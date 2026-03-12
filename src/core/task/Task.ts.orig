@@ -2234,20 +2234,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	/**
 	 * Cancels the current HTTP request if one is in progress.
 	 * This immediately aborts the underlying stream rather than waiting for the next chunk.
-	 *
-	 * @param destroyClient - If true, tells the provider to destroy its client to sever connections.
-	 *                        This is useful for local models that may continue inference even after abort.
 	 */
-	public cancelCurrentRequest(destroyClient: boolean = false): void {
+	public cancelCurrentRequest(): void {
 		if (this.currentRequestAbortController) {
 			console.log(`[Task#${this.taskId}.${this.instanceId}] Aborting current HTTP request`)
 			this.currentRequestAbortController.abort()
 			this.currentRequestAbortController = undefined
-		}
-
-		// Tell the API provider to cancel its request and optionally destroy its client
-		if (this.api.cancelRequest) {
-			this.api.cancelRequest(destroyClient)
 		}
 	}
 
