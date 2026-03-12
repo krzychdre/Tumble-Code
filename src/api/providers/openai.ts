@@ -10,7 +10,7 @@ import {
 	OPENAI_AZURE_AI_INFERENCE_PATH,
 } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import { type ApiHandlerOptions, shouldUseReasoningEffort } from "../../shared/api"
 
 import { TagMatcher } from "../../utils/tag-matcher"
 
@@ -24,6 +24,35 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleOpenAIError } from "./utils/openai-error-handler"
+
+/**
+ * Custom interface for GLM params to support thinking mode.
+ * GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5) from z.ai support a thinking
+ * object that enables chain-of-thought reasoning.
+ *
+ * - LOW budget: { type: "enabled" } - Basic thinking (reasoning within turn)
+ * - MEDIUM budget: { type: "enabled", clear_thinking: false } - Turn-level/preserved thinking
+ * - Disabled: { type: "disabled" }
+ *
+ * @see https://docs.z.ai/guides/llm/glm-4.7
+ */
+type GLMChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParamsStreaming & {
+	thinking?: { type: "enabled" | "disabled"; clear_thinking?: boolean }
+}
+
+/**
+ * Detects if the model ID is a GLM model that supports thinking mode.
+ * Matches GLM-4.5, GLM-4.6, GLM-4.7, GLM-5 and their variants.
+ */
+function isGLMThinkingModel(modelId: string): boolean {
+	const normalized = modelId.toLowerCase()
+	return (
+		normalized.includes("glm-4.5") ||
+		normalized.includes("glm-4.6") ||
+		normalized.includes("glm-4.7") ||
+		normalized.includes("glm-5")
+	)
+}
 
 // TODO: Rename this to OpenAICompatibleHandler. Also, I think the
 // `OpenAINativeHandler` can subclass from this, since it's obviously
@@ -167,6 +196,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			// Add GLM thinking parameter for GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5)
+			// when reasoning is enabled via settings
+			this.addGLMThinkingIfNeeded(requestOptions as GLMChatCompletionParams, modelId, modelInfo)
+
 			let stream
 			try {
 				stream = await this.client.chat.completions.create(
@@ -234,6 +267,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
+
+			// Add GLM thinking parameter for GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5)
+			// when reasoning is enabled via settings
+			this.addGLMThinkingIfNeeded(requestOptions as unknown as GLMChatCompletionParams, modelId, modelInfo)
 
 			let response
 			try {
@@ -530,6 +567,53 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Use user-configured modelMaxTokens if available, otherwise fall back to model's default maxTokens
 			// Using max_completion_tokens as max_tokens is deprecated
 			requestOptions.max_completion_tokens = this.options.modelMaxTokens || modelInfo.maxTokens
+		}
+	}
+
+	/**
+	 * Adds GLM thinking parameter for GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5)
+	 * when used through custom OpenAI-compatible providers.
+	 *
+	 * GLM models support a `thinking` object with:
+	 * - LOW budget: { type: "enabled" } - Basic thinking within the turn
+	 * - MEDIUM budget: { type: "enabled", clear_thinking: false } - Turn-level/preserved thinking
+	 * - Disabled: { type: "disabled" }
+	 *
+	 * @see https://docs.z.ai/guides/llm/glm-4.7
+	 */
+	protected addGLMThinkingIfNeeded(
+		requestOptions: GLMChatCompletionParams,
+		modelId: string,
+		modelInfo: ModelInfo,
+	): void {
+		// Only apply to GLM models
+		if (!isGLMThinkingModel(modelId)) {
+			return
+		}
+
+		// Check if reasoning should be used based on model capabilities and settings
+		const useReasoning = shouldUseReasoningEffort({ model: modelInfo, settings: this.options })
+
+		if (useReasoning) {
+			// Determine thinking level based on reasoningEffort setting
+			// "medium" or higher = preserved thinking (clear_thinking: false)
+			// "low" or default = basic thinking
+			const reasoningEffort = this.options.reasoningEffort ?? modelInfo.reasoningEffort
+			const useMediumOrHigher =
+				reasoningEffort === "medium" || reasoningEffort === "high" || reasoningEffort === "xhigh"
+
+			if (useMediumOrHigher) {
+				// MEDIUM budget: preserved/turn-level thinking
+				requestOptions.thinking = { type: "enabled", clear_thinking: false }
+			} else {
+				// LOW budget: basic thinking
+				requestOptions.thinking = { type: "enabled" }
+			}
+		} else {
+			// Reasoning is explicitly disabled
+			// For GLM-4.7 and GLM-5, thinking is ON by default in the API,
+			// so we need to explicitly disable it
+			requestOptions.thinking = { type: "disabled" }
 		}
 	}
 }
