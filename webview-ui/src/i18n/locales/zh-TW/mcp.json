@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "執行中",
 		"completed": "已完成",
-		"error": "錯誤"
+		"error": "錯誤",
+		"response": "回應"
 	}
 }
