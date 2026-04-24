@@ -13,10 +13,19 @@
 
 > AI destekli dev ekibin, doğrudan editörünün içinde
 
-## v3.51.0'daki Yenilikler
+## v3.53.0'daki Yenilikler
 
-- Roo Code içinde en yeni OpenAI sohbet modellerini kullanabilmen için OpenAI GPT-5.4 ve GPT-5.3 Chat Latest desteği eklendi.
-- Skills artık fallback yürütmeyle slash komutları olarak sunulabiliyor, böylece yeniden kullanılabilir iş akışları daha hızlı tetiklenebiliyor.
+> ### Roo Code eklentisi bir yere gitmiyor.
+>
+> Roo Code'un 3 milyon kuruluma ulaştığı ve orijinal ekibin tüm enerjisini Roomote'a verdiği [son duyuruyu](https://x.com/mattrubens/status/2046636598859559114) görmüş olabilirsin. Bu haberin birçoğunuz için zor olduğunu biliyoruz. Bu eklenti bizim ve senin için çok şey ifade ediyor ve seni duyuyoruz.
+>
+> İyi haber: **bir topluluk ekibi Roo Code'u ileriye taşımak için öne çıktı**, ve güvendiğin eklentinin bakımı ve geliştirilmesinin sürmesi için onlarla resmi bir devir çalışması yürütüyoruz.
+
+**Bu sürümdeki yenilikler:**
+
+- OpenAI Codex sağlayıcısı üzerinden GPT-5.5 desteği eklendi.
+- Vertex AI'da Claude Opus 4.7 desteği eklendi.
+- Önceki checkpoint'ler arasında daha kolay geri adım atabilmen için sohbete önceki checkpoint navigasyon kontrolleri eklendi.
 
 <details>
   <summary>🌐 Mevcut diller</summary>
@@ -40,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-  </details>
+      </details>
 
 ---
 

@@ -13,10 +13,19 @@
 
 > 你的 AI 驱动开发团队，就在你的编辑器里
 
-## v3.51.0 新增内容
+## v3.53.0 新增内容
 
-- 已添加对 OpenAI GPT-5.4 和 GPT-5.3 Chat Latest 的支持，让你可以在 Roo Code 中使用 OpenAI 最新的聊天模型。
-- 现在可以将 skills 公开为 slash 命令，并支持 fallback execution，让可复用工作流触发得更快。
+> ### Roo Code 插件不会消失。
+>
+> 你可能已经看到[最近的公告](https://x.com/mattrubens/status/2046636598859559114)：Roo Code 已突破 300 万次安装，原团队正全力投入 Roomote。我们知道这个消息让许多人感到难受。这个插件对我们和你都意义重大，你的心声我们听到了。
+>
+> 好消息是：**一支社区团队已挺身而出，继续推进 Roo Code**，我们正与他们协作进行正式交接，让你所依赖的插件继续得到维护和改进。
+
+**本次发布的新增内容：**
+
+- 通过 OpenAI Codex 提供商新增对 GPT-5.5 的支持。
+- 在 Vertex AI 上新增对 Claude Opus 4.7 的支持。
+- 在聊天中新增了上一存档点导航控件，让你可以更轻松地回退到此前的存档点。
 
 <details>
   <summary>🌐 可用语言</summary>
@@ -40,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-  </details>
+      </details>
 
 ---
 

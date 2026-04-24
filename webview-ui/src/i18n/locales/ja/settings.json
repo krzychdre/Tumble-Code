@@ -56,9 +56,6 @@
 			"label": "脆弱性を発見しましたか？",
 			"link": "開示プロセスに従ってください"
 		},
-		"contact": {
-			"label": "お問い合わせが必要ですか？メールを送信"
-		},
 		"community": "ヒントが欲しいですか、または他のRoo Codeユーザーと交流したいですか？<redditLink>reddit.com/r/RooCode</redditLink>または<discordLink>discord.gg/roocode</discordLink>に参加してください",
 		"contactAndCommunity": "お問い合わせとコミュニティ",
 		"manageSettings": "設定を管理",
@@ -380,6 +377,9 @@
 		"vertex1MContextBetaDescription": "Claude Sonnet 4.x / Claude Opus 4.6のコンテキストウィンドウを100万トークンに拡張します",
 		"basetenApiKey": "Baseten APIキー",
 		"getBasetenApiKey": "Baseten APIキーを取得",
+		"poeApiKey": "Poe APIキー",
+		"getPoeApiKey": "Poe APIキーを取得",
+		"poeBaseUrl": "Poe ベースURL",
 		"fireworksApiKey": "Fireworks APIキー",
 		"getFireworksApiKey": "Fireworks APIキーを取得",
 		"deepSeekApiKey": "DeepSeek APIキー",

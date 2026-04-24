@@ -13,10 +13,19 @@
 
 > Tim dev bertenaga AI-mu, langsung di editor kamu
 
-## Yang Baru di v3.51.0
+## Yang Baru di v3.53.0
 
-- Menambahkan dukungan untuk OpenAI GPT-5.4 dan GPT-5.3 Chat Latest agar kamu bisa memakai model chat OpenAI terbaru di Roo Code.
-- Skill kini bisa diekspos sebagai slash command dengan eksekusi fallback supaya workflow yang bisa dipakai ulang lebih cepat dijalankan.
+> ### Plugin Roo Code tidak akan hilang.
+>
+> Kamu mungkin sudah melihat [pengumuman baru-baru ini](https://x.com/mattrubens/status/2046636598859559114) bahwa Roo Code mencapai 3 juta instalasi dan tim aslinya sepenuhnya fokus ke Roomote. Kami tahu berita itu berat bagi banyak dari kalian. Plugin ini sangat berarti bagi kami dan bagi kamu, dan kami mendengarmu.
+>
+> Kabar baiknya: **sebuah tim komunitas telah maju untuk melanjutkan Roo Code**, dan kami sedang bekerja sama dengan mereka untuk serah terima resmi agar plugin yang kamu andalkan tetap dirawat dan ditingkatkan.
+
+**Yang baru di rilis ini:**
+
+- Menambahkan dukungan GPT-5.5 melalui provider OpenAI Codex.
+- Menambahkan dukungan Claude Opus 4.7 di Vertex AI.
+- Menambahkan kontrol navigasi checkpoint sebelumnya di chat agar kamu bisa melangkah mundur melalui checkpoint sebelumnya dengan lebih mudah.
 
 <details>
   <summary>🌐 Bahasa yang tersedia</summary>
@@ -40,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-  </details>
+      </details>
 
 ---
 
