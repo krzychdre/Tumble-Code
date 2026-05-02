@@ -169,6 +169,11 @@ function getSelectedModel({
 			const routerInfo = routerModels.litellm?.[id]
 			return { id, info: routerInfo ?? litellmDefaultModelInfo }
 		}
+		case "poe": {
+			const id = getValidatedModelId(apiConfiguration.apiModelId, routerModels.poe, defaultModelId)
+			const routerInfo = routerModels.poe?.[id]
+			return { id, info: routerInfo }
+		}
 		case "xai": {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
 			const info = xaiModels[id as keyof typeof xaiModels]
