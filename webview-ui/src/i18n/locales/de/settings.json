@@ -56,9 +56,6 @@
 			"label": "Sicherheitslücke entdeckt?",
 			"link": "Folge unserem Offenlegungsprozess"
 		},
-		"contact": {
-			"label": "Musst du mit uns sprechen? Schreibe"
-		},
 		"community": "Möchtest du Tipps oder dich einfach mit anderen Roo Code-Nutzern austauschen? Tritt <redditLink>reddit.com/r/RooCode</redditLink> oder <discordLink>discord.gg/roocode</discordLink> bei",
 		"contactAndCommunity": "Kontakt & Community",
 		"manageSettings": "Einstellungen verwalten",
@@ -380,6 +377,9 @@
 		"vertex1MContextBetaDescription": "Erweitert das Kontextfenster für Claude Sonnet 4.x / Claude Opus 4.6 auf 1 Million Token",
 		"basetenApiKey": "Baseten API-Schlüssel",
 		"getBasetenApiKey": "Baseten API-Schlüssel erhalten",
+		"poeApiKey": "Poe API-Schlüssel",
+		"getPoeApiKey": "Poe API-Schlüssel erhalten",
+		"poeBaseUrl": "Poe Basis-URL",
 		"fireworksApiKey": "Fireworks API-Schlüssel",
 		"getFireworksApiKey": "Fireworks API-Schlüssel erhalten",
 		"deepSeekApiKey": "DeepSeek API-Schlüssel",

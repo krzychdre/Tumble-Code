@@ -13,10 +13,19 @@
 
 > Twój zespół deweloperski zasilany AI — prosto w edytorze
 
-## Nowości w v3.51.0
+## Nowości w v3.53.0
 
-- Dodano obsługę OpenAI GPT-5.4 i GPT-5.3 Chat Latest, żebyś mógł używać najnowszych modeli czatu OpenAI w Roo Code.
-- Skills można teraz udostępniać jako slash commandy z wykonaniem awaryjnym, żeby szybciej uruchamiać wielokrotnego użytku workflowy.
+> ### Wtyczka Roo Code nie znika.
+>
+> Być może widziałeś [niedawne ogłoszenie](https://x.com/mattrubens/status/2046636598859559114), że Roo Code osiągnął 3 miliony instalacji, a oryginalny zespół całkowicie skupia się na Roomote. Wiemy, że ta wiadomość była trudna dla wielu z was. Ta wtyczka wiele dla nas i dla ciebie znaczy, i słyszymy was.
+>
+> Dobra wiadomość: **zespół społeczności zgłosił się, żeby poprowadzić Roo Code dalej**, i pracujemy z nimi nad oficjalnym przekazaniem, żeby wtyczka, na której polegasz, była nadal utrzymywana i ulepszana.
+
+**Nowości w tej wersji:**
+
+- Dodano obsługę GPT-5.5 przez dostawcę OpenAI Codex.
+- Dodano obsługę Claude Opus 4.7 w Vertex AI.
+- Dodano w czacie kontrolki nawigacji do poprzednich checkpointów, żebyś mógł łatwiej cofać się do wcześniejszych checkpointów.
 
 <details>
   <summary>🌐 Dostępne języki</summary>

@@ -9,6 +9,7 @@ import {
 	AnthropicHandler,
 	AwsBedrockHandler,
 	OpenRouterHandler,
+	PoeHandler,
 	VertexHandler,
 	AnthropicVertexHandler,
 	OpenAiHandler,
@@ -106,6 +107,15 @@ export interface ApiHandler {
 	 * @returns A promise resolving to the token count
 	 */
 	countTokens(content: Array<Anthropic.Messages.ContentBlockParam>): Promise<number>
+
+	/**
+	 * Cancels the current in-flight request and optionally destroys the client.
+	 * This allows providers to perform provider-specific cleanup when a request is cancelled.
+	 * For local models, this can include destroying the SDK client to sever HTTP connections.
+	 *
+	 * @param destroyClient - If true, destroy and recreate the client to force connection termination
+	 */
+	cancelRequest?(destroyClient?: boolean): void
 }
 
 export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
@@ -176,6 +186,8 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new MiniMaxHandler(options)
 		case "baseten":
 			return new BasetenHandler(options)
+		case "poe":
+			return new PoeHandler(options)
 		default:
 			return new AnthropicHandler(options)
 	}

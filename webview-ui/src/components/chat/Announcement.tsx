@@ -40,12 +40,34 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 					<DialogTitle>{t("chat:announcement.title", { version: Package.version })}</DialogTitle>
 				</DialogHeader>
 				<div>
+					{/* Community Handoff Notice */}
+					<div className="mb-4 p-3 rounded border border-vscode-textLink-foreground/40 bg-vscode-textLink-foreground/5">
+						<p className="font-semibold mb-1.5 text-vscode-textLink-foreground">
+							{t("chat:announcement.handoff.heading")}
+						</p>
+						<p className="text-sm mb-2">
+							<Trans i18nKey="chat:announcement.handoff.description" components={{ bold: <strong /> }} />
+						</p>
+						<VSCodeLink
+							href="https://x.com/mattrubens/status/2046636598859559114"
+							onClick={(e) => {
+								e.preventDefault()
+								vscode.postMessage({
+									type: "openExternal",
+									url: "https://x.com/mattrubens/status/2046636598859559114",
+								})
+							}}>
+							{t("chat:announcement.handoff.readMore")}
+						</VSCodeLink>
+					</div>
+
 					{/* Regular Release Highlights */}
 					<div className="mb-4">
 						<p className="mb-3">{t("chat:announcement.release.heading")}</p>
 						<ul className="list-disc list-inside text-sm space-y-1.5">
-							<li>{t("chat:announcement.release.gpt54")}</li>
-							<li>{t("chat:announcement.release.slashSkills")}</li>
+							<li>{t("chat:announcement.release.gpt55")}</li>
+							<li>{t("chat:announcement.release.claudeOpus47")}</li>
+							<li>{t("chat:announcement.release.checkpointNav")}</li>
 						</ul>
 					</div>
 
@@ -72,16 +94,6 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 					<div className="mt-3 text-sm text-center text-vscode-descriptionForeground">
 						<Trans i18nKey="chat:announcement.support" components={{ githubLink: <GitHubLink /> }} />
 					</div>
-
-					{/* Careers Section */}
-					<div className="mt-2 text-sm text-center">
-						<Trans
-							i18nKey="chat:announcement.careers"
-							components={{
-								careersLink: <CareersLink />,
-							}}
-						/>
-					</div>
 				</div>
 			</DialogContent>
 		</Dialog>
@@ -107,17 +119,6 @@ const GitHubLink = ({ children }: { children?: ReactNode }) => (
 		onClick={(e) => {
 			e.preventDefault()
 			vscode.postMessage({ type: "openExternal", url: "https://github.com/RooCodeInc/Roo-Code" })
-		}}>
-		{children}
-	</VSCodeLink>
-)
-
-const CareersLink = ({ children }: { children?: ReactNode }) => (
-	<VSCodeLink
-		href="https://careers.roocode.com"
-		onClick={(e) => {
-			e.preventDefault()
-			vscode.postMessage({ type: "openExternal", url: "https://careers.roocode.com" })
 		}}>
 		{children}
 	</VSCodeLink>

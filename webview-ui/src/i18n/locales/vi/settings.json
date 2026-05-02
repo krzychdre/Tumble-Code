@@ -56,9 +56,6 @@
 			"label": "Phát hiện lỗ hổng bảo mật?",
 			"link": "Làm theo quy trình công bố của chúng tôi"
 		},
-		"contact": {
-			"label": "Cần nói chuyện với chúng tôi? Viết"
-		},
 		"community": "Muốn nhận mẹo hoặc chỉ muốn giao lưu với những người dùng Roo Code khác? Tham gia <redditLink>reddit.com/r/RooCode</redditLink> hoặc <discordLink>discord.gg/roocode</discordLink>",
 		"contactAndCommunity": "Liên Hệ & Cộng Đồng",
 		"manageSettings": "Quản Lý Cài Đặt",
@@ -380,6 +377,9 @@
 		"vertex1MContextBetaDescription": "Mở rộng cửa sổ ngữ cảnh lên 1 triệu token cho Claude Sonnet 4.x / Claude Opus 4.6",
 		"basetenApiKey": "Khóa API Baseten",
 		"getBasetenApiKey": "Lấy khóa API Baseten",
+		"poeApiKey": "Khóa API Poe",
+		"getPoeApiKey": "Lấy khóa API Poe",
+		"poeBaseUrl": "URL cơ sở Poe",
 		"fireworksApiKey": "Khóa API Fireworks",
 		"getFireworksApiKey": "Lấy khóa API Fireworks",
 		"deepSeekApiKey": "Khóa API DeepSeek",

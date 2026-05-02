@@ -56,9 +56,6 @@
 			"label": "कोई कमजोरी खोजी?",
 			"link": "हमारी प्रकटीकरण प्रक्रिया का पालन करें"
 		},
-		"contact": {
-			"label": "हमसे बात करने की जरूरत है? लिखें"
-		},
 		"community": "सुझाव चाहिए या बस अन्य Roo Code उपयोगकर्ताओं के साथ घूमना चाहते हैं? <redditLink>reddit.com/r/RooCode</redditLink> या <discordLink>discord.gg/roocode</discordLink> में शामिल हों",
 		"contactAndCommunity": "संपर्क और समुदाय",
 		"manageSettings": "सेटिंग्स प्रबंधित करें",
@@ -380,6 +377,9 @@
 		"vertex1MContextBetaDescription": "Claude Sonnet 4.x / Claude Opus 4.6 के लिए संदर्भ विंडो को 1 मिलियन टोकन तक बढ़ाता है",
 		"basetenApiKey": "Baseten API कुंजी",
 		"getBasetenApiKey": "Baseten API कुंजी प्राप्त करें",
+		"poeApiKey": "Poe API कुंजी",
+		"getPoeApiKey": "Poe API कुंजी प्राप्त करें",
+		"poeBaseUrl": "Poe बेस URL",
 		"fireworksApiKey": "Fireworks API कुंजी",
 		"getFireworksApiKey": "Fireworks API कुंजी प्राप्त करें",
 		"deepSeekApiKey": "DeepSeek API कुंजी",

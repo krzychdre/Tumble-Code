@@ -13,10 +13,19 @@
 
 > Đội ngũ dev dùng AI của bạn, ngay trong trình chỉnh sửa
 
-## Điểm mới trong v3.51.0
+## Điểm mới trong v3.53.0
 
-- Đã thêm hỗ trợ cho OpenAI GPT-5.4 và GPT-5.3 Chat Latest để bạn có thể dùng các mô hình chat OpenAI mới nhất trong Roo Code.
-- Skills giờ có thể được cung cấp dưới dạng lệnh slash kèm thực thi dự phòng để kích hoạt các quy trình tái sử dụng nhanh hơn.
+> ### Plugin Roo Code sẽ không biến mất.
+>
+> Bạn có thể đã thấy [thông báo gần đây](https://x.com/mattrubens/status/2046636598859559114) rằng Roo Code đã đạt 3 triệu lượt cài đặt và đội ngũ ban đầu đang dồn toàn lực cho Roomote. Chúng tôi biết rằng tin này thật khó khăn với nhiều bạn. Plugin này có ý nghĩa rất lớn với chúng tôi và với bạn, và chúng tôi lắng nghe bạn.
+>
+> Tin tốt: **một đội ngũ từ cộng đồng đã đứng ra tiếp tục đưa Roo Code đi tiếp**, và chúng tôi đang làm việc với họ về việc bàn giao chính thức để plugin mà bạn đang tin cậy tiếp tục được bảo trì và cải thiện.
+
+**Điểm mới trong bản phát hành này:**
+
+- Thêm hỗ trợ GPT-5.5 thông qua nhà cung cấp OpenAI Codex.
+- Thêm hỗ trợ Claude Opus 4.7 trên Vertex AI.
+- Thêm các điều khiển điều hướng checkpoint trước đó trong chat để bạn có thể quay lại các checkpoint trước dễ dàng hơn.
 
 <details>
   <summary>🌐 Các ngôn ngữ có sẵn</summary>

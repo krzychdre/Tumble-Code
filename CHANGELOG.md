@@ -1,5 +1,39 @@
 # Roo Code Changelog
 
+## 3.53.0
+
+### Minor Changes
+
+- **The Roo Code plugin is not going away.** You may have seen the [recent announcement](https://x.com/mattrubens/status/2046636598859559114) that Roo Code hit 3 million installs and the original team is going all-in on Roomote. We know that news was hard for a lot of you. This plugin means a lot to us and to you, and we hear you. The good news: a community team has stepped up to carry Roo Code forward, and we're working with them on an official handoff so the plugin you rely on keeps getting maintained and improved.
+- Add GPT-5.5 support via the OpenAI Codex provider (PR #12170 by @hannesrudolph)
+- Add Claude Opus 4.7 support on Vertex AI (#12134 by @saneroen, PR #12135 by @saneroen)
+- Add previous checkpoint navigation controls and i18n in chat (#12138 by @saneroen, PR #12139 by @saneroen)
+- Add Roomote banner (PR #12119 by @brunobergher)
+- Redesign Roomote announcement banner with violet branding on the web (PR #12161 by @roomote-v0)
+- Add sunsetting Roo Code blog post (PR #12160 by @roomote-v0)
+
+## 3.52.1
+
+### Patch Changes
+
+- Add correct JSON schema for `.roomodes` configuration files (#11790 by @algorhythm85, PR #11791 by @app/roomote-v0)
+- Remove the hiring announcement from the VS Code extension UI (PR #12108 by @app/roomote-v0)
+
+## 3.52.0
+
+### Minor Changes
+
+- Add Poe as an AI provider so users can access Poe models directly in Roo Code (PR #12015 by @kamilio)
+- Improve the xAI provider by migrating it to the Responses API with reusable transform utilities (#11961 by @carlesso, PR #11962 by @carlesso)
+- Fix MiniMax model listings and context window handling for more reliable configuration (#11999 by @Rexarrior, PR #12069 by @Rexarrior)
+- Add xAI Grok-4.20 models and update the default xAI model selection (#11955 by @carlesso, PR #11956 by @carlesso)
+- Add OpenAI GPT-5.4 mini and nano models to expand the available OpenAI model lineup (PR #11946 by @PeterDaveHello)
+- Chore: include the automated version bump PR from the previous release cycle for complete release accounting (PR #11892 by @app/github-actions)
+
+### Patch Changes
+
+- Add support for OpenAI `gpt-5.4-mini` and `gpt-5.4-nano` models.
+
 ## 3.51.1
 
 ### Patch Changes

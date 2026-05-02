@@ -169,7 +169,7 @@ export class ClineProvider
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
-	public readonly latestAnnouncementId = "mar-2026-v3.51.0-gpt-54-slash-skills" // v3.51.0 OpenAI GPT-5.4 support and slash command skills
+	public readonly latestAnnouncementId = "apr-2026-v3.53.0-community-handoff-gpt55-opus47" // v3.53.0 Community handoff, GPT-5.5, Claude Opus 4.7, checkpoint navigation
 	public readonly providerSettingsManager: ProviderSettingsManager
 	public readonly customModesManager: CustomModesManager
 
@@ -3016,7 +3016,9 @@ export class ClineProvider
 
 		// Immediately cancel the underlying HTTP request if one is in progress
 		// This ensures the stream fails quickly rather than waiting for network timeout
-		task.cancelCurrentRequest()
+		// Pass destroyClient=true to sever all HTTP connections and force client recreation.
+		// This is essential for local models that may continue inference even after abort.
+		task.cancelCurrentRequest(true)
 
 		// Begin abort (non-blocking)
 		task.abortTask()
