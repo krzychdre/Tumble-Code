@@ -30,18 +30,26 @@ import { handleOpenAIError } from "./utils/openai-error-handler"
 // compatible with the OpenAI API. We can also rename it to `OpenAIHandler`.
 export class OpenAiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
-	protected client: OpenAI
+	protected client: OpenAI | null = null
+	private abortController?: AbortController
 	private readonly providerName = "OpenAI"
 
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
+		// Client is created lazily on first use via getClient()
+	}
 
+	/**
+	 * Creates or recreates the OpenAI SDK client.
+	 * Called lazily on first request or after client destruction.
+	 */
+	private createClient(): OpenAI {
 		const baseURL = this.options.openAiBaseUrl || "https://api.openai.com/v1"
 		const apiKey = this.options.openAiApiKey ?? "not-provided"
 		const isAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
 		const urlHost = this._getUrlHost(this.options.openAiBaseUrl)
-		const isAzureOpenAi = urlHost === "azure.com" || urlHost.endsWith(".azure.com") || options.openAiUseAzure
+		const isAzureOpenAi = urlHost === "azure.com" || urlHost.endsWith(".azure.com") || this.options.openAiUseAzure
 
 		const headers = {
 			...DEFAULT_HEADERS,
@@ -52,7 +60,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 		if (isAzureAiInference) {
 			// Azure AI Inference Service (e.g., for DeepSeek) uses a different path structure
-			this.client = new OpenAI({
+			return new OpenAI({
 				baseURL,
 				apiKey,
 				defaultHeaders: headers,
@@ -62,7 +70,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		} else if (isAzureOpenAi) {
 			// Azure API shape slightly differs from the core API shape:
 			// https://github.com/openai/openai-node?tab=readme-ov-file#microsoft-azure-openai
-			this.client = new AzureOpenAI({
+			return new AzureOpenAI({
 				baseURL,
 				apiKey,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
@@ -70,12 +78,41 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				timeout,
 			})
 		} else {
-			this.client = new OpenAI({
+			return new OpenAI({
 				baseURL,
 				apiKey,
 				defaultHeaders: headers,
 				timeout,
 			})
+		}
+	}
+
+	/**
+	 * Gets the client, creating it if necessary (lazy initialization).
+	 */
+	protected getClient(): OpenAI {
+		if (!this.client) {
+			this.client = this.createClient()
+		}
+		return this.client
+	}
+
+	/**
+	 * Cancels the current in-flight request and optionally destroys the client.
+	 *
+	 * @param destroyClient - If true, nullify the client to force connection termination.
+	 *                        The client will be lazily recreated on the next request.
+	 */
+	cancelRequest(destroyClient: boolean = false): void {
+		// Abort any in-flight request
+		if (this.abortController) {
+			this.abortController.abort()
+			this.abortController = undefined
+		}
+
+		// Optionally destroy the client to sever HTTP connections
+		if (destroyClient && this.client) {
+			this.client = null
 		}
 	}
 
@@ -167,13 +204,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			this.abortController = new AbortController()
 			let stream
 			try {
-				stream = await this.client.chat.completions.create(
-					requestOptions,
-					isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-				)
+				stream = await this.getClient().chat.completions.create(requestOptions, {
+					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
+				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
 			}
 
@@ -189,36 +228,40 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			let lastUsage
 			const activeToolCallIds = new Set<string>()
 
-			for await (const chunk of stream) {
-				const delta = chunk.choices?.[0]?.delta ?? {}
-				const finishReason = chunk.choices?.[0]?.finish_reason
+			try {
+				for await (const chunk of stream) {
+					const delta = chunk.choices?.[0]?.delta ?? {}
+					const finishReason = chunk.choices?.[0]?.finish_reason
 
-				if (delta.content) {
-					for (const chunk of matcher.update(delta.content)) {
-						yield chunk
+					if (delta.content) {
+						for (const chunk of matcher.update(delta.content)) {
+							yield chunk
+						}
+					}
+
+					if ("reasoning_content" in delta && delta.reasoning_content) {
+						yield {
+							type: "reasoning",
+							text: (delta.reasoning_content as string | undefined) || "",
+						}
+					}
+
+					yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
+
+					if (chunk.usage) {
+						lastUsage = chunk.usage
 					}
 				}
 
-				if ("reasoning_content" in delta && delta.reasoning_content) {
-					yield {
-						type: "reasoning",
-						text: (delta.reasoning_content as string | undefined) || "",
-					}
+				for (const chunk of matcher.final()) {
+					yield chunk
 				}
 
-				yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
-
-				if (chunk.usage) {
-					lastUsage = chunk.usage
+				if (lastUsage) {
+					yield this.processUsageMetrics(lastUsage, modelInfo)
 				}
-			}
-
-			for (const chunk of matcher.final()) {
-				yield chunk
-			}
-
-			if (lastUsage) {
-				yield this.processUsageMetrics(lastUsage, modelInfo)
+			} finally {
+				this.abortController = undefined
 			}
 		} else {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
@@ -235,14 +278,18 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.client.chat.completions.create(
-					requestOptions,
-					this._isAzureAiInference(modelUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-				)
+				response = await this.getClient().chat.completions.create(requestOptions, {
+					...(this._isAzureAiInference(modelUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
+				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
+			} finally {
+				this.abortController = undefined
 			}
 
 			const message = response.choices?.[0]?.message
@@ -306,14 +353,17 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.client.chat.completions.create(
-					requestOptions,
-					isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-				)
+				response = await this.getClient().chat.completions.create(requestOptions, {
+					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
+			} finally {
+				this.abortController = undefined
 			}
 
 			return response.choices?.[0]?.message.content || ""
@@ -362,17 +412,23 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			this.abortController = new AbortController()
 			let stream
 			try {
-				stream = await this.client.chat.completions.create(
-					requestOptions,
-					methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-				)
+				stream = await this.getClient().chat.completions.create(requestOptions, {
+					...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
+				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
 			}
 
-			yield* this.handleStreamResponse(stream)
+			try {
+				yield* this.handleStreamResponse(stream)
+			} finally {
+				this.abortController = undefined
+			}
 		} else {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: modelId,
@@ -396,14 +452,18 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
+			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.client.chat.completions.create(
-					requestOptions,
-					methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
-				)
+				response = await this.getClient().chat.completions.create(requestOptions, {
+					...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
+				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
+			} finally {
+				this.abortController = undefined
 			}
 
 			const message = response.choices?.[0]?.message
