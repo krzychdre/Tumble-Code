@@ -38,10 +38,10 @@ export const dynamicProviders = [
 	"openrouter",
 	"vercel-ai-gateway",
 	"litellm",
+	"poe",
 	"requesty",
 	"roo",
 	"unbound",
-	"poe",
 ] as const
 
 export type DynamicProvider = (typeof dynamicProviders)[number]
@@ -314,11 +314,6 @@ const deepSeekSchema = apiModelIdProviderModelSchema.extend({
 	deepSeekApiKey: z.string().optional(),
 })
 
-const poeSchema = apiModelIdProviderModelSchema.extend({
-	poeApiKey: z.string().optional(),
-	poeBaseUrl: z.string().optional(),
-})
-
 const moonshotSchema = apiModelIdProviderModelSchema.extend({
 	moonshotBaseUrl: z
 		.union([z.literal("https://api.moonshot.ai/v1"), z.literal("https://api.moonshot.cn/v1")])
@@ -331,6 +326,11 @@ const minimaxSchema = apiModelIdProviderModelSchema.extend({
 		.union([z.literal("https://api.minimax.io/v1"), z.literal("https://api.minimaxi.com/v1")])
 		.optional(),
 	minimaxApiKey: z.string().optional(),
+})
+
+const poeSchema = apiModelIdProviderModelSchema.extend({
+	poeApiKey: z.string().optional(),
+	poeBaseUrl: z.string().optional(),
 })
 
 const requestySchema = baseProviderSettingsSchema.extend({
@@ -416,6 +416,7 @@ export const providerSettingsSchemaDiscriminated = z.discriminatedUnion("apiProv
 	poeSchema.merge(z.object({ apiProvider: z.literal("poe") })),
 	moonshotSchema.merge(z.object({ apiProvider: z.literal("moonshot") })),
 	minimaxSchema.merge(z.object({ apiProvider: z.literal("minimax") })),
+	poeSchema.merge(z.object({ apiProvider: z.literal("poe") })),
 	requestySchema.merge(z.object({ apiProvider: z.literal("requesty") })),
 	unboundSchema.merge(z.object({ apiProvider: z.literal("unbound") })),
 	fakeAiSchema.merge(z.object({ apiProvider: z.literal("fake-ai") })),
@@ -450,6 +451,7 @@ export const providerSettingsSchema = z.object({
 	...poeSchema.shape,
 	...moonshotSchema.shape,
 	...minimaxSchema.shape,
+	...poeSchema.shape,
 	...requestySchema.shape,
 	...unboundSchema.shape,
 	...fakeAiSchema.shape,

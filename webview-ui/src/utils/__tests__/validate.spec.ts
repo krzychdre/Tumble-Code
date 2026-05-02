@@ -41,11 +41,11 @@ describe("Model Validation Functions", () => {
 		requesty: {},
 		unbound: {},
 		litellm: {},
+		poe: {},
 		ollama: {},
 		lmstudio: {},
 		"vercel-ai-gateway": {},
 		roo: {},
-		poe: {},
 	}
 
 	const allowAllOrganization: OrganizationAllowList = {

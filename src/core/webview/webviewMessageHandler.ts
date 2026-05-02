@@ -950,12 +950,12 @@ export const webviewMessageHandler = async (
 						openrouter: {},
 						"vercel-ai-gateway": {},
 						litellm: {},
+						poe: {},
 						requesty: {},
 						unbound: {},
 						ollama: {},
 						lmstudio: {},
 						roo: {},
-						poe: {},
 					}
 
 			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {

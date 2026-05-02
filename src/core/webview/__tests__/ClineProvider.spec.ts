@@ -2491,10 +2491,10 @@ describe("ClineProvider - Router Models", () => {
 				unbound: mockModels,
 				roo: mockModels,
 				litellm: mockModels,
+				poe: {},
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
-				poe: {},
 			},
 			values: undefined,
 		})
@@ -2540,8 +2540,8 @@ describe("ClineProvider - Router Models", () => {
 				ollama: {},
 				lmstudio: {},
 				litellm: {},
-				"vercel-ai-gateway": mockModels,
 				poe: {},
+				"vercel-ai-gateway": mockModels,
 			},
 			values: undefined,
 		})
@@ -2633,10 +2633,10 @@ describe("ClineProvider - Router Models", () => {
 				unbound: mockModels,
 				roo: mockModels,
 				litellm: {},
+				poe: {},
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
-				poe: {},
 			},
 			values: undefined,
 		})
