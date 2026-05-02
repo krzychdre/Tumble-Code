@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "Выполняется",
 		"completed": "Завершено",
-		"error": "Ошибка"
+		"error": "Ошибка",
+		"response": "Ответ"
 	}
 }

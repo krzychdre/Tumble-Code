@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "Wird ausgeführt",
 		"completed": "Abgeschlossen",
-		"error": "Fehler"
+		"error": "Fehler",
+		"response": "Antwort"
 	}
 }

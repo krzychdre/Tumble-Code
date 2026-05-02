@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "実行中",
 		"completed": "完了",
-		"error": "エラー"
+		"error": "エラー",
+		"response": "レスポンス"
 	}
 }

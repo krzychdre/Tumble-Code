@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "Berjalan",
 		"completed": "Selesai",
-		"error": "Error"
+		"error": "Error",
+		"response": "Respons"
 	}
 }

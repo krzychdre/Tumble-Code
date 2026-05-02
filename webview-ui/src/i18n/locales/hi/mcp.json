@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "चल रहा है",
 		"completed": "पूरा हुआ",
-		"error": "त्रुटि"
+		"error": "त्रुटि",
+		"response": "प्रतिक्रिया"
 	}
 }

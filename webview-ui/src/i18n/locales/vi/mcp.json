@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "Đang chạy",
 		"completed": "Hoàn thành",
-		"error": "Lỗi"
+		"error": "Lỗi",
+		"response": "Phản hồi"
 	}
 }

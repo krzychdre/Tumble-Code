@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, memo } from "react"
-import { Server, ChevronDown } from "lucide-react"
+import { Server, ChevronDown, ChevronRight } from "lucide-react"
 import { useEvent } from "react-use"
 import { useTranslation } from "react-i18next"
 
@@ -52,13 +52,19 @@ export const McpExecution = ({
 
 	// State for tracking MCP response status
 	const [status, setStatus] = useState<McpExecutionStatus | null>(null)
-	const [responseText, setResponseText] = useState(text || "")
+	const [responseText, setResponseText] = useState(useMcpServer?.response || "")
 	const [argumentsText, setArgumentsText] = useState(text || "")
 	const [serverName, setServerName] = useState(initialServerName)
 	const [toolName, setToolName] = useState(initialToolName)
 
-	// Only need expanded state for response section (like command output)
+	// Details section (arguments, tool description, response) collapsed by default
+	const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
+	// Response sub-section within details, also collapsed by default
 	const [isResponseExpanded, setIsResponseExpanded] = useState(false)
+
+	// Derive the display tool name from either useMcpServer or direct props
+	const displayToolName = useMcpServer?.toolName || toolName
+	const displayServerName = useMcpServer?.serverName || serverName
 
 	// Try to parse JSON and return both the result and formatted text
 	const tryParseJson = useCallback((text: string): { isJson: boolean; formatted: string } => {
@@ -91,10 +97,10 @@ export const McpExecution = ({
 		return { isJson: false, formatted: responseText }
 	}, [responseText, isResponseExpanded, tryParseJson, status])
 
-	// Only parse arguments data when complete to avoid parsing partial JSON
+	// Only parse arguments data when details are expanded, to avoid unnecessary work
 	const argumentsData = useMemo(() => {
-		if (!argumentsText) {
-			return { isJson: false, formatted: "" }
+		if (!argumentsText || !isDetailsExpanded) {
+			return { isJson: false, formatted: argumentsText || "" }
 		}
 
 		// For arguments, we don't have a streaming status, so we check if it looks like complete JSON
@@ -120,15 +126,19 @@ export const McpExecution = ({
 
 		// For non-JSON or incomplete data, just return as-is
 		return { isJson: false, formatted: argumentsText }
-	}, [argumentsText])
+	}, [argumentsText, isDetailsExpanded])
 
 	const formattedResponseText = responseData.formatted
 	const formattedArgumentsText = argumentsData.formatted
 	const responseIsJson = responseData.isJson
 
+	const onToggleDetailsExpand = useCallback(() => {
+		setIsDetailsExpanded((prev) => !prev)
+	}, [])
+
 	const onToggleResponseExpand = useCallback(() => {
-		setIsResponseExpanded(!isResponseExpanded)
-	}, [isResponseExpanded])
+		setIsResponseExpanded((prev) => !prev)
+	}, [])
 
 	// Listen for MCP execution status messages
 	const onMessage = useCallback(
@@ -184,112 +194,146 @@ export const McpExecution = ({
 		}
 	}, [text, useMcpServer, initialServerName, initialToolName, serverName, toolName, isArguments])
 
+	const hasArguments = !!(isArguments || useMcpServer?.arguments || argumentsText)
+	const hasResponse = responseText.length > 0
+
 	return (
 		<>
-			<div className="flex flex-row items-center justify-between gap-2 mb-1">
-				<div className="flex flex-row items-center gap-1 flex-wrap">
-					<Server size={16} className="text-vscode-descriptionForeground" />
-					<div className="flex items-center gap-1 flex-wrap">
-						{serverName && <span className="font-bold text-vscode-foreground">{serverName}</span>}
-					</div>
+			{/* Concise header: serverName > toolName with status and expand toggle */}
+			<div
+				data-testid="mcp-execution-header"
+				className="flex flex-row items-center justify-between gap-2 mb-1 cursor-pointer select-none"
+				onClick={onToggleDetailsExpand}>
+				<div className="flex flex-row items-center gap-1.5 min-w-0">
+					<Server size={16} className="text-vscode-descriptionForeground flex-shrink-0" />
+					<span className="font-bold text-vscode-foreground truncate" data-testid="mcp-server-name">
+						{displayServerName}
+					</span>
+					{displayToolName && (
+						<>
+							<ChevronRight size={12} className="text-vscode-descriptionForeground flex-shrink-0" />
+							<span className="font-medium text-vscode-foreground truncate" data-testid="mcp-tool-name">
+								{displayToolName}
+							</span>
+						</>
+					)}
 				</div>
-				<div className="flex flex-row items-center justify-between gap-2 px-1">
-					<div className="flex flex-row items-center gap-1">
-						{status && (
-							<div className="flex flex-row items-center gap-2 font-mono text-xs">
-								<div
-									className={cn("rounded-full size-1.5", {
-										"bg-lime-400": status.status === "started" || status.status === "completed",
-										"bg-red-400": status.status === "error",
-									})}
-								/>
-								<div
-									className={cn("whitespace-nowrap", {
-										"text-vscode-foreground":
-											status.status === "started" || status.status === "completed",
-										"text-vscode-errorForeground": status.status === "error",
-									})}>
-									{status.status === "started"
-										? t("execution.running")
-										: status.status === "completed"
-											? t("execution.completed")
-											: t("execution.error")}
-								</div>
-								{status.status === "error" && "error" in status && status.error && (
-									<div className="whitespace-nowrap">({status.error})</div>
-								)}
+				<div className="flex flex-row items-center gap-1 flex-shrink-0 px-1">
+					{status && (
+						<div className="flex flex-row items-center gap-2 font-mono text-xs">
+							<div
+								className={cn("rounded-full size-1.5", {
+									"bg-lime-400": status.status === "started" || status.status === "completed",
+									"bg-red-400": status.status === "error",
+								})}
+							/>
+							<div
+								className={cn("whitespace-nowrap", {
+									"text-vscode-foreground":
+										status.status === "started" || status.status === "completed",
+									"text-vscode-errorForeground": status.status === "error",
+								})}>
+								{status.status === "started"
+									? t("execution.running")
+									: status.status === "completed"
+										? t("execution.completed")
+										: t("execution.error")}
 							</div>
-						)}
-						{responseText && responseText.length > 0 && (
-							<Button variant="ghost" size="icon" onClick={onToggleResponseExpand}>
-								<ChevronDown
-									className={cn("size-4 transition-transform duration-300", {
-										"rotate-180": isResponseExpanded,
-									})}
-								/>
-							</Button>
-						)}
-					</div>
+							{status.status === "error" && "error" in status && status.error && (
+								<div className="whitespace-nowrap">({status.error})</div>
+							)}
+						</div>
+					)}
+					<ChevronDown
+						data-testid="mcp-details-chevron"
+						className={cn("size-4 transition-transform duration-200 text-vscode-descriptionForeground", {
+							"rotate-0": isDetailsExpanded,
+							"-rotate-90": !isDetailsExpanded,
+						})}
+					/>
 				</div>
 			</div>
 
-			<div className="w-full bg-vscode-editor-background rounded-xs p-2">
-				{/* Tool information section */}
-				{useMcpServer?.type === "use_mcp_tool" && (
-					<div onClick={(e) => e.stopPropagation()}>
-						<McpToolRow
-							tool={{
-								name: useMcpServer.toolName || "",
-								description:
-									server?.tools?.find((tool) => tool.name === useMcpServer.toolName)?.description ||
-									"",
-								alwaysAllow:
-									server?.tools?.find((tool) => tool.name === useMcpServer.toolName)?.alwaysAllow ||
-									false,
-							}}
-							serverName={useMcpServer.serverName}
-							serverSource={server?.source}
-							alwaysAllowMcp={alwaysAllowMcp}
-							isInChatContext={true}
-						/>
-					</div>
-				)}
-				{!useMcpServer && toolName && serverName && (
-					<div onClick={(e) => e.stopPropagation()}>
-						<McpToolRow
-							tool={{
-								name: toolName || "",
-								description: "",
-								alwaysAllow: false,
-							}}
-							serverName={serverName}
-							serverSource={undefined}
-							alwaysAllowMcp={alwaysAllowMcp}
-							isInChatContext={true}
-						/>
-					</div>
-				)}
+			{/* Collapsible details section */}
+			{isDetailsExpanded && (
+				<div className="w-full bg-vscode-editor-background rounded-xs p-2" data-testid="mcp-details-content">
+					{/* Tool information section */}
+					{useMcpServer?.type === "use_mcp_tool" && (
+						<div onClick={(e) => e.stopPropagation()}>
+							<McpToolRow
+								tool={{
+									name: useMcpServer.toolName || "",
+									description:
+										server?.tools?.find((tool) => tool.name === useMcpServer.toolName)
+											?.description || "",
+									alwaysAllow:
+										server?.tools?.find((tool) => tool.name === useMcpServer.toolName)
+											?.alwaysAllow || false,
+								}}
+								serverName={useMcpServer.serverName}
+								serverSource={server?.source}
+								alwaysAllowMcp={alwaysAllowMcp}
+								isInChatContext={true}
+							/>
+						</div>
+					)}
+					{!useMcpServer && toolName && serverName && (
+						<div onClick={(e) => e.stopPropagation()}>
+							<McpToolRow
+								tool={{
+									name: toolName || "",
+									description: "",
+									alwaysAllow: false,
+								}}
+								serverName={serverName}
+								serverSource={undefined}
+								alwaysAllowMcp={alwaysAllowMcp}
+								isInChatContext={true}
+							/>
+						</div>
+					)}
 
-				{/* Arguments section - display like command (always visible) */}
-				{(isArguments || useMcpServer?.arguments || argumentsText) && (
-					<div
-						className={cn({
-							"mt-1 pt-1":
-								!isArguments && (useMcpServer?.type === "use_mcp_tool" || (toolName && serverName)),
-						})}>
-						<CodeBlock source={formattedArgumentsText} language="json" />
-					</div>
-				)}
+					{/* Arguments section */}
+					{hasArguments && (
+						<div
+							className={cn({
+								"mt-1 pt-1":
+									!isArguments && (useMcpServer?.type === "use_mcp_tool" || (toolName && serverName)),
+							})}>
+							<CodeBlock source={formattedArgumentsText} language="json" />
+						</div>
+					)}
 
-				{/* Response section - collapsible like command output */}
-				<ResponseContainer
-					isExpanded={isResponseExpanded}
-					response={formattedResponseText}
-					isJson={responseIsJson}
-					hasArguments={!!(isArguments || useMcpServer?.arguments || argumentsText)}
-					isPartial={status ? status.status !== "completed" : false}
-				/>
-			</div>
+					{/* Response section - collapsible within details */}
+					{hasResponse && (
+						<div className="mt-1 pt-1 border-t border-border/25">
+							<div
+								data-testid="mcp-response-header"
+								className="flex items-center gap-1 cursor-pointer select-none mb-1"
+								onClick={onToggleResponseExpand}>
+								<span className="text-xs font-mono text-vscode-descriptionForeground">
+									{t("execution.response", "Response")}
+								</span>
+								<Button variant="ghost" size="icon" className="size-5">
+									<ChevronDown
+										className={cn("size-3 transition-transform duration-200", {
+											"rotate-0": isResponseExpanded,
+											"-rotate-90": !isResponseExpanded,
+										})}
+									/>
+								</Button>
+							</div>
+							<ResponseContainer
+								isExpanded={isResponseExpanded}
+								response={formattedResponseText}
+								isJson={responseIsJson}
+								hasArguments={hasArguments}
+								isPartial={status ? status.status !== "completed" : false}
+							/>
+						</div>
+					)}
+				</div>
+			)}
 		</>
 	)
 }

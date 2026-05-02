@@ -60,6 +60,7 @@
 	"execution": {
 		"running": "Çalışıyor",
 		"completed": "Tamamlandı",
-		"error": "Hata"
+		"error": "Hata",
+		"response": "Yanıt"
 	}
 }
