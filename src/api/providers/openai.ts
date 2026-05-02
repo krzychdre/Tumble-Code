@@ -233,20 +233,13 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-			// Add GLM thinking parameter for GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5)
-			// when reasoning is enabled via settings
-			this.addGLMThinkingIfNeeded(requestOptions as GLMChatCompletionParams, modelId, modelInfo)
-
 			this.abortController = new AbortController()
 			let stream
 			try {
-				stream = await this.getClient().chat.completions.create(
-					requestOptions,
-					{
-						...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-						signal: this.abortController.signal,
-					},
-				)
+				stream = await this.getClient().chat.completions.create(requestOptions, {
+					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
 				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
@@ -314,20 +307,13 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// Add max_tokens if needed
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-			// Add GLM thinking parameter for GLM models (GLM-4.5, GLM-4.6, GLM-4.7, GLM-5)
-			// when reasoning is enabled via settings
-			this.addGLMThinkingIfNeeded(requestOptions as unknown as GLMChatCompletionParams, modelId, modelInfo)
-
 			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.getClient().chat.completions.create(
-					requestOptions,
-					{
-						...(this._isAzureAiInference(modelUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-						signal: this.abortController.signal,
-					},
-				)
+				response = await this.getClient().chat.completions.create(requestOptions, {
+					...(this._isAzureAiInference(modelUrl) ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
 				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
@@ -399,13 +385,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.getClient().chat.completions.create(
-					requestOptions,
-					{
-						...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-						signal: this.abortController.signal,
-					},
-				)
+				response = await this.getClient().chat.completions.create(requestOptions, {
+					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
 			} finally {
@@ -461,13 +444,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			this.abortController = new AbortController()
 			let stream
 			try {
-				stream = await this.getClient().chat.completions.create(
-					requestOptions,
-					{
-						...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-						signal: this.abortController.signal,
-					},
-				)
+				stream = await this.getClient().chat.completions.create(requestOptions, {
+					...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
 				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
@@ -504,13 +484,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.getClient().chat.completions.create(
-					requestOptions,
-					{
-						...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
-						signal: this.abortController.signal,
-					},
-				)
+				response = await this.getClient().chat.completions.create(requestOptions, {
+					...(methodIsAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
 				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
