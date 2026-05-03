@@ -407,7 +407,9 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 		const inferenceConfig: BedrockInferenceConfig = {
 			maxTokens: modelConfig.maxTokens || (modelConfig.info.maxTokens as number),
-			temperature: modelConfig.temperature ?? (this.options.modelTemperature as number),
+			...(modelConfig.temperature !== undefined && { temperature: modelConfig.temperature }),
+			...(this.options.modelTemperature != null &&
+				modelConfig.temperature === undefined && { temperature: this.options.modelTemperature as number }),
 		}
 
 		// Check if 1M context is enabled for supported Claude 4 models
@@ -747,7 +749,9 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 			const inferenceConfig: BedrockInferenceConfig = {
 				maxTokens: modelConfig.maxTokens || (modelConfig.info.maxTokens as number),
-				temperature: modelConfig.temperature ?? (this.options.modelTemperature as number),
+				...(modelConfig.temperature !== undefined && { temperature: modelConfig.temperature }),
+				...(this.options.modelTemperature != null &&
+					modelConfig.temperature === undefined && { temperature: this.options.modelTemperature as number }),
 			}
 
 			// For completePrompt, use a unique conversation ID based on the prompt

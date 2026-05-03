@@ -84,12 +84,13 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 				format: "openai",
 			}) ?? undefined
 
-		const temperature = this.options.modelTemperature ?? info.defaultTemperature ?? this.defaultTemperature
+		// Only include temperature if explicitly set by user or model
+		const temperature = this.options.modelTemperature ?? info.defaultTemperature
 
 		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 			model,
 			max_tokens,
-			temperature,
+			...(temperature !== undefined && { temperature }),
 			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
 			stream: true,
 			stream_options: { include_usage: true },

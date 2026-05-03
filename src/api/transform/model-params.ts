@@ -95,7 +95,8 @@ export function getModelParams({
 		format,
 	})
 
-	let temperature = customTemperature ?? model.defaultTemperature ?? defaultTemperature
+	// Only use temperature if explicitly set by user or model, otherwise omit it
+	let temperature = customTemperature ?? model.defaultTemperature ?? undefined
 	let reasoningBudget: ModelParams["reasoningBudget"] = undefined
 	let reasoningEffort: ModelParams["reasoningEffort"] = undefined
 	let verbosity: VerbosityLevel | undefined = customVerbosity
