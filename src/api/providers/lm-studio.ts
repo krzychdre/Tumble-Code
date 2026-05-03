@@ -83,10 +83,12 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		let assistantText = ""
 
 		try {
-			const params: OpenAI.Chat.ChatCompletionCreateParamsStreaming & { draft_model?: string } = {
+			// Only include temperature if explicitly set by user
+			const temperature = this.options.modelTemperature
+			const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & { draft_model?: string } = {
 				model: this.getModel().id,
 				messages: openAiMessages,
-				temperature: this.options.modelTemperature ?? LMSTUDIO_DEFAULT_TEMPERATURE,
+				...(temperature !== undefined && { temperature }),
 				stream: true,
 				tools: this.convertToolsForOpenAI(metadata?.tools),
 				tool_choice: metadata?.tool_choice,
@@ -187,11 +189,13 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 
 	async completePrompt(prompt: string): Promise<string> {
 		try {
+			// Only include temperature if explicitly set by user
+			const temperature = this.options.modelTemperature
 			// Create params object with optional draft model
 			const params: any = {
 				model: this.getModel().id,
 				messages: [{ role: "user", content: prompt }],
-				temperature: this.options.modelTemperature ?? LMSTUDIO_DEFAULT_TEMPERATURE,
+				...(temperature !== undefined && { temperature }),
 				stream: false,
 			}
 
