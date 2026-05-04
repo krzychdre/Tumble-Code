@@ -78,6 +78,10 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 			},
 			say: vi.fn().mockResolvedValue(undefined),
 			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
+			askSay: {
+				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
+				say: vi.fn().mockResolvedValue(undefined),
+			},
 		}
 
 		// Add pushToolResultToUserContent method after mockTask is created so it can reference mockTask
@@ -254,7 +258,7 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 			await presentAssistantMessage(mockTask)
 
 			// Should be treated as unknown tool (not executed)
-			expect(mockTask.say).toHaveBeenCalledWith("error", "unknownToolError")
+			expect(mockTask.askSay.say).toHaveBeenCalledWith("error", "unknownToolError")
 			expect(mockTask.consecutiveMistakeCount).toBe(1)
 
 			// Custom tool should NOT have been executed

@@ -55,6 +55,10 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 			},
 			say: vi.fn().mockResolvedValue(undefined),
 			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
+			askSay: {
+				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
+				say: vi.fn().mockResolvedValue(undefined),
+			},
 		}
 
 		// Add pushToolResultToUserContent method after mockTask is created so 'this' binds correctly
@@ -108,7 +112,7 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 		)
 
 		// Verify error message was shown to user (uses i18n key)
-		expect(mockTask.say).toHaveBeenCalledWith("error", "unknownToolError")
+		expect(mockTask.askSay.say).toHaveBeenCalledWith("error", "unknownToolError")
 	})
 
 	it("should fail fast when tool_use is missing id (legacy/XML-style tool call)", async () => {
@@ -139,7 +143,7 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 		expect(mockTask.recordToolError).toHaveBeenCalled()
 
 		// Verify error message was shown to user
-		expect(mockTask.say).toHaveBeenCalledWith("error", expect.anything())
+		expect(mockTask.askSay.say).toHaveBeenCalledWith("error", expect.anything())
 	})
 
 	it("should handle unknown tool without freezing (native tool calling)", async () => {
