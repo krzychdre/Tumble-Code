@@ -171,6 +171,8 @@ describe("DeepSeekHandler", () => {
 				deepSeekBaseUrl: undefined,
 			})
 			expect(handlerWithoutBaseUrl).toBeInstanceOf(DeepSeekHandler)
+			// Trigger lazy client initialization (getClient is protected, so cast to any)
+			;(handlerWithoutBaseUrl as any).getClient()
 			// The base URL is passed to OpenAI client internally
 			expect(OpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -186,6 +188,8 @@ describe("DeepSeekHandler", () => {
 				deepSeekBaseUrl: customBaseUrl,
 			})
 			expect(handlerWithCustomUrl).toBeInstanceOf(DeepSeekHandler)
+			// Trigger lazy client initialization (getClient is protected, so cast to any)
+			;(handlerWithCustomUrl as any).getClient()
 			// The custom base URL is passed to OpenAI client
 			expect(OpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -197,6 +201,8 @@ describe("DeepSeekHandler", () => {
 		it("should set includeMaxTokens to true", () => {
 			// Create a new handler and verify OpenAI client was called with includeMaxTokens
 			const _handler = new DeepSeekHandler(mockOptions)
+			// Trigger lazy client initialization (getClient is protected, so cast to any)
+			;(_handler as any).getClient()
 			expect(OpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: mockOptions.deepSeekApiKey }))
 		})
 	})

@@ -10,6 +10,54 @@ import axios from "axios"
 
 const mockCreate = vitest.fn()
 
+// Set default implementation once at module level
+const defaultMockImplementation = async (options: any) => {
+	if (!options.stream) {
+		return {
+			id: "test-completion",
+			choices: [
+				{
+					message: { role: "assistant", content: "Test response", refusal: null },
+					finish_reason: "stop",
+					index: 0,
+				},
+			],
+			usage: {
+				prompt_tokens: 10,
+				completion_tokens: 5,
+				total_tokens: 15,
+			},
+		}
+	}
+
+	return {
+		[Symbol.asyncIterator]: async function* () {
+			yield {
+				choices: [
+					{
+						delta: { content: "Test response" },
+						index: 0,
+					},
+				],
+				usage: null,
+			}
+			yield {
+				choices: [
+					{
+						delta: {},
+						index: 0,
+					},
+				],
+				usage: {
+					prompt_tokens: 10,
+					completion_tokens: 5,
+					total_tokens: 15,
+				},
+			}
+		},
+	}
+}
+
 vitest.mock("openai", () => {
 	const mockConstructor = vitest.fn()
 	return {
@@ -17,52 +65,7 @@ vitest.mock("openai", () => {
 		default: mockConstructor.mockImplementation(() => ({
 			chat: {
 				completions: {
-					create: mockCreate.mockImplementation(async (options) => {
-						if (!options.stream) {
-							return {
-								id: "test-completion",
-								choices: [
-									{
-										message: { role: "assistant", content: "Test response", refusal: null },
-										finish_reason: "stop",
-										index: 0,
-									},
-								],
-								usage: {
-									prompt_tokens: 10,
-									completion_tokens: 5,
-									total_tokens: 15,
-								},
-							}
-						}
-
-						return {
-							[Symbol.asyncIterator]: async function* () {
-								yield {
-									choices: [
-										{
-											delta: { content: "Test response" },
-											index: 0,
-										},
-									],
-									usage: null,
-								}
-								yield {
-									choices: [
-										{
-											delta: {},
-											index: 0,
-										},
-									],
-									usage: {
-										prompt_tokens: 10,
-										completion_tokens: 5,
-										total_tokens: 15,
-									},
-								}
-							},
-						}
-					}),
+					create: mockCreate,
 				},
 			},
 		})),
@@ -88,6 +91,8 @@ describe("OpenAiHandler", () => {
 		}
 		handler = new OpenAiHandler(mockOptions)
 		mockCreate.mockClear()
+		// Reset to default implementation after each test
+		mockCreate.mockImplementation(defaultMockImplementation)
 	})
 
 	describe("constructor", () => {
@@ -106,6 +111,8 @@ describe("OpenAiHandler", () => {
 		})
 
 		it("should set default headers correctly", () => {
+			// Trigger lazy client initialization (getClient is protected, so cast to any)
+			;(handler as any).getClient()
 			// Check that the OpenAI constructor was called with correct parameters
 			expect(vi.mocked(OpenAI)).toHaveBeenCalledWith({
 				baseURL: expect.any(String),
@@ -549,7 +556,7 @@ describe("OpenAiHandler", () => {
 					model: mockOptions.openAiModelId,
 					messages: [{ role: "user", content: "Test prompt" }],
 				},
-				{},
+				expect.objectContaining({}),
 			)
 		})
 
@@ -637,7 +644,7 @@ describe("OpenAiHandler", () => {
 					tool_choice: undefined,
 					parallel_tool_calls: true,
 				},
-				{ path: "/models/chat/completions" },
+				expect.objectContaining({ path: "/models/chat/completions" }),
 			)
 
 			// Verify max_tokens is NOT included when not explicitly set
@@ -686,7 +693,7 @@ describe("OpenAiHandler", () => {
 					tool_choice: undefined,
 					parallel_tool_calls: true,
 				},
-				{ path: "/models/chat/completions" },
+				expect.objectContaining({ path: "/models/chat/completions" }),
 			)
 
 			// Verify max_tokens is NOT included when not explicitly set
@@ -703,7 +710,7 @@ describe("OpenAiHandler", () => {
 					model: azureOptions.openAiModelId,
 					messages: [{ role: "user", content: "Test prompt" }],
 				},
-				{ path: "/models/chat/completions" },
+				expect.objectContaining({ path: "/models/chat/completions" }),
 			)
 
 			// Verify max_tokens is NOT included when includeMaxTokens is not set
@@ -743,7 +750,7 @@ describe("OpenAiHandler", () => {
 					model: grokOptions.openAiModelId,
 					stream: true,
 				}),
-				{},
+				expect.objectContaining({}),
 			)
 
 			const mockCalls = mockCreate.mock.calls
@@ -802,7 +809,7 @@ describe("OpenAiHandler", () => {
 					// O3 models do not support deprecated max_tokens but do support max_completion_tokens
 					max_completion_tokens: 32000,
 				}),
-				{},
+				expect.objectContaining({}),
 			)
 		})
 
@@ -959,7 +966,7 @@ describe("OpenAiHandler", () => {
 					reasoning_effort: "medium",
 					temperature: undefined,
 				}),
-				{},
+				expect.objectContaining({}),
 			)
 
 			// Verify max_tokens is NOT included
@@ -1003,7 +1010,7 @@ describe("OpenAiHandler", () => {
 					// O3 models do not support deprecated max_tokens but do support max_completion_tokens
 					max_completion_tokens: 65536, // Using default maxTokens from o3Options
 				}),
-				{},
+				expect.objectContaining({}),
 			)
 
 			// Verify stream is not set
@@ -1080,7 +1087,7 @@ describe("OpenAiHandler", () => {
 				expect.objectContaining({
 					temperature: undefined, // Temperature is not supported for O3 models
 				}),
-				{},
+				expect.objectContaining({}),
 			)
 		})
 
@@ -1105,7 +1112,7 @@ describe("OpenAiHandler", () => {
 				expect.objectContaining({
 					model: "o3-mini",
 				}),
-				{ path: "/models/chat/completions" },
+				expect.objectContaining({ path: "/models/chat/completions" }),
 			)
 
 			// Verify max_tokens is NOT included when includeMaxTokens is false
@@ -1135,7 +1142,7 @@ describe("OpenAiHandler", () => {
 					model: "o3-mini",
 					// O3 models do not support max_tokens
 				}),
-				{ path: "/models/chat/completions" },
+				expect.objectContaining({ path: "/models/chat/completions" }),
 			)
 		})
 	})
