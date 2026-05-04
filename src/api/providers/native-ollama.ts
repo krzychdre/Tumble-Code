@@ -227,12 +227,9 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 			// Build options object conditionally
 			const chatOptions: OllamaChatOptions = {}
 
-			// Only include temperature if explicitly set, or for deepseek-r1 which requires it
-			const temperature =
-				this.options.modelTemperature ?? (useR1Format ? DEEP_SEEK_DEFAULT_TEMPERATURE : undefined)
-			if (temperature !== undefined) {
-				chatOptions.temperature = temperature
-			}
+			// Set temperature - use user-provided value, or default for deepseek-r1
+			const temperature = this.options.modelTemperature ?? (useR1Format ? DEEP_SEEK_DEFAULT_TEMPERATURE : 0)
+			chatOptions.temperature = temperature
 
 			// Only include num_ctx if explicitly set via ollamaNumCtx
 			if (this.options.ollamaNumCtx !== undefined) {
@@ -358,12 +355,9 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 			// Build options object conditionally
 			const chatOptions: OllamaChatOptions = {}
 
-			// Only include temperature if explicitly set, or for deepseek-r1 which requires it
-			const temperature =
-				this.options.modelTemperature ?? (useR1Format ? DEEP_SEEK_DEFAULT_TEMPERATURE : undefined)
-			if (temperature !== undefined) {
-				chatOptions.temperature = temperature
-			}
+			// Set temperature - use user-provided value, or default for deepseek-r1
+			const temperature = this.options.modelTemperature ?? (useR1Format ? DEEP_SEEK_DEFAULT_TEMPERATURE : 0)
+			chatOptions.temperature = temperature
 
 			// Only include num_ctx if explicitly set via ollamaNumCtx
 			if (this.options.ollamaNumCtx !== undefined) {
