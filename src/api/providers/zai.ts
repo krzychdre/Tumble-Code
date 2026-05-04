@@ -87,8 +87,7 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 				format: "openai",
 			}) ?? undefined
 
-		// Only include temperature if explicitly set by user
-		const temperature = this.options.modelTemperature
+		const temperature = this.options.modelTemperature ?? this.defaultTemperature
 
 		// Use Z.ai format to preserve reasoning_content and merge post-tool text into tool messages
 		const convertedMessages = convertToZAiFormat(messages, { mergeToolResultText: true })
@@ -96,7 +95,7 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 		const params: ZAiChatCompletionParams = {
 			model,
 			max_tokens,
-			...(temperature !== undefined && { temperature }),
+			temperature,
 			messages: [{ role: "system", content: systemPrompt }, ...convertedMessages],
 			stream: true,
 			stream_options: { include_usage: true },

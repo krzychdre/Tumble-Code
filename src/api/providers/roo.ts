@@ -96,13 +96,12 @@ export class RooHandler extends BaseOpenAiCompatibleProvider<string> {
 		})
 
 		const max_tokens = params.maxTokens ?? undefined
-		// Only include temperature if explicitly set (from getModelParams)
-		const temperature = params.temperature
+		const temperature = params.temperature ?? this.defaultTemperature
 
 		const rooParams: RooChatCompletionParams = {
 			model,
 			max_tokens,
-			...(temperature !== undefined && { temperature }),
+			temperature,
 			messages: [{ role: "system", content: systemPrompt }, ...convertToOpenAiMessages(messages)],
 			stream: true,
 			stream_options: { include_usage: true },

@@ -218,8 +218,8 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			requestOptions.max_tokens = maxTokens
 		}
 
-		if (this.supportsTemperature(modelId) && this.options.modelTemperature !== undefined) {
-			requestOptions.temperature = this.options.modelTemperature
+		if (this.supportsTemperature(modelId)) {
+			requestOptions.temperature = this.options.modelTemperature ?? 0
 		}
 
 		try {
@@ -303,8 +303,8 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 				messages: [{ role: "user", content: prompt }],
 			}
 
-			if (this.supportsTemperature(modelId) && this.options.modelTemperature !== undefined) {
-				requestOptions.temperature = this.options.modelTemperature
+			if (this.supportsTemperature(modelId)) {
+				requestOptions.temperature = this.options.modelTemperature ?? 0
 			}
 
 			// GPT-5 models require max_completion_tokens instead of the deprecated max_tokens parameter
