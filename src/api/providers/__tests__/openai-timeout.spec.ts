@@ -54,7 +54,9 @@ describe("OpenAiHandler timeout configuration", () => {
 			openAiApiKey: "test-key",
 		}
 
-		new OpenAiHandler(options)
+		const handler = new OpenAiHandler(options)
+		// Trigger lazy client initialization (getClient is protected, so cast to any)
+		;(handler as any).getClient()
 
 		expect(getApiRequestTimeout).toHaveBeenCalled()
 		expect(mockOpenAIConstructor).toHaveBeenCalledWith(
@@ -76,7 +78,9 @@ describe("OpenAiHandler timeout configuration", () => {
 			openAiApiKey: "test-key",
 		}
 
-		new OpenAiHandler(options)
+		const handler = new OpenAiHandler(options)
+		// Trigger lazy client initialization (getClient is protected, so cast to any)
+		;(handler as any).getClient()
 
 		expect(mockOpenAIConstructor).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -97,7 +101,9 @@ describe("OpenAiHandler timeout configuration", () => {
 			openAiUseAzure: true,
 		}
 
-		new OpenAiHandler(options)
+		const handler = new OpenAiHandler(options)
+		// Trigger lazy client initialization (getClient is protected, so cast to any)
+		;(handler as any).getClient()
 
 		expect(mockAzureOpenAIConstructor).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -116,7 +122,9 @@ describe("OpenAiHandler timeout configuration", () => {
 			openAiApiKey: "test-key",
 		}
 
-		new OpenAiHandler(options)
+		const handler = new OpenAiHandler(options)
+		// Trigger lazy client initialization (getClient is protected, so cast to any)
+		;(handler as any).getClient()
 
 		expect(mockOpenAIConstructor).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -133,7 +141,9 @@ describe("OpenAiHandler timeout configuration", () => {
 			openAiModelId: "gpt-4",
 		}
 
-		new OpenAiHandler(options)
+		const handler = new OpenAiHandler(options)
+		// Trigger lazy client initialization (getClient is protected, so cast to any)
+		;(handler as any).getClient()
 
 		expect(mockOpenAIConstructor).toHaveBeenCalledWith(
 			expect.objectContaining({

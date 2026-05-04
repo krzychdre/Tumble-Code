@@ -89,7 +89,7 @@ export class DeepSeekHandler extends OpenAiHandler {
 
 		let stream
 		try {
-			stream = await this.client!.chat.completions.create(
+			stream = await this.getClient().chat.completions.create(
 				requestOptions,
 				isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
 			)
