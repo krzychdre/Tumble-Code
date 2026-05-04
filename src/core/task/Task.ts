@@ -134,6 +134,8 @@ import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { TaskHistory } from "./TaskHistory"
 import { TaskAskSay } from "./TaskAskSay"
+import { TaskStreamProcessor } from "./TaskStreamProcessor"
+import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -425,6 +427,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Ask/Say communication protocol (extracted from Task)
 	readonly askSay: TaskAskSay
 
+	// Stream processing (extracted from Task)
+	readonly streamProcessor: TaskStreamProcessor
+
 	// MessageManager for high-level message operations (lazy initialized)
 	private _messageManager?: MessageManager
 
@@ -584,6 +589,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Pass Task as TaskAskSayAccess so property reads/writes go through the live
 		// Task instance (critical for mutable primitives like askResponse, lastMessageTs).
 		this.askSay = new TaskAskSay(this as unknown as import("./TaskAskSay").TaskAskSayAccess)
+
+		// Initialize TaskStreamProcessor for stream processing logic
+		// Pass Task as TaskStreamProcessorAccess for property access, plus the full Task
+		// reference for presentAssistantMessage() calls which require the complete Task object.
+		this.streamProcessor = new TaskStreamProcessor(
+			this as unknown as import("./TaskStreamProcessor").TaskStreamProcessorAccess,
+			this,
+		)
 
 		onCreated?.(this)
 
@@ -2007,12 +2020,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			await this.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
 
 			try {
-				let cacheWriteTokens = 0
-				let cacheReadTokens = 0
-				let inputTokens = 0
-				let outputTokens = 0
-				let totalCost: number | undefined
+				// Reset streaming state for each new API request (delegated to TaskStreamProcessor)
+				await this.streamProcessor.resetStreamingState()
 
+				// Cache model info was set by resetStreamingState; extract streamModelInfo for chunk processing
+				const streamModelInfo = this.cachedStreamingModel!.info
+				const cachedModelId = this.cachedStreamingModel!.id
+
+				// Create closures via TaskStreamProcessor (replaces inline closure definitions)
 				// We can't use `api_req_finished` anymore since it's a unique case
 				// where it could come after a streaming message (i.e. in the middle
 				// of being updated or executed).
@@ -2020,111 +2035,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// anyways, so it remains solely for legacy purposes to keep track
 				// of prices in tasks from history (it's worth removing a few months
 				// from now).
-				const updateApiReqMsg = (cancelReason?: ClineApiReqCancelReason, streamingFailedMessage?: string) => {
-					if (lastApiReqIndex < 0 || !this.clineMessages[lastApiReqIndex]) {
-						return
-					}
-
-					const existingData = JSON.parse(this.clineMessages[lastApiReqIndex].text || "{}")
-
-					// Calculate total tokens and cost using provider-aware function
-					const modelId = getModelId(this.apiConfiguration)
-					const apiProvider = this.apiConfiguration.apiProvider
-					const apiProtocol = getApiProtocol(
-						apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
-						modelId,
-					)
-
-					const costResult =
-						apiProtocol === "anthropic"
-							? calculateApiCostAnthropic(
-									streamModelInfo,
-									inputTokens,
-									outputTokens,
-									cacheWriteTokens,
-									cacheReadTokens,
-								)
-							: calculateApiCostOpenAI(
-									streamModelInfo,
-									inputTokens,
-									outputTokens,
-									cacheWriteTokens,
-									cacheReadTokens,
-								)
-
-					this.clineMessages[lastApiReqIndex].text = JSON.stringify({
-						...existingData,
-						tokensIn: costResult.totalInputTokens,
-						tokensOut: costResult.totalOutputTokens,
-						cacheWrites: cacheWriteTokens,
-						cacheReads: cacheReadTokens,
-						cost: totalCost ?? costResult.totalCost,
-						cancelReason,
-						streamingFailedMessage,
-					} satisfies ClineApiReqInfo)
-				}
-
-				const abortStream = async (cancelReason: ClineApiReqCancelReason, streamingFailedMessage?: string) => {
-					if (this.diffViewProvider.isEditing) {
-						await this.diffViewProvider.revertChanges() // closes diff view
-					}
-
-					// if last message is a partial we need to update and save it
-					const lastMessage = this.clineMessages.at(-1)
-
-					if (lastMessage && lastMessage.partial) {
-						// lastMessage.ts = Date.now() DO NOT update ts since it is used as a key for virtuoso list
-						lastMessage.partial = false
-						// instead of streaming partialMessage events, we do a save and post like normal to persist to disk
-					}
-
-					// Update `api_req_started` to have cancelled and cost, so that
-					// we can display the cost of the partial stream and the cancellation reason
-					updateApiReqMsg(cancelReason, streamingFailedMessage)
-					await this.history.saveClineMessages()
-
-					// Signals to provider that it can retrieve the saved messages
-					// from disk, as abortTask can not be awaited on in nature.
-					this.didFinishAbortingStream = true
-				}
-
-				// Reset streaming state for each new API request
-				this.currentStreamingContentIndex = 0
-				this.currentStreamingDidCheckpoint = false
-				this.assistantMessageContent = []
-				this.didCompleteReadingStream = false
-				this.userMessageContent = []
-				this.userMessageContentReady = false
-				this.didRejectTool = false
-				this.didAlreadyUseTool = false
-				this.assistantMessageSavedToHistory = false
-				// Reset tool failure flag for each new assistant turn - this ensures that tool failures
-				// only prevent attempt_completion within the same assistant message, not across turns
-				// (e.g., if a tool fails, then user sends a message saying "just complete anyway")
-				this.didToolFailInCurrentTurn = false
-				this.presentAssistantMessageLocked = false
-				this.presentAssistantMessageHasPendingUpdates = false
-				// No legacy text-stream tool parser.
-				this.streamingToolCallIndices.clear()
-				// Clear any leftover streaming tool call state from previous interrupted streams
-				NativeToolCallParser.clearAllStreamingToolCalls()
-				NativeToolCallParser.clearRawChunkState()
-
-				await this.diffViewProvider.reset()
-
-				// Cache model info once per API request to avoid repeated calls during streaming
-				// This is especially important for tools and background usage collection
-				this.cachedStreamingModel = this.api.getModel()
-				const streamModelInfo = this.cachedStreamingModel.info
-				const cachedModelId = this.cachedStreamingModel.id
+				const updateApiReqMsg = this.streamProcessor.createUpdateApiReqMsgFn(lastApiReqIndex, streamModelInfo)
+				const abortStream = this.streamProcessor.createAbortStreamFn(lastApiReqIndex, updateApiReqMsg)
 
 				// Yields only if the first chunk is successful, otherwise will
 				// allow the user to retry the request (most likely due to rate
 				// limit error, which gets thrown on the first chunk).
 				const stream = this.attemptApiRequest(currentItem.retryAttempt ?? 0, { skipProviderRateLimit: true })
-				let assistantMessage = ""
-				let reasoningMessage = ""
-				let pendingGroundingSources: GroundingSource[] = []
 				this.isStreaming = true
 
 				try {
@@ -2163,210 +2080,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 							continue
 						}
 
-						switch (chunk.type) {
-							case "reasoning": {
-								reasoningMessage += chunk.text
-								// Only apply formatting if the message contains sentence-ending punctuation followed by **
-								let formattedReasoning = reasoningMessage
-								if (reasoningMessage.includes("**")) {
-									// Add line breaks before **Title** patterns that appear after sentence endings
-									// This targets section headers like "...end of sentence.**Title Here**"
-									// Handles periods, exclamation marks, and question marks
-									formattedReasoning = reasoningMessage.replace(
-										/([.!?])\*\*([^*\n]+)\*\*/g,
-										"$1\n\n**$2**",
-									)
-								}
-								await this.askSay.say("reasoning", formattedReasoning, undefined, true)
-								break
-							}
-							case "usage":
-								inputTokens += chunk.inputTokens
-								outputTokens += chunk.outputTokens
-								cacheWriteTokens += chunk.cacheWriteTokens ?? 0
-								cacheReadTokens += chunk.cacheReadTokens ?? 0
-								totalCost = chunk.totalCost
-								break
-							case "grounding":
-								// Handle grounding sources separately from regular content
-								// to prevent state persistence issues - store them separately
-								if (chunk.sources && chunk.sources.length > 0) {
-									pendingGroundingSources.push(...chunk.sources)
-								}
-								break
-							case "tool_call_partial": {
-								// Process raw tool call chunk through NativeToolCallParser
-								// which handles tracking, buffering, and emits events
-								const events = NativeToolCallParser.processRawChunk({
-									index: chunk.index,
-									id: chunk.id,
-									name: chunk.name,
-									arguments: chunk.arguments,
-								})
-
-								for (const event of events) {
-									if (event.type === "tool_call_start") {
-										// Guard against duplicate tool_call_start events for the same tool ID.
-										// This can occur due to stream retry, reconnection, or API quirks.
-										// Without this check, duplicate tool_use blocks with the same ID would
-										// be added to assistantMessageContent, causing API 400 errors:
-										// "tool_use ids must be unique"
-										if (this.streamingToolCallIndices.has(event.id)) {
-											console.warn(
-												`[Task#${this.taskId}] Ignoring duplicate tool_call_start for ID: ${event.id} (tool: ${event.name})`,
-											)
-											continue
-										}
-
-										// Initialize streaming in NativeToolCallParser
-										NativeToolCallParser.startStreamingToolCall(event.id, event.name as ToolName)
-
-										// Before adding a new tool, finalize any preceding text block
-										// This prevents the text block from blocking tool presentation
-										const lastBlock =
-											this.assistantMessageContent[this.assistantMessageContent.length - 1]
-										if (lastBlock?.type === "text" && lastBlock.partial) {
-											lastBlock.partial = false
-										}
-
-										// Track the index where this tool will be stored
-										const toolUseIndex = this.assistantMessageContent.length
-										this.streamingToolCallIndices.set(event.id, toolUseIndex)
-
-										// Create initial partial tool use
-										const partialToolUse: ToolUse = {
-											type: "tool_use",
-											name: event.name as ToolName,
-											params: {},
-											partial: true,
-										}
-
-										// Store the ID for native protocol
-										;(partialToolUse as any).id = event.id
-
-										// Add to content and present
-										this.assistantMessageContent.push(partialToolUse)
-										this.userMessageContentReady = false
-										presentAssistantMessage(this)
-									} else if (event.type === "tool_call_delta") {
-										// Process chunk using streaming JSON parser
-										const partialToolUse = NativeToolCallParser.processStreamingChunk(
-											event.id,
-											event.delta,
-										)
-
-										if (partialToolUse) {
-											// Get the index for this tool call
-											const toolUseIndex = this.streamingToolCallIndices.get(event.id)
-											if (toolUseIndex !== undefined) {
-												// Store the ID for native protocol
-												;(partialToolUse as any).id = event.id
-
-												// Update the existing tool use with new partial data
-												this.assistantMessageContent[toolUseIndex] = partialToolUse
-
-												// Present updated tool use
-												presentAssistantMessage(this)
-											}
-										}
-									} else if (event.type === "tool_call_end") {
-										// Finalize the streaming tool call
-										const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(event.id)
-
-										// Get the index for this tool call
-										const toolUseIndex = this.streamingToolCallIndices.get(event.id)
-
-										if (finalToolUse) {
-											// Store the tool call ID
-											;(finalToolUse as any).id = event.id
-
-											// Get the index and replace partial with final
-											if (toolUseIndex !== undefined) {
-												this.assistantMessageContent[toolUseIndex] = finalToolUse
-											}
-
-											// Clean up tracking
-											this.streamingToolCallIndices.delete(event.id)
-
-											// Mark that we have new content to process
-											this.userMessageContentReady = false
-
-											// Present the finalized tool call
-											presentAssistantMessage(this)
-										} else if (toolUseIndex !== undefined) {
-											// finalizeStreamingToolCall returned null (malformed JSON or missing args)
-											// Mark the tool as non-partial so it's presented as complete, but execution
-											// will be short-circuited in presentAssistantMessage with a structured tool_result.
-											const existingToolUse = this.assistantMessageContent[toolUseIndex]
-											if (existingToolUse && existingToolUse.type === "tool_use") {
-												existingToolUse.partial = false
-												// Ensure it has the ID for native protocol
-												;(existingToolUse as any).id = event.id
-											}
-
-											// Clean up tracking
-											this.streamingToolCallIndices.delete(event.id)
-
-											// Mark that we have new content to process
-											this.userMessageContentReady = false
-
-											// Present the tool call - validation will handle missing params
-											presentAssistantMessage(this)
-										}
-									}
-								}
-								break
-							}
-
-							case "tool_call": {
-								// Legacy: Handle complete tool calls (for backward compatibility)
-								// Convert native tool call to ToolUse format
-								const toolUse = NativeToolCallParser.parseToolCall({
-									id: chunk.id,
-									name: chunk.name as ToolName,
-									arguments: chunk.arguments,
-								})
-
-								if (!toolUse) {
-									console.error(`Failed to parse tool call for task ${this.taskId}:`, chunk)
-									break
-								}
-
-								// Store the tool call ID on the ToolUse object for later reference
-								// This is needed to create tool_result blocks that reference the correct tool_use_id
-								toolUse.id = chunk.id
-
-								// Add the tool use to assistant message content
-								this.assistantMessageContent.push(toolUse)
-
-								// Mark that we have new content to process
-								this.userMessageContentReady = false
-
-								// Present the tool call to user - presentAssistantMessage will execute
-								// tools sequentially and accumulate all results in userMessageContent
-								presentAssistantMessage(this)
-								break
-							}
-							case "text": {
-								assistantMessage += chunk.text
-
-								// Native tool calling: text chunks are plain text.
-								// Create or update a text content block directly
-								const lastBlock = this.assistantMessageContent[this.assistantMessageContent.length - 1]
-								if (lastBlock?.type === "text" && lastBlock.partial) {
-									lastBlock.content = assistantMessage
-								} else {
-									this.assistantMessageContent.push({
-										type: "text",
-										content: assistantMessage,
-										partial: true,
-									})
-									this.userMessageContentReady = false
-								}
-								presentAssistantMessage(this)
-								break
-							}
-						}
+						this.streamProcessor.processChunk(chunk, streamModelInfo)
 
 						if (this.abort) {
 							console.log(`aborting stream, this.abandoned = ${this.abandoned}`)
@@ -2385,7 +2099,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						if (this.didRejectTool) {
 							// `userContent` has a tool rejection, so interrupt the
 							// assistant's response to present the user's feedback.
-							assistantMessage += "\n\n[Response interrupted by user feedback]"
+							this.streamProcessor.appendAssistantMessage("\n\n[Response interrupted by user feedback]")
 							// Instead of setting this preemptively, we allow the
 							// present iterator to finish and set
 							// userMessageContentReady when its ready.
@@ -2394,181 +2108,30 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						}
 
 						if (this.didAlreadyUseTool) {
-							assistantMessage +=
-								"\n\n[Response interrupted by a tool use result. Only one tool may be used at a time and should be placed at the end of the message.]"
+							this.streamProcessor.appendAssistantMessage(
+								"\n\n[Response interrupted by a tool use result. Only one tool may be used at a time and should be placed at the end of the message.]",
+							)
 							break
 						}
 					}
 
 					// Create a copy of current token values to avoid race conditions
-					const currentTokens = {
-						input: inputTokens,
-						output: outputTokens,
-						cacheWrite: cacheWriteTokens,
-						cacheRead: cacheReadTokens,
-						total: totalCost,
+					const currentTokens: TokenSnapshot = {
+						input: this.streamProcessor.inputTokens,
+						output: this.streamProcessor.outputTokens,
+						cacheWrite: this.streamProcessor.cacheWriteTokens,
+						cacheRead: this.streamProcessor.cacheReadTokens,
+						total: this.streamProcessor.totalCost,
 					}
 
-					const drainStreamInBackgroundToFindAllUsage = async (apiReqIndex: number) => {
-						const timeoutMs = DEFAULT_USAGE_COLLECTION_TIMEOUT_MS
-						const startTime = performance.now()
-						const modelId = getModelId(this.apiConfiguration)
-
-						// Local variables to accumulate usage data without affecting the main flow
-						let bgInputTokens = currentTokens.input
-						let bgOutputTokens = currentTokens.output
-						let bgCacheWriteTokens = currentTokens.cacheWrite
-						let bgCacheReadTokens = currentTokens.cacheRead
-						let bgTotalCost = currentTokens.total
-
-						// Helper function to capture telemetry and update messages
-						const captureUsageData = async (
-							tokens: {
-								input: number
-								output: number
-								cacheWrite: number
-								cacheRead: number
-								total?: number
-							},
-							messageIndex: number = apiReqIndex,
-						) => {
-							if (
-								tokens.input > 0 ||
-								tokens.output > 0 ||
-								tokens.cacheWrite > 0 ||
-								tokens.cacheRead > 0
-							) {
-								// Update the shared variables atomically
-								inputTokens = tokens.input
-								outputTokens = tokens.output
-								cacheWriteTokens = tokens.cacheWrite
-								cacheReadTokens = tokens.cacheRead
-								totalCost = tokens.total
-
-								// Update the API request message with the latest usage data
-								updateApiReqMsg()
-								await this.history.saveClineMessages()
-
-								// Update the specific message in the webview
-								const apiReqMessage = this.clineMessages[messageIndex]
-								if (apiReqMessage) {
-									await this.history.updateClineMessage(apiReqMessage)
-								}
-
-								// Capture telemetry with provider-aware cost calculation
-								const modelId = getModelId(this.apiConfiguration)
-								const apiProvider = this.apiConfiguration.apiProvider
-								const apiProtocol = getApiProtocol(
-									apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
-									modelId,
-								)
-
-								// Use the appropriate cost function based on the API protocol
-								const costResult =
-									apiProtocol === "anthropic"
-										? calculateApiCostAnthropic(
-												streamModelInfo,
-												tokens.input,
-												tokens.output,
-												tokens.cacheWrite,
-												tokens.cacheRead,
-											)
-										: calculateApiCostOpenAI(
-												streamModelInfo,
-												tokens.input,
-												tokens.output,
-												tokens.cacheWrite,
-												tokens.cacheRead,
-											)
-
-								TelemetryService.instance.captureLlmCompletion(this.taskId, {
-									inputTokens: costResult.totalInputTokens,
-									outputTokens: costResult.totalOutputTokens,
-									cacheWriteTokens: tokens.cacheWrite,
-									cacheReadTokens: tokens.cacheRead,
-									cost: tokens.total ?? costResult.totalCost,
-								})
-							}
-						}
-
-						try {
-							// Continue processing the original stream from where the main loop left off
-							let usageFound = false
-							let chunkCount = 0
-
-							// Use the same iterator that the main loop was using
-							while (!item.done) {
-								// Check for timeout
-								if (performance.now() - startTime > timeoutMs) {
-									console.warn(
-										`[Background Usage Collection] Timed out after ${timeoutMs}ms for model: ${modelId}, processed ${chunkCount} chunks`,
-									)
-									// Clean up the iterator before breaking
-									if (iterator.return) {
-										await iterator.return(undefined)
-									}
-									break
-								}
-
-								const chunk = item.value
-								item = await iterator.next()
-								chunkCount++
-
-								if (chunk && chunk.type === "usage") {
-									usageFound = true
-									bgInputTokens += chunk.inputTokens
-									bgOutputTokens += chunk.outputTokens
-									bgCacheWriteTokens += chunk.cacheWriteTokens ?? 0
-									bgCacheReadTokens += chunk.cacheReadTokens ?? 0
-									bgTotalCost = chunk.totalCost
-								}
-							}
-
-							if (
-								usageFound ||
-								bgInputTokens > 0 ||
-								bgOutputTokens > 0 ||
-								bgCacheWriteTokens > 0 ||
-								bgCacheReadTokens > 0
-							) {
-								// We have usage data either from a usage chunk or accumulated tokens
-								await captureUsageData(
-									{
-										input: bgInputTokens,
-										output: bgOutputTokens,
-										cacheWrite: bgCacheWriteTokens,
-										cacheRead: bgCacheReadTokens,
-										total: bgTotalCost,
-									},
-									lastApiReqIndex,
-								)
-							} else {
-								console.warn(
-									`[Background Usage Collection] Suspicious: request ${apiReqIndex} is complete, but no usage info was found. Model: ${modelId}`,
-								)
-							}
-						} catch (error) {
-							console.error("Error draining stream for usage data:", error)
-							// Still try to capture whatever usage data we have collected so far
-							if (
-								bgInputTokens > 0 ||
-								bgOutputTokens > 0 ||
-								bgCacheWriteTokens > 0 ||
-								bgCacheReadTokens > 0
-							) {
-								await captureUsageData(
-									{
-										input: bgInputTokens,
-										output: bgOutputTokens,
-										cacheWrite: bgCacheWriteTokens,
-										cacheRead: bgCacheReadTokens,
-										total: bgTotalCost,
-									},
-									lastApiReqIndex,
-								)
-							}
-						}
-					}
+					const drainStreamInBackgroundToFindAllUsage = this.streamProcessor.createBackgroundUsageDrain(
+						lastApiReqIndex,
+						currentTokens,
+						streamModelInfo,
+						iterator,
+						item,
+						updateApiReqMsg,
+					)
 
 					// Start the background task and handle any errors
 					drainStreamInBackgroundToFindAllUsage(lastApiReqIndex).catch((error) => {
@@ -2642,251 +2205,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					)
 				}
 
-				this.didCompleteReadingStream = true
-
-				// Set any blocks to be complete to allow `presentAssistantMessage`
-				// to finish and set `userMessageContentReady` to true.
-				// (Could be a text block that had no subsequent tool uses, or a
-				// text block at the very end, or an invalid tool use, etc. Whatever
-				// the case, `presentAssistantMessage` relies on these blocks either
-				// to be completed or the user to reject a block in order to proceed
-				// and eventually set userMessageContentReady to true.)
-
-				// Finalize any remaining streaming tool calls that weren't explicitly ended
-				// This is critical for MCP tools which need tool_call_end events to be properly
-				// converted from ToolUse to McpToolUse via finalizeStreamingToolCall()
-				const finalizeEvents = NativeToolCallParser.finalizeRawChunks()
-				for (const event of finalizeEvents) {
-					if (event.type === "tool_call_end") {
-						// Finalize the streaming tool call
-						const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(event.id)
-
-						// Get the index for this tool call
-						const toolUseIndex = this.streamingToolCallIndices.get(event.id)
-
-						if (finalToolUse) {
-							// Store the tool call ID
-							;(finalToolUse as any).id = event.id
-
-							// Get the index and replace partial with final
-							if (toolUseIndex !== undefined) {
-								this.assistantMessageContent[toolUseIndex] = finalToolUse
-							}
-
-							// Clean up tracking
-							this.streamingToolCallIndices.delete(event.id)
-
-							// Mark that we have new content to process
-							this.userMessageContentReady = false
-
-							// Present the finalized tool call
-							presentAssistantMessage(this)
-						} else if (toolUseIndex !== undefined) {
-							// finalizeStreamingToolCall returned null (malformed JSON or missing args)
-							// We still need to mark the tool as non-partial so it gets executed
-							// The tool's validation will catch any missing required parameters
-							const existingToolUse = this.assistantMessageContent[toolUseIndex]
-							if (existingToolUse && existingToolUse.type === "tool_use") {
-								existingToolUse.partial = false
-								// Ensure it has the ID for native protocol
-								;(existingToolUse as any).id = event.id
-							}
-
-							// Clean up tracking
-							this.streamingToolCallIndices.delete(event.id)
-
-							// Mark that we have new content to process
-							this.userMessageContentReady = false
-
-							// Present the tool call - validation will handle missing params
-							presentAssistantMessage(this)
-						}
-					}
-				}
-
-				// IMPORTANT: Capture partialBlocks AFTER finalizeRawChunks() to avoid double-presentation.
-				// Tools finalized above are already presented, so we only want blocks still partial after finalization.
-				const partialBlocks = this.assistantMessageContent.filter((block) => block.partial)
-				partialBlocks.forEach((block) => (block.partial = false))
-
-				// Can't just do this b/c a tool could be in the middle of executing.
-				// this.assistantMessageContent.forEach((e) => (e.partial = false))
-
-				// No legacy streaming parser to finalize.
-
-				// Note: updateApiReqMsg() is now called from within drainStreamInBackgroundToFindAllUsage
-				// to ensure usage data is captured even when the stream is interrupted. The background task
-				// uses local variables to accumulate usage data before atomically updating the shared state.
-
-				// Complete the reasoning message if it exists
-				// We can't use say() here because the reasoning message may not be the last message
-				// (other messages like text blocks or tool uses may have been added after it during streaming)
-				if (reasoningMessage) {
-					const lastReasoningIndex = findLastIndex(
-						this.clineMessages,
-						(m) => m.type === "say" && m.say === "reasoning",
-					)
-
-					if (lastReasoningIndex !== -1 && this.clineMessages[lastReasoningIndex].partial) {
-						this.clineMessages[lastReasoningIndex].partial = false
-						await this.history.updateClineMessage(this.clineMessages[lastReasoningIndex])
-					}
-				}
-
-				await this.history.saveClineMessages()
-				await this.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
-
-				// No legacy text-stream tool parser state to reset.
+				// Finalize the stream: complete remaining tool calls, mark partial blocks,
+				// and save cline messages. Delegated to TaskStreamProcessor.
+				await this.streamProcessor.finalizeStream()
 
 				// CRITICAL: Save assistant message to API history BEFORE executing tools.
 				// This ensures that when new_task triggers delegation and calls flushPendingToolResultsToHistory(),
 				// the assistant message is already in history. Otherwise, tool_result blocks would appear
 				// BEFORE their corresponding tool_use blocks, causing API errors.
-
-				// Check if we have any content to process (text or tool uses)
-				const hasTextContent = assistantMessage.length > 0
-
-				const hasToolUses = this.assistantMessageContent.some(
-					(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
-				)
-
-				if (hasTextContent || hasToolUses) {
-					// Reset counter when we get a successful response with content
-					this.consecutiveNoAssistantMessagesCount = 0
-					// Display grounding sources to the user if they exist
-					if (pendingGroundingSources.length > 0) {
-						const citationLinks = pendingGroundingSources.map((source, i) => `[${i + 1}](${source.url})`)
-						const sourcesText = `${t("common:gemini.sources")} ${citationLinks.join(", ")}`
-
-						await this.askSay.say("text", sourcesText, undefined, false, undefined, undefined, {
-							isNonInteractive: true,
-						})
-					}
-
-					// Build the assistant message content array
-					const assistantContent: Array<Anthropic.TextBlockParam | Anthropic.ToolUseBlockParam> = []
-
-					// Add text content if present
-					if (assistantMessage) {
-						assistantContent.push({
-							type: "text" as const,
-							text: assistantMessage,
-						})
-					}
-
-					// Add tool_use blocks with their IDs for native protocol
-					// This handles both regular ToolUse and McpToolUse types
-					// IMPORTANT: Track seen IDs to prevent duplicates in the API request.
-					// Duplicate tool_use IDs cause Anthropic API 400 errors:
-					// "tool_use ids must be unique"
-					const seenToolUseIds = new Set<string>()
-					const toolUseBlocks = this.assistantMessageContent.filter(
-						(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
-					)
-					for (const block of toolUseBlocks) {
-						if (block.type === "mcp_tool_use") {
-							// McpToolUse already has the original tool name (e.g., "mcp_serverName_toolName")
-							// The arguments are the raw tool arguments (matching the simplified schema)
-							const mcpBlock = block as import("../../shared/tools").McpToolUse
-							if (mcpBlock.id) {
-								const sanitizedId = sanitizeToolUseId(mcpBlock.id)
-								// Pre-flight deduplication: Skip if we've already added this ID
-								if (seenToolUseIds.has(sanitizedId)) {
-									console.warn(
-										`[Task#${this.taskId}] Pre-flight deduplication: Skipping duplicate MCP tool_use ID: ${sanitizedId} (tool: ${mcpBlock.name})`,
-									)
-									continue
-								}
-								seenToolUseIds.add(sanitizedId)
-								assistantContent.push({
-									type: "tool_use" as const,
-									id: sanitizedId,
-									name: mcpBlock.name, // Original dynamic name
-									input: mcpBlock.arguments, // Direct tool arguments
-								})
-							}
-						} else {
-							// Regular ToolUse
-							const toolUse = block as import("../../shared/tools").ToolUse
-							const toolCallId = toolUse.id
-							if (toolCallId) {
-								const sanitizedId = sanitizeToolUseId(toolCallId)
-								// Pre-flight deduplication: Skip if we've already added this ID
-								if (seenToolUseIds.has(sanitizedId)) {
-									console.warn(
-										`[Task#${this.taskId}] Pre-flight deduplication: Skipping duplicate tool_use ID: ${sanitizedId} (tool: ${toolUse.name})`,
-									)
-									continue
-								}
-								seenToolUseIds.add(sanitizedId)
-								// nativeArgs is already in the correct API format for all tools
-								const input = toolUse.nativeArgs || toolUse.params
-
-								// Use originalName (alias) if present for API history consistency.
-								// When tool aliases are used (e.g., "edit_file" -> "search_and_replace" -> "edit" (current canonical name)),
-								// we want the alias name in the conversation history to match what the model
-								// was told the tool was named, preventing confusion in multi-turn conversations.
-								const toolNameForHistory = toolUse.originalName ?? toolUse.name
-
-								assistantContent.push({
-									type: "tool_use" as const,
-									id: sanitizedId,
-									name: toolNameForHistory,
-									input,
-								})
-							}
-						}
-					}
-
-					// Enforce new_task isolation: if new_task is called alongside other tools,
-					// truncate any tools that come after it and inject error tool_results.
-					// This prevents orphaned tools when delegation disposes the parent task.
-					const newTaskIndex = assistantContent.findIndex(
-						(block) => block.type === "tool_use" && block.name === "new_task",
-					)
-
-					if (newTaskIndex !== -1 && newTaskIndex < assistantContent.length - 1) {
-						// new_task found but not last - truncate subsequent tools
-						const truncatedTools = assistantContent.slice(newTaskIndex + 1)
-						assistantContent.length = newTaskIndex + 1 // Truncate API history array
-
-						// ALSO truncate the execution array (assistantMessageContent) to prevent
-						// tools after new_task from being executed by presentAssistantMessage().
-						// Find new_task index in assistantMessageContent (may differ from assistantContent
-						// due to text blocks being structured differently).
-						const executionNewTaskIndex = this.assistantMessageContent.findIndex(
-							(block) => block.type === "tool_use" && block.name === "new_task",
-						)
-						if (executionNewTaskIndex !== -1) {
-							this.assistantMessageContent.length = executionNewTaskIndex + 1
-						}
-
-						// Pre-inject error tool_results for truncated tools
-						for (const tool of truncatedTools) {
-							if (tool.type === "tool_use" && (tool as Anthropic.ToolUseBlockParam).id) {
-								this.pushToolResultToUserContent({
-									type: "tool_result",
-									tool_use_id: (tool as Anthropic.ToolUseBlockParam).id,
-									content:
-										"This tool was not executed because new_task was called in the same message turn. The new_task tool must be the last tool in a message.",
-									is_error: true,
-								})
-							}
-						}
-					}
-
-					// Save assistant message BEFORE executing tools
-					// This is critical for new_task: when it triggers delegation, flushPendingToolResultsToHistory()
-					// will save the user message with tool_results. The assistant message must already be in history
-					// so that tool_result blocks appear AFTER their corresponding tool_use blocks.
-					await this.history.addToApiConversationHistory(
-						{ role: "assistant", content: assistantContent },
-						reasoningMessage || undefined,
-					)
-					this.assistantMessageSavedToHistory = true
-
-					TelemetryService.instance.captureConversationMessage(this.taskId, "assistant")
-				}
+				await this.streamProcessor.assembleAndSaveAssistantMessage()
 
 				// Present any partial blocks that were just completed.
 				// Tool calls are typically presented during streaming via tool_call_partial events,
@@ -2894,12 +2221,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// NOTE: This MUST happen AFTER saving the assistant message to API history.
 				// When new_task is in the batch, it triggers delegation which calls flushPendingToolResultsToHistory().
 				// If the assistant message isn't saved yet, tool_results would appear before tool_use blocks.
-				if (partialBlocks.length > 0) {
+				if (this.streamProcessor.partialBlocks.length > 0) {
 					// If there is content to update then it will complete and
 					// update `this.userMessageContentReady` to true, which we
 					// `pWaitFor` before making the next request.
 					presentAssistantMessage(this)
 				}
+
+				const hasTextContent = this.streamProcessor.assistantMessage.length > 0
+				const hasToolUses = this.assistantMessageContent.some(
+					(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
+				)
 
 				if (hasTextContent || hasToolUses) {
 					// NOTE: This comment is here for future reference - this was a
