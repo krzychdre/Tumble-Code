@@ -59,6 +59,10 @@ describe("presentAssistantMessage - Image Handling in Native Tool Calling", () =
 			},
 			say: vi.fn().mockResolvedValue(undefined),
 			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
+			askSay: {
+				ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
+				say: vi.fn().mockResolvedValue(undefined),
+			},
 		}
 
 		// Add pushToolResultToUserContent method after mockTask is created so it can reference mockTask
@@ -97,6 +101,11 @@ describe("presentAssistantMessage - Image Handling in Native Tool Calling", () =
 			},
 		}
 
+		mockTask.askSay.ask = vi.fn().mockResolvedValue({
+			response: "yesButtonClicked",
+			text: "I see a cat",
+			images: ["data:image/png;base64,base64ImageData"],
+		})
 		mockTask.ask = vi.fn().mockResolvedValue({
 			response: "yesButtonClicked",
 			text: "I see a cat",
@@ -141,7 +150,7 @@ describe("presentAssistantMessage - Image Handling in Native Tool Calling", () =
 		]
 
 		// Response with text but NO images
-		mockTask.ask = vi.fn().mockResolvedValue({
+		mockTask.askSay.ask = vi.fn().mockResolvedValue({
 			response: "yesButtonClicked",
 			text: "My name is Alice",
 			images: undefined,
@@ -169,7 +178,7 @@ describe("presentAssistantMessage - Image Handling in Native Tool Calling", () =
 			},
 		]
 
-		mockTask.ask = vi.fn().mockResolvedValue({
+		mockTask.askSay.ask = vi.fn().mockResolvedValue({
 			response: "yesButtonClicked",
 			text: "I see a dog",
 			images: ["data:image/png;base64,dogImageData"],
@@ -198,7 +207,7 @@ describe("presentAssistantMessage - Image Handling in Native Tool Calling", () =
 		]
 
 		// Empty response
-		mockTask.ask = vi.fn().mockResolvedValue({
+		mockTask.askSay.ask = vi.fn().mockResolvedValue({
 			response: "yesButtonClicked",
 			text: undefined,
 			images: undefined,

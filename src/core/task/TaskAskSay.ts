@@ -1,0 +1,502 @@
+import EventEmitter from "events"
+
+import {
+	type ClineMessage,
+	type ClineAsk,
+	type ClineSay,
+	type ClineAskResponse,
+	type ToolProgressStatus,
+	type ContextCondense,
+	type ContextTruncation,
+	RooCodeEventName,
+	isIdleAsk,
+	isInteractiveAsk,
+	isResumableAsk,
+} from "@roo-code/types"
+import { type ToolName } from "@roo-code/types"
+
+import { type TaskHistory } from "./TaskHistory"
+import { checkAutoApproval } from "../auto-approval"
+import { findLastIndex } from "../../shared/array"
+import { formatResponse } from "../prompts/responses"
+import { AskIgnoredError } from "./AskIgnoredError"
+import { type MessageQueueService } from "../message-queue/MessageQueueService"
+import { type ClineProvider } from "../webview/ClineProvider"
+import pWaitFor from "p-wait-for"
+
+export interface TaskAskSayAccess {
+	taskId: string
+	instanceId: string
+	abort: boolean
+	clineMessages: ClineMessage[]
+	askResponse?: ClineAskResponse
+	askResponseText?: string
+	askResponseImages?: string[]
+	lastMessageTs?: number
+	idleAsk?: ClineMessage
+	resumableAsk?: ClineMessage
+	interactiveAsk?: ClineMessage
+	autoApprovalTimeoutRef?: NodeJS.Timeout
+	messageQueueService: MessageQueueService
+	providerRef: WeakRef<ClineProvider>
+	history: TaskHistory
+	emit: EventEmitter["emit"]
+	checkpointSave: (isSave: boolean, isCreateCheckpoint: boolean) => Promise<void>
+}
+
+export class TaskAskSay {
+	constructor(private readonly access: TaskAskSayAccess) {}
+
+	// Note that `partial` has three valid states true (partial message),
+	// false (completion of partial message), undefined (individual complete
+	// message).
+	async ask(
+		type: ClineAsk,
+		text?: string,
+		partial?: boolean,
+		progressStatus?: ToolProgressStatus,
+		isProtected?: boolean,
+	): Promise<{ response: ClineAskResponse; text?: string; images?: string[] }> {
+		// If this Cline instance was aborted by the provider, then the only
+		// thing keeping us alive is a promise still running in the background,
+		// in which case we don't want to send its result to the webview as it
+		// is attached to a new instance of Cline now. So we can safely ignore
+		// the result of any active promises, and this class will be
+		// deallocated. (Although we set Cline = undefined in provider, that
+		// simply removes the reference to this instance, but the instance is
+		// still alive until this promise resolves or rejects.)
+		if (this.access.abort) {
+			throw new Error(`[RooCode#ask] task ${this.access.taskId}.${this.access.instanceId} aborted`)
+		}
+
+		let askTs: number
+
+		if (partial !== undefined) {
+			const lastMessage = this.access.clineMessages.at(-1)
+
+			const isUpdatingPreviousPartial =
+				lastMessage && lastMessage.partial && lastMessage.type === "ask" && lastMessage.ask === type
+
+			if (partial) {
+				if (isUpdatingPreviousPartial) {
+					// Existing partial message, so update it.
+					lastMessage.text = text
+					lastMessage.partial = partial
+					lastMessage.progressStatus = progressStatus
+					lastMessage.isProtected = isProtected
+					// TODO: Be more efficient about saving and posting only new
+					// data or one whole message at a time so ignore partial for
+					// saves, and only post parts of partial message instead of
+					// whole array in new listener.
+					this.access.history.updateClineMessage(lastMessage)
+					// console.log("Task#ask: current ask promise was ignored (#1)")
+					throw new AskIgnoredError("updating existing partial")
+				} else {
+					// This is a new partial message, so add it with partial
+					// state.
+					askTs = Date.now()
+					this.access.lastMessageTs = askTs
+					await this.access.history.addToClineMessages({
+						ts: askTs,
+						type: "ask",
+						ask: type,
+						text,
+						partial,
+						isProtected,
+					})
+					// console.log("Task#ask: current ask promise was ignored (#2)")
+					throw new AskIgnoredError("new partial")
+				}
+			} else {
+				if (isUpdatingPreviousPartial) {
+					// This is the complete version of a previously partial
+					// message, so replace the partial with the complete version.
+					this.access.askResponse = undefined
+					this.access.askResponseText = undefined
+					this.access.askResponseImages = undefined
+
+					// Bug for the history books:
+					// In the webview we use the ts as the chatrow key for the
+					// virtuoso list. Since we would update this ts right at the
+					// end of streaming, it would cause the view to flicker. The
+					// key prop has to be stable otherwise react has trouble
+					// reconciling items between renders, causing unmounting and
+					// remounting of components (flickering).
+					// The lesson here is if you see flickering when rendering
+					// lists, it's likely because the key prop is not stable.
+					// So in this case we must make sure that the message ts is
+					// never altered after first setting it.
+					askTs = lastMessage.ts
+					this.access.lastMessageTs = askTs
+					lastMessage.text = text
+					lastMessage.partial = false
+					lastMessage.progressStatus = progressStatus
+					lastMessage.isProtected = isProtected
+					await this.access.history.saveClineMessages()
+					this.access.history.updateClineMessage(lastMessage)
+				} else {
+					// This is a new and complete message, so add it like normal.
+					this.access.askResponse = undefined
+					this.access.askResponseText = undefined
+					this.access.askResponseImages = undefined
+					askTs = Date.now()
+					this.access.lastMessageTs = askTs
+					await this.access.history.addToClineMessages({
+						ts: askTs,
+						type: "ask",
+						ask: type,
+						text,
+						isProtected,
+					})
+				}
+			}
+		} else {
+			// This is a new non-partial message, so add it like normal.
+			this.access.askResponse = undefined
+			this.access.askResponseText = undefined
+			this.access.askResponseImages = undefined
+			askTs = Date.now()
+			this.access.lastMessageTs = askTs
+			await this.access.history.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
+		}
+
+		let timeouts: NodeJS.Timeout[] = []
+
+		// Automatically approve if the ask according to the user's settings.
+		const provider = this.access.providerRef.deref()
+		const state = provider ? await provider.getState() : undefined
+		const approval = await checkAutoApproval({ state, ask: type, text, isProtected })
+
+		if (approval.decision === "approve") {
+			this.approveAsk()
+		} else if (approval.decision === "deny") {
+			this.denyAsk()
+		} else if (approval.decision === "timeout") {
+			// Store the auto-approval timeout so it can be cancelled if user interacts
+			this.access.autoApprovalTimeoutRef = setTimeout(() => {
+				const { askResponse, text, images } = approval.fn()
+				this.handleWebviewAskResponse(askResponse, text, images)
+				this.access.autoApprovalTimeoutRef = undefined
+			}, approval.timeout)
+			timeouts.push(this.access.autoApprovalTimeoutRef)
+		}
+
+		// The state is mutable if the message is complete and the task will
+		// block (via the `pWaitFor`).
+		const isBlocking = !(this.access.askResponse !== undefined || this.access.lastMessageTs !== askTs)
+		const isMessageQueued = !this.access.messageQueueService.isEmpty()
+		// Keep queued user messages intact during command_output asks. Those asks
+		// are terminal flow-control, not conversational turns.
+		const shouldDrainQueuedMessageForAsk = type !== "command_output"
+		const isStatusMutable = !partial && isBlocking && !isMessageQueued && approval.decision === "ask"
+
+		if (isStatusMutable) {
+			const statusMutationTimeout = 2_000
+
+			if (isInteractiveAsk(type)) {
+				timeouts.push(
+					setTimeout(() => {
+						const message = this.access.history.findMessageByTimestamp(askTs)
+
+						if (message) {
+							this.access.interactiveAsk = message
+							this.access.emit(RooCodeEventName.TaskInteractive, this.access.taskId)
+							provider?.postMessageToWebview({ type: "interactionRequired" })
+						}
+					}, statusMutationTimeout),
+				)
+			} else if (isResumableAsk(type)) {
+				timeouts.push(
+					setTimeout(() => {
+						const message = this.access.history.findMessageByTimestamp(askTs)
+
+						if (message) {
+							this.access.resumableAsk = message
+							this.access.emit(RooCodeEventName.TaskResumable, this.access.taskId)
+						}
+					}, statusMutationTimeout),
+				)
+			} else if (isIdleAsk(type)) {
+				timeouts.push(
+					setTimeout(() => {
+						const message = this.access.history.findMessageByTimestamp(askTs)
+
+						if (message) {
+							this.access.idleAsk = message
+							this.access.emit(RooCodeEventName.TaskIdle, this.access.taskId)
+						}
+					}, statusMutationTimeout),
+				)
+			}
+		} else if (isMessageQueued && shouldDrainQueuedMessageForAsk) {
+			const message = this.access.messageQueueService.dequeueMessage()
+
+			if (message) {
+				// Check if this is a tool approval ask that needs to be handled.
+				if (type === "tool" || type === "command" || type === "use_mcp_server") {
+					// For tool approvals, we need to approve first, then send
+					// the message if there's text/images.
+					this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images)
+				} else {
+					// For other ask types (like followup or command_output), fulfill the ask
+					// directly.
+					this.handleWebviewAskResponse("messageResponse", message.text, message.images)
+				}
+			}
+		}
+
+		// Wait for askResponse to be set
+		await pWaitFor(
+			() => {
+				if (this.access.askResponse !== undefined || this.access.lastMessageTs !== askTs) {
+					return true
+				}
+
+				// If a queued message arrives while we're blocked on an ask (e.g. a follow-up
+				// suggestion click that was incorrectly queued due to UI state), consume it
+				// immediately so the task doesn't hang.
+				if (shouldDrainQueuedMessageForAsk && !this.access.messageQueueService.isEmpty()) {
+					const message = this.access.messageQueueService.dequeueMessage()
+					if (message) {
+						// If this is a tool approval ask, we need to approve first (yesButtonClicked)
+						// and include any queued text/images.
+						if (type === "tool" || type === "command" || type === "use_mcp_server") {
+							this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images)
+						} else {
+							this.handleWebviewAskResponse("messageResponse", message.text, message.images)
+						}
+					}
+				}
+
+				return false
+			},
+			{ interval: 100 },
+		)
+
+		if (this.access.lastMessageTs !== askTs) {
+			// Could happen if we send multiple asks in a row i.e. with
+			// command_output. It's important that when we know an ask could
+			// fail, it is handled gracefully.
+			throw new AskIgnoredError("superseded")
+		}
+
+		const result = {
+			response: this.access.askResponse!,
+			text: this.access.askResponseText,
+			images: this.access.askResponseImages,
+		}
+		this.access.askResponse = undefined
+		this.access.askResponseText = undefined
+		this.access.askResponseImages = undefined
+
+		// Cancel the timeouts if they are still running.
+		timeouts.forEach((timeout) => clearTimeout(timeout))
+
+		// Switch back to an active state.
+		if (this.access.idleAsk || this.access.resumableAsk || this.access.interactiveAsk) {
+			this.access.idleAsk = undefined
+			this.access.resumableAsk = undefined
+			this.access.interactiveAsk = undefined
+			this.access.emit(RooCodeEventName.TaskActive, this.access.taskId)
+		}
+
+		this.access.emit(RooCodeEventName.TaskAskResponded)
+		return result
+	}
+
+	handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
+		// Clear any pending auto-approval timeout when user responds
+		this.cancelAutoApprovalTimeout()
+
+		this.access.askResponse = askResponse
+		this.access.askResponseText = text
+		this.access.askResponseImages = images
+
+		// Create a checkpoint whenever the user sends a message.
+		// Use allowEmpty=true to ensure a checkpoint is recorded even if there are no file changes.
+		// Suppress the checkpoint_saved chat row for this particular checkpoint to keep the timeline clean.
+		if (askResponse === "messageResponse") {
+			void this.access.checkpointSave(false, true)
+		}
+
+		// Mark the last follow-up question as answered
+		if (askResponse === "messageResponse" || askResponse === "yesButtonClicked") {
+			// Find the last unanswered follow-up message using findLastIndex
+			const lastFollowUpIndex = findLastIndex(
+				this.access.clineMessages,
+				(msg) => msg.type === "ask" && msg.ask === "followup" && !msg.isAnswered,
+			)
+
+			if (lastFollowUpIndex !== -1) {
+				// Mark this follow-up as answered
+				this.access.clineMessages[lastFollowUpIndex].isAnswered = true
+				// Save the updated messages
+				this.access.history.saveClineMessages().catch((error) => {
+					console.error("Failed to save answered follow-up state:", error)
+				})
+			}
+		}
+
+		// Mark the last tool-approval ask as answered when user approves (or auto-approval)
+		if (askResponse === "yesButtonClicked") {
+			const lastToolAskIndex = findLastIndex(
+				this.access.clineMessages,
+				(msg) => msg.type === "ask" && msg.ask === "tool" && !msg.isAnswered,
+			)
+			if (lastToolAskIndex !== -1) {
+				this.access.clineMessages[lastToolAskIndex].isAnswered = true
+				void this.access.history.updateClineMessage(this.access.clineMessages[lastToolAskIndex])
+				this.access.history.saveClineMessages().catch((error) => {
+					console.error("Failed to save answered tool-ask state:", error)
+				})
+			}
+		}
+	}
+
+	/**
+	 * Cancel any pending auto-approval timeout.
+	 * Called when user interacts (types, clicks buttons, etc.) to prevent the timeout from firing.
+	 */
+	cancelAutoApprovalTimeout(): void {
+		if (this.access.autoApprovalTimeoutRef) {
+			clearTimeout(this.access.autoApprovalTimeoutRef)
+			this.access.autoApprovalTimeoutRef = undefined
+		}
+	}
+
+	approveAsk({ text, images }: { text?: string; images?: string[] } = {}) {
+		this.handleWebviewAskResponse("yesButtonClicked", text, images)
+	}
+
+	denyAsk({ text, images }: { text?: string; images?: string[] } = {}) {
+		this.handleWebviewAskResponse("noButtonClicked", text, images)
+	}
+
+	supersedePendingAsk(): void {
+		this.access.lastMessageTs = Date.now()
+	}
+
+	async say(
+		type: ClineSay,
+		text?: string,
+		images?: string[],
+		partial?: boolean,
+		checkpoint?: Record<string, unknown>,
+		progressStatus?: ToolProgressStatus,
+		options: {
+			isNonInteractive?: boolean
+		} = {},
+		contextCondense?: ContextCondense,
+		contextTruncation?: ContextTruncation,
+	): Promise<undefined> {
+		if (this.access.abort) {
+			throw new Error(`[RooCode#say] task ${this.access.taskId}.${this.access.instanceId} aborted`)
+		}
+
+		if (partial !== undefined) {
+			const lastMessage = this.access.clineMessages.at(-1)
+
+			const isUpdatingPreviousPartial =
+				lastMessage && lastMessage.partial && lastMessage.type === "say" && lastMessage.say === type
+
+			if (partial) {
+				if (isUpdatingPreviousPartial) {
+					// Existing partial message, so update it.
+					lastMessage.text = text
+					lastMessage.images = images
+					lastMessage.partial = partial
+					lastMessage.progressStatus = progressStatus
+					this.access.history.updateClineMessage(lastMessage)
+				} else {
+					// This is a new partial message, so add it with partial state.
+					const sayTs = Date.now()
+
+					if (!options.isNonInteractive) {
+						this.access.lastMessageTs = sayTs
+					}
+
+					await this.access.history.addToClineMessages({
+						ts: sayTs,
+						type: "say",
+						say: type,
+						text,
+						images,
+						partial,
+						contextCondense,
+						contextTruncation,
+					})
+				}
+			} else {
+				// New now have a complete version of a previously partial message.
+				// This is the complete version of a previously partial
+				// message, so replace the partial with the complete version.
+				if (isUpdatingPreviousPartial) {
+					if (!options.isNonInteractive) {
+						this.access.lastMessageTs = lastMessage.ts
+					}
+
+					lastMessage.text = text
+					lastMessage.images = images
+					lastMessage.partial = false
+					lastMessage.progressStatus = progressStatus
+
+					// Instead of streaming partialMessage events, we do a save
+					// and post like normal to persist to disk.
+					await this.access.history.saveClineMessages()
+
+					// More performant than an entire `postStateToWebview`.
+					this.access.history.updateClineMessage(lastMessage)
+				} else {
+					// This is a new and complete message, so add it like normal.
+					const sayTs = Date.now()
+
+					if (!options.isNonInteractive) {
+						this.access.lastMessageTs = sayTs
+					}
+
+					await this.access.history.addToClineMessages({
+						ts: sayTs,
+						type: "say",
+						say: type,
+						text,
+						images,
+						contextCondense,
+						contextTruncation,
+					})
+				}
+			}
+		} else {
+			// This is a new non-partial message, so add it like normal.
+			const sayTs = Date.now()
+
+			// A "non-interactive" message is a message is one that the user
+			// does not need to respond to. We don't want these message types
+			// to trigger an update to `lastMessageTs` since they can be created
+			// asynchronously and could interrupt a pending ask.
+			if (!options.isNonInteractive) {
+				this.access.lastMessageTs = sayTs
+			}
+
+			await this.access.history.addToClineMessages({
+				ts: sayTs,
+				type: "say",
+				say: type,
+				text,
+				images,
+				checkpoint,
+				contextCondense,
+				contextTruncation,
+			})
+		}
+	}
+
+	async sayAndCreateMissingParamError(toolName: ToolName, paramName: string, relPath?: string) {
+		await this.say(
+			"error",
+			`Roo tried to use ${toolName}${
+				relPath ? ` for '${relPath.toPosix()}'` : ""
+			} without value for required parameter '${paramName}'. Retrying...`,
+		)
+		return formatResponse.toolError(formatResponse.missingToolParameterError(paramName))
+	}
+}

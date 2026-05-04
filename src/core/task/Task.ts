@@ -133,6 +133,7 @@ import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { TaskHistory } from "./TaskHistory"
+import { TaskAskSay } from "./TaskAskSay"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -421,6 +422,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Task history management (extracted from Task)
 	readonly history: TaskHistory
 
+	// Ask/Say communication protocol (extracted from Task)
+	readonly askSay: TaskAskSay
+
 	// MessageManager for high-level message operations (lazy initialized)
 	private _messageManager?: MessageManager
 
@@ -575,6 +579,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Task instance (critical for mutable primitives like abort, assistantMessageSavedToHistory).
 		this.restoreTodoListForTask = () => restoreTodoListForTask(this)
 		this.history = new TaskHistory(this as unknown as import("./TaskHistory").TaskHistoryAccess)
+
+		// Initialize TaskAskSay for the ask/say communication protocol
+		// Pass Task as TaskAskSayAccess so property reads/writes go through the live
+		// Task instance (critical for mutable primitives like askResponse, lastMessageTs).
+		this.askSay = new TaskAskSay(this as unknown as import("./TaskAskSay").TaskAskSayAccess)
 
 		onCreated?.(this)
 
@@ -953,290 +962,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		progressStatus?: ToolProgressStatus,
 		isProtected?: boolean,
 	): Promise<{ response: ClineAskResponse; text?: string; images?: string[] }> {
-		// If this Cline instance was aborted by the provider, then the only
-		// thing keeping us alive is a promise still running in the background,
-		// in which case we don't want to send its result to the webview as it
-		// is attached to a new instance of Cline now. So we can safely ignore
-		// the result of any active promises, and this class will be
-		// deallocated. (Although we set Cline = undefined in provider, that
-		// simply removes the reference to this instance, but the instance is
-		// still alive until this promise resolves or rejects.)
-		if (this.abort) {
-			throw new Error(`[RooCode#ask] task ${this.taskId}.${this.instanceId} aborted`)
-		}
-
-		let askTs: number
-
-		if (partial !== undefined) {
-			const lastMessage = this.clineMessages.at(-1)
-
-			const isUpdatingPreviousPartial =
-				lastMessage && lastMessage.partial && lastMessage.type === "ask" && lastMessage.ask === type
-
-			if (partial) {
-				if (isUpdatingPreviousPartial) {
-					// Existing partial message, so update it.
-					lastMessage.text = text
-					lastMessage.partial = partial
-					lastMessage.progressStatus = progressStatus
-					lastMessage.isProtected = isProtected
-					// TODO: Be more efficient about saving and posting only new
-					// data or one whole message at a time so ignore partial for
-					// saves, and only post parts of partial message instead of
-					// whole array in new listener.
-					this.history.updateClineMessage(lastMessage)
-					// console.log("Task#ask: current ask promise was ignored (#1)")
-					throw new AskIgnoredError("updating existing partial")
-				} else {
-					// This is a new partial message, so add it with partial
-					// state.
-					askTs = Date.now()
-					this.lastMessageTs = askTs
-					await this.history.addToClineMessages({
-						ts: askTs,
-						type: "ask",
-						ask: type,
-						text,
-						partial,
-						isProtected,
-					})
-					// console.log("Task#ask: current ask promise was ignored (#2)")
-					throw new AskIgnoredError("new partial")
-				}
-			} else {
-				if (isUpdatingPreviousPartial) {
-					// This is the complete version of a previously partial
-					// message, so replace the partial with the complete version.
-					this.askResponse = undefined
-					this.askResponseText = undefined
-					this.askResponseImages = undefined
-
-					// Bug for the history books:
-					// In the webview we use the ts as the chatrow key for the
-					// virtuoso list. Since we would update this ts right at the
-					// end of streaming, it would cause the view to flicker. The
-					// key prop has to be stable otherwise react has trouble
-					// reconciling items between renders, causing unmounting and
-					// remounting of components (flickering).
-					// The lesson here is if you see flickering when rendering
-					// lists, it's likely because the key prop is not stable.
-					// So in this case we must make sure that the message ts is
-					// never altered after first setting it.
-					askTs = lastMessage.ts
-					this.lastMessageTs = askTs
-					lastMessage.text = text
-					lastMessage.partial = false
-					lastMessage.progressStatus = progressStatus
-					lastMessage.isProtected = isProtected
-					await this.history.saveClineMessages()
-					this.history.updateClineMessage(lastMessage)
-				} else {
-					// This is a new and complete message, so add it like normal.
-					this.askResponse = undefined
-					this.askResponseText = undefined
-					this.askResponseImages = undefined
-					askTs = Date.now()
-					this.lastMessageTs = askTs
-					await this.history.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
-				}
-			}
-		} else {
-			// This is a new non-partial message, so add it like normal.
-			this.askResponse = undefined
-			this.askResponseText = undefined
-			this.askResponseImages = undefined
-			askTs = Date.now()
-			this.lastMessageTs = askTs
-			await this.history.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
-		}
-
-		let timeouts: NodeJS.Timeout[] = []
-
-		// Automatically approve if the ask according to the user's settings.
-		const provider = this.providerRef.deref()
-		const state = provider ? await provider.getState() : undefined
-		const approval = await checkAutoApproval({ state, ask: type, text, isProtected })
-
-		if (approval.decision === "approve") {
-			this.approveAsk()
-		} else if (approval.decision === "deny") {
-			this.denyAsk()
-		} else if (approval.decision === "timeout") {
-			// Store the auto-approval timeout so it can be cancelled if user interacts
-			this.autoApprovalTimeoutRef = setTimeout(() => {
-				const { askResponse, text, images } = approval.fn()
-				this.handleWebviewAskResponse(askResponse, text, images)
-				this.autoApprovalTimeoutRef = undefined
-			}, approval.timeout)
-			timeouts.push(this.autoApprovalTimeoutRef)
-		}
-
-		// The state is mutable if the message is complete and the task will
-		// block (via the `pWaitFor`).
-		const isBlocking = !(this.askResponse !== undefined || this.lastMessageTs !== askTs)
-		const isMessageQueued = !this.messageQueueService.isEmpty()
-		// Keep queued user messages intact during command_output asks. Those asks
-		// are terminal flow-control, not conversational turns.
-		const shouldDrainQueuedMessageForAsk = type !== "command_output"
-		const isStatusMutable = !partial && isBlocking && !isMessageQueued && approval.decision === "ask"
-
-		if (isStatusMutable) {
-			const statusMutationTimeout = 2_000
-
-			if (isInteractiveAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.history.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.interactiveAsk = message
-							this.emit(RooCodeEventName.TaskInteractive, this.taskId)
-							provider?.postMessageToWebview({ type: "interactionRequired" })
-						}
-					}, statusMutationTimeout),
-				)
-			} else if (isResumableAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.history.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.resumableAsk = message
-							this.emit(RooCodeEventName.TaskResumable, this.taskId)
-						}
-					}, statusMutationTimeout),
-				)
-			} else if (isIdleAsk(type)) {
-				timeouts.push(
-					setTimeout(() => {
-						const message = this.history.findMessageByTimestamp(askTs)
-
-						if (message) {
-							this.idleAsk = message
-							this.emit(RooCodeEventName.TaskIdle, this.taskId)
-						}
-					}, statusMutationTimeout),
-				)
-			}
-		} else if (isMessageQueued && shouldDrainQueuedMessageForAsk) {
-			const message = this.messageQueueService.dequeueMessage()
-
-			if (message) {
-				// Check if this is a tool approval ask that needs to be handled.
-				if (type === "tool" || type === "command" || type === "use_mcp_server") {
-					// For tool approvals, we need to approve first, then send
-					// the message if there's text/images.
-					this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images)
-				} else {
-					// For other ask types (like followup or command_output), fulfill the ask
-					// directly.
-					this.handleWebviewAskResponse("messageResponse", message.text, message.images)
-				}
-			}
-		}
-
-		// Wait for askResponse to be set
-		await pWaitFor(
-			() => {
-				if (this.askResponse !== undefined || this.lastMessageTs !== askTs) {
-					return true
-				}
-
-				// If a queued message arrives while we're blocked on an ask (e.g. a follow-up
-				// suggestion click that was incorrectly queued due to UI state), consume it
-				// immediately so the task doesn't hang.
-				if (shouldDrainQueuedMessageForAsk && !this.messageQueueService.isEmpty()) {
-					const message = this.messageQueueService.dequeueMessage()
-					if (message) {
-						// If this is a tool approval ask, we need to approve first (yesButtonClicked)
-						// and include any queued text/images.
-						if (type === "tool" || type === "command" || type === "use_mcp_server") {
-							this.handleWebviewAskResponse("yesButtonClicked", message.text, message.images)
-						} else {
-							this.handleWebviewAskResponse("messageResponse", message.text, message.images)
-						}
-					}
-				}
-
-				return false
-			},
-			{ interval: 100 },
-		)
-
-		if (this.lastMessageTs !== askTs) {
-			// Could happen if we send multiple asks in a row i.e. with
-			// command_output. It's important that when we know an ask could
-			// fail, it is handled gracefully.
-			throw new AskIgnoredError("superseded")
-		}
-
-		const result = { response: this.askResponse!, text: this.askResponseText, images: this.askResponseImages }
-		this.askResponse = undefined
-		this.askResponseText = undefined
-		this.askResponseImages = undefined
-
-		// Cancel the timeouts if they are still running.
-		timeouts.forEach((timeout) => clearTimeout(timeout))
-
-		// Switch back to an active state.
-		if (this.idleAsk || this.resumableAsk || this.interactiveAsk) {
-			this.idleAsk = undefined
-			this.resumableAsk = undefined
-			this.interactiveAsk = undefined
-			this.emit(RooCodeEventName.TaskActive, this.taskId)
-		}
-
-		this.emit(RooCodeEventName.TaskAskResponded)
-		return result
+		return this.askSay.ask(type, text, partial, progressStatus, isProtected)
 	}
 
 	handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[]) {
-		// Clear any pending auto-approval timeout when user responds
-		this.cancelAutoApprovalTimeout()
-
-		this.askResponse = askResponse
-		this.askResponseText = text
-		this.askResponseImages = images
-
-		// Create a checkpoint whenever the user sends a message.
-		// Use allowEmpty=true to ensure a checkpoint is recorded even if there are no file changes.
-		// Suppress the checkpoint_saved chat row for this particular checkpoint to keep the timeline clean.
-		if (askResponse === "messageResponse") {
-			void this.checkpointSave(false, true)
-		}
-
-		// Mark the last follow-up question as answered
-		if (askResponse === "messageResponse" || askResponse === "yesButtonClicked") {
-			// Find the last unanswered follow-up message using findLastIndex
-			const lastFollowUpIndex = findLastIndex(
-				this.clineMessages,
-				(msg) => msg.type === "ask" && msg.ask === "followup" && !msg.isAnswered,
-			)
-
-			if (lastFollowUpIndex !== -1) {
-				// Mark this follow-up as answered
-				this.clineMessages[lastFollowUpIndex].isAnswered = true
-				// Save the updated messages
-				this.history.saveClineMessages().catch((error) => {
-					console.error("Failed to save answered follow-up state:", error)
-				})
-			}
-		}
-
-		// Mark the last tool-approval ask as answered when user approves (or auto-approval)
-		if (askResponse === "yesButtonClicked") {
-			const lastToolAskIndex = findLastIndex(
-				this.clineMessages,
-				(msg) => msg.type === "ask" && msg.ask === "tool" && !msg.isAnswered,
-			)
-			if (lastToolAskIndex !== -1) {
-				this.clineMessages[lastToolAskIndex].isAnswered = true
-				void this.history.updateClineMessage(this.clineMessages[lastToolAskIndex])
-				this.history.saveClineMessages().catch((error) => {
-					console.error("Failed to save answered tool-ask state:", error)
-				})
-			}
-		}
+		this.askSay.handleWebviewAskResponse(askResponse, text, images)
 	}
 
 	/**
@@ -1244,22 +974,19 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Called when user interacts (types, clicks buttons, etc.) to prevent the timeout from firing.
 	 */
 	public cancelAutoApprovalTimeout(): void {
-		if (this.autoApprovalTimeoutRef) {
-			clearTimeout(this.autoApprovalTimeoutRef)
-			this.autoApprovalTimeoutRef = undefined
-		}
+		this.askSay.cancelAutoApprovalTimeout()
 	}
 
 	public approveAsk({ text, images }: { text?: string; images?: string[] } = {}) {
-		this.handleWebviewAskResponse("yesButtonClicked", text, images)
+		this.askSay.approveAsk({ text, images })
 	}
 
 	public denyAsk({ text, images }: { text?: string; images?: string[] } = {}) {
-		this.handleWebviewAskResponse("noButtonClicked", text, images)
+		this.askSay.denyAsk({ text, images })
 	}
 
 	public supersedePendingAsk(): void {
-		this.lastMessageTs = Date.now()
+		this.askSay.supersedePendingAsk()
 	}
 
 	/**
@@ -1311,7 +1038,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Handle the message directly instead of routing through the webview.
 				// This avoids a race condition where the webview's message state hasn't
 				// hydrated yet, causing it to interpret the message as a new task request.
-				this.handleWebviewAskResponse("messageResponse", text, images)
+				this.askSay.handleWebviewAskResponse("messageResponse", text, images)
 			} else {
 				console.error("[Task#submitUserMessage] Provider reference lost")
 			}
@@ -1409,7 +1136,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			rooIgnoreController: this.rooIgnoreController,
 		})
 		if (error) {
-			await this.say(
+			await this.askSay.say(
 				"condense_context_error",
 				error,
 				undefined /* images */,
@@ -1429,7 +1156,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			prevContextTokens,
 			condenseId: condenseId!,
 		}
-		await this.say(
+		await this.askSay.say(
 			"condense_context",
 			undefined /* text */,
 			undefined /* images */,
@@ -1457,115 +1184,21 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		contextCondense?: ContextCondense,
 		contextTruncation?: ContextTruncation,
 	): Promise<undefined> {
-		if (this.abort) {
-			throw new Error(`[RooCode#say] task ${this.taskId}.${this.instanceId} aborted`)
-		}
-
-		if (partial !== undefined) {
-			const lastMessage = this.clineMessages.at(-1)
-
-			const isUpdatingPreviousPartial =
-				lastMessage && lastMessage.partial && lastMessage.type === "say" && lastMessage.say === type
-
-			if (partial) {
-				if (isUpdatingPreviousPartial) {
-					// Existing partial message, so update it.
-					lastMessage.text = text
-					lastMessage.images = images
-					lastMessage.partial = partial
-					lastMessage.progressStatus = progressStatus
-					this.history.updateClineMessage(lastMessage)
-				} else {
-					// This is a new partial message, so add it with partial state.
-					const sayTs = Date.now()
-
-					if (!options.isNonInteractive) {
-						this.lastMessageTs = sayTs
-					}
-
-					await this.history.addToClineMessages({
-						ts: sayTs,
-						type: "say",
-						say: type,
-						text,
-						images,
-						partial,
-						contextCondense,
-						contextTruncation,
-					})
-				}
-			} else {
-				// New now have a complete version of a previously partial message.
-				// This is the complete version of a previously partial
-				// message, so replace the partial with the complete version.
-				if (isUpdatingPreviousPartial) {
-					if (!options.isNonInteractive) {
-						this.lastMessageTs = lastMessage.ts
-					}
-
-					lastMessage.text = text
-					lastMessage.images = images
-					lastMessage.partial = false
-					lastMessage.progressStatus = progressStatus
-
-					// Instead of streaming partialMessage events, we do a save
-					// and post like normal to persist to disk.
-					await this.history.saveClineMessages()
-
-					// More performant than an entire `postStateToWebview`.
-					this.history.updateClineMessage(lastMessage)
-				} else {
-					// This is a new and complete message, so add it like normal.
-					const sayTs = Date.now()
-
-					if (!options.isNonInteractive) {
-						this.lastMessageTs = sayTs
-					}
-
-					await this.history.addToClineMessages({
-						ts: sayTs,
-						type: "say",
-						say: type,
-						text,
-						images,
-						contextCondense,
-						contextTruncation,
-					})
-				}
-			}
-		} else {
-			// This is a new non-partial message, so add it like normal.
-			const sayTs = Date.now()
-
-			// A "non-interactive" message is a message is one that the user
-			// does not need to respond to. We don't want these message types
-			// to trigger an update to `lastMessageTs` since they can be created
-			// asynchronously and could interrupt a pending ask.
-			if (!options.isNonInteractive) {
-				this.lastMessageTs = sayTs
-			}
-
-			await this.history.addToClineMessages({
-				ts: sayTs,
-				type: "say",
-				say: type,
-				text,
-				images,
-				checkpoint,
-				contextCondense,
-				contextTruncation,
-			})
-		}
+		return this.askSay.say(
+			type,
+			text,
+			images,
+			partial,
+			checkpoint,
+			progressStatus,
+			options,
+			contextCondense,
+			contextTruncation,
+		)
 	}
 
 	async sayAndCreateMissingParamError(toolName: ToolName, paramName: string, relPath?: string) {
-		await this.say(
-			"error",
-			`Roo tried to use ${toolName}${
-				relPath ? ` for '${relPath.toPosix()}'` : ""
-			} without value for required parameter '${paramName}'. Retrying...`,
-		)
-		return formatResponse.toolError(formatResponse.missingToolParameterError(paramName))
+		return this.askSay.sayAndCreateMissingParamError(toolName, paramName, relPath)
 	}
 
 	// Lifecycle
@@ -1642,12 +1275,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			await this.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
 
-			await this.say("text", task, images)
+			await this.askSay.say("text", task, images)
 
 			// Check for too many MCP tools and warn the user
 			const { enabledToolCount, enabledServerCount } = await this.getEnabledMcpToolsCount()
 			if (enabledToolCount > MAX_MCP_TOOLS_THRESHOLD) {
-				await this.say(
+				await this.askSay.say(
 					"too_many_tools_warning",
 					JSON.stringify({
 						toolCount: enabledToolCount,
@@ -1757,13 +1390,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			this.isInitialized = true
 
-			const { response, text, images } = await this.ask(askType) // Calls `postStateToWebview`.
+			const { response, text, images } = await this.askSay.ask(askType) // Calls `postStateToWebview`.
 
 			let responseText: string | undefined
 			let responseImages: string[] | undefined
 
 			if (response === "messageResponse") {
-				await this.say("user_feedback", text, images)
+				await this.askSay.say("user_feedback", text, images)
 				responseText = text
 				responseImages = images
 			}
@@ -2242,7 +1875,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					),
 				)
 
-				const { response, text, images } = await this.ask(
+				const { response, text, images } = await this.askSay.ask(
 					"mistake_limit_reached",
 					t("common:errors.mistake_limit_guidance"),
 				)
@@ -2255,7 +1888,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						],
 					)
 
-					await this.say("user_feedback", text, images)
+					await this.askSay.say("user_feedback", text, images)
 				}
 
 				this.consecutiveMistakeCount = 0
@@ -2285,7 +1918,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			await this.maybeWaitForProviderRateLimit(currentItem.retryAttempt ?? 0)
 			Task.lastGlobalApiRequestTime = performance.now()
 
-			await this.say(
+			await this.askSay.say(
 				"api_req_started",
 				JSON.stringify({
 					apiProtocol,
@@ -2544,7 +2177,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 										"$1\n\n**$2**",
 									)
 								}
-								await this.say("reasoning", formattedReasoning, undefined, true)
+								await this.askSay.say("reasoning", formattedReasoning, undefined, true)
 								break
 							}
 							case "usage":
@@ -3125,7 +2758,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						const citationLinks = pendingGroundingSources.map((source, i) => `[${i + 1}](${source.url})`)
 						const sourcesText = `${t("common:gemini.sources")} ${citationLinks.join(", ")}`
 
-						await this.say("text", sourcesText, undefined, false, undefined, undefined, {
+						await this.askSay.say("text", sourcesText, undefined, false, undefined, undefined, {
 							isNonInteractive: true,
 						})
 					}
@@ -3299,7 +2932,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 						// Only show error and count toward mistake limit after 2 consecutive failures
 						if (this.consecutiveNoToolUseCount >= 2) {
-							await this.say("error", "MODEL_NO_TOOLS_USED")
+							await this.askSay.say("error", "MODEL_NO_TOOLS_USED")
 							// Only count toward mistake limit after second consecutive failure
 							this.consecutiveMistakeCount++
 						}
@@ -3338,7 +2971,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// Only show error and count toward mistake limit after 2 consecutive failures
 					// This provides a "grace retry" - first failure retries silently
 					if (this.consecutiveNoAssistantMessagesCount >= 2) {
-						await this.say("error", "MODEL_NO_ASSISTANT_MESSAGES")
+						await this.askSay.say("error", "MODEL_NO_ASSISTANT_MESSAGES")
 					}
 
 					// IMPORTANT: We already added the user message to
@@ -3386,13 +3019,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						continue
 					} else {
 						// Prompt the user for retry decision
-						const { response } = await this.ask(
+						const { response } = await this.askSay.ask(
 							"api_req_failed",
 							"The model returned no assistant messages. This may indicate an issue with the API or the model's output.",
 						)
 
 						if (response === "yesButtonClicked") {
-							await this.say("api_req_retried")
+							await this.askSay.say("api_req_retried")
 
 							// Push the same content back to retry
 							stack.push({
@@ -3411,7 +3044,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								content: currentUserContent,
 							})
 
-							await this.say(
+							await this.askSay.say(
 								"error",
 								"Unexpected API Response: The language model did not provide any assistant messages. This may indicate an issue with the API or the model's output.",
 							)
@@ -3611,7 +3244,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (truncateResult.summary) {
 				const { summary, cost, prevContextTokens, newContextTokens = 0 } = truncateResult
 				const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
-				await this.say(
+				await this.askSay.say(
 					"condense_context",
 					undefined /* text */,
 					undefined /* images */,
@@ -3629,7 +3262,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					prevContextTokens: truncateResult.prevContextTokens,
 					newContextTokens: truncateResult.newContextTokensAfterTruncation ?? 0,
 				}
-				await this.say(
+				await this.askSay.say(
 					"sliding_window_truncation",
 					undefined /* text */,
 					undefined /* images */,
@@ -3676,11 +3309,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			for (let i = rateLimitDelay; i > 0; i--) {
 				// Send structured JSON data for i18n-safe transport
 				const delayMessage = JSON.stringify({ seconds: i })
-				await this.say("api_req_rate_limit_wait", delayMessage, undefined, true)
+				await this.askSay.say("api_req_rate_limit_wait", delayMessage, undefined, true)
 				await delay(1000)
 			}
 			// Finalize the partial message so the UI doesn't keep rendering an in-progress spinner.
-			await this.say("api_req_rate_limit_wait", undefined, undefined, false)
+			await this.askSay.say("api_req_rate_limit_wait", undefined, undefined, false)
 		}
 	}
 
@@ -3835,7 +3468,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					await this.history.overwriteApiConversationHistory(truncateResult.messages)
 				}
 				if (truncateResult.error) {
-					await this.say("condense_context_error", truncateResult.error)
+					await this.askSay.say("condense_context_error", truncateResult.error)
 				}
 				if (truncateResult.summary) {
 					const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
@@ -3846,7 +3479,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						prevContextTokens,
 						condenseId,
 					}
-					await this.say(
+					await this.askSay.say(
 						"condense_context",
 						undefined /* text */,
 						undefined /* images */,
@@ -3864,7 +3497,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						prevContextTokens: truncateResult.prevContextTokens,
 						newContextTokens: truncateResult.newContextTokensAfterTruncation ?? 0,
 					}
-					await this.say(
+					await this.askSay.say(
 						"sliding_window_truncation",
 						undefined /* text */,
 						undefined /* images */,
@@ -3903,7 +3536,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		const approvalResult = await this.autoApprovalHandler.checkAutoApprovalLimits(
 			state,
 			this.combineMessages(this.clineMessages.slice(1)),
-			async (type, data) => this.ask(type, data),
+			async (type, data) => this.askSay.ask(type, data),
 		)
 
 		if (!approvalResult.shouldProceed) {
@@ -4045,7 +3678,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 				return
 			} else {
-				const { response } = await this.ask(
+				const { response } = await this.askSay.ask(
 					"api_req_failed",
 					error.message ?? JSON.stringify(serializeError(error), null, 2),
 				)
@@ -4056,7 +3689,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					throw new Error("API request failed")
 				}
 
-				await this.say("api_req_retried")
+				await this.askSay.say("api_req_retried")
 
 				// Delegate generator output from the recursive call.
 				yield* this.attemptApiRequest()
@@ -4133,11 +3766,16 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					throw new Error(`[Task#${this.taskId}] Aborted during retry countdown`)
 				}
 
-				await this.say("api_req_retry_delayed", `${headerText}<retry_timer>${i}</retry_timer>`, undefined, true)
+				await this.askSay.say(
+					"api_req_retry_delayed",
+					`${headerText}<retry_timer>${i}</retry_timer>`,
+					undefined,
+					true,
+				)
 				await delay(1000)
 			}
 
-			await this.say("api_req_retry_delayed", headerText, undefined, false)
+			await this.askSay.say("api_req_retry_delayed", headerText, undefined, false)
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err)
 

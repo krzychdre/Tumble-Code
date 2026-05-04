@@ -1,0 +1,273 @@
+# Refactoring Plan: `src/core/task/Task.ts`
+
+> **Goal:** Decompose the 4,738-line God class into 8 focused modules that a smaller model can implement independently, while preserving all existing behavior and test contracts.
+
+---
+
+## 1. Current State Analysis
+
+### 1.1 File Metrics
+
+| Metric           | Value |
+| ---------------- | ----- |
+| Total lines      | 4,738 |
+| Methods          | 66    |
+| Properties       | ~50   |
+| Imports          | 55+   |
+| Responsibilities | 10+   |
+
+### 1.2 Responsibility Map
+
+| #   | Responsibility                | Lines      | Methods                                                                                                                                                                                     | Complexity                  |
+| --- | ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| 1   | **Constructor & Init**        | L420–578   | constructor, initializeTaskMode, initializeTaskApiConfigName, setupProviderProfileChangeListener                                                                                            | Medium                      |
+| 2   | **Mode/API Config Accessors** | L580–840   | waitForModeInitialization, getTaskMode, taskMode, waitForApiConfigInitialization, getTaskApiConfigName, taskApiConfigName, setTaskApiConfigName, static create                              | Low                         |
+| 3   | **API Conversation History**  | L859–1250  | getSavedApiConversationHistory, addToApiConversationHistory, overwriteApiConversationHistory, flushPendingToolResultsToHistory, saveApiConversationHistory, retrySaveApiConversationHistory | Medium                      |
+| 4   | **Cline Messages**            | L1152–1260 | getSavedClineMessages, addToClineMessages, overwriteClineMessages, updateClineMessage, saveClineMessages, findMessageByTimestamp                                                            | Medium                      |
+| 5   | **Ask/Say Protocol**          | L1264–1877 | ask, handleWebviewAskResponse, cancelAutoApprovalTimeout, approveAsk, denyAsk, supersedePendingAsk, say, sayAndCreateMissingParamError                                                      | **High**                    |
+| 6   | **User Interaction**          | L1579–1646 | updateApiConfiguration, submitUserMessage, handleTerminalOperation, getFilesReadByRooSafely                                                                                                 | Low                         |
+| 7   | **Context Condensing**        | L1648–1753 | condenseContext                                                                                                                                                                             | Medium                      |
+| 8   | **Task Lifecycle**            | L1924–2383 | start, startTask, resumeTaskFromHistory, cancelCurrentRequest, abortTask, dispose                                                                                                           | **High**                    |
+| 9   | **Subtasks**                  | L2388–2476 | startSubtask, resumeAfterDelegation                                                                                                                                                         | Low                         |
+| 10  | **Task Loop Init**            | L2480–2513 | initiateTaskLoop                                                                                                                                                                            | Low                         |
+| 11  | **API Request Loop**          | L2514–3750 | recursivelyMakeClineRequests                                                                                                                                                                | **Critical** (1,236 lines!) |
+| 12  | **System Prompt & Context**   | L3752–3959 | getSystemPrompt, getCurrentProfileId, handleContextWindowExceededError                                                                                                                      | Medium                      |
+| 13  | **API Request Attempt**       | L3995–4384 | attemptApiRequest, maybeWaitForProviderRateLimit                                                                                                                                            | **High**                    |
+| 14  | **Backoff & Retry**           | L4386–4458 | backoffAndAnnounce                                                                                                                                                                          | Low                         |
+| 15  | **Checkpoints**               | L4462–4613 | checkpointSave, checkpointRestore, checkpointDiff, buildCleanConversationHistory                                                                                                            | Medium                      |
+| 16  | **Metrics & Getters**         | L4615–4738 | combineMessages, getTokenUsage, recordToolUsage, recordToolError, taskStatus, taskAsk, queuedMessages, tokenUsage, cwd, messageManager, processQueuedMessages                               | Low                         |
+
+### 1.3 The Critical Problem: `recursivelyMakeClineRequests`
+
+This single method spans **lines 2514–3750** (1,236 lines) and contains:
+
+- Consecutive mistake limit handling
+- Provider rate limiting
+- User content processing & environment details
+- API request setup & stream creation
+- **Stream chunk processing** (6 switch cases: reasoning, usage, grounding, tool_call_partial, tool_call, text)
+- Stream abort handling
+- Background usage collection (nested async function)
+- Error handling & retry logic
+- Assistant message saving & tool result collection
+- No-tool-use / no-assistant-messages handling
+
+---
+
+## 2. Target Architecture
+
+### 2.1 Module Decomposition
+
+```
+src/core/task/
+├── Task.ts                          (~800 lines — coordinator only)
+├── TaskHistory.ts                   (~250 lines — API + Cline message persistence)
+├── TaskAskSay.ts                    (~350 lines — ask/say communication protocol)
+├── TaskStreamProcessor.ts           (~400 lines — stream chunk processing)
+├── TaskApiLoop.ts                   (~600 lines — API request loop orchestration)
+├── TaskLifecycle.ts                 (~400 lines — start/resume/abort/dispose)
+├── TaskContextManager.ts            (~250 lines — context condensing & window management)
+├── TaskSubtasks.ts                  (~100 lines — subtask delegation)
+├── TaskTokenTracking.ts             (~120 lines — token/cost tracking & metrics)
+├── build-tools.ts                   (existing, unchanged)
+├── mergeConsecutiveApiMessages.ts   (existing, unchanged)
+├── validateToolResultIds.ts         (existing, unchanged)
+└── __tests__/                       (existing tests, updated imports)
+```
+
+### 2.2 Composition Pattern
+
+Each module is a **class that receives a `Task` reference** (typed to a narrow interface) and exposes methods that were previously on `Task`. The `Task` class creates instances of these modules in its constructor and delegates calls.
+
+```typescript
+// Example: TaskHistory.ts
+export class TaskHistory {
+    constructor(private readonly task: TaskHistoryAccess) {}
+
+    async getSavedApiConversationHistory(): Promise<ApiMessage[]> { ... }
+    async addToApiConversationHistory(message: Anthropic.MessageParam, reasoning?: string) { ... }
+    // ...
+}
+
+// Narrow interface — only exposes what TaskHistory needs
+export interface TaskHistoryAccess {
+    taskId: string
+    globalStoragePath: string
+    apiConversationHistory: ApiMessage[]
+    clineMessages: ClineMessage[]
+    // ... minimal set of properties
+}
+```
+
+```typescript
+// In Task.ts constructor:
+this.history = new TaskHistory(this)
+this.askSay = new TaskAskSay(this)
+this.streamProcessor = new TaskStreamProcessor(this)
+this.apiLoop = new TaskApiLoop(this)
+this.lifecycle = new TaskLifecycle(this)
+this.contextManager = new TaskContextManager(this)
+this.subtasks = new TaskSubtasks(this)
+this.tokenTracking = new TaskTokenTracking(this)
+```
+
+### 2.3 Dependency Graph
+
+```
+Task (coordinator)
+ ├── TaskHistory          ← no dependencies on other modules
+ ├── TaskAskSay           ← depends on TaskHistory (addToClineMessages, saveClineMessages, updateClineMessage, findMessageByTimestamp)
+ ├── TaskTokenTracking    ← depends on TaskHistory (combineMessages, clineMessages)
+ ├── TaskStreamProcessor  ← depends on TaskAskSay (say), TaskHistory (saveClineMessages, updateClineMessage)
+ ├── TaskContextManager    ← depends on TaskAskSay (say), TaskHistory (flushPendingToolResultsToHistory, overwriteApiConversationHistory)
+ ├── TaskSubtasks         ← depends on TaskLifecycle (initiateTaskLoop), TaskHistory (getSavedApiConversationHistory, saveApiConversationHistory)
+ ├── TaskLifecycle         ← depends on TaskAskSay (ask, say), TaskHistory (getSaved*, overwrite*), TaskContextManager (indirectly)
+ └── TaskApiLoop          ← depends on ALL other modules
+```
+
+### 2.4 Extraction Order (by dependency, safest first)
+
+| Phase | Module                | Risk       | Reason                                                       |
+| ----- | --------------------- | ---------- | ------------------------------------------------------------ |
+| 1     | `TaskHistory`         | 🟢 Low     | No dependencies on other new modules; pure I/O               |
+| 2     | `TaskTokenTracking`   | 🟢 Low     | Depends only on TaskHistory; simple computations             |
+| 3     | `TaskAskSay`          | 🟡 Medium  | Depends on TaskHistory; complex ask flow with auto-approval  |
+| 4     | `TaskSubtasks`        | 🟢 Low     | Small surface area; depends on TaskLifecycle                 |
+| 5     | `TaskContextManager`  | 🟡 Medium  | Depends on TaskAskSay, TaskHistory; condensing logic         |
+| 6     | `TaskStreamProcessor` | 🟠 High    | Extracted from the 1,236-line monster; complex state machine |
+| 7     | `TaskLifecycle`       | 🟠 High    | Depends on many modules; constructor changes                 |
+| 8     | `TaskApiLoop`         | 🔴 Highest | Depends on everything; the final orchestration layer         |
+
+---
+
+## 3. Interface Contracts
+
+### 3.1 `TaskHistoryAccess` (what TaskHistory needs from Task)
+
+```typescript
+export interface TaskHistoryAccess {
+	taskId: string
+	globalStoragePath: string
+	apiConversationHistory: ApiMessage[]
+	clineMessages: ClineMessage[]
+	providerRef: WeakRef<ClineProvider>
+	lastMessageTs?: number
+	assistantMessageSavedToHistory: boolean
+}
+```
+
+### 3.2 `TaskAskSayAccess` (what TaskAskSay needs from Task)
+
+```typescript
+export interface TaskAskSayAccess {
+	taskId: string
+	instanceId: string
+	abort: boolean
+	clineMessages: ClineMessage[]
+	askResponse?: ClineAskResponse
+	askResponseText?: string
+	askResponseImages?: string[]
+	lastMessageTs?: number
+	idleAsk?: ClineMessage
+	resumableAsk?: ClineMessage
+	interactiveAsk?: ClineMessage
+	autoApprovalTimeoutRef?: NodeJS.Timeout
+	messageQueueService: MessageQueueService
+	providerRef: WeakRef<ClineProvider>
+	history: TaskHistory // delegation target
+	// Methods needed:
+	emit: Task["emit"]
+	checkpointSave: Task["checkpointSave"]
+}
+```
+
+### 3.3 Full interface definitions are in each module's spec file.
+
+---
+
+## 4. Testing Strategy
+
+### 4.1 Existing Tests
+
+The following test files exist in `src/core/task/__tests__/`:
+
+- `Task.spec.ts`
+- `Task.persistence.spec.ts`
+- `Task.dispose.test.ts`
+- `Task.throttle.test.ts`
+- `Task.sticky-profile-race.spec.ts`
+- `ask-queued-message-drain.spec.ts`
+- `duplicate-tool-use-ids.spec.ts`
+- `flushPendingToolResultsToHistory.spec.ts`
+- `grace-retry-errors.spec.ts`
+- `grounding-sources.test.ts`
+- `mergeConsecutiveApiMessages.spec.ts`
+- `native-tools-filtering.spec.ts`
+- `new-task-isolation.spec.ts`
+- `reasoning-preservation.test.ts`
+- `task-tool-history.spec.ts`
+- `validateToolResultIds.spec.ts`
+
+### 4.2 Test Migration Rules
+
+1. **No behavioral changes** during extraction — all existing tests must pass without modification
+2. **New unit tests** for each extracted module should be created in `src/core/task/__tests__/`
+3. **Integration tests** (existing `Task.spec.ts`) remain unchanged — they test `Task` which delegates to modules
+4. After each extraction phase, run: `cd src && npx vitest run core/task/__tests__/`
+
+---
+
+## 5. Risk Mitigation
+
+### 5.1 Incremental Extraction
+
+Each phase follows this process:
+
+1. Create the new module file with the extracted methods
+2. Create a narrow interface for what the module needs from `Task`
+3. Wire the module into `Task` via a public property
+4. Delegate from `Task` methods to the module (initially just forwarding)
+5. Run all tests to verify no behavioral change
+6. Remove the original method body from `Task`, keeping only the delegation call
+
+### 5.2 Backward Compatibility
+
+During the transition, `Task` continues to expose the same public API. Callers outside `src/core/task/` see no change. Internal calls gradually migrate from `this.method()` to `this.module.method()`.
+
+### 5.3 Property Access
+
+Modules that need access to `Task` properties receive a reference typed to a narrow interface. This prevents modules from reaching into unrelated state and makes dependencies explicit.
+
+---
+
+## 6. File-by-File Specs
+
+| Spec File                                      | Module              | Lines to Extract |
+| ---------------------------------------------- | ------------------- | ---------------- |
+| `refactor-task-ts-01-task-history.md`          | TaskHistory         | ~300             |
+| `refactor-task-ts-02-task-ask-say.md`          | TaskAskSay          | ~350             |
+| `refactor-task-ts-03-task-stream-processor.md` | TaskStreamProcessor | ~400             |
+| `refactor-task-ts-04-task-api-loop.md`         | TaskApiLoop         | ~600             |
+| `refactor-task-ts-05-task-lifecycle.md`        | TaskLifecycle       | ~400             |
+| `refactor-task-ts-06-task-context-manager.md`  | TaskContextManager  | ~250             |
+| `refactor-task-ts-07-task-subtasks.md`         | TaskSubtasks        | ~100             |
+| `refactor-task-ts-08-task-token-tracking.md`   | TaskTokenTracking   | ~120             |
+
+---
+
+## 7. Expected Outcome
+
+| File                     | Current Lines | Target Lines                           |
+| ------------------------ | ------------- | -------------------------------------- |
+| `Task.ts`                | 4,738         | ~800 (coordinator + wiring)            |
+| `TaskHistory.ts`         | 0             | ~250                                   |
+| `TaskAskSay.ts`          | 0             | ~350                                   |
+| `TaskStreamProcessor.ts` | 0             | ~400                                   |
+| `TaskApiLoop.ts`         | 0             | ~600                                   |
+| `TaskLifecycle.ts`       | 0             | ~400                                   |
+| `TaskContextManager.ts`  | 0             | ~250                                   |
+| `TaskSubtasks.ts`        | 0             | ~100                                   |
+| `TaskTokenTracking.ts`   | 0             | ~120                                   |
+| **Total**                | **4,738**     | **~3,274** (but each file < 600 lines) |
+
+The total line count increases slightly due to interface definitions and delegation boilerplate, but **no single file exceeds 600 lines**, and each file has a single clear responsibility.

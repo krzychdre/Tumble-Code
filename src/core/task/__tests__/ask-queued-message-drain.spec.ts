@@ -1,4 +1,5 @@
 import { Task } from "../Task"
+import { TaskAskSay } from "../TaskAskSay"
 
 // Keep this test focused: if a queued message arrives while Task.ask() is blocked,
 // it should be consumed and used to fulfill the ask.
@@ -12,6 +13,12 @@ describe("Task.ask queued message drain", () => {
 		;(task as any).askResponseText = undefined
 		;(task as any).askResponseImages = undefined
 		;(task as any).lastMessageTs = undefined
+		;(task as any).taskId = "test-task-id"
+		;(task as any).instanceId = "test-instance-id"
+		;(task as any).idleAsk = undefined
+		;(task as any).resumableAsk = undefined
+		;(task as any).interactiveAsk = undefined
+		;(task as any).autoApprovalTimeoutRef = undefined
 
 		// Message queue service exists in constructor; for unit test we can attach a real one.
 		const { MessageQueueService } = await import("../../message-queue/MessageQueueService")
@@ -22,15 +29,16 @@ describe("Task.ask queued message drain", () => {
 			addToClineMessages: vi.fn(async () => {}),
 			saveClineMessages: vi.fn(async () => {}),
 			updateClineMessage: vi.fn(async () => {}),
+			findMessageByTimestamp: vi.fn(() => undefined),
 		}
 		;(task as any).history = historyStub
-		;(task as any).addToClineMessages = historyStub.addToClineMessages
-		;(task as any).saveClineMessages = historyStub.saveClineMessages
-		;(task as any).updateClineMessage = historyStub.updateClineMessage
-		;(task as any).cancelAutoApprovalTimeout = vi.fn(() => {})
 		;(task as any).checkpointSave = vi.fn(async () => {})
 		;(task as any).emit = vi.fn()
 		;(task as any).providerRef = { deref: () => undefined }
+
+		// Initialize TaskAskSay with the task-like object as the access interface
+		// so that property reads/writes in TaskAskSay go through the live task object
+		;(task as any).askSay = new TaskAskSay(task as any)
 
 		const askPromise = task.ask("followup", "Q?", false)
 
@@ -50,6 +58,12 @@ describe("Task.ask queued message drain", () => {
 		;(task as any).askResponseText = undefined
 		;(task as any).askResponseImages = undefined
 		;(task as any).lastMessageTs = undefined
+		;(task as any).taskId = "test-task-id"
+		;(task as any).instanceId = "test-instance-id"
+		;(task as any).idleAsk = undefined
+		;(task as any).resumableAsk = undefined
+		;(task as any).interactiveAsk = undefined
+		;(task as any).autoApprovalTimeoutRef = undefined
 
 		const { MessageQueueService } = await import("../../message-queue/MessageQueueService")
 		;(task as any).messageQueueService = new MessageQueueService()
@@ -59,15 +73,15 @@ describe("Task.ask queued message drain", () => {
 			addToClineMessages: vi.fn(async () => {}),
 			saveClineMessages: vi.fn(async () => {}),
 			updateClineMessage: vi.fn(async () => {}),
+			findMessageByTimestamp: vi.fn(() => undefined),
 		}
 		;(task as any).history = historyStub
-		;(task as any).addToClineMessages = historyStub.addToClineMessages
-		;(task as any).saveClineMessages = historyStub.saveClineMessages
-		;(task as any).updateClineMessage = historyStub.updateClineMessage
-		;(task as any).cancelAutoApprovalTimeout = vi.fn(() => {})
 		;(task as any).checkpointSave = vi.fn(async () => {})
 		;(task as any).emit = vi.fn()
 		;(task as any).providerRef = { deref: () => undefined }
+
+		// Initialize TaskAskSay with the task-like object as the access interface
+		;(task as any).askSay = new TaskAskSay(task as any)
 
 		const askPromise = task.ask("command_output", "command is still running...", false)
 		;(task as any).messageQueueService.addMessage("1+1=?")

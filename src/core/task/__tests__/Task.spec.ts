@@ -638,7 +638,7 @@ describe("Cline", () => {
 				vi.spyOn(await import("delay"), "default").mockImplementation(mockDelay)
 
 				// Mock say to track messages
-				const saySpy = vi.spyOn(cline, "say")
+				const saySpy = vi.spyOn(cline.askSay, "say")
 
 				// Create a stream that fails on first chunk
 				const mockError = new Error("API Error")
@@ -759,7 +759,7 @@ describe("Cline", () => {
 				vi.spyOn(await import("delay"), "default").mockImplementation(mockDelay)
 
 				// Mock say to track messages
-				const saySpy = vi.spyOn(cline, "say")
+				const saySpy = vi.spyOn(cline.askSay, "say")
 
 				// Create a stream that fails on first chunk
 				const mockError = new Error("API Error")
@@ -1043,7 +1043,7 @@ describe("Cline", () => {
 				vi.spyOn(child as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Spy on child.say to verify the emitted message type
-				const saySpy = vi.spyOn(child, "say")
+				const saySpy = vi.spyOn(child.askSay, "say")
 
 				// Mock the child's API stream
 				const childMockStream = {
@@ -1487,7 +1487,7 @@ describe("Cline", () => {
 				})
 
 				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task, "handleWebviewAskResponse")
+				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
 
 				// Set up some existing messages to simulate an ongoing conversation
 				task.clineMessages = [
@@ -1517,7 +1517,7 @@ describe("Cline", () => {
 				})
 
 				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task, "handleWebviewAskResponse")
+				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
 
 				// Call with empty text and no images
 				task.submitUserMessage("", [])
@@ -1539,7 +1539,7 @@ describe("Cline", () => {
 				})
 
 				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task, "handleWebviewAskResponse")
+				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
 
 				// Test with no messages (new task scenario)
 				task.clineMessages = []
@@ -1573,7 +1573,7 @@ describe("Cline", () => {
 				})
 
 				// Spy on handleWebviewAskResponse
-				const handleResponseSpy = vi.spyOn(task, "handleWebviewAskResponse")
+				const handleResponseSpy = vi.spyOn(task.askSay, "handleWebviewAskResponse")
 
 				// Simulate weakref returning undefined
 				Object.defineProperty(task, "providerRef", {
