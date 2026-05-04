@@ -132,6 +132,7 @@ import { AutoApprovalHandler, checkAutoApproval } from "../auto-approval"
 import { MessageManager } from "../message-manager"
 import { validateAndFixToolResultIds } from "./validateToolResultIds"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
+import { TaskHistory } from "./TaskHistory"
 
 const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
@@ -414,6 +415,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Initial status for the task's history item (set at creation time to avoid race conditions)
 	private readonly initialStatus?: "active" | "delegated" | "completed"
 
+	// Callback for TaskHistory to restore todo list (wraps module-level function)
+	readonly restoreTodoListForTask: () => void
+
+	// Task history management (extracted from Task)
+	readonly history: TaskHistory
+
 	// MessageManager for high-level message operations (lazy initialized)
 	private _messageManager?: MessageManager
 
@@ -562,6 +569,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.TOKEN_USAGE_EMIT_INTERVAL_MS,
 			{ leading: true, trailing: true, maxWait: this.TOKEN_USAGE_EMIT_INTERVAL_MS },
 		)
+
+		// Initialize restoreTodoListForTask callback and TaskHistory
+		// Pass Task as TaskHistoryAccess so property reads/writes go through the live
+		// Task instance (critical for mutable primitives like abort, assistantMessageSavedToHistory).
+		this.restoreTodoListForTask = () => restoreTodoListForTask(this)
+		this.history = new TaskHistory(this as unknown as import("./TaskHistory").TaskHistoryAccess)
 
 		onCreated?.(this)
 
@@ -857,168 +870,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// API Messages
 
 	private async getSavedApiConversationHistory(): Promise<ApiMessage[]> {
-		return readApiMessages({ taskId: this.taskId, globalStoragePath: this.globalStoragePath })
+		return this.history.getSavedApiConversationHistory()
 	}
 
 	private async addToApiConversationHistory(message: Anthropic.MessageParam, reasoning?: string) {
-		// Capture the encrypted_content / thought signatures from the provider (e.g., OpenAI Responses API, Google GenAI) if present.
-		// We only persist data reported by the current response body.
-		const handler = this.api as ApiHandler & {
-			getResponseId?: () => string | undefined
-			getEncryptedContent?: () => { encrypted_content: string; id?: string } | undefined
-			getThoughtSignature?: () => string | undefined
-			getSummary?: () => any[] | undefined
-			getReasoningDetails?: () => any[] | undefined
-		}
-
-		if (message.role === "assistant") {
-			const responseId = handler.getResponseId?.()
-			const reasoningData = handler.getEncryptedContent?.()
-			const thoughtSignature = handler.getThoughtSignature?.()
-			const reasoningSummary = handler.getSummary?.()
-			const reasoningDetails = handler.getReasoningDetails?.()
-
-			// Only Anthropic's API expects/validates the special `thinking` content block signature.
-			// Other providers (notably Gemini 3) use different signature semantics (e.g. `thoughtSignature`)
-			// and require round-tripping the signature in their own format.
-			const modelId = getModelId(this.apiConfiguration)
-			const apiProvider = this.apiConfiguration.apiProvider
-			const apiProtocol = getApiProtocol(
-				apiProvider && !isRetiredProvider(apiProvider) ? apiProvider : undefined,
-				modelId,
-			)
-			const isAnthropicProtocol = apiProtocol === "anthropic"
-
-			// Start from the original assistant message
-			const messageWithTs: any = {
-				...message,
-				...(responseId ? { id: responseId } : {}),
-				ts: Date.now(),
-			}
-
-			// Store reasoning_details array if present (for models like Gemini 3)
-			if (reasoningDetails) {
-				messageWithTs.reasoning_details = reasoningDetails
-			}
-
-			// Store reasoning: Anthropic thinking (with signature), plain text (most providers), or encrypted (OpenAI Native)
-			// Skip if reasoning_details already contains the reasoning (to avoid duplication)
-			if (isAnthropicProtocol && reasoning && thoughtSignature && !reasoningDetails) {
-				// Anthropic provider with extended thinking: Store as proper `thinking` block
-				// This format passes through anthropic-filter.ts and is properly round-tripped
-				// for interleaved thinking with tool use (required by Anthropic API)
-				const thinkingBlock = {
-					type: "thinking",
-					thinking: reasoning,
-					signature: thoughtSignature,
-				}
-
-				if (typeof messageWithTs.content === "string") {
-					messageWithTs.content = [
-						thinkingBlock,
-						{ type: "text", text: messageWithTs.content } satisfies Anthropic.Messages.TextBlockParam,
-					]
-				} else if (Array.isArray(messageWithTs.content)) {
-					messageWithTs.content = [thinkingBlock, ...messageWithTs.content]
-				} else if (!messageWithTs.content) {
-					messageWithTs.content = [thinkingBlock]
-				}
-			} else if (reasoning && !reasoningDetails) {
-				// Other providers (non-Anthropic): Store as generic reasoning block
-				const reasoningBlock = {
-					type: "reasoning",
-					text: reasoning,
-					summary: reasoningSummary ?? ([] as any[]),
-				}
-
-				if (typeof messageWithTs.content === "string") {
-					messageWithTs.content = [
-						reasoningBlock,
-						{ type: "text", text: messageWithTs.content } satisfies Anthropic.Messages.TextBlockParam,
-					]
-				} else if (Array.isArray(messageWithTs.content)) {
-					messageWithTs.content = [reasoningBlock, ...messageWithTs.content]
-				} else if (!messageWithTs.content) {
-					messageWithTs.content = [reasoningBlock]
-				}
-			} else if (reasoningData?.encrypted_content) {
-				// OpenAI Native encrypted reasoning
-				const reasoningBlock = {
-					type: "reasoning",
-					summary: [] as any[],
-					encrypted_content: reasoningData.encrypted_content,
-					...(reasoningData.id ? { id: reasoningData.id } : {}),
-				}
-
-				if (typeof messageWithTs.content === "string") {
-					messageWithTs.content = [
-						reasoningBlock,
-						{ type: "text", text: messageWithTs.content } satisfies Anthropic.Messages.TextBlockParam,
-					]
-				} else if (Array.isArray(messageWithTs.content)) {
-					messageWithTs.content = [reasoningBlock, ...messageWithTs.content]
-				} else if (!messageWithTs.content) {
-					messageWithTs.content = [reasoningBlock]
-				}
-			}
-
-			// For non-Anthropic providers (e.g., Gemini 3), persist the thought signature as its own
-			// content block so converters can attach it back to the correct provider-specific fields.
-			// Note: For Anthropic extended thinking, the signature is already included in the thinking block above.
-			if (thoughtSignature && !isAnthropicProtocol) {
-				const thoughtSignatureBlock = {
-					type: "thoughtSignature",
-					thoughtSignature,
-				}
-
-				if (typeof messageWithTs.content === "string") {
-					messageWithTs.content = [
-						{ type: "text", text: messageWithTs.content } satisfies Anthropic.Messages.TextBlockParam,
-						thoughtSignatureBlock,
-					]
-				} else if (Array.isArray(messageWithTs.content)) {
-					messageWithTs.content = [...messageWithTs.content, thoughtSignatureBlock]
-				} else if (!messageWithTs.content) {
-					messageWithTs.content = [thoughtSignatureBlock]
-				}
-			}
-
-			this.apiConversationHistory.push(messageWithTs)
-		} else {
-			// For user messages, validate tool_result IDs ONLY when the immediately previous *effective* message
-			// is an assistant message.
-			//
-			// If the previous effective message is also a user message (e.g., summary + a new user message),
-			// validating against any earlier assistant message can incorrectly inject placeholder tool_results.
-			const effectiveHistoryForValidation = getEffectiveApiHistory(this.apiConversationHistory)
-			const lastEffective = effectiveHistoryForValidation[effectiveHistoryForValidation.length - 1]
-			const historyForValidation = lastEffective?.role === "assistant" ? effectiveHistoryForValidation : []
-
-			// If the previous effective message is NOT an assistant, convert tool_result blocks to text blocks.
-			// This prevents orphaned tool_results from being filtered out by getEffectiveApiHistory.
-			// This can happen when condensing occurs after the assistant sends tool_uses but before
-			// the user responds - the tool_use blocks get condensed away, leaving orphaned tool_results.
-			let messageToAdd = message
-			if (lastEffective?.role !== "assistant" && Array.isArray(message.content)) {
-				messageToAdd = {
-					...message,
-					content: message.content.map((block) =>
-						block.type === "tool_result"
-							? {
-									type: "text" as const,
-									text: `Tool result:\n${typeof block.content === "string" ? block.content : JSON.stringify(block.content)}`,
-								}
-							: block,
-					),
-				}
-			}
-
-			const validatedMessage = validateAndFixToolResultIds(messageToAdd, historyForValidation)
-			const messageWithTs = { ...validatedMessage, ts: Date.now() }
-			this.apiConversationHistory.push(messageWithTs)
-		}
-
-		await this.saveApiConversationHistory()
+		return this.history.addToApiConversationHistory(message, reasoning)
 	}
 
 	// NOTE: We intentionally do NOT mutate stored messages to merge consecutive user turns.
@@ -1026,8 +882,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// so rewind/edit behavior can still reference original message boundaries.
 
 	async overwriteApiConversationHistory(newHistory: ApiMessage[]) {
-		this.apiConversationHistory = newHistory
-		await this.saveApiConversationHistory()
+		return this.history.overwriteApiConversationHistory(newHistory)
 	}
 
 	/**
@@ -1046,81 +901,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * So we usually only need to flush the pending user message with tool_results.
 	 */
 	public async flushPendingToolResultsToHistory(): Promise<boolean> {
-		// Only flush if there's actually pending content to save
-		if (this.userMessageContent.length === 0) {
-			return true
-		}
-
-		// CRITICAL: Wait for the assistant message to be saved to API history first.
-		// Without this, tool_result blocks would appear BEFORE tool_use blocks in the
-		// conversation history, causing API errors like:
-		// "unexpected `tool_use_id` found in `tool_result` blocks"
-		//
-		// This can happen when parallel tools are called (e.g., update_todo_list + new_task).
-		// Tools execute during streaming via presentAssistantMessage, BEFORE the assistant
-		// message is saved. When new_task triggers delegation, it calls this method to
-		// flush pending results - but the assistant message hasn't been saved yet.
-		//
-		// The assistantMessageSavedToHistory flag is:
-		// - Reset to false at the start of each API request
-		// - Set to true after the assistant message is saved in recursivelyMakeClineRequests
-		if (!this.assistantMessageSavedToHistory) {
-			await pWaitFor(() => this.assistantMessageSavedToHistory || this.abort, {
-				interval: 50,
-				timeout: 30_000, // 30 second timeout as safety net
-			}).catch(() => {
-				// If timeout or abort, log and proceed anyway to avoid hanging
-				console.warn(
-					`[Task#${this.taskId}] flushPendingToolResultsToHistory: timed out waiting for assistant message to be saved`,
-				)
-			})
-		}
-
-		// If task was aborted while waiting, don't flush
-		if (this.abort) {
-			return false
-		}
-
-		// Save the user message with tool_result blocks
-		const userMessage: Anthropic.MessageParam = {
-			role: "user",
-			content: this.userMessageContent,
-		}
-
-		// Validate and fix tool_result IDs when the previous *effective* message is an assistant message.
-		const effectiveHistoryForValidation = getEffectiveApiHistory(this.apiConversationHistory)
-		const lastEffective = effectiveHistoryForValidation[effectiveHistoryForValidation.length - 1]
-		const historyForValidation = lastEffective?.role === "assistant" ? effectiveHistoryForValidation : []
-		const validatedMessage = validateAndFixToolResultIds(userMessage, historyForValidation)
-		const userMessageWithTs = { ...validatedMessage, ts: Date.now() }
-		this.apiConversationHistory.push(userMessageWithTs as ApiMessage)
-
-		const saved = await this.saveApiConversationHistory()
-
-		if (saved) {
-			// Clear the pending content since it's now saved
-			this.userMessageContent = []
-		} else {
-			console.warn(
-				`[Task#${this.taskId}] flushPendingToolResultsToHistory: save failed, retaining pending tool results in memory`,
-			)
-		}
-
-		return saved
+		return this.history.flushPendingToolResultsToHistory()
 	}
 
 	private async saveApiConversationHistory(): Promise<boolean> {
-		try {
-			await saveApiMessages({
-				messages: structuredClone(this.apiConversationHistory),
-				taskId: this.taskId,
-				globalStoragePath: this.globalStoragePath,
-			})
-			return true
-		} catch (error) {
-			console.error("Failed to save API conversation history:", error)
-			return false
-		}
+		return this.history.saveApiConversationHistory()
 	}
 
 	/**
@@ -1129,133 +914,33 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Used by delegation flow when flushPendingToolResultsToHistory reports failure.
 	 */
 	public async retrySaveApiConversationHistory(): Promise<boolean> {
-		const delays = [100, 500, 1500]
-
-		for (let attempt = 0; attempt < delays.length; attempt++) {
-			await new Promise<void>((resolve) => setTimeout(resolve, delays[attempt]))
-			console.warn(
-				`[Task#${this.taskId}] retrySaveApiConversationHistory: retry attempt ${attempt + 1}/${delays.length}`,
-			)
-
-			const success = await this.saveApiConversationHistory()
-
-			if (success) {
-				return true
-			}
-		}
-
-		return false
+		return this.history.retrySaveApiConversationHistory()
 	}
 
 	// Cline Messages
 
 	private async getSavedClineMessages(): Promise<ClineMessage[]> {
-		return readTaskMessages({ taskId: this.taskId, globalStoragePath: this.globalStoragePath })
+		return this.history.getSavedClineMessages()
 	}
 
 	private async addToClineMessages(message: ClineMessage) {
-		this.clineMessages.push(message)
-		const provider = this.providerRef.deref()
-		// Avoid resending large, mostly-static fields (notably taskHistory) on every chat message update.
-		// taskHistory is maintained in-memory in the webview and updated via taskHistoryItemUpdated.
-		await provider?.postStateToWebviewWithoutTaskHistory()
-		this.emit(RooCodeEventName.Message, { action: "created", message })
-		await this.saveClineMessages()
-
-		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
-
-		if (shouldCaptureMessage) {
-			CloudService.instance.captureEvent({
-				event: TelemetryEventName.TASK_MESSAGE,
-				properties: { taskId: this.taskId, message },
-			})
-			// Track that this message has been synced to cloud
-			this.cloudSyncedMessageTimestamps.add(message.ts)
-		}
+		return this.history.addToClineMessages(message)
 	}
 
 	public async overwriteClineMessages(newMessages: ClineMessage[]) {
-		this.clineMessages = newMessages
-		restoreTodoListForTask(this)
-		await this.saveClineMessages()
-
-		// When overwriting messages (e.g., during task resume), repopulate the cloud sync tracking Set
-		// with timestamps from all non-partial messages to prevent re-syncing previously synced messages
-		this.cloudSyncedMessageTimestamps.clear()
-		for (const msg of newMessages) {
-			if (msg.partial !== true) {
-				this.cloudSyncedMessageTimestamps.add(msg.ts)
-			}
-		}
+		return this.history.overwriteClineMessages(newMessages)
 	}
 
 	private async updateClineMessage(message: ClineMessage) {
-		const provider = this.providerRef.deref()
-		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
-		this.emit(RooCodeEventName.Message, { action: "updated", message })
-
-		// Check if we should sync to cloud and haven't already synced this message
-		const shouldCaptureMessage = message.partial !== true && CloudService.isEnabled()
-		const hasNotBeenSynced = !this.cloudSyncedMessageTimestamps.has(message.ts)
-
-		if (shouldCaptureMessage && hasNotBeenSynced) {
-			CloudService.instance.captureEvent({
-				event: TelemetryEventName.TASK_MESSAGE,
-				properties: { taskId: this.taskId, message },
-			})
-			// Track that this message has been synced to cloud
-			this.cloudSyncedMessageTimestamps.add(message.ts)
-		}
+		return this.history.updateClineMessage(message)
 	}
 
 	private async saveClineMessages(): Promise<boolean> {
-		try {
-			await saveTaskMessages({
-				messages: structuredClone(this.clineMessages),
-				taskId: this.taskId,
-				globalStoragePath: this.globalStoragePath,
-			})
-
-			if (this._taskApiConfigName === undefined) {
-				await this.taskApiConfigReady
-			}
-
-			const { historyItem, tokenUsage } = await taskMetadata({
-				taskId: this.taskId,
-				rootTaskId: this.rootTaskId,
-				parentTaskId: this.parentTaskId,
-				taskNumber: this.taskNumber,
-				messages: this.clineMessages,
-				globalStoragePath: this.globalStoragePath,
-				workspace: this.cwd,
-				mode: this._taskMode || defaultModeSlug, // Use the task's own mode, not the current provider mode.
-				apiConfigName: this._taskApiConfigName, // Use the task's own provider profile, not the current provider profile.
-				initialStatus: this.initialStatus,
-			})
-
-			// Emit token/tool usage updates using debounced function
-			// The debounce with maxWait ensures:
-			// - Immediate first emit (leading: true)
-			// - At most one emit per interval during rapid updates (maxWait)
-			// - Final state is emitted when updates stop (trailing: true)
-			this.debouncedEmitTokenUsage(tokenUsage, this.toolUsage)
-
-			await this.providerRef.deref()?.updateTaskHistory(historyItem)
-			return true
-		} catch (error) {
-			console.error("Failed to save Roo messages:", error)
-			return false
-		}
+		return this.history.saveClineMessages()
 	}
 
 	private findMessageByTimestamp(ts: number): ClineMessage | undefined {
-		for (let i = this.clineMessages.length - 1; i >= 0; i--) {
-			if (this.clineMessages[i].ts === ts) {
-				return this.clineMessages[i]
-			}
-		}
-
-		return undefined
+		return this.history.findMessageByTimestamp(ts)
 	}
 
 	// Note that `partial` has three valid states true (partial message),
@@ -1299,7 +984,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// data or one whole message at a time so ignore partial for
 					// saves, and only post parts of partial message instead of
 					// whole array in new listener.
-					this.updateClineMessage(lastMessage)
+					this.history.updateClineMessage(lastMessage)
 					// console.log("Task#ask: current ask promise was ignored (#1)")
 					throw new AskIgnoredError("updating existing partial")
 				} else {
@@ -1307,7 +992,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// state.
 					askTs = Date.now()
 					this.lastMessageTs = askTs
-					await this.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, partial, isProtected })
+					await this.history.addToClineMessages({
+						ts: askTs,
+						type: "ask",
+						ask: type,
+						text,
+						partial,
+						isProtected,
+					})
 					// console.log("Task#ask: current ask promise was ignored (#2)")
 					throw new AskIgnoredError("new partial")
 				}
@@ -1336,8 +1028,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					lastMessage.partial = false
 					lastMessage.progressStatus = progressStatus
 					lastMessage.isProtected = isProtected
-					await this.saveClineMessages()
-					this.updateClineMessage(lastMessage)
+					await this.history.saveClineMessages()
+					this.history.updateClineMessage(lastMessage)
 				} else {
 					// This is a new and complete message, so add it like normal.
 					this.askResponse = undefined
@@ -1345,7 +1037,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					this.askResponseImages = undefined
 					askTs = Date.now()
 					this.lastMessageTs = askTs
-					await this.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
+					await this.history.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
 				}
 			}
 		} else {
@@ -1355,7 +1047,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.askResponseImages = undefined
 			askTs = Date.now()
 			this.lastMessageTs = askTs
-			await this.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
+			await this.history.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
 		}
 
 		let timeouts: NodeJS.Timeout[] = []
@@ -1394,7 +1086,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (isInteractiveAsk(type)) {
 				timeouts.push(
 					setTimeout(() => {
-						const message = this.findMessageByTimestamp(askTs)
+						const message = this.history.findMessageByTimestamp(askTs)
 
 						if (message) {
 							this.interactiveAsk = message
@@ -1406,7 +1098,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			} else if (isResumableAsk(type)) {
 				timeouts.push(
 					setTimeout(() => {
-						const message = this.findMessageByTimestamp(askTs)
+						const message = this.history.findMessageByTimestamp(askTs)
 
 						if (message) {
 							this.resumableAsk = message
@@ -1417,7 +1109,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			} else if (isIdleAsk(type)) {
 				timeouts.push(
 					setTimeout(() => {
-						const message = this.findMessageByTimestamp(askTs)
+						const message = this.history.findMessageByTimestamp(askTs)
 
 						if (message) {
 							this.idleAsk = message
@@ -1525,7 +1217,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// Mark this follow-up as answered
 				this.clineMessages[lastFollowUpIndex].isAnswered = true
 				// Save the updated messages
-				this.saveClineMessages().catch((error) => {
+				this.history.saveClineMessages().catch((error) => {
 					console.error("Failed to save answered follow-up state:", error)
 				})
 			}
@@ -1539,8 +1231,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			)
 			if (lastToolAskIndex !== -1) {
 				this.clineMessages[lastToolAskIndex].isAnswered = true
-				void this.updateClineMessage(this.clineMessages[lastToolAskIndex])
-				this.saveClineMessages().catch((error) => {
+				void this.history.updateClineMessage(this.clineMessages[lastToolAskIndex])
+				this.history.saveClineMessages().catch((error) => {
 					console.error("Failed to save answered tool-ask state:", error)
 				})
 			}
@@ -1648,7 +1340,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public async condenseContext(): Promise<void> {
 		// CRITICAL: Flush any pending tool results before condensing
 		// to ensure tool_use/tool_result pairs are complete in history
-		await this.flushPendingToolResultsToHistory()
+		await this.history.flushPendingToolResultsToHistory()
 
 		const systemPrompt = await this.getSystemPrompt()
 
@@ -1728,7 +1420,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			)
 			return
 		}
-		await this.overwriteApiConversationHistory(messages)
+		await this.history.overwriteApiConversationHistory(messages)
 
 		const contextCondense: ContextCondense = {
 			summary,
@@ -1782,7 +1474,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					lastMessage.images = images
 					lastMessage.partial = partial
 					lastMessage.progressStatus = progressStatus
-					this.updateClineMessage(lastMessage)
+					this.history.updateClineMessage(lastMessage)
 				} else {
 					// This is a new partial message, so add it with partial state.
 					const sayTs = Date.now()
@@ -1791,7 +1483,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						this.lastMessageTs = sayTs
 					}
 
-					await this.addToClineMessages({
+					await this.history.addToClineMessages({
 						ts: sayTs,
 						type: "say",
 						say: type,
@@ -1818,10 +1510,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					// Instead of streaming partialMessage events, we do a save
 					// and post like normal to persist to disk.
-					await this.saveClineMessages()
+					await this.history.saveClineMessages()
 
 					// More performant than an entire `postStateToWebview`.
-					this.updateClineMessage(lastMessage)
+					this.history.updateClineMessage(lastMessage)
 				} else {
 					// This is a new and complete message, so add it like normal.
 					const sayTs = Date.now()
@@ -1830,7 +1522,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						this.lastMessageTs = sayTs
 					}
 
-					await this.addToClineMessages({
+					await this.history.addToClineMessages({
 						ts: sayTs,
 						type: "say",
 						say: type,
@@ -1853,7 +1545,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.lastMessageTs = sayTs
 			}
 
-			await this.addToClineMessages({
+			await this.history.addToClineMessages({
 				ts: sayTs,
 				type: "say",
 				say: type,
@@ -2000,7 +1692,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	private async resumeTaskFromHistory() {
 		try {
-			const modifiedClineMessages = await this.getSavedClineMessages()
+			const modifiedClineMessages = await this.history.getSavedClineMessages()
 
 			// Remove any resume messages that may have been added before.
 			const lastRelevantMessageIndex = findLastIndex(
@@ -2040,8 +1732,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				}
 			}
 
-			await this.overwriteClineMessages(modifiedClineMessages)
-			this.clineMessages = await this.getSavedClineMessages()
+			await this.history.overwriteClineMessages(modifiedClineMessages)
+			this.clineMessages = await this.history.getSavedClineMessages()
 
 			// Now present the cline messages to the user and ask if they want to
 			// resume (NOTE: we ran into a bug before where the
@@ -2049,7 +1741,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// task, and it was because we were waiting for resume).
 			// This is important in case the user deletes messages without resuming
 			// the task first.
-			this.apiConversationHistory = await this.getSavedApiConversationHistory()
+			this.apiConversationHistory = await this.history.getSavedApiConversationHistory()
 
 			const lastClineMessage = this.clineMessages
 				.slice()
@@ -2078,7 +1770,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			// Make sure that the api conversation history can be resumed by the API,
 			// even if it goes out of sync with cline messages.
-			let existingApiConversationHistory: ApiMessage[] = await this.getSavedApiConversationHistory()
+			let existingApiConversationHistory: ApiMessage[] = await this.history.getSavedApiConversationHistory()
 
 			// Tool blocks are always preserved; native tool calling only.
 
@@ -2217,7 +1909,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				})
 			}
 
-			await this.overwriteApiConversationHistory(modifiedApiConversationHistory)
+			await this.history.overwriteApiConversationHistory(modifiedApiConversationHistory)
 
 			// Task resuming from history item.
 			await this.initiateTaskLoop(newUserContent)
@@ -2290,7 +1982,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Save the countdown message in the automatic retry or other content.
 		try {
 			// Save the countdown message in the automatic retry or other content.
-			await this.saveClineMessages()
+			await this.history.saveClineMessages()
 		} catch (error) {
 			console.error(`Error saving messages during abort for task ${this.taskId}.${this.instanceId}:`, error)
 		}
@@ -2434,7 +2126,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Load conversation history if not already loaded
 		if (this.apiConversationHistory.length === 0) {
-			this.apiConversationHistory = await this.getSavedApiConversationHistory()
+			this.apiConversationHistory = await this.history.getSavedApiConversationHistory()
 		}
 
 		// Add environment details to the existing last user message (which contains the tool_result)
@@ -2468,7 +2160,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		// Save the updated history
-		await this.saveApiConversationHistory()
+		await this.history.saveApiConversationHistory()
 
 		// Continue task loop - pass empty array to signal no new user content needed
 		// The initiateTaskLoop will handle this by skipping user message addition
@@ -2664,7 +2356,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			const shouldAddUserMessage =
 				((currentItem.retryAttempt ?? 0) === 0 && !isEmptyUserContent) || currentItem.userMessageWasRemoved
 			if (shouldAddUserMessage) {
-				await this.addToApiConversationHistory({ role: "user", content: finalUserContent })
+				await this.history.addToApiConversationHistory({ role: "user", content: finalUserContent })
 				TelemetryService.instance.captureConversationMessage(this.taskId, "user")
 			}
 
@@ -2678,7 +2370,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				apiProtocol,
 			} satisfies ClineApiReqInfo)
 
-			await this.saveClineMessages()
+			await this.history.saveClineMessages()
 			await this.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
 
 			try {
@@ -2756,7 +2448,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// Update `api_req_started` to have cancelled and cost, so that
 					// we can display the cost of the partial stream and the cancellation reason
 					updateApiReqMsg(cancelReason, streamingFailedMessage)
-					await this.saveClineMessages()
+					await this.history.saveClineMessages()
 
 					// Signals to provider that it can retrieve the saved messages
 					// from disk, as abortTask can not be awaited on in nature.
@@ -3122,12 +2814,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 								// Update the API request message with the latest usage data
 								updateApiReqMsg()
-								await this.saveClineMessages()
+								await this.history.saveClineMessages()
 
 								// Update the specific message in the webview
 								const apiReqMessage = this.clineMessages[messageIndex]
 								if (apiReqMessage) {
-									await this.updateClineMessage(apiReqMessage)
+									await this.history.updateClineMessage(apiReqMessage)
 								}
 
 								// Capture telemetry with provider-aware cost calculation
@@ -3404,11 +3096,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 					if (lastReasoningIndex !== -1 && this.clineMessages[lastReasoningIndex].partial) {
 						this.clineMessages[lastReasoningIndex].partial = false
-						await this.updateClineMessage(this.clineMessages[lastReasoningIndex])
+						await this.history.updateClineMessage(this.clineMessages[lastReasoningIndex])
 					}
 				}
 
-				await this.saveClineMessages()
+				await this.history.saveClineMessages()
 				await this.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
 
 				// No legacy text-stream tool parser state to reset.
@@ -3554,7 +3246,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// This is critical for new_task: when it triggers delegation, flushPendingToolResultsToHistory()
 					// will save the user message with tool_results. The assistant message must already be in history
 					// so that tool_result blocks appear AFTER their corresponding tool_use blocks.
-					await this.addToApiConversationHistory(
+					await this.history.addToApiConversationHistory(
 						{ role: "assistant", content: assistantContent },
 						reasoningMessage || undefined,
 					)
@@ -3714,7 +3406,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						} else {
 							// User declined to retry
 							// Re-add the user message we removed.
-							await this.addToApiConversationHistory({
+							await this.history.addToApiConversationHistory({
 								role: "user",
 								content: currentUserContent,
 							})
@@ -3724,7 +3416,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 								"Unexpected API Response: The language model did not provide any assistant messages. This may indicate an issue with the API or the model's output.",
 							)
 
-							await this.addToApiConversationHistory({
+							await this.history.addToApiConversationHistory({
 								role: "assistant",
 								content: [{ type: "text", text: "Failure: I did not provide a response." }],
 							})
@@ -3913,7 +3605,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			})
 
 			if (truncateResult.messages !== this.apiConversationHistory) {
-				await this.overwriteApiConversationHistory(truncateResult.messages)
+				await this.history.overwriteApiConversationHistory(truncateResult.messages)
 			}
 
 			if (truncateResult.summary) {
@@ -4140,7 +3832,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					rooIgnoreController: this.rooIgnoreController,
 				})
 				if (truncateResult.messages !== this.apiConversationHistory) {
-					await this.overwriteApiConversationHistory(truncateResult.messages)
+					await this.history.overwriteApiConversationHistory(truncateResult.messages)
 				}
 				if (truncateResult.error) {
 					await this.say("condense_context_error", truncateResult.error)

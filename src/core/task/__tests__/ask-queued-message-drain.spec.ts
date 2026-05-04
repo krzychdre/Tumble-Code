@@ -17,10 +17,16 @@ describe("Task.ask queued message drain", () => {
 		const { MessageQueueService } = await import("../../message-queue/MessageQueueService")
 		;(task as any).messageQueueService = new MessageQueueService()
 
-		// Minimal stubs used by ask()
-		;(task as any).addToClineMessages = vi.fn(async () => {})
-		;(task as any).saveClineMessages = vi.fn(async () => {})
-		;(task as any).updateClineMessage = vi.fn(async () => {})
+		// Minimal stubs used by ask() - these are now delegated via history
+		const historyStub = {
+			addToClineMessages: vi.fn(async () => {}),
+			saveClineMessages: vi.fn(async () => {}),
+			updateClineMessage: vi.fn(async () => {}),
+		}
+		;(task as any).history = historyStub
+		;(task as any).addToClineMessages = historyStub.addToClineMessages
+		;(task as any).saveClineMessages = historyStub.saveClineMessages
+		;(task as any).updateClineMessage = historyStub.updateClineMessage
 		;(task as any).cancelAutoApprovalTimeout = vi.fn(() => {})
 		;(task as any).checkpointSave = vi.fn(async () => {})
 		;(task as any).emit = vi.fn()
@@ -47,9 +53,17 @@ describe("Task.ask queued message drain", () => {
 
 		const { MessageQueueService } = await import("../../message-queue/MessageQueueService")
 		;(task as any).messageQueueService = new MessageQueueService()
-		;(task as any).addToClineMessages = vi.fn(async () => {})
-		;(task as any).saveClineMessages = vi.fn(async () => {})
-		;(task as any).updateClineMessage = vi.fn(async () => {})
+
+		// Minimal stubs used by ask() - these are now delegated via history
+		const historyStub = {
+			addToClineMessages: vi.fn(async () => {}),
+			saveClineMessages: vi.fn(async () => {}),
+			updateClineMessage: vi.fn(async () => {}),
+		}
+		;(task as any).history = historyStub
+		;(task as any).addToClineMessages = historyStub.addToClineMessages
+		;(task as any).saveClineMessages = historyStub.saveClineMessages
+		;(task as any).updateClineMessage = historyStub.updateClineMessage
 		;(task as any).cancelAutoApprovalTimeout = vi.fn(() => {})
 		;(task as any).checkpointSave = vi.fn(async () => {})
 		;(task as any).emit = vi.fn()
