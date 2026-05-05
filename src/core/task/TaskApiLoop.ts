@@ -1,9 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import OpenAI from "openai"
 import delay from "delay"
 import pWaitFor from "p-wait-for"
 import { serializeError } from "serialize-error"
-import * as vscode from "vscode"
 import {
 	type ProviderSettings,
 	type TokenUsage,
@@ -22,17 +20,13 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { type ApiStream } from "../../api/transform/stream"
-import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
-import { McpHub } from "../../services/mcp/McpHub"
-import { McpServerManager } from "../../services/mcp/McpServerManager"
-import { SYSTEM_PROMPT } from "../prompts/system"
-import { formatResponse } from "../prompts/responses"
-import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
-import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
+import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
+import { formatResponse } from "../prompts/responses"
+import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { type TaskHistory } from "./TaskHistory"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskStreamProcessor } from "./TaskStreamProcessor"
@@ -47,41 +41,17 @@ import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { AutoApprovalHandler } from "../auto-approval"
 import { presentAssistantMessage } from "../assistant-message"
 import { type AssistantMessageContent } from "../assistant-message"
-import { Package } from "../../shared/package"
 import { type ApiMessage } from "../task-persistence"
+import { ApiRequestBuilder, type ApiRequestBuilderAccess } from "./ApiRequestBuilder"
+import {
+	RetryHandler,
+	getLastGlobalApiRequestTime,
+	setLastGlobalApiRequestTime,
+	resetGlobalApiRequestTime,
+} from "./RetryHandler"
 
-/**
- * Module-level constant for exponential backoff limit
- */
-const MAX_EXPONENTIAL_BACKOFF_SECONDS = 600 // 10 minutes
-
-/**
- * Module-level static for tracking last global API request time
- * This is shared across all Task instances to enforce rate limiting
- */
-let lastGlobalApiRequestTime: number | undefined
-
-/**
- * Reset the global API request timestamp. For testing only.
- * @internal
- */
-export function resetGlobalApiRequestTime(): void {
-	lastGlobalApiRequestTime = undefined
-}
-
-/**
- * Get the last global API request time (for testing/access)
- */
-export function getLastGlobalApiRequestTime(): number | undefined {
-	return lastGlobalApiRequestTime
-}
-
-/**
- * Set the last global API request time
- */
-export function setLastGlobalApiRequestTime(time: number): void {
-	lastGlobalApiRequestTime = time
-}
+// Re-export functions for backward compatibility
+export { getLastGlobalApiRequestTime, setLastGlobalApiRequestTime, resetGlobalApiRequestTime } from "./RetryHandler"
 
 /**
  * Interface for Task access needed by TaskApiLoop.
@@ -176,7 +146,36 @@ interface StackItem {
  * This includes the main request loop, API request generation, and retry logic.
  */
 export class TaskApiLoop {
-	constructor(private readonly access: TaskApiLoopAccess) {}
+	// Delegate API request building to ApiRequestBuilder
+	private readonly apiRequestBuilder: ApiRequestBuilder
+	// Delegate retry/backoff logic to RetryHandler
+	private readonly retryHandler: RetryHandler
+
+	constructor(private readonly access: TaskApiLoopAccess) {
+		// Create the ApiRequestBuilder with a compatible access interface
+		this.apiRequestBuilder = new ApiRequestBuilder({
+			taskId: access.taskId,
+			instanceId: access.instanceId,
+			apiConfiguration: access.apiConfiguration,
+			api: access.api,
+			apiConversationHistory: access.apiConversationHistory,
+			providerRef: access.providerRef,
+			cwd: access.cwd,
+			diffStrategy: access.diffStrategy,
+			contextManager: access.contextManager,
+			getTokenUsage: access.getTokenUsage,
+			emit: access.emit,
+		})
+		// Create the RetryHandler with a compatible access interface
+		this.retryHandler = new RetryHandler({
+			taskId: access.taskId,
+			instanceId: access.instanceId,
+			abort: access.abort,
+			apiConfiguration: access.apiConfiguration,
+			providerRef: access.providerRef,
+			askSay: access.askSay,
+		})
+	}
 
 	/**
 	 * Initiates the main task loop that drives recursive API requests.
@@ -789,91 +788,19 @@ export class TaskApiLoop {
 	}
 
 	/**
-	 * Build the system prompt with MCP, mode, and custom instructions
+	 * Build the system prompt with MCP, mode, and custom instructions.
+	 * Delegates to ApiRequestBuilder.
 	 */
 	async getSystemPrompt(): Promise<string> {
-		const { mcpEnabled } = (await this.access.providerRef.deref()?.getState()) ?? {}
-		let mcpHub: McpHub | undefined
-		if (mcpEnabled ?? true) {
-			const provider = this.access.providerRef.deref()
-
-			if (!provider) {
-				throw new Error("Provider reference lost during view transition")
-			}
-
-			mcpHub = await McpServerManager.getInstance(provider.context, provider)
-
-			if (!mcpHub) {
-				throw new Error("Failed to get MCP hub from server manager")
-			}
-
-			await pWaitFor(() => !mcpHub!.isConnecting, { timeout: 10_000 }).catch(() => {
-				console.error("MCP servers failed to connect in time")
-			})
-		}
-
-		const rooIgnoreInstructions = this.access.rooIgnoreController?.getInstructions()
-
-		const state = await this.access.providerRef.deref()?.getState()
-
-		const {
-			mode,
-			customModes,
-			customModePrompts,
-			customInstructions,
-			experiments,
-			language,
-			apiConfiguration,
-			enableSubfolderRules,
-		} = state ?? {}
-
-		return await (async () => {
-			const provider = this.access.providerRef.deref()
-
-			if (!provider) {
-				throw new Error("Provider not available")
-			}
-
-			const modelInfo = this.access.api.getModel().info
-
-			return SYSTEM_PROMPT(
-				provider.context,
-				this.access.cwd,
-				false,
-				mcpHub,
-				this.access.diffStrategy,
-				mode ?? defaultModeSlug,
-				customModePrompts,
-				customModes,
-				customInstructions,
-				experiments,
-				language,
-				rooIgnoreInstructions,
-				{
-					todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
-					useAgentRules:
-						vscode.workspace.getConfiguration(Package.name).get<boolean>("useAgentRules") ?? true,
-					enableSubfolderRules: enableSubfolderRules ?? false,
-					newTaskRequireTodos: vscode.workspace
-						.getConfiguration(Package.name)
-						.get<boolean>("newTaskRequireTodos", false),
-					isStealthModel: modelInfo?.isStealthModel,
-				},
-				undefined, // todoList
-				this.access.api.getModel().id,
-				provider.getSkillsManager(),
-			)
-		})()
+		return this.apiRequestBuilder.buildSystemPrompt()
 	}
 
 	/**
-	 * Get the current profile ID from state
+	 * Get the current profile ID from state.
+	 * Delegates to ApiRequestBuilder.
 	 */
 	getCurrentProfileId(state: any): string {
-		return (
-			state?.listApiConfigMeta?.find((profile: any) => profile.name === state?.currentApiConfigName)?.id ??
-			"default"
-		)
+		return this.apiRequestBuilder.getCurrentProfileId(state)
 	}
 
 	/**
@@ -886,31 +813,10 @@ export class TaskApiLoop {
 	/**
 	 * Enforce user-configured provider rate limit.
 	 * Shows countdown UX on first attempt, skips on retries.
+	 * Delegates to RetryHandler.
 	 */
 	async maybeWaitForProviderRateLimit(retryAttempt: number): Promise<void> {
-		const state = await this.access.providerRef.deref()?.getState()
-		const rateLimitSeconds =
-			state?.apiConfiguration?.rateLimitSeconds ?? this.access.apiConfiguration?.rateLimitSeconds ?? 0
-
-		if (rateLimitSeconds <= 0 || !getLastGlobalApiRequestTime()) {
-			return
-		}
-
-		const now = performance.now()
-		const timeSinceLastRequest = now - getLastGlobalApiRequestTime()!
-		const rateLimitDelay = Math.ceil(
-			Math.min(rateLimitSeconds, Math.max(0, rateLimitSeconds * 1000 - timeSinceLastRequest) / 1000),
-		)
-
-		// Only show countdown UX on first attempt
-		if (rateLimitDelay > 0 && retryAttempt === 0) {
-			for (let i = rateLimitDelay; i > 0; i--) {
-				const delayMessage = JSON.stringify({ seconds: i })
-				await this.access.askSay.say("api_req_rate_limit_wait", delayMessage, undefined, true)
-				await delay(1000)
-			}
-			await this.access.askSay.say("api_req_rate_limit_wait", undefined, undefined, false)
-		}
+		return this.retryHandler.maybeWaitForProviderRateLimit(retryAttempt)
 	}
 
 	/**
@@ -1101,37 +1007,16 @@ export class TaskApiLoop {
 	}
 
 	/**
-	 * Build tools array for API request
+	 * Build tools array for API request.
+	 * Delegates to ApiRequestBuilder.
 	 */
 	private async buildToolsArray(
 		state: any,
 		apiConfiguration: ProviderSettings | undefined,
 		mode: string | undefined,
 		modelInfo: any,
-	): Promise<{ allTools: OpenAI.Chat.ChatCompletionTool[]; allowedFunctionNames: string[] | undefined }> {
-		const provider = this.access.providerRef.deref()
-		if (!provider) {
-			throw new Error("Provider reference lost during tool building")
-		}
-
-		const supportsAllowedFunctionNames = apiConfiguration?.apiProvider === "gemini"
-
-		const toolsResult = await buildNativeToolsArrayWithRestrictions({
-			provider,
-			cwd: this.access.cwd,
-			mode,
-			customModes: state?.customModes,
-			experiments: state?.experiments,
-			apiConfiguration,
-			disabledTools: state?.disabledTools,
-			modelInfo,
-			includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
-		})
-
-		return {
-			allTools: toolsResult.tools,
-			allowedFunctionNames: toolsResult.allowedFunctionNames,
-		}
+	): Promise<{ allTools: any[]; allowedFunctionNames: string[] | undefined }> {
+		return this.apiRequestBuilder.buildToolsArray(state, apiConfiguration, mode, modelInfo)
 	}
 
 	/**
@@ -1184,84 +1069,16 @@ export class TaskApiLoop {
 	}
 
 	/**
-	 * Shared exponential backoff for retries with countdown UX
+	 * Shared exponential backoff for retries with countdown UX.
+	 * Delegates to RetryHandler.
 	 */
 	async backoffAndAnnounce(retryAttempt: number, error: any): Promise<void> {
-		try {
-			const state = await this.access.providerRef.deref()?.getState()
-			const baseDelay = state?.requestDelaySeconds || 5
-
-			let exponentialDelay = Math.min(
-				Math.ceil(baseDelay * Math.pow(2, retryAttempt)),
-				MAX_EXPONENTIAL_BACKOFF_SECONDS,
-			)
-
-			// Respect provider rate limit window
-			let rateLimitDelay = 0
-			const rateLimit = (state?.apiConfiguration ?? this.access.apiConfiguration)?.rateLimitSeconds || 0
-			if (getLastGlobalApiRequestTime() && rateLimit > 0) {
-				const elapsed = performance.now() - getLastGlobalApiRequestTime()!
-				rateLimitDelay = Math.ceil(Math.min(rateLimit, Math.max(0, rateLimit * 1000 - elapsed) / 1000))
-			}
-
-			// Prefer RetryInfo on 429 if present
-			if (error?.status === 429) {
-				const retryInfo = error?.errorDetails?.find(
-					(d: any) => d["@type"] === "type.googleapis.com/google.rpc.RetryInfo",
-				)
-				const match = retryInfo?.retryDelay?.match?.(/^(\d+)s$/)
-				if (match) {
-					exponentialDelay = Number(match[1]) + 1
-				}
-			}
-
-			const finalDelay = Math.max(exponentialDelay, rateLimitDelay)
-			if (finalDelay <= 0) {
-				return
-			}
-
-			// Build header text
-			let headerText: string
-			if (error.status) {
-				const errorMessage = error?.message || "Unknown error"
-				headerText = `${error.status}\n${errorMessage}`
-			} else if (error?.message) {
-				headerText = error.message
-			} else {
-				headerText = "Unknown error"
-			}
-
-			headerText = headerText ? `${headerText}\n` : ""
-
-			// Show countdown timer
-			for (let i = finalDelay; i > 0; i--) {
-				if (this.access.abort) {
-					throw new Error(`[Task#${this.access.taskId}] Aborted during retry countdown`)
-				}
-
-				await this.access.askSay.say(
-					"api_req_retry_delayed",
-					`${headerText}<retry_timer>${i}</retry_timer>`,
-					undefined,
-					true,
-				)
-				await delay(1000)
-			}
-
-			await this.access.askSay.say("api_req_retry_delayed", headerText, undefined, false)
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err)
-
-			if (this.access.abort && message.includes("Aborted during retry countdown")) {
-				return
-			}
-
-			console.error("Exponential backoff failed:", err)
-		}
+		return this.retryHandler.backoffAndAnnounce(retryAttempt, error)
 	}
 
 	/**
-	 * Build clean conversation history by stripping reasoning blocks
+	 * Build clean conversation history by stripping reasoning blocks.
+	 * Delegates to ApiRequestBuilder.
 	 */
 	buildCleanConversationHistory(
 		messages: ApiMessage[],
@@ -1269,130 +1086,6 @@ export class TaskApiLoop {
 	): Array<
 		Anthropic.Messages.MessageParam | { type: "reasoning"; encrypted_content: string; id?: string; summary?: any[] }
 	> {
-		type ReasoningItemForRequest = {
-			type: "reasoning"
-			encrypted_content: string
-			id?: string
-			summary?: any[]
-		}
-
-		const cleanConversationHistory: (Anthropic.Messages.MessageParam | ReasoningItemForRequest)[] = []
-
-		for (const msg of messages) {
-			// Standalone reasoning: send encrypted, skip plain text
-			if (msg.type === "reasoning") {
-				if (msg.encrypted_content) {
-					cleanConversationHistory.push({
-						type: "reasoning",
-						summary: msg.summary,
-						encrypted_content: msg.encrypted_content!,
-						...(msg.id ? { id: msg.id } : {}),
-					})
-				}
-				continue
-			}
-
-			// Preferred path: assistant message with embedded reasoning
-			if (msg.role === "assistant") {
-				const rawContent = msg.content
-
-				const contentArray: Anthropic.Messages.ContentBlockParam[] = Array.isArray(rawContent)
-					? (rawContent as Anthropic.Messages.ContentBlockParam[])
-					: rawContent !== undefined
-						? ([
-								{ type: "text", text: rawContent } satisfies Anthropic.Messages.TextBlockParam,
-							] as Anthropic.Messages.ContentBlockParam[])
-						: []
-
-				const [first, ...rest] = contentArray
-
-				// Check for reasoning_details (OpenRouter format)
-				const msgWithDetails = msg as any
-				if (msgWithDetails.reasoning_details && Array.isArray(msgWithDetails.reasoning_details)) {
-					let assistantContent: Anthropic.Messages.MessageParam["content"]
-
-					if (contentArray.length === 0) {
-						assistantContent = ""
-					} else if (contentArray.length === 1 && contentArray[0].type === "text") {
-						assistantContent = (contentArray[0] as Anthropic.Messages.TextBlockParam).text
-					} else {
-						assistantContent = contentArray
-					}
-
-					cleanConversationHistory.push({
-						role: "assistant",
-						content: assistantContent,
-						reasoning_details: msgWithDetails.reasoning_details,
-					} as any)
-
-					continue
-				}
-
-				// Embedded reasoning: encrypted or plain text
-				const hasEncryptedReasoning =
-					first && (first as any).type === "reasoning" && typeof (first as any).encrypted_content === "string"
-				const hasPlainTextReasoning =
-					first && (first as any).type === "reasoning" && typeof (first as any).text === "string"
-
-				if (hasEncryptedReasoning) {
-					const reasoningBlock = first as any
-
-					cleanConversationHistory.push({
-						type: "reasoning",
-						summary: reasoningBlock.summary ?? [],
-						encrypted_content: reasoningBlock.encrypted_content,
-						...(reasoningBlock.id ? { id: reasoningBlock.id } : {}),
-					})
-
-					let assistantContent: Anthropic.Messages.MessageParam["content"]
-
-					if (rest.length === 0) {
-						assistantContent = ""
-					} else if (rest.length === 1 && rest[0].type === "text") {
-						assistantContent = (rest[0] as Anthropic.Messages.TextBlockParam).text
-					} else {
-						assistantContent = rest
-					}
-
-					cleanConversationHistory.push({
-						role: "assistant",
-						content: assistantContent,
-					} satisfies Anthropic.Messages.MessageParam)
-
-					continue
-				} else if (hasPlainTextReasoning) {
-					let assistantContent: Anthropic.Messages.MessageParam["content"]
-
-					if (preserveReasoning) {
-						assistantContent = contentArray
-					} else {
-						if (rest.length === 0) {
-							assistantContent = ""
-						} else if (rest.length === 1 && rest[0].type === "text") {
-							assistantContent = (rest[0] as Anthropic.Messages.TextBlockParam).text
-						} else {
-							assistantContent = rest
-						}
-					}
-
-					cleanConversationHistory.push({
-						role: "assistant",
-						content: assistantContent,
-					} satisfies Anthropic.Messages.MessageParam)
-
-					continue
-				}
-			}
-
-			// Default path for regular messages
-			if (msg.role) {
-				cleanConversationHistory.push({
-					role: msg.role,
-					content: msg.content as Anthropic.Messages.ContentBlockParam[] | string,
-				})
-			}
-		}
-
-		return cleanConversationHistory
+		return this.apiRequestBuilder.buildCleanConversationHistory(messages, preserveReasoning)
 	}
 }
