@@ -1,9 +1,10 @@
 """Application settings loaded from environment variables."""
 
+import json
 from typing import List, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, HttpUrl
+from pydantic import Field, HttpUrl, computed_field
 
 
 class Settings(BaseSettings):
@@ -30,8 +31,22 @@ class Settings(BaseSettings):
     authentik_client_secret: Optional[str] = None
     authentik_redirect_uri: str = Field(..., description="OAuth2 redirect URI")
 
-    # CORS
-    cors_origins: List[str] = Field(default=["*"], description="Allowed CORS origins")
+    # CORS - stored as raw string to avoid pydantic-settings v2 JSON-parsing issues
+    # with List[str] env vars. Use cors_origins_list property to get the parsed list.
+    cors_origins: str = Field(default="*", description="Allowed CORS origins (comma-separated or JSON array)")
+
+    @computed_field(return_type=List[str])
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse cors_origins string into a list.
+
+        Supports JSON array format (e.g. '["https://a.com","https://b.com"]')
+        or comma-separated format (e.g. 'https://a.com,https://b.com' or '*').
+        """
+        try:
+            return json.loads(self.cors_origins)
+        except (json.JSONDecodeError, ValueError):
+            return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     # LLM Proxy
     default_llm_provider: str = "openai"

@@ -7,6 +7,7 @@ A self-hosted replacement for the Roo Code Cloud API, compatible with the existi
 ### Prerequisites
 
 - Python 3.12+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
 - PostgreSQL 16+
 - Authentik (for OAuth authentication)
 - Docker & Docker Compose (optional, for containerized deployment)
@@ -35,13 +36,13 @@ docker-compose up -d
 
 ```bash
 # Install dependencies
-poetry install
+uv sync
 
 # Run database migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Start the server
-uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## Configuring the Roo Code Extension
