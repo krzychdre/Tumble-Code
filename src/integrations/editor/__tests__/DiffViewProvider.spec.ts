@@ -101,6 +101,58 @@ vi.mock("../DecorationController", () => ({
 	})),
 }))
 
+// Build a fake ActiveEdit shaped like the private interface in DiffViewProvider.
+// Tests install one directly so we can drive `update`, `saveChanges`, etc.
+// without a real `open()` round-trip.
+function installActiveEdit(
+	provider: DiffViewProvider,
+	overrides: Partial<{
+		relPath: string
+		diffEditor: any
+		fadedOverlay: any
+		activeLine: any
+		preDiagnostics: any[]
+		documentWasOpen: boolean
+		createdDirs: string[]
+		streamedLines: string[]
+		newContent?: string
+	}> = {},
+): any {
+	const diffEditor = overrides.diffEditor ?? {
+		document: {
+			uri: { fsPath: "/mock/cwd/test.txt" },
+			getText: vi.fn(),
+			lineCount: 10,
+		},
+		selection: {
+			active: { line: 0, character: 0 },
+			anchor: { line: 0, character: 0 },
+		},
+		visibleRanges: [],
+		edit: vi.fn().mockResolvedValue(true),
+		revealRange: vi.fn(),
+	}
+	const activeEdit = {
+		id: 1,
+		relPath: overrides.relPath ?? "test.txt",
+		diffEditor,
+		fadedOverlay: overrides.fadedOverlay ?? {
+			updateOverlayAfterLine: vi.fn(),
+			addLines: vi.fn(),
+			clear: vi.fn(),
+		},
+		activeLine: overrides.activeLine ?? { setActiveLine: vi.fn(), clear: vi.fn() },
+		preDiagnostics: overrides.preDiagnostics ?? [],
+		documentWasOpen: overrides.documentWasOpen ?? false,
+		createdDirs: overrides.createdDirs ?? [],
+		streamedLines: overrides.streamedLines ?? [],
+		newContent: overrides.newContent,
+		isStale: false,
+	}
+	;(provider as any).activeEdit = activeEdit
+	return activeEdit
+}
+
 describe("DiffViewProvider", () => {
 	let diffViewProvider: DiffViewProvider
 	const mockCwd = "/mock/cwd"
@@ -128,27 +180,7 @@ describe("DiffViewProvider", () => {
 		}
 
 		diffViewProvider = new DiffViewProvider(mockCwd, mockTask)
-		// Mock the necessary properties and methods
-		;(diffViewProvider as any).relPath = "test.txt"
-		;(diffViewProvider as any).activeDiffEditor = {
-			document: {
-				uri: { fsPath: `${mockCwd}/test.txt` },
-				getText: vi.fn(),
-				lineCount: 10,
-			},
-			selection: {
-				active: { line: 0, character: 0 },
-				anchor: { line: 0, character: 0 },
-			},
-			edit: vi.fn().mockResolvedValue(true),
-			revealRange: vi.fn(),
-		}
-		;(diffViewProvider as any).activeLineController = { setActiveLine: vi.fn(), clear: vi.fn() }
-		;(diffViewProvider as any).fadedOverlayController = {
-			updateOverlayAfterLine: vi.fn(),
-			addLines: vi.fn(),
-			clear: vi.fn(),
-		}
+		installActiveEdit(diffViewProvider)
 	})
 
 	describe("update method", () => {
@@ -428,30 +460,29 @@ describe("DiffViewProvider", () => {
 			expect(mockDelay).toHaveBeenCalledWith(0)
 		})
 
-		it("should store results for formatFileWriteResponse", async () => {
+		it("should store results for pushToolWriteResult", async () => {
 			await diffViewProvider.saveDirectly("test.ts", "new content", true, true, 1000)
 
 			// Verify internal state was updated
 			expect((diffViewProvider as any).newProblemsMessage).toBe("")
 			expect((diffViewProvider as any).userEdits).toBeUndefined()
-			expect((diffViewProvider as any).relPath).toBe("test.ts")
-			expect((diffViewProvider as any).newContent).toBe("new content")
+			expect((diffViewProvider as any).lastEditedRelPath).toBe("test.ts")
 		})
 	})
 
 	describe("saveChanges method with diagnostic settings", () => {
 		beforeEach(() => {
-			// Setup common mocks for saveChanges tests
-			;(diffViewProvider as any).relPath = "test.ts"
-			;(diffViewProvider as any).newContent = "new content"
-			;(diffViewProvider as any).activeDiffEditor = {
-				document: {
-					getText: vi.fn().mockReturnValue("new content"),
-					isDirty: false,
-					save: vi.fn().mockResolvedValue(undefined),
+			installActiveEdit(diffViewProvider, {
+				relPath: "test.ts",
+				newContent: "new content",
+				diffEditor: {
+					document: {
+						getText: vi.fn().mockReturnValue("new content"),
+						isDirty: false,
+						save: vi.fn().mockResolvedValue(undefined),
+					},
 				},
-			}
-			;(diffViewProvider as any).preDiagnostics = []
+			})
 
 			// Mock vscode functions
 			vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any)
