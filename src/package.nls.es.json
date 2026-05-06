@@ -45,5 +45,8 @@
 	"settings.debug.description": "Activa el modo de depuración para mostrar botones adicionales para ver el historial de conversación de API y los mensajes de la interfaz de usuario como JSON embellecido en archivos temporales.",
 	"settings.debugProxy.enabled.description": "**Activar Debug Proxy** — Redirige todas las solicitudes de red salientes a través de un proxy para depuración MITM. Solo está activo cuando se ejecuta en modo depuración (F5).",
 	"settings.debugProxy.serverUrl.description": "URL del proxy (p. ej., `http://127.0.0.1:8888`). Solo se usa cuando **Debug Proxy** está activado.",
-	"settings.debugProxy.tlsInsecure.description": "Aceptar certificados autofirmados del proxy. **Necesario para la inspección MITM.** ⚠️ Inseguro: úsalo solo para depuración local."
+	"settings.debugProxy.tlsInsecure.description": "Aceptar certificados autofirmados del proxy. **Necesario para la inspección MITM.** ⚠️ Inseguro: úsalo solo para depuración local.",
+	"settings.cloudApiUrl.description": "Override the Roo Code Cloud API URL (e.g. `https://app.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.cloudProviderUrl.description": "Override the Roo Code Cloud Provider URL (e.g. `https://api.roocode.com/proxy`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.clerkBaseUrl.description": "Override the Clerk authentication base URL (e.g. `https://clerk.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments."
 }

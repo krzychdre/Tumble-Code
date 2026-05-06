@@ -11,6 +11,7 @@ vi.mock("@roo-code/cloud", () => ({
 			},
 		},
 	},
+	getRooCodeProviderUrl: vi.fn().mockReturnValue("https://api.roocode.com/proxy"),
 }))
 
 describe("webviewMessageHandler - requestRooCreditBalance", () => {

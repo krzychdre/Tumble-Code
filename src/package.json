@@ -429,6 +429,27 @@
 					"default": false,
 					"description": "%settings.debugProxy.tlsInsecure.description%",
 					"markdownDescription": "%settings.debugProxy.tlsInsecure.description%"
+				},
+				"roo-cline.cloudApiUrl": {
+					"type": "string",
+					"default": "",
+					"description": "%settings.cloudApiUrl.description%",
+					"markdownDescription": "%settings.cloudApiUrl.description%",
+					"order": 100
+				},
+				"roo-cline.cloudProviderUrl": {
+					"type": "string",
+					"default": "",
+					"description": "%settings.cloudProviderUrl.description%",
+					"markdownDescription": "%settings.cloudProviderUrl.description%",
+					"order": 101
+				},
+				"roo-cline.clerkBaseUrl": {
+					"type": "string",
+					"default": "",
+					"description": "%settings.clerkBaseUrl.description%",
+					"markdownDescription": "%settings.clerkBaseUrl.description%",
+					"order": 102
 				}
 			}
 		}

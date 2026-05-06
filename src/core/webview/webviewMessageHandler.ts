@@ -23,7 +23,7 @@ import {
 	checkoutRestorePayloadSchema,
 } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
-import { CloudService } from "@roo-code/cloud"
+import { CloudService, getRooCodeProviderUrl } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiMessage } from "../task-persistence/apiMessages"
@@ -994,7 +994,7 @@ export const webviewMessageHandler = async (
 					key: "roo",
 					options: {
 						provider: "roo",
-						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
+						baseUrl: getRooCodeProviderUrl(),
 						apiKey: CloudService.hasInstance()
 							? CloudService.instance.authService?.getSessionToken()
 							: undefined,
@@ -1134,7 +1134,7 @@ export const webviewMessageHandler = async (
 			try {
 				const rooOptions = {
 					provider: "roo" as const,
-					baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
+					baseUrl: getRooCodeProviderUrl(),
 					apiKey: CloudService.hasInstance()
 						? CloudService.instance.authService?.getSessionToken()
 						: undefined,

@@ -8,6 +8,7 @@ import { z } from "zod"
 import type { ProviderName, ModelRecord } from "@roo-code/types"
 import { modelInfoSchema, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
+import { getRooCodeProviderUrl } from "@roo-code/cloud"
 
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 
@@ -91,7 +92,7 @@ async function fetchModelsFromProvider(options: GetModelsOptions): Promise<Model
 			break
 		case "roo": {
 			// Roo Code Cloud provider requires baseUrl and optional apiKey
-			const rooBaseUrl = options.baseUrl ?? process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy"
+			const rooBaseUrl = options.baseUrl ?? getRooCodeProviderUrl()
 			models = await getRooModels(rooBaseUrl, options.apiKey)
 			break
 		}

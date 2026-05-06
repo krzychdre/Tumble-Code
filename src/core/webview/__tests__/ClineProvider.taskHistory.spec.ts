@@ -230,6 +230,7 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
+	getRooCodeProviderUrl: vi.fn().mockReturnValue("https://api.roocode.com/proxy"),
 }))
 
 afterAll(() => {

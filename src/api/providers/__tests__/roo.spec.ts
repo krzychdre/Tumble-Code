@@ -74,6 +74,7 @@ vitest.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
+	getRooCodeProviderUrl: vitest.fn().mockReturnValue("https://api.roocode.com/proxy"),
 }))
 
 // Mock i18n

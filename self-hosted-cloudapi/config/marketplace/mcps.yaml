@@ -1,0 +1,14 @@
+# Default MCP marketplace items for self-hosted deployment
+# These can be customized or replaced with your own MCP servers
+
+- id: filesystem-mcp
+  name: Filesystem
+  description: "Secure file system access MCP server"
+  type: mcp
+  url: "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem"
+
+- id: fetch-mcp
+  name: Fetch
+  description: "HTTP request MCP server for fetching web content"
+  type: mcp
+  url: "https://github.com/modelcontextprotocol/servers/tree/main/src/fetch"

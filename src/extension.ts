@@ -18,7 +18,7 @@ if (fs.existsSync(envPath)) {
 }
 
 import type { CloudUserInfo, AuthState } from "@roo-code/types"
-import { CloudService } from "@roo-code/cloud"
+import { CloudService, getRooCodeProviderUrl } from "@roo-code/cloud"
 import { TelemetryService, PostHogTelemetryClient } from "@roo-code/telemetry"
 import { customToolRegistry } from "@roo-code/core"
 
@@ -28,6 +28,7 @@ import { initializeNetworkProxy } from "./utils/networkProxy"
 
 import { Package } from "./shared/package"
 import { formatLanguage } from "./shared/language"
+import { syncCloudUrls, registerCloudUrlsSubscription } from "./shared/cloud-urls"
 import { ContextProxy } from "./core/config/ContextProxy"
 import { ClineProvider } from "./core/webview/ClineProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
@@ -128,6 +129,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Only applied in debug mode (F5).
 	await initializeNetworkProxy(context, outputChannel)
 
+	// Sync cloud URL overrides from VS Code settings into the @roo-code/cloud package.
+	// This must happen before any cloud service initialization so that the
+	// configurable API/provider/clerk URLs take effect.
+	syncCloudUrls()
+	registerCloudUrlsSubscription(context)
+
 	// Set extension path for custom tool registry to find bundled esbuild
 	customToolRegistry.setExtensionPath(context.extensionPath)
 
@@ -210,7 +217,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						: undefined
 					await refreshModels({
 						provider: "roo",
-						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
+						baseUrl: getRooCodeProviderUrl(),
 						apiKey: sessionToken,
 					})
 				} else {

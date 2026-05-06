@@ -45,5 +45,8 @@
 	"settings.debug.description": "Enable debug mode to show additional buttons for viewing API conversation history and UI messages as prettified JSON in temporary files.",
 	"settings.debugProxy.enabled.description": "**Enable Debug Proxy** — Route all outbound network requests through a proxy for MITM debugging. Only active when running in debug mode (F5).",
 	"settings.debugProxy.serverUrl.description": "Proxy URL (e.g., `http://127.0.0.1:8888`). Only used when **Debug Proxy** is enabled.",
-	"settings.debugProxy.tlsInsecure.description": "Accept self-signed certificates from the proxy. **Required for MITM inspection.** ⚠️ Insecure — only use for local debugging."
+	"settings.debugProxy.tlsInsecure.description": "Accept self-signed certificates from the proxy. **Required for MITM inspection.** ⚠️ Insecure — only use for local debugging.",
+	"settings.cloudApiUrl.description": "Override the Roo Code Cloud API URL (e.g. `https://app.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.cloudProviderUrl.description": "Override the Roo Code Cloud Provider URL (e.g. `https://api.roocode.com/proxy`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.clerkBaseUrl.description": "Override the Clerk authentication base URL (e.g. `https://clerk.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments."
 }
