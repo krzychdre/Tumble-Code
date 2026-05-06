@@ -12,6 +12,16 @@
  *   - `roo-cline.clerkBaseUrl`     → overrides `CLERK_BASE_URL`
  *
  * Empty strings are treated as "not set" so the defaults still apply.
+ *
+ * Auto-detect behavior for self-hosted deployments:
+ * When `clerkBaseUrl` is not explicitly configured but `cloudApiUrl` IS
+ * configured (pointing to a self-hosted instance), the Clerk base URL is
+ * automatically set to the same URL as `cloudApiUrl`. This is because
+ * self-hosted deployments serve Clerk-compatible auth endpoints
+ * (`/v1/client/sign_ins`, etc.) on the same API server. Without this
+ * auto-detect, the extension would send auth tickets to the production
+ * Clerk, which has no knowledge of self-hosted users/sessions, causing
+ * an HTTP 400 error.
  */
 
 import * as vscode from "vscode"

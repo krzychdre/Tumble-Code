@@ -47,11 +47,54 @@ uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
 
 ## Configuring the Roo Code Extension
 
-Set these environment variables in the Roo Code extension settings:
+In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to configure these settings:
 
-- `ROO_CODE_API_URL`: Point to your self-hosted API (e.g., `https://roo.example.com`)
-- `CLERK_BASE_URL`: Point to your self-hosted auth facade (same URL as above)
-- `ROO_CODE_PROVIDER_URL`: Point to your LLM proxy (e.g., `https://roo.example.com`)
+| VS Code Setting              | Environment Variable    | Description                                                                           |
+| ---------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
+| `roo-cline.cloudApiUrl`      | `ROO_CODE_API_URL`      | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
+| `roo-cline.clerkBaseUrl`     | `CLERK_BASE_URL`        | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
+| `roo-cline.cloudProviderUrl` | `ROO_CODE_PROVIDER_URL` | URL of the LLM proxy (e.g., `http://localhost:8085`)                                  |
+
+> **Auto-detect:** When `clerkBaseUrl` is not explicitly configured, the extension
+> automatically uses the same URL as `cloudApiUrl` for Clerk auth requests. This means
+> that for self-hosted deployments, you only need to set `cloudApiUrl` — the extension
+> will automatically send auth requests (like ticket validation) to your self-hosted API
+> instead of the production Clerk.
+>
+> You only need to set `clerkBaseUrl` explicitly if you want the Clerk auth endpoint
+> to be different from `cloudApiUrl` (which is rarely needed).
+>
+> **Important:** If you do set `clerkBaseUrl` manually, it must point to your self-hosted API,
+> **not** to Authentik. The self-hosted API serves the Clerk-compatible endpoints
+> (`/v1/client/sign_ins`, etc.) that the extension calls after the browser-based OAuth
+> flow completes. If `clerkBaseUrl` is left pointing at the production Clerk
+> (`https://clerk.roocode.com`), the ticket exchange will fail because the production
+> Clerk has no knowledge of users created in your self-hosted instance.
+
+### Authentication Flow
+
+1. The extension opens the browser to `/extension/sign-in?state=...&auth_redirect=vscode://...`
+2. The API redirects to Authentik for OAuth authentication
+3. After Authentik authentication, the browser is redirected to `/auth/clerk/callback`
+4. The API exchanges the OAuth code, creates a user/session, generates a ticket,
+   and returns an HTML page that navigates back to `vscode://...`
+5. The VS Code extension receives the ticket and calls `/v1/client/sign_ins` on
+   `clerkBaseUrl` to complete sign-in
+
+### Troubleshooting
+
+**"Failed to handle Roo Code Cloud callback: Error: HTTP 400: Bad Request" after Authentik login:**
+
+- This error occurs when the extension tries to validate the auth ticket against the production Clerk (`https://clerk.roocode.com`) instead of your self-hosted API
+- Ensure `roo-cline.cloudApiUrl` is set to your self-hosted API URL (e.g., `http://localhost:8085`)
+- The extension should auto-detect the Clerk base URL from `cloudApiUrl` — if it doesn't, explicitly set `roo-cline.clerkBaseUrl` to the same URL as `cloudApiUrl`
+- Check the VS Code developer console (Help > Toggle Developer Tools) for network requests to verify the ticket is being sent to the correct URL
+
+**"Waiting for browser authentication" hangs after Authentik login:**
+
+- Check the browser's developer console for errors in the callback page
+- Verify the Authentik redirect URI is set to `{API_BASE_URL}/auth/clerk/callback`
+- Check the API server logs for errors during the token exchange or user creation
 
 ## Authentik Setup
 

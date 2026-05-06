@@ -27,7 +27,7 @@ class TaskMessage(Base):
     id = Column(String, primary_key=True, default=lambda: generate_id("msg_"))
     task_id = Column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     message_data = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     task = relationship("Task", back_populates="messages")
 
@@ -41,7 +41,7 @@ class TaskShare(Base):
     visibility = Column(String, default="organization")
     share_url = Column(String, nullable=True)
     manage_url = Column(String, nullable=True)
-    expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     task = relationship("Task", back_populates="shares")

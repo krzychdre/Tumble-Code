@@ -53,82 +53,93 @@ def mock_auth_flow():
 
 
 class TestAuthCallbackRedirect:
-    """Test that the auth callback redirects to the correct VS Code URI."""
+    """Test that the auth callback returns HTML with the correct VS Code URI."""
 
-    def test_callback_redirect_includes_clerk_callback_path(self, client, mock_auth_flow):
-        """The redirect URL must include /auth/clerk/callback path for VS Code handleUri() to route correctly."""
+    def test_callback_html_includes_clerk_callback_path(self, client, mock_auth_flow):
+        """The HTML response must include /auth/clerk/callback path for VS Code handleUri() to route correctly."""
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
-            follow_redirects=False,
         )
 
-        assert response.status_code in (302, 303, 307)
-        redirect_url = response.headers["location"]
+        assert response.status_code == 200
+        body = response.text
 
-        assert "/auth/clerk/callback" in redirect_url, (
-            f"Redirect URL must include /auth/clerk/callback path for VS Code to handle the callback. "
-            f"Got: {redirect_url}"
+        assert "/auth/clerk/callback" in body, (
+            f"HTML response must include /auth/clerk/callback path for VS Code to handle the callback. "
+            f"Got: {body[:200]}"
         )
 
-    def test_callback_redirect_format_vscode_uri(self, client, mock_auth_flow):
-        """The redirect URL should be: vscode://publisher.extension/auth/clerk/callback?code=...&state=..."""
+    def test_callback_html_contains_vscode_uri(self, client, mock_auth_flow):
+        """The HTML response should contain the vscode:// URI with code and state params."""
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
-            follow_redirects=False,
         )
 
-        redirect_url = response.headers["location"]
+        assert response.status_code == 200
+        body = response.text
 
-        assert redirect_url.startswith("vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?"), (
-            f"Redirect URL should start with vscode://publisher.name/auth/clerk/callback?. "
-            f"Got: {redirect_url}"
+        assert "vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?" in body, (
+            f"HTML response should contain vscode://publisher.name/auth/clerk/callback?. "
+            f"Got: {body[:200]}"
         )
-        assert "code=test-ticket-code" in redirect_url
-        assert "state=test-state" in redirect_url
+        # URL-encoded params: urllib.parse.urlencode uses + for spaces and %XX for special chars
+        assert "code=test-ticket-code" in body or "code=test-ticket-code" in body
+        assert "state=test-state" in body
 
-    def test_callback_redirect_with_org_id(self, client, mock_auth_flow):
-        """When org_id is present, it should be included in the redirect URL."""
+    def test_callback_html_no_org_id_when_absent(self, client, mock_auth_flow):
+        """When org_id is absent, it should NOT appear in the VS Code URI."""
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
-            follow_redirects=False,
         )
 
-        redirect_url = response.headers["location"]
+        assert response.status_code == 200
+        body = response.text
 
-        assert "code=" in redirect_url
-        assert "state=test-state" in redirect_url
-        assert "organizationId=" not in redirect_url
+        assert "code=" in body
+        assert "state=test-state" in body
+        assert "organizationId=" not in body
 
-    def test_callback_redirect_uses_query_separator_for_simple_uri(self, client, mock_auth_flow):
-        """When auth_redirect has no query string, use '?' as separator."""
+    def test_callback_html_uses_query_separator_for_simple_uri(self, client, mock_auth_flow):
+        """When auth_redirect has no query string, use '?' as separator in the vscode URI."""
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "test-state"},
-            follow_redirects=False,
         )
 
-        redirect_url = response.headers["location"]
+        assert response.status_code == 200
+        body = response.text
 
-        assert "vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?code=" in redirect_url, (
-            f"Expected '?' separator for simple URI. Got: {redirect_url}"
+        assert "vscode://RooVeterinaryInc.roo-cline/auth/clerk/callback?code=" in body, (
+            f"Expected '?' separator for simple URI in HTML. Got: {body[:200]}"
         )
 
-    def test_callback_invalid_state_returns_error(self, client, mock_auth_flow):
-        """When state is invalid (not found in store), should redirect to error page."""
+    def test_callback_html_is_success_page(self, client, mock_auth_flow):
+        """The HTML response should be a success page with JavaScript redirect."""
+        response = client.get(
+            "/auth/clerk/callback",
+            params={"code": "test-code", "state": "test-state"},
+        )
+
+        assert response.status_code == 200
+        body = response.text
+        assert "Authentication Successful" in body
+        assert "window.location.assign" in body
+
+    def test_callback_invalid_state_returns_error_html(self, client, mock_auth_flow):
+        """When state is invalid (not found in store), should return an error HTML page."""
         mock_auth_flow["get_state"].return_value = None
 
         response = client.get(
             "/auth/clerk/callback",
             params={"code": "test-code", "state": "invalid-state"},
-            follow_redirects=False,
         )
 
-        assert response.status_code in (302, 303, 307)
-        redirect_url = response.headers["location"]
-        assert "invalid_state" in redirect_url or "error" in redirect_url.lower()
+        assert response.status_code == 400
+        body = response.text
+        assert "Authentication Failed" in body or "Invalid or expired" in body
 
 
 class TestSignInPageRedirect:

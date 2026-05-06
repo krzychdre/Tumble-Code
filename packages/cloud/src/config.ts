@@ -15,7 +15,35 @@ export const setClerkBaseUrl = (url: string | undefined) => {
 	runtimeClerkBaseUrl = url
 }
 
-export const getClerkBaseUrl = () => runtimeClerkBaseUrl || process.env.CLERK_BASE_URL || PRODUCTION_CLERK_BASE_URL
+/**
+ * Get the Clerk base URL.
+ *
+ * Priority:
+ * 1. Explicit runtime override (setClerkBaseUrl)
+ * 2. CLERK_BASE_URL environment variable
+ * 3. Auto-detect: if the Roo Code API URL is non-production, use it as the
+ *    Clerk base URL (self-hosted deployments serve Clerk-compatible endpoints)
+ * 4. Production default (https://clerk.roocode.com)
+ *
+ * The auto-detect step (3) is critical for self-hosted deployments: when the
+ * user configures ROO_CODE_API_URL (or cloudApiUrl in VS Code) to point to
+ * their self-hosted instance but does NOT explicitly set CLERK_BASE_URL,
+ * the ticket created by the self-hosted backend must be validated against
+ * the self-hosted Clerk facade, not the production Clerk. Without this,
+ * the extension sends the ticket to production Clerk which has no knowledge
+ * of self-hosted users/sessions, resulting in HTTP 400.
+ */
+export const getClerkBaseUrl = () => {
+	// Explicit overrides take priority
+	if (runtimeClerkBaseUrl) return runtimeClerkBaseUrl
+	if (process.env.CLERK_BASE_URL) return process.env.CLERK_BASE_URL
+
+	// Auto-detect: if the API URL is non-production, the Clerk facade is on the same server
+	const apiUrl = getRooCodeApiUrl()
+	if (apiUrl !== PRODUCTION_ROO_CODE_API_URL) return apiUrl
+
+	return PRODUCTION_CLERK_BASE_URL
+}
 
 /**
  * Set the Roo Code API URL at runtime (e.g. from VS Code configuration).

@@ -13,5 +13,5 @@ class AuthentikStateStore(Base):
     state = Column(String, primary_key=True)
     auth_redirect = Column(String, nullable=False)
     code_verifier = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime(timezone=True), nullable=False)

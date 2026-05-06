@@ -99,4 +99,58 @@ describe("cloud config", () => {
 			expect(getRooCodeProviderUrl()).toBe(PRODUCTION_ROO_CODE_PROVIDER_URL)
 		})
 	})
+
+	describe("Clerk base URL auto-detect for self-hosted deployments", () => {
+		it("should auto-detect Clerk base URL from Roo Code API URL when API URL is non-production", () => {
+			// Simulate self-hosted: only cloudApiUrl is set, clerkBaseUrl is not set
+			setRooCodeApiUrl("http://localhost:8085")
+			expect(getClerkBaseUrl()).toBe("http://localhost:8085")
+		})
+
+		it("should auto-detect Clerk base URL from ROO_CODE_API_URL env var when no explicit Clerk override", () => {
+			process.env.ROO_CODE_API_URL = "https://my-selfhosted.example.com"
+			expect(getClerkBaseUrl()).toBe("https://my-selfhosted.example.com")
+			delete process.env.ROO_CODE_API_URL
+		})
+
+		it("should use explicit CLERK_BASE_URL env var instead of auto-detect from API URL", () => {
+			process.env.ROO_CODE_API_URL = "https://my-selfhosted.example.com"
+			process.env.CLERK_BASE_URL = "https://explicit-clerk.example.com"
+			expect(getClerkBaseUrl()).toBe("https://explicit-clerk.example.com")
+			delete process.env.ROO_CODE_API_URL
+			delete process.env.CLERK_BASE_URL
+		})
+
+		it("should use explicit runtime setClerkBaseUrl instead of auto-detect from API URL", () => {
+			setRooCodeApiUrl("http://localhost:8085")
+			setClerkBaseUrl("https://explicit-clerk.example.com")
+			expect(getClerkBaseUrl()).toBe("https://explicit-clerk.example.com")
+		})
+
+		it("should return production Clerk URL when API URL is production", () => {
+			setRooCodeApiUrl("https://app.roocode.com")
+			expect(getClerkBaseUrl()).toBe(PRODUCTION_CLERK_BASE_URL)
+		})
+
+		it("should return production Clerk URL when no API URL override is set", () => {
+			// No overrides at all — both are production defaults
+			expect(getClerkBaseUrl()).toBe(PRODUCTION_CLERK_BASE_URL)
+		})
+
+		it("should auto-detect Clerk URL from runtime API URL override even when env var for API URL is different", () => {
+			process.env.ROO_CODE_API_URL = "https://env-api.example.com"
+			setRooCodeApiUrl("http://localhost:8085")
+			// Runtime override takes precedence for API URL, and Clerk auto-detects from it
+			expect(getClerkBaseUrl()).toBe("http://localhost:8085")
+			delete process.env.ROO_CODE_API_URL
+		})
+
+		it("should auto-detect Clerk URL from env-based API URL when runtime API URL is not set", () => {
+			process.env.ROO_CODE_API_URL = "https://selfhosted.example.com"
+			// No runtime API URL override, so env var is used for API URL
+			// Clerk should auto-detect from the env-based API URL
+			expect(getClerkBaseUrl()).toBe("https://selfhosted.example.com")
+			delete process.env.ROO_CODE_API_URL
+		})
+	})
 })
