@@ -117,8 +117,27 @@ export class DiffViewProvider {
 	}
 
 	async update(accumulatedContent: string, isFinal: boolean) {
-		if (!this.relPath || !this.activeLineController || !this.fadedOverlayController) {
-			throw new Error("Required values not set")
+		// Snapshot all mutable state we depend on. reset() may run during any
+		// `await` below and null the instance properties; locals survive so the
+		// remainder of this call can complete (or no-op) without throwing.
+		const activeLineController = this.activeLineController
+		const fadedOverlayController = this.fadedOverlayController
+		const diffEditor = this.activeDiffEditor
+		const document = diffEditor?.document
+		const relPath = this.relPath
+
+		if (
+			!this.isEditing ||
+			!relPath ||
+			!activeLineController ||
+			!fadedOverlayController ||
+			!diffEditor ||
+			!document
+		) {
+			// Either update() was called before open(), or reset() has already run
+			// (e.g. user denied during streaming). No-op silently — concurrent reset
+			// is expected and the caller will not save.
+			return
 		}
 
 		this.newContent = accumulatedContent
@@ -128,41 +147,29 @@ export class DiffViewProvider {
 			accumulatedLines.pop() // Remove the last partial line only if it's not the final update.
 		}
 
-		const diffEditor = this.activeDiffEditor
-		const document = diffEditor?.document
-
-		if (!diffEditor || !document) {
-			throw new Error("User closed text editor, unable to edit file...")
-		}
-
 		// Place cursor at the beginning of the diff editor to keep it out of
 		// the way of the stream animation, but do this without stealing focus
 		const beginningOfDocument = new vscode.Position(0, 0)
 		diffEditor.selection = new vscode.Selection(beginningOfDocument, beginningOfDocument)
 
 		const endLine = accumulatedLines.length
-		// Replace all content up to the current line with accumulated lines.
 		const edit = new vscode.WorkspaceEdit()
 		const rangeToReplace = new vscode.Range(0, 0, endLine, 0)
 		const contentToReplace =
 			accumulatedLines.slice(0, endLine).join("\n") + (accumulatedLines.length > 0 ? "\n" : "")
 		edit.replace(document.uri, rangeToReplace, this.stripAllBOMs(contentToReplace))
 		await vscode.workspace.applyEdit(edit)
-		// Update decorations.
-		this.activeLineController.setActiveLine(endLine)
-		this.fadedOverlayController.updateOverlayAfterLine(endLine, document.lineCount)
-		// Scroll to the current line without stealing focus.
-		const ranges = this.activeDiffEditor?.visibleRanges
+
+		activeLineController.setActiveLine(endLine)
+		fadedOverlayController.updateOverlayAfterLine(endLine, document.lineCount)
+		const ranges = diffEditor.visibleRanges
 		if (ranges && ranges.length > 0 && ranges[0].start.line < endLine && ranges[0].end.line > endLine) {
 			this.scrollEditorToLine(endLine)
 		}
 
-		// Update the streamedLines with the new accumulated content.
 		this.streamedLines = accumulatedLines
 
 		if (isFinal) {
-			// Handle any remaining lines if the new content is shorter than the
-			// original.
 			if (this.streamedLines.length < document.lineCount) {
 				const edit = new vscode.WorkspaceEdit()
 				edit.delete(document.uri, new vscode.Range(this.streamedLines.length, 0, document.lineCount, 0))
@@ -176,20 +183,16 @@ export class DiffViewProvider {
 				accumulatedContent += "\n"
 			}
 
-			// Apply the final content.
 			const finalEdit = new vscode.WorkspaceEdit()
-
 			finalEdit.replace(
 				document.uri,
 				new vscode.Range(0, 0, document.lineCount, 0),
 				this.stripAllBOMs(accumulatedContent),
 			)
-
 			await vscode.workspace.applyEdit(finalEdit)
 
-			// Clear all decorations at the end (after applying final edit).
-			this.fadedOverlayController.clear()
-			this.activeLineController.clear()
+			fadedOverlayController.clear()
+			activeLineController.clear()
 		}
 	}
 
@@ -202,6 +205,29 @@ export class DiffViewProvider {
 		finalContent: string | undefined
 	}> {
 		if (!this.relPath || !this.newContent || !this.activeDiffEditor) {
+			console.warn("DiffViewProvider.saveChanges: missing state, skipping save", {
+				hasRelPath: !!this.relPath,
+				hasNewContent: !!this.newContent,
+				hasActiveDiffEditor: !!this.activeDiffEditor,
+			})
+
+			// Best-effort flush: even if we lost track of activeDiffEditor (e.g. reset()
+			// ran between update() and saveChanges()), the underlying file document may
+			// still be dirty in VS Code. Save it to avoid a stranded dirty tab.
+			if (this.relPath) {
+				const absPath = path.resolve(this.cwd, this.relPath)
+				const stranded = vscode.workspace.textDocuments.find(
+					(d) => d.uri.scheme === "file" && arePathsEqual(d.uri.fsPath, absPath) && d.isDirty,
+				)
+				if (stranded) {
+					try {
+						await stranded.save()
+					} catch (e) {
+						console.warn("DiffViewProvider.saveChanges: stranded save failed", e)
+					}
+				}
+			}
+
 			return { newProblemsMessage: undefined, userEdits: undefined, finalContent: undefined }
 		}
 
