@@ -20,6 +20,18 @@ describe("Task.startSubtask() metadata-driven delegation", () => {
 		;(parent as any).taskId = "parent-1"
 		;(parent as any).providerRef = { deref: () => provider }
 		;(parent as any).emit = vi.fn()
+		// Mock the subtasks module that startSubtask delegates to
+		;(parent as any).subtasks = {
+			startSubtask: async (message: string, initialTodos: any[], mode: string) => {
+				const p = (parent as any).providerRef.deref()
+				return p.delegateParentAndOpenChild({
+					parentTaskId: (parent as any).taskId,
+					message,
+					initialTodos,
+					mode,
+				})
+			},
+		}
 
 		const child = await (Task.prototype as any).startSubtask.call(parent, "Do something", [], "code")
 

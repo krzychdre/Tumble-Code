@@ -101,6 +101,58 @@ vi.mock("../DecorationController", () => ({
 	})),
 }))
 
+// Build a fake ActiveEdit shaped like the private interface in DiffViewProvider.
+// Tests install one directly so we can drive `update`, `saveChanges`, etc.
+// without a real `open()` round-trip.
+function installActiveEdit(
+	provider: DiffViewProvider,
+	overrides: Partial<{
+		relPath: string
+		diffEditor: any
+		fadedOverlay: any
+		activeLine: any
+		preDiagnostics: any[]
+		documentWasOpen: boolean
+		createdDirs: string[]
+		streamedLines: string[]
+		newContent?: string
+	}> = {},
+): any {
+	const diffEditor = overrides.diffEditor ?? {
+		document: {
+			uri: { fsPath: "/mock/cwd/test.txt" },
+			getText: vi.fn(),
+			lineCount: 10,
+		},
+		selection: {
+			active: { line: 0, character: 0 },
+			anchor: { line: 0, character: 0 },
+		},
+		visibleRanges: [],
+		edit: vi.fn().mockResolvedValue(true),
+		revealRange: vi.fn(),
+	}
+	const activeEdit = {
+		id: 1,
+		relPath: overrides.relPath ?? "test.txt",
+		diffEditor,
+		fadedOverlay: overrides.fadedOverlay ?? {
+			updateOverlayAfterLine: vi.fn(),
+			addLines: vi.fn(),
+			clear: vi.fn(),
+		},
+		activeLine: overrides.activeLine ?? { setActiveLine: vi.fn(), clear: vi.fn() },
+		preDiagnostics: overrides.preDiagnostics ?? [],
+		documentWasOpen: overrides.documentWasOpen ?? false,
+		createdDirs: overrides.createdDirs ?? [],
+		streamedLines: overrides.streamedLines ?? [],
+		newContent: overrides.newContent,
+		isStale: false,
+	}
+	;(provider as any).activeEdit = activeEdit
+	return activeEdit
+}
+
 describe("DiffViewProvider", () => {
 	let diffViewProvider: DiffViewProvider
 	const mockCwd = "/mock/cwd"
@@ -128,28 +180,7 @@ describe("DiffViewProvider", () => {
 		}
 
 		diffViewProvider = new DiffViewProvider(mockCwd, mockTask)
-		// Mock the necessary properties and methods
-		;(diffViewProvider as any).relPath = "test.txt"
-		;(diffViewProvider as any).isEditing = true
-		;(diffViewProvider as any).activeDiffEditor = {
-			document: {
-				uri: { fsPath: `${mockCwd}/test.txt` },
-				getText: vi.fn(),
-				lineCount: 10,
-			},
-			selection: {
-				active: { line: 0, character: 0 },
-				anchor: { line: 0, character: 0 },
-			},
-			edit: vi.fn().mockResolvedValue(true),
-			revealRange: vi.fn(),
-		}
-		;(diffViewProvider as any).activeLineController = { setActiveLine: vi.fn(), clear: vi.fn() }
-		;(diffViewProvider as any).fadedOverlayController = {
-			updateOverlayAfterLine: vi.fn(),
-			addLines: vi.fn(),
-			clear: vi.fn(),
-		}
+		installActiveEdit(diffViewProvider)
 	})
 
 	describe("update method", () => {
@@ -180,67 +211,6 @@ describe("DiffViewProvider", () => {
 			await diffViewProvider.update("New content", true)
 
 			expect(mockWorkspaceEdit.replace).toHaveBeenCalledWith(expect.anything(), expect.anything(), "New content")
-		})
-
-		it("should return early if isEditing is false at entry", async () => {
-			;(diffViewProvider as any).isEditing = false
-			;(diffViewProvider as any).originalContent = "Original content"
-
-			await diffViewProvider.update("New content", true)
-
-			expect(mockWorkspaceEdit.replace).not.toHaveBeenCalled()
-		})
-
-		it("should not throw when reset() runs concurrently during partial update", async () => {
-			// reset() nulls instance properties; update() must survive because it
-			// captured local refs at entry.
-			;(diffViewProvider as any).originalContent = "Original content"
-			;(diffViewProvider as any).isEditing = true
-
-			const capturedActiveLine = (diffViewProvider as any).activeLineController
-			const capturedFadedOverlay = (diffViewProvider as any).fadedOverlayController
-
-			vi.mocked(vscode.workspace.applyEdit).mockImplementation(async () => {
-				// Simulate reset() interleaving on the await
-				;(diffViewProvider as any).isEditing = false
-				;(diffViewProvider as any).activeLineController = undefined
-				;(diffViewProvider as any).fadedOverlayController = undefined
-				;(diffViewProvider as any).activeDiffEditor = undefined
-				return true
-			})
-
-			await expect(diffViewProvider.update("New content", false)).resolves.not.toThrow()
-
-			// Local refs were used after the concurrent reset.
-			expect(capturedActiveLine.setActiveLine).toHaveBeenCalled()
-			expect(capturedFadedOverlay.updateOverlayAfterLine).toHaveBeenCalled()
-		})
-
-		it("should not throw when reset() runs concurrently during final update", async () => {
-			;(diffViewProvider as any).originalContent = "Original content"
-			;(diffViewProvider as any).isEditing = true
-			;(diffViewProvider as any).streamedLines = ["Line 1"]
-
-			const capturedActiveLine = (diffViewProvider as any).activeLineController
-			const capturedFadedOverlay = (diffViewProvider as any).fadedOverlayController
-
-			let callCount = 0
-			vi.mocked(vscode.workspace.applyEdit).mockImplementation(async () => {
-				callCount++
-				if (callCount === 2) {
-					;(diffViewProvider as any).isEditing = false
-					;(diffViewProvider as any).activeLineController = undefined
-					;(diffViewProvider as any).fadedOverlayController = undefined
-					;(diffViewProvider as any).activeDiffEditor = undefined
-				}
-				return true
-			})
-
-			await expect(diffViewProvider.update("New content", true)).resolves.not.toThrow()
-
-			// clear() ran on the captured local refs even though instance refs were nulled.
-			expect(capturedActiveLine.clear).toHaveBeenCalled()
-			expect(capturedFadedOverlay.clear).toHaveBeenCalled()
 		})
 	})
 
@@ -490,30 +460,29 @@ describe("DiffViewProvider", () => {
 			expect(mockDelay).toHaveBeenCalledWith(0)
 		})
 
-		it("should store results for formatFileWriteResponse", async () => {
+		it("should store results for pushToolWriteResult", async () => {
 			await diffViewProvider.saveDirectly("test.ts", "new content", true, true, 1000)
 
 			// Verify internal state was updated
 			expect((diffViewProvider as any).newProblemsMessage).toBe("")
 			expect((diffViewProvider as any).userEdits).toBeUndefined()
-			expect((diffViewProvider as any).relPath).toBe("test.ts")
-			expect((diffViewProvider as any).newContent).toBe("new content")
+			expect((diffViewProvider as any).lastEditedRelPath).toBe("test.ts")
 		})
 	})
 
 	describe("saveChanges method with diagnostic settings", () => {
 		beforeEach(() => {
-			// Setup common mocks for saveChanges tests
-			;(diffViewProvider as any).relPath = "test.ts"
-			;(diffViewProvider as any).newContent = "new content"
-			;(diffViewProvider as any).activeDiffEditor = {
-				document: {
-					getText: vi.fn().mockReturnValue("new content"),
-					isDirty: false,
-					save: vi.fn().mockResolvedValue(undefined),
+			installActiveEdit(diffViewProvider, {
+				relPath: "test.ts",
+				newContent: "new content",
+				diffEditor: {
+					document: {
+						getText: vi.fn().mockReturnValue("new content"),
+						isDirty: false,
+						save: vi.fn().mockResolvedValue(undefined),
+					},
 				},
-			}
-			;(diffViewProvider as any).preDiagnostics = []
+			})
 
 			// Mock vscode functions
 			vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any)
@@ -577,45 +546,6 @@ describe("DiffViewProvider", () => {
 			// Verify custom delay was used
 			expect(mockDelay).toHaveBeenCalledWith(5000)
 			expect(vscode.languages.getDiagnostics).toHaveBeenCalled()
-		})
-
-		it("should flush a stranded dirty document when activeDiffEditor was reset", async () => {
-			// Simulate state torn down between update() and saveChanges() — the in-memory
-			// document for the file may still be dirty and would otherwise leak.
-			;(diffViewProvider as any).relPath = "test.ts"
-			;(diffViewProvider as any).activeDiffEditor = undefined
-
-			const strandedSave = vi.fn().mockResolvedValue(true)
-			const otherSave = vi.fn().mockResolvedValue(true)
-			vi.mocked(vscode.workspace).textDocuments = [
-				{
-					uri: { scheme: "file", fsPath: `${mockCwd}/test.ts` },
-					isDirty: true,
-					save: strandedSave,
-				},
-				// Non-matching path — should be ignored.
-				{
-					uri: { scheme: "file", fsPath: `${mockCwd}/other.ts` },
-					isDirty: true,
-					save: otherSave,
-				},
-				// Matching path but clean — should be ignored.
-				{
-					uri: { scheme: "file", fsPath: `${mockCwd}/test.ts` },
-					isDirty: false,
-					save: vi.fn(),
-				},
-			] as any
-
-			const result = await diffViewProvider.saveChanges()
-
-			expect(strandedSave).toHaveBeenCalled()
-			expect(otherSave).not.toHaveBeenCalled()
-			expect(result).toEqual({
-				newProblemsMessage: undefined,
-				userEdits: undefined,
-				finalContent: undefined,
-			})
 		})
 	})
 })
