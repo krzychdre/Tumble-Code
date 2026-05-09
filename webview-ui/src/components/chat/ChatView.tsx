@@ -1274,9 +1274,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const hasLatestCheckpoint = checkpointIndices.length > 0
 	const checkpointJumpCursorRef = useRef<number | null>(null)
 
+	// Narrow the dep to `.length` so streamed message ticks don't clobber the user's
+	// checkpoint-jump cursor mid-scroll. Ported from Zoo-Code 5ea544d07 by Elliott de Launay;
+	// applied as-is here (no behavioral changes beyond the upstream patch).
 	useEffect(() => {
 		checkpointJumpCursorRef.current = null
-	}, [task?.ts, checkpointIndices])
+	}, [task?.ts, checkpointIndices.length])
 
 	// Scroll lifecycle is managed by a dedicated hook to keep ChatView focused
 	// on message handling and UI orchestration.
