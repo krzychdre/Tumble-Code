@@ -270,12 +270,34 @@ export class DiffViewProvider {
 		const updatedDocument = edit.diffEditor.document
 		const editedContent = updatedDocument.getText()
 
+		// Post-await staleness recovery: a concurrent reset() can flip
+		// edit.isStale during any of the awaits below. The bytes the user
+		// approved must still reach disk — fall through to flushPendingSaveDirectly()
+		// which is idempotent (it may rewrite content the editor save already
+		// persisted, but disk state stays correct).
+		const recoverIfStale = async (): Promise<{
+			newProblemsMessage: string | undefined
+			userEdits: string | undefined
+			finalContent: string | undefined
+		} | null> => {
+			if (!edit.isStale) return null
+			const buffer = pending ?? { relPath: edit.relPath, newContent: edit.newContent! }
+			return await this.flushPendingSaveDirectly(buffer, edit.preDiagnostics, diagnosticsEnabled, writeDelayMs)
+		}
+
 		if (updatedDocument.isDirty) {
 			await updatedDocument.save()
+			const recovered = await recoverIfStale()
+			if (recovered) return recovered
 		}
 
 		await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), { preview: false, preserveFocus: true })
+		const recoveredAfterShow = await recoverIfStale()
+		if (recoveredAfterShow) return recoveredAfterShow
+
 		await this.closeAllDiffViews()
+		const recoveredAfterClose = await recoverIfStale()
+		if (recoveredAfterClose) return recoveredAfterClose
 
 		// Getting diagnostics before and after the file edit is a better approach than
 		// automatically tracking problems in real-time. This method ensures we only
@@ -308,11 +330,16 @@ export class DiffViewProvider {
 				console.warn(`Failed to apply write delay: ${error}`)
 			}
 
+			const recoveredAfterDelay = await recoverIfStale()
+			if (recoveredAfterDelay) return recoveredAfterDelay
+
 			const postDiagnostics = vscode.languages.getDiagnostics()
 
 			// Get diagnostic settings from state
 			const task = this.taskRef.deref()
 			const state = await task?.providerRef.deref()?.getState()
+			const recoveredAfterState = await recoverIfStale()
+			if (recoveredAfterState) return recoveredAfterState
 			const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
 			const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
 
@@ -325,6 +352,9 @@ export class DiffViewProvider {
 				includeDiagnosticMessages,
 				maxDiagnosticMessages,
 			) // Will be empty string if no errors.
+
+			const recoveredAfterDiagnostics = await recoverIfStale()
+			if (recoveredAfterDiagnostics) return recoveredAfterDiagnostics
 
 			newProblemsMessage =
 				newProblems.length > 0 ? `\n\nNew problems detected after saving the file:\n${newProblems}` : ""
