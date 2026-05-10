@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import * as fs from "fs/promises"
 
 import { DiffViewProvider } from "../DiffViewProvider"
 
@@ -159,5 +160,35 @@ describe("DiffViewProvider race-condition safety", () => {
 
 	it("update() throws cleanly when no session is installed", async () => {
 		await expect(provider.update("anything", true)).rejects.toThrow("Required values not set")
+	})
+
+	it("saveChanges() persists approved buffered content to disk when reset() detached the diff session before save", async () => {
+		// Reproduces the silent-save-loss bug: TaskStreamProcessor.resetStreamingState()
+		// fires diffViewProvider.reset() between askApproval() and saveChanges() in
+		// WriteToFileTool.execute(). activeEdit is nulled, but the user already
+		// approved the change — the buffered content MUST still reach disk.
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+		installFakeSession(provider)
+		vi.mocked(vscode.workspace.applyEdit).mockResolvedValue(true)
+
+		// Tool buffers the final, user-visible content via update(isFinal=true).
+		await provider.update("approved\n", true)
+
+		// resetStreamingState() races between approval and saveChanges().
+		await provider.reset()
+		expect((provider as any).activeEdit).toBeUndefined()
+
+		// User had already clicked "Approve" — saveChanges must persist the content.
+		const result = await provider.saveChanges(false, 0)
+
+		expect(vi.mocked(fs.writeFile)).toHaveBeenCalledWith("/cwd/test.ts", "approved\n", "utf-8")
+		expect(result.finalContent).toBe("approved\n")
+		expect(result.userEdits).toBeUndefined()
+		expect((provider as any).lastEditedRelPath).toBe("test.ts")
+		expect(warnSpy).toHaveBeenCalledTimes(1)
+		expect(warnSpy.mock.calls[0]?.[0]).toContain("test.ts")
+
+		warnSpy.mockRestore()
 	})
 })
