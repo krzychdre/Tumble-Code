@@ -77,6 +77,7 @@
 		"share_auth_required": "Cần xác thực. Vui lòng đăng nhập để chia sẻ nhiệm vụ.",
 		"share_not_enabled": "Chia sẻ nhiệm vụ không được bật cho tổ chức này.",
 		"share_task_not_found": "Không tìm thấy nhiệm vụ hoặc truy cập bị từ chối.",
+		"task_show_failed": "Không thể mở nhiệm vụ. Nhiệm vụ có thể đã bị xóa hoặc hỏng.",
 		"mode_import_failed": "Nhập chế độ thất bại: {{error}}",
 		"delete_rules_folder_failed": "Không thể xóa thư mục quy tắc: {{rulesFolderPath}}. Lỗi: {{error}}",
 		"command_not_found": "Không tìm thấy lệnh '{{name}}'",

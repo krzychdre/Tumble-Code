@@ -108,7 +108,22 @@ export class TaskAskSay {
 					throw new AskIgnoredError("new partial")
 				}
 			} else {
-				if (isUpdatingPreviousPartial) {
+				// Dedup: if the tail is already a finalized ask of the same type with the
+				// same text, treat this call as a re-ask on the existing message instead of
+				// appending. This catches a race where some upstream path finalizes the
+				// partial (partial=true → partial=false) before the second ask(text, false)
+				// reaches this code. Without dedup, the second call falls through to the
+				// "new and complete message" branch and creates a duplicate UI card whose
+				// ts diverges from task.lastMessageTs — breaking executionId-based status
+				// routing for tools like execute_command (see ai_plans/2026-05-15_21-16).
+				const isAlreadyFinalizedDuplicate =
+					!!lastMessage &&
+					lastMessage.partial !== true &&
+					lastMessage.type === "ask" &&
+					lastMessage.ask === type &&
+					(lastMessage.text ?? "") === (text ?? "")
+
+				if (isUpdatingPreviousPartial || isAlreadyFinalizedDuplicate) {
 					// This is the complete version of a previously partial
 					// message, so replace the partial with the complete version.
 					this.access.askResponse = undefined

@@ -827,7 +827,12 @@ export const webviewMessageHandler = async (
 			}
 			break
 		case "showTaskWithId":
-			provider.showTaskWithId(message.text!)
+			provider.showTaskWithId(message.text!).catch((error) => {
+				provider.log(
+					`[showTaskWithId] Failed to show task ${message.text}: ${error instanceof Error ? error.message : String(error)}`,
+				)
+				vscode.window.showErrorMessage(t("common:errors.task_show_failed"))
+			})
 			break
 		case "condenseTaskContextRequest":
 			provider.condenseTaskContext(message.text!)
@@ -956,6 +961,7 @@ export const webviewMessageHandler = async (
 						ollama: {},
 						lmstudio: {},
 						roo: {},
+						deepseek: {},
 					}
 
 			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
@@ -1031,6 +1037,21 @@ export const webviewMessageHandler = async (
 				candidates.push({
 					key: "poe",
 					options: { provider: "poe", apiKey: poeApiKey, baseUrl: poeBaseUrl },
+				})
+			}
+
+			// DeepSeek is conditional on apiKey
+			const deepSeekApiKey = apiConfiguration.deepSeekApiKey || message?.values?.deepSeekApiKey
+			const deepSeekBaseUrl = apiConfiguration.deepSeekBaseUrl || message?.values?.deepSeekBaseUrl
+
+			if (deepSeekApiKey) {
+				if (message?.values?.deepSeekApiKey || message?.values?.deepSeekBaseUrl) {
+					await flushModels({ provider: "deepseek", apiKey: deepSeekApiKey, baseUrl: deepSeekBaseUrl }, true)
+				}
+
+				candidates.push({
+					key: "deepseek",
+					options: { provider: "deepseek", apiKey: deepSeekApiKey, baseUrl: deepSeekBaseUrl },
 				})
 			}
 

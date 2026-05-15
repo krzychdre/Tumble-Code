@@ -77,6 +77,7 @@
 		"share_auth_required": "प्रमाणीकरण आवश्यक है। कार्य साझा करने के लिए कृपया साइन इन करें।",
 		"share_not_enabled": "इस संगठन के लिए कार्य साझाकरण सक्षम नहीं है।",
 		"share_task_not_found": "कार्य नहीं मिला या पहुंच अस्वीकृत।",
+		"task_show_failed": "कार्य खोलने में विफल। इसे हटाया या दूषित किया जा चुका होगा।",
 		"mode_import_failed": "मोड आयात करने में विफल: {{error}}",
 		"delete_rules_folder_failed": "नियम फ़ोल्डर हटाने में विफल: {{rulesFolderPath}}। त्रुटि: {{error}}",
 		"command_not_found": "कमांड '{{name}}' नहीं मिला",

@@ -107,22 +107,11 @@ export class TaskLifecycle {
 	private readonly taskResumption: TaskResumption
 
 	constructor(private readonly access: TaskLifecycleAccess) {
-		// Create TaskResumption with compatible access interface
-		this.taskResumption = new TaskResumption({
-			taskId: access.taskId,
-			instanceId: access.instanceId,
-			isInitialized: access.isInitialized,
-			abort: access.abort,
-			abandoned: access.abandoned,
-			abortReason: access.abortReason,
-			clineMessages: access.clineMessages,
-			apiConversationHistory: access.apiConversationHistory,
-			providerRef: access.providerRef,
-			history: access.history,
-			askSay: access.askSay,
-			emit: access.emit,
-			initiateTaskLoop: access.initiateTaskLoop,
-		})
+		// Pass the live access reference, not a destructured snapshot. `history`
+		// and `askSay` are still undefined on the Task when TaskLifecycle is
+		// constructed; freezing them by value here makes resumeTaskFromHistory
+		// crash with "Cannot read properties of undefined".
+		this.taskResumption = new TaskResumption(access)
 	}
 
 	// ======================

@@ -26,15 +26,18 @@ export class DiffViewProvider {
 	editType?: "create" | "modify"
 	isEditing = false
 	originalContent: string | undefined
-	private createdDirs: string[] = []
-	private documentWasOpen = false
-	private relPath?: string
-	private newContent?: string
-	private activeDiffEditor?: vscode.TextEditor
-	private fadedOverlayController?: DecorationController
-	private activeLineController?: DecorationController
-	private streamedLines: string[] = []
-	private preDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] = []
+	// Path of the last successfully saved edit. Outlives `activeEdit` because
+	// `pushToolWriteResult()` is called after `saveChanges()` / `saveDirectly()`
+	// and needs to know which file was just written.
+	private lastEditedRelPath?: string
+	private activeEdit?: ActiveEdit
+	// Snapshot of the most recently buffered final content + path, published by
+	// update() once isFinal=true has settled the document. Drained by
+	// saveChanges() / saveDirectly(), cleared by revertChanges() / open().
+	// Survives reset() on purpose: a reset that races between askApproval() and
+	// saveChanges() must not silently drop an already-approved write.
+	private pendingSave?: { relPath: string; newContent: string }
+	private nextEditId = 0
 	private taskRef: WeakRef<Task>
 
 	constructor(
@@ -49,6 +52,10 @@ export class DiffViewProvider {
 		const fileExists = this.editType === "modify"
 		const absolutePath = path.resolve(this.cwd, relPath)
 		this.isEditing = true
+		// A new diff session must not inherit a recovery buffer from a prior
+		// session. Successful saves drain it; this defensive clear protects
+		// against paths that left the buffer set without a save.
+		this.pendingSave = undefined
 
 		// If the file is already open, ensure it's not dirty before getting its
 		// contents.
@@ -121,7 +128,28 @@ export class DiffViewProvider {
 			throw new Error("Required values not set")
 		}
 
-		this.newContent = accumulatedContent
+		if (isFinal) {
+			// Preserve empty last line if original content had one. Hoisted from
+			// just-before-the-final-WorkspaceEdit so the recovery buffer published
+			// below holds exactly the bytes the final replace would write.
+			const hasEmptyLastLine = this.originalContent?.endsWith("\n")
+			if (hasEmptyLastLine && !accumulatedContent.endsWith("\n")) {
+				accumulatedContent += "\n"
+			}
+			// Publish the recovery snapshot BEFORE any await in this method. The
+			// isFinal block below has up to three sequential applyEdit awaits,
+			// each followed by `if (edit.isStale) return`. If reset() races any
+			// of them, update() bails before reaching the tail-end pendingSave
+			// publication site, leaving the buffer empty. saveChanges() then takes
+			// its "nothing to save" early-return without setting lastEditedRelPath,
+			// and pushToolWriteResult() crashes with "No file path available in
+			// DiffViewProvider". Setting pendingSave here keeps the approved bytes
+			// intact for flushPendingSaveDirectly() to recover from no matter
+			// which stale-check bails.
+			this.pendingSave = { relPath: edit.relPath, newContent: this.stripAllBOMs(accumulatedContent) }
+		}
+
+		edit.newContent = accumulatedContent
 		const accumulatedLines = accumulatedContent.split("\n")
 
 		if (!isFinal) {
@@ -169,14 +197,10 @@ export class DiffViewProvider {
 				await vscode.workspace.applyEdit(edit)
 			}
 
-			// Preserve empty last line if original content had one.
-			const hasEmptyLastLine = this.originalContent?.endsWith("\n")
-
-			if (hasEmptyLastLine && !accumulatedContent.endsWith("\n")) {
-				accumulatedContent += "\n"
-			}
-
-			// Apply the final content.
+			// Apply the final content. (EOL adjustment and pendingSave publication
+			// already happened at the top of the isFinal branch above — before any
+			// await — so a reset() racing this final applyEdit still leaves the
+			// recovery buffer intact.)
 			const finalEdit = new vscode.WorkspaceEdit()
 
 			finalEdit.replace(
@@ -201,20 +225,85 @@ export class DiffViewProvider {
 		userEdits: string | undefined
 		finalContent: string | undefined
 	}> {
-		if (!this.relPath || !this.newContent || !this.activeDiffEditor) {
+		const edit = this.activeEdit
+		const pending = this.pendingSave
+
+		// Genuinely nothing to save — open() never reached the buffered-content stage.
+		if ((!edit || edit.newContent === undefined || edit.isStale) && !pending) {
 			return { newProblemsMessage: undefined, userEdits: undefined, finalContent: undefined }
 		}
 
-		const absolutePath = path.resolve(this.cwd, this.relPath)
-		const updatedDocument = this.activeDiffEditor.document
+		// Recovery branch: the diff session was detached or marked stale by a
+		// concurrent reset() (typically TaskStreamProcessor.resetStreamingState()
+		// firing between askApproval() and saveChanges()). The user already
+		// approved the change — flush the buffered content directly to disk
+		// instead of silently dropping it.
+		if (!edit || edit.newContent === undefined || edit.isStale) {
+			return await this.flushPendingSaveDirectly(pending!, edit?.preDiagnostics, diagnosticsEnabled, writeDelayMs)
+		}
+
+		const absolutePath = path.resolve(this.cwd, edit.relPath)
+		this.lastEditedRelPath = edit.relPath
+		const updatedDocument = edit.diffEditor.document
 		const editedContent = updatedDocument.getText()
 
+		// Post-await staleness recovery: a concurrent reset() can flip
+		// edit.isStale during any of the awaits below. The bytes the user
+		// approved must still reach disk — fall through to flushPendingSaveDirectly()
+		// which is idempotent (it may rewrite content the editor save already
+		// persisted, but disk state stays correct).
+		const recoverIfStale = async (): Promise<{
+			newProblemsMessage: string | undefined
+			userEdits: string | undefined
+			finalContent: string | undefined
+		} | null> => {
+			if (!edit.isStale) return null
+			const buffer = pending ?? { relPath: edit.relPath, newContent: edit.newContent! }
+			return await this.flushPendingSaveDirectly(buffer, edit.preDiagnostics, diagnosticsEnabled, writeDelayMs)
+		}
+
+		// Editor's save() returns Thenable<boolean>: false means VS Code silently
+		// refused to write (read-only document, disposed buffer, locked file,
+		// internal error). The prior arrangement discarded the boolean and
+		// reported success even when no bytes reached disk — manifesting as a
+		// silent no-save with no error in dev tools. Capture it and treat
+		// false the same as a stale-session detach: fall through to
+		// flushPendingSaveDirectly() so the user-approved bytes still land on disk.
+		//
+		// The !isDirty branch is symmetric: VS Code believes the buffer matches
+		// disk (typically autosave fired between update() and saveChanges()),
+		// but if pendingSave is populated we still need to guarantee those exact
+		// bytes are on disk — autosave may have captured an intermediate or
+		// pre-edit state. flushPendingSaveDirectly() is idempotent.
+		const fallbackToDirectWrite = async () => {
+			const buffer = pending ?? { relPath: edit.relPath, newContent: edit.newContent! }
+			return await this.flushPendingSaveDirectly(buffer, edit.preDiagnostics, diagnosticsEnabled, writeDelayMs)
+		}
+
 		if (updatedDocument.isDirty) {
-			await updatedDocument.save()
+			const saved = await updatedDocument.save()
+			const recovered = await recoverIfStale()
+			if (recovered) return recovered
+			if (!saved) {
+				console.warn(
+					`[DiffViewProvider] saveChanges: editor save() returned false for ${edit.relPath}; falling back to direct disk write`,
+				)
+				return await fallbackToDirectWrite()
+			}
+		} else if (pending) {
+			// Buffer published by update(isFinal=true) but VS Code thinks the
+			// document is clean — write through to guarantee disk matches the
+			// approved content.
+			return await fallbackToDirectWrite()
 		}
 
 		await vscode.window.showTextDocument(vscode.Uri.file(absolutePath), { preview: false, preserveFocus: true })
+		const recoveredAfterShow = await recoverIfStale()
+		if (recoveredAfterShow) return recoveredAfterShow
+
 		await this.closeAllDiffViews()
+		const recoveredAfterClose = await recoverIfStale()
+		if (recoveredAfterClose) return recoveredAfterClose
 
 		// Getting diagnostics before and after the file edit is a better approach than
 		// automatically tracking problems in real-time. This method ensures we only
@@ -247,11 +336,16 @@ export class DiffViewProvider {
 				console.warn(`Failed to apply write delay: ${error}`)
 			}
 
+			const recoveredAfterDelay = await recoverIfStale()
+			if (recoveredAfterDelay) return recoveredAfterDelay
+
 			const postDiagnostics = vscode.languages.getDiagnostics()
 
 			// Get diagnostic settings from state
 			const task = this.taskRef.deref()
 			const state = await task?.providerRef.deref()?.getState()
+			const recoveredAfterState = await recoverIfStale()
+			if (recoveredAfterState) return recoveredAfterState
 			const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
 			const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
 
@@ -264,6 +358,9 @@ export class DiffViewProvider {
 				includeDiagnosticMessages,
 				maxDiagnosticMessages,
 			) // Will be empty string if no errors.
+
+			const recoveredAfterDiagnostics = await recoverIfStale()
+			if (recoveredAfterDiagnostics) return recoveredAfterDiagnostics
 
 			newProblemsMessage =
 				newProblems.length > 0 ? `\n\nNew problems detected after saving the file:\n${newProblems}` : ""
@@ -278,6 +375,9 @@ export class DiffViewProvider {
 
 		// Just in case the new content has a mix of varying EOL characters.
 		const normalizedNewContent = this.newContent.replace(/\r\n|\n/g, newContentEOL)
+
+		// Editor save succeeded — drain the recovery buffer.
+		this.pendingSave = undefined
 
 		if (normalizedEditedContent !== normalizedNewContent) {
 			// User made changes before approving edit.
@@ -300,6 +400,78 @@ export class DiffViewProvider {
 
 			return { newProblemsMessage, userEdits: undefined, finalContent: normalizedEditedContent }
 		}
+	}
+
+	/**
+	 * Recovery path for saveChanges(): the diff session was detached or marked
+	 * stale by a concurrent reset() before the editor save could complete, but
+	 * the user already approved the buffered content. Write the bytes directly
+	 * to disk and run the same post-save diagnostics flow saveDirectly() uses.
+	 *
+	 * Mirrors the file-IO and diagnostics shape of saveDirectly() so that the
+	 * recovery path is observably equivalent to a successful editor save —
+	 * pushToolWriteResult() consumes lastEditedRelPath / newProblemsMessage /
+	 * userEdits the same way regardless of branch.
+	 */
+	private async flushPendingSaveDirectly(
+		pending: { relPath: string; newContent: string },
+		preDiagnostics: [vscode.Uri, vscode.Diagnostic[]][] | undefined,
+		diagnosticsEnabled: boolean,
+		writeDelayMs: number,
+	): Promise<{
+		newProblemsMessage: string | undefined
+		userEdits: string | undefined
+		finalContent: string | undefined
+	}> {
+		console.warn(
+			`[DiffViewProvider] saveChanges: diff session went stale before save completed; flushing approved content directly to disk for ${pending.relPath}`,
+		)
+
+		const absolutePath = path.resolve(this.cwd, pending.relPath)
+		await createDirectoriesForFile(absolutePath)
+		await fs.writeFile(absolutePath, pending.newContent, "utf-8")
+
+		// Use the snapshot taken at open() time when available, otherwise fall
+		// back to the current diagnostics — better than silently skipping the
+		// post-save report.
+		const effectivePreDiagnostics = preDiagnostics ?? vscode.languages.getDiagnostics()
+
+		let newProblemsMessage = ""
+
+		if (diagnosticsEnabled) {
+			const safeDelayMs = Math.max(0, writeDelayMs)
+
+			try {
+				await delay(safeDelayMs)
+			} catch (error) {
+				console.warn(`Failed to apply write delay: ${error}`)
+			}
+
+			const postDiagnostics = vscode.languages.getDiagnostics()
+
+			const task = this.taskRef.deref()
+			const state = await task?.providerRef.deref()?.getState()
+			const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
+			const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
+
+			const newProblems = await diagnosticsToProblemsString(
+				getNewDiagnostics(effectivePreDiagnostics, postDiagnostics),
+				[vscode.DiagnosticSeverity.Error],
+				this.cwd,
+				includeDiagnosticMessages,
+				maxDiagnosticMessages,
+			)
+
+			newProblemsMessage =
+				newProblems.length > 0 ? `\n\nNew problems detected after saving the file:\n${newProblems}` : ""
+		}
+
+		this.lastEditedRelPath = pending.relPath
+		this.newProblemsMessage = newProblemsMessage
+		this.userEdits = undefined
+		this.pendingSave = undefined
+
+		return { newProblemsMessage, userEdits: undefined, finalContent: pending.newContent }
 	}
 
 	/**
@@ -363,9 +535,17 @@ export class DiffViewProvider {
 	}
 
 	async revertChanges(): Promise<void> {
-		if (!this.relPath || !this.activeDiffEditor) {
+		const edit = this.activeEdit
+		if (!edit) {
+			// No active session, but a recovery buffer may have leaked from an
+			// earlier sequence. Discard it — revert means the user rejected the
+			// content; it must not survive into a later save.
+			this.pendingSave = undefined
 			return
 		}
+		// User rejected the change; discard the recovery buffer so a later
+		// saveChanges() cannot resurrect it.
+		this.pendingSave = undefined
 
 		const fileExists = this.editType === "modify"
 		const updatedDocument = this.activeDiffEditor.document
@@ -617,7 +797,18 @@ export class DiffViewProvider {
 	}
 
 	async reset(): Promise<void> {
-		await this.closeAllDiffViews()
+		// Detach the session atomically before closing diff views (which awaits).
+		// Any in-flight method that captured `edit` keeps a live reference and
+		// will see `isStale === true` after its own awaits resume, so it can
+		// short-circuit instead of touching the closed editor.
+		//
+		// NOTE: pendingSave is intentionally NOT cleared here. saveChanges() and
+		// saveDirectly() drain it on success; revertChanges() / open() clear it.
+		// Preserving it across reset() is what allows saveChanges() to recover an
+		// already-approved write when resetStreamingState() races with the tool
+		// execution between askApproval() and saveChanges().
+		const edit = this.activeEdit
+		this.activeEdit = undefined
 		this.editType = undefined
 		this.isEditing = false
 		this.originalContent = undefined
@@ -715,8 +906,11 @@ export class DiffViewProvider {
 		// Store the results for formatFileWriteResponse
 		this.newProblemsMessage = newProblemsMessage
 		this.userEdits = undefined
-		this.relPath = relPath
-		this.newContent = content
+		this.lastEditedRelPath = relPath
+		// preventFocusDisruption path doesn't populate pendingSave, but a
+		// stale buffer from a prior diff-editor session must not survive a
+		// switch to direct mode.
+		this.pendingSave = undefined
 
 		return {
 			newProblemsMessage,
