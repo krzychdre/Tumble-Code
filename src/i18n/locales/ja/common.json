@@ -77,6 +77,7 @@
 		"share_auth_required": "認証が必要です。タスクを共有するにはサインインしてください。",
 		"share_not_enabled": "この組織ではタスク共有が有効になっていません。",
 		"share_task_not_found": "タスクが見つからないか、アクセスが拒否されました。",
+		"task_show_failed": "タスクを開けませんでした。削除されたか破損している可能性があります。",
 		"mode_import_failed": "モードのインポートに失敗しました：{{error}}",
 		"delete_rules_folder_failed": "ルールフォルダの削除に失敗しました：{{rulesFolderPath}}。エラー：{{error}}",
 		"command_not_found": "コマンド '{{name}}' が見つかりません",

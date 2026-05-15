@@ -5,8 +5,8 @@ import pWaitFor from "p-wait-for"
 import {
 	type ApiMessage,
 	readApiMessages,
-	saveApiMessages,
 	readTaskMessages,
+	saveApiMessages,
 	saveTaskMessages,
 	taskMetadata,
 } from "../task-persistence"
@@ -392,6 +392,14 @@ export class TaskHistory {
 	async overwriteClineMessages(newMessages: ClineMessage[]) {
 		this.access.clineMessages = newMessages
 		this.access.restoreTodoListForTask()
+
+		// Push the new message set to the webview *before* persisting. On task
+		// resume the chat view depends on this state push to render the loaded
+		// conversation; without it the user only ever sees the trailing
+		// resume_task ask added later by ask(), and tab-switching to chat shows
+		// an empty (or stale) message list.
+		await this.access.providerRef.deref()?.postStateToWebviewWithoutTaskHistory()
+
 		await this.saveClineMessages()
 
 		// When overwriting messages (e.g., during task resume), repopulate the cloud sync tracking Set
@@ -425,6 +433,22 @@ export class TaskHistory {
 
 	async saveClineMessages(): Promise<boolean> {
 		try {
+			// Guard: if the in-memory array is empty but the on-disk file already
+			// holds messages, persisting now would wipe a real conversation and
+			// poison the history-item title with "No messages". This can happen
+			// when abortTask fires during the brief window where startTask has
+			// reset clineMessages but the first say() has not yet replenished it,
+			// or when a provider error tears the task down before reconstruction.
+			if (this.access.clineMessages.length === 0) {
+				const persisted = await readTaskMessages({
+					taskId: this.access.taskId,
+					globalStoragePath: this.access.globalStoragePath,
+				})
+				if (persisted.length > 0) {
+					return true
+				}
+			}
+
 			await saveTaskMessages({
 				messages: structuredClone(this.access.clineMessages),
 				taskId: this.access.taskId,

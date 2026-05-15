@@ -77,6 +77,7 @@
 		"share_auth_required": "인증이 필요합니다. 작업을 공유하려면 로그인하세요.",
 		"share_not_enabled": "이 조직에서는 작업 공유가 활성화되지 않았습니다.",
 		"share_task_not_found": "작업을 찾을 수 없거나 액세스가 거부되었습니다.",
+		"task_show_failed": "작업을 열지 못했습니다. 삭제되었거나 손상되었을 수 있습니다.",
 		"mode_import_failed": "모드 가져오기 실패: {{error}}",
 		"delete_rules_folder_failed": "규칙 폴더 삭제 실패: {{rulesFolderPath}}. 오류: {{error}}",
 		"command_not_found": "'{{name}}' 명령을 찾을 수 없습니다",

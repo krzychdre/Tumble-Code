@@ -77,6 +77,7 @@
 		"share_auth_required": "Kimlik doğrulama gerekli. Görevleri paylaşmak için lütfen giriş yapın.",
 		"share_not_enabled": "Bu kuruluş için görev paylaşımı etkinleştirilmemiş.",
 		"share_task_not_found": "Görev bulunamadı veya erişim reddedildi.",
+		"task_show_failed": "Görev açılamadı. Silinmiş veya bozulmuş olabilir.",
 		"mode_import_failed": "Mod içe aktarılamadı: {{error}}",
 		"delete_rules_folder_failed": "Kurallar klasörü silinemedi: {{rulesFolderPath}}. Hata: {{error}}",
 		"command_not_found": "'{{name}}' komutu bulunamadı",

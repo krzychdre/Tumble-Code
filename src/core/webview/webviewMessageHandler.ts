@@ -827,7 +827,12 @@ export const webviewMessageHandler = async (
 			}
 			break
 		case "showTaskWithId":
-			provider.showTaskWithId(message.text!)
+			provider.showTaskWithId(message.text!).catch((error) => {
+				provider.log(
+					`[showTaskWithId] Failed to show task ${message.text}: ${error instanceof Error ? error.message : String(error)}`,
+				)
+				vscode.window.showErrorMessage(t("common:errors.task_show_failed"))
+			})
 			break
 		case "condenseTaskContextRequest":
 			provider.condenseTaskContext(message.text!)

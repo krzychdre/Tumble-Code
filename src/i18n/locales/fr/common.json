@@ -77,6 +77,7 @@
 		"share_auth_required": "Authentification requise. Veuillez vous connecter pour partager des tâches.",
 		"share_not_enabled": "Le partage de tâches n'est pas activé pour cette organisation.",
 		"share_task_not_found": "Tâche non trouvée ou accès refusé.",
+		"task_show_failed": "Échec de l'ouverture de la tâche. Elle a peut-être été supprimée ou corrompue.",
 		"mode_import_failed": "Échec de l'importation du mode : {{error}}",
 		"delete_rules_folder_failed": "Échec de la suppression du dossier de règles : {{rulesFolderPath}}. Erreur : {{error}}",
 		"command_not_found": "Commande '{{name}}' introuvable",

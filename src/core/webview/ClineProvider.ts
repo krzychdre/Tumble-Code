@@ -1134,6 +1134,10 @@ export class ClineProvider
 			)
 		}
 
+		// Eager state push so the webview shows the new task immediately;
+		// resumeTaskFromHistory pushes further updates asynchronously.
+		await this.postStateToWebview()
+
 		// Check if there's a pending edit after checkpoint restoration
 		const operationId = `task-${task.taskId}`
 		const pendingEdit = this.getPendingEditOperation(operationId)
@@ -1835,9 +1839,21 @@ export class ClineProvider
 
 	async showTaskWithId(id: string) {
 		if (id !== this.getCurrentTask()?.taskId) {
-			// Non-current task.
 			const { historyItem } = await this.getTaskWithId(id)
-			await this.createTaskWithHistoryItem(historyItem) // Clears existing task.
+
+			// Resolve rootTask/parentTask references from the active stack so
+			// that subtask delegation metadata survives history-item round-trips
+			// (only the IDs are persisted, not the live Task objects).
+			let rootTask: Task | undefined
+			let parentTask: Task | undefined
+			if (historyItem.rootTaskId) {
+				rootTask = this.clineStack.find((t) => t.taskId === historyItem.rootTaskId)
+			}
+			if (historyItem.parentTaskId) {
+				parentTask = this.clineStack.find((t) => t.taskId === historyItem.parentTaskId)
+			}
+
+			await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
 		}
 
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
