@@ -78,7 +78,12 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 
 			task.consecutiveMistakeCount = 0
 
-			await task.say("completion_result", result, undefined, false)
+			const alreadyFinalized = task.clineMessages?.some(
+				(m) => m.type === "say" && m.say === "completion_result" && m.partial !== true && m.text === result,
+			)
+			if (!alreadyFinalized) {
+				await task.say("completion_result", result, undefined, false)
+			}
 
 			// Check for subtask using parentTaskId (metadata-driven delegation)
 			if (task.parentTaskId) {

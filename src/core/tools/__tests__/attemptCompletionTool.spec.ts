@@ -515,6 +515,102 @@ describe("attemptCompletionTool", () => {
 				)
 			})
 
+			describe("partial-stream / execute handoff", () => {
+				it("does not emit a duplicate completion_result when handlePartial saw a command param", async () => {
+					const resultText = "All done. See command output."
+					const commandText = "echo hello"
+
+					// Track messages the way Task would
+					const clineMessages: any[] = []
+					mockTask.clineMessages = clineMessages
+
+					mockTask.say = vi.fn(async (type: string, text?: string, _images?: any, partial?: boolean) => {
+						const lastMessage = clineMessages.at(-1)
+						if (partial === true) {
+							if (lastMessage?.type === "say" && lastMessage.say === type && lastMessage.partial) {
+								lastMessage.text = text ?? ""
+							} else {
+								clineMessages.push({ type: "say", say: type, text: text ?? "", partial: true })
+							}
+						} else if (partial === false) {
+							if (lastMessage?.type === "say" && lastMessage.say === type && lastMessage.partial) {
+								lastMessage.text = text ?? ""
+								lastMessage.partial = false
+							} else {
+								clineMessages.push({ type: "say", say: type, text: text ?? "", partial: false })
+							}
+						} else {
+							clineMessages.push({ type: "say", say: type, text: text ?? "" })
+						}
+					}) as any
+
+					mockTask.ask = vi.fn(async (type: string, text?: string, partial?: boolean) => {
+						const lastMessage = clineMessages.at(-1)
+						if (partial === true) {
+							if (lastMessage?.type === "ask" && lastMessage.ask === type && lastMessage.partial) {
+								lastMessage.text = text ?? ""
+							} else {
+								clineMessages.push({ type: "ask", ask: type, text: text ?? "", partial: true })
+							}
+							return { response: "yesButtonClicked", text: "", images: [] }
+						}
+						if (partial === false) {
+							if (lastMessage?.type === "ask" && lastMessage.ask === type && lastMessage.partial) {
+								lastMessage.text = text ?? ""
+								lastMessage.partial = false
+							} else {
+								clineMessages.push({ type: "ask", ask: type, text: text ?? "", partial: false })
+							}
+						}
+						return { response: "yesButtonClicked", text: "", images: [] }
+					}) as any
+
+					const callbacks: AttemptCompletionCallbacks = {
+						askApproval: mockAskApproval,
+						handleError: mockHandleError,
+						pushToolResult: mockPushToolResult,
+						askFinishSubTaskApproval: mockAskFinishSubTaskApproval,
+						toolDescription: mockToolDescription,
+					}
+
+					// First partial: result + command starting to stream
+					const partial1 = {
+						type: "tool_use",
+						name: "attempt_completion",
+						params: { result: resultText, command: commandText } as any,
+						nativeArgs: { result: resultText },
+						partial: true,
+					} as AttemptCompletionToolUse
+					await attemptCompletionTool.handle(mockTask as Task, partial1, callbacks)
+
+					// Second partial: command continues streaming
+					const partial2 = {
+						type: "tool_use",
+						name: "attempt_completion",
+						params: { result: resultText, command: commandText + " world" } as any,
+						nativeArgs: { result: resultText },
+						partial: true,
+					} as AttemptCompletionToolUse
+					await attemptCompletionTool.handle(mockTask as Task, partial2, callbacks)
+
+					// Final: execute() with full result
+					const final = {
+						type: "tool_use",
+						name: "attempt_completion",
+						params: { result: resultText, command: commandText + " world" } as any,
+						nativeArgs: { result: resultText },
+						partial: false,
+					} as AttemptCompletionToolUse
+					await attemptCompletionTool.handle(mockTask as Task, final, callbacks)
+
+					const finalizedCompletionSays = clineMessages.filter(
+						(m) => m.type === "say" && m.say === "completion_result" && m.partial !== true,
+					)
+					expect(finalizedCompletionSays).toHaveLength(1)
+					expect(finalizedCompletionSays[0].text).toBe(resultText)
+				})
+			})
+
 			it("does not emit TaskCompleted when user provides follow-up feedback", async () => {
 				const block: AttemptCompletionToolUse = {
 					type: "tool_use",
