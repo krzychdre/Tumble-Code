@@ -81,6 +81,7 @@
 		"share_auth_required": "Autenticação necessária. Faça login para compartilhar tarefas.",
 		"share_not_enabled": "O compartilhamento de tarefas não está habilitado para esta organização.",
 		"share_task_not_found": "Tarefa não encontrada ou acesso negado.",
+		"task_show_failed": "Falha ao abrir a tarefa. Ela pode ter sido excluída ou corrompida.",
 		"mode_import_failed": "Falha ao importar o modo: {{error}}",
 		"delete_rules_folder_failed": "Falha ao excluir pasta de regras: {{rulesFolderPath}}. Erro: {{error}}",
 		"command_not_found": "Comando '{{name}}' não encontrado",

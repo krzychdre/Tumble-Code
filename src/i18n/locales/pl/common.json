@@ -77,6 +77,7 @@
 		"share_auth_required": "Wymagana autoryzacja. Zaloguj się, aby udostępniać zadania.",
 		"share_not_enabled": "Udostępnianie zadań nie jest włączone dla tej organizacji.",
 		"share_task_not_found": "Zadanie nie znalezione lub dostęp odmówiony.",
+		"task_show_failed": "Nie udało się otworzyć zadania. Mogło zostać usunięte lub uszkodzone.",
 		"mode_import_failed": "Import trybu nie powiódł się: {{error}}",
 		"delete_rules_folder_failed": "Nie udało się usunąć folderu reguł: {{rulesFolderPath}}. Błąd: {{error}}",
 		"command_not_found": "Polecenie '{{name}}' nie zostało znalezione",

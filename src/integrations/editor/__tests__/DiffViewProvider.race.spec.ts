@@ -236,6 +236,71 @@ describe("DiffViewProvider race-condition safety", () => {
 		expect(vi.mocked(fs.writeFile)).not.toHaveBeenCalled()
 	})
 
+	it("update(isFinal=true) racing reset() during its first applyEdit still buffers approved bytes for recovery", async () => {
+		// Regression for the third reset() race window inside update(isFinal=true).
+		// The prior two fixes (commit 09739193c) closed the windows AROUND
+		// saveChanges(); this one is BEFORE it. update(isFinal=true) does up to
+		// three sequential awaits (partial replace, optional trim, final replace),
+		// each followed by `if (edit.isStale) return`. If reset() flips isStale
+		// during ANY of those awaits, update() bails before it reaches the
+		// pendingSave publication site at the tail of the isFinal block —
+		// pendingSave stays undefined, saveChanges() takes its "nothing to save"
+		// early-return without setting lastEditedRelPath, and the subsequent
+		// pushToolWriteResult() throws "No file path available in DiffViewProvider".
+		// Real-world trigger: TaskStreamProcessor.resetStreamingState() races
+		// WriteToFileTool.execute() between its update(isFinal=true) and saveChanges().
+		// The fix moves the pendingSave publication BEFORE any await in the isFinal
+		// branch, so even a bail at the EARLIEST possible stale-check still leaves
+		// the approved bytes in the recovery buffer.
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const { session } = installFakeSession(provider)
+
+		// Arm the very first applyEdit (the partial replace at the top of update())
+		// with a deferred, so we can race reset() during the worst-case window:
+		// before update() has even entered the isFinal block.
+		const partialDeferred = deferred<boolean>()
+		vi.mocked(vscode.workspace.applyEdit).mockReturnValueOnce(partialDeferred.promise as any)
+
+		const updatePromise = provider.update("approved\n", true)
+
+		// Yield enough microtasks for update() to suspend on the partial applyEdit.
+		await Promise.resolve()
+		await Promise.resolve()
+
+		// Mid-flight reset() flips isStale and detaches activeEdit.
+		await provider.reset()
+		expect(session.isStale).toBe(true)
+		expect((provider as any).activeEdit).toBeUndefined()
+
+		// Releasing the partial applyEdit lets update() resume — it hits its
+		// first `if (edit.isStale) return` and exits BEFORE the trim/final
+		// applyEdits and BEFORE the prior pendingSave publication site at the
+		// tail of the isFinal block.
+		partialDeferred.resolve(true)
+		await expect(updatePromise).resolves.toBeUndefined()
+
+		// The fix's load-bearing assertion: pendingSave was published BEFORE the
+		// first await, so it survives the early bail.
+		expect((provider as any).pendingSave).toEqual({
+			relPath: "test.ts",
+			newContent: "approved\n",
+		})
+
+		// And saveChanges() takes the recovery branch: writes the approved bytes
+		// to disk via flushPendingSaveDirectly, sets lastEditedRelPath so the
+		// subsequent pushToolWriteResult() won't throw.
+		const result = await provider.saveChanges(false, 0)
+
+		expect(vi.mocked(fs.writeFile)).toHaveBeenCalledWith("/cwd/test.ts", "approved\n", "utf-8")
+		expect(result.finalContent).toBe("approved\n")
+		expect(result.userEdits).toBeUndefined()
+		expect((provider as any).lastEditedRelPath).toBe("test.ts")
+		expect(warnSpy).toHaveBeenCalledTimes(1)
+		expect(warnSpy.mock.calls[0]?.[0]).toContain("test.ts")
+
+		warnSpy.mockRestore()
+	})
+
 	it("saveChanges() recovers when reset() fires during the editor branch's document.save() await", async () => {
 		// Narrower-window race: reset() fires AFTER saveChanges() has already
 		// entered the editor branch (edit was valid at entry) but DURING one of
@@ -291,6 +356,85 @@ describe("DiffViewProvider race-condition safety", () => {
 		expect((provider as any).pendingSave).toBeUndefined()
 		expect(warnSpy).toHaveBeenCalledTimes(1)
 		expect(warnSpy.mock.calls[0]?.[0]).toContain("test.ts")
+
+		warnSpy.mockRestore()
+	})
+
+	it("saveChanges() recovers when updatedDocument.save() returns false (silent VSCode refusal)", async () => {
+		// Regression for the silent no-save symptom: VSCode's TextDocument.save()
+		// returns Thenable<boolean> — false means the save was silently refused
+		// (read-only document, disposed buffer, locked file, internal VS Code
+		// error). The prior arrangement awaited save() and discarded its return
+		// value, then drained pendingSave and reported success to the model.
+		// Result: model thinks the file was written, user finds the file empty
+		// or stale, no error anywhere — confirmed by the user manually pressing
+		// Ctrl+S to save the buffer themselves. The fix captures save()'s return
+		// and falls through to flushPendingSaveDirectly() when it's false, so the
+		// user-approved bytes still land on disk.
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const { session } = installFakeSession(provider)
+
+		// Make the document dirty, but arm save() to silently refuse (return false).
+		;(session.diffEditor as any).document = {
+			...session.diffEditor.document,
+			isDirty: true,
+			save: vi.fn().mockResolvedValue(false),
+			getText: vi.fn().mockReturnValue("approved\n"),
+		}
+
+		vi.mocked(vscode.workspace.applyEdit).mockResolvedValue(true)
+
+		// update(isFinal=true) populates pendingSave AND edit.newContent.
+		await provider.update("approved\n", true)
+		expect((provider as any).pendingSave).toEqual({ relPath: "test.ts", newContent: "approved\n" })
+
+		const result = await provider.saveChanges(false, 0)
+
+		// Editor save returned false — recovery branch MUST have written the
+		// approved bytes to disk via fs.writeFile, NOT silently reported success.
+		expect(vi.mocked(fs.writeFile)).toHaveBeenCalledWith("/cwd/test.ts", "approved\n", "utf-8")
+		expect(result.finalContent).toBe("approved\n")
+		expect((provider as any).lastEditedRelPath).toBe("test.ts")
+		expect((provider as any).pendingSave).toBeUndefined()
+		expect(warnSpy.mock.calls.some((call) => String(call[0]).includes("test.ts"))).toBe(true)
+
+		warnSpy.mockRestore()
+	})
+
+	it("saveChanges() writes through pendingSave when document is not dirty but buffer is queued", async () => {
+		// Defense against the !isDirty silent-skip path. updatedDocument.isDirty
+		// can be false at saveChanges() time if (a) autosave fired between
+		// update(isFinal=true) and saveChanges(), or (b) the user reverted the
+		// editor manually. In either case, the prior arrangement skipped save()
+		// entirely and trusted that disk already held the right bytes — but it
+		// may not. With pendingSave populated by update(isFinal=true), the
+		// flushPendingSaveDirectly() path is idempotent and guarantees the
+		// user-approved bytes are on disk regardless of buffer state.
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+		const { session } = installFakeSession(provider)
+
+		// Document is NOT dirty — editor branch would skip save() entirely.
+		;(session.diffEditor as any).document = {
+			...session.diffEditor.document,
+			isDirty: false,
+			save: vi.fn(),
+			getText: vi.fn().mockReturnValue("approved\n"),
+		}
+
+		vi.mocked(vscode.workspace.applyEdit).mockResolvedValue(true)
+
+		await provider.update("approved\n", true)
+		expect((provider as any).pendingSave).toEqual({ relPath: "test.ts", newContent: "approved\n" })
+
+		const result = await provider.saveChanges(false, 0)
+
+		// save() was never called — but fs.writeFile must still have run to
+		// guarantee the buffered bytes reach disk.
+		expect((session.diffEditor as any).document.save).not.toHaveBeenCalled()
+		expect(vi.mocked(fs.writeFile)).toHaveBeenCalledWith("/cwd/test.ts", "approved\n", "utf-8")
+		expect(result.finalContent).toBe("approved\n")
+		expect((provider as any).lastEditedRelPath).toBe("test.ts")
+		expect((provider as any).pendingSave).toBeUndefined()
 
 		warnSpy.mockRestore()
 	})

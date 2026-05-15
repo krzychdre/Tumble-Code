@@ -631,7 +631,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			if (task || images) {
 				this.lifecycle.startTask(task, images)
 			} else if (historyItem) {
-				this.lifecycle.resumeTaskFromHistory()
+				this.lifecycle.resumeTaskFromHistory().catch((error) => {
+					if (this.abandoned || this.abort) {
+						return
+					}
+					console.error(
+						`[Task#${this.taskId}.${this.instanceId}] resumeTaskFromHistory failed:`,
+						error instanceof Error ? error.message : String(error),
+					)
+					const provider = this.providerRef.deref()
+					provider?.postStateToWebview().catch(() => {})
+				})
 			} else {
 				throw new Error("Either historyItem or task/images must be provided")
 			}

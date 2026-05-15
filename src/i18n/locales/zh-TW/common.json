@@ -77,6 +77,7 @@
 		"share_auth_required": "需要身份驗證。請登入以分享工作。",
 		"share_not_enabled": "此組織未啟用工作分享功能。",
 		"share_task_not_found": "未找到工作或存取被拒絕。",
+		"task_show_failed": "無法開啟工作。工作可能已被刪除或損壞。",
 		"delete_rules_folder_failed": "刪除規則資料夾失敗: {{rulesFolderPath}}。錯誤: {{error}}",
 		"command_not_found": "找不到指令 '{{name}}'",
 		"open_command_file": "開啟指令檔案失敗",

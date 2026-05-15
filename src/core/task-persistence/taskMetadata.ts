@@ -9,6 +9,7 @@ import { getApiMetrics } from "../../shared/getApiMetrics"
 import { findLastIndex } from "../../shared/array"
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { t } from "../../i18n"
+import { readTaskMessages } from "./taskMessages"
 
 const taskSizeCache = new NodeCache({ stdTTL: 30, checkperiod: 5 * 60 })
 
@@ -40,6 +41,22 @@ export async function taskMetadata({
 	initialStatus,
 }: TaskMetadataOptions) {
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, id)
+
+	// If the in-memory messages array is empty (e.g. abortTask fires after
+	// startTask cleared the arrays but before the first say landed, or a
+	// provider error short-circuits initialization) the disk file usually
+	// still holds the real conversation. Fall back to it so we don't clobber
+	// the task title in history with "No messages".
+	if (!messages || messages.length === 0) {
+		try {
+			const persisted = await readTaskMessages({ taskId: id, globalStoragePath })
+			if (persisted.length > 0) {
+				messages = persisted
+			}
+		} catch {
+			// Swallow; we'll fall through to the "no messages" branch.
+		}
+	}
 
 	// Determine message availability upfront
 	const hasMessages = messages && messages.length > 0

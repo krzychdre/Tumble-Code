@@ -77,6 +77,7 @@
 		"share_auth_required": "Autentikasi diperlukan. Silakan masuk untuk berbagi tugas.",
 		"share_not_enabled": "Berbagi tugas tidak diaktifkan untuk organisasi ini.",
 		"share_task_not_found": "Tugas tidak ditemukan atau akses ditolak.",
+		"task_show_failed": "Gagal membuka tugas. Tugas mungkin telah dihapus atau rusak.",
 		"mode_import_failed": "Gagal mengimpor mode: {{error}}",
 		"delete_rules_folder_failed": "Gagal menghapus folder aturan: {{rulesFolderPath}}. Error: {{error}}",
 		"command_not_found": "Perintah '{{name}}' tidak ditemukan",
