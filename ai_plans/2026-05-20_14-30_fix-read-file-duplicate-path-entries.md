@@ -2,8 +2,9 @@
 
 **Date:** 2026-05-20
 **Author:** Grandmaster (with user collaboration)
-**Status:** Implemented
+**Status:** Implemented (committed to branch only - not pushed, no PR)
 **Branch:** `fix/read-file-duplicate-path-entries`
+**Commits:** `b139a130b` - dedup discriminator (Sections 3-6); `dd091bff` - race elimination (Section 7)
 **Related:** `ai_plans/2026-05-15_21-16_fix-duplicate-execute-command-cards.md`
 
 ## 1. Objective
@@ -17,10 +18,16 @@ tool - without hiding a legitimate second invocation of the same target.
 From real persisted task `019e4189`: the model emits ONE `read_file` tool_use;
 Roo persists TWO `ask:"tool"` cards. Every askApproval tool streams in two
 phases - `handlePartial` emits a placeholder card, `requestApproval` emits the
-complete card. A streaming race finalizes the placeholder before the complete
-`ask(..., false)`. The `2026-05-15` finalized-duplicate dedup only reused a
-finalized tail when `text === text`; for any tool whose placeholder and
-complete payloads diverge in text, it missed - producing a duplicate card.
+complete card. The placeholder->complete reconciliation in `TaskAskSay.ask`
+could fail, stranding the placeholder while the complete card was appended as a
+separate second card. Two independent causes were found, each fixed:
+
+- **(a) text-based dedup miss** - the `2026-05-15` finalized-duplicate dedup
+  only reused a tail card when `text === text`; for any tool whose placeholder
+  and complete payloads diverge in text it missed. Fixed in Sections 3-6.
+- **(b) tail-adjacency-bound reconciliation** - reconciliation only matched a
+  placeholder still at `clineMessages.at(-1)`, so an intervening `say`
+  displaced and orphaned it. Fixed in Section 7.
 
 ## 3. Discriminator: native tool-call id
 
@@ -30,8 +37,10 @@ invocation-precise signal is the native `tool_use.id`, already on the `block`
 passed to both `handlePartial` and `execute`.
 
 Tools stamp the id onto their `ask:"tool"` payloads as `toolCallId`. The dedup
-in `TaskAskSay.ask` merges a finalized tail into the new complete card iff both
+in `TaskAskSay.ask` merges a placeholder into the new complete card iff both
 carry the SAME `toolCallId`; when ids are absent it falls back to exact-text.
+(Section 7 extends this lookup from the tail to a bounded recent window, so an
+intervening `say` cannot defeat it.)
 The placeholder and complete card of one invocation share the id; two
 invocations never do - so two genuine invocations always stay two cards.
 
