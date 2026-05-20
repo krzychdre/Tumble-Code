@@ -20,7 +20,7 @@ export class SearchFilesTool extends BaseTool<"search_files"> {
 	readonly name = "search_files" as const
 
 	async execute(params: SearchFilesParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		const relDirPath = params.path
 		const regex = params.regex
@@ -53,6 +53,9 @@ export class SearchFilesTool extends BaseTool<"search_files"> {
 			regex: regex,
 			filePattern: filePattern,
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so the finalized-duplicate dedup links
+			// this complete card to its streaming placeholder (which differs in text).
+			toolCallId,
 		}
 
 		try {
@@ -85,6 +88,9 @@ export class SearchFilesTool extends BaseTool<"search_files"> {
 			regex: regex ?? "",
 			filePattern: filePattern ?? "",
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		const partialMessage = JSON.stringify({ ...sharedMessageProps, content: "" } satisfies ClineSayTool)

@@ -18,7 +18,7 @@ export class SkillTool extends BaseTool<"skill"> {
 
 	async execute(params: SkillParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { skill: skillName, args } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
 			// Validate skill name parameter
@@ -66,7 +66,7 @@ export class SkillTool extends BaseTool<"skill"> {
 			}
 
 			// Build approval message
-			const toolMessage = buildSkillApprovalMessage(skillName, args, skillContent)
+			const toolMessage = buildSkillApprovalMessage(skillName, args, skillContent, toolCallId)
 
 			const didApprove = await askApproval("tool", toolMessage)
 
@@ -88,6 +88,9 @@ export class SkillTool extends BaseTool<"skill"> {
 			tool: "skill",
 			skill: skillName,
 			args: args,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		})
 
 		await task.ask("tool", partialMessage, block.partial).catch(() => {})

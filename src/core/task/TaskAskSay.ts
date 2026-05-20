@@ -16,6 +16,7 @@ import {
 import { type ToolName } from "@roo-code/types"
 
 import { type TaskHistory } from "./TaskHistory"
+import { getToolCallId } from "./toolAskIdentity"
 import { checkAutoApproval } from "../auto-approval"
 import { findLastIndex } from "../../shared/array"
 import { formatResponse } from "../prompts/responses"
@@ -108,22 +109,53 @@ export class TaskAskSay {
 					throw new AskIgnoredError("new partial")
 				}
 			} else {
-				// Dedup: if the tail is already a finalized ask of the same type with the
-				// same text, treat this call as a re-ask on the existing message instead of
-				// appending. This catches a race where some upstream path finalizes the
-				// partial (partial=true → partial=false) before the second ask(text, false)
-				// reaches this code. Without dedup, the second call falls through to the
-				// "new and complete message" branch and creates a duplicate UI card whose
-				// ts diverges from task.lastMessageTs — breaking executionId-based status
-				// routing for tools like execute_command (see ai_plans/2026-05-15_21-16).
-				const isAlreadyFinalizedDuplicate =
+				// Dedup: if the tail is already a finalized ask of the same type, treat this
+				// call as a re-ask on the existing message instead of appending. This catches
+				// a race where some upstream path finalizes the partial (partial=true →
+				// partial=false) before the second ask(text, false) reaches this code.
+				// Without dedup, the second call falls through to the "new and complete
+				// message" branch and creates a duplicate UI card whose ts diverges from
+				// task.lastMessageTs — breaking executionId-based status routing for tools
+				// like execute_command (see ai_plans/2026-05-15_21-16).
+				//
+				// For ask:"tool" the placeholder emitted by a tool's handlePartial and the
+				// complete payload emitted by its requestApproval differ in text (read_file
+				// adds reason/content/startLine; search_files swaps content:"" for results),
+				// so a raw text comparison misses the duplicate. The discriminator must stay
+				// invocation-precise: reuse a leftover streaming placeholder, but NEVER merge
+				// into a different invocation — otherwise a second legitimate read of the
+				// same file (e.g. a different line range) would be hidden.
+				//
+				// When a tool stamps the native tool-call id onto both its placeholder and
+				// its complete ask:"tool" payload, the two cards of one invocation share
+				// that id and two invocations never do — so id equality is the precise
+				// signal. When ids are absent (tools that have not adopted stamping), fall
+				// back to exact-text, preserving the prior behavior for them.
+				const tailIsFinalizedSameTypeAsk =
 					!!lastMessage &&
 					lastMessage.partial !== true &&
 					lastMessage.type === "ask" &&
-					lastMessage.ask === type &&
-					(lastMessage.text ?? "") === (text ?? "")
+					lastMessage.ask === type
 
-				if (isUpdatingPreviousPartial || isAlreadyFinalizedDuplicate) {
+				let isAlreadyFinalizedDuplicate = false
+				if (tailIsFinalizedSameTypeAsk) {
+					const tailToolCallId = type === "tool" ? getToolCallId(lastMessage!.text) : undefined
+					const newToolCallId = type === "tool" ? getToolCallId(text) : undefined
+
+					if (tailToolCallId !== undefined || newToolCallId !== undefined) {
+						// At least one side carries an id: this is an id-aware tool.
+						// Merge only when both ids are present and equal.
+						isAlreadyFinalizedDuplicate = tailToolCallId !== undefined && tailToolCallId === newToolCallId
+					} else {
+						// No ids: fall back to exact-text comparison.
+						isAlreadyFinalizedDuplicate = (lastMessage!.text ?? "") === (text ?? "")
+					}
+				}
+
+				// Both branches below imply a defined tail: isUpdatingPreviousPartial
+				// requires it directly; isAlreadyFinalizedDuplicate is only ever set
+				// true when tailIsFinalizedSameTypeAsk (which requires it) held.
+				if (lastMessage && (isUpdatingPreviousPartial || isAlreadyFinalizedDuplicate)) {
 					// This is the complete version of a previously partial
 					// message, so replace the partial with the complete version.
 					this.access.askResponse = undefined

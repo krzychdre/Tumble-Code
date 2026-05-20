@@ -21,7 +21,7 @@ export class ListFilesTool extends BaseTool<"list_files"> {
 
 	async execute(params: ListFilesParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { path: relDirPath, recursive } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
 			if (!relDirPath) {
@@ -53,6 +53,9 @@ export class ListFilesTool extends BaseTool<"list_files"> {
 				tool: !recursive ? "listFilesTopLevel" : "listFilesRecursive",
 				path: getReadablePath(task.cwd, relDirPath),
 				isOutsideWorkspace,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder.
+				toolCallId,
 			}
 
 			const completeMessage = JSON.stringify({ ...sharedMessageProps, content: result } satisfies ClineSayTool)
@@ -80,6 +83,9 @@ export class ListFilesTool extends BaseTool<"list_files"> {
 			tool: !recursive ? "listFilesTopLevel" : "listFilesRecursive",
 			path: getReadablePath(task.cwd, relDirPath ?? ""),
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		const partialMessage = JSON.stringify({ ...sharedMessageProps, content: "" } satisfies ClineSayTool)
