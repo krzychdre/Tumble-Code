@@ -19,7 +19,7 @@ def mock_auth_flow():
          patch("src.routers.browser.get_userinfo") as mock_userinfo, \
          patch("src.routers.browser.get_oauth_state") as mock_get_state, \
          patch("src.routers.browser.get_or_create_user") as mock_create_user, \
-         patch("src.routers.browser.create_session_and_token") as mock_session, \
+         patch("src.routers.browser.create_session") as mock_session, \
          patch("src.routers.browser.create_ticket") as mock_ticket:
 
         mock_get_state.return_value = MagicMock(
@@ -39,7 +39,8 @@ def mock_auth_flow():
             "picture": "https://example.com/photo.jpg",
         }
         mock_create_user.return_value = MagicMock(id="user-123")
-        mock_session.return_value = (MagicMock(id="session-123"), "raw-token")
+        # create_session now returns just the Session (no client token at callback)
+        mock_session.return_value = MagicMock(id="session-123")
         mock_ticket.return_value = "test-ticket-code"
 
         yield {

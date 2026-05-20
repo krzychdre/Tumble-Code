@@ -1,13 +1,9 @@
-"""Tests for Clerk-compatible auth endpoints."""
+"""Tests for Clerk-compatible auth endpoints (error paths only).
 
-import pytest
-from fastapi.testclient import TestClient
-from src.main import app
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
+The full happy-path sign-in flow lives in test_sign_in_flow.py.
+The `client` fixture is provided by conftest.py with get_db overridden
+to use the per-test in-memory SQLite engine.
+"""
 
 
 def test_sign_in_missing_strategy(client):

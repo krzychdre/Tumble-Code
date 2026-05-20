@@ -22,7 +22,7 @@ from src.services.auth_service import (
     store_oauth_state,
     get_oauth_state,
     get_or_create_user,
-    create_session_and_token,
+    create_session,
     create_ticket,
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
@@ -268,8 +268,11 @@ async def auth_callback(
         image_url=picture,
     )
 
-    # Create session and client token
-    session, raw_token = await create_session_and_token(db, user.id)
+    # Create only the session here. The client token is minted later, at
+    # POST /v1/client/sign_ins, so the raw token can be handed back to the
+    # extension in the same request (the DB only stores its hash, so a token
+    # created here would be unrecoverable).
+    session = await create_session(db, user.id)
 
     # Generate ticket for Clerk sign-in flow
     ticket_code = await create_ticket(db, session.id)

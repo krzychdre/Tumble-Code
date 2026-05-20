@@ -17,7 +17,7 @@ from src.services.auth_service import (
     validate_ticket,
     validate_client_token,
     deactivate_session,
-    create_session_and_token,
+    create_client_token,
 )
 from src.auth.jwt_issuer import issue_session_token
 from src.auth.clerk_facade import (
@@ -57,8 +57,10 @@ async def sign_in(
             detail="Invalid or expired ticket",
         )
 
-    # Create a new client token for this session
-    _, raw_token = await create_session_and_token(db, session.user_id)
+    # Bind the client token to the ticket's session — not a new one — so the
+    # session id we return in the body matches the token's session, and the
+    # subsequent POST /v1/client/sessions/{sess_id}/tokens call resolves.
+    _, raw_token = await create_client_token(db, session.id)
 
     body, auth_header_value = format_sign_in_response(session.id, raw_token)
 

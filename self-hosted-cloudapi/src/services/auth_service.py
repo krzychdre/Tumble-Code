@@ -47,26 +47,46 @@ async def get_or_create_user(
     return user
 
 
-async def create_session_and_token(
+async def create_session(
     db: AsyncSession,
     user_id: str,
-) -> tuple[Session, str]:
-    """Create a new session and client token for a user."""
+) -> Session:
+    """Create a new session for a user (no client token yet)."""
     session = Session(user_id=user_id)
     db.add(session)
     await db.flush()
+    return session
 
-    # Generate a secure client token
+
+async def create_client_token(
+    db: AsyncSession,
+    session_id: str,
+) -> tuple[ClientToken, str]:
+    """Issue a fresh client token bound to an existing session.
+
+    The raw token is only returned here; the DB stores only its SHA-256 hash,
+    so callers MUST hand the raw value back to the client in the same request.
+    """
     raw_token = secrets.token_urlsafe(48)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
     client_token = ClientToken(
-        session_id=session.id,
+        session_id=session_id,
         token_hash=token_hash,
     )
     db.add(client_token)
     await db.flush()
 
+    return client_token, raw_token
+
+
+async def create_session_and_token(
+    db: AsyncSession,
+    user_id: str,
+) -> tuple[Session, str]:
+    """Create a new session and an initial client token for a user."""
+    session = await create_session(db, user_id)
+    _, raw_token = await create_client_token(db, session.id)
     return session, raw_token
 
 
@@ -100,7 +120,13 @@ async def validate_ticket(
     if ticket is None:
         return None
 
-    if ticket.expires_at < datetime.now(timezone.utc):
+    # SQLite's aiosqlite driver returns naive datetimes even for columns
+    # declared as DateTime(timezone=True). Coerce to UTC before comparing so
+    # the same code works on Postgres (aware) and SQLite (naive).
+    expires_at = ticket.expires_at
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
         return None
 
     ticket.used = True
