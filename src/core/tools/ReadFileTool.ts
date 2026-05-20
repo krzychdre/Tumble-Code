@@ -84,7 +84,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	 * Execute new single-file format with slice/indentation mode support.
 	 */
 	private async executeNew(params: ReadFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { pushToolResult } = callbacks
+		const { pushToolResult, toolCallId } = callbacks
 		const modelInfo = task.api.getModel().info
 		const filePath = params.path
 
@@ -163,7 +163,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			}
 
 			// Phase 2: Request user approval
-			await this.requestApproval(task, filesToApprove, updateFileResult)
+			await this.requestApproval(task, filesToApprove, updateFileResult, toolCallId)
 
 			// Phase 3: Process approved files
 			const imageMemoryTracker = new ImageMemoryTracker()
@@ -428,6 +428,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		task: Task,
 		filesToApprove: FileResult[],
 		updateFileResult: (path: string, updates: Partial<FileResult>) => void,
+		toolCallId?: string,
 	): Promise<void> {
 		if (filesToApprove.length === 0) return
 
@@ -445,7 +446,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				return { path: readablePath, lineSnippet, isOutsideWorkspace, key, content: fullPath }
 			})
 
-			const completeMessage = JSON.stringify({ tool: "readFile", batchFiles } satisfies ClineSayTool)
+			const completeMessage = JSON.stringify({ tool: "readFile", batchFiles, toolCallId } satisfies ClineSayTool)
 			const { response, text, images } = await task.ask("tool", completeMessage, false)
 
 			if (response === "yesButtonClicked") {
@@ -513,6 +514,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 				content: fullPath,
 				reason: lineSnippet,
 				startLine,
+				toolCallId,
 			} satisfies ClineSayTool)
 
 			const { response, text, images } = await task.ask("tool", completeMessage, false)
@@ -652,6 +654,10 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			tool: "readFile",
 			path: getReadablePath(task.cwd, filePath),
 			isOutsideWorkspace: filePath ? isPathOutsideWorkspace(fullPath) : false,
+			// Stamp the native tool-call id so the finalized-duplicate dedup can
+			// recognise this placeholder and the later complete card as one
+			// invocation even though their payloads differ in text.
+			toolCallId: block.id,
 		}
 		const partialMessage = JSON.stringify({
 			...sharedMessageProps,

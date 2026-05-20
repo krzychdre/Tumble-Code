@@ -22,7 +22,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 
 	async execute(params: NewTaskParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { mode, message, todos } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
 			// Validate required parameters.
@@ -101,6 +101,10 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				mode: targetMode.name,
 				content: message,
 				todos: todoItems,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder, whose
+				// payload differs (mode slug vs name, raw vs parsed todos).
+				toolCallId,
 			})
 
 			const didApprove = await askApproval("tool", toolMessage)
@@ -136,6 +140,9 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 			mode: mode ?? "",
 			content: message ?? "",
 			todos: todos,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		})
 
 		await task.ask("tool", partialMessage, block.partial).catch(() => {})

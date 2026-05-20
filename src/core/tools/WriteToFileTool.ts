@@ -27,7 +27,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	readonly name = "write_to_file" as const
 
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { pushToolResult, handleError, askApproval } = callbacks
+		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
 		const relPath = params.path
 		let newContent = params.content
 
@@ -94,6 +94,10 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			content: newContent,
 			isOutsideWorkspace,
 			isProtected: isWriteProtected,
+			// Stamp the native tool-call id so the finalized-duplicate dedup links
+			// this complete card to its streaming placeholder, whose content
+			// differs (raw newContent vs the unified diff shown on approval).
+			toolCallId,
 		}
 
 		try {
@@ -239,6 +243,9 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			content: newContent || "",
 			isOutsideWorkspace,
 			isProtected: isWriteProtected,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		const partialMessage = JSON.stringify(sharedMessageProps)

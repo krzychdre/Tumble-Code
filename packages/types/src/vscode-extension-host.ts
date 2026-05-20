@@ -840,6 +840,11 @@ export interface ClineSayTool {
 	description?: string
 	// Properties for skill tool
 	skill?: string
+	// Native tool-call id, stamped by tools whose handlePartial placeholder and
+	// complete payload diverge in text (read_file, search_files). Lets the
+	// finalized-duplicate dedup recognise the placeholder and the complete card
+	// as the same invocation without a brittle text comparison.
+	toolCallId?: string
 }
 
 export interface ClineAskUseMcpServer {

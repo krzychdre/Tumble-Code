@@ -730,4 +730,53 @@ describe("ReadFileTool", () => {
 			expect(description).toBe("[read_file with missing path]")
 		})
 	})
+
+	describe("multi-range read (single call)", () => {
+		// The native read_file schema is single-range per call (path + offset/limit
+		// OR one indentation block). Multiple disjoint ranges in ONE call are only
+		// expressible via the legacy { files:[{ path, lineRanges:[...] }] } format,
+		// which executeLegacy reads and concatenates. This proves that path: one
+		// approval prompt, both ranges read, concatenated into one result.
+		it("reads both ranges of one file and concatenates them into a single result", async () => {
+			const mockTask = createMockTask()
+			const callbacks = createMockCallbacks()
+
+			const tenLines = Array.from({ length: 10 }, (_, i) => `line ${i + 1}`).join("\n")
+			// executeLegacy calls fs.readFile(path, "utf8") and expects a string;
+			// executeNew calls fs.readFile(path) and expects a Buffer. Honor the
+			// encoding argument so this mock works for the legacy path under test.
+			mockedFsReadFile.mockImplementation((async (_path: unknown, encoding?: unknown) =>
+				encoding === "utf8" ? tenLines : Buffer.from(tenLines)) as any)
+
+			await readFileTool.execute(
+				{
+					_legacyFormat: true,
+					files: [
+						{
+							path: "multi.ts",
+							lineRanges: [
+								{ start: 1, end: 2 },
+								{ start: 5, end: 6 },
+							],
+						},
+					],
+				} as any,
+				mockTask as any,
+				callbacks,
+			)
+
+			// Exactly one approval prompt for the one file.
+			expect(mockTask.ask).toHaveBeenCalledTimes(1)
+
+			// The single result concatenates both ranges, each line prefixed "N | ".
+			const pushed = callbacks.pushToolResult.mock.calls[0][0] as string
+			expect(pushed).toContain("1 | line 1")
+			expect(pushed).toContain("2 | line 2")
+			expect(pushed).toContain("5 | line 5")
+			expect(pushed).toContain("6 | line 6")
+			// Lines outside both ranges are not included.
+			expect(pushed).not.toContain("3 | line 3")
+			expect(pushed).not.toContain("7 | line 7")
+		})
+	})
 })

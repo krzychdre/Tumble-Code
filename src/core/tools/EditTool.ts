@@ -27,7 +27,7 @@ export class EditTool extends BaseTool<"edit"> {
 
 	async execute(params: EditParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { file_path: relPath, old_string: oldString, new_string: newString, replace_all: replaceAll } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
 			// Validate required parameters
@@ -181,6 +181,9 @@ export class EditTool extends BaseTool<"edit"> {
 				path: getReadablePath(task.cwd, relPath),
 				diff: sanitizedDiff,
 				isOutsideWorkspace,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder.
+				toolCallId,
 			}
 
 			const completeMessage = JSON.stringify({
@@ -260,6 +263,9 @@ export class EditTool extends BaseTool<"edit"> {
 			path: getReadablePath(task.cwd, relPath!),
 			diff: block.params.old_string ? "1 edit operation" : undefined,
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})

@@ -22,6 +22,7 @@ export function buildSkillApprovalMessage(
 	skillName: string,
 	args: string | undefined,
 	skillContent: Pick<SkillContent, "source" | "description">,
+	toolCallId?: string,
 ): string {
 	return JSON.stringify({
 		tool: "skill",
@@ -29,6 +30,9 @@ export function buildSkillApprovalMessage(
 		args,
 		source: skillContent.source,
 		description: skillContent.description,
+		// Stamp the native tool-call id so the finalized-duplicate dedup links
+		// this complete card to its streaming placeholder.
+		toolCallId,
 	})
 }
 

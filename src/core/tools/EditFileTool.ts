@@ -143,7 +143,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		const old_string = typeof params.old_string === "string" ? params.old_string : ""
 		const new_string = typeof params.new_string === "string" ? params.new_string : ""
 		const expected_replacements = params.expected_replacements ?? 1
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 		let relPathForErrorHandling: string | undefined
 		let operationPreviewForErrorHandling: string | undefined
 
@@ -164,6 +164,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 				path: getReadablePath(task.cwd, relPath),
 				diff: operationPreviewForErrorHandling,
 				isOutsideWorkspace,
+				// Same tool-call id as the placeholder so this finalize reuses
+				// that row instead of appending a duplicate.
+				toolCallId,
 			}
 
 			// Finalize the existing partial tool ask row so the UI doesn't get stuck in a spinner state.
@@ -406,6 +409,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 				path: getReadablePath(task.cwd, relPath),
 				diff: sanitizedDiff,
 				isOutsideWorkspace,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder.
+				toolCallId,
 			}
 
 			const completeMessage = JSON.stringify({
@@ -519,6 +525,9 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			path: getReadablePath(task.cwd, relPath),
 			diff: operationPreview,
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})

@@ -17,7 +17,7 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 	readonly name = "update_todo_list" as const
 
 	async execute(params: UpdateTodoListParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { pushToolResult, handleError, askApproval } = callbacks
+		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
 
 		try {
 			const todosRaw = params.todos
@@ -51,6 +51,9 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 			const approvalMsg = JSON.stringify({
 				tool: "updateTodoList",
 				todos: normalizedTodos,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder.
+				toolCallId,
 			})
 
 			approvedTodoList = cloneDeep(normalizedTodos)
@@ -101,6 +104,9 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 		const approvalMsg = JSON.stringify({
 			tool: "updateTodoList",
 			todos: todos,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		})
 		await task.ask("tool", approvalMsg, block.partial).catch(() => {})
 	}
