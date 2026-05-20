@@ -65,3 +65,48 @@ export function isSameToolInvocation(textA: string | undefined, textB: string | 
 	const idB = getToolCallId(textB)
 	return idA !== undefined && idA === idB
 }
+
+/** Minimal shape of a clineMessage needed to match an ask:"tool" by id. */
+interface ToolAskCandidate {
+	type: "ask" | "say"
+	ask?: string
+	text?: string
+}
+
+/**
+ * How far back from the tail to look for a tool placeholder. The placeholder
+ * is created in the same streaming turn as its complete card, so a small
+ * window is sufficient and keeps the scan O(1) regardless of history size.
+ */
+const TOOL_ASK_LOOKBACK = 50
+
+/**
+ * Find the index of the most recent `ask:"tool"` message whose payload carries
+ * `toolCallId`, scanning backward from the tail within a bounded window.
+ *
+ * This makes the streaming placeholder -> complete card transition driven by
+ * tool identity rather than tail adjacency: an intervening say (checkpoint,
+ * text, reasoning) emitted between handlePartial and execute() can no longer
+ * orphan the placeholder. Returns -1 when no match is found or `toolCallId`
+ * is empty.
+ */
+export function findToolAskIndexByCallId(
+	messages: readonly ToolAskCandidate[],
+	toolCallId: string | undefined,
+): number {
+	if (!toolCallId) {
+		return -1
+	}
+
+	const start = messages.length - 1
+	const end = Math.max(0, messages.length - TOOL_ASK_LOOKBACK)
+
+	for (let i = start; i >= end; i--) {
+		const message = messages[i]
+		if (message.type === "ask" && message.ask === "tool" && getToolCallId(message.text) === toolCallId) {
+			return i
+		}
+	}
+
+	return -1
+}

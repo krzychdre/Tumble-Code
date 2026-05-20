@@ -50,17 +50,17 @@ Single-call multi-range remains a native-schema gap (only the legacy
 
 ## 5. File Changes
 
-| Action | File Path                                               | Brief Purpose                                                 |
-| ------ | ------------------------------------------------------- | ------------------------------------------------------------- |
-| NEW    | `src/core/task/toolAskIdentity.ts`                      | `getToolCallId` / `isSameToolInvocation`                      |
-| NEW    | `src/core/task/__tests__/toolAskIdentity.spec.ts`       | Helper unit tests                                             |
-| MOD    | `src/core/task/TaskAskSay.ts`                           | Dedup uses `toolCallId` for `ask:"tool"`, exact-text fallback |
-| MOD    | `packages/types/src/vscode-extension-host.ts`           | Optional `toolCallId` on `ClineSayTool`                       |
-| MOD    | `src/core/assistant-message/presentAssistantMessage.ts` | Pass `toolCallId` into every `ask:"tool"` tool's callbacks    |
-| MOD    | `src/core/tools/*.ts` (15 tools)                        | Stamp `toolCallId` on placeholder + complete payloads         |
-| MOD    | `src/services/skills/skillInvocation.ts`                | `buildSkillApprovalMessage` accepts `toolCallId`              |
-| MOD    | `src/core/task/__tests__/ask-finalized-dedup.spec.ts`   | Cases a/b/c/d + per-tool collapse/distinct tests              |
-| MOD    | `src/core/tools/__tests__/readFileTool.spec.ts`         | Case (d) multi-range read+concatenate                         |
+| Action | File Path                                               | Brief Purpose                                                         |
+| ------ | ------------------------------------------------------- | --------------------------------------------------------------------- |
+| NEW    | `src/core/task/toolAskIdentity.ts`                      | `getToolCallId` / `isSameToolInvocation` / `findToolAskIndexByCallId` |
+| NEW    | `src/core/task/__tests__/toolAskIdentity.spec.ts`       | Helper unit tests                                                     |
+| MOD    | `src/core/task/TaskAskSay.ts`                           | Identity-driven placeholder transition + dedup fallback               |
+| MOD    | `packages/types/src/vscode-extension-host.ts`           | Optional `toolCallId` on `ClineSayTool`                               |
+| MOD    | `src/core/assistant-message/presentAssistantMessage.ts` | Pass `toolCallId` into every `ask:"tool"` tool's callbacks            |
+| MOD    | `src/core/tools/*.ts` (15 tools)                        | Stamp `toolCallId` on placeholder + complete payloads                 |
+| MOD    | `src/services/skills/skillInvocation.ts`                | `buildSkillApprovalMessage` accepts `toolCallId`                      |
+| MOD    | `src/core/task/__tests__/ask-finalized-dedup.spec.ts`   | Cases a/b/c/d + per-tool + race-elimination tests                     |
+| MOD    | `src/core/tools/__tests__/readFileTool.spec.ts`         | Case (d) multi-range read+concatenate                                 |
 
 ## 6. Verification Standards
 
@@ -70,8 +70,48 @@ Single-call multi-range remains a native-schema gap (only the legacy
       `list_files` - placeholder->race-finalize->complete = ONE card; two
       distinct invocations = TWO cards.
 - [x] `codebase_search` no-regression test stays ONE card.
-- [x] Regression: 630 passed / 4 skipped across 45 task + tool +
+- [x] Race-elimination tests: placeholder transitions in place when a `say`
+      intervened; two distinct invocations stay two cards.
+- [x] Regression: 640 passed / 4 skipped across 45 task + tool +
       assistant-message + skills suites; webview 31/31; 0 failures.
 - [x] `tsc --noEmit` clean for `src`, `packages/types`, `webview-ui`.
-- [x] No stranded approvals: dedup branch reuses the message and resolves
-      the ask promise (execute_command dedup test).
+- [x] No stranded approvals: transition branch reuses the message and
+      resolves the ask promise (execute_command dedup test).
+
+## 7. Race Elimination (deeper fix on the same branch)
+
+### Proven race mechanism
+
+The `TaskAskSay.ask` placeholder->complete reconciliation was
+**tail-adjacency-bound**. A tool streams in two phases:
+
+- `handlePartial` -> `ask("tool", placeholder, partial=true)` adds a
+  `partial:true` `ask:"tool"` clineMessage (`TaskAskSay.ts` new-partial
+  branch, requires the tail).
+- `execute`/`requestApproval` -> `ask("tool", complete, false)` was only
+  reconciled when the placeholder was still `clineMessages.at(-1)`
+  (`isUpdatingPreviousPartial` / tail `isAlreadyFinalizedDuplicate`).
+
+Between those two calls, an intervening `say` displaces the placeholder
+from the tail. Concrete path: for `write_to_file` / `apply_diff` / `edit` /
+`apply_patch` / `new_task`, `presentAssistantMessage` calls
+`checkpointSaveAndMark(cline)` immediately before `*.handle` ->
+`checkpointSave` appends a `checkpoint_saved` `say`. A streamed text block
+(`presentAssistantMessage.ts:295` `say("text", ...)`) does the same. With
+the placeholder no longer at the tail, the complete `ask(..., false)` fell
+through to the "new and complete message" branch and appended a second
+card, orphaning the placeholder.
+
+### Fix
+
+`TaskAskSay.ask` now locates the `ask:"tool"` placeholder by its native
+`toolCallId` **anywhere in a bounded recent window** of `clineMessages`
+(`findToolAskIndexByCallId`, 50-message lookback) and transitions it in
+place - one `ts`, one message - for both the streaming-update
+(`partial:true`) and complete (`partial:false`) calls. The handoff is now
+identity-driven, not adjacency-driven, so an intervening `say` cannot
+orphan the placeholder. Partial-streaming UX is unchanged: partial cards
+still render live; only _who_ finalizes and _by what key_ changed.
+
+The tail-based `toolCallId` dedup is retained as defense-in-depth: it still
+covers the no-id fallback path (exact-text) and is not dead code.

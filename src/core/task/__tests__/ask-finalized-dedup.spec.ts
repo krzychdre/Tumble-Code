@@ -507,6 +507,146 @@ describe("TaskAskSay.ask — finalized-duplicate dedup", () => {
 		expect(toolAsks[0].ts).toBe(seededTs)
 	})
 
+	// --- Race elimination: identity-driven placeholder -> complete transition ---
+	// The streaming placeholder (ask:"tool", partial:true) can be displaced from
+	// the tail of clineMessages by an intervening say (checkpoint_saved, text,
+	// reasoning) emitted between handlePartial and the tool's execute(). The
+	// complete ask("tool", ..., false) must still transition that placeholder
+	// IN PLACE - found by toolCallId anywhere in clineMessages - so the
+	// placeholder is never left orphaned at partial:true and no second card is
+	// appended. This is the primary race cure; the tail dedup is belt-and-braces.
+
+	it("transitions a still-partial placeholder in place when a say intervened (no orphan)", async () => {
+		const { task, clineMessages } = makeTaskWithAskSay()
+		const toolCallId = "call_race_1"
+
+		// Streaming placeholder created by handlePartial.
+		const placeholderTs = 1
+		clineMessages.push({
+			ts: placeholderTs,
+			type: "ask",
+			ask: "tool",
+			text: JSON.stringify({ tool: "readFile", path: "src/a.ts", toolCallId }),
+			partial: true,
+		})
+		;(task as any).lastMessageTs = placeholderTs
+
+		// An intervening say (e.g. checkpoint_saved) displaces the placeholder
+		// from the tail before the tool's execute() runs.
+		clineMessages.push({ ts: 2, type: "say", say: "checkpoint_saved", text: "" })
+
+		// The tool's requestApproval emits the complete card.
+		const completeText = JSON.stringify({
+			tool: "readFile",
+			path: "src/a.ts",
+			content: "/abs/src/a.ts",
+			reason: "(lines 1-20)",
+			startLine: 1,
+			toolCallId,
+		})
+		const askPromise = task.ask("tool", completeText, false)
+		setTimeout(() => task.approveAsk(), 0)
+		await askPromise
+
+		// Exactly ONE tool card - the placeholder transitioned in place.
+		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
+		expect(toolAsks).toHaveLength(1)
+		expect(toolAsks[0].ts).toBe(placeholderTs)
+		expect(toolAsks[0].partial).toBe(false)
+		expect(toolAsks[0].text).toBe(completeText)
+		// The intervening say is untouched and keeps its position.
+		expect(clineMessages.map((m) => m.type)).toEqual(["ask", "say"])
+	})
+
+	it("transitions a finalized placeholder in place when a say intervened (no orphan)", async () => {
+		// Same as above but the placeholder was already finalized to partial:false
+		// by an upstream path before execute() runs.
+		const { task, clineMessages } = makeTaskWithAskSay()
+		const toolCallId = "call_race_2"
+
+		const placeholderTs = 1
+		clineMessages.push({
+			ts: placeholderTs,
+			type: "ask",
+			ask: "tool",
+			text: JSON.stringify({ tool: "appliedDiff", path: "src/b.ts", diff: "1 edit", toolCallId }),
+			partial: false,
+		})
+		;(task as any).lastMessageTs = placeholderTs
+
+		clineMessages.push({ ts: 2, type: "say", say: "text", text: "checking downstream usage" })
+
+		const completeText = JSON.stringify({
+			tool: "appliedDiff",
+			path: "src/b.ts",
+			diff: "1 edit",
+			content: "@@ -1 +1 @@",
+			toolCallId,
+		})
+		const askPromise = task.ask("tool", completeText, false)
+		setTimeout(() => task.approveAsk(), 0)
+		await askPromise
+
+		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
+		expect(toolAsks).toHaveLength(1)
+		expect(toolAsks[0].ts).toBe(placeholderTs)
+		expect(toolAsks[0].text).toBe(completeText)
+	})
+
+	it("does NOT reuse a same-id placeholder for a partial update once a say intervened - it would orphan; instead transitions in place on finalize", async () => {
+		// Defense check: a streaming partial update (partial:true) for a tool whose
+		// placeholder is no longer the tail must still update that placeholder in
+		// place, not append a second partial card.
+		const { task, clineMessages } = makeTaskWithAskSay()
+		const toolCallId = "call_race_3"
+
+		const placeholderTs = 1
+		clineMessages.push({
+			ts: placeholderTs,
+			type: "ask",
+			ask: "tool",
+			text: JSON.stringify({ tool: "readFile", path: "src/c.ts", toolCallId }),
+			partial: true,
+		})
+		;(task as any).lastMessageTs = placeholderTs
+		clineMessages.push({ ts: 2, type: "say", say: "reasoning", text: "thinking" })
+
+		// A later partial update for the SAME tool invocation.
+		await task.ask("tool", JSON.stringify({ tool: "readFile", path: "src/c.ts", toolCallId }), true).catch(() => {})
+
+		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
+		expect(toolAsks).toHaveLength(1)
+		expect(toolAsks[0].ts).toBe(placeholderTs)
+		expect(toolAsks[0].partial).toBe(true)
+	})
+
+	it("two distinct invocations still produce two cards even with intervening says", async () => {
+		// Regression guard for the race fix: identity-by-id must not collapse
+		// two genuinely different invocations.
+		const { task, clineMessages } = makeTaskWithAskSay()
+
+		clineMessages.push({
+			ts: 1,
+			type: "ask",
+			ask: "tool",
+			text: JSON.stringify({ tool: "readFile", path: "src/a.ts", content: "/abs", toolCallId: "call_d1" }),
+			partial: false,
+		})
+		clineMessages.push({ ts: 2, type: "say", say: "checkpoint_saved", text: "" })
+		;(task as any).lastMessageTs = 2
+
+		const askPromise = task.ask(
+			"tool",
+			JSON.stringify({ tool: "readFile", path: "src/a.ts", content: "/abs", toolCallId: "call_d2" }),
+			false,
+		)
+		setTimeout(() => task.approveAsk(), 0)
+		await askPromise
+
+		const toolAsks = clineMessages.filter((m) => m.type === "ask" && m.ask === "tool")
+		expect(toolAsks).toHaveLength(2)
+	})
+
 	it("finalizes a partial tail in place (existing behavior preserved)", async () => {
 		const { task, clineMessages } = makeTaskWithAskSay()
 

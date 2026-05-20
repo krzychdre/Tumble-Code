@@ -16,7 +16,7 @@ import {
 import { type ToolName } from "@roo-code/types"
 
 import { type TaskHistory } from "./TaskHistory"
-import { getToolCallId } from "./toolAskIdentity"
+import { getToolCallId, findToolAskIndexByCallId } from "./toolAskIdentity"
 import { checkAutoApproval } from "../auto-approval"
 import { findLastIndex } from "../../shared/array"
 import { formatResponse } from "../prompts/responses"
@@ -75,10 +75,33 @@ export class TaskAskSay {
 		if (partial !== undefined) {
 			const lastMessage = this.access.clineMessages.at(-1)
 
+			// Race elimination for ask:"tool": a tool's streaming placeholder and
+			// its complete card share a native tool-call id. Locate the existing
+			// message by that id ANYWHERE in recent history and transition it in
+			// place. This makes the placeholder -> complete handoff identity-driven
+			// rather than tail-adjacency-driven, so an intervening say (checkpoint,
+			// text, reasoning) emitted between handlePartial and execute() can no
+			// longer orphan the placeholder. Tail-based logic below remains the
+			// fallback for asks without an id.
+			const trackedToolAskIndex =
+				type === "tool" ? findToolAskIndexByCallId(this.access.clineMessages, getToolCallId(text)) : -1
+			const trackedToolAsk =
+				trackedToolAskIndex !== -1 ? this.access.clineMessages[trackedToolAskIndex] : undefined
+
 			const isUpdatingPreviousPartial =
 				lastMessage && lastMessage.partial && lastMessage.type === "ask" && lastMessage.ask === type
 
 			if (partial) {
+				if (trackedToolAsk) {
+					// Streaming update for an already-tracked invocation - update in
+					// place by identity, even if the placeholder is no longer the tail.
+					trackedToolAsk.text = text
+					trackedToolAsk.partial = true
+					trackedToolAsk.progressStatus = progressStatus
+					trackedToolAsk.isProtected = isProtected
+					this.access.history.updateClineMessage(trackedToolAsk)
+					throw new AskIgnoredError("updating existing partial (by tool-call id)")
+				}
 				if (isUpdatingPreviousPartial) {
 					// Existing partial message, so update it.
 					lastMessage.text = text
@@ -152,10 +175,17 @@ export class TaskAskSay {
 					}
 				}
 
-				// Both branches below imply a defined tail: isUpdatingPreviousPartial
-				// requires it directly; isAlreadyFinalizedDuplicate is only ever set
-				// true when tailIsFinalizedSameTypeAsk (which requires it) held.
-				if (lastMessage && (isUpdatingPreviousPartial || isAlreadyFinalizedDuplicate)) {
+				// Prefer the identity-matched message (found by tool-call id
+				// anywhere in history) over the tail. This is the primary race
+				// cure; the tail-based isAlreadyFinalizedDuplicate is the fallback
+				// for asks that carry no id.
+				const transitionTarget = trackedToolAsk ?? lastMessage
+
+				// transitionTarget is defined whenever we take the reuse path:
+				// trackedToolAsk is defined by construction, and the tail branches
+				// (isUpdatingPreviousPartial / isAlreadyFinalizedDuplicate) each
+				// require a defined tail.
+				if (transitionTarget && (trackedToolAsk || isUpdatingPreviousPartial || isAlreadyFinalizedDuplicate)) {
 					// This is the complete version of a previously partial
 					// message, so replace the partial with the complete version.
 					this.access.askResponse = undefined
@@ -173,14 +203,14 @@ export class TaskAskSay {
 					// lists, it's likely because the key prop is not stable.
 					// So in this case we must make sure that the message ts is
 					// never altered after first setting it.
-					askTs = lastMessage.ts
+					askTs = transitionTarget.ts
 					this.access.lastMessageTs = askTs
-					lastMessage.text = text
-					lastMessage.partial = false
-					lastMessage.progressStatus = progressStatus
-					lastMessage.isProtected = isProtected
+					transitionTarget.text = text
+					transitionTarget.partial = false
+					transitionTarget.progressStatus = progressStatus
+					transitionTarget.isProtected = isProtected
 					await this.access.history.saveClineMessages()
-					this.access.history.updateClineMessage(lastMessage)
+					this.access.history.updateClineMessage(transitionTarget)
 				} else {
 					// This is a new and complete message, so add it like normal.
 					this.access.askResponse = undefined
