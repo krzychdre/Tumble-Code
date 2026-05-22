@@ -1,4 +1,11 @@
-import { formatLargeNumber, formatDate, formatTimeAgo, formatTimestamp, formatDuration } from "../format"
+import {
+	formatLargeNumber,
+	formatDate,
+	formatTimeAgo,
+	formatTimestamp,
+	formatDateTime,
+	formatDuration,
+} from "../format"
 
 // Mock i18next
 vi.mock("i18next", () => ({
@@ -153,17 +160,27 @@ describe("formatTimeAgo", () => {
 })
 
 describe("formatTimestamp", () => {
-	it("should format a timestamp as a short HH:MM clock time", () => {
+	it("should format a timestamp as 24-hour HH:MM clock time", () => {
 		const timestamp = new Date("2024-01-15T14:30:00").getTime()
-		const result = formatTimestamp(timestamp)
-		// Locale-dependent but must contain hour and minute components
-		expect(result).toMatch(/30/)
-		expect(result).toMatch(/2|14/)
+		// 24-hour format: 14:30, never "02:30 PM".
+		expect(formatTimestamp(timestamp)).toBe("14:30")
 	})
 
-	it("should pad the minute component to two digits", () => {
+	it("should pad the hour and minute components to two digits", () => {
 		const timestamp = new Date("2024-01-15T09:05:00").getTime()
-		expect(formatTimestamp(timestamp)).toMatch(/[:.]05/)
+		expect(formatTimestamp(timestamp)).toBe("09:05")
+	})
+})
+
+describe("formatDateTime", () => {
+	it("should format a timestamp as yyyy-mm-dd hh:mm:ss in 24-hour time", () => {
+		const timestamp = new Date("2024-01-15T14:30:05").getTime()
+		expect(formatDateTime(timestamp)).toBe("2024-01-15 14:30:05")
+	})
+
+	it("should zero-pad every date and time component", () => {
+		const timestamp = new Date("2024-03-07T09:05:08").getTime()
+		expect(formatDateTime(timestamp)).toBe("2024-03-07 09:05:08")
 	})
 })
 

@@ -27,7 +27,7 @@ export const formatDate = (timestamp: number) => {
 }
 
 /**
- * Formats an epoch-ms timestamp as a short, locale-aware clock time (HH:MM).
+ * Formats an epoch-ms timestamp as a short 24-hour clock time (HH:MM).
  * Used for the non-intrusive start time shown beside status block headers.
  */
 export const formatTimestamp = (timestamp: number) => {
@@ -37,7 +37,22 @@ export const formatTimestamp = (timestamp: number) => {
 	return date.toLocaleTimeString(locale, {
 		hour: "2-digit",
 		minute: "2-digit",
+		hourCycle: "h23",
 	})
+}
+
+/**
+ * Formats an epoch-ms timestamp as a full local date-time string in
+ * `yyyy-mm-dd hh:mm:ss` (24-hour) form, e.g. `2026-05-22 17:50:33`.
+ */
+export const formatDateTime = (timestamp: number) => {
+	const date = new Date(timestamp)
+	const pad = (n: number) => String(n).padStart(2, "0")
+
+	const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+	const timePart = `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+
+	return `${datePart} ${timePart}`
 }
 
 /**

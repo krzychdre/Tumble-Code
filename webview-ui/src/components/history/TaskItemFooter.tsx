@@ -1,6 +1,6 @@
 import React from "react"
 import type { HistoryItem } from "@roo-code/types"
-import { formatTimeAgo } from "@/utils/format"
+import { formatDateTime } from "@/utils/format"
 import { CopyButton } from "./CopyButton"
 import { ExportButton } from "./ExportButton"
 import { DeleteButton } from "./DeleteButton"
@@ -36,9 +36,9 @@ const TaskItemFooter: React.FC<TaskItemFooterProps> = ({
 						<span>·</span>
 					</>
 				)}
-				{/* Datetime with time-ago format */}
+				{/* Full date and time (yyyy-mm-dd hh:mm:ss) */}
 				<StandardTooltip content={new Date(item.ts).toLocaleString()}>
-					<span className="first-letter:uppercase">{formatTimeAgo(item.ts)}</span>
+					<span>{formatDateTime(item.ts)}</span>
 				</StandardTooltip>
 
 				{/* Cost */}
