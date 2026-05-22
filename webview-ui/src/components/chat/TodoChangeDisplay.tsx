@@ -83,7 +83,10 @@ export function TodoChangeDisplay({ previousTodos, newTodos, startTs, endTs }: T
 									status === "in_progress" ? "text-vscode-charts-yellow" : ""
 								}`}>
 								{icon}
-								<span>{todo.content}</span>
+								<span className="flex-1">{todo.content}</span>
+								{status === "completed" && typeof startTs === "number" && (
+									<BlockTimestamp startTs={startTs} className="mt-1 shrink-0" />
+								)}
 							</li>
 						)
 					})}
