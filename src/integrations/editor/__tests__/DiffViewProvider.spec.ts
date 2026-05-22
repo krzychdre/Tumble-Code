@@ -377,15 +377,68 @@ describe("DiffViewProvider", () => {
 			await (diffViewProvider as any).closeAllDiffViews()
 
 			// Verify that only the appropriate tabs were closed
-			expect(closedTabs).toHaveLength(2)
-			expect(closedTabs[0].label).toBe(`file1.ts: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`)
-			expect(closedTabs[1].label).toBe(`file2.md: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`)
+			expect(closedTabs).toHaveLength(3)
+			expect(closedTabs.map((t) => t.label)).toContain(`file1.ts: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`)
+			expect(closedTabs.map((t) => t.label)).toContain(`file2.md: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`)
 
-			// Verify that the regular file and dirty diff were not closed
+			// A dirty Roo diff tab IS now closed — after its modified document is
+			// reverted to disk. The file is already correctly saved by Roo; leaving
+			// the dirty diff tab open is the user-reported bug. The regular file tab
+			// must still be untouched.
+			expect(closedTabs.map((t) => t.label)).toContain(`file4.ts: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`)
 			expect(closedTabs.find((t) => t.label === "file3.js")).toBeUndefined()
-			expect(
-				closedTabs.find((t) => t.label === `file4.ts: ${DIFF_VIEW_LABEL_CHANGES} (Editable)` && t.isDirty),
-			).toBeUndefined()
+		})
+
+		it("reverts a dirty Roo diff tab to disk before closing it, but never touches a foreign dirty tab", async () => {
+			// The dirty filter must only protect genuine unsaved user work. A
+			// Roo-owned diff tab whose content already matches disk should be
+			// reverted (clearing the dirty flag) and closed. A foreign dirty tab
+			// (not a Roo diff view) must stay open and untouched.
+			const rooDiffSave = vi.fn().mockResolvedValue(true)
+			const rooDiffDocument = {
+				uri: { scheme: "file", fsPath: "/test/roo.ts" },
+				isDirty: true,
+				getText: vi.fn().mockReturnValue("roo content"),
+				positionAt: vi.fn((n: number) => ({ line: 0, character: n })),
+				save: rooDiffSave,
+			}
+			const rooDiffTab = {
+				input: {
+					original: { scheme: DIFF_VIEW_URI_SCHEME },
+					modified: { fsPath: "/test/roo.ts" },
+				},
+				label: `roo.ts: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`,
+				isDirty: true,
+			}
+			Object.setPrototypeOf(rooDiffTab.input, vscode.TabInputTextDiff.prototype)
+
+			// A foreign dirty tab — not a Roo diff view. Must never be closed.
+			const foreignTab = {
+				input: { uri: { fsPath: "/test/user-file.ts" } },
+				label: "user-file.ts",
+				isDirty: true,
+			}
+			Object.setPrototypeOf(foreignTab.input, class TabInputText {}.prototype)
+
+			Object.defineProperty(vscode.window.tabGroups, "all", {
+				get: () => [{ tabs: [rooDiffTab, foreignTab] as any }],
+				configurable: true,
+			})
+
+			const closedTabs: any[] = []
+			vi.mocked(vscode.window.tabGroups.close).mockImplementation((tab) => {
+				closedTabs.push(tab)
+				return Promise.resolve(true)
+			})
+			;(vscode.workspace as any).textDocuments = [rooDiffDocument]
+			vi.mocked(vscode.workspace.applyEdit).mockResolvedValue(true)
+
+			await (diffViewProvider as any).closeAllDiffViews()
+
+			// The dirty Roo diff tab was closed.
+			expect(closedTabs).toContain(rooDiffTab)
+			// The foreign dirty tab was left alone.
+			expect(closedTabs).not.toContain(foreignTab)
 		})
 	})
 
