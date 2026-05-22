@@ -1075,9 +1075,7 @@ export const ChatRowContent = ({
 					return (
 						<>
 							<div
-								className={`group text-sm transition-opacity ${
-									isApiRequestInProgress ? "opacity-100" : "opacity-40 hover:opacity-100"
-								}`}
+								className="group text-sm"
 								style={{
 									...headerStyle,
 									marginBottom:
