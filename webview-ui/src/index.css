@@ -25,6 +25,13 @@
 @theme {
 	--font-display: var(--vscode-font-family);
 
+	/* Console / fixed-width font: the VS Code editor font, with a monospace
+	   fallback chain so every `font-mono` usage is guaranteed fixed-width
+	   even when VS Code does not supply --vscode-editor-font-family. */
+	--font-mono:
+		var(--vscode-editor-font-family), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+		"Courier New", monospace;
+
 	--text-xs: calc(var(--vscode-font-size) * 0.85);
 	--text-sm: calc(var(--vscode-font-size) * 0.9);
 	--text-base: var(--vscode-font-size);
@@ -54,9 +61,19 @@
 	--color-chart-3: var(--chart-3);
 	--color-chart-4: var(--chart-4);
 	--color-chart-5: var(--chart-5);
-	--radius-lg: var(--radius);
-	--radius-md: calc(var(--radius) - 2px);
-	--radius-sm: calc(var(--radius) - 4px);
+
+	/**
+	 * Rectangular corners: every Tailwind radius token is collapsed to 0 so all
+	 * `rounded-*` utilities render square corners from a single location.
+	 */
+	--radius-xs: 0;
+	--radius-sm: 0;
+	--radius-md: 0;
+	--radius-lg: 0;
+	--radius-xl: 0;
+	--radius-2xl: 0;
+	--radius-3xl: 0;
+	--radius-4xl: 0;
 
 	/**
 	 * Allow VSCode colors to be used with Tailwind.
@@ -176,7 +193,7 @@
 		--chart-3: var(--vscode-charts-yellow);
 		--chart-4: var(--vscode-charts-orange);
 		--chart-5: var(--vscode-charts-green);
-		--radius: 0.5rem;
+		--radius: 0; /* Rectangular corners across the webview. */
 	}
 
 	/* Higher specififty than VSCode's theme and root. */
@@ -184,6 +201,39 @@
 
 	body {
 		--vscode-input-border: var(--border);
+	}
+}
+
+@layer utilities {
+	/*
+	 * Rectangular corners: Tailwind v4 maps `rounded` (no suffix) to a fixed
+	 * default and `rounded-full` to `calc(infinity * 1px)`; neither reads the
+	 * `@theme` radius scale. Flatten the static utilities and their directional
+	 * variants here so the entire webview renders square corners from one place.
+	 */
+	.rounded,
+	.rounded-full,
+	.rounded-s,
+	.rounded-e,
+	.rounded-t,
+	.rounded-r,
+	.rounded-b,
+	.rounded-l,
+	.rounded-ss,
+	.rounded-se,
+	.rounded-ee,
+	.rounded-es,
+	.rounded-tl,
+	.rounded-tr,
+	.rounded-br,
+	.rounded-bl,
+	.rounded-s-full,
+	.rounded-e-full,
+	.rounded-t-full,
+	.rounded-r-full,
+	.rounded-b-full,
+	.rounded-l-full {
+		border-radius: 0;
 	}
 }
 
