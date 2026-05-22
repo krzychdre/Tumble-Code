@@ -1059,14 +1059,7 @@ export const ChatRowContent = ({
 						</div>
 					)
 				case "reasoning":
-					return (
-						<ReasoningBlock
-							content={message.text || ""}
-							ts={message.ts}
-							isStreaming={isStreaming}
-							isLast={isLast}
-						/>
-					)
+					return <ReasoningBlock content={message.text || ""} ts={message.ts} endTs={nextMessageTs} />
 				case "api_req_started":
 					// Determine if the API request is in progress
 					const isApiRequestInProgress =
