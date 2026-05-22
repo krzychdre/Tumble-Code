@@ -57,8 +57,7 @@ export const TerminalOutput: React.FC<TerminalOutputProps> = ({ content, classNa
 		<pre
 			className={className}
 			style={{
-				fontFamily:
-					"var(--vscode-editor-font-family, 'Cascadia Code', 'Fira Code', 'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace)",
+				fontFamily: "var(--font-mono)",
 				fontSize: "var(--vscode-editor-font-size, 13px)",
 				lineHeight: "var(--vscode-editor-line-height, 1.4)",
 				whiteSpace: "pre-wrap",

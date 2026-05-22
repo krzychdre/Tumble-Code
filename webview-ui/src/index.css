@@ -25,6 +25,13 @@
 @theme {
 	--font-display: var(--vscode-font-family);
 
+	/* Console / fixed-width font: the VS Code editor font, with a monospace
+	   fallback chain so every `font-mono` usage is guaranteed fixed-width
+	   even when VS Code does not supply --vscode-editor-font-family. */
+	--font-mono:
+		var(--vscode-editor-font-family), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+		"Courier New", monospace;
+
 	--text-xs: calc(var(--vscode-font-size) * 0.85);
 	--text-sm: calc(var(--vscode-font-size) * 0.9);
 	--text-base: var(--vscode-font-size);
