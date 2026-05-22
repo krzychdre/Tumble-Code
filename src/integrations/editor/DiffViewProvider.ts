@@ -465,6 +465,15 @@ export class DiffViewProvider {
 		await createDirectoriesForFile(absolutePath)
 		await fs.writeFile(absolutePath, pending.newContent, "utf-8")
 
+		// The diff editor tab from the (now-stale) session is still open. The
+		// editor-branch save path closes it via closeAllDiffViews(); this recovery
+		// branch must do the same, otherwise the tab is orphaned — left open,
+		// still flagged dirty (fs.writeFile does not notify VS Code), showing
+		// stale content even though disk is correct. closeAllDiffViews() now
+		// reverts a dirty Roo diff tab to disk before closing it, so the leftover
+		// tab is cleaned up here too.
+		await this.closeAllDiffViews()
+
 		// Use the snapshot taken at open() time when available, otherwise fall
 		// back to the current diagnostics — better than silently skipping the
 		// post-save report.
@@ -629,38 +638,77 @@ export class DiffViewProvider {
 		await this.reset()
 	}
 
+	/**
+	 * True if `tab` is one of Roo's own diff-edit tabs. Mirrors the two
+	 * recognition strategies the close logic has always used: the `cline-diff`
+	 * URI scheme on the original side, and the diff-view label as a fallback for
+	 * pre-opened files whose original side ends up with a `file` scheme instead.
+	 *
+	 * Deliberately ignores `tab.isDirty` — identifying the tab and deciding
+	 * whether it is safe to close are two separate concerns.
+	 */
+	private isRooDiffTab(tab: vscode.Tab): boolean {
+		if (tab.input instanceof vscode.TabInputTextDiff && tab.input.original.scheme === DIFF_VIEW_URI_SCHEME) {
+			return true
+		}
+
+		return tab.label.includes(DIFF_VIEW_LABEL_CHANGES)
+	}
+
+	/**
+	 * Closes a single Roo diff tab.
+	 *
+	 * A diff tab's modified side is the real file document; the streamed
+	 * `applyEdit` calls in `update()` leave that document dirty, so the tab
+	 * reports `isDirty === true`. By the time a diff session is being closed the
+	 * approved bytes are already on disk (`saveChanges()` /
+	 * `flushPendingSaveDirectly()` ran first). A direct `close()` on a dirty tab
+	 * would pop VS Code's "save / don't save" dialog, so for a dirty tab we first
+	 * revert the modified document to its on-disk state — which clears the dirty
+	 * flag — then close it. The revert is idempotent: disk already holds the
+	 * correct content, so re-applying it changes nothing.
+	 *
+	 * This is what keeps the diff tab from being orphaned open + dirty + showing
+	 * stale content after a save (the user-reported defect).
+	 */
+	private async closeDiffTab(tab: vscode.Tab): Promise<void> {
+		try {
+			if (tab.isDirty && tab.input instanceof vscode.TabInputTextDiff) {
+				const modifiedPath = tab.input.modified.fsPath
+				const document = vscode.workspace.textDocuments.find(
+					(doc) => doc.uri.scheme === "file" && arePathsEqual(doc.uri.fsPath, modifiedPath),
+				)
+
+				if (document && document.isDirty) {
+					// Revert the in-memory buffer to whatever is on disk. The disk
+					// content is authoritative here — saveChanges() or the direct
+					// recovery write already persisted the approved bytes; an
+					// fs.writeFile in particular does not notify VS Code, so the
+					// buffer can still look dirty even though disk is correct.
+					const onDiskContent = await fs.readFile(modifiedPath, "utf-8")
+					const revertEdit = new vscode.WorkspaceEdit()
+					const fullRange = new vscode.Range(
+						document.positionAt(0),
+						document.positionAt(document.getText().length),
+					)
+					revertEdit.replace(document.uri, fullRange, this.stripAllBOMs(onDiskContent))
+					await vscode.workspace.applyEdit(revertEdit)
+					await document.save()
+				}
+			}
+
+			await vscode.window.tabGroups.close(tab)
+		} catch (err) {
+			console.error(`Failed to close diff tab ${tab.label}`, err)
+		}
+	}
+
 	private async closeAllDiffViews(): Promise<void> {
-		const closeOps = vscode.window.tabGroups.all
+		const diffTabs = vscode.window.tabGroups.all
 			.flatMap((group) => group.tabs)
-			.filter((tab) => {
-				// Check for standard diff views with our URI scheme
-				if (
-					tab.input instanceof vscode.TabInputTextDiff &&
-					tab.input.original.scheme === DIFF_VIEW_URI_SCHEME &&
-					!tab.isDirty
-				) {
-					return true
-				}
+			.filter((tab) => this.isRooDiffTab(tab))
 
-				// Also check by tab label for our specific diff views
-				// This catches cases where the diff view might be created differently
-				// when files are pre-opened as text documents
-				if (tab.label.includes(DIFF_VIEW_LABEL_CHANGES) && !tab.isDirty) {
-					return true
-				}
-
-				return false
-			})
-			.map((tab) =>
-				vscode.window.tabGroups.close(tab).then(
-					() => undefined,
-					(err) => {
-						console.error(`Failed to close diff tab ${tab.label}`, err)
-					},
-				),
-			)
-
-		await Promise.all(closeOps)
+		await Promise.all(diffTabs.map((tab) => this.closeDiffTab(tab)))
 	}
 
 	private async openDiffEditor(relPath: string): Promise<vscode.TextEditor> {

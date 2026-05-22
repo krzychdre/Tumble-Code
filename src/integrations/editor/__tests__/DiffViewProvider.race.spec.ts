@@ -439,6 +439,62 @@ describe("DiffViewProvider race-condition safety", () => {
 		warnSpy.mockRestore()
 	})
 
+	it("flushPendingSaveDirectly() (stale-session recovery) closes the leftover dirty diff tab", async () => {
+		// Regression for the user-reported symptom: after a stale-session recovery
+		// the file is written to disk via fs.writeFile, but the diff editor tab was
+		// left open and still dirty. flushPendingSaveDirectly() previously never
+		// called closeAllDiffViews(), so the just-saved tab leaked. fs.writeFile
+		// writes behind VS Code's back, so the in-memory diff document stays dirty
+		// and the !isDirty filter in closeAllDiffViews() skipped it on the later
+		// reset() too. The fix: flushPendingSaveDirectly() must tear the tab down,
+		// and closeAllDiffViews() must be able to close a Roo-owned dirty tab.
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+		// A Roo diff tab whose modified-side document is still dirty.
+		const diffTabSave = vi.fn().mockResolvedValue(true)
+		const diffTabDocument = {
+			uri: { scheme: "file", fsPath: "/cwd/test.ts" },
+			isDirty: true,
+			getText: vi.fn().mockReturnValue("approved\n"),
+			positionAt: vi.fn((n: number) => ({ line: 0, character: n })),
+			save: diffTabSave,
+		}
+		const diffTab = {
+			input: { original: { scheme: "cline-diff" }, modified: { fsPath: "/cwd/test.ts" } },
+			label: "test.ts: Original ↔ Roo's Changes (Editable)",
+			isDirty: true,
+		}
+		Object.setPrototypeOf(diffTab.input, vscode.TabInputTextDiff.prototype)
+
+		const closedTabs: any[] = []
+		Object.defineProperty(vscode.window.tabGroups, "all", {
+			get: () => [{ tabs: [diffTab] }],
+			configurable: true,
+		})
+		vi.mocked(vscode.window.tabGroups.close).mockImplementation((tab: any) => {
+			closedTabs.push(tab)
+			return Promise.resolve(true)
+		})
+		;(vscode.workspace as any).textDocuments = [diffTabDocument]
+		vi.mocked(vscode.workspace.applyEdit).mockResolvedValue(true)
+
+		// Stale session: reset() detached activeEdit and flipped isStale, but
+		// pendingSave survived (the user already approved the write).
+		;(provider as any).pendingSave = { relPath: "test.ts", newContent: "approved\n" }
+
+		const result = await provider.saveChanges(false, 0)
+
+		// The bytes reached disk via the recovery path.
+		expect(vi.mocked(fs.writeFile)).toHaveBeenCalledWith("/cwd/test.ts", "approved\n", "utf-8")
+		expect(result.finalContent).toBe("approved\n")
+
+		// The load-bearing assertion: the leftover dirty diff tab was closed.
+		expect(closedTabs).toHaveLength(1)
+		expect(closedTabs[0]).toBe(diffTab)
+
+		warnSpy.mockRestore()
+	})
+
 	it("open() defensively clears any stale pendingSave from a prior unsuccessful sequence", async () => {
 		// Protects against an exception path that left pendingSave populated
 		// without a save — a new diff session must not inherit it. The clear
