@@ -5,6 +5,7 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Lightbulb, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { BlockTimestamp } from "./BlockTimestamp"
 
 interface ReasoningBlockProps {
 	content: string
@@ -14,7 +15,7 @@ interface ReasoningBlockProps {
 	metadata?: any
 }
 
-export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockProps) => {
+export const ReasoningBlock = ({ content, ts, isStreaming, isLast }: ReasoningBlockProps) => {
 	const { t } = useTranslation()
 	const { reasoningBlockCollapsed } = useExtensionState()
 
@@ -23,6 +24,8 @@ export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockP
 	const startTimeRef = useRef<number>(Date.now())
 	const [elapsed, setElapsed] = useState<number>(0)
 	const contentRef = useRef<HTMLDivElement>(null)
+	// Frozen end timestamp captured the moment the thinking block stops streaming.
+	const [finishedTs, setFinishedTs] = useState<number | undefined>(undefined)
 
 	useEffect(() => {
 		setIsCollapsed(reasoningBlockCollapsed)
@@ -36,6 +39,13 @@ export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockP
 			return () => clearInterval(id)
 		}
 	}, [isLast, isStreaming])
+
+	useEffect(() => {
+		// Once the block is no longer streaming, freeze its completion time once.
+		if (!isStreaming) {
+			setFinishedTs((prev) => prev ?? Date.now())
+		}
+	}, [isStreaming])
 
 	const seconds = Math.floor(elapsed / 1000)
 	const secondsLabel = t("chat:reasoning.seconds", { count: seconds })
@@ -52,6 +62,7 @@ export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockP
 				<div className="flex items-center gap-2">
 					<Lightbulb className="w-4" />
 					<span className="font-bold text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
+					<BlockTimestamp startTs={ts} endTs={finishedTs} />
 					{elapsed > 0 && (
 						<span className="text-sm text-vscode-descriptionForeground mt-0.5">{secondsLabel}</span>
 					)}

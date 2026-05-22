@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
 import MarkdownBlock from "../common/MarkdownBlock"
+import { BlockTimestamp } from "./BlockTimestamp"
 
 interface TodoItem {
 	id?: string
@@ -24,6 +25,10 @@ interface UpdateTodoListToolBlockProps {
 	/** Whether editing is allowed (controlled externally) */
 	editable?: boolean
 	userEdited?: boolean
+	/** Epoch-ms timestamp marking when this todo-list update started. */
+	startTs?: number
+	/** Epoch-ms timestamp marking when this todo-list update finished, if known. */
+	endTs?: number
 }
 
 const STATUS_OPTIONS = [
@@ -52,6 +57,8 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 	onChange,
 	editable = true,
 	userEdited = false,
+	startTs,
+	endTs,
 }) => {
 	const [editTodos, setEditTodos] = useState<TodoItem[]>(
 		todos.length > 0 ? todos.map((todo) => ({ ...todo, id: todo.id || genId() })) : [],
@@ -156,6 +163,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						<span className="font-bold mr-2" style={{ fontWeight: "bold" }}>
 							User Edit
 						</span>
+						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} />}
 						<div className="flex-grow" />
 					</div>
 				</ToolUseBlockHeader>
@@ -178,6 +186,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						<span className="font-bold mr-2" style={{ fontWeight: "bold" }}>
 							Todo List Updated
 						</span>
+						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} />}
 						<div className="flex-grow" />
 						{editable && (
 							<button

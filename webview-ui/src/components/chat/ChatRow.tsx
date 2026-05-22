@@ -25,6 +25,7 @@ import { formatPathTooltip } from "@src/utils/formatPathTooltip"
 
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
 import UpdateTodoListToolBlock from "./UpdateTodoListToolBlock"
+import { BlockTimestamp } from "./BlockTimestamp"
 import { TodoChangeDisplay } from "./TodoChangeDisplay"
 import CodeAccordion from "../common/CodeAccordion"
 import MarkdownBlock from "../common/MarkdownBlock"
@@ -266,6 +267,14 @@ export const ChatRowContent = ({
 	const isMcpServerResponding = isLast && lastModifiedMessage?.say === "mcp_server_request_started"
 
 	const type = message.type === "ask" ? message.ask : message.say
+
+	// Start timestamp of the status block is the message's own `ts`; the block's
+	// end time is the `ts` of the next message in the conversation (if any).
+	const nextMessageTs = useMemo(() => {
+		const currentIndex = clineMessages.findIndex((msg) => msg.ts === message.ts)
+		if (currentIndex < 0) return undefined
+		return clineMessages[currentIndex + 1]?.ts
+	}, [clineMessages, message.ts])
 
 	const normalColor = "var(--vscode-foreground)"
 	const errorColor = "var(--vscode-errorForeground)"
@@ -556,7 +565,14 @@ export const ChatRowContent = ({
 				// Get previous todos from the latest todos in the task context
 				const previousTodos = getPreviousTodos(clineMessages, message.ts)
 
-				return <TodoChangeDisplay previousTodos={previousTodos} newTodos={todos} />
+				return (
+					<TodoChangeDisplay
+						previousTodos={previousTodos}
+						newTodos={todos}
+						startTs={message.ts}
+						endTs={nextMessageTs}
+					/>
+				)
 			}
 			case "readFile":
 				// Check if this is a batch file permission request
@@ -1074,6 +1090,10 @@ export const ChatRowContent = ({
 								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
 									{icon}
 									{title}
+									<BlockTimestamp
+										startTs={message.ts}
+										endTs={isApiRequestInProgress ? undefined : nextMessageTs}
+									/>
 								</div>
 								<div
 									className="text-xs text-vscode-dropdown-foreground border-vscode-dropdown-border/50 border px-1.5 py-0.5 rounded-lg"
@@ -1399,7 +1419,14 @@ export const ChatRowContent = ({
 
 					return <CodebaseSearchResultsDisplay results={results} />
 				case "user_edit_todos":
-					return <UpdateTodoListToolBlock userEdited onChange={() => {}} />
+					return (
+						<UpdateTodoListToolBlock
+							userEdited
+							onChange={() => {}}
+							startTs={message.ts}
+							endTs={nextMessageTs}
+						/>
+					)
 				case "tool" as any:
 					// Handle say tool messages
 					const sayTool = safeJsonParse<ClineSayTool>(message.text)

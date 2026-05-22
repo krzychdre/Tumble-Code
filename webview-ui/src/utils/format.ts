@@ -26,6 +26,38 @@ export const formatDate = (timestamp: number) => {
 	})
 }
 
+/**
+ * Formats an epoch-ms timestamp as a short, locale-aware clock time (HH:MM).
+ * Used for the non-intrusive start time shown beside status block headers.
+ */
+export const formatTimestamp = (timestamp: number) => {
+	const date = new Date(timestamp)
+	const locale = i18next.language || "en"
+
+	return date.toLocaleTimeString(locale, {
+		hour: "2-digit",
+		minute: "2-digit",
+	})
+}
+
+/**
+ * Formats a duration in milliseconds into a compact, human-readable string.
+ * Sub-minute durations render as seconds with one decimal (e.g. "1.2s");
+ * longer durations render as minutes and zero-padded seconds (e.g. "3m 04s").
+ */
+export const formatDuration = (durationMs: number) => {
+	const safeMs = Math.max(0, durationMs)
+	const totalSeconds = safeMs / 1000
+
+	if (totalSeconds < 60) {
+		return `${totalSeconds.toFixed(1)}s`
+	}
+
+	const minutes = Math.floor(totalSeconds / 60)
+	const seconds = Math.floor(totalSeconds % 60)
+	return `${minutes}m ${seconds.toString().padStart(2, "0")}s`
+}
+
 export const formatTimeAgo = (timestamp: number) => {
 	const now = Date.now()
 	const diff = now - timestamp
