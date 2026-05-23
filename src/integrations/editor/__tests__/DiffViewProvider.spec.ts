@@ -440,6 +440,69 @@ describe("DiffViewProvider", () => {
 			// The foreign dirty tab was left alone.
 			expect(closedTabs).not.toContain(foreignTab)
 		})
+
+		it("closes a Roo diff tab even when VS Code refuses the first close() because Tab.isDirty has not yet propagated", async () => {
+			// Real-world defect (the user-reported symptom #23 did not fix): after
+			// saveChanges() persists the modified document, VS Code clears the
+			// *tab's* isDirty flag asynchronously, on a later turn of the event
+			// loop. closeAllDiffViews() runs immediately after the save, so
+			// tabGroups.close() is invoked while the tab still reports dirty —
+			// VS Code refuses it and the diff tab is orphaned: open, still showing
+			// the unsaved marker, even though the file on disk is already correct.
+			//
+			// closeDiffTab()'s revert is gated on document.isDirty, which is
+			// already false here (saveChanges() saved the document first), so the
+			// revert is skipped and close() is fired exactly once at a tab VS Code
+			// still believes is dirty. The close must be retried once the flag has
+			// propagated.
+			let tabDirty = true
+			// VS Code refreshes Tab.isDirty on a later turn of the event loop.
+			setTimeout(() => {
+				tabDirty = false
+			}, 0)
+
+			const diffTab: any = {
+				input: {
+					original: { scheme: DIFF_VIEW_URI_SCHEME },
+					modified: { fsPath: "/test/new-file.ts" },
+				},
+				label: "new-file.ts: New File (Editable)",
+				get isDirty() {
+					return tabDirty
+				},
+			}
+			Object.setPrototypeOf(diffTab.input, vscode.TabInputTextDiff.prototype)
+
+			// The modified document is already clean — saveChanges() persisted it
+			// before closeAllDiffViews() ran. Only the tab's flag is lagging.
+			;(vscode.workspace as any).textDocuments = [
+				{ uri: { scheme: "file", fsPath: "/test/new-file.ts" }, isDirty: false },
+			]
+
+			let openTabs: any[] = [diffTab]
+			Object.defineProperty(vscode.window.tabGroups, "all", {
+				get: () => [{ tabs: openTabs }],
+				configurable: true,
+			})
+
+			const closeCalls: any[] = []
+			vi.mocked(vscode.window.tabGroups.close).mockImplementation((tab: any) => {
+				closeCalls.push(tab)
+				if (tab.isDirty) {
+					// VS Code refuses to silently close a tab it still believes is dirty.
+					return Promise.resolve(false)
+				}
+				openTabs = openTabs.filter((t) => t !== tab)
+				return Promise.resolve(true)
+			})
+
+			await (diffViewProvider as any).closeAllDiffViews()
+
+			// The diff tab must end up closed — not orphaned with the unsaved marker.
+			expect(openTabs).toHaveLength(0)
+			// The first close() was refused; a later attempt succeeded.
+			expect(closeCalls.length).toBeGreaterThan(1)
+		})
 	})
 
 	describe("saveDirectly method", () => {
