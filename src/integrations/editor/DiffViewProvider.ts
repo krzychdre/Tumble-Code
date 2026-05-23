@@ -18,6 +18,11 @@ import { DecorationController } from "./DecorationController"
 export const DIFF_VIEW_URI_SCHEME = "cline-diff"
 export const DIFF_VIEW_LABEL_CHANGES = "Original ↔ Roo's Changes"
 
+// VS Code refreshes Tab.isDirty asynchronously after a save, so tabGroups.close()
+// can be refused for a turn or two of the event loop. Bounds the close retry in
+// closeDiffTab() so a tab that genuinely cannot close never loops forever.
+const CLOSE_DIFF_TAB_MAX_ATTEMPTS = 5
+
 /**
  * All in-flight state for one diff-edit session. Created atomically by `open()`
  * and detached atomically by `reset()`. Async methods capture the reference once
@@ -659,22 +664,29 @@ export class DiffViewProvider {
 	 * Closes a single Roo diff tab.
 	 *
 	 * A diff tab's modified side is the real file document; the streamed
-	 * `applyEdit` calls in `update()` leave that document dirty, so the tab
-	 * reports `isDirty === true`. By the time a diff session is being closed the
-	 * approved bytes are already on disk (`saveChanges()` /
-	 * `flushPendingSaveDirectly()` ran first). A direct `close()` on a dirty tab
-	 * would pop VS Code's "save / don't save" dialog, so for a dirty tab we first
-	 * revert the modified document to its on-disk state — which clears the dirty
-	 * flag — then close it. The revert is idempotent: disk already holds the
-	 * correct content, so re-applying it changes nothing.
+	 * `applyEdit` calls in `update()` leave that document dirty. By the time a
+	 * diff session is being closed the approved bytes are already on disk
+	 * (`saveChanges()` / `flushPendingSaveDirectly()` ran first), so disk is
+	 * authoritative. Two things otherwise leave the tab orphaned — open, still
+	 * carrying VS Code's unsaved marker, showing stale content:
 	 *
-	 * This is what keeps the diff tab from being orphaned open + dirty + showing
-	 * stale content after a save (the user-reported defect).
+	 *   1. A recovery-path `fs.writeFile` persists the bytes behind VS Code's
+	 *      back, so the in-memory buffer still looks dirty. We revert it to the
+	 *      on-disk content (idempotent — disk already holds the correct bytes)
+	 *      and save, which clears the document's dirty flag.
+	 *   2. VS Code refreshes `Tab.isDirty` asynchronously: after a save the tab
+	 *      can still report dirty for a turn of the event loop, and
+	 *      `tabGroups.close()` refuses (resolves `false`) a tab it believes is
+	 *      dirty. The earlier fix closed exactly once and trusted it — so a
+	 *      close issued in that lag window was silently dropped. We now retry a
+	 *      refused close against a freshly-read tab, yielding between attempts
+	 *      so the dirty flag can propagate.
 	 */
 	private async closeDiffTab(tab: vscode.Tab): Promise<void> {
 		try {
-			if (tab.isDirty && tab.input instanceof vscode.TabInputTextDiff) {
-				const modifiedPath = tab.input.modified.fsPath
+			const modifiedPath = tab.input instanceof vscode.TabInputTextDiff ? tab.input.modified.fsPath : undefined
+
+			if (modifiedPath) {
 				const document = vscode.workspace.textDocuments.find(
 					(doc) => doc.uri.scheme === "file" && arePathsEqual(doc.uri.fsPath, modifiedPath),
 				)
@@ -697,10 +709,52 @@ export class DiffViewProvider {
 				}
 			}
 
-			await vscode.window.tabGroups.close(tab)
+			// `tabGroups.close()` returns a Thenable<boolean>: a falsy result
+			// means VS Code refused the close — typically because it still
+			// believes the tab is dirty (its `Tab.isDirty` refresh lags the
+			// document save). Retry against a freshly-read tab, yielding a turn
+			// of the event loop between attempts so the flag can settle. A `true`
+			// result is trusted immediately.
+			let target: vscode.Tab | undefined = tab
+			for (let attempt = 0; attempt < CLOSE_DIFF_TAB_MAX_ATTEMPTS; attempt++) {
+				const closed = await vscode.window.tabGroups.close(target)
+				target = this.findOpenTab(tab)
+
+				if (closed || !target) {
+					return
+				}
+
+				// Let VS Code propagate the post-save Tab.isDirty refresh.
+				await new Promise((resolve) => setTimeout(resolve, 0))
+			}
+
+			console.error(`Failed to close diff tab ${tab.label} after ${CLOSE_DIFF_TAB_MAX_ATTEMPTS} attempts`)
 		} catch (err) {
 			console.error(`Failed to close diff tab ${tab.label}`, err)
 		}
+	}
+
+	/**
+	 * Re-locates a still-open tab equivalent to `tab` in the current tab model.
+	 * VS Code can hand back a fresh `Tab` object after state changes, so the
+	 * original reference may be stale — match by identity first, then by the
+	 * diff tab's modified-side path. Returns undefined once the tab is gone.
+	 */
+	private findOpenTab(tab: vscode.Tab): vscode.Tab | undefined {
+		const modifiedPath = tab.input instanceof vscode.TabInputTextDiff ? tab.input.modified.fsPath : undefined
+
+		return vscode.window.tabGroups.all
+			.flatMap((group) => group.tabs)
+			.find((candidate) => {
+				if (candidate === tab) {
+					return true
+				}
+				return (
+					modifiedPath !== undefined &&
+					candidate.input instanceof vscode.TabInputTextDiff &&
+					arePathsEqual(candidate.input.modified.fsPath, modifiedPath)
+				)
+			})
 	}
 
 	private async closeAllDiffViews(): Promise<void> {
