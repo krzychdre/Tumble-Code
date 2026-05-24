@@ -59,7 +59,7 @@ two modifications justified by Roo Code's multi-provider model:
 - The deferred-catalog text is injected into the **system prompt** (not the
   tools array) by a new prompt section `deferred-tools.ts`, formatted as:
 
-    ```
+    ```text
     # Deferred tools (load on demand)
     Use the `tools_load` tool to fetch the full schema for any of these.
 
@@ -220,3 +220,126 @@ branch tip.
   Claude Code uses it, but v1 ships the `names: []` form only.
 - Per-tool `alwaysLoad` opt-out for MCP — let users pin specific MCP tools.
 - A `toolSchemaCache` analogue. The analysis doc rates it ★★ medium; defer.
+
+---
+
+## 8. Hardening for weak models (v1.1)
+
+**Trigger:** A GLM-4.7-FP8 trace emitted `tools_load` with literal empty
+`input: {}` — and _also_ emitted other tools (e.g. `read_file`) with empty
+input. That confirms the failure mode is **structured-tool-args reliability**
+on weak/cheap models, not a misunderstanding of the deferred protocol per se.
+The protocol must therefore become "tolerance-first": every failure shape we
+can predict gets converted into actionable model guidance instead of a hard
+error that the model can't recover from.
+
+All hardening changes are gated on `experiments.deferredTools`. With the
+experiment OFF, behaviour is byte-identical to today.
+
+### 8.1 — Catalog prompt rewrite + redundant tool description
+
+**Problem.** v1's catalog header is friendly prose ("Use the `tools_load`
+tool to fetch the full schema…"). Weak models often miss the imperative or
+fail to construct the right JSON shape because they only see the high-level
+sentence, never a literal example.
+
+**Change.**
+
+- `src/core/task/deferred-tools.ts` / `formatDeferredCatalog` — rewrite the
+  header to an explicit two-step procedure with a literal JSON example
+  (`tools_load({"names": ["mcp_..."]})`) and three bullet rules. Quote tool
+  names in the listing (`- "<name>" — <brief>`) so the model pattern-matches
+  the call site against the listing.
+- `src/core/prompts/tools/native-tools/tools_load.ts` — duplicate the
+  worked-example JSON into the tool's `description`. Redundancy across
+  system prompt + tool description protects against models that weight one
+  channel over the other.
+- Tests updated in
+  `src/core/task/__tests__/deferred-tools.spec.ts` and
+  `src/core/prompts/sections/__tests__/deferred-tools.spec.ts` to lock the
+  new copy.
+
+### 8.2 — Tolerant `tools_load`
+
+**Problem.** v1 throws on missing/empty `names`; the throw is caught by the
+generic `missing nativeArgs` validator at
+`src/core/assistant-message/presentAssistantMessage.ts:430`. Result: an
+"Invalid tool call" tool_result that the model can't act on.
+
+**Change.**
+
+- `src/core/tools/ToolsLoadTool.ts` — override `handle()` so the generic
+  `nativeArgs === undefined` path no longer throws. Instead the handler
+  detects four shapes and produces a structured guidance tool-result:
+    1. `{}` / no `nativeArgs` / `names` missing → guidance with the current
+       deferred-tools list + a literal JSON call example.
+    2. `{ names: "single_string" }` → coerce to `["single_string"]`.
+    3. `{ name: "foo" }` (singular) → coerce to `{ names: ["foo"] }`.
+    4. `{ names: [] }` → guidance (already covered in v1, but the message
+       now includes the current list + a JSON example).
+- Validation moved **inside** the handler (option (b) from the dispatch),
+  so the generic `missing nativeArgs` guard at line 430 is left intact for
+  every other tool. The dispatcher gains a tight allow-list of tools whose
+  empty `nativeArgs` must reach their handler (`tools_load` is currently
+  the only entry).
+- Tests added to `src/core/tools/__tests__/ToolsLoadTool.spec.ts` covering
+  each tolerated shape.
+
+### 8.3 — Auto-materialize on direct call
+
+**Problem.** Some models skip `tools_load` entirely and call a deferred
+tool name directly (e.g. emit `tool_use` for `mcp--github--get_issue`).
+v1 routes this through the unknown-tool default branch → `Unknown tool`
+error → wasted turn.
+
+**Change.**
+
+- New helper `src/core/task/deferred-tools-resolver.ts` exporting
+  `tryMaterializeDirectCall(task, blockName, nativeArgs, options)`.
+  Behaviour:
+    1. If `experiments.deferredTools !== true` → return `null` (no-op).
+    2. Cross-reference `blockName` against `task.deferredToolDirectory`. If
+       not present → return `null` (fall through to the existing dispatcher
+       paths so typos still get the standard "unknown tool" error).
+    3. If present, add it to `task.materializedDeferredTools` so subsequent
+       turns include the schema in the active set.
+    4. Validate `nativeArgs` against the freshly-materialized JSON Schema.
+        - Valid → return `{ kind: "ready" }` so the dispatcher can continue
+          to the normal MCP-tool path (the call can run _this turn_).
+        - Invalid (or empty) → return
+          `{ kind: "guidance", result: <tool result with schema + retry hint> }`.
+- Wire the helper into `presentAssistantMessage.ts`:
+    - Just before the "Invalid tool call: missing nativeArgs" guard at
+      line ~425, call `tryMaterializeDirectCall` for the **direct-call**
+      case (block name is a deferred tool, args empty/invalid). Return
+      the guidance result.
+    - At the unknown-tool default branch (~line 933), call the helper
+      again for the **valid-args** case so a deferred name with proper
+      args succeeds on its first emission.
+- Tests in `src/core/task/__tests__/deferred-tools-resolver.spec.ts`:
+  (a) direct call with valid args materializes + reports ready, (b)
+  direct call with invalid args returns guidance containing the schema,
+  (c) name that isn't deferred returns `null` so the existing
+  "unknown tool" error path takes over, (d) experiment OFF → `null`
+  immediately, no state mutation.
+
+### 8.4 — Test plan
+
+```bash
+pnpm --filter roo-cline test -- --run src/core/task/__tests__/deferred-tools.spec.ts
+pnpm --filter roo-cline test -- --run src/core/tools/__tests__/ToolsLoadTool.spec.ts
+pnpm --filter roo-cline test -- --run src/core/prompts/sections/__tests__/deferred-tools.spec.ts
+pnpm --filter roo-cline test -- --run src/core/task/__tests__/deferred-tools-resolver.spec.ts
+pnpm --filter roo-cline check-types
+pnpm --filter roo-cline lint
+```
+
+### 8.5 — Blast radius
+
+| Component                                   | Impact                                                              | Mitigation                                                   |
+| ------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `formatDeferredCatalog` text                | Snapshot-ish tests update                                           | Tests updated in same commit                                 |
+| `tools_load` description text               | Slightly larger system-prompt tool entry                            | Acceptable; description still < 1k tokens                    |
+| Dispatcher tool-allow-list                  | New explicit "tools that may pass with empty nativeArgs" set        | Hard-coded, single entry, gated by experiment                |
+| Direct-call materialization                 | New code path entered ONLY when name resolves in deferred directory | Returns `null` early when experiment off / name not deferred |
+| Existing tools that emit empty `nativeArgs` | Unchanged — still hit the generic "missing nativeArgs" error path   | Tools_load is the only exception                             |

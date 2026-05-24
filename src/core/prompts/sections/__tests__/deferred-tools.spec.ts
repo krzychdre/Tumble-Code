@@ -54,8 +54,12 @@ describe("getDeferredToolsSection", () => {
 		expect(text).toContain("Deferred tools")
 		expect(text).toContain("## mcp:weather")
 		expect(text).toContain("## mcp:jira")
-		expect(text).toContain("mcp--weather--get_current")
-		expect(text).toContain("mcp--jira--search")
+		// Names appear quoted in the listing so weak models pattern-match the call-site.
+		expect(text).toContain(`"mcp--weather--get_current"`)
+		expect(text).toContain(`"mcp--jira--search"`)
+		// Literal worked example must be present.
+		expect(text).toContain("STEP 1")
+		expect(text).toContain(`tools_load({"names":`)
 	})
 
 	it("omits an MCP tool from the catalog once it has been materialized", () => {
@@ -70,7 +74,8 @@ describe("getDeferredToolsSection", () => {
 			customTools: [],
 			materializedDeferredTools: new Set(["mcp--weather--get_current"]),
 		})
-		expect(text).toContain("mcp--weather--get_forecast")
-		expect(text).not.toContain("mcp--weather--get_current")
+		expect(text).toContain(`"mcp--weather--get_forecast"`)
+		// The materialized tool's name should no longer appear as a listing entry.
+		expect(text).not.toContain(`"mcp--weather--get_current"`)
 	})
 })

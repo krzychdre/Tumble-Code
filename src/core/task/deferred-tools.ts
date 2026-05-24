@@ -151,22 +151,61 @@ export function applyDeferralStrategy(options: ApplyDeferralOptions): ApplyDefer
 }
 
 /**
+ * Build the literal worked-example JSON used in both the system-prompt
+ * catalog header and the `tools_load` tool description. Picks the first
+ * one or two names from the catalog so the example mirrors real usage on
+ * the current installation. Falls back to a stable placeholder when the
+ * catalog is empty.
+ */
+export function buildToolsLoadCallExample(catalog: DeferredCatalog): string {
+	const names = catalog.entries.slice(0, 2).map((e) => e.name)
+	if (names.length === 0) {
+		return `tools_load({"names": ["<deferred_tool_name>"]})`
+	}
+	// Render with spaces inside the JSON: weak models pattern-match this verbatim
+	// from the prompt, and the spaced form is what we want them to emit (it's
+	// also what the dispatch example in the spec/test uses).
+	const namesList = names.map((n) => `"${n}"`).join(", ")
+	return `tools_load({"names": [${namesList}]})`
+}
+
+/**
  * Format the deferred-tools catalog for inclusion in the system prompt.
  * Returns an empty string when the catalog is empty so callers can splice
  * it in unconditionally.
+ *
+ * Hardening for weak tool-calling models (v1.1): the header is now a
+ * literal two-step procedure with a worked JSON example, and the
+ * per-entry names are rendered quoted so the model can pattern-match the
+ * call-site against the listing. Both nudge weak models toward emitting
+ * the correct shape on the first try.
  */
 export function formatDeferredCatalog(catalog: DeferredCatalog): string {
 	if (catalog.entries.length === 0) {
 		return ""
 	}
 
+	const example = buildToolsLoadCallExample(catalog)
+
 	const lines: string[] = []
 	lines.push("# Deferred tools (load on demand)")
+	lines.push("")
 	lines.push(
-		"The following tools are available but their full schemas have been withheld " +
-			"to keep the context small. Call the `tools_load` tool with the exact names " +
-			"you need to fetch the full schemas before invoking them.",
+		"You have additional tools available below. Their input schemas have been " +
+			"withheld to keep your context small, but you CAN use them via this two-step " +
+			"procedure:",
 	)
+	lines.push("")
+	lines.push("  STEP 1 — Call the `tools_load` tool with the names you need. Example:")
+	lines.push(`      ${example}`)
+	lines.push("")
+	lines.push("  STEP 2 — On the next turn the requested tools become callable like any")
+	lines.push("  other tool. Use their normal schemas.")
+	lines.push("")
+	lines.push("Rules:")
+	lines.push("  • `names` MUST be a non-empty array of strings.")
+	lines.push("  • Names are case-sensitive and must match the entries below EXACTLY.")
+	lines.push("  • Batch related tools in one call instead of calling tools_load repeatedly.")
 	lines.push("")
 
 	// Group entries by their `group` label, preserving the input ordering of
@@ -186,7 +225,9 @@ export function formatDeferredCatalog(catalog: DeferredCatalog): string {
 		lines.push(`## ${group}  (${items.length} ${items.length === 1 ? "tool" : "tools"})`)
 		for (const item of items) {
 			const brief = buildBrief(item.brief)
-			lines.push(brief ? `- ${item.name}  ${brief}` : `- ${item.name}`)
+			// Quote the name. Weak models latch onto quoted strings as call-site
+			// arguments more reliably than bare identifiers.
+			lines.push(brief ? `- "${item.name}"  — ${brief}` : `- "${item.name}"`)
 		}
 		lines.push("")
 	}

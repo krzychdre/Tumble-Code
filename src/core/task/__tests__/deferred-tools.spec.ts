@@ -162,10 +162,30 @@ describe("formatDeferredCatalog", () => {
 		expect(text).toContain("Deferred tools")
 		expect(text).toContain("tools_load")
 		expect(text).toContain("## mcp:weather")
-		expect(text).toContain("- mcp--weather--get_current")
+		// Names MUST be rendered quoted so weak models pattern-match them as call-site strings.
+		expect(text).toContain(`"mcp--weather--get_current"`)
 		expect(text).toContain("Get current weather.")
 		expect(text).toContain("## custom")
-		expect(text).toContain("- my_jira_search")
+		expect(text).toContain(`"my_jira_search"`)
+	})
+
+	it("includes the literal two-step procedure with a worked JSON example", () => {
+		const catalog: DeferredCatalog = {
+			entries: [
+				{ group: "mcp:github", name: "mcp--github--get_issue", brief: "Fetch a GitHub issue." },
+				{ group: "mcp:github", name: "mcp--github--create_issue", brief: "Create a GitHub issue." },
+			],
+		}
+		const text = formatDeferredCatalog(catalog)
+		// Step labels — explicit two-step instructions for weak models.
+		expect(text).toContain("STEP 1")
+		expect(text).toContain("STEP 2")
+		// Literal worked example must appear verbatim so the model can copy it.
+		expect(text).toContain(`tools_load({"names": ["mcp--github--get_issue", "mcp--github--create_issue"]})`)
+		// The three rules block must be there.
+		expect(text).toContain("non-empty array of strings")
+		expect(text).toContain("case-sensitive")
+		expect(text).toContain("Batch")
 	})
 
 	it("clips descriptions to first sentence and to 200 chars max", () => {
