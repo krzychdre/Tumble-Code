@@ -73,16 +73,16 @@ export const IndexingStatusBadge: React.FC<IndexingStatusBadgeProps> = ({ classN
 		}
 	}, [indexingStatus.systemStatus, progressPercentage, t])
 
-	const statusColorClass = useMemo(() => {
-		const statusColors = {
-			Standby: "bg-vscode-descriptionForeground/60",
-			Indexing: "bg-yellow-500 animate-pulse",
-			Indexed: "bg-green-500",
-			Stopping: "bg-amber-500 animate-pulse",
-			Error: "bg-red-500",
+	const statusIconClass = useMemo(() => {
+		const statusClasses = {
+			Standby: "text-vscode-descriptionForeground",
+			Indexing: "text-vscode-charts-yellow animate-pulse",
+			Indexed: "text-vscode-charts-green",
+			Stopping: "text-vscode-charts-yellow animate-pulse",
+			Error: "text-vscode-charts-red",
 		}
 
-		return statusColors[indexingStatus.systemStatus as keyof typeof statusColors] || statusColors.Standby
+		return statusClasses[indexingStatus.systemStatus as keyof typeof statusClasses] || statusClasses.Standby
 	}, [indexingStatus.systemStatus])
 
 	return (
@@ -95,18 +95,12 @@ export const IndexingStatusBadge: React.FC<IndexingStatusBadgeProps> = ({ classN
 						aria-label={tooltipText}
 						className={cn(
 							"relative h-5 w-5 p-0",
-							"text-vscode-foreground opacity-85",
+							"opacity-85",
 							"hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)]",
 							"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
 							className,
 						)}>
-						<Database className="w-4 h-4" />
-						<span
-							className={cn(
-								"absolute top-0 right-0 w-1.5 h-1.5 rounded-full transition-colors duration-200",
-								statusColorClass,
-							)}
-						/>
+						<Database className={cn("w-4 h-4 transition-colors duration-200", statusIconClass)} />
 					</Button>
 				</PopoverTrigger>
 			</StandardTooltip>
