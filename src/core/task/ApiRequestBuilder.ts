@@ -65,6 +65,13 @@ export interface ApiRequestBuilderAccess {
 
 	// Methods
 	emit: (event: any, ...args: any[]) => boolean
+
+	// Deferred-tool loading state (Phase 4 of ai_plans/deferred-tool-loading.md).
+	// These come straight off the Task instance; the apiRequestBuilder reads
+	// `materializedDeferredTools` to re-promote loaded schemas and writes back
+	// the per-request `deferredToolDirectory` so `tools_load` can resolve names.
+	materializedDeferredTools: Set<string>
+	deferredToolDirectory: Map<string, OpenAI.Chat.ChatCompletionTool>
 }
 
 /**
@@ -73,6 +80,8 @@ export interface ApiRequestBuilderAccess {
 export interface ToolsArrayResult {
 	allTools: OpenAI.Chat.ChatCompletionTool[]
 	allowedFunctionNames: string[] | undefined
+	/** Catalog of deferred (withheld) tools. See ai_plans/deferred-tool-loading.md. */
+	deferredCatalog?: import("./deferred-tools").DeferredCatalog
 }
 
 /**
@@ -185,11 +194,45 @@ export class ApiRequestBuilder {
 			disabledTools: state?.disabledTools,
 			modelInfo,
 			includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
+			materializedDeferredTools: this.access.materializedDeferredTools,
 		})
+
+		// Persist the deferred-tools directory onto the Task so `tools_load`
+		// can resolve names without re-querying the MCP hub. We snapshot the
+		// catalog at request time because it can change between turns (a new
+		// MCP server might connect, custom tool files might change on disk).
+		const directory = this.access.deferredToolDirectory
+		directory.clear()
+		if (toolsResult.deferredCatalog) {
+			const provider2 = this.access.providerRef.deref()
+			const mcpTools = provider2?.getMcpHub()
+				? (await import("../prompts/tools/native-tools")).getMcpServerTools(provider2.getMcpHub())
+				: []
+			const candidates = new Map<string, OpenAI.Chat.ChatCompletionTool>()
+			for (const tool of mcpTools) {
+				candidates.set((tool as OpenAI.Chat.ChatCompletionFunctionTool).function.name, tool)
+			}
+			// Also include filesystem-discovered custom tools when the experiment is on.
+			if (state?.experiments?.customTools) {
+				const { customToolRegistry, formatNative } = await import("@roo-code/core")
+				const customSerialized = customToolRegistry.getAllSerialized()
+				for (const tool of customSerialized) {
+					const formatted = formatNative(tool)
+					candidates.set(formatted.function.name, formatted)
+				}
+			}
+			for (const entry of toolsResult.deferredCatalog.entries) {
+				const tool = candidates.get(entry.name)
+				if (tool) {
+					directory.set(entry.name, tool)
+				}
+			}
+		}
 
 		return {
 			allTools: toolsResult.tools,
 			allowedFunctionNames: toolsResult.allowedFunctionNames,
+			deferredCatalog: toolsResult.deferredCatalog,
 		}
 	}
 

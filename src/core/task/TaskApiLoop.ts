@@ -129,6 +129,10 @@ export interface TaskApiLoopAccess {
 	cancelCurrentRequest(destroyClient?: boolean): void
 	pushToolResultToUserContent(toolResult: Anthropic.ToolResultBlockParam): boolean
 	combineMessages(messages: ClineMessage[]): ClineMessage[]
+
+	// Deferred-tool loading state (Phase 4 of ai_plans/deferred-tool-loading.md)
+	materializedDeferredTools: Set<string>
+	deferredToolDirectory: Map<string, import("openai").default.Chat.ChatCompletionTool>
 }
 
 /**
@@ -165,6 +169,8 @@ export class TaskApiLoop {
 			contextManager: access.contextManager,
 			getTokenUsage: access.getTokenUsage,
 			emit: access.emit,
+			materializedDeferredTools: access.materializedDeferredTools,
+			deferredToolDirectory: access.deferredToolDirectory,
 		})
 		// Create the RetryHandler with a compatible access interface
 		this.retryHandler = new RetryHandler({

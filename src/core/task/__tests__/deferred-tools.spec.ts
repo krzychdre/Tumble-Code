@@ -56,7 +56,10 @@ describe("applyDeferralStrategy", () => {
 			customTools: [],
 			materializedDeferredTools: new Set(),
 		})
-		expect(result.activeTools.map((t) => t.function.name)).toEqual(["read_file", "apply_diff"])
+		expect(result.activeTools.map((t) => (t as OpenAI.Chat.ChatCompletionFunctionTool).function.name)).toEqual([
+			"read_file",
+			"apply_diff",
+		])
 	})
 
 	it("defers MCP tools by default and groups them in the catalog by server", () => {
@@ -72,7 +75,9 @@ describe("applyDeferralStrategy", () => {
 			materializedDeferredTools: new Set(),
 		})
 		// MCP tools are gone from the active set
-		expect(result.activeTools.map((t) => t.function.name)).toEqual(["read_file"])
+		expect(result.activeTools.map((t) => (t as OpenAI.Chat.ChatCompletionFunctionTool).function.name)).toEqual([
+			"read_file",
+		])
 		// All three appear in the catalog
 		expect(result.catalog.entries).toHaveLength(3)
 		const weather = result.catalog.entries.filter((e) => e.group === "mcp:weather")
@@ -102,7 +107,9 @@ describe("applyDeferralStrategy", () => {
 			customTools: [],
 			materializedDeferredTools: new Set(),
 		})
-		expect(result.activeTools.map((t) => t.function.name)).toEqual(ALWAYS_AVAILABLE_TOOLS as readonly string[])
+		expect(result.activeTools.map((t) => (t as OpenAI.Chat.ChatCompletionFunctionTool).function.name)).toEqual(
+			ALWAYS_AVAILABLE_TOOLS as readonly string[],
+		)
 	})
 
 	it("re-promotes materialized deferred tools back into the active set", () => {
@@ -115,7 +122,9 @@ describe("applyDeferralStrategy", () => {
 			materializedDeferredTools: materialized,
 		})
 		// The materialized one is active; the other stays deferred
-		expect(result.activeTools.map((t) => t.function.name)).toEqual(["mcp--weather--get_current"])
+		expect(result.activeTools.map((t) => (t as OpenAI.Chat.ChatCompletionFunctionTool).function.name)).toEqual([
+			"mcp--weather--get_current",
+		])
 		expect(result.catalog.entries).toHaveLength(1)
 		expect(result.catalog.entries[0].name).toBe("mcp--weather--get_forecast")
 	})
