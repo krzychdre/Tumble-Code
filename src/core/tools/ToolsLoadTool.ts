@@ -1,7 +1,6 @@
 import type OpenAI from "openai"
 
 import { Task } from "../task/Task"
-import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 import { ALWAYS_AVAILABLE_TOOLS } from "../../shared/tools"
@@ -24,6 +23,8 @@ interface ToolsLoadResult {
 
 const ALWAYS_LOAD_SET: ReadonlySet<string> = new Set(ALWAYS_AVAILABLE_TOOLS)
 
+const MAX_GUIDANCE_NAMES = 30
+
 /**
  * Meta-tool: resolves deferred tool names back into their full
  * `{name, description, parameters}` schemas and marks them as materialized
@@ -31,10 +32,38 @@ const ALWAYS_LOAD_SET: ReadonlySet<string> = new Set(ALWAYS_AVAILABLE_TOOLS)
  * array.
  *
  * This is Roo Code's userland port of Claude Code's `ToolSearch` tool.
- * See `ai_plans/deferred-tool-loading.md` §2 for the design contract.
+ * See `ai_plans/deferred-tool-loading.md` §2 for the design contract and
+ * §8 (Hardening for weak models) for the tolerance layer below.
  */
 export class ToolsLoadTool extends BaseTool<"tools_load"> {
 	readonly name = "tools_load" as const
+
+	/**
+	 * Override the BaseTool entry point so the generic `nativeArgs === undefined`
+	 * branch (which `throw`s and reports a parse error) no longer fires for
+	 * `tools_load`. Weak tool-calling models routinely emit `tools_load` with
+	 * no `input` field; we convert each known degenerate shape into a
+	 * structured guidance tool-result instead of an error, so the model can
+	 * recover on the next turn.
+	 *
+	 * Tolerated shapes:
+	 *   - no `nativeArgs` at all          → guidance with the current list + example
+	 *   - `{}`                            → guidance with the current list + example
+	 *   - `{ names: "single_string" }`    → coerced to `["single_string"]`
+	 *   - `{ name: "foo" }` (singular)    → coerced to `{ names: ["foo"] }`
+	 *   - `{ names: [] }`                 → guidance (covered in execute())
+	 *
+	 * Partial blocks are still handed off to BaseTool's default no-op handler.
+	 */
+	override async handle(task: Task, block: ToolUse<"tools_load">, callbacks: ToolCallbacks): Promise<void> {
+		if (block.partial) {
+			// Inherit BaseTool's partial-handling path (no-op for tools_load).
+			return super.handle(task, block, callbacks)
+		}
+
+		const coerced = coerceToolsLoadArgs(block.nativeArgs)
+		await this.execute(coerced, task, callbacks)
+	}
 
 	async execute(params: ToolsLoadParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { handleError, pushToolResult } = callbacks
@@ -43,13 +72,9 @@ export class ToolsLoadTool extends BaseTool<"tools_load"> {
 			const names = Array.isArray(params?.names) ? params.names : []
 
 			if (names.length === 0) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("tools_load")
-				pushToolResult(
-					formatResponse.toolError(
-						"`tools_load` requires at least one tool name in `names`. Pass the exact deferred tool names from the system prompt.",
-					),
-				)
+				// Guidance — NOT an error. Do NOT increment the mistake counter:
+				// the model can recover on the next turn with a correct call.
+				pushToolResult(buildMissingNamesGuidance(task))
 				return
 			}
 
@@ -95,6 +120,89 @@ export class ToolsLoadTool extends BaseTool<"tools_load"> {
 			await handleError("executing tools_load", error instanceof Error ? error : new Error(String(error)))
 		}
 	}
+}
+
+/**
+ * Normalise the wide variety of malformed `nativeArgs` shapes weak models
+ * emit into the canonical `{ names: string[] }` form. Unknown shapes pass
+ * through with `names: []` so `execute()` falls into the guidance path.
+ */
+export function coerceToolsLoadArgs(rawArgs: unknown): ToolsLoadParams {
+	if (rawArgs == null || typeof rawArgs !== "object") {
+		return { names: [] }
+	}
+	const obj = rawArgs as Record<string, unknown>
+
+	// Canonical shape: { names: string[] }
+	if (Array.isArray(obj.names)) {
+		const filtered = obj.names.filter((n): n is string => typeof n === "string")
+		return { names: filtered }
+	}
+
+	// Degenerate: { names: "single_string" }
+	if (typeof obj.names === "string") {
+		const trimmed = obj.names.trim()
+		return { names: trimmed ? [trimmed] : [] }
+	}
+
+	// Degenerate: { name: "foo" } (singular, common in weak models)
+	if (typeof obj.name === "string") {
+		const trimmed = obj.name.trim()
+		return { names: trimmed ? [trimmed] : [] }
+	}
+
+	// Degenerate: { name: ["foo", "bar"] } (singular plural)
+	if (Array.isArray(obj.name)) {
+		const filtered = obj.name.filter((n): n is string => typeof n === "string")
+		return { names: filtered }
+	}
+
+	return { names: [] }
+}
+
+/**
+ * Build a guidance tool-result for the model. Contains:
+ *  - a clear "names is required" message
+ *  - the current deferred-tool list (capped to avoid blowing context)
+ *  - a literal JSON example mirroring the one in the system prompt
+ *
+ * Calls into the Task to pull the current deferred-tool directory so the
+ * example is grounded in this user's actual installation.
+ */
+function buildMissingNamesGuidance(task: Task): string {
+	const directory = task.deferredToolDirectory
+	const allNames = directory ? Array.from(directory.keys()) : []
+	const exampleNames = allNames.slice(0, 2)
+	const examplePayload =
+		exampleNames.length > 0
+			? `{"names": [${exampleNames.map((n) => `"${n}"`).join(", ")}]}`
+			: `{"names": ["<deferred_tool_name>"]}`
+	const exampleCall = `tools_load(${examplePayload})`
+
+	const lines: string[] = []
+	lines.push(
+		"You called `tools_load` but did not pass `names`. " +
+			"`names` MUST be a non-empty array of strings — one entry per deferred " +
+			"tool you want to materialize.",
+	)
+	lines.push("")
+	lines.push("Worked example (copy this shape verbatim):")
+	lines.push(`    ${exampleCall}`)
+	lines.push("")
+
+	if (allNames.length === 0) {
+		lines.push("There are currently no deferred tools to load.")
+	} else {
+		const shown = allNames.slice(0, MAX_GUIDANCE_NAMES)
+		lines.push(
+			`Currently deferred tool names (${allNames.length} total${allNames.length > shown.length ? `, showing first ${shown.length}` : ""}):`,
+		)
+		for (const name of shown) {
+			lines.push(`  - "${name}"`)
+		}
+	}
+
+	return lines.join("\n")
 }
 
 /**

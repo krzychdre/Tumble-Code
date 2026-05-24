@@ -59,7 +59,7 @@ function makeCallbacks(): { callbacks: ToolCallbacks; results: string[] } {
 }
 
 describe("ToolsLoadTool", () => {
-	it("returns an error and increments mistakes when names is empty", async () => {
+	it("returns guidance (not an error) when names is empty", async () => {
 		const { task, state } = makeTask([mcpTool("weather", "get_current")])
 		const { callbacks, results } = makeCallbacks()
 		const handler = new ToolsLoadTool()
@@ -74,7 +74,9 @@ describe("ToolsLoadTool", () => {
 		await handler.handle(task, block, callbacks)
 		expect(state.materialized.size).toBe(0)
 		expect(results).toHaveLength(1)
-		expect(results[0]).toMatch(/at least one/i)
+		// New hardened copy explains the requirement and shows a worked example.
+		expect(results[0]).toMatch(/non-empty array of strings/i)
+		expect(results[0]).toContain(`tools_load({"names":`)
 	})
 
 	it("reports unknown names without mutating state", async () => {
@@ -141,5 +143,108 @@ describe("ToolsLoadTool", () => {
 		expect(payload).toContain("mcp--weather--get_current")
 		expect(payload).toContain("unknown")
 		expect(payload).toContain("ghost_tool")
+	})
+
+	describe("hardening — tolerance for weak models", () => {
+		it("treats missing nativeArgs as a guidance request, not an error", async () => {
+			const { task, state } = makeTask([mcpTool("weather", "get_current"), mcpTool("github", "get_issue")])
+			const { callbacks, results } = makeCallbacks()
+			const handler = new ToolsLoadTool()
+			const block: ToolUse<"tools_load"> = {
+				type: "tool_use",
+				name: "tools_load",
+				params: {},
+				// No nativeArgs at all — the GLM-4.7-FP8 failure shape.
+				partial: false,
+				id: "block-missing",
+			}
+			await handler.handle(task, block, callbacks)
+			expect(state.materialized.size).toBe(0)
+			expect(results).toHaveLength(1)
+			// Guidance must include: a clear "names is required" message, the
+			// current deferred-tool list, and a literal JSON example.
+			const payload = results[0]
+			expect(payload).toMatch(/names/i)
+			expect(payload).toContain("mcp--weather--get_current")
+			expect(payload).toContain("mcp--github--get_issue")
+			expect(payload).toContain(`tools_load({"names":`)
+		})
+
+		it("treats empty-object nativeArgs ({}) as a guidance request", async () => {
+			const { task, state } = makeTask([mcpTool("weather", "get_current")])
+			const { callbacks, results } = makeCallbacks()
+			const handler = new ToolsLoadTool()
+			const block: ToolUse<"tools_load"> = {
+				type: "tool_use",
+				name: "tools_load",
+				params: {},
+				nativeArgs: {} as { names: string[] }, // GLM-4.7-FP8 shape
+				partial: false,
+				id: "block-empty-obj",
+			}
+			await handler.handle(task, block, callbacks)
+			expect(state.materialized.size).toBe(0)
+			expect(results).toHaveLength(1)
+			const payload = results[0]
+			expect(payload).toMatch(/names/i)
+			expect(payload).toContain("mcp--weather--get_current")
+		})
+
+		it("coerces { names: 'single_string' } into a one-element array", async () => {
+			const tool = mcpTool("weather", "get_current")
+			const { task, state } = makeTask([tool])
+			const { callbacks, results } = makeCallbacks()
+			const handler = new ToolsLoadTool()
+			const block: ToolUse<"tools_load"> = {
+				type: "tool_use",
+				name: "tools_load",
+				params: {},
+				// Some models pass a bare string instead of an array.
+				nativeArgs: { names: "mcp--weather--get_current" as unknown as string[] },
+				partial: false,
+				id: "block-string",
+			}
+			await handler.handle(task, block, callbacks)
+			expect(state.materialized.has("mcp--weather--get_current")).toBe(true)
+			expect(results).toHaveLength(1)
+			expect(results[0]).toContain('"parameters"')
+		})
+
+		it("coerces singular { name: 'foo' } into { names: ['foo'] }", async () => {
+			const tool = mcpTool("github", "get_issue")
+			const { task, state } = makeTask([tool])
+			const { callbacks, results } = makeCallbacks()
+			const handler = new ToolsLoadTool()
+			const block: ToolUse<"tools_load"> = {
+				type: "tool_use",
+				name: "tools_load",
+				params: {},
+				// Singular `name` — another common weak-model shape.
+				nativeArgs: { name: "mcp--github--get_issue" } as unknown as { names: string[] },
+				partial: false,
+				id: "block-singular",
+			}
+			await handler.handle(task, block, callbacks)
+			expect(state.materialized.has("mcp--github--get_issue")).toBe(true)
+			expect(results).toHaveLength(1)
+		})
+
+		it("guidance message does not increment consecutiveMistakeCount", async () => {
+			const { task } = makeTask([mcpTool("weather", "get_current")])
+			;(task as unknown as { consecutiveMistakeCount: number }).consecutiveMistakeCount = 7
+			const { callbacks } = makeCallbacks()
+			const handler = new ToolsLoadTool()
+			const block: ToolUse<"tools_load"> = {
+				type: "tool_use",
+				name: "tools_load",
+				params: {},
+				nativeArgs: {} as { names: string[] },
+				partial: false,
+				id: "block-counter",
+			}
+			await handler.handle(task, block, callbacks)
+			// Guidance is not a mistake — model can recover next turn.
+			expect((task as unknown as { consecutiveMistakeCount: number }).consecutiveMistakeCount).toBe(7)
+		})
 	})
 })

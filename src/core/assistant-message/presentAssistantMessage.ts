@@ -425,7 +425,15 @@ export async function presentAssistantMessage(cline: Task) {
 			if (!block.partial) {
 				const customTool = stateExperiments?.customTools ? customToolRegistry.get(block.name) : undefined
 				const isKnownTool = isValidToolName(String(block.name), stateExperiments)
-				if (isKnownTool && !block.nativeArgs && !customTool) {
+				// Allow-list: tools that own their own missing-args handling and
+				// MUST be allowed to reach their handler with empty/undefined
+				// nativeArgs. Weak tool-calling models routinely emit `tools_load`
+				// with `input: {}` — the ToolsLoadTool handler converts that into
+				// structured guidance instead of an error. Gated by `deferredTools`
+				// so behaviour with the experiment OFF is byte-identical to today.
+				// See ai_plans/deferred-tool-loading.md §8.2.
+				const allowsEmptyNativeArgs = stateExperiments?.deferredTools === true && block.name === "tools_load"
+				if (isKnownTool && !block.nativeArgs && !customTool && !allowsEmptyNativeArgs) {
 					const errorMessage =
 						`Invalid tool call for '${block.name}': missing nativeArgs. ` +
 						`This usually means the model streamed invalid or incomplete arguments and the call could not be finalized.`
