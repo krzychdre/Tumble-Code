@@ -33,6 +33,7 @@ import { newTaskTool } from "../tools/NewTaskTool"
 import { updateTodoListTool } from "../tools/UpdateTodoListTool"
 import { runSlashCommandTool } from "../tools/RunSlashCommandTool"
 import { skillTool } from "../tools/SkillTool"
+import { toolsLoadTool } from "../tools/ToolsLoadTool"
 import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
@@ -381,6 +382,12 @@ export async function presentAssistantMessage(cline: Task) {
 						return `[${block.name} for '${block.params.command}'${block.params.args ? ` with args: ${block.params.args}` : ""}]`
 					case "skill":
 						return `[${block.name} for '${block.params.skill}'${block.params.args ? ` with args: ${block.params.args}` : ""}]`
+					case "tools_load": {
+						const nativeArgs = (block as ToolUse<"tools_load">).nativeArgs
+						const names = Array.isArray(nativeArgs?.names) ? nativeArgs.names : []
+						const summary = names.length > 0 ? names.join(", ") : "(no names)"
+						return `[${block.name} for ${summary}]`
+					}
 					case "generate_image":
 						return `[${block.name} for '${block.params.path}']`
 					default:
@@ -849,6 +856,14 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "skill":
 					await skillTool.handle(cline, block as ToolUse<"skill">, {
+						askApproval,
+						handleError,
+						pushToolResult,
+						toolCallId,
+					})
+					break
+				case "tools_load":
+					await toolsLoadTool.handle(cline, block as ToolUse<"tools_load">, {
 						askApproval,
 						handleError,
 						pushToolResult,

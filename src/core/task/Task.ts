@@ -363,6 +363,20 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	userMessageContentReady = false
 
 	/**
+	 * Tool names that the model has materialized via `tools_load` during this
+	 * Task's lifetime. They are re-promoted into the active tools array on
+	 * subsequent turns. Used only when the `deferredTools` experiment is on.
+	 */
+	materializedDeferredTools: Set<string> = new Set<string>()
+
+	/**
+	 * Snapshot of the deferred tools' full schemas, keyed by canonical name.
+	 * Refreshed at the start of each request by `ApiRequestBuilder` so that
+	 * `tools_load` can resolve names without re-querying the MCP hub.
+	 */
+	deferredToolDirectory: Map<string, import("openai").default.Chat.ChatCompletionTool> = new Map()
+
+	/**
 	 * Flag indicating whether the assistant message for the current streaming session
 	 * has been saved to API conversation history.
 	 *
