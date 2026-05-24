@@ -14,6 +14,7 @@ import {
 	filterMcpToolsForMode,
 	resolveToolAlias,
 } from "../prompts/tools/filter-tools-for-mode"
+import { applyDeferralStrategy, type DeferredCatalog } from "./deferred-tools"
 
 interface BuildToolsOptions {
 	provider: ClineProvider
@@ -31,6 +32,13 @@ interface BuildToolsOptions {
 	 * to pass all tool definitions while restricting callable tools.
 	 */
 	includeAllToolsWithRestrictions?: boolean
+	/**
+	 * Tool names the current Task has already materialized via the
+	 * `tools_load` meta-tool. Each entry is re-promoted back into the active
+	 * tools array so the model can actually call them on subsequent turns.
+	 * Ignored unless the `deferredTools` experiment is enabled.
+	 */
+	materializedDeferredTools?: ReadonlySet<string>
 }
 
 interface BuildToolsResult {
@@ -46,6 +54,14 @@ interface BuildToolsResult {
 	 * Use this with allowedFunctionNames in providers that support it.
 	 */
 	allowedFunctionNames?: string[]
+	/**
+	 * Catalog of tools whose schemas were withheld from the active `tools`
+	 * array. Populated only when the `deferredTools` experiment is enabled and
+	 * at least one MCP/custom tool is deferred. Consumers (`getDeferredToolsSection`)
+	 * read this to advertise the names in the system prompt so the model
+	 * knows what is callable via `tools_load`.
+	 */
+	deferredCatalog?: DeferredCatalog
 }
 
 /**
@@ -90,6 +106,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		disabledTools,
 		modelInfo,
 		includeAllToolsWithRestrictions,
+		materializedDeferredTools,
 	} = options
 
 	const mcpHub = provider.getMcpHub()
@@ -144,6 +161,8 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 	// Combine filtered tools (for backward compatibility and for allowedFunctionNames)
 	const filteredTools = [...filteredNativeTools, ...filteredMcpTools, ...nativeCustomTools]
 
+	const deferralEnabled = experiments?.deferredTools === true
+
 	// If includeAllToolsWithRestrictions is true, return ALL tools but provide
 	// allowed names based on mode filtering
 	if (includeAllToolsWithRestrictions) {
@@ -156,14 +175,48 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		// to aliases in filteredTools but allTools contains the original canonical names.
 		const allowedFunctionNames = filteredTools.map((tool) => resolveToolAlias(getToolName(tool)))
 
+		if (!deferralEnabled) {
+			return {
+				tools: allTools,
+				allowedFunctionNames,
+			}
+		}
+
+		const deferral = applyDeferralStrategy({
+			nativeTools,
+			mcpTools,
+			customTools: nativeCustomTools,
+			materializedDeferredTools: materializedDeferredTools ?? new Set<string>(),
+		})
+
 		return {
-			tools: allTools,
-			allowedFunctionNames,
+			tools: deferral.activeTools,
+			// IMPORTANT: keep deferred names in allowedFunctionNames so providers
+			// like Gemini still allow the model to call them once materialized
+			// via `tools_load`. allTools already covers the deferred names; we
+			// re-resolve via the deferred catalog to be explicit.
+			allowedFunctionNames: Array.from(
+				new Set([...allowedFunctionNames, ...deferral.catalog.entries.map((e) => e.name)]),
+			),
+			deferredCatalog: deferral.catalog,
 		}
 	}
 
-	// Default behavior: return only filtered tools
+	if (!deferralEnabled) {
+		return {
+			tools: filteredTools,
+		}
+	}
+
+	const deferral = applyDeferralStrategy({
+		nativeTools: filteredNativeTools,
+		mcpTools: filteredMcpTools,
+		customTools: nativeCustomTools,
+		materializedDeferredTools: materializedDeferredTools ?? new Set<string>(),
+	})
+
 	return {
-		tools: filteredTools,
+		tools: deferral.activeTools,
+		deferredCatalog: deferral.catalog,
 	}
 }
