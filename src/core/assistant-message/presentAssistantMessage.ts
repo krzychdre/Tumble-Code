@@ -41,6 +41,7 @@ import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 
 import { formatResponse } from "../prompts/responses"
 import { sanitizeToolUseId } from "../../utils/tool-id"
+import { tryAutoMaterializeDirectCall } from "../task/deferred-tools-resolver"
 
 /**
  * Processes and presents assistant message content to the user interface.
@@ -237,6 +238,24 @@ export async function presentAssistantMessage(cline: Task) {
 			if (!mcpBlock.partial) {
 				cline.recordToolUsage("use_mcp_tool") // Record as use_mcp_tool for analytics
 				TelemetryService.instance.captureToolUsage(cline.taskId, "use_mcp_tool")
+
+				// Auto-materialize: if the model called a deferred MCP tool directly
+				// (without using `tools_load` first), promote it to the active set so
+				// the next turn carries the full schema. The live MCP execution below
+				// works regardless. Gated on the deferredTools experiment so behaviour
+				// is byte-identical with the flag off. See ai_plans/deferred-tool-loading.md §8.3.
+				try {
+					const stateForResolver = await cline.providerRef.deref()?.getState()
+					tryAutoMaterializeDirectCall({
+						task: cline,
+						blockName: mcpBlock.name,
+						nativeArgs: mcpBlock.arguments,
+						experiments: stateForResolver?.experiments,
+					})
+				} catch (resolverErr) {
+					// Resolver is best-effort — never block a live MCP execution if it throws.
+					console.warn("[presentAssistantMessage] auto-materialize hook failed:", resolverErr)
+				}
 			}
 
 			// Resolve sanitized server name back to original server name
@@ -433,6 +452,28 @@ export async function presentAssistantMessage(cline: Task) {
 				// so behaviour with the experiment OFF is byte-identical to today.
 				// See ai_plans/deferred-tool-loading.md §8.2.
 				const allowsEmptyNativeArgs = stateExperiments?.deferredTools === true && block.name === "tools_load"
+
+				// Auto-materialize: a direct call to a deferred tool name without
+				// args. Resolver returns `guidance` with the schema inlined so the
+				// model can retry next turn with valid args. Gated on the
+				// `deferredTools` experiment. See §8.3.
+				if (!block.nativeArgs && !customTool && stateExperiments?.deferredTools === true) {
+					const outcome = tryAutoMaterializeDirectCall({
+						task: cline,
+						blockName: block.name,
+						nativeArgs: block.nativeArgs,
+						experiments: stateExperiments,
+					})
+					if (outcome && outcome.kind === "guidance") {
+						cline.pushToolResultToUserContent({
+							type: "tool_result",
+							tool_use_id: sanitizeToolUseId(toolCallId),
+							content: outcome.payload,
+						})
+						break
+					}
+				}
+
 				if (isKnownTool && !block.nativeArgs && !customTool && !allowsEmptyNativeArgs) {
 					const errorMessage =
 						`Invalid tool call for '${block.name}': missing nativeArgs. ` +
@@ -935,6 +976,38 @@ export async function presentAssistantMessage(cline: Task) {
 						}
 
 						break
+					}
+
+					// Auto-materialize check before falling through to "Unknown tool".
+					// If the name resolves in the deferred-tool directory, the model
+					// called a deferred tool directly (instead of via `tools_load`):
+					//   - guidance → push schema as result and break.
+					//   - ready    → push a synthesised success-style guidance: we
+					//                still cannot execute (no live handler on this
+					//                turn) but the schema is now active, so the
+					//                model retries next turn. Either way it's
+					//                strictly better than an "Unknown tool" error.
+					// Gated on the `deferredTools` experiment. See §8.3.
+					if (stateExperiments?.deferredTools === true) {
+						const outcome = tryAutoMaterializeDirectCall({
+							task: cline,
+							blockName: block.name,
+							nativeArgs: block.nativeArgs,
+							experiments: stateExperiments,
+						})
+						if (outcome) {
+							const content =
+								outcome.kind === "guidance"
+									? outcome.payload
+									: `Tool \`${block.name}\` was deferred but is now available. ` +
+										`Its full schema will be in your tools list next turn — retry it then.`
+							cline.pushToolResultToUserContent({
+								type: "tool_result",
+								tool_use_id: sanitizeToolUseId(toolCallId),
+								content,
+							})
+							break
+						}
 					}
 
 					// Not a custom tool - handle as unknown tool error
