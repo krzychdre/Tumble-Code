@@ -165,6 +165,7 @@ export class ApiRequestBuilder {
 			undefined, // todoList
 			this.access.api.getModel().id,
 			provider.getSkillsManager(),
+			this.access.materializedDeferredTools,
 		)
 	}
 
