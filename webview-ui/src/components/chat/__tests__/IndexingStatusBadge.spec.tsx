@@ -103,7 +103,7 @@ describe("IndexingStatusBadge", () => {
 		vi.clearAllMocks()
 	})
 
-	it("renders the status dot", () => {
+	it("renders the status icon", () => {
 		renderComponent()
 		const button = screen.getByRole("button")
 		expect(button).toBeInTheDocument()
