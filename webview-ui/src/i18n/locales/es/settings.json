@@ -823,6 +823,10 @@
 			"refreshSuccess": "Herramientas actualizadas correctamente",
 			"refreshError": "Error al actualizar las herramientas",
 			"toolParameters": "Parámetros"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Aplazar los esquemas de herramientas hasta que se necesiten",
+			"description": "Cuando está habilitado, la mayoría de las herramientas se anuncian solo con su nombre y una descripción breve; sus esquemas JSON completos se cargan bajo demanda mediante la meta-herramienta tools_load. Reduce los tokens del prompt del sistema con inventarios grandes de herramientas, a costa de una solicitud adicional la primera vez que se usa una herramienta aplazada."
 		}
 	},
 	"promptCaching": {

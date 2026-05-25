@@ -823,6 +823,10 @@
 			"refreshSuccess": "Araçlar başarıyla yenilendi",
 			"refreshError": "Araçlar yenilenemedi",
 			"toolParameters": "Parametreler"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Araç şemalarını gerekene kadar ertele",
+			"description": "Etkinleştirildiğinde, çoğu araç yalnızca ad ve tek satırlık açıklamayla duyurulur; tam JSON şemaları tools_load meta aracı aracılığıyla isteğe bağlı olarak yüklenir. Büyük araç envanterleriyle sistem isteminin token sayısını azaltır; ertelenmiş bir araç ilk kullanıldığında ek bir gidiş-dönüş maliyeti getirir."
 		}
 	},
 	"promptCaching": {

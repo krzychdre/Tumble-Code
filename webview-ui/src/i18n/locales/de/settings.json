@@ -823,6 +823,10 @@
 			"refreshSuccess": "Tools erfolgreich aktualisiert",
 			"refreshError": "Fehler beim Aktualisieren der Tools",
 			"toolParameters": "Parameter"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Tool-Schemas erst bei Bedarf laden",
+			"description": "Wenn aktiviert, werden die meisten Tools nur mit Namen und kurzer Beschreibung angekündigt; ihre vollständigen JSON-Schemas werden bei Bedarf über das Meta-Tool tools_load geladen. Reduziert die Token im System-Prompt bei großen Tool-Inventaren – um den Preis einer zusätzlichen Runde beim ersten Einsatz eines verzögerten Tools."
 		}
 	},
 	"promptCaching": {

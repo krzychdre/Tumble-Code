@@ -823,6 +823,10 @@
 			"refreshSuccess": "Làm mới công cụ thành công",
 			"refreshError": "Không thể làm mới công cụ",
 			"toolParameters": "Thông số"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Hoãn tải schema công cụ cho đến khi cần",
+			"description": "Khi được bật, hầu hết các công cụ chỉ được thông báo theo tên và mô tả một dòng; schema JSON đầy đủ của chúng được tải theo yêu cầu thông qua meta-tool tools_load. Giảm token trong prompt hệ thống khi danh sách công cụ lớn, đổi lại một vòng yêu cầu bổ sung trong lần đầu tiên sử dụng công cụ bị hoãn."
 		}
 	},
 	"promptCaching": {

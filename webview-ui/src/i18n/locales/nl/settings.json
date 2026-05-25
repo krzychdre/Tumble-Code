@@ -823,6 +823,10 @@
 			"refreshSuccess": "Tools succesvol vernieuwd",
 			"refreshError": "Fout bij vernieuwen van tools",
 			"toolParameters": "Parameters"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Tool-schema's pas laden wanneer nodig",
+			"description": "Wanneer ingeschakeld, worden de meeste tools alleen aangekondigd met naam en een korte beschrijving; hun volledige JSON-schema's worden op aanvraag geladen via de tools_load-metatool. Vermindert tokens in de systeemprompt bij grote tool-inventarissen, ten koste van één extra round-trip wanneer een uitgestelde tool voor het eerst wordt gebruikt."
 		}
 	},
 	"promptCaching": {

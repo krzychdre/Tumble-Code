@@ -823,6 +823,10 @@
 			"refreshSuccess": "Eines actualitzades correctament",
 			"refreshError": "Error en actualitzar les eines",
 			"toolParameters": "Paràmetres"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Ajornar els esquemes de les eines fins que calguin",
+			"description": "Quan està habilitat, la majoria d'eines s'anuncien només amb el nom i una descripció breu; els seus esquemes JSON complets es carreguen sota demanda mitjançant la meta-eina tools_load. Redueix els tokens del prompt del sistema amb inventaris grans d'eines, a costa d'una sol·licitud addicional la primera vegada que s'utilitza una eina ajornada."
 		}
 	},
 	"promptCaching": {

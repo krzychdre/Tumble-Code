@@ -823,6 +823,10 @@
 			"refreshSuccess": "도구가 성공적으로 새로고침되었습니다",
 			"refreshError": "도구 새로고침에 실패했습니다",
 			"toolParameters": "매개변수"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "필요할 때까지 도구 스키마 지연 로드",
+			"description": "활성화하면 대부분의 도구는 이름과 한 줄 설명으로만 광고되며, 전체 JSON 스키마는 tools_load 메타 도구를 통해 필요할 때 로드됩니다. 도구 인벤토리가 클 때 시스템 프롬프트 토큰을 줄이지만, 지연된 도구를 처음 사용할 때 한 번의 추가 왕복 비용이 발생합니다."
 		}
 	},
 	"promptCaching": {

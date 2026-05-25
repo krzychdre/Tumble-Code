@@ -823,6 +823,10 @@
 			"refreshSuccess": "Strumenti aggiornati con successo",
 			"refreshError": "Impossibile aggiornare gli strumenti",
 			"toolParameters": "Parametri"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Rinvia gli schemi degli strumenti finché non servono",
+			"description": "Quando abilitato, la maggior parte degli strumenti viene annunciata solo con nome e una breve descrizione; i loro schemi JSON completi vengono caricati su richiesta tramite il meta-strumento tools_load. Riduce i token del prompt di sistema con grandi inventari di strumenti, al costo di un giro aggiuntivo la prima volta che uno strumento rinviato viene utilizzato."
 		}
 	},
 	"promptCaching": {

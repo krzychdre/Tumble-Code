@@ -23,6 +23,7 @@ import {
 	addCustomInstructions,
 	markdownFormattingSection,
 	getSkillsSection,
+	getDeferredToolsSection,
 } from "./sections"
 
 // Helper function to get prompt component, filtering out empty objects
@@ -55,6 +56,7 @@ async function generatePrompt(
 	todoList?: TodoItem[],
 	modelId?: string,
 	skillsManager?: SkillsManager,
+	materializedDeferredTools?: ReadonlySet<string>,
 ): Promise<string> {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -82,6 +84,18 @@ async function generatePrompt(
 	// Tools catalog is not included in the system prompt.
 	const toolsCatalog = ""
 
+	const deferredToolsSection = getDeferredToolsSection({
+		experiments,
+		mcpHub: shouldIncludeMcp ? mcpHub : undefined,
+		// Note: custom tools advertised in this section would need the
+		// CustomToolRegistry — gated behind the `customTools` experiment.
+		// For v1 we only advertise MCP tools in the catalog; custom tools
+		// are still deferred at the API layer but discovered by name via
+		// the existing skill/custom-tool flow if the user has them enabled.
+		customTools: [],
+		materializedDeferredTools,
+	})
+
 	const basePrompt = `${roleDefinition}
 
 ${markdownFormattingSection()}
@@ -91,7 +105,7 @@ ${getSharedToolUseSection()}${toolsCatalog}
 	${getToolUseGuidelinesSection()}
 
 ${getCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined)}
-
+${deferredToolsSection ? `\n${deferredToolsSection}\n` : ""}
 ${modesSection}
 ${skillsSection ? `\n${skillsSection}` : ""}
 ${getRulesSection(cwd, settings)}
@@ -126,6 +140,7 @@ export const SYSTEM_PROMPT = async (
 	todoList?: TodoItem[],
 	modelId?: string,
 	skillsManager?: SkillsManager,
+	materializedDeferredTools?: ReadonlySet<string>,
 ): Promise<string> => {
 	if (!context) {
 		throw new Error("Extension context is required for generating system prompt")
@@ -154,5 +169,6 @@ export const SYSTEM_PROMPT = async (
 		todoList,
 		modelId,
 		skillsManager,
+		materializedDeferredTools,
 	)
 }

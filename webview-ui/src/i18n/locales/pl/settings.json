@@ -823,6 +823,10 @@
 			"refreshSuccess": "Narzędzia odświeżone pomyślnie",
 			"refreshError": "Nie udało się odświeżyć narzędzi",
 			"toolParameters": "Parametry"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Odraczaj schematy narzędzi do momentu użycia",
+			"description": "Po włączeniu większość narzędzi jest ogłaszana tylko z nazwą i jednolinijkowym opisem; ich pełne schematy JSON są ładowane na żądanie przez meta-narzędzie tools_load. Zmniejsza liczbę tokenów w prompcie systemowym przy dużych zestawach narzędzi, kosztem jednego dodatkowego round-tripu przy pierwszym użyciu odroczonego narzędzia."
 		}
 	},
 	"promptCaching": {
