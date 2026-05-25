@@ -1,4 +1,44 @@
 import { NativeToolCallParser } from "../NativeToolCallParser"
+import { TOOL_DISPLAY_NAMES } from "../../../shared/tools"
+import type { ToolName } from "@roo-code/types"
+
+/**
+ * Minimal valid args payload for each native tool. The point of these
+ * fixtures is NOT to test schema validation — it is to prove that
+ * `NativeToolCallParser.parseToolCall` has a switch case for every tool
+ * the system advertises. If you add a new tool to `TOOL_DISPLAY_NAMES`
+ * without an entry here OR a parser case, the test below will fail loudly.
+ *
+ * The exact field names come from the parser switch in NativeToolCallParser.ts;
+ * each entry contains only the fields the case checks for before populating
+ * `nativeArgs`.
+ */
+const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string, unknown>> = {
+	read_file: { path: "src/x.ts" },
+	read_command_output: { artifact_id: "cmd-1.txt" },
+	write_to_file: { path: "src/x.ts", content: "x" },
+	apply_diff: { path: "src/x.ts", diff: "<<<<<<< SEARCH\n=======\n>>>>>>> REPLACE" },
+	edit: { file_path: "src/x.ts", old_string: "a", new_string: "b" },
+	search_and_replace: { file_path: "src/x.ts", old_string: "a", new_string: "b" },
+	search_replace: { file_path: "src/x.ts", old_string: "a", new_string: "b" },
+	edit_file: { file_path: "src/x.ts", old_string: "a", new_string: "b" },
+	apply_patch: { patch: "*** Begin Patch\n*** End Patch" },
+	search_files: { path: ".", regex: "x" },
+	list_files: { path: "." },
+	use_mcp_tool: { server_name: "s", tool_name: "t" },
+	access_mcp_resource: { server_name: "s", uri: "x://y" },
+	ask_followup_question: { question: "q", follow_up: [{ text: "a", mode: null }] },
+	attempt_completion: { result: "done" },
+	switch_mode: { mode_slug: "code", reason: "r" },
+	new_task: { mode: "code", message: "m" },
+	codebase_search: { query: "q" },
+	execute_command: { command: "echo hi" },
+	update_todo_list: { todos: "- [ ] x" },
+	run_slash_command: { command: "review" },
+	skill: { skill: "init" },
+	generate_image: { prompt: "p", path: "out.png" },
+	tools_load: { names: ["mcp--example--tool"] },
+}
 
 describe("NativeToolCallParser", () => {
 	beforeEach(() => {
@@ -341,6 +381,40 @@ describe("NativeToolCallParser", () => {
 					expect(nativeArgs.limit).toBe(10)
 				}
 			})
+		})
+	})
+
+	// Catches the class of bug where a new native tool is added to the
+	// codebase but no `case "..."` is added to `parseToolCall`'s switch.
+	// Symptom: model emits correct args → parser throws → catch returns null →
+	// downstream paths construct an empty ToolUse → tool handler sees no args.
+	// This bit `tools_load` (see ai_plans/2026-05-25_fix-tools-load-parser-omission.md).
+	describe("parseToolCall — every registered native tool has a parser case", () => {
+		const fixtureNames = Object.keys(MINIMAL_VALID_ARGS) as Array<keyof typeof MINIMAL_VALID_ARGS>
+
+		// Guard: every native tool in TOOL_DISPLAY_NAMES (except custom_tool,
+		// which goes through customToolRegistry) MUST have a fixture entry.
+		// Adding a tool to the system without a fixture is itself a test failure.
+		it("has a minimal-args fixture for every native tool in TOOL_DISPLAY_NAMES", () => {
+			const advertised = (Object.keys(TOOL_DISPLAY_NAMES) as ToolName[]).filter((n) => n !== "custom_tool")
+			const missingFixtures = advertised.filter((n) => !(n in MINIMAL_VALID_ARGS))
+			expect(missingFixtures).toEqual([])
+		})
+
+		it.each(fixtureNames)("parseToolCall(%s) returns a non-null result with populated nativeArgs", (toolName) => {
+			const result = NativeToolCallParser.parseToolCall({
+				id: `toolu_${toolName}`,
+				name: toolName,
+				arguments: JSON.stringify(MINIMAL_VALID_ARGS[toolName]),
+			})
+
+			expect(result).not.toBeNull()
+			if (result?.type === "tool_use") {
+				expect(result.nativeArgs).toBeDefined()
+				// Reject the empty-object case — that's the "fell into default,
+				// nothing populated" symptom this test exists to catch.
+				expect(Object.keys(result.nativeArgs as object).length).toBeGreaterThan(0)
+			}
 		})
 	})
 })

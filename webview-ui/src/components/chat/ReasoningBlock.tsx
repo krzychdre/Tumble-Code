@@ -45,7 +45,7 @@ export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 				<div className="flex items-center gap-2">
 					<Lightbulb className="w-4" />
 					<span className="font-bold text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
-					<BlockTimestamp startTs={ts} endTs={endTs} />
+					<BlockTimestamp startTs={ts} endTs={endTs} live />
 				</div>
 				<div className="flex items-center gap-2">
 					<ChevronUp

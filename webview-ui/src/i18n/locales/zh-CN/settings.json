@@ -823,6 +823,10 @@
 			"refreshSuccess": "工具刷新成功",
 			"refreshError": "工具刷新失败",
 			"toolParameters": "参数"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "按需延迟加载工具模式",
+			"description": "启用后,大多数工具只通过名称和一行描述进行通告;它们完整的 JSON 模式通过 tools_load 元工具按需加载。在工具清单较大时减少系统提示词的 Token,代价是在首次使用延迟工具时多一次往返。"
 		}
 	},
 	"promptCaching": {

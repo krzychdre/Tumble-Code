@@ -163,7 +163,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						<span className="font-bold mr-2" style={{ fontWeight: "bold" }}>
 							User Edit
 						</span>
-						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} />}
+						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
 						<div className="flex-grow" />
 					</div>
 				</ToolUseBlockHeader>
@@ -186,7 +186,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						<span className="font-bold mr-2" style={{ fontWeight: "bold" }}>
 							Todo List Updated
 						</span>
-						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} />}
+						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
 						<div className="flex-grow" />
 						{editable && (
 							<button

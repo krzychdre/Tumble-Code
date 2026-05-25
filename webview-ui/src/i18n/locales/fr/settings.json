@@ -823,6 +823,10 @@
 			"refreshSuccess": "Outils actualisés avec succès",
 			"refreshError": "Échec de l'actualisation des outils",
 			"toolParameters": "Paramètres"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Différer les schémas des outils jusqu'à utilisation",
+			"description": "Lorsque cette option est activée, la plupart des outils sont annoncés uniquement par leur nom et une brève description ; leurs schémas JSON complets sont chargés à la demande via le méta-outil tools_load. Réduit les jetons du prompt système pour les grands inventaires d'outils, au prix d'un aller-retour supplémentaire la première fois qu'un outil différé est utilisé."
 		}
 	},
 	"promptCaching": {

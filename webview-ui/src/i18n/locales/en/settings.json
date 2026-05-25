@@ -886,6 +886,10 @@
 			"refreshSuccess": "Tools refreshed successfully",
 			"refreshError": "Failed to refresh tools",
 			"toolParameters": "Parameters"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Defer tool schemas until needed",
+			"description": "When enabled, most tools are advertised by name and one-line description only; their full JSON schemas are loaded on demand via the tools_load meta-tool. Reduces system-prompt tokens with large tool inventories, at the cost of one extra round-trip the first time a deferred tool is used."
 		}
 	},
 	"promptCaching": {

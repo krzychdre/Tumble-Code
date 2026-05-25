@@ -833,6 +833,10 @@
 			"refreshSuccess": "工具重新整理成功",
 			"refreshError": "工具重新整理失敗",
 			"toolParameters": "參數"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "按需延遲載入工具結構描述",
+			"description": "啟用後,大多數工具僅以名稱和單行描述進行宣告;它們完整的 JSON 結構描述透過 tools_load 元工具按需載入。在工具清單較大時可減少系統提示的 Token,代價是首次使用延遲工具時多一次往返。"
 		}
 	},
 	"promptCaching": {

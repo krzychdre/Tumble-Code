@@ -823,6 +823,10 @@
 			"refreshSuccess": "Ferramentas atualizadas com sucesso",
 			"refreshError": "Falha ao atualizar ferramentas",
 			"toolParameters": "Parâmetros"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Adiar esquemas de ferramentas até serem necessários",
+			"description": "Quando habilitado, a maioria das ferramentas é anunciada apenas com nome e uma descrição breve; seus esquemas JSON completos são carregados sob demanda através da meta-ferramenta tools_load. Reduz tokens no prompt do sistema com grandes inventários de ferramentas, ao custo de uma viagem extra na primeira vez que uma ferramenta adiada é usada."
 		}
 	},
 	"promptCaching": {

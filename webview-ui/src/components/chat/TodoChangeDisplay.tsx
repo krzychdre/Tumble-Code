@@ -67,7 +67,7 @@ export function TodoChangeDisplay({ previousTodos, newTodos, startTs, endTs }: T
 				<span className="overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold">
 					{t("chat:todo.updated")}
 				</span>
-				{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} />}
+				{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
 				<div className="flex-1" />
 			</div>
 

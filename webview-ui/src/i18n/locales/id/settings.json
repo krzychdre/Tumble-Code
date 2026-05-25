@@ -823,6 +823,10 @@
 			"refreshSuccess": "Tool berhasil direfresh",
 			"refreshError": "Gagal merefresh tool",
 			"toolParameters": "Parameter"
+		},
+		"DEFERRED_TOOLS": {
+			"name": "Tangguhkan skema alat hingga dibutuhkan",
+			"description": "Saat diaktifkan, sebagian besar alat hanya diiklankan berdasarkan nama dan deskripsi satu baris; skema JSON lengkapnya dimuat sesuai permintaan melalui meta-tool tools_load. Mengurangi token system-prompt untuk inventaris alat yang besar, dengan biaya satu round-trip tambahan saat alat yang ditangguhkan pertama kali digunakan."
 		}
 	},
 	"promptCaching": {

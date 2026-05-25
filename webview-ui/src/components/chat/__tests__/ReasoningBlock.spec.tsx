@@ -23,11 +23,21 @@ describe("ReasoningBlock", () => {
 		expect(screen.getByText("T(1000)")).toBeInTheDocument()
 	})
 
-	it("shows only the start time while the duration is not yet known", () => {
-		render(<ReasoningBlock content="" ts={1000} />)
+	it("shows a live elapsed duration while endTs is not yet known", () => {
+		vi.useFakeTimers()
+		try {
+			vi.setSystemTime(new Date(5_000))
+			render(<ReasoningBlock content="" ts={1_000} />)
 
-		expect(screen.getByText("T(1000)")).toBeInTheDocument()
-		expect(screen.queryByText(/^D\(/)).not.toBeInTheDocument()
+			expect(screen.getByText("T(1000)")).toBeInTheDocument()
+			// At mount, elapsed = 5000 - 1000 = 4000ms; rendered by the shared
+			// BlockTimestamp using the same formatDuration helper as the
+			// post-completion duration (single span, single font).
+			expect(screen.getAllByText(/^D\(/)).toHaveLength(1)
+			expect(screen.getByText("D(4000)")).toBeInTheDocument()
+		} finally {
+			vi.useRealTimers()
+		}
 	})
 
 	it("renders the timestamp with the shared muted BlockTimestamp styling", () => {

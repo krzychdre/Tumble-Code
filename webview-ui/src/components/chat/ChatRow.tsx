@@ -1084,6 +1084,7 @@ export const ChatRowContent = ({
 									<BlockTimestamp
 										startTs={message.ts}
 										endTs={isApiRequestInProgress ? undefined : nextMessageTs}
+										live={isApiRequestInProgress}
 									/>
 								</div>
 								<div
