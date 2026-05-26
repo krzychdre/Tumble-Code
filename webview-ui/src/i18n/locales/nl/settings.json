@@ -468,10 +468,6 @@
 			"description": "Ollama laat je modellen lokaal op je computer draaien. Zie hun quickstart-gids voor instructies.",
 			"warning": "Let op: Tumble Code gebruikt complexe prompts en werkt het beste met Claude-modellen. Minder krachtige modellen werken mogelijk niet zoals verwacht."
 		},
-		"roo": {
-			"authenticatedMessage": "Veilig geauthenticeerd via je Tumble Code Cloud-account.",
-			"connectButton": "Verbinden met Tumble Code Cloud"
-		},
 		"openRouter": {
 			"providerRouting": {
 				"title": "OpenRouter-providerroutering",

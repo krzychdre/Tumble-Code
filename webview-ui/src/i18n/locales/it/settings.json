@@ -468,10 +468,6 @@
 			"description": "Ollama ti permette di eseguire modelli localmente sul tuo computer. Per iniziare, consulta la guida rapida.",
 			"warning": "Nota: Tumble Code utiliza prompt complessi e funziona meglio con i modelli Claude. I modelli con capacità inferiori potrebbero non funzionare come previsto."
 		},
-		"roo": {
-			"authenticatedMessage": "Autenticato in modo sicuro tramite il tuo account Tumble Code Cloud.",
-			"connectButton": "Connetti a Tumble Code Cloud"
-		},
 		"openRouter": {
 			"providerRouting": {
 				"title": "Routing dei fornitori OpenRouter",

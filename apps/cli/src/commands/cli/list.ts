@@ -215,29 +215,6 @@ function requestModes(host: ExtensionHost): Promise<ModeLike[]> {
 	})
 }
 
-function requestRooModels(host: ExtensionHost): Promise<ModelRecord> {
-	return requestFromExtension(host, "requestRooModels", (message) => {
-		if (message.type !== "singleRouterModelFetchResponse") {
-			return undefined
-		}
-
-		const values = isRecord(message.values) ? message.values : undefined
-		if (values?.provider !== "roo") {
-			return undefined
-		}
-
-		if (message.success === false) {
-			const errorMessage =
-				typeof message.error === "string" && message.error.length > 0
-					? message.error
-					: "Failed to fetch Roo models"
-			throw new Error(errorMessage)
-		}
-
-		return isRecord(values.models) ? (values.models as ModelRecord) : {}
-	})
-}
-
 async function withHostAndSignalHandlers<T>(
 	options: BaseListOptions,
 	hostOptions: ListHostOptions,
@@ -297,17 +274,18 @@ export async function listModes(options: BaseListOptions): Promise<void> {
 
 export async function listModels(options: BaseListOptions): Promise<void> {
 	const format = parseFormat(options.format)
+	const models: ModelRecord = {}
 
-	await withHostAndSignalHandlers(options, { ephemeral: true }, async (host) => {
-		const models = await requestRooModels(host)
+	if (format === "json") {
+		outputJson({ models })
+		return
+	}
 
-		if (format === "json") {
-			outputJson({ models })
-			return
-		}
+	outputModelsText(models)
 
-		outputModelsText(models)
-	})
+	// Quiet the "options unused" lint; the CLI host isn't needed when there
+	// is no router-provided model list to query.
+	void options
 }
 
 export async function listSessions(options: BaseListOptions): Promise<void> {
