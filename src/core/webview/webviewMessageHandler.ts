@@ -1000,7 +1000,7 @@ export const webviewMessageHandler = async (
 					key: "roo",
 					options: {
 						provider: "roo",
-						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
+						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "http://localhost:8080/proxy",
 						apiKey: CloudService.hasInstance()
 							? CloudService.instance.authService?.getSessionToken()
 							: undefined,
@@ -1155,7 +1155,7 @@ export const webviewMessageHandler = async (
 			try {
 				const rooOptions = {
 					provider: "roo" as const,
-					baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
+					baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "http://localhost:8080/proxy",
 					apiKey: CloudService.hasInstance()
 						? CloudService.instance.authService?.getSessionToken()
 						: undefined,

@@ -8,7 +8,7 @@ import { RefreshTimer } from "../RefreshTimer.js"
 vi.mock("../RefreshTimer")
 
 vi.mock("../config", () => ({
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
+	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
 global.fetch = vi.fn()
@@ -380,7 +380,7 @@ describe("CloudSettingsService", () => {
 
 			expect(result).toBe(true)
 
-			expect(fetch).toHaveBeenCalledWith("https://app.roocode.com/api/extension-settings", {
+			expect(fetch).toHaveBeenCalledWith("http://localhost:8080/api/extension-settings", {
 				headers: {
 					Authorization: "Bearer valid-token",
 				},

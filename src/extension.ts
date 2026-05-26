@@ -212,7 +212,7 @@ export async function activate(context: vscode.ExtensionContext) {
 						: undefined
 					await refreshModels({
 						provider: "roo",
-						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
+						baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "http://localhost:8080/proxy",
 						apiKey: sessionToken,
 					})
 				} else {

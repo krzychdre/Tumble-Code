@@ -20,7 +20,7 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 	getClerkBaseUrl: vi.fn(),
-	PRODUCTION_CLERK_BASE_URL: "https://clerk.roocode.com",
+	PRODUCTION_CLERK_BASE_URL: "https://auth.tumblecode.dev",
 }))
 
 vi.mock("vscode", () => ({
@@ -81,7 +81,7 @@ describe("MdmService", () => {
 		mockOs.platform.mockReturnValue("darwin")
 
 		// Setup default mock for getClerkBaseUrl to return development URL
-		mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+		mockGetClerkBaseUrl.mockReturnValue("http://localhost:8080/auth")
 
 		// Setup VSCode mocks
 		const mockConfig = {
@@ -93,7 +93,7 @@ describe("MdmService", () => {
 		// Reset mocks
 		vi.clearAllMocks()
 		// Re-setup the default after clearing
-		mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+		mockGetClerkBaseUrl.mockReturnValue("http://localhost:8080/auth")
 	})
 
 	afterEach(() => {
@@ -175,7 +175,7 @@ describe("MdmService", () => {
 		it("should use correct path for Windows in development", async () => {
 			mockOs.platform.mockReturnValue("win32")
 			process.env.PROGRAMDATA = "C:\\ProgramData"
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			mockGetClerkBaseUrl.mockReturnValue("http://localhost:8080/auth")
 
 			mockFs.existsSync.mockReturnValue(false)
 
@@ -197,7 +197,7 @@ describe("MdmService", () => {
 
 		it("should use correct path for macOS in development", async () => {
 			mockOs.platform.mockReturnValue("darwin")
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			mockGetClerkBaseUrl.mockReturnValue("http://localhost:8080/auth")
 
 			mockFs.existsSync.mockReturnValue(false)
 
@@ -219,7 +219,7 @@ describe("MdmService", () => {
 
 		it("should use correct path for Linux in development", async () => {
 			mockOs.platform.mockReturnValue("linux")
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			mockGetClerkBaseUrl.mockReturnValue("http://localhost:8080/auth")
 
 			mockFs.existsSync.mockReturnValue(false)
 
@@ -230,7 +230,7 @@ describe("MdmService", () => {
 
 		it("should default to dev config when NODE_ENV is not set", async () => {
 			mockOs.platform.mockReturnValue("darwin")
-			mockGetClerkBaseUrl.mockReturnValue("https://dev.clerk.roocode.com")
+			mockGetClerkBaseUrl.mockReturnValue("http://localhost:8080/auth")
 
 			mockFs.existsSync.mockReturnValue(false)
 

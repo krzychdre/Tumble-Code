@@ -100,11 +100,11 @@ describe("WebAuthService", () => {
 		MockedRefreshTimer.mockImplementation(() => mockTimer as unknown as RefreshTimer)
 
 		// Setup config mocks - use production URL by default to maintain existing test behavior
-		vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.roocode.com")
+		vi.mocked(getClerkBaseUrl).mockReturnValue("https://auth.tumblecode.dev")
 		vi.mocked(getRooCodeApiUrl).mockReturnValue("https://api.test.com")
 
 		// Setup utils mock
-		vi.mocked(getUserAgent).mockReturnValue("Roo-Code 1.0.0")
+		vi.mocked(getUserAgent).mockReturnValue("Tumble-Code 1.0.0")
 
 		// Setup crypto mock
 		vi.mocked(crypto.randomBytes).mockReturnValue(Buffer.from("test-random-bytes") as never)
@@ -474,7 +474,7 @@ describe("WebAuthService", () => {
 			expect(mockContext.secrets.delete).toHaveBeenCalledWith("clerk-auth-credentials")
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("clerk-auth-state", undefined)
 			expect(mockFetch).toHaveBeenCalledWith(
-				"https://clerk.roocode.com/v1/client/sessions/test-session/remove",
+				"https://auth.tumblecode.dev/v1/client/sessions/test-session/remove",
 				expect.objectContaining({
 					method: "POST",
 					headers: expect.objectContaining({
@@ -1117,7 +1117,7 @@ describe("WebAuthService", () => {
 	describe("auth credentials key scoping", () => {
 		it("should use default key when getClerkBaseUrl returns production URL", async () => {
 			// Mock getClerkBaseUrl to return production URL
-			vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.roocode.com")
+			vi.mocked(getClerkBaseUrl).mockReturnValue("https://auth.tumblecode.dev")
 
 			const service = new WebAuthService(mockContext as unknown as ExtensionContext, mockLog)
 			const credentials = {

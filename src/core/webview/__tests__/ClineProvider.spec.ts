@@ -301,7 +301,7 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
+	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
 }))
 
 afterAll(() => {
@@ -483,9 +483,9 @@ describe("ClineProvider", () => {
 
 		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
 
-		// Verify Content Security Policy contains the necessary PostHog domains
+		// Verify Content Security Policy connect-src directive
 		expect(mockWebviewView.webview.html).toContain(
-			"connect-src vscode-webview://test-csp-source https://openrouter.ai https://api.requesty.ai https://ph.roocode.com",
+			"connect-src vscode-webview://test-csp-source https://openrouter.ai https://api.requesty.ai",
 		)
 
 		// Extract the script-src directive section and verify required security elements
