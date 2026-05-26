@@ -37,6 +37,7 @@ import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
 import { MdmService } from "./services/mdm/MdmService"
 import { migrateSettings } from "./utils/migrateSettings"
+import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
 
@@ -135,6 +136,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Migrate old settings to new
 	await migrateSettings(context, outputChannel)
+
+	// One-shot import of settings from a previous Roo Code installation, if present.
+	// Idempotent: flagged in globalState after running so it won't re-prompt.
+	await migrateFromRooCode(context, outputChannel)
 
 	// Initialize telemetry service.
 	const telemetryService = TelemetryService.createInstance()
