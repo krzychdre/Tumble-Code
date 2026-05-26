@@ -64,21 +64,20 @@ Mention alignment with these areas in your PRs.
 
 All contributions start with a GitHub Issue.
 
+<!-- External issue-tracking guidance is hidden until contact channels are set up.
 - **Check existing issues**: Search [GitHub Issues](https://github.com/krzychdre/tumble-code/issues).
 - **Create an issue** describing:
     - **Enhancements:** plain-language description focused on user benefit.
     - **Bugs:** minimal repro + expected vs actual + version.
 - **Want to work on it?** Comment "Claiming" on the issue to signal intent before opening a PR.
 - **PRs must link to the issue.** Unlinked PRs may be closed.
+-->
 
 ### Reporting Bugs
 
 - Check for existing reports first.
-- Create a new bug report with:
-    - Clear, numbered reproduction steps
-    - Expected vs actual result
-    - Tumble Code version (required); API provider/model if relevant
-- **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new).
+- Create a new bug report with: - Clear, numbered reproduction steps - Expected vs actual result - Tumble Code version (required); API provider/model if relevant
+  <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Development & Submission Process
 

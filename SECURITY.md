@@ -6,7 +6,9 @@ We actively patch only the most recent minor release of Tumble Code. Older versi
 
 ## Reporting a Vulnerability
 
-Please report vulnerabilities privately via [GitHub security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new) with:
+<!-- Please report vulnerabilities privately via [GitHub security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new) with: -->
+
+Please report vulnerabilities privately to a maintainer through whichever contact channel Tumble Code publishes once it has one set up, including:
 
 - A short summary of the issue
 - Steps to reproduce or a proof of concept

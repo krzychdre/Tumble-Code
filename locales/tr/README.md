@@ -1,12 +1,12 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
+  <!-- <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a> -->
+  <!-- <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a> -->
+  <!-- <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a> -->
+  <!-- <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a> -->
 </p>
 <p align="center">
-  <em>Hızlı yardım alın → <a href="https://discord.gg/tumblecode">Discord'a Katılın</a> • Asenkron mu tercih edersiniz? → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Code'a Katılın</a></em>
+  <!-- <em>Hızlı yardım alın → <a href="https://discord.gg/tumblecode">Discord'a Katılın</a> • Asenkron mu tercih edersiniz? → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Code'a Katılın</a></em> -->
 </p>
 
 # Tumble Code
@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -92,11 +92,11 @@ Daha fazla: [Modları kullanma](https://docs.tumblecode.dev/basic-usage/using-mo
 ## Kaynaklar
 
 - **[Dokümantasyon](https://docs.tumblecode.dev):** Tumble Code'u yükleme, yapılandırma ve ustalaşma konusundaki resmi kılavuz.
-- **[YouTube Kanalı](https://youtube.com/@tumblecode?feature=shared):** Eğitimleri izleyin ve özellikleri çalışırken görün.
-- **[Discord Sunucusu](https://discord.gg/tumblecode):** Gerçek zamanlı yardım ve tartışma için topluluğa katılın.
-- **[Reddit Topluluğu](https://www.reddit.com/r/TumbleCode):** Deneyimlerinizi paylaşın ve başkalarının ne inşa ettiğini görün.
-- **[GitHub Sorunları](https://github.com/krzychdre/tumble-code/issues):** Hataları bildirin ve gelişimi takip edin.
-- **[Özellik İstekleri](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Bir fikriniz mi var? Geliştiricilerle paylaşın.
+    <!-- - **[YouTube Kanalı](https://youtube.com/@tumblecode?feature=shared):** Eğitimleri izleyin ve özellikleri çalışırken görün. -->
+    <!-- - **[Discord Sunucusu](https://discord.gg/tumblecode):** Gerçek zamanlı yardım ve tartışma için topluluğa katılın. -->
+    <!-- - **[Reddit Topluluğu](https://www.reddit.com/r/TumbleCode):** Deneyimlerinizi paylaşın ve başkalarının ne inşa ettiğini görün. -->
+    <!-- - **[GitHub Sorunları](https://github.com/krzychdre/tumble-code/issues):** Hataları bildirin ve gelişimi takip edin. -->
+    <!-- - **[Özellik İstekleri](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Bir fikriniz mi var? Geliştiricilerle paylaşın. -->
 
 ---
 
@@ -186,4 +186,4 @@ Topluluk katkılarını çok seviyoruz! [CONTRIBUTING.md](CONTRIBUTING.md) dosya
 
 ---
 
-**Tumble Code'un keyfini çıkar!** Onu kısa tasmalı tut ya da otonom dolaşsın; ne inşa edeceğini görmek için sabırsızlanıyoruz. Soruların veya özellik fikirlerin varsa [Reddit topluluğumuza](https://www.reddit.com/r/TumbleCode/) ya da [Discord](https://discord.gg/tumblecode)'a uğra. İyi kodlamalar!
+<!-- **Tumble Code'un keyfini çıkar!** Onu kısa tasmalı tut ya da otonom dolaşsın; ne inşa edeceğini görmek için sabırsızlanıyoruz. Soruların veya özellik fikirlerin varsa [Reddit topluluğumuza](https://www.reddit.com/r/TumbleCode/) ya da [Discord](https://discord.gg/tumblecode)'a uğra. İyi kodlamalar! -->

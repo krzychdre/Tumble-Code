@@ -1,12 +1,12 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
+  <!-- <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a> -->
+  <!-- <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a> -->
+  <!-- <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a> -->
+  <!-- <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a> -->
 </p>
 <p align="center">
-  <em>Получить быструю помощь → <a href="https://discord.gg/tumblecode">Присоединяйтесь к Discord</a> • Предпочитаете асинхронный режим? → <a href="https://www.reddit.com/r/TumbleCode/">Присоединяйтесь к r/Tumble Code</a></em>
+  <!-- <em>Получить быструю помощь → <a href="https://discord.gg/tumblecode">Присоединяйтесь к Discord</a> • Предпочитаете асинхронный режим? → <a href="https://www.reddit.com/r/TumbleCode/">Присоединяйтесь к r/Tumble Code</a></em> -->
 </p>
 
 # Tumble Code
@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -92,11 +92,11 @@ Tumble Code адаптируется к вашему стилю работы, а
 ## Ресурсы
 
 - **[Документация](https://docs.tumblecode.dev):** Официальное руководство по установке, настройке и освоению Tumble Code.
-- **[Канал на YouTube](https://youtube.com/@tumblecode?feature=shared):** Смотрите обучающие видео и функции в действии.
-- **[Сервер Discord](https://discord.gg/tumblecode):** Присоединяйтесь к сообществу для получения помощи и обсуждений в реальном времени.
-- **[Сообщество Reddit](https://www.reddit.com/r/TumbleCode):** Делитесь своим опытом и смотрите, что создают другие.
-- **[Проблемы на GitHub](https://github.com/krzychdre/tumble-code/issues):** Сообщайте об ошибках и отслеживайте разработку.
-- **[Запросы на новые функции](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Есть идея? Поделитесь ею с разработчиками.
+    <!-- - **[Канал на YouTube](https://youtube.com/@tumblecode?feature=shared):** Смотрите обучающие видео и функции в действии. -->
+    <!-- - **[Сервер Discord](https://discord.gg/tumblecode):** Присоединяйтесь к сообществу для получения помощи и обсуждений в реальном времени. -->
+    <!-- - **[Сообщество Reddit](https://www.reddit.com/r/TumbleCode):** Делитесь своим опытом и смотрите, что создают другие. -->
+    <!-- - **[Проблемы на GitHub](https://github.com/krzychdre/tumble-code/issues):** Сообщайте об ошибках и отслеживайте разработку. -->
+    <!-- - **[Запросы на новые функции](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Есть идея? Поделитесь ею с разработчиками. -->
 
 ---
 
@@ -186,4 +186,4 @@ pnpm install:vsix [-y] [--editor=<command>]
 
 ---
 
-**Наслаждайтесь Tumble Code!** Независимо от того, будете ли вы держать его на коротком поводке или позволите ему действовать автономно, мы с нетерпением ждем, что вы создадите. Если у вас есть вопросы или идеи по поводу функций, заходите в наше [сообщество на Reddit](https://www.reddit.com/r/TumbleCode/) или [Discord](https://discord.gg/tumblecode). Приятного кодирования!
+<!-- **Наслаждайтесь Tumble Code!** Независимо от того, будете ли вы держать его на коротком поводке или позволите ему действовать автономно, мы с нетерпением ждем, что вы создадите. Если у вас есть вопросы или идеи по поводу функций, заходите в наше [сообщество на Reddit](https://www.reddit.com/r/TumbleCode/) или [Discord](https://discord.gg/tumblecode). Приятного кодирования! -->

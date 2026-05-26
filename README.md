@@ -36,7 +36,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - [Tiếng Việt](locales/vi/README.md)
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
-      </details>
+  </details>
 
 ---
 
@@ -64,8 +64,11 @@ Tumble Code adapts to how you work:
 ## Resources
 
 - **Documentation:** Tumble Code documentation is a work in progress. The original Roo Code docs at [docs.roocode.com](https://docs.roocode.com) still describe most behaviors, since Tumble Code is a recent fork.
+
+<!-- External community channels are intentionally hidden until they're set up.
 - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Report bugs and track development.
 - **[GitHub Discussions](https://github.com/krzychdre/tumble-code/discussions):** Ideas, questions, and feature requests.
+-->
 
 ---
 
@@ -174,7 +177,9 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 
 The Roo Code project was the work of many contributors over multiple years; their commits remain in this repository's git history. If you contributed to upstream Roo Code, your work is still here. The fork carries forward your effort under a new name, not a clean-room reimplementation.
 
-For questions about lineage, licensing, or attribution, please open a [GitHub issue](https://github.com/krzychdre/tumble-code/issues).
+<!-- For questions about lineage, licensing, or attribution, please open a [GitHub issue](https://github.com/krzychdre/tumble-code/issues). -->
+
+For questions about lineage, licensing, or attribution, please reach out through whichever contact channel Tumble Code publishes once it has one set up.
 
 ---
 

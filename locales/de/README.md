@@ -1,12 +1,12 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
+  <!-- <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a> -->
+  <!-- <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a> -->
+  <!-- <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a> -->
+  <!-- <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a> -->
 </p>
 <p align="center">
-  <em>Schnelle Hilfe → <a href="https://discord.gg/tumblecode">Discord beitreten</a> • Lieber asynchron? → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Code beitreten</a></em>
+  <!-- <em>Schnelle Hilfe → <a href="https://discord.gg/tumblecode">Discord beitreten</a> • Lieber asynchron? → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Code beitreten</a></em> -->
 </p>
 
 # Tumble Code
@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -92,11 +92,11 @@ Mehr erfahren: [Modi verwenden](https://docs.tumblecode.dev/basic-usage/using-mo
 ## Ressourcen
 
 - **[Dokumentation](https://docs.tumblecode.dev):** Die offizielle Anleitung zur Installation, Konfiguration und Beherrschung von Tumble Code.
-- **[YouTube-Kanal](https://youtube.com/@tumblecode?feature=shared):** Schau dir Tutorials an und sieh Features in Aktion.
-- **[Discord-Server](https://discord.gg/tumblecode):** Tritt der Community bei für Echtzeit-Hilfe und Diskussionen.
-- **[Reddit-Community](https://www.reddit.com/r/TumbleCode):** Teile deine Erfahrungen und sieh, was andere bauen.
-- **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Melde Fehler und verfolge die Entwicklung.
-- **[Feature-Anfragen](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Hast du eine Idee? Teile sie mit den Entwicklern.
+    <!-- - **[YouTube-Kanal](https://youtube.com/@tumblecode?feature=shared):** Schau dir Tutorials an und sieh Features in Aktion. -->
+    <!-- - **[Discord-Server](https://discord.gg/tumblecode):** Tritt der Community bei für Echtzeit-Hilfe und Diskussionen. -->
+    <!-- - **[Reddit-Community](https://www.reddit.com/r/TumbleCode):** Teile deine Erfahrungen und sieh, was andere bauen. -->
+    <!-- - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Melde Fehler und verfolge die Entwicklung. -->
+    <!-- - **[Feature-Anfragen](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Hast du eine Idee? Teile sie mit den Entwicklern. -->
 
 ---
 
@@ -186,4 +186,4 @@ Wir lieben Community-Beiträge! Lies unsere [CONTRIBUTING.md](CONTRIBUTING.md), 
 
 ---
 
-**Viel Spaß mit Tumble Code!** Egal, ob du ihn an der kurzen Leine führst oder autonom agieren lässt, wir können es kaum erwarten zu sehen, was du baust. Wenn du Fragen oder Ideen für neue Funktionen hast, schau in unserer [Reddit-Community](https://www.reddit.com/r/TumbleCode/) oder auf [Discord](https://discord.gg/tumblecode) vorbei. Viel Spaß beim Codieren!
+<!-- **Viel Spaß mit Tumble Code!** Egal, ob du ihn an der kurzen Leine führst oder autonom agieren lässt, wir können es kaum erwarten zu sehen, was du baust. Wenn du Fragen oder Ideen für neue Funktionen hast, schau in unserer [Reddit-Community](https://www.reddit.com/r/TumbleCode/) oder auf [Discord](https://discord.gg/tumblecode) vorbei. Viel Spaß beim Codieren! -->

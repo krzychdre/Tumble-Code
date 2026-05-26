@@ -54,7 +54,8 @@ Mencione o alinhamento com essas áreas em seus PRs.
 
 ### 3. Junte-se à comunidade Tumble Code
 
-- **Principal:** Junte-se ao nosso [Discord](https://discord.gg/tumblecode) e envie uma DM para **Hannes Rudolph (`hrudolph`)**.
+<!-- - **Principal:** Junte-se ao nosso [Discord](https://discord.gg/tumblecode) e envie uma DM para **Hannes Rudolph (`hrudolph`)**. -->
+
 - **Alternativa:** Contribuidores experientes могут se envolver diretamente através dos [Projetos do GitHub](https://github.com/orgs/QUB-IT/projects/1).
 
 ## Encontrando e planejando sua contribuição
@@ -69,11 +70,10 @@ Mencione o alinhamento com essas áreas em seus PRs.
 
 Todas as contribuições começam com uma Issue do GitHub usando nossos modelos simplificados.
 
-- **Verifique as issues existentes**: Pesquise nas [Issues do GitHub](https://github.com/krzychdre/tumble-code/issues).
-- **Crie uma issue** usando:
-    - **Melhorias:** modelo "Solicitação de melhoria" (linguagem simples focada no benefício do usuário).
-    - **Bugs:** modelo "Relatório de bug" (reprodução mínima + esperado vs. real + versão).
-- **Quer trabalhar nisso?** Comente "Reivindicando" na issue e envie uma DM para **Hannes Rudolph (`hrudolph`)** no [Discord](https://discord.gg/tumblecode) para ser atribuído. A atribuição será confirmada no tópico.
+<!-- - **Verifique as issues existentes**: Pesquise nas [Issues do GitHub](https://github.com/krzychdre/tumble-code/issues). -->
+
+- **Crie uma issue** usando: - **Melhorias:** modelo "Solicitação de melhoria" (linguagem simples focada no benefício do usuário). - **Bugs:** modelo "Relatório de bug" (reprodução mínima + esperado vs. real + versão).
+  <!-- - **Quer trabalhar nisso?** Comente "Reivindicando" na issue e envie uma DM para **Hannes Rudolph (`hrudolph`)** no [Discord](https://discord.gg/tumblecode) para ser atribuído. A atribuição será confirmada no tópico. -->
 - **Os PRs devem ser vinculados à issue.** PRs não vinculados podem ser fechados.
 
 ### Decidindo no que trabalhar
@@ -84,11 +84,11 @@ Todas as contribuições começam com uma Issue do GitHub usando nossos modelos 
 ### Relatando bugs
 
 - Verifique primeiro os relatórios existentes.
-- Crie um novo bug usando o [modelo "Relatório de bug"](https://github.com/krzychdre/tumble-code/issues/new/choose) com:
-    - Passos de reprodução claros e numerados
-    - Resultado esperado vs. real
-    - Versão do Tumble Code (obrigatório); provedor/modelo de IA, se relevante
-- **Problemas de segurança**: Relate em particular através de [avisos de segurança](https://github.com/krzychdre/tumble-code/security/advisories/new).
+    <!-- - Crie um novo bug usando o [modelo "Relatório de bug"](https://github.com/krzychdre/tumble-code/issues/new/choose) com: -->
+        - Passos de reprodução claros e numerados
+        - Resultado esperado vs. real
+        - Versão do Tumble Code (obrigatório); provedor/modelo de IA, se relevante
+    <!-- - **Problemas de segurança**: Relate em particular através de [avisos de segurança](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Processo de desenvolvimento e envio
 
@@ -126,7 +126,8 @@ pnpm install
 
 ### Política de Pull Request
 
-- Deve fazer referência a uma Issue do GitHub atribuída. Para ser atribuído: comente "Reivindicando" na issue e envie uma DM para **Hannes Rudolph (`hrudolph`)** no [Discord](https://discord.gg/tumblecode). A atribuição será confirmada no tópico.
+<!-- - Deve fazer referência a uma Issue do GitHub atribuída. Para ser atribuído: comente "Reivindicando" na issue e envie uma DM para **Hannes Rudolph (`hrudolph`)** no [Discord](https://discord.gg/tumblecode). A atribuição será confirmada no tópico. -->
+
 - PRs não vinculados podem ser fechados.
 - Os PRs devem passar nos testes de CI, estar alinhados com o roteiro e ter documentação clara.
 

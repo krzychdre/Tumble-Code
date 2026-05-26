@@ -54,7 +54,8 @@ PR'lerinizde bu alanlarla uyumu belirtin.
 
 ### 3. Tumble Code Topluluğuna Katılın
 
-- **Birincil:** [Discord](https://discord.gg/tumblecode) sunucumuza katılın ve **Hannes Rudolph (`hrudolph`)**'a DM gönderin.
+<!-- - **Birincil:** [Discord](https://discord.gg/tumblecode) sunucumuza katılın ve **Hannes Rudolph (`hrudolph`)**'a DM gönderin. -->
+
 - **Alternatif:** Deneyimli katkıda bulunanlar doğrudan [GitHub Projeleri](https://github.com/orgs/QUB-IT/projects/1) aracılığıyla etkileşimde bulunabilirler.
 
 ## Katkınızı Bulma ve Planlama
@@ -69,11 +70,10 @@ PR'lerinizde bu alanlarla uyumu belirtin.
 
 Tüm katkılar, basit şablonlarımızı kullanarak bir GitHub Sorunu ile başlar.
 
-- **Mevcut sorunları kontrol edin**: [GitHub Sorunları](https://github.com/krzychdre/tumble-code/issues)nda arama yapın.
-- **Bir sorun oluşturun**:
-    - **İyileştirmeler:** "İyileştirme İsteği" şablonu (kullanıcı yararına odaklanan sade bir dil).
-    - **Hatalar:** "Hata Raporu" şablonu (minimum yeniden oluşturma + beklenen vs gerçek + sürüm).
-- **Üzerinde çalışmak ister misiniz?** Soruna "Talep ediyorum" yorumu yapın ve atanmak için [Discord](https://discord.gg/tumblecode) üzerinden **Hannes Rudolph (`hrudolph`)**'a DM gönderin. Atama, başlıkta teyit edilecektir.
+<!-- - **Mevcut sorunları kontrol edin**: [GitHub Sorunları](https://github.com/krzychdre/tumble-code/issues)nda arama yapın. -->
+
+- **Bir sorun oluşturun**: - **İyileştirmeler:** "İyileştirme İsteği" şablonu (kullanıcı yararına odaklanan sade bir dil). - **Hatalar:** "Hata Raporu" şablonu (minimum yeniden oluşturma + beklenen vs gerçek + sürüm).
+  <!-- - **Üzerinde çalışmak ister misiniz?** Soruna "Talep ediyorum" yorumu yapın ve atanmak için [Discord](https://discord.gg/tumblecode) üzerinden **Hannes Rudolph (`hrudolph`)**'a DM gönderin. Atama, başlıkta teyit edilecektir. -->
 - **PR'ler soruna bağlanmalıdır.** Bağlantısız PR'ler kapatılabilir.
 
 ### Ne Üzerinde Çalışılacağına Karar Verme
@@ -84,11 +84,11 @@ Tüm katkılar, basit şablonlarımızı kullanarak bir GitHub Sorunu ile başla
 ### Hataları Bildirme
 
 - Önce mevcut raporları kontrol edin.
-- Aşağıdakilerle ["Hata Raporu" şablonunu](https://github.com/krzychdre/tumble-code/issues/new/choose) kullanarak yeni bir hata oluşturun:
-    - Açık, numaralandırılmış yeniden oluşturma adımları
-    - Beklenen vs gerçek sonuç
-    - Tumble Code sürümü (gerekli); ilgiliyse API sağlayıcısı/modeli
-- **Güvenlik sorunları**: [Güvenlik tavsiyeleri](https://github.com/krzychdre/tumble-code/security/advisories/new) aracılığıyla özel olarak bildirin.
+    <!-- - Aşağıdakilerle ["Hata Raporu" şablonunu](https://github.com/krzychdre/tumble-code/issues/new/choose) kullanarak yeni bir hata oluşturun: -->
+        - Açık, numaralandırılmış yeniden oluşturma adımları
+        - Beklenen vs gerçek sonuç
+        - Tumble Code sürümü (gerekli); ilgiliyse API sağlayıcısı/modeli
+    <!-- - **Güvenlik sorunları**: [Güvenlik tavsiyeleri](https://github.com/krzychdre/tumble-code/security/advisories/new) aracılığıyla özel olarak bildirin. -->
 
 ## Geliştirme ve Gönderme Süreci
 
@@ -126,7 +126,8 @@ pnpm install
 
 ### Çekme İsteği Politikası
 
-- Atanmış bir GitHub Sorununa atıfta bulunmalıdır. Atanmak için: soruna "Talep ediyorum" yorumu yapın ve [Discord](https://discord.gg/tumblecode) üzerinden **Hannes Rudolph (`hrudolph`)**'a DM gönderin. Atama, başlıkta teyit edilecektir.
+<!-- - Atanmış bir GitHub Sorununa atıfta bulunmalıdır. Atanmak için: soruna "Talep ediyorum" yorumu yapın ve [Discord](https://discord.gg/tumblecode) üzerinden **Hannes Rudolph (`hrudolph`)**'a DM gönderin. Atama, başlıkta teyit edilecektir. -->
+
 - Bağlantısız PR'ler kapatılabilir.
 - PR'ler CI testlerini geçmeli, yol haritasıyla uyumlu olmalı ve net belgelere sahip olmalıdır.
 

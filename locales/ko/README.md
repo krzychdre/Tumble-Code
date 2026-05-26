@@ -1,12 +1,12 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
+  <!-- <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a> -->
+  <!-- <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a> -->
+  <!-- <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a> -->
+  <!-- <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a> -->
 </p>
 <p align="center">
-  <em>빠른 도움 받기 → <a href="https://discord.gg/tumblecode">Discord 가입하기</a> • 비동기 선호? → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Code 가입하기</a></em>
+  <!-- <em>빠른 도움 받기 → <a href="https://discord.gg/tumblecode">Discord 가입하기</a> • 비동기 선호? → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Code 가입하기</a></em> -->
 </p>
 
 # Tumble Code
@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -92,11 +92,11 @@ Tumble Code는 당신의 작업 방식에 맞춰 적응합니다.
 ## 리소스
 
 - **[문서](https://docs.tumblecode.dev):** Tumble Code 설치, 구성 및 마스터하기 위한 공식 가이드.
-- **[YouTube 채널](https://youtube.com/@tumblecode?feature=shared):** 튜토리얼을 시청하고 실제 기능을 확인하세요.
-- **[Discord 서버](https://discord.gg/tumblecode):** 커뮤니티에 가입하여 실시간 도움과 토론에 참여하세요.
-- **[Reddit 커뮤니티](https://www.reddit.com/r/TumbleCode):** 경험을 공유하고 다른 사람들이 무엇을 만들고 있는지 확인하세요.
-- **[GitHub 문제](https://github.com/krzychdre/tumble-code/issues):** 버그를 보고하고 개발을 추적하세요.
-- **[기능 요청](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** 아이디어가 있으신가요? 개발자들과 공유하세요.
+    <!-- - **[YouTube 채널](https://youtube.com/@tumblecode?feature=shared):** 튜토리얼을 시청하고 실제 기능을 확인하세요. -->
+    <!-- - **[Discord 서버](https://discord.gg/tumblecode):** 커뮤니티에 가입하여 실시간 도움과 토론에 참여하세요. -->
+    <!-- - **[Reddit 커뮤니티](https://www.reddit.com/r/TumbleCode):** 경험을 공유하고 다른 사람들이 무엇을 만들고 있는지 확인하세요. -->
+    <!-- - **[GitHub 문제](https://github.com/krzychdre/tumble-code/issues):** 버그를 보고하고 개발을 추적하세요. -->
+    <!-- - **[기능 요청](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** 아이디어가 있으신가요? 개발자들과 공유하세요. -->
 
 ---
 
@@ -186,4 +186,4 @@ VSIX 패키지를 수동으로 설치하려면:
 
 ---
 
-**Tumble Code를 즐기세요!** 짧은 줄에 묶어두든 자율적으로 돌아다니게 하든, 여러분이 무엇을 만들지 기대됩니다. 질문이나 기능 아이디어가 있으면 저희 [Reddit 커뮤니티](https://www.reddit.com/r/TumbleCode/)나 [Discord](https://discord.gg/tumblecode)에 들러주세요. 즐거운 코딩 되세요!
+<!-- **Tumble Code를 즐기세요!** 짧은 줄에 묶어두든 자율적으로 돌아다니게 하든, 여러분이 무엇을 만들지 기대됩니다. 질문이나 기능 아이디어가 있으면 저희 [Reddit 커뮤니티](https://www.reddit.com/r/TumbleCode/)나 [Discord](https://discord.gg/tumblecode)에 들러주세요. 즐거운 코딩 되세요! -->

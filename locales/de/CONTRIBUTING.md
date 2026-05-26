@@ -54,7 +54,8 @@ Erwähne die Ausrichtung auf diese Bereiche in deinen PRs.
 
 ### 3. Tritt der Tumble Code Community bei
 
-- **Primär:** Tritt unserem [Discord](https://discord.gg/tumblecode) bei und schreibe eine DM an **Hannes Rudolph (`hrudolph`)**.
+<!-- - **Primär:** Tritt unserem [Discord](https://discord.gg/tumblecode) bei und schreibe eine DM an **Hannes Rudolph (`hrudolph`)**. -->
+
 - **Alternative:** Erfahrene Mitwirkende können sich direkt über [GitHub-Projekte](https://github.com/orgs/QUB-IT/projects/1) beteiligen.
 
 ## Deinen Beitrag finden und planen
@@ -69,11 +70,10 @@ Erwähne die Ausrichtung auf diese Bereiche in deinen PRs.
 
 Alle Beiträge beginnen mit einem GitHub-Issue unter Verwendung unserer schlanken Vorlagen.
 
-- **Überprüfe bestehende Issues**: Suche in den [GitHub Issues](https://github.com/krzychdre/tumble-code/issues).
-- **Erstelle ein Issue** mit:
-    - **Verbesserungen:** Vorlage „Verbesserungsvorschlag“ (einfache Sprache mit Fokus auf den Nutzen für den Benutzer).
-    - **Fehler:** Vorlage „Fehlerbericht“ (minimale Reproduktion + erwartet vs. tatsächlich + Version).
-- **Möchtest du daran arbeiten?** Kommentiere „Claiming“ im Issue und schreibe eine DM an **Hannes Rudolph (`hrudolph`)** auf [Discord](https://discord.gg/tumblecode), um zugewiesen zu werden. Die Zuweisung wird im Thread bestätigt.
+<!-- - **Überprüfe bestehende Issues**: Suche in den [GitHub Issues](https://github.com/krzychdre/tumble-code/issues). -->
+
+- **Erstelle ein Issue** mit: - **Verbesserungen:** Vorlage „Verbesserungsvorschlag“ (einfache Sprache mit Fokus auf den Nutzen für den Benutzer). - **Fehler:** Vorlage „Fehlerbericht“ (minimale Reproduktion + erwartet vs. tatsächlich + Version).
+  <!-- - **Möchtest du daran arbeiten?** Kommentiere „Claiming“ im Issue und schreibe eine DM an **Hannes Rudolph (`hrudolph`)** auf [Discord](https://discord.gg/tumblecode), um zugewiesen zu werden. Die Zuweisung wird im Thread bestätigt. -->
 - **PRs müssen auf das Issue verweisen.** Nicht verknüpfte PRs können geschlossen werden.
 
 ### Entscheiden, woran du arbeiten möchtest
@@ -84,11 +84,11 @@ Alle Beiträge beginnen mit einem GitHub-Issue unter Verwendung unserer schlanke
 ### Fehler melden
 
 - Überprüfe zuerst, ob bereits Berichte vorhanden sind.
-- Erstelle einen neuen Fehler mit der [Vorlage „Fehlerbericht“](https://github.com/krzychdre/tumble-code/issues/new/choose) mit:
-    - Klaren, nummerierten Reproduktionsschritten
-    - Erwartetes vs. tatsächliches Ergebnis
-    - Tumble Code-Version (erforderlich); API-Anbieter/Modell, falls relevant
-- **Sicherheitsprobleme**: Melde sie privat über [Sicherheitshinweise](https://github.com/krzychdre/tumble-code/security/advisories/new).
+    <!-- - Erstelle einen neuen Fehler mit der [Vorlage „Fehlerbericht“](https://github.com/krzychdre/tumble-code/issues/new/choose) mit: -->
+        - Klaren, nummerierten Reproduktionsschritten
+        - Erwartetes vs. tatsächliches Ergebnis
+        - Tumble Code-Version (erforderlich); API-Anbieter/Modell, falls relevant
+    <!-- - **Sicherheitsprobleme**: Melde sie privat über [Sicherheitshinweise](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Entwicklungs- und Einreichungsprozess
 
@@ -126,7 +126,8 @@ pnpm install
 
 ### Pull-Request-Richtlinie
 
-- Muss auf ein zugewiesenes GitHub-Issue verweisen. Um zugewiesen zu werden: Kommentiere „Claiming“ im Issue und schreibe eine DM an **Hannes Rudolph (`hrudolph`)** auf [Discord](https://discord.gg/tumblecode). Die Zuweisung wird im Thread bestätigt.
+<!-- - Muss auf ein zugewiesenes GitHub-Issue verweisen. Um zugewiesen zu werden: Kommentiere „Claiming“ im Issue und schreibe eine DM an **Hannes Rudolph (`hrudolph`)** auf [Discord](https://discord.gg/tumblecode). Die Zuweisung wird im Thread bestätigt. -->
+
 - Nicht verknüpfte PRs können geschlossen werden.
 - PRs müssen die CI-Tests bestehen, mit der Roadmap übereinstimmen und eine klare Dokumentation haben.
 

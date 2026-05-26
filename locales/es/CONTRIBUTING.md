@@ -54,7 +54,8 @@ Mencione la alineación con estas áreas en sus solicitudes de extracción.
 
 ### 3. Únase a la comunidad de Tumble Code
 
-- **Principal:** Únase a nuestro [Discord](https://discord.gg/tumblecode) y envíe un mensaje directo a **Hannes Rudolph (`hrudolph`)**.
+<!-- - **Principal:** Únase a nuestro [Discord](https://discord.gg/tumblecode) y envíe un mensaje directo a **Hannes Rudolph (`hrudolph`)**. -->
+
 - **Alternativa:** Los colaboradores experimentados pueden participar directamente a través de [Proyectos de GitHub](https://github.com/orgs/QUB-IT/projects/1).
 
 ## Encontrar y planificar su contribución
@@ -69,11 +70,10 @@ Mencione la alineación con estas áreas en sus solicitudes de extracción.
 
 Todas las contribuciones comienzan con una incidencia de GitHub utilizando nuestras plantillas simplificadas.
 
-- **Compruebe las incidencias existentes**: busque en [Incidencias de GitHub](https://github.com/krzychdre/tumble-code/issues).
-- **Cree una incidencia** utilizando:
-    - **Mejoras:** plantilla "Solicitud de mejora" (lenguaje sencillo centrado en el beneficio del usuario).
-    - **Errores:** plantilla "Informe de error" (reproducción mínima + esperado vs. real + versión).
-- **¿Quiere trabajar en ello?** Comente "Reclamando" en la incidencia y envíe un mensaje directo a **Hannes Rudolph (`hrudolph`)** en [Discord](https://discord.gg/tumblecode) para que se le asigne. La asignación se confirmará en el hilo.
+<!-- - **Compruebe las incidencias existentes**: busque en [Incidencias de GitHub](https://github.com/krzychdre/tumble-code/issues). -->
+
+- **Cree una incidencia** utilizando: - **Mejoras:** plantilla "Solicitud de mejora" (lenguaje sencillo centrado en el beneficio del usuario). - **Errores:** plantilla "Informe de error" (reproducción mínima + esperado vs. real + versión).
+  <!-- - **¿Quiere trabajar en ello?** Comente "Reclamando" en la incidencia y envíe un mensaje directo a **Hannes Rudolph (`hrudolph`)** en [Discord](https://discord.gg/tumblecode) para que se le asigne. La asignación se confirmará en el hilo. -->
 - **Las solicitudes de extracción deben enlazar a la incidencia.** Las solicitudes de extracción no enlazadas pueden cerrarse.
 
 ### Decidir en qué trabajar
@@ -84,11 +84,11 @@ Todas las contribuciones comienzan con una incidencia de GitHub utilizando nuest
 ### Informar de errores
 
 - Compruebe primero si existen informes.
-- Cree un nuevo error utilizando la [plantilla "Informe de error"](https://github.com/krzychdre/tumble-code/issues/new/choose) con:
-    - Pasos de reproducción claros y numerados
-    - Resultado esperado vs. real
-    - Versión de Tumble Code (obligatorio); proveedor/modelo de API si es relevante
-- **Problemas de seguridad**: informe de forma privada a través de [avisos de seguridad](https://github.com/krzychdre/tumble-code/security/advisories/new).
+    <!-- - Cree un nuevo error utilizando la [plantilla "Informe de error"](https://github.com/krzychdre/tumble-code/issues/new/choose) con: -->
+        - Pasos de reproducción claros y numerados
+        - Resultado esperado vs. real
+        - Versión de Tumble Code (obligatorio); proveedor/modelo de API si es relevante
+    <!-- - **Problemas de seguridad**: informe de forma privada a través de [avisos de seguridad](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Proceso de desarrollo y envío
 
@@ -126,7 +126,8 @@ pnpm install
 
 ### Política de solicitud de extracción
 
-- Debe hacer referencia a una incidencia de GitHub asignada. Para que se le asigne: comente "Reclamando" en la incidencia y envíe un mensaje directo a **Hannes Rudolph (`hrudolph`)** en [Discord](https://discord.gg/tumblecode). La asignación se confirmará en el hilo.
+<!-- - Debe hacer referencia a una incidencia de GitHub asignada. Para que se le asigne: comente "Reclamando" en la incidencia y envíe un mensaje directo a **Hannes Rudolph (`hrudolph`)** en [Discord](https://discord.gg/tumblecode). La asignación se confirmará en el hilo. -->
+
 - Las solicitudes de extracción no enlazadas pueden cerrarse.
 - Las solicitudes de extracción deben pasar las pruebas de CI, estar alineadas con la hoja de ruta y tener una documentación clara.
 

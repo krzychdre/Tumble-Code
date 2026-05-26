@@ -1,12 +1,12 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
+  <!-- <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a> -->
+  <!-- <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a> -->
+  <!-- <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a> -->
+  <!-- <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a> -->
 </p>
 <p align="center">
-  <em>すぐに助けを得る → <a href="https://discord.gg/tumblecode">Discordに参加</a> • 非同期を好む？ → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Codeに参加</a></em>
+  <!-- <em>すぐに助けを得る → <a href="https://discord.gg/tumblecode">Discordに参加</a> • 非同期を好む？ → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Codeに参加</a></em> -->
 </p>
 
 # Tumble Code
@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -92,11 +92,11 @@ Tumble Codeは、あなたの働き方に合わせるように適応します。
 ## リソース
 
 - **[ドキュメント](https://docs.tumblecode.dev):** Tumble Codeのインストール、設定、習熟のための公式ガイド。
-- **[YouTubeチャンネル](https://youtube.com/@tumblecode?feature=shared):** チュートリアルを見て、実際の機能を確認できます。
-- **[Discordサーバー](https://discord.gg/tumblecode):** コミュニティに参加して、リアルタイムのヘルプやディスカッションに参加できます。
-- **[Redditコミュニティ](https://www.reddit.com/r/TumbleCode):** あなたの経験を共有し、他の人が何を構築しているかを見ることができます。
-- **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** バグを報告し、開発を追跡します。
-- **[機能リクエスト](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** アイデアがありますか？開発者と共有してください。
+    <!-- - **[YouTubeチャンネル](https://youtube.com/@tumblecode?feature=shared):** チュートリアルを見て、実際の機能を確認できます。 -->
+    <!-- - **[Discordサーバー](https://discord.gg/tumblecode):** コミュニティに参加して、リアルタイムのヘルプやディスカッションに参加できます。 -->
+    <!-- - **[Redditコミュニティ](https://www.reddit.com/r/TumbleCode):** あなたの経験を共有し、他の人が何を構築しているかを見ることができます。 -->
+    <!-- - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** バグを報告し、開発を追跡します。 -->
+    <!-- - **[機能リクエスト](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** アイデアがありますか？開発者と共有してください。 -->
 
 ---
 
@@ -186,4 +186,4 @@ VSIXパッケージを手動でインストールしたい場合：
 
 ---
 
-**Tumble Codeをお楽しみください！** 手綱を短く持って使うか、自律的に歩き回らせるかにかかわらず、あなたが何を構築するか楽しみにしています。質問や機能のアイデアがあれば、私たちの[Redditコミュニティ](https://www.reddit.com/r/TumbleCode/)または[Discord](https://discord.gg/tumblecode)にお立ち寄りください。ハッピーコーディング！
+<!-- **Tumble Codeをお楽しみください！** 手綱を短く持って使うか、自律的に歩き回らせるかにかかわらず、あなたが何を構築するか楽しみにしています。質問や機能のアイデアがあれば、私たちの[Redditコミュニティ](https://www.reddit.com/r/TumbleCode/)または[Discord](https://discord.gg/tumblecode)にお立ち寄りください。ハッピーコーディング！ -->

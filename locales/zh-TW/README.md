@@ -1,12 +1,12 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
+  <!-- <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a> -->
+  <!-- <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a> -->
+  <!-- <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a> -->
+  <!-- <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a> -->
 </p>
 <p align="center">
-  <em>快速取得協助 → <a href="https://discord.gg/tumblecode">加入 Discord</a> • 偏好非同步溝通？→ <a href="https://www.reddit.com/r/TumbleCode/">加入 r/Tumble Code</a></em>
+  <!-- <em>快速取得協助 → <a href="https://discord.gg/tumblecode">加入 Discord</a> • 偏好非同步溝通？→ <a href="https://www.reddit.com/r/TumbleCode/">加入 r/Tumble Code</a></em> -->
 </p>
 
 # Tumble Code
@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-  </details>
+    </details>
 
 ---
 
@@ -92,11 +92,11 @@ Tumble Code 會配合您的工作方式，而非要您配合它：
 ## 資源
 
 - **[文件](https://docs.tumblecode.dev):** 安裝、設定和掌握 Tumble Code 的官方指南。
-- **[YouTube 頻道](https://youtube.com/@tumblecode?feature=shared):** 觀看教學和功能實際操作。
-- **[Discord 伺服器](https://discord.gg/tumblecode):** 加入社群以獲得即時協助和討論。
-- **[Reddit 社群](https://www.reddit.com/r/TumbleCode):** 分享您的經驗，看看其他人正在建立什麼。
-- **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** 回報問題並追蹤開發進度。
-- **[功能請求](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** 有想法嗎？與開發人員分享。
+    <!-- - **[YouTube 頻道](https://youtube.com/@tumblecode?feature=shared):** 觀看教學和功能實際操作。 -->
+    <!-- - **[Discord 伺服器](https://discord.gg/tumblecode):** 加入社群以獲得即時協助和討論。 -->
+    <!-- - **[Reddit 社群](https://www.reddit.com/r/TumbleCode):** 分享您的經驗，看看其他人正在建立什麼。 -->
+    <!-- - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** 回報問題並追蹤開發進度。 -->
+    <!-- - **[功能請求](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** 有想法嗎？與開發人員分享。 -->
 
 ---
 
@@ -186,4 +186,4 @@ pnpm install:vsix [-y] [--editor=<command>]
 
 ---
 
-**享受 Tumble Code！** 無論您是想嚴格控管它，還是讓它自主運作，我們都迫不及待地想看看您會打造些什麼。如果您有問題或功能想法，請造訪我們的 [Reddit 社群](https://www.reddit.com/r/TumbleCode/)或 [Discord](https://discord.gg/tumblecode)。祝您開發愉快！
+<!-- **享受 Tumble Code！** 無論您是想嚴格控管它，還是讓它自主運作，我們都迫不及待地想看看您會打造些什麼。如果您有問題或功能想法，請造訪我們的 [Reddit 社群](https://www.reddit.com/r/TumbleCode/)或 [Discord](https://discord.gg/tumblecode)。祝您開發愉快！ -->

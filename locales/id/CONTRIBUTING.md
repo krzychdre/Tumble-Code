@@ -54,7 +54,8 @@ Sebutkan keselarasan dengan area-area ini di PR Anda.
 
 ### 3. Bergabunglah dengan Komunitas Tumble Code
 
-- **Utama:** Bergabunglah dengan [Discord](https://discord.gg/tumblecode) kami dan kirim DM ke **Hannes Rudolph (`hrudolph`)**.
+<!-- - **Utama:** Bergabunglah dengan [Discord](https://discord.gg/tumblecode) kami dan kirim DM ke **Hannes Rudolph (`hrudolph`)**. -->
+
 - **Alternatif:** Kontributor berpengalaman dapat terlibat langsung melalui [Proyek GitHub](https://github.com/orgs/QUB-IT/projects/1).
 
 ## Menemukan & Merencanakan Kontribusi Anda
@@ -69,11 +70,10 @@ Sebutkan keselarasan dengan area-area ini di PR Anda.
 
 Semua kontribusi dimulai dengan Masalah GitHub menggunakan template ramping kami.
 
-- **Periksa masalah yang ada**: Cari di [Masalah GitHub](https://github.com/krzychdre/tumble-code/issues).
-- **Buat masalah** menggunakan:
-    - **Penyempurnaan:** Template "Permintaan Penyempurnaan" (bahasa sederhana yang berfokus pada manfaat pengguna).
-    - **Bug:** Template "Laporan Bug" (repro minimal + yang diharapkan vs aktual + versi).
-- **Ingin mengerjakannya?** Beri komentar "Mengklaim" pada masalah tersebut dan kirim DM ke **Hannes Rudolph (`hrudolph`)** di [Discord](https://discord.gg/tumblecode) untuk ditugaskan. Penugasan akan dikonfirmasi di utas.
+<!-- - **Periksa masalah yang ada**: Cari di [Masalah GitHub](https://github.com/krzychdre/tumble-code/issues). -->
+
+- **Buat masalah** menggunakan: - **Penyempurnaan:** Template "Permintaan Penyempurnaan" (bahasa sederhana yang berfokus pada manfaat pengguna). - **Bug:** Template "Laporan Bug" (repro minimal + yang diharapkan vs aktual + versi).
+  <!-- - **Ingin mengerjakannya?** Beri komentar "Mengklaim" pada masalah tersebut dan kirim DM ke **Hannes Rudolph (`hrudolph`)** di [Discord](https://discord.gg/tumblecode) untuk ditugaskan. Penugasan akan dikonfirmasi di utas. -->
 - **PR harus menautkan ke masalah.** PR yang tidak tertaut dapat ditutup.
 
 ### Memutuskan Apa yang Akan Dikerjakan
@@ -84,11 +84,11 @@ Semua kontribusi dimulai dengan Masalah GitHub menggunakan template ramping kami
 ### Melaporkan Bug
 
 - Periksa laporan yang ada terlebih dahulu.
-- Buat bug baru menggunakan [template "Laporan Bug"](https://github.com/krzychdre/tumble-code/issues/new/choose) dengan:
-    - Langkah-langkah reproduksi yang jelas dan bernomor
-    - Hasil yang diharapkan vs aktual
-    - Versi Tumble Code (wajib); penyedia/model API jika relevan
-- **Masalah keamanan**: Laporkan secara pribadi melalui [saran keamanan](https://github.com/krzychdre/tumble-code/security/advisories/new).
+    <!-- - Buat bug baru menggunakan [template "Laporan Bug"](https://github.com/krzychdre/tumble-code/issues/new/choose) dengan: -->
+        - Langkah-langkah reproduksi yang jelas dan bernomor
+        - Hasil yang diharapkan vs aktual
+        - Versi Tumble Code (wajib); penyedia/model API jika relevan
+    <!-- - **Masalah keamanan**: Laporkan secara pribadi melalui [saran keamanan](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Proses Pengembangan & Pengajuan
 
@@ -126,7 +126,8 @@ pnpm install
 
 ### Kebijakan Pull Request
 
-- Harus merujuk pada Masalah GitHub yang ditugaskan. Untuk ditugaskan: beri komentar "Mengklaim" pada masalah tersebut dan kirim DM ke **Hannes Rudolph (`hrudolph`)** di [Discord](https://discord.gg/tumblecode). Penugasan akan dikonfirmasi di utas.
+<!-- - Harus merujuk pada Masalah GitHub yang ditugaskan. Untuk ditugaskan: beri komentar "Mengklaim" pada masalah tersebut dan kirim DM ke **Hannes Rudolph (`hrudolph`)** di [Discord](https://discord.gg/tumblecode). Penugasan akan dikonfirmasi di utas. -->
+
 - PR yang tidak tertaut dapat ditutup.
 - PR harus lulus tes CI, selaras dengan peta jalan, dan memiliki dokumentasi yang jelas.
 

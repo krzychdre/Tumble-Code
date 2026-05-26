@@ -31,7 +31,9 @@ We take reasonable measures to secure your data, but no system is 100% secure. I
 
 ### **Contact Us**
 
-For any privacy-related questions, please open a [GitHub issue](https://github.com/krzychdre/tumble-code/issues) or a private [security advisory](https://github.com/krzychdre/tumble-code/security/advisories/new).
+<!-- For any privacy-related questions, please open a [GitHub issue](https://github.com/krzychdre/tumble-code/issues) or a private [security advisory](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+
+For any privacy-related questions, please reach out through whichever contact channel Tumble Code publishes once it has one set up.
 
 ---
 

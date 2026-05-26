@@ -54,7 +54,8 @@ Menziona l'allineamento con queste aree nelle tue PR.
 
 ### 3. Unisciti alla community di Tumble Code
 
-- **Principale:** Unisciti al nostro [Discord](https://discord.gg/tumblecode) e invia un DM a **Hannes Rudolph (`hrudolph`)**.
+<!-- - **Principale:** Unisciti al nostro [Discord](https://discord.gg/tumblecode) e invia un DM a **Hannes Rudolph (`hrudolph`)**. -->
+
 - **Alternativa:** I contributori esperti possono interagire direttamente tramite i [progetti GitHub](https://github.com/orgs/QUB-IT/projects/1).
 
 ## Trovare e pianificare il tuo contributo
@@ -69,11 +70,10 @@ Menziona l'allineamento con queste aree nelle tue PR.
 
 Tutti i contributi iniziano con un'issue di GitHub utilizzando i nostri modelli snelli.
 
-- **Controlla le issue esistenti**: cerca nelle [issue di GitHub](https://github.com/krzychdre/tumble-code/issues).
-- **Crea un'issue** utilizzando:
-    - **Miglioramenti:** modello "Richiesta di miglioramento" (linguaggio semplice incentrato sul vantaggio per l'utente).
-    - **Bug:** modello "Segnalazione di bug" (riproduzione minima + previsto vs effettivo + versione).
-- **Vuoi lavorarci?** Commenta "Rivendico" sull'issue e invia un DM a **Hannes Rudolph (`hrudolph`)** su [Discord](https://discord.gg/tumblecode) per essere assegnato. L'assegnazione verrà confermata nel thread.
+<!-- - **Controlla le issue esistenti**: cerca nelle [issue di GitHub](https://github.com/krzychdre/tumble-code/issues). -->
+
+- **Crea un'issue** utilizzando: - **Miglioramenti:** modello "Richiesta di miglioramento" (linguaggio semplice incentrato sul vantaggio per l'utente). - **Bug:** modello "Segnalazione di bug" (riproduzione minima + previsto vs effettivo + versione).
+  <!-- - **Vuoi lavorarci?** Commenta "Rivendico" sull'issue e invia un DM a **Hannes Rudolph (`hrudolph`)** su [Discord](https://discord.gg/tumblecode) per essere assegnato. L'assegnazione verrà confermata nel thread. -->
 - **Le PR devono essere collegate all'issue.** Le PR non collegate possono essere chiuse.
 
 ### Decidere su cosa lavorare
@@ -84,11 +84,11 @@ Tutti i contributi iniziano con un'issue di GitHub utilizzando i nostri modelli 
 ### Segnalazione di bug
 
 - Controlla prima le segnalazioni esistenti.
-- Crea un nuovo bug utilizzando il [modello "Segnalazione di bug"](https://github.com/krzychdre/tumble-code/issues/new/choose) con:
-    - Passaggi di riproduzione chiari e numerati
-    - Risultato previsto vs effettivo
-    - Versione di Tumble Code (obbligatoria); provider/modello di intelligenza artificiale se pertinente
-- **Problemi di sicurezza**: segnala in privato tramite [avvisi di sicurezza](https://github.com/krzychdre/tumble-code/security/advisories/new).
+    <!-- - Crea un nuovo bug utilizzando il [modello "Segnalazione di bug"](https://github.com/krzychdre/tumble-code/issues/new/choose) con: -->
+        - Passaggi di riproduzione chiari e numerati
+        - Risultato previsto vs effettivo
+        - Versione di Tumble Code (obbligatoria); provider/modello di intelligenza artificiale se pertinente
+    <!-- - **Problemi di sicurezza**: segnala in privato tramite [avvisi di sicurezza](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Processo di sviluppo e invio
 
@@ -126,7 +126,8 @@ pnpm install
 
 ### Politica sulle Pull Request
 
-- Deve fare riferimento a un'issue di GitHub assegnata. Per essere assegnato: commenta "Rivendico" sull'issue e invia un DM a **Hannes Rudolph (`hrudolph`)** su [Discord](https://discord.gg/tumblecode). L'assegnazione verrà confermata nel thread.
+<!-- - Deve fare riferimento a un'issue di GitHub assegnata. Per essere assegnato: commenta "Rivendico" sull'issue e invia un DM a **Hannes Rudolph (`hrudolph`)** su [Discord](https://discord.gg/tumblecode). L'assegnazione verrà confermata nel thread. -->
+
 - Le PR non collegate possono essere chiuse.
 - Le PR devono superare i test di integrazione continua, essere in linea con la roadmap e avere una documentazione chiara.
 

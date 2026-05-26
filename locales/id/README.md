@@ -1,12 +1,12 @@
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
+  <!-- <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a> -->
+  <!-- <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a> -->
+  <!-- <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a> -->
+  <!-- <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a> -->
 </p>
 <p align="center">
-  <em>Dapatkan bantuan cepat → <a href="https://discord.gg/tumblecode">Gabung Discord</a> • Lebih suka asinkron? → <a href="https://www.reddit.com/r/TumbleCode/">Gabung r/Tumble Code</a></em>
+  <!-- <em>Dapatkan bantuan cepat → <a href="https://discord.gg/tumblecode">Gabung Discord</a> • Lebih suka asinkron? → <a href="https://www.reddit.com/r/TumbleCode/">Gabung r/Tumble Code</a></em> -->
 </p>
 
 # Tumble Code
@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-    </details>
+      </details>
 
 ---
 
@@ -92,11 +92,11 @@ Pelajari lebih lanjut: [Menggunakan Mode](https://docs.tumblecode.dev/basic-usag
 ## Sumber daya
 
 - **[Dokumentasi](https://docs.tumblecode.dev):** Panduan resmi untuk menginstal, mengonfigurasi, dan menguasai Tumble Code.
-- **[Saluran YouTube](https://youtube.com/@tumblecode?feature=shared):** Tonton tutorial dan lihat fitur-fitur dalam aksi.
-- **[Server Discord](https://discord.gg/tumblecode):** Bergabunglah dengan komunitas untuk bantuan dan diskusi real-time.
-- **[Komunitas Reddit](https://www.reddit.com/r/TumbleCode):** Bagikan pengalaman Anda dan lihat apa yang sedang dibangun orang lain.
-- **[Masalah GitHub](https://github.com/krzychdre/tumble-code/issues):** Laporkan bug dan lacak pengembangan.
-- **[Permintaan Fitur](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Punya ide? Bagikan dengan para pengembang.
+    <!-- - **[Saluran YouTube](https://youtube.com/@tumblecode?feature=shared):** Tonton tutorial dan lihat fitur-fitur dalam aksi. -->
+    <!-- - **[Server Discord](https://discord.gg/tumblecode):** Bergabunglah dengan komunitas untuk bantuan dan diskusi real-time. -->
+    <!-- - **[Komunitas Reddit](https://www.reddit.com/r/TumbleCode):** Bagikan pengalaman Anda dan lihat apa yang sedang dibangun orang lain. -->
+    <!-- - **[Masalah GitHub](https://github.com/krzychdre/tumble-code/issues):** Laporkan bug dan lacak pengembangan. -->
+    <!-- - **[Permintaan Fitur](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Punya ide? Bagikan dengan para pengembang. -->
 
 ---
 
@@ -186,4 +186,4 @@ Kami menyukai kontribusi komunitas! Mulailah dengan membaca [CONTRIBUTING.md](CO
 
 ---
 
-**Selamat menikmati Tumble Code!** Baik Anda mengendalikannya dengan ketat atau membiarkannya berkeliaran secara otonom, kami tidak sabar untuk melihat apa yang Anda bangun. Jika Anda memiliki pertanyaan atau ide fitur, kunjungi [komunitas Reddit](https://www.reddit.com/r/TumbleCode/) atau [Discord](https://discord.gg/tumblecode) kami. Selamat membuat kode!
+<!-- **Selamat menikmati Tumble Code!** Baik Anda mengendalikannya dengan ketat atau membiarkannya berkeliaran secara otonom, kami tidak sabar untuk melihat apa yang Anda bangun. Jika Anda memiliki pertanyaan atau ide fitur, kunjungi [komunitas Reddit](https://www.reddit.com/r/TumbleCode/) atau [Discord](https://discord.gg/tumblecode) kami. Selamat membuat kode! -->
