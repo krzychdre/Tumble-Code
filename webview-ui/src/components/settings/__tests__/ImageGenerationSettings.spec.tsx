@@ -90,14 +90,10 @@ describe("ImageGenerationSettings", () => {
 			).toBeInTheDocument()
 		})
 
-		it("should not render API key field when provider is roo", () => {
-			const { queryByPlaceholderText } = render(
-				<ImageGenerationSettings {...defaultProps} enabled={true} imageGenerationProvider="roo" />,
-			)
+		it("should coerce legacy roo provider value to openrouter on mount", () => {
+			render(<ImageGenerationSettings {...defaultProps} enabled={true} imageGenerationProvider={"roo" as any} />)
 
-			expect(
-				queryByPlaceholderText("settings:experimental.IMAGE_GENERATION.openRouterApiKeyPlaceholder"),
-			).not.toBeInTheDocument()
+			expect(mockSetImageGenerationProvider).toHaveBeenCalledWith("openrouter")
 		})
 
 		it("should not render input fields when enabled is false", () => {
