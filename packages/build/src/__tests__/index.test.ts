@@ -3,7 +3,7 @@
 import { generatePackageJson } from "../index.js"
 
 describe("generatePackageJson", () => {
-	it("rewrites command/view IDs for the nightly variant while keeping the new manifest identity", () => {
+	it("rewrites command/view/config IDs for the nightly variant", () => {
 		const generatedPackageJson = generatePackageJson({
 			packageJson: {
 				name: "tumble-code",
@@ -16,29 +16,29 @@ describe("generatePackageJson", () => {
 					viewsContainers: {
 						activitybar: [
 							{
-								id: "roo-cline-ActivityBar",
+								id: "tumble-code-ActivityBar",
 								title: "%views.activitybar.title%",
 								icon: "assets/icons/icon.svg",
 							},
 						],
 					},
 					views: {
-						"roo-cline-ActivityBar": [
+						"tumble-code-ActivityBar": [
 							{
 								type: "webview",
-								id: "roo-cline.SidebarProvider",
+								id: "tumble-code.SidebarProvider",
 								name: "",
 							},
 						],
 					},
 					commands: [
 						{
-							command: "roo-cline.plusButtonClicked",
+							command: "tumble-code.plusButtonClicked",
 							title: "%command.newTask.title%",
 							icon: "$(edit)",
 						},
 						{
-							command: "roo-cline.openInNewTab",
+							command: "tumble-code.openInNewTab",
 							title: "%command.openInNewTab.title%",
 							category: "%configuration.title%",
 						},
@@ -46,41 +46,41 @@ describe("generatePackageJson", () => {
 					menus: {
 						"editor/context": [
 							{
-								submenu: "roo-cline.contextMenu",
+								submenu: "tumble-code.contextMenu",
 								group: "navigation",
 							},
 						],
-						"roo-cline.contextMenu": [
+						"tumble-code.contextMenu": [
 							{
-								command: "roo-cline.addToContext",
+								command: "tumble-code.addToContext",
 								group: "1_actions@1",
 							},
 						],
 						"editor/title": [
 							{
-								command: "roo-cline.plusButtonClicked",
+								command: "tumble-code.plusButtonClicked",
 								group: "navigation@1",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
+								when: "activeWebviewPanelId == tumble-code.TabPanelProvider",
 							},
 							{
-								command: "roo-cline.settingsButtonClicked",
+								command: "tumble-code.settingsButtonClicked",
 								group: "navigation@6",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
+								when: "activeWebviewPanelId == tumble-code.TabPanelProvider",
 							},
 							{
-								command: "roo-cline.accountButtonClicked",
+								command: "tumble-code.accountButtonClicked",
 								group: "navigation@6",
-								when: "activeWebviewPanelId == roo-cline.TabPanelProvider",
+								when: "activeWebviewPanelId == tumble-code.TabPanelProvider",
 							},
 						],
 					},
 					submenus: [
 						{
-							id: "roo-cline.contextMenu",
+							id: "tumble-code.contextMenu",
 							label: "%views.contextMenu.label%",
 						},
 						{
-							id: "roo-cline.terminalMenu",
+							id: "tumble-code.terminalMenu",
 							label: "%views.terminalMenu.label%",
 						},
 					],
@@ -115,10 +115,7 @@ describe("generatePackageJson", () => {
 				icon: "assets/icons/icon-nightly.png",
 				scripts: {},
 			},
-			// Rename only the internal roo-cline.* identifiers; the tumble-code.*
-			// config property keys intentionally stay the same in the nightly
-			// manifest (see the comment in apps/vscode-nightly/esbuild.mjs).
-			substitution: ["roo-cline", "tumble-code-nightly"],
+			substitution: ["tumble-code", "tumble-code-nightly"],
 		})
 
 		expect(generatedPackageJson).toStrictEqual({
@@ -203,7 +200,7 @@ describe("generatePackageJson", () => {
 				configuration: {
 					title: "%configuration.title%",
 					properties: {
-						"tumble-code.allowedCommands": {
+						"tumble-code-nightly.allowedCommands": {
 							type: "array",
 							items: {
 								type: "string",
@@ -211,7 +208,7 @@ describe("generatePackageJson", () => {
 							default: ["npm test", "npm install", "tsc", "git log", "git diff", "git show"],
 							description: "%commands.allowedCommands.description%",
 						},
-						"tumble-code.customStoragePath": {
+						"tumble-code-nightly.customStoragePath": {
 							type: "string",
 							default: "",
 							description: "%settings.customStoragePath.description%",
