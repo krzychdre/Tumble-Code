@@ -1,25 +1,25 @@
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=RooVeterinaryInc.roo-cline"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/roocode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@roocodeyt?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/roocode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/RooCode/"><img src="https://img.shields.io/badge/Join%20r%2FRooCode-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/RooCode"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
+  <a href="https://x.com/tumblecode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
+  <a href="https://youtube.com/@tumblecode?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
+  <a href="https://discord.gg/tumblecode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
+  <a href="https://www.reddit.com/r/TumbleCode/"><img src="https://img.shields.io/badge/Join%20r%2FTumble Code-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/Tumble Code"></a>
 </p>
 <p align="center">
-  <em>जल्दी मदद पाएं → <a href="https://discord.gg/roocode">डिस्कॉर्ड से जुड़ें</a> • एसिंक पसंद है? → <a href="https://www.reddit.com/r/RooCode/">r/RooCode से जुड़ें</a></em>
+  <em>जल्दी मदद पाएं → <a href="https://discord.gg/tumblecode">डिस्कॉर्ड से जुड़ें</a> • एसिंक पसंद है? → <a href="https://www.reddit.com/r/TumbleCode/">r/Tumble Code से जुड़ें</a></em>
 </p>
 
-# Roo Code
+# Tumble Code
 
 > तुम्हारी AI-संचालित डेवलपमेंट टीम, सीधे तुम्हारे एडिटर में
 
 ## v3.53.0 में नया क्या है
 
-> ### Roo Code plugin कहीं नहीं जा रहा है।
+> ### Tumble Code plugin कहीं नहीं जा रहा है।
 >
-> आपने शायद [हाल ही की घोषणा](https://x.com/mattrubens/status/2046636598859559114) देखी होगी कि Roo Code ने 30 लाख installs पार कर लिए हैं और मूल टीम पूरी तरह Roomote पर focus कर रही है। हम जानते हैं कि यह खबर आप में से कई के लिए कठिन थी। यह plugin हमारे और आपके लिए बहुत मायने रखता है, और हम आपकी बात सुन रहे हैं।
+> आपने शायद [हाल ही की घोषणा](https://x.com/mattrubens/status/2046636598859559114) देखी होगी कि Tumble Code ने 30 लाख installs पार कर लिए हैं और मूल टीम पूरी तरह Roomote पर focus कर रही है। हम जानते हैं कि यह खबर आप में से कई के लिए कठिन थी। यह plugin हमारे और आपके लिए बहुत मायने रखता है, और हम आपकी बात सुन रहे हैं।
 >
-> अच्छी खबर: **एक community team ने Roo Code को आगे ले जाने की ज़िम्मेदारी ली है**, और हम उनके साथ एक आधिकारिक handoff पर काम कर रहे हैं ताकि जिस plugin पर आप भरोसा करते हैं, उसका maintenance और improvement जारी रहे।
+> अच्छी खबर: **एक community team ने Tumble Code को आगे ले जाने की ज़िम्मेदारी ली है**, और हम उनके साथ एक आधिकारिक handoff पर काम कर रहे हैं ताकि जिस plugin पर आप भरोसा करते हैं, उसका maintenance और improvement जारी रहे।
 
 **इस रिलीज़ में नया क्या है:**
 
@@ -49,11 +49,11 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-  </details>
+    </details>
 
 ---
 
-## Roo Code आपके लिए क्या कर सकता है?
+## Tumble Code आपके लिए क्या कर सकता है?
 
 - प्राकृतिक भाषा विवरण से कोड उत्पन्न करें
 - मोड के साथ अनुकूलन: कोड, आर्किटेक्ट, पूछें, डीबग और कस्टम मोड
@@ -73,7 +73,7 @@
 - डीबग मोड: समस्याओं का पता लगाएं, लॉग जोड़ें, मूल कारणों को अलग करें
 - कस्टम मोड: अपनी टीम या वर्कफ़्लो के लिए विशेष मोड बनाएं
 
-और जानो: [मोड्स का इस्तेमाल](https://docs.roocode.com/basic-usage/using-modes) • [कस्टम मोड्स](https://docs.roocode.com/advanced-usage/custom-modes)
+और जानो: [मोड्स का इस्तेमाल](https://docs.tumblecode.dev/basic-usage/using-modes) • [कस्टम मोड्स](https://docs.tumblecode.dev/advanced-usage/custom-modes)
 
 ## ट्यूटोरियल और फ़ीचर वीडियो
 
@@ -86,17 +86,17 @@
 
 </div>
 <p align="center">
-<a href="https://docs.roocode.com/tutorial-videos">अधिक त्वरित ट्यूटोरियल और फ़ीचर वीडियो...</a>
+<a href="https://docs.tumblecode.dev/tutorial-videos">अधिक त्वरित ट्यूटोरियल और फ़ीचर वीडियो...</a>
 </p>
 
 ## संसाधन
 
-- **[दस्तावेज़ीकरण](https://docs.roocode.com):** Roo Code को स्थापित करने, कॉन्फ़िगर करने और उसमें महारत हासिल करने के लिए आधिकारिक गाइड।
-- **[यूट्यूब चैनल](https://youtube.com/@roocodeyt?feature=shared):** ट्यूटोरियल देखें और सुविधाओं को एक्शन में देखें।
-- **[डिस्कॉर्ड सर्वर](https://discord.gg/roocode):** रीयल-टाइम सहायता और चर्चा के लिए समुदाय में शामिल हों।
-- **[रेडिट समुदाय](https://www.reddit.com/r/RooCode):** अपने अनुभव साझा करें और देखें कि दूसरे क्या बना रहे हैं।
-- **[गिटहब मुद्दे](https://github.com/RooCodeInc/Roo-Code/issues):** बग की रिपोर्ट करें और विकास को ट्रैक करें।
-- **[सुविधा अनुरोध](https://github.com/RooCodeInc/Roo-Code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** क्या आपके पास कोई विचार है? इसे डेवलपर्स के साथ साझा करें।
+- **[दस्तावेज़ीकरण](https://docs.tumblecode.dev):** Tumble Code को स्थापित करने, कॉन्फ़िगर करने और उसमें महारत हासिल करने के लिए आधिकारिक गाइड।
+- **[यूट्यूब चैनल](https://youtube.com/@tumblecode?feature=shared):** ट्यूटोरियल देखें और सुविधाओं को एक्शन में देखें।
+- **[डिस्कॉर्ड सर्वर](https://discord.gg/tumblecode):** रीयल-टाइम सहायता और चर्चा के लिए समुदाय में शामिल हों।
+- **[रेडिट समुदाय](https://www.reddit.com/r/TumbleCode):** अपने अनुभव साझा करें और देखें कि दूसरे क्या बना रहे हैं।
+- **[गिटहब मुद्दे](https://github.com/krzychdre/tumble-code/issues):** बग की रिपोर्ट करें और विकास को ट्रैक करें।
+- **[सुविधा अनुरोध](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** क्या आपके पास कोई विचार है? इसे डेवलपर्स के साथ साझा करें।
 
 ---
 
@@ -105,7 +105,7 @@
 1. **क्लोन** करें रेपो:
 
 ```sh
-git clone https://github.com/RooCodeInc/Roo-Code.git
+git clone https://github.com/krzychdre/tumble-code.git
 ```
 
 2. **निर्भरताएँ स्थापित करें**:
@@ -122,7 +122,7 @@ pnpm install
 
 सक्रिय विकास के लिए, वीएसकोड के अंतर्निहित डिबगिंग का उपयोग करें:
 
-वीएसकोड में `F5` दबाएं (या **रन** → **डीबगिंग प्रारंभ करें** पर जाएं)। यह Roo Code एक्सटेंशन के साथ एक नई वीएसकोड विंडो खोलेगा।
+वीएसकोड में `F5` दबाएं (या **रन** → **डीबगिंग प्रारंभ करें** पर जाएं)। यह Tumble Code एक्सटेंशन के साथ एक नई वीएसकोड विंडो खोलेगा।
 
 - वेबव्यू में किए गए परिवर्तन तुरंत दिखाई देंगे।
 - कोर एक्सटेंशन में किए गए परिवर्तन भी स्वचालित रूप से हॉट रीलोड हो जाएंगे।
@@ -156,10 +156,10 @@ pnpm install:vsix [-y] [--editor=<command>]
     ```sh
     pnpm vsix
     ```
-2.  `bin/` डायरेक्टरी में एक `.vsix` फ़ाइल जनरेट होगी (जैसे, `bin/roo-cline-<version>.vsix` )।
+2.  `bin/` डायरेक्टरी में एक `.vsix` फ़ाइल जनरेट होगी (जैसे, `bin/tumble-code-<version>.vsix` )।
 3.  इसे वीएसकोड सीएलआई का उपयोग करके मैन्युअल रूप से इंस्टॉल करें:
     ```sh
-    code --install-extension bin/roo-cline-<version>.vsix
+    code --install-extension bin/tumble-code-<version>.vsix
     ```
 
 ---
@@ -182,8 +182,8 @@ pnpm install:vsix [-y] [--editor=<command>]
 
 ## लाइसेंस
 
-[Apache 2.0 © 2025 Roo Code, Inc.](../../LICENSE)
+[Apache 2.0 © 2025 Tumble Code, Inc.](../../LICENSE)
 
 ---
 
-**Roo Code का आनंद लें!** चाहे आप इसे छोटी लगाम में रखें या इसे स्वायत्त रूप से घूमने दें, हम यह देखने के लिए इंतजार नहीं कर सकते कि आप क्या बनाते हैं। यदि आपके कोई प्रश्न या सुविधा के विचार हैं, तो हमारी [रेडिट समुदाय](https://www.reddit.com/r/RooCode/) या [डिस्कॉर्ड](https://discord.gg/roocode) पर आएं। हैप्पी कोडिंग!
+**Tumble Code का आनंद लें!** चाहे आप इसे छोटी लगाम में रखें या इसे स्वायत्त रूप से घूमने दें, हम यह देखने के लिए इंतजार नहीं कर सकते कि आप क्या बनाते हैं। यदि आपके कोई प्रश्न या सुविधा के विचार हैं, तो हमारी [रेडिट समुदाय](https://www.reddit.com/r/TumbleCode/) या [डिस्कॉर्ड](https://discord.gg/tumblecode) पर आएं। हैप्पी कोडिंग!
