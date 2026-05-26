@@ -88,7 +88,14 @@ async function main() {
 					const generatedPackageJson = generatePackageJson({
 						packageJson,
 						overrideJson,
-						substitution: ["roo-cline", "roo-code-nightly"],
+						// Rename the internal `roo-cline.*` command/view IDs to a nightly-only
+						// prefix so a Tumble Code stable + nightly install can coexist without
+						// VS Code command-ID collisions. The `tumble-code.*` config property
+						// keys are NOT remapped here -- nightly reads from the same namespace
+						// at runtime because PKG_NAME override only affects the manifest top-
+						// level name. Settings entered in stable will be seen by nightly too,
+						// which is an acceptable minor coexistence quirk.
+						substitution: ["roo-cline", "tumble-code-nightly"],
 					})
 
 					fs.writeFileSync(path.join(buildDir, "package.json"), JSON.stringify(generatedPackageJson, null, 2))
