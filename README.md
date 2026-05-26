@@ -36,7 +36,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - [Tiếng Việt](locales/vi/README.md)
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
-    </details>
+      </details>
 
 ---
 
@@ -49,6 +49,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - Answer Questions about your codebase
 - Automate repetitive tasks
 - Utilize MCP Servers
+- Run with **local inference engines** (Ollama, LM Studio, llama.cpp) so your code never leaves your machine and you pay nothing per token
 
 ## Modes
 
@@ -150,7 +151,7 @@ We love community contributions! Get started by reading our [CONTRIBUTING.md](CO
 
 ## Lineage
 
-Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code), originally authored by Roo Veterinary Inc. and published on the VS Code Marketplace as `RooVeterinaryInc.roo-cline`. In early 2026 the upstream team [announced](https://x.com/mattrubens/status/2046636598859559114) that they were stepping away from Roo Code to focus on their new product, Roomote. With the original maintainers no longer actively developing the extension, this fork was started to keep the codebase alive and evolving under independent stewardship.
+Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code), originally authored by Roo Veterinary Inc. and published on the VS Code Marketplace as `RooVeterinaryInc.roo-cline`. In early 2026 the upstream team [announced](https://x.com/mattrubens/status/2046636598859559114) that they were stepping away from Roo Code to focus on their new product, Roomote. With the original maintainers no longer actively developing the extension, this fork was started to keep the codebase alive and shift the focus toward **local inference engines** — running with Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs as first-class providers so users can use AI coding assistance without paying per-token or sending their code to a cloud provider.
 
 **What we kept from Roo Code:**
 
@@ -166,7 +167,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - New marketplace identity: `QUB-IT.tumble-code` — install path is independent from the upstream extension
 - The agent persona in chat copy is renamed from "Roo" to "Tumble"; the logo is a tumbleweed instead of a kangaroo
 - Cloud features (auth, share links, telemetry, the LLM proxy) point at a self-hosted backend (see [`self-hosted-cloudapi/`](./self-hosted-cloudapi/) in this repo) instead of `*.roocode.com`. Default URLs are configurable via env vars
-- Independent direction: features, models, and priorities are set by Tumble Code contributors, not the original Roo team
+- Independent direction with a focus on **local inference**: Ollama, LM Studio, llama.cpp, and similar locally-hosted LLMs are treated as first-class providers, not afterthoughts. Cloud providers (Anthropic, OpenAI, OpenRouter, etc.) still work; they're just no longer the default expectation
 - A first-launch settings migration bridge offers to copy your existing Roo Code configuration so you don't lose work
 
 **Credit:**

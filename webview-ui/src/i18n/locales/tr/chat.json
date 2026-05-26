@@ -349,9 +349,9 @@
 			"goToSettingsButton": "Ayarlar'a Git"
 		},
 		"handoff": {
-			"heading": "Tumble Code eklentisi bir yere gitmiyor.",
-			"description": "Tumble Code'un 3 milyon kuruluma ulaştığı ve orijinal ekibin tüm enerjisini Roomote'a verdiği son duyuruyu görmüş olabilirsin. Bu haberin birçoğunuz için zor olduğunu biliyoruz. Bu eklenti bizim ve senin için çok şey ifade ediyor ve seni duyuyoruz. İyi haber: <bold>bir topluluk ekibi Tumble Code'u ileriye taşımak için öne çıktı</bold> ve güvendiğin eklentinin bakımı ve geliştirilmesinin sürmesi için onlarla resmi bir devir çalışması yürütüyoruz.",
-			"readMore": "Matt Rubens'in orijinal duyurusunu oku"
+			"heading": "From Roo Code to Tumble Code",
+			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
+			"readMore": "Read the original Roo Code handoff announcement"
 		},
 		"release": {
 			"heading": "Yenilikler:",

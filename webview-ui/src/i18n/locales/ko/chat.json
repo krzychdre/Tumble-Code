@@ -348,9 +348,9 @@
 			"goToSettingsButton": "설정으로 이동"
 		},
 		"handoff": {
-			"heading": "Tumble Code 플러그인은 사라지지 않아요.",
-			"description": "Tumble Code가 300만 설치를 돌파했고, 원래 팀이 Roomote에 전념하기로 했다는 최근 발표를 보셨을 거예요. 많은 분들께 이 소식이 힘들게 다가왔다는 걸 알고 있어요. 이 플러그인은 저희와 여러분 모두에게 큰 의미가 있고, 여러분의 목소리를 듣고 있어요. 좋은 소식이 있어요: <bold>커뮤니티 팀이 Tumble Code를 계속 이어가기로 나섰어요</bold>. 여러분이 의지하는 이 플러그인이 계속 유지 관리되고 개선될 수 있도록, 저희는 그들과 공식적인 인수인계를 진행하고 있어요.",
-			"readMore": "Matt Rubens의 원본 발표 읽기"
+			"heading": "From Roo Code to Tumble Code",
+			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
+			"readMore": "Read the original Roo Code handoff announcement"
 		},
 		"release": {
 			"heading": "새로운 기능:",

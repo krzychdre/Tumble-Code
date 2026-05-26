@@ -348,9 +348,9 @@
 			"goToSettingsButton": "सेटिंग्स पर जाएं"
 		},
 		"handoff": {
-			"heading": "Tumble Code plugin कहीं नहीं जा रहा है।",
-			"description": "आपने शायद हाल ही की घोषणा देखी होगी कि Tumble Code ने 30 लाख installs पार कर लिए हैं और मूल टीम पूरी तरह Roomote पर focus कर रही है। हम जानते हैं कि यह खबर आप में से कई के लिए कठिन थी। यह plugin हमारे और आपके लिए बहुत मायने रखता है, और हम आपकी बात सुन रहे हैं। अच्छी खबर: <bold>एक community team ने Tumble Code को आगे ले जाने की ज़िम्मेदारी ली है</bold>, और हम उनके साथ एक आधिकारिक handoff पर काम कर रहे हैं ताकि जिस plugin पर आप भरोसा करते हैं, उसका maintenance और improvement जारी रहे।",
-			"readMore": "Matt Rubens की मूल घोषणा पढ़ें"
+			"heading": "From Roo Code to Tumble Code",
+			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
+			"readMore": "Read the original Roo Code handoff announcement"
 		},
 		"release": {
 			"heading": "नया क्या है:",

@@ -348,9 +348,9 @@
 			"goToSettingsButton": "Przejdź do Ustawień"
 		},
 		"handoff": {
-			"heading": "Wtyczka Tumble Code nie znika.",
-			"description": "Być może widziałeś niedawne ogłoszenie, że Tumble Code osiągnął 3 miliony instalacji, a oryginalny zespół całkowicie skupia się na Roomote. Wiemy, że ta wiadomość była trudna dla wielu z was. Ta wtyczka wiele dla nas i dla ciebie znaczy, i słyszymy was. Dobra wiadomość: <bold>zespół społeczności zgłosił się, żeby poprowadzić Tumble Code dalej</bold>, i pracujemy z nimi nad oficjalnym przekazaniem, żeby wtyczka, na której polegasz, była nadal utrzymywana i ulepszana.",
-			"readMore": "Przeczytaj oryginalne ogłoszenie Matta Rubensa"
+			"heading": "From Roo Code to Tumble Code",
+			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
+			"readMore": "Read the original Roo Code handoff announcement"
 		},
 		"release": {
 			"heading": "Co nowego:",

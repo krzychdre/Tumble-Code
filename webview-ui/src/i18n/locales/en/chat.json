@@ -367,9 +367,9 @@
 			"goToSettingsButton": "Go to Settings"
 		},
 		"handoff": {
-			"heading": "The Tumble Code plugin is not going away.",
-			"description": "You may have seen the recent announcement that Tumble Code hit 3 million installs and the original team is going all-in on Roomote. We know that news was hard for a lot of you. This plugin means a lot to us and to you, and we hear you. The good news: <bold>a community team has stepped up to carry Tumble Code forward</bold>, and we're working with them on an official handoff so the plugin you rely on keeps getting maintained and improved.",
-			"readMore": "Read the original announcement from Matt Rubens"
+			"heading": "From Roo Code to Tumble Code",
+			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
+			"readMore": "Read the original Roo Code handoff announcement"
 		},
 		"release": {
 			"heading": "What's New:",

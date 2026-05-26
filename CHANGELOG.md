@@ -8,7 +8,7 @@
 
 ### Major Changes
 
-- **Renamed to Tumble Code (community fork).** Upstream Roo Code is no longer maintained by the original team; this fork carries the codebase forward under independent stewardship. User-visible identity (extension displayName, marketplace publisher, URLs, output channel) now reads "Tumble Code"; internal command and view IDs (`roo-cline.*`) are preserved so existing keybindings keep working. Config property keys move from `roo-cline.*` to `tumble-code.*`; the first launch after installing Tumble Code will offer to migrate settings from the legacy Roo Code extension.
+- **Renamed to Tumble Code (community fork).** The original Roo Code team moved on to focus on their new product, Roomote; Tumble Code is the community fork that picks up the codebase from there. Going forward we're putting the accent on **local inference engines** (Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs) so users can run AI coding assistance entirely on their own hardware without paying per-token. User-visible identity (extension displayName, marketplace publisher, URLs, output channel) now reads "Tumble Code"; internal command and view IDs (`roo-cline.*`) are preserved so existing keybindings keep working. Config property keys move from `roo-cline.*` to `tumble-code.*`; the first launch after installing Tumble Code will offer to migrate settings from the legacy Roo Code extension.
 
 ## 3.53.0
 
