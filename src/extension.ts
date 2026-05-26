@@ -95,9 +95,11 @@ async function checkWorktreeAutoOpen(
 			// Clear the state first to prevent re-triggering
 			await context.globalState.update("worktreeAutoOpenPath", undefined)
 
-			outputChannel.appendLine(`[Worktree] Auto-opening Roo Code sidebar for worktree: ${worktreeAutoOpenPath}`)
+			outputChannel.appendLine(
+				`[Worktree] Auto-opening Tumble Code sidebar for worktree: ${worktreeAutoOpenPath}`,
+			)
 
-			// Open the Roo Code sidebar with a slight delay to ensure UI is ready
+			// Open the Tumble Code sidebar with a slight delay to ensure UI is ready
 			setTimeout(async () => {
 				try {
 					await vscode.commands.executeCommand("roo-cline.plusButtonClicked")
