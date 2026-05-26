@@ -342,9 +342,8 @@ function getSelectedModel({
 		}
 		// case "anthropic":
 		// case "fake-ai":
-		// case "roo": legacy provider; settings UI no longer exposes it, but stored configs fall through here.
 		default: {
-			provider satisfies "anthropic" | "gemini-cli" | "fake-ai" | "roo"
+			provider satisfies "anthropic" | "gemini-cli" | "fake-ai"
 			const id = apiConfiguration.apiModelId ?? defaultModelId
 			const baseInfo = anthropicModels[id as keyof typeof anthropicModels]
 

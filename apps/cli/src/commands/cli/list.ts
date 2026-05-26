@@ -106,14 +106,14 @@ function outputSessionsText(sessions: SessionLike[]): void {
 async function createListHost(options: BaseListOptions, hostOptions: ListHostOptions): Promise<ExtensionHost> {
 	const workspacePath = resolveWorkspacePath(options.workspace)
 	const extensionPath = resolveExtensionPath(options.extension)
-	const apiKey = options.apiKey || (await loadToken()) || getApiKeyFromEnv("roo")
+	const apiKey = options.apiKey || (await loadToken()) || getApiKeyFromEnv("anthropic")
 
 	const extensionHostOptions: ExtensionHostOptions = {
 		mode: "code",
 		reasoningEffort: undefined,
 		user: null,
-		provider: "roo",
-		model: getProviderDefaultModelId("roo"),
+		provider: "anthropic",
+		model: getProviderDefaultModelId("anthropic"),
 		apiKey,
 		workspacePath,
 		extensionPath,
