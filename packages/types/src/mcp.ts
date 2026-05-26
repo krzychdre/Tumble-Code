@@ -7,6 +7,22 @@ import { z } from "zod"
 export const MAX_MCP_TOOLS_THRESHOLD = 60
 
 /**
+ * Higher warning threshold used when the `deferredTools` experiment is enabled.
+ * Deferred loading hides MCP tool schemas from the per-turn prompt, so the
+ * model is exposed to far fewer concurrent tools and tolerates a larger
+ * installed-tool universe before the warning becomes useful.
+ */
+export const MAX_MCP_TOOLS_THRESHOLD_DEFERRED = 120
+
+/**
+ * Pick the appropriate "too many tools" warning threshold based on whether
+ * the `deferredTools` experiment is enabled.
+ */
+export function getMaxMcpToolsThreshold(deferredToolsEnabled: boolean): number {
+	return deferredToolsEnabled ? MAX_MCP_TOOLS_THRESHOLD_DEFERRED : MAX_MCP_TOOLS_THRESHOLD
+}
+
+/**
  * McpServerUse
  */
 

@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
-import { MAX_MCP_TOOLS_THRESHOLD } from "@roo-code/types"
+import { MAX_MCP_TOOLS_THRESHOLD, MAX_MCP_TOOLS_THRESHOLD_DEFERRED } from "@roo-code/types"
 
 import { TooManyToolsWarning } from "../TooManyToolsWarning"
 
@@ -10,12 +10,14 @@ vi.mock("@/utils/vscode", () => ({
 	},
 }))
 
-// Mock ExtensionState context with variable mcpServers
+// Mock ExtensionState context with variable mcpServers and experiments
 const mockMcpServers = vi.fn()
+const mockExperiments = vi.fn()
 
 vi.mock("@/context/ExtensionStateContext", () => ({
 	useExtensionState: () => ({
 		mcpServers: mockMcpServers(),
+		experiments: mockExperiments(),
 	}),
 }))
 
@@ -52,6 +54,7 @@ describe("TooManyToolsWarning", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		mockMcpServers.mockReturnValue([])
+		mockExperiments.mockReturnValue({ deferredTools: false })
 	})
 
 	it("does not render when there are no MCP servers", () => {
@@ -257,6 +260,78 @@ describe("TooManyToolsWarning", () => {
 				`You have 65 tools enabled via 2 MCP servers. Such a high number can confuse the model and lead to errors. Try to keep it below ${MAX_MCP_TOOLS_THRESHOLD}.`,
 			),
 		).toBeInTheDocument()
+	})
+
+	describe("with deferredTools experiment enabled", () => {
+		beforeEach(() => {
+			mockExperiments.mockReturnValue({ deferredTools: true })
+		})
+
+		it("does not render when tool count is between the standard and deferred thresholds", () => {
+			// 61 tools — over the 60-tool default, but under the 120-tool deferred ceiling.
+			const tools = Array.from({ length: MAX_MCP_TOOLS_THRESHOLD + 1 }, (_, i) => ({
+				name: `tool${i}`,
+				enabledForPrompt: true,
+			}))
+
+			mockMcpServers.mockReturnValue([
+				{
+					name: "server1",
+					status: "connected",
+					disabled: false,
+					tools,
+				},
+			])
+
+			const { container } = render(<TooManyToolsWarning />)
+
+			expect(container.firstChild).toBeNull()
+		})
+
+		it("does not render when tool count equals the deferred threshold", () => {
+			const tools = Array.from({ length: MAX_MCP_TOOLS_THRESHOLD_DEFERRED }, (_, i) => ({
+				name: `tool${i}`,
+				enabledForPrompt: true,
+			}))
+
+			mockMcpServers.mockReturnValue([
+				{
+					name: "server1",
+					status: "connected",
+					disabled: false,
+					tools,
+				},
+			])
+
+			const { container } = render(<TooManyToolsWarning />)
+
+			expect(container.firstChild).toBeNull()
+		})
+
+		it("renders warning when tool count exceeds the deferred threshold and quotes the new ceiling", () => {
+			const tools = Array.from({ length: MAX_MCP_TOOLS_THRESHOLD_DEFERRED + 5 }, (_, i) => ({
+				name: `tool${i}`,
+				enabledForPrompt: true,
+			}))
+
+			mockMcpServers.mockReturnValue([
+				{
+					name: "server1",
+					status: "connected",
+					disabled: false,
+					tools,
+				},
+			])
+
+			render(<TooManyToolsWarning />)
+
+			expect(screen.getByText("Too many tools enabled")).toBeInTheDocument()
+			expect(
+				screen.getByText(
+					`You have ${MAX_MCP_TOOLS_THRESHOLD_DEFERRED + 5} tools enabled via 1 MCP server. Such a high number can confuse the model and lead to errors. Try to keep it below ${MAX_MCP_TOOLS_THRESHOLD_DEFERRED}.`,
+				),
+			).toBeInTheDocument()
+		})
 	})
 
 	it("renders MCP settings link and opens settings when clicked", () => {
