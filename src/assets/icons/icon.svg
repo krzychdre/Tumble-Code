@@ -1,32 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
-  <defs>
-    <style>
-      .tw {
-        fill: none;
-        stroke: #000;
-        stroke-width: 3.5;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-    </style>
-  </defs>
-  <!-- Tumbleweed: tangled ball of twigs.
-       Placeholder design; replace with a final asset later. -->
-  <circle class="tw" cx="48" cy="48" r="30"/>
-  <path class="tw" d="M18,42 C30,24 62,68 80,48"/>
-  <path class="tw" d="M48,18 C66,30 28,62 50,80"/>
-  <path class="tw" d="M22,30 C38,44 58,52 74,68"/>
-  <path class="tw" d="M22,68 C38,52 58,44 74,28"/>
-  <path class="tw" d="M30,22 C46,32 50,64 66,76"/>
-  <path class="tw" d="M70,22 C60,38 36,58 26,74"/>
-  <!-- Outer wispy twigs -->
-  <path class="tw" d="M14,38 L8,34"/>
-  <path class="tw" d="M14,58 L7,62"/>
-  <path class="tw" d="M82,38 L89,34"/>
-  <path class="tw" d="M82,58 L89,62"/>
-  <path class="tw" d="M44,14 L42,7"/>
-  <path class="tw" d="M58,14 L62,8"/>
-  <path class="tw" d="M44,82 L42,89"/>
-  <path class="tw" d="M58,82 L62,89"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="50" cy="50" r="40"></circle>
+  <path d="M50 22 C72 24 78 52 60 70 C42 80 26 66 32 50 C38 36 60 36 58 52 C56 62 46 60 50 50"></path>
+  <path d="M20.33 26.41 L23.67 33.59 M18.41 31.67 L25.59 28.33"></path>
+  <path d="M74.76 35.73 L81.24 40.27 M75.73 41.24 L80.27 34.76"></path>
+  <path d="M40.00 80.00 L42.29 81.32 M40.00 80.00 L37.71 81.32 M40.00 80.00 L40.00 77.36"></path>
+  <path d="M72.00 60.00 L74.42 60.00 M72.00 60.00 L70.79 62.10 M72.00 60.00 L70.79 57.90"></path>
+  <path d="M34.00 53.17 L34.00 58.83 M31.17 56.00 L36.83 56.00"></path>
 </svg>

@@ -171,8 +171,12 @@ Files to replace:
 - `icon.svg` (SVG source)
 - `icon-nightly.png` (nightly build variant)
 - `panel_light.png`, `panel_dark.png` (sidebar branding)
+- `src/assets/images/roo-logo.svg` (welcome hero — masked silhouette in `webview-ui/src/components/welcome/RooHero.tsx`)
+- `src/assets/images/roo.png` (legacy kangaroo, currently unreferenced — swapped for consistency)
 
 Strategy: tumbleweed silhouette, single-color, square 1024×1024 master. Need source asset (D7). Until then, use a placeholder SVG and mark a TODO. Add `assets/icons/icon.svg.original-roo` to preserve the original (for attribution + diff history) — optional.
+
+**Status:** Swapped to `tumbleweed-a` design (stroked tangled-ball with wispy outer twigs, three small accent marks). All PNGs regenerated from `icon.svg` via `sharp` (`render-icons.js`). Treated as a draft variant (the `-a` suffix in the source) — D7 remains open until a final designed asset lands.
 
 Also check `webview-ui/public/` and `apps/web-roo-code/public/` for additional logo files referenced by the webview/marketing site.
 

@@ -260,27 +260,18 @@
 		@apply underline;
 	}
 
-	/* Custom smooth bounce animation for Roo hero */
-	@keyframes smooth-bounce {
+	/* Tumble (rolling) animation for the welcome hero */
+	@keyframes smooth-tumble {
 		0% {
-			transform: translateY(0);
-		}
-		25% {
-			transform: translateY(-25%);
-		}
-		50% {
-			transform: translateY(0);
-		}
-		75% {
-			transform: translateY(-12.5%);
+			transform: rotate(0deg);
 		}
 		100% {
-			transform: translateY(0);
+			transform: rotate(360deg);
 		}
 	}
 
-	.animate-smooth-bounce {
-		animation: smooth-bounce 1s ease-in-out infinite;
+	.animate-smooth-tumble {
+		animation: smooth-tumble 1s linear infinite;
 	}
 }
 
