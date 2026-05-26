@@ -7,7 +7,7 @@
 
 > Your AI-Powered Dev Team, Right in Your Editor
 
-Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code). The original Roo Code project is no longer actively maintained by its authors; Tumble Code carries the codebase forward under independent stewardship. See the upcoming **Lineage** section for full attribution.
+Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code). The original Roo Code project is no longer actively maintained by its authors; Tumble Code carries the codebase forward under independent stewardship. See the [Lineage](#lineage) section below for full attribution.
 
 **What's new in this release:**
 
@@ -36,7 +36,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - [Tiếng Việt](locales/vi/README.md)
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
-  </details>
+    </details>
 
 ---
 
@@ -145,6 +145,35 @@ We use [changesets](https://github.com/changesets/changesets) for versioning and
 ## Contributing
 
 We love community contributions! Get started by reading our [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## Lineage
+
+Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code), originally authored by Roo Veterinary Inc. and published on the VS Code Marketplace as `RooVeterinaryInc.roo-cline`. In early 2026 the upstream team [announced](https://x.com/mattrubens/status/2046636598859559114) that they were stepping away from Roo Code to focus on their new product, Roomote. With the original maintainers no longer actively developing the extension, this fork was started to keep the codebase alive and evolving under independent stewardship.
+
+**What we kept from Roo Code:**
+
+- The entire codebase, Apache 2.0 licensed (see [LICENSE](./LICENSE) for the full notice including the original Roo Code copyright)
+- The agent architecture, mode system, MCP integration, provider abstractions, and webview UI
+- Internal identifiers (`roo-cline.*` command IDs, view IDs, file names, type names) so the rebrand stays additive rather than disruptive
+- The original release history in [CHANGELOG.md](./CHANGELOG.md), preserved verbatim with a header note distinguishing the upstream and fork eras
+- The translation work of the Roo Code community across 18 locales
+- The [original Roo Code documentation](https://docs.roocode.com) remains the best reference for most features until Tumble-Code-specific docs catch up
+
+**What's different in Tumble Code:**
+
+- New marketplace identity: `QUB-IT.tumble-code` — install path is independent from the upstream extension
+- The agent persona in chat copy is renamed from "Roo" to "Tumble"; the logo is a tumbleweed instead of a kangaroo
+- Cloud features (auth, share links, telemetry, the LLM proxy) point at a self-hosted backend (see [`self-hosted-cloudapi/`](./self-hosted-cloudapi/) in this repo) instead of `*.roocode.com`. Default URLs are configurable via env vars
+- Independent direction: features, models, and priorities are set by Tumble Code contributors, not the original Roo team
+- A first-launch settings migration bridge offers to copy your existing Roo Code configuration so you don't lose work
+
+**Credit:**
+
+The Roo Code project was the work of many contributors over multiple years; their commits remain in this repository's git history. If you contributed to upstream Roo Code, your work is still here. The fork carries forward your effort under a new name, not a clean-room reimplementation.
+
+For questions about lineage, licensing, or attribution, please open a [GitHub issue](https://github.com/krzychdre/tumble-code/issues).
 
 ---
 
