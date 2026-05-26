@@ -1,49 +1,11 @@
 {
-	"routers": {
-		"requesty": {
-			"description": "Tu router LLM optimizado",
-			"incentive": "$1 de crédito gratis"
-		},
-		"openrouter": {
-			"description": "Una interfaz unificada para LLMs"
-		},
-		"roo": {
-			"description": "Los mejores modelos gratuitos para empezar",
-			"incentive": "Prueba Tumble gratis"
-		}
-	},
 	"landing": {
 		"greeting": "¡Bienvenido a Tumble Code!",
-		"introduction": "Con una variedad de Modos integrados y extensibles, Tumble Code te permite planificar, arquitectar, codificar, depurar y aumentar tu productividad como nunca antes.",
-		"accountMention": "Para comenzar, crea tu cuenta de Tumble Code Cloud. Obtén modelos potentes, control web, análisis, soporte y más.",
-		"getStarted": "Crear cuenta de Tumble",
-		"noAccount": "o usar sin cuenta"
+		"introduction": "Con una variedad de Modos integrados y extensibles, Tumble Code te permite planificar, arquitectar, codificar, depurar y aumentar tu productividad como nunca antes."
 	},
 	"providerSignup": {
-		"heading": "Elige tu proveedor",
-		"chooseProvider": "Tumble necesita un proveedor de LLM para funcionar. Elige uno para comenzar, puedes añadir más después.",
-		"rooCloudProvider": "Proveedor de Tumble Code Cloud",
-		"rooCloudDescription": "La forma más sencilla de comenzar es con el Proveedor Tumble Code Cloud: una mezcla seleccionada de modelos gratuitos y de pago a bajo costo.",
-		"learnMore": "Más información",
-		"useAnotherProvider": "Proveedor de terceros",
-		"useAnotherProviderDescription": "Introduce una clave API y comienza.",
-		"noApiKeys": "¿No quieres lidiar con claves API y cuentas separadas?",
-		"backToTumble": "Ve con el Proveedor de Tumble Code Cloud.",
-		"goBack": "Atrás",
 		"finish": "Finalizar"
 	},
-	"waitingForCloud": {
-		"heading": "Iniciando sesión en Tumble Code Cloud...",
-		"description": "Te llevaremos a tu navegador para que te registres en Tumble Code Cloud. Luego te traeremos aquí para terminar.",
-		"noPrompt": "Si no se te pide que abras una URL, <clickHere>haz clic aquí</clickHere>.",
-		"havingTrouble": "Si completaste el registro pero tienes problemas, <clickHere>haz clic aquí</clickHere>.",
-		"pasteUrl": "Pega la URL de respuesta de tu navegador:",
-		"docsLink": "¿No funciona? <DocsLink>Consulta la documentación</DocsLink>.",
-		"invalidURL": "Eso no parece ser una URL de respuesta válida. Por favor copia lo que Tumble Code Cloud está mostrando en tu navegador.",
-		"goBack": "Atrás"
-	},
-	"startRouter": "Recomendamos usar un router LLM:",
-	"startCustom": "O puedes traer tu propia clave API:",
 	"telemetry": {
 		"helpImprove": "Ayuda a mejorar Tumble Code",
 		"helpImproveMessage": "Tumble Code recopila datos de errores y uso para ayudarnos a corregir errores y mejorar la extensión. Esta telemetría no recopila código, prompts o información personal. Puedes desactivar esto en la <settingsLink>configuración</settingsLink>."
