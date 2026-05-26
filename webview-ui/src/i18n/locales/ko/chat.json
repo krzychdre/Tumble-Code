@@ -1,5 +1,5 @@
 {
-	"greeting": "Roo Code에 오신 것을 환영합니다",
+	"greeting": "Tumble Code에 오신 것을 환영합니다",
 	"task": {
 		"title": "작업",
 		"expand": "작업 펼치기",
@@ -21,7 +21,7 @@
 		"sharePublicly": "공개적으로 공유",
 		"sharePubliclyDescription": "링크가 있는 누구나 액세스할 수 있습니다",
 		"connectToCloud": "클라우드에 연결",
-		"connectToCloudDescription": "작업을 공유하려면 Roo Code Cloud에 로그인하세요",
+		"connectToCloudDescription": "작업을 공유하려면 Tumble Code Cloud에 로그인하세요",
 		"sharingDisabledByOrganization": "조직에서 공유가 비활성화됨",
 		"shareSuccessOrganization": "조직 링크가 클립보드에 복사되었습니다",
 		"shareSuccessPublic": "공개 링크가 클립보드에 복사되었습니다",
@@ -98,7 +98,7 @@
 	"enqueueMessage": "메시지를 대기열에 추가 (현재 작업 완료 후 전송)",
 	"scrollToBottom": "채팅 하단으로 스크롤",
 	"scrollToLatestCheckpoint": "이전 체크포인트로 스크롤",
-	"about": "Roo Code는 편집기 안에 있는 전체 AI 개발팀입니다.",
+	"about": "Tumble Code는 편집기 안에 있는 전체 AI 개발팀입니다.",
 	"docs": "더 알아보려면 <DocsLink>문서</DocsLink>를 확인하세요.",
 	"onboarding": "이 작업 공간의 작업 목록이 비어 있습니다.",
 	"rooTips": {
@@ -130,7 +130,7 @@
 		"title": "모드",
 		"marketplace": "모드 마켓플레이스",
 		"settings": "모드 설정",
-		"description": "Roo의 행동을 맞춤화하는 전문화된 페르소나.",
+		"description": "Tumble의 행동을 맞춤화하는 전문화된 페르소나.",
 		"searchPlaceholder": "모드 검색...",
 		"noResults": "결과를 찾을 수 없습니다"
 	},
@@ -144,7 +144,7 @@
 	"diffError": {
 		"title": "편집 실패"
 	},
-	"troubleMessage": "Roo에 문제가 발생했습니다...",
+	"troubleMessage": "Tumble에 문제가 발생했습니다...",
 	"apiRequest": {
 		"title": "API 요청",
 		"failed": "API 요청 실패",
@@ -162,7 +162,7 @@
 			"500": "공급자 서버 오류입니다. 공급자 쪽에 문제가 있으며 요청에는 문제가 없습니다.",
 			"docs": "문서",
 			"goToSettings": "설정",
-			"unknown": "알 수 없는 API 오류입니다. Roo Code 지원팀에 문의하세요.",
+			"unknown": "알 수 없는 API 오류입니다. Tumble Code 지원팀에 문의하세요.",
 			"connection": "연결 오류입니다. 인터넷 연결이 제대로 작동하는지 확인하세요.",
 			"claudeCodeNotAuthenticated": "Claude Code를 사용하려면 로그인해야 합니다. 설정으로 이동하여 \"Claude Code에 로그인\"을 클릭하여 인증하세요."
 		}
@@ -187,43 +187,43 @@
 		"current": "현재"
 	},
 	"instructions": {
-		"wantsToFetch": "Roo는 현재 작업을 지원하기 위해 자세한 지침을 가져오려고 합니다"
+		"wantsToFetch": "Tumble는 현재 작업을 지원하기 위해 자세한 지침을 가져오려고 합니다"
 	},
 	"fileOperations": {
-		"wantsToRead": "Roo가 이 파일을 읽고 싶어합니다",
-		"wantsToReadOutsideWorkspace": "Roo가 워크스페이스 외부의 이 파일을 읽고 싶어합니다",
-		"didRead": "Roo가 이 파일을 읽었습니다",
-		"wantsToEdit": "Roo가 이 파일을 편집하고 싶어합니다",
-		"wantsToEditOutsideWorkspace": "Roo가 워크스페이스 외부의 이 파일을 편집하고 싶어합니다",
-		"wantsToEditProtected": "Roo가 보호된 설정 파일을 편집하고 싶어합니다",
-		"wantsToCreate": "Roo가 새 파일을 만들고 싶어합니다",
-		"wantsToSearchReplace": "Roo가 이 파일에서 검색 및 바꾸기를 수행하고 싶어합니다",
-		"didSearchReplace": "Roo가 이 파일에서 검색 및 바꾸기를 수행했습니다",
-		"wantsToInsert": "Roo가 이 파일에 내용을 삽입하고 싶어합니다",
-		"wantsToInsertWithLineNumber": "Roo가 이 파일의 {{lineNumber}}번 줄에 내용을 삽입하고 싶어합니다",
-		"wantsToInsertAtEnd": "Roo가 이 파일의 끝에 내용을 추가하고 싶어합니다",
-		"wantsToReadAndXMore": "Roo가 이 파일과 {{count}}개의 파일을 더 읽으려고 합니다",
-		"wantsToReadMultiple": "Roo가 여러 파일을 읽으려고 합니다",
-		"wantsToApplyBatchChanges": "Roo가 여러 파일에 변경 사항을 적용하고 싶어합니다",
-		"wantsToGenerateImage": "Roo가 이미지를 생성하고 싶어합니다",
-		"wantsToGenerateImageOutsideWorkspace": "Roo가 워크스페이스 외부에서 이미지를 생성하고 싶어합니다",
-		"wantsToGenerateImageProtected": "Roo가 보호된 위치에서 이미지를 생성하고 싶어합니다",
-		"didGenerateImage": "Roo가 이미지를 생성했습니다"
+		"wantsToRead": "Tumble가 이 파일을 읽고 싶어합니다",
+		"wantsToReadOutsideWorkspace": "Tumble가 워크스페이스 외부의 이 파일을 읽고 싶어합니다",
+		"didRead": "Tumble가 이 파일을 읽었습니다",
+		"wantsToEdit": "Tumble가 이 파일을 편집하고 싶어합니다",
+		"wantsToEditOutsideWorkspace": "Tumble가 워크스페이스 외부의 이 파일을 편집하고 싶어합니다",
+		"wantsToEditProtected": "Tumble가 보호된 설정 파일을 편집하고 싶어합니다",
+		"wantsToCreate": "Tumble가 새 파일을 만들고 싶어합니다",
+		"wantsToSearchReplace": "Tumble가 이 파일에서 검색 및 바꾸기를 수행하고 싶어합니다",
+		"didSearchReplace": "Tumble가 이 파일에서 검색 및 바꾸기를 수행했습니다",
+		"wantsToInsert": "Tumble가 이 파일에 내용을 삽입하고 싶어합니다",
+		"wantsToInsertWithLineNumber": "Tumble가 이 파일의 {{lineNumber}}번 줄에 내용을 삽입하고 싶어합니다",
+		"wantsToInsertAtEnd": "Tumble가 이 파일의 끝에 내용을 추가하고 싶어합니다",
+		"wantsToReadAndXMore": "Tumble가 이 파일과 {{count}}개의 파일을 더 읽으려고 합니다",
+		"wantsToReadMultiple": "Tumble가 여러 파일을 읽으려고 합니다",
+		"wantsToApplyBatchChanges": "Tumble가 여러 파일에 변경 사항을 적용하고 싶어합니다",
+		"wantsToGenerateImage": "Tumble가 이미지를 생성하고 싶어합니다",
+		"wantsToGenerateImageOutsideWorkspace": "Tumble가 워크스페이스 외부에서 이미지를 생성하고 싶어합니다",
+		"wantsToGenerateImageProtected": "Tumble가 보호된 위치에서 이미지를 생성하고 싶어합니다",
+		"didGenerateImage": "Tumble가 이미지를 생성했습니다"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Roo가 이 디렉토리의 최상위 파일을 보고 싶어합니다",
-		"didViewTopLevel": "Roo가 이 디렉토리의 최상위 파일을 보았습니다",
-		"wantsToViewRecursive": "Roo가 이 디렉토리의 모든 파일을 재귀적으로 보고 싶어합니다",
-		"didViewRecursive": "Roo가 이 디렉토리의 모든 파일을 재귀적으로 보았습니다",
-		"wantsToSearch": "Roo가 이 디렉토리에서 <code>{{regex}}</code>을(를) 검색하고 싶어합니다",
-		"didSearch": "Roo가 이 디렉토리에서 <code>{{regex}}</code>을(를) 검색했습니다",
-		"wantsToSearchOutsideWorkspace": "Roo가 이 디렉토리(워크스페이스 외부)에서 <code>{{regex}}</code>을(를) 검색하고 싶어합니다",
-		"didSearchOutsideWorkspace": "Roo가 이 디렉토리(워크스페이스 외부)에서 <code>{{regex}}</code>을(를) 검색했습니다",
-		"wantsToViewTopLevelOutsideWorkspace": "Roo가 이 디렉토리(워크스페이스 외부)의 최상위 파일을 보고 싶어합니다",
-		"didViewTopLevelOutsideWorkspace": "Roo가 이 디렉토리(워크스페이스 외부)의 최상위 파일을 보았습니다",
-		"wantsToViewRecursiveOutsideWorkspace": "Roo가 이 디렉토리(워크스페이스 외부)의 모든 파일을 재귀적으로 보고 싶어합니다",
-		"didViewRecursiveOutsideWorkspace": "Roo가 이 디렉토리(워크스페이스 외부)의 모든 파일을 재귀적으로 보았습니다",
-		"wantsToViewMultipleDirectories": "Roo가 여러 디렉토리를 보려고 합니다"
+		"wantsToViewTopLevel": "Tumble가 이 디렉토리의 최상위 파일을 보고 싶어합니다",
+		"didViewTopLevel": "Tumble가 이 디렉토리의 최상위 파일을 보았습니다",
+		"wantsToViewRecursive": "Tumble가 이 디렉토리의 모든 파일을 재귀적으로 보고 싶어합니다",
+		"didViewRecursive": "Tumble가 이 디렉토리의 모든 파일을 재귀적으로 보았습니다",
+		"wantsToSearch": "Tumble가 이 디렉토리에서 <code>{{regex}}</code>을(를) 검색하고 싶어합니다",
+		"didSearch": "Tumble가 이 디렉토리에서 <code>{{regex}}</code>을(를) 검색했습니다",
+		"wantsToSearchOutsideWorkspace": "Tumble가 이 디렉토리(워크스페이스 외부)에서 <code>{{regex}}</code>을(를) 검색하고 싶어합니다",
+		"didSearchOutsideWorkspace": "Tumble가 이 디렉토리(워크스페이스 외부)에서 <code>{{regex}}</code>을(를) 검색했습니다",
+		"wantsToViewTopLevelOutsideWorkspace": "Tumble가 이 디렉토리(워크스페이스 외부)의 최상위 파일을 보고 싶어합니다",
+		"didViewTopLevelOutsideWorkspace": "Tumble가 이 디렉토리(워크스페이스 외부)의 최상위 파일을 보았습니다",
+		"wantsToViewRecursiveOutsideWorkspace": "Tumble가 이 디렉토리(워크스페이스 외부)의 모든 파일을 재귀적으로 보고 싶어합니다",
+		"didViewRecursiveOutsideWorkspace": "Tumble가 이 디렉토리(워크스페이스 외부)의 모든 파일을 재귀적으로 보았습니다",
+		"wantsToViewMultipleDirectories": "Tumble가 여러 디렉토리를 보려고 합니다"
 	},
 	"commandOutput": "명령 출력",
 	"commandExecution": {
@@ -251,18 +251,18 @@
 		"youSaid": "당신은 말했다"
 	},
 	"mcp": {
-		"wantsToUseTool": "Roo가 {{serverName}} MCP 서버에서 도구를 사용하고 싶어합니다",
-		"wantsToAccessResource": "Roo가 {{serverName}} MCP 서버에서 리소스에 접근하고 싶어합니다"
+		"wantsToUseTool": "Tumble가 {{serverName}} MCP 서버에서 도구를 사용하고 싶어합니다",
+		"wantsToAccessResource": "Tumble가 {{serverName}} MCP 서버에서 리소스에 접근하고 싶어합니다"
 	},
 	"modes": {
-		"wantsToSwitch": "Roo가 <code>{{mode}}</code> 모드로 전환하고 싶어합니다",
-		"wantsToSwitchWithReason": "Roo가 다음 이유로 <code>{{mode}}</code> 모드로 전환하고 싶어합니다: {{reason}}",
-		"didSwitch": "Roo가 <code>{{mode}}</code> 모드로 전환했습니다",
-		"didSwitchWithReason": "Roo가 다음 이유로 <code>{{mode}}</code> 모드로 전환했습니다: {{reason}}"
+		"wantsToSwitch": "Tumble가 <code>{{mode}}</code> 모드로 전환하고 싶어합니다",
+		"wantsToSwitchWithReason": "Tumble가 다음 이유로 <code>{{mode}}</code> 모드로 전환하고 싶어합니다: {{reason}}",
+		"didSwitch": "Tumble가 <code>{{mode}}</code> 모드로 전환했습니다",
+		"didSwitchWithReason": "Tumble가 다음 이유로 <code>{{mode}}</code> 모드로 전환했습니다: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Roo가 <code>{{mode}}</code> 모드에서 새 하위 작업을 만들고 싶어합니다",
-		"wantsToFinish": "Roo가 이 하위 작업을 완료하고 싶어합니다",
+		"wantsToCreate": "Tumble가 <code>{{mode}}</code> 모드에서 새 하위 작업을 만들고 싶어합니다",
+		"wantsToFinish": "Tumble가 이 하위 작업을 완료하고 싶어합니다",
 		"newTaskContent": "하위 작업 지침",
 		"completionContent": "하위 작업 완료",
 		"resultContent": "하위 작업 결과",
@@ -271,7 +271,7 @@
 		"goToSubtask": "작업 보기"
 	},
 	"questions": {
-		"hasQuestion": "Roo에게 질문이 있습니다"
+		"hasQuestion": "Tumble에게 질문이 있습니다"
 	},
 	"taskCompleted": "작업 완료",
 	"modelResponseIncomplete": "모델 응답 불완전",
@@ -287,7 +287,7 @@
 		"copyToClipboard": "클립보드에 복사",
 		"copied": "복사됨!",
 		"diagnostics": "상세한 오류 정보 가져오기",
-		"proxyProvider": "프록시 기반 제공자를 사용하는 것 같습니다. 로그를 확인하고 Roo의 요청을 다시 작성하지 않는지 확인하세요."
+		"proxyProvider": "프록시 기반 제공자를 사용하는 것 같습니다. 로그를 확인하고 Tumble의 요청을 다시 작성하지 않는지 확인하세요."
 	},
 	"powershell": {
 		"issues": "Windows PowerShell에 문제가 있는 것 같습니다. 다음을 참조하세요"
@@ -330,31 +330,31 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Roo가 스킬을 로드하려고 합니다",
-		"didLoad": "Roo가 스킬을 로드했습니다"
+		"wantsToLoad": "Tumble가 스킬을 로드하려고 합니다",
+		"didLoad": "Tumble가 스킬을 로드했습니다"
 	},
 	"followUpSuggest": {
 		"copyToInput": "입력창에 복사 (또는 Shift + 클릭)",
 		"timerPrefix": "자동 승인 활성화됨. {{seconds}}초 후 선택 중…"
 	},
 	"announcement": {
-		"title": "Roo Code {{version}} 출시",
-		"support": "<githubLink>GitHub</githubLink>에서 별표를 눌러 Roo Code를 응원해 주세요.",
+		"title": "Tumble Code {{version}} 출시",
+		"support": "<githubLink>GitHub</githubLink>에서 별표를 눌러 Tumble Code를 응원해 주세요.",
 		"stealthModel": {
-			"feature": "<bold>기간 한정 무료 스텔스 모델</bold> - Code Supernova: 이제 <bold>1M 토큰 컨텍스트 윈도우</bold>로 업그레이드되었습니다! 이미지 입력을 지원하는 다목적 에이전틱 코딩 모델, Roo Code Cloud를 통해 이용 가능.",
+			"feature": "<bold>기간 한정 무료 스텔스 모델</bold> - Code Supernova: 이제 <bold>1M 토큰 컨텍스트 윈도우</bold>로 업그레이드되었습니다! 이미지 입력을 지원하는 다목적 에이전틱 코딩 모델, Tumble Code Cloud를 통해 이용 가능.",
 			"note": "(참고: 프롬프트와 완성은 모델 제작자에 의해 기록되고 모델 개선에 사용됩니다)",
-			"connectButton": "Roo Code Cloud에 연결",
-			"selectModel": "설정에서 Roo Code Cloud 제공업체의 <code>roo/code-supernova</code>를 선택하여 시작하세요.",
+			"connectButton": "Tumble Code Cloud에 연결",
+			"selectModel": "설정에서 Tumble Code Cloud 제공업체의 <code>roo/code-supernova</code>를 선택하여 시작하세요.",
 			"goToSettingsButton": "설정으로 이동"
 		},
 		"handoff": {
-			"heading": "Roo Code 플러그인은 사라지지 않아요.",
-			"description": "Roo Code가 300만 설치를 돌파했고, 원래 팀이 Roomote에 전념하기로 했다는 최근 발표를 보셨을 거예요. 많은 분들께 이 소식이 힘들게 다가왔다는 걸 알고 있어요. 이 플러그인은 저희와 여러분 모두에게 큰 의미가 있고, 여러분의 목소리를 듣고 있어요. 좋은 소식이 있어요: <bold>커뮤니티 팀이 Roo Code를 계속 이어가기로 나섰어요</bold>. 여러분이 의지하는 이 플러그인이 계속 유지 관리되고 개선될 수 있도록, 저희는 그들과 공식적인 인수인계를 진행하고 있어요.",
+			"heading": "Tumble Code 플러그인은 사라지지 않아요.",
+			"description": "Tumble Code가 300만 설치를 돌파했고, 원래 팀이 Roomote에 전념하기로 했다는 최근 발표를 보셨을 거예요. 많은 분들께 이 소식이 힘들게 다가왔다는 걸 알고 있어요. 이 플러그인은 저희와 여러분 모두에게 큰 의미가 있고, 여러분의 목소리를 듣고 있어요. 좋은 소식이 있어요: <bold>커뮤니티 팀이 Tumble Code를 계속 이어가기로 나섰어요</bold>. 여러분이 의지하는 이 플러그인이 계속 유지 관리되고 개선될 수 있도록, 저희는 그들과 공식적인 인수인계를 진행하고 있어요.",
 			"readMore": "Matt Rubens의 원본 발표 읽기"
 		},
 		"release": {
 			"heading": "새로운 기능:",
-			"gpt55": "OpenAI Codex를 통한 GPT-5.5: OpenAI Codex 제공업체에 GPT-5.5 지원을 추가해, Roo Code에서 바로 최신 모델을 사용할 수 있어요.",
+			"gpt55": "OpenAI Codex를 통한 GPT-5.5: OpenAI Codex 제공업체에 GPT-5.5 지원을 추가해, Tumble Code에서 바로 최신 모델을 사용할 수 있어요.",
 			"claudeOpus47": "Vertex AI에서 Claude Opus 4.7: Anthropic의 최신 플래그십 추론 모델인 Claude Opus 4.7을 Vertex AI 제공업체에 추가했어요.",
 			"checkpointNav": "이전 체크포인트 탐색: 이전 체크포인트로 돌아갈 수 있는 컨트롤을 채팅에 추가했고, i18n을 완벽하게 지원해요."
 		},
@@ -380,24 +380,24 @@
 	"profileViolationWarning": "현재 프로필이 조직 설정과 호환되지 않습니다",
 	"shellIntegration": {
 		"title": "명령 실행 경고",
-		"description": "명령이 VSCode 터미널 쉘 통합 없이 실행되고 있습니다. 이 경고를 숨기려면 <settingsLink>Roo Code 설정</settingsLink>의 <strong>Terminal</strong> 섹션에서 쉘 통합을 비활성화하거나 아래 링크를 사용하여 VSCode 터미널 통합 문제를 해결하세요.",
+		"description": "명령이 VSCode 터미널 쉘 통합 없이 실행되고 있습니다. 이 경고를 숨기려면 <settingsLink>Tumble Code 설정</settingsLink>의 <strong>Terminal</strong> 섹션에서 쉘 통합을 비활성화하거나 아래 링크를 사용하여 VSCode 터미널 통합 문제를 해결하세요.",
 		"troubleshooting": "쉘 통합 문서를 보려면 여기를 클릭하세요."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "자동 승인 요청 한도 도달",
-			"description": "Roo가 {{count}}개의 API 요청(들)에 대한 자동 승인 한도에 도달했습니다. 카운트를 재설정하고 작업을 계속하시겠습니까?",
+			"description": "Tumble가 {{count}}개의 API 요청(들)에 대한 자동 승인 한도에 도달했습니다. 카운트를 재설정하고 작업을 계속하시겠습니까?",
 			"button": "재설정 후 계속"
 		},
 		"autoApprovedCostLimitReached": {
-			"description": "Roo가 자동 승인된 비용 한도인 ${{count}}에 도달했습니다. 비용을 초기화하고 작업을 계속하시겠습니까?",
+			"description": "Tumble가 자동 승인된 비용 한도인 ${{count}}에 도달했습니다. 비용을 초기화하고 작업을 계속하시겠습니까?",
 			"title": "자동 승인 비용 한도에 도달함",
 			"button": "재설정 후 계속하기"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Roo가 코드베이스에서 <code>{{query}}</code>을(를) 검색하고 싶어합니다",
-		"wantsToSearchWithPath": "Roo가 <code>{{path}}</code>에서 <code>{{query}}</code>을(를) 검색하고 싶어합니다",
+		"wantsToSearch": "Tumble가 코드베이스에서 <code>{{query}}</code>을(를) 검색하고 싶어합니다",
+		"wantsToSearchWithPath": "Tumble가 <code>{{path}}</code>에서 <code>{{query}}</code>을(를) 검색하고 싶어합니다",
 		"didSearch_one": "1개의 결과를 찾았습니다",
 		"didSearch_other": "{{count}}개의 결과를 찾았습니다",
 		"resultTooltip": "유사도 점수: {{score}} (클릭하여 파일 열기)"
@@ -438,7 +438,7 @@
 		"ariaLabel": "버전 {{version}} - 릴리스 노트를 보려면 클릭하세요"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud가 진화하고 있습니다!",
+		"title": "Tumble Code Cloud가 진화하고 있습니다!",
 		"description": "클라우드에서 원격 에이전트를 실행하고, 어디서나 작업에 액세스하고, 다른 사람들과 협업하는 등 다양한 기능을 이용하세요.",
 		"joinWaitlist": "최신 업데이트를 받으려면 가입하세요."
 	},
@@ -479,8 +479,8 @@
 		"clickToEdit": "클릭하여 메시지 편집"
 	},
 	"slashCommand": {
-		"wantsToRun": "Roo가 슬래시 명령어를 실행하려고 합니다",
-		"didRun": "Roo가 슬래시 명령어를 실행했습니다"
+		"wantsToRun": "Tumble가 슬래시 명령어를 실행하려고 합니다",
+		"didRun": "Tumble가 슬래시 명령어를 실행했습니다"
 	},
 	"todo": {
 		"partial": "{{total}}개의 할 일 중 {{completed}}개 완료",
@@ -499,11 +499,11 @@
 		"openMcpSettings": "MCP 설정 열기"
 	},
 	"readCommandOutput": {
-		"title": "Roo read command output"
+		"title": "Tumble read command output"
 	},
 	"retiredProvider": {
 		"title": "공급자 지원 종료",
-		"message": "죄송합니다. 이 공급자는 더 이상 지원되지 않습니다. 실제로 사용하는 Roo 사용자가 매우 적었고, 빠르게 개발하고 커뮤니티에 잘 봉사하기 위해 코드베이스의 범위를 줄여야 했습니다. 정말 어려운 결정이었지만, 당신에게 가장 중요한 것에 집중할 수 있게 해줍니다. 불편을 드려 죄송합니다.",
+		"message": "죄송합니다. 이 공급자는 더 이상 지원되지 않습니다. 실제로 사용하는 Tumble 사용자가 매우 적었고, 빠르게 개발하고 커뮤니티에 잘 봉사하기 위해 코드베이스의 범위를 줄여야 했습니다. 정말 어려운 결정이었지만, 당신에게 가장 중요한 것에 집중할 수 있게 해줍니다. 불편을 드려 죄송합니다.",
 		"openSettings": "설정 열기"
 	}
 }
