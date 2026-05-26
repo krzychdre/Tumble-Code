@@ -139,7 +139,13 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// One-shot import of settings from a previous Roo Code installation, if present.
 	// Idempotent: flagged in globalState after running so it won't re-prompt.
-	await migrateFromRooCode(context, outputChannel)
+	// Run in the background -- the prompt awaits the user's button click, and if we
+	// awaited here the rest of activate() (including registerCommands) would block
+	// until the user responds, leaving every `roo-cline.*` command unregistered.
+	void migrateFromRooCode(context, outputChannel).catch((error) => {
+		const message = error instanceof Error ? error.message : String(error)
+		outputChannel.appendLine(`[migrate-from-roo-code] background failure: ${message}`)
+	})
 
 	// Initialize telemetry service.
 	const telemetryService = TelemetryService.createInstance()
