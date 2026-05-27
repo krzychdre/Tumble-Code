@@ -119,7 +119,6 @@
 	"addImages": "Bilder zur Nachricht hinzufügen",
 	"sendMessage": "Nachricht senden",
 	"pressToSend": "Drücke {{keyCombination}} zum Senden",
-	"stopTts": "Text-in-Sprache beenden",
 	"typeMessage": "Nachricht eingeben...",
 	"typeTask": "Gib deine Aufgabe hier ein...",
 	"addContext": "@ für Kontext, / für Befehle",

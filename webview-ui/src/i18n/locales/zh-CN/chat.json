@@ -119,7 +119,6 @@
 	"addImages": "添加图片到消息",
 	"sendMessage": "发送消息",
 	"pressToSend": "按 {{keyCombination}} 发送",
-	"stopTts": "停止文本转语音",
 	"typeMessage": "输入消息...",
 	"typeTask": "在此处输入您的任务...",
 	"addContext": "@添加上下文，/输入命令",

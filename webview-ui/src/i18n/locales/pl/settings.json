@@ -567,11 +567,6 @@
 			"label": "Włącz efekty dźwiękowe",
 			"description": "Gdy włączone, Tumble będzie odtwarzać efekty dźwiękowe dla powiadomień i zdarzeń.",
 			"volumeLabel": "Głośność"
-		},
-		"tts": {
-			"label": "Włącz syntezę mowy",
-			"description": "Gdy włączone, Tumble będzie czytać na głos swoje odpowiedzi za pomocą syntezy mowy.",
-			"speedLabel": "Szybkość"
 		}
 	},
 	"contextManagement": {

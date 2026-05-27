@@ -170,8 +170,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		maxWorkspaceFiles,
 		mcpEnabled,
 		soundEnabled,
-		ttsEnabled,
-		ttsSpeed,
 		soundVolume,
 		telemetrySetting,
 		terminalOutputPreviewSize,
@@ -383,8 +381,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					autoCondenseContextPercent,
 					soundEnabled: soundEnabled ?? true,
 					soundVolume: soundVolume ?? 0.5,
-					ttsEnabled,
-					ttsSpeed,
 					enableCheckpoints: enableCheckpoints ?? false,
 					checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 					writeDelayMs,
@@ -817,8 +813,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						{/* Notifications Section */}
 						{renderTab === "notifications" && (
 							<NotificationSettings
-								ttsEnabled={ttsEnabled}
-								ttsSpeed={ttsSpeed}
 								soundEnabled={soundEnabled}
 								soundVolume={soundVolume}
 								setCachedStateField={setCachedStateField}

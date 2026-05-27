@@ -567,11 +567,6 @@
 			"label": "Geluidseffecten inschakelen",
 			"description": "Indien ingeschakeld, speelt Tumble geluidseffecten af voor meldingen en gebeurtenissen.",
 			"volumeLabel": "Volume"
-		},
-		"tts": {
-			"label": "Tekst-naar-spraak inschakelen",
-			"description": "Indien ingeschakeld, leest Tumble zijn antwoorden hardop voor via tekst-naar-spraak.",
-			"speedLabel": "Snelheid"
 		}
 	},
 	"contextManagement": {

@@ -567,11 +567,6 @@
 			"label": "Habilitar efectes de so",
 			"description": "Quan està habilitat, Tumble reproduirà efectes de so per a notificacions i esdeveniments.",
 			"volumeLabel": "Volum"
-		},
-		"tts": {
-			"label": "Habilitar text a veu",
-			"description": "Quan està habilitat, Tumble llegirà en veu alta les seves respostes utilitzant text a veu.",
-			"speedLabel": "Velocitat"
 		}
 	},
 	"contextManagement": {

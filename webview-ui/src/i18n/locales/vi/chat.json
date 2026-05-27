@@ -119,7 +119,6 @@
 	"addImages": "Thêm hình ảnh vào tin nhắn",
 	"sendMessage": "Gửi tin nhắn",
 	"pressToSend": "Nhấn {{keyCombination}} để gửi",
-	"stopTts": "Dừng chuyển văn bản thành giọng nói",
 	"typeMessage": "Nhập tin nhắn...",
 	"typeTask": "Nhập nhiệm vụ của bạn tại đây...",
 	"addContext": "@ để thêm ngữ cảnh, / cho lệnh",

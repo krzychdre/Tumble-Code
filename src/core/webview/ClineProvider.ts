@@ -63,6 +63,7 @@ import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { ProfileValidator } from "../../shared/ProfileValidator"
 
 import { Terminal } from "../../integrations/terminal/Terminal"
+import { getCustomSoundsDir, resolveCustomSoundUri } from "../../integrations/misc/custom-sounds"
 import { downloadTask, getTaskFileName } from "../../integrations/misc/export-markdown"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { getTheme } from "../../integrations/theme/getTheme"
@@ -78,7 +79,6 @@ import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
 import { fileExistsAtPath } from "../../utils/fs"
-import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
@@ -852,8 +852,6 @@ export class ClineProvider
 				terminalZshP10k = false,
 				terminalPowershellCounter = false,
 				terminalZdotdir = false,
-				ttsEnabled,
-				ttsSpeed,
 			}) => {
 				Terminal.setShellIntegrationTimeout(terminalShellIntegrationTimeout)
 				Terminal.setShellIntegrationDisabled(terminalShellIntegrationDisabled)
@@ -863,8 +861,6 @@ export class ClineProvider
 				Terminal.setTerminalZshP10k(terminalZshP10k)
 				Terminal.setPowershellCounter(terminalPowershellCounter)
 				Terminal.setTerminalZdotdir(terminalZdotdir)
-				setTtsEnabled(ttsEnabled ?? false)
-				setTtsSpeed(ttsSpeed ?? 1)
 			},
 		)
 
@@ -875,6 +871,9 @@ export class ClineProvider
 		if (vscode.workspace.workspaceFolders) {
 			resourceRoots.push(...vscode.workspace.workspaceFolders.map((folder) => folder.uri))
 		}
+
+		// Allow webview to load user-uploaded custom sound files (notification settings).
+		resourceRoots.push(vscode.Uri.file(getCustomSoundsDir(this.contextProxy.globalStorageUri.fsPath)))
 
 		webviewView.webview.options = {
 			enableScripts: true,
@@ -2163,12 +2162,16 @@ export class ClineProvider
 			autoCondenseContext,
 			autoCondenseContextPercent,
 			soundEnabled,
-			ttsEnabled,
-			ttsSpeed,
 			enableCheckpoints,
 			checkpointTimeout,
 			taskHistory,
 			soundVolume,
+			customSoundCelebration,
+			customSoundCelebrationOriginal,
+			customSoundProgressLoop,
+			customSoundProgressLoopOriginal,
+			customSoundNotification,
+			customSoundNotificationOriginal,
 			writeDelayMs,
 			terminalShellIntegrationTimeout,
 			terminalShellIntegrationDisabled,
@@ -2255,6 +2258,21 @@ export class ClineProvider
 		const cwd = this.cwd
 		const currentTask = this.getCurrentTask()
 
+		// Resolve user-uploaded custom sound files to webview URIs (undefined => use built-in).
+		const customSoundUris: ExtensionState["customSoundUris"] = {}
+		const webview = this.view?.webview
+		if (webview) {
+			const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
+			const [celebrationUri, progressLoopUri, notificationUri] = await Promise.all([
+				resolveCustomSoundUri(webview, globalStoragePath, customSoundCelebration),
+				resolveCustomSoundUri(webview, globalStoragePath, customSoundProgressLoop),
+				resolveCustomSoundUri(webview, globalStoragePath, customSoundNotification),
+			])
+			if (celebrationUri) customSoundUris.celebration = celebrationUri
+			if (progressLoopUri) customSoundUris.progress_loop = progressLoopUri
+			if (notificationUri) customSoundUris.notification = notificationUri
+		}
+
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
@@ -2280,8 +2298,15 @@ export class ClineProvider
 			messageQueue: currentTask?.messageQueueService?.messages,
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
 			soundEnabled: soundEnabled ?? false,
-			ttsEnabled: ttsEnabled ?? false,
-			ttsSpeed: ttsSpeed ?? 1.0,
+			// Send `null` (not `undefined`) so the webview merge actually clears
+			// the slot after a reset — postMessage drops undefined keys.
+			customSoundCelebration: customSoundCelebration ?? null,
+			customSoundCelebrationOriginal: customSoundCelebrationOriginal ?? null,
+			customSoundProgressLoop: customSoundProgressLoop ?? null,
+			customSoundProgressLoopOriginal: customSoundProgressLoopOriginal ?? null,
+			customSoundNotification: customSoundNotification ?? null,
+			customSoundNotificationOriginal: customSoundNotificationOriginal ?? null,
+			customSoundUris,
 			enableCheckpoints: enableCheckpoints ?? true,
 			checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			shouldShowAnnouncement:
@@ -2510,8 +2535,12 @@ export class ClineProvider
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
 			soundEnabled: stateValues.soundEnabled ?? false,
-			ttsEnabled: stateValues.ttsEnabled ?? false,
-			ttsSpeed: stateValues.ttsSpeed ?? 1.0,
+			customSoundCelebration: stateValues.customSoundCelebration,
+			customSoundCelebrationOriginal: stateValues.customSoundCelebrationOriginal,
+			customSoundProgressLoop: stateValues.customSoundProgressLoop,
+			customSoundProgressLoopOriginal: stateValues.customSoundProgressLoopOriginal,
+			customSoundNotification: stateValues.customSoundNotification,
+			customSoundNotificationOriginal: stateValues.customSoundNotificationOriginal,
 			enableCheckpoints: stateValues.enableCheckpoints ?? true,
 			checkpointTimeout: stateValues.checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			soundVolume: stateValues.soundVolume,

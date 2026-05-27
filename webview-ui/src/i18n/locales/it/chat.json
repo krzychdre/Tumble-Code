@@ -119,7 +119,6 @@
 	"addImages": "Aggiungi immagini al messaggio",
 	"sendMessage": "Invia messaggio",
 	"pressToSend": "Premi {{keyCombination}} per inviare",
-	"stopTts": "Interrompi sintesi vocale",
 	"typeMessage": "Scrivi un messaggio...",
 	"typeTask": "Scrivi la tua attività qui...",
 	"addContext": "@ per aggiungere contesto, / per i comandi",
