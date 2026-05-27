@@ -277,8 +277,6 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 		maxWorkspaceFiles: 200,
 		mcpEnabled: false,
 		soundEnabled: false,
-		ttsEnabled: false,
-		ttsSpeed: 1.0,
 		soundVolume: 0.5,
 		telemetrySetting: "unset",
 		terminalOutputLineLimit: 500,

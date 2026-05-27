@@ -567,11 +567,6 @@
 			"label": "Aktifkan efek suara",
 			"description": "Ketika diaktifkan, Tumble akan memutar efek suara untuk notifikasi dan event.",
 			"volumeLabel": "Volume"
-		},
-		"tts": {
-			"label": "Aktifkan text-to-speech",
-			"description": "Ketika diaktifkan, Tumble akan membacakan responnya menggunakan text-to-speech.",
-			"speedLabel": "Kecepatan"
 		}
 	},
 	"contextManagement": {

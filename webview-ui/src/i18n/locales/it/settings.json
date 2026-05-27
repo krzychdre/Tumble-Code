@@ -567,11 +567,6 @@
 			"label": "Abilita effetti sonori",
 			"description": "Quando abilitato, Tumble riprodurrà effetti sonori per notifiche ed eventi.",
 			"volumeLabel": "Volume"
-		},
-		"tts": {
-			"label": "Abilita sintesi vocale",
-			"description": "Quando abilitato, Tumble leggerà ad alta voce le sue risposte utilizzando la sintesi vocale.",
-			"speedLabel": "Velocità"
 		}
 	},
 	"contextManagement": {

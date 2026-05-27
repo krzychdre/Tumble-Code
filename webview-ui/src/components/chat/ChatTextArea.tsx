@@ -1,9 +1,6 @@
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { useEvent } from "react-use"
 import DynamicTextArea from "react-textarea-autosize"
-import { VolumeX, Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-react"
-
-import type { ExtensionMessage } from "@roo-code/types"
+import { Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-react"
 
 import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
 import { WebviewMessage } from "@roo/WebviewMessage"
@@ -913,18 +910,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			],
 		)
 
-		const [isTtsPlaying, setIsTtsPlaying] = useState(false)
-
-		useEvent("message", (event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
-
-			if (message.type === "ttsStart") {
-				setIsTtsPlaying(true)
-			} else if (message.type === "ttsStop") {
-				setIsTtsPlaying(false)
-			}
-		})
-
 		const placeholderBottomText = `\n(${t("chat:addContext")}${shouldDisableImages ? `, ${t("chat:dragFiles")}` : `, ${t("chat:dragFilesImages")}`})`
 
 		// Common mode selector handler
@@ -1327,26 +1312,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							"flex flex-shrink-0 items-center gap-0.5 h-5 leading-none",
 							!isEditMode && cloudUserInfo ? "" : "pr-2",
 						)}>
-						{isTtsPlaying && (
-							<StandardTooltip content={t("chat:stopTts")}>
-								<button
-									aria-label={t("chat:stopTts")}
-									onClick={() => vscode.postMessage({ type: "stopTts" })}
-									className={cn(
-										"relative inline-flex items-center justify-center",
-										"bg-transparent border-none p-1.5",
-										"rounded-md min-w-[28px] min-h-[28px]",
-										"text-vscode-foreground opacity-85",
-										"transition-all duration-150",
-										"hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)]",
-										"focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder",
-										"active:bg-[rgba(255,255,255,0.1)]",
-										"cursor-pointer",
-									)}>
-									<VolumeX className="w-4 h-4" />
-								</button>
-							</StandardTooltip>
-						)}
 						{!isEditMode ? <IndexingStatusBadge /> : null}
 						{!isEditMode && cloudUserInfo && <CloudAccountSwitcher />}
 					</div>

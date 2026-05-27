@@ -567,11 +567,6 @@
 			"label": "Ses efektlerini etkinleştir",
 			"description": "Etkinleştirildiğinde, Tumble bildirimler ve olaylar için ses efektleri çalacaktır.",
 			"volumeLabel": "Ses Düzeyi"
-		},
-		"tts": {
-			"label": "Metinden sese özelliğini etkinleştir",
-			"description": "Etkinleştirildiğinde, Tumble yanıtlarını metinden sese teknolojisi kullanarak sesli okuyacaktır.",
-			"speedLabel": "Hız"
 		}
 	},
 	"contextManagement": {

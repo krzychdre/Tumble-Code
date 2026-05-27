@@ -567,11 +567,6 @@
 			"label": "Soundeffekte aktivieren",
 			"description": "Wenn aktiviert, spielt Tumble Soundeffekte für Benachrichtigungen und Ereignisse ab.",
 			"volumeLabel": "Lautstärke"
-		},
-		"tts": {
-			"label": "Text-zu-Sprache aktivieren",
-			"description": "Wenn aktiviert, liest Tumble seine Antworten mit Text-zu-Sprache laut vor.",
-			"speedLabel": "Geschwindigkeit"
 		}
 	},
 	"contextManagement": {

@@ -155,7 +155,6 @@
 	"addImages": "Add images to message",
 	"sendMessage": "Send message",
 	"pressToSend": "Press {{keyCombination}} to send",
-	"stopTts": "Stop text-to-speech",
 	"typeMessage": "Type a message...",
 	"typeTask": "Type your task here...",
 	"addContext": "@ to add context, / for commands",

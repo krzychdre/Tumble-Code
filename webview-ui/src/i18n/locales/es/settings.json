@@ -567,11 +567,6 @@
 			"label": "Habilitar efectos de sonido",
 			"description": "Cuando está habilitado, Tumble reproducirá efectos de sonido para notificaciones y eventos.",
 			"volumeLabel": "Volumen"
-		},
-		"tts": {
-			"label": "Habilitar texto a voz",
-			"description": "Cuando está habilitado, Tumble leerá en voz alta sus respuestas usando texto a voz.",
-			"speedLabel": "Velocidad"
 		}
 	},
 	"contextManagement": {

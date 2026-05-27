@@ -158,7 +158,6 @@
 	"addImages": "Tambahkan gambar ke pesan",
 	"sendMessage": "Kirim pesan",
 	"pressToSend": "Tekan {{keyCombination}} untuk mengirim",
-	"stopTts": "Hentikan text-to-speech",
 	"typeMessage": "Ketik pesan...",
 	"typeTask": "Bangun, cari, tanya sesuatu",
 	"addContext": "@ untuk menambah konteks, / untuk perintah",

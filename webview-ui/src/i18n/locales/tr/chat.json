@@ -119,7 +119,6 @@
 	"addImages": "Mesaja resim ekle",
 	"sendMessage": "Mesaj gönder",
 	"pressToSend": "Göndermek için {{keyCombination}} tuşuna bas",
-	"stopTts": "Metin okumayı durdur",
 	"typeMessage": "Bir mesaj yazın...",
 	"typeTask": "Görevinizi buraya yazın...",
 	"addContext": "Bağlam eklemek için @, komutlar için /",

@@ -629,12 +629,28 @@
 		"sound": {
 			"label": "Enable sound effects",
 			"description": "When enabled, Tumble will play sound effects for notifications and events.",
-			"volumeLabel": "Volume"
-		},
-		"tts": {
-			"label": "Enable text-to-speech",
-			"description": "When enabled, Tumble will read aloud its responses using text-to-speech.",
-			"speedLabel": "Speed"
+			"volumeLabel": "Volume",
+			"custom": {
+				"sectionLabel": "Custom sound files",
+				"sectionDescription": "Override built-in sounds with your own WAV / MP3 / OGG file (max {{max}} seconds).",
+				"choose": "Choose file…",
+				"preview": "Preview",
+				"reset": "Reset to default",
+				"current": "Custom",
+				"tooLong": "Audio must be {{max}} seconds or shorter. Reverted to built-in sound.",
+				"celebration": {
+					"label": "Task completed",
+					"description": "Plays when the assistant signals that a task is finished."
+				},
+				"progressLoop": {
+					"label": "Task failed",
+					"description": "Plays when an API request fails or the mistake limit is reached."
+				},
+				"notification": {
+					"label": "Interaction required",
+					"description": "Plays when the assistant needs user input to continue."
+				}
+			}
 		}
 	},
 	"contextManagement": {

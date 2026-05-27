@@ -59,8 +59,6 @@ export interface ExtensionMessage {
 		| "deleteCustomModeCheck"
 		| "currentCheckpointUpdated"
 		| "checkpointInitWarning"
-		| "ttsStart"
-		| "ttsStop"
 		| "fileSearchResults"
 		| "toggleApiConfigPin"
 		| "acceptInput"
@@ -268,10 +266,14 @@ export type ExtensionState = Pick<
 	| "deniedCommands"
 	| "allowedMaxRequests"
 	| "allowedMaxCost"
-	| "ttsEnabled"
-	| "ttsSpeed"
 	| "soundEnabled"
 	| "soundVolume"
+	| "customSoundCelebration"
+	| "customSoundCelebrationOriginal"
+	| "customSoundProgressLoop"
+	| "customSoundProgressLoopOriginal"
+	| "customSoundNotification"
+	| "customSoundNotificationOriginal"
 	| "terminalOutputPreviewSize"
 	| "terminalShellIntegrationTimeout"
 	| "terminalShellIntegrationDisabled"
@@ -381,6 +383,13 @@ export type ExtensionState = Pick<
 	 * (captured during async getStateToPostToWebview) from overwriting newer messages.
 	 */
 	clineMessagesSeq?: number
+
+	/**
+	 * Webview-accessible URIs for user-uploaded custom sound files, one per AudioType.
+	 * Missing/undefined means the built-in WAV is used. Computed at state-push time
+	 * from the corresponding `customSound*` settings + the on-disk file.
+	 */
+	customSoundUris?: Partial<Record<AudioType, string>>
 }
 
 export interface Command {
@@ -453,10 +462,6 @@ export interface WebviewMessage {
 		| "vsCodeSetting"
 		| "updateCondensingPrompt"
 		| "playSound"
-		| "playTts"
-		| "stopTts"
-		| "ttsEnabled"
-		| "ttsSpeed"
 		| "openKeyboardShortcuts"
 		| "openMcpSettings"
 		| "openProjectMcpSettings"
@@ -578,6 +583,8 @@ export interface WebviewMessage {
 		| "moveSkill"
 		| "updateSkillModes"
 		| "openSkillFile"
+		| "selectCustomSound"
+		| "resetCustomSound"
 	text?: string
 	taskId?: string
 	editedMessageContent?: string

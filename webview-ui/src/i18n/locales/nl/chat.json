@@ -128,7 +128,6 @@
 	"addImages": "Afbeeldingen toevoegen aan bericht",
 	"sendMessage": "Bericht verzenden",
 	"pressToSend": "Druk op {{keyCombination}} om te verzenden",
-	"stopTts": "Stop tekst-naar-spraak",
 	"typeMessage": "Typ een bericht...",
 	"typeTask": "Typ hier je taak...",
 	"addContext": "@ om context toe te voegen, / voor commando's",
