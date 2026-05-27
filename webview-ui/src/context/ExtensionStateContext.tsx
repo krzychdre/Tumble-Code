@@ -474,16 +474,11 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		vscode.postMessage({ type: "webviewDidLaunch" })
 	}, [])
 
-	// Watch for authentication state changes and refresh Roo models
+	// Track cloud authentication transitions; previously refreshed the router model list.
 	useEffect(() => {
 		const currentAuth = state.cloudIsAuthenticated ?? false
-		const currentProvider = state.apiConfiguration?.apiProvider
-		if (!prevCloudIsAuthenticated && currentAuth && currentProvider === "roo") {
-			// User just authenticated and Roo is the active provider - refresh Roo models
-			vscode.postMessage({ type: "requestRooModels" })
-		}
 		setPrevCloudIsAuthenticated(currentAuth)
-	}, [state.cloudIsAuthenticated, prevCloudIsAuthenticated, state.apiConfiguration?.apiProvider])
+	}, [state.cloudIsAuthenticated, prevCloudIsAuthenticated])
 
 	const contextValue: ExtensionStateContextType = {
 		...state,

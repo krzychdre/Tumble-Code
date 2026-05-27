@@ -84,8 +84,8 @@ describe("WebAuthService", () => {
 			extension: {
 				packageJSON: {
 					version: "1.0.0",
-					publisher: "RooVeterinaryInc",
-					name: "roo-cline",
+					publisher: "QUB-IT",
+					name: "tumble-code",
 				},
 			},
 		}
@@ -100,11 +100,11 @@ describe("WebAuthService", () => {
 		MockedRefreshTimer.mockImplementation(() => mockTimer as unknown as RefreshTimer)
 
 		// Setup config mocks - use production URL by default to maintain existing test behavior
-		vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.roocode.com")
+		vi.mocked(getClerkBaseUrl).mockReturnValue("https://auth.tumblecode.dev")
 		vi.mocked(getRooCodeApiUrl).mockReturnValue("https://api.test.com")
 
 		// Setup utils mock
-		vi.mocked(getUserAgent).mockReturnValue("Roo-Code 1.0.0")
+		vi.mocked(getUserAgent).mockReturnValue("Tumble-Code 1.0.0")
 
 		// Setup crypto mock
 		vi.mocked(crypto.randomBytes).mockReturnValue(Buffer.from("test-random-bytes") as never)
@@ -269,7 +269,7 @@ describe("WebAuthService", () => {
 			await authService.login()
 
 			const expectedUrl =
-				"https://api.test.com/extension/sign-in?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FRooVeterinaryInc.roo-cline"
+				"https://api.test.com/extension/sign-in?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FQUB-IT.tumble-code"
 			expect(mockOpenExternal).toHaveBeenCalledWith(
 				expect.objectContaining({
 					toString: expect.any(Function),
@@ -289,7 +289,7 @@ describe("WebAuthService", () => {
 			await authService.login(undefined, true)
 
 			const expectedUrl =
-				"https://api.test.com/extension/provider-sign-up?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FRooVeterinaryInc.roo-cline"
+				"https://api.test.com/extension/provider-sign-up?state=746573742d72616e646f6d2d6279746573&auth_redirect=vscode%3A%2F%2FQUB-IT.tumble-code"
 			expect(mockOpenExternal).toHaveBeenCalledWith(
 				expect.objectContaining({
 					toString: expect.any(Function),
@@ -474,7 +474,7 @@ describe("WebAuthService", () => {
 			expect(mockContext.secrets.delete).toHaveBeenCalledWith("clerk-auth-credentials")
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("clerk-auth-state", undefined)
 			expect(mockFetch).toHaveBeenCalledWith(
-				"https://clerk.roocode.com/v1/client/sessions/test-session/remove",
+				"https://auth.tumblecode.dev/v1/client/sessions/test-session/remove",
 				expect.objectContaining({
 					method: "POST",
 					headers: expect.objectContaining({
@@ -1117,7 +1117,7 @@ describe("WebAuthService", () => {
 	describe("auth credentials key scoping", () => {
 		it("should use default key when getClerkBaseUrl returns production URL", async () => {
 			// Mock getClerkBaseUrl to return production URL
-			vi.mocked(getClerkBaseUrl).mockReturnValue("https://clerk.roocode.com")
+			vi.mocked(getClerkBaseUrl).mockReturnValue("https://auth.tumblecode.dev")
 
 			const service = new WebAuthService(mockContext as unknown as ExtensionContext, mockLog)
 			const credentials = {

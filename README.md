@@ -1,25 +1,13 @@
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=RooVeterinaryInc.roo-cline"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
-  <a href="https://x.com/roocode"><img src="https://img.shields.io/badge/roocode-000000?style=flat&logo=x&logoColor=white" alt="X"></a>
-  <a href="https://youtube.com/@roocodeyt?feature=shared"><img src="https://img.shields.io/badge/YouTube-FF0000?style=flat&logo=youtube&logoColor=white" alt="YouTube"></a>
-  <a href="https://discord.gg/roocode"><img src="https://img.shields.io/badge/Join%20Discord-5865F2?style=flat&logo=discord&logoColor=white" alt="Join Discord"></a>
-  <a href="https://www.reddit.com/r/RooCode/"><img src="https://img.shields.io/badge/Join%20r%2FRooCode-FF4500?style=flat&logo=reddit&logoColor=white" alt="Join r/RooCode"></a>
-</p>
-<p align="center">
-  <em>Get help fast → <a href="https://discord.gg/roocode">Join Discord</a> • Prefer async? → <a href="https://www.reddit.com/r/RooCode/">Join r/RooCode</a></em>
+  <a href="https://marketplace.visualstudio.com/items?itemName=QUB-IT.tumble-code"><img src="https://img.shields.io/badge/VS_Code_Marketplace-007ACC?style=flat&logo=visualstudiocode&logoColor=white" alt="VS Code Marketplace"></a>
+  <a href="https://github.com/krzychdre/tumble-code"><img src="https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white" alt="GitHub"></a>
 </p>
 
-# Roo Code
+# Tumble Code
 
 > Your AI-Powered Dev Team, Right in Your Editor
 
-## What's New in v3.53.0
-
-> ### The Roo Code plugin is not going away.
->
-> You may have seen the [recent announcement](https://x.com/mattrubens/status/2046636598859559114) that Roo Code hit 3 million installs and the original team is going all-in on Roomote. We know that news was hard for a lot of you. This plugin means a lot to us and to you, and we hear you.
->
-> The good news: **a community team has stepped up to carry Roo Code forward**, and we're working with them on an official handoff so the plugin you rely on keeps getting maintained and improved.
+Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code). The original Roo Code project is no longer actively maintained by its authors; Tumble Code carries the codebase forward under independent stewardship. See the [Lineage](#lineage) section below for full attribution.
 
 **What's new in this release:**
 
@@ -48,12 +36,11 @@
 - [Tiếng Việt](locales/vi/README.md)
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
-- ...
-      </details>
+  </details>
 
 ---
 
-## What Can Roo Code Do For YOU?
+## What Can Tumble Code Do For YOU?
 
 - Generate Code from natural language descriptions and specs
 - Adapt with Modes: Code, Architect, Ask, Debug, and Custom Modes
@@ -62,10 +49,11 @@
 - Answer Questions about your codebase
 - Automate repetitive tasks
 - Utilize MCP Servers
+- Run with **local inference engines** (Ollama, LM Studio, llama.cpp) so your code never leaves your machine and you pay nothing per token
 
 ## Modes
 
-Roo Code adapts to how you work:
+Tumble Code adapts to how you work:
 
 - Code Mode: everyday coding, edits, and file ops
 - Architect Mode: plan systems, specs, and migrations
@@ -73,30 +61,14 @@ Roo Code adapts to how you work:
 - Debug Mode: trace issues, add logs, isolate root causes
 - Custom Modes: build specialized modes for your team or workflow
 
-Learn more: [Using Modes](https://docs.roocode.com/basic-usage/using-modes) • [Custom Modes](https://docs.roocode.com/advanced-usage/custom-modes)
-
-## Tutorial & Feature Videos
-
-<div align="center">
-
-|                                                                                                                                                                           |                                                                                                                                                                            |                                                                                                                                                                          |
-| :-----------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-| <a href="https://www.youtube.com/watch?v=Mcq3r1EPZ-4"><img src="https://img.youtube.com/vi/Mcq3r1EPZ-4/maxresdefault.jpg" width="100%"></a><br><b>Installing Roo Code</b> | <a href="https://www.youtube.com/watch?v=ZBML8h5cCgo"><img src="https://img.youtube.com/vi/ZBML8h5cCgo/maxresdefault.jpg" width="100%"></a><br><b>Configuring Profiles</b> | <a href="https://www.youtube.com/watch?v=r1bpod1VWhg"><img src="https://img.youtube.com/vi/r1bpod1VWhg/maxresdefault.jpg" width="100%"></a><br><b>Codebase Indexing</b>  |
-|    <a href="https://www.youtube.com/watch?v=iiAv1eKOaxk"><img src="https://img.youtube.com/vi/iiAv1eKOaxk/maxresdefault.jpg" width="100%"></a><br><b>Custom Modes</b>     |     <a href="https://www.youtube.com/watch?v=Ho30nyY332E"><img src="https://img.youtube.com/vi/Ho30nyY332E/maxresdefault.jpg" width="100%"></a><br><b>Checkpoints</b>      | <a href="https://www.youtube.com/watch?v=HmnNSasv7T8"><img src="https://img.youtube.com/vi/HmnNSasv7T8/maxresdefault.jpg" width="100%"></a><br><b>Context Management</b> |
-
-</div>
-<p align="center">
-<a href="https://docs.roocode.com/tutorial-videos">More quick tutorial and feature videos...</a>
-</p>
-
 ## Resources
 
-- **[Documentation](https://docs.roocode.com):** The official guide to installing, configuring, and mastering Roo Code.
-- **[YouTube Channel](https://youtube.com/@roocodeyt?feature=shared):** Watch tutorials and see features in action.
-- **[Discord Server](https://discord.gg/roocode):** Join the community for real-time help and discussion.
-- **[Reddit Community](https://www.reddit.com/r/RooCode):** Share your experiences and see what others are building.
-- **[GitHub Issues](https://github.com/RooCodeInc/Roo-Code/issues):** Report bugs and track development.
-- **[Feature Requests](https://github.com/RooCodeInc/Roo-Code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Have an idea? Share it with the developers.
+- **Documentation:** Tumble Code documentation is a work in progress. The original Roo Code docs at [docs.roocode.com](https://docs.roocode.com) still describe most behaviors, since Tumble Code is a recent fork.
+
+<!-- External community channels are intentionally hidden until they're set up.
+- **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Report bugs and track development.
+- **[GitHub Discussions](https://github.com/krzychdre/tumble-code/discussions):** Ideas, questions, and feature requests.
+-->
 
 ---
 
@@ -105,7 +77,7 @@ Learn more: [Using Modes](https://docs.roocode.com/basic-usage/using-modes) • 
 1. **Clone** the repo:
 
 ```sh
-git clone https://github.com/RooCodeInc/Roo-Code.git
+git clone https://github.com/krzychdre/tumble-code.git
 ```
 
 2. **Install dependencies**:
@@ -116,13 +88,13 @@ pnpm install
 
 3. **Run the extension**:
 
-There are several ways to run the Roo Code extension:
+There are several ways to run the Tumble Code extension:
 
 ### Development Mode (F5)
 
 For active development, use VSCode's built-in debugging:
 
-Press `F5` (or go to **Run** → **Start Debugging**) in VSCode. This will open a new VSCode window with the Roo Code extension running.
+Press `F5` (or go to **Run** → **Start Debugging**) in VSCode. This will open a new VSCode window with the Tumble Code extension running.
 
 - Changes to the webview will appear immediately.
 - Changes to the core extension will also hot reload automatically.
@@ -156,10 +128,10 @@ If you prefer to install the VSIX package manually:
     ```sh
     pnpm vsix
     ```
-2.  A `.vsix` file will be generated in the `bin/` directory (e.g., `bin/roo-cline-<version>.vsix`).
+2.  A `.vsix` file will be generated in the `bin/` directory (e.g., `bin/tumble-code-<version>.vsix`).
 3.  Install it manually using the VSCode CLI:
     ```sh
-    code --install-extension bin/roo-cline-<version>.vsix
+    code --install-extension bin/tumble-code-<version>.vsix
     ```
 
 ---
@@ -170,7 +142,7 @@ We use [changesets](https://github.com/changesets/changesets) for versioning and
 
 ## Disclaimer
 
-**Please note** that Roo Code, Inc does **not** make any representations or warranties regarding any code, models, or other tools provided or made available in connection with Roo Code, any associated third-party tools, or any resulting outputs. You assume **all risks** associated with the use of any such tools or outputs; such tools are provided on an **"AS IS"** and **"AS AVAILABLE"** basis. Such risks may include, without limitation, intellectual property infringement, cyber vulnerabilities or attacks, bias, inaccuracies, errors, defects, viruses, downtime, property loss or damage, and/or personal injury. You are solely responsible for your use of any such tools or outputs (including, without limitation, the legality, appropriateness, and results thereof).
+**Please note** that the Tumble Code contributors do **not** make any representations or warranties regarding any code, models, or other tools provided or made available in connection with Tumble Code, any associated third-party tools, or any resulting outputs. You assume **all risks** associated with the use of any such tools or outputs; such tools are provided on an **"AS IS"** and **"AS AVAILABLE"** basis. Such risks may include, without limitation, intellectual property infringement, cyber vulnerabilities or attacks, bias, inaccuracies, errors, defects, viruses, downtime, property loss or damage, and/or personal injury. You are solely responsible for your use of any such tools or outputs (including, without limitation, the legality, appropriateness, and results thereof).
 
 ---
 
@@ -180,10 +152,41 @@ We love community contributions! Get started by reading our [CONTRIBUTING.md](CO
 
 ---
 
-## License
+## Lineage
 
-[Apache 2.0 © 2025 Roo Code, Inc.](./LICENSE)
+Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code), originally authored by Roo Veterinary Inc. and published on the VS Code Marketplace as `RooVeterinaryInc.roo-cline`. In early 2026 the upstream team [announced](https://x.com/mattrubens/status/2046636598859559114) that they were stepping away from Roo Code to focus on their new product, Roomote. With the original maintainers no longer actively developing the extension, this fork was started to keep the codebase alive and shift the focus toward **local inference engines** — running with Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs as first-class providers so users can use AI coding assistance without paying per-token or sending their code to a cloud provider.
+
+**What we kept from Roo Code:**
+
+- The entire codebase, Apache 2.0 licensed (see [LICENSE](./LICENSE) for the full notice including the original Roo Code copyright)
+- The agent architecture, mode system, MCP integration, provider abstractions, and webview UI
+- Internal identifiers (`roo-cline.*` command IDs, view IDs, file names, type names) so the rebrand stays additive rather than disruptive
+- The original release history in [CHANGELOG.md](./CHANGELOG.md), preserved verbatim with a header note distinguishing the upstream and fork eras
+- The translation work of the Roo Code community across 18 locales
+- The [original Roo Code documentation](https://docs.roocode.com) remains the best reference for most features until Tumble-Code-specific docs catch up
+
+**What's different in Tumble Code:**
+
+- New marketplace identity: `QUB-IT.tumble-code` — install path is independent from the upstream extension
+- The agent persona in chat copy is renamed from "Roo" to "Tumble"; the logo is a tumbleweed instead of a kangaroo
+- Cloud features (auth, share links, telemetry, the LLM proxy) point at a self-hosted backend (see [`self-hosted-cloudapi/`](./self-hosted-cloudapi/) in this repo) instead of `*.roocode.com`. Default URLs are configurable via env vars
+- Independent direction with a focus on **local inference**: Ollama, LM Studio, llama.cpp, and similar locally-hosted LLMs are treated as first-class providers, not afterthoughts. Cloud providers (Anthropic, OpenAI, OpenRouter, etc.) still work; they're just no longer the default expectation
+- A first-launch settings migration bridge offers to copy your existing Roo Code configuration so you don't lose work
+
+**Credit:**
+
+The Roo Code project was the work of many contributors over multiple years; their commits remain in this repository's git history. If you contributed to upstream Roo Code, your work is still here. The fork carries forward your effort under a new name, not a clean-room reimplementation.
+
+<!-- For questions about lineage, licensing, or attribution, please open a [GitHub issue](https://github.com/krzychdre/tumble-code/issues). -->
+
+For questions about lineage, licensing, or attribution, please reach out through whichever contact channel Tumble Code publishes once it has one set up.
 
 ---
 
-**Enjoy Roo Code!** Whether you keep it on a short leash or let it roam autonomously, we can’t wait to see what you build. If you have questions or feature ideas, drop by our [Reddit community](https://www.reddit.com/r/RooCode/) or [Discord](https://discord.gg/roocode). Happy coding!
+## License
+
+[Apache 2.0 © 2025 Roo Code, Inc. — community fork © 2026 Tumble Code contributors](./LICENSE)
+
+---
+
+**Enjoy Tumble Code!**

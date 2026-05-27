@@ -68,8 +68,6 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 		// Default mock: return distinct model maps per provider so we can verify keys
 		getModelsMock.mockImplementation(async (options: any) => {
 			switch (options?.provider) {
-				case "roo":
-					return { "roo/sonnet": { contextWindow: 8192, supportsPromptCache: false } }
 				case "openrouter":
 					return { "openrouter/qwen2.5": { contextWindow: 32768, supportsPromptCache: false } }
 				case "requesty":
@@ -82,37 +80,6 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 					return {}
 			}
 		})
-	})
-
-	it("fetches only requested provider when values.provider is present ('roo')", async () => {
-		await webviewMessageHandler(
-			mockProvider as any,
-			{
-				type: "requestRouterModels",
-				values: { provider: "roo" },
-			} as any,
-		)
-
-		// Should post a single routerModels message
-		expect(mockProvider.postMessageToWebview).toHaveBeenCalledWith(
-			expect.objectContaining({ type: "routerModels", routerModels: expect.any(Object) }),
-		)
-
-		const call = (mockProvider.postMessageToWebview as any).mock.calls.find(
-			(c: any[]) => c[0]?.type === "routerModels",
-		)
-		expect(call).toBeTruthy()
-		const payload = call[0]
-		const routerModels = payload.routerModels as Record<string, Record<string, any>>
-
-		// Only "roo" key should be present
-		const keys = Object.keys(routerModels)
-		expect(keys).toEqual(["roo"])
-		expect(Object.keys(routerModels.roo || {})).toContain("roo/sonnet")
-
-		// getModels should have been called exactly once for roo
-		const providersCalled = getModelsMock.mock.calls.map((c: any[]) => c[0]?.provider)
-		expect(providersCalled).toEqual(["roo"])
 	})
 
 	it("defaults to aggregate fetching when no provider filter is sent", async () => {
@@ -131,7 +98,6 @@ describe("webviewMessageHandler - requestRouterModels provider filter", () => {
 
 		// Aggregate handler initializes many known routers - ensure a few expected keys exist
 		expect(routerModels).toHaveProperty("openrouter")
-		expect(routerModels).toHaveProperty("roo")
 		expect(routerModels).toHaveProperty("requesty")
 	})
 

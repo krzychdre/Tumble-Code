@@ -1,12 +1,12 @@
 {
 	"title": "Worktrees",
 	"done": "Fertig",
-	"description": "Git-Worktrees ermöglichen dir, gleichzeitig an mehreren Branches in separaten Verzeichnissen zu arbeiten. Jeder Worktree bekommt sein eigenes VS Code-Fenster mit Roo Code.",
+	"description": "Git-Worktrees ermöglichen dir, gleichzeitig an mehreren Branches in separaten Verzeichnissen zu arbeiten. Jeder Worktree bekommt sein eigenes VS Code-Fenster mit Tumble Code.",
 
 	"notGitRepo": "Dieser Workspace ist kein Git-Repository. Worktrees benötigen ein Git-Repository, um zu funktionieren.",
-	"multiRootNotSupported": "Worktrees werden in Multi-Root-Workspaces nicht unterstützt. Öffne einen einzelnen Ordner, um Worktrees zu verwenden.",
-	"subfolderNotSupported": "Dieser Workspace ist ein Unterordner eines Git-Repositories. Öffne das Repository-Root, um Worktrees zu verwenden.",
-	"gitRoot": "Git-Root",
+	"multiTumbletNotSupported": "Worktrees werden in Multi-Tumblet-Workspaces nicht unterstützt. Öffne einen einzelnen Ordner, um Worktrees zu verwenden.",
+	"subfolderNotSupported": "Dieser Workspace ist ein Unterordner eines Git-Repositories. Öffne das Repository-Tumblet, um Worktrees zu verwenden.",
+	"gitTumblet": "Git-Tumblet",
 
 	"includeFileExists": ".worktreeinclude-Datei gefunden – Dateien werden in neue Worktrees kopiert",
 	"noIncludeFile": "Keine .worktreeinclude-Datei gefunden",

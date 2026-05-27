@@ -21,13 +21,11 @@ import {
 	IpcMessageType,
 } from "@roo-code/types"
 import { IpcServer } from "@roo-code/ipc"
-import { CloudService } from "@roo-code/cloud"
 
 import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { openClineInNewTab } from "../activate/registerCommands"
 import { getCommands } from "../services/command/commands"
-import { getModels } from "../api/providers/fetchers/modelCache"
 
 export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	private readonly outputChannel: vscode.OutputChannel
@@ -136,20 +134,8 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 						break
 					case TaskCommandName.GetModels:
-						try {
-							const models = await getModels({
-								provider: "roo" as const,
-								baseUrl: process.env.ROO_CODE_PROVIDER_URL ?? "https://api.roocode.com/proxy",
-								apiKey: CloudService.hasInstance()
-									? CloudService.instance.authService?.getSessionToken()
-									: undefined,
-							})
-
-							sendResponse(RooCodeEventName.ModelsResponse, [models])
-						} catch (error) {
-							sendResponse(RooCodeEventName.ModelsResponse, [{}])
-						}
-
+						// Router provider removed; no built-in model catalog is fetched here.
+						sendResponse(RooCodeEventName.ModelsResponse, [{}])
 						break
 					case TaskCommandName.DeleteQueuedMessage:
 						this.log(`[API] DeleteQueuedMessage -> ${command.data}`)
