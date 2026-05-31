@@ -9,7 +9,7 @@ import { ZaiApiLine } from "../provider-settings.js"
 // https://bigmodel.cn/pricing
 
 export type InternationalZAiModelId = keyof typeof internationalZAiModels
-export const internationalZAiDefaultModelId: InternationalZAiModelId = "glm-4.6"
+export const internationalZAiDefaultModelId: InternationalZAiModelId = "glm-4.7"
 export const internationalZAiModels = {
 	"glm-4.5": {
 		maxTokens: 16_384,
@@ -197,7 +197,7 @@ export const internationalZAiModels = {
 } as const satisfies Record<string, ModelInfo>
 
 export type MainlandZAiModelId = keyof typeof mainlandZAiModels
-export const mainlandZAiDefaultModelId: MainlandZAiModelId = "glm-4.6"
+export const mainlandZAiDefaultModelId: MainlandZAiModelId = "glm-4.7"
 export const mainlandZAiModels = {
 	"glm-4.5": {
 		maxTokens: 16_384,
