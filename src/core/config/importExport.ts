@@ -319,6 +319,10 @@ export const importSettingsWithFeedback = async (
 	if (result.success) {
 		provider.settingsImportedAt = Date.now()
 		await provider.postStateToWebview()
+		// Reset immediately so the webview only treats this as a one-shot signal to
+		// recover the UI after an import; otherwise a stale timestamp could re-trigger
+		// navigation on subsequent state updates.
+		provider.settingsImportedAt = undefined
 
 		// Show warnings if any profiles had issues but were still imported (with modifications)
 		if (result.warnings && result.warnings.length > 0) {
