@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Aktifkan efek suara",
 			"description": "Ketika diaktifkan, Tumble akan memutar efek suara untuk notifikasi dan event.",
-			"volumeLabel": "Volume"
+			"volumeLabel": "Volume",
+			"custom": {
+				"sectionLabel": "File suara kustom",
+				"sectionDescription": "Ganti suara bawaan dengan file WAV / MP3 / OGG Anda sendiri (maks. {{max}} detik).",
+				"choose": "Pilih file…",
+				"preview": "Pratinjau",
+				"reset": "Setel ulang ke default",
+				"current": "Kustom",
+				"tooLong": "Audio harus {{max}} detik atau lebih pendek. Dikembalikan ke suara bawaan.",
+				"celebration": {
+					"label": "Tugas selesai",
+					"description": "Diputar saat asisten menandakan bahwa sebuah tugas telah selesai."
+				},
+				"progressLoop": {
+					"label": "Tugas gagal",
+					"description": "Diputar saat permintaan API gagal atau batas kesalahan tercapai."
+				},
+				"notification": {
+					"label": "Interaksi diperlukan",
+					"description": "Diputar saat asisten membutuhkan masukan pengguna untuk melanjutkan."
+				}
+			}
 		}
 	},
 	"contextManagement": {

@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Bật hiệu ứng âm thanh",
 			"description": "Khi được bật, Tumble sẽ phát hiệu ứng âm thanh cho thông báo và sự kiện.",
-			"volumeLabel": "Âm lượng"
+			"volumeLabel": "Âm lượng",
+			"custom": {
+				"sectionLabel": "Tệp âm thanh tùy chỉnh",
+				"sectionDescription": "Ghi đè âm thanh tích hợp bằng tệp WAV / MP3 / OGG của riêng bạn (tối đa {{max}} giây).",
+				"choose": "Chọn tệp…",
+				"preview": "Xem trước",
+				"reset": "Đặt lại về mặc định",
+				"current": "Tùy chỉnh",
+				"tooLong": "Âm thanh phải dài {{max}} giây hoặc ngắn hơn. Đã hoàn nguyên về âm thanh tích hợp.",
+				"celebration": {
+					"label": "Đã hoàn thành tác vụ",
+					"description": "Phát khi trợ lý báo hiệu rằng một tác vụ đã hoàn thành."
+				},
+				"progressLoop": {
+					"label": "Tác vụ thất bại",
+					"description": "Phát khi một yêu cầu API thất bại hoặc đạt đến giới hạn lỗi."
+				},
+				"notification": {
+					"label": "Cần tương tác",
+					"description": "Phát khi trợ lý cần người dùng nhập liệu để tiếp tục."
+				}
+			}
 		}
 	},
 	"contextManagement": {

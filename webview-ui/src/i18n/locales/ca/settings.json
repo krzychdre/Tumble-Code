@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Habilitar efectes de so",
 			"description": "Quan està habilitat, Tumble reproduirà efectes de so per a notificacions i esdeveniments.",
-			"volumeLabel": "Volum"
+			"volumeLabel": "Volum",
+			"custom": {
+				"sectionLabel": "Fitxers de so personalitzats",
+				"sectionDescription": "Substituïu els sons integrats pel vostre propi fitxer WAV / MP3 / OGG (màx. {{max}} segons).",
+				"choose": "Tria un fitxer…",
+				"preview": "Previsualitza",
+				"reset": "Restableix als valors predeterminats",
+				"current": "Personalitzat",
+				"tooLong": "L'àudio ha de durar {{max}} segons o menys. S'ha tornat al so integrat.",
+				"celebration": {
+					"label": "Tasca completada",
+					"description": "Es reprodueix quan l'assistent indica que una tasca ha finalitzat."
+				},
+				"progressLoop": {
+					"label": "Tasca fallida",
+					"description": "Es reprodueix quan una sol·licitud d'API falla o s'arriba al límit d'errors."
+				},
+				"notification": {
+					"label": "Es requereix interacció",
+					"description": "Es reprodueix quan l'assistent necessita l'entrada de l'usuari per continuar."
+				}
+			}
 		}
 	},
 	"contextManagement": {

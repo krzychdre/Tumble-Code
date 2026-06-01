@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Ses efektlerini etkinleştir",
 			"description": "Etkinleştirildiğinde, Tumble bildirimler ve olaylar için ses efektleri çalacaktır.",
-			"volumeLabel": "Ses Düzeyi"
+			"volumeLabel": "Ses Düzeyi",
+			"custom": {
+				"sectionLabel": "Özel ses dosyaları",
+				"sectionDescription": "Yerleşik sesleri kendi WAV / MP3 / OGG dosyanızla değiştirin (en fazla {{max}} saniye).",
+				"choose": "Dosya seç…",
+				"preview": "Önizleme",
+				"reset": "Varsayılana sıfırla",
+				"current": "Özel",
+				"tooLong": "Ses {{max}} saniye veya daha kısa olmalıdır. Yerleşik sese geri dönüldü.",
+				"celebration": {
+					"label": "Görev tamamlandı",
+					"description": "Asistan bir görevin tamamlandığını bildirdiğinde çalınır."
+				},
+				"progressLoop": {
+					"label": "Görev başarısız",
+					"description": "Bir API isteği başarısız olduğunda veya hata sınırına ulaşıldığında çalınır."
+				},
+				"notification": {
+					"label": "Etkileşim gerekli",
+					"description": "Asistan devam etmek için kullanıcı girişine ihtiyaç duyduğunda çalınır."
+				}
+			}
 		}
 	},
 	"contextManagement": {

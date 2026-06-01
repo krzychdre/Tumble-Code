@@ -577,7 +577,28 @@
 		"sound": {
 			"label": "啟用音效",
 			"description": "啟用後，Tumble 將為通知和事件播放音效。",
-			"volumeLabel": "音量"
+			"volumeLabel": "音量",
+			"custom": {
+				"sectionLabel": "自訂音效檔案",
+				"sectionDescription": "使用你自己的 WAV / MP3 / OGG 檔案覆寫內建音效（最長 {{max}} 秒）。",
+				"choose": "選擇檔案…",
+				"preview": "預覽",
+				"reset": "重設為預設值",
+				"current": "自訂",
+				"tooLong": "音訊必須不超過 {{max}} 秒。已還原為內建音效。",
+				"celebration": {
+					"label": "工作完成",
+					"description": "當助理發出工作已完成的訊號時播放。"
+				},
+				"progressLoop": {
+					"label": "工作失敗",
+					"description": "當 API 請求失敗或達到錯誤上限時播放。"
+				},
+				"notification": {
+					"label": "需要互動",
+					"description": "當助理需要使用者輸入才能繼續時播放。"
+				}
+			}
 		}
 	},
 	"contextManagement": {
