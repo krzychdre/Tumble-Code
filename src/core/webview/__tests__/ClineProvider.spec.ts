@@ -449,11 +449,15 @@ describe("ClineProvider", () => {
 	})
 
 	test("resolveWebviewView sets up webview correctly", async () => {
+		// The webview also allows loading user-uploaded custom sound files from global storage.
+		const customSoundsUri = { fsPath: "/test/storage/path/custom-sounds" } as vscode.Uri
+		;(vscode.Uri.file as any).mockReturnValueOnce(customSoundsUri)
+
 		await provider.resolveWebviewView(mockWebviewView)
 
 		expect(mockWebviewView.webview.options).toEqual({
 			enableScripts: true,
-			localResourceRoots: [mockContext.extensionUri],
+			localResourceRoots: [mockContext.extensionUri, customSoundsUri],
 		})
 
 		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
@@ -468,11 +472,14 @@ describe("ClineProvider", () => {
 		)
 		;(axios.get as any).mockRejectedValueOnce(new Error("Network error"))
 
+		const customSoundsUri = { fsPath: "/test/storage/path/custom-sounds" } as vscode.Uri
+		;(vscode.Uri.file as any).mockReturnValueOnce(customSoundsUri)
+
 		await provider.resolveWebviewView(mockWebviewView)
 
 		expect(mockWebviewView.webview.options).toEqual({
 			enableScripts: true,
-			localResourceRoots: [mockContext.extensionUri],
+			localResourceRoots: [mockContext.extensionUri, customSoundsUri],
 		})
 
 		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
