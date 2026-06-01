@@ -115,6 +115,17 @@
 	"selectApiConfig": "एपीआई कॉन्फ़िगरेशन का चयन करें",
 	"lockApiConfigAcrossModes": "इस कार्यक्षेत्र में सभी मोड के लिए API कॉन्फ़िगरेशन लॉक करें",
 	"unlockApiConfigAcrossModes": "इस कार्यक्षेत्र में सभी मोड के लिए API कॉन्फ़िगरेशन लॉक है (अनलॉक करने के लिए क्लिक करें)",
+	"applyConfigToModes": {
+		"button": "यह कॉन्फ़िगरेशन अन्य मोड पर लागू करें",
+		"description": "चुनें कि किन मोड को \"{{config}}\" का उपयोग करना चाहिए।",
+		"selectAll": "सभी चुनें",
+		"selectNone": "कोई नहीं चुनें",
+		"current": "वर्तमान",
+		"back": "वापस",
+		"apply": "लागू करें",
+		"confirm": "पुष्टि करें",
+		"confirmPrompt": "{{count}} मोड पर लागू करें?"
+	},
 	"enhancePrompt": "अतिरिक्त संदर्भ के साथ प्रॉम्प्ट बढ़ाएँ",
 	"addImages": "संदेश में चित्र जोड़ें",
 	"sendMessage": "संदेश भेजें",

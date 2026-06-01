@@ -142,6 +142,17 @@
 	"selectApiConfig": "Select API configuration",
 	"lockApiConfigAcrossModes": "Lock API configuration across all modes in this workspace",
 	"unlockApiConfigAcrossModes": "API configuration is locked across all modes in this workspace (click to unlock)",
+	"applyConfigToModes": {
+		"button": "Apply this configuration to other modes",
+		"description": "Choose which modes should use \"{{config}}\".",
+		"selectAll": "Select all",
+		"selectNone": "Select none",
+		"current": "current",
+		"back": "Back",
+		"apply": "Apply",
+		"confirm": "Confirm",
+		"confirmPrompt": "Apply to {{count}} modes?"
+	},
 	"enhancePrompt": "Enhance prompt with additional context",
 	"modeSelector": {
 		"title": "Modes",

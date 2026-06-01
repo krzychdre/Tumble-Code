@@ -115,6 +115,17 @@
 	"selectApiConfig": "Seleziona la configurazione API",
 	"lockApiConfigAcrossModes": "Blocca la configurazione API per tutte le modalità in questo workspace",
 	"unlockApiConfigAcrossModes": "La configurazione API è bloccata per tutte le modalità in questo workspace (clicca per sbloccare)",
+	"applyConfigToModes": {
+		"button": "Applica questa configurazione ad altre modalità",
+		"description": "Scegli quali modalità devono usare \"{{config}}\".",
+		"selectAll": "Seleziona tutto",
+		"selectNone": "Deseleziona tutto",
+		"current": "attuale",
+		"back": "Indietro",
+		"apply": "Applica",
+		"confirm": "Conferma",
+		"confirmPrompt": "Applicare a {{count}} modalità?"
+	},
 	"enhancePrompt": "Migliora prompt con contesto aggiuntivo",
 	"addImages": "Aggiungi immagini al messaggio",
 	"sendMessage": "Invia messaggio",

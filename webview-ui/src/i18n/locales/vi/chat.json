@@ -115,6 +115,17 @@
 	"selectApiConfig": "Chọn cấu hình API",
 	"lockApiConfigAcrossModes": "Khóa cấu hình API cho tất cả chế độ trong workspace này",
 	"unlockApiConfigAcrossModes": "Cấu hình API đã bị khóa cho tất cả chế độ trong workspace này (nhấn để mở khóa)",
+	"applyConfigToModes": {
+		"button": "Áp dụng cấu hình này cho các chế độ khác",
+		"description": "Chọn chế độ nào sẽ sử dụng \"{{config}}\".",
+		"selectAll": "Chọn tất cả",
+		"selectNone": "Bỏ chọn tất cả",
+		"current": "hiện tại",
+		"back": "Quay lại",
+		"apply": "Áp dụng",
+		"confirm": "Xác nhận",
+		"confirmPrompt": "Áp dụng cho {{count}} chế độ?"
+	},
 	"enhancePrompt": "Nâng cao yêu cầu với ngữ cảnh bổ sung",
 	"addImages": "Thêm hình ảnh vào tin nhắn",
 	"sendMessage": "Gửi tin nhắn",

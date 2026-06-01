@@ -115,6 +115,17 @@
 	"selectApiConfig": "Wybierz konfigurację API",
 	"lockApiConfigAcrossModes": "Zablokuj konfigurację API dla wszystkich trybów w tym obszarze roboczym",
 	"unlockApiConfigAcrossModes": "Konfiguracja API jest zablokowana dla wszystkich trybów w tym obszarze roboczym (kliknij, aby odblokować)",
+	"applyConfigToModes": {
+		"button": "Zastosuj tę konfigurację do innych trybów",
+		"description": "Wybierz, które tryby mają używać „{{config}}”.",
+		"selectAll": "Zaznacz wszystkie",
+		"selectNone": "Odznacz wszystkie",
+		"current": "bieżący",
+		"back": "Wstecz",
+		"apply": "Zastosuj",
+		"confirm": "Potwierdź",
+		"confirmPrompt": "Zastosować do {{count}} trybów?"
+	},
 	"enhancePrompt": "Ulepsz podpowiedź dodatkowym kontekstem",
 	"addImages": "Dodaj obrazy do wiadomości",
 	"sendMessage": "Wyślij wiadomość",

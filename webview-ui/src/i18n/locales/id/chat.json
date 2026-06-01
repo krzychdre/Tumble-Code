@@ -145,6 +145,17 @@
 	"selectApiConfig": "Pilih konfigurasi API",
 	"lockApiConfigAcrossModes": "Kunci konfigurasi API di semua mode dalam workspace ini",
 	"unlockApiConfigAcrossModes": "Konfigurasi API terkunci di semua mode dalam workspace ini (klik untuk membuka kunci)",
+	"applyConfigToModes": {
+		"button": "Terapkan konfigurasi ini ke mode lain",
+		"description": "Pilih mode mana yang harus menggunakan \"{{config}}\".",
+		"selectAll": "Pilih semua",
+		"selectNone": "Hapus semua pilihan",
+		"current": "saat ini",
+		"back": "Kembali",
+		"apply": "Terapkan",
+		"confirm": "Konfirmasi",
+		"confirmPrompt": "Terapkan ke {{count}} mode?"
+	},
 	"enhancePrompt": "Tingkatkan prompt dengan konteks tambahan",
 	"enhancePromptDescription": "Tombol 'Tingkatkan Prompt' membantu memperbaiki prompt kamu dengan memberikan konteks tambahan, klarifikasi, atau penyusunan ulang. Coba ketik prompt di sini dan klik tombol lagi untuk melihat cara kerjanya.",
 	"modeSelector": {

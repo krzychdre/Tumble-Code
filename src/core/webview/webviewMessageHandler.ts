@@ -1613,6 +1613,17 @@ export const webviewMessageHandler = async (
 			break
 		}
 
+		case "assignCurrentApiConfigToModes": {
+			const configId = message.values?.configId as string | undefined
+			const modeSlugs = (message.values?.modeSlugs as string[] | undefined) ?? []
+
+			if (configId && modeSlugs.length > 0) {
+				await provider.providerSettingsManager.setModeConfigs(modeSlugs, configId)
+				await provider.postStateToWebview()
+			}
+			break
+		}
+
 		case "toggleApiConfigPin":
 			if (message.text) {
 				const currentPinned = getGlobalState("pinnedApiConfigs") ?? {}

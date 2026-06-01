@@ -115,6 +115,17 @@
 	"selectApiConfig": "选择 API 配置",
 	"lockApiConfigAcrossModes": "锁定此工作区所有模式的 API 配置",
 	"unlockApiConfigAcrossModes": "此工作区所有模式的 API 配置已锁定（点击解锁）",
+	"applyConfigToModes": {
+		"button": "将此配置应用到其他模式",
+		"description": "选择哪些模式应使用“{{config}}”。",
+		"selectAll": "全选",
+		"selectNone": "全不选",
+		"current": "当前",
+		"back": "返回",
+		"apply": "应用",
+		"confirm": "确认",
+		"confirmPrompt": "应用到 {{count}} 个模式？"
+	},
 	"enhancePrompt": "增强提示词",
 	"addImages": "添加图片到消息",
 	"sendMessage": "发送消息",
