@@ -31,6 +31,18 @@ describe("ZAiHandler", () => {
 		mockCreate = (OpenAI as unknown as any)().chat.completions.create
 	})
 
+	describe("Default model ids", () => {
+		it("should default the international Z AI line to glm-4.7", () => {
+			expect(internationalZAiDefaultModelId).toBe("glm-4.7")
+			expect(internationalZAiModels[internationalZAiDefaultModelId]).toBeDefined()
+		})
+
+		it("should default the mainland Z AI line to glm-4.7", () => {
+			expect(mainlandZAiDefaultModelId).toBe("glm-4.7")
+			expect(mainlandZAiModels[mainlandZAiDefaultModelId]).toBeDefined()
+		})
+	})
+
 	describe("International Z AI", () => {
 		beforeEach(() => {
 			handler = new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "international_coding" })
