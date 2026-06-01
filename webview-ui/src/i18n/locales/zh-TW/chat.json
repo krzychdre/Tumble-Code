@@ -142,6 +142,17 @@
 	"selectApiConfig": "選取 API 設定",
 	"lockApiConfigAcrossModes": "鎖定此工作區所有模式的 API 設定",
 	"unlockApiConfigAcrossModes": "此工作區所有模式的 API 設定已鎖定（點擊解鎖）",
+	"applyConfigToModes": {
+		"button": "將此設定套用到其他模式",
+		"description": "選擇哪些模式應使用「{{config}}」。",
+		"selectAll": "全選",
+		"selectNone": "全部取消",
+		"current": "目前",
+		"back": "返回",
+		"apply": "套用",
+		"confirm": "確認",
+		"confirmPrompt": "套用到 {{count}} 個模式？"
+	},
 	"enhancePrompt": "使用額外內容強化提示詞",
 	"modeSelector": {
 		"title": "模式",

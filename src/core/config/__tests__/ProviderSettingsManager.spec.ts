@@ -843,6 +843,94 @@ describe("ProviderSettingsManager", () => {
 		})
 	})
 
+	describe("setModeConfigs", () => {
+		it("should assign the given config id to every listed mode in a single store call", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: {
+						default: { id: "default" },
+						local: { apiProvider: "ollama", id: "local-id" },
+					},
+					modeApiConfigs: {
+						code: "default",
+						architect: "default",
+						ask: "default",
+					},
+				}),
+			)
+
+			await providerSettingsManager.setModeConfigs(["code", "architect", "ask"], "local-id")
+
+			// A bulk assignment must persist with exactly one store round-trip.
+			expect(mockSecrets.store).toHaveBeenCalledTimes(1)
+
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1])
+			expect(storedConfig.modeApiConfigs).toEqual({
+				code: "local-id",
+				architect: "local-id",
+				ask: "local-id",
+			})
+		})
+
+		it("should preserve assignments for modes not included in the list", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: {
+						default: { id: "default" },
+						local: { apiProvider: "ollama", id: "local-id" },
+					},
+					modeApiConfigs: {
+						code: "default",
+						architect: "default",
+						ask: "default",
+					},
+				}),
+			)
+
+			await providerSettingsManager.setModeConfigs(["code"], "local-id")
+
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1])
+			expect(storedConfig.modeApiConfigs).toEqual({
+				code: "local-id",
+				architect: "default",
+				ask: "default",
+			})
+		})
+
+		it("should create the modeApiConfigs map when it is absent", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default" }, local: { apiProvider: "ollama", id: "local-id" } },
+				}),
+			)
+
+			await providerSettingsManager.setModeConfigs(["code", "ask"], "local-id")
+
+			const storedConfig = JSON.parse(mockSecrets.store.mock.calls[0][1])
+			expect(storedConfig.modeApiConfigs).toMatchObject({
+				code: "local-id",
+				ask: "local-id",
+			})
+		})
+
+		it("should not write when given an empty mode list", async () => {
+			mockSecrets.get.mockResolvedValue(
+				JSON.stringify({
+					currentApiConfigName: "default",
+					apiConfigs: { default: { id: "default" } },
+					modeApiConfigs: { code: "default" },
+				}),
+			)
+
+			await providerSettingsManager.setModeConfigs([], "default")
+
+			expect(mockSecrets.store).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("syncCloudProfiles", () => {
 		it("should add new cloud profiles without secret keys", async () => {
 			const existingConfig: ProviderProfiles = {

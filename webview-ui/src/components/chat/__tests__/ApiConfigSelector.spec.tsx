@@ -537,4 +537,87 @@ describe("ApiConfigSelector", () => {
 		const stickyHeader = scrollContainer?.querySelector(".sticky.top-0")
 		expect(stickyHeader).not.toBeInTheDocument()
 	})
+
+	describe("assign config to modes", () => {
+		const modeProps = {
+			...defaultProps,
+			value: "config1",
+			availableModes: [
+				{ slug: "code", name: "Code" },
+				{ slug: "architect", name: "Architect" },
+				{ slug: "ask", name: "Ask" },
+			],
+			modeApiConfigs: { code: "config1", architect: "config2", ask: "config2" },
+		}
+
+		const openModesPanel = () => {
+			fireEvent.click(screen.getByTestId("dropdown-trigger"))
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.button" }))
+		}
+
+		test("opens a mode checklist with every mode checked by default", () => {
+			render(<ApiConfigSelector {...modeProps} />)
+			openModesPanel()
+
+			const checkboxes = screen.getAllByRole("checkbox")
+			expect(checkboxes).toHaveLength(3)
+			checkboxes.forEach((cb) => expect(cb).toBeChecked())
+		})
+
+		test("Apply posts assignCurrentApiConfigToModes with all checked slugs and the current config id", () => {
+			render(<ApiConfigSelector {...modeProps} />)
+			openModesPanel()
+
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.apply" }))
+
+			expect(vi.mocked(vscode.postMessage)).toHaveBeenCalledWith({
+				type: "assignCurrentApiConfigToModes",
+				values: { configId: "config1", modeSlugs: ["code", "architect", "ask"] },
+			})
+		})
+
+		test("unchecking a mode excludes it from the applied slugs", () => {
+			render(<ApiConfigSelector {...modeProps} />)
+			openModesPanel()
+
+			fireEvent.click(screen.getByRole("checkbox", { name: "Architect" }))
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.apply" }))
+
+			expect(vi.mocked(vscode.postMessage)).toHaveBeenCalledWith({
+				type: "assignCurrentApiConfigToModes",
+				values: { configId: "config1", modeSlugs: ["code", "ask"] },
+			})
+		})
+
+		test("does not post when no modes are selected", () => {
+			render(<ApiConfigSelector {...modeProps} />)
+			openModesPanel()
+
+			screen.getAllByRole("checkbox").forEach((cb) => fireEvent.click(cb))
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.apply" }))
+
+			expect(vi.mocked(vscode.postMessage)).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: "assignCurrentApiConfigToModes" }),
+			)
+		})
+
+		test("requires a confirmation step before applying to a large number of modes", () => {
+			const manyModes = Array.from({ length: 12 }, (_, i) => ({ slug: `mode${i}`, name: `Mode ${i}` }))
+			render(<ApiConfigSelector {...modeProps} availableModes={manyModes} modeApiConfigs={{}} />)
+			openModesPanel()
+
+			// First Apply click only arms the confirmation; it must not post yet.
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.apply" }))
+			expect(vi.mocked(vscode.postMessage)).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: "assignCurrentApiConfigToModes" }),
+			)
+
+			// Confirming commits the assignment.
+			fireEvent.click(screen.getByRole("button", { name: "chat:applyConfigToModes.confirm" }))
+			expect(vi.mocked(vscode.postMessage)).toHaveBeenCalledWith({
+				type: "assignCurrentApiConfigToModes",
+				values: { configId: "config1", modeSlugs: manyModes.map((m) => m.slug) },
+			})
+		})
+	})
 })

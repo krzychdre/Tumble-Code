@@ -491,6 +491,35 @@ export class ProviderSettingsManager {
 	}
 
 	/**
+	 * Set the API config for many modes at once.
+	 *
+	 * Used to fast-assign the active profile to all (or a chosen subset of)
+	 * modes in a single store round-trip, instead of one lock+store per mode.
+	 */
+	public async setModeConfigs(modes: Mode[], configId: string) {
+		if (modes.length === 0) {
+			return
+		}
+
+		try {
+			return await this.lock(async () => {
+				const providerProfiles = await this.load()
+				// Ensure the per-mode config map exists
+				if (!providerProfiles.modeApiConfigs) {
+					providerProfiles.modeApiConfigs = {}
+				}
+				// Assign the chosen config ID to every listed mode
+				for (const mode of modes) {
+					providerProfiles.modeApiConfigs[mode] = configId
+				}
+				await this.store(providerProfiles)
+			})
+		} catch (error) {
+			throw new Error(`Failed to set mode configs: ${error}`)
+		}
+	}
+
+	/**
 	 * Get the API config ID for a specific mode.
 	 */
 	public async getModeConfigId(mode: Mode) {
