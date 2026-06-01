@@ -80,18 +80,21 @@ describe("getModelMaxOutputTokens", () => {
 		expect(result).toBe(ANTHROPIC_DEFAULT_MAX_TOKENS) // Should be 8192, not 64_000
 	})
 
-	test("should preserve Anthropic hybrid token handling when a model also supports binary reasoning", () => {
+	test("should preserve Anthropic hybrid token handling for Claude Opus 4.8", () => {
+		// 4.8 inherits the same adaptive-thinking + binary-reasoning capability as 4.7
+		// (no breaking API changes between 4.7 and 4.8 per the official migration guide).
 		const model: ModelInfo = {
 			contextWindow: 1_000_000,
 			supportsPromptCache: true,
 			supportsReasoningBudget: true,
 			supportsReasoningBinary: true,
+			supportsTemperature: false,
 			maxTokens: 128_000,
 		}
 
 		expect(
 			getModelMaxOutputTokens({
-				modelId: "claude-opus-4-7",
+				modelId: "claude-opus-4-8",
 				model,
 				settings: { apiProvider: "anthropic", enableReasoningEffort: false },
 			}),
@@ -99,7 +102,7 @@ describe("getModelMaxOutputTokens", () => {
 
 		expect(
 			getModelMaxOutputTokens({
-				modelId: "claude-opus-4-7",
+				modelId: "claude-opus-4-8",
 				model,
 				settings: { apiProvider: "anthropic", enableReasoningEffort: true, modelMaxTokens: 32_768 },
 			}),

@@ -7,12 +7,12 @@
 ## Problem
 
 `createSanitizedGit` (the helper behind every shadow-checkpoint git instance) only
-stripped seven _location-override_ env vars (GIT_DIR, GIT_WORK_TREE, …). It left
-_code-execution_ vectors — GIT_EDITOR, GIT_SSH_COMMAND, GIT_PAGER, PREFIX, EDITOR,
+stripped seven _location-override_ env vars (GIT*DIR, GIT_WORK_TREE, …). It left
+\_code-execution* vectors — GIT*EDITOR, GIT_SSH_COMMAND, GIT_PAGER, PREFIX, EDITOR,
 PAGER, etc. — inherited from the user's environment, which simple-git ≥3.36's
 `blockUnsafeOperationsPlugin` treats as unsafe when passed via `.env()`. Bumping
 simple-git (a step the fork's security-bump practice will eventually take) would
-also start _rejecting_ the existing `git.init({ "--template": "" })` call, breaking
+also start \_rejecting* the existing `git.init({ "--template": "" })` call, breaking
 checkpoints. This PR fixes both axes together.
 
 ## Dependency bump (integral, not separable)
