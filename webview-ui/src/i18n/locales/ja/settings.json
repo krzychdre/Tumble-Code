@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "サウンドエフェクトを有効化",
 			"description": "有効にすると、Tumbleは通知やイベントのためにサウンドエフェクトを再生します。",
-			"volumeLabel": "音量"
+			"volumeLabel": "音量",
+			"custom": {
+				"sectionLabel": "カスタムサウンドファイル",
+				"sectionDescription": "組み込みのサウンドを独自の WAV / MP3 / OGG ファイルで上書きします（最大 {{max}} 秒）。",
+				"choose": "ファイルを選択…",
+				"preview": "プレビュー",
+				"reset": "デフォルトにリセット",
+				"current": "カスタム",
+				"tooLong": "オーディオは {{max}} 秒以下である必要があります。組み込みのサウンドに戻しました。",
+				"celebration": {
+					"label": "タスク完了",
+					"description": "アシスタントがタスクの完了を通知したときに再生されます。"
+				},
+				"progressLoop": {
+					"label": "タスク失敗",
+					"description": "API リクエストが失敗した場合、またはミス制限に達した場合に再生されます。"
+				},
+				"notification": {
+					"label": "操作が必要",
+					"description": "アシスタントが続行するためにユーザー入力を必要とするときに再生されます。"
+				}
+			}
 		}
 	},
 	"contextManagement": {

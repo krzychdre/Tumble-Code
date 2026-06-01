@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Geluidseffecten inschakelen",
 			"description": "Indien ingeschakeld, speelt Tumble geluidseffecten af voor meldingen en gebeurtenissen.",
-			"volumeLabel": "Volume"
+			"volumeLabel": "Volume",
+			"custom": {
+				"sectionLabel": "Aangepaste geluidsbestanden",
+				"sectionDescription": "Vervang de ingebouwde geluiden door je eigen WAV-/MP3-/OGG-bestand (max. {{max}} seconden).",
+				"choose": "Bestand kiezen…",
+				"preview": "Voorbeeld",
+				"reset": "Standaardwaarden herstellen",
+				"current": "Aangepast",
+				"tooLong": "De audio mag maximaal {{max}} seconden duren. Teruggezet naar het ingebouwde geluid.",
+				"celebration": {
+					"label": "Taak voltooid",
+					"description": "Wordt afgespeeld wanneer de assistent aangeeft dat een taak is voltooid."
+				},
+				"progressLoop": {
+					"label": "Taak mislukt",
+					"description": "Wordt afgespeeld wanneer een API-verzoek mislukt of de foutlimiet wordt bereikt."
+				},
+				"notification": {
+					"label": "Interactie vereist",
+					"description": "Wordt afgespeeld wanneer de assistent invoer van de gebruiker nodig heeft om door te gaan."
+				}
+			}
 		}
 	},
 	"contextManagement": {

@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Włącz efekty dźwiękowe",
 			"description": "Gdy włączone, Tumble będzie odtwarzać efekty dźwiękowe dla powiadomień i zdarzeń.",
-			"volumeLabel": "Głośność"
+			"volumeLabel": "Głośność",
+			"custom": {
+				"sectionLabel": "Niestandardowe pliki dźwiękowe",
+				"sectionDescription": "Zastąp wbudowane dźwięki własnym plikiem WAV / MP3 / OGG (maks. {{max}} sekund).",
+				"choose": "Wybierz plik…",
+				"preview": "Podgląd",
+				"reset": "Przywróć domyślne",
+				"current": "Niestandardowy",
+				"tooLong": "Dźwięk może trwać maksymalnie {{max}} sekund. Przywrócono wbudowany dźwięk.",
+				"celebration": {
+					"label": "Zadanie ukończone",
+					"description": "Odtwarzane, gdy asystent sygnalizuje zakończenie zadania."
+				},
+				"progressLoop": {
+					"label": "Zadanie nieudane",
+					"description": "Odtwarzane, gdy żądanie API zakończy się niepowodzeniem lub zostanie osiągnięty limit błędów."
+				},
+				"notification": {
+					"label": "Wymagana interakcja",
+					"description": "Odtwarzane, gdy asystent potrzebuje danych wejściowych od użytkownika, aby kontynuować."
+				}
+			}
 		}
 	},
 	"contextManagement": {

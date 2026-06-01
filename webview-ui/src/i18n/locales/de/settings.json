@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Soundeffekte aktivieren",
 			"description": "Wenn aktiviert, spielt Tumble Soundeffekte für Benachrichtigungen und Ereignisse ab.",
-			"volumeLabel": "Lautstärke"
+			"volumeLabel": "Lautstärke",
+			"custom": {
+				"sectionLabel": "Benutzerdefinierte Sounddateien",
+				"sectionDescription": "Überschreibe die integrierten Sounds mit deiner eigenen WAV-/MP3-/OGG-Datei (max. {{max}} Sekunden).",
+				"choose": "Datei auswählen…",
+				"preview": "Vorschau",
+				"reset": "Auf Standard zurücksetzen",
+				"current": "Benutzerdefiniert",
+				"tooLong": "Das Audio darf höchstens {{max}} Sekunden lang sein. Es wurde zum integrierten Sound zurückgesetzt.",
+				"celebration": {
+					"label": "Aufgabe abgeschlossen",
+					"description": "Wird abgespielt, wenn der Assistent signalisiert, dass eine Aufgabe abgeschlossen ist."
+				},
+				"progressLoop": {
+					"label": "Aufgabe fehlgeschlagen",
+					"description": "Wird abgespielt, wenn eine API-Anfrage fehlschlägt oder das Fehlerlimit erreicht wird."
+				},
+				"notification": {
+					"label": "Interaktion erforderlich",
+					"description": "Wird abgespielt, wenn der Assistent eine Benutzereingabe benötigt, um fortzufahren."
+				}
+			}
 		}
 	},
 	"contextManagement": {

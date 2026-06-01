@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "사운드 효과 활성화",
 			"description": "활성화되면 Tumble는 알림 및 이벤트에 대한 사운드 효과를 재생합니다.",
-			"volumeLabel": "볼륨"
+			"volumeLabel": "볼륨",
+			"custom": {
+				"sectionLabel": "사용자 지정 사운드 파일",
+				"sectionDescription": "기본 제공 사운드를 직접 만든 WAV / MP3 / OGG 파일로 대체합니다(최대 {{max}}초).",
+				"choose": "파일 선택…",
+				"preview": "미리 듣기",
+				"reset": "기본값으로 재설정",
+				"current": "사용자 지정",
+				"tooLong": "오디오는 {{max}}초 이하여야 합니다. 기본 제공 사운드로 되돌렸습니다.",
+				"celebration": {
+					"label": "작업 완료",
+					"description": "어시스턴트가 작업이 완료되었음을 알릴 때 재생됩니다."
+				},
+				"progressLoop": {
+					"label": "작업 실패",
+					"description": "API 요청이 실패하거나 오류 한도에 도달하면 재생됩니다."
+				},
+				"notification": {
+					"label": "상호 작용 필요",
+					"description": "어시스턴트가 계속하기 위해 사용자 입력이 필요할 때 재생됩니다."
+				}
+			}
 		}
 	},
 	"contextManagement": {

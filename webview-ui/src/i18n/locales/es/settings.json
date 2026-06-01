@@ -567,7 +567,28 @@
 		"sound": {
 			"label": "Habilitar efectos de sonido",
 			"description": "Cuando está habilitado, Tumble reproducirá efectos de sonido para notificaciones y eventos.",
-			"volumeLabel": "Volumen"
+			"volumeLabel": "Volumen",
+			"custom": {
+				"sectionLabel": "Archivos de sonido personalizados",
+				"sectionDescription": "Reemplaza los sonidos integrados con tu propio archivo WAV / MP3 / OGG (máx. {{max}} segundos).",
+				"choose": "Elegir archivo…",
+				"preview": "Vista previa",
+				"reset": "Restablecer a los valores predeterminados",
+				"current": "Personalizado",
+				"tooLong": "El audio debe durar {{max}} segundos o menos. Se restauró el sonido integrado.",
+				"celebration": {
+					"label": "Tarea completada",
+					"description": "Se reproduce cuando el asistente indica que una tarea ha finalizado."
+				},
+				"progressLoop": {
+					"label": "Tarea fallida",
+					"description": "Se reproduce cuando una solicitud de API falla o se alcanza el límite de errores."
+				},
+				"notification": {
+					"label": "Se requiere interacción",
+					"description": "Se reproduce cuando el asistente necesita la entrada del usuario para continuar."
+				}
+			}
 		}
 	},
 	"contextManagement": {
