@@ -137,6 +137,9 @@ export class ClineProvider
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
 	private clineStack: Task[] = []
+	// Children whose delegated parent could not be proven detached on cancel.
+	// reopenParentFromDelegation() refuses to reopen a parent for any child here.
+	private cancelledDelegationChildIds = new Set<string>()
 	private codeIndexStatusSubscription?: vscode.Disposable
 	private codeIndexManager?: CodeIndexManager
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
@@ -3056,8 +3059,9 @@ export class ClineProvider
 		}
 
 		// Preserve parent and root task information for history item.
-		const rootTask = task.rootTask
-		const parentTask = task.parentTask
+		// `let` because a delegated-parent detach below may clear them.
+		let rootTask = task.rootTask
+		let parentTask = task.parentTask
 
 		// Mark this as a user-initiated cancellation so provider-only rehydration can occur
 		task.abortReason = "user_cancelled"
@@ -3115,6 +3119,57 @@ export class ClineProvider
 
 		if (!historyItem) {
 			return
+		}
+
+		// If this is a delegated subtask, detach its parent so the parent does not
+		// stay stuck in "delegated" awaiting a child that the user just cancelled.
+		if (task.parentTaskId) {
+			try {
+				const { historyItem: parentHistory } = await this.getTaskWithId(task.parentTaskId)
+
+				if (parentHistory?.status === "delegated" && parentHistory?.awaitingChildId === task.taskId) {
+					await this.updateTaskHistory({
+						...parentHistory,
+						status: "active",
+						awaitingChildId: undefined,
+					})
+
+					this.log(
+						`[cancelTask] Detached delegated parent ${task.parentTaskId}: delegated → active (child ${task.taskId} cancelled)`,
+					)
+					parentTask = undefined
+					rootTask = undefined
+					// Clear any stale fail-closed entry from a prior failed cancel attempt.
+					this.cancelledDelegationChildIds.delete(task.taskId)
+				}
+			} catch (error) {
+				// Fail closed: if we cannot prove the parent was detached, make the
+				// rehydrated child standalone so later completions cannot reopen a
+				// stale delegated parent, even after a provider reload.
+				parentTask = undefined
+				rootTask = undefined
+				this.cancelledDelegationChildIds.add(task.taskId)
+				historyItem = {
+					...historyItem,
+					parentTaskId: undefined,
+					rootTaskId: undefined,
+				}
+				try {
+					await this.updateTaskHistory(historyItem)
+				} catch (historyError) {
+					this.log(
+						`[cancelTask] Failed to persist standalone child state for ${task.taskId}: ${
+							historyError instanceof Error ? historyError.message : String(historyError)
+						}`,
+					)
+					throw historyError
+				}
+				this.log(
+					`[cancelTask] Failed to detach delegated parent for ${task.taskId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			}
 		}
 
 		// Clears task again, so we need to abortTask manually above.
@@ -3420,12 +3475,29 @@ export class ClineProvider
 		parentTaskId: string
 		childTaskId: string
 		completionResultSummary: string
-	}): Promise<void> {
+	}): Promise<boolean> {
 		const { parentTaskId, childTaskId, completionResultSummary } = params
 		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
 
 		// 1) Load parent from history and current persisted messages
 		const { historyItem } = await this.getTaskWithId(parentTaskId)
+
+		// Guard: re-validate delegation state after the async approval gap.
+		// cancelTask() or removeClineFromStack() may have already detached the parent
+		// (status → "active", awaitingChildId → undefined) while the user was
+		// approving the subtask finish. Routing output back now would corrupt an
+		// unrelated task.
+		if (
+			this.cancelledDelegationChildIds.has(childTaskId) ||
+			historyItem.status !== "delegated" ||
+			historyItem.awaitingChildId !== childTaskId
+		) {
+			this.log(
+				`[reopenParentFromDelegation] Aborting: parent ${parentTaskId} is no longer delegated to child ${childTaskId} ` +
+					`(status=${historyItem.status}, awaitingChildId=${historyItem.awaitingChildId})`,
+			)
+			return false
+		}
 
 		let parentClineMessages: ClineMessage[] = []
 		try {
@@ -3460,7 +3532,14 @@ export class ClineProvider
 			text: completionResultSummary,
 			ts,
 		}
-		parentClineMessages.push(subtaskUiMessage)
+		const lastParentClineMessage = parentClineMessages.at(-1)
+		if (
+			lastParentClineMessage?.type !== "say" ||
+			lastParentClineMessage.say !== "subtask_result" ||
+			lastParentClineMessage.text !== completionResultSummary
+		) {
+			parentClineMessages.push(subtaskUiMessage)
+		}
 		await saveTaskMessages({ messages: parentClineMessages, taskId: parentTaskId, globalStoragePath })
 
 		// Find the tool_use_id from the last assistant message's new_task tool_use
@@ -3523,16 +3602,26 @@ export class ClineProvider
 		} else {
 			// If there is no corresponding tool_use in the parent API history, we cannot emit a
 			// tool_result. Fall back to a plain user text note so the parent can still resume.
-			parentApiMessages.push({
-				role: "user",
-				content: [
-					{
-						type: "text" as const,
-						text: `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`,
-					},
-				],
-				ts,
-			})
+			const fallbackText = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+			const lastParentApiMessage = parentApiMessages.at(-1)
+			const alreadyHasFallback =
+				lastParentApiMessage?.role === "user" &&
+				Array.isArray(lastParentApiMessage.content) &&
+				lastParentApiMessage.content.some(
+					(block: { type?: string; text?: string }) => block.type === "text" && block.text === fallbackText,
+				)
+			if (!alreadyHasFallback) {
+				parentApiMessages.push({
+					role: "user",
+					content: [
+						{
+							type: "text" as const,
+							text: fallbackText,
+						},
+					],
+					ts,
+				})
+			}
 		}
 
 		await saveApiMessages({ messages: parentApiMessages as any, taskId: parentTaskId, globalStoragePath })
@@ -3544,7 +3633,9 @@ export class ClineProvider
 		//    overwrite a "completed" status set earlier.
 		const current = this.getCurrentTask()
 		if (current?.taskId === childTaskId) {
-			await this.removeClineFromStack()
+			// This method explicitly persists the parent's active state below, so the
+			// generic delegated→active repair in removeClineFromStack would be redundant.
+			await this.removeClineFromStack({ skipDelegationRepair: true })
 		}
 
 		// 4) Update child metadata to "completed" status.
@@ -3610,6 +3701,9 @@ export class ClineProvider
 		} catch {
 			// non-fatal
 		}
+
+		this.cancelledDelegationChildIds.delete(childTaskId)
+		return true
 	}
 
 	/**
