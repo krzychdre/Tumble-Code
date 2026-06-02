@@ -30,7 +30,7 @@ interface DelegationProvider {
 		parentTaskId: string
 		childTaskId: string
 		completionResultSummary: string
-	}): Promise<void>
+	}): Promise<boolean>
 }
 
 export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
@@ -101,18 +101,29 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 							// This shows the user the completion result and waits for acceptance
 							// without injecting another tool_result to the parent
 						} else if (status === "active") {
-							// Normal subtask completion - do delegation
-							const delegation = await this.delegateToParent(
-								task,
-								result,
-								provider,
-								askFinishSubTaskApproval,
-								pushToolResult,
-							)
-							if (delegation === "delegated") {
-								this.emitTaskCompleted(task)
+							// Re-check the parent: it may have been detached (e.g. the user
+							// cancelled this child) since delegation began. Only delegate if the
+							// parent still awaits this child; otherwise fall through to the normal
+							// completion ask flow.
+							const { historyItem: parentHistory } = await provider.getTaskWithId(task.parentTaskId!)
+
+							if (
+								parentHistory?.status === "delegated" &&
+								parentHistory?.awaitingChildId === task.taskId
+							) {
+								const delegation = await this.delegateToParent(
+									task,
+									result,
+									provider,
+									askFinishSubTaskApproval,
+									pushToolResult,
+								)
+								if (delegation === "delegated") {
+									this.emitTaskCompleted(task)
+								}
+								if (delegation !== "continue") return
 							}
-							if (delegation !== "continue") return
+							// else: parent already detached — fall through to normal completion ask flow.
 						} else {
 							// Unexpected status (undefined or "delegated") - log error and skip delegation
 							// undefined indicates a bug in status persistence during child creation
@@ -172,14 +183,19 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 			return "denied"
 		}
 
-		pushToolResult("")
-
-		await provider.reopenParentFromDelegation({
+		const didReopen = await provider.reopenParentFromDelegation({
 			parentTaskId: task.parentTaskId!,
 			childTaskId: task.taskId,
 			completionResultSummary: result,
 		})
 
+		if (didReopen === false) {
+			// Parent was detached during the approval gap; let the caller fall through
+			// to the normal completion ask flow instead of reporting a (false) delegation.
+			return "continue"
+		}
+
+		pushToolResult("")
 		return "delegated"
 	}
 

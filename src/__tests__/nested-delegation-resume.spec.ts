@@ -150,6 +150,8 @@ describe("Nested delegation resume (A → B → C)", () => {
 
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
+			cancelledDelegationChildIds: new Set<string>(),
+			log: vi.fn(),
 			getTaskWithId,
 			emit: emitSpy,
 			getCurrentTask: vi.fn(() => (currentActiveId ? ({ taskId: currentActiveId } as any) : undefined)),
