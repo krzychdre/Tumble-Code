@@ -948,11 +948,24 @@ describe("Cline", () => {
 			let mockProvider: any
 			let mockApiConfig: any
 			let mockDelay: ReturnType<typeof vi.fn>
+			// Deterministic clock. The rate-limit countdown is derived from
+			// `performance.now() - lastGlobalApiRequestTime`, so relying on real wall-clock time
+			// makes these assertions flaky — on Windows CI the suite runs in a single heavily-loaded
+			// fork (see vitest.config.ts `singleFork`), where the gap between the parent and child
+			// request can balloon past the rate-limit window (→ 0 delays) or the 20s test timeout.
+			// Controlling `performance.now()` makes the elapsed time — and the expected delay count —
+			// exact and machine-independent.
+			let mockNow: number
+			let perfNowSpy: ReturnType<typeof vi.spyOn>
 
 			beforeEach(() => {
 				vi.clearAllMocks()
 				// Reset the global timestamp before each test
 				Task.resetGlobalApiRequestTime()
+
+				// Install a controllable clock; tests advance `mockNow` explicitly.
+				mockNow = 1_000_000
+				perfNowSpy = vi.spyOn(performance, "now").mockImplementation(() => mockNow)
 
 				mockApiConfig = {
 					apiProvider: "anthropic",
@@ -990,6 +1003,8 @@ describe("Cline", () => {
 			afterEach(() => {
 				// Clean up the global state after each test
 				Task.resetGlobalApiRequestTime()
+				// Restore the real clock so nothing leaks into other tests (critical under singleFork).
+				perfNowSpy.mockRestore()
 			})
 
 			it("should enforce rate limiting across parent and subtask", async () => {
@@ -1117,10 +1132,8 @@ describe("Cline", () => {
 				const parentIterator = parent.attemptApiRequest(0)
 				await parentIterator.next()
 
-				// Simulate time passing (more than rate limit)
-				const originalPerformanceNow = performance.now
-				const mockTime = performance.now() + (mockApiConfig.rateLimitSeconds + 1) * 1000
-				performance.now = vi.fn(() => mockTime)
+				// Simulate time passing (more than the rate limit window) by advancing the clock.
+				mockNow += (mockApiConfig.rateLimitSeconds + 1) * 1000
 
 				// Create a subtask after time has passed
 				const child = new Task({
@@ -1141,9 +1154,6 @@ describe("Cline", () => {
 
 				// Verify no rate limiting was applied
 				expect(mockDelay).not.toHaveBeenCalled()
-
-				// Restore performance.now
-				performance.now = originalPerformanceNow
 			})
 
 			it("should share rate limiting across multiple subtasks", async () => {
