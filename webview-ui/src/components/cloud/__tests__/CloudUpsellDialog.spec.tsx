@@ -8,9 +8,7 @@ vi.mock("react-i18next", () => ({
 		t: (key: string) => {
 			const translations: Record<string, string> = {
 				"cloud:cloudBenefitsTitle": "Try Roo Code Cloud",
-				"cloud:cloudBenefitProvider": "Access free and paid models that work great with Roo",
-				"cloud:cloudBenefitCloudAgents": "Give tasks to autonomous Cloud agents",
-				"cloud:cloudBenefitTriggers": "Get code reviews on GitHub, start tasks from Slack and more",
+				"cloud:cloudComingSoon": "This feature is coming soon — and will let you self-host the cloud backend.",
 				"cloud:cloudBenefitWalkaway": "Follow and control tasks from anywhere (including your phone)",
 				"cloud:cloudBenefitHistory": "Access your task history from anywhere and share them with others",
 				"cloud:cloudBenefitMetrics": "Get a holistic view of your token consumption",
@@ -33,9 +31,9 @@ describe("CloudUpsellDialog", () => {
 		render(<CloudUpsellDialog open={true} onOpenChange={mockOnOpenChange} onConnect={mockOnConnect} />)
 
 		expect(screen.getByText("Try Roo Code Cloud")).toBeInTheDocument()
-		expect(screen.getByText("Access free and paid models that work great with Roo")).toBeInTheDocument()
-		expect(screen.getByText("Give tasks to autonomous Cloud agents")).toBeInTheDocument()
-		expect(screen.getByText("Get code reviews on GitHub, start tasks from Slack and more")).toBeInTheDocument()
+		expect(
+			screen.getByText("This feature is coming soon — and will let you self-host the cloud backend."),
+		).toBeInTheDocument()
 		expect(screen.getByText("Follow and control tasks from anywhere (including your phone)")).toBeInTheDocument()
 		expect(
 			screen.getByText("Access your task history from anywhere and share them with others"),
@@ -63,6 +61,6 @@ describe("CloudUpsellDialog", () => {
 		render(<CloudUpsellDialog open={true} onOpenChange={mockOnOpenChange} onConnect={mockOnConnect} />)
 
 		const listItems = screen.getAllByRole("listitem")
-		expect(listItems).toHaveLength(6)
+		expect(listItems).toHaveLength(3)
 	})
 })

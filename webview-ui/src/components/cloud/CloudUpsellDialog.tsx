@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { Dialog, DialogContent, DialogHeader, Button } from "@/components/ui"
 import RooHero from "../welcome/RooHero"
-import { ArrowRight, Brain, Cable, CircleDollarSign, FileStack, Router, Users2 } from "lucide-react"
+import { ArrowRight, CircleDollarSign, Clock, FileStack, Router } from "lucide-react"
 import { DialogTitle } from "@radix-ui/react-dialog"
 
 interface CloudUpsellDialogProps {
@@ -21,18 +21,6 @@ export const renderCloudBenefitsContent = (t: any) => {
 			<div className="text-lg">
 				<ul className="text-vscode-descriptionForeground space-y-2 my-8">
 					<li className="flex items-start gap-2">
-						<Brain className="size-4 mt-1 shrink-0" />
-						{t("cloud:cloudBenefitProvider")}
-					</li>
-					<li className="flex items-start gap-2">
-						<Users2 className="size-4 mt-1 shrink-0" />
-						{t("cloud:cloudBenefitCloudAgents")}
-					</li>
-					<li className="flex items-start gap-2">
-						<Cable className="size-4 mt-1 shrink-0" />
-						{t("cloud:cloudBenefitTriggers")}
-					</li>
-					<li className="flex items-start gap-2">
 						<Router className="size-4 mt-1 shrink-0" />
 						{t("cloud:cloudBenefitWalkaway")}
 					</li>
@@ -45,6 +33,10 @@ export const renderCloudBenefitsContent = (t: any) => {
 						{t("cloud:cloudBenefitHistory")}
 					</li>
 				</ul>
+				<p className="flex items-start gap-2 text-sm text-vscode-descriptionForeground italic">
+					<Clock className="size-4 mt-0.5 shrink-0" />
+					{t("cloud:cloudComingSoon")}
+				</p>
 			</div>
 		</div>
 	)
