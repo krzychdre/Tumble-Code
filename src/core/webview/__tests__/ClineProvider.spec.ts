@@ -308,6 +308,7 @@ describe("ClineProvider", () => {
 			const task: any = {
 				api: undefined,
 				abortTask: vi.fn(),
+				start: vi.fn(),
 				handleWebviewAskResponse: vi.fn(),
 				clineMessages: [],
 				apiConversationHistory: [],
@@ -446,6 +447,33 @@ describe("ClineProvider", () => {
 		// @ts-ignore - accessing private property for testing
 		provider.view = mockWebviewView
 		expect(ClineProvider.getVisibleInstance()).toBe(provider)
+	})
+
+	describe("createTask startTask gating", () => {
+		const stubCreateTaskDeps = () => {
+			// createTask runs setValues + allowlist + stack ops before start();
+			// stub those so the test exercises only the start()-gating branch.
+			vi.spyOn(provider as any, "setValues").mockResolvedValue(undefined)
+			vi.spyOn(provider, "getState").mockResolvedValue({
+				mode: "code",
+				apiConfiguration: { apiProvider: "openrouter" },
+				organizationAllowList: { allowAll: true, providers: {} },
+			} as any)
+			vi.spyOn(provider as any, "addClineToStack").mockResolvedValue(undefined)
+			vi.spyOn(provider as any, "removeClineFromStack").mockResolvedValue(undefined)
+		}
+
+		it("auto-starts the task by default", async () => {
+			stubCreateTaskDeps()
+			const task = await provider.createTask("hello")
+			expect((task as any).start).toHaveBeenCalledTimes(1)
+		})
+
+		it("does NOT auto-start when options.startTask is false", async () => {
+			stubCreateTaskDeps()
+			const task = await provider.createTask("hello", undefined, undefined, { startTask: false })
+			expect((task as any).start).not.toHaveBeenCalled()
+		})
 	})
 
 	test("resolveWebviewView sets up webview correctly", async () => {
