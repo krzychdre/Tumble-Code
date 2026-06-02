@@ -3016,7 +3016,13 @@ export class ClineProvider
 		})
 
 		await this.addClineToStack(task)
-		task.start()
+		// Gate the explicit start so callers passing `startTask: false`
+		// (e.g. delegateParentAndOpenChild) can persist surrounding metadata
+		// before the task loop begins. Without this, the child loop starts here
+		// and the later child.start() becomes a no-op (_started guard).
+		if (options.startTask !== false) {
+			task.start()
+		}
 
 		this.log(
 			`[createTask] ${task.parentTask ? "child" : "parent"} task ${task.taskId}.${task.instanceId} instantiated`,
