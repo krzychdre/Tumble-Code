@@ -66,6 +66,7 @@ export interface ExtensionMessage {
 		| "commandExecutionStatus"
 		| "mcpExecutionStatus"
 		| "vsCodeSetting"
+		| "terminalProfiles"
 		| "authenticatedUser"
 		| "condenseTaskContextStarted"
 		| "condenseTaskContextResponse"
@@ -156,6 +157,8 @@ export interface ExtensionMessage {
 	error?: string
 	setting?: string
 	value?: any // eslint-disable-line @typescript-eslint/no-explicit-any
+	/** Sanitized VS Code terminal profile names for the `terminalProfiles` message. */
+	profiles?: string[]
 	hasContent?: boolean
 	items?: MarketplaceItem[]
 	userInfo?: CloudUserInfo
@@ -283,6 +286,7 @@ export type ExtensionState = Pick<
 	| "terminalZshOhMy"
 	| "terminalZshP10k"
 	| "terminalZdotdir"
+	| "terminalProfile"
 	| "execaShellPath"
 	| "diagnosticsEnabled"
 	| "language"
@@ -460,6 +464,8 @@ export interface WebviewMessage {
 		| "updateVSCodeSetting"
 		| "getVSCodeSetting"
 		| "vsCodeSetting"
+		| "requestTerminalProfiles"
+		| "openTerminalProfilePicker"
 		| "updateCondensingPrompt"
 		| "playSound"
 		| "openKeyboardShortcuts"

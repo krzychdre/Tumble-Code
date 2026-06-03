@@ -181,6 +181,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		terminalZshOhMy,
 		terminalZshP10k,
 		terminalZdotdir,
+		terminalProfile,
 		writeDelayMs,
 		showRooIgnoredFiles,
 		enableSubfolderRules,
@@ -392,6 +393,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					terminalZshOhMy,
 					terminalZshP10k,
 					terminalZdotdir,
+					terminalProfile: terminalProfile ?? "", // "" clears a saved profile; undefined is dropped by JSON.stringify
 					terminalOutputPreviewSize: terminalOutputPreviewSize ?? "medium",
 					mcpEnabled,
 					maxOpenTabsContext: Math.min(Math.max(0, maxOpenTabsContext ?? 20), 500),
@@ -856,6 +858,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								terminalZshOhMy={terminalZshOhMy}
 								terminalZshP10k={terminalZshP10k}
 								terminalZdotdir={terminalZdotdir}
+								terminalProfile={terminalProfile}
+								onTerminalProfilePickerOpened={() => setChangeDetected(true)}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}
