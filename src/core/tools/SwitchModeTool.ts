@@ -16,7 +16,7 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 
 	async execute(params: SwitchModeParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { mode_slug, reason } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
 			if (!mode_slug) {
@@ -48,7 +48,7 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 				return
 			}
 
-			const completeMessage = JSON.stringify({ tool: "switchMode", mode: mode_slug, reason })
+			const completeMessage = JSON.stringify({ tool: "switchMode", mode: mode_slug, reason, toolCallId })
 			const didApprove = await askApproval("tool", completeMessage)
 
 			if (!didApprove) {
@@ -78,6 +78,9 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 			tool: "switchMode",
 			mode: mode_slug ?? "",
 			reason: reason ?? "",
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		})
 
 		await task.ask("tool", partialMessage, block.partial).catch(() => {})

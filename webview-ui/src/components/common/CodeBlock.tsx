@@ -143,7 +143,7 @@ export const StyledPre = styled.div<{
 		word-break: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "normal")};
 		overflow-wrap: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "break-word")};
 		font-size: 0.95em;
-		font-family: var(--vscode-editor-font-family);
+		font-family: var(--font-mono);
 	}
 
 	pre > code {

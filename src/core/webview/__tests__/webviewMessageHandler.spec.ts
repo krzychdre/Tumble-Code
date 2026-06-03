@@ -4,6 +4,9 @@ import type { Mock } from "vitest"
 
 // Mock dependencies - must come before imports
 vi.mock("../../../api/providers/fetchers/modelCache")
+vi.mock("../../../api/providers/fetchers/lmstudio", () => ({
+	getLMStudioModels: vi.fn(),
+}))
 
 vi.mock("../../../integrations/openai-codex/oauth", () => ({
 	openAiCodexOAuthManager: {
@@ -42,11 +45,13 @@ import type { ModelRecord } from "@roo-code/types"
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import type { ClineProvider } from "../ClineProvider"
 import { getModels } from "../../../api/providers/fetchers/modelCache"
+import { getLMStudioModels } from "../../../api/providers/fetchers/lmstudio"
 import { getCommands } from "../../../services/command/commands"
 const { openAiCodexOAuthManager } = await import("../../../integrations/openai-codex/oauth")
 const { fetchOpenAiCodexRateLimitInfo } = await import("../../../integrations/openai-codex/rate-limits")
 
 const mockGetModels = getModels as Mock<typeof getModels>
+const mockGetLMStudioModels = getLMStudioModels as Mock<typeof getLMStudioModels>
 const mockGetCommands = vi.mocked(getCommands)
 const mockGetAccessToken = vi.mocked(openAiCodexOAuthManager.getAccessToken)
 const mockGetAccountId = vi.mocked(openAiCodexOAuthManager.getAccountId)
@@ -98,6 +103,10 @@ vi.mock("vscode", () => {
 		workspace: {
 			workspaceFolders: [{ uri: { fsPath: "/mock/workspace" } }],
 			openTextDocument,
+			getConfiguration: vi.fn(() => ({ get: vi.fn() })),
+		},
+		commands: {
+			executeCommand: vi.fn().mockResolvedValue(undefined),
 		},
 	}
 })
@@ -162,10 +171,13 @@ vi.mock("../../mentions/resolveImageMentions", () => ({
 }))
 
 import { resolveImageMentions } from "../../mentions/resolveImageMentions"
+import { Terminal } from "../../../integrations/terminal/Terminal"
+import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
 
 describe("webviewMessageHandler - requestLmStudioModels", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		mockGetLMStudioModels.mockReset()
 		mockClineProvider.getState = vi.fn().mockResolvedValue({
 			apiConfiguration: {
 				lmStudioModelId: "model-1",
@@ -202,6 +214,30 @@ describe("webviewMessageHandler - requestLmStudioModels", () => {
 			type: "lmStudioModels",
 			lmStudioModels: mockModels,
 		})
+	})
+
+	it("prefers the request payload base URL over persisted settings", async () => {
+		mockGetLMStudioModels.mockResolvedValue({})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestLmStudioModels",
+			values: { baseUrl: "http://127.0.0.1:4321" },
+		})
+
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321")
+		expect(mockGetModels).not.toHaveBeenCalled()
+	})
+
+	it("treats an empty-string base URL as an explicit preview request", async () => {
+		mockGetLMStudioModels.mockResolvedValue({})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "requestLmStudioModels",
+			values: { baseUrl: "" },
+		})
+
+		expect(mockGetLMStudioModels).toHaveBeenCalledWith("")
+		expect(mockGetModels).not.toHaveBeenCalled()
 	})
 })
 
@@ -322,12 +358,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			}),
 		)
 		expect(mockGetModels).toHaveBeenCalledWith({ provider: "vercel-ai-gateway" })
-		expect(mockGetModels).toHaveBeenCalledWith(
-			expect.objectContaining({
-				provider: "roo",
-				baseUrl: expect.any(String),
-			}),
-		)
 		expect(mockGetModels).toHaveBeenCalledWith({
 			provider: "litellm",
 			apiKey: "litellm-key",
@@ -343,7 +373,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				unbound: mockModels,
 				litellm: mockModels,
 				poe: {},
-				roo: mockModels,
 				ollama: {},
 				lmstudio: {},
 				"vercel-ai-gateway": mockModels,
@@ -428,7 +457,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				openrouter: mockModels,
 				requesty: mockModels,
 				unbound: mockModels,
-				roo: mockModels,
 				litellm: {},
 				poe: {},
 				ollama: {},
@@ -456,7 +484,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockResolvedValueOnce(mockModels) // unbound
 			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway
-			.mockResolvedValueOnce(mockModels) // roo
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -485,7 +512,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 				openrouter: mockModels,
 				requesty: {},
 				unbound: mockModels,
-				roo: mockModels,
 				litellm: {},
 				poe: {},
 				ollama: {},
@@ -504,7 +530,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
 			.mockRejectedValueOnce(new Error("Unbound error")) // unbound
 			.mockRejectedValueOnce(new Error("Vercel AI Gateway error")) // vercel-ai-gateway
-			.mockRejectedValueOnce(new Error("Roo API error")) // roo
 			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
 
 		await webviewMessageHandler(mockClineProvider, {
@@ -538,13 +563,6 @@ describe("webviewMessageHandler - requestRouterModels", () => {
 			success: false,
 			error: "Vercel AI Gateway error",
 			values: { provider: "vercel-ai-gateway" },
-		})
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "Roo API error",
-			values: { provider: "roo" },
 		})
 
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
@@ -832,6 +850,129 @@ describe("webviewMessageHandler - mcpEnabled", () => {
 
 		expect((mockClineProvider as any).getMcpHub).toHaveBeenCalledTimes(1)
 		expect(mockClineProvider.postStateToWebview).toHaveBeenCalledTimes(1)
+	})
+})
+
+describe("webviewMessageHandler - terminalProfile", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		Terminal.setTerminalProfile(undefined)
+	})
+
+	afterEach(() => {
+		Terminal.setTerminalProfile(undefined)
+		vi.restoreAllMocks()
+	})
+
+	it("normalizes and persists a saved terminalProfile, then closes stale idle terminals", async () => {
+		const closeIdleTerminalsSpy = vi.spyOn(TerminalRegistry, "closeIdleTerminals").mockImplementation(() => {})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { terminalProfile: " Git Bash " },
+		})
+
+		expect(Terminal.getTerminalProfile()).toBe("Git Bash")
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("terminalProfile", "Git Bash")
+		expect(closeIdleTerminalsSpy).toHaveBeenCalledTimes(1)
+	})
+
+	it("does not close idle terminals when hydration sends the unchanged profile", async () => {
+		Terminal.setTerminalProfile("Git Bash")
+		const closeIdleTerminalsSpy = vi.spyOn(TerminalRegistry, "closeIdleTerminals").mockImplementation(() => {})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { terminalProfile: " Git Bash " },
+		})
+
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("terminalProfile", "Git Bash")
+		expect(closeIdleTerminalsSpy).not.toHaveBeenCalled()
+	})
+
+	it("clears the persisted profile when SettingsView sends the empty-string sentinel", async () => {
+		Terminal.setTerminalProfile("Git Bash")
+		const closeIdleTerminalsSpy = vi.spyOn(TerminalRegistry, "closeIdleTerminals").mockImplementation(() => {})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { terminalProfile: "" },
+		})
+
+		expect(Terminal.getTerminalProfile()).toBeUndefined()
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("terminalProfile", undefined)
+		expect(closeIdleTerminalsSpy).toHaveBeenCalledTimes(1)
+	})
+
+	it("does not close idle terminals when the empty-string sentinel leaves the profile unset", async () => {
+		const closeIdleTerminalsSpy = vi.spyOn(TerminalRegistry, "closeIdleTerminals").mockImplementation(() => {})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { terminalProfile: "" },
+		})
+
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("terminalProfile", undefined)
+		expect(closeIdleTerminalsSpy).not.toHaveBeenCalled()
+	})
+
+	it("treats non-string terminalProfile values as unset", async () => {
+		Terminal.setTerminalProfile("Git Bash")
+		const closeIdleTerminalsSpy = vi.spyOn(TerminalRegistry, "closeIdleTerminals").mockImplementation(() => {})
+
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateSettings",
+			updatedSettings: { terminalProfile: 42 as any },
+		})
+
+		expect(Terminal.getTerminalProfile()).toBeUndefined()
+		expect(mockClineProvider.contextProxy.setValue).toHaveBeenCalledWith("terminalProfile", undefined)
+		expect(closeIdleTerminalsSpy).toHaveBeenCalledTimes(1)
+	})
+})
+
+describe("webviewMessageHandler - requestTerminalProfiles", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it("posts available profile names", async () => {
+		vi.spyOn(Terminal, "getAvailableProfileNames").mockReturnValue(["Git Bash", "bash"])
+
+		await webviewMessageHandler(mockClineProvider, { type: "requestTerminalProfiles" })
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "terminalProfiles",
+			profiles: ["Git Bash", "bash"],
+		})
+	})
+
+	it("posts an empty array when profile discovery throws", async () => {
+		vi.spyOn(Terminal, "getAvailableProfileNames").mockImplementation(() => {
+			throw new Error("config error")
+		})
+
+		await webviewMessageHandler(mockClineProvider, { type: "requestTerminalProfiles" })
+
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "terminalProfiles",
+			profiles: [],
+		})
+	})
+})
+
+describe("webviewMessageHandler - openTerminalProfilePicker", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("executes the VS Code selectDefaultShell command", async () => {
+		await webviewMessageHandler(mockClineProvider, { type: "openTerminalProfilePicker" })
+		expect(vscode.commands.executeCommand).toHaveBeenCalledWith("workbench.action.terminal.selectDefaultShell")
 	})
 })
 

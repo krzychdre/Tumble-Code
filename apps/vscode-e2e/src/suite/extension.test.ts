@@ -32,10 +32,12 @@ suite("Roo Code Extension", function () {
 			"terminalExplainCommand",
 		]
 
-		const commands = new Set((await vscode.commands.getCommands(true)).filter((cmd) => cmd.startsWith("roo-cline")))
+		const commands = new Set(
+			(await vscode.commands.getCommands(true)).filter((cmd) => cmd.startsWith("tumble-code")),
+		)
 
 		for (const command of expectedCommands) {
-			assert.ok(commands.has(`roo-cline.${command}`), `Command ${command} should be registered`)
+			assert.ok(commands.has(`tumble-code.${command}`), `Command ${command} should be registered`)
 		}
 	})
 })

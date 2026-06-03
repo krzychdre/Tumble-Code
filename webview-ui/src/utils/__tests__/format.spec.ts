@@ -1,4 +1,11 @@
-import { formatLargeNumber, formatDate, formatTimeAgo } from "../format"
+import {
+	formatLargeNumber,
+	formatDate,
+	formatTimeAgo,
+	formatTimestamp,
+	formatDateTime,
+	formatDuration,
+} from "../format"
 
 // Mock i18next
 vi.mock("i18next", () => ({
@@ -149,5 +156,50 @@ describe("formatTimeAgo", () => {
 	it("should format years ago", () => {
 		const timestamp = new Date("2021-01-15T12:00:00").getTime() // 3 years ago
 		expect(formatTimeAgo(timestamp)).toBe("3 years ago")
+	})
+})
+
+describe("formatTimestamp", () => {
+	it("should format a timestamp as 24-hour HH:MM clock time", () => {
+		const timestamp = new Date("2024-01-15T14:30:00").getTime()
+		// 24-hour format: 14:30, never "02:30 PM".
+		expect(formatTimestamp(timestamp)).toBe("14:30")
+	})
+
+	it("should pad the hour and minute components to two digits", () => {
+		const timestamp = new Date("2024-01-15T09:05:00").getTime()
+		expect(formatTimestamp(timestamp)).toBe("09:05")
+	})
+})
+
+describe("formatDateTime", () => {
+	it("should format a timestamp as yyyy-mm-dd hh:mm:ss in 24-hour time", () => {
+		const timestamp = new Date("2024-01-15T14:30:05").getTime()
+		expect(formatDateTime(timestamp)).toBe("2024-01-15 14:30:05")
+	})
+
+	it("should zero-pad every date and time component", () => {
+		const timestamp = new Date("2024-03-07T09:05:08").getTime()
+		expect(formatDateTime(timestamp)).toBe("2024-03-07 09:05:08")
+	})
+})
+
+describe("formatDuration", () => {
+	it("should format sub-minute durations in seconds with one decimal", () => {
+		expect(formatDuration(1200)).toBe("1.2s")
+		expect(formatDuration(800)).toBe("0.8s")
+	})
+
+	it("should format durations of a minute or more as minutes and seconds", () => {
+		expect(formatDuration(65000)).toBe("1m 05s")
+		expect(formatDuration(184000)).toBe("3m 04s")
+	})
+
+	it("should format whole seconds without a trailing decimal artifact", () => {
+		expect(formatDuration(2000)).toBe("2.0s")
+	})
+
+	it("should clamp negative durations to zero", () => {
+		expect(formatDuration(-500)).toBe("0.0s")
 	})
 })

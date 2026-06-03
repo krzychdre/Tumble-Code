@@ -56,6 +56,7 @@ const App = () => {
 	const {
 		didHydrateState,
 		showWelcome,
+		settingsImportedAt,
 		shouldShowAnnouncement,
 		telemetrySetting,
 		telemetryKey,
@@ -90,6 +91,7 @@ const App = () => {
 
 	const settingsRef = useRef<SettingsViewRef>(null)
 	const chatViewRef = useRef<ChatViewRef>(null)
+	const handledImportRef = useRef<number | undefined>(undefined)
 
 	const switchTab = useCallback(
 		(newTab: Tab) => {
@@ -177,6 +179,22 @@ const App = () => {
 		}
 	}, [shouldShowAnnouncement, tab])
 
+	// When settings are imported while the welcome screen is still gating the UI
+	// (e.g. the import cleared the provider config), make sure the user is not
+	// stranded. Recover by routing them into Settings unless they are already on a
+	// reachable tab (settings or marketplace). Runs once per import via the ref guard.
+	useEffect(() => {
+		const isRecoverableTab = tab === "settings" || tab === "marketplace"
+		if (showWelcome && settingsImportedAt && settingsImportedAt !== handledImportRef.current) {
+			handledImportRef.current = settingsImportedAt
+			if (!isRecoverableTab) {
+				setCurrentSection("providers")
+				setCurrentMarketplaceTab(undefined)
+				setTab("settings")
+			}
+		}
+	}, [showWelcome, settingsImportedAt, tab])
+
 	useEffect(() => {
 		if (didHydrateState) {
 			telemetryClient.updateTelemetryState(telemetrySetting, telemetryKey, machineId)
@@ -222,7 +240,10 @@ const App = () => {
 
 	// Do not conditionally load ChatView, it's expensive and there's state we
 	// don't want to lose (user input, disableInput, askResponse promise, etc.)
-	return showWelcome ? (
+	// Keep Settings and Marketplace reachable even while onboarding is gating the
+	// rest of the UI, so an imported-but-incomplete config can still be recovered.
+	const isSetupGatedTab = showWelcome && tab !== "settings" && tab !== "marketplace"
+	return isSetupGatedTab ? (
 		<WelcomeView />
 	) : (
 		<>

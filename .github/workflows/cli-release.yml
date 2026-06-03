@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
@@ -195,7 +195,7 @@ jobs:
           rm -rf "$VERIFY_DIR"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: cli-${{ matrix.platform }}
           path: |
@@ -213,7 +213,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Get version
         id: version
@@ -227,7 +227,7 @@ jobs:
           echo "tag=cli-v$VERSION" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
 
@@ -320,12 +320,12 @@ jobs:
           echo "## Installation" >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
           echo '```bash' >> "$NOTES_FILE"
-          echo "curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh" >> "$NOTES_FILE"
+          echo "curl -fsSL https://raw.githubusercontent.com/krzychdre/tumble-code/main/apps/cli/install.sh | sh" >> "$NOTES_FILE"
           echo '```' >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
           echo "Or install a specific version:" >> "$NOTES_FILE"
           echo '```bash' >> "$NOTES_FILE"
-          echo "ROO_VERSION=$VERSION curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh" >> "$NOTES_FILE"
+          echo "ROO_VERSION=$VERSION curl -fsSL https://raw.githubusercontent.com/krzychdre/tumble-code/main/apps/cli/install.sh | sh" >> "$NOTES_FILE"
           echo '```' >> "$NOTES_FILE"
           echo "" >> "$NOTES_FILE"
           echo "## Requirements" >> "$NOTES_FILE"
@@ -357,7 +357,7 @@ jobs:
           echo '```' >> "$NOTES_FILE"
 
           gh release create "$TAG" \
-            --title "Roo Code CLI v$VERSION" \
+            --title "Tumble Code CLI v$VERSION" \
             --notes-file "$NOTES_FILE" \
             --prerelease \
             release/*
@@ -373,7 +373,7 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
 

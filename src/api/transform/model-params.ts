@@ -148,6 +148,10 @@ export function getModelParams({
 	const params: BaseModelParams = { maxTokens, temperature, reasoningEffort, reasoningBudget, verbosity }
 
 	if (format === "anthropic") {
+		if (model.supportsTemperature === false) {
+			params.temperature = undefined
+		}
+
 		return {
 			format,
 			...params,

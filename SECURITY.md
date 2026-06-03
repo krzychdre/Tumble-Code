@@ -2,16 +2,18 @@
 
 ## Supported Versions
 
-We actively patch only the most recent minor release of Roo Code. Older versions receive fixes at our discretion.
+We actively patch only the most recent minor release of Tumble Code. Older versions receive fixes at our discretion.
 
 ## Reporting a Vulnerability
 
-Email security@roocode.com with:
+<!-- Please report vulnerabilities privately via [GitHub security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new) with: -->
+
+Please report vulnerabilities privately to a maintainer through whichever contact channel Tumble Code publishes once it has one set up, including:
 
 - A short summary of the issue
 - Steps to reproduce or a proof of concept
 - Any logs, stack traces, or screenshots that might help us understand the problem
 
-We acknowledge reports within 48 hours and aim to release a fix or mitigation within 30 days. While we work on a resolution, please keep the details private.
+We aim to acknowledge reports within a reasonable timeframe and release a fix or mitigation as quickly as the severity warrants. While we work on a resolution, please keep the details private.
 
-Thank you for helping us keep Roo Code users safe.
+Thank you for helping us keep Tumble Code users safe.

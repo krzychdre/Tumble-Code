@@ -21,7 +21,7 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 
 	async execute(params: RunSlashCommandParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { command: commandName, args } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		// Check if run slash command experiment is enabled
 		const provider = task.providerRef.deref()
@@ -90,6 +90,9 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 				source: command.source,
 				description: command.description,
 				mode: command.mode,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder.
+				toolCallId,
 			})
 
 			const didApprove = await askApproval("tool", toolMessage)
@@ -144,6 +147,9 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 			tool: "runSlashCommand",
 			command: commandName,
 			args: args,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		})
 
 		await task.ask("tool", partialMessage, block.partial).catch(() => {})

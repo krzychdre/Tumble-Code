@@ -11,9 +11,9 @@
 </sub>
 </div>
 
-# Contributing to Roo Code
+# Contributing to Tumble Code
 
-Roo Code is a community-driven project, and we deeply value every contribution. To streamline collaboration, we operate on an [Issue-First](#issue-first-approach) basis, meaning all [Pull Requests (PRs)](#submitting-a-pull-request) must first be linked to a GitHub Issue. Please review this guide carefully.
+Tumble Code is a community-driven fork of [Roo Code](https://github.com/RooCodeInc/Roo-Code), and we deeply value every contribution. To streamline collaboration, we operate on an [Issue-First](#issue-first-approach) basis, meaning all [Pull Requests (PRs)](#submitting-a-pull-request) must first be linked to a GitHub Issue. Please review this guide carefully.
 
 ## Table of Contents
 
@@ -28,9 +28,9 @@ Roo Code is a community-driven project, and we deeply value every contribution. 
 
 All contributors must adhere to our [Code of Conduct](./CODE_OF_CONDUCT.md).
 
-### 2. Project Roadmap
+### 2. Project Direction
 
-Our roadmap guides the project's direction. Align your contributions with these key goals:
+Tumble Code inherits Roo Code's focus areas and extends them. Align your contributions with:
 
 ### Reliability First
 
@@ -52,11 +52,6 @@ Our roadmap guides the project's direction. Align your contributions with these 
 
 Mention alignment with these areas in your PRs.
 
-### 3. Join the Roo Code Community
-
-- **Primary:** Join our [Discord](https://discord.gg/roocode) and DM **Hannes Rudolph (`hrudolph`)**.
-- **Alternative:** Experienced contributors can engage directly via [GitHub Projects](https://github.com/orgs/RooCodeInc/projects/1).
-
 ## Finding & Planning Your Contribution
 
 ### Types of Contributions
@@ -67,28 +62,22 @@ Mention alignment with these areas in your PRs.
 
 ### Issue-First Approach
 
-All contributions start with a GitHub Issue using our skinny templates.
+All contributions start with a GitHub Issue.
 
-- **Check existing issues**: Search [GitHub Issues](https://github.com/RooCodeInc/Roo-Code/issues).
-- **Create an issue** using:
-    - **Enhancements:** "Enhancement Request" template (plain language focused on user benefit).
-    - **Bugs:** "Bug Report" template (minimal repro + expected vs actual + version).
-- **Want to work on it?** Comment "Claiming" on the issue and DM **Hannes Rudolph (`hrudolph`)** on [Discord](https://discord.gg/roocode) to get assigned. Assignment will be confirmed in the thread.
+<!-- External issue-tracking guidance is hidden until contact channels are set up.
+- **Check existing issues**: Search [GitHub Issues](https://github.com/krzychdre/tumble-code/issues).
+- **Create an issue** describing:
+    - **Enhancements:** plain-language description focused on user benefit.
+    - **Bugs:** minimal repro + expected vs actual + version.
+- **Want to work on it?** Comment "Claiming" on the issue to signal intent before opening a PR.
 - **PRs must link to the issue.** Unlinked PRs may be closed.
-
-### Deciding What to Work On
-
-- Check the [GitHub Project](https://github.com/orgs/RooCodeInc/projects/1) for "Issue [Unassigned]" issues.
-- For docs, visit [Roo Code Docs](https://github.com/RooCodeInc/Roo-Code-Docs).
+-->
 
 ### Reporting Bugs
 
 - Check for existing reports first.
-- Create a new bug using the ["Bug Report" template](https://github.com/RooCodeInc/Roo-Code/issues/new/choose) with:
-    - Clear, numbered reproduction steps
-    - Expected vs actual result
-    - Roo Code version (required); API provider/model if relevant
-- **Security issues**: Report privately via [security advisories](https://github.com/RooCodeInc/Roo-Code/security/advisories/new).
+- Create a new bug report with: - Clear, numbered reproduction steps - Expected vs actual result - Tumble Code version (required); API provider/model if relevant
+    <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Development & Submission Process
 
@@ -97,7 +86,7 @@ All contributions start with a GitHub Issue using our skinny templates.
 1. **Fork & Clone:**
 
 ```
-git clone https://github.com/YOUR_USERNAME/Roo-Code.git
+git clone https://github.com/YOUR_USERNAME/tumble-code.git
 ```
 
 2. **Install Dependencies:**
@@ -113,7 +102,7 @@ pnpm install
 - One focused PR per feature or fix.
 - Follow ESLint and TypeScript best practices.
 - Write clear, descriptive commits referencing issues (e.g., `Fixes #123`).
-- Provide thorough testing (`npm test`).
+- Provide thorough testing (`pnpm test`).
 - Rebase onto the latest `main` branch before submission.
 
 ### Submitting a Pull Request
@@ -126,16 +115,14 @@ pnpm install
 
 ### Pull Request Policy
 
-- Must reference an assigned GitHub Issue. To get assigned: comment "Claiming" on the issue and DM **Hannes Rudolph (`hrudolph`)** on [Discord](https://discord.gg/roocode). Assignment will be confirmed in the thread.
+- Must reference an open GitHub Issue.
 - Unlinked PRs may be closed.
-- PRs should pass CI tests, align with the roadmap, and have clear documentation.
+- PRs should pass CI tests, align with the project direction, and have clear documentation.
 
 ### Review Process
 
-- **Daily Triage:** Quick checks by maintainers.
-- **Weekly In-depth Review:** Comprehensive assessment.
-- **Iterate promptly** based on feedback.
+- Iterate promptly based on maintainer feedback.
 
 ## Legal
 
-By contributing, you agree your contributions will be licensed under the Apache 2.0 License, consistent with Roo Code's licensing.
+By contributing, you agree your contributions will be licensed under the Apache 2.0 License, consistent with Tumble Code's licensing (which inherits from the upstream Roo Code Apache 2.0 license).

@@ -84,8 +84,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setTerminalShellIntegrationDisabled: (value: boolean) => void
 	terminalZdotdir?: boolean
 	setTerminalZdotdir: (value: boolean) => void
-	setTtsEnabled: (value: boolean) => void
-	setTtsSpeed: (value: number) => void
+	terminalProfile?: string
 	setEnableCheckpoints: (value: boolean) => void
 	checkpointTimeout: number
 	setCheckpointTimeout: (value: number) => void
@@ -200,8 +199,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		deniedCommands: [],
 		soundEnabled: false,
 		soundVolume: 0.5,
-		ttsEnabled: false,
-		ttsSpeed: 1.0,
 		enableCheckpoints: true,
 		checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Default to 15 seconds
 		language: "en", // Default language code
@@ -233,6 +230,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		terminalZshOhMy: false, // Default Oh My Zsh integration setting
 		terminalZshP10k: false, // Default Powerlevel10k integration setting
 		terminalZdotdir: false, // Default ZDOTDIR handling setting
+		terminalProfile: undefined, // Default VS Code terminal profile (use VS Code default)
 		historyPreviewCollapsed: false, // Initialize the new state (default to expanded)
 		reasoningBlockCollapsed: true, // Default to collapsed
 		enterBehavior: "send", // Default: Enter sends, Shift+Enter creates newline
@@ -474,16 +472,11 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		vscode.postMessage({ type: "webviewDidLaunch" })
 	}, [])
 
-	// Watch for authentication state changes and refresh Roo models
+	// Track cloud authentication transitions; previously refreshed the router model list.
 	useEffect(() => {
 		const currentAuth = state.cloudIsAuthenticated ?? false
-		const currentProvider = state.apiConfiguration?.apiProvider
-		if (!prevCloudIsAuthenticated && currentAuth && currentProvider === "roo") {
-			// User just authenticated and Roo is the active provider - refresh Roo models
-			vscode.postMessage({ type: "requestRooModels" })
-		}
 		setPrevCloudIsAuthenticated(currentAuth)
-	}, [state.cloudIsAuthenticated, prevCloudIsAuthenticated, state.apiConfiguration?.apiProvider])
+	}, [state.cloudIsAuthenticated, prevCloudIsAuthenticated])
 
 	const contextValue: ExtensionStateContextType = {
 		...state,
@@ -497,7 +490,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		openedTabs,
 		commands,
 		soundVolume: state.soundVolume,
-		ttsSpeed: state.ttsSpeed,
 		writeDelayMs: state.writeDelayMs,
 		routerModels: extensionRouterModels,
 		cloudIsAuthenticated: state.cloudIsAuthenticated ?? false,
@@ -533,8 +525,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setAllowedMaxCost: (value) => setState((prevState) => ({ ...prevState, allowedMaxCost: value })),
 		setSoundEnabled: (value) => setState((prevState) => ({ ...prevState, soundEnabled: value })),
 		setSoundVolume: (value) => setState((prevState) => ({ ...prevState, soundVolume: value })),
-		setTtsEnabled: (value) => setState((prevState) => ({ ...prevState, ttsEnabled: value })),
-		setTtsSpeed: (value) => setState((prevState) => ({ ...prevState, ttsSpeed: value })),
 		setEnableCheckpoints: (value) => setState((prevState) => ({ ...prevState, enableCheckpoints: value })),
 		setCheckpointTimeout: (value) => setState((prevState) => ({ ...prevState, checkpointTimeout: value })),
 		setWriteDelayMs: (value) => setState((prevState) => ({ ...prevState, writeDelayMs: value })),

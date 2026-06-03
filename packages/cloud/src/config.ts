@@ -1,6 +1,6 @@
-export const PRODUCTION_CLERK_BASE_URL = "https://clerk.roocode.com"
-export const PRODUCTION_ROO_CODE_API_URL = "https://app.roocode.com"
-export const PRODUCTION_ROO_CODE_PROVIDER_URL = "https://api.roocode.com/proxy"
+export const PRODUCTION_CLERK_BASE_URL = "https://auth.tumblecode.dev"
+export const PRODUCTION_ROO_CODE_API_URL = "https://app.tumblecode.dev"
+export const PRODUCTION_ROO_CODE_PROVIDER_URL = "https://api.tumblecode.dev/proxy"
 
 // Runtime overrides (set from VS Code configuration, take priority over env vars)
 let runtimeClerkBaseUrl: string | undefined
@@ -23,7 +23,7 @@ export const setClerkBaseUrl = (url: string | undefined) => {
  * 2. CLERK_BASE_URL environment variable
  * 3. Auto-detect: if the Roo Code API URL is non-production, use it as the
  *    Clerk base URL (self-hosted deployments serve Clerk-compatible endpoints)
- * 4. Production default (https://clerk.roocode.com)
+ * 4. Production default (https://auth.tumblecode.dev)
  *
  * The auto-detect step (3) is critical for self-hosted deployments: when the
  * user configures ROO_CODE_API_URL (or cloudApiUrl in VS Code) to point to
@@ -58,7 +58,7 @@ export const getRooCodeApiUrl = () =>
 
 /**
  * Set the Roo Code Provider URL at runtime (e.g. from VS Code configuration).
- * This is the base URL for the Roo cloud proxy/provider (e.g. "https://api.roocode.com/proxy").
+ * This is the base URL for the Roo cloud proxy/provider (e.g. "https://api.tumblecode.dev/proxy").
  * Pass `undefined` to clear the override and fall back to env var / default.
  */
 export const setRooCodeProviderUrl = (url: string | undefined) => {

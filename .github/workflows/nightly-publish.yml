@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read # No tags pushed → read is enough.
+      contents: write # Needed to create the nightly GitHub release + tag.
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
       - name: Setup Node.js and pnpm
@@ -25,7 +25,10 @@ jobs:
         id: version
         env:
           RUN_NUMBER: ${{ github.run_number }}
-        run: echo "number=$(( 5500 + ${RUN_NUMBER} ))" >> $GITHUB_OUTPUT
+        run: |
+          NUMBER=$(( 5500 + ${RUN_NUMBER} ))
+          echo "number=${NUMBER}" >> $GITHUB_OUTPUT
+          echo "version=0.0.${NUMBER}" >> $GITHUB_OUTPUT
       - name: Patch package.json version
         env:
           VERSION_NUMBER: ${{ steps.version.outputs.number }}
@@ -42,11 +45,18 @@ jobs:
           EOF
       - name: Build VSIX
         run: pnpm vsix:nightly # Produces bin/roo-code-nightly-0.0.[count].vsix
-      - name: Publish to VS Code Marketplace
+      # Marketplace publishing is disabled for this fork (no VSCE_PAT / OVSX_PAT).
+      # Instead, attach the nightly VSIX to a GitHub prerelease for direct download.
+      - name: Create nightly GitHub Release
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: npx vsce publish --packagePath "bin/$(/bin/ls bin | head -n1)"
-      - name: Publish to Open VSX Registry
-        env:
-          OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx ovsx publish "bin/$(ls bin | head -n1)"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          VSIX_PATH="bin/$(ls bin | head -n1)"
+          gh release create "nightly-v${VERSION}" \
+            --title "Nightly v${VERSION}" \
+            --notes "Automated nightly build from ${GITHUB_SHA}. Download the \`.vsix\` below and install it in VS Code via \"Extensions: Install from VSIX...\"." \
+            --prerelease \
+            --target "${GITHUB_SHA}" \
+            "${VSIX_PATH}"
+          echo "Published nightly release nightly-v${VERSION} with asset ${VSIX_PATH}"

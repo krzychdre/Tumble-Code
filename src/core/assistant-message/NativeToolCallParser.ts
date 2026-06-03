@@ -637,6 +637,16 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "tools_load":
+				if (partialArgs.names !== undefined) {
+					nativeArgs = {
+						names: Array.isArray(partialArgs.names)
+							? partialArgs.names.filter((n: unknown): n is string => typeof n === "string")
+							: [],
+					}
+				}
+				break
+
 			default:
 				break
 		}
@@ -984,6 +994,14 @@ export class NativeToolCallParser {
 							todos: args.todos,
 						} as NativeArgsFor<TName>
 					}
+					break
+
+				case "tools_load":
+					nativeArgs = {
+						names: Array.isArray(args.names)
+							? args.names.filter((n: unknown): n is string => typeof n === "string")
+							: [],
+					} as NativeArgsFor<TName>
 					break
 
 				default:

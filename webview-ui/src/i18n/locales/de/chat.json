@@ -1,5 +1,5 @@
 {
-	"greeting": "Willkommen bei Roo Code",
+	"greeting": "Willkommen bei Tumble Code",
 	"task": {
 		"title": "Aufgabe",
 		"expand": "Aufgabe erweitern",
@@ -21,7 +21,7 @@
 		"sharePublicly": "Öffentlich teilen",
 		"sharePubliclyDescription": "Jeder mit dem Link kann zugreifen",
 		"connectToCloud": "Mit Cloud verbinden",
-		"connectToCloudDescription": "Melde dich bei Roo Code Cloud an, um Aufgaben zu teilen",
+		"connectToCloudDescription": "Melde dich bei Tumble Code Cloud an, um Aufgaben zu teilen",
 		"sharingDisabledByOrganization": "Freigabe von der Organisation deaktiviert",
 		"shareSuccessOrganization": "Organisationslink in die Zwischenablage kopiert",
 		"shareSuccessPublic": "Öffentlicher Link in die Zwischenablage kopiert",
@@ -98,7 +98,7 @@
 	"enqueueMessage": "Nachricht zur Warteschlange hinzufügen (wird nach Abschluss der aktuellen Aufgabe gesendet)",
 	"scrollToBottom": "Zum Chat-Ende scrollen",
 	"scrollToLatestCheckpoint": "Zum vorherigen Checkpoint scrollen",
-	"about": "Roo Code ist ein ganzes KI-Entwicklerteam in deinem Editor.",
+	"about": "Tumble Code ist ein ganzes KI-Entwicklerteam in deinem Editor.",
 	"docs": "Schau in unsere <DocsLink>Dokumentation</DocsLink>, um mehr zu erfahren.",
 	"onboarding": "Deine Aufgabenliste in diesem Arbeitsbereich ist leer.",
 	"rooTips": {
@@ -115,11 +115,21 @@
 	"selectApiConfig": "API-Konfiguration auswählen",
 	"lockApiConfigAcrossModes": "API-Konfiguration für alle Modi in diesem Arbeitsbereich sperren",
 	"unlockApiConfigAcrossModes": "API-Konfiguration ist für alle Modi in diesem Arbeitsbereich gesperrt (klicke zum Entsperren)",
+	"applyConfigToModes": {
+		"button": "Diese Konfiguration auf andere Modi anwenden",
+		"description": "Wähle aus, welche Modi \"{{config}}\" verwenden sollen.",
+		"selectAll": "Alle auswählen",
+		"selectNone": "Keine auswählen",
+		"current": "aktuell",
+		"back": "Zurück",
+		"apply": "Anwenden",
+		"confirm": "Bestätigen",
+		"confirmPrompt": "Auf {{count}} Modi anwenden?"
+	},
 	"enhancePrompt": "Prompt mit zusätzlichem Kontext verbessern",
 	"addImages": "Bilder zur Nachricht hinzufügen",
 	"sendMessage": "Nachricht senden",
 	"pressToSend": "Drücke {{keyCombination}} zum Senden",
-	"stopTts": "Text-in-Sprache beenden",
 	"typeMessage": "Nachricht eingeben...",
 	"typeTask": "Gib deine Aufgabe hier ein...",
 	"addContext": "@ für Kontext, / für Befehle",
@@ -130,7 +140,7 @@
 		"title": "Modi",
 		"marketplace": "Modus-Marketplace",
 		"settings": "Modus-Einstellungen",
-		"description": "Spezialisierte Personas, die Roos Verhalten anpassen.",
+		"description": "Spezialisierte Personas, die Tumbles Verhalten anpassen.",
 		"searchPlaceholder": "Modi suchen...",
 		"noResults": "Keine Ergebnisse gefunden"
 	},
@@ -144,7 +154,7 @@
 	"diffError": {
 		"title": "Bearbeitung fehlgeschlagen"
 	},
-	"troubleMessage": "Roo hat Probleme...",
+	"troubleMessage": "Tumble hat Probleme...",
 	"apiRequest": {
 		"title": "API-Anfrage",
 		"failed": "API-Anfrage fehlgeschlagen",
@@ -162,7 +172,7 @@
 			"500": "Fehler auf dem Server des Anbieters. Es stimmt etwas mit der Anbieterseite nicht, mit deiner Anfrage stimmt alles.",
 			"docs": "Dokumentation",
 			"goToSettings": "Einstellungen",
-			"unknown": "Unbekannter API-Fehler. Bitte kontaktiere den Roo Code Support.",
+			"unknown": "Unbekannter API-Fehler. Bitte kontaktiere den Tumble Code Support.",
 			"connection": "Verbindungsfehler. Stelle sicher, dass du eine funktionierende Internetverbindung hast.",
 			"claudeCodeNotAuthenticated": "Du musst dich anmelden, um Claude Code zu verwenden. Gehe zu den Einstellungen und klicke auf \"Bei Claude Code anmelden\", um dich zu authentifizieren."
 		}
@@ -187,43 +197,43 @@
 		"current": "Aktuell"
 	},
 	"instructions": {
-		"wantsToFetch": "Roo möchte detaillierte Anweisungen abrufen, um bei der aktuellen Aufgabe zu helfen"
+		"wantsToFetch": "Tumble möchte detaillierte Anweisungen abrufen, um bei der aktuellen Aufgabe zu helfen"
 	},
 	"fileOperations": {
-		"wantsToRead": "Roo möchte diese Datei lesen",
-		"wantsToReadAndXMore": "Roo möchte diese Datei und {{count}} weitere lesen",
-		"wantsToReadOutsideWorkspace": "Roo möchte diese Datei außerhalb des Arbeitsbereichs lesen",
-		"didRead": "Roo hat diese Datei gelesen",
-		"wantsToEdit": "Roo möchte diese Datei bearbeiten",
-		"wantsToEditOutsideWorkspace": "Roo möchte diese Datei außerhalb des Arbeitsbereichs bearbeiten",
-		"wantsToEditProtected": "Roo möchte eine geschützte Konfigurationsdatei bearbeiten",
-		"wantsToCreate": "Roo möchte eine neue Datei erstellen",
-		"wantsToSearchReplace": "Roo möchte in dieser Datei suchen und ersetzen",
-		"didSearchReplace": "Roo hat Suchen und Ersetzen in dieser Datei durchgeführt",
-		"wantsToInsert": "Roo möchte Inhalte in diese Datei einfügen",
-		"wantsToInsertWithLineNumber": "Roo möchte Inhalte in diese Datei in Zeile {{lineNumber}} einfügen",
-		"wantsToInsertAtEnd": "Roo möchte Inhalte am Ende dieser Datei anhängen",
-		"wantsToReadMultiple": "Roo möchte mehrere Dateien lesen",
-		"wantsToApplyBatchChanges": "Roo möchte Änderungen an mehreren Dateien vornehmen",
-		"wantsToGenerateImage": "Roo möchte ein Bild generieren",
-		"wantsToGenerateImageOutsideWorkspace": "Roo möchte ein Bild außerhalb des Arbeitsbereichs generieren",
-		"wantsToGenerateImageProtected": "Roo möchte ein Bild an einem geschützten Ort generieren",
-		"didGenerateImage": "Roo hat ein Bild generiert"
+		"wantsToRead": "Tumble möchte diese Datei lesen",
+		"wantsToReadAndXMore": "Tumble möchte diese Datei und {{count}} weitere lesen",
+		"wantsToReadOutsideWorkspace": "Tumble möchte diese Datei außerhalb des Arbeitsbereichs lesen",
+		"didRead": "Tumble hat diese Datei gelesen",
+		"wantsToEdit": "Tumble möchte diese Datei bearbeiten",
+		"wantsToEditOutsideWorkspace": "Tumble möchte diese Datei außerhalb des Arbeitsbereichs bearbeiten",
+		"wantsToEditProtected": "Tumble möchte eine geschützte Konfigurationsdatei bearbeiten",
+		"wantsToCreate": "Tumble möchte eine neue Datei erstellen",
+		"wantsToSearchReplace": "Tumble möchte in dieser Datei suchen und ersetzen",
+		"didSearchReplace": "Tumble hat Suchen und Ersetzen in dieser Datei durchgeführt",
+		"wantsToInsert": "Tumble möchte Inhalte in diese Datei einfügen",
+		"wantsToInsertWithLineNumber": "Tumble möchte Inhalte in diese Datei in Zeile {{lineNumber}} einfügen",
+		"wantsToInsertAtEnd": "Tumble möchte Inhalte am Ende dieser Datei anhängen",
+		"wantsToReadMultiple": "Tumble möchte mehrere Dateien lesen",
+		"wantsToApplyBatchChanges": "Tumble möchte Änderungen an mehreren Dateien vornehmen",
+		"wantsToGenerateImage": "Tumble möchte ein Bild generieren",
+		"wantsToGenerateImageOutsideWorkspace": "Tumble möchte ein Bild außerhalb des Arbeitsbereichs generieren",
+		"wantsToGenerateImageProtected": "Tumble möchte ein Bild an einem geschützten Ort generieren",
+		"didGenerateImage": "Tumble hat ein Bild generiert"
 	},
 	"directoryOperations": {
-		"wantsToViewTopLevel": "Roo möchte die Dateien auf oberster Ebene in diesem Verzeichnis anzeigen",
-		"didViewTopLevel": "Roo hat die Dateien auf oberster Ebene in diesem Verzeichnis angezeigt",
-		"wantsToViewRecursive": "Roo möchte rekursiv alle Dateien in diesem Verzeichnis anzeigen",
-		"didViewRecursive": "Roo hat rekursiv alle Dateien in diesem Verzeichnis angezeigt",
-		"wantsToSearch": "Roo möchte dieses Verzeichnis nach <code>{{regex}}</code> durchsuchen",
-		"didSearch": "Roo hat dieses Verzeichnis nach <code>{{regex}}</code> durchsucht",
-		"wantsToSearchOutsideWorkspace": "Roo möchte dieses Verzeichnis (außerhalb des Arbeitsbereichs) nach <code>{{regex}}</code> durchsuchen",
-		"didSearchOutsideWorkspace": "Roo hat dieses Verzeichnis (außerhalb des Arbeitsbereichs) nach <code>{{regex}}</code> durchsucht",
-		"wantsToViewTopLevelOutsideWorkspace": "Roo möchte die Dateien auf oberster Ebene in diesem Verzeichnis (außerhalb des Arbeitsbereichs) anzeigen",
-		"didViewTopLevelOutsideWorkspace": "Roo hat die Dateien auf oberster Ebene in diesem Verzeichnis (außerhalb des Arbeitsbereichs) angezeigt",
-		"wantsToViewRecursiveOutsideWorkspace": "Roo möchte rekursiv alle Dateien in diesem Verzeichnis (außerhalb des Arbeitsbereichs) anzeigen",
-		"didViewRecursiveOutsideWorkspace": "Roo hat rekursiv alle Dateien in diesem Verzeichnis (außerhalb des Arbeitsbereichs) angezeigt",
-		"wantsToViewMultipleDirectories": "Roo möchte mehrere Verzeichnisse anzeigen"
+		"wantsToViewTopLevel": "Tumble möchte die Dateien auf oberster Ebene in diesem Verzeichnis anzeigen",
+		"didViewTopLevel": "Tumble hat die Dateien auf oberster Ebene in diesem Verzeichnis angezeigt",
+		"wantsToViewRecursive": "Tumble möchte rekursiv alle Dateien in diesem Verzeichnis anzeigen",
+		"didViewRecursive": "Tumble hat rekursiv alle Dateien in diesem Verzeichnis angezeigt",
+		"wantsToSearch": "Tumble möchte dieses Verzeichnis nach <code>{{regex}}</code> durchsuchen",
+		"didSearch": "Tumble hat dieses Verzeichnis nach <code>{{regex}}</code> durchsucht",
+		"wantsToSearchOutsideWorkspace": "Tumble möchte dieses Verzeichnis (außerhalb des Arbeitsbereichs) nach <code>{{regex}}</code> durchsuchen",
+		"didSearchOutsideWorkspace": "Tumble hat dieses Verzeichnis (außerhalb des Arbeitsbereichs) nach <code>{{regex}}</code> durchsucht",
+		"wantsToViewTopLevelOutsideWorkspace": "Tumble möchte die Dateien auf oberster Ebene in diesem Verzeichnis (außerhalb des Arbeitsbereichs) anzeigen",
+		"didViewTopLevelOutsideWorkspace": "Tumble hat die Dateien auf oberster Ebene in diesem Verzeichnis (außerhalb des Arbeitsbereichs) angezeigt",
+		"wantsToViewRecursiveOutsideWorkspace": "Tumble möchte rekursiv alle Dateien in diesem Verzeichnis (außerhalb des Arbeitsbereichs) anzeigen",
+		"didViewRecursiveOutsideWorkspace": "Tumble hat rekursiv alle Dateien in diesem Verzeichnis (außerhalb des Arbeitsbereichs) angezeigt",
+		"wantsToViewMultipleDirectories": "Tumble möchte mehrere Verzeichnisse anzeigen"
 	},
 	"commandOutput": "Befehlsausgabe",
 	"commandExecution": {
@@ -245,24 +255,24 @@
 	"response": "Antwort",
 	"arguments": "Argumente",
 	"text": {
-		"rooSaid": "Roo hat gesagt"
+		"rooSaid": "Tumble hat gesagt"
 	},
 	"feedback": {
 		"youSaid": "Du hast gesagt"
 	},
 	"mcp": {
-		"wantsToUseTool": "Roo möchte ein Tool auf dem {{serverName}} MCP-Server verwenden",
-		"wantsToAccessResource": "Roo möchte auf eine Ressource auf dem {{serverName}} MCP-Server zugreifen"
+		"wantsToUseTool": "Tumble möchte ein Tool auf dem {{serverName}} MCP-Server verwenden",
+		"wantsToAccessResource": "Tumble möchte auf eine Ressource auf dem {{serverName}} MCP-Server zugreifen"
 	},
 	"modes": {
-		"wantsToSwitch": "Roo möchte zum <code>{{mode}}</code>-Modus wechseln",
-		"wantsToSwitchWithReason": "Roo möchte zum <code>{{mode}}</code>-Modus wechseln, weil: {{reason}}",
-		"didSwitch": "Roo hat zum <code>{{mode}}</code>-Modus gewechselt",
-		"didSwitchWithReason": "Roo hat zum <code>{{mode}}</code>-Modus gewechselt, weil: {{reason}}"
+		"wantsToSwitch": "Tumble möchte zum <code>{{mode}}</code>-Modus wechseln",
+		"wantsToSwitchWithReason": "Tumble möchte zum <code>{{mode}}</code>-Modus wechseln, weil: {{reason}}",
+		"didSwitch": "Tumble hat zum <code>{{mode}}</code>-Modus gewechselt",
+		"didSwitchWithReason": "Tumble hat zum <code>{{mode}}</code>-Modus gewechselt, weil: {{reason}}"
 	},
 	"subtasks": {
-		"wantsToCreate": "Roo möchte eine neue Teilaufgabe im <code>{{mode}}</code>-Modus erstellen",
-		"wantsToFinish": "Roo möchte diese Teilaufgabe abschließen",
+		"wantsToCreate": "Tumble möchte eine neue Teilaufgabe im <code>{{mode}}</code>-Modus erstellen",
+		"wantsToFinish": "Tumble möchte diese Teilaufgabe abschließen",
 		"newTaskContent": "Teilaufgabenanweisungen",
 		"completionContent": "Teilaufgabe abgeschlossen",
 		"resultContent": "Teilaufgabenergebnisse",
@@ -271,7 +281,7 @@
 		"goToSubtask": "Aufgabe anzeigen"
 	},
 	"questions": {
-		"hasQuestion": "Roo hat eine Frage"
+		"hasQuestion": "Tumble hat eine Frage"
 	},
 	"taskCompleted": "Aufgabe abgeschlossen",
 	"modelResponseIncomplete": "Modellantwort unvollständig",
@@ -287,7 +297,7 @@
 		"copyToClipboard": "In Zwischenablage kopieren",
 		"copied": "Kopiert!",
 		"diagnostics": "Detaillierte Fehlerinformationen abrufen",
-		"proxyProvider": "Du scheinst einen Proxy-basierten Anbieter zu verwenden. Überprüfe unbedingt seine Protokolle und stelle sicher, dass er Roos Anfragen nicht umschreibt."
+		"proxyProvider": "Du scheinst einen Proxy-basierten Anbieter zu verwenden. Überprüfe unbedingt seine Protokolle und stelle sicher, dass er Tumbles Anfragen nicht umschreibt."
 	},
 	"powershell": {
 		"issues": "Es scheint, dass du Probleme mit Windows PowerShell hast, bitte sieh dir dies an"
@@ -330,31 +340,31 @@
 		}
 	},
 	"skill": {
-		"wantsToLoad": "Roo möchte eine Fähigkeit laden",
-		"didLoad": "Roo hat eine Fähigkeit geladen"
+		"wantsToLoad": "Tumble möchte eine Fähigkeit laden",
+		"didLoad": "Tumble hat eine Fähigkeit geladen"
 	},
 	"followUpSuggest": {
 		"copyToInput": "In Eingabefeld kopieren (oder Shift + Klick)",
 		"timerPrefix": "Automatische Genehmigung aktiviert. Wähle in {{seconds}}s…"
 	},
 	"announcement": {
-		"title": "Roo Code {{version}} veröffentlicht",
-		"support": "Bitte unterstütze Roo Code, indem du uns auf <githubLink>GitHub</githubLink> einen Stern gibst.",
+		"title": "Tumble Code {{version}} veröffentlicht",
+		"support": "Bitte unterstütze Tumble Code, indem du uns auf <githubLink>GitHub</githubLink> einen Stern gibst.",
 		"stealthModel": {
-			"feature": "<bold>Zeitlich begrenztes KOSTENLOSES Stealth-Modell</bold> - Code Supernova: Jetzt mit einem <bold>1M Token Kontextfenster</bold> erweitert! Ein vielseitiges agentisches Coding-Modell, das Bildeingaben unterstützt und über Roo Code Cloud zugänglich ist.",
+			"feature": "<bold>Zeitlich begrenztes KOSTENLOSES Stealth-Modell</bold> - Code Supernova: Jetzt mit einem <bold>1M Token Kontextfenster</bold> erweitert! Ein vielseitiges agentisches Coding-Modell, das Bildeingaben unterstützt und über Tumble Code Cloud zugänglich ist.",
 			"note": "(Hinweis: Prompts und Vervollständigungen werden vom Modellersteller protokolliert und zur Verbesserung des Modells verwendet)",
-			"connectButton": "Mit Roo Code Cloud verbinden",
-			"selectModel": "Wähle <code>roo/code-supernova</code> vom Roo Code Cloud-Provider in den Einstellungen aus, um zu beginnen.",
+			"connectButton": "Mit Tumble Code Cloud verbinden",
+			"selectModel": "Wähle <code>roo/code-supernova</code> vom Tumble Code Cloud-Provider in den Einstellungen aus, um zu beginnen.",
 			"goToSettingsButton": "Zu den Einstellungen"
 		},
 		"handoff": {
-			"heading": "Das Roo Code-Plugin verschwindet nicht.",
-			"description": "Du hast vielleicht die neuliche Ankündigung gesehen, dass Roo Code 3 Millionen Installationen erreicht hat und das ursprüngliche Team sich voll auf Roomote konzentriert. Wir wissen, dass diese Nachricht für viele von euch schwer war. Dieses Plugin bedeutet uns und dir sehr viel, und wir hören dich. Die gute Nachricht: <bold>ein Community-Team hat sich bereit erklärt, Roo Code weiterzuführen</bold>, und wir arbeiten mit ihnen an einer offiziellen Übergabe, damit das Plugin, auf das du dich verlässt, weiterhin gepflegt und verbessert wird.",
-			"readMore": "Die ursprüngliche Ankündigung von Matt Rubens lesen"
+			"heading": "From Roo Code to Tumble Code",
+			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
+			"readMore": "Read the original Roo Code handoff announcement"
 		},
 		"release": {
 			"heading": "Was ist neu:",
-			"gpt55": "GPT-5.5 via OpenAI Codex: GPT-5.5-Unterstützung im OpenAI Codex-Provider hinzugefügt, damit du das neueste Modell direkt aus Roo Code heraus nutzen kannst.",
+			"gpt55": "GPT-5.5 via OpenAI Codex: GPT-5.5-Unterstützung im OpenAI Codex-Provider hinzugefügt, damit du das neueste Modell direkt aus Tumble Code heraus nutzen kannst.",
 			"claudeOpus47": "Claude Opus 4.7 auf Vertex AI: Claude Opus 4.7 zum Vertex AI-Provider hinzugefügt – Anthropics neuestes Flaggschiff-Reasoning-Modell.",
 			"checkpointNav": "Navigation zu vorherigen Checkpoints: Neue Steuerelemente im Chat, um durch frühere Checkpoints zurückzuspringen, mit vollständiger i18n-Unterstützung."
 		},
@@ -380,24 +390,24 @@
 	"profileViolationWarning": "Das aktuelle Profil ist nicht kompatibel mit den Einstellungen deiner Organisation",
 	"shellIntegration": {
 		"title": "Befehlsausführungswarnung",
-		"description": "Dein Befehl wird ohne VSCode Terminal-Shell-Integration ausgeführt. Um diese Warnung zu unterdrücken, kannst du die Shell-Integration im Abschnitt <strong>Terminal</strong> der <settingsLink>Roo Code Einstellungen</settingsLink> deaktivieren oder die VSCode Terminal-Integration mit dem Link unten beheben.",
+		"description": "Dein Befehl wird ohne VSCode Terminal-Shell-Integration ausgeführt. Um diese Warnung zu unterdrücken, kannst du die Shell-Integration im Abschnitt <strong>Terminal</strong> der <settingsLink>Tumble Code Einstellungen</settingsLink> deaktivieren oder die VSCode Terminal-Integration mit dem Link unten beheben.",
 		"troubleshooting": "Klicke hier für die Shell-Integrationsdokumentation."
 	},
 	"ask": {
 		"autoApprovedRequestLimitReached": {
 			"title": "Limit für automatisch genehmigte Anfragen erreicht",
-			"description": "Roo hat das automatisch genehmigte Limit von {{count}} API-Anfrage(n) erreicht. Möchtest du den Zähler zurücksetzen und mit der Aufgabe fortfahren?",
+			"description": "Tumble hat das automatisch genehmigte Limit von {{count}} API-Anfrage(n) erreicht. Möchtest du den Zähler zurücksetzen und mit der Aufgabe fortfahren?",
 			"button": "Zurücksetzen und fortfahren"
 		},
 		"autoApprovedCostLimitReached": {
-			"description": "Roo hat das automatisch genehmigte Kostenlimit von ${{count}} erreicht. Möchten Sie die Kosten zurücksetzen und mit der Aufgabe fortfahren?",
+			"description": "Tumble hat das automatisch genehmigte Kostenlimit von ${{count}} erreicht. Möchten Sie die Kosten zurücksetzen und mit der Aufgabe fortfahren?",
 			"title": "Kostengrenze für automatische Genehmigung erreicht",
 			"button": "Zurücksetzen und Fortfahren"
 		}
 	},
 	"codebaseSearch": {
-		"wantsToSearch": "Roo möchte den Codebase nach <code>{{query}}</code> durchsuchen",
-		"wantsToSearchWithPath": "Roo möchte den Codebase nach <code>{{query}}</code> in <code>{{path}}</code> durchsuchen",
+		"wantsToSearch": "Tumble möchte den Codebase nach <code>{{query}}</code> durchsuchen",
+		"wantsToSearchWithPath": "Tumble möchte den Codebase nach <code>{{query}}</code> in <code>{{path}}</code> durchsuchen",
 		"didSearch_one": "1 Ergebnis gefunden",
 		"didSearch_other": "{{count}} Ergebnisse gefunden",
 		"resultTooltip": "Ähnlichkeitswert: {{score}} (klicken zum Öffnen der Datei)"
@@ -438,7 +448,7 @@
 		"ariaLabel": "Version {{version}} - Klicken Sie, um die Versionshinweise anzuzeigen"
 	},
 	"rooCloudCTA": {
-		"title": "Roo Code Cloud entwickelt sich weiter!",
+		"title": "Tumble Code Cloud entwickelt sich weiter!",
 		"description": "Führe Remote-Agenten in der Cloud aus, greife von überall auf deine Aufgaben zu, arbeite mit anderen zusammen und vieles mehr.",
 		"joinWaitlist": "Melde dich an, um die neuesten Updates zu erhalten."
 	},
@@ -479,8 +489,8 @@
 		"clickToEdit": "Klicken zum Bearbeiten der Nachricht"
 	},
 	"slashCommand": {
-		"wantsToRun": "Roo möchte einen Slash-Befehl ausführen",
-		"didRun": "Roo hat einen Slash-Befehl ausgeführt"
+		"wantsToRun": "Tumble möchte einen Slash-Befehl ausführen",
+		"didRun": "Tumble hat einen Slash-Befehl ausgeführt"
 	},
 	"todo": {
 		"partial": "{{completed}} von {{total}} To-Dos erledigt",
@@ -499,11 +509,11 @@
 		"openMcpSettings": "MCP-Einstellungen öffnen"
 	},
 	"readCommandOutput": {
-		"title": "Roo las Befehlsausgabe"
+		"title": "Tumble las Befehlsausgabe"
 	},
 	"retiredProvider": {
 		"title": "Anbieter wird nicht mehr unterstützt",
-		"message": "Leider wird dieser Anbieter nicht mehr unterstützt. Wir haben festgestellt, dass nur sehr wenige Roo-Nutzer ihn tatsächlich verwendet haben, und wir müssen den Umfang unserer Codebasis reduzieren, damit wir weiterhin schnell liefern und unserer Community in diesem Bereich gut dienen können. Es war eine wirklich schwere Entscheidung, aber sie ermöglicht uns, uns auf das zu konzentrieren, was dir am wichtigsten ist. Es ist ärgerlich, das wissen wir.",
+		"message": "Leider wird dieser Anbieter nicht mehr unterstützt. Wir haben festgestellt, dass nur sehr wenige Tumble-Nutzer ihn tatsächlich verwendet haben, und wir müssen den Umfang unserer Codebasis reduzieren, damit wir weiterhin schnell liefern und unserer Community in diesem Bereich gut dienen können. Es war eine wirklich schwere Entscheidung, aber sie ermöglicht uns, uns auf das zu konzentrieren, was dir am wichtigsten ist. Es ist ärgerlich, das wissen wir.",
 		"openSettings": "Einstellungen öffnen"
 	}
 }

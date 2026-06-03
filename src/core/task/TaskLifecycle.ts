@@ -6,7 +6,7 @@ import {
 	type ClineApiReqCancelReason,
 	type ClineMessage,
 	RooCodeEventName,
-	MAX_MCP_TOOLS_THRESHOLD,
+	getMaxMcpToolsThreshold,
 } from "@roo-code/types"
 
 import { type ClineProvider } from "../webview/ClineProvider"
@@ -420,15 +420,20 @@ export class TaskLifecycle {
 
 			await this.access.askSay.say("text", task, images)
 
-			// Check for too many MCP tools and warn the user
+			// Check for too many MCP tools and warn the user. The threshold is
+			// relaxed when the `deferredTools` experiment is on, because deferred
+			// loading keeps MCP tool schemas out of the per-turn prompt.
 			const { enabledToolCount, enabledServerCount } = await this.access.contextManager.getEnabledMcpToolsCount()
-			if (enabledToolCount > MAX_MCP_TOOLS_THRESHOLD) {
+			const deferredToolsEnabled =
+				(await this.access.providerRef.deref()?.getState())?.experiments?.deferredTools === true
+			const threshold = getMaxMcpToolsThreshold(deferredToolsEnabled)
+			if (enabledToolCount > threshold) {
 				await this.access.askSay.say(
 					"too_many_tools_warning",
 					JSON.stringify({
 						toolCount: enabledToolCount,
 						serverCount: enabledServerCount,
-						threshold: MAX_MCP_TOOLS_THRESHOLD,
+						threshold,
 					}),
 					undefined,
 					undefined,

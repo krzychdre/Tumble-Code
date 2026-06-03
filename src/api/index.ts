@@ -30,7 +30,6 @@ import {
 	SambaNovaHandler,
 	ZAiHandler,
 	FireworksHandler,
-	RooHandler,
 	VercelAiGatewayHandler,
 	MiniMaxHandler,
 	BasetenHandler,
@@ -44,7 +43,6 @@ export interface SingleCompletionHandler {
 export interface ApiHandlerCreateMessageMetadata {
 	/**
 	 * Task ID used for tracking and provider-specific features:
-	 * - Roo: Sent as X-Roo-Task-ID header
 	 * - Requesty: Sent as trace_id
 	 */
 	taskId: string
@@ -176,10 +174,6 @@ export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
 			return new ZAiHandler(options)
 		case "fireworks":
 			return new FireworksHandler(options)
-		case "roo":
-			// Never throw exceptions from provider constructors
-			// The provider-proxy server will handle authentication and return appropriate error codes
-			return new RooHandler(options)
 		case "vercel-ai-gateway":
 			return new VercelAiGatewayHandler(options)
 		case "minimax":

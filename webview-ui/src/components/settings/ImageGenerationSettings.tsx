@@ -1,6 +1,6 @@
-import React, { useMemo } from "react"
+import React, { useEffect, useMemo } from "react"
 import { VSCodeCheckbox, VSCodeTextField, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider, getImageGenerationProvider } from "@roo-code/types"
+import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider } from "@roo-code/types"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
 interface ImageGenerationSettingsProps {
@@ -26,11 +26,14 @@ export const ImageGenerationSettings = ({
 }: ImageGenerationSettingsProps) => {
 	const { t } = useAppTranslation()
 
-	// Use shared utility for backwards compatibility logic
-	const currentProvider = getImageGenerationProvider(
-		imageGenerationProvider,
-		!!openRouterImageGenerationSelectedModel,
-	)
+	// Only OpenRouter remains as an image-generation provider; coerce any legacy "roo" value.
+	const currentProvider: ImageGenerationProvider = "openrouter"
+
+	useEffect(() => {
+		if ((imageGenerationProvider as string) === "roo") {
+			setImageGenerationProvider("openrouter")
+		}
+	}, [imageGenerationProvider, setImageGenerationProvider])
 
 	const availableModels = useMemo(() => {
 		return IMAGE_GENERATION_MODELS.filter((model) => model.provider === currentProvider)
@@ -52,30 +55,6 @@ export const ImageGenerationSettings = ({
 		// Otherwise use first available model for current provider
 		return availableModels[0]?.value || IMAGE_GENERATION_MODELS[0].value
 	}, [openRouterImageGenerationSelectedModel, availableModels, currentProvider])
-
-	// Handle provider changes
-	const handleProviderChange = (value: string) => {
-		const newProvider = value as ImageGenerationProvider
-		setImageGenerationProvider(newProvider)
-
-		// Smart model selection when switching providers:
-		// 1. If current model exists for new provider (same model name), keep it
-		// 2. Otherwise, switch to first available model for new provider
-		const providerModels = IMAGE_GENERATION_MODELS.filter((m) => m.provider === newProvider)
-		if (providerModels.length > 0) {
-			// Check if current model exists for new provider
-			const currentModelForNewProvider = providerModels.find(
-				(m) => m.value === openRouterImageGenerationSelectedModel,
-			)
-			if (currentModelForNewProvider) {
-				// Current model exists for new provider, keep it
-				// No need to call setImageGenerationSelectedModel since the value doesn't change
-			} else {
-				// Current model doesn't exist for new provider, switch to first available
-				setImageGenerationSelectedModel(providerModels[0].value)
-			}
-		}
-	}
 
 	// Handle API key changes
 	const handleApiKeyChange = (value: string) => {
@@ -105,52 +84,29 @@ export const ImageGenerationSettings = ({
 
 			{enabled && (
 				<div className="ml-2 space-y-3">
-					{/* Provider Selection */}
+					{/* API Key Configuration (OpenRouter is the only supported provider) */}
 					<div>
 						<label className="block font-medium mb-1">
-							{t("settings:experimental.IMAGE_GENERATION.providerLabel")}
+							{t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyLabel")}
 						</label>
-						<VSCodeDropdown
-							value={currentProvider}
-							onChange={(e: any) => handleProviderChange(e.target.value)}
-							className="w-full">
-							<VSCodeOption value="roo" className="py-2 px-3">
-								Roo Code Cloud
-							</VSCodeOption>
-							<VSCodeOption value="openrouter" className="py-2 px-3">
-								OpenRouter
-							</VSCodeOption>
-						</VSCodeDropdown>
+						<VSCodeTextField
+							value={openRouterImageApiKey || ""}
+							onInput={(e: any) => handleApiKeyChange(e.target.value)}
+							placeholder={t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyPlaceholder")}
+							className="w-full"
+							type="password"
+						/>
 						<p className="text-vscode-descriptionForeground text-xs mt-1">
-							{t("settings:experimental.IMAGE_GENERATION.providerDescription")}
+							{t("settings:experimental.IMAGE_GENERATION.getApiKeyText")}{" "}
+							<a
+								href="https://openrouter.ai/keys"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground">
+								openrouter.ai/keys
+							</a>
 						</p>
 					</div>
-
-					{/* API Key Configuration (only for OpenRouter) */}
-					{currentProvider === "openrouter" && (
-						<div>
-							<label className="block font-medium mb-1">
-								{t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyLabel")}
-							</label>
-							<VSCodeTextField
-								value={openRouterImageApiKey || ""}
-								onInput={(e: any) => handleApiKeyChange(e.target.value)}
-								placeholder={t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyPlaceholder")}
-								className="w-full"
-								type="password"
-							/>
-							<p className="text-vscode-descriptionForeground text-xs mt-1">
-								{t("settings:experimental.IMAGE_GENERATION.getApiKeyText")}{" "}
-								<a
-									href="https://openrouter.ai/keys"
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-vscode-textLink-foreground hover:text-vscode-textLink-activeForeground">
-									openrouter.ai/keys
-								</a>
-							</p>
-						</div>
-					)}
 
 					{/* Model Selection */}
 					<div>

@@ -1,6 +1,8 @@
 import { t } from "i18next"
 import { ArrowRight, Check, ListChecks, SquareDashed } from "lucide-react"
 
+import { BlockTimestamp } from "./BlockTimestamp"
+
 type TodoStatus = "completed" | "in_progress" | "pending"
 
 interface TodoItem {
@@ -12,6 +14,10 @@ interface TodoItem {
 interface TodoChangeDisplayProps {
 	previousTodos: TodoItem[]
 	newTodos: TodoItem[]
+	/** Epoch-ms timestamp marking when this todo-list update started. */
+	startTs?: number
+	/** Epoch-ms timestamp marking when this todo-list update finished, if known. */
+	endTs?: number
 }
 
 function getTodoIcon(status: TodoStatus | null) {
@@ -25,7 +31,7 @@ function getTodoIcon(status: TodoStatus | null) {
 	}
 }
 
-export function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplayProps) {
+export function TodoChangeDisplay({ previousTodos, newTodos, startTs, endTs }: TodoChangeDisplayProps) {
 	const isInitialState = previousTodos.length === 0
 
 	// Determine which todos to display
@@ -58,9 +64,11 @@ export function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplay
 		<div data-todo-changes className="overflow-hidden">
 			<div className="flex items-center gap-2">
 				<ListChecks className="size-4 shrink-0" />
-				<span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold">
+				<span className="overflow-hidden text-ellipsis whitespace-nowrap text-base font-semibold">
 					{t("chat:todo.updated")}
 				</span>
+				{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
+				<div className="flex-1" />
 			</div>
 
 			<div className="pl-1 pr-1 pt-1 font-light leading-normal">
@@ -75,7 +83,10 @@ export function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplay
 									status === "in_progress" ? "text-vscode-charts-yellow" : ""
 								}`}>
 								{icon}
-								<span>{todo.content}</span>
+								<span className="flex-1">{todo.content}</span>
+								{status === "completed" && typeof startTs === "number" && (
+									<BlockTimestamp startTs={startTs} className="mt-1 shrink-0" />
+								)}
 							</li>
 						)
 					})}

@@ -1,7 +1,6 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { useDeepCompareEffect, useEvent } from "react-use"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
-import removeMd from "remove-markdown"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import useSound from "use-sound"
 import { LRUCache } from "lru-cache"
@@ -90,6 +89,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		telemetrySetting,
 		soundEnabled,
 		soundVolume,
+		customSoundUris,
 		cloudIsAuthenticated,
 		messageQueue = [],
 		showWorktreesInHomeScreen,
@@ -155,8 +155,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({})
 	const prevExpandedRowsRef = useRef<Record<number, boolean>>()
 	const scrollContainerRef = useRef<HTMLDivElement>(null)
-	const lastTtsRef = useRef<string>("")
-	const [wasStreaming, setWasStreaming] = useState<boolean>(false)
 	const [checkpointWarning, setCheckpointWarning] = useState<
 		{ type: "WAIT_TIMEOUT" | "INIT_TIMEOUT"; timeout: number } | undefined
 	>(undefined)
@@ -228,9 +226,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const secondLastMessage = useMemo(() => messages.at(-2), [messages])
 
 	const volume = typeof soundVolume === "number" ? soundVolume : 0.5
-	const [playNotification] = useSound(`${audioBaseUri}/notification.wav`, { volume, soundEnabled, interrupt: true })
-	const [playCelebration] = useSound(`${audioBaseUri}/celebration.wav`, { volume, soundEnabled, interrupt: true })
-	const [playProgressLoop] = useSound(`${audioBaseUri}/progress_loop.wav`, { volume, soundEnabled, interrupt: true })
+	const notificationSrc = customSoundUris?.notification ?? `${audioBaseUri}/notification.wav`
+	const celebrationSrc = customSoundUris?.celebration ?? `${audioBaseUri}/celebration.wav`
+	const progressLoopSrc = customSoundUris?.progress_loop ?? `${audioBaseUri}/progress_loop.wav`
+	const [playNotification] = useSound(notificationSrc, { volume, soundEnabled, interrupt: true })
+	const [playCelebration] = useSound(celebrationSrc, { volume, soundEnabled, interrupt: true })
+	const [playProgressLoop] = useSound(progressLoopSrc, { volume, soundEnabled, interrupt: true })
 
 	const lastPlayedRef = useRef<Record<string, number>>({})
 
@@ -263,10 +264,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		},
 		[soundEnabled, playNotification, playCelebration, playProgressLoop],
 	)
-
-	function playTts(text: string) {
-		vscode.postMessage({ type: "playTts", text })
-	}
 
 	useDeepCompareEffect(() => {
 		// if last message is an ask, show user ask UI
@@ -1079,39 +1076,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[isHidden, sendingDisabled, enableButtons],
 	)
 
-	useEffect(() => {
-		// This ensures the first message is not read, future user messages are
-		// labeled as `user_feedback`.
-		if (lastMessage && messages.length > 1) {
-			if (
-				typeof lastMessage.text === "string" && // has text (must be string for startsWith)
-				(lastMessage.say === "text" || lastMessage.say === "completion_result") && // is a text message
-				!lastMessage.partial && // not a partial message
-				!lastMessage.text.startsWith("{") // not a json object
-			) {
-				let text = lastMessage?.text || ""
-				const mermaidRegex = /```mermaid[\s\S]*?```/g
-				// remove mermaid diagrams from text
-				text = text.replace(mermaidRegex, "")
-				// remove markdown from text
-				text = removeMd(text)
-
-				// ensure message is not a duplicate of last read message
-				if (text !== lastTtsRef.current) {
-					try {
-						playTts(text)
-						lastTtsRef.current = text
-					} catch (error) {
-						console.error("Failed to execute text-to-speech:", error)
-					}
-				}
-			}
-		}
-
-		// Update previous value.
-		setWasStreaming(isStreaming)
-	}, [isStreaming, lastMessage, wasStreaming, messages.length])
-
 	const groupedMessages = useMemo(() => {
 		const filtered: ClineMessage[] = visibleMessages
 
@@ -1629,8 +1593,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					)}
 				</>
 			) : (
-				<div className="flex flex-col h-full justify-center p-6 min-h-0 overflow-y-auto gap-4 relative">
-					<div className="flex flex-col items-start gap-2 justify-center h-full min-[400px]:px-6">
+				<div className="flex flex-col h-full p-6 min-h-0 overflow-y-auto gap-4 relative">
+					<div className="flex flex-col items-start gap-2 my-auto min-[400px]:px-6">
 						<VersionIndicator
 							onClick={() => setShowAnnouncementModal(true)}
 							className="absolute top-2 right-3 z-10"

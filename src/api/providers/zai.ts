@@ -79,13 +79,18 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 	) {
 		const { id: model, info } = this.getModel()
 
+		// Honor an explicit user override (the configurable max-output slider); otherwise
+		// fall back to getModelMaxOutputTokens, which clamps to 20% of the context window by
+		// default so GLM models don't over-reserve output budget.
 		const max_tokens =
-			getModelMaxOutputTokens({
+			this.options.modelMaxTokens ||
+			(getModelMaxOutputTokens({
 				modelId: model,
 				model: info,
 				settings: this.options,
 				format: "openai",
-			}) ?? undefined
+			}) ??
+				undefined)
 
 		const temperature = this.options.modelTemperature ?? this.defaultTemperature
 

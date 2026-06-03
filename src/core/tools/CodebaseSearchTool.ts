@@ -19,7 +19,7 @@ export class CodebaseSearchTool extends BaseTool<"codebase_search"> {
 	readonly name = "codebase_search" as const
 
 	async execute(params: CodebaseSearchParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 		const { query, path: directoryPrefix } = params
 
 		const workspacePath = task.cwd && task.cwd.trim() !== "" ? task.cwd : getWorkspacePath()
@@ -41,6 +41,9 @@ export class CodebaseSearchTool extends BaseTool<"codebase_search"> {
 			query: query,
 			path: directoryPrefix,
 			isOutsideWorkspace: false,
+			// Stamp the native tool-call id so the finalized-duplicate dedup
+			// links this complete card to its streaming placeholder.
+			toolCallId,
 		}
 
 		const didApprove = await askApproval("tool", JSON.stringify(sharedMessageProps))
@@ -137,6 +140,9 @@ Code Chunk: ${result.codeChunk}
 			query: query,
 			path: directoryPrefix,
 			isOutsideWorkspace: false,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})

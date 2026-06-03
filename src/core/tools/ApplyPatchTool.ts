@@ -146,7 +146,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		callbacks: ToolCallbacks,
 		isWriteProtected: boolean,
 	): Promise<void> {
-		const { askApproval, pushToolResult } = callbacks
+		const { askApproval, pushToolResult, toolCallId } = callbacks
 
 		// Check if file already exists
 		const fileExists = await fileExistsAtPath(absolutePath)
@@ -186,6 +186,9 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			path: getReadablePath(task.cwd, relPath),
 			diff: sanitizedDiff,
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so the finalized-duplicate dedup
+			// links this complete card to its streaming placeholder.
+			toolCallId,
 		}
 
 		const completeMessage = JSON.stringify({
@@ -237,7 +240,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		callbacks: ToolCallbacks,
 		isWriteProtected: boolean,
 	): Promise<void> {
-		const { askApproval, pushToolResult } = callbacks
+		const { askApproval, pushToolResult, toolCallId } = callbacks
 
 		// Check if file exists
 		const fileExists = await fileExistsAtPath(absolutePath)
@@ -257,6 +260,9 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			path: getReadablePath(task.cwd, relPath),
 			diff: `File will be deleted: ${relPath}`,
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so the finalized-duplicate dedup
+			// links this complete card to its streaming placeholder.
+			toolCallId,
 		}
 
 		const completeMessage = JSON.stringify({
@@ -295,7 +301,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		callbacks: ToolCallbacks,
 		isWriteProtected: boolean,
 	): Promise<void> {
-		const { askApproval, pushToolResult } = callbacks
+		const { askApproval, pushToolResult, toolCallId } = callbacks
 
 		// Check if file exists
 		const fileExists = await fileExistsAtPath(absolutePath)
@@ -343,6 +349,9 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			diff: sanitizedDiff,
 			originalContent,
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so the finalized-duplicate dedup
+			// links this complete card to its streaming placeholder.
+			toolCallId,
 		}
 
 		const completeMessage = JSON.stringify({
@@ -470,6 +479,9 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			path: displayPath || path.basename(task.cwd) || "workspace",
 			diff: patchPreview || "Parsing patch...",
 			isOutsideWorkspace: isPathOutsideWorkspace(absolutePath),
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})

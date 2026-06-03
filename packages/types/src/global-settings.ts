@@ -89,7 +89,7 @@ export const globalSettingsSchema = z.object({
 	dismissedUpsells: z.array(z.string()).optional(),
 
 	// Image generation settings (experimental) - flattened for simplicity
-	imageGenerationProvider: z.enum(["openrouter", "roo"]).optional(),
+	imageGenerationProvider: z.literal("openrouter").optional(),
 	openRouterImageApiKey: z.string().optional(),
 	openRouterImageGenerationSelectedModel: z.string().optional(),
 
@@ -155,10 +155,21 @@ export const globalSettingsSchema = z.object({
 		.max(MAX_CHECKPOINT_TIMEOUT_SECONDS)
 		.optional(),
 
-	ttsEnabled: z.boolean().optional(),
-	ttsSpeed: z.number().optional(),
 	soundEnabled: z.boolean().optional(),
 	soundVolume: z.number().optional(),
+	// Basenames of user-uploaded files inside globalStorage/custom-sounds/.
+	// Empty/null/undefined => use the built-in WAV. `.nullish()` is required
+	// because postMessage strips `undefined`, so the extension pushes `null`
+	// when the user resets a slot; without nullish, the webview merge would
+	// keep the stale custom basename.
+	// `*Original` holds the user's source filename for display purposes (the
+	// storage basename is randomised for cache-busting).
+	customSoundCelebration: z.string().nullish(),
+	customSoundCelebrationOriginal: z.string().nullish(),
+	customSoundProgressLoop: z.string().nullish(),
+	customSoundProgressLoopOriginal: z.string().nullish(),
+	customSoundNotification: z.string().nullish(),
+	customSoundNotificationOriginal: z.string().nullish(),
 
 	maxOpenTabsContext: z.number().optional(),
 	maxWorkspaceFiles: z.number().optional(),
@@ -176,6 +187,7 @@ export const globalSettingsSchema = z.object({
 	terminalZshOhMy: z.boolean().optional(),
 	terminalZshP10k: z.boolean().optional(),
 	terminalZdotdir: z.boolean().optional(),
+	terminalProfile: z.string().optional(),
 	execaShellPath: z.string().optional(),
 
 	diagnosticsEnabled: z.boolean().optional(),
@@ -343,8 +355,6 @@ export const EVALS_SETTINGS: RooCodeSettings = {
 	commandTimeoutAllowlist: [],
 	preventCompletionWithOpenTodos: false,
 
-	ttsEnabled: false,
-	ttsSpeed: 1,
 	soundEnabled: false,
 	soundVolume: 0.5,
 

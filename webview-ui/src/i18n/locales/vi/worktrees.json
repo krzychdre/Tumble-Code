@@ -1,12 +1,12 @@
 {
 	"title": "Worktrees",
 	"done": "Xong",
-	"description": "Git worktrees cho phép bạn làm việc đồng thời trên nhiều nhánh trong các thư mục riêng. Mỗi worktree có một cửa sổ VS Code riêng với Roo Code.",
+	"description": "Git worktrees cho phép bạn làm việc đồng thời trên nhiều nhánh trong các thư mục riêng. Mỗi worktree có một cửa sổ VS Code riêng với Tumble Code.",
 
 	"notGitRepo": "Workspace này không phải là kho Git. Worktrees cần một kho Git để hoạt động.",
-	"multiRootNotSupported": "Worktrees không được hỗ trợ trong workspace đa gốc. Hãy mở một thư mục đơn để dùng worktrees.",
+	"multiTumbletNotSupported": "Worktrees không được hỗ trợ trong workspace đa gốc. Hãy mở một thư mục đơn để dùng worktrees.",
 	"subfolderNotSupported": "Workspace này là một thư mục con của kho Git. Hãy mở thư mục gốc của kho để dùng worktrees.",
-	"gitRoot": "Thư mục gốc Git",
+	"gitTumblet": "Thư mục gốc Git",
 
 	"includeFileExists": "Đã tìm thấy tệp .worktreeinclude — các tệp sẽ được sao chép sang worktrees mới",
 	"noIncludeFile": "Không tìm thấy tệp .worktreeinclude",

@@ -26,7 +26,7 @@ export class SearchReplaceTool extends BaseTool<"search_replace"> {
 
 	async execute(params: SearchReplaceParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { file_path, old_string, new_string } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
 			// Validate required parameters
@@ -177,6 +177,9 @@ export class SearchReplaceTool extends BaseTool<"search_replace"> {
 				path: getReadablePath(task.cwd, relPath),
 				diff: sanitizedDiff,
 				isOutsideWorkspace,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder.
+				toolCallId,
 			}
 
 			const completeMessage = JSON.stringify({
@@ -269,6 +272,9 @@ export class SearchReplaceTool extends BaseTool<"search_replace"> {
 			path: getReadablePath(task.cwd, relPath),
 			diff: operationPreview,
 			isOutsideWorkspace,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})

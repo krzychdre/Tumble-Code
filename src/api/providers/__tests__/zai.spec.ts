@@ -31,6 +31,18 @@ describe("ZAiHandler", () => {
 		mockCreate = (OpenAI as unknown as any)().chat.completions.create
 	})
 
+	describe("Default model ids", () => {
+		it("should default the international Z AI line to glm-4.7", () => {
+			expect(internationalZAiDefaultModelId).toBe("glm-4.7")
+			expect(internationalZAiModels[internationalZAiDefaultModelId]).toBeDefined()
+		})
+
+		it("should default the mainland Z AI line to glm-4.7", () => {
+			expect(mainlandZAiDefaultModelId).toBe("glm-4.7")
+			expect(mainlandZAiModels[mainlandZAiDefaultModelId]).toBeDefined()
+		})
+	})
+
 	describe("International Z AI", () => {
 		beforeEach(() => {
 			handler = new ZAiHandler({ zaiApiKey: "test-zai-api-key", zaiApiLine: "international_coding" })
@@ -96,6 +108,24 @@ describe("ZAiHandler", () => {
 			expect(model.info.supportsReasoningEffort).toEqual(["disable", "medium"])
 			expect(model.info.reasoningEffort).toBe("medium")
 			expect(model.info.preserveReasoning).toBe(true)
+		})
+
+		it("should return GLM-5.1 international model with thinking support and 128k max output", () => {
+			const testModelId: InternationalZAiModelId = "glm-5.1"
+			const handlerWithModel = new ZAiHandler({
+				apiModelId: testModelId,
+				zaiApiKey: "test-zai-api-key",
+				zaiApiLine: "international_coding",
+			})
+			const model = handlerWithModel.getModel()
+			expect(model.id).toBe(testModelId)
+			expect(model.info).toEqual(internationalZAiModels[testModelId])
+			expect(model.info.contextWindow).toBe(200_000)
+			expect(model.info.maxTokens).toBe(131_072)
+			expect(model.info.supportsReasoningEffort).toEqual(["disable", "medium"])
+			expect(model.info.reasoningEffort).toBe("medium")
+			expect(model.info.preserveReasoning).toBe(true)
+			expect(model.info.supportsImages).toBe(false)
 		})
 
 		it("should return GLM-4.5v international model with vision support", () => {
@@ -176,6 +206,24 @@ describe("ZAiHandler", () => {
 			expect(model.info.supportsImages).toBe(true)
 			expect(model.info.maxTokens).toBe(16_384)
 			expect(model.info.contextWindow).toBe(131_072)
+		})
+
+		it("should return GLM-5.1 China model with thinking support and 128k max output", () => {
+			const testModelId: MainlandZAiModelId = "glm-5.1"
+			const handlerWithModel = new ZAiHandler({
+				apiModelId: testModelId,
+				zaiApiKey: "test-zai-api-key",
+				zaiApiLine: "china_coding",
+			})
+			const model = handlerWithModel.getModel()
+			expect(model.id).toBe(testModelId)
+			expect(model.info).toEqual(mainlandZAiModels[testModelId])
+			expect(model.info.contextWindow).toBe(204_800)
+			expect(model.info.maxTokens).toBe(131_072)
+			expect(model.info.supportsReasoningEffort).toEqual(["disable", "medium"])
+			expect(model.info.reasoningEffort).toBe("medium")
+			expect(model.info.preserveReasoning).toBe(true)
+			expect(model.info.supportsImages).toBe(false)
 		})
 
 		it("should return GLM-4.7 China model with thinking support", () => {
@@ -404,7 +452,78 @@ describe("ZAiHandler", () => {
 		})
 	})
 
+	describe("Configurable max output tokens (supportsMaxTokens)", () => {
+		it("should advertise supportsMaxTokens for configurable GLM models", () => {
+			expect(internationalZAiModels["glm-5.1"].supportsMaxTokens).toBe(true)
+			expect(mainlandZAiModels["glm-5.1"].supportsMaxTokens).toBe(true)
+			// Models without a large configurable output budget should not advertise the flag.
+			expect((internationalZAiModels["glm-5"] as { supportsMaxTokens?: boolean }).supportsMaxTokens).toBe(
+				undefined,
+			)
+			expect((internationalZAiModels["glm-4.7"] as { supportsMaxTokens?: boolean }).supportsMaxTokens).toBe(
+				undefined,
+			)
+		})
+
+		it("should honor an explicit modelMaxTokens override instead of the 20% clamp", async () => {
+			const handlerWithModel = new ZAiHandler({
+				apiModelId: "glm-5.1",
+				zaiApiKey: "test-zai-api-key",
+				zaiApiLine: "international_coding",
+				modelMaxTokens: 100_000,
+			})
+
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						async next() {
+							return { done: true }
+						},
+					}),
+				}
+			})
+
+			const messageGenerator = handlerWithModel.createMessage("system prompt", [])
+			await messageGenerator.next()
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "glm-5.1",
+					max_tokens: 100_000,
+				}),
+			)
+		})
+	})
+
 	describe("GLM-4.7 Thinking Mode", () => {
+		it("should cap GLM-5.1 max_tokens to 20% of context window by default", async () => {
+			const handlerWithModel = new ZAiHandler({
+				apiModelId: "glm-5.1",
+				zaiApiKey: "test-zai-api-key",
+				zaiApiLine: "international_coding",
+			})
+
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						async next() {
+							return { done: true }
+						},
+					}),
+				}
+			})
+
+			const messageGenerator = handlerWithModel.createMessage("system prompt", [])
+			await messageGenerator.next()
+
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: "glm-5.1",
+					max_tokens: 40_000,
+				}),
+			)
+		})
+
 		it("should enable thinking by default for GLM-4.7 (default reasoningEffort is medium)", async () => {
 			const handlerWithModel = new ZAiHandler({
 				apiModelId: "glm-4.7",

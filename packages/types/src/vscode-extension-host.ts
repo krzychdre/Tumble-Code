@@ -59,8 +59,6 @@ export interface ExtensionMessage {
 		| "deleteCustomModeCheck"
 		| "currentCheckpointUpdated"
 		| "checkpointInitWarning"
-		| "ttsStart"
-		| "ttsStop"
 		| "fileSearchResults"
 		| "toggleApiConfigPin"
 		| "acceptInput"
@@ -68,11 +66,11 @@ export interface ExtensionMessage {
 		| "commandExecutionStatus"
 		| "mcpExecutionStatus"
 		| "vsCodeSetting"
+		| "terminalProfiles"
 		| "authenticatedUser"
 		| "condenseTaskContextStarted"
 		| "condenseTaskContextResponse"
 		| "singleRouterModelFetchResponse"
-		| "rooCreditBalance"
 		| "indexingStatusUpdate"
 		| "indexCleared"
 		| "codebaseIndexConfig"
@@ -159,6 +157,8 @@ export interface ExtensionMessage {
 	error?: string
 	setting?: string
 	value?: any // eslint-disable-line @typescript-eslint/no-explicit-any
+	/** Sanitized VS Code terminal profile names for the `terminalProfiles` message. */
+	profiles?: string[]
 	hasContent?: boolean
 	items?: MarketplaceItem[]
 	userInfo?: CloudUserInfo
@@ -269,10 +269,14 @@ export type ExtensionState = Pick<
 	| "deniedCommands"
 	| "allowedMaxRequests"
 	| "allowedMaxCost"
-	| "ttsEnabled"
-	| "ttsSpeed"
 	| "soundEnabled"
 	| "soundVolume"
+	| "customSoundCelebration"
+	| "customSoundCelebrationOriginal"
+	| "customSoundProgressLoop"
+	| "customSoundProgressLoopOriginal"
+	| "customSoundNotification"
+	| "customSoundNotificationOriginal"
 	| "terminalOutputPreviewSize"
 	| "terminalShellIntegrationTimeout"
 	| "terminalShellIntegrationDisabled"
@@ -282,6 +286,7 @@ export type ExtensionState = Pick<
 	| "terminalZshOhMy"
 	| "terminalZshP10k"
 	| "terminalZdotdir"
+	| "terminalProfile"
 	| "execaShellPath"
 	| "diagnosticsEnabled"
 	| "language"
@@ -382,6 +387,13 @@ export type ExtensionState = Pick<
 	 * (captured during async getStateToPostToWebview) from overwriting newer messages.
 	 */
 	clineMessagesSeq?: number
+
+	/**
+	 * Webview-accessible URIs for user-uploaded custom sound files, one per AudioType.
+	 * Missing/undefined means the built-in WAV is used. Computed at state-push time
+	 * from the corresponding `customSound*` settings + the on-disk file.
+	 */
+	customSoundUris?: Partial<Record<AudioType, string>>
 }
 
 export interface Command {
@@ -441,8 +453,6 @@ export interface WebviewMessage {
 		| "requestOpenAiModels"
 		| "requestOllamaModels"
 		| "requestLmStudioModels"
-		| "requestRooModels"
-		| "requestRooCreditBalance"
 		| "requestVsCodeLmModels"
 		| "openImage"
 		| "saveImage"
@@ -454,12 +464,10 @@ export interface WebviewMessage {
 		| "updateVSCodeSetting"
 		| "getVSCodeSetting"
 		| "vsCodeSetting"
+		| "requestTerminalProfiles"
+		| "openTerminalProfilePicker"
 		| "updateCondensingPrompt"
 		| "playSound"
-		| "playTts"
-		| "stopTts"
-		| "ttsEnabled"
-		| "ttsSpeed"
 		| "openKeyboardShortcuts"
 		| "openMcpSettings"
 		| "openProjectMcpSettings"
@@ -499,6 +507,7 @@ export interface WebviewMessage {
 		| "toggleApiConfigPin"
 		| "hasOpenedModeSelector"
 		| "lockApiConfigAcrossModes"
+		| "assignCurrentApiConfigToModes"
 		| "clearCloudAuthSkipModel"
 		| "cloudButtonClicked"
 		| "rooCloudSignIn"
@@ -581,6 +590,8 @@ export interface WebviewMessage {
 		| "moveSkill"
 		| "updateSkillModes"
 		| "openSkillFile"
+		| "selectCustomSound"
+		| "resetCustomSound"
 	text?: string
 	taskId?: string
 	editedMessageContent?: string
@@ -840,6 +851,11 @@ export interface ClineSayTool {
 	description?: string
 	// Properties for skill tool
 	skill?: string
+	// Native tool-call id, stamped by tools whose handlePartial placeholder and
+	// complete payload diverge in text (read_file, search_files). Lets the
+	// finalized-duplicate dedup recognise the placeholder and the complete card
+	// as the same invocation without a brittle text comparison.
+	toolCallId?: string
 }
 
 export interface ClineAskUseMcpServer {

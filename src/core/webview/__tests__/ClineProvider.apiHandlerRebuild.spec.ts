@@ -76,11 +76,6 @@ vi.mock("vscode", () => ({
 	version: "1.85.0",
 }))
 
-vi.mock("../../../utils/tts", () => ({
-	setTtsEnabled: vi.fn(),
-	setTtsSpeed: vi.fn(),
-}))
-
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn(),
 }))
@@ -129,8 +124,8 @@ vi.mock("@roo-code/cloud", () => ({
 			}
 		},
 	},
-	getRooCodeApiUrl: vi.fn().mockReturnValue("https://app.roocode.com"),
-	getRooCodeProviderUrl: vi.fn().mockReturnValue("https://api.roocode.com/proxy"),
+	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getRooCodeProviderUrl: vi.fn().mockReturnValue("http://localhost:8080/proxy"),
 }))
 
 describe("ClineProvider - API Handler Rebuild Guard", () => {

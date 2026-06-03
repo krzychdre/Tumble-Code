@@ -25,7 +25,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 	readonly name = "apply_diff" as const
 
 	async execute(params: ApplyDiffParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 		let { path: relPath, diff: diffContent } = params
 
 		if (diffContent && !task.api.getModel().id.includes("claude")) {
@@ -142,6 +142,9 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 				tool: "appliedDiff",
 				path: getReadablePath(task.cwd, relPath),
 				diff: diffContent,
+				// Stamp the native tool-call id so the finalized-duplicate dedup
+				// links this complete card to its streaming placeholder.
+				toolCallId,
 			}
 
 			if (isPreventFocusDisruptionEnabled) {
@@ -282,6 +285,9 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			tool: "appliedDiff",
 			path: getReadablePath(task.cwd, relPath),
 			diff: diffContent,
+			// Stamp the native tool-call id so this placeholder links to the
+			// later complete card under the finalized-duplicate dedup.
+			toolCallId: block.id,
 		}
 
 		let toolProgressStatus

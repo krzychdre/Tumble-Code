@@ -9,7 +9,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 }))
 
 vi.mock("@/utils/format", () => ({
-	formatTimeAgo: vi.fn(() => "2 hours ago"),
+	formatDateTime: vi.fn(() => "2026-05-22 17:50:33"),
 	formatDate: vi.fn(() => "January 15 at 2:30 PM"),
 	formatLargeNumber: vi.fn((num: number) => num.toString()),
 }))
@@ -26,11 +26,11 @@ const mockItem = {
 }
 
 describe("TaskItemFooter", () => {
-	it("renders time ago information", () => {
+	it("renders the task date and time", () => {
 		render(<TaskItemFooter item={mockItem} variant="full" />)
 
-		// Should show time ago format
-		expect(screen.getByText(/ago/)).toBeInTheDocument()
+		// Should show the full date and time
+		expect(screen.getByText("2026-05-22 17:50:33")).toBeInTheDocument()
 	})
 
 	it("renders cost information", () => {

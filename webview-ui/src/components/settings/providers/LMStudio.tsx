@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo, useEffect } from "react"
+import { useCallback, useState, useMemo, useEffect, useRef } from "react"
 import { useEvent } from "react-use"
 import { Trans } from "react-i18next"
 import { Checkbox } from "vscrui"
@@ -8,7 +8,7 @@ import type { ProviderSettings, ExtensionMessage, ModelRecord } from "@roo-code/
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
-import { vscode } from "@src/utils/vscode"
+import { requestLmStudioModels } from "@src/components/ui/hooks/useLmStudioModels"
 
 import { inputEventTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
@@ -23,6 +23,7 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 
 	const [lmStudioModels, setLmStudioModels] = useState<ModelRecord>({})
 	const routerModels = useRouterModels()
+	const initialBaseUrlRef = useRef(apiConfiguration?.lmStudioBaseUrl)
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -52,8 +53,9 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 
 	// Refresh models on mount
 	useEffect(() => {
-		// Request fresh models - the handler now flushes cache automatically
-		vscode.postMessage({ type: "requestLmStudioModels" })
+		// Request fresh models - the handler now flushes cache automatically.
+		// Pass the initial (possibly unsaved) base URL so first load isn't empty.
+		requestLmStudioModels(initialBaseUrlRef.current)
 	}, [])
 
 	// Check if the selected model exists in the fetched models

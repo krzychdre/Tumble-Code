@@ -34,12 +34,12 @@ vi.mock("vscode", () => ({
 	},
 }))
 
-vi.mock("../Config", () => ({
-	getRooCodeApiUrl: () => "https://app.roocode.com",
+vi.mock("../config", () => ({
+	getRooCodeApiUrl: () => "http://localhost:8080",
 }))
 
 vi.mock("../utils", () => ({
-	getUserAgent: () => "Roo-Code 1.0.0",
+	getUserAgent: () => "Tumble-Code 1.0.0",
 }))
 
 describe("CloudShareService", () => {
@@ -73,7 +73,7 @@ describe("CloudShareService", () => {
 		it("should share task with organization visibility and copy to clipboard", async () => {
 			const mockResponseData = {
 				success: true,
-				shareUrl: "https://app.roocode.com/share/abc123",
+				shareUrl: "http://localhost:8080/share/abc123",
 			}
 
 			;(mockAuthService.getSessionToken as any).mockReturnValue("session-token")
@@ -86,14 +86,14 @@ describe("CloudShareService", () => {
 			const result = await shareService.shareTask("task-123", "organization")
 
 			expect(result.success).toBe(true)
-			expect(result.shareUrl).toBe("https://app.roocode.com/share/abc123")
+			expect(result.shareUrl).toBe("http://localhost:8080/share/abc123")
 
-			expect(mockFetch).toHaveBeenCalledWith("https://app.roocode.com/api/extension/share", {
+			expect(mockFetch).toHaveBeenCalledWith("http://localhost:8080/api/extension/share", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 					Authorization: "Bearer session-token",
-					"User-Agent": "Roo-Code 1.0.0",
+					"User-Agent": "Tumble-Code 1.0.0",
 				},
 				body: JSON.stringify({
 					taskId: "task-123",
@@ -102,13 +102,13 @@ describe("CloudShareService", () => {
 				signal: expect.any(AbortSignal),
 			})
 
-			expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith("https://app.roocode.com/share/abc123")
+			expect(vscode.env.clipboard.writeText).toHaveBeenCalledWith("http://localhost:8080/share/abc123")
 		})
 
 		it("should share task with public visibility", async () => {
 			const mockResponseData = {
 				success: true,
-				shareUrl: "https://app.roocode.com/share/abc123",
+				shareUrl: "http://localhost:8080/share/abc123",
 			}
 
 			;(mockAuthService.getSessionToken as any).mockReturnValue("session-token")
@@ -122,12 +122,12 @@ describe("CloudShareService", () => {
 
 			expect(result.success).toBe(true)
 
-			expect(mockFetch).toHaveBeenCalledWith("https://app.roocode.com/api/extension/share", {
+			expect(mockFetch).toHaveBeenCalledWith("http://localhost:8080/api/extension/share", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 					Authorization: "Bearer session-token",
-					"User-Agent": "Roo-Code 1.0.0",
+					"User-Agent": "Tumble-Code 1.0.0",
 				},
 				body: JSON.stringify({ taskId: "task-123", visibility: "public" }),
 				signal: expect.any(AbortSignal),
@@ -137,7 +137,7 @@ describe("CloudShareService", () => {
 		it("should default to organization visibility when not specified", async () => {
 			const mockResponseData = {
 				success: true,
-				shareUrl: "https://app.roocode.com/share/abc123",
+				shareUrl: "http://localhost:8080/share/abc123",
 			}
 
 			;(mockAuthService.getSessionToken as any).mockReturnValue("session-token")
@@ -149,12 +149,12 @@ describe("CloudShareService", () => {
 			const result = await shareService.shareTask("task-123")
 
 			expect(result.success).toBe(true)
-			expect(mockFetch).toHaveBeenCalledWith("https://app.roocode.com/api/extension/share", {
+			expect(mockFetch).toHaveBeenCalledWith("http://localhost:8080/api/extension/share", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 					Authorization: "Bearer session-token",
-					"User-Agent": "Roo-Code 1.0.0",
+					"User-Agent": "Tumble-Code 1.0.0",
 				},
 				body: JSON.stringify({
 					taskId: "task-123",

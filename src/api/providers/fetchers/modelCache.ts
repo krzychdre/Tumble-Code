@@ -8,7 +8,6 @@ import { z } from "zod"
 import type { ProviderName, ModelRecord } from "@roo-code/types"
 import { modelInfoSchema, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
-import { getRooCodeProviderUrl } from "@roo-code/cloud"
 
 import { safeWriteJson } from "../../../utils/safeWriteJson"
 
@@ -26,7 +25,6 @@ import { getLiteLLMModels } from "./litellm"
 import { GetModelsOptions } from "../../../shared/api"
 import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
-import { getRooModels } from "./roo"
 import { getDeepSeekModels } from "./deepseek"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
@@ -94,12 +92,6 @@ async function fetchModelsFromProvider(options: GetModelsOptions): Promise<Model
 		case "deepseek":
 			models = await getDeepSeekModels(options.baseUrl, options.apiKey)
 			break
-		case "roo": {
-			// Roo Code Cloud provider requires baseUrl and optional apiKey
-			const rooBaseUrl = options.baseUrl ?? getRooCodeProviderUrl()
-			models = await getRooModels(rooBaseUrl, options.apiKey)
-			break
-		}
 		default: {
 			// Ensures router is exhaustively checked if RouterName is a strict union.
 			const exhaustiveCheck: never = provider

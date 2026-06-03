@@ -28,17 +28,17 @@ describe("cloud config", () => {
 	describe("default values", () => {
 		it("should return production Clerk base URL by default", () => {
 			expect(getClerkBaseUrl()).toBe(PRODUCTION_CLERK_BASE_URL)
-			expect(getClerkBaseUrl()).toBe("https://clerk.roocode.com")
+			expect(getClerkBaseUrl()).toBe("https://auth.tumblecode.dev")
 		})
 
 		it("should return production Roo Code API URL by default", () => {
 			expect(getRooCodeApiUrl()).toBe(PRODUCTION_ROO_CODE_API_URL)
-			expect(getRooCodeApiUrl()).toBe("https://app.roocode.com")
+			expect(getRooCodeApiUrl()).toBe("https://app.tumblecode.dev")
 		})
 
 		it("should return production Roo Code Provider URL by default", () => {
 			expect(getRooCodeProviderUrl()).toBe(PRODUCTION_ROO_CODE_PROVIDER_URL)
-			expect(getRooCodeProviderUrl()).toBe("https://api.roocode.com/proxy")
+			expect(getRooCodeProviderUrl()).toBe("https://api.tumblecode.dev/proxy")
 		})
 	})
 
@@ -128,7 +128,7 @@ describe("cloud config", () => {
 		})
 
 		it("should return production Clerk URL when API URL is production", () => {
-			setRooCodeApiUrl("https://app.roocode.com")
+			setRooCodeApiUrl("https://app.tumblecode.dev")
 			expect(getClerkBaseUrl()).toBe(PRODUCTION_CLERK_BASE_URL)
 		})
 

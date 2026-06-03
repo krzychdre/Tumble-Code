@@ -12,12 +12,8 @@ export type OpenRouterReasoningParams = {
 	exclude?: boolean
 }
 
-export type RooReasoningParams = {
-	enabled?: boolean
-	effort?: ReasoningEffortExtended
-}
-
 export type AnthropicReasoningParams = BetaThinkingConfigParam
+export type AnthropicProviderReasoningParams = AnthropicReasoningParams | { type: "adaptive" }
 
 export type OpenAiReasoningParams = { reasoning_effort: OpenAI.Chat.ChatCompletionCreateParams["reasoning_effort"] }
 
@@ -55,61 +51,24 @@ export const getOpenRouterReasoning = ({
 				: undefined
 			: undefined
 
-export const getRooReasoning = ({
-	model,
-	reasoningEffort,
-	settings,
-}: GetModelReasoningOptions): RooReasoningParams | undefined => {
-	// Check if model supports reasoning effort
-	if (!model.supportsReasoningEffort) {
-		return undefined
-	}
-
-	if (model.requiredReasoningEffort) {
-		// Honor the provided effort if it's valid, otherwise let the model choose.
-		if (reasoningEffort && reasoningEffort !== "disable" && reasoningEffort !== "minimal") {
-			return { enabled: true, effort: reasoningEffort }
-		} else {
-			return { enabled: true }
-		}
-	}
-
-	// Explicit off switch from settings: always send disabled for back-compat and to
-	// prevent automatic reasoning when the toggle is turned off.
-	if (settings.enableReasoningEffort === false) {
-		return { enabled: false }
-	}
-
-	// For Roo models that support reasoning effort, absence of a selection should be
-	// treated as an explicit "off" signal so that the backend does not auto-enable
-	// reasoning. This aligns with the default behavior in tests.
-	if (!reasoningEffort) {
-		return { enabled: false }
-	}
-
-	// "disable" is a legacy sentinel that means "omit the reasoning field entirely"
-	// and let the server decide any defaults.
-	if (reasoningEffort === "disable") {
-		return undefined
-	}
-
-	// For Roo, "minimal" is treated as "none" for effort-based reasoning – we omit
-	// the reasoning field entirely instead of sending an explicit effort.
-	if (reasoningEffort === "minimal") {
-		return undefined
-	}
-
-	// When an effort is provided (e.g. "low" | "medium" | "high" | "none"), enable
-	// with the selected effort.
-	return { enabled: true, effort: reasoningEffort as ReasoningEffortExtended }
-}
-
 export const getAnthropicReasoning = ({
 	model,
 	reasoningBudget,
 	settings,
 }: GetModelReasoningOptions): AnthropicReasoningParams | undefined =>
 	shouldUseReasoningBudget({ model, settings }) ? { type: "enabled", budget_tokens: reasoningBudget! } : undefined
+
+export const getAnthropicProviderReasoning = ({
+	model,
+	reasoningBudget,
+	settings,
+}: GetModelReasoningOptions): AnthropicProviderReasoningParams | undefined => {
+	if (model.supportsReasoningBinary && settings.enableReasoningEffort) {
+		return { type: "adaptive" }
+	}
+
+	return getAnthropicReasoning({ model, reasoningBudget, reasoningEffort: undefined, settings })
+}
 
 export const getOpenAiReasoning = ({
 	model,

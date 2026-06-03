@@ -187,6 +187,17 @@
       identification within third-party archives.
 
    Copyright 2025 Roo Code, Inc.
+   Portions Copyright 2026 Tumble Code contributors.
+
+   This project is a community fork of Roo Code (originally authored by
+   Roo Veterinary Inc., publisher RooVeterinaryInc on the VS Code
+   Marketplace). The original Roo Code project ceased active maintenance
+   in 2026, and the codebase is being carried forward under the Tumble
+   Code name by an independent community team. The Apache 2.0 license
+   below continues to apply to the entire combined work, including all
+   modifications made by Tumble Code contributors after the fork point.
+
+   See README.md for full lineage and attribution.
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.

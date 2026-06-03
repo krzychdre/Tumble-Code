@@ -1,10 +1,20 @@
-# Roo Code Changelog
+# Tumble Code Changelog
+
+> This changelog continues the history of [Roo Code](https://github.com/RooCodeInc/Roo-Code).
+> All entries below v3.53.0 describe Roo Code releases authored by the upstream team.
+> Tumble Code is a community fork that picks up maintenance from v3.53.0 onward.
+
+## Unreleased
+
+### Major Changes
+
+- **Renamed to Tumble Code (community fork).** The original Roo Code team moved on to focus on their new product, Roomote; Tumble Code is the community fork that picks up the codebase from there. Going forward we're putting the accent on **local inference engines** (Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs) so users can run AI coding assistance entirely on their own hardware without paying per-token. User-visible identity (extension displayName, marketplace publisher, URLs, output channel) now reads "Tumble Code"; internal command and view IDs (`roo-cline.*`) are preserved so existing keybindings keep working. Config property keys move from `roo-cline.*` to `tumble-code.*`; the first launch after installing Tumble Code will offer to migrate settings from the legacy Roo Code extension.
 
 ## 3.53.0
 
 ### Minor Changes
 
-- **The Roo Code plugin is not going away.** You may have seen the [recent announcement](https://x.com/mattrubens/status/2046636598859559114) that Roo Code hit 3 million installs and the original team is going all-in on Roomote. We know that news was hard for a lot of you. This plugin means a lot to us and to you, and we hear you. The good news: a community team has stepped up to carry Roo Code forward, and we're working with them on an official handoff so the plugin you rely on keeps getting maintained and improved.
+- **Note from Tumble Code:** v3.53.0 was the final release published by the original Roo Code team. The entries below preserve the upstream release notes verbatim for historical accuracy.
 - Add GPT-5.5 support via the OpenAI Codex provider (PR #12170 by @hannesrudolph)
 - Add Claude Opus 4.7 support on Vertex AI (#12134 by @saneroen, PR #12135 by @saneroen)
 - Add previous checkpoint navigation controls and i18n in chat (#12138 by @saneroen, PR #12139 by @saneroen)

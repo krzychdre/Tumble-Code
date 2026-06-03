@@ -33,9 +33,9 @@ async function main() {
 		sourcesContent: false,
 		platform: "node",
 		define: {
-			"process.env.PKG_NAME": '"roo-code-nightly"',
+			"process.env.PKG_NAME": '"tumble-code-nightly"',
 			"process.env.PKG_VERSION": `"${overrideJson.version}"`,
-			"process.env.PKG_OUTPUT_CHANNEL": '"Roo-Code-Nightly"',
+			"process.env.PKG_OUTPUT_CHANNEL": '"Tumble-Code-Nightly"',
 			...(gitSha ? { "process.env.PKG_SHA": `"${gitSha}"` } : {}),
 		},
 	}
@@ -88,7 +88,11 @@ async function main() {
 					const generatedPackageJson = generatePackageJson({
 						packageJson,
 						overrideJson,
-						substitution: ["roo-cline", "roo-code-nightly"],
+						// Rewrite every `tumble-code` token in the stable manifest to
+						// `tumble-code-nightly` so the nightly variant has its own
+						// command IDs, view IDs, and config property keys -- no collisions
+						// with a stable install.
+						substitution: ["tumble-code", "tumble-code-nightly"],
 					})
 
 					fs.writeFileSync(path.join(buildDir, "package.json"), JSON.stringify(generatedPackageJson, null, 2))

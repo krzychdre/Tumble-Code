@@ -23,7 +23,7 @@ import {
 	checkoutRestorePayloadSchema,
 } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
-import { CloudService, getRooCodeProviderUrl } from "@roo-code/cloud"
+import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiMessage } from "../task-persistence/apiMessages"
@@ -49,13 +49,20 @@ import { CodeIndexManager } from "../../services/code-index/manager"
 import { checkExistKey } from "../../shared/checkExistApiConfig"
 import { experimentDefault } from "../../shared/experiments"
 import { Terminal } from "../../integrations/terminal/Terminal"
+import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { openFile } from "../../integrations/misc/open-file"
 import { openImage, saveImage } from "../../integrations/misc/image-handler"
 import { selectImages } from "../../integrations/misc/process-images"
+import {
+	deleteCustomSound,
+	getCustomSoundOriginalSettingKey,
+	getCustomSoundSettingKey,
+	selectAndStoreCustomSound,
+} from "../../integrations/misc/custom-sounds"
+import type { AudioType } from "@roo-code/types"
 import { getTheme } from "../../integrations/theme/getTheme"
 import { searchWorkspaceFiles } from "../../services/search/file-search"
 import { fileExistsAtPath } from "../../utils/fs"
-import { playTts, setTtsEnabled, setTtsSpeed, stopTts } from "../../utils/tts"
 import { searchCommits } from "../../utils/git"
 import { exportSettings, importSettingsWithFeedback } from "../config/importExport"
 import { getOpenAiModels } from "../../api/providers/openai"
@@ -67,6 +74,7 @@ import { getWorkspacePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Mode, defaultModeSlug } from "../../shared/modes"
 import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
+import { getLMStudioModels } from "../../api/providers/fetchers/lmstudio"
 import { GetModelsOptions } from "../../shared/api"
 import { generateSystemPrompt } from "./generateSystemPrompt"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
@@ -680,12 +688,6 @@ export const webviewMessageHandler = async (
 						await vscode.workspace
 							.getConfiguration(Package.name)
 							.update("deniedCommands", newValue, vscode.ConfigurationTarget.Global)
-					} else if (key === "ttsEnabled") {
-						newValue = value ?? true
-						setTtsEnabled(newValue as boolean)
-					} else if (key === "ttsSpeed") {
-						newValue = value ?? 1.0
-						setTtsSpeed(newValue as number)
 					} else if (key === "terminalShellIntegrationTimeout") {
 						if (value !== undefined) {
 							Terminal.setShellIntegrationTimeout(value as number)
@@ -717,6 +719,17 @@ export const webviewMessageHandler = async (
 					} else if (key === "terminalZdotdir") {
 						if (value !== undefined) {
 							Terminal.setTerminalZdotdir(value as boolean)
+						}
+					} else if (key === "terminalProfile") {
+						const previousProfile = Terminal.getTerminalProfile()
+						Terminal.setTerminalProfile(typeof value === "string" ? value : undefined)
+						newValue = Terminal.getTerminalProfile()
+
+						if (newValue !== previousProfile) {
+							// Discard idle terminals so the next command gets a fresh
+							// terminal using the new profile's shell instead of reusing
+							// a stale one from the previous profile.
+							TerminalRegistry.closeIdleTerminals()
 						}
 					} else if (key === "execaShellPath") {
 						Terminal.setExecaShellPath(value as string | undefined)
@@ -775,6 +788,42 @@ export const webviewMessageHandler = async (
 				messageTs: message.messageTs,
 			})
 			break
+		case "selectCustomSound": {
+			const audioType = message.audioType as AudioType | undefined
+			if (!audioType) break
+			const settingKey = getCustomSoundSettingKey(audioType)
+			const originalKey = getCustomSoundOriginalSettingKey(audioType)
+			const previous = getGlobalState(settingKey) as string | undefined
+			const globalStoragePath = provider.contextProxy.globalStorageUri.fsPath
+			try {
+				const result = await selectAndStoreCustomSound(globalStoragePath, audioType, previous)
+				if (result) {
+					await updateGlobalState(settingKey, result.basename)
+					await updateGlobalState(originalKey, result.originalName)
+					await provider.postStateToWebview()
+				}
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err)
+				vscode.window.showErrorMessage(`Failed to set custom sound: ${msg}`)
+			}
+			break
+		}
+		case "resetCustomSound": {
+			const audioType = message.audioType as AudioType | undefined
+			if (!audioType) break
+			const settingKey = getCustomSoundSettingKey(audioType)
+			const originalKey = getCustomSoundOriginalSettingKey(audioType)
+			const previous = getGlobalState(settingKey) as string | undefined
+			try {
+				await deleteCustomSound(provider.contextProxy.globalStorageUri.fsPath, previous)
+			} catch {
+				// Best-effort cleanup; still clear the setting.
+			}
+			await updateGlobalState(settingKey, undefined)
+			await updateGlobalState(originalKey, undefined)
+			await provider.postStateToWebview()
+			break
+		}
 		case "exportCurrentTask":
 			const currentTaskId = provider.getCurrentTask()?.taskId
 			if (currentTaskId) {
@@ -960,7 +1009,6 @@ export const webviewMessageHandler = async (
 						unbound: {},
 						ollama: {},
 						lmstudio: {},
-						roo: {},
 						deepseek: {},
 					}
 
@@ -996,16 +1044,6 @@ export const webviewMessageHandler = async (
 					},
 				},
 				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
-				{
-					key: "roo",
-					options: {
-						provider: "roo",
-						baseUrl: getRooCodeProviderUrl(),
-						apiKey: CloudService.hasInstance()
-							? CloudService.instance.authService?.getSessionToken()
-							: undefined,
-					},
-				},
 			]
 
 			// LiteLLM is conditional on baseUrl+apiKey
@@ -1129,14 +1167,20 @@ export const webviewMessageHandler = async (
 			// Specific handler for LM Studio models only.
 			const { apiConfiguration: lmStudioApiConfig } = await provider.getState()
 			try {
-				const lmStudioOptions = {
-					provider: "lmstudio" as const,
-					baseUrl: lmStudioApiConfig.lmStudioBaseUrl,
+				const requestedBaseUrl = message.values?.baseUrl
+				const hasPreviewBaseUrl = typeof requestedBaseUrl === "string"
+				let lmStudioModels: ModelRecord
+				if (hasPreviewBaseUrl) {
+					lmStudioModels = await getLMStudioModels(requestedBaseUrl)
+				} else {
+					const lmStudioOptions = {
+						provider: "lmstudio" as const,
+						baseUrl: lmStudioApiConfig.lmStudioBaseUrl,
+					}
+					// Flush cache and refresh to ensure fresh models.
+					await flushModels(lmStudioOptions, true)
+					lmStudioModels = await getModels(lmStudioOptions)
 				}
-				// Flush cache and refresh to ensure fresh models.
-				await flushModels(lmStudioOptions, true)
-
-				const lmStudioModels = await getModels(lmStudioOptions)
 
 				if (Object.keys(lmStudioModels).length > 0) {
 					provider.postMessageToWebview({
@@ -1147,64 +1191,6 @@ export const webviewMessageHandler = async (
 			} catch (error) {
 				// Silently fail - user hasn't configured LM Studio yet.
 				console.debug("LM Studio models fetch failed:", error)
-			}
-			break
-		}
-		case "requestRooModels": {
-			// Specific handler for Roo models only - flushes cache to ensure fresh auth token is used
-			try {
-				const rooOptions = {
-					provider: "roo" as const,
-					baseUrl: getRooCodeProviderUrl(),
-					apiKey: CloudService.hasInstance()
-						? CloudService.instance.authService?.getSessionToken()
-						: undefined,
-				}
-				// Flush cache and refresh to ensure fresh models with current auth state
-				await flushModels(rooOptions, true)
-
-				const rooModels = await getModels(rooOptions)
-
-				// Always send a response, even if no models are returned
-				provider.postMessageToWebview({
-					type: "singleRouterModelFetchResponse",
-					success: true,
-					values: { provider: "roo", models: rooModels },
-				})
-			} catch (error) {
-				// Send error response
-				const errorMessage = error instanceof Error ? error.message : String(error)
-				provider.postMessageToWebview({
-					type: "singleRouterModelFetchResponse",
-					success: false,
-					error: errorMessage,
-					values: { provider: "roo" },
-				})
-			}
-			break
-		}
-		case "requestRooCreditBalance": {
-			// Fetch Roo credit balance using CloudAPI
-			const requestId = message.requestId
-			try {
-				if (!CloudService.hasInstance() || !CloudService.instance.cloudAPI) {
-					throw new Error("Cloud service not available")
-				}
-
-				const balance = await CloudService.instance.cloudAPI.creditBalance()
-
-				provider.postMessageToWebview({
-					type: "rooCreditBalance",
-					requestId,
-					values: { balance },
-				})
-			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error)
-				provider.postMessageToWebview({
-					type: "rooCreditBalance",
-					requestId,
-					values: { error: errorMessage },
-				})
 			}
 			break
 		}
@@ -1386,6 +1372,12 @@ export const webviewMessageHandler = async (
 
 			break
 		}
+		case "openTerminalProfilePicker": {
+			// Open VS Code's native terminal profile picker so the user can set the
+			// default shell without leaving VS Code's own settings UI.
+			await vscode.commands.executeCommand("workbench.action.terminal.selectDefaultShell")
+			break
+		}
 		case "openKeyboardShortcuts": {
 			// Open VSCode keyboard shortcuts settings and optionally filter to show the Roo Code commands
 			const searchQuery = message.text || ""
@@ -1533,31 +1525,6 @@ export const webviewMessageHandler = async (
 			break
 		}
 
-		case "ttsEnabled":
-			const ttsEnabled = message.bool ?? true
-			await updateGlobalState("ttsEnabled", ttsEnabled)
-			setTtsEnabled(ttsEnabled)
-			await provider.postStateToWebview()
-			break
-		case "ttsSpeed":
-			const ttsSpeed = message.value ?? 1.0
-			await updateGlobalState("ttsSpeed", ttsSpeed)
-			setTtsSpeed(ttsSpeed)
-			await provider.postStateToWebview()
-			break
-		case "playTts":
-			if (message.text) {
-				playTts(message.text, {
-					onStart: () => provider.postMessageToWebview({ type: "ttsStart", text: message.text }),
-					onStop: () => provider.postMessageToWebview({ type: "ttsStop", text: message.text }),
-				})
-			}
-
-			break
-		case "stopTts":
-			stopTts()
-			break
-
 		case "updateVSCodeSetting": {
 			const { setting, value } = message
 
@@ -1594,6 +1561,27 @@ export const webviewMessageHandler = async (
 			}
 
 			break
+
+		case "requestTerminalProfiles": {
+			// Allowlisted request: read VS Code's terminal profiles server-side and
+			// return only the sanitized profile names. The terminal profile dropdown
+			// only needs names, so this avoids routing it through the generic
+			// `getVSCodeSetting` handler (which reads any key the webview supplies).
+			// Only profiles with a resolvable `path` are returned — source-only
+			// profiles (e.g. { source: "PowerShell" }) cannot be mapped to a shell
+			// binary by an extension and would silently fall back to the default.
+			try {
+				await provider.postMessageToWebview({
+					type: "terminalProfiles",
+					profiles: Terminal.getAvailableProfileNames(),
+				})
+			} catch (error) {
+				console.error("Failed to get terminal profiles:", error)
+				await provider.postMessageToWebview({ type: "terminalProfiles", profiles: [] })
+			}
+
+			break
+		}
 
 		case "mode":
 			await provider.handleModeSwitch(message.text as Mode)
@@ -1668,6 +1656,17 @@ export const webviewMessageHandler = async (
 			await provider.context.workspaceState.update("lockApiConfigAcrossModes", enabled)
 
 			await provider.postStateToWebview()
+			break
+		}
+
+		case "assignCurrentApiConfigToModes": {
+			const configId = message.values?.configId as string | undefined
+			const modeSlugs = (message.values?.modeSlugs as string[] | undefined) ?? []
+
+			if (configId && modeSlugs.length > 0) {
+				await provider.providerSettingsManager.setModeConfigs(modeSlugs, configId)
+				await provider.postStateToWebview()
+			}
 			break
 		}
 

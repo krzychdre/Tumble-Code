@@ -5,14 +5,14 @@ import type { ModelInfo, ProviderSettings, ReasoningEffortWithMinimal } from "@r
 import {
 	getOpenRouterReasoning,
 	getAnthropicReasoning,
+	getAnthropicProviderReasoning,
 	getOpenAiReasoning,
-	getRooReasoning,
 	getGeminiReasoning,
 	GetModelReasoningOptions,
 	OpenRouterReasoningParams,
 	AnthropicReasoningParams,
+	AnthropicProviderReasoningParams,
 	OpenAiReasoningParams,
-	RooReasoningParams,
 	GeminiReasoningParams,
 	GeminiThinkingLevel,
 } from "../reasoning"
@@ -457,6 +457,56 @@ describe("reasoning.ts", () => {
 			const result = getAnthropicReasoning(options)
 
 			expect(result).toBeUndefined()
+		})
+	})
+
+	describe("getAnthropicProviderReasoning", () => {
+		it("should use adaptive thinking for Claude Opus 4.7 when reasoning is enabled", () => {
+			const modelWithBinaryReasoning: ModelInfo = {
+				...baseModel,
+				supportsReasoningBinary: true,
+			}
+
+			const result = getAnthropicProviderReasoning({
+				...baseOptions,
+				model: modelWithBinaryReasoning,
+				settings: { enableReasoningEffort: true },
+				reasoningBudget: undefined,
+			})
+
+			expect(result).toEqual({ type: "adaptive" })
+		})
+
+		it("should omit thinking for Claude Opus 4.7 when reasoning is disabled", () => {
+			const modelWithBinaryReasoning: ModelInfo = {
+				...baseModel,
+				supportsReasoningBinary: true,
+			}
+
+			const result = getAnthropicProviderReasoning({
+				...baseOptions,
+				model: modelWithBinaryReasoning,
+				settings: { enableReasoningEffort: false },
+				reasoningBudget: undefined,
+			})
+
+			expect(result).toBeUndefined()
+		})
+
+		it("should preserve budget thinking for older Anthropic reasoning-budget models", () => {
+			const modelWithBudgetReasoning: ModelInfo = {
+				...baseModel,
+				supportsReasoningBudget: true,
+			}
+
+			const result = getAnthropicProviderReasoning({
+				...baseOptions,
+				model: modelWithBudgetReasoning,
+				settings: { enableReasoningEffort: true },
+				reasoningBudget: 1000,
+			})
+
+			expect(result).toEqual({ type: "enabled", budget_tokens: 1000 })
 		})
 	})
 
@@ -1124,6 +1174,22 @@ describe("reasoning.ts", () => {
 			}
 		})
 
+		it("should return correct types for Anthropic provider reasoning params", () => {
+			const modelWithBinaryReasoning: ModelInfo = {
+				...baseModel,
+				supportsReasoningBinary: true,
+			}
+
+			const result: AnthropicProviderReasoningParams | undefined = getAnthropicProviderReasoning({
+				...baseOptions,
+				model: modelWithBinaryReasoning,
+				settings: { enableReasoningEffort: true },
+				reasoningBudget: undefined,
+			})
+
+			expect(result).toEqual({ type: "adaptive" })
+		})
+
 		it("should return correct types for OpenAI reasoning params", () => {
 			const modelWithEffort: ModelInfo = {
 				...baseModel,
@@ -1137,135 +1203,6 @@ describe("reasoning.ts", () => {
 			if (result) {
 				expect(result).toHaveProperty("reasoning_effort")
 			}
-		})
-	})
-
-	describe("getRooReasoning", () => {
-		it("should return undefined when model does not support reasoning effort", () => {
-			const options = { ...baseOptions }
-			const result = getRooReasoning(options)
-			expect(result).toBeUndefined()
-		})
-
-		it("should return enabled: false when enableReasoningEffort is explicitly false", () => {
-			const modelWithSupported: ModelInfo = {
-				...baseModel,
-				supportsReasoningEffort: true,
-			}
-
-			const settingsWithDisabled: ProviderSettings = {
-				enableReasoningEffort: false,
-			}
-
-			const options = {
-				...baseOptions,
-				model: modelWithSupported,
-				settings: settingsWithDisabled,
-			}
-
-			const result = getRooReasoning(options)
-			expect(result).toEqual({ enabled: false })
-		})
-
-		it("should return enabled: true with effort when reasoningEffort is provided", () => {
-			const modelWithSupported: ModelInfo = {
-				...baseModel,
-				supportsReasoningEffort: true,
-			}
-
-			const settingsWithEffort: ProviderSettings = {
-				reasoningEffort: "high",
-			}
-
-			const options = {
-				...baseOptions,
-				model: modelWithSupported,
-				settings: settingsWithEffort,
-				reasoningEffort: "high" as const,
-			}
-
-			const result = getRooReasoning(options)
-			expect(result).toEqual({ enabled: true, effort: "high" })
-		})
-
-		it("should return enabled: false when reasoningEffort is undefined (None selected)", () => {
-			const modelWithSupported: ModelInfo = {
-				...baseModel,
-				supportsReasoningEffort: true,
-			}
-
-			const options = {
-				...baseOptions,
-				model: modelWithSupported,
-				settings: {},
-				reasoningEffort: undefined,
-			}
-
-			const result = getRooReasoning(options)
-			expect(result).toEqual({ enabled: false })
-		})
-
-		it("should omit reasoning params for minimal effort", () => {
-			const modelWithSupported: ModelInfo = {
-				...baseModel,
-				supportsReasoningEffort: true,
-			}
-
-			const settingsWithMinimal: ProviderSettings = {
-				reasoningEffort: "minimal",
-			}
-
-			const options = {
-				...baseOptions,
-				model: modelWithSupported,
-				settings: settingsWithMinimal,
-				reasoningEffort: "minimal" as ReasoningEffortWithMinimal,
-			}
-
-			const result = getRooReasoning(options)
-			expect(result).toBeUndefined()
-		})
-
-		it("should handle all valid reasoning effort values", () => {
-			const efforts: Array<"low" | "medium" | "high"> = ["low", "medium", "high"]
-
-			efforts.forEach((effort) => {
-				const modelWithSupported: ModelInfo = {
-					...baseModel,
-					supportsReasoningEffort: true,
-				}
-
-				const settingsWithEffort: ProviderSettings = {
-					reasoningEffort: effort,
-				}
-
-				const options = {
-					...baseOptions,
-					model: modelWithSupported,
-					settings: settingsWithEffort,
-					reasoningEffort: effort,
-				}
-
-				const result = getRooReasoning(options)
-				expect(result).toEqual({ enabled: true, effort })
-			})
-		})
-
-		it("should return enabled: false when model supports reasoning but no effort is provided", () => {
-			const modelWithSupported: ModelInfo = {
-				...baseModel,
-				supportsReasoningEffort: true,
-			}
-
-			const options = {
-				...baseOptions,
-				model: modelWithSupported,
-				settings: {},
-				reasoningEffort: undefined,
-			}
-
-			const result = getRooReasoning(options)
-			expect(result).toEqual({ enabled: false })
 		})
 	})
 })

@@ -5,40 +5,33 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Lightbulb, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { BlockTimestamp } from "./BlockTimestamp"
 
 interface ReasoningBlockProps {
 	content: string
+	/** Epoch-ms timestamp marking when the thinking block started. */
 	ts: number
-	isStreaming: boolean
-	isLast: boolean
+	/**
+	 * Epoch-ms timestamp marking when the thinking block finished — the `ts` of
+	 * the next message in the conversation. Undefined while thinking is still
+	 * the latest message, in which case no duration is shown yet. Using the
+	 * next message's timestamp keeps the duration consistent with every other
+	 * status block and correct for reopened (historical) tasks.
+	 */
+	endTs?: number
 	metadata?: any
 }
 
-export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockProps) => {
+export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 	const { t } = useTranslation()
 	const { reasoningBlockCollapsed } = useExtensionState()
 
 	const [isCollapsed, setIsCollapsed] = useState(reasoningBlockCollapsed)
-
-	const startTimeRef = useRef<number>(Date.now())
-	const [elapsed, setElapsed] = useState<number>(0)
 	const contentRef = useRef<HTMLDivElement>(null)
 
 	useEffect(() => {
 		setIsCollapsed(reasoningBlockCollapsed)
 	}, [reasoningBlockCollapsed])
-
-	useEffect(() => {
-		if (isLast && isStreaming) {
-			const tick = () => setElapsed(Date.now() - startTimeRef.current)
-			tick()
-			const id = setInterval(tick, 1000)
-			return () => clearInterval(id)
-		}
-	}, [isLast, isStreaming])
-
-	const seconds = Math.floor(elapsed / 1000)
-	const secondsLabel = t("chat:reasoning.seconds", { count: seconds })
 
 	const handleToggle = () => {
 		setIsCollapsed(!isCollapsed)
@@ -52,9 +45,7 @@ export const ReasoningBlock = ({ content, isStreaming, isLast }: ReasoningBlockP
 				<div className="flex items-center gap-2">
 					<Lightbulb className="w-4" />
 					<span className="font-bold text-vscode-foreground">{t("chat:reasoning.thinking")}</span>
-					{elapsed > 0 && (
-						<span className="text-sm text-vscode-descriptionForeground mt-0.5">{secondsLabel}</span>
-					)}
+					<BlockTimestamp startTs={ts} endTs={endTs} live />
 				</div>
 				<div className="flex items-center gap-2">
 					<ChevronUp

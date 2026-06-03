@@ -63,6 +63,7 @@ import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { ProfileValidator } from "../../shared/ProfileValidator"
 
 import { Terminal } from "../../integrations/terminal/Terminal"
+import { getCustomSoundsDir, resolveCustomSoundUri } from "../../integrations/misc/custom-sounds"
 import { downloadTask, getTaskFileName } from "../../integrations/misc/export-markdown"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { getTheme } from "../../integrations/theme/getTheme"
@@ -78,7 +79,6 @@ import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
 import { fileExistsAtPath } from "../../utils/fs"
-import { setTtsEnabled, setTtsSpeed } from "../../utils/tts"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
@@ -137,6 +137,9 @@ export class ClineProvider
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
 	private clineStack: Task[] = []
+	// Children whose delegated parent could not be proven detached on cancel.
+	// reopenParentFromDelegation() refuses to reopen a parent for any child here.
+	private cancelledDelegationChildIds = new Set<string>()
 	private codeIndexStatusSubscription?: vscode.Disposable
 	private codeIndexManager?: CodeIndexManager
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
@@ -852,8 +855,7 @@ export class ClineProvider
 				terminalZshP10k = false,
 				terminalPowershellCounter = false,
 				terminalZdotdir = false,
-				ttsEnabled,
-				ttsSpeed,
+				terminalProfile,
 			}) => {
 				Terminal.setShellIntegrationTimeout(terminalShellIntegrationTimeout)
 				Terminal.setShellIntegrationDisabled(terminalShellIntegrationDisabled)
@@ -863,8 +865,7 @@ export class ClineProvider
 				Terminal.setTerminalZshP10k(terminalZshP10k)
 				Terminal.setPowershellCounter(terminalPowershellCounter)
 				Terminal.setTerminalZdotdir(terminalZdotdir)
-				setTtsEnabled(ttsEnabled ?? false)
-				setTtsSpeed(ttsSpeed ?? 1)
+				Terminal.setTerminalProfile(terminalProfile)
 			},
 		)
 
@@ -875,6 +876,9 @@ export class ClineProvider
 		if (vscode.workspace.workspaceFolders) {
 			resourceRoots.push(...vscode.workspace.workspaceFolders.map((folder) => folder.uri))
 		}
+
+		// Allow webview to load user-uploaded custom sound files (notification settings).
+		resourceRoots.push(vscode.Uri.file(getCustomSoundsDir(this.contextProxy.globalStorageUri.fsPath)))
 
 		webviewView.webview.options = {
 			enableScripts: true,
@@ -1358,7 +1362,7 @@ export class ClineProvider
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
             <meta name="theme-color" content="#000000">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' https://ph.roocode.com 'strict-dynamic'; connect-src ${webview.cspSource} ${openRouterDomain} https://api.requesty.ai https://ph.roocode.com;">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'; connect-src ${webview.cspSource} ${openRouterDomain} https://api.requesty.ai;">
             <link rel="stylesheet" type="text/css" href="${stylesUri}">
 			<link href="${codiconsUri}" rel="stylesheet" />
 			<script nonce="${nonce}">
@@ -2163,12 +2167,16 @@ export class ClineProvider
 			autoCondenseContext,
 			autoCondenseContextPercent,
 			soundEnabled,
-			ttsEnabled,
-			ttsSpeed,
 			enableCheckpoints,
 			checkpointTimeout,
 			taskHistory,
 			soundVolume,
+			customSoundCelebration,
+			customSoundCelebrationOriginal,
+			customSoundProgressLoop,
+			customSoundProgressLoopOriginal,
+			customSoundNotification,
+			customSoundNotificationOriginal,
 			writeDelayMs,
 			terminalShellIntegrationTimeout,
 			terminalShellIntegrationDisabled,
@@ -2178,6 +2186,7 @@ export class ClineProvider
 			terminalZshOhMy,
 			terminalZshP10k,
 			terminalZdotdir,
+			terminalProfile,
 			mcpEnabled,
 			currentApiConfigName,
 			listApiConfigMeta,
@@ -2255,6 +2264,21 @@ export class ClineProvider
 		const cwd = this.cwd
 		const currentTask = this.getCurrentTask()
 
+		// Resolve user-uploaded custom sound files to webview URIs (undefined => use built-in).
+		const customSoundUris: ExtensionState["customSoundUris"] = {}
+		const webview = this.view?.webview
+		if (webview) {
+			const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
+			const [celebrationUri, progressLoopUri, notificationUri] = await Promise.all([
+				resolveCustomSoundUri(webview, globalStoragePath, customSoundCelebration),
+				resolveCustomSoundUri(webview, globalStoragePath, customSoundProgressLoop),
+				resolveCustomSoundUri(webview, globalStoragePath, customSoundNotification),
+			])
+			if (celebrationUri) customSoundUris.celebration = celebrationUri
+			if (progressLoopUri) customSoundUris.progress_loop = progressLoopUri
+			if (notificationUri) customSoundUris.notification = notificationUri
+		}
+
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
@@ -2280,8 +2304,15 @@ export class ClineProvider
 			messageQueue: currentTask?.messageQueueService?.messages,
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
 			soundEnabled: soundEnabled ?? false,
-			ttsEnabled: ttsEnabled ?? false,
-			ttsSpeed: ttsSpeed ?? 1.0,
+			// Send `null` (not `undefined`) so the webview merge actually clears
+			// the slot after a reset — postMessage drops undefined keys.
+			customSoundCelebration: customSoundCelebration ?? null,
+			customSoundCelebrationOriginal: customSoundCelebrationOriginal ?? null,
+			customSoundProgressLoop: customSoundProgressLoop ?? null,
+			customSoundProgressLoopOriginal: customSoundProgressLoopOriginal ?? null,
+			customSoundNotification: customSoundNotification ?? null,
+			customSoundNotificationOriginal: customSoundNotificationOriginal ?? null,
+			customSoundUris,
 			enableCheckpoints: enableCheckpoints ?? true,
 			checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			shouldShowAnnouncement:
@@ -2298,6 +2329,7 @@ export class ClineProvider
 			terminalZshOhMy: terminalZshOhMy ?? false,
 			terminalZshP10k: terminalZshP10k ?? false,
 			terminalZdotdir: terminalZdotdir ?? false,
+			terminalProfile,
 			mcpEnabled: mcpEnabled ?? true,
 			currentApiConfigName: currentApiConfigName ?? "default",
 			listApiConfigMeta: listApiConfigMeta ?? [],
@@ -2510,8 +2542,12 @@ export class ClineProvider
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
 			soundEnabled: stateValues.soundEnabled ?? false,
-			ttsEnabled: stateValues.ttsEnabled ?? false,
-			ttsSpeed: stateValues.ttsSpeed ?? 1.0,
+			customSoundCelebration: stateValues.customSoundCelebration,
+			customSoundCelebrationOriginal: stateValues.customSoundCelebrationOriginal,
+			customSoundProgressLoop: stateValues.customSoundProgressLoop,
+			customSoundProgressLoopOriginal: stateValues.customSoundProgressLoopOriginal,
+			customSoundNotification: stateValues.customSoundNotification,
+			customSoundNotificationOriginal: stateValues.customSoundNotificationOriginal,
 			enableCheckpoints: stateValues.enableCheckpoints ?? true,
 			checkpointTimeout: stateValues.checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			soundVolume: stateValues.soundVolume,
@@ -2525,6 +2561,7 @@ export class ClineProvider
 			terminalZshOhMy: stateValues.terminalZshOhMy ?? false,
 			terminalZshP10k: stateValues.terminalZshP10k ?? false,
 			terminalZdotdir: stateValues.terminalZdotdir ?? false,
+			terminalProfile: stateValues.terminalProfile,
 			mode: stateValues.mode ?? defaultModeSlug,
 			language: stateValues.language ?? formatLanguage(vscode.env.language),
 			mcpEnabled: stateValues.mcpEnabled ?? true,
@@ -2987,7 +3024,13 @@ export class ClineProvider
 		})
 
 		await this.addClineToStack(task)
-		task.start()
+		// Gate the explicit start so callers passing `startTask: false`
+		// (e.g. delegateParentAndOpenChild) can persist surrounding metadata
+		// before the task loop begins. Without this, the child loop starts here
+		// and the later child.start() becomes a no-op (_started guard).
+		if (options.startTask !== false) {
+			task.start()
+		}
 
 		this.log(
 			`[createTask] ${task.parentTask ? "child" : "parent"} task ${task.taskId}.${task.instanceId} instantiated`,
@@ -3021,8 +3064,9 @@ export class ClineProvider
 		}
 
 		// Preserve parent and root task information for history item.
-		const rootTask = task.rootTask
-		const parentTask = task.parentTask
+		// `let` because a delegated-parent detach below may clear them.
+		let rootTask = task.rootTask
+		let parentTask = task.parentTask
 
 		// Mark this as a user-initiated cancellation so provider-only rehydration can occur
 		task.abortReason = "user_cancelled"
@@ -3080,6 +3124,57 @@ export class ClineProvider
 
 		if (!historyItem) {
 			return
+		}
+
+		// If this is a delegated subtask, detach its parent so the parent does not
+		// stay stuck in "delegated" awaiting a child that the user just cancelled.
+		if (task.parentTaskId) {
+			try {
+				const { historyItem: parentHistory } = await this.getTaskWithId(task.parentTaskId)
+
+				if (parentHistory?.status === "delegated" && parentHistory?.awaitingChildId === task.taskId) {
+					await this.updateTaskHistory({
+						...parentHistory,
+						status: "active",
+						awaitingChildId: undefined,
+					})
+
+					this.log(
+						`[cancelTask] Detached delegated parent ${task.parentTaskId}: delegated → active (child ${task.taskId} cancelled)`,
+					)
+					parentTask = undefined
+					rootTask = undefined
+					// Clear any stale fail-closed entry from a prior failed cancel attempt.
+					this.cancelledDelegationChildIds.delete(task.taskId)
+				}
+			} catch (error) {
+				// Fail closed: if we cannot prove the parent was detached, make the
+				// rehydrated child standalone so later completions cannot reopen a
+				// stale delegated parent, even after a provider reload.
+				parentTask = undefined
+				rootTask = undefined
+				this.cancelledDelegationChildIds.add(task.taskId)
+				historyItem = {
+					...historyItem,
+					parentTaskId: undefined,
+					rootTaskId: undefined,
+				}
+				try {
+					await this.updateTaskHistory(historyItem)
+				} catch (historyError) {
+					this.log(
+						`[cancelTask] Failed to persist standalone child state for ${task.taskId}: ${
+							historyError instanceof Error ? historyError.message : String(historyError)
+						}`,
+					)
+					throw historyError
+				}
+				this.log(
+					`[cancelTask] Failed to detach delegated parent for ${task.taskId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			}
 		}
 
 		// Clears task again, so we need to abortTask manually above.
@@ -3385,12 +3480,29 @@ export class ClineProvider
 		parentTaskId: string
 		childTaskId: string
 		completionResultSummary: string
-	}): Promise<void> {
+	}): Promise<boolean> {
 		const { parentTaskId, childTaskId, completionResultSummary } = params
 		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
 
 		// 1) Load parent from history and current persisted messages
 		const { historyItem } = await this.getTaskWithId(parentTaskId)
+
+		// Guard: re-validate delegation state after the async approval gap.
+		// cancelTask() or removeClineFromStack() may have already detached the parent
+		// (status → "active", awaitingChildId → undefined) while the user was
+		// approving the subtask finish. Routing output back now would corrupt an
+		// unrelated task.
+		if (
+			this.cancelledDelegationChildIds.has(childTaskId) ||
+			historyItem.status !== "delegated" ||
+			historyItem.awaitingChildId !== childTaskId
+		) {
+			this.log(
+				`[reopenParentFromDelegation] Aborting: parent ${parentTaskId} is no longer delegated to child ${childTaskId} ` +
+					`(status=${historyItem.status}, awaitingChildId=${historyItem.awaitingChildId})`,
+			)
+			return false
+		}
 
 		let parentClineMessages: ClineMessage[] = []
 		try {
@@ -3425,7 +3537,14 @@ export class ClineProvider
 			text: completionResultSummary,
 			ts,
 		}
-		parentClineMessages.push(subtaskUiMessage)
+		const lastParentClineMessage = parentClineMessages.at(-1)
+		if (
+			lastParentClineMessage?.type !== "say" ||
+			lastParentClineMessage.say !== "subtask_result" ||
+			lastParentClineMessage.text !== completionResultSummary
+		) {
+			parentClineMessages.push(subtaskUiMessage)
+		}
 		await saveTaskMessages({ messages: parentClineMessages, taskId: parentTaskId, globalStoragePath })
 
 		// Find the tool_use_id from the last assistant message's new_task tool_use
@@ -3488,16 +3607,26 @@ export class ClineProvider
 		} else {
 			// If there is no corresponding tool_use in the parent API history, we cannot emit a
 			// tool_result. Fall back to a plain user text note so the parent can still resume.
-			parentApiMessages.push({
-				role: "user",
-				content: [
-					{
-						type: "text" as const,
-						text: `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`,
-					},
-				],
-				ts,
-			})
+			const fallbackText = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+			const lastParentApiMessage = parentApiMessages.at(-1)
+			const alreadyHasFallback =
+				lastParentApiMessage?.role === "user" &&
+				Array.isArray(lastParentApiMessage.content) &&
+				lastParentApiMessage.content.some(
+					(block: { type?: string; text?: string }) => block.type === "text" && block.text === fallbackText,
+				)
+			if (!alreadyHasFallback) {
+				parentApiMessages.push({
+					role: "user",
+					content: [
+						{
+							type: "text" as const,
+							text: fallbackText,
+						},
+					],
+					ts,
+				})
+			}
 		}
 
 		await saveApiMessages({ messages: parentApiMessages as any, taskId: parentTaskId, globalStoragePath })
@@ -3509,7 +3638,9 @@ export class ClineProvider
 		//    overwrite a "completed" status set earlier.
 		const current = this.getCurrentTask()
 		if (current?.taskId === childTaskId) {
-			await this.removeClineFromStack()
+			// This method explicitly persists the parent's active state below, so the
+			// generic delegated→active repair in removeClineFromStack would be redundant.
+			await this.removeClineFromStack({ skipDelegationRepair: true })
 		}
 
 		// 4) Update child metadata to "completed" status.
@@ -3575,6 +3706,9 @@ export class ClineProvider
 		} catch {
 			// non-fatal
 		}
+
+		this.cancelledDelegationChildIds.delete(childTaskId)
+		return true
 	}
 
 	/**
