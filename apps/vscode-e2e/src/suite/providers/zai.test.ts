@@ -203,12 +203,12 @@ suite("Z.ai GLM provider", function () {
 
 		assert.ok(completionMessage, "Task should complete with the expected Z.ai GLM response")
 
-		// Verify max_tokens is the model's documented limit (131_072), not the 20%-of-context
-		// heuristic cap (40_000) that guards against inaccurate OpenRouter dynamic metadata.
+		// Verify max_tokens uses the default 20%-of-context clamp (200_000 * 0.2 = 40_000)
+		// unless the user explicitly overrides it via modelMaxTokens.
 		assert.strictEqual(
 			requestCapture.maxTokens,
-			131_072,
-			`max_tokens should be the documented glm-5.1 limit (131_072) but was ${requestCapture.maxTokens}`,
+			40_000,
+			`max_tokens should default to the glm-5.1 clamp (40_000) but was ${requestCapture.maxTokens}`,
 		)
 	})
 })
