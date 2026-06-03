@@ -15,10 +15,17 @@ import path from "path"
 import { t } from "../../i18n"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
+import { isTransientConnectionError } from "./shared/validation-helpers"
 
 export class CodeIndexManager {
 	// --- Singleton Implementation ---
 	private static instances = new Map<string, CodeIndexManager>() // Map workspace path to instance
+
+	// Auto-retry tuning for transient connection failures (e.g. a local llama.cpp /
+	// Ollama / Qdrant server that is intermittently down). Exponential backoff capped so
+	// a permanently-unavailable service is retried at most once every few minutes.
+	private static readonly AUTO_RETRY_INITIAL_DELAY_MS = 5_000
+	private static readonly AUTO_RETRY_MAX_DELAY_MS = 300_000
 
 	// Specialized class instances
 	private _configManager: CodeIndexConfigManager | undefined
@@ -30,6 +37,13 @@ export class CodeIndexManager {
 
 	// Flag to prevent race conditions during error recovery
 	private _isRecoveringFromError = false
+
+	// --- Auto-retry state ---
+	// Kept across recoverFromError() so retries can re-initialize without the webview.
+	private _contextProxy: ContextProxy | undefined
+	private _retryTimer: ReturnType<typeof setTimeout> | undefined
+	private _retryAttempt = 0
+	private _stateSubscription: vscode.Disposable | undefined
 
 	public static getInstance(context: vscode.ExtensionContext, workspacePath?: string): CodeIndexManager | undefined {
 		// Resolve the workspace folder to get both fsPath and the real URI
@@ -90,6 +104,12 @@ export class CodeIndexManager {
 		this._folderUri = folderUri
 		this.context = context
 		this._stateManager = new CodeIndexStateManager()
+
+		// Watch state transitions to drive automatic recovery from transient connection
+		// failures. onProgressUpdate may be a no-op in some test doubles, hence the guard.
+		this._stateSubscription = this._stateManager.onProgressUpdate?.((status) =>
+			this._onIndexStateChanged(status.systemStatus, status.message),
+		)
 	}
 
 	// --- Public API ---
@@ -161,6 +181,9 @@ export class CodeIndexManager {
 	 * @returns Object indicating if a restart is needed
 	 */
 	public async initialize(contextProxy: ContextProxy): Promise<{ requiresRestart: boolean }> {
+		// Remember the proxy so automatic retries can re-initialize without the webview.
+		this._contextProxy = contextProxy
+
 		// 1. ConfigManager Initialization and Configuration Loading
 		if (!this._configManager) {
 			this._configManager = new CodeIndexConfigManager(contextProxy)
@@ -244,6 +267,8 @@ export class CodeIndexManager {
 	 * Stops any in-progress indexing operation and the file watcher.
 	 */
 	public stopIndexing(): void {
+		// A user-initiated stop must cancel any pending automatic retry.
+		this._cancelAutoRetry()
 		if (this._orchestrator) {
 			this._orchestrator.stopIndexing()
 		}
@@ -301,11 +326,124 @@ export class CodeIndexManager {
 		}
 	}
 
+	// --- Automatic retry on transient connection failures ---
+
+	/**
+	 * Reacts to indexing state transitions to drive automatic recovery.
+	 * - On a transient connection `Error` (while the feature is enabled & configured),
+	 *   schedules a retry with exponential backoff.
+	 * - On any progress/success (`Indexing`/`Indexed`), resets the backoff and cancels
+	 *   any pending retry, since the service is healthy again.
+	 */
+	private _onIndexStateChanged(systemStatus: IndexingState, message?: string): void {
+		if (systemStatus === "Indexing" || systemStatus === "Indexed") {
+			this._retryAttempt = 0
+			this._cancelAutoRetry()
+			return
+		}
+
+		if (systemStatus !== "Error") {
+			return
+		}
+
+		// Only auto-retry recoverable connection failures, and only while the feature is
+		// actually meant to be running. Permanent misconfigurations (bad key, invalid
+		// model/endpoint) are left in Error for the user to fix.
+		if (!this.isFeatureEnabled || !this.isWorkspaceEnabled || !this.isFeatureConfigured) {
+			return
+		}
+		if (!isTransientConnectionError(message)) {
+			return
+		}
+
+		this._scheduleAutoRetry()
+	}
+
+	/**
+	 * Schedules a single auto-retry using exponential backoff. No-op if one is already
+	 * pending (the state subscription can fire multiple times for the same failure).
+	 */
+	private _scheduleAutoRetry(): void {
+		if (this._retryTimer) {
+			return
+		}
+
+		const delay = Math.min(
+			CodeIndexManager.AUTO_RETRY_MAX_DELAY_MS,
+			CodeIndexManager.AUTO_RETRY_INITIAL_DELAY_MS * 2 ** this._retryAttempt,
+		)
+		this._retryAttempt++
+
+		console.log(
+			`[CodeIndexManager] Connection error detected. Scheduling automatic reindex retry in ${Math.round(
+				delay / 1000,
+			)}s (attempt ${this._retryAttempt}).`,
+		)
+
+		this._retryTimer = setTimeout(() => {
+			this._retryTimer = undefined
+			void this._performAutoRetry()
+		}, delay)
+	}
+
+	/**
+	 * Cancels any pending auto-retry and resets the backoff counter.
+	 */
+	private _cancelAutoRetry(): void {
+		if (this._retryTimer) {
+			clearTimeout(this._retryTimer)
+			this._retryTimer = undefined
+		}
+		this._retryAttempt = 0
+	}
+
+	/**
+	 * Performs one automatic retry: recovers from the error state and re-initializes,
+	 * which re-validates the embedder connection and (on success) restarts indexing.
+	 * A repeated failure simply re-enters the Error state and the subscription schedules
+	 * the next retry with a larger backoff.
+	 */
+	private async _performAutoRetry(): Promise<void> {
+		// Bail if things changed while we were waiting.
+		if (!this.isFeatureEnabled || !this.isWorkspaceEnabled || !this.isFeatureConfigured) {
+			this._retryAttempt = 0
+			return
+		}
+		const currentStatus = this._stateManager.getCurrentStatus().systemStatus
+		if (currentStatus === "Indexing" || currentStatus === "Indexed") {
+			// Already healthy again — nothing to do.
+			this._retryAttempt = 0
+			return
+		}
+		if (!this._contextProxy) {
+			console.warn("[CodeIndexManager] Cannot auto-retry indexing: no context proxy available.")
+			return
+		}
+
+		try {
+			// Clear the error and rebuild services, then re-initialize. initialize() will
+			// recreate services and auto-start indexing when appropriate.
+			await this.recoverFromError()
+			await this.initialize(this._contextProxy)
+		} catch (error) {
+			// Expected when the service is still unreachable — _recreateServices() has
+			// already set the Error state, so the subscription will reschedule.
+			console.warn(
+				`[CodeIndexManager] Automatic reindex retry failed: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+		}
+	}
+
 	/**
 	 * Cleans up the manager instance.
 	 */
 	public dispose(): void {
 		this.stopIndexing()
+		this._cancelAutoRetry()
+		this._stateSubscription?.dispose()
+		this._stateSubscription = undefined
 		this._stateManager.dispose()
 	}
 
@@ -442,7 +580,8 @@ export class CodeIndexManager {
 			const isFeatureEnabled = this.isFeatureEnabled
 			const isFeatureConfigured = this.isFeatureConfigured
 
-			// If feature is disabled, stop the service (including any active scan)
+			// If feature is disabled, stop the service (including any active scan).
+			// stopIndexing() also cancels any pending automatic retry.
 			if (!isFeatureEnabled) {
 				this.stopIndexing()
 				this._stateManager.setSystemState("Standby", "Code indexing is disabled")

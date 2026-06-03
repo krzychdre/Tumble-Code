@@ -1,4 +1,4 @@
-import { sanitizeErrorMessage } from "../validation-helpers"
+import { sanitizeErrorMessage, isTransientConnectionError } from "../validation-helpers"
 
 describe("sanitizeErrorMessage", () => {
 	it("should sanitize Unix-style file paths", () => {
@@ -88,5 +88,56 @@ describe("sanitizeErrorMessage", () => {
 		const input = "Copy from /src/file1.js to /dest/file2.js failed"
 		const expected = "Copy from [REDACTED_PATH] to [REDACTED_PATH] failed"
 		expect(sanitizeErrorMessage(input)).toBe(expected)
+	})
+})
+
+describe("isTransientConnectionError", () => {
+	it("returns true for raw network error signatures", () => {
+		const transient = [
+			"connect ECONNREFUSED 127.0.0.1:8080",
+			"read ECONNRESET",
+			"getaddrinfo ENOTFOUND localhost",
+			"connect ETIMEDOUT",
+			"getaddrinfo EAI_AGAIN host",
+			"socket hang up",
+			"fetch failed",
+			"Connection error.", // OpenAI SDK APIConnectionError
+			"request timed out",
+			"HTTP 0: (no status)",
+			"No response",
+		]
+		for (const msg of transient) {
+			expect(isTransientConnectionError(msg)).toBe(true)
+		}
+	})
+
+	it("matches case-insensitively", () => {
+		expect(isTransientConnectionError("connect econnrefused 127.0.0.1")).toBe(true)
+	})
+
+	it("returns false for permanent configuration errors", () => {
+		const permanent = [
+			"Authentication failed. Please check your API key in the settings.",
+			"The specified model is not available. Please check your model configuration.",
+			"Invalid API endpoint. Please check your URL configuration.",
+			"Invalid embedder configuration. Please review your settings.",
+		]
+		for (const msg of permanent) {
+			expect(isTransientConnectionError(msg)).toBe(false)
+		}
+	})
+
+	it("returns false for empty/nullish input", () => {
+		expect(isTransientConnectionError(undefined)).toBe(false)
+		expect(isTransientConnectionError(null)).toBe(false)
+		expect(isTransientConnectionError("")).toBe(false)
+		expect(isTransientConnectionError("everything is fine")).toBe(false)
+	})
+
+	it("detects errors wrapped by the orchestrator/embedder layers", () => {
+		// Mirrors the real shape: failedDuringInitialScan -> indexing failed -> embed retry
+		const wrapped =
+			"Failed during initial scan: Indexing failed: Failed to create embeddings after 3 attempts: connect ECONNREFUSED 127.0.0.1:8080"
+		expect(isTransientConnectionError(wrapped)).toBe(true)
 	})
 })
