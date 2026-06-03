@@ -792,6 +792,52 @@ describe("ProviderSettingsManager", () => {
 			expect(exported.apiConfigs.retired.modelMaxTokens).toBe(4096)
 			expect(exported.apiConfigs.retired.modelMaxThinkingTokens).toBe(2048)
 		})
+
+		it("should preserve modelMaxTokens for models that support a configurable max output (e.g. GLM)", async () => {
+			const existingConfig: ProviderProfiles = {
+				currentApiConfigName: "glm",
+				apiConfigs: {
+					glm: {
+						id: "glm-id",
+						apiProvider: "zai",
+						apiModelId: "glm-5.1",
+						modelMaxTokens: 8192,
+						modelMaxThinkingTokens: 2048,
+					},
+				},
+			}
+
+			mockSecrets.get.mockResolvedValue(JSON.stringify(existingConfig))
+
+			const exported = await providerSettingsManager.export()
+
+			// GLM exposes a configurable max output (supportsMaxTokens) but no reasoning budget,
+			// so modelMaxTokens must survive the export while modelMaxThinkingTokens is dropped.
+			expect(exported.apiConfigs.glm.modelMaxTokens).toBe(8192)
+			expect(exported.apiConfigs.glm.modelMaxThinkingTokens).toBeUndefined()
+		})
+
+		it("should strip both token fields for models that support neither reasoning budgets nor a configurable max", async () => {
+			const existingConfig: ProviderProfiles = {
+				currentApiConfigName: "anthropic",
+				apiConfigs: {
+					anthropic: {
+						id: "anthropic-id",
+						apiProvider: "anthropic",
+						apiModelId: "claude-3-5-haiku-20241022",
+						modelMaxTokens: 8192,
+						modelMaxThinkingTokens: 2048,
+					},
+				},
+			}
+
+			mockSecrets.get.mockResolvedValue(JSON.stringify(existingConfig))
+
+			const exported = await providerSettingsManager.export()
+
+			expect(exported.apiConfigs.anthropic.modelMaxTokens).toBeUndefined()
+			expect(exported.apiConfigs.anthropic.modelMaxThinkingTokens).toBeUndefined()
+		})
 	})
 
 	describe("ResetAllConfigs", () => {
