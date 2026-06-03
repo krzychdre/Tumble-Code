@@ -326,12 +326,13 @@ describe("ThinkingBudget", () => {
 			expect(screen.getByTestId("reasoning-effort")).toBeInTheDocument()
 		})
 
-		it("should default the slider to the model's full max output (Z.ai bypass) when modelMaxTokens is unset", () => {
+		it("should default the slider to the 20%-of-context clamp when modelMaxTokens is unset", () => {
 			render(<ThinkingBudget {...defaultProps} apiConfiguration={glmApiConfiguration} modelInfo={glmModelInfo} />)
 
-			// Our fork bypasses the 20% clamp for zai, so the runtime default is the full ceiling (131072).
+			// Z.ai GLM models are clamped to 20% of the context window by default
+			// (200000 * 0.2 = 40000); the user can raise it via an explicit modelMaxTokens override.
 			const slider = screen.getByTestId("max-output-tokens").querySelector("input[type='range']")!
-			expect(slider).toHaveValue("131072")
+			expect(slider).toHaveValue("40000")
 		})
 
 		it("should reflect an explicit modelMaxTokens override on the slider", () => {
