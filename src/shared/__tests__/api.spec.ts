@@ -312,8 +312,9 @@ describe("getModelMaxOutputTokens", () => {
 		})
 	})
 
-	test("should bypass 20% cap for Z.ai provider and use exact configured max tokens", () => {
-		// glm-5.1: maxTokens=131_072 on a 200k context window (65.5%) — would be capped to 40k without bypass
+	test("should still clamp Z.ai models to 20% of context window by default", () => {
+		// glm-5.1: maxTokens=131_072 on a 200k context window. Without an explicit
+		// modelMaxTokens override the default 20% clamp applies (200_000 * 0.2 = 40_000).
 		const model: ModelInfo = {
 			contextWindow: 200_000,
 			supportsPromptCache: true,
@@ -328,7 +329,7 @@ describe("getModelMaxOutputTokens", () => {
 			format: "openai",
 		})
 
-		expect(result).toBe(131_072)
+		expect(result).toBe(40_000)
 	})
 
 	test("should still clamp non-Z.ai models with high maxTokens to 20% of context window", () => {
