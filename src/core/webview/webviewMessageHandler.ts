@@ -73,6 +73,7 @@ import { getWorkspacePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Mode, defaultModeSlug } from "../../shared/modes"
 import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
+import { getLMStudioModels } from "../../api/providers/fetchers/lmstudio"
 import { GetModelsOptions } from "../../shared/api"
 import { generateSystemPrompt } from "./generateSystemPrompt"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
@@ -1154,14 +1155,20 @@ export const webviewMessageHandler = async (
 			// Specific handler for LM Studio models only.
 			const { apiConfiguration: lmStudioApiConfig } = await provider.getState()
 			try {
-				const lmStudioOptions = {
-					provider: "lmstudio" as const,
-					baseUrl: lmStudioApiConfig.lmStudioBaseUrl,
+				const requestedBaseUrl = message.values?.baseUrl
+				const hasPreviewBaseUrl = typeof requestedBaseUrl === "string"
+				let lmStudioModels: ModelRecord
+				if (hasPreviewBaseUrl) {
+					lmStudioModels = await getLMStudioModels(requestedBaseUrl)
+				} else {
+					const lmStudioOptions = {
+						provider: "lmstudio" as const,
+						baseUrl: lmStudioApiConfig.lmStudioBaseUrl,
+					}
+					// Flush cache and refresh to ensure fresh models.
+					await flushModels(lmStudioOptions, true)
+					lmStudioModels = await getModels(lmStudioOptions)
 				}
-				// Flush cache and refresh to ensure fresh models.
-				await flushModels(lmStudioOptions, true)
-
-				const lmStudioModels = await getModels(lmStudioOptions)
 
 				if (Object.keys(lmStudioModels).length > 0) {
 					provider.postMessageToWebview({
