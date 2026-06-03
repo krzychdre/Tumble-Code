@@ -213,6 +213,69 @@ export async function withValidationErrorHandling<T extends { valid: boolean; er
 }
 
 /**
+ * Raw signatures that indicate a transient/connection-level failure of the embedder
+ * or vector store (as opposed to a permanent misconfiguration like a bad API key or
+ * an unknown model). These are matched case-insensitively as substrings.
+ */
+const TRANSIENT_CONNECTION_SIGNATURES = [
+	"ECONNREFUSED",
+	"ECONNRESET",
+	"ENOTFOUND",
+	"ETIMEDOUT",
+	"EAI_AGAIN",
+	"ECONNABORTED",
+	"EPIPE",
+	"socket hang up",
+	"fetch failed",
+	"network error",
+	"connection error",
+	"connection failed",
+	"timed out",
+	"timeout",
+	"HTTP 0:",
+	"No response",
+] as const
+
+/**
+ * Determines whether an error message represents a transient connection failure that
+ * is worth retrying automatically (e.g. a local llama.cpp / Ollama / Qdrant server that
+ * is temporarily down). Permanent configuration errors (auth, invalid model/endpoint)
+ * return false so callers do not retry them forever.
+ *
+ * Matches both raw network signatures and the localized, user-facing strings produced
+ * by {@link handleValidationError} and the vector store, so it works regardless of
+ * which layer set the message.
+ */
+export function isTransientConnectionError(message: string | undefined | null): boolean {
+	if (!message || typeof message !== "string") {
+		return false
+	}
+
+	const haystack = message.toLowerCase()
+
+	if (TRANSIENT_CONNECTION_SIGNATURES.some((sig) => haystack.includes(sig.toLowerCase()))) {
+		return true
+	}
+
+	// Localized, user-facing messages (current locale) that mean "service unreachable".
+	// Non-templated messages are matched in full; the templated Qdrant message is matched
+	// on the stable prefix preceding its first interpolation (located via a sentinel), so
+	// locale wording is respected without depending on the dynamic URL/error tail.
+	const SENTINEL = "\u0001"
+	const qdrantMessage = t("embeddings:vectorStore.qdrantConnectionFailed", {
+		qdrantUrl: SENTINEL,
+		errorMessage: SENTINEL,
+	})
+	const localizedMatchers = [
+		t("embeddings:validation.connectionFailed"),
+		t("embeddings:validation.serviceUnavailable"),
+		qdrantMessage.split(SENTINEL)[0],
+	].map((m) => m.trim().toLowerCase())
+
+	return localizedMatchers.some((matcher) => matcher.length > 0 && haystack.includes(matcher))
+}
+
+/**
  * Formats an embedding error message based on the error type and context
  */
 export function formatEmbeddingError(error: any, maxRetries: number): Error {
