@@ -13,7 +13,7 @@ import { findLastIndex } from "@roo/array"
 
 import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"
-import { StandardTooltip, Button, Table, TableBody, TableRow, TableCell, CircularProgress } from "@src/components/ui"
+import { StandardTooltip, Button } from "@src/components/ui"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
 import { vscode } from "@src/utils/vscode"
@@ -215,107 +215,55 @@ const TaskHeader = ({
 				</div>
 				{!isTaskExpanded && contextWindow > 0 && (
 					<div
-						className="flex items-center justify-between text-sm text-muted-foreground/70"
+						className="flex items-center gap-2 text-sm text-muted-foreground/70"
 						onClick={(e) => e.stopPropagation()}>
-						<div className="flex items-center gap-2">
-							<StandardTooltip
-								content={(() => {
-									const availableSpace = contextWindow - (contextTokens || 0) - reservedForOutput
-
-									return (
-										<Table className="text-base ml-1.5">
-											<TableBody>
-												<TableRow>
-													<TableCell className="font-medium whitespace-nowrap">
-														{t("chat:tokenProgress.tokensUsedLabel")}
-													</TableCell>
-													<TableCell className="text-right text-[0.9em] font-mono">
-														{formatLargeNumber(contextTokens || 0)} /{" "}
-														{formatLargeNumber(contextWindow)}
-													</TableCell>
-												</TableRow>
-												{reservedForOutput > 0 && (
-													<TableRow>
-														<TableCell className="font-medium whitespace-nowrap">
-															{t("chat:tokenProgress.reservedForResponseLabel")}
-														</TableCell>
-														<TableCell className="text-right text-[0.9em] font-mono">
-															{formatLargeNumber(reservedForOutput)}
-														</TableCell>
-													</TableRow>
-												)}
-												{availableSpace > 0 && (
-													<TableRow>
-														<TableCell className="font-medium whitespace-nowrap">
-															{t("chat:tokenProgress.availableSpaceLabel")}
-														</TableCell>
-														<TableCell className="text-right text-[0.9em] font-mono">
-															{formatLargeNumber(availableSpace)}
-														</TableCell>
-													</TableRow>
-												)}
-											</TableBody>
-										</Table>
-									)
-								})()}
-								side="top"
-								sideOffset={8}>
-								<span className="flex items-center gap-1.5">
-									{(() => {
-										// Calculate percentage of available input space used
-										// Available input space = context window - reserved for output
-										const availableInputSpace = contextWindow - reservedForOutput
-										const percentage =
-											availableInputSpace > 0
-												? Math.round(((contextTokens || 0) / availableInputSpace) * 100)
-												: 0
-										return (
-											<>
-												<CircularProgress percentage={percentage} />
-												<span>{percentage}%</span>
-											</>
-										)
-									})()}
-								</span>
-							</StandardTooltip>
-							{!!totalCost && (
-								<>
-									<span>·</span>
-									<StandardTooltip
-										content={
-											hasSubtasks ? (
+						{/* Kilo Code–style horizontal context bar: tokens-used —bar— context-window */}
+						<ContextWindowProgress
+							contextWindow={contextWindow}
+							contextTokens={contextTokens || 0}
+							maxTokens={maxTokens || undefined}
+						/>
+						{(() => {
+							// Percentage of available input space used
+							// (available input space = context window - reserved for output)
+							const availableInputSpace = contextWindow - reservedForOutput
+							const percentage =
+								availableInputSpace > 0
+									? Math.round(((contextTokens || 0) / availableInputSpace) * 100)
+									: 0
+							return <span className="shrink-0">{percentage}%</span>
+						})()}
+						{!!totalCost && (
+							<>
+								<span className="shrink-0">·</span>
+								<StandardTooltip
+									content={
+										hasSubtasks ? (
+											<div>
 												<div>
-													<div>
-														{t("chat:costs.totalWithSubtasks", {
-															cost: (aggregatedCost ?? totalCost).toFixed(2),
-														})}
-													</div>
-													{costBreakdown && (
-														<div className="text-xs mt-1">{costBreakdown}</div>
-													)}
+													{t("chat:costs.totalWithSubtasks", {
+														cost: (aggregatedCost ?? totalCost).toFixed(2),
+													})}
 												</div>
-											) : (
-												<div>{t("chat:costs.total", { cost: totalCost.toFixed(2) })}</div>
-											)
-										}
-										side="top"
-										sideOffset={8}>
-										<>
-											<span>
-												${(aggregatedCost ?? totalCost).toFixed(2)}
-												{hasSubtasks && (
-													<span
-														className="text-xs ml-1"
-														title={t("chat:costs.includesSubtasks")}>
-														*
-													</span>
-												)}
+												{costBreakdown && <div className="text-xs mt-1">{costBreakdown}</div>}
+											</div>
+										) : (
+											<div>{t("chat:costs.total", { cost: totalCost.toFixed(2) })}</div>
+										)
+									}
+									side="top"
+									sideOffset={8}>
+									<span className="shrink-0">
+										${(aggregatedCost ?? totalCost).toFixed(2)}
+										{hasSubtasks && (
+											<span className="text-xs ml-1" title={t("chat:costs.includesSubtasks")}>
+												*
 											</span>
-										</>
-									</StandardTooltip>
-								</>
-							)}
-						</div>
+										)}
+									</span>
+								</StandardTooltip>
+							</>
+						)}
 					</div>
 				)}
 				{/* Expanded state: Show task text and images */}
