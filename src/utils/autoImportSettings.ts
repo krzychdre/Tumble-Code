@@ -46,6 +46,17 @@ export async function autoImportSettings(
 		if (result.success) {
 			outputChannel.appendLine(`[AutoImport] Successfully imported settings from ${resolvedPath}`)
 
+			const warnings = (result as { warnings?: string[] }).warnings
+			if (warnings && warnings.length > 0) {
+				const count = warnings.length
+				outputChannel.appendLine(
+					`[AutoImport] Import completed with ${count} warning${count === 1 ? "" : "s"}.`,
+				)
+				for (const warning of warnings) {
+					outputChannel.appendLine(`[AutoImport] Warning: ${warning}`)
+				}
+			}
+
 			// Show a notification to the user
 			vscode.window.showInformationMessage(
 				t("common:info.auto_import_success", { filename: path.basename(resolvedPath) }),

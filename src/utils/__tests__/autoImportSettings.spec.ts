@@ -220,6 +220,39 @@ describe("autoImportSettings", () => {
 		expect(mockContextProxy.setValues).toHaveBeenCalled()
 	})
 
+	it("logs import warnings while still succeeding", async () => {
+		const settingsPath = "/absolute/path/to/config.json"
+		vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
+			get: vi.fn().mockReturnValue(settingsPath),
+		} as any)
+		vi.mocked(fileExistsAtPath).mockResolvedValue(true)
+		vi.mocked(fsPromises.readFile).mockResolvedValue(
+			JSON.stringify({
+				providerProfiles: {
+					currentApiConfigName: "test-config",
+					apiConfigs: { "test-config": { apiProvider: "anthropic", anthropicApiKey: "test-key" } },
+				},
+				globalSettings: { requestDelaySeconds: "slow", customInstructions: "Test instructions" },
+			}) as any,
+		)
+
+		await autoImportSettings(mockOutputChannel, {
+			providerSettingsManager: mockProviderSettingsManager,
+			contextProxy: mockContextProxy,
+			customModesManager: mockCustomModesManager,
+		})
+
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+			"[AutoImport] Successfully imported settings from /absolute/path/to/config.json",
+		)
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("[AutoImport] Import completed with 1 warning.")
+		expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(
+			expect.stringContaining('[AutoImport] Warning: Setting "globalSettings.requestDelaySeconds"'),
+		)
+		expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("info.auto_import_success")
+		expect(mockContextProxy.setValues).toHaveBeenCalledWith({ customInstructions: "Test instructions" })
+	})
+
 	it("should handle invalid JSON gracefully", async () => {
 		const settingsPath = "~/config.json"
 		vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
