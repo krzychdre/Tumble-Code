@@ -10,6 +10,7 @@ import {
 	globalSettingsSchema,
 	providerSettingsWithIdSchema,
 	isProviderName,
+	type GlobalSettings,
 	type ProviderSettingsWithId,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -62,6 +63,56 @@ function sanitizeProviderConfig(configName: string, apiConfig: unknown): { confi
 	return { config: apiConfig }
 }
 
+const globalSettingsShape = globalSettingsSchema.shape as Record<keyof GlobalSettings, z.ZodTypeAny>
+
+function formatZodIssues(error: ZodError): string {
+	return error.issues.map((issue) => `[${issue.path.join(".") || "value"}]: ${issue.message}`).join(", ")
+}
+
+/**
+ * Validates imported global settings one key at a time so a single invalid or
+ * unknown key is skipped (with a warning) instead of aborting the whole import.
+ */
+function sanitizeGlobalSettings(rawGlobalSettings: unknown): {
+	sanitizedGlobalSettings: GlobalSettings
+	warnings: string[]
+} {
+	const warnings: string[] = []
+	const sanitizedGlobalSettings: Record<string, unknown> = {}
+
+	if (typeof rawGlobalSettings === "undefined") {
+		return { sanitizedGlobalSettings: sanitizedGlobalSettings as GlobalSettings, warnings }
+	}
+
+	if (typeof rawGlobalSettings !== "object" || rawGlobalSettings === null || Array.isArray(rawGlobalSettings)) {
+		warnings.push(
+			`Setting "globalSettings" was skipped: Expected object, received ${
+				Array.isArray(rawGlobalSettings) ? "array" : typeof rawGlobalSettings
+			}.`,
+		)
+		return { sanitizedGlobalSettings: sanitizedGlobalSettings as GlobalSettings, warnings }
+	}
+
+	for (const [key, rawValue] of Object.entries(rawGlobalSettings)) {
+		const path = `globalSettings.${key}`
+		const schema = globalSettingsShape[key as keyof GlobalSettings]
+
+		if (!schema) {
+			warnings.push(`Setting "${path}" was skipped: Unknown setting.`)
+			continue
+		}
+
+		const result = schema.safeParse(rawValue)
+		if (result.success) {
+			sanitizedGlobalSettings[key] = result.data
+		} else {
+			warnings.push(`Setting "${path}" was skipped: ${formatZodIssues(result.error)}`)
+		}
+	}
+
+	return { sanitizedGlobalSettings: sanitizedGlobalSettings as GlobalSettings, warnings }
+}
+
 /**
  * Imports configuration from a specific file path
  * Shares base functionality for import settings for both the manual
@@ -83,14 +134,15 @@ export async function importSettingsFromPath(
 
 	const lenientSchema = z.object({
 		providerProfiles: lenientProviderProfilesSchema,
-		globalSettings: globalSettingsSchema.optional(),
+		globalSettings: z.unknown().optional(),
 	})
 
 	try {
 		const previousProviderProfiles = await providerSettingsManager.export()
 
 		const rawData = JSON.parse(await fs.readFile(filePath, "utf-8"))
-		const { providerProfiles: rawProviderProfiles, globalSettings = {} } = lenientSchema.parse(rawData)
+		const { providerProfiles: rawProviderProfiles, globalSettings: rawGlobalSettings } =
+			lenientSchema.parse(rawData)
 
 		// Track warnings for profiles that had issues
 		const warnings: string[] = []
@@ -153,15 +205,20 @@ export async function importSettingsFromPath(
 			},
 		}
 
+		const { sanitizedGlobalSettings, warnings: globalSettingsWarnings } = sanitizeGlobalSettings(rawGlobalSettings)
+		warnings.push(...globalSettingsWarnings)
+
 		await Promise.all(
-			(globalSettings.customModes ?? []).map((mode) => customModesManager.updateCustomMode(mode.slug, mode)),
+			(sanitizedGlobalSettings.customModes ?? []).map((mode) =>
+				customModesManager.updateCustomMode(mode.slug, mode),
+			),
 		)
 
 		// OpenAI Compatible settings are now correctly stored in codebaseIndexConfig
 		// They will be imported automatically with the config - no special handling needed
 
 		await providerSettingsManager.import(providerProfiles)
-		await contextProxy.setValues(globalSettings)
+		await contextProxy.setValues(sanitizedGlobalSettings)
 
 		// Set the current provider.
 		const currentProviderName = providerProfiles.currentApiConfigName
@@ -179,7 +236,7 @@ export async function importSettingsFromPath(
 
 		return {
 			providerProfiles,
-			globalSettings,
+			globalSettings: sanitizedGlobalSettings,
 			success: true,
 			warnings: warnings.length > 0 ? warnings : undefined,
 		}
@@ -332,7 +389,7 @@ export const importSettingsWithFeedback = async (
 			// Show a short summary in the toast notification
 			const count = result.warnings.length
 			const summary =
-				count === 1 ? `1 profile had issues during import.` : `${count} profiles had issues during import.`
+				count === 1 ? `1 item had issues during import.` : `${count} items had issues during import.`
 			await vscode.window.showWarningMessage(
 				`${t("common:info.settings_imported")} ${summary} See Developer Tools console for details.`,
 			)
