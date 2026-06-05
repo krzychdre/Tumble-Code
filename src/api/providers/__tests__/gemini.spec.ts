@@ -12,7 +12,7 @@ vitest.mock("@roo-code/telemetry", () => ({
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { type ModelInfo, geminiDefaultModelId, ApiProviderError } from "@roo-code/types"
+import { type ModelInfo, geminiDefaultModelId, geminiModels, ApiProviderError } from "@roo-code/types"
 
 import { t } from "i18next"
 import { GeminiHandler } from "../gemini"
@@ -176,12 +176,12 @@ describe("GeminiHandler", () => {
 
 		it("should honor a custom gemini model id not present in geminiModels (#227)", () => {
 			const customHandler = new GeminiHandler({
-				apiModelId: "gemini-3.5-flash",
+				apiModelId: "gemini-9.9-nonexistent",
 				geminiApiKey: "test-key",
 			})
 			const modelInfo = customHandler.getModel()
 			// The configured id must be invoked, not silently swapped for the default.
-			expect(modelInfo.id).toBe("gemini-3.5-flash")
+			expect(modelInfo.id).toBe("gemini-9.9-nonexistent")
 			expect(modelInfo.id).not.toBe(geminiDefaultModelId)
 			// A baseline ModelInfo is provided so downstream params resolve.
 			expect(modelInfo.info).toBeDefined()
@@ -204,6 +204,26 @@ describe("GeminiHandler", () => {
 			const modelInfo = protoHandler.getModel()
 			expect(modelInfo.id).toBe(geminiDefaultModelId)
 			expect(modelInfo.info).toBeDefined()
+		})
+
+		it("registers gemini-3.5-flash with its verified pricing and no reasoning budget (#331)", () => {
+			const flashHandler = new GeminiHandler({
+				apiModelId: "gemini-3.5-flash",
+				geminiApiKey: "test-key",
+			})
+			const { id, info } = flashHandler.getModel()
+
+			expect(id).toBe("gemini-3.5-flash")
+			expect(geminiModels).toHaveProperty("gemini-3.5-flash")
+			expect(info.contextWindow).toBe(1_048_576)
+			expect(info.maxTokens).toBe(65_536)
+			expect(info.supportsImages).toBe(true)
+			expect(info.supportsPromptCache).toBe(true)
+			expect(info.supportsReasoningBudget).toBe(false)
+			expect(info.inputPrice).toBe(1.5)
+			expect(info.outputPrice).toBe(9)
+			expect(info.cacheReadsPrice).toBe(0.15)
+			expect(info.cacheWritesPrice).toBe(1.0)
 		})
 
 		it("should exclude apply_diff and include edit in tool preferences", () => {
