@@ -30,6 +30,7 @@ import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { type TaskHistory } from "./TaskHistory"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskStreamProcessor } from "./TaskStreamProcessor"
+import { type UpdateApiReqMsgFn } from "./StreamProcessorTypes"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { findLastIndex } from "../../shared/array"
@@ -389,6 +390,7 @@ export class TaskApiLoop {
 				const streamResult = await this.processStream(
 					stream,
 					abortStream,
+					updateApiReqMsg,
 					lastApiReqIndex,
 					streamModelInfo,
 					currentItem,
@@ -476,6 +478,7 @@ export class TaskApiLoop {
 	private async processStream(
 		stream: ApiStream,
 		abortStream: any,
+		updateApiReqMsg: UpdateApiReqMsgFn,
 		lastApiReqIndex: number,
 		streamModelInfo: any,
 		currentItem: StackItem,
@@ -539,7 +542,7 @@ export class TaskApiLoop {
 			}
 
 			// Handle background usage drain
-			await this.handleBackgroundUsageDrain(lastApiReqIndex, streamModelInfo, iterator, item, abortStream)
+			await this.handleBackgroundUsageDrain(lastApiReqIndex, streamModelInfo, iterator, item, updateApiReqMsg)
 
 			// Check for abort after stream
 			if (this.access.abort || this.access.abandoned) {
@@ -564,7 +567,13 @@ export class TaskApiLoop {
 		streamModelInfo: any,
 		iterator: AsyncGenerator<any>,
 		item: IteratorResult<any>,
-		abortStream: any,
+		// The background drain only updates the api_req message with the final
+		// token/cost figures — it must be handed `updateApiReqMsg`, NOT `abortStream`.
+		// Passing `abortStream` here caused `captureUsageData` to abort the stream
+		// (reverting any in-progress diff edit) after every successful request,
+		// which stranded freshly-written files as dirty buffers. See
+		// ai_plans/2026-06-04_fix-diff-view-already-open-dirty-save.md.
+		updateApiReqMsg: UpdateApiReqMsgFn,
 	): Promise<void> {
 		// Create a copy of current token values to avoid race conditions
 		const currentTokens = {
@@ -581,7 +590,7 @@ export class TaskApiLoop {
 			streamModelInfo,
 			iterator,
 			item,
-			abortStream,
+			updateApiReqMsg,
 		)
 
 		drainStreamInBackgroundToFindAllUsage(lastApiReqIndex).catch((error) => {
