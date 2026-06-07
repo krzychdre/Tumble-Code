@@ -8,6 +8,7 @@ import { MAX_CONDENSE_THRESHOLD, MIN_CONDENSE_THRESHOLD, summarizeConversation, 
 import { ApiMessage } from "../task-persistence/apiMessages"
 import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
+import { microcompactToolResults, MICROCOMPACT_KEEP_RECENT } from "./microcompact"
 
 /**
  * Context Management
@@ -236,6 +237,12 @@ export type ContextManagementResult = SummarizeResponse & {
 	truncationId?: string
 	messagesRemoved?: number
 	newContextTokensAfterTruncation?: number
+	/** True when the cheap tool-result microcompaction pre-pass ran. */
+	microcompacted?: boolean
+	/** Number of tool results whose content was cleared by microcompaction. */
+	microcompactClearedCount?: number
+	/** Estimated tokens reclaimed by microcompaction. */
+	microcompactTokensCleared?: number
 }
 
 /**
@@ -303,12 +310,66 @@ export async function manageContext({
 	}
 	// If no specific threshold is found for the profile, fall back to global setting
 
+	const contextPercent = (100 * prevContextTokens) / contextWindow
+	const overCondenseThreshold = autoCondenseContext && contextPercent >= effectiveThreshold
+	const overAllowedTokens = prevContextTokens > allowedTokens
+
+	// --- Microcompaction pre-pass (cheap, no-LLM, lossless to the dialogue) ---
+	// Before resorting to the expensive, lossy full summarization, clear the
+	// content of OLD tool results (keeping the most recent N raw). Old tool output
+	// is the dominant, lowest-signal token sink in a coding session, and clearing
+	// it often frees enough to avoid summarizing entirely. This mirrors Claude
+	// Code's `microcompact → autocompact` ordering: the expensive summary is the
+	// last resort, not the first response to any overflow.
+	let workingMessages = messages
+	let microcompacted = false
+	let microcompactClearedCount = 0
+	let microcompactTokensCleared = 0
+
+	if (overCondenseThreshold || overAllowedTokens) {
+		const mc = microcompactToolResults(messages, { keepRecent: MICROCOMPACT_KEEP_RECENT })
+		if (mc.clearedCount > 0) {
+			workingMessages = mc.messages
+			microcompacted = true
+			microcompactClearedCount = mc.clearedCount
+			microcompactTokensCleared = mc.clearedText
+				? await estimateTokenCount([{ type: "text", text: mc.clearedText }], apiHandler)
+				: 0
+
+			// Estimate the post-microcompaction context size. If the cheap pass
+			// brought us back under both thresholds, we are done — skip the
+			// expensive summarization (and truncation) entirely. This is the
+			// "quiet" path that keeps the conversation fully intact.
+			const newContextTokens = Math.max(0, prevContextTokens - microcompactTokensCleared)
+			const newContextPercent = (100 * newContextTokens) / contextWindow
+			const stillOverCondense = autoCondenseContext && newContextPercent >= effectiveThreshold
+			const stillOverAllowed = newContextTokens > allowedTokens
+			if (!stillOverCondense && !stillOverAllowed) {
+				return {
+					messages: workingMessages,
+					summary: "",
+					cost: 0,
+					prevContextTokens,
+					newContextTokens,
+					microcompacted: true,
+					microcompactClearedCount,
+					microcompactTokensCleared,
+				}
+			}
+		}
+	}
+
+	// Only surface microcompaction fields when the pre-pass actually ran, so the
+	// no-op result shape stays backward-compatible with existing callers/tests.
+	const microcompactFields = microcompacted
+		? { microcompacted, microcompactClearedCount, microcompactTokensCleared }
+		: undefined
+
 	if (autoCondenseContext) {
-		const contextPercent = (100 * prevContextTokens) / contextWindow
 		if (contextPercent >= effectiveThreshold || prevContextTokens > allowedTokens) {
-			// Attempt to intelligently condense the context
+			// Attempt to intelligently condense the (already microcompacted) context
 			const result = await summarizeConversation({
-				messages,
+				messages: workingMessages,
 				apiHandler,
 				systemPrompt,
 				taskId,
@@ -325,14 +386,14 @@ export async function manageContext({
 				errorDetails = result.errorDetails
 				cost = result.cost
 			} else {
-				return { ...result, prevContextTokens }
+				return { ...result, prevContextTokens, ...microcompactFields }
 			}
 		}
 	}
 
 	// Fall back to sliding window truncation if needed
 	if (prevContextTokens > allowedTokens) {
-		const truncationResult = truncateConversation(messages, 0.5, taskId)
+		const truncationResult = truncateConversation(workingMessages, 0.5, taskId)
 
 		// Calculate new context tokens after truncation by counting non-truncated messages
 		// Messages with truncationParent are hidden, so we count only those without it
@@ -369,8 +430,20 @@ export async function manageContext({
 			truncationId: truncationResult.truncationId,
 			messagesRemoved: truncationResult.messagesRemoved,
 			newContextTokensAfterTruncation,
+			...microcompactFields,
 		}
 	}
-	// No truncation or condensation needed
-	return { messages, summary: "", cost, prevContextTokens, error, errorDetails }
+	// No truncation or condensation needed. `workingMessages` may differ from
+	// `messages` if microcompaction ran but did not fully resolve the overflow
+	// (e.g. autoCondenseContext disabled); return it so the cleared content is
+	// persisted by the caller (it overwrites history when the reference changes).
+	return {
+		messages: workingMessages,
+		summary: "",
+		cost,
+		prevContextTokens,
+		error,
+		errorDetails,
+		...microcompactFields,
+	}
 }
