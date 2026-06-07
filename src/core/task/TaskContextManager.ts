@@ -89,6 +89,10 @@ export interface TaskContextManagerAccess {
 	// Auto-condense circuit breaker counter (read AND written by the manager).
 	consecutiveAutoCompactFailures: number
 
+	// Non-destructive microcompaction: transient set of tool_use_ids to clear at
+	// send time. Written by the manager each request; read by buildCleanConversationHistory.
+	microcompactedToolUseIds: Set<string>
+
 	// Workspace path
 	cwd: string
 
@@ -525,6 +529,17 @@ export class TaskContextManager {
 				this.access.consecutiveAutoCompactFailures,
 				truncateResult,
 			)
+
+			// Stash the non-destructive microcompaction decision as transient state.
+			// Mutate the EXISTING set in place (rather than reassigning) so the
+			// reference captured by ApiRequestBuilder at construction stays live.
+			// Always overwrite (empty when nothing to clear) so a stale set from a
+			// prior request — or a prior mode with a narrower context window — never
+			// lingers. The send-time chokepoint applies it to the outgoing copy only.
+			this.access.microcompactedToolUseIds.clear()
+			for (const id of truncateResult.microcompactClearedToolUseIds ?? []) {
+				this.access.microcompactedToolUseIds.add(id)
+			}
 
 			if (truncateResult.messages !== this.access.apiConversationHistory) {
 				await this.access.history.overwriteApiConversationHistory(truncateResult.messages)

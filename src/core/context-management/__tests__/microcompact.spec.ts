@@ -288,8 +288,14 @@ describe("manageContext microcompaction pre-pass", () => {
 		expect(result.microcompactClearedCount).toBe(5)
 		expect(result.summary).toBe("") // no summarization
 		expect(result.truncationId).toBeUndefined() // no truncation
-		expect(result.messages).not.toBe(messages) // cleared messages returned for persistence
-		expect(resultContentFor(result.messages, "big-0")).toBe(MICROCOMPACT_CLEARED_PLACEHOLDER)
+		// Non-destructive contract: stored history stays pristine (same reference);
+		// the clearing decision is carried as ids and applied only at send time.
+		expect(result.messages).toBe(messages) // pristine — nothing persisted
+		expect(result.microcompactClearedToolUseIds).toHaveLength(5)
+		expect(result.microcompactClearedToolUseIds).toContain("big-0")
+		// The actual content in the (pristine) history is untouched.
+		expect(resultContentFor(result.messages, "big-0")).not.toBe(MICROCOMPACT_CLEARED_PLACEHOLDER)
+		expect(resultContentFor(result.messages, "big-0")).toContain("x")
 	})
 
 	it("escalates to summarization when microcompaction does not free enough", async () => {

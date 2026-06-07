@@ -212,3 +212,48 @@ export function microcompactToolResults(messages: ApiMessage[], options: Microco
 		clearedText,
 	}
 }
+
+/**
+ * Send-time, NON-DESTRUCTIVE application of a microcompaction decision.
+ *
+ * Given a set of `tool_use_id`s chosen for clearing (by `microcompactToolResults`
+ * against the current model's budget), returns a COPY of `messages` with the
+ * content of any matching `tool_result` block replaced by
+ * `MICROCOMPACT_CLEARED_PLACEHOLDER`. The input array and its messages are never
+ * mutated — this is meant to run on the outgoing request copy while the stored
+ * `apiConversationHistory` stays pristine (cache-stable, rewind-safe, and correct
+ * across mid-task mode switches: a wider-window model simply passes an empty set).
+ *
+ * Idempotent and cheap: returns the SAME reference when the set is empty or no
+ * block matches, so callers can skip work with `result === messages`.
+ */
+export function applyMicrocompactCleared(messages: ApiMessage[], clearedToolUseIds: ReadonlySet<string>): ApiMessage[] {
+	if (clearedToolUseIds.size === 0) {
+		return messages
+	}
+
+	let anyTouched = false
+	const result = messages.map((msg) => {
+		if (msg.role !== "user" || !Array.isArray(msg.content)) {
+			return msg
+		}
+		let touched = false
+		const newContent = msg.content.map((block) => {
+			if (block.type === "tool_result") {
+				const tr = block as Anthropic.Messages.ToolResultBlockParam
+				if (clearedToolUseIds.has(tr.tool_use_id) && !isAlreadyCleared(tr)) {
+					touched = true
+					return { ...tr, content: MICROCOMPACT_CLEARED_PLACEHOLDER }
+				}
+			}
+			return block
+		})
+		if (!touched) {
+			return msg
+		}
+		anyTouched = true
+		return { ...msg, content: newContent }
+	})
+
+	return anyTouched ? result : messages
+}
