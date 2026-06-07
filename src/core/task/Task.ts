@@ -339,6 +339,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	consecutiveMistakeCountForEditFile: Map<string, number> = new Map()
 	consecutiveNoToolUseCount: number = 0
 	consecutiveNoAssistantMessagesCount: number = 0
+	// Auto-condense circuit breaker: consecutive futile (errored or non-reducing)
+	// condense attempts. Once it reaches MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES the
+	// condense step is skipped for the rest of the task; a genuine reduction resets it.
+	consecutiveAutoCompactFailures: number = 0
 	toolUsage: ToolUsage = {}
 
 	// Checkpoints

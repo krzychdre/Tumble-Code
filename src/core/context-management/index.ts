@@ -230,6 +230,14 @@ export type ContextManagementOptions = {
 	cwd?: string
 	/** Optional controller for file access validation */
 	rooIgnoreController?: RooIgnoreController
+	/**
+	 * When true, the auto-condense circuit breaker is tripped (too many
+	 * consecutive futile condense attempts): skip the expensive condense step and
+	 * fall through to the cheap microcompaction pre-pass and the reliable
+	 * sliding-window truncation fallback. Microcompaction and truncation are never
+	 * gated by this — only the LLM summary is.
+	 */
+	condenseCircuitOpen?: boolean
 }
 
 export type ContextManagementResult = SummarizeResponse & {
@@ -269,6 +277,7 @@ export async function manageContext({
 	filesReadByRoo,
 	cwd,
 	rooIgnoreController,
+	condenseCircuitOpen,
 }: ContextManagementOptions): Promise<ContextManagementResult> {
 	let error: string | undefined
 	let errorDetails: string | undefined
@@ -365,7 +374,11 @@ export async function manageContext({
 		? { microcompacted, microcompactClearedCount, microcompactTokensCleared }
 		: undefined
 
-	if (autoCondenseContext) {
+	// Skip the expensive condense step when the circuit breaker is tripped: too
+	// many consecutive condense attempts have failed to reduce the context, so
+	// retrying the lossy summary is futile. Microcompaction (above) and truncation
+	// (below) still run — they always reduce and cannot "fail" like an LLM summary.
+	if (autoCondenseContext && !condenseCircuitOpen) {
 		if (contextPercent >= effectiveThreshold || prevContextTokens > allowedTokens) {
 			// Attempt to intelligently condense the (already microcompacted) context
 			const result = await summarizeConversation({

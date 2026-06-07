@@ -30,6 +30,46 @@ import { RooIgnoreController } from "../ignore/RooIgnoreController"
  */
 const FORCED_CONTEXT_REDUCTION_PERCENT = 75 // Keep 75% of context (remove 25%) on context window errors
 const MAX_CONTEXT_WINDOW_RETRIES = 3 // Maximum retries for context window errors
+// Auto-condense circuit breaker: after this many consecutive condense attempts
+// that error or fail to reduce context, stop attempting condense for the task and
+// fall back to microcompaction + truncation. Mirrors Claude Code's autocompact guard.
+export const MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES = 3
+
+/**
+ * Outcome fields from `manageContext` relevant to the auto-condense circuit breaker.
+ * `summary`/`error` are set exclusively by the condense branch of `manageContext`,
+ * so their presence is what tells us a condense was attempted in this pass.
+ */
+export interface CondenseOutcome {
+	summary?: string
+	error?: string
+	prevContextTokens: number
+	newContextTokens?: number
+}
+
+/**
+ * Pure transition for the auto-condense circuit-breaker counter.
+ *
+ * - No condense attempted this pass (no `summary` and no `error`) → unchanged, so a
+ *   tripped breaker stays latched and microcompaction-only / truncation-only / no-op
+ *   passes never move the counter.
+ * - Condense attempted and genuinely reduced context → reset to 0.
+ * - Condense attempted but errored, or did not reduce context
+ *   (`newContextTokens >= prevContextTokens`) → increment (a non-reducing summary is
+ *   as futile as one that throws).
+ *
+ * The breaker is considered open once the returned count reaches
+ * MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES.
+ */
+export function nextAutoCompactFailureCount(current: number, result: CondenseOutcome): number {
+	const condenseAttempted = !!result.summary || !!result.error
+	if (!condenseAttempted) {
+		return current
+	}
+	const condenseReduced =
+		!result.error && result.newContextTokens !== undefined && result.newContextTokens < result.prevContextTokens
+	return condenseReduced ? 0 : current + 1
+}
 
 /**
  * Interface for Task access needed by TaskContextManager.
@@ -45,6 +85,9 @@ export interface TaskContextManagerAccess {
 
 	// Conversation history
 	apiConversationHistory: ApiMessage[]
+
+	// Auto-condense circuit breaker counter (read AND written by the manager).
+	consecutiveAutoCompactFailures: number
 
 	// Workspace path
 	cwd: string
@@ -403,6 +446,12 @@ export class TaskContextManager {
 			customCondensingPrompt,
 		} = params
 
+		// Auto-condense circuit breaker: when too many consecutive condense attempts
+		// have failed to reduce context, skip condense entirely (manageContext falls
+		// back to microcompaction + truncation). When open we also skip the condense-
+		// only prep work (folded files, environment details) and the condense spinner.
+		const condenseCircuitOpen = this.access.consecutiveAutoCompactFailures >= MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES
+
 		// Check if context management will likely run (threshold check)
 		// This allows us to show an in-progress indicator to the user
 		const contextManagementWillRun = willManageContext({
@@ -416,8 +465,10 @@ export class TaskContextManager {
 			lastMessageTokens,
 		})
 
-		// Send condenseTaskContextStarted BEFORE manageContext to show in-progress indicator
-		if (contextManagementWillRun && autoCondenseContext) {
+		// Send condenseTaskContextStarted BEFORE manageContext to show in-progress indicator.
+		// Skip when the breaker is open: condense will not run, so a condense spinner would mislead.
+		const willShowCondenseSpinner = contextManagementWillRun && autoCondenseContext && !condenseCircuitOpen
+		if (willShowCondenseSpinner) {
 			await this.access.providerRef
 				.deref()
 				?.postMessageToWebview({ type: "condenseTaskContextStarted", text: this.access.taskId })
@@ -433,14 +484,16 @@ export class TaskContextManager {
 			state?.disabledTools,
 		)
 
-		// Only generate environment details when context management will actually run
-		const environmentDetails = contextManagementWillRun
-			? await getEnvironmentDetails(this.access as any, true)
-			: undefined
+		// Only generate environment details / folded files when a condense could
+		// actually run — both are condense-only inputs, wasted when the breaker is open.
+		const environmentDetails =
+			contextManagementWillRun && !condenseCircuitOpen
+				? await getEnvironmentDetails(this.access as any, true)
+				: undefined
 
-		// Get files read by Roo for code folding - only when context management will run
+		// Get files read by Roo for code folding - only when condense could run
 		const filesReadByRoo =
-			contextManagementWillRun && autoCondenseContext
+			contextManagementWillRun && autoCondenseContext && !condenseCircuitOpen
 				? await this.getFilesReadByRooSafely("attemptApiRequest")
 				: undefined
 
@@ -463,7 +516,15 @@ export class TaskContextManager {
 				filesReadByRoo,
 				cwd: this.access.cwd,
 				rooIgnoreController: this.access.rooIgnoreController,
+				condenseCircuitOpen,
 			})
+
+			// Update the auto-condense circuit breaker from the condense outcome
+			// (see nextAutoCompactFailureCount for the success/failure/latch rules).
+			this.access.consecutiveAutoCompactFailures = nextAutoCompactFailureCount(
+				this.access.consecutiveAutoCompactFailures,
+				truncateResult,
+			)
 
 			if (truncateResult.messages !== this.access.apiConversationHistory) {
 				await this.access.history.overwriteApiConversationHistory(truncateResult.messages)
@@ -525,8 +586,9 @@ export class TaskContextManager {
 			}
 		} finally {
 			// Notify webview that context management is complete (sets isCondensing = false)
-			// IMPORTANT: Must always be sent to dismiss the spinner, even on error
-			if (contextManagementWillRun && autoCondenseContext) {
+			// IMPORTANT: Must always be sent to dismiss the spinner, even on error.
+			// Mirror the start condition so we only dismiss a spinner we actually showed.
+			if (willShowCondenseSpinner) {
 				await this.access.providerRef
 					.deref()
 					?.postMessageToWebview({ type: "condenseTaskContextResponse", text: this.access.taskId })
