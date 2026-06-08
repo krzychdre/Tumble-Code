@@ -68,7 +68,17 @@ async function generatePrompt(
 
 	// Check if MCP functionality should be included
 	const hasMcpGroup = modeConfig.groups.some((groupEntry) => getGroupName(groupEntry) === "mcp")
-	const hasMcpServers = mcpHub && mcpHub.getServers().length > 0
+	const allowedMcpServers = modeConfig.allowedMcpServers
+
+	// Hoist the allowlist Set once (matches the sibling call sites, e.g. mcp_server.ts) instead
+	// of constructing a new Set on every `.filter` iteration.
+	const allowSet = allowedMcpServers ? new Set(allowedMcpServers) : undefined
+
+	let hasMcpServers = false
+	if (mcpHub) {
+		const servers = allowSet ? mcpHub.getServers().filter((s) => allowSet.has(s.name)) : mcpHub.getServers()
+		hasMcpServers = servers.length > 0
+	}
 	const shouldIncludeMcp = hasMcpGroup && hasMcpServers
 
 	const codeIndexManager = CodeIndexManager.getInstance(context, cwd)
@@ -104,7 +114,12 @@ ${getSharedToolUseSection()}${toolsCatalog}
 
 	${getToolUseGuidelinesSection()}
 
-${getCapabilitiesSection(cwd, shouldIncludeMcp ? mcpHub : undefined)}
+${
+	// Forward the hub only when the mode actually exposes the MCP group, and pass the per-mode
+	// allowlist through so the capabilities section filters servers using the SAME convention as
+	// the tool-listing layer (a single source of truth for which servers are visible).
+	getCapabilitiesSection(cwd, hasMcpGroup ? mcpHub : undefined, allowedMcpServers)
+}
 ${deferredToolsSection ? `\n${deferredToolsSection}\n` : ""}
 ${modesSection}
 ${skillsSection ? `\n${skillsSection}` : ""}
