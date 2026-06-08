@@ -66,6 +66,30 @@ export function getModeConfig(slug: string, customModes?: ModeConfig[]): ModeCon
 	return mode
 }
 
+/**
+ * Resolve the per-mode MCP server allowlist for any mode (built-in or custom).
+ *
+ * Built-in modes can't be expressed as an editable ModeConfig, so their allowlist lives in the
+ * `customModePrompts` override channel (alongside roleDefinition/customInstructions). Custom modes
+ * carry it directly on their ModeConfig. The override wins when present so a built-in mode can
+ * restrict its frozen default.
+ *
+ * Semantics (single source of truth, mirrors the listing/filtering layer):
+ *   - `undefined` → all servers available (backward compatible, feature opt-in)
+ *   - `[]`        → no servers
+ *   - populated   → only the listed servers
+ *
+ * `??` (not `||`) is deliberate so an empty-array override is preserved rather than falling through.
+ */
+export function getModeAllowedMcpServers(
+	slug: string,
+	customModes?: ModeConfig[],
+	customModePrompts?: CustomModePrompts,
+): string[] | undefined {
+	const override = customModePrompts?.[slug]?.allowedMcpServers
+	return override ?? getModeBySlug(slug, customModes)?.allowedMcpServers
+}
+
 // Get all available modes, with custom modes overriding built-in modes
 export function getAllModes(customModes?: ModeConfig[]): ModeConfig[] {
 	if (!customModes?.length) {

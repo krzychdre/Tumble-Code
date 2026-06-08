@@ -43,8 +43,16 @@ describe("getCapabilitiesSection", () => {
 		expect(result).toContain("read and write files")
 	})
 
-	it("includes MCP reference when mcpHub is provided", () => {
-		const mockMcpHub = {} as McpHub
+	// getCapabilitiesSection now filters the hub's server list (honoring the per-mode
+	// allowedMcpServers allowlist) to decide whether to advertise MCP, so the mock must
+	// expose getServers(). An empty `{}` hub would throw on getServers().
+	const createMockMcpHub = (serverNames: string[]): McpHub =>
+		({
+			getServers: () => serverNames.map((name) => ({ name })),
+		}) as unknown as McpHub
+
+	it("includes MCP reference when mcpHub exposes at least one server", () => {
+		const mockMcpHub = createMockMcpHub(["test-server"])
 		const result = getCapabilitiesSection(cwd, mockMcpHub)
 
 		expect(result).toContain("MCP servers")
@@ -52,6 +60,34 @@ describe("getCapabilitiesSection", () => {
 
 	it("excludes MCP reference when mcpHub is undefined", () => {
 		const result = getCapabilitiesSection(cwd, undefined)
+
+		expect(result).not.toContain("MCP servers")
+	})
+
+	it("excludes MCP reference when mcpHub exposes no servers", () => {
+		const mockMcpHub = createMockMcpHub([])
+		const result = getCapabilitiesSection(cwd, mockMcpHub)
+
+		expect(result).not.toContain("MCP servers")
+	})
+
+	it("includes MCP reference when allowedMcpServers matches a connected server", () => {
+		const mockMcpHub = createMockMcpHub(["allowed-server", "other-server"])
+		const result = getCapabilitiesSection(cwd, mockMcpHub, ["allowed-server"])
+
+		expect(result).toContain("MCP servers")
+	})
+
+	it("excludes MCP reference when allowedMcpServers is an empty array", () => {
+		const mockMcpHub = createMockMcpHub(["test-server"])
+		const result = getCapabilitiesSection(cwd, mockMcpHub, [])
+
+		expect(result).not.toContain("MCP servers")
+	})
+
+	it("excludes MCP reference when allowedMcpServers matches no connected server", () => {
+		const mockMcpHub = createMockMcpHub(["test-server"])
+		const result = getCapabilitiesSection(cwd, mockMcpHub, ["nonexistent-server"])
 
 		expect(result).not.toContain("MCP servers")
 	})

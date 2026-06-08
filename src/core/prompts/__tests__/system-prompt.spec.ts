@@ -575,7 +575,176 @@ describe("SYSTEM_PROMPT", () => {
 		expect(prompt).toContain("OBJECTIVE")
 	})
 
+	describe("allowedMcpServers filtering in system prompt", () => {
+		it("should exclude MCP capability text when allowedMcpServers is empty array", async () => {
+			mockMcpHub = createMockMcpHub(true)
+
+			const customModes: ModeConfig[] = [
+				{
+					slug: "filtered-mode",
+					name: "Filtered Mode",
+					roleDefinition: "A filtered mode",
+					groups: ["read", "mcp"] as const,
+					allowedMcpServers: [],
+				},
+			]
+
+			const prompt = await SYSTEM_PROMPT(
+				mockContext,
+				"/test/path",
+				false,
+				mockMcpHub, // mcpHub with servers
+				undefined, // diffStrategy
+				"filtered-mode", // mode
+				undefined, // customModePrompts
+				customModes, // customModes
+				undefined, // globalCustomInstructions
+				experiments,
+				undefined, // language
+				undefined, // rooIgnoreInstructions
+			)
+
+			expect(prompt).not.toContain("MCP servers")
+		})
+
+		it("should include MCP capability text when allowedMcpServers matches connected servers", async () => {
+			mockMcpHub = createMockMcpHub(true) // has "test-server"
+
+			const customModes: ModeConfig[] = [
+				{
+					slug: "mcp-mode",
+					name: "MCP Mode",
+					roleDefinition: "A mode with MCP",
+					groups: ["read", "mcp"] as const,
+					allowedMcpServers: ["test-server"],
+				},
+			]
+
+			const prompt = await SYSTEM_PROMPT(
+				mockContext,
+				"/test/path",
+				false,
+				mockMcpHub,
+				undefined,
+				"mcp-mode",
+				undefined,
+				customModes,
+				undefined,
+				experiments,
+				undefined,
+				undefined,
+			)
+
+			expect(prompt).toContain("MCP servers")
+		})
+	})
+
 	afterAll(() => {
 		vi.restoreAllMocks()
+	})
+})
+
+// A hub exposing two named servers, each with one deferred MCP tool. Lets us assert that the
+// deferred-tools catalog (rendered when the `deferredTools` experiment is on) advertises only the
+// servers a mode allows. Tool names are `mcp--<server>--<tool>` (see buildMcpToolName).
+const createTwoServerHub = (): McpHub =>
+	({
+		getServers: () => [
+			{
+				name: "allowed-srv",
+				disabled: false,
+				tools: [{ name: "ping", description: "Ping the allowed server", inputSchema: { type: "object" } }],
+				resources: [],
+			},
+			{
+				name: "blocked-srv",
+				disabled: false,
+				tools: [{ name: "scan", description: "Scan the blocked server", inputSchema: { type: "object" } }],
+				resources: [],
+			},
+		],
+		getMcpServersPath: async () => "/mock/mcp/path",
+		getMcpSettingsFilePath: async () => "/mock/settings/path",
+		dispose: async () => {},
+		restartConnection: async () => {},
+		readResource: async () => ({ contents: [] }),
+		callTool: async () => ({ content: [] }),
+		toggleServerDisabled: async () => {},
+		toggleToolAlwaysAllow: async () => {},
+		isConnecting: false,
+		connections: [],
+	}) as unknown as McpHub
+
+describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("advertises every server's tools in the deferred catalog when the built-in mode has no allowlist", async () => {
+		// Control: with no allowlist, both servers' tools appear. This anchors the restricted case
+		// below — without it, the absence assertion could pass vacuously.
+		const prompt = await SYSTEM_PROMPT(
+			mockContext,
+			"/test/path",
+			false,
+			createTwoServerHub(), // mcpHub
+			undefined, // diffStrategy
+			"code", // built-in mode (has the mcp group)
+			undefined, // customModePrompts — no allowlist
+			undefined, // customModes
+			undefined, // globalCustomInstructions
+			{ deferredTools: true }, // experiments — render the deferred catalog
+			undefined, // language
+			undefined, // rooIgnoreInstructions
+		)
+
+		expect(prompt).toContain("mcp--allowed-srv--ping")
+		expect(prompt).toContain("mcp--blocked-srv--scan")
+	})
+
+	it("filters the deferred catalog by a built-in mode's customModePrompts allowlist (leak closed)", async () => {
+		const customModePrompts = { code: { allowedMcpServers: ["allowed-srv"] } }
+
+		const prompt = await SYSTEM_PROMPT(
+			mockContext,
+			"/test/path",
+			false,
+			createTwoServerHub(), // mcpHub
+			undefined, // diffStrategy
+			"code", // built-in mode
+			customModePrompts, // customModePrompts — restrict to allowed-srv
+			undefined, // customModes
+			undefined, // globalCustomInstructions
+			{ deferredTools: true }, // experiments
+			undefined, // language
+			undefined, // rooIgnoreInstructions
+		)
+
+		// Only the allowed server's tool is advertised; the blocked server's tool must NOT leak.
+		expect(prompt).toContain("mcp--allowed-srv--ping")
+		expect(prompt).not.toContain("mcp--blocked-srv--scan")
+	})
+
+	it("drops the MCP capabilities line when a built-in mode's override allows no servers", async () => {
+		// An empty-array override means "no servers": after filtering, hasMcpServers is false, so the
+		// generic "access to MCP servers" capability line is omitted.
+		const customModePrompts = { code: { allowedMcpServers: [] as string[] } }
+
+		const prompt = await SYSTEM_PROMPT(
+			mockContext,
+			"/test/path",
+			false,
+			createTwoServerHub(), // mcpHub
+			undefined, // diffStrategy
+			"code", // built-in mode
+			customModePrompts, // customModePrompts — restrict to nothing
+			undefined, // customModes
+			undefined, // globalCustomInstructions
+			{}, // experiments
+			undefined, // language
+			undefined, // rooIgnoreInstructions
+		)
+
+		expect(prompt).not.toContain("You have access to MCP servers")
 	})
 })

@@ -1,6 +1,6 @@
 // npx vitest run shared/__tests__/modes.spec.ts
 
-import type { ModeConfig, PromptComponent } from "@roo-code/types"
+import type { ModeConfig, PromptComponent, CustomModePrompts } from "@roo-code/types"
 
 // Mock setup must come before imports
 vi.mock("vscode")
@@ -9,7 +9,7 @@ vi.mock("../../core/prompts/sections/custom-instructions", () => ({
 	addCustomInstructions: vi.fn().mockResolvedValue("Combined instructions"),
 }))
 
-import { FileRestrictionError, getFullModeDetails, modes, getModeSelection } from "../modes"
+import { FileRestrictionError, getFullModeDetails, modes, getModeSelection, getModeAllowedMcpServers } from "../modes"
 import { isToolAllowedForMode } from "../../core/tools/validateToolUse"
 import { addCustomInstructions } from "../../core/prompts/sections/custom-instructions"
 
@@ -923,5 +923,53 @@ describe("getModeSelection", () => {
 		const selection = getModeSelection("ask", promptComponentAsk, undefined)
 		expect(selection.roleDefinition).toBe(promptComponentAsk.roleDefinition)
 		expect(selection.baseInstructions).toBe(promptComponentAsk.customInstructions)
+	})
+})
+
+describe("getModeAllowedMcpServers", () => {
+	// A custom mode carries its allowlist on the ModeConfig.
+	const customMode: ModeConfig = {
+		slug: "custom-mode",
+		name: "Custom Mode",
+		roleDefinition: "role",
+		groups: ["mcp"],
+		allowedMcpServers: ["cfg-srv"],
+		source: "global",
+	}
+
+	it("returns the customModePrompts override for a built-in mode (which has no ModeConfig allowlist)", () => {
+		const prompts: CustomModePrompts = { code: { allowedMcpServers: ["override-srv"] } }
+		expect(getModeAllowedMcpServers("code", [], prompts)).toEqual(["override-srv"])
+	})
+
+	it("lets an empty-array override restrict a built-in mode whose config allowlist is undefined", () => {
+		// `[]` means "no servers"; it must win over the built-in's implicit `undefined` (unrestricted),
+		// which only works because precedence uses `??` (not `||`).
+		const prompts: CustomModePrompts = { code: { allowedMcpServers: [] } }
+		expect(getModeAllowedMcpServers("code", [], prompts)).toEqual([])
+	})
+
+	it("prefers the prompt override over a custom mode's own ModeConfig allowlist", () => {
+		const prompts: CustomModePrompts = { "custom-mode": { allowedMcpServers: ["override-srv"] } }
+		expect(getModeAllowedMcpServers("custom-mode", [customMode], prompts)).toEqual(["override-srv"])
+	})
+
+	it("falls through to the custom mode's ModeConfig allowlist when there is no override", () => {
+		expect(getModeAllowedMcpServers("custom-mode", [customMode], {})).toEqual(["cfg-srv"])
+		expect(getModeAllowedMcpServers("custom-mode", [customMode], undefined)).toEqual(["cfg-srv"])
+	})
+
+	it("treats an override entry without allowedMcpServers as no restriction (falls through to config)", () => {
+		const prompts: CustomModePrompts = { "custom-mode": { roleDefinition: "override role only" } }
+		expect(getModeAllowedMcpServers("custom-mode", [customMode], prompts)).toEqual(["cfg-srv"])
+	})
+
+	it("returns undefined when neither the override nor the config restricts servers", () => {
+		expect(getModeAllowedMcpServers("code", [], {})).toBeUndefined()
+		expect(getModeAllowedMcpServers("code", [], undefined)).toBeUndefined()
+	})
+
+	it("returns undefined for an unknown mode with no override", () => {
+		expect(getModeAllowedMcpServers("does-not-exist", [], {})).toBeUndefined()
 	})
 })
