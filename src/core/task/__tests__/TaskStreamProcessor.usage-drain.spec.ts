@@ -118,3 +118,59 @@ describe("TaskStreamProcessor background usage drain", () => {
 		expect(access.diffViewProvider.revertChanges).toHaveBeenCalledTimes(1)
 	})
 })
+
+// Regression: the drain is fire-and-forget and can outlive the task by up to
+// DEFAULT_USAGE_COLLECTION_TIMEOUT_MS. For a parent disposed by delegation, a late
+// saveClineMessages here re-stamps status (initialStatus "active") via taskMetadata,
+// clobbering the "delegated" metadata and making the child finalize the whole task.
+// The guard must suppress the persist once the owning task is aborted/abandoned, while
+// still leaving the in-memory message update + telemetry intact.
+// See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+describe("TaskStreamProcessor usage drain — abort/abandon persist guard", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	async function runDrainWithUsage(access: TaskStreamProcessorAccess) {
+		const processor = new TaskStreamProcessor(access, {} as any)
+		const updateApiReqMsg = vi.fn()
+		const drain = processor.createBackgroundUsageDrain(
+			0,
+			{ input: 0, output: 0, cacheWrite: 0, cacheRead: 0, total: undefined },
+			makeModelInfo(),
+			doneIterator(),
+			{ done: false, value: { type: "usage", inputTokens: 100, outputTokens: 50, totalCost: 0.01 } },
+			updateApiReqMsg,
+		)
+		await drain(0)
+		return { updateApiReqMsg }
+	}
+
+	it("persists history for a live task (abort=false, abandoned=false)", async () => {
+		const access = makeAccess({ abort: false, abandoned: false })
+
+		const { updateApiReqMsg } = await runDrainWithUsage(access)
+
+		expect(updateApiReqMsg).toHaveBeenCalled()
+		expect(access.history.saveClineMessages).toHaveBeenCalledTimes(1)
+	})
+
+	it("does NOT persist history once the task has been aborted (delegated-parent clobber)", async () => {
+		const access = makeAccess({ abort: true, abandoned: false })
+
+		const { updateApiReqMsg } = await runDrainWithUsage(access)
+
+		// The in-memory update + webview message refresh still run...
+		expect(updateApiReqMsg).toHaveBeenCalled()
+		// ...but the durable history write that would clobber "delegated" is suppressed.
+		expect(access.history.saveClineMessages).not.toHaveBeenCalled()
+	})
+
+	it("does NOT persist history once the task has been abandoned", async () => {
+		const access = makeAccess({ abort: false, abandoned: true })
+
+		await runDrainWithUsage(access)
+
+		expect(access.history.saveClineMessages).not.toHaveBeenCalled()
+	})
+})

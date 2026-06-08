@@ -3492,10 +3492,17 @@ export class ClineProvider
 		// (status → "active", awaitingChildId → undefined) while the user was
 		// approving the subtask finish. Routing output back now would corrupt an
 		// unrelated task.
+		//
+		// `awaitingChildId` is the authoritative signal and must still point at this child;
+		// a genuine detach clears it. We intentionally do NOT require status === "delegated"
+		// (and instead only reject status === "completed"): a late background usage-drain save
+		// on the disposed parent can clobber status "delegated" → "active" while preserving
+		// awaitingChildId. This mirrors the AttemptCompletionTool gate so delegateToParent does
+		// not get a false `didReopen === false`. See ai_plans/2026-06-08_delegated-subtask-no-return.md.
 		if (
 			this.cancelledDelegationChildIds.has(childTaskId) ||
-			historyItem.status !== "delegated" ||
-			historyItem.awaitingChildId !== childTaskId
+			historyItem.awaitingChildId !== childTaskId ||
+			historyItem.status === "completed"
 		) {
 			this.log(
 				`[reopenParentFromDelegation] Aborting: parent ${parentTaskId} is no longer delegated to child ${childTaskId} ` +
