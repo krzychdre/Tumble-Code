@@ -648,4 +648,99 @@ describe("attemptCompletionTool", () => {
 			})
 		})
 	})
+
+	// Regression coverage for the delegation gate: a delegated subtask must return its
+	// result to the parent (reopenParentFromDelegation) rather than finalize the whole task
+	// (ask("completion_result")). The gate keys on the durable `awaitingChildId` signal so a
+	// background-drain save that clobbers the parent status "delegated" -> "active" does not
+	// break the return. See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+	describe("subtask delegation gate", () => {
+		const CHILD_ID = "task_1"
+		const PARENT_ID = "parent_1"
+
+		let mockGetTaskWithId: ReturnType<typeof vi.fn>
+		let mockReopenParentFromDelegation: ReturnType<typeof vi.fn>
+
+		const setupDelegation = (parentHistory: { status?: string; awaitingChildId?: string }) => {
+			mockGetTaskWithId = vi.fn(async (id: string) => {
+				if (id === CHILD_ID) {
+					return { historyItem: { id: CHILD_ID, status: "active" } }
+				}
+				return { historyItem: { id: PARENT_ID, ...parentHistory } }
+			})
+			mockReopenParentFromDelegation = vi.fn().mockResolvedValue(true)
+			;(mockTask as any).parentTaskId = PARENT_ID
+			mockTask.clineMessages = []
+			mockTask.didToolFailInCurrentTurn = false
+			mockTask.providerRef = {
+				deref: () => ({
+					getTaskWithId: mockGetTaskWithId,
+					reopenParentFromDelegation: mockReopenParentFromDelegation,
+				}),
+			} as any
+
+			// approve the finish-subtask gate so the delegation branch can proceed
+			mockAskFinishSubTaskApproval.mockResolvedValue(true)
+
+			return {
+				type: "tool_use",
+				name: "attempt_completion",
+				params: { result: "child done" },
+				nativeArgs: { result: "child done" },
+				partial: false,
+			} as AttemptCompletionToolUse
+		}
+
+		const callbacks = (): AttemptCompletionCallbacks => ({
+			askApproval: mockAskApproval,
+			handleError: mockHandleError,
+			pushToolResult: mockPushToolResult,
+			askFinishSubTaskApproval: mockAskFinishSubTaskApproval,
+			toolDescription: mockToolDescription,
+		})
+
+		it("returns to parent when parent is still delegated and awaiting this child", async () => {
+			const block = setupDelegation({ status: "delegated", awaitingChildId: CHILD_ID })
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			expect(mockReopenParentFromDelegation).toHaveBeenCalledWith(
+				expect.objectContaining({ parentTaskId: PARENT_ID, childTaskId: CHILD_ID }),
+			)
+			// must NOT fall through to the whole-task completion ask
+			expect(mockTask.ask).not.toHaveBeenCalledWith("completion_result", "", false)
+		})
+
+		it("returns to parent when status drifted to 'active' but awaitingChildId still points here (the clobber regression)", async () => {
+			// This is the exact state a late background-usage-drain save leaves the parent in:
+			// status re-stamped "delegated" -> "active", awaitingChildId preserved.
+			const block = setupDelegation({ status: "active", awaitingChildId: CHILD_ID })
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			expect(mockReopenParentFromDelegation).toHaveBeenCalledWith(
+				expect.objectContaining({ parentTaskId: PARENT_ID, childTaskId: CHILD_ID }),
+			)
+			expect(mockTask.ask).not.toHaveBeenCalledWith("completion_result", "", false)
+		})
+
+		it("finalizes (does NOT delegate) when the parent was genuinely detached (awaitingChildId cleared)", async () => {
+			const block = setupDelegation({ status: "active", awaitingChildId: undefined })
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			expect(mockReopenParentFromDelegation).not.toHaveBeenCalled()
+			// falls through to the normal whole-task completion ask flow
+			expect(mockTask.ask).toHaveBeenCalledWith("completion_result", "", false)
+		})
+
+		it("finalizes (does NOT delegate) when the parent is already completed", async () => {
+			const block = setupDelegation({ status: "completed", awaitingChildId: CHILD_ID })
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			expect(mockReopenParentFromDelegation).not.toHaveBeenCalled()
+			expect(mockTask.ask).toHaveBeenCalledWith("completion_result", "", false)
+		})
+	})
 })

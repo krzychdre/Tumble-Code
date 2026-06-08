@@ -107,9 +107,17 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 							// completion ask flow.
 							const { historyItem: parentHistory } = await provider.getTaskWithId(task.parentTaskId!)
 
+							// `awaitingChildId` is the AUTHORITATIVE delegation signal: it is set only by
+							// delegateParentAndOpenChild and cleared (→ undefined) by every genuine detach
+							// (cancelTask, removeClineFromStack repair, reopenParentFromDelegation). We do NOT
+							// require status === "delegated" because a late, fire-and-forget background
+							// usage-drain save on the (disposed) parent can re-stamp status "delegated" →
+							// "active" while preserving awaitingChildId (see
+							// ai_plans/2026-06-08_delegated-subtask-no-return.md). A real detach always clears
+							// awaitingChildId, so keying on it preserves #73's cancel-race protection.
 							if (
-								parentHistory?.status === "delegated" &&
-								parentHistory?.awaitingChildId === task.taskId
+								parentHistory?.awaitingChildId === task.taskId &&
+								parentHistory?.status !== "completed"
 							) {
 								const delegation = await this.delegateToParent(
 									task,

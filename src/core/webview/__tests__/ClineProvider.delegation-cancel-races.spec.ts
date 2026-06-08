@@ -81,6 +81,26 @@ vi.mock("../../../shared/embeddingModels", () => ({
 	EMBEDDING_MODEL_PROFILES: [],
 }))
 
+// Partial mocks of the persistence helpers so reopenParentFromDelegation's success path
+// can run without touching disk. importOriginal preserves the other exports (e.g.
+// TaskHistoryStore) the ClineProvider constructor depends on.
+vi.mock("../../task-persistence", async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>
+	return {
+		...actual,
+		readApiMessages: vi.fn().mockResolvedValue([]),
+		saveApiMessages: vi.fn().mockResolvedValue(undefined),
+		saveTaskMessages: vi.fn().mockResolvedValue(undefined),
+	}
+})
+vi.mock("../../task-persistence/taskMessages", async (importOriginal) => {
+	const actual = (await importOriginal()) as Record<string, unknown>
+	return {
+		...actual,
+		readTaskMessages: vi.fn().mockResolvedValue([]),
+	}
+})
+
 describe("ClineProvider delegation cancel/reopen races", () => {
 	let provider: ClineProvider
 	let mockContext: any
@@ -178,6 +198,94 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			updateTaskHistory,
 			getTaskWithId: vi.fn().mockResolvedValue({
 				historyItem: { id: "parent-1", status: "active", awaitingChildId: undefined },
+			}),
+		}
+
+		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
+			parentTaskId: "parent-1",
+			childTaskId: "child-1",
+			completionResultSummary: "done",
+		})
+
+		expect(result).toBe(false)
+		expect(updateTaskHistory).not.toHaveBeenCalled()
+	})
+
+	// Regression parity with the AttemptCompletionTool gate: a late background usage-drain
+	// save can clobber the parent status "delegated" -> "active" while leaving awaitingChildId
+	// pointing at this child. reopenParentFromDelegation must NOT treat that drift as a detach;
+	// otherwise delegateToParent receives didReopen === false and the child finalizes the whole
+	// task. See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+	it("reopenParentFromDelegation proceeds when status drifted to 'active' but awaitingChildId still points here", async () => {
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
+		const fakeProvider: any = {
+			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
+			cancelledDelegationChildIds: new Set<string>(),
+			log: vi.fn(),
+			updateTaskHistory,
+			getCurrentTask: vi.fn().mockReturnValue(undefined),
+			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
+			createTaskWithHistoryItem: vi.fn().mockResolvedValue(undefined),
+			emit: vi.fn(),
+			getTaskWithId: vi.fn().mockImplementation((id: string) =>
+				Promise.resolve({
+					historyItem:
+						id === "parent-1"
+							? { id: "parent-1", status: "active", awaitingChildId: "child-1", childIds: [] }
+							: { id: "child-1", status: "active" },
+				}),
+			),
+		}
+
+		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
+			parentTaskId: "parent-1",
+			childTaskId: "child-1",
+			completionResultSummary: "done",
+		})
+
+		// Guard passed despite the status drift: the delegation completed.
+		expect(result).toBe(true)
+		expect(updateTaskHistory).toHaveBeenCalledWith(
+			expect.objectContaining({
+				id: "parent-1",
+				status: "active",
+				completedByChildId: "child-1",
+				awaitingChildId: undefined,
+			}),
+		)
+	})
+
+	it("reopenParentFromDelegation aborts (returns false) when the parent is already completed", async () => {
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
+		const fakeProvider: any = {
+			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
+			cancelledDelegationChildIds: new Set<string>(),
+			log: vi.fn(),
+			updateTaskHistory,
+			getTaskWithId: vi.fn().mockResolvedValue({
+				historyItem: { id: "parent-1", status: "completed", awaitingChildId: "child-1" },
+			}),
+		}
+
+		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
+			parentTaskId: "parent-1",
+			childTaskId: "child-1",
+			completionResultSummary: "done",
+		})
+
+		expect(result).toBe(false)
+		expect(updateTaskHistory).not.toHaveBeenCalled()
+	})
+
+	it("reopenParentFromDelegation aborts (returns false) when the child was cancelled mid-approval", async () => {
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
+		const fakeProvider: any = {
+			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
+			cancelledDelegationChildIds: new Set<string>(["child-1"]),
+			log: vi.fn(),
+			updateTaskHistory,
+			getTaskWithId: vi.fn().mockResolvedValue({
+				historyItem: { id: "parent-1", status: "delegated", awaitingChildId: "child-1" },
 			}),
 		}
 
