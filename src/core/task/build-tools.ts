@@ -2,12 +2,12 @@ import path from "path"
 
 import type OpenAI from "openai"
 
-import type { ProviderSettings, ModeConfig, ModelInfo } from "@roo-code/types"
+import type { ProviderSettings, ModeConfig, ModelInfo, CustomModePrompts } from "@roo-code/types"
 import { customToolRegistry, formatNative } from "@roo-code/core"
 
 import type { ClineProvider } from "../webview/ClineProvider"
 import { getRooDirectoriesForCwd } from "../../services/roo-config/index.js"
-import { getModeBySlug, defaultModeSlug } from "../../shared/modes"
+import { getModeAllowedMcpServers, defaultModeSlug } from "../../shared/modes"
 
 import { getNativeTools, getMcpServerTools } from "../prompts/tools/native-tools"
 import {
@@ -22,6 +22,12 @@ interface BuildToolsOptions {
 	cwd: string
 	mode: string | undefined
 	customModes: ModeConfig[] | undefined
+	/**
+	 * Per-slug prompt overrides for built-in modes. Carries `allowedMcpServers` for built-in
+	 * modes (custom modes carry it on their ModeConfig). Used to resolve the MCP allowlist so a
+	 * built-in mode can restrict servers, not just custom modes.
+	 */
+	customModePrompts?: CustomModePrompts
 	experiments: Record<string, boolean> | undefined
 	apiConfiguration: ProviderSettings | undefined
 	disabledTools?: string[]
@@ -102,6 +108,7 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		cwd,
 		mode,
 		customModes,
+		customModePrompts,
 		experiments,
 		apiConfiguration,
 		disabledTools,
@@ -131,9 +138,9 @@ export async function buildNativeToolsArrayWithRestrictions(options: BuildToolsO
 		supportsImages,
 	})
 
-	// Resolve mode config to get allowedMcpServers for MCP server filtering.
-	const modeConfig = getModeBySlug(mode ?? defaultModeSlug, customModes)
-	const allowedMcpServers = modeConfig?.allowedMcpServers
+	// Resolve the per-mode MCP allowlist for filtering. Works for built-in modes (override in
+	// customModePrompts) as well as custom modes (allowlist on the ModeConfig).
+	const allowedMcpServers = getModeAllowedMcpServers(mode ?? defaultModeSlug, customModes, customModePrompts)
 
 	// Filter native tools based on mode restrictions. The allowlist is forwarded so the
 	// access_mcp_resource availability check only considers resources from allowed servers;

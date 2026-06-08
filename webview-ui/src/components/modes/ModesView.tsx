@@ -1182,37 +1182,68 @@ const ModesView = () => {
 									if (!customMode || !isMcpEnabled) return null
 									return (
 										<McpServerRestriction
-											customMode={customMode}
+											slug={customMode.slug}
+											value={customMode.allowedMcpServers}
 											mcpServers={mcpServers}
-											onCommit={updateCustomMode}
+											onChange={(next) =>
+												updateCustomMode(customMode.slug, {
+													...customMode,
+													allowedMcpServers: next,
+													source: customMode.source || "global",
+												})
+											}
 										/>
 									)
 								})()}
 							</>
 						) : (
-							<div className="text-sm text-vscode-foreground mb-2 leading-relaxed">
+							<>
+								<div className="text-sm text-vscode-foreground mb-2 leading-relaxed">
+									{(() => {
+										const currentMode = getCurrentMode()
+										const enabledGroups = currentMode?.groups || []
+
+										// If there are no enabled groups, display translated "None"
+										if (enabledGroups.length === 0) {
+											return t("prompts:tools.noTools")
+										}
+
+										return enabledGroups
+											.map((group) => {
+												const groupName = getGroupName(group)
+												const displayName = t(`prompts:tools.toolNames.${groupName}`)
+												if (Array.isArray(group) && group[1]?.fileRegex) {
+													const description =
+														group[1].description || `/${group[1].fileRegex}/`
+													return `${displayName} (${description})`
+												}
+												return displayName
+											})
+											.join(", ")
+									})()}
+								</div>
+								{/* MCP Server Restriction for built-in modes. Built-in modes have no editable
+								    ModeConfig and no "edit tools" toggle, so the allowlist is persisted via the
+								    customModePrompts override path (updateAgentPrompt → updatePrompt). Shown only
+								    when the built-in mode includes the mcp tool group. */}
 								{(() => {
+									const isBuiltIn = !findModeBySlug(visualMode, customModes)
 									const currentMode = getCurrentMode()
-									const enabledGroups = currentMode?.groups || []
-
-									// If there are no enabled groups, display translated "None"
-									if (enabledGroups.length === 0) {
-										return t("prompts:tools.noTools")
-									}
-
-									return enabledGroups
-										.map((group) => {
-											const groupName = getGroupName(group)
-											const displayName = t(`prompts:tools.toolNames.${groupName}`)
-											if (Array.isArray(group) && group[1]?.fileRegex) {
-												const description = group[1].description || `/${group[1].fileRegex}/`
-												return `${displayName} (${description})`
+									const isMcpEnabled = currentMode?.groups?.some((g) => getGroupName(g) === "mcp")
+									if (!isBuiltIn || !isMcpEnabled) return null
+									const builtInPrompt = customModePrompts?.[visualMode] as PromptComponent | undefined
+									return (
+										<McpServerRestriction
+											slug={visualMode}
+											value={builtInPrompt?.allowedMcpServers}
+											mcpServers={mcpServers}
+											onChange={(next) =>
+												updateAgentPrompt(visualMode, { allowedMcpServers: next })
 											}
-											return displayName
-										})
-										.join(", ")
+										/>
+									)
 								})()}
-							</div>
+							</>
 						)}
 					</div>
 				</>

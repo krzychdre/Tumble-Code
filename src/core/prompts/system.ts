@@ -68,7 +68,10 @@ async function generatePrompt(
 
 	// Check if MCP functionality should be included
 	const hasMcpGroup = modeConfig.groups.some((groupEntry) => getGroupName(groupEntry) === "mcp")
-	const allowedMcpServers = modeConfig.allowedMcpServers
+	// Resolve the per-mode MCP allowlist. For built-in modes the allowlist lives in the prompt
+	// override (promptComponent, already resolved for this mode); custom modes carry it on the
+	// ModeConfig. The override wins when present (matches getModeAllowedMcpServers precedence).
+	const allowedMcpServers = promptComponent?.allowedMcpServers ?? modeConfig.allowedMcpServers
 
 	// Hoist the allowlist Set once (matches the sibling call sites, e.g. mcp_server.ts) instead
 	// of constructing a new Set on every `.filter` iteration.
@@ -97,6 +100,9 @@ async function generatePrompt(
 	const deferredToolsSection = getDeferredToolsSection({
 		experiments,
 		mcpHub: shouldIncludeMcp ? mcpHub : undefined,
+		// Forward the allowlist so the deferred catalog honors the per-mode restriction; otherwise a
+		// restricted mode would still advertise every server's tools when deferredTools is enabled.
+		allowedMcpServers,
 		// Note: custom tools advertised in this section would need the
 		// CustomToolRegistry — gated behind the `customTools` experiment.
 		// For v1 we only advertise MCP tools in the catalog; custom tools

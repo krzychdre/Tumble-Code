@@ -147,6 +147,15 @@ export const promptComponentSchema = z.object({
 	whenToUse: z.string().optional(),
 	description: z.string().optional(),
 	customInstructions: z.string().optional(),
+	// Per-mode MCP server allowlist for built-in modes (custom modes carry this on their
+	// ModeConfig instead). Same semantics as modeConfigSchema.allowedMcpServers: omitted = all
+	// servers available; set = only the listed servers are injected; empty = no servers.
+	allowedMcpServers: z
+		.array(z.string())
+		.describe(
+			"Optional list of MCP server names to include. When omitted, all servers are available. When set, only the listed servers are injected.",
+		)
+		.optional(),
 })
 
 export type PromptComponent = z.infer<typeof promptComponentSchema>

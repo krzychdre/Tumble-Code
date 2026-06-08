@@ -1,18 +1,15 @@
 // npx vitest run core/tools/__tests__/mcpServerRestriction.spec.ts
 
 import type { Task } from "../../task/Task"
+import type { ModeConfig, CustomModePrompts } from "@roo-code/types"
 import { isMcpServerAllowed, getAllowedMcpServersForTask, ensureMcpServerAllowed } from "../mcpServerRestriction"
+import { defaultModeSlug } from "../../../shared/modes"
 
-vi.mock("../../../shared/modes", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../../../shared/modes")>()
-	return {
-		...actual,
-		defaultModeSlug: "code",
-		getModeBySlug: vi.fn(),
-	}
-})
-
-import { getModeBySlug } from "../../../shared/modes"
+// These specs drive the guard through the REAL `getModeAllowedMcpServers` resolver (no module mock)
+// so they exercise the full path: provider state → resolver → enforcement. The resolver's own
+// precedence rules are unit-tested in src/shared/__tests__/modes.spec.ts; here we prove the guard
+// honors whatever the resolver returns for both custom modes (ModeConfig allowlist) and built-in
+// modes (customModePrompts override).
 
 const toolError = (error: string) => `ERR:${error}`
 
@@ -27,6 +24,23 @@ function makeTask(state: any): Task {
 		didToolFailInCurrentTurn: false,
 		recordToolError: vi.fn(),
 	} as unknown as Task
+}
+
+// A custom mode carries its allowlist on the ModeConfig.
+function customModeWithAllowlist(allowedMcpServers?: string[]): ModeConfig {
+	return {
+		slug: "custom-mcp",
+		name: "Custom MCP",
+		roleDefinition: "",
+		groups: ["mcp"],
+		...(allowedMcpServers !== undefined ? { allowedMcpServers } : {}),
+		source: "global",
+	} as ModeConfig
+}
+
+// A built-in mode (e.g. "code") carries its allowlist as a customModePrompts override.
+function builtInOverride(allowedMcpServers?: string[]): CustomModePrompts {
+	return allowedMcpServers !== undefined ? { code: { allowedMcpServers } } : {}
 }
 
 describe("isMcpServerAllowed", () => {
@@ -48,58 +62,44 @@ describe("isMcpServerAllowed", () => {
 })
 
 describe("getAllowedMcpServersForTask", () => {
-	beforeEach(() => {
-		vi.mocked(getModeBySlug).mockReset()
-	})
-
-	it("returns the mode's allowedMcpServers when defined", async () => {
-		vi.mocked(getModeBySlug).mockReturnValue({
-			slug: "code",
-			name: "Code",
-			roleDefinition: "",
-			groups: ["mcp"],
-			allowedMcpServers: ["srv-a"],
-		} as any)
-		const task = makeTask({ mode: "code", customModes: [] })
+	it("returns a custom mode's ModeConfig allowlist", async () => {
+		const task = makeTask({ mode: "custom-mcp", customModes: [customModeWithAllowlist(["srv-a"])] })
 		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual(["srv-a"])
 	})
 
-	it("returns undefined when the mode does not restrict servers", async () => {
-		vi.mocked(getModeBySlug).mockReturnValue({
-			slug: "code",
-			name: "Code",
-			roleDefinition: "",
-			groups: ["mcp"],
-		} as any)
-		const task = makeTask({ mode: "code", customModes: [] })
+	it("returns a built-in mode's customModePrompts override allowlist", async () => {
+		const task = makeTask({ mode: "code", customModes: [], customModePrompts: builtInOverride(["srv-b"]) })
+		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual(["srv-b"])
+	})
+
+	it("returns an empty-array override for a built-in mode (restrict to no servers)", async () => {
+		const task = makeTask({ mode: "code", customModes: [], customModePrompts: builtInOverride([]) })
+		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual([])
+	})
+
+	it("returns undefined when the built-in mode does not restrict servers", async () => {
+		const task = makeTask({ mode: "code", customModes: [], customModePrompts: {} })
 		await expect(getAllowedMcpServersForTask(task)).resolves.toBeUndefined()
 	})
 
-	it("returns undefined when the mode cannot be resolved", async () => {
-		vi.mocked(getModeBySlug).mockReturnValue(undefined as any)
-		const task = makeTask({ mode: "missing", customModes: [] })
+	it("defaults to the default mode slug when state has no mode", async () => {
+		// No `mode` on state → falls back to defaultModeSlug; an override keyed on that slug applies.
+		const task = makeTask({
+			customModes: [],
+			customModePrompts: { [defaultModeSlug]: { allowedMcpServers: ["srv-default"] } },
+		})
+		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual(["srv-default"])
+	})
+
+	it("returns undefined when the provider has no getState", async () => {
+		const task = { providerRef: { deref: () => ({}) } } as unknown as Task
 		await expect(getAllowedMcpServersForTask(task)).resolves.toBeUndefined()
 	})
 })
 
 describe("ensureMcpServerAllowed", () => {
-	beforeEach(() => {
-		vi.mocked(getModeBySlug).mockReset()
-	})
-
-	function mockModeAllowlist(allowedMcpServers?: string[]) {
-		vi.mocked(getModeBySlug).mockReturnValue({
-			slug: "code",
-			name: "Code",
-			roleDefinition: "",
-			groups: ["mcp"],
-			...(allowedMcpServers !== undefined ? { allowedMcpServers } : {}),
-		} as any)
-	}
-
 	it("allows invocation when allowlist is undefined (allows all)", async () => {
-		mockModeAllowlist(undefined)
-		const task = makeTask({ mode: "code", customModes: [] })
+		const task = makeTask({ mode: "code", customModes: [], customModePrompts: {} })
 		const pushToolResult = vi.fn()
 
 		const result = await ensureMcpServerAllowed(task, "use_mcp_tool", "anything", pushToolResult, toolError)
@@ -109,9 +109,8 @@ describe("ensureMcpServerAllowed", () => {
 		expect(task.recordToolError).not.toHaveBeenCalled()
 	})
 
-	it("allows invocation when server is in the populated allowlist", async () => {
-		mockModeAllowlist(["allowed-server"])
-		const task = makeTask({ mode: "code", customModes: [] })
+	it("allows invocation when server is in the populated allowlist (built-in override)", async () => {
+		const task = makeTask({ mode: "code", customModes: [], customModePrompts: builtInOverride(["allowed-server"]) })
 		const pushToolResult = vi.fn()
 
 		const result = await ensureMcpServerAllowed(task, "use_mcp_tool", "allowed-server", pushToolResult, toolError)
@@ -120,9 +119,10 @@ describe("ensureMcpServerAllowed", () => {
 		expect(pushToolResult).not.toHaveBeenCalled()
 	})
 
-	it("rejects invocation when server is NOT in the populated allowlist", async () => {
-		mockModeAllowlist(["allowed-server"])
-		const task = makeTask({ mode: "code", customModes: [] })
+	it("rejects invocation when server is NOT in a built-in mode's customModePrompts allowlist", async () => {
+		// The headline of this change: a BUILT-IN mode can now restrict MCP servers via the override,
+		// and the exec-time guard enforces it.
+		const task = makeTask({ mode: "code", customModes: [], customModePrompts: builtInOverride(["allowed-server"]) })
 		const pushToolResult = vi.fn()
 
 		const result = await ensureMcpServerAllowed(
@@ -144,9 +144,24 @@ describe("ensureMcpServerAllowed", () => {
 		expect(message).toContain("allowed-server")
 	})
 
-	it("rejects all invocations when allowlist is empty", async () => {
-		mockModeAllowlist([])
-		const task = makeTask({ mode: "code", customModes: [] })
+	it("rejects invocation when server is NOT in a custom mode's ModeConfig allowlist", async () => {
+		const task = makeTask({ mode: "custom-mcp", customModes: [customModeWithAllowlist(["allowed-server"])] })
+		const pushToolResult = vi.fn()
+
+		const result = await ensureMcpServerAllowed(
+			task,
+			"use_mcp_tool",
+			"disallowed-server",
+			pushToolResult,
+			toolError,
+		)
+
+		expect(result).toBe(false)
+		expect(task.recordToolError).toHaveBeenCalledWith("use_mcp_tool")
+	})
+
+	it("rejects all invocations when a built-in mode's override allowlist is empty", async () => {
+		const task = makeTask({ mode: "code", customModes: [], customModePrompts: builtInOverride([]) })
 		const pushToolResult = vi.fn()
 
 		const result = await ensureMcpServerAllowed(

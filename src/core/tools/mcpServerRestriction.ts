@@ -1,4 +1,4 @@
-import { getModeBySlug, defaultModeSlug } from "../../shared/modes"
+import { getModeAllowedMcpServers, defaultModeSlug } from "../../shared/modes"
 import { Task } from "../task/Task"
 
 /**
@@ -44,8 +44,9 @@ export async function getAllowedMcpServersForTask(task: Task): Promise<string[] 
 	try {
 		const state = await provider.getState()
 		const modeSlug = state?.mode ?? defaultModeSlug
-		const modeConfig = getModeBySlug(modeSlug, state?.customModes)
-		return modeConfig?.allowedMcpServers
+		// Resolve for built-in modes (override in customModePrompts) as well as custom modes
+		// (allowlist on the ModeConfig).
+		return getModeAllowedMcpServers(modeSlug, state?.customModes, state?.customModePrompts)
 	} catch {
 		return undefined
 	}

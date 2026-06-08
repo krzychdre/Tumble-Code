@@ -190,6 +190,7 @@ export class ApiRequestBuilder {
 			cwd: this.access.cwd,
 			mode,
 			customModes: state?.customModes,
+			customModePrompts: state?.customModePrompts,
 			experiments: state?.experiments,
 			apiConfiguration,
 			disabledTools: state?.disabledTools,
