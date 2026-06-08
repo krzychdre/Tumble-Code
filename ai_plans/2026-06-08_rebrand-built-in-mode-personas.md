@@ -31,13 +31,29 @@ Source of truth for built-in modes is `DEFAULT_MODES` in
 `"You are Roo, …"` → `"You are Tumble, …"` (literal Roo→Tumble; the short persona name,
 matching the display brand "Tumble Code").
 
-**Not touched** (out of scope / internal per master rule 2):
+### Custom project modes — `.roomodes`
+
+Per user direction ("**all** 'You are Roo' → Tumble; Roo may only appear in lineage/history"),
+the persona rename also covers the custom project modes in [.roomodes](../.roomodes). Five
+`roleDefinition`s renamed:
+
+| Mode (slug)        | `.roomodes` line | Original opener                                                       |
+| ------------------ | ---------------- | --------------------------------------------------------------------- |
+| translate          | 4                | `You are Roo, a linguistic specialist…`                               |
+| pr-fixer           | 36               | `You are Roo, a pull request resolution specialist…`                  |
+| merge-resolver     | 47               | `You are Roo, a merge conflict resolution specialist…`                |
+| docs-extractor     | 79               | `You are Roo Code, a codebase analyst…` (the lone "Roo Code" variant) |
+| issue-investigator | 101              | `You are Roo, a GitHub issue investigator…`                           |
+
+All → `You are Tumble, …`. After this, `.roomodes` contains **no** "Roo" token at all.
+
+**Not touched** (out of scope / internal per master rule 2, or owned by other rebrand branches):
 
 - `description` / `whenToUse` fields — verified no "Roo" present.
 - Other built-in prompt sections (`src/core/prompts/sections/*`, `tools/*`) — only internal
   identifiers there (`getAllRooDirectoriesForCwd`, `.roo/` dirs), no brand prose.
-- `.roomodes` custom project modes (architect/translate/pr-fixer/etc. also say "You are Roo")
-  — those are project-level custom modes, not _built-in_. Left for a follow-up if desired.
+- Product/brand "Roo Code" in package docs (e.g. `packages/ipc/README.md`) — these are doc
+  strings owned by the master plan's README/docs branch (§4.6), not persona prompt text.
 
 ## Test fallout (handled in this branch)
 
