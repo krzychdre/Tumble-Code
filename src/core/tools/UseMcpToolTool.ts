@@ -111,7 +111,18 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 			return { isValid: false }
 		}
 
-		// Native-only: arguments are already a structured object.
+		// Some weak models (DeepSeek V4, Qwen, GLM, ...) emit MCP tool arguments as a
+		// JSON-encoded string (e.g. '{"headless": true}') rather than a structured
+		// object. Unwrap it before the type check below; if it is not valid JSON,
+		// leave it as-is and let the existing validation reject the malformed input.
+		if (typeof (params.arguments as unknown) === "string") {
+			try {
+				params.arguments = JSON.parse(params.arguments as unknown as string)
+			} catch {
+				// Not valid JSON — fall through to the object check, which rejects it.
+			}
+		}
+
 		let parsedArguments: Record<string, unknown> | undefined
 		if (params.arguments !== undefined) {
 			if (typeof params.arguments !== "object" || params.arguments === null || Array.isArray(params.arguments)) {

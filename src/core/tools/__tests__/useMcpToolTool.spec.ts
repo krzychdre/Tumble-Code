@@ -254,6 +254,57 @@ describe("useMcpToolTool", () => {
 			expect(mockPushToolResult).toHaveBeenCalledWith("Tool result: Tool executed successfully")
 		})
 
+		it("should parse JSON-string arguments and pass the parsed object to callTool", async () => {
+			// Some weak models (DeepSeek V4, Qwen, GLM, ...) emit MCP tool arguments
+			// as a JSON-encoded string instead of a structured object.
+			const callToolMock = vi.fn().mockResolvedValue({
+				content: [{ type: "text", text: "Browser session started" }],
+				isError: false,
+			})
+
+			mockProviderRef.deref.mockReturnValue({
+				getMcpHub: () => ({
+					callTool: callToolMock,
+					getAllServers: vi
+						.fn()
+						.mockReturnValue([
+							{ name: "test_server", tools: [{ name: "test_tool", description: "Test Tool" }] },
+						]),
+				}),
+				postMessageToWebview: vi.fn(),
+			})
+
+			const block: ToolUse = {
+				type: "tool_use",
+				name: "use_mcp_tool",
+				params: {
+					server_name: "test_server",
+					tool_name: "test_tool",
+					arguments: '{"headless": true}',
+				},
+				nativeArgs: {
+					server_name: "test_server",
+					tool_name: "test_tool",
+					arguments: '{"headless": true}' as unknown as Record<string, unknown>,
+				},
+				partial: false,
+			}
+
+			mockAskApproval.mockResolvedValue(true)
+
+			await useMcpToolTool.handle(mockTask as Task, block as any, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(mockTask.consecutiveMistakeCount).toBe(0)
+			expect(mockTask.recordToolError).not.toHaveBeenCalled()
+			expect(callToolMock).toHaveBeenCalledWith("test_server", "test_tool", { headless: true })
+			expect(mockTask.say).toHaveBeenCalledWith("mcp_server_request_started")
+			expect(mockTask.say).toHaveBeenCalledWith("mcp_server_response", "Browser session started", [])
+		})
+
 		it("should handle user rejection", async () => {
 			const block: ToolUse = {
 				type: "tool_use",
