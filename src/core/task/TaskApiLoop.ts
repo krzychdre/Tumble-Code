@@ -76,6 +76,10 @@ export interface TaskApiLoopAccess {
 	apiConversationHistory: ApiMessage[]
 	clineMessages: ClineMessage[]
 
+	// Non-destructive microcompaction: transient set of tool_use_ids whose results
+	// are cleared on the outgoing request copy (stored history stays pristine).
+	microcompactedToolUseIds: Set<string>
+
 	// Mistake tracking
 	consecutiveMistakeCount: number
 	consecutiveMistakeLimit: number
@@ -164,6 +168,7 @@ export class TaskApiLoop {
 			apiConfiguration: access.apiConfiguration,
 			api: access.api,
 			apiConversationHistory: access.apiConversationHistory,
+			microcompactedToolUseIds: access.microcompactedToolUseIds,
 			providerRef: access.providerRef,
 			cwd: access.cwd,
 			diffStrategy: access.diffStrategy,

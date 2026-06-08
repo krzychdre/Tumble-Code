@@ -25,6 +25,7 @@ import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
+import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
@@ -49,6 +50,11 @@ export interface ApiRequestBuilderAccess {
 
 	// Conversation history
 	apiConversationHistory: ApiMessage[]
+
+	// Non-destructive microcompaction: transient set of tool_use_ids whose results
+	// are cleared on the OUTGOING request copy (stored history stays pristine).
+	// Recomputed each request by the context manager. See applyMicrocompactCleared.
+	microcompactedToolUseIds: ReadonlySet<string>
 
 	// Provider reference
 	providerRef: WeakRef<ClineProvider>
@@ -255,7 +261,19 @@ export class ApiRequestBuilder {
 
 		const cleanConversationHistory: (Anthropic.Messages.MessageParam | ReasoningItemForRequest)[] = []
 
-		for (const msg of messages) {
+		// Non-destructive microcompaction (send-time): clear the content of old
+		// tool results selected by the context manager for THIS request's model.
+		// Operates on a copy — stored history stays pristine — so it is cache-stable
+		// and correct across mid-task mode switches (a wider-window mode passes an
+		// empty set and gets full fidelity back). No-op (same ref) when the set is
+		// empty, which is the common case.
+		const microcompactedToolUseIds = this.access.microcompactedToolUseIds
+		const sourceMessages =
+			microcompactedToolUseIds && microcompactedToolUseIds.size > 0
+				? applyMicrocompactCleared(messages, microcompactedToolUseIds)
+				: messages
+
+		for (const msg of sourceMessages) {
 			// Standalone reasoning: send encrypted, skip plain text
 			if (msg.type === "reasoning") {
 				if (msg.encrypted_content) {

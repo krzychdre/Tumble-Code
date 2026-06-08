@@ -111,6 +111,24 @@ export function transformMessagesForCondensing<
 export const MIN_CONDENSE_THRESHOLD = 5 // Minimum percentage of context window to trigger condensing
 export const MAX_CONDENSE_THRESHOLD = 100 // Maximum percentage of context window to trigger condensing
 
+/**
+ * How many of the most-recent messages to keep RAW (verbatim) in the effective
+ * history after a full condense, instead of collapsing to the summary alone.
+ * ~3 native tool turns (assistant tool_use + user tool_result = 2 messages each),
+ * i.e. the model's immediate working set. Keeping these intact lets work continue
+ * seamlessly after a condense — the exact recent tool calls / results / decisions
+ * survive, not just the lossy paraphrase.
+ */
+export const CONDENSE_KEEP_RECENT_MESSAGES = 6
+
+/**
+ * The recent raw tail is only kept when the since-last-summary region is at least
+ * `CONDENSE_KEEP_RECENT_MESSAGES + CONDENSE_MIN_SUMMARIZED_MESSAGES` long, so that
+ * summarizing the older prefix still yields a worthwhile reduction. On smaller
+ * histories the classic fresh-start (summarize everything, no tail) is used.
+ */
+export const CONDENSE_MIN_SUMMARIZED_MESSAGES = 4
+
 const SUMMARY_PROMPT = `You are a helpful AI assistant tasked with summarizing conversations.
 
 CRITICAL: This is a summarization-only request. DO NOT call any tools or functions.
@@ -463,28 +481,32 @@ ${commandBlocks}
 		condenseId, // Unique ID for this summary, used to track which messages it replaces
 	}
 
-	// NON-DESTRUCTIVE CONDENSE:
-	// Tag ALL existing messages with condenseParent so they are filtered out when
-	// the effective history is computed. The summary message is the only message
-	// that will be visible to the API after condensing (fresh start model).
+	// NON-DESTRUCTIVE CONDENSE (with recent raw tail):
+	// Tag the PREFIX (older messages) with condenseParent so they are filtered out
+	// of the effective history, then place the summary, then keep the most-recent
+	// messages RAW so the model retains its exact working set after the condense.
 	//
 	// Storage structure after condense:
-	// [msg1(parent=X), msg2(parent=X), ..., msgN(parent=X), summary(id=X)]
+	// [msg1(parent=X), ..., msgK(parent=X), summary(id=X), recentTail1, recentTail2, ...]
 	//
-	// Effective for API (filtered by getEffectiveApiHistory):
-	// [summary]  ← Fresh start!
+	// Effective for API (getEffectiveApiHistory slices from the summary):
+	// [summary, ...recentTail]  ← fresh start that still carries the recent turns
+	//
+	// On small histories computeCondenseKeepBoundary returns messages.length, so
+	// the tail is empty and this reduces to the classic [..tagged, summary] shape.
+	const keepBoundary = computeCondenseKeepBoundary(messages)
 
-	// Tag ALL messages with condenseParent
-	const newMessages = messages.map((msg) => {
-		// If message already has a condenseParent, we leave it - nested condense is handled by filtering
-		if (!msg.condenseParent) {
-			return { ...msg, condenseParent: condenseId }
-		}
-		return msg
-	})
-
-	// Append the summary message at the end
+	const newMessages: ApiMessage[] = []
+	for (let i = 0; i < keepBoundary; i++) {
+		const msg = messages[i]
+		// Leave already-condensed messages as-is (nested condense is handled by filtering).
+		newMessages.push(msg.condenseParent ? msg : { ...msg, condenseParent: condenseId })
+	}
 	newMessages.push(summaryMessage)
+	const recentTail = messages.slice(keepBoundary)
+	for (const msg of recentTail) {
+		newMessages.push(msg)
+	}
 
 	// Count the tokens in the context for the next API request
 	// After condense, the context will contain: system prompt + summary + tool definitions
@@ -505,7 +527,20 @@ ${commandBlocks}
 		toolTokens = await apiHandler.countTokens([{ text: toolsText, type: "text" }])
 	}
 
-	const newContextTokens = messageTokens + toolTokens
+	// The recent raw tail is also part of the post-condense context, so its tokens
+	// must be included. Tool blocks are converted to text first so countTokens can
+	// measure them uniformly across providers.
+	let tailTokens = 0
+	if (recentTail.length > 0) {
+		const tailBlocks = transformMessagesForCondensing(recentTail).flatMap((message) =>
+			typeof message.content === "string" ? [{ text: message.content, type: "text" as const }] : message.content,
+		)
+		if (tailBlocks.length > 0) {
+			tailTokens = await apiHandler.countTokens(tailBlocks)
+		}
+	}
+
+	const newContextTokens = messageTokens + toolTokens + tailTokens
 	return { messages: newMessages, summary, cost, newContextTokens, condenseId }
 }
 
@@ -525,6 +560,83 @@ export function getMessagesSinceLastSummary(messages: ApiMessage[]): ApiMessage[
 
 	const lastSummaryIndex = messages.length - lastSummaryIndexReverse - 1
 	return messages.slice(lastSummaryIndex)
+}
+
+/**
+ * True iff every `tool_result` block in `messages[boundary..]` has its matching
+ * `tool_use` (same id) also within `messages[boundary..]`. Used to choose a
+ * keep-boundary that does not split a tool pair (an orphaned tool_result in the
+ * kept tail would be stripped by `getEffectiveApiHistory`).
+ */
+function toolPairsSatisfiedFrom(messages: ApiMessage[], boundary: number): boolean {
+	const toolUseIds = new Set<string>()
+	for (let i = boundary; i < messages.length; i++) {
+		const msg = messages[i]
+		if (msg.role === "assistant" && Array.isArray(msg.content)) {
+			for (const block of msg.content) {
+				if (block.type === "tool_use") {
+					toolUseIds.add((block as Anthropic.Messages.ToolUseBlockParam).id)
+				}
+			}
+		}
+	}
+	for (let i = boundary; i < messages.length; i++) {
+		const msg = messages[i]
+		if (msg.role === "user" && Array.isArray(msg.content)) {
+			for (const block of msg.content) {
+				if (
+					block.type === "tool_result" &&
+					!toolUseIds.has((block as Anthropic.Messages.ToolResultBlockParam).tool_use_id)
+				) {
+					return false
+				}
+			}
+		}
+	}
+	return true
+}
+
+/**
+ * Computes the index into `messages` at which the recent RAW tail should start
+ * when condensing (i.e. `messages[boundary..]` are kept verbatim and only
+ * `messages[0..boundary)` are summarized/tagged). Returns `messages.length` to
+ * signal "no tail — classic fresh start".
+ *
+ * Guarantees:
+ * - Only keeps a tail when the since-last-summary region is large enough that
+ *   summarizing the prefix is still worthwhile (the gate).
+ * - The tail never reaches back to include a prior summary, so the new summary
+ *   stays the last `isSummary` in the array (which `getEffectiveApiHistory` and
+ *   `getMessagesSinceLastSummary` anchor on).
+ * - The boundary does not split a `tool_use`/`tool_result` pair (pulled backward,
+ *   capped at `keepRecent*2` and floored, so a pathological unpaired chain can't
+ *   swallow the prefix).
+ *
+ * Pure and deterministic; exported for direct unit testing.
+ */
+export function computeCondenseKeepBoundary(
+	messages: ApiMessage[],
+	keepRecent: number = CONDENSE_KEEP_RECENT_MESSAGES,
+): number {
+	const sinceLast = getMessagesSinceLastSummary(messages)
+
+	// Gate: too small to benefit → no tail.
+	if (keepRecent <= 0 || sinceLast.length < keepRecent + CONDENSE_MIN_SUMMARIZED_MESSAGES) {
+		return messages.length
+	}
+
+	// Floor just past any prior summary at the start of the region, so the tail
+	// can never contain an earlier summary.
+	const sinceLastStart = messages.length - sinceLast.length
+	const floor = sinceLast.length > 0 && sinceLast[0].isSummary ? sinceLastStart + 1 : sinceLastStart
+
+	let boundary = messages.length - keepRecent
+	// Pull backward to avoid splitting a tool pair, bounded so it can't run away.
+	const minBoundary = Math.max(floor, messages.length - keepRecent * 2)
+	while (boundary > minBoundary && !toolPairsSatisfiedFrom(messages, boundary)) {
+		boundary--
+	}
+	return Math.max(boundary, floor)
 }
 
 /**
