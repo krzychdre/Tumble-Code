@@ -1,5 +1,5 @@
 import React from "react"
-import { ListChecks, LayoutList, Settings, CheckCheck, X } from "lucide-react"
+import { ListChecks, LayoutList, Settings, ShieldCheck, ShieldAlert, Zap, X } from "lucide-react"
 
 import { vscode } from "@/utils/vscode"
 
@@ -17,6 +17,16 @@ import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
 import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, ToggleSwitch, Button } from "@/components/ui"
 
 import { AutoApproveSetting, autoApproveSettingsConfig } from "../settings/AutoApproveToggle"
+import { AutoApproveModeSelector } from "../settings/AutoApproveModeSelector"
+
+import type { AutoApprovalMode } from "@roo-code/types"
+
+/**
+ * Bypass forces every action except follow-up questions; autonomous forces all.
+ * The matching toggle buttons are rendered orange to signal the override.
+ */
+const isModeForced = (mode: AutoApprovalMode, key: AutoApproveSetting) =>
+	mode === "autonomous" || (mode === "bypass" && key !== "alwaysAllowFollowupQuestions")
 
 interface AutoApproveDropdownProps {
 	disabled?: boolean
@@ -31,6 +41,8 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 	const {
 		autoApprovalEnabled,
 		setAutoApprovalEnabled,
+		autoApprovalMode = "default",
+		setAutoApprovalMode,
 		setAlwaysAllowReadOnly,
 		setAlwaysAllowWrite,
 		setAlwaysAllowExecute,
@@ -121,6 +133,21 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 		vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
 	}, [autoApprovalEnabled, setAutoApprovalEnabled])
 
+	// Handle the auto-approval mode selector (default / bypass / autonomous)
+	const handleModeChange = React.useCallback(
+		(mode: AutoApprovalMode) => {
+			setAutoApprovalMode(mode)
+			vscode.postMessage({ type: "updateSettings", updatedSettings: { autoApprovalMode: mode } })
+
+			// Selecting a non-default mode implies auto-approval is active.
+			if (mode !== "default" && !autoApprovalEnabled) {
+				setAutoApprovalEnabled(true)
+				vscode.postMessage({ type: "autoApprovalEnabled", bool: true })
+			}
+		},
+		[autoApprovalEnabled, setAutoApprovalMode, setAutoApprovalEnabled],
+	)
+
 	// Calculate enabled and total counts as separate properties
 	const settingsArray = Object.values(autoApproveSettingsConfig)
 
@@ -134,15 +161,46 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 
 	const { effectiveAutoApprovalEnabled } = useAutoApprovalState(toggles, autoApprovalEnabled)
 
-	const tooltipText =
-		!effectiveAutoApprovalEnabled || enabledCount === 0
-			? t("chat:autoApprove.tooltipManage")
-			: t("chat:autoApprove.tooltipStatus", {
-					toggles: settingsArray
-						.filter((setting) => toggles[setting.key])
-						.map((setting) => t(setting.labelKey))
-						.join(", "),
-				})
+	// A non-default mode is "active" only while auto-approval is on. The trigger box then
+	// adopts an orange border, a mode-specific icon, and the mode name instead of a count.
+	const isBypass = effectiveAutoApprovalEnabled && autoApprovalMode === "bypass"
+	const isAutonomous = effectiveAutoApprovalEnabled && autoApprovalMode === "autonomous"
+	const isModeActive = isBypass || isAutonomous
+
+	const TriggerIcon = !effectiveAutoApprovalEnabled ? X : isAutonomous ? Zap : isBypass ? ShieldAlert : ShieldCheck
+
+	const triggerLabel = !effectiveAutoApprovalEnabled
+		? t("chat:autoApprove.triggerLabelOff")
+		: isAutonomous
+			? t("chat:autoApprove.mode.autonomous.label")
+			: isBypass
+				? t("chat:autoApprove.mode.bypass.label")
+				: enabledCount === totalCount
+					? t("chat:autoApprove.triggerLabelAll")
+					: t("chat:autoApprove.triggerLabel", { count: enabledCount })
+
+	const triggerLabelShort = !effectiveAutoApprovalEnabled
+		? t("chat:autoApprove.triggerLabelOffShort")
+		: isAutonomous
+			? t("chat:autoApprove.mode.autonomous.label")
+			: isBypass
+				? t("chat:autoApprove.mode.bypass.label")
+				: enabledCount === totalCount
+					? t("chat:autoApprove.triggerLabelAll")
+					: enabledCount
+
+	const tooltipText = isAutonomous
+		? t("chat:autoApprove.mode.autonomous.description")
+		: isBypass
+			? t("chat:autoApprove.mode.bypass.description")
+			: !effectiveAutoApprovalEnabled || enabledCount === 0
+				? t("chat:autoApprove.tooltipManage")
+				: t("chat:autoApprove.tooltipStatus", {
+						toggles: settingsArray
+							.filter((setting) => toggles[setting.key])
+							.map((setting) => t(setting.labelKey))
+							.join(", "),
+					})
 
 	return (
 		<Popover open={open} onOpenChange={setOpen} data-testid="auto-approve-dropdown-root">
@@ -152,34 +210,22 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 					data-testid="auto-approve-dropdown-trigger"
 					className={cn(
 						"inline-flex items-center gap-1.5 relative whitespace-nowrap px-1.5 py-1 text-xs",
-						"bg-transparent border border-[rgba(255,255,255,0.08)] rounded-md text-vscode-foreground",
+						"bg-transparent border rounded-md text-vscode-foreground",
 						"transition-all duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-vscode-focusBorder focus-visible:ring-inset",
 						"max-[300px]:shrink-0",
+						isModeActive ? "!border-orange-600 text-orange-500" : "border-[rgba(255,255,255,0.08)]",
 						disabled
 							? "opacity-50 cursor-not-allowed"
-							: "opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.15)] cursor-pointer",
+							: cn(
+									"opacity-90 hover:opacity-100 hover:bg-[rgba(255,255,255,0.03)] cursor-pointer",
+									!isModeActive && "hover:border-[rgba(255,255,255,0.15)]",
+								),
 						triggerClassName,
 					)}>
-					{!effectiveAutoApprovalEnabled ? (
-						<X className="size-3 flex-shrink-0" />
-					) : (
-						<CheckCheck className="size-3 flex-shrink-0" />
-					)}
+					<TriggerIcon className="size-3 flex-shrink-0" />
 
-					<span className="hidden min-[300px]:inline truncate min-w-0">
-						{!effectiveAutoApprovalEnabled
-							? t("chat:autoApprove.triggerLabelOff")
-							: enabledCount === totalCount
-								? t("chat:autoApprove.triggerLabelAll")
-								: t("chat:autoApprove.triggerLabel", { count: enabledCount })}
-					</span>
-					<span className="inline min-[300px]:hidden min-w-0">
-						{!effectiveAutoApprovalEnabled
-							? t("chat:autoApprove.triggerLabelOffShort")
-							: enabledCount === totalCount
-								? t("chat:autoApprove.triggerLabelAll")
-								: enabledCount}
-					</span>
+					<span className="hidden min-[300px]:inline truncate min-w-0">{triggerLabel}</span>
+					<span className="inline min-[300px]:hidden min-w-0">{triggerLabelShort}</span>
 				</PopoverTrigger>
 			</StandardTooltip>
 			<PopoverContent
@@ -204,22 +250,36 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 							{t("chat:autoApprove.description")}
 						</p>
 					</div>
+					{/* Mode selector: default / bypass / autonomous.
+					    Not gated by the master toggle — picking Bypass/Autonomous enables it. */}
+					<div className="px-3 pt-3">
+						<AutoApproveModeSelector
+							mode={autoApprovalMode}
+							onChange={handleModeChange}
+							disabled={disabled}
+						/>
+					</div>
 					<div className="grid grid-cols-1 min-[340px]:grid-cols-2 gap-x-2 gap-y-2 p-3">
 						{settingsArray.map(({ key, labelKey, descriptionKey, icon }) => {
-							const isEnabled = toggles[key]
+							const forced = isModeForced(autoApprovalMode, key)
+							const isEnabled = forced || toggles[key]
 							return (
-								<StandardTooltip key={key} content={t(descriptionKey)}>
+								<StandardTooltip
+									key={key}
+									content={forced ? t("chat:autoApprove.mode.forcedHint") : t(descriptionKey)}>
 									<Button
 										variant={isEnabled ? "primary" : "secondary"}
-										onClick={() => onAutoApproveToggle(key, !isEnabled)}
+										onClick={() => onAutoApproveToggle(key, !toggles[key])}
 										className={cn(
 											"flex items-center gap-2 px-2 py-2 text-sm text-left justify-start h-auto",
 											"transition-all duration-150",
 											!effectiveAutoApprovalEnabled &&
 												"opacity-50 cursor-not-allowed hover:opacity-50",
 											!isEnabled && "bg-vscode-button-background/15",
+											forced &&
+												"!bg-orange-600 hover:!bg-orange-600 !text-white !border-orange-600 !opacity-100 cursor-default",
 										)}
-										disabled={!effectiveAutoApprovalEnabled}
+										disabled={!effectiveAutoApprovalEnabled || forced}
 										data-testid={`auto-approve-${key}`}>
 										<span className={`codicon codicon-${icon} text-sm flex-shrink-0`} />
 										<span className="flex-1 truncate">{t(labelKey)}</span>

@@ -1,4 +1,4 @@
-import type { GlobalSettings } from "@roo-code/types"
+import type { GlobalSettings, AutoApprovalMode } from "@roo-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { cn } from "@/lib/utils"
@@ -16,6 +16,13 @@ type AutoApproveToggles = Pick<
 >
 
 export type AutoApproveSetting = keyof AutoApproveToggles
+
+/**
+ * Bypass forces every action except follow-up questions; autonomous forces all.
+ * Matching toggles render orange to signal the override is in effect.
+ */
+export const isAutoApproveForced = (mode: AutoApprovalMode | undefined, key: AutoApproveSetting) =>
+	mode === "autonomous" || (mode === "bypass" && key !== "alwaysAllowFollowupQuestions")
 
 type AutoApproveConfig = {
 	key: AutoApproveSetting
@@ -79,27 +86,38 @@ export const autoApproveSettingsConfig: Record<AutoApproveSetting, AutoApproveCo
 
 type AutoApproveToggleProps = AutoApproveToggles & {
 	onToggle: (key: AutoApproveSetting, value: boolean) => void
+	mode?: AutoApprovalMode
 }
 
-export const AutoApproveToggle = ({ onToggle, ...props }: AutoApproveToggleProps) => {
+export const AutoApproveToggle = ({ onToggle, mode, ...props }: AutoApproveToggleProps) => {
 	const { t } = useAppTranslation()
 
 	return (
 		<div className={cn("flex flex-row flex-wrap gap-2 py-2")}>
-			{Object.values(autoApproveSettingsConfig).map(({ key, descriptionKey, labelKey, icon, testId }) => (
-				<StandardTooltip key={key} content={t(descriptionKey || "")}>
-					<Button
-						variant={props[key] ? "primary" : "secondary"}
-						onClick={() => onToggle(key, !props[key])}
-						aria-label={t(labelKey)}
-						aria-pressed={!!props[key]}
-						data-testid={testId}
-						className={cn("gap-1.5 text-xs whitespace-nowrap", !props[key] && "opacity-50")}>
-						<span className={`codicon codicon-${icon} text-sm`} />
-						<span>{t(labelKey)}</span>
-					</Button>
-				</StandardTooltip>
-			))}
+			{Object.values(autoApproveSettingsConfig).map(({ key, descriptionKey, labelKey, icon, testId }) => {
+				const forced = isAutoApproveForced(mode, key)
+				const isActive = forced || props[key]
+				return (
+					<StandardTooltip key={key} content={t(descriptionKey || "")}>
+						<Button
+							variant={isActive ? "primary" : "secondary"}
+							onClick={() => onToggle(key, !props[key])}
+							aria-label={t(labelKey)}
+							aria-pressed={!!isActive}
+							disabled={forced}
+							data-testid={testId}
+							className={cn(
+								"gap-1.5 text-xs whitespace-nowrap",
+								!isActive && "opacity-50",
+								forced &&
+									"!bg-orange-600 hover:!bg-orange-600 !text-white !border-orange-600 !opacity-100 cursor-default",
+							)}>
+							<span className={`codicon codicon-${icon} text-sm`} />
+							<span>{t(labelKey)}</span>
+						</Button>
+					</StandardTooltip>
+				)
+			})}
 		</div>
 	)
 }
