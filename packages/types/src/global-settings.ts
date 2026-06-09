@@ -24,6 +24,24 @@ import { languagesSchema } from "./vscode.js"
 export const DEFAULT_WRITE_DELAY_MS = 1000
 
 /**
+ * Auto-approval tiers layered on top of the granular per-action toggles.
+ *
+ * - `default`: respect the individual `alwaysAllow*` toggles, allowlists, and
+ *   outside-workspace / protected-file guards (the original behavior).
+ * - `bypass`: force-approve every interactive permission ask (read / write / mcp /
+ *   subtask / mode-switch / execute) with no exceptions — even unknown commands.
+ *   Follow-up questions still interrupt the user (semi-auto).
+ * - `autonomous`: everything `bypass` does, plus follow-up questions are
+ *   auto-answered so the agent runs to completion without interaction.
+ *
+ * The master `autoApprovalEnabled` flag remains the kill-switch: when it is off,
+ * every ask prompts regardless of the selected mode.
+ */
+export const autoApprovalModes = ["default", "bypass", "autonomous"] as const
+
+export type AutoApprovalMode = (typeof autoApprovalModes)[number]
+
+/**
  * Terminal output preview size options for persisted command output.
  *
  * Controls how much command output is kept in memory as a "preview" before
@@ -96,6 +114,7 @@ export const globalSettingsSchema = z.object({
 	customCondensingPrompt: z.string().optional(),
 
 	autoApprovalEnabled: z.boolean().optional(),
+	autoApprovalMode: z.enum(autoApprovalModes).optional(),
 	alwaysAllowReadOnly: z.boolean().optional(),
 	alwaysAllowReadOnlyOutsideWorkspace: z.boolean().optional(),
 	alwaysAllowWrite: z.boolean().optional(),

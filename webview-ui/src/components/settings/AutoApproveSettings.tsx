@@ -13,6 +13,7 @@ import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { AutoApproveToggle } from "./AutoApproveToggle"
+import { AutoApproveModeSelector } from "./AutoApproveModeSelector"
 import { MaxLimitInputs } from "./MaxLimitInputs"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useAutoApprovalState } from "@/hooks/useAutoApprovalState"
@@ -75,7 +76,22 @@ export const AutoApproveSettings = ({
 	const { t } = useAppTranslation()
 	const [commandInput, setCommandInput] = useState("")
 	const [deniedCommandInput, setDeniedCommandInput] = useState("")
-	const { autoApprovalEnabled, setAutoApprovalEnabled } = useExtensionState()
+	const {
+		autoApprovalEnabled,
+		setAutoApprovalEnabled,
+		autoApprovalMode = "default",
+		setAutoApprovalMode,
+	} = useExtensionState()
+
+	const handleModeChange = (mode: typeof autoApprovalMode) => {
+		setAutoApprovalMode(mode)
+		vscode.postMessage({ type: "updateSettings", updatedSettings: { autoApprovalMode: mode } })
+
+		if (mode !== "default" && !autoApprovalEnabled) {
+			setAutoApprovalEnabled(true)
+			vscode.postMessage({ type: "autoApprovalEnabled", bool: true })
+		}
+	}
 
 	const toggles = useAutoApprovalToggles()
 
@@ -149,6 +165,8 @@ export const AutoApproveSettings = ({
 						</div>
 					</SearchableSetting>
 
+					<AutoApproveModeSelector mode={autoApprovalMode} onChange={handleModeChange} />
+
 					<AutoApproveToggle
 						alwaysAllowReadOnly={alwaysAllowReadOnly}
 						alwaysAllowWrite={alwaysAllowWrite}
@@ -157,6 +175,7 @@ export const AutoApproveSettings = ({
 						alwaysAllowSubtasks={alwaysAllowSubtasks}
 						alwaysAllowExecute={alwaysAllowExecute}
 						alwaysAllowFollowupQuestions={alwaysAllowFollowupQuestions}
+						mode={autoApprovalMode}
 						onToggle={(key, value) => setCachedStateField(key, value)}
 					/>
 

@@ -12,6 +12,7 @@ import {
 	type CloudOrganizationMembership,
 	type ExtensionMessage,
 	type ExtensionState,
+	type AutoApprovalMode,
 	type MarketplaceInstalledMetadata,
 	type SkillMetadata,
 	type Command,
@@ -105,6 +106,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setEnhancementApiConfigId: (value: string) => void
 	setExperimentEnabled: (id: ExperimentId, enabled: boolean) => void
 	setAutoApprovalEnabled: (value: boolean) => void
+	setAutoApprovalMode: (value: AutoApprovalMode) => void
 	customModes: ModeConfig[]
 	setCustomModes: (value: ModeConfig[]) => void
 	setMaxOpenTabsContext: (value: number) => void
@@ -215,6 +217,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		enhancementApiConfigId: "",
 		hasOpenedModeSelector: false, // Default to false (not opened yet)
 		autoApprovalEnabled: false,
+		autoApprovalMode: "default",
 		customModes: [],
 		maxOpenTabsContext: 20,
 		maxWorkspaceFiles: 200,
@@ -545,6 +548,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setEnhancementApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
 		setAutoApprovalEnabled: (value) => setState((prevState) => ({ ...prevState, autoApprovalEnabled: value })),
+		setAutoApprovalMode: (value) => setState((prevState) => ({ ...prevState, autoApprovalMode: value })),
 		setCustomModes: (value) => setState((prevState) => ({ ...prevState, customModes: value })),
 		setMaxOpenTabsContext: (value) => setState((prevState) => ({ ...prevState, maxOpenTabsContext: value })),
 		setMaxWorkspaceFiles: (value) => setState((prevState) => ({ ...prevState, maxWorkspaceFiles: value })),
