@@ -8,7 +8,8 @@
 		"src/workers/countTokens.ts",
 		"src/extension.ts",
 		"scripts/**",
-		"apps/cli/scripts/**"
+		"apps/cli/scripts/**",
+		"@vscode/ripgrep"
 	],
 	"workspaces": {
 		"src": {
