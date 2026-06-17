@@ -72,6 +72,17 @@ export class TaskAskSay {
 
 		let askTs: number
 
+		// Resolve auto-approval before adding the message so the state snapshot
+		// sent to the webview already carries isAnswered:true when the ask will
+		// be immediately resolved. This eliminates the race between the state
+		// update (which shows approval buttons) and the former separate
+		// clearApprovalButtons message (which could arrive before buttons were
+		// rendered, leaving them stuck on-screen).
+		const provider = this.access.providerRef.deref()
+		const state = provider ? await provider.getState() : undefined
+		const approval = await checkAutoApproval({ state, ask: type, text, isProtected })
+		const isAutoAnswered = approval.decision === "approve" || approval.decision === "deny"
+
 		if (partial !== undefined) {
 			const lastMessage = this.access.clineMessages.at(-1)
 
@@ -209,6 +220,9 @@ export class TaskAskSay {
 					transitionTarget.partial = false
 					transitionTarget.progressStatus = progressStatus
 					transitionTarget.isProtected = isProtected
+					if (isAutoAnswered) {
+						transitionTarget.isAnswered = true
+					}
 					await this.access.history.saveClineMessages()
 					this.access.history.updateClineMessage(transitionTarget)
 				} else {
@@ -224,6 +238,7 @@ export class TaskAskSay {
 						ask: type,
 						text,
 						isProtected,
+						isAnswered: isAutoAnswered || undefined,
 					})
 				}
 			}
@@ -234,15 +249,17 @@ export class TaskAskSay {
 			this.access.askResponseImages = undefined
 			askTs = Date.now()
 			this.access.lastMessageTs = askTs
-			await this.access.history.addToClineMessages({ ts: askTs, type: "ask", ask: type, text, isProtected })
+			await this.access.history.addToClineMessages({
+				ts: askTs,
+				type: "ask",
+				ask: type,
+				text,
+				isProtected,
+				isAnswered: isAutoAnswered || undefined,
+			})
 		}
 
 		let timeouts: NodeJS.Timeout[] = []
-
-		// Automatically approve if the ask according to the user's settings.
-		const provider = this.access.providerRef.deref()
-		const state = provider ? await provider.getState() : undefined
-		const approval = await checkAutoApproval({ state, ask: type, text, isProtected })
 
 		if (approval.decision === "approve") {
 			this.approveAsk()
