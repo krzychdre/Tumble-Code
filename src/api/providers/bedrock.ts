@@ -316,6 +316,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		return (
 			baseModelId.includes("opus-4-7") ||
 			baseModelId.includes("opus-4-8") ||
+			baseModelId.includes("fable-5") ||
 			baseModelId.includes("sonnet-4-7") ||
 			baseModelId.includes("sonnet-4-8")
 		)
