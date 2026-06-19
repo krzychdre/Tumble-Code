@@ -780,7 +780,18 @@ export class TaskStreamProcessor {
 
 					// Update the API request message with the latest usage data
 					updateApiReqMsg()
-					await access.history.saveClineMessages()
+					// Do not persist task history once the owning task has been aborted/abandoned.
+					// This drain is fire-and-forget (launched, not awaited, in TaskApiLoop) and can
+					// outlive the task by up to DEFAULT_USAGE_COLLECTION_TIMEOUT_MS. For a parent
+					// disposed by delegation, a late save here re-stamps the task's status from its
+					// initialStatus ("active") via taskMetadata, clobbering the "delegated" metadata
+					// delegateParentAndOpenChild just wrote — which makes the child's attempt_completion
+					// finalize the whole task instead of returning to the parent. The guard lives here
+					// (not in saveClineMessages) because abortTask deliberately persists final state.
+					// See ai_plans/2026-06-08_delegated-subtask-no-return.md.
+					if (!access.abort && !access.abandoned) {
+						await access.history.saveClineMessages()
+					}
 
 					// Update the specific message in the webview
 					const apiReqMessage = access.clineMessages[messageIndex]

@@ -102,6 +102,12 @@ export const modeConfigSchema = z.object({
 	customInstructions: z.string().optional(),
 	groups: groupEntryArraySchema,
 	source: z.enum(["global", "project"]).optional(),
+	allowedMcpServers: z
+		.array(z.string())
+		.describe(
+			"Optional list of MCP server names to include. When omitted, all servers are available. When set, only the listed servers are injected.",
+		)
+		.optional(),
 })
 
 export type ModeConfig = z.infer<typeof modeConfigSchema>
@@ -141,6 +147,15 @@ export const promptComponentSchema = z.object({
 	whenToUse: z.string().optional(),
 	description: z.string().optional(),
 	customInstructions: z.string().optional(),
+	// Per-mode MCP server allowlist for built-in modes (custom modes carry this on their
+	// ModeConfig instead). Same semantics as modeConfigSchema.allowedMcpServers: omitted = all
+	// servers available; set = only the listed servers are injected; empty = no servers.
+	allowedMcpServers: z
+		.array(z.string())
+		.describe(
+			"Optional list of MCP server names to include. When omitted, all servers are available. When set, only the listed servers are injected.",
+		)
+		.optional(),
 })
 
 export type PromptComponent = z.infer<typeof promptComponentSchema>
@@ -170,7 +185,7 @@ export const DEFAULT_MODES: readonly ModeConfig[] = [
 		slug: "architect",
 		name: "🏗️ Architect",
 		roleDefinition:
-			"You are Roo, an experienced technical leader who is inquisitive and an excellent planner. Your goal is to gather information and get context to create a detailed plan for accomplishing the user's task, which the user will review and approve before they switch into another mode to implement the solution.",
+			"You are Tumble, an experienced technical leader who is inquisitive and an excellent planner. Your goal is to gather information and get context to create a detailed plan for accomplishing the user's task, which the user will review and approve before they switch into another mode to implement the solution.",
 		whenToUse:
 			"Use this mode when you need to plan, design, or strategize before implementation. Perfect for breaking down complex problems, creating technical specifications, designing system architecture, or brainstorming solutions before coding.",
 		description: "Plan and design before implementation",
@@ -182,7 +197,7 @@ export const DEFAULT_MODES: readonly ModeConfig[] = [
 		slug: "code",
 		name: "💻 Code",
 		roleDefinition:
-			"You are Roo, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
+			"You are Tumble, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
 		whenToUse:
 			"Use this mode when you need to write, modify, or refactor code. Ideal for implementing features, fixing bugs, creating new files, or making code improvements across any programming language or framework.",
 		description: "Write, modify, and refactor code",
@@ -192,19 +207,19 @@ export const DEFAULT_MODES: readonly ModeConfig[] = [
 		slug: "ask",
 		name: "❓ Ask",
 		roleDefinition:
-			"You are Roo, a knowledgeable technical assistant focused on answering questions and providing information about software development, technology, and related topics.",
+			"You are Tumble, a knowledgeable technical assistant focused on answering questions and providing information about software development, technology, and related topics.",
 		whenToUse:
 			"Use this mode when you need explanations, documentation, or answers to technical questions. Best for understanding concepts, analyzing existing code, getting recommendations, or learning about technologies without making changes.",
 		description: "Get answers and explanations",
 		groups: ["read", "mcp"],
 		customInstructions:
-			"You can analyze code, explain concepts, and access external resources. Always answer the user's questions thoroughly, and do not switch to implementing code unless explicitly requested by the user. Include Mermaid diagrams when they clarify your response.",
+			"You can analyze code, explain concepts, and access external resources. When an MCP server that provides web search or web page fetching/scraping is connected, prefer to use it eagerly rather than answering from memory alone: reach for it whenever a question touches current events, recent releases, library or API versions, third-party documentation, or anything that may have changed since your training cutoff or that you are not confident about. After searching, cite the sources you used. If no web-capable MCP server is available, answer from your existing knowledge and note when the information may be outdated. Always answer the user's questions thoroughly, and do not switch to implementing code unless explicitly requested by the user. Include Mermaid diagrams when they clarify your response.",
 	},
 	{
 		slug: "debug",
 		name: "🪲 Debug",
 		roleDefinition:
-			"You are Roo, an expert software debugger specializing in systematic problem diagnosis and resolution.",
+			"You are Tumble, an expert software debugger specializing in systematic problem diagnosis and resolution.",
 		whenToUse:
 			"Use this mode when you're troubleshooting issues, investigating errors, or diagnosing problems. Specialized in systematic debugging, adding logging, analyzing stack traces, and identifying root causes before applying fixes.",
 		description: "Diagnose and fix software issues",
@@ -216,7 +231,7 @@ export const DEFAULT_MODES: readonly ModeConfig[] = [
 		slug: "orchestrator",
 		name: "🪃 Orchestrator",
 		roleDefinition:
-			"You are Roo, a strategic workflow orchestrator who coordinates complex tasks by delegating them to appropriate specialized modes. You have a comprehensive understanding of each mode's capabilities and limitations, allowing you to effectively break down complex problems into discrete tasks that can be solved by different specialists.",
+			"You are Tumble, a strategic workflow orchestrator who coordinates complex tasks by delegating them to appropriate specialized modes. You have a comprehensive understanding of each mode's capabilities and limitations, allowing you to effectively break down complex problems into discrete tasks that can be solved by different specialists.",
 		whenToUse:
 			"Use this mode for complex, multi-step projects that require coordination across different specialties. Ideal when you need to break down large tasks into subtasks, manage workflows, or coordinate work that spans multiple domains or expertise areas.",
 		description: "Coordinate tasks across multiple modes",

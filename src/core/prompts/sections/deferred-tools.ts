@@ -22,6 +22,8 @@ import { getMcpServerTools } from "../tools/native-tools"
 export function getDeferredToolsSection(options: {
 	experiments?: Record<string, boolean>
 	mcpHub?: McpHub
+	/** Per-mode MCP server allowlist; when set, only these servers' tools appear in the catalog. */
+	allowedMcpServers?: string[]
 	customTools?: OpenAI.Chat.ChatCompletionTool[]
 	materializedDeferredTools?: ReadonlySet<string>
 }): string {
@@ -29,7 +31,7 @@ export function getDeferredToolsSection(options: {
 		return ""
 	}
 
-	const mcpTools = getMcpServerTools(options.mcpHub)
+	const mcpTools = getMcpServerTools(options.mcpHub, options.allowedMcpServers)
 	const customTools = options.customTools ?? []
 
 	if (mcpTools.length === 0 && customTools.length === 0) {

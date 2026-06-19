@@ -339,6 +339,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	consecutiveMistakeCountForEditFile: Map<string, number> = new Map()
 	consecutiveNoToolUseCount: number = 0
 	consecutiveNoAssistantMessagesCount: number = 0
+	// Auto-condense circuit breaker: consecutive futile (errored or non-reducing)
+	// condense attempts. Once it reaches MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES the
+	// condense step is skipped for the rest of the task; a genuine reduction resets it.
+	consecutiveAutoCompactFailures: number = 0
+	// Non-destructive microcompaction: tool_use_ids whose results should be cleared
+	// at SEND time (content replaced on the outgoing copy only; stored history stays
+	// pristine). Transient — recomputed by the context manager on every request that
+	// runs context management, so it stays correct across mid-task mode switches.
+	microcompactedToolUseIds: Set<string> = new Set()
 	toolUsage: ToolUsage = {}
 
 	// Checkpoints

@@ -284,6 +284,7 @@
 		"running": "Running",
 		"pid": "PID: {{pid}}",
 		"exitStatus": "Exited with status {{exitCode}}",
+		"malformedCommand": "Malformed command: shell syntax error",
 		"manageCommands": "Auto-approved commands",
 		"addToAllowed": "Add to allowed list",
 		"removeFromAllowed": "Remove from allowed list",
@@ -364,7 +365,23 @@
 		"triggerLabel_zero": "0 auto-approve",
 		"triggerLabel_one": "1 auto-approved",
 		"triggerLabel_other": "{{count}} auto-approved",
-		"triggerLabelAll": "BRRR"
+		"triggerLabelAll": "BRRR",
+		"mode": {
+			"label": "Auto-approval mode",
+			"forcedHint": "Always approved by the current mode",
+			"default": {
+				"label": "Default",
+				"description": "Respect the individual toggles, command allowlist, and outside-workspace / protected-file guards."
+			},
+			"bypass": {
+				"label": "Bypass",
+				"description": "Semi-auto: approve every read, write, MCP, subtask, mode switch, and command (even unknown ones) without asking. Follow-up questions still interrupt you."
+			},
+			"autonomous": {
+				"label": "Autonomous",
+				"description": "Full auto: everything Bypass does, plus follow-up questions are answered automatically so the agent runs until it finishes."
+			}
+		}
 	},
 	"announcement": {
 		"title": "Tumble Code {{version}} Released",

@@ -354,7 +354,7 @@ describe("ClineProvider", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
 	let mockOutputChannel: vscode.OutputChannel
-	let mockWebviewView: vscode.WebviewView
+	let mockWebviewView: any
 	let mockPostMessage: any
 	let updateGlobalStateSpy: any
 
@@ -433,7 +433,7 @@ describe("ClineProvider", () => {
 				return { dispose: vi.fn() }
 			}),
 			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
+		}
 
 		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
 
@@ -522,6 +522,48 @@ describe("ClineProvider", () => {
 		})
 
 		expect(mockWebviewView.webview.html).toContain("<!DOCTYPE html>")
+	})
+
+	describe("logWebviewHiddenDiagnostics", () => {
+		let visibilityCallback: () => void
+
+		beforeEach(async () => {
+			// Capture the visibility callback registered during resolveWebviewView
+			mockWebviewView.onDidChangeVisibility = vi.fn().mockImplementation((cb: () => void) => {
+				visibilityCallback = cb
+				return { dispose: vi.fn() }
+			})
+			// @ts-ignore - accessing private property for testing
+			provider.view = mockWebviewView
+			await provider.resolveWebviewView(mockWebviewView)
+			;(mockOutputChannel.appendLine as ReturnType<typeof vi.fn>).mockClear()
+		})
+
+		test("does not log when no task is active", () => {
+			// view becomes hidden with no task on the stack
+			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
+			visibilityCallback()
+			expect(mockOutputChannel.appendLine).not.toHaveBeenCalled()
+		})
+
+		test("does not log when the active task is aborted", async () => {
+			const task = new Task(defaultTaskOptions)
+			Object.defineProperty(task, "taskId", { value: "aborted-task", writable: true })
+			task.abort = true
+			await provider.addClineToStack(task)
+			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
+			visibilityCallback()
+			expect(mockOutputChannel.appendLine).not.toHaveBeenCalled()
+		})
+
+		test("logs task state to output channel when an active task is running", async () => {
+			const task = new Task(defaultTaskOptions)
+			Object.defineProperty(task, "taskId", { value: "running-task", writable: true })
+			await provider.addClineToStack(task)
+			Object.defineProperty(mockWebviewView, "visible", { value: false, configurable: true })
+			visibilityCallback()
+			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith(expect.stringContaining("running-task"))
+		})
 	})
 
 	test("resolveWebviewView sets up webview correctly in development mode even if local server is not running", async () => {
@@ -2044,7 +2086,7 @@ describe("Project MCP Settings", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
 	let mockOutputChannel: vscode.OutputChannel
-	let mockWebviewView: vscode.WebviewView
+	let mockWebviewView: any
 	let mockPostMessage: any
 
 	beforeEach(async () => {
@@ -2098,7 +2140,7 @@ describe("Project MCP Settings", () => {
 			visible: true,
 			onDidDispose: vi.fn(),
 			onDidChangeVisibility: vi.fn(),
-		} as unknown as vscode.WebviewView
+		}
 		;(vscode.window as any).activeTextEditor = undefined
 		;(vscode.workspace.getWorkspaceFolder as any).mockReset()
 		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
@@ -2361,7 +2403,7 @@ describe("ClineProvider - Router Models", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
 	let mockOutputChannel: vscode.OutputChannel
-	let mockWebviewView: vscode.WebviewView
+	let mockWebviewView: any
 	let mockPostMessage: any
 
 	beforeEach(() => {
@@ -2420,7 +2462,7 @@ describe("ClineProvider - Router Models", () => {
 				return { dispose: vi.fn() }
 			}),
 			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
+		}
 
 		if (!TelemetryService.hasInstance()) {
 			TelemetryService.createInstance([])
@@ -2665,7 +2707,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 	let provider: ClineProvider
 	let mockContext: vscode.ExtensionContext
 	let mockOutputChannel: vscode.OutputChannel
-	let mockWebviewView: vscode.WebviewView
+	let mockWebviewView: any
 	let mockPostMessage: any
 	let defaultTaskOptions: TaskOptions
 
@@ -2734,7 +2776,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				return { dispose: vi.fn() }
 			}),
 			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
-		} as unknown as vscode.WebviewView
+		}
 
 		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
 

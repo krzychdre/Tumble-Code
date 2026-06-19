@@ -49,6 +49,8 @@ import {
 	StandardTooltip,
 } from "@src/components/ui"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
+import McpServerRestriction from "@src/components/modes/McpServerRestriction"
+import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
 
 // Get all available groups that should show in prompts view
@@ -74,6 +76,7 @@ const ModesView = () => {
 		customInstructions,
 		setCustomInstructions,
 		customModes,
+		mcpServers,
 	} = useExtensionState()
 
 	// Use a local state to track the visually active mode
@@ -311,6 +314,7 @@ const ModesView = () => {
 	const [newModeCustomInstructions, setNewModeCustomInstructions] = useState("")
 	const [newModeGroups, setNewModeGroups] = useState<GroupEntry[]>(availableGroups)
 	const [newModeSource, setNewModeSource] = useState<ModeSource>("global")
+	const [newModeAllowedMcpServers, setNewModeAllowedMcpServers] = useState<string[] | undefined>(undefined)
 
 	// Field-specific error states
 	const [nameError, setNameError] = useState<string>("")
@@ -330,6 +334,7 @@ const ModesView = () => {
 		setNewModeWhenToUse("")
 		setNewModeCustomInstructions("")
 		setNewModeSource("global")
+		setNewModeAllowedMcpServers(undefined)
 		// Reset error states
 		setNameError("")
 		setSlugError("")
@@ -388,6 +393,7 @@ const ModesView = () => {
 			customInstructions: newModeCustomInstructions.trim() || undefined,
 			groups: newModeGroups,
 			source,
+			allowedMcpServers: newModeAllowedMcpServers,
 		}
 
 		// Validate the mode against the schema
@@ -436,6 +442,7 @@ const ModesView = () => {
 		newModeCustomInstructions,
 		newModeGroups,
 		newModeSource,
+		newModeAllowedMcpServers,
 		updateCustomMode,
 	])
 
@@ -1126,64 +1133,117 @@ const ModesView = () => {
 							</div>
 						)}
 						{isToolsEditMode && findModeBySlug(visualMode, customModes) ? (
-							<div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
-								{availableGroups.map((group) => {
-									const currentMode = getCurrentMode()
-									const isCustomMode = findModeBySlug(visualMode, customModes)
-									const customMode = isCustomMode
-									const isGroupEnabled = isCustomMode
-										? customMode?.groups?.some((g) => getGroupName(g) === group)
-										: currentMode?.groups?.some((g) => getGroupName(g) === group)
+							<>
+								<div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
+									{availableGroups.map((group) => {
+										const currentMode = getCurrentMode()
+										const isCustomMode = findModeBySlug(visualMode, customModes)
+										const customMode = isCustomMode
+										const isGroupEnabled = isCustomMode
+											? customMode?.groups?.some((g) => getGroupName(g) === group)
+											: currentMode?.groups?.some((g) => getGroupName(g) === group)
 
-									return (
-										<VSCodeCheckbox
-											key={group}
-											checked={isGroupEnabled}
-											onChange={handleGroupChange(group, Boolean(isCustomMode), customMode)}
-											disabled={!isCustomMode}>
-											{t(`prompts:tools.toolNames.${group}`)}
-											{group === "edit" && (
-												<div className="text-xs text-vscode-descriptionForeground mt-0.5">
-													{t("prompts:tools.allowedFiles")}{" "}
-													{(() => {
-														const currentMode = getCurrentMode()
-														const editGroup = currentMode?.groups?.find(
-															(g) =>
-																Array.isArray(g) && g[0] === "edit" && g[1]?.fileRegex,
-														)
-														if (!Array.isArray(editGroup)) return t("prompts:allFiles")
-														return editGroup[1].description || `/${editGroup[1].fileRegex}/`
-													})()}
-												</div>
-											)}
-										</VSCodeCheckbox>
-									)
-								})}
-							</div>
-						) : (
-							<div className="text-sm text-vscode-foreground mb-2 leading-relaxed">
+										return (
+											<VSCodeCheckbox
+												key={group}
+												checked={isGroupEnabled}
+												onChange={handleGroupChange(group, Boolean(isCustomMode), customMode)}
+												disabled={!isCustomMode}>
+												{t(`prompts:tools.toolNames.${group}`)}
+												{group === "edit" && (
+													<div className="text-xs text-vscode-descriptionForeground mt-0.5">
+														{t("prompts:tools.allowedFiles")}{" "}
+														{(() => {
+															const currentMode = getCurrentMode()
+															const editGroup = currentMode?.groups?.find(
+																(g) =>
+																	Array.isArray(g) &&
+																	g[0] === "edit" &&
+																	g[1]?.fileRegex,
+															)
+															if (!Array.isArray(editGroup)) return t("prompts:allFiles")
+															return (
+																editGroup[1].description ||
+																`/${editGroup[1].fileRegex}/`
+															)
+														})()}
+													</div>
+												)}
+											</VSCodeCheckbox>
+										)
+									})}
+								</div>
+								{/* MCP Server Restriction — shown when the mcp group is enabled. Uses a
+								    local cached-state buffer + 150 ms debounced flush to avoid host
+								    round-trip flicker. See McpServerRestriction.tsx. */}
 								{(() => {
-									const currentMode = getCurrentMode()
-									const enabledGroups = currentMode?.groups || []
-
-									// If there are no enabled groups, display translated "None"
-									if (enabledGroups.length === 0) {
-										return t("prompts:tools.noTools")
-									}
-
-									return enabledGroups
-										.map((group) => {
-											const groupName = getGroupName(group)
-											const displayName = t(`prompts:tools.toolNames.${groupName}`)
-											if (Array.isArray(group) && group[1]?.fileRegex) {
-												const description = group[1].description || `/${group[1].fileRegex}/`
-												return `${displayName} (${description})`
+									const customMode = findModeBySlug(visualMode, customModes)
+									const isMcpEnabled = customMode?.groups?.some((g) => getGroupName(g) === "mcp")
+									if (!customMode || !isMcpEnabled) return null
+									return (
+										<McpServerRestriction
+											slug={customMode.slug}
+											value={customMode.allowedMcpServers}
+											mcpServers={mcpServers}
+											onChange={(next) =>
+												updateCustomMode(customMode.slug, {
+													...customMode,
+													allowedMcpServers: next,
+													source: customMode.source || "global",
+												})
 											}
-											return displayName
-										})
-										.join(", ")
+										/>
+									)
 								})()}
-							</div>
+							</>
+						) : (
+							<>
+								<div className="text-sm text-vscode-foreground mb-2 leading-relaxed">
+									{(() => {
+										const currentMode = getCurrentMode()
+										const enabledGroups = currentMode?.groups || []
+
+										// If there are no enabled groups, display translated "None"
+										if (enabledGroups.length === 0) {
+											return t("prompts:tools.noTools")
+										}
+
+										return enabledGroups
+											.map((group) => {
+												const groupName = getGroupName(group)
+												const displayName = t(`prompts:tools.toolNames.${groupName}`)
+												if (Array.isArray(group) && group[1]?.fileRegex) {
+													const description =
+														group[1].description || `/${group[1].fileRegex}/`
+													return `${displayName} (${description})`
+												}
+												return displayName
+											})
+											.join(", ")
+									})()}
+								</div>
+								{/* MCP Server Restriction for built-in modes. Built-in modes have no editable
+								    ModeConfig and no "edit tools" toggle, so the allowlist is persisted via the
+								    customModePrompts override path (updateAgentPrompt → updatePrompt). Shown only
+								    when the built-in mode includes the mcp tool group. */}
+								{(() => {
+									const isBuiltIn = !findModeBySlug(visualMode, customModes)
+									const currentMode = getCurrentMode()
+									const isMcpEnabled = currentMode?.groups?.some((g) => getGroupName(g) === "mcp")
+									if (!isBuiltIn || !isMcpEnabled) return null
+									const builtInPrompt = customModePrompts?.[visualMode] as PromptComponent | undefined
+									return (
+										<McpServerRestriction
+											slug={visualMode}
+											value={builtInPrompt?.allowedMcpServers}
+											mcpServers={mcpServers}
+											onChange={(next) =>
+												updateAgentPrompt(visualMode, { allowedMcpServers: next })
+											}
+										/>
+									)
+								})()}
+							</>
 						)}
 					</div>
 				</>
@@ -1553,6 +1613,43 @@ const ModesView = () => {
 								</div>
 								{groupsError && (
 									<div className="text-xs text-vscode-errorForeground mt-1">{groupsError}</div>
+								)}
+								{/* MCP Server Restriction in create dialog */}
+								{newModeGroups.some((g) => getGroupName(g) === "mcp") && (
+									<div className="mt-3 ml-1" data-testid="create-mcp-server-restriction">
+										<VSCodeCheckbox
+											checked={newModeAllowedMcpServers !== undefined}
+											data-testid="create-restrict-mcp-servers-toggle"
+											onChange={(e: Event | React.FormEvent<HTMLElement>) => {
+												const target =
+													(e as CustomEvent)?.detail?.target || (e.target as HTMLInputElement)
+												const checked = target.checked
+												setNewModeAllowedMcpServers(checked ? [] : undefined)
+											}}>
+											Restrict to specific MCP servers
+										</VSCodeCheckbox>
+										{newModeAllowedMcpServers !== undefined && (
+											<McpServerChecklist
+												allowedMcpServers={newModeAllowedMcpServers}
+												mcpServers={mcpServers}
+												testIdPrefix="create-mcp-server"
+												onServerToggle={(serverName) => (e) => {
+													const target =
+														(e as CustomEvent)?.detail?.target ||
+														(e.target as HTMLInputElement)
+													const checked = target.checked
+													setNewModeAllowedMcpServers((prev) => {
+														const current = prev ?? []
+														return checked
+															? current.includes(serverName)
+																? current
+																: [...current, serverName]
+															: current.filter((s) => s !== serverName)
+													})
+												}}
+											/>
+										)}
+									</div>
 								)}
 							</div>
 							<div className="mb-4">

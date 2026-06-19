@@ -8,6 +8,7 @@ import { MAX_CONDENSE_THRESHOLD, MIN_CONDENSE_THRESHOLD, summarizeConversation, 
 import { ApiMessage } from "../task-persistence/apiMessages"
 import { ANTHROPIC_DEFAULT_MAX_TOKENS } from "@roo-code/types"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
+import { microcompactToolResults, MICROCOMPACT_KEEP_RECENT } from "./microcompact"
 
 /**
  * Context Management
@@ -229,6 +230,14 @@ export type ContextManagementOptions = {
 	cwd?: string
 	/** Optional controller for file access validation */
 	rooIgnoreController?: RooIgnoreController
+	/**
+	 * When true, the auto-condense circuit breaker is tripped (too many
+	 * consecutive futile condense attempts): skip the expensive condense step and
+	 * fall through to the cheap microcompaction pre-pass and the reliable
+	 * sliding-window truncation fallback. Microcompaction and truncation are never
+	 * gated by this — only the LLM summary is.
+	 */
+	condenseCircuitOpen?: boolean
 }
 
 export type ContextManagementResult = SummarizeResponse & {
@@ -236,6 +245,20 @@ export type ContextManagementResult = SummarizeResponse & {
 	truncationId?: string
 	messagesRemoved?: number
 	newContextTokensAfterTruncation?: number
+	/** True when the cheap tool-result microcompaction pre-pass ran. */
+	microcompacted?: boolean
+	/** Number of tool results whose content was cleared by microcompaction. */
+	microcompactClearedCount?: number
+	/** Estimated tokens reclaimed by microcompaction. */
+	microcompactTokensCleared?: number
+	/**
+	 * The `tool_use_id`s whose results microcompaction selected for clearing.
+	 * Microcompaction is NON-DESTRUCTIVE: the stored content is left intact and
+	 * these ids are applied as a send-time strip (see `applyMicrocompactCleared` /
+	 * `buildCleanConversationHistory`). The caller stashes them as transient,
+	 * recomputed-per-request state so they stay correct across mode switches.
+	 */
+	microcompactClearedToolUseIds?: string[]
 }
 
 /**
@@ -262,6 +285,7 @@ export async function manageContext({
 	filesReadByRoo,
 	cwd,
 	rooIgnoreController,
+	condenseCircuitOpen,
 }: ContextManagementOptions): Promise<ContextManagementResult> {
 	let error: string | undefined
 	let errorDetails: string | undefined
@@ -303,10 +327,79 @@ export async function manageContext({
 	}
 	// If no specific threshold is found for the profile, fall back to global setting
 
-	if (autoCondenseContext) {
-		const contextPercent = (100 * prevContextTokens) / contextWindow
+	const contextPercent = (100 * prevContextTokens) / contextWindow
+	const overCondenseThreshold = autoCondenseContext && contextPercent >= effectiveThreshold
+	const overAllowedTokens = prevContextTokens > allowedTokens
+
+	// --- Microcompaction pre-pass (cheap, no-LLM, lossless to the dialogue) ---
+	// Before resorting to the expensive, lossy full summarization, identify OLD
+	// tool results to clear (keeping the most recent N raw). Old tool output is the
+	// dominant, lowest-signal token sink in a coding session, and clearing it often
+	// frees enough to avoid summarizing entirely. This mirrors Claude Code's
+	// `microcompact → autocompact` ordering: the expensive summary is the last
+	// resort, not the first response to any overflow.
+	//
+	// NON-DESTRUCTIVE: we only SELECT the ids here (for the freed-token estimate and
+	// for the send-time strip). The stored `tool_result` content is left pristine;
+	// the actual clearing is applied to the outgoing request copy by
+	// `buildCleanConversationHistory`. The caller stashes the returned ids as
+	// transient, recomputed-per-request state so a wider-context mode (after a mode
+	// switch) simply clears nothing. condense/truncate below run on pristine
+	// `messages`, so branch 2's kept raw tail stays pristine too.
+	let microcompacted = false
+	let microcompactClearedCount = 0
+	let microcompactTokensCleared = 0
+	let microcompactClearedToolUseIds: string[] = []
+
+	if (overCondenseThreshold || overAllowedTokens) {
+		const mc = microcompactToolResults(messages, { keepRecent: MICROCOMPACT_KEEP_RECENT })
+		if (mc.clearedCount > 0) {
+			microcompacted = true
+			microcompactClearedCount = mc.clearedCount
+			microcompactClearedToolUseIds = mc.clearedToolUseIds
+			microcompactTokensCleared = mc.clearedText
+				? await estimateTokenCount([{ type: "text", text: mc.clearedText }], apiHandler)
+				: 0
+
+			// Estimate the post-strip context size. If clearing old tool output at
+			// send time will bring us back under both thresholds, we are done — skip
+			// the expensive summarization (and truncation) entirely. This is the
+			// "quiet" path that keeps the conversation fully intact.
+			const newContextTokens = Math.max(0, prevContextTokens - microcompactTokensCleared)
+			const newContextPercent = (100 * newContextTokens) / contextWindow
+			const stillOverCondense = autoCondenseContext && newContextPercent >= effectiveThreshold
+			const stillOverAllowed = newContextTokens > allowedTokens
+			if (!stillOverCondense && !stillOverAllowed) {
+				return {
+					messages, // pristine — clearing is applied at send time, not persisted
+					summary: "",
+					cost: 0,
+					prevContextTokens,
+					newContextTokens,
+					microcompacted: true,
+					microcompactClearedCount,
+					microcompactTokensCleared,
+					microcompactClearedToolUseIds,
+				}
+			}
+		}
+	}
+
+	// Only surface microcompaction fields when the pre-pass actually ran, so the
+	// no-op result shape stays backward-compatible with existing callers/tests.
+	const microcompactFields = microcompacted
+		? { microcompacted, microcompactClearedCount, microcompactTokensCleared, microcompactClearedToolUseIds }
+		: undefined
+
+	// Skip the expensive condense step when the circuit breaker is tripped: too
+	// many consecutive condense attempts have failed to reduce the context, so
+	// retrying the lossy summary is futile. Microcompaction (above) and truncation
+	// (below) still run — they always reduce and cannot "fail" like an LLM summary.
+	if (autoCondenseContext && !condenseCircuitOpen) {
 		if (contextPercent >= effectiveThreshold || prevContextTokens > allowedTokens) {
-			// Attempt to intelligently condense the context
+			// Attempt to intelligently condense the PRISTINE context (the send-time
+			// strip handles old tool output; condensing pristine keeps the kept raw
+			// tail pristine and the stored transcript intact).
 			const result = await summarizeConversation({
 				messages,
 				apiHandler,
@@ -325,7 +418,7 @@ export async function manageContext({
 				errorDetails = result.errorDetails
 				cost = result.cost
 			} else {
-				return { ...result, prevContextTokens }
+				return { ...result, prevContextTokens, ...microcompactFields }
 			}
 		}
 	}
@@ -369,8 +462,19 @@ export async function manageContext({
 			truncationId: truncationResult.truncationId,
 			messagesRemoved: truncationResult.messagesRemoved,
 			newContextTokensAfterTruncation,
+			...microcompactFields,
 		}
 	}
-	// No truncation or condensation needed
-	return { messages, summary: "", cost, prevContextTokens, error, errorDetails }
+	// No truncation or condensation needed. Return the PRISTINE messages — any
+	// microcompaction is carried as `microcompactClearedToolUseIds` (in
+	// `microcompactFields`) and applied at send time, never persisted here.
+	return {
+		messages,
+		summary: "",
+		cost,
+		prevContextTokens,
+		error,
+		errorDetails,
+		...microcompactFields,
+	}
 }

@@ -26,6 +26,7 @@ export type AutoApprovalState =
 // Some of these actions have additional settings associated with them.
 export type AutoApprovalStateOptions =
 	| "autoApprovalEnabled"
+	| "autoApprovalMode" // "default" | "bypass" | "autonomous"
 	| "alwaysAllowReadOnlyOutsideWorkspace" // For `alwaysAllowReadOnly`.
 	| "alwaysAllowWriteOutsideWorkspace" // For `alwaysAllowWrite`.
 	| "alwaysAllowWriteProtected"
@@ -61,6 +62,47 @@ export async function checkAutoApproval({
 
 	if (!state || !state.autoApprovalEnabled) {
 		return { decision: "ask" }
+	}
+
+	// Bypass / Autonomous tiers override the granular toggles, allowlists, and
+	// outside-workspace / protected-file guards. They only force-approve the
+	// interactive permission asks — every other ask (api_req_failed, resume_*,
+	// mistake_limit_reached, auto_approval_max_req_reached, ...) intentionally
+	// falls through to the default handling below so it still prompts the user.
+	const mode = state.autoApprovalMode ?? "default"
+
+	if (mode === "bypass" || mode === "autonomous") {
+		if (ask === "command" || ask === "tool" || ask === "use_mcp_server") {
+			return { decision: "approve" }
+		}
+
+		if (ask === "followup") {
+			// Bypass keeps questions interactive (semi-auto); autonomous answers them.
+			if (mode === "autonomous") {
+				let answer: string | undefined
+
+				try {
+					answer = (JSON.parse(text || "{}") as FollowUpData).suggest?.[0]?.answer
+				} catch {
+					answer = undefined
+				}
+
+				const timeout =
+					typeof state.followupAutoApproveTimeoutMs === "number" && state.followupAutoApproveTimeoutMs > 0
+						? state.followupAutoApproveTimeoutMs
+						: 0
+
+				// Always proceed: use the first suggestion when present, otherwise
+				// respond with empty text so the task continues unattended.
+				return {
+					decision: "timeout",
+					timeout,
+					fn: () => ({ askResponse: "messageResponse", text: answer ?? "" }),
+				}
+			}
+
+			return { decision: "ask" }
+		}
 	}
 
 	if (ask === "followup") {

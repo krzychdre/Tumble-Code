@@ -24,6 +24,7 @@ import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleOpenAIError } from "./utils/openai-error-handler"
+import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
 /**
  * Custom interface for GLM params to support thinking mode.
@@ -280,11 +281,9 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 						}
 					}
 
-					if ("reasoning_content" in delta && delta.reasoning_content) {
-						yield {
-							type: "reasoning",
-							text: (delta.reasoning_content as string | undefined) || "",
-						}
+					const reasoningText = extractReasoningFromDelta(delta)
+					if (reasoningText) {
+						yield { type: "reasoning", text: reasoningText }
 					}
 
 					yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
