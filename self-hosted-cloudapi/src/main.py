@@ -1,13 +1,16 @@
 """FastAPI application factory and lifespan management."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from config.settings import settings
 from src.middleware.cors import setup_cors
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
-from src.routers import auth, extension, settings as settings_router, events, marketplace, proxy, browser
+from src.routers import auth, extension, settings as settings_router, events, marketplace, proxy, browser, web
 
 
 @asynccontextmanager
@@ -79,6 +82,28 @@ app.include_router(marketplace.router)
 
 # LLM Proxy
 app.include_router(proxy.router)
+
+# Web UI (task list + read-only task viewer)
+app.include_router(web.router)
+
+# Static assets for the web UI (CSS, vendored JS, the renderer)
+_STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+# Live remote-control bridge (socket.io). Mounted as a sub-app so `app` stays a
+# FastAPI instance (tests rely on app.dependency_overrides). The engine.io
+# endpoint lands at settings.bridge_path (default /bridge/socket.io).
+#
+# NOTE: starlette's Mount (>=0.50) no longer strips the mount prefix from
+# scope["path"]; it only adjusts root_path. engine.io matches its endpoint
+# against the raw scope["path"] and ignores root_path, so socketio_path must
+# include the "/bridge" prefix or every handshake falls through to a 404 — which
+# crashes the WebSocket with "Expected ASGI message 'websocket.accept'...".
+if settings.bridge_enabled:
+    import socketio
+    from src.realtime.sio import sio
+
+    app.mount("/bridge", socketio.ASGIApp(sio, socketio_path="bridge/socket.io"))
 
 
 @app.get("/health")

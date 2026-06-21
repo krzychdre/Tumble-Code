@@ -1,0 +1,560 @@
+/*
+ * Lightweight read-only renderer for a Tumble Code task conversation.
+ *
+ * Input: a ClineMessage[] (packages/types/src/message.ts) embedded as JSON in
+ * #messages-data. Each message is a {type:"ask"|"say", ask?, say?, text?, ...}.
+ * We render a vertical list of rows — the same flow as the extension chat —
+ * classifying each message into a role for styling. Markdown is rendered with
+ * marked and sanitized with DOMPurify (content can come from public shares).
+ */
+;(function () {
+	"use strict"
+
+	marked.setOptions({ breaks: true, gfm: true })
+
+	function md(text) {
+		if (!text) return ""
+		return DOMPurify.sanitize(marked.parse(String(text)))
+	}
+
+	function escapeHtml(s) {
+		return String(s == null ? "" : s)
+			.replace(/&/g, "&amp;")
+			.replace(/</g, "&lt;")
+			.replace(/>/g, "&gt;")
+	}
+
+	function fmtTime(ts) {
+		const d = new Date(Number(ts))
+		if (isNaN(d)) return ""
+		return d.toLocaleString()
+	}
+
+	function fmtDuration(ms) {
+		if (ms == null || ms < 0) return ""
+		if (ms < 1000) return Math.round(ms) + "ms"
+		const s = ms / 1000
+		if (s < 60) return (s < 10 ? s.toFixed(1) : Math.round(s)) + "s"
+		const m = Math.floor(s / 60)
+		const r = Math.round(s % 60)
+		return m + "m " + r + "s"
+	}
+
+	function firstLine(text, max) {
+		const line = String(text == null ? "" : text).split("\n")[0]
+		return line.length > max ? line.slice(0, max - 1) + "…" : line
+	}
+
+	function tryParse(text) {
+		if (typeof text !== "string") return null
+		const t = text.trim()
+		if (!t.startsWith("{") && !t.startsWith("[")) return null
+		try {
+			return JSON.parse(t)
+		} catch (e) {
+			return null
+		}
+	}
+
+	function codeBlock(content, lang) {
+		return "<pre><code>" + escapeHtml(content) + "</code></pre>"
+	}
+
+	// Returns { role, label, icon, body(html) } or null to skip the message.
+	function classify(m) {
+		const kind = m.say || m.ask || m.type
+
+		// Messages with no renderable payload.
+		if (kind === "api_req_finished") return null
+
+		switch (kind) {
+			case "user_feedback":
+			case "user_feedback_diff":
+				return { role: "user", label: "You", icon: "\u{1F464}", body: md(m.text) }
+
+			case "text":
+				if (!m.text && !(m.images && m.images.length)) return null
+				return {
+					role: "assistant",
+					label: "Assistant",
+					icon: "\u{1F916}",
+					body: md(m.text) + images(m),
+					fold: true,
+					activity: "Responding…",
+				}
+
+			case "reasoning":
+				if (!m.text && !m.reasoning) return null
+				return {
+					role: "reasoning",
+					label: "Reasoning",
+					icon: "\u{1F4AD}",
+					body: md(m.text || m.reasoning),
+					fold: true,
+					activity: "Thinking…",
+				}
+
+			case "completion_result":
+				// The result `say` carries the text; the trailing empty `ask` would
+				// otherwise render a redundant "Task completed." row — drop it.
+				if (!m.text) return null
+				return { role: "completion", label: "Result", icon: "✅", body: md(m.text) }
+
+			case "command":
+				return {
+					role: "command",
+					label: "Command · " + firstLine(m.text, 80),
+					icon: "\u{1F4BB}",
+					body: codeBlock(m.text || ""),
+					fold: true,
+					activity: "Running command…",
+				}
+
+			case "command_output":
+				if (!m.text) return null
+				return { role: "output", label: "Output", icon: "≡", body: codeBlock(m.text), fold: true }
+
+			case "error":
+			case "diff_error":
+			case "rooignore_error":
+			case "mistake_limit_reached":
+			case "api_req_failed":
+				return { role: "error", label: "Error", icon: "⚠", body: md(m.text) || "<em>An error occurred.</em>" }
+
+			case "api_req_started":
+				return apiReq(m)
+
+			case "tool":
+				return toolMsg(m)
+
+			case "followup":
+				return followup(m)
+
+			case "use_mcp_server":
+			case "mcp_server_request_started":
+			case "mcp_server_response":
+				if (!m.text) return null
+				return { role: "mcp", label: "MCP", icon: "\u{1F50C}", body: renderMaybeJson(m.text), fold: true }
+
+			case "checkpoint_saved":
+				return {
+					role: "system",
+					label: "Checkpoint",
+					icon: "\u{1F4CD}",
+					body: "<span class='kv'>Checkpoint saved</span>",
+				}
+
+			case "condense_context":
+				return {
+					role: "system",
+					label: "Context condensed",
+					icon: "\u{1F5DC}",
+					body:
+						m.contextCondense && m.contextCondense.summary
+							? md(m.contextCondense.summary)
+							: "<span class='kv'>Conversation context was summarized.</span>",
+				}
+
+			case "subtask_result":
+				return { role: "completion", label: "Subtask result", icon: "↳", body: md(m.text) }
+
+			case "image":
+				return { role: "assistant", label: "Image", icon: "\u{1F5BC}", body: images(m) }
+
+			default:
+				if (!m.text) return null
+				return { role: "system", label: kind || "Message", icon: "ℹ", body: renderMaybeJson(m.text) }
+		}
+	}
+
+	function images(m) {
+		if (!m.images || !m.images.length) return ""
+		return (
+			'<div class="img-msg">' +
+			m.images
+				.map(function (src) {
+					return '<img alt="attachment" src="' + escapeHtml(src) + '">'
+				})
+				.join("") +
+			"</div>"
+		)
+	}
+
+	function renderMaybeJson(text) {
+		const obj = tryParse(text)
+		if (obj) return codeBlock(JSON.stringify(obj, null, 2))
+		return md(text)
+	}
+
+	function apiReq(m) {
+		const obj = tryParse(m.text) || {}
+		const bits = []
+		if (obj.tokensIn != null || obj.tokensOut != null) {
+			bits.push("↑" + (obj.tokensIn || 0) + " ↓" + (obj.tokensOut || 0))
+		}
+		if (obj.cost != null) bits.push("$" + Number(obj.cost).toFixed(4))
+		// One-liner: stats live in the row label; the body holds only the optional
+		// folded request prompt. No cost yet → the request is still in flight.
+		const label = "API request" + (bits.length ? " · " + bits.join(" · ") : "")
+		const body = obj.request ? md(obj.request) : ""
+		const active = obj.cost == null && obj.cancelReason == null && obj.streamingFailedMessage == null
+		return {
+			role: "api",
+			label: label,
+			icon: "⇅",
+			body: body,
+			fold: !!body,
+			active: active,
+			activity: "Calling API…",
+		}
+	}
+
+	function toolMsg(m) {
+		const obj = tryParse(m.text)
+		if (!obj)
+			return {
+				role: "tool",
+				label: "Tool",
+				icon: "\u{1F527}",
+				body: md(m.text),
+				fold: true,
+				activity: "Running tool…",
+			}
+		const name = obj.tool || "tool"
+		let inner = ""
+		if (obj.path) inner += '<div class="path">' + escapeHtml(obj.path) + "</div>"
+		if (obj.diff) inner += codeBlock(obj.diff, "diff")
+		else if (obj.content) inner += codeBlock(obj.content)
+		else if (obj.query) inner += '<div class="kv">query: ' + escapeHtml(obj.query) + "</div>"
+		if (!inner) inner = codeBlock(JSON.stringify(obj, null, 2))
+		const label = "Tool · " + name + (obj.path ? " · " + obj.path : "")
+		return { role: "tool", label: label, icon: "\u{1F527}", body: inner, fold: true, activity: "Running tool…" }
+	}
+
+	function followup(m) {
+		const obj = tryParse(m.text)
+		let body
+		if (obj && obj.question) {
+			body = md(obj.question)
+			const sug = obj.suggest || obj.suggestions
+			if (Array.isArray(sug) && sug.length) {
+				body +=
+					"<ul>" +
+					sug
+						.map(function (s) {
+							const txt = typeof s === "string" ? s : (s && s.answer) || ""
+							return "<li>" + escapeHtml(txt) + "</li>"
+						})
+						.join("") +
+					"</ul>"
+			}
+		} else {
+			body = md(m.text)
+		}
+		return { role: "assistant", label: "Question", icon: "❓", body: body }
+	}
+
+	function rowEl(info, ts, active) {
+		const el = document.createElement("div")
+		el.className = "msg role-" + info.role + (active ? " running" : "") + (info.fold ? " foldable" : "")
+		if (ts != null) el.setAttribute("data-ts", String(ts))
+		const spinner = active ? '<span class="spinner" aria-hidden="true"></span>' : ""
+		// Right-aligned meta: absolute time (+ step duration, backfilled later).
+		const time = ts != null ? '<span class="msg-time">' + escapeHtml(fmtTime(ts)) + "</span>" : ""
+		const meta = '<span class="msg-meta">' + time + '<span class="msg-dur"></span></span>'
+		const headInner = '<span class="msg-icon">' + info.icon + "</span>" + escapeHtml(info.label) + spinner + meta
+		if (info.fold && info.body) {
+			// The summary IS the header — one collapsible line that expands in place,
+			// instead of a header row stacked on a redundant "Show…" summary.
+			el.innerHTML =
+				'<details><summary class="msg-head">' +
+				headInner +
+				"</summary>" +
+				'<div class="msg-body">' +
+				info.body +
+				"</div></details>"
+		} else {
+			// A true one-liner when there is no body (e.g. an in-flight API request).
+			const bodyHtml = info.body ? '<div class="msg-body">' + info.body + "</div>" : ""
+			el.innerHTML = '<div class="msg-head">' + headInner + "</div>" + bodyHtml
+		}
+		return el
+	}
+
+	// Badge an answered ask row so the reader can see the decision after the fact.
+	function resolutionBadge(decision) {
+		const span = document.createElement("span")
+		span.className = "ask-resolution " + decision
+		span.textContent = decision === "approved" ? "✓ Approved" : decision === "denied" ? "✗ Denied" : "✓ Answered"
+		return span
+	}
+
+	// A live-updatable conversation: renders rows keyed by message `ts` so a
+	// streaming message (created → partial → final, all one ts) replaces its row
+	// in place instead of appending duplicates — mirroring the live VS Code view.
+	function mountConversation(container) {
+		const byTs = {}
+		const rawByTs = {} // ts -> latest raw message, for token/cost metrics
+		const activeByTs = {} // ts -> activity label, for the "executing now" indicator
+		const resolvedByTs = {} // ts -> "approved"|"denied", survives row replacement
+		let activeAsk = null // { ts, onApprove, onDeny, ... } — the pending approval
+		let tail = null // { ts, el } — last row in document order, for step duration
+		let count = 0
+
+		function clearPlaceholder() {
+			const empty = container.querySelector(".empty, .loading")
+			if (empty) empty.remove()
+			container.removeAttribute("aria-busy")
+		}
+
+		function metaOf(el) {
+			return el && (el.querySelector(".msg-meta") || el.querySelector(".msg-head"))
+		}
+
+		function applyResolution(el, decision) {
+			if (!el || el.querySelector(".ask-resolution")) return
+			const meta = metaOf(el)
+			if (meta) meta.appendChild(resolutionBadge(decision))
+		}
+
+		function setDuration(el, ms) {
+			const d = el && el.querySelector(".msg-dur")
+			if (d && !d.textContent) d.textContent = " · " + fmtDuration(ms)
+		}
+
+		function copyDuration(from, to) {
+			const a = from && from.querySelector(".msg-dur")
+			const b = to && to.querySelector(".msg-dur")
+			if (a && b && a.textContent) b.textContent = a.textContent
+		}
+
+		// Attach Approve/Deny to the ask's own conversation row (chronological,
+		// coherent) instead of a detached bar. Buttons stop propagation so they
+		// never toggle the row's fold.
+		function decorateAsk(el) {
+			if (!el || !activeAsk || resolvedByTs[el.getAttribute("data-ts")]) return
+			el.classList.add("ask-pending")
+			if (el.querySelector(".ask-actions-inline")) return
+			const bar = document.createElement("div")
+			bar.className = "ask-actions-inline"
+			const spec = activeAsk
+			const mkBtn = function (cls, text, fn) {
+				const b = document.createElement("button")
+				b.type = "button"
+				b.className = "btn " + cls
+				b.textContent = text
+				b.addEventListener("click", function (e) {
+					e.preventDefault()
+					e.stopPropagation()
+					fn()
+				})
+				return b
+			}
+			bar.appendChild(
+				mkBtn("btn-approve", spec.approveLabel || "Approve", function () {
+					spec.onApprove && spec.onApprove()
+				}),
+			)
+			if (spec.showDeny !== false) {
+				bar.appendChild(
+					mkBtn("btn-deny", spec.denyLabel || "Deny", function () {
+						spec.onDeny && spec.onDeny()
+					}),
+				)
+			}
+			el.appendChild(bar)
+		}
+
+		function undecorateAsk(el) {
+			if (!el) return
+			el.classList.remove("ask-pending")
+			const bar = el.querySelector(".ask-actions-inline")
+			if (bar) bar.remove()
+		}
+
+		function upsert(m, opts) {
+			if (!m || typeof m !== "object") return
+			if (m.partial && !m.text && !(m.images && m.images.length)) return
+			const info = classify(m)
+			if (!info) return
+			clearPlaceholder()
+			const ts = m.ts
+			// A row is "running" while its message streams (partial) or, for an API
+			// request, until it reports a cost. The in-place upsert of the final
+			// message clears it automatically. Initial history replay (opts.history)
+			// is a point-in-time snapshot, not a live stream — never animate it, or a
+			// partial row persisted mid-stream would spin forever. A later live event
+			// for the same ts re-activates it and the finalize clears it.
+			const active = !(opts && opts.history) && (!!m.partial || !!info.active)
+			if (ts != null) {
+				rawByTs[ts] = m
+				if (active) activeByTs[ts] = info.activity || info.label
+				else delete activeByTs[ts]
+			}
+			const fresh = rowEl(info, ts, active)
+			const existing = ts != null ? byTs[ts] : null
+			if (existing && existing.parentNode) {
+				copyDuration(existing, fresh)
+				existing.parentNode.replaceChild(fresh, existing)
+				if (tail && tail.ts === ts) tail.el = fresh
+			} else {
+				// New step: the previous tail's duration is now known (gap to this ts).
+				if (tail && tail.ts != null && ts != null && ts >= tail.ts) {
+					setDuration(tail.el, ts - tail.ts)
+				}
+				container.appendChild(fresh)
+				count++
+				if (ts != null) tail = { ts: ts, el: fresh }
+			}
+			if (ts != null) {
+				byTs[ts] = fresh
+				if (resolvedByTs[ts]) applyResolution(fresh, resolvedByTs[ts])
+				else if (activeAsk && activeAsk.ts === ts) decorateAsk(fresh)
+			}
+		}
+
+		// Show inline Approve/Deny on the ask row. `spec` carries the handlers.
+		function setActiveAsk(ts, spec) {
+			if (ts == null) {
+				clearActiveAsk()
+				return
+			}
+			if (activeAsk && activeAsk.ts !== ts) clearActiveAsk()
+			if (resolvedByTs[ts]) return
+			activeAsk = Object.assign({ ts: ts }, spec || {})
+			decorateAsk(byTs[ts])
+		}
+
+		function clearActiveAsk() {
+			if (activeAsk) undecorateAsk(byTs[activeAsk.ts])
+			activeAsk = null
+		}
+
+		// Mark an answered ask (approve/deny) so the decision stays visible.
+		function markResolved(ts, decision) {
+			if (ts == null) return
+			resolvedByTs[ts] = decision
+			delete activeByTs[ts]
+			if (activeAsk && activeAsk.ts === ts) activeAsk = null
+			undecorateAsk(byTs[ts])
+			applyResolution(byTs[ts], decision)
+		}
+
+		// Token/cost summary derived from the persisted conversation — the same
+		// aggregation the VS Code view uses (consolidateTokenUsage): sum tokens/cost
+		// over api_req_started (+ condense_context cost); contextTokens is the last
+		// request's tokensIn+tokensOut (tokensIn already includes cache tokens).
+		function getMetrics() {
+			const m = { totalTokensIn: 0, totalTokensOut: 0, totalCost: 0, contextTokens: 0 }
+			const tss = Object.keys(rawByTs)
+				.map(Number)
+				.sort(function (a, b) {
+					return a - b
+				})
+			tss.forEach(function (ts) {
+				const msg = rawByTs[ts]
+				if (!msg || msg.type !== "say") return
+				if (msg.say === "api_req_started" && msg.text) {
+					const o = tryParse(msg.text)
+					if (!o) return
+					if (typeof o.tokensIn === "number") m.totalTokensIn += o.tokensIn
+					if (typeof o.tokensOut === "number") m.totalTokensOut += o.tokensOut
+					if (typeof o.cost === "number") m.totalCost += o.cost
+				} else if (msg.say === "condense_context" && msg.contextCondense) {
+					m.totalCost += msg.contextCondense.cost || 0
+				}
+			})
+			for (let i = tss.length - 1; i >= 0; i--) {
+				const msg = rawByTs[tss[i]]
+				if (!msg || msg.type !== "say") continue
+				if (msg.say === "api_req_started" && msg.text) {
+					const o = tryParse(msg.text)
+					if (o) {
+						m.contextTokens = (o.tokensIn || 0) + (o.tokensOut || 0)
+					}
+				} else if (msg.say === "condense_context" && msg.contextCondense) {
+					m.contextTokens = msg.contextCondense.newContextTokens || 0
+				}
+				if (m.contextTokens) break
+			}
+			return m
+		}
+
+		// Label of the newest still-active row, or null when idle.
+		function getActivity() {
+			let best = null
+			Object.keys(activeByTs).forEach(function (ts) {
+				if (best == null || Number(ts) > best) best = Number(ts)
+			})
+			return best == null ? null : activeByTs[best]
+		}
+
+		function renderAll(messages) {
+			;(messages || []).forEach(function (m) {
+				upsert(m, { history: true })
+			})
+			if (count === 0) {
+				container.innerHTML = '<div class="empty">This task has no messages.</div>'
+			}
+		}
+
+		return {
+			upsert: upsert,
+			renderAll: renderAll,
+			markResolved: markResolved,
+			setActiveAsk: setActiveAsk,
+			clearActiveAsk: clearActiveAsk,
+			getActivity: getActivity,
+			getMetrics: getMetrics,
+			get count() {
+				return count
+			},
+		}
+	}
+
+	// Exposed so the live controller (live.js) can reuse the exact same rendering.
+	window.TumbleConversation = { mount: mountConversation }
+
+	function localizeDates() {
+		document.querySelectorAll(".task-date[data-ts]").forEach(function (el) {
+			const d = new Date(el.getAttribute("data-ts"))
+			if (!isNaN(d)) el.textContent = d.toLocaleString()
+		})
+	}
+
+	function init() {
+		localizeDates()
+		const container = document.getElementById("conversation")
+		const dataEl = document.getElementById("messages-data")
+		if (!container || !dataEl) return
+
+		let messages = []
+		try {
+			messages = JSON.parse(dataEl.textContent || "[]")
+		} catch (e) {
+			container.innerHTML = '<div class="empty">Could not load this conversation.</div>'
+			return
+		}
+
+		container.innerHTML = ""
+		const convo = mountConversation(container)
+		convo.renderAll(messages)
+
+		// Hand the live controller (if loaded) the same conversation instance so
+		// relayed events append to the history already on screen.
+		window.__tumbleConversation = convo
+		if (typeof window.TumbleLiveInit === "function") {
+			try {
+				window.TumbleLiveInit(convo)
+			} catch (e) {
+				/* live is best-effort */
+			}
+		}
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", init)
+	} else {
+		init()
+	}
+})()

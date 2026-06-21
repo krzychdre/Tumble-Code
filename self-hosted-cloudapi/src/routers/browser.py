@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.auth.authentik import generate_pkce_pair, get_authorize_url
+from src.auth.web_session import set_session_cookie, clear_session_cookie
 from src.services.auth_service import (
     store_oauth_state,
     get_oauth_state,
@@ -27,6 +28,11 @@ from src.services.auth_service import (
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
 from config.settings import settings
+
+# Marker stored as the OAuth `auth_redirect` for browser (web) logins. The
+# shared /auth/clerk/callback branches on this: web logins set a session cookie
+# and redirect to /app; everything else does the vscode:// bounce.
+WEB_AUTH_REDIRECT = "web:/app"
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +197,32 @@ async def landing_page(
     return RedirectResponse(url=authorize_url)
 
 
+@router.get("/app/login")
+async def web_login(
+    db: AsyncSession = Depends(get_db),
+):
+    """Start the Authentik OAuth flow for a browser (web viewer) login.
+
+    Uses the same redirect URI as the extension flow; the callback distinguishes
+    web logins via the WEB_AUTH_REDIRECT marker stored in the OAuth state.
+    """
+    state = secrets.token_urlsafe(32)
+    code_verifier, code_challenge = generate_pkce_pair()
+    await store_oauth_state(db, state, WEB_AUTH_REDIRECT, code_verifier)
+    authorize_url = get_authorize_url(
+        state=state, code_challenge=code_challenge, auth_redirect=WEB_AUTH_REDIRECT
+    )
+    return RedirectResponse(url=authorize_url)
+
+
+@router.get("/app/logout")
+async def web_logout():
+    """Clear the browser session cookie and return to the login page."""
+    response = RedirectResponse(url="/app/login", status_code=303)
+    clear_session_cookie(response)
+    return response
+
+
 @router.get("/auth/clerk/callback")
 async def auth_callback(
     code: str = Query(...),
@@ -273,6 +305,18 @@ async def auth_callback(
     # extension in the same request (the DB only stores its hash, so a token
     # created here would be unrecoverable).
     session = await create_session(db, user.id)
+
+    # Browser (web viewer) login: set a signed session cookie and redirect to
+    # the task list instead of bouncing back to VS Code.
+    if state_store.auth_redirect == WEB_AUTH_REDIRECT:
+        logger.info(
+            "Web auth callback successful for user %s (email=%s)",
+            authentik_id[:8] if authentik_id else "unknown",
+            email,
+        )
+        response = RedirectResponse(url="/app", status_code=303)
+        set_session_cookie(response, session_id=session.id, user_id=user.id)
+        return response
 
     # Generate ticket for Clerk sign-in flow
     ticket_code = await create_ticket(db, session.id)

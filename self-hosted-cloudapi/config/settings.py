@@ -61,8 +61,23 @@ class Settings(BaseSettings):
 
     # Optional features
     credit_system_enabled: bool = False
-    bridge_enabled: bool = False
+    # Live remote-control bridge (socket.io). When enabled the API mounts a
+    # socket.io server that relays events/commands between the extension and the
+    # web task viewer. Defaults on for self-hosted: the relay is inert until an
+    # extension actually connects (which itself is gated by an opt-in extension
+    # setting), so enabling it costs nothing when unused.
+    bridge_enabled: bool = True
+    # Path the socket.io ASGI sub-app is mounted at (the engine.io endpoint).
+    # The extension and browser connect with socket.io-client using this `path`.
+    bridge_path: str = "/bridge/socket.io"
     telemetry_enabled: bool = True
+
+    # Task sharing. With no organizations configured (self-hosted single-tenant
+    # dev), org-level cloud settings are absent, which would leave the extension's
+    # Share button disabled. When true, the API advertises task sharing as enabled
+    # at the org-less level so a logged-in user can share tasks to the web viewer.
+    enable_task_sharing: bool = True
+    allow_public_task_sharing: bool = True
     rate_limit_enabled: bool = True
     rate_limit_requests_per_minute: int = 60
 

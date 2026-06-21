@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · Tumble Code{% endblock %}
+{% block content %}
+<div class="detail-header">
+  <a class="back" href="/app">← All tasks</a>
+  <div class="detail-title-row">
+    <h1 class="page-title">{{ title }}</h1>
+    {% if can_delete %}
+    <form class="task-delete-detail" method="post" action="/app/tasks/{{ task.id }}/delete"
+          onsubmit="return confirm('Delete this task and its conversation permanently? This cannot be undone.');">
+      <button class="btn-delete" type="submit">Delete task</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if share_url and not live %}<div class="share-note">Shared link · read-only</div>{% endif %}
+</div>
+
+{% if live %}
+<div class="live-header">
+  <span id="live-status" class="live-status">Connecting…</span>
+  <span id="live-activity" class="live-activity" style="display:none"></span>
+  <span class="live-stat">mode <b id="hdr-mode">—</b></span>
+  <span class="live-stat">tokens <b id="hdr-tokens-in">—</b> in / <b id="hdr-tokens-out">—</b> out</span>
+  <span class="live-stat">context <b id="hdr-context">—</b></span>
+  <span class="live-stat" id="hdr-cost-wrap">cost <b id="hdr-cost">—</b></span>
+</div>
+{% endif %}
+
+<div id="conversation" class="conversation" aria-busy="true">
+  <div class="loading">Rendering conversation…</div>
+</div>
+
+{% if live %}
+<div id="live-controls" class="live-controls offline">
+  <div class="auto-bar">
+    <label class="auto-main"><input id="auto-enabled" type="checkbox"> Auto-approve</label>
+    <label class="auto-mode-wrap">mode
+      <select id="auto-mode">
+        <option value="default">default</option>
+        <option value="bypass">bypass</option>
+        <option value="autonomous">autonomous</option>
+      </select>
+    </label>
+    <span class="auto-toggles">
+      <label><input id="auto-ReadOnly" type="checkbox"> read</label>
+      <label><input id="auto-Write" type="checkbox"> write</label>
+      <label><input id="auto-Execute" type="checkbox"> execute</label>
+      <label><input id="auto-Mcp" type="checkbox"> mcp</label>
+      <label><input id="auto-ModeSwitch" type="checkbox"> mode</label>
+      <label><input id="auto-Subtasks" type="checkbox"> subtasks</label>
+    </span>
+  </div>
+  <div class="chat-bar">
+    <textarea id="chat-input" rows="2" placeholder="Message the task… (Ctrl/⌘+Enter to send)"></textarea>
+    <div class="chat-actions">
+      <button id="btn-send" class="btn btn-send" type="button">Send</button>
+      <button id="btn-stop" class="btn btn-stop" type="button" style="display:none">Stop</button>
+      <button id="btn-resume" class="btn btn-resume" type="button">Resume</button>
+    </div>
+  </div>
+</div>
+<script id="live-config" type="application/json">{{ live_config_json | safe }}</script>
+{% endif %}
+
+<script id="messages-data" type="application/json">{{ messages_json | safe }}</script>
+{% endblock %}
+{% block scripts %}
+<script src="/static/vendor/marked.min.js"></script>
+<script src="/static/vendor/purify.min.js"></script>
+<script src="/static/render.js?v={{ asset_v }}"></script>
+{% if live %}
+<script src="/static/vendor/socket.io.min.js"></script>
+<script src="/static/live.js?v={{ asset_v }}"></script>
+{% endif %}
+{% endblock %}

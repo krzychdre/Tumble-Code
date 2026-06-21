@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Your tasks · Tumble Code{% endblock %}
+{% block content %}
+<h1 class="page-title">Your tasks</h1>
+{% if tasks %}
+<ul class="task-list">
+  {% for t in tasks %}
+  <li class="task-item">
+    <a class="task-link" href="/app/tasks/{{ t.id }}">
+      <span class="task-title">{{ t.title }}</span>
+      <span class="task-meta">
+        <span class="badge">{{ t.message_count }} message{{ '' if t.message_count == 1 else 's' }}</span>
+        {% if t.updated_at %}<span class="task-date" data-ts="{{ t.updated_at.isoformat() }}">{{ t.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
+      </span>
+    </a>
+    <form class="task-delete" method="post" action="/app/tasks/{{ t.id }}/delete"
+          onsubmit="return confirm('Delete “{{ t.title }}” and its conversation permanently? This cannot be undone.');">
+      <button class="btn-delete" type="submit" title="Delete task" aria-label="Delete task">Delete</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty">
+  <p>No shared tasks yet.</p>
+  <p class="empty-hint">In VS Code, open a task and click <strong>Share</strong> to make it appear here.</p>
+</div>
+{% endif %}
+{% endblock %}

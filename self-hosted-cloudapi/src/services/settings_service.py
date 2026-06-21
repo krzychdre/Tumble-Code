@@ -1,10 +1,12 @@
 """Settings service for extension-settings and user-settings endpoints."""
 
+import hashlib
 import json
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config.settings import settings as app_settings
 from src.services.user_service import get_or_create_org_settings, get_or_create_user_settings
 from src.schemas.settings import (
     OrganizationSettingsResponse,
@@ -17,6 +19,20 @@ from src.schemas.settings import (
 )
 
 
+def _content_version(payload: dict) -> int:
+    """A stable, content-derived settings version (32-bit int).
+
+    The extension caches org settings and only replaces them when the `version`
+    field changes (CloudSettingsService.fetchSettings). A constant version means
+    a client that cached the old org-less settings (e.g. cloudSettings=null from
+    before task sharing was advertised) never picks up the new values. Deriving
+    the version from the content guarantees any change to the advertised cloud
+    settings bumps the version, so the client refreshes on its next fetch.
+    """
+    blob = json.dumps(payload, sort_keys=True).encode()
+    return int.from_bytes(hashlib.sha256(blob).digest()[:4], "big")
+
+
 async def get_extension_settings(
     db: AsyncSession,
     user_id: str,
@@ -24,7 +40,21 @@ async def get_extension_settings(
 ) -> ExtensionSettingsResponse:
     """Get combined org + user settings for the /api/extension-settings endpoint."""
     # Organization settings
-    org_settings_response = OrganizationSettingsResponse()
+    #
+    # With no organization configured (self-hosted single-tenant), there are no
+    # org-level cloud settings. The extension gates its Share button on
+    # `organization.cloudSettings.enableTaskSharing`, so without this the button
+    # stays disabled ("sharingDisabledByOrganization"). Advertise task sharing as
+    # enabled at the org-less level, controlled by ENABLE_TASK_SHARING. The
+    # version is content-derived so already-logged-in clients pick up the change.
+    org_cloud_settings = OrganizationCloudSettings(
+        enable_task_sharing=app_settings.enable_task_sharing,
+        allow_public_task_sharing=app_settings.allow_public_task_sharing,
+    )
+    org_settings_response = OrganizationSettingsResponse(
+        version=_content_version(org_cloud_settings.model_dump(by_alias=True)),
+        cloud_settings=org_cloud_settings,
+    )
     if org_id:
         org_settings = await get_or_create_org_settings(db, org_id)
         allow_list = json.loads(org_settings.allow_list) if org_settings.allow_list else {"allowAll": True, "providers": {}}

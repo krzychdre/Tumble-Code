@@ -4,9 +4,10 @@ import json
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
-from src.models.task import Task, TaskShare
+from config.settings import settings
+from src.models.task import Task, TaskMessage, TaskShare
 from src.schemas.share import ShareResponse
 
 
@@ -30,27 +31,65 @@ async def share_task(
     )
     existing_share = result.scalar_one_or_none()
 
+    # Absolute URLs so the link the extension copies to the clipboard is
+    # directly openable in a browser.
+    base = settings.api_base_url.rstrip("/")
+    share_url = f"{base}/shared/{task_id}"
+    manage_url = f"{base}/app/tasks/{task_id}"
+
     if existing_share:
+        # Refresh visibility and (legacy relative) URLs to the absolute form.
+        existing_share.visibility = visibility
+        existing_share.share_url = share_url
+        existing_share.manage_url = manage_url
+        await db.flush()
         return ShareResponse(
             success=True,
-            share_url=existing_share.share_url,
+            share_url=share_url,
             is_new_share=False,
-            manage_url=existing_share.manage_url,
+            manage_url=manage_url,
         )
 
     # Create new share
     share = TaskShare(
         task_id=task_id,
         visibility=visibility,
-        share_url=f"/shared/{task_id}",
-        manage_url=f"/manage/{task_id}",
+        share_url=share_url,
+        manage_url=manage_url,
     )
     db.add(share)
     await db.flush()
 
     return ShareResponse(
         success=True,
-        share_url=share.share_url,
+        share_url=share_url,
         is_new_share=True,
-        manage_url=share.manage_url,
+        manage_url=manage_url,
     )
+
+
+async def delete_shared_task(
+    db: AsyncSession,
+    task_id: str,
+    user_id: str,
+) -> bool:
+    """Permanently remove a task and everything hanging off it from the DB.
+
+    Returns True when the task existed and was owned by ``user_id`` (and is now
+    gone), False otherwise — so an unknown id or another user's task is a safe
+    no-op, never a leak or an error.
+
+    Children are deleted explicitly (messages, then shares, then the task)
+    rather than via ORM relationship cascade: under async SQLAlchemy the cascade
+    would try to lazy-load ``task.messages``/``task.shares``, which raises.
+    """
+    result = await db.execute(select(Task).where(Task.id == task_id))
+    task = result.scalar_one_or_none()
+    if task is None or task.user_id != user_id:
+        return False
+
+    await db.execute(delete(TaskMessage).where(TaskMessage.task_id == task_id))
+    await db.execute(delete(TaskShare).where(TaskShare.task_id == task_id))
+    await db.execute(delete(Task).where(Task.id == task_id))
+    await db.flush()
+    return True

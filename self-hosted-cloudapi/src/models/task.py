@@ -1,7 +1,7 @@
 """Task, TaskMessage, and TaskShare models."""
 
 import uuid
-from sqlalchemy import Column, String, Text, ForeignKey, DateTime
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime, BigInteger, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 
@@ -27,7 +27,18 @@ class TaskMessage(Base):
     id = Column(String, primary_key=True, default=lambda: generate_id("msg_"))
     task_id = Column(String, ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
     message_data = Column(Text, nullable=False)
+    # ClineMessage.ts of the stored message. Lets the live bridge upsert a
+    # streaming message in place (created → partial updates → final) instead of
+    # appending duplicate rows. Nullable for legacy/backfilled rows.
+    message_ts = Column(BigInteger, nullable=True, index=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    # The bridge upserts a streaming message in place via ON CONFLICT on this
+    # pair. NULL message_ts stays distinct, so legacy/backfilled rows still
+    # append. See migration d4e5f6a7b8c9.
+    __table_args__ = (
+        UniqueConstraint("task_id", "message_ts", name="uq_task_messages_task_ts"),
+    )
 
     task = relationship("Task", back_populates="messages")
 
