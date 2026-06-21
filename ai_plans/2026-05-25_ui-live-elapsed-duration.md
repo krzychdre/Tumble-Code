@@ -20,19 +20,14 @@ No doubled durations. No font drift.
   renders the duration when `endTs > startTs`; while running, callers pass
   `endTs = undefined` (or the next-message `ts` which is `undefined` for the
   latest message).
-- Callsites:
-    - `ReasoningBlock.tsx:48` — thinking block; `endTs` is the next message's
-      `ts`, `undefined` while still streaming.
-    - `ChatRow.tsx:1084-1087` — api_req_started; an explicit
-      `isApiRequestInProgress` boolean drives `endTs = isApiRequestInProgress ?
-undefined : nextMessageTs`.
-    - `UpdateTodoListToolBlock.tsx:166, 189` — block-level start + duration on
-      the "Todo List Updated" header.
-    - `TodoChangeDisplay.tsx:70` — block-level start + duration on the
-      "todos updated" header.
-    - `TodoChangeDisplay.tsx:88` — **per-item** start-only badge for completed
-      todos. This row passes only `startTs` (no `endTs` concept), and **must
-      not start ticking live** when we add live behavior to the others.
+- Callsites: - `ReasoningBlock.tsx:48` — thinking block; `endTs` is the next message's
+  `ts`, `undefined` while still streaming. - `ChatRow.tsx:1084-1087` — api_req_started; an explicit
+  `isApiRequestInProgress` boolean drives `endTs = isApiRequestInProgress ?
+undefined : nextMessageTs`. - `UpdateTodoListToolBlock.tsx:166, 189` — block-level start + duration on
+  the "Todo List Updated" header. - `TodoChangeDisplay.tsx:70` — block-level start + duration on the
+  "todos updated" header. - `TodoChangeDisplay.tsx:88` — **per-item** start-only badge for completed
+  todos. This row passes only `startTs` (no `endTs` concept), and **must
+  not start ticking live** when we add live behavior to the others.
 - `formatDuration` (`webview-ui/src/utils/format.ts:63-74`) is the canonical
   duration formatter (`1.2s` / `3m 04s`). Reusing it preserves visual parity
   between live and final values.

@@ -115,6 +115,7 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getRooCodeProviderUrl: vi.fn().mockReturnValue("http://localhost:8080/proxy"),
 }))
 
 vi.mock("../../../shared/modes", () => ({

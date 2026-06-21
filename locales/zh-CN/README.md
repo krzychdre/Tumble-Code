@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -92,11 +92,11 @@ Tumble Code 适应您的工作方式，而不是相反：
 ## 资源
 
 - **[文档](https://docs.tumblecode.dev):** 安装、配置和掌握 Tumble Code 的官方指南。
-    <!-- - **[YouTube 频道](https://youtube.com/@tumblecode?feature=shared):** 观看教程和功能演示。 -->
-    <!-- - **[Discord 服务器](https://discord.gg/tumblecode):** 加入社区以获得实时帮助和讨论。 -->
-    <!-- - **[Reddit 社区](https://www.reddit.com/r/TumbleCode):** 分享您的经验，看看别人在构建什么。 -->
-    <!-- - **[GitHub 问题](https://github.com/krzychdre/tumble-code/issues):** 报告错误并跟踪开发。 -->
-    <!-- - **[功能请求](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** 有想法吗？与开发人员分享。 -->
+      <!-- - **[YouTube 频道](https://youtube.com/@tumblecode?feature=shared):** 观看教程和功能演示。 -->
+      <!-- - **[Discord 服务器](https://discord.gg/tumblecode):** 加入社区以获得实时帮助和讨论。 -->
+      <!-- - **[Reddit 社区](https://www.reddit.com/r/TumbleCode):** 分享您的经验，看看别人在构建什么。 -->
+      <!-- - **[GitHub 问题](https://github.com/krzychdre/tumble-code/issues):** 报告错误并跟踪开发。 -->
+      <!-- - **[功能请求](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** 有想法吗？与开发人员分享。 -->
 
 ---
 

@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -92,11 +92,11 @@ Pelajari lebih lanjut: [Menggunakan Mode](https://docs.tumblecode.dev/basic-usag
 ## Sumber daya
 
 - **[Dokumentasi](https://docs.tumblecode.dev):** Panduan resmi untuk menginstal, mengonfigurasi, dan menguasai Tumble Code.
-    <!-- - **[Saluran YouTube](https://youtube.com/@tumblecode?feature=shared):** Tonton tutorial dan lihat fitur-fitur dalam aksi. -->
-    <!-- - **[Server Discord](https://discord.gg/tumblecode):** Bergabunglah dengan komunitas untuk bantuan dan diskusi real-time. -->
-    <!-- - **[Komunitas Reddit](https://www.reddit.com/r/TumbleCode):** Bagikan pengalaman Anda dan lihat apa yang sedang dibangun orang lain. -->
-    <!-- - **[Masalah GitHub](https://github.com/krzychdre/tumble-code/issues):** Laporkan bug dan lacak pengembangan. -->
-    <!-- - **[Permintaan Fitur](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Punya ide? Bagikan dengan para pengembang. -->
+      <!-- - **[Saluran YouTube](https://youtube.com/@tumblecode?feature=shared):** Tonton tutorial dan lihat fitur-fitur dalam aksi. -->
+      <!-- - **[Server Discord](https://discord.gg/tumblecode):** Bergabunglah dengan komunitas untuk bantuan dan diskusi real-time. -->
+      <!-- - **[Komunitas Reddit](https://www.reddit.com/r/TumbleCode):** Bagikan pengalaman Anda dan lihat apa yang sedang dibangun orang lain. -->
+      <!-- - **[Masalah GitHub](https://github.com/krzychdre/tumble-code/issues):** Laporkan bug dan lacak pengembangan. -->
+      <!-- - **[Permintaan Fitur](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Punya ide? Bagikan dengan para pengembang. -->
 
 ---
 

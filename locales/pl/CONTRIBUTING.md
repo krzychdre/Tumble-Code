@@ -73,7 +73,7 @@ Wszystkie wkłady zaczynają się od zgłoszenia na GitHubie przy użyciu naszyc
 <!-- - **Sprawdź istniejące zgłoszenia**: Przeszukaj [zgłoszenia на GitHubie](https://github.com/krzychdre/tumble-code/issues). -->
 
 - **Utwórz zgłoszenie**, używając: - **Ulepszenia:** szablon „Prośba o ulepszenie” (prosty język skoncentrowany na korzyściach dla użytkownika). - **Błędy:** szablon „Zgłoszenie błędu” (minimalna reprodukcja + oczekiwane a rzeczywiste + wersja).
-  <!-- - **Chcesz nad tym popracować?** Skomentuj „Zgłaszam się” w zgłoszeniu i wyślij wiadomość prywatną do **Hannes Rudolph (`hrudolph`)** na [Discordzie](https://discord.gg/tumblecode), aby zostać przypisanym. Przypisanie zostanie potwierdzone w wątku. -->
+    <!-- - **Chcesz nad tym popracować?** Skomentuj „Zgłaszam się” w zgłoszeniu i wyślij wiadomość prywatną do **Hannes Rudolph (`hrudolph`)** na [Discordzie](https://discord.gg/tumblecode), aby zostać przypisanym. Przypisanie zostanie potwierdzone w wątku. -->
 - **PR-y muszą być połączone зі zgłoszeniem.** Niepołączone PR-y mogą zostać zamknięte.
 
 ### Decydowanie, nad czym pracować
@@ -84,11 +84,11 @@ Wszystkie wkłady zaczynają się od zgłoszenia na GitHubie przy użyciu naszyc
 ### Zgłaszanie błędów
 
 - Najpierw sprawdź istniejące raporty.
-    <!-- - Utwórz nowy błąd, używając szablonu [„Zgłoszenie błędu”](https://github.com/krzychdre/tumble-code/issues/new/choose) z: -->
-        - Jasnymi, ponumerowanymi krokami reprodukcji
-        - Oczekiwanym a rzeczywistym wynikiem
-        - Wersją Tumble Code (wymagane); dostawcą/modelem sztucznej inteligencji, jeśli ma to zastosowanie
-    <!-- - **Problemy z bezpieczeństwem**: Zgłoś je prywatnie za pośrednictwem [zaleceń dotyczących bezpieczeństwa](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+      <!-- - Utwórz nowy błąd, używając szablonu [„Zgłoszenie błędu”](https://github.com/krzychdre/tumble-code/issues/new/choose) z: -->
+          - Jasnymi, ponumerowanymi krokami reprodukcji
+          - Oczekiwanym a rzeczywistym wynikiem
+          - Wersją Tumble Code (wymagane); dostawcą/modelem sztucznej inteligencji, jeśli ma to zastosowanie
+      <!-- - **Problemy z bezpieczeństwem**: Zgłoś je prywatnie za pośrednictwem [zaleceń dotyczących bezpieczeństwa](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Proces rozwoju i przesyłania
 

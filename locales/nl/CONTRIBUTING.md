@@ -73,7 +73,7 @@ Alle bijdragen beginnen met een GitHub Issue met behulp van onze slanke sjablone
 <!-- - **Controleer bestaande issues**: Zoek in [GitHub Issues](https://github.com/krzychdre/tumble-code/issues). -->
 
 - **Maak een issue** aan met: - **Verbeteringen:** sjabloon "Verbeteringsverzoek" (eenvoudige taal gericht op gebruikersvoordeel). - **Bugs:** sjabloon "Bugrapport" (minimale repro + verwacht vs. feitelijk + versie).
-  <!-- - **Wil je eraan werken?** Reageer met "Claiming" op de issue en stuur een DM naar **Hannes Rudolph (`hrudolph`)** op [Discord](https://discord.gg/tumblecode) om toegewezen te worden. De toewijzing wordt in de thread bevestigd. -->
+    <!-- - **Wil je eraan werken?** Reageer met "Claiming" op de issue en stuur een DM naar **Hannes Rudolph (`hrudolph`)** op [Discord](https://discord.gg/tumblecode) om toegewezen te worden. De toewijzing wordt in de thread bevestigd. -->
 - **PR's moeten naar de issue linken.** Niet-gekoppelde PR's kunnen worden gesloten.
 
 ### Beslissen waaraan je wilt werken
@@ -84,11 +84,11 @@ Alle bijdragen beginnen met een GitHub Issue met behulp van onze slanke sjablone
 ### Bugs rapporteren
 
 - Controleer eerst bestaande rapporten.
-    <!-- - Maak een nieuwe bug aan met het ["Bugrapport"-sjabloon](https://github.com/krzychdre/tumble-code/issues/new/choose) met: -->
-        - Duidelijke, genummerde reproductiestappen
-        - Verwacht vs. feitelijk resultaat
-        - Tumble Code-versie (vereist); API-provider/model indien relevant
-    <!-- - **Beveiligingsproblemen**: Rapporteer privé via [beveiligingsadviezen](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+      <!-- - Maak een nieuwe bug aan met het ["Bugrapport"-sjabloon](https://github.com/krzychdre/tumble-code/issues/new/choose) met: -->
+          - Duidelijke, genummerde reproductiestappen
+          - Verwacht vs. feitelijk resultaat
+          - Tumble Code-versie (vereist); API-provider/model indien relevant
+      <!-- - **Beveiligingsproblemen**: Rapporteer privé via [beveiligingsadviezen](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Ontwikkelings- en indieningsproces
 

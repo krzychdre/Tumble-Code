@@ -73,7 +73,7 @@ Tüm katkılar, basit şablonlarımızı kullanarak bir GitHub Sorunu ile başla
 <!-- - **Mevcut sorunları kontrol edin**: [GitHub Sorunları](https://github.com/krzychdre/tumble-code/issues)nda arama yapın. -->
 
 - **Bir sorun oluşturun**: - **İyileştirmeler:** "İyileştirme İsteği" şablonu (kullanıcı yararına odaklanan sade bir dil). - **Hatalar:** "Hata Raporu" şablonu (minimum yeniden oluşturma + beklenen vs gerçek + sürüm).
-  <!-- - **Üzerinde çalışmak ister misiniz?** Soruna "Talep ediyorum" yorumu yapın ve atanmak için [Discord](https://discord.gg/tumblecode) üzerinden **Hannes Rudolph (`hrudolph`)**'a DM gönderin. Atama, başlıkta teyit edilecektir. -->
+    <!-- - **Üzerinde çalışmak ister misiniz?** Soruna "Talep ediyorum" yorumu yapın ve atanmak için [Discord](https://discord.gg/tumblecode) üzerinden **Hannes Rudolph (`hrudolph`)**'a DM gönderin. Atama, başlıkta teyit edilecektir. -->
 - **PR'ler soruna bağlanmalıdır.** Bağlantısız PR'ler kapatılabilir.
 
 ### Ne Üzerinde Çalışılacağına Karar Verme
@@ -84,11 +84,11 @@ Tüm katkılar, basit şablonlarımızı kullanarak bir GitHub Sorunu ile başla
 ### Hataları Bildirme
 
 - Önce mevcut raporları kontrol edin.
-    <!-- - Aşağıdakilerle ["Hata Raporu" şablonunu](https://github.com/krzychdre/tumble-code/issues/new/choose) kullanarak yeni bir hata oluşturun: -->
-        - Açık, numaralandırılmış yeniden oluşturma adımları
-        - Beklenen vs gerçek sonuç
-        - Tumble Code sürümü (gerekli); ilgiliyse API sağlayıcısı/modeli
-    <!-- - **Güvenlik sorunları**: [Güvenlik tavsiyeleri](https://github.com/krzychdre/tumble-code/security/advisories/new) aracılığıyla özel olarak bildirin. -->
+      <!-- - Aşağıdakilerle ["Hata Raporu" şablonunu](https://github.com/krzychdre/tumble-code/issues/new/choose) kullanarak yeni bir hata oluşturun: -->
+          - Açık, numaralandırılmış yeniden oluşturma adımları
+          - Beklenen vs gerçek sonuç
+          - Tumble Code sürümü (gerekli); ilgiliyse API sağlayıcısı/modeli
+      <!-- - **Güvenlik sorunları**: [Güvenlik tavsiyeleri](https://github.com/krzychdre/tumble-code/security/advisories/new) aracılığıyla özel olarak bildirin. -->
 
 ## Geliştirme ve Gönderme Süreci
 

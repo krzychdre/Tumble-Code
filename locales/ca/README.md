@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -92,11 +92,11 @@ Més informació: [Ús de Modes](https://docs.tumblecode.dev/basic-usage/using-m
 ## Recursos
 
 - **[Documentació](https://docs.tumblecode.dev):** La guia oficial per instal·lar, configurar i dominar Tumble Code.
-    <!-- - **[Canal de YouTube](https://youtube.com/@tumblecode?feature=shared):** Mira tutorials i veu les funcionalitats en acció. -->
-    <!-- - **[Servidor de Discord](https://discord.gg/tumblecode):** Uneix-te a la comunitat per obtenir ajuda i discutir en temps real. -->
-    <!-- - **[Comunitat de Reddit](https://www.reddit.com/r/TumbleCode):** Comparteix les teves experiències i veu què estan construint altres. -->
-    <!-- - **[Incidències de GitHub](https://github.com/krzychdre/tumble-code/issues):** Informa d'errors i segueix el desenvolupament. -->
-    <!-- - **[Sol·licituds de funcionalitats](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Tens una idea? Comparteix-la amb els desenvolupadors. -->
+      <!-- - **[Canal de YouTube](https://youtube.com/@tumblecode?feature=shared):** Mira tutorials i veu les funcionalitats en acció. -->
+      <!-- - **[Servidor de Discord](https://discord.gg/tumblecode):** Uneix-te a la comunitat per obtenir ajuda i discutir en temps real. -->
+      <!-- - **[Comunitat de Reddit](https://www.reddit.com/r/TumbleCode):** Comparteix les teves experiències i veu què estan construint altres. -->
+      <!-- - **[Incidències de GitHub](https://github.com/krzychdre/tumble-code/issues):** Informa d'errors i segueix el desenvolupament. -->
+      <!-- - **[Sol·licituds de funcionalitats](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Tens una idea? Comparteix-la amb els desenvolupadors. -->
 
 ---
 

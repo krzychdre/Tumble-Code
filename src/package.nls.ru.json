@@ -46,5 +46,8 @@
 	"settings.debug.description": "Включить режим отладки, чтобы отображать дополнительные кнопки для просмотра истории разговоров API и сообщений интерфейса в виде форматированного JSON во временных файлах.",
 	"settings.debugProxy.enabled.description": "**Включить Debug Proxy** — направлять все исходящие сетевые запросы через прокси для MITM-отладки. Активен только когда ты запускаешь расширение в режиме отладки (F5).",
 	"settings.debugProxy.serverUrl.description": "URL прокси (например, `http://127.0.0.1:8888`). Используется только если **Debug Proxy** включён.",
-	"settings.debugProxy.tlsInsecure.description": "Принимать self-signed сертификаты от прокси. **Требуется для MITM-инспекции.** ⚠️ Небезопасно — используй только для локальной отладки."
+	"settings.debugProxy.tlsInsecure.description": "Принимать self-signed сертификаты от прокси. **Требуется для MITM-инспекции.** ⚠️ Небезопасно — используй только для локальной отладки.",
+	"settings.cloudApiUrl.description": "Override the Roo Code Cloud API URL (e.g. `https://app.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.cloudProviderUrl.description": "Override the Roo Code Cloud Provider URL (e.g. `https://api.roocode.com/proxy`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.clerkBaseUrl.description": "Override the Clerk authentication base URL (e.g. `https://clerk.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments."
 }

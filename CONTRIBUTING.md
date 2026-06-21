@@ -77,7 +77,7 @@ All contributions start with a GitHub Issue.
 
 - Check for existing reports first.
 - Create a new bug report with: - Clear, numbered reproduction steps - Expected vs actual result - Tumble Code version (required); API provider/model if relevant
-  <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+    <!-- - **Security issues**: Report privately via [security advisories](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Development & Submission Process
 

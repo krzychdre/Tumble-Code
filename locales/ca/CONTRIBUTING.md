@@ -73,7 +73,7 @@ Totes les contribucions comencen amb una incidència de GitHub utilitzant les no
 <!-- - **Comproveu les incidències existents**: cerqueu a [Incidències de GitHub](https://github.com/krzychdre/tumble-code/issues). -->
 
 - **Creeu una incidència** utilitzant: - **Millores:** plantilla "Sol·licitud de millora" (llenguatge senzill centrat en el benefici per a l'usuari). - **Errors:** plantilla "Informe d'error" (reproducció mínima + esperat vs real + versió).
-  <!-- - **Voleu treballar-hi?** Comenteu "Reclamant" a la incidència i envieu un missatge directe a **Hannes Rudolph (`hrudolph`)** a [Discord](https://discord.gg/tumblecode) per ser assignat. L'assignació es confirmarà al fil. -->
+    <!-- - **Voleu treballar-hi?** Comenteu "Reclamant" a la incidència i envieu un missatge directe a **Hannes Rudolph (`hrudolph`)** a [Discord](https://discord.gg/tumblecode) per ser assignat. L'assignació es confirmarà al fil. -->
 - **Les sol·licituds d'extracció han d'enllaçar a la incidència.** Les sol·licituds d'extracció no enllaçades es poden tancar.
 
 ### Decidir en què treballar
@@ -84,11 +84,11 @@ Totes les contribucions comencen amb una incidència de GitHub utilitzant les no
 ### Informar d'errors
 
 - Comproveu primer si hi ha informes existents.
-    <!-- - Creeu un error nou utilitzant la [plantilla "Informe d'error"](https://github.com/krzychdre/tumble-code/issues/new/choose) amb: -->
-        - Passos de reproducció clars i numerats
-        - Resultat esperat vs real
-        - Versió de Tumble Code (obligatori); proveïdor/model d'API si és rellevant
-    <!-- - **Problemes de seguretat**: informeu de manera privada a través d' [avisos de seguretat](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+      <!-- - Creeu un error nou utilitzant la [plantilla "Informe d'error"](https://github.com/krzychdre/tumble-code/issues/new/choose) amb: -->
+          - Passos de reproducció clars i numerats
+          - Resultat esperat vs real
+          - Versió de Tumble Code (obligatori); proveïdor/model d'API si és rellevant
+      <!-- - **Problemes de seguretat**: informeu de manera privada a través d' [avisos de seguretat](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Procés de desenvolupament i submissió
 

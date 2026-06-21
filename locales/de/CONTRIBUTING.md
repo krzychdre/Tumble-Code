@@ -73,7 +73,7 @@ Alle Beiträge beginnen mit einem GitHub-Issue unter Verwendung unserer schlanke
 <!-- - **Überprüfe bestehende Issues**: Suche in den [GitHub Issues](https://github.com/krzychdre/tumble-code/issues). -->
 
 - **Erstelle ein Issue** mit: - **Verbesserungen:** Vorlage „Verbesserungsvorschlag“ (einfache Sprache mit Fokus auf den Nutzen für den Benutzer). - **Fehler:** Vorlage „Fehlerbericht“ (minimale Reproduktion + erwartet vs. tatsächlich + Version).
-  <!-- - **Möchtest du daran arbeiten?** Kommentiere „Claiming“ im Issue und schreibe eine DM an **Hannes Rudolph (`hrudolph`)** auf [Discord](https://discord.gg/tumblecode), um zugewiesen zu werden. Die Zuweisung wird im Thread bestätigt. -->
+    <!-- - **Möchtest du daran arbeiten?** Kommentiere „Claiming“ im Issue und schreibe eine DM an **Hannes Rudolph (`hrudolph`)** auf [Discord](https://discord.gg/tumblecode), um zugewiesen zu werden. Die Zuweisung wird im Thread bestätigt. -->
 - **PRs müssen auf das Issue verweisen.** Nicht verknüpfte PRs können geschlossen werden.
 
 ### Entscheiden, woran du arbeiten möchtest
@@ -84,11 +84,11 @@ Alle Beiträge beginnen mit einem GitHub-Issue unter Verwendung unserer schlanke
 ### Fehler melden
 
 - Überprüfe zuerst, ob bereits Berichte vorhanden sind.
-    <!-- - Erstelle einen neuen Fehler mit der [Vorlage „Fehlerbericht“](https://github.com/krzychdre/tumble-code/issues/new/choose) mit: -->
-        - Klaren, nummerierten Reproduktionsschritten
-        - Erwartetes vs. tatsächliches Ergebnis
-        - Tumble Code-Version (erforderlich); API-Anbieter/Modell, falls relevant
-    <!-- - **Sicherheitsprobleme**: Melde sie privat über [Sicherheitshinweise](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
+      <!-- - Erstelle einen neuen Fehler mit der [Vorlage „Fehlerbericht“](https://github.com/krzychdre/tumble-code/issues/new/choose) mit: -->
+          - Klaren, nummerierten Reproduktionsschritten
+          - Erwartetes vs. tatsächliches Ergebnis
+          - Tumble Code-Version (erforderlich); API-Anbieter/Modell, falls relevant
+      <!-- - **Sicherheitsprobleme**: Melde sie privat über [Sicherheitshinweise](https://github.com/krzychdre/tumble-code/security/advisories/new). -->
 
 ## Entwicklungs- und Einreichungsprozess
 

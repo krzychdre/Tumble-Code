@@ -435,6 +435,27 @@
 					"default": false,
 					"description": "%settings.debugProxy.tlsInsecure.description%",
 					"markdownDescription": "%settings.debugProxy.tlsInsecure.description%"
+				},
+				"tumble-code.cloudApiUrl": {
+					"type": "string",
+					"default": "",
+					"description": "%settings.cloudApiUrl.description%",
+					"markdownDescription": "%settings.cloudApiUrl.description%",
+					"order": 100
+				},
+				"tumble-code.cloudProviderUrl": {
+					"type": "string",
+					"default": "",
+					"description": "%settings.cloudProviderUrl.description%",
+					"markdownDescription": "%settings.cloudProviderUrl.description%",
+					"order": 101
+				},
+				"tumble-code.clerkBaseUrl": {
+					"type": "string",
+					"default": "",
+					"description": "%settings.clerkBaseUrl.description%",
+					"markdownDescription": "%settings.clerkBaseUrl.description%",
+					"order": 102
 				}
 			}
 		}

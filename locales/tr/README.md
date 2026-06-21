@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -92,11 +92,11 @@ Daha fazla: [Modları kullanma](https://docs.tumblecode.dev/basic-usage/using-mo
 ## Kaynaklar
 
 - **[Dokümantasyon](https://docs.tumblecode.dev):** Tumble Code'u yükleme, yapılandırma ve ustalaşma konusundaki resmi kılavuz.
-    <!-- - **[YouTube Kanalı](https://youtube.com/@tumblecode?feature=shared):** Eğitimleri izleyin ve özellikleri çalışırken görün. -->
-    <!-- - **[Discord Sunucusu](https://discord.gg/tumblecode):** Gerçek zamanlı yardım ve tartışma için topluluğa katılın. -->
-    <!-- - **[Reddit Topluluğu](https://www.reddit.com/r/TumbleCode):** Deneyimlerinizi paylaşın ve başkalarının ne inşa ettiğini görün. -->
-    <!-- - **[GitHub Sorunları](https://github.com/krzychdre/tumble-code/issues):** Hataları bildirin ve gelişimi takip edin. -->
-    <!-- - **[Özellik İstekleri](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Bir fikriniz mi var? Geliştiricilerle paylaşın. -->
+      <!-- - **[YouTube Kanalı](https://youtube.com/@tumblecode?feature=shared):** Eğitimleri izleyin ve özellikleri çalışırken görün. -->
+      <!-- - **[Discord Sunucusu](https://discord.gg/tumblecode):** Gerçek zamanlı yardım ve tartışma için topluluğa katılın. -->
+      <!-- - **[Reddit Topluluğu](https://www.reddit.com/r/TumbleCode):** Deneyimlerinizi paylaşın ve başkalarının ne inşa ettiğini görün. -->
+      <!-- - **[GitHub Sorunları](https://github.com/krzychdre/tumble-code/issues):** Hataları bildirin ve gelişimi takip edin. -->
+      <!-- - **[Özellik İstekleri](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Bir fikriniz mi var? Geliştiricilerle paylaşın. -->
 
 ---
 

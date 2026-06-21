@@ -1,0 +1,26 @@
+# Default mode marketplace items for self-hosted deployment
+# These can be customized or replaced with your own modes
+
+- id: code-mode
+  name: Code
+  description: "Optimized for code writing and editing tasks"
+  type: mode
+  content: |
+    # Code Mode
+    You are an expert software engineer. Focus on writing clean, efficient code.
+
+- id: architect-mode
+  name: Architect
+  description: "Optimized for planning and system design"
+  type: mode
+  content: |
+    # Architect Mode
+    You are a software architect. Focus on system design and planning.
+
+- id: ask-mode
+  name: Ask
+  description: "Optimized for answering questions about code"
+  type: mode
+  content: |
+    # Ask Mode
+    You are a knowledgeable assistant. Focus on answering questions clearly.

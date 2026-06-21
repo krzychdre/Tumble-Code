@@ -28,6 +28,7 @@ import { initializeNetworkProxy } from "./utils/networkProxy"
 
 import { Package } from "./shared/package"
 import { formatLanguage } from "./shared/language"
+import { syncCloudUrls, registerCloudUrlsSubscription } from "./shared/cloud-urls"
 import { ContextProxy } from "./core/config/ContextProxy"
 import { ClineProvider } from "./core/webview/ClineProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
@@ -131,6 +132,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	// When proxyUrl is configured, all HTTP/HTTPS traffic will be routed through it.
 	// Only applied in debug mode (F5).
 	await initializeNetworkProxy(context, outputChannel)
+
+	// Sync cloud URL overrides from VS Code settings into the @roo-code/cloud package.
+	// This must happen before any cloud service initialization so that the
+	// configurable API/provider/clerk URLs take effect.
+	syncCloudUrls()
+	registerCloudUrlsSubscription(context)
 
 	// Set extension path for custom tool registry to find bundled esbuild
 	customToolRegistry.setExtensionPath(context.extensionPath)

@@ -40,14 +40,11 @@ There is **no automatic recovery** from the `Error` state. Evidence:
    batch error bubbles up, the orchestrator catches it, sets `Error`, and the whole
    process is done — no outer/connection-level retry exists.
 
-4. How connection failures look in the final `Error` message:
-    - Embedder validation: exactly `t("embeddings:validation.connectionFailed")`
-      (via `validation-helpers.ts:174-184` matching `ECONNREFUSED`/`ENOTFOUND`/
-      `ETIMEDOUT`/`AbortError`/`HTTP 0:`/`No response`).
-    - Scan failure: `Failed during initial scan: Indexing failed: Failed to create
+4. How connection failures look in the final `Error` message: - Embedder validation: exactly `t("embeddings:validation.connectionFailed")`
+   (via `validation-helpers.ts:174-184` matching `ECONNREFUSED`/`ENOTFOUND`/
+   `ETIMEDOUT`/`AbortError`/`HTTP 0:`/`No response`). - Scan failure: `Failed during initial scan: Indexing failed: Failed to create
 embeddings after 3 attempts: <raw>` where `<raw>` carries the network signature
-      (OpenAI SDK `Connection error.`, `fetch failed`, `ECONNREFUSED`, …).
-    - Qdrant down: `...qdrantConnectionFailed...`.
+   (OpenAI SDK `Connection error.`, `fetch failed`, `ECONNREFUSED`, …). - Qdrant down: `...qdrantConnectionFailed...`.
 
 ## Fix
 

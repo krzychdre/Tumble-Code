@@ -36,7 +36,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - [Tiếng Việt](locales/vi/README.md)
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
-  </details>
+    </details>
 
 ---
 

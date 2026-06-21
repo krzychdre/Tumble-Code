@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -92,11 +92,11 @@ En savoir plus : [Utiliser les Modes](https://docs.tumblecode.dev/basic-usage/us
 ## Ressources
 
 - **[Documentation](https://docs.tumblecode.dev):** Le guide officiel pour installer, configurer et maîtriser Tumble Code.
-    <!-- - **[Chaîne YouTube](https://youtube.com/@tumblecode?feature=shared):** Regardez des tutoriels et découvrez les fonctionnalités en action. -->
-    <!-- - **[Serveur Discord](https://discord.gg/tumblecode):** Rejoignez la communauté pour obtenir de l'aide en temps réel et discuter. -->
-    <!-- - **[Communauté Reddit](https://www.reddit.com/r/TumbleCode):** Partagez vos expériences et découvrez ce que les autres construisent. -->
-    <!-- - **[Problèmes GitHub](https://github.com/krzychdre/tumble-code/issues):** Signalez des bugs et suivez le développement. -->
-    <!-- - **[Demandes de fonctionnalités](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Vous avez une idée ? Partagez-la avec les développeurs. -->
+      <!-- - **[Chaîne YouTube](https://youtube.com/@tumblecode?feature=shared):** Regardez des tutoriels et découvrez les fonctionnalités en action. -->
+      <!-- - **[Serveur Discord](https://discord.gg/tumblecode):** Rejoignez la communauté pour obtenir de l'aide en temps réel et discuter. -->
+      <!-- - **[Communauté Reddit](https://www.reddit.com/r/TumbleCode):** Partagez vos expériences et découvrez ce que les autres construisent. -->
+      <!-- - **[Problèmes GitHub](https://github.com/krzychdre/tumble-code/issues):** Signalez des bugs et suivez le développement. -->
+      <!-- - **[Demandes de fonctionnalités](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Vous avez une idée ? Partagez-la avec les développeurs. -->
 
 ---
 

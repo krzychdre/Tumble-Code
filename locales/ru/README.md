@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -92,11 +92,11 @@ Tumble Code адаптируется к вашему стилю работы, а
 ## Ресурсы
 
 - **[Документация](https://docs.tumblecode.dev):** Официальное руководство по установке, настройке и освоению Tumble Code.
-    <!-- - **[Канал на YouTube](https://youtube.com/@tumblecode?feature=shared):** Смотрите обучающие видео и функции в действии. -->
-    <!-- - **[Сервер Discord](https://discord.gg/tumblecode):** Присоединяйтесь к сообществу для получения помощи и обсуждений в реальном времени. -->
-    <!-- - **[Сообщество Reddit](https://www.reddit.com/r/TumbleCode):** Делитесь своим опытом и смотрите, что создают другие. -->
-    <!-- - **[Проблемы на GitHub](https://github.com/krzychdre/tumble-code/issues):** Сообщайте об ошибках и отслеживайте разработку. -->
-    <!-- - **[Запросы на новые функции](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Есть идея? Поделитесь ею с разработчиками. -->
+      <!-- - **[Канал на YouTube](https://youtube.com/@tumblecode?feature=shared):** Смотрите обучающие видео и функции в действии. -->
+      <!-- - **[Сервер Discord](https://discord.gg/tumblecode):** Присоединяйтесь к сообществу для получения помощи и обсуждений в реальном времени. -->
+      <!-- - **[Сообщество Reddit](https://www.reddit.com/r/TumbleCode):** Делитесь своим опытом и смотрите, что создают другие. -->
+      <!-- - **[Проблемы на GitHub](https://github.com/krzychdre/tumble-code/issues):** Сообщайте об ошибках и отслеживайте разработку. -->
+      <!-- - **[Запросы на новые функции](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Есть идея? Поделитесь ею с разработчиками. -->
 
 ---
 

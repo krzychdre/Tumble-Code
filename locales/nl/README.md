@@ -49,7 +49,7 @@
 - [简体中文](../zh-CN/README.md)
 - [繁體中文](../zh-TW/README.md)
 - ...
-      </details>
+  </details>
 
 ---
 
@@ -92,11 +92,11 @@ Meer info: [Modi gebruiken](https://docs.tumblecode.dev/basic-usage/using-modes)
 ## Hulpbronnen
 
 - **[Documentatie](https://docs.tumblecode.dev):** De officiële gids voor het installeren, configureren en beheersen van Tumble Code.
-    <!-- - **[YouTube-kanaal](https://youtube.com/@tumblecode?feature=shared):** Bekijk tutorials en zie functies in actie. -->
-    <!-- - **[Discord Server](https://discord.gg/tumblecode):** Word lid van de community voor realtime hulp en discussie. -->
-    <!-- - **[Reddit Community](https://www.reddit.com/r/TumbleCode):** Deel je ervaringen en kijk wat anderen bouwen. -->
-    <!-- - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Meld bugs en volg de ontwikkeling. -->
-    <!-- - **[Feature Requests](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Heb je een idee? Deel het met de ontwikkelaars. -->
+      <!-- - **[YouTube-kanaal](https://youtube.com/@tumblecode?feature=shared):** Bekijk tutorials en zie functies in actie. -->
+      <!-- - **[Discord Server](https://discord.gg/tumblecode):** Word lid van de community voor realtime hulp en discussie. -->
+      <!-- - **[Reddit Community](https://www.reddit.com/r/TumbleCode):** Deel je ervaringen en kijk wat anderen bouwen. -->
+      <!-- - **[GitHub Issues](https://github.com/krzychdre/tumble-code/issues):** Meld bugs en volg de ontwikkeling. -->
+      <!-- - **[Feature Requests](https://github.com/krzychdre/tumble-code/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop):** Heb je een idee? Deel het met de ontwikkelaars. -->
 
 ---
 

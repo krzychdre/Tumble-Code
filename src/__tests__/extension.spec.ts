@@ -18,8 +18,13 @@ vi.mock("vscode", () => ({
 	workspace: {
 		registerTextDocumentContentProvider: vi.fn(),
 		getConfiguration: vi.fn().mockReturnValue({
-			get: vi.fn().mockReturnValue([]),
+			// String settings (e.g. the self-hosted cloud URL overrides read by syncCloudUrls)
+			// must return undefined rather than [] so callers can safely call .trim().
+			get: vi.fn((key?: string) =>
+				key === "cloudApiUrl" || key === "cloudProviderUrl" || key === "clerkBaseUrl" ? undefined : [],
+			),
 		}),
+		onDidChangeConfiguration: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 		createFileSystemWatcher: vi.fn().mockReturnValue({
 			onDidCreate: vi.fn(),
 			onDidChange: vi.fn(),
@@ -70,6 +75,10 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getRooCodeProviderUrl: vi.fn().mockReturnValue("http://localhost:8080/proxy"),
+	setRooCodeApiUrl: vi.fn(),
+	setRooCodeProviderUrl: vi.fn(),
+	setClerkBaseUrl: vi.fn(),
 }))
 
 vi.mock("@roo-code/telemetry", () => ({

@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    ports:
+      - "${PORT:-8085}:${PORT:-8085}"
+    environment:
+      PORT: ${PORT:-8085}
+      DATABASE_URL: postgresql://roo:password@postgres:5432/roo_cloud
+      SECRET_KEY: ${SECRET_KEY:-change-me-to-a-random-secret-key}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-jwt-secret}
+      AUTHENTIK_BASE_URL: ${AUTHENTIK_BASE_URL:-http://localhost:9000}
+      AUTHENTIK_APP_SLUG: ${AUTHENTIK_APP_SLUG:-stork-code}
+      AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-your-client-id}
+      AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
+      AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-https://roo.example.com/auth/clerk/callback}
+      API_BASE_URL: ${API_BASE_URL:-https://roo.example.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-openai}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      XAI_API_KEY: ${XAI_API_KEY:-}
+      MARKETPLACE_SOURCE: ${MARKETPLACE_SOURCE:-yaml}
+      MARKETPLACE_YAML_DIR: ${MARKETPLACE_YAML_DIR:-./config/marketplace}
+      CREDIT_SYSTEM_ENABLED: ${CREDIT_SYSTEM_ENABLED:-false}
+      BRIDGE_ENABLED: ${BRIDGE_ENABLED:-false}
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_REQUESTS_PER_MINUTE: ${RATE_LIMIT_REQUESTS_PER_MINUTE:-60}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: roo
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: roo_cloud
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
