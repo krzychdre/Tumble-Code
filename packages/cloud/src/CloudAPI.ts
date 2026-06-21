@@ -129,6 +129,7 @@ export class CloudAPI {
 					.object({
 						userId: z.string(),
 						socketBridgeUrl: z.string(),
+						socketBridgePath: z.string().optional(),
 						token: z.string(),
 					})
 					.parse(data),

@@ -20,7 +20,13 @@ from src.services.settings_service import get_extension_settings, update_user_se
 router = APIRouter(prefix="/api", tags=["settings"])
 
 
-@router.get("/extension-settings")
+# NOTE: response_model_exclude_none is REQUIRED here. The client parses this
+# response with Zod schemas (packages/types cloud.ts) whose optional fields use
+# `.optional()` — which accepts `undefined` but REJECTS `null`. Pydantic would
+# otherwise serialize unset Optional fields as JSON `null`, the client parse would
+# fail, CloudSettingsService never caches the settings, and `canShareTask()` returns
+# false — silently disabling the Share button. Omitting nulls keeps the contract.
+@router.get("/extension-settings", response_model_exclude_none=True)
 async def extension_settings_endpoint(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -33,7 +39,10 @@ async def extension_settings_endpoint(
     )
 
 
-@router.patch("/user-settings")
+# Same null-vs-undefined contract as /extension-settings: the client parses this
+# with the strict `.optional()` userSettingsDataSchema, so unset fields must be
+# omitted rather than serialized as null.
+@router.patch("/user-settings", response_model_exclude_none=True)
 async def update_user_settings_endpoint(
     body: UpdateUserSettingsRequest,
     current_user: dict = Depends(get_current_user),

@@ -4,7 +4,7 @@ import { z } from "zod"
 
 import { RooCodeEventName } from "./events.js"
 import { TaskStatus, taskMetadataSchema } from "./task.js"
-import { globalSettingsSchema } from "./global-settings.js"
+import { globalSettingsSchema, autoApprovalModes } from "./global-settings.js"
 import { providerSettingsWithIdSchema } from "./provider-settings.js"
 import { mcpMarketplaceItemSchema } from "./marketplace.js"
 import { clineMessageSchema, queuedMessageSchema, tokenUsageSchema } from "./message.js"
@@ -425,6 +425,27 @@ export const extensionInstanceSchema = z.object({
 export type ExtensionInstance = z.infer<typeof extensionInstanceSchema>
 
 /**
+ * AutoApprovalSettings
+ *
+ * The subset of auto-approval state the web cockpit can both display and steer:
+ * the master kill-switch, the main mode selector (default / bypass / autonomous),
+ * and the detailed per-tool toggles. Mirrors the same keys in GlobalSettings.
+ */
+
+export const autoApprovalSettingsSchema = z.object({
+	autoApprovalEnabled: z.boolean().optional(),
+	autoApprovalMode: z.enum(autoApprovalModes).optional(),
+	alwaysAllowReadOnly: z.boolean().optional(),
+	alwaysAllowWrite: z.boolean().optional(),
+	alwaysAllowExecute: z.boolean().optional(),
+	alwaysAllowMcp: z.boolean().optional(),
+	alwaysAllowModeSwitch: z.boolean().optional(),
+	alwaysAllowSubtasks: z.boolean().optional(),
+})
+
+export type AutoApprovalSettings = z.infer<typeof autoApprovalSettingsSchema>
+
+/**
  * TaskBridgeEvent
  */
 
@@ -432,6 +453,7 @@ export enum TaskBridgeEventName {
 	Message = RooCodeEventName.Message,
 	TaskModeSwitched = RooCodeEventName.TaskModeSwitched,
 	TaskInteractive = RooCodeEventName.TaskInteractive,
+	InstanceState = "instanceState",
 }
 
 export const taskBridgeEventSchema = z.discriminatedUnion("type", [
@@ -450,6 +472,19 @@ export const taskBridgeEventSchema = z.discriminatedUnion("type", [
 		type: z.literal(TaskBridgeEventName.TaskInteractive),
 		taskId: z.string(),
 	}),
+	// Periodic snapshot so the web cockpit can render the header + controls live:
+	// current mode, the auto-approval state, token/context usage, and the pending ask (if any).
+	z.object({
+		type: z.literal(TaskBridgeEventName.InstanceState),
+		taskId: z.string(),
+		mode: z.string().optional(),
+		isRunning: z.boolean().optional(),
+		autoApproval: autoApprovalSettingsSchema.optional(),
+		tokenUsage: tokenUsageSchema.optional(),
+		contextTokens: z.number().optional(),
+		contextWindow: z.number().optional(),
+		currentAsk: clineMessageSchema.optional(),
+	}),
 ])
 
 export type TaskBridgeEvent = z.infer<typeof taskBridgeEventSchema>
@@ -462,6 +497,9 @@ export enum TaskBridgeCommandName {
 	Message = "message",
 	ApproveAsk = "approve_ask",
 	DenyAsk = "deny_ask",
+	StopTask = "stop_task",
+	SetAutoApproval = "set_auto_approval",
+	ResumeTask = "resume_task",
 }
 
 export const taskBridgeCommandSchema = z.discriminatedUnion("type", [
@@ -492,6 +530,22 @@ export const taskBridgeCommandSchema = z.discriminatedUnion("type", [
 			text: z.string().optional(),
 			images: z.array(z.string()).optional(),
 		}),
+		timestamp: z.number(),
+	}),
+	z.object({
+		type: z.literal(TaskBridgeCommandName.StopTask),
+		taskId: z.string(),
+		timestamp: z.number(),
+	}),
+	z.object({
+		type: z.literal(TaskBridgeCommandName.SetAutoApproval),
+		taskId: z.string(),
+		payload: autoApprovalSettingsSchema,
+		timestamp: z.number(),
+	}),
+	z.object({
+		type: z.literal(TaskBridgeCommandName.ResumeTask),
+		taskId: z.string(),
 		timestamp: z.number(),
 	}),
 ])

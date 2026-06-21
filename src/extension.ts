@@ -42,6 +42,7 @@ import { migrateSettings } from "./utils/migrateSettings"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
+import { setupRemoteControlBridge } from "./extension/bridge"
 
 import {
 	handleUri,
@@ -385,7 +386,23 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Initialize background model cache refresh
 	initializeModelCacheRefresh()
 
-	return new API(outputChannel, provider, socketPath, enableLogging)
+	const api = new API(outputChannel, provider, socketPath, enableLogging)
+
+	// Wire the opt-in live remote-control bridge (extension ↔ backend ↔ browser).
+	try {
+		setupRemoteControlBridge({
+			context,
+			api,
+			provider,
+			log: (message: string) => outputChannel.appendLine(message),
+		})
+	} catch (error) {
+		outputChannel.appendLine(
+			`[bridge] Failed to set up remote control bridge: ${error instanceof Error ? error.message : String(error)}`,
+		)
+	}
+
+	return api
 }
 
 // This method is called when your extension is deactivated.
