@@ -13,6 +13,7 @@ from src.database import get_db
 from src.dependencies import get_current_user
 from src.schemas.telemetry import TelemetryEventRequest
 from src.services.telemetry_service import record_event, backfill_messages
+from src.realtime.hub import registry
 from config.settings import settings
 
 router = APIRouter(prefix="/api", tags=["events"])
@@ -67,10 +68,19 @@ async def backfill_events_endpoint(
         except (json.JSONDecodeError, UnicodeDecodeError):
             messages = []
 
+    # Project/worktree root: prefer the explicit client field (works even when the
+    # bridge is offline); fall back to the live registered instance for older
+    # clients that don't send it.
+    user_id = current_user["user_id"]
+    workspace_path = form.get("workspacePath") or None
+    if not workspace_path:
+        workspace_path = (registry.instance(user_id) or {}).get("workspacePath")
+
     await backfill_messages(
         db=db,
         task_id=task_id,
-        user_id=current_user["user_id"],
+        user_id=user_id,
         messages=messages,
+        workspace_path=workspace_path,
     )
     return {"status": "ok"}

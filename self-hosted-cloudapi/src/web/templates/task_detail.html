@@ -12,6 +12,7 @@
     </form>
     {% endif %}
   </div>
+  {% if workspace %}<div class="detail-workspace" title="{{ workspace }}">📁 {{ workspace }}</div>{% endif %}
   {% if share_url and not live %}<div class="share-note">Shared link · read-only</div>{% endif %}
 </div>
 

@@ -294,12 +294,31 @@
 	// in place instead of appending duplicates — mirroring the live VS Code view.
 	function mountConversation(container) {
 		const byTs = {}
-		const rawByTs = {} // ts -> latest raw message, for token/cost metrics
-		const activeByTs = {} // ts -> activity label, for the "executing now" indicator
-		const resolvedByTs = {} // ts -> "approved"|"denied", survives row replacement
+		const rawByTs = {} // key -> latest raw message, for token/cost metrics
+		const activeByTs = {} // key -> { ts, label }, for the "executing now" indicator
+		const resolvedByTs = {} // key -> "approved"|"denied", survives row replacement
 		let activeAsk = null // { ts, onApprove, onDeny, ... } — the pending approval
-		let tail = null // { ts, el } — last row in document order, for step duration
+		let tail = null // { ts, key, el } — last row in document order, for step duration
 		let count = 0
+		let lastCommandTs = null // owning command for trailing command_output rows
+
+		// Row-identity key. Normally the message ts, but every `command_output` that
+		// follows one `command` is ONE logical output block: the streaming tool emits
+		// an orphaned partial say + a finalized say with different ts (an interleaved
+		// command_output *ask* splits the say stream — see the ai_plan). Keying them to
+		// the owning command collapses both onto one row (latest wins), mirroring the
+		// VS Code chat's consolidateCommands. `ts` stays numeric for duration math.
+		function keyOf(m) {
+			const kind = m.say || m.ask || m.type
+			if (kind === "command") {
+				lastCommandTs = m.ts
+				return m.ts
+			}
+			if (kind === "command_output") {
+				return "cmdout@" + (lastCommandTs != null ? lastCommandTs : m.ts)
+			}
+			return m.ts
+		}
 
 		function clearPlaceholder() {
 			const empty = container.querySelector(".empty, .loading")
@@ -379,24 +398,25 @@
 			if (!info) return
 			clearPlaceholder()
 			const ts = m.ts
+			const key = keyOf(m)
 			// A row is "running" while its message streams (partial) or, for an API
 			// request, until it reports a cost. The in-place upsert of the final
 			// message clears it automatically. Initial history replay (opts.history)
 			// is a point-in-time snapshot, not a live stream — never animate it, or a
 			// partial row persisted mid-stream would spin forever. A later live event
-			// for the same ts re-activates it and the finalize clears it.
+			// for the same key re-activates it and the finalize clears it.
 			const active = !(opts && opts.history) && (!!m.partial || !!info.active)
-			if (ts != null) {
-				rawByTs[ts] = m
-				if (active) activeByTs[ts] = info.activity || info.label
-				else delete activeByTs[ts]
+			if (key != null) {
+				rawByTs[key] = m
+				if (active) activeByTs[key] = { ts: ts, label: info.activity || info.label }
+				else delete activeByTs[key]
 			}
 			const fresh = rowEl(info, ts, active)
-			const existing = ts != null ? byTs[ts] : null
+			const existing = key != null ? byTs[key] : null
 			if (existing && existing.parentNode) {
 				copyDuration(existing, fresh)
 				existing.parentNode.replaceChild(fresh, existing)
-				if (tail && tail.ts === ts) tail.el = fresh
+				if (tail && tail.key === key) tail.el = fresh
 			} else {
 				// New step: the previous tail's duration is now known (gap to this ts).
 				if (tail && tail.ts != null && ts != null && ts >= tail.ts) {
@@ -404,12 +424,12 @@
 				}
 				container.appendChild(fresh)
 				count++
-				if (ts != null) tail = { ts: ts, el: fresh }
+				if (ts != null) tail = { ts: ts, key: key, el: fresh }
 			}
-			if (ts != null) {
-				byTs[ts] = fresh
-				if (resolvedByTs[ts]) applyResolution(fresh, resolvedByTs[ts])
-				else if (activeAsk && activeAsk.ts === ts) decorateAsk(fresh)
+			if (key != null) {
+				byTs[key] = fresh
+				if (resolvedByTs[key]) applyResolution(fresh, resolvedByTs[key])
+				else if (activeAsk && activeAsk.ts === key) decorateAsk(fresh)
 			}
 		}
 
@@ -482,11 +502,17 @@
 
 		// Label of the newest still-active row, or null when idle.
 		function getActivity() {
-			let best = null
-			Object.keys(activeByTs).forEach(function (ts) {
-				if (best == null || Number(ts) > best) best = Number(ts)
+			let bestTs = null
+			let label = null
+			Object.keys(activeByTs).forEach(function (k) {
+				const a = activeByTs[k]
+				const t = a && a.ts
+				if (t != null && (bestTs == null || t > bestTs)) {
+					bestTs = t
+					label = a.label
+				}
 			})
-			return best == null ? null : activeByTs[best]
+			return label
 		}
 
 		function renderAll(messages) {

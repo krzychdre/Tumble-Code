@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Usage metrics · Tumble Code{% endblock %}
+{% block content %}
+<div class="metrics-head">
+  <h1 class="page-title">Usage metrics</h1>
+  <nav class="period-control" aria-label="Time period">
+    {% for p in periods %}
+    <a class="period-opt{{ ' active' if p.active else '' }}" href="/app/metrics?period={{ p.key }}">{{ p.label }}</a>
+    {% endfor %}
+  </nav>
+</div>
+
+{% if metrics.has_data %}
+{% set t = metrics.totals %}
+<section class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total tokens</div>
+    <div class="stat-value">{{ t.total_tokens_fmt }}</div>
+    <div class="stat-sub">↑ {{ "{:,}".format(t.input) }} in · ↓ {{ "{:,}".format(t.output) }} out</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Cache tokens</div>
+    <div class="stat-value">{{ "{:,}".format(t.cache_read + t.cache_write) }}</div>
+    <div class="stat-sub">⚡ {{ "{:,}".format(t.cache_write) }} write · {{ "{:,}".format(t.cache_read) }} read</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Cost</div>
+    <div class="stat-value">${{ "%.4f"|format(t.cost) }}</div>
+    <div class="stat-sub">{{ t.completions }} API completion{{ '' if t.completions == 1 else 's' }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Session duration</div>
+    <div class="stat-value">{{ metrics.duration }}</div>
+    <div class="stat-sub">{{ metrics.task_count }} task{{ '' if metrics.task_count == 1 else 's' }}</div>
+  </div>
+</section>
+
+<section class="chart-grid">
+  <div class="chart-card chart-wide">
+    <h2 class="chart-title">Tokens &amp; cost per day</h2>
+    <div class="chart-box"><canvas id="chart-daily"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h2 class="chart-title">Tokens by model</h2>
+    <div class="chart-box"><canvas id="chart-models"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <h2 class="chart-title">Tokens by mode</h2>
+    <div class="chart-box"><canvas id="chart-modes"></canvas></div>
+  </div>
+</section>
+
+<section class="breakdown-grid">
+  {% macro breakdown(title, rows) %}
+  <div class="breakdown-card">
+    <h2 class="chart-title">{{ title }}</h2>
+    <table class="breakdown">
+      <thead><tr><th>{{ title.split(' ')[-1]|capitalize }}</th><th>Tokens</th><th>Cost</th><th>Calls</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="bd-name" title="{{ r.name }}">{{ r.name }}</td>
+          <td class="bd-num">{{ r.tokens_fmt }}</td>
+          <td class="bd-num">${{ "%.4f"|format(r.cost) }}</td>
+          <td class="bd-num">{{ r.count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endmacro %}
+  {{ breakdown("By model", metrics.by_model) }}
+  {{ breakdown("By mode", metrics.by_mode) }}
+  {{ breakdown("By provider", metrics.by_provider) }}
+</section>
+{% else %}
+<div class="empty">
+  <p>No usage recorded for this period.</p>
+  <p class="empty-hint">Run a task in VS Code with telemetry enabled, then revisit — or widen the period above.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script id="metrics-data" type="application/json">{{ chart_json | safe }}</script>
+{% if metrics.has_data %}
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script src="/static/metrics.js?v={{ asset_v }}"></script>
+{% endif %}
+{% endblock %}

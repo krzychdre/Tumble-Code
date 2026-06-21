@@ -3356,6 +3356,16 @@ export class ClineProvider
 	}
 
 	/**
+	 * Worktree root sent with backfill uploads so the cloud web view can attribute
+	 * an offline task to its project. Implements TelemetryPropertiesProvider; kept
+	 * out of the per-event telemetry properties to avoid leaking an absolute path
+	 * into every event.
+	 */
+	public getTelemetryWorkspacePath(): string | undefined {
+		return this.cwd || undefined
+	}
+
+	/**
 	 * Delegate parent task and open child task.
 	 *
 	 * - Enforce single-open invariant

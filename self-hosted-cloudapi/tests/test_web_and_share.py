@@ -20,7 +20,10 @@ from src.dependencies import get_current_user
 from src.auth.web_session import get_web_user_optional, WebUser
 from src.models.user import User
 from src.models.task import Task, TaskMessage, TaskShare
+from src.models.event import TelemetryEvent
+from src.realtime.hub import registry
 from src.services.settings_service import get_extension_settings
+from src.services.metrics_service import compute_user_metrics
 
 
 # --- helpers ---------------------------------------------------------------
@@ -232,6 +235,50 @@ async def test_backfill_is_idempotent_on_reshare(client, db_session, session_fac
         assert tasks == 1
 
 
+async def test_backfill_persists_explicit_workspace_path(client, db_session, session_factory):
+    """The explicit client `workspacePath` field is stamped on the task, so an
+    offline share (no live bridge) still records its project/worktree."""
+    await _seed_user(db_session)
+    from src.main import app
+
+    ws = "/home/krzych/Projekty/QUB-IT/Roo-Code-worktree-x"
+    _override_current_user(app)
+    files, data = _backfill_files("task-ws-explicit", _msgs())
+    data["workspacePath"] = ws
+    try:
+        resp = client.post("/api/events/backfill", files=files, data=data)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp.status_code == 200
+    async with session_factory() as s:
+        task = (await s.execute(select(Task).where(Task.id == "task-ws-explicit"))).scalar_one()
+        assert task.workspace_path == ws
+
+
+async def test_backfill_falls_back_to_registry_workspace_path(client, db_session, session_factory):
+    """An older client that doesn't send `workspacePath` still gets the project
+    recorded, sourced from the live registered instance for that user."""
+    await _seed_user(db_session)
+    from src.main import app
+
+    ws = "/home/krzych/Projekty/QUB-IT/Roo-Code"
+    registry.register_extension("ext_fallback", "user_test", {"workspacePath": ws})
+
+    _override_current_user(app)
+    files, data = _backfill_files("task-ws-fallback", _msgs())  # no workspacePath field
+    try:
+        resp = client.post("/api/events/backfill", files=files, data=data)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        registry.detach("ext_fallback")
+
+    assert resp.status_code == 200
+    async with session_factory() as s:
+        task = (await s.execute(select(Task).where(Task.id == "task-ws-fallback"))).scalar_one()
+        assert task.workspace_path == ws
+
+
 # --- Web: /app requires a session ------------------------------------------
 
 
@@ -258,6 +305,98 @@ async def test_app_lists_owned_tasks(client, db_session, session_factory):
 
     assert resp.status_code == 200
     assert "Build me a feature" in resp.text
+
+
+async def test_app_list_and_detail_show_workspace(client, db_session, session_factory):
+    """The list shows the worktree basename (full path on hover); the detail header
+    shows the full path."""
+    await _seed_user(db_session)
+    ws = "/home/krzych/Projekty/QUB-IT/Roo-Code-worktree-alpha"
+    async with session_factory() as s:
+        s.add(Task(id="task-ws-view", user_id="user_test", workspace_path=ws))
+        s.add(TaskMessage(task_id="task-ws-view", message_data=json.dumps(_msgs()[0])))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        list_resp = client.get("/app")
+        detail_resp = client.get("/app/tasks/task-ws-view")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert list_resp.status_code == 200
+    # Basename badge, full path as the hover title.
+    assert "Roo-Code-worktree-alpha" in list_resp.text
+    assert f'title="{ws}"' in list_resp.text
+
+    assert detail_resp.status_code == 200
+    assert ws in detail_resp.text
+
+
+async def test_app_list_without_workspace_renders_cleanly(client, db_session, session_factory):
+    """A task with no workspace_path (legacy / bridge-off share) renders without a
+    project badge and does not error."""
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        s.add(Task(id="task-no-ws", user_id="user_test", workspace_path=None))
+        s.add(TaskMessage(task_id="task-no-ws", message_data=json.dumps(_msgs()[0])))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        resp = client.get("/app")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    assert "badge-workspace" not in resp.text
+
+
+async def test_app_list_shows_cost_and_tokens(client, db_session, session_factory):
+    await _seed_user(db_session)
+    # Two api_req messages 65s apart so duration spans the whole conversation.
+    first = {"ts": 1000, "type": "say", "say": "text", "text": "Build me a feature"}
+    api_req = {
+        "ts": 66000,
+        "type": "say",
+        "say": "api_req_started",
+        "text": json.dumps(
+            {
+                "tokensIn": 96941,
+                "tokensOut": 3365,
+                "cacheWrites": 1200,
+                "cacheReads": 8400,
+                "cost": 0.1234,
+            }
+        ),
+    }
+    async with session_factory() as s:
+        s.add(Task(id="task-metrics", user_id="user_test"))
+        s.add(TaskMessage(task_id="task-metrics", message_data=json.dumps(first)))
+        s.add(TaskMessage(task_id="task-metrics", message_data=json.dumps(api_req)))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        resp = client.get("/app")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    # 96941 + 3365 = 100306 → "100.3k tokens"; cost rendered to 4 dp.
+    assert "100.3k tokens" in resp.text
+    assert "$0.1234" in resp.text
+    # Hover tooltip breakdown: in/out, cache, session duration, cost.
+    assert "↑ In: 96,941" in resp.text
+    assert "↓ Out: 3,365" in resp.text
+    assert "1,200 write / 8,400 read" in resp.text
+    assert "⏱ Session: 1m 5s" in resp.text
 
 
 # --- Web: task detail enforces ownership -----------------------------------
@@ -571,3 +710,167 @@ async def test_shared_nonowner_stays_readonly(
     body = resp.text
     assert 'id="live-controls"' not in body
     assert "/static/live.js" not in body
+
+
+# --- Metrics page ----------------------------------------------------------
+
+
+def _llm_event(
+    user_id="user_test",
+    *,
+    model="modelX",
+    mode="code",
+    provider="openrouter",
+    task_id="task-a",
+    tin=1000,
+    tout=200,
+    cread=0,
+    cwrite=0,
+    cost=0.01,
+    created_at=None,
+):
+    """Build an ``LLM Completion`` telemetry row mirroring the extension payload."""
+    from datetime import datetime, timezone
+
+    props = {
+        "mode": mode,
+        "apiProvider": provider,
+        "modelId": model,
+        "taskId": task_id,
+        "inputTokens": tin,
+        "outputTokens": tout,
+        "cacheReadTokens": cread,
+        "cacheWriteTokens": cwrite,
+        "cost": cost,
+    }
+    return TelemetryEvent(
+        user_id=user_id,
+        organization_id=None,
+        event_type="LLM Completion",
+        properties=json.dumps(props),
+        created_at=created_at or datetime.now(timezone.utc),
+    )
+
+
+async def test_metrics_redirects_to_login_without_session(client):
+    resp = client.get("/app/metrics", follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/app/login"
+
+
+async def test_compute_user_metrics_aggregates_dimensions(db_session):
+    """Totals, breakdowns and per-task duration aggregate from LLM Completion events."""
+    from datetime import datetime, timezone, timedelta
+
+    await _seed_user(db_session)
+    base = datetime(2026, 6, 21, 12, 0, tzinfo=timezone.utc)
+    db_session.add_all(
+        [
+            _llm_event(model="gpt-a", mode="code", task_id="t1", tin=1000, tout=200,
+                       cwrite=50, cread=10, cost=0.02, created_at=base),
+            _llm_event(model="gpt-a", mode="code", task_id="t1", tin=500, tout=100,
+                       cost=0.01, created_at=base + timedelta(minutes=5)),
+            _llm_event(model="llama-b", mode="architect", provider="openai",
+                       task_id="t2", tin=300, tout=50, cost=0.0, created_at=base),
+        ]
+    )
+    await db_session.commit()
+
+    m = await compute_user_metrics(db_session, "user_test", period="all")
+
+    assert m["totals"]["input"] == 1800
+    assert m["totals"]["output"] == 350
+    assert m["totals"]["cache_write"] == 50
+    assert m["totals"]["cache_read"] == 10
+    assert m["totals"]["total_tokens"] == 2150
+    assert abs(m["totals"]["cost"] - 0.03) < 1e-9
+    assert m["totals"]["completions"] == 3
+
+    # Two tasks; t1 spans 5 minutes, t2 is a single event (0 span).
+    assert m["task_count"] == 2
+    assert m["duration_ms"] == 5 * 60 * 1000
+
+    # Models sorted desc by tokens: gpt-a (1800) before llama-b (350).
+    names = [r["name"] for r in m["by_model"]]
+    assert names == ["gpt-a", "llama-b"]
+    assert m["by_model"][0]["count"] == 2
+    modes = {r["name"] for r in m["by_mode"]}
+    assert modes == {"code", "architect"}
+    providers = {r["name"] for r in m["by_provider"]}
+    assert providers == {"openrouter", "openai"}
+
+
+async def test_compute_user_metrics_period_filters_old_events(db_session):
+    from datetime import datetime, timezone, timedelta
+
+    await _seed_user(db_session)
+    now = datetime.now(timezone.utc)
+    db_session.add_all(
+        [
+            _llm_event(task_id="recent", tin=100, tout=10, created_at=now),
+            _llm_event(task_id="old", tin=9999, tout=9999,
+                       created_at=now - timedelta(days=40)),
+        ]
+    )
+    await db_session.commit()
+
+    m = await compute_user_metrics(db_session, "user_test", period="7d")
+    assert m["totals"]["completions"] == 1
+    assert m["totals"]["input"] == 100
+
+
+async def test_compute_user_metrics_scopes_to_user(db_session):
+    await _seed_user(db_session)
+    await _seed_user(db_session, user_id="other", email="o@example.com")
+    db_session.add_all(
+        [
+            _llm_event(user_id="user_test", tin=100, tout=10),
+            _llm_event(user_id="other", tin=5000, tout=5000),
+        ]
+    )
+    await db_session.commit()
+
+    m = await compute_user_metrics(db_session, "user_test", period="all")
+    assert m["totals"]["input"] == 100
+    assert m["totals"]["completions"] == 1
+
+
+async def test_metrics_page_renders_dimensions(client, db_session, session_factory):
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        s.add(_llm_event(model="nvidia/nemotron", mode="orchestrator",
+                         provider="openrouter", tin=96941, tout=3365, cost=0.1234))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        resp = client.get("/app/metrics?period=all")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    body = resp.text
+    assert "nvidia/nemotron" in body
+    assert "orchestrator" in body
+    assert "$0.1234" in body
+    # Chart payload + library are wired when there is data.
+    assert "/static/vendor/chart.umd.min.js" in body
+    assert 'id="metrics-data"' in body
+
+
+async def test_metrics_page_empty_state(client, db_session):
+    await _seed_user(db_session)
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        resp = client.get("/app/metrics")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    assert "No usage recorded" in resp.text
+    # No chart library loaded when there is nothing to plot.
+    assert "/static/vendor/chart.umd.min.js" not in resp.text

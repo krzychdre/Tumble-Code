@@ -26,6 +26,11 @@ from src.database import get_db
 from src.auth.web_session import WebUser, get_web_user_optional
 from src.models.task import Task, TaskMessage, TaskShare
 from src.services.share_service import delete_shared_task
+from src.services.metrics_service import (
+    DEFAULT_PERIOD,
+    PERIOD_LABELS,
+    compute_user_metrics,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +62,22 @@ router = APIRouter(tags=["web"])
 _TITLE_MAX = 100
 
 
+def _workspace_label(path: str | None) -> str | None:
+    """Compact project/worktree name for a badge: the last path segment.
+
+    The full absolute path is kept for the tooltip/header so sibling worktrees
+    that share a basename (e.g. two checkouts both named ``Roo-Code``) can still
+    be told apart on hover. Handles both POSIX and Windows separators since the
+    path is whatever the client's OS reported.
+    """
+    if not path:
+        return None
+    trimmed = path.replace("\\", "/").rstrip("/")
+    if not trimmed:
+        return None
+    return trimmed.rsplit("/", 1)[-1] or trimmed
+
+
 def _derive_title(messages: list[dict]) -> str:
     """Pick a human-readable title from the conversation (first text-bearing msg)."""
     for msg in messages:
@@ -66,6 +87,101 @@ def _derive_title(messages: list[dict]) -> str:
             if first_line:
                 return first_line[:_TITLE_MAX] + ("…" if len(first_line) > _TITLE_MAX else "")
     return "Untitled task"
+
+
+def _num(value) -> float:
+    """Coerce a JSON number to float, treating anything else as 0."""
+    return value if isinstance(value, (int, float)) else 0
+
+
+def _compute_metrics(messages: list[dict]) -> dict:
+    """Sum token/cost totals from a task's messages.
+
+    Server-side port of ``getMetrics`` in static/render.js (the aggregation the
+    VS Code view and live header use): over every ``api_req_started`` say-message
+    add ``tokensIn``/``tokensOut``/``cost`` (plus ``cacheWrites``/``cacheReads`` for
+    the hover breakdown) parsed from its JSON ``text``, plus the cost of any
+    ``condense_context`` message. ``duration_ms`` spans the first→last message ts.
+    ``contextTokens`` is deliberately omitted — it's a live header gauge, not a total.
+    """
+    tokens_in = 0
+    tokens_out = 0
+    cache_writes = 0
+    cache_reads = 0
+    cost = 0.0
+    first_ts: Optional[int] = None
+    last_ts: Optional[int] = None
+    for msg in messages:
+        ts = msg.get("ts")
+        if isinstance(ts, (int, float)):
+            first_ts = ts if first_ts is None else min(first_ts, ts)
+            last_ts = ts if last_ts is None else max(last_ts, ts)
+        if msg.get("type") != "say":
+            continue
+        say = msg.get("say")
+        if say == "api_req_started" and msg.get("text"):
+            try:
+                obj = json.loads(msg["text"])
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(obj, dict):
+                tokens_in += _num(obj.get("tokensIn"))
+                tokens_out += _num(obj.get("tokensOut"))
+                cache_writes += _num(obj.get("cacheWrites"))
+                cache_reads += _num(obj.get("cacheReads"))
+                cost += _num(obj.get("cost"))
+        elif say == "condense_context":
+            condense = msg.get("contextCondense")
+            if isinstance(condense, dict):
+                cost += _num(condense.get("cost"))
+    return {
+        "tokens_in": int(tokens_in),
+        "tokens_out": int(tokens_out),
+        "cache_writes": int(cache_writes),
+        "cache_reads": int(cache_reads),
+        "cost": cost,
+        "duration_ms": (last_ts - first_ts) if (first_ts is not None and last_ts is not None) else 0,
+    }
+
+
+def _fmt_tokens(n: float) -> str:
+    """Compact token count: 1_000_000 → "1M", 96_941 → "96.9k".
+
+    Mirrors ``fmt()`` in static/live.js so the list and detail header read the same.
+    """
+    num = float(n)
+    for value, suffix in ((1e9, "B"), (1e6, "M"), (1e3, "k")):
+        if abs(num) >= value:
+            return f"{num / value:.1f}".rstrip("0").rstrip(".") + suffix
+    return str(int(num))
+
+
+def _fmt_duration(ms: float) -> str:
+    """Human session span: 4500 → "4s", 125000 → "2m 5s", 3_700_000 → "1h 1m"."""
+    total = int(ms // 1000)
+    if total <= 0:
+        return "0s"
+    hours, rem = divmod(total, 3600)
+    minutes, seconds = divmod(rem, 60)
+    if hours:
+        return f"{hours}h {minutes}m"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
+
+
+def _metrics_tooltip(metrics: dict) -> str:
+    """Multi-line hover breakdown (native title tooltips honour the newlines)."""
+    lines = [
+        f"↑ In: {metrics['tokens_in']:,}",
+        f"↓ Out: {metrics['tokens_out']:,}",
+    ]
+    if metrics["cache_writes"] or metrics["cache_reads"]:
+        lines.append(f"⚡ Cache: {metrics['cache_writes']:,} write / {metrics['cache_reads']:,} read")
+    if metrics["duration_ms"]:
+        lines.append(f"⏱ Session: {_fmt_duration(metrics['duration_ms'])}")
+    lines.append(f"$ Cost: ${metrics['cost']:.4f}")
+    return "\n".join(lines)
 
 
 def _parse_messages(rows: list[TaskMessage]) -> list[dict]:
@@ -115,19 +231,60 @@ async def task_list(
     items = []
     for task, n in result.all():
         messages = await _load_task_messages(db, task.id)
+        metrics = _compute_metrics(messages)
+        total_tokens = metrics["tokens_in"] + metrics["tokens_out"]
+        has_metrics = total_tokens > 0 or metrics["cost"] > 0
         items.append(
             {
                 "id": task.id,
                 "title": _derive_title(messages),
                 "message_count": n or 0,
                 "updated_at": task.updated_at,
+                "tokens": _fmt_tokens(total_tokens) if total_tokens else None,
+                "cost": f"${metrics['cost']:.4f}" if metrics["cost"] > 0 else None,
+                "metrics_title": _metrics_tooltip(metrics) if has_metrics else None,
+                "workspace": task.workspace_path,
+                "workspace_label": _workspace_label(task.workspace_path),
             }
         )
 
     return templates.TemplateResponse(
         request,
         "tasks_list.html",
-        {"user": user, "tasks": items},
+        {"user": user, "tasks": items, "nav_active": "tasks"},
+    )
+
+
+@router.get("/app/metrics", response_class=HTMLResponse)
+async def metrics_page(
+    request: Request,
+    period: str = DEFAULT_PERIOD,
+    user: Optional[WebUser] = Depends(get_web_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """Usage-metrics dashboard for the logged-in user.
+
+    Aggregates LLM Completion telemetry (tokens / cost / duration / models /
+    modes) over the selected period. See services/metrics_service.py.
+    """
+    if user is None:
+        return RedirectResponse(url="/app/login", status_code=303)
+
+    metrics = await compute_user_metrics(db, user["user_id"], period)
+    periods = [
+        {"key": key, "label": label, "active": key == metrics["period"]}
+        for key, label in PERIOD_LABELS.items()
+    ]
+    return templates.TemplateResponse(
+        request,
+        "metrics.html",
+        {
+            "user": user,
+            "nav_active": "metrics",
+            "metrics": metrics,
+            "periods": periods,
+            "chart_json": json.dumps(metrics["chart"]),
+        },
     )
 
 
@@ -163,6 +320,8 @@ async def task_detail(
             "user": user,
             "task": task,
             "title": _derive_title(messages),
+            "workspace": task.workspace_path,
+            "workspace_label": _workspace_label(task.workspace_path),
             "messages_json": json.dumps(messages),
             "share_url": None,
             "live": live,

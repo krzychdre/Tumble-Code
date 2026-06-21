@@ -9,6 +9,12 @@
 <body>
   <header class="topbar">
     <a class="brand" href="/app">Tumble&nbsp;Code <span class="brand-sub">Cloud</span></a>
+    {% if user %}
+      <nav class="mainnav">
+        <a href="/app" class="{{ 'active' if nav_active == 'tasks' else '' }}">Tasks</a>
+        <a href="/app/metrics" class="{{ 'active' if nav_active == 'metrics' else '' }}">Metrics</a>
+      </nav>
+    {% endif %}
     <div class="spacer"></div>
     {% if user %}
       <span class="user">{{ user.name }}</span>
