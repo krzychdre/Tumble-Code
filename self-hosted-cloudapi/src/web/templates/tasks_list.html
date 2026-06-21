@@ -9,7 +9,10 @@
     <a class="task-link" href="/app/tasks/{{ t.id }}">
       <span class="task-title">{{ t.title }}</span>
       <span class="task-meta">
+        {% if t.workspace_label %}<span class="badge badge-workspace" title="{{ t.workspace }}">{{ t.workspace_label }}</span>{% endif %}
         <span class="badge">{{ t.message_count }} message{{ '' if t.message_count == 1 else 's' }}</span>
+        {% if t.tokens %}<span class="badge badge-muted" title="{{ t.metrics_title }}">{{ t.tokens }} tokens</span>{% endif %}
+        {% if t.cost %}<span class="badge badge-muted" title="{{ t.metrics_title }}">{{ t.cost }}</span>{% endif %}
         {% if t.updated_at %}<span class="task-date" data-ts="{{ t.updated_at.isoformat() }}">{{ t.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>{% endif %}
       </span>
     </a>

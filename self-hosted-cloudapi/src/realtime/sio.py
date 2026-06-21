@@ -185,9 +185,15 @@ async def on_task_event(sid, data):
         registry.update_instance_state(user_id, data)
 
     if evt_type == EVT_MESSAGE and isinstance(data.get("message"), dict):
+        # The registered instance carries the worktree root the bridge is
+        # attached to; stamp it on the task so the web view can show the project.
+        instance = registry.instance(user_id) or {}
+        workspace_path = instance.get("workspacePath")
         try:
             async with async_session_factory() as db:
-                await upsert_task_message(db, task_id, user_id, data["message"])
+                await upsert_task_message(
+                    db, task_id, user_id, data["message"], workspace_path=workspace_path
+                )
                 await db.commit()
         except Exception as exc:  # persistence must never break the live relay
             logger.warning("[bridge] failed to persist task message: %s", exc)

@@ -151,9 +151,34 @@ a:hover {
 	border-radius: 999px;
 	border: 1px solid var(--border);
 }
+/* Secondary metric badges (tokens, cost): quieter than the message-count badge. */
+.badge-muted {
+	background: transparent;
+	border-color: transparent;
+	padding-left: 0.25rem;
+	padding-right: 0.25rem;
+}
+/* Project/worktree badge: tinted like an accent chip, name only (full path on hover). */
+.badge-workspace {
+	color: var(--accent);
+	border-color: var(--border);
+	max-width: 16rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 .task-date {
 	color: var(--muted);
 	font-size: 0.78rem;
+}
+
+/* Worktree path under the task-detail title; full absolute path, on hover too. */
+.detail-workspace {
+	color: var(--muted);
+	font-family: var(--mono);
+	font-size: 0.78rem;
+	margin-top: 0.25rem;
+	overflow-wrap: anywhere;
 }
 
 .empty {
@@ -611,4 +636,168 @@ details[open] summary {
 .btn:disabled {
 	opacity: 0.45;
 	cursor: not-allowed;
+}
+
+/* --- top nav (Tasks · Metrics) ------------------------------------------- */
+.mainnav {
+	display: flex;
+	gap: 0.25rem;
+}
+.mainnav a {
+	color: var(--muted);
+	font-size: 0.9rem;
+	font-weight: 600;
+	padding: 0.3rem 0.7rem;
+	border-radius: 6px;
+}
+.mainnav a:hover {
+	background: var(--panel-2);
+	text-decoration: none;
+}
+.mainnav a.active {
+	color: var(--text);
+	background: var(--panel-2);
+}
+
+/* --- metrics page -------------------------------------------------------- */
+.metrics-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin-bottom: 1.25rem;
+}
+.period-control {
+	display: inline-flex;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	overflow: hidden;
+}
+.period-opt {
+	color: var(--muted);
+	font-size: 0.82rem;
+	font-weight: 600;
+	padding: 0.35rem 0.7rem;
+	border-right: 1px solid var(--border);
+}
+.period-opt:last-child {
+	border-right: none;
+}
+.period-opt:hover {
+	background: var(--panel-2);
+	text-decoration: none;
+}
+.period-opt.active {
+	background: var(--accent);
+	color: #10211d;
+}
+
+.stat-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 0.85rem;
+	margin-bottom: 1.5rem;
+}
+.stat-card {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 0.9rem 1rem;
+}
+.stat-label {
+	color: var(--muted);
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+.stat-value {
+	font-size: 1.7rem;
+	font-weight: 700;
+	margin: 0.2rem 0;
+	font-family: var(--mono);
+}
+.stat-sub {
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+.chart-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.85rem;
+	margin-bottom: 1.5rem;
+}
+.chart-card {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 0.9rem 1rem 1rem;
+}
+.chart-card.chart-wide {
+	grid-column: 1 / -1;
+}
+.chart-title {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--muted);
+	margin: 0 0 0.6rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+.chart-box {
+	position: relative;
+	height: 240px;
+}
+
+.breakdown-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 0.85rem;
+}
+.breakdown-card {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 0.9rem 1rem 1rem;
+}
+table.breakdown {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.85rem;
+}
+table.breakdown th {
+	text-align: left;
+	color: var(--muted);
+	font-weight: 600;
+	font-size: 0.72rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+	padding: 0.25rem 0.4rem;
+	border-bottom: 1px solid var(--border);
+}
+table.breakdown td {
+	padding: 0.3rem 0.4rem;
+	border-bottom: 1px solid var(--border);
+}
+table.breakdown tr:last-child td {
+	border-bottom: none;
+}
+.bd-name {
+	font-family: var(--mono);
+	max-width: 160px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.bd-num {
+	text-align: right;
+	font-family: var(--mono);
+	color: var(--muted);
+	white-space: nowrap;
+}
+@media (max-width: 640px) {
+	.chart-grid {
+		grid-template-columns: 1fr;
+	}
 }

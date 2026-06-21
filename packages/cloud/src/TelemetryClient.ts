@@ -222,6 +222,14 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			formData.append("taskId", taskId)
 			formData.append("properties", JSON.stringify(mergedProperties))
 
+			// Worktree root, sent explicitly so the cloud web view can attribute
+			// this (possibly offline) task to its project. Kept out of `properties`
+			// to avoid embedding an absolute path in the per-event payload.
+			const workspacePath = this.providerRef?.deref()?.getTelemetryWorkspacePath?.()
+			if (workspacePath) {
+				formData.append("workspacePath", workspacePath)
+			}
+
 			formData.append(
 				"file",
 				new File([JSON.stringify(messages)], "task.json", {

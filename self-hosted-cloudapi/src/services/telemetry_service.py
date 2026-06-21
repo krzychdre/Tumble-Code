@@ -6,6 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.event import TelemetryEvent
 
 
+def _stamp_workspace_path(task, workspace_path) -> None:
+    """Record the task's project/worktree root, once.
+
+    Set only when we have a value and the task does not already carry one. A task
+    never moves workspaces, so a stored path is authoritative and is never
+    overwritten; a NULL on a pre-existing (legacy) row is filled in the first time
+    a value becomes known. Empty/whitespace paths are ignored.
+    """
+    if not (workspace_path and workspace_path.strip()):
+        return
+    if getattr(task, "workspace_path", None):
+        return
+    task.workspace_path = workspace_path
+
+
 async def record_event(
     db: AsyncSession,
     user_id: str,
@@ -29,6 +44,7 @@ async def backfill_messages(
     task_id: str,
     user_id: str,
     messages: list,
+    workspace_path: str | None = None,
 ) -> None:
     """Backfill task messages.
 
@@ -37,6 +53,10 @@ async def backfill_messages(
     this the insert raises an IntegrityError. Idempotent: re-uploading a task
     (e.g. re-sharing after more turns) replaces the previously stored messages
     rather than appending duplicates.
+
+    `workspace_path` is the project/worktree root (explicit client field, with a
+    registry fallback resolved by the caller); stamped on the Task so offline
+    tasks show their project in the web view.
     """
     from sqlalchemy import select, delete
     from src.models.task import Task, TaskMessage
@@ -47,7 +67,9 @@ async def backfill_messages(
     if task is None:
         task = Task(id=task_id, user_id=user_id)
         db.add(task)
+        # Flush the new parent before inserting messages (FK on task_id).
         await db.flush()
+    _stamp_workspace_path(task, workspace_path)
 
     # Replace any existing messages for this task (idempotent re-share).
     await db.execute(delete(TaskMessage).where(TaskMessage.task_id == task_id))
@@ -68,6 +90,7 @@ async def upsert_task_message(
     task_id: str,
     user_id: str,
     message: dict,
+    workspace_path: str | None = None,
 ) -> None:
     """Insert or update a single live-streamed task message.
 
@@ -120,6 +143,9 @@ async def upsert_task_message(
     elif task.user_id != user_id:
         # Never let a bridge event write into another user's task.
         return
+    # Stamp the project/worktree root on first sight (set on create, and fill a
+    # legacy NULL the first time the bridge reports a path). Never overwrites.
+    _stamp_workspace_path(task, workspace_path)
 
     dialect = db.bind.dialect.name
     if ts is not None and dialect in ("postgresql", "sqlite"):

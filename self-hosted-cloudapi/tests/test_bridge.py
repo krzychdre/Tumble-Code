@@ -305,6 +305,70 @@ async def test_task_event_message_relays_and_upserts(
         assert "hello from the task" in rows[0].message_data
 
 
+async def test_task_event_stamps_workspace_path_from_registered_instance(
+    patch_session_factory, db_session, session_factory, stub_emit
+):
+    """The live bridge stamps the registered instance's workspacePath on the task
+    it creates, so the web view can show which project/worktree it ran in."""
+    await _seed_user(db_session, "owner")
+
+    ws = "/home/krzych/Projekty/QUB-IT/Roo-Code"
+    registry.attach("ext_owner", "extension", "owner")
+    registry.register_extension("ext_owner", "owner", {"workspacePath": ws})
+
+    event = {
+        "taskId": "task-ws",
+        "type": EVT_MESSAGE,
+        "message": {"ts": 1, "type": "say", "say": "text", "text": "hi"},
+    }
+    await sio_module.on_task_event("ext_owner", event)
+
+    async with session_factory() as s:
+        task = (await s.execute(select(Task).where(Task.id == "task-ws"))).scalar_one()
+        assert task.workspace_path == ws
+
+
+async def test_task_event_backfills_workspace_path_on_legacy_null_task(
+    patch_session_factory, db_session, session_factory, stub_emit
+):
+    """A task that predates workspace tracking (workspace_path NULL) gets it filled
+    the first time the bridge reports a path — set once, never overwritten."""
+    await _seed_user(db_session, "owner")
+    db_session.add(Task(id="task-legacy", user_id="owner", workspace_path=None))
+    await db_session.commit()
+
+    ws = "/home/krzych/Projekty/QUB-IT/Roo-Code"
+    registry.attach("ext_owner", "extension", "owner")
+    registry.register_extension("ext_owner", "owner", {"workspacePath": ws})
+
+    await sio_module.on_task_event(
+        "ext_owner",
+        {
+            "taskId": "task-legacy",
+            "type": EVT_MESSAGE,
+            "message": {"ts": 1, "type": "say", "say": "text", "text": "hi"},
+        },
+    )
+
+    async with session_factory() as s:
+        task = (await s.execute(select(Task).where(Task.id == "task-legacy"))).scalar_one()
+        assert task.workspace_path == ws
+
+    # A later event from a different worktree must NOT move the task.
+    registry.register_extension("ext_owner", "owner", {"workspacePath": "/some/other/root"})
+    await sio_module.on_task_event(
+        "ext_owner",
+        {
+            "taskId": "task-legacy",
+            "type": EVT_MESSAGE,
+            "message": {"ts": 2, "type": "say", "say": "text", "text": "more"},
+        },
+    )
+    async with session_factory() as s:
+        task = (await s.execute(select(Task).where(Task.id == "task-legacy"))).scalar_one()
+        assert task.workspace_path == ws
+
+
 async def test_task_event_message_upsert_is_idempotent_by_ts(
     patch_session_factory, db_session, session_factory, stub_emit
 ):

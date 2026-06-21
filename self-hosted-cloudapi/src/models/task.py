@@ -15,6 +15,11 @@ class Task(Base, TimestampMixin):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     organization_id = Column(String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True)
+    # Absolute path of the VS Code workspace folder (worktree root) the task was
+    # attached to, captured from the bridge's extension:register `workspacePath`
+    # or the share/backfill payload. Nullable: legacy rows and tasks created
+    # while the bridge was offline (and the client sent nothing) have no value.
+    workspace_path = Column(String, nullable=True)
 
     messages = relationship("TaskMessage", back_populates="task", cascade="all, delete-orphan")
     shares = relationship("TaskShare", back_populates="task", cascade="all, delete-orphan")

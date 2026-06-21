@@ -253,6 +253,13 @@ export type TelemetryEventSubscription =
 
 export interface TelemetryPropertiesProvider {
 	getTelemetryProperties(): Promise<TelemetryProperties>
+	/**
+	 * Absolute path of the active workspace folder (worktree root). Sent
+	 * explicitly with backfill uploads so the cloud web view can attribute an
+	 * offline task to its project/worktree. Optional: not every provider exposes
+	 * a workspace.
+	 */
+	getTelemetryWorkspacePath?(): string | undefined
 }
 
 /**

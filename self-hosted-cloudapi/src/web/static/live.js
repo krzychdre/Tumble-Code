@@ -49,9 +49,25 @@
 	})
 
 	// --- helpers -------------------------------------------------------------
+	// Compact, human-readable token counts: 1 000 000 → "1M", 96 941 → "96.9k".
+	// Used for tokens in/out and context; cost has its own formatter.
 	function fmt(n) {
 		if (n == null) return "—"
-		return Number(n).toLocaleString()
+		var num = Number(n)
+		if (!isFinite(num)) return "—"
+		var abs = Math.abs(num)
+		var units = [
+			{ v: 1e9, s: "B" },
+			{ v: 1e6, s: "M" },
+			{ v: 1e3, s: "k" },
+		]
+		for (var i = 0; i < units.length; i++) {
+			if (abs >= units[i].v) {
+				// One decimal, but drop a trailing ".0" so 1 000 000 → "1M".
+				return (num / units[i].v).toFixed(1).replace(/\.0$/, "") + units[i].s
+			}
+		}
+		return String(num)
 	}
 
 	function setStatus(text, cls) {

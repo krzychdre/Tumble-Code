@@ -493,6 +493,36 @@ describe("TelemetryClient", () => {
 			expect(fileContent).toBe(JSON.stringify(messages))
 		})
 
+		it("should append the workspacePath field when the provider exposes one", async () => {
+			const client = new TelemetryClient(mockAuthService, mockSettingsService)
+
+			const mockProvider: TelemetryPropertiesProvider = {
+				getTelemetryProperties: vi.fn().mockResolvedValue({}),
+				getTelemetryWorkspacePath: vi.fn().mockReturnValue("/home/me/Projekty/Roo-Code-worktree-x"),
+			}
+			client.setProvider(mockProvider)
+
+			await client.backfillMessages([{ ts: 1, type: "say", say: "text", text: "hi" }], "task-ws")
+
+			const formData = mockFetch.mock.calls[0]?.[1]?.body as FormData
+			expect(formData.get("workspacePath")).toBe("/home/me/Projekty/Roo-Code-worktree-x")
+		})
+
+		it("should omit workspacePath when the provider has none", async () => {
+			const client = new TelemetryClient(mockAuthService, mockSettingsService)
+
+			const mockProvider: TelemetryPropertiesProvider = {
+				getTelemetryProperties: vi.fn().mockResolvedValue({}),
+				getTelemetryWorkspacePath: vi.fn().mockReturnValue(undefined),
+			}
+			client.setProvider(mockProvider)
+
+			await client.backfillMessages([{ ts: 1, type: "say", say: "text", text: "hi" }], "task-no-ws")
+
+			const formData = mockFetch.mock.calls[0]?.[1]?.body as FormData
+			expect(formData.has("workspacePath")).toBe(false)
+		})
+
 		it("should handle provider errors gracefully", async () => {
 			const client = new TelemetryClient(mockAuthService, mockSettingsService)
 
