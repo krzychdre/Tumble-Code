@@ -4,37 +4,92 @@ A self-hosted replacement for the Roo Code Cloud API, compatible with the existi
 
 ## Quick Start
 
-### Prerequisites
+### Running the full stack with Docker Compose (recommended)
 
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
-- PostgreSQL 16+
-- Authentik (for OAuth authentication)
-- Docker & Docker Compose (optional, for containerized deployment)
-
-### Environment Setup
-
-1. Copy `.env.example` to `.env` and fill in the required values:
+`docker compose up` brings up **everything**: this API and its Postgres, plus a
+bundled **Authentik** (server, worker, Postgres, Redis). The Authentik OAuth2
+provider and application are **auto-provisioned from a blueprint**
+([`authentik/blueprints/tumble-code.yaml`](authentik/blueprints/tumble-code.yaml)),
+so there is no manual Authentik OAuth setup.
 
 ```bash
 cp .env.example .env
+
+# Fill in the REQUIRED secrets in .env:
+#   SECRET_KEY, JWT_SECRET            — openssl rand -hex 32
+#   AUTHENTIK_CLIENT_SECRET           — openssl rand -hex 32 (shared with the blueprint)
+#   AUTH_PG_PASS                      — openssl rand -hex 32 (Authentik's DB)
+#   AUTHENTIK_SECRET_KEY              — openssl rand -base64 60
+#   AUTHENTIK_BOOTSTRAP_PASSWORD      — the akadmin password you'll log in with
+
+docker compose up -d --build
 ```
 
-2. Key environment variables:
-    - `DATABASE_URL`: PostgreSQL connection string
-    - `AUTHENTIK_BASE_URL`: Your Authentik instance URL
-    - `AUTHENTIK_CLIENT_ID`: OAuth2 client ID from Authentik
-    - `API_BASE_URL`: Public URL of this API server
+Services and ports:
 
-### Running with Docker Compose
+| Service       | URL / port            | Purpose                              |
+| ------------- | --------------------- | ------------------------------------ |
+| `api`         | http://localhost:8085 | The cloud API the extension talks to |
+| `auth_server` | http://localhost:9000 | Authentik (login UI + OAuth)         |
+| `postgres`    | in-network only       | API database                         |
+| `auth_db`     | localhost:5544        | Authentik database                   |
+
+Log in to Authentik at http://localhost:9000 with `akadmin` /
+`AUTHENTIK_BOOTSTRAP_PASSWORD`. The same account is what you sign in with during
+the extension's OAuth flow.
+
+> **Front-channel vs back-channel URLs.** `AUTHENTIK_BASE_URL`
+> (`http://localhost:9000`) is what the _browser_ is redirected to;
+> `AUTHENTIK_INTERNAL_URL` (`http://auth_server:9000`) is what the _api container_
+> uses for server-to-server calls (token/userinfo/jwks). Both are preset in
+> `docker-compose.yml` — only change them if you front Authentik with a real
+> domain/reverse proxy (then point `AUTHENTIK_BASE_URL` at the public domain and
+> leave `AUTHENTIK_INTERNAL_URL` as the in-network service URL).
+>
+> **Why the api overrides the `Host` header on back-channel calls.** Authentik
+> resolves a request's _brand_ — and therefore serves its `/application/o/*`
+> routes — from the HTTP `Host` header, and rejects hosts containing an
+> underscore (`auth_server` is not a valid RFC-1123 hostname) with a **404**.
+> So the api connects to `AUTHENTIK_INTERNAL_URL` for networking but sends the
+> _front-channel_ host (the host of `AUTHENTIK_BASE_URL`, e.g. `localhost:9000`
+> or `auth.tumblecode.dev`) as `Host`. This is automatic — you don't configure
+> it — and it is why the underscore in the default `auth_server` service name is
+> harmless. If back-channel token exchange ever 404s, this is the mechanism to
+> look at (see [`config/auth.py`](config/auth.py) → `get_back_channel_host_header`).
+
+#### Production example (public address)
+
+For a public deployment where the API is served at `https://app.tumblecode.dev`
+and Authentik at `https://auth.tumblecode.dev`, set in `.env`:
 
 ```bash
-docker-compose up -d
+API_BASE_URL=https://app.tumblecode.dev
+AUTHENTIK_BASE_URL=https://auth.tumblecode.dev        # front-channel; also sent as Host on back-channel
+AUTHENTIK_INTERNAL_URL=http://auth_server:9000        # back-channel (in-cluster service name)
+AUTHENTIK_REDIRECT_URI=https://app.tumblecode.dev/auth/clerk/callback
+CORS_ORIGINS=https://app.tumblecode.dev
+AUTHENTIK_CLIENT_SECRET=<openssl rand -hex 32>        # REQUIRED: the provider is confidential
 ```
 
-### Running Locally
+The api sends `Host: auth.tumblecode.dev` (taken from `AUTHENTIK_BASE_URL`) on
+every back-channel call, so Authentik resolves the brand correctly even though
+the connection targets the internal service name. The provider's `client_type`
+is `confidential`, so a matching `AUTHENTIK_CLIENT_SECRET` is mandatory.
+
+> **Blueprint troubleshooting.** The provider/app are created by the worker on
+> first boot. Check it applied with `docker compose logs auth_worker | grep -i
+blueprint`, or in the Authentik UI under **System → Blueprints**. The blueprint
+> schema is Authentik-version-sensitive; if it errors, adjust
+> `authentik/blueprints/tumble-code.yaml` for your `AUTHENTIK_TAG`.
+
+### Running the API locally (without Docker)
+
+Requires Python 3.12+, [uv](https://docs.astral.sh/uv/getting-started/installation/),
+a PostgreSQL 16+ you control, and an Authentik instance.
 
 ```bash
+cp .env.example .env          # set DATABASE_URL + the AUTHENTIK_* values
+
 # Install dependencies
 uv sync
 
@@ -42,8 +97,14 @@ uv sync
 uv run alembic upgrade head
 
 # Start the server
-uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8085
 ```
+
+For a non-compose deployment, leave `AUTHENTIK_INTERNAL_URL` unset — it falls
+back to `AUTHENTIK_BASE_URL`.
+
+A [`Makefile`](Makefile) wraps these commands (`make help`, `make dev`,
+`make docker-up`, …).
 
 ## Configuring the Roo Code Extension
 
@@ -95,6 +156,18 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to con
 - Check the browser's developer console for errors in the callback page
 - Verify the Authentik redirect URI is set to `{API_BASE_URL}/auth/clerk/callback`
 - Check the API server logs for errors during the token exchange or user creation
+
+**`502 Bad Gateway` on `/auth/clerk/callback` right after Authentik login:**
+
+- This is the API's own error page, returned when the **back-channel token
+  exchange** to Authentik fails — not a reverse-proxy error.
+- Check the API logs: `docker compose logs api | grep -i "token exchange"`.
+  A `404 Not Found` for `…/application/o/token/` means Authentik rejected the
+  request's `Host`. The api derives that `Host` from `AUTHENTIK_BASE_URL`, so
+  ensure it is a valid hostname (no underscores) and points at the host your
+  Authentik brand serves. See _Why the api overrides the `Host` header_ above.
+- A `400 invalid_client` instead means `AUTHENTIK_CLIENT_SECRET` is missing or
+  does not match the value the blueprint provisioned (the provider is confidential).
 
 ## Authentik Setup
 

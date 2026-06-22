@@ -12,6 +12,7 @@ by static/render.js from the embedded ClineMessage[] JSON.
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -61,6 +62,30 @@ router = APIRouter(tags=["web"])
 # Message says/asks whose text is the most representative task title.
 _TITLE_MAX = 100
 
+# Roo Code's first user turn can reach the cloud in API-prompt form: the typed
+# text wrapped in <user_message>/<task>/<feedback>, trailed by a machine-built
+# <environment_details> block (current mode, open tabs, file tree, cost…). None
+# of the environment block is the user's query, so strip it before deriving a
+# title. Match the trailing/unclosed case too (the block is always last).
+_ENV_DETAILS_RE = re.compile(r"<environment_details>.*?(?:</environment_details>|\Z)", re.DOTALL)
+_MSG_WRAPPER_RE = re.compile(r"<(user_message|task|feedback)>(.*?)</\1>", re.DOTALL)
+
+
+def _strip_task_wrappers(text: str) -> str:
+    """Reduce a raw conversation message to the human-authored query.
+
+    Drops the machine ``<environment_details>`` appendix and unwraps the
+    ``<user_message>``/``<task>``/``<feedback>`` tag to its inner content. Plain
+    text (already clean) passes through unchanged.
+    """
+    if not text:
+        return ""
+    cleaned = _ENV_DETAILS_RE.sub("", text)
+    match = _MSG_WRAPPER_RE.search(cleaned)
+    if match:
+        cleaned = match.group(2)
+    return cleaned.strip()
+
 
 def _workspace_label(path: str | None) -> str | None:
     """Compact project/worktree name for a badge: the last path segment.
@@ -79,13 +104,22 @@ def _workspace_label(path: str | None) -> str | None:
 
 
 def _derive_title(messages: list[dict]) -> str:
-    """Pick a human-readable title from the conversation (first text-bearing msg)."""
+    """Pick a human-readable title from the conversation (first text-bearing msg).
+
+    The first candidate is unwrapped to the user's query (machine framing such as
+    ``<environment_details>`` is dropped) so the title reflects what the user
+    actually typed, not the current mode/file tree the extension appended.
+    """
     for msg in messages:
         text = (msg.get("text") or "").strip()
-        if text and not text.startswith("{"):
-            first_line = text.splitlines()[0].strip()
-            if first_line:
-                return first_line[:_TITLE_MAX] + ("…" if len(first_line) > _TITLE_MAX else "")
+        if not text or text.startswith("{"):
+            continue
+        query = _strip_task_wrappers(text)
+        if not query:
+            continue
+        first_line = query.splitlines()[0].strip()
+        if first_line:
+            return first_line[:_TITLE_MAX] + ("…" if len(first_line) > _TITLE_MAX else "")
     return "Untitled task"
 
 

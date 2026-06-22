@@ -15,6 +15,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 # Copy application
 COPY . .
 RUN uv sync --frozen --no-dev
+RUN chmod +x docker-entrypoint.sh
 
-# Run Alembic migrations on startup, then start the app
-CMD ["sh", "-c", "uv run alembic upgrade head && uv run uvicorn src.main:app --host 0.0.0.0 --port ${PORT:-8085}"]
+# Reconcile the schema (create_all + stamp on a fresh DB, upgrade on a managed
+# one — see docker-entrypoint.sh / src/db_bootstrap.py), then start the app.
+CMD ["./docker-entrypoint.sh"]
