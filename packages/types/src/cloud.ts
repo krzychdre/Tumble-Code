@@ -462,6 +462,12 @@ export const taskBridgeEventSchema = z.discriminatedUnion("type", [
 		taskId: z.string(),
 		action: z.string(),
 		message: clineMessageSchema,
+		// Worktree root of the window that produced this message. Carried per-event
+		// so the backend attributes a live task to the project it actually ran in,
+		// rather than the user-keyed registry singleton (which holds only the most
+		// recently registered window when several share one cloud account).
+		// Optional so older extension clients still validate.
+		workspacePath: z.string().optional(),
 	}),
 	z.object({
 		type: z.literal(TaskBridgeEventName.TaskModeSwitched),

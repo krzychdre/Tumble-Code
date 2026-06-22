@@ -328,6 +328,39 @@ async def test_task_event_stamps_workspace_path_from_registered_instance(
         assert task.workspace_path == ws
 
 
+async def test_task_event_prefers_event_workspace_path_over_registry(
+    patch_session_factory, db_session, session_factory, stub_emit
+):
+    """When several windows share one cloud account the registry holds only the
+    most recently registered window's path. The originating window stamps its own
+    worktree root on the event, which must take precedence so the task is
+    attributed to the project it actually ran in."""
+    await _seed_user(db_session, "owner")
+
+    # Registry points at a *different* window (the last to register).
+    registry.attach("ext_owner", "extension", "owner")
+    registry.register_extension(
+        "ext_owner", "owner", {"workspacePath": "/home/krzych/Projekty/septicoBackend"}
+    )
+
+    event_ws = "/home/krzych/Projekty/lids-uniform-api"
+    await sio_module.on_task_event(
+        "ext_owner",
+        {
+            "taskId": "task-evt-ws",
+            "type": EVT_MESSAGE,
+            "workspacePath": event_ws,
+            "message": {"ts": 1, "type": "say", "say": "text", "text": "hi"},
+        },
+    )
+
+    async with session_factory() as s:
+        task = (
+            await s.execute(select(Task).where(Task.id == "task-evt-ws"))
+        ).scalar_one()
+        assert task.workspace_path == event_ws
+
+
 async def test_task_event_backfills_workspace_path_on_legacy_null_task(
     patch_session_factory, db_session, session_factory, stub_emit
 ):

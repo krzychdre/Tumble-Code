@@ -151,6 +151,10 @@ export class BridgeOrchestrator {
 				taskId: payload.taskId,
 				action: payload.action ?? "",
 				message: payload.message,
+				// Stamp this window's worktree root on the event so the backend
+				// attributes the task to the project it actually ran in, instead of
+				// the user-keyed registry singleton (wrong with multiple windows).
+				workspacePath: this.options.workspacePath,
 			})
 		}
 		const onState: BusListener = (...args) => void this.pushInstanceState(args[0] as string)

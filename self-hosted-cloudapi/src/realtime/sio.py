@@ -185,10 +185,13 @@ async def on_task_event(sid, data):
         registry.update_instance_state(user_id, data)
 
     if evt_type == EVT_MESSAGE and isinstance(data.get("message"), dict):
-        # The registered instance carries the worktree root the bridge is
-        # attached to; stamp it on the task so the web view can show the project.
-        instance = registry.instance(user_id) or {}
-        workspace_path = instance.get("workspacePath")
+        # Worktree root: prefer the value the originating window stamped on the
+        # event — correct even when several windows share one cloud account, since
+        # the registry tracks only one instance per user. Fall back to the
+        # registered instance for older clients that don't send it.
+        workspace_path = data.get("workspacePath") or (
+            registry.instance(user_id) or {}
+        ).get("workspacePath")
         try:
             async with async_session_factory() as db:
                 await upsert_task_message(

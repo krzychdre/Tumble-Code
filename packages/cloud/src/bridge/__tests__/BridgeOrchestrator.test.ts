@@ -123,6 +123,9 @@ describe("BridgeOrchestrator", () => {
 			type: TaskBridgeEventName.Message,
 			taskId: "task-9",
 			action: "created",
+			// Each window stamps its own worktree root so the backend can attribute
+			// the task correctly even when several windows share one cloud account.
+			workspacePath: "/work",
 		})
 	})
 
