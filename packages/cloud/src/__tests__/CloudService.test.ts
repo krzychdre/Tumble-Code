@@ -508,7 +508,7 @@ describe("CloudService", () => {
 			cloudService = await CloudService.createInstance(mockContext)
 		})
 
-		it("should call shareTask without retry when successful", async () => {
+		it("should backfill the full local history up front, then share once", async () => {
 			const taskId = "test-task-id"
 			const visibility = "organization"
 			const clineMessages: ClineMessage[] = [
@@ -528,9 +528,13 @@ describe("CloudService", () => {
 
 			const result = await cloudService.shareTask(taskId, visibility, clineMessages)
 
+			// The extension is the source of truth: it uploads the full local history
+			// before sharing so a partial/missing server copy can't leak into the
+			// shared view. One backfill, one (successful) share — no 404 retry.
+			expect(mockTelemetryClient.backfillMessages).toHaveBeenCalledTimes(1)
+			expect(mockTelemetryClient.backfillMessages).toHaveBeenCalledWith(clineMessages, taskId)
 			expect(mockShareService.shareTask).toHaveBeenCalledTimes(1)
 			expect(mockShareService.shareTask).toHaveBeenCalledWith(taskId, visibility)
-			expect(mockTelemetryClient.backfillMessages).not.toHaveBeenCalled()
 			expect(result).toEqual(expectedResult)
 		})
 
@@ -561,7 +565,9 @@ describe("CloudService", () => {
 			expect(mockShareService.shareTask).toHaveBeenCalledTimes(2)
 			expect(mockShareService.shareTask).toHaveBeenNthCalledWith(1, taskId, visibility)
 			expect(mockShareService.shareTask).toHaveBeenNthCalledWith(2, taskId, visibility)
-			expect(mockTelemetryClient.backfillMessages).toHaveBeenCalledTimes(1)
+			// Once up front, once more on the 404 fallback (the up-front backfill is
+			// best-effort and may have silently failed on a network error).
+			expect(mockTelemetryClient.backfillMessages).toHaveBeenCalledTimes(2)
 			expect(mockTelemetryClient.backfillMessages).toHaveBeenCalledWith(clineMessages, taskId)
 			expect(result).toEqual(expectedResult)
 		})
@@ -596,8 +602,9 @@ describe("CloudService", () => {
 
 			await expect(cloudService.shareTask(taskId, visibility, clineMessages)).rejects.toThrow(genericError)
 
+			// The up-front backfill still runs, but a non-404 error is not retried.
+			expect(mockTelemetryClient.backfillMessages).toHaveBeenCalledTimes(1)
 			expect(mockShareService.shareTask).toHaveBeenCalledTimes(1)
-			expect(mockTelemetryClient.backfillMessages).not.toHaveBeenCalled()
 		})
 
 		it("should work with default parameters", async () => {

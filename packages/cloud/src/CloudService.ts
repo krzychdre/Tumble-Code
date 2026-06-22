@@ -319,11 +319,24 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 	) {
 		this.ensureInitialized()
 
+		// The extension is the source of truth for its own task. The server copy may
+		// be absent (the task ran while the backend was unreachable) or partial (the
+		// live bridge connected mid-task and only captured the later messages, while
+		// the opening turns were never uploaded). Upload the full local history before
+		// sharing so the shared view shows the whole conversation and a real title —
+		// not just the api_req_started fragments that yield "Untitled task" + metrics.
+		// backfillMessages replaces the task's stored rows, so this is safe to run on
+		// every share.
+		if (clineMessages?.length) {
+			await this.telemetryClient!.backfillMessages(clineMessages, taskId)
+		}
+
 		try {
 			return await this.shareService!.shareTask(taskId, visibility)
 		} catch (error) {
-			if (error instanceof TaskNotFoundError && clineMessages) {
-				// Backfill messages and retry.
+			if (error instanceof TaskNotFoundError && clineMessages?.length) {
+				// The up-front backfill is best-effort (it swallows network errors), so
+				// a TaskNotFoundError here means it silently no-op'd — retry once.
 				await this.telemetryClient!.backfillMessages(clineMessages, taskId)
 				return await this.shareService!.shareTask(taskId, visibility)
 			}
