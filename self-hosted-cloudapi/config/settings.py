@@ -10,7 +10,12 @@ from pydantic import Field, HttpUrl, computed_field
 class Settings(BaseSettings):
     """Roo Cloud API settings."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    # extra="ignore": the same .env is shared with docker-compose and carries
+    # infra-only keys (COMPOSE_PORT_*, AUTHENTIK_BOOTSTRAP_*, AUTH_PG_PASS, …)
+    # that this app doesn't define. Ignore them instead of failing to start.
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+    )
 
     # Core
     database_url: str = Field(..., description="PostgreSQL connection string")
@@ -25,8 +30,17 @@ class Settings(BaseSettings):
     jwt_secret: Optional[str] = None
 
     # Authentik OAuth
-    authentik_base_url: str = Field(..., description="Authentik instance URL")
-    authentik_app_slug: str = Field("stork-code", description="Authentik application slug for app-specific endpoints")
+    authentik_base_url: str = Field(..., description="Authentik instance URL (browser-facing / front-channel)")
+    # Internal (container-network) Authentik URL for server-to-server calls
+    # (token/userinfo/discovery/jwks). In a single docker-compose the api
+    # container cannot reach the browser-facing `localhost:9000` — it must use
+    # the compose service name (e.g. http://auth_server:9000). Falls back to
+    # authentik_base_url when unset, so existing single-host deployments are
+    # unaffected.
+    authentik_internal_url: Optional[str] = Field(
+        None, description="Internal Authentik URL for back-channel calls; falls back to authentik_base_url"
+    )
+    authentik_app_slug: str = Field("tumble-code", description="Authentik application slug for app-specific endpoints")
     authentik_client_id: str = Field(..., description="OAuth2 client ID")
     authentik_client_secret: Optional[str] = None
     authentik_redirect_uri: str = Field(..., description="OAuth2 redirect URI")

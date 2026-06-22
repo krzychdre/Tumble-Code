@@ -448,6 +448,24 @@ details[open] summary {
 	margin-bottom: 0.5rem;
 }
 
+/* Machine environment_details appendix on a user prompt — collapsed by default,
+   unfolds to the full original text. */
+details.env-details {
+	margin-top: 0.5rem;
+	border-top: 1px dashed var(--border);
+	padding-top: 0.4rem;
+}
+details.env-details > summary {
+	font-size: 0.78rem;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+details.env-details > pre {
+	margin-top: 0.4rem;
+	max-height: 22rem;
+	overflow: auto;
+}
+
 /* Foldable rows: the <summary> is the header — one collapsible line. */
 .msg.foldable > details > summary.msg-head {
 	list-style: none;
@@ -752,7 +770,7 @@ details[open] summary {
 
 .breakdown-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	grid-template-columns: 1fr;
 	gap: 0.85rem;
 }
 .breakdown-card {
@@ -763,6 +781,7 @@ details[open] summary {
 }
 table.breakdown {
 	width: 100%;
+	table-layout: fixed;
 	border-collapse: collapse;
 	font-size: 0.85rem;
 }
@@ -775,6 +794,23 @@ table.breakdown th {
 	letter-spacing: 0.03em;
 	padding: 0.25rem 0.4rem;
 	border-bottom: 1px solid var(--border);
+	white-space: nowrap;
+}
+/* Name column flexes; numeric columns get fixed widths so values never clip. */
+table.breakdown th:nth-child(2),
+table.breakdown td:nth-child(2) {
+	width: 5rem;
+}
+table.breakdown th:nth-child(3),
+table.breakdown td:nth-child(3) {
+	width: 5.5rem;
+}
+table.breakdown th:nth-child(4),
+table.breakdown td:nth-child(4) {
+	width: 3.5rem;
+}
+table.breakdown th:nth-child(n + 2) {
+	text-align: right;
 }
 table.breakdown td {
 	padding: 0.3rem 0.4rem;
@@ -785,7 +821,6 @@ table.breakdown tr:last-child td {
 }
 .bd-name {
 	font-family: var(--mono);
-	max-width: 160px;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

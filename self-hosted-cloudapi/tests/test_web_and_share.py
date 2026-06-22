@@ -307,6 +307,47 @@ async def test_app_lists_owned_tasks(client, db_session, session_factory):
     assert "Build me a feature" in resp.text
 
 
+async def test_title_strips_environment_details_wrapper(client, db_session, session_factory):
+    """A first turn in Roo Code's API-prompt form (typed text wrapped in
+    <user_message>, trailed by a machine <environment_details> block) yields a
+    title of just the user's query — no mode/file-tree leakage."""
+    await _seed_user(db_session)
+    wrapped = (
+        "<user_message>\n"
+        "uruchom wszystkie testy w langgrapha\n"
+        "</user_message> <environment_details>\n"
+        "# VSCode Visible Files\n.roo/rules/rules.md\n\n"
+        "# Current Mode\n<slug>code</slug>\n<name>💻 Code</name>\n"
+        "</environment_details>"
+    )
+    async with session_factory() as s:
+        s.add(Task(id="task-wrapped", user_id="user_test"))
+        s.add(
+            TaskMessage(
+                task_id="task-wrapped",
+                message_data=json.dumps({"ts": 1, "type": "say", "say": "text", "text": wrapped}),
+            )
+        )
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        list_resp = client.get("/app")
+        detail_resp = client.get("/app/tasks/task-wrapped")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert list_resp.status_code == 200
+    assert "uruchom wszystkie testy w langgrapha" in list_resp.text
+    # The machine framing must not bleed into the title.
+    for leak in ("environment_details", "Current Mode", "<user_message>", "<slug>"):
+        assert leak not in list_resp.text
+    assert detail_resp.status_code == 200
+    assert "uruchom wszystkie testy w langgrapha" in detail_resp.text
+
+
 async def test_app_list_and_detail_show_workspace(client, db_session, session_factory):
     """The list shows the worktree basename (full path on hover); the detail header
     shows the full path."""

@@ -17,6 +17,33 @@
 		return DOMPurify.sanitize(marked.parse(String(text)))
 	}
 
+	// Roo Code's first user turn (and resumed turns) can arrive wrapped: the typed
+	// text inside <user_message>/<task>/<feedback>, trailed by a machine-built
+	// <environment_details> block (current mode, open tabs, file tree, cost…).
+	// Render the human query; tuck the environment block into a collapsed fold so
+	// the full original is still one click away. Plain text passes through as-is.
+	function userContentHtml(text) {
+		if (!text) return ""
+		let body = String(text)
+		let env = ""
+		const envMatch = body.match(/<environment_details>([\s\S]*?)(?:<\/environment_details>|$)/)
+		if (envMatch) {
+			env = envMatch[1].trim()
+			body = body.slice(0, envMatch.index) + body.slice(envMatch.index + envMatch[0].length)
+		}
+		const wrap = body.match(/<(user_message|task|feedback)>([\s\S]*?)<\/\1>/)
+		if (wrap) body = wrap[2]
+		let html = md(body.trim())
+		if (env) {
+			html +=
+				'<details class="env-details"><summary>Environment details</summary>' +
+				"<pre><code>" +
+				escapeHtml(env) +
+				"</code></pre></details>"
+		}
+		return html
+	}
+
 	function escapeHtml(s) {
 		return String(s == null ? "" : s)
 			.replace(/&/g, "&amp;")
@@ -70,7 +97,7 @@
 		switch (kind) {
 			case "user_feedback":
 			case "user_feedback_diff":
-				return { role: "user", label: "You", icon: "\u{1F464}", body: md(m.text) }
+				return { role: "user", label: "You", icon: "\u{1F464}", body: userContentHtml(m.text) }
 
 			case "text":
 				if (!m.text && !(m.images && m.images.length)) return null
@@ -78,7 +105,7 @@
 					role: "assistant",
 					label: "Assistant",
 					icon: "\u{1F916}",
-					body: md(m.text) + images(m),
+					body: userContentHtml(m.text) + images(m),
 					fold: true,
 					activity: "Responding…",
 				}

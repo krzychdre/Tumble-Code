@@ -1,6 +1,11 @@
-version: "3.8"
-
+# Full self-hosted stack: cloud API + its Postgres, plus a bundled Authentik
+# (server, worker, Postgres, Redis). `docker compose up -d` brings up everything
+# and the Authentik OAuth2 provider/application is auto-provisioned from the
+# blueprint in ./authentik/blueprints, so no manual Authentik clicking is needed.
+#
+# Reference for the Authentik services: /opt/docker/llm/docker-compose.yaml
 services:
+  # --- Cloud API ------------------------------------------------------------
   api:
     build: .
     ports:
@@ -11,12 +16,18 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-random-secret-key}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-jwt-secret}
+      # Browser-facing Authentik URL (front-channel: authorize / logout redirects).
       AUTHENTIK_BASE_URL: ${AUTHENTIK_BASE_URL:-http://localhost:9000}
-      AUTHENTIK_APP_SLUG: ${AUTHENTIK_APP_SLUG:-stork-code}
-      AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-your-client-id}
+      # In-network Authentik URL (back-channel: token / userinfo / jwks / discovery).
+      # The api container's own localhost is not Authentik, so it must reach the
+      # auth_server service by name.
+      AUTHENTIK_INTERNAL_URL: ${AUTHENTIK_INTERNAL_URL:-http://auth_server:9000}
+      AUTHENTIK_APP_SLUG: ${AUTHENTIK_APP_SLUG:-tumble-code}
+      # Same credentials the blueprint provisions into Authentik.
+      AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-tumble-code}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
-      AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-https://roo.example.com/auth/clerk/callback}
-      API_BASE_URL: ${API_BASE_URL:-https://roo.example.com}
+      AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8085}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-openai}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -33,23 +44,120 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      auth_server:
+        condition: service_healthy
     restart: unless-stopped
 
   postgres:
     image: postgres:16-alpine
-    ports:
-      - "5432:5432"
+    # Not published to the host: nothing outside the compose network needs it,
+    # and 5432 collides with other local Postgres instances. Reachable in-network
+    # as postgres:5432.
     environment:
       POSTGRES_USER: roo
       POSTGRES_PASSWORD: password
       POSTGRES_DB: roo_cloud
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./.vol/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U roo"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
-volumes:
-  postgres_data:
+  # --- Authentik ------------------------------------------------------------
+  auth_db:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PG_DB:-authentik}
+      POSTGRES_USER: ${PG_USER:-authentik}
+      POSTGRES_PASSWORD: ${AUTH_PG_PASS:?database password required}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    ports:
+      # Host port remapped 5432 -> 5544 to avoid colliding with other local
+      # Postgres instances. Internal port stays 5432 (auth_server/worker reach it
+      # as auth_db:5432). Override AUTH_DB_PORT to coexist with another stack.
+      - "${AUTH_DB_PORT:-5544}:5432"
+    volumes:
+      - ./.vol/auth/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  auth_redis:
+    image: docker.io/library/redis:alpine
+    command: --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - ./.vol/auth/redis:/data
+    restart: unless-stopped
+
+  auth_server:
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.2.2}
+    command: server
+    environment: &authentik_env
+      AUTHENTIK_POSTGRESQL__HOST: auth_db
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTH_PG_PASS}
+      AUTHENTIK_REDIS__HOST: auth_redis
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
+      # First-run admin (akadmin). Lets you log in to the Authentik UI and is the
+      # account you sign in with during the extension OAuth flow.
+      AUTHENTIK_BOOTSTRAP_PASSWORD: ${AUTHENTIK_BOOTSTRAP_PASSWORD:-}
+      AUTHENTIK_BOOTSTRAP_EMAIL: ${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@example.com}
+      AUTHENTIK_BOOTSTRAP_TOKEN: ${AUTHENTIK_BOOTSTRAP_TOKEN:-}
+      # Consumed by the blueprint's !Env tags to provision the OAuth2 provider.
+      AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-tumble-code}
+      AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
+      AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
+    healthcheck:
+      test: ["CMD", "ak", "healthcheck"]
+      start_period: 60s
+      interval: 30s
+      timeout: 30s
+      retries: 8
+    ports:
+      - "${COMPOSE_PORT_HTTP:-9000}:9000"
+      - "${COMPOSE_PORT_HTTPS:-9443}:9443"
+    shm_size: 512mb
+    volumes:
+      - ./.vol/auth/data:/data
+      - ./.vol/auth/templates:/templates
+      - ./authentik/blueprints:/blueprints/custom:ro
+    depends_on:
+      auth_db:
+        condition: service_healthy
+      auth_redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  auth_worker:
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.2.2}
+    command: worker
+    # The worker is what applies blueprints, so it needs the same env (incl. the
+    # AUTHENTIK_CLIENT_* values the blueprint reads via !Env).
+    environment: *authentik_env
+    user: root
+    shm_size: 512mb
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./.vol/auth/data:/data
+      - ./.vol/auth/certs:/certs
+      - ./.vol/auth/templates:/templates
+      - ./authentik/blueprints:/blueprints/custom:ro
+    depends_on:
+      auth_db:
+        condition: service_healthy
+      auth_redis:
+        condition: service_healthy
+    restart: unless-stopped

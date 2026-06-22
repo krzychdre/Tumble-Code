@@ -1,0 +1,2 @@
+# Local bind-mount data for docker-compose (Postgres, Redis, Authentik state)
+.vol/

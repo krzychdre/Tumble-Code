@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+#
+# Auto-provisions the OAuth2 provider + application the cloud API signs in
+# against. Applied automatically by the auth_worker on startup (mounted at
+# /blueprints/custom). State is visible in the Authentik admin under
+# System -> Blueprints.
+#
+# Credentials and the redirect URI are read from the container environment
+# (set in docker-compose.yml / .env), so the api and Authentik stay in sync
+# from a single source of truth. The application slug MUST equal the api's
+# AUTHENTIK_APP_SLUG (default: tumble-code), since app-specific endpoints
+# (jwks, end-session, discovery) are built from it.
+#
+# NOTE: the oauth2provider schema (notably redirect_uris and property_mappings)
+# is Authentik-version-sensitive. This is authored for the pinned AUTHENTIK_TAG
+# (2026.2.2). If the worker logs a blueprint error, this file is the thing to
+# adjust.
+version: 1
+metadata:
+  name: tumble-code OAuth2 provider + application
+  labels:
+    blueprints.goauthentik.io/instantiate: "true"
+entries:
+  # 1. OAuth2 / OpenID provider
+  - model: authentik_providers_oauth2.oauth2provider
+    state: present
+    id: tumble-code-provider
+    identifiers:
+      name: tumble-code
+    attrs:
+      name: tumble-code
+      client_type: confidential
+      client_id: !Env [AUTHENTIK_CLIENT_ID, tumble-code]
+      client_secret: !Env [AUTHENTIK_CLIENT_SECRET, ""]
+      authorization_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key:
+        !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+      redirect_uris:
+        - matching_mode: strict
+          url: !Env [AUTHENTIK_REDIRECT_URI, "http://localhost:8085/auth/clerk/callback"]
+      property_mappings:
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+        - !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+
+  # 2. Access group. Add users to this group (Directory -> Groups -> "Tumble
+  #    Code Users") to let them sign in to Tumble Code; the binding in entry 4
+  #    gates the application on membership. akadmin is added here so the bootstrap
+  #    superuser (the account used for the extension OAuth flow) is not locked out
+  #    of its own app — superuser status does NOT bypass application bindings.
+  - model: authentik_core.group
+    state: present
+    id: tumble-code-group
+    identifiers:
+      name: Tumble Code Users
+    attrs:
+      name: Tumble Code Users
+      users:
+        - !Find [authentik_core.user, [username, akadmin]]
+
+  # 3. Application bound to the provider. slug must match AUTHENTIK_APP_SLUG.
+  - model: authentik_core.application
+    state: present
+    id: tumble-code-application
+    identifiers:
+      slug: tumble-code
+    attrs:
+      name: Tumble Code
+      slug: tumble-code
+      provider: !KeyOf tumble-code-provider
+      policy_engine_mode: any
+
+  # 4. Group gate: bind the group to the application. With this binding present,
+  #    only members of "Tumble Code Users" can access the application (an app with
+  #    no bindings is open to everyone; the first binding restricts it).
+  - model: authentik_policies.policybinding
+    state: present
+    identifiers:
+      target: !KeyOf tumble-code-application
+      group: !KeyOf tumble-code-group
+      order: 0
+    attrs:
+      target: !KeyOf tumble-code-application
+      group: !KeyOf tumble-code-group
+      order: 0
+      enabled: true

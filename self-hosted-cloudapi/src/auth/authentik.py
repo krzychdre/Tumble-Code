@@ -16,7 +16,22 @@ from config.auth import (
     get_authentik_end_session_url,
     get_authentik_jwks_url,
     get_authentik_discovery_url,
+    get_back_channel_host_header,
 )
+
+
+def _back_channel_headers(extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    """Headers for server-to-server Authentik calls, including the brand ``Host``.
+
+    Authentik routes to its OAuth/OIDC endpoints by Host header, so back-channel
+    requests (which connect to the internal service name) must present the public
+    front-channel host or Authentik 404s. See ``config.auth`` for the full why.
+    """
+    headers: Dict[str, str] = dict(extra or {})
+    host = get_back_channel_host_header()
+    if host:
+        headers["Host"] = host
+    return headers
 
 
 def generate_pkce_pair() -> tuple[str, str]:
@@ -66,7 +81,9 @@ async def exchange_code_for_tokens(
         response = await client.post(
             get_authentik_token_url(),
             data=token_data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            headers=_back_channel_headers(
+                {"Content-Type": "application/x-www-form-urlencoded"}
+            ),
         )
         response.raise_for_status()
         return response.json()
@@ -77,7 +94,9 @@ async def get_userinfo(access_token: str) -> Dict[str, Any]:
     async with httpx.AsyncClient() as client:
         response = await client.get(
             get_authentik_userinfo_url(),
-            headers={"Authorization": f"Bearer {access_token}"},
+            headers=_back_channel_headers(
+                {"Authorization": f"Bearer {access_token}"}
+            ),
         )
         response.raise_for_status()
         return response.json()
@@ -86,6 +105,9 @@ async def get_userinfo(access_token: str) -> Dict[str, Any]:
 async def get_openid_configuration() -> Dict[str, Any]:
     """Fetch the OpenID Connect discovery document from Authentik."""
     async with httpx.AsyncClient() as client:
-        response = await client.get(get_authentik_discovery_url())
+        response = await client.get(
+            get_authentik_discovery_url(),
+            headers=_back_channel_headers(),
+        )
         response.raise_for_status()
         return response.json()
