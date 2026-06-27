@@ -567,7 +567,6 @@
 	},
 	"devDependencies": {
 		"@ai-sdk/openai-compatible": "^2.0.28",
-		"@openrouter/ai-sdk-provider": "^2.1.1",
 		"@roo-code/build": "workspace:^",
 		"@roo-code/config-eslint": "workspace:^",
 		"@roo-code/config-typescript": "workspace:^",
@@ -590,7 +589,6 @@
 		"@types/tmp": "^0.2.6",
 		"@types/turndown": "^5.0.5",
 		"@types/vscode": "^1.84.0",
-		"@vscode/test-electron": "^2.5.2",
 		"@vscode/vsce": "3.3.2",
 		"ai": "^6.0.75",
 		"esbuild-wasm": "^0.25.0",
@@ -598,12 +596,8 @@
 		"glob": "^11.1.0",
 		"mkdirp": "^3.0.1",
 		"nock": "^14.0.4",
-		"npm-run-all2": "^8.0.1",
 		"ovsx": "0.10.4",
 		"rimraf": "^6.0.1",
-		"tsup": "^8.4.0",
-		"tsx": "^4.19.3",
-		"vitest": "^3.2.3",
-		"zod-to-ts": "^1.2.0"
+		"vitest": "^3.2.3"
 	}
 }
