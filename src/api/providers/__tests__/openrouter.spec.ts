@@ -1,5 +1,9 @@
 // pnpm --filter roo-cline test api/providers/__tests__/openrouter.spec.ts
 
+vitest.mock("../utils/timeout-config", () => ({
+	getApiRequestTimeout: vitest.fn().mockReturnValue(600_000),
+}))
+
 vitest.mock("vscode", () => ({}))
 
 import { Anthropic } from "@anthropic-ai/sdk"
@@ -104,6 +108,7 @@ describe("OpenRouterHandler", () => {
 				"X-Title": "Roo Code",
 				"User-Agent": `RooCode/${Package.version}`,
 			},
+			timeout: 600_000,
 		})
 	})
 

@@ -1,6 +1,10 @@
 // npx vitest run src/api/providers/__tests__/vertex.spec.ts
 
 // Mock vscode first to avoid import errors
+vitest.mock("../utils/timeout-config", () => ({
+	getApiRequestTimeout: vitest.fn().mockReturnValue(600_000),
+}))
+
 vitest.mock("vscode", () => ({}))
 
 const mockCaptureException = vitest.fn()
