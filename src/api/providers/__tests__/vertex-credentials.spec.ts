@@ -2,6 +2,10 @@
 
 // Mock vscode first to avoid import errors when the provider stack pulls
 // transitive vscode-dependent modules during construction.
+vitest.mock("../utils/timeout-config", () => ({
+	getApiRequestTimeout: vitest.fn().mockReturnValue(600_000),
+}))
+
 vitest.mock("vscode", () => ({}))
 
 vitest.mock("@roo-code/telemetry", () => ({

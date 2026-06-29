@@ -1,5 +1,9 @@
 // npx vitest run api/providers/__tests__/requesty.spec.ts
 
+vitest.mock("../utils/timeout-config", () => ({
+	getApiRequestTimeout: vitest.fn().mockReturnValue(600_000),
+}))
+
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
@@ -76,6 +80,7 @@ describe("RequestyHandler", () => {
 				"X-Title": "Roo Code",
 				"User-Agent": `RooCode/${Package.version}`,
 			},
+			timeout: 600_000,
 		})
 	})
 
@@ -91,6 +96,7 @@ describe("RequestyHandler", () => {
 				"X-Title": "Roo Code",
 				"User-Agent": `RooCode/${Package.version}`,
 			},
+			timeout: 600_000,
 		})
 	})
 

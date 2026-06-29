@@ -806,6 +806,62 @@ describe("useMcpToolTool", () => {
 			expect(mockPushToolResult).toHaveBeenCalledWith(expect.stringContaining("with 1 image(s)"))
 		})
 
+		it("should render resource_link content as a markdown link (MCP spec 2025-06-18)", async () => {
+			const block: ToolUse = {
+				type: "tool_use",
+				name: "use_mcp_tool",
+				params: {
+					server_name: "figma-server",
+					tool_name: "get_node_info",
+					arguments: '{"nodeId": "123"}',
+				},
+				nativeArgs: {
+					server_name: "figma-server",
+					tool_name: "get_node_info",
+					arguments: { nodeId: "123" },
+				},
+				partial: false,
+			}
+
+			mockAskApproval.mockResolvedValue(true)
+
+			const mockToolResult = {
+				content: [
+					{
+						type: "resource_link",
+						uri: "https://example.com/spec.pdf",
+						name: "Design Spec",
+						description: "Full spec",
+					},
+				],
+				isError: false,
+			}
+
+			mockProviderRef.deref.mockReturnValue({
+				getMcpHub: () => ({
+					callTool: vi.fn().mockResolvedValue(mockToolResult),
+					getAllServers: vi
+						.fn()
+						.mockReturnValue([
+							{ name: "figma-server", tools: [{ name: "get_node_info", description: "Get node info" }] },
+						]),
+				}),
+				postMessageToWebview: vi.fn(),
+			})
+
+			await useMcpToolTool.handle(mockTask as Task, block as any, {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(mockTask.say).toHaveBeenCalledWith(
+				"mcp_server_response",
+				"[Design Spec](https://example.com/spec.pdf) — Full spec",
+				[],
+			)
+		})
+
 		it("should handle image with data URL already formatted", async () => {
 			const block: ToolUse = {
 				type: "tool_use",

@@ -23,7 +23,7 @@
 		"install:vsix:nightly": "pnpm install --frozen-lockfile && pnpm clean && pnpm vsix:nightly && node scripts/install-vsix.js --nightly",
 		"code-server:install": "node scripts/code-server.js",
 		"changeset:version": "cp CHANGELOG.md src/CHANGELOG.md && changeset version && cp -vf src/CHANGELOG.md .",
-		"knip": "knip --include files",
+		"knip": "knip",
 		"evals": "dotenvx run -f packages/evals/.env.development packages/evals/.env.local -- docker compose -f packages/evals/docker-compose.yml --profile server --profile runner up --build --scale runner=0",
 		"npm:publish:types": "pnpm --filter @roo-code/types npm:publish"
 	},
@@ -61,13 +61,13 @@
 		"overrides": {
 			"tar-fs": ">=3.1.1",
 			"esbuild": ">=0.25.0",
-			"undici": "^6.21.3",
+			"undici": "^6.27.0",
 			"brace-expansion": "^2.0.2",
 			"form-data": ">=4.0.4",
 			"bluebird": ">=3.7.2",
 			"glob": ">=11.1.0",
-			"@types/react": "^18.3.23",
-			"@types/react-dom": "^18.3.5",
+			"@types/react": "18.3.23",
+			"@types/react-dom": "18.3.7",
 			"zod": "3.25.76",
 			"picomatch@>=4": "4.0.4"
 		}

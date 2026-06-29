@@ -115,6 +115,24 @@ export type McpResourceResponse = {
 	}>
 }
 
+export type McpResourceLinkAnnotations = {
+	audience?: ("user" | "assistant")[]
+	priority?: number
+	lastModified?: string
+}
+
+// Defined in MCP spec 2025-06-18: https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+export type McpResourceLink = {
+	type: "resource_link"
+	uri: string
+	name: string
+	description?: string
+	mimeType?: string
+	title?: string
+	size?: number
+	annotations?: McpResourceLinkAnnotations
+}
+
 export type McpToolCallResponse = {
 	_meta?: Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
 	content: Array<
@@ -141,6 +159,7 @@ export type McpToolCallResponse = {
 					blob?: string
 				}
 		  }
+		| McpResourceLink
 	>
 	isError?: boolean
 }

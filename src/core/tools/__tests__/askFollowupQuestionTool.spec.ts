@@ -83,7 +83,7 @@ describe("AskFollowupQuestionTool", () => {
 		expect(mockTask.sayAndCreateMissingParamError).toHaveBeenCalledWith("ask_followup_question", "follow_up")
 	})
 
-	it("should handle follow_up that is not an array", async () => {
+	it("should report a type error when follow_up is a string", async () => {
 		const params = { question: "What?", follow_up: "not-an-array" as any }
 
 		await tool.execute(params, mockTask, mockCallbacks)
@@ -91,7 +91,35 @@ describe("AskFollowupQuestionTool", () => {
 		expect(mockTask.consecutiveMistakeCount).toBe(1)
 		expect(mockTask.recordToolError).toHaveBeenCalledWith("ask_followup_question")
 		expect(mockTask.didToolFailInCurrentTurn).toBe(true)
-		expect(mockTask.sayAndCreateMissingParamError).toHaveBeenCalledWith("ask_followup_question", "follow_up")
+		// A present-but-non-array value is a type error.
+		expect(mockTask.sayAndCreateMissingParamError).not.toHaveBeenCalled()
+		const pushed = (mockCallbacks.pushToolResult as any).mock.calls[0][0]
+		expect(pushed).toContain("must be an array")
+		expect(pushed).not.toContain("Missing value")
+	})
+
+	it("should report a type error when follow_up is an object", async () => {
+		// Reproduces the issue: follow_up arrives as a keyed object instead of an array.
+		const params = {
+			question: "How should I proceed?",
+			follow_up: {
+				"0": { mode: null, text: "Keep the guard" },
+				"1": { mode: null, text: "Remove the guard" },
+			} as any,
+		}
+
+		await tool.execute(params, mockTask, mockCallbacks)
+
+		expect(mockTask.consecutiveMistakeCount).toBe(1)
+		expect(mockTask.recordToolError).toHaveBeenCalledWith("ask_followup_question")
+		expect(mockTask.didToolFailInCurrentTurn).toBe(true)
+		expect(mockTask.sayAndCreateMissingParamError).not.toHaveBeenCalled()
+		expect(mockTask.say).toHaveBeenCalledWith("error", expect.stringContaining("must be an array"))
+		const pushed = (mockCallbacks.pushToolResult as any).mock.calls[0][0]
+		expect(pushed).toContain("must be an array")
+		expect(pushed).not.toContain("Missing value")
+		// The tool must not proceed to ask the user with an invalid payload.
+		expect(mockTask.ask).not.toHaveBeenCalled()
 	})
 
 	// ===== Happy path tests =====

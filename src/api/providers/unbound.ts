@@ -63,6 +63,7 @@ export class UnboundHandler extends BaseProvider implements SingleCompletionHand
 				...DEFAULT_HEADERS,
 				"X-Unbound-Metadata": JSON.stringify({ labels: [{ key: "app", value: "roo-code" }] }),
 			},
+			timeout: this.timeoutMs,
 		})
 	}
 

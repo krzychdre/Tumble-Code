@@ -1,5 +1,9 @@
 // npx vitest run src/api/providers/__tests__/anthropic-vertex.spec.ts
 
+vitest.mock("../utils/timeout-config", () => ({
+	getApiRequestTimeout: vitest.fn().mockReturnValue(600_000),
+}))
+
 import { Anthropic } from "@anthropic-ai/sdk"
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 
@@ -64,6 +68,7 @@ describe("VertexHandler", () => {
 			expect(AnthropicVertex).toHaveBeenCalledWith({
 				projectId: "test-project",
 				region: "us-central1",
+				timeout: 600_000,
 			})
 		})
 	})

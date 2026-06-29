@@ -13,7 +13,6 @@ import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { calculateApiCostOpenAI } from "../../shared/cost"
-import { getApiRequestTimeout } from "./utils/timeout-config"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
@@ -64,7 +63,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			baseURL,
 			apiKey: this.options.apiKey,
 			defaultHeaders: DEFAULT_HEADERS,
-			timeout: getApiRequestTimeout(),
+			timeout: this.timeoutMs,
 		})
 	}
 
@@ -119,7 +118,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		const stream = await this.createStream(systemPrompt, messages, metadata)
 
 		const matcher = new TagMatcher(
-			"think",
+			["think", "thought"],
 			(chunk) =>
 				({
 					type: chunk.matched ? "reasoning" : "text",

@@ -22,7 +22,6 @@ import { getModelParams } from "../transform/model-params"
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
@@ -86,7 +85,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			...(this.options.openAiHeaders || {}),
 		}
 
-		const timeout = getApiRequestTimeout()
+		const timeout = this.timeoutMs
 
 		if (isAzureAiInference) {
 			// Azure AI Inference Service (e.g., for DeepSeek) uses a different path structure
@@ -259,7 +258,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 
 			const matcher = new TagMatcher(
-				"think",
+				["think", "thought"],
 				(chunk) =>
 					({
 						type: chunk.matched ? "reasoning" : "text",

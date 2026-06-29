@@ -1,3 +1,7 @@
+vi.mock("../utils/timeout-config", () => ({
+	getApiRequestTimeout: vi.fn().mockReturnValue(600_000),
+}))
+
 import OpenAI from "openai"
 import { Anthropic } from "@anthropic-ai/sdk"
 

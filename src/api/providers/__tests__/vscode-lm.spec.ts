@@ -1,3 +1,7 @@
+vi.mock("../utils/timeout-config", () => ({
+	getApiRequestTimeout: vi.fn().mockReturnValue(600_000),
+}))
+
 import type { Mock } from "vitest"
 
 // Mocks must come first, before imports
