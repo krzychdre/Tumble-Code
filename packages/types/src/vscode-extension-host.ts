@@ -312,6 +312,12 @@ export type ExtensionState = Pick<
 	| "requestDelaySeconds"
 	| "showWorktreesInHomeScreen"
 	| "disabledTools"
+	| "autoMemoryEnabled"
+	| "autoMemoryDirectory"
+	| "memoryRecallEnabled"
+	| "autoDreamEnabled"
+	| "autoDreamMinHours"
+	| "autoDreamMinSessions"
 > & {
 	lockApiConfigAcrossModes?: boolean
 	version: string

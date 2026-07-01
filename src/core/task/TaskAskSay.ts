@@ -17,7 +17,7 @@ import { type ToolName } from "@roo-code/types"
 
 import { type TaskHistory } from "./TaskHistory"
 import { getToolCallId, findToolAskIndexByCallId } from "./toolAskIdentity"
-import { checkAutoApproval } from "../auto-approval"
+import { checkAutoApproval, type CheckAutoApprovalResult } from "../auto-approval"
 import { findLastIndex } from "../../shared/array"
 import { formatResponse } from "../prompts/responses"
 import { AskIgnoredError } from "./AskIgnoredError"
@@ -43,6 +43,12 @@ export interface TaskAskSayAccess {
 	history: TaskHistory
 	emit: EventEmitter["emit"]
 	checkpointSave: (isSave: boolean, isCreateCheckpoint: boolean) => Promise<void>
+	/**
+	 * Optional per-task auto-approval override (headless background tasks). Checked
+	 * before the global auto-approval state; returns "approve"/"deny" to resolve an
+	 * ask without user interaction, or undefined to defer to normal handling.
+	 */
+	autoApprovalOverride?: (ask: ClineAsk, text?: string) => "approve" | "deny" | undefined
 }
 
 export class TaskAskSay {
@@ -80,7 +86,17 @@ export class TaskAskSay {
 		// rendered, leaving them stuck on-screen).
 		const provider = this.access.providerRef.deref()
 		const state = provider ? await provider.getState() : undefined
-		const approval = await checkAutoApproval({ state, ask: type, text, isProtected })
+		// Per-task override first (headless background tasks): lets a task run
+		// autonomously without mutating the global auto-approval settings. Only
+		// short-circuits when it returns a concrete "approve"/"deny"; otherwise
+		// falls through to the normal global auto-approval flow.
+		const override = this.access.autoApprovalOverride?.(type, text)
+		const approval: CheckAutoApprovalResult =
+			override === "approve"
+				? { decision: "approve" }
+				: override === "deny"
+					? { decision: "deny" }
+					: await checkAutoApproval({ state, ask: type, text, isProtected })
 		const isAutoAnswered = approval.decision === "approve" || approval.decision === "deny"
 
 		if (partial !== undefined) {

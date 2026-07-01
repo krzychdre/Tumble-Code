@@ -50,6 +50,7 @@ import {
 	setLastGlobalApiRequestTime,
 	resetGlobalApiRequestTime,
 } from "./RetryHandler"
+import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 
 // Re-export functions for backward compatibility
 export { getLastGlobalApiRequestTime, setLastGlobalApiRequestTime, resetGlobalApiRequestTime } from "./RetryHandler"
@@ -122,6 +123,15 @@ export interface TaskApiLoopAccess {
 	askSay: TaskAskSay
 	streamProcessor: TaskStreamProcessor
 	contextManager: TaskContextManager
+	// Memory recall coordinator (undefined if memory is disabled / no handler).
+	memoryCoordinator?: MemoryCoordinator
+	// Monotonic loop iteration counter, advanced each executeApiRequestCycle
+	// entry. Used by the memory recall consume-once guard.
+	apiLoopIteration?: number
+	// Headless turn cap for background tasks (undefined = no cap / foreground).
+	maxAgentTurns?: number
+	// Assistant-turn counter enforced against `maxAgentTurns`.
+	agentTurnCount: number
 
 	// Methods needed
 	emit: (event: any, ...args: any[]) => boolean
@@ -238,6 +248,18 @@ export class TaskApiLoop {
 	): Promise<boolean> {
 		const stack: StackItem[] = [{ userContent, includeFileDetails, retryAttempt: 0 }]
 
+		// Memory recall prefetch: fire once per user turn (the prompt is
+		// invariant across iterations). Non-blocking; the consume point in
+		// executeApiRequestCycle polls the settled handle. The prefetch reads
+		// the last non-meta user message text from clineMessages; single-word
+		// prompts and the session byte cap are skipped inside the coordinator.
+		if (this.access.memoryCoordinator) {
+			this.access.memoryCoordinator.startPrefetch(
+				this.access.clineMessages as unknown as import("../memory/prefetch").PrefetchMessage[],
+				this.access.currentRequestAbortController,
+			)
+		}
+
 		while (stack.length > 0) {
 			const currentItem = stack.pop()!
 			const currentUserContent = currentItem.userContent
@@ -247,6 +269,20 @@ export class TaskApiLoop {
 				throw new Error(
 					`[RooCode#recursivelyMakeRooRequests] task ${this.access.taskId}.${this.access.instanceId} aborted`,
 				)
+			}
+
+			// Headless turn cap: a background task (memory writer / parallel
+			// subagent) aborts cleanly once it exhausts its assistant-turn budget.
+			// Foreground tasks pass `maxAgentTurns === undefined` and are unaffected.
+			if (this.access.maxAgentTurns !== undefined) {
+				if (this.access.agentTurnCount >= this.access.maxAgentTurns) {
+					console.log(
+						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
+					)
+					await this.access.abortTask()
+					return true
+				}
+				this.access.agentTurnCount += 1
 			}
 
 			// Handle consecutive mistake limit
@@ -359,6 +395,21 @@ export class TaskApiLoop {
 			currentIncludeFileDetails,
 			currentItem,
 		)
+
+		// Memory recall consume: if the prefetch has settled and hasn't been
+		// consumed yet this turn, inject the surfaced memories as hidden
+		// <system-reminder> text blocks into the user content that goes to the
+		// API. Non-blocking — only `await`s an already-settled promise. The
+		// consume-once guard (consumedOnIteration) prevents re-injection across
+		// iterations; filterDuplicateMemoryAttachments dedups against files the
+		// model already read/wrote.
+		if (this.access.memoryCoordinator && shouldAddUserMessage) {
+			this.access.apiLoopIteration = (this.access.apiLoopIteration ?? 0) + 1
+			const memoryBlocks = await this.access.memoryCoordinator.consumePrefetch(this.access.apiLoopIteration)
+			if (memoryBlocks.length > 0) {
+				finalUserContent.push(...memoryBlocks)
+			}
+		}
 
 		// Add user message to history if needed
 		if (shouldAddUserMessage) {

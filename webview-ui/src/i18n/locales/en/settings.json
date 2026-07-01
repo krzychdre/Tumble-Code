@@ -33,6 +33,7 @@
 		"skills": "Skills",
 		"autoApprove": "Auto-Approve",
 		"checkpoints": "Checkpoints",
+		"memory": "Memory",
 		"notifications": "Notifications",
 		"contextManagement": "Context",
 		"terminal": "Terminal",
@@ -625,6 +626,35 @@
 		"enable": {
 			"label": "Enable automatic checkpoints",
 			"description": "When enabled, Tumble will automatically create checkpoints during task execution, making it easy to review changes or revert to earlier states. <0>Learn more</0>"
+		}
+	},
+	"memory": {
+		"enable": {
+			"label": "Enable persistent memory",
+			"description": "When enabled, the agent maintains a file-based memory of who you are, your preferences, and project context. Memory persists across sessions in extension-private storage. The agent reads it each task and writes to it as you work. <0>Learn more</0>"
+		},
+		"recall": {
+			"label": "Enable relevant-memory recall",
+			"description": "When enabled, the agent runs a fast background query to surface the most relevant memories for your current prompt. Disabling saves the side-query cost; the memory index still loads. Requires a configured model provider."
+		},
+		"directory": {
+			"label": "Custom memory directory (optional)",
+			"description": "Override the default memory storage location. Must be an absolute path. Project settings are ignored for this field (trusted sources only) so a repository can't redirect memory writes. Leave blank to use the default extension storage location.",
+			"placeholder": "/absolute/path/to/memory/dir"
+		},
+		"dream": {
+			"enable": {
+				"label": "Enable memory consolidation (dream)",
+				"description": "When enabled, the agent periodically reviews and reorganizes memory: merges duplicates, removes contradicted facts, and prunes stale entries. Runs automatically when enough time and sessions have passed."
+			},
+			"minHours": {
+				"label": "Minimum hours between dreams",
+				"description": "Hours since the last consolidation before the next dream can run. Default 24. Range: 1-168."
+			},
+			"minSessions": {
+				"label": "Minimum sessions between dreams",
+				"description": "Task sessions since the last consolidation required before the next dream runs. Default 5. Range: 1-100. It's a skip-gate, so undercounting only delays a dream."
+			}
 		}
 	},
 	"notifications": {

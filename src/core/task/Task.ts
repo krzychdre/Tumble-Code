@@ -166,7 +166,45 @@ export interface TaskOptions extends CreateTaskOptions {
 	workspacePath?: string
 	/** Initial status for the task's history item (e.g., "active" for child tasks) */
 	initialStatus?: "active" | "delegated" | "completed"
+	/**
+	 * Explicit mode slug for this task, bypassing the global current mode. Used by
+	 * headless background tasks (e.g. the `memory-writer` sandbox mode) and
+	 * parallel subagents so they don't inherit / mutate the foreground mode.
+	 */
+	taskMode?: string
+	/**
+	 * Marks this task as a headless background task (memory writer / parallel
+	 * subagent). Background tasks are not pushed onto the provider's `clineStack`,
+	 * do not drive the webview, and skip their own memory background-writers.
+	 */
+	isBackground?: boolean
+	/**
+	 * Hard cap on assistant turns for a background task. When the loop reaches
+	 * this many assistant turns the task aborts cleanly. `undefined` = no cap
+	 * (normal foreground behavior).
+	 */
+	maxAgentTurns?: number
+	/**
+	 * Per-task auto-approval override, checked before the global auto-approval
+	 * state. Returns `"approve"` / `"deny"` to resolve an ask without user
+	 * interaction, or `undefined` to fall through to normal handling. Lets a
+	 * headless task run autonomously without mutating global approval settings.
+	 */
+	autoApprovalOverride?: AutoApprovalOverride
+	/**
+	 * When true, file writes bypass the diff-view editor UI (no editor tabs) and
+	 * are saved straight to disk. Used by background tasks so memory writes are
+	 * invisible.
+	 */
+	silentWrites?: boolean
 }
+
+/**
+ * A per-task auto-approval decision function. Given the ask type and its text,
+ * returns `"approve"` / `"deny"` to short-circuit, or `undefined` to defer to
+ * the normal (global) auto-approval flow.
+ */
+export type AutoApprovalOverride = (ask: ClineAsk, text?: string) => "approve" | "deny" | undefined
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly taskId: string
@@ -500,6 +538,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// API loop orchestration (extracted from Task)
 	readonly apiLoop: TaskApiLoop
 
+	// Headless background task controls (memory writer / parallel subagents).
+	// All default to the inert foreground values so normal tasks are unaffected.
+	readonly isBackground: boolean
+	readonly maxAgentTurns?: number
+	autoApprovalOverride?: AutoApprovalOverride
+	readonly silentWrites: boolean
+	/** Assistant-turn counter used to enforce `maxAgentTurns`. */
+	agentTurnCount = 0
+
 	// MessageManager for high-level message operations (lazy initialized)
 	private _messageManager?: MessageManager
 
@@ -522,6 +569,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		initialTodos,
 		workspacePath,
 		initialStatus,
+		taskMode,
+		isBackground = false,
+		maxAgentTurns,
+		autoApprovalOverride,
+		silentWrites = false,
 	}: TaskOptions) {
 		super()
 
@@ -584,6 +636,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.taskNumber = taskNumber
 		this.initialStatus = initialStatus
 
+		// Headless background-task controls (memory writer / parallel subagents).
+		this.isBackground = isBackground
+		this.maxAgentTurns = maxAgentTurns
+		this.autoApprovalOverride = autoApprovalOverride
+		this.silentWrites = silentWrites
+
 		// Store the task's mode and API config name when it's created.
 		// For history items, use the stored values; for new tasks, we'll set them
 		// after getting state.
@@ -593,6 +651,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.taskModeReady = Promise.resolve()
 			this.taskApiConfigReady = Promise.resolve()
 			TelemetryService.instance.captureTaskRestarted(this.taskId)
+		} else if (taskMode) {
+			// Explicit per-task mode (headless background task / subagent): don't
+			// read or mutate the global current mode.
+			this._taskMode = taskMode
+			this._taskApiConfigName = undefined
+			this.taskModeReady = Promise.resolve()
+			this.taskApiConfigReady = Promise.resolve()
 		} else {
 			// For new tasks, don't set the mode/apiConfigName yet - wait for async initialization.
 			this._taskMode = undefined
@@ -681,6 +746,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// agent internally, so double-firing with a later abort is safe. The
 		// listener is cleaned up by `removeAllListeners()` in dispose().
 		this.on(RooCodeEventName.TaskCompleted, () => {
+			// Background tasks (the memory writer itself, parallel subagents) must
+			// not spawn their own memory writers — that would recurse.
+			if (this.isBackground) return
 			try {
 				this.lifecycle.triggerMemoryBackgroundWriters()
 			} catch (error) {
@@ -692,7 +760,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		})
 
 		// Now initialize mode/api config for new tasks (after lifecycle is ready)
-		if (!historyItem) {
+		if (!historyItem && !taskMode) {
 			this.taskModeReady = this.initializeTaskMode(provider)
 			this.taskApiConfigReady = this.initializeTaskApiConfigName(provider)
 		}

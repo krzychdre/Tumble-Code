@@ -99,6 +99,13 @@ export interface CreateTaskOptions {
 	/** Whether to start the task loop immediately (default: true).
 	 *  When false, the caller must invoke `task.start()` manually. */
 	startTask?: boolean
+	/**
+	 * Explicit working directory for the task (e.g. a git worktree). When set and
+	 * no `parentTask` is supplied, the task runs against this directory instead of
+	 * the opened workspace — the basis for headless background tasks / parallel
+	 * subagents in isolated worktrees.
+	 */
+	workspacePath?: string
 }
 
 export enum TaskStatus {

@@ -13,6 +13,7 @@ import {
 	CheckCheck,
 	GitBranch,
 	Bell,
+	Brain,
 	Database,
 	SquareTerminal,
 	FlaskConical,
@@ -67,6 +68,7 @@ import ApiConfigManager from "./ApiConfigManager"
 import ApiOptions from "./ApiOptions"
 import { AutoApproveSettings } from "./AutoApproveSettings"
 import { CheckpointSettings } from "./CheckpointSettings"
+import { MemorySettings } from "./MemorySettings"
 import { NotificationSettings } from "./NotificationSettings"
 import { ContextManagementSettings } from "./ContextManagementSettings"
 import { TerminalSettings } from "./TerminalSettings"
@@ -101,6 +103,7 @@ export const sectionNames = [
 	"slashCommands",
 	"skills",
 	"checkpoints",
+	"memory",
 	"notifications",
 	"contextManagement",
 	"terminal",
@@ -165,6 +168,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCondenseContextPercent,
 		enableCheckpoints,
 		checkpointTimeout,
+		autoMemoryEnabled,
+		autoMemoryDirectory,
+		memoryRecallEnabled,
+		autoDreamEnabled,
+		autoDreamMinHours,
+		autoDreamMinSessions,
 		experiments,
 		maxOpenTabsContext,
 		maxWorkspaceFiles,
@@ -384,6 +393,12 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					soundVolume: soundVolume ?? 0.5,
 					enableCheckpoints: enableCheckpoints ?? false,
 					checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+					autoMemoryEnabled: autoMemoryEnabled ?? true,
+					autoMemoryDirectory: autoMemoryDirectory || undefined,
+					memoryRecallEnabled: memoryRecallEnabled ?? true,
+					autoDreamEnabled: autoDreamEnabled ?? true,
+					autoDreamMinHours: autoDreamMinHours ?? 24,
+					autoDreamMinSessions: autoDreamMinSessions ?? 5,
 					writeDelayMs,
 					terminalShellIntegrationTimeout: terminalShellIntegrationTimeout ?? 30_000,
 					terminalShellIntegrationDisabled,
@@ -513,6 +528,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "autoApprove", icon: CheckCheck },
 			{ id: "mcp", icon: Server },
 			{ id: "checkpoints", icon: GitCommitVertical },
+			{ id: "memory", icon: Brain },
 			{ id: "notifications", icon: Bell },
 			{ id: "contextManagement", icon: Database },
 			{ id: "terminal", icon: SquareTerminal },
@@ -808,6 +824,19 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							<CheckpointSettings
 								enableCheckpoints={enableCheckpoints}
 								checkpointTimeout={checkpointTimeout}
+								setCachedStateField={setCachedStateField}
+							/>
+						)}
+
+						{/* Memory Section */}
+						{renderTab === "memory" && (
+							<MemorySettings
+								autoMemoryEnabled={autoMemoryEnabled}
+								autoMemoryDirectory={autoMemoryDirectory}
+								memoryRecallEnabled={memoryRecallEnabled}
+								autoDreamEnabled={autoDreamEnabled}
+								autoDreamMinHours={autoDreamMinHours}
+								autoDreamMinSessions={autoDreamMinSessions}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}

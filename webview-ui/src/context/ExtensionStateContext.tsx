@@ -203,6 +203,11 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		soundVolume: 0.5,
 		enableCheckpoints: true,
 		checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Default to 15 seconds
+		autoMemoryEnabled: true,
+		memoryRecallEnabled: true,
+		autoDreamEnabled: true,
+		autoDreamMinHours: 24,
+		autoDreamMinSessions: 5,
 		language: "en", // Default language code
 		writeDelayMs: 1000,
 		terminalShellIntegrationTimeout: 4000,

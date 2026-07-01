@@ -30,6 +30,7 @@ import { Package } from "./shared/package"
 import { formatLanguage } from "./shared/language"
 import { syncCloudUrls, registerCloudUrlsSubscription } from "./shared/cloud-urls"
 import { ContextProxy } from "./core/config/ContextProxy"
+import { initMemoryPaths } from "./core/memory/paths"
 import { ClineProvider } from "./core/webview/ClineProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { Terminal } from "./integrations/terminal/Terminal"
@@ -189,6 +190,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	}
 
 	const contextProxy = await ContextProxy.getInstance(context)
+
+	// Initialize the native memory system's path module. The config accessor
+	// reads through to the live ContextProxy state so memory settings stay
+	// fresh without re-initialization. Memory paths are resolved per-cwd at
+	// use time; this just wires the storage root + settings source.
+	initMemoryPaths(context.globalStorageUri.fsPath, () => ({
+		autoMemoryEnabled: contextProxy.getValue("autoMemoryEnabled"),
+		autoMemoryDirectory: contextProxy.getValue("autoMemoryDirectory"),
+		autoDreamEnabled: contextProxy.getValue("autoDreamEnabled"),
+		autoDreamMinHours: contextProxy.getValue("autoDreamMinHours"),
+		autoDreamMinSessions: contextProxy.getValue("autoDreamMinSessions"),
+		memoryRecallEnabled: contextProxy.getValue("memoryRecallEnabled"),
+	}))
 
 	// Initialize code index managers for all workspace folders.
 	const codeIndexManagers: CodeIndexManager[] = []

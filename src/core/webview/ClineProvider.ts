@@ -93,7 +93,7 @@ import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/provi
 import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
-import { Task } from "../task/Task"
+import { Task, type AutoApprovalOverride } from "../task/Task"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { ClineMessage, TodoItem } from "@roo-code/types"
@@ -137,6 +137,10 @@ export class ClineProvider
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
 	private clineStack: Task[] = []
+	// Headless background tasks (memory writers, parallel subagents). Deliberately
+	// kept OFF `clineStack` so `getCurrentTask()` and the webview stay bound to the
+	// foreground task. Keyed by taskId; entries are removed on completion/abort.
+	private backgroundTasks = new Map<string, Task>()
 	// Children whose delegated parent could not be proven detached on cancel.
 	// reopenParentFromDelegation() refuses to reopen a parent for any child here.
 	private cancelledDelegationChildIds = new Set<string>()
@@ -251,7 +255,9 @@ export class ClineProvider
 				try {
 					// Only rehydrate on genuine streaming failures.
 					// User-initiated cancels are handled by cancelTask().
-					if (instance.abortReason === "streaming_failed") {
+					// Background tasks (memory writers / subagents) are never on the
+					// stack and must not rehydrate as a foreground task.
+					if (instance.abortReason === "streaming_failed" && !instance.isBackground) {
 						// Defensive safeguard: if another path already replaced this instance, skip
 						const current = this.getCurrentTask()
 						if (current && current.instanceId !== instance.instanceId) {
@@ -3059,6 +3065,111 @@ export class ClineProvider
 		)
 
 		return task
+	}
+
+	/**
+	 * Create and start a HEADLESS background task — the reusable primitive behind
+	 * the memory background writers and (future) parallel subagents.
+	 *
+	 * Unlike {@link createTask}, a background task:
+	 * - is **never** pushed onto `clineStack`, so `getCurrentTask()` and the
+	 *   webview stay bound to the foreground task;
+	 * - runs autonomously via `autoApprovalOverride` (interactive asks never block
+	 *   it — the task isn't the current task, so no webview response would arrive);
+	 * - is bounded by `maxAgentTurns`;
+	 * - can run in its own `workspacePath` (a git worktree) and `taskMode`
+	 *   (e.g. a write-sandboxed mode).
+	 *
+	 * Pair with {@link awaitTaskCompletion} to await its result.
+	 */
+	public async createBackgroundTask(
+		text: string,
+		options: {
+			taskMode?: string
+			workspacePath?: string
+			maxAgentTurns?: number
+			autoApprovalOverride?: AutoApprovalOverride
+			silentWrites?: boolean
+			initialTodos?: TodoItem[]
+		} = {},
+	): Promise<Task> {
+		const { apiConfiguration, experiments } = await this.getState()
+
+		const task = new Task({
+			provider: this,
+			apiConfiguration,
+			// Background tasks don't participate in checkpoints (no shadow git per
+			// memory write); keeps them cheap and side-effect-free.
+			enableCheckpoints: false,
+			experiments,
+			task: text,
+			taskMode: options.taskMode,
+			workspacePath: options.workspacePath,
+			isBackground: true,
+			maxAgentTurns: options.maxAgentTurns,
+			autoApprovalOverride: options.autoApprovalOverride,
+			silentWrites: options.silentWrites,
+			initialTodos: options.initialTodos,
+			// Start explicitly below (after registry insert), never via the stack.
+			startTask: false,
+			onCreated: this.taskCreationCallback,
+		})
+
+		this.backgroundTasks.set(task.taskId, task)
+		this.log(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
+		task.start()
+		return task
+	}
+
+	/**
+	 * Await a background task's terminal state. Resolves `{ completed: true,
+	 * lastMessage }` on `TaskCompleted` (attempt_completion) or `{ completed:
+	 * false }` on `TaskAborted`. Removes the registry entry and disposes a
+	 * completed task. An optional `signal` aborts the task early.
+	 */
+	public awaitTaskCompletion(
+		task: Task,
+		options: { signal?: AbortSignal } = {},
+	): Promise<{ completed: boolean; lastMessage?: string }> {
+		return new Promise((resolve) => {
+			let settled = false
+
+			const onSignalAbort = () => {
+				void task.abortTask().catch(() => {})
+			}
+
+			const finish = (result: { completed: boolean; lastMessage?: string }) => {
+				if (settled) return
+				settled = true
+				task.off(RooCodeEventName.TaskCompleted, onCompleted)
+				task.off(RooCodeEventName.TaskAborted, onAborted)
+				options.signal?.removeEventListener("abort", onSignalAbort)
+				this.backgroundTasks.delete(task.taskId)
+				// Dispose a completed background task (aborted ones are already torn
+				// down). `isBackground` makes this abort skip the memory writers.
+				if (result.completed) {
+					void task.abortTask(true).catch(() => {})
+				}
+				resolve(result)
+			}
+
+			const onCompleted = () => {
+				// Last completion_result say carries the attempt_completion text.
+				const last = [...task.clineMessages]
+					.reverse()
+					.find((m) => m.type === "say" && m.say === "completion_result")
+				finish({ completed: true, lastMessage: last?.text })
+			}
+			const onAborted = () => finish({ completed: false })
+
+			task.on(RooCodeEventName.TaskCompleted, onCompleted)
+			task.on(RooCodeEventName.TaskAborted, onAborted)
+
+			if (options.signal) {
+				if (options.signal.aborted) onSignalAbort()
+				else options.signal.addEventListener("abort", onSignalAbort, { once: true })
+			}
+		})
 	}
 
 	public async cancelTask(): Promise<void> {

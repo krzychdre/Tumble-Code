@@ -174,6 +174,45 @@ export const globalSettingsSchema = z.object({
 		.max(MAX_CHECKPOINT_TIMEOUT_SECONDS)
 		.optional(),
 
+	/**
+	 * Whether the native file-based memory system is enabled. When on, the
+	 * model reads/writes per-workspace memory files under VS Code
+	 * globalStorage via the existing file tools, gated by a behavioral prompt
+	 * section and a write carve-out for the memory dir. Default ON.
+	 * @default true
+	 */
+	autoMemoryEnabled: z.boolean().optional(),
+	/**
+	 * Optional full-path override for the memory base directory. Trusted
+	 * sources only — project settings are excluded so a malicious repo can't
+	 * redirect memory writes via the carve-out. When unset, memory lives
+	 * under `<globalStorage>/memory/projects/<sanitizedCwd>/memory/`.
+	 */
+	autoMemoryDirectory: z.string().optional(),
+	/**
+	 * Whether the background memory consolidation ("dream") runs periodically.
+	 * @default true
+	 */
+	autoDreamEnabled: z.boolean().optional(),
+	/**
+	 * Minimum hours since the last consolidation before the next dream can
+	 * run. Combined with {@link autoDreamMinSessions} as a gate cascade.
+	 * @default 24
+	 */
+	autoDreamMinHours: z.number().optional(),
+	/**
+	 * Minimum number of task sessions since the last consolidation before the
+	 * next dream can run. It's a skip-gate, so undercounting is safe.
+	 * @default 5
+	 */
+	autoDreamMinSessions: z.number().optional(),
+	/**
+	 * Whether the relevant-memory recall prefetch is active. When off, the
+	 * side-query LLM call is skipped (saves cost); the MEMORY.md index still
+	 * loads. @default true
+	 */
+	memoryRecallEnabled: z.boolean().optional(),
+
 	soundEnabled: z.boolean().optional(),
 	soundVolume: z.number().optional(),
 	// Basenames of user-uploaded files inside globalStorage/custom-sounds/.

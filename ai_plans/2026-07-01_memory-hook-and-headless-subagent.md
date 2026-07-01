@@ -108,10 +108,56 @@ completion; all new/updated tests green; `noopSubTaskRunner` still means no file
 
 ---
 
-## Phase 2 — Reusable headless sub-agent (plan; build after approval)
+## Phase 2 — Reusable headless sub-agent (APPROVED: build on this branch, primitive + fan-out tool)
 
 Aligns with [`2026-06-27_parallel-subagents-worktrees.md`](2026-06-27_parallel-subagents-worktrees.md)
 A1/A2 so the same primitive serves memory **and** parallel subagents.
+
+### Research-grounded seams (verified in tree)
+
+- **No per-Task auto-approval exists.** `TaskAskSay.ask()` (src/core/task/TaskAskSay.ts:81-84) calls
+  `checkAutoApproval({state,...})` reading **global** provider state, then `approveAsk()` sets
+  `askResponse` to unblock the `pWaitFor`. → Add an **optional per-Task predicate**
+  `autoApprovalOverride?(ask, text): "approve"|"deny"|undefined` checked at the top of `ask()`
+  before the global check. `undefined` → existing behavior (zero foreground change).
+- **The loop.** `initiateTaskLoop` (outer `while(!abort)`) → `recursivelyMakeClineRequests`
+  (inner `while(stack.length)`; each pop = one assistant turn). → Add optional `maxAgentTurns`;
+  increment a per-Task counter at the top of the inner loop; when exceeded, abort the task cleanly
+  (sets `abort`, returns), so the loop unwinds normally. Default undefined → no cap.
+- **Both write paths open an editor.** `WriteToFileTool` uses either `diffViewProvider.saveDirectly`
+  or `open`+`saveChanges`; **both** call `vscode.window.showTextDocument` (DiffViewProvider.ts:982).
+  → Add a per-Task `silentWrites`/background flag; `saveDirectly` skips `showTextDocument` and just
+  writes to disk when set (guarded so foreground is unchanged). Memory writes become invisible.
+- **Sandbox = restrictive mode + existing carve-out.** `validateToolUse` already allows writes to
+  `isAutoMemPath` regardless of a mode's edit `fileRegex` (validateToolUse.ts:221). → Run the memory
+  background task in a built-in **`memory-writer`** mode whose edit group `fileRegex` matches nothing
+  (`$^`): normal writes throw `FileRestrictionError`, memory writes pass via the carve-out. Read
+  tools unrestricted. This is the airtight sandbox; the auto-approval predicate can then safely
+  approve all asks.
+- **writtenPaths.** `fileContextTracker.getAndClearCheckpointPossibleFile()`
+  (FileContextTracker.ts:262) returns the in-memory set of Roo-edited paths; resolve against
+  `task.cwd`, filter to `isAutoMemPath`. (Memory filters `MEMORY.md` from the "Saved N" count.)
+- **Background task = new Task without `addClineToStack`.** `taskCreationCallback`/`onCreated`
+  (ClineProvider.ts:241) only wires events — the stack push is the separate `addClineToStack`
+  (ClineProvider.ts:474/1138). So a background task is `new Task({..., onCreated})` **without**
+  the stack push; `getCurrentTask()`/`postStateToWebview` stay on the foreground task.
+
+### Build slices (each self-contained, tested, committed)
+
+- **Slice 1 — reusable core (no foreground behavior change):** `workspacePath` on
+  `CreateTaskOptions`; per-Task `autoApprovalOverride` seam in `TaskAskSay`; per-Task `maxAgentTurns`
+  in `TaskApiLoop`; `ClineProvider.backgroundTasks` + `createBackgroundTask()` +
+  `awaitTaskCompletion()`. Tests.
+- **Slice 2 — memory consumer (delivers the original goal: memory writes):** `memory-writer`
+  sandbox mode; `silentWrites` diff-view suppression; `writtenPaths` capture; wire
+  `ClineProvider.memorySubTaskRunner` → `createBackgroundTask`+`awaitTaskCompletion`. Flip the
+  `noopSubTaskRunner` fallback. Tests.
+- **Slice 3 — fan-out tool:** `run_parallel_tasks` ToolName + registrations (tool.ts, tools.ts
+  groups/ALWAYS_AVAILABLE, native-tools prompt, presentAssistantMessage dispatch);
+  `RunParallelTasksTool` (worktree per subtask via `worktreeService.createWorktree`, concurrency
+  cap, aggregated `tool_result`). Tests.
+
+### Original A1/A2 mapping
 
 ### P2.1 `workspacePath` in `CreateTaskOptions` (A1)
 
