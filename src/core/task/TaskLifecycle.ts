@@ -20,6 +20,15 @@ import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskContextManager } from "./TaskContextManager"
 import { defaultModeSlug } from "../../shared/modes"
 import { TaskResumption, type TaskResumptionAccess } from "./TaskResumption"
+import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import {
+	executeExtractMemories,
+	drainPendingExtraction,
+	executeAutoDream,
+	renderTranscript,
+	type AutoDreamConfig,
+	type TranscriptMessage,
+} from "../memory"
 
 import Anthropic from "@anthropic-ai/sdk"
 
@@ -55,6 +64,11 @@ export interface TaskLifecycleAccess {
 	// Mutable state arrays (accessed directly for initialization/reset)
 	clineMessages: ClineMessage[]
 	apiConversationHistory: ApiMessage[]
+
+	// Memory system: the recall coordinator (undefined if memory/recall off)
+	// and the iteration counter shared with the API loop for consume-once.
+	memoryCoordinator?: MemoryCoordinator
+	apiLoopIteration?: number
 
 	// Task state flags
 	abort: boolean
@@ -529,6 +543,21 @@ export class TaskLifecycle {
 
 		this.access.emit(RooCodeEventName.TaskAborted)
 
+		// Memory background writers: fire-and-forget extraction + dream at task
+		// end. Both are gated internally (memory enabled, main agent, no direct
+		// writes for extraction; time/session/lock cascade for dream) and run
+		// as sandboxed sub-Tasks. Abandoned tasks skip extraction (no durable
+		// signal to save from an abandoned run). We `void` the promises; the
+		// drain below awaits them with a soft timeout so in-flight work isn't
+		// orphaned on extension shutdown.
+		if (!isAbandoned) {
+			try {
+				this.triggerMemoryBackgroundWriters()
+			} catch (error) {
+				console.error("Error triggering memory background writers:", error)
+			}
+		}
+
 		try {
 			this.dispose() // Call the centralized dispose method
 		} catch (error) {
@@ -545,6 +574,84 @@ export class TaskLifecycle {
 				error,
 			)
 		}
+
+		// Drain in-flight memory extraction so it isn't orphaned on shutdown.
+		// Soft 60s timeout (unref'd internally) so it never blocks process exit.
+		try {
+			await drainPendingExtraction(60_000)
+		} catch (error) {
+			console.error("Error draining memory extraction:", error)
+		}
+	}
+
+	/**
+	 * Fire-and-forget the memory background writers (extraction + dream).
+	 *
+	 * Extraction saves memories the main agent didn't get to; dream
+	 * periodically consolidates. Both are best-effort and sandboxed; both are
+	 * skipped when memory is disabled or this isn't the main agent.
+	 *
+	 * Called on normal completion (via the task's `TaskCompleted` subscription)
+	 * and on non-abandoned abort. Both entry points are idempotent: extraction
+	 * is cursor-based and early-returns when there are no new messages, so a
+	 * completion-then-abort sequence never double-writes.
+	 *
+	 * Phase 2 (ai_plans/2026-07-01_memory-hook-and-headless-subagent.md) replaces
+	 * the `noopSubTaskRunner` fallback with `provider.memorySubTaskRunner` backed
+	 * by the reusable `createBackgroundTask` primitive. Until then this fires the
+	 * correctly-parameterized hook (real transcript + manifest) but writes stay
+	 * off because the runner is a no-op.
+	 */
+	public triggerMemoryBackgroundWriters(): void {
+		const provider = this.access.providerRef.deref()
+		if (!provider) return
+		// Sub-Task spawn wiring: delegated to the provider's task factory.
+		// Exposed as a method so the provider can inject the real spawner;
+		// defaults to a no-op so the hooks ship safely.
+		const subTaskRunner =
+			(provider as unknown as { memorySubTaskRunner?: import("../memory/extractMemories").SubTaskRunner })
+				.memorySubTaskRunner ?? require("../memory/memoryTaskIntegration").noopSubTaskRunner
+		// Render the recent conversation so the *fresh* extraction sub-agent has
+		// content to analyze (it can't fork the parent's context — see the plan).
+		const transcript = renderTranscript(this.access.apiConversationHistory as unknown as TranscriptMessage[])
+		void executeExtractMemories({
+			cwd: this.access.cwd,
+			isMainAgent: !this.access.parentTaskId,
+			messages: this.access
+				.clineMessages as unknown as import("../memory/extractMemories").ExtractionMessageView[],
+			transcript,
+			subTaskRunner,
+			onSaved: (count) => {
+				if (count > 0) {
+					console.log(`[memory] extractMemories saved ${count} memor${count === 1 ? "y" : "ies"}`)
+				}
+			},
+		})
+		const dreamConfig: AutoDreamConfig = {
+			enabled: provider.getValue("autoDreamEnabled") ?? true,
+			minHours: provider.getValue("autoDreamMinHours") ?? 24,
+			minSessions: provider.getValue("autoDreamMinSessions") ?? 5,
+		}
+		// HistoryItem uses `ts` (creation timestamp) as its time field; the
+		// dream's session gate reads `lastModified`. Map the field. `ts` is a
+		// creation-time snapshot, so it undercounts activity within a long
+		// session — safe, since the gate is a skip-only throttle.
+		const taskHistory = (provider.getValue("taskHistory") ?? []).map((h) => ({
+			lastModified: typeof h.ts === "number" ? h.ts : undefined,
+		}))
+		void executeAutoDream({
+			cwd: this.access.cwd,
+			isMainAgent: !this.access.parentTaskId,
+			config: dreamConfig,
+			taskHistory,
+			currentTaskId: this.access.taskId,
+			subTaskRunner,
+			onImproved: (count) => {
+				if (count > 0) {
+					console.log(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
+				}
+			},
+		})
 	}
 
 	/**
@@ -559,6 +666,14 @@ export class TaskLifecycle {
 			this.access.cancelCurrentRequest()
 		} catch (error) {
 			console.error("Error cancelling current request:", error)
+		}
+
+		// Abort any in-flight memory recall prefetch so a lingering side-query
+		// can't resolve after the task is gone.
+		try {
+			this.access.memoryCoordinator?.disposePrefetch()
+		} catch (error) {
+			console.error("Error disposing memory prefetch:", error)
 		}
 
 		// Remove provider profile change listener

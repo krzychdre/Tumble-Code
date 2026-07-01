@@ -58,6 +58,8 @@ import { CloudService } from "@roo-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
+import { MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { isAutoMemoryEnabled } from "../memory/paths"
 import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
@@ -356,6 +358,35 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	checkpointService?: RepoPerTaskCheckpointService
 	checkpointServiceInitializing = false
 
+	// Memory recall coordinator. Lazily constructed on first access so it
+	// picks up the live `api` handler (which may be rebuilt on profile switch)
+	// and the current `memoryRecallEnabled` setting. `undefined` when memory or
+	// recall is disabled, or when no `completePrompt`-capable handler is present.
+	private _memoryCoordinator: MemoryCoordinator | undefined
+	public get memoryCoordinator(): MemoryCoordinator | undefined {
+		if (this._memoryCoordinator) return this._memoryCoordinator
+		// `paths.ts` is the source of truth for the memory enable gate; if
+		// memory is off (env or setting), skip constructing the coordinator.
+		if (!isAutoMemoryEnabled()) return undefined
+		const recallEnabled = this.providerRef.deref()?.getValue("memoryRecallEnabled") ?? true
+		this._memoryCoordinator = new MemoryCoordinator({
+			cwd: this.cwd,
+			recallEnabled,
+			readFileState: this._memoryReadFileState,
+			apiHandler: this.api,
+		})
+		return this._memoryCoordinator
+	}
+	// Memory dedup cache (Roo has no readFileState primitive; the coordinator
+	// owns one purely for surfacing dedup against prior turns).
+	private _memoryReadFileState = new Map<
+		string,
+		{ content: string; timestamp: number; offset?: number; limit?: number }
+	>()
+	// Monotonic API-loop iteration counter, shared with the lifecycle for the
+	// recall consume-once guard.
+	public apiLoopIteration = 0
+
 	// Message Queue Service
 	public readonly messageQueueService: MessageQueueService
 	private messageQueueStateChangedHandler: (() => void) | undefined
@@ -640,6 +671,25 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Initialize TaskApiLoop for API request loop orchestration
 		// Pass Task as TaskApiLoopAccess for property access.
 		this.apiLoop = new TaskApiLoop(this as unknown as import("./TaskApiLoop").TaskApiLoopAccess)
+
+		// Memory background writers: run extraction/consolidation when this task
+		// completes normally. `abortTask` already covers the cancelled/errored
+		// paths, but a normal `attempt_completion` only emits `TaskCompleted` and
+		// leaves the task alive (it is later abandoned-aborted, which skips the
+		// writers) — so hook completion here. The trigger is idempotent
+		// (cursor-based, early-returns on no new messages) and gated to the main
+		// agent internally, so double-firing with a later abort is safe. The
+		// listener is cleaned up by `removeAllListeners()` in dispose().
+		this.on(RooCodeEventName.TaskCompleted, () => {
+			try {
+				this.lifecycle.triggerMemoryBackgroundWriters()
+			} catch (error) {
+				console.error(
+					`[Task#${this.taskId}.${this.instanceId}] memory writers on completion failed:`,
+					error instanceof Error ? error.message : String(error),
+				)
+			}
+		})
 
 		// Now initialize mode/api config for new tasks (after lifecycle is ready)
 		if (!historyItem) {
