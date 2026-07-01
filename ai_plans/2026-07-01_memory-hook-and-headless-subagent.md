@@ -2,7 +2,9 @@
 
 **Date:** 2026-07-01
 **Branch:** `feature/memory-subtask-runner-wiring` (off `main`)
-**Status:** Phase 1 = implement now; Phase 2 = planned, build after approval.
+**Status:** DONE. Phase 1 (hook) + Phase 2 (slices 1–3) implemented, tested, committed.
+Commits: `056eb3211` (hook), `cd20a6a3c` (slice 1 primitive), `eceec7e64` (slice 2 memory
+writes ON), `9e95492ab` (slice 3 run_parallel_tasks).
 
 ## Problem (proven)
 
