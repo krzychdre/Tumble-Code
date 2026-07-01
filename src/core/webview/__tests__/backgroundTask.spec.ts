@@ -53,7 +53,7 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 
 		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
 
-		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "saved 2 memories" })
+		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "saved 2 memories", writtenPaths: [] })
 		// completed task is disposed and de-registered
 		expect(task.abortTask).toHaveBeenCalledWith(true)
 		expect(backgroundTasks.has("bg-1")).toBe(false)
@@ -65,7 +65,7 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 
 		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
 
-		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined })
+		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
 		expect(task.abortTask).not.toHaveBeenCalled() // aborted tasks are already torn down
 		expect(backgroundTasks.has("bg-1")).toBe(false)
 	})
@@ -77,7 +77,7 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
 		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
 
-		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done" })
+		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
 	})
 
@@ -90,7 +90,7 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 		// The task's own abortTask -> TaskAborted would normally fire; simulate it.
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
 		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
-		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined })
+		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
 	})
 
 	it("aborts immediately if the signal is already aborted", async () => {
@@ -100,6 +100,6 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 		const { promise } = invokeAwait(task, { signal: controller.signal })
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
 		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
-		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined })
+		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
 	})
 })

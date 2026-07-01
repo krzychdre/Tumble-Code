@@ -94,6 +94,7 @@ import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
 import { Task, type AutoApprovalOverride } from "../task/Task"
+import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from "../memory"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { ClineMessage, TodoItem } from "@roo-code/types"
@@ -3130,7 +3131,7 @@ export class ClineProvider
 	public awaitTaskCompletion(
 		task: Task,
 		options: { signal?: AbortSignal } = {},
-	): Promise<{ completed: boolean; lastMessage?: string }> {
+	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }> {
 		return new Promise((resolve) => {
 			let settled = false
 
@@ -3144,13 +3145,23 @@ export class ClineProvider
 				task.off(RooCodeEventName.TaskCompleted, onCompleted)
 				task.off(RooCodeEventName.TaskAborted, onAborted)
 				options.signal?.removeEventListener("abort", onSignalAbort)
+				// Capture the set of files the task wrote/edited BEFORE disposing it
+				// (dispose tears down the tracker). Resolve to absolute paths.
+				let writtenPaths: string[] = []
+				try {
+					writtenPaths = (task.fileContextTracker?.getAndClearCheckpointPossibleFile?.() ?? []).map((p) =>
+						path.isAbsolute(p) ? p : path.resolve(task.cwd, p),
+					)
+				} catch {
+					// Non-fatal: no written-path reporting for this run.
+				}
 				this.backgroundTasks.delete(task.taskId)
 				// Dispose a completed background task (aborted ones are already torn
 				// down). `isBackground` makes this abort skip the memory writers.
 				if (result.completed) {
 					void task.abortTask(true).catch(() => {})
 				}
-				resolve(result)
+				resolve({ ...result, writtenPaths })
 			}
 
 			const onCompleted = () => {
@@ -3170,6 +3181,35 @@ export class ClineProvider
 				else options.signal.addEventListener("abort", onSignalAbort, { once: true })
 			}
 		})
+	}
+
+	/**
+	 * The memory background-writer runner (extraction + dream), consumed by
+	 * `TaskLifecycle.triggerMemoryBackgroundWriters` via `provider.memorySubTaskRunner`.
+	 *
+	 * Spawns a headless, write-sandboxed background task (in "code" mode so the
+	 * read/write tools are available) against the given cwd, runs it autonomously
+	 * with a turn cap, and returns the memory files it wrote. This is the wiring
+	 * that flips memory writes ON — replacing the historical `noopSubTaskRunner`
+	 * fallback. The `autoApprovalOverride` (see {@link memoryWriteSandbox}) confines
+	 * writes to the memory directory, and `silentWrites` keeps the writes off-screen.
+	 */
+	public get memorySubTaskRunner(): SubTaskRunner {
+		return async ({ cwd, systemPrompt, userPrompt, maxTurns, signal }) => {
+			// The real Task builds its own system prompt (which already includes the
+			// memory behavioral section), so fold the extraction/dream system prompt
+			// into the task's initial message alongside the user prompt.
+			const text = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt
+			const task = await this.createBackgroundTask(text, {
+				taskMode: "code",
+				workspacePath: cwd,
+				maxAgentTurns: maxTurns,
+				autoApprovalOverride: memoryWriteSandbox(cwd),
+				silentWrites: true,
+			})
+			const { writtenPaths } = await this.awaitTaskCompletion(task, { signal })
+			return { writtenPaths: filterMemoryWrittenPaths(writtenPaths, cwd) }
+		}
 	}
 
 	public async cancelTask(): Promise<void> {

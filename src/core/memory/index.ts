@@ -55,6 +55,7 @@ export {
 	type TranscriptMessage,
 	type RenderTranscriptOptions,
 } from "./transcript"
+export { memoryWriteSandbox, filterMemoryWrittenPaths, type SandboxDecision } from "./memorySandbox"
 export {
 	findRelevantMemories,
 	selectRelevantMemories,

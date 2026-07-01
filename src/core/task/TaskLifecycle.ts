@@ -596,21 +596,16 @@ export class TaskLifecycle {
 	 * is cursor-based and early-returns when there are no new messages, so a
 	 * completion-then-abort sequence never double-writes.
 	 *
-	 * Phase 2 (ai_plans/2026-07-01_memory-hook-and-headless-subagent.md) replaces
-	 * the `noopSubTaskRunner` fallback with `provider.memorySubTaskRunner` backed
-	 * by the reusable `createBackgroundTask` primitive. Until then this fires the
-	 * correctly-parameterized hook (real transcript + manifest) but writes stay
-	 * off because the runner is a no-op.
+	 * The runner is `provider.memorySubTaskRunner` (Phase 2), which spawns a
+	 * headless, write-sandboxed background task that actually persists memories.
 	 */
 	public triggerMemoryBackgroundWriters(): void {
 		const provider = this.access.providerRef.deref()
 		if (!provider) return
-		// Sub-Task spawn wiring: delegated to the provider's task factory.
-		// Exposed as a method so the provider can inject the real spawner;
-		// defaults to a no-op so the hooks ship safely.
-		const subTaskRunner =
-			(provider as unknown as { memorySubTaskRunner?: import("../memory/extractMemories").SubTaskRunner })
-				.memorySubTaskRunner ?? require("../memory/memoryTaskIntegration").noopSubTaskRunner
+		// The provider's `memorySubTaskRunner` spawns a headless, write-sandboxed
+		// background task and returns the memory files it wrote (Phase 2). This is
+		// what makes the writers actually persist memories.
+		const subTaskRunner = provider.memorySubTaskRunner
 		// Render the recent conversation so the *fresh* extraction sub-agent has
 		// content to analyze (it can't fork the parent's context — see the plan).
 		const transcript = renderTranscript(this.access.apiConversationHistory as unknown as TranscriptMessage[])
