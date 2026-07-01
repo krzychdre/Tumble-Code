@@ -637,6 +637,15 @@ export class NativeToolCallParser {
 				}
 				break
 
+			case "run_parallel_tasks":
+				if (partialArgs.subtasks !== undefined) {
+					nativeArgs = {
+						subtasks: Array.isArray(partialArgs.subtasks) ? partialArgs.subtasks : [],
+						maxConcurrency: partialArgs.maxConcurrency ?? null,
+					}
+				}
+				break
+
 			case "tools_load":
 				if (partialArgs.names !== undefined) {
 					nativeArgs = {
@@ -998,6 +1007,15 @@ export class NativeToolCallParser {
 							mode: args.mode,
 							message: args.message,
 							todos: args.todos,
+						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "run_parallel_tasks":
+					if (Array.isArray(args.subtasks)) {
+						nativeArgs = {
+							subtasks: args.subtasks,
+							maxConcurrency: args.maxConcurrency ?? null,
 						} as NativeArgsFor<TName>
 					}
 					break

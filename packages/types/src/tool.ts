@@ -47,6 +47,7 @@ export const toolNames = [
 	"generate_image",
 	"custom_tool",
 	"tools_load",
+	"run_parallel_tasks",
 ] as const
 
 export const toolNamesSchema = z.enum(toolNames)

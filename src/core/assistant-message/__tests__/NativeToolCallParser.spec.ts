@@ -31,6 +31,7 @@ const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string
 	attempt_completion: { result: "done" },
 	switch_mode: { mode_slug: "code", reason: "r" },
 	new_task: { mode: "code", message: "m" },
+	run_parallel_tasks: { subtasks: [{ message: "m", mode: "code" }], maxConcurrency: 2 },
 	codebase_search: { query: "q" },
 	execute_command: { command: "echo hi" },
 	update_todo_list: { todos: "- [ ] x" },
