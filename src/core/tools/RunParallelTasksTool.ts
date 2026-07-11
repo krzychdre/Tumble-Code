@@ -2,12 +2,14 @@ import * as os from "os"
 import * as path from "path"
 
 import { worktreeService } from "@roo-code/core"
-import { RooCodeEventName } from "@roo-code/types"
+import { RooCodeEventName, type ExtensionState } from "@roo-code/types"
 
-import { Task } from "../task/Task"
+import { Task, type AutoApprovalOverride } from "../task/Task"
+import { buildSubagentApprovalPolicy } from "../task/subagentApproval"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
+import type { AutoApprovalState, AutoApprovalStateOptions } from "../auto-approval"
 
 /** One requested subtask. */
 export interface ParallelSubtask {
@@ -134,6 +136,9 @@ export function worktreeNamesFor(
 	}
 }
 
+/** State slice consumed by `checkAutoApproval` via the subagent approval policy. */
+type ApprovalState = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions>
+
 /** Provider surface needed by a single subtask worker. */
 interface SubtaskProvider {
 	createBackgroundTask(
@@ -142,7 +147,7 @@ interface SubtaskProvider {
 			taskMode?: string
 			workspacePath?: string
 			maxAgentTurns?: number
-			autoApprovalOverride?: () => "approve" | "deny"
+			autoApprovalOverride?: AutoApprovalOverride
 			silentWrites?: boolean
 		},
 	): Promise<Task>
@@ -150,6 +155,7 @@ interface SubtaskProvider {
 		task: Task,
 		options: { signal?: AbortSignal },
 	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }>
+	getState(): Promise<ApprovalState>
 }
 
 /** Arguments for {@link runOneSubtask}. */
@@ -204,8 +210,13 @@ async function runOneSubtask({
 			taskMode: subtask.mode,
 			workspacePath: worktreePath,
 			maxAgentTurns: SUBAGENT_MAX_TURNS,
-			// Subagents run autonomously in their isolated worktree.
-			autoApprovalOverride: () => "approve",
+			// Subagents follow the user's auto-approval settings; worktree
+			// writes and reads are pre-approved; anything that would ask the
+			// user is denied (a headless child has no user to ask).
+			autoApprovalOverride: buildSubagentApprovalPolicy({
+				getState: () => provider.getState(),
+				worktreePath,
+			}),
 		})
 		const outcome = await provider.awaitTaskCompletion(child, { signal })
 

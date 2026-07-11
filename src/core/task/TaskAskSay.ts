@@ -23,6 +23,7 @@ import { formatResponse } from "../prompts/responses"
 import { AskIgnoredError } from "./AskIgnoredError"
 import { type MessageQueueService } from "../message-queue/MessageQueueService"
 import { type ClineProvider } from "../webview/ClineProvider"
+import { type AutoApprovalOverride } from "./Task"
 import pWaitFor from "p-wait-for"
 
 export interface TaskAskSayAccess {
@@ -47,8 +48,10 @@ export interface TaskAskSayAccess {
 	 * Optional per-task auto-approval override (headless background tasks). Checked
 	 * before the global auto-approval state; returns "approve"/"deny" to resolve an
 	 * ask without user interaction, or undefined to defer to normal handling.
+	 * May be async; receives `isProtected` so the policy can factor in protected-file
+	 * status.
 	 */
-	autoApprovalOverride?: (ask: ClineAsk, text?: string) => "approve" | "deny" | undefined
+	autoApprovalOverride?: AutoApprovalOverride
 }
 
 export class TaskAskSay {
@@ -90,7 +93,7 @@ export class TaskAskSay {
 		// autonomously without mutating the global auto-approval settings. Only
 		// short-circuits when it returns a concrete "approve"/"deny"; otherwise
 		// falls through to the normal global auto-approval flow.
-		const override = this.access.autoApprovalOverride?.(type, text)
+		const override = await this.access.autoApprovalOverride?.(type, text, isProtected)
 		const approval: CheckAutoApprovalResult =
 			override === "approve"
 				? { decision: "approve" }

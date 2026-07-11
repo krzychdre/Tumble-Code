@@ -40,7 +40,7 @@ import type { ToolCallbacks } from "../BaseTool"
 // ---------------------------------------------------------------------------
 
 /** A minimal fake provider that records calls and lets tests control outcomes. */
-function makeFakeProvider() {
+function makeFakeProvider(state: Record<string, unknown> = {}) {
 	const children: FakeChild[] = []
 	const provider = {
 		children,
@@ -52,11 +52,19 @@ function makeFakeProvider() {
 		awaitTaskCompletion: vi
 			.fn()
 			.mockImplementation((child: FakeChild, options: { signal?: AbortSignal }) => child.await(options)),
+		getState: vi.fn().mockResolvedValue({
+			autoApprovalEnabled: true,
+			alwaysAllowExecute: false,
+			allowedCommands: [],
+			deniedCommands: [],
+			...state,
+		}),
 	}
 	return provider as unknown as {
 		children: FakeChild[]
 		createBackgroundTask: ReturnType<typeof vi.fn>
 		awaitTaskCompletion: ReturnType<typeof vi.fn>
+		getState: ReturnType<typeof vi.fn>
 	}
 }
 
@@ -346,5 +354,32 @@ describe("RunParallelTasksTool.execute", () => {
 		// Listener count for TaskAborted should be zero after execution.
 		const emitter = parent as unknown as EventEmitter
 		expect(emitter.listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+	})
+
+	it("passes a real approval policy (not blanket approve) to createBackgroundTask", async () => {
+		// State: no commands auto-approved, so a command ask should be denied.
+		const provider = makeFakeProvider({ autoApprovalEnabled: true, alwaysAllowExecute: false })
+		const parent = makeFakeParentTask(provider)
+		const callbacks = makeCallbacks()
+
+		const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+
+		await vi.waitFor(() => expect(provider.children.length).toBe(1))
+		provider.children[0].complete()
+		await execPromise
+
+		expect(provider.createBackgroundTask).toHaveBeenCalledOnce()
+		const opts = provider.createBackgroundTask.mock.calls[0][1] as {
+			autoApprovalOverride?: (ask: string, text?: string, isProtected?: boolean) => Promise<string>
+		}
+		expect(typeof opts.autoApprovalOverride).toBe("function")
+
+		// Read-only tool ask → approve (policy recognises reads as safe).
+		const readOnlyTool = JSON.stringify({ tool: "readFile", path: "/anywhere" })
+		expect(await opts.autoApprovalOverride!("tool", readOnlyTool, false)).toBe("approve")
+
+		// Command ask with no allowed commands → deny (delegates to checkAutoApproval
+		// which returns "ask" when alwaysAllowExecute is false, maps to deny).
+		expect(await opts.autoApprovalOverride!("command", "rm -rf /tmp", false)).toBe("deny")
 	})
 })

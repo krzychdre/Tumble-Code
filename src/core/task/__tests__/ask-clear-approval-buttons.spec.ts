@@ -156,3 +156,45 @@ describe("Task.ask auto-approval stamping", () => {
 		expect(postMessageToWebview).not.toHaveBeenCalledWith({ type: "clearApprovalButtons" })
 	})
 })
+
+describe("Task.ask async autoApprovalOverride", () => {
+	it("honors an async override that resolves deny", async () => {
+		const provider: ProviderStub = {
+			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+			getState: async () => ({ autoApprovalEnabled: true, alwaysAllowExecute: true }),
+		}
+
+		const task = buildTask(provider)
+		await attachQueue(task)
+		;(task as any).autoApprovalOverride = async () => "deny" as const
+
+		const result = await task.ask("command", "echo hi", false)
+
+		expect(result.response).toBe("noButtonClicked")
+		const addCall = (task as any).history.addToClineMessages.mock.calls[0][0]
+		expect(addCall.isAnswered).toBe(true)
+	})
+
+	it("falls through to checkAutoApproval when async override resolves undefined", async () => {
+		const provider: ProviderStub = {
+			postMessageToWebview: vi.fn().mockResolvedValue(undefined),
+			getState: async () => ({
+				autoApprovalEnabled: true,
+				alwaysAllowExecute: true,
+				allowedCommands: ["echo"],
+				deniedCommands: [],
+			}),
+		}
+
+		const task = buildTask(provider)
+		await attachQueue(task)
+		;(task as any).autoApprovalOverride = async () => undefined
+
+		const result = await task.ask("command", "echo hi", false)
+
+		// checkAutoApproval sees allowedCommands includes "echo" → approve.
+		expect(result.response).toBe("yesButtonClicked")
+		const addCall = (task as any).history.addToClineMessages.mock.calls[0][0]
+		expect(addCall.isAnswered).toBe(true)
+	})
+})

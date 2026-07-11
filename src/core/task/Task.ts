@@ -200,11 +200,16 @@ export interface TaskOptions extends CreateTaskOptions {
 }
 
 /**
- * A per-task auto-approval decision function. Given the ask type and its text,
- * returns `"approve"` / `"deny"` to short-circuit, or `undefined` to defer to
- * the normal (global) auto-approval flow.
+ * A per-task auto-approval decision function. Given the ask type, its text, and
+ * whether the target is a protected file, returns `"approve"` / `"deny"` to
+ * short-circuit, or `undefined` to defer to the normal (global) auto-approval
+ * flow. The function may be async; `undefined` falls through to the global flow.
  */
-export type AutoApprovalOverride = (ask: ClineAsk, text?: string) => "approve" | "deny" | undefined
+export type AutoApprovalOverride = (
+	ask: ClineAsk,
+	text?: string,
+	isProtected?: boolean,
+) => "approve" | "deny" | undefined | Promise<"approve" | "deny" | undefined>
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly taskId: string
