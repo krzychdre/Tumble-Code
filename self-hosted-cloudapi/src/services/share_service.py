@@ -22,7 +22,7 @@ async def share_task(
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
 
-    if task is None:
+    if task is None or task.user_id != user_id:
         return ShareResponse(success=False, error="Task not found")
 
     # Check for existing share

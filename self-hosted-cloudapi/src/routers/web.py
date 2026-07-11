@@ -26,6 +26,7 @@ from config.settings import settings
 from src.database import get_db
 from src.auth.web_session import WebUser, get_web_user_optional
 from src.models.task import Task, TaskMessage, TaskShare
+from src.models.organization import Membership
 from src.services.share_service import delete_shared_task
 from src.services.metrics_service import (
     DEFAULT_PERIOD,
@@ -414,6 +415,28 @@ async def shared_task(
     task_result = await db.execute(select(Task).where(Task.id == task_id))
     task = task_result.scalar_one_or_none()
     is_owner = user is not None and task is not None and task.user_id == user["user_id"]
+
+    # For non-public shares, enforce org membership: the viewer must be the task
+    # owner or share an organization with the task owner. This prevents a logged-in
+    # user from a different org reading another org's private conversation.
+    if share.visibility != "public" and not is_owner:
+        allowed = False
+        if task is not None and task.organization_id is not None and user is not None:
+            member_result = await db.execute(
+                select(Membership).where(
+                    Membership.user_id == user["user_id"],
+                    Membership.organization_id == task.organization_id,
+                )
+            )
+            allowed = member_result.scalar_one_or_none() is not None
+        if not allowed:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                {"user": user},
+                status_code=404,
+            )
+
     live = bool(settings.bridge_enabled and is_owner)
 
     messages = await _load_task_messages(db, task_id)

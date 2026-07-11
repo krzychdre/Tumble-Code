@@ -1,8 +1,9 @@
 """Share response schema."""
 
+from typing import Literal, Optional
+
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
-from typing import Optional
 
 
 class ShareTaskRequest(BaseModel):
@@ -10,7 +11,7 @@ class ShareTaskRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
 
     task_id: str
-    visibility: str = "organization"
+    visibility: Literal["organization", "public"] = "organization"
 
 
 class ShareResponse(BaseModel):
