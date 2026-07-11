@@ -43,8 +43,10 @@ const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string
 
 describe("NativeToolCallParser", () => {
 	beforeEach(() => {
-		NativeToolCallParser.clearAllStreamingToolCalls()
-		NativeToolCallParser.clearRawChunkState()
+		// Clear state on a fresh instance to avoid cross-test contamination
+		const parser = new NativeToolCallParser()
+		parser.clearAllStreamingToolCalls()
+		parser.clearRawChunkState()
 	})
 
 	describe("parseToolCall", () => {
@@ -337,14 +339,15 @@ describe("NativeToolCallParser", () => {
 	describe("processStreamingChunk", () => {
 		describe("read_file tool", () => {
 			it("should emit a partial ToolUse with nativeArgs.path during streaming", () => {
+				const parser = new NativeToolCallParser()
 				const id = "toolu_streaming_123"
-				NativeToolCallParser.startStreamingToolCall(id, "read_file")
+				parser.startStreamingToolCall(id, "read_file")
 
 				// Simulate streaming chunks
 				const fullArgs = JSON.stringify({ path: "src/test.ts" })
 
 				// Process the complete args as a single chunk for simplicity
-				const result = NativeToolCallParser.processStreamingChunk(id, fullArgs)
+				const result = parser.processStreamingChunk(id, fullArgs)
 
 				expect(result).not.toBeNull()
 				expect(result?.nativeArgs).toBeDefined()
@@ -357,11 +360,12 @@ describe("NativeToolCallParser", () => {
 	describe("finalizeStreamingToolCall", () => {
 		describe("read_file tool", () => {
 			it("should parse read_file args on finalize", () => {
+				const parser = new NativeToolCallParser()
 				const id = "toolu_finalize_123"
-				NativeToolCallParser.startStreamingToolCall(id, "read_file")
+				parser.startStreamingToolCall(id, "read_file")
 
 				// Add the complete arguments
-				NativeToolCallParser.processStreamingChunk(
+				parser.processStreamingChunk(
 					id,
 					JSON.stringify({
 						path: "finalized.ts",
@@ -371,7 +375,7 @@ describe("NativeToolCallParser", () => {
 					}),
 				)
 
-				const result = NativeToolCallParser.finalizeStreamingToolCall(id)
+				const result = parser.finalizeStreamingToolCall(id)
 
 				expect(result).not.toBeNull()
 				expect(result?.type).toBe("tool_use")
@@ -416,6 +420,77 @@ describe("NativeToolCallParser", () => {
 				// nothing populated" symptom this test exists to catch.
 				expect(Object.keys(result.nativeArgs as object).length).toBeGreaterThan(0)
 			}
+		})
+	})
+
+	// Regression test for TL-1: static Maps in NativeToolCallParser were shared
+	// across all tasks. When task B called clearRawChunkState()/clearAllStreamingToolCalls()
+	// (via resetStreamingState), it wiped task A's mid-stream tool-call accumulation.
+	// With per-task instances, each parser has its own state and cannot interfere.
+	describe("per-task instance isolation (TL-1)", () => {
+		it("parser A's tool call survives parser B calling clearRawChunkState/clearAllStreamingToolCalls", () => {
+			const parserA = new NativeToolCallParser()
+			const parserB = new NativeToolCallParser()
+
+			// Start a raw tool call on parser A: first chunk with id+name
+			const events1 = parserA.processRawChunk({
+				index: 0,
+				id: "call_A_001",
+				name: "read_file",
+				arguments: '{"path":"src',
+			})
+			// Should emit a tool_call_start (name is present)
+			expect(events1).toContainEqual({
+				type: "tool_call_start",
+				id: "call_A_001",
+				name: "read_file",
+			})
+
+			// Simulate task B's resetStreamingState clearing all state
+			parserB.clearRawChunkState()
+			parserB.clearAllStreamingToolCalls()
+
+			// Continue sending argument deltas to parser A
+			const events2 = parserA.processRawChunk({
+				index: 0,
+				arguments: '/test.ts"}',
+			})
+			// Should still emit delta events (state was NOT wiped by B's clear)
+			expect(events2).toContainEqual({
+				type: "tool_call_delta",
+				id: "call_A_001",
+				delta: '/test.ts"}',
+			})
+
+			// Finalize should produce end events for parser A
+			const endEvents = parserA.processFinishReason("tool_calls")
+			expect(endEvents).toHaveLength(1)
+			expect(endEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_A_001",
+			})
+		})
+
+		it("parser A's streaming tool call survives parser B calling clearAllStreamingToolCalls", () => {
+			const parserA = new NativeToolCallParser()
+			const parserB = new NativeToolCallParser()
+
+			// Start streaming a tool call on parser A
+			parserA.startStreamingToolCall("call_A_002", "write_to_file")
+			parserA.processStreamingChunk("call_A_002", '{"path":"test.ts","content":"hello')
+
+			// Task B clears its state — must not affect A
+			parserB.clearAllStreamingToolCalls()
+
+			// Continue streaming on parser A
+			const partial = parserA.processStreamingChunk("call_A_002", '"}')
+			expect(partial).not.toBeNull()
+			expect(partial?.type).toBe("tool_use")
+
+			// Finalize should work correctly
+			const result = parserA.finalizeStreamingToolCall("call_A_002")
+			expect(result).not.toBeNull()
+			expect(result?.type).toBe("tool_use")
 		})
 	})
 })

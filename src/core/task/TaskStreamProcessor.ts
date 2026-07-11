@@ -23,7 +23,7 @@ import { t } from "../../i18n"
 import { sanitizeToolUseId } from "../../utils/tool-id"
 
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
-import { NativeToolCallParser } from "../assistant-message/NativeToolCallParser"
+import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
 import { type ClineProvider } from "../webview/ClineProvider"
 
 import { type TaskAskSay } from "./TaskAskSay"
@@ -89,6 +89,9 @@ export class TaskStreamProcessor {
 		private readonly access: TaskStreamProcessorAccess,
 		private readonly _task: any,
 	) {}
+
+	// Per-task parser instance — avoids cross-task state interference in parallel tasks
+	private readonly toolCallParser = new NativeToolCallParser()
 
 	// Accumulation state for the current streaming session
 	private _reasoningMessage: string = ""
@@ -156,8 +159,8 @@ export class TaskStreamProcessor {
 		// No legacy text-stream tool parser.
 		this.access.streamingToolCallIndices.clear()
 		// Clear any leftover streaming tool call state from previous interrupted streams
-		NativeToolCallParser.clearAllStreamingToolCalls()
-		NativeToolCallParser.clearRawChunkState()
+		this.toolCallParser.clearAllStreamingToolCalls()
+		this.toolCallParser.clearRawChunkState()
 
 		await this.access.diffViewProvider.reset()
 
@@ -210,123 +213,24 @@ export class TaskStreamProcessor {
 				}
 				break
 			case "tool_call_partial": {
-				// Process raw tool call chunk through NativeToolCallParser
+				// Process raw tool call chunk through the per-task parser instance
 				// which handles tracking, buffering, and emits events
-				const events = NativeToolCallParser.processRawChunk({
+				const events = this.toolCallParser.processRawChunk({
 					index: chunk.index,
 					id: chunk.id,
 					name: chunk.name,
 					arguments: chunk.arguments,
 				})
 
-				for (const event of events) {
-					if (event.type === "tool_call_start") {
-						// Guard against duplicate tool_call_start events for the same tool ID.
-						// This can occur due to stream retry, reconnection, or API quirks.
-						// Without this check, duplicate tool_use blocks with the same ID would
-						// be added to assistantMessageContent, causing API 400 errors:
-						// "tool_use ids must be unique"
-						if (this.access.streamingToolCallIndices.has(event.id)) {
-							console.warn(
-								`[Task#${this.access.taskId}] Ignoring duplicate tool_call_start for ID: ${event.id} (tool: ${event.name})`,
-							)
-							continue
-						}
+				this.handleToolCallEvents(events, streamModelInfo)
+				break
+			}
 
-						// Initialize streaming in NativeToolCallParser
-						NativeToolCallParser.startStreamingToolCall(event.id, event.name as ToolName)
-
-						// Before adding a new tool, finalize any preceding text block
-						// This prevents the text block from blocking tool presentation
-						const lastBlock =
-							this.access.assistantMessageContent[this.access.assistantMessageContent.length - 1]
-						if (lastBlock?.type === "text" && lastBlock.partial) {
-							lastBlock.partial = false
-						}
-
-						// Track the index where this tool will be stored
-						const toolUseIndex = this.access.assistantMessageContent.length
-						this.access.streamingToolCallIndices.set(event.id, toolUseIndex)
-
-						// Create initial partial tool use
-						const partialToolUse = {
-							type: "tool_use" as const,
-							name: event.name as ToolName,
-							params: {},
-							partial: true,
-						}
-
-						// Store the ID for native protocol
-						;(partialToolUse as any).id = event.id
-
-						// Add to content and present
-						this.access.assistantMessageContent.push(partialToolUse)
-						this.access.userMessageContentReady = false
-						presentAssistantMessage(this._task)
-					} else if (event.type === "tool_call_delta") {
-						// Process chunk using streaming JSON parser
-						const partialToolUse = NativeToolCallParser.processStreamingChunk(event.id, event.delta)
-
-						if (partialToolUse) {
-							// Get the index for this tool call
-							const toolUseIndex = this.access.streamingToolCallIndices.get(event.id)
-							if (toolUseIndex !== undefined) {
-								// Store the ID for native protocol
-								;(partialToolUse as any).id = event.id
-
-								// Update the existing tool use with new partial data
-								this.access.assistantMessageContent[toolUseIndex] = partialToolUse
-
-								// Present updated tool use
-								presentAssistantMessage(this._task)
-							}
-						}
-					} else if (event.type === "tool_call_end") {
-						// Finalize the streaming tool call
-						const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(event.id)
-
-						// Get the index for this tool call
-						const toolUseIndex = this.access.streamingToolCallIndices.get(event.id)
-
-						if (finalToolUse) {
-							// Store the tool call ID
-							;(finalToolUse as any).id = event.id
-
-							// Get the index and replace partial with final
-							if (toolUseIndex !== undefined) {
-								this.access.assistantMessageContent[toolUseIndex] = finalToolUse
-							}
-
-							// Clean up tracking
-							this.access.streamingToolCallIndices.delete(event.id)
-
-							// Mark that we have new content to process
-							this.access.userMessageContentReady = false
-
-							// Present the finalized tool call
-							presentAssistantMessage(this._task)
-						} else if (toolUseIndex !== undefined) {
-							// finalizeStreamingToolCall returned null (malformed JSON or missing args)
-							// Mark the tool as non-partial so it's presented as complete, but execution
-							// will be short-circuited in presentAssistantMessage with a structured tool_result.
-							const existingToolUse = this.access.assistantMessageContent[toolUseIndex]
-							if (existingToolUse && existingToolUse.type === "tool_use") {
-								existingToolUse.partial = false
-								// Ensure it has the ID for native protocol
-								;(existingToolUse as any).id = event.id
-							}
-
-							// Clean up tracking
-							this.access.streamingToolCallIndices.delete(event.id)
-
-							// Mark that we have new content to process
-							this.access.userMessageContentReady = false
-
-							// Present the tool call - validation will handle missing params
-							presentAssistantMessage(this._task)
-						}
-					}
-				}
+			case "finish_reason": {
+				// Process finish reason through the per-task parser instance
+				// This replaces direct provider calls to NativeToolCallParser.processFinishReason
+				const events = this.toolCallParser.processFinishReason(chunk.finishReason)
+				this.handleToolCallEvents(events, streamModelInfo)
 				break
 			}
 
@@ -382,29 +286,75 @@ export class TaskStreamProcessor {
 	}
 
 	/**
-	 * Finalize the stream after all chunks have been read.
-	 * Completes remaining tool calls, marks partial blocks as complete,
-	 * and saves the reasoning message.
+	 * Process tool call events (start/delta/end) emitted by the parser.
+	 * Shared between tool_call_partial and finish_reason chunk handling
+	 * to avoid duplicating the ~100-line event loop.
 	 */
-	async finalizeStream(): Promise<void> {
-		this.access.didCompleteReadingStream = true
+	private handleToolCallEvents(events: ToolCallStreamEvent[], _streamModelInfo: ModelInfo): void {
+		for (const event of events) {
+			if (event.type === "tool_call_start") {
+				// Guard against duplicate tool_call_start events for the same tool ID.
+				// This can occur due to stream retry, reconnection, or API quirks.
+				// Without this check, duplicate tool_use blocks with the same ID would
+				// be added to assistantMessageContent, causing API 400 errors:
+				// "tool_use ids must be unique"
+				if (this.access.streamingToolCallIndices.has(event.id)) {
+					console.warn(
+						`[Task#${this.access.taskId}] Ignoring duplicate tool_call_start for ID: ${event.id} (tool: ${event.name})`,
+					)
+					continue
+				}
 
-		// Set any blocks to be complete to allow `presentAssistantMessage`
-		// to finish and set `userMessageContentReady` to true.
-		// (Could be a text block that had no subsequent tool uses, or a
-		// text block at the very end, or an invalid tool use, etc. Whatever
-		// the case, `presentAssistantMessage` relies on these blocks either
-		// to be completed or the user to reject a block in order to proceed
-		// and eventually set userMessageContentReady to true.)
+				// Initialize streaming in the per-task parser
+				this.toolCallParser.startStreamingToolCall(event.id, event.name as ToolName)
 
-		// Finalize any remaining streaming tool calls that weren't explicitly ended
-		// This is critical for MCP tools which need tool_call_end events to be properly
-		// converted from ToolUse to McpToolUse via finalizeStreamingToolCall()
-		const finalizeEvents = NativeToolCallParser.finalizeRawChunks()
-		for (const event of finalizeEvents) {
-			if (event.type === "tool_call_end") {
+				// Before adding a new tool, finalize any preceding text block
+				// This prevents the text block from blocking tool presentation
+				const lastBlock = this.access.assistantMessageContent[this.access.assistantMessageContent.length - 1]
+				if (lastBlock?.type === "text" && lastBlock.partial) {
+					lastBlock.partial = false
+				}
+
+				// Track the index where this tool will be stored
+				const toolUseIndex = this.access.assistantMessageContent.length
+				this.access.streamingToolCallIndices.set(event.id, toolUseIndex)
+
+				// Create initial partial tool use
+				const partialToolUse = {
+					type: "tool_use" as const,
+					name: event.name as ToolName,
+					params: {},
+					partial: true,
+				}
+
+				// Store the ID for native protocol
+				;(partialToolUse as any).id = event.id
+
+				// Add to content and present
+				this.access.assistantMessageContent.push(partialToolUse)
+				this.access.userMessageContentReady = false
+				presentAssistantMessage(this._task)
+			} else if (event.type === "tool_call_delta") {
+				// Process chunk using streaming JSON parser
+				const partialToolUse = this.toolCallParser.processStreamingChunk(event.id, event.delta)
+
+				if (partialToolUse) {
+					// Get the index for this tool call
+					const toolUseIndex = this.access.streamingToolCallIndices.get(event.id)
+					if (toolUseIndex !== undefined) {
+						// Store the ID for native protocol
+						;(partialToolUse as any).id = event.id
+
+						// Update the existing tool use with new partial data
+						this.access.assistantMessageContent[toolUseIndex] = partialToolUse
+
+						// Present updated tool use
+						presentAssistantMessage(this._task)
+					}
+				}
+			} else if (event.type === "tool_call_end") {
 				// Finalize the streaming tool call
-				const finalToolUse = NativeToolCallParser.finalizeStreamingToolCall(event.id)
+				const finalToolUse = this.toolCallParser.finalizeStreamingToolCall(event.id)
 
 				// Get the index for this tool call
 				const toolUseIndex = this.access.streamingToolCallIndices.get(event.id)
@@ -428,8 +378,8 @@ export class TaskStreamProcessor {
 					presentAssistantMessage(this._task)
 				} else if (toolUseIndex !== undefined) {
 					// finalizeStreamingToolCall returned null (malformed JSON or missing args)
-					// We still need to mark the tool as non-partial so it gets executed
-					// The tool's validation will catch any missing required parameters
+					// Mark the tool as non-partial so it's presented as complete, but execution
+					// will be short-circuited in presentAssistantMessage with a structured tool_result.
 					const existingToolUse = this.access.assistantMessageContent[toolUseIndex]
 					if (existingToolUse && existingToolUse.type === "tool_use") {
 						existingToolUse.partial = false
@@ -448,6 +398,29 @@ export class TaskStreamProcessor {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Finalize the stream after all chunks have been read.
+	 * Completes remaining tool calls, marks partial blocks as complete,
+	 * and saves the reasoning message.
+	 */
+	async finalizeStream(): Promise<void> {
+		this.access.didCompleteReadingStream = true
+
+		// Set any blocks to be complete to allow `presentAssistantMessage`
+		// to finish and set `userMessageContentReady` to true.
+		// (Could be a text block that had no subsequent tool uses, or a
+		// text block at the very end, or an invalid tool use, etc. Whatever
+		// the case, `presentAssistantMessage` relies on these blocks either
+		// to be completed or the user to reject a block in order to proceed
+		// and eventually set userMessageContentReady to true.)
+
+		// Finalize any remaining streaming tool calls that weren't explicitly ended
+		// This is critical for MCP tools which need tool_call_end events to be properly
+		// converted from ToolUse to McpToolUse via finalizeStreamingToolCall()
+		const finalizeEvents = this.toolCallParser.finalizeRawChunks()
+		this.handleToolCallEvents(finalizeEvents, this.access.cachedStreamingModel?.info ?? ({} as ModelInfo))
 
 		// IMPORTANT: Capture partialBlocks AFTER finalizeRawChunks() to avoid double-presentation.
 		// Tools finalized above are already presented, so we only want blocks still partial after finalization.

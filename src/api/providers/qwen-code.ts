@@ -8,8 +8,6 @@ import { type ModelInfo, type QwenCodeModelId, qwenCodeModels, qwenCodeDefaultMo
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
-import { NativeToolCallParser } from "../../core/assistant-message/NativeToolCallParser"
-
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 
@@ -303,12 +301,9 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 				}
 			}
 
-			// Process finish_reason to emit tool_call_end events
+			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
 			if (finishReason) {
-				const endEvents = NativeToolCallParser.processFinishReason(finishReason)
-				for (const event of endEvents) {
-					yield event
-				}
+				yield { type: "finish_reason", finishReason }
 			}
 
 			if (apiChunk.usage) {

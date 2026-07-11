@@ -10,11 +10,13 @@ import { openAiCodexOAuthManager } from "../../../integrations/openai-codex/oaut
 describe("OpenAiCodexHandler native tool calls", () => {
 	let handler: OpenAiCodexHandler
 	let mockOptions: ApiHandlerOptions
+	let parser: NativeToolCallParser
 
 	beforeEach(() => {
 		vi.restoreAllMocks()
-		NativeToolCallParser.clearRawChunkState()
-		NativeToolCallParser.clearAllStreamingToolCalls()
+		parser = new NativeToolCallParser()
+		parser.clearRawChunkState()
+		parser.clearAllStreamingToolCalls()
 
 		mockOptions = {
 			apiModelId: "gpt-5.2-2025-12-11",
@@ -79,8 +81,8 @@ describe("OpenAiCodexHandler native tool calls", () => {
 		for await (const chunk of stream) {
 			chunks.push(chunk)
 			if (chunk.type === "tool_call_partial") {
-				// Simulate Task.ts behavior so finish_reason handling can emit tool_call_end elsewhere
-				NativeToolCallParser.processRawChunk({
+				// Simulate TaskStreamProcessor behavior: process through per-task parser instance
+				parser.processRawChunk({
 					index: chunk.index,
 					id: chunk.id,
 					name: chunk.name,

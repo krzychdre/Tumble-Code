@@ -13,8 +13,6 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { NativeToolCallParser } from "../../core/assistant-message/NativeToolCallParser"
-
 import type { ApiHandlerOptions } from "../../shared/api"
 
 import {
@@ -500,13 +498,10 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				}
 			}
 
-			// Process finish_reason to emit tool_call_end events
+			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
 			// This ensures tool calls are finalized even if the stream doesn't properly close
 			if (finishReason) {
-				const endEvents = NativeToolCallParser.processFinishReason(finishReason)
-				for (const event of endEvents) {
-					yield event
-				}
+				yield { type: "finish_reason", finishReason }
 			}
 
 			if (chunk.usage) {

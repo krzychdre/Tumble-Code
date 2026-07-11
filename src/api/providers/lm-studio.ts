@@ -6,7 +6,6 @@ import { type ModelInfo, openAiModelInfoSaneDefaults, LMSTUDIO_DEFAULT_TEMPERATU
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
-import { NativeToolCallParser } from "../../core/assistant-message/NativeToolCallParser"
 import { TagMatcher } from "../../utils/tag-matcher"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
@@ -168,12 +167,9 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 						}
 					}
 
-					// Process finish_reason to emit tool_call_end events
+					// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
 					if (finishReason) {
-						const endEvents = NativeToolCallParser.processFinishReason(finishReason)
-						for (const event of endEvents) {
-							yield event
-						}
+						yield { type: "finish_reason", finishReason }
 					}
 				}
 
