@@ -2,6 +2,7 @@ import * as os from "os"
 import * as path from "path"
 
 import { worktreeService } from "@roo-code/core"
+import { RooCodeEventName } from "@roo-code/types"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
@@ -29,7 +30,7 @@ interface RunParallelTasksParams {
 export interface ParallelSubtaskResult {
 	index: number
 	mode: string
-	status: "completed" | "failed"
+	status: "completed" | "failed" | "cancelled"
 	worktreePath?: string
 	branch?: string
 	message?: string
@@ -93,8 +94,13 @@ export async function runWithConcurrency<T, R>(
 /** Render the per-subtask outcomes into a single delimited tool result. */
 export function formatParallelResults(results: ReadonlyArray<ParallelSubtaskResult>): string {
 	const completed = results.filter((r) => r.status === "completed").length
+	const failed = results.filter((r) => r.status === "failed").length
+	const cancelled = results.filter((r) => r.status === "cancelled").length
+
+	const summaryParts = [`${completed} completed`, `${failed} failed`]
+	if (cancelled > 0) summaryParts.push(`${cancelled} cancelled`)
 	const lines: string[] = [
-		`Ran ${results.length} parallel subtask(s): ${completed} completed, ${results.length - completed} failed.`,
+		`Ran ${results.length} parallel subtask(s): ${summaryParts.join(", ")}.`,
 		"Worktrees and branches are left intact for review; nothing was merged.",
 		"",
 	]
@@ -103,6 +109,8 @@ export function formatParallelResults(results: ReadonlyArray<ParallelSubtaskResu
 		if (r.worktreePath) lines.push(`- worktree: ${r.worktreePath}${r.branch ? ` (branch: ${r.branch})` : ""}`)
 		if (r.status === "completed") {
 			lines.push("", r.message?.trim() || "(no result message)")
+		} else if (r.status === "cancelled") {
+			lines.push("", "Cancelled before completion.")
 		} else {
 			lines.push("", `Failed: ${r.error ?? "unknown error"}`)
 		}
@@ -123,6 +131,105 @@ export function worktreeNamesFor(
 	return {
 		worktreePath: path.join(os.homedir(), ".roo", "worktrees", tag),
 		branch: `worktree/parallel-${shortId}-${index + 1}`,
+	}
+}
+
+/** Provider surface needed by a single subtask worker. */
+interface SubtaskProvider {
+	createBackgroundTask(
+		text: string,
+		options: {
+			taskMode?: string
+			workspacePath?: string
+			maxAgentTurns?: number
+			autoApprovalOverride?: () => "approve" | "deny"
+			silentWrites?: boolean
+		},
+	): Promise<Task>
+	awaitTaskCompletion(
+		task: Task,
+		options: { signal?: AbortSignal },
+	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }>
+}
+
+/** Arguments for {@link runOneSubtask}. */
+interface RunOneSubtaskArgs {
+	provider: SubtaskProvider
+	cwd: string
+	parentTaskId: string
+	subtask: NormalizedSubtask
+	index: number
+	signal: AbortSignal
+}
+
+/**
+ * Run a single subtask: create its worktree, spawn a headless child, and await
+ * completion. Checks `signal.aborted` before each side-effecting step so that
+ * a parent abort cancels pending workers without orphaning children.
+ */
+async function runOneSubtask({
+	provider,
+	cwd,
+	parentTaskId,
+	subtask,
+	index,
+	signal,
+}: RunOneSubtaskArgs): Promise<ParallelSubtaskResult> {
+	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, index)
+
+	if (signal.aborted) {
+		return { index, mode: subtask.mode, status: "cancelled" }
+	}
+
+	try {
+		const created = await worktreeService.createWorktree(cwd, {
+			path: worktreePath,
+			branch,
+			createNewBranch: true,
+		})
+		if (!created.success) {
+			return {
+				index,
+				mode: subtask.mode,
+				status: "failed",
+				error: `worktree creation failed: ${created.message}`,
+			}
+		}
+
+		if (signal.aborted) {
+			return { index, mode: subtask.mode, status: "cancelled", worktreePath, branch }
+		}
+
+		const child = await provider.createBackgroundTask(subtask.message, {
+			taskMode: subtask.mode,
+			workspacePath: worktreePath,
+			maxAgentTurns: SUBAGENT_MAX_TURNS,
+			// Subagents run autonomously in their isolated worktree.
+			autoApprovalOverride: () => "approve",
+		})
+		const outcome = await provider.awaitTaskCompletion(child, { signal })
+
+		if (!outcome.completed && signal.aborted) {
+			return { index, mode: subtask.mode, status: "cancelled", worktreePath, branch }
+		}
+		return {
+			index,
+			mode: subtask.mode,
+			status: outcome.completed ? "completed" : "failed",
+			worktreePath,
+			branch,
+			message: outcome.lastMessage,
+			error: outcome.completed ? undefined : "subtask aborted before completion",
+		}
+	} catch (error) {
+		return {
+			index,
+			mode: subtask.mode,
+			status: "failed",
+			worktreePath,
+			branch,
+			error: error instanceof Error ? error.message : String(error),
+		}
 	}
 }
 
@@ -170,56 +277,29 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			const didApprove = await askApproval("tool", approvalMessage)
 			if (!didApprove) return
 
-			const results = await runWithConcurrency(
-				subtasks,
-				maxConcurrency,
-				async (subtask, index): Promise<ParallelSubtaskResult> => {
-					const { worktreePath, branch } = worktreeNamesFor(cwd, task.taskId, index)
-					try {
-						const created = await worktreeService.createWorktree(cwd, {
-							path: worktreePath,
-							branch,
-							createNewBranch: true,
-						})
-						if (!created.success) {
-							return {
-								index,
-								mode: subtask.mode,
-								status: "failed",
-								error: `worktree creation failed: ${created.message}`,
-							}
-						}
-						const child = await provider.createBackgroundTask(subtask.message, {
-							taskMode: subtask.mode,
-							workspacePath: worktreePath,
-							maxAgentTurns: SUBAGENT_MAX_TURNS,
-							// Subagents run autonomously in their isolated worktree.
-							autoApprovalOverride: () => "approve",
-						})
-						const outcome = await provider.awaitTaskCompletion(child)
-						return {
-							index,
-							mode: subtask.mode,
-							status: outcome.completed ? "completed" : "failed",
-							worktreePath,
-							branch,
-							message: outcome.lastMessage,
-							error: outcome.completed ? undefined : "subtask aborted before completion",
-						}
-					} catch (error) {
-						return {
-							index,
-							mode: subtask.mode,
-							status: "failed",
-							worktreePath,
-							branch,
-							error: error instanceof Error ? error.message : String(error),
-						}
-					}
-				},
-			)
+			if (task.abort) {
+				pushToolResult(formatResponse.toolError("run_parallel_tasks cancelled."))
+				return
+			}
 
-			pushToolResult(formatParallelResults(results))
+			const controller = new AbortController()
+			const onParentAborted = () => controller.abort()
+			task.on(RooCodeEventName.TaskAborted, onParentAborted)
+			try {
+				const results = await runWithConcurrency(subtasks, maxConcurrency, (subtask, index) =>
+					runOneSubtask({
+						provider,
+						cwd,
+						parentTaskId: task.taskId,
+						subtask,
+						index,
+						signal: controller.signal,
+					}),
+				)
+				pushToolResult(formatParallelResults(results))
+			} finally {
+				task.off(RooCodeEventName.TaskAborted, onParentAborted)
+			}
 		} catch (error) {
 			await handleError("running parallel tasks", error)
 		}
