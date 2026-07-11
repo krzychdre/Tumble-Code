@@ -13,6 +13,7 @@
  * filenames so a hallucinated name can't surface a non-existent file.
  */
 
+import { logger } from "../../utils/logging"
 import { type MemoryHeader, scanMemoryFiles, formatMemoryManifest } from "./memoryScan"
 import { type RelevantMemory, readMemoriesForSurfacing } from "./surfacing"
 
@@ -65,7 +66,9 @@ export async function selectRelevantMemories(
 			signal,
 		)
 	} catch (e) {
-		if (signal.aborted) return []
+		if (!signal.aborted) {
+			logger.error(`[memory] selectRelevantMemories ranker failed: ${e instanceof Error ? e.message : String(e)}`)
+		}
 		return []
 	}
 

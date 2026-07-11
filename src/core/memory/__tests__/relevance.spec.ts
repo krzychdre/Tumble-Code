@@ -7,6 +7,7 @@ import {
 	type RecentToolMessageView,
 } from "../relevance"
 import { initMemoryPaths, resetMemoryPaths } from "../paths"
+import { logger } from "../../../utils/logging"
 import { scanMemoryFiles } from "../memoryScan"
 import * as surfacing from "../surfacing"
 
@@ -73,6 +74,36 @@ describe("relevance", () => {
 			const sideQuery: SideQuery = vi.fn(async () => '{"selected_memories":[]}')
 			const result = await selectRelevantMemories("q", memories, new AbortController().signal, [], sideQuery)
 			expect(result).toEqual([])
+		})
+
+		it("logs non-abort ranker errors and returns []", async () => {
+			const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			try {
+				const sideQuery: SideQuery = vi.fn(async () => {
+					throw new Error("connection refused")
+				})
+				const result = await selectRelevantMemories("q", memories, new AbortController().signal, [], sideQuery)
+				expect(result).toEqual([])
+				expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("connection refused"))
+			} finally {
+				errorSpy.mockRestore()
+			}
+		})
+
+		it("does not log when the failure is an abort", async () => {
+			const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+			try {
+				const controller = new AbortController()
+				const sideQuery: SideQuery = vi.fn(async () => {
+					controller.abort()
+					throw new Error("aborted")
+				})
+				const result = await selectRelevantMemories("q", memories, controller.signal, [], sideQuery)
+				expect(result).toEqual([])
+				expect(errorSpy).not.toHaveBeenCalled()
+			} finally {
+				errorSpy.mockRestore()
+			}
 		})
 	})
 
