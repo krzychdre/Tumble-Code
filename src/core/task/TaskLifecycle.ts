@@ -21,6 +21,7 @@ import { type TaskContextManager } from "./TaskContextManager"
 import { defaultModeSlug } from "../../shared/modes"
 import { TaskResumption, type TaskResumptionAccess } from "./TaskResumption"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { logger } from "../../utils/logging"
 import { t } from "../../i18n"
 import {
 	executeExtractMemories,
@@ -635,7 +636,12 @@ export class TaskLifecycle {
 		// Render the recent conversation so the *fresh* extraction sub-agent has
 		// content to analyze (it can't fork the parent's context — see the plan).
 		const transcript = renderTranscript(this.access.apiConversationHistory as unknown as TranscriptMessage[])
-		void executeExtractMemories({
+		// Fire-and-forget, but never let a rejection escape as an unhandledRejection
+		// in the extension host (e.g. memory paths not initialized at activation).
+		const logWriterFailure = (writer: string) => (e: unknown) => {
+			logger.error(`[memory] ${writer} trigger failed: ${e instanceof Error ? e.message : String(e)}`)
+		}
+		executeExtractMemories({
 			cwd: this.access.cwd,
 			isMainAgent: !this.access.parentTaskId,
 			taskId: this.access.taskId,
@@ -649,7 +655,7 @@ export class TaskLifecycle {
 					provider.notifyBackgroundOutcome(t("common:info.memory_saved", { count }))
 				}
 			},
-		})
+		}).catch(logWriterFailure("extractMemories"))
 		const dreamConfig: AutoDreamConfig = {
 			enabled: provider.getValue("autoDreamEnabled") ?? true,
 			minHours: provider.getValue("autoDreamMinHours") ?? 24,
@@ -662,7 +668,7 @@ export class TaskLifecycle {
 		const taskHistory = (provider.getValue("taskHistory") ?? []).map((h) => ({
 			lastModified: typeof h.ts === "number" ? h.ts : undefined,
 		}))
-		void executeAutoDream({
+		executeAutoDream({
 			cwd: this.access.cwd,
 			isMainAgent: !this.access.parentTaskId,
 			config: dreamConfig,
@@ -675,7 +681,7 @@ export class TaskLifecycle {
 					provider.notifyBackgroundOutcome(t("common:info.memory_consolidated", { count }))
 				}
 			},
-		})
+		}).catch(logWriterFailure("autoDream"))
 	}
 
 	/**

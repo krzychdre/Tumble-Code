@@ -34,6 +34,7 @@ vi.mock("../../../i18n", () => ({
 }))
 
 import { executeExtractMemories, executeAutoDream, drainPendingExtraction, drainPendingDreams } from "../../memory"
+import { logger } from "../../../utils/logging"
 
 function buildAccessStub(overrides: Partial<TaskLifecycleAccess> = {}): TaskLifecycleAccess {
 	const provider = {
@@ -96,6 +97,26 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 		expect(executeAutoDream).toHaveBeenCalledTimes(1)
 		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
 		expect(drainPendingDreams).toHaveBeenCalledTimes(1)
+	})
+
+	it("catches and logs rejected writer triggers instead of leaking unhandled rejections", async () => {
+		const errorSpy = vi.spyOn(logger, "error").mockImplementation(() => {})
+		try {
+			vi.mocked(executeExtractMemories).mockRejectedValueOnce(new Error("memory paths not initialized"))
+			vi.mocked(executeAutoDream).mockRejectedValueOnce(new Error("memory paths not initialized"))
+			const access = buildAccessStub()
+			const lifecycle = new TaskLifecycle(access)
+
+			await lifecycle.abortTask()
+			// Give the rejected fire-and-forget promises a macrotask to settle.
+			await new Promise((resolve) => setTimeout(resolve, 0))
+
+			// Both triggers rejected; both rejections must have been caught + logged.
+			expect(errorSpy).toHaveBeenCalledTimes(2)
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("memory paths not initialized"))
+		} finally {
+			errorSpy.mockRestore()
+		}
 	})
 
 	it("keeps skipping writers for abandoned aborts (pre-existing behavior)", async () => {
