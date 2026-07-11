@@ -180,6 +180,7 @@ describe("writeToFileTool", () => {
 		mockCline.ask = vi.fn().mockResolvedValue(undefined)
 		mockCline.recordToolError = vi.fn()
 		mockCline.sayAndCreateMissingParamError = vi.fn().mockResolvedValue("Missing param error")
+		mockCline.processQueuedMessages = vi.fn()
 
 		mockAskApproval = vi.fn().mockResolvedValue(true)
 		mockHandleError = vi.fn().mockResolvedValue(undefined)
@@ -216,8 +217,8 @@ describe("writeToFileTool", () => {
 				...params,
 			},
 			nativeArgs: {
-				path: (params.path ?? testFilePath) as any,
-				content: (params.content ?? testContent) as any,
+				path: ("path" in params ? params.path : testFilePath) as any,
+				content: ("content" in params ? params.content : testContent) as any,
 			},
 			partial: isPartial,
 		}
@@ -439,6 +440,27 @@ describe("writeToFileTool", () => {
 				"user_feedback_diff",
 				expect.stringContaining("editedExistingFile"),
 			)
+		})
+	})
+
+	describe("weak-model param coercion", () => {
+		it("produces a missing-param error when path is a number, not a string", async () => {
+			await executeWriteFileTool({ path: 42 as any })
+
+			// Should NOT throw a raw TypeError from path.resolve; should produce
+			// a clear missing-param tool error and reset.
+			expect(mockHandleError).not.toHaveBeenCalled()
+			expect(mockCline.sayAndCreateMissingParamError).toHaveBeenCalledWith("write_to_file", "path")
+			expect(mockCline.recordToolError).toHaveBeenCalledWith("write_to_file")
+			expect(mockCline.diffViewProvider.reset).toHaveBeenCalled()
+		})
+
+		it("coerces null content to empty string without throwing", async () => {
+			await executeWriteFileTool({ content: null as any })
+
+			// null content should be coerced to "", not trigger a raw TypeError.
+			expect(mockHandleError).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith("", true)
 		})
 	})
 

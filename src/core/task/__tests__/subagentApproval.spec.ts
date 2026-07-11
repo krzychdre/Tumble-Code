@@ -137,9 +137,10 @@ describe("buildSubagentApprovalPolicy", () => {
 			expect(mockCheckAutoApproval).toHaveBeenCalledOnce()
 		})
 
-		it("approves unparseable tool text conservatively (mirrors memorySandbox)", async () => {
+		it("denies unparseable tool text (fail-safe: malformed write must not bypass containment)", async () => {
 			const decide = makePolicy()
-			expect(await decide("tool", "not json")).toBe("approve")
+			expect(await decide("tool", "not json")).toBe("deny")
+			expect(await decide("tool", "{invalid")).toBe("deny")
 			expect(mockCheckAutoApproval).not.toHaveBeenCalled()
 		})
 	})

@@ -51,9 +51,9 @@ export function memoryWriteSandbox(cwd: string): (ask: string, text?: string) =>
 		try {
 			parsed = JSON.parse(text ?? "{}") as ClineSayTool
 		} catch {
-			// Unparseable tool ask — approve conservatively (reads are the common
-			// case; a write would still be caught below only if parseable).
-			return "approve"
+			// Unparseable tool ask — fail-safe deny: a malformed write must not
+			// bypass the containment check.
+			return "deny"
 		}
 		if (parsed && isReadOnlyToolAction(parsed)) {
 			return "approve"

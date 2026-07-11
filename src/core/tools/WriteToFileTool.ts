@@ -29,9 +29,10 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
 		const relPath = params.path
-		let newContent = params.content
+		// Coerce content to string safely — weak models can emit null/numbers.
+		let newContent = typeof params.content === "string" ? params.content : ""
 
-		if (!relPath) {
+		if (typeof relPath !== "string" || !relPath) {
 			task.consecutiveMistakeCount++
 			task.recordToolError("write_to_file")
 			pushToolResult(await task.sayAndCreateMissingParamError("write_to_file", "path"))
@@ -39,7 +40,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			return
 		}
 
-		if (newContent === undefined) {
+		if (params.content === undefined) {
 			task.consecutiveMistakeCount++
 			task.recordToolError("write_to_file")
 			pushToolResult(await task.sayAndCreateMissingParamError("write_to_file", "content"))

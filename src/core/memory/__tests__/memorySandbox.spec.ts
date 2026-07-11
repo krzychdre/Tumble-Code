@@ -63,9 +63,10 @@ describe("memorySandbox", () => {
 			expect(decide("tool", JSON.stringify({ tool: "appliedDiff" }))).toBe("deny")
 		})
 
-		it("approves an unparseable tool ask conservatively (reads are the common case)", () => {
+		it("denies an unparseable tool ask (fail-safe: a malformed write must not bypass containment)", () => {
 			const decide = memoryWriteSandbox(cwd)
-			expect(decide("tool", "not json")).toBe("approve")
+			expect(decide("tool", "not json")).toBe("deny")
+			expect(decide("tool", "{invalid")).toBe("deny")
 		})
 
 		it("never returns undefined (would hang a non-current background task)", () => {
