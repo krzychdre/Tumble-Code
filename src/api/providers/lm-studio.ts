@@ -20,7 +20,8 @@ import { handleOpenAIError } from "./utils/openai-error-handler"
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
-	private client: OpenAI
+	private client: OpenAI | null = null
+	private abortController?: AbortController
 	private readonly providerName = "LM Studio"
 
 	constructor(options: ApiHandlerOptions) {
@@ -35,6 +36,31 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			apiKey: apiKey,
 			timeout: getApiRequestTimeout(),
 		})
+	}
+
+	/**
+	 * Gets the client, recreating it if it was previously destroyed.
+	 */
+	private getClient(): OpenAI {
+		if (!this.client) {
+			this.client = new OpenAI({
+				baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",
+				apiKey: "noop",
+				timeout: getApiRequestTimeout(),
+			})
+		}
+		return this.client
+	}
+
+	cancelRequest(destroyClient: boolean = false): void {
+		if (this.abortController) {
+			this.abortController.abort()
+			this.abortController = undefined
+		}
+
+		if (destroyClient && this.client) {
+			this.client = null
+		}
 	}
 
 	override async *createMessage(
@@ -97,10 +123,14 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				params.draft_model = this.options.lmStudioDraftModelId
 			}
 
+			this.abortController = new AbortController()
 			let results
 			try {
-				results = await this.client.chat.completions.create(params)
+				results = await this.getClient().chat.completions.create(params, {
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
+				this.abortController = undefined
 				throw handleOpenAIError(error, this.providerName)
 			}
 
@@ -113,56 +143,60 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 					}) as const,
 			)
 
-			for await (const chunk of results) {
-				const delta = chunk.choices?.[0]?.delta
-				const finishReason = chunk.choices?.[0]?.finish_reason
+			try {
+				for await (const chunk of results) {
+					const delta = chunk.choices?.[0]?.delta
+					const finishReason = chunk.choices?.[0]?.finish_reason
 
-				if (delta?.content) {
-					assistantText += delta.content
-					for (const processedChunk of matcher.update(delta.content)) {
-						yield processedChunk
+					if (delta?.content) {
+						assistantText += delta.content
+						for (const processedChunk of matcher.update(delta.content)) {
+							yield processedChunk
+						}
 					}
-				}
 
-				// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
-				if (delta?.tool_calls) {
-					for (const toolCall of delta.tool_calls) {
-						yield {
-							type: "tool_call_partial",
-							index: toolCall.index,
-							id: toolCall.id,
-							name: toolCall.function?.name,
-							arguments: toolCall.function?.arguments,
+					// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
+					if (delta?.tool_calls) {
+						for (const toolCall of delta.tool_calls) {
+							yield {
+								type: "tool_call_partial",
+								index: toolCall.index,
+								id: toolCall.id,
+								name: toolCall.function?.name,
+								arguments: toolCall.function?.arguments,
+							}
+						}
+					}
+
+					// Process finish_reason to emit tool_call_end events
+					if (finishReason) {
+						const endEvents = NativeToolCallParser.processFinishReason(finishReason)
+						for (const event of endEvents) {
+							yield event
 						}
 					}
 				}
 
-				// Process finish_reason to emit tool_call_end events
-				if (finishReason) {
-					const endEvents = NativeToolCallParser.processFinishReason(finishReason)
-					for (const event of endEvents) {
-						yield event
-					}
+				for (const processedChunk of matcher.final()) {
+					yield processedChunk
 				}
-			}
 
-			for (const processedChunk of matcher.final()) {
-				yield processedChunk
-			}
+				let outputTokens = 0
+				try {
+					outputTokens = await this.countTokens([{ type: "text", text: assistantText }])
+				} catch (err) {
+					console.error("[LmStudio] Failed to count output tokens:", err)
+					outputTokens = 0
+				}
 
-			let outputTokens = 0
-			try {
-				outputTokens = await this.countTokens([{ type: "text", text: assistantText }])
-			} catch (err) {
-				console.error("[LmStudio] Failed to count output tokens:", err)
-				outputTokens = 0
+				yield {
+					type: "usage",
+					inputTokens,
+					outputTokens,
+				} as const
+			} finally {
+				this.abortController = undefined
 			}
-
-			yield {
-				type: "usage",
-				inputTokens,
-				outputTokens,
-			} as const
 		} catch (error) {
 			throw new Error(
 				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",
@@ -200,11 +234,16 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				params.draft_model = this.options.lmStudioDraftModelId
 			}
 
+			this.abortController = new AbortController()
 			let response
 			try {
-				response = await this.client.chat.completions.create(params)
+				response = await this.getClient().chat.completions.create(params, {
+					signal: this.abortController.signal,
+				})
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
+			} finally {
+				this.abortController = undefined
 			}
 			return response.choices?.[0]?.message?.content || ""
 		} catch (error) {

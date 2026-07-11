@@ -131,12 +131,17 @@ describe("LmStudioHandler", () => {
 		it("should complete prompt successfully", async () => {
 			const result = await handler.completePrompt("Test prompt")
 			expect(result).toBe("Test response")
-			expect(mockCreate).toHaveBeenCalledWith({
-				model: mockOptions.lmStudioModelId,
-				messages: [{ role: "user", content: "Test prompt" }],
-				temperature: 0,
-				stream: false,
-			})
+			expect(mockCreate).toHaveBeenCalledWith(
+				{
+					model: mockOptions.lmStudioModelId,
+					messages: [{ role: "user", content: "Test prompt" }],
+					temperature: 0,
+					stream: false,
+				},
+				expect.objectContaining({
+					signal: expect.any(AbortSignal),
+				}),
+			)
 		})
 
 		it("should handle API errors", async () => {
@@ -205,6 +210,77 @@ describe("LmStudioHandler", () => {
 			expect(modelInfo.info).toBeDefined()
 			expect(modelInfo.info.maxTokens).toBe(-1)
 			expect(modelInfo.info.contextWindow).toBe(128_000)
+		})
+	})
+
+	describe("abort / cancelRequest", () => {
+		it("should pass an AbortSignal as the second argument to chat.completions.create in createMessage", async () => {
+			const stream = handler.createMessage("system prompt", [])
+			await stream.next()
+
+			expect(mockCreate).toHaveBeenCalledTimes(1)
+			const secondArg = mockCreate.mock.calls[0][1]
+			expect(secondArg).toBeDefined()
+			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
+		})
+
+		it("should pass an AbortSignal as the second argument to chat.completions.create in completePrompt", async () => {
+			await handler.completePrompt("test prompt")
+
+			expect(mockCreate).toHaveBeenCalledTimes(1)
+			const secondArg = mockCreate.mock.calls[0][1]
+			expect(secondArg).toBeDefined()
+			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
+		})
+
+		it("should abort the signal when cancelRequest() is called", async () => {
+			// Mock a stream that yields one chunk then blocks
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: () => ({
+					next: vi
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: { choices: [{ delta: { content: "chunk1" } }] },
+						})
+						.mockImplementationOnce(() => new Promise(() => {})), // never resolves
+				}),
+			}))
+
+			const stream = handler.createMessage("system prompt", [])
+			const iterator = stream[Symbol.asyncIterator]()
+
+			// Get first chunk
+			const first = await iterator.next()
+			expect(first.done).toBe(false)
+
+			// Now cancel
+			handler.cancelRequest()
+
+			// The abort controller should be cleared
+			expect((handler as any).abortController).toBeUndefined()
+		})
+
+		it("should create a fresh AbortController per request", async () => {
+			const stream1 = handler.createMessage("system prompt", [])
+			await stream1.next()
+			const signal1 = mockCreate.mock.calls[0][1].signal as AbortSignal
+
+			const stream2 = handler.createMessage("system prompt", [])
+			await stream2.next()
+			const signal2 = mockCreate.mock.calls[1][1].signal as AbortSignal
+
+			expect(signal1).not.toBe(signal2)
+		})
+
+		it("should not destroy the client when cancelRequest(false)", async () => {
+			handler.cancelRequest(false)
+			expect((handler as any).client).toBeDefined()
+		})
+
+		it("should destroy the client when cancelRequest(true)", async () => {
+			handler.cancelRequest(true)
+			expect((handler as any).client).toBeNull()
 		})
 	})
 })

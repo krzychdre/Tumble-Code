@@ -421,7 +421,9 @@ describe("BaseOpenAiCompatibleProvider", () => {
 					stream: true,
 					stream_options: { include_usage: true },
 				}),
-				undefined,
+				expect.objectContaining({
+					signal: expect.any(AbortSignal),
+				}),
 			)
 		})
 
@@ -610,6 +612,114 @@ describe("BaseOpenAiCompatibleProvider", () => {
 
 			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
 			expect(endChunks).toHaveLength(0)
+		})
+	})
+
+	describe("abort / cancelRequest", () => {
+		it("should pass an AbortSignal as the second argument to chat.completions.create", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: () => ({
+					next: vi.fn().mockResolvedValueOnce({ done: true }),
+				}),
+			}))
+
+			const messageGenerator = handler.createMessage("system prompt", [])
+			await messageGenerator.next()
+
+			expect(mockCreate).toHaveBeenCalledTimes(1)
+			const secondArg = mockCreate.mock.calls[0][1]
+			expect(secondArg).toBeDefined()
+			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
+		})
+
+		it("should abort the signal when cancelRequest() is called", async () => {
+			// Mock a stream that yields one chunk then blocks
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: () => ({
+					next: vi
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: { choices: [{ delta: { content: "chunk1" } }] },
+						})
+						// This next call would normally resolve after a long time
+						.mockImplementationOnce(
+							() => new Promise(() => {}), // never resolves
+						),
+				}),
+			}))
+
+			const stream = handler.createMessage("system prompt", [])
+			const iterator = stream[Symbol.asyncIterator]()
+
+			// Get first chunk
+			const first = await iterator.next()
+			expect(first.done).toBe(false)
+
+			// Now cancel
+			handler.cancelRequest()
+
+			// The abort controller should be cleared
+			expect((handler as any).abortController).toBeUndefined()
+		})
+
+		it("should create a fresh AbortController per request", async () => {
+			mockCreate.mockImplementation(() => ({
+				[Symbol.asyncIterator]: () => ({
+					next: vi.fn().mockResolvedValueOnce({ done: true }),
+				}),
+			}))
+
+			// First request
+			const stream1 = handler.createMessage("system prompt", [])
+			await stream1.next()
+			const signal1 = mockCreate.mock.calls[0][1].signal as AbortSignal
+
+			// Second request
+			const stream2 = handler.createMessage("system prompt", [])
+			await stream2.next()
+			const signal2 = mockCreate.mock.calls[1][1].signal as AbortSignal
+
+			// Signals should be different instances
+			expect(signal1).not.toBe(signal2)
+		})
+
+		it("should not destroy the client when cancelRequest(false)", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				choices: [{ message: { content: "test" } }],
+			}))
+
+			await handler.completePrompt("test")
+			expect((handler as any).client).toBeDefined()
+
+			handler.cancelRequest(false)
+			expect((handler as any).client).toBeDefined()
+		})
+
+		it("should destroy the client when cancelRequest(true)", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				choices: [{ message: { content: "test" } }],
+			}))
+
+			await handler.completePrompt("test")
+			expect((handler as any).client).toBeDefined()
+
+			handler.cancelRequest(true)
+			// Client should be null after destroy
+			expect((handler as any).client).toBeNull()
+		})
+
+		it("should pass signal in completePrompt too", async () => {
+			mockCreate.mockResolvedValueOnce({
+				choices: [{ message: { content: "test response" } }],
+			})
+
+			await handler.completePrompt("test prompt")
+
+			expect(mockCreate).toHaveBeenCalledTimes(1)
+			const secondArg = mockCreate.mock.calls[0][1]
+			expect(secondArg).toBeDefined()
+			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
 		})
 	})
 })

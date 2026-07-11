@@ -148,6 +148,11 @@ function convertToOllamaMessages(anthropicMessages: Anthropic.Messages.MessagePa
 export class NativeOllamaHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: Ollama | undefined
+	/**
+	 * Reference to the current in-flight async iterator (streaming chat).
+	 * Used by cancelRequest() to abort the server-side generation.
+	 */
+	private currentStream: { abort: () => void } | undefined
 	protected models: Record<string, ModelInfo> = {}
 
 	constructor(options: ApiHandlerOptions) {
@@ -176,6 +181,38 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 			}
 		}
 		return this.client
+	}
+
+	/**
+	 * Cancels the current in-flight request and optionally destroys the client.
+	 * Calls abort() on the active stream iterator (if any) to stop server-side
+	 * generation, and optionally destroys the Ollama client to sever connections.
+	 *
+	 * @param destroyClient - If true, nullify the client to force reconnection.
+	 */
+	cancelRequest(destroyClient: boolean = false): void {
+		// Abort the in-flight stream
+		if (this.currentStream) {
+			try {
+				this.currentStream.abort()
+			} catch {
+				// ignore — stream may have already ended
+			}
+			this.currentStream = undefined
+		}
+
+		// The Ollama SDK also has a global abort() that cancels all ongoing streamed requests
+		if (this.client) {
+			try {
+				this.client.abort()
+			} catch {
+				// ignore
+			}
+		}
+
+		if (destroyClient) {
+			this.client = undefined
+		}
 	}
 
 	/**
@@ -245,6 +282,9 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 				tools: this.convertToolsToOllama(metadata?.tools),
 			})
 
+			// Store stream reference so cancelRequest() can abort it
+			this.currentStream = stream as any
+
 			let totalInputTokens = 0
 			let totalOutputTokens = 0
 			// Track tool calls across chunks (Ollama may send complete tool_calls in final chunk)
@@ -312,6 +352,8 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 			} catch (streamError: any) {
 				console.error("Error processing Ollama stream:", streamError)
 				throw new Error(`Ollama stream processing error: ${streamError.message || "Unknown error"}`)
+			} finally {
+				this.currentStream = undefined
 			}
 		} catch (error: any) {
 			// Enhance error reporting
