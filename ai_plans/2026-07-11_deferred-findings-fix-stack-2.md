@@ -112,6 +112,14 @@ design constraint). Fix: invalidate `_memoryCoordinator` in `updateApiConfigurat
 - CB-7: `web.py` `_num` counts booleans (Python `bool ⊂ int`) → dashboard/list totals
   diverge. Fix: exclude bools, matching `metrics_service.py`.
 
+### B15 `fix/memory-ranker-error-logging` — MEM-5 companion [high confidence]
+
+Added post-batch: `selectRelevantMemories` (`relevance.ts`) swallowed all non-abort
+ranker errors with no logging (the most common weak-model failure mode: error /
+timeout / unparseable), making broken recall undebuggable. The `catch` also had dead
+identical branches. Fix: `logger.error` on the non-abort branch, matching the
+`[memory]` logging convention.
+
 ## Discipline
 
 Failing test first, minimal fix, green (targeted vitest/pytest). One branch per

@@ -36,7 +36,7 @@ weak-model robustness and local-server resource behaviour are weighted heavily.
 | MEM-2 | high | ✅ DONE (B10)   | memory | autoDream sub-task never drained/aborted on shutdown                       |
 | MEM-3 | high | ✅ DONE (B10)   | memory | double-fired autoDream: same-PID race both acquire consolidation lock      |
 | MEM-4 | med  | ✅ DONE (B11)\* | memory | `makeSideQuery` unhandled rejection when abort wins the race               |
-| MEM-5 | high | ⏳ DEFERRED     | memory | `selectRelevantMemories` swallows all ranker errors, no logging            |
+| MEM-5 | high | ✅ DONE (B15)   | memory | `selectRelevantMemories` swallows all ranker errors, no logging            |
 | MEM-6 | med  | ✅ DONE (B11)   | memory | extraction cursor advances past messages added during run                  |
 | MEM-7 | low  | ✅ DONE (B11)   | memory | dead code `quoteProblematicValue` in frontmatter.ts                        |
 | TL-1  | high | ✅ DONE (B6)    | tools  | `NativeToolCallParser` static state races across parallel tasks            |
@@ -74,7 +74,8 @@ Section-heading status emojis below reflect the original review — the summary 
 above is authoritative. \*MEM-4's premise was disproven during TDD: `Promise.race`
 already consumes the losing promise's rejection, so no `unhandledRejection` was
 reachable; the explicit `.catch` was kept as intent-documenting hygiene. Still
-deferred: TE-4…TE-8, TL-2, AP-8, CB-8's org half, MEM-5's ranker-logging companion.
+deferred: TE-4…TE-8, TL-2, AP-8, CB-8's org half. MEM-5's ranker-logging companion
+shipped as B15 (`fix/memory-ranker-error-logging`, the new tip).
 
 ---
 
