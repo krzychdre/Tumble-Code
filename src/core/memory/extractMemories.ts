@@ -73,16 +73,27 @@ export interface ExtractionContext {
 	subTaskRunner: SubTaskRunner
 	/** Called with a "Saved N memories" notice on success (may be a no-op). */
 	onSaved?: (count: number, paths: string[]) => void
+	/** The task this extraction belongs to; the extraction cursor is tracked per task. */
+	taskId: string
 }
 
-// Module-scoped state (mirrors the upstream closure). Idempotent init.
+// Module-scoped state. Extraction cursors are per-task: each value is an index
+// into that task's own messages array.
 let inFlightExtractions = new Set<Promise<void>>()
-let lastMemoryMessageCursor = 0 // index into the messages array
+const lastMemoryMessageCursors = new Map<string, number>()
+// AbortControllers for in-flight extractions, so drain can cancel live sub-tasks
+// on shutdown timeout instead of orphaning them.
+const inFlightControllers = new Set<AbortController>()
+
+// The cursor only matters for the completion→abort double-fire window of a
+// single task; 64 entries is far more than any realistic concurrent task count.
+const MAX_CURSOR_ENTRIES = 64
 
 /** Reset module state — for tests only. */
 export function resetExtractionState(): void {
 	inFlightExtractions = new Set<Promise<void>>()
-	lastMemoryMessageCursor = 0
+	lastMemoryMessageCursors.clear()
+	inFlightControllers.clear()
 }
 
 /**
@@ -133,6 +144,15 @@ function buildExtractionPrompt(newMessageCount: number, existingManifest: string
 	return lines.join("\n")
 }
 
+/** Set the per-task cursor, bounding the map size. */
+function setCursor(taskId: string, value: number): void {
+	lastMemoryMessageCursors.set(taskId, value)
+	if (lastMemoryMessageCursors.size > MAX_CURSOR_ENTRIES) {
+		const oldest = lastMemoryMessageCursors.keys().next().value
+		if (oldest !== undefined) lastMemoryMessageCursors.delete(oldest)
+	}
+}
+
 /**
  * Run a single extraction. Gated on: memory enabled, main agent, no direct
  * writes this turn. Fire-and-forget by the caller; tracked in
@@ -141,12 +161,13 @@ function buildExtractionPrompt(newMessageCount: number, existingManifest: string
 export async function executeExtractMemories(context: ExtractionContext): Promise<void> {
 	if (!isAutoMemoryEnabled() || !context.isMainAgent) return
 
-	const newMessageCount = context.messages.length - lastMemoryMessageCursor
+	const cursor = lastMemoryMessageCursors.get(context.taskId) ?? 0
+	const newMessageCount = context.messages.length - cursor
 	if (newMessageCount <= 0) return
 
 	// Mutual exclusion: main agent already wrote a memory → skip + advance cursor.
-	if (hasMemoryWritesSince(context.messages, context.cwd, lastMemoryMessageCursor)) {
-		lastMemoryMessageCursor = context.messages.length
+	if (hasMemoryWritesSince(context.messages, context.cwd, cursor)) {
+		setCursor(context.taskId, context.messages.length)
 		return
 	}
 
@@ -169,7 +190,7 @@ export async function executeExtractMemories(context: ExtractionContext): Promis
 				signal: controller.signal,
 			})
 			// Advance cursor only on success.
-			lastMemoryMessageCursor = context.messages.length
+			setCursor(context.taskId, context.messages.length)
 			// Index touches aren't "memories" — filter MEMORY.md out of the count.
 			const memoryPaths = result.writtenPaths.filter((p) => basename(p) !== ENTRYPOINT_NAME)
 			if (memoryPaths.length > 0 && context.onSaved) {
@@ -180,8 +201,11 @@ export async function executeExtractMemories(context: ExtractionContext): Promis
 			logger.error(`[memory] extractMemories failed: ${e instanceof Error ? e.message : String(e)}`)
 		} finally {
 			if (run) inFlightExtractions.delete(run)
+			inFlightControllers.delete(controller)
 		}
 	})()
+	// Registered together so the `finally` above always deregisters both.
+	inFlightControllers.add(controller)
 	inFlightExtractions.add(run)
 }
 
@@ -199,7 +223,9 @@ function buildExtractionSystemPrompt(memoryDir: string): string {
 
 /**
  * Await in-flight extractions with a 60s soft timeout. Called on shutdown.
- * The timeout is `.unref()`'d so it never blocks process exit.
+ * The timeout is `.unref()`'d so it never blocks process exit. When the timeout
+ * fires with extractions still pending, abort their controllers so live sub-tasks
+ * are cancelled instead of orphaned.
  */
 export async function drainPendingExtraction(timeoutMs: number = 60_000): Promise<void> {
 	if (inFlightExtractions.size === 0) return
@@ -211,4 +237,8 @@ export async function drainPendingExtraction(timeoutMs: number = 60_000): Promis
 	})
 	await Promise.race([Promise.allSettled(inflight), timeout])
 	if (timer) clearTimeout(timer)
+	// If anything is still in flight after the timeout, cancel it.
+	if (inFlightExtractions.size > 0) {
+		for (const c of inFlightControllers) c.abort()
+	}
 }

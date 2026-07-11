@@ -54,6 +54,7 @@ describe("extractMemories", () => {
 			await executeExtractMemories({
 				cwd,
 				isMainAgent: false,
+				taskId: "a",
 				messages: [{ toolUses: [{ name: "read_file" }] }],
 				subTaskRunner: runner,
 			})
@@ -69,6 +70,7 @@ describe("extractMemories", () => {
 			await executeExtractMemories({
 				cwd,
 				isMainAgent: true,
+				taskId: "a",
 				messages: messages as any,
 				subTaskRunner: runner,
 			})
@@ -84,6 +86,7 @@ describe("extractMemories", () => {
 			await executeExtractMemories({
 				cwd,
 				isMainAgent: true,
+				taskId: "a",
 				messages: [{ toolUses: [{ name: "read_file", input: { file_path: "/workspace/foo.ts" } }] }] as any,
 				subTaskRunner: runner,
 				onSaved: (n, p) => {
@@ -101,6 +104,7 @@ describe("extractMemories", () => {
 			await executeExtractMemories({
 				cwd,
 				isMainAgent: true,
+				taskId: "a",
 				messages: [{ toolUses: [{ name: "read_file", input: { file_path: "/workspace/foo.ts" } }] }] as any,
 				transcript: "User: remember my name is Ada\n\nAssistant: noted",
 				subTaskRunner: runner,
@@ -116,6 +120,7 @@ describe("extractMemories", () => {
 			await executeExtractMemories({
 				cwd,
 				isMainAgent: true,
+				taskId: "a",
 				messages: [{ toolUses: [{ name: "read_file", input: { file_path: "/workspace/foo.ts" } }] }] as any,
 				subTaskRunner: runner,
 			})
@@ -123,11 +128,128 @@ describe("extractMemories", () => {
 			const userPrompt = runner.mock.calls[0][0].userPrompt as string
 			expect(userPrompt).not.toContain("## Recent conversation")
 		})
+
+		it("per-task cursor: short task after long task still extracts (regression)", async () => {
+			const runner = vi.fn(async () => ({ writtenPaths: [] as string[] }))
+			// Task "a" with 60 messages extracts successfully (cursor → 60).
+			const longMessages = Array.from({ length: 60 }, () => ({ toolUses: [{ name: "read_file" }] }))
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: longMessages as any,
+				subTaskRunner: runner,
+			})
+			expect(runner).toHaveBeenCalledTimes(1)
+			// Task "b" with 25 messages — old code computed 25 − 60 ≤ 0 and skipped.
+			const shortMessages = Array.from({ length: 25 }, () => ({ toolUses: [{ name: "read_file" }] }))
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "b",
+				messages: shortMessages as any,
+				subTaskRunner: runner,
+			})
+			expect(runner).toHaveBeenCalledTimes(2)
+		})
+
+		it("same-task double-fire: second call with unchanged messages early-returns", async () => {
+			const runner = vi.fn(async () => ({ writtenPaths: [] as string[] }))
+			const messages = [{ toolUses: [{ name: "read_file" }] }]
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: messages as any,
+				subTaskRunner: runner,
+			})
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: messages as any,
+				subTaskRunner: runner,
+			})
+			expect(runner).toHaveBeenCalledTimes(1)
+		})
+
+		it("mutual-exclusion advance is per-task: advancing task a does not block task b", async () => {
+			const memDir = getAutoMemPath(cwd)
+			const runner = vi.fn(async () => ({ writtenPaths: [] as string[] }))
+			// Task "a" wrote a memory directly → cursor advances, runner not called.
+			const messagesA = [
+				{ toolUses: [{ name: "write_to_file", input: { file_path: path.join(memDir, "user.md") } }] },
+			]
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: messagesA as any,
+				subTaskRunner: runner,
+			})
+			expect(runner).not.toHaveBeenCalled()
+			// Task "b" has no direct writes → still extracts.
+			const messagesB = [{ toolUses: [{ name: "read_file" }] }]
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "b",
+				messages: messagesB as any,
+				subTaskRunner: runner,
+			})
+			expect(runner).toHaveBeenCalledTimes(1)
+		})
 	})
 
 	describe("drainPendingExtraction", () => {
 		it("resolves immediately when nothing is in flight", async () => {
 			await expect(drainPendingExtraction(1000)).resolves.toBeUndefined()
+		})
+
+		it("aborts in-flight controllers when the timeout fires", async () => {
+			let aborted = false
+			// Runner that never resolves on its own — only the abort signal can end it.
+			const runner = vi.fn(
+				(params: { signal: AbortSignal }) =>
+					new Promise<any>((_resolve, reject) => {
+						params.signal.addEventListener("abort", () => {
+							aborted = true
+							reject(new Error("aborted"))
+						})
+					}),
+			)
+			void executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: [{ toolUses: [{ name: "read_file" }] }] as any,
+				subTaskRunner: runner,
+			})
+			// Give the extraction a tick to register the controller.
+			await new Promise((r) => setTimeout(r, 10))
+			await drainPendingExtraction(20)
+			expect(aborted).toBe(true)
+		})
+
+		it("does not abort when extractions complete before the timeout", async () => {
+			let aborted = false
+			const runner = vi.fn(async (params: { signal: AbortSignal }) => {
+				params.signal.addEventListener("abort", () => {
+					aborted = true
+				})
+				return { writtenPaths: [] as string[] }
+			})
+			void executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: [{ toolUses: [{ name: "read_file" }] }] as any,
+				subTaskRunner: runner,
+			})
+			// Wait long enough for the runner to resolve naturally.
+			await new Promise((r) => setTimeout(r, 50))
+			await drainPendingExtraction(1000)
+			expect(aborted).toBe(false)
 		})
 	})
 })

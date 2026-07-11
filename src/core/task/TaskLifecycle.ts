@@ -623,6 +623,7 @@ export class TaskLifecycle {
 		void executeExtractMemories({
 			cwd: this.access.cwd,
 			isMainAgent: !this.access.parentTaskId,
+			taskId: this.access.taskId,
 			messages: this.access
 				.clineMessages as unknown as import("../memory/extractMemories").ExtractionMessageView[],
 			transcript,
