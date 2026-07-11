@@ -547,10 +547,14 @@ export class TaskLifecycle {
 		// end. Both are gated internally (memory enabled, main agent, no direct
 		// writes for extraction; time/session/lock cascade for dream) and run
 		// as sandboxed sub-Tasks. Abandoned tasks skip extraction (no durable
-		// signal to save from an abandoned run). We `void` the promises; the
-		// drain below awaits them with a soft timeout so in-flight work isn't
-		// orphaned on extension shutdown.
-		if (!isAbandoned) {
+		// signal to save from an abandoned run). User-cancelled aborts also skip:
+		// the writers spawn a fresh LLM request, so firing them here would put the
+		// inference engine right back to work the moment the user pressed Stop
+		// (completion is the durable extraction signal; a cancelled run has none).
+		// We `void` the promises; the drain below awaits them with a soft timeout
+		// so in-flight work isn't orphaned on extension shutdown.
+		const isUserCancelled = this.access.abortReason === "user_cancelled"
+		if (!isAbandoned && !isUserCancelled) {
 			try {
 				this.triggerMemoryBackgroundWriters()
 			} catch (error) {
@@ -577,10 +581,17 @@ export class TaskLifecycle {
 
 		// Drain in-flight memory extraction so it isn't orphaned on shutdown.
 		// Soft 60s timeout (unref'd internally) so it never blocks process exit.
-		try {
-			await drainPendingExtraction(60_000)
-		} catch (error) {
-			console.error("Error draining memory extraction:", error)
+		// Skipped on user cancel: the stream loop awaits abortTask()
+		// (TaskApiLoop.handleStreamError), so draining here holds isStreaming=true
+		// past cancelTask's 3s pWaitFor and freezes the UI. In-flight extraction
+		// runs as a provider-level background task and survives without the drain;
+		// the drain only matters for extension shutdown.
+		if (!isUserCancelled) {
+			try {
+				await drainPendingExtraction(60_000)
+			} catch (error) {
+				console.error("Error draining memory extraction:", error)
+			}
 		}
 	}
 
