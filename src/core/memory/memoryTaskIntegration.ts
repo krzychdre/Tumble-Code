@@ -47,6 +47,12 @@ export function makeSideQuery(handler: ApiHandler): SideQuery | undefined {
 		// `completePrompt` implementations don't all accept an AbortSignal; we
 		// race against the signal so an aborted task still unblocks promptly.
 		const completion = doComplete(`${system}\n\n${user}`)
+		// Attach a no-op catch on a derived promise so that if abort wins the
+		// race and `completion` later rejects, the late rejection doesn't surface
+		// as an unhandled rejection in the extension host. The race still
+		// propagates `completion`'s rejection when abort hasn't fired — the
+		// derived handler doesn't affect what `Promise.race` sees.
+		completion.catch(() => {})
 		if (signal.aborted) throw new Error("aborted")
 		const result = await Promise.race([
 			completion,

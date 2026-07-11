@@ -199,6 +199,39 @@ describe("extractMemories", () => {
 			})
 			expect(runner).toHaveBeenCalledTimes(1)
 		})
+
+		it("cursor snapshots message length at T0, not T1 (messages added mid-run are not skipped)", async () => {
+			// Use a live array that gets a message appended mid-run.
+			const messages: any[] = [{ toolUses: [{ name: "read_file" }] }]
+			const lengthBefore = messages.length
+			const runner = vi.fn(async () => {
+				// Simulate a message arriving while the sub-task runs.
+				messages.push({ toolUses: [{ name: "read_file" }] })
+				return { writtenPaths: [] as string[] }
+			})
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "cursor-snap",
+				messages: messages as any,
+				subTaskRunner: runner,
+			})
+			// The cursor should be the PRE-run length (1), not the post-run length (2).
+			// Re-invoke with the same messages — if cursor was set to 2, newMessageCount
+			// would be 0 and the runner would NOT be called. If cursor was set to 1,
+			// newMessageCount is 1 and the runner IS called.
+			const runner2 = vi.fn(async () => ({ writtenPaths: [] as string[] }))
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "cursor-snap",
+				messages: messages as any,
+				subTaskRunner: runner2,
+			})
+			expect(runner2).toHaveBeenCalledTimes(1)
+			expect(lengthBefore).toBe(1)
+			expect(messages.length).toBe(2)
+		})
 	})
 
 	describe("drainPendingExtraction", () => {

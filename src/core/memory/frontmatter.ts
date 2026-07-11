@@ -24,31 +24,6 @@ export interface MemoryFrontmatter {
 const FRONTMATTER_REGEX = /^---\s*\n([\s\S]*?)---\s*\n?/
 
 /**
- * Characters that, if present in a YAML value, indicate it needs quoting to be
- * safely re-parsed. The `: ` (colon-space) entry is the load-bearing one: a
- * value like `12:30` would otherwise be parsed as a nested mapping by a real
- * YAML parser.
- */
-const PROBLEMATIC_VALUE_CHARS = /[\{\}\[\]*&#!|>%@`]|:\s/
-
-/**
- * Quote a YAML scalar value that contains problematic characters, so a stricter
- * parser (if one is ever wired in) would accept it. Used as a fallback path.
- */
-function quoteProblematicValue(value: string): string {
-	// Already quoted.
-	if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-		return value
-	}
-	if (PROBLEMATIC_VALUE_CHARS.test(value)) {
-		// Double-quote, escaping backslashes and double quotes.
-		const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
-		return `"${escaped}"`
-	}
-	return value
-}
-
-/**
  * Parse a single `key: value` line into a trimmed key/value pair.
  * Returns null for blank lines, comments, and lines without a key.
  *
@@ -101,17 +76,6 @@ export function parseFrontmatter(content: string, _filePath?: string): MemoryFro
 	for (const line of raw.split("\n")) {
 		const parsed = parseScalarLine(line)
 		if (!parsed) continue
-		// If the value contains problematic chars and the raw line didn't look
-		// like a clean scalar, run it through the quoting fallback and re-extract.
-		// For our flat key:value memory frontmatter the direct parse is already
-		// correct; this fallback exists to mirror upstream behavior and to be
-		// robust if richer values appear.
-		if (PROBLEMATIC_VALUE_CHARS.test(parsed.value)) {
-			// value is already unquoted/stripped above; the quoting fallback is
-			// a no-op for our purposes but documents the intent for any future
-			// stricter parser.
-			void quoteProblematicValue(parsed.value)
-		}
 		// Last definition wins (matches YAML scalar override semantics).
 		data[parsed.key] = parsed.value
 	}

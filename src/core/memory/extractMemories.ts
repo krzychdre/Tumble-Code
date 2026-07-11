@@ -161,13 +161,17 @@ function setCursor(taskId: string, value: number): void {
 export async function executeExtractMemories(context: ExtractionContext): Promise<void> {
 	if (!isAutoMemoryEnabled() || !context.isMainAgent) return
 
+	// Snapshot the message length at T0, before the multi-second extraction
+	// sub-task runs. Messages appended during the sub-task (T0→T1) must NOT be
+	// skipped — they'll be picked up by the next extraction.
 	const cursor = lastMemoryMessageCursors.get(context.taskId) ?? 0
-	const newMessageCount = context.messages.length - cursor
+	const lengthAtStart = context.messages.length
+	const newMessageCount = lengthAtStart - cursor
 	if (newMessageCount <= 0) return
 
 	// Mutual exclusion: main agent already wrote a memory → skip + advance cursor.
 	if (hasMemoryWritesSince(context.messages, context.cwd, cursor)) {
-		setCursor(context.taskId, context.messages.length)
+		setCursor(context.taskId, lengthAtStart)
 		return
 	}
 
@@ -189,8 +193,9 @@ export async function executeExtractMemories(context: ExtractionContext): Promis
 				maxTurns: 5,
 				signal: controller.signal,
 			})
-			// Advance cursor only on success.
-			setCursor(context.taskId, context.messages.length)
+			// Advance cursor only on success, using the T0 snapshot so messages
+			// appended mid-run are reconsidered next time.
+			setCursor(context.taskId, lengthAtStart)
 			// Index touches aren't "memories" — filter MEMORY.md out of the count.
 			const memoryPaths = result.writtenPaths.filter((p) => basename(p) !== ENTRYPOINT_NAME)
 			if (memoryPaths.length > 0 && context.onSaved) {
