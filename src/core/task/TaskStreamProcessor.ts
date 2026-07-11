@@ -380,12 +380,7 @@ export class TaskStreamProcessor {
 					// finalizeStreamingToolCall returned null (malformed JSON or missing args)
 					// Mark the tool as non-partial so it's presented as complete, but execution
 					// will be short-circuited in presentAssistantMessage with a structured tool_result.
-					const existingToolUse = this.access.assistantMessageContent[toolUseIndex]
-					if (existingToolUse && existingToolUse.type === "tool_use") {
-						existingToolUse.partial = false
-						// Ensure it has the ID for native protocol
-						;(existingToolUse as any).id = event.id
-					}
+					this.markToolUseNonPartial(event.id, toolUseIndex)
 
 					// Clean up tracking
 					this.access.streamingToolCallIndices.delete(event.id)
@@ -395,9 +390,76 @@ export class TaskStreamProcessor {
 
 					// Present the tool call - validation will handle missing params
 					presentAssistantMessage(this._task)
+				} else {
+					// TE-8: finalToolUse is null AND toolUseIndex is undefined.
+					// This happens when a duplicate tool_call_start was deduped (so
+					// streamingToolCallIndices never tracked this id under the
+					// duplicate's index), but the parser's rawChunkTracker still has
+					// an entry that emits a tool_call_end on finish_reason/finalize.
+					// The first end already handled the content block; this second
+					// end must not be silently swallowed.
+					this.handleOrphanedToolCallEnd(event.id)
 				}
 			}
 		}
+	}
+
+	/**
+	 * Mark a tool_use block at the given index as non-partial (complete).
+	 * Used when finalizeStreamingToolCall returns null (malformed JSON) but
+	 * the tool call was tracked — the block must be presented so that
+	 * presentAssistantMessage short-circuits with a structured error tool_result.
+	 */
+	private markToolUseNonPartial(toolCallId: string, toolUseIndex: number): void {
+		const existingToolUse = this.access.assistantMessageContent[toolUseIndex]
+		if (existingToolUse && existingToolUse.type === "tool_use") {
+			existingToolUse.partial = false
+			// Ensure it has the ID for native protocol
+			;(existingToolUse as any).id = toolCallId
+		}
+	}
+
+	/**
+	 * Handle a tool_call_end event for an id that has no tracking index
+	 * (streamingToolCallIndices has no entry). This is reachable when:
+	 *   - A duplicate tool_call_start was deduped by the guard, so the id
+	 *     was tracked under the first start's index, and the first
+	 *     tool_call_end already cleaned up tracking.
+	 *   - Or a state inconsistency caused the tracking to be lost.
+	 *
+	 * We scan assistantMessageContent for a block with the matching id.
+	 * If found and still partial, we mark it non-partial (reusing the same
+	 * logic as the null-finalize-with-index branch). If not found at all,
+	 * there is nothing to repair in content — we log a loud error so the
+	 * orphaned end is never silently swallowed.
+	 */
+	private handleOrphanedToolCallEnd(toolCallId: string): void {
+		// Scan for a content block with this id.
+		const contentIndex = this.access.assistantMessageContent.findIndex((block) => (block as any).id === toolCallId)
+
+		if (contentIndex !== -1) {
+			const block = this.access.assistantMessageContent[contentIndex]
+			if (block && block.type === "tool_use" && block.partial) {
+				// Repair: mark the block non-partial so presentAssistantMessage
+				// can process it (will short-circuit with a structured error
+				// tool_result if params are invalid).
+				block.partial = false
+				this.access.userMessageContentReady = false
+				presentAssistantMessage(this._task)
+			}
+			// If already non-partial, the first end already handled it — nothing to do.
+		} else {
+			// No content block exists for this id. This is not expected through
+			// normal parser event flow (the parser only emits tool_call_end for
+			// started tool calls, and a start always creates a content block).
+			// Log a loud error so the orphaned end is never silently swallowed.
+			console.error(
+				`[Task#${this.access.taskId}] Orphaned tool_call_end: no content block found for tool call ID: ${toolCallId}`,
+			)
+		}
+
+		// Defensive: ensure tracking is clean even if an entry somehow exists.
+		this.access.streamingToolCallIndices.delete(toolCallId)
 	}
 
 	/**
