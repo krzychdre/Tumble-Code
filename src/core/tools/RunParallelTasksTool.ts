@@ -37,6 +37,8 @@ export interface ParallelSubtaskResult {
 	branch?: string
 	message?: string
 	error?: string
+	/** Worktree + branch removed because nothing reviewable was produced. */
+	cleaned?: boolean
 }
 
 const DEFAULT_MODE = "code"
@@ -103,12 +105,16 @@ export function formatParallelResults(results: ReadonlyArray<ParallelSubtaskResu
 	if (cancelled > 0) summaryParts.push(`${cancelled} cancelled`)
 	const lines: string[] = [
 		`Ran ${results.length} parallel subtask(s): ${summaryParts.join(", ")}.`,
-		"Worktrees and branches are left intact for review; nothing was merged.",
+		"Worktrees with changes are kept for review; empty ones were removed. Nothing was merged.",
 		"",
 	]
 	for (const r of results) {
 		lines.push(`### Subtask ${r.index + 1} — ${r.status.toUpperCase()} (${r.mode} mode)`)
-		if (r.worktreePath) lines.push(`- worktree: ${r.worktreePath}${r.branch ? ` (branch: ${r.branch})` : ""}`)
+		if (r.cleaned) {
+			lines.push("- worktree: cleaned up (no changes)")
+		} else if (r.worktreePath) {
+			lines.push(`- worktree: ${r.worktreePath}${r.branch ? ` (branch: ${r.branch})` : ""}`)
+		}
 		if (r.status === "completed") {
 			lines.push("", r.message?.trim() || "(no result message)")
 		} else if (r.status === "cancelled") {
@@ -133,6 +139,29 @@ export function worktreeNamesFor(
 	return {
 		worktreePath: path.join(os.homedir(), ".roo", "worktrees", tag),
 		branch: `worktree/parallel-${shortId}-${index + 1}`,
+	}
+}
+
+/**
+ * Remove a subtask's worktree + branch when nothing reviewable was produced.
+ * Non-forced remove is a second safety net: git refuses uncommitted changes.
+ */
+async function cleanupSubtaskWorktreeIfEmpty({
+	cwd,
+	worktreePath,
+	branch,
+}: {
+	cwd: string
+	worktreePath: string
+	branch: string
+}): Promise<boolean> {
+	try {
+		if (await worktreeService.hasUncommittedChanges(worktreePath)) return false
+		if (await worktreeService.branchHasCommits(cwd, branch)) return false
+		const removed = await worktreeService.deleteWorktree(cwd, worktreePath)
+		return removed.success
+	} catch {
+		return false
 	}
 }
 
@@ -203,7 +232,7 @@ async function runOneSubtask({
 		}
 
 		if (signal.aborted) {
-			return { index, mode: subtask.mode, status: "cancelled", worktreePath, branch }
+			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
 		}
 
 		const child = await provider.createBackgroundTask(subtask.message, {
@@ -221,9 +250,9 @@ async function runOneSubtask({
 		const outcome = await provider.awaitTaskCompletion(child, { signal })
 
 		if (!outcome.completed && signal.aborted) {
-			return { index, mode: subtask.mode, status: "cancelled", worktreePath, branch }
+			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
 		}
-		return {
+		return await finalize(cwd, {
 			index,
 			mode: subtask.mode,
 			status: outcome.completed ? "completed" : "failed",
@@ -231,17 +260,25 @@ async function runOneSubtask({
 			branch,
 			message: outcome.lastMessage,
 			error: outcome.completed ? undefined : "subtask aborted before completion",
-		}
+		})
 	} catch (error) {
-		return {
+		return await finalize(cwd, {
 			index,
 			mode: subtask.mode,
 			status: "failed",
 			worktreePath,
 			branch,
 			error: error instanceof Error ? error.message : String(error),
-		}
+		})
 	}
+}
+
+/** Attach cleanup outcome to a terminal subtask result. */
+async function finalize(cwd: string, result: ParallelSubtaskResult): Promise<ParallelSubtaskResult> {
+	const { worktreePath, branch } = result
+	if (!worktreePath || !branch) return result
+	const cleaned = await cleanupSubtaskWorktreeIfEmpty({ cwd, worktreePath, branch })
+	return cleaned ? { ...result, cleaned: true } : result
 }
 
 export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
