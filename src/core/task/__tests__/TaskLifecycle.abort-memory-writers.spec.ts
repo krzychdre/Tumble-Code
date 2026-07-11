@@ -48,6 +48,7 @@ function buildAccessStub(overrides: Partial<TaskLifecycleAccess> = {}): TaskLife
 		abort: false,
 		abandoned: false,
 		abortReason: undefined,
+		isBackground: false,
 		parentTaskId: undefined,
 		clineMessages: [],
 		apiConversationHistory: [],
@@ -106,6 +107,50 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 		// shutdown, where orphaning in-flight extraction is the concern.
 		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
 		expect(access.abandoned).toBe(true)
+	})
+})
+
+describe("TaskLifecycle.abortTask — background tasks skip writers and drain", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("does NOT fire memory writers and does NOT drain when isBackground is true", async () => {
+		const access = buildAccessStub({ isBackground: true })
+		const lifecycle = new TaskLifecycle(access)
+
+		await lifecycle.abortTask()
+
+		expect(executeExtractMemories).not.toHaveBeenCalled()
+		expect(executeAutoDream).not.toHaveBeenCalled()
+		expect(drainPendingExtraction).not.toHaveBeenCalled()
+		expect(access.abort).toBe(true)
+	})
+
+	it("does NOT fire memory writers or drain when isBackground is true even if not user-cancelled", async () => {
+		// Belt-and-suspenders: isBackground guard must be independent of
+		// the isUserCancelled guard. A background task aborted via
+		// maxAgentTurns has no abortReason set, so the isUserCancelled
+		// check alone would let writers fire.
+		const access = buildAccessStub({ isBackground: true, abortReason: undefined })
+		const lifecycle = new TaskLifecycle(access)
+
+		await lifecycle.abortTask()
+
+		expect(executeExtractMemories).not.toHaveBeenCalled()
+		expect(executeAutoDream).not.toHaveBeenCalled()
+		expect(drainPendingExtraction).not.toHaveBeenCalled()
+	})
+
+	it("fires memory writers and drains when isBackground is false (foreground regression guard)", async () => {
+		const access = buildAccessStub({ isBackground: false })
+		const lifecycle = new TaskLifecycle(access)
+
+		await lifecycle.abortTask()
+
+		expect(executeExtractMemories).toHaveBeenCalledTimes(1)
+		expect(executeAutoDream).toHaveBeenCalledTimes(1)
+		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
 	})
 })
 

@@ -79,6 +79,11 @@ export interface TaskLifecycleAccess {
 	isStreaming: boolean
 	_started: boolean
 
+	// Background task flag: true for memory writers / parallel subagents.
+	// Background tasks must not trigger their own memory writers (unbounded
+	// recursion) or drain extraction (they never start it).
+	isBackground: boolean
+
 	// Abort controller for current request
 	currentRequestAbortController?: AbortController
 
@@ -555,7 +560,11 @@ export class TaskLifecycle {
 		// We `void` the promises; the drain below awaits them with a soft timeout
 		// so in-flight work isn't orphaned on extension shutdown.
 		const isUserCancelled = this.access.abortReason === "user_cancelled"
-		if (!isAbandoned && !isUserCancelled) {
+		// Background tasks (memory writers, parallel subagents) must never
+		// trigger their own memory writers — that would recurse unboundedly
+		// (aborted background task → new background task → aborted → …).
+		// They also never start extraction, so draining is pointless for them.
+		if (!isAbandoned && !isUserCancelled && !this.access.isBackground) {
 			try {
 				this.triggerMemoryBackgroundWriters()
 			} catch (error) {
@@ -586,8 +595,9 @@ export class TaskLifecycle {
 		// (TaskApiLoop.handleStreamError), so draining here holds isStreaming=true
 		// past cancelTask's 3s pWaitFor and freezes the UI. In-flight extraction
 		// runs as a provider-level background task and survives without the drain;
-		// the drain only matters for extension shutdown.
-		if (!isUserCancelled) {
+		// the drain only matters for extension shutdown. Also skipped for
+		// background tasks: they never start extraction, so there is nothing to drain.
+		if (!isUserCancelled && !this.access.isBackground) {
 			try {
 				await drainPendingExtraction(60_000)
 			} catch (error) {

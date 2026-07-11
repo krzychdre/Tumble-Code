@@ -279,6 +279,11 @@ export class TaskApiLoop {
 					console.log(
 						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
 					)
+					// Set a non-"user_cancelled" abortReason so abortTask's
+					// isUserCancelled guard does not falsely apply. The primary
+					// guard is the isBackground check in abortTask, but this
+					// makes the intent explicit and belt-and-suspenders safe.
+					this.access.abortReason = "streaming_failed"
 					await this.access.abortTask()
 					return true
 				}
