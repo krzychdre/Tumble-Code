@@ -1101,3 +1101,149 @@ async def test_share_visibility_rejects_invalid_value(client, db_session, sessio
         app.dependency_overrides.pop(get_current_user, None)
 
     assert resp.status_code == 422
+
+
+# --- Security: org policy enforcement server-side (CB-8) -------------------
+
+
+async def test_share_public_rejected_when_org_disallows_public(client, db_session, session_factory):
+    """When the org has allow_public_task_sharing=False, a public-visibility
+    share must be rejected with 403. Organization-visibility shares are still
+    allowed."""
+    from src.models.organization import Organization, Membership
+    from src.models.settings import OrganizationSettings
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-nopub", name="NoPub Org"))
+        s.add(Membership(user_id="owner", organization_id="org-nopub", role="org:member"))
+        s.add(Task(id="task-nopub", user_id="owner", organization_id="org-nopub"))
+        s.add(OrganizationSettings(
+            organization_id="org-nopub",
+            enable_task_sharing=True,
+            allow_public_task_sharing=False,
+        ))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nopub", "visibility": "public"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp.status_code == 403
+
+    # No share row should have been created.
+    async with session_factory() as s:
+        shares = (
+            await s.execute(
+                select(func.count(TaskShare.id)).where(TaskShare.task_id == "task-nopub")
+            )
+        ).scalar_one()
+        assert shares == 0
+
+
+async def test_share_organization_allowed_when_org_disallows_public(client, db_session, session_factory):
+    """When the org has allow_public_task_sharing=False but enable_task_sharing=True,
+    an organization-visibility share is still allowed."""
+    from src.models.organization import Organization, Membership
+    from src.models.settings import OrganizationSettings
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-nopub2", name="NoPub Org 2"))
+        s.add(Membership(user_id="owner", organization_id="org-nopub2", role="org:member"))
+        s.add(Task(id="task-nopub-org", user_id="owner", organization_id="org-nopub2"))
+        s.add(OrganizationSettings(
+            organization_id="org-nopub2",
+            enable_task_sharing=True,
+            allow_public_task_sharing=False,
+        ))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nopub-org", "visibility": "organization"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp.status_code == 200
+
+
+async def test_share_all_visibilities_rejected_when_sharing_disabled(client, db_session, session_factory):
+    """When the org has enable_task_sharing=False, both visibility values are
+    rejected with 403."""
+    from src.models.organization import Organization, Membership
+    from src.models.settings import OrganizationSettings
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-noshare", name="NoShare Org"))
+        s.add(Membership(user_id="owner", organization_id="org-noshare", role="org:member"))
+        s.add(Task(id="task-noshare", user_id="owner", organization_id="org-noshare"))
+        s.add(OrganizationSettings(
+            organization_id="org-noshare",
+            enable_task_sharing=False,
+            allow_public_task_sharing=True,
+        ))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp_pub = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-noshare", "visibility": "public"},
+        )
+        resp_org = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-noshare", "visibility": "organization"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp_pub.status_code == 403
+    assert resp_org.status_code == 403
+
+
+async def test_share_allowed_when_no_org_settings_configured(client, db_session, session_factory):
+    """When the task has an organization_id but no OrganizationSettings row exists,
+    the permissive default applies: both visibilities are allowed (back-compat
+    for existing self-hosted deployments that never configured org settings)."""
+    from src.models.organization import Organization, Membership
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-nosettings", name="NoSettings Org"))
+        s.add(Membership(user_id="owner", organization_id="org-nosettings", role="org:member"))
+        s.add(Task(id="task-nosettings", user_id="owner", organization_id="org-nosettings"))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp_pub = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nosettings", "visibility": "public"},
+        )
+        resp_org = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nosettings", "visibility": "organization"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp_pub.status_code == 200
+    assert resp_org.status_code == 200
