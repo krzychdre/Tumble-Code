@@ -81,6 +81,16 @@ half. **Decision:** `share_task` loads the task's organization settings and reje
 when `enable_task_sharing` is false (any share) or `allow_public_task_sharing` is
 false (public share), with a non-leaking error.
 
+### B24 `fix/autodream-trigger-unhandled-rejection` — writer-trigger catch [added post-batch]
+
+Found during final verification: the "pre-existing" unhandled-rejection errors in
+`Task.spec.ts` runs traced to `TaskLifecycle.triggerMemoryBackgroundWriters` — both
+`executeExtractMemories` and `executeAutoDream` are fire-and-forget (`void`-called)
+and can reject before their internal try/catch (e.g. `getAutoMemPath` throwing when
+memory paths aren't initialized), producing an `unhandledRejection` in the extension
+host. **Fix:** replace `void` with `.catch()` + `logger.error` at both trigger sites.
+Verified: the run-level "Errors" in the vitest sweep dropped from 7 to 0.
+
 ## Discipline
 
 Failing test first, minimal fix, green (targeted vitest/pytest). One branch per

@@ -22,45 +22,45 @@ weak-model robustness and local-server resource behaviour are weighted heavily.
 
 ## Summary table
 
-| ID    | Sev  | Status          | Area   | Finding                                                                    |
-| ----- | ---- | --------------- | ------ | -------------------------------------------------------------------------- |
-| TE-1  | high | ✅ DONE (B3)    | task   | bg abort → recursive memory writers (missing `isBackground` guard)         |
-| TE-2  | high | ✅ DONE (B3)    | task   | `maxAgentTurns` abort sets no `abortReason` → writers fire on bg           |
-| TE-3  | med  | ✅ DONE (B4)    | task   | subagentApproval/memorySandbox approve unparseable tool-ask                |
-| TE-4  | med  | ⏳ DEFERRED     | task   | `awaitTaskCompletion` leaks bg entry if no Completed/Aborted event         |
-| TE-5  | med  | ⏳ DEFERRED     | task   | `NativeToolCallParser.processRawChunk` drops first chunk lacking `id`      |
-| TE-6  | med  | ⏳ DEFERRED     | task   | `drainPendingExtraction` aborts but doesn't await settle                   |
-| TE-7  | med  | ⏳ DEFERRED     | task   | `cancelTask` fire-and-forget abort vs 3s `pWaitFor(isStreaming)`           |
-| TE-8  | med  | ⏳ DEFERRED     | task   | `TaskStreamProcessor` orphaned `tool_call_end` (null final + no index)     |
-| MEM-1 | high | ✅ DONE (B9)    | memory | `MemoryCoordinator` caches stale `ApiHandler` after profile switch         |
-| MEM-2 | high | ✅ DONE (B10)   | memory | autoDream sub-task never drained/aborted on shutdown                       |
-| MEM-3 | high | ✅ DONE (B10)   | memory | double-fired autoDream: same-PID race both acquire consolidation lock      |
-| MEM-4 | med  | ✅ DONE (B11)\* | memory | `makeSideQuery` unhandled rejection when abort wins the race               |
-| MEM-5 | high | ✅ DONE (B15)   | memory | `selectRelevantMemories` swallows all ranker errors, no logging            |
-| MEM-6 | med  | ✅ DONE (B11)   | memory | extraction cursor advances past messages added during run                  |
-| MEM-7 | low  | ✅ DONE (B11)   | memory | dead code `quoteProblematicValue` in frontmatter.ts                        |
-| TL-1  | high | ✅ DONE (B6)    | tools  | `NativeToolCallParser` static state races across parallel tasks            |
-| TL-2  | high | ⏳ DEFERRED     | tools  | `WriteToFileTool` trusts stale `editType` from handlePartial               |
-| TL-3  | med  | ✅ DONE (B4)    | tools  | `WriteToFileTool` doesn't coerce non-string params                         |
-| TL-4  | med  | ✅ DONE (B12)   | tools  | handlePartial error leaves diff editor open (no `reset()`)                 |
-| TL-5  | med  | ✅ DONE (B4)    | tools  | `ApplyDiffTool` passes `NaN` startLine to strategy                         |
-| TL-6  | med  | ✅ DONE (B12)   | tools  | handlePartial opens diff editor pre-validation → info disclosure           |
-| AP-1  | crit | ✅ DONE (B2)    | api    | abort not propagated to HTTP for OAI-compat/local providers                |
-| AP-2  | high | ✅ DONE (B7)    | api    | base provider only finalizes tool calls on `finish_reason==="tool_calls"`  |
-| AP-3  | high | ✅ DONE (B1)    | api    | `lm-studio.ts` crashes on missing `choices[0]`                             |
-| AP-4  | high | ✅ DONE (B8)    | api    | `OpenAICompatibleHandler` yields no usage chunk when server omits usage    |
-| AP-5  | med  | ✅ DONE (B8)    | api    | abort-listener leak in `nextChunkWithAbort` (per-chunk `addEventListener`) |
-| AP-6  | med  | ✅ DONE (B7)    | api    | `deepseek.ts`/base don't call `processFinishReason`                        |
-| AP-7  | med  | ✅ DONE (B8)    | api    | zero-token entries → auto-condense never triggers                          |
-| AP-8  | med  | ⏳ DEFERRED     | api    | `openai.ts` O3 path drops `reasoning_content`                              |
-| CB-1  | high | ✅ DONE (B5)    | cloud  | `share_task` missing ownership check                                       |
-| CB-2  | high | ✅ DONE (B5)    | cloud  | `/shared/{id}` org-visibility: no membership check                         |
-| CB-3  | high | ✅ DONE (B13)   | cloud  | `StaticTokenAuthService` never checks JWT expiry                           |
-| CB-4  | med  | ✅ DONE (B13)   | cloud  | `WebAuthService.refreshSession` `clearCredentials()` not awaited           |
-| CB-5  | med  | ✅ DONE (B14)   | cloud  | settings/telemetry `fetch` calls have no timeout                           |
-| CB-6  | med  | ✅ DONE (B14)   | cloud  | `RetryQueue` default `maxRetries:0` = infinite retries                     |
-| CB-7  | med  | ✅ DONE (B14)   | cloud  | `web.py` `_num` counts booleans as numbers (drifts from metrics_service)   |
-| CB-8  | med  | 🟡 PARTIAL (B5) | cloud  | `share_task` doesn't enforce org `allowPublicTaskSharing` server-side      |
+| ID    | Sev  | Status           | Area   | Finding                                                                    |
+| ----- | ---- | ---------------- | ------ | -------------------------------------------------------------------------- |
+| TE-1  | high | ✅ DONE (B3)     | task   | bg abort → recursive memory writers (missing `isBackground` guard)         |
+| TE-2  | high | ✅ DONE (B3)     | task   | `maxAgentTurns` abort sets no `abortReason` → writers fire on bg           |
+| TE-3  | med  | ✅ DONE (B4)     | task   | subagentApproval/memorySandbox approve unparseable tool-ask                |
+| TE-4  | med  | ✅ DONE (B19)    | task   | `awaitTaskCompletion` leaks bg entry if no Completed/Aborted event         |
+| TE-5  | med  | ✅ DONE (B16)    | task   | `NativeToolCallParser.processRawChunk` drops first chunk lacking `id`      |
+| TE-6  | med  | ✅ DONE (B21)    | task   | `drainPendingExtraction` aborts but doesn't await settle                   |
+| TE-7  | med  | ✅ DONE (B20)    | task   | `cancelTask` fire-and-forget abort vs 3s `pWaitFor(isStreaming)`           |
+| TE-8  | med  | ✅ DONE (B17)    | task   | `TaskStreamProcessor` orphaned `tool_call_end` (null final + no index)     |
+| MEM-1 | high | ✅ DONE (B9)     | memory | `MemoryCoordinator` caches stale `ApiHandler` after profile switch         |
+| MEM-2 | high | ✅ DONE (B10)    | memory | autoDream sub-task never drained/aborted on shutdown                       |
+| MEM-3 | high | ✅ DONE (B10)    | memory | double-fired autoDream: same-PID race both acquire consolidation lock      |
+| MEM-4 | med  | ✅ DONE (B11)\*  | memory | `makeSideQuery` unhandled rejection when abort wins the race               |
+| MEM-5 | high | ✅ DONE (B15)    | memory | `selectRelevantMemories` swallows all ranker errors, no logging            |
+| MEM-6 | med  | ✅ DONE (B11)    | memory | extraction cursor advances past messages added during run                  |
+| MEM-7 | low  | ✅ DONE (B11)    | memory | dead code `quoteProblematicValue` in frontmatter.ts                        |
+| TL-1  | high | ✅ DONE (B6)     | tools  | `NativeToolCallParser` static state races across parallel tasks            |
+| TL-2  | high | ✅ DONE (B18)    | tools  | `WriteToFileTool` trusts stale `editType` from handlePartial               |
+| TL-3  | med  | ✅ DONE (B4)     | tools  | `WriteToFileTool` doesn't coerce non-string params                         |
+| TL-4  | med  | ✅ DONE (B12)    | tools  | handlePartial error leaves diff editor open (no `reset()`)                 |
+| TL-5  | med  | ✅ DONE (B4)     | tools  | `ApplyDiffTool` passes `NaN` startLine to strategy                         |
+| TL-6  | med  | ✅ DONE (B12)    | tools  | handlePartial opens diff editor pre-validation → info disclosure           |
+| AP-1  | crit | ✅ DONE (B2)     | api    | abort not propagated to HTTP for OAI-compat/local providers                |
+| AP-2  | high | ✅ DONE (B7)     | api    | base provider only finalizes tool calls on `finish_reason==="tool_calls"`  |
+| AP-3  | high | ✅ DONE (B1)     | api    | `lm-studio.ts` crashes on missing `choices[0]`                             |
+| AP-4  | high | ✅ DONE (B8)     | api    | `OpenAICompatibleHandler` yields no usage chunk when server omits usage    |
+| AP-5  | med  | ✅ DONE (B8)     | api    | abort-listener leak in `nextChunkWithAbort` (per-chunk `addEventListener`) |
+| AP-6  | med  | ✅ DONE (B7)     | api    | `deepseek.ts`/base don't call `processFinishReason`                        |
+| AP-7  | med  | ✅ DONE (B8)     | api    | zero-token entries → auto-condense never triggers                          |
+| AP-8  | med  | ✅ DONE (B22)    | api    | `openai.ts` O3 path drops `reasoning_content`                              |
+| CB-1  | high | ✅ DONE (B5)     | cloud  | `share_task` missing ownership check                                       |
+| CB-2  | high | ✅ DONE (B5)     | cloud  | `/shared/{id}` org-visibility: no membership check                         |
+| CB-3  | high | ✅ DONE (B13)    | cloud  | `StaticTokenAuthService` never checks JWT expiry                           |
+| CB-4  | med  | ✅ DONE (B13)    | cloud  | `WebAuthService.refreshSession` `clearCredentials()` not awaited           |
+| CB-5  | med  | ✅ DONE (B14)    | cloud  | settings/telemetry `fetch` calls have no timeout                           |
+| CB-6  | med  | ✅ DONE (B14)    | cloud  | `RetryQueue` default `maxRetries:0` = infinite retries                     |
+| CB-7  | med  | ✅ DONE (B14)    | cloud  | `web.py` `_num` counts booleans as numbers (drifts from metrics_service)   |
+| CB-8  | med  | ✅ DONE (B5+B23) | cloud  | `share_task` doesn't enforce org `allowPublicTaskSharing` server-side      |
 
 Implemented: 10 findings across 5 branches (some are the same bug seen by two
 reviewers — TE-3≡MEM-5). Deferred: 24 discrete findings + the tech-debt notes below.
@@ -76,6 +76,13 @@ already consumes the losing promise's rejection, so no `unhandledRejection` was
 reachable; the explicit `.catch` was kept as intent-documenting hygiene. Still
 deferred: TE-4…TE-8, TL-2, AP-8, CB-8's org half. MEM-5's ranker-logging companion
 shipped as B15 (`fix/memory-ranker-error-logging`, the new tip).
+
+**Update (2026-07-12, fix stack 3):** the final 8 deferred findings shipped across
+B16–B23 (see [`2026-07-11_deferred-findings-fix-stack-3.md`](./2026-07-11_deferred-findings-fix-stack-3.md)),
+plus B24 (`fix/autodream-trigger-unhandled-rejection`): the `void executeExtractMemories`
+/ `void executeAutoDream` trigger sites now `.catch` + log — this was the source of the
+"pre-existing" unhandled-rejection errors in `Task.spec.ts` runs, now zero. **Every
+finding in this register is now ✅ DONE.** New tip: `fix/autodream-trigger-unhandled-rejection`.
 
 ---
 
