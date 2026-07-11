@@ -62,9 +62,29 @@ export interface AutoDreamContext {
 // Module-scoped scan throttle state (mirrors the upstream closure).
 let lastSessionScanAt = 0
 
+// Module-scoped in-flight state — mirrors extractMemories.ts so the two
+// read identically. Used by drainPendingDreams (MEM-2) to await/abort
+// in-flight dreams on shutdown instead of orphaning them.
+let inFlightDreams = new Set<Promise<void>>()
+const inFlightDreamControllers = new Set<AbortController>()
+
+// Per-memory-dir re-entry guard (MEM-3): prevents double-fired dreams from
+// racing through the PID lock when both see no lock / a dead PID and both
+// write the same process.pid. This is in-process re-entry protection
+// complementing the cross-process PID lock.
+const activeDreamDirs = new Set<string>()
+
 /** Reset module state — for tests only. */
 export function resetAutoDreamState(): void {
 	lastSessionScanAt = 0
+	inFlightDreams = new Set()
+	inFlightDreamControllers.clear()
+	activeDreamDirs.clear()
+}
+
+/** @internal — test only */
+export function _inFlightDreamsCount(): number {
+	return inFlightDreams.size
 }
 
 /**
@@ -130,6 +150,14 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 	if (!isAutoMemoryEnabled() || !context.isMainAgent || !context.config.enabled) return
 
 	const memoryDir = getAutoMemPath(context.cwd)
+
+	// MEM-3: in-process re-entry guard. If a dream for this memory dir is
+	// already in flight, bail immediately — prevents double-fired dreams from
+	// racing through the PID lock (both callers see no lock / a dead PID,
+	// both write the same process.pid, both pass verification). This is
+	// in-process protection complementing the cross-process PID lock.
+	if (activeDreamDirs.has(memoryDir)) return
+
 	const lastAt = await readLastConsolidatedAt(memoryDir)
 	const hoursSince = (Date.now() - lastAt) / 3_600_000
 	if (hoursSince < context.config.minHours) return
@@ -148,34 +176,56 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 	const priorMtime = await tryAcquireConsolidationLock(memoryDir)
 	if (priorMtime === null) return // held by another process
 
+	// Re-check the re-entry guard after the async lock acquisition — a
+	// double-fired caller may have already entered between the initial check
+	// and the lock acquire. This closes the narrow race window.
+	if (activeDreamDirs.has(memoryDir)) {
+		await rollbackConsolidationLock(memoryDir, priorMtime)
+		return
+	}
+
+	activeDreamDirs.add(memoryDir)
+
 	const controller = new AbortController()
 	const extra =
 		"Tool constraints: read_file / search_files / list_files unrestricted; execute_command read-only only; write_to_file / edit_file only inside the memory directory."
 	const prompt = buildConsolidationPrompt(memoryDir, context.cwd, extra)
 
-	try {
-		const result = await context.subTaskRunner({
-			cwd: context.cwd,
-			systemPrompt: buildDreamSystemPrompt(memoryDir),
-			userPrompt: prompt,
-			maxTurns: 10,
-			signal: controller.signal,
-		})
-		const memoryPaths = result.writtenPaths.filter((p) => basename(p) !== ENTRYPOINT_NAME)
-		if (memoryPaths.length > 0 && context.onImproved) {
-			context.onImproved(memoryPaths.length, memoryPaths)
+	// Declare the promise holder first so the `finally` can deregister itself
+	// without a use-before-assignment error.
+	let run: Promise<void> | undefined
+	run = (async () => {
+		try {
+			const result = await context.subTaskRunner({
+				cwd: context.cwd,
+				systemPrompt: buildDreamSystemPrompt(memoryDir),
+				userPrompt: prompt,
+				maxTurns: 10,
+				signal: controller.signal,
+			})
+			const memoryPaths = result.writtenPaths.filter((p) => basename(p) !== ENTRYPOINT_NAME)
+			if (memoryPaths.length > 0 && context.onImproved) {
+				context.onImproved(memoryPaths.length, memoryPaths)
+			}
+		} catch (e) {
+			if (controller.signal.aborted) {
+				// Killed (e.g. by drainPendingDreams or a UI kill action).
+				// Do NOT double-rollback — the killer already handled cleanup.
+				return
+			}
+			logger.error(`[memory] autoDream failed: ${e instanceof Error ? e.message : String(e)}`)
+			// Roll back the lock mtime so the time-gate re-passes; the scan
+			// throttle becomes the effective backoff (next attempt ≥ 10 min later).
+			await rollbackConsolidationLock(memoryDir, priorMtime)
+		} finally {
+			activeDreamDirs.delete(memoryDir)
+			if (run) inFlightDreams.delete(run)
+			inFlightDreamControllers.delete(controller)
 		}
-	} catch (e) {
-		if (controller.signal.aborted) {
-			// Killed (e.g. by a UI kill action that already rolled back the lock).
-			// Do NOT double-rollback.
-			return
-		}
-		logger.error(`[memory] autoDream failed: ${e instanceof Error ? e.message : String(e)}`)
-		// Roll back the lock mtime so the time-gate re-passes; the scan
-		// throttle becomes the effective backoff (next attempt ≥ 10 min later).
-		await rollbackConsolidationLock(memoryDir, priorMtime)
-	}
+	})()
+	// Registered together so the `finally` above always deregisters both.
+	inFlightDreamControllers.add(controller)
+	inFlightDreams.add(run)
 }
 
 function buildDreamSystemPrompt(memoryDir: string): string {
@@ -187,4 +237,27 @@ function buildDreamSystemPrompt(memoryDir: string): string {
 		"",
 		"Use the memory file format and the four types (user / feedback / project / reference) from your system prompt's auto-memory section.",
 	].join("\n")
+}
+
+/**
+ * Await in-flight dreams with a soft timeout. Called on shutdown alongside
+ * {@link drainPendingExtraction}. The timeout is `.unref()`'d so it never
+ * blocks process exit. When the timeout fires with dreams still pending,
+ * abort their controllers so live sub-tasks are cancelled instead of
+ * orphaned (MEM-2).
+ */
+export async function drainPendingDreams(timeoutMs: number = 60_000): Promise<void> {
+	if (inFlightDreams.size === 0) return
+	const inflight = [...inFlightDreams]
+	let timer: NodeJS.Timeout | undefined
+	const timeout = new Promise<void>((resolve) => {
+		timer = setTimeout(resolve, timeoutMs)
+		timer.unref?.()
+	})
+	await Promise.race([Promise.allSettled(inflight), timeout])
+	if (timer) clearTimeout(timer)
+	// If anything is still in flight after the timeout, cancel it.
+	if (inFlightDreams.size > 0) {
+		for (const c of inFlightDreamControllers) c.abort()
+	}
 }

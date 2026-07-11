@@ -97,6 +97,7 @@ export {
 } from "./extractMemories"
 export {
 	executeAutoDream,
+	drainPendingDreams,
 	buildConsolidationPrompt,
 	resetAutoDreamState,
 	type AutoDreamConfig,

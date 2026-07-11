@@ -22,6 +22,7 @@ vi.mock("../../memory", () => ({
 	executeExtractMemories: vi.fn().mockResolvedValue(undefined),
 	executeAutoDream: vi.fn().mockResolvedValue(undefined),
 	drainPendingExtraction: vi.fn().mockResolvedValue(undefined),
+	drainPendingDreams: vi.fn().mockResolvedValue(undefined),
 	renderTranscript: vi.fn().mockReturnValue(""),
 }))
 
@@ -32,7 +33,7 @@ vi.mock("../../../i18n", () => ({
 	}),
 }))
 
-import { executeExtractMemories, executeAutoDream, drainPendingExtraction } from "../../memory"
+import { executeExtractMemories, executeAutoDream, drainPendingExtraction, drainPendingDreams } from "../../memory"
 
 function buildAccessStub(overrides: Partial<TaskLifecycleAccess> = {}): TaskLifecycleAccess {
 	const provider = {
@@ -81,6 +82,7 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 		expect(executeExtractMemories).not.toHaveBeenCalled()
 		expect(executeAutoDream).not.toHaveBeenCalled()
 		expect(drainPendingExtraction).not.toHaveBeenCalled()
+		expect(drainPendingDreams).not.toHaveBeenCalled()
 		expect(access.abort).toBe(true)
 	})
 
@@ -93,6 +95,7 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 		expect(executeExtractMemories).toHaveBeenCalledTimes(1)
 		expect(executeAutoDream).toHaveBeenCalledTimes(1)
 		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
+		expect(drainPendingDreams).toHaveBeenCalledTimes(1)
 	})
 
 	it("keeps skipping writers for abandoned aborts (pre-existing behavior)", async () => {
@@ -106,6 +109,7 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 		// Drain still runs for abandoned aborts — that path covers extension
 		// shutdown, where orphaning in-flight extraction is the concern.
 		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
+		expect(drainPendingDreams).toHaveBeenCalledTimes(1)
 		expect(access.abandoned).toBe(true)
 	})
 })
@@ -124,6 +128,7 @@ describe("TaskLifecycle.abortTask — background tasks skip writers and drain", 
 		expect(executeExtractMemories).not.toHaveBeenCalled()
 		expect(executeAutoDream).not.toHaveBeenCalled()
 		expect(drainPendingExtraction).not.toHaveBeenCalled()
+		expect(drainPendingDreams).not.toHaveBeenCalled()
 		expect(access.abort).toBe(true)
 	})
 
@@ -140,6 +145,7 @@ describe("TaskLifecycle.abortTask — background tasks skip writers and drain", 
 		expect(executeExtractMemories).not.toHaveBeenCalled()
 		expect(executeAutoDream).not.toHaveBeenCalled()
 		expect(drainPendingExtraction).not.toHaveBeenCalled()
+		expect(drainPendingDreams).not.toHaveBeenCalled()
 	})
 
 	it("fires memory writers and drains when isBackground is false (foreground regression guard)", async () => {
@@ -151,6 +157,7 @@ describe("TaskLifecycle.abortTask — background tasks skip writers and drain", 
 		expect(executeExtractMemories).toHaveBeenCalledTimes(1)
 		expect(executeAutoDream).toHaveBeenCalledTimes(1)
 		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
+		expect(drainPendingDreams).toHaveBeenCalledTimes(1)
 	})
 })
 

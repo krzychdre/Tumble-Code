@@ -26,6 +26,7 @@ import {
 	executeExtractMemories,
 	drainPendingExtraction,
 	executeAutoDream,
+	drainPendingDreams,
 	renderTranscript,
 	type AutoDreamConfig,
 	type TranscriptMessage,
@@ -597,11 +598,14 @@ export class TaskLifecycle {
 		// runs as a provider-level background task and survives without the drain;
 		// the drain only matters for extension shutdown. Also skipped for
 		// background tasks: they never start extraction, so there is nothing to drain.
+		// Same guards apply to dreams (MEM-2): skip drain on user cancel and for
+		// background tasks — they never start dreams, so there is nothing to drain.
 		if (!isUserCancelled && !this.access.isBackground) {
 			try {
 				await drainPendingExtraction(60_000)
+				await drainPendingDreams(60_000)
 			} catch (error) {
-				console.error("Error draining memory extraction:", error)
+				console.error("Error draining memory background writers:", error)
 			}
 		}
 	}
