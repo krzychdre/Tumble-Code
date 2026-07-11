@@ -165,18 +165,33 @@ export class NativeToolCallParser {
 
 	/**
 	 * Process stream finish reason.
-	 * Emits end events when finish_reason is 'tool_calls'.
+	 * For ANY non-empty finish reason, flushes all STARTED tool calls (emits
+	 * tool_call_end for each and clears their tracker entries). This handles
+	 * weak/local OpenAI-compatible servers that return finish_reason "stop"
+	 * or other values even after emitting tool_calls deltas.
+	 *
+	 * Tool calls that never started (no name received) are not flushed here,
+	 * consistent with finalizeRawChunks behavior.
+	 *
+	 * If arguments were truncated, finalizeStreamingToolCall already returns
+	 * null on malformed JSON and TaskStreamProcessor short-circuits with a
+	 * structured error tool_result — that's the designed fail-safe.
 	 */
 	public processFinishReason(finishReason: string | null | undefined): ToolCallStreamEvent[] {
 		const events: ToolCallStreamEvent[] = []
 
-		if (finishReason === "tool_calls" && this.rawChunkTracker.size > 0) {
+		if (finishReason && this.rawChunkTracker.size > 0) {
 			for (const [, tracked] of this.rawChunkTracker.entries()) {
-				events.push({
-					type: "tool_call_end",
-					id: tracked.id,
-				})
+				if (tracked.hasStarted) {
+					events.push({
+						type: "tool_call_end",
+						id: tracked.id,
+					})
+				}
 			}
+			// Clear all tracker entries after flushing, so finalizeRawChunks
+			// does not produce duplicate tool_call_end events
+			this.rawChunkTracker.clear()
 		}
 
 		return events

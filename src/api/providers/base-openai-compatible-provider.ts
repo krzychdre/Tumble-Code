@@ -151,7 +151,6 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		)
 
 		let lastUsage: OpenAI.CompletionUsage | undefined
-		const activeToolCallIds = new Set<string>()
 
 		try {
 			for await (const chunk of stream) {
@@ -180,9 +179,6 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 				// Emit raw tool call chunks - NativeToolCallParser handles state management
 				if (delta?.tool_calls) {
 					for (const toolCall of delta.tool_calls) {
-						if (toolCall.id) {
-							activeToolCallIds.add(toolCall.id)
-						}
 						yield {
 							type: "tool_call_partial",
 							index: toolCall.index,
@@ -193,13 +189,12 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 					}
 				}
 
-				// Emit tool_call_end events when finish_reason is "tool_calls"
-				// This ensures tool calls are finalized even if the stream doesn't properly close
-				if (finishReason === "tool_calls" && activeToolCallIds.size > 0) {
-					for (const id of activeToolCallIds) {
-						yield { type: "tool_call_end", id }
-					}
-					activeToolCallIds.clear()
+				// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
+				// This covers ALL finish reasons (not just "tool_calls") — many local/weak
+				// OpenAI-compatible servers (llama.cpp, vLLM, older LM Studio) return "stop"
+				// even after emitting tool_calls deltas (AP-2).
+				if (finishReason) {
+					yield { type: "finish_reason", finishReason }
 				}
 
 				if (chunk.usage) {

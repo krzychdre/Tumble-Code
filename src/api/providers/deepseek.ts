@@ -173,6 +173,13 @@ export class DeepSeekHandler extends OpenAiHandler {
 				}
 			}
 
+			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
+			// DeepSeek may return "stop" or "tool_calls" — both must trigger finalization (AP-6).
+			const finishReason = chunk.choices?.[0]?.finish_reason
+			if (finishReason) {
+				yield { type: "finish_reason", finishReason }
+			}
+
 			if (chunk.usage) {
 				lastUsage = chunk.usage
 			}

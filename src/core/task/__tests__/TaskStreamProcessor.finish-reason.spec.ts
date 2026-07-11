@@ -128,7 +128,7 @@ describe("TaskStreamProcessor finish_reason chunk handling (TL-1)", () => {
 		expect(presentAssistantMessage).toHaveBeenCalled()
 	})
 
-	it("finish_reason 'stop' does not emit tool_call_end (processFinishReason only acts on 'tool_calls')", () => {
+	it("finish_reason 'stop' finalizes started tool calls (AP-2: weak servers say 'stop' after tool_calls deltas)", () => {
 		const access = makeAccess()
 		const processor = new TaskStreamProcessor(access, {} as any)
 		const modelInfo = makeModelInfo()
@@ -148,7 +148,8 @@ describe("TaskStreamProcessor finish_reason chunk handling (TL-1)", () => {
 		expect(access.assistantMessageContent).toHaveLength(1)
 		expect(access.streamingToolCallIndices.has("call_test_002")).toBe(true)
 
-		// Send finish_reason "stop" — processFinishReason returns no events for non-"tool_calls"
+		// Send finish_reason "stop" — AP-2 fix: processFinishReason now flushes
+		// STARTED tool calls for ANY non-empty finish reason, not just "tool_calls"
 		processor.processChunk(
 			{
 				type: "finish_reason",
@@ -157,9 +158,11 @@ describe("TaskStreamProcessor finish_reason chunk handling (TL-1)", () => {
 			modelInfo,
 		)
 
-		// Tool call should still be partial (not finalized by finish_reason "stop")
-		const toolUse = access.assistantMessageContent[0] as any
-		expect(toolUse.partial).toBe(true)
-		expect(access.streamingToolCallIndices.has("call_test_002")).toBe(true)
+		// Tool call should have been finalized by finish_reason "stop"
+		const finalizedToolUse = access.assistantMessageContent[0] as any
+		expect(finalizedToolUse.type).toBe("tool_use")
+		expect(finalizedToolUse.partial).toBe(false)
+		// streamingToolCallIndices should be cleaned up
+		expect(access.streamingToolCallIndices.has("call_test_002")).toBe(false)
 	})
 })

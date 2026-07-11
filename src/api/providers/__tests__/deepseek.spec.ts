@@ -707,4 +707,147 @@ describe("DeepSeekHandler", () => {
 			expect(toolCallChunks[0].name).toBe("get_weather")
 		})
 	})
+
+	describe("finish_reason chunk handling (AP-6)", () => {
+		const systemPrompt = "You are a helpful assistant."
+		const messages: Anthropic.Messages.MessageParam[] = [
+			{
+				role: "user",
+				content: [
+					{
+						type: "text" as const,
+						text: "Hello!",
+					},
+				],
+			},
+		]
+
+		it("should yield finish_reason chunk when finish_reason is 'stop' after tool_calls deltas (AP-6)", async () => {
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						choices: [
+							{
+								delta: {
+									tool_calls: [
+										{
+											index: 0,
+											id: "call_deepseek_ap6",
+											function: {
+												name: "get_weather",
+												arguments: '{"location":"SF"}',
+											},
+										},
+									],
+								},
+								index: 0,
+							},
+						],
+					}
+					yield {
+						choices: [
+							{
+								delta: {},
+								index: 0,
+								finish_reason: "stop",
+							},
+						],
+						usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+					}
+				},
+			}))
+
+			const chatHandler = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: "deepseek-chat",
+			})
+
+			const tools: any[] = [
+				{
+					type: "function",
+					function: {
+						name: "get_weather",
+						description: "Get weather",
+						parameters: { type: "object", properties: {} },
+					},
+				},
+			]
+
+			const stream = chatHandler.createMessage(systemPrompt, messages, { taskId: "test", tools })
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			// AP-6: DeepSeek has its own stream loop and must yield finish_reason chunks
+			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+
+			expect(partialChunks).toHaveLength(1)
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "stop" })
+		})
+
+		it("should yield finish_reason chunk when finish_reason is 'tool_calls' (AP-6)", async () => {
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						choices: [
+							{
+								delta: {
+									tool_calls: [
+										{
+											index: 0,
+											id: "call_deepseek_tc",
+											function: {
+												name: "get_weather",
+												arguments: '{"location":"SF"}',
+											},
+										},
+									],
+								},
+								index: 0,
+							},
+						],
+					}
+					yield {
+						choices: [
+							{
+								delta: {},
+								index: 0,
+								finish_reason: "tool_calls",
+							},
+						],
+						usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+					}
+				},
+			}))
+
+			const chatHandler = new DeepSeekHandler({
+				...mockOptions,
+				apiModelId: "deepseek-chat",
+			})
+
+			const tools: any[] = [
+				{
+					type: "function",
+					function: {
+						name: "get_weather",
+						description: "Get weather",
+						parameters: { type: "object", properties: {} },
+					},
+				},
+			]
+
+			const stream = chatHandler.createMessage(systemPrompt, messages, { taskId: "test", tools })
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "tool_calls" })
+		})
+	})
 })

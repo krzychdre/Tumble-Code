@@ -454,7 +454,7 @@ describe("BaseOpenAiCompatibleProvider", () => {
 	})
 
 	describe("Tool call handling", () => {
-		it("should yield tool_call_end events when finish_reason is tool_calls", async () => {
+		it("should yield finish_reason chunk when finish_reason is tool_calls (AP-2)", async () => {
 			mockCreate.mockImplementationOnce(() => {
 				return {
 					[Symbol.asyncIterator]: () => ({
@@ -517,16 +517,16 @@ describe("BaseOpenAiCompatibleProvider", () => {
 				chunks.push(chunk)
 			}
 
-			// Should have tool_call_partial and tool_call_end
+			// AP-2: base provider now yields finish_reason chunks instead of tool_call_end
 			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
 
 			expect(partialChunks).toHaveLength(2)
-			expect(endChunks).toHaveLength(1)
-			expect(endChunks[0]).toEqual({ type: "tool_call_end", id: "call_123" })
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "tool_calls" })
 		})
 
-		it("should yield multiple tool_call_end events for parallel tool calls", async () => {
+		it("should yield finish_reason chunk for multiple parallel tool calls (AP-2)", async () => {
 			mockCreate.mockImplementationOnce(() => {
 				return {
 					[Symbol.asyncIterator]: () => ({
@@ -577,12 +577,13 @@ describe("BaseOpenAiCompatibleProvider", () => {
 				chunks.push(chunk)
 			}
 
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
-			expect(endChunks).toHaveLength(2)
-			expect(endChunks.map((c: any) => c.id).sort()).toEqual(["call_001", "call_002"])
+			// AP-2: should yield a single finish_reason chunk, not individual tool_call_end events
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "tool_calls" })
 		})
 
-		it("should not yield tool_call_end when finish_reason is not tool_calls", async () => {
+		it("should yield finish_reason chunk when server returns 'stop' after tool_calls deltas (AP-2)", async () => {
 			mockCreate.mockImplementationOnce(() => {
 				return {
 					[Symbol.asyncIterator]: () => ({
@@ -593,7 +594,42 @@ describe("BaseOpenAiCompatibleProvider", () => {
 								value: {
 									choices: [
 										{
-											delta: { content: "Some text response" },
+											delta: {
+												tool_calls: [
+													{
+														index: 0,
+														id: "call_stop_ap2",
+														function: { name: "test_tool", arguments: '{"arg":' },
+													},
+												],
+											},
+										},
+									],
+								},
+							})
+							.mockResolvedValueOnce({
+								done: false,
+								value: {
+									choices: [
+										{
+											delta: {
+												tool_calls: [
+													{
+														index: 0,
+														function: { arguments: '"value"}' },
+													},
+												],
+											},
+										},
+									],
+								},
+							})
+							.mockResolvedValueOnce({
+								done: false,
+								value: {
+									choices: [
+										{
+											delta: {},
 											finish_reason: "stop",
 										},
 									],
@@ -610,8 +646,46 @@ describe("BaseOpenAiCompatibleProvider", () => {
 				chunks.push(chunk)
 			}
 
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
-			expect(endChunks).toHaveLength(0)
+			// AP-2: Even with finish_reason "stop" (not "tool_calls"), the provider
+			// must yield a finish_reason chunk so TaskStreamProcessor can finalize
+			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+
+			expect(partialChunks).toHaveLength(2)
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "stop" })
+		})
+
+		it("should NOT yield finish_reason chunk when finish_reason is null", async () => {
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						next: vi
+							.fn()
+							.mockResolvedValueOnce({
+								done: false,
+								value: {
+									choices: [
+										{
+											delta: { content: "Some text" },
+											finish_reason: null,
+										},
+									],
+								},
+							})
+							.mockResolvedValueOnce({ done: true }),
+					}),
+				}
+			})
+
+			const stream = handler.createMessage("system prompt", [])
+			const chunks = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+			expect(finishReasonChunks).toHaveLength(0)
 		})
 	})
 

@@ -423,6 +423,141 @@ describe("NativeToolCallParser", () => {
 		})
 	})
 
+	// AP-2: Many local/weak OpenAI-compatible servers (llama.cpp, vLLM, older
+	// LM Studio) return finish_reason: "stop" or null even after emitting
+	// tool_calls deltas. processFinishReason must flush STARTED tool calls for
+	// ANY non-empty finish reason, not just "tool_calls".
+	describe("processFinishReason — AP-2: finalize on any non-empty finish reason", () => {
+		it("flushes STARTED tool call on finish_reason 'stop'", () => {
+			const parser = new NativeToolCallParser()
+
+			// Start a raw tool call: first chunk with id+name+partial args
+			const startEvents = parser.processRawChunk({
+				index: 0,
+				id: "call_stop_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+			// Should emit tool_call_start + tool_call_delta
+			expect(startEvents).toContainEqual({
+				type: "tool_call_start",
+				id: "call_stop_001",
+				name: "read_file",
+			})
+
+			// processFinishReason("stop") should flush the started call
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_stop_001",
+			})
+		})
+
+		it("flushes STARTED tool call on finish_reason 'tool_calls'", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_tc_001",
+				name: "write_to_file",
+				arguments: '{"path":"out.ts","content":"x"}',
+			})
+
+			const finishEvents = parser.processFinishReason("tool_calls")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_tc_001",
+			})
+		})
+
+		it("flushes multiple STARTED tool calls on any non-empty finish reason", () => {
+			const parser = new NativeToolCallParser()
+
+			// Start two tool calls
+			parser.processRawChunk({
+				index: 0,
+				id: "call_multi_001",
+				name: "read_file",
+				arguments: '{"path":"a.ts"}',
+			})
+			parser.processRawChunk({
+				index: 1,
+				id: "call_multi_002",
+				name: "read_file",
+				arguments: '{"path":"b.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(2)
+			const ids = finishEvents.map((e) => e.id).sort()
+			expect(ids).toEqual(["call_multi_001", "call_multi_002"])
+		})
+
+		it("does NOT flush when finish_reason is null", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_null_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason(null)
+			expect(finishEvents).toHaveLength(0)
+		})
+
+		it("does NOT flush when finish_reason is undefined", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_undef_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason(undefined)
+			expect(finishEvents).toHaveLength(0)
+		})
+
+		it("does NOT flush tool calls that never started (no name received)", () => {
+			const parser = new NativeToolCallParser()
+
+			// Send a chunk with id but no name — tool call is tracked but not started
+			parser.processRawChunk({
+				index: 0,
+				id: "call_nostart_001",
+				arguments: '{"path":"test"}',
+			})
+
+			// No tool_call_start should have been emitted
+			const finishEvents = parser.processFinishReason("stop")
+			// Calls that never started (hasStarted=false) should not get end events,
+			// consistent with finalizeRawChunks behavior
+			expect(finishEvents).toHaveLength(0)
+		})
+
+		it("clears tracker entries after flushing", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_clear_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+
+			parser.processFinishReason("stop")
+
+			// After flushing, a subsequent finalizeRawChunks should not produce duplicate ends
+			const finalizeEvents = parser.finalizeRawChunks()
+			expect(finalizeEvents).toHaveLength(0)
+		})
+	})
+
 	// Regression test for TL-1: static Maps in NativeToolCallParser were shared
 	// across all tasks. When task B called clearRawChunkState()/clearAllStreamingToolCalls()
 	// (via resetStreamingState), it wiped task A's mid-stream tool-call accumulation.
