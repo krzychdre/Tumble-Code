@@ -7,6 +7,7 @@ import {
 	drainPendingExtraction,
 	hasMemoryWritesSince,
 	resetExtractionState,
+	_inFlightExtractionsCount,
 } from "../extractMemories"
 import { initMemoryPaths, resetMemoryPaths, getAutoMemPath } from "../paths"
 
@@ -283,6 +284,66 @@ describe("extractMemories", () => {
 			await new Promise((r) => setTimeout(r, 50))
 			await drainPendingExtraction(1000)
 			expect(aborted).toBe(false)
+		})
+
+		it("awaited post-abort settle: registry is empty when drain returns (abort-responsive work)", async () => {
+			// Runner that resolves ONLY when its abort signal fires — simulating
+			// abort-responsive work. Pre-fix the drain returned while the registry
+			// was still non-empty (the finally cleanup hadn't run yet).
+			const runner = vi.fn(
+				(params: { signal: AbortSignal }) =>
+					new Promise<any>((_resolve, reject) => {
+						params.signal.addEventListener("abort", () => {
+							reject(new Error("aborted"))
+						})
+					}),
+			)
+			void executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: [{ toolUses: [{ name: "read_file" }] }] as any,
+				subTaskRunner: runner,
+			})
+			// Give the extraction a tick to register the controller.
+			await new Promise((r) => setTimeout(r, 10))
+			expect(_inFlightExtractionsCount()).toBe(1)
+
+			// Main timeout (20ms) fires → abort → grace period lets it settle.
+			await drainPendingExtraction(20)
+
+			// Post-fix: the grace await gives the finally block time to run,
+			// so the registry is empty when drain returns.
+			expect(_inFlightExtractionsCount()).toBe(0)
+		})
+
+		it("never hangs forever: drain returns even if a promise never settles after abort", async () => {
+			// Runner that NEVER settles — not even on abort. The drain must
+			// still return after main-timeout + grace (it must not hang).
+			const runner = vi.fn(
+				(_params: { signal: AbortSignal }) =>
+					new Promise<any>(() => {
+						// intentionally never resolves or rejects
+					}),
+			)
+			void executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "a",
+				messages: [{ toolUses: [{ name: "read_file" }] }] as any,
+				subTaskRunner: runner,
+			})
+			// Give the extraction a tick to register.
+			await new Promise((r) => setTimeout(r, 10))
+
+			// Use short real timeouts to keep the test fast: 20ms main + 50ms grace.
+			const start = Date.now()
+			await drainPendingExtraction(20, 50)
+			const elapsed = Date.now() - start
+			// Drain returned — it didn't hang. Elapsed should be roughly
+			// main-timeout + grace (within a generous tolerance).
+			expect(elapsed).toBeGreaterThanOrEqual(20)
+			expect(elapsed).toBeLessThan(500)
 		})
 	})
 })

@@ -30,7 +30,7 @@ import {
 	rollbackConsolidationLock,
 	countSessionsSince,
 } from "./consolidationLock"
-import { type SubTaskRunner, type SubTaskResult } from "./extractMemories"
+import { type SubTaskRunner, type SubTaskResult, drainInFlight } from "./extractMemories"
 
 export { type SubTaskRunner, type SubTaskResult } from "./extractMemories"
 
@@ -244,20 +244,9 @@ function buildDreamSystemPrompt(memoryDir: string): string {
  * {@link drainPendingExtraction}. The timeout is `.unref()`'d so it never
  * blocks process exit. When the timeout fires with dreams still pending,
  * abort their controllers so live sub-tasks are cancelled instead of
- * orphaned (MEM-2).
+ * orphaned (MEM-2). After aborting, a bounded grace period (5s) is awaited
+ * so aborted work can settle and deregister before the drain returns.
  */
-export async function drainPendingDreams(timeoutMs: number = 60_000): Promise<void> {
-	if (inFlightDreams.size === 0) return
-	const inflight = [...inFlightDreams]
-	let timer: NodeJS.Timeout | undefined
-	const timeout = new Promise<void>((resolve) => {
-		timer = setTimeout(resolve, timeoutMs)
-		timer.unref?.()
-	})
-	await Promise.race([Promise.allSettled(inflight), timeout])
-	if (timer) clearTimeout(timer)
-	// If anything is still in flight after the timeout, cancel it.
-	if (inFlightDreams.size > 0) {
-		for (const c of inFlightDreamControllers) c.abort()
-	}
+export async function drainPendingDreams(timeoutMs: number = 60_000, graceMs: number = 5_000): Promise<void> {
+	await drainInFlight(inFlightDreams, inFlightDreamControllers, timeoutMs, graceMs)
 }

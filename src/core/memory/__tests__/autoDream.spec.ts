@@ -7,6 +7,7 @@ import {
 	drainPendingDreams,
 	buildConsolidationPrompt,
 	resetAutoDreamState,
+	_inFlightDreamsCount,
 	type AutoDreamConfig,
 } from "../autoDream"
 import { initMemoryPaths, resetMemoryPaths } from "../paths"
@@ -355,6 +356,95 @@ describe("drainPendingDreams (MEM-2)", () => {
 		await new Promise((r) => setTimeout(r, 50))
 		await drainPendingDreams(1000)
 		expect(aborted).toBe(false)
+
+		acquireSpy.mockRestore()
+		rollbackSpy.mockRestore()
+	})
+
+	it("awaited post-abort settle: registry is empty when drain returns (abort-responsive work)", async () => {
+		const now = Date.now()
+		vi.setSystemTime(now)
+		await setup(now - 48 * 3_600_000)
+		resetAutoDreamState()
+
+		const acquireSpy = vi.spyOn(lock, "tryAcquireConsolidationLock").mockResolvedValue(0)
+		const rollbackSpy = vi.spyOn(lock, "rollbackConsolidationLock").mockResolvedValue(undefined)
+
+		// Runner that resolves ONLY when its abort signal fires — simulating
+		// abort-responsive work. Pre-fix the drain returned while the registry
+		// was still non-empty (the finally cleanup hadn't run yet).
+		const runner = vi.fn(
+			(params: { signal: AbortSignal }) =>
+				new Promise<any>((_resolve, reject) => {
+					params.signal.addEventListener("abort", () => {
+						reject(new Error("aborted"))
+					})
+				}),
+		)
+
+		void executeAutoDream({
+			cwd,
+			isMainAgent: true,
+			config: baseConfig,
+			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
+			currentTaskId: "current",
+			subTaskRunner: runner,
+			onImproved: () => {},
+		})
+		// Wait for the dream to register in the in-flight set.
+		await vi.waitFor(() => expect(_inFlightDreamsCount()).toBe(1))
+
+		// Main timeout (20ms) fires → abort → grace period lets it settle.
+		await drainPendingDreams(20)
+
+		// Post-fix: the grace await gives the finally block time to run,
+		// so the registry is empty when drain returns.
+		expect(_inFlightDreamsCount()).toBe(0)
+
+		acquireSpy.mockRestore()
+		rollbackSpy.mockRestore()
+	})
+
+	it("never hangs forever: drain returns even if a promise never settles after abort", async () => {
+		const now = Date.now()
+		vi.setSystemTime(now)
+		await setup(now - 48 * 3_600_000)
+		resetAutoDreamState()
+
+		const acquireSpy = vi.spyOn(lock, "tryAcquireConsolidationLock").mockResolvedValue(0)
+		const rollbackSpy = vi.spyOn(lock, "rollbackConsolidationLock").mockResolvedValue(undefined)
+
+		// Runner that NEVER settles — not even on abort. The drain must
+		// still return after main-timeout + grace (it must not hang).
+		const runner = vi.fn(
+			(_params: { signal: AbortSignal }) =>
+				new Promise<any>(() => {
+					// intentionally never resolves or rejects
+				}),
+		)
+
+		void executeAutoDream({
+			cwd,
+			isMainAgent: true,
+			config: baseConfig,
+			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
+			currentTaskId: "current",
+			subTaskRunner: runner,
+			onImproved: () => {},
+		})
+		// Wait for the dream to register in the in-flight set (it has async
+		// lock acquisition + gate cascade before reaching the runner).
+		await vi.waitFor(() => expect(_inFlightDreamsCount()).toBe(1))
+
+		// Use short real timeouts to keep the test fast: 20ms main + 50ms grace.
+		// Use performance.now() (not Date.now()) because vi.setSystemTime
+		// freezes Date.now() at a fixed value.
+		const start = performance.now()
+		await drainPendingDreams(20, 50)
+		const elapsed = performance.now() - start
+		// Drain returned — it didn't hang.
+		expect(elapsed).toBeGreaterThanOrEqual(20)
+		expect(elapsed).toBeLessThan(500)
 
 		acquireSpy.mockRestore()
 		rollbackSpy.mockRestore()

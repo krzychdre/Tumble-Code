@@ -96,6 +96,52 @@ export function resetExtractionState(): void {
 	inFlightControllers.clear()
 }
 
+/** @internal — test only */
+export function _inFlightExtractionsCount(): number {
+	return inFlightExtractions.size
+}
+
+/**
+ * Shared drain algorithm: await in-flight promises with a soft timeout, abort
+ * remaining controllers on timeout, then await a bounded grace period so
+ * aborted work can settle and deregister before the drain returns.
+ *
+ * Used by both {@link drainPendingExtraction} and `drainPendingDreams` — the
+ * registries stay separate, only the drain ALGORITHM is shared.
+ *
+ * The drain never hangs forever: if the grace period expires with promises
+ * still unsettled (a truly stuck task), it returns anyway.
+ */
+export async function drainInFlight(
+	promises: Set<Promise<void>>,
+	controllers: Set<AbortController>,
+	timeoutMs: number,
+	graceMs: number = 5_000,
+): Promise<void> {
+	if (promises.size === 0) return
+	const inflight = [...promises]
+	let timer: NodeJS.Timeout | undefined
+	const timeout = new Promise<void>((resolve) => {
+		timer = setTimeout(resolve, timeoutMs)
+		timer.unref?.()
+	})
+	await Promise.race([Promise.allSettled(inflight), timeout])
+	if (timer) clearTimeout(timer)
+	// If anything is still in flight after the timeout, abort their controllers
+	// and give them a bounded grace period to settle + deregister.
+	if (promises.size > 0) {
+		for (const c of controllers) c.abort()
+		const stillInFlight = [...promises]
+		let graceTimer: NodeJS.Timeout | undefined
+		const grace = new Promise<void>((resolve) => {
+			graceTimer = setTimeout(resolve, graceMs)
+			graceTimer.unref?.()
+		})
+		await Promise.race([Promise.allSettled(stillInFlight), grace])
+		if (graceTimer) clearTimeout(graceTimer)
+	}
+}
+
 /**
  * Did the main agent already write to a memory path in the message range since
  * the cursor? If so, skip extraction (mutual exclusion) and advance the cursor.
@@ -230,20 +276,10 @@ function buildExtractionSystemPrompt(memoryDir: string): string {
  * Await in-flight extractions with a 60s soft timeout. Called on shutdown.
  * The timeout is `.unref()`'d so it never blocks process exit. When the timeout
  * fires with extractions still pending, abort their controllers so live sub-tasks
- * are cancelled instead of orphaned.
+ * are cancelled instead of orphaned. After aborting, a bounded grace period
+ * (5s) is awaited so aborted work can settle and deregister before the drain
+ * returns — callers treat the drain's return as "background writers are done".
  */
-export async function drainPendingExtraction(timeoutMs: number = 60_000): Promise<void> {
-	if (inFlightExtractions.size === 0) return
-	const inflight = [...inFlightExtractions]
-	let timer: NodeJS.Timeout | undefined
-	const timeout = new Promise<void>((resolve) => {
-		timer = setTimeout(resolve, timeoutMs)
-		timer.unref?.()
-	})
-	await Promise.race([Promise.allSettled(inflight), timeout])
-	if (timer) clearTimeout(timer)
-	// If anything is still in flight after the timeout, cancel it.
-	if (inFlightExtractions.size > 0) {
-		for (const c of inFlightControllers) c.abort()
-	}
+export async function drainPendingExtraction(timeoutMs: number = 60_000, graceMs: number = 5_000): Promise<void> {
+	await drainInFlight(inFlightExtractions, inFlightControllers, timeoutMs, graceMs)
 }
