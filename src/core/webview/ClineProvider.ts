@@ -3314,11 +3314,13 @@ export class ClineProvider
 		// This is essential for local models that may continue inference even after abort.
 		task.cancelCurrentRequest(true)
 
-		// Begin abort (non-blocking)
+		// Begin abort (non-blocking) — the abort runs concurrently while we
+		// do a bounded wait for streaming to stop.  We do NOT set `abandoned`
+		// before the wait: setting it prematurely would mark the task as
+		// abandoned while the abort is still progressing, which can clobber a
+		// to-be-successful cleanup.  Instead `abandoned` is set AFTER the
+		// bounded wait concludes, regardless of whether the abort finished.
 		task.abortTask()
-
-		// Immediately mark the original instance as abandoned to prevent any residual activity
-		task.abandoned = true
 
 		await pWaitFor(
 			() =>
@@ -3333,8 +3335,19 @@ export class ClineProvider
 				timeout: 3_000,
 			},
 		).catch(() => {
-			console.error("Failed to abort task")
+			// The abort is still in progress (e.g. slow stream cleanup,
+			// memory-writer drain on a non-user-cancel path).  This is NOT
+			// a failure — the abort was initiated and will complete in the
+			// background.  We log a warning instead of an error so the
+			// task is not spuriously marked as failed.
+			this.log("[cancelTask] abort still in progress after 3s bound — continuing")
 		})
+
+		// Mark the original instance as abandoned NOW — after the bounded
+		// wait, so it never clobbers a still-progressing abort.  The abort
+		// itself was already started above; `abandoned` just prevents
+		// residual activity from the old instance after rehydrate.
+		task.abandoned = true
 
 		// Defensive safeguard: if current instance already changed, skip rehydrate
 		const current = this.getCurrentTask()
