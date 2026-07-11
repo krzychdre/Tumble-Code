@@ -32,40 +32,49 @@ weak-model robustness and local-server resource behaviour are weighted heavily.
 | TE-6  | med  | ⏳ DEFERRED     | task   | `drainPendingExtraction` aborts but doesn't await settle                   |
 | TE-7  | med  | ⏳ DEFERRED     | task   | `cancelTask` fire-and-forget abort vs 3s `pWaitFor(isStreaming)`           |
 | TE-8  | med  | ⏳ DEFERRED     | task   | `TaskStreamProcessor` orphaned `tool_call_end` (null final + no index)     |
-| MEM-1 | high | ⏳ DEFERRED     | memory | `MemoryCoordinator` caches stale `ApiHandler` after profile switch         |
-| MEM-2 | high | ⏳ DEFERRED     | memory | autoDream sub-task never drained/aborted on shutdown                       |
-| MEM-3 | high | ⏳ DEFERRED     | memory | double-fired autoDream: same-PID race both acquire consolidation lock      |
-| MEM-4 | med  | ⏳ DEFERRED     | memory | `makeSideQuery` unhandled rejection when abort wins the race               |
+| MEM-1 | high | ✅ DONE (B9)    | memory | `MemoryCoordinator` caches stale `ApiHandler` after profile switch         |
+| MEM-2 | high | ✅ DONE (B10)   | memory | autoDream sub-task never drained/aborted on shutdown                       |
+| MEM-3 | high | ✅ DONE (B10)   | memory | double-fired autoDream: same-PID race both acquire consolidation lock      |
+| MEM-4 | med  | ✅ DONE (B11)\* | memory | `makeSideQuery` unhandled rejection when abort wins the race               |
 | MEM-5 | high | ⏳ DEFERRED     | memory | `selectRelevantMemories` swallows all ranker errors, no logging            |
-| MEM-6 | med  | ⏳ DEFERRED     | memory | extraction cursor advances past messages added during run                  |
-| MEM-7 | low  | ⏳ DEFERRED     | memory | dead code `quoteProblematicValue` in frontmatter.ts                        |
-| TL-1  | high | ⏳ DEFERRED     | tools  | `NativeToolCallParser` static state races across parallel tasks            |
+| MEM-6 | med  | ✅ DONE (B11)   | memory | extraction cursor advances past messages added during run                  |
+| MEM-7 | low  | ✅ DONE (B11)   | memory | dead code `quoteProblematicValue` in frontmatter.ts                        |
+| TL-1  | high | ✅ DONE (B6)    | tools  | `NativeToolCallParser` static state races across parallel tasks            |
 | TL-2  | high | ⏳ DEFERRED     | tools  | `WriteToFileTool` trusts stale `editType` from handlePartial               |
 | TL-3  | med  | ✅ DONE (B4)    | tools  | `WriteToFileTool` doesn't coerce non-string params                         |
-| TL-4  | med  | ⏳ DEFERRED     | tools  | handlePartial error leaves diff editor open (no `reset()`)                 |
+| TL-4  | med  | ✅ DONE (B12)   | tools  | handlePartial error leaves diff editor open (no `reset()`)                 |
 | TL-5  | med  | ✅ DONE (B4)    | tools  | `ApplyDiffTool` passes `NaN` startLine to strategy                         |
-| TL-6  | med  | ⏳ DEFERRED     | tools  | handlePartial opens diff editor pre-validation → info disclosure           |
+| TL-6  | med  | ✅ DONE (B12)   | tools  | handlePartial opens diff editor pre-validation → info disclosure           |
 | AP-1  | crit | ✅ DONE (B2)    | api    | abort not propagated to HTTP for OAI-compat/local providers                |
-| AP-2  | high | ⏳ DEFERRED     | api    | base provider only finalizes tool calls on `finish_reason==="tool_calls"`  |
+| AP-2  | high | ✅ DONE (B7)    | api    | base provider only finalizes tool calls on `finish_reason==="tool_calls"`  |
 | AP-3  | high | ✅ DONE (B1)    | api    | `lm-studio.ts` crashes on missing `choices[0]`                             |
-| AP-4  | high | ⏳ DEFERRED     | api    | `OpenAICompatibleHandler` yields no usage chunk when server omits usage    |
-| AP-5  | med  | ⏳ DEFERRED     | api    | abort-listener leak in `nextChunkWithAbort` (per-chunk `addEventListener`) |
-| AP-6  | med  | ⏳ DEFERRED     | api    | `deepseek.ts`/base don't call `processFinishReason`                        |
-| AP-7  | med  | ⏳ DEFERRED     | api    | zero-token entries → auto-condense never triggers                          |
+| AP-4  | high | ✅ DONE (B8)    | api    | `OpenAICompatibleHandler` yields no usage chunk when server omits usage    |
+| AP-5  | med  | ✅ DONE (B8)    | api    | abort-listener leak in `nextChunkWithAbort` (per-chunk `addEventListener`) |
+| AP-6  | med  | ✅ DONE (B7)    | api    | `deepseek.ts`/base don't call `processFinishReason`                        |
+| AP-7  | med  | ✅ DONE (B8)    | api    | zero-token entries → auto-condense never triggers                          |
 | AP-8  | med  | ⏳ DEFERRED     | api    | `openai.ts` O3 path drops `reasoning_content`                              |
 | CB-1  | high | ✅ DONE (B5)    | cloud  | `share_task` missing ownership check                                       |
 | CB-2  | high | ✅ DONE (B5)    | cloud  | `/shared/{id}` org-visibility: no membership check                         |
-| CB-3  | high | ⏳ DEFERRED     | cloud  | `StaticTokenAuthService` never checks JWT expiry                           |
-| CB-4  | med  | ⏳ DEFERRED     | cloud  | `WebAuthService.refreshSession` `clearCredentials()` not awaited           |
-| CB-5  | med  | ⏳ DEFERRED     | cloud  | settings/telemetry `fetch` calls have no timeout                           |
-| CB-6  | med  | ⏳ DEFERRED     | cloud  | `RetryQueue` default `maxRetries:0` = infinite retries                     |
-| CB-7  | med  | ⏳ DEFERRED     | cloud  | `web.py` `_num` counts booleans as numbers (drifts from metrics_service)   |
+| CB-3  | high | ✅ DONE (B13)   | cloud  | `StaticTokenAuthService` never checks JWT expiry                           |
+| CB-4  | med  | ✅ DONE (B13)   | cloud  | `WebAuthService.refreshSession` `clearCredentials()` not awaited           |
+| CB-5  | med  | ✅ DONE (B14)   | cloud  | settings/telemetry `fetch` calls have no timeout                           |
+| CB-6  | med  | ✅ DONE (B14)   | cloud  | `RetryQueue` default `maxRetries:0` = infinite retries                     |
+| CB-7  | med  | ✅ DONE (B14)   | cloud  | `web.py` `_num` counts booleans as numbers (drifts from metrics_service)   |
 | CB-8  | med  | 🟡 PARTIAL (B5) | cloud  | `share_task` doesn't enforce org `allowPublicTaskSharing` server-side      |
 
 Implemented: 10 findings across 5 branches (some are the same bug seen by two
 reviewers — TE-3≡MEM-5). Deferred: 24 discrete findings + the tech-debt notes below.
 CB-8: the `visibility` `Literal` narrowing shipped in B5; the org-policy enforcement
 half is still deferred (needs org-context plumbing into `share_task`).
+
+**Update (2026-07-11 evening, fix stack 2):** 19 further findings shipped across
+branches B6–B14 (see [`2026-07-11_deferred-findings-fix-stack-2.md`](./2026-07-11_deferred-findings-fix-stack-2.md)),
+stacked linearly on `fix/cloud-share-authz`; new tip is `fix/cloud-client-resilience`.
+Section-heading status emojis below reflect the original review — the summary table
+above is authoritative. \*MEM-4's premise was disproven during TDD: `Promise.race`
+already consumes the losing promise's rejection, so no `unhandledRejection` was
+reachable; the explicit `.catch` was kept as intent-documenting hygiene. Still
+deferred: TE-4…TE-8, TL-2, AP-8, CB-8's org half, MEM-5's ranker-logging companion.
 
 ---
 
@@ -348,10 +357,10 @@ lm-studio, ollama). Confidence: high.
 ## AP-2 ⏳ [high] Base provider only finalizes tool calls on `finish_reason==="tool_calls"`
 
 `base-openai-compatible-provider.ts:171-178`. Local servers (llama.cpp, vLLM, older LM
-Studio) often return `finish_reason:"stop"`/`null` even after emitting tool_calls
+Studio) often return `finish_reason:"stop"`/`null` even after emitting tool*calls
 deltas; then `activeToolCallIds` is never flushed and no `tool_call_end` fires. The
 `finalizeStream` fallback marks blocks non-partial, so a tool executes with possibly
-_truncated_ JSON arguments. `lm-studio.ts:141-146` already uses the robust
+\_truncated* JSON arguments. `lm-studio.ts:141-146` already uses the robust
 `processFinishReason` pattern. **Fix:** call
 `NativeToolCallParser.processFinishReason(finishReason)` + a finally-style flush of any
 remaining `activeToolCallIds` regardless of reason. **TDD:** final chunk
