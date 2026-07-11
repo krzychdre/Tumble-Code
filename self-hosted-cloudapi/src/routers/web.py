@@ -125,8 +125,13 @@ def _derive_title(messages: list[dict]) -> str:
 
 
 def _num(value) -> float:
-    """Coerce a JSON number to float, treating anything else as 0."""
-    return value if isinstance(value, (int, float)) else 0
+    """Coerce a JSON number to float, treating anything else as 0.
+
+    ``bool`` is excluded because in Python ``bool`` is a subclass of ``int``
+    (``isinstance(True, (int, float))`` is ``True``), and a malformed
+    ``tokensIn: true`` should not add 1.0 to the total.
+    """
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else 0
 
 
 def _compute_metrics(messages: list[dict]) -> dict:

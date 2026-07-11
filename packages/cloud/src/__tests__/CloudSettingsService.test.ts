@@ -380,11 +380,14 @@ describe("CloudSettingsService", () => {
 
 			expect(result).toBe(true)
 
-			expect(fetch).toHaveBeenCalledWith("http://localhost:8080/api/extension-settings", {
-				headers: {
-					Authorization: "Bearer valid-token",
-				},
-			})
+			expect(fetch).toHaveBeenCalledWith(
+				"http://localhost:8080/api/extension-settings",
+				expect.objectContaining({
+					headers: {
+						Authorization: "Bearer valid-token",
+					},
+				}),
+			)
 
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("organization-settings", mockSettings)
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("user-settings", mockUserSettings)
@@ -424,6 +427,39 @@ describe("CloudSettingsService", () => {
 			expect(mockLog).toHaveBeenCalledWith(
 				"[cloud-settings] Invalid extension settings format:",
 				expect.any(Object),
+			)
+		})
+
+		it("should pass a 30s AbortSignal timeout on the fetch call", async () => {
+			mockAuthService.getSessionToken.mockReturnValue("valid-token")
+			vi.mocked(fetch).mockResolvedValue({
+				ok: true,
+				json: vi.fn().mockResolvedValue(mockExtensionSettingsResponse),
+			} as unknown as Response)
+
+			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
+			await timerCallback?.()
+
+			const callArgs = vi.mocked(fetch).mock.calls[0]
+			expect(callArgs?.[1]).toHaveProperty("signal")
+			// AbortSignal.timeout returns a signal that will abort after 30s
+			expect(callArgs?.[1]?.signal).toBeInstanceOf(AbortSignal)
+		})
+
+		it("should handle fetch timeout gracefully (AbortError treated as failure)", async () => {
+			mockAuthService.getSessionToken.mockReturnValue("valid-token")
+			const abortError = new DOMException("The operation was aborted", "AbortError")
+			vi.mocked(fetch).mockRejectedValue(abortError)
+
+			const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
+
+			const result = await timerCallback?.()
+
+			// A timeout must behave like any failed fetch: return false
+			expect(result).toBe(false)
+			expect(mockLog).toHaveBeenCalledWith(
+				"[cloud-settings] Error fetching extension settings:",
+				expect.any(Error),
 			)
 		})
 	})

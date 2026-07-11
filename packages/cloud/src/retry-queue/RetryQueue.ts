@@ -30,7 +30,7 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		this.authHeaderProvider = authHeaderProvider
 
 		this.config = {
-			maxRetries: 0,
+			maxRetries: 5,
 			retryDelay: 60000,
 			maxQueueSize: 100,
 			persistQueue: true,

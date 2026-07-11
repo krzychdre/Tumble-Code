@@ -398,6 +398,89 @@ describe("RetryQueue", () => {
 			expect(stats.totalQueued).toBe(0)
 		})
 
+		it("should default to maxRetries=5 and discard after 5 failures", async () => {
+			// Default config should be maxRetries=5 (not 0/infinite)
+			retryQueue = new RetryQueue(mockContext)
+
+			const maxRetriesListener = vi.fn()
+			retryQueue.on("request-max-retries-exceeded", maxRetriesListener)
+
+			// Enqueue 3 requests
+			await retryQueue.enqueue("https://api.example.com/test1", { method: "POST" }, "telemetry")
+			await retryQueue.enqueue("https://api.example.com/test2", { method: "POST" }, "telemetry")
+			await retryQueue.enqueue("https://api.example.com/test3", { method: "POST" }, "telemetry")
+
+			// All fetches fail
+			fetchMock.mockRejectedValue(new Error("Network error"))
+
+			// Run retryAll 10 times — after 5 failures each, all should be discarded
+			for (let i = 0; i < 10; i++) {
+				await retryQueue.retryAll()
+			}
+
+			// All 3 requests should have been discarded after 5 retries
+			const stats = retryQueue.getStats()
+			expect(stats.totalQueued).toBe(0)
+
+			// max-retries-exceeded should have been emitted for each request
+			expect(maxRetriesListener).toHaveBeenCalledTimes(3)
+		})
+
+		it("should persist retryCount across restarts via workspaceState", async () => {
+			// Enqueue a request and fail it twice to increment retryCount
+			const storage = new Map<string, unknown>()
+
+			const context1 = {
+				workspaceState: {
+					get: vi.fn((key: string) => storage.get(key)),
+					update: vi.fn(async (key: string, value: unknown) => {
+						storage.set(key, value)
+					}),
+				},
+			} as unknown as ExtensionContext
+
+			const queue1 = new RetryQueue(context1, { maxRetries: 5 })
+			await queue1.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
+
+			const failFetch = vi.fn().mockRejectedValue(new Error("Network error"))
+			global.fetch = failFetch
+
+			// Fail twice
+			await queue1.retryAll()
+			await queue1.retryAll()
+			queue1.dispose()
+
+			// Verify retryCount was persisted
+			const persisted = storage.get("roo.retryQueue") as QueuedRequest[]
+			expect(persisted).toHaveLength(1)
+			expect(persisted[0]!.retryCount).toBe(2)
+
+			// Create a new queue loading from the same storage
+			const context2 = {
+				workspaceState: {
+					get: vi.fn((key: string) => storage.get(key)),
+					update: vi.fn(async (key: string, value: unknown) => {
+						storage.set(key, value)
+					}),
+				},
+			} as unknown as ExtensionContext
+
+			const queue2 = new RetryQueue(context2, { maxRetries: 5 })
+			const stats = queue2.getStats()
+			expect(stats.totalQueued).toBe(1)
+
+			// The persisted retryCount should have survived the restart
+			// queue2 loaded the request with retryCount=2
+			// 3 more failures (total 5) should discard it
+			for (let i = 0; i < 3; i++) {
+				await queue2.retryAll()
+			}
+
+			// Should be discarded now (2 persisted + 3 new = 5 >= maxRetries)
+			expect(queue2.getStats().totalQueued).toBe(0)
+			queue2.dispose()
+		})
+
 		it("should not process if already processing", async () => {
 			// Add a request
 			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")

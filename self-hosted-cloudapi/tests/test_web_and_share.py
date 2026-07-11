@@ -917,6 +917,61 @@ async def test_metrics_page_empty_state(client, db_session):
     assert "/static/vendor/chart.umd.min.js" not in resp.text
 
 
+async def test_web_num_excludes_booleans(client, db_session, session_factory):
+    """``_num`` in web.py must NOT count ``True``/``False`` as 1.0/0.0 — Python
+    ``bool`` is a subclass of ``int``, so ``isinstance(True, (int, float))`` is
+    ``True``. A malformed ``tokensIn: true`` would inflate the task-list total
+    by 1.0 while the metrics dashboard (which excludes bools) reports 0,
+    diverging the two views. This test feeds a boolean token value and asserts
+    the web task-list aggregates it as 0, not 1."""
+    from src.routers.web import _num
+
+    # Direct unit test of _num: bool must be treated as 0
+    assert _num(True) == 0
+    assert _num(False) == 0
+    assert _num(42) == 42.0
+    assert _num(3.14) == 3.14
+    assert _num("hello") == 0
+    assert _num(None) == 0
+
+    # Integration: a task with tokensIn=true must NOT inflate the total
+    await _seed_user(db_session)
+    first = {"ts": 1000, "type": "say", "say": "text", "text": "Build me a feature"}
+    api_req = {
+        "ts": 2000,
+        "type": "say",
+        "say": "api_req_started",
+        "text": json.dumps(
+            {
+                "tokensIn": True,  # malformed boolean — must count as 0
+                "tokensOut": 100,
+                "cost": 0.05,
+            }
+        ),
+    }
+    async with session_factory() as s:
+        s.add(Task(id="task-bool", user_id="user_test"))
+        s.add(TaskMessage(task_id="task-bool", message_data=json.dumps(first)))
+        s.add(TaskMessage(task_id="task-bool", message_data=json.dumps(api_req)))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        resp = client.get("/app")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    # tokens_in should be 0 (bool excluded), tokens_out=100 → total 100
+    # "100 tokens" in the list, NOT "101 tokens"
+    assert "100 tokens" in resp.text
+    assert "101" not in resp.text
+    # The tooltip should show In: 0 (not In: 1)
+    assert "↑ In: 0" in resp.text
+
+
 # --- Security: share_task ownership check (BUG A) --------------------------
 
 

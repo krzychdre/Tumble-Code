@@ -19,7 +19,7 @@ export interface QueueStats {
 }
 
 export interface RetryQueueConfig {
-	maxRetries: number // 0 means unlimited
+	maxRetries: number // 0 means unlimited; default is 5
 	retryDelay: number
 	maxQueueSize: number // FIFO eviction when full
 	persistQueue: boolean
