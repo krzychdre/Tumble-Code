@@ -25,12 +25,20 @@ vi.mock("../../memory", () => ({
 	renderTranscript: vi.fn().mockReturnValue(""),
 }))
 
+vi.mock("../../../i18n", () => ({
+	t: vi.fn((key: string, opts?: Record<string, unknown>) => {
+		const count = opts?.count
+		return count !== undefined ? `${key} ${count}` : key
+	}),
+}))
+
 import { executeExtractMemories, executeAutoDream, drainPendingExtraction } from "../../memory"
 
 function buildAccessStub(overrides: Partial<TaskLifecycleAccess> = {}): TaskLifecycleAccess {
 	const provider = {
 		memorySubTaskRunner: vi.fn(),
 		getValue: vi.fn().mockReturnValue(undefined),
+		notifyBackgroundOutcome: vi.fn(),
 	}
 
 	const access: Partial<TaskLifecycleAccess> = {
@@ -98,5 +106,67 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 		// shutdown, where orphaning in-flight extraction is the concern.
 		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
 		expect(access.abandoned).toBe(true)
+	})
+})
+
+describe("TaskLifecycle.triggerMemoryBackgroundWriters — visibility toasts", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("onSaved(2, ...) calls notifyBackgroundOutcome with a string containing '2'", async () => {
+		const access = buildAccessStub()
+		const lifecycle = new TaskLifecycle(access)
+
+		lifecycle.triggerMemoryBackgroundWriters()
+
+		expect(executeExtractMemories).toHaveBeenCalledTimes(1)
+		const opts = (executeExtractMemories as ReturnType<typeof vi.fn>).mock.calls[0][0]
+		opts.onSaved(2, [])
+
+		const provider = access.providerRef.deref() as unknown as { notifyBackgroundOutcome: ReturnType<typeof vi.fn> }
+		expect(provider.notifyBackgroundOutcome).toHaveBeenCalledTimes(1)
+		expect(provider.notifyBackgroundOutcome.mock.calls[0][0]).toContain("2")
+	})
+
+	it("onSaved(0, []) does not call notifyBackgroundOutcome", async () => {
+		const access = buildAccessStub()
+		const lifecycle = new TaskLifecycle(access)
+
+		lifecycle.triggerMemoryBackgroundWriters()
+
+		const opts = (executeExtractMemories as ReturnType<typeof vi.fn>).mock.calls[0][0]
+		opts.onSaved(0, [])
+
+		const provider = access.providerRef.deref() as unknown as { notifyBackgroundOutcome: ReturnType<typeof vi.fn> }
+		expect(provider.notifyBackgroundOutcome).not.toHaveBeenCalled()
+	})
+
+	it("onImproved(3, ...) calls notifyBackgroundOutcome with a string containing '3'", async () => {
+		const access = buildAccessStub()
+		const lifecycle = new TaskLifecycle(access)
+
+		lifecycle.triggerMemoryBackgroundWriters()
+
+		expect(executeAutoDream).toHaveBeenCalledTimes(1)
+		const opts = (executeAutoDream as ReturnType<typeof vi.fn>).mock.calls[0][0]
+		opts.onImproved(3)
+
+		const provider = access.providerRef.deref() as unknown as { notifyBackgroundOutcome: ReturnType<typeof vi.fn> }
+		expect(provider.notifyBackgroundOutcome).toHaveBeenCalledTimes(1)
+		expect(provider.notifyBackgroundOutcome.mock.calls[0][0]).toContain("3")
+	})
+
+	it("onImproved(0) does not call notifyBackgroundOutcome", async () => {
+		const access = buildAccessStub()
+		const lifecycle = new TaskLifecycle(access)
+
+		lifecycle.triggerMemoryBackgroundWriters()
+
+		const opts = (executeAutoDream as ReturnType<typeof vi.fn>).mock.calls[0][0]
+		opts.onImproved(0)
+
+		const provider = access.providerRef.deref() as unknown as { notifyBackgroundOutcome: ReturnType<typeof vi.fn> }
+		expect(provider.notifyBackgroundOutcome).not.toHaveBeenCalled()
 	})
 })

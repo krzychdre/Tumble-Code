@@ -3158,8 +3158,17 @@ export class ClineProvider
 				this.backgroundTasks.delete(task.taskId)
 				// Dispose a completed background task (aborted ones are already torn
 				// down). `isBackground` makes this abort skip the memory writers.
+				// Completed background tasks have no history item and are never
+				// resumed — delete their on-disk directory once the dispose settles
+				// (abortTask saves messages, which would re-create the directory).
+				// Aborted/failed tasks keep their directory for post-mortem. No
+				// ShadowCheckpointService cleanup is needed (background tasks are
+				// created with enableCheckpoints: false).
 				if (result.completed) {
-					void task.abortTask(true).catch(() => {})
+					void task
+						.abortTask(true)
+						.catch(() => {})
+						.then(() => this.cleanupBackgroundTaskFiles(task.taskId))
 				}
 				resolve({ ...result, writtenPaths })
 			}
@@ -3181,6 +3190,33 @@ export class ClineProvider
 				else options.signal.addEventListener("abort", onSignalAbort, { once: true })
 			}
 		})
+	}
+
+	/**
+	 * Best-effort deletion of a completed background task's on-disk directory.
+	 * Failure is logged and never thrown — the await result is already settled.
+	 */
+	private cleanupBackgroundTaskFiles(taskId: string): void {
+		void (async () => {
+			try {
+				const { getTaskDirectoryPath } = await import("../../utils/storage")
+				const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
+				const dirPath = await getTaskDirectoryPath(globalStoragePath, taskId)
+				await fs.rm(dirPath, { recursive: true, force: true })
+				this.log(`[cleanupBackgroundTaskFiles] removed task directory for ${taskId}`)
+			} catch (error) {
+				this.log(
+					`[cleanupBackgroundTaskFiles] failed to remove task directory for ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		})()
+	}
+
+	/**
+	 * Surface a non-blocking toast for background-task outcomes (memory writes).
+	 */
+	public notifyBackgroundOutcome(message: string): void {
+		void vscode.window.showInformationMessage(message)
 	}
 
 	/**

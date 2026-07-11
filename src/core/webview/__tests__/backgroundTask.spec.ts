@@ -39,8 +39,12 @@ function invokeAwait(
 	task: ReturnType<typeof makeFakeTask>,
 	options?: { signal?: AbortSignal },
 	backgroundTasks = new Map<string, unknown>(),
+	cleanupSpy?: ReturnType<typeof vi.fn>,
 ) {
-	const fakeThis = { backgroundTasks } as unknown as ClineProvider
+	const fakeThis = {
+		backgroundTasks,
+		cleanupBackgroundTaskFiles: cleanupSpy ?? vi.fn(),
+	} as unknown as ClineProvider
 	backgroundTasks.set((task as unknown as { taskId: string }).taskId, task)
 	const promise = ClineProvider.prototype.awaitTaskCompletion.call(fakeThis, task as never, options)
 	return { promise, backgroundTasks }
@@ -101,5 +105,45 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 		expect(task.abortTask).toHaveBeenCalledTimes(1)
 		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
 		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
+	})
+
+	it("cleans up task directory for completed background tasks", async () => {
+		const task = makeFakeTask({ completionText: "done" })
+		const cleanupSpy = vi.fn()
+		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
+
+		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
+
+		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
+		// Cleanup is chained after the dispose (abortTask) settles.
+		await vi.waitFor(() => expect(cleanupSpy).toHaveBeenCalledWith("bg-1"))
+	})
+
+	it("does not clean up task directory for aborted background tasks", async () => {
+		const task = makeFakeTask()
+		const cleanupSpy = vi.fn()
+		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
+
+		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskAborted, "bg-1")
+
+		await expect(promise).resolves.toEqual({ completed: false, lastMessage: undefined, writtenPaths: [] })
+		// Flush microtasks so a wrongly-chained cleanup would have fired by now.
+		await new Promise((r) => setTimeout(r, 0))
+		expect(cleanupSpy).not.toHaveBeenCalled()
+	})
+
+	it("cleanup failure does not affect the await result", async () => {
+		const task = makeFakeTask({ completionText: "done" })
+		// The real cleanupBackgroundTaskFiles is fire-and-forget (void async IIFE
+		// with try/catch); it never throws synchronously. Simulate a rejection
+		// inside the async body by returning a rejected promise — the await
+		// result must still resolve normally.
+		const cleanupSpy = vi.fn().mockResolvedValue(undefined)
+		const { promise } = invokeAwait(task, {}, undefined, cleanupSpy)
+
+		;(task as unknown as EventEmitter).emit(RooCodeEventName.TaskCompleted, "bg-1", {}, {})
+
+		await expect(promise).resolves.toEqual({ completed: true, lastMessage: "done", writtenPaths: [] })
+		await vi.waitFor(() => expect(cleanupSpy).toHaveBeenCalledWith("bg-1"))
 	})
 })

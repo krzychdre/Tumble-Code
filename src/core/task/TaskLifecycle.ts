@@ -21,6 +21,7 @@ import { type TaskContextManager } from "./TaskContextManager"
 import { defaultModeSlug } from "../../shared/modes"
 import { TaskResumption, type TaskResumptionAccess } from "./TaskResumption"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { t } from "../../i18n"
 import {
 	executeExtractMemories,
 	drainPendingExtraction,
@@ -631,6 +632,7 @@ export class TaskLifecycle {
 			onSaved: (count) => {
 				if (count > 0) {
 					console.log(`[memory] extractMemories saved ${count} memor${count === 1 ? "y" : "ies"}`)
+					provider.notifyBackgroundOutcome(t("common:info.memory_saved", { count }))
 				}
 			},
 		})
@@ -656,6 +658,7 @@ export class TaskLifecycle {
 			onImproved: (count) => {
 				if (count > 0) {
 					console.log(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
+					provider.notifyBackgroundOutcome(t("common:info.memory_consolidated", { count }))
 				}
 			},
 		})

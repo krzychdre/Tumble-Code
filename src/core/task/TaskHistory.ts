@@ -90,6 +90,9 @@ export interface TaskHistoryAccess {
 
 	// Callback for operations needing full Task context
 	restoreTodoListForTask: () => void
+
+	// Background tasks must not appear in or be resumable from task history.
+	isBackground: boolean
 }
 
 export class TaskHistory {
@@ -456,7 +459,9 @@ export class TaskHistory {
 			})
 
 			const historyItem = await this.emitTokenUsageUpdate()
-			await this.updateProviderTaskHistory(historyItem)
+			if (!this.access.isBackground) {
+				await this.updateProviderTaskHistory(historyItem)
+			}
 
 			return true
 		} catch (error) {
