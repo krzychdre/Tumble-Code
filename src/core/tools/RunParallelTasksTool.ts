@@ -2,14 +2,13 @@ import * as os from "os"
 import * as path from "path"
 
 import { worktreeService } from "@roo-code/core"
-import { RooCodeEventName, type ExtensionState } from "@roo-code/types"
+import { RooCodeEventName } from "@roo-code/types"
 
 import { Task, type AutoApprovalOverride } from "../task/Task"
-import { buildSubagentApprovalPolicy } from "../task/subagentApproval"
+import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
-import type { AutoApprovalState, AutoApprovalStateOptions } from "../auto-approval"
 
 /** One requested subtask. */
 export interface ParallelSubtask {
@@ -164,9 +163,6 @@ async function cleanupSubtaskWorktreeIfEmpty({
 		return false
 	}
 }
-
-/** State slice consumed by `checkAutoApproval` via the subagent approval policy. */
-type ApprovalState = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions>
 
 /** Provider surface needed by a single subtask worker. */
 interface SubtaskProvider {

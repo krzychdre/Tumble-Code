@@ -25,10 +25,9 @@ describe("memorySandbox", () => {
 	const toolAsk = (tool: string, p?: string) => JSON.stringify({ tool, path: p })
 
 	describe("memoryWriteSandbox", () => {
-		it("denies command / browser / mcp asks (capabilities the memory agent never needs)", () => {
+		it("denies command / mcp asks (capabilities the memory agent never needs)", () => {
 			const decide = memoryWriteSandbox(cwd)
 			expect(decide("command", "ls")).toBe("deny")
-			expect(decide("browser_action", "{}")).toBe("deny")
 			expect(decide("use_mcp_server", "{}")).toBe("deny")
 		})
 

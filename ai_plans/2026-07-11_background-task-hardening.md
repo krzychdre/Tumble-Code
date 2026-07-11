@@ -2,7 +2,26 @@
 
 **Date:** 2026-07-11
 **Base branch:** `fix/memory-writers-skip-user-cancel` (stacked; one branch per slice)
-**Status:** IN PROGRESS
+**Status:** DONE. All 7 slices implemented, reviewed, tested, committed:
+
+| Slice     | Branch                                        | Commit        |
+| --------- | --------------------------------------------- | ------------- |
+| 1 (F1+F7) | `fix/memory-extraction-cursor-per-task`       | `1721393fd`   |
+| 2 (F2)    | `fix/parallel-tasks-cancel-propagation`       | `7d72baed1`   |
+| 3 (F3)    | `fix/parallel-tasks-approval-policy`          | `edda8b4e6`   |
+| 4 (F4+F5) | `fix/background-tasks-history-and-visibility` | `c2a2d3c89`   |
+| 5 (F6)    | `feat/memory-writer-api-profile`              | `b6dd156b5`   |
+| 6 (F8)    | `feat/parallel-worktree-cleanup`              | `52378e528`   |
+| 7         | `refactor/background-task-loose-ends`         | (this commit) |
+
+Review-round corrections worth noting: slice 1 — controller registration moved after the
+run IIFE (leak on scan failure); slice 3 — protected-file writes inside the worktree
+delegate to `checkAutoApproval` instead of short-circuiting (a child must not rewrite its
+own `.rooignore` guardrails un-asked); slice 4 — task-dir cleanup sequenced after dispose
+settles (dispose's `saveClineMessages` could resurrect the deleted directory); slice 5 —
+Radix rejects `SelectItem value=""`, sentinel `"-"` used per PromptsSettings precedent;
+slice 6 — unparseable `rev-list` output errs toward keeping (NaN must not read as 0).
+
 **Predecessor:** [`2026-07-01_memory-hook-and-headless-subagent.md`](2026-07-01_memory-hook-and-headless-subagent.md)
 
 ## Problem (proven, per-finding evidence)
@@ -216,9 +235,9 @@ committed before the next branch is cut. Design constraints throughout:
   error-shape (`WorktreeResult`).
 - In the subtask worker's completion path: if the child **failed/was cancelled** or the
   worktree has **no uncommitted changes and no commits on its branch** (`git rev-list
-    <base>..<branch>` empty — add `branchHasCommits` helper or fold into `hasChanges`), then
-    `deleteWorktree(force)` + `deleteBranch`; result line says "cleaned up (no changes)".
-    Worktrees **with** changes are always kept — never delete user-reviewable work.
+      <base>..<branch>` empty — add `branchHasCommits` helper or fold into `hasChanges`), then
+      `deleteWorktree(force)` + `deleteBranch`; result line says "cleaned up (no changes)".
+      Worktrees **with** changes are always kept — never delete user-reviewable work.
 - Best-effort: cleanup errors are appended to the result text, never thrown.
 - `formatParallelResults` shows kept-vs-cleaned per subtask so the parent model can tell
   the user exactly where review is needed.

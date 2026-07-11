@@ -3070,7 +3070,7 @@ export class ClineProvider
 
 	/**
 	 * Create and start a HEADLESS background task — the reusable primitive behind
-	 * the memory background writers and (future) parallel subagents.
+	 * the memory background writers and the `run_parallel_tasks` subagents.
 	 *
 	 * Unlike {@link createTask}, a background task:
 	 * - is **never** pushed onto `clineStack`, so `getCurrentTask()` and the
@@ -3128,8 +3128,9 @@ export class ClineProvider
 	/**
 	 * Await a background task's terminal state. Resolves `{ completed: true,
 	 * lastMessage }` on `TaskCompleted` (attempt_completion) or `{ completed:
-	 * false }` on `TaskAborted`. Removes the registry entry and disposes a
-	 * completed task. An optional `signal` aborts the task early.
+	 * false }` on `TaskAborted`. Removes the registry entry, disposes a
+	 * completed task, and then deletes its on-disk directory (aborted tasks
+	 * keep theirs for post-mortem). An optional `signal` aborts the task early.
 	 */
 	public awaitTaskCompletion(
 		task: Task,

@@ -12,8 +12,8 @@
  *
  * Policy (fail-safe — the override must ALWAYS decide, never return `undefined`,
  * or a non-current background task would block forever on a webview response):
- * - `command` / `browser_action` / `use_mcp_server` asks → `"deny"` (the memory
- *   agent never needs a shell, browser, or MCP);
+ * - `command` / `use_mcp_server` asks → `"deny"` (the memory agent never needs
+ *   a shell or MCP);
  * - non-`tool` asks (followup, completion_result, resume, …) → `"approve"` (so
  *   nothing hangs — the task runs autonomously);
  * - read-only tool actions → `"approve"` (reads/searches are safe anywhere);
@@ -39,7 +39,7 @@ export type SandboxDecision = "approve" | "deny"
 export function memoryWriteSandbox(cwd: string): (ask: string, text?: string) => SandboxDecision {
 	return (ask, text) => {
 		// Capabilities the memory agent must never use.
-		if (ask === "command" || ask === "browser_action" || ask === "use_mcp_server") {
+		if (ask === "command" || ask === "use_mcp_server") {
 			return "deny"
 		}
 		// Non-tool asks (followup / completion_result / resume / …): approve so the

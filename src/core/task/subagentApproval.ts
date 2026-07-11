@@ -38,7 +38,7 @@ import { isReadOnlyToolAction } from "../auto-approval/tools"
 import type { AutoApprovalOverride } from "./Task"
 
 /** State slice consumed by `checkAutoApproval`. */
-type ApprovalState = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions>
+export type ApprovalState = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions>
 
 /** Options for building a subagent approval policy. */
 export interface SubagentApprovalOptions {
