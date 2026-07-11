@@ -161,6 +161,45 @@ interface StackItem {
 }
 
 /**
+ * Race an async iterator's next() against an AbortSignal.
+ *
+ * AP-5: Every call adds `{ once: true }` to addEventListener AND removes the
+ * listener in a `finally` block, so the listener is gone as soon as the chunk
+ * resolves. Without this, thousands of listeners accumulate on one AbortSignal
+ * during long generations → MaxListenersExceededWarning + GC pressure.
+ *
+ * Exported for unit testing (the closure inside processStream is not
+ * directly testable).
+ */
+export async function raceNextChunkWithAbort<T>(
+	iterator: AsyncIterator<T>,
+	signal: AbortSignal,
+): Promise<IteratorResult<T>> {
+	const nextPromise = iterator.next()
+
+	if (signal.aborted) {
+		// Already aborted — reject immediately, no listener to leak
+		throw new Error("Request cancelled by user")
+	}
+
+	const onAbort = () => {
+		rejectRef(new Error("Request cancelled by user"))
+	}
+
+	let rejectRef: (error: Error) => void
+	const abortPromise = new Promise<never>((_, reject) => {
+		rejectRef = reject
+		signal.addEventListener("abort", onAbort, { once: true })
+	})
+
+	try {
+		return await Promise.race([nextPromise, abortPromise])
+	} finally {
+		signal.removeEventListener("abort", onAbort)
+	}
+}
+
+/**
  * TaskApiLoop handles the API request loop orchestration for Task.
  * This includes the main request loop, API request generation, and retry logic.
  */
@@ -548,25 +587,14 @@ export class TaskApiLoop {
 	): Promise<"continue" | "return_true" | "return_false"> {
 		const iterator = stream[Symbol.asyncIterator]()
 
-		// Helper to race iterator.next() with abort signal
+		// Helper to race iterator.next() with abort signal.
+		// AP-5: delegates to the exported raceNextChunkWithAbort so the listener
+		// cleanup logic is unit-testable without going through the full loop.
 		const nextChunkWithAbort = async () => {
-			const nextPromise = iterator.next()
-
 			if (this.access.currentRequestAbortController) {
-				const abortPromise = new Promise<never>((_, reject) => {
-					const signal = this.access.currentRequestAbortController!.signal
-					if (signal.aborted) {
-						reject(new Error("Request cancelled by user"))
-					} else {
-						signal.addEventListener("abort", () => {
-							reject(new Error("Request cancelled by user"))
-						})
-					}
-				})
-				return await Promise.race([nextPromise, abortPromise])
+				return raceNextChunkWithAbort(iterator, this.access.currentRequestAbortController.signal)
 			}
-
-			return await nextPromise
+			return iterator.next()
 		}
 
 		try {
@@ -921,7 +949,39 @@ export class TaskApiLoop {
 		setLastGlobalApiRequestTime(performance.now())
 
 		const systemPrompt = await this.getSystemPrompt()
-		const { contextTokens } = this.access.getTokenUsage()
+		const { contextTokens: trackedContextTokens } = this.access.getTokenUsage()
+
+		// AP-7: when tracked contextTokens is 0/falsy (e.g. server omitted usage →
+		// zeros recorded → context tracking sees 0 forever), fall back to a local
+		// estimate via countTokens over the conversation history so context
+		// management (auto-condense) still runs. Keep the fast path (non-zero
+		// tracked tokens) unchanged — the fallback only runs in the zero case.
+		let contextTokens = trackedContextTokens
+		if (!contextTokens) {
+			const effectiveHistory = getEffectiveApiHistory(this.access.apiConversationHistory)
+			if (effectiveHistory.length > 0) {
+				try {
+					const fallbackContent: Anthropic.Messages.ContentBlockParam[] = []
+					for (const msg of effectiveHistory) {
+						if (typeof msg.content === "string") {
+							fallbackContent.push({ type: "text", text: msg.content })
+						} else if (Array.isArray(msg.content)) {
+							for (const block of msg.content) {
+								if (block.type === "text") {
+									fallbackContent.push({ type: "text", text: block.text })
+								}
+							}
+						}
+					}
+					if (fallbackContent.length > 0) {
+						contextTokens = await this.access.api.countTokens(fallbackContent)
+					}
+				} catch (err) {
+					console.error(`[Task#${this.access.taskId}] Failed to compute fallback contextTokens:`, err)
+					// Leave contextTokens as 0 → context management skipped (same as today)
+				}
+			}
+		}
 
 		if (contextTokens) {
 			await this.handleContextManagement({

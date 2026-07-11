@@ -181,18 +181,67 @@ export abstract class OpenAICompatibleHandler extends BaseProvider implements Si
 		// Use streamText for streaming responses
 		const result = streamText(requestOptions)
 
+		// Track assistant text for fallback token counting (AP-4)
+		let assistantText = ""
+
 		// Process the full stream to get all events
 		for await (const part of result.fullStream) {
 			// Use the processAiSdkStreamPart utility to convert stream parts
 			for (const chunk of processAiSdkStreamPart(part)) {
+				// Accumulate text chunks for fallback usage computation
+				if (chunk.type === "text") {
+					assistantText += chunk.text
+				}
 				yield chunk
 			}
 		}
 
-		// Yield usage metrics at the end
+		// Yield usage metrics at the end (AP-4: always yield exactly one usage chunk)
 		const usage = await result.usage
-		if (usage) {
-			yield this.processUsageMetrics(usage)
+		const hasRealUsage = usage && ((usage.inputTokens ?? 0) > 0 || (usage.outputTokens ?? 0) > 0)
+
+		if (hasRealUsage) {
+			yield this.processUsageMetrics(usage!)
+		} else {
+			// Fallback: compute tokens locally when server omits usage or returns all-zero.
+			// Many local/weak OpenAI-compatible servers (llama.cpp, Ollama, LM Studio)
+			// omit the usage block entirely even when stream_options.include_usage is set.
+			// Mirror lm-studio.ts approach with try/catch-to-0 error handling.
+			let inputTokens = 0
+			try {
+				const inputContent: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: systemPrompt }]
+				for (const msg of messages) {
+					if (typeof msg.content === "string") {
+						inputContent.push({ type: "text", text: msg.content })
+					} else if (Array.isArray(msg.content)) {
+						for (const block of msg.content) {
+							if (block.type === "text") {
+								inputContent.push({ type: "text", text: block.text })
+							}
+						}
+					}
+				}
+				inputTokens = await this.countTokens(inputContent)
+			} catch (err) {
+				console.error(`[${this.config.providerName}] Failed to count input tokens:`, err)
+				inputTokens = 0
+			}
+
+			let outputTokens = 0
+			if (assistantText) {
+				try {
+					outputTokens = await this.countTokens([{ type: "text", text: assistantText }])
+				} catch (err) {
+					console.error(`[${this.config.providerName}] Failed to count output tokens:`, err)
+					outputTokens = 0
+				}
+			}
+
+			yield {
+				type: "usage",
+				inputTokens,
+				outputTokens,
+			} as const
 		}
 	}
 

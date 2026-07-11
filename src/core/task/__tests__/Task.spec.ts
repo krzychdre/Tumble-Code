@@ -2096,3 +2096,277 @@ describe("pushToolResultToUserContent", () => {
 		expect(task.userMessageContent[2]).toEqual(toolResult)
 	})
 })
+
+describe("AP-7: context management fallback on zero tracked tokens", () => {
+	let mockProvider: any
+	let mockApiConfig: ProviderSettings
+
+	beforeEach(() => {
+		if (!TelemetryService.hasInstance()) {
+			TelemetryService.createInstance([])
+		}
+
+		Task.resetGlobalApiRequestTime()
+
+		mockApiConfig = {
+			apiProvider: "anthropic",
+			apiModelId: "claude-3-5-sonnet-20241022",
+			apiKey: "test-api-key",
+		}
+
+		const storageUri = { fsPath: path.join(os.tmpdir(), "test-storage") }
+		const mockExtensionContext = {
+			globalState: {
+				get: vi.fn().mockImplementation((_key: keyof GlobalState) => undefined),
+				update: vi.fn().mockResolvedValue(undefined),
+				keys: vi.fn().mockReturnValue([]),
+			},
+			globalStorageUri: storageUri,
+			workspaceState: {
+				get: vi.fn().mockImplementation((_key) => undefined),
+				update: vi.fn().mockResolvedValue(undefined),
+				keys: vi.fn().mockReturnValue([]),
+			},
+			secrets: {
+				get: vi.fn().mockResolvedValue(undefined),
+				store: vi.fn().mockResolvedValue(undefined),
+				delete: vi.fn().mockResolvedValue(undefined),
+			},
+			extensionUri: { fsPath: "/mock/extension/path" },
+			extension: { packageJSON: { version: "1.0.0" } },
+		} as unknown as vscode.ExtensionContext
+
+		const mockOutputChannel = {
+			name: "test-output",
+			appendLine: vi.fn(),
+			append: vi.fn(),
+			replace: vi.fn(),
+			clear: vi.fn(),
+			show: vi.fn(),
+			hide: vi.fn(),
+			dispose: vi.fn(),
+		}
+
+		mockProvider = new ClineProvider(
+			mockExtensionContext,
+			mockOutputChannel,
+			"sidebar",
+			new ContextProxy(mockExtensionContext),
+		) as any
+
+		mockProvider.postMessageToWebview = vi.fn().mockResolvedValue(undefined)
+		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
+		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
+		mockProvider.getTaskWithId = vi.fn().mockImplementation(async (id) => ({
+			historyItem: {
+				id,
+				ts: Date.now(),
+				task: "historical task",
+				tokensIn: 100,
+				tokensOut: 200,
+				cacheWrites: 0,
+				cacheReads: 0,
+				totalCost: 0.001,
+			},
+			taskDirPath: "/mock/storage/path/tasks/123",
+			apiConversationHistoryFilePath: "/mock/storage/path/tasks/123/api_conversation_history.json",
+			uiMessagesFilePath: "/mock/storage/path/tasks/123/ui_messages.json",
+			apiConversationHistory: [
+				{
+					role: "user",
+					content: [{ type: "text", text: "historical task" }],
+					ts: Date.now(),
+				},
+				{
+					role: "assistant",
+					content: [{ type: "text", text: "I'll help you with that task." }],
+					ts: Date.now(),
+				},
+			],
+		}))
+	})
+
+	afterEach(() => {
+		Task.resetGlobalApiRequestTime()
+		vi.restoreAllMocks()
+	})
+
+	it("should fall back to countTokens when contextTokens is 0 and history is non-empty", async () => {
+		// Mock getState before creating Task to avoid ClineProvider internals
+		vi.spyOn(mockProvider, "getState").mockResolvedValue({
+			apiConfiguration: mockApiConfig,
+			autoApprovalEnabled: false,
+			requestDelaySeconds: 0,
+			mode: "code",
+			autoCondenseContext: true,
+			autoCondenseContextPercent: 100,
+			profileThresholds: {},
+		} as any)
+
+		const cline = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
+
+		// Mock the API to return a simple stream
+		const mockStream = {
+			async *[Symbol.asyncIterator]() {
+				yield { type: "text", text: "response" }
+			},
+		} as AsyncGenerator<ApiStreamChunk>
+		vi.spyOn(cline.api, "createMessage").mockReturnValue(mockStream)
+
+		// Mock getModel to return valid model info
+		vi.spyOn(cline.api, "getModel").mockReturnValue({
+			id: "test-model",
+			info: {
+				contextWindow: 128000,
+				maxTokens: 4096,
+				supportsImages: false,
+				supportsPromptCache: false,
+				inputPrice: 0,
+				outputPrice: 0,
+			} as ModelInfo,
+		})
+
+		// Set up non-empty conversation history
+		cline.apiConversationHistory = [
+			{
+				role: "user" as const,
+				content: [{ type: "text" as const, text: "Hello, can you help me?" }],
+				ts: Date.now(),
+			},
+			{
+				role: "assistant" as const,
+				content: [{ type: "text" as const, text: "Of course! What do you need?" }],
+				ts: Date.now(),
+			},
+		] as any
+
+		// Mock getTokenUsage to return 0 contextTokens (the bug condition)
+		vi.spyOn(cline, "getTokenUsage").mockReturnValue({
+			totalTokensIn: 0,
+			totalTokensOut: 0,
+			contextTokens: 0,
+			totalCost: 0,
+			totalCacheWrites: 0,
+			totalCacheReads: 0,
+		} as any)
+
+		// Spy on countTokens to verify it's called as fallback
+		const countTokensSpy = vi.spyOn(cline.api, "countTokens").mockResolvedValue(500)
+
+		// Spy on manageContextIfNeeded to verify it's called
+		const manageContextSpy = vi
+			.spyOn(cline.contextManager, "manageContextIfNeeded")
+			.mockResolvedValue(undefined as any)
+
+		// Mock buildToolsArray via bracket notation to bypass private access
+		vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
+			allTools: [],
+			allowedFunctionNames: undefined,
+		})
+
+		const iterator = cline.attemptApiRequest(0)
+		await iterator.next()
+
+		// AP-7: countTokens should have been called as fallback
+		expect(countTokensSpy).toHaveBeenCalled()
+		// AP-7: manageContextIfNeeded should have been called with the fallback estimate
+		expect(manageContextSpy).toHaveBeenCalled()
+		// The contextTokens passed should be the fallback estimate (non-zero)
+		const callArgs = manageContextSpy.mock.calls[0][0]
+		expect(callArgs.contextTokens).toBeGreaterThan(0)
+
+		countTokensSpy.mockRestore()
+		manageContextSpy.mockRestore()
+	})
+
+	it("should NOT call countTokens when contextTokens is non-zero (fast path preserved)", async () => {
+		// Mock getState before creating Task
+		vi.spyOn(mockProvider, "getState").mockResolvedValue({
+			apiConfiguration: mockApiConfig,
+			autoApprovalEnabled: false,
+			requestDelaySeconds: 0,
+			mode: "code",
+			autoCondenseContext: true,
+			autoCondenseContextPercent: 100,
+			profileThresholds: {},
+		} as any)
+
+		const cline = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
+
+		const mockStream = {
+			async *[Symbol.asyncIterator]() {
+				yield { type: "text", text: "response" }
+			},
+		} as AsyncGenerator<ApiStreamChunk>
+		vi.spyOn(cline.api, "createMessage").mockReturnValue(mockStream)
+
+		vi.spyOn(cline.api, "getModel").mockReturnValue({
+			id: "test-model",
+			info: {
+				contextWindow: 128000,
+				maxTokens: 4096,
+				supportsImages: false,
+				supportsPromptCache: false,
+				inputPrice: 0,
+				outputPrice: 0,
+			} as ModelInfo,
+		})
+
+		cline.apiConversationHistory = [
+			{
+				role: "user" as const,
+				content: [{ type: "text" as const, text: "Hello" }],
+				ts: Date.now(),
+			},
+		] as any
+
+		// Mock getTokenUsage to return non-zero contextTokens
+		vi.spyOn(cline, "getTokenUsage").mockReturnValue({
+			totalTokensIn: 100,
+			totalTokensOut: 200,
+			contextTokens: 300,
+			totalCost: 0,
+			totalCacheWrites: 0,
+			totalCacheReads: 0,
+		} as any)
+
+		// countTokens should NOT be called in the fast path
+		const countTokensSpy = vi.spyOn(cline.api, "countTokens").mockResolvedValue(999)
+
+		const manageContextSpy = vi
+			.spyOn(cline.contextManager, "manageContextIfNeeded")
+			.mockResolvedValue(undefined as any)
+
+		vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
+			allTools: [],
+			allowedFunctionNames: undefined,
+		})
+
+		const iterator = cline.attemptApiRequest(0)
+		await iterator.next()
+
+		// AP-7: countTokens should NOT have been called from the fallback path.
+		// Note: handleContextManagement internally calls countTokens for lastMessageTokens,
+		// so countTokens MAY be called once from there. The fallback path should NOT add
+		// an additional call. We verify by checking the contextTokens passed to
+		// manageContextIfNeeded is the tracked value (300), not a fallback.
+		expect(manageContextSpy).toHaveBeenCalled()
+		const callArgs = manageContextSpy.mock.calls[0][0]
+		expect(callArgs.contextTokens).toBe(300)
+
+		countTokensSpy.mockRestore()
+		manageContextSpy.mockRestore()
+	})
+})
