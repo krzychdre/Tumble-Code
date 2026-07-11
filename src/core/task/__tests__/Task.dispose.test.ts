@@ -1,4 +1,4 @@
-import { ProviderSettings } from "@roo-code/types"
+import { ProviderSettings, RooCodeEventName } from "@roo-code/types"
 
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
@@ -194,5 +194,109 @@ describe("Task dispose method", () => {
 
 		// Verify total listener count is 0
 		expect(task.eventNames().length).toBe(0)
+	})
+
+	test("dispose() emits TaskAborted when no terminal event has fired", () => {
+		const abortedSpy = vi.fn()
+		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+
+		task.dispose()
+
+		// dispose() should have emitted TaskAborted so waiters resolve.
+		expect(abortedSpy).toHaveBeenCalledTimes(1)
+
+		// Listeners are removed after the emit, so the spy fired exactly once.
+		expect(task.listenerCount(RooCodeEventName.TaskAborted)).toBe(0)
+	})
+
+	test("dispose() does NOT emit TaskAborted when TaskCompleted already fired", () => {
+		const completedSpy = vi.fn()
+		const abortedSpy = vi.fn()
+		task.on(RooCodeEventName.TaskCompleted, completedSpy)
+		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+
+		// Simulate normal completion: emit TaskCompleted first.
+		task.emit(
+			RooCodeEventName.TaskCompleted,
+			task.taskId,
+			{
+				totalTokensIn: 0,
+				totalTokensOut: 0,
+				totalCost: 0,
+				contextTokens: 0,
+			},
+			{},
+		)
+		expect(completedSpy).toHaveBeenCalledTimes(1)
+
+		task.dispose()
+
+		// No double terminal event: aborted should NOT fire.
+		expect(abortedSpy).not.toHaveBeenCalled()
+	})
+
+	test("dispose() does NOT emit TaskAborted when TaskAborted already fired", () => {
+		const abortedSpy = vi.fn()
+		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+
+		// Simulate a normal abort: emit TaskAborted first.
+		task.emit(RooCodeEventName.TaskAborted)
+		expect(abortedSpy).toHaveBeenCalledTimes(1)
+
+		task.dispose()
+
+		// No double emission.
+		expect(abortedSpy).toHaveBeenCalledTimes(1)
+	})
+
+	test("dispose() emits TaskAborted BEFORE removeAllListeners so waiters still fire", () => {
+		const abortedSpy = vi.fn()
+		task.on(RooCodeEventName.TaskAborted, abortedSpy)
+
+		// Spy on removeAllListeners to verify ordering.
+		const removeAllListenersSpy = vi.spyOn(task, "removeAllListeners")
+
+		task.dispose()
+
+		// The aborted handler fired (listener was still attached at emit time).
+		expect(abortedSpy).toHaveBeenCalledTimes(1)
+		// removeAllListeners was called after the emit.
+		expect(removeAllListenersSpy).toHaveBeenCalledOnce()
+	})
+
+	test("awaitTaskCompletion resolves when task.dispose() is called without a terminal event", async () => {
+		// Simulate what awaitTaskCompletion does: attach a listener that
+		// resolves a promise on TaskAborted, then call dispose() without any
+		// terminal event. Pre-fix the promise hangs forever; post-fix dispose()
+		// emits TaskAborted and the promise resolves.
+		//
+		// We can't use the real ClineProvider.prototype.awaitTaskCompletion here
+		// because ClineProvider is mocked in this spec. Instead, replicate the
+		// core listener pattern.
+		let resolved = false
+		const completionPromise = new Promise<{ completed: boolean }>((resolve) => {
+			const onAborted = () => {
+				resolved = true
+				resolve({ completed: false })
+			}
+			task.on(RooCodeEventName.TaskAborted, onAborted)
+		})
+
+		// Dispose without any terminal event.
+		task.dispose()
+
+		// Race against a timeout: pre-fix the promise hangs.
+		const result = await Promise.race([
+			completionPromise,
+			new Promise<{ completed: boolean }>((_, reject) =>
+				setTimeout(() => reject(new Error("promise hung — dispose did not emit terminal event")), 2000),
+			),
+		])
+
+		expect(result.completed).toBe(false)
+		expect(resolved).toBe(true)
+
+		// Mark task as aborted so afterEach doesn't try to dispose again.
+		task.abort = true
 	})
 })

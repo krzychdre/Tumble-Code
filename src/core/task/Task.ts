@@ -332,6 +332,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	isInitialized = false
 	isPaused: boolean = false
 
+	/**
+	 * True once a terminal lifecycle event (`TaskCompleted` or `TaskAborted`)
+	 * has been emitted. Prevents double-emission and lets `dispose()` emit a
+	 * final `TaskAborted` when the task is being torn down without a terminal
+	 * signal — so waiters like `awaitTaskCompletion` resolve instead of hanging.
+	 */
+	private terminalEventEmitted = false
+
 	// API
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
@@ -1238,11 +1246,51 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
+	 * Track terminal lifecycle events so `dispose()` can emit a final
+	 * `TaskAborted` when the task is torn down without one. Overriding `emit`
+	 * (rather than wrapping each call site) catches every emitter —
+	 * `TaskLifecycle.abortTask`, `AttemptCompletionTool`, and any future
+	 * caller — through a single chokepoint.
+	 */
+	public override emit<K extends keyof TaskEvents>(event: K, ...args: TaskEvents[K]): boolean {
+		if (event === RooCodeEventName.TaskCompleted || event === RooCodeEventName.TaskAborted) {
+			this.terminalEventEmitted = true
+		}
+		// Cast through unknown: Node's EventEmitter typings use a conditional
+		// `Args<K, T>` that TypeScript can't relate back to `TaskEvents[K]` when
+		// spreading generic rest tuples. The runtime behaviour is correct.
+		return (super.emit as (event: K, ...args: TaskEvents[K]) => boolean)(event, ...args)
+	}
+
+	/**
 	 * Dispose of all task resources.
 	 * Delegates to TaskLifecycle module for most cleanup, with Task-specific
 	 * cleanup for EventEmitter listeners.
+	 *
+	 * If no terminal event (`TaskCompleted` / `TaskAborted`) has been emitted
+	 * yet, emits `TaskAborted` BEFORE removing listeners so that waiters like
+	 * `awaitTaskCompletion` resolve instead of hanging forever. This covers
+	 * direct `dispose()` calls that bypass `abortTask()` (e.g. test cleanup,
+	 * extension shutdown). The `terminalEventEmitted` flag prevents
+	 * double-emission when `dispose()` is reached via `abortTask()` (which
+	 * already emitted `TaskAborted` before calling `this.lifecycle.dispose()`).
 	 */
 	public dispose(): void {
+		// If no terminal event has fired, emit TaskAborted now so waiters
+		// (awaitTaskCompletion, runWithConcurrency, provider event forwarding)
+		// resolve. This MUST happen before removeAllListeners() so the handlers
+		// are still attached and can run.
+		if (!this.terminalEventEmitted) {
+			try {
+				this.emit(RooCodeEventName.TaskAborted)
+			} catch (error) {
+				console.error(
+					`[Task#${this.taskId}.${this.instanceId}] Error emitting final TaskAborted during dispose:`,
+					error instanceof Error ? error.message : String(error),
+				)
+			}
+		}
+
 		// Delegate most cleanup to lifecycle module
 		this.lifecycle.dispose()
 
