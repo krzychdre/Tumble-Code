@@ -318,6 +318,7 @@ export type ExtensionState = Pick<
 	| "autoDreamEnabled"
 	| "autoDreamMinHours"
 	| "autoDreamMinSessions"
+	| "memoryWriterApiConfigId"
 > & {
 	lockApiConfigAcrossModes?: boolean
 	version: string

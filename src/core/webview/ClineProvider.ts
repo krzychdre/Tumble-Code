@@ -3092,9 +3092,12 @@ export class ClineProvider
 			autoApprovalOverride?: AutoApprovalOverride
 			silentWrites?: boolean
 			initialTodos?: TodoItem[]
+			apiConfiguration?: ProviderSettings
 		} = {},
 	): Promise<Task> {
-		const { apiConfiguration, experiments } = await this.getState()
+		const state = await this.getState()
+		const apiConfiguration = options.apiConfiguration ?? state.apiConfiguration
+		const { experiments } = state
 
 		const task = new Task({
 			provider: this,
@@ -3236,15 +3239,36 @@ export class ClineProvider
 			// memory behavioral section), so fold the extraction/dream system prompt
 			// into the task's initial message alongside the user prompt.
 			const text = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt
+			const apiConfiguration = await this.resolveMemoryWriterApiConfiguration()
 			const task = await this.createBackgroundTask(text, {
 				taskMode: "code",
 				workspacePath: cwd,
 				maxAgentTurns: maxTurns,
 				autoApprovalOverride: memoryWriteSandbox(cwd),
 				silentWrites: true,
+				apiConfiguration,
 			})
 			const { writtenPaths } = await this.awaitTaskCompletion(task, { signal })
 			return { writtenPaths: filterMemoryWrittenPaths(writtenPaths, cwd) }
+		}
+	}
+
+	/**
+	 * Resolve the configured memory-writer API profile. Returns undefined when
+	 * no profile is configured or the configured id is stale — callers fall
+	 * back to the foreground profile. Never throws.
+	 */
+	private async resolveMemoryWriterApiConfiguration(): Promise<ProviderSettings | undefined> {
+		const id = this.getValue("memoryWriterApiConfigId")
+		if (!id) return undefined
+		try {
+			const { name: _name, ...profile } = await this.providerSettingsManager.getProfile({ id })
+			return profile
+		} catch (error) {
+			this.log(
+				`[memorySubTaskRunner] failed to load writer profile ${id}, falling back to foreground: ${error instanceof Error ? error.message : String(error)}`,
+			)
+			return undefined
 		}
 	}
 

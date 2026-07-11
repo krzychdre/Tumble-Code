@@ -212,6 +212,11 @@ export const globalSettingsSchema = z.object({
 	 * loads. @default true
 	 */
 	memoryRecallEnabled: z.boolean().optional(),
+	/**
+	 * API profile id to use for background memory writers (extraction + dream).
+	 * When unset or stale, memory writers fall back to the foreground profile.
+	 */
+	memoryWriterApiConfigId: z.string().optional(),
 
 	soundEnabled: z.boolean().optional(),
 	soundVolume: z.number().optional(),

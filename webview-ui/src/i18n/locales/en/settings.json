@@ -642,6 +642,11 @@
 			"description": "Override the default memory storage location. Must be an absolute path. Project settings are ignored for this field (trusted sources only) so a repository can't redirect memory writes. Leave blank to use the default extension storage location.",
 			"placeholder": "/absolute/path/to/memory/dir"
 		},
+		"writerProfile": {
+			"label": "Memory writer API profile",
+			"description": "Routes background memory writers (extraction and dream consolidation) to a cheaper or local API profile instead of the foreground model. A stale or deleted profile falls back to the current profile automatically.",
+			"useCurrent": "Use current profile"
+		},
 		"dream": {
 			"enable": {
 				"label": "Enable memory consolidation (dream)",

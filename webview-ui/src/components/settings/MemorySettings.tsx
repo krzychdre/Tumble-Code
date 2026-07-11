@@ -3,11 +3,13 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { VSCodeCheckbox, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 
+import type { ProviderSettingsEntry } from "@roo-code/types"
+
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { Slider } from "@/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider } from "@/components/ui"
 
 type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
 	autoMemoryEnabled?: boolean
@@ -16,6 +18,8 @@ type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
 	autoDreamEnabled?: boolean
 	autoDreamMinHours?: number
 	autoDreamMinSessions?: number
+	memoryWriterApiConfigId?: string
+	listApiConfigMeta: ProviderSettingsEntry[]
 	setCachedStateField: SetCachedStateField<
 		| "autoMemoryEnabled"
 		| "autoMemoryDirectory"
@@ -23,8 +27,13 @@ type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
 		| "autoDreamEnabled"
 		| "autoDreamMinHours"
 		| "autoDreamMinSessions"
+		| "memoryWriterApiConfigId"
 	>
 }
+
+// Radix Select rejects empty-string item values; "-" is safe because profile
+// ids are nanoid-generated (same sentinel as PromptsSettings).
+const UNSET_PROFILE = "-"
 
 const MIN_DREAM_HOURS = 1
 const MAX_DREAM_HOURS = 168 // 1 week
@@ -41,6 +50,8 @@ export const MemorySettings = ({
 	autoDreamEnabled,
 	autoDreamMinHours,
 	autoDreamMinSessions,
+	memoryWriterApiConfigId,
+	listApiConfigMeta,
 	setCachedStateField,
 	...props
 }: MemorySettingsProps) => {
@@ -105,6 +116,42 @@ export const MemorySettings = ({
 							/>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								{t("settings:memory.directory.description")}
+							</div>
+						</SearchableSetting>
+
+						<SearchableSetting
+							settingId="memory-writer-profile"
+							section="memory"
+							label={t("settings:memory.writerProfile.label")}
+							className="mt-4">
+							<label className="block text-sm font-medium mb-2">
+								{t("settings:memory.writerProfile.label")}
+							</label>
+							<Select
+								value={memoryWriterApiConfigId ?? UNSET_PROFILE}
+								onValueChange={(value) => {
+									setCachedStateField(
+										"memoryWriterApiConfigId",
+										value === UNSET_PROFILE ? undefined : value,
+									)
+								}}
+								data-testid="memory-writer-profile-select">
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder={t("settings:memory.writerProfile.useCurrent")} />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={UNSET_PROFILE}>
+										{t("settings:memory.writerProfile.useCurrent")}
+									</SelectItem>
+									{listApiConfigMeta.map((config) => (
+										<SelectItem key={config.id} value={config.id}>
+											{config.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<div className="text-vscode-descriptionForeground text-sm mt-1">
+								{t("settings:memory.writerProfile.description")}
 							</div>
 						</SearchableSetting>
 

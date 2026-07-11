@@ -8,21 +8,6 @@ vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-// Mock the UI components used by MemorySettings.
-vi.mock("@/components/ui", () => ({
-	Slider: ({ defaultValue, onValueChange, "data-testid": dataTestId, min, max }: any) => (
-		<input
-			type="range"
-			data-testid={dataTestId}
-			min={min}
-			max={max}
-			defaultValue={defaultValue?.[0] ?? 0}
-			onChange={(e) => onValueChange?.([parseFloat(e.target.value)])}
-			role="slider"
-		/>
-	),
-}))
-
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeCheckbox: ({ checked, onChange, children, "data-testid": dataTestId }: any) => (
 		<label data-testid={dataTestId}>
@@ -50,12 +35,42 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	),
 }))
 
+// Mock the UI components used by MemorySettings. SelectValue renders nothing —
+// the real Radix SelectValue is a display slot, not an option.
+vi.mock("@/components/ui", () => ({
+	Slider: ({ defaultValue, onValueChange, "data-testid": dataTestId, min, max }: any) => (
+		<input
+			type="range"
+			data-testid={dataTestId}
+			min={min}
+			max={max}
+			defaultValue={defaultValue?.[0] ?? 0}
+			onChange={(e) => onValueChange?.([parseFloat(e.target.value)])}
+			role="slider"
+		/>
+	),
+	Select: ({ value, onValueChange, children, "data-testid": dataTestId }: any) => (
+		<select data-testid={dataTestId} value={value ?? ""} onChange={(e: any) => onValueChange?.(e.target.value)}>
+			{children}
+		</select>
+	),
+	SelectTrigger: ({ children }: any) => <>{children}</>,
+	SelectValue: () => null,
+	SelectContent: ({ children }: any) => <>{children}</>,
+	SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
+}))
+
 const defaultProps = {
 	autoMemoryEnabled: true,
 	memoryRecallEnabled: true,
 	autoDreamEnabled: true,
 	autoDreamMinHours: 24,
 	autoDreamMinSessions: 5,
+	memoryWriterApiConfigId: undefined,
+	listApiConfigMeta: [
+		{ id: "profile-1", name: "Cheap Local" },
+		{ id: "profile-2", name: "Fast Cloud" },
+	],
 	setCachedStateField: vi.fn(),
 }
 
@@ -133,5 +148,49 @@ describe("MemorySettings", () => {
 		// Only the enable checkbox should be present; no directory input or sliders.
 		expect(screen.queryByTestId("memory-directory-input")).not.toBeInTheDocument()
 		expect(screen.queryByTestId("memory-dream-hours-slider")).not.toBeInTheDocument()
+	})
+
+	it("renders the writer-profile dropdown with profiles from listApiConfigMeta", () => {
+		render(<MemorySettings {...defaultProps} />)
+		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
+		expect(select).toBeInTheDocument()
+		// The dropdown includes the "Use current profile" option plus one per profile.
+		expect(screen.getByText("settings:memory.writerProfile.useCurrent")).toBeInTheDocument()
+		expect(screen.getByText("Cheap Local")).toBeInTheDocument()
+		expect(screen.getByText("Fast Cloud")).toBeInTheDocument()
+	})
+
+	it("never renders a SelectItem with an empty-string value (Radix rejects it at runtime)", () => {
+		render(<MemorySettings {...defaultProps} />)
+		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
+		const optionValues = Array.from(select.querySelectorAll("option")).map((o) => o.getAttribute("value"))
+		expect(optionValues.length).toBeGreaterThan(0)
+		expect(optionValues).not.toContain("")
+	})
+
+	it("selecting a profile calls setCachedStateField with the profile id", async () => {
+		const setCachedStateField = vi.fn()
+		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
+		fireEvent.change(select, { target: { value: "profile-1" } })
+		await waitFor(() => {
+			expect(setCachedStateField).toHaveBeenCalledWith("memoryWriterApiConfigId", "profile-1")
+		})
+	})
+
+	it("selecting the 'use current profile' sentinel calls setCachedStateField with undefined", async () => {
+		const setCachedStateField = vi.fn()
+		render(
+			<MemorySettings
+				{...defaultProps}
+				memoryWriterApiConfigId="profile-1"
+				setCachedStateField={setCachedStateField}
+			/>,
+		)
+		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
+		fireEvent.change(select, { target: { value: "-" } })
+		await waitFor(() => {
+			expect(setCachedStateField).toHaveBeenCalledWith("memoryWriterApiConfigId", undefined)
+		})
 	})
 })

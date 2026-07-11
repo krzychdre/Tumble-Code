@@ -147,3 +147,65 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 		await vi.waitFor(() => expect(cleanupSpy).toHaveBeenCalledWith("bg-1"))
 	})
 })
+
+describe("ClineProvider.resolveMemoryWriterApiConfiguration", () => {
+	// The method is private but accessible via prototype.call with a fake `this`
+	// that provides `getValue` and `providerSettingsManager`.
+
+	function makeFakeThis(opts: {
+		configId?: string
+		getProfile?: ReturnType<typeof vi.fn>
+		log?: ReturnType<typeof vi.fn>
+	}) {
+		return {
+			getValue: vi.fn().mockReturnValue(opts.configId),
+			providerSettingsManager: { getProfile: opts.getProfile ?? vi.fn() },
+			log: opts.log ?? vi.fn(),
+		} as unknown as ClineProvider
+	}
+
+	it("returns undefined when memoryWriterApiConfigId is unset", async () => {
+		const getProfile = vi.fn()
+		const fakeThis = makeFakeThis({ configId: undefined, getProfile })
+		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		expect(result).toBeUndefined()
+		expect(getProfile).not.toHaveBeenCalled()
+	})
+
+	it("returns undefined when memoryWriterApiConfigId is empty string", async () => {
+		const getProfile = vi.fn()
+		const fakeThis = makeFakeThis({ configId: "", getProfile })
+		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		expect(result).toBeUndefined()
+		expect(getProfile).not.toHaveBeenCalled()
+	})
+
+	it("returns the resolved profile (minus name) when getProfile succeeds", async () => {
+		const getProfile = vi.fn().mockResolvedValue({
+			name: "cheap-local",
+			id: "profile-1",
+			apiProvider: "ollama",
+			apiModelId: "llama3",
+		})
+		const fakeThis = makeFakeThis({ configId: "profile-1", getProfile })
+		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		expect(result).toEqual({
+			id: "profile-1",
+			apiProvider: "ollama",
+			apiModelId: "llama3",
+		})
+		expect(getProfile).toHaveBeenCalledWith({ id: "profile-1" })
+	})
+
+	it("falls back to undefined and logs when getProfile throws", async () => {
+		const getProfile = vi.fn().mockRejectedValue(new Error("not found"))
+		const log = vi.fn()
+		const fakeThis = makeFakeThis({ configId: "stale-id", getProfile, log })
+		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		expect(result).toBeUndefined()
+		expect(getProfile).toHaveBeenCalledWith({ id: "stale-id" })
+		expect(log).toHaveBeenCalledWith(
+			expect.stringContaining("[memorySubTaskRunner] failed to load writer profile stale-id"),
+		)
+	})
+})

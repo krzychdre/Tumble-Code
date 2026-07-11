@@ -174,6 +174,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoDreamEnabled,
 		autoDreamMinHours,
 		autoDreamMinSessions,
+		memoryWriterApiConfigId,
 		experiments,
 		maxOpenTabsContext,
 		maxWorkspaceFiles,
@@ -399,6 +400,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					autoDreamEnabled: autoDreamEnabled ?? true,
 					autoDreamMinHours: autoDreamMinHours ?? 24,
 					autoDreamMinSessions: autoDreamMinSessions ?? 5,
+					memoryWriterApiConfigId: memoryWriterApiConfigId || undefined,
 					writeDelayMs,
 					terminalShellIntegrationTimeout: terminalShellIntegrationTimeout ?? 30_000,
 					terminalShellIntegrationDisabled,
@@ -837,6 +839,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 								autoDreamEnabled={autoDreamEnabled}
 								autoDreamMinHours={autoDreamMinHours}
 								autoDreamMinSessions={autoDreamMinSessions}
+								memoryWriterApiConfigId={memoryWriterApiConfigId}
+								listApiConfigMeta={listApiConfigMeta ?? []}
 								setCachedStateField={setCachedStateField}
 							/>
 						)}
