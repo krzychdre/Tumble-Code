@@ -243,19 +243,19 @@ describe("StaticTokenAuthService", () => {
 	})
 
 	describe("authentication state methods", () => {
-		it("should always return true for isAuthenticated", () => {
+		it("should return true for isAuthenticated with non-expiring static token", () => {
 			expect(authService.isAuthenticated()).toBe(true)
 		})
 
-		it("should always return true for hasActiveSession", () => {
+		it("should return true for hasActiveSession with non-expiring static token", () => {
 			expect(authService.hasActiveSession()).toBe(true)
 		})
 
-		it("should always return true for hasOrIsAcquiringActiveSession", () => {
+		it("should return true for hasOrIsAcquiringActiveSession with non-expiring static token", () => {
 			expect(authService.hasOrIsAcquiringActiveSession()).toBe(true)
 		})
 
-		it("should return active-session for getState", () => {
+		it("should return active-session for getState with non-expiring static token", () => {
 			expect(authService.getState()).toBe("active-session")
 		})
 	})
@@ -298,6 +298,150 @@ describe("StaticTokenAuthService", () => {
 			expect(userInfoSpy).toHaveBeenCalledWith({
 				userInfo: expect.objectContaining({}),
 			})
+		})
+	})
+
+	// ---------------------------------------------------------------------------
+	// CB-3: JWT expiry handling
+	// ---------------------------------------------------------------------------
+
+	// Helper to craft unsigned JWTs with a specific exp claim.
+	function makeJWT(exp?: number): string {
+		const header = { alg: "none", typ: "JWT" }
+		const payload: Record<string, unknown> = {
+			iss: "rcc",
+			sub: "user_test",
+			iat: Math.floor(Date.now() / 1000),
+			r: { u: "user_test", t: "auth" },
+		}
+		if (exp !== undefined) {
+			payload.exp = exp
+		}
+		const b64url = (obj: unknown) => Buffer.from(JSON.stringify(obj)).toString("base64url")
+		return `${b64url(header)}.${b64url(payload)}.`
+	}
+
+	describe("JWT expiry handling (CB-3)", () => {
+		beforeEach(() => {
+			vi.useFakeTimers()
+			vi.setSystemTime(new Date())
+		})
+
+		afterEach(() => {
+			vi.useRealTimers()
+		})
+
+		it("should start in inactive-session when JWT is already expired at construction", async () => {
+			const expiredJWT = makeJWT(Math.floor(Date.now() / 1000) - 3600)
+			const service = new StaticTokenAuthService(mockContext, expiredJWT, mockLog)
+
+			expect(service.getState()).toBe("inactive-session")
+			expect(service.isAuthenticated()).toBe(false)
+			expect(service.hasActiveSession()).toBe(false)
+
+			await service.initialize()
+			expect(service.getState()).toBe("inactive-session")
+		})
+
+		it("should be authenticated when JWT exp is in the future", async () => {
+			const futureJWT = makeJWT(Math.floor(Date.now() / 1000) + 3600)
+			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
+
+			expect(service.getState()).toBe("active-session")
+
+			await service.initialize()
+
+			expect(service.isAuthenticated()).toBe(true)
+			expect(service.hasActiveSession()).toBe(true)
+			expect(service.hasOrIsAcquiringActiveSession()).toBe(true)
+		})
+
+		it("should transition to inactive-session and emit auth-state-changed when timer fires past expiry", async () => {
+			const expSeconds = Math.floor(Date.now() / 1000) + 3600
+			const futureJWT = makeJWT(expSeconds)
+			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
+
+			await service.initialize()
+
+			const spy = vi.fn()
+			service.on("auth-state-changed", spy)
+
+			expect(service.isAuthenticated()).toBe(true)
+
+			// Advance past expiry
+			vi.advanceTimersByTime(3600 * 1000 + 1)
+
+			expect(spy).toHaveBeenCalledTimes(1)
+			expect(spy).toHaveBeenCalledWith({
+				state: "inactive-session",
+				previousState: "active-session",
+			})
+			expect(service.getState()).toBe("inactive-session")
+			expect(service.isAuthenticated()).toBe(false)
+			expect(service.hasActiveSession()).toBe(false)
+		})
+
+		it("should keep always-authenticated behavior for tokens without exp (back-compat)", async () => {
+			const noExpJWT = makeJWT(undefined)
+			const service = new StaticTokenAuthService(mockContext, noExpJWT, mockLog)
+
+			expect(service.getState()).toBe("active-session")
+
+			await service.initialize()
+
+			expect(service.isAuthenticated()).toBe(true)
+			expect(service.hasActiveSession()).toBe(true)
+			expect(service.hasOrIsAcquiringActiveSession()).toBe(true)
+
+			// Advance way into the future — should still be authenticated.
+			vi.advanceTimersByTime(999_999_999)
+			expect(service.isAuthenticated()).toBe(true)
+			expect(service.hasActiveSession()).toBe(true)
+		})
+
+		it("should report false from isAuthenticated even if timer was suppressed (live re-check)", async () => {
+			const expSeconds = Math.floor(Date.now() / 1000) + 3600
+			const futureJWT = makeJWT(expSeconds)
+			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
+
+			await service.initialize()
+
+			// Suppress the timer by advancing system time without advancing fake timers.
+			// This simulates a missed/blocked timer.
+			vi.setSystemTime(new Date((expSeconds + 60) * 1000))
+
+			// isAuthenticated does a live re-check — should return false even
+			// though the timer callback hasn't fired yet.
+			expect(service.isAuthenticated()).toBe(false)
+			expect(service.hasActiveSession()).toBe(false)
+
+			// The live re-check should also have transitioned the state.
+			expect(service.getState()).toBe("inactive-session")
+		})
+
+		it("should clear expiry timer on dispose", async () => {
+			const futureJWT = makeJWT(Math.floor(Date.now() / 1000) + 3600)
+			const service = new StaticTokenAuthService(mockContext, futureJWT, mockLog)
+
+			await service.initialize()
+
+			// Access the private timer to verify it's set
+			expect(service["expiryTimer"]).not.toBeNull()
+
+			service.dispose()
+
+			expect(service["expiryTimer"]).toBeNull()
+
+			// Advancing timers should not cause any transition after dispose.
+			const spy = vi.fn()
+			service.on("auth-state-changed", spy)
+
+			vi.advanceTimersByTime(3600 * 1000 + 1)
+
+			expect(spy).not.toHaveBeenCalled()
+			// State remains active-session because timer was cleared and
+			// isAuthenticated wasn't called (which would do the live re-check).
+			expect(service.getState()).toBe("active-session")
 		})
 	})
 })

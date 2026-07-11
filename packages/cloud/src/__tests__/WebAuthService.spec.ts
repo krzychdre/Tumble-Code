@@ -655,6 +655,42 @@ describe("WebAuthService", () => {
 			expect(mockLog).toHaveBeenCalledWith("[auth] Invalid/Expired client token: clearing credentials")
 		})
 
+		it("should not produce unhandled rejection when clearCredentials rejects on InvalidClientTokenError (CB-4)", async () => {
+			// Mock 401 response (invalid token)
+			mockFetch.mockResolvedValue({
+				ok: false,
+				status: 401,
+				statusText: "Unauthorized",
+			})
+
+			// Make secrets.delete reject — before the fix, clearCredentials()
+			// was not awaited, so this rejection was unhandled.
+			const deleteError = new Error("Secret storage delete failed")
+			mockContext.secrets.delete.mockRejectedValueOnce(deleteError)
+
+			// Track unhandled rejections
+			const unhandledRejections: unknown[] = []
+			const handler = (reason: unknown) => unhandledRejections.push(reason)
+			process.on("unhandledRejection", handler)
+
+			try {
+				const timerCallback = vi.mocked(RefreshTimer).mock.calls[0]?.[0]?.callback
+
+				// The refreshSession should reject (it rethrows after the
+				// InvalidClientTokenError branch). The awaited clearCredentials
+				// rejection propagates into the catch block and is logged.
+				await expect(timerCallback?.()).rejects.toThrow()
+
+				// Allow any pending microtasks to settle.
+				await new Promise((resolve) => setImmediate(resolve))
+
+				expect(unhandledRejections).toHaveLength(0)
+				expect(mockContext.secrets.delete).toHaveBeenCalledWith("clerk-auth-credentials")
+			} finally {
+				process.off("unhandledRejection", handler)
+			}
+		})
+
 		it("should handle network errors during refresh", async () => {
 			mockFetch.mockRejectedValue(new Error("Network error"))
 

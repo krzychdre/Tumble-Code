@@ -450,7 +450,7 @@ export class WebAuthService extends EventEmitter<AuthServiceEvents> implements A
 		} catch (error) {
 			if (error instanceof InvalidClientTokenError) {
 				this.log("[auth] Invalid/Expired client token: clearing credentials")
-				this.clearCredentials()
+				await this.clearCredentials()
 			} else if (this.isFirstRefreshAttempt && this.state === "attempting-session") {
 				this.isFirstRefreshAttempt = false
 				this.transitionToInactiveSession()
