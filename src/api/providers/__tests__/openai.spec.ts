@@ -1251,6 +1251,51 @@ describe("OpenAiHandler", () => {
 			expect(callArgs).not.toHaveProperty("max_completion_tokens")
 		})
 
+		it("O3 stream path yields reasoning chunk from delta.reasoning_content", async () => {
+			// AP-8: O3-family streaming handler must extract reasoning_content
+			// the same way the main streaming path does.
+			const o3Handler = new OpenAiHandler(o3Options)
+
+			mockCreate.mockImplementation(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { reasoning_content: "thinking..." }, index: 0 }] }
+					yield { choices: [{ delta: { content: "answer" }, index: 0 }] }
+					yield {
+						choices: [{ delta: {}, index: 0 }],
+						usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+					}
+				},
+			}))
+
+			const chunks: any[] = []
+			for await (const chunk of o3Handler.createMessage("system", [])) {
+				chunks.push(chunk)
+			}
+
+			expect(chunks).toContainEqual({ type: "reasoning", text: "thinking..." })
+		})
+
+		it("O3 stream path falls back to delta.reasoning when reasoning_content is absent", async () => {
+			const o3Handler = new OpenAiHandler(o3Options)
+
+			mockCreate.mockImplementation(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { reasoning: "router-style thought" }, index: 0 }] }
+					yield {
+						choices: [{ delta: {}, index: 0 }],
+						usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+					}
+				},
+			}))
+
+			const chunks: any[] = []
+			for await (const chunk of o3Handler.createMessage("system", [])) {
+				chunks.push(chunk)
+			}
+
+			expect(chunks).toContainEqual({ type: "reasoning", text: "router-style thought" })
+		})
+
 		it("should NOT include max_tokens for O3 model with Azure AI Inference Service even when includeMaxTokens is true", async () => {
 			const o3AzureHandler = new OpenAiHandler({
 				...o3Options,
