@@ -34,6 +34,15 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	private lastValidatedPartialPath: string | undefined = undefined
 	private lastPartialAccessAllowed: boolean | undefined = undefined
 
+	/**
+	 * The relPath that diffViewProvider.editType was computed for.
+	 * During partial streaming, partial-json may produce a truncated path that
+	 * differs from the final parsed path.  If editType was set for a different
+	 * path than the final one, execute() must re-check file existence rather than
+	 * trust the stale value.  Reset by resetPartialState().
+	 */
+	private editTypePath: string | undefined = undefined
+
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
 		const relPath = params.path
@@ -69,11 +78,20 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		let fileExists: boolean
 		const absolutePath = path.resolve(task.cwd, relPath)
 
-		if (task.diffViewProvider.editType !== undefined) {
+		// TL-2: If editType was set during the partial phase but for a DIFFERENT
+		// path than the final relPath (partial-json truncated-string behavior),
+		// the cached editType is stale and must not be trusted.  Re-check file
+		// existence for the actual final path.  When editTypePath is undefined
+		// (editType set externally, not by handlePartial), trust the cache.
+		if (
+			task.diffViewProvider.editType !== undefined &&
+			(this.editTypePath === undefined || this.editTypePath === relPath)
+		) {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
+			this.editTypePath = relPath
 		}
 
 		// Create parent directories early for new files to prevent ENOENT errors
@@ -262,11 +280,15 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		// relPath is guaranteed non-null after hasPathStabilized
 		let fileExists: boolean
 
-		if (task.diffViewProvider.editType !== undefined) {
+		if (
+			task.diffViewProvider.editType !== undefined &&
+			(this.editTypePath === undefined || this.editTypePath === relPath)
+		) {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
+			this.editTypePath = relPath
 		}
 
 		// Create parent directories early for new files to prevent ENOENT errors
@@ -307,6 +329,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		super.resetPartialState()
 		this.lastValidatedPartialPath = undefined
 		this.lastPartialAccessAllowed = undefined
+		this.editTypePath = undefined
 	}
 }
 

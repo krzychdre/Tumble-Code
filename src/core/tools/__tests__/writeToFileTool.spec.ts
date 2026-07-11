@@ -540,4 +540,55 @@ describe("writeToFileTool", () => {
 			expect(mockHandleError).toHaveBeenCalledWith("handling partial write_to_file", expect.any(Error))
 		})
 	})
+
+	describe("stale editType from partial phase (TL-2)", () => {
+		it.skipIf(process.platform === "win32")(
+			"re-checks file existence when final path differs from partial-phase path",
+			async () => {
+				const partialPath = "existing/file.txt"
+				const finalPath = "new/file.txt"
+				const finalAbs = "/new/file.txt"
+
+				// Use join-based path.resolve so different relPaths produce different absolute paths
+				mockedPathResolve.mockImplementation((...args: string[]) => args.join("/"))
+
+				// Phase 1: handlePartial with path A (existing file)
+				// First call - path not yet stabilized
+				await executeWriteFileTool({ path: partialPath }, { fileExists: true, isPartial: true })
+				// Second call - path stabilized, fileExists=true → editType="modify", editTypePath=partialPath
+				await executeWriteFileTool({ path: partialPath }, { fileExists: true, isPartial: true })
+
+				// Verify partial phase set editType to "modify"
+				expect(mockCline.diffViewProvider.editType).toBe("modify")
+
+				// Phase 2: execute with path B (non-existent file)
+				await executeWriteFileTool({ path: finalPath }, { fileExists: false })
+
+				// Post-fix: fileExistsAtPath should have been called for the final absolute path
+				expect(mockedFileExistsAtPath).toHaveBeenCalledWith(finalAbs)
+				// editType should be corrected to "create"
+				expect(mockCline.diffViewProvider.editType).toBe("create")
+			},
+		)
+
+		it("does not re-check file existence when partial and final paths match (fast path)", async () => {
+			const samePath = "test/file.txt"
+
+			// Phase 1: handlePartial with path A
+			await executeWriteFileTool({ path: samePath }, { fileExists: true, isPartial: true })
+			await executeWriteFileTool({ path: samePath }, { fileExists: true, isPartial: true })
+
+			expect(mockCline.diffViewProvider.editType).toBe("modify")
+
+			// Clear mock call history to track execute-phase calls only
+			mockedFileExistsAtPath.mockClear()
+
+			// Phase 2: execute with same path — fast path, no redundant re-check
+			await executeWriteFileTool({ path: samePath }, { fileExists: true })
+
+			// Fast path: fileExistsAtPath should NOT be called (editType already correct for this path)
+			expect(mockedFileExistsAtPath).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.editType).toBe("modify")
+		})
+	})
 })
