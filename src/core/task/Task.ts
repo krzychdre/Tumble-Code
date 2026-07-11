@@ -1070,6 +1070,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Update the configuration and rebuild the API handler
 		this.apiConfiguration = newApiConfiguration
 		this.api = buildApiHandler(this.apiConfiguration)
+		// Invalidate the cached MemoryCoordinator so the next lazy-getter
+		// access rebuilds it against the new handler. Without this, memory-recall
+		// side-queries keep running on the old (possibly dead-credentials)
+		// handler after a mid-task profile switch (MEM-1).
+		this._memoryCoordinator = undefined
 	}
 
 	public async submitUserMessage(
