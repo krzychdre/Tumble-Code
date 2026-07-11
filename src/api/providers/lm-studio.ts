@@ -114,8 +114,8 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			)
 
 			for await (const chunk of results) {
-				const delta = chunk.choices[0]?.delta
-				const finishReason = chunk.choices[0]?.finish_reason
+				const delta = chunk.choices?.[0]?.delta
+				const finishReason = chunk.choices?.[0]?.finish_reason
 
 				if (delta?.content) {
 					assistantText += delta.content
@@ -206,7 +206,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 			} catch (error) {
 				throw handleOpenAIError(error, this.providerName)
 			}
-			return response.choices[0]?.message.content || ""
+			return response.choices?.[0]?.message?.content || ""
 		} catch (error) {
 			throw new Error(
 				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",

@@ -155,6 +155,49 @@ describe("LmStudioHandler", () => {
 		})
 	})
 
+	describe("streaming with choices-less SSE chunks", () => {
+		const systemPrompt = "You are a helpful assistant."
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+
+		it("should not crash when first chunk has choices: undefined (keepalive)", async () => {
+			mockCreate.mockImplementationOnce(async (options) => {
+				if (!options.stream) return {}
+				return {
+					[Symbol.asyncIterator]: async function* () {
+						// keepalive / usage-only chunk with no choices
+						yield { choices: undefined, usage: null }
+						// normal delta with content
+						yield {
+							choices: [{ delta: { content: "Hello back" }, index: 0 }],
+							usage: null,
+						}
+						// final usage-only chunk with empty choices
+						yield {
+							choices: [],
+							usage: { prompt_tokens: 1, completion_tokens: 2 },
+						}
+					},
+				}
+			})
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const textChunks = chunks.filter((c) => c.type === "text")
+			expect(textChunks).toHaveLength(1)
+			expect(textChunks[0].text).toBe("Hello back")
+		})
+
+		it("should return empty string when completePrompt response has choices: []", async () => {
+			mockCreate.mockResolvedValueOnce({ choices: [], usage: {} })
+			const result = await handler.completePrompt("Test prompt")
+			expect(result).toBe("")
+		})
+	})
+
 	describe("getModel", () => {
 		it("should return model info", () => {
 			const modelInfo = handler.getModel()
