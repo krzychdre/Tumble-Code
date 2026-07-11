@@ -107,10 +107,15 @@ export class NativeToolCallParser {
 
 		let tracked = this.rawChunkTracker.get(index)
 
-		// Initialize new tool call tracking when we receive an id
-		if (id && !tracked) {
+		// TE-5: Initialize tracking when ANY of id/name/arguments is present.
+		// Weak models sometimes emit the first chunk without an id (or with an
+		// empty id), sending name+arguments first and the real id in a later
+		// chunk — or never. Previously tracking was initialized ONLY when a
+		// non-empty id arrived, so pre-id chunks (including their arguments
+		// delta) were silently dropped and the tool call never assembled.
+		if (!tracked && (id || name || args)) {
 			tracked = {
-				id,
+				id: id || `synthetic-tool-call-${index}`,
 				name: name || "",
 				hasStarted: false,
 				deltaBuffer: [],
@@ -120,6 +125,17 @@ export class NativeToolCallParser {
 
 		if (!tracked) {
 			return events
+		}
+
+		// TE-5: If a real id arrives in a later chunk for an index that was
+		// initialized with a synthetic id, adopt the real id ONLY IF the
+		// tool_call_start event hasn't been emitted yet (hasStarted is false).
+		// Once started with the synthetic id, downstream state
+		// (streamingToolCallIndices in TaskStreamProcessor, the ToolUse.id on
+		// the assistant message content) is keyed by that synthetic id —
+		// switching ids mid-flight would orphan that state.
+		if (id && tracked.id.startsWith("synthetic-tool-call-") && !tracked.hasStarted) {
+			tracked.id = id
 		}
 
 		// Update name if present in chunk and not yet set

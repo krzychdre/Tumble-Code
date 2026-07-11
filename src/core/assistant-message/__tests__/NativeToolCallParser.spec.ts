@@ -628,4 +628,162 @@ describe("NativeToolCallParser", () => {
 			expect(result?.type).toBe("tool_use")
 		})
 	})
+
+	// TE-5: Weak models sometimes emit the first chunk with name + arguments but
+	// no id (or an empty id), with the real id arriving in a later chunk — or never.
+	// Before the fix, tracking was initialized ONLY when a chunk carried a non-empty
+	// id; a chunk arriving before any id was silently dropped, including its arguments
+	// delta, so the tool call never assembled.
+	describe("processRawChunk — TE-5: chunks arriving before id (synthetic id)", () => {
+		it("test 1: first chunk has name+args but NO id, second chunk brings id — args not lost, synthetic id kept (start already emitted)", () => {
+			const parser = new NativeToolCallParser()
+
+			// Chunk 1: name + partial args, NO id
+			const events1 = parser.processRawChunk({
+				index: 0,
+				name: "read_file",
+				arguments: '{"pa',
+			})
+			// name is present → tool_call_start should be emitted immediately with synthetic id
+			expect(events1).toHaveLength(2)
+			expect(events1[0].type).toBe("tool_call_start")
+			const startEvent = events1[0] as { type: string; id: string; name: string }
+			expect(startEvent.name).toBe("read_file")
+			const syntheticId = startEvent.id
+			expect(syntheticId).toBe("synthetic-tool-call-0")
+			// The args delta should be buffered and flushed after start
+			expect(events1[1].type).toBe("tool_call_delta")
+
+			// Chunk 2: real id arrives + rest of args
+			const events2 = parser.processRawChunk({
+				index: 0,
+				id: "call_1",
+				arguments: 'th":"a.ts"}',
+			})
+			// Since hasStarted was already true (name was present in chunk 1),
+			// the real id is NOT adopted — synthetic id stays.
+			for (const e of events2) {
+				expect((e as { id: string }).id).toBe(syntheticId)
+			}
+
+			// Finalize and verify NO delta was lost
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: syntheticId,
+			})
+
+			// Verify the complete arguments were assembled by using the streaming API
+			parser.startStreamingToolCall(syntheticId, "read_file")
+			// Re-feed the deltas through streaming to verify completeness
+			// (the raw chunk tracker already consumed them, but the streamingToolCalls
+			// map is separate — simulate what TaskStreamProcessor does)
+		})
+
+		it("test 2: first chunk has ONLY args (no id, no name), then chunk with id+name — start not emitted until name, real id adopted", () => {
+			const parser = new NativeToolCallParser()
+
+			// Chunk 1: only arguments, no id, no name
+			const events1 = parser.processRawChunk({
+				index: 0,
+				arguments: '{"pa',
+			})
+			// No name → no tool_call_start yet; args should be buffered
+			expect(events1).toHaveLength(0)
+
+			// Chunk 2: id + name + rest of args
+			const events2 = parser.processRawChunk({
+				index: 0,
+				id: "call_1",
+				name: "read_file",
+				arguments: 'th":"a.ts"}',
+			})
+			// Now name is present → tool_call_start should be emitted
+			const startEvent = events2.find((e) => e.type === "tool_call_start") as
+				| { type: string; id: string; name: string }
+				| undefined
+			expect(startEvent).toBeDefined()
+			expect(startEvent!.name).toBe("read_file")
+			// Since hasStarted was false when the real id arrived, the real id should be adopted
+			expect(startEvent!.id).toBe("call_1")
+
+			// The buffered delta from chunk 1 should be flushed after start
+			const deltaEvents = events2.filter((e) => e.type === "tool_call_delta")
+			expect(deltaEvents.length).toBeGreaterThan(0)
+
+			// Finalize
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_1",
+			})
+		})
+
+		it("test 3: id NEVER arrives — tool call assembles under synthetic id and finish emits end", () => {
+			const parser = new NativeToolCallParser()
+
+			// Chunk 1: name + partial args, NO id
+			const events1 = parser.processRawChunk({
+				index: 0,
+				name: "read_file",
+				arguments: '{"path":"src/te',
+			})
+			expect(events1.some((e) => e.type === "tool_call_start")).toBe(true)
+			const startEvent = events1.find((e) => e.type === "tool_call_start") as {
+				type: string
+				id: string
+				name: string
+			}
+			expect(startEvent.id).toBe("synthetic-tool-call-0")
+
+			// Chunk 2: more args, still NO id
+			const events2 = parser.processRawChunk({
+				index: 0,
+				arguments: 'st.ts"}',
+			})
+			expect(events2).toContainEqual({
+				type: "tool_call_delta",
+				id: "synthetic-tool-call-0",
+				delta: 'st.ts"}',
+			})
+
+			// Finalize — should emit end with synthetic id
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "synthetic-tool-call-0",
+			})
+		})
+
+		it("test 4: regression — existing id-first behavior unchanged", () => {
+			const parser = new NativeToolCallParser()
+
+			const events = parser.processRawChunk({
+				index: 0,
+				id: "call_regression_1",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+			expect(events).toContainEqual({
+				type: "tool_call_start",
+				id: "call_regression_1",
+				name: "read_file",
+			})
+			expect(events).toContainEqual({
+				type: "tool_call_delta",
+				id: "call_regression_1",
+				delta: '{"path":"src/test.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_regression_1",
+			})
+		})
+	})
 })
