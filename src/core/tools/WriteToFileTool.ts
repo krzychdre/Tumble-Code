@@ -26,6 +26,14 @@ interface WriteToFileParams {
 export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	readonly name = "write_to_file" as const
 
+	/**
+	 * Memo of the last path validated during partial streaming and its access result.
+	 * Avoids re-validating (and re-emitting any error UI) on every streamed chunk
+	 * for the same path. Reset by resetPartialState().
+	 */
+	private lastValidatedPartialPath: string | undefined = undefined
+	private lastPartialAccessAllowed: boolean | undefined = undefined
+
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
 		const relPath = params.path
@@ -218,9 +226,41 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			return
 		}
 
+		// --- TL-6: validate access BEFORE opening the diff editor ---
+		// During partial streaming, a (weak or manipulated) model could stream a
+		// roo-ignored secrets file or a path outside the workspace.  Opening the
+		// diff editor reads the file's content into the UI before execute()'s
+		// access checks run.  Guard the partial phase by skipping open() when
+		// access is denied or the path is outside the workspace — execute() will
+		// produce the proper structured error in the final phase.
+		const absolutePath = path.resolve(task.cwd, relPath!)
+
+		// Memoize the access check result per path so repeated chunks for the same
+		// rejected path don't re-validate (and won't spam any UI).
+		let accessAllowed: boolean
+		if (this.lastValidatedPartialPath === relPath && this.lastPartialAccessAllowed !== undefined) {
+			accessAllowed = this.lastPartialAccessAllowed
+		} else {
+			accessAllowed = task.rooIgnoreController?.validateAccess(relPath!) ?? true
+			this.lastValidatedPartialPath = relPath
+			this.lastPartialAccessAllowed = accessAllowed
+		}
+
+		if (!accessAllowed) {
+			// Skip opening diff editor; execute() will emit the roo-ignore error.
+			return
+		}
+
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		if (isOutsideWorkspace) {
+			// Outside-workspace writes may be legitimate with approval, but in the
+			// partial phase we skip opening the diff editor — defer to execute()'s
+			// approval flow which can properly gate the operation.
+			return
+		}
+
 		// relPath is guaranteed non-null after hasPathStabilized
 		let fileExists: boolean
-		const absolutePath = path.resolve(task.cwd, relPath!)
 
 		if (task.diffViewProvider.editType !== undefined) {
 			fileExists = task.diffViewProvider.editType === "modify"
@@ -236,7 +276,6 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		}
 
 		const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath!) || false
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: fileExists ? "editedExistingFile" : "newFileCreated",
@@ -262,6 +301,12 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 				false,
 			)
 		}
+	}
+
+	override resetPartialState(): void {
+		super.resetPartialState()
+		this.lastValidatedPartialPath = undefined
+		this.lastPartialAccessAllowed = undefined
 	}
 }
 

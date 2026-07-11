@@ -414,6 +414,60 @@ describe("writeToFileTool", () => {
 		})
 	})
 
+	describe("partial access control (TL-6)", () => {
+		it("does not open diff editor when rooIgnoreController denies access", async () => {
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			// Second call with same path - path is now stabilized, but access denied
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			expect(mockCline.rooIgnoreController.validateAccess).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+		})
+
+		it("does not open diff editor when path is outside workspace", async () => {
+			mockedIsPathOutsideWorkspace.mockReturnValue(true)
+
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true })
+
+			// Second call with same path - path is now stabilized, but outside workspace
+			await executeWriteFileTool({}, { isPartial: true })
+
+			expect(mockedIsPathOutsideWorkspace).toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+		})
+
+		it("does open diff editor for valid inside-workspace path with access allowed", async () => {
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: true })
+
+			// Second call with same path - path is now stabilized, access allowed, inside workspace
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: true })
+
+			expect(mockCline.rooIgnoreController.validateAccess).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath)
+		})
+
+		it("does not re-validate on repeated partial chunks for the same rejected path", async () => {
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			// Second call - path stabilized, access denied (first validation)
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			const firstCallCount = mockCline.rooIgnoreController.validateAccess.mock.calls.length
+
+			// Third call - same path, should skip re-validation
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			const secondCallCount = mockCline.rooIgnoreController.validateAccess.mock.calls.length
+			expect(secondCallCount).toBe(firstCallCount)
+			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("user interaction", () => {
 		it("reverts changes when user rejects approval", async () => {
 			mockAskApproval.mockResolvedValue(false)

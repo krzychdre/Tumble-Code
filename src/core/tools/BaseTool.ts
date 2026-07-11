@@ -121,6 +121,16 @@ export abstract class BaseTool<TName extends ToolName> {
 					`handling partial ${this.name}`,
 					error instanceof Error ? error : new Error(String(error)),
 				)
+				// TL-4: if handlePartial threw AFTER opening the diff editor
+				// (e.g., during update()), the editor stays open with isEditing=true
+				// until the next turn's resetStreamingState.  Reset it here so the
+				// UI doesn't get stuck.  Guard the reset itself so a failure can't
+				// mask the original error already sent to handleError above.
+				try {
+					await task.diffViewProvider.reset()
+				} catch (resetError) {
+					console.error(`Error resetting diffViewProvider after partial error:`, resetError)
+				}
 			}
 			return
 		}
