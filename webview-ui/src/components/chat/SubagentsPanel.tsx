@@ -135,11 +135,18 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 	const [messages, setMessages] = useState<ClineMessage[]>([])
 	const [input, setInput] = useState("")
 	const containerRef = useRef<HTMLDivElement>(null)
+	// Follow-output contract (same as ChatView's Virtuoso): auto-scroll only
+	// while the user is at the bottom; scrolling up pauses following, and
+	// scrolling back down re-engages it. Ref, not state — scroll position
+	// tracking must not re-render the tail on every wheel tick.
+	const atBottomRef = useRef(true)
 	const taskId = summary.taskId
 	const awaitingInput = summary.status === "awaiting_input"
 
 	useEffect(() => {
 		setMessages([])
+		// A freshly (re)opened tail starts pinned to the latest output.
+		atBottomRef.current = true
 		vscode.postMessage({ type: "subscribeSubagentMessages", taskId })
 		return () => {
 			vscode.postMessage({ type: "unsubscribeSubagentMessages", taskId })
@@ -171,13 +178,24 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 		return () => window.removeEventListener("message", handler)
 	}, [taskId])
 
-	// Pin the tail to the latest output.
+	// Pin the tail to the latest output — but only while the user is at the
+	// bottom. New content must never yank the view away from text the user
+	// scrolled up to read.
 	useEffect(() => {
 		const el = containerRef.current
-		if (el) {
+		if (el && atBottomRef.current) {
 			el.scrollTop = el.scrollHeight
 		}
 	}, [messages])
+
+	const handleScroll = useCallback(() => {
+		const el = containerRef.current
+		if (el) {
+			// Small threshold so sub-pixel rounding and momentum scrolling
+			// still count as "at the bottom".
+			atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+		}
+	}, [])
 
 	const entries = useMemo(
 		() =>
@@ -237,7 +255,10 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 					</div>
 				)
 			) : (
-				<div ref={containerRef} className="max-h-64 overflow-y-auto px-2 py-1 flex flex-col gap-1">
+				<div
+					ref={containerRef}
+					onScroll={handleScroll}
+					className="max-h-64 overflow-y-auto px-2 py-1 flex flex-col gap-1">
 					{entries.map(({ ts, entry }) => {
 						switch (entry.kind) {
 							case "markdown":
