@@ -18,6 +18,7 @@ import {
 	getObjectiveSection,
 	getSharedToolUseSection,
 	getToolUseGuidelinesSection,
+	getOutputEfficiencySection,
 	getCapabilitiesSection,
 	getModesSection,
 	addCustomInstructions,
@@ -127,6 +128,8 @@ ${markdownFormattingSection()}
 ${getSharedToolUseSection()}${toolsCatalog}
 
 	${getToolUseGuidelinesSection()}
+
+${getOutputEfficiencySection()}
 
 ${
 	// Forward the hub only when the mode actually exposes the MCP group, and pass the per-mode
