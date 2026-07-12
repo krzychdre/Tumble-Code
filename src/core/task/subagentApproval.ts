@@ -1,38 +1,29 @@
 /**
  * The auto-approval policy for headless parallel-subagent children.
  *
- * Each subagent runs in its own git worktree as a background task. Unlike the
- * memory writer (which is write-confined to a single directory and denies
- * commands outright), a subagent does real work: it may run shell commands,
- * call MCP servers, and edit files inside its worktree. The user's configured
- * auto-approval policy — command allow/deny lists, MCP toggles, protected-file
- * guards — must be honoured, because one upfront approval of subtask
- * descriptions is not informed consent for unsupervised arbitrary command
- * execution.
+ * Each subagent runs in its own git worktree as a background task. A subagent
+ * does real work: it may run shell commands, call MCP servers, and edit files
+ * inside its worktree. The user's configured auto-approval policy — write
+ * toggles, command allow/deny lists, MCP toggles, protected-file guards —
+ * must be honoured EXACTLY as it would be for a foreground task: worktree
+ * isolation is not consent. When the user's settings would ask, the ask
+ * surfaces interactively in the subagents panel (Approve/Deny), bounded by
+ * the TaskAskSay background fallback so unattended runs never hang.
  *
- * Policy (fail-safe — the override decides every ask except `followup`; a
- * deliberate `undefined` for followups hands the ask to the normal blocking
- * flow, which TaskAskSay bounds with SUBAGENT_ASK_FALLBACK_TIMEOUT_MS so a
- * headless child can never block forever):
+ * Policy:
  * - `followup` asks → `undefined` (interactive: surfaced in the subagents
- *   panel, answerable by the user, auto-approved after the fallback window);
+ *   panel, answerable by the user, auto-APPROVED after the fallback window);
  * - other non-`tool`/`command`/`use_mcp_server` asks (completion_result,
  *   api_req_failed, resume, …) → `"approve"` (autonomy; retries stay bounded
  *   by `maxAgentTurns`);
  * - read-only tool actions → `"approve"` (reads/searches are safe anywhere);
- * - tool asks whose target path resolves inside the child's worktree →
- *   `"approve"` (the isolation contract the user accepted at fan-out time:
- *   edits confined to a throwaway worktree) — except protected files
- *   (`.rooignore`, `.roo*` config), which follow the user's protected-write
- *   setting via delegation;
- * - everything else (commands, MCP, writes outside the worktree, path-less
- *   writes) → delegate to `checkAutoApproval` with the user's live
- *   state; `"approve"` passes through, `"deny"` / `"ask"` / `"timeout"` all
- *   map to `"deny"` (a headless child has no user to ask and must never wait
- *   on a timeout designed for a visible countdown).
+ * - everything else (file writes — INCLUDING inside the worktree — commands,
+ *   MCP) → consult `checkAutoApproval` with the user's live settings:
+ *   `"approve"`/`"deny"` pass through; `"ask"`/`"timeout"` return `undefined`
+ *   so the normal blocking ask flow runs — panel shows Approve/Deny, and the
+ *   TaskAskSay fallback DENIES a permission ask that nobody answers (an
+ *   unattended subagent must never write without permission).
  */
-
-import * as path from "path"
 
 import type { ClineAsk, ClineSayTool, ExtensionState } from "@roo-code/types"
 
@@ -47,28 +38,28 @@ export type ApprovalState = Pick<ExtensionState, AutoApprovalState | AutoApprova
 export interface SubagentApprovalOptions {
 	/** Accessor for the live extension state (delegated asks consult it). */
 	getState: () => Promise<ApprovalState>
-	/** Absolute path of the child's worktree — writes inside it are pre-approved. */
+	/**
+	 * Absolute path of the child's worktree. Kept for interface stability
+	 * (callers identify the child's sandbox); containment no longer grants
+	 * write approval — the user's settings decide.
+	 */
 	worktreePath: string
 }
 
 /**
  * Build the auto-approval policy for a headless parallel-subagent child.
- * The returned function always decides (`"approve"` or `"deny"`, never
- * `undefined`) so the child can never block on a webview response.
+ * Decides `"approve"`/`"deny"` where the user's settings are unambiguous and
+ * returns `undefined` where a real approval decision is needed — the ask then
+ * blocks and surfaces in the subagents panel (bounded by the TaskAskSay
+ * background fallback, so the child can never block forever).
  */
 export function buildSubagentApprovalPolicy(options: SubagentApprovalOptions): AutoApprovalOverride {
-	const { getState, worktreePath } = options
-	// Pre-compute the separator-terminated prefix for containment checks.
-	const prefix = path.normalize(worktreePath) + path.sep
+	const { getState } = options
 
-	return async (ask, text, isProtected) => {
-		// Followup questions fall through to the normal ask flow (undefined):
-		// the child blocks, its panel row flips to "awaiting input" via the
-		// TaskInteractive machinery, and the user can answer from the subagent
-		// tail. TaskAskSay bounds the wait with a fallback auto-approval
-		// (SUBAGENT_ASK_FALLBACK_TIMEOUT_MS) so unattended runs never hang;
-		// users with alwaysAllowFollowupQuestions keep their configured
-		// auto-answer timeout via the global flow.
+	return async (ask: ClineAsk, text?: string, isProtected?: boolean) => {
+		// Followup questions fall through to the normal ask flow: the child
+		// blocks, its panel row flips to "awaiting input", the user can
+		// answer; the fallback auto-approves (empty answer) after the window.
 		if (ask === "followup") {
 			return undefined
 		}
@@ -78,46 +69,33 @@ export function buildSubagentApprovalPolicy(options: SubagentApprovalOptions): A
 			return "approve"
 		}
 
-		// Tool asks: read-only actions and worktree-contained writes are pre-approved.
+		// Read-only tool actions are pre-approved (reads/searches are safe).
 		if (ask === "tool") {
 			let parsed: ClineSayTool | undefined
 			try {
 				parsed = JSON.parse(text ?? "{}") as ClineSayTool
 			} catch {
 				// Unparseable tool ask — fail-safe deny: a malformed write must
-				// not bypass the worktree containment check.
+				// not slip past the user's write policy.
 				return "deny"
 			}
 			if (parsed && isReadOnlyToolAction(parsed)) {
 				return "approve"
 			}
-			// Protected files (.rooignore, .roo* config) keep the user's
-			// protected-write guard even inside the worktree — delegate below.
-			const p = parsed?.path
-			if (
-				!isProtected &&
-				typeof p === "string" &&
-				p.length > 0 &&
-				isInsideWorktree(path.resolve(worktreePath, p), prefix)
-			) {
-				return "approve"
-			}
 		}
 
-		// Commands, MCP, and tool writes outside the worktree: delegate to the
-		// user's configured auto-approval policy.
+		// Writes (anywhere — worktree isolation is not consent), commands, and
+		// MCP calls follow the user's configured auto-approval policy.
 		const result = await checkAutoApproval({ state: await getState(), ask, text, isProtected })
-		// "ask" / "timeout" map to deny — a headless child has no user to ask.
-		return result.decision === "approve" ? "approve" : "deny"
+		if (result.decision === "approve") {
+			return "approve"
+		}
+		if (result.decision === "deny") {
+			return "deny"
+		}
+		// "ask" / "timeout": a real permission decision — surface it in the
+		// subagents panel via the normal blocking flow. TaskAskSay bounds the
+		// wait and denies if nobody answers.
+		return undefined
 	}
-}
-
-/**
- * Containment check: does `absolutePath` live inside the worktree? Uses a
- * separator-terminated prefix so `/wt/evil` cannot match a worktree at `/wt`.
- */
-function isInsideWorktree(absolutePath: string, prefix: string): boolean {
-	const normalized = path.normalize(absolutePath)
-	if (normalized === prefix.slice(0, -1)) return true // the worktree dir itself
-	return normalized.startsWith(prefix)
 }

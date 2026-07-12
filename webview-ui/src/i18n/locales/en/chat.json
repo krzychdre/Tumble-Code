@@ -51,7 +51,8 @@
 			"failed": "Failed",
 			"cancelled": "Cancelled"
 		},
-		"apiConfig": "API profile: {{name}} (pinned to the subtask's mode — change it in Settings → Modes)"
+		"apiConfig": "API profile: {{name}} (pinned to the subtask's mode — change it in Settings → Modes)",
+		"permissionNeeded": "This subtask needs permission to proceed"
 	},
 	"retry": {
 		"title": "Retry",

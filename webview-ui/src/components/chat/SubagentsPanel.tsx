@@ -207,20 +207,38 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 		[messages],
 	)
 
-	// The followup the child is currently blocked on (status is the source of
-	// truth; the message supplies the suggestions).
-	const pendingFollowUp = useMemo(() => {
+	// The ask the child is currently blocked on (status is the source of
+	// truth; the message supplies question/suggestions or the action needing
+	// permission).
+	const pendingAsk = useMemo(() => {
 		if (!awaitingInput) {
 			return undefined
 		}
 		for (let i = messages.length - 1; i >= 0; i--) {
 			const message = messages[i]
-			if (message.type === "ask" && message.ask === "followup" && !message.partial) {
-				return parseFollowUp(message.text ?? "")
+			if (message.type === "ask" && !message.partial) {
+				return message
 			}
 		}
 		return undefined
 	}, [awaitingInput, messages])
+
+	const pendingFollowUp = pendingAsk?.ask === "followup" ? parseFollowUp(pendingAsk.text ?? "") : undefined
+	const pendingPermission =
+		pendingAsk && (pendingAsk.ask === "tool" || pendingAsk.ask === "command" || pendingAsk.ask === "use_mcp_server")
+			? pendingAsk
+			: undefined
+
+	const respondToPermission = useCallback(
+		(approve: boolean) => {
+			vscode.postMessage({
+				type: "askResponse",
+				askResponse: approve ? "yesButtonClicked" : "noButtonClicked",
+				taskId,
+			})
+		},
+		[taskId],
+	)
 
 	const sendAnswer = useCallback(
 		(text: string) => {
@@ -291,6 +309,32 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 								)
 						}
 					})}
+				</div>
+			)}
+			{pendingPermission && (
+				<div className="flex items-center gap-1 px-2 pb-1">
+					<span className="text-xs text-vscode-descriptionForeground grow truncate">
+						{t("chat:subagents.permissionNeeded")}
+					</span>
+					<button
+						type="button"
+						onClick={() => respondToPermission(true)}
+						className={cn(
+							"text-xs px-2 py-1 rounded border-0 cursor-pointer",
+							"bg-vscode-button-background text-vscode-button-foreground hover:bg-vscode-button-hoverBackground",
+						)}>
+						{t("chat:approve.title")}
+					</button>
+					<button
+						type="button"
+						onClick={() => respondToPermission(false)}
+						className={cn(
+							"text-xs px-2 py-1 rounded border border-vscode-button-border cursor-pointer",
+							"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground",
+							"hover:bg-vscode-button-secondaryHoverBackground",
+						)}>
+						{t("chat:reject.title")}
+					</button>
 				</div>
 			)}
 			{pendingFollowUp?.suggest && pendingFollowUp.suggest.length > 0 && (

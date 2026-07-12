@@ -532,9 +532,11 @@ describe("RunParallelTasksTool.execute", () => {
 		const readOnlyTool = JSON.stringify({ tool: "readFile", path: "/anywhere" })
 		expect(await opts.autoApprovalOverride!("tool", readOnlyTool, false)).toBe("approve")
 
-		// Command ask with no allowed commands → deny (delegates to checkAutoApproval
-		// which returns "ask" when alwaysAllowExecute is false, maps to deny).
-		expect(await opts.autoApprovalOverride!("command", "rm -rf /tmp", false)).toBe("deny")
+		// Command ask with no allowed commands → undefined (delegates to
+		// checkAutoApproval which returns "ask" when alwaysAllowExecute is
+		// false; the ask then surfaces interactively in the subagents panel,
+		// bounded by the TaskAskSay fallback which denies it unanswered).
+		expect(await opts.autoApprovalOverride!("command", "rm -rf /tmp", false)).toBeUndefined()
 	})
 
 	// ---------------------------------------------------------------------------

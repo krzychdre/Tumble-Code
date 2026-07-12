@@ -51,7 +51,8 @@
 			"failed": "Nieudany",
 			"cancelled": "Anulowany"
 		},
-		"apiConfig": "Profil API: {{name}} (przypięty do trybu podzadania — zmień w Ustawienia → Tryby)"
+		"apiConfig": "Profil API: {{name}} (przypięty do trybu podzadania — zmień w Ustawienia → Tryby)",
+		"permissionNeeded": "To podzadanie wymaga zgody, aby kontynuować"
 	},
 	"tokenProgress": {
 		"availableSpace": "Dostępne miejsce: {{amount}} tokenów",

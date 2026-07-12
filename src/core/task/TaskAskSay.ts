@@ -369,19 +369,23 @@ export class TaskAskSay {
 
 		// A headless subagent may block on an ask the user never notices (its
 		// panel row shows "awaiting input", but nobody is watching). Bound the
-		// wait: after the fallback window (`subagentFollowupTimeoutSec`, 0 =
-		// answer immediately), answer the way the pre-interactive policy did —
-		// plain approval with no text — so unattended fan-outs always make
-		// progress. A real user answer any time earlier wins.
+		// wait (`subagentFollowupTimeoutSec`, 0 = answer immediately) so
+		// unattended fan-outs always make progress. The fallback answer
+		// depends on what is being asked: a followup question is approved
+		// (empty answer — the child proceeds on its best judgment), but a
+		// PERMISSION ask (tool/command/MCP) is DENIED — an unattended subagent
+		// must never write or execute without the user's permission. A real
+		// user answer any time earlier wins.
 		if (this.access.isBackground && approval.decision === "ask") {
 			const fallbackMs = Math.max(
 				0,
 				(state?.subagentFollowupTimeoutSec ?? SUBAGENT_ASK_FALLBACK_TIMEOUT_MS / 1000) * 1000,
 			)
+			const isPermissionAsk = type === "tool" || type === "command" || type === "use_mcp_server"
 			timeouts.push(
 				setTimeout(() => {
 					if (this.access.askResponse === undefined && this.access.lastMessageTs === askTs) {
-						this.handleWebviewAskResponse("yesButtonClicked")
+						this.handleWebviewAskResponse(isPermissionAsk ? "noButtonClicked" : "yesButtonClicked")
 					}
 				}, fallbackMs),
 			)
