@@ -205,6 +205,14 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	}
 
 	protected processUsageMetrics(usage: any, modelInfo?: any): ApiStreamUsageChunk {
+		// Spike instrumentation: dump the provider's raw usage object so cache
+		// reporting can be verified endpoint-by-endpoint (e.g. whether Z.ai's
+		// coding plan returns prompt_tokens_details.cached_tokens). See
+		// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-6).
+		if (process.env.ROO_LOG_RAW_USAGE === "1") {
+			console.log(`[${this.providerName}] raw usage: ${JSON.stringify(usage)}`)
+		}
+
 		const inputTokens = usage?.prompt_tokens || 0
 		const outputTokens = usage?.completion_tokens || 0
 		const cacheWriteTokens = usage?.prompt_tokens_details?.cache_write_tokens || 0
