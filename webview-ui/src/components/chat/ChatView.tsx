@@ -46,6 +46,7 @@ import { QueuedMessages } from "./QueuedMessages"
 import { WorktreeSelector } from "./WorktreeSelector"
 import FileChangesPanel from "./FileChangesPanel"
 import SubagentsPanel from "./SubagentsPanel"
+import MemoryActivityBadge from "./MemoryActivityBadge"
 import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
@@ -100,6 +101,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		messageQueue = [],
 		showWorktreesInHomeScreen,
 		subagents,
+		memoryActivity,
 	} = useExtensionState()
 
 	// Show a WarningRow when the user sends a message with a retired provider.
@@ -1670,6 +1672,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							atBottomThreshold={10}
 						/>
 					</div>
+					<MemoryActivityBadge memoryActivity={memoryActivity} />
 					<SubagentsPanel subagents={subagents} />
 					<FileChangesPanel clineMessages={messages} />
 					{areButtonsVisible && (

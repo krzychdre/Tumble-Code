@@ -41,6 +41,7 @@ export interface ExtensionMessage {
 		| "messageUpdated"
 		| "subagentsUpdated"
 		| "subagentMessages"
+		| "memoryActivity"
 		| "mcpServers"
 		| "enhancedPrompt"
 		| "commitSearchResults"
@@ -147,6 +148,11 @@ export interface ExtensionMessage {
 	subagents?: SubagentSummary[]
 	/** Full message snapshot for a just-subscribed subagent (`subagentMessages`). */
 	subagentMessages?: ClineMessage[]
+	/**
+	 * Live memory-system activity counters (`memoryActivity` pushes and state):
+	 * how many recall prefetches / background writers are running right now.
+	 */
+	memoryActivity?: { recall: number; write: number }
 	routerModels?: RouterModels
 	openAiModels?: string[]
 	ollamaModels?: ModelRecord
@@ -343,6 +349,8 @@ export type ExtensionState = Pick<
 	currentTaskTodos?: TodoItem[] // Initial todos for the current task
 	/** Live parallel background subagents (run_parallel_tasks children). */
 	subagents?: SubagentSummary[]
+	/** Live memory-system activity (recall prefetches / background writers). */
+	memoryActivity?: { recall: number; write: number }
 	apiConfiguration: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean

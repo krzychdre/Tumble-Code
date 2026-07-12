@@ -74,17 +74,28 @@ export class MemoryCoordinator {
 	private readonly cwd: string
 	private readonly recallEnabled: boolean
 	private readonly sideQuery: SideQuery | undefined
+	private readonly onActivity: ((active: boolean) => void) | undefined
+	// End-signal for the CURRENT prefetch's activity window; idempotent so
+	// settle + dispose can both call it without double-decrementing.
+	private endActivity: (() => void) | undefined
 
 	constructor(params: {
 		cwd: string
 		recallEnabled: boolean
 		readFileState: FileStateCache
 		apiHandler?: ApiHandler
+		/**
+		 * Recall-activity signal for the UI ("recalling memory…"): called with
+		 * `true` when a prefetch actually starts (gates passed) and `false`
+		 * when it settles or is disposed.
+		 */
+		onActivity?: (active: boolean) => void
 	}) {
 		this.cwd = params.cwd
 		this.recallEnabled = params.recallEnabled
 		this.readFileState = params.readFileState
 		this.sideQuery = params.apiHandler ? makeSideQuery(params.apiHandler) : undefined
+		this.onActivity = params.onActivity
 	}
 
 	/**
@@ -103,6 +114,20 @@ export class MemoryCoordinator {
 			sideQuery: this.sideQuery,
 			parentAbortController,
 		})
+		if (this.prefetch && this.onActivity) {
+			let signaled = true
+			this.onActivity(true)
+			const end = () => {
+				if (signaled) {
+					signaled = false
+					this.onActivity?.(false)
+				}
+			}
+			this.endActivity = end
+			// The prefetch promise never rejects (ranker errors resolve to []),
+			// so finally-style hooks fire on every settle path.
+			void this.prefetch.promise.then(end, end)
+		}
 	}
 
 	/**
@@ -128,6 +153,10 @@ export class MemoryCoordinator {
 	disposePrefetch(): void {
 		this.prefetch?.dispose()
 		this.prefetch = undefined
+		// Belt-and-braces: if the promise hasn't settled yet, close the
+		// activity window now (idempotent with the settle hook).
+		this.endActivity?.()
+		this.endActivity = undefined
 	}
 }
 

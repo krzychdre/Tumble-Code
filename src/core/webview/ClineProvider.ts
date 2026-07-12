@@ -150,6 +150,8 @@ export class ClineProvider
 	public readonly subagentRegistry = new SubagentRegistry((message) => {
 		this.postMessageToWebview(message).catch(() => {})
 	})
+	// Live memory-system activity counters ("recalling/writing memory…" badge).
+	private memoryActivityCounts = { recall: 0, write: 0 }
 	// Children whose delegated parent could not be proven detached on cancel.
 	// reopenParentFromDelegation() refuses to reopen a parent for any child here.
 	private cancelledDelegationChildIds = new Set<string>()
@@ -2348,6 +2350,7 @@ export class ClineProvider
 			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
 			clineMessages: currentTask?.clineMessages || [],
 			subagents: this.subagentRegistry.list(),
+			memoryActivity: { ...this.memoryActivityCounts },
 			currentTaskTodos: currentTask?.todoList || [],
 			messageQueue: currentTask?.messageQueueService?.messages,
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
@@ -3227,6 +3230,19 @@ export class ClineProvider
 	}
 
 	/**
+	 * Adjust a memory-activity counter and push the change to the webview.
+	 * `active: true` opens an activity window, `false` closes it. Counters,
+	 * not booleans: recall prefetches and background writers can overlap.
+	 */
+	public setMemoryActivity(kind: "recall" | "write", active: boolean): void {
+		this.memoryActivityCounts[kind] = Math.max(0, this.memoryActivityCounts[kind] + (active ? 1 : -1))
+		this.postMessageToWebview({
+			type: "memoryActivity",
+			memoryActivity: { ...this.memoryActivityCounts },
+		}).catch(() => {})
+	}
+
+	/**
 	 * Resolve the API profile pinned to `mode` (the "use a specific
 	 * configuration for this mode" binding — the same source handleModeSwitch
 	 * applies to foreground tasks). Returns undefined — meaning "use the
@@ -3376,16 +3392,21 @@ export class ClineProvider
 			// into the task's initial message alongside the user prompt.
 			const text = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt
 			const apiConfiguration = await this.resolveMemoryWriterApiConfiguration()
-			const task = await this.createBackgroundTask(text, {
-				taskMode: "code",
-				workspacePath: cwd,
-				maxAgentTurns: maxTurns,
-				autoApprovalOverride: memoryWriteSandbox(cwd),
-				silentWrites: true,
-				apiConfiguration,
-			})
-			const { writtenPaths } = await this.awaitTaskCompletion(task, { signal })
-			return { writtenPaths: filterMemoryWrittenPaths(writtenPaths, cwd) }
+			this.setMemoryActivity("write", true)
+			try {
+				const task = await this.createBackgroundTask(text, {
+					taskMode: "code",
+					workspacePath: cwd,
+					maxAgentTurns: maxTurns,
+					autoApprovalOverride: memoryWriteSandbox(cwd),
+					silentWrites: true,
+					apiConfiguration,
+				})
+				const { writtenPaths } = await this.awaitTaskCompletion(task, { signal })
+				return { writtenPaths: filterMemoryWrittenPaths(writtenPaths, cwd) }
+			} finally {
+				this.setMemoryActivity("write", false)
+			}
 		}
 	}
 

@@ -425,6 +425,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			recallEnabled,
 			readFileState: this._memoryReadFileState,
 			apiHandler: this.api,
+			// Surface "recalling memory…" in the UI while a prefetch runs.
+			onActivity: (active) => this.providerRef.deref()?.setMemoryActivity("recall", active),
 		})
 		return this._memoryCoordinator
 	}

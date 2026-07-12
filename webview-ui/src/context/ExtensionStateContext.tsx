@@ -415,6 +415,13 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					setState((prevState) => ({ ...prevState, subagents }))
 					break
 				}
+				case "memoryActivity": {
+					const memoryActivity = message.memoryActivity
+					if (memoryActivity) {
+						setState((prevState) => ({ ...prevState, memoryActivity }))
+					}
+					break
+				}
 				case "skills": {
 					if (message.skills) {
 						setSkills(message.skills)
