@@ -14,6 +14,7 @@ import { BaseProvider } from "./base-provider"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { calculateApiCostOpenAI } from "../../shared/cost"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
+import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
 	providerName: string
@@ -177,25 +178,13 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 				}
 
 				// Emit raw tool call chunks - NativeToolCallParser handles state management
-				if (delta?.tool_calls) {
-					for (const toolCall of delta.tool_calls) {
-						yield {
-							type: "tool_call_partial",
-							index: toolCall.index,
-							id: toolCall.id,
-							name: toolCall.function?.name,
-							arguments: toolCall.function?.arguments,
-						}
-					}
-				}
+				yield* emitToolCallChunks(delta)
 
 				// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
 				// This covers ALL finish reasons (not just "tool_calls") — many local/weak
 				// OpenAI-compatible servers (llama.cpp, vLLM, older LM Studio) return "stop"
 				// even after emitting tool_calls deltas (AP-2).
-				if (finishReason) {
-					yield { type: "finish_reason", finishReason }
-				}
+				yield* emitFinishReasonChunk(finishReason)
 
 				if (chunk.usage) {
 					lastUsage = chunk.usage

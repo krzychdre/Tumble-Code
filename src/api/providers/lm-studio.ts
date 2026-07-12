@@ -16,6 +16,7 @@ import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from ".
 import { getModelsFromCache } from "./fetchers/modelCache"
 import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleOpenAIError } from "./utils/openai-error-handler"
+import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -155,22 +156,10 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 					}
 
 					// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
-					if (delta?.tool_calls) {
-						for (const toolCall of delta.tool_calls) {
-							yield {
-								type: "tool_call_partial",
-								index: toolCall.index,
-								id: toolCall.id,
-								name: toolCall.function?.name,
-								arguments: toolCall.function?.arguments,
-							}
-						}
-					}
+					yield* emitToolCallChunks(delta)
 
 					// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
-					if (finishReason) {
-						yield { type: "finish_reason", finishReason }
-					}
+					yield* emitFinishReasonChunk(finishReason)
 				}
 
 				for (const processedChunk of matcher.final()) {

@@ -37,6 +37,7 @@ import type { ApiHandlerCreateMessageMetadata, SingleCompletionHandler } from ".
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
+import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 
 // Add custom interface for OpenRouter params.
 type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
@@ -481,17 +482,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				}
 
 				// Emit raw tool call chunks - NativeToolCallParser handles state management
-				if ("tool_calls" in delta && Array.isArray(delta.tool_calls)) {
-					for (const toolCall of delta.tool_calls) {
-						yield {
-							type: "tool_call_partial",
-							index: toolCall.index,
-							id: toolCall.id,
-							name: toolCall.function?.name,
-							arguments: toolCall.function?.arguments,
-						}
-					}
-				}
+				yield* emitToolCallChunks(delta)
 
 				if (delta.content) {
 					yield { type: "text", text: delta.content }
@@ -500,9 +491,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 
 			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
 			// This ensures tool calls are finalized even if the stream doesn't properly close
-			if (finishReason) {
-				yield { type: "finish_reason", finishReason }
-			}
+			yield* emitFinishReasonChunk(finishReason)
 
 			if (chunk.usage) {
 				lastUsage = chunk.usage
