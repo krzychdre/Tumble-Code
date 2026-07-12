@@ -148,4 +148,29 @@ run_parallel_tasks.ts`) notes the cap so weak models aren't told to exceed it.
 
 ## Outcome
 
-(fill at stack end)
+Shipped 2026-07-12 as 4 stacked branches off a9474a665 (all green:
+types/src/webview/cli typecheck, 54 subagent-specific tests, full
+core/task 298 + core/webview 345 suites):
+
+- `feat/subagent-visibility` (f56667df3) — SubagentSummary type,
+  SubagentRegistry (+10-test spec), taskId-scoped `messageUpdated`
+  (`sourceTaskId`), subscribe/unsubscribe tail streaming, SubagentsPanel.
+  Side fix: unwatched background tasks no longer leak untargeted
+  messageUpdated pushes nor trigger a full state post per message.
+- `feat/subagent-interaction` (a262693a6) — followups fall through to the
+  blocking ask flow (awaiting_input badge, TaskInteractive), answers routed
+  by taskId (dead child ⇒ dropped, never misdelivered), mid-run guidance via
+  the child's message queue, per-child cancel (first-terminal-wins keeps
+  "cancelled" over the generic abort "failed").
+- `feat/subagent-settings` (5e3bb4d67) — `parallelTasksMaxConcurrency`
+  (cap clamps the model's arg) + `subagentFollowupTimeoutSec` (0 = old
+  fully-autonomous behavior), new "Subagents" settings section, en+pl.
+- `feat/subagent-mode-model` (6b345e4f6, new stack TIP) — subagents resolve
+  the mode-pinned API profile (explicit > mode-pinned > current; respects
+  lockApiConfigAcrossModes); Modes-view picker = per-subtask model choice;
+  profile name shown in the panel.
+
+Deviations from plan: "queued" status added (subtasks visible while waiting
+for a slot, via deterministic placeholder ids swapped on task creation);
+followup fallback implemented generically in TaskAskSay for any background
+"ask" decision rather than a tool-attached timer.
