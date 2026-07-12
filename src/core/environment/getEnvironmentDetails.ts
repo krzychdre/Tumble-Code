@@ -20,6 +20,21 @@ import { getGitStatus } from "../../utils/git"
 import { Task } from "../task/Task"
 import { formatReminderSection } from "./reminder"
 
+// Transient change-tracking per Task instance (never persisted, so a new or
+// resumed task — including after a mode switch to a different context window —
+// always starts from a full emission). Sections that rarely change between
+// turns are omitted when identical to what the previous turn already sent:
+// the model still has them in history, and re-sending churns every message
+// with noise the model re-reads and re-reasons about each turn. See
+// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-2).
+interface EnvSectionSnapshot {
+	visibleFiles: string
+	openTabs: string
+	mode: string
+}
+
+const lastEnvSnapshot = new WeakMap<Task, EnvSectionSnapshot>()
+
 export async function getEnvironmentDetails(cline: Task, includeFileDetails: boolean = false) {
 	let details = ""
 
@@ -27,8 +42,13 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 	const state = await clineProvider?.getState()
 	const { maxWorkspaceFiles = 200 } = state ?? {}
 
+	// includeFileDetails marks task/resume/subtask starts — always emit the full
+	// block there so the model's baseline never depends on dedup state.
+	const prevSnapshot = includeFileDetails ? undefined : lastEnvSnapshot.get(cline)
+
 	// It could be useful for cline to know if the user went from one or no
-	// file to another between messages, so we always include this context.
+	// file to another between messages, so we include this context whenever
+	// it changed since the previous turn.
 	const visibleFilePaths = vscode.window.visibleTextEditors
 		?.map((editor) => editor.document?.uri?.fsPath)
 		.filter(Boolean)
@@ -40,9 +60,17 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		? cline.rooIgnoreController.filterPaths(visibleFilePaths)
 		: visibleFilePaths.map((p) => p.toPosix()).join("\n")
 
-	if (allowedVisibleFiles) {
-		details += "\n\n# VSCode Visible Files"
-		details += `\n${allowedVisibleFiles}`
+	const visibleFilesText = Array.isArray(allowedVisibleFiles)
+		? allowedVisibleFiles.join("\n")
+		: allowedVisibleFiles || ""
+
+	if (prevSnapshot === undefined || prevSnapshot.visibleFiles !== visibleFilesText) {
+		if (visibleFilesText) {
+			details += "\n\n# VSCode Visible Files"
+			details += `\n${visibleFilesText}`
+		} else if (prevSnapshot?.visibleFiles) {
+			details += "\n\n# VSCode Visible Files\n(No visible files)"
+		}
 	}
 
 	const { maxOpenTabsContext } = state ?? {}
@@ -60,9 +88,15 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		? cline.rooIgnoreController.filterPaths(openTabPaths)
 		: openTabPaths.map((p) => p.toPosix()).join("\n")
 
-	if (allowedOpenTabs) {
-		details += "\n\n# VSCode Open Tabs"
-		details += `\n${allowedOpenTabs}`
+	const openTabsText = Array.isArray(allowedOpenTabs) ? allowedOpenTabs.join("\n") : allowedOpenTabs || ""
+
+	if (prevSnapshot === undefined || prevSnapshot.openTabs !== openTabsText) {
+		if (openTabsText) {
+			details += "\n\n# VSCode Open Tabs"
+			details += `\n${openTabsText}`
+		} else if (prevSnapshot?.openTabs) {
+			details += "\n\n# VSCode Open Tabs\n(No open tabs)"
+		}
 	}
 
 	// Get task-specific and background terminals.
@@ -172,11 +206,14 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		details += terminalDetails
 	}
 
-	// Get settings for time and cost display
-	const { includeCurrentTime = true, includeCurrentCost = true, maxGitStatusFiles = 0 } = state ?? {}
+	// Time and cost are churn: they differ every turn while adding nothing the
+	// task needs, so both default off. Time is still emitted on the first turn
+	// (and on resume/subtask starts) so the model knows today's date.
+	const { includeCurrentTime = false, includeCurrentCost = false, maxGitStatusFiles = 0 } = state ?? {}
 
-	// Add current time information with timezone (if enabled).
-	if (includeCurrentTime) {
+	// Add current time information with timezone (every turn if enabled,
+	// otherwise only on full emissions).
+	if (includeCurrentTime || prevSnapshot === undefined) {
 		const now = new Date()
 
 		const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -221,10 +258,22 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		language: language ?? formatLanguage(vscode.env.language),
 	})
 
-	details += `\n\n# Current Mode\n`
-	details += `<slug>${currentMode}</slug>\n`
-	details += `<name>${modeDetails.name}</name>\n`
-	details += `<model>${modelId}</model>\n`
+	let modeSection = `\n\n# Current Mode\n`
+	modeSection += `<slug>${currentMode}</slug>\n`
+	modeSection += `<name>${modeDetails.name}</name>\n`
+	modeSection += `<model>${modelId}</model>\n`
+
+	// Re-emitted whenever mode or model changes (mode switches recompute
+	// naturally since the comparison string embeds both).
+	if (prevSnapshot === undefined || prevSnapshot.mode !== modeSection) {
+		details += modeSection
+	}
+
+	lastEnvSnapshot.set(cline, {
+		visibleFiles: visibleFilesText,
+		openTabs: openTabsText,
+		mode: modeSection,
+	})
 
 	if (includeFileDetails) {
 		details += `\n\n# Current Workspace Directory (${cline.cwd.toPosix()}) Files\n`

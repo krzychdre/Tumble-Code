@@ -146,9 +146,9 @@ describe("getEnvironmentDetails", () => {
 		expect(result).toContain("<environment_details>")
 		expect(result).toContain("</environment_details>")
 		// Visible Files and Open Tabs headers only appear when there's content
-		expect(result).toContain("# Current Time")
+		expect(result).toContain("# Current Time") // First emission for this task instance
 		expect(result).not.toContain("# Git Status") // Git status is disabled by default (maxGitStatusFiles = 0)
-		expect(result).toContain("# Current Cost")
+		expect(result).not.toContain("# Current Cost") // Cost is churn; off by default
 		expect(result).toContain("# Current Mode")
 		expect(result).toContain("<model>test-model</model>")
 
@@ -160,7 +160,8 @@ describe("getEnvironmentDetails", () => {
 			language: "en",
 		})
 
-		expect(getApiMetrics).toHaveBeenCalledWith(mockCline.clineMessages)
+		// getApiMetrics is only consulted when includeCurrentCost is enabled.
+		expect(getApiMetrics).not.toHaveBeenCalled()
 	})
 
 	it("should include file details when includeFileDetails is true", async () => {
@@ -443,5 +444,71 @@ describe("getEnvironmentDetails", () => {
 		await getEnvironmentDetails(mockCline as Task)
 
 		expect(getGitStatus).toHaveBeenCalledWith(mockCwd, 5)
+	})
+
+	describe("change-only sections", () => {
+		it("omits the unchanged mode section on later turns and re-emits it after a mode switch", async () => {
+			const first = await getEnvironmentDetails(mockCline as Task)
+			expect(first).toContain("# Current Mode")
+
+			const second = await getEnvironmentDetails(mockCline as Task)
+			expect(second).not.toContain("# Current Mode")
+
+			mockProvider.getState.mockResolvedValue({ ...mockState, mode: "architect" })
+			;(getFullModeDetails as Mock).mockResolvedValue({
+				name: "🏗️ Architect",
+				roleDefinition: "You are an architect",
+				customInstructions: "",
+			})
+
+			const third = await getEnvironmentDetails(mockCline as Task)
+			expect(third).toContain("<slug>architect</slug>")
+		})
+
+		it("re-emits all sections when includeFileDetails is true (task/resume/subtask starts)", async () => {
+			await getEnvironmentDetails(mockCline as Task)
+
+			const result = await getEnvironmentDetails(mockCline as Task, true)
+			expect(result).toContain("# Current Mode")
+			expect(result).toContain("# Current Time")
+		})
+
+		it("emits visible files only when they change, with an explicit marker when they clear", async () => {
+			const vscode = await import("vscode")
+			;(vscode.window as any).visibleTextEditors = [{ document: { uri: { fsPath: "/test/path/a.ts" } } }]
+			try {
+				const first = await getEnvironmentDetails(mockCline as Task)
+				expect(first).toContain("# VSCode Visible Files")
+				expect(first).toContain("a.ts")
+
+				const second = await getEnvironmentDetails(mockCline as Task)
+				expect(second).not.toContain("# VSCode Visible Files")
+				;(vscode.window as any).visibleTextEditors = []
+
+				const third = await getEnvironmentDetails(mockCline as Task)
+				expect(third).toContain("(No visible files)")
+			} finally {
+				;(vscode.window as any).visibleTextEditors = []
+			}
+		})
+
+		it("omits time on later turns by default but keeps it every turn when includeCurrentTime is true", async () => {
+			await getEnvironmentDetails(mockCline as Task)
+			const second = await getEnvironmentDetails(mockCline as Task)
+			expect(second).not.toContain("# Current Time")
+
+			mockProvider.getState.mockResolvedValue({ ...mockState, includeCurrentTime: true })
+			const third = await getEnvironmentDetails(mockCline as Task)
+			expect(third).toContain("# Current Time")
+		})
+
+		it("includes cost only when includeCurrentCost is explicitly enabled", async () => {
+			const withoutCost = await getEnvironmentDetails(mockCline as Task)
+			expect(withoutCost).not.toContain("# Current Cost")
+
+			mockProvider.getState.mockResolvedValue({ ...mockState, includeCurrentCost: true })
+			const withCost = await getEnvironmentDetails(mockCline as Task)
+			expect(withCost).toContain("# Current Cost")
+		})
 	})
 })
