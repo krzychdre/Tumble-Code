@@ -556,9 +556,11 @@ export class ClineProvider
 			const childTaskId = task.taskId
 			const parentTaskId = task.parentTaskId
 
-			// The popped task's fan-out (if any) is dead — its children were
-			// aborted alongside the parent. Drop their panel entries.
-			this.subagentRegistry.clearForParent(childTaskId)
+			// NOTE: deliberately no subagentRegistry cleanup here. Popping a
+			// task is often mere abandonment (switching tasks via history, an
+			// in-place rehydrate) — its fan-out children keep running detached
+			// and must stay visible in the panel. Rows are cleared only by the
+			// next fan-out for the same parent (beginFanOut).
 
 			task.emit(RooCodeEventName.TaskUnfocused)
 
@@ -3206,6 +3208,22 @@ export class ClineProvider
 	/** Look up a live headless background task (parallel subagent) by id. */
 	public getBackgroundTask(taskId: string): Task | undefined {
 		return this.backgroundTasks.get(taskId)
+	}
+
+	/**
+	 * Find the CURRENT live instance of a task by id on the foreground stack
+	 * (top-down). Used by a detached fan-out to deliver its report to the
+	 * rehydrated instance of its parent — the original instance that launched
+	 * the fan-out may have been abandoned by a task switch or in-place
+	 * rehydrate while the children kept running.
+	 */
+	public getLiveTaskInstance(taskId: string): Task | undefined {
+		for (let i = this.clineStack.length - 1; i >= 0; i--) {
+			if (this.clineStack[i].taskId === taskId) {
+				return this.clineStack[i]
+			}
+		}
+		return undefined
 	}
 
 	/**

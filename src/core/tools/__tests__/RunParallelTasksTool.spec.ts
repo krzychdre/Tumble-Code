@@ -72,6 +72,7 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 			markTerminal: vi.fn(),
 			get: vi.fn().mockReturnValue(undefined),
 		},
+		getLiveTaskInstance: vi.fn().mockReturnValue(undefined),
 	}
 	return provider as unknown as {
 		children: FakeChild[]
@@ -83,6 +84,7 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 			registerQueued: ReturnType<typeof vi.fn>
 			markTerminal: ReturnType<typeof vi.fn>
 		}
+		getLiveTaskInstance: ReturnType<typeof vi.fn>
 	}
 }
 
@@ -408,7 +410,9 @@ describe("RunParallelTasksTool.execute", () => {
 		// Wait for both children to be spawned.
 		await vi.waitFor(() => expect(provider.children.length).toBe(2))
 
-		// Emit TaskAborted on the parent — this fires the AbortController.
+		// An explicit user cancel: abortReason is set before the abort event
+		// (matching ClineProvider.cancelTask) — this fires the AbortController.
+		;(parent as any).abortReason = "user_cancelled"
 		parent.emit(RooCodeEventName.TaskAborted)
 
 		await execPromise
@@ -420,6 +424,74 @@ describe("RunParallelTasksTool.execute", () => {
 		const cancelledMatches = report.match(/CANCELLED/g)
 		expect(cancelledMatches).toHaveLength(2)
 		expect(report).toContain("2 cancelled")
+	})
+
+	it("abandonment abort (no user_cancelled) DETACHES: children keep running and finish", async () => {
+		const provider = makeFakeProvider()
+		const parent = makeFakeParentTask(provider)
+		const callbacks = makeCallbacks()
+
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			callbacks,
+		)
+
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+
+		// Abandonment (task switch / in-place rehydrate): TaskAborted fires
+		// WITHOUT abortReason = "user_cancelled" — the fan-out must survive.
+		parent.emit(RooCodeEventName.TaskAborted)
+		provider.children.forEach((c) => expect(c.abortTask).not.toHaveBeenCalled())
+
+		provider.children.forEach((c) => c.complete())
+		await execPromise
+
+		const report = callbacks.pushToolResult.mock.calls[0][0] as string
+		expect(report).toContain("2 completed")
+		expect(report).not.toContain("CANCELLED")
+	})
+
+	it("detached fan-out queues its report into the live rehydrated parent instance", async () => {
+		const provider = makeFakeProvider()
+		const addMessage = vi.fn()
+		provider.getLiveTaskInstance.mockReturnValue({ messageQueueService: { addMessage } })
+		const parent = makeFakeParentTask(provider)
+		const callbacks = makeCallbacks()
+
+		const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+
+		await vi.waitFor(() => expect(provider.children.length).toBe(1))
+		// Parent abandoned mid-run (rehydrated elsewhere).
+		;(parent as any).abandoned = true
+		parent.emit(RooCodeEventName.TaskAborted)
+		provider.children[0].complete()
+		await execPromise
+
+		expect(provider.getLiveTaskInstance).toHaveBeenCalledWith("parent-12345678")
+		expect(addMessage).toHaveBeenCalledOnce()
+		const queued = addMessage.mock.calls[0][0] as string
+		expect(queued).toContain("finished while this task was paused")
+		expect(queued).toContain("1 completed")
+	})
+
+	it("user-cancelled fan-out does NOT queue a report into the rehydrated instance", async () => {
+		const provider = makeFakeProvider()
+		const addMessage = vi.fn()
+		provider.getLiveTaskInstance.mockReturnValue({ messageQueueService: { addMessage } })
+		const parent = makeFakeParentTask(provider)
+		const callbacks = makeCallbacks()
+
+		const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+
+		await vi.waitFor(() => expect(provider.children.length).toBe(1))
+		;(parent as any).abort = true
+		;(parent as any).abortReason = "user_cancelled"
+		parent.emit(RooCodeEventName.TaskAborted)
+		await execPromise
+
+		// Cancelled on purpose: no auto-resume injection.
+		expect(addMessage).not.toHaveBeenCalled()
 	})
 
 	it("cleans up the TaskAborted listener after execution", async () => {
@@ -520,7 +592,8 @@ describe("RunParallelTasksTool.execute", () => {
 
 			await vi.waitFor(() => expect(provider.children.length).toBe(1))
 			// Don't call complete() — child will resolve as not-completed when signal fires.
-			// Instead, abort the parent to make the child resolve.
+			// Instead, user-cancel the parent to make the child resolve.
+			;(parent as any).abortReason = "user_cancelled"
 			parent.emit(RooCodeEventName.TaskAborted)
 			await execPromise
 
@@ -537,6 +610,7 @@ describe("RunParallelTasksTool.execute", () => {
 			const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
 
 			await vi.waitFor(() => expect(provider.children.length).toBe(1))
+			;(parent as any).abortReason = "user_cancelled"
 			parent.emit(RooCodeEventName.TaskAborted)
 			await execPromise
 

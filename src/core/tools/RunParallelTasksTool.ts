@@ -229,6 +229,7 @@ interface SubtaskProvider {
 	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }>
 	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number }>
 	subagentRegistry: SubtaskRegistry
+	getLiveTaskInstance(taskId: string): { messageQueueService: { addMessage(text: string): unknown } } | undefined
 }
 
 /** Truncate a subtask message for panel display. */
@@ -437,7 +438,18 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			}
 
 			const controller = new AbortController()
-			const onParentAborted = () => controller.abort()
+			const onParentAborted = () => {
+				// Only an EXPLICIT user cancel cascades to the children.
+				// Abandonment aborts (task switch via history, in-place
+				// rehydrate on cancel of another op, streaming-failure
+				// rehydrate) detach the fan-out instead: the children keep
+				// running, stay visible in the panel (individually
+				// cancellable), and the report is delivered to the parent's
+				// rehydrated instance below.
+				if (task.abortReason === "user_cancelled") {
+					controller.abort()
+				}
+			}
 			task.on(RooCodeEventName.TaskAborted, onParentAborted)
 			try {
 				const results = await runWithConcurrency(subtasks, maxConcurrency, (subtask, index) =>
@@ -450,7 +462,20 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 						signal: controller.signal,
 					}),
 				)
-				pushToolResult(formatParallelResults(results))
+				const report = formatParallelResults(results)
+				if ((task.abort || task.abandoned) && task.abortReason !== "user_cancelled") {
+					// The original tool context is dead (parent was abandoned
+					// mid-fan-out). Queue the report into the live rehydrated
+					// instance of the same task: its pending resume_task ask
+					// drains the queue, so the orchestrator auto-resumes with
+					// the results the moment they are ready.
+					provider
+						.getLiveTaskInstance(task.taskId)
+						?.messageQueueService.addMessage(
+							`All parallel subtasks launched by run_parallel_tasks finished while this task was paused. Results:\n\n${report}`,
+						)
+				}
+				pushToolResult(report)
 			} finally {
 				task.off(RooCodeEventName.TaskAborted, onParentAborted)
 			}
