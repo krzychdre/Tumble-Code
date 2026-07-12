@@ -95,6 +95,8 @@ export class TaskStreamProcessor {
 
 	// Accumulation state for the current streaming session
 	private _reasoningMessage: string = ""
+	private _requestStartTs: number = 0
+	private _firstChunkTs: number | undefined
 	private _assistantMessage: string = ""
 	private _inputTokens: number = 0
 	private _outputTokens: number = 0
@@ -168,6 +170,8 @@ export class TaskStreamProcessor {
 		this.access.cachedStreamingModel = this.access.api.getModel()
 
 		// Reset accumulation state
+		this._requestStartTs = performance.now()
+		this._firstChunkTs = undefined
 		this._reasoningMessage = ""
 		this._assistantMessage = ""
 		this._inputTokens = 0
@@ -184,6 +188,9 @@ export class TaskStreamProcessor {
 	 * Handles reasoning, usage, grounding, tool_call_partial, tool_call, and text chunks.
 	 */
 	processChunk(chunk: any, streamModelInfo: ModelInfo): void {
+		if (this._firstChunkTs === undefined) {
+			this._firstChunkTs = performance.now()
+		}
 		switch (chunk.type) {
 			case "reasoning": {
 				this._reasoningMessage += chunk.text
@@ -782,6 +789,15 @@ export class TaskStreamProcessor {
 	): (apiReqIndex: number) => Promise<void> {
 		const access = this.access
 
+		// Snapshot per-request metrics now: this drain is fire-and-forget and can
+		// outlive resetStreamingState() for the next request, which clears them.
+		const ttftMs =
+			this._firstChunkTs !== undefined ? Math.round(this._firstChunkTs - this._requestStartTs) : undefined
+		const reasoningChars = this._reasoningMessage.length
+		const toolCount = (access.assistantMessageContent ?? []).filter(
+			(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
+		).length
+
 		return async (apiReqIndex: number) => {
 			const timeoutMs = DEFAULT_USAGE_COLLECTION_TIMEOUT_MS
 			const startTime = performance.now()
@@ -866,6 +882,9 @@ export class TaskStreamProcessor {
 						cacheWriteTokens: tokens.cacheWrite,
 						cacheReadTokens: tokens.cacheRead,
 						cost: tokens.total ?? costResult.totalCost,
+						ttftMs,
+						reasoningChars,
+						toolCount,
 					})
 				}
 			}
