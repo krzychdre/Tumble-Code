@@ -724,18 +724,38 @@ export class TaskApiLoop {
 			)
 
 			if (!didToolUse) {
-				// Increment consecutive no-tool-use counter
-				this.access.consecutiveNoToolUseCount++
+				// A text-only response is treated as the completion result when
+				// the task has no incomplete todos: it runs through the real
+				// attempt_completion tool (so delegation gates and the
+				// completion ask flow behave identically) instead of paying a
+				// full extra turn on a noToolsUsed retry. With incomplete todos
+				// the retry stays — a weak model narrating mid-task must not
+				// complete the task by accident. See
+				// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5).
+				const fallback = await this.tryTextCompletionFallback()
 
-				if (this.access.consecutiveNoToolUseCount >= 2) {
-					await this.access.askSay.say("error", "MODEL_NO_TOOLS_USED")
-					this.access.consecutiveMistakeCount++
+				if (fallback === "completed") {
+					// Same downstream flow as an accepted attempt_completion:
+					// nothing to send back, the loop drains naturally.
+					return "continue"
 				}
 
-				this.access.userMessageContent.push({
-					type: "text",
-					text: formatResponse.noToolsUsed(),
-				})
+				if (fallback === "skipped") {
+					// Increment consecutive no-tool-use counter
+					this.access.consecutiveNoToolUseCount++
+
+					if (this.access.consecutiveNoToolUseCount >= 2) {
+						await this.access.askSay.say("error", "MODEL_NO_TOOLS_USED")
+						this.access.consecutiveMistakeCount++
+					}
+
+					this.access.userMessageContent.push({
+						type: "text",
+						text: formatResponse.noToolsUsed(),
+					})
+				}
+				// "feedback": the user's completion feedback is already in
+				// userMessageContent and continues the conversation below.
 			} else {
 				this.access.consecutiveNoToolUseCount = 0
 			}
@@ -755,6 +775,75 @@ export class TaskApiLoop {
 			// No assistant response - handle error
 			return this.handleEmptyAssistantResponse(currentItem, currentUserContent, stack)
 		}
+	}
+
+	/**
+	 * Treat a text-only assistant response as the completion result.
+	 *
+	 * Runs the REAL AttemptCompletionTool so the delegation gates (subtask →
+	 * parent return, cancel races, re-attach evidence) and the completion ask
+	 * flow behave exactly as if the model had called attempt_completion with
+	 * this text. Returns:
+	 * - "completed": completion flow ran; nothing to send back to the model
+	 * - "feedback": user answered the completion ask with feedback (already
+	 *   pushed to userMessageContent as plain text — there is no tool_use id
+	 *   to attach a tool_result to)
+	 * - "skipped": guards failed; caller falls back to the noToolsUsed retry
+	 */
+	private async tryTextCompletionFallback(): Promise<"completed" | "feedback" | "skipped"> {
+		const task = this.access as unknown as import("./Task").Task
+
+		const text = this.access.streamProcessor.assistantMessage.trim()
+		if (!text || this.access.isPaused || this.access.abort) {
+			return "skipped"
+		}
+
+		// A narrating model mid-task must not complete by accident: with
+		// incomplete todos the noToolsUsed retry remains the right answer.
+		const todoList = (task as any).todoList
+		if (Array.isArray(todoList) && todoList.some((todo: any) => todo?.status !== "completed")) {
+			return "skipped"
+		}
+
+		// There is no tool_use block in this turn, so anything the tool would
+		// report back (user feedback, tool errors) goes in as plain text.
+		const pushToolResult = (content: string | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam>) => {
+			if (typeof content === "string") {
+				if (content) {
+					this.access.userMessageContent.push({ type: "text", text: content })
+				}
+			} else if (Array.isArray(content)) {
+				this.access.userMessageContent.push(...content)
+			}
+		}
+
+		try {
+			const { attemptCompletionTool } = await import("../tools/AttemptCompletionTool")
+
+			await attemptCompletionTool.execute({ result: text }, task, {
+				askApproval: async () => true,
+				handleError: async (action: string, error: Error) => {
+					await this.access.askSay.say("error", `Error ${action}: ${error.message}`)
+				},
+				pushToolResult,
+				askFinishSubTaskApproval: async () => {
+					const { response } = await this.access.askSay.ask(
+						"tool",
+						JSON.stringify({ tool: "finishTask" }),
+						false,
+					)
+					return response === "yesButtonClicked"
+				},
+				toolDescription: () => "attempt_completion (text-only completion fallback)",
+			})
+		} catch (error) {
+			console.error(
+				`[Task#${this.access.taskId}.${this.access.instanceId}] text-completion fallback failed: ${error?.message ?? error}`,
+			)
+			return "skipped"
+		}
+
+		return this.access.userMessageContent.length > 0 ? "feedback" : "completed"
 	}
 
 	/**
