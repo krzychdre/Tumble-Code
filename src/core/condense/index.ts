@@ -568,7 +568,7 @@ export function getMessagesSinceLastSummary(messages: ApiMessage[]): ApiMessage[
  * keep-boundary that does not split a tool pair (an orphaned tool_result in the
  * kept tail would be stripped by `getEffectiveApiHistory`).
  */
-function toolPairsSatisfiedFrom(messages: ApiMessage[], boundary: number): boolean {
+export function toolPairsSatisfiedFrom(messages: ApiMessage[], boundary: number): boolean {
 	const toolUseIds = new Set<string>()
 	for (let i = boundary; i < messages.length; i++) {
 		const msg = messages[i]
@@ -608,9 +608,14 @@ function toolPairsSatisfiedFrom(messages: ApiMessage[], boundary: number): boole
  * - The tail never reaches back to include a prior summary, so the new summary
  *   stays the last `isSummary` in the array (which `getEffectiveApiHistory` and
  *   `getMessagesSinceLastSummary` anchor on).
- * - The boundary does not split a `tool_use`/`tool_result` pair (pulled backward,
- *   capped at `keepRecent*2` and floored, so a pathological unpaired chain can't
- *   swallow the prefix).
+ * - The boundary NEVER splits a `tool_use`/`tool_result` pair. Two-direction
+ *   search: first pull BACKWARD from `messages.length - keepRecent` (prefer
+ *   keeping more raw messages), capped at `keepRecent*2` and floored so a
+ *   pathological unpaired chain can't swallow the prefix. If the backward pull
+ *   exhausts the cap without satisfying `toolPairsSatisfiedFrom`, fall FORWARD
+ *   from the original position upward — the forward search always terminates
+ *   because `boundary === messages.length` trivially satisfies (empty tail =
+ *   classic fresh start, the safe degradation).
  *
  * Pure and deterministic; exported for direct unit testing.
  */
@@ -630,12 +635,26 @@ export function computeCondenseKeepBoundary(
 	const sinceLastStart = messages.length - sinceLast.length
 	const floor = sinceLast.length > 0 && sinceLast[0].isSummary ? sinceLastStart + 1 : sinceLastStart
 
-	let boundary = messages.length - keepRecent
+	const initialBoundary = messages.length - keepRecent
+
 	// Pull backward to avoid splitting a tool pair, bounded so it can't run away.
 	const minBoundary = Math.max(floor, messages.length - keepRecent * 2)
+	let boundary = initialBoundary
 	while (boundary > minBoundary && !toolPairsSatisfiedFrom(messages, boundary)) {
 		boundary--
 	}
+
+	// If the backward pull exhausted the cap without satisfying toolPairsSatisfiedFrom,
+	// the current boundary still splits a pair. Fall FORWARD from the original position:
+	// search upward for the first satisfying boundary. This always terminates because
+	// boundary === messages.length trivially satisfies (empty tail = fresh start).
+	if (!toolPairsSatisfiedFrom(messages, boundary)) {
+		boundary = initialBoundary
+		while (boundary < messages.length && !toolPairsSatisfiedFrom(messages, boundary)) {
+			boundary++
+		}
+	}
+
 	return Math.max(boundary, floor)
 }
 

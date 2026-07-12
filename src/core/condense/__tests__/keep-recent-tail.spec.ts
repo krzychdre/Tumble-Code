@@ -7,6 +7,7 @@ import {
 	summarizeConversation,
 	getEffectiveApiHistory,
 	computeCondenseKeepBoundary,
+	toolPairsSatisfiedFrom,
 	CONDENSE_KEEP_RECENT_MESSAGES,
 	CONDENSE_MIN_SUMMARIZED_MESSAGES,
 } from "../index"
@@ -87,14 +88,121 @@ describe("computeCondenseKeepBoundary", () => {
 				ts: i + 1,
 			}
 		}
-		// Floor is the index just after the prior summary (3 + 1 = 4); the boundary
-		// is clamped there rather than swallowing the prior summary into the tail.
-		expect(computeCondenseKeepBoundary(messages)).toBe(4)
+		// With the forward fallback, no boundary < messages.length satisfies
+		// (every tail has orphan results), so the function returns messages.length
+		// (fresh start) rather than a floor-clamped boundary that splits pairs.
+		// The floor guarantee still holds: the returned boundary (16) is above the
+		// floor (4), so the prior summary is never swallowed into the tail.
+		expect(computeCondenseKeepBoundary(messages)).toBe(16)
 	})
 
 	it("respects a keepRecent override", () => {
 		const messages = plainConversation(20)
 		expect(computeCondenseKeepBoundary(messages, 3)).toBe(20 - 3)
+	})
+
+	// --- Forward-fallback cases (register tech-debt: capped backward pull splits a pair) ---
+
+	it("forward fallback: never returns a boundary that splits a tool pair when backward is capped", () => {
+		// 20 messages, keepRecent=4. Backward window is [12, 16].
+		// Messages 12-16: every user message carries an orphan tool_result (its tool_use
+		// sits in the prefix, before the window). Assistant messages in the window are
+		// plain text (no tool_use), so every boundary in [12, 16] has at least one
+		// orphaned tool_result in the tail → toolPairsSatisfiedFrom returns false.
+		// Messages 17-19: clean plain text (no tool blocks). Boundary 17 starts a tail
+		// with no tool_results at all → trivially satisfied.
+		//
+		// Pre-fix: backward loop exhausts at minBoundary=12, returns 12 (splits pair at msg 12).
+		// Post-fix: forward search from 16 finds boundary 17 (satisfied) → returns 17.
+		const messages = plainConversation(20)
+		messages[12] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-12", content: "x" }],
+			ts: 13,
+		}
+		messages[13] = { role: "assistant", content: "text", ts: 14 }
+		messages[14] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-14", content: "x" }],
+			ts: 15,
+		}
+		messages[15] = { role: "assistant", content: "text", ts: 16 }
+		messages[16] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-16", content: "x" }],
+			ts: 17,
+		}
+		// 17-19 stay as plain text from plainConversation(20) — no tool blocks.
+
+		const keepRecent = 4
+		const boundary = computeCondenseKeepBoundary(messages, keepRecent)
+		// The returned boundary must satisfy toolPairsSatisfiedFrom.
+		expect(toolPairsSatisfiedFrom(messages, boundary)).toBe(true)
+		// Specifically, the forward fallback should land at 17 (first clean boundary).
+		expect(boundary).toBe(17)
+	})
+
+	it("degenerate case: no satisfying boundary except messages.length returns messages.length", () => {
+		// Every user message in the tail region carries an orphan tool_result whose
+		// matching tool_use is in the prefix. The last message is also an orphan
+		// tool_result, so no boundary < messages.length is satisfied.
+		// Forward search terminates at messages.length (empty tail = fresh start).
+		const messages = plainConversation(20)
+		messages[12] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-12", content: "x" }],
+			ts: 13,
+		}
+		messages[13] = { role: "assistant", content: "text", ts: 14 }
+		messages[14] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-14", content: "x" }],
+			ts: 15,
+		}
+		messages[15] = { role: "assistant", content: "text", ts: 16 }
+		messages[16] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-16", content: "x" }],
+			ts: 17,
+		}
+		messages[17] = { role: "assistant", content: "text", ts: 18 }
+		messages[18] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-18", content: "x" }],
+			ts: 19,
+		}
+		messages[19] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "ghost-19", content: "x" }],
+			ts: 20,
+		}
+
+		const keepRecent = 4
+		const boundary = computeCondenseKeepBoundary(messages, keepRecent)
+		expect(boundary).toBe(messages.length)
+		expect(toolPairsSatisfiedFrom(messages, boundary)).toBe(true)
+	})
+
+	it("regression: backward-satisfiable fixture returns the same boundary as before the change", () => {
+		// The existing "pulls backward" test already asserts boundary === 13 for the
+		// default keepRecent. Here we assert the same with an explicit keepRecent
+		// and verify it's identical to what the backward pull alone would produce.
+		const messages = plainConversation(20)
+		messages[13] = {
+			role: "assistant",
+			content: [{ type: "tool_use", id: "pair-1", name: "read_file", input: {} }],
+			ts: 14,
+		}
+		messages[14] = {
+			role: "user",
+			content: [{ type: "tool_result", tool_use_id: "pair-1", content: "file contents" }],
+			ts: 15,
+		}
+		const keepRecent = 6
+		// Boundary at 14 splits the pair (tool_result at 14 orphaned); pulled back to 13.
+		expect(computeCondenseKeepBoundary(messages, keepRecent)).toBe(13)
+		// Also verify the invariant holds.
+		expect(toolPairsSatisfiedFrom(messages, 13)).toBe(true)
 	})
 })
 
