@@ -50,7 +50,8 @@
 			"completed": "Completed",
 			"failed": "Failed",
 			"cancelled": "Cancelled"
-		}
+		},
+		"apiConfig": "API profile: {{name}} (pinned to the subtask's mode — change it in Settings → Modes)"
 	},
 	"retry": {
 		"title": "Retry",

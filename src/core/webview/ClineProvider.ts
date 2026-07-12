@@ -3141,7 +3141,21 @@ export class ClineProvider
 		} = {},
 	): Promise<Task> {
 		const state = await this.getState()
-		const apiConfiguration = options.apiConfiguration ?? state.apiConfiguration
+		// Model resolution, most specific wins: explicit apiConfiguration from
+		// the caller → the subtask mode's pinned API profile (same binding a
+		// foreground mode switch applies) → the currently active profile.
+		// Mode resolution is scoped to panel-visible subagents so internal
+		// background tasks (memory writers) keep their explicit/current config.
+		let apiConfiguration = options.apiConfiguration
+		let apiConfigName = options.apiConfiguration ? undefined : state.currentApiConfigName
+		if (!apiConfiguration && options.subagentInfo && options.taskMode) {
+			const resolved = await this.getApiConfigurationForMode(options.taskMode)
+			if (resolved) {
+				apiConfiguration = resolved.apiConfiguration
+				apiConfigName = resolved.name
+			}
+		}
+		apiConfiguration ??= state.apiConfiguration
 		const { experiments } = state
 
 		const task = new Task({
@@ -3176,7 +3190,7 @@ export class ClineProvider
 				mode: options.taskMode ?? state.mode,
 				description: options.subagentInfo.description,
 				status: "running",
-				apiConfigName: state.currentApiConfigName,
+				apiConfigName,
 				tokensIn: 0,
 				tokensOut: 0,
 				totalCost: 0,
@@ -3192,6 +3206,40 @@ export class ClineProvider
 	/** Look up a live headless background task (parallel subagent) by id. */
 	public getBackgroundTask(taskId: string): Task | undefined {
 		return this.backgroundTasks.get(taskId)
+	}
+
+	/**
+	 * Resolve the API profile pinned to `mode` (the "use a specific
+	 * configuration for this mode" binding — the same source handleModeSwitch
+	 * applies to foreground tasks). Returns undefined — meaning "use the
+	 * current profile" — when no binding exists, the profile is an empty CLI
+	 * placeholder (no apiProvider), the workspace locks its API config across
+	 * modes, or resolution fails for any reason.
+	 */
+	public async getApiConfigurationForMode(
+		mode: string,
+	): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined> {
+		try {
+			if (this.context.workspaceState.get("lockApiConfigAcrossModes", false)) {
+				return undefined
+			}
+			const configId = await this.providerSettingsManager.getModeConfigId(mode)
+			if (!configId) {
+				return undefined
+			}
+			const profile = await this.providerSettingsManager.getProfile({ id: configId })
+			if (!profile.name || !profile.apiProvider) {
+				return undefined
+			}
+			return { apiConfiguration: profile, name: profile.name }
+		} catch (error) {
+			this.log(
+				`[getApiConfigurationForMode] failed for mode "${mode}": ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+			return undefined
+		}
 	}
 
 	/**

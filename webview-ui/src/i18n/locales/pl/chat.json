@@ -50,7 +50,8 @@
 			"completed": "Ukończony",
 			"failed": "Nieudany",
 			"cancelled": "Anulowany"
-		}
+		},
+		"apiConfig": "Profil API: {{name}} (przypięty do trybu podzadania — zmień w Ustawienia → Tryby)"
 	},
 	"tokenProgress": {
 		"availableSpace": "Dostępne miejsce: {{amount}} tokenów",

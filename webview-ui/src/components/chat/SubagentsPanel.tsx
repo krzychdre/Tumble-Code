@@ -374,6 +374,13 @@ const SubagentRow = ({ summary }: { summary: SubagentSummary }) => {
 					<span className="text-xs px-1 py-0.5 rounded bg-vscode-badge-background text-vscode-badge-foreground shrink-0">
 						{summary.mode}
 					</span>
+					{summary.apiConfigName && (
+						<span
+							className="text-xs text-vscode-descriptionForeground shrink-0 max-w-24 truncate"
+							title={t("chat:subagents.apiConfig", { name: summary.apiConfigName })}>
+							{summary.apiConfigName}
+						</span>
+					)}
 					<span className="text-sm truncate grow" title={summary.description}>
 						{summary.description}
 					</span>
