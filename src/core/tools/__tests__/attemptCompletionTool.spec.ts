@@ -660,8 +660,12 @@ describe("attemptCompletionTool", () => {
 
 		let mockGetTaskWithId: ReturnType<typeof vi.fn>
 		let mockReopenParentFromDelegation: ReturnType<typeof vi.fn>
+		let mockTryReattachDelegatedParent: ReturnType<typeof vi.fn>
 
-		const setupDelegation = (parentHistory: { status?: string; awaitingChildId?: string }) => {
+		const setupDelegation = (
+			parentHistory: { status?: string; awaitingChildId?: string },
+			options: { tryReattach?: boolean } = {},
+		) => {
 			mockGetTaskWithId = vi.fn(async (id: string) => {
 				if (id === CHILD_ID) {
 					return { historyItem: { id: CHILD_ID, status: "active" } }
@@ -669,6 +673,7 @@ describe("attemptCompletionTool", () => {
 				return { historyItem: { id: PARENT_ID, ...parentHistory } }
 			})
 			mockReopenParentFromDelegation = vi.fn().mockResolvedValue(true)
+			mockTryReattachDelegatedParent = vi.fn().mockResolvedValue(options.tryReattach ?? false)
 			;(mockTask as any).parentTaskId = PARENT_ID
 			mockTask.clineMessages = []
 			mockTask.didToolFailInCurrentTurn = false
@@ -676,6 +681,7 @@ describe("attemptCompletionTool", () => {
 				deref: () => ({
 					getTaskWithId: mockGetTaskWithId,
 					reopenParentFromDelegation: mockReopenParentFromDelegation,
+					tryReattachDelegatedParent: mockTryReattachDelegatedParent,
 				}),
 			} as any
 
@@ -724,14 +730,42 @@ describe("attemptCompletionTool", () => {
 			expect(mockTask.ask).not.toHaveBeenCalledWith("completion_result", "", false)
 		})
 
-		it("finalizes (does NOT delegate) when the parent was genuinely detached (awaitingChildId cleared)", async () => {
-			const block = setupDelegation({ status: "active", awaitingChildId: undefined })
+		it("finalizes (does NOT delegate) when the parent was genuinely detached (awaitingChildId cleared) and re-attach fails", async () => {
+			const block = setupDelegation({ status: "active", awaitingChildId: undefined }, { tryReattach: false })
 
 			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
 
+			expect(mockTryReattachDelegatedParent).toHaveBeenCalledWith(PARENT_ID, CHILD_ID)
 			expect(mockReopenParentFromDelegation).not.toHaveBeenCalled()
 			// falls through to the normal whole-task completion ask flow
 			expect(mockTask.ask).toHaveBeenCalledWith("completion_result", "", false)
+		})
+
+		it("delegates to parent when detached but tryReattachDelegatedParent succeeds (re-attach path)", async () => {
+			const block = setupDelegation({ status: "active", awaitingChildId: undefined }, { tryReattach: true })
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			// Re-attach was attempted (gate failed) and succeeded
+			expect(mockTryReattachDelegatedParent).toHaveBeenCalledWith(PARENT_ID, CHILD_ID)
+			// The delegation flow ran (reopenParentFromDelegation called)
+			expect(mockReopenParentFromDelegation).toHaveBeenCalledWith(
+				expect.objectContaining({ parentTaskId: PARENT_ID, childTaskId: CHILD_ID }),
+			)
+			// must NOT fall through to the whole-task completion ask
+			expect(mockTask.ask).not.toHaveBeenCalledWith("completion_result", "", false)
+		})
+
+		it("does NOT call tryReattachDelegatedParent when the gate already passes (short-circuit)", async () => {
+			const block = setupDelegation({ status: "delegated", awaitingChildId: CHILD_ID })
+
+			await attemptCompletionTool.handle(mockTask as Task, block, callbacks())
+
+			// Gate passed — tryReattachDelegatedParent should NOT be called
+			expect(mockTryReattachDelegatedParent).not.toHaveBeenCalled()
+			expect(mockReopenParentFromDelegation).toHaveBeenCalledWith(
+				expect.objectContaining({ parentTaskId: PARENT_ID, childTaskId: CHILD_ID }),
+			)
 		})
 
 		it("finalizes (does NOT delegate) when the parent is already completed", async () => {

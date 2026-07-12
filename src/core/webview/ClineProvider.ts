@@ -3742,6 +3742,145 @@ export class ClineProvider
 	}
 
 	/**
+	 * Attempt to re-attach a detached parent when its cancelled/resumed child later completes.
+	 *
+	 * Both `cancelTask` and `removeClineFromStack` deliberately detach the parent
+	 * (status → "active", awaitingChildId → undefined) so the parent is not stuck
+	 * waiting for a dead child. But if the child is later resumed and completes,
+	 * nothing re-establishes delegation — so the child falls through to standalone
+	 * completion instead of returning its result to the parent.
+	 *
+	 * This method re-stamps the parent `{status: "delegated", awaitingChildId: childTaskId}`
+	 * ONLY when ALL five evidence conditions hold (see ai_plans/2026-07-12_delegated-child-return-after-cancel.md):
+	 *   1. parentHistory.status === "active" (not completed; not already delegated to someone else);
+	 *   2. parentHistory.awaitingChildId === undefined (no live delegation);
+	 *   3. parentHistory.delegatedToId === childTaskId (the parent's LAST delegation was to THIS child);
+	 *   4. parent is not currently open in the task stack (user is not actively working in it);
+	 *   5. untouched-tail proof: the parent's persisted API messages still end frozen at the
+	 *      delegation — the last `new_task` tool_use has NO tool_result answering it in any
+	 *      later message (same backward scan as reopenParentFromDelegation).
+	 *
+	 * Returns true on successful re-attach, false otherwise (never throws).
+	 */
+	public async tryReattachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean> {
+		try {
+			// 1-3: Load parent history and check the three metadata conditions.
+			const { historyItem: parentHistory } = await this.getTaskWithId(parentTaskId)
+
+			if (parentHistory.status !== "active") {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} status is "${parentHistory.status}", not "active"`,
+				)
+				return false
+			}
+
+			if (parentHistory.awaitingChildId !== undefined) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has awaitingChildId="${parentHistory.awaitingChildId}"`,
+				)
+				return false
+			}
+
+			if (parentHistory.delegatedToId !== childTaskId) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} delegatedToId="${parentHistory.delegatedToId}" !== child "${childTaskId}"`,
+				)
+				return false
+			}
+
+			// 4: Parent must not be currently open in the task stack.
+			const stackIds = this.getCurrentTaskStack()
+			if (stackIds.includes(parentTaskId)) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} is currently open in the task stack [${stackIds.join(", ")}]`,
+				)
+				return false
+			}
+
+			// 5: Untouched-tail proof — read the parent's persisted API messages and scan
+			//    backward for the last `new_task` tool_use, then verify NO later message
+			//    contains a `tool_result` with that tool_use_id.
+			let parentApiMessages: any[] = []
+			try {
+				parentApiMessages = (await readApiMessages({
+					taskId: parentTaskId,
+					globalStoragePath: this.contextProxy.globalStorageUri.fsPath,
+				})) as any[]
+			} catch (readErr) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: failed to read parent API messages for ${parentTaskId}: ${
+						readErr instanceof Error ? readErr.message : String(readErr)
+					}`,
+				)
+				return false
+			}
+
+			if (!Array.isArray(parentApiMessages)) {
+				this.log(`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} API messages is not an array`)
+				return false
+			}
+
+			// Same backward scan as reopenParentFromDelegation (~line 3827-3837).
+			let toolUseId: string | undefined
+			let toolUseIndex = -1
+			for (let i = parentApiMessages.length - 1; i >= 0; i--) {
+				const msg = parentApiMessages[i]
+				if (msg.role === "assistant" && Array.isArray(msg.content)) {
+					for (const block of msg.content) {
+						if (block.type === "tool_use" && block.name === "new_task") {
+							toolUseId = block.id
+							toolUseIndex = i
+							break
+						}
+					}
+					if (toolUseId) break
+				}
+			}
+
+			if (!toolUseId) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: no new_task tool_use found in parent ${parentTaskId} API history (cannot prove frozen state)`,
+				)
+				return false
+			}
+
+			// Scan ALL messages AFTER the tool_use for a matching tool_result.
+			for (let i = toolUseIndex; i < parentApiMessages.length; i++) {
+				const msg = parentApiMessages[i]
+				if (msg.role === "user" && Array.isArray(msg.content)) {
+					for (const block of msg.content) {
+						if (block.type === "tool_result" && block.tool_use_id === toolUseId) {
+							this.log(
+								`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
+							)
+							return false
+						}
+					}
+				}
+			}
+
+			// All five conditions hold — re-attach.
+			await this.updateTaskHistory({
+				...parentHistory,
+				status: "delegated",
+				awaitingChildId: childTaskId,
+			})
+
+			this.log(
+				`[tryReattachDelegatedParent] Re-attached parent ${parentTaskId} to child ${childTaskId} (status: active → delegated, awaitingChildId: undefined → ${childTaskId})`,
+			)
+			return true
+		} catch (err) {
+			this.log(
+				`[tryReattachDelegatedParent] Error re-attaching parent ${parentTaskId} to child ${childTaskId}: ${
+					err instanceof Error ? err.message : String(err)
+				}`,
+			)
+			return false
+		}
+	}
+
+	/**
 	 * Reopen parent task from delegation with write-back and events.
 	 */
 	public async reopenParentFromDelegation(params: {

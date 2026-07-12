@@ -31,6 +31,7 @@ interface DelegationProvider {
 		childTaskId: string
 		completionResultSummary: string
 	}): Promise<boolean>
+	tryReattachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean>
 }
 
 export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
@@ -115,10 +116,18 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 							// "active" while preserving awaitingChildId (see
 							// ai_plans/2026-06-08_delegated-subtask-no-return.md). A real detach always clears
 							// awaitingChildId, so keying on it preserves #73's cancel-race protection.
-							if (
-								parentHistory?.awaitingChildId === task.taskId &&
-								parentHistory?.status !== "completed"
-							) {
+							//
+							// If the gate fails (parent was detached by cancel/restart), try to re-attach
+							// via tryReattachDelegatedParent — which re-stamps the parent ONLY when all five
+							// evidence conditions hold (see ai_plans/2026-07-12_delegated-child-return-after-cancel.md).
+							// Short-circuit: re-attach is only attempted when the gate fails.
+							const gatePasses =
+								parentHistory?.awaitingChildId === task.taskId && parentHistory?.status !== "completed"
+							const shouldDelegate =
+								gatePasses ||
+								(await provider.tryReattachDelegatedParent(task.parentTaskId!, task.taskId))
+
+							if (shouldDelegate) {
 								const delegation = await this.delegateToParent(
 									task,
 									result,
