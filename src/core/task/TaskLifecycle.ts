@@ -530,9 +530,34 @@ export class TaskLifecycle {
 	/**
 	 * Abort the task, stopping any running operations and cleaning up.
 	 *
+	 * Split into three ordered phases so the load-bearing ordering — recently
+	 * the source of several bugs (writers skipped on user-cancel + background,
+	 * drains before dispose, TaskAborted emitted before dispose) — is explicit:
+	 *
+	 *   1. prepareAbort  — flags + emit + trigger memory writers
+	 *   2. cleanupAbort  — dispose + persist messages
+	 *   3. drainAbort    — await in-flight extraction/dreams
+	 *
 	 * @param isAbandoned - If true, marks the task as abandoned (different from user-cancelled)
 	 */
 	async abortTask(isAbandoned = false): Promise<void> {
+		const isUserCancelled = this.prepareAbort(isAbandoned)
+		await this.cleanupAbort()
+		await this.drainAbort(isUserCancelled)
+	}
+
+	/**
+	 * Phase 1 of abort: set flags, reset counters, force final token usage,
+	 * emit TaskAborted, and trigger memory background writers.
+	 *
+	 * Ordering constraint: MUST run before cleanupAbort and drainAbort.
+	 * Sets the `abort` flag that stops autonomously running promises, emits
+	 * the abort event while task state is still intact, and fires memory
+	 * writers before dispose tears anything down.
+	 *
+	 * @returns `isUserCancelled` — needed by drainAbort's guard.
+	 */
+	private prepareAbort(isAbandoned: boolean): boolean {
 		// Aborting task
 
 		// Will stop any autonomously running promises.
@@ -574,6 +599,17 @@ export class TaskLifecycle {
 			}
 		}
 
+		return isUserCancelled
+	}
+
+	/**
+	 * Phase 2 of abort: dispose the task and persist final messages.
+	 *
+	 * Ordering constraint: MUST run after prepareAbort (flags set, writers
+	 * triggered) and before drainAbort (messages must be persisted before
+	 * we await background work that might reference them).
+	 */
+	private async cleanupAbort(): Promise<void> {
 		try {
 			this.dispose() // Call the centralized dispose method
 		} catch (error) {
@@ -590,7 +626,17 @@ export class TaskLifecycle {
 				error,
 			)
 		}
+	}
 
+	/**
+	 * Phase 3 of abort: drain in-flight memory extraction and dreams.
+	 *
+	 * Ordering constraint: MUST run after cleanupAbort (dispose + save done).
+	 * Skipped on user cancel (holds isStreaming=true past cancelTask's 3s
+	 * pWaitFor and freezes the UI) and for background tasks (they never start
+	 * extraction/dreams, so there is nothing to drain).
+	 */
+	private async drainAbort(isUserCancelled: boolean): Promise<void> {
 		// Drain in-flight memory extraction so it isn't orphaned on shutdown.
 		// Soft 60s timeout (unref'd internally) so it never blocks process exit.
 		// Skipped on user cancel: the stream loop awaits abortTask()
