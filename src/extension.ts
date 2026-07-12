@@ -245,26 +245,40 @@ export async function activate(context: vscode.ExtensionContext) {
 		postStateListener()
 	}
 
-	cloudService = await CloudService.createInstance(context, cloudLogger, {
-		"auth-state-changed": authStateChangedHandler,
-		"settings-updated": settingsUpdatedHandler,
-		"user-info": userInfoHandler,
-	})
-
+	// Initialize cloud service. A broken cloud backend (bad URL, corrupted
+	// credentials, Authentik down) must NEVER take down the whole extension —
+	// wrap the entire cloud-init block so activation continues in local-only mode.
 	try {
-		if (cloudService.telemetryClient) {
-			TelemetryService.instance.register(cloudService.telemetryClient)
+		cloudService = await CloudService.createInstance(context, cloudLogger, {
+			"auth-state-changed": authStateChangedHandler,
+			"settings-updated": settingsUpdatedHandler,
+			"user-info": userInfoHandler,
+		})
+
+		// Telemetry registration fails softly — a broken telemetry client must
+		// not disable the rest of the cloud layer (pre-existing semantics).
+		try {
+			if (cloudService.telemetryClient) {
+				TelemetryService.instance.register(cloudService.telemetryClient)
+			}
+		} catch (error) {
+			outputChannel.appendLine(
+				`[CloudService] Failed to register TelemetryClient: ${error instanceof Error ? error.message : String(error)}`,
+			)
 		}
+
+		// Add to subscriptions for proper cleanup on deactivate.
+		context.subscriptions.push(cloudService)
 	} catch (error) {
+		cloudService = undefined
 		outputChannel.appendLine(
-			`[CloudService] Failed to register TelemetryClient: ${error instanceof Error ? error.message : String(error)}`,
+			`[CloudService] initialization failed — continuing in local-only mode: ${error instanceof Error ? error.message : String(error)}`,
 		)
 	}
 
-	// Add to subscriptions for proper cleanup on deactivate.
-	context.subscriptions.push(cloudService)
-
 	// Trigger initial cloud profile sync now that CloudService is ready.
+	// Safe to call even when cloudService is undefined — the provider internally
+	// guards with CloudService.hasInstance().
 	try {
 		await provider.initializeCloudProfileSyncWhenReady()
 	} catch (error) {
