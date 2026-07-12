@@ -34,6 +34,31 @@ import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 
+// Tools that trigger a pre-edit checkpoint in presentAssistantMessage. Kept in
+// sync with the checkpointSaveAndMark call sites there.
+const CHECKPOINTED_WRITE_TOOLS = new Set([
+	"write_to_file",
+	"apply_diff",
+	"edit",
+	"search_and_replace",
+	"search_replace",
+	"edit_file",
+	"apply_patch",
+])
+
+// Tools that cannot mutate the workspace. An eager pre-edit checkpoint is only
+// safe while every earlier tool block in the turn is in this set — anything
+// else (execute_command, MCP tools, other writes) may still be mutating files
+// when the write tool's arguments start streaming.
+const WORKSPACE_READ_ONLY_TOOLS = new Set([
+	"read_file",
+	"list_files",
+	"search_files",
+	"codebase_search",
+	"list_code_definition_names",
+	"read_command_output",
+])
+
 export interface TaskStreamProcessorAccess {
 	taskId: string
 	instanceId: string
@@ -146,6 +171,10 @@ export class TaskStreamProcessor {
 	async resetStreamingState(): Promise<void> {
 		this.access.currentStreamingContentIndex = 0
 		this.access.currentStreamingDidCheckpoint = false
+		// Drop any checkpoint from a previous (possibly aborted) turn — it
+		// captured state before that turn's writes, so it must not satisfy this
+		// turn's pre-edit checkpoint.
+		this._task.pendingCheckpointSave = undefined
 		this.access.assistantMessageContent = []
 		this.access.didCompleteReadingStream = false
 		this.access.userMessageContent = []
@@ -314,6 +343,32 @@ export class TaskStreamProcessor {
 
 				// Initialize streaming in the per-task parser
 				this.toolCallParser.startStreamingToolCall(event.id, event.name as ToolName)
+
+				// Eager pre-edit checkpoint: a write tool's arguments (whole file
+				// contents / diffs) can stream for seconds. Start the checkpoint
+				// now so it overlaps argument streaming instead of blocking the
+				// tool execution in checkpointSaveAndMark. Only safe while every
+				// earlier tool block this turn is workspace-read-only; otherwise
+				// checkpointSaveAndMark falls back to the cold save after the
+				// mutating tool finished. The stored promise is awaited there;
+				// errors surface at the await site (the extra catch below only
+				// suppresses an unhandled rejection when no write tool ends up
+				// executing this turn).
+				if (
+					CHECKPOINTED_WRITE_TOOLS.has(event.name) &&
+					!this.access.currentStreamingDidCheckpoint &&
+					typeof this._task?.checkpointSave === "function" &&
+					this._task.pendingCheckpointSave === undefined &&
+					this.access.assistantMessageContent.every(
+						(b) =>
+							b.type === "text" ||
+							(b.type === "tool_use" && WORKSPACE_READ_ONLY_TOOLS.has(b.name as string)),
+					)
+				) {
+					const pending: Promise<void> = this._task.checkpointSave(true)
+					pending.catch(() => {})
+					this._task.pendingCheckpointSave = pending
+				}
 
 				// Before adding a new tool, finalize any preceding text block
 				// This prevents the text block from blocking tool presentation

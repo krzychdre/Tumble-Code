@@ -8,11 +8,11 @@ Base: installed stack tip `fix/delegated-child-return-after-cancel` (a9474a665),
 ## Correction to the parent analysis (challenged and revised)
 
 The analysis claimed the `attempt_completion` finale "saves ~1 turn/task" if removed.
-**Measured: false.** All 11 completed GLM tasks end with a _lone_ attempt_completion
+**Measured: false.** All 11 completed GLM tasks end with a _lone_ attempt*completion
 turn (0 batched with other tools) — but a text-only final response would be the same
 turn count. The fallback (WS-5) is therefore a **robustness + prerequisite** change,
 not a turn saver, and is demoted below the decode-side workstreams. The only real
-turn saver in that area is the _completion-batching experiment_ (WS-5b), which is
+turn saver in that area is the \_completion-batching experiment* (WS-5b), which is
 higher risk and gated behind a flag + benchmark.
 
 Revised lever ranking (decode 22 s/turn is the bottleneck; TTFT 1.3 s is not):
@@ -100,6 +100,19 @@ mitigated because the info was sent when it last changed and remains in history.
 
 ## WS-3 `feat/concurrent-safe-tools` — parallel reads + async checkpoints
 
+> **Implementation outcome (2026-07-13):** the concurrent read-execution half
+> was **dropped** after code-level reassessment: tools execute _during_
+> streaming through `presentAssistantMessage`'s index machinery (not
+> post-stream), so a safe concurrent pre-pass would have to rework the hottest
+> code path in the extension — while local reads cost milliseconds against a
+> 22 s decode bottleneck. Poor risk/benefit; revisit only if WS-0 benchmarks
+> show tool-execution time is a material share of a turn. The checkpoint half
+> shipped stronger than planned: instead of fire-and-forget-with-barrier, the
+> pre-edit checkpoint now starts **eagerly at `tool_call_start`** of a write
+> tool (guarded: only while every earlier tool block that turn is
+> workspace-read-only), overlapping the seconds a diff spends streaming its
+> arguments; `checkpointSaveAndMark` awaits the in-flight promise.
+
 **Goal:** cut serial wall-clock inside multi-tool turns (47.7% of tool-turns have
 ≥2 tools; today [presentAssistantMessage](src/core/assistant-message/presentAssistantMessage.ts)
 walks blocks strictly sequentially) and take checkpoint saves off the critical path.
@@ -108,7 +121,7 @@ walks blocks strictly sequentially) and take checkpoint saves off the critical p
 
 - Read-only set: `read_file`, `list_files`, `search_files`, `codebase_search`,
   `list_code_definition_names`. When a completed assistant message contains ≥2
-  tool_use blocks and a _consecutive run_ of them are all in the read-only set AND
+  tool*use blocks and a \_consecutive run* of them are all in the read-only set AND
   all auto-approved, execute that run with `Promise.all` (cap 8), then emit results
   in original block order (result ordering must stay deterministic for history).
   Any non-read tool ends the run and falls back to the existing sequential path.
