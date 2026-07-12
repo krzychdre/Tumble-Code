@@ -43,6 +43,13 @@ export interface ParallelSubtaskResult {
 
 const DEFAULT_MODE = "code"
 const DEFAULT_MAX_CONCURRENCY = DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
+
+/**
+ * Modes that are never allowed for a parallel subtask. Subtasks are small
+ * one-shot jobs; architecture/planning and orchestration are serious,
+ * long-horizon work that belongs in the parent task itself.
+ */
+export const DISALLOWED_SUBTASK_MODES = ["architect", "orchestrator"] as const
 /** Turn cap per subagent — a runaway backstop, generous enough for real work. */
 export const SUBAGENT_MAX_TURNS = 50
 
@@ -68,7 +75,18 @@ export function validateParallelParams(
 		if (typeof message !== "string" || message.trim().length === 0) {
 			return { ok: false, error: `Subtask #${i + 1} is missing a non-empty \`message\`.` }
 		}
-		subtasks.push({ message, mode: raw[i]?.mode || DEFAULT_MODE })
+		const mode = raw[i]?.mode || DEFAULT_MODE
+		if ((DISALLOWED_SUBTASK_MODES as readonly string[]).includes(mode)) {
+			return {
+				ok: false,
+				error:
+					`Subtask #${i + 1} uses mode "${mode}", which is not allowed for parallel subtasks. ` +
+					`Parallel subtasks are small one-shot jobs (answering a question in ask mode, web research, ` +
+					`a small scoped code edit, running tests) — do the ${mode} work yourself in this task and ` +
+					`fan out only the small independent pieces.`,
+			}
+		}
+		subtasks.push({ message, mode })
 	}
 	const cap =
 		Number.isFinite(maxConcurrencyCap) && maxConcurrencyCap >= 1

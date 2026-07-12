@@ -194,6 +194,19 @@ describe("RunParallelTasksTool helpers", () => {
 			})
 		})
 
+		it("rejects architect/orchestrator subtask modes with a corrective error", () => {
+			for (const mode of ["architect", "orchestrator"]) {
+				const r = validateParallelParams({ subtasks: [{ message: "plan the system", mode }] })
+				expect(r.ok).toBe(false)
+				if (!r.ok) {
+					expect(r.error).toContain(`"${mode}"`)
+					expect(r.error).toContain("one-shot")
+				}
+			}
+			// Lightweight modes stay allowed.
+			expect(validateParallelParams({ subtasks: [{ message: "q", mode: "ask" }] }).ok).toBe(true)
+		})
+
 		it("clamps the requested concurrency to the user's configured cap", () => {
 			const many = Array.from({ length: 10 }, (_, i) => ({ message: `m${i}` }))
 			expect(validateParallelParams({ subtasks: many, maxConcurrency: 8 }, 2)).toMatchObject({
