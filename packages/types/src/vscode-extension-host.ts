@@ -322,6 +322,8 @@ export type ExtensionState = Pick<
 	| "includeCurrentTime"
 	| "includeCurrentCost"
 	| "maxGitStatusFiles"
+	| "parallelTasksMaxConcurrency"
+	| "subagentFollowupTimeoutSec"
 	| "requestDelaySeconds"
 	| "showWorktreesInHomeScreen"
 	| "disabledTools"

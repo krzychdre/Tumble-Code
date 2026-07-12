@@ -23,6 +23,15 @@ import { languagesSchema } from "./vscode.js"
  */
 export const DEFAULT_WRITE_DELAY_MS = 1000
 
+/** Default cap on concurrently running `run_parallel_tasks` subagents. */
+export const DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY = 3
+
+/** Upper bound accepted for `parallelTasksMaxConcurrency` (settings slider). */
+export const MAX_PARALLEL_TASKS_MAX_CONCURRENCY = 8
+
+/** Default wait (seconds) before a subagent followup is auto-approved. */
+export const DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC = 300
+
 /**
  * Auto-approval tiers layered on top of the granular per-action toggles.
  *
@@ -154,6 +163,20 @@ export const globalSettingsSchema = z.object({
 	 * @default 0
 	 */
 	maxGitStatusFiles: z.number().optional(),
+
+	/**
+	 * Hard cap on how many `run_parallel_tasks` subagents may run concurrently.
+	 * The model-supplied `maxConcurrency` argument is clamped to this value.
+	 * @default 3
+	 */
+	parallelTasksMaxConcurrency: z.number().optional(),
+	/**
+	 * How long (seconds) a parallel subagent's followup question waits for a
+	 * user answer before being auto-approved so unattended fan-outs never
+	 * hang. 0 answers immediately (fully autonomous, pre-interactive behavior).
+	 * @default 300
+	 */
+	subagentFollowupTimeoutSec: z.number().optional(),
 
 	/**
 	 * Whether to include diagnostic messages (errors, warnings) in tool outputs

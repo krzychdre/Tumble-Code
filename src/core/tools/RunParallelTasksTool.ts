@@ -2,7 +2,7 @@ import * as os from "os"
 import * as path from "path"
 
 import { worktreeService } from "@roo-code/core"
-import { RooCodeEventName } from "@roo-code/types"
+import { DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY, RooCodeEventName } from "@roo-code/types"
 
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
@@ -42,16 +42,21 @@ export interface ParallelSubtaskResult {
 }
 
 const DEFAULT_MODE = "code"
-const DEFAULT_MAX_CONCURRENCY = 3
+const DEFAULT_MAX_CONCURRENCY = DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
 /** Turn cap per subagent — a runaway backstop, generous enough for real work. */
 export const SUBAGENT_MAX_TURNS = 50
 
 /**
  * Validate & normalize the raw tool args. Returns either normalized subtasks +
  * concurrency, or an error string describing what's wrong.
+ *
+ * `maxConcurrencyCap` is the user's configured hard limit
+ * (`parallelTasksMaxConcurrency`): the model-supplied `maxConcurrency` may
+ * lower concurrency below it but never exceed it.
  */
 export function validateParallelParams(
 	params: Partial<RunParallelTasksParams> | undefined,
+	maxConcurrencyCap: number = DEFAULT_MAX_CONCURRENCY,
 ): { ok: true; subtasks: NormalizedSubtask[]; maxConcurrency: number } | { ok: false; error: string } {
 	const raw = params?.subtasks
 	if (!Array.isArray(raw) || raw.length === 0) {
@@ -65,11 +70,15 @@ export function validateParallelParams(
 		}
 		subtasks.push({ message, mode: raw[i]?.mode || DEFAULT_MODE })
 	}
-	let maxConcurrency = params?.maxConcurrency ?? DEFAULT_MAX_CONCURRENCY
+	const cap =
+		Number.isFinite(maxConcurrencyCap) && maxConcurrencyCap >= 1
+			? Math.floor(maxConcurrencyCap)
+			: DEFAULT_MAX_CONCURRENCY
+	let maxConcurrency = params?.maxConcurrency ?? Math.min(DEFAULT_MAX_CONCURRENCY, cap)
 	if (typeof maxConcurrency !== "number" || !Number.isFinite(maxConcurrency) || maxConcurrency < 1) {
-		maxConcurrency = DEFAULT_MAX_CONCURRENCY
+		maxConcurrency = Math.min(DEFAULT_MAX_CONCURRENCY, cap)
 	}
-	return { ok: true, subtasks, maxConcurrency: Math.min(Math.floor(maxConcurrency), subtasks.length) }
+	return { ok: true, subtasks, maxConcurrency: Math.min(Math.floor(maxConcurrency), cap, subtasks.length) }
 }
 
 /**
@@ -200,7 +209,7 @@ interface SubtaskProvider {
 		task: Task,
 		options: { signal?: AbortSignal },
 	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }>
-	getState(): Promise<ApprovalState>
+	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number }>
 	subagentRegistry: SubtaskRegistry
 }
 
@@ -328,7 +337,18 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 		const { askApproval, handleError, pushToolResult } = callbacks
 
 		try {
-			const validated = validateParallelParams(params)
+			const provider = task.providerRef.deref()
+			if (!provider) {
+				pushToolResult(formatResponse.toolError("Provider reference lost"))
+				return
+			}
+
+			// The user's configured hard cap bounds whatever concurrency the
+			// model asked for.
+			const maxConcurrencyCap =
+				(await provider.getState()).parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
+
+			const validated = validateParallelParams(params, maxConcurrencyCap)
 			if (!validated.ok) {
 				task.consecutiveMistakeCount++
 				task.recordToolError("run_parallel_tasks")
@@ -337,12 +357,6 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 				return
 			}
 			task.consecutiveMistakeCount = 0
-
-			const provider = task.providerRef.deref()
-			if (!provider) {
-				pushToolResult(formatResponse.toolError("Provider reference lost"))
-				return
-			}
 
 			const cwd = task.cwd
 			if (!(await worktreeService.checkGitRepo(cwd))) {

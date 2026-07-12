@@ -42,7 +42,8 @@
 		"ui": "UI",
 		"experimental": "Experimental",
 		"language": "Language",
-		"about": "About Tumble Code"
+		"about": "About Tumble Code",
+		"subagents": "Subagents"
 	},
 	"about": {
 		"bugReport": {
@@ -1071,6 +1072,17 @@
 			"input": "Input",
 			"output": "Output",
 			"cacheReads": "Cache reads"
+		}
+	},
+	"subagents": {
+		"maxConcurrency": {
+			"label": "Max parallel subagents",
+			"description": "Hard cap on how many parallel subtasks (run_parallel_tasks) may run at the same time. The orchestrator can request fewer, never more. Additional subtasks wait in the queue."
+		},
+		"followupTimeout": {
+			"label": "Question timeout",
+			"description": "How long a subagent's question waits for your answer before it is auto-approved and the subagent continues on its own. 0 answers immediately (fully autonomous).",
+			"immediate": "off"
 		}
 	}
 }

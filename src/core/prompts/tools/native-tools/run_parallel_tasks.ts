@@ -2,7 +2,7 @@ import type OpenAI from "openai"
 
 const RUN_PARALLEL_TASKS_DESCRIPTION = `Run several independent subtasks CONCURRENTLY, each as a headless agent in its own isolated git worktree (separate branch + working directory), then get back an aggregated report of every subtask's result.
 
-Use this to decompose one job into parts that can run at the same time for speed — e.g. "refactor these 3 modules", "write tests for these files", "investigate these areas in parallel". Each subtask runs autonomously (no user interaction) and cannot see the others' work while running; results are merged into your next turn.
+Use this to decompose one job into parts that can run at the same time for speed — e.g. "refactor these 3 modules", "write tests for these files", "investigate these areas in parallel". Each subtask runs autonomously (mostly without user interaction — the user can watch each subtask live, answer a subtask's clarifying question, or cancel one) and cannot see the others' work while running; results are merged into your next turn.
 
 Guidance:
 - Only split work that is genuinely INDEPENDENT. Dependent steps must be sequential, not parallel.
@@ -13,7 +13,7 @@ CRITICAL: This tool MUST be called alone. Do NOT call it alongside other tools i
 
 const SUBTASKS_DESCRIPTION = `The subtasks to run in parallel. Each is an object with a self-contained \`message\` (the full instructions/context for that subtask) and an optional \`mode\` slug (e.g. code, debug, architect; defaults to code).`
 
-const MAX_CONCURRENCY_DESCRIPTION = `Maximum number of subtasks to run at once (default 3). Use null for the default. Keep modest to respect API rate limits.`
+const MAX_CONCURRENCY_DESCRIPTION = `Maximum number of subtasks to run at once (default 3). Use null for the default. Keep modest to respect API rate limits. Values above the user's configured limit are clamped to it, never rejected.`
 
 export default {
 	type: "function",

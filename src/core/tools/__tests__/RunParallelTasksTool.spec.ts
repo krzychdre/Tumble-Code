@@ -193,6 +193,23 @@ describe("RunParallelTasksTool helpers", () => {
 				maxConcurrency: 3,
 			})
 		})
+
+		it("clamps the requested concurrency to the user's configured cap", () => {
+			const many = Array.from({ length: 10 }, (_, i) => ({ message: `m${i}` }))
+			expect(validateParallelParams({ subtasks: many, maxConcurrency: 8 }, 2)).toMatchObject({
+				maxConcurrency: 2,
+			})
+			// The model may lower concurrency below the cap.
+			expect(validateParallelParams({ subtasks: many, maxConcurrency: 1 }, 4)).toMatchObject({
+				maxConcurrency: 1,
+			})
+			// Default request under a cap tighter than the built-in default.
+			expect(validateParallelParams({ subtasks: many }, 1)).toMatchObject({ maxConcurrency: 1 })
+			// A nonsensical cap falls back to the built-in default.
+			expect(validateParallelParams({ subtasks: many, maxConcurrency: 8 }, 0)).toMatchObject({
+				maxConcurrency: 3,
+			})
+		})
 	})
 
 	describe("runWithConcurrency", () => {

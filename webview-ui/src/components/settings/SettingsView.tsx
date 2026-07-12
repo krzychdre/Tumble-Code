@@ -11,6 +11,7 @@ import React, {
 } from "react"
 import {
 	CheckCheck,
+	Bot,
 	GitBranch,
 	Bell,
 	Brain,
@@ -71,6 +72,7 @@ import { CheckpointSettings } from "./CheckpointSettings"
 import { MemorySettings } from "./MemorySettings"
 import { NotificationSettings } from "./NotificationSettings"
 import { ContextManagementSettings } from "./ContextManagementSettings"
+import { SubagentSettings } from "./SubagentSettings"
 import { TerminalSettings } from "./TerminalSettings"
 import { ExperimentalSettings } from "./ExperimentalSettings"
 import { LanguageSettings } from "./LanguageSettings"
@@ -110,6 +112,7 @@ export const sectionNames = [
 	"modes",
 	"mcp",
 	"worktrees",
+	"subagents",
 	"prompts",
 	"ui",
 	"experimental",
@@ -212,6 +215,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeCurrentTime,
 		includeCurrentCost,
 		maxGitStatusFiles,
+		parallelTasksMaxConcurrency,
+		subagentFollowupTimeoutSec,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -431,6 +436,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					includeCurrentTime: includeCurrentTime ?? true,
 					includeCurrentCost: includeCurrentCost ?? true,
 					maxGitStatusFiles: maxGitStatusFiles ?? 0,
+					parallelTasksMaxConcurrency,
+					subagentFollowupTimeoutSec,
 					profileThresholds,
 					imageGenerationProvider,
 					openRouterImageApiKey,
@@ -536,6 +543,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "terminal", icon: SquareTerminal },
 			{ id: "prompts", icon: MessageSquare },
 			{ id: "worktrees", icon: GitBranch },
+			{ id: "subagents", icon: Bot },
 			{ id: "ui", icon: Glasses },
 			{ id: "experimental", icon: FlaskConical },
 			{ id: "language", icon: Globe },
@@ -905,6 +913,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 						{/* Worktrees Section */}
 						{renderTab === "worktrees" && <WorktreesView />}
+
+						{/* Subagents Section */}
+						{renderTab === "subagents" && (
+							<SubagentSettings
+								parallelTasksMaxConcurrency={parallelTasksMaxConcurrency}
+								subagentFollowupTimeoutSec={subagentFollowupTimeoutSec}
+								setCachedStateField={setCachedStateField}
+							/>
+						)}
 
 						{/* Prompts Section */}
 						{renderTab === "prompts" && (
