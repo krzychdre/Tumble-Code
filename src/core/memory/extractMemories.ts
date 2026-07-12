@@ -101,6 +101,11 @@ export function _inFlightExtractionsCount(): number {
 	return inFlightExtractions.size
 }
 
+/** @internal — test only: the current cursor-map key insertion order (LRU tail = most recent). */
+export function _cursorKeys(): string[] {
+	return [...lastMemoryMessageCursors.keys()]
+}
+
 /**
  * Shared drain algorithm: await in-flight promises with a soft timeout, abort
  * remaining controllers on timeout, then await a bounded grace period so
@@ -190,12 +195,28 @@ function buildExtractionPrompt(newMessageCount: number, existingManifest: string
 	return lines.join("\n")
 }
 
-/** Set the per-task cursor, bounding the map size. */
+/**
+ * Get the per-task cursor, refreshing recency (LRU: delete + re-insert at tail
+ * so the entry is the least-likely to be evicted).
+ */
+function getCursor(taskId: string): number | undefined {
+	const value = lastMemoryMessageCursors.get(taskId)
+	if (value === undefined) return undefined
+	lastMemoryMessageCursors.delete(taskId)
+	lastMemoryMessageCursors.set(taskId, value)
+	return value
+}
+
+/**
+ * Set the per-task cursor, refreshing recency (LRU: delete + re-insert at tail)
+ * and bounding the map size by evicting the least-recently-USED entry.
+ */
 function setCursor(taskId: string, value: number): void {
+	lastMemoryMessageCursors.delete(taskId)
 	lastMemoryMessageCursors.set(taskId, value)
 	if (lastMemoryMessageCursors.size > MAX_CURSOR_ENTRIES) {
-		const oldest = lastMemoryMessageCursors.keys().next().value
-		if (oldest !== undefined) lastMemoryMessageCursors.delete(oldest)
+		const lru = lastMemoryMessageCursors.keys().next().value
+		if (lru !== undefined) lastMemoryMessageCursors.delete(lru)
 	}
 }
 
@@ -210,7 +231,7 @@ export async function executeExtractMemories(context: ExtractionContext): Promis
 	// Snapshot the message length at T0, before the multi-second extraction
 	// sub-task runs. Messages appended during the sub-task (T0→T1) must NOT be
 	// skipped — they'll be picked up by the next extraction.
-	const cursor = lastMemoryMessageCursors.get(context.taskId) ?? 0
+	const cursor = getCursor(context.taskId) ?? 0
 	const lengthAtStart = context.messages.length
 	const newMessageCount = lengthAtStart - cursor
 	if (newMessageCount <= 0) return

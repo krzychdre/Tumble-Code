@@ -75,6 +75,54 @@ describe("memorySandbox", () => {
 				expect(["approve", "deny"]).toContain(decide(ask, "{}"))
 			}
 		})
+
+		it("denies when a path-bearing field other than `path` points outside the memory dir", () => {
+			const decide = memoryWriteSandbox(cwd)
+			// `path` is inside memory dir, but a hypothetical `file_path` points outside.
+			const inside = path.join(memDir, "user.md")
+			const ask = JSON.stringify({ tool: "newFileCreated", path: inside, file_path: "/workspace/src/evil.ts" })
+			expect(decide("tool", ask)).toBe("deny")
+		})
+
+		it("approves when all path-bearing fields point inside the memory dir", () => {
+			const decide = memoryWriteSandbox(cwd)
+			const inside = path.join(memDir, "user.md")
+			const inside2 = path.join(memDir, "other.md")
+			const ask = JSON.stringify({ tool: "newFileCreated", path: inside, file_path: inside2 })
+			expect(decide("tool", ask)).toBe("approve")
+		})
+
+		it("denies when a path inside an array of objects (files: [{path}]) points outside the memory dir", () => {
+			const decide = memoryWriteSandbox(cwd)
+			const inside = path.join(memDir, "user.md")
+			const ask = JSON.stringify({
+				tool: "newFileCreated",
+				path: inside,
+				files: [{ path: "/workspace/src/evil.ts" }],
+			})
+			expect(decide("tool", ask)).toBe("deny")
+		})
+
+		it("approves when array-of-objects paths are all inside the memory dir", () => {
+			const decide = memoryWriteSandbox(cwd)
+			const inside = path.join(memDir, "user.md")
+			const inside2 = path.join(memDir, "other.md")
+			const ask = JSON.stringify({ tool: "newFileCreated", path: inside, files: [{ path: inside2 }] })
+			expect(decide("tool", ask)).toBe("approve")
+		})
+
+		it("does not flag read-only pattern fields (regex, searchPattern, filePattern) even if they contain path-like strings", () => {
+			const decide = memoryWriteSandbox(cwd)
+			const inside = path.join(memDir, "user.md")
+			const ask = JSON.stringify({
+				tool: "newFileCreated",
+				path: inside,
+				regex: "/workspace/src/secret.ts",
+				searchPattern: "/etc/passwd",
+				filePattern: "../../etc",
+			})
+			expect(decide("tool", ask)).toBe("approve")
+		})
 	})
 
 	describe("filterMemoryWrittenPaths", () => {

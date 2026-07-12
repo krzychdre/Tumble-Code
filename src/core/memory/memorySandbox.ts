@@ -32,6 +32,54 @@ import { isAutoMemPath } from "./paths"
 export type SandboxDecision = "approve" | "deny"
 
 /**
+ * Key names that are considered path-bearing for write containment. Any field
+ * with one of these keys whose value is a non-empty string is validated against
+ * the memory directory. The list covers all current write-tool arg shapes
+ * (`path` for write_to_file/apply_diff, `file_path` for edit/edit_file) plus
+ * likely future write-capable field names (`dest`, `destination`, `target`,
+ * `targetPath`, `to`). Read-only pattern fields (`searchPattern`, `filePattern`,
+ * `regex`) are intentionally NOT listed — they are not path-bearing for writes.
+ */
+const PATH_BEARING_KEYS = new Set([
+	"path",
+	"file_path",
+	"filePath",
+	"dest",
+	"destination",
+	"target",
+	"targetPath",
+	"to",
+])
+
+/**
+ * Collect all string values from the parsed tool-ask payload whose key matches a
+ * path-bearing name. Checks the top level and one level into arrays of objects
+ * (e.g. `files: [{path: …}]`). Returns the raw string values (unresolved).
+ */
+function collectPathBearingValues(parsed: Record<string, unknown>): string[] {
+	const values: string[] = []
+	for (const [key, val] of Object.entries(parsed)) {
+		if (PATH_BEARING_KEYS.has(key) && typeof val === "string" && val.length > 0) {
+			values.push(val)
+		} else if (Array.isArray(val)) {
+			// Arrays of objects (e.g. `files: [{path: …}]`) are scanned regardless
+			// of the array's own key — the array key ("files") is not path-bearing,
+			// its items' keys are.
+			for (const item of val) {
+				if (item && typeof item === "object") {
+					for (const [subKey, subVal] of Object.entries(item as Record<string, unknown>)) {
+						if (PATH_BEARING_KEYS.has(subKey) && typeof subVal === "string" && subVal.length > 0) {
+							values.push(subVal)
+						}
+					}
+				}
+			}
+		}
+	}
+	return values
+}
+
+/**
  * Build the memory write-sandbox auto-approval predicate for a given cwd. The
  * returned function is structurally compatible with `Task`'s
  * `AutoApprovalOverride` ((ask, text) => "approve" | "deny" | undefined).
@@ -58,9 +106,12 @@ export function memoryWriteSandbox(cwd: string): (ask: string, text?: string) =>
 		if (parsed && isReadOnlyToolAction(parsed)) {
 			return "approve"
 		}
-		// Any tool acting on a path inside the memory dir is allowed (memory write).
-		const p = parsed?.path
-		if (typeof p === "string" && p.length > 0 && isAutoMemPath(path.resolve(cwd, p), cwd)) {
+		// Generic path containment: collect ALL path-bearing fields from the parsed
+		// payload and require EVERY one to resolve inside the memory dir. This
+		// catches not just `parsed.path` but also `file_path`, `dest`, etc. that a
+		// future write-capable tool might carry.
+		const pathValues = collectPathBearingValues(parsed as unknown as Record<string, unknown>)
+		if (pathValues.length > 0 && pathValues.every((p) => isAutoMemPath(path.resolve(cwd, p), cwd))) {
 			return "approve"
 		}
 		// Writes outside the memory dir (or path-less write actions) are denied.

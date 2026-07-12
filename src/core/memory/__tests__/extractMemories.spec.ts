@@ -8,6 +8,7 @@ import {
 	hasMemoryWritesSince,
 	resetExtractionState,
 	_inFlightExtractionsCount,
+	_cursorKeys,
 } from "../extractMemories"
 import { initMemoryPaths, resetMemoryPaths, getAutoMemPath } from "../paths"
 
@@ -232,6 +233,66 @@ describe("extractMemories", () => {
 			expect(runner2).toHaveBeenCalledTimes(1)
 			expect(lengthBefore).toBe(1)
 			expect(messages.length).toBe(2)
+		})
+
+		it("LRU eviction: recently-read cursor survives when newer cursors fill the map", async () => {
+			const runner = vi.fn(async () => ({ writtenPaths: [] as string[] }))
+			// Task "A" with 10 messages extracts successfully (cursor → 10).
+			const messagesA = Array.from({ length: 10 }, () => ({ toolUses: [{ name: "read_file" }] }))
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "A",
+				messages: messagesA as any,
+				subTaskRunner: runner,
+			})
+			expect(runner).toHaveBeenCalledTimes(1)
+
+			// Task "B" with 1 message extracts (cursor → 1). Now B is more recent than A.
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "B",
+				messages: [{ toolUses: [{ name: "read_file" }] }] as any,
+				subTaskRunner: runner,
+			})
+
+			// Touch/READ A's cursor by running another extraction for A (messages
+			// unchanged → early-returns, but getCursor refreshes recency).
+			// After this, A is the MRU and B is the LRU.
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "A",
+				messages: messagesA as any,
+				subTaskRunner: runner,
+			})
+
+			// Fill the map to capacity: A + B + 62 others = 64 entries.
+			for (let i = 0; i < 62; i++) {
+				await executeExtractMemories({
+					cwd,
+					isMainAgent: true,
+					taskId: `other-${i}`,
+					messages: [{ toolUses: [{ name: "read_file" }] }] as any,
+					subTaskRunner: runner,
+				})
+			}
+			// Map is now full (64). A was touched after B, so B is the LRU.
+			// Add one more → eviction. LRU evicts B; FIFO evicts A.
+			await executeExtractMemories({
+				cwd,
+				isMainAgent: true,
+				taskId: "overflow",
+				messages: [{ toolUses: [{ name: "read_file" }] }] as any,
+				subTaskRunner: runner,
+			})
+
+			// A's cursor must have SURVIVED — it was recently read (LRU), so B
+			// (the true LRU) was evicted instead. Pre-fix (FIFO), A was evicted
+			// because it was inserted first despite the recent read.
+			expect(_cursorKeys()).toContain("A")
+			expect(_cursorKeys()).not.toContain("B")
 		})
 	})
 
