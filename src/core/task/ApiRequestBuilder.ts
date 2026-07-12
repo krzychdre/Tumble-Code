@@ -18,6 +18,7 @@ import {
 	type ClineApiReqInfo,
 	RooCodeEventName,
 	getModelId,
+	isParallelTasksEnabled,
 } from "@roo-code/types"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
@@ -198,11 +199,16 @@ export class ApiRequestBuilder {
 
 		// Background tasks (parallel subagents, memory writers) never get
 		// delegation tools: a subtask is a small one-shot job that must return
-		// to its parent, not fan out further. Routed through disabledTools so
-		// the existing alias-resolving filter removes them.
-		const disabledTools = this.access.isBackground
-			? [...(state?.disabledTools ?? []), "new_task", "run_parallel_tasks"]
-			: state?.disabledTools
+		// to its parent, not fan out further. Foreground tasks lose
+		// run_parallel_tasks when the user's concurrency cap turns the feature
+		// Off (< 2). Routed through disabledTools so the existing
+		// alias-resolving filter removes them.
+		let disabledTools = state?.disabledTools
+		if (this.access.isBackground) {
+			disabledTools = [...(disabledTools ?? []), "new_task", "run_parallel_tasks"]
+		} else if (!isParallelTasksEnabled(state?.parallelTasksMaxConcurrency)) {
+			disabledTools = [...(disabledTools ?? []), "run_parallel_tasks"]
+		}
 
 		const toolsResult = await buildNativeToolsArrayWithRestrictions({
 			provider,

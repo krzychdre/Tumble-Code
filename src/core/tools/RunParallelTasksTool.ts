@@ -2,7 +2,7 @@ import * as os from "os"
 import * as path from "path"
 
 import { worktreeService } from "@roo-code/core"
-import { DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY, RooCodeEventName } from "@roo-code/types"
+import { DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY, isParallelTasksEnabled, RooCodeEventName } from "@roo-code/types"
 
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
@@ -69,6 +69,15 @@ export function validateParallelParams(
 	if (!Array.isArray(raw) || raw.length === 0) {
 		return { ok: false, error: "run_parallel_tasks requires a non-empty `subtasks` array." }
 	}
+	if (raw.length < 2) {
+		return {
+			ok: false,
+			error:
+				"run_parallel_tasks requires AT LEAST 2 subtasks — its whole value is running several independent " +
+				"jobs at the same time. For a single job, do the work directly in this task (or delegate it via " +
+				"new_task if it needs a different specialist mode).",
+		}
+	}
 	const subtasks: NormalizedSubtask[] = []
 	for (let i = 0; i < raw.length; i++) {
 		const message = raw[i]?.message
@@ -93,7 +102,10 @@ export function validateParallelParams(
 			? Math.floor(maxConcurrencyCap)
 			: DEFAULT_MAX_CONCURRENCY
 	let maxConcurrency = params?.maxConcurrency ?? Math.min(DEFAULT_MAX_CONCURRENCY, cap)
-	if (typeof maxConcurrency !== "number" || !Number.isFinite(maxConcurrency) || maxConcurrency < 1) {
+	// Below 2 is treated as invalid, not honored: "parallel with concurrency 1"
+	// defeats the tool's purpose, so a nonsensical request falls back to the
+	// default instead of degrading the fan-out to a sequential queue.
+	if (typeof maxConcurrency !== "number" || !Number.isFinite(maxConcurrency) || maxConcurrency < 2) {
 		maxConcurrency = Math.min(DEFAULT_MAX_CONCURRENCY, cap)
 	}
 	return { ok: true, subtasks, maxConcurrency: Math.min(Math.floor(maxConcurrency), cap, subtasks.length) }
@@ -378,9 +390,20 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			}
 
 			// The user's configured hard cap bounds whatever concurrency the
-			// model asked for.
+			// model asked for; below 2 it disables the feature entirely.
 			const maxConcurrencyCap =
 				(await provider.getState()).parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
+			if (!isParallelTasksEnabled(maxConcurrencyCap)) {
+				task.recordToolError("run_parallel_tasks")
+				pushToolResult(
+					formatResponse.toolError(
+						"run_parallel_tasks is disabled: the user's 'Max parallel subagents' setting is Off. " +
+							"Do the work directly in this task, or delegate it via new_task if it needs a " +
+							"different specialist mode.",
+					),
+				)
+				return
+			}
 
 			const validated = validateParallelParams(params, maxConcurrencyCap)
 			if (!validated.ok) {

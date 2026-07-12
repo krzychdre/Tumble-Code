@@ -166,8 +166,17 @@ describe("RunParallelTasksTool helpers", () => {
 			expect(validateParallelParams({ subtasks: [] })).toEqual({ ok: false, error: expect.any(String) })
 		})
 
+		it("rejects a single-subtask fan-out with corrective steering", () => {
+			const r = validateParallelParams({ subtasks: [{ message: "just one job" }] })
+			expect(r.ok).toBe(false)
+			if (!r.ok) {
+				expect(r.error).toContain("AT LEAST 2")
+				expect(r.error).toContain("new_task")
+			}
+		})
+
 		it("rejects a subtask without a message", () => {
-			const r = validateParallelParams({ subtasks: [{ message: "  " } as never] })
+			const r = validateParallelParams({ subtasks: [{ message: "  " } as never, { message: "ok" }] })
 			expect(r.ok).toBe(false)
 		})
 
@@ -198,7 +207,9 @@ describe("RunParallelTasksTool helpers", () => {
 
 		it("rejects architect/orchestrator subtask modes with a corrective error", () => {
 			for (const mode of ["architect", "orchestrator"]) {
-				const r = validateParallelParams({ subtasks: [{ message: "plan the system", mode }] })
+				const r = validateParallelParams({
+					subtasks: [{ message: "plan the system", mode }, { message: "ok" }],
+				})
 				expect(r.ok).toBe(false)
 				if (!r.ok) {
 					expect(r.error).toContain(`"${mode}"`)
@@ -206,7 +217,14 @@ describe("RunParallelTasksTool helpers", () => {
 				}
 			}
 			// Lightweight modes stay allowed.
-			expect(validateParallelParams({ subtasks: [{ message: "q", mode: "ask" }] }).ok).toBe(true)
+			expect(
+				validateParallelParams({
+					subtasks: [
+						{ message: "q", mode: "ask" },
+						{ message: "r", mode: "ask" },
+					],
+				}).ok,
+			).toBe(true)
 		})
 
 		it("clamps the requested concurrency to the user's configured cap", () => {
@@ -214,12 +232,16 @@ describe("RunParallelTasksTool helpers", () => {
 			expect(validateParallelParams({ subtasks: many, maxConcurrency: 8 }, 2)).toMatchObject({
 				maxConcurrency: 2,
 			})
-			// The model may lower concurrency below the cap.
+			// The model may lower concurrency below the cap — but never under 2
+			// (a sequential "parallel" run is nonsense; invalid → default).
+			expect(validateParallelParams({ subtasks: many, maxConcurrency: 2 }, 4)).toMatchObject({
+				maxConcurrency: 2,
+			})
 			expect(validateParallelParams({ subtasks: many, maxConcurrency: 1 }, 4)).toMatchObject({
-				maxConcurrency: 1,
+				maxConcurrency: 3,
 			})
 			// Default request under a cap tighter than the built-in default.
-			expect(validateParallelParams({ subtasks: many }, 1)).toMatchObject({ maxConcurrency: 1 })
+			expect(validateParallelParams({ subtasks: many }, 2)).toMatchObject({ maxConcurrency: 2 })
 			// A nonsensical cap falls back to the built-in default.
 			expect(validateParallelParams({ subtasks: many, maxConcurrency: 8 }, 0)).toMatchObject({
 				maxConcurrency: 3,
@@ -344,12 +366,34 @@ describe("RunParallelTasksTool.execute", () => {
 		mockDeleteWorktree.mockResolvedValue({ success: true, message: "removed" })
 	})
 
+	it("cap below 2 (feature Off): refused before validation/approval", async () => {
+		const provider = makeFakeProvider({ parallelTasksMaxConcurrency: 1 })
+		const parent = makeFakeParentTask(provider)
+		const callbacks = makeCallbacks()
+
+		await runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			callbacks,
+		)
+
+		expect(callbacks.askApproval).not.toHaveBeenCalled()
+		expect(provider.createBackgroundTask).not.toHaveBeenCalled()
+		const result = callbacks.pushToolResult.mock.calls[0][0] as string
+		expect(result).toContain("disabled")
+		expect(result).toContain("new_task")
+	})
+
 	it("background caller (subtask): refused — no nested fan-outs", async () => {
 		const provider = makeFakeProvider()
 		const parent = makeFakeParentTask(provider, { isBackground: true, recordToolError: vi.fn() })
 		const callbacks = makeCallbacks()
 
-		await runParallelTasksTool.execute({ subtasks: [{ message: "nested" }] }, parent, callbacks)
+		await runParallelTasksTool.execute(
+			{ subtasks: [{ message: "nested" }, { message: "nested 2" }] },
+			parent,
+			callbacks,
+		)
 
 		expect(mockCreateWorktree).not.toHaveBeenCalled()
 		expect(provider.createBackgroundTask).not.toHaveBeenCalled()
@@ -363,7 +407,11 @@ describe("RunParallelTasksTool.execute", () => {
 		const parent = makeFakeParentTask(provider, { abort: true })
 		const callbacks = makeCallbacks()
 
-		await runParallelTasksTool.execute({ subtasks: [{ message: "do thing" }] }, parent, callbacks)
+		await runParallelTasksTool.execute(
+			{ subtasks: [{ message: "do thing" }, { message: "other thing" }] },
+			parent,
+			callbacks,
+		)
 
 		expect(mockCreateWorktree).not.toHaveBeenCalled()
 		expect(provider.createBackgroundTask).not.toHaveBeenCalled()
@@ -459,20 +507,24 @@ describe("RunParallelTasksTool.execute", () => {
 		const parent = makeFakeParentTask(provider)
 		const callbacks = makeCallbacks()
 
-		const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			callbacks,
+		)
 
-		await vi.waitFor(() => expect(provider.children.length).toBe(1))
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
 		// Parent abandoned mid-run (rehydrated elsewhere).
 		;(parent as any).abandoned = true
 		parent.emit(RooCodeEventName.TaskAborted)
-		provider.children[0].complete()
+		provider.children.forEach((c) => c.complete())
 		await execPromise
 
 		expect(provider.getLiveTaskInstance).toHaveBeenCalledWith("parent-12345678")
 		expect(addMessage).toHaveBeenCalledOnce()
 		const queued = addMessage.mock.calls[0][0] as string
 		expect(queued).toContain("finished while this task was paused")
-		expect(queued).toContain("1 completed")
+		expect(queued).toContain("2 completed")
 	})
 
 	it("user-cancelled fan-out does NOT queue a report into the rehydrated instance", async () => {
@@ -482,9 +534,13 @@ describe("RunParallelTasksTool.execute", () => {
 		const parent = makeFakeParentTask(provider)
 		const callbacks = makeCallbacks()
 
-		const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			callbacks,
+		)
 
-		await vi.waitFor(() => expect(provider.children.length).toBe(1))
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
 		;(parent as any).abort = true
 		;(parent as any).abortReason = "user_cancelled"
 		parent.emit(RooCodeEventName.TaskAborted)
@@ -499,10 +555,14 @@ describe("RunParallelTasksTool.execute", () => {
 		const parent = makeFakeParentTask(provider)
 		const callbacks = makeCallbacks()
 
-		const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			callbacks,
+		)
 
-		await vi.waitFor(() => expect(provider.children.length).toBe(1))
-		provider.children[0].complete()
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+		provider.children.forEach((c) => c.complete())
 		await execPromise
 
 		// Listener count for TaskAborted should be zero after execution.
@@ -516,13 +576,17 @@ describe("RunParallelTasksTool.execute", () => {
 		const parent = makeFakeParentTask(provider)
 		const callbacks = makeCallbacks()
 
-		const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			callbacks,
+		)
 
-		await vi.waitFor(() => expect(provider.children.length).toBe(1))
-		provider.children[0].complete()
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+		provider.children.forEach((c) => c.complete())
 		await execPromise
 
-		expect(provider.createBackgroundTask).toHaveBeenCalledOnce()
+		expect(provider.createBackgroundTask).toHaveBeenCalledTimes(2)
 		const opts = provider.createBackgroundTask.mock.calls[0][1] as {
 			autoApprovalOverride?: (ask: string, text?: string, isProtected?: boolean) => Promise<string>
 		}
@@ -549,10 +613,14 @@ describe("RunParallelTasksTool.execute", () => {
 			const parent = makeFakeParentTask(provider)
 			const callbacks = makeCallbacks()
 
-			const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				callbacks,
+			)
 
-			await vi.waitFor(() => expect(provider.children.length).toBe(1))
-			provider.children[0].complete()
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			provider.children.forEach((c) => c.complete())
 			await execPromise
 
 			expect(mockHasUncommittedChanges).toHaveBeenCalled()
@@ -563,7 +631,7 @@ describe("RunParallelTasksTool.execute", () => {
 			)
 			const report = callbacks.pushToolResult.mock.calls[0][0] as string
 			expect(report).toContain("cleaned up (no changes)")
-			expect(report).toContain("1 completed")
+			expect(report).toContain("2 completed")
 		})
 
 		it("completed subtask WITH commits → worktree kept", async () => {
@@ -572,10 +640,14 @@ describe("RunParallelTasksTool.execute", () => {
 			const parent = makeFakeParentTask(provider)
 			const callbacks = makeCallbacks()
 
-			const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				callbacks,
+			)
 
-			await vi.waitFor(() => expect(provider.children.length).toBe(1))
-			provider.children[0].complete()
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			provider.children.forEach((c) => c.complete())
 			await execPromise
 
 			expect(mockDeleteWorktree).not.toHaveBeenCalled()
@@ -590,9 +662,13 @@ describe("RunParallelTasksTool.execute", () => {
 			const parent = makeFakeParentTask(provider)
 			const callbacks = makeCallbacks()
 
-			const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				callbacks,
+			)
 
-			await vi.waitFor(() => expect(provider.children.length).toBe(1))
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
 			// Don't call complete() — child will resolve as not-completed when signal fires.
 			// Instead, user-cancel the parent to make the child resolve.
 			;(parent as any).abortReason = "user_cancelled"
@@ -609,9 +685,13 @@ describe("RunParallelTasksTool.execute", () => {
 			const parent = makeFakeParentTask(provider)
 			const callbacks = makeCallbacks()
 
-			const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				callbacks,
+			)
 
-			await vi.waitFor(() => expect(provider.children.length).toBe(1))
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
 			;(parent as any).abortReason = "user_cancelled"
 			parent.emit(RooCodeEventName.TaskAborted)
 			await execPromise
@@ -627,15 +707,19 @@ describe("RunParallelTasksTool.execute", () => {
 			const parent = makeFakeParentTask(provider)
 			const callbacks = makeCallbacks()
 
-			const execPromise = runParallelTasksTool.execute({ subtasks: [{ message: "task A" }] }, parent, callbacks)
+			const execPromise = runParallelTasksTool.execute(
+				{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+				parent,
+				callbacks,
+			)
 
-			await vi.waitFor(() => expect(provider.children.length).toBe(1))
-			provider.children[0].complete()
+			await vi.waitFor(() => expect(provider.children.length).toBe(2))
+			provider.children.forEach((c) => c.complete())
 			await execPromise
 
 			// Should not throw, status still completed.
 			const report = callbacks.pushToolResult.mock.calls[0][0] as string
-			expect(report).toContain("1 completed")
+			expect(report).toContain("2 completed")
 			expect(report).not.toContain("cleaned up")
 			expect(report).toContain("worktree:")
 		})

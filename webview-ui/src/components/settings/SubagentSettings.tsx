@@ -5,6 +5,7 @@ import {
 	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
 	DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 	MAX_PARALLEL_TASKS_MAX_CONCURRENCY,
+	MIN_PARALLEL_TASKS_CONCURRENCY,
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
@@ -61,7 +62,11 @@ export const SubagentSettings = ({
 							onValueChange={([value]) => setCachedStateField("parallelTasksMaxConcurrency", value)}
 							data-testid="subagents-max-concurrency-slider"
 						/>
-						<span className="w-10">{concurrency}</span>
+						<span className="w-10">
+							{concurrency < MIN_PARALLEL_TASKS_CONCURRENCY
+								? t("settings:subagents.maxConcurrency.off")
+								: concurrency}
+						</span>
 					</div>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:subagents.maxConcurrency.description")}

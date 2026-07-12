@@ -7,6 +7,7 @@ WHEN TO USE WHICH DELEGATION TOOL:
 - SEVERAL genuinely separate tiny jobs that happen to be pending at once → run_parallel_tasks.
 
 A subtask QUALIFIES only if ALL of these hold:
+- you have AT LEAST TWO of them — a single-subtask call is rejected. One job means no fan-out: do it directly in this task, or new_task it to a specialist;
 - you can state it in one or two sentences with a concrete, checkable outcome;
 - a single agent can finish it in a few minutes, one-shot, no follow-up work;
 - it is INDEPENDENT of the other subtasks (dependent steps must be sequential).

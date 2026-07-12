@@ -29,6 +29,17 @@ export const DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY = 3
 /** Upper bound accepted for `parallelTasksMaxConcurrency` (settings slider). */
 export const MAX_PARALLEL_TASKS_MAX_CONCURRENCY = 8
 
+/**
+ * `parallelTasksMaxConcurrency` values below this disable `run_parallel_tasks`
+ * entirely ("Off" in the settings slider): parallelism of one is a
+ * contradiction — a single job belongs in the task itself or a `new_task`.
+ */
+export const MIN_PARALLEL_TASKS_CONCURRENCY = 2
+
+/** Whether the configured cap enables the parallel-subtasks feature at all. */
+export const isParallelTasksEnabled = (cap: number | undefined): boolean =>
+	(cap ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY) >= MIN_PARALLEL_TASKS_CONCURRENCY
+
 /** Default wait (seconds) before a subagent followup is auto-approved. */
 export const DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC = 300
 
