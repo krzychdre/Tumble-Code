@@ -41,11 +41,14 @@ save/revert/diagnostics + recovery buffers + tab cleanup + BOM). Extract:
 Split into private `prepareAbort()` / `drainAbort()` / `cleanupAbort()` so ordering
 is explicit. No behavior change; abort specs stay green.
 
-### B29 `refactor/task-abort-event-helper`
+### B29 `refactor/task-abort-event-helper` — DROPPED after investigation
 
-`RunParallelTasksTool` hand-duplicates the "abort a controller when a Task event
-fires + `finally { off() }`" pattern. Extract a small helper
-(`linkAbortToTaskEvent(task, event, controller)` returning a dispose fn) and use it.
+Verified on the current tree: the "duplicated" abort-listener + `finally { off }`
+pattern exists exactly ONCE (`RunParallelTasksTool.ts:329-345`); the other two
+Task-event wirings (`ClineProvider.ts:297-308` bulk provider events,
+`:3187-3195` `awaitTaskCompletion` promise-resolve) have different shapes. A
+helper with a single call site adds indirection without removing duplication.
+The register note predates the fix-stack changes that simplified these paths.
 
 ### B30 `refactor/memory-tech-debt`
 
@@ -95,6 +98,23 @@ hard floor to avoid keeping everything).
   needs a data-model change.
 - **`pendingSave` recovery-buffer fragility**: invariants move intact in B27;
   further simplification needs its own design.
+
+## Outcome (2026-07-12, end of session)
+
+All planned branches shipped except B29 (dropped, see above). Stack order as built:
+B25 → B26 → B27 → B28 → B30 → B31 → B32 → B33; new tip
+`fix/cloud-degradation-signals`. Review pass caught and fixed four agent issues
+before commit: a local-variable shadow of `num` in the shared format util (B25);
+`openDiffEditor` taking state via temporally-coupled mutable fields instead of
+params (B27); a dead `files: [{path}]` array-scan branch in the sandbox that never
+executed (B30, +2 tests); the dropped `Array.isArray` guard in the shared tool-call
+emitter that a malformed proxied backend could crash (B31). B33 review restored the
+soft-fail semantics of telemetry registration inside the new activation guard.
+Also repaired in passing: 8 pre-existing stale `DiffViewProvider.spec.ts` failures
+(B27 phase 1) and the broken `extension.spec.ts` mock context (B33).
+Verification on tip: src sweep 1428 passed / 1 skipped (102 files, no unhandled
+errors), packages/cloud 299, cloudapi pytest 91, typechecks clean except
+pre-existing `zai.ts:129`.
 
 ## Discipline
 
