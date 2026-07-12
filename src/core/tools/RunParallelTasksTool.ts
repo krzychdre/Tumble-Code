@@ -6,6 +6,7 @@ import { RooCodeEventName } from "@roo-code/types"
 
 import { Task, type AutoApprovalOverride } from "../task/Task"
 import { buildSubagentApprovalPolicy, type ApprovalState } from "../task/subagentApproval"
+import { queuedSubagentId } from "../webview/SubagentRegistry"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
@@ -164,6 +165,23 @@ async function cleanupSubtaskWorktreeIfEmpty({
 	}
 }
 
+/** Registry surface the fan-out reports lifecycle changes to (webview panel). */
+export interface SubtaskRegistry {
+	beginFanOut(parentTaskId: string): void
+	registerQueued(summary: {
+		parentTaskId: string
+		index: number
+		mode: string
+		description: string
+		tokensIn: number
+		tokensOut: number
+		totalCost: number
+		startedAt: number
+		lastActivityAt: number
+	}): void
+	markTerminal(taskId: string, status: "completed" | "failed" | "cancelled", finalMessage?: string): void
+}
+
 /** Provider surface needed by a single subtask worker. */
 interface SubtaskProvider {
 	createBackgroundTask(
@@ -174,6 +192,7 @@ interface SubtaskProvider {
 			maxAgentTurns?: number
 			autoApprovalOverride?: AutoApprovalOverride
 			silentWrites?: boolean
+			subagentInfo?: { parentTaskId: string; index: number; description: string }
 		},
 	): Promise<Task>
 	awaitTaskCompletion(
@@ -181,6 +200,13 @@ interface SubtaskProvider {
 		options: { signal?: AbortSignal },
 	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }>
 	getState(): Promise<ApprovalState>
+	subagentRegistry: SubtaskRegistry
+}
+
+/** Truncate a subtask message for panel display. */
+export function subagentDescription(message: string): string {
+	const firstLine = message.split("\n", 1)[0] ?? message
+	return firstLine.length > 200 ? `${firstLine.slice(0, 200)}…` : firstLine
 }
 
 /** Arguments for {@link runOneSubtask}. */
@@ -207,8 +233,12 @@ async function runOneSubtask({
 	signal,
 }: RunOneSubtaskArgs): Promise<ParallelSubtaskResult> {
 	const { worktreePath, branch } = worktreeNamesFor(cwd, parentTaskId, index)
+	const registry = provider.subagentRegistry
+	// Until the child Task exists, panel updates target the queued placeholder.
+	let registryId = queuedSubagentId(parentTaskId, index)
 
 	if (signal.aborted) {
+		registry.markTerminal(registryId, "cancelled")
 		return { index, mode: subtask.mode, status: "cancelled" }
 	}
 
@@ -219,15 +249,13 @@ async function runOneSubtask({
 			createNewBranch: true,
 		})
 		if (!created.success) {
-			return {
-				index,
-				mode: subtask.mode,
-				status: "failed",
-				error: `worktree creation failed: ${created.message}`,
-			}
+			const error = `worktree creation failed: ${created.message}`
+			registry.markTerminal(registryId, "failed", error)
+			return { index, mode: subtask.mode, status: "failed", error }
 		}
 
 		if (signal.aborted) {
+			registry.markTerminal(registryId, "cancelled")
 			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
 		}
 
@@ -242,12 +270,21 @@ async function runOneSubtask({
 				getState: () => provider.getState(),
 				worktreePath,
 			}),
+			subagentInfo: { parentTaskId, index, description: subagentDescription(subtask.message) },
 		})
+		registryId = child.taskId
 		const outcome = await provider.awaitTaskCompletion(child, { signal })
 
 		if (!outcome.completed && signal.aborted) {
+			registry.markTerminal(registryId, "cancelled")
 			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
 		}
+		const error = outcome.completed ? undefined : "subtask aborted before completion"
+		registry.markTerminal(
+			registryId,
+			outcome.completed ? "completed" : "failed",
+			outcome.completed ? outcome.lastMessage : error,
+		)
 		return await finalize(cwd, {
 			index,
 			mode: subtask.mode,
@@ -255,16 +292,18 @@ async function runOneSubtask({
 			worktreePath,
 			branch,
 			message: outcome.lastMessage,
-			error: outcome.completed ? undefined : "subtask aborted before completion",
+			error,
 		})
 	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		registry.markTerminal(registryId, "failed", errorMessage)
 		return await finalize(cwd, {
 			index,
 			mode: subtask.mode,
 			status: "failed",
 			worktreePath,
 			branch,
-			error: error instanceof Error ? error.message : String(error),
+			error: errorMessage,
 		})
 	}
 }
@@ -324,6 +363,25 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 			if (task.abort) {
 				pushToolResult(formatResponse.toolError("run_parallel_tasks cancelled."))
 				return
+			}
+
+			// Seed the webview subagents panel: previous fan-out entries for
+			// this parent are dropped, every subtask appears immediately as
+			// "queued" and transitions as its worker picks it up.
+			const fanOutStartedAt = Date.now()
+			provider.subagentRegistry.beginFanOut(task.taskId)
+			for (let i = 0; i < subtasks.length; i++) {
+				provider.subagentRegistry.registerQueued({
+					parentTaskId: task.taskId,
+					index: i,
+					mode: subtasks[i].mode,
+					description: subagentDescription(subtasks[i].message),
+					tokensIn: 0,
+					tokensOut: 0,
+					totalCost: 0,
+					startedAt: fanOutStartedAt,
+					lastActivityAt: fanOutStartedAt,
+				})
 			}
 
 			const controller = new AbortController()

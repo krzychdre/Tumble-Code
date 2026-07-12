@@ -102,6 +102,7 @@ import { readApiMessages, saveApiMessages, saveTaskMessages, TaskHistoryStore } 
 import { readTaskMessages } from "../task-persistence/taskMessages"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
+import { SubagentRegistry } from "./SubagentRegistry"
 import { REQUESTY_BASE_URL } from "../../shared/utils/requesty"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 
@@ -142,6 +143,11 @@ export class ClineProvider
 	// kept OFF `clineStack` so `getCurrentTask()` and the webview stay bound to the
 	// foreground task. Keyed by taskId; entries are removed on completion/abort.
 	private backgroundTasks = new Map<string, Task>()
+	// Live summaries + tail subscriptions for the UI-visible subset of
+	// backgroundTasks (parallel subagents). Memory writers never register.
+	public readonly subagentRegistry = new SubagentRegistry((message) => {
+		this.postMessageToWebview(message).catch(() => {})
+	})
 	// Children whose delegated parent could not be proven detached on cancel.
 	// reopenParentFromDelegation() refuses to reopen a parent for any child here.
 	private cancelledDelegationChildIds = new Set<string>()
@@ -248,9 +254,14 @@ export class ClineProvider
 
 			// Create named listener functions so we can remove them later.
 			const onTaskStarted = () => this.emit(RooCodeEventName.TaskStarted, instance.taskId)
-			const onTaskCompleted = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) =>
+			const onTaskCompleted = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
+				this.subagentRegistry.markTerminal(taskId, "completed")
 				this.emit(RooCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
+			}
 			const onTaskAborted = async () => {
+				// Generic "failed"; RunParallelTasksTool refines to "cancelled"
+				// when the abort turns out to be a fan-out cancellation.
+				this.subagentRegistry.markTerminal(instance.taskId, "failed")
 				this.emit(RooCodeEventName.TaskAborted, instance.taskId)
 
 				try {
@@ -283,16 +294,30 @@ export class ClineProvider
 			}
 			const onTaskFocused = () => this.emit(RooCodeEventName.TaskFocused, instance.taskId)
 			const onTaskUnfocused = () => this.emit(RooCodeEventName.TaskUnfocused, instance.taskId)
-			const onTaskActive = (taskId: string) => this.emit(RooCodeEventName.TaskActive, taskId)
-			const onTaskInteractive = (taskId: string) => this.emit(RooCodeEventName.TaskInteractive, taskId)
+			const onTaskActive = (taskId: string) => {
+				this.subagentRegistry.setLiveStatus(taskId, "running")
+				this.emit(RooCodeEventName.TaskActive, taskId)
+			}
+			const onTaskInteractive = (taskId: string) => {
+				this.subagentRegistry.setLiveStatus(taskId, "awaiting_input")
+				this.emit(RooCodeEventName.TaskInteractive, taskId)
+			}
 			const onTaskResumable = (taskId: string) => this.emit(RooCodeEventName.TaskResumable, taskId)
 			const onTaskIdle = (taskId: string) => this.emit(RooCodeEventName.TaskIdle, taskId)
 			const onTaskPaused = (taskId: string) => this.emit(RooCodeEventName.TaskPaused, taskId)
 			const onTaskUnpaused = (taskId: string) => this.emit(RooCodeEventName.TaskUnpaused, taskId)
 			const onTaskSpawned = (taskId: string) => this.emit(RooCodeEventName.TaskSpawned, taskId)
 			const onTaskUserMessage = (taskId: string) => this.emit(RooCodeEventName.TaskUserMessage, taskId)
-			const onTaskTokenUsageUpdated = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) =>
+			const onTaskTokenUsageUpdated = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
+				if (this.subagentRegistry.has(taskId)) {
+					this.subagentRegistry.update(taskId, {
+						tokensIn: tokenUsage.totalTokensIn,
+						tokensOut: tokenUsage.totalTokensOut,
+						totalCost: tokenUsage.totalCost,
+					})
+				}
 				this.emit(RooCodeEventName.TaskTokenUsageUpdated, taskId, tokenUsage, toolUsage)
+			}
 
 			// Attach the listeners.
 			instance.on(RooCodeEventName.TaskStarted, onTaskStarted)
@@ -528,6 +553,10 @@ export class ClineProvider
 			// is async and the task reference is cleared afterwards.
 			const childTaskId = task.taskId
 			const parentTaskId = task.parentTaskId
+
+			// The popped task's fan-out (if any) is dead — its children were
+			// aborted alongside the parent. Drop their panel entries.
+			this.subagentRegistry.clearForParent(childTaskId)
 
 			task.emit(RooCodeEventName.TaskUnfocused)
 
@@ -2312,6 +2341,7 @@ export class ClineProvider
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
 			clineMessages: currentTask?.clineMessages || [],
+			subagents: this.subagentRegistry.list(),
 			currentTaskTodos: currentTask?.todoList || [],
 			messageQueue: currentTask?.messageQueueService?.messages,
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
@@ -3093,6 +3123,12 @@ export class ClineProvider
 			silentWrites?: boolean
 			initialTodos?: TodoItem[]
 			apiConfiguration?: ProviderSettings
+			/**
+			 * Registers the child in the subagent registry so it is visible in
+			 * the webview subagents panel. Omitted for internal background
+			 * tasks (memory writers), which stay invisible.
+			 */
+			subagentInfo?: { parentTaskId: string; index: number; description: string }
 		} = {},
 	): Promise<Task> {
 		const state = await this.getState()
@@ -3120,9 +3156,33 @@ export class ClineProvider
 		})
 
 		this.backgroundTasks.set(task.taskId, task)
+		if (options.subagentInfo) {
+			// Register BEFORE start() so a tail subscribed on the queued
+			// placeholder streams the child's first messages.
+			const now = Date.now()
+			this.subagentRegistry.register({
+				taskId: task.taskId,
+				parentTaskId: options.subagentInfo.parentTaskId,
+				index: options.subagentInfo.index,
+				mode: options.taskMode ?? state.mode,
+				description: options.subagentInfo.description,
+				status: "running",
+				apiConfigName: state.currentApiConfigName,
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				startedAt: now,
+				lastActivityAt: now,
+			})
+		}
 		this.log(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
 		task.start()
 		return task
+	}
+
+	/** Look up a live headless background task (parallel subagent) by id. */
+	public getBackgroundTask(taskId: string): Task | undefined {
+		return this.backgroundTasks.get(taskId)
 	}
 
 	/**

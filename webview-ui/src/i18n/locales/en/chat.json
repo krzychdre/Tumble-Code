@@ -34,6 +34,20 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} file(s) changed in this conversation"
 	},
+	"subagents": {
+		"headerActive": "Subagents: {{active}}/{{total}} active",
+		"headerDone": "Subagents: {{total}} finished",
+		"noOutput": "No output yet.",
+		"tokens": "Tokens used",
+		"status": {
+			"queued": "Queued",
+			"running": "Running",
+			"awaiting_input": "Needs input",
+			"completed": "Completed",
+			"failed": "Failed",
+			"cancelled": "Cancelled"
+		}
+	},
 	"retry": {
 		"title": "Retry",
 		"tooltip": "Try the operation again"

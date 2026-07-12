@@ -34,6 +34,20 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} plik(ów) zmienionych w tej rozmowie"
 	},
+	"subagents": {
+		"headerActive": "Subagenci: {{active}}/{{total}} aktywnych",
+		"headerDone": "Subagenci: {{total}} zakończonych",
+		"noOutput": "Brak danych wyjściowych.",
+		"tokens": "Zużyte tokeny",
+		"status": {
+			"queued": "W kolejce",
+			"running": "Działa",
+			"awaiting_input": "Czeka na odpowiedź",
+			"completed": "Ukończony",
+			"failed": "Nieudany",
+			"cancelled": "Anulowany"
+		}
+	},
 	"tokenProgress": {
 		"availableSpace": "Dostępne miejsce: {{amount}} tokenów",
 		"tokensUsed": "Wykorzystane tokeny: {{used}} z {{total}}",

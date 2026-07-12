@@ -66,12 +66,22 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 			deniedCommands: [],
 			...state,
 		}),
+		subagentRegistry: {
+			beginFanOut: vi.fn(),
+			registerQueued: vi.fn(),
+			markTerminal: vi.fn(),
+		},
 	}
 	return provider as unknown as {
 		children: FakeChild[]
 		createBackgroundTask: ReturnType<typeof vi.fn>
 		awaitTaskCompletion: ReturnType<typeof vi.fn>
 		getState: ReturnType<typeof vi.fn>
+		subagentRegistry: {
+			beginFanOut: ReturnType<typeof vi.fn>
+			registerQueued: ReturnType<typeof vi.fn>
+			markTerminal: ReturnType<typeof vi.fn>
+		}
 	}
 }
 

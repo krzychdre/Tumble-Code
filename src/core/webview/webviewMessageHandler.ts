@@ -1327,6 +1327,29 @@ export const webviewMessageHandler = async (
 		case "cancelTask":
 			await provider.cancelTask()
 			break
+		case "subscribeSubagentMessages": {
+			// Open a live tail on a parallel subagent: mark it watched (so
+			// TaskHistory streams its subsequent messages) and send a snapshot
+			// of everything said so far. A queued placeholder or an
+			// already-disposed child yields an empty snapshot — the panel
+			// falls back to the summary's finalMessage.
+			const subagentTaskId = message.taskId
+			if (subagentTaskId) {
+				provider.subagentRegistry.watch(subagentTaskId)
+				const subagentTask = provider.getBackgroundTask(subagentTaskId)
+				await provider.postMessageToWebview({
+					type: "subagentMessages",
+					sourceTaskId: subagentTaskId,
+					subagentMessages: subagentTask ? [...subagentTask.clineMessages] : [],
+				})
+			}
+			break
+		}
+		case "unsubscribeSubagentMessages":
+			if (message.taskId) {
+				provider.subagentRegistry.unwatch(message.taskId)
+			}
+			break
 		case "cancelAutoApproval":
 			// Cancel any pending auto-approval timeout for the current task
 			provider.getCurrentTask()?.cancelAutoApprovalTimeout()

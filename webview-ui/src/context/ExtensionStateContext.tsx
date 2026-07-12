@@ -195,6 +195,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		apiConfiguration: {},
 		version: "",
 		clineMessages: [],
+		subagents: [],
 		taskHistory: [],
 		shouldShowAnnouncement: false,
 		allowedCommands: [],
@@ -379,6 +380,17 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 				case "messageUpdated": {
 					const clineMessage = message.clineMessage!
 					setState((prevState) => {
+						// Updates from a non-current task (a watched parallel
+						// subagent's live tail) are consumed by the subagent
+						// panel's own listener — never merge them into the main
+						// chat, and don't warn about them.
+						if (
+							message.sourceTaskId !== undefined &&
+							prevState.currentTaskId !== undefined &&
+							message.sourceTaskId !== prevState.currentTaskId
+						) {
+							return prevState
+						}
 						// worth noting it will never be possible for a more up-to-date message to be sent here or in normal messages post since the presentAssistantContent function uses lock
 						const lastIndex = findLastIndex(prevState.clineMessages, (msg) => msg.ts === clineMessage.ts)
 						if (lastIndex !== -1) {
@@ -396,6 +408,11 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 						)
 						return prevState
 					})
+					break
+				}
+				case "subagentsUpdated": {
+					const subagents = message.subagents ?? []
+					setState((prevState) => ({ ...prevState, subagents }))
 					break
 				}
 				case "skills": {
