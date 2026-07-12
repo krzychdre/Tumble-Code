@@ -113,4 +113,27 @@
 
 ## Outcome
 
-(fill at end)
+Shipped 2026-07-12 as 4 stacked branches off bf35eb360 (852 tests green
+across core/task, core/webview, core/memory, tool specs; src+webview+types
+typecheck clean):
+
+- `fix/parallel-subtask-mode-guard` (c746198ee) — architect/orchestrator
+  subtask modes rejected with a corrective error; prompt lists good subtask
+  shapes.
+- `fix/fanout-survives-parent-rehydration` (73cf41c7c) — registry rows no
+  longer wiped on stack pop; cascade-cancel only on
+  abortReason === "user_cancelled"; detached fan-outs queue their report
+  into the live rehydrated parent instance (resume_task queue-drain
+  auto-resumes the orchestrator with results).
+- `fix/subagent-write-approvals` (5b6fc669d) — worktree blanket write
+  approval removed; user's auto-approval settings decide; interactive
+  Approve/Deny in the panel; unanswered permission asks DENY after the
+  fallback window (followups still approve).
+- `feat/memory-activity-visibility` (fc7e1b874, new stack TIP) —
+  memoryActivity {recall, write} counters in provider/state,
+  MemoryCoordinator onActivity hook + memorySubTaskRunner wrap,
+  MemoryActivityBadge ("Recalling/Writing memory…") above the chat input.
+
+Known limitation (documented, acceptable): if the user clicks Resume before
+a detached fan-out finishes, the parent continues without results; the
+report still arrives at its next ask boundary via the message queue.
