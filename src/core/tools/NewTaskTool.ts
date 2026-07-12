@@ -25,6 +25,22 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
 
 		try {
+			// Background subagents must never delegate: a subtask is a small
+			// one-shot job that returns to its parent. The tool is already
+			// stripped from their tool list; this guards hallucinated calls
+			// and prompt-listed (non-native) protocols.
+			if (task.isBackground) {
+				task.recordToolError("new_task")
+				pushToolResult(
+					formatResponse.toolError(
+						"new_task is not available inside a parallel subtask. Subtasks are one-shot jobs: " +
+							"do the work directly in this task and finish with attempt_completion so the " +
+							"parent task can continue.",
+					),
+				)
+				return
+			}
+
 			// Validate required parameters.
 			if (!mode) {
 				task.consecutiveMistakeCount++

@@ -53,7 +53,7 @@ export type ToolCallStreamEvent = ApiStreamToolCallStartChunk | ApiStreamToolCal
 export class NativeToolCallParser {
 	// Streaming state management for argument accumulation (keyed by tool call id)
 	// Note: name is string to accommodate dynamic MCP tools (mcp--serverName--toolName)
-	private static streamingToolCalls = new Map<
+	private streamingToolCalls = new Map<
 		string,
 		{
 			id: string
@@ -63,7 +63,7 @@ export class NativeToolCallParser {
 	>()
 
 	// Raw chunk tracking state (keyed by index from API stream)
-	private static rawChunkTracker = new Map<
+	private rawChunkTracker = new Map<
 		number,
 		{
 			id: string
@@ -96,7 +96,7 @@ export class NativeToolCallParser {
 	 * This is the entry point for providers that emit tool_call_partial chunks.
 	 * Returns an array of events to be processed by the consumer.
 	 */
-	public static processRawChunk(chunk: {
+	public processRawChunk(chunk: {
 		index: number
 		id?: string
 		name?: string
@@ -107,10 +107,15 @@ export class NativeToolCallParser {
 
 		let tracked = this.rawChunkTracker.get(index)
 
-		// Initialize new tool call tracking when we receive an id
-		if (id && !tracked) {
+		// TE-5: Initialize tracking when ANY of id/name/arguments is present.
+		// Weak models sometimes emit the first chunk without an id (or with an
+		// empty id), sending name+arguments first and the real id in a later
+		// chunk — or never. Previously tracking was initialized ONLY when a
+		// non-empty id arrived, so pre-id chunks (including their arguments
+		// delta) were silently dropped and the tool call never assembled.
+		if (!tracked && (id || name || args)) {
 			tracked = {
-				id,
+				id: id || `synthetic-tool-call-${index}`,
 				name: name || "",
 				hasStarted: false,
 				deltaBuffer: [],
@@ -120,6 +125,17 @@ export class NativeToolCallParser {
 
 		if (!tracked) {
 			return events
+		}
+
+		// TE-5: If a real id arrives in a later chunk for an index that was
+		// initialized with a synthetic id, adopt the real id ONLY IF the
+		// tool_call_start event hasn't been emitted yet (hasStarted is false).
+		// Once started with the synthetic id, downstream state
+		// (streamingToolCallIndices in TaskStreamProcessor, the ToolUse.id on
+		// the assistant message content) is keyed by that synthetic id —
+		// switching ids mid-flight would orphan that state.
+		if (id && tracked.id.startsWith("synthetic-tool-call-") && !tracked.hasStarted) {
+			tracked.id = id
 		}
 
 		// Update name if present in chunk and not yet set
@@ -165,18 +181,33 @@ export class NativeToolCallParser {
 
 	/**
 	 * Process stream finish reason.
-	 * Emits end events when finish_reason is 'tool_calls'.
+	 * For ANY non-empty finish reason, flushes all STARTED tool calls (emits
+	 * tool_call_end for each and clears their tracker entries). This handles
+	 * weak/local OpenAI-compatible servers that return finish_reason "stop"
+	 * or other values even after emitting tool_calls deltas.
+	 *
+	 * Tool calls that never started (no name received) are not flushed here,
+	 * consistent with finalizeRawChunks behavior.
+	 *
+	 * If arguments were truncated, finalizeStreamingToolCall already returns
+	 * null on malformed JSON and TaskStreamProcessor short-circuits with a
+	 * structured error tool_result — that's the designed fail-safe.
 	 */
-	public static processFinishReason(finishReason: string | null | undefined): ToolCallStreamEvent[] {
+	public processFinishReason(finishReason: string | null | undefined): ToolCallStreamEvent[] {
 		const events: ToolCallStreamEvent[] = []
 
-		if (finishReason === "tool_calls" && this.rawChunkTracker.size > 0) {
+		if (finishReason && this.rawChunkTracker.size > 0) {
 			for (const [, tracked] of this.rawChunkTracker.entries()) {
-				events.push({
-					type: "tool_call_end",
-					id: tracked.id,
-				})
+				if (tracked.hasStarted) {
+					events.push({
+						type: "tool_call_end",
+						id: tracked.id,
+					})
+				}
 			}
+			// Clear all tracker entries after flushing, so finalizeRawChunks
+			// does not produce duplicate tool_call_end events
+			this.rawChunkTracker.clear()
 		}
 
 		return events
@@ -186,7 +217,7 @@ export class NativeToolCallParser {
 	 * Finalize any remaining tool calls that weren't explicitly ended.
 	 * Should be called at the end of stream processing.
 	 */
-	public static finalizeRawChunks(): ToolCallStreamEvent[] {
+	public finalizeRawChunks(): ToolCallStreamEvent[] {
 		const events: ToolCallStreamEvent[] = []
 
 		if (this.rawChunkTracker.size > 0) {
@@ -208,7 +239,7 @@ export class NativeToolCallParser {
 	 * Clear all raw chunk tracking state.
 	 * Should be called when a new API request starts.
 	 */
-	public static clearRawChunkState(): void {
+	public clearRawChunkState(): void {
 		this.rawChunkTracker.clear()
 	}
 
@@ -217,7 +248,7 @@ export class NativeToolCallParser {
 	 * Initializes tracking for incremental argument parsing.
 	 * Accepts string to support both ToolName and dynamic MCP tools (mcp--serverName--toolName).
 	 */
-	public static startStreamingToolCall(id: string, name: string): void {
+	public startStreamingToolCall(id: string, name: string): void {
 		this.streamingToolCalls.set(id, {
 			id,
 			name,
@@ -230,7 +261,7 @@ export class NativeToolCallParser {
 	 * Should be called when a new API request starts to prevent memory leaks
 	 * from interrupted streams.
 	 */
-	public static clearAllStreamingToolCalls(): void {
+	public clearAllStreamingToolCalls(): void {
 		this.streamingToolCalls.clear()
 	}
 
@@ -238,7 +269,7 @@ export class NativeToolCallParser {
 	 * Check if there are any active streaming tool calls.
 	 * Useful for debugging and testing.
 	 */
-	public static hasActiveStreamingToolCalls(): boolean {
+	public hasActiveStreamingToolCalls(): boolean {
 		return this.streamingToolCalls.size > 0
 	}
 
@@ -247,7 +278,7 @@ export class NativeToolCallParser {
 	 * Uses partial-json-parser to extract values from incomplete JSON immediately.
 	 * Returns a partial ToolUse with currently parsed parameters.
 	 */
-	public static processStreamingChunk(id: string, chunk: string): ToolUse | null {
+	public processStreamingChunk(id: string, chunk: string): ToolUse | null {
 		const toolCall = this.streamingToolCalls.get(id)
 		if (!toolCall) {
 			return null
@@ -273,7 +304,7 @@ export class NativeToolCallParser {
 			const originalName = toolCall.name !== resolvedName ? toolCall.name : undefined
 
 			// Create partial ToolUse with extracted values
-			return this.createPartialToolUse(
+			return NativeToolCallParser.createPartialToolUse(
 				toolCall.id,
 				resolvedName,
 				partialArgs || {},
@@ -291,7 +322,7 @@ export class NativeToolCallParser {
 	 * Finalize a streaming tool call.
 	 * Parses the complete JSON and returns the final ToolUse or McpToolUse.
 	 */
-	public static finalizeStreamingToolCall(id: string): ToolUse | McpToolUse | null {
+	public finalizeStreamingToolCall(id: string): ToolUse | McpToolUse | null {
 		const toolCall = this.streamingToolCalls.get(id)
 		if (!toolCall) {
 			return null
@@ -299,7 +330,7 @@ export class NativeToolCallParser {
 
 		// Parse the complete accumulated JSON
 		// Cast to any for the name since parseToolCall handles both ToolName and dynamic MCP tools
-		const finalToolUse = this.parseToolCall({
+		const finalToolUse = NativeToolCallParser.parseToolCall({
 			id: toolCall.id,
 			name: toolCall.name as ToolName,
 			arguments: toolCall.argumentsAccumulator,
@@ -633,6 +664,15 @@ export class NativeToolCallParser {
 						mode: partialArgs.mode,
 						message: partialArgs.message,
 						todos: partialArgs.todos,
+					}
+				}
+				break
+
+			case "run_parallel_tasks":
+				if (partialArgs.subtasks !== undefined) {
+					nativeArgs = {
+						subtasks: Array.isArray(partialArgs.subtasks) ? partialArgs.subtasks : [],
+						maxConcurrency: partialArgs.maxConcurrency ?? null,
 					}
 				}
 				break
@@ -998,6 +1038,15 @@ export class NativeToolCallParser {
 							mode: args.mode,
 							message: args.message,
 							todos: args.todos,
+						} as NativeArgsFor<TName>
+					}
+					break
+
+				case "run_parallel_tasks":
+					if (Array.isArray(args.subtasks)) {
+						nativeArgs = {
+							subtasks: args.subtasks,
+							maxConcurrency: args.maxConcurrency ?? null,
 						} as NativeArgsFor<TName>
 					}
 					break

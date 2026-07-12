@@ -367,6 +367,54 @@ describe("TelemetryClient", () => {
 				}),
 			).resolves.not.toThrow()
 		})
+
+		it("should pass an AbortSignal timeout on the fetch call", async () => {
+			const client = new TelemetryClient(mockAuthService, mockSettingsService)
+
+			const providerProperties = {
+				appName: "roo-code",
+				appVersion: "1.0.0",
+				vscodeVersion: "1.60.0",
+				platform: "darwin",
+				editorName: "vscode",
+				language: "en",
+				mode: "code",
+			}
+
+			const mockProvider: TelemetryPropertiesProvider = {
+				getTelemetryProperties: vi.fn().mockResolvedValue(providerProperties),
+			}
+
+			client.setProvider(mockProvider)
+
+			await client.capture({
+				event: TelemetryEventName.TASK_CREATED,
+				properties: { taskId: "test-task-id" },
+			})
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				"https://app.tumblecode.dev/api/events",
+				expect.objectContaining({
+					signal: expect.any(AbortSignal),
+				}),
+			)
+		})
+
+		it("should handle fetch timeout gracefully (AbortError treated as failure)", async () => {
+			const client = new TelemetryClient(mockAuthService, mockSettingsService)
+
+			const abortError = new DOMException("The operation was aborted", "AbortError")
+			mockFetch.mockRejectedValue(abortError)
+
+			// A timeout must behave like any failed fetch — the error is caught
+			// in capture(), logged, and the promise resolves without throwing.
+			await expect(
+				client.capture({
+					event: TelemetryEventName.TASK_CREATED,
+					properties: { test: "value" },
+				}),
+			).resolves.not.toThrow()
+		})
 	})
 
 	describe("telemetry state methods", () => {
@@ -668,6 +716,28 @@ describe("TelemetryClient", () => {
 
 			expect(console.error).toHaveBeenCalledWith(
 				"[TelemetryClient#backfillMessages] POST events/backfill -> 404 Not Found",
+			)
+		})
+
+		it("should pass an AbortSignal timeout on the backfill fetch call", async () => {
+			const client = new TelemetryClient(mockAuthService, mockSettingsService)
+
+			const messages = [
+				{
+					ts: 1,
+					type: "say" as const,
+					say: "text" as const,
+					text: "test message",
+				},
+			]
+
+			await client.backfillMessages(messages, "test-task-id")
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				"https://app.tumblecode.dev/api/events/backfill",
+				expect.objectContaining({
+					signal: expect.any(AbortSignal),
+				}),
 			)
 		})
 

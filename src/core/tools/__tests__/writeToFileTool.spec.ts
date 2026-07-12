@@ -180,6 +180,7 @@ describe("writeToFileTool", () => {
 		mockCline.ask = vi.fn().mockResolvedValue(undefined)
 		mockCline.recordToolError = vi.fn()
 		mockCline.sayAndCreateMissingParamError = vi.fn().mockResolvedValue("Missing param error")
+		mockCline.processQueuedMessages = vi.fn()
 
 		mockAskApproval = vi.fn().mockResolvedValue(true)
 		mockHandleError = vi.fn().mockResolvedValue(undefined)
@@ -216,8 +217,8 @@ describe("writeToFileTool", () => {
 				...params,
 			},
 			nativeArgs: {
-				path: (params.path ?? testFilePath) as any,
-				content: (params.content ?? testContent) as any,
+				path: ("path" in params ? params.path : testFilePath) as any,
+				content: ("content" in params ? params.content : testContent) as any,
 			},
 			partial: isPartial,
 		}
@@ -413,6 +414,60 @@ describe("writeToFileTool", () => {
 		})
 	})
 
+	describe("partial access control (TL-6)", () => {
+		it("does not open diff editor when rooIgnoreController denies access", async () => {
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			// Second call with same path - path is now stabilized, but access denied
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			expect(mockCline.rooIgnoreController.validateAccess).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+		})
+
+		it("does not open diff editor when path is outside workspace", async () => {
+			mockedIsPathOutsideWorkspace.mockReturnValue(true)
+
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true })
+
+			// Second call with same path - path is now stabilized, but outside workspace
+			await executeWriteFileTool({}, { isPartial: true })
+
+			expect(mockedIsPathOutsideWorkspace).toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+		})
+
+		it("does open diff editor for valid inside-workspace path with access allowed", async () => {
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: true })
+
+			// Second call with same path - path is now stabilized, access allowed, inside workspace
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: true })
+
+			expect(mockCline.rooIgnoreController.validateAccess).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath)
+		})
+
+		it("does not re-validate on repeated partial chunks for the same rejected path", async () => {
+			// First call - path not yet stabilized
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			// Second call - path stabilized, access denied (first validation)
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			const firstCallCount = mockCline.rooIgnoreController.validateAccess.mock.calls.length
+
+			// Third call - same path, should skip re-validation
+			await executeWriteFileTool({}, { isPartial: true, accessAllowed: false })
+
+			const secondCallCount = mockCline.rooIgnoreController.validateAccess.mock.calls.length
+			expect(secondCallCount).toBe(firstCallCount)
+			expect(mockCline.diffViewProvider.open).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("user interaction", () => {
 		it("reverts changes when user rejects approval", async () => {
 			mockAskApproval.mockResolvedValue(false)
@@ -442,6 +497,27 @@ describe("writeToFileTool", () => {
 		})
 	})
 
+	describe("weak-model param coercion", () => {
+		it("produces a missing-param error when path is a number, not a string", async () => {
+			await executeWriteFileTool({ path: 42 as any })
+
+			// Should NOT throw a raw TypeError from path.resolve; should produce
+			// a clear missing-param tool error and reset.
+			expect(mockHandleError).not.toHaveBeenCalled()
+			expect(mockCline.sayAndCreateMissingParamError).toHaveBeenCalledWith("write_to_file", "path")
+			expect(mockCline.recordToolError).toHaveBeenCalledWith("write_to_file")
+			expect(mockCline.diffViewProvider.reset).toHaveBeenCalled()
+		})
+
+		it("coerces null content to empty string without throwing", async () => {
+			await executeWriteFileTool({ content: null as any })
+
+			// null content should be coerced to "", not trigger a raw TypeError.
+			expect(mockHandleError).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith("", true)
+		})
+	})
+
 	describe("error handling", () => {
 		it("handles general file operation errors", async () => {
 			mockCline.diffViewProvider.open.mockRejectedValue(new Error("General error"))
@@ -462,6 +538,57 @@ describe("writeToFileTool", () => {
 			// Second call with same path - path is now stabilized, error occurs
 			await executeWriteFileTool({}, { isPartial: true })
 			expect(mockHandleError).toHaveBeenCalledWith("handling partial write_to_file", expect.any(Error))
+		})
+	})
+
+	describe("stale editType from partial phase (TL-2)", () => {
+		it.skipIf(process.platform === "win32")(
+			"re-checks file existence when final path differs from partial-phase path",
+			async () => {
+				const partialPath = "existing/file.txt"
+				const finalPath = "new/file.txt"
+				const finalAbs = "/new/file.txt"
+
+				// Use join-based path.resolve so different relPaths produce different absolute paths
+				mockedPathResolve.mockImplementation((...args: string[]) => args.join("/"))
+
+				// Phase 1: handlePartial with path A (existing file)
+				// First call - path not yet stabilized
+				await executeWriteFileTool({ path: partialPath }, { fileExists: true, isPartial: true })
+				// Second call - path stabilized, fileExists=true → editType="modify", editTypePath=partialPath
+				await executeWriteFileTool({ path: partialPath }, { fileExists: true, isPartial: true })
+
+				// Verify partial phase set editType to "modify"
+				expect(mockCline.diffViewProvider.editType).toBe("modify")
+
+				// Phase 2: execute with path B (non-existent file)
+				await executeWriteFileTool({ path: finalPath }, { fileExists: false })
+
+				// Post-fix: fileExistsAtPath should have been called for the final absolute path
+				expect(mockedFileExistsAtPath).toHaveBeenCalledWith(finalAbs)
+				// editType should be corrected to "create"
+				expect(mockCline.diffViewProvider.editType).toBe("create")
+			},
+		)
+
+		it("does not re-check file existence when partial and final paths match (fast path)", async () => {
+			const samePath = "test/file.txt"
+
+			// Phase 1: handlePartial with path A
+			await executeWriteFileTool({ path: samePath }, { fileExists: true, isPartial: true })
+			await executeWriteFileTool({ path: samePath }, { fileExists: true, isPartial: true })
+
+			expect(mockCline.diffViewProvider.editType).toBe("modify")
+
+			// Clear mock call history to track execute-phase calls only
+			mockedFileExistsAtPath.mockClear()
+
+			// Phase 2: execute with same path — fast path, no redundant re-check
+			await executeWriteFileTool({ path: samePath }, { fileExists: true })
+
+			// Fast path: fileExistsAtPath should NOT be called (editType already correct for this path)
+			expect(mockedFileExistsAtPath).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.editType).toBe("modify")
 		})
 	})
 })

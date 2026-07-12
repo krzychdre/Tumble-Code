@@ -1,4 +1,10 @@
 import * as path from "path"
+import { execFile } from "child_process"
+
+vi.mock("child_process", () => ({
+	exec: vi.fn(),
+	execFile: vi.fn(),
+}))
 
 import { WorktreeService } from "../worktree-service.js"
 
@@ -141,6 +147,82 @@ bare
 				path: "/home/user/repo.git",
 				isBare: true,
 			})
+		})
+	})
+
+	describe("hasUncommittedChanges", () => {
+		let service: WorktreeService
+		const mockExecFile = vi.mocked(execFile)
+
+		beforeEach(() => {
+			service = new WorktreeService()
+			mockExecFile.mockReset()
+		})
+
+		// promisify(execFile) without the custom symbol resolves with the
+		// second cb arg as the whole value, so we pass { stdout, stderr }.
+		type ExecCb = (err: Error | null, result?: { stdout: string; stderr: string }) => void
+		const mockImpl = (stdout: string) =>
+			((_cmd: string, _args: string[], _opts: unknown, cb: ExecCb) => cb(null, { stdout, stderr: "" })) as never
+
+		const mockErr = (err: Error) =>
+			((_cmd: string, _args: string[], _opts: unknown, cb: ExecCb) => cb(err)) as never
+
+		it("returns false for clean worktree (empty porcelain output)", async () => {
+			mockExecFile.mockImplementation(mockImpl(""))
+			expect(await service.hasUncommittedChanges("/wt")).toBe(false)
+		})
+
+		it("returns true when porcelain output has changes", async () => {
+			mockExecFile.mockImplementation(mockImpl(" M file.ts\n"))
+			expect(await service.hasUncommittedChanges("/wt")).toBe(true)
+		})
+
+		it("returns false for whitespace-only porcelain output", async () => {
+			mockExecFile.mockImplementation(mockImpl("  \n  \n"))
+			expect(await service.hasUncommittedChanges("/wt")).toBe(false)
+		})
+
+		it("returns true on exec error (errs toward keeping)", async () => {
+			mockExecFile.mockImplementation(mockErr(new Error("boom")))
+			expect(await service.hasUncommittedChanges("/wt")).toBe(true)
+		})
+	})
+
+	describe("branchHasCommits", () => {
+		let service: WorktreeService
+		const mockExecFile = vi.mocked(execFile)
+
+		beforeEach(() => {
+			service = new WorktreeService()
+			mockExecFile.mockReset()
+		})
+
+		type ExecCb = (err: Error | null, result?: { stdout: string; stderr: string }) => void
+		const mockImpl = (stdout: string) =>
+			((_cmd: string, _args: string[], _opts: unknown, cb: ExecCb) => cb(null, { stdout, stderr: "" })) as never
+
+		const mockErr = (err: Error) =>
+			((_cmd: string, _args: string[], _opts: unknown, cb: ExecCb) => cb(err)) as never
+
+		it("returns false when count is 0", async () => {
+			mockExecFile.mockImplementation(mockImpl("0\n"))
+			expect(await service.branchHasCommits("/repo", "worktree/parallel-x-1")).toBe(false)
+		})
+
+		it("returns true when count > 0", async () => {
+			mockExecFile.mockImplementation(mockImpl("3\n"))
+			expect(await service.branchHasCommits("/repo", "worktree/parallel-x-1")).toBe(true)
+		})
+
+		it("returns true on exec error (errs toward keeping)", async () => {
+			mockExecFile.mockImplementation(mockErr(new Error("boom")))
+			expect(await service.branchHasCommits("/repo", "worktree/parallel-x-1")).toBe(true)
+		})
+
+		it("returns true on unparseable output (errs toward keeping)", async () => {
+			mockExecFile.mockImplementation(mockImpl("fatal: not a number\n"))
+			expect(await service.branchHasCommits("/repo", "worktree/parallel-x-1")).toBe(true)
 		})
 	})
 })

@@ -16,7 +16,6 @@ vi.mock("openai", () => {
 })
 
 import { LmStudioHandler } from "../lm-studio"
-import { NativeToolCallParser } from "../../../core/assistant-message/NativeToolCallParser"
 import type { ApiHandlerOptions } from "../../../shared/api"
 
 describe("LmStudioHandler Native Tools", () => {
@@ -49,9 +48,6 @@ describe("LmStudioHandler Native Tools", () => {
 			lmStudioBaseUrl: "http://localhost:1234",
 		}
 		handler = new LmStudioHandler(mockOptions)
-
-		// Clear NativeToolCallParser state before each test
-		NativeToolCallParser.clearRawChunkState()
 	})
 
 	describe("Native Tool Calling Support", () => {
@@ -81,6 +77,7 @@ describe("LmStudioHandler Native Tools", () => {
 						}),
 					]),
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 			// parallel_tool_calls should be true by default when not explicitly set
 			const callArgs = mockCreate.mock.calls[0][0]
@@ -107,6 +104,7 @@ describe("LmStudioHandler Native Tools", () => {
 				expect.objectContaining({
 					tool_choice: "auto",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -219,6 +217,7 @@ describe("LmStudioHandler Native Tools", () => {
 				expect.objectContaining({
 					parallel_tool_calls: true,
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -261,26 +260,16 @@ describe("LmStudioHandler Native Tools", () => {
 
 			const chunks = []
 			for await (const chunk of stream) {
-				// Simulate what Task.ts does: when we receive tool_call_partial,
-				// process it through NativeToolCallParser to populate rawChunkTracker
-				if (chunk.type === "tool_call_partial") {
-					NativeToolCallParser.processRawChunk({
-						index: chunk.index,
-						id: chunk.id,
-						name: chunk.name,
-						arguments: chunk.arguments,
-					})
-				}
 				chunks.push(chunk)
 			}
 
-			// Should have tool_call_partial and tool_call_end
+			// Should have tool_call_partial and finish_reason (not tool_call_end — providers no longer call processFinishReason)
 			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
 
 			expect(partialChunks).toHaveLength(1)
-			expect(endChunks).toHaveLength(1)
-			expect(endChunks[0].id).toBe("call_lmstudio_test")
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0].finishReason).toBe("tool_calls")
 		})
 
 		it("should work with parallel tool calls disabled (sends false)", async () => {
@@ -352,26 +341,18 @@ describe("LmStudioHandler Native Tools", () => {
 
 			const chunks = []
 			for await (const chunk of stream) {
-				if (chunk.type === "tool_call_partial") {
-					NativeToolCallParser.processRawChunk({
-						index: chunk.index,
-						id: chunk.id,
-						name: chunk.name,
-						arguments: chunk.arguments,
-					})
-				}
 				chunks.push(chunk)
 			}
 
-			// Should have reasoning, tool_call_partial, and tool_call_end
+			// Should have reasoning, tool_call_partial, and finish_reason
 			const reasoningChunks = chunks.filter((chunk) => chunk.type === "reasoning")
 			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
 
 			expect(reasoningChunks).toHaveLength(1)
 			expect(reasoningChunks[0].text).toBe("Thinking about this...")
 			expect(partialChunks).toHaveLength(1)
-			expect(endChunks).toHaveLength(1)
+			expect(finishReasonChunks).toHaveLength(1)
 		})
 	})
 })

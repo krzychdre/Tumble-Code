@@ -58,6 +58,8 @@ import { CloudService } from "@roo-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
+import { MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { isAutoMemoryEnabled } from "../memory/paths"
 import { ApiStream, GroundingSource } from "../../api/transform/stream"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 
@@ -164,7 +166,50 @@ export interface TaskOptions extends CreateTaskOptions {
 	workspacePath?: string
 	/** Initial status for the task's history item (e.g., "active" for child tasks) */
 	initialStatus?: "active" | "delegated" | "completed"
+	/**
+	 * Explicit mode slug for this task, bypassing the global current mode. Used by
+	 * headless background tasks (e.g. the `memory-writer` sandbox mode) and
+	 * parallel subagents so they don't inherit / mutate the foreground mode.
+	 */
+	taskMode?: string
+	/**
+	 * Marks this task as a headless background task (memory writer / parallel
+	 * subagent). Background tasks are not pushed onto the provider's `clineStack`,
+	 * do not drive the webview, and skip their own memory background-writers.
+	 */
+	isBackground?: boolean
+	/**
+	 * Hard cap on assistant turns for a background task. When the loop reaches
+	 * this many assistant turns the task aborts cleanly. `undefined` = no cap
+	 * (normal foreground behavior).
+	 */
+	maxAgentTurns?: number
+	/**
+	 * Per-task auto-approval override, checked before the global auto-approval
+	 * state. Returns `"approve"` / `"deny"` to resolve an ask without user
+	 * interaction, or `undefined` to fall through to normal handling. Lets a
+	 * headless task run autonomously without mutating global approval settings.
+	 */
+	autoApprovalOverride?: AutoApprovalOverride
+	/**
+	 * When true, file writes bypass the diff-view editor UI (no editor tabs) and
+	 * are saved straight to disk. Used by background tasks so memory writes are
+	 * invisible.
+	 */
+	silentWrites?: boolean
 }
+
+/**
+ * A per-task auto-approval decision function. Given the ask type, its text, and
+ * whether the target is a protected file, returns `"approve"` / `"deny"` to
+ * short-circuit, or `undefined` to defer to the normal (global) auto-approval
+ * flow. The function may be async; `undefined` falls through to the global flow.
+ */
+export type AutoApprovalOverride = (
+	ask: ClineAsk,
+	text?: string,
+	isProtected?: boolean,
+) => "approve" | "deny" | undefined | Promise<"approve" | "deny" | undefined>
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly taskId: string
@@ -287,6 +332,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	isInitialized = false
 	isPaused: boolean = false
 
+	/**
+	 * True once a terminal lifecycle event (`TaskCompleted` or `TaskAborted`)
+	 * has been emitted. Prevents double-emission and lets `dispose()` emit a
+	 * final `TaskAborted` when the task is being torn down without a terminal
+	 * signal — so waiters like `awaitTaskCompletion` resolve instead of hanging.
+	 */
+	private terminalEventEmitted = false
+
 	// API
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
@@ -355,6 +408,37 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	checkpointTimeout: number
 	checkpointService?: RepoPerTaskCheckpointService
 	checkpointServiceInitializing = false
+
+	// Memory recall coordinator. Lazily constructed on first access so it
+	// picks up the live `api` handler (which may be rebuilt on profile switch)
+	// and the current `memoryRecallEnabled` setting. `undefined` when memory or
+	// recall is disabled, or when no `completePrompt`-capable handler is present.
+	private _memoryCoordinator: MemoryCoordinator | undefined
+	public get memoryCoordinator(): MemoryCoordinator | undefined {
+		if (this._memoryCoordinator) return this._memoryCoordinator
+		// `paths.ts` is the source of truth for the memory enable gate; if
+		// memory is off (env or setting), skip constructing the coordinator.
+		if (!isAutoMemoryEnabled()) return undefined
+		const recallEnabled = this.providerRef.deref()?.getValue("memoryRecallEnabled") ?? true
+		this._memoryCoordinator = new MemoryCoordinator({
+			cwd: this.cwd,
+			recallEnabled,
+			readFileState: this._memoryReadFileState,
+			apiHandler: this.api,
+			// Surface "recalling memory…" in the UI while a prefetch runs.
+			onActivity: (active) => this.providerRef.deref()?.setMemoryActivity("recall", active),
+		})
+		return this._memoryCoordinator
+	}
+	// Memory dedup cache (Roo has no readFileState primitive; the coordinator
+	// owns one purely for surfacing dedup against prior turns).
+	private _memoryReadFileState = new Map<
+		string,
+		{ content: string; timestamp: number; offset?: number; limit?: number }
+	>()
+	// Monotonic API-loop iteration counter, shared with the lifecycle for the
+	// recall consume-once guard.
+	public apiLoopIteration = 0
 
 	// Message Queue Service
 	public readonly messageQueueService: MessageQueueService
@@ -469,6 +553,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// API loop orchestration (extracted from Task)
 	readonly apiLoop: TaskApiLoop
 
+	// Headless background task controls (memory writer / parallel subagents).
+	// All default to the inert foreground values so normal tasks are unaffected.
+	readonly isBackground: boolean
+	readonly maxAgentTurns?: number
+	autoApprovalOverride?: AutoApprovalOverride
+	readonly silentWrites: boolean
+	/** Assistant-turn counter used to enforce `maxAgentTurns`. */
+	agentTurnCount = 0
+
 	// MessageManager for high-level message operations (lazy initialized)
 	private _messageManager?: MessageManager
 
@@ -491,6 +584,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		initialTodos,
 		workspacePath,
 		initialStatus,
+		taskMode,
+		isBackground = false,
+		maxAgentTurns,
+		autoApprovalOverride,
+		silentWrites = false,
 	}: TaskOptions) {
 		super()
 
@@ -553,6 +651,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.taskNumber = taskNumber
 		this.initialStatus = initialStatus
 
+		// Headless background-task controls (memory writer / parallel subagents).
+		this.isBackground = isBackground
+		this.maxAgentTurns = maxAgentTurns
+		this.autoApprovalOverride = autoApprovalOverride
+		this.silentWrites = silentWrites
+
 		// Store the task's mode and API config name when it's created.
 		// For history items, use the stored values; for new tasks, we'll set them
 		// after getting state.
@@ -562,6 +666,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this.taskModeReady = Promise.resolve()
 			this.taskApiConfigReady = Promise.resolve()
 			TelemetryService.instance.captureTaskRestarted(this.taskId)
+		} else if (taskMode) {
+			// Explicit per-task mode (headless background task / subagent): don't
+			// read or mutate the global current mode.
+			this._taskMode = taskMode
+			this._taskApiConfigName = undefined
+			this.taskModeReady = Promise.resolve()
+			this.taskApiConfigReady = Promise.resolve()
 		} else {
 			// For new tasks, don't set the mode/apiConfigName yet - wait for async initialization.
 			this._taskMode = undefined
@@ -641,8 +752,30 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Pass Task as TaskApiLoopAccess for property access.
 		this.apiLoop = new TaskApiLoop(this as unknown as import("./TaskApiLoop").TaskApiLoopAccess)
 
+		// Memory background writers: run extraction/consolidation when this task
+		// completes normally. `abortTask` already covers the cancelled/errored
+		// paths, but a normal `attempt_completion` only emits `TaskCompleted` and
+		// leaves the task alive (it is later abandoned-aborted, which skips the
+		// writers) — so hook completion here. The trigger is idempotent
+		// (cursor-based, early-returns on no new messages) and gated to the main
+		// agent internally, so double-firing with a later abort is safe. The
+		// listener is cleaned up by `removeAllListeners()` in dispose().
+		this.on(RooCodeEventName.TaskCompleted, () => {
+			// Background tasks (the memory writer itself, parallel subagents) must
+			// not spawn their own memory writers — that would recurse.
+			if (this.isBackground) return
+			try {
+				this.lifecycle.triggerMemoryBackgroundWriters()
+			} catch (error) {
+				console.error(
+					`[Task#${this.taskId}.${this.instanceId}] memory writers on completion failed:`,
+					error instanceof Error ? error.message : String(error),
+				)
+			}
+		})
+
 		// Now initialize mode/api config for new tasks (after lifecycle is ready)
-		if (!historyItem) {
+		if (!historyItem && !taskMode) {
 			this.taskModeReady = this.initializeTaskMode(provider)
 			this.taskApiConfigReady = this.initializeTaskApiConfigName(provider)
 		}
@@ -947,6 +1080,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// Update the configuration and rebuild the API handler
 		this.apiConfiguration = newApiConfiguration
 		this.api = buildApiHandler(this.apiConfiguration)
+		// Invalidate the cached MemoryCoordinator so the next lazy-getter
+		// access rebuilds it against the new handler. Without this, memory-recall
+		// side-queries keep running on the old (possibly dead-credentials)
+		// handler after a mid-task profile switch (MEM-1).
+		this._memoryCoordinator = undefined
 	}
 
 	public async submitUserMessage(
@@ -1110,11 +1248,51 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	}
 
 	/**
+	 * Track terminal lifecycle events so `dispose()` can emit a final
+	 * `TaskAborted` when the task is torn down without one. Overriding `emit`
+	 * (rather than wrapping each call site) catches every emitter —
+	 * `TaskLifecycle.abortTask`, `AttemptCompletionTool`, and any future
+	 * caller — through a single chokepoint.
+	 */
+	public override emit<K extends keyof TaskEvents>(event: K, ...args: TaskEvents[K]): boolean {
+		if (event === RooCodeEventName.TaskCompleted || event === RooCodeEventName.TaskAborted) {
+			this.terminalEventEmitted = true
+		}
+		// Cast through unknown: Node's EventEmitter typings use a conditional
+		// `Args<K, T>` that TypeScript can't relate back to `TaskEvents[K]` when
+		// spreading generic rest tuples. The runtime behaviour is correct.
+		return (super.emit as (event: K, ...args: TaskEvents[K]) => boolean)(event, ...args)
+	}
+
+	/**
 	 * Dispose of all task resources.
 	 * Delegates to TaskLifecycle module for most cleanup, with Task-specific
 	 * cleanup for EventEmitter listeners.
+	 *
+	 * If no terminal event (`TaskCompleted` / `TaskAborted`) has been emitted
+	 * yet, emits `TaskAborted` BEFORE removing listeners so that waiters like
+	 * `awaitTaskCompletion` resolve instead of hanging forever. This covers
+	 * direct `dispose()` calls that bypass `abortTask()` (e.g. test cleanup,
+	 * extension shutdown). The `terminalEventEmitted` flag prevents
+	 * double-emission when `dispose()` is reached via `abortTask()` (which
+	 * already emitted `TaskAborted` before calling `this.lifecycle.dispose()`).
 	 */
 	public dispose(): void {
+		// If no terminal event has fired, emit TaskAborted now so waiters
+		// (awaitTaskCompletion, runWithConcurrency, provider event forwarding)
+		// resolve. This MUST happen before removeAllListeners() so the handlers
+		// are still attached and can run.
+		if (!this.terminalEventEmitted) {
+			try {
+				this.emit(RooCodeEventName.TaskAborted)
+			} catch (error) {
+				console.error(
+					`[Task#${this.taskId}.${this.instanceId}] Error emitting final TaskAborted during dispose:`,
+					error instanceof Error ? error.message : String(error),
+				)
+			}
+		}
+
 		// Delegate most cleanup to lifecycle module
 		this.lifecycle.dispose()
 

@@ -395,10 +395,11 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			const state = await provider?.getState()
 			const diagnosticsEnabled = state?.diagnosticsEnabled ?? true
 			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-			const isPreventFocusDisruptionEnabled = experiments.isEnabled(
-				state?.experiments ?? {},
-				EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
-			)
+			// Background/memory tasks (`silentWrites`) reuse the focus-disruption
+			// path: it writes straight to disk without opening a diff editor tab.
+			const isPreventFocusDisruptionEnabled =
+				task.silentWrites ||
+				experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
 
 			const sanitizedDiff = sanitizeUnifiedDiff(diff || "")
 			const diffStats = computeDiffStats(sanitizedDiff) || undefined

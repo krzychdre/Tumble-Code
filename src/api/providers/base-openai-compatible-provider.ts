@@ -14,6 +14,7 @@ import { BaseProvider } from "./base-provider"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { calculateApiCostOpenAI } from "../../shared/cost"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
+import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
 	providerName: string
@@ -35,7 +36,8 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 	protected readonly options: ApiHandlerOptions
 
-	protected client: OpenAI
+	protected client: OpenAI | null = null
+	protected abortController?: AbortController
 
 	constructor({
 		providerName,
@@ -65,6 +67,21 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			defaultHeaders: DEFAULT_HEADERS,
 			timeout: this.timeoutMs,
 		})
+	}
+
+	/**
+	 * Gets the client, recreating it if it was previously destroyed.
+	 */
+	protected getClient(): OpenAI {
+		if (!this.client) {
+			this.client = new OpenAI({
+				baseURL: this.baseURL,
+				apiKey: this.options.apiKey,
+				defaultHeaders: DEFAULT_HEADERS,
+				timeout: this.timeoutMs,
+			})
+		}
+		return this.client
 	}
 
 	protected createStream(
@@ -103,9 +120,17 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			;(params as any).thinking = { type: "enabled" }
 		}
 
+		// Create a fresh AbortController for this request
+		this.abortController = new AbortController()
+		const mergedRequestOptions: OpenAI.RequestOptions = {
+			...requestOptions,
+			signal: this.abortController.signal,
+		}
+
 		try {
-			return this.client.chat.completions.create(params, requestOptions)
+			return this.getClient().chat.completions.create(params, mergedRequestOptions)
 		} catch (error) {
+			this.abortController = undefined
 			throw handleOpenAIError(error, this.providerName)
 		}
 	}
@@ -127,68 +152,55 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		)
 
 		let lastUsage: OpenAI.CompletionUsage | undefined
-		const activeToolCallIds = new Set<string>()
 
-		for await (const chunk of stream) {
-			// Check for provider-specific error responses (e.g., MiniMax base_resp)
-			const chunkAny = chunk as any
-			if (chunkAny.base_resp?.status_code && chunkAny.base_resp.status_code !== 0) {
-				throw new Error(
-					`${this.providerName} API Error (${chunkAny.base_resp.status_code}): ${chunkAny.base_resp.status_msg || "Unknown error"}`,
-				)
-			}
-
-			const delta = chunk.choices?.[0]?.delta
-			const finishReason = chunk.choices?.[0]?.finish_reason
-
-			if (delta?.content) {
-				for (const processedChunk of matcher.update(delta.content)) {
-					yield processedChunk
+		try {
+			for await (const chunk of stream) {
+				// Check for provider-specific error responses (e.g., MiniMax base_resp)
+				const chunkAny = chunk as any
+				if (chunkAny.base_resp?.status_code && chunkAny.base_resp.status_code !== 0) {
+					throw new Error(
+						`${this.providerName} API Error (${chunkAny.base_resp.status_code}): ${chunkAny.base_resp.status_msg || "Unknown error"}`,
+					)
 				}
-			}
 
-			const reasoningText = extractReasoningFromDelta(delta)
-			if (reasoningText) {
-				yield { type: "reasoning", text: reasoningText }
-			}
+				const delta = chunk.choices?.[0]?.delta
+				const finishReason = chunk.choices?.[0]?.finish_reason
 
-			// Emit raw tool call chunks - NativeToolCallParser handles state management
-			if (delta?.tool_calls) {
-				for (const toolCall of delta.tool_calls) {
-					if (toolCall.id) {
-						activeToolCallIds.add(toolCall.id)
-					}
-					yield {
-						type: "tool_call_partial",
-						index: toolCall.index,
-						id: toolCall.id,
-						name: toolCall.function?.name,
-						arguments: toolCall.function?.arguments,
+				if (delta?.content) {
+					for (const processedChunk of matcher.update(delta.content)) {
+						yield processedChunk
 					}
 				}
-			}
 
-			// Emit tool_call_end events when finish_reason is "tool_calls"
-			// This ensures tool calls are finalized even if the stream doesn't properly close
-			if (finishReason === "tool_calls" && activeToolCallIds.size > 0) {
-				for (const id of activeToolCallIds) {
-					yield { type: "tool_call_end", id }
+				const reasoningText = extractReasoningFromDelta(delta)
+				if (reasoningText) {
+					yield { type: "reasoning", text: reasoningText }
 				}
-				activeToolCallIds.clear()
+
+				// Emit raw tool call chunks - NativeToolCallParser handles state management
+				yield* emitToolCallChunks(delta)
+
+				// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
+				// This covers ALL finish reasons (not just "tool_calls") — many local/weak
+				// OpenAI-compatible servers (llama.cpp, vLLM, older LM Studio) return "stop"
+				// even after emitting tool_calls deltas (AP-2).
+				yield* emitFinishReasonChunk(finishReason)
+
+				if (chunk.usage) {
+					lastUsage = chunk.usage
+				}
 			}
 
-			if (chunk.usage) {
-				lastUsage = chunk.usage
+			if (lastUsage) {
+				yield this.processUsageMetrics(lastUsage, this.getModel().info)
 			}
-		}
 
-		if (lastUsage) {
-			yield this.processUsageMetrics(lastUsage, this.getModel().info)
-		}
-
-		// Process any remaining content
-		for (const processedChunk of matcher.final()) {
-			yield processedChunk
+			// Process any remaining content
+			for (const processedChunk of matcher.final()) {
+				yield processedChunk
+			}
+		} finally {
+			this.abortController = undefined
 		}
 	}
 
@@ -225,8 +237,11 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			;(params as any).thinking = { type: "enabled" }
 		}
 
+		this.abortController = new AbortController()
 		try {
-			const response = await this.client.chat.completions.create(params)
+			const response = await this.getClient().chat.completions.create(params, {
+				signal: this.abortController.signal,
+			})
 
 			// Check for provider-specific error responses (e.g., MiniMax base_resp)
 			const responseAny = response as any
@@ -239,6 +254,19 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			return response.choices?.[0]?.message.content || ""
 		} catch (error) {
 			throw handleOpenAIError(error, this.providerName)
+		} finally {
+			this.abortController = undefined
+		}
+	}
+
+	cancelRequest(destroyClient: boolean = false): void {
+		if (this.abortController) {
+			this.abortController.abort()
+			this.abortController = undefined
+		}
+
+		if (destroyClient && this.client) {
+			this.client = null
 		}
 	}
 

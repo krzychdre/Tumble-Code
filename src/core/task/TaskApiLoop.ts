@@ -50,6 +50,7 @@ import {
 	setLastGlobalApiRequestTime,
 	resetGlobalApiRequestTime,
 } from "./RetryHandler"
+import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 
 // Re-export functions for backward compatibility
 export { getLastGlobalApiRequestTime, setLastGlobalApiRequestTime, resetGlobalApiRequestTime } from "./RetryHandler"
@@ -122,6 +123,18 @@ export interface TaskApiLoopAccess {
 	askSay: TaskAskSay
 	streamProcessor: TaskStreamProcessor
 	contextManager: TaskContextManager
+	// Memory recall coordinator (undefined if memory is disabled / no handler).
+	memoryCoordinator?: MemoryCoordinator
+	// Monotonic loop iteration counter, advanced each executeApiRequestCycle
+	// entry. Used by the memory recall consume-once guard.
+	apiLoopIteration?: number
+	// Headless background task (parallel subagent / memory writer). Background
+	// tasks must not receive delegation tools (no nested fan-outs).
+	isBackground: boolean
+	// Headless turn cap for background tasks (undefined = no cap / foreground).
+	maxAgentTurns?: number
+	// Assistant-turn counter enforced against `maxAgentTurns`.
+	agentTurnCount: number
 
 	// Methods needed
 	emit: (event: any, ...args: any[]) => boolean
@@ -151,6 +164,45 @@ interface StackItem {
 }
 
 /**
+ * Race an async iterator's next() against an AbortSignal.
+ *
+ * AP-5: Every call adds `{ once: true }` to addEventListener AND removes the
+ * listener in a `finally` block, so the listener is gone as soon as the chunk
+ * resolves. Without this, thousands of listeners accumulate on one AbortSignal
+ * during long generations → MaxListenersExceededWarning + GC pressure.
+ *
+ * Exported for unit testing (the closure inside processStream is not
+ * directly testable).
+ */
+export async function raceNextChunkWithAbort<T>(
+	iterator: AsyncIterator<T>,
+	signal: AbortSignal,
+): Promise<IteratorResult<T>> {
+	const nextPromise = iterator.next()
+
+	if (signal.aborted) {
+		// Already aborted — reject immediately, no listener to leak
+		throw new Error("Request cancelled by user")
+	}
+
+	const onAbort = () => {
+		rejectRef(new Error("Request cancelled by user"))
+	}
+
+	let rejectRef: (error: Error) => void
+	const abortPromise = new Promise<never>((_, reject) => {
+		rejectRef = reject
+		signal.addEventListener("abort", onAbort, { once: true })
+	})
+
+	try {
+		return await Promise.race([nextPromise, abortPromise])
+	} finally {
+		signal.removeEventListener("abort", onAbort)
+	}
+}
+
+/**
  * TaskApiLoop handles the API request loop orchestration for Task.
  * This includes the main request loop, API request generation, and retry logic.
  */
@@ -165,6 +217,7 @@ export class TaskApiLoop {
 		this.apiRequestBuilder = new ApiRequestBuilder({
 			taskId: access.taskId,
 			instanceId: access.instanceId,
+			isBackground: access.isBackground,
 			apiConfiguration: access.apiConfiguration,
 			api: access.api,
 			apiConversationHistory: access.apiConversationHistory,
@@ -238,6 +291,18 @@ export class TaskApiLoop {
 	): Promise<boolean> {
 		const stack: StackItem[] = [{ userContent, includeFileDetails, retryAttempt: 0 }]
 
+		// Memory recall prefetch: fire once per user turn (the prompt is
+		// invariant across iterations). Non-blocking; the consume point in
+		// executeApiRequestCycle polls the settled handle. The prefetch reads
+		// the last non-meta user message text from clineMessages; single-word
+		// prompts and the session byte cap are skipped inside the coordinator.
+		if (this.access.memoryCoordinator) {
+			this.access.memoryCoordinator.startPrefetch(
+				this.access.clineMessages as unknown as import("../memory/prefetch").PrefetchMessage[],
+				this.access.currentRequestAbortController,
+			)
+		}
+
 		while (stack.length > 0) {
 			const currentItem = stack.pop()!
 			const currentUserContent = currentItem.userContent
@@ -247,6 +312,25 @@ export class TaskApiLoop {
 				throw new Error(
 					`[RooCode#recursivelyMakeRooRequests] task ${this.access.taskId}.${this.access.instanceId} aborted`,
 				)
+			}
+
+			// Headless turn cap: a background task (memory writer / parallel
+			// subagent) aborts cleanly once it exhausts its assistant-turn budget.
+			// Foreground tasks pass `maxAgentTurns === undefined` and are unaffected.
+			if (this.access.maxAgentTurns !== undefined) {
+				if (this.access.agentTurnCount >= this.access.maxAgentTurns) {
+					console.log(
+						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
+					)
+					// Set a non-"user_cancelled" abortReason so abortTask's
+					// isUserCancelled guard does not falsely apply. The primary
+					// guard is the isBackground check in abortTask, but this
+					// makes the intent explicit and belt-and-suspenders safe.
+					this.access.abortReason = "streaming_failed"
+					await this.access.abortTask()
+					return true
+				}
+				this.access.agentTurnCount += 1
 			}
 
 			// Handle consecutive mistake limit
@@ -359,6 +443,21 @@ export class TaskApiLoop {
 			currentIncludeFileDetails,
 			currentItem,
 		)
+
+		// Memory recall consume: if the prefetch has settled and hasn't been
+		// consumed yet this turn, inject the surfaced memories as hidden
+		// <system-reminder> text blocks into the user content that goes to the
+		// API. Non-blocking — only `await`s an already-settled promise. The
+		// consume-once guard (consumedOnIteration) prevents re-injection across
+		// iterations; filterDuplicateMemoryAttachments dedups against files the
+		// model already read/wrote.
+		if (this.access.memoryCoordinator && shouldAddUserMessage) {
+			this.access.apiLoopIteration = (this.access.apiLoopIteration ?? 0) + 1
+			const memoryBlocks = await this.access.memoryCoordinator.consumePrefetch(this.access.apiLoopIteration)
+			if (memoryBlocks.length > 0) {
+				finalUserContent.push(...memoryBlocks)
+			}
+		}
 
 		// Add user message to history if needed
 		if (shouldAddUserMessage) {
@@ -492,25 +591,14 @@ export class TaskApiLoop {
 	): Promise<"continue" | "return_true" | "return_false"> {
 		const iterator = stream[Symbol.asyncIterator]()
 
-		// Helper to race iterator.next() with abort signal
+		// Helper to race iterator.next() with abort signal.
+		// AP-5: delegates to the exported raceNextChunkWithAbort so the listener
+		// cleanup logic is unit-testable without going through the full loop.
 		const nextChunkWithAbort = async () => {
-			const nextPromise = iterator.next()
-
 			if (this.access.currentRequestAbortController) {
-				const abortPromise = new Promise<never>((_, reject) => {
-					const signal = this.access.currentRequestAbortController!.signal
-					if (signal.aborted) {
-						reject(new Error("Request cancelled by user"))
-					} else {
-						signal.addEventListener("abort", () => {
-							reject(new Error("Request cancelled by user"))
-						})
-					}
-				})
-				return await Promise.race([nextPromise, abortPromise])
+				return raceNextChunkWithAbort(iterator, this.access.currentRequestAbortController.signal)
 			}
-
-			return await nextPromise
+			return iterator.next()
 		}
 
 		try {
@@ -865,7 +953,39 @@ export class TaskApiLoop {
 		setLastGlobalApiRequestTime(performance.now())
 
 		const systemPrompt = await this.getSystemPrompt()
-		const { contextTokens } = this.access.getTokenUsage()
+		const { contextTokens: trackedContextTokens } = this.access.getTokenUsage()
+
+		// AP-7: when tracked contextTokens is 0/falsy (e.g. server omitted usage →
+		// zeros recorded → context tracking sees 0 forever), fall back to a local
+		// estimate via countTokens over the conversation history so context
+		// management (auto-condense) still runs. Keep the fast path (non-zero
+		// tracked tokens) unchanged — the fallback only runs in the zero case.
+		let contextTokens = trackedContextTokens
+		if (!contextTokens) {
+			const effectiveHistory = getEffectiveApiHistory(this.access.apiConversationHistory)
+			if (effectiveHistory.length > 0) {
+				try {
+					const fallbackContent: Anthropic.Messages.ContentBlockParam[] = []
+					for (const msg of effectiveHistory) {
+						if (typeof msg.content === "string") {
+							fallbackContent.push({ type: "text", text: msg.content })
+						} else if (Array.isArray(msg.content)) {
+							for (const block of msg.content) {
+								if (block.type === "text") {
+									fallbackContent.push({ type: "text", text: block.text })
+								}
+							}
+						}
+					}
+					if (fallbackContent.length > 0) {
+						contextTokens = await this.access.api.countTokens(fallbackContent)
+					}
+				} catch (err) {
+					console.error(`[Task#${this.access.taskId}] Failed to compute fallback contextTokens:`, err)
+					// Leave contextTokens as 0 → context management skipped (same as today)
+				}
+			}
+		}
 
 		if (contextTokens) {
 			await this.handleContextManagement({

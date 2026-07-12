@@ -23,6 +23,26 @@ import { languagesSchema } from "./vscode.js"
  */
 export const DEFAULT_WRITE_DELAY_MS = 1000
 
+/** Default cap on concurrently running `run_parallel_tasks` subagents. */
+export const DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY = 3
+
+/** Upper bound accepted for `parallelTasksMaxConcurrency` (settings slider). */
+export const MAX_PARALLEL_TASKS_MAX_CONCURRENCY = 8
+
+/**
+ * `parallelTasksMaxConcurrency` values below this disable `run_parallel_tasks`
+ * entirely ("Off" in the settings slider): parallelism of one is a
+ * contradiction — a single job belongs in the task itself or a `new_task`.
+ */
+export const MIN_PARALLEL_TASKS_CONCURRENCY = 2
+
+/** Whether the configured cap enables the parallel-subtasks feature at all. */
+export const isParallelTasksEnabled = (cap: number | undefined): boolean =>
+	(cap ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY) >= MIN_PARALLEL_TASKS_CONCURRENCY
+
+/** Default wait (seconds) before a subagent followup is auto-approved. */
+export const DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC = 300
+
 /**
  * Auto-approval tiers layered on top of the granular per-action toggles.
  *
@@ -156,6 +176,20 @@ export const globalSettingsSchema = z.object({
 	maxGitStatusFiles: z.number().optional(),
 
 	/**
+	 * Hard cap on how many `run_parallel_tasks` subagents may run concurrently.
+	 * The model-supplied `maxConcurrency` argument is clamped to this value.
+	 * @default 3
+	 */
+	parallelTasksMaxConcurrency: z.number().optional(),
+	/**
+	 * How long (seconds) a parallel subagent's followup question waits for a
+	 * user answer before being auto-approved so unattended fan-outs never
+	 * hang. 0 answers immediately (fully autonomous, pre-interactive behavior).
+	 * @default 300
+	 */
+	subagentFollowupTimeoutSec: z.number().optional(),
+
+	/**
 	 * Whether to include diagnostic messages (errors, warnings) in tool outputs
 	 * @default true
 	 */
@@ -173,6 +207,50 @@ export const globalSettingsSchema = z.object({
 		.min(MIN_CHECKPOINT_TIMEOUT_SECONDS)
 		.max(MAX_CHECKPOINT_TIMEOUT_SECONDS)
 		.optional(),
+
+	/**
+	 * Whether the native file-based memory system is enabled. When on, the
+	 * model reads/writes per-workspace memory files under VS Code
+	 * globalStorage via the existing file tools, gated by a behavioral prompt
+	 * section and a write carve-out for the memory dir. Default ON.
+	 * @default true
+	 */
+	autoMemoryEnabled: z.boolean().optional(),
+	/**
+	 * Optional full-path override for the memory base directory. Trusted
+	 * sources only — project settings are excluded so a malicious repo can't
+	 * redirect memory writes via the carve-out. When unset, memory lives
+	 * under `<globalStorage>/memory/projects/<sanitizedCwd>/memory/`.
+	 */
+	autoMemoryDirectory: z.string().optional(),
+	/**
+	 * Whether the background memory consolidation ("dream") runs periodically.
+	 * @default true
+	 */
+	autoDreamEnabled: z.boolean().optional(),
+	/**
+	 * Minimum hours since the last consolidation before the next dream can
+	 * run. Combined with {@link autoDreamMinSessions} as a gate cascade.
+	 * @default 24
+	 */
+	autoDreamMinHours: z.number().optional(),
+	/**
+	 * Minimum number of task sessions since the last consolidation before the
+	 * next dream can run. It's a skip-gate, so undercounting is safe.
+	 * @default 5
+	 */
+	autoDreamMinSessions: z.number().optional(),
+	/**
+	 * Whether the relevant-memory recall prefetch is active. When off, the
+	 * side-query LLM call is skipped (saves cost); the MEMORY.md index still
+	 * loads. @default true
+	 */
+	memoryRecallEnabled: z.boolean().optional(),
+	/**
+	 * API profile id to use for background memory writers (extraction + dream).
+	 * When unset or stale, memory writers fall back to the foreground profile.
+	 */
+	memoryWriterApiConfigId: z.string().optional(),
 
 	soundEnabled: z.boolean().optional(),
 	soundVolume: z.number().optional(),

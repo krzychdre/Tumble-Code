@@ -28,6 +28,7 @@ function buildAccessStub(): TaskLifecycleAccess {
 		abort: false,
 		abandoned: false,
 		abortReason: undefined,
+		isBackground: false,
 		clineMessages: [],
 		apiConversationHistory: [],
 		providerRef: { deref: () => undefined } as unknown as TaskLifecycleAccess["providerRef"],

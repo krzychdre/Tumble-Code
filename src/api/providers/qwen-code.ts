@@ -8,13 +8,12 @@ import { type ModelInfo, type QwenCodeModelId, qwenCodeModels, qwenCodeDefaultMo
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
-import { NativeToolCallParser } from "../../core/assistant-message/NativeToolCallParser"
-
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 
 import { BaseProvider } from "./base-provider"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
+import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 import type { SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 
 const QWEN_OAUTH_BASE_URL = "https://chat.qwen.ai"
@@ -291,25 +290,10 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 			}
 
 			// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
-			if (delta.tool_calls) {
-				for (const toolCall of delta.tool_calls) {
-					yield {
-						type: "tool_call_partial",
-						index: toolCall.index,
-						id: toolCall.id,
-						name: toolCall.function?.name,
-						arguments: toolCall.function?.arguments,
-					}
-				}
-			}
+			yield* emitToolCallChunks(delta)
 
-			// Process finish_reason to emit tool_call_end events
-			if (finishReason) {
-				const endEvents = NativeToolCallParser.processFinishReason(finishReason)
-				for (const event of endEvents) {
-					yield event
-				}
-			}
+			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
+			yield* emitFinishReasonChunk(finishReason)
 
 			if (apiChunk.usage) {
 				yield {

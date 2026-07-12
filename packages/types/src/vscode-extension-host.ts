@@ -21,6 +21,7 @@ import type { McpServer } from "./mcp.js"
 import type { ModelRecord, RouterModels } from "./model.js"
 import type { OpenAiCodexRateLimitInfo } from "./providers/openai-codex-rate-limits.js"
 import type { SkillMetadata } from "./skills.js"
+import type { SubagentSummary } from "./subagent.js"
 import type { WorktreeIncludeStatus } from "./worktree.js"
 
 /**
@@ -38,6 +39,9 @@ export interface ExtensionMessage {
 		| "workspaceUpdated"
 		| "invoke"
 		| "messageUpdated"
+		| "subagentsUpdated"
+		| "subagentMessages"
+		| "memoryActivity"
 		| "mcpServers"
 		| "enhancedPrompt"
 		| "commitSearchResults"
@@ -134,6 +138,21 @@ export interface ExtensionMessage {
 		path?: string
 	}>
 	clineMessage?: ClineMessage
+	/**
+	 * Source task of a `messageUpdated` push, and the target of `subagentsUpdated`
+	 * / `subagentMessages`. The webview routes by it: current task → main chat,
+	 * subscribed subagent → its live tail, otherwise dropped.
+	 */
+	sourceTaskId?: string
+	/** Live summaries of parallel background subagents (`subagentsUpdated`). */
+	subagents?: SubagentSummary[]
+	/** Full message snapshot for a just-subscribed subagent (`subagentMessages`). */
+	subagentMessages?: ClineMessage[]
+	/**
+	 * Live memory-system activity counters (`memoryActivity` pushes and state):
+	 * how many recall prefetches / background writers are running right now.
+	 */
+	memoryActivity?: { recall: number; write: number }
 	routerModels?: RouterModels
 	openAiModels?: string[]
 	ollamaModels?: ModelRecord
@@ -309,9 +328,18 @@ export type ExtensionState = Pick<
 	| "includeCurrentTime"
 	| "includeCurrentCost"
 	| "maxGitStatusFiles"
+	| "parallelTasksMaxConcurrency"
+	| "subagentFollowupTimeoutSec"
 	| "requestDelaySeconds"
 	| "showWorktreesInHomeScreen"
 	| "disabledTools"
+	| "autoMemoryEnabled"
+	| "autoMemoryDirectory"
+	| "memoryRecallEnabled"
+	| "autoDreamEnabled"
+	| "autoDreamMinHours"
+	| "autoDreamMinSessions"
+	| "memoryWriterApiConfigId"
 > & {
 	lockApiConfigAcrossModes?: boolean
 	version: string
@@ -319,6 +347,10 @@ export type ExtensionState = Pick<
 	currentTaskId?: string
 	currentTaskItem?: HistoryItem
 	currentTaskTodos?: TodoItem[] // Initial todos for the current task
+	/** Live parallel background subagents (run_parallel_tasks children). */
+	subagents?: SubagentSummary[]
+	/** Live memory-system activity (recall prefetches / background writers). */
+	memoryActivity?: { recall: number; write: number }
 	apiConfiguration: ProviderSettings
 	uriScheme?: string
 	shouldShowAnnouncement: boolean
@@ -461,6 +493,10 @@ export interface WebviewMessage {
 		| "readFileContent"
 		| "openMention"
 		| "cancelTask"
+		| "subscribeSubagentMessages"
+		| "unsubscribeSubagentMessages"
+		| "cancelSubagent"
+		| "queueSubagentMessage"
 		| "cancelAutoApproval"
 		| "updateVSCodeSetting"
 		| "getVSCodeSetting"

@@ -22,12 +22,13 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { logger } from "../../utils/logging"
 import { supportPrompt } from "../../shared/support-prompt"
+import { validateMemoryPath } from "../memory/paths"
 
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
 type RooCodeSettingsKey = keyof RooCodeSettings
 
-const PASS_THROUGH_STATE_KEYS = ["taskHistory"]
+const PASS_THROUGH_STATE_KEYS = ["taskHistory", "autoMemoryEnabled", "autoDreamEnabled", "memoryRecallEnabled"]
 
 export const isPassThroughStateKey = (key: string) => PASS_THROUGH_STATE_KEYS.includes(key)
 
@@ -100,7 +101,56 @@ export class ContextProxy {
 		// Migration: Clear old default condensing prompt so users get the improved v2 default
 		await this.migrateOldDefaultCondensingPrompt()
 
+		// Migration: Default the native memory system ON for existing users on
+		// first load after upgrade (only sets the flag if it's not yet present,
+		// so users who explicitly disabled memory aren't re-enabled).
+		await this.migrateAutoMemoryDefaults()
+
 		this._isInitialized = true
+	}
+
+	/**
+	 * Migrates users to the native memory system defaults on first load after
+	 * the feature ships. Only writes defaults for keys that are absent — users
+	 * who have explicitly set a value (including `false`) keep their choice.
+	 *
+	 * Defaults: `autoMemoryEnabled=true`, `autoDreamEnabled=true`,
+	 * `memoryRecallEnabled=true`, `autoDreamMinHours=24`,
+	 * `autoDreamMinSessions=5`. `autoMemoryDirectory` is left unset (globalStorage
+	 * default) unless the user set it.
+	 */
+	private async migrateAutoMemoryDefaults() {
+		try {
+			const updates: Partial<GlobalState> = {}
+			if (this.stateCache.autoMemoryEnabled === undefined) updates.autoMemoryEnabled = true
+			if (this.stateCache.autoDreamEnabled === undefined) updates.autoDreamEnabled = true
+			if (this.stateCache.memoryRecallEnabled === undefined) updates.memoryRecallEnabled = true
+			if (this.stateCache.autoDreamMinHours === undefined) updates.autoDreamMinHours = 24
+			if (this.stateCache.autoDreamMinSessions === undefined) updates.autoDreamMinSessions = 5
+			// If a stored autoMemoryDirectory is invalid (e.g. a leftover from a
+			// removed volume), clear it rather than crash the path module.
+			if (this.stateCache.autoMemoryDirectory !== undefined) {
+				try {
+					validateMemoryPath(this.stateCache.autoMemoryDirectory)
+				} catch {
+					updates.autoMemoryDirectory = undefined
+				}
+			}
+			const keys = Object.keys(updates) as GlobalStateKey[]
+			if (keys.length === 0) return
+			for (const key of keys) {
+				const value = updates[key]
+				this.stateCache[key] = value as any
+				await this.originalContext.globalState.update(key, value as any)
+			}
+			logger.info(`[memory] migrateAutoMemoryDefaults applied ${keys.length} default(s)`)
+		} catch (error) {
+			logger.error(
+				`Error during auto-memory defaults migration: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+		}
 	}
 
 	/**
@@ -501,6 +551,23 @@ export class ContextProxy {
 	 */
 
 	public async setValue<K extends RooCodeSettingsKey>(key: K, value: RooCodeSettings[K]) {
+		// Trusted-source guard for the memory-directory override: validate the
+		// path before persisting. An invalid path is rejected (cleared) rather
+		// than stored, so a bad value can't redirect the write carve-out or
+		// crash the path module. Project-scoped sourcing is the webview
+		// handler's responsibility; here we only validate the value itself.
+		if (key === "autoMemoryDirectory" && typeof value === "string" && value.trim() !== "") {
+			try {
+				value = validateMemoryPath(value) as RooCodeSettings[K]
+			} catch (error) {
+				logger.error(
+					`[memory] rejected invalid autoMemoryDirectory "${value}": ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+				value = undefined as RooCodeSettings[K]
+			}
+		}
 		return isSecretStateKey(key)
 			? this.storeSecret(key as SecretStateKey, value as string)
 			: this.updateGlobalState(key as GlobalStateKey, value)

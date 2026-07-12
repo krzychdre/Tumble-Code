@@ -18,6 +18,7 @@ import {
 	type ClineApiReqInfo,
 	RooCodeEventName,
 	getModelId,
+	isParallelTasksEnabled,
 } from "@roo-code/types"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
@@ -43,6 +44,11 @@ export interface ApiRequestBuilderAccess {
 	// Core identifiers
 	taskId: string
 	instanceId: string
+
+	// Headless background task (parallel subagent / memory writer): delegation
+	// tools are stripped from its requests — subtasks are one-shot jobs and
+	// must never spawn further subtasks.
+	isBackground: boolean
 
 	// API configuration and handler
 	apiConfiguration: ProviderSettings
@@ -191,6 +197,19 @@ export class ApiRequestBuilder {
 
 		const supportsAllowedFunctionNames = apiConfiguration?.apiProvider === "gemini"
 
+		// Background tasks (parallel subagents, memory writers) never get
+		// delegation tools: a subtask is a small one-shot job that must return
+		// to its parent, not fan out further. Foreground tasks lose
+		// run_parallel_tasks when the user's concurrency cap turns the feature
+		// Off (< 2). Routed through disabledTools so the existing
+		// alias-resolving filter removes them.
+		let disabledTools = state?.disabledTools
+		if (this.access.isBackground) {
+			disabledTools = [...(disabledTools ?? []), "new_task", "run_parallel_tasks"]
+		} else if (!isParallelTasksEnabled(state?.parallelTasksMaxConcurrency)) {
+			disabledTools = [...(disabledTools ?? []), "run_parallel_tasks"]
+		}
+
 		const toolsResult = await buildNativeToolsArrayWithRestrictions({
 			provider,
 			cwd: this.access.cwd,
@@ -199,7 +218,7 @@ export class ApiRequestBuilder {
 			customModePrompts: state?.customModePrompts,
 			experiments: state?.experiments,
 			apiConfiguration,
-			disabledTools: state?.disabledTools,
+			disabledTools,
 			modelInfo,
 			includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
 			materializedDeferredTools: this.access.materializedDeferredTools,

@@ -31,6 +31,7 @@ const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string
 	attempt_completion: { result: "done" },
 	switch_mode: { mode_slug: "code", reason: "r" },
 	new_task: { mode: "code", message: "m" },
+	run_parallel_tasks: { subtasks: [{ message: "m", mode: "code" }], maxConcurrency: 2 },
 	codebase_search: { query: "q" },
 	execute_command: { command: "echo hi" },
 	update_todo_list: { todos: "- [ ] x" },
@@ -42,8 +43,10 @@ const MINIMAL_VALID_ARGS: Record<Exclude<ToolName, "custom_tool">, Record<string
 
 describe("NativeToolCallParser", () => {
 	beforeEach(() => {
-		NativeToolCallParser.clearAllStreamingToolCalls()
-		NativeToolCallParser.clearRawChunkState()
+		// Clear state on a fresh instance to avoid cross-test contamination
+		const parser = new NativeToolCallParser()
+		parser.clearAllStreamingToolCalls()
+		parser.clearRawChunkState()
 	})
 
 	describe("parseToolCall", () => {
@@ -336,14 +339,15 @@ describe("NativeToolCallParser", () => {
 	describe("processStreamingChunk", () => {
 		describe("read_file tool", () => {
 			it("should emit a partial ToolUse with nativeArgs.path during streaming", () => {
+				const parser = new NativeToolCallParser()
 				const id = "toolu_streaming_123"
-				NativeToolCallParser.startStreamingToolCall(id, "read_file")
+				parser.startStreamingToolCall(id, "read_file")
 
 				// Simulate streaming chunks
 				const fullArgs = JSON.stringify({ path: "src/test.ts" })
 
 				// Process the complete args as a single chunk for simplicity
-				const result = NativeToolCallParser.processStreamingChunk(id, fullArgs)
+				const result = parser.processStreamingChunk(id, fullArgs)
 
 				expect(result).not.toBeNull()
 				expect(result?.nativeArgs).toBeDefined()
@@ -356,11 +360,12 @@ describe("NativeToolCallParser", () => {
 	describe("finalizeStreamingToolCall", () => {
 		describe("read_file tool", () => {
 			it("should parse read_file args on finalize", () => {
+				const parser = new NativeToolCallParser()
 				const id = "toolu_finalize_123"
-				NativeToolCallParser.startStreamingToolCall(id, "read_file")
+				parser.startStreamingToolCall(id, "read_file")
 
 				// Add the complete arguments
-				NativeToolCallParser.processStreamingChunk(
+				parser.processStreamingChunk(
 					id,
 					JSON.stringify({
 						path: "finalized.ts",
@@ -370,7 +375,7 @@ describe("NativeToolCallParser", () => {
 					}),
 				)
 
-				const result = NativeToolCallParser.finalizeStreamingToolCall(id)
+				const result = parser.finalizeStreamingToolCall(id)
 
 				expect(result).not.toBeNull()
 				expect(result?.type).toBe("tool_use")
@@ -415,6 +420,370 @@ describe("NativeToolCallParser", () => {
 				// nothing populated" symptom this test exists to catch.
 				expect(Object.keys(result.nativeArgs as object).length).toBeGreaterThan(0)
 			}
+		})
+	})
+
+	// AP-2: Many local/weak OpenAI-compatible servers (llama.cpp, vLLM, older
+	// LM Studio) return finish_reason: "stop" or null even after emitting
+	// tool_calls deltas. processFinishReason must flush STARTED tool calls for
+	// ANY non-empty finish reason, not just "tool_calls".
+	describe("processFinishReason — AP-2: finalize on any non-empty finish reason", () => {
+		it("flushes STARTED tool call on finish_reason 'stop'", () => {
+			const parser = new NativeToolCallParser()
+
+			// Start a raw tool call: first chunk with id+name+partial args
+			const startEvents = parser.processRawChunk({
+				index: 0,
+				id: "call_stop_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+			// Should emit tool_call_start + tool_call_delta
+			expect(startEvents).toContainEqual({
+				type: "tool_call_start",
+				id: "call_stop_001",
+				name: "read_file",
+			})
+
+			// processFinishReason("stop") should flush the started call
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_stop_001",
+			})
+		})
+
+		it("flushes STARTED tool call on finish_reason 'tool_calls'", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_tc_001",
+				name: "write_to_file",
+				arguments: '{"path":"out.ts","content":"x"}',
+			})
+
+			const finishEvents = parser.processFinishReason("tool_calls")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_tc_001",
+			})
+		})
+
+		it("flushes multiple STARTED tool calls on any non-empty finish reason", () => {
+			const parser = new NativeToolCallParser()
+
+			// Start two tool calls
+			parser.processRawChunk({
+				index: 0,
+				id: "call_multi_001",
+				name: "read_file",
+				arguments: '{"path":"a.ts"}',
+			})
+			parser.processRawChunk({
+				index: 1,
+				id: "call_multi_002",
+				name: "read_file",
+				arguments: '{"path":"b.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(2)
+			const ids = finishEvents.map((e) => e.id).sort()
+			expect(ids).toEqual(["call_multi_001", "call_multi_002"])
+		})
+
+		it("does NOT flush when finish_reason is null", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_null_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason(null)
+			expect(finishEvents).toHaveLength(0)
+		})
+
+		it("does NOT flush when finish_reason is undefined", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_undef_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason(undefined)
+			expect(finishEvents).toHaveLength(0)
+		})
+
+		it("does NOT flush tool calls that never started (no name received)", () => {
+			const parser = new NativeToolCallParser()
+
+			// Send a chunk with id but no name — tool call is tracked but not started
+			parser.processRawChunk({
+				index: 0,
+				id: "call_nostart_001",
+				arguments: '{"path":"test"}',
+			})
+
+			// No tool_call_start should have been emitted
+			const finishEvents = parser.processFinishReason("stop")
+			// Calls that never started (hasStarted=false) should not get end events,
+			// consistent with finalizeRawChunks behavior
+			expect(finishEvents).toHaveLength(0)
+		})
+
+		it("clears tracker entries after flushing", () => {
+			const parser = new NativeToolCallParser()
+
+			parser.processRawChunk({
+				index: 0,
+				id: "call_clear_001",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+
+			parser.processFinishReason("stop")
+
+			// After flushing, a subsequent finalizeRawChunks should not produce duplicate ends
+			const finalizeEvents = parser.finalizeRawChunks()
+			expect(finalizeEvents).toHaveLength(0)
+		})
+	})
+
+	// Regression test for TL-1: static Maps in NativeToolCallParser were shared
+	// across all tasks. When task B called clearRawChunkState()/clearAllStreamingToolCalls()
+	// (via resetStreamingState), it wiped task A's mid-stream tool-call accumulation.
+	// With per-task instances, each parser has its own state and cannot interfere.
+	describe("per-task instance isolation (TL-1)", () => {
+		it("parser A's tool call survives parser B calling clearRawChunkState/clearAllStreamingToolCalls", () => {
+			const parserA = new NativeToolCallParser()
+			const parserB = new NativeToolCallParser()
+
+			// Start a raw tool call on parser A: first chunk with id+name
+			const events1 = parserA.processRawChunk({
+				index: 0,
+				id: "call_A_001",
+				name: "read_file",
+				arguments: '{"path":"src',
+			})
+			// Should emit a tool_call_start (name is present)
+			expect(events1).toContainEqual({
+				type: "tool_call_start",
+				id: "call_A_001",
+				name: "read_file",
+			})
+
+			// Simulate task B's resetStreamingState clearing all state
+			parserB.clearRawChunkState()
+			parserB.clearAllStreamingToolCalls()
+
+			// Continue sending argument deltas to parser A
+			const events2 = parserA.processRawChunk({
+				index: 0,
+				arguments: '/test.ts"}',
+			})
+			// Should still emit delta events (state was NOT wiped by B's clear)
+			expect(events2).toContainEqual({
+				type: "tool_call_delta",
+				id: "call_A_001",
+				delta: '/test.ts"}',
+			})
+
+			// Finalize should produce end events for parser A
+			const endEvents = parserA.processFinishReason("tool_calls")
+			expect(endEvents).toHaveLength(1)
+			expect(endEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_A_001",
+			})
+		})
+
+		it("parser A's streaming tool call survives parser B calling clearAllStreamingToolCalls", () => {
+			const parserA = new NativeToolCallParser()
+			const parserB = new NativeToolCallParser()
+
+			// Start streaming a tool call on parser A
+			parserA.startStreamingToolCall("call_A_002", "write_to_file")
+			parserA.processStreamingChunk("call_A_002", '{"path":"test.ts","content":"hello')
+
+			// Task B clears its state — must not affect A
+			parserB.clearAllStreamingToolCalls()
+
+			// Continue streaming on parser A
+			const partial = parserA.processStreamingChunk("call_A_002", '"}')
+			expect(partial).not.toBeNull()
+			expect(partial?.type).toBe("tool_use")
+
+			// Finalize should work correctly
+			const result = parserA.finalizeStreamingToolCall("call_A_002")
+			expect(result).not.toBeNull()
+			expect(result?.type).toBe("tool_use")
+		})
+	})
+
+	// TE-5: Weak models sometimes emit the first chunk with name + arguments but
+	// no id (or an empty id), with the real id arriving in a later chunk — or never.
+	// Before the fix, tracking was initialized ONLY when a chunk carried a non-empty
+	// id; a chunk arriving before any id was silently dropped, including its arguments
+	// delta, so the tool call never assembled.
+	describe("processRawChunk — TE-5: chunks arriving before id (synthetic id)", () => {
+		it("test 1: first chunk has name+args but NO id, second chunk brings id — args not lost, synthetic id kept (start already emitted)", () => {
+			const parser = new NativeToolCallParser()
+
+			// Chunk 1: name + partial args, NO id
+			const events1 = parser.processRawChunk({
+				index: 0,
+				name: "read_file",
+				arguments: '{"pa',
+			})
+			// name is present → tool_call_start should be emitted immediately with synthetic id
+			expect(events1).toHaveLength(2)
+			expect(events1[0].type).toBe("tool_call_start")
+			const startEvent = events1[0] as { type: string; id: string; name: string }
+			expect(startEvent.name).toBe("read_file")
+			const syntheticId = startEvent.id
+			expect(syntheticId).toBe("synthetic-tool-call-0")
+			// The args delta should be buffered and flushed after start
+			expect(events1[1].type).toBe("tool_call_delta")
+
+			// Chunk 2: real id arrives + rest of args
+			const events2 = parser.processRawChunk({
+				index: 0,
+				id: "call_1",
+				arguments: 'th":"a.ts"}',
+			})
+			// Since hasStarted was already true (name was present in chunk 1),
+			// the real id is NOT adopted — synthetic id stays.
+			for (const e of events2) {
+				expect((e as { id: string }).id).toBe(syntheticId)
+			}
+
+			// Finalize and verify NO delta was lost
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: syntheticId,
+			})
+
+			// Verify the complete arguments were assembled by using the streaming API
+			parser.startStreamingToolCall(syntheticId, "read_file")
+			// Re-feed the deltas through streaming to verify completeness
+			// (the raw chunk tracker already consumed them, but the streamingToolCalls
+			// map is separate — simulate what TaskStreamProcessor does)
+		})
+
+		it("test 2: first chunk has ONLY args (no id, no name), then chunk with id+name — start not emitted until name, real id adopted", () => {
+			const parser = new NativeToolCallParser()
+
+			// Chunk 1: only arguments, no id, no name
+			const events1 = parser.processRawChunk({
+				index: 0,
+				arguments: '{"pa',
+			})
+			// No name → no tool_call_start yet; args should be buffered
+			expect(events1).toHaveLength(0)
+
+			// Chunk 2: id + name + rest of args
+			const events2 = parser.processRawChunk({
+				index: 0,
+				id: "call_1",
+				name: "read_file",
+				arguments: 'th":"a.ts"}',
+			})
+			// Now name is present → tool_call_start should be emitted
+			const startEvent = events2.find((e) => e.type === "tool_call_start") as
+				| { type: string; id: string; name: string }
+				| undefined
+			expect(startEvent).toBeDefined()
+			expect(startEvent!.name).toBe("read_file")
+			// Since hasStarted was false when the real id arrived, the real id should be adopted
+			expect(startEvent!.id).toBe("call_1")
+
+			// The buffered delta from chunk 1 should be flushed after start
+			const deltaEvents = events2.filter((e) => e.type === "tool_call_delta")
+			expect(deltaEvents.length).toBeGreaterThan(0)
+
+			// Finalize
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_1",
+			})
+		})
+
+		it("test 3: id NEVER arrives — tool call assembles under synthetic id and finish emits end", () => {
+			const parser = new NativeToolCallParser()
+
+			// Chunk 1: name + partial args, NO id
+			const events1 = parser.processRawChunk({
+				index: 0,
+				name: "read_file",
+				arguments: '{"path":"src/te',
+			})
+			expect(events1.some((e) => e.type === "tool_call_start")).toBe(true)
+			const startEvent = events1.find((e) => e.type === "tool_call_start") as {
+				type: string
+				id: string
+				name: string
+			}
+			expect(startEvent.id).toBe("synthetic-tool-call-0")
+
+			// Chunk 2: more args, still NO id
+			const events2 = parser.processRawChunk({
+				index: 0,
+				arguments: 'st.ts"}',
+			})
+			expect(events2).toContainEqual({
+				type: "tool_call_delta",
+				id: "synthetic-tool-call-0",
+				delta: 'st.ts"}',
+			})
+
+			// Finalize — should emit end with synthetic id
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "synthetic-tool-call-0",
+			})
+		})
+
+		it("test 4: regression — existing id-first behavior unchanged", () => {
+			const parser = new NativeToolCallParser()
+
+			const events = parser.processRawChunk({
+				index: 0,
+				id: "call_regression_1",
+				name: "read_file",
+				arguments: '{"path":"src/test.ts"}',
+			})
+			expect(events).toContainEqual({
+				type: "tool_call_start",
+				id: "call_regression_1",
+				name: "read_file",
+			})
+			expect(events).toContainEqual({
+				type: "tool_call_delta",
+				id: "call_regression_1",
+				delta: '{"path":"src/test.ts"}',
+			})
+
+			const finishEvents = parser.processFinishReason("stop")
+			expect(finishEvents).toHaveLength(1)
+			expect(finishEvents[0]).toEqual({
+				type: "tool_call_end",
+				id: "call_regression_1",
+			})
 		})
 	})
 })

@@ -34,6 +34,26 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} plik(ów) zmienionych w tej rozmowie"
 	},
+	"subagents": {
+		"headerActive": "Subagenci: {{active}}/{{total}} aktywnych",
+		"headerDone": "Subagenci: {{total}} zakończonych",
+		"noOutput": "Brak danych wyjściowych.",
+		"tokens": "Zużyte tokeny",
+		"cancel": "Anuluj tego subagenta",
+		"send": "Wyślij",
+		"answerPlaceholder": "Odpowiedz na pytanie subagenta…",
+		"guidancePlaceholder": "Wyślij wskazówkę (dostarczona przy najbliższym punkcie zatrzymania)…",
+		"status": {
+			"queued": "W kolejce",
+			"running": "Działa",
+			"awaiting_input": "Czeka na odpowiedź",
+			"completed": "Ukończony",
+			"failed": "Nieudany",
+			"cancelled": "Anulowany"
+		},
+		"apiConfig": "Profil API: {{name}} (przypięty do trybu podzadania — zmień w Ustawienia → Tryby)",
+		"permissionNeeded": "To podzadanie wymaga zgody, aby kontynuować"
+	},
 	"tokenProgress": {
 		"availableSpace": "Dostępne miejsce: {{amount}} tokenów",
 		"tokensUsed": "Wykorzystane tokeny: {{used}} z {{total}}",
@@ -516,5 +536,10 @@
 		"title": "Dostawca nie jest już obsługiwany",
 		"message": "Przepraszamy, ten dostawca nie jest już obsługiwany. Zauważyliśmy, że bardzo niewielu użytkowników Tumble faktycznie z niego korzystało, a my musimy zmniejszyć zakres naszego kodu, aby móc dalej szybko dostarczać i dobrze służyć naszej społeczności. To była naprawdę trudna decyzja, ale pozwala nam skupić się na tym, co jest dla ciebie najważniejsze. Wiemy, że to frustrujące.",
 		"openSettings": "Otwórz ustawienia"
+	},
+	"memoryActivity": {
+		"recalling": "Przywoływanie pamięci…",
+		"writing": "Zapisywanie pamięci…",
+		"both": "Przywoływanie i zapisywanie pamięci…"
 	}
 }

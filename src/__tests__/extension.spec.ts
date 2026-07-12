@@ -68,7 +68,7 @@ const mockCloudServiceInstance = {
 
 vi.mock("@roo-code/cloud", () => ({
 	CloudService: {
-		createInstance: vi.fn(),
+		createInstance: vi.fn().mockResolvedValue(mockCloudServiceInstance),
 		hasInstance: vi.fn().mockReturnValue(true),
 		get instance() {
 			return mockCloudServiceInstance
@@ -235,6 +235,8 @@ describe("extension.ts", () => {
 				get: vi.fn().mockReturnValue(undefined),
 				update: vi.fn(),
 			},
+			globalStorageUri: { fsPath: "/test/storage" },
+			storageUri: { fsPath: "/test/storage" },
 			subscriptions: [],
 		} as unknown as vscode.ExtensionContext
 
@@ -269,5 +271,32 @@ describe("extension.ts", () => {
 		await activate(mockContext)
 
 		expect(dotenvx.config).toHaveBeenCalledTimes(1)
+	})
+
+	test("continues activation in local-only mode when CloudService.createInstance rejects", async () => {
+		vi.resetModules()
+		vi.clearAllMocks()
+
+		// CloudService.createInstance rejects — simulate bad backend URL or
+		// corrupted credentials. activate() must NOT throw; it must log the
+		// degradation and continue so the rest of the extension works.
+		const cloud = await import("@roo-code/cloud")
+		vi.mocked(cloud.CloudService.createInstance).mockRejectedValueOnce(
+			new Error("ECONNREFUSED — backend unreachable"),
+		)
+
+		const { activate } = await import("../extension")
+
+		// Must resolve — not throw. activate() returns an API object or undefined;
+		// the point is it resolves, so we only check it doesn't reject.
+		await expect(activate(mockContext)).resolves.toBeDefined()
+
+		// The degradation line must have been logged to the output channel.
+		const vscode = await import("vscode")
+		const channel = (vscode.window as any).createOutputChannel()
+		const lines = (channel.appendLine as any).mock.calls.map((c: any[]) => c[0]) as string[]
+		expect(
+			lines.some((l) => l.includes("[CloudService] initialization failed") && l.includes("local-only mode")),
+		).toBe(true)
 	})
 })

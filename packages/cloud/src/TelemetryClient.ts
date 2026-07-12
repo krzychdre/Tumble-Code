@@ -121,7 +121,10 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 		}
 
 		try {
-			const response = await fetch(url, fetchOptions)
+			const response = await fetch(url, {
+				...fetchOptions,
+				signal: AbortSignal.timeout(30_000),
+			})
 
 			if (!response.ok) {
 				console.error(
@@ -253,7 +256,10 @@ export class CloudTelemetryClient extends BaseTelemetryClient {
 			}
 
 			try {
-				const response = await fetch(url, fetchOptions)
+				const response = await fetch(url, {
+					...fetchOptions,
+					signal: AbortSignal.timeout(30_000),
+				})
 
 				if (!response.ok) {
 					console.error(

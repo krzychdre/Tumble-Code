@@ -221,6 +221,114 @@ describe("MoonshotHandler", () => {
 			expect(usageChunks[0].cacheWriteTokens).toBe(0)
 			expect(usageChunks[0].cacheReadTokens).toBe(2)
 		})
+
+		it("AP-4: should yield exactly one usage chunk with fallback when server omits usage", async () => {
+			async function* mockFullStream() {
+				yield { type: "text-delta", text: "Hello world response" }
+			}
+
+			// Server omits usage entirely (common with llama.cpp, Ollama, LM Studio)
+			const mockUsage = Promise.resolve(undefined as any)
+
+			mockStreamText.mockReturnValue({
+				fullStream: mockFullStream(),
+				usage: mockUsage,
+			})
+
+			// Spy on countTokens to verify it's called for fallback
+			const countTokensSpy = vi.spyOn(handler, "countTokens").mockResolvedValue(42)
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
+			// AP-4: exactly one usage chunk must be yielded even when server omits usage
+			expect(usageChunks).toHaveLength(1)
+			// Fallback should produce non-zero tokens (countTokens returns 42)
+			expect(usageChunks[0].inputTokens).toBeGreaterThan(0)
+			expect(usageChunks[0].outputTokens).toBeGreaterThan(0)
+			// countTokens should have been called for fallback computation
+			expect(countTokensSpy).toHaveBeenCalled()
+
+			countTokensSpy.mockRestore()
+		})
+
+		it("AP-4: should yield exactly one usage chunk with server values when usage IS present (no double)", async () => {
+			async function* mockFullStream() {
+				yield { type: "text-delta", text: "Test response" }
+			}
+
+			const mockUsage = Promise.resolve({
+				inputTokens: 10,
+				outputTokens: 5,
+				details: {},
+				raw: {},
+			})
+
+			mockStreamText.mockReturnValue({
+				fullStream: mockFullStream(),
+				usage: mockUsage,
+			})
+
+			// countTokens should NOT be called when real usage is present
+			const countTokensSpy = vi.spyOn(handler, "countTokens").mockResolvedValue(999)
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
+			// AP-4: exactly one usage chunk, no double-yield
+			expect(usageChunks).toHaveLength(1)
+			// Should use server values, not fallback
+			expect(usageChunks[0].inputTokens).toBe(10)
+			expect(usageChunks[0].outputTokens).toBe(5)
+			// countTokens should NOT have been called
+			expect(countTokensSpy).not.toHaveBeenCalled()
+
+			countTokensSpy.mockRestore()
+		})
+
+		it("AP-4: should yield exactly one usage chunk when usage is all-zero (treated as missing)", async () => {
+			async function* mockFullStream() {
+				yield { type: "text-delta", text: "Response text" }
+			}
+
+			// Server returns usage but with all zeros (some servers do this)
+			const mockUsage = Promise.resolve({
+				inputTokens: 0,
+				outputTokens: 0,
+				details: {},
+				raw: {},
+			})
+
+			mockStreamText.mockReturnValue({
+				fullStream: mockFullStream(),
+				usage: mockUsage,
+			})
+
+			const countTokensSpy = vi.spyOn(handler, "countTokens").mockResolvedValue(15)
+
+			const stream = handler.createMessage(systemPrompt, messages)
+			const chunks: any[] = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
+			// AP-4: exactly one usage chunk, and it should use fallback since server was all-zero
+			expect(usageChunks).toHaveLength(1)
+			expect(usageChunks[0].inputTokens).toBeGreaterThan(0)
+			expect(usageChunks[0].outputTokens).toBeGreaterThan(0)
+			expect(countTokensSpy).toHaveBeenCalled()
+
+			countTokensSpy.mockRestore()
+		})
 	})
 
 	describe("completePrompt", () => {

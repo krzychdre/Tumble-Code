@@ -24,6 +24,8 @@ import {
 	markdownFormattingSection,
 	getSkillsSection,
 	getDeferredToolsSection,
+	getMemorySection,
+	getMemoryIndexSection,
 } from "./sections"
 
 // Helper function to get prompt component, filtering out empty objects
@@ -112,6 +114,12 @@ async function generatePrompt(
 		materializedDeferredTools,
 	})
 
+	// Memory system: the behavioral section (what/when/how to save) is injected
+	// between the rules and system-info sections; the truncated MEMORY.md index
+	// is appended after custom instructions so memory stays orthogonal to mode
+	// rules. Both read from disk and return "" when memory is disabled.
+	const [memorySection, memoryIndex] = await Promise.all([getMemorySection(cwd), getMemoryIndexSection(cwd)])
+
 	const basePrompt = `${roleDefinition}
 
 ${markdownFormattingSection()}
@@ -130,7 +138,7 @@ ${deferredToolsSection ? `\n${deferredToolsSection}\n` : ""}
 ${modesSection}
 ${skillsSection ? `\n${skillsSection}` : ""}
 ${getRulesSection(cwd, settings)}
-
+${memorySection ? `\n\n${memorySection}\n` : ""}
 ${getSystemInfoSection(cwd)}
 
 ${getObjectiveSection()}
@@ -139,7 +147,7 @@ ${await addCustomInstructions(baseInstructions, globalCustomInstructions || "", 
 	language: language ?? formatLanguage(vscode.env.language),
 	rooIgnoreInstructions,
 	settings,
-})}`
+})}${memoryIndex}`
 
 	return basePrompt
 }

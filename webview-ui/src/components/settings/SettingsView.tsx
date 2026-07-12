@@ -11,8 +11,10 @@ import React, {
 } from "react"
 import {
 	CheckCheck,
+	Bot,
 	GitBranch,
 	Bell,
+	Brain,
 	Database,
 	SquareTerminal,
 	FlaskConical,
@@ -67,8 +69,10 @@ import ApiConfigManager from "./ApiConfigManager"
 import ApiOptions from "./ApiOptions"
 import { AutoApproveSettings } from "./AutoApproveSettings"
 import { CheckpointSettings } from "./CheckpointSettings"
+import { MemorySettings } from "./MemorySettings"
 import { NotificationSettings } from "./NotificationSettings"
 import { ContextManagementSettings } from "./ContextManagementSettings"
+import { SubagentSettings } from "./SubagentSettings"
 import { TerminalSettings } from "./TerminalSettings"
 import { ExperimentalSettings } from "./ExperimentalSettings"
 import { LanguageSettings } from "./LanguageSettings"
@@ -101,12 +105,14 @@ export const sectionNames = [
 	"slashCommands",
 	"skills",
 	"checkpoints",
+	"memory",
 	"notifications",
 	"contextManagement",
 	"terminal",
 	"modes",
 	"mcp",
 	"worktrees",
+	"subagents",
 	"prompts",
 	"ui",
 	"experimental",
@@ -165,6 +171,13 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		autoCondenseContextPercent,
 		enableCheckpoints,
 		checkpointTimeout,
+		autoMemoryEnabled,
+		autoMemoryDirectory,
+		memoryRecallEnabled,
+		autoDreamEnabled,
+		autoDreamMinHours,
+		autoDreamMinSessions,
+		memoryWriterApiConfigId,
 		experiments,
 		maxOpenTabsContext,
 		maxWorkspaceFiles,
@@ -202,6 +215,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		includeCurrentTime,
 		includeCurrentCost,
 		maxGitStatusFiles,
+		parallelTasksMaxConcurrency,
+		subagentFollowupTimeoutSec,
 	} = cachedState
 
 	const apiConfiguration = useMemo(() => cachedState.apiConfiguration ?? {}, [cachedState.apiConfiguration])
@@ -384,6 +399,13 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					soundVolume: soundVolume ?? 0.5,
 					enableCheckpoints: enableCheckpoints ?? false,
 					checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+					autoMemoryEnabled: autoMemoryEnabled ?? true,
+					autoMemoryDirectory: autoMemoryDirectory || undefined,
+					memoryRecallEnabled: memoryRecallEnabled ?? true,
+					autoDreamEnabled: autoDreamEnabled ?? true,
+					autoDreamMinHours: autoDreamMinHours ?? 24,
+					autoDreamMinSessions: autoDreamMinSessions ?? 5,
+					memoryWriterApiConfigId: memoryWriterApiConfigId || undefined,
 					writeDelayMs,
 					terminalShellIntegrationTimeout: terminalShellIntegrationTimeout ?? 30_000,
 					terminalShellIntegrationDisabled,
@@ -414,6 +436,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					includeCurrentTime: includeCurrentTime ?? true,
 					includeCurrentCost: includeCurrentCost ?? true,
 					maxGitStatusFiles: maxGitStatusFiles ?? 0,
+					parallelTasksMaxConcurrency,
+					subagentFollowupTimeoutSec,
 					profileThresholds,
 					imageGenerationProvider,
 					openRouterImageApiKey,
@@ -513,11 +537,13 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			{ id: "autoApprove", icon: CheckCheck },
 			{ id: "mcp", icon: Server },
 			{ id: "checkpoints", icon: GitCommitVertical },
+			{ id: "memory", icon: Brain },
 			{ id: "notifications", icon: Bell },
 			{ id: "contextManagement", icon: Database },
 			{ id: "terminal", icon: SquareTerminal },
 			{ id: "prompts", icon: MessageSquare },
 			{ id: "worktrees", icon: GitBranch },
+			{ id: "subagents", icon: Bot },
 			{ id: "ui", icon: Glasses },
 			{ id: "experimental", icon: FlaskConical },
 			{ id: "language", icon: Globe },
@@ -812,6 +838,21 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							/>
 						)}
 
+						{/* Memory Section */}
+						{renderTab === "memory" && (
+							<MemorySettings
+								autoMemoryEnabled={autoMemoryEnabled}
+								autoMemoryDirectory={autoMemoryDirectory}
+								memoryRecallEnabled={memoryRecallEnabled}
+								autoDreamEnabled={autoDreamEnabled}
+								autoDreamMinHours={autoDreamMinHours}
+								autoDreamMinSessions={autoDreamMinSessions}
+								memoryWriterApiConfigId={memoryWriterApiConfigId}
+								listApiConfigMeta={listApiConfigMeta ?? []}
+								setCachedStateField={setCachedStateField}
+							/>
+						)}
+
 						{/* Notifications Section */}
 						{renderTab === "notifications" && (
 							<NotificationSettings
@@ -872,6 +913,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 						{/* Worktrees Section */}
 						{renderTab === "worktrees" && <WorktreesView />}
+
+						{/* Subagents Section */}
+						{renderTab === "subagents" && (
+							<SubagentSettings
+								parallelTasksMaxConcurrency={parallelTasksMaxConcurrency}
+								subagentFollowupTimeoutSec={subagentFollowupTimeoutSec}
+								setCachedStateField={setCachedStateField}
+							/>
+						)}
 
 						{/* Prompts Section */}
 						{renderTab === "prompts" && (

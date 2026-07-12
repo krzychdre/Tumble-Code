@@ -421,7 +421,9 @@ describe("BaseOpenAiCompatibleProvider", () => {
 					stream: true,
 					stream_options: { include_usage: true },
 				}),
-				undefined,
+				expect.objectContaining({
+					signal: expect.any(AbortSignal),
+				}),
 			)
 		})
 
@@ -452,7 +454,7 @@ describe("BaseOpenAiCompatibleProvider", () => {
 	})
 
 	describe("Tool call handling", () => {
-		it("should yield tool_call_end events when finish_reason is tool_calls", async () => {
+		it("should yield finish_reason chunk when finish_reason is tool_calls (AP-2)", async () => {
 			mockCreate.mockImplementationOnce(() => {
 				return {
 					[Symbol.asyncIterator]: () => ({
@@ -515,16 +517,16 @@ describe("BaseOpenAiCompatibleProvider", () => {
 				chunks.push(chunk)
 			}
 
-			// Should have tool_call_partial and tool_call_end
+			// AP-2: base provider now yields finish_reason chunks instead of tool_call_end
 			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
 
 			expect(partialChunks).toHaveLength(2)
-			expect(endChunks).toHaveLength(1)
-			expect(endChunks[0]).toEqual({ type: "tool_call_end", id: "call_123" })
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "tool_calls" })
 		})
 
-		it("should yield multiple tool_call_end events for parallel tool calls", async () => {
+		it("should yield finish_reason chunk for multiple parallel tool calls (AP-2)", async () => {
 			mockCreate.mockImplementationOnce(() => {
 				return {
 					[Symbol.asyncIterator]: () => ({
@@ -575,12 +577,13 @@ describe("BaseOpenAiCompatibleProvider", () => {
 				chunks.push(chunk)
 			}
 
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
-			expect(endChunks).toHaveLength(2)
-			expect(endChunks.map((c: any) => c.id).sort()).toEqual(["call_001", "call_002"])
+			// AP-2: should yield a single finish_reason chunk, not individual tool_call_end events
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "tool_calls" })
 		})
 
-		it("should not yield tool_call_end when finish_reason is not tool_calls", async () => {
+		it("should yield finish_reason chunk when server returns 'stop' after tool_calls deltas (AP-2)", async () => {
 			mockCreate.mockImplementationOnce(() => {
 				return {
 					[Symbol.asyncIterator]: () => ({
@@ -591,7 +594,42 @@ describe("BaseOpenAiCompatibleProvider", () => {
 								value: {
 									choices: [
 										{
-											delta: { content: "Some text response" },
+											delta: {
+												tool_calls: [
+													{
+														index: 0,
+														id: "call_stop_ap2",
+														function: { name: "test_tool", arguments: '{"arg":' },
+													},
+												],
+											},
+										},
+									],
+								},
+							})
+							.mockResolvedValueOnce({
+								done: false,
+								value: {
+									choices: [
+										{
+											delta: {
+												tool_calls: [
+													{
+														index: 0,
+														function: { arguments: '"value"}' },
+													},
+												],
+											},
+										},
+									],
+								},
+							})
+							.mockResolvedValueOnce({
+								done: false,
+								value: {
+									choices: [
+										{
+											delta: {},
 											finish_reason: "stop",
 										},
 									],
@@ -608,8 +646,154 @@ describe("BaseOpenAiCompatibleProvider", () => {
 				chunks.push(chunk)
 			}
 
-			const endChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
-			expect(endChunks).toHaveLength(0)
+			// AP-2: Even with finish_reason "stop" (not "tool_calls"), the provider
+			// must yield a finish_reason chunk so TaskStreamProcessor can finalize
+			const partialChunks = chunks.filter((chunk) => chunk.type === "tool_call_partial")
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+
+			expect(partialChunks).toHaveLength(2)
+			expect(finishReasonChunks).toHaveLength(1)
+			expect(finishReasonChunks[0]).toEqual({ type: "finish_reason", finishReason: "stop" })
+		})
+
+		it("should NOT yield finish_reason chunk when finish_reason is null", async () => {
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						next: vi
+							.fn()
+							.mockResolvedValueOnce({
+								done: false,
+								value: {
+									choices: [
+										{
+											delta: { content: "Some text" },
+											finish_reason: null,
+										},
+									],
+								},
+							})
+							.mockResolvedValueOnce({ done: true }),
+					}),
+				}
+			})
+
+			const stream = handler.createMessage("system prompt", [])
+			const chunks = []
+			for await (const chunk of stream) {
+				chunks.push(chunk)
+			}
+
+			const finishReasonChunks = chunks.filter((chunk) => chunk.type === "finish_reason")
+			expect(finishReasonChunks).toHaveLength(0)
+		})
+	})
+
+	describe("abort / cancelRequest", () => {
+		it("should pass an AbortSignal as the second argument to chat.completions.create", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: () => ({
+					next: vi.fn().mockResolvedValueOnce({ done: true }),
+				}),
+			}))
+
+			const messageGenerator = handler.createMessage("system prompt", [])
+			await messageGenerator.next()
+
+			expect(mockCreate).toHaveBeenCalledTimes(1)
+			const secondArg = mockCreate.mock.calls[0][1]
+			expect(secondArg).toBeDefined()
+			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
+		})
+
+		it("should abort the signal when cancelRequest() is called", async () => {
+			// Mock a stream that yields one chunk then blocks
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: () => ({
+					next: vi
+						.fn()
+						.mockResolvedValueOnce({
+							done: false,
+							value: { choices: [{ delta: { content: "chunk1" } }] },
+						})
+						// This next call would normally resolve after a long time
+						.mockImplementationOnce(
+							() => new Promise(() => {}), // never resolves
+						),
+				}),
+			}))
+
+			const stream = handler.createMessage("system prompt", [])
+			const iterator = stream[Symbol.asyncIterator]()
+
+			// Get first chunk
+			const first = await iterator.next()
+			expect(first.done).toBe(false)
+
+			// Now cancel
+			handler.cancelRequest()
+
+			// The abort controller should be cleared
+			expect((handler as any).abortController).toBeUndefined()
+		})
+
+		it("should create a fresh AbortController per request", async () => {
+			mockCreate.mockImplementation(() => ({
+				[Symbol.asyncIterator]: () => ({
+					next: vi.fn().mockResolvedValueOnce({ done: true }),
+				}),
+			}))
+
+			// First request
+			const stream1 = handler.createMessage("system prompt", [])
+			await stream1.next()
+			const signal1 = mockCreate.mock.calls[0][1].signal as AbortSignal
+
+			// Second request
+			const stream2 = handler.createMessage("system prompt", [])
+			await stream2.next()
+			const signal2 = mockCreate.mock.calls[1][1].signal as AbortSignal
+
+			// Signals should be different instances
+			expect(signal1).not.toBe(signal2)
+		})
+
+		it("should not destroy the client when cancelRequest(false)", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				choices: [{ message: { content: "test" } }],
+			}))
+
+			await handler.completePrompt("test")
+			expect((handler as any).client).toBeDefined()
+
+			handler.cancelRequest(false)
+			expect((handler as any).client).toBeDefined()
+		})
+
+		it("should destroy the client when cancelRequest(true)", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				choices: [{ message: { content: "test" } }],
+			}))
+
+			await handler.completePrompt("test")
+			expect((handler as any).client).toBeDefined()
+
+			handler.cancelRequest(true)
+			// Client should be null after destroy
+			expect((handler as any).client).toBeNull()
+		})
+
+		it("should pass signal in completePrompt too", async () => {
+			mockCreate.mockResolvedValueOnce({
+				choices: [{ message: { content: "test response" } }],
+			})
+
+			await handler.completePrompt("test prompt")
+
+			expect(mockCreate).toHaveBeenCalledTimes(1)
+			const secondArg = mockCreate.mock.calls[0][1]
+			expect(secondArg).toBeDefined()
+			expect(secondArg.signal).toBeInstanceOf(AbortSignal)
 		})
 	})
 })

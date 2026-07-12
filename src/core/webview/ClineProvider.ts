@@ -44,6 +44,8 @@ import {
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_MODES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
+	DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 	getModelId,
 	isRetiredProvider,
 } from "@roo-code/types"
@@ -93,7 +95,8 @@ import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/provi
 import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
-import { Task } from "../task/Task"
+import { Task, type AutoApprovalOverride } from "../task/Task"
+import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from "../memory"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { ClineMessage, TodoItem } from "@roo-code/types"
@@ -101,6 +104,7 @@ import { readApiMessages, saveApiMessages, saveTaskMessages, TaskHistoryStore } 
 import { readTaskMessages } from "../task-persistence/taskMessages"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
+import { SubagentRegistry } from "./SubagentRegistry"
 import { REQUESTY_BASE_URL } from "../../shared/utils/requesty"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 
@@ -137,6 +141,17 @@ export class ClineProvider
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
 	private clineStack: Task[] = []
+	// Headless background tasks (memory writers, parallel subagents). Deliberately
+	// kept OFF `clineStack` so `getCurrentTask()` and the webview stay bound to the
+	// foreground task. Keyed by taskId; entries are removed on completion/abort.
+	private backgroundTasks = new Map<string, Task>()
+	// Live summaries + tail subscriptions for the UI-visible subset of
+	// backgroundTasks (parallel subagents). Memory writers never register.
+	public readonly subagentRegistry = new SubagentRegistry((message) => {
+		this.postMessageToWebview(message).catch(() => {})
+	})
+	// Live memory-system activity counters ("recalling/writing memory…" badge).
+	private memoryActivityCounts = { recall: 0, write: 0 }
 	// Children whose delegated parent could not be proven detached on cancel.
 	// reopenParentFromDelegation() refuses to reopen a parent for any child here.
 	private cancelledDelegationChildIds = new Set<string>()
@@ -243,15 +258,22 @@ export class ClineProvider
 
 			// Create named listener functions so we can remove them later.
 			const onTaskStarted = () => this.emit(RooCodeEventName.TaskStarted, instance.taskId)
-			const onTaskCompleted = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) =>
+			const onTaskCompleted = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
+				this.subagentRegistry.markTerminal(taskId, "completed")
 				this.emit(RooCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
+			}
 			const onTaskAborted = async () => {
+				// Generic "failed"; RunParallelTasksTool refines to "cancelled"
+				// when the abort turns out to be a fan-out cancellation.
+				this.subagentRegistry.markTerminal(instance.taskId, "failed")
 				this.emit(RooCodeEventName.TaskAborted, instance.taskId)
 
 				try {
 					// Only rehydrate on genuine streaming failures.
 					// User-initiated cancels are handled by cancelTask().
-					if (instance.abortReason === "streaming_failed") {
+					// Background tasks (memory writers / subagents) are never on the
+					// stack and must not rehydrate as a foreground task.
+					if (instance.abortReason === "streaming_failed" && !instance.isBackground) {
 						// Defensive safeguard: if another path already replaced this instance, skip
 						const current = this.getCurrentTask()
 						if (current && current.instanceId !== instance.instanceId) {
@@ -276,16 +298,30 @@ export class ClineProvider
 			}
 			const onTaskFocused = () => this.emit(RooCodeEventName.TaskFocused, instance.taskId)
 			const onTaskUnfocused = () => this.emit(RooCodeEventName.TaskUnfocused, instance.taskId)
-			const onTaskActive = (taskId: string) => this.emit(RooCodeEventName.TaskActive, taskId)
-			const onTaskInteractive = (taskId: string) => this.emit(RooCodeEventName.TaskInteractive, taskId)
+			const onTaskActive = (taskId: string) => {
+				this.subagentRegistry.setLiveStatus(taskId, "running")
+				this.emit(RooCodeEventName.TaskActive, taskId)
+			}
+			const onTaskInteractive = (taskId: string) => {
+				this.subagentRegistry.setLiveStatus(taskId, "awaiting_input")
+				this.emit(RooCodeEventName.TaskInteractive, taskId)
+			}
 			const onTaskResumable = (taskId: string) => this.emit(RooCodeEventName.TaskResumable, taskId)
 			const onTaskIdle = (taskId: string) => this.emit(RooCodeEventName.TaskIdle, taskId)
 			const onTaskPaused = (taskId: string) => this.emit(RooCodeEventName.TaskPaused, taskId)
 			const onTaskUnpaused = (taskId: string) => this.emit(RooCodeEventName.TaskUnpaused, taskId)
 			const onTaskSpawned = (taskId: string) => this.emit(RooCodeEventName.TaskSpawned, taskId)
 			const onTaskUserMessage = (taskId: string) => this.emit(RooCodeEventName.TaskUserMessage, taskId)
-			const onTaskTokenUsageUpdated = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) =>
+			const onTaskTokenUsageUpdated = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
+				if (this.subagentRegistry.has(taskId)) {
+					this.subagentRegistry.update(taskId, {
+						tokensIn: tokenUsage.totalTokensIn,
+						tokensOut: tokenUsage.totalTokensOut,
+						totalCost: tokenUsage.totalCost,
+					})
+				}
 				this.emit(RooCodeEventName.TaskTokenUsageUpdated, taskId, tokenUsage, toolUsage)
+			}
 
 			// Attach the listeners.
 			instance.on(RooCodeEventName.TaskStarted, onTaskStarted)
@@ -521,6 +557,12 @@ export class ClineProvider
 			// is async and the task reference is cleared afterwards.
 			const childTaskId = task.taskId
 			const parentTaskId = task.parentTaskId
+
+			// NOTE: deliberately no subagentRegistry cleanup here. Popping a
+			// task is often mere abandonment (switching tasks via history, an
+			// in-place rehydrate) — its fan-out children keep running detached
+			// and must stay visible in the panel. Rows are cleared only by the
+			// next fan-out for the same parent (beginFanOut).
 
 			task.emit(RooCodeEventName.TaskUnfocused)
 
@@ -2233,6 +2275,8 @@ export class ClineProvider
 			includeCurrentTime,
 			includeCurrentCost,
 			maxGitStatusFiles,
+			parallelTasksMaxConcurrency,
+			subagentFollowupTimeoutSec,
 			taskSyncEnabled,
 			imageGenerationProvider,
 			openRouterImageApiKey,
@@ -2305,6 +2349,8 @@ export class ClineProvider
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
 			clineMessages: currentTask?.clineMessages || [],
+			subagents: this.subagentRegistry.list(),
+			memoryActivity: { ...this.memoryActivityCounts },
 			currentTaskTodos: currentTask?.todoList || [],
 			messageQueue: currentTask?.messageQueueService?.messages,
 			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
@@ -2404,6 +2450,8 @@ export class ClineProvider
 			includeCurrentTime: includeCurrentTime ?? true,
 			includeCurrentCost: includeCurrentCost ?? true,
 			maxGitStatusFiles: maxGitStatusFiles ?? 0,
+			parallelTasksMaxConcurrency: parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
+			subagentFollowupTimeoutSec: subagentFollowupTimeoutSec ?? DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 			taskSyncEnabled,
 			imageGenerationProvider,
 			openRouterImageApiKey,
@@ -2629,6 +2677,9 @@ export class ClineProvider
 			includeCurrentTime: stateValues.includeCurrentTime ?? true,
 			includeCurrentCost: stateValues.includeCurrentCost ?? true,
 			maxGitStatusFiles: stateValues.maxGitStatusFiles ?? 0,
+			parallelTasksMaxConcurrency:
+				stateValues.parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
+			subagentFollowupTimeoutSec: stateValues.subagentFollowupTimeoutSec ?? DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 			taskSyncEnabled,
 			imageGenerationProvider: stateValues.imageGenerationProvider,
 			openRouterImageApiKey: stateValues.openRouterImageApiKey,
@@ -3061,6 +3112,323 @@ export class ClineProvider
 		return task
 	}
 
+	/**
+	 * Create and start a HEADLESS background task — the reusable primitive behind
+	 * the memory background writers and the `run_parallel_tasks` subagents.
+	 *
+	 * Unlike {@link createTask}, a background task:
+	 * - is **never** pushed onto `clineStack`, so `getCurrentTask()` and the
+	 *   webview stay bound to the foreground task;
+	 * - runs autonomously via `autoApprovalOverride` (interactive asks never block
+	 *   it — the task isn't the current task, so no webview response would arrive);
+	 * - is bounded by `maxAgentTurns`;
+	 * - can run in its own `workspacePath` (a git worktree) and `taskMode`
+	 *   (e.g. a write-sandboxed mode).
+	 *
+	 * Pair with {@link awaitTaskCompletion} to await its result.
+	 */
+	public async createBackgroundTask(
+		text: string,
+		options: {
+			taskMode?: string
+			workspacePath?: string
+			maxAgentTurns?: number
+			autoApprovalOverride?: AutoApprovalOverride
+			silentWrites?: boolean
+			initialTodos?: TodoItem[]
+			apiConfiguration?: ProviderSettings
+			/**
+			 * Registers the child in the subagent registry so it is visible in
+			 * the webview subagents panel. Omitted for internal background
+			 * tasks (memory writers), which stay invisible.
+			 */
+			subagentInfo?: { parentTaskId: string; index: number; description: string }
+		} = {},
+	): Promise<Task> {
+		const state = await this.getState()
+		// Model resolution, most specific wins: explicit apiConfiguration from
+		// the caller → the subtask mode's pinned API profile (same binding a
+		// foreground mode switch applies) → the currently active profile.
+		// Mode resolution is scoped to panel-visible subagents so internal
+		// background tasks (memory writers) keep their explicit/current config.
+		let apiConfiguration = options.apiConfiguration
+		let apiConfigName = options.apiConfiguration ? undefined : state.currentApiConfigName
+		if (!apiConfiguration && options.subagentInfo && options.taskMode) {
+			const resolved = await this.getApiConfigurationForMode(options.taskMode)
+			if (resolved) {
+				apiConfiguration = resolved.apiConfiguration
+				apiConfigName = resolved.name
+			}
+		}
+		apiConfiguration ??= state.apiConfiguration
+		const { experiments } = state
+
+		const task = new Task({
+			provider: this,
+			apiConfiguration,
+			// Background tasks don't participate in checkpoints (no shadow git per
+			// memory write); keeps them cheap and side-effect-free.
+			enableCheckpoints: false,
+			experiments,
+			task: text,
+			taskMode: options.taskMode,
+			workspacePath: options.workspacePath,
+			isBackground: true,
+			maxAgentTurns: options.maxAgentTurns,
+			autoApprovalOverride: options.autoApprovalOverride,
+			silentWrites: options.silentWrites,
+			initialTodos: options.initialTodos,
+			// Start explicitly below (after registry insert), never via the stack.
+			startTask: false,
+			onCreated: this.taskCreationCallback,
+		})
+
+		this.backgroundTasks.set(task.taskId, task)
+		if (options.subagentInfo) {
+			// Register BEFORE start() so a tail subscribed on the queued
+			// placeholder streams the child's first messages.
+			const now = Date.now()
+			this.subagentRegistry.register({
+				taskId: task.taskId,
+				parentTaskId: options.subagentInfo.parentTaskId,
+				index: options.subagentInfo.index,
+				mode: options.taskMode ?? state.mode,
+				description: options.subagentInfo.description,
+				status: "running",
+				apiConfigName,
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				startedAt: now,
+				lastActivityAt: now,
+			})
+		}
+		this.log(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
+		task.start()
+		return task
+	}
+
+	/** Look up a live headless background task (parallel subagent) by id. */
+	public getBackgroundTask(taskId: string): Task | undefined {
+		return this.backgroundTasks.get(taskId)
+	}
+
+	/**
+	 * Find the CURRENT live instance of a task by id on the foreground stack
+	 * (top-down). Used by a detached fan-out to deliver its report to the
+	 * rehydrated instance of its parent — the original instance that launched
+	 * the fan-out may have been abandoned by a task switch or in-place
+	 * rehydrate while the children kept running.
+	 */
+	public getLiveTaskInstance(taskId: string): Task | undefined {
+		for (let i = this.clineStack.length - 1; i >= 0; i--) {
+			if (this.clineStack[i].taskId === taskId) {
+				return this.clineStack[i]
+			}
+		}
+		return undefined
+	}
+
+	/**
+	 * Adjust a memory-activity counter and push the change to the webview.
+	 * `active: true` opens an activity window, `false` closes it. Counters,
+	 * not booleans: recall prefetches and background writers can overlap.
+	 */
+	public setMemoryActivity(kind: "recall" | "write", active: boolean): void {
+		this.memoryActivityCounts[kind] = Math.max(0, this.memoryActivityCounts[kind] + (active ? 1 : -1))
+		this.postMessageToWebview({
+			type: "memoryActivity",
+			memoryActivity: { ...this.memoryActivityCounts },
+		}).catch(() => {})
+	}
+
+	/**
+	 * Resolve the API profile pinned to `mode` (the "use a specific
+	 * configuration for this mode" binding — the same source handleModeSwitch
+	 * applies to foreground tasks). Returns undefined — meaning "use the
+	 * current profile" — when no binding exists, the profile is an empty CLI
+	 * placeholder (no apiProvider), the workspace locks its API config across
+	 * modes, or resolution fails for any reason.
+	 */
+	public async getApiConfigurationForMode(
+		mode: string,
+	): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined> {
+		try {
+			if (this.context.workspaceState.get("lockApiConfigAcrossModes", false)) {
+				return undefined
+			}
+			const configId = await this.providerSettingsManager.getModeConfigId(mode)
+			if (!configId) {
+				return undefined
+			}
+			const profile = await this.providerSettingsManager.getProfile({ id: configId })
+			if (!profile.name || !profile.apiProvider) {
+				return undefined
+			}
+			return { apiConfiguration: profile, name: profile.name }
+		} catch (error) {
+			this.log(
+				`[getApiConfigurationForMode] failed for mode "${mode}": ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+			return undefined
+		}
+	}
+
+	/**
+	 * Await a background task's terminal state. Resolves `{ completed: true,
+	 * lastMessage }` on `TaskCompleted` (attempt_completion) or `{ completed:
+	 * false }` on `TaskAborted`. Removes the registry entry, disposes a
+	 * completed task, and then deletes its on-disk directory (aborted tasks
+	 * keep theirs for post-mortem). An optional `signal` aborts the task early.
+	 */
+	public awaitTaskCompletion(
+		task: Task,
+		options: { signal?: AbortSignal } = {},
+	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }> {
+		return new Promise((resolve) => {
+			let settled = false
+
+			const onSignalAbort = () => {
+				void task.abortTask().catch(() => {})
+			}
+
+			const finish = (result: { completed: boolean; lastMessage?: string }) => {
+				if (settled) return
+				settled = true
+				task.off(RooCodeEventName.TaskCompleted, onCompleted)
+				task.off(RooCodeEventName.TaskAborted, onAborted)
+				options.signal?.removeEventListener("abort", onSignalAbort)
+				// Capture the set of files the task wrote/edited BEFORE disposing it
+				// (dispose tears down the tracker). Resolve to absolute paths.
+				let writtenPaths: string[] = []
+				try {
+					writtenPaths = (task.fileContextTracker?.getAndClearCheckpointPossibleFile?.() ?? []).map((p) =>
+						path.isAbsolute(p) ? p : path.resolve(task.cwd, p),
+					)
+				} catch {
+					// Non-fatal: no written-path reporting for this run.
+				}
+				this.backgroundTasks.delete(task.taskId)
+				// Dispose a completed background task (aborted ones are already torn
+				// down). `isBackground` makes this abort skip the memory writers.
+				// Completed background tasks have no history item and are never
+				// resumed — delete their on-disk directory once the dispose settles
+				// (abortTask saves messages, which would re-create the directory).
+				// Aborted/failed tasks keep their directory for post-mortem. No
+				// ShadowCheckpointService cleanup is needed (background tasks are
+				// created with enableCheckpoints: false).
+				if (result.completed) {
+					void task
+						.abortTask(true)
+						.catch(() => {})
+						.then(() => this.cleanupBackgroundTaskFiles(task.taskId))
+				}
+				resolve({ ...result, writtenPaths })
+			}
+
+			const onCompleted = () => {
+				// Last completion_result say carries the attempt_completion text.
+				const last = [...task.clineMessages]
+					.reverse()
+					.find((m) => m.type === "say" && m.say === "completion_result")
+				finish({ completed: true, lastMessage: last?.text })
+			}
+			const onAborted = () => finish({ completed: false })
+
+			task.on(RooCodeEventName.TaskCompleted, onCompleted)
+			task.on(RooCodeEventName.TaskAborted, onAborted)
+
+			if (options.signal) {
+				if (options.signal.aborted) onSignalAbort()
+				else options.signal.addEventListener("abort", onSignalAbort, { once: true })
+			}
+		})
+	}
+
+	/**
+	 * Best-effort deletion of a completed background task's on-disk directory.
+	 * Failure is logged and never thrown — the await result is already settled.
+	 */
+	private cleanupBackgroundTaskFiles(taskId: string): void {
+		void (async () => {
+			try {
+				const { getTaskDirectoryPath } = await import("../../utils/storage")
+				const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
+				const dirPath = await getTaskDirectoryPath(globalStoragePath, taskId)
+				await fs.rm(dirPath, { recursive: true, force: true })
+				this.log(`[cleanupBackgroundTaskFiles] removed task directory for ${taskId}`)
+			} catch (error) {
+				this.log(
+					`[cleanupBackgroundTaskFiles] failed to remove task directory for ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		})()
+	}
+
+	/**
+	 * Surface a non-blocking toast for background-task outcomes (memory writes).
+	 */
+	public notifyBackgroundOutcome(message: string): void {
+		void vscode.window.showInformationMessage(message)
+	}
+
+	/**
+	 * The memory background-writer runner (extraction + dream), consumed by
+	 * `TaskLifecycle.triggerMemoryBackgroundWriters` via `provider.memorySubTaskRunner`.
+	 *
+	 * Spawns a headless, write-sandboxed background task (in "code" mode so the
+	 * read/write tools are available) against the given cwd, runs it autonomously
+	 * with a turn cap, and returns the memory files it wrote. This is the wiring
+	 * that flips memory writes ON — replacing the historical `noopSubTaskRunner`
+	 * fallback. The `autoApprovalOverride` (see {@link memoryWriteSandbox}) confines
+	 * writes to the memory directory, and `silentWrites` keeps the writes off-screen.
+	 */
+	public get memorySubTaskRunner(): SubTaskRunner {
+		return async ({ cwd, systemPrompt, userPrompt, maxTurns, signal }) => {
+			// The real Task builds its own system prompt (which already includes the
+			// memory behavioral section), so fold the extraction/dream system prompt
+			// into the task's initial message alongside the user prompt.
+			const text = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt
+			const apiConfiguration = await this.resolveMemoryWriterApiConfiguration()
+			this.setMemoryActivity("write", true)
+			try {
+				const task = await this.createBackgroundTask(text, {
+					taskMode: "code",
+					workspacePath: cwd,
+					maxAgentTurns: maxTurns,
+					autoApprovalOverride: memoryWriteSandbox(cwd),
+					silentWrites: true,
+					apiConfiguration,
+				})
+				const { writtenPaths } = await this.awaitTaskCompletion(task, { signal })
+				return { writtenPaths: filterMemoryWrittenPaths(writtenPaths, cwd) }
+			} finally {
+				this.setMemoryActivity("write", false)
+			}
+		}
+	}
+
+	/**
+	 * Resolve the configured memory-writer API profile. Returns undefined when
+	 * no profile is configured or the configured id is stale — callers fall
+	 * back to the foreground profile. Never throws.
+	 */
+	private async resolveMemoryWriterApiConfiguration(): Promise<ProviderSettings | undefined> {
+		const id = this.getValue("memoryWriterApiConfigId")
+		if (!id) return undefined
+		try {
+			const { name: _name, ...profile } = await this.providerSettingsManager.getProfile({ id })
+			return profile
+		} catch (error) {
+			this.log(
+				`[memorySubTaskRunner] failed to load writer profile ${id}, falling back to foreground: ${error instanceof Error ? error.message : String(error)}`,
+			)
+			return undefined
+		}
+	}
+
 	public async cancelTask(): Promise<void> {
 		const task = this.getCurrentTask()
 
@@ -3102,11 +3470,13 @@ export class ClineProvider
 		// This is essential for local models that may continue inference even after abort.
 		task.cancelCurrentRequest(true)
 
-		// Begin abort (non-blocking)
+		// Begin abort (non-blocking) — the abort runs concurrently while we
+		// do a bounded wait for streaming to stop.  We do NOT set `abandoned`
+		// before the wait: setting it prematurely would mark the task as
+		// abandoned while the abort is still progressing, which can clobber a
+		// to-be-successful cleanup.  Instead `abandoned` is set AFTER the
+		// bounded wait concludes, regardless of whether the abort finished.
 		task.abortTask()
-
-		// Immediately mark the original instance as abandoned to prevent any residual activity
-		task.abandoned = true
 
 		await pWaitFor(
 			() =>
@@ -3121,8 +3491,19 @@ export class ClineProvider
 				timeout: 3_000,
 			},
 		).catch(() => {
-			console.error("Failed to abort task")
+			// The abort is still in progress (e.g. slow stream cleanup,
+			// memory-writer drain on a non-user-cancel path).  This is NOT
+			// a failure — the abort was initiated and will complete in the
+			// background.  We log a warning instead of an error so the
+			// task is not spuriously marked as failed.
+			this.log("[cancelTask] abort still in progress after 3s bound — continuing")
 		})
+
+		// Mark the original instance as abandoned NOW — after the bounded
+		// wait, so it never clobbers a still-progressing abort.  The abort
+		// itself was already started above; `abandoned` just prevents
+		// residual activity from the old instance after rehydrate.
+		task.abandoned = true
 
 		// Defensive safeguard: if current instance already changed, skip rehydrate
 		const current = this.getCurrentTask()
@@ -3514,6 +3895,145 @@ export class ClineProvider
 		}
 
 		return child
+	}
+
+	/**
+	 * Attempt to re-attach a detached parent when its cancelled/resumed child later completes.
+	 *
+	 * Both `cancelTask` and `removeClineFromStack` deliberately detach the parent
+	 * (status → "active", awaitingChildId → undefined) so the parent is not stuck
+	 * waiting for a dead child. But if the child is later resumed and completes,
+	 * nothing re-establishes delegation — so the child falls through to standalone
+	 * completion instead of returning its result to the parent.
+	 *
+	 * This method re-stamps the parent `{status: "delegated", awaitingChildId: childTaskId}`
+	 * ONLY when ALL five evidence conditions hold (see ai_plans/2026-07-12_delegated-child-return-after-cancel.md):
+	 *   1. parentHistory.status === "active" (not completed; not already delegated to someone else);
+	 *   2. parentHistory.awaitingChildId === undefined (no live delegation);
+	 *   3. parentHistory.delegatedToId === childTaskId (the parent's LAST delegation was to THIS child);
+	 *   4. parent is not currently open in the task stack (user is not actively working in it);
+	 *   5. untouched-tail proof: the parent's persisted API messages still end frozen at the
+	 *      delegation — the last `new_task` tool_use has NO tool_result answering it in any
+	 *      later message (same backward scan as reopenParentFromDelegation).
+	 *
+	 * Returns true on successful re-attach, false otherwise (never throws).
+	 */
+	public async tryReattachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean> {
+		try {
+			// 1-3: Load parent history and check the three metadata conditions.
+			const { historyItem: parentHistory } = await this.getTaskWithId(parentTaskId)
+
+			if (parentHistory.status !== "active") {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} status is "${parentHistory.status}", not "active"`,
+				)
+				return false
+			}
+
+			if (parentHistory.awaitingChildId !== undefined) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has awaitingChildId="${parentHistory.awaitingChildId}"`,
+				)
+				return false
+			}
+
+			if (parentHistory.delegatedToId !== childTaskId) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} delegatedToId="${parentHistory.delegatedToId}" !== child "${childTaskId}"`,
+				)
+				return false
+			}
+
+			// 4: Parent must not be currently open in the task stack.
+			const stackIds = this.getCurrentTaskStack()
+			if (stackIds.includes(parentTaskId)) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} is currently open in the task stack [${stackIds.join(", ")}]`,
+				)
+				return false
+			}
+
+			// 5: Untouched-tail proof — read the parent's persisted API messages and scan
+			//    backward for the last `new_task` tool_use, then verify NO later message
+			//    contains a `tool_result` with that tool_use_id.
+			let parentApiMessages: any[] = []
+			try {
+				parentApiMessages = (await readApiMessages({
+					taskId: parentTaskId,
+					globalStoragePath: this.contextProxy.globalStorageUri.fsPath,
+				})) as any[]
+			} catch (readErr) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: failed to read parent API messages for ${parentTaskId}: ${
+						readErr instanceof Error ? readErr.message : String(readErr)
+					}`,
+				)
+				return false
+			}
+
+			if (!Array.isArray(parentApiMessages)) {
+				this.log(`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} API messages is not an array`)
+				return false
+			}
+
+			// Same backward scan as reopenParentFromDelegation (~line 3827-3837).
+			let toolUseId: string | undefined
+			let toolUseIndex = -1
+			for (let i = parentApiMessages.length - 1; i >= 0; i--) {
+				const msg = parentApiMessages[i]
+				if (msg.role === "assistant" && Array.isArray(msg.content)) {
+					for (const block of msg.content) {
+						if (block.type === "tool_use" && block.name === "new_task") {
+							toolUseId = block.id
+							toolUseIndex = i
+							break
+						}
+					}
+					if (toolUseId) break
+				}
+			}
+
+			if (!toolUseId) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: no new_task tool_use found in parent ${parentTaskId} API history (cannot prove frozen state)`,
+				)
+				return false
+			}
+
+			// Scan ALL messages AFTER the tool_use for a matching tool_result.
+			for (let i = toolUseIndex; i < parentApiMessages.length; i++) {
+				const msg = parentApiMessages[i]
+				if (msg.role === "user" && Array.isArray(msg.content)) {
+					for (const block of msg.content) {
+						if (block.type === "tool_result" && block.tool_use_id === toolUseId) {
+							this.log(
+								`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
+							)
+							return false
+						}
+					}
+				}
+			}
+
+			// All five conditions hold — re-attach.
+			await this.updateTaskHistory({
+				...parentHistory,
+				status: "delegated",
+				awaitingChildId: childTaskId,
+			})
+
+			this.log(
+				`[tryReattachDelegatedParent] Re-attached parent ${parentTaskId} to child ${childTaskId} (status: active → delegated, awaitingChildId: undefined → ${childTaskId})`,
+			)
+			return true
+		} catch (err) {
+			this.log(
+				`[tryReattachDelegatedParent] Error re-attaching parent ${parentTaskId} to child ${childTaskId}: ${
+					err instanceof Error ? err.message : String(err)
+				}`,
+			)
+			return false
+		}
 	}
 
 	/**

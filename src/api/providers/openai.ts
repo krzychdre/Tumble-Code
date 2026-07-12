@@ -546,6 +546,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					}
 				}
 
+				// AP-8: Extract reasoning_content/reasoning from the delta the
+				// same way the main streaming path does, so reasoning-capable
+				// servers routed through the O3 branch (DeepSeek-R1 distills,
+				// QwQ behind adapters, etc.) surface reasoning output.
+				const reasoningText = extractReasoningFromDelta(delta)
+				if (reasoningText) {
+					yield { type: "reasoning", text: reasoningText }
+				}
+
 				yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
 			}
 

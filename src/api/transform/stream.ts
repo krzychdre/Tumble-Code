@@ -11,6 +11,7 @@ export type ApiStreamChunk =
 	| ApiStreamToolCallDeltaChunk
 	| ApiStreamToolCallEndChunk
 	| ApiStreamToolCallPartialChunk
+	| ApiStreamFinishReasonChunk
 	| ApiStreamError
 
 export interface ApiStreamError {
@@ -105,6 +106,16 @@ export interface ApiStreamToolCallPartialChunk {
 	id?: string
 	name?: string
 	arguments?: string
+}
+
+/**
+ * Finish reason chunk from the API stream.
+ * Providers yield this instead of calling NativeToolCallParser.processFinishReason directly,
+ * so that TaskStreamProcessor can handle it with per-task parser state.
+ */
+export interface ApiStreamFinishReasonChunk {
+	type: "finish_reason"
+	finishReason: string
 }
 
 export interface GroundingSource {

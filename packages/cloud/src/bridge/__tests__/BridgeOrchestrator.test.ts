@@ -18,6 +18,15 @@ class FakeEmitter {
 	emitted: Array<{ event: string; data: any }> = []
 	connected = true
 	id = "fake-sid"
+	/** Stands in for the socket.io Manager (socket.io property). Lazily created. */
+	private _io: FakeEmitter | null = null
+
+	get io(): FakeEmitter {
+		// Lazy — avoids infinite recursion in the constructor (each FakeEmitter
+		// would create another FakeEmitter for its .io, which creates another…).
+		if (!this._io) this._io = new FakeEmitter()
+		return this._io
+	}
 
 	on(event: string, cb: (...a: any[]) => void) {
 		const list = this.handlers.get(event) ?? []
@@ -159,5 +168,113 @@ describe("BridgeOrchestrator", () => {
 		const before = socket.emitted.length
 		bus.fire(RooCodeEventName.Message, { taskId: "t", action: "x", message: {} })
 		expect(socket.emitted.length).toBe(before)
+	})
+
+	it("logs connect_error with auth/network classification", async () => {
+		const logs: string[] = []
+		const orch = new BridgeOrchestrator({
+			getBridgeConfig: vi.fn(async () => CONFIG),
+			provider,
+			events: bus as unknown as BridgeEventSource,
+			workspacePath: "/work",
+			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			ioFactory: ioFactory as any,
+			log: (...args: unknown[]) => logs.push(args.join(" ")),
+		})
+		await orch.start()
+		socket.fire("connect_error", new Error("token expired"))
+		expect(
+			logs.some((l) => l.includes("connect_error") && l.includes("token expired") && l.includes("(auth)")),
+		).toBe(true)
+
+		socket.fire("connect_error", new Error("xhr poll error"))
+		expect(
+			logs.some(
+				(l) => l.includes("connect_error") && l.includes("xhr poll error") && l.includes("(network/server)"),
+			),
+		).toBe(true)
+	})
+
+	it("logs reconnect_attempt #1 and every 5th, skips 2-4", async () => {
+		const logs: string[] = []
+		const orch = new BridgeOrchestrator({
+			getBridgeConfig: vi.fn(async () => CONFIG),
+			provider,
+			events: bus as unknown as BridgeEventSource,
+			workspacePath: "/work",
+			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			ioFactory: ioFactory as any,
+			log: (...args: unknown[]) => logs.push(args.join(" ")),
+		})
+		await orch.start()
+		const manager = (socket as any).io as FakeEmitter
+
+		// Attempt 1 — logged
+		manager.fire("reconnect_attempt", 1)
+		expect(logs.some((l) => l.includes("reconnect attempt #1"))).toBe(true)
+
+		// Attempts 2-4 — NOT logged (throttled)
+		logs.length = 0
+		manager.fire("reconnect_attempt", 2)
+		manager.fire("reconnect_attempt", 3)
+		manager.fire("reconnect_attempt", 4)
+		expect(logs.filter((l) => l.includes("reconnect attempt"))).toHaveLength(0)
+
+		// Attempt 5 — logged
+		manager.fire("reconnect_attempt", 5)
+		expect(logs.some((l) => l.includes("reconnect attempt #5"))).toBe(true)
+	})
+
+	it("logs reconnect_failed when manager gives up", async () => {
+		const logs: string[] = []
+		const orch = new BridgeOrchestrator({
+			getBridgeConfig: vi.fn(async () => CONFIG),
+			provider,
+			events: bus as unknown as BridgeEventSource,
+			workspacePath: "/work",
+			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			ioFactory: ioFactory as any,
+			log: (...args: unknown[]) => logs.push(args.join(" ")),
+		})
+		await orch.start()
+		const manager = (socket as any).io as FakeEmitter
+
+		manager.fire("reconnect_failed")
+		expect(logs.some((l) => l.includes("reconnect failed") && l.includes("offline"))).toBe(true)
+	})
+
+	it("cleans up manager-level listeners on stop()", async () => {
+		const orch = build()
+		await orch.start()
+		const manager = (socket as any).io as FakeEmitter
+		expect(manager.handlers.get("reconnect_attempt")?.length ?? 0).toBeGreaterThan(0)
+		expect(manager.handlers.get("reconnect_failed")?.length ?? 0).toBeGreaterThan(0)
+		await orch.stop()
+		expect(manager.handlers.get("reconnect_attempt")?.length ?? 0).toBe(0)
+		expect(manager.handlers.get("reconnect_failed")?.length ?? 0).toBe(0)
+	})
+
+	it("resets reconnect counter on successful connect", async () => {
+		const logs: string[] = []
+		const orch = new BridgeOrchestrator({
+			getBridgeConfig: vi.fn(async () => CONFIG),
+			provider,
+			events: bus as unknown as BridgeEventSource,
+			workspacePath: "/work",
+			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
+			ioFactory: ioFactory as any,
+			log: (...args: unknown[]) => logs.push(args.join(" ")),
+		})
+		await orch.start()
+		const manager = (socket as any).io as FakeEmitter
+
+		// Simulate a few reconnect attempts
+		manager.fire("reconnect_attempt", 3)
+		// Successful connect resets the counter
+		socket.fire("connect")
+		// Next attempt 1 should be logged again (counter was reset)
+		logs.length = 0
+		manager.fire("reconnect_attempt", 1)
+		expect(logs.some((l) => l.includes("reconnect attempt #1"))).toBe(true)
 	})
 })

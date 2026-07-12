@@ -16,6 +16,7 @@ import { convertToR1Format } from "../transform/r1-format"
 
 import { OpenAiHandler } from "./openai"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
+import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
 // Custom interface for DeepSeek params to support thinking mode
@@ -161,17 +162,12 @@ export class DeepSeekHandler extends OpenAiHandler {
 			}
 
 			// Handle tool calls
-			if (delta.tool_calls) {
-				for (const toolCall of delta.tool_calls) {
-					yield {
-						type: "tool_call_partial",
-						index: toolCall.index,
-						id: toolCall.id,
-						name: toolCall.function?.name,
-						arguments: toolCall.function?.arguments,
-					}
-				}
-			}
+			yield* emitToolCallChunks(delta)
+
+			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
+			// DeepSeek may return "stop" or "tool_calls" — both must trigger finalization (AP-6).
+			const finishReason = chunk.choices?.[0]?.finish_reason
+			yield* emitFinishReasonChunk(finishReason)
 
 			if (chunk.usage) {
 				lastUsage = chunk.usage

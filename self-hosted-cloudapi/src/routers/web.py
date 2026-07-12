@@ -26,12 +26,14 @@ from config.settings import settings
 from src.database import get_db
 from src.auth.web_session import WebUser, get_web_user_optional
 from src.models.task import Task, TaskMessage, TaskShare
+from src.models.organization import Membership
 from src.services.share_service import delete_shared_task
 from src.services.metrics_service import (
     DEFAULT_PERIOD,
     PERIOD_LABELS,
     compute_user_metrics,
 )
+from src.utils.format import fmt_duration, fmt_tokens, num
 
 logger = logging.getLogger(__name__)
 
@@ -123,11 +125,6 @@ def _derive_title(messages: list[dict]) -> str:
     return "Untitled task"
 
 
-def _num(value) -> float:
-    """Coerce a JSON number to float, treating anything else as 0."""
-    return value if isinstance(value, (int, float)) else 0
-
-
 def _compute_metrics(messages: list[dict]) -> dict:
     """Sum token/cost totals from a task's messages.
 
@@ -159,15 +156,15 @@ def _compute_metrics(messages: list[dict]) -> dict:
             except (json.JSONDecodeError, TypeError):
                 continue
             if isinstance(obj, dict):
-                tokens_in += _num(obj.get("tokensIn"))
-                tokens_out += _num(obj.get("tokensOut"))
-                cache_writes += _num(obj.get("cacheWrites"))
-                cache_reads += _num(obj.get("cacheReads"))
-                cost += _num(obj.get("cost"))
+                tokens_in += num(obj.get("tokensIn"))
+                tokens_out += num(obj.get("tokensOut"))
+                cache_writes += num(obj.get("cacheWrites"))
+                cache_reads += num(obj.get("cacheReads"))
+                cost += num(obj.get("cost"))
         elif say == "condense_context":
             condense = msg.get("contextCondense")
             if isinstance(condense, dict):
-                cost += _num(condense.get("cost"))
+                cost += num(condense.get("cost"))
     return {
         "tokens_in": int(tokens_in),
         "tokens_out": int(tokens_out),
@@ -176,32 +173,6 @@ def _compute_metrics(messages: list[dict]) -> dict:
         "cost": cost,
         "duration_ms": (last_ts - first_ts) if (first_ts is not None and last_ts is not None) else 0,
     }
-
-
-def _fmt_tokens(n: float) -> str:
-    """Compact token count: 1_000_000 → "1M", 96_941 → "96.9k".
-
-    Mirrors ``fmt()`` in static/live.js so the list and detail header read the same.
-    """
-    num = float(n)
-    for value, suffix in ((1e9, "B"), (1e6, "M"), (1e3, "k")):
-        if abs(num) >= value:
-            return f"{num / value:.1f}".rstrip("0").rstrip(".") + suffix
-    return str(int(num))
-
-
-def _fmt_duration(ms: float) -> str:
-    """Human session span: 4500 → "4s", 125000 → "2m 5s", 3_700_000 → "1h 1m"."""
-    total = int(ms // 1000)
-    if total <= 0:
-        return "0s"
-    hours, rem = divmod(total, 3600)
-    minutes, seconds = divmod(rem, 60)
-    if hours:
-        return f"{hours}h {minutes}m"
-    if minutes:
-        return f"{minutes}m {seconds}s"
-    return f"{seconds}s"
 
 
 def _metrics_tooltip(metrics: dict) -> str:
@@ -213,7 +184,7 @@ def _metrics_tooltip(metrics: dict) -> str:
     if metrics["cache_writes"] or metrics["cache_reads"]:
         lines.append(f"⚡ Cache: {metrics['cache_writes']:,} write / {metrics['cache_reads']:,} read")
     if metrics["duration_ms"]:
-        lines.append(f"⏱ Session: {_fmt_duration(metrics['duration_ms'])}")
+        lines.append(f"⏱ Session: {fmt_duration(metrics['duration_ms'])}")
     lines.append(f"$ Cost: ${metrics['cost']:.4f}")
     return "\n".join(lines)
 
@@ -274,7 +245,7 @@ async def task_list(
                 "title": _derive_title(messages),
                 "message_count": n or 0,
                 "updated_at": task.updated_at,
-                "tokens": _fmt_tokens(total_tokens) if total_tokens else None,
+                "tokens": fmt_tokens(total_tokens) if total_tokens else None,
                 "cost": f"${metrics['cost']:.4f}" if metrics["cost"] > 0 else None,
                 "metrics_title": _metrics_tooltip(metrics) if has_metrics else None,
                 "workspace": task.workspace_path,
@@ -414,6 +385,28 @@ async def shared_task(
     task_result = await db.execute(select(Task).where(Task.id == task_id))
     task = task_result.scalar_one_or_none()
     is_owner = user is not None and task is not None and task.user_id == user["user_id"]
+
+    # For non-public shares, enforce org membership: the viewer must be the task
+    # owner or share an organization with the task owner. This prevents a logged-in
+    # user from a different org reading another org's private conversation.
+    if share.visibility != "public" and not is_owner:
+        allowed = False
+        if task is not None and task.organization_id is not None and user is not None:
+            member_result = await db.execute(
+                select(Membership).where(
+                    Membership.user_id == user["user_id"],
+                    Membership.organization_id == task.organization_id,
+                )
+            )
+            allowed = member_result.scalar_one_or_none() is not None
+        if not allowed:
+            return templates.TemplateResponse(
+                request,
+                "not_found.html",
+                {"user": user},
+                status_code=404,
+            )
+
     live = bool(settings.bridge_enabled and is_owner)
 
     messages = await _load_task_messages(db, task_id)

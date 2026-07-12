@@ -17,13 +17,21 @@ import { type ToolName } from "@roo-code/types"
 
 import { type TaskHistory } from "./TaskHistory"
 import { getToolCallId, findToolAskIndexByCallId } from "./toolAskIdentity"
-import { checkAutoApproval } from "../auto-approval"
+import { checkAutoApproval, type CheckAutoApprovalResult } from "../auto-approval"
 import { findLastIndex } from "../../shared/array"
 import { formatResponse } from "../prompts/responses"
 import { AskIgnoredError } from "./AskIgnoredError"
 import { type MessageQueueService } from "../message-queue/MessageQueueService"
 import { type ClineProvider } from "../webview/ClineProvider"
+import { type AutoApprovalOverride } from "./Task"
 import pWaitFor from "p-wait-for"
+
+/**
+ * How long a headless subagent's interactive ask (followup question) may wait
+ * for a user answer before falling back to a plain approval. Keeps unattended
+ * fan-outs bounded while giving a watching user a real window to reply.
+ */
+export const SUBAGENT_ASK_FALLBACK_TIMEOUT_MS = 5 * 60 * 1000
 
 export interface TaskAskSayAccess {
 	taskId: string
@@ -37,12 +45,22 @@ export interface TaskAskSayAccess {
 	idleAsk?: ClineMessage
 	resumableAsk?: ClineMessage
 	interactiveAsk?: ClineMessage
+	/** Headless background task (parallel subagent / memory writer). */
+	isBackground: boolean
 	autoApprovalTimeoutRef?: NodeJS.Timeout
 	messageQueueService: MessageQueueService
 	providerRef: WeakRef<ClineProvider>
 	history: TaskHistory
 	emit: EventEmitter["emit"]
 	checkpointSave: (isSave: boolean, isCreateCheckpoint: boolean) => Promise<void>
+	/**
+	 * Optional per-task auto-approval override (headless background tasks). Checked
+	 * before the global auto-approval state; returns "approve"/"deny" to resolve an
+	 * ask without user interaction, or undefined to defer to normal handling.
+	 * May be async; receives `isProtected` so the policy can factor in protected-file
+	 * status.
+	 */
+	autoApprovalOverride?: AutoApprovalOverride
 }
 
 export class TaskAskSay {
@@ -80,7 +98,17 @@ export class TaskAskSay {
 		// rendered, leaving them stuck on-screen).
 		const provider = this.access.providerRef.deref()
 		const state = provider ? await provider.getState() : undefined
-		const approval = await checkAutoApproval({ state, ask: type, text, isProtected })
+		// Per-task override first (headless background tasks): lets a task run
+		// autonomously without mutating the global auto-approval settings. Only
+		// short-circuits when it returns a concrete "approve"/"deny"; otherwise
+		// falls through to the normal global auto-approval flow.
+		const override = await this.access.autoApprovalOverride?.(type, text, isProtected)
+		const approval: CheckAutoApprovalResult =
+			override === "approve"
+				? { decision: "approve" }
+				: override === "deny"
+					? { decision: "deny" }
+					: await checkAutoApproval({ state, ask: type, text, isProtected })
 		const isAutoAnswered = approval.decision === "approve" || approval.decision === "deny"
 
 		if (partial !== undefined) {
@@ -337,6 +365,30 @@ export class TaskAskSay {
 					this.handleWebviewAskResponse("messageResponse", message.text, message.images)
 				}
 			}
+		}
+
+		// A headless subagent may block on an ask the user never notices (its
+		// panel row shows "awaiting input", but nobody is watching). Bound the
+		// wait (`subagentFollowupTimeoutSec`, 0 = answer immediately) so
+		// unattended fan-outs always make progress. The fallback answer
+		// depends on what is being asked: a followup question is approved
+		// (empty answer — the child proceeds on its best judgment), but a
+		// PERMISSION ask (tool/command/MCP) is DENIED — an unattended subagent
+		// must never write or execute without the user's permission. A real
+		// user answer any time earlier wins.
+		if (this.access.isBackground && approval.decision === "ask") {
+			const fallbackMs = Math.max(
+				0,
+				(state?.subagentFollowupTimeoutSec ?? SUBAGENT_ASK_FALLBACK_TIMEOUT_MS / 1000) * 1000,
+			)
+			const isPermissionAsk = type === "tool" || type === "command" || type === "use_mcp_server"
+			timeouts.push(
+				setTimeout(() => {
+					if (this.access.askResponse === undefined && this.access.lastMessageTs === askTs) {
+						this.handleWebviewAskResponse(isPermissionAsk ? "noButtonClicked" : "yesButtonClicked")
+					}
+				}, fallbackMs),
+			)
 		}
 
 		// Wait for askResponse to be set

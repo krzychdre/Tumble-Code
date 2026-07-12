@@ -397,8 +397,17 @@ describe("ContextProxy", () => {
 				expect(mockGlobalState.update).toHaveBeenCalledWith(key, undefined)
 			}
 
-			// Total calls should include initial setup + reset operations
-			const expectedUpdateCalls = 2 + GLOBAL_STATE_KEYS.length
+			// Total calls should include:
+			// - 2 initial setup writes (apiModelId, apiProvider)
+			// - GLOBAL_STATE_KEYS.length writes from resetAllState's clear loop
+			// - MIGRATION_WRITES_PER_INIT * 2 writes from the auto-memory
+			//   defaults migration, which runs once in beforeEach's initialize()
+			//   and again inside resetAllState's initialize(). The migration
+			//   writes 5 defaults (autoMemoryEnabled, autoDreamEnabled,
+			//   memoryRecallEnabled, autoDreamMinHours, autoDreamMinSessions)
+			//   when those keys are absent (mock get returns undefined).
+			const MIGRATION_WRITES_PER_INIT = 5
+			const expectedUpdateCalls = 2 + GLOBAL_STATE_KEYS.length + MIGRATION_WRITES_PER_INIT * 2
 			expect(mockGlobalState.update).toHaveBeenCalledTimes(expectedUpdateCalls)
 		})
 

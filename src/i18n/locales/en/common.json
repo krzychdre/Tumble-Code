@@ -162,7 +162,9 @@
 		"image_copied_to_clipboard": "Image data URI copied to clipboard",
 		"image_saved": "Image saved to {{path}}",
 		"mode_exported": "Mode '{{mode}}' exported successfully",
-		"mode_imported": "Mode imported successfully"
+		"mode_imported": "Mode imported successfully",
+		"memory_saved": "Memory: saved {{count}} new memories",
+		"memory_consolidated": "Memory: consolidated {{count}} memories"
 	},
 	"answers": {
 		"yes": "Yes",

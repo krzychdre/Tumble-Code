@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
+from src.utils.format import fmt_duration, fmt_tokens, num as _num
 
 logger = logging.getLogger(__name__)
 
@@ -49,34 +50,6 @@ PERIOD_LABELS: dict[str, str] = {
     "all": "All time",
 }
 DEFAULT_PERIOD = "7d"
-
-
-def _num(value) -> float:
-    """Coerce a JSON number to float, treating anything else as 0."""
-    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else 0
-
-
-def fmt_tokens(n: float) -> str:
-    """Compact token count: 1_000_000 → "1M", 96_941 → "96.9k"."""
-    num = float(n)
-    for value, suffix in ((1e9, "B"), (1e6, "M"), (1e3, "k")):
-        if abs(num) >= value:
-            return f"{num / value:.1f}".rstrip("0").rstrip(".") + suffix
-    return str(int(num))
-
-
-def fmt_duration(ms: float) -> str:
-    """Human session span: 4500 → "4s", 125000 → "2m 5s", 3_700_000 → "1h 1m"."""
-    total = int(ms // 1000)
-    if total <= 0:
-        return "0s"
-    hours, rem = divmod(total, 3600)
-    minutes, seconds = divmod(rem, 60)
-    if hours:
-        return f"{hours}h {minutes}m"
-    if minutes:
-        return f"{minutes}m {seconds}s"
-    return f"{seconds}s"
 
 
 def period_start(period: str, now: Optional[datetime] = None) -> Optional[datetime]:

@@ -915,3 +915,358 @@ async def test_metrics_page_empty_state(client, db_session):
     assert "No usage recorded" in resp.text
     # No chart library loaded when there is nothing to plot.
     assert "/static/vendor/chart.umd.min.js" not in resp.text
+
+
+async def test_web_num_excludes_booleans(client, db_session, session_factory):
+    """``num`` (shared util) must NOT count ``True``/``False`` as 1.0/0.0 — Python
+    ``bool`` is a subclass of ``int``, so ``isinstance(True, (int, float))`` is
+    ``True``. A malformed ``tokensIn: true`` would inflate the task-list total
+    by 1.0 while the metrics dashboard (which excludes bools) reports 0,
+    diverging the two views. This test feeds a boolean token value and asserts
+    the web task-list aggregates it as 0, not 1."""
+    from src.utils.format import num
+
+    # Direct unit test of num: bool must be treated as 0
+    assert num(True) == 0
+    assert num(False) == 0
+    assert num(42) == 42.0
+    assert num(3.14) == 3.14
+    assert num("hello") == 0
+    assert num(None) == 0
+
+    # Integration: a task with tokensIn=true must NOT inflate the total
+    await _seed_user(db_session)
+    first = {"ts": 1000, "type": "say", "say": "text", "text": "Build me a feature"}
+    api_req = {
+        "ts": 2000,
+        "type": "say",
+        "say": "api_req_started",
+        "text": json.dumps(
+            {
+                "tokensIn": True,  # malformed boolean — must count as 0
+                "tokensOut": 100,
+                "cost": 0.05,
+            }
+        ),
+    }
+    async with session_factory() as s:
+        s.add(Task(id="task-bool", user_id="user_test"))
+        s.add(TaskMessage(task_id="task-bool", message_data=json.dumps(first)))
+        s.add(TaskMessage(task_id="task-bool", message_data=json.dumps(api_req)))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app)
+    try:
+        resp = client.get("/app")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    # tokens_in should be 0 (bool excluded), tokens_out=100 → total 100
+    # "100 tokens" in the list, NOT "101 tokens"
+    assert "100 tokens" in resp.text
+    assert "101" not in resp.text
+    # The tooltip should show In: 0 (not In: 1)
+    assert "↑ In: 0" in resp.text
+
+
+# --- Security: share_task ownership check (BUG A) --------------------------
+
+
+async def test_share_task_by_non_owner_returns_not_found(client, db_session, session_factory):
+    """A user may only share tasks they own. Sharing another user's task must
+    return the same 'Task not found' response as a missing task — never leak
+    that the task exists, and never create a share row."""
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    await _seed_user(db_session, user_id="intruder", email="intruder@example.com")
+    async with session_factory() as s:
+        s.add(Task(id="task-own-a", user_id="owner"))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="intruder")
+    try:
+        resp = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-own-a", "visibility": "organization"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    # The endpoint raises 404 for "Task not found" results.
+    assert resp.status_code == 404
+
+    # No share row should have been created.
+    async with session_factory() as s:
+        shares = (
+            await s.execute(
+                select(func.count(TaskShare.id)).where(TaskShare.task_id == "task-own-a")
+            )
+        ).scalar_one()
+        assert shares == 0
+
+
+# --- Security: /shared org-visibility blocks other-org users (BUG B) -------
+
+
+async def test_shared_organization_visibility_blocks_other_org_user(
+    client, db_session, session_factory
+):
+    """An organization-visibility share must only be viewable by the task owner
+    or users who share an organization with the owner. A logged-in user from a
+    different org gets 404 (not-found), not the conversation."""
+    from src.models.organization import Organization, Membership
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    await _seed_user(db_session, user_id="viewer", email="viewer@example.com")
+
+    async with session_factory() as s:
+        org_a = Organization(id="org-a", name="Org A")
+        org_b = Organization(id="org-b", name="Org B")
+        s.add_all([org_a, org_b])
+        # Owner is in org-a; viewer is in org-b (different org).
+        s.add(Membership(user_id="owner", organization_id="org-a", role="org:member"))
+        s.add(Membership(user_id="viewer", organization_id="org-b", role="org:member"))
+        s.add(Task(id="task-org-vis", user_id="owner", organization_id="org-a"))
+        s.add(TaskMessage(task_id="task-org-vis", message_data=json.dumps(_msgs()[0])))
+        s.add(TaskShare(task_id="task-org-vis", visibility="organization"))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app, user_id="viewer", email="viewer@example.com")
+    try:
+        resp = client.get("/shared/task-org-vis")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 404
+
+
+async def test_shared_organization_visibility_allows_same_org_user(
+    client, db_session, session_factory
+):
+    """A logged-in user in the same org as the task owner CAN view an
+    organization-visibility share (positive control for the previous test)."""
+    from src.models.organization import Organization, Membership
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    await _seed_user(db_session, user_id="colleague", email="colleague@example.com")
+
+    async with session_factory() as s:
+        org = Organization(id="org-shared", name="Shared Org")
+        s.add(org)
+        s.add(Membership(user_id="owner", organization_id="org-shared", role="org:member"))
+        s.add(Membership(user_id="colleague", organization_id="org-shared", role="org:member"))
+        s.add(Task(id="task-org-same", user_id="owner", organization_id="org-shared"))
+        s.add(TaskMessage(task_id="task-org-same", message_data=json.dumps(_msgs()[0])))
+        s.add(TaskShare(task_id="task-org-same", visibility="organization"))
+        await s.commit()
+
+    from src.main import app
+
+    _override_web_user(app, user_id="colleague", email="colleague@example.com")
+    try:
+        resp = client.get("/shared/task-org-same")
+    finally:
+        app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    assert "Build me a feature" in resp.text
+
+
+# --- Security: visibility Literal constraint (BUG C) -----------------------
+
+
+async def test_share_visibility_rejects_invalid_value(client, db_session, session_factory):
+    """The visibility field must only accept 'organization' or 'public'.
+    An invalid value is rejected with 422 (Pydantic validation error)."""
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        s.add(Task(id="task-vis", user_id="user_test"))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app)
+    try:
+        resp = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-vis", "visibility": "secret"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp.status_code == 422
+
+
+# --- Security: org policy enforcement server-side (CB-8) -------------------
+
+
+async def test_share_public_rejected_when_org_disallows_public(client, db_session, session_factory):
+    """When the org has allow_public_task_sharing=False, a public-visibility
+    share must be rejected with 403. Organization-visibility shares are still
+    allowed."""
+    from src.models.organization import Organization, Membership
+    from src.models.settings import OrganizationSettings
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-nopub", name="NoPub Org"))
+        s.add(Membership(user_id="owner", organization_id="org-nopub", role="org:member"))
+        s.add(Task(id="task-nopub", user_id="owner", organization_id="org-nopub"))
+        s.add(OrganizationSettings(
+            organization_id="org-nopub",
+            enable_task_sharing=True,
+            allow_public_task_sharing=False,
+        ))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nopub", "visibility": "public"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp.status_code == 403
+
+    # No share row should have been created.
+    async with session_factory() as s:
+        shares = (
+            await s.execute(
+                select(func.count(TaskShare.id)).where(TaskShare.task_id == "task-nopub")
+            )
+        ).scalar_one()
+        assert shares == 0
+
+
+async def test_share_organization_allowed_when_org_disallows_public(client, db_session, session_factory):
+    """When the org has allow_public_task_sharing=False but enable_task_sharing=True,
+    an organization-visibility share is still allowed."""
+    from src.models.organization import Organization, Membership
+    from src.models.settings import OrganizationSettings
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-nopub2", name="NoPub Org 2"))
+        s.add(Membership(user_id="owner", organization_id="org-nopub2", role="org:member"))
+        s.add(Task(id="task-nopub-org", user_id="owner", organization_id="org-nopub2"))
+        s.add(OrganizationSettings(
+            organization_id="org-nopub2",
+            enable_task_sharing=True,
+            allow_public_task_sharing=False,
+        ))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nopub-org", "visibility": "organization"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp.status_code == 200
+
+
+async def test_share_all_visibilities_rejected_when_sharing_disabled(client, db_session, session_factory):
+    """When the org has enable_task_sharing=False, both visibility values are
+    rejected with 403."""
+    from src.models.organization import Organization, Membership
+    from src.models.settings import OrganizationSettings
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-noshare", name="NoShare Org"))
+        s.add(Membership(user_id="owner", organization_id="org-noshare", role="org:member"))
+        s.add(Task(id="task-noshare", user_id="owner", organization_id="org-noshare"))
+        s.add(OrganizationSettings(
+            organization_id="org-noshare",
+            enable_task_sharing=False,
+            allow_public_task_sharing=True,
+        ))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp_pub = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-noshare", "visibility": "public"},
+        )
+        resp_org = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-noshare", "visibility": "organization"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp_pub.status_code == 403
+    assert resp_org.status_code == 403
+
+
+async def test_share_allowed_when_no_org_settings_configured(client, db_session, session_factory):
+    """When the task has an organization_id but no OrganizationSettings row exists,
+    the permissive default applies: both visibilities are allowed (back-compat
+    for existing self-hosted deployments that never configured org settings)."""
+    from src.models.organization import Organization, Membership
+
+    await _seed_user(db_session, user_id="owner", email="owner@example.com")
+    async with session_factory() as s:
+        s.add(Organization(id="org-nosettings", name="NoSettings Org"))
+        s.add(Membership(user_id="owner", organization_id="org-nosettings", role="org:member"))
+        s.add(Task(id="task-nosettings", user_id="owner", organization_id="org-nosettings"))
+        await s.commit()
+
+    from src.main import app
+
+    _override_current_user(app, user_id="owner")
+    try:
+        resp_pub = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nosettings", "visibility": "public"},
+        )
+        resp_org = client.post(
+            "/api/extension/share",
+            json={"taskId": "task-nosettings", "visibility": "organization"},
+        )
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp_pub.status_code == 200
+    assert resp_org.status_code == 200
+
+
+async def test_format_helpers_are_single_source_of_truth():
+    """web.py and metrics_service.py must import the SAME ``num``/``fmt_tokens``/
+    ``fmt_duration`` function objects from ``src.utils.format`` — not local copies.
+
+    This guards against the CB-7 regression: two independent copies of ``_num``
+    drifted (one counted ``bool``, one didn't), so a malformed ``tokensIn: true``
+    inflated one view and not the other. If either module ever re-defines a
+    local copy, identity fails.
+    """
+    from src.routers import web
+    from src.services import metrics_service
+    from src.utils import format as fmt
+
+    assert web.num is fmt.num
+    assert web.fmt_tokens is fmt.fmt_tokens
+    assert web.fmt_duration is fmt.fmt_duration
+
+    # metrics_service aliases ``num`` as ``_num`` for its internal call sites.
+    assert metrics_service._num is fmt.num
+    assert metrics_service.fmt_tokens is fmt.fmt_tokens
+    assert metrics_service.fmt_duration is fmt.fmt_duration

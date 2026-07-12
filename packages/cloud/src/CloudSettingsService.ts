@@ -116,6 +116,7 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 				headers: {
 					Authorization: `Bearer ${token}`,
 				},
+				signal: AbortSignal.timeout(30_000),
 			})
 
 			if (!response.ok) {
@@ -232,6 +233,7 @@ export class CloudSettingsService extends EventEmitter<SettingsServiceEvents> im
 					Authorization: `Bearer ${token}`,
 				},
 				body: JSON.stringify(requestBody),
+				signal: AbortSignal.timeout(30_000),
 			})
 
 			if (!response.ok) {

@@ -246,6 +246,34 @@ export class WorktreeService {
 	}
 
 	/**
+	 * Check if a worktree has uncommitted changes.
+	 * Errs toward keeping the worktree: on error returns true so callers never delete reviewable work.
+	 */
+	async hasUncommittedChanges(worktreePath: string): Promise<boolean> {
+		try {
+			const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd: worktreePath })
+			return stdout.trim().length > 0
+		} catch {
+			return true
+		}
+	}
+
+	/**
+	 * Check if a branch has commits beyond the current HEAD.
+	 * Errs toward keeping the worktree: on error returns true so callers never delete reviewable work.
+	 */
+	async branchHasCommits(cwd: string, branch: string): Promise<boolean> {
+		try {
+			const { stdout } = await execFileAsync("git", ["rev-list", "--count", `HEAD..${branch}`], { cwd })
+			const count = parseInt(stdout.trim(), 10)
+			// Unparseable output errs toward keeping too (NaN must not read as 0).
+			return !Number.isFinite(count) || count > 0
+		} catch {
+			return true
+		}
+	}
+
+	/**
 	 * Parse git worktree list --porcelain output
 	 */
 	private parseWorktreeOutput(output: string, currentCwd: string): Worktree[] {

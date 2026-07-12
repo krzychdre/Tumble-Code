@@ -90,6 +90,9 @@ export interface TaskHistoryAccess {
 
 	// Callback for operations needing full Task context
 	restoreTodoListForTask: () => void
+
+	// Background tasks must not appear in or be resumable from task history.
+	isBackground: boolean
 }
 
 export class TaskHistory {
@@ -371,9 +374,21 @@ export class TaskHistory {
 	async addToClineMessages(message: ClineMessage) {
 		this.access.clineMessages.push(message)
 		const provider = this.access.providerRef.deref()
-		// Avoid resending large, mostly-static fields (notably taskHistory) on every chat message update.
-		// taskHistory is maintained in-memory in the webview and updated via taskHistoryItemUpdated.
-		await provider?.postStateToWebviewWithoutTaskHistory()
+		if (!this.access.isBackground) {
+			// Avoid resending large, mostly-static fields (notably taskHistory) on every chat message update.
+			// taskHistory is maintained in-memory in the webview and updated via taskHistoryItemUpdated.
+			await provider?.postStateToWebviewWithoutTaskHistory()
+		} else if (provider?.subagentRegistry.isWatched(this.access.taskId)) {
+			// A background task's messages never ride the state push (state
+			// carries only the CURRENT task's messages). Stream new messages
+			// to a subscribed subagent tail instead; unwatched background
+			// tasks post nothing.
+			await provider.postMessageToWebview({
+				type: "messageUpdated",
+				sourceTaskId: this.access.taskId,
+				clineMessage: message,
+			})
+		}
 		this.access.emit(RooCodeEventName.Message, { action: "created", message })
 		await this.saveClineMessages()
 
@@ -414,7 +429,17 @@ export class TaskHistory {
 
 	async updateClineMessage(message: ClineMessage) {
 		const provider = this.access.providerRef.deref()
-		await provider?.postMessageToWebview({ type: "messageUpdated", clineMessage: message })
+		// Tag every update with its source task so the webview can route it:
+		// current task → main chat, watched subagent → its live tail. Unwatched
+		// background tasks post nothing (previously their updates leaked to the
+		// webview and were dropped there by timestamp mismatch).
+		if (!this.access.isBackground || provider?.subagentRegistry.isWatched(this.access.taskId)) {
+			await provider?.postMessageToWebview({
+				type: "messageUpdated",
+				sourceTaskId: this.access.taskId,
+				clineMessage: message,
+			})
+		}
 		this.access.emit(RooCodeEventName.Message, { action: "updated", message })
 
 		// Check if we should sync to cloud and haven't already synced this message
@@ -456,7 +481,9 @@ export class TaskHistory {
 			})
 
 			const historyItem = await this.emitTokenUsageUpdate()
-			await this.updateProviderTaskHistory(historyItem)
+			if (!this.access.isBackground) {
+				await this.updateProviderTaskHistory(historyItem)
+			}
 
 			return true
 		} catch (error) {

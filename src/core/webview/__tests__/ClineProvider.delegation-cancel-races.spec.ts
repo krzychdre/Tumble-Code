@@ -299,6 +299,241 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		expect(updateTaskHistory).not.toHaveBeenCalled()
 	})
 
+	describe("tryReattachDelegatedParent", () => {
+		// Helper: build a fake provider with the minimum surface tryReattachDelegatedParent needs.
+		const makeFakeProvider = (overrides: Record<string, any> = {}) => {
+			const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
+			const fakeProvider: any = {
+				contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
+				log: vi.fn(),
+				updateTaskHistory,
+				getTaskWithId: vi.fn().mockResolvedValue({
+					historyItem: {
+						id: "parent-1",
+						status: "active",
+						awaitingChildId: undefined,
+						delegatedToId: "child-1",
+					},
+				}),
+				getCurrentTaskStack: vi.fn().mockReturnValue([]),
+				...overrides,
+			}
+			return { fakeProvider, updateTaskHistory }
+		}
+
+		// Helper: build API messages with a new_task tool_use at the given assistant message index.
+		const makeApiMessagesWithNewTask = (
+			opts: {
+				toolUseId?: string
+				hasToolResult?: boolean
+			} = {},
+		) => {
+			const toolUseId = opts.toolUseId ?? "tu-1"
+			const messages: any[] = [
+				{ role: "user", content: [{ type: "text", text: "do stuff" }] },
+				{
+					role: "assistant",
+					content: [{ type: "tool_use", id: toolUseId, name: "new_task", input: {} }],
+				},
+			]
+			if (opts.hasToolResult) {
+				messages.push({
+					role: "user",
+					content: [{ type: "tool_result", tool_use_id: toolUseId, content: "result" }],
+				})
+			}
+			return messages
+		}
+
+		it("returns true and re-stamps parent when all five conditions hold", async () => {
+			const apiMessages = makeApiMessagesWithNewTask()
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
+				getTaskWithId: vi.fn().mockResolvedValue({
+					historyItem: {
+						id: "parent-1",
+						status: "active",
+						awaitingChildId: undefined,
+						delegatedToId: "child-1",
+					},
+				}),
+			})
+			// Mock readApiMessages to return messages with an unanswered new_task tool_use
+			const { readApiMessages } = await import("../../task-persistence")
+			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(true)
+			expect(updateTaskHistory).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: "parent-1",
+					status: "delegated",
+					awaitingChildId: "child-1",
+				}),
+			)
+		})
+
+		it("returns false when delegatedToId is a different child (no update)", async () => {
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
+				getTaskWithId: vi.fn().mockResolvedValue({
+					historyItem: {
+						id: "parent-1",
+						status: "active",
+						awaitingChildId: undefined,
+						delegatedToId: "child-OTHER",
+					},
+				}),
+			})
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("returns false when parent status is 'delegated' (no update)", async () => {
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
+				getTaskWithId: vi.fn().mockResolvedValue({
+					historyItem: {
+						id: "parent-1",
+						status: "delegated",
+						awaitingChildId: undefined,
+						delegatedToId: "child-1",
+					},
+				}),
+			})
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("returns false when parent status is 'completed' (no update)", async () => {
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
+				getTaskWithId: vi.fn().mockResolvedValue({
+					historyItem: {
+						id: "parent-1",
+						status: "completed",
+						awaitingChildId: undefined,
+						delegatedToId: "child-1",
+					},
+				}),
+			})
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("returns false when awaitingChildId is already set (no update)", async () => {
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
+				getTaskWithId: vi.fn().mockResolvedValue({
+					historyItem: {
+						id: "parent-1",
+						status: "active",
+						awaitingChildId: "child-1",
+						delegatedToId: "child-1",
+					},
+				}),
+			})
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("returns false when parent is present in the task stack (no update)", async () => {
+			const apiMessages = makeApiMessagesWithNewTask()
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
+				getCurrentTaskStack: vi.fn().mockReturnValue(["parent-1"]),
+			})
+			const { readApiMessages } = await import("../../task-persistence")
+			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("returns false when the new_task tool_use already has a tool_result (parent was resumed)", async () => {
+			const apiMessages = makeApiMessagesWithNewTask({ hasToolResult: true })
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider()
+			const { readApiMessages } = await import("../../task-persistence")
+			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("returns false when no new_task tool_use exists in parent API history (no update)", async () => {
+			const apiMessages = [
+				{ role: "user", content: [{ type: "text", text: "hello" }] },
+				{ role: "assistant", content: [{ type: "text", text: "hi" }] },
+			]
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider()
+			const { readApiMessages } = await import("../../task-persistence")
+			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+
+		it("returns false on readApiMessages error (no update, no throw)", async () => {
+			const { fakeProvider, updateTaskHistory } = makeFakeProvider()
+			const { readApiMessages } = await import("../../task-persistence")
+			vi.mocked(readApiMessages).mockRejectedValue(new Error("disk error"))
+
+			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
+				fakeProvider,
+				"parent-1",
+				"child-1",
+			)
+
+			expect(result).toBe(false)
+			expect(updateTaskHistory).not.toHaveBeenCalled()
+		})
+	})
+
 	// Mock Task constructor so any rehydration path that constructs a Task is safe.
 	beforeEach(() => {
 		vi.mocked(Task).mockImplementation(

@@ -30,6 +30,7 @@ import { Package } from "./shared/package"
 import { formatLanguage } from "./shared/language"
 import { syncCloudUrls, registerCloudUrlsSubscription } from "./shared/cloud-urls"
 import { ContextProxy } from "./core/config/ContextProxy"
+import { initMemoryPaths } from "./core/memory/paths"
 import { ClineProvider } from "./core/webview/ClineProvider"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { Terminal } from "./integrations/terminal/Terminal"
@@ -190,6 +191,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	const contextProxy = await ContextProxy.getInstance(context)
 
+	// Initialize the native memory system's path module. The config accessor
+	// reads through to the live ContextProxy state so memory settings stay
+	// fresh without re-initialization. Memory paths are resolved per-cwd at
+	// use time; this just wires the storage root + settings source.
+	initMemoryPaths(context.globalStorageUri.fsPath, () => ({
+		autoMemoryEnabled: contextProxy.getValue("autoMemoryEnabled"),
+		autoMemoryDirectory: contextProxy.getValue("autoMemoryDirectory"),
+		autoDreamEnabled: contextProxy.getValue("autoDreamEnabled"),
+		autoDreamMinHours: contextProxy.getValue("autoDreamMinHours"),
+		autoDreamMinSessions: contextProxy.getValue("autoDreamMinSessions"),
+		memoryRecallEnabled: contextProxy.getValue("memoryRecallEnabled"),
+	}))
+
 	// Initialize code index managers for all workspace folders.
 	const codeIndexManagers: CodeIndexManager[] = []
 
@@ -231,26 +245,40 @@ export async function activate(context: vscode.ExtensionContext) {
 		postStateListener()
 	}
 
-	cloudService = await CloudService.createInstance(context, cloudLogger, {
-		"auth-state-changed": authStateChangedHandler,
-		"settings-updated": settingsUpdatedHandler,
-		"user-info": userInfoHandler,
-	})
-
+	// Initialize cloud service. A broken cloud backend (bad URL, corrupted
+	// credentials, Authentik down) must NEVER take down the whole extension —
+	// wrap the entire cloud-init block so activation continues in local-only mode.
 	try {
-		if (cloudService.telemetryClient) {
-			TelemetryService.instance.register(cloudService.telemetryClient)
+		cloudService = await CloudService.createInstance(context, cloudLogger, {
+			"auth-state-changed": authStateChangedHandler,
+			"settings-updated": settingsUpdatedHandler,
+			"user-info": userInfoHandler,
+		})
+
+		// Telemetry registration fails softly — a broken telemetry client must
+		// not disable the rest of the cloud layer (pre-existing semantics).
+		try {
+			if (cloudService.telemetryClient) {
+				TelemetryService.instance.register(cloudService.telemetryClient)
+			}
+		} catch (error) {
+			outputChannel.appendLine(
+				`[CloudService] Failed to register TelemetryClient: ${error instanceof Error ? error.message : String(error)}`,
+			)
 		}
+
+		// Add to subscriptions for proper cleanup on deactivate.
+		context.subscriptions.push(cloudService)
 	} catch (error) {
+		cloudService = undefined
 		outputChannel.appendLine(
-			`[CloudService] Failed to register TelemetryClient: ${error instanceof Error ? error.message : String(error)}`,
+			`[CloudService] initialization failed — continuing in local-only mode: ${error instanceof Error ? error.message : String(error)}`,
 		)
 	}
 
-	// Add to subscriptions for proper cleanup on deactivate.
-	context.subscriptions.push(cloudService)
-
 	// Trigger initial cloud profile sync now that CloudService is ready.
+	// Safe to call even when cloudService is undefined — the provider internally
+	// guards with CloudService.hasInstance().
 	try {
 		await provider.initializeCloudProfileSyncWhenReady()
 	} catch (error) {

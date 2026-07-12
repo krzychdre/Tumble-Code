@@ -45,11 +45,22 @@ async def share_task_endpoint(
         user_id=current_user["user_id"],
         visibility=body.visibility,
     )
-    if not result.success and (result.error or "").lower() == "task not found":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found",
-        )
+    if not result.success:
+        err = (result.error or "").lower()
+        if err == "task not found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found",
+            )
+        # Policy violations: the caller has already proven ownership (the
+        # service only returns these after the ownership check passes), so a
+        # 403 is explicit and non-leaking — no information about the task's
+        # existence is revealed to a non-owner.
+        if "disabled for this organization" in err:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=result.error,
+            )
     return result
 
 

@@ -20,6 +20,18 @@ import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskContextManager } from "./TaskContextManager"
 import { defaultModeSlug } from "../../shared/modes"
 import { TaskResumption, type TaskResumptionAccess } from "./TaskResumption"
+import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { logger } from "../../utils/logging"
+import { t } from "../../i18n"
+import {
+	executeExtractMemories,
+	drainPendingExtraction,
+	executeAutoDream,
+	drainPendingDreams,
+	renderTranscript,
+	type AutoDreamConfig,
+	type TranscriptMessage,
+} from "../memory"
 
 import Anthropic from "@anthropic-ai/sdk"
 
@@ -56,6 +68,11 @@ export interface TaskLifecycleAccess {
 	clineMessages: ClineMessage[]
 	apiConversationHistory: ApiMessage[]
 
+	// Memory system: the recall coordinator (undefined if memory/recall off)
+	// and the iteration counter shared with the API loop for consume-once.
+	memoryCoordinator?: MemoryCoordinator
+	apiLoopIteration?: number
+
 	// Task state flags
 	abort: boolean
 	abandoned: boolean
@@ -63,6 +80,11 @@ export interface TaskLifecycleAccess {
 	isInitialized: boolean
 	isStreaming: boolean
 	_started: boolean
+
+	// Background task flag: true for memory writers / parallel subagents.
+	// Background tasks must not trigger their own memory writers (unbounded
+	// recursion) or drain extraction (they never start it).
+	isBackground: boolean
 
 	// Abort controller for current request
 	currentRequestAbortController?: AbortController
@@ -508,9 +530,34 @@ export class TaskLifecycle {
 	/**
 	 * Abort the task, stopping any running operations and cleaning up.
 	 *
+	 * Split into three ordered phases so the load-bearing ordering — recently
+	 * the source of several bugs (writers skipped on user-cancel + background,
+	 * drains before dispose, TaskAborted emitted before dispose) — is explicit:
+	 *
+	 *   1. prepareAbort  — flags + emit + trigger memory writers
+	 *   2. cleanupAbort  — dispose + persist messages
+	 *   3. drainAbort    — await in-flight extraction/dreams
+	 *
 	 * @param isAbandoned - If true, marks the task as abandoned (different from user-cancelled)
 	 */
 	async abortTask(isAbandoned = false): Promise<void> {
+		const isUserCancelled = this.prepareAbort(isAbandoned)
+		await this.cleanupAbort()
+		await this.drainAbort(isUserCancelled)
+	}
+
+	/**
+	 * Phase 1 of abort: set flags, reset counters, force final token usage,
+	 * emit TaskAborted, and trigger memory background writers.
+	 *
+	 * Ordering constraint: MUST run before cleanupAbort and drainAbort.
+	 * Sets the `abort` flag that stops autonomously running promises, emits
+	 * the abort event while task state is still intact, and fires memory
+	 * writers before dispose tears anything down.
+	 *
+	 * @returns `isUserCancelled` — needed by drainAbort's guard.
+	 */
+	private prepareAbort(isAbandoned: boolean): boolean {
 		// Aborting task
 
 		// Will stop any autonomously running promises.
@@ -529,6 +576,40 @@ export class TaskLifecycle {
 
 		this.access.emit(RooCodeEventName.TaskAborted)
 
+		// Memory background writers: fire-and-forget extraction + dream at task
+		// end. Both are gated internally (memory enabled, main agent, no direct
+		// writes for extraction; time/session/lock cascade for dream) and run
+		// as sandboxed sub-Tasks. Abandoned tasks skip extraction (no durable
+		// signal to save from an abandoned run). User-cancelled aborts also skip:
+		// the writers spawn a fresh LLM request, so firing them here would put the
+		// inference engine right back to work the moment the user pressed Stop
+		// (completion is the durable extraction signal; a cancelled run has none).
+		// We `void` the promises; the drain below awaits them with a soft timeout
+		// so in-flight work isn't orphaned on extension shutdown.
+		const isUserCancelled = this.access.abortReason === "user_cancelled"
+		// Background tasks (memory writers, parallel subagents) must never
+		// trigger their own memory writers — that would recurse unboundedly
+		// (aborted background task → new background task → aborted → …).
+		// They also never start extraction, so draining is pointless for them.
+		if (!isAbandoned && !isUserCancelled && !this.access.isBackground) {
+			try {
+				this.triggerMemoryBackgroundWriters()
+			} catch (error) {
+				console.error("Error triggering memory background writers:", error)
+			}
+		}
+
+		return isUserCancelled
+	}
+
+	/**
+	 * Phase 2 of abort: dispose the task and persist final messages.
+	 *
+	 * Ordering constraint: MUST run after prepareAbort (flags set, writers
+	 * triggered) and before drainAbort (messages must be persisted before
+	 * we await background work that might reference them).
+	 */
+	private async cleanupAbort(): Promise<void> {
 		try {
 			this.dispose() // Call the centralized dispose method
 		} catch (error) {
@@ -548,6 +629,108 @@ export class TaskLifecycle {
 	}
 
 	/**
+	 * Phase 3 of abort: drain in-flight memory extraction and dreams.
+	 *
+	 * Ordering constraint: MUST run after cleanupAbort (dispose + save done).
+	 * Skipped on user cancel (holds isStreaming=true past cancelTask's 3s
+	 * pWaitFor and freezes the UI) and for background tasks (they never start
+	 * extraction/dreams, so there is nothing to drain).
+	 */
+	private async drainAbort(isUserCancelled: boolean): Promise<void> {
+		// Drain in-flight memory extraction so it isn't orphaned on shutdown.
+		// Soft 60s timeout (unref'd internally) so it never blocks process exit.
+		// Skipped on user cancel: the stream loop awaits abortTask()
+		// (TaskApiLoop.handleStreamError), so draining here holds isStreaming=true
+		// past cancelTask's 3s pWaitFor and freezes the UI. In-flight extraction
+		// runs as a provider-level background task and survives without the drain;
+		// the drain only matters for extension shutdown. Also skipped for
+		// background tasks: they never start extraction, so there is nothing to drain.
+		// Same guards apply to dreams (MEM-2): skip drain on user cancel and for
+		// background tasks — they never start dreams, so there is nothing to drain.
+		if (!isUserCancelled && !this.access.isBackground) {
+			try {
+				await drainPendingExtraction(60_000)
+				await drainPendingDreams(60_000)
+			} catch (error) {
+				console.error("Error draining memory background writers:", error)
+			}
+		}
+	}
+
+	/**
+	 * Fire-and-forget the memory background writers (extraction + dream).
+	 *
+	 * Extraction saves memories the main agent didn't get to; dream
+	 * periodically consolidates. Both are best-effort and sandboxed; both are
+	 * skipped when memory is disabled or this isn't the main agent.
+	 *
+	 * Called on normal completion (via the task's `TaskCompleted` subscription)
+	 * and on non-abandoned abort. Both entry points are idempotent: extraction
+	 * is cursor-based and early-returns when there are no new messages, so a
+	 * completion-then-abort sequence never double-writes.
+	 *
+	 * The runner is `provider.memorySubTaskRunner` (Phase 2), which spawns a
+	 * headless, write-sandboxed background task that actually persists memories.
+	 */
+	public triggerMemoryBackgroundWriters(): void {
+		const provider = this.access.providerRef.deref()
+		if (!provider) return
+		// The provider's `memorySubTaskRunner` spawns a headless, write-sandboxed
+		// background task and returns the memory files it wrote (Phase 2). This is
+		// what makes the writers actually persist memories.
+		const subTaskRunner = provider.memorySubTaskRunner
+		// Render the recent conversation so the *fresh* extraction sub-agent has
+		// content to analyze (it can't fork the parent's context — see the plan).
+		const transcript = renderTranscript(this.access.apiConversationHistory as unknown as TranscriptMessage[])
+		// Fire-and-forget, but never let a rejection escape as an unhandledRejection
+		// in the extension host (e.g. memory paths not initialized at activation).
+		const logWriterFailure = (writer: string) => (e: unknown) => {
+			logger.error(`[memory] ${writer} trigger failed: ${e instanceof Error ? e.message : String(e)}`)
+		}
+		executeExtractMemories({
+			cwd: this.access.cwd,
+			isMainAgent: !this.access.parentTaskId,
+			taskId: this.access.taskId,
+			messages: this.access
+				.clineMessages as unknown as import("../memory/extractMemories").ExtractionMessageView[],
+			transcript,
+			subTaskRunner,
+			onSaved: (count) => {
+				if (count > 0) {
+					console.log(`[memory] extractMemories saved ${count} memor${count === 1 ? "y" : "ies"}`)
+					provider.notifyBackgroundOutcome(t("common:info.memory_saved", { count }))
+				}
+			},
+		}).catch(logWriterFailure("extractMemories"))
+		const dreamConfig: AutoDreamConfig = {
+			enabled: provider.getValue("autoDreamEnabled") ?? true,
+			minHours: provider.getValue("autoDreamMinHours") ?? 24,
+			minSessions: provider.getValue("autoDreamMinSessions") ?? 5,
+		}
+		// HistoryItem uses `ts` (creation timestamp) as its time field; the
+		// dream's session gate reads `lastModified`. Map the field. `ts` is a
+		// creation-time snapshot, so it undercounts activity within a long
+		// session — safe, since the gate is a skip-only throttle.
+		const taskHistory = (provider.getValue("taskHistory") ?? []).map((h) => ({
+			lastModified: typeof h.ts === "number" ? h.ts : undefined,
+		}))
+		executeAutoDream({
+			cwd: this.access.cwd,
+			isMainAgent: !this.access.parentTaskId,
+			config: dreamConfig,
+			taskHistory,
+			currentTaskId: this.access.taskId,
+			subTaskRunner,
+			onImproved: (count) => {
+				if (count > 0) {
+					console.log(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
+					provider.notifyBackgroundOutcome(t("common:info.memory_consolidated", { count }))
+				}
+			},
+		}).catch(logWriterFailure("autoDream"))
+	}
+
+	/**
 	 * Dispose of all task resources, cleaning up terminals, listeners, and controllers.
 	 * This is the centralized cleanup method called on abort and task completion.
 	 */
@@ -559,6 +742,14 @@ export class TaskLifecycle {
 			this.access.cancelCurrentRequest()
 		} catch (error) {
 			console.error("Error cancelling current request:", error)
+		}
+
+		// Abort any in-flight memory recall prefetch so a lingering side-query
+		// can't resolve after the task is gone.
+		try {
+			this.access.memoryCoordinator?.disposePrefetch()
+		} catch (error) {
+			console.error("Error disposing memory prefetch:", error)
 		}
 
 		// Remove provider profile change listener

@@ -26,12 +26,30 @@ interface WriteToFileParams {
 export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	readonly name = "write_to_file" as const
 
+	/**
+	 * Memo of the last path validated during partial streaming and its access result.
+	 * Avoids re-validating (and re-emitting any error UI) on every streamed chunk
+	 * for the same path. Reset by resetPartialState().
+	 */
+	private lastValidatedPartialPath: string | undefined = undefined
+	private lastPartialAccessAllowed: boolean | undefined = undefined
+
+	/**
+	 * The relPath that diffViewProvider.editType was computed for.
+	 * During partial streaming, partial-json may produce a truncated path that
+	 * differs from the final parsed path.  If editType was set for a different
+	 * path than the final one, execute() must re-check file existence rather than
+	 * trust the stale value.  Reset by resetPartialState().
+	 */
+	private editTypePath: string | undefined = undefined
+
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
 		const relPath = params.path
-		let newContent = params.content
+		// Coerce content to string safely — weak models can emit null/numbers.
+		let newContent = typeof params.content === "string" ? params.content : ""
 
-		if (!relPath) {
+		if (typeof relPath !== "string" || !relPath) {
 			task.consecutiveMistakeCount++
 			task.recordToolError("write_to_file")
 			pushToolResult(await task.sayAndCreateMissingParamError("write_to_file", "path"))
@@ -39,7 +57,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			return
 		}
 
-		if (newContent === undefined) {
+		if (params.content === undefined) {
 			task.consecutiveMistakeCount++
 			task.recordToolError("write_to_file")
 			pushToolResult(await task.sayAndCreateMissingParamError("write_to_file", "content"))
@@ -60,11 +78,20 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		let fileExists: boolean
 		const absolutePath = path.resolve(task.cwd, relPath)
 
-		if (task.diffViewProvider.editType !== undefined) {
+		// TL-2: If editType was set during the partial phase but for a DIFFERENT
+		// path than the final relPath (partial-json truncated-string behavior),
+		// the cached editType is stale and must not be trusted.  Re-check file
+		// existence for the actual final path.  When editTypePath is undefined
+		// (editType set externally, not by handlePartial), trust the cache.
+		if (
+			task.diffViewProvider.editType !== undefined &&
+			(this.editTypePath === undefined || this.editTypePath === relPath)
+		) {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
+			this.editTypePath = relPath
 		}
 
 		// Create parent directories early for new files to prevent ENOENT errors
@@ -107,10 +134,11 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			const state = await provider?.getState()
 			const diagnosticsEnabled = state?.diagnosticsEnabled ?? true
 			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-			const isPreventFocusDisruptionEnabled = experiments.isEnabled(
-				state?.experiments ?? {},
-				EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
-			)
+			// Background/memory tasks (`silentWrites`) reuse the focus-disruption
+			// path: it writes straight to disk without opening a diff editor tab.
+			const isPreventFocusDisruptionEnabled =
+				task.silentWrites ||
+				experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
 
 			if (isPreventFocusDisruptionEnabled) {
 				task.diffViewProvider.editType = fileExists ? "modify" : "create"
@@ -208,24 +236,59 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 		const provider = task.providerRef.deref()
 		const state = await provider?.getState()
-		const isPreventFocusDisruptionEnabled = experiments.isEnabled(
-			state?.experiments ?? {},
-			EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
-		)
+		const isPreventFocusDisruptionEnabled =
+			task.silentWrites ||
+			experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
 
 		if (isPreventFocusDisruptionEnabled) {
 			return
 		}
 
-		// relPath is guaranteed non-null after hasPathStabilized
-		let fileExists: boolean
+		// --- TL-6: validate access BEFORE opening the diff editor ---
+		// During partial streaming, a (weak or manipulated) model could stream a
+		// roo-ignored secrets file or a path outside the workspace.  Opening the
+		// diff editor reads the file's content into the UI before execute()'s
+		// access checks run.  Guard the partial phase by skipping open() when
+		// access is denied or the path is outside the workspace — execute() will
+		// produce the proper structured error in the final phase.
 		const absolutePath = path.resolve(task.cwd, relPath!)
 
-		if (task.diffViewProvider.editType !== undefined) {
+		// Memoize the access check result per path so repeated chunks for the same
+		// rejected path don't re-validate (and won't spam any UI).
+		let accessAllowed: boolean
+		if (this.lastValidatedPartialPath === relPath && this.lastPartialAccessAllowed !== undefined) {
+			accessAllowed = this.lastPartialAccessAllowed
+		} else {
+			accessAllowed = task.rooIgnoreController?.validateAccess(relPath!) ?? true
+			this.lastValidatedPartialPath = relPath
+			this.lastPartialAccessAllowed = accessAllowed
+		}
+
+		if (!accessAllowed) {
+			// Skip opening diff editor; execute() will emit the roo-ignore error.
+			return
+		}
+
+		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		if (isOutsideWorkspace) {
+			// Outside-workspace writes may be legitimate with approval, but in the
+			// partial phase we skip opening the diff editor — defer to execute()'s
+			// approval flow which can properly gate the operation.
+			return
+		}
+
+		// relPath is guaranteed non-null after hasPathStabilized
+		let fileExists: boolean
+
+		if (
+			task.diffViewProvider.editType !== undefined &&
+			(this.editTypePath === undefined || this.editTypePath === relPath)
+		) {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
+			this.editTypePath = relPath
 		}
 
 		// Create parent directories early for new files to prevent ENOENT errors
@@ -235,7 +298,6 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		}
 
 		const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath!) || false
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
 
 		const sharedMessageProps: ClineSayTool = {
 			tool: fileExists ? "editedExistingFile" : "newFileCreated",
@@ -261,6 +323,13 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 				false,
 			)
 		}
+	}
+
+	override resetPartialState(): void {
+		super.resetPartialState()
+		this.lastValidatedPartialPath = undefined
+		this.lastPartialAccessAllowed = undefined
+		this.editTypePath = undefined
 	}
 }
 

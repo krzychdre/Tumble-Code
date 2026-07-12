@@ -34,6 +34,26 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} file(s) changed in this conversation"
 	},
+	"subagents": {
+		"headerActive": "Subagents: {{active}}/{{total}} active",
+		"headerDone": "Subagents: {{total}} finished",
+		"noOutput": "No output yet.",
+		"tokens": "Tokens used",
+		"cancel": "Cancel this subagent",
+		"send": "Send",
+		"answerPlaceholder": "Answer the subagent's question…",
+		"guidancePlaceholder": "Send guidance (delivered at the next stopping point)…",
+		"status": {
+			"queued": "Queued",
+			"running": "Running",
+			"awaiting_input": "Needs input",
+			"completed": "Completed",
+			"failed": "Failed",
+			"cancelled": "Cancelled"
+		},
+		"apiConfig": "API profile: {{name}} (pinned to the subtask's mode — change it in Settings → Modes)",
+		"permissionNeeded": "This subtask needs permission to proceed"
+	},
 	"retry": {
 		"title": "Retry",
 		"tooltip": "Try the operation again"
@@ -520,5 +540,10 @@
 		"title": "Provider no longer supported",
 		"message": "Sorry, this provider is no longer supported. We saw very few Tumble users actually using it and we need to reduce the surface area of our codebase so we can keep shipping fast and serving our community well in this space. It was a really hard decision but it lets us focus on what matters most to you. It sucks, we know.",
 		"openSettings": "Open Settings"
+	},
+	"memoryActivity": {
+		"recalling": "Recalling memory…",
+		"writing": "Writing memory…",
+		"both": "Recalling and writing memory…"
 	}
 }

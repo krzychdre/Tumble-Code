@@ -41,7 +41,8 @@
 		"experimental": "Eksperymentalne",
 		"language": "Język",
 		"about": "O Tumble Code",
-		"skills": "Skills"
+		"skills": "Skills",
+		"subagents": "Subagenci"
 	},
 	"about": {
 		"bugReport": {
@@ -1037,5 +1038,17 @@
 			"descriptionTooLong": "Opis musi mieć maksymalnie 1024 znaki"
 		},
 		"footer": "Twórz własne umiejętności za pomocą trybu Skill Writer, dostępnego w <MarketplaceLink>Modes Marketplace</MarketplaceLink>."
+	},
+	"subagents": {
+		"maxConcurrency": {
+			"label": "Maks. równoległych subagentów",
+			"description": "Twardy limit liczby równoległych podzadań (run_parallel_tasks) działających jednocześnie. Ustaw Wył. (poniżej 2), aby całkowicie wyłączyć równoległe podzadania — orkiestrator deleguje wtedy pojedyncze zadania. Orkiestrator może poprosić o mniej, nigdy o więcej; nadmiarowe podzadania czekają w kolejce.",
+			"off": "Wył."
+		},
+		"followupTimeout": {
+			"label": "Limit czasu pytania",
+			"description": "Jak długo pytanie subagenta czeka na Twoją odpowiedź, zanim zostanie automatycznie zatwierdzone i subagent ruszy dalej samodzielnie. 0 odpowiada natychmiast (pełna autonomia).",
+			"immediate": "wył."
+		}
 	}
 }

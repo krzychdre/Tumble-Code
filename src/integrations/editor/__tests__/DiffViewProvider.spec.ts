@@ -128,26 +128,44 @@ describe("DiffViewProvider", () => {
 		}
 
 		diffViewProvider = new DiffViewProvider(mockCwd, mockTask)
-		// Mock the necessary properties and methods
-		;(diffViewProvider as any).relPath = "test.txt"
-		;(diffViewProvider as any).activeDiffEditor = {
-			document: {
-				uri: { fsPath: `${mockCwd}/test.txt` },
-				getText: vi.fn(),
-				lineCount: 10,
+
+		// Set up activeEdit with a faithful shape matching what open() constructs.
+		// Tests that exercise update() / saveChanges() need this; open() tests
+		// overwrite it, and saveDirectly() / closeAllDiffViews() don't use it.
+		;(diffViewProvider as any).activeEdit = {
+			id: 1,
+			relPath: "test.txt",
+			diffEditor: {
+				document: {
+					uri: { fsPath: `${mockCwd}/test.txt` },
+					getText: vi.fn().mockReturnValue(""),
+					lineCount: 10,
+				},
+				selection: {
+					active: { line: 0, character: 0 },
+					anchor: { line: 0, character: 0 },
+				},
+				revealRange: vi.fn(),
+				visibleRanges: [] as any[],
 			},
-			selection: {
-				active: { line: 0, character: 0 },
-				anchor: { line: 0, character: 0 },
+			fadedOverlay: {
+				setActiveLine: vi.fn(),
+				updateOverlayAfterLine: vi.fn(),
+				addLines: vi.fn(),
+				clear: vi.fn(),
 			},
-			edit: vi.fn().mockResolvedValue(true),
-			revealRange: vi.fn(),
-		}
-		;(diffViewProvider as any).activeLineController = { setActiveLine: vi.fn(), clear: vi.fn() }
-		;(diffViewProvider as any).fadedOverlayController = {
-			updateOverlayAfterLine: vi.fn(),
-			addLines: vi.fn(),
-			clear: vi.fn(),
+			activeLine: {
+				setActiveLine: vi.fn(),
+				updateOverlayAfterLine: vi.fn(),
+				addLines: vi.fn(),
+				clear: vi.fn(),
+			},
+			preDiagnostics: [],
+			documentWasOpen: false,
+			createdDirs: [],
+			streamedLines: [],
+			newContent: undefined,
+			isStale: false,
 		}
 	})
 
@@ -547,27 +565,31 @@ describe("DiffViewProvider", () => {
 		it("should store results for formatFileWriteResponse", async () => {
 			await diffViewProvider.saveDirectly("test.ts", "new content", true, true, 1000)
 
-			// Verify internal state was updated
+			// Verify internal state was updated — lastEditedRelPath is the
+			// private field pushToolWriteResult reads; newContent is returned
+			// directly via finalContent, not stored on the provider.
 			expect((diffViewProvider as any).newProblemsMessage).toBe("")
 			expect((diffViewProvider as any).userEdits).toBeUndefined()
-			expect((diffViewProvider as any).relPath).toBe("test.ts")
-			expect((diffViewProvider as any).newContent).toBe("new content")
+			expect((diffViewProvider as any).lastEditedRelPath).toBe("test.ts")
 		})
 	})
 
 	describe("saveChanges method with diagnostic settings", () => {
 		beforeEach(() => {
-			// Setup common mocks for saveChanges tests
-			;(diffViewProvider as any).relPath = "test.ts"
-			;(diffViewProvider as any).newContent = "new content"
-			;(diffViewProvider as any).activeDiffEditor = {
+			// Set up activeEdit with the shape saveChanges() expects:
+			// edit.relPath, edit.newContent, edit.diffEditor.document,
+			// edit.preDiagnostics.
+			const edit = (diffViewProvider as any).activeEdit
+			edit.relPath = "test.ts"
+			edit.newContent = "new content"
+			edit.preDiagnostics = []
+			edit.diffEditor = {
 				document: {
 					getText: vi.fn().mockReturnValue("new content"),
 					isDirty: false,
 					save: vi.fn().mockResolvedValue(undefined),
 				},
 			}
-			;(diffViewProvider as any).preDiagnostics = []
 
 			// Mock vscode functions
 			vi.mocked(vscode.window.showTextDocument).mockResolvedValue({} as any)

@@ -55,6 +55,9 @@ export class BridgeOrchestrator {
 	private started = false
 	private readonly listeners: Array<[string, BusListener]> = []
 
+	/** Reconnect attempt counter for throttled logging. */
+	private reconnectAttempt = 0
+
 	constructor(private readonly options: BridgeOrchestratorOptions) {}
 
 	private log(...args: unknown[]) {
@@ -89,13 +92,35 @@ export class BridgeOrchestrator {
 		this.socket = socket
 
 		socket.on("connect", () => {
+			this.reconnectAttempt = 0
 			this.log("connected", socket.id)
 			this.register()
 			this.startHeartbeat()
 		})
 		socket.on("disconnect", (reason: string) => this.log("disconnected", reason))
+		socket.on("connect_error", (err: Error) => {
+			// Auth-shaped failures (token rejected, expired) have distinctive messages;
+			// surface the type so the user can tell auth issues from network issues.
+			const msg = err?.message ?? String(err)
+			const isAuthShaped = /token|auth|unauthorized|401|403/i.test(msg)
+			this.log("connect_error:", msg, isAuthShaped ? "(auth)" : "(network/server)")
+		})
 		socket.on(TaskSocketEvents.RELAYED_COMMAND, (data: unknown) => void this.onRelayedCommand(data))
 		socket.on(ExtensionSocketEvents.RELAYED_COMMAND, (data: unknown) => void this.onRelayedCommand(data))
+
+		// Manager-level reconnection events: socket.io reconnect-loops silently
+		// on repeated auth failures. Log with throttling so a long outage doesn't
+		// spam the output channel — log attempt 1, then every 5th.
+		const manager = socket.io
+		manager.on("reconnect_attempt", (attempt: number) => {
+			this.reconnectAttempt = attempt
+			if (attempt === 1 || attempt % 5 === 0) {
+				this.log(`reconnect attempt #${attempt}`)
+			}
+		})
+		manager.on("reconnect_failed", () => {
+			this.log("reconnect failed — giving up; remote control is offline")
+		})
 
 		this.subscribeToBus()
 	}
@@ -110,6 +135,12 @@ export class BridgeOrchestrator {
 				this.socket.emit(ExtensionSocketEvents.UNREGISTER, {})
 			} catch {
 				// best-effort
+			}
+			// Clean up manager-level reconnection listeners we registered.
+			try {
+				this.socket.io.removeAllListeners()
+			} catch {
+				// best-effort — manager may already be torn down
 			}
 			this.socket.removeAllListeners()
 			this.socket.disconnect()

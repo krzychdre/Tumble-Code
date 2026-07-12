@@ -5,6 +5,7 @@ import { customToolRegistry } from "@roo-code/core"
 import { type Mode, FileRestrictionError, getModeBySlug, getGroupName } from "../../shared/modes"
 import { EXPERIMENT_IDS } from "../../shared/experiments"
 import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS, TOOL_ALIASES } from "../../shared/tools"
+import { isAutoMemPath } from "../memory/paths"
 
 /**
  * Checks if a tool name is a valid, known tool.
@@ -37,6 +38,7 @@ export function validateToolUse(
 	toolParams?: Record<string, unknown>,
 	experiments?: Record<string, boolean>,
 	includedTools?: string[],
+	cwd?: string,
 ): void {
 	// First, check if the tool name is actually a valid/known tool
 	// This catches completely invalid tool names like "edit_file" that don't exist
@@ -56,6 +58,7 @@ export function validateToolUse(
 			toolParams,
 			experiments,
 			includedTools,
+			cwd,
 		)
 	) {
 		throw new Error(`Tool "${toolName}" is not allowed in ${mode} mode.`)
@@ -125,6 +128,7 @@ export function isToolAllowedForMode(
 	toolParams?: Record<string, any>, // All tool parameters
 	experiments?: Record<string, boolean>,
 	includedTools?: string[], // Opt-in tools explicitly included (e.g., from modelInfo)
+	cwd?: string, // The task cwd, used for the auto-memory write carve-out
 ): boolean {
 	// Resolve alias to canonical name (e.g., "search_and_replace" → "edit")
 	const resolvedTool = TOOL_ALIASES[tool] ?? tool
@@ -205,6 +209,18 @@ export function isToolAllowedForMode(
 		// For the edit group, check file regex if specified
 		if (groupName === "edit" && options.fileRegex) {
 			const filePath = toolParams?.path || toolParams?.file_path
+			// Auto-memory write carve-out: the memory system stores topic files
+			// under VS Code globalStorage (outside the workspace), so a mode with
+			// a restrictive `fileRegex` (e.g. architect's `\.md$`) would reject
+			// legitimate memory writes. Bypass the regex for paths inside the
+			// per-workspace memory dir. `isAutoMemPath` is a no-op (returns false)
+			// when memory is disabled or the module is uninitialized, so this is
+			// safe to call unconditionally. `autoMemoryDirectory` is trusted-
+			// sources-only (project settings excluded) so a malicious repo can't
+			// redirect the carve-out.
+			if (cwd && typeof filePath === "string" && isAutoMemPath(filePath, cwd)) {
+				return true
+			}
 			// Check if this is an actual edit operation (not just path-only for streaming)
 			const isEditOperation = EDIT_OPERATION_PARAMS.some((param) => toolParams?.[param])
 
@@ -213,10 +229,15 @@ export function isToolAllowedForMode(
 				throw new FileRestrictionError(mode.name, options.fileRegex, options.description, filePath, tool)
 			}
 
-			// Handle apply_patch: extract file paths from patch content and validate each
+			// Handle apply_patch: extract file paths from patch content and validate each.
+			// The auto-memory carve-out applies per-path: a patch may touch both
+			// workspace files (regex-checked) and memory topic files (carved out).
 			if (tool === "apply_patch" && typeof toolParams?.patch === "string") {
 				const patchFilePaths = extractFilePathsFromPatch(toolParams.patch)
 				for (const patchFilePath of patchFilePaths) {
+					if (cwd && isAutoMemPath(patchFilePath, cwd)) {
+						continue
+					}
 					if (!doesFileMatchRegex(patchFilePath, options.fileRegex)) {
 						throw new FileRestrictionError(
 							mode.name,
