@@ -654,9 +654,12 @@ export const webviewMessageHandler = async (
 		case "askResponse":
 			{
 				const resolved = await resolveIncomingImages({ text: message.text, images: message.images })
-				provider
-					.getCurrentTask()
-					?.handleWebviewAskResponse(message.askResponse!, resolved.text, resolved.images)
+				// A taskId routes the answer to a live background subagent
+				// (subagents panel). If that child is already gone the response
+				// is DROPPED — falling back to the current task would answer a
+				// foreground ask with text meant for the dead child.
+				const target = message.taskId ? provider.getBackgroundTask(message.taskId) : provider.getCurrentTask()
+				target?.handleWebviewAskResponse(message.askResponse!, resolved.text, resolved.images)
 			}
 			break
 
@@ -1348,6 +1351,29 @@ export const webviewMessageHandler = async (
 		case "unsubscribeSubagentMessages":
 			if (message.taskId) {
 				provider.subagentRegistry.unwatch(message.taskId)
+			}
+			break
+		case "cancelSubagent":
+			{
+				const subagentTask = message.taskId ? provider.getBackgroundTask(message.taskId) : undefined
+				if (subagentTask) {
+					// Mark cancelled BEFORE aborting: first-terminal-wins in the
+					// registry keeps the row "cancelled" when the TaskAborted
+					// listener races in with its generic "failed".
+					provider.subagentRegistry.markTerminal(subagentTask.taskId, "cancelled")
+					subagentTask.abortTask().catch(() => {})
+				}
+			}
+			break
+		case "queueSubagentMessage":
+			{
+				// Mid-run guidance for a subagent: enqueue into the child's own
+				// message queue — TaskAskSay drains it at the next ask boundary
+				// (an already-pending followup consumes it immediately).
+				const subagentTask = message.taskId ? provider.getBackgroundTask(message.taskId) : undefined
+				if (subagentTask && message.text) {
+					subagentTask.messageQueueService.addMessage(message.text)
+				}
 			}
 			break
 		case "cancelAutoApproval":

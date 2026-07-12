@@ -26,6 +26,13 @@ import { type ClineProvider } from "../webview/ClineProvider"
 import { type AutoApprovalOverride } from "./Task"
 import pWaitFor from "p-wait-for"
 
+/**
+ * How long a headless subagent's interactive ask (followup question) may wait
+ * for a user answer before falling back to a plain approval. Keeps unattended
+ * fan-outs bounded while giving a watching user a real window to reply.
+ */
+export const SUBAGENT_ASK_FALLBACK_TIMEOUT_MS = 5 * 60 * 1000
+
 export interface TaskAskSayAccess {
 	taskId: string
 	instanceId: string
@@ -38,6 +45,8 @@ export interface TaskAskSayAccess {
 	idleAsk?: ClineMessage
 	resumableAsk?: ClineMessage
 	interactiveAsk?: ClineMessage
+	/** Headless background task (parallel subagent / memory writer). */
+	isBackground: boolean
 	autoApprovalTimeoutRef?: NodeJS.Timeout
 	messageQueueService: MessageQueueService
 	providerRef: WeakRef<ClineProvider>
@@ -356,6 +365,21 @@ export class TaskAskSay {
 					this.handleWebviewAskResponse("messageResponse", message.text, message.images)
 				}
 			}
+		}
+
+		// A headless subagent may block on an ask the user never notices (its
+		// panel row shows "awaiting input", but nobody is watching). Bound the
+		// wait: after the fallback window, answer the way the pre-interactive
+		// policy did — plain approval with no text — so unattended fan-outs
+		// always make progress. A real user answer any time earlier wins.
+		if (this.access.isBackground && approval.decision === "ask") {
+			timeouts.push(
+				setTimeout(() => {
+					if (this.access.askResponse === undefined && this.access.lastMessageTs === askTs) {
+						this.handleWebviewAskResponse("yesButtonClicked")
+					}
+				}, SUBAGENT_ASK_FALLBACK_TIMEOUT_MS),
+			)
 		}
 
 		// Wait for askResponse to be set

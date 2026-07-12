@@ -10,10 +10,13 @@
  * descriptions is not informed consent for unsupervised arbitrary command
  * execution.
  *
- * Policy (fail-safe — the override must ALWAYS decide, never return `undefined`,
- * or a headless child would block forever on a webview response it can never
- * receive):
- * - non-`tool`/`command`/`use_mcp_server` asks (followup, completion_result,
+ * Policy (fail-safe — the override decides every ask except `followup`; a
+ * deliberate `undefined` for followups hands the ask to the normal blocking
+ * flow, which TaskAskSay bounds with SUBAGENT_ASK_FALLBACK_TIMEOUT_MS so a
+ * headless child can never block forever):
+ * - `followup` asks → `undefined` (interactive: surfaced in the subagents
+ *   panel, answerable by the user, auto-approved after the fallback window);
+ * - other non-`tool`/`command`/`use_mcp_server` asks (completion_result,
  *   api_req_failed, resume, …) → `"approve"` (autonomy; retries stay bounded
  *   by `maxAgentTurns`);
  * - read-only tool actions → `"approve"` (reads/searches are safe anywhere);
@@ -59,6 +62,17 @@ export function buildSubagentApprovalPolicy(options: SubagentApprovalOptions): A
 	const prefix = path.normalize(worktreePath) + path.sep
 
 	return async (ask, text, isProtected) => {
+		// Followup questions fall through to the normal ask flow (undefined):
+		// the child blocks, its panel row flips to "awaiting input" via the
+		// TaskInteractive machinery, and the user can answer from the subagent
+		// tail. TaskAskSay bounds the wait with a fallback auto-approval
+		// (SUBAGENT_ASK_FALLBACK_TIMEOUT_MS) so unattended runs never hang;
+		// users with alwaysAllowFollowupQuestions keep their configured
+		// auto-answer timeout via the global flow.
+		if (ask === "followup") {
+			return undefined
+		}
+
 		// Non-actionable asks: autonomy (retries bounded by maxAgentTurns).
 		if (ask !== "tool" && ask !== "command" && ask !== "use_mcp_server") {
 			return "approve"

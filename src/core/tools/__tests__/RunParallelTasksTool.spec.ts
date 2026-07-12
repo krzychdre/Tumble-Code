@@ -70,6 +70,7 @@ function makeFakeProvider(state: Record<string, unknown> = {}) {
 			beginFanOut: vi.fn(),
 			registerQueued: vi.fn(),
 			markTerminal: vi.fn(),
+			get: vi.fn().mockReturnValue(undefined),
 		},
 	}
 	return provider as unknown as {

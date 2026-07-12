@@ -47,9 +47,9 @@ beforeEach(() => {
 
 describe("buildSubagentApprovalPolicy", () => {
 	describe("non-actionable asks → approve (no delegation)", () => {
-		it("approves followup without consulting checkAutoApproval", async () => {
+		it("defers followup to the normal ask flow (interactive, bounded by the TaskAskSay fallback)", async () => {
 			const decide = makePolicy()
-			expect(await decide("followup", JSON.stringify({ suggest: [] }))).toBe("approve")
+			expect(await decide("followup", JSON.stringify({ suggest: [] }))).toBeUndefined()
 			expect(mockCheckAutoApproval).not.toHaveBeenCalled()
 		})
 
@@ -202,14 +202,13 @@ describe("buildSubagentApprovalPolicy", () => {
 		})
 	})
 
-	describe("never returns undefined", () => {
-		it("always decides for every ask type", async () => {
+	describe("always decides except interactive followups", () => {
+		it("decides for every non-followup ask type", async () => {
 			const decide = makePolicy()
 			for (const ask of [
 				"tool",
 				"command",
 				"use_mcp_server",
-				"followup",
 				"completion_result",
 				"api_req_failed",
 				"resume_task",
@@ -217,6 +216,11 @@ describe("buildSubagentApprovalPolicy", () => {
 				const result = await decide(ask as any, "{}")
 				expect(["approve", "deny"]).toContain(result)
 			}
+		})
+
+		it("returns undefined only for followup (blocking wait is bounded in TaskAskSay)", async () => {
+			const decide = makePolicy()
+			expect(await decide("followup", "{}")).toBeUndefined()
 		})
 	})
 })

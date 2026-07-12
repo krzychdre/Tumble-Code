@@ -39,6 +39,10 @@
 		"headerDone": "Subagenci: {{total}} zakończonych",
 		"noOutput": "Brak danych wyjściowych.",
 		"tokens": "Zużyte tokeny",
+		"cancel": "Anuluj tego subagenta",
+		"send": "Wyślij",
+		"answerPlaceholder": "Odpowiedz na pytanie subagenta…",
+		"guidancePlaceholder": "Wyślij wskazówkę (dostarczona przy najbliższym punkcie zatrzymania)…",
 		"status": {
 			"queued": "W kolejce",
 			"running": "Działa",

@@ -485,6 +485,8 @@ export interface WebviewMessage {
 		| "cancelTask"
 		| "subscribeSubagentMessages"
 		| "unsubscribeSubagentMessages"
+		| "cancelSubagent"
+		| "queueSubagentMessage"
 		| "cancelAutoApproval"
 		| "updateVSCodeSetting"
 		| "getVSCodeSetting"

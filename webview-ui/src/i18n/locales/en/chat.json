@@ -39,6 +39,10 @@
 		"headerDone": "Subagents: {{total}} finished",
 		"noOutput": "No output yet.",
 		"tokens": "Tokens used",
+		"cancel": "Cancel this subagent",
+		"send": "Send",
+		"answerPlaceholder": "Answer the subagent's question…",
+		"guidancePlaceholder": "Send guidance (delivered at the next stopping point)…",
 		"status": {
 			"queued": "Queued",
 			"running": "Running",

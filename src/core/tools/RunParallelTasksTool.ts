@@ -180,6 +180,7 @@ export interface SubtaskRegistry {
 		lastActivityAt: number
 	}): void
 	markTerminal(taskId: string, status: "completed" | "failed" | "cancelled", finalMessage?: string): void
+	get(taskId: string): { status: string } | undefined
 }
 
 /** Provider surface needed by a single subtask worker. */
@@ -275,7 +276,11 @@ async function runOneSubtask({
 		registryId = child.taskId
 		const outcome = await provider.awaitTaskCompletion(child, { signal })
 
-		if (!outcome.completed && signal.aborted) {
+		// Cancellation shows up two ways: the fan-out signal (parent aborted)
+		// or a per-subagent cancel from the panel (registry already terminal
+		// "cancelled" via the cancelSubagent handler).
+		const wasCancelledIndividually = registry.get(registryId)?.status === "cancelled"
+		if (!outcome.completed && (signal.aborted || wasCancelledIndividually)) {
 			registry.markTerminal(registryId, "cancelled")
 			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
 		}
