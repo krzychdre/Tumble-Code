@@ -918,21 +918,21 @@ async def test_metrics_page_empty_state(client, db_session):
 
 
 async def test_web_num_excludes_booleans(client, db_session, session_factory):
-    """``_num`` in web.py must NOT count ``True``/``False`` as 1.0/0.0 — Python
+    """``num`` (shared util) must NOT count ``True``/``False`` as 1.0/0.0 — Python
     ``bool`` is a subclass of ``int``, so ``isinstance(True, (int, float))`` is
     ``True``. A malformed ``tokensIn: true`` would inflate the task-list total
     by 1.0 while the metrics dashboard (which excludes bools) reports 0,
     diverging the two views. This test feeds a boolean token value and asserts
     the web task-list aggregates it as 0, not 1."""
-    from src.routers.web import _num
+    from src.utils.format import num
 
-    # Direct unit test of _num: bool must be treated as 0
-    assert _num(True) == 0
-    assert _num(False) == 0
-    assert _num(42) == 42.0
-    assert _num(3.14) == 3.14
-    assert _num("hello") == 0
-    assert _num(None) == 0
+    # Direct unit test of num: bool must be treated as 0
+    assert num(True) == 0
+    assert num(False) == 0
+    assert num(42) == 42.0
+    assert num(3.14) == 3.14
+    assert num("hello") == 0
+    assert num(None) == 0
 
     # Integration: a task with tokensIn=true must NOT inflate the total
     await _seed_user(db_session)
@@ -1247,3 +1247,26 @@ async def test_share_allowed_when_no_org_settings_configured(client, db_session,
 
     assert resp_pub.status_code == 200
     assert resp_org.status_code == 200
+
+
+async def test_format_helpers_are_single_source_of_truth():
+    """web.py and metrics_service.py must import the SAME ``num``/``fmt_tokens``/
+    ``fmt_duration`` function objects from ``src.utils.format`` — not local copies.
+
+    This guards against the CB-7 regression: two independent copies of ``_num``
+    drifted (one counted ``bool``, one didn't), so a malformed ``tokensIn: true``
+    inflated one view and not the other. If either module ever re-defines a
+    local copy, identity fails.
+    """
+    from src.routers import web
+    from src.services import metrics_service
+    from src.utils import format as fmt
+
+    assert web.num is fmt.num
+    assert web.fmt_tokens is fmt.fmt_tokens
+    assert web.fmt_duration is fmt.fmt_duration
+
+    # metrics_service aliases ``num`` as ``_num`` for its internal call sites.
+    assert metrics_service._num is fmt.num
+    assert metrics_service.fmt_tokens is fmt.fmt_tokens
+    assert metrics_service.fmt_duration is fmt.fmt_duration
