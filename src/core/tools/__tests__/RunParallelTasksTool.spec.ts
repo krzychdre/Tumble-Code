@@ -329,6 +329,20 @@ describe("RunParallelTasksTool.execute", () => {
 		mockDeleteWorktree.mockResolvedValue({ success: true, message: "removed" })
 	})
 
+	it("background caller (subtask): refused — no nested fan-outs", async () => {
+		const provider = makeFakeProvider()
+		const parent = makeFakeParentTask(provider, { isBackground: true, recordToolError: vi.fn() })
+		const callbacks = makeCallbacks()
+
+		await runParallelTasksTool.execute({ subtasks: [{ message: "nested" }] }, parent, callbacks)
+
+		expect(mockCreateWorktree).not.toHaveBeenCalled()
+		expect(provider.createBackgroundTask).not.toHaveBeenCalled()
+		expect(callbacks.askApproval).not.toHaveBeenCalled()
+		const result = callbacks.pushToolResult.mock.calls[0][0] as string
+		expect(result).toContain("not available inside a parallel subtask")
+	})
+
 	it("pre-aborted parent: starts nothing, no worktree created", async () => {
 		const provider = makeFakeProvider()
 		const parent = makeFakeParentTask(provider, { abort: true })

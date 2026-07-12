@@ -6,6 +6,7 @@ Use this to decompose one job into parts that can run at the same time for speed
 
 Guidance:
 - Only split work that is genuinely INDEPENDENT. Dependent steps must be sequential, not parallel.
+- Each subtask must be a SMALL, ONE-SHOT job that a single agent can finish quickly on its own. Subtasks CANNOT delegate: new_task and run_parallel_tasks are unavailable inside a subtask. Never assign a subtask that would need to split work further — do that splitting yourself, here.
 - Give each subtask a self-contained \`message\` with all the context it needs — a subtask starts fresh and shares no memory with you or its siblings.
 - Worktrees and branches are left intact for review; nothing is auto-merged.
 

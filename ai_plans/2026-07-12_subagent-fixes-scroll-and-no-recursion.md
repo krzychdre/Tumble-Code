@@ -67,4 +67,18 @@ say so in the prompt):
 
 ## Outcome
 
-(fill at end)
+Shipped 2026-07-12 as 2 stacked branches off 9d883338a:
+
+- `fix/subagent-tail-scroll` (1d2102df5) — onScroll ref tracks bottom-ness
+  (24px threshold); auto-scroll only re-pins when the user was at the
+  bottom; fresh/re-keyed tails start pinned.
+- `fix/subagent-no-recursive-spawn` (new stack TIP) — `isBackground`
+  threaded Task → TaskApiLoopAccess → ApiRequestBuilderAccess; background
+  requests get `new_task` + `run_parallel_tasks` appended to disabledTools
+  (alias-resolving filter strips them from the tool array); both tools
+  refuse at runtime with a "do the work directly, finish with
+  attempt_completion" error when `task.isBackground` (covers hallucinated
+  calls and prompt-listed protocols); run_parallel_tasks description now
+  requires small one-shot subtasks and states delegation is unavailable
+  inside them. Guard tests added to both tool specs (40 green); src +
+  webview typecheck clean.

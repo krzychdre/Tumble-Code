@@ -128,6 +128,9 @@ export interface TaskApiLoopAccess {
 	// Monotonic loop iteration counter, advanced each executeApiRequestCycle
 	// entry. Used by the memory recall consume-once guard.
 	apiLoopIteration?: number
+	// Headless background task (parallel subagent / memory writer). Background
+	// tasks must not receive delegation tools (no nested fan-outs).
+	isBackground: boolean
 	// Headless turn cap for background tasks (undefined = no cap / foreground).
 	maxAgentTurns?: number
 	// Assistant-turn counter enforced against `maxAgentTurns`.
@@ -214,6 +217,7 @@ export class TaskApiLoop {
 		this.apiRequestBuilder = new ApiRequestBuilder({
 			taskId: access.taskId,
 			instanceId: access.instanceId,
+			isBackground: access.isBackground,
 			apiConfiguration: access.apiConfiguration,
 			api: access.api,
 			apiConversationHistory: access.apiConversationHistory,

@@ -44,6 +44,11 @@ export interface ApiRequestBuilderAccess {
 	taskId: string
 	instanceId: string
 
+	// Headless background task (parallel subagent / memory writer): delegation
+	// tools are stripped from its requests — subtasks are one-shot jobs and
+	// must never spawn further subtasks.
+	isBackground: boolean
+
 	// API configuration and handler
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
@@ -191,6 +196,14 @@ export class ApiRequestBuilder {
 
 		const supportsAllowedFunctionNames = apiConfiguration?.apiProvider === "gemini"
 
+		// Background tasks (parallel subagents, memory writers) never get
+		// delegation tools: a subtask is a small one-shot job that must return
+		// to its parent, not fan out further. Routed through disabledTools so
+		// the existing alias-resolving filter removes them.
+		const disabledTools = this.access.isBackground
+			? [...(state?.disabledTools ?? []), "new_task", "run_parallel_tasks"]
+			: state?.disabledTools
+
 		const toolsResult = await buildNativeToolsArrayWithRestrictions({
 			provider,
 			cwd: this.access.cwd,
@@ -199,7 +212,7 @@ export class ApiRequestBuilder {
 			customModePrompts: state?.customModePrompts,
 			experiments: state?.experiments,
 			apiConfiguration,
-			disabledTools: state?.disabledTools,
+			disabledTools,
 			modelInfo,
 			includeAllToolsWithRestrictions: supportsAllowedFunctionNames,
 			materializedDeferredTools: this.access.materializedDeferredTools,

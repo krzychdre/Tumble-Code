@@ -337,6 +337,21 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 		const { askApproval, handleError, pushToolResult } = callbacks
 
 		try {
+			// No nested fan-outs: a subtask is a small one-shot job. The tool
+			// is already stripped from background tasks' tool lists; this
+			// guards hallucinated calls and prompt-listed protocols.
+			if (task.isBackground) {
+				task.recordToolError("run_parallel_tasks")
+				pushToolResult(
+					formatResponse.toolError(
+						"run_parallel_tasks is not available inside a parallel subtask. Subtasks are " +
+							"one-shot jobs and cannot spawn further subtasks: do the work directly in this " +
+							"task and finish with attempt_completion so the parent task can continue.",
+					),
+				)
+				return
+			}
+
 			const provider = task.providerRef.deref()
 			if (!provider) {
 				pushToolResult(formatResponse.toolError("Provider reference lost"))

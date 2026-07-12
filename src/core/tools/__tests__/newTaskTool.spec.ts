@@ -143,6 +143,33 @@ describe("newTaskTool", () => {
 		} as any)
 	})
 
+	it("refuses to run inside a background subtask (no nested delegation)", async () => {
+		;(mockCline as any).isBackground = true
+		try {
+			const block: ToolUse<"new_task"> = {
+				type: "tool_use",
+				name: "new_task",
+				params: { mode: "code", message: "nested delegation attempt" },
+				partial: false,
+			}
+
+			await newTaskTool.handle(mockCline as any, withNativeArgs(block), {
+				askApproval: mockAskApproval,
+				handleError: mockHandleError,
+				pushToolResult: mockPushToolResult,
+			})
+
+			expect(mockAskApproval).not.toHaveBeenCalled()
+			expect(mockStartSubtask).not.toHaveBeenCalled()
+			expect(mockCline.recordToolError).toHaveBeenCalledWith("new_task")
+			expect(mockPushToolResult).toHaveBeenCalledWith(
+				expect.stringContaining("not available inside a parallel subtask"),
+			)
+		} finally {
+			;(mockCline as any).isBackground = false
+		}
+	})
+
 	it("should correctly un-escape \\\\@ to \\@ in the message passed to the new task", async () => {
 		const block: ToolUse<"new_task"> = {
 			type: "tool_use", // Add required 'type' property
