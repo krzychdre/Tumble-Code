@@ -102,6 +102,9 @@ export class TelemetryService {
 			cacheWriteTokens: number
 			cacheReadTokens: number
 			cost?: number
+			ttftMs?: number
+			reasoningChars?: number
+			toolCount?: number
 		},
 	): void {
 		this.captureEvent(TelemetryEventName.LLM_COMPLETION, { taskId, ...properties })

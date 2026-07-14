@@ -449,6 +449,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	isStreaming = false
 	currentStreamingContentIndex = 0
 	currentStreamingDidCheckpoint = false
+	// Pre-edit checkpoint started eagerly while a write tool's arguments are
+	// still streaming; awaited by checkpointSaveAndMark before the edit lands.
+	pendingCheckpointSave: Promise<void> | undefined = undefined
 	assistantMessageContent: AssistantMessageContent[] = []
 	presentAssistantMessageLocked = false
 	presentAssistantMessageHasPendingUpdates = false

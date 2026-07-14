@@ -233,6 +233,9 @@ export const rooCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 			cacheReadTokens: z.number().optional(),
 			cacheWriteTokens: z.number().optional(),
 			cost: z.number().optional(),
+			ttftMs: z.number().optional(),
+			reasoningChars: z.number().optional(),
+			toolCount: z.number().optional(),
 		}),
 	}),
 ])

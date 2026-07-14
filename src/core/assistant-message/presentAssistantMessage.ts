@@ -1111,9 +1111,13 @@ async function checkpointSaveAndMark(task: Task) {
 		return
 	}
 	try {
-		await task.checkpointSave(true)
+		// Prefer the checkpoint started eagerly at tool_call_start (it overlapped
+		// the write tool's argument streaming); fall back to a cold save.
+		await (task.pendingCheckpointSave ?? task.checkpointSave(true))
 		task.currentStreamingDidCheckpoint = true
 	} catch (error) {
 		console.error(`[Task#presentAssistantMessage] Error saving checkpoint: ${error.message}`, error)
+	} finally {
+		task.pendingCheckpointSave = undefined
 	}
 }
