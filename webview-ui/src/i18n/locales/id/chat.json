@@ -536,6 +536,7 @@
 		"deleteNote": "Hapus catatan",
 		"save": "Simpan",
 		"reviewFile": "Tinjau rencana",
-		"loading": "Memuat rencana…"
+		"loading": "Memuat rencana…",
+		"pauseTitle": "Rencana diperbarui — tinjau dan setujui"
 	}
 }

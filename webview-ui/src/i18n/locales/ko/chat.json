@@ -530,6 +530,7 @@
 		"deleteNote": "메모 삭제",
 		"save": "저장",
 		"reviewFile": "계획 검토",
-		"loading": "계획 불러오는 중…"
+		"loading": "계획 불러오는 중…",
+		"pauseTitle": "계획이 업데이트됨 — 검토 후 승인하세요"
 	}
 }

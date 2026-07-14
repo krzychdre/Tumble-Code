@@ -531,6 +531,7 @@
 		"deleteNote": "Xóa ghi chú",
 		"save": "Lưu",
 		"reviewFile": "Xem xét kế hoạch",
-		"loading": "Đang tải kế hoạch…"
+		"loading": "Đang tải kế hoạch…",
+		"pauseTitle": "Kế hoạch đã cập nhật — xem xét và phê duyệt"
 	}
 }

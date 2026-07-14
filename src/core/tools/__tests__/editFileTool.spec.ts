@@ -57,6 +57,10 @@ vi.mock("../../diff/stats", () => ({
 	computeDiffStats: vi.fn(() => ({ additions: 1, deletions: 1 })),
 }))
 
+vi.mock("../../plan-review/planReviewPause", () => ({
+	pauseForPlanReviewIfNeeded: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("vscode", () => ({
 	window: {
 		showWarningMessage: vi.fn().mockResolvedValue(undefined),

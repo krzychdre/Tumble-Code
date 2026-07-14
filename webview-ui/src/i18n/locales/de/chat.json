@@ -530,6 +530,7 @@
 		"deleteNote": "Notiz löschen",
 		"save": "Speichern",
 		"reviewFile": "Plan überprüfen",
-		"loading": "Plan wird geladen…"
+		"loading": "Plan wird geladen…",
+		"pauseTitle": "Plan aktualisiert — prüfen und genehmigen"
 	}
 }

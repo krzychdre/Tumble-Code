@@ -6,7 +6,6 @@ import {
 	type AutoApprovalStateOptions,
 	type AutoApprovalPlanState,
 } from "../index"
-import { registerPlanReviewFile, unregisterPlanReviewFile } from "../../webview/planReviewRegistry"
 
 type State = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions | AutoApprovalPlanState>
 
@@ -235,83 +234,36 @@ describe("checkAutoApproval modes", () => {
 		})
 	})
 
-	describe("reviewed-plan-file write gate", () => {
-		const cwd = "/project"
-		const reviewedFile = "/project/plans/plan.md"
-		const planWriteText = JSON.stringify({ tool: "editedExistingFile", path: "plans/plan.md" })
-		const otherWriteText = JSON.stringify({ tool: "editedExistingFile", path: "src/other.ts" })
+	describe("reviewPlan pause ask", () => {
+		const reviewPlanText = JSON.stringify({ tool: "reviewPlan", path: "plans/plan.md" })
 
-		beforeEach(() => {
-			registerPlanReviewFile(reviewedFile)
-		})
-
-		afterEach(() => {
-			unregisterPlanReviewFile(reviewedFile)
-		})
-
-		it("write to a file open in a Plan Review panel → ask even with alwaysAllowWrite ON", async () => {
-			const state = baseState({ cwd, alwaysAllowWrite: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
+		it("default mode → ask (user must review)", async () => {
+			const state = baseState({ alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
 			expect(result.decision).toBe("ask")
 		})
 
-		it("write to a different file → approve (gate scoped to the reviewed file)", async () => {
-			const state = baseState({ cwd, alwaysAllowWrite: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: otherWriteText })
+		it("alwaysApprovePlan true → approve (user opted out of plan review)", async () => {
+			const state = baseState({ alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
 			expect(result.decision).toBe("approve")
 		})
 
-		it("write to reviewed file with no panel open → approve", async () => {
-			unregisterPlanReviewFile(reviewedFile)
-			const state = baseState({ cwd, alwaysAllowWrite: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
+		it("bypass mode → ask (gate survives bypass)", async () => {
+			const state = baseState({ autoApprovalMode: "bypass", alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("bypass mode + alwaysApprovePlan true → approve", async () => {
+			const state = baseState({ autoApprovalMode: "bypass", alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
 			expect(result.decision).toBe("approve")
 		})
 
-		it("write to reviewed file + alwaysApprovePlan ON → approve", async () => {
-			const state = baseState({ cwd, alwaysAllowWrite: true, alwaysApprovePlan: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("absolute tool path is matched without cwd", async () => {
-			const state = baseState({ alwaysAllowWrite: true })
-			const result = await checkAutoApproval({
-				state,
-				ask: "tool",
-				text: JSON.stringify({ tool: "editedExistingFile", path: reviewedFile }),
-			})
-			expect(result.decision).toBe("ask")
-		})
-
-		it("bypass mode + write to reviewed file → ask (gate survives bypass)", async () => {
-			const state = baseState({ cwd, autoApprovalMode: "bypass" })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("autonomous mode + write to reviewed file → approve (autonomous bypasses the gate)", async () => {
-			const state = baseState({ cwd, autoApprovalMode: "autonomous" })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
-			expect(result.decision).toBe("approve")
-		})
-
-		it("architect mode is gated too while the panel is open", async () => {
-			const state = baseState({ cwd, mode: "architect", alwaysAllowWrite: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("fails closed: relative write with no cwd while a panel is open → ask", async () => {
-			const state = baseState({ cwd: undefined, alwaysAllowWrite: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
-			expect(result.decision).toBe("ask")
-		})
-
-		it("relative write with no cwd and no panel open → approve", async () => {
-			unregisterPlanReviewFile(reviewedFile)
-			const state = baseState({ cwd: undefined, alwaysAllowWrite: true })
-			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
+		it("autonomous mode → approve (autonomous bypasses the gate)", async () => {
+			const state = baseState({ autoApprovalMode: "autonomous", alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
 			expect(result.decision).toBe("approve")
 		})
 	})

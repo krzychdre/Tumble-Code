@@ -549,6 +549,7 @@
 	"planReview": {
 		"annotateTooltip": "Review & annotate",
 		"title": "Review plan",
+		"pauseTitle": "Plan updated — review and approve",
 		"addNote": "Add note",
 		"notePlaceholder": "Write your note…",
 		"overallPlaceholder": "Overall comments (optional)",

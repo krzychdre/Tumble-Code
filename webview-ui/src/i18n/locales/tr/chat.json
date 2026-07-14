@@ -531,6 +531,7 @@
 		"deleteNote": "Notu sil",
 		"save": "Kaydet",
 		"reviewFile": "Planı incele",
-		"loading": "Plan yükleniyor…"
+		"loading": "Plan yükleniyor…",
+		"pauseTitle": "Plan güncellendi — incele ve onayla"
 	}
 }

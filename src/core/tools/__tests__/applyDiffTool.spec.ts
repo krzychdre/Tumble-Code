@@ -45,6 +45,10 @@ vi.mock("../../../utils/text-normalization", () => ({
 	unescapeHtmlEntities: vi.fn().mockImplementation((content) => content),
 }))
 
+vi.mock("../../plan-review/planReviewPause", () => ({
+	pauseForPlanReviewIfNeeded: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("vscode", () => ({
 	window: {
 		showWarningMessage: vi.fn().mockResolvedValue(undefined),

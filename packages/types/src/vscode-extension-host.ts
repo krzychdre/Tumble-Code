@@ -836,6 +836,7 @@ export interface ClineSayTool {
 		| "switchMode"
 		| "newTask"
 		| "finishTask"
+		| "reviewPlan"
 		| "generateImage"
 		| "imageGenerated"
 		| "runSlashCommand"

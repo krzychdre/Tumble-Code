@@ -531,6 +531,7 @@
 		"deleteNote": "删除备注",
 		"save": "保存",
 		"reviewFile": "审阅计划",
-		"loading": "正在加载计划…"
+		"loading": "正在加载计划…",
+		"pauseTitle": "计划已更新 — 请审查并批准"
 	}
 }

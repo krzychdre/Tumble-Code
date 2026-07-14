@@ -530,6 +530,7 @@
 		"deleteNote": "Excluir nota",
 		"save": "Salvar",
 		"reviewFile": "Revisar plano",
-		"loading": "Carregando plano…"
+		"loading": "Carregando plano…",
+		"pauseTitle": "Plano atualizado — revise e aprove"
 	}
 }

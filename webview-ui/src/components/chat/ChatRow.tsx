@@ -73,6 +73,7 @@ import {
 	ArrowRight,
 	Check,
 	MessageSquarePlus,
+	ClipboardCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PathTooltip } from "../ui/PathTooltip"
@@ -930,6 +931,29 @@ export const ChatRowContent = ({
 						<div className="text-muted-foreground pl-6">
 							<MarkdownBlock markdown={t("chat:subtasks.completionInstructions")} />
 						</div>
+					</>
+				)
+			case "reviewPlan":
+				return (
+					<>
+						<div style={headerStyle}>
+							<ClipboardCheck className="w-4 shrink-0" aria-label="Plan review icon" />
+							<span style={{ fontWeight: "bold" }}>{t("chat:planReview.pauseTitle")}</span>
+						</div>
+						{tool.path && (
+							<div className="text-muted-foreground pl-6">
+								<code>{tool.path}</code>
+							</div>
+						)}
+						{tool.path && (
+							<div className="pl-6 mt-1">
+								<button
+									className="cursor-pointer text-vscode-descriptionForeground hover:underline font-normal"
+									onClick={() => vscode.postMessage({ type: "openPlanReview", text: tool.path })}>
+									{t("chat:planReview.reviewFile")}
+								</button>
+							</div>
+						)}
 					</>
 				)
 			case "runSlashCommand": {

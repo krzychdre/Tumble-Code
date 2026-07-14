@@ -521,6 +521,7 @@
 		"deleteNote": "刪除備註",
 		"save": "儲存",
 		"reviewFile": "審閱計劃",
-		"loading": "正在載入計劃…"
+		"loading": "正在載入計劃…",
+		"pauseTitle": "計劃已更新 — 請審查並批准"
 	}
 }

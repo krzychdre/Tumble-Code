@@ -555,6 +555,7 @@
 		"deleteNote": "Usuń notatkę",
 		"save": "Zapisz",
 		"reviewFile": "Przegląd planu",
-		"loading": "Ładowanie planu…"
+		"loading": "Ładowanie planu…",
+		"pauseTitle": "Plan zaktualizowany — przejrzyj i zatwierdź"
 	}
 }

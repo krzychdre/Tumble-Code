@@ -11,6 +11,7 @@ import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { sanitizeUnifiedDiff, computeDiffStats } from "../diff/stats"
+import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
@@ -230,7 +231,8 @@ export class EditTool extends BaseTool<"edit"> {
 
 			// Get the formatted response message
 			const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, false)
-			pushToolResult(message)
+			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
+			pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
 
 			// Record successful tool usage and cleanup
 			task.recordToolUsage("edit")

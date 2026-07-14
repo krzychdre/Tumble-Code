@@ -530,6 +530,7 @@
 		"deleteNote": "Suprimir nota",
 		"save": "Desar",
 		"reviewFile": "Revisar pla",
-		"loading": "Carregant pla…"
+		"loading": "Carregant pla…",
+		"pauseTitle": "Pla actualitzat — revisa i aprova"
 	}
 }

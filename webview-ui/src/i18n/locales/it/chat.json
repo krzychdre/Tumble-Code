@@ -530,6 +530,7 @@
 		"deleteNote": "Elimina nota",
 		"save": "Salva",
 		"reviewFile": "Rivedi piano",
-		"loading": "Caricamento piano…"
+		"loading": "Caricamento piano…",
+		"pauseTitle": "Piano aggiornato — rivedi e approva"
 	}
 }

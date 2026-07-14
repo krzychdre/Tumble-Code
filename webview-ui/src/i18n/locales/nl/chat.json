@@ -530,6 +530,7 @@
 		"deleteNote": "Notitie verwijderen",
 		"save": "Opslaan",
 		"reviewFile": "Plan beoordelen",
-		"loading": "Plan laden…"
+		"loading": "Plan laden…",
+		"pauseTitle": "Plan bijgewerkt — beoordeel en keur goed"
 	}
 }

@@ -530,6 +530,7 @@
 		"deleteNote": "Supprimer la note",
 		"save": "Enregistrer",
 		"reviewFile": "Examiner le plan",
-		"loading": "Chargement du plan…"
+		"loading": "Chargement du plan…",
+		"pauseTitle": "Plan mis à jour — relisez et approuvez"
 	}
 }

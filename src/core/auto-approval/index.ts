@@ -9,13 +9,10 @@ import {
 
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 
-import * as nodePath from "path"
-
 import { isWriteToolAction, isReadOnlyToolAction } from "./tools"
 import { isMcpToolAlwaysAllowed } from "./mcp"
 import { getCommandDecision } from "./commands"
 import { getModeBySlug } from "../../shared/modes"
-import { isPlanReviewFileOpen, hasOpenPlanReviewFiles } from "../webview/planReviewRegistry"
 
 // We have auto-approval actions for different categories.
 export type AutoApprovalState =
@@ -42,7 +39,7 @@ export type AutoApprovalStateOptions =
 	| "mcpServers" // For `alwaysAllowMcp`.
 	| "allowedCommands" // For `alwaysAllowExecute`.
 	| "deniedCommands"
-	| "cwd" // For resolving relative tool paths in the plan-approval gate.
+	| "cwd" // Resolved in TaskAskSay for the asking task's own cwd.
 
 export type CheckAutoApprovalResult =
 	| { decision: "approve" }
@@ -82,8 +79,10 @@ export async function checkAutoApproval({
 
 	if (mode === "bypass" || mode === "autonomous") {
 		if (ask === "command" || ask === "tool" || ask === "use_mcp_server") {
-			// The plan-approval gate survives bypass (semi-auto): only autonomous
-			// mode or the Plan auto-approve toggle may skip plan review.
+			// The plan-approval gate survives bypass (semi-auto): only
+			// autonomous mode or the Plan auto-approve toggle may skip plan
+			// review. This covers both the mode-exit gate (switchMode/newTask)
+			// and the post-save plan review pause (reviewPlan).
 			if (mode === "bypass" && ask === "tool" && state.alwaysApprovePlan !== true) {
 				let tool: ClineSayTool | undefined
 
@@ -97,7 +96,7 @@ export async function checkAutoApproval({
 					return { decision: "ask" }
 				}
 
-				if (tool && isReviewedPlanFileWrite(state, tool)) {
+				if (tool?.tool === "reviewPlan") {
 					return { decision: "ask" }
 				}
 			}
@@ -249,6 +248,13 @@ export async function checkAutoApproval({
 			return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
 		}
 
+		// Post-save plan review pause: the write tool already saved the plan
+		// file and is now asking for review approval. Approve only when the
+		// Plan auto-approve toggle is on; otherwise ask the user.
+		if (tool?.tool === "reviewPlan") {
+			return state.alwaysApprovePlan === true ? { decision: "approve" } : { decision: "ask" }
+		}
+
 		const isOutsideWorkspace = !!tool.isOutsideWorkspace
 
 		if (isReadOnlyToolAction(tool)) {
@@ -259,13 +265,6 @@ export async function checkAutoApproval({
 		}
 
 		if (isWriteToolAction(tool)) {
-			// Plan-approval gate: edits to a plan file the user has open in a
-			// Plan Review panel always ask, in any mode — the user is actively
-			// reviewing that document.
-			if (state.alwaysApprovePlan !== true && isReviewedPlanFileWrite(state, tool)) {
-				return { decision: "ask" }
-			}
-
 			return state.alwaysAllowWrite === true &&
 				(!isOutsideWorkspace || state.alwaysAllowWriteOutsideWorkspace === true) &&
 				(!isProtected || state.alwaysAllowWriteProtected === true)
@@ -285,31 +284,6 @@ export async function checkAutoApproval({
 function isPlanApprovalRequired(state: Pick<ExtensionState, AutoApprovalPlanState>): boolean {
 	const modeConfig = getModeBySlug(state.mode ?? "", state.customModes)
 	return modeConfig?.planApprovalRequired === true
-}
-
-/**
- * True when the tool call writes to a file that is currently open in a Plan
- * Review panel — i.e. the user is actively reviewing that plan document.
- */
-function isReviewedPlanFileWrite(state: Pick<ExtensionState, "cwd">, tool: ClineSayTool): boolean {
-	if (!isWriteToolAction(tool) || !tool.path) {
-		return false
-	}
-
-	const absPath = nodePath.isAbsolute(tool.path)
-		? tool.path
-		: state.cwd
-			? nodePath.resolve(state.cwd, tool.path)
-			: undefined
-
-	if (!absPath) {
-		// Fail closed: a review panel is open but the relative path can't be
-		// resolved (state carried no cwd) — asking is safer than silently
-		// skipping the gate.
-		return hasOpenPlanReviewFiles()
-	}
-
-	return isPlanReviewFileOpen(absPath)
 }
 
 export { AutoApprovalHandler } from "./AutoApprovalHandler"

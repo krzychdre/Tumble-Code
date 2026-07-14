@@ -146,3 +146,49 @@ Also fixed alongside (same feedback round): the chat `AutoApproveDropdown` had
 a duplicated `isModeForced` that rendered the Plan toggle as forced-on in
 bypass; it now uses the shared `isAutoApproveForced` and got the missing
 `alwaysApprovePlan` toggle case + ExtensionStateContext setter.
+
+---
+
+## V3 — automatic post-save plan review pause (2026-07-14, user feedback round 3)
+
+User: "Plany ZAWSZE mają być otwierane w trybie do review. Zawsze po ich
+pierwszym kompletnym zapisaniu lub edycji, model musi pauzować i czekać na
+zatwierdzenie." Clicking "Review plan" manually must not be required.
+AskUserQuestion decisions: pause skipped ONLY by autonomous mode or the Plan
+toggle (bypass holds, consistent with V1/V2); plan files = any `.md` under a
+`plans/` or `ai_plans/` path segment + root `plan.md`/`todo.md`.
+
+### Semantics change vs V2
+
+The pre-write "file open in a review panel" gate is REPLACED by a post-save
+pause: the write completes first (the user reviews the finished plan, not a
+diff preview), then the task blocks. Pre-write + post-save together would
+double-stop every edit. The registry stays: a file manually opened in a review
+panel is also pause-eligible even outside the plan patterns.
+
+### Mechanics
+
+1. `src/shared/planFiles.ts` — pure `isPlanFilePath(absPath, cwd)`:
+   relative path has a `plans`/`ai_plans` segment and ends with `.md`, or is
+   exactly `plan.md`/`todo.md`. Constant patterns for now (setting later).
+2. Post-save helper (`src/core/plan-review/planReviewPause.ts`) called by every
+   write tool after a successful save, before pushToolResult:
+    - eligible = isPlanFilePath(abs) OR isPlanReviewFileOpen(abs)
+    - skipped when: `alwaysApprovePlan`, `autoApprovalMode === "autonomous"`,
+      or headless task (`isBackground`) — background subagents must never hang.
+    - auto-opens/reveals PlanReviewPanel for the file (the "always open in
+      review mode" requirement), then blocks:
+      `task.ask("tool", { tool: "reviewPlan", path })`.
+    - approve → appends "user approved" to the tool result; reject/message →
+      `say("user_feedback")` + feedback appended `<user_message>`-style
+      (AskFollowupQuestionTool pattern, weak-model-safe).
+    - Annotation submit (`submitUserMessage`) resolves this pending ask as
+      messageResponse — notes ARE the review response; the loop is:
+      save → pause+panel → annotate/approve → revise → save → pause…
+3. `checkAutoApproval`: `tool === "reviewPlan"` → approve only when
+   `alwaysApprovePlan`; explicit exception in the bypass force-approve block
+   (bypass must not auto-resolve the pause); autonomous force-approve stands.
+   The V2 `isReviewedPlanFileWrite` pre-write gate and its tests are removed.
+4. ChatRow renders the `reviewPlan` ask (title + path, standard approve/deny
+   buttons come from ChatView's ask handling). New ClineSayTool member.
+5. i18n: `chat.json` planReview.pause\* keys, en + 17 locales.
