@@ -73,6 +73,18 @@ export async function pauseForPlanReviewIfNeeded(task: Task, toolRelPath: string
 		)
 
 		if (response === "yesButtonClicked") {
+			// The user may have drafted annotation notes in the panel and clicked
+			// Approve instead of the panel's Send button — the notes ARE the
+			// review response, so deliver them as corrections.
+			const draftNotes = PlanReviewPanel.consumeDraftNotes(absPath)
+			if (draftNotes) {
+				await task.say("user_feedback", draftNotes)
+				return (
+					"The user reviewed the updated plan and responded with the following notes:\n<user_message>\n" +
+					draftNotes +
+					"\n</user_message>\nAddress these notes and update the plan."
+				)
+			}
 			return "The user reviewed the updated plan and approved it."
 		}
 

@@ -1,5 +1,5 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { X, Plus, Pencil, Trash2 } from "lucide-react"
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { X, Plus, Pencil, Trash2, Send } from "lucide-react"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip } from "@src/components/ui"
@@ -12,6 +12,16 @@ interface PlanReviewSurfaceProps {
 	filePath?: string
 	onClose: () => void
 	onSubmit: (compiledText: string) => void
+	/**
+	 * Reports the current draft notes (compiled) whenever they change, so the
+	 * extension host can send them when the user clicks Approve on the pending
+	 * review ask instead of the panel's own Send button.
+	 */
+	onDraftsChanged?: (compiledText: string, count: number) => void
+	/** Bump to clear draft annotations from outside (drafts consumed by host). */
+	resetSignal?: number
+	/** Testing seam — jsdom cannot produce text selections. */
+	initialAnnotations?: PlanAnnotation[]
 }
 
 /**
@@ -94,11 +104,18 @@ function clearHighlights() {
 	}
 }
 
-export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({ markdown, filePath, onClose, onSubmit }) => {
+export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
+	markdown,
+	filePath,
+	onClose,
+	onSubmit,
+	onDraftsChanged,
+	resetSignal,
+	initialAnnotations,
+}) => {
 	const { t } = useAppTranslation()
 
-	const [annotations, setAnnotations] = useState<PlanAnnotation[]>([])
-	const [overallComment, setOverallComment] = useState("")
+	const [annotations, setAnnotations] = useState<PlanAnnotation[]>(initialAnnotations ?? [])
 	const [showNoteEditor, setShowNoteEditor] = useState(false)
 	const [noteEditorText, setNoteEditorText] = useState("")
 	const [pendingQuote, setPendingQuote] = useState("")
@@ -112,6 +129,25 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({ markdown, 
 	const rootRef = useRef<HTMLDivElement>(null)
 	const markdownRef = useRef<HTMLDivElement>(null)
 	const chipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	// Keep the host informed about draft notes so clicking Approve on the
+	// pending review ask can send them (the user shouldn't have to find the
+	// panel's own Send button).
+	useEffect(() => {
+		onDraftsChanged?.(
+			annotations.length > 0 ? compilePlanReviewMessage(annotations, "", filePath) : "",
+			annotations.length,
+		)
+	}, [annotations, filePath, onDraftsChanged])
+
+	// External reset: the host consumed the drafts (e.g. Approve sent them).
+	const lastResetRef = useRef(resetSignal)
+	useEffect(() => {
+		if (resetSignal !== lastResetRef.current) {
+			lastResetRef.current = resetSignal
+			setAnnotations([])
+		}
+	}, [resetSignal])
 
 	// Responsive layout: side column when wide, bottom section when narrow.
 	useLayoutEffect(() => {
@@ -255,17 +291,16 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({ markdown, 
 		setEditingText("")
 	}, [])
 
-	const canSend = annotations.length > 0 || overallComment.trim().length > 0
+	const canSend = annotations.length > 0
 
 	const handleSend = useCallback(() => {
-		const compiled = compilePlanReviewMessage(annotations, overallComment, filePath)
+		const compiled = compilePlanReviewMessage(annotations, "", filePath)
 		onSubmit(compiled)
 		// The panel stays open after sending (the model's revision streams in
 		// via live updates) — clear the drafts so the next review round starts
 		// clean instead of re-sending the same notes.
 		setAnnotations([])
-		setOverallComment("")
-	}, [annotations, overallComment, filePath, onSubmit])
+	}, [annotations, filePath, onSubmit])
 
 	const annotationsPanel = useMemo(() => {
 		return (
@@ -428,21 +463,24 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({ markdown, 
 				</div>
 			</div>
 
-			{/* Footer */}
-			<div className="flex items-end gap-2 px-4 py-2 border-t border-vscode-editorWidget-border shrink-0">
-				<textarea
-					className="flex-1 text-sm bg-vscode-input-background text-vscode-input-foreground border border-vscode-input-border rounded p-2 resize-none"
-					rows={2}
-					placeholder={t("chat:planReview.overallPlaceholder")}
-					value={overallComment}
-					onChange={(e) => setOverallComment(e.target.value)}
-				/>
-				<div className="flex gap-2">
+			{/* Footer — always visible action bar */}
+			<div
+				className="flex items-center justify-between gap-2 px-4 py-3 border-t border-vscode-editorWidget-border shrink-0"
+				style={{ background: "var(--vscode-editorWidget-background)" }}>
+				<span className="text-sm text-vscode-descriptionForeground">
+					{annotations.length > 0
+						? t("chat:planReview.notesCount", { count: annotations.length })
+						: t("chat:planReview.emptyState")}
+				</span>
+				<div className="flex gap-2 shrink-0">
 					<Button variant="secondary" onClick={onClose}>
 						{t("chat:planReview.cancel")}
 					</Button>
 					<Button variant="primary" disabled={!canSend} onClick={handleSend}>
-						{t("chat:planReview.send")}
+						<Send className="w-3.5 h-3.5 mr-1" />
+						{annotations.length > 0
+							? `${t("chat:planReview.send")} (${annotations.length})`
+							: t("chat:planReview.send")}
 					</Button>
 				</div>
 			</div>

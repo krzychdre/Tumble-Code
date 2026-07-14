@@ -108,6 +108,7 @@ export interface ExtensionMessage {
 		| "fileContent"
 		| "planReviewInit"
 		| "planReviewUpdate"
+		| "planReviewDraftsConsumed"
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -637,6 +638,7 @@ export interface WebviewMessage {
 		| "planReviewReady"
 		| "planReviewSubmit"
 		| "planReviewClose"
+		| "planReviewDraftsChanged"
 	text?: string
 	taskId?: string
 	editedMessageContent?: string

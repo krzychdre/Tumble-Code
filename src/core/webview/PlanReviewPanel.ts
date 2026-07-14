@@ -10,6 +10,7 @@ import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { ClineProvider } from "./ClineProvider"
 import { registerPlanReviewFile, unregisterPlanReviewFile } from "./planReviewRegistry"
+import { arePathsEqual } from "../../utils/path"
 
 interface PlanReviewTarget {
 	filePath?: string
@@ -21,6 +22,9 @@ interface PanelEntry {
 	filePath?: string
 	watcher?: vscode.FileSystemWatcher
 	disposed: boolean
+	/** Compiled draft annotations, kept in sync by the webview so Approve on a
+	 * pending review ask can send them without a round trip. */
+	draftNotes?: string
 }
 
 /**
@@ -174,9 +178,44 @@ export class PlanReviewPanel {
 		return target.markdown ?? ""
 	}
 
+	private static findEntry(panel: vscode.WebviewPanel): PanelEntry | undefined {
+		for (const entry of this.panels.values()) {
+			if (entry.panel === panel) {
+				return entry
+			}
+		}
+		return this.contentPanel?.panel === panel ? this.contentPanel : undefined
+	}
+
+	/**
+	 * Returns and clears the draft annotation notes for a file, notifying the
+	 * panel so its UI clears too. Used when the user resolves the pending
+	 * review ask with Approve while draft notes exist — the notes are the
+	 * review response.
+	 */
+	static consumeDraftNotes(fsPath: string): string | undefined {
+		for (const [key, entry] of this.panels) {
+			if (!entry.disposed && entry.draftNotes && arePathsEqual(key, fsPath)) {
+				const notes = entry.draftNotes
+				entry.draftNotes = undefined
+				entry.panel.webview.postMessage({ type: "planReviewDraftsConsumed" })
+				return notes
+			}
+		}
+		return undefined
+	}
+
 	private static setupMessageListener(panel: vscode.WebviewPanel, target: PlanReviewTarget): void {
 		panel.webview.onDidReceiveMessage(async (message: WebviewMessage) => {
 			switch (message.type) {
+				case "planReviewDraftsChanged": {
+					const entry = this.findEntry(panel)
+					if (entry) {
+						const count = (message.values?.count as number | undefined) ?? 0
+						entry.draftNotes = count > 0 && message.text ? message.text : undefined
+					}
+					break
+				}
 				case "planReviewReady": {
 					const markdown = await this.resolveMarkdown(target)
 					panel.webview.postMessage({

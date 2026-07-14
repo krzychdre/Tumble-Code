@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
 import { PlanReviewSurface } from "../PlanReviewSurface"
+import type { PlanAnnotation } from "../planReviewMessage"
 
 // Mock MarkdownBlock to just render text — avoids complex markdown rendering in jsdom.
 vi.mock("../../common/MarkdownBlock", () => ({
@@ -12,15 +13,15 @@ vi.mock("../../common/MarkdownBlock", () => ({
 // Mock the i18n translation to return predictable English strings.
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
-		t: (key: string) => {
+		t: (key: string, options?: Record<string, unknown>) => {
 			const map: Record<string, string> = {
 				"chat:planReview.title": "Review plan",
 				"chat:planReview.addNote": "Add note",
 				"chat:planReview.notePlaceholder": "Write your note…",
-				"chat:planReview.overallPlaceholder": "Overall comments (optional)",
 				"chat:planReview.send": "Send notes",
 				"chat:planReview.cancel": "Cancel",
 				"chat:planReview.emptyState": "Select text in the plan to add a note.",
+				"chat:planReview.notesCount": `Notes: ${options?.count ?? 0}`,
 				"chat:planReview.editNote": "Edit note",
 				"chat:planReview.deleteNote": "Delete note",
 				"chat:planReview.save": "Save",
@@ -30,6 +31,11 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 		},
 	}),
 }))
+
+const twoNotes: PlanAnnotation[] = [
+	{ id: "a1", quote: "Plan Title", note: "Rename this section" },
+	{ id: "a2", quote: "substantial plan", note: "Add a rollout step" },
+]
 
 describe("PlanReviewSurface", () => {
 	const defaultProps = {
@@ -55,45 +61,74 @@ describe("PlanReviewSurface", () => {
 
 	it("shows empty state when no annotations", () => {
 		render(<PlanReviewSurface {...defaultProps} />)
-		expect(screen.getByText("Select text in the plan to add a note.")).toBeInTheDocument()
+		expect(screen.getAllByText("Select text in the plan to add a note.").length).toBeGreaterThan(0)
 	})
 
-	it("send button is disabled with no notes and no overall comment", () => {
+	it("send and cancel buttons are always visible; send disabled with no notes", () => {
 		render(<PlanReviewSurface {...defaultProps} />)
 		const sendButton = screen.getByText("Send notes")
+		expect(sendButton).toBeVisible()
 		expect(sendButton.closest("button")).toBeDisabled()
+		const cancelButtons = screen.getAllByText("Cancel").filter((el) => el.tagName === "BUTTON")
+		expect(cancelButtons.length).toBeGreaterThan(0)
+		expect(cancelButtons[0]).toBeVisible()
 	})
 
-	it("typing overall comment enables send button", () => {
-		render(<PlanReviewSurface {...defaultProps} />)
-		const textarea = screen.getByPlaceholderText("Overall comments (optional)")
-		fireEvent.change(textarea, { target: { value: "Good plan" } })
-		const sendButton = screen.getByText("Send notes")
+	it("send button is enabled and shows the note count when annotations exist", () => {
+		render(<PlanReviewSurface {...defaultProps} initialAnnotations={twoNotes} />)
+		const sendButton = screen.getByText("Send notes (2)")
 		expect(sendButton.closest("button")).not.toBeDisabled()
+		expect(screen.getByText("Notes: 2")).toBeInTheDocument()
 	})
 
-	it("clicking send calls onSubmit with compiled text containing Overall:", () => {
-		render(<PlanReviewSurface {...defaultProps} />)
-		const textarea = screen.getByPlaceholderText("Overall comments (optional)")
-		fireEvent.change(textarea, { target: { value: "Good plan" } })
-		const sendButton = screen.getByText("Send notes")
-		fireEvent.click(sendButton)
+	it("clicking send compiles the notes and calls onSubmit", () => {
+		render(<PlanReviewSurface {...defaultProps} filePath="plans/plan.md" initialAnnotations={twoNotes} />)
+		fireEvent.click(screen.getByText("Send notes (2)"))
 		expect(defaultProps.onSubmit).toHaveBeenCalledTimes(1)
 		const compiled = defaultProps.onSubmit.mock.calls[0][0] as string
-		expect(compiled).toContain("Overall: Good plan")
+		expect(compiled).toContain("> Plan Title")
+		expect(compiled).toContain("Note: Rename this section")
+		expect(compiled).toContain("Note: Add a rollout step")
+		expect(compiled).toContain("plans/plan.md")
 		expect(compiled).toContain("Please address these notes and update the plan.")
-		// No annotations → no header.
-		expect(compiled).not.toContain("I reviewed the plan and added notes on specific parts.")
 	})
 
 	it("clears drafts after sending (panel stays open for the next review round)", () => {
-		render(<PlanReviewSurface {...defaultProps} />)
-		const textarea = screen.getByPlaceholderText("Overall comments (optional)") as HTMLTextAreaElement
-		fireEvent.change(textarea, { target: { value: "Good plan" } })
-		fireEvent.click(screen.getByText("Send notes"))
+		render(<PlanReviewSurface {...defaultProps} initialAnnotations={twoNotes} />)
+		fireEvent.click(screen.getByText("Send notes (2)"))
 		expect(defaultProps.onSubmit).toHaveBeenCalledTimes(1)
-		expect(textarea.value).toBe("")
 		// Send is disabled again until new notes are added.
+		expect(screen.getByText("Send notes").closest("button")).toBeDisabled()
+	})
+
+	it("reports drafts via onDraftsChanged and clears them on resetSignal bump", () => {
+		const onDraftsChanged = vi.fn()
+		const { rerender } = render(
+			<PlanReviewSurface
+				{...defaultProps}
+				initialAnnotations={twoNotes}
+				onDraftsChanged={onDraftsChanged}
+				resetSignal={0}
+			/>,
+		)
+		// Initial report carries the compiled draft.
+		expect(onDraftsChanged).toHaveBeenCalled()
+		const [compiled, count] = onDraftsChanged.mock.calls.at(-1)!
+		expect(count).toBe(2)
+		expect(compiled).toContain("Note: Rename this section")
+
+		// Host consumed the drafts (user clicked Approve) → resetSignal bump clears.
+		rerender(
+			<PlanReviewSurface
+				{...defaultProps}
+				initialAnnotations={twoNotes}
+				onDraftsChanged={onDraftsChanged}
+				resetSignal={1}
+			/>,
+		)
+		const [afterReset, afterCount] = onDraftsChanged.mock.calls.at(-1)!
+		expect(afterCount).toBe(0)
+		expect(afterReset).toBe("")
 		expect(screen.getByText("Send notes").closest("button")).toBeDisabled()
 	})
 
@@ -107,21 +142,11 @@ describe("PlanReviewSurface", () => {
 
 	it("cancel button in footer calls onClose", () => {
 		render(<PlanReviewSurface {...defaultProps} />)
-		// Footer cancel button — find by text "Cancel" that's a button.
 		const cancelButtons = screen.getAllByText("Cancel")
-		// The footer cancel button is a Button component (renders as <button>)
 		const footerCancel = cancelButtons.find((el) => el.tagName === "BUTTON")
 		expect(footerCancel).toBeTruthy()
 		fireEvent.click(footerCancel!)
 		expect(defaultProps.onClose).toHaveBeenCalledTimes(1)
-	})
-
-	it("send is disabled when annotations empty but overall whitespace-only", () => {
-		render(<PlanReviewSurface {...defaultProps} />)
-		const textarea = screen.getByPlaceholderText("Overall comments (optional)")
-		fireEvent.change(textarea, { target: { value: "   " } })
-		const sendButton = screen.getByText("Send notes")
-		expect(sendButton.closest("button")).toBeDisabled()
 	})
 
 	it("shows filePath in header when provided", () => {

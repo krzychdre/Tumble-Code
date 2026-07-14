@@ -26,6 +26,9 @@ const PlanReviewAppInner: React.FC = () => {
 	// Bumped when a content-mode init brings a different document, so the
 	// surface remounts and stale annotations don't leak onto the new plan.
 	const [contentSession, setContentSession] = useState(0)
+	// Bumped when the host consumed the draft notes (e.g. the user clicked
+	// Approve on the pending review ask) — clears the surface's drafts.
+	const [draftsResetSignal, setDraftsResetSignal] = useState(0)
 
 	// Load translations on mount.
 	useEffect(() => {
@@ -66,6 +69,8 @@ const PlanReviewAppInner: React.FC = () => {
 					// Update markdown only — preserve annotation state.
 					setState((prev) => ({ ...prev, markdown: planReview.markdown }))
 				}
+			} else if (message.type === "planReviewDraftsConsumed") {
+				setDraftsResetSignal((s) => s + 1)
 			}
 		}
 
@@ -79,6 +84,10 @@ const PlanReviewAppInner: React.FC = () => {
 
 	const handleClose = useCallback(() => {
 		vscode.postMessage({ type: "planReviewClose" })
+	}, [])
+
+	const handleDraftsChanged = useCallback((compiledText: string, count: number) => {
+		vscode.postMessage({ type: "planReviewDraftsChanged", text: compiledText, values: { count } })
 	}, [])
 
 	if (!state) {
@@ -96,6 +105,8 @@ const PlanReviewAppInner: React.FC = () => {
 			filePath={state.filePath}
 			onSubmit={handleSubmit}
 			onClose={handleClose}
+			onDraftsChanged={handleDraftsChanged}
+			resetSignal={draftsResetSignal}
 		/>
 	)
 }

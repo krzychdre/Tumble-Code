@@ -1,6 +1,6 @@
 import React from "react"
 import { describe, expect, it, vi, beforeEach } from "vitest"
-import { render, screen, fireEvent, act, waitFor } from "@/utils/test-utils"
+import { render, screen, act, waitFor, fireEvent } from "@/utils/test-utils"
 
 // Mock vscode.postMessage — vi.mock is hoisted, so we use vi.hoisted to create
 // the mock function before the factory runs.
@@ -19,15 +19,15 @@ vi.mock("../../common/MarkdownBlock", () => ({
 // Mock i18n translation.
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
-		t: (key: string) => {
+		t: (key: string, options?: Record<string, unknown>) => {
 			const map: Record<string, string> = {
 				"chat:planReview.title": "Review plan",
 				"chat:planReview.addNote": "Add note",
 				"chat:planReview.notePlaceholder": "Write your note…",
-				"chat:planReview.overallPlaceholder": "Overall comments (optional)",
 				"chat:planReview.send": "Send notes",
 				"chat:planReview.cancel": "Cancel",
 				"chat:planReview.emptyState": "Select text in the plan to add a note.",
+				"chat:planReview.notesCount": `Notes: ${options?.count ?? 0}`,
 				"chat:planReview.editNote": "Edit note",
 				"chat:planReview.deleteNote": "Delete note",
 				"chat:planReview.save": "Save",
@@ -48,7 +48,6 @@ vi.mock("react-i18next", () => ({
 				"chat:planReview.title": "Review plan",
 				"chat:planReview.send": "Send notes",
 				"chat:planReview.cancel": "Cancel",
-				"chat:planReview.overallPlaceholder": "Overall comments (optional)",
 				"chat:planReview.emptyState": "Select text in the plan to add a note.",
 				"chat:planReview.addNote": "Add note",
 				"chat:planReview.notePlaceholder": "Write your note…",
@@ -131,12 +130,13 @@ describe("PlanReviewApp", () => {
 		expect(screen.getByText("plans/plan.md")).toBeInTheDocument()
 	})
 
-	it("updates markdown on planReviewUpdate without resetting annotations", async () => {
+	it("swaps markdown on planReviewUpdate (surface stays mounted)", async () => {
 		render(<PlanReviewApp />)
 		dispatchMessage({
 			type: "planReviewInit",
 			planReview: {
 				markdown: "# Original Plan",
+				filePath: "plans/plan.md",
 				language: "en",
 			},
 		})
@@ -144,11 +144,6 @@ describe("PlanReviewApp", () => {
 			expect(screen.getByTestId("markdown-block")).toHaveTextContent("Original Plan")
 		})
 
-		// Add an overall comment (annotations state is inside Surface).
-		const textarea = screen.getByPlaceholderText("Overall comments (optional)")
-		fireEvent.change(textarea, { target: { value: "My overall note" } })
-
-		// Send update — markdown changes but the overall comment should persist.
 		dispatchMessage({
 			type: "planReviewUpdate",
 			planReview: {
@@ -158,16 +153,15 @@ describe("PlanReviewApp", () => {
 		await waitFor(() => {
 			expect(screen.getByTestId("markdown-block")).toHaveTextContent("Updated Plan")
 		})
-		// The overall comment textarea should still have the value.
-		expect(textarea).toHaveValue("My overall note")
 	})
 
-	it("submit posts planReviewSubmit with compiled text", async () => {
+	it("handles planReviewDraftsConsumed without crashing (drafts reset propagated)", async () => {
 		render(<PlanReviewApp />)
 		dispatchMessage({
 			type: "planReviewInit",
 			planReview: {
-				markdown: "# Plan\n\nContent here.",
+				markdown: "# Plan",
+				filePath: "plans/plan.md",
 				language: "en",
 			},
 		})
@@ -175,18 +169,10 @@ describe("PlanReviewApp", () => {
 			expect(screen.getByTestId("markdown-block")).toBeInTheDocument()
 		})
 
-		// Type an overall comment and send.
-		const textarea = screen.getByPlaceholderText("Overall comments (optional)")
-		fireEvent.change(textarea, { target: { value: "Good plan" } })
-		const sendButton = screen.getByText("Send notes")
-		fireEvent.click(sendButton)
-
-		expect(mockPostMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "planReviewSubmit",
-				text: expect.stringContaining("Overall: Good plan"),
-			}),
-		)
+		dispatchMessage({ type: "planReviewDraftsConsumed" })
+		// Still rendered, send disabled (no drafts).
+		expect(screen.getByTestId("markdown-block")).toBeInTheDocument()
+		expect(screen.getByText("Send notes").closest("button")).toBeDisabled()
 	})
 
 	it("close button posts planReviewClose", async () => {
