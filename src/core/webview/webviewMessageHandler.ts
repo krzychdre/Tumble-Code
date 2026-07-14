@@ -887,7 +887,17 @@ export const webviewMessageHandler = async (
 			})
 			break
 		case "condenseTaskContextRequest":
-			provider.condenseTaskContext(message.text!)
+			// Fire-and-forget: condenseTaskContext now has its own try/finally
+			// that always sends condenseTaskContextResponse, so the spinner is
+			// dismissed even on throw. This .catch prevents an unhandled
+			// rejection (e.g. task-not-found) from surfacing as a stray error.
+			provider.condenseTaskContext(message.text!).catch((error) => {
+				provider.log(
+					`[condenseTaskContext] Failed for task ${message.text}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				)
+			})
 			break
 		case "deleteTaskWithId":
 			provider.deleteTaskWithId(message.text!)

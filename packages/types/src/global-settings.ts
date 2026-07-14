@@ -251,6 +251,13 @@ export const globalSettingsSchema = z.object({
 	 * When unset or stale, memory writers fall back to the foreground profile.
 	 */
 	memoryWriterApiConfigId: z.string().optional(),
+	/**
+	 * API profile id to use for automatic context compaction (condense) LLM calls.
+	 * When unset or stale, compaction uses the foreground task model. A runtime
+	 * failure of the chosen profile falls back to the foreground model via the
+	 * BackgroundModelHandler wrapper.
+	 */
+	autoCondenseContextApiConfigId: z.string().optional(),
 
 	soundEnabled: z.boolean().optional(),
 	soundVolume: z.number().optional(),

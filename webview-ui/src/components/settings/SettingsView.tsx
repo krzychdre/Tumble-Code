@@ -169,6 +169,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		alwaysAllowWriteProtected,
 		autoCondenseContext,
 		autoCondenseContextPercent,
+		autoCondenseContextApiConfigId,
 		enableCheckpoints,
 		checkpointTimeout,
 		autoMemoryEnabled,
@@ -406,6 +407,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					autoDreamMinHours: autoDreamMinHours ?? 24,
 					autoDreamMinSessions: autoDreamMinSessions ?? 5,
 					memoryWriterApiConfigId: memoryWriterApiConfigId || undefined,
+					autoCondenseContextApiConfigId: autoCondenseContextApiConfigId || undefined,
 					writeDelayMs,
 					terminalShellIntegrationTimeout: terminalShellIntegrationTimeout ?? 30_000,
 					terminalShellIntegrationDisabled,
@@ -867,6 +869,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							<ContextManagementSettings
 								autoCondenseContext={autoCondenseContext}
 								autoCondenseContextPercent={autoCondenseContextPercent}
+								autoCondenseContextApiConfigId={autoCondenseContextApiConfigId}
 								listApiConfigMeta={listApiConfigMeta ?? []}
 								maxOpenTabsContext={maxOpenTabsContext}
 								maxWorkspaceFiles={maxWorkspaceFiles ?? 200}

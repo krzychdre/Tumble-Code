@@ -322,11 +322,16 @@ export class TaskApiLoop {
 					console.log(
 						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
 					)
-					// Set a non-"user_cancelled" abortReason so abortTask's
-					// isUserCancelled guard does not falsely apply. The primary
-					// guard is the isBackground check in abortTask, but this
-					// makes the intent explicit and belt-and-suspenders safe.
-					this.access.abortReason = "streaming_failed"
+					// Use a distinct abortReason so callers (notably the memory
+					// runner's retry decision in ClineProvider.awaitTaskCompletion)
+					// can distinguish "turn budget exhausted" (a weak model that
+					// didn't finish — do NOT retry on expensive foreground, it'll
+					// just exhaust the same budget) from "streaming_failed" (a
+					// genuine provider outage — DO retry on foreground). The
+					// primary guard is the isBackground check in abortTask, but a
+					// distinct reason makes the intent explicit and
+					// belt-and-suspenders safe against the isUserCancelled guard.
+					this.access.abortReason = "max_turns_reached"
 					await this.access.abortTask()
 					return true
 				}

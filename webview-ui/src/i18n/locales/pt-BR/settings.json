@@ -603,6 +603,11 @@
 			"description": "Selecione qual configuração de API usar para operações de condensação de contexto. Deixe desmarcado para usar a configuração ativa atual.",
 			"useCurrentConfig": "Padrão"
 		},
+		"condenseProfile": {
+			"label": "Perfil de API para compactação",
+			"description": "Direciona as chamadas LLM de compactação de contexto (condensação) para um perfil de API mais barato ou diferente em vez do modelo principal. Se o perfil escolhido estiver offline ou retornar um erro, a compactação volta automaticamente para o modelo atual. Um perfil desatualizado ou excluído também volta para o modelo atual.",
+			"useCurrent": "Usar perfil atual"
+		},
 		"customCondensingPrompt": {
 			"label": "Prompt Personalizado de Condensação de Contexto",
 			"description": "Prompt de sistema personalizado para condensação de contexto. Deixe em branco para usar o prompt padrão.",

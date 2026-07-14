@@ -1933,10 +1933,21 @@ export class ClineProvider
 			}
 		}
 		if (!task) {
+			// Task gone: still dismiss the spinner so the UI doesn't hang.
+			await this.postMessageToWebview({ type: "condenseTaskContextResponse", text: taskId })
 			throw new Error(`Task with id ${taskId} not found in stack`)
 		}
-		await task.condenseContext()
-		await this.postMessageToWebview({ type: "condenseTaskContextResponse", text: taskId })
+		// Claim 1: wrap condenseContext in try/finally so the
+		// condenseTaskContextResponse (which dismisses the ChatView spinner and
+		// re-enables input) is ALWAYS sent, even when condenseContext throws.
+		// Without this, an unwrapped throw leaves the spinner hanging forever
+		// and the input blocked — the manual condense path has no other
+		// finally (unlike manageContextIfNeeded, which has its own).
+		try {
+			await task.condenseContext()
+		} finally {
+			await this.postMessageToWebview({ type: "condenseTaskContextResponse", text: taskId })
+		}
 	}
 
 	// this function deletes a task from task history, and deletes its checkpoints and delete the task folder
@@ -2212,6 +2223,8 @@ export class ClineProvider
 			allowedMaxCost,
 			autoCondenseContext,
 			autoCondenseContextPercent,
+			autoCondenseContextApiConfigId,
+			memoryWriterApiConfigId,
 			soundEnabled,
 			enableCheckpoints,
 			checkpointTimeout,
@@ -2345,6 +2358,8 @@ export class ClineProvider
 			allowedMaxCost,
 			autoCondenseContext: autoCondenseContext ?? true,
 			autoCondenseContextPercent: autoCondenseContextPercent ?? 100,
+			autoCondenseContextApiConfigId,
+			memoryWriterApiConfigId,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
@@ -2592,6 +2607,8 @@ export class ClineProvider
 			allowedMaxCost: stateValues.allowedMaxCost,
 			autoCondenseContext: stateValues.autoCondenseContext ?? true,
 			autoCondenseContextPercent: stateValues.autoCondenseContextPercent ?? 100,
+			autoCondenseContextApiConfigId: stateValues.autoCondenseContextApiConfigId,
+			memoryWriterApiConfigId: stateValues.memoryWriterApiConfigId,
 			taskHistory: this.taskHistoryStore.getAll(),
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
@@ -3279,14 +3296,29 @@ export class ClineProvider
 	/**
 	 * Await a background task's terminal state. Resolves `{ completed: true,
 	 * lastMessage }` on `TaskCompleted` (attempt_completion) or `{ completed:
-	 * false }` on `TaskAborted`. Removes the registry entry, disposes a
-	 * completed task, and then deletes its on-disk directory (aborted tasks
-	 * keep theirs for post-mortem). An optional `signal` aborts the task early.
+	 * false, abortReason }` on `TaskAborted`. Removes the registry entry,
+	 * disposes a completed task, and then deletes its on-disk directory
+	 * (aborted tasks keep theirs for post-mortem). An optional `signal` aborts
+	 * the task early.
+	 *
+	 * Claim 3: `abortReason` is propagated so callers can distinguish a genuine
+	 * provider failure (`"streaming_failed"` — worth retrying on a different
+	 * handler) from turn-budget exhaustion (`"max_turns_reached"` — a weak
+	 * model that didn't finish; retrying on an expensive foreground model will
+	 * just exhaust the same budget and double cost) from user cancellation
+	 * (`"user_cancelled"` — never retry). Without this distinction the memory
+	 * runner retried on foreground for EVERY non-completion, doubling cost
+	 * exactly where the feature aimed to save it.
 	 */
 	public awaitTaskCompletion(
 		task: Task,
 		options: { signal?: AbortSignal } = {},
-	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }> {
+	): Promise<{
+		completed: boolean
+		lastMessage?: string
+		writtenPaths: string[]
+		abortReason?: string
+	}> {
 		return new Promise((resolve) => {
 			let settled = false
 
@@ -3294,7 +3326,7 @@ export class ClineProvider
 				void task.abortTask().catch(() => {})
 			}
 
-			const finish = (result: { completed: boolean; lastMessage?: string }) => {
+			const finish = (result: { completed: boolean; lastMessage?: string; abortReason?: string }) => {
 				if (settled) return
 				settled = true
 				task.off(RooCodeEventName.TaskCompleted, onCompleted)
@@ -3335,7 +3367,10 @@ export class ClineProvider
 					.find((m) => m.type === "say" && m.say === "completion_result")
 				finish({ completed: true, lastMessage: last?.text })
 			}
-			const onAborted = () => finish({ completed: false })
+			// Capture the abortReason at abort time so the caller can classify
+			// the failure (Claim 3). task.abortReason is set by TaskApiLoop
+			// before abortTask() fires TaskAborted.
+			const onAborted = () => finish({ completed: false, abortReason: task.abortReason })
 
 			task.on(RooCodeEventName.TaskCompleted, onCompleted)
 			task.on(RooCodeEventName.TaskAborted, onAborted)
@@ -3391,23 +3426,83 @@ export class ClineProvider
 			// memory behavioral section), so fold the extraction/dream system prompt
 			// into the task's initial message alongside the user prompt.
 			const text = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt
-			const apiConfiguration = await this.resolveMemoryWriterApiConfiguration()
+			const backgroundConfig = await this.resolveMemoryWriterApiConfiguration()
 			this.setMemoryActivity("write", true)
 			try {
-				const task = await this.createBackgroundTask(text, {
-					taskMode: "code",
-					workspacePath: cwd,
-					maxAgentTurns: maxTurns,
-					autoApprovalOverride: memoryWriteSandbox(cwd),
-					silentWrites: true,
-					apiConfiguration,
-				})
-				const { writtenPaths } = await this.awaitTaskCompletion(task, { signal })
-				return { writtenPaths: filterMemoryWrittenPaths(writtenPaths, cwd) }
+				const outcome = await this.runMemorySubTask(text, cwd, maxTurns, signal, backgroundConfig)
+				if (outcome.completed) {
+					return { writtenPaths: filterMemoryWrittenPaths(outcome.writtenPaths, cwd) }
+				}
+				// Claim 3: classify the abort reason before retrying. The old
+				// code retried on foreground for EVERY non-completion (when a
+				// background profile was set and the user hadn't cancelled) —
+				// but a weak background model that exhausts its turn budget
+				// (max_turns_reached, typical for memory extraction) looks
+				// identical to "provider offline" at the boolean boundary, so
+				// it triggered a full re-run on the expensive foreground model
+				// every time, doubling cost exactly where savings were the goal.
+				//
+				// Retry on foreground ONLY for a genuine provider failure
+				// (streaming_failed) — the background model may be offline. Do
+				// NOT retry on:
+				//  - max_turns_reached: the weak model didn't finish in budget;
+				//    the foreground model will likely also need more turns and
+				//    the retry doubles cost. Accept the partial result.
+				//  - user_cancelled (signal.aborted): never retry a cancel.
+				//  - undefined/other abort reasons: unknown, don't risk a loop.
+				const shouldRetry = backgroundConfig && !signal?.aborted && outcome.abortReason === "streaming_failed"
+				if (shouldRetry) {
+					this.log(
+						"[memorySubTaskRunner] background profile failed (streaming_failed), retrying on foreground",
+					)
+					const retry = await this.runMemorySubTask(text, cwd, maxTurns, signal, undefined)
+					// Claim 6: return the UNION of attempt #1 and attempt #2
+					// writtenPaths (filtered). The old code returned only
+					// attempt #2's paths, discarding attempt #1's on-disk
+					// writes — so onSaved/onImproved toasts never fired for
+					// files the first attempt wrote. The extraction cursor
+					// advances independently, so this is "only" a reporting
+					// regression, but a conscious one the diff didn't
+					// compensate for. Dedupe by path in case both attempts
+					// wrote the same file.
+					const unionPaths = [...new Set([...outcome.writtenPaths, ...retry.writtenPaths])]
+					return { writtenPaths: filterMemoryWrittenPaths(unionPaths, cwd) }
+				}
+				// Non-retryable abort: still report attempt #1's written paths
+				// (Claim 6) so toasts fire for files the attempt did write
+				// before aborting. The old code returned [] here, dropping them.
+				return { writtenPaths: filterMemoryWrittenPaths(outcome.writtenPaths, cwd) }
 			} finally {
 				this.setMemoryActivity("write", false)
 			}
 		}
+	}
+
+	/**
+	 * Helper extracted from {@linkcode memorySubTaskRunner} for retry support.
+	 * Spawns a single headless memory-writer sub-task with the given
+	 * `apiConfiguration` (undefined ⇒ foreground profile) and awaits its
+	 * completion. Returns the raw `{ completed, writtenPaths, abortReason }`
+	 * outcome so the caller can decide whether to retry on the foreground
+	 * profile (and only for genuine provider failures — see Claim 3).
+	 */
+	private async runMemorySubTask(
+		text: string,
+		cwd: string,
+		maxTurns: number,
+		signal: AbortSignal | undefined,
+		apiConfiguration: ProviderSettings | undefined,
+	): Promise<{ completed: boolean; writtenPaths: string[]; abortReason?: string }> {
+		const task = await this.createBackgroundTask(text, {
+			taskMode: "code",
+			workspacePath: cwd,
+			maxAgentTurns: maxTurns,
+			autoApprovalOverride: memoryWriteSandbox(cwd),
+			silentWrites: true,
+			apiConfiguration,
+		})
+		const { completed, writtenPaths, abortReason } = await this.awaitTaskCompletion(task, { signal })
+		return { completed, writtenPaths, abortReason }
 	}
 
 	/**

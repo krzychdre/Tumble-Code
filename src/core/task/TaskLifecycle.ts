@@ -56,6 +56,11 @@ export interface TaskLifecycleAccess {
 	// API configuration
 	apiConfiguration: ProviderSettings
 	api: { cancelRequest: ((destroyClient: boolean) => void) | undefined }
+	// Severs an in-flight condense request on the background model. The condense
+	// handler is a separate ApiHandler from `api`, so cancelling `api` alone
+	// leaves a background-model condense stream running (post-cancel spend,
+	// delayed abort).
+	cancelCondenseRequest: (destroyClient: boolean) => void
 
 	// Controllers and services
 	rooIgnoreController?: { dispose: () => void }
@@ -525,6 +530,13 @@ export class TaskLifecycle {
 		if (this.access.api.cancelRequest) {
 			this.access.api.cancelRequest(destroyClient)
 		}
+
+		// The condense handler streams from a separate (background) provider;
+		// cancelling `api` does not reach it. Without this, Stop during an
+		// auto-condense served by the background model leaves the stream
+		// running to completion (post-cancel token spend, delayed abort).
+		// Optional call: partial access mocks in tests may not wire it.
+		this.access.cancelCondenseRequest?.(destroyClient)
 	}
 
 	/**

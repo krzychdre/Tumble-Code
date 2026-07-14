@@ -603,6 +603,11 @@
 			"description": "Chọn cấu hình API để sử dụng cho các thao tác tóm tắt ngữ cảnh. Để trống để sử dụng cấu hình đang hoạt động hiện tại.",
 			"useCurrentConfig": "Mặc định"
 		},
+		"condenseProfile": {
+			"label": "Hồ sơ API để nén ngữ cảnh",
+			"description": "Chuyển các lệnh gọi LLM nén ngữ cảnh (condense) sang một hồ sơ API rẻ hơn hoặc khác thay vì mô hình chính. Nếu hồ sơ được chọn ngoại tuyến hoặc trả về lỗi, việc nén sẽ tự động quay lại mô hình hiện tại. Hồ sơ cũ hoặc đã bị xóa cũng sẽ quay lại mô hình hiện tại.",
+			"useCurrent": "Dùng hồ sơ hiện tại"
+		},
 		"customCondensingPrompt": {
 			"label": "Lời nhắc nén ngữ cảnh tùy chỉnh",
 			"description": "Lời nhắc hệ thống tùy chỉnh cho việc nén ngữ cảnh. Để trống để sử dụng lời nhắc mặc định.",

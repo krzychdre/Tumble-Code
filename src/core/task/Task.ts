@@ -58,6 +58,7 @@ import { CloudService } from "@roo-code/cloud"
 
 // api
 import { ApiHandler, ApiHandlerCreateMessageMetadata, buildApiHandler } from "../../api"
+import { BackgroundModelHandler } from "../../api/BackgroundModelHandler"
 import { MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { isAutoMemoryEnabled } from "../memory/paths"
 import { ApiStream, GroundingSource } from "../../api/transform/stream"
@@ -429,6 +430,140 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			onActivity: (active) => this.providerRef.deref()?.setMemoryActivity("recall", active),
 		})
 		return this._memoryCoordinator
+	}
+
+	// Condense (context-compaction) API handler: the background model wrapped
+	// with a fallback to the foreground `this.api`. Lazily resolved on first
+	// access via `getCondenseApiHandler()` (async, because profile loading goes
+	// through `providerSettingsManager.getProfile`). Invalidated on
+	// `updateApiConfiguration` (foreground config changed) and re-keyed by the
+	// `autoCondenseContextApiConfigId` value it was built for, so a mid-task
+	// change of the setting takes effect on the next resolve even for tasks
+	// that never receive `updateApiConfiguration` (paused parents, background
+	// subagents). When no `autoCondenseContextApiConfigId` is configured, or the
+	// id is stale, or `buildApiHandler` throws, the wrapper is a passthrough to
+	// `this.api` — identical to today's behavior.
+	private _condenseApiHandler: BackgroundModelHandler | undefined
+	// The setting value `_condenseApiHandler` was built for; compared against
+	// the live setting on each resolve (cheap sync read from contextProxy).
+	private _condenseApiHandlerConfigId: string | undefined
+	/**
+	 * Sync accessor for the cached condense handler. Returns a passthrough
+	 * wrapper (background === undefined) until {@linkcode getCondenseApiHandler}
+	 * has resolved the configured profile. Private to force external callers
+	 * through the async {@linkcode getCondenseApiHandler} resolver, so a future
+	 * sync caller can never silently bypass the configured background model.
+	 * Internal (same-class) synchronous references are allowed.
+	 */
+	private get condenseApiHandler(): ApiHandler {
+		if (this._condenseApiHandler) return this._condenseApiHandler
+		// Passthrough wrapper — no background configured (yet).
+		if (!this._condensePassthrough) {
+			this._condensePassthrough = new BackgroundModelHandler({ fallback: this.api })
+		}
+		return this._condensePassthrough
+	}
+	private _condensePassthrough: ApiHandler | undefined
+
+	/**
+	 * Resolve and cache the condense handler. Reads
+	 * `autoCondenseContextApiConfigId` from the provider, loads the profile via
+	 * `providerSettingsManager.getProfile`, and builds a background handler with
+	 * `buildApiHandler`. Returns a passthrough wrapper (background === undefined)
+	 * if no id is configured, the id is stale, or construction throws — never
+	 * throws. Subsequent calls return the cached wrapper until
+	 * `updateApiConfiguration` invalidates it or the setting's value changes
+	 * (the cache is keyed by the config id it was built for, so tasks that
+	 * never see `updateApiConfiguration` — paused parents, background
+	 * subagents — still pick up a changed setting on their next condense).
+	 */
+	public async getCondenseApiHandler(): Promise<ApiHandler> {
+		const configId = this.providerRef.deref()?.getValue("autoCondenseContextApiConfigId")
+		if (this._condenseApiHandler && this._condenseApiHandlerConfigId === configId) {
+			return this._condenseApiHandler
+		}
+		const background = await this.resolveBackgroundCondenseHandler(configId)
+		this._condenseApiHandler = new BackgroundModelHandler({
+			background,
+			fallback: this.api,
+			onFallback: ({ error }) => {
+				const message = error instanceof Error ? error.message : String(error)
+				this.providerRef.deref()?.log(`[condense] background model failed, falling back to main: ${message}`)
+			},
+		})
+		this._condenseApiHandlerConfigId = configId
+		this._condensePassthrough = undefined
+		return this._condenseApiHandler
+	}
+
+	/**
+	 * Sever an in-flight condense request. Called from
+	 * `TaskLifecycle.cancelCurrentRequest` (Stop button / abort): the condense
+	 * handler's background model is a separate ApiHandler from `this.api`, so
+	 * cancelling `this.api` alone leaves a background condense stream running.
+	 * Only the background handler needs severing here — the wrapper's fallback
+	 * IS `this.api`, which the caller cancels itself.
+	 */
+	public cancelCondenseRequest(destroyClient = false): void {
+		this._condenseApiHandler?.background?.cancelRequest?.(destroyClient)
+	}
+
+	/**
+	 * Resolve the configured condense background profile into an `ApiHandler`.
+	 * Returns `undefined` when no profile is configured, the id is stale, or
+	 * `buildApiHandler` throws — never throws. Mirrors
+	 * `ClineProvider.resolveMemoryWriterApiConfiguration` but returns a handler
+	 * (condense is a direct LLM call, not a sub-task).
+	 *
+	 * Claim 2B defense-in-depth: after building the handler, warn (not block)
+	 * when the background model's context window is much smaller than the
+	 * foreground's. With the wrapper now reporting the background model for
+	 * payload sizing (Claim 2A), a small background window sizes the payload
+	 * down correctly — but condense only fires near the foreground window, so
+	 * a tiny background model (e.g. 8k) will routinely reject the payload and
+	 * fall back to foreground anyway, defeating the cost optimization. The
+	 * 400-as-trigger fallback (Claim 2B/5) ensures correctness; this warning
+	 * helps the user pick a sensibly-sized background model. Never throws — a
+	 * capability read failure just skips the warning.
+	 */
+	private async resolveBackgroundCondenseHandler(id: string | undefined): Promise<ApiHandler | undefined> {
+		const provider = this.providerRef.deref()
+		if (!id || !provider) return undefined
+		try {
+			const { name: _name, ...profile } = await provider.providerSettingsManager.getProfile({ id })
+			const handler = buildApiHandler(profile as ProviderSettings)
+			// Defense-in-depth capability check (never throws). A background
+			// window < 25% of the foreground window will routinely trigger 400
+			// context_length_exceeded and fall back — the user should pick a
+			// larger background model to actually realize the savings.
+			try {
+				const bgWindow = handler.getModel().info.contextWindow
+				const fgWindow = this.api.getModel().info.contextWindow
+				if (typeof bgWindow === "number" && typeof fgWindow === "number" && bgWindow > 0 && fgWindow > 0) {
+					if (bgWindow < fgWindow * 0.25) {
+						provider?.log(
+							`[condense] background profile "${_name ?? id}" has a context window of ${bgWindow} ` +
+								`tokens vs the foreground model's ${fgWindow}. Condense fires near the ` +
+								`foreground window, so this background model will routinely reject the ` +
+								`payload (400) and fall back to the foreground — defeating the cost ` +
+								`savings. Consider a background model with a larger context window.`,
+						)
+					}
+				}
+			} catch {
+				// Capability read failed (e.g. handler doesn't expose getModel
+				// cleanly) — skip the warning, the 400-as-trigger fallback
+				// still ensures correctness.
+			}
+			return handler
+		} catch (error) {
+			provider?.log(
+				`[condense] failed to load background profile ${id}, falling back to foreground: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+			return undefined
+		}
 	}
 	// Memory dedup cache (Roo has no readFileState primitive; the coordinator
 	// owns one purely for surfacing dedup against prior turns).
@@ -1088,6 +1223,14 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// side-queries keep running on the old (possibly dead-credentials)
 		// handler after a mid-task profile switch (MEM-1).
 		this._memoryCoordinator = undefined
+		// Invalidate the cached condense (context-compaction) handler so the
+		// next access rebuilds the BackgroundModelHandler against the new
+		// `this.api` (fallback) and re-resolves the background profile. Without
+		// this, a mid-task profile switch would keep condensing on the old
+		// handler.
+		this._condenseApiHandler = undefined
+		this._condenseApiHandlerConfigId = undefined
+		this._condensePassthrough = undefined
 	}
 
 	public async submitUserMessage(

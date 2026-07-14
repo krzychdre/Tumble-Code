@@ -603,6 +603,11 @@
 			"description": "Seleccioneu quina configuració d'API utilitzar per a les operacions de condensació de context. Deixeu-ho sense seleccionar per utilitzar la configuració activa actual.",
 			"useCurrentConfig": "Per defecte"
 		},
+		"condenseProfile": {
+			"label": "Perfil d'API per a la compactació",
+			"description": "Dirigeix les crides LLM de compactació de context (condensació) a un perfil d'API més econòmic o diferent en lloc del model principal. Si el perfil escollit està fora de línia o retorna un error, la compactació torna automàticament al model actual. Un perfil obsolet o eliminat també torna al model actual.",
+			"useCurrent": "Usa el perfil actual"
+		},
 		"customCondensingPrompt": {
 			"label": "Indicació personalitzada de condensació de context",
 			"description": "Personalitzeu la indicació del sistema utilitzada per a la condensació de context. Deixeu-ho buit per utilitzar la indicació per defecte.",

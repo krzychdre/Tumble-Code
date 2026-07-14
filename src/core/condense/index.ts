@@ -271,6 +271,60 @@ export type SummarizeConversationOptions = {
  *   because fresh environment details will be injected on the very next turn via
  *   getEnvironmentDetails() in recursivelyMakeClineRequests().
  */
+
+/**
+ * Stream a condense summary from `handler`, accumulating text/usage chunks.
+ *
+ * With the deep-rewrite `BackgroundModelHandler`, mid-stream fallback is
+ * handled INSIDE the wrapper (it buffers the background stream and replays on
+ * the fallback on a trigger error, discarding partial output). This function
+ * therefore only sees the final, seamless stream and does not need its own
+ * fallback retry — any error that reaches here is either a non-trigger (abort
+ * / programmer error) or a foreground failure on a passthrough, both of which
+ * must surface via the error-shaping path.
+ *
+ * Returns the trimmed summary plus accumulated cost/outputTokens. Throws on
+ * stream errors, but attaches the partial cost accumulated so far as
+ * `error.partialCost` so the caller can still account for spend from a failed
+ * attempt (Claim 7: failed-condense cost must not be silently lost).
+ */
+async function streamSummary(
+	handler: ApiHandler,
+	promptToUse: string,
+	requestMessages: Anthropic.Messages.MessageParam[],
+	metadata: ApiHandlerCreateMessageMetadata | undefined,
+): Promise<{ summary: string; cost: number; outputTokens: number }> {
+	let summary = ""
+	let cost = 0
+	let outputTokens = 0
+	const stream = handler.createMessage(promptToUse, requestMessages, metadata)
+	try {
+		for await (const chunk of stream) {
+			if (chunk.type === "text") {
+				summary += chunk.text
+			} else if (chunk.type === "usage") {
+				// Accumulate usage: providers emit usage once at stream end
+				// (OpenAI-family) or at message_delta boundaries (Anthropic).
+				// Overwriting keeps the LAST usage chunk's totals, which for
+				// end-of-stream providers is the full cost and for Anthropic
+				// is the running cumulative total (Anthropic's message_delta
+				// usage is cumulative). Either way the final value is correct.
+				cost = chunk.totalCost ?? 0
+				outputTokens = chunk.outputTokens ?? 0
+			}
+		}
+	} catch (error) {
+		// Attach the partial cost so the caller can account for spend from the
+		// failed attempt. Anthropic emits usage mid-stream, so a failure after
+		// a message_delta may have captured real spend that must not be lost.
+		if (error instanceof Error && cost > 0) {
+			;(error as Error & { partialCost?: number }).partialCost = cost
+		}
+		throw error
+	}
+	return { summary: summary.trim(), cost, outputTokens }
+}
+
 export async function summarizeConversation(options: SummarizeConversationOptions): Promise<SummarizeResponse> {
 	const {
 		messages,
@@ -349,19 +403,26 @@ export async function summarizeConversation(options: SummarizeConversationOption
 	let cost = 0
 	let outputTokens = 0
 
+	// Background-model fallback is handled INSIDE the BackgroundModelHandler
+	// wrapper (it buffers the background stream and, on a trigger error
+	// mid-flight, discards the partial output and replays the producer against
+	// the fallback). Any error that reaches this catch is therefore either a
+	// non-trigger (abort / programmer error) or a genuine foreground failure
+	// on a passthrough — both must surface via the error-shaping path so
+	// cancellations still cancel condense. There is no bespoke retry here; the
+	// wrapper is the single source of fallback policy and every consumer
+	// (condense, memory, future features) gets it for free.
 	try {
-		const stream = apiHandler.createMessage(promptToUse, requestMessages, metadata)
-
-		for await (const chunk of stream) {
-			if (chunk.type === "text") {
-				summary += chunk.text
-			} else if (chunk.type === "usage") {
-				// Record final usage chunk only
-				cost = chunk.totalCost ?? 0
-				outputTokens = chunk.outputTokens ?? 0
-			}
-		}
+		const result = await streamSummary(apiHandler, promptToUse, requestMessages, metadata)
+		summary = result.summary
+		cost = result.cost
+		outputTokens = result.outputTokens
 	} catch (error) {
+		// Capture partial cost from the failed attempt (Claim 7: failed-condense
+		// spend must not be silently lost — Anthropic emits usage mid-stream).
+		const partialCost = (error as Error & { partialCost?: number })?.partialCost
+		if (typeof partialCost === "number" && partialCost > 0) cost = partialCost
+
 		console.error("Error during condensing API call:", error)
 		const errorMessage = error instanceof Error ? error.message : String(error)
 
