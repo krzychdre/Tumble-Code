@@ -284,6 +284,7 @@ export type ExtensionState = Pick<
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
+	| "alwaysApprovePlan"
 	| "alwaysAllowFollowupQuestions"
 	| "alwaysAllowExecute"
 	| "followupAutoApproveTimeoutMs"

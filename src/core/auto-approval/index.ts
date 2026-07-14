@@ -12,6 +12,7 @@ import { ClineAskResponse } from "../../shared/WebviewMessage"
 import { isWriteToolAction, isReadOnlyToolAction } from "./tools"
 import { isMcpToolAlwaysAllowed } from "./mcp"
 import { getCommandDecision } from "./commands"
+import { getModeBySlug } from "../../shared/modes"
 
 // We have auto-approval actions for different categories.
 export type AutoApprovalState =
@@ -20,8 +21,12 @@ export type AutoApprovalState =
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
+	| "alwaysApprovePlan"
 	| "alwaysAllowExecute"
 	| "alwaysAllowFollowupQuestions"
+
+// Additional state keys needed for plan-approval gate lookups.
+export type AutoApprovalPlanState = "mode" | "customModes"
 
 // Some of these actions have additional settings associated with them.
 export type AutoApprovalStateOptions =
@@ -51,7 +56,7 @@ export async function checkAutoApproval({
 	text,
 	isProtected,
 }: {
-	state?: Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions>
+	state?: Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions | AutoApprovalPlanState>
 	ask: ClineAsk
 	text?: string
 	isProtected?: boolean
@@ -73,6 +78,22 @@ export async function checkAutoApproval({
 
 	if (mode === "bypass" || mode === "autonomous") {
 		if (ask === "command" || ask === "tool" || ask === "use_mcp_server") {
+			// The plan-approval gate survives bypass (semi-auto): only autonomous
+			// mode or the Plan auto-approve toggle may skip plan review.
+			if (mode === "bypass" && ask === "tool" && state.alwaysApprovePlan !== true) {
+				let tool: ClineSayTool | undefined
+
+				try {
+					tool = JSON.parse(text || "{}")
+				} catch {
+					tool = undefined
+				}
+
+				if ((tool?.tool === "switchMode" || tool?.tool === "newTask") && isPlanApprovalRequired(state)) {
+					return { decision: "ask" }
+				}
+			}
+
 			return { decision: "approve" }
 		}
 
@@ -196,10 +217,27 @@ export async function checkAutoApproval({
 		}
 
 		if (tool?.tool === "switchMode") {
+			// Plan-approval gate: when the current mode requires plan review and
+			// the user hasn't enabled the Plan auto-approve toggle, force an ask
+			// even if alwaysAllowModeSwitch is on.
+			if (isPlanApprovalRequired(state) && state.alwaysApprovePlan !== true) {
+				return { decision: "ask" }
+			}
 			return state.alwaysAllowModeSwitch === true ? { decision: "approve" } : { decision: "ask" }
 		}
 
-		if (["newTask", "finishTask"].includes(tool?.tool)) {
+		if (tool?.tool === "newTask") {
+			// Plan-approval gate: same as switchMode — a subtask is an
+			// implementation escape hatch from a planning mode.
+			if (isPlanApprovalRequired(state) && state.alwaysApprovePlan !== true) {
+				return { decision: "ask" }
+			}
+			return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
+		}
+
+		// finishTask is NOT gated: it returns control to the parent task rather
+		// than starting new work, so plan review is not relevant.
+		if (tool?.tool === "finishTask") {
 			return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
 		}
 
@@ -222,6 +260,16 @@ export async function checkAutoApproval({
 	}
 
 	return { decision: "ask" }
+}
+
+/**
+ * Resolve the current mode and check whether it requires plan approval.
+ * Returns false when the mode can't be resolved (unknown mode slug) so the
+ * gate fails open rather than blocking an unrecognized mode.
+ */
+function isPlanApprovalRequired(state: Pick<ExtensionState, AutoApprovalPlanState>): boolean {
+	const modeConfig = getModeBySlug(state.mode ?? "", state.customModes)
+	return modeConfig?.planApprovalRequired === true
 }
 
 export { AutoApprovalHandler } from "./AutoApprovalHandler"

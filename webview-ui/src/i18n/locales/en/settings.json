@@ -317,6 +317,10 @@
 			"label": "Subtasks",
 			"description": "Allow creation and completion of subtasks without requiring approval"
 		},
+		"plan": {
+			"label": "Plan",
+			"description": "Automatically approve switching modes or creating subtasks from a planning mode (Architect) without reviewing the plan first"
+		},
 		"followupQuestions": {
 			"label": "Question",
 			"description": "Automatically select the first suggested answer for follow-up questions after the configured timeout",

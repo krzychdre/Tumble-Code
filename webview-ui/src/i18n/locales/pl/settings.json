@@ -255,6 +255,10 @@
 			"label": "Podzadania",
 			"description": "Zezwalaj na tworzenie i ukończenie podzadań bez konieczności zatwierdzania"
 		},
+		"plan": {
+			"label": "Plan",
+			"description": "Automatycznie zatwierdzaj przełączanie trybów lub tworzenie podzadań z trybu planowania (Architekt) bez wcześniejszego przeglądu planu"
+		},
 		"followupQuestions": {
 			"label": "Pytanie",
 			"description": "Automatycznie wybierz pierwszą sugerowaną odpowiedź na pytania uzupełniające po skonfigurowanym limicie czasu",

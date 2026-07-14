@@ -11,6 +11,7 @@ describe("useAutoApprovalState", () => {
 				alwaysAllowMcp: false,
 				alwaysAllowModeSwitch: false,
 				alwaysAllowSubtasks: false,
+				alwaysApprovePlan: false,
 				alwaysAllowFollowupQuestions: false,
 			}
 
@@ -27,6 +28,7 @@ describe("useAutoApprovalState", () => {
 				alwaysAllowMcp: undefined,
 				alwaysAllowModeSwitch: undefined,
 				alwaysAllowSubtasks: undefined,
+				alwaysApprovePlan: undefined,
 				alwaysAllowFollowupQuestions: undefined,
 			}
 
@@ -75,6 +77,7 @@ describe("useAutoApprovalState", () => {
 				alwaysAllowMcp: true,
 				alwaysAllowModeSwitch: true,
 				alwaysAllowSubtasks: true,
+				alwaysApprovePlan: true,
 				alwaysAllowFollowupQuestions: true,
 			}
 
@@ -117,6 +120,7 @@ describe("useAutoApprovalState", () => {
 				alwaysAllowMcp: false,
 				alwaysAllowModeSwitch: false,
 				alwaysAllowSubtasks: false,
+				alwaysApprovePlan: false,
 				alwaysAllowFollowupQuestions: false,
 			}
 

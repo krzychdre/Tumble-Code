@@ -254,6 +254,10 @@
 			"label": "Subtasques",
 			"description": "Permetre la creació i finalització de subtasques sense requerir aprovació"
 		},
+		"plan": {
+			"label": "Pla",
+			"description": "Aprova automàticament el canvi de mode o la creació de subtasques des d'un mode de planificació (Arquitecte) sense revisar primer el pla"
+		},
 		"followupQuestions": {
 			"label": "Pregunta",
 			"description": "Seleccionar automàticament la primera resposta suggerida per a preguntes de seguiment després del temps d'espera configurat",

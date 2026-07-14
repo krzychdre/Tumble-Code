@@ -254,6 +254,10 @@
 			"label": "Sottoattività",
 			"description": "Consenti la creazione e il completamento di attività secondarie senza richiedere approvazione"
 		},
+		"plan": {
+			"label": "Piano",
+			"description": "Approva automaticamente il cambio di modalità o la creazione di sottoattività da una modalità di pianificazione (Architetto) senza prima rivedere il piano"
+		},
 		"followupQuestions": {
 			"label": "Domanda",
 			"description": "Seleziona automaticamente la prima risposta suggerita per le domande di follow-up dopo il timeout configurato",

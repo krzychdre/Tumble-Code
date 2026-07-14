@@ -441,6 +441,7 @@ export const autoApprovalSettingsSchema = z.object({
 	alwaysAllowMcp: z.boolean().optional(),
 	alwaysAllowModeSwitch: z.boolean().optional(),
 	alwaysAllowSubtasks: z.boolean().optional(),
+	alwaysApprovePlan: z.boolean().optional(),
 })
 
 export type AutoApprovalSettings = z.infer<typeof autoApprovalSettingsSchema>

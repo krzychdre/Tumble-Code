@@ -254,6 +254,10 @@
 			"label": "Subtugas",
 			"description": "Izinkan pembuatan dan penyelesaian subtugas tanpa memerlukan persetujuan"
 		},
+		"plan": {
+			"label": "Rencana",
+			"description": "Setujui secara otomatis perpindahan mode atau pembuatan subtugas dari mode perencanaan (Arsitek) tanpa meninjau rencana terlebih dahulu"
+		},
 		"followupQuestions": {
 			"label": "Pertanyaan",
 			"description": "Secara otomatis memilih jawaban pertama yang disarankan untuk pertanyaan lanjutan setelah batas waktu yang dikonfigurasi",

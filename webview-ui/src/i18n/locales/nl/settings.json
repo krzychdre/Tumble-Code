@@ -254,6 +254,10 @@
 			"label": "Subtaken",
 			"description": "Subtaken aanmaken en afronden zonder goedkeuring"
 		},
+		"plan": {
+			"label": "Plan",
+			"description": "Keur het wisselen van modus of het aanmaken van subtaken vanuit een planningsmodus (Architect) automatisch goed zonder het plan eerst te beoordelen"
+		},
 		"followupQuestions": {
 			"label": "Vraag",
 			"description": "Selecteer automatisch het eerste voorgestelde antwoord voor vervolgvragen na de geconfigureerde time-out",

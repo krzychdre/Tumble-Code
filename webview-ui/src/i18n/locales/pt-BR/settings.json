@@ -254,6 +254,10 @@
 			"label": "Subtarefas",
 			"description": "Permitir a criação e conclusão de subtarefas sem exigir aprovação"
 		},
+		"plan": {
+			"label": "Plano",
+			"description": "Aprovar automaticamente a troca de modo ou a criação de subtarefas a partir de um modo de planejamento (Arquiteto) sem revisar o plano primeiro"
+		},
 		"followupQuestions": {
 			"label": "Pergunta",
 			"description": "Selecionar automaticamente a primeira resposta sugerida para perguntas de acompanhamento após o tempo limite configurado",

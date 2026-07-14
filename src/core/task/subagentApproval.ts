@@ -27,12 +27,17 @@
 
 import type { ClineAsk, ClineSayTool, ExtensionState } from "@roo-code/types"
 
-import { checkAutoApproval, type AutoApprovalState, type AutoApprovalStateOptions } from "../auto-approval"
+import {
+	checkAutoApproval,
+	type AutoApprovalState,
+	type AutoApprovalStateOptions,
+	type AutoApprovalPlanState,
+} from "../auto-approval"
 import { isReadOnlyToolAction } from "../auto-approval/tools"
 import type { AutoApprovalOverride } from "./Task"
 
 /** State slice consumed by `checkAutoApproval`. */
-export type ApprovalState = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions>
+export type ApprovalState = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions | AutoApprovalPlanState>
 
 /** Options for building a subagent approval policy. */
 export interface SubagentApprovalOptions {

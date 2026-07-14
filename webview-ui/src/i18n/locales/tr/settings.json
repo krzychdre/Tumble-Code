@@ -254,6 +254,10 @@
 			"label": "Alt Görevler",
 			"description": "Onay gerektirmeden alt görevlerin oluşturulmasına ve tamamlanmasına izin ver"
 		},
+		"plan": {
+			"label": "Plan",
+			"description": "Planlama modundan (Mimar) mod değiştirmeyi veya alt görev oluşturmayı planı incelemeden otomatik olarak onayla"
+		},
 		"followupQuestions": {
 			"label": "Soru",
 			"description": "Yapılandırılan zaman aşımından sonra takip sorularına ilişkin ilk önerilen yanıtı otomatik olarak seç",

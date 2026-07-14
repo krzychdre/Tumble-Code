@@ -255,6 +255,10 @@
 			"label": "Sous-tâches",
 			"description": "Permettre la création et l'achèvement des sous-tâches sans nécessiter d'approbation"
 		},
+		"plan": {
+			"label": "Plan",
+			"description": "Approuver automatiquement le changement de mode ou la création de sous-tâches depuis un mode de planification (Architecte) sans relire le plan au préalable"
+		},
 		"followupQuestions": {
 			"label": "Question",
 			"description": "Sélectionner automatiquement la première réponse suggérée pour les questions de suivi après le délai configuré",
