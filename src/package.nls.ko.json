@@ -16,6 +16,7 @@
 	"command.acceptInput.title": "입력/제안 수락",
 	"command.showRipgrepDiagnostic.title": "Ripgrep 진단 표시",
 	"command.toggleAutoApprove.title": "자동 승인 전환",
+	"command.reviewPlanFile.title": "계획 검토 (주석 달기)",
 	"views.activitybar.title": "Tumble Code",
 	"views.contextMenu.label": "Tumble Code",
 	"views.terminalMenu.label": "Tumble Code",

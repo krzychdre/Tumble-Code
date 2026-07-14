@@ -106,6 +106,8 @@ export interface ExtensionMessage {
 		| "folderSelected"
 		| "skills"
 		| "fileContent"
+		| "planReviewInit"
+		| "planReviewUpdate"
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -630,6 +632,10 @@ export interface WebviewMessage {
 		| "openSkillFile"
 		| "selectCustomSound"
 		| "resetCustomSound"
+		| "openPlanReview"
+		| "planReviewReady"
+		| "planReviewSubmit"
+		| "planReviewClose"
 	text?: string
 	taskId?: string
 	editedMessageContent?: string
@@ -739,6 +745,8 @@ export interface WebviewMessage {
 	worktreeForce?: boolean
 	worktreeNewWindow?: boolean
 	worktreeIncludeContent?: string
+	/** Plan review panel init/update payload. */
+	planReview?: { filePath?: string; markdown?: string; language?: string }
 }
 
 export interface RequestOpenAiCodexRateLimitsMessage {

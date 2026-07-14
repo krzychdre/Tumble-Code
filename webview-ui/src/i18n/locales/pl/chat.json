@@ -541,5 +541,20 @@
 		"recalling": "Przywoływanie pamięci…",
 		"writing": "Zapisywanie pamięci…",
 		"both": "Przywoływanie i zapisywanie pamięci…"
+	},
+	"planReview": {
+		"annotateTooltip": "Przejrzyj i dodaj adnotację",
+		"title": "Przegląd planu",
+		"addNote": "Dodaj notatkę",
+		"notePlaceholder": "Napisz swoją notatkę…",
+		"overallPlaceholder": "Ogólne komentarze (opcjonalne)",
+		"send": "Wyślij notatki",
+		"cancel": "Anuluj",
+		"emptyState": "Zaznacz tekst w planie, aby dodać notatkę.",
+		"editNote": "Edytuj notatkę",
+		"deleteNote": "Usuń notatkę",
+		"save": "Zapisz",
+		"reviewFile": "Przegląd planu",
+		"loading": "Ładowanie planu…"
 	}
 }

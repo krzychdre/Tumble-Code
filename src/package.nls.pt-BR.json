@@ -16,6 +16,7 @@
 	"command.acceptInput.title": "Aceitar Entrada/Sugestão",
 	"command.showRipgrepDiagnostic.title": "Mostrar diagnóstico do Ripgrep",
 	"command.toggleAutoApprove.title": "Alternar Auto-Aprovação",
+	"command.reviewPlanFile.title": "Revisar plano (Anotar)",
 	"views.activitybar.title": "Tumble Code",
 	"views.contextMenu.label": "Tumble Code",
 	"views.terminalMenu.label": "Tumble Code",

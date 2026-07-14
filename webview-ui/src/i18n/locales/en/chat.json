@@ -545,5 +545,20 @@
 		"recalling": "Recalling memory…",
 		"writing": "Writing memory…",
 		"both": "Recalling and writing memory…"
+	},
+	"planReview": {
+		"annotateTooltip": "Review & annotate",
+		"title": "Review plan",
+		"addNote": "Add note",
+		"notePlaceholder": "Write your note…",
+		"overallPlaceholder": "Overall comments (optional)",
+		"send": "Send notes",
+		"cancel": "Cancel",
+		"emptyState": "Select text in the plan to add a note.",
+		"editNote": "Edit note",
+		"deleteNote": "Delete note",
+		"save": "Save",
+		"reviewFile": "Review plan",
+		"loading": "Loading plan…"
 	}
 }

@@ -516,5 +516,20 @@
 		"title": "Proveïdor ja no compatible",
 		"message": "Ho sentim, aquest proveïdor ja no és compatible. Hem vist molt pocs usuaris de Tumble que realment l'utilitzaven i necessitem reduir l'abast del nostre codi per poder seguir avançant ràpidament i servir bé la nostra comunitat en aquest espai. Va ser una decisió molt difícil, però ens permet centrar-nos en el que més t'importa. Ho sabem, és una llàstima.",
 		"openSettings": "Obrir configuració"
+	},
+	"planReview": {
+		"annotateTooltip": "Revisar i anotar",
+		"title": "Revisar pla",
+		"addNote": "Afegir nota",
+		"notePlaceholder": "Escriu la teva nota…",
+		"overallPlaceholder": "Comentaris generals (opcional)",
+		"send": "Enviar notes",
+		"cancel": "Cancel·lar",
+		"emptyState": "Selecciona text al pla per afegir una nota.",
+		"editNote": "Editar nota",
+		"deleteNote": "Suprimir nota",
+		"save": "Desar",
+		"reviewFile": "Revisar pla",
+		"loading": "Carregant pla…"
 	}
 }

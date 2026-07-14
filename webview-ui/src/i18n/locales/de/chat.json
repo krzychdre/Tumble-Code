@@ -516,5 +516,20 @@
 		"title": "Anbieter wird nicht mehr unterstützt",
 		"message": "Leider wird dieser Anbieter nicht mehr unterstützt. Wir haben festgestellt, dass nur sehr wenige Tumble-Nutzer ihn tatsächlich verwendet haben, und wir müssen den Umfang unserer Codebasis reduzieren, damit wir weiterhin schnell liefern und unserer Community in diesem Bereich gut dienen können. Es war eine wirklich schwere Entscheidung, aber sie ermöglicht uns, uns auf das zu konzentrieren, was dir am wichtigsten ist. Es ist ärgerlich, das wissen wir.",
 		"openSettings": "Einstellungen öffnen"
+	},
+	"planReview": {
+		"annotateTooltip": "Überprüfen & annotieren",
+		"title": "Plan überprüfen",
+		"addNote": "Notiz hinzufügen",
+		"notePlaceholder": "Schreibe deine Notiz…",
+		"overallPlaceholder": "Allgemeine Kommentare (optional)",
+		"send": "Notizen senden",
+		"cancel": "Abbrechen",
+		"emptyState": "Wähle Text im Plan aus, um eine Notiz hinzuzufügen.",
+		"editNote": "Notiz bearbeiten",
+		"deleteNote": "Notiz löschen",
+		"save": "Speichern",
+		"reviewFile": "Plan überprüfen",
+		"loading": "Plan wird geladen…"
 	}
 }

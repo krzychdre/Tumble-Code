@@ -516,5 +516,20 @@
 		"title": "Provedor não é mais suportado",
 		"message": "Desculpe, este provedor não é mais suportado. Percebemos que muito poucos usuários do Tumble realmente o utilizavam e precisamos reduzir o escopo do nosso código para continuar entregando rápido e servindo bem nossa comunidade. Foi uma decisão muito difícil, mas nos permite focar no que mais importa para você. Sabemos que é chato.",
 		"openSettings": "Abrir configurações"
+	},
+	"planReview": {
+		"annotateTooltip": "Revisar e anotar",
+		"title": "Revisar plano",
+		"addNote": "Adicionar nota",
+		"notePlaceholder": "Escreva sua nota…",
+		"overallPlaceholder": "Comentários gerais (opcional)",
+		"send": "Enviar notas",
+		"cancel": "Cancelar",
+		"emptyState": "Selecione texto no plano para adicionar uma nota.",
+		"editNote": "Editar nota",
+		"deleteNote": "Excluir nota",
+		"save": "Salvar",
+		"reviewFile": "Revisar plano",
+		"loading": "Carregando plano…"
 	}
 }

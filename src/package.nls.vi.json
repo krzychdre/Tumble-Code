@@ -16,6 +16,7 @@
 	"command.acceptInput.title": "Chấp Nhận Đầu Vào/Gợi Ý",
 	"command.showRipgrepDiagnostic.title": "Hiển thị chẩn đoán Ripgrep",
 	"command.toggleAutoApprove.title": "Bật/Tắt Tự Động Phê Duyệt",
+	"command.reviewPlanFile.title": "Xem xét kế hoạch (Chú thích)",
 	"views.activitybar.title": "Tumble Code",
 	"views.contextMenu.label": "Tumble Code",
 	"views.terminalMenu.label": "Tumble Code",
