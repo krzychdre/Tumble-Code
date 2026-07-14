@@ -613,6 +613,11 @@
 			"description": "選擇用於上下文壓縮操作的 API 設定。留空則使用目前啟用的設定。",
 			"useCurrentConfig": "預設"
 		},
+		"condenseProfile": {
+			"label": "壓縮 API 設定檔",
+			"description": "將上下文壓縮(condense)的 LLM 呼叫路由到更便宜或不同的 API 設定檔,而不是前台模型。如果所選設定檔離線或返回錯誤,壓縮會自動回退到目前模型。過期或已刪除的設定檔也會回退到目前模型。",
+			"useCurrent": "使用目前設定檔"
+		},
 		"customCondensingPrompt": {
 			"label": "自訂上下文壓縮提示",
 			"description": "自訂用於上下文壓縮的系統提示。留空則使用預設提示。",

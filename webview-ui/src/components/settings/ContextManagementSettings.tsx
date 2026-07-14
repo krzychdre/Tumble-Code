@@ -25,9 +25,12 @@ import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { vscode } from "@/utils/vscode"
 
+const UNSET_PROFILE = "-"
+
 type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	autoCondenseContext: boolean
 	autoCondenseContextPercent: number
+	autoCondenseContextApiConfigId?: string
 	listApiConfigMeta: any[]
 	maxOpenTabsContext: number
 	maxWorkspaceFiles: number
@@ -47,6 +50,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	setCachedStateField: SetCachedStateField<
 		| "autoCondenseContext"
 		| "autoCondenseContextPercent"
+		| "autoCondenseContextApiConfigId"
 		| "maxOpenTabsContext"
 		| "maxWorkspaceFiles"
 		| "showRooIgnoredFiles"
@@ -66,6 +70,7 @@ type ContextManagementSettingsProps = HTMLAttributes<HTMLDivElement> & {
 export const ContextManagementSettings = ({
 	autoCondenseContext,
 	autoCondenseContextPercent,
+	autoCondenseContextApiConfigId,
 	listApiConfigMeta,
 	maxOpenTabsContext,
 	maxWorkspaceFiles,
@@ -555,6 +560,45 @@ export const ContextManagementSettings = ({
 									: t("settings:contextManagement.condensingThreshold.profileDescription")}
 							</div>
 						</div>
+
+						{/* Compaction API profile (background model with fallback) */}
+						<SearchableSetting
+							settingId="context-condense-profile"
+							section="contextManagement"
+							label={t("settings:contextManagement.condenseProfile.label")}
+							className="mt-4">
+							<label className="block text-sm font-medium mb-2">
+								{t("settings:contextManagement.condenseProfile.label")}
+							</label>
+							<Select
+								value={autoCondenseContextApiConfigId ?? UNSET_PROFILE}
+								onValueChange={(value) => {
+									setCachedStateField(
+										"autoCondenseContextApiConfigId",
+										value === UNSET_PROFILE ? undefined : value,
+									)
+								}}
+								data-testid="condense-profile-select">
+								<SelectTrigger className="w-full">
+									<SelectValue
+										placeholder={t("settings:contextManagement.condenseProfile.useCurrent")}
+									/>
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value={UNSET_PROFILE}>
+										{t("settings:contextManagement.condenseProfile.useCurrent")}
+									</SelectItem>
+									{(listApiConfigMeta || []).map((config) => (
+										<SelectItem key={config.id} value={config.id}>
+											{config.name}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+							<div className="text-vscode-descriptionForeground text-sm mt-1">
+								{t("settings:contextManagement.condenseProfile.description")}
+							</div>
+						</SearchableSetting>
 					</div>
 				)}
 			</Section>

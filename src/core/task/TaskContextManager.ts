@@ -82,6 +82,14 @@ export interface TaskContextManagerAccess {
 	// API configuration and handler
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
+	/**
+	 * Async-resolve and cache the condense (context-compaction) handler: the
+	 * background model wrapped with a fallback to `api`. Loads the configured
+	 * profile on first call. The sync `condenseApiHandler` getter is intentionally
+	 * NOT exposed here — external callers must use the async resolver so the
+	 * configured background model is never silently bypassed.
+	 */
+	getCondenseApiHandler(): Promise<ApiHandler>
 
 	// Conversation history
 	apiConversationHistory: ApiMessage[]
@@ -223,6 +231,11 @@ export class TaskContextManager {
 
 		const filesReadByRoo = await this.getFilesReadByRooSafely("condenseContext")
 
+		// Resolve the condense handler (background model with fallback to the
+		// foreground model) so a configured `autoCondenseContextApiConfigId`
+		// routes the condense LLM call to the chosen profile.
+		const condenseApiHandler = await this.access.getCondenseApiHandler()
+
 		const {
 			messages,
 			summary,
@@ -232,7 +245,7 @@ export class TaskContextManager {
 			condenseId,
 		} = await summarizeConversation({
 			messages: this.access.apiConversationHistory,
-			apiHandler: this.access.api,
+			apiHandler: condenseApiHandler,
 			systemPrompt,
 			taskId: this.access.taskId,
 			isAutomaticTrigger: false,
@@ -365,13 +378,18 @@ export class TaskContextManager {
 			// Generate environment details to include in the condensed summary
 			const environmentDetails = await getEnvironmentDetails(this.access as any, true)
 
+			// Resolve the condense handler (background model with fallback to the
+			// foreground model) so a configured `autoCondenseContextApiConfigId`
+			// routes the forced-truncation condense to the chosen profile.
+			const condenseApiHandler = await this.access.getCondenseApiHandler()
+
 			// Force aggressive truncation by keeping only 75% of the conversation history
 			const truncateResult = await manageContext({
 				messages: this.access.apiConversationHistory,
 				totalTokens: contextTokens || 0,
 				maxTokens,
 				contextWindow,
-				apiHandler: this.access.api,
+				apiHandler: condenseApiHandler,
 				autoCondenseContext: true,
 				autoCondenseContextPercent: FORCED_CONTEXT_REDUCTION_PERCENT,
 				systemPrompt: await this.access.getSystemPrompt(),
@@ -501,13 +519,40 @@ export class TaskContextManager {
 				? await this.getFilesReadByRooSafely("attemptApiRequest")
 				: undefined
 
+		// Track whether a condense was attempted this pass so a thrown
+		// summarizeConversation still increments the circuit breaker (Claim 1:
+		// the old code only updated the breaker on the success path, so a
+		// chronically-throwing background model kept retrying instead of
+		// latching the breaker open after MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES).
+		let condenseAttemptedThisPass = false
+		// manageContext returns a rich result (messages/cost/summary/truncationId/
+		// microcompact fields); CondenseOutcome is the narrow breaker-relevant
+		// subset. Type as the full return so the post-call code compiles.
+		let truncateResult: Awaited<ReturnType<typeof manageContext>> | undefined
 		try {
-			const truncateResult = await manageContext({
+			// A condense is attempted iff manageContext will reach its condense
+			// branch: context management will run, auto-condense is on, and the
+			// breaker is not already open. Mirror the gate in manageContext
+			// (context-management/index.ts) so the breaker update below matches
+			// what actually happened.
+			condenseAttemptedThisPass = contextManagementWillRun && autoCondenseContext && !condenseCircuitOpen
+
+			// Resolve the condense handler (background model with fallback to the
+			// foreground model) only when a condense can actually run — this is
+			// the every-request path, and the first resolve per task costs a
+			// profile load from secret storage plus an SDK client build. When no
+			// condense will run, manageContext only uses the handler for token
+			// counting (truncation math), where the foreground `api` is correct.
+			const condenseApiHandler = condenseAttemptedThisPass
+				? await this.access.getCondenseApiHandler()
+				: this.access.api
+
+			truncateResult = await manageContext({
 				messages: this.access.apiConversationHistory,
 				totalTokens: contextTokens,
 				maxTokens,
 				contextWindow,
-				apiHandler: this.access.api,
+				apiHandler: condenseApiHandler,
 				autoCondenseContext,
 				autoCondenseContextPercent,
 				systemPrompt,
@@ -599,6 +644,22 @@ export class TaskContextManager {
 				truncationId: truncateResult.truncationId,
 				messagesRemoved: truncateResult.messagesRemoved,
 			}
+		} catch (error) {
+			// Claim 1: a thrown condense (e.g. summarizeConversation threw after
+			// the wrapper exhausted both background and foreground) must still
+			// count against the circuit breaker. Synthesize a failure outcome
+			// so nextAutoCompactFailureCount increments; without this, a
+			// chronically-throwing background model retries forever instead of
+			// latching the breaker open and falling back to microcompaction.
+			if (condenseAttemptedThisPass) {
+				this.access.consecutiveAutoCompactFailures = nextAutoCompactFailureCount(
+					this.access.consecutiveAutoCompactFailures,
+					{ error: "condense threw", prevContextTokens: contextTokens },
+				)
+			}
+			// Re-throw so the caller (attemptApiRequest) sees the failure; the
+			// finally below still dismisses the spinner.
+			throw error
 		} finally {
 			// Notify webview that context management is complete (sets isCondensing = false)
 			// IMPORTANT: Must always be sent to dismiss the spinner, even on error.

@@ -6,6 +6,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { ApiHandler } from "../../../api"
+import { BackgroundModelHandler } from "../../../api/BackgroundModelHandler"
 import { ApiMessage } from "../../task-persistence/apiMessages"
 import { maybeRemoveImageBlocks } from "../../../api/transform/image-cleaning"
 import {
@@ -1284,6 +1285,221 @@ describe("summarizeConversation with custom settings", () => {
 			true, // isAutomaticTrigger
 			true, // usedCustomPrompt
 		)
+	})
+})
+
+describe("summarizeConversation — BackgroundModelHandler fallback integration", () => {
+	const localTaskId = "test-task-bg"
+	const defaultSystemPrompt = "Default prompt"
+	const sampleMessages: ApiMessage[] = [
+		{ role: "user", content: "Hello", ts: 1 },
+		{ role: "assistant", content: "Hi there", ts: 2 },
+		{ role: "user", content: "How are you?", ts: 3 },
+		{ role: "assistant", content: "I'm good", ts: 4 },
+		{ role: "user", content: "Tell me more", ts: 5 },
+	]
+
+	/**
+	 * Build a mock handler whose createMessage yields the given text chunks.
+	 * The background handler reports a smaller context window (8000) than the
+	 * fallback (200000) to mirror the "cheap small model" target config.
+	 */
+	function mockHandler(
+		text: string,
+		usageTotalCost = 0.05,
+		outputTokens = 100,
+		opts: { contextWindow?: number; supportsImages?: boolean; modelId?: string } = {},
+	): ApiHandler {
+		return {
+			createMessage: vi.fn().mockImplementation(() => {
+				return (async function* () {
+					yield { type: "text" as const, text }
+					yield { type: "usage" as const, totalCost: usageTotalCost, outputTokens }
+				})()
+			}),
+			countTokens: vi.fn().mockResolvedValue(50),
+			getModel: vi.fn().mockReturnValue({
+				id: opts.modelId ?? "model",
+				info: {
+					contextWindow: opts.contextWindow ?? 8000,
+					supportsImages: opts.supportsImages ?? false,
+				},
+			}),
+		} as unknown as ApiHandler
+	}
+
+	/** Build a mock handler whose stream throws synchronously in createMessage. */
+	function mockHandlerSyncThrow(error: unknown): ApiHandler {
+		return {
+			createMessage: vi.fn().mockImplementation(() => {
+				throw error
+			}),
+			countTokens: vi.fn().mockResolvedValue(50),
+			getModel: vi.fn().mockReturnValue({ id: "model", info: { contextWindow: 8000 } }),
+		} as unknown as ApiHandler
+	}
+
+	/**
+	 * Build a mock handler whose stream yields one text chunk then throws
+	 * mid-iteration (simulating a provider dropping the connection after
+	 * emitting partial output).
+	 */
+	function mockHandlerMidStreamThrow(partial: string, error: unknown): ApiHandler {
+		return {
+			createMessage: vi.fn().mockImplementation(() => {
+				return (async function* () {
+					yield { type: "text" as const, text: partial }
+					throw error
+				})()
+			}),
+			countTokens: vi.fn().mockResolvedValue(50),
+			getModel: vi.fn().mockReturnValue({ id: "model", info: { contextWindow: 8000 } }),
+		} as unknown as ApiHandler
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+		;(TelemetryService.instance.captureContextCondensed as Mock).mockClear()
+	})
+
+	it("background handler succeeds → summary comes from background, fallback not called", async () => {
+		const bg = mockHandler("Summary from background")
+		const fb = mockHandler("Summary from fallback", 0.05, 100, { contextWindow: 200000 })
+		const onFallback = vi.fn()
+		const wrapper = new BackgroundModelHandler({ background: bg, fallback: fb, onFallback })
+
+		const result = await summarizeConversation({
+			messages: sampleMessages,
+			apiHandler: wrapper,
+			systemPrompt: defaultSystemPrompt,
+			taskId: localTaskId,
+			isAutomaticTrigger: false,
+		})
+
+		expect(result.error).toBeUndefined()
+		expect(result.summary).toContain("Summary from background")
+		expect((bg.createMessage as Mock).mock.calls.length).toBe(1)
+		expect((fb.createMessage as Mock).mock.calls.length).toBe(0)
+		expect(onFallback).not.toHaveBeenCalled()
+	})
+
+	it("background createMessage throws synchronously (trigger) → wrapper falls back internally, onFallback fired", async () => {
+		const bg = mockHandlerSyncThrow(Object.assign(new Error("connect ECONNREFUSED"), { code: "ECONNRESET" }))
+		const fb = mockHandler("Summary from fallback", 0.05, 100, { contextWindow: 200000 })
+		const onFallback = vi.fn()
+		const wrapper = new BackgroundModelHandler({ background: bg, fallback: fb, onFallback })
+
+		const result = await summarizeConversation({
+			messages: sampleMessages,
+			apiHandler: wrapper,
+			systemPrompt: defaultSystemPrompt,
+			taskId: localTaskId,
+			isAutomaticTrigger: false,
+		})
+
+		// The wrapper's buffered-fallback catches the sync throw at the first
+		// next() of its internal consumer, fires onFallback, and replays on
+		// the fallback. streamSummary/summarizeConversation never see the
+		// throw — the wrapper hands it a single seamless stream.
+		expect(result.error).toBeUndefined()
+		expect(result.summary).toContain("Summary from fallback")
+		expect(onFallback).toHaveBeenCalledTimes(1)
+		expect((fb.createMessage as Mock).mock.calls.length).toBe(1)
+	})
+
+	it("background stream errors mid-flight (trigger) → wrapper discards partial and replays on fallback", async () => {
+		const bg = mockHandlerMidStreamThrow("partial-", Object.assign(new Error("unavail"), { status: 503 }))
+		const fb = mockHandler("Summary from fallback", 0.05, 100, { contextWindow: 200000 })
+		const onFallback = vi.fn()
+		const wrapper = new BackgroundModelHandler({ background: bg, fallback: fb, onFallback })
+
+		const result = await summarizeConversation({
+			messages: sampleMessages,
+			apiHandler: wrapper,
+			systemPrompt: defaultSystemPrompt,
+			taskId: localTaskId,
+			isAutomaticTrigger: false,
+		})
+
+		// Mid-stream trigger: the wrapper buffers the background stream, catches
+		// the throw mid-flight, discards the partial "partial-" chunk, and
+		// replays the producer on the fallback. summarizeConversation sees only
+		// the fallback's complete output — no bespoke retry needed in the
+		// integration layer (the deep-rewrite wrapper owns fallback policy).
+		expect(result.error).toBeUndefined()
+		expect(result.summary).toContain("Summary from fallback")
+		expect(result.summary).not.toContain("partial-")
+		expect((bg.createMessage as Mock).mock.calls.length).toBe(1)
+		expect((fb.createMessage as Mock).mock.calls.length).toBe(1)
+		expect(onFallback).toHaveBeenCalledTimes(1)
+	})
+
+	it("background 400 (context_length_exceeded) → wrapper falls back to foreground (target cheap-model config)", async () => {
+		// The core Claim 2B scenario: a background model with a small window
+		// rejects the payload with 400. 400 is now a fallback trigger (Claim 5),
+		// so the wrapper retries on the foreground (which can accept the
+		// payload) instead of surfacing an error every time.
+		const bg = mockHandlerMidStreamThrow("", Object.assign(new Error("context_length_exceeded"), { status: 400 }))
+		const fb = mockHandler("Summary from fallback", 0.05, 100, { contextWindow: 200000 })
+		const onFallback = vi.fn()
+		const wrapper = new BackgroundModelHandler({ background: bg, fallback: fb, onFallback })
+
+		const result = await summarizeConversation({
+			messages: sampleMessages,
+			apiHandler: wrapper,
+			systemPrompt: defaultSystemPrompt,
+			taskId: localTaskId,
+			isAutomaticTrigger: false,
+		})
+
+		expect(result.error).toBeUndefined()
+		expect(result.summary).toContain("Summary from fallback")
+		expect(onFallback).toHaveBeenCalledTimes(1)
+		expect((fb.createMessage as Mock).mock.calls.length).toBe(1)
+	})
+
+	it("background createMessage throws non-trigger error → wrapper re-throws, error path shapes it, fallback not called", async () => {
+		const bg = mockHandlerSyncThrow(new Error("bad request"))
+		const fb = mockHandler("Summary from fallback", 0.05, 100, { contextWindow: 200000 })
+		const onFallback = vi.fn()
+		const wrapper = new BackgroundModelHandler({ background: bg, fallback: fb, onFallback })
+
+		const result = await summarizeConversation({
+			messages: sampleMessages,
+			apiHandler: wrapper,
+			systemPrompt: defaultSystemPrompt,
+			taskId: localTaskId,
+			isAutomaticTrigger: false,
+		})
+
+		// Non-trigger error propagates through the wrapper (no internal retry)
+		// and through summarizeConversation's error-shaping path.
+		expect(result.error).toBeDefined()
+		// The response's summary defaults to "" and is not overwritten on error.
+		expect(result.summary).toBe("")
+		expect(onFallback).not.toHaveBeenCalled()
+		expect((fb.createMessage as Mock).mock.calls.length).toBe(0)
+	})
+
+	it("no background configured (passthrough) → foreground failure surfaces as error, no retry", async () => {
+		// A passthrough wrapper whose fallback throws a trigger error: since
+		// background === undefined, the wrapper is a direct passthrough and the
+		// error surfaces via the existing path (no retry — there's no other
+		// handler to fall back to).
+		const fb = mockHandlerSyncThrow(Object.assign(new Error("unavail"), { status: 503 }))
+		const wrapper = new BackgroundModelHandler({ fallback: fb })
+
+		const result = await summarizeConversation({
+			messages: sampleMessages,
+			apiHandler: wrapper,
+			systemPrompt: defaultSystemPrompt,
+			taskId: localTaskId,
+			isAutomaticTrigger: false,
+		})
+
+		expect(result.error).toBeDefined()
+		// Only the single foreground attempt — no retry on a passthrough.
+		expect((fb.createMessage as Mock).mock.calls.length).toBe(1)
 	})
 })
 

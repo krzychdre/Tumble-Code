@@ -603,6 +603,11 @@
 			"description": "Bağlam yoğunlaştırma işlemleri için hangi API yapılandırmasının kullanılacağını seçin. Mevcut aktif yapılandırmayı kullanmak için seçimsiz bırakın.",
 			"useCurrentConfig": "Varsayılan"
 		},
+		"condenseProfile": {
+			"label": "Sıkıştırma için API profili",
+			"description": "Bağlam sıkıştırma (condense) LLM çağrılarını ön plandaki model yerine daha ucuz veya farklı bir API profiline yönlendirir. Seçilen profil çevrimdışıysa veya hata döndürürse, sıkıştırma otomatik olarak mevcut modele geri döner. Eski veya silinmiş bir profil de mevcut modele geri döner.",
+			"useCurrent": "Mevcut profili kullan"
+		},
 		"customCondensingPrompt": {
 			"label": "Özel Bağlam Yoğunlaştırma İstemcisi",
 			"description": "Bağlam yoğunlaştırma için özel sistem istemcisi. Varsayılan istemciyi kullanmak için boş bırakın.",

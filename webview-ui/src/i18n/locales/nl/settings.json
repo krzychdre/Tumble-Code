@@ -603,6 +603,11 @@
 			"description": "Selecteer welke API-configuratie gebruikt moet worden voor contextcondensatie. Laat leeg om de huidige actieve configuratie te gebruiken.",
 			"useCurrentConfig": "Standaard"
 		},
+		"condenseProfile": {
+			"label": "API-profiel voor compactie",
+			"description": "Stuurt LLM-aanroepen voor contextcompactie (condensatie) naar een goedkoper of ander API-profiel in plaats van het voorgrondmodel. Als het gekozen profiel offline is of een fout retourneert, valt de compactie automatisch terug op het huidige model. Een verouderd of verwijderd profiel valt ook terug op het huidige model.",
+			"useCurrent": "Huidig profiel gebruiken"
+		},
 		"customCondensingPrompt": {
 			"label": "Aangepaste contextcondensatieprompt",
 			"description": "Aangepaste systeemprompt voor contextcondensatie. Laat leeg om de standaardprompt te gebruiken.",

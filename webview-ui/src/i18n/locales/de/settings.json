@@ -603,6 +603,11 @@
 			"description": "Wählen Sie, welche API-Konfiguration für Kontextkomprimierungsoperationen verwendet werden soll. Lassen Sie unausgewählt, um die aktuelle aktive Konfiguration zu verwenden.",
 			"useCurrentConfig": "Aktuelle Konfiguration verwenden"
 		},
+		"condenseProfile": {
+			"label": "API-Profil für Kompaktierung",
+			"description": "Leitet LLM-Aufrufe zur Kontextkompaktierung (Condense) an ein günstigeres oder anderes API-Profil statt an das Vordergrundmodell. Wenn das gewählte Profil offline ist oder einen Fehler zurückgibt, fällt die Kompaktierung automatisch auf das aktuelle Modell zurück. Ein veraltetes oder gelöschtes Profil fällt ebenfalls auf das aktuelle Modell zurück.",
+			"useCurrent": "Aktuelles Profil verwenden"
+		},
 		"customCondensingPrompt": {
 			"label": "Benutzerdefinierter Kontextkomprimierungs-Prompt",
 			"description": "Passen Sie den System-Prompt an, der für die Kontextkomprimierung verwendet wird. Lassen Sie leer, um den Standard-Prompt zu verwenden.",

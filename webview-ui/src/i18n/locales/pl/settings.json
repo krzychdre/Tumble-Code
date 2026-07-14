@@ -604,6 +604,11 @@
 			"description": "Wybierz, którą konfigurację API używać do operacji kondensacji kontekstu. Pozostaw niewybrane, aby użyć aktualnej aktywnej konfiguracji.",
 			"useCurrentConfig": "Domyślna"
 		},
+		"condenseProfile": {
+			"label": "Profil API do kompaktowania",
+			"description": "Kieruje wywołania LLM kompaktowania kontekstu (condense) do tańszego lub innego profilu API zamiast modelu głównego. Jeśli wybrany profil jest niedostępny lub zwraca błąd, kompaktowanie automatycznie wraca do bieżącego modelu. Nieaktualny lub usunięty profil również powoduje powrót do bieżącego modelu.",
+			"useCurrent": "Użyj bieżącego profilu"
+		},
 		"customCondensingPrompt": {
 			"label": "Niestandardowy monit kondensacji kontekstu",
 			"description": "Niestandardowy monit systemowy dla kondensacji kontekstu. Pozostaw puste, aby użyć domyślnego monitu.",

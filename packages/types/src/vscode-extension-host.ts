@@ -340,6 +340,7 @@ export type ExtensionState = Pick<
 	| "autoDreamMinHours"
 	| "autoDreamMinSessions"
 	| "memoryWriterApiConfigId"
+	| "autoCondenseContextApiConfigId"
 > & {
 	lockApiConfigAcrossModes?: boolean
 	version: string
@@ -916,4 +917,4 @@ export interface ClineApiReqInfo {
 	apiProtocol?: "anthropic" | "openai"
 }
 
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"
+export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "max_turns_reached"

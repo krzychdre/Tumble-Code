@@ -22,4 +22,12 @@ describe("GLOBAL_STATE_KEYS", () => {
 	it("should not contain OpenAI Compatible API key (secret)", () => {
 		expect(GLOBAL_STATE_KEYS).not.toContain("codebaseIndexOpenAiCompatibleApiKey")
 	})
+
+	it("should contain the memory writer profile id", () => {
+		expect(GLOBAL_STATE_KEYS).toContain("memoryWriterApiConfigId")
+	})
+
+	it("should contain the condense background profile id", () => {
+		expect(GLOBAL_STATE_KEYS).toContain("autoCondenseContextApiConfigId")
+	})
 })

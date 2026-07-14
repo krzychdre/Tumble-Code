@@ -603,6 +603,11 @@
 			"description": "Pilih konfigurasi API mana yang akan digunakan untuk operasi kondensasi konteks. Biarkan tidak dipilih untuk menggunakan konfigurasi aktif saat ini.",
 			"useCurrentConfig": "Default"
 		},
+		"condenseProfile": {
+			"label": "Profil API untuk pemadatan",
+			"description": "Mengarahkan panggilan LLM pemadatan konteks (condense) ke profil API yang lebih murah atau berbeda alih-alih model utama. Jika profil yang dipilih offline atau mengembalikan kesalahan, pemadatan otomatis kembali ke model saat ini. Profil yang usang atau dihapus juga kembali ke model saat ini.",
+			"useCurrent": "Gunakan profil saat ini"
+		},
 		"customCondensingPrompt": {
 			"label": "Prompt Kondensasi Konteks Kustom",
 			"description": "Kustomisasi system prompt yang digunakan untuk kondensasi konteks. Biarkan kosong untuk menggunakan prompt default.",

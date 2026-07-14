@@ -47,15 +47,23 @@ vi.mock("@/components/ui", () => ({
 			{children}
 		</button>
 	),
-	Select: ({ children, ...props }: any) => (
-		<div role="combobox" {...props}>
+	Select: ({ children, value, onValueChange, "data-testid": dataTestId }: any) => (
+		<select
+			role="combobox"
+			data-testid={dataTestId}
+			value={value ?? ""}
+			onChange={(e: any) => onValueChange?.(e.target.value)}>
 			{children}
-		</div>
+		</select>
 	),
-	SelectTrigger: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-	SelectValue: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-	SelectContent: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-	SelectItem: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+	SelectTrigger: ({ children }: any) => <>{children}</>,
+	SelectValue: ({ children }: any) => <>{children}</>,
+	SelectContent: ({ children }: any) => <>{children}</>,
+	SelectItem: ({ value, children, ...props }: any) => (
+		<option value={value} {...props}>
+			{children}
+		</option>
+	),
 	StandardTooltip: ({ children, content }: any) => <div title={content}>{children}</div>,
 }))
 
@@ -88,6 +96,7 @@ describe("ContextManagementSettings", () => {
 	const defaultProps = {
 		autoCondenseContext: false,
 		autoCondenseContextPercent: 80,
+		autoCondenseContextApiConfigId: undefined,
 		listApiConfigMeta: [],
 		maxOpenTabsContext: 20,
 		maxWorkspaceFiles: 200,
@@ -333,9 +342,9 @@ describe("ContextManagementSettings", () => {
 		const slider = screen.getByTestId("condense-threshold-slider")
 		expect(slider).toBeInTheDocument()
 
-		// Should render the profile select dropdown
+		// Should render the profile select dropdowns (threshold profile + condense profile)
 		const selects = screen.getAllByRole("combobox")
-		expect(selects).toHaveLength(1)
+		expect(selects).toHaveLength(2)
 	})
 
 	describe("Auto Condense Context functionality", () => {
@@ -368,8 +377,8 @@ describe("ContextManagementSettings", () => {
 
 			// Threshold settings should be visible
 			expect(screen.getByTestId("condense-threshold-slider")).toBeInTheDocument()
-			// One combobox for profile selection
-			expect(screen.getAllByRole("combobox")).toHaveLength(1)
+			// Two comboboxes: threshold-profile selection + condense-profile selection
+			expect(screen.getAllByRole("combobox")).toHaveLength(2)
 		})
 
 		it("updates auto condense context percent", () => {
@@ -390,6 +399,62 @@ describe("ContextManagementSettings", () => {
 		it("displays correct auto condense context percent value", () => {
 			render(<ContextManagementSettings {...autoCondenseProps} />)
 			expect(screen.getByText("75%")).toBeInTheDocument()
+		})
+	})
+
+	describe("Condense API profile selector (background model)", () => {
+		const profileProps = {
+			...defaultProps,
+			autoCondenseContext: true,
+			autoCondenseContextPercent: 75,
+			listApiConfigMeta: [{ id: "profile-1", name: "P1" }],
+		}
+
+		it("renders the condense-profile select only when autoCondenseContext is enabled", () => {
+			render(<ContextManagementSettings {...profileProps} />)
+			expect(screen.getByTestId("condense-profile-select")).toBeInTheDocument()
+
+			const disabledProps = { ...profileProps, autoCondenseContext: false }
+			render(<ContextManagementSettings {...disabledProps} />)
+			// The second render has autoCondenseContext false → no condense-profile select.
+			// (queryByTestId across the whole screen body; only the enabled render has it.)
+			expect(screen.getAllByTestId("condense-profile-select")).toHaveLength(1)
+		})
+
+		it("selecting a profile calls setCachedStateField with the profile id", async () => {
+			const mockSetCachedStateField = vitest.fn()
+			const props = { ...profileProps, setCachedStateField: mockSetCachedStateField }
+			render(<ContextManagementSettings {...props} />)
+
+			const select = screen.getByTestId("condense-profile-select") as HTMLSelectElement
+			fireEvent.change(select, { target: { value: "profile-1" } })
+			await waitFor(() => {
+				expect(mockSetCachedStateField).toHaveBeenCalledWith("autoCondenseContextApiConfigId", "profile-1")
+			})
+		})
+
+		it("selecting the 'use current profile' sentinel calls setCachedStateField with undefined", async () => {
+			const mockSetCachedStateField = vitest.fn()
+			const props = {
+				...profileProps,
+				autoCondenseContextApiConfigId: "profile-1",
+				setCachedStateField: mockSetCachedStateField,
+			}
+			render(<ContextManagementSettings {...props} />)
+
+			const select = screen.getByTestId("condense-profile-select") as HTMLSelectElement
+			fireEvent.change(select, { target: { value: "-" } })
+			await waitFor(() => {
+				expect(mockSetCachedStateField).toHaveBeenCalledWith("autoCondenseContextApiConfigId", undefined)
+			})
+		})
+
+		it("never renders a SelectItem with an empty-string value (Radix rejects it at runtime)", () => {
+			render(<ContextManagementSettings {...profileProps} />)
+			const select = screen.getByTestId("condense-profile-select") as HTMLSelectElement
+			const optionValues = Array.from(select.querySelectorAll("option")).map((o) => o.getAttribute("value"))
+			expect(optionValues.length).toBeGreaterThan(0)
+			expect(optionValues).not.toContain("")
 		})
 	})
 

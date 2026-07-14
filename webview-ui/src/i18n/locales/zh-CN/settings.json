@@ -603,6 +603,11 @@
 			"description": "选择用于上下文压缩操作的API配置。留空则使用当前活动的配置。",
 			"useCurrentConfig": "使用当前配置"
 		},
+		"condenseProfile": {
+			"label": "压缩 API 配置文件",
+			"description": "将上下文压缩(condense)的 LLM 调用路由到更便宜或不同的 API 配置文件,而不是前台模型。如果所选配置文件离线或返回错误,压缩会自动回退到当前模型。过期或已删除的配置文件也会回退到当前模型。",
+			"useCurrent": "使用当前配置文件"
+		},
 		"customCondensingPrompt": {
 			"label": "自定义上下文压缩提示词",
 			"description": "自定义用于上下文压缩的系统提示词。留空则使用默认提示词。",
