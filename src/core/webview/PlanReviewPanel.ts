@@ -9,6 +9,7 @@ import { formatLanguage } from "../../shared/language"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { ClineProvider } from "./ClineProvider"
+import { registerPlanReviewFile, unregisterPlanReviewFile } from "./planReviewRegistry"
 
 interface PlanReviewTarget {
 	filePath?: string
@@ -189,8 +190,11 @@ export class PlanReviewPanel {
 					break
 				}
 				case "planReviewSubmit": {
+					// The panel stays open: the model's revision of the plan
+					// live-updates the view (file watcher), and while the file
+					// is open here its edits require approval — that is the
+					// annotate → revise → re-review loop.
 					await this.handleSubmit(message.text)
-					panel.dispose()
 					break
 				}
 				case "planReviewClose": {
@@ -251,6 +255,7 @@ export class PlanReviewPanel {
 		entry.disposed = true
 		entry.watcher?.dispose()
 		if (entry.filePath) {
+			unregisterPlanReviewFile(entry.filePath)
 			this.panels.delete(entry.filePath)
 		}
 		if (this.contentPanel === entry) {
@@ -320,6 +325,7 @@ export class PlanReviewPanel {
 
 		const entry: PanelEntry = { panel, filePath: target.filePath, watcher, disposed: false }
 		if (target.filePath) {
+			registerPlanReviewFile(target.filePath)
 			this.panels.set(target.filePath, entry)
 		} else {
 			this.contentPanel = entry

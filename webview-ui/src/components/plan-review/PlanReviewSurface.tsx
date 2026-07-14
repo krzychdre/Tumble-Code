@@ -260,6 +260,11 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({ markdown, 
 	const handleSend = useCallback(() => {
 		const compiled = compilePlanReviewMessage(annotations, overallComment, filePath)
 		onSubmit(compiled)
+		// The panel stays open after sending (the model's revision streams in
+		// via live updates) — clear the drafts so the next review round starts
+		// clean instead of re-sending the same notes.
+		setAnnotations([])
+		setOverallComment("")
 	}, [annotations, overallComment, filePath, onSubmit])
 
 	const annotationsPanel = useMemo(() => {

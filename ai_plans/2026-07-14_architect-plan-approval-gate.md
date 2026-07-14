@@ -111,3 +111,38 @@ plan first". OFF = review enforced.
 - Full `src` + `webview-ui` vitest, `tsc` in `src`/`webview-ui`/`packages/types`.
 - Manual: architect plans → tries `switch_mode` with Mode auto-approve ON →
   approval buttons appear; reject with annotation notes → model revises.
+
+---
+
+## V2 — reviewed-plan-file write gate (2026-07-14, user feedback)
+
+Feedback after first build: in `code` mode the model updated the plan file and
+kept going — nothing stopped it, because the original gate only guards leaving
+a planning mode. User picked (AskUserQuestion) the "file open in a review
+panel" rule over path heuristics.
+
+New rule, enforced in the same `checkAutoApproval` spot: **a write tool call
+(`editedExistingFile` / `appliedDiff` / `newFileCreated` / `generateImage`)
+targeting a file currently open in a Plan Review panel always asks — in any
+mode, including architect and code** — unless `alwaysApprovePlan` is on or
+auto-approval mode is `autonomous`. `bypass` does NOT skip it (consistent with
+the mode-exit gate).
+
+Mechanics:
+
+- `src/core/webview/planReviewRegistry.ts` — dependency-free singleton set of
+  open review-file paths (avoids an import cycle core/auto-approval ↔
+  core/webview). `PlanReviewPanel` registers on open, unregisters on dispose.
+- `checkAutoApproval` resolves the tool's relative `path` against `state.cwd`
+  (present in `getState()`), compares via `arePathsEqual`. New
+  `AutoApprovalStateOptions` member: `"cwd"`.
+- The panel no longer closes after "Send notes": it live-updates with the
+  model's revision (file watcher) and, while open, holds the write gate — that
+  is the annotate → revise → re-review loop. The surface clears drafts after
+  sending. Closing the panel ends the review session and plan edits flow
+  normally again (e.g. routine todo check-offs during implementation).
+
+Also fixed alongside (same feedback round): the chat `AutoApproveDropdown` had
+a duplicated `isModeForced` that rendered the Plan toggle as forced-on in
+bypass; it now uses the shared `isAutoApproveForced` and got the missing
+`alwaysApprovePlan` toggle case + ExtensionStateContext setter.

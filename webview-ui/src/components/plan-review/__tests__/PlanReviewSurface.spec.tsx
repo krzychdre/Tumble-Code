@@ -86,6 +86,17 @@ describe("PlanReviewSurface", () => {
 		expect(compiled).not.toContain("I reviewed the plan and added notes on specific parts.")
 	})
 
+	it("clears drafts after sending (panel stays open for the next review round)", () => {
+		render(<PlanReviewSurface {...defaultProps} />)
+		const textarea = screen.getByPlaceholderText("Overall comments (optional)") as HTMLTextAreaElement
+		fireEvent.change(textarea, { target: { value: "Good plan" } })
+		fireEvent.click(screen.getByText("Send notes"))
+		expect(defaultProps.onSubmit).toHaveBeenCalledTimes(1)
+		expect(textarea.value).toBe("")
+		// Send is disabled again until new notes are added.
+		expect(screen.getByText("Send notes").closest("button")).toBeDisabled()
+	})
+
 	it("close button (X) calls onClose", () => {
 		render(<PlanReviewSurface {...defaultProps} />)
 		// The X button has aria-label "Cancel" (reuses cancel i18n key).

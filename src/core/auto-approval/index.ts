@@ -9,10 +9,13 @@ import {
 
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 
+import * as nodePath from "path"
+
 import { isWriteToolAction, isReadOnlyToolAction } from "./tools"
 import { isMcpToolAlwaysAllowed } from "./mcp"
 import { getCommandDecision } from "./commands"
 import { getModeBySlug } from "../../shared/modes"
+import { isPlanReviewFileOpen } from "../webview/planReviewRegistry"
 
 // We have auto-approval actions for different categories.
 export type AutoApprovalState =
@@ -39,6 +42,7 @@ export type AutoApprovalStateOptions =
 	| "mcpServers" // For `alwaysAllowMcp`.
 	| "allowedCommands" // For `alwaysAllowExecute`.
 	| "deniedCommands"
+	| "cwd" // For resolving relative tool paths in the plan-approval gate.
 
 export type CheckAutoApprovalResult =
 	| { decision: "approve" }
@@ -90,6 +94,10 @@ export async function checkAutoApproval({
 				}
 
 				if ((tool?.tool === "switchMode" || tool?.tool === "newTask") && isPlanApprovalRequired(state)) {
+					return { decision: "ask" }
+				}
+
+				if (tool && isReviewedPlanFileWrite(state, tool)) {
 					return { decision: "ask" }
 				}
 			}
@@ -251,6 +259,13 @@ export async function checkAutoApproval({
 		}
 
 		if (isWriteToolAction(tool)) {
+			// Plan-approval gate: edits to a plan file the user has open in a
+			// Plan Review panel always ask, in any mode — the user is actively
+			// reviewing that document.
+			if (state.alwaysApprovePlan !== true && isReviewedPlanFileWrite(state, tool)) {
+				return { decision: "ask" }
+			}
+
 			return state.alwaysAllowWrite === true &&
 				(!isOutsideWorkspace || state.alwaysAllowWriteOutsideWorkspace === true) &&
 				(!isProtected || state.alwaysAllowWriteProtected === true)
@@ -270,6 +285,24 @@ export async function checkAutoApproval({
 function isPlanApprovalRequired(state: Pick<ExtensionState, AutoApprovalPlanState>): boolean {
 	const modeConfig = getModeBySlug(state.mode ?? "", state.customModes)
 	return modeConfig?.planApprovalRequired === true
+}
+
+/**
+ * True when the tool call writes to a file that is currently open in a Plan
+ * Review panel — i.e. the user is actively reviewing that plan document.
+ */
+function isReviewedPlanFileWrite(state: Pick<ExtensionState, "cwd">, tool: ClineSayTool): boolean {
+	if (!isWriteToolAction(tool) || !tool.path) {
+		return false
+	}
+
+	const absPath = nodePath.isAbsolute(tool.path)
+		? tool.path
+		: state.cwd
+			? nodePath.resolve(state.cwd, tool.path)
+			: undefined
+
+	return absPath ? isPlanReviewFileOpen(absPath) : false
 }
 
 export { AutoApprovalHandler } from "./AutoApprovalHandler"
