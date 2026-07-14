@@ -2590,6 +2590,10 @@ export class ClineProvider
 		// Return the same structure as before.
 		return {
 			apiConfiguration: providerSettings,
+			// The plan-review write gate (checkAutoApproval) resolves relative
+			// tool paths against cwd; getStateToPostToWebview has it, but this
+			// method is what TaskAskSay/subagent approval consume.
+			cwd: this.cwd,
 			lastShownAnnouncementId: stateValues.lastShownAnnouncementId,
 			customInstructions: stateValues.customInstructions,
 			apiModelId: stateValues.apiModelId,

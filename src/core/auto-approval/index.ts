@@ -15,7 +15,7 @@ import { isWriteToolAction, isReadOnlyToolAction } from "./tools"
 import { isMcpToolAlwaysAllowed } from "./mcp"
 import { getCommandDecision } from "./commands"
 import { getModeBySlug } from "../../shared/modes"
-import { isPlanReviewFileOpen } from "../webview/planReviewRegistry"
+import { isPlanReviewFileOpen, hasOpenPlanReviewFiles } from "../webview/planReviewRegistry"
 
 // We have auto-approval actions for different categories.
 export type AutoApprovalState =
@@ -302,7 +302,14 @@ function isReviewedPlanFileWrite(state: Pick<ExtensionState, "cwd">, tool: Cline
 			? nodePath.resolve(state.cwd, tool.path)
 			: undefined
 
-	return absPath ? isPlanReviewFileOpen(absPath) : false
+	if (!absPath) {
+		// Fail closed: a review panel is open but the relative path can't be
+		// resolved (state carried no cwd) — asking is safer than silently
+		// skipping the gate.
+		return hasOpenPlanReviewFiles()
+	}
+
+	return isPlanReviewFileOpen(absPath)
 }
 
 export { AutoApprovalHandler } from "./AutoApprovalHandler"

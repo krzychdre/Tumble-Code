@@ -301,5 +301,18 @@ describe("checkAutoApproval modes", () => {
 			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
 			expect(result.decision).toBe("ask")
 		})
+
+		it("fails closed: relative write with no cwd while a panel is open → ask", async () => {
+			const state = baseState({ cwd: undefined, alwaysAllowWrite: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("relative write with no cwd and no panel open → approve", async () => {
+			unregisterPlanReviewFile(reviewedFile)
+			const state = baseState({ cwd: undefined, alwaysAllowWrite: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: planWriteText })
+			expect(result.decision).toBe("approve")
+		})
 	})
 })
