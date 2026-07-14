@@ -16,17 +16,10 @@ import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
 
 import { Popover, PopoverContent, PopoverTrigger, StandardTooltip, ToggleSwitch, Button } from "@/components/ui"
 
-import { AutoApproveSetting, autoApproveSettingsConfig } from "../settings/AutoApproveToggle"
+import { AutoApproveSetting, autoApproveSettingsConfig, isAutoApproveForced } from "../settings/AutoApproveToggle"
 import { AutoApproveModeSelector } from "../settings/AutoApproveModeSelector"
 
 import type { AutoApprovalMode } from "@roo-code/types"
-
-/**
- * Bypass forces every action except follow-up questions; autonomous forces all.
- * The matching toggle buttons are rendered orange to signal the override.
- */
-const isModeForced = (mode: AutoApprovalMode, key: AutoApproveSetting) =>
-	mode === "autonomous" || (mode === "bypass" && key !== "alwaysAllowFollowupQuestions")
 
 interface AutoApproveDropdownProps {
 	disabled?: boolean
@@ -49,6 +42,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 		setAlwaysAllowMcp,
 		setAlwaysAllowModeSwitch,
 		setAlwaysAllowSubtasks,
+		setAlwaysApprovePlan,
 		setAlwaysAllowFollowupQuestions,
 	} = useExtensionState()
 
@@ -77,6 +71,9 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 				case "alwaysAllowSubtasks":
 					setAlwaysAllowSubtasks(value)
 					break
+				case "alwaysApprovePlan":
+					setAlwaysApprovePlan(value)
+					break
 				case "alwaysAllowFollowupQuestions":
 					setAlwaysAllowFollowupQuestions(value)
 					break
@@ -96,6 +93,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 			setAlwaysAllowMcp,
 			setAlwaysAllowModeSwitch,
 			setAlwaysAllowSubtasks,
+			setAlwaysApprovePlan,
 			setAlwaysAllowFollowupQuestions,
 			setAutoApprovalEnabled,
 		],
@@ -261,7 +259,7 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 					</div>
 					<div className="grid grid-cols-1 min-[340px]:grid-cols-2 gap-x-2 gap-y-2 p-3">
 						{settingsArray.map(({ key, labelKey, descriptionKey, icon }) => {
-							const forced = isModeForced(autoApprovalMode, key)
+							const forced = isAutoApproveForced(autoApprovalMode, key)
 							const isEnabled = forced || toggles[key]
 							return (
 								<StandardTooltip
