@@ -4,6 +4,7 @@ import type { Task } from "../task/Task"
 import { PlanReviewPanel } from "../webview/PlanReviewPanel"
 import { isPlanReviewFileOpen } from "../webview/planReviewRegistry"
 import { isPlanFilePath } from "../../shared/planFiles"
+import { arePathsEqual } from "../../utils/path"
 
 /**
  * After a write tool successfully saves a plan file, block the task until the
@@ -57,6 +58,14 @@ export async function pauseForPlanReviewIfNeeded(task: Task, toolRelPath: string
 		// Background/headless subagents must never hang waiting for a user.
 		if (task.isBackground) {
 			return undefined
+		}
+
+		// First round for this file: seed the diff baseline from the pre-write
+		// content the write tool captured, so the panel highlights what the
+		// model just changed even before any review has closed.
+		const dvp = task.diffViewProvider
+		if (dvp?.lastSavedRelPath && arePathsEqual(path.resolve(task.cwd, dvp.lastSavedRelPath), absPath)) {
+			PlanReviewPanel.seedBaseline(absPath, dvp.originalContent)
 		}
 
 		// Open/reveal the Plan Review panel BEFORE asking so the user sees

@@ -322,6 +322,18 @@ export class PlanReviewPanel {
 	}
 
 	/**
+	 * Seeds the diff baseline for a file's FIRST review round from its
+	 * pre-write content, so "what did the model just change" is highlighted
+	 * even before any review has closed. Later rounds keep the
+	 * content-at-last-close baseline (never overwritten here).
+	 */
+	static seedBaseline(fsPath: string, preWriteContent: string | undefined): void {
+		if (preWriteContent && !this.lastReviewedContent.has(fsPath)) {
+			this.lastReviewedContent.set(fsPath, preWriteContent)
+		}
+	}
+
+	/**
 	 * Closes the review panel for a file after its review round resolved
 	 * (Approve/Deny on the pending ask). No-op when no panel is open.
 	 */

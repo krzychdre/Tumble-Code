@@ -240,3 +240,31 @@ diff-coloured but on the rendered preview, not source.
   compare against; the whole plan would otherwise light up green).
 - i18n: `planReview.changesHighlighted` + `planReview.removedContent`,
   en + 17 locales.
+
+### V4.1 — first-round diff colours + stale-host debugging note (2026-07-15)
+
+User retest of V4 failed ("panel not closing, no diff colours") — root cause
+was NOT the code: the test window's extension host had been running since
+12:24, the VSIX was installed 15:51, and the host only restarted 16:05:47
+(exthost.log). Until an extension-host restart/window reload, the OLD host
+code runs with the NEW webview bundle (webviews load from disk per panel).
+Verification protocol: after installing the VSIX, reload EVERY window you
+test in.
+
+The retest still exposed a real gap: diff colours only appeared from the
+second review round (baseline = content at last panel close, in-memory).
+V4.1 seeds the FIRST round's baseline with the file's pre-write content:
+
+- `DiffViewProvider.saveDirectly()` now captures pre-write content into
+  `originalContent` (it previously left a stale value from an earlier diff
+  session; the direct-save path never set it).
+- New `DiffViewProvider.lastSavedRelPath` getter exposes which file the last
+  save belonged to.
+- `planReviewPause` seeds `PlanReviewPanel.seedBaseline(absPath,
+originalContent)` when the last save matches the reviewed file; seeding
+  never overwrites a stored baseline (round 2+ keeps content-at-last-close).
+  Empty pre-write content (brand-new plan file) does not seed — a fully
+  green first render would be noise.
+- New `planReviewPause.spec.ts` (9 cases): skip paths, baseline seeding and
+  its file-identity guard, close-on-Approve/Deny/feedback, draft-notes
+  delivery.
