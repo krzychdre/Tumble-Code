@@ -92,7 +92,7 @@ const PlanReviewAppInner: React.FC = () => {
 
 	if (!state) {
 		return (
-			<div className="h-full w-full flex items-center justify-center">
+			<div className="fixed inset-0 flex items-center justify-center">
 				<p className="text-sm text-vscode-descriptionForeground">{t("chat:planReview.loading")}</p>
 			</div>
 		)

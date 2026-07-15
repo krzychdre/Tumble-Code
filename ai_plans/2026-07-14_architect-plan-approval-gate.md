@@ -192,3 +192,15 @@ panel is also pause-eligible even outside the plan patterns.
 4. ChatRow renders the `reviewPlan` ask (title + path, standard approve/deny
    buttons come from ChatView's ask handling). New ClineSayTool member.
 5. i18n: `chat.json` planReview.pause\* keys, en + 17 locales.
+
+### V3.1 fix — footer action bar scrolled out of view (2026-07-15)
+
+User: the panel's Cancel / "Send notes" buttons must be always visible (or
+removed). They were designed as a fixed footer, but the plan-review webview
+body has no height (`index.css` sets `height: 100%` on `html` only), so the
+surface's `h-full` resolved to auto — the page grew with the plan and the
+footer landed below a document-length scroll. Fix: the surface root (and the
+loading state) are `fixed inset-0`, pinning header + footer to the viewport
+and making the markdown area the only scroll container (which the annotation
+chip math already assumed). jsdom cannot catch this class of bug — verify in
+the extension.

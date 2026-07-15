@@ -373,7 +373,9 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 	return (
 		<div
 			ref={rootRef}
-			className="h-full w-full flex flex-col"
+			// Pinned to the viewport: the webview body has no height, so h-full
+			// would grow with content and scroll the footer out of view.
+			className="fixed inset-0 flex flex-col"
 			style={{ background: "var(--vscode-editor-background)" }}>
 			{/* Header */}
 			<div className="flex items-center justify-between px-4 py-2 border-b border-vscode-editorWidget-border shrink-0">
