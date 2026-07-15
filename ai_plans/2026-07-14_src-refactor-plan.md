@@ -3,6 +3,14 @@
 > **Date:** 2026-07-14 · **Scope:** [`src/`](src/) only · **Mode:** architect (planning, no code changes)
 > **Goal:** Make the extension host code readable and maintainable by a human working alone, without AI assistance. Priorities: (1) low cognitive complexity, (2) design patterns where sensible, (3) dead-code removal, (4) human readability.
 
+> **✅ Verification stamp — 2026-07-14 (re-verified by orchestrator pass):** Fresh structural metrics re-derived independently and cross-checked against this plan's claims; all headline numbers confirmed against live code:
+>
+> - [`ClineProvider.ts`](src/core/webview/ClineProvider.ts:1) = **4,417 lines** (largest file in `src/`, ~80 methods, ESLint complexity 24 violations; [`getStateToPostToWebview()`](src/core/webview/ClineProvider.ts:2203) c=115/284 lines).
+> - [`webviewMessageHandler.ts`](src/core/webview/webviewMessageHandler.ts:1) = **3,792 lines**, ESLint **complexity 669** on the 143-case switch — **worst in the repo**.
+> - [`McpHub.ts`](src/services/mcp/McpHub.ts:1) = **1,995** ([`connectToServer()`](src/services/mcp/McpHub.ts:655) c=31/242 lines); [`bedrock.ts`](src/api/providers/bedrock.ts:1) = **1,647** ([`createMessage()`](src/api/providers/bedrock.ts:384) c=116/410 lines); [`Task.ts`](src/core/task/Task.ts:1) = **1,689** (decomposition confirmed).
+> - The plan's ordering and findings hold. **New deltas added below — §3.1 (cleanup-now, verified actionable today) and §5.1 (open test gap on the delegation path) — these were NOT in the original plan.**
+> - [`COGNITIVE_COMPLEXITY_ANALYSIS.md`](COGNITIVE_COMPLEXITY_ANALYSIS.md:1) reconfirmed **stale** (2026-05-03); its #1 finding (`Task.ts` 4,738 lines) is obsolete. Do not re-derive from it.
+
 ---
 
 ## 0. Status of prior analysis — read this first
@@ -250,6 +258,27 @@ export function buildApiHandler(cfg: ProviderSettings): ApiHandler {
 | `src/shared/getApiMetrics.ts` re-export                                                    | [`getApiMetrics`](src/shared/getApiMetrics.ts:1), [`hasTokenUsageChanged`](src/shared/getApiMetrics.ts:4), [`hasToolUsageChanged`](src/shared/getApiMetrics.ts:5)    | re-exports from `@roo-code/core` | Live in [`TaskTokenTracking`](src/core/task/TaskTokenTracking.ts:14), [`AutoApprovalHandler`](src/core/auto-approval/AutoApprovalHandler.ts:3), [`checkpoints`](src/core/checkpoints/index.ts:13), [`taskMetadata`](src/core/task-persistence/taskMetadata.ts:8), [`getEnvironmentDetails`](src/core/environment/getEnvironmentDetails.ts:12). | **keep** — but note the `src/shared/` shim duplicates the `@roo-code/core` export; consider importing from core directly in new code.                                  |
 
 **Systematic recommendation:** before any manual removal, run `npx knip` from the repo root with the existing [`knip.json`](knip.json:1). It cross-checks all workspaces (src ↔ webview-ui ↔ packages) for unused exports, types, and files — far more reliable than hand-grep for a codebase this size. Treat its `exports`/`types` warnings as the authoritative dead-code list; use the table above only for the dynamic-consumption cases knip can't detect.
+
+### 3.1 Cleanup-now deltas (NEW — verified actionable today, not in original plan)
+
+The verification pass surfaced four concrete, low-risk removals that predate this refactor and can be done immediately, independent of the structural work:
+
+1. **Overdue migration removal — [`src/utils/migrateSettings.ts:14`](src/utils/migrateSettings.ts:14).** The file's own TODO says "Remove this migration code in September 2025 (6 months after implementation)." As of 2026-07-15 that is ~10 months overdue. The migration renames legacy `cline_custom_modes.json` → `custom_modes.json` and `cline_mcp_settings.json` → `mcp_settings.json` (yaml). Safe to delete once you confirm no supported users still ship pre-2025 settings files. ⚠️ run `cd src && npx vitest run utils/migrateSettings` after removing.
+
+2. **6 `@deprecated` exports whose replacements already ship (delete the deprecated wrappers):**
+
+    - [`src/api/transform/minimax-format.ts:105`](src/api/transform/minimax-format.ts:105) → use `mergeEnvironmentDetailsForMiniMax`.
+    - [`src/api/providers/utils/openai-error-handler.ts:5`](src/api/providers/utils/openai-error-handler.ts:5) → use `handleProviderError` from `./error-handler`.
+    - [`src/shared/skills.ts:11`](src/shared/skills.ts:11) → use `modeSlugs`.
+    - [`src/core/prompts/sections/custom-instructions.ts:352`](src/core/prompts/sections/custom-instructions.ts:352) → use `loadAllAgentRulesFiles`.
+    - [`src/core/webview/ClineProvider.ts:2797`](src/core/webview/ClineProvider.ts:2797) → use `ContextProxy#setValue`.
+    - [`src/core/webview/ClineProvider.ts:2802`](src/core/webview/ClineProvider.ts:2802) → use `ContextProxy#getValue`.
+
+3. **Unexport test-only types** (referenced only inside their own `__tests__`; safe to drop the `export` keyword — verify each with knip first, grep can false-positive on short names): `ConnectedMcpConnection`, `DisableReason`, `DisconnectedMcpConnection`, `McpConnection`, `ServerConfigSchema` ([`McpHub.ts`](src/services/mcp/McpHub.ts:1)); `TaskOptions` ([`Task.ts`](src/core/task/Task.ts:1)); `StreamEvent` ([`bedrock.ts`](src/api/providers/bedrock.ts:1)); [`raceNextChunkWithAbort`](src/core/task/TaskApiLoop.ts:1); `UsageType` ([`bedrock.ts`](src/api/providers/bedrock.ts:1)); `OpenAiNativeModel` ([`openai-native.ts`](src/api/providers/openai-native.ts:1)); `OpenAiCodexModel` ([`openai-codex.ts`](src/api/providers/openai-codex.ts:1)).
+
+4. **Delete `ClineProviderEvents`** — exported in [`ClineProvider.ts`](src/core/webview/ClineProvider.ts:1) with zero external references (strongest candidate; knip should confirm).
+
+**Verification gate:** after each removal run `cd src && npx vitest run <affected-path>` and `npx knip` to confirm no consumer broke. These four items are prerequisites-optional — they can ship before Step 1 or in parallel.
 
 ---
 
