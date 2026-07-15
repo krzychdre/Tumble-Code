@@ -4,6 +4,8 @@
 > **Goal:** low cognitive complexity, human-maintainable, elegant, extensible, shrinking number of change-points (open-closed wins).
 > **Method:** every claim grounded in live code (file:line). Built on — and explicitly correcting — the two pre-existing analysis docs at repo root.
 
+> **✅ Verification stamp — 2026-07-15 (re-verified by orchestrator pass):** Fresh structural metrics re-derived independently; the ranked refactor points below are reconfirmed against live code. This doc and [`2026-07-14_src-refactor-plan.md`](ai_plans/2026-07-14_src-refactor-plan.md:1) are complementary — this one leads with **open-closed / change-point** leverage (the dimension the cognitive doc never covered), the other with **per-file complexity reduction**. Reconciled execution order: #3 → (#1 + #5) → #2 → #4 → (#6, #8, #7). Both docs agree on this. New §5 below adds cleanup-now deltas and a test-gap gate that were **not** in the original ranking.
+
 ---
 
 ## 0. Relationship to the existing analysis docs
@@ -249,4 +251,19 @@ After this, **adding a provider = 1 file** (`src/api/providers/<name>.ts` export
 
 ---
 
-_All file:line citations verified against the current checkout at the time of analysis. The two pre-existing docs were used as input and explicitly corrected where stale._
+## 5. Cleanup-now deltas & test-gap gate — added 2026-07-15
+
+These were **not** in the original ranking above. They are low-risk standalone PRs that shrink the surface **before** the structural refactors — do them first. Full detail lives in [`2026-07-14_src-refactor-plan.md`](ai_plans/2026-07-14_src-refactor-plan.md:1) §3.1; the verified items are:
+
+1. **Overdue migration removal** — [`migrateSettings.ts:14`](src/utils/migrateSettings.ts:14) says "Remove in September 2025"; it is July 2026 (~10 months overdue). Delete the fn + call site; gate with `cd src && npx vitest run utils/migrateSettings`.
+2. **6 `@deprecated` exports** with named replacements — [`minimax-format.ts:105`](src/api/transform/minimax-format.ts:105), [`openai-error-handler.ts:5`](src/api/providers/utils/openai-error-handler.ts:5), [`skills.ts:11`](src/shared/skills.ts:11) (`modeSlugs`), [`custom-instructions.ts:352`](src/core/prompts/sections/custom-instructions.ts:352) (`loadAllAgentRulesFiles`), [`ClineProvider.ts:2797`](src/core/webview/ClineProvider.ts:2797) & [`:2802`](src/core/webview/ClineProvider.ts:2802) (`ContextProxy#setValue`/`getValue`). Remove each + re-point callers to the named replacement.
+3. **Unexport test-only types** (knip-confirmed; grep can false-positive on short names) — `ConnectedMcpConnection`/`DisableReason`/`DisconnectedMcpConnection`/`McpConnection`/`ServerConfigSchema` ([`McpHub.ts`](src/services/mcp/McpHub.ts:1)), `TaskOptions` ([`Task.ts`](src/core/task/Task.ts:1)), `StreamEvent`/`UsageType` ([`bedrock.ts`](src/api/providers/bedrock.ts:1)), [`raceNextChunkWithAbort`](src/core/task/TaskApiLoop.ts:1), `OpenAiNativeModel` ([`openai-native.ts`](src/api/providers/openai-native.ts:1)), `OpenAiCodexModel` ([`openai-codex.ts`](src/api/providers/openai-codex.ts:1)).
+4. **`ClineProviderEvents`** — exported in [`ClineProvider.ts`](src/core/webview/ClineProvider.ts:1) with **zero external references** (whole-repo grep); strong delete candidate.
+
+> **Test-gap gate (prerequisite for #4):** the delegation → parent-return path via [`reopenParentFromDelegation()`](src/core/assistant-message/presentAssistantMessage.ts:203) — the path #4's `ProviderDelegation` collaborator will rework — is **untested at any layer** (finding I-4 in [`2026-07-13_efficiency-stack-review-findings.md`](ai_plans/2026-07-13_efficiency-stack-review-findings.md:1); `TaskApiLoop.text-completion-fallback.spec.ts` mocks `attemptCompletionTool` entirely). **Add a subtask e2e/integration test before touching the delegation helper in #4** — it is the riskiest least-tested path in the codebase.
+
+> **Systematic dead-code tool:** `npx knip` (configured via [`knip.json`](knip.json:1)) is the authoritative unused-export/types/files detector and resolves the dynamic-`import()` blind spot that hid [`PlanReviewPanel`](src/core/webview/PlanReviewPanel.ts:1) from static-grep. Run it before classifying any §5 item as removable; the table above is only for dynamic-consumption cases knip can't see.
+
+---
+
+_All file:line citations verified against the current checkout at the time of analysis. The two pre-existing docs were used as input and explicitly corrected where stale. The 2026-07-15 orchestrator pass re-verified the headline metrics and added §5._
