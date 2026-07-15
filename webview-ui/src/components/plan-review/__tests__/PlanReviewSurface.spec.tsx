@@ -26,6 +26,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 				"chat:planReview.deleteNote": "Delete note",
 				"chat:planReview.save": "Save",
 				"chat:planReview.annotateTooltip": "Review & annotate",
+				"chat:planReview.changesHighlighted": "Changes since last review",
+				"chat:planReview.removedContent": "Removed since last review",
 			}
 			return map[key] ?? key
 		},
@@ -157,5 +159,48 @@ describe("PlanReviewSurface", () => {
 	it("does not show filePath in header when not provided", () => {
 		render(<PlanReviewSurface {...defaultProps} />)
 		expect(screen.queryByText("plans/plan.md")).not.toBeInTheDocument()
+	})
+
+	describe("change highlighting (baselineMarkdown)", () => {
+		it("shows no diff badge or highlights without a baseline", () => {
+			render(<PlanReviewSurface {...defaultProps} />)
+			expect(screen.queryByTestId("plan-diff-badge")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("plan-diff-changed")).not.toBeInTheDocument()
+		})
+
+		it("shows no diff badge when baseline equals current content", () => {
+			render(<PlanReviewSurface {...defaultProps} baselineMarkdown={defaultProps.markdown} />)
+			expect(screen.queryByTestId("plan-diff-badge")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("plan-diff-changed")).not.toBeInTheDocument()
+		})
+
+		it("highlights blocks changed since the baseline and shows the badge", () => {
+			render(
+				<PlanReviewSurface
+					{...defaultProps}
+					markdown={"# Title\n\nintro\n\nnew step added by the model"}
+					baselineMarkdown={"# Title\n\nintro"}
+				/>,
+			)
+			expect(screen.getByTestId("plan-diff-badge")).toBeInTheDocument()
+			const changed = screen.getByTestId("plan-diff-changed")
+			expect(changed).toHaveTextContent("new step added by the model")
+			// Unchanged content is rendered outside the highlighted block.
+			const blocks = screen.getAllByTestId("markdown-block")
+			expect(blocks.some((b) => b.textContent?.includes("intro"))).toBe(true)
+		})
+
+		it("shows a struck-through strip for content removed since the baseline", () => {
+			render(
+				<PlanReviewSurface
+					{...defaultProps}
+					markdown={"# Title\n\nend"}
+					baselineMarkdown={"# Title\n\ndropped step\n\nend"}
+				/>,
+			)
+			const removed = screen.getByTestId("plan-diff-removed")
+			expect(removed).toHaveTextContent("dropped step")
+			expect(screen.getByTestId("plan-diff-badge")).toBeInTheDocument()
+		})
 	})
 })

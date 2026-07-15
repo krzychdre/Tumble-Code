@@ -524,6 +524,8 @@
 		"notePlaceholder": "메모를 작성하세요…",
 		"send": "메모 보내기",
 		"cancel": "취소",
+		"changesHighlighted": "마지막 검토 이후 변경 사항",
+		"removedContent": "마지막 검토 이후 제거됨",
 		"emptyState": "메모를 추가하려면 계획에서 텍스트를 선택하세요.",
 		"notesCount": "노트: {{count}}",
 		"editNote": "메모 편집",

@@ -204,3 +204,39 @@ loading state) are `fixed inset-0`, pinning header + footer to the viewport
 and making the markdown area the only scroll container (which the annotation
 chip math already assumed). jsdom cannot catch this class of bug — verify in
 the extension.
+
+## V4 — close-on-resolve + rendered change highlighting (2026-07-15, feedback round 4)
+
+User: (1) Approve / Deny / Send notes / Cancel must all CLOSE the Plan Review
+panel (V3 kept it open); (2) the panel must show WHAT changed in the plan —
+diff-coloured but on the rendered preview, not source.
+
+### Close on resolve
+
+- Cancel already disposed the panel (`planReviewClose`).
+- `planReviewSubmit` (Send notes) now disposes the panel after routing the
+  message.
+- `planReviewPause` calls new `PlanReviewPanel.closeForFile(absPath)` after the
+  reviewPlan ask resolves — covers Approve, Deny, and chat-typed responses.
+  Idempotent with the submit-dispose (already-disposed entries are skipped).
+
+### Rendered change highlighting
+
+- Host: `PlanReviewPanel` tracks `entry.currentMarkdown` (init, re-init,
+  watcher updates); on dispose it lands in a static per-file
+  `lastReviewedContent` map — "content the user last saw". Both init paths
+  send it as `planReview.baselineMarkdown`. Round trip: close (any action)
+  stores baseline → model revises → pause reopens panel → webview diffs
+  baseline vs current.
+- Webview: `planMarkdownDiff.ts` — fence-aware blank-line block split +
+  `diffArrays` (whitespace-insensitive comparator). Changed/added blocks
+  render as normal markdown inside a green `diffEditor.insertedTextBackground`
+  wrapper; pure deletions render as a struck-through red strip (plain text on
+  purpose — rendering deleted markdown next to live content is misleading);
+  removed-followed-by-added collapses to just the highlighted replacement.
+  A header badge ("Changes since last review") appears whenever highlights
+  are active. Live `planReviewUpdate`s keep diffing against the same baseline.
+- First-ever open of a file has no baseline → no highlights (nothing to
+  compare against; the whole plan would otherwise light up green).
+- i18n: `planReview.changesHighlighted` + `planReview.removedContent`,
+  en + 17 locales.

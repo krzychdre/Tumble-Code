@@ -549,6 +549,8 @@
 		"notePlaceholder": "Napisz swoją notatkę…",
 		"send": "Wyślij notatki",
 		"cancel": "Anuluj",
+		"changesHighlighted": "Zmiany od ostatniego przeglądu",
+		"removedContent": "Usunięte od ostatniego przeglądu",
 		"emptyState": "Zaznacz tekst w planie, aby dodać notatkę.",
 		"notesCount": "Notatki: {{count}}",
 		"editNote": "Edytuj notatkę",

@@ -749,7 +749,7 @@ export interface WebviewMessage {
 	worktreeNewWindow?: boolean
 	worktreeIncludeContent?: string
 	/** Plan review panel init/update payload. */
-	planReview?: { filePath?: string; markdown?: string; language?: string }
+	planReview?: { filePath?: string; markdown?: string; baselineMarkdown?: string; language?: string }
 }
 
 export interface RequestOpenAiCodexRateLimitsMessage {

@@ -525,6 +525,8 @@
 		"notePlaceholder": "Notunu yaz…",
 		"send": "Notları gönder",
 		"cancel": "İptal",
+		"changesHighlighted": "Son incelemeden bu yana yapılan değişiklikler",
+		"removedContent": "Son incelemeden bu yana kaldırıldı",
 		"emptyState": "Not eklemek için planda metin seç.",
 		"notesCount": "Notlar: {{count}}",
 		"editNote": "Notu düzenle",

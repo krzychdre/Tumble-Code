@@ -515,6 +515,8 @@
 		"notePlaceholder": "寫下你的備註…",
 		"send": "傳送備註",
 		"cancel": "取消",
+		"changesHighlighted": "自上次審閱以來的變更",
+		"removedContent": "自上次審閱以來已移除",
 		"emptyState": "在計劃中選取文字以新增備註。",
 		"notesCount": "筆記：{{count}}",
 		"editNote": "編輯備註",

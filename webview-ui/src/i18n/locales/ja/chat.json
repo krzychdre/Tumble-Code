@@ -524,6 +524,8 @@
 		"notePlaceholder": "ノートを書く…",
 		"send": "ノートを送信",
 		"cancel": "キャンセル",
+		"changesHighlighted": "前回のレビュー以降の変更",
+		"removedContent": "前回のレビュー以降に削除",
 		"emptyState": "ノートを追加するにはプラン内のテキストを選択してください。",
 		"notesCount": "ノート: {{count}}",
 		"editNote": "ノートを編集",

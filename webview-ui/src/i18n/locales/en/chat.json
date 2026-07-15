@@ -554,6 +554,8 @@
 		"notePlaceholder": "Write your note…",
 		"send": "Send notes",
 		"cancel": "Cancel",
+		"changesHighlighted": "Changes since last review",
+		"removedContent": "Removed since last review",
 		"emptyState": "Select text in the plan to add a note.",
 		"notesCount": "Notes: {{count}}",
 		"editNote": "Edit note",

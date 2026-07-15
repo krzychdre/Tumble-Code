@@ -72,6 +72,8 @@ export async function pauseForPlanReviewIfNeeded(task: Task, toolRelPath: string
 			false,
 		)
 
+		let result: string
+
 		if (response === "yesButtonClicked") {
 			// The user may have drafted annotation notes in the panel and clicked
 			// Approve instead of the panel's Send button — the notes ARE the
@@ -79,23 +81,27 @@ export async function pauseForPlanReviewIfNeeded(task: Task, toolRelPath: string
 			const draftNotes = PlanReviewPanel.consumeDraftNotes(absPath)
 			if (draftNotes) {
 				await task.say("user_feedback", draftNotes)
-				return (
+				result =
 					"The user reviewed the updated plan and responded with the following notes:\n<user_message>\n" +
 					draftNotes +
 					"\n</user_message>\nAddress these notes and update the plan."
-				)
+			} else {
+				result = "The user reviewed the updated plan and approved it."
 			}
-			return "The user reviewed the updated plan and approved it."
-		}
-
-		// messageResponse / noButtonClicked with text: treat as feedback.
-		if (text) {
+		} else if (text) {
+			// messageResponse / noButtonClicked with text: treat as feedback.
 			await task.say("user_feedback", text, images)
-			return "The user reviewed the updated plan and responded:\n<user_message>\n" + text + "\n</user_message>"
+			result = "The user reviewed the updated plan and responded:\n<user_message>\n" + text + "\n</user_message>"
+		} else {
+			// Plain reject with no text.
+			result = "The user rejected the plan update. Wait for further instructions or ask a clarifying question."
 		}
 
-		// Plain reject with no text.
-		return "The user rejected the plan update. Wait for further instructions or ask a clarifying question."
+		// The review round is resolved (Approve/Deny/notes) — close the panel.
+		// Already-disposed panels (e.g. Send notes disposed it) are a no-op.
+		PlanReviewPanel.closeForFile(absPath)
+
+		return result
 	} catch (error) {
 		// The pause must never crash a write tool — log and continue.
 		const provider = task.providerRef.deref()

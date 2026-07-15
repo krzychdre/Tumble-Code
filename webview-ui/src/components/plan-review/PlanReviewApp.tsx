@@ -15,6 +15,9 @@ import { PlanReviewSurface } from "./PlanReviewSurface"
 interface PlanReviewState {
 	filePath?: string
 	markdown?: string
+	/** Content at the last closed review — diffed against markdown to
+	 * highlight what the model changed. Sent on init only. */
+	baselineMarkdown?: string
 	language?: string
 }
 
@@ -66,7 +69,8 @@ const PlanReviewAppInner: React.FC = () => {
 			} else if (message.type === "planReviewUpdate") {
 				const planReview = message.planReview as PlanReviewState
 				if (planReview) {
-					// Update markdown only — preserve annotation state.
+					// Update markdown only — preserve annotation state and the
+					// baseline (live edits keep diffing against the same round).
 					setState((prev) => ({ ...prev, markdown: planReview.markdown }))
 				}
 			} else if (message.type === "planReviewDraftsConsumed") {
@@ -102,6 +106,7 @@ const PlanReviewAppInner: React.FC = () => {
 		<PlanReviewSurface
 			key={state.filePath ?? `content-${contentSession}`}
 			markdown={state.markdown ?? ""}
+			baselineMarkdown={state.baselineMarkdown}
 			filePath={state.filePath}
 			onSubmit={handleSubmit}
 			onClose={handleClose}

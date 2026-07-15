@@ -524,6 +524,8 @@
 		"notePlaceholder": "अपना नोट लिखें…",
 		"send": "नोट भेजें",
 		"cancel": "रद्द करें",
+		"changesHighlighted": "पिछली समीक्षा के बाद के बदलाव",
+		"removedContent": "पिछली समीक्षा के बाद हटाया गया",
 		"emptyState": "नोट जोड़ने के लिए योजना में टेक्स्ट चुनें।",
 		"notesCount": "नोट्स: {{count}}",
 		"editNote": "नोट संपादित करें",

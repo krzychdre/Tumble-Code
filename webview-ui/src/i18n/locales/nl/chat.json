@@ -524,6 +524,8 @@
 		"notePlaceholder": "Schrijf je notitie…",
 		"send": "Notities verzenden",
 		"cancel": "Annuleren",
+		"changesHighlighted": "Wijzigingen sinds laatste beoordeling",
+		"removedContent": "Verwijderd sinds laatste beoordeling",
 		"emptyState": "Selecteer tekst in het plan om een notitie toe te voegen.",
 		"notesCount": "Notities: {{count}}",
 		"editNote": "Notitie bewerken",

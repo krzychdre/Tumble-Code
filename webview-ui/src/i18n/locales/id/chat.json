@@ -530,6 +530,8 @@
 		"notePlaceholder": "Tulis catatanmu…",
 		"send": "Kirim catatan",
 		"cancel": "Batal",
+		"changesHighlighted": "Perubahan sejak tinjauan terakhir",
+		"removedContent": "Dihapus sejak tinjauan terakhir",
 		"emptyState": "Pilih teks dalam rencana untuk menambahkan catatan.",
 		"notesCount": "Catatan: {{count}}",
 		"editNote": "Edit catatan",

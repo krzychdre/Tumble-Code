@@ -524,6 +524,8 @@
 		"notePlaceholder": "Escriu la teva nota…",
 		"send": "Enviar notes",
 		"cancel": "Cancel·lar",
+		"changesHighlighted": "Canvis des de l'última revisió",
+		"removedContent": "Eliminat des de l'última revisió",
 		"emptyState": "Selecciona text al pla per afegir una nota.",
 		"notesCount": "Notes: {{count}}",
 		"editNote": "Editar nota",

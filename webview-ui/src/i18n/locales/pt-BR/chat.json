@@ -524,6 +524,8 @@
 		"notePlaceholder": "Escreva sua nota…",
 		"send": "Enviar notas",
 		"cancel": "Cancelar",
+		"changesHighlighted": "Alterações desde a última revisão",
+		"removedContent": "Removido desde a última revisão",
 		"emptyState": "Selecione texto no plano para adicionar uma nota.",
 		"notesCount": "Notas: {{count}}",
 		"editNote": "Editar nota",

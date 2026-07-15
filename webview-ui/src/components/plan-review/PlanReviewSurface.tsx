@@ -6,9 +6,13 @@ import { Button, StandardTooltip } from "@src/components/ui"
 import MarkdownBlock from "../common/MarkdownBlock"
 
 import { compilePlanReviewMessage, type PlanAnnotation } from "./planReviewMessage"
+import { diffPlanMarkdown } from "./planMarkdownDiff"
 
 interface PlanReviewSurfaceProps {
 	markdown: string
+	/** Content at the last closed review; when present, blocks that changed
+	 * since then are highlighted in the rendered preview. */
+	baselineMarkdown?: string
 	filePath?: string
 	onClose: () => void
 	onSubmit: (compiledText: string) => void
@@ -106,6 +110,7 @@ function clearHighlights() {
 
 export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 	markdown,
+	baselineMarkdown,
 	filePath,
 	onClose,
 	onSubmit,
@@ -114,6 +119,9 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 	initialAnnotations,
 }) => {
 	const { t } = useAppTranslation()
+
+	const diffSegments = useMemo(() => diffPlanMarkdown(baselineMarkdown, markdown), [baselineMarkdown, markdown])
+	const hasChanges = useMemo(() => diffSegments.some((s) => s.kind !== "same"), [diffSegments])
 
 	const [annotations, setAnnotations] = useState<PlanAnnotation[]>(initialAnnotations ?? [])
 	const [showNoteEditor, setShowNoteEditor] = useState(false)
@@ -386,6 +394,17 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 							{filePath}
 						</code>
 					)}
+					{hasChanges && (
+						<span
+							data-testid="plan-diff-badge"
+							className="text-xs px-1.5 py-0.5 rounded shrink-0"
+							style={{
+								background: "var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.15))",
+								color: "var(--vscode-foreground)",
+							}}>
+							{t("chat:planReview.changesHighlighted")}
+						</span>
+					)}
 				</div>
 				<button
 					className="cursor-pointer p-1 hover:bg-vscode-list-hoverBackground rounded shrink-0"
@@ -403,7 +422,35 @@ export const PlanReviewSurface: React.FC<PlanReviewSurfaceProps> = ({
 					className={isWide ? "flex-1 overflow-y-auto p-4 relative" : "flex-1 overflow-y-auto p-4 relative"}
 					onMouseUp={handleMouseUp}
 					style={{ position: "relative" }}>
-					<MarkdownBlock markdown={markdown} />
+					{diffSegments.map((segment, i) =>
+						segment.kind === "removed" ? (
+							<div
+								key={i}
+								data-testid="plan-diff-removed"
+								title={t("chat:planReview.removedContent")}
+								className="my-2 px-2 py-1 rounded text-xs text-vscode-descriptionForeground whitespace-pre-wrap line-through"
+								style={{
+									background: "var(--vscode-diffEditor-removedTextBackground, rgba(255, 0, 0, 0.15))",
+									borderLeft: "3px solid var(--vscode-editorGutter-deletedBackground, #f14c4c)",
+								}}>
+								{segment.text}
+							</div>
+						) : segment.kind === "changed" ? (
+							<div
+								key={i}
+								data-testid="plan-diff-changed"
+								className="my-1 px-2 rounded"
+								style={{
+									background:
+										"var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.15))",
+									borderLeft: "3px solid var(--vscode-editorGutter-addedBackground, #487e02)",
+								}}>
+								<MarkdownBlock markdown={segment.markdown} />
+							</div>
+						) : (
+							<MarkdownBlock key={i} markdown={segment.markdown} />
+						),
+					)}
 
 					{/* Floating "Add note" chip */}
 					{chipPos && !showNoteEditor && (

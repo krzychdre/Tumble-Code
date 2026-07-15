@@ -155,6 +155,33 @@ describe("PlanReviewApp", () => {
 		})
 	})
 
+	it("highlights changes against the init baseline and keeps it across live updates", async () => {
+		render(<PlanReviewApp />)
+		dispatchMessage({
+			type: "planReviewInit",
+			planReview: {
+				markdown: "# Plan\n\nintro\n\nrevised step",
+				baselineMarkdown: "# Plan\n\nintro",
+				filePath: "plans/plan.md",
+				language: "en",
+			},
+		})
+		await waitFor(() => {
+			expect(screen.getByTestId("plan-diff-changed")).toHaveTextContent("revised step")
+		})
+
+		// A live update keeps diffing against the same baseline.
+		dispatchMessage({
+			type: "planReviewUpdate",
+			planReview: {
+				markdown: "# Plan\n\nintro\n\nrevised step again",
+			},
+		})
+		await waitFor(() => {
+			expect(screen.getByTestId("plan-diff-changed")).toHaveTextContent("revised step again")
+		})
+	})
+
 	it("handles planReviewDraftsConsumed without crashing (drafts reset propagated)", async () => {
 		render(<PlanReviewApp />)
 		dispatchMessage({

@@ -25,6 +25,9 @@ interface PanelEntry {
 	/** Compiled draft annotations, kept in sync by the webview so Approve on a
 	 * pending review ask can send them without a round trip. */
 	draftNotes?: string
+	/** Latest markdown pushed to the webview — becomes the diff baseline for
+	 * the next review round when the panel closes. */
+	currentMarkdown?: string
 }
 
 /**
@@ -38,6 +41,9 @@ interface PanelEntry {
 export class PlanReviewPanel {
 	private static panels = new Map<string, PanelEntry>()
 	private static contentPanel: PanelEntry | null = null
+	/** Per-file markdown as of the last closed review — the baseline the next
+	 * review round diffs against so the user sees what the model changed. */
+	private static lastReviewedContent = new Map<string, string>()
 
 	private static async getHtmlContent(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
 		const stylesUri = getUri(webview, extensionUri, ["webview-ui", "build", "assets", "index.css"])
@@ -218,22 +224,29 @@ export class PlanReviewPanel {
 				}
 				case "planReviewReady": {
 					const markdown = await this.resolveMarkdown(target)
+					const entry = this.findEntry(panel)
+					if (entry) {
+						entry.currentMarkdown = markdown
+					}
 					panel.webview.postMessage({
 						type: "planReviewInit",
 						planReview: {
 							filePath: target.filePath,
 							markdown,
+							baselineMarkdown: target.filePath
+								? this.lastReviewedContent.get(target.filePath)
+								: undefined,
 							language: this.getLanguage(),
 						},
 					})
 					break
 				}
 				case "planReviewSubmit": {
-					// The panel stays open: the model's revision of the plan
-					// live-updates the view (file watcher), and while the file
-					// is open here its edits require approval — that is the
-					// annotate → revise → re-review loop.
+					// Sending notes resolves this review round — close the
+					// panel. The next round's pause re-opens it on the revised
+					// plan with the changes highlighted.
 					await this.handleSubmit(message.text)
+					panel.dispose()
 					break
 				}
 				case "planReviewClose": {
@@ -269,7 +282,7 @@ export class PlanReviewPanel {
 		}
 	}
 
-	private static setupWatcher(panel: vscode.WebviewPanel, filePath: string): vscode.FileSystemWatcher | undefined {
+	private static setupWatcher(entry: PanelEntry, filePath: string): vscode.FileSystemWatcher | undefined {
 		const dir = path.dirname(filePath)
 		const base = path.basename(filePath)
 		const pattern = new vscode.RelativePattern(vscode.Uri.file(dir), base)
@@ -278,7 +291,8 @@ export class PlanReviewPanel {
 		watcher.onDidChange(async () => {
 			try {
 				const markdown = await fs.readFile(filePath, "utf8")
-				panel.webview.postMessage({
+				entry.currentMarkdown = markdown
+				entry.panel.webview.postMessage({
 					type: "planReviewUpdate",
 					planReview: { markdown },
 				})
@@ -294,11 +308,29 @@ export class PlanReviewPanel {
 		entry.disposed = true
 		entry.watcher?.dispose()
 		if (entry.filePath) {
+			// The content the user last saw becomes the baseline the next
+			// review round diffs against.
+			if (entry.currentMarkdown !== undefined) {
+				this.lastReviewedContent.set(entry.filePath, entry.currentMarkdown)
+			}
 			unregisterPlanReviewFile(entry.filePath)
 			this.panels.delete(entry.filePath)
 		}
 		if (this.contentPanel === entry) {
 			this.contentPanel = null
+		}
+	}
+
+	/**
+	 * Closes the review panel for a file after its review round resolved
+	 * (Approve/Deny on the pending ask). No-op when no panel is open.
+	 */
+	static closeForFile(fsPath: string): void {
+		for (const [key, entry] of this.panels) {
+			if (!entry.disposed && arePathsEqual(key, fsPath)) {
+				entry.panel.dispose()
+				return
+			}
 		}
 	}
 
@@ -317,11 +349,13 @@ export class PlanReviewPanel {
 				existing.panel.reveal(vscode.ViewColumn.Active)
 				// Re-init in case the file changed since last open.
 				const markdown = await this.resolveMarkdown(target)
+				existing.currentMarkdown = markdown
 				existing.panel.webview.postMessage({
 					type: "planReviewInit",
 					planReview: {
 						filePath: target.filePath,
 						markdown,
+						baselineMarkdown: this.lastReviewedContent.get(target.filePath),
 						language: this.getLanguage(),
 					},
 				})
@@ -357,13 +391,9 @@ export class PlanReviewPanel {
 
 		this.setupMessageListener(panel, target)
 
-		let watcher: vscode.FileSystemWatcher | undefined
+		const entry: PanelEntry = { panel, filePath: target.filePath, disposed: false }
 		if (target.filePath) {
-			watcher = this.setupWatcher(panel, target.filePath)
-		}
-
-		const entry: PanelEntry = { panel, filePath: target.filePath, watcher, disposed: false }
-		if (target.filePath) {
+			entry.watcher = this.setupWatcher(entry, target.filePath)
 			registerPlanReviewFile(target.filePath)
 			this.panels.set(target.filePath, entry)
 		} else {

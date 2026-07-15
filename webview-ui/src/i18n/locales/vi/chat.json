@@ -525,6 +525,8 @@
 		"notePlaceholder": "Viết ghi chú của bạn…",
 		"send": "Gửi ghi chú",
 		"cancel": "Hủy",
+		"changesHighlighted": "Thay đổi kể từ lần xem xét trước",
+		"removedContent": "Đã xóa kể từ lần xem xét trước",
 		"emptyState": "Chọn văn bản trong kế hoạch để thêm ghi chú.",
 		"notesCount": "Ghi chú: {{count}}",
 		"editNote": "Sửa ghi chú",
