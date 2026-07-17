@@ -29,21 +29,8 @@ interface HistoryIndex {
  * on per-task file writes. Within a single extension host process,
  * an in-process write lock serializes mutations.
  */
-/**
- * Options for TaskHistoryStore constructor.
- */
-export interface TaskHistoryStoreOptions {
-	/**
-	 * Optional callback invoked inside the write lock after each mutation
-	 * (upsert, delete, deleteMany). Used for serialized write-through to
-	 * globalState during the transition period.
-	 */
-	onWrite?: (items: HistoryItem[]) => Promise<void>
-}
-
 export class TaskHistoryStore {
 	private readonly globalStoragePath: string
-	private readonly onWrite?: (items: HistoryItem[]) => Promise<void>
 	private cache: Map<string, HistoryItem> = new Map()
 	private writeLock: Promise<void> = Promise.resolve()
 	private indexWriteTimer: ReturnType<typeof setTimeout> | null = null
@@ -64,9 +51,8 @@ export class TaskHistoryStore {
 	/** Periodic reconciliation interval in milliseconds. */
 	private static readonly RECONCILE_INTERVAL_MS = 5 * 60 * 1000
 
-	constructor(globalStoragePath: string, options?: TaskHistoryStoreOptions) {
+	constructor(globalStoragePath: string) {
 		this.globalStoragePath = globalStoragePath
-		this.onWrite = options?.onWrite
 		this.initialized = new Promise<void>((resolve) => {
 			this.resolveInitialized = resolve
 		})
@@ -182,11 +168,6 @@ export class TaskHistoryStore {
 
 		const all = this.getAll()
 
-		// Call onWrite callback inside the lock for serialized write-through
-		if (this.onWrite) {
-			await this.onWrite(all)
-		}
-
 		return all
 	}
 
@@ -206,11 +187,6 @@ export class TaskHistoryStore {
 			}
 
 			this.scheduleIndexWrite()
-
-			// Call onWrite callback inside the lock for serialized write-through
-			if (this.onWrite) {
-				await this.onWrite(this.getAll())
-			}
 		})
 	}
 
@@ -231,11 +207,6 @@ export class TaskHistoryStore {
 			}
 
 			this.scheduleIndexWrite()
-
-			// Call onWrite callback inside the lock for serialized write-through
-			if (this.onWrite) {
-				await this.onWrite(this.getAll())
-			}
 		})
 	}
 
@@ -318,51 +289,6 @@ export class TaskHistoryStore {
 	 */
 	invalidateAll(): void {
 		this.cache.clear()
-	}
-
-	// ────────────────────────────── Migration ──────────────────────────────
-
-	/**
-	 * Migrate from globalState taskHistory array to per-task files.
-	 *
-	 * For each entry in the globalState array, writes a `history_item.json`
-	 * file if one doesn't already exist. This is idempotent and safe to re-run.
-	 */
-	async migrateFromGlobalState(taskHistoryEntries: HistoryItem[]): Promise<void> {
-		if (!taskHistoryEntries || taskHistoryEntries.length === 0) {
-			return
-		}
-
-		for (const item of taskHistoryEntries) {
-			if (!item.id) {
-				continue
-			}
-
-			// Check if task directory exists on disk
-			const tasksDir = await this.getTasksDir()
-			const taskDir = path.join(tasksDir, item.id)
-
-			try {
-				await fs.access(taskDir)
-			} catch {
-				// Task directory doesn't exist; skip this entry as it's orphaned in globalState
-				continue
-			}
-
-			// Write history_item.json if it doesn't exist yet
-			const filePath = path.join(taskDir, GlobalFileNames.historyItem)
-			try {
-				await fs.access(filePath)
-				// File already exists, skip (don't overwrite existing per-task files)
-			} catch {
-				// File doesn't exist, write it
-				await safeWriteJson(filePath, item)
-				this.cache.set(item.id, item)
-			}
-		}
-
-		// Write the index
-		await this.writeIndex()
 	}
 
 	// ────────────────────────────── Private: Index management ──────────────────────────────

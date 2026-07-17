@@ -69,6 +69,30 @@ describe("ContextProxy", () => {
 	})
 
 	describe("constructor", () => {
+		it("clears legacy task history global state without reading it", () => {
+			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistory", undefined)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
+			expect(mockGlobalState.get).not.toHaveBeenCalledWith("taskHistory")
+			expect(mockGlobalState.get).not.toHaveBeenCalledWith("taskHistoryMigratedToFiles")
+		})
+
+		it("continues initialization when clearing one legacy key fails", async () => {
+			const update = vi
+				.fn()
+				.mockImplementation((key: string) =>
+					key === "taskHistory" ? Promise.reject(new Error("cleanup failed")) : Promise.resolve(undefined),
+				)
+			const context = {
+				...mockContext,
+				globalState: { get: vi.fn(), update },
+			}
+			const newProxy = new ContextProxy(context)
+
+			await expect(newProxy.initialize()).resolves.toBeUndefined()
+			expect(newProxy.isInitialized).toBe(true)
+			expect(update).toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
+		})
+
 		it("should initialize state cache with all global state keys", () => {
 			// +3 for the migration checks:
 			// 1. openRouterImageGenerationSettings
@@ -116,37 +140,23 @@ describe("ContextProxy", () => {
 
 		it("should bypass cache for pass-through state keys", async () => {
 			// Setup mock return value
-			mockGlobalState.get.mockReturnValue("pass-through-value")
+			mockGlobalState.get.mockReturnValue(false)
 
-			// Use a pass-through key (taskHistory)
-			const result = proxy.getGlobalState("taskHistory")
+			const result = proxy.getGlobalState("autoMemoryEnabled")
 
 			// Should get value directly from original context
-			expect(result).toBe("pass-through-value")
-			expect(mockGlobalState.get).toHaveBeenCalledWith("taskHistory")
+			expect(result).toBe(false)
+			expect(mockGlobalState.get).toHaveBeenCalledWith("autoMemoryEnabled")
 		})
 
 		it("should respect default values for pass-through state keys", async () => {
 			// Setup mock to return undefined
 			mockGlobalState.get.mockReturnValue(undefined)
 
-			// Use a pass-through key with default value
-			const historyItems = [
-				{
-					id: "1",
-					number: 1,
-					ts: 1,
-					task: "test",
-					tokensIn: 1,
-					tokensOut: 1,
-					totalCost: 1,
-				},
-			]
-
-			const result = proxy.getGlobalState("taskHistory", historyItems)
+			const result = proxy.getGlobalState("autoMemoryEnabled", false)
 
 			// Should return default value when original context returns undefined
-			expect(result).toBe(historyItems)
+			expect(result).toBe(false)
 		})
 	})
 
@@ -163,30 +173,18 @@ describe("ContextProxy", () => {
 		})
 
 		it("should bypass cache for pass-through state keys", async () => {
-			const historyItems = [
-				{
-					id: "1",
-					number: 1,
-					ts: 1,
-					task: "test",
-					tokensIn: 1,
-					tokensOut: 1,
-					totalCost: 1,
-				},
-			]
-
-			await proxy.updateGlobalState("taskHistory", historyItems)
+			await proxy.updateGlobalState("autoMemoryEnabled", false)
 
 			// Should update original context
-			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistory", historyItems)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("autoMemoryEnabled", false)
 
 			// Setup mock for subsequent get
-			mockGlobalState.get.mockReturnValue(historyItems)
+			mockGlobalState.get.mockReturnValue(false)
 
 			// Should get fresh value from original context
-			const storedValue = proxy.getGlobalState("taskHistory")
-			expect(storedValue).toBe(historyItems)
-			expect(mockGlobalState.get).toHaveBeenCalledWith("taskHistory")
+			const storedValue = proxy.getGlobalState("autoMemoryEnabled")
+			expect(storedValue).toBe(false)
+			expect(mockGlobalState.get).toHaveBeenCalledWith("autoMemoryEnabled")
 		})
 	})
 
@@ -400,6 +398,7 @@ describe("ContextProxy", () => {
 			// Total calls should include:
 			// - 2 initial setup writes (apiModelId, apiProvider)
 			// - GLOBAL_STATE_KEYS.length writes from resetAllState's clear loop
+			// - 2 legacy task-history cleanup writes per initialization
 			// - MIGRATION_WRITES_PER_INIT * 2 writes from the auto-memory
 			//   defaults migration, which runs once in beforeEach's initialize()
 			//   and again inside resetAllState's initialize(). The migration
@@ -407,7 +406,9 @@ describe("ContextProxy", () => {
 			//   memoryRecallEnabled, autoDreamMinHours, autoDreamMinSessions)
 			//   when those keys are absent (mock get returns undefined).
 			const MIGRATION_WRITES_PER_INIT = 5
-			const expectedUpdateCalls = 2 + GLOBAL_STATE_KEYS.length + MIGRATION_WRITES_PER_INIT * 2
+			const LEGACY_CLEANUP_WRITES_PER_INIT = 2
+			const expectedUpdateCalls =
+				2 + GLOBAL_STATE_KEYS.length + (MIGRATION_WRITES_PER_INIT + LEGACY_CLEANUP_WRITES_PER_INIT) * 2
 			expect(mockGlobalState.update).toHaveBeenCalledTimes(expectedUpdateCalls)
 		})
 

@@ -282,6 +282,19 @@ describe("ClineProvider - Sticky Mode", () => {
 		// Wait for the async TaskHistoryStore initialization to complete
 		await new Promise((resolve) => setTimeout(resolve, 10))
 
+		// Mode persistence reads task metadata exclusively from TaskHistoryStore.
+		vi.spyOn(provider.taskHistoryStore, "get").mockImplementation((id) => ({
+			id,
+			ts: Date.now(),
+			task: `Task ${id}`,
+			number: 1,
+			tokensIn: 0,
+			tokensOut: 0,
+			cacheWrites: 0,
+			cacheReads: 0,
+			totalCost: 0,
+		}))
+
 		// Mock getMcpHub method
 		provider.getMcpHub = vi.fn().mockReturnValue({
 			listTools: vi.fn().mockResolvedValue([]),
@@ -306,21 +319,6 @@ describe("ClineProvider - Sticky Mode", () => {
 
 			// Get the actual taskId from the mock
 			const taskId = (mockTask as any).taskId || "test-task-id"
-
-			// Mock getGlobalState to return task history
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-				},
-			])
 
 			// Mock updateTaskHistory to track calls
 			const updateTaskHistorySpy = vi
@@ -360,21 +358,6 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Add task to provider stack
 			await provider.addClineToStack(mockTask as any)
 
-			// Mock getGlobalState to return task history
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: mockTask.taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-				},
-			])
-
 			// Mock updateTaskHistory
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve([]))
 
@@ -397,21 +380,6 @@ describe("ClineProvider - Sticky Mode", () => {
 
 			// Get the actual taskId from the mock
 			const taskId = (mockTask as any).taskId || "test-task-id"
-
-			// Mock getGlobalState to return task history
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-				},
-			])
 
 			// Mock updateTaskHistory to track calls
 			const updateTaskHistorySpy = vi
@@ -521,21 +489,6 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Get the actual taskId from the mock
 			const taskId = (mockTask as any).taskId || "test-task-id"
 
-			// Mock getGlobalState to return task history with our task
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-				},
-			])
-
 			// Mock updateTaskHistory to capture the updated history item
 			let updatedHistoryItem: any
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation((item) => {
@@ -579,25 +532,22 @@ describe("ClineProvider - Sticky Mode", () => {
 				[parentTaskId]: "architect", // Parent starts with architect mode
 			}
 
-			// Mock getGlobalState to return task history
-			const getGlobalStateMock = vi.spyOn(provider as any, "getGlobalState")
-			getGlobalStateMock.mockImplementation((key) => {
-				if (key === "taskHistory") {
-					return Object.entries(taskModes).map(([id, mode]) => ({
-						id,
-						ts: Date.now(),
-						task: `Task ${id}`,
-						number: 1,
-						tokensIn: 0,
-						tokensOut: 0,
-						cacheWrites: 0,
-						cacheReads: 0,
-						totalCost: 0,
-						mode,
-					}))
-				}
-				// Return empty array for other keys
-				return []
+			vi.spyOn(provider.taskHistoryStore, "get").mockImplementation((id) => {
+				const mode = taskModes[id]
+				return mode === undefined
+					? undefined
+					: {
+							id,
+							ts: Date.now(),
+							task: `Task ${id}`,
+							number: 1,
+							tokensIn: 0,
+							tokensOut: 0,
+							cacheWrites: 0,
+							cacheReads: 0,
+							totalCost: 0,
+							mode,
+						}
 			})
 
 			// Mock updateTaskHistory to track mode changes
@@ -808,21 +758,6 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Add task to provider stack
 			await provider.addClineToStack(mockTask as any)
 
-			// Mock getGlobalState to return task history
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: mockTask.taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-				},
-			])
-
 			// Mock updateTaskHistory
 			const updateTaskHistorySpy = vi
 				.spyOn(provider, "updateTaskHistory")
@@ -874,22 +809,6 @@ describe("ClineProvider - Sticky Mode", () => {
 
 			// Add task to provider stack
 			await provider.addClineToStack(mockTask as any)
-
-			// Mock getGlobalState
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: mockTask.taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-					mode: "code",
-				},
-			])
 
 			// Mock updateTaskHistory
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve([]))
@@ -962,21 +881,6 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Add task to provider stack
 			await provider.addClineToStack(mockTask as any)
 
-			// Mock getGlobalState to return task history
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: mockTask.taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-				},
-			])
-
 			// Mock updateTaskHistory
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve([]))
 
@@ -1017,21 +921,6 @@ describe("ClineProvider - Sticky Mode", () => {
 
 			// Add task to provider stack
 			await provider.addClineToStack(mockTask as any)
-
-			// Mock getGlobalState
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: mockTask.taskId,
-					ts: Date.now(),
-					task: "Test task",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-				},
-			])
 
 			// Mock updateTaskHistory to throw error
 			vi.spyOn(provider, "updateTaskHistory").mockRejectedValue(new Error("Update failed"))
@@ -1086,46 +975,6 @@ describe("ClineProvider - Sticky Mode", () => {
 			await provider.addClineToStack(task1 as any)
 			await provider.addClineToStack(task2 as any)
 			await provider.addClineToStack(task3 as any)
-
-			// Mock getGlobalState to return all tasks
-			vi.spyOn(provider as any, "getGlobalState").mockReturnValue([
-				{
-					id: task1.taskId,
-					ts: Date.now(),
-					task: "Task 1",
-					number: 1,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-					mode: "code",
-				},
-				{
-					id: task2.taskId,
-					ts: Date.now(),
-					task: "Task 2",
-					number: 2,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-					mode: "architect",
-				},
-				{
-					id: task3.taskId,
-					ts: Date.now(),
-					task: "Task 3",
-					number: 3,
-					tokensIn: 0,
-					tokensOut: 0,
-					cacheWrites: 0,
-					cacheReads: 0,
-					totalCost: 0,
-					mode: "debug",
-				},
-			])
 
 			// Mock updateTaskHistory
 			const updateTaskHistorySpy = vi

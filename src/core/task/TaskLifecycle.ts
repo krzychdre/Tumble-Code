@@ -723,7 +723,7 @@ export class TaskLifecycle {
 		// dream's session gate reads `lastModified`. Map the field. `ts` is a
 		// creation-time snapshot, so it undercounts activity within a long
 		// session — safe, since the gate is a skip-only throttle.
-		const taskHistory = (provider.getValue("taskHistory") ?? []).map((h) => ({
+		const taskHistory = provider.getTaskHistory().map((h) => ({
 			lastModified: typeof h.ts === "number" ? h.ts : undefined,
 		}))
 		executeAutoDream({

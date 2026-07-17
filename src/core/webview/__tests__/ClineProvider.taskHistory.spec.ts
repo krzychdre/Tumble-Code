@@ -238,7 +238,6 @@ describe("ClineProvider Task History Synchronization", () => {
 	let mockOutputChannel: vscode.OutputChannel
 	let mockWebviewView: vscode.WebviewView
 	let mockPostMessage: ReturnType<typeof vi.fn>
-	let taskHistoryState: HistoryItem[]
 
 	beforeEach(async () => {
 		vi.clearAllMocks()
@@ -247,13 +246,9 @@ describe("ClineProvider Task History Synchronization", () => {
 			TelemetryService.createInstance([])
 		}
 
-		// Initialize task history state
-		taskHistoryState = []
-
 		const globalState: Record<string, any> = {
 			mode: "code",
 			currentApiConfigName: "current-config",
-			taskHistory: taskHistoryState,
 		}
 
 		const secrets: Record<string, string | undefined> = {}
@@ -265,9 +260,6 @@ describe("ClineProvider Task History Synchronization", () => {
 				get: vi.fn().mockImplementation((key: string) => globalState[key]),
 				update: vi.fn().mockImplementation((key: string, value: any) => {
 					globalState[key] = value
-					if (key === "taskHistory") {
-						taskHistoryState = value
-					}
 				}),
 				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
 			},
@@ -354,6 +346,17 @@ describe("ClineProvider Task History Synchronization", () => {
 	}
 
 	describe("updateTaskHistory", () => {
+		it("persists only through TaskHistoryStore, not globalState", async () => {
+			vi.mocked(mockContext.globalState.update).mockClear()
+
+			await provider.updateTaskHistory(createHistoryItem({ id: "store-only", task: "Store-only task" }), {
+				broadcast: false,
+			})
+
+			expect(provider.taskHistoryStore.get("store-only")).toBeDefined()
+			expect(mockContext.globalState.update).not.toHaveBeenCalledWith("taskHistory", expect.anything())
+		})
+
 		it("broadcasts task history update by default", async () => {
 			await provider.resolveWebviewView(mockWebviewView)
 			provider.isViewLaunched = true
