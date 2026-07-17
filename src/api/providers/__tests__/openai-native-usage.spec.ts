@@ -5,8 +5,8 @@ import { openAiNativeModels } from "@roo-code/types"
 describe("OpenAiNativeHandler - normalizeUsage", () => {
 	let handler: OpenAiNativeHandler
 	const mockModel = {
-		id: "gpt-4o",
-		info: openAiNativeModels["gpt-4o"],
+		id: "gpt-4o-mini",
+		info: openAiNativeModels["gpt-4o-mini"],
 	}
 	const gpt54Model = {
 		id: "gpt-5.4",
@@ -365,34 +365,28 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 			return (handler as any).buildRequestBody(model, [], "", model.verbosity, undefined, undefined)
 		}
 
-		it("should set prompt_cache_retention=24h for gpt-5.1 models that support prompt caching", () => {
+		it("should set prompt_cache_retention=24h for gpt-5.1", () => {
 			const body = buildRequestBodyForModel("gpt-5.1")
 			expect(body.prompt_cache_retention).toBe("24h")
-
-			const codexBody = buildRequestBodyForModel("gpt-5.1-codex")
-			expect(codexBody.prompt_cache_retention).toBe("24h")
-
-			const codexMiniBody = buildRequestBodyForModel("gpt-5.1-codex-mini")
-			expect(codexMiniBody.prompt_cache_retention).toBe("24h")
 		})
 
 		it("should not set prompt_cache_retention for non-gpt-5.1 models even if they support prompt caching", () => {
 			const body = buildRequestBodyForModel("gpt-5")
 			expect(body.prompt_cache_retention).toBeUndefined()
 
-			const fourOBody = buildRequestBodyForModel("gpt-4o")
+			const fourOBody = buildRequestBodyForModel("gpt-4o-mini")
 			expect(fourOBody.prompt_cache_retention).toBeUndefined()
 
 			const gpt54Body = buildRequestBodyForModel("gpt-5.4")
 			expect(gpt54Body.prompt_cache_retention).toBeUndefined()
 
-			const chatModelBody = buildRequestBodyForModel("gpt-5.3-chat-latest")
-			expect(chatModelBody.prompt_cache_retention).toBeUndefined()
+			const currentBody = buildRequestBodyForModel("gpt-5.6-sol")
+			expect(currentBody.prompt_cache_retention).toBeUndefined()
 		})
 
 		it("should not set prompt_cache_retention when the model does not support prompt caching", () => {
-			const modelId = "codex-mini-latest"
-			expect(openAiNativeModels[modelId as keyof typeof openAiNativeModels].supportsPromptCache).toBe(false)
+			const modelId = "gpt-5.5-pro"
+			expect(openAiNativeModels[modelId].supportsPromptCache).toBe(false)
 
 			const body = buildRequestBodyForModel(modelId)
 			expect(body.prompt_cache_retention).toBeUndefined()

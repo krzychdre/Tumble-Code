@@ -74,7 +74,7 @@ describe("OpenAiNativeHandler MCP tool schema handling", () => {
 
 		const handler = new OpenAiNativeHandler({
 			openAiNativeApiKey: "test-key",
-			apiModelId: "gpt-4o",
+			apiModelId: "gpt-4.1",
 		} as ApiHandlerOptions)
 
 		// Mock the responses API call
@@ -141,7 +141,7 @@ describe("OpenAiNativeHandler MCP tool schema handling", () => {
 
 		const handler = new OpenAiNativeHandler({
 			openAiNativeApiKey: "test-key",
-			apiModelId: "gpt-4o",
+			apiModelId: "gpt-4.1",
 		} as ApiHandlerOptions)
 
 		// Mock the responses API call
@@ -208,7 +208,7 @@ describe("OpenAiNativeHandler MCP tool schema handling", () => {
 
 		const handler = new OpenAiNativeHandler({
 			openAiNativeApiKey: "test-key",
-			apiModelId: "gpt-4o",
+			apiModelId: "gpt-4.1",
 		} as ApiHandlerOptions)
 
 		// Mock the responses API call
@@ -284,7 +284,7 @@ describe("OpenAiNativeHandler MCP tool schema handling", () => {
 	it("should handle missing call_id and name in tool_call_arguments.delta by using pending tool identity", async () => {
 		const handler = new OpenAiNativeHandler({
 			openAiNativeApiKey: "test-key",
-			apiModelId: "gpt-4o",
+			apiModelId: "gpt-4.1",
 		} as ApiHandlerOptions)
 
 		const mockClient = {
@@ -365,7 +365,7 @@ describe("OpenAiNativeHandler done-event fallbacks", () => {
 	const createHandlerWithEvents = (events: any[]) => {
 		const handler = new OpenAiNativeHandler({
 			openAiNativeApiKey: "test-key",
-			apiModelId: "gpt-4o",
+			apiModelId: "gpt-4.1",
 		} as ApiHandlerOptions)
 
 		;(handler as any).client = {
