@@ -51,6 +51,10 @@ vi.mock("../../../utils/text-normalization", () => ({
 	unescapeHtmlEntities: vi.fn().mockImplementation((content) => content),
 }))
 
+vi.mock("../../plan-review/planReviewPause", () => ({
+	pauseForPlanReviewIfNeeded: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("../../../integrations/misc/extract-text", () => ({
 	everyLineHasLineNumbers: vi.fn().mockReturnValue(false),
 	stripLineNumbers: vi.fn().mockImplementation((content) => content),

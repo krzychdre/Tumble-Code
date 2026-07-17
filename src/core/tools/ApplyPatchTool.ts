@@ -11,6 +11,7 @@ import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { sanitizeUnifiedDiff, computeDiffStats } from "../diff/stats"
+import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 import { parsePatch, ParseError, processAllHunks } from "./apply-patch"
@@ -228,7 +229,8 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		task.didEditFile = true
 
 		const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, true)
-		pushToolResult(message)
+		const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
+		pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
 		await task.diffViewProvider.reset()
 		task.processQueuedMessages()
 	}
@@ -454,7 +456,9 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		task.didEditFile = true
 
 		const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, false)
-		pushToolResult(message)
+		const reviewRelPath = change.movePath || relPath
+		const reviewNote = await pauseForPlanReviewIfNeeded(task, reviewRelPath)
+		pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
 		await task.diffViewProvider.reset()
 		task.processQueuedMessages()
 	}

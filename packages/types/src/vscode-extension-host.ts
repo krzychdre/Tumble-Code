@@ -106,6 +106,9 @@ export interface ExtensionMessage {
 		| "folderSelected"
 		| "skills"
 		| "fileContent"
+		| "planReviewInit"
+		| "planReviewUpdate"
+		| "planReviewDraftsConsumed"
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -282,6 +285,7 @@ export type ExtensionState = Pick<
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
+	| "alwaysApprovePlan"
 	| "alwaysAllowFollowupQuestions"
 	| "alwaysAllowExecute"
 	| "followupAutoApproveTimeoutMs"
@@ -630,6 +634,11 @@ export interface WebviewMessage {
 		| "openSkillFile"
 		| "selectCustomSound"
 		| "resetCustomSound"
+		| "openPlanReview"
+		| "planReviewReady"
+		| "planReviewSubmit"
+		| "planReviewClose"
+		| "planReviewDraftsChanged"
 	text?: string
 	taskId?: string
 	editedMessageContent?: string
@@ -739,6 +748,8 @@ export interface WebviewMessage {
 	worktreeForce?: boolean
 	worktreeNewWindow?: boolean
 	worktreeIncludeContent?: string
+	/** Plan review panel init/update payload. */
+	planReview?: { filePath?: string; markdown?: string; baselineMarkdown?: string; language?: string }
 }
 
 export interface RequestOpenAiCodexRateLimitsMessage {
@@ -827,6 +838,7 @@ export interface ClineSayTool {
 		| "switchMode"
 		| "newTask"
 		| "finishTask"
+		| "reviewPlan"
 		| "generateImage"
 		| "imageGenerated"
 		| "runSlashCommand"

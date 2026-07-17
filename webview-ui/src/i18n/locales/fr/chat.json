@@ -516,5 +516,23 @@
 		"title": "Fournisseur plus pris en charge",
 		"message": "Désolé, ce fournisseur n'est plus pris en charge. Nous avons constaté que très peu d'utilisateurs de Tumble l'utilisaient réellement et nous devons réduire la portée de notre code pour continuer à avancer rapidement et bien servir notre communauté. C'était une décision vraiment difficile, mais elle nous permet de nous concentrer sur ce qui compte le plus pour toi. C'est rageant, on le sait.",
 		"openSettings": "Ouvrir les paramètres"
+	},
+	"planReview": {
+		"annotateTooltip": "Examiner et annoter",
+		"title": "Examiner le plan",
+		"addNote": "Ajouter une note",
+		"notePlaceholder": "Écris ta note…",
+		"send": "Envoyer les notes",
+		"cancel": "Annuler",
+		"changesHighlighted": "Modifications depuis la dernière révision",
+		"removedContent": "Supprimé depuis la dernière révision",
+		"emptyState": "Sélectionne du texte dans le plan pour ajouter une note.",
+		"notesCount": "Notes : {{count}}",
+		"editNote": "Modifier la note",
+		"deleteNote": "Supprimer la note",
+		"save": "Enregistrer",
+		"reviewFile": "Examiner le plan",
+		"loading": "Chargement du plan…",
+		"pauseTitle": "Plan mis à jour — relisez et approuvez"
 	}
 }

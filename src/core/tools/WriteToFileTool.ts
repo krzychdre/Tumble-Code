@@ -13,6 +13,7 @@ import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
+import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import { convertNewFileToUnifiedDiff, computeDiffStats, sanitizeUnifiedDiff } from "../diff/stats"
 import type { ToolUse } from "../../shared/tools"
 
@@ -209,7 +210,8 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 			const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, !fileExists)
 
-			pushToolResult(message)
+			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
+			pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
 
 			await task.diffViewProvider.reset()
 			this.resetPartialState()

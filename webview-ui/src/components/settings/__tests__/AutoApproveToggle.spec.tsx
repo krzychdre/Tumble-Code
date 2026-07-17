@@ -22,6 +22,7 @@ describe("AutoApproveToggle", () => {
 		alwaysAllowMcp: false,
 		alwaysAllowModeSwitch: true,
 		alwaysAllowSubtasks: false,
+		alwaysApprovePlan: false,
 		alwaysAllowExecute: true,
 		alwaysAllowFollowupQuestions: false,
 		onToggle: mockOnToggle,

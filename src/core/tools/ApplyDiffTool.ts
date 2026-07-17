@@ -12,6 +12,7 @@ import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { unescapeHtmlEntities } from "../../utils/text-normalization"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { computeDiffStats, sanitizeUnifiedDiff } from "../diff/stats"
+import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
@@ -248,10 +249,12 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 					? "\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>"
 					: ""
 
+			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
+
 			if (partFailHint) {
-				pushToolResult(partFailHint + message + singleBlockNotice)
+				pushToolResult(partFailHint + message + singleBlockNotice + (reviewNote ? `\n\n${reviewNote}` : ""))
 			} else {
-				pushToolResult(message + singleBlockNotice)
+				pushToolResult(message + singleBlockNotice + (reviewNote ? `\n\n${reviewNote}` : ""))
 			}
 
 			await task.diffViewProvider.reset()

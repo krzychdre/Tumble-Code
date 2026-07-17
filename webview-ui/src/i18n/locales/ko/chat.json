@@ -516,5 +516,23 @@
 		"title": "공급자 지원 종료",
 		"message": "죄송합니다. 이 공급자는 더 이상 지원되지 않습니다. 실제로 사용하는 Tumble 사용자가 매우 적었고, 빠르게 개발하고 커뮤니티에 잘 봉사하기 위해 코드베이스의 범위를 줄여야 했습니다. 정말 어려운 결정이었지만, 당신에게 가장 중요한 것에 집중할 수 있게 해줍니다. 불편을 드려 죄송합니다.",
 		"openSettings": "설정 열기"
+	},
+	"planReview": {
+		"annotateTooltip": "검토 및 주석 달기",
+		"title": "계획 검토",
+		"addNote": "메모 추가",
+		"notePlaceholder": "메모를 작성하세요…",
+		"send": "메모 보내기",
+		"cancel": "취소",
+		"changesHighlighted": "마지막 검토 이후 변경 사항",
+		"removedContent": "마지막 검토 이후 제거됨",
+		"emptyState": "메모를 추가하려면 계획에서 텍스트를 선택하세요.",
+		"notesCount": "노트: {{count}}",
+		"editNote": "메모 편집",
+		"deleteNote": "메모 삭제",
+		"save": "저장",
+		"reviewFile": "계획 검토",
+		"loading": "계획 불러오는 중…",
+		"pauseTitle": "계획이 업데이트됨 — 검토 후 승인하세요"
 	}
 }

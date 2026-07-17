@@ -516,5 +516,23 @@
 		"title": "Proveedor ya no compatible",
 		"message": "Lo sentimos, este proveedor ya no es compatible. Vimos que muy pocos usuarios de Tumble lo usaban realmente y necesitamos reducir el alcance de nuestro código para poder seguir avanzando rápido y servir bien a nuestra comunidad en este espacio. Fue una decisión muy difícil, pero nos permite enfocarnos en lo que más te importa. Lo sabemos, es una lástima.",
 		"openSettings": "Abrir configuración"
+	},
+	"planReview": {
+		"annotateTooltip": "Revisar y anotar",
+		"title": "Revisar plan",
+		"addNote": "Añadir nota",
+		"notePlaceholder": "Escribe tu nota…",
+		"send": "Enviar notas",
+		"cancel": "Cancelar",
+		"changesHighlighted": "Cambios desde la última revisión",
+		"removedContent": "Eliminado desde la última revisión",
+		"emptyState": "Selecciona texto en el plan para añadir una nota.",
+		"notesCount": "Notas: {{count}}",
+		"editNote": "Editar nota",
+		"deleteNote": "Eliminar nota",
+		"save": "Guardar",
+		"reviewFile": "Revisar plan",
+		"loading": "Cargando plan…",
+		"pauseTitle": "Plan actualizado — revisa y aprueba"
 	}
 }

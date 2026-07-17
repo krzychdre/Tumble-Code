@@ -214,6 +214,25 @@ const getCommandsMap = ({
 			action: "toggleAutoApprove",
 		})
 	},
+	reviewPlanFile: async (uri?: vscode.Uri) => {
+		let fileUri = uri
+		if (!fileUri) {
+			const editor = vscode.window.activeTextEditor
+			if (editor) {
+				fileUri = editor.document.uri
+			}
+		}
+		if (!fileUri) {
+			vscode.window.showWarningMessage("No file is currently open to review.")
+			return
+		}
+		if (fileUri.scheme !== "file" || !fileUri.fsPath.toLowerCase().endsWith(".md")) {
+			vscode.window.showWarningMessage("Review Plan is only available for Markdown files.")
+			return
+		}
+		const { PlanReviewPanel } = await import("../core/webview/PlanReviewPanel")
+		await PlanReviewPanel.open(context, { filePath: fileUri.fsPath })
+	},
 })
 
 export const openClineInNewTab = async ({ context, outputChannel }: Omit<RegisterCommandOptions, "provider">) => {

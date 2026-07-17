@@ -47,6 +47,8 @@ export interface TaskAskSayAccess {
 	interactiveAsk?: ClineMessage
 	/** Headless background task (parallel subagent / memory writer). */
 	isBackground: boolean
+	/** Task working directory — may differ from the provider's (worktrees). */
+	cwd: string
 	autoApprovalTimeoutRef?: NodeJS.Timeout
 	messageQueueService: MessageQueueService
 	providerRef: WeakRef<ClineProvider>
@@ -97,7 +99,11 @@ export class TaskAskSay {
 		// clearApprovalButtons message (which could arrive before buttons were
 		// rendered, leaving them stuck on-screen).
 		const provider = this.access.providerRef.deref()
-		const state = provider ? await provider.getState() : undefined
+		const baseState = provider ? await provider.getState() : undefined
+		// Resolve relative tool paths (plan-review write gate) against the
+		// asking task's own cwd — it may differ from the provider's when the
+		// task runs in a worktree.
+		const state = baseState ? { ...baseState, cwd: this.access.cwd ?? baseState.cwd } : undefined
 		// Per-task override first (headless background tasks): lets a task run
 		// autonomously without mutating the global auto-approval settings. Only
 		// short-circuits when it returns a concrete "approve"/"deny"; otherwise

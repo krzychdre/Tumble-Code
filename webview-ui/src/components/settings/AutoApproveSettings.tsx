@@ -28,6 +28,7 @@ type AutoApproveSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	alwaysAllowMcp?: boolean
 	alwaysAllowModeSwitch?: boolean
 	alwaysAllowSubtasks?: boolean
+	alwaysApprovePlan?: boolean
 	alwaysAllowExecute?: boolean
 	alwaysAllowFollowupQuestions?: boolean
 	followupAutoApproveTimeoutMs?: number
@@ -44,6 +45,7 @@ type AutoApproveSettingsProps = HTMLAttributes<HTMLDivElement> & {
 		| "alwaysAllowMcp"
 		| "alwaysAllowModeSwitch"
 		| "alwaysAllowSubtasks"
+		| "alwaysApprovePlan"
 		| "alwaysAllowExecute"
 		| "alwaysAllowFollowupQuestions"
 		| "followupAutoApproveTimeoutMs"
@@ -63,6 +65,7 @@ export const AutoApproveSettings = ({
 	alwaysAllowMcp,
 	alwaysAllowModeSwitch,
 	alwaysAllowSubtasks,
+	alwaysApprovePlan,
 	alwaysAllowExecute,
 	alwaysAllowFollowupQuestions,
 	followupAutoApproveTimeoutMs = 60000,
@@ -173,6 +176,7 @@ export const AutoApproveSettings = ({
 						alwaysAllowMcp={alwaysAllowMcp}
 						alwaysAllowModeSwitch={alwaysAllowModeSwitch}
 						alwaysAllowSubtasks={alwaysAllowSubtasks}
+						alwaysApprovePlan={alwaysApprovePlan}
 						alwaysAllowExecute={alwaysAllowExecute}
 						alwaysAllowFollowupQuestions={alwaysAllowFollowupQuestions}
 						mode={autoApprovalMode}

@@ -75,6 +75,7 @@ export function setupRemoteControlBridge(opts: {
 				alwaysAllowMcp: state.alwaysAllowMcp,
 				alwaysAllowModeSwitch: state.alwaysAllowModeSwitch,
 				alwaysAllowSubtasks: state.alwaysAllowSubtasks,
+				alwaysApprovePlan: state.alwaysApprovePlan,
 			},
 			tokenUsage,
 			contextTokens: tokenUsage?.contextTokens,

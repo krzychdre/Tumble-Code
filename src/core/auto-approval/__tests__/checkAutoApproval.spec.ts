@@ -1,8 +1,13 @@
-import type { ExtensionState } from "@roo-code/types"
+import type { ExtensionState, ModeConfig } from "@roo-code/types"
 
-import { checkAutoApproval, type AutoApprovalState, type AutoApprovalStateOptions } from "../index"
+import {
+	checkAutoApproval,
+	type AutoApprovalState,
+	type AutoApprovalStateOptions,
+	type AutoApprovalPlanState,
+} from "../index"
 
-type State = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions>
+type State = Pick<ExtensionState, AutoApprovalState | AutoApprovalStateOptions | AutoApprovalPlanState>
 
 const baseState = (overrides: Partial<State> = {}): State =>
 	({
@@ -16,11 +21,14 @@ const baseState = (overrides: Partial<State> = {}): State =>
 		alwaysAllowMcp: false,
 		alwaysAllowModeSwitch: false,
 		alwaysAllowSubtasks: false,
+		alwaysApprovePlan: false,
 		alwaysAllowExecute: false,
 		alwaysAllowFollowupQuestions: false,
 		followupAutoApproveTimeoutMs: 0,
 		allowedCommands: [],
 		deniedCommands: [],
+		mode: "code",
+		customModes: [],
 		...overrides,
 	}) as State
 
@@ -120,6 +128,143 @@ describe("checkAutoApproval modes", () => {
 			const state = baseState({ autoApprovalMode: "default", alwaysAllowExecute: true })
 			const result = await checkAutoApproval({ state, ask: "command", text: "definitely-not-allowed" })
 			expect(result.decision).toBe("ask")
+		})
+	})
+
+	describe("plan-approval gate", () => {
+		const switchModeText = JSON.stringify({ tool: "switchMode", mode: "code" })
+		const newTaskText = JSON.stringify({ tool: "newTask", mode: "code" })
+		const finishTaskText = JSON.stringify({ tool: "finishTask" })
+
+		it("architect + switchMode + alwaysAllowModeSwitch ON + alwaysApprovePlan OFF → ask", async () => {
+			const state = baseState({ mode: "architect", alwaysAllowModeSwitch: true, alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("architect + switchMode + alwaysAllowModeSwitch ON + alwaysApprovePlan ON → approve", async () => {
+			const state = baseState({ mode: "architect", alwaysAllowModeSwitch: true, alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("architect + newTask + alwaysAllowSubtasks ON → ask (subtask is implementation escape hatch)", async () => {
+			const state = baseState({ mode: "architect", alwaysAllowSubtasks: true, alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: newTaskText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("architect + finishTask + alwaysAllowSubtasks ON → approve (finishTask not gated)", async () => {
+			const state = baseState({ mode: "architect", alwaysAllowSubtasks: true, alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: finishTaskText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("code mode + switchMode + alwaysAllowModeSwitch ON → approve (non-planning mode unaffected)", async () => {
+			const state = baseState({ mode: "code", alwaysAllowModeSwitch: true, alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("custom mode with planApprovalRequired + switchMode → ask", async () => {
+			const customModes: ModeConfig[] = [
+				{
+					slug: "my-planner",
+					name: "My Planner",
+					roleDefinition: "You plan things.",
+					groups: ["read"],
+					planApprovalRequired: true,
+				},
+			]
+			const state = baseState({ mode: "my-planner", customModes, alwaysAllowModeSwitch: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("bypass mode + architect + switchMode → ask (gate survives bypass)", async () => {
+			const state = baseState({ mode: "architect", autoApprovalMode: "bypass", alwaysAllowModeSwitch: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("bypass mode + architect + newTask → ask (gate survives bypass)", async () => {
+			const state = baseState({ mode: "architect", autoApprovalMode: "bypass", alwaysAllowSubtasks: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: newTaskText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("bypass mode + architect + switchMode + alwaysApprovePlan ON → approve", async () => {
+			const state = baseState({ mode: "architect", autoApprovalMode: "bypass", alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("bypass mode + non-planning mode + switchMode → approve (gate not applicable)", async () => {
+			const state = baseState({ mode: "code", autoApprovalMode: "bypass" })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("bypass mode + architect + non-gated tool ask → approve (gate only guards switchMode/newTask)", async () => {
+			const state = baseState({ mode: "architect", autoApprovalMode: "bypass" })
+			const result = await checkAutoApproval({
+				state,
+				ask: "tool",
+				text: JSON.stringify({ tool: "finishTask" }),
+			})
+			expect(result.decision).toBe("approve")
+		})
+
+		it("autonomous mode + architect + switchMode → approve (autonomous bypasses the gate)", async () => {
+			const state = baseState({ mode: "architect", autoApprovalMode: "autonomous", alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("architect + switchMode + alwaysAllowModeSwitch OFF + alwaysApprovePlan ON → ask (plan toggle doesn't grant approval by itself)", async () => {
+			const state = baseState({ mode: "architect", alwaysAllowModeSwitch: false, alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: switchModeText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("architect + newTask + alwaysAllowSubtasks ON + alwaysApprovePlan ON → approve", async () => {
+			const state = baseState({ mode: "architect", alwaysAllowSubtasks: true, alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: newTaskText })
+			expect(result.decision).toBe("approve")
+		})
+	})
+
+	describe("reviewPlan pause ask", () => {
+		const reviewPlanText = JSON.stringify({ tool: "reviewPlan", path: "plans/plan.md" })
+
+		it("default mode → ask (user must review)", async () => {
+			const state = baseState({ alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("alwaysApprovePlan true → approve (user opted out of plan review)", async () => {
+			const state = baseState({ alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("bypass mode → ask (gate survives bypass)", async () => {
+			const state = baseState({ autoApprovalMode: "bypass", alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
+			expect(result.decision).toBe("ask")
+		})
+
+		it("bypass mode + alwaysApprovePlan true → approve", async () => {
+			const state = baseState({ autoApprovalMode: "bypass", alwaysApprovePlan: true })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
+			expect(result.decision).toBe("approve")
+		})
+
+		it("autonomous mode → approve (autonomous bypasses the gate)", async () => {
+			const state = baseState({ autoApprovalMode: "autonomous", alwaysApprovePlan: false })
+			const result = await checkAutoApproval({ state, ask: "tool", text: reviewPlanText })
+			expect(result.decision).toBe("approve")
 		})
 	})
 })

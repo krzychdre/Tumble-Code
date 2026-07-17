@@ -517,5 +517,23 @@
 		"title": "Sağlayıcı artık desteklenmiyor",
 		"message": "Üzgünüz, bu sağlayıcı artık desteklenmiyor. Çok az Tumble kullanıcısının bunu gerçekten kullandığını gördük ve hızlı gelişmeye devam edip topluluğumuza iyi hizmet verebilmek için kod tabanımızın kapsamını daraltmamız gerekiyor. Gerçekten zor bir karardı ama senin için en önemli olana odaklanmamızı sağlıyor. Bunun can sıkıcı olduğunu biliyoruz.",
 		"openSettings": "Ayarları aç"
+	},
+	"planReview": {
+		"annotateTooltip": "İncele ve not ekle",
+		"title": "Planı incele",
+		"addNote": "Not ekle",
+		"notePlaceholder": "Notunu yaz…",
+		"send": "Notları gönder",
+		"cancel": "İptal",
+		"changesHighlighted": "Son incelemeden bu yana yapılan değişiklikler",
+		"removedContent": "Son incelemeden bu yana kaldırıldı",
+		"emptyState": "Not eklemek için planda metin seç.",
+		"notesCount": "Notlar: {{count}}",
+		"editNote": "Notu düzenle",
+		"deleteNote": "Notu sil",
+		"save": "Kaydet",
+		"reviewFile": "Planı incele",
+		"loading": "Plan yükleniyor…",
+		"pauseTitle": "Plan güncellendi — incele ve onayla"
 	}
 }

@@ -51,6 +51,12 @@ export class DiffViewProvider {
 	// `pushToolWriteResult()` is called after `saveChanges()` / `saveDirectly()`
 	// and needs to know which file was just written.
 	private lastEditedRelPath?: string
+
+	/** Path of the last successfully saved edit (see `lastEditedRelPath`) —
+	 * lets post-save consumers verify `originalContent` belongs to their file. */
+	get lastSavedRelPath(): string | undefined {
+		return this.lastEditedRelPath
+	}
 	private activeEdit?: ActiveEdit
 	// Snapshot of the most recently buffered final content + path, published by
 	// update() once isFinal=true has settled the document. Drained by
@@ -621,6 +627,15 @@ export class DiffViewProvider {
 		// Get diagnostics before editing the file. Local capture: this path does
 		// not own a diff session, so the snapshot lives on the stack only.
 		const preDiagnostics = this.diagnostics.capturePreDiagnostics()
+
+		// Capture the pre-write content so consumers of `originalContent`
+		// (e.g. the plan-review baseline) see this edit, not a stale one from
+		// an earlier diff session.
+		try {
+			this.originalContent = await fs.readFile(absolutePath, "utf-8")
+		} catch {
+			this.originalContent = ""
+		}
 
 		// Write the content directly to the file
 		await createDirectoriesForFile(absolutePath)

@@ -254,6 +254,10 @@
 			"label": "Teilaufgaben",
 			"description": "Erstellung und Abschluss von Unteraufgaben ohne Genehmigung erlauben"
 		},
+		"plan": {
+			"label": "Plan",
+			"description": "Moduswechsel oder das Erstellen von Unteraufgaben aus einem Planungsmodus (Architekt) automatisch genehmigen, ohne den Plan vorher zu prüfen"
+		},
 		"followupQuestions": {
 			"label": "Frage",
 			"description": "Automatisch die erste vorgeschlagene Antwort für Folgefragen nach der konfigurierten Zeitüberschreitung auswählen",

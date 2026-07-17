@@ -3392,6 +3392,24 @@ export const webviewMessageHandler = async (
 			break
 		}
 
+		case "openPlanReview": {
+			const { PlanReviewPanel } = await import("./PlanReviewPanel")
+			if (message.text) {
+				// File mode: resolve path like openFile does.
+				let filePath: string = message.text
+				if (!path.isAbsolute(filePath)) {
+					filePath = path.join(getCurrentCwd(), filePath)
+				}
+				await PlanReviewPanel.open(provider.context, { filePath })
+			} else if (message.values?.markdown) {
+				// Content mode: raw markdown passed from the webview.
+				await PlanReviewPanel.open(provider.context, {
+					markdown: message.values.markdown as string,
+				})
+			}
+			break
+		}
+
 		case "requestOpenAiCodexRateLimits": {
 			try {
 				const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")

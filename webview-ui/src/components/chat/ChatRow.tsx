@@ -72,10 +72,13 @@ import {
 	Split,
 	ArrowRight,
 	Check,
+	MessageSquarePlus,
+	ClipboardCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PathTooltip } from "../ui/PathTooltip"
 import { OpenMarkdownPreviewButton } from "./OpenMarkdownPreviewButton"
+import { AnnotateButton } from "./AnnotateButton"
 
 // Helper function to get previous todos before a specific message
 function getPreviousTodos(messages: ClineMessage[], currentMessageTs: number): any[] {
@@ -497,6 +500,24 @@ export const ChatRowContent = ({
 								onJumpToFile={onJumpToCreatedFile}
 								diffStats={tool.diffStats}
 							/>
+							{tool.path?.toLowerCase().endsWith(".md") && (
+								<button
+									className="flex items-center gap-1 mt-1 text-xs cursor-pointer hover:opacity-80"
+									onClick={(e) => {
+										e.stopPropagation()
+										vscode.postMessage({ type: "openPlanReview", text: tool.path })
+									}}
+									style={{
+										color: "var(--vscode-button-foreground)",
+										background: "var(--vscode-button-background)",
+										padding: "2px 8px",
+										borderRadius: "3px",
+										border: "none",
+									}}>
+									<MessageSquarePlus className="w-3 h-3" />
+									{t("chat:planReview.reviewFile")}
+								</button>
+							)}
 						</div>
 					</>
 				)
@@ -912,6 +933,29 @@ export const ChatRowContent = ({
 						</div>
 					</>
 				)
+			case "reviewPlan":
+				return (
+					<>
+						<div style={headerStyle}>
+							<ClipboardCheck className="w-4 shrink-0" aria-label="Plan review icon" />
+							<span style={{ fontWeight: "bold" }}>{t("chat:planReview.pauseTitle")}</span>
+						</div>
+						{tool.path && (
+							<div className="text-muted-foreground pl-6">
+								<code>{tool.path}</code>
+							</div>
+						)}
+						{tool.path && (
+							<div className="pl-6 mt-1">
+								<button
+									className="cursor-pointer text-vscode-descriptionForeground hover:underline font-normal"
+									onClick={() => vscode.postMessage({ type: "openPlanReview", text: tool.path })}>
+									{t("chat:planReview.reviewFile")}
+								</button>
+							</div>
+						)}
+					</>
+				)
 			case "runSlashCommand": {
 				const slashCommandInfo = tool
 				return (
@@ -1200,6 +1244,7 @@ export const ChatRowContent = ({
 								<span style={{ fontWeight: "bold" }}>{t("chat:text.rooSaid")}</span>
 								<div style={{ flexGrow: 1 }} />
 								<OpenMarkdownPreviewButton markdown={message.text} />
+								{!message.partial && <AnnotateButton markdown={message.text} />}
 							</div>
 							<div className="pl-6">
 								<Markdown markdown={message.text} partial={message.partial} />
@@ -1340,6 +1385,7 @@ export const ChatRowContent = ({
 								{title}
 								<div style={{ flexGrow: 1 }} />
 								<OpenMarkdownPreviewButton markdown={message.text} />
+								{!message.partial && <AnnotateButton markdown={message.text} />}
 							</div>
 							<div className="border-l border-green-600/30 ml-2 pl-4 pb-1">
 								<Markdown markdown={message.text} />
@@ -1677,6 +1723,7 @@ export const ChatRowContent = ({
 									{title}
 									<div style={{ flexGrow: 1 }} />
 									<OpenMarkdownPreviewButton markdown={message.text} />
+									{!message.partial && <AnnotateButton markdown={message.text} />}
 								</div>
 								<div style={{ color: "var(--vscode-charts-green)", paddingTop: 10 }}>
 									<Markdown markdown={message.text} partial={message.partial} />

@@ -13,6 +13,7 @@ export function useAutoApprovalToggles() {
 		alwaysAllowMcp,
 		alwaysAllowModeSwitch,
 		alwaysAllowSubtasks,
+		alwaysApprovePlan,
 		alwaysAllowFollowupQuestions,
 	} = useExtensionState()
 
@@ -24,6 +25,7 @@ export function useAutoApprovalToggles() {
 			alwaysAllowMcp,
 			alwaysAllowModeSwitch,
 			alwaysAllowSubtasks,
+			alwaysApprovePlan,
 			alwaysAllowFollowupQuestions,
 		}),
 		[
@@ -33,6 +35,7 @@ export function useAutoApprovalToggles() {
 			alwaysAllowMcp,
 			alwaysAllowModeSwitch,
 			alwaysAllowSubtasks,
+			alwaysApprovePlan,
 			alwaysAllowFollowupQuestions,
 		],
 	)

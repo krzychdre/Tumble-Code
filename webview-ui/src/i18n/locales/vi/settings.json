@@ -254,6 +254,10 @@
 			"label": "Công việc phụ",
 			"description": "Cho phép tạo và hoàn thành các công việc phụ mà không cần phê duyệt"
 		},
+		"plan": {
+			"label": "Kế hoạch",
+			"description": "Tự động phê duyệt việc chuyển chế độ hoặc tạo nhiệm vụ phụ từ chế độ lập kế hoạch (Kiến trúc sư) mà không cần xem lại kế hoạch trước"
+		},
 		"followupQuestions": {
 			"label": "Câu hỏi",
 			"description": "Tự động chọn câu trả lời đầu tiên được đề xuất cho các câu hỏi tiếp theo sau thời gian chờ đã cấu hình",

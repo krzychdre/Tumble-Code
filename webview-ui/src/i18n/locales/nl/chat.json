@@ -516,5 +516,23 @@
 		"title": "Provider wordt niet meer ondersteund",
 		"message": "Sorry, deze provider wordt niet meer ondersteund. We zagen dat heel weinig Tumble-gebruikers het daadwerkelijk gebruikten en we moeten de omvang van onze codebase verkleinen zodat we snel kunnen blijven leveren en onze community goed kunnen blijven bedienen. Het was een heel moeilijke beslissing, maar het stelt ons in staat om ons te richten op wat het belangrijkst voor je is. Het is vervelend, dat weten we.",
 		"openSettings": "Instellingen openen"
+	},
+	"planReview": {
+		"annotateTooltip": "Beoordelen & annoteren",
+		"title": "Plan beoordelen",
+		"addNote": "Notitie toevoegen",
+		"notePlaceholder": "Schrijf je notitie…",
+		"send": "Notities verzenden",
+		"cancel": "Annuleren",
+		"changesHighlighted": "Wijzigingen sinds laatste beoordeling",
+		"removedContent": "Verwijderd sinds laatste beoordeling",
+		"emptyState": "Selecteer tekst in het plan om een notitie toe te voegen.",
+		"notesCount": "Notities: {{count}}",
+		"editNote": "Notitie bewerken",
+		"deleteNote": "Notitie verwijderen",
+		"save": "Opslaan",
+		"reviewFile": "Plan beoordelen",
+		"loading": "Plan laden…",
+		"pauseTitle": "Plan bijgewerkt — beoordeel en keur goed"
 	}
 }

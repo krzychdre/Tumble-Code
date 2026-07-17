@@ -11,6 +11,7 @@ import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
 import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
 import { sanitizeUnifiedDiff, computeDiffStats } from "../diff/stats"
+import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
@@ -468,7 +469,8 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 				!isNewFile && expected_replacements > 1 ? ` (${expected_replacements} replacements)` : ""
 			const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, isNewFile)
 
-			pushToolResult(message + replacementInfo)
+			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
+			pushToolResult(message + replacementInfo + (reviewNote ? `\n\n${reviewNote}` : ""))
 
 			// Record successful tool usage and cleanup
 			task.recordToolUsage("edit_file")

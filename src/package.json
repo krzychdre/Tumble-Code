@@ -175,6 +175,11 @@
 				"command": "tumble-code.toggleAutoApprove",
 				"title": "%command.toggleAutoApprove.title%",
 				"category": "%configuration.title%"
+			},
+			{
+				"command": "tumble-code.reviewPlanFile",
+				"title": "%command.reviewPlanFile.title%",
+				"icon": "$(comment-discussion)"
 			}
 		],
 		"menus": {
@@ -280,6 +285,11 @@
 					"command": "tumble-code.popoutButtonClicked",
 					"group": "overflow@2",
 					"when": "activeWebviewPanelId == tumble-code.TabPanelProvider"
+				},
+				{
+					"command": "tumble-code.reviewPlanFile",
+					"group": "navigation",
+					"when": "resourceLangId == markdown"
 				}
 			]
 		},

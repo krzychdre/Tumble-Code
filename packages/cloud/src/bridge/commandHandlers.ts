@@ -15,6 +15,7 @@ const AUTO_APPROVAL_KEYS: (keyof AutoApprovalSettings)[] = [
 	"alwaysAllowMcp",
 	"alwaysAllowModeSwitch",
 	"alwaysAllowSubtasks",
+	"alwaysApprovePlan",
 ]
 
 async function applyAutoApproval(payload: AutoApprovalSettings, provider: BridgeProvider): Promise<void> {

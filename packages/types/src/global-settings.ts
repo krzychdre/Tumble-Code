@@ -143,6 +143,7 @@ export const globalSettingsSchema = z.object({
 	alwaysAllowMcp: z.boolean().optional(),
 	alwaysAllowModeSwitch: z.boolean().optional(),
 	alwaysAllowSubtasks: z.boolean().optional(),
+	alwaysApprovePlan: z.boolean().optional(),
 	alwaysAllowExecute: z.boolean().optional(),
 	alwaysAllowFollowupQuestions: z.boolean().optional(),
 	followupAutoApproveTimeoutMs: z.number().optional(),
@@ -449,6 +450,8 @@ export const EVALS_SETTINGS: RooCodeSettings = {
 	alwaysAllowMcp: true,
 	alwaysAllowModeSwitch: true,
 	alwaysAllowSubtasks: true,
+	// Evals run unattended — the plan-approval gate must not block them.
+	alwaysApprovePlan: true,
 	alwaysAllowExecute: true,
 	alwaysAllowFollowupQuestions: true,
 	followupAutoApproveTimeoutMs: 0,

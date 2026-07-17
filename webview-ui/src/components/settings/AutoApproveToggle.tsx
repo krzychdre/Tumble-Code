@@ -11,6 +11,7 @@ type AutoApproveToggles = Pick<
 	| "alwaysAllowMcp"
 	| "alwaysAllowModeSwitch"
 	| "alwaysAllowSubtasks"
+	| "alwaysApprovePlan"
 	| "alwaysAllowExecute"
 	| "alwaysAllowFollowupQuestions"
 >
@@ -18,11 +19,13 @@ type AutoApproveToggles = Pick<
 export type AutoApproveSetting = keyof AutoApproveToggles
 
 /**
- * Bypass forces every action except follow-up questions; autonomous forces all.
- * Matching toggles render orange to signal the override is in effect.
+ * Bypass forces every action except follow-up questions and the plan-approval
+ * gate; autonomous forces all. Matching toggles render orange to signal the
+ * override is in effect.
  */
 export const isAutoApproveForced = (mode: AutoApprovalMode | undefined, key: AutoApproveSetting) =>
-	mode === "autonomous" || (mode === "bypass" && key !== "alwaysAllowFollowupQuestions")
+	mode === "autonomous" ||
+	(mode === "bypass" && key !== "alwaysAllowFollowupQuestions" && key !== "alwaysApprovePlan")
 
 type AutoApproveConfig = {
 	key: AutoApproveSetting
@@ -67,6 +70,13 @@ export const autoApproveSettingsConfig: Record<AutoApproveSetting, AutoApproveCo
 		descriptionKey: "settings:autoApprove.subtasks.description",
 		icon: "list-tree",
 		testId: "always-allow-subtasks-toggle",
+	},
+	alwaysApprovePlan: {
+		key: "alwaysApprovePlan",
+		labelKey: "settings:autoApprove.plan.label",
+		descriptionKey: "settings:autoApprove.plan.description",
+		icon: "tasklist",
+		testId: "always-approve-plan-toggle",
 	},
 	alwaysAllowExecute: {
 		key: "alwaysAllowExecute",

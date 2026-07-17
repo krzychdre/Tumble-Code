@@ -254,6 +254,10 @@
 			"label": "子任务",
 			"description": "允许创建和完成子任务而无需批准"
 		},
+		"plan": {
+			"label": "计划",
+			"description": "自动批准从规划模式（架构师）切换模式或创建子任务，而无需先审查计划"
+		},
 		"followupQuestions": {
 			"label": "问题",
 			"description": "在配置的超时时间后自动选择后续问题的第一个建议答案",
