@@ -3662,12 +3662,9 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 	describe("getTaskWithId", () => {
 		it("returns empty apiConversationHistory when file is missing", async () => {
 			const historyItem = { id: "missing-api-file-task", task: "test task", ts: Date.now() }
-			vi.mocked(mockContext.globalState.get).mockImplementation((key: string) => {
-				if (key === "taskHistory") {
-					return [historyItem]
-				}
-				return undefined
-			})
+			const globalStateGet = vi.mocked(mockContext.globalState.get)
+			globalStateGet.mockClear()
+			vi.spyOn(provider.taskHistoryStore, "get").mockReturnValue(historyItem as any)
 
 			const deleteTaskSpy = vi.spyOn(provider, "deleteTaskFromState")
 
@@ -3676,16 +3673,14 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			expect(result.historyItem).toEqual(historyItem)
 			expect(result.apiConversationHistory).toEqual([])
 			expect(deleteTaskSpy).not.toHaveBeenCalled()
+			expect(globalStateGet).not.toHaveBeenCalledWith("taskHistory")
 		})
 
 		it("returns empty apiConversationHistory when file contains invalid JSON", async () => {
 			const historyItem = { id: "corrupt-api-task", task: "test task", ts: Date.now() }
-			vi.mocked(mockContext.globalState.get).mockImplementation((key: string) => {
-				if (key === "taskHistory") {
-					return [historyItem]
-				}
-				return undefined
-			})
+			const globalStateGet = vi.mocked(mockContext.globalState.get)
+			globalStateGet.mockClear()
+			vi.spyOn(provider.taskHistoryStore, "get").mockReturnValue(historyItem as any)
 
 			// Make fileExistsAtPath return true so the read path is exercised
 			const fsUtils = await import("../../../utils/fs")
@@ -3702,6 +3697,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			expect(result.historyItem).toEqual(historyItem)
 			expect(result.apiConversationHistory).toEqual([])
 			expect(deleteTaskSpy).not.toHaveBeenCalled()
+			expect(globalStateGet).not.toHaveBeenCalledWith("taskHistory")
 
 			// Restore the spy
 			vi.mocked(fsUtils.fileExistsAtPath).mockRestore()

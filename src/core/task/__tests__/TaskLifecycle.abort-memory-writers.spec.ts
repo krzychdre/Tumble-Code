@@ -40,6 +40,7 @@ function buildAccessStub(overrides: Partial<TaskLifecycleAccess> = {}): TaskLife
 	const provider = {
 		memorySubTaskRunner: vi.fn(),
 		getValue: vi.fn().mockReturnValue(undefined),
+		getTaskHistory: vi.fn().mockReturnValue([]),
 		notifyBackgroundOutcome: vi.fn(),
 	}
 
@@ -200,6 +201,19 @@ describe("TaskLifecycle.triggerMemoryBackgroundWriters — visibility toasts", (
 		const provider = access.providerRef.deref() as unknown as { notifyBackgroundOutcome: ReturnType<typeof vi.fn> }
 		expect(provider.notifyBackgroundOutcome).toHaveBeenCalledTimes(1)
 		expect(provider.notifyBackgroundOutcome.mock.calls[0][0]).toContain("2")
+	})
+
+	it("passes task history from TaskHistoryStore to auto-dream", () => {
+		const access = buildAccessStub()
+		const provider = access.providerRef.deref() as unknown as {
+			getTaskHistory: ReturnType<typeof vi.fn>
+		}
+		provider.getTaskHistory.mockReturnValue([{ id: "stored-task", ts: 1234 }])
+
+		new TaskLifecycle(access).triggerMemoryBackgroundWriters()
+
+		const opts = (executeAutoDream as ReturnType<typeof vi.fn>).mock.calls[0][0]
+		expect(opts.taskHistory).toEqual([{ lastModified: 1234 }])
 	})
 
 	it("onSaved(0, []) does not call notifyBackgroundOutcome", async () => {

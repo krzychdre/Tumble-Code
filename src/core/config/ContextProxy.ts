@@ -28,12 +28,11 @@ type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
 type RooCodeSettingsKey = keyof RooCodeSettings
 
-const PASS_THROUGH_STATE_KEYS = ["taskHistory", "autoMemoryEnabled", "autoDreamEnabled", "memoryRecallEnabled"]
+const PASS_THROUGH_STATE_KEYS = ["autoMemoryEnabled", "autoDreamEnabled", "memoryRecallEnabled"]
 
 export const isPassThroughStateKey = (key: string) => PASS_THROUGH_STATE_KEYS.includes(key)
 
 const globalSettingsExportSchema = globalSettingsSchema.omit({
-	taskHistory: true,
 	listApiConfigMeta: true,
 	currentApiConfigName: true,
 })
@@ -57,6 +56,8 @@ export class ContextProxy {
 	}
 
 	public async initialize() {
+		await this.clearLegacyTaskHistoryKeys()
+
 		for (const key of GLOBAL_STATE_KEYS) {
 			try {
 				// Revert to original assignment
@@ -107,6 +108,28 @@ export class ContextProxy {
 		await this.migrateAutoMemoryDefaults()
 
 		this._isInitialized = true
+	}
+
+	/**
+	 * Clears obsolete legacy globalState keys related to task history.
+	 *
+	 * `taskHistory` (a HistoryItem array) and `taskHistoryMigratedToFiles`
+	 * (a boolean migration marker) were used by the old globalState-based
+	 * storage and the one-time migration to per-task files. TaskHistoryStore is
+	 * now the sole persistence source, so these keys are cleared without
+	 * reading or copying their values. Clearing is best-effort and never
+	 * prevents initialization from completing.
+	 */
+	private async clearLegacyTaskHistoryKeys(): Promise<void> {
+		for (const key of ["taskHistory", "taskHistoryMigratedToFiles"]) {
+			try {
+				await this.originalContext.globalState.update(key, undefined)
+			} catch (error) {
+				logger.error(
+					`Error clearing legacy ${key} key: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		}
 	}
 
 	/**
