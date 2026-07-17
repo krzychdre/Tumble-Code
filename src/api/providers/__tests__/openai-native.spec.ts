@@ -228,6 +228,80 @@ describe("OpenAiNativeHandler", () => {
 	})
 
 	describe("getModel", () => {
+		it.each([
+			["gpt-5.6-sol", 5, 30],
+			["gpt-5.6-terra", 2.5, 15],
+			["gpt-5.6-luna", 1, 6],
+		] as const)("should return current GPT-5.6 model info for %s", (apiModelId, inputPrice, outputPrice) => {
+			const currentHandler = new OpenAiNativeHandler({
+				...mockOptions,
+				apiModelId,
+			})
+
+			const modelInfo = currentHandler.getModel()
+			expect(modelInfo.id).toBe(apiModelId)
+			expect(modelInfo.info).toMatchObject({
+				maxTokens: 128_000,
+				contextWindow: 1_050_000,
+				supportsImages: true,
+				supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+				reasoningEffort: "medium",
+				inputPrice,
+				outputPrice,
+			})
+		})
+
+		it.each([
+			["gpt-5.5-pro", "high"],
+			["gpt-5.4-pro", "medium"],
+		] as const)("should return current Pro model info for %s", (apiModelId, reasoningEffort) => {
+			const proHandler = new OpenAiNativeHandler({ ...mockOptions, apiModelId })
+
+			expect(proHandler.getModel()).toMatchObject({
+				id: apiModelId,
+				info: {
+					maxTokens: 128_000,
+					contextWindow: 1_050_000,
+					supportsReasoningEffort: ["medium", "high", "xhigh"],
+					reasoningEffort,
+					inputPrice: 30,
+					outputPrice: 180,
+				},
+			})
+		})
+
+		it.each([
+			"gpt-5.1-codex-max",
+			"gpt-5.2-codex",
+			"gpt-5.2-chat-latest",
+			"gpt-5.3-chat-latest",
+			"gpt-5.1-codex",
+			"gpt-5.1-codex-mini",
+			"gpt-5-codex",
+			"gpt-5-chat-latest",
+			"gpt-4.1-nano",
+			"o3-high",
+			"o3-low",
+			"o4-mini",
+			"o4-mini-high",
+			"o4-mini-low",
+			"o3-mini",
+			"o3-mini-high",
+			"o3-mini-low",
+			"o1",
+			"o1-preview",
+			"o1-mini",
+			"gpt-4o",
+			"codex-mini-latest",
+			"gpt-5-2025-08-07",
+			"gpt-5-mini-2025-08-07",
+			"gpt-5-nano-2025-08-07",
+		])("should reject deprecated model id %s", (apiModelId) => {
+			const deprecatedHandler = new OpenAiNativeHandler({ ...mockOptions, apiModelId })
+
+			expect(deprecatedHandler.getModel().id).toBe("gpt-5.6-sol")
+		})
+
 		it("should return model info", () => {
 			const modelInfo = handler.getModel()
 			expect(modelInfo.id).toBe(mockOptions.apiModelId)
@@ -318,25 +392,12 @@ describe("OpenAiNativeHandler", () => {
 			])
 		})
 
-		it("should return GPT-5.3 Chat model info when selected", () => {
-			const chatHandler = new OpenAiNativeHandler({
-				...mockOptions,
-				apiModelId: "gpt-5.3-chat-latest",
-			})
-
-			const modelInfo = chatHandler.getModel()
-			expect(modelInfo.id).toBe("gpt-5.3-chat-latest")
-			expect(modelInfo.info.maxTokens).toBe(16_384)
-			expect(modelInfo.info.contextWindow).toBe(128000)
-			expect(modelInfo.info.supportsImages).toBe(true)
-		})
-
 		it("should handle undefined model ID", () => {
 			const handlerWithoutModel = new OpenAiNativeHandler({
 				openAiNativeApiKey: "test-api-key",
 			})
 			const modelInfo = handlerWithoutModel.getModel()
-			expect(modelInfo.id).toBe("gpt-5.1-codex-max") // Default model
+			expect(modelInfo.id).toBe("gpt-5.6-sol") // Default model
 			expect(modelInfo.info).toBeDefined()
 		})
 	})
@@ -527,7 +588,7 @@ describe("OpenAiNativeHandler", () => {
 			expect(textChunks[0].text).toBe("GPT-5.5 reply")
 		})
 
-		it("should handle GPT-5.3 Chat model with Responses API", async () => {
+		it("should handle GPT-4.1 Mini with Responses API", async () => {
 			// Mock fetch for Responses API
 			const mockFetch = vitest.fn().mockResolvedValue({
 				ok: true,
@@ -550,7 +611,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5.3-chat-latest",
+				apiModelId: "gpt-4.1-mini",
 			})
 
 			const stream = handler.createMessage(systemPrompt, messages)
@@ -567,8 +628,8 @@ describe("OpenAiNativeHandler", () => {
 			)
 			const body = (mockFetch.mock.calls[0][1] as any).body as string
 			const parsedBody = JSON.parse(body)
-			expect(parsedBody.model).toBe("gpt-5.3-chat-latest")
-			expect(parsedBody.max_output_tokens).toBe(16_384)
+			expect(parsedBody.model).toBe("gpt-4.1-mini")
+			expect(parsedBody.max_output_tokens).toBe(32_768)
 			expect(parsedBody.temperature).toBe(0)
 			expect(parsedBody.reasoning?.effort).toBeUndefined()
 			expect(parsedBody.text?.verbosity).toBeUndefined()
@@ -601,7 +662,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-mini-2025-08-07",
+				apiModelId: "gpt-5-mini",
 			})
 
 			const stream = handler.createMessage(systemPrompt, messages)
@@ -614,7 +675,7 @@ describe("OpenAiNativeHandler", () => {
 			expect(mockFetch).toHaveBeenCalledWith(
 				"https://api.openai.com/v1/responses",
 				expect.objectContaining({
-					body: expect.stringContaining('"model":"gpt-5-mini-2025-08-07"'),
+					body: expect.stringContaining('"model":"gpt-5-mini"'),
 				}),
 			)
 		})
@@ -642,7 +703,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5-nano-2025-08-07",
+				apiModelId: "gpt-5-nano",
 			})
 
 			const stream = handler.createMessage(systemPrompt, messages)
@@ -655,7 +716,7 @@ describe("OpenAiNativeHandler", () => {
 			expect(mockFetch).toHaveBeenCalledWith(
 				"https://api.openai.com/v1/responses",
 				expect.objectContaining({
-					body: expect.stringContaining('"model":"gpt-5-nano-2025-08-07"'),
+					body: expect.stringContaining('"model":"gpt-5-nano"'),
 				}),
 			)
 		})
@@ -768,7 +829,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5.1-codex-max",
+				apiModelId: "gpt-5.3-codex",
 				reasoningEffort: "xhigh",
 			})
 
@@ -1466,20 +1527,20 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 		expect(textChunks.map((c: any) => c.text)).toEqual(["Before", "After"])
 	})
 
-	describe("Codex Mini Model", () => {
+	describe("GPT-4o Mini response handling", () => {
 		let handler: OpenAiNativeHandler
 		const mockOptions: ApiHandlerOptions = {
 			openAiNativeApiKey: "test-api-key",
-			apiModelId: "codex-mini-latest",
+			apiModelId: "gpt-4o-mini",
 		}
 
-		it("should handle codex-mini-latest streaming response", async () => {
-			// Mock fetch for Codex Mini responses API
+		it("should handle streaming responses", async () => {
+			// Mock fetch for a standard Responses API stream.
 			const mockFetch = vitest.fn().mockResolvedValue({
 				ok: true,
 				body: new ReadableStream({
 					start(controller) {
-						// Codex Mini uses the same responses API format
+						// Exercise the standard Responses API event format.
 						controller.enqueue(
 							new TextEncoder().encode('data: {"type":"response.output_text.delta","delta":"Hello"}\n\n'),
 						)
@@ -1513,7 +1574,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "codex-mini-latest",
+				apiModelId: "gpt-4o-mini",
 			})
 
 			const systemPrompt = "You are a helpful coding assistant."
@@ -1539,11 +1600,11 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 				type: "usage",
 				inputTokens: 50,
 				outputTokens: 10,
-				totalCost: expect.any(Number), // Codex Mini has pricing: $1.5/M input, $6/M output
+				totalCost: expect.any(Number),
 			})
 
 			// Verify cost is calculated correctly based on API usage data
-			const expectedCost = (50 / 1_000_000) * 1.5 + (10 / 1_000_000) * 6
+			const expectedCost = (50 / 1_000_000) * 0.15 + (10 / 1_000_000) * 0.6
 			expect(usageChunks[0].totalCost).toBeCloseTo(expectedCost, 10)
 
 			// Verify the request was made with correct parameters
@@ -1561,7 +1622,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 
 			const requestBody = JSON.parse(mockFetch.mock.calls[0][1].body)
 			expect(requestBody).toMatchObject({
-				model: "codex-mini-latest",
+				model: "gpt-4o-mini",
 				instructions: "You are a helpful coding assistant.",
 				input: [
 					{
@@ -1573,10 +1634,10 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 			})
 		})
 
-		it("should handle codex-mini-latest non-streaming completion", async () => {
+		it("should handle non-streaming completion", async () => {
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "codex-mini-latest",
+				apiModelId: "gpt-4o-mini",
 			})
 
 			// Mock the responses.create method to return a non-streaming response
@@ -1599,7 +1660,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 			expect(result).toBe("def hello_world():\n    print('Hello, World!')")
 			expect(mockResponsesCreate).toHaveBeenCalledWith(
 				expect.objectContaining({
-					model: "codex-mini-latest",
+					model: "gpt-4o-mini",
 					stream: false,
 					store: false,
 				}),
@@ -1609,7 +1670,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 			)
 		})
 
-		it("should handle codex-mini-latest API errors", async () => {
+		it("should handle API errors", async () => {
 			// Mock fetch with error response
 			const mockFetch = vitest.fn().mockResolvedValue({
 				ok: false,
@@ -1624,7 +1685,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "codex-mini-latest",
+				apiModelId: "gpt-4o-mini",
 			})
 
 			const systemPrompt = "You are a helpful assistant."
@@ -1640,7 +1701,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 			}).rejects.toThrow("Rate limit exceeded")
 		})
 
-		it("should handle codex-mini-latest with multiple user messages", async () => {
+		it("should handle multiple user messages", async () => {
 			// Mock fetch for streaming response
 			const mockFetch = vitest.fn().mockResolvedValue({
 				ok: true,
@@ -1664,7 +1725,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "codex-mini-latest",
+				apiModelId: "gpt-4o-mini",
 			})
 
 			const systemPrompt = "You are a helpful assistant."
@@ -1699,7 +1760,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 			])
 		})
 
-		it("should handle codex-mini-latest stream error events", async () => {
+		it("should handle stream error events", async () => {
 			// Mock fetch with error event in stream
 			const mockFetch = vitest.fn().mockResolvedValue({
 				ok: true,
@@ -1727,7 +1788,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "codex-mini-latest",
+				apiModelId: "gpt-4o-mini",
 			})
 
 			const systemPrompt = "You are a helpful assistant."
@@ -1785,7 +1846,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 				expect(bodyStr).not.toContain('"verbosity"')
 			})
 
-			it("should omit text.verbosity for gpt-4o", async () => {
+			it("should omit text.verbosity for gpt-4o-mini", async () => {
 				const mockFetch = vitest.fn().mockResolvedValue({
 					ok: true,
 					body: new ReadableStream({
@@ -1804,7 +1865,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 				mockResponsesCreate.mockRejectedValue(new Error("SDK not available"))
 
 				const handler = new OpenAiNativeHandler({
-					apiModelId: "gpt-4o",
+					apiModelId: "gpt-4o-mini",
 					openAiNativeApiKey: "test-api-key",
 					verbosity: "low",
 				})
@@ -1819,7 +1880,7 @@ describe("GPT-5 streaming event coverage (additional)", () => {
 
 				const bodyStr = (mockFetch.mock.calls[0][1] as any).body as string
 				const parsedBody = JSON.parse(bodyStr)
-				expect(parsedBody.model).toBe("gpt-4o")
+				expect(parsedBody.model).toBe("gpt-4o-mini")
 				expect(parsedBody.text).toBeUndefined()
 				expect(bodyStr).not.toContain('"verbosity"')
 			})

@@ -1452,9 +1452,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		// Reasoning effort inclusion is handled by getModelParams/getOpenAiReasoning.
 		// Do not re-compute or filter efforts here.
 
-		// The o3 models are named like "o3-mini-[reasoning-effort]", which are
-		// not valid model ids, so we need to strip the suffix.
-		return { id: id.startsWith("o3-mini") ? "o3-mini" : id, info, ...params, verbosity: params.verbosity }
+		return { id, info, ...params, verbosity: params.verbosity }
 	}
 
 	/**

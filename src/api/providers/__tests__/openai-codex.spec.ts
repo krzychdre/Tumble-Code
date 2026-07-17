@@ -1,26 +1,44 @@
 // npx vitest run api/providers/__tests__/openai-codex.spec.ts
 
+import { openAiCodexModels } from "@roo-code/types"
+
 import { OpenAiCodexHandler } from "../openai-codex"
 
 describe("OpenAiCodexHandler.getModel", () => {
-	it.each(["gpt-5.1", "gpt-5", "gpt-5.1-codex", "gpt-5-codex", "gpt-5-codex-mini", "gpt-5.3-codex-spark"])(
-		"should return specified model when a valid model id is provided: %s",
+	it.each(["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"])(
+		"should expose current GPT-5.6 subscription model capabilities: %s",
 		(apiModelId) => {
 			const handler = new OpenAiCodexHandler({ apiModelId })
 			const model = handler.getModel()
 
 			expect(model.id).toBe(apiModelId)
-			expect(model.info).toBeDefined()
-			// Default reasoning effort for GPT-5 family
-			expect(model.info.reasoningEffort).toBe("medium")
+			expect(model.info).toMatchObject({
+				contextWindow: 1_050_000,
+				maxTokens: 128_000,
+				supportsImages: true,
+				supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
+				reasoningEffort: "medium",
+			})
 		},
 	)
+
+	it("should expose only the current ChatGPT subscription model catalog", () => {
+		expect(Object.keys(openAiCodexModels)).toEqual([
+			"gpt-5.6-sol",
+			"gpt-5.6-terra",
+			"gpt-5.6-luna",
+			"gpt-5.5",
+			"gpt-5.3-codex-spark",
+			"gpt-5.4",
+			"gpt-5.4-mini",
+		])
+	})
 
 	it("should fall back to default model when an invalid model id is provided", () => {
 		const handler = new OpenAiCodexHandler({ apiModelId: "not-a-real-model" })
 		const model = handler.getModel()
 
-		expect(model.id).toBe("gpt-5.3-codex")
+		expect(model.id).toBe("gpt-5.6-sol")
 		expect(model.info).toBeDefined()
 	})
 
