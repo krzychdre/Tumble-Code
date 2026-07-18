@@ -7,7 +7,7 @@ import sanitize from "sanitize-filename"
 import type { ModelRecord } from "@roo-code/types"
 
 import { ContextProxy } from "../../../core/config/ContextProxy"
-import { RouterName } from "../../../shared/api"
+import type { FetchableModelSourceId } from "../../../shared/api"
 import { getCacheDirectoryPath } from "../../../utils/storage"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { safeWriteJson } from "../../../utils/safeWriteJson"
@@ -17,7 +17,7 @@ import { getModels } from "./modelCache"
 
 const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
-const getCacheKey = (router: RouterName, modelId: string) => sanitize(`${router}_${modelId}`)
+const getCacheKey = (router: FetchableModelSourceId, modelId: string) => sanitize(`${router}_${modelId}`)
 
 async function writeModelEndpoints(key: string, data: ModelRecord) {
 	const filename = `${key}_endpoints.json`
@@ -38,7 +38,7 @@ export const getModelEndpoints = async ({
 	modelId,
 	endpoint,
 }: {
-	router: RouterName
+	router: FetchableModelSourceId
 	modelId?: string
 	endpoint?: string
 }): Promise<ModelRecord> => {
@@ -100,5 +100,5 @@ export const getModelEndpoints = async ({
 	return modelProviders ?? {}
 }
 
-export const flushModelProviders = async (router: RouterName, modelId: string) =>
+export const flushModelProviders = async (router: FetchableModelSourceId, modelId: string) =>
 	memoryCache.del(getCacheKey(router, modelId))

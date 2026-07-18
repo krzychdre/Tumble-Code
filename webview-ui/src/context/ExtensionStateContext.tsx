@@ -17,7 +17,6 @@ import {
 	type SkillMetadata,
 	type Command,
 	type McpServer,
-	RouterModels,
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 } from "@roo-code/types"
@@ -132,7 +131,6 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setAutoCondenseContext: (value: boolean) => void
 	autoCondenseContextPercent: number
 	setAutoCondenseContextPercent: (value: number) => void
-	routerModels?: RouterModels
 	includeDiagnosticMessages?: boolean
 	setIncludeDiagnosticMessages: (value: boolean) => void
 	maxDiagnosticMessages?: number
@@ -283,7 +281,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 	const [commands, setCommands] = useState<Command[]>([])
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
 	const [currentCheckpoint, setCurrentCheckpoint] = useState<string>()
-	const [extensionRouterModels, setExtensionRouterModels] = useState<RouterModels | undefined>(undefined)
 	const [marketplaceItems, setMarketplaceItems] = useState<any[]>([])
 	const [alwaysAllowFollowupQuestions, setAlwaysAllowFollowupQuestions] = useState(false) // Add state for follow-up questions auto-approve
 	const [followupAutoApproveTimeoutMs, setFollowupAutoApproveTimeoutMs] = useState<number | undefined>(undefined) // Will be set from global settings
@@ -443,10 +440,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					setListApiConfigMeta(message.listApiConfig ?? [])
 					break
 				}
-				case "routerModels": {
-					setExtensionRouterModels(message.routerModels)
-					break
-				}
 				case "marketplaceData": {
 					if (message.marketplaceItems !== undefined) {
 						setMarketplaceItems(message.marketplaceItems)
@@ -539,7 +532,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		commands,
 		soundVolume: state.soundVolume,
 		writeDelayMs: state.writeDelayMs,
-		routerModels: extensionRouterModels,
 		cloudIsAuthenticated: state.cloudIsAuthenticated ?? false,
 		cloudOrganizations: state.cloudOrganizations ?? [],
 		organizationSettingsVersion: state.organizationSettingsVersion ?? -1,

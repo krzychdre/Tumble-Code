@@ -2,7 +2,14 @@ import { useEffect, useRef, useCallback, useMemo } from "react"
 import { useApp } from "ink"
 import { randomUUID } from "crypto"
 import pWaitFor from "p-wait-for"
-import type { ExtensionMessage, HistoryItem, WebviewMessage } from "@roo-code/types"
+import {
+	type ExtensionMessage,
+	type HistoryItem,
+	type ModelSourceId,
+	type RequestableModelSource,
+	type WebviewMessage,
+	modelSources,
+} from "@roo-code/types"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 import { arePathsEqual } from "@/lib/utils/path.js"
@@ -10,6 +17,25 @@ import { arePathsEqual } from "@/lib/utils/path.js"
 import { useCLIStore } from "../store.js"
 
 const TASK_HISTORY_WAIT_TIMEOUT_MS = 2_000
+
+/**
+ * Resolve the requestable model source for a CLI provider name, if it is a
+ * dynamic (non-static) source. Returns undefined for static-model providers
+ * (anthropic, openai-native, etc.) so the CLI does not post a pointless
+ * `requestProviderModels` for them. Most dynamic source ids match the
+ * provider name directly (openrouter, ollama, lmstudio, ...).
+ */
+const resolveProviderModelSource = (provider: string): RequestableModelSource | undefined => {
+	if (provider === "openai") {
+		// The OpenAI provider routes through the openai-compatible source.
+		return modelSources["openai-compatible"]
+	}
+	const sourceId = provider as ModelSourceId
+	// `modelSources` only contains requestable (non-static) sources, so a hit
+	// is always dynamic. Providers not in the map (anthropic, openai-native,
+	// etc.) are static and do not need a `requestProviderModels` round-trip.
+	return modelSources[sourceId]
+}
 
 function extractTaskHistory(message: ExtensionMessage): HistoryItem[] | undefined {
 	if (message.type === "state" && Array.isArray(message.state?.taskHistory)) {
@@ -158,6 +184,24 @@ export function useExtensionHost({
 				// postStateToWebview which includes taskHistory).
 				host.sendToExtension({ type: "requestCommands" })
 				host.sendToExtension({ type: "requestModes" })
+
+				// C2: the refactor removed the push-based `routerModels` extension
+				// message. Request dynamic model info for the configured provider
+				// via the new `requestProviderModels` protocol so the CLI store's
+				// `routerModels` (used by `getContextWindow`) stays populated for
+				// dynamic providers (openrouter, ollama, lmstudio, ...). Static
+				// providers do not need this request.
+				const providerModelSource = resolveProviderModelSource(provider)
+				if (providerModelSource) {
+					host.sendToExtension({
+						type: "requestProviderModels",
+						modelSourceRequest: {
+							requestId: `cli-provider-models-${randomUUID()}`,
+							source: providerModelSource,
+							provider,
+						},
+					})
+				}
 
 				if (requestedSessionId || continueSession) {
 					await pWaitFor(() => hasReceivedTaskHistory, {

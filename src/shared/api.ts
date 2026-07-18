@@ -1,11 +1,8 @@
 import {
 	type ModelInfo,
 	type ProviderSettings,
-	type DynamicProvider,
-	type LocalProvider,
+	type ModelSourceId,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
-	isDynamicProvider,
-	isLocalProvider,
 } from "@roo-code/types"
 
 // ApiHandlerOptions
@@ -25,19 +22,10 @@ export type ApiHandlerOptions = Omit<ProviderSettings, "apiProvider"> & {
 	ollamaNumCtx?: number
 }
 
-// RouterName
-
-export type RouterName = DynamicProvider | LocalProvider
-
-export const isRouterName = (value: string): value is RouterName => isDynamicProvider(value) || isLocalProvider(value)
-
-export function toRouterName(value?: string): RouterName {
-	if (value && isRouterName(value)) {
-		return value
-	}
-
-	throw new Error(`Invalid router name: ${value}`)
-}
+export type FetchableModelSourceId = Extract<
+	ModelSourceId,
+	"openrouter" | "vercel-ai-gateway" | "litellm" | "poe" | "requesty" | "unbound" | "ollama" | "lmstudio" | "deepseek"
+>
 
 // Reasoning
 
@@ -185,10 +173,17 @@ const dynamicProviderExtras = {
 	ollama: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
 	lmstudio: {} as {}, // eslint-disable-line @typescript-eslint/no-empty-object-type
 	deepseek: {} as { apiKey?: string; baseUrl?: string },
-} as const satisfies Record<RouterName, object>
+} as const satisfies Record<FetchableModelSourceId, object>
+
+export function toFetchableModelSourceId(value?: string): FetchableModelSourceId {
+	if (value && value in dynamicProviderExtras) {
+		return value as FetchableModelSourceId
+	}
+	throw new Error(`Invalid model source: ${value}`)
+}
 
 // Build the dynamic options union from the map, intersected with CommonFetchParams
 // so extra fields are always allowed while required ones are enforced.
 export type GetModelsOptions = {
 	[P in keyof typeof dynamicProviderExtras]: ({ provider: P } & (typeof dynamicProviderExtras)[P]) & CommonFetchParams
-}[RouterName]
+}[FetchableModelSourceId]

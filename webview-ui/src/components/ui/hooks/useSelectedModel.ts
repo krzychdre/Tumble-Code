@@ -28,15 +28,18 @@ import {
 	lMStudioDefaultModelInfo,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
 	VERTEX_1M_CONTEXT_MODEL_IDS,
-	isDynamicProvider,
 	isRetiredProvider,
 	getProviderDefaultModelId,
 } from "@roo-code/types"
 
-import { useRouterModels } from "./useRouterModels"
 import { useOpenRouterModelProviders } from "./useOpenRouterModelProviders"
 import { useLmStudioModels } from "./useLmStudioModels"
 import { useOllamaModels } from "./useOllamaModels"
+import { useProviderModels } from "./useProviderModels"
+import {
+	getProviderModelSource,
+	getProviderModelSourceOptions,
+} from "@src/components/settings/utils/providerModelConfig"
 
 /**
  * Helper to get a validated model ID for dynamic providers.
@@ -53,34 +56,34 @@ function getValidatedModelId(
 export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 	const provider = apiConfiguration?.apiProvider || "anthropic"
 	const activeProvider: ProviderName | undefined = isRetiredProvider(provider) ? undefined : provider
-	const dynamicProvider = activeProvider && isDynamicProvider(activeProvider) ? activeProvider : undefined
+	const modelSource = activeProvider ? getProviderModelSource(activeProvider) : undefined
+	const dynamicProvider =
+		modelSource?.kind === "remote" && modelSource.payload === "models" ? activeProvider : undefined
 	const openRouterModelId = activeProvider === "openrouter" ? apiConfiguration?.openRouterModelId : undefined
 	const lmStudioModelId = activeProvider === "lmstudio" ? apiConfiguration?.lmStudioModelId : undefined
 	const ollamaModelId = activeProvider === "ollama" ? apiConfiguration?.ollamaModelId : undefined
 
-	// Only fetch router models for dynamic providers
-	const shouldFetchRouterModels = !!dynamicProvider
-	const routerModels = useRouterModels({
-		provider: dynamicProvider,
-		enabled: shouldFetchRouterModels,
-	})
+	const providerModels = useProviderModels(dynamicProvider, getProviderModelSourceOptions(apiConfiguration ?? {}))
+	// `useProviderModels` returns `{ source, models, modelIds, isLoading, error, refresh }`
+	// with no legacy `data`/`isError` fields, so the previous `as unknown as`
+	// fallbacks were dead code that could mask future regressions. Read the
+	// real fields directly (M1).
+	const dynamicModels = providerModels.models
+	const providerModelsError = Boolean(providerModels.error)
 
 	const openRouterModelProviders = useOpenRouterModelProviders(openRouterModelId)
 	const lmStudioModels = useLmStudioModels(lmStudioModelId)
 	const ollamaModels = useOllamaModels(ollamaModelId)
 
 	// Compute readiness only for the data actually needed for the selected provider
-	const needRouterModels = shouldFetchRouterModels
+	const needRouterModels = Boolean(dynamicProvider)
 	const needOpenRouterProviders = activeProvider === "openrouter"
 	const needLmStudio = typeof lmStudioModelId !== "undefined"
 	const needOllama = typeof ollamaModelId !== "undefined"
 
 	const hasValidRouterData =
 		needRouterModels && dynamicProvider
-			? routerModels.data &&
-				routerModels.data[dynamicProvider] !== undefined &&
-				typeof routerModels.data[dynamicProvider] === "object" &&
-				!routerModels.isLoading
+			? dynamicModels !== undefined && typeof dynamicModels === "object" && !providerModels.isLoading
 			: true
 
 	const isReady =
@@ -94,7 +97,9 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 			? getSelectedModel({
 					provider: activeProvider,
 					apiConfiguration,
-					routerModels: (routerModels.data || {}) as RouterModels,
+					routerModels: {
+						...(dynamicProvider && dynamicModels ? { [dynamicProvider]: dynamicModels } : {}),
+					} as RouterModels,
 					openRouterModelProviders: (openRouterModelProviders.data || {}) as Record<string, ModelInfo>,
 					lmStudioModels: (lmStudioModels.data || undefined) as ModelRecord | undefined,
 					ollamaModels: (ollamaModels.data || undefined) as ModelRecord | undefined,
@@ -106,12 +111,12 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 		id,
 		info,
 		isLoading:
-			(needRouterModels && routerModels.isLoading) ||
+			(needRouterModels && providerModels.isLoading) ||
 			(needOpenRouterProviders && openRouterModelProviders.isLoading) ||
 			(needLmStudio && lmStudioModels!.isLoading) ||
 			(needOllama && ollamaModels!.isLoading),
 		isError:
-			(needRouterModels && routerModels.isError) ||
+			(needRouterModels && providerModelsError) ||
 			(needOpenRouterProviders && openRouterModelProviders.isError) ||
 			(needLmStudio && lmStudioModels!.isError) ||
 			(needOllama && ollamaModels!.isError),

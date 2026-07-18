@@ -13,12 +13,21 @@ describe("OpenAiCodexHandler.getModel", () => {
 
 			expect(model.id).toBe(apiModelId)
 			expect(model.info).toMatchObject({
-				contextWindow: 1_050_000,
+				contextWindow: 200_000,
 				maxTokens: 128_000,
 				supportsImages: true,
 				supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
 				reasoningEffort: "medium",
 			})
+		},
+	)
+
+	it.each(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"])(
+		"should use the ChatGPT subscription context limit: %s",
+		(apiModelId) => {
+			const handler = new OpenAiCodexHandler({ apiModelId })
+
+			expect(handler.getModel().info.contextWindow).toBe(200_000)
 		},
 	)
 

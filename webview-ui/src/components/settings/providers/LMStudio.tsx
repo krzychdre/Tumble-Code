@@ -1,14 +1,12 @@
-import { useCallback, useState, useMemo, useEffect, useRef } from "react"
-import { useEvent } from "react-use"
+import { useCallback, useMemo } from "react"
 import { Trans } from "react-i18next"
 import { Checkbox } from "vscrui"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import type { ProviderSettings, ExtensionMessage, ModelRecord } from "@roo-code/types"
+import type { ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
-import { requestLmStudioModels } from "@src/components/ui/hooks/useLmStudioModels"
+import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { inputEventTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
@@ -21,9 +19,9 @@ type LMStudioProps = {
 export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudioProps) => {
 	const { t } = useAppTranslation()
 
-	const [lmStudioModels, setLmStudioModels] = useState<ModelRecord>({})
-	const routerModels = useRouterModels()
-	const initialBaseUrlRef = useRef(apiConfiguration?.lmStudioBaseUrl)
+	const { models: lmStudioModels = {} } = useProviderModels("lmstudio", {
+		baseUrl: apiConfiguration.lmStudioBaseUrl,
+	})
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -36,28 +34,6 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 		[setApiConfigurationField],
 	)
 
-	const onMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
-
-		switch (message.type) {
-			case "lmStudioModels":
-				{
-					const newModels = message.lmStudioModels ?? {}
-					setLmStudioModels(newModels)
-				}
-				break
-		}
-	}, [])
-
-	useEvent("message", onMessage)
-
-	// Refresh models on mount
-	useEffect(() => {
-		// Request fresh models - the handler now flushes cache automatically.
-		// Pass the initial (possibly unsaved) base URL so first load isn't empty.
-		requestLmStudioModels(initialBaseUrlRef.current)
-	}, [])
-
 	// Check if the selected model exists in the fetched models
 	const modelNotAvailableError = useMemo(() => {
 		const selectedModel = apiConfiguration?.lmStudioModelId
@@ -68,18 +44,13 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 			return undefined // Model is available locally
 		}
 
-		// If we have router models data for LM Studio
-		if (routerModels.data?.lmstudio) {
-			const availableModels = Object.keys(routerModels.data.lmstudio)
-			// Show warning if model is not in the list (regardless of how many models there are)
-			if (!availableModels.includes(selectedModel)) {
-				return t("settings:validation.modelAvailability", { modelId: selectedModel })
-			}
+		if (Object.keys(lmStudioModels).length > 0 && !(selectedModel in lmStudioModels)) {
+			return t("settings:validation.modelAvailability", { modelId: selectedModel })
 		}
 
 		// If neither source has loaded yet, don't show warning
 		return undefined
-	}, [apiConfiguration?.lmStudioModelId, routerModels.data, lmStudioModels, t])
+	}, [apiConfiguration?.lmStudioModelId, lmStudioModels, t])
 
 	// Check if the draft model exists
 	const draftModelNotAvailableError = useMemo(() => {
@@ -91,18 +62,13 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 			return undefined // Model is available locally
 		}
 
-		// If we have router models data for LM Studio
-		if (routerModels.data?.lmstudio) {
-			const availableModels = Object.keys(routerModels.data.lmstudio)
-			// Show warning if model is not in the list (regardless of how many models there are)
-			if (!availableModels.includes(draftModel)) {
-				return t("settings:validation.modelAvailability", { modelId: draftModel })
-			}
+		if (Object.keys(lmStudioModels).length > 0 && !(draftModel in lmStudioModels)) {
+			return t("settings:validation.modelAvailability", { modelId: draftModel })
 		}
 
 		// If neither source has loaded yet, don't show warning
 		return undefined
-	}, [apiConfiguration?.lmStudioDraftModelId, routerModels.data, lmStudioModels, t])
+	}, [apiConfiguration?.lmStudioDraftModelId, lmStudioModels, t])
 
 	return (
 		<>

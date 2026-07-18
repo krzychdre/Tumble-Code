@@ -4,9 +4,6 @@ import type { Mock } from "vitest"
 
 // Mock dependencies - must come before imports
 vi.mock("../../../api/providers/fetchers/modelCache")
-vi.mock("../../../api/providers/fetchers/lmstudio", () => ({
-	getLMStudioModels: vi.fn(),
-}))
 
 vi.mock("../../../integrations/openai-codex/oauth", () => ({
 	openAiCodexOAuthManager: {
@@ -45,13 +42,11 @@ import type { ModelRecord } from "@roo-code/types"
 import { webviewMessageHandler } from "../webviewMessageHandler"
 import type { ClineProvider } from "../ClineProvider"
 import { getModels } from "../../../api/providers/fetchers/modelCache"
-import { getLMStudioModels } from "../../../api/providers/fetchers/lmstudio"
 import { getCommands } from "../../../services/command/commands"
 const { openAiCodexOAuthManager } = await import("../../../integrations/openai-codex/oauth")
 const { fetchOpenAiCodexRateLimitInfo } = await import("../../../integrations/openai-codex/rate-limits")
 
 const mockGetModels = getModels as Mock<typeof getModels>
-const mockGetLMStudioModels = getLMStudioModels as Mock<typeof getLMStudioModels>
 const mockGetCommands = vi.mocked(getCommands)
 const mockGetAccessToken = vi.mocked(openAiCodexOAuthManager.getAccessToken)
 const mockGetAccountId = vi.mocked(openAiCodexOAuthManager.getAccountId)
@@ -174,73 +169,6 @@ import { resolveImageMentions } from "../../mentions/resolveImageMentions"
 import { Terminal } from "../../../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../../../integrations/terminal/TerminalRegistry"
 
-describe("webviewMessageHandler - requestLmStudioModels", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
-		mockGetLMStudioModels.mockReset()
-		mockClineProvider.getState = vi.fn().mockResolvedValue({
-			apiConfiguration: {
-				lmStudioModelId: "model-1",
-				lmStudioBaseUrl: "http://localhost:1234",
-			},
-		})
-	})
-
-	it("successfully fetches models from LMStudio", async () => {
-		const mockModels: ModelRecord = {
-			"model-1": {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsPromptCache: false,
-				description: "Test model 1",
-			},
-			"model-2": {
-				maxTokens: 8192,
-				contextWindow: 16384,
-				supportsPromptCache: false,
-				description: "Test model 2",
-			},
-		}
-
-		mockGetModels.mockResolvedValue(mockModels)
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestLmStudioModels",
-		})
-
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "lmstudio", baseUrl: "http://localhost:1234" })
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "lmStudioModels",
-			lmStudioModels: mockModels,
-		})
-	})
-
-	it("prefers the request payload base URL over persisted settings", async () => {
-		mockGetLMStudioModels.mockResolvedValue({})
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestLmStudioModels",
-			values: { baseUrl: "http://127.0.0.1:4321" },
-		})
-
-		expect(mockGetLMStudioModels).toHaveBeenCalledWith("http://127.0.0.1:4321")
-		expect(mockGetModels).not.toHaveBeenCalled()
-	})
-
-	it("treats an empty-string base URL as an explicit preview request", async () => {
-		mockGetLMStudioModels.mockResolvedValue({})
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestLmStudioModels",
-			values: { baseUrl: "" },
-		})
-
-		expect(mockGetLMStudioModels).toHaveBeenCalledWith("")
-		expect(mockGetModels).not.toHaveBeenCalled()
-	})
-})
-
 describe("webviewMessageHandler - image mentions", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -272,324 +200,61 @@ describe("webviewMessageHandler - image mentions", () => {
 	})
 })
 
-describe("webviewMessageHandler - requestOllamaModels", () => {
+describe("webviewMessageHandler - requestProviderModels", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
-		mockClineProvider.getState = vi.fn().mockResolvedValue({
-			apiConfiguration: {
-				ollamaModelId: "model-1",
-				ollamaBaseUrl: "http://localhost:1234",
-			},
-		})
+		mockClineProvider.getState = vi.fn().mockResolvedValue({ apiConfiguration: {} })
 	})
 
-	it("successfully fetches models from Ollama", async () => {
-		const mockModels: ModelRecord = {
-			"model-1": {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsPromptCache: false,
-				description: "Test model 1",
-			},
-			"model-2": {
-				maxTokens: 8192,
-				contextWindow: 16384,
-				supportsPromptCache: false,
-				description: "Test model 2",
-			},
+	it("returns a correlated unified response", async () => {
+		const models: ModelRecord = {
+			"model-1": { maxTokens: 4096, contextWindow: 8192, supportsPromptCache: false },
 		}
-
-		mockGetModels.mockResolvedValue(mockModels)
+		mockGetModels.mockResolvedValue(models)
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestOllamaModels",
-		})
-
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "ollama", baseUrl: "http://localhost:1234" })
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "ollamaModels",
-			ollamaModels: mockModels,
-		})
-	})
-})
-
-describe("webviewMessageHandler - requestRouterModels", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
-		mockClineProvider.getState = vi.fn().mockResolvedValue({
-			apiConfiguration: {
-				openRouterApiKey: "openrouter-key",
-				requestyApiKey: "requesty-key",
-				litellmApiKey: "litellm-key",
-				litellmBaseUrl: "http://localhost:4000",
+			type: "requestProviderModels",
+			modelSourceRequest: {
+				requestId: "request-1",
+				source: { id: "ollama", kind: "local", payload: "models" },
+				provider: "ollama",
+				options: { baseUrl: "http://localhost:11434" },
 			},
 		})
-	})
 
-	it("successfully fetches models from all providers", async () => {
-		const mockModels: ModelRecord = {
-			"model-1": {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsPromptCache: false,
-				description: "Test model 1",
-			},
-			"model-2": {
-				maxTokens: 8192,
-				contextWindow: 16384,
-				supportsPromptCache: false,
-				description: "Test model 2",
-			},
-		}
-
-		mockGetModels.mockResolvedValue(mockModels)
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
-		})
-
-		// Verify getModels was called for each provider
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "openrouter" })
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "requesty", apiKey: "requesty-key" })
-		expect(mockGetModels).toHaveBeenCalledWith(
-			expect.objectContaining({
-				provider: "unbound",
-			}),
-		)
-		expect(mockGetModels).toHaveBeenCalledWith({ provider: "vercel-ai-gateway" })
 		expect(mockGetModels).toHaveBeenCalledWith({
-			provider: "litellm",
-			apiKey: "litellm-key",
-			baseUrl: "http://localhost:4000",
+			provider: "ollama",
+			baseUrl: "http://localhost:11434",
+			apiKey: undefined,
 		})
-
-		// Verify response was sent
 		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "routerModels",
-			routerModels: {
-				openrouter: mockModels,
-				requesty: mockModels,
-				unbound: mockModels,
-				litellm: mockModels,
-				poe: {},
-				ollama: {},
-				lmstudio: {},
-				"vercel-ai-gateway": mockModels,
-				deepseek: {},
+			type: "providerModels",
+			modelSourceResult: {
+				requestId: "request-1",
+				sourceId: "ollama",
+				models,
 			},
-			values: undefined,
 		})
 	})
 
-	it("handles LiteLLM models with values from message when config is missing", async () => {
-		mockClineProvider.getState = vi.fn().mockResolvedValue({
-			apiConfiguration: {
-				openRouterApiKey: "openrouter-key",
-				requestyApiKey: "requesty-key",
-				// Missing litellm config
-			},
-		})
-
-		const mockModels: ModelRecord = {
-			"model-1": {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsPromptCache: false,
-				description: "Test model 1",
-			},
-		}
-
-		mockGetModels.mockResolvedValue(mockModels)
+	it("returns errors through the same correlated response", async () => {
+		mockGetModels.mockRejectedValue(new Error("unavailable"))
 
 		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
-			values: {
-				litellmApiKey: "message-litellm-key",
-				litellmBaseUrl: "http://message-url:4000",
+			type: "requestProviderModels",
+			modelSourceRequest: {
+				requestId: "request-2",
+				source: { id: "requesty", kind: "remote", payload: "models" },
 			},
 		})
 
-		// Verify LiteLLM was called with values from message
-		expect(mockGetModels).toHaveBeenCalledWith({
-			provider: "litellm",
-			apiKey: "message-litellm-key",
-			baseUrl: "http://message-url:4000",
-		})
-	})
-
-	it("skips LiteLLM when both config and message values are missing", async () => {
-		mockClineProvider.getState = vi.fn().mockResolvedValue({
-			apiConfiguration: {
-				openRouterApiKey: "openrouter-key",
-				requestyApiKey: "requesty-key",
-				// Missing litellm config
+		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
+			type: "providerModels",
+			modelSourceResult: {
+				requestId: "request-2",
+				sourceId: "requesty",
+				error: "unavailable",
 			},
-		})
-
-		const mockModels: ModelRecord = {
-			"model-1": {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsPromptCache: false,
-				description: "Test model 1",
-			},
-		}
-
-		mockGetModels.mockResolvedValue(mockModels)
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
-			// No values provided
-		})
-
-		// Verify LiteLLM was NOT called
-		expect(mockGetModels).not.toHaveBeenCalledWith(
-			expect.objectContaining({
-				provider: "litellm",
-			}),
-		)
-
-		// Verify response includes empty object for LiteLLM
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "routerModels",
-			routerModels: {
-				openrouter: mockModels,
-				requesty: mockModels,
-				unbound: mockModels,
-				litellm: {},
-				poe: {},
-				ollama: {},
-				lmstudio: {},
-				"vercel-ai-gateway": mockModels,
-				deepseek: {},
-			},
-			values: undefined,
-		})
-	})
-
-	it("handles individual provider failures gracefully", async () => {
-		const mockModels: ModelRecord = {
-			"model-1": {
-				maxTokens: 4096,
-				contextWindow: 8192,
-				supportsPromptCache: false,
-				description: "Test model 1",
-			},
-		}
-
-		// Mock some providers to succeed and others to fail
-		mockGetModels
-			.mockResolvedValueOnce(mockModels) // openrouter
-			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
-			.mockResolvedValueOnce(mockModels) // unbound
-			.mockResolvedValueOnce(mockModels) // vercel-ai-gateway
-			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
-		})
-
-		// Verify error messages were sent for failed providers (these come first)
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "Requesty API error",
-			values: { provider: "requesty" },
-		})
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "LiteLLM connection failed",
-			values: { provider: "litellm" },
-		})
-
-		// Verify final routerModels response includes successful providers and empty objects for failed ones
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "routerModels",
-			routerModels: {
-				openrouter: mockModels,
-				requesty: {},
-				unbound: mockModels,
-				litellm: {},
-				poe: {},
-				ollama: {},
-				lmstudio: {},
-				"vercel-ai-gateway": mockModels,
-				deepseek: {},
-			},
-			values: undefined,
-		})
-	})
-
-	it("handles Error objects and string errors correctly", async () => {
-		// Mock providers to fail with different error types
-		mockGetModels
-			.mockRejectedValueOnce(new Error("Structured error message")) // openrouter
-			.mockRejectedValueOnce(new Error("Requesty API error")) // requesty
-			.mockRejectedValueOnce(new Error("Unbound error")) // unbound
-			.mockRejectedValueOnce(new Error("Vercel AI Gateway error")) // vercel-ai-gateway
-			.mockRejectedValueOnce(new Error("LiteLLM connection failed")) // litellm
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
-		})
-
-		// Verify error handling for different error types
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "Structured error message",
-			values: { provider: "openrouter" },
-		})
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "Requesty API error",
-			values: { provider: "requesty" },
-		})
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "Unbound error",
-			values: { provider: "unbound" },
-		})
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "Vercel AI Gateway error",
-			values: { provider: "vercel-ai-gateway" },
-		})
-
-		expect(mockClineProvider.postMessageToWebview).toHaveBeenCalledWith({
-			type: "singleRouterModelFetchResponse",
-			success: false,
-			error: "LiteLLM connection failed",
-			values: { provider: "litellm" },
-		})
-	})
-
-	it("prefers config values over message values for LiteLLM", async () => {
-		const mockModels: ModelRecord = {}
-		mockGetModels.mockResolvedValue(mockModels)
-
-		await webviewMessageHandler(mockClineProvider, {
-			type: "requestRouterModels",
-			values: {
-				litellmApiKey: "message-key",
-				litellmBaseUrl: "http://message-url",
-			},
-		})
-
-		// Verify config values are used over message values
-		expect(mockGetModels).toHaveBeenCalledWith({
-			provider: "litellm",
-			apiKey: "litellm-key", // From config
-			baseUrl: "http://localhost:4000", // From config
 		})
 	})
 })

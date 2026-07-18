@@ -24,7 +24,8 @@ import {
 	type ProviderSettings,
 	type GlobalSettings,
 	globalSettingsSchema,
-	providerSettingsSchema,
+	migrateProviderProfiles,
+	providerProfileToLegacySettings,
 	getModelId,
 	EVALS_SETTINGS,
 } from "@roo-code/types"
@@ -466,18 +467,23 @@ export function NewRun() {
 			clearErrors("settings")
 
 			try {
-				const { providerProfiles, globalSettings } = z
+				const { providerProfiles: rawProviderProfiles, globalSettings } = z
 					.object({
-						providerProfiles: z.object({
-							currentApiConfigName: z.string(),
-							apiConfigs: z.record(z.string(), providerSettingsSchema),
-						}),
+						providerProfiles: z.unknown(),
 						globalSettings: globalSettingsSchema,
 					})
 					.parse(JSON.parse(await file.text()))
+				const providerProfiles = migrateProviderProfiles(rawProviderProfiles).data
+				const apiConfigs = Object.fromEntries(
+					Object.entries(providerProfiles.apiConfigs).flatMap(([name, profile]) =>
+						"config" in profile.provider
+							? [[name, { id: profile.id, ...providerProfileToLegacySettings(profile) }]]
+							: [],
+					),
+				) as Record<string, ProviderSettings>
 
 				setImportedSettings({
-					apiConfigs: providerProfiles.apiConfigs,
+					apiConfigs,
 					globalSettings,
 					currentApiConfigName: providerProfiles.currentApiConfigName,
 				})
@@ -485,7 +491,7 @@ export function NewRun() {
 				const defaultConfigName = providerProfiles.currentApiConfigName
 				setConfigSelections([{ id: crypto.randomUUID(), configName: defaultConfigName, popoverOpen: false }])
 
-				const providerSettings = providerProfiles.apiConfigs[defaultConfigName] ?? {}
+				const providerSettings = apiConfigs[defaultConfigName] ?? {}
 				setValue("model", getModelId(providerSettings) ?? "")
 				setValue("settings", { ...EVALS_SETTINGS, ...providerSettings, ...globalSettings })
 

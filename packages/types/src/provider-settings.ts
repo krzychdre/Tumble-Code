@@ -2,64 +2,13 @@ import { z } from "zod"
 
 import { modelInfoSchema, reasoningEffortSettingSchema, verbosityLevelsSchema, serviceTierSchema } from "./model.js"
 import { codebaseIndexProviderSchema } from "./codebase-index.js"
-import {
-	anthropicModels,
-	basetenModels,
-	bedrockModels,
-	deepSeekModels,
-	fireworksModels,
-	geminiModels,
-	mistralModels,
-	moonshotModels,
-	openAiCodexModels,
-	openAiNativeModels,
-	qwenCodeModels,
-	sambaNovaModels,
-	vertexModels,
-	vscodeLlmModels,
-	xaiModels,
-	internationalZAiModels,
-	minimaxModels,
-} from "./providers/index.js"
+import { activeProviderIdsForPublicApi, providerIdsForPublicApi, retiredProviderIds } from "./provider-registry.js"
 
 /**
  * constants
  */
 
 export const DEFAULT_CONSECUTIVE_MISTAKE_LIMIT = 3
-
-/**
- * DynamicProvider
- *
- * Dynamic provider requires external API calls in order to get the model list.
- */
-
-export const dynamicProviders = [
-	"openrouter",
-	"vercel-ai-gateway",
-	"litellm",
-	"poe",
-	"requesty",
-	"unbound",
-	"deepseek",
-] as const
-
-export type DynamicProvider = (typeof dynamicProviders)[number]
-
-export const isDynamicProvider = (key: string): key is DynamicProvider =>
-	dynamicProviders.includes(key as DynamicProvider)
-
-/**
- * LocalProvider
- *
- * Local providers require localhost API calls in order to get the model list.
- */
-
-export const localProviders = ["ollama", "lmstudio"] as const
-
-export type LocalProvider = (typeof localProviders)[number]
-
-export const isLocalProvider = (key: string): key is LocalProvider => localProviders.includes(key as LocalProvider)
 
 /**
  * InternalProvider
@@ -104,30 +53,7 @@ export const isFauxProvider = (key: string): key is FauxProvider => fauxProvider
  * ProviderName
  */
 
-export const providerNames = [
-	...dynamicProviders,
-	...localProviders,
-	...internalProviders,
-	...customProviders,
-	...fauxProviders,
-	"anthropic",
-	"bedrock",
-	"baseten",
-	"deepseek",
-	"fireworks",
-	"gemini",
-	"gemini-cli",
-	"mistral",
-	"moonshot",
-	"minimax",
-	"openai-codex",
-	"openai-native",
-	"qwen-code",
-	"sambanova",
-	"vertex",
-	"xai",
-	"zai",
-] as const
+export const providerNames = activeProviderIdsForPublicApi
 
 export const providerNamesSchema = z.enum(providerNames)
 
@@ -140,16 +66,7 @@ export const isProviderName = (key: unknown): key is ProviderName =>
  * RetiredProviderName
  */
 
-export const retiredProviderNames = [
-	"cerebras",
-	"chutes",
-	"deepinfra",
-	"doubao",
-	"featherless",
-	"groq",
-	"huggingface",
-	"io-intelligence",
-] as const
+export const retiredProviderNames = retiredProviderIds
 
 export const retiredProviderNamesSchema = z.enum(retiredProviderNames)
 
@@ -157,6 +74,8 @@ export type RetiredProviderName = z.infer<typeof retiredProviderNamesSchema>
 
 export const isRetiredProvider = (value: string): value is RetiredProviderName =>
 	retiredProviderNames.includes(value as RetiredProviderName)
+
+export const providerNamesWithRetired = providerIdsForPublicApi
 
 export const providerNamesWithRetiredSchema = z.union([providerNamesSchema, retiredProviderNamesSchema])
 
@@ -553,95 +472,4 @@ export const getApiProtocol = (provider: ProviderName | undefined, modelId?: str
 	}
 
 	return "openai"
-}
-
-/**
- * MODELS_BY_PROVIDER
- */
-
-export const MODELS_BY_PROVIDER: Record<
-	Exclude<ProviderName, "fake-ai" | "gemini-cli" | "openai">,
-	{ id: ProviderName; label: string; models: string[] }
-> = {
-	anthropic: {
-		id: "anthropic",
-		label: "Anthropic",
-		models: Object.keys(anthropicModels),
-	},
-	bedrock: {
-		id: "bedrock",
-		label: "Amazon Bedrock",
-		models: Object.keys(bedrockModels),
-	},
-	deepseek: {
-		id: "deepseek",
-		label: "DeepSeek",
-		models: Object.keys(deepSeekModels),
-	},
-	fireworks: {
-		id: "fireworks",
-		label: "Fireworks",
-		models: Object.keys(fireworksModels),
-	},
-	gemini: {
-		id: "gemini",
-		label: "Google Gemini",
-		models: Object.keys(geminiModels),
-	},
-	mistral: {
-		id: "mistral",
-		label: "Mistral",
-		models: Object.keys(mistralModels),
-	},
-	moonshot: {
-		id: "moonshot",
-		label: "Moonshot",
-		models: Object.keys(moonshotModels),
-	},
-	minimax: {
-		id: "minimax",
-		label: "MiniMax",
-		models: Object.keys(minimaxModels),
-	},
-	"openai-codex": {
-		id: "openai-codex",
-		label: "OpenAI - ChatGPT Plus/Pro",
-		models: Object.keys(openAiCodexModels),
-	},
-	"openai-native": {
-		id: "openai-native",
-		label: "OpenAI",
-		models: Object.keys(openAiNativeModels),
-	},
-	"qwen-code": { id: "qwen-code", label: "Qwen Code", models: Object.keys(qwenCodeModels) },
-	sambanova: {
-		id: "sambanova",
-		label: "SambaNova",
-		models: Object.keys(sambaNovaModels),
-	},
-	vertex: {
-		id: "vertex",
-		label: "GCP Vertex AI",
-		models: Object.keys(vertexModels),
-	},
-	"vscode-lm": {
-		id: "vscode-lm",
-		label: "VS Code LM API",
-		models: Object.keys(vscodeLlmModels),
-	},
-	xai: { id: "xai", label: "xAI (Grok)", models: Object.keys(xaiModels) },
-	zai: { id: "zai", label: "Z.ai", models: Object.keys(internationalZAiModels) },
-	baseten: { id: "baseten", label: "Baseten", models: Object.keys(basetenModels) },
-
-	// Dynamic providers; models pulled from remote APIs.
-	poe: { id: "poe", label: "Poe", models: [] },
-	litellm: { id: "litellm", label: "LiteLLM", models: [] },
-	openrouter: { id: "openrouter", label: "OpenRouter", models: [] },
-	requesty: { id: "requesty", label: "Requesty", models: [] },
-	unbound: { id: "unbound", label: "Unbound", models: [] },
-	"vercel-ai-gateway": { id: "vercel-ai-gateway", label: "Vercel AI Gateway", models: [] },
-
-	// Local providers; models discovered from localhost endpoints.
-	lmstudio: { id: "lmstudio", label: "LM Studio", models: [] },
-	ollama: { id: "ollama", label: "Ollama", models: [] },
 }

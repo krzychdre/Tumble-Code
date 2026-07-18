@@ -1,13 +1,18 @@
 import { render, screen } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
-import type { ProviderSettings, OrganizationAllowList } from "@roo-code/types"
+import {
+	getSelectableProviderDefinitions,
+	providerRegistry,
+	type ProviderSettings,
+	type OrganizationAllowList,
+} from "@roo-code/types"
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 
 import ApiOptions from "../ApiOptions"
-import { MODELS_BY_PROVIDER, PROVIDERS } from "../constants"
+import { MODELS_BY_PROVIDER } from "../constants"
 
 // Mock the extension state context
 vi.mock("@src/context/ExtensionStateContext", () => ({
@@ -112,6 +117,35 @@ describe("ApiOptions Provider Filtering", () => {
 		setErrorMessage: vi.fn(),
 	}
 
+	const expectedProviderOptions = [
+		{ value: "openrouter", label: "OpenRouter" },
+		{ value: "bedrock", label: "Amazon Bedrock" },
+		{ value: "anthropic", label: "Anthropic" },
+		{ value: "baseten", label: "Baseten" },
+		{ value: "deepseek", label: "DeepSeek" },
+		{ value: "fireworks", label: "Fireworks AI" },
+		{ value: "vertex", label: "GCP Vertex AI" },
+		{ value: "gemini", label: "Google Gemini" },
+		{ value: "litellm", label: "LiteLLM" },
+		{ value: "lmstudio", label: "LM Studio" },
+		{ value: "minimax", label: "MiniMax" },
+		{ value: "mistral", label: "Mistral" },
+		{ value: "moonshot", label: "Moonshot" },
+		{ value: "ollama", label: "Ollama" },
+		{ value: "openai-codex", label: "OpenAI - ChatGPT Plus/Pro" },
+		{ value: "openai-native", label: "OpenAI" },
+		{ value: "openai", label: "OpenAI Compatible" },
+		{ value: "poe", label: "Poe" },
+		{ value: "qwen-code", label: "Qwen Code" },
+		{ value: "requesty", label: "Requesty" },
+		{ value: "sambanova", label: "SambaNova" },
+		{ value: "unbound", label: "Unbound" },
+		{ value: "vercel-ai-gateway", label: "Vercel AI Gateway" },
+		{ value: "vscode-lm", label: "VS Code LM API" },
+		{ value: "xai", label: "xAI (Grok)" },
+		{ value: "zai", label: "Z.ai" },
+	]
+
 	const renderWithProviders = (props = defaultProps) => {
 		return render(
 			<QueryClientProvider client={queryClient}>
@@ -120,11 +154,38 @@ describe("ApiOptions Provider Filtering", () => {
 		)
 	}
 
+	const getProviderOptions = () => {
+		const selectElement = screen.getByTestId("provider-select")
+		return JSON.parse(selectElement.getAttribute("data-options") || "[]") as Array<{
+			value: string
+			label: string
+		}>
+	}
+
+	it("should derive selectable provider order and labels from the portable registry", () => {
+		renderWithProviders()
+
+		const registryOptions = getSelectableProviderDefinitions().map(({ id, label }) => ({ value: id, label }))
+
+		expect(registryOptions).toEqual(expectedProviderOptions)
+		expect(getProviderOptions()).toEqual(expectedProviderOptions)
+	})
+
+	it("should exclude hidden and retired registry providers from standard selection", () => {
+		renderWithProviders()
+
+		const providerValues = getProviderOptions().map(({ value }) => value)
+		const nonSelectableProviderIds = providerRegistry
+			.filter(({ lifecycle }) => lifecycle !== "active")
+			.map(({ id }) => id)
+
+		expect(providerValues).not.toEqual(expect.arrayContaining(nonSelectableProviderIds))
+	})
+
 	it("should show all providers when no organization allow list is provided", () => {
 		renderWithProviders()
 
-		const selectElement = screen.getByTestId("provider-select")
-		const options = JSON.parse(selectElement.getAttribute("data-options") || "[]")
+		const options = getProviderOptions()
 
 		// Should include both static and dynamic providers
 		const providerValues = options.map((opt: any) => opt.value)
@@ -133,34 +194,23 @@ describe("ApiOptions Provider Filtering", () => {
 		expect(providerValues).toContain("ollama") // dynamic provider
 	})
 
-	it("should hide static providers with empty models", () => {
-		// Mock MODELS_BY_PROVIDER to have an empty provider
-		const _originalModels = { ...MODELS_BY_PROVIDER }
-		;(MODELS_BY_PROVIDER as any).emptyProvider = {}
-
-		// Add the empty provider to PROVIDERS
-		PROVIDERS.push({ value: "emptyProvider", label: "Empty Provider", proxy: false })
-
+	it("should hide static registry providers with empty models", () => {
+		const originalModels = MODELS_BY_PROVIDER.gemini
+		MODELS_BY_PROVIDER.gemini = {}
 		renderWithProviders()
 
-		const selectElement = screen.getByTestId("provider-select")
-		const options = JSON.parse(selectElement.getAttribute("data-options") || "[]")
-		const providerValues = options.map((opt: any) => opt.value)
+		const providerValues = getProviderOptions().map(({ value }) => value)
 
 		// Should NOT include the empty static provider
-		expect(providerValues).not.toContain("emptyProvider")
+		expect(providerValues).not.toContain("gemini")
 
-		// Cleanup
-		delete (MODELS_BY_PROVIDER as any).emptyProvider
-		PROVIDERS.pop()
+		MODELS_BY_PROVIDER.gemini = originalModels
 	})
 
 	it("should always show dynamic providers even if they have no models yet", () => {
 		renderWithProviders()
 
-		const selectElement = screen.getByTestId("provider-select")
-		const options = JSON.parse(selectElement.getAttribute("data-options") || "[]")
-		const providerValues = options.map((opt: any) => opt.value)
+		const providerValues = getProviderOptions().map(({ value }) => value)
 
 		// Dynamic providers (not in MODELS_BY_PROVIDER) should always be shown
 		expect(providerValues).toContain("openrouter")
@@ -197,9 +247,7 @@ describe("ApiOptions Provider Filtering", () => {
 
 		renderWithProviders()
 
-		const selectElement = screen.getByTestId("provider-select")
-		const options = JSON.parse(selectElement.getAttribute("data-options") || "[]")
-		const providerValues = options.map((opt: any) => opt.value)
+		const providerValues = getProviderOptions().map(({ value }) => value)
 
 		// Should include anthropic (has allowed models)
 		expect(providerValues).toContain("anthropic")
@@ -232,29 +280,24 @@ describe("ApiOptions Provider Filtering", () => {
 
 		renderWithProviders()
 
-		const selectElement = screen.getByTestId("provider-select")
-		const options = JSON.parse(selectElement.getAttribute("data-options") || "[]")
-		const providerValues = options.map((opt: any) => opt.value)
+		const providerValues = getProviderOptions().map(({ value }) => value)
 
 		// Should include anthropic since allowAll is true
 		expect(providerValues).toContain("anthropic")
 	})
 
-	it("should always show currently selected provider even if it has no models", () => {
-		// Add an empty static provider to test
-		;(MODELS_BY_PROVIDER as any).testEmptyProvider = {}
-		// Add the provider to the PROVIDERS list
-		PROVIDERS.push({ value: "testEmptyProvider", label: "Test Empty Provider", proxy: false })
-
+	it("should always show currently selected registry provider even if it has no models", () => {
+		const originalModels = MODELS_BY_PROVIDER.anthropic
+		MODELS_BY_PROVIDER.anthropic = {}
 		// Create a mock organization allow list that allows the provider but no models
 		const allowList: OrganizationAllowList = {
 			allowAll: false,
 			providers: {
-				testEmptyProvider: {
+				anthropic: {
 					allowAll: true, // Allow the provider itself, but it has no models in MODELS_BY_PROVIDER
 				},
-				anthropic: {
-					allowAll: true, // Allow anthropic for comparison
+				openrouter: {
+					allowAll: true,
 				},
 			},
 		}
@@ -264,35 +307,29 @@ describe("ApiOptions Provider Filtering", () => {
 			cloudIsAuthenticated: false,
 		} as any)
 
-		// Mock the selected model hook to return testEmptyProvider as the selected provider
+		// Mock the selected model hook to return anthropic as the selected provider
 		;(useSelectedModel as any).mockReturnValue({
-			provider: "testEmptyProvider",
+			provider: "anthropic",
 			id: undefined,
 			info: null,
 		})
 
-		// Render with testEmptyProvider as the selected provider
+		// Render with anthropic as the selected provider
 		const props = {
 			...defaultProps,
 			apiConfiguration: {
 				...defaultProps.apiConfiguration,
-				apiProvider: "testEmptyProvider" as any,
+				apiProvider: "anthropic",
 			} as ProviderSettings,
 		}
 
 		renderWithProviders(props)
 
-		const selectElement = screen.getByTestId("provider-select")
-		const options = JSON.parse(selectElement.getAttribute("data-options") || "[]")
-		const providerValues = options.map((opt: any) => opt.value)
+		const providerValues = getProviderOptions().map(({ value }) => value)
 
-		// Should include testEmptyProvider even though it has no models (empty object in MODELS_BY_PROVIDER), because it's currently selected
-		expect(providerValues).toContain("testEmptyProvider")
-		// Should also include anthropic since it has allowAll: true
 		expect(providerValues).toContain("anthropic")
+		expect(providerValues).toContain("openrouter")
 
-		// Cleanup
-		delete (MODELS_BY_PROVIDER as any).testEmptyProvider
-		PROVIDERS.pop()
+		MODELS_BY_PROVIDER.anthropic = originalModels
 	})
 })

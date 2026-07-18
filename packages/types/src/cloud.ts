@@ -5,7 +5,7 @@ import { z } from "zod"
 import { RooCodeEventName } from "./events.js"
 import { TaskStatus, taskMetadataSchema } from "./task.js"
 import { globalSettingsSchema, autoApprovalModes } from "./global-settings.js"
-import { providerSettingsWithIdSchema } from "./provider-settings.js"
+import { opaqueProviderProfileSchema, type PersistedProviderProfile } from "./provider-profile.js"
 import { mcpMarketplaceItemSchema } from "./marketplace.js"
 import { clineMessageSchema, queuedMessageSchema, tokenUsageSchema } from "./message.js"
 import { staticAppPropertiesSchema, gitPropertiesSchema } from "./telemetry.js"
@@ -159,10 +159,14 @@ export const organizationSettingsSchema = z.object({
 	hiddenMcps: z.array(z.string()).optional(),
 	hideMarketplaceMcps: z.boolean().optional(),
 	mcps: z.array(mcpMarketplaceItemSchema).optional(),
-	providerProfiles: z.record(z.string(), providerSettingsWithIdSchema).optional(),
+	providerProfiles: z.record(z.string(), opaqueProviderProfileSchema).optional(),
 })
 
-export type OrganizationSettings = z.infer<typeof organizationSettingsSchema>
+type InferredOrganizationSettings = z.infer<typeof organizationSettingsSchema>
+
+export type OrganizationSettings = Omit<InferredOrganizationSettings, "providerProfiles"> & {
+	providerProfiles?: Record<string, PersistedProviderProfile>
+}
 
 /**
  * User Settings Schemas

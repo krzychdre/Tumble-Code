@@ -1,10 +1,9 @@
-import { useState, useCallback, useMemo } from "react"
-import { useEvent } from "react-use"
-import { LanguageModelChatSelector } from "vscode"
+import { useCallback, useMemo } from "react"
 
-import type { ProviderSettings, ExtensionMessage, ModelInfo } from "@roo-code/types"
+import type { ProviderSettings, ModelInfo } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { ModelPicker } from "../ModelPicker"
 
@@ -16,33 +15,17 @@ type VSCodeLMProps = {
 export const VSCodeLM = ({ apiConfiguration, setApiConfigurationField }: VSCodeLMProps) => {
 	const { t } = useAppTranslation()
 
-	const [vsCodeLmModels, setVsCodeLmModels] = useState<LanguageModelChatSelector[]>([])
-
-	const onMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
-
-		switch (message.type) {
-			case "vsCodeLmModels":
-				{
-					const newModels = message.vsCodeLmModels ?? []
-					setVsCodeLmModels(newModels)
-				}
-				break
-		}
-	}, [])
-
-	useEvent("message", onMessage)
+	const { modelIds: vsCodeLmModels = [] } = useProviderModels("vscode-lm")
 
 	// Convert VSCode LM models array to Record format for ModelPicker
 	const modelsRecord = useMemo((): Record<string, ModelInfo> => {
 		return vsCodeLmModels.reduce(
 			(acc, model) => {
-				const modelId = `${model.vendor}/${model.family}`
-				acc[modelId] = {
+				acc[model] = {
 					maxTokens: 0,
 					contextWindow: 0,
 					supportsPromptCache: false,
-					description: `${model.vendor} - ${model.family}`,
+					description: model.replace("/", " - "),
 				}
 				return acc
 			},

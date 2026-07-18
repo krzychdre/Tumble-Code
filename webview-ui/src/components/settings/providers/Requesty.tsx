@@ -8,7 +8,6 @@ import {
 	requestyDefaultModelId,
 } from "@roo-code/types"
 
-import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button } from "@src/components/ui"
 
@@ -33,6 +32,7 @@ export const Requesty = ({
 	apiConfiguration,
 	setApiConfigurationField,
 	routerModels,
+	refetchRouterModels,
 	organizationAllowList,
 	modelValidationError,
 	uriScheme,
@@ -126,11 +126,7 @@ export const Requesty = ({
 					</div>
 				</VSCodeTextField>
 			)}
-			<Button
-				variant="outline"
-				onClick={() => {
-					vscode.postMessage({ type: "requestRouterModels", values: { provider: "requesty", refresh: true } })
-				}}>
+			<Button variant="outline" onClick={refetchRouterModels}>
 				<div className="flex items-center gap-2">
 					<span className="codicon codicon-refresh" />
 					{t("settings:providers.refreshModels.label")}
