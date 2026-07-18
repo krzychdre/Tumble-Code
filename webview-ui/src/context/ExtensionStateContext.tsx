@@ -491,6 +491,19 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					})
 					break
 				}
+				case "taskHistoryItemDeleted": {
+					const deletedId = message.taskHistoryItemId
+					if (!deletedId) {
+						break
+					}
+					setState((prevState) => ({
+						...prevState,
+						taskHistory: prevState.taskHistory.filter((h) => h.id !== deletedId),
+						currentTaskItem:
+							prevState.currentTaskItem?.id === deletedId ? undefined : prevState.currentTaskItem,
+					}))
+					break
+				}
 			}
 		},
 		[setListApiConfigMeta],

@@ -4,6 +4,7 @@ import * as vscode from "vscode"
 import { TelemetryService } from "@roo-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
 import { ContextProxy } from "../../config/ContextProxy"
+import { TaskHistoryStore } from "../../task-persistence"
 import type { HistoryItem } from "@roo-code/types"
 
 vi.mock("vscode", () => ({
@@ -81,7 +82,27 @@ vi.mock("../../task/Task", () => ({
 
 vi.mock("../../prompts/sections/custom-instructions")
 
-vi.mock("../../../utils/safeWriteJson")
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockResolvedValue(undefined)
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: unknown) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
+
+// The JSON transaction gateway is mocked above; keep proper-lockfile inert for
+// unrelated safe-write call sites in these provider-wiring specs.
+vi.mock("proper-lockfile", () => ({
+	lock: vi.fn(async () => async () => {}),
+	unlock: vi.fn(async () => {}),
+	check: vi.fn(async () => false),
+}))
 
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn().mockReturnValue({
@@ -111,6 +132,8 @@ vi.mock("@roo-code/cloud", () => ({
 		get instance() {
 			return {
 				isAuthenticated: vi.fn().mockReturnValue(false),
+				on: vi.fn(),
+				off: vi.fn(),
 			}
 		},
 	},
@@ -163,7 +186,7 @@ vi.mock("p-wait-for", () => ({
 vi.mock("fs/promises", () => ({
 	mkdir: vi.fn().mockResolvedValue(undefined),
 	writeFile: vi.fn().mockResolvedValue(undefined),
-	readFile: vi.fn().mockResolvedValue(""),
+	readFile: vi.fn().mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" })),
 	readdir: vi.fn().mockResolvedValue([]),
 	unlink: vi.fn().mockResolvedValue(undefined),
 	rmdir: vi.fn().mockResolvedValue(undefined),
@@ -303,6 +326,10 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 		} else {
 			process.env.ROO_CLI_RUNTIME = originalRooCliRuntimeEnv
 		}
+		// Reset the process-wide shared TaskHistoryStore registry so each
+		// case starts with an empty cache (every provider here shares the
+		// same mocked storage path).
+		TaskHistoryStore.resetSharedStoresForTests()
 	})
 
 	describe("activateProviderProfile", () => {
@@ -327,7 +354,9 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			await provider.addClineToStack(mockTask as any)
 
 			// Populate the store so persistStickyProviderProfileToCurrentTask finds the task
-			await provider.taskHistoryStore.upsert({
+			await (
+				await (provider as any).getTaskHistoryStore()
+			).upsert({
 				id: mockTask.taskId,
 				ts: Date.now(),
 				task: "Test task",
@@ -340,7 +369,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			// Mock updateTaskHistory to track calls
 			const updateTaskHistorySpy = vi
 				.spyOn(provider, "updateTaskHistory")
-				.mockImplementation(() => Promise.resolve([]))
+				.mockImplementation(() => Promise.resolve())
 
 			// Mock providerSettingsManager.activateProfile
 			vi.spyOn(provider.providerSettingsManager, "activateProfile").mockResolvedValue({
@@ -403,7 +432,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			])
 
 			// Mock updateTaskHistory
-			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve([]))
+			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
 
 			// Mock providerSettingsManager.activateProfile
 			vi.spyOn(provider.providerSettingsManager, "activateProfile").mockResolvedValue({
@@ -447,7 +476,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 
 			const updateTaskHistorySpy = vi
 				.spyOn(provider, "updateTaskHistory")
-				.mockImplementation(() => Promise.resolve([]))
+				.mockImplementation(() => Promise.resolve())
 
 			vi.spyOn(provider.providerSettingsManager, "activateProfile").mockResolvedValue({
 				name: "new-profile",
@@ -695,7 +724,9 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			}
 
 			// Populate the store so persistStickyProviderProfileToCurrentTask finds the task
-			await provider.taskHistoryStore.upsert({
+			await (
+				await (provider as any).getTaskHistoryStore()
+			).upsert({
 				id: mockTask.taskId,
 				ts: Date.now(),
 				task: "Test task",
@@ -709,7 +740,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			let updatedHistoryItem: any
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation((item) => {
 				updatedHistoryItem = item
-				return Promise.resolve([item])
+				return Promise.resolve()
 			})
 
 			// Add task to provider stack
@@ -804,7 +835,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 
 			// Populate the store
 			for (const item of taskHistory) {
-				await provider.taskHistoryStore.upsert(item as any)
+				await (await (provider as any).getTaskHistoryStore()).upsert(item as any)
 			}
 
 			// Mock updateTaskHistory
@@ -813,7 +844,7 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 				if (index >= 0) {
 					taskHistory[index] = { ...taskHistory[index], ...item }
 				}
-				return Promise.resolve(taskHistory)
+				return Promise.resolve()
 			})
 
 			// Mock providerSettingsManager.activateProfile
@@ -862,7 +893,9 @@ describe("ClineProvider - Sticky Provider Profile", () => {
 			await provider.addClineToStack(mockTask as any)
 
 			// Populate the store
-			await provider.taskHistoryStore.upsert({
+			await (
+				await (provider as any).getTaskHistoryStore()
+			).upsert({
 				id: mockTask.taskId,
 				ts: Date.now(),
 				task: "Test task",

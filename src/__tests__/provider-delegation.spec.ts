@@ -29,6 +29,17 @@ function makeStoreStub(
 }
 
 /**
+ * Minimal provider fields beyond what each test explicitly sets. The real
+ * ClineProvider keeps a `selfOriginatedMutations` Set to suppress the shared
+ * store's onChange echo for its own writes; the delegation path touches it, so
+ * the stub provider must provide one.
+ */
+const sharedProviderFields = () => ({
+	selfOriginatedMutations: new Set<string>(),
+	getTaskHistoryStore: vi.fn(),
+})
+
+/**
  * Parent task double with the methods delegateParentAndOpenChild reads from
  * `parent`. Without flushPendingToolResultsToHistory the method hits its
  * non-fatal flush-error branch and never reaches the happy delegation path.
@@ -53,6 +64,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		const taskHistoryStore = makeStoreStub()
 
 		const provider = {
+			...sharedProviderFields(),
 			emit: providerEmit,
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack,
@@ -63,6 +75,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
+		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
 		const child = await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
 			parentTaskId: "parent-1",
@@ -117,6 +130,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		})
 
 		const provider = {
+			...sharedProviderFields(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
@@ -128,6 +142,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
+		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
 		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
 			parentTaskId: "parent-1",
@@ -150,6 +165,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		})
 
 		const provider = {
+			...sharedProviderFields(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
@@ -161,6 +177,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
+		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
 		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
 			parentTaskId: "parent-1",
@@ -191,6 +208,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		})
 
 		const provider = {
+			...sharedProviderFields(),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => parentTask),
 			removeClineFromStack,
@@ -201,6 +219,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
+		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
 		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
 			parentTaskId: "parent-1",

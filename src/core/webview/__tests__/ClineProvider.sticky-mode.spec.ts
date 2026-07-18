@@ -4,6 +4,7 @@ import * as vscode from "vscode"
 import { TelemetryService } from "@roo-code/telemetry"
 import { ClineProvider } from "../ClineProvider"
 import { ContextProxy } from "../../config/ContextProxy"
+import { TaskHistoryStore } from "../../task-persistence"
 import { Task } from "../../task/Task"
 import type { HistoryItem, ProviderName } from "@roo-code/types"
 
@@ -79,7 +80,27 @@ vi.mock("../../task/Task", () => ({
 
 vi.mock("../../prompts/sections/custom-instructions")
 
-vi.mock("../../../utils/safeWriteJson")
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockResolvedValue(undefined)
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: unknown) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
+
+// The JSON transaction gateway is mocked above; keep proper-lockfile inert for
+// unrelated safe-write call sites in these provider-wiring specs.
+vi.mock("proper-lockfile", () => ({
+	lock: vi.fn(async () => async () => {}),
+	unlock: vi.fn(async () => {}),
+	check: vi.fn(async () => false),
+}))
 
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn().mockReturnValue({
@@ -109,6 +130,8 @@ vi.mock("@roo-code/cloud", () => ({
 		get instance() {
 			return {
 				isAuthenticated: vi.fn().mockReturnValue(false),
+				on: vi.fn(),
+				off: vi.fn(),
 			}
 		},
 	},
@@ -162,7 +185,7 @@ vi.mock("p-wait-for", () => ({
 vi.mock("fs/promises", () => ({
 	mkdir: vi.fn().mockResolvedValue(undefined),
 	writeFile: vi.fn().mockResolvedValue(undefined),
-	readFile: vi.fn().mockResolvedValue(""),
+	readFile: vi.fn().mockRejectedValue(Object.assign(new Error("missing"), { code: "ENOENT" })),
 	readdir: vi.fn().mockResolvedValue([]),
 	unlink: vi.fn().mockResolvedValue(undefined),
 	rmdir: vi.fn().mockResolvedValue(undefined),
@@ -283,7 +306,7 @@ describe("ClineProvider - Sticky Mode", () => {
 		await new Promise((resolve) => setTimeout(resolve, 10))
 
 		// Mode persistence reads task metadata exclusively from TaskHistoryStore.
-		vi.spyOn(provider.taskHistoryStore, "get").mockImplementation((id) => ({
+		vi.spyOn(await (provider as any).getTaskHistoryStore(), "get").mockImplementation((id) => ({
 			id,
 			ts: Date.now(),
 			task: `Task ${id}`,
@@ -305,6 +328,13 @@ describe("ClineProvider - Sticky Mode", () => {
 		})
 	})
 
+	afterEach(() => {
+		// Reset the process-wide shared TaskHistoryStore registry so each
+		// case starts with an empty cache (every provider here shares the
+		// same mocked storage path).
+		TaskHistoryStore.resetSharedStoresForTests()
+	})
+
 	describe("handleModeSwitch", () => {
 		beforeEach(async () => {
 			await provider.resolveWebviewView(mockWebviewView)
@@ -323,7 +353,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Mock updateTaskHistory to track calls
 			const updateTaskHistorySpy = vi
 				.spyOn(provider, "updateTaskHistory")
-				.mockImplementation(() => Promise.resolve([]))
+				.mockImplementation(() => Promise.resolve())
 
 			// Add task to provider stack
 			await provider.addClineToStack(mockTask)
@@ -359,7 +389,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			await provider.addClineToStack(mockTask as any)
 
 			// Mock updateTaskHistory
-			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve([]))
+			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
 
 			// Switch mode
 			await provider.handleModeSwitch("architect")
@@ -384,7 +414,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Mock updateTaskHistory to track calls
 			const updateTaskHistorySpy = vi
 				.spyOn(provider, "updateTaskHistory")
-				.mockImplementation(() => Promise.resolve([]))
+				.mockImplementation(() => Promise.resolve())
 
 			// Add task to provider stack
 			await provider.addClineToStack(mockTask)
@@ -493,7 +523,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			let updatedHistoryItem: any
 			vi.spyOn(provider, "updateTaskHistory").mockImplementation((item) => {
 				updatedHistoryItem = item
-				return Promise.resolve([item])
+				return Promise.resolve()
 			})
 
 			// Add task to provider stack
@@ -532,7 +562,8 @@ describe("ClineProvider - Sticky Mode", () => {
 				[parentTaskId]: "architect", // Parent starts with architect mode
 			}
 
-			vi.spyOn(provider.taskHistoryStore, "get").mockImplementation((id) => {
+			vi.spyOn(await (provider as any).getTaskHistoryStore(), "get").mockImplementation((rawId) => {
+				const id = String(rawId)
 				const mode = taskModes[id]
 				return mode === undefined
 					? undefined
@@ -558,7 +589,7 @@ describe("ClineProvider - Sticky Mode", () => {
 				if (item.id && item.mode !== undefined) {
 					taskModes[item.id] = item.mode
 				}
-				return Promise.resolve([])
+				return Promise.resolve()
 			})
 
 			// Add parent task to stack
@@ -761,7 +792,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Mock updateTaskHistory
 			const updateTaskHistorySpy = vi
 				.spyOn(provider, "updateTaskHistory")
-				.mockImplementation(() => Promise.resolve([]))
+				.mockImplementation(() => Promise.resolve())
 
 			// Clear previous calls to globalState.update
 			vi.mocked(mockContext.globalState.update).mockClear()
@@ -811,7 +842,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			await provider.addClineToStack(mockTask as any)
 
 			// Mock updateTaskHistory
-			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve([]))
+			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
 
 			// Start a save operation
 			const savePromise = mockTask.saveClineMessages()
@@ -882,7 +913,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			await provider.addClineToStack(mockTask as any)
 
 			// Mock updateTaskHistory
-			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve([]))
+			vi.spyOn(provider, "updateTaskHistory").mockImplementation(() => Promise.resolve())
 
 			// Mock console.error to suppress error output
 			const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
@@ -979,7 +1010,7 @@ describe("ClineProvider - Sticky Mode", () => {
 			// Mock updateTaskHistory
 			const updateTaskHistorySpy = vi
 				.spyOn(provider, "updateTaskHistory")
-				.mockImplementation(() => Promise.resolve([]))
+				.mockImplementation(() => Promise.resolve())
 
 			// Mock getCurrentTask to return different tasks
 			const getCurrentTaskSpy = vi.spyOn(provider, "getCurrentTask")

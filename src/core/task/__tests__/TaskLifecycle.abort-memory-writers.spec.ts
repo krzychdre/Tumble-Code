@@ -40,7 +40,7 @@ function buildAccessStub(overrides: Partial<TaskLifecycleAccess> = {}): TaskLife
 	const provider = {
 		memorySubTaskRunner: vi.fn(),
 		getValue: vi.fn().mockReturnValue(undefined),
-		getTaskHistory: vi.fn().mockReturnValue([]),
+		getTaskHistory: vi.fn().mockResolvedValue([]),
 		notifyBackgroundOutcome: vi.fn(),
 	}
 
@@ -203,14 +203,15 @@ describe("TaskLifecycle.triggerMemoryBackgroundWriters — visibility toasts", (
 		expect(provider.notifyBackgroundOutcome.mock.calls[0][0]).toContain("2")
 	})
 
-	it("passes task history from TaskHistoryStore to auto-dream", () => {
+	it("passes task history from TaskHistoryStore to auto-dream", async () => {
 		const access = buildAccessStub()
 		const provider = access.providerRef.deref() as unknown as {
 			getTaskHistory: ReturnType<typeof vi.fn>
 		}
-		provider.getTaskHistory.mockReturnValue([{ id: "stored-task", ts: 1234 }])
+		provider.getTaskHistory.mockResolvedValue([{ id: "stored-task", ts: 1234 }])
 
 		new TaskLifecycle(access).triggerMemoryBackgroundWriters()
+		await vi.waitFor(() => expect(executeAutoDream).toHaveBeenCalledTimes(1))
 
 		const opts = (executeAutoDream as ReturnType<typeof vi.fn>).mock.calls[0][0]
 		expect(opts.taskHistory).toEqual([{ lastModified: 1234 }])
@@ -235,7 +236,7 @@ describe("TaskLifecycle.triggerMemoryBackgroundWriters — visibility toasts", (
 
 		lifecycle.triggerMemoryBackgroundWriters()
 
-		expect(executeAutoDream).toHaveBeenCalledTimes(1)
+		await vi.waitFor(() => expect(executeAutoDream).toHaveBeenCalledTimes(1))
 		const opts = (executeAutoDream as ReturnType<typeof vi.fn>).mock.calls[0][0]
 		opts.onImproved(3)
 
@@ -249,6 +250,7 @@ describe("TaskLifecycle.triggerMemoryBackgroundWriters — visibility toasts", (
 		const lifecycle = new TaskLifecycle(access)
 
 		lifecycle.triggerMemoryBackgroundWriters()
+		await vi.waitFor(() => expect(executeAutoDream).toHaveBeenCalledTimes(1))
 
 		const opts = (executeAutoDream as ReturnType<typeof vi.fn>).mock.calls[0][0]
 		opts.onImproved(0)

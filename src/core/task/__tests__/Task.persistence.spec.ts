@@ -73,24 +73,40 @@ vi.mock("p-wait-for", () => ({
 	default: mockPWaitFor,
 }))
 
-vi.mock("../../task-persistence", () => ({
-	saveApiMessages: mockSaveApiMessages,
-	saveTaskMessages: mockSaveTaskMessages,
-	readApiMessages: mockReadApiMessages,
-	readTaskMessages: mockReadTaskMessages,
-	taskMetadata: mockTaskMetadata,
-	TaskHistoryStore: vi.fn().mockImplementation(() => ({
+vi.mock("../../task-persistence", () => {
+	const mockTaskHistoryStoreInstance = {
 		initialize: vi.fn().mockResolvedValue(undefined),
 		dispose: vi.fn(),
 		get: vi.fn(),
 		getAll: vi.fn().mockReturnValue([]),
-		upsert: vi.fn().mockResolvedValue([]),
+		upsert: vi.fn().mockResolvedValue(undefined),
 		delete: vi.fn().mockResolvedValue(undefined),
 		deleteMany: vi.fn().mockResolvedValue(undefined),
 		reconcile: vi.fn().mockResolvedValue(undefined),
+		onChange: vi.fn().mockReturnValue(() => {}),
 		initialized: Promise.resolve(),
-	})),
-}))
+	}
+	return {
+		saveApiMessages: mockSaveApiMessages,
+		saveTaskMessages: mockSaveTaskMessages,
+		readApiMessages: mockReadApiMessages,
+		readTaskMessages: mockReadTaskMessages,
+		taskMetadata: mockTaskMetadata,
+		TaskHistoryStore: Object.assign(
+			vi.fn().mockImplementation(() => mockTaskHistoryStoreInstance),
+			{
+				// Shared-store factory used by ClineProvider constructor.
+				acquire: vi.fn().mockResolvedValue({
+					store: mockTaskHistoryStoreInstance,
+					dispose: vi.fn(),
+				}),
+				resetSharedStoresForTests: vi.fn(),
+				LEGACY_TASK_HISTORY_KEY: "taskHistory",
+				LEGACY_MIGRATION_MARKER_KEY: "taskHistoryMigratedToFiles",
+			},
+		),
+	}
+})
 
 vi.mock("vscode", () => {
 	const mockDisposable = { dispose: vi.fn() }

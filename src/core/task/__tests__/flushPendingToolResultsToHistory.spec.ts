@@ -9,6 +9,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { Task } from "../Task"
 import { ClineProvider } from "../../webview/ClineProvider"
+import { TaskHistoryStore } from "../../task-persistence"
 import { ContextProxy } from "../../config/ContextProxy"
 
 // Mock delay before any imports that might use it
@@ -21,8 +22,26 @@ vi.mock("execa", () => ({
 	execa: vi.fn(),
 }))
 
-vi.mock("../../../utils/safeWriteJson", () => ({
-	safeWriteJson: vi.fn().mockResolvedValue(undefined),
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockResolvedValue(undefined)
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: unknown) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
+
+// The JSON transaction gateway is mocked above; keep proper-lockfile inert for
+// unrelated safe-write call sites in these specs.
+vi.mock("proper-lockfile", () => ({
+	lock: vi.fn(async () => async () => {}),
+	unlock: vi.fn(async () => {}),
+	check: vi.fn(async () => false),
 }))
 
 vi.mock("fs/promises", async (importOriginal) => {
@@ -146,6 +165,9 @@ vi.mock("../../../utils/storage", () => ({
 	getSettingsDirectoryPath: vi
 		.fn()
 		.mockImplementation((globalStoragePath) => Promise.resolve(`${globalStoragePath}/settings`)),
+	// Shared TaskHistoryStore needs this to locate its tasks dir during
+	// initialize(); a passthrough keeps the store's init no-op-friendly.
+	getStorageBasePath: vi.fn().mockImplementation((globalStoragePath) => Promise.resolve(globalStoragePath)),
 }))
 
 vi.mock("../../../utils/fs", () => ({
@@ -220,6 +242,11 @@ describe("flushPendingToolResultsToHistory", () => {
 		mockProvider.postStateToWebview = vi.fn().mockResolvedValue(undefined)
 		mockProvider.postStateToWebviewWithoutTaskHistory = vi.fn().mockResolvedValue(undefined)
 		mockProvider.updateTaskHistory = vi.fn().mockResolvedValue(undefined)
+	})
+
+	afterEach(() => {
+		// Reset the process-wide shared TaskHistoryStore registry between cases.
+		TaskHistoryStore.resetSharedStoresForTests()
 	})
 
 	it("should not save anything when userMessageContent is empty", async () => {
