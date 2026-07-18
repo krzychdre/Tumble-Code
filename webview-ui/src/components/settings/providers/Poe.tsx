@@ -1,21 +1,16 @@
-import { useCallback, useState, useEffect, useRef } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { useQueryClient } from "@tanstack/react-query"
 
 import {
 	type ProviderSettings,
 	type OrganizationAllowList,
-	type ExtensionMessage,
 	poeDefaultModelId,
 	type ProviderName,
 } from "@roo-code/types"
 
-import { RouterName } from "@roo/api"
-
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
-import { vscode } from "@src/utils/vscode"
+import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 import { Button } from "@src/components/ui"
 
 import { inputEventTransform } from "../transforms"
@@ -38,39 +33,24 @@ export const Poe = ({
 	simplifySettings,
 }: PoeProps) => {
 	const { t } = useAppTranslation()
-	const queryClient = useQueryClient()
-	const { routerModels } = useExtensionState()
+	const {
+		models: poeModels = {},
+		refresh: refreshModels,
+		error: providerModelsError,
+	} = useProviderModels("poe", {
+		apiKey: apiConfiguration.poeApiKey,
+		baseUrl: apiConfiguration.poeBaseUrl,
+	})
 	const [refreshStatus, setRefreshStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
 	const [refreshError, setRefreshError] = useState<string | undefined>()
-	const poeErrorJustReceived = useRef(false)
-
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent<ExtensionMessage>) => {
-			const message = event.data
-			if (message.type === "singleRouterModelFetchResponse" && !message.success) {
-				const providerName = message.values?.provider as RouterName
-				if (providerName === "poe") {
-					poeErrorJustReceived.current = true
-					setRefreshStatus("error")
-					setRefreshError(message.error)
-				}
-			} else if (message.type === "routerModels") {
-				if (refreshStatus === "loading") {
-					if (!poeErrorJustReceived.current) {
-						setRefreshStatus("success")
-						// Invalidate the react-query router models cache so
-						// validation in ApiOptions picks up the refreshed list.
-						queryClient.invalidateQueries({ queryKey: ["routerModels"] })
-					}
-				}
-			}
+		if (refreshStatus === "loading" && providerModelsError) {
+			setRefreshStatus("error")
+			setRefreshError(providerModelsError)
+		} else if (refreshStatus === "loading" && Object.keys(poeModels).length > 0) {
+			setRefreshStatus("success")
 		}
-
-		window.addEventListener("message", handleMessage)
-		return () => {
-			window.removeEventListener("message", handleMessage)
-		}
-	}, [refreshStatus, queryClient])
+	}, [poeModels, providerModelsError, refreshStatus])
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -84,7 +64,6 @@ export const Poe = ({
 	)
 
 	const handleRefreshModels = useCallback(() => {
-		poeErrorJustReceived.current = false
 		setRefreshStatus("loading")
 		setRefreshError(undefined)
 
@@ -96,11 +75,8 @@ export const Poe = ({
 			return
 		}
 
-		vscode.postMessage({
-			type: "requestRouterModels",
-			values: { poeApiKey: key, poeBaseUrl: apiConfiguration.poeBaseUrl },
-		})
-	}, [apiConfiguration, t])
+		refreshModels()
+	}, [apiConfiguration.poeApiKey, refreshModels, t])
 
 	return (
 		<>
@@ -150,7 +126,7 @@ export const Poe = ({
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField}
 				defaultModelId={poeDefaultModelId}
-				models={routerModels?.poe ?? {}}
+				models={poeModels}
 				modelIdKey="apiModelId"
 				serviceName="Poe"
 				serviceUrl="https://poe.com"

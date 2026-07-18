@@ -1,17 +1,9 @@
-import { useCallback, useState, useEffect, useRef } from "react"
+import { useCallback, useState, useEffect } from "react"
 import { VSCodeTextField, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 
-import {
-	type ProviderSettings,
-	type OrganizationAllowList,
-	type ExtensionMessage,
-	litellmDefaultModelId,
-} from "@roo-code/types"
+import { type ProviderSettings, type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/types"
 
-import { RouterName } from "@roo/api"
-
-import { vscode } from "@src/utils/vscode"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button } from "@src/components/ui"
 
@@ -34,38 +26,24 @@ export const LiteLLM = ({
 	simplifySettings,
 }: LiteLLMProps) => {
 	const { t } = useAppTranslation()
-	const { routerModels } = useExtensionState()
+	const {
+		models: litellmModels = {},
+		refresh: refreshModels,
+		error: providerModelsError,
+	} = useProviderModels("litellm", {
+		liteLlmApiKey: apiConfiguration.litellmApiKey,
+		liteLlmBaseUrl: apiConfiguration.litellmBaseUrl,
+	})
 	const [refreshStatus, setRefreshStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
 	const [refreshError, setRefreshError] = useState<string | undefined>()
-	const litellmErrorJustReceived = useRef(false)
-
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent<ExtensionMessage>) => {
-			const message = event.data
-			if (message.type === "singleRouterModelFetchResponse" && !message.success) {
-				const providerName = message.values?.provider as RouterName
-				if (providerName === "litellm") {
-					litellmErrorJustReceived.current = true
-					setRefreshStatus("error")
-					setRefreshError(message.error)
-				}
-			} else if (message.type === "routerModels") {
-				// If we were loading and no specific error for litellm was just received, mark as success.
-				// The ModelPicker will show available models or "no models found".
-				if (refreshStatus === "loading") {
-					if (!litellmErrorJustReceived.current) {
-						setRefreshStatus("success")
-					}
-					// If litellmErrorJustReceived.current is true, status is already (or will be) "error".
-				}
-			}
+		if (refreshStatus === "loading" && providerModelsError) {
+			setRefreshStatus("error")
+			setRefreshError(providerModelsError)
+		} else if (refreshStatus === "loading" && Object.keys(litellmModels).length > 0) {
+			setRefreshStatus("success")
 		}
-
-		window.addEventListener("message", handleMessage)
-		return () => {
-			window.removeEventListener("message", handleMessage)
-		}
-	}, [refreshStatus, refreshError, setRefreshStatus, setRefreshError])
+	}, [litellmModels, providerModelsError, refreshStatus])
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -79,7 +57,6 @@ export const LiteLLM = ({
 	)
 
 	const handleRefreshModels = useCallback(() => {
-		litellmErrorJustReceived.current = false // Reset flag on new refresh action
 		setRefreshStatus("loading")
 		setRefreshError(undefined)
 
@@ -92,8 +69,8 @@ export const LiteLLM = ({
 			return
 		}
 
-		vscode.postMessage({ type: "requestRouterModels", values: { litellmApiKey: key, litellmBaseUrl: url } })
-	}, [apiConfiguration, setRefreshStatus, setRefreshError, t])
+		refreshModels()
+	}, [apiConfiguration, refreshModels, t])
 
 	return (
 		<>
@@ -150,7 +127,7 @@ export const LiteLLM = ({
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
 				defaultModelId={litellmDefaultModelId}
-				models={routerModels?.litellm ?? {}}
+				models={litellmModels}
 				modelIdKey="litellmModelId"
 				serviceName="LiteLLM"
 				serviceUrl="https://docs.litellm.ai/"
@@ -163,7 +140,7 @@ export const LiteLLM = ({
 			{/* Show prompt caching option if the selected model supports it */}
 			{(() => {
 				const selectedModelId = apiConfiguration.litellmModelId || litellmDefaultModelId
-				const selectedModel = routerModels?.litellm?.[selectedModelId]
+				const selectedModel = litellmModels[selectedModelId]
 				if (selectedModel?.supportsPromptCache) {
 					return (
 						<div className="mt-4">

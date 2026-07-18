@@ -17,6 +17,7 @@ import {
 	fireworksModels,
 	minimaxModels,
 	basetenModels,
+	getSelectableProviderDefinitions,
 } from "@roo-code/types"
 
 export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
@@ -38,31 +39,11 @@ export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, Mod
 	baseten: basetenModels,
 }
 
-export const PROVIDERS = [
-	{ value: "openrouter", label: "OpenRouter", proxy: false },
-	{ value: "anthropic", label: "Anthropic", proxy: false },
-	{ value: "gemini", label: "Google Gemini", proxy: false },
-	{ value: "deepseek", label: "DeepSeek", proxy: false },
-	{ value: "moonshot", label: "Moonshot", proxy: false },
-	{ value: "openai-native", label: "OpenAI", proxy: false },
-	{ value: "openai-codex", label: "OpenAI - ChatGPT Plus/Pro", proxy: false },
-	{ value: "openai", label: "OpenAI Compatible", proxy: true },
-	{ value: "qwen-code", label: "Qwen Code", proxy: false },
-	{ value: "vertex", label: "GCP Vertex AI", proxy: false },
-	{ value: "bedrock", label: "Amazon Bedrock", proxy: false },
-	{ value: "vscode-lm", label: "VS Code LM API", proxy: false },
-	{ value: "mistral", label: "Mistral", proxy: false },
-	{ value: "lmstudio", label: "LM Studio", proxy: true },
-	{ value: "ollama", label: "Ollama", proxy: true },
-	{ value: "requesty", label: "Requesty", proxy: false },
-	{ value: "xai", label: "xAI (Grok)", proxy: false },
-	{ value: "litellm", label: "LiteLLM", proxy: true },
-	{ value: "sambanova", label: "SambaNova", proxy: false },
-	{ value: "zai", label: "Z.ai", proxy: false },
-	{ value: "fireworks", label: "Fireworks AI", proxy: false },
-	{ value: "vercel-ai-gateway", label: "Vercel AI Gateway", proxy: false },
-	{ value: "minimax", label: "MiniMax", proxy: false },
-	{ value: "baseten", label: "Baseten", proxy: false },
-	{ value: "unbound", label: "Unbound", proxy: false },
-	{ value: "poe", label: "Poe", proxy: false },
-].sort((a, b) => a.label.localeCompare(b.label))
+const PROXY_PROVIDER_IDS = new Set<ProviderName>(["openai", "lmstudio", "ollama", "litellm"])
+
+// Compatibility view for webview consumers; provider inventory, labels, order, and lifecycle live in the portable registry.
+export const PROVIDERS = getSelectableProviderDefinitions().map(({ id, label }) => ({
+	value: id,
+	label,
+	proxy: PROXY_PROVIDER_IDS.has(id),
+}))

@@ -731,9 +731,9 @@ describe("importExport", () => {
 				expect(importedProfiles.apiConfigs["valid-profile"]).toBeDefined()
 				expect(importedProfiles.apiConfigs["valid-profile"].apiProvider).toBe("openai")
 
-				// The invalid profile should still be imported but without apiProvider
+				// The unknown provider profile remains opaque so a newer client can recover it.
 				expect(importedProfiles.apiConfigs["invalid-profile"]).toBeDefined()
-				expect(importedProfiles.apiConfigs["invalid-profile"].apiProvider).toBeUndefined()
+				expect(importedProfiles.apiConfigs["invalid-profile"].apiProvider).toBe("claude-code")
 			})
 
 			it("should skip completely invalid profiles and return warnings", async () => {
@@ -1078,9 +1078,9 @@ describe("importExport", () => {
 				expect(importedProfiles.apiConfigs["anthropic-profile"].apiProvider).toBe("anthropic")
 				expect(importedProfiles.apiConfigs["openai-profile"].apiProvider).toBe("openai")
 
-				// Invalid provider profiles should have apiProvider removed
-				expect(importedProfiles.apiConfigs["old-claude-profile"].apiProvider).toBeUndefined()
-				expect(importedProfiles.apiConfigs["another-invalid"].apiProvider).toBeUndefined()
+				// Unknown-provider profiles and their discriminators remain intact.
+				expect(importedProfiles.apiConfigs["old-claude-profile"].apiProvider).toBe("claude-code")
+				expect(importedProfiles.apiConfigs["another-invalid"].apiProvider).toBe("some-old-provider")
 			})
 
 			it("should fallback currentApiConfigName when the imported current profile was skipped", async () => {
@@ -2500,10 +2500,215 @@ describe("importExport", () => {
 				// Verify that token fields were excluded because reasoning budget is not supported/required
 				const provider = exportedData.providerProfiles.apiConfigs[providerName]
 				expect(provider).toBeDefined()
-				expect(provider.apiModelId).toBe(modelId)
-				expect("modelMaxTokens" in provider).toBe(false) // Should be excluded
-				expect("modelMaxThinkingTokens" in provider).toBe(false) // Should be excluded
+				expect(provider.provider.config.apiModelId).toBe(modelId)
+				expect(provider.shared?.modelMaxTokens).toBeUndefined()
+				expect(provider.shared?.modelMaxThinkingTokens).toBeUndefined()
 			},
 		)
+	})
+
+	// H1/H2/R1/R2: real-manager secret round-trip tests. These exercise the
+	// actual `migrateProviderProfiles` + `updateProfileSecrets` boundary
+	// against a Map-backed `ExtensionContext.secrets` (no mocked
+	// `ProviderSettingsManager.import`) so the secret-preservation behavior is
+	// asserted end-to-end rather than via a call-argument mock.
+	describe("secret round-trip through the real ProviderSettingsManager", () => {
+		it("R1: legacy inline apiKey survives initialize() into provider_profile_secrets_v2 and round-trips via getProfile", async () => {
+			// Seed the secrets store with a legacy flat envelope (pre-v2) that
+			// carries an inline `apiKey` for a known provider.
+			const map = new Map<string, string>([
+				[
+					"roo_cline_config_api_config",
+					JSON.stringify({
+						currentApiConfigName: "anthropic",
+						apiConfigs: {
+							anthropic: {
+								apiProvider: "anthropic",
+								apiKey: "legacy-anthropic-key",
+								id: "anthropic-id",
+							},
+						},
+						migrations: {
+							rateLimitSecondsMigrated: true,
+							openAiHeadersMigrated: true,
+							consecutiveMistakeLimitMigrated: true,
+							todoListEnabledMigrated: true,
+							claudeCodeLegacySettingsMigrated: true,
+						},
+					}),
+				],
+			])
+			const ctx = {
+				secrets: {
+					get: vi.fn().mockImplementation((key: string) => map.get(key)),
+					store: vi.fn().mockImplementation((key: string, value: string) => {
+						map.set(key, value)
+					}),
+					delete: vi.fn().mockImplementation((key: string) => {
+						map.delete(key)
+					}),
+				},
+			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
+
+			const manager = new ProviderSettingsManager(ctx)
+			await manager.initialize()
+
+			// (a) The persisted v2 envelope must NOT contain the plaintext key.
+			const envelopeJson = map.get("roo_cline_config_api_config") ?? ""
+			expect(envelopeJson).not.toContain("legacy-anthropic-key")
+
+			// (b) The secret store must contain it under the profile id.
+			const v2Secrets = JSON.parse(map.get("roo_cline_config_provider_profile_secrets_v2") ?? "{}")
+			expect(v2Secrets["anthropic-id"]).toBeDefined()
+			expect(v2Secrets["anthropic-id"].apiKey).toBe("legacy-anthropic-key")
+
+			// (c) getProfile must merge the secret back into the runtime config.
+			const { name: _name, ...profile } = await manager.getProfile({ name: "anthropic" })
+			expect(profile.apiKey).toBe("legacy-anthropic-key")
+			expect(profile.apiProvider).toBe("anthropic")
+		})
+
+		it("R2: v2 export -> v2 import does NOT transfer secrets; existing local secrets are preserved on import", async () => {
+			// Source install: a known provider with a secret in the v2 store.
+			const sourceMap = new Map<string, string>()
+			const sourceCtx = {
+				secrets: {
+					get: vi.fn().mockImplementation((key: string) => sourceMap.get(key)),
+					store: vi.fn().mockImplementation((key: string, value: string) => {
+						sourceMap.set(key, value)
+					}),
+					delete: vi.fn().mockImplementation((key: string) => {
+						sourceMap.delete(key)
+					}),
+				},
+			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
+
+			const sourceManager = new ProviderSettingsManager(sourceCtx)
+			await sourceManager.initialize()
+			await sourceManager.saveConfig("openai", {
+				apiProvider: "openai" as ProviderName,
+				apiModelId: "gpt-4o",
+				id: "openai-id",
+				openAiApiKey: "source-openai-key",
+			})
+
+			// Export the source install.
+			const exported = await sourceManager.export()
+			// H1: the export envelope must NOT contain the secret.
+			expect(JSON.stringify(exported)).not.toContain("source-openai-key")
+
+			// Target install: pre-seeded with its OWN secret for the same name.
+			const targetMap = new Map<string, string>([
+				[
+					"roo_cline_config_api_config",
+					JSON.stringify({
+						schemaVersion: 2,
+						data: {
+							currentApiConfigName: "default",
+							apiConfigs: {
+								default: { id: "default-id", provider: { providerId: "anthropic", config: {} } },
+								openai: {
+									id: "openai-id",
+									provider: { providerId: "openai", config: { apiModelId: "gpt-4o" } },
+								},
+							},
+							modeApiConfigs: {},
+							migrations: {
+								rateLimitSecondsMigrated: true,
+								openAiHeadersMigrated: true,
+								consecutiveMistakeLimitMigrated: true,
+								todoListEnabledMigrated: true,
+								claudeCodeLegacySettingsMigrated: true,
+							},
+						},
+					}),
+				],
+				[
+					"roo_cline_config_provider_profile_secrets_v2",
+					JSON.stringify({ "openai-id": { openAiApiKey: "target-openai-key" } }),
+				],
+			])
+			const targetCtx = {
+				secrets: {
+					get: vi.fn().mockImplementation((key: string) => targetMap.get(key)),
+					store: vi.fn().mockImplementation((key: string, value: string) => {
+						targetMap.set(key, value)
+					}),
+					delete: vi.fn().mockImplementation((key: string) => {
+						targetMap.delete(key)
+					}),
+				},
+			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
+
+			const targetManager = new ProviderSettingsManager(targetCtx)
+			await targetManager.initialize()
+
+			// Import the source export into the target. The import boundary in
+			// importExport.ts re-attaches previous local secrets; here we call
+			// manager.import() directly with the exported envelope to assert
+			// the manager does NOT pull secrets from the export (there are
+			// none) and preserves what the target already had.
+			await targetManager.import(exported)
+
+			const targetSecrets = JSON.parse(targetMap.get("roo_cline_config_provider_profile_secrets_v2") ?? "{}")
+			// H1: the source secret must NOT have been transferred.
+			expect(JSON.stringify(targetSecrets)).not.toContain("source-openai-key")
+			// The target's pre-existing secret survives (the export carried no
+			// secret for this profile, so import() does not overwrite it).
+			expect(targetSecrets["openai-id"]?.openAiApiKey).toBe("target-openai-key")
+		})
+
+		it("R-extra: opaque retired profile secrets are routed to provider_profile_secrets_v2 and survive export", async () => {
+			const map = new Map<string, string>([
+				[
+					"roo_cline_config_api_config",
+					JSON.stringify({
+						currentApiConfigName: "retired",
+						apiConfigs: {
+							retired: {
+								id: "retired-id",
+								apiProvider: "groq",
+								apiKey: "legacy-key",
+								apiModelId: "legacy-model",
+							},
+						},
+						migrations: {
+							rateLimitSecondsMigrated: true,
+							openAiHeadersMigrated: true,
+							consecutiveMistakeLimitMigrated: true,
+							todoListEnabledMigrated: true,
+							claudeCodeLegacySettingsMigrated: true,
+						},
+					}),
+				],
+			])
+			const ctx = {
+				secrets: {
+					get: vi.fn().mockImplementation((key: string) => map.get(key)),
+					store: vi.fn().mockImplementation((key: string, value: string) => {
+						map.set(key, value)
+					}),
+					delete: vi.fn().mockImplementation((key: string) => {
+						map.delete(key)
+					}),
+				},
+			} as unknown as ReturnType<typeof vi.mocked<vscode.ExtensionContext>>
+
+			const manager = new ProviderSettingsManager(ctx)
+			await manager.initialize()
+
+			// C3: opaque payload must not carry the secret.
+			const envelopeJson = map.get("roo_cline_config_api_config") ?? ""
+			expect(envelopeJson).not.toContain("legacy-key")
+			const v2Secrets = JSON.parse(map.get("roo_cline_config_provider_profile_secrets_v2") ?? "{}")
+			expect(v2Secrets["retired-id"].apiKey).toBe("legacy-key")
+
+			// Export must also be clean.
+			const exported = await manager.export()
+			expect(JSON.stringify(exported)).not.toContain("legacy-key")
+			// And getProfile must still merge the secret back.
+			const { name: _name, ...profile } = await manager.getProfile({ name: "retired" })
+			expect(profile.apiKey).toBe("legacy-key")
+		})
 	})
 })

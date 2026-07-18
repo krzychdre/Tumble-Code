@@ -64,7 +64,11 @@ export function SearchableSelect({
 		const matchingOptions =
 			normalizedSearch.length === 0
 				? options
-				: options.filter((option) => option.label.toLowerCase().includes(normalizedSearch))
+				: options.filter((option) =>
+						[option.label, option.value].some((candidate) =>
+							candidate.toLowerCase().includes(normalizedSearch),
+						),
+					)
 
 		if (matchingOptions.length <= maxDisplayItems) {
 			return matchingOptions

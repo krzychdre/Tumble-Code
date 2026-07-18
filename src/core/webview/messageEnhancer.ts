@@ -49,7 +49,7 @@ export class MessageEnhancer {
 
 			// Try to get enhancement config first, fall back to current config
 			if (enhancementApiConfigId && listApiConfigMeta.find(({ id }) => id === enhancementApiConfigId)) {
-				const { name: _, ...providerSettings } = await providerSettingsManager.getProfile({
+				const { name: _, ...providerSettings } = await providerSettingsManager.activateProfile({
 					id: enhancementApiConfigId,
 				})
 

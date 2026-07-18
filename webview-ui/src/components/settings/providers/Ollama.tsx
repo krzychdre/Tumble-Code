@@ -1,12 +1,10 @@
-import { useState, useCallback, useMemo, useEffect } from "react"
-import { useEvent } from "react-use"
+import { useCallback, useMemo } from "react"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import type { ProviderSettings, ExtensionMessage, ModelRecord } from "@roo-code/types"
+import type { ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useRouterModels } from "@src/components/ui/hooks/useRouterModels"
-import { vscode } from "@src/utils/vscode"
+import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { inputEventTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
@@ -19,8 +17,10 @@ type OllamaProps = {
 export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaProps) => {
 	const { t } = useAppTranslation()
 
-	const [ollamaModels, setOllamaModels] = useState<ModelRecord>({})
-	const routerModels = useRouterModels()
+	const { models: ollamaModels = {} } = useProviderModels("ollama", {
+		baseUrl: apiConfiguration.ollamaBaseUrl,
+		apiKey: apiConfiguration.ollamaApiKey,
+	})
 
 	const handleInputChange = useCallback(
 		<K extends keyof ProviderSettings, E>(
@@ -33,27 +33,6 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 		[setApiConfigurationField],
 	)
 
-	const onMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
-
-		switch (message.type) {
-			case "ollamaModels":
-				{
-					const newModels = message.ollamaModels ?? {}
-					setOllamaModels(newModels)
-				}
-				break
-		}
-	}, [])
-
-	useEvent("message", onMessage)
-
-	// Refresh models on mount
-	useEffect(() => {
-		// Request fresh models - the handler now flushes cache automatically
-		vscode.postMessage({ type: "requestOllamaModels" })
-	}, [])
-
 	// Check if the selected model exists in the fetched models
 	const modelNotAvailableError = useMemo(() => {
 		const selectedModel = apiConfiguration?.ollamaModelId
@@ -64,18 +43,13 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 			return undefined // Model is available locally
 		}
 
-		// Only validate against router models if they actually contain data (not just an empty placeholder)
-		if (routerModels.data?.ollama && Object.keys(routerModels.data.ollama).length > 0) {
-			const availableModels = Object.keys(routerModels.data.ollama)
-			// Show warning if model is not in the list
-			if (!availableModels.includes(selectedModel)) {
-				return t("settings:validation.modelAvailability", { modelId: selectedModel })
-			}
+		if (Object.keys(ollamaModels).length > 0 && !(selectedModel in ollamaModels)) {
+			return t("settings:validation.modelAvailability", { modelId: selectedModel })
 		}
 
 		// If neither source has loaded yet, don't show warning
 		return undefined
-	}, [apiConfiguration?.ollamaModelId, routerModels.data, ollamaModels, t])
+	}, [apiConfiguration?.ollamaModelId, ollamaModels, t])
 
 	return (
 		<>

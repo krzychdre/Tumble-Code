@@ -1,4 +1,4 @@
-import type { ProviderName, ModelInfo, ProviderSettings } from "@roo-code/types"
+import type { ProviderName, ModelInfo, ModelSource, ModelSourceOptions, ProviderSettings } from "@roo-code/types"
 import {
 	anthropicDefaultModelId,
 	bedrockDefaultModelId,
@@ -16,6 +16,8 @@ import {
 	fireworksDefaultModelId,
 	minimaxDefaultModelId,
 	basetenDefaultModelId,
+	getProviderDefinition,
+	modelSources,
 } from "@roo-code/types"
 
 import { MODELS_BY_PROVIDER } from "../constants"
@@ -109,6 +111,45 @@ export const getStaticModelsForProvider = (
  */
 export const isStaticModelProvider = (provider: ProviderName): boolean => {
 	return provider in MODELS_BY_PROVIDER
+}
+
+export const getProviderModelSource = (provider: ProviderName): ModelSource | undefined => {
+	if (isStaticModelProvider(provider)) {
+		return { kind: "static" }
+	}
+	const definition = getProviderDefinition(provider)
+	const sourceId = definition && "modelSource" in definition ? definition.modelSource : undefined
+	return sourceId ? modelSources[sourceId] : undefined
+}
+
+export const getProviderModelSourceOptions = (apiConfiguration: ProviderSettings): ModelSourceOptions => {
+	switch (apiConfiguration.apiProvider) {
+		case "openai":
+			return {
+				baseUrl: apiConfiguration.openAiBaseUrl,
+				apiKey: apiConfiguration.openAiApiKey,
+				headers: apiConfiguration.openAiHeaders,
+			}
+		case "ollama":
+			return { baseUrl: apiConfiguration.ollamaBaseUrl, apiKey: apiConfiguration.ollamaApiKey }
+		case "lmstudio":
+			return { baseUrl: apiConfiguration.lmStudioBaseUrl }
+		case "litellm":
+			return {
+				liteLlmBaseUrl: apiConfiguration.litellmBaseUrl,
+				liteLlmApiKey: apiConfiguration.litellmApiKey,
+			}
+		case "poe":
+			return { baseUrl: apiConfiguration.poeBaseUrl, apiKey: apiConfiguration.poeApiKey }
+		case "requesty":
+			return { baseUrl: apiConfiguration.requestyBaseUrl, apiKey: apiConfiguration.requestyApiKey }
+		case "unbound":
+			return { apiKey: apiConfiguration.unboundApiKey }
+		case "deepseek":
+			return { baseUrl: apiConfiguration.deepSeekBaseUrl, apiKey: apiConfiguration.deepSeekApiKey }
+		default:
+			return {}
+	}
 }
 
 /**

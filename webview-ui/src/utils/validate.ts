@@ -8,10 +8,12 @@ import {
 	modelIdKeysByProvider,
 	isProviderName,
 	isRetiredProvider,
-	isDynamicProvider,
 	isFauxProvider,
 	isCustomProvider,
 } from "@roo-code/types"
+
+import { providerValidationRegistry } from "@src/provider-validation-registry"
+import { getProviderModelSource } from "@src/components/settings/utils/providerModelConfig"
 
 export function validateApiConfiguration(
 	apiConfiguration: ProviderSettings,
@@ -37,100 +39,15 @@ export function validateApiConfiguration(
 }
 
 function validateModelsAndKeysProvided(apiConfiguration: ProviderSettings): string | undefined {
-	switch (apiConfiguration.apiProvider) {
-		case "openrouter":
-			if (!apiConfiguration.openRouterApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "requesty":
-			if (!apiConfiguration.requestyApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "unbound":
-			if (!apiConfiguration.unboundApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "litellm":
-			if (!apiConfiguration.litellmApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "anthropic":
-			if (!apiConfiguration.apiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "bedrock":
-			if (!apiConfiguration.awsRegion) {
-				return i18next.t("settings:validation.awsRegion")
-			}
-			break
-		case "vertex":
-			if (!apiConfiguration.vertexProjectId || !apiConfiguration.vertexRegion) {
-				return i18next.t("settings:validation.googleCloud")
-			}
-			break
-		case "gemini":
-			if (!apiConfiguration.geminiApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "openai-native":
-			if (!apiConfiguration.openAiNativeApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "mistral":
-			if (!apiConfiguration.mistralApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "openai":
-			if (!apiConfiguration.openAiBaseUrl || !apiConfiguration.openAiApiKey || !apiConfiguration.openAiModelId) {
-				return i18next.t("settings:validation.openAi")
-			}
-			break
-		case "ollama":
-			if (!apiConfiguration.ollamaModelId) {
-				return i18next.t("settings:validation.modelId")
-			}
-			break
-		case "lmstudio":
-			if (!apiConfiguration.lmStudioModelId) {
-				return i18next.t("settings:validation.modelId")
-			}
-			break
-		case "vscode-lm":
-			if (!apiConfiguration.vsCodeLmModelSelector) {
-				return i18next.t("settings:validation.modelSelector")
-			}
-			break
-		case "fireworks":
-			if (!apiConfiguration.fireworksApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "qwen-code":
-			if (!apiConfiguration.qwenCodeOauthPath) {
-				return i18next.t("settings:validation.qwenCodeOauthPath")
-			}
-			break
-		case "vercel-ai-gateway":
-			if (!apiConfiguration.vercelAiGatewayApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
-		case "baseten":
-			if (!apiConfiguration.basetenApiKey) {
-				return i18next.t("settings:validation.apiKey")
-			}
-			break
+	if (!isProviderName(apiConfiguration.apiProvider)) {
+		return undefined
 	}
 
-	return undefined
+	const strategy = providerValidationRegistry[apiConfiguration.apiProvider]
+
+	return strategy.kind === "required-fields" && strategy.fields.some((field) => !apiConfiguration[field])
+		? i18next.t(strategy.message)
+		: undefined
 }
 
 type ValidationError = {
@@ -226,8 +143,11 @@ function validateDynamicProviderModelId(
 ): string | undefined {
 	const provider = apiConfiguration.apiProvider ?? ""
 
-	// We only validate model ids from dynamic providers.
-	if (!isDynamicProvider(provider)) {
+	if (!isProviderName(provider)) {
+		return
+	}
+	const modelSource = getProviderModelSource(provider)
+	if (!modelSource || modelSource.kind !== "remote" || modelSource.payload !== "models") {
 		return undefined
 	}
 
@@ -237,7 +157,7 @@ function validateDynamicProviderModelId(
 		return i18next.t("settings:validation.modelId")
 	}
 
-	const models = routerModels?.[provider]
+	const models = routerModels?.[modelSource.id as keyof RouterModels]
 
 	if (models && Object.keys(models).length > 1 && !Object.keys(models).includes(modelId)) {
 		return i18next.t("settings:validation.modelAvailability", { modelId })

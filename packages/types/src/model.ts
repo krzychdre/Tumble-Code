@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { DynamicProvider, LocalProvider } from "./provider-settings.js"
+import type { ModelSourceId } from "./model-source.js"
 
 /**
  * ReasoningEffort
@@ -163,4 +163,5 @@ export type ModelInfo = z.infer<typeof modelInfoSchema>
 
 export type ModelRecord = Record<string, ModelInfo>
 
-export type RouterModels = Record<DynamicProvider | LocalProvider, ModelRecord>
+/** @deprecated Prefer source-keyed ModelRecord payloads from the ModelSource protocol. */
+export type RouterModels = Partial<Record<ModelSourceId, ModelRecord>>

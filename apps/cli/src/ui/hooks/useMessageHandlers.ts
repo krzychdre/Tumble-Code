@@ -382,9 +382,17 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				setAllSlashCommands((msg.commands as SlashCommandResult[]) || [])
 			} else if (msg.type === "modes") {
 				setAvailableModes((msg.modes as ModeResult[]) || [])
-			} else if (msg.type === "routerModels") {
-				if (msg.routerModels) {
-					setRouterModels(msg.routerModels)
+			} else if (msg.type === "providerModels") {
+				// C2: the refactor removed the push-based `routerModels` extension
+				// message in favor of the request/response `providerModels` protocol
+				// (see webview-ui ApiOptions.tsx + useProviderModels). The CLI
+				// consumes the same protocol: each result carries a `sourceId`
+				// (which matches the provider name for router-style sources) and a
+				// `models` map. Fold it into the store's `routerModels` so
+				// `getContextWindow` and any dynamic-model UI keep working.
+				const result = msg.modelSourceResult
+				if (result?.sourceId && result.models) {
+					setRouterModels({ [result.sourceId]: result.models })
 				}
 			}
 		},

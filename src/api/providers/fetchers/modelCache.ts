@@ -13,7 +13,7 @@ import { safeWriteJson } from "../../../utils/safeWriteJson"
 
 import { ContextProxy } from "../../../core/config/ContextProxy"
 import { getCacheDirectoryPath } from "../../../utils/storage"
-import type { RouterName } from "../../../shared/api"
+import type { GetModelsOptions } from "../../../shared/api"
 import { fileExistsAtPath } from "../../../utils/fs"
 
 import { getOpenRouterModels } from "./openrouter"
@@ -22,7 +22,6 @@ import { getPoeModels } from "./poe"
 import { getRequestyModels } from "./requesty"
 import { getUnboundModels } from "./unbound"
 import { getLiteLLMModels } from "./litellm"
-import { GetModelsOptions } from "../../../shared/api"
 import { getOllamaModels } from "./ollama"
 import { getLMStudioModels } from "./lmstudio"
 import { getDeepSeekModels } from "./deepseek"
@@ -34,15 +33,17 @@ const modelRecordSchema = z.record(z.string(), modelInfoSchema)
 
 // Track in-flight refresh requests to prevent concurrent API calls for the same provider
 // This prevents race conditions where multiple calls might overwrite each other's results
-const inFlightRefresh = new Map<RouterName, Promise<ModelRecord>>()
+type CacheableModelSourceId = GetModelsOptions["provider"]
 
-async function writeModels(router: RouterName, data: ModelRecord) {
+const inFlightRefresh = new Map<CacheableModelSourceId, Promise<ModelRecord>>()
+
+async function writeModels(router: CacheableModelSourceId, data: ModelRecord) {
 	const filename = `${router}_models.json`
 	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
 	await safeWriteJson(path.join(cacheDir, filename), data)
 }
 
-async function readModels(router: RouterName): Promise<ModelRecord | undefined> {
+async function readModels(router: CacheableModelSourceId): Promise<ModelRecord | undefined> {
 	const filename = `${router}_models.json`
 	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
 	const filePath = path.join(cacheDir, filename)
@@ -93,7 +94,7 @@ async function fetchModelsFromProvider(options: GetModelsOptions): Promise<Model
 			models = await getDeepSeekModels(options.baseUrl, options.apiKey)
 			break
 		default: {
-			// Ensures router is exhaustively checked if RouterName is a strict union.
+			// Ensures model source handling is exhaustive.
 			const exhaustiveCheck: never = provider
 			throw new Error(`Unknown provider: ${exhaustiveCheck}`)
 		}
@@ -230,7 +231,7 @@ export async function initializeModelCacheRefresh(): Promise<void> {
 	// Wait for extension to fully activate before refreshing
 	setTimeout(async () => {
 		// Providers that work without API keys
-		const publicProviders: Array<{ provider: RouterName; options: GetModelsOptions }> = [
+		const publicProviders: Array<{ provider: CacheableModelSourceId; options: GetModelsOptions }> = [
 			{ provider: "openrouter", options: { provider: "openrouter" } },
 			{ provider: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
 		]

@@ -3458,11 +3458,12 @@ export class ClineProvider
 			if (!configId) {
 				return undefined
 			}
-			const profile = await this.providerSettingsManager.getProfile({ id: configId })
-			if (!profile.name || !profile.apiProvider) {
+			const persistedProfile = await this.providerSettingsManager.getProfile({ id: configId })
+			if (!persistedProfile.name || !persistedProfile.apiProvider) {
 				return undefined
 			}
-			return { apiConfiguration: profile, name: profile.name }
+			const { name, ...profile } = await this.providerSettingsManager.activateProfile({ id: configId })
+			return { apiConfiguration: profile, name }
 		} catch (error) {
 			this.log(
 				`[getApiConfigurationForMode] failed for mode "${mode}": ${
@@ -3694,7 +3695,7 @@ export class ClineProvider
 		const id = this.getValue("memoryWriterApiConfigId")
 		if (!id) return undefined
 		try {
-			const { name: _name, ...profile } = await this.providerSettingsManager.getProfile({ id })
+			const { name: _name, ...profile } = await this.providerSettingsManager.activateProfile({ id })
 			return profile
 		} catch (error) {
 			this.log(

@@ -12,7 +12,6 @@ import {
 	type ClineMessage,
 	type TelemetrySetting,
 	type UserSettingsConfig,
-	type ModelRecord,
 	type Command as SlashCommand,
 	type WebviewMessage,
 	type EditQueuedMessagePayload,
@@ -42,7 +41,6 @@ import {
 } from "./skillsMessageHandler"
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
-import { type RouterName, toRouterName } from "../../shared/api"
 import { MessageEnhancer } from "./messageEnhancer"
 
 import { CodeIndexManager } from "../../services/code-index/manager"
@@ -65,17 +63,13 @@ import { searchWorkspaceFiles } from "../../services/search/file-search"
 import { fileExistsAtPath } from "../../utils/fs"
 import { searchCommits } from "../../utils/git"
 import { exportSettings, importSettingsWithFeedback } from "../config/importExport"
-import { getOpenAiModels } from "../../api/providers/openai"
-import { getVsCodeLmModels } from "../../api/providers/vscode-lm"
+import { fetchModelSource } from "../../api/providers/fetchers/modelSourceRegistry"
 import { openMention } from "../mentions"
 import { resolveImageMentions } from "../mentions/resolveImageMentions"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { getWorkspacePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Mode, defaultModeSlug } from "../../shared/modes"
-import { getModels, flushModels } from "../../api/providers/fetchers/modelCache"
-import { getLMStudioModels } from "../../api/providers/fetchers/lmstudio"
-import { GetModelsOptions } from "../../shared/api"
 import { generateSystemPrompt } from "./generateSystemPrompt"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { getCommand } from "../../utils/commands"
@@ -995,235 +989,37 @@ export const webviewMessageHandler = async (
 		case "resetState":
 			await provider.resetState()
 			break
-		case "flushRouterModels":
-			const routerNameFlush: RouterName = toRouterName(message.text)
-			// Note: flushRouterModels is a generic flush without credentials
-			// For providers that need credentials, use their specific handlers
-			await flushModels({ provider: routerNameFlush } as GetModelsOptions, true)
-			break
-		case "requestRouterModels":
-			const { apiConfiguration } = await provider.getState()
-
-			// Optional single provider filter from webview
-			const requestedProvider = message?.values?.provider
-			const providerFilter = requestedProvider ? toRouterName(requestedProvider) : undefined
-
-			// Optional refresh flag to flush cache before fetching (useful for providers requiring credentials)
-			const shouldRefresh = message?.values?.refresh === true
-
-			const routerModels: Record<RouterName, ModelRecord> = providerFilter
-				? ({} as Record<RouterName, ModelRecord>)
-				: {
-						openrouter: {},
-						"vercel-ai-gateway": {},
-						litellm: {},
-						poe: {},
-						requesty: {},
-						unbound: {},
-						ollama: {},
-						lmstudio: {},
-						deepseek: {},
-					}
-
-			const safeGetModels = async (options: GetModelsOptions): Promise<ModelRecord> => {
-				try {
-					return await getModels(options)
-				} catch (error) {
-					console.error(
-						`Failed to fetch models in webviewMessageHandler requestRouterModels for ${options.provider}:`,
-						error,
-					)
-
-					throw error // Re-throw to be caught by Promise.allSettled.
-				}
+		case "requestProviderModels": {
+			const request = message.modelSourceRequest
+			if (!request) {
+				break
 			}
 
-			// Base candidates (only those handled by this aggregate fetcher)
-			const candidates: { key: RouterName; options: GetModelsOptions }[] = [
-				{ key: "openrouter", options: { provider: "openrouter" } },
-				{
-					key: "requesty",
-					options: {
-						provider: "requesty",
-						apiKey: apiConfiguration.requestyApiKey,
-						baseUrl: apiConfiguration.requestyBaseUrl,
-					},
-				},
-				{
-					key: "unbound",
-					options: {
-						provider: "unbound",
-						apiKey: apiConfiguration.unboundApiKey,
-					},
-				},
-				{ key: "vercel-ai-gateway", options: { provider: "vercel-ai-gateway" } },
-			]
-
-			// LiteLLM is conditional on baseUrl+apiKey
-			const litellmApiKey = apiConfiguration.litellmApiKey || message?.values?.litellmApiKey
-			const litellmBaseUrl = apiConfiguration.litellmBaseUrl || message?.values?.litellmBaseUrl
-
-			if (litellmApiKey && litellmBaseUrl) {
-				// If explicit credentials are provided in message.values (from Refresh Models button),
-				// flush the cache first to ensure we fetch fresh data with the new credentials
-				if (message?.values?.litellmApiKey || message?.values?.litellmBaseUrl) {
-					await flushModels({ provider: "litellm", apiKey: litellmApiKey, baseUrl: litellmBaseUrl }, true)
-				}
-
-				candidates.push({
-					key: "litellm",
-					options: { provider: "litellm", apiKey: litellmApiKey, baseUrl: litellmBaseUrl },
-				})
-			}
-
-			// Poe is conditional on apiKey
-			const poeApiKey = apiConfiguration.poeApiKey || message?.values?.poeApiKey
-			const poeBaseUrl = apiConfiguration.poeBaseUrl || message?.values?.poeBaseUrl
-
-			if (poeApiKey) {
-				if (message?.values?.poeApiKey || message?.values?.poeBaseUrl) {
-					await flushModels({ provider: "poe", apiKey: poeApiKey, baseUrl: poeBaseUrl }, true)
-				}
-
-				candidates.push({
-					key: "poe",
-					options: { provider: "poe", apiKey: poeApiKey, baseUrl: poeBaseUrl },
-				})
-			}
-
-			// DeepSeek is conditional on apiKey
-			const deepSeekApiKey = apiConfiguration.deepSeekApiKey || message?.values?.deepSeekApiKey
-			const deepSeekBaseUrl = apiConfiguration.deepSeekBaseUrl || message?.values?.deepSeekBaseUrl
-
-			if (deepSeekApiKey) {
-				if (message?.values?.deepSeekApiKey || message?.values?.deepSeekBaseUrl) {
-					await flushModels({ provider: "deepseek", apiKey: deepSeekApiKey, baseUrl: deepSeekBaseUrl }, true)
-				}
-
-				candidates.push({
-					key: "deepseek",
-					options: { provider: "deepseek", apiKey: deepSeekApiKey, baseUrl: deepSeekBaseUrl },
-				})
-			}
-
-			// Apply single provider filter if specified
-			const modelFetchPromises = providerFilter
-				? candidates.filter(({ key }) => key === providerFilter)
-				: candidates
-
-			// If refresh flag is set and we have a specific provider, flush its cache first
-			if (shouldRefresh && providerFilter && modelFetchPromises.length > 0) {
-				const targetCandidate = modelFetchPromises[0]
-				await flushModels(targetCandidate.options, true)
-			}
-
-			const results = await Promise.allSettled(
-				modelFetchPromises.map(async ({ key, options }) => {
-					const models = await safeGetModels(options)
-					return { key, models } // The key is `ProviderName` here.
-				}),
-			)
-
-			results.forEach((result, index) => {
-				const routerName = modelFetchPromises[index].key
-
-				if (result.status === "fulfilled") {
-					routerModels[routerName] = result.value.models
-
-					// Ollama and LM Studio settings pages still need these events. They are not fetched here.
-				} else {
-					// Handle rejection: Post a specific error message for this provider.
-					const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
-					console.error(`Error fetching models for ${routerName}:`, result.reason)
-
-					routerModels[routerName] = {} // Ensure it's an empty object in the main routerModels message.
-
-					provider.postMessageToWebview({
-						type: "singleRouterModelFetchResponse",
-						success: false,
-						error: errorMessage,
-						values: { provider: routerName },
-					})
-				}
-			})
-
-			provider.postMessageToWebview({
-				type: "routerModels",
-				routerModels,
-				values: providerFilter ? { provider: requestedProvider } : undefined,
-			})
-			break
-		case "requestOllamaModels": {
-			// Specific handler for Ollama models only.
-			const { apiConfiguration: ollamaApiConfig } = await provider.getState()
 			try {
-				const ollamaOptions = {
-					provider: "ollama" as const,
-					baseUrl: ollamaApiConfig.ollamaBaseUrl,
-					apiKey: ollamaApiConfig.ollamaApiKey,
-				}
-				// Flush cache and refresh to ensure fresh models.
-				await flushModels(ollamaOptions, true)
-
-				const ollamaModels = await getModels(ollamaOptions)
-
-				if (Object.keys(ollamaModels).length > 0) {
-					provider.postMessageToWebview({ type: "ollamaModels", ollamaModels: ollamaModels })
-				}
+				const { apiConfiguration } = await provider.getState()
+				const payload = await fetchModelSource(request, {
+					apiConfiguration,
+				})
+				await provider.postMessageToWebview({
+					type: "providerModels",
+					modelSourceResult: {
+						requestId: request.requestId,
+						sourceId: request.source.id,
+						...payload,
+					},
+				})
 			} catch (error) {
-				// Silently fail - user hasn't configured Ollama yet
-				console.debug("Ollama models fetch failed:", error)
+				await provider.postMessageToWebview({
+					type: "providerModels",
+					modelSourceResult: {
+						requestId: request.requestId,
+						sourceId: request.source.id,
+						error: error instanceof Error ? error.message : String(error),
+					},
+				})
 			}
 			break
 		}
-		case "requestLmStudioModels": {
-			// Specific handler for LM Studio models only.
-			const { apiConfiguration: lmStudioApiConfig } = await provider.getState()
-			try {
-				const requestedBaseUrl = message.values?.baseUrl
-				const hasPreviewBaseUrl = typeof requestedBaseUrl === "string"
-				let lmStudioModels: ModelRecord
-				if (hasPreviewBaseUrl) {
-					lmStudioModels = await getLMStudioModels(requestedBaseUrl)
-				} else {
-					const lmStudioOptions = {
-						provider: "lmstudio" as const,
-						baseUrl: lmStudioApiConfig.lmStudioBaseUrl,
-					}
-					// Flush cache and refresh to ensure fresh models.
-					await flushModels(lmStudioOptions, true)
-					lmStudioModels = await getModels(lmStudioOptions)
-				}
-
-				if (Object.keys(lmStudioModels).length > 0) {
-					provider.postMessageToWebview({
-						type: "lmStudioModels",
-						lmStudioModels: lmStudioModels,
-					})
-				}
-			} catch (error) {
-				// Silently fail - user hasn't configured LM Studio yet.
-				console.debug("LM Studio models fetch failed:", error)
-			}
-			break
-		}
-		case "requestOpenAiModels":
-			if (message?.values?.baseUrl && message?.values?.apiKey) {
-				const openAiModels = await getOpenAiModels(
-					message?.values?.baseUrl,
-					message?.values?.apiKey,
-					message?.values?.openAiHeaders,
-				)
-
-				provider.postMessageToWebview({ type: "openAiModels", openAiModels })
-			}
-
-			break
-		case "requestVsCodeLmModels":
-			const vsCodeLmModels = await getVsCodeLmModels()
-			// TODO: Cache like we do for OpenRouter, etc?
-			provider.postMessageToWebview({ type: "vsCodeLmModels", vsCodeLmModels })
-			break
 		case "openImage":
 			openImage(message.text!, { values: message.values })
 			break

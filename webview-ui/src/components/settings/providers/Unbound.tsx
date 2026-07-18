@@ -8,7 +8,6 @@ import {
 	unboundDefaultModelId,
 } from "@roo-code/types"
 
-import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button } from "@src/components/ui"
 
@@ -29,6 +28,7 @@ export const Unbound = ({
 	apiConfiguration,
 	setApiConfigurationField,
 	routerModels,
+	refetchRouterModels,
 	organizationAllowList,
 	modelValidationError,
 	simplifySettings,
@@ -74,11 +74,7 @@ export const Unbound = ({
 				}}>
 				{t("settings:providers.getUnboundApiKey")}
 			</a>
-			<Button
-				variant="outline"
-				onClick={() => {
-					vscode.postMessage({ type: "requestRouterModels", values: { provider: "unbound", refresh: true } })
-				}}>
+			<Button variant="outline" onClick={refetchRouterModels}>
 				<div className="flex items-center gap-2">
 					<span className="codicon codicon-refresh" />
 					{t("settings:providers.refreshModels.label")}

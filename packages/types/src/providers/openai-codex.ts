@@ -26,7 +26,7 @@ export const openAiCodexModels = {
 	"gpt-5.6-sol": {
 		...commonSubscriptionModelInfo,
 		maxTokens: 128_000,
-		contextWindow: 1_050_000,
+		contextWindow: 200_000,
 		supportsImages: true,
 		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
 		reasoningEffort: "medium",
@@ -37,7 +37,7 @@ export const openAiCodexModels = {
 	"gpt-5.6-terra": {
 		...commonSubscriptionModelInfo,
 		maxTokens: 128_000,
-		contextWindow: 1_050_000,
+		contextWindow: 200_000,
 		supportsImages: true,
 		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
 		reasoningEffort: "medium",
@@ -47,7 +47,7 @@ export const openAiCodexModels = {
 	"gpt-5.6-luna": {
 		...commonSubscriptionModelInfo,
 		maxTokens: 128_000,
-		contextWindow: 1_050_000,
+		contextWindow: 200_000,
 		supportsImages: true,
 		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh", "max"],
 		reasoningEffort: "medium",
@@ -57,7 +57,7 @@ export const openAiCodexModels = {
 	"gpt-5.5": {
 		...commonSubscriptionModelInfo,
 		maxTokens: 128_000,
-		contextWindow: 1_050_000,
+		contextWindow: 200_000,
 		supportsImages: true,
 		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh"],
 		reasoningEffort: "medium",
@@ -76,7 +76,7 @@ export const openAiCodexModels = {
 	"gpt-5.4": {
 		...commonSubscriptionModelInfo,
 		maxTokens: 128_000,
-		contextWindow: 1_050_000,
+		contextWindow: 200_000,
 		supportsImages: true,
 		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh"],
 		reasoningEffort: "none",
@@ -86,7 +86,7 @@ export const openAiCodexModels = {
 	"gpt-5.4-mini": {
 		...commonSubscriptionModelInfo,
 		maxTokens: 128_000,
-		contextWindow: 400_000,
+		contextWindow: 200_000,
 		supportsImages: true,
 		supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh"],
 		reasoningEffort: "none",

@@ -18,7 +18,7 @@ import type { CloudUserInfo, CloudOrganizationMembership, OrganizationAllowList,
 import type { SerializedCustomToolDefinition } from "./custom-tool.js"
 import type { GitCommit } from "./git.js"
 import type { McpServer } from "./mcp.js"
-import type { ModelRecord, RouterModels } from "./model.js"
+import type { ModelSourceRequest, ModelSourceResult } from "./model-source.js"
 import type { OpenAiCodexRateLimitInfo } from "./providers/openai-codex-rate-limits.js"
 import type { SkillMetadata } from "./skills.js"
 import type { SubagentSummary } from "./subagent.js"
@@ -47,11 +47,6 @@ export interface ExtensionMessage {
 		| "enhancedPrompt"
 		| "commitSearchResults"
 		| "listApiConfig"
-		| "routerModels"
-		| "openAiModels"
-		| "ollamaModels"
-		| "lmStudioModels"
-		| "vsCodeLmModels"
 		| "vsCodeLmApiAvailable"
 		| "updatePrompt"
 		| "systemPrompt"
@@ -75,7 +70,7 @@ export interface ExtensionMessage {
 		| "authenticatedUser"
 		| "condenseTaskContextStarted"
 		| "condenseTaskContextResponse"
-		| "singleRouterModelFetchResponse"
+		| "providerModels"
 		| "indexingStatusUpdate"
 		| "indexCleared"
 		| "codebaseIndexConfig"
@@ -157,11 +152,6 @@ export interface ExtensionMessage {
 	 * how many recall prefetches / background writers are running right now.
 	 */
 	memoryActivity?: { recall: number; write: number }
-	routerModels?: RouterModels
-	openAiModels?: string[]
-	ollamaModels?: ModelRecord
-	lmStudioModels?: ModelRecord
-	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	mcpServers?: McpServer[]
 	commits?: GitCommit[]
 	listApiConfig?: ProviderSettingsEntry[]
@@ -173,6 +163,7 @@ export interface ExtensionMessage {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	values?: Record<string, any>
 	requestId?: string
+	modelSourceResult?: ModelSourceResult
 	promptText?: string
 	results?:
 		| { path: string; type: "file" | "folder"; label?: string }[]
@@ -489,12 +480,7 @@ export interface WebviewMessage {
 		| "importSettings"
 		| "exportSettings"
 		| "resetState"
-		| "flushRouterModels"
-		| "requestRouterModels"
-		| "requestOpenAiModels"
-		| "requestOllamaModels"
-		| "requestLmStudioModels"
-		| "requestVsCodeLmModels"
+		| "requestProviderModels"
 		| "openImage"
 		| "saveImage"
 		| "openFile"
@@ -688,6 +674,7 @@ export interface WebviewMessage {
 	/** Target mode slugs for updateSkillModes */
 	newSkillModeSlugs?: string[] // For updateSkillModes (new mode restrictions)
 	requestId?: string
+	modelSourceRequest?: ModelSourceRequest
 	ids?: string[]
 	terminalOperation?: "continue" | "abort"
 	messageTs?: number

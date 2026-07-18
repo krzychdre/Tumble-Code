@@ -76,6 +76,18 @@ describe("SearchableSelect", () => {
 		})
 	})
 
+	it("filters options by value when the label does not contain the provider ID", async () => {
+		const user = userEvent.setup()
+		render(<SearchableSelect {...defaultProps} options={[{ value: "openai-native", label: "OpenAI" }]} />)
+
+		await user.click(screen.getByRole("combobox"))
+		fireEvent.change(screen.getByPlaceholderText("Search options..."), {
+			target: { value: "native" },
+		})
+
+		await waitFor(() => expect(screen.getByText("OpenAI")).toBeInTheDocument())
+	})
+
 	it("calls onValueChange when an option is selected", async () => {
 		const user = userEvent.setup()
 		render(<SearchableSelect {...defaultProps} />)

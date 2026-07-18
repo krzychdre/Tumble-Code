@@ -530,6 +530,8 @@ describe("ApiOptions", () => {
 			expect(screen.getByTestId("litellm-provider")).toBeInTheDocument()
 			expect(screen.getByTestId("litellm-base-url")).toHaveValue("http://localhost:4000")
 			expect(screen.getByTestId("litellm-api-key")).toHaveValue("test-key")
+			expect(screen.getByTestId("temperature-control")).toBeInTheDocument()
+			expect(screen.getByTestId("rate-limit-seconds-control")).toBeInTheDocument()
 		})
 
 		it("calls setApiConfigurationField when LiteLLM inputs change", () => {
@@ -581,8 +583,21 @@ describe("ApiOptions", () => {
 			},
 		})
 
-		expect(screen.getByTestId("retired-provider-message")).toHaveTextContent(
+		expect(screen.getByTestId("unavailable-provider-message")).toHaveTextContent(
 			"settings:providers.retiredProviderMessage",
+		)
+		expect(screen.queryByTestId("litellm-provider")).not.toBeInTheDocument()
+	})
+
+	it("renders a preserved unknown-provider message and hides provider-specific forms", () => {
+		renderApiOptions({
+			apiConfiguration: {
+				apiProvider: "future-provider",
+			} as unknown as ProviderSettings,
+		})
+
+		expect(screen.getByTestId("unavailable-provider-message")).toHaveTextContent(
+			"Provider “future-provider” is not supported by this version. Its saved settings were preserved",
 		)
 		expect(screen.queryByTestId("litellm-provider")).not.toBeInTheDocument()
 	})

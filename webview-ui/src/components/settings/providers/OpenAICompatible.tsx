@@ -1,5 +1,4 @@
-import { useState, useCallback, useEffect } from "react"
-import { useEvent } from "react-use"
+import { useState, useCallback, useEffect, useMemo } from "react"
 import { Checkbox } from "vscrui"
 import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
@@ -8,13 +7,13 @@ import {
 	type ModelInfo,
 	type ReasoningEffort,
 	type OrganizationAllowList,
-	type ExtensionMessage,
 	azureOpenAiDefaultApiVersion,
 	openAiModelInfoSaneDefaults,
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button, StandardTooltip } from "@src/components/ui"
+import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { convertHeadersToObject } from "../utils/headers"
 import { inputEventTransform, noTransform } from "../transforms"
@@ -45,7 +44,18 @@ export const OpenAICompatible = ({
 
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 
-	const [openAiModels, setOpenAiModels] = useState<Record<string, ModelInfo> | null>(null)
+	const { modelIds: openAiModelIds } = useProviderModels("openai", {
+		baseUrl: apiConfiguration.openAiBaseUrl,
+		apiKey: apiConfiguration.openAiApiKey,
+		headers: apiConfiguration.openAiHeaders,
+	})
+	const openAiModels = useMemo<Record<string, ModelInfo> | null>(
+		() =>
+			openAiModelIds
+				? Object.fromEntries(openAiModelIds.map((modelId) => [modelId, openAiModelInfoSaneDefaults]))
+				: null,
+		[openAiModelIds],
+	)
 
 	const [customHeaders, setCustomHeaders] = useState<[string, string][]>(() => {
 		const headers = apiConfiguration?.openAiHeaders || {}
@@ -108,20 +118,6 @@ export const OpenAICompatible = ({
 			},
 		[setApiConfigurationField],
 	)
-
-	const onMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
-
-		switch (message.type) {
-			case "openAiModels": {
-				const updatedModels = message.openAiModels ?? []
-				setOpenAiModels(Object.fromEntries(updatedModels.map((item) => [item, openAiModelInfoSaneDefaults])))
-				break
-			}
-		}
-	}, [])
-
-	useEvent("message", onMessage)
 
 	return (
 		<>

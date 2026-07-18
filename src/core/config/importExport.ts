@@ -7,15 +7,19 @@ import * as vscode from "vscode"
 import { z, ZodError } from "zod"
 
 import {
+	classifyProvider,
 	globalSettingsSchema,
+	migrateProviderProfiles,
+	providerProfileToLegacySettings,
 	providerSettingsWithIdSchema,
-	isProviderName,
 	type GlobalSettings,
+	type PersistedProviderProfile,
 	type ProviderSettingsWithId,
+	SECRET_STATE_KEYS,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { ProviderSettingsManager, providerProfilesSchema } from "./ProviderSettingsManager"
+import { ProviderSettingsManager } from "./ProviderSettingsManager"
 import { ContextProxy } from "./ContextProxy"
 import { CustomModesManager } from "./CustomModesManager"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
@@ -36,31 +40,6 @@ type ImportWithProviderOptions = ImportOptions & {
 		settingsImportedAt?: number
 		postStateToWebview: () => Promise<void>
 	}
-}
-
-/**
- * Sanitizes a provider config by resetting invalid/removed apiProvider values.
- * Returns the sanitized config and a warning message if the provider was invalid.
- */
-function sanitizeProviderConfig(configName: string, apiConfig: unknown): { config: unknown; warning?: string } {
-	if (typeof apiConfig !== "object" || apiConfig === null) {
-		return { config: apiConfig }
-	}
-
-	const config = apiConfig as Record<string, unknown>
-
-	// Check if apiProvider is set and if it's still valid
-	if (config.apiProvider !== undefined && !isProviderName(config.apiProvider)) {
-		const invalidProvider = config.apiProvider
-		// Return a new config object without the invalid apiProvider
-		const { apiProvider, ...restConfig } = config
-		return {
-			config: restConfig,
-			warning: `Profile "${configName}": Invalid provider "${invalidProvider}" was removed. Please reconfigure this profile.`,
-		}
-	}
-
-	return { config: apiConfig }
 }
 
 const globalSettingsShape = globalSettingsSchema.shape as Record<keyof GlobalSettings, z.ZodTypeAny>
@@ -127,43 +106,87 @@ export async function importSettingsFromPath(
 	filePath: string,
 	{ providerSettingsManager, contextProxy, customModesManager }: ImportOptions,
 ) {
-	// Use a lenient schema that accepts any apiConfigs, then validate each individually
-	const lenientProviderProfilesSchema = providerProfilesSchema.extend({
-		apiConfigs: z.record(z.string(), z.any()),
-	})
-
 	const lenientSchema = z.object({
-		providerProfiles: lenientProviderProfilesSchema,
+		providerProfiles: z.unknown(),
 		globalSettings: z.unknown().optional(),
 	})
 
 	try {
 		const previousProviderProfiles = await providerSettingsManager.export()
+		const previousLegacyProfiles = Object.fromEntries(
+			await Promise.all(
+				Object.keys(previousProviderProfiles?.apiConfigs ?? {}).map(async (name) => {
+					try {
+						const { name: _name, ...legacy } = await providerSettingsManager.getProfile({ name })
+						return [name, legacy]
+					} catch {
+						return [name, undefined]
+					}
+				}),
+			),
+		) as Record<string, ProviderSettingsWithId | undefined>
 
 		const rawData = JSON.parse(await fs.readFile(filePath, "utf-8"))
-		const { providerProfiles: rawProviderProfiles, globalSettings: rawGlobalSettings } =
+		const { providerProfiles: rawProviderProfilesValue, globalSettings: rawGlobalSettings } =
 			lenientSchema.parse(rawData)
+		let rawProviderProfiles
+		try {
+			rawProviderProfiles = migrateProviderProfiles(rawProviderProfilesValue).data
+		} catch (error) {
+			if (error instanceof z.ZodError) {
+				for (const issue of error.issues) {
+					issue.path.unshift("providerProfiles")
+				}
+			}
+			throw error
+		}
+		const rawProfilesRecord =
+			typeof rawProviderProfilesValue === "object" && rawProviderProfilesValue !== null
+				? (rawProviderProfilesValue as Record<string, unknown>)
+				: undefined
+		const envelopeData =
+			typeof rawProfilesRecord?.data === "object" && rawProfilesRecord.data !== null
+				? (rawProfilesRecord.data as Record<string, unknown>)
+				: undefined
+		const sourceProfiles = (rawProfilesRecord?.apiConfigs ?? envelopeData?.apiConfigs) as
+			| Record<string, Record<string, unknown>>
+			| undefined
 
 		// Track warnings for profiles that had issues
 		const warnings: string[] = []
 		const validApiConfigs: Record<string, ProviderSettingsWithId> = {}
 
-		// Process each apiConfig individually with sanitization
+		// Profiles have already been migrated and validated by the current envelope schema.
 		for (const [configName, rawConfig] of Object.entries(rawProviderProfiles.apiConfigs)) {
-			// First sanitize to handle invalid apiProvider values
-			const { config: sanitizedConfig, warning } = sanitizeProviderConfig(configName, rawConfig)
-			if (warning) {
-				warnings.push(warning)
+			const classification = classifyProvider(rawConfig.provider.providerId)
+			if (
+				classification === "unknown" &&
+				!("opaqueLegacyPayload" in rawConfig.provider && rawConfig.provider.opaqueLegacyPayload.apiProvider)
+			) {
+				warnings.push(`Profile "${configName}" was skipped: apiProvider: Invalid provider`)
+				continue
 			}
-
-			// Then validate the sanitized config
-			const result = providerSettingsWithIdSchema.safeParse(sanitizedConfig)
-			if (result.success) {
-				validApiConfigs[configName] = result.data
-			} else {
-				// Profile is completely invalid - skip it
-				const issues = result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", ")
-				warnings.push(`Profile "${configName}" was skipped: ${issues}`)
+			validApiConfigs[configName] =
+				"config" in rawConfig.provider
+					? { id: rawConfig.id, ...providerProfileToLegacySettings(rawConfig) }
+					: ({ id: rawConfig.id, ...rawConfig.provider.opaqueLegacyPayload } as ProviderSettingsWithId)
+			const previousSecrets = previousLegacyProfiles[configName]
+			if (previousSecrets) {
+				for (const key of SECRET_STATE_KEYS) {
+					if (previousSecrets[key] !== undefined) validApiConfigs[configName][key] = previousSecrets[key]
+				}
+			}
+			const importedSecrets = sourceProfiles?.[configName]
+			if (importedSecrets) {
+				for (const key of SECRET_STATE_KEYS) {
+					const secret = importedSecrets[key]
+					if (typeof secret === "string") validApiConfigs[configName][key] = secret
+				}
+			}
+			if (classification === "unknown") {
+				warnings.push(
+					`Profile "${configName}": Unknown provider "${rawConfig.provider.providerId}" was preserved but cannot be used by this version.`,
+				)
 			}
 		}
 
@@ -229,7 +252,7 @@ export async function importSettingsFromPath(
 		// the proxy; we can just use providerSettingsManager as the source of
 		// truth.
 		if (currentProvider) {
-			contextProxy.setProviderSettings(currentProvider)
+			contextProxy.setProviderSettings(currentProvider as ProviderSettingsWithId)
 		}
 
 		contextProxy.setValue("listApiConfigMeta", await providerSettingsManager.listConfig())
@@ -335,6 +358,19 @@ export const exportSettings = async ({ providerSettingsManager, contextProxy }: 
 		const dirname = path.dirname(uri.fsPath)
 		await fs.mkdir(dirname, { recursive: true })
 		await safeWriteJson(uri.fsPath, { providerProfiles, globalSettings })
+
+		// H1: secrets do NOT travel in exports. Known-profile configs have
+		// their SECRET_STATE_KEYS stripped by `pickPresent(providerFieldOwnership[...])`
+		// and opaque retired/unknown profiles have them stripped by
+		// `stripSecretStateKeys` in the migration path. Surface this so users
+		// know API keys must be re-entered on the import side (existing local
+		// secrets are preserved by `importSettingsFromPath`).
+		await vscode.window.showInformationMessage(
+			t("common:info.settings_exported_no_secrets", {
+				defaultValue:
+					"Settings exported. API keys and other secrets are not included in the export file and must be re-entered after import.",
+			}),
+		)
 	} catch (e) {
 		console.error("Failed to export settings:", e)
 		// Don't re-throw - the UI will handle showing error messages
