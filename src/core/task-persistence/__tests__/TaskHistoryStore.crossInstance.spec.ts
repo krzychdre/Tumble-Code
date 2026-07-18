@@ -14,12 +14,22 @@ vi.mock("../../../utils/storage", () => ({
 }))
 
 // Mock safeWriteJson to use plain fs writes in tests (avoids proper-lockfile issues)
-vi.mock("../../../utils/safeWriteJson", () => ({
-	safeWriteJson: vi.fn().mockImplementation(async (filePath: string, data: any) => {
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockImplementation(async (filePath: string, data: any) => {
 		await fs.mkdir(path.dirname(filePath), { recursive: true })
 		await fs.writeFile(filePath, JSON.stringify(data, null, "\t"), "utf8")
-	}),
-}))
+	})
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: any) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
 
 function makeHistoryItem(overrides: Partial<HistoryItem> = {}): HistoryItem {
 	return {

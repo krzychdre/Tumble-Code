@@ -14,12 +14,22 @@ vi.mock("../../../utils/storage", () => ({
 }))
 
 // Mock safeWriteJson to use plain fs writes in tests (avoids proper-lockfile issues)
-vi.mock("../../../utils/safeWriteJson", () => ({
-	safeWriteJson: vi.fn().mockImplementation(async (filePath: string, data: any) => {
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockImplementation(async (filePath: string, data: any) => {
 		await fs.mkdir(path.dirname(filePath), { recursive: true })
 		await fs.writeFile(filePath, JSON.stringify(data, null, "\t"), "utf8")
-	}),
-}))
+	})
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: any) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
 
 function makeHistoryItem(overrides: Partial<HistoryItem> = {}): HistoryItem {
 	return {
@@ -135,15 +145,18 @@ describe("TaskHistoryStore", () => {
 	})
 
 	describe("upsert()", () => {
-		it("writes per-task file and updates cache", async () => {
+		it("writes per-task file and updates cache (returns void)", async () => {
 			await store.initialize()
 
 			const item = makeHistoryItem({ id: "upsert-task" })
 			const result = await store.upsert(item)
 
+			// New contract: upsert returns void (no full-history copy/sort)
+			expect(result).toBeUndefined()
+
 			// Cache should be updated
 			expect(store.get("upsert-task")).toBeDefined()
-			expect(result.length).toBe(1)
+			expect(store.getAll()).toHaveLength(1)
 
 			// Per-task file should exist
 			const filePath = path.join(tmpDir, "tasks", "upsert-task", GlobalFileNames.historyItem)
@@ -181,7 +194,7 @@ describe("TaskHistoryStore", () => {
 			expect(result.tokensOut).toBe(200)
 		})
 
-		it("returns updated task history array", async () => {
+		it("does not return the full history (callers use getAll)", async () => {
 			await store.initialize()
 
 			const item1 = makeHistoryItem({ id: "item-1", ts: 1000 })
@@ -190,10 +203,14 @@ describe("TaskHistoryStore", () => {
 			await store.upsert(item1)
 			const result = await store.upsert(item2)
 
-			expect(result).toHaveLength(2)
-			// Should be sorted by ts descending
-			expect(result[0].id).toBe("item-2")
-			expect(result[1].id).toBe("item-1")
+			// void contract — callers that need history call getAll()
+			expect(result).toBeUndefined()
+
+			const all = store.getAll()
+			expect(all).toHaveLength(2)
+			// getAll() still sorts by ts descending
+			expect(all[0].id).toBe("item-2")
+			expect(all[1].id).toBe("item-1")
 		})
 	})
 
@@ -213,6 +230,9 @@ describe("TaskHistoryStore", () => {
 		it("handles deleting non-existent task gracefully", async () => {
 			await store.initialize()
 			await expect(store.delete("non-existent")).resolves.not.toThrow()
+			await expect(fs.access(path.join(tmpDir, "tasks", "non-existent"))).rejects.toMatchObject({
+				code: "ENOENT",
+			})
 		})
 	})
 
@@ -368,6 +388,411 @@ describe("TaskHistoryStore", () => {
 			await store.invalidate("gone-task")
 
 			expect(store.get("gone-task")).toBeUndefined()
+		})
+	})
+
+	describe("migrateFromLegacyHistory()", () => {
+		it("backfills legacy entries into per-task files", async () => {
+			await store.initialize()
+
+			// Simulate pre-existing task directories (created by past runs)
+			const tasksDir = path.join(tmpDir, "tasks")
+			for (const id of ["legacy-1", "legacy-2"]) {
+				await fs.mkdir(path.join(tasksDir, id), { recursive: true })
+			}
+
+			const legacy: HistoryItem[] = [
+				makeHistoryItem({ id: "legacy-1", task: "Legacy 1", ts: 1000 }),
+				makeHistoryItem({ id: "legacy-2", task: "Legacy 2", ts: 2000 }),
+				// No task directory on disk -> migration creates it and preserves history
+				makeHistoryItem({ id: "orphan-no-dir", task: "Orphan", ts: 3000 }),
+			]
+
+			const ok = await store.migrateFromLegacyHistory(legacy)
+			expect(ok).toBe(true)
+
+			expect(store.get("legacy-1")?.task).toBe("Legacy 1")
+			expect(store.get("legacy-2")?.task).toBe("Legacy 2")
+			expect(store.get("orphan-no-dir")?.task).toBe("Orphan")
+
+			// Per-task files written
+			for (const id of ["legacy-1", "legacy-2", "orphan-no-dir"]) {
+				const raw = await fs.readFile(path.join(tasksDir, id, GlobalFileNames.historyItem), "utf8")
+				expect(JSON.parse(raw).id).toBe(id)
+			}
+		})
+
+		it("is idempotent: a second run does not overwrite newer per-task files", async () => {
+			await store.initialize()
+
+			const tasksDir = path.join(tmpDir, "tasks")
+			await fs.mkdir(path.join(tasksDir, "legacy-id"), { recursive: true })
+
+			// First migration writes the legacy snapshot
+			const legacySnapshot = makeHistoryItem({ id: "legacy-id", task: "Legacy snapshot", ts: 1000, tokensIn: 10 })
+			await store.migrateFromLegacyHistory([legacySnapshot])
+
+			// A newer per-task record is now on disk (e.g. from a real run)
+			const newer = { ...legacySnapshot, task: "Newer on-disk record", tokensIn: 999, ts: 5000 }
+			await fs.writeFile(path.join(tasksDir, "legacy-id", GlobalFileNames.historyItem), JSON.stringify(newer))
+
+			// Second migration with the SAME stale legacy snapshot must NOT overwrite
+			const ok = await store.migrateFromLegacyHistory([legacySnapshot])
+			expect(ok).toBe(true)
+
+			const onDisk = JSON.parse(
+				await fs.readFile(path.join(tasksDir, "legacy-id", GlobalFileNames.historyItem), "utf8"),
+			)
+			expect(onDisk.task).toBe("Newer on-disk record")
+			expect(onDisk.tokensIn).toBe(999)
+			// Cache reflects the on-disk record, not the stale snapshot
+			expect(store.get("legacy-id")?.task).toBe("Newer on-disk record")
+			expect(store.get("legacy-id")?.tokensIn).toBe(999)
+		})
+
+		it("resumes a partial migration without clobbering already-migrated records", async () => {
+			await store.initialize()
+
+			const tasksDir = path.join(tmpDir, "tasks")
+			await fs.mkdir(path.join(tasksDir, "partial-1"), { recursive: true })
+			await fs.mkdir(path.join(tasksDir, "partial-2"), { recursive: true })
+
+			// partial-1 already migrated (file exists)
+			const already = makeHistoryItem({ id: "partial-1", task: "Already migrated", ts: 1000 })
+			await fs.writeFile(path.join(tasksDir, "partial-1", GlobalFileNames.historyItem), JSON.stringify(already))
+
+			const legacy: HistoryItem[] = [
+				already,
+				makeHistoryItem({ id: "partial-2", task: "Pending migration", ts: 2000 }),
+			]
+
+			const ok = await store.migrateFromLegacyHistory(legacy)
+			expect(ok).toBe(true)
+
+			// partial-1 untouched
+			expect(
+				JSON.parse(await fs.readFile(path.join(tasksDir, "partial-1", GlobalFileNames.historyItem), "utf8"))
+					.task,
+			).toBe("Already migrated")
+			// partial-2 now migrated
+			expect(store.get("partial-2")?.task).toBe("Pending migration")
+		})
+
+		it("returns false and leaves data on disk when a write fails (no cleanup)", async () => {
+			await store.initialize()
+
+			const tasksDir = path.join(tmpDir, "tasks")
+			await fs.mkdir(path.join(tasksDir, "fail-target"), { recursive: true })
+
+			// Force safeWriteJson to fail for the target file
+			const { safeWriteJson } = await import("../../../utils/safeWriteJson")
+			const mock = vi.mocked(safeWriteJson)
+			mock.mockImplementationOnce(async (filePath: string) => {
+				if (filePath.endsWith(GlobalFileNames.historyItem)) {
+					throw new Error("disk full")
+				}
+			})
+
+			const legacy = [makeHistoryItem({ id: "fail-target", task: "Failing", ts: 1000 })]
+			const ok = await store.migrateFromLegacyHistory(legacy)
+
+			expect(ok).toBe(false)
+			// Task directory still exists — caller (ContextProxy) keeps the
+			// legacy key so the next start can retry.
+			await expect(fs.access(path.join(tasksDir, "fail-target"))).resolves.toBeUndefined()
+		})
+
+		it("is a no-op for an empty legacy array", async () => {
+			await store.initialize()
+			const ok = await store.migrateFromLegacyHistory([])
+			expect(ok).toBe(true)
+			expect(store.getAll()).toEqual([])
+		})
+	})
+
+	describe("reconcile() detects modifications to existing records", () => {
+		it("picks up an external mutation to an existing history_item.json without manual invalidate()", async () => {
+			await store.initialize()
+
+			const item = makeHistoryItem({ id: "mutate-me", tokensIn: 100, ts: 1000 })
+			await store.upsert(item)
+			await store.flushIndex()
+
+			// Externally rewrite the file (simulating another process/instance)
+			const filePath = path.join(tmpDir, "tasks", "mutate-me", GlobalFileNames.historyItem)
+			// Bump mtime by writing with a small delay so mtimeMs differs
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			const mutated = { ...item, tokensIn: 777, task: "Externally mutated" }
+			await fs.writeFile(filePath, JSON.stringify(mutated))
+
+			// reconcile() must detect the mtime/size change and re-read
+			await store.reconcile()
+
+			expect(store.get("mutate-me")?.tokensIn).toBe(777)
+			expect(store.get("mutate-me")?.task).toBe("Externally mutated")
+		})
+
+		it("does not re-read unchanged files (cheap metadata check)", async () => {
+			await store.initialize()
+
+			const item = makeHistoryItem({ id: "stable", tokensIn: 100 })
+			await store.upsert(item)
+			await store.flushIndex()
+
+			// Spy on the store's private readTaskFileResult — the only path
+			// that re-reads a task's history_item.json during reconcile (via
+			// refreshTask). readTaskFile is a legacy wrapper that is no
+			// longer on the reconcile path.
+			const readTaskFileResult = vi.spyOn(
+				store as unknown as {
+					readTaskFileResult: (
+						filePath: string,
+					) => Promise<
+						| { status: "ok"; item: HistoryItem }
+						| { status: "missing" }
+						| { status: "error"; error: unknown }
+					>
+				},
+				"readTaskFileResult",
+			)
+
+			// First reconcile after upsert: metadata is fresh, no re-read expected
+			await store.reconcile()
+			expect(readTaskFileResult).not.toHaveBeenCalled()
+
+			// Touch the file (rewrite with new mtime) so metadata changes
+			const filePath = path.join(tmpDir, "tasks", "stable", GlobalFileNames.historyItem)
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			await fs.writeFile(filePath, JSON.stringify({ ...item, tokensIn: 100 }))
+
+			readTaskFileResult.mockClear()
+			await store.reconcile()
+			// Now mtime changed so the file is re-read once (refreshTask →
+			// readTaskFileResult).
+			expect(readTaskFileResult).toHaveBeenCalledTimes(1)
+
+			readTaskFileResult.mockRestore()
+		})
+	})
+
+	describe("atomicReadAndUpdate()", () => {
+		it("reads, applies, and writes under a file lock (no stale cache)", async () => {
+			await store.initialize()
+
+			const item = makeHistoryItem({ id: "armu-task", tokensIn: 100, task: "Original" })
+			await store.upsert(item)
+			await store.flushIndex()
+
+			const updated = await store.atomicReadAndUpdate("armu-task", (current) => ({
+				...current,
+				tokensIn: current.tokensIn + 50,
+				task: "Updated",
+			}))
+
+			expect(updated.tokensIn).toBe(150)
+			expect(updated.task).toBe("Updated")
+			// Cache mirrors the on-disk write
+			expect(store.get("armu-task")?.tokensIn).toBe(150)
+
+			// On-disk file reflects the locked write
+			const onDisk = JSON.parse(
+				await fs.readFile(path.join(tmpDir, "tasks", "armu-task", GlobalFileNames.historyItem), "utf8"),
+			)
+			expect(onDisk.tokensIn).toBe(150)
+		})
+
+		it("reads the on-disk record (not a stale cache) when an external mutation happened", async () => {
+			await store.initialize()
+
+			const item = makeHistoryItem({ id: "stale-cache", tokensIn: 100, task: "Original" })
+			await store.upsert(item)
+			await store.flushIndex()
+
+			// Externally rewrite the file with a newer value the cache hasn't seen
+			const filePath = path.join(tmpDir, "tasks", "stale-cache", GlobalFileNames.historyItem)
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			const externallyNewer = { ...item, tokensIn: 999, task: "Externally newer" }
+			await fs.writeFile(filePath, JSON.stringify(externallyNewer))
+
+			// atomicReadAndUpdate must read on-disk under the lock, not the
+			// stale cache (which still says tokensIn: 100)
+			const updated = await store.atomicReadAndUpdate("stale-cache", (current) => ({
+				...current,
+				tokensIn: current.tokensIn + 1,
+			}))
+
+			expect(updated.tokensIn).toBe(1000)
+			expect(updated.task).toBe("Externally newer")
+		})
+
+		it("rejects an updater that changes the task id", async () => {
+			await store.initialize()
+			const item = makeHistoryItem({ id: "id-stable" })
+			await store.upsert(item)
+
+			await expect(
+				store.atomicReadAndUpdate("id-stable", (current) => ({ ...current, id: "id-changed" })),
+			).rejects.toThrow(/changed task id/)
+		})
+
+		it("serializes concurrent updates to the same id (last writer wins, no lost update)", async () => {
+			await store.initialize()
+			const item = makeHistoryItem({ id: "concurrent-armu", ts: 1000 })
+			// Use tokensIn as the counter field to avoid schema issues
+			await store.upsert({ ...item, tokensIn: 0 })
+
+			// Five concurrent increments must produce 5 (no lost updates)
+			const updates = Array.from({ length: 5 }, () =>
+				store.atomicReadAndUpdate("concurrent-armu", (current) => ({
+					...current,
+					tokensIn: current.tokensIn + 1,
+				})),
+			)
+			await Promise.all(updates)
+
+			expect(store.get("concurrent-armu")?.tokensIn).toBe(5)
+		})
+	})
+
+	describe("record transaction cleanup", () => {
+		it("releases per-ID lock tails for many unique IDs", async () => {
+			await store.initialize()
+			await Promise.all(
+				Array.from({ length: 100 }, (_, index) => store.upsert(makeHistoryItem({ id: `lock-${index}` }))),
+			)
+			expect(TaskHistoryStore.getPendingRecordLockCountForTests(store)).toBe(0)
+		})
+
+		it("does not recreate a missing task directory during refresh", async () => {
+			await store.initialize()
+			await store.refreshTask("refresh-missing")
+			await expect(fs.access(path.join(tmpDir, "tasks", "refresh-missing"))).rejects.toMatchObject({
+				code: "ENOENT",
+			})
+		})
+	})
+
+	describe("shared lifecycle (acquire/dispose)", () => {
+		afterEach(() => {
+			TaskHistoryStore.resetSharedStoresForTests()
+		})
+
+		it("returns the same store instance for the same storage path", async () => {
+			const a = await TaskHistoryStore.acquire(tmpDir)
+			const b = await TaskHistoryStore.acquire(tmpDir)
+			expect(a.store).toBe(b.store)
+			a.dispose()
+			b.dispose()
+		})
+
+		it("returns distinct stores for distinct storage paths", async () => {
+			const a = await TaskHistoryStore.acquire(tmpDir)
+			const b = await TaskHistoryStore.acquire(tmpDir + "-other")
+			expect(a.store).not.toBe(b.store)
+			a.dispose()
+			b.dispose()
+		})
+
+		it("returns distinct stores for distinct contexts on the same path", async () => {
+			const a = await TaskHistoryStore.acquire(tmpDir, { context: "ctx-a" })
+			const b = await TaskHistoryStore.acquire(tmpDir, { context: "ctx-b" })
+			expect(a.store).not.toBe(b.store)
+			a.dispose()
+			b.dispose()
+		})
+
+		it("keeps the store alive until the last consumer disposes", async () => {
+			const a = await TaskHistoryStore.acquire(tmpDir)
+			const b = await TaskHistoryStore.acquire(tmpDir)
+			const store = a.store
+
+			// Dispose one consumer — the store must still be usable by the other
+			a.dispose()
+			await store.upsert(makeHistoryItem({ id: "after-a-dispose" }))
+			expect(store.get("after-a-dispose")).toBeDefined()
+
+			// Final dispose tears down the store
+			b.dispose()
+			// After final dispose, acquiring again yields a fresh store
+			const c = await TaskHistoryStore.acquire(tmpDir)
+			expect(c.store).not.toBe(store)
+			c.dispose()
+		})
+
+		it("notifies subscribers on upsert (local) and dispose unsubscribes", async () => {
+			const handle = await TaskHistoryStore.acquire(tmpDir)
+			const store = handle.store
+			await store.initialized
+
+			let calls = 0
+			let lastExternal: boolean | undefined
+			let lastKind: string | undefined
+			const unsub = store.onChange((event) => {
+				calls++
+				lastExternal = event.external
+				lastKind = event.kind
+			})
+
+			await store.upsert(makeHistoryItem({ id: "sub-task" }))
+			expect(calls).toBeGreaterThanOrEqual(1)
+			// Local mutations report external=false and kind="upsert" so
+			// consumers can skip a redundant full-history broadcast for
+			// their own writes and push a targeted update instead.
+			expect(lastExternal).toBe(false)
+			expect(lastKind).toBe("upsert")
+
+			unsub()
+			await store.upsert(makeHistoryItem({ id: "sub-task-2" }))
+			expect(calls).toBe(1) // no new calls after unsubscribe
+
+			handle.dispose()
+		})
+
+		it("notifies subscribers with external=true on reconcile-detected changes", async () => {
+			const handle = await TaskHistoryStore.acquire(tmpDir)
+			const store = handle.store
+			await store.initialized
+
+			// Seed a task so the cache has something to compare against.
+			const item = makeHistoryItem({ id: "ext-change", tokensIn: 100 })
+			await store.upsert(item)
+			await store.flushIndex()
+
+			let externalFlag: boolean | undefined
+			let lastKind: string | undefined
+			const unsub = store.onChange((event) => {
+				externalFlag = event.external
+				lastKind = event.kind
+			})
+
+			// Externally rewrite the file so reconcile detects the mtime change.
+			const filePath = path.join(tmpDir, "tasks", "ext-change", GlobalFileNames.historyItem)
+			await new Promise((resolve) => setTimeout(resolve, 20))
+			await fs.writeFile(filePath, JSON.stringify({ ...item, tokensIn: 999 }))
+
+			await store.reconcile()
+
+			expect(externalFlag).toBe(true)
+			// Reconcile re-reads an existing record -> upsert event.
+			expect(lastKind).toBe("upsert")
+			expect(store.get("ext-change")?.tokensIn).toBe(999)
+
+			unsub()
+			handle.dispose()
+		})
+
+		it("closing one consumer does not break the other's store", async () => {
+			const a = await TaskHistoryStore.acquire(tmpDir)
+			const b = await TaskHistoryStore.acquire(tmpDir)
+			const store = a.store
+
+			a.dispose()
+
+			// b's store (same instance) must still accept writes
+			await b.store.upsert(makeHistoryItem({ id: "survivor" }))
+			expect(store.get("survivor")).toBeDefined()
+
+			b.dispose()
 		})
 	})
 })

@@ -77,7 +77,27 @@ vi.mock("../../task/Task", () => ({
 
 vi.mock("../../prompts/sections/custom-instructions")
 
-vi.mock("../../../utils/safeWriteJson")
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockResolvedValue(undefined)
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: unknown) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
+
+// The JSON transaction gateway is mocked above; keep proper-lockfile inert for
+// unrelated safe-write call sites in these provider-wiring specs.
+vi.mock("proper-lockfile", () => ({
+	lock: vi.fn(async () => async () => {}),
+	unlock: vi.fn(async () => {}),
+	check: vi.fn(async () => false),
+}))
 
 vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn().mockReturnValue({

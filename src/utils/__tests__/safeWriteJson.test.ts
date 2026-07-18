@@ -4,10 +4,10 @@ import { Writable } from "stream"
 import * as path from "path"
 import * as os from "os"
 
-import { safeWriteJson } from "../safeWriteJson"
+import * as lockfile from "proper-lockfile"
 
-const originalFsPromisesRename = actualFsPromises.rename
-const originalFsPromisesUnlink = actualFsPromises.unlink
+import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from "../safeWriteJson"
+
 const originalFsPromisesWriteFile = actualFsPromises.writeFile
 const _originalFsPromisesAccess = actualFsPromises.access
 const originalFsPromisesMkdir = actualFsPromises.mkdir
@@ -122,6 +122,109 @@ describe("safeWriteJson", () => {
 		expect(content).toEqual(newData)
 	})
 
+	test("always acquires an inter-process lock", async () => {
+		const releaseExternalLock = await lockfile.lock(currentTestFilePath, {
+			realpath: false,
+			retries: 0,
+		})
+
+		try {
+			await expect(safeWriteJson(currentTestFilePath, { locked: true })).rejects.toMatchObject({
+				code: "ELOCKED",
+			})
+		} finally {
+			await releaseExternalLock()
+		}
+
+		expect(await readFileContent(currentTestFilePath)).toEqual({ initial: "content" })
+	})
+
+	test("exports no lock-bypass option or raw atomic writer", async () => {
+		const api = await import("../safeWriteJson")
+
+		expect(api).not.toHaveProperty("writeJsonAtomically")
+		expect(api).not.toHaveProperty("alreadyLocked")
+		expect(api).not.toHaveProperty("skipLock")
+	})
+
+	test("transaction writer runs while locked and rejects use after the callback", async () => {
+		const destinationPath = path.join(tempDir, "transaction.json")
+		const lockTargetPath = path.join(tempDir, "locks", "transaction.lock-target")
+		let retainedWriter: LockedJsonWriter | undefined
+		let competingLockError: NodeJS.ErrnoException | undefined
+
+		await fs.mkdir(path.dirname(destinationPath), { recursive: true })
+		await withLockedJsonTransaction(lockTargetPath, destinationPath, async (writeJson) => {
+			retainedWriter = writeJson
+			await writeJson({ transaction: true })
+			try {
+				const releaseCompetingLock = await lockfile.lock(lockTargetPath, {
+					realpath: false,
+					retries: 0,
+				})
+				await releaseCompetingLock()
+			} catch (error) {
+				competingLockError = error as NodeJS.ErrnoException
+			}
+		})
+
+		expect(competingLockError?.code).toBe("ELOCKED")
+		expect(await readFileContent(destinationPath)).toEqual({ transaction: true })
+		await expect(retainedWriter?.({ afterUnlock: true })).rejects.toThrow(
+			"Locked JSON writer cannot be used after its transaction callback",
+		)
+		expect(await readFileContent(destinationPath)).toEqual({ transaction: true })
+	})
+
+	test.runIf(process.platform !== "win32")(
+		"transaction writer preserves an existing destination's POSIX mode",
+		async () => {
+			const destinationPath = path.join(tempDir, "transaction-mode.json")
+			const lockTargetPath = path.join(tempDir, "locks", "mode.lock-target")
+			await fs.writeFile(destinationPath, JSON.stringify({ initial: true }))
+			await fs.chmod(destinationPath, 0o640)
+
+			await withLockedJsonTransaction(lockTargetPath, destinationPath, (writeJson) =>
+				writeJson({ updated: true }),
+			)
+
+			expect((await fs.stat(destinationPath)).mode & 0o777).toBe(0o640)
+		},
+	)
+
+	test.runIf(process.platform !== "win32")("preserves an existing destination's POSIX mode", async () => {
+		await fs.chmod(currentTestFilePath, 0o600)
+
+		await safeWriteJson(currentTestFilePath, { protected: true })
+
+		expect((await fs.stat(currentTestFilePath)).mode & 0o777).toBe(0o600)
+	})
+
+	test.runIf(process.platform !== "win32")("does not broaden permissions for a new file", async () => {
+		const filePath = path.join(tempDir, "new-mode.json")
+
+		await safeWriteJson(filePath, { fresh: true })
+
+		const mode = (await fs.stat(filePath)).mode & 0o777
+		expect(mode).toBe(0o666 & ~process.umask())
+	})
+
+	test.runIf(process.platform !== "win32")(
+		"keeps the original file when chmod on the temporary file fails",
+		async () => {
+			const original = await readFileContent(currentTestFilePath)
+			await fs.chmod(currentTestFilePath, 0o600)
+			const chmod = vi.spyOn(fs, "chmod").mockRejectedValueOnce(new Error("chmod failed"))
+
+			await expect(safeWriteJson(currentTestFilePath, { replacement: true })).rejects.toThrow("chmod failed")
+
+			expect(await readFileContent(currentTestFilePath)).toEqual(original)
+			const files = await fs.readdir(tempDir)
+			expect(files.some((name) => name.includes(".new_"))).toBe(false)
+			chmod.mockRestore()
+		},
+	)
+
 	// Failure Scenarios
 	test("should handle failure when writing to tempNewFilePath", async () => {
 		// currentTestFilePath exists due to beforeEach, allowing lock acquisition.
@@ -174,7 +277,7 @@ describe("safeWriteJson", () => {
 		expect(content).toEqual(initialData)
 	})
 
-	test("should handle failure when renaming tempNewFilePath to filePath (filePath exists, backup succeeded)", async () => {
+	test("should handle failure when atomically renaming tempNewFilePath to filePath", async () => {
 		const initialData = { message: "Initial content, should be restored" }
 		const newData = { message: "New content" }
 
@@ -183,26 +286,7 @@ describe("safeWriteJson", () => {
 
 		const renameSpy = vi.spyOn(fs, "rename")
 
-		// Track rename calls
-		let renameCallCount = 0
-
-		// Mock rename to succeed on first call (filePath -> tempBackupFilePath)
-		// and fail on second call (tempNewFilePath -> filePath)
-		renameSpy.mockImplementation(async (oldPath, newPath) => {
-			renameCallCount++
-			if (renameCallCount === 1) {
-				// First call: filePath -> tempBackupFilePath (should succeed)
-				return originalFsPromisesRename(oldPath, newPath)
-			} else if (renameCallCount === 2) {
-				// Second call: tempNewFilePath -> filePath (should fail)
-				throw new Error("Rename from temp to final failed")
-			} else if (renameCallCount === 3) {
-				// Third call: tempBackupFilePath -> filePath (rollback, should succeed)
-				return originalFsPromisesRename(oldPath, newPath)
-			}
-			// Default: use original implementation
-			return originalFsPromisesRename(oldPath, newPath)
-		})
+		renameSpy.mockRejectedValueOnce(new Error("Rename from temp to final failed"))
 
 		await expect(safeWriteJson(currentTestFilePath, newData)).rejects.toThrow("Rename from temp to final failed")
 
@@ -293,55 +377,6 @@ describe("safeWriteJson", () => {
 		expect(content).toEqual(data)
 	})
 
-	test("should handle failure when deleting tempBackupFilePath (filePath exists, all renames succeed)", async () => {
-		const initialData = { message: "Initial content" }
-		const newData = { message: "Successfully written new content" }
-
-		// Overwrite the pre-created file with specific initial data
-		await originalFsPromisesWriteFile(currentTestFilePath, JSON.stringify(initialData))
-
-		const unlinkSpy = vi.spyOn(fs, "unlink")
-
-		// Mock unlink to fail when trying to delete the backup file
-		unlinkSpy.mockImplementationOnce(async () => {
-			throw new Error("Failed to delete backup file")
-		})
-
-		// The write should succeed even if backup deletion fails
-		await safeWriteJson(currentTestFilePath, newData)
-
-		// Verify the new content was written successfully
-		const content = await readFileContent(currentTestFilePath)
-		expect(content).toEqual(newData)
-	})
-
-	// Test for console error suppression during backup deletion
-	test("should suppress console.error when backup deletion fails", async () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {}) // Suppress console.error
-		const initialData = { message: "Initial" }
-		const newData = { message: "New" }
-
-		await originalFsPromisesWriteFile(currentTestFilePath, JSON.stringify(initialData))
-
-		// Mock unlink to fail when deleting backup files
-		const unlinkSpy = vi.spyOn(fs, "unlink")
-		unlinkSpy.mockImplementation(async (filePath: any) => {
-			if (filePath.toString().includes(".bak_")) {
-				throw new Error("Backup deletion failed")
-			}
-			return originalFsPromisesUnlink(filePath)
-		})
-
-		await safeWriteJson(currentTestFilePath, newData)
-
-		// Verify console.error was called with the expected message
-		expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Successfully wrote"), expect.any(Error))
-
-		consoleErrorSpy.mockRestore()
-		unlinkSpy.mockRestore()
-	})
-
-	// The expected error message might need to change if the mock behaves differently.
 	test("should handle failure when renaming tempNewFilePath to filePath (filePath initially exists)", async () => {
 		// currentTestFilePath exists due to beforeEach.
 		const initialData = { message: "Initial content" }
@@ -356,16 +391,7 @@ describe("safeWriteJson", () => {
 		// The existing complex mock in `test("should handle failure when renaming tempNewFilePath to filePath (filePath exists, backup succeeded)"`
 		// might be more relevant or adaptable here.
 
-		let renameCallCount = 0
-		renameSpy.mockImplementation(async (oldPath, newPath) => {
-			renameCallCount++
-			if (renameCallCount === 2) {
-				// Second call: tempNewFilePath -> filePath (should fail)
-				throw new Error("Rename failed")
-			}
-			// For all other calls, use the original implementation
-			return originalFsPromisesRename(oldPath, newPath)
-		})
+		renameSpy.mockRejectedValueOnce(new Error("Rename failed"))
 
 		await expect(safeWriteJson(currentTestFilePath, newData)).rejects.toThrow("Rename failed")
 
@@ -441,40 +467,5 @@ describe("safeWriteJson", () => {
 
 		// Verify access was called
 		expect(accessSpy).toHaveBeenCalled()
-	})
-
-	// Test for rollback failure scenario
-	test("should log error and re-throw original if rollback fails", async () => {
-		const initialData = { message: "Initial, should be lost if rollback fails" }
-		const newData = { message: "New content" }
-
-		await originalFsPromisesWriteFile(currentTestFilePath, JSON.stringify(initialData))
-
-		const renameSpy = vi.spyOn(fs, "rename")
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {}) // Suppress console.error
-
-		let renameCallCount = 0
-		renameSpy.mockImplementation(async (oldPath, newPath) => {
-			renameCallCount++
-			if (renameCallCount === 2) {
-				// Second call: tempNewFilePath -> filePath (fail)
-				throw new Error("Primary rename failed")
-			} else if (renameCallCount === 3) {
-				// Third call: tempBackupFilePath -> filePath (rollback, also fail)
-				throw new Error("Rollback rename failed")
-			}
-			return originalFsPromisesRename(oldPath, newPath)
-		})
-
-		// Should throw the original error, not the rollback error
-		await expect(safeWriteJson(currentTestFilePath, newData)).rejects.toThrow("Primary rename failed")
-
-		// Verify console.error was called for the rollback failure
-		expect(consoleErrorSpy).toHaveBeenCalledWith(
-			expect.stringContaining("Failed to restore backup"),
-			expect.objectContaining({ message: "Rollback rename failed" }),
-		)
-
-		consoleErrorSpy.mockRestore()
 	})
 })

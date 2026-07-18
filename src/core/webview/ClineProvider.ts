@@ -100,7 +100,13 @@ import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { ClineMessage, TodoItem } from "@roo-code/types"
-import { readApiMessages, saveApiMessages, saveTaskMessages, TaskHistoryStore } from "../task-persistence"
+import {
+	readApiMessages,
+	saveApiMessages,
+	saveTaskMessages,
+	TaskHistoryStore,
+	type TaskHistoryStoreHandle,
+} from "../task-persistence"
 import { readTaskMessages } from "../task-persistence/taskMessages"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
@@ -168,7 +174,24 @@ export class ClineProvider
 	private _disposed = false
 
 	private recentTasksCache?: string[]
-	public readonly taskHistoryStore: TaskHistoryStore
+	private readonly taskHistoryOrigin = Symbol("ClineProvider.taskHistoryOrigin")
+	private readonly taskHistoryStoreReady: Promise<TaskHistoryStore>
+	/**
+	 * Ref-counted handle that owns the shared {@link TaskHistoryStore} for
+	 * this storage path. Disposed in {@link dispose} so the final consumer
+	 * tears down the watcher/timers; earlier consumers keep the store alive.
+	 */
+	private taskHistoryStoreHandle?: TaskHistoryStoreHandle
+	/** Unsubscribe for the shared store's change notifications. */
+	private taskHistoryStoreUnsubscribe?: () => void
+	/**
+	 * IDs of task-history mutations this provider initiated (via
+	 * `updateTaskHistory` / `deleteTaskFromState` /
+	 * `delegateParentAndOpenChild`'s `atomicReadAndUpdate`). Used to
+	 * suppress the `onChange` echo for our own writes so we don't double-send
+	 * the targeted webview message. Entries are consumed (deleted) by the
+	 * `onChange` handler when it sees the matching `external:false` event.
+	 */
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
 
@@ -203,10 +226,54 @@ export class ClineProvider
 		this.mdmService = mdmService
 		this.updateGlobalState("codebaseIndexModels", EMBEDDING_MODEL_PROFILES)
 
-		// Initialize the per-task file-based history store (sole persistence source).
-		this.taskHistoryStore = new TaskHistoryStore(this.contextProxy.globalStorageUri.fsPath)
+		// Acquire a shared, ref-counted TaskHistoryStore for this storage
+		// path. Multiple ClineProvider instances (sidebar + editor tab,
+		// multiple windows on the same storage) share one watcher/timer set;
+		// the final dispose tears them down. Distinct storage paths or
+		// contexts get distinct stores. Path aliases that canonicalize to the
+		// same path (trailing separator, `.`/`..` segments, mixed separators)
+		// collapse to one store.
+		const pendingHistoryStore = TaskHistoryStore.acquire(this.contextProxy.globalStorageUri.fsPath)
+		this.taskHistoryStoreReady = pendingHistoryStore.then((handle) => {
+			if (this._disposed) {
+				handle.dispose()
+				throw new Error("ClineProvider was disposed before TaskHistoryStore became ready")
+			}
+			this.taskHistoryStoreHandle = handle
+			this.subscribeToTaskHistoryStore(handle.store)
+			return handle.store
+		})
+
+		// React to cache changes from the shared store. The store fires one
+		// event per change with `external` (filesystem/other-process origin),
+		// `kind` ("upsert" | "delete" | "external"), and the affected
+		// `taskId`/`item` when known.
+		//
+		// - For a LOCAL mutation performed through THIS provider's own
+		//   `updateTaskHistory`/`deleteTaskFromState`/`atomicReadAndUpdate`,
+		//   we already sent the targeted `taskHistoryItemUpdated`/full state
+		//   message ourselves, so we skip the onChange callback to avoid a
+		//   redundant broadcast. (The store still reports `external:false` for
+		//   these, which other providers sharing the store WILL act on.)
+		// - For a mutation performed by ANOTHER provider sharing the store
+		//   (also `external:false` because it's a local mutation — just not
+		//   ours), we push a targeted `taskHistoryItemUpdated` /
+		//   `taskHistoryDeleted` message and refresh `recentTasksCache`, but
+		//   we do NOT rebroadcast the full history.
+		// - For an EXTERNAL change (watcher/periodic reconcile picked up a
+		//   change from another process or an explicit invalidate), we fall
+		//   back to a full `taskHistoryUpdated` broadcast because the watcher
+		//   coalesces IDs and a targeted message per ID is not always
+		//   available.
+		//
+		// We track the IDs of mutations this provider initiated so we can
+		// suppress the echo for our own writes (the store has no notion of
+		// "which provider caused this" — every local mutation is
+		// `external:false`).
 		this.initializeTaskHistoryStore().catch((error) => {
-			this.log(`Failed to initialize TaskHistoryStore: ${error}`)
+			if (!this._disposed) {
+				this.log(`Failed to initialize TaskHistoryStore: ${error}`)
+			}
 		})
 
 		// Start configuration loading (which might trigger indexing) in the background.
@@ -360,17 +427,86 @@ export class ClineProvider
 	}
 
 	/**
-	 * Initialize the TaskHistoryStore. Legacy globalState task history is not
-	 * migrated — the store is the sole persistence source. The legacy
-	 * `taskHistory` and `taskHistoryMigratedToFiles` globalState keys are
-	 * cleared centrally by ContextProxy during its own initialization.
+	 * Initialize the shared TaskHistoryStore and, if present, migrate the
+	 * legacy `taskHistory` globalState array into per-task files before
+	 * clearing the legacy key.
+	 *
+	 * Migration safety:
+	 * - The legacy array is only read when {@link ContextProxy.hasLegacyTaskHistory}
+	 *   reports a value, so starts after a successful cleanup never
+	 *   materialize it.
+	 * - {@link TaskHistoryStore.migrateFromLegacyHistory} is idempotent and
+	 *   never overwrites an existing per-task file, so a partially-migrated
+	 *   state resumes without clobbering newer records.
+	 * - The legacy keys are cleared only after migration reports success; on
+	 *   failure they are left intact so the next start can retry.
 	 */
 	private async initializeTaskHistoryStore(): Promise<void> {
-		try {
-			await this.taskHistoryStore.initialize()
-		} catch (error) {
-			this.log(`[initializeTaskHistoryStore] Error: ${error instanceof Error ? error.message : String(error)}`)
+		const taskHistoryStore = await this.getTaskHistoryStore()
+
+		// One-time backfill from the legacy globalState array. Skipped
+		// entirely (no read, no writes) once cleanup has run.
+		if (this.contextProxy.hasLegacyTaskHistory()) {
+			const legacy = this.contextProxy.getLegacyTaskHistory<HistoryItem>() ?? []
+			if (legacy.length > 0) {
+				this.log(`[initializeTaskHistoryStore] Migrating ${legacy.length} legacy entries`)
+				const ok = await taskHistoryStore.migrateFromLegacyHistory(legacy)
+				if (!ok) {
+					this.log("[initializeTaskHistoryStore] Migration incomplete — legacy keys retained for retry")
+					return
+				}
+				this.log("[initializeTaskHistoryStore] Migration complete")
+			}
+			// Only clear after a successful migration (or when the
+			// legacy array was empty — nothing to migrate).
+			await this.contextProxy.clearLegacyTaskHistoryKeys()
 		}
+	}
+
+	private subscribeToTaskHistoryStore(taskHistoryStore: TaskHistoryStore): void {
+		this.taskHistoryStoreUnsubscribe = taskHistoryStore.onChange((event) => {
+			if (event.origin === this.taskHistoryOrigin || !this.isViewLaunched || this._disposed) {
+				return
+			}
+
+			this.recentTasksCache = undefined
+			if (event.kind === "delete" && event.taskId) {
+				this.postMessageToWebview({
+					type: "taskHistoryItemDeleted",
+					taskHistoryItemId: event.taskId,
+				}).catch((err) => {
+					this.log(
+						`[TaskHistoryStore onChange] targeted delete push failed: ${err instanceof Error ? err.message : String(err)}`,
+					)
+				})
+			} else if (event.kind === "upsert" && event.item) {
+				this.postMessageToWebview({
+					type: "taskHistoryItemUpdated",
+					taskHistoryItem: event.item,
+				}).catch((err) => {
+					this.log(
+						`[TaskHistoryStore onChange] targeted upsert push failed: ${err instanceof Error ? err.message : String(err)}`,
+					)
+				})
+			} else if (event.kind === "external") {
+				this.broadcastTaskHistoryUpdate().catch((err) => {
+					this.log(
+						`[TaskHistoryStore onChange] broadcast failed: ${err instanceof Error ? err.message : String(err)}`,
+					)
+				})
+			}
+		})
+	}
+
+	private async getTaskHistoryStore(): Promise<TaskHistoryStore> {
+		if (this._disposed) {
+			throw new Error("ClineProvider is disposed")
+		}
+		const taskHistoryStore = await this.taskHistoryStoreReady
+		if (this._disposed) {
+			throw new Error("ClineProvider is disposed")
+		}
+		return taskHistoryStore
 	}
 
 	/**
@@ -732,7 +868,13 @@ export class ClineProvider
 		this.skillsManager = undefined
 		this.marketplaceManager?.cleanup()
 		this.customModesManager?.dispose()
-		this.taskHistoryStore.dispose()
+		this.taskHistoryStoreUnsubscribe?.()
+		this.taskHistoryStoreUnsubscribe = undefined
+		// Release the shared store handle. The final consumer's release
+		// disposes the underlying watcher/timers; earlier consumers only
+		// detach so closing one panel never breaks the others.
+		this.taskHistoryStoreHandle?.dispose()
+		this.taskHistoryStoreHandle = undefined
 		this.log("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 
@@ -1429,7 +1571,8 @@ export class ClineProvider
 
 			try {
 				// Update the task history with the new mode first.
-				const taskHistoryItem = this.taskHistoryStore.get(task.taskId)
+				const taskHistoryStore = await this.getTaskHistoryStore()
+				const taskHistoryItem = taskHistoryStore.get(task.taskId)
 
 				if (taskHistoryItem) {
 					await this.updateTaskHistory({ ...taskHistoryItem, mode: newMode })
@@ -1646,7 +1789,8 @@ export class ClineProvider
 			// been persisted into taskHistory (it will be captured on the next save).
 			task.setTaskApiConfigName(apiConfigName)
 
-			const taskHistoryItem = this.taskHistoryStore.get(task.taskId)
+			const taskHistoryStore = await this.getTaskHistoryStore()
+			const taskHistoryItem = taskHistoryStore.get(task.taskId)
 
 			if (taskHistoryItem) {
 				await this.updateTaskHistory({ ...taskHistoryItem, apiConfigName })
@@ -1808,9 +1952,9 @@ export class ClineProvider
 		// Ensure the store is initialized before reading — an early task lookup
 		// (e.g. resume via command before the constructor's fire-and-forget init
 		// completes) would otherwise miss entries that haven't been loaded yet.
-		await this.taskHistoryStore.initialized
+		const taskHistoryStore = await this.getTaskHistoryStore()
 
-		const historyItem = this.taskHistoryStore.get(id)
+		const historyItem = taskHistoryStore.get(id)
 
 		if (!historyItem) {
 			throw new Error("Task not found")
@@ -1964,9 +2108,30 @@ export class ClineProvider
 				}
 			}
 
-			// Delete all tasks from state in one batch
-			await this.taskHistoryStore.deleteMany(allIdsToDelete)
+			// Delete all tasks from state in one batch. Mark each as
+			// self-originated so the shared store's onChange echo
+			// (external:false) is suppressed for us — we send our own
+			// targeted delete messages below. Other providers sharing the
+			// store still receive the echo and push their own targeted
+			// deletes.
+			const taskHistoryStore = await this.getTaskHistoryStore()
+			await taskHistoryStore.deleteMany(allIdsToDelete, this.taskHistoryOrigin)
 			this.recentTasksCache = undefined
+			// Push a targeted delete message per ID so the webview removes
+			// just these items without a full history resend (the full state
+			// push below still runs for legacy callers).
+			if (this.isViewLaunched) {
+				for (const taskId of allIdsToDelete) {
+					await this.postMessageToWebview({
+						type: "taskHistoryItemDeleted",
+						taskHistoryItemId: taskId,
+					}).catch((err) => {
+						this.log(
+							`[deleteTaskWithId] targeted delete push failed for ${taskId}: ${err instanceof Error ? err.message : String(err)}`,
+						)
+					})
+				}
+			}
 
 			// Delete associated shadow repositories or branches and task directories
 			const globalStorageDir = this.contextProxy.globalStorageUri.fsPath
@@ -2007,8 +2172,28 @@ export class ClineProvider
 	}
 
 	async deleteTaskFromState(id: string) {
-		await this.taskHistoryStore.delete(id)
+		// Mark this as a self-originated mutation so the shared store's
+		// `onChange` echo (external:false) is suppressed for us — we send
+		// our own targeted delete message below. Other providers sharing the
+		// store still receive the echo and push their own targeted delete.
+		const taskHistoryStore = await this.getTaskHistoryStore()
+		await taskHistoryStore.delete(id, this.taskHistoryOrigin)
 		this.recentTasksCache = undefined
+
+		// Send a targeted delete message so the webview removes just this
+		// item without a full history resend. The full state push below
+		// still runs for legacy callers, but the webview's history list is
+		// updated by this lightweight message first.
+		if (this.isViewLaunched) {
+			await this.postMessageToWebview({
+				type: "taskHistoryItemDeleted",
+				taskHistoryItemId: id,
+			}).catch((err) => {
+				this.log(
+					`[deleteTaskFromState] targeted delete push failed: ${err instanceof Error ? err.message : String(err)}`,
+				)
+			})
+		}
 
 		await this.postStateToWebview()
 	}
@@ -2019,7 +2204,7 @@ export class ClineProvider
 	}
 
 	async postStateToWebview() {
-		const state = await this.getStateToPostToWebview()
+		const state = await this.getStateToPostToWebview({ includeTaskHistory: true })
 		this.clineMessagesSeq++
 		state.clineMessagesSeq = this.clineMessagesSeq
 		this.postMessageToWebview({ type: "state", state })
@@ -2037,10 +2222,15 @@ export class ClineProvider
 	 * Rationale:
 	 * - taskHistory can be large and was being resent on every chat message update.
 	 * - The webview maintains taskHistory in-memory and receives updates via
-	 *   `taskHistoryUpdated` / `taskHistoryItemUpdated`.
+	 *   `taskHistoryUpdated` / `taskHistoryItemUpdated` / `taskHistoryItemDeleted`.
+	 *
+	 * This path does NOT call `taskHistoryStore.getAll()`: the builder is
+	 * invoked with `includeTaskHistory: false`, so the history is never
+	 * materialized or sorted here. The webview keeps its in-memory history
+	 * list in sync via the targeted messages.
 	 */
 	async postStateToWebviewWithoutTaskHistory(): Promise<void> {
-		const state = await this.getStateToPostToWebview()
+		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
 		this.clineMessagesSeq++
 		state.clineMessagesSeq = this.clineMessagesSeq
 		const { taskHistory: _omit, ...rest } = state
@@ -2062,9 +2252,12 @@ export class ClineProvider
 	 *   getStateToPostToWebview) overwrites newer messages the task has streamed in the meantime.
 	 * - This method ensures cloud/mode events only push the state fields they actually affect
 	 *   (cloud auth, org settings, profiles, etc.) without interfering with task message streaming.
+	 *
+	 * This path does NOT call `taskHistoryStore.getAll()` (the builder is
+	 * invoked with `includeTaskHistory: false`).
 	 */
 	async postStateToWebviewWithoutClineMessages(): Promise<void> {
-		const state = await this.getStateToPostToWebview()
+		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
 		const { clineMessages: _omitMessages, taskHistory: _omitHistory, ...rest } = state
 		this.postMessageToWebview({ type: "state", state: rest })
 
@@ -2175,9 +2368,12 @@ export class ClineProvider
 		}
 	}
 
-	async getStateToPostToWebview(): Promise<ExtensionState> {
-		// Ensure the store is initialized before reading task history
-		await this.taskHistoryStore.initialized
+	async getStateToPostToWebview(options: { includeTaskHistory?: boolean } = {}): Promise<ExtensionState> {
+		const { includeTaskHistory = true } = options
+		// Ensure the store is initialized before reading task history. Even
+		// when `includeTaskHistory` is false we still await readiness so the
+		// cache is populated for `currentTaskItem` lookups below.
+		const taskHistoryStore = await this.getTaskHistoryStore()
 
 		const {
 			apiConfiguration,
@@ -2338,13 +2534,23 @@ export class ClineProvider
 			memoryWriterApiConfigId,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskId: currentTask?.taskId,
-			currentTaskItem: currentTask?.taskId ? this.taskHistoryStore.get(currentTask.taskId) : undefined,
+			currentTaskItem: currentTask?.taskId ? taskHistoryStore.get(currentTask.taskId) : undefined,
 			clineMessages: currentTask?.clineMessages || [],
 			subagents: this.subagentRegistry.list(),
 			memoryActivity: { ...this.memoryActivityCounts },
 			currentTaskTodos: currentTask?.todoList || [],
 			messageQueue: currentTask?.messageQueueService?.messages,
-			taskHistory: this.taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
+			// Only materialize + sort the full history when the caller
+			// actually needs it. `postStateToWebviewWithoutTaskHistory` and
+			// `postStateToWebviewWithoutClineMessages` pass
+			// `includeTaskHistory: false` so this hot path (every chat
+			// message update, every cloud/mode event) never calls
+			// `getAll()`. The webview keeps its history list in sync via the
+			// targeted `taskHistoryItemUpdated` / `taskHistoryItemDeleted`
+			// messages and the full `taskHistoryUpdated` broadcast.
+			taskHistory: includeTaskHistory
+				? taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task)
+				: [],
 			soundEnabled: soundEnabled ?? false,
 			// Send `null` (not `undefined`) so the webview merge actually clears
 			// the slot after a reset — postMessage drops undefined keys.
@@ -2590,7 +2796,15 @@ export class ClineProvider
 			autoCondenseContextPercent: stateValues.autoCondenseContextPercent ?? 100,
 			autoCondenseContextApiConfigId: stateValues.autoCondenseContextApiConfigId,
 			memoryWriterApiConfigId: stateValues.memoryWriterApiConfigId,
-			taskHistory: this.taskHistoryStore.getAll(),
+			// `getState` is a hot path consumed by many internal call sites
+			// (system prompt building, auto-approval, retry, plan review…)
+			// that never read task history. Materializing and sorting the
+			// full history here on every call was a dominant per-message cost.
+			// Callers that actually need the history must use
+			// {@link getTaskHistory} or {@link getStateToPostToWebview},
+			// both of which read it explicitly. We return an empty array to
+			// satisfy the ExtensionState shape without the I/O.
+			taskHistory: [],
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
 			soundEnabled: stateValues.soundEnabled ?? false,
@@ -2686,27 +2900,36 @@ export class ClineProvider
 	}
 
 	/**
-	 * Updates a task in the task history and optionally broadcasts the updated history to the webview.
-	 * Now delegates to TaskHistoryStore for per-task file persistence.
+	 * Updates a task in the task history and optionally broadcasts the
+	 * updated item to the webview. Delegates persistence to the shared
+	 * {@link TaskHistoryStore}.
+	 *
+	 * Returns `void` — callers that need the full sorted history should call
+	 * {@link getTaskHistory} explicitly. This avoids copying and sorting the
+	 * entire history on every mutation; the webview is kept in sync via the
+	 * targeted `taskHistoryItemUpdated` message and the store's
+	 * {@link TaskHistoryStore.onChange} subscription.
 	 *
 	 * @param item The history item to update or add
-	 * @param options.broadcast Whether to broadcast the updated history to the webview (default: true)
-	 * @returns The updated task history array
+	 * @param options.broadcast Whether to broadcast the updated item to the webview (default: true)
 	 */
-	async updateTaskHistory(item: HistoryItem, options: { broadcast?: boolean } = {}): Promise<HistoryItem[]> {
+	async updateTaskHistory(item: HistoryItem, options: { broadcast?: boolean } = {}): Promise<void> {
 		const { broadcast = true } = options
 
-		const history = await this.taskHistoryStore.upsert(item)
+		// Mark this as a self-originated mutation so the shared store's
+		// `onChange` echo (external:false) is suppressed for us — we send
+		// our own targeted message below. Other providers sharing the store
+		// still receive the echo and push their own targeted update.
+		const taskHistoryStore = await this.getTaskHistoryStore()
+		await taskHistoryStore.upsert(item, this.taskHistoryOrigin)
 		this.recentTasksCache = undefined
 
-		// Broadcast the updated history to the webview if requested.
+		// Broadcast the updated item to the webview if requested.
 		// Prefer per-item updates to avoid repeatedly cloning/sending the full history.
 		if (broadcast && this.isViewLaunched) {
-			const updatedItem = this.taskHistoryStore.get(item.id) ?? item
+			const updatedItem = taskHistoryStore.get(item.id) ?? item
 			await this.postMessageToWebview({ type: "taskHistoryItemUpdated", taskHistoryItem: updatedItem })
 		}
-
-		return history
 	}
 
 	/**
@@ -2719,7 +2942,8 @@ export class ClineProvider
 			return
 		}
 
-		const taskHistory = history ?? this.taskHistoryStore.getAll()
+		const taskHistoryStore = await this.getTaskHistoryStore()
+		const taskHistory = history ?? taskHistoryStore.getAll()
 
 		// Sort and filter the history the same way as getStateToPostToWebview
 		const sortedHistory = taskHistory
@@ -2741,8 +2965,8 @@ export class ClineProvider
 	 *
 	 * @returns All history items sorted by timestamp descending (newest first).
 	 */
-	public getTaskHistory(): HistoryItem[] {
-		return this.taskHistoryStore.getAll()
+	public async getTaskHistory(): Promise<HistoryItem[]> {
+		return (await this.getTaskHistoryStore()).getAll()
 	}
 
 	// ContextProxy
@@ -2935,12 +3159,12 @@ export class ClineProvider
 		)
 	}
 
-	public getRecentTasks(): string[] {
+	public async getRecentTasks(): Promise<string[]> {
 		if (this.recentTasksCache) {
 			return this.recentTasksCache
 		}
 
-		const history = this.taskHistoryStore.getAll()
+		const history = (await this.getTaskHistoryStore()).getAll()
 		const workspaceTasks: HistoryItem[] = []
 
 		for (const item of history) {
@@ -3893,11 +4117,12 @@ export class ClineProvider
 		// call attempt_completion before status is persisted separately.
 		//
 		// Pass startTask: false to prevent the child from beginning its task loop
-		// (and writing to globalState via saveClineMessages → updateTaskHistory)
-		// before we persist the parent's delegation metadata in step 5.
-		// Without this, the child's fire-and-forget startTask() races with step 5,
-		// and the last writer to globalState overwrites the other's changes—
-		// causing the parent's delegation fields to be lost.
+		// (and persisting its own history_item.json via saveClineMessages →
+		// updateTaskHistory) before we persist the parent's delegation
+		// metadata in step 5. Without this, the child's fire-and-forget
+		// startTask() races with step 5's atomicReadAndUpdate, and the last
+		// writer to the parent's history_item.json overwrites the other's
+		// changes — causing the parent's delegation fields to be lost.
 		const child = await this.createTask(message, undefined, parent as any, {
 			initialTodos,
 			initialStatus: "active",
@@ -3910,19 +4135,28 @@ export class ClineProvider
 		//    write, and the pure updater cannot re-enter the lock (no deadlock).
 		//    Broadcast and cache invalidation happen outside the lock after it releases.
 		try {
-			await this.taskHistoryStore.atomicReadAndUpdate(parentTaskId, (historyItem) => {
-				const childIds = Array.from(new Set([...(historyItem.childIds ?? []), child.taskId]))
-				return {
-					...historyItem,
-					status: "delegated",
-					delegatedToId: child.taskId,
-					awaitingChildId: child.taskId,
-					childIds,
-				}
-			})
+			// Mark self-originated so the shared store's onChange echo
+			// (external:false) is suppressed for us — we send our own
+			// targeted message below. Other providers sharing the store
+			// still receive the echo and push their own targeted update.
+			const taskHistoryStore = await this.getTaskHistoryStore()
+			await taskHistoryStore.atomicReadAndUpdate(
+				parentTaskId,
+				(historyItem) => {
+					const childIds = Array.from(new Set([...(historyItem.childIds ?? []), child.taskId]))
+					return {
+						...historyItem,
+						status: "delegated",
+						delegatedToId: child.taskId,
+						awaitingChildId: child.taskId,
+						childIds,
+					}
+				},
+				this.taskHistoryOrigin,
+			)
 			this.recentTasksCache = undefined
 			if (this.isViewLaunched) {
-				const updatedItem = this.taskHistoryStore.get(parentTaskId)
+				const updatedItem = taskHistoryStore.get(parentTaskId)
 				if (updatedItem) {
 					await this.postMessageToWebview({ type: "taskHistoryItemUpdated", taskHistoryItem: updatedItem })
 				}

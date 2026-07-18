@@ -63,7 +63,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			},
 		})
 
-		const updateTaskHistory = vi.fn().mockResolvedValue([])
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
 		const createTaskWithHistoryItem = vi.fn().mockResolvedValue({
 			taskId: "parent-1",
@@ -146,7 +146,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
 			}),
-			updateTaskHistory: vi.fn().mockResolvedValue([]),
+			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// Start with existing messages in history
@@ -230,7 +230,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
 			}),
-			updateTaskHistory: vi.fn().mockResolvedValue([]),
+			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// Include an assistant message with new_task tool_use to exercise the tool_result path
@@ -317,7 +317,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
 			}),
-			updateTaskHistory: vi.fn().mockResolvedValue([]),
+			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// No assistant tool_use in history
@@ -373,7 +373,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			getCurrentTask: vi.fn(() => ({ taskId: "child-2" })),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
 			createTaskWithHistoryItem: vi.fn().mockResolvedValue(parentInstance),
-			updateTaskHistory: vi.fn().mockResolvedValue([]),
+			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		vi.mocked(readTaskMessages).mockResolvedValue([])
@@ -392,7 +392,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 
 	it("reopenParentFromDelegation emits events in correct order: TaskDelegationCompleted → TaskDelegationResumed", async () => {
 		const emitSpy = vi.fn()
-		const updateTaskHistory = vi.fn().mockResolvedValue([])
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
@@ -497,7 +497,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			getCurrentTask: vi.fn(() => ({ taskId: "child-rpd06" })),
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
 			createTaskWithHistoryItem: vi.fn().mockResolvedValue(parentInstance),
-			updateTaskHistory: vi.fn().mockResolvedValue([]),
+			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		vi.mocked(readTaskMessages).mockResolvedValue([])
@@ -556,7 +556,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
 			}),
-			updateTaskHistory: vi.fn().mockResolvedValue([]),
+			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		vi.mocked(readTaskMessages).mockResolvedValue([])
@@ -582,7 +582,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 			overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
 		}
 
-		const updateTaskHistory = vi.fn().mockResolvedValue([])
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
 		const createTaskWithHistoryItem = vi.fn().mockResolvedValue(parentInstance)
 
@@ -758,7 +758,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 				overwriteClineMessages: vi.fn().mockResolvedValue(undefined),
 				overwriteApiConversationHistory: vi.fn().mockResolvedValue(undefined),
 			}),
-			updateTaskHistory: vi.fn().mockResolvedValue([]),
+			updateTaskHistory: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ClineProvider
 
 		// Mock read failures or empty returns

@@ -23,6 +23,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { logger } from "../../utils/logging"
 import { supportPrompt } from "../../shared/support-prompt"
 import { validateMemoryPath } from "../memory/paths"
+import { TaskHistoryStore } from "../task-persistence"
 
 type GlobalStateKey = keyof GlobalState
 type SecretStateKey = keyof SecretState
@@ -56,8 +57,6 @@ export class ContextProxy {
 	}
 
 	public async initialize() {
-		await this.clearLegacyTaskHistoryKeys()
-
 		for (const key of GLOBAL_STATE_KEYS) {
 			try {
 				// Revert to original assignment
@@ -111,17 +110,30 @@ export class ContextProxy {
 	}
 
 	/**
-	 * Clears obsolete legacy globalState keys related to task history.
+	 * Reads the legacy `taskHistory` globalState array, if any.
 	 *
-	 * `taskHistory` (a HistoryItem array) and `taskHistoryMigratedToFiles`
-	 * (a boolean migration marker) were used by the old globalState-based
-	 * storage and the one-time migration to per-task files. TaskHistoryStore is
-	 * now the sole persistence source, so these keys are cleared without
-	 * reading or copying their values. Clearing is best-effort and never
-	 * prevents initialization from completing.
+	 * Used by `ClineProvider.initializeTaskHistoryStore()` to backfill
+	 * per-task `history_item.json` files before clearing the legacy key.
+	 * Returns `undefined` when the key is absent so callers can avoid
+	 * materializing a potentially large array on every start.
 	 */
-	private async clearLegacyTaskHistoryKeys(): Promise<void> {
-		for (const key of ["taskHistory", "taskHistoryMigratedToFiles"]) {
+	public getLegacyTaskHistory<T = unknown>(): T[] | undefined {
+		const value = this.originalContext.globalState.get<T[]>(TaskHistoryStore.LEGACY_TASK_HISTORY_KEY)
+		return Array.isArray(value) ? value : undefined
+	}
+
+	/**
+	 * Clears the obsolete legacy `taskHistory` and `taskHistoryMigratedToFiles`
+	 * globalState keys.
+	 *
+	 * Called by `ClineProvider` only after the legacy array has been
+	 * successfully migrated into per-task files, so the next start is a
+	 * no-op and we never lose data on a failed migration. Best-effort:
+	 * a failure to clear one key does not prevent clearing the other and
+	 * never throws.
+	 */
+	public async clearLegacyTaskHistoryKeys(): Promise<void> {
+		for (const key of [TaskHistoryStore.LEGACY_TASK_HISTORY_KEY, TaskHistoryStore.LEGACY_MIGRATION_MARKER_KEY]) {
 			try {
 				await this.originalContext.globalState.update(key, undefined)
 			} catch (error) {
@@ -130,6 +142,15 @@ export class ContextProxy {
 				)
 			}
 		}
+	}
+
+	/**
+	 * Reports whether the legacy `taskHistory` globalState key still holds a
+	 * value that needs migrating. Used to skip the migration path entirely on
+	 * subsequent starts once cleanup has run.
+	 */
+	public hasLegacyTaskHistory(): boolean {
+		return this.originalContext.globalState.get(TaskHistoryStore.LEGACY_TASK_HISTORY_KEY) !== undefined
 	}
 
 	/**

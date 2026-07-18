@@ -17,6 +17,142 @@ export interface SafeWriteJsonOptions {
 	prettyPrint?: boolean
 }
 
+/** An atomic writer bound to one destination for the lifetime of a locked transaction. */
+export type LockedJsonWriter = (data: any, options?: SafeWriteJsonOptions) => Promise<void>
+
+const LOCK_OPTIONS = {
+	stale: 31000,
+	update: 10000,
+	realpath: false,
+	retries: {
+		retries: 5,
+		factor: 2,
+		minTimeout: 100,
+		maxTimeout: 1000,
+	},
+} as const
+
+async function getExistingFileMode(filePath: string): Promise<number | undefined> {
+	try {
+		return (await fs.stat(filePath)).mode & 0o7777
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+			return undefined
+		}
+		throw error
+	}
+}
+
+async function streamJsonToTemporaryFile(
+	targetPath: string,
+	data: any,
+	prettyPrint: boolean | undefined,
+	mode: number | undefined,
+): Promise<void> {
+	await _streamDataToFile(targetPath, data, prettyPrint, mode)
+	if (mode !== undefined) {
+		await fs.chmod(targetPath, mode)
+	}
+}
+
+async function writeJsonAtomically(filePath: string, data: any, options?: SafeWriteJsonOptions): Promise<void> {
+	const absoluteFilePath = path.resolve(filePath)
+	const existingMode = await getExistingFileMode(absoluteFilePath)
+	let tempPath = path.join(
+		path.dirname(absoluteFilePath),
+		`.${path.basename(absoluteFilePath)}.new_${Date.now()}_${Math.random().toString(36).substring(2)}.tmp`,
+	)
+
+	try {
+		await streamJsonToTemporaryFile(tempPath, data, options?.prettyPrint, existingMode)
+		await fs.rename(tempPath, absoluteFilePath)
+		tempPath = ""
+	} finally {
+		if (tempPath) {
+			await fs.unlink(tempPath).catch(() => {})
+		}
+	}
+}
+
+/**
+ * Run a transaction while holding an inter-process lock at a stable target.
+ *
+ * The callback receives an atomic writer bound to `destinationPath`. The
+ * writer cannot select another destination and rejects calls made after the
+ * callback has finished. All writes started by the callback settle before the
+ * lock is released, including writes the callback did not await itself.
+ *
+ * This gateway deliberately does not create the destination directory. A
+ * transaction may therefore read or delete a missing destination without
+ * creating it, and create the directory only if it decides to write.
+ */
+export async function withLockedJsonTransaction<T>(
+	lockTargetPath: string,
+	destinationPath: string,
+	transaction: (writeJson: LockedJsonWriter) => Promise<T>,
+): Promise<T> {
+	const absoluteLockTargetPath = path.resolve(lockTargetPath)
+	const absoluteDestinationPath = path.resolve(destinationPath)
+
+	await fs.mkdir(path.dirname(absoluteLockTargetPath), { recursive: true })
+
+	let releaseLock: (() => Promise<void>) | undefined
+	try {
+		releaseLock = await lockfile.lock(absoluteLockTargetPath, {
+			...LOCK_OPTIONS,
+			onCompromised: (error) => {
+				throw error
+			},
+		})
+	} catch (lockError) {
+		console.error(`Failed to acquire lock for ${absoluteLockTargetPath}:`, lockError)
+		throw lockError
+	}
+
+	let acceptsWrites = true
+	const startedWrites: Promise<void>[] = []
+	const writeJson: LockedJsonWriter = (data, options) => {
+		if (!acceptsWrites) {
+			return Promise.reject(new Error("Locked JSON writer cannot be used after its transaction callback"))
+		}
+
+		const write = writeJsonAtomically(absoluteDestinationPath, data, options)
+		startedWrites.push(write)
+		return write
+	}
+
+	let callbackResult: T | undefined
+	let callbackError: unknown
+	let callbackFailed = false
+	try {
+		try {
+			callbackResult = await transaction(writeJson)
+		} catch (error) {
+			callbackFailed = true
+			callbackError = error
+		}
+		acceptsWrites = false
+
+		const writeResults = await Promise.allSettled(startedWrites)
+		if (callbackFailed) {
+			throw callbackError
+		}
+		const failedWrite = writeResults.find((result): result is PromiseRejectedResult => result.status === "rejected")
+		if (failedWrite) {
+			throw failedWrite.reason
+		}
+
+		return callbackResult as T
+	} finally {
+		acceptsWrites = false
+		try {
+			await releaseLock()
+		} catch (unlockError) {
+			console.error(`Failed to release lock for ${absoluteLockTargetPath}:`, unlockError)
+		}
+	}
+}
+
 /**
  * Safely writes JSON data to a file.
  * - Creates parent directories if they don't exist
@@ -34,7 +170,6 @@ export interface SafeWriteJsonOptions {
 
 async function safeWriteJson(filePath: string, data: any, options?: SafeWriteJsonOptions): Promise<void> {
 	const absoluteFilePath = path.resolve(filePath)
-	let releaseLock = async () => {} // Initialized to a no-op
 
 	// For directory creation
 	const dirPath = path.dirname(absoluteFilePath)
@@ -51,144 +186,11 @@ async function safeWriteJson(filePath: string, data: any, options?: SafeWriteJso
 		throw dirError
 	}
 
-	// Acquire the lock before any file operations
 	try {
-		releaseLock = await lockfile.lock(absoluteFilePath, {
-			stale: 31000, // Stale after 31 seconds
-			update: 10000, // Update mtime every 10 seconds to prevent staleness if operation is long
-			realpath: false, // the file may not exist yet, which is acceptable
-			retries: {
-				// Configuration for retrying lock acquisition
-				retries: 5, // Number of retries after the initial attempt
-				factor: 2, // Exponential backoff factor (e.g., 100ms, 200ms, 400ms, ...)
-				minTimeout: 100, // Minimum time to wait before the first retry (in ms)
-				maxTimeout: 1000, // Maximum time to wait for any single retry (in ms)
-			},
-			onCompromised: (err) => {
-				console.error(`Lock at ${absoluteFilePath} was compromised:`, err)
-				throw err
-			},
-		})
-	} catch (lockError) {
-		// If lock acquisition fails, we throw immediately.
-		// The releaseLock remains a no-op, so the finally block in the main file operations
-		// try-catch-finally won't try to release an unacquired lock if this path is taken.
-		console.error(`Failed to acquire lock for ${absoluteFilePath}:`, lockError)
-		// Propagate the lock acquisition error
-		throw lockError
-	}
-
-	// Variables to hold the actual paths of temp files if they are created.
-	let actualTempNewFilePath: string | null = null
-	let actualTempBackupFilePath: string | null = null
-
-	try {
-		// Step 1: Write data to a new temporary file.
-		actualTempNewFilePath = path.join(
-			path.dirname(absoluteFilePath),
-			`.${path.basename(absoluteFilePath)}.new_${Date.now()}_${Math.random().toString(36).substring(2)}.tmp`,
-		)
-
-		await _streamDataToFile(actualTempNewFilePath, data, options?.prettyPrint)
-
-		// Step 2: Check if the target file exists. If so, rename it to a backup path.
-		try {
-			// Check for target file existence
-			await fs.access(absoluteFilePath)
-			// Target exists, create a backup path and rename.
-			actualTempBackupFilePath = path.join(
-				path.dirname(absoluteFilePath),
-				`.${path.basename(absoluteFilePath)}.bak_${Date.now()}_${Math.random().toString(36).substring(2)}.tmp`,
-			)
-			await fs.rename(absoluteFilePath, actualTempBackupFilePath)
-		} catch (accessError: any) {
-			// Explicitly type accessError
-			if (accessError.code !== "ENOENT") {
-				// An error other than "file not found" occurred during access check.
-				throw accessError
-			}
-			// Target file does not exist, so no backup is made. actualTempBackupFilePath remains null.
-		}
-
-		// Step 3: Rename the new temporary file to the target file path.
-		// This is the main "commit" step.
-		await fs.rename(actualTempNewFilePath, absoluteFilePath)
-
-		// If we reach here, the new file is successfully in place.
-		// The original actualTempNewFilePath is now the main file, so we shouldn't try to clean it up as "temp".
-		// Mark as "used" or "committed"
-		actualTempNewFilePath = null
-
-		// Step 4: If a backup was created, attempt to delete it.
-		if (actualTempBackupFilePath) {
-			try {
-				await fs.unlink(actualTempBackupFilePath)
-				// Mark backup as handled
-				actualTempBackupFilePath = null
-			} catch (unlinkBackupError) {
-				// Log this error, but do not re-throw. The main operation was successful.
-				// actualTempBackupFilePath remains set, indicating an orphaned backup.
-				console.error(
-					`Successfully wrote ${absoluteFilePath}, but failed to clean up backup ${actualTempBackupFilePath}:`,
-					unlinkBackupError,
-				)
-			}
-		}
+		await withLockedJsonTransaction(absoluteFilePath, absoluteFilePath, (writeJson) => writeJson(data, options))
 	} catch (originalError) {
 		console.error(`Operation failed for ${absoluteFilePath}: [Original Error Caught]`, originalError)
-
-		const newFileToCleanupWithinCatch = actualTempNewFilePath
-		const backupFileToRollbackOrCleanupWithinCatch = actualTempBackupFilePath
-
-		// Attempt rollback if a backup was made
-		if (backupFileToRollbackOrCleanupWithinCatch) {
-			try {
-				await fs.rename(backupFileToRollbackOrCleanupWithinCatch, absoluteFilePath)
-				// Mark as handled, prevent later unlink of this path
-				actualTempBackupFilePath = null
-			} catch (rollbackError) {
-				// actualTempBackupFilePath (outer scope) remains pointing to backupFileToRollbackOrCleanupWithinCatch
-				console.error(
-					`[Catch] Failed to restore backup ${backupFileToRollbackOrCleanupWithinCatch} to ${absoluteFilePath}:`,
-					rollbackError,
-				)
-			}
-		}
-
-		// Cleanup the .new file if it exists
-		if (newFileToCleanupWithinCatch) {
-			try {
-				await fs.unlink(newFileToCleanupWithinCatch)
-			} catch (cleanupError) {
-				console.error(
-					`[Catch] Failed to clean up temporary new file ${newFileToCleanupWithinCatch}:`,
-					cleanupError,
-				)
-			}
-		}
-
-		// Cleanup the .bak file if it still needs to be (i.e., wasn't successfully restored)
-		if (actualTempBackupFilePath) {
-			try {
-				await fs.unlink(actualTempBackupFilePath)
-			} catch (cleanupError) {
-				console.error(
-					`[Catch] Failed to clean up temporary backup file ${actualTempBackupFilePath}:`,
-					cleanupError,
-				)
-			}
-		}
-		throw originalError // This MUST be the error that rejects the promise.
-	} finally {
-		// Release the lock in the main finally block.
-		try {
-			// releaseLock will be the actual unlock function if lock was acquired,
-			// or the initial no-op if acquisition failed.
-			await releaseLock()
-		} catch (unlockError) {
-			// Do not re-throw here, as the originalError from the try/catch (if any) is more important.
-			console.error(`Failed to release lock for ${absoluteFilePath}:`, unlockError)
-		}
+		throw originalError
 	}
 }
 
@@ -199,9 +201,17 @@ async function safeWriteJson(filePath: string, data: any, options?: SafeWriteJso
  * @param prettyPrint Whether to format the JSON with indentation.
  * @returns Promise<void>
  */
-async function _streamDataToFile(targetPath: string, data: any, prettyPrint = false): Promise<void> {
+async function _streamDataToFile(
+	targetPath: string,
+	data: any,
+	prettyPrint = false,
+	mode: number | undefined = undefined,
+): Promise<void> {
 	// Stream data to avoid high memory usage for large JSON objects.
-	const fileWriteStream = fsSync.createWriteStream(targetPath, { encoding: "utf8" })
+	const fileWriteStream = fsSync.createWriteStream(targetPath, {
+		encoding: "utf8",
+		...(mode === undefined ? {} : { mode }),
+	})
 
 	// JsonStreamStringify traverses the object and streams tokens directly
 	// The 'spaces' parameter adds indentation during streaming, not via a separate pass

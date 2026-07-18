@@ -19,6 +19,7 @@ vi.mock("fs/promises", () => ({
 }))
 
 vi.mock("../../../utils/storage", () => ({
+	getStorageBasePath: vi.fn().mockImplementation((defaultPath: string) => Promise.resolve(defaultPath)),
 	getSettingsDirectoryPath: vi.fn().mockResolvedValue("/test/settings/path"),
 	getTaskDirectoryPath: vi.fn().mockResolvedValue("/test/task/path"),
 	getGlobalStoragePath: vi.fn().mockResolvedValue("/test/storage/path"),
@@ -121,6 +122,8 @@ vi.mock("@roo-code/cloud", () => ({
 		get instance() {
 			return {
 				isAuthenticated: vi.fn().mockReturnValue(false),
+				on: vi.fn(),
+				off: vi.fn(),
 			}
 		},
 	},

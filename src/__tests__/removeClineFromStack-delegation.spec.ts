@@ -22,7 +22,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 			abortTask: vi.fn().mockResolvedValue(undefined),
 		}
 
-		const updateTaskHistory = vi.fn().mockResolvedValue([])
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const getTaskWithId = opts.getTaskWithIdError
 			? vi.fn().mockRejectedValue(opts.getTaskWithIdError)
 			: vi.fn().mockImplementation(async (id: string) => {
@@ -255,7 +255,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 			}
 			throw new Error("Task not found")
 		})
-		const updateTaskHistory = vi.fn().mockResolvedValue([])
+		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 
 		const provider = {
 			clineStack: [taskB] as any[],

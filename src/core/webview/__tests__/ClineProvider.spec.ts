@@ -40,6 +40,12 @@ vi.mock("fs/promises", () => ({
 	readFile: vi.fn().mockResolvedValue(""),
 	unlink: vi.fn().mockResolvedValue(undefined),
 	rmdir: vi.fn().mockResolvedValue(undefined),
+	// TaskHistoryStore.initialize/reconcile/refreshTask need these to be
+	// no-ops against the in-memory mock so the shared store becomes ready.
+	readdir: vi.fn().mockResolvedValue([]),
+	access: vi.fn().mockResolvedValue(undefined),
+	rm: vi.fn().mockResolvedValue(undefined),
+	stat: vi.fn().mockResolvedValue({ mtimeMs: 0, size: 0, isDirectory: () => true }),
 }))
 
 vi.mock("axios", () => ({
@@ -51,7 +57,27 @@ vi.mock("axios", () => ({
 	post: vi.fn(),
 }))
 
-vi.mock("../../../utils/safeWriteJson")
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockResolvedValue(undefined)
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: unknown) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
+
+// The JSON transaction gateway is mocked above; keep proper-lockfile inert for
+// unrelated safe-write call sites in these provider-wiring specs.
+vi.mock("proper-lockfile", () => ({
+	lock: vi.fn(async () => async () => {}),
+	unlock: vi.fn(async () => {}),
+	check: vi.fn(async () => false),
+}))
 
 vi.mock("../../../utils/path", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../../../utils/path")>()
@@ -65,6 +91,9 @@ vi.mock("../../../utils/storage", () => ({
 	getSettingsDirectoryPath: vi.fn().mockResolvedValue("/test/settings/path"),
 	getTaskDirectoryPath: vi.fn().mockResolvedValue("/test/task/path"),
 	getGlobalStoragePath: vi.fn().mockResolvedValue("/test/storage/path"),
+	// TaskHistoryStore.getTasksDir resolves the storage base path; passthrough
+	// so the shared store initializes against the mocked storage path.
+	getStorageBasePath: vi.fn().mockImplementation((defaultPath: string) => Promise.resolve(defaultPath)),
 }))
 
 vi.mock("@modelcontextprotocol/sdk/types.js", () => ({
@@ -3664,7 +3693,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			const historyItem = { id: "missing-api-file-task", task: "test task", ts: Date.now() }
 			const globalStateGet = vi.mocked(mockContext.globalState.get)
 			globalStateGet.mockClear()
-			vi.spyOn(provider.taskHistoryStore, "get").mockReturnValue(historyItem as any)
+			vi.spyOn(await (provider as any).getTaskHistoryStore(), "get").mockReturnValue(historyItem as any)
 
 			const deleteTaskSpy = vi.spyOn(provider, "deleteTaskFromState")
 
@@ -3680,7 +3709,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			const historyItem = { id: "corrupt-api-task", task: "test task", ts: Date.now() }
 			const globalStateGet = vi.mocked(mockContext.globalState.get)
 			globalStateGet.mockClear()
-			vi.spyOn(provider.taskHistoryStore, "get").mockReturnValue(historyItem as any)
+			vi.spyOn(await (provider as any).getTaskHistoryStore(), "get").mockReturnValue(historyItem as any)
 
 			// Make fileExistsAtPath return true so the read path is exercised
 			const fsUtils = await import("../../../utils/fs")

@@ -46,6 +46,7 @@ vi.mock("../../../services/mcp/McpServerManager", () => ({
 	McpServerManager: {
 		getInstance: vi.fn().mockResolvedValue({
 			registerClient: vi.fn(),
+			unregisterClient: vi.fn().mockResolvedValue(undefined),
 		}),
 		unregisterProvider: vi.fn(),
 	},
@@ -83,8 +84,21 @@ vi.mock("../../../shared/embeddingModels", () => ({
 
 vi.mock("../../task-persistence", async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>
+	const store = {
+		initialized: Promise.resolve(),
+		onChange: vi.fn().mockReturnValue(vi.fn()),
+		get: vi.fn(),
+		getAll: vi.fn().mockReturnValue([]),
+		upsert: vi.fn().mockResolvedValue(undefined),
+		delete: vi.fn().mockResolvedValue(undefined),
+		deleteMany: vi.fn().mockResolvedValue(undefined),
+		migrateFromLegacyHistory: vi.fn().mockResolvedValue(true),
+	}
 	return {
 		...actual,
+		TaskHistoryStore: {
+			acquire: vi.fn().mockResolvedValue({ store, dispose: vi.fn() }),
+		},
 		readApiMessages: vi.fn().mockResolvedValue([]),
 		saveApiMessages: vi.fn().mockResolvedValue(undefined),
 		saveTaskMessages: vi.fn().mockResolvedValue(undefined),

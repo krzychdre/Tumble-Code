@@ -68,15 +68,23 @@ describe("ContextProxy", () => {
 		})
 	})
 
-	describe("constructor", () => {
-		it("clears legacy task history global state without reading it", () => {
-			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistory", undefined)
-			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
-			expect(mockGlobalState.get).not.toHaveBeenCalledWith("taskHistory")
-			expect(mockGlobalState.get).not.toHaveBeenCalledWith("taskHistoryMigratedToFiles")
+	describe("constructor / initialize", () => {
+		it("does NOT clear legacy task history keys during initialize (migration owns cleanup)", () => {
+			// initialize() must not touch the legacy keys — ClineProvider
+			// clears them only after a successful migration. Unconditional
+			// cleanup here would orphan data on a failed migration.
+			expect(mockGlobalState.update).not.toHaveBeenCalledWith("taskHistory", undefined)
+			expect(mockGlobalState.update).not.toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
 		})
 
-		it("continues initialization when clearing one legacy key fails", async () => {
+		it("clearLegacyTaskHistoryKeys clears both legacy keys best-effort", async () => {
+			mockGlobalState.update.mockClear()
+			await proxy.clearLegacyTaskHistoryKeys()
+			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistory", undefined)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
+		})
+
+		it("clearLegacyTaskHistoryKeys continues when clearing one key fails", async () => {
 			const update = vi
 				.fn()
 				.mockImplementation((key: string) =>
@@ -87,10 +95,26 @@ describe("ContextProxy", () => {
 				globalState: { get: vi.fn(), update },
 			}
 			const newProxy = new ContextProxy(context)
+			await newProxy.initialize()
 
-			await expect(newProxy.initialize()).resolves.toBeUndefined()
-			expect(newProxy.isInitialized).toBe(true)
+			// Must not throw, and must still attempt the other key.
+			await expect(newProxy.clearLegacyTaskHistoryKeys()).resolves.toBeUndefined()
 			expect(update).toHaveBeenCalledWith("taskHistoryMigratedToFiles", undefined)
+			expect(update).toHaveBeenCalledWith("taskHistory", undefined)
+		})
+
+		it("hasLegacyTaskHistory / getLegacyTaskHistory read the key lazily", () => {
+			mockGlobalState.get.mockClear()
+			// No legacy value present -> false, and no array materialized
+			mockGlobalState.get.mockReturnValue(undefined)
+			expect(proxy.hasLegacyTaskHistory()).toBe(false)
+			expect(proxy.getLegacyTaskHistory()).toBeUndefined()
+
+			// Legacy array present -> true, and the array is returned
+			const legacy = [{ id: "legacy-1", ts: 1, task: "x" }]
+			mockGlobalState.get.mockReturnValue(legacy)
+			expect(proxy.hasLegacyTaskHistory()).toBe(true)
+			expect(proxy.getLegacyTaskHistory()).toBe(legacy)
 		})
 
 		it("should initialize state cache with all global state keys", () => {
@@ -398,17 +422,17 @@ describe("ContextProxy", () => {
 			// Total calls should include:
 			// - 2 initial setup writes (apiModelId, apiProvider)
 			// - GLOBAL_STATE_KEYS.length writes from resetAllState's clear loop
-			// - 2 legacy task-history cleanup writes per initialization
 			// - MIGRATION_WRITES_PER_INIT * 2 writes from the auto-memory
 			//   defaults migration, which runs once in beforeEach's initialize()
 			//   and again inside resetAllState's initialize(). The migration
 			//   writes 5 defaults (autoMemoryEnabled, autoDreamEnabled,
 			//   memoryRecallEnabled, autoDreamMinHours, autoDreamMinSessions)
 			//   when those keys are absent (mock get returns undefined).
+			// Legacy task-history keys are no longer cleared during
+			// initialize() — ClineProvider clears them only after a
+			// successful migration, so they contribute 0 writes here.
 			const MIGRATION_WRITES_PER_INIT = 5
-			const LEGACY_CLEANUP_WRITES_PER_INIT = 2
-			const expectedUpdateCalls =
-				2 + GLOBAL_STATE_KEYS.length + (MIGRATION_WRITES_PER_INIT + LEGACY_CLEANUP_WRITES_PER_INIT) * 2
+			const expectedUpdateCalls = 2 + GLOBAL_STATE_KEYS.length + MIGRATION_WRITES_PER_INIT * 2
 			expect(mockGlobalState.update).toHaveBeenCalledTimes(expectedUpdateCalls)
 		})
 

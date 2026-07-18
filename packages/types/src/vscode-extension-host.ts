@@ -34,6 +34,7 @@ export interface ExtensionMessage {
 		| "state"
 		| "taskHistoryUpdated"
 		| "taskHistoryItemUpdated"
+		| "taskHistoryItemDeleted"
 		| "selectedImages"
 		| "theme"
 		| "workspaceUpdated"
@@ -213,6 +214,8 @@ export interface ExtensionMessage {
 	taskHistory?: HistoryItem[] // For taskHistoryUpdated: full sorted task history
 	/** For taskHistoryItemUpdated: single updated/added history item */
 	taskHistoryItem?: HistoryItem
+	/** For taskHistoryItemDeleted: id of the deleted history item */
+	taskHistoryItemId?: string
 	// Worktree response properties
 	worktrees?: Array<{
 		path: string

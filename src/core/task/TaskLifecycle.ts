@@ -723,23 +723,27 @@ export class TaskLifecycle {
 		// dream's session gate reads `lastModified`. Map the field. `ts` is a
 		// creation-time snapshot, so it undercounts activity within a long
 		// session — safe, since the gate is a skip-only throttle.
-		const taskHistory = provider.getTaskHistory().map((h) => ({
-			lastModified: typeof h.ts === "number" ? h.ts : undefined,
-		}))
-		executeAutoDream({
-			cwd: this.access.cwd,
-			isMainAgent: !this.access.parentTaskId,
-			config: dreamConfig,
-			taskHistory,
-			currentTaskId: this.access.taskId,
-			subTaskRunner,
-			onImproved: (count) => {
-				if (count > 0) {
-					console.log(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
-					provider.notifyBackgroundOutcome(t("common:info.memory_consolidated", { count }))
-				}
-			},
-		}).catch(logWriterFailure("autoDream"))
+		void provider
+			.getTaskHistory()
+			.then((history) =>
+				executeAutoDream({
+					cwd: this.access.cwd,
+					isMainAgent: !this.access.parentTaskId,
+					config: dreamConfig,
+					taskHistory: history.map((h) => ({
+						lastModified: typeof h.ts === "number" ? h.ts : undefined,
+					})),
+					currentTaskId: this.access.taskId,
+					subTaskRunner,
+					onImproved: (count) => {
+						if (count > 0) {
+							console.log(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
+							provider.notifyBackgroundOutcome(t("common:info.memory_consolidated", { count }))
+						}
+					},
+				}),
+			)
+			.catch(logWriterFailure("autoDream"))
 	}
 
 	/**
