@@ -2,6 +2,31 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 
+import { providerRequiresApiKey, getEnvVarName, keylessProviders } from "@/lib/utils/provider-types.js"
+
+describe("provider-aware API-key gate", () => {
+	it("keyless providers do not require a key", () => {
+		expect(providerRequiresApiKey("ollama")).toBe(false)
+		expect(providerRequiresApiKey("lmstudio")).toBe(false)
+		expect(providerRequiresApiKey("bedrock")).toBe(false)
+		expect(providerRequiresApiKey("qwen-code")).toBe(false)
+		expect(providerRequiresApiKey("vertex")).toBe(false)
+	})
+
+	it("every keyless provider is listed in keylessProviders", () => {
+		for (const provider of ["ollama", "lmstudio", "bedrock", "qwen-code", "vertex"]) {
+			expect(keylessProviders).toContain(provider)
+		}
+	})
+
+	it("keyed providers require a key and expose its env var", () => {
+		expect(providerRequiresApiKey("anthropic")).toBe(true)
+		expect(providerRequiresApiKey("openrouter")).toBe(true)
+		expect(getEnvVarName("openrouter")).toBe("OPENROUTER_API_KEY")
+		expect(getEnvVarName("lmstudio")).toBeNull()
+	})
+})
+
 describe("run command --prompt-file option", () => {
 	let tempDir: string
 	let promptFilePath: string

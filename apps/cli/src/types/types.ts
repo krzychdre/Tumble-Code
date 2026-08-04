@@ -1,19 +1,9 @@
-import type { ProviderName, ReasoningEffortExtended } from "@roo-code/types"
+import type { ReasoningEffortExtended } from "@roo-code/types"
 import type { OutputFormat } from "./json-events.js"
+import type { SupportedProvider } from "@/lib/utils/provider-types.js"
 
-export const supportedProviders = [
-	"anthropic",
-	"openai-native",
-	"gemini",
-	"openrouter",
-	"vercel-ai-gateway",
-] as const satisfies ProviderName[]
-
-export type SupportedProvider = (typeof supportedProviders)[number]
-
-export function isSupportedProvider(provider: string): provider is SupportedProvider {
-	return supportedProviders.includes(provider as SupportedProvider)
-}
+export { supportedProviders, isSupportedProvider } from "@/lib/utils/provider-types.js"
+export type { SupportedProvider } from "@/lib/utils/provider-types.js"
 
 export type ReasoningEffortFlagOptions = ReasoningEffortExtended | "unspecified" | "disabled"
 
@@ -33,6 +23,7 @@ export type FlagOptions = {
 	apiKey?: string
 	provider?: SupportedProvider
 	model?: string
+	baseUrl?: string
 	mode?: string
 	terminalShell?: string
 	reasoningEffort?: ReasoningEffortFlagOptions
@@ -60,6 +51,8 @@ export interface CliSettings {
 	provider?: SupportedProvider
 	/** Default model to use */
 	model?: string
+	/** Default base URL for the selected provider (when the provider's schema has one) */
+	baseUrl?: string
 	/** Default reasoning effort level */
 	reasoningEffort?: ReasoningEffortFlagOptions
 	/** Default consecutive error/repetition limit before guidance prompts */

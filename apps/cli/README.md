@@ -176,27 +176,28 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ## Options
 
-| Option                                  | Description                                                                             | Default                                     |
-| --------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `[prompt]`                              | Your prompt (positional argument, optional)                                             | None                                        |
-| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                | None                                        |
-| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                  | None                                        |
-| `-w, --workspace <path>`                | Workspace path to operate in                                                            | Current directory                           |
-| `-p, --print`                           | Print response and exit (non-interactive mode)                                          | `false`                                     |
-| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                            | `false`                                     |
-| `-e, --extension <path>`                | Path to the extension bundle directory                                                  | Auto-detected                               |
-| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                                     |
-| `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                                     |
-| `-k, --api-key <key>`                   | API key for the LLM provider                                                            | From env var                                |
-| `--provider <provider>`                 | API provider (tumble, anthropic, openai, openrouter, etc.)                              | `openrouter` (or `tumble` if authenticated) |
-| `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6`                 |
-| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                                      |
-| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell                         |
-| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) | `medium`                                    |
-| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)      | `10`                                        |
-| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                   | `false`                                     |
-| `--oneshot`                             | Exit upon task completion                                                               | `false`                                     |
-| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                          | `text`                                      |
+| Option                                  | Description                                                                             | Default                     |
+| --------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------- |
+| `[prompt]`                              | Your prompt (positional argument, optional)                                             | None                        |
+| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                | None                        |
+| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                  | None                        |
+| `-w, --workspace <path>`                | Workspace path to operate in                                                            | Current directory           |
+| `-p, --print`                           | Print response and exit (non-interactive mode)                                          | `false`                     |
+| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                            | `false`                     |
+| `-e, --extension <path>`                | Path to the extension bundle directory                                                  | Auto-detected               |
+| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                     |
+| `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                     |
+| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                              | From env var                |
+| `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                              | `openrouter`                |
+| `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6` |
+| `--base-url <url>`                      | Base URL override for the selected provider (when supported)                            | None                        |
+| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                      |
+| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell         |
+| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) | `medium`                    |
+| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)      | `10`                        |
+| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                   | `false`                     |
+| `--oneshot`                             | Exit upon task completion                                                               | `false`                     |
+| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                          | `text`                      |
 
 ## Auth Commands
 
@@ -208,16 +209,48 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ## Environment Variables
 
-The CLI will look for API keys in environment variables if not provided via `--api-key`:
+The CLI supports the same inference providers as the VS Code extension. For
+providers that need an API key, the CLI looks for it in the environment
+variable below if not provided via `--api-key`. Provider selection follows:
+`--provider` flag > persisted CLI settings > the provider configured in the VS
+Code extension > default (`openrouter`). Keyless providers (ollama, lmstudio,
+bedrock, qwen-code, vertex) run without any key.
 
-| Provider          | Environment Variable        |
-| ----------------- | --------------------------- |
-| roo               | `ROO_API_KEY`               |
-| anthropic         | `ANTHROPIC_API_KEY`         |
-| openai-native     | `OPENAI_API_KEY`            |
-| openrouter        | `OPENROUTER_API_KEY`        |
-| gemini            | `GOOGLE_API_KEY`            |
-| vercel-ai-gateway | `VERCEL_AI_GATEWAY_API_KEY` |
+For providers whose schema has a base-url setting, the CLI also honors a
+`*_BASE_URL` environment variable (and a generic `--base-url` flag).
+
+| Provider          | API Key Environment Variable  | Base URL Environment Variable |
+| ----------------- | ----------------------------- | ----------------------------- |
+| anthropic         | `ANTHROPIC_API_KEY`           | `ANTHROPIC_BASE_URL`          |
+| openai-native     | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
+| openai            | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
+| gemini            | `GOOGLE_API_KEY`              | `GOOGLE_GEMINI_BASE_URL`      |
+| openrouter        | `OPENROUTER_API_KEY`          | `OPENROUTER_BASE_URL`         |
+| vercel-ai-gateway | `VERCEL_AI_GATEWAY_API_KEY`   | —                             |
+| litellm           | `LITELLM_API_KEY`             | `LITELLM_BASE_URL`            |
+| poe               | `POE_API_KEY`                 | `POE_BASE_URL`                |
+| requesty          | `REQUESTY_API_KEY`            | `REQUESTY_BASE_URL`           |
+| unbound           | `UNBOUND_API_KEY`             | —                             |
+| deepseek          | `DEEPSEEK_API_KEY`            | `DEEPSEEK_BASE_URL`           |
+| ollama            | — (keyless)                   | `OLLAMA_BASE_URL`             |
+| lmstudio          | — (keyless)                   | `LMSTUDIO_BASE_URL`           |
+| bedrock           | — (AWS credential chain)      | `AWS_BEDROCK_ENDPOINT`        |
+| baseten           | `BASETEN_API_KEY`             | —                             |
+| fireworks         | `FIREWORKS_API_KEY`           | —                             |
+| mistral           | `MISTRAL_API_KEY`             | `MISTRAL_BASE_URL`            |
+| moonshot          | `MOONSHOT_API_KEY`            | `MOONSHOT_BASE_URL`           |
+| minimax           | `MINIMAX_API_KEY`             | `MINIMAX_BASE_URL`            |
+| qwen-code         | — (OAuth credentials on disk) | —                             |
+| sambanova         | `SAMBANOVA_API_KEY`           | —                             |
+| vertex            | — (gcloud credential chain)   | —                             |
+| xai               | `XAI_API_KEY`                 | —                             |
+| zai               | `ZAI_API_KEY`                 | —                             |
+
+Excluded providers: `vscode-lm` (needs the real VS Code LM API), `openai-codex`
+(OAuth via the VS Code extension context), `fake-ai` (hidden internal test
+provider), `gemini-cli` (no runtime handler). Retired providers (groq,
+huggingface, deepinfra, cerebras, chutes, doubao, featherless,
+io-intelligence) are rejected with a clear error.
 
 **Authentication Environment Variables:**
 

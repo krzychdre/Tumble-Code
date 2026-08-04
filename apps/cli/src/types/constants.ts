@@ -4,6 +4,7 @@ export const DEFAULT_FLAGS = {
 	mode: "code",
 	reasoningEffort: "medium" as const,
 	model: "anthropic/claude-opus-4.6",
+	provider: "openrouter" as const,
 	consecutiveMistakeLimit: 10,
 }
 

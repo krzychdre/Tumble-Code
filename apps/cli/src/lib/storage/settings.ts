@@ -30,6 +30,14 @@ export async function saveSettings(settings: Partial<CliSettings>): Promise<void
 	const existing = await loadSettings()
 	const merged = { ...existing, ...settings }
 
+	// An explicit `null` clears the persisted value; `undefined` (or absent)
+	// keeps the existing value so a partial save merges instead of wiping.
+	for (const key of ["provider", "model", "baseUrl"] as const) {
+		if (merged[key] === null) {
+			delete merged[key]
+		}
+	}
+
 	await fs.writeFile(getSettingsPath(), JSON.stringify(merged, null, 2), {
 		mode: 0o600,
 	})

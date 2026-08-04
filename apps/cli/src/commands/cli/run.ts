@@ -18,9 +18,10 @@ import {
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
-import { loadSettings } from "@/lib/storage/index.js"
+import { loadSettings, saveSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
-import { getEnvVarName, getApiKeyFromEnv } from "@/lib/utils/provider.js"
+import { getEnvVarName, getApiKeyFromEnv, providerRequiresApiKey } from "@/lib/utils/provider.js"
+import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
@@ -117,12 +118,19 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const isTuiEnabled = !flagOptions.print && isTuiSupported
 	const isOnboardingEnabled = isTuiEnabled && !flagOptions.provider && !settings.provider
 
+	// Reuse provider/model/key/baseUrl chosen in the VS Code extension
+	// (via the vscode-shim global storage). Precedence for everything below:
+	// CLI flags > settings file > persisted VS Code config > env > defaults.
+	const vsCodeConfig = readVsCodeConfig() ?? {}
+
 	// Determine effective values: CLI flags > settings file > DEFAULT_FLAGS.
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
-	const effectiveModel = flagOptions.model || settings.model || DEFAULT_FLAGS.model
+	const effectiveModel = flagOptions.model || settings.model || vsCodeConfig?.model || DEFAULT_FLAGS.model
 	const effectiveReasoningEffort =
 		flagOptions.reasoningEffort || settings.reasoningEffort || DEFAULT_FLAGS.reasoningEffort
-	const effectiveProvider = flagOptions.provider ?? settings.provider ?? "openrouter"
+	const effectiveProvider =
+		flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider ?? DEFAULT_FLAGS.provider
+	const effectiveBaseUrl = flagOptions.baseUrl || settings.baseUrl || vsCodeConfig?.baseUrl || undefined
 	const effectiveWorkspacePath = flagOptions.workspace ? path.resolve(flagOptions.workspace) : process.cwd()
 	const legacyRequireApprovalFromSettings =
 		settings.requireApproval ??
@@ -162,6 +170,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		model: effectiveModel,
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
+		baseUrl: effectiveBaseUrl,
 		nonInteractive: !effectiveRequireApproval,
 		exitOnError: flagOptions.exitOnError,
 		ephemeral: flagOptions.ephemeral,
@@ -192,13 +201,25 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
-	extensionHostOptions.apiKey =
-		extensionHostOptions.apiKey || flagOptions.apiKey || getApiKeyFromEnv(extensionHostOptions.provider)
+	// Provider-aware API-key gate. Providers whose settings schema has no
+	// required API-key field (ollama, lmstudio, bedrock, qwen-code, vertex — as
+	// derived in provider-types.ts) run keyless; providers that need a key
+	// hard-exit with the missing-key message when none was supplied.
+	const needsKey = providerRequiresApiKey(extensionHostOptions.provider)
 
-	if (!extensionHostOptions.apiKey) {
-		console.error(`[CLI] Error: No API key provided. Use --api-key or set the appropriate environment variable.`)
-		console.error(`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`)
-		process.exit(1)
+	if (needsKey) {
+		extensionHostOptions.apiKey =
+			flagOptions.apiKey || getApiKeyFromEnv(extensionHostOptions.provider) || vsCodeConfig?.apiKey
+
+		if (!extensionHostOptions.apiKey) {
+			console.error(
+				`[CLI] Error: No API key provided. Use --api-key or set the appropriate environment variable.`,
+			)
+			console.error(
+				`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`,
+			)
+			process.exit(1)
+		}
 	}
 
 	if (!fs.existsSync(extensionHostOptions.workspacePath)) {
@@ -211,6 +232,19 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			`[CLI] Error: Invalid reasoning effort: ${extensionHostOptions.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`,
 		)
 		process.exit(1)
+	}
+
+	// Persist provider/model/base-url for the next run (flags > settings > defaults).
+	// Keys are never persisted — they stay env/flags only.
+	const persistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
+	const persistedModel = flagOptions.model ?? settings.model ?? vsCodeConfig?.model
+	const persistedBaseUrl = flagOptions.baseUrl ?? settings.baseUrl ?? vsCodeConfig?.baseUrl
+	if (persistedProvider || persistedModel || persistedBaseUrl) {
+		await saveSettings({
+			...(persistedProvider ? { provider: persistedProvider } : {}),
+			...(persistedModel ? { model: persistedModel } : {}),
+			...(persistedBaseUrl ? { baseUrl: persistedBaseUrl } : {}),
+		})
 	}
 
 	// Validate output format

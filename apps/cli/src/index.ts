@@ -47,8 +47,9 @@ program
 	.option("-d, --debug", "Enable debug output (includes detailed debug information)", false)
 	.option("-a, --require-approval", "Require manual approval for actions", false)
 	.option("-k, --api-key <key>", "API key for the LLM provider")
-	.option("--provider <provider>", "API provider (tumble, anthropic, openai, openrouter, etc.)")
+	.option("--provider <provider>", "API provider (anthropic, openrouter, ollama, etc.)")
 	.option("-m, --model <model>", "Model to use", DEFAULT_FLAGS.model)
+	.option("--base-url <url>", "Base URL override for the selected provider")
 	.option("--mode <mode>", "Mode to start in (code, architect, ask, debug, etc.)", DEFAULT_FLAGS.mode)
 	.option("--terminal-shell <path>", "Absolute path to shell executable for inline terminal commands")
 	.option(
