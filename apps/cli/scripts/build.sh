@@ -116,7 +116,7 @@ build() {
     pnpm bundle
 
     step "3/6" "Building CLI..."
-    pnpm --filter @roo-code/cli build
+    pnpm --filter @tumble-code/cli build
 
     info "Build complete"
 }

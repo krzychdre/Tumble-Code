@@ -65,7 +65,7 @@ pnpm install
 pnpm --filter roo-cline bundle
 
 # Build the CLI.
-pnpm --filter @roo-code/cli build
+pnpm --filter @tumble-code/cli build
 ```
 
 ## Usage
