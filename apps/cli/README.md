@@ -1,16 +1,16 @@
-# @roo-code/cli
+# @tumble-code/cli
 
-Command Line Interface for Roo Code - Run the Roo Code agent from the terminal without VSCode.
+Command Line Interface for Tumble Code - Run the Tumble Code agent from the terminal without VSCode.
 
 ## Overview
 
-This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the main Roo Code extension to run in a Node.js environment.
+This CLI uses the `@roo-code/vscode-shim` package to provide a VSCode API compatibility layer, allowing the main Tumble Code extension to run in a Node.js environment.
 
 ## Installation
 
 ### Quick Install (Recommended)
 
-Install the Roo Code CLI with a single command:
+Install the Tumble Code CLI with a single command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/install.sh | sh
@@ -44,13 +44,13 @@ curl -fsSL https://raw.githubusercontent.com/RooCodeInc/Roo-Code/main/apps/cli/i
 Or run:
 
 ```bash
-roo upgrade
+tumble upgrade
 ```
 
 ### Uninstalling
 
 ```bash
-rm -rf ~/.roo/cli ~/.local/bin/roo
+rm -rf ~/.roo/cli ~/.local/bin/tumble
 ```
 
 ### Development Installation
@@ -77,13 +77,13 @@ By default, the CLI auto-approves actions and runs in interactive TUI mode:
 ```bash
 export OPENROUTER_API_KEY=sk-or-v1-...
 
-roo "What is this project?" -w ~/Documents/my-project
+tumble "What is this project?" -w ~/Documents/my-project
 ```
 
 You can also run without a prompt and enter it interactively in TUI mode:
 
 ```bash
-roo -w ~/Documents/my-project
+tumble -w ~/Documents/my-project
 ```
 
 In interactive mode:
@@ -98,7 +98,7 @@ In interactive mode:
 If you want manual approval prompts, enable approval-required mode:
 
 ```bash
-roo "Refactor the utils.ts file" --require-approval -w ~/Documents/my-project
+tumble "Refactor the utils.ts file" --require-approval -w ~/Documents/my-project
 ```
 
 In approval-required mode:
@@ -112,10 +112,10 @@ Use `--print` for non-interactive execution and machine-readable output:
 
 ```bash
 # Prompt is required
-roo --print "Summarize this repository"
+tumble --print "Summarize this repository"
 
 # Create a new task with a specific session ID (UUID)
-roo --print --create-with-session-id 018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87 "Summarize this repository"
+tumble --print --create-with-session-id 018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87 "Summarize this repository"
 ```
 
 ### Stdin Stream Mode (`--stdin-prompt-stream`)
@@ -124,30 +124,30 @@ For programmatic control (one process, multiple prompts), use `--stdin-prompt-st
 Send NDJSON commands via stdin:
 
 ```bash
-printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | roo --print --stdin-prompt-stream --output-format stream-json
+printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | tumble --print --stdin-prompt-stream --output-format stream-json
 
 # Optional: provide taskId per start command
-printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | roo --print --stdin-prompt-stream --output-format stream-json
+printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | tumble --print --stdin-prompt-stream --output-format stream-json
 ```
 
-### Roo Code Cloud Authentication
+### Tumble Code Cloud Authentication
 
-To use Roo Code Cloud features (like the provider proxy), you need to authenticate:
+To use Tumble Code Cloud features (like the provider proxy), you need to authenticate:
 
 ```bash
-# Log in to Roo Code Cloud (opens browser)
-roo auth login
+# Log in to Tumble Code Cloud (opens browser)
+tumble auth login
 
 # Check authentication status
-roo auth status
+tumble auth status
 
 # Log out
-roo auth logout
+tumble auth logout
 ```
 
 The `auth login` command:
 
-1. Opens your browser to authenticate with Roo Code Cloud
+1. Opens your browser to authenticate with Tumble Code Cloud
 2. Receives a secure token via localhost callback
 3. Stores the token in `~/.config/roo/credentials.json`
 
@@ -157,7 +157,7 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ```
 ┌──────┐         ┌─────────┐         ┌───────────────┐
-│  CLI │         │ Browser │         │ Roo Code Cloud│
+│  CLI │         │ Browser │         │ Tumble Code Cloud│
 └──┬───┘         └────┬────┘         └───────┬───────┘
    │                  │                      │
    │ Open auth URL    │                      │
@@ -176,35 +176,35 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ## Options
 
-| Option                                  | Description                                                                             | Default                                  |
-| --------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `[prompt]`                              | Your prompt (positional argument, optional)                                             | None                                     |
-| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                | None                                     |
-| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                  | None                                     |
-| `-w, --workspace <path>`                | Workspace path to operate in                                                            | Current directory                        |
-| `-p, --print`                           | Print response and exit (non-interactive mode)                                          | `false`                                  |
-| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                            | `false`                                  |
-| `-e, --extension <path>`                | Path to the extension bundle directory                                                  | Auto-detected                            |
-| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                                  |
-| `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                                  |
-| `-k, --api-key <key>`                   | API key for the LLM provider                                                            | From env var                             |
-| `--provider <provider>`                 | API provider (roo, anthropic, openai, openrouter, etc.)                                 | `openrouter` (or `roo` if authenticated) |
-| `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6`              |
-| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                                   |
-| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell                      |
-| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) | `medium`                                 |
-| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)      | `10`                                     |
-| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                   | `false`                                  |
-| `--oneshot`                             | Exit upon task completion                                                               | `false`                                  |
-| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                          | `text`                                   |
+| Option                                  | Description                                                                             | Default                                     |
+| --------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `[prompt]`                              | Your prompt (positional argument, optional)                                             | None                                        |
+| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                | None                                        |
+| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                  | None                                        |
+| `-w, --workspace <path>`                | Workspace path to operate in                                                            | Current directory                           |
+| `-p, --print`                           | Print response and exit (non-interactive mode)                                          | `false`                                     |
+| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                            | `false`                                     |
+| `-e, --extension <path>`                | Path to the extension bundle directory                                                  | Auto-detected                               |
+| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                                     |
+| `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                                     |
+| `-k, --api-key <key>`                   | API key for the LLM provider                                                            | From env var                                |
+| `--provider <provider>`                 | API provider (tumble, anthropic, openai, openrouter, etc.)                              | `openrouter` (or `tumble` if authenticated) |
+| `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6`                 |
+| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                                      |
+| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell                         |
+| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) | `medium`                                    |
+| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)      | `10`                                        |
+| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                   | `false`                                     |
+| `--oneshot`                             | Exit upon task completion                                                               | `false`                                     |
+| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                          | `text`                                      |
 
 ## Auth Commands
 
-| Command           | Description                        |
-| ----------------- | ---------------------------------- |
-| `roo auth login`  | Authenticate with Roo Code Cloud   |
-| `roo auth logout` | Clear stored authentication token  |
-| `roo auth status` | Show current authentication status |
+| Command              | Description                         |
+| -------------------- | ----------------------------------- |
+| `tumble auth login`  | Authenticate with Tumble Code Cloud |
+| `tumble auth logout` | Clear stored authentication token   |
+| `tumble auth status` | Show current authentication status  |
 
 ## Environment Variables
 

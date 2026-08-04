@@ -1,12 +1,12 @@
 {
-	"name": "@roo-code/cli",
+	"name": "@tumble-code/cli",
 	"version": "0.1.17",
-	"description": "Roo Code CLI - Run the Roo Code agent from the command line",
+	"description": "Tumble Code CLI - Run the Tumble Code agent from the command line",
 	"private": true,
 	"type": "module",
 	"main": "dist/index.js",
 	"bin": {
-		"roo": "dist/index.js"
+		"tumble": "dist/index.js"
 	},
 	"scripts": {
 		"format": "prettier --write 'src/**/*.ts'",
