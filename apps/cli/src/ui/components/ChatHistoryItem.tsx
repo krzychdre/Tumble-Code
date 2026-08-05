@@ -1,218 +1,56 @@
 import { memo } from "react"
-import { Box, Newline, Text } from "ink"
 
-import type { TUIMessage } from "../types.js"
-import * as theme from "../theme.js"
+import type { ToolData, TUIMessage } from "../types.js"
+import { extractToolData } from "../utils/tools.js"
 
 import TodoDisplay from "./TodoDisplay.js"
 import { getToolRenderer } from "./tools/index.js"
+import GenericTool from "./tools/GenericTool.js"
 
-/**
- * Tool categories for styling
- */
-type ToolCategory = "file" | "directory" | "search" | "command" | "mode" | "completion" | "other"
+import AssistantMessage from "./messages/AssistantMessage.js"
+import SystemMessage from "./messages/SystemMessage.js"
+import ThinkingMessage from "./messages/ThinkingMessage.js"
+import UserMessage from "./messages/UserMessage.js"
 
-function getToolCategory(toolName: string): ToolCategory {
-	const fileTools = ["readFile", "read_file", "writeToFile", "write_to_file", "applyDiff", "apply_diff"]
-	const dirTools = ["listFiles", "list_files", "listFilesRecursive", "listFilesTopLevel"]
-	const searchTools = ["searchFiles", "search_files"]
-	const commandTools = ["executeCommand", "execute_command"]
-	const modeTools = ["switchMode", "switch_mode", "newTask", "new_task"]
-	const completionTools = ["attemptCompletion", "attempt_completion", "askFollowupQuestion", "ask_followup_question"]
-
-	if (fileTools.includes(toolName)) return "file"
-	if (dirTools.includes(toolName)) return "directory"
-	if (searchTools.includes(toolName)) return "search"
-	if (commandTools.includes(toolName)) return "command"
-	if (modeTools.includes(toolName)) return "mode"
-	if (completionTools.includes(toolName)) return "completion"
-	return "other"
+interface ChatHistoryItemProps {
+	message: TUIMessage
 }
 
 /**
- * Category colors for tool types
+ * Try to parse raw JSON content into structured ToolData so legacy tool
+ * messages (added without a pre-built toolData field) still render with
+ * the correct specialized renderer and extracted path/badges.
  */
-const CATEGORY_COLORS: Record<ToolCategory, string> = {
-	file: theme.toolHeader,
-	directory: theme.toolHeader,
-	search: theme.warningColor,
-	command: theme.successColor,
-	mode: theme.userHeader,
-	completion: theme.successColor,
-	other: theme.toolHeader,
-}
-
-/**
- * Sanitize content for terminal display by:
- * - Replacing tab characters with spaces (tabs expand to variable widths in terminals)
- * - Stripping carriage returns that could cause display issues
- */
-function sanitizeContent(text: string): string {
-	return text.replace(/\t/g, "    ").replace(/\r/g, "")
-}
-
-/**
- * Truncate content for display, showing line count
- */
-function truncateContent(
-	content: string,
-	maxLines: number = 10,
-): { text: string; truncated: boolean; totalLines: number } {
-	const lines = content.split("\n")
-	const totalLines = lines.length
-
-	if (lines.length <= maxLines) {
-		return { text: content, truncated: false, totalLines }
-	}
-
-	const truncatedText = lines.slice(0, maxLines).join("\n")
-	return { text: truncatedText, truncated: true, totalLines }
-}
-
-/**
- * Parse tool info from raw JSON content
- */
-function parseToolInfo(content: string): Record<string, unknown> | null {
+function tryExtractToolData(content: string, toolName?: string): ToolData | null {
 	try {
-		return JSON.parse(content)
+		const parsed = JSON.parse(content) as Record<string, unknown>
+		const data = extractToolData(parsed)
+		// Prefer the message-level toolName when the JSON lacks one
+		if (!data.tool || data.tool === "unknown") {
+			data.tool = toolName || "unknown"
+		}
+		return data
 	} catch {
 		return null
 	}
 }
 
 /**
- * Render tool display component
+ * Thin dispatcher: role → component. Tool messages route to the todo
+ * special-case, a structured toolData renderer, or the GenericTool fallback.
  */
-function ToolDisplay({ message }: { message: TUIMessage }) {
-	const toolName = message.toolName || "unknown"
-	const category = getToolCategory(toolName)
-	const categoryColor = CATEGORY_COLORS[category]
-
-	// Try to parse the raw content for additional tool info
-	const toolInfo = parseToolInfo(message.content || "")
-
-	// Extract key fields from tool info
-	const path = toolInfo?.path as string | undefined
-	const isOutsideWorkspace = toolInfo?.isOutsideWorkspace as boolean | undefined
-	const reason = toolInfo?.reason as string | undefined
-	const rawContent = toolInfo?.content as string | undefined
-
-	// Get the display output (formatted by App.tsx) - already sanitized
-	const toolDisplayOutput = message.toolDisplayOutput ? sanitizeContent(message.toolDisplayOutput) : undefined
-
-	// Sanitize raw content if present
-	const sanitizedRawContent = rawContent ? sanitizeContent(rawContent) : undefined
-
-	// Format the header
-	const headerText = message.toolDisplayName || toolName
-
-	return (
-		<Box flexDirection="column" paddingX={1}>
-			{/* Tool Header */}
-			<Text bold color={categoryColor}>
-				{headerText}
-			</Text>
-
-			{/* Path indicator for file/directory operations */}
-			{path && (
-				<Box marginLeft={2}>
-					<Text color={theme.dimText}>
-						{category === "file" ? "file: " : category === "directory" ? "dir: " : "path: "}
-					</Text>
-					<Text color={theme.text} bold>
-						{path}
-					</Text>
-					{isOutsideWorkspace && (
-						<Text color={theme.warningColor} dimColor>
-							{" (outside workspace)"}
-						</Text>
-					)}
-				</Box>
-			)}
-
-			{/* Reason/explanation if present */}
-			{reason && (
-				<Box marginLeft={2}>
-					<Text color={theme.dimText} italic>
-						{reason}
-					</Text>
-				</Box>
-			)}
-
-			{/* Content display */}
-			{(toolDisplayOutput || sanitizedRawContent) && (
-				<Box flexDirection="column" marginLeft={2} marginTop={0}>
-					{(() => {
-						const contentToDisplay = toolDisplayOutput || sanitizedRawContent || ""
-						const { text, truncated, totalLines } = truncateContent(contentToDisplay, 15)
-
-						return (
-							<>
-								<Text color={theme.toolText}>{text}</Text>
-								{truncated && (
-									<Text color={theme.dimText} dimColor>
-										{`... (${totalLines - 15} more lines)`}
-									</Text>
-								)}
-							</>
-						)
-					})()}
-				</Box>
-			)}
-
-			<Text>
-				<Newline />
-			</Text>
-		</Box>
-	)
-}
-
-interface ChatHistoryItemProps {
-	message: TUIMessage
-}
-
 function ChatHistoryItem({ message }: ChatHistoryItemProps) {
-	const content = sanitizeContent(message.content || "...")
-
 	switch (message.role) {
 		case "user":
-			return (
-				<Box flexDirection="column" paddingX={1}>
-					<Text bold color="magenta">
-						You said:
-					</Text>
-					<Text color={theme.userText}>
-						{content}
-						<Newline />
-					</Text>
-				</Box>
-			)
+			return <UserMessage content={message.content} />
 		case "assistant":
-			return (
-				<Box flexDirection="column" paddingX={1}>
-					<Text bold color="yellow">
-						Tumble said:
-					</Text>
-					<Text color={theme.rooText}>
-						{content}
-						<Newline />
-					</Text>
-				</Box>
-			)
+			return <AssistantMessage content={message.content} addMargin={true} />
 		case "thinking":
-			return (
-				<Box flexDirection="column" paddingX={1}>
-					<Text bold color={theme.thinkingHeader} dimColor>
-						Tumble is thinking:
-					</Text>
-					<Text color={theme.thinkingText} dimColor>
-						{content}
-						<Newline />
-					</Text>
-				</Box>
-			)
+			return <ThinkingMessage />
+		case "system":
+			return <SystemMessage content={message.content} />
 		case "tool": {
-			// Special rendering for update_todo_list tool - show full TODO list
+			// Special rendering for update_todo_list tool — show full TODO list
 			if (
 				(message.toolName === "update_todo_list" || message.toolName === "updateTodoList") &&
 				message.todos &&
@@ -221,26 +59,29 @@ function ChatHistoryItem({ message }: ChatHistoryItemProps) {
 				return <TodoDisplay todos={message.todos} previousTodos={message.previousTodos} showProgress={true} />
 			}
 
-			// Use the new structured tool renderers when toolData is available
+			// Structured tool renderers when toolData is available
 			if (message.toolData) {
 				const ToolRenderer = getToolRenderer(message.toolData.tool)
-				return <ToolRenderer toolData={message.toolData} rawContent={message.content} />
+				return <ToolRenderer toolData={message.toolData} rawContent={message.content} message={message} />
 			}
 
-			// Fallback to generic ToolDisplay for messages without toolData
-			return <ToolDisplay message={message} />
-		}
-		case "system":
-			// System messages are typically rendered as Header, not here.
-			// But if they appear, show them subtly.
+			// Legacy fallback: try to extract toolData from raw JSON content,
+			// then route through the specialized renderer if extraction succeeds.
+			const extracted = tryExtractToolData(message.content, message.toolName)
+			if (extracted) {
+				const ToolRenderer = getToolRenderer(extracted.tool)
+				return <ToolRenderer toolData={extracted} rawContent={message.content} message={message} />
+			}
+
+			// Final fallback for non-JSON content
 			return (
-				<Box flexDirection="column" paddingX={1}>
-					<Text color="gray" dimColor>
-						{content}
-						<Newline />
-					</Text>
-				</Box>
+				<GenericTool
+					toolData={{ tool: message.toolName || "unknown", content: message.content }}
+					rawContent={message.content}
+					message={message}
+				/>
 			)
+		}
 		default:
 			return null
 	}

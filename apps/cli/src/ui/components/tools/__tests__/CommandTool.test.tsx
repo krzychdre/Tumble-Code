@@ -5,7 +5,7 @@ import { CommandTool } from "../CommandTool.js"
 
 describe("CommandTool", () => {
 	describe("command display", () => {
-		it("displays the command when toolData.command is provided", () => {
+		it("displays the command as Bash(command) when toolData.command is provided", () => {
 			const props: ToolRendererProps = {
 				toolData: {
 					tool: "execute_command",
@@ -17,12 +17,13 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			// Command should be displayed with $ prefix
-			expect(output).toContain("$")
+			// New grammar: ● Bash(command) — no $ prefix
+			expect(output).toContain("Bash")
 			expect(output).toContain("npm test")
+			expect(output).not.toContain("$ npm test")
 		})
 
-		it("does not display command section when toolData.command is empty", () => {
+		it("displays Bash without command arg when toolData.command is empty", () => {
 			const props: ToolRendererProps = {
 				toolData: {
 					tool: "execute_command",
@@ -34,13 +35,12 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			// The output should be displayed but no command line with $
+			// Output should be displayed; no command arg shown
 			expect(output).toContain("All tests passed")
-			// Should not have a standalone $ followed by a command
-			// (just checking the output is present without command)
+			expect(output).toContain("Bash")
 		})
 
-		it("does not display command section when toolData.command is undefined", () => {
+		it("displays Bash without command arg when toolData.command is undefined", () => {
 			const props: ToolRendererProps = {
 				toolData: {
 					tool: "execute_command",
@@ -51,8 +51,8 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			// The output should be displayed
 			expect(output).toContain("All tests passed")
+			expect(output).toContain("Bash")
 		})
 
 		it("displays command with complex arguments", () => {
@@ -67,7 +67,7 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			expect(output).toContain("$")
+			expect(output).toContain("Bash")
 			expect(output).toContain('git commit -m "fix: resolve issue"')
 		})
 	})
@@ -139,13 +139,13 @@ describe("CommandTool", () => {
 			expect(output).toContain("line 1")
 			expect(output).toContain("line 10")
 
-			// Should show truncation indicator
-			expect(output).toContain("more lines")
+			// ResultRow uses "… +N lines" truncation indicator
+			expect(output).toContain("+10 lines")
 		})
 	})
 
 	describe("header display", () => {
-		it("displays terminal icon when rendered", () => {
+		it("displays Bash display name when rendered", () => {
 			const props: ToolRendererProps = {
 				toolData: {
 					tool: "execute_command",
@@ -156,8 +156,7 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			// The terminal icon fallback is "$", which also appears before the command
-			expect(output).toContain("$")
+			expect(output).toContain("Bash")
 			expect(output).toContain("echo test")
 		})
 	})

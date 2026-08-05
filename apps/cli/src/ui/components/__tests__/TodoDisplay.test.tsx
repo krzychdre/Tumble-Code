@@ -3,20 +3,8 @@ import { render } from "ink-testing-library"
 import type { TodoItem } from "@roo-code/types"
 
 import TodoDisplay from "../TodoDisplay.js"
-import { resetNerdFontCache } from "../Icon.js"
 
 describe("TodoDisplay", () => {
-	beforeEach(() => {
-		// Use fallback icons in tests so they render as visible characters
-		process.env.ROOCODE_NERD_FONT = "0"
-		resetNerdFontCache()
-	})
-
-	afterEach(() => {
-		delete process.env.ROOCODE_NERD_FONT
-		resetNerdFontCache()
-	})
-
 	const mockTodos: TodoItem[] = [
 		{ id: "1", content: "Analyze requirements", status: "completed" },
 		{ id: "2", content: "Design architecture", status: "completed" },
@@ -25,12 +13,12 @@ describe("TodoDisplay", () => {
 		{ id: "5", content: "Update documentation", status: "pending" },
 	]
 
-	it("renders all todos with correct status icons", () => {
+	it("renders all todos with correct checkbox glyphs", () => {
 		const { lastFrame } = render(<TodoDisplay todos={mockTodos} />)
 		const output = lastFrame()
 
-		// Check header (default title is "Progress")
-		expect(output).toContain("Progress")
+		// Check header (default title is "Update Todos")
+		expect(output).toContain("Update Todos")
 
 		// Check all items are rendered
 		expect(output).toContain("Analyze requirements")
@@ -39,10 +27,9 @@ describe("TodoDisplay", () => {
 		expect(output).toContain("Write tests")
 		expect(output).toContain("Update documentation")
 
-		// Check status icons are present (fallback icons)
-		expect(output).toContain("✓") // completed
-		expect(output).toContain("→") // in_progress
-		expect(output).toContain("○") // pending
+		// Check checkbox glyphs are present
+		expect(output).toContain("☒") // completed (checkboxOn)
+		expect(output).toContain("☐") // pending / in_progress (checkboxOff)
 	})
 
 	it("renders progress bar when showProgress is true", () => {
@@ -87,9 +74,6 @@ describe("TodoDisplay", () => {
 		// Should show changed items
 		expect(output).toContain("Design architecture")
 		expect(output).toContain("Implement core logic")
-
-		// Unchanged item should still be there since we're just filtering by change
-		// The filter only removes items that haven't changed status
 	})
 
 	it("shows change labels for items that changed status", () => {
@@ -146,7 +130,7 @@ describe("TodoDisplay", () => {
 
 		// Progress bar shows percentage (1/4 = 25%)
 		expect(output).toContain("25%")
-		// In_progress items render with the arrow icon
-		expect(output).toContain("→") // in_progress indicator
+		// In_progress items render with checkboxOff glyph and bold warning
+		expect(output).toContain("☐") // checkboxOff for in_progress
 	})
 })
