@@ -86,7 +86,7 @@ You can also run without a prompt and enter it interactively in TUI mode:
 tumble -w ~/Documents/my-project
 ```
 
-In interactive mode:
+In interactive mode (see [Terminal UI](#terminal-ui) for the full visual grammar and keyboard reference):
 
 - Tool executions are auto-approved
 - Commands are auto-approved
@@ -129,6 +129,69 @@ printf '{"command":"start","requestId":"1","prompt":"1+1=?"}\n' | tumble --print
 # Optional: provide taskId per start command
 printf '{"command":"start","requestId":"1","taskId":"018f7fc8-7c96-7f7c-98aa-2ec4ff7f6d87","prompt":"1+1=?"}\n' | tumble --print --stdin-prompt-stream --output-format stream-json
 ```
+
+## Terminal UI
+
+The interactive TUI uses a **print-and-forget transcript** model inspired by Claude Code. Finalized messages are written once into your terminal's native scrollback via ink's `<Static>`; only the dynamic tail (in-flight message, spinner, dialogs, input) re-renders. There is no in-app scroll viewport — use your terminal's native scrollback (mouse wheel, Shift+PgUp, tmux copy-mode) to review history.
+
+### Visual grammar
+
+```
+✻ Welcome to Tumble Code v0.1.17                ← welcome banner (brand orange ✻)
+
+  cwd: ~/Projekty/QUB-IT/Roo-Code                 dim, indent 2
+  openai · gpt-5 [medium] · mode: code            dim, indent 2
+
+❯ fix the failing test in foo.ts                ← user turn: subtle bg band + pointer
+
+● I'll look at the test file first.             ← assistant: bullet + markdown
+
+● Read(src/foo.test.ts)                         ← tool call: status bullet + bold name(args)
+  ⎿  Read 42 lines                              ← tool result: ⎿ connector, dim
+
+∴ Thinking…                                     ← collapsed thinking, dim italic
+
+✳ Rummaging… (esc to interrupt · 12s · ↓ 1.2k tokens)   ← spinner while loading
+
+────────────────────────────────────────────────  ← input frame top border
+ ❯ type your message…                             ← prompt char + input
+────────────────────────────────────────────────  ← input frame bottom border
+  ? for shortcuts                  code · gpt-5 · 38%   ← footer: hints left, status right
+```
+
+| Glyph | Meaning                                                                                                |
+| ----- | ------------------------------------------------------------------------------------------------------ |
+| `✻`   | Welcome banner (brand orange)                                                                          |
+| `❯`   | User-prompt rows and the input prompt char (subtle/prompt-border color)                                |
+| `●`   | Assistant messages and tool-call status bullets (color: running = blink, success = green, error = red) |
+| `⎿`   | Tool-result connector (dim)                                                                            |
+| `∴`   | Collapsed thinking (dim italic)                                                                        |
+| `✳`  | Spinner frame (brand orange, ping-pong animation) with a verb + elapsed time + tokens out              |
+
+User-prompt rows render on a subtle background band. Assistant text is rendered as markdown (bold, italic, inline code, fenced code blocks, lists, blockquotes, links). Tool results are dim and truncated to 5 lines with a `… +N lines` tail. The spinner cycles through a whimsical verb (`Pondering`, `Rummaging`, `Brewing`, `Tumbling`, …) chosen deterministically per turn.
+
+The theme is the Tumble "Hardcore" palette mapped to Claude Code's semantic key system: brand orange for the `✻` welcome glyph and spinner, permission purple for dialog borders and focused select rows, subtle gray for `❯` prompt chars and `⎿` connectors, and a dark background band for user turns.
+
+### Keyboard shortcuts
+
+| Key            | Action                                                    |
+| -------------- | --------------------------------------------------------- |
+| `Ctrl+C` twice | Exit the CLI                                              |
+| `Ctrl+M`       | Cycle modes (code → architect → ask → debug → …)          |
+| `Ctrl+T`       | Toggle the TODO viewer                                    |
+| `Esc`          | Cancel a running task, or close the TODO viewer / dialogs |
+| `y` / `n`      | Approve / reject in approval dialogs (accelerators)       |
+| `↑` / `↓`      | Navigate autocomplete picker and dialog lists             |
+| `1`–`9`        | Jump-select a numbered option in dialogs                  |
+| `Enter`        | Confirm the focused option                                |
+
+### Approval dialogs
+
+When `--require-approval` is active, actions prompt for yes/no approval in a permission-bordered box (purple round border) with a bold title (`Bash command`, `Write file`, `MCP tool`, …), the relevant details (command, path, server+tool), and a numbered `1. Yes` / `2. No` list. Press `y` or `n` for the legacy accelerators, or use `↑`/`↓` + `Enter`, or `1`/`2` to jump-select.
+
+### Followup questions
+
+When the agent asks a followup question, a permission-bordered dialog renders the question as a bold title, numbered suggestions, and a final `Type my own answer…` option. An auto-accept countdown (`Auto-selecting "{label}" in {n}s — press any arrow key to cancel`) runs at the bottom; press any arrow key to cancel and choose manually. Selecting `Type my own answer…` reveals the input area for a free-form reply.
 
 ### Tumble Code Cloud Authentication
 

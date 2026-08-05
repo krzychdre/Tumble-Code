@@ -80,7 +80,7 @@ function computeVisibleWindow(
 
 /**
  * Generic picker dropdown component for autocomplete.
- * Uses windowing approach (like @inkjs/ui) - only renders visible items.
+ * Uses windowing approach - only renders visible items.
  * This eliminates flickering caused by ScrollArea's margin-based scrolling.
  *
  * @template T - The type of items to display

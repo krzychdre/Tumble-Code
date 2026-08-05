@@ -21,7 +21,6 @@
 		"clean": "rimraf dist .turbo"
 	},
 	"dependencies": {
-		"@inkjs/ui": "^2.0.0",
 		"@roo-code/core": "workspace:^",
 		"@roo-code/types": "workspace:^",
 		"@roo-code/vscode-shim": "workspace:^",
