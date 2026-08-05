@@ -48,6 +48,9 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 
 	// Track seen message timestamps to filter duplicates and the prompt echo
 	const seenMessageIds = useRef<Set<string>>(new Set())
+	// Track the last assistant text we rendered so a same-text duplicate (with a
+	// different ts) collapses to a single block (see handleSayMessage below).
+	const lastAssistantText = useRef<string | null>(null)
 	const firstTextMessageSkipped = useRef(false)
 
 	// Track pending command for injecting into command_output toolData
@@ -104,7 +107,26 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				role = "thinking"
 			}
 
+			// Deduplicate assistant text rendered twice with identical content.
+			// The core streaming pipeline can emit two ClineMessage entries with
+			// the SAME text but DIFFERENT timestamps (a partial text say finalized
+			// after reasoning or grounding sources interleaved), and the ts-based
+			// seenMessageIds dedupe above cannot collapse them. Skip a complete
+			// assistant text message whose text exactly matches the last one we
+			// rendered. Distinct replies (different text) always pass through.
+			if (say === "text" && !partial && lastAssistantText.current === text && text !== "") {
+				seenMessageIds.current.add(messageId)
+				return
+			}
+
 			seenMessageIds.current.add(messageId)
+
+			// Remember the last assistant text we actually rendered (partial
+			// included) so a later same-text duplicate with a new ts is not
+			// shown a second time.
+			if (say === "text" && role === "assistant") {
+				lastAssistantText.current = text
+			}
 
 			addMessage({
 				id: messageId,
