@@ -228,6 +228,13 @@ export async function presentAssistantMessage(cline: Task) {
 				if (error instanceof AskIgnoredError) {
 					return
 				}
+				// Silently ignore errors raised while the task is aborting. ask()/say()
+				// throw a plain abort Error when access.abort is set; reporting it via
+				// say() would re-throw (say() is itself abort-gated) and crash the
+				// process. The abort is intentional — there is nothing to surface.
+				if (cline.abort) {
+					return
+				}
 				const errorString = `Error ${action}: ${JSON.stringify(serializeError(error))}`
 				await cline.askSay.say(
 					"error",
@@ -603,6 +610,13 @@ export async function presentAssistantMessage(cline: Task) {
 				// Silently ignore AskIgnoredError - this is an internal control flow
 				// signal, not an actual error. It occurs when a newer ask supersedes an older one.
 				if (error instanceof AskIgnoredError) {
+					return
+				}
+				// Silently ignore errors raised while the task is aborting. ask()/say()
+				// throw a plain abort Error when access.abort is set; reporting it via
+				// say() would re-throw (say() is itself abort-gated) and crash the
+				// process. The abort is intentional — there is nothing to surface.
+				if (cline.abort) {
 					return
 				}
 				const errorString = `Error ${action}: ${JSON.stringify(serializeError(error))}`
