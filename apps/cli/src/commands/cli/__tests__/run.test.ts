@@ -4,8 +4,8 @@ import os from "os"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders } from "@/lib/utils/provider-types.js"
 
-import { run } from "../run.js"
-import { loadSettings, getSettingsPath } from "@/lib/storage/settings.js"
+import { run, resolveEffectiveModel } from "../run.js"
+import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
 import { getConfigDir } from "@/lib/storage/config-dir.js"
 import type { FlagOptions } from "@/types/index.js"
 
@@ -24,7 +24,7 @@ vi.mock("@/lib/utils/vscode-config.js", () => ({
 // Capture what the extension host is constructed with, without booting the
 // real extension bundle.
 const mockHost = vi.hoisted(() => ({
-	lastOptions: undefined as undefined | { provider?: string },
+	lastOptions: undefined as undefined | { provider?: string; workspacePath?: string; model?: string },
 }))
 
 vi.mock("@/agent/index.js", () => {
@@ -186,6 +186,33 @@ $((1+1))
 	})
 })
 
+describe("resolveEffectiveModel (provider/model coexistence, decision A3)", () => {
+	it("returns the persisted model when the persisted provider matches the active provider", () => {
+		expect(resolveEffectiveModel({ provider: "openrouter", model: "openai/gpt-4o" }, "openrouter")).toBe(
+			"openai/gpt-4o",
+		)
+	})
+
+	it("returns undefined when the persisted model has no matching provider", () => {
+		// Persisted for openrouter, running openai → the openrouter model must
+		// NOT be sent to openai.
+		expect(resolveEffectiveModel({ provider: "openrouter", model: "openai/gpt-4o" }, "openai")).toBeUndefined()
+	})
+
+	it("resolves persisted aliases before comparing providers", () => {
+		// Persisted "tumble" maps to openrouter.
+		expect(resolveEffectiveModel({ provider: "tumble" as never, model: "openai/gpt-4o" }, "openrouter")).toBe(
+			"openai/gpt-4o",
+		)
+	})
+
+	it("returns undefined when no model or provider is persisted", () => {
+		expect(resolveEffectiveModel({}, "openrouter")).toBeUndefined()
+		expect(resolveEffectiveModel({ provider: "openrouter" }, "openrouter")).toBeUndefined()
+		expect(resolveEffectiveModel(undefined, "openrouter")).toBeUndefined()
+	})
+})
+
 describe("run --provider alias persistence", () => {
 	let tempDir: string
 
@@ -227,6 +254,39 @@ describe("run --provider alias persistence", () => {
 			expect(mockHost.lastOptions?.provider).toBe("openrouter")
 			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
 			expect(after.provider).toBe("openrouter")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("bare run (no -w) uses the current working directory as workspace", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// Save a provider first so the run is valid (bare `tumble` reads settings).
+			await saveSettings({ provider: "openrouter" })
+
+			await run("hello", baseFlags({ workspace: undefined }))
+
+			// -w is undefined → process.cwd() must be used, never a persisted workspace.
+			expect(mockHost.lastOptions?.workspacePath).toBe(process.cwd())
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("persisted settings drive a bare run: no -w/--provider/--model flags needed", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter", model: "openai/gpt-4o" })
+
+			await run("hello", baseFlags({ workspace: undefined }))
+
+			// Provider and model come from cli-settings.json (no flags given).
+			expect(mockHost.lastOptions?.provider).toBe("openrouter")
+			expect(mockHost.lastOptions?.model).toBe("openai/gpt-4o")
+			expect(mockHost.lastOptions?.workspacePath).toBe(process.cwd())
 		} finally {
 			exitSpy.mockRestore()
 		}

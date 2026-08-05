@@ -15,6 +15,7 @@ import {
 	DEFAULT_FLAGS,
 	REASONING_EFFORTS,
 	OutputFormat,
+	type CliSettings,
 	type SupportedProvider,
 } from "@/types/index.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
@@ -50,6 +51,35 @@ async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: str
 
 function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
+}
+
+/**
+ * Resolve the effective model for a run when no explicit `-m/--model` flag is
+ * given (the caller applies the flag first).
+ *
+ * ▶ Precedence: flag `-m/--model` > persisted cli-settings.json model > mock
+ *   VS Code config model > built-in default (caller chain).
+ * ▶ A persisted model belongs to the provider that was active when it was
+ *   saved — the settings file stores provider + model together. It is applied
+ *   only when the persisted provider resolves to the provider actually
+ *   running; otherwise the built-in default model is used so a model saved for
+ *   another provider never gets sent to the wrong provider (decision A3 of
+ *   ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
+ */
+export function resolveEffectiveModel(
+	settings: Pick<CliSettings, "provider" | "model"> | undefined,
+	activeProvider: SupportedProvider,
+): string | undefined {
+	if (!settings?.model) {
+		return undefined
+	}
+
+	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
+	if (persistedProvider !== activeProvider) {
+		return undefined
+	}
+
+	return settings.model
 }
 
 export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
@@ -127,7 +157,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	// Determine effective values: CLI flags > settings file > DEFAULT_FLAGS.
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
-	const effectiveModel = flagOptions.model || settings.model || vsCodeConfig?.model || DEFAULT_FLAGS.model
 	const effectiveReasoningEffort =
 		flagOptions.reasoningEffort || settings.reasoningEffort || DEFAULT_FLAGS.reasoningEffort
 	const rawEffectiveProvider =
@@ -135,7 +164,21 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	// Persisted aliases (e.g. the cloud "tumble" id) are accepted and mapped to
 	// the real provider (tumble -> openrouter) before anything else consumes it.
 	const effectiveProvider = resolveProviderIdAlias(rawEffectiveProvider) as SupportedProvider
+	// An explicit -m wins outright; otherwise the persisted model applies only
+	// when its provider matches the active provider (its settings were saved
+	// for) — a model persisted for a different provider must not be sent to it.
+	// Explicit flags > persisted cli-settings.json > mock VS Code config > default.
+	const effectiveModel =
+		flagOptions.model ||
+		resolveEffectiveModel(settings, effectiveProvider) ||
+		vsCodeConfig?.model ||
+		DEFAULT_FLAGS.model
 	const effectiveBaseUrl = flagOptions.baseUrl || settings.baseUrl || vsCodeConfig?.baseUrl || undefined
+	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
+	// the current working directory. The workspace is intentionally NEVER read
+	// from persisted settings — `tumble` must follow the directory it is run
+	// in, so a persisted workspace could never override pwd (decision A1 of
+	// ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
 	const effectiveWorkspacePath = flagOptions.workspace ? path.resolve(flagOptions.workspace) : process.cwd()
 	const legacyRequireApprovalFromSettings =
 		settings.requireApproval ??
