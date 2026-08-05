@@ -256,9 +256,15 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// cleared it), so the old scrollback stays above a fresh region.
 	const [staticKey, setStaticKey] = useState(0)
 	const [prevStaticCount, setPrevStaticCount] = useState(0)
-	const [prevIds, setPrevIds] = useState<string[]>([])
+	// `prevIds` is only consulted inside the effect below to detect task-switch
+	// resets — it never participates in rendering — so it lives in a ref instead
+	// of state. Keeping it in state made it an effect dependency, and since we
+	// rebuild a fresh ids array on every run, the new identity retriggered the
+	// effect unconditionally → "Maximum update depth exceeded".
+	const prevIdsRef = useRef<string[]>([])
 
 	useEffect(() => {
+		const prevIds = prevIdsRef.current
 		// Detect task-switch reset: the promoted prefix must be an extension
 		// of the previous ids (same ids in the same order). If the array
 		// shrank or ids diverged, the store cleared it — remount Static.
@@ -269,8 +275,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		} else {
 			setPrevStaticCount((prev) => Math.max(prev, staticCount))
 		}
-		setPrevIds(messages.map((m) => m.id))
-	}, [messages, staticCount, prevIds])
+		prevIdsRef.current = messages.map((m) => m.id)
+	}, [messages, staticCount])
 
 	const effectiveStaticCount = Math.max(prevStaticCount, staticCount)
 	const staticMessages = messages.slice(0, effectiveStaticCount)
