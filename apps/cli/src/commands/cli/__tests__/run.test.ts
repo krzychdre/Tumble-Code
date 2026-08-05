@@ -24,7 +24,9 @@ vi.mock("@/lib/utils/vscode-config.js", () => ({
 // Capture what the extension host is constructed with, without booting the
 // real extension bundle.
 const mockHost = vi.hoisted(() => ({
-	lastOptions: undefined as undefined | { provider?: string; workspacePath?: string; model?: string },
+	lastOptions: undefined as
+		| undefined
+		| { provider?: string; workspacePath?: string; model?: string; baseUrl?: string },
 }))
 
 vi.mock("@/agent/index.js", () => {
@@ -300,6 +302,25 @@ describe("run baseUrl persistence (bug 1)", () => {
 		mockGetConfigDir.mockReset()
 		if (tempDir) {
 			fs.rmSync(tempDir, { recursive: true, force: true })
+		}
+	})
+
+	it("openai baseUrl from settings is forwarded into the ExtensionHostOptions (bug 3)", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// The user's ~/.roo/cli-settings.json declares openai + baseUrl —
+			// the effective baseUrl must reach the extension host so the
+			// OpenAiHandler builds the URL against the custom backend, never
+			// against https://api.openai.com/v1.
+			await saveSettings({ provider: "openai", baseUrl: "http://192.168.50.194:11111/v1" })
+
+			await run("hello", baseFlags())
+
+			expect(mockHost.lastOptions?.provider).toBe("openai")
+			expect(mockHost.lastOptions?.baseUrl).toBe("http://192.168.50.194:11111/v1")
+		} finally {
+			exitSpy.mockRestore()
 		}
 	})
 

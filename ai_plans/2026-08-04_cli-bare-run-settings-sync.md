@@ -119,3 +119,54 @@ Two real user-reported bugs found in the settings-sync path:
 - **Also fixed:** the CLI's persistence path could still pick a VS Code-config model saved by
   the extension for a _different_ provider than the active CLI provider; that cross-provider
   value is no longer written into the CLI settings file.
+
+## Bug 3 — `tumble` still hit `https://api.openai.com/v1` (401) despite a baseUrl in settings
+
+### Diagnosis (2026-08-05)
+
+- **Stale-binary hypothesis — DISPROVEN.** `which tumble` → `~/.local/bin/tumble` →
+  `~/.roo/cli/bin/tumble` → `~/.roo/cli/lib/index.js`, version `0.1.17-local.dc93d5de2`,
+  mtime 10:05 (after both fix commits). The installed bundle was current.
+- **Mapping — correct.** `run.ts` computes `effectiveBaseUrl` (flag > settings file >
+  VS Code config). `getProviderSettings("openai", …)` writes `openAiBaseUrl`; the
+  extension's `OpenAiHandler` (`src/api/providers/openai.ts:78`) consumes `openAiBaseUrl`.
+  The mirror (`src/utils/cliSettingsMirror.ts`) already has
+  `openai: { modelField: "openAiModelId", baseUrlField: "openAiBaseUrl" }`.
+- **Settings file — correct.** The CLI reads `~/.roo/cli-settings.json` (config-dir), and
+  `saveSettings({ provider, model, baseUrl })` writes/reads the same file.
+- **Provider selection — correct.** `cli-settings.json` declares `provider: "openai"`; the
+  run resolves to `openai`, not openrouter.
+- **REAL ROOT CAUSE — baseUrl was never forwarded into the ExtensionHost.**
+    - `run.ts` builds `extensionHostOptions` with the effective `baseUrl`, but the **TUI path**
+      (`apps/cli/src/ui/App.tsx`) destructured `extensionHostOptions` **without `baseUrl`** and
+      never passed it to `useExtensionHost`, and `useExtensionHost` itself **dropped `baseUrl`**
+      when calling `createExtensionHost(...)` (it forwarded only mode/user/reasoningEffort/
+      provider/apiKey/model/workspacePath/...).
+    - So `initialSettings` (built in `extension-host.ts` from `getProviderSettings(...,
+this.options.baseUrl)`) received `baseUrl === undefined`, `openAiBaseUrl` never landed in
+      the current task's `apiConfiguration`, and `OpenAiHandler.createClient()` fell back to
+      `https://api.openai.com/v1`. With the stale key `123` → `401 Incorrect API key provided`.
+
+### Fix
+
+- `apps/cli/src/ui/hooks/useExtensionHost.ts`: accept `baseUrl` and forward it into the
+  `createExtensionHost({ ... })` options.
+- `apps/cli/src/ui/App.tsx`: destructure `baseUrl` from `extensionHostOptions` and pass it in
+  the `useExtensionHost({ ... })` call.
+- Regression tests:
+    - `apps/cli/src/commands/cli/__tests__/run.test.ts` — a settings file with
+      `{ provider: "openai", baseUrl }` on a bare run forwards `baseUrl` into
+      `ExtensionHostOptions` (would have failed before).
+    - `src/utils/__tests__/cliSettingsMirror.spec.ts` — openai profile with `openAiBaseUrl`
+      mirrors `baseUrl` into cli-settings.json (regression for the app-configured workflow).
+
+### Verification
+
+- `cd apps/cli && npx vitest run` — 541 passed, 1 skipped (pre-existing).
+- `cd src && npx vitest run utils/__tests__/cliSettingsMirror.spec.ts` — 14 passed.
+- `npx tsc --noEmit` clean in `apps/cli` and `src`; eslint clean on both.
+- `./apps/cli/scripts/build.sh --install --skip-verify` rebuilt + reinstalled; on-PATH
+  `/home/krzych/.roo/cli/lib/App-WQ6TURPG.js` now contains `baseUrl` in both the
+  `useExtensionHost` destructure and the `createExtensionHost({ ... })` call. Note: the
+  version string stays `0.1.17-local.<git-hash>` by design (hash of branch HEAD, not a
+  content marker).

@@ -107,6 +107,24 @@ describe("buildCliSettingsFromApiConfiguration", () => {
 		})
 	})
 
+	it("mirrors the openai baseUrl when the profile carries it (bug 3 — the baseUrl must reach cli-settings.json)", () => {
+		// The user configured their own OpenAI-compatible backend in the app.
+		// The mirror must write the provider's baseUrl field into
+		// cli-settings.json so a bare `tumble` run honors it — never falling
+		// back to https://api.openai.com/v1.
+		const config: ProviderSettings = {
+			apiProvider: "openai",
+			openAiModelId: "DeepSeek-V4-Flash-0731",
+			openAiBaseUrl: "http://192.168.50.194:11111/v1",
+		}
+
+		expect(buildCliSettingsFromApiConfiguration(config)).toEqual({
+			provider: "openai",
+			model: "DeepSeek-V4-Flash-0731",
+			baseUrl: "http://192.168.50.194:11111/v1",
+		})
+	})
+
 	it("falls back to no model when the active provider's own model field is unset (no cross-provider leak)", () => {
 		// apiProvider=openai but only a stale openRouterModelId exists — the
 		// stale model must NOT be mirrored at all.
