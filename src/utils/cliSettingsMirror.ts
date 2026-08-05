@@ -20,6 +20,49 @@ import os from "os"
 import path from "path"
 
 import type { ProviderSettings } from "@roo-code/types"
+import type { KnownProviderId } from "@roo-code/types"
+
+/**
+ * Per-provider model/base-url settings fields (what the CLI reads). Aligned
+ * with the CLI's `getModelField()`/`getBaseUrlField()` provider map — the
+ * authoritative source for which settings key holds the model/base URL.
+ * Providers without an entry have no model/baseUrl mirrored at all (their
+ * schema either has no such field or is not wired to the CLI).
+ */
+const providerFieldMap: Partial<
+	Record<KnownProviderId, { modelField?: keyof ProviderSettings; baseUrlField?: keyof ProviderSettings }>
+> = {
+	anthropic: { modelField: "apiModelId", baseUrlField: "anthropicBaseUrl" },
+	openrouter: { modelField: "openRouterModelId", baseUrlField: "openRouterBaseUrl" },
+	bedrock: { modelField: "apiModelId", baseUrlField: "awsBedrockEndpoint" },
+	vertex: { modelField: "apiModelId" },
+	// "openai" (OpenAI Compatible) uses openAiModelId/openAiBaseUrl — NOT
+	// apiModelId (which the ownership list also carries for migration).
+	openai: { modelField: "openAiModelId", baseUrlField: "openAiBaseUrl" },
+	ollama: { modelField: "ollamaModelId", baseUrlField: "ollamaBaseUrl" },
+	"vscode-lm": {},
+	lmstudio: { modelField: "lmStudioModelId", baseUrlField: "lmStudioBaseUrl" },
+	gemini: { modelField: "apiModelId", baseUrlField: "googleGeminiBaseUrl" },
+	"gemini-cli": { modelField: "apiModelId" },
+	"openai-codex": { modelField: "apiModelId" },
+	"openai-native": { modelField: "apiModelId", baseUrlField: "openAiNativeBaseUrl" },
+	mistral: { modelField: "apiModelId", baseUrlField: "mistralCodestralUrl" },
+	deepseek: { modelField: "apiModelId", baseUrlField: "deepSeekBaseUrl" },
+	poe: { modelField: "apiModelId", baseUrlField: "poeBaseUrl" },
+	moonshot: { modelField: "apiModelId", baseUrlField: "moonshotBaseUrl" },
+	minimax: { modelField: "apiModelId", baseUrlField: "minimaxBaseUrl" },
+	requesty: { modelField: "requestyModelId", baseUrlField: "requestyBaseUrl" },
+	unbound: { modelField: "unboundModelId" },
+	"fake-ai": {},
+	xai: { modelField: "apiModelId" },
+	baseten: { modelField: "apiModelId" },
+	litellm: { modelField: "litellmModelId", baseUrlField: "litellmBaseUrl" },
+	sambanova: { modelField: "apiModelId" },
+	zai: { modelField: "apiModelId" },
+	fireworks: { modelField: "apiModelId" },
+	"qwen-code": { modelField: "apiModelId" },
+	"vercel-ai-gateway": { modelField: "vercelAiGatewayModelId" },
+}
 
 /** Same shape the CLI's saveSettings produces/provider union. */
 export interface CliSettingsMirror {
@@ -58,58 +101,27 @@ export function buildCliSettingsFromApiConfiguration(apiConfiguration: ProviderS
 		settings.provider = provider
 	}
 
-	// Model: the extension's provider-specific model field (openRouterModelId,
-	// openAiModelId, apiModelId, ...). `getModelId` reads the first present key.
-	const modelField = getModelIdField(apiConfiguration)
-	if (modelField && apiConfiguration[modelField]) {
-		settings.model = apiConfiguration[modelField]
+	// Model/base-url are read from the ACTIVE PROVIDER'S OWN field
+	// (openRouterModelId for openrouter, openAiModelId for openai,
+	// apiModelId for most). Never fall back to "the first present key": a
+	// stale model from another provider (e.g. a leftover openRouterModelId
+	// "anthropic/claude-opus-4.6" while apiProvider=openai) must not be
+	// mirrored — it would clobber the CLI's model.
+	const fields = providerFieldMap[apiConfiguration.apiProvider as KnownProviderId]
+	const modelField = fields?.modelField
+	const modelValue = modelField ? apiConfiguration[modelField] : undefined
+	if (typeof modelValue === "string" && modelValue) {
+		settings.model = modelValue
 	}
 
-	// Base URL: the provider's base-url field when the schema has one
-	// (openRouterBaseUrl, openAiBaseUrl, anthropicBaseUrl, ...).
-	const baseUrlField = getBaseUrlField(apiConfiguration.apiProvider)
+	// Base URL: the active provider's base-url field when the schema has one.
+	const baseUrlField = fields?.baseUrlField
 	const baseUrlValue = baseUrlField ? apiConfiguration[baseUrlField] : undefined
 	if (typeof baseUrlValue === "string" && baseUrlValue) {
 		settings.baseUrl = baseUrlValue
 	}
 
 	return settings
-}
-
-const MODEL_ID_FIELDS = [
-	"openRouterModelId",
-	"openAiModelId",
-	"apiModelId",
-	"ollamaModelId",
-	"lmStudioModelId",
-	"requestyModelId",
-	"unboundModelId",
-	"litellmModelId",
-	"vercelAiGatewayModelId",
-] as const satisfies readonly (keyof ProviderSettings)[]
-
-function getModelIdField(settings: ProviderSettings): (typeof MODEL_ID_FIELDS)[number] | undefined {
-	return MODEL_ID_FIELDS.find((key) => settings[key])
-}
-
-const BASE_URL_FIELDS: Partial<Record<NonNullable<ProviderSettings["apiProvider"]>, keyof ProviderSettings>> = {
-	anthropic: "anthropicBaseUrl",
-	openrouter: "openRouterBaseUrl",
-	openai: "openAiBaseUrl",
-	"openai-native": "openAiNativeBaseUrl",
-	ollama: "ollamaBaseUrl",
-	lmstudio: "lmStudioBaseUrl",
-	gemini: "googleGeminiBaseUrl",
-	deepseek: "deepSeekBaseUrl",
-	poe: "poeBaseUrl",
-	moonshot: "moonshotBaseUrl",
-	minimax: "minimaxBaseUrl",
-	requesty: "requestyBaseUrl",
-	mistral: "mistralCodestralUrl",
-}
-
-function getBaseUrlField(provider: ProviderSettings["apiProvider"]): keyof ProviderSettings | undefined {
-	return provider ? BASE_URL_FIELDS[provider] : undefined
 }
 
 /**

@@ -83,3 +83,39 @@ persisted model; an **explicit** `-m` still wins.
   `~/.roo/cli-settings.json`; `-w` domyślnie = `pwd`.
 - Flagi wciąż mają pierwszeństwo; `--provider X` bez `-m` używa zapisanego modelu tylko gdy
   zapisany provider == X.
+
+## Fixes (2026-08-05)
+
+Two real user-reported bugs found in the settings-sync path:
+
+### Bug 1 — baseUrl was never persisted (or dropped on every run)
+
+- **Root cause:** `run.ts` built `pendingSettings` with `provider`/`model` but never filled
+  `pendingSettings.baseUrl` (and a hand-edited file with provider+model but no baseUrl key
+  stayed without one — the openai handler then fell back to `https://api.openai.com/v1`).
+- **Chosen semantics:** on a successful run the CLI persists the **effective** baseUrl
+  (flag > settings > VS Code config) **only when it differs** from what is already in the
+  file (no rewrite churn), and **only for a provider whose schema has a base-url field**
+  (`getBaseUrlField()` — providers such as `unbound`/`baseten`/`vercel-ai-gateway` never get
+  a `baseUrl` key). A hand-edited file with no baseUrl key is left untouched on a bare run.
+
+### Bug 2 — model kept being rewritten to `anthropic/claude-opus-4.6` (the default) on every run
+
+- **Root cause (a):** `run.ts` persisted the **effective** model. When the active provider
+  differed from the persisted provider (or the model resolved to the built-in
+  `DEFAULT_FLAGS.model`), that fallback default was written back into `cli-settings.json`,
+  clobbering the user's model (e.g. `DeepSeek-V4-Flash-0731`).
+  **Fix:** the model is persisted **only when it is explicitly tied to the active provider** —
+  an explicit `-m`, or the persisted settings model whose provider matches the active one
+  (via `resolveEffectiveModel()`). A VS Code-config/default model is **never** written back.
+- **Root cause (b):** `src/utils/cliSettingsMirror.ts` used a hardcoded `MODEL_ID_FIELDS`
+  list with `openRouterModelId` first — not provider-aware. With both `openRouterModelId`
+  (stale `anthropic/claude-opus-4.6`) and `openAiModelId` present in globalState, it picked
+  the stale openrouter model even though `apiProvider=openai`.
+  **Fix:** the mirror now uses a provider-aware `providerFieldMap` (model + baseUrl field per
+  provider, aligned with the CLI's `getModelField()`/`getBaseUrlField()`), so a model/baseUrl
+  from another provider is never mirrored. `buildCliSettingsFromApiConfiguration()` stays
+  pure; the existing 11 mirror tests still pass, extended with the stale-openrouter regression.
+- **Also fixed:** the CLI's persistence path could still pick a VS Code-config model saved by
+  the extension for a _different_ provider than the active CLI provider; that cross-provider
+  value is no longer written into the CLI settings file.

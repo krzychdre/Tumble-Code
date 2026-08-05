@@ -88,6 +88,37 @@ describe("buildCliSettingsFromApiConfiguration", () => {
 		expect(result.provider).toBe("openrouter")
 		expect(result).not.toHaveProperty("openRouterSpecificProvider")
 	})
+
+	it("picks the model field of the ACTIVE provider — a stale openRouterModelId never wins for openai (bug 2b)", () => {
+		// The editor kept a leftover openRouterModelId ("anthropic/claude-opus-4.6")
+		// in globalState while apiProvider=openai with a real openAiModelId. The
+		// mirror must mirror the openai model — never the stale openrouter one.
+		const config: ProviderSettings = {
+			apiProvider: "openai",
+			openRouterModelId: "anthropic/claude-opus-4.6",
+			openAiModelId: "DeepSeek-V4-Flash-0731",
+			openAiBaseUrl: "http://localhost:1234/v1",
+		}
+
+		expect(buildCliSettingsFromApiConfiguration(config)).toEqual({
+			provider: "openai",
+			model: "DeepSeek-V4-Flash-0731",
+			baseUrl: "http://localhost:1234/v1",
+		})
+	})
+
+	it("falls back to no model when the active provider's own model field is unset (no cross-provider leak)", () => {
+		// apiProvider=openai but only a stale openRouterModelId exists — the
+		// stale model must NOT be mirrored at all.
+		const config: ProviderSettings = {
+			apiProvider: "openai",
+			openRouterModelId: "anthropic/claude-opus-4.6",
+		}
+
+		expect(buildCliSettingsFromApiConfiguration(config)).toEqual({
+			provider: "openai",
+		})
+	})
 })
 
 describe("writeCliSettingsMirror", () => {
