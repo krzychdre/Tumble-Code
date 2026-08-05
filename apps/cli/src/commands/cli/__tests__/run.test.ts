@@ -2,7 +2,7 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 
-import { providerRequiresApiKey, getEnvVarName, keylessProviders } from "@/lib/utils/provider-types.js"
+import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
 
 import { run, resolveEffectiveModel } from "../run.js"
 import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
@@ -210,6 +210,151 @@ describe("resolveEffectiveModel (provider/model coexistence, decision A3)", () =
 		expect(resolveEffectiveModel({}, "openrouter")).toBeUndefined()
 		expect(resolveEffectiveModel({ provider: "openrouter" }, "openrouter")).toBeUndefined()
 		expect(resolveEffectiveModel(undefined, "openrouter")).toBeUndefined()
+	})
+})
+
+describe("run model persistence — never clobber with defaults (bug 2)", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-model-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		if (tempDir) {
+			fs.rmSync(tempDir, { recursive: true, force: true })
+		}
+	})
+
+	it("bare run with settings {provider: openai, model: DeepSeek-V4-Flash-0731} does NOT rewrite the model in the file", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// The user hand-wrote a DeepSeek model under an OpenAI-compatible
+			// provider. A bare run (no -m) must keep it — never replace it with
+			// the built-in DEFAULT_FLAGS.model (anthropic/claude-opus-4.6).
+			await saveSettings({ provider: "openai", model: "DeepSeek-V4-Flash-0731" })
+			const mtimeBefore = fs.statSync(getSettingsPath()).mtimeMs
+
+			await run("hello", baseFlags())
+
+			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(after.model).toBe("DeepSeek-V4-Flash-0731")
+			expect(after.model).not.toBe("anthropic/claude-opus-4.6")
+			// No rewrite happened at all.
+			expect(fs.statSync(getSettingsPath()).mtimeMs).toBe(mtimeBefore)
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("--provider openai with no -m on a file whose provider was openrouter keeps the user's model", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// Settings were saved for openrouter; the run switches to openai
+			// without -m. The file's openrouter model must survive — the run's
+			// effective default model must never be written over the user's data.
+			await saveSettings({ provider: "openrouter", model: "openai/gpt-4o" })
+
+			await run("hello", baseFlags({ provider: "openai" }))
+
+			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(after.provider).toBe("openai")
+			expect(after.model).toBe("openai/gpt-4o")
+			expect(after.model).not.toBe("anthropic/claude-opus-4.6")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("an explicit --model persists to the file", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openai" })
+
+			await run("hello", baseFlags({ provider: "openai", model: "my-custom-model" }))
+
+			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(after.model).toBe("my-custom-model")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+})
+
+describe("run baseUrl persistence (bug 1)", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-baseurl-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		if (tempDir) {
+			fs.rmSync(tempDir, { recursive: true, force: true })
+		}
+	})
+
+	it("run with --base-url persists it to the settings file", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openai" })
+
+			await run("hello", baseFlags({ provider: "openai", baseUrl: "http://localhost:1234/v1" }))
+
+			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(after.baseUrl).toBe("http://localhost:1234/v1")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("a baseUrl already in settings is kept on a bare run (and not dropped)", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// The user hand-edited ~/.roo/cli-settings.json: provider + model
+			// without baseUrl — a bare run must not write a baseUrl key at all
+			// (the key must survive untouched, i.e. stay absent).
+			await saveSettings({ provider: "openai", model: "DeepSeek-V4-Flash-0731" })
+
+			await run("hello", baseFlags())
+
+			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(after).not.toHaveProperty("baseUrl")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("never persists a baseUrl for a provider without a base-url field", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// unbound has no base-url field at all (its schema has no base-url key).
+			expect(getBaseUrlField("unbound")).toBeUndefined()
+
+			await saveSettings({ provider: "unbound" })
+
+			await run(
+				"hello",
+				baseFlags({ provider: "unbound", apiKey: "unbound-key", baseUrl: "http://should-not-persist" }),
+			)
+
+			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(after).not.toHaveProperty("baseUrl")
+		} finally {
+			exitSpy.mockRestore()
+		}
 	})
 })
 

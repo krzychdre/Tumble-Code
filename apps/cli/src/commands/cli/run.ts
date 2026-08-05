@@ -23,7 +23,13 @@ import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
 import { loadSettings, saveSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
-import { getEnvVarName, getApiKeyFromEnv, providerRequiresApiKey, getProviderSettings } from "@/lib/utils/provider.js"
+import {
+	getEnvVarName,
+	getApiKeyFromEnv,
+	getBaseUrlField,
+	providerRequiresApiKey,
+	getProviderSettings,
+} from "@/lib/utils/provider.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
@@ -80,6 +86,17 @@ export function resolveEffectiveModel(
 	}
 
 	return settings.model
+}
+
+/**
+ * Whether the active provider's settings schema has a base-url field. Used to
+ * gate baseUrl persistence: a provider without a base-url field must never get
+ * a baseUrl key written into cli-settings.json (getProviderSettings would
+ * reject it on the next run — provider-types.ts throws when a baseUrl is given
+ * for a provider that has no base-url field).
+ */
+export function effectiveProviderSupportBaseUrl(provider: SupportedProvider): boolean {
+	return getBaseUrlField(provider) !== undefined
 }
 
 export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
@@ -303,8 +320,20 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const rawPersistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
 	const persistedProvider =
 		rawPersistedProvider !== undefined ? resolveProviderIdAlias(rawPersistedProvider) : undefined
-	const persistedModel = flagOptions.model ?? settings.model ?? vsCodeConfig?.model
-	const persistedBaseUrl = flagOptions.baseUrl ?? settings.baseUrl ?? vsCodeConfig?.baseUrl
+	// The model is persisted ONLY when it is explicitly tied to the active
+	// provider — an explicit -m, or the persisted settings model whose provider
+	// matches the active one (the settings file stores provider + model
+	// together). A model read from the mock VS Code config or the built-in
+	// default belongs to "some other provider" and must NEVER be written back
+	// over the settings file (decision A3; bug: model got clobbered to
+	// DEFAULT_FLAGS.model anthropic/claude-opus-4.6 on every run).
+	const persistedModel = flagOptions.model ?? resolveEffectiveModel(settings, effectiveProvider)
+	// baseUrl is persisted only for providers whose settings schema has a
+	// base-url field (getProviderSettings throws otherwise). The effective
+	// flag > settings > VS Code config value is persisted when it differs from
+	// what the file already holds; a provider without a base-url field never
+	// gets a baseUrl key written.
+	const persistedBaseUrl = effectiveProviderSupportBaseUrl(effectiveProvider) ? effectiveBaseUrl : undefined
 
 	// Skip the write entirely when nothing actually changed — an unconditional
 	// saveSettings would rewrite the file (and bump mtime) on every plain run
