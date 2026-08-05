@@ -36,8 +36,11 @@ describe("TodoDisplay", () => {
 		const { lastFrame } = render(<TodoDisplay todos={mockTodos} showProgress={true} />)
 		const output = lastFrame()
 
-		// Check progress bar shows percentage (2/5 = 40%)
-		expect(output).toContain("40%")
+		// The mini-bar shows completed/total and a █/░ bar (no percentage).
+		// 2/5 completed → round(2/5 * 16) = 6 filled blocks, 10 empty.
+		expect(output).toContain("(2/5)")
+		expect(output).toContain("█".repeat(6))
+		expect(output).toContain("░".repeat(10))
 	})
 
 	it("hides progress bar when showProgress is false", () => {
@@ -128,8 +131,10 @@ describe("TodoDisplay", () => {
 		const { lastFrame } = render(<TodoDisplay todos={todosWithMultipleInProgress} showProgress={true} />)
 		const output = lastFrame()
 
-		// Progress bar shows percentage (1/4 = 25%)
-		expect(output).toContain("25%")
+		// 1/4 completed → round(1/4 * 16) = 4 filled blocks, 12 empty.
+		expect(output).toContain("(1/4)")
+		expect(output).toContain("█".repeat(4))
+		expect(output).toContain("░".repeat(12))
 		// In_progress items render with checkboxOff glyph and bold warning
 		expect(output).toContain("☐") // checkboxOff for in_progress
 	})

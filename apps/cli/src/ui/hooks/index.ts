@@ -5,7 +5,6 @@ export { useInputHistory } from "./useInputHistory.js"
 
 // Export new extracted hooks
 export { useFollowupCountdown } from "./useFollowupCountdown.js"
-export { useFocusManagement } from "./useFocusManagement.js"
 export { useMessageHandlers } from "./useMessageHandlers.js"
 export { useExtensionHost } from "./useExtensionHost.js"
 export { useTaskSubmit } from "./useTaskSubmit.js"
@@ -14,7 +13,6 @@ export { usePickerHandlers } from "./usePickerHandlers.js"
 
 // Export types
 export type { UseFollowupCountdownOptions } from "./useFollowupCountdown.js"
-export type { UseFocusManagementOptions, UseFocusManagementReturn } from "./useFocusManagement.js"
 export type { UseMessageHandlersOptions, UseMessageHandlersReturn } from "./useMessageHandlers.js"
 export type { UseExtensionHostOptions, UseExtensionHostReturn } from "./useExtensionHost.js"
 export type { UseTaskSubmitOptions, UseTaskSubmitReturn } from "./useTaskSubmit.js"

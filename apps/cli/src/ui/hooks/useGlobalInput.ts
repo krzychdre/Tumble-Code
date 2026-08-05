@@ -9,8 +9,6 @@ import { useUIStateStore } from "../stores/uiStateStore.js"
 import { useCLIStore } from "../store.js"
 
 export interface UseGlobalInputOptions {
-	canToggleFocus: boolean
-	isScrollAreaActive: boolean
 	pickerIsOpen: boolean
 	availableModes: ModeResult[]
 	currentMode: string | null
@@ -19,7 +17,6 @@ export interface UseGlobalInputOptions {
 	showInfo: (msg: string, duration?: number) => void
 	exit: () => void
 	cleanup: () => Promise<void>
-	toggleFocus: () => void
 	closePicker: () => void
 }
 
@@ -28,14 +25,15 @@ export interface UseGlobalInputOptions {
  *
  * Shortcuts:
  * - Ctrl+C: Double-press to exit
- * - Tab: Toggle focus between scroll area and input
  * - Ctrl+M: Cycle through available modes
  * - Ctrl+T: Toggle TODO list viewer
  * - Escape: Cancel task (when loading) or close TODO viewer
+ *
+ * Note: the scroll/input focus toggle (Tab) was removed with the ScrollArea
+ * component — the transcript now flows into native scrollback via `<Static>`,
+ * so there is no in-app scroll viewport to focus.
  */
 export function useGlobalInput({
-	canToggleFocus,
-	isScrollAreaActive: _isScrollAreaActive,
 	pickerIsOpen,
 	availableModes,
 	currentMode,
@@ -44,7 +42,6 @@ export function useGlobalInput({
 	showInfo,
 	exit,
 	cleanup,
-	toggleFocus,
 	closePicker,
 }: UseGlobalInputOptions): void {
 	const { isLoading, currentTodos } = useCLIStore()
@@ -71,12 +68,6 @@ export function useGlobalInput({
 
 	// Handle global keyboard shortcuts
 	useInput((input, key) => {
-		// Tab to toggle focus between scroll area and input (only when input is available)
-		if (key.tab && canToggleFocus && !pickerIsOpen) {
-			toggleFocus()
-			return
-		}
-
 		// Ctrl+M to cycle through modes (only when not loading and we have available modes)
 		// Uses centralized global input sequence detection
 		if (matchesGlobalSequence(input, key, "ctrl-m")) {

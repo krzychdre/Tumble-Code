@@ -5,7 +5,6 @@ import type { TodoItem } from "@roo-code/types"
 
 import { figures } from "../figures.js"
 import * as theme from "../theme.js"
-import ProgressBar from "./ProgressBar.js"
 import Bullet from "./primitives/Bullet.js"
 
 interface TodoDisplayProps {
@@ -62,6 +61,18 @@ function TodoDisplay({
 	const totalCount = todos.length
 	const completedCount = todos.filter((t) => t.status === "completed").length
 
+	// Inline mini progress bar: filled blocks vs empty blocks (width 16).
+	// Replaces the deleted ProgressBar component with a simple text bar.
+	const progressWidth = 16
+	const filled = totalCount > 0 ? Math.round((completedCount / totalCount) * progressWidth) : 0
+	const empty = progressWidth - filled
+	const progressColor =
+		totalCount > 0 && completedCount === totalCount
+			? theme.success
+			: completedCount > 0
+				? theme.warning
+				: theme.subtle
+
 	return (
 		<Box flexDirection="column" marginBottom={1}>
 			{/* Header line: bullet + title + count + progress bar */}
@@ -79,7 +90,8 @@ function TodoDisplay({
 						{showProgress && (
 							<>
 								<Text> </Text>
-								<ProgressBar value={completedCount} max={totalCount} width={16} />
+								<Text color={progressColor}>{"█".repeat(filled)}</Text>
+								<Text color={theme.subtle}>{"░".repeat(empty)}</Text>
 							</>
 						)}
 					</Box>

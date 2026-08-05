@@ -1,5 +1,4 @@
-import { Box, Text, useApp, useInput } from "ink"
-import { Select } from "@inkjs/ui"
+import { Box, Static, Text, useApp, useInput } from "ink"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
@@ -9,8 +8,10 @@ import { arePathsEqual } from "@/lib/utils/path.js"
 import { getContextWindow } from "@/lib/utils/context-window.js"
 
 import * as theme from "./theme.js"
+import { figures } from "./figures.js"
 import { useCLIStore } from "./store.js"
 import { useUIStateStore } from "./stores/uiStateStore.js"
+import { getStaticCount } from "./transcript.js"
 
 // Import extracted hooks.
 import {
@@ -22,26 +23,22 @@ import {
 	useTaskSubmit,
 	useGlobalInput,
 	useFollowupCountdown,
-	useFocusManagement,
 	usePickerHandlers,
 } from "./hooks/index.js"
 
-// Import extracted utilities.
-import { getView } from "./utils/index.js"
-
 // Import components.
-import Header from "./components/Header.js"
+import WelcomeBanner from "./components/WelcomeBanner.js"
 import ChatHistoryItem from "./components/ChatHistoryItem.js"
-import LoadingText from "./components/LoadingText.js"
+import Spinner from "./components/Spinner.js"
 import ToastDisplay from "./components/ToastDisplay.js"
 import TodoDisplay from "./components/TodoDisplay.js"
-import { HorizontalLine } from "./components/HorizontalLine.js"
+import ApprovalDialog from "./components/dialogs/ApprovalDialog.js"
+import FollowupDialog from "./components/dialogs/FollowupDialog.js"
+import InputArea, { type AutocompleteInputHandle } from "./components/input/InputArea.js"
 import {
-	type AutocompleteInputHandle,
 	type AutocompleteTrigger,
 	type FileResult,
 	type SlashCommandResult,
-	AutocompleteInput,
 	PickerSelect,
 	createFileTrigger,
 	createSlashCommandTrigger,
@@ -53,10 +50,8 @@ import {
 	toModeResult,
 	toHistoryResult,
 } from "./components/autocomplete/index.js"
-import { ScrollArea, useScrollToBottom } from "./components/ScrollArea.js"
-import ScrollIndicator from "./components/ScrollIndicator.js"
 
-const PICKER_HEIGHT = 10
+const PICKER_MAX_VISIBLE = 8
 
 export interface TUIAppProps extends ExtensionHostOptions {
 	initialPrompt?: string
@@ -69,7 +64,27 @@ export interface TUIAppProps extends ExtensionHostOptions {
 }
 
 /**
- * Inner App component that uses the terminal size context
+ * Discriminated item type for the `<Static>` region.
+ *
+ * The welcome banner is a synthetic first item (`id === "__welcome__"`) so it
+ * prints once into native scrollback and scrolls away naturally as the
+ * conversation grows. Message items delegate to `ChatHistoryItem`.
+ */
+type StaticItem =
+	| { id: "__welcome__"; isWelcome: true; welcomeProps: WelcomeBannerProps }
+	| { id: string; isWelcome: false; message: TUIMessage }
+
+// Imported here to avoid a circular type-only import through components.
+import type { TUIMessage } from "./types.js"
+import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
+
+/**
+ * Inner App component that uses the terminal size context.
+ *
+ * Layout (plan §8): a `<Static>` transcript region (finalized messages + the
+ * welcome banner, printed once into native scrollback) followed by a dynamic
+ * tail of in-flight messages, spinner, dialogs, the autocomplete picker, and
+ * the bordered `InputArea` with its footer.
  */
 function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps) {
 	const {
@@ -154,14 +169,10 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		taskHistoryRef.current = taskHistory
 	}, [taskHistory])
 
-	// Scroll area state
-	const { rows } = useTerminalSize()
-	const [scrollState, setScrollState] = useState({ scrollTop: 0, maxScroll: 0, isAtBottom: true })
-	const { scrollToBottomTrigger, scrollToBottom } = useScrollToBottom()
-
-	// RAF-style throttle refs for scroll updates (prevents multiple state updates per event loop tick).
-	const rafIdRef = useRef<NodeJS.Immediate | null>(null)
-	const pendingScrollRef = useRef<{ scrollTop: number; maxScroll: number; isAtBottom: boolean } | null>(null)
+	// Terminal size is still exposed via context for any layout-sensitive
+	// children, but the outer flow no longer sets a fixed viewport height —
+	// `<Static>` + the dynamic tail flow naturally into native scrollback.
+	useTerminalSize()
 
 	// Toast notifications for ephemeral messages (e.g., mode changes).
 	const { currentToast, showInfo } = useToast()
@@ -205,12 +216,6 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		firstTextMessageSkipped,
 	})
 
-	// Initialize focus management hook
-	const { canToggleFocus, isScrollAreaActive, isInputAreaActive, toggleFocus } = useFocusManagement({
-		showApprovalPrompt: Boolean(pendingAsk && pendingAsk.type !== "followup"),
-		pendingAsk,
-	})
-
 	// Initialize countdown hook for followup auto-accept
 	const { cancelCountdown } = useFollowupCountdown({
 		pendingAsk,
@@ -228,10 +233,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			firstTextMessageSkipped,
 		})
 
-	// Initialize global input hook
+	// Initialize global input hook (scroll/focus toggle removed — plan §8)
 	useGlobalInput({
-		canToggleFocus,
-		isScrollAreaActive,
 		pickerIsOpen: pickerState.isOpen,
 		availableModes,
 		currentMode,
@@ -240,56 +243,102 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		showInfo,
 		exit,
 		cleanup,
-		toggleFocus,
 		closePicker: handlePickerClose,
 	})
 
-	// Determine current view
-	const view = getView(messages, pendingAsk, isLoading)
+	// --- Transcript split (plan §3) -------------------------------------------
 
-	// Determine if we should show the approval prompt (Y/N) instead of text input
-	const showApprovalPrompt = pendingAsk && pendingAsk.type !== "followup"
+	const hasPendingAsk = Boolean(pendingAsk)
+	const staticCount = getStaticCount(messages, isLoading, hasPendingAsk)
 
-	// Display all messages including partial (streaming) ones
-	const displayMessages = useMemo(() => {
-		return messages
-	}, [messages])
+	// Monotonicity + task-switch reset detection. `staticKey` remounts the
+	// `<Static>` region when the message array identity changes (task switch
+	// cleared it), so the old scrollback stays above a fresh region.
+	const [staticKey, setStaticKey] = useState(0)
+	const [prevStaticCount, setPrevStaticCount] = useState(0)
+	const [prevIds, setPrevIds] = useState<string[]>([])
 
-	// Scroll to bottom when new messages arrive (if auto-scroll is enabled)
-	const prevMessageCount = useRef(messages.length)
 	useEffect(() => {
-		if (messages.length > prevMessageCount.current && scrollState.isAtBottom) {
-			scrollToBottom()
+		// Detect task-switch reset: the promoted prefix must be an extension
+		// of the previous ids (same ids in the same order). If the array
+		// shrank or ids diverged, the store cleared it — remount Static.
+		const isExtension = messages.length >= prevIds.length && prevIds.every((id, i) => messages[i]?.id === id)
+		if (!isExtension && messages.length > 0) {
+			setStaticKey((k) => k + 1)
+			setPrevStaticCount(0)
+		} else {
+			setPrevStaticCount((prev) => Math.max(prev, staticCount))
 		}
-		prevMessageCount.current = messages.length
-	}, [messages.length, scrollState.isAtBottom, scrollToBottom])
+		setPrevIds(messages.map((m) => m.id))
+	}, [messages, staticCount, prevIds])
 
-	// Handle scroll state changes from ScrollArea (RAF-throttled to coalesce rapid updates)
-	const handleScroll = useCallback((scrollTop: number, maxScroll: number, isAtBottom: boolean) => {
-		// Store the latest scroll values in ref
-		pendingScrollRef.current = { scrollTop, maxScroll, isAtBottom }
+	const effectiveStaticCount = Math.max(prevStaticCount, staticCount)
+	const staticMessages = messages.slice(0, effectiveStaticCount)
+	const dynamicMessages = messages.slice(effectiveStaticCount)
 
-		// Only schedule one update per event loop tick
-		if (rafIdRef.current === null) {
-			rafIdRef.current = setImmediate(() => {
-				rafIdRef.current = null
-				const pending = pendingScrollRef.current
-				if (pending) {
-					setScrollState(pending)
-					pendingScrollRef.current = null
-				}
-			})
+	// Snapshot the welcome props once — the banner prints into scrollback and
+	// should not reflect later mode/model changes (which are footer concerns).
+	// Empty deps are intentional: this is a one-time snapshot taken on first
+	// render so the printed banner stays stable in native scrollback.
+	const welcomeProps = useMemo<WelcomeBannerProps>(
+		() => ({
+			workspacePath,
+			user,
+			provider,
+			model,
+			mode: currentMode || mode,
+			reasoningEffort,
+			nonInteractive,
+			version,
+		}),
+		[],
+	)
+
+	const staticItems = useMemo<StaticItem[]>(() => {
+		const items: StaticItem[] = [{ id: "__welcome__", isWelcome: true, welcomeProps }]
+		for (const m of staticMessages) {
+			items.push({ id: m.id, isWelcome: false, message: m })
 		}
-	}, [])
+		return items
+	}, [staticMessages, welcomeProps])
 
-	// Cleanup RAF-style timer on unmount
+	// --- Loading spinner timing -----------------------------------------------
+
+	const loadingStartRef = useRef<number>(0)
 	useEffect(() => {
-		return () => {
-			if (rafIdRef.current !== null) {
-				clearImmediate(rafIdRef.current)
-			}
-		}
-	}, [])
+		if (isLoading) loadingStartRef.current = Date.now()
+	}, [isLoading])
+
+	// --- Context percent for the footer ---------------------------------------
+
+	const contextPercent = useMemo(() => {
+		if (!contextWindow || contextWindow <= 0 || !tokenUsage) return null
+		return Math.min(100, Math.round((tokenUsage.contextTokens / contextWindow) * 100))
+	}, [contextWindow, tokenUsage])
+
+	const footerCost = tokenUsage?.totalCost && tokenUsage.totalCost > 0 ? tokenUsage.totalCost : undefined
+
+	// --- Dialog / input visibility flags --------------------------------------
+
+	const showApprovalDialog = Boolean(pendingAsk && pendingAsk.type !== "followup")
+	const showFollowupDialog =
+		pendingAsk?.type === "followup" &&
+		Boolean(pendingAsk.suggestions && pendingAsk.suggestions.length > 0) &&
+		!showCustomInput
+	const showFollowupCustomInput = pendingAsk?.type === "followup" && (showCustomInput || isTransitioningToCustomInput)
+
+	// Input is owned by whichever dialog is up; the picker renders on top of
+	// the input area only when the input itself is active.
+	const inputActive = !showApprovalDialog && !showFollowupDialog && !showTodoViewer
+
+	// `showFollowupSuggestions` is reused by the arrow-key countdown-cancel
+	// `useInput` below.
+	const showFollowupSuggestions =
+		pendingAsk?.type === "followup" &&
+		Boolean(pendingAsk.suggestions && pendingAsk.suggestions.length > 0) &&
+		!showCustomInput
+
+	// --- Autocomplete triggers (unchanged logic) ------------------------------
 
 	// File search handler for the file trigger
 	const handleFileSearch = useCallback(
@@ -375,81 +424,21 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		}
 	}, [fileSearchResults]) // Only depend on fileSearchResults - read pickerState from ref
 
-	// Handle Y/N input for approval prompts
-	useInput((input) => {
-		if (pendingAsk && pendingAsk.type !== "followup") {
-			const lower = input.toLowerCase()
-
-			if (lower === "y") {
-				handleApprove()
-			} else if (lower === "n") {
-				handleReject()
+	// --- Followup countdown-cancel: any arrow key cancels the auto-accept ------
+	useInput(
+		(_input, key) => {
+			if (showFollowupSuggestions && countdownSeconds !== null) {
+				if (key.upArrow || key.downArrow) {
+					cancelCountdown()
+				}
 			}
-		}
-	})
+		},
+		{ isActive: showFollowupSuggestions && countdownSeconds !== null },
+	)
 
-	// Cancel countdown timer when user navigates in the followup suggestion menu
-	// This provides better UX - any user interaction cancels the auto-accept timer
-	const showFollowupSuggestions =
-		pendingAsk?.type === "followup" &&
-		pendingAsk.suggestions &&
-		pendingAsk.suggestions.length > 0 &&
-		!showCustomInput
+	// --- Picker render-item fallback ------------------------------------------
 
-	useInput((_input, key) => {
-		// Only handle when followup suggestions are shown and countdown is active
-		if (showFollowupSuggestions && countdownSeconds !== null) {
-			// Cancel countdown on any arrow key navigation
-			if (key.upArrow || key.downArrow) {
-				cancelCountdown()
-			}
-		}
-	})
-
-	// Error display
-	if (error) {
-		return (
-			<Box flexDirection="column" padding={1}>
-				<Text color="red" bold>
-					Error: {error}
-				</Text>
-				<Text color="gray" dimColor>
-					Press Ctrl+C to exit
-				</Text>
-			</Box>
-		)
-	}
-
-	// Status bar content
-	// Priority: Toast > Exit hint > Loading > Scroll indicator > Input hint
-	// Don't show spinner when waiting for user input (pendingAsk is set)
-	const statusBarMessage = currentToast ? (
-		<ToastDisplay toast={currentToast} />
-	) : showExitHint ? (
-		<Text color="yellow">Press Ctrl+C again to exit</Text>
-	) : isLoading && !pendingAsk ? (
-		<Box>
-			<LoadingText>{view === "ToolUse" ? "Using tool" : "Thinking"}</LoadingText>
-			<Text color={theme.dimText}> • </Text>
-			<Text color={theme.dimText}>Esc to cancel</Text>
-			{isScrollAreaActive && (
-				<>
-					<Text color={theme.dimText}> • </Text>
-					<ScrollIndicator
-						scrollTop={scrollState.scrollTop}
-						maxScroll={scrollState.maxScroll}
-						isScrollFocused={true}
-					/>
-				</>
-			)}
-		</Box>
-	) : isScrollAreaActive ? (
-		<ScrollIndicator scrollTop={scrollState.scrollTop} maxScroll={scrollState.maxScroll} isScrollFocused={true} />
-	) : isInputAreaActive ? (
-		<Text color={theme.dimText}>? for shortcuts</Text>
-	) : null
-
-	const getPickerRenderItem = () => {
+	const getPickerRenderItem = useCallback(() => {
 		if (pickerState.activeTrigger) {
 			return pickerState.activeTrigger.renderItem
 		}
@@ -459,160 +448,136 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 				<Text color={isSelected ? "cyan" : undefined}>{item.key}</Text>
 			</Box>
 		)
+	}, [pickerState.activeTrigger])
+
+	// --- Error display ---------------------------------------------------------
+
+	if (error) {
+		return (
+			<Box flexDirection="column" padding={1}>
+				<Text color={theme.error} bold>
+					Error: {error}
+				</Text>
+				<Text dimColor>Press Ctrl+C to exit</Text>
+			</Box>
+		)
 	}
 
+	// --- Render ----------------------------------------------------------------
+
 	return (
-		<Box flexDirection="column" height={rows - 1}>
-			{/* Header - fixed size */}
-			<Box flexShrink={0}>
-				<Header
-					{...extensionHostOptions}
-					mode={currentMode || mode}
-					version={version}
-					tokenUsage={tokenUsage}
-					contextWindow={contextWindow}
-				/>
-			</Box>
+		<>
+			<Static key={staticKey} items={staticItems}>
+				{(item) =>
+					item.isWelcome ? (
+						<Box key="__welcome__">
+							<WelcomeBanner {...item.welcomeProps} />
+						</Box>
+					) : (
+						<Box key={item.id}>
+							<ChatHistoryItem message={item.message} />
+						</Box>
+					)
+				}
+			</Static>
 
-			{/* Scrollable message history area - fills remaining space via flexGrow */}
-			<ScrollArea
-				isActive={isScrollAreaActive}
-				onScroll={handleScroll}
-				scrollToBottomTrigger={scrollToBottomTrigger}>
-				{displayMessages.map((message) => (
-					<ChatHistoryItem key={message.id} message={message} />
+			<Box flexDirection="column">
+				{/* Dynamic tail: in-flight / streaming messages still re-rendering */}
+				{dynamicMessages.map((m) => (
+					<ChatHistoryItem key={m.id} message={m} />
 				))}
-			</ScrollArea>
 
-			{/* Input area - with borders like Claude Code - fixed size */}
-			<Box flexDirection="column" flexShrink={0}>
-				{pendingAsk?.type === "followup" ? (
-					<Box flexDirection="column">
-						<Text color={theme.rooHeader}>{pendingAsk.content}</Text>
-						{pendingAsk.suggestions && pendingAsk.suggestions.length > 0 && !showCustomInput ? (
-							<Box flexDirection="column" marginTop={1}>
-								<HorizontalLine active={true} />
-								<Select
-									options={[
-										...pendingAsk.suggestions.map((s) => ({
-											label: s.answer,
-											value: s.answer,
-										})),
-										{ label: "Type something...", value: "__CUSTOM__" },
-									]}
-									onChange={(value) => {
-										if (!value || typeof value !== "string") return
-										if (showCustomInput || isTransitioningToCustomInput) return
+				{/* Spinner while loading and no dialog is stealing the frame */}
+				{isLoading && !pendingAsk && (
+					<Spinner startTime={loadingStartRef.current} tokensOut={tokenUsage?.totalTokensOut} isActive />
+				)}
 
-										if (value === "__CUSTOM__") {
-											// Clear countdown timer and switch to custom input
-											cancelCountdown()
-											setIsTransitioningToCustomInput(true)
-											useUIStateStore.getState().setShowCustomInput(true)
-										} else if (value.trim()) {
-											handleSubmit(value)
-										}
-									}}
-								/>
-								<HorizontalLine active={true} />
-								<Text color={theme.dimText}>
-									↑↓ navigate • Enter select
-									{countdownSeconds !== null && (
-										<Text color="yellow"> • Auto-select in {countdownSeconds}s</Text>
-									)}
-								</Text>
-							</Box>
-						) : (
-							<Box flexDirection="column" marginTop={1}>
-								<HorizontalLine active={isInputAreaActive} />
-								<AutocompleteInput
-									ref={followupAutocompleteRef}
-									placeholder="Type your response..."
-									onSubmit={(text: string) => {
+				{/* TODO viewer overlay (ctrl+t) */}
+				{showTodoViewer && (
+					<Box flexDirection="column" paddingLeft={1}>
+						<TodoDisplay todos={currentTodos} showProgress={true} title="TODO List" />
+						<Text dimColor>{figures.pointer} Ctrl+T to close</Text>
+					</Box>
+				)}
+
+				{/* Approval dialog (tool/command) */}
+				{showApprovalDialog && pendingAsk && (
+					<ApprovalDialog ask={pendingAsk} onApprove={handleApprove} onReject={handleReject} isActive />
+				)}
+
+				{/* Followup suggestions dialog */}
+				{showFollowupDialog && pendingAsk && (
+					<FollowupDialog
+						ask={pendingAsk}
+						onSelect={(ans) => {
+							void handleSubmit(ans)
+						}}
+						onCustomInput={() => {
+							cancelCountdown()
+							setIsTransitioningToCustomInput(true)
+							useUIStateStore.getState().setShowCustomInput(true)
+						}}
+						countdownSeconds={countdownSeconds}
+						isActive
+					/>
+				)}
+
+				{/* Autocomplete picker dropdown — shown above the input when open */}
+				{pickerState.isOpen && inputActive && (
+					<PickerSelect
+						results={pickerState.results}
+						selectedIndex={pickerState.selectedIndex}
+						maxVisible={PICKER_MAX_VISIBLE}
+						onSelect={handlePickerSelect}
+						onEscape={handlePickerClose}
+						onIndexChange={handlePickerIndexChange}
+						renderItem={getPickerRenderItem()}
+						emptyMessage={pickerState.activeTrigger?.emptyMessage}
+						isActive={pickerState.isOpen}
+						isLoading={pickerState.isLoading}
+					/>
+				)}
+
+				{/* Input area — hidden when a dialog or the TODO viewer owns input.
+				    In followup custom-input mode, the ❯ is accented and the submit
+				    handler clears the custom-input state after sending. */}
+				{inputActive && (
+					<InputArea
+						onSubmit={
+							showFollowupCustomInput
+								? (text) => {
 										if (text && text.trim()) {
-											handleSubmit(text)
+											void handleSubmit(text)
 											useUIStateStore.getState().setShowCustomInput(false)
 											setIsTransitioningToCustomInput(false)
 										}
-									}}
-									isActive={true}
-									triggers={autocompleteTriggers}
-									onPickerStateChange={handlePickerStateChange}
-									prompt="> "
-								/>
-								<HorizontalLine active={isInputAreaActive} />
-								{pickerState.isOpen ? (
-									<Box flexDirection="column" height={PICKER_HEIGHT}>
-										<PickerSelect
-											results={pickerState.results}
-											selectedIndex={pickerState.selectedIndex}
-											maxVisible={PICKER_HEIGHT - 1}
-											onSelect={handlePickerSelect}
-											onEscape={handlePickerClose}
-											onIndexChange={handlePickerIndexChange}
-											renderItem={getPickerRenderItem()}
-											emptyMessage={pickerState.activeTrigger?.emptyMessage}
-											isActive={isInputAreaActive && pickerState.isOpen}
-											isLoading={pickerState.isLoading}
-										/>
-									</Box>
-								) : (
-									<Box height={1}>{statusBarMessage}</Box>
-								)}
-							</Box>
-						)}
-					</Box>
-				) : showApprovalPrompt ? (
-					<Box flexDirection="column">
-						<Text color={theme.rooHeader}>{pendingAsk?.content}</Text>
-						<Text color={theme.dimText}>
-							Press <Text color={theme.successColor}>Y</Text> to approve,{" "}
-							<Text color={theme.errorColor}>N</Text> to reject
-						</Text>
-						<Box height={1}>{statusBarMessage}</Box>
-					</Box>
-				) : (
-					<Box flexDirection="column">
-						<HorizontalLine active={isInputAreaActive} />
-						<AutocompleteInput
-							ref={autocompleteRef}
-							placeholder={isComplete ? "Type to continue..." : ""}
-							onSubmit={handleSubmit}
-							isActive={isInputAreaActive}
-							triggers={autocompleteTriggers}
-							onPickerStateChange={handlePickerStateChange}
-							prompt="› "
-						/>
-						<HorizontalLine active={isInputAreaActive} />
-						{showTodoViewer ? (
-							<Box flexDirection="column" height={PICKER_HEIGHT}>
-								<TodoDisplay todos={currentTodos} showProgress={true} title="TODO List" />
-								<Box height={1}>
-									<Text color={theme.dimText}>Ctrl+T to close</Text>
-								</Box>
-							</Box>
-						) : pickerState.isOpen ? (
-							<Box flexDirection="column" height={PICKER_HEIGHT}>
-								<PickerSelect
-									results={pickerState.results}
-									selectedIndex={pickerState.selectedIndex}
-									maxVisible={PICKER_HEIGHT - 1}
-									onSelect={handlePickerSelect}
-									onEscape={handlePickerClose}
-									onIndexChange={handlePickerIndexChange}
-									renderItem={getPickerRenderItem()}
-									emptyMessage={pickerState.activeTrigger?.emptyMessage}
-									isActive={isInputAreaActive && pickerState.isOpen}
-									isLoading={pickerState.isLoading}
-								/>
-							</Box>
-						) : (
-							<Box height={1}>{statusBarMessage}</Box>
-						)}
-					</Box>
+									}
+								: (text) => {
+										void handleSubmit(text)
+									}
+						}
+						isActive={!pickerState.isOpen && !isLoading}
+						isLoading={isLoading}
+						placeholder={
+							showFollowupCustomInput ? "Type your response..." : isComplete ? "Type to continue..." : ""
+						}
+						triggers={autocompleteTriggers}
+						onPickerStateChange={handlePickerStateChange}
+						inputRef={showFollowupCustomInput ? followupAutocompleteRef : autocompleteRef}
+						mode={currentMode || mode}
+						model={model}
+						contextPercent={contextPercent}
+						cost={footerCost}
+						toast={currentToast}
+						exitHint={showExitHint ? "Press Ctrl+C again to exit" : null}
+						accentPrompt={showFollowupCustomInput}
+					/>
 				)}
+
+				{/* Toast line when a dialog owns input (InputArea/Footer not rendered) */}
+				{!inputActive && currentToast && <ToastDisplay toast={currentToast} />}
 			</Box>
-		</Box>
+		</>
 	)
 }
 
