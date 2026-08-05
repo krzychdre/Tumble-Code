@@ -4,6 +4,75 @@ import os from "os"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders } from "@/lib/utils/provider-types.js"
 
+import { run } from "../run.js"
+import { loadSettings, getSettingsPath } from "@/lib/storage/settings.js"
+import { getConfigDir } from "@/lib/storage/config-dir.js"
+import type { FlagOptions } from "@/types/index.js"
+
+// Point the real settings storage at a temp dir via the leaf config-dir module.
+// The factory needs a concrete default: other storage modules call
+// getConfigDir() at import time (credentials.ts computes its file path).
+vi.mock("@/lib/storage/config-dir.js", () => ({
+	getConfigDir: vi.fn(() => path.join(os.tmpdir(), "cli-config-dir-default")),
+}))
+
+// Keep the run deterministic: no VS Code state on disk may leak a provider in.
+vi.mock("@/lib/utils/vscode-config.js", () => ({
+	readVsCodeConfig: vi.fn(() => undefined),
+}))
+
+// Capture what the extension host is constructed with, without booting the
+// real extension bundle.
+const mockHost = vi.hoisted(() => ({
+	lastOptions: undefined as undefined | { provider?: string },
+}))
+
+vi.mock("@/agent/index.js", () => {
+	class MockExtensionHost {
+		constructor(options: unknown) {
+			mockHost.lastOptions = options as { provider?: string }
+		}
+
+		async activate(): Promise<void> {}
+		async runTask(): Promise<void> {}
+		async resumeTask(): Promise<void> {}
+		async dispose(): Promise<void> {}
+	}
+
+	return { ExtensionHost: MockExtensionHost }
+})
+
+const mockGetConfigDir = getConfigDir as unknown as ReturnType<typeof vi.fn>
+
+function baseFlags(overrides: Partial<FlagOptions> = {}): FlagOptions {
+	return {
+		promptFile: undefined,
+		createWithSessionId: undefined,
+		sessionId: undefined,
+		continue: false,
+		workspace: undefined,
+		print: true,
+		stdinPromptStream: false,
+		signalOnlyExit: false,
+		extension: undefined,
+		debug: false,
+		requireApproval: false,
+		exitOnError: false,
+		apiKey: "test-key",
+		provider: undefined,
+		model: undefined,
+		baseUrl: undefined,
+		mode: undefined,
+		terminalShell: undefined,
+		reasoningEffort: undefined,
+		consecutiveMistakeLimit: undefined,
+		ephemeral: false,
+		oneshot: false,
+		outputFormat: undefined,
+		...overrides,
+	}
+}
+
 describe("provider-aware API-key gate", () => {
 	it("keyless providers do not require a key", () => {
 		expect(providerRequiresApiKey("ollama")).toBe(false)
@@ -114,5 +183,52 @@ $((1+1))
 		expect(readContent).toContain("$HOME")
 		expect(readContent).toContain("$(echo dangerous)")
 		expect(readContent).toContain("`rm -rf /`")
+	})
+})
+
+describe("run --provider alias persistence", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		if (tempDir) {
+			fs.rmSync(tempDir, { recursive: true, force: true })
+		}
+	})
+
+	it("persists the resolved provider (openrouter) when --provider tumble is passed, and a later run reading it resolves normally", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// First run: the alias is passed on the flag. The effective host
+			// provider is resolved to openrouter, and the settings file must
+			// persist the RESOLVED id — never the raw alias "tumble".
+			await run("hello", baseFlags({ provider: "tumble" as unknown as FlagOptions["provider"] }))
+
+			expect(mockHost.lastOptions?.provider).toBe("openrouter")
+
+			const persisted = await loadSettings()
+			expect(persisted.provider).toBe("openrouter")
+
+			const raw = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(raw.provider).toBe("openrouter")
+			expect(raw.provider).not.toBe("tumble")
+
+			// Second run: no --provider flag at all. The settings file now holds
+			// the resolved id, so it must resolve normally without any alias.
+			await run("hello again", baseFlags())
+
+			expect(mockHost.lastOptions?.provider).toBe("openrouter")
+			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+			expect(after.provider).toBe("openrouter")
+		} finally {
+			exitSpy.mockRestore()
+		}
 	})
 })

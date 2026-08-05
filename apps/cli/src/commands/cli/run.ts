@@ -254,7 +254,12 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	// Persist provider/model/base-url for the next run (flags > settings > defaults).
 	// Keys are never persisted — they stay env/flags only.
-	const persistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
+	// The provider id is persisted RESOLVED (tumble -> openrouter): the settings
+	// file must only ever contain a registry provider id, never a raw alias. A
+	// missing raw value stays undefined (a later `null` still clears the key).
+	const rawPersistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
+	const persistedProvider =
+		rawPersistedProvider !== undefined ? resolveProviderIdAlias(rawPersistedProvider) : undefined
 	const persistedModel = flagOptions.model ?? settings.model ?? vsCodeConfig?.model
 	const persistedBaseUrl = flagOptions.baseUrl ?? settings.baseUrl ?? vsCodeConfig?.baseUrl
 
