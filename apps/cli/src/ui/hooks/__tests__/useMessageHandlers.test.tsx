@@ -107,4 +107,27 @@ describe("useMessageHandlers", () => {
 		expect(assistantMessages).toHaveLength(2)
 		expect(assistantMessages.map((m) => m.content)).toEqual(["First reply", "Second reply"])
 	})
+
+	it("renders BOTH byte-identical replies across turns (user_feedback resets the dedupe)", () => {
+		// Turn 1: prompt echo (skipped) + the model's reply.
+		stateMessage([
+			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
+			{ ts: 1000, type: "say", say: "text", text: "Same answer", partial: false },
+		])
+
+		expect(useCLIStore.getState().messages.filter((m) => m.role === "assistant")).toHaveLength(1)
+
+		// Turn 2: the user asks the SAME question again. A new user turn begins
+		// with a `user_feedback` say; the dedupe marker must be reset there so
+		// the byte-identical second answer is NOT treated as an in-turn
+		// duplicate of the first turn's reply.
+		stateMessage([
+			{ ts: 2000, type: "say", say: "user_feedback", text: "Same question", partial: false },
+			{ ts: 2001, type: "say", say: "text", text: "Same answer", partial: false },
+		])
+
+		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+		expect(assistantMessages).toHaveLength(2)
+		expect(assistantMessages.map((m) => m.content)).toEqual(["Same answer", "Same answer"])
+	})
 })

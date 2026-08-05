@@ -2,7 +2,7 @@
 
 Date: 2026-08-05
 Branch: `feat/13-cli-duplicate-greeting` (stacked on `rebrand/12-cli-remnant-strings`)
-Status: implemented, tests green
+Status: implemented, tests green; follow-up review fixes applied (see below)
 
 ## Symptom
 
@@ -111,7 +111,66 @@ Per `AGENTS.md` (lowest layer that would have failed):
 - The existing `ChatHistoryItem.test.tsx` covers rendering of the `Tumble
 said:` header itself (updated in the stacked rebrand branch).
 
+## Follow-up (review): cross-turn reset of the dedupe marker
+
+**Reviewer finding:** `lastAssistantText` was never reset, so if the user asks
+the SAME question twice and receives byte-identical answers, the second reply
+was wrongly suppressed as an in-turn duplicate.
+
+**Fix:** reset `lastAssistantText.current = null` at the start of every new
+user turn — exactly in the `say === "user_feedback"` branch of
+[`handleSayMessage`](apps/cli/src/ui/hooks/useMessageHandlers.ts:75). That is
+the single funnel through which every user message enters the render path, so
+it is the one unambiguous user-turn boundary.
+
+Why a user-turn boundary is the RIGHT scope for the dedupe:
+
+- The in-turn duplicate the fix targets exists only WITHIN one assistant turn
+  (a partial finalized after interleaved reasoning/grounding gets re-appended
+  with a new ts — `TaskAskSay.say` while the model is still responding).
+- Across turns, two same-text messages are genuinely different replies and
+  must both render; the user-turn boundary is exactly where "same answer,
+  second time" becomes legitimate.
+- The reset does NOT break in-turn streaming: during a single assistant turn,
+  `messageUpdated` partials and the completed same-text duplicate still arrive
+  with no `user_feedback` between them, so the ref still holds and the
+  duplicate collapse keeps working.
+- The user's typed echo passes through unchanged: the echo is dropped by
+  `firstTextMessageSkipped`, not by the content dedupe, and resetting the ref
+  at `user_feedback` cannot resurrect a duplicate that is already suppressed.
+
+New regression case (4th in `useMessageHandlers.test.tsx`): two byte-identical
+assistant replies separated by a `user_feedback` say must BOTH render (2
+`assistant` blocks, both `"Same answer"`).
+
+## Companion fix (review): install/upgrade path pointed at the fork
+
+`apps/cli/install.sh` (`REPO="RooCodeInc/Roo-Code"`) still downloaded from
+upstream while `apps/cli/src/commands/cli/upgrade.ts` already fetched the
+version list from `krzychdre/tumble-code` — breaking `tumble code upgrade`.
+Fixed on `rebrand/12-cli-remnant-strings`:
+
+- `apps/cli/install.sh`: `REPO="krzychdre/tumble-code"` (line 16) + usage
+  comment URL (line 3). The API/tarball URLs (lines ~103, ~185) derive from
+  `$REPO`, so they inherit the fix automatically.
+- `apps/cli/README.md`: install instructions at lines 16/33/41 now point at
+  `raw.githubusercontent.com/krzychdre/tumble-code/main/apps/cli/install.sh`,
+  consistent with the rest of the rebrand.
+- `apps/cli/dist/index.js` is NOT tracked (gitignored), so no rebuild was
+  required for the committed artifact.
+- Verified: `grep -ni "RooCodeInc" apps/cli/README.md apps/cli/install.sh` is
+  empty; remaining lowercase "roo" hits are intentional (env var names, paths,
+  `@roo-code/vscode-shim`).
+
 ## Files changed
+
+- `apps/cli/src/ui/hooks/useMessageHandlers.ts` — content-based consecutive
+  dedupe in `handleSayMessage` + cross-turn reset of `lastAssistantText` in
+  the `user_feedback` branch.
+- `apps/cli/src/ui/hooks/__tests__/useMessageHandlers.test.tsx` — NEW
+  regression tests (4 cases; the 4th covers the cross-turn reset).
+- `apps/cli/install.sh` / `apps/cli/README.md` — fork repo in installer and
+  docs (companion fix on `rebrand/12-cli-remnant-strings`).
 
 - `apps/cli/src/ui/hooks/useMessageHandlers.ts` — content-based consecutive
   dedupe in `handleSayMessage`.

@@ -74,6 +74,14 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 
 			if (say === "user_feedback") {
 				seenMessageIds.current.add(messageId)
+				// A new user turn begins here: the next assistant reply is a NEW
+				// answer, so the same text must be allowed to render again. Reset
+				// the greeting-dedupe marker at the user-turn boundary — without
+				// this, byte-identical follow-up answers would be wrongly
+				// suppressed. The ref still holds DURING a single assistant turn
+				// (partial updates append via `messageUpdated`), so the
+				// in-turn duplicate collapse keeps working.
+				lastAssistantText.current = null
 				return
 			}
 
