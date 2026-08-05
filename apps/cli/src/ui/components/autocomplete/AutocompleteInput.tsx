@@ -21,7 +21,7 @@ export interface AutocompleteInputProps<T extends AutocompleteItem = Autocomplet
 	onSelect?: (item: T) => void
 	/** Called when picker state changes - use this to render PickerSelect externally */
 	onPickerStateChange?: (state: AutocompletePickerState<T>) => void
-	/** Prompt character for the first line (default: "> ") */
+	/** Prompt character for the first line (default: "" — InputArea renders the ❯) */
 	prompt?: string
 }
 
@@ -52,7 +52,7 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 		triggers,
 		onSelect,
 		onPickerStateChange,
-		prompt = "> ",
+		prompt = "",
 	}: AutocompleteInputProps<T>,
 	ref: Ref<AutocompleteInputHandle<T>>,
 ) {
