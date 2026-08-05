@@ -108,11 +108,13 @@ export function readVsCodeConfig(): VsCodeProviderConfig | undefined {
 		config.baseUrl = profileConfig[baseUrlField] as string
 	}
 
-	// 4. API key — secret-store key (v2 profile secrets first, legacy flat
-	// fallback), the v1-style per-key direct value, or the flat secrets key.
+	// 4. API key — provider-scoped only: read the setting field that belongs to
+	// the provider (v2 profile secret, or the legacy flat secret store key).
+	// Never fall back to "the first string in the profile secret map": an
+	// anthropic profile that carries only `openAiNativeApiKey` yields no key.
 	const apiKeyField = getApiKeyField(providerId)
 	if (apiKeyField) {
-		config.apiKey = readSecret(secrets, apiKeyField) ?? readEnvelopeSecret(secrets)
+		config.apiKey = readEnvelopeSecret(secrets, apiKeyField) ?? readFlatSecret(secrets, apiKeyField)
 	}
 
 	return config
@@ -186,9 +188,17 @@ function readEnvelopeProfile(secrets: Record<string, unknown> | undefined): Reco
 	return {}
 }
 
-/** Secret value scoped to the active profile id (v2), from
- *  `roo_cline_config_provider_profile_secrets_v2`. */
-function readEnvelopeSecret(secrets: Record<string, unknown> | undefined): string | undefined {
+/**
+ * Secret value scoped to the active profile id (v2) and the *provider's own
+ * key field* (e.g. `openRouterApiKey` for openrouter) — never the first string.
+ *
+ * The v2 secret store is keyed by profile id: `{ [profileId]: { apiKey, ... } }`.
+ * Only the key field that belongs to the active provider is returned; another
+ * profile's (or another provider's) secret is never picked up.
+ *
+ * @param keyField the provider-specific key settings field (from providerEnvMap)
+ */
+function readEnvelopeSecret(secrets: Record<string, unknown> | undefined, keyField: string): string | undefined {
 	const envelope = secrets?.[PROVIDER_PROFILES_SECRETS_KEY]
 	if (typeof envelope !== "string" || !envelope) return undefined
 
@@ -210,18 +220,22 @@ function readEnvelopeSecret(secrets: Record<string, unknown> | undefined): strin
 		if (typeof envelopeValue !== "string") return undefined
 		const secretMap = JSON.parse(envelopeValue) as Record<string, Record<string, unknown>>
 		const profileSecrets = secretMap[profileId] ?? {}
-		return Object.values(profileSecrets).find((v): v is string => typeof v === "string")
+		const value = profileSecrets[keyField]
+		return typeof value === "string" ? value : undefined
 	} catch {
 		return undefined
 	}
 }
 
-/** Read a secret by its provider key field (v1 legacy flat or v2 profile). */
-function readSecret(secrets: Record<string, unknown> | undefined, keyField: string): string | undefined {
+/**
+ * Read the provider's API key in the legacy flat secret layout (v1): the secret
+ * is stored under the provider-specific key field (e.g. `openRouterApiKey`),
+ * not under a generic name and never "the first string".
+ */
+function readFlatSecret(secrets: Record<string, unknown> | undefined, keyField: string): string | undefined {
 	if (!secrets) return undefined
 	const direct = secrets[keyField]
-	if (typeof direct === "string") return direct
-	return undefined
+	return typeof direct === "string" ? direct : undefined
 }
 
 function isSupportedConfigProvider(id: string): id is SupportedProvider {

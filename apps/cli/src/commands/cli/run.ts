@@ -9,18 +9,20 @@ import { setLogger } from "@roo-code/vscode-shim"
 
 import {
 	FlagOptions,
-	isSupportedProvider,
+	isAcceptedProvider,
+	resolveProviderIdAlias,
 	supportedProviders,
 	DEFAULT_FLAGS,
 	REASONING_EFFORTS,
 	OutputFormat,
+	type SupportedProvider,
 } from "@/types/index.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
 import { loadSettings, saveSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
-import { getEnvVarName, getApiKeyFromEnv, providerRequiresApiKey } from "@/lib/utils/provider.js"
+import { getEnvVarName, getApiKeyFromEnv, providerRequiresApiKey, getProviderSettings } from "@/lib/utils/provider.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
@@ -128,8 +130,11 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const effectiveModel = flagOptions.model || settings.model || vsCodeConfig?.model || DEFAULT_FLAGS.model
 	const effectiveReasoningEffort =
 		flagOptions.reasoningEffort || settings.reasoningEffort || DEFAULT_FLAGS.reasoningEffort
-	const effectiveProvider =
+	const rawEffectiveProvider =
 		flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider ?? DEFAULT_FLAGS.provider
+	// Persisted aliases (e.g. the cloud "tumble" id) are accepted and mapped to
+	// the real provider (tumble -> openrouter) before anything else consumes it.
+	const effectiveProvider = resolveProviderIdAlias(rawEffectiveProvider) as SupportedProvider
 	const effectiveBaseUrl = flagOptions.baseUrl || settings.baseUrl || vsCodeConfig?.baseUrl || undefined
 	const effectiveWorkspacePath = flagOptions.workspace ? path.resolve(flagOptions.workspace) : process.cwd()
 	const legacyRequireApprovalFromSettings =
@@ -194,11 +199,24 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	// TODO: Validate the API key for the chosen provider.
 	// TODO: Validate the model for the chosen provider.
 
-	if (!isSupportedProvider(extensionHostOptions.provider)) {
+	// The raw (possibly aliased) id must be accepted; the effective provider is
+	// already the resolved alias (tumble -> openrouter).
+	if (!isAcceptedProvider(rawEffectiveProvider)) {
 		console.error(
-			`[CLI] Error: Invalid provider: ${extensionHostOptions.provider}; must be one of: ${supportedProviders.join(", ")}`,
+			`[CLI] Error: Invalid provider: ${rawEffectiveProvider}; must be one of: ${supportedProviders.join(", ")}`,
 		)
 		process.exit(1)
+	}
+
+	// A base-url is only valid where the provider's settings schema has a
+	// base-url field. Reject early with the provider's name (decision 5).
+	if (effectiveBaseUrl) {
+		try {
+			getProviderSettings(extensionHostOptions.provider, undefined, undefined, effectiveBaseUrl)
+		} catch (error) {
+			console.error(`[CLI] Error: ${(error as Error).message}`)
+			process.exit(1)
+		}
 	}
 
 	// Provider-aware API-key gate. Providers whose settings schema has no
@@ -239,12 +257,22 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const persistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
 	const persistedModel = flagOptions.model ?? settings.model ?? vsCodeConfig?.model
 	const persistedBaseUrl = flagOptions.baseUrl ?? settings.baseUrl ?? vsCodeConfig?.baseUrl
-	if (persistedProvider || persistedModel || persistedBaseUrl) {
-		await saveSettings({
-			...(persistedProvider ? { provider: persistedProvider } : {}),
-			...(persistedModel ? { model: persistedModel } : {}),
-			...(persistedBaseUrl ? { baseUrl: persistedBaseUrl } : {}),
-		})
+
+	// Skip the write entirely when nothing actually changed — an unconditional
+	// saveSettings would rewrite the file (and bump mtime) on every plain run
+	// even when the values are already persisted.
+	const pendingSettings: Partial<Parameters<typeof saveSettings>[0]> = {}
+	if (persistedProvider && persistedProvider !== settings.provider) {
+		pendingSettings.provider = persistedProvider as typeof settings.provider
+	}
+	if (persistedModel && persistedModel !== settings.model) {
+		pendingSettings.model = persistedModel
+	}
+	if (persistedBaseUrl && persistedBaseUrl !== settings.baseUrl) {
+		pendingSettings.baseUrl = persistedBaseUrl
+	}
+	if (Object.keys(pendingSettings).length > 0) {
+		await saveSettings(pendingSettings)
 	}
 
 	// Validate output format

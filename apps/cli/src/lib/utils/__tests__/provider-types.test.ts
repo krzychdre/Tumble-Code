@@ -12,6 +12,9 @@ import {
 	getModelField,
 	getProviderSettings,
 	keylessProviders,
+	providerIdAliases,
+	resolveProviderIdAlias,
+	isAcceptedProvider,
 } from "@/lib/utils/provider-types.js"
 
 import { activeProviderIds } from "@roo-code/types"
@@ -114,7 +117,47 @@ describe("env-var map coverage", () => {
 	})
 })
 
+describe("provider id aliases", () => {
+	it("maps the persisted 'tumble' cloud id to openrouter", () => {
+		expect(providerIdAliases).toHaveProperty("tumble", "openrouter")
+		expect(resolveProviderIdAlias("tumble")).toBe("openrouter")
+		expect(isAcceptedProvider("tumble")).toBe(true)
+		// The alias resolves to a real supported provider for settings resolution.
+		expect(getProviderSettings(resolveProviderIdAlias("tumble") as never, "k", "m")).toEqual({
+			apiProvider: "openrouter",
+			openRouterApiKey: "k",
+			openRouterModelId: "m",
+		})
+	})
+
+	it("passes through real provider ids and rejects unknown ids", () => {
+		expect(resolveProviderIdAlias("anthropic")).toBe("anthropic")
+		expect(isAcceptedProvider("anthropic")).toBe(true)
+		expect(isAcceptedProvider("not-a-provider")).toBe(false)
+	})
+})
+
 describe("getProviderSettings", () => {
+	it("openai-native maps base url + model to the extension fields", () => {
+		const settings = getProviderSettings("openai-native", "sk-test", "gpt-5", "https://openai.example")
+		expect(settings.apiProvider).toBe("openai-native")
+		expect(settings.openAiNativeApiKey).toBe("sk-test")
+		expect(settings.openAiNativeBaseUrl).toBe("https://openai.example")
+		expect(settings.apiModelId).toBe("gpt-5")
+	})
+
+	it("mistral maps base url to mistralCodestralUrl", () => {
+		const settings = getProviderSettings("mistral", undefined, "codestral-latest", "https://codestral.example")
+		expect(settings.mistralCodestralUrl).toBe("https://codestral.example")
+	})
+
+	it("rejects --base-url for a provider without a base-url field", () => {
+		expect(() => getProviderSettings("vercel-ai-gateway", "k", "m", "https://proxy.example")).toThrow(
+			"Provider 'vercel-ai-gateway' does not support a base URL",
+		)
+		// Custom base-url of "" is treated as absent.
+		expect(() => getProviderSettings("vercel-ai-gateway", "k", "m", "")).not.toThrow()
+	})
 	it("maps the model to the provider-specific model field", () => {
 		const settings = getProviderSettings("openrouter", "key", "anthropic/claude-sonnet-4")
 		expect(settings.apiProvider).toBe("openrouter")

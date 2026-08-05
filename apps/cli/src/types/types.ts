@@ -2,7 +2,13 @@ import type { ReasoningEffortExtended } from "@roo-code/types"
 import type { OutputFormat } from "./json-events.js"
 import type { SupportedProvider } from "@/lib/utils/provider-types.js"
 
-export { supportedProviders, isSupportedProvider } from "@/lib/utils/provider-types.js"
+export {
+	supportedProviders,
+	isSupportedProvider,
+	providerIdAliases,
+	resolveProviderIdAlias,
+	isAcceptedProvider,
+} from "@/lib/utils/provider-types.js"
 export type { SupportedProvider } from "@/lib/utils/provider-types.js"
 
 export type ReasoningEffortFlagOptions = ReasoningEffortExtended | "unspecified" | "disabled"

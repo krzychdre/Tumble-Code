@@ -66,4 +66,19 @@ describe("cli settings persistence", () => {
 		const raw = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
 		expect(raw.apiKey).toBeUndefined()
 	})
+
+	it("does not rewrite the file when nothing changes (mtime/content unchanged)", async () => {
+		await saveSettings({ provider: "openrouter", model: "m1", baseUrl: "https://openrouter.example" })
+		const pathBefore = getSettingsPath()
+		const mtimeBefore = fs.statSync(pathBefore).mtimeMs
+		const contentBefore = fs.readFileSync(pathBefore, "utf-8")
+
+		// Re-saving identical values must be a no-op at the storage layer too:
+		// the caller skips the write, but saveSettings never rewrites identical
+		// merged content.
+		await saveSettings({ provider: "openrouter", model: "m1", baseUrl: "https://openrouter.example" })
+
+		expect(fs.statSync(pathBefore).mtimeMs).toBe(mtimeBefore)
+		expect(fs.readFileSync(pathBefore, "utf-8")).toBe(contentBefore)
+	})
 })

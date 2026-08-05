@@ -101,3 +101,37 @@ supported provider to env vars, gate the API key per provider schema, add a gene
 - `bedrock` marks itself keyless because the AWS SDK resolves credentials from the
   standard env/profile chain; passing `--api-key` maps to the token-based
   `awsApiKey` + `awsUseApiKey` fields.
+
+## Review fixes (applied on feat/10-cli-provider-parity)
+
+- **Major 1** — verified: the extension handler `src/api/providers/openai-native.ts`
+  reads `openAiNativeBaseUrl` (not `openAiNativeUrl`); the CLI map already used
+  the correct field. Regression test pins it.
+- **Major 2** — `vscode-config.ts` reads the provider-specific key field from the
+  v2 profile secret map (and the matching legacy flat key) instead of returning
+  the first string; a wrong-field key (e.g. anthropic carrying only
+  `openAiNativeApiKey`) is never returned.
+- **Moderate 3** — `getProviderSettings` throws
+  `Provider '<id>' does not support a base URL`; run.ts exits with that message.
+- **Moderate 4** — persisted/CLI id `tumble` is accepted again and mapped to
+  `openrouter` settings (`providerIdAliases`), re-listed in README.
+- **Moderate 5** — run.ts only calls `saveSettings` when provider/model/baseUrl
+  actually changed; `saveSettings` itself also skips identical rewrites.
+- **Nit 8** — mistral already maps `mistralCodestralUrl` (schema + handler);
+  `MISTRAL_BASE_URL` documented; test pins it.
+- **Nit 10** — verified: the extension handler reads `options.apiModelId` for
+  openai-native and profile ownership lists `apiModelId`; the CLI map is
+  correct (`apiModelId`), pinned by test.
+
+### Decision 3 update (default provider)
+
+The target default is **OpenAI-compatible (`openai`)** — a local llama.cpp /
+vLLM endpoint via custom `--base-url`, not a hosted router. The current shipped
+fallback in `DEFAULT_FLAGS` is still `openrouter`; switching it to `openai`
+(with local-model defaults) is a follow-up, not part of the review-fixes commit.
+
+### Verification
+
+- `cd apps/cli && npx vitest run` — full CLI suite passes (527 tests).
+- `cd apps/cli && npx tsup` — build + DTS succeed.
+- `npx eslint src --ext .ts --max-warnings=0` — clean.

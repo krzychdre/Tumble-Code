@@ -112,4 +112,78 @@ describe("readVsCodeConfig", () => {
 		// V1_ENVELOPE has no apiProvider — undefined.
 		expect(readVsCodeConfig()).toBeUndefined()
 	})
+
+	it("reads the provider-scoped secret from the v2 profile secret store", () => {
+		fs.mkdirSync(path.join(tmpStorage, ".vscode-mock", "global-storage"), { recursive: true })
+		const envelope = JSON.stringify({
+			schemaVersion: 2,
+			data: {
+				currentApiConfigName: "default",
+				apiConfigs: {
+					default: {
+						id: "profile-1",
+						provider: { providerId: "anthropic", config: { apiModelId: "claude-opus-4" } },
+					},
+				},
+			},
+		})
+		const profileSecrets = JSON.stringify({
+			"profile-1": { apiKey: "sk-anthropic", openRouterApiKey: "sk-other" },
+		})
+		fs.writeFileSync(
+			path.join(tmpStorage, ".vscode-mock", "global-storage", VSCODE_CONFIG_SECRETS_FILE),
+			JSON.stringify({
+				roo_cline_config_api_config: envelope,
+				roo_cline_config_provider_profile_secrets_v2: profileSecrets,
+			}),
+		)
+
+		const config = readVsCodeConfig()
+		expect(config?.provider).toBe("anthropic")
+		expect(config?.apiKey).toBe("sk-anthropic")
+	})
+
+	it("never returns a wrong-field key for the provider (anthropic + only openAiNativeApiKey)", () => {
+		fs.mkdirSync(path.join(tmpStorage, ".vscode-mock", "global-storage"), { recursive: true })
+		const envelope = JSON.stringify({
+			schemaVersion: 2,
+			data: {
+				currentApiConfigName: "default",
+				apiConfigs: {
+					default: {
+						id: "profile-1",
+						provider: { providerId: "anthropic", config: { apiModelId: "claude-opus-4" } },
+					},
+				},
+			},
+		})
+		const profileSecrets = JSON.stringify({ "profile-1": { openAiNativeApiKey: "sk-openai-native" } })
+		fs.writeFileSync(
+			path.join(tmpStorage, ".vscode-mock", "global-storage", VSCODE_CONFIG_SECRETS_FILE),
+			JSON.stringify({
+				roo_cline_config_api_config: envelope,
+				roo_cline_config_provider_profile_secrets_v2: profileSecrets,
+			}),
+		)
+
+		const config = readVsCodeConfig()
+		expect(config?.provider).toBe("anthropic")
+		expect(config?.apiKey).toBeUndefined()
+	})
+
+	it("reads the legacy flat api key only under the provider's own key field", () => {
+		fs.mkdirSync(path.join(tmpStorage, ".vscode-mock", "global-storage"), { recursive: true })
+		fs.writeFileSync(
+			path.join(tmpStorage, ".vscode-mock", "global-storage", VSCODE_CONFIG_SECRETS_FILE),
+			JSON.stringify({ openRouterApiKey: "sk-123", openAiNativeApiKey: "sk-wrong" }),
+		)
+		fs.writeFileSync(
+			path.join(tmpStorage, ".vscode-mock", "global-storage", VSCODE_CONFIG_GLOBAL_STATE_FILE),
+			JSON.stringify({ apiProvider: "openrouter" }),
+		)
+
+		const config = readVsCodeConfig()
+		expect(config?.provider).toBe("openrouter")
+		expect(config?.apiKey).toBe("sk-123")
+	})
 })

@@ -224,6 +224,7 @@ For providers whose schema has a base-url setting, the CLI also honors a
 | anthropic         | `ANTHROPIC_API_KEY`           | `ANTHROPIC_BASE_URL`          |
 | openai-native     | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
 | openai            | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
+| tumble (alias)    | — (uses openrouter)           | — (uses openrouter)           |
 | gemini            | `GOOGLE_API_KEY`              | `GOOGLE_GEMINI_BASE_URL`      |
 | openrouter        | `OPENROUTER_API_KEY`          | `OPENROUTER_BASE_URL`         |
 | vercel-ai-gateway | `VERCEL_AI_GATEWAY_API_KEY`   | —                             |
@@ -245,6 +246,10 @@ For providers whose schema has a base-url setting, the CLI also honors a
 | vertex            | — (gcloud credential chain)   | —                             |
 | xai               | `XAI_API_KEY`                 | —                             |
 | zai               | `ZAI_API_KEY`                 | —                             |
+
+Alias: the persisted cloud provider id `tumble` is accepted on the CLI and maps
+to the `openrouter` provider settings (`OPENROUTER_API_KEY`, models, base-url);
+`--provider tumble` behaves like `--provider openrouter`.
 
 Excluded providers: `vscode-lm` (needs the real VS Code LM API), `openai-codex`
 (OAuth via the VS Code extension context), `fake-ai` (hidden internal test

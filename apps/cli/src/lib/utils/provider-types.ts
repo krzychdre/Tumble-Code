@@ -12,6 +12,10 @@
  * Keyless providers (no API-key field, or credentials resolved by an SDK) are
  * marked with `keyField: null`; the API-key gate in run.ts derives from this
  * table rather than a second hand-maintained list.
+ *
+ * Persisted aliases:
+ *  - "tumble" — the cloud provider id shipped by BR-09 (rebrand). The CLI has
+ *    no cloud handler, so it maps to the openrouter provider settings.
  */
 
 import { activeProviderIds } from "@roo-code/types"
@@ -39,6 +43,29 @@ export const excludedProviderIds = [
 ] as const satisfies readonly string[]
 
 export type ExcludedProviderId = (typeof excludedProviderIds)[number]
+
+/**
+ * Provider ids accepted from persisted CLI settings / VS Code config (or the
+ * `--provider` flag) that do not exist in the shared registry. Each maps to the
+ * real provider whose settings are used at runtime.
+ */
+export const providerIdAliases: Record<string, SupportedProvider> = {
+	tumble: "openrouter",
+}
+
+/**
+ * Resolve a user-facing provider id to the supported provider used for
+ * settings/env/key resolution. Unknown ids pass through unchanged so the caller
+ * can reject them with the normal "invalid provider" message.
+ */
+export function resolveProviderIdAlias(provider: string): string {
+	return providerIdAliases[provider] ?? provider
+}
+
+/** True when the id is a supported provider OR a known persisted alias. */
+export function isAcceptedProvider(provider: string): boolean {
+	return isSupportedProvider(provider) || provider in providerIdAliases
+}
 
 /**
  * The CLI-supported provider list, derived from the shared registry:
@@ -217,6 +244,8 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 	sambanova: {
 		apiKeyField: "sambaNovaApiKey",
 		keyEnvVar: "SAMBANOVA_API_KEY",
+		// SAMBANOVA_URL overrides the base URL at the handler level; the CLI's
+		// generic `--base-url`/`SAMBANOVA_BASE_URL` do not apply to it.
 		modelField: "apiModelId",
 	},
 	vertex: {
@@ -295,6 +324,10 @@ export function getBaseUrlFromEnv(provider: SupportedProvider): string | undefin
  * Compose the extension provider settings from CLI options.
  * Keys/base-urls are injected only when present; the model field follows the
  * provider's own field (routers use provider-specific model id fields).
+ *
+ * Throws when a `baseUrl` is given for a provider whose settings schema has
+ * no base-url field (decision 5 of ai_plans/2026-08-04_cli-provider-parity.md) —
+ * instead of silently dropping it.
  */
 export function getProviderSettings(
 	provider: SupportedProvider,
@@ -309,9 +342,10 @@ export function getProviderSettings(
 
 	if (baseUrl) {
 		const baseUrlField = getBaseUrlField(provider)
-		if (baseUrlField) {
-			config[baseUrlField] = baseUrl
+		if (!baseUrlField) {
+			throw new Error(`Provider '${provider}' does not support a base URL`)
 		}
+		config[baseUrlField] = baseUrl
 	}
 
 	if (apiKey) {

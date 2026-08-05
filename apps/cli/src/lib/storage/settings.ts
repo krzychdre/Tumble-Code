@@ -27,6 +27,7 @@ export async function saveSettings(settings: Partial<CliSettings>): Promise<void
 	const configDir = getConfigDir()
 	await fs.mkdir(configDir, { recursive: true })
 
+	const settingsPath = getSettingsPath()
 	const existing = await loadSettings()
 	const merged = { ...existing, ...settings }
 
@@ -38,7 +39,21 @@ export async function saveSettings(settings: Partial<CliSettings>): Promise<void
 		}
 	}
 
-	await fs.writeFile(getSettingsPath(), JSON.stringify(merged, null, 2), {
+	const content = JSON.stringify(merged, null, 2)
+
+	// Skip the write when nothing actually changed (e.g. a run that reused the
+	// already-persisted provider/model/baseUrl) so the file/mtime stay untouched.
+	let current: string | undefined
+	try {
+		current = await fs.readFile(settingsPath, "utf-8")
+	} catch {
+		current = undefined
+	}
+	if (current === content) {
+		return
+	}
+
+	await fs.writeFile(settingsPath, content, {
 		mode: 0o600,
 	})
 }
