@@ -121,6 +121,28 @@ needed); keep the debounced React state update. Verified with the same PTY
 repro: 0 raw `2J` writes, screen intact after typing + 12 interleaved
 resizes (pyte replay).
 
+## Addendum 3 (same day): the picker staircase — ink 6.8.0 incremental regression
+
+Field test on c2cdced43 in GNOME Terminal: help-picker rows stacked one row
+lower per frame (`❯ @ / ! / @ …` pairs), plus a composed `focusne` fragment.
+The user captured raw bytes via `script -fq` (254×61); replaying them in pyte
+reproduced the corruption exactly, and a per-frame cursor simulation showed
+every frame moving **up 12 but down 13 → net +1 row per changed frame**.
+
+Root cause: the _installed_ bundle (`~/.roo/cli`) resolves `"ink": "^6.6.0"`
+freshly at package time and got **ink 6.8.0**, while the dev tree (and every
+clean PTY repro so far) ran 6.6.0. In 6.8.0's incremental renderer the
+fullscreen/native-cursor refactor broke frame accounting for outputs with a
+trailing newline (ours always have one): it writes `visibleCount` rows down
+but only returns `previousVisible − 1` rows up. Proven with a minimal driver
+feeding both versions' `log-update` directly: 6.6.0 drifts 0 rows/frame,
+6.8.0 drifts +1 row/frame.
+
+Fix: pin `"ink": "6.6.0"` exactly in `apps/cli/package.json` so the packaged
+install resolves the same known-good version as dev. Re-evaluate the pin when
+upstream fixes the incremental accounting (worth filing an issue with the
+minimal driver above).
+
 ## Verification
 
 - Unit tests for `clampTail` (fits/no-op, tail slice, wrap estimate, giant
