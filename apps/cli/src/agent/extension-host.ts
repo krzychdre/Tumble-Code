@@ -336,6 +336,19 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		console.warn = () => {}
 		console.debug = () => {}
 		console.info = () => {}
+		// Route console.error to the file-based debug log instead of the
+		// terminal. Extension code logs raw stacks via console.error (e.g.
+		// provider API errors in handleProviderError); in the TUI ink's
+		// patchConsole prints those straight into the transcript. The
+		// user-facing surfacing already happens through the task loop's
+		// ask/error UI — the dump is diagnostics, so it belongs in
+		// ~/.roo/cli-debug.log (written when --debug is passed).
+		console.error = (...args: unknown[]) => {
+			cliLogger.error(
+				"console.error",
+				args.map((arg) => (arg instanceof Error ? (arg.stack ?? String(arg)) : arg)),
+			)
+		}
 	}
 
 	private restoreConsole(): void {

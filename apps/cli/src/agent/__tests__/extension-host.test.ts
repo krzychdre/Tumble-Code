@@ -377,9 +377,12 @@ describe("ExtensionHost", () => {
 				callPrivate(host, "restoreConsole")
 			})
 
-			it("should preserve console.error even when suppressing", () => {
-				const host = createTestHost()
+			it("should redirect console.error away from the terminal when suppressing", () => {
+				// Capture the real console.error before any suppression
 				const originalError = console.error
+
+				// Create host with integrationTest: true to prevent constructor from suppressing
+				const host = createTestHost({ integrationTest: true })
 
 				// Override integrationTest to false
 				const options = getPrivate<ExtensionHostOptions>(host, "options")
@@ -387,9 +390,14 @@ describe("ExtensionHost", () => {
 
 				callPrivate(host, "setupQuietMode")
 
-				expect(console.error).toBe(originalError)
+				// Raw stacks printed via console.error corrupt the TUI
+				// transcript — they must go to the file debug log instead.
+				expect(console.error).not.toBe(originalError)
+				// The redirect must not throw, including on Error arguments.
+				expect(() => console.error("API error:", new Error("boom"))).not.toThrow()
 
 				callPrivate(host, "restoreConsole")
+				expect(console.error).toBe(originalError)
 			})
 		})
 
