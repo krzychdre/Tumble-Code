@@ -20,4 +20,12 @@ export const figures = {
 	dot: "·",
 } as const
 
-export const SPINNER_FRAMES = ["·", "✢", "✳", "∗", "✻", "✽", "∗", "✳", "✢"]
+/**
+ * Droplet-into-puddle animation, played as a forward cycle: the drop falls
+ * (˙ · .), hits (∘), the ripple grows (○) and fades (◦), then the next drop
+ * appears. Every glyph is string-width 1 — the previous star set mixed
+ * widths (✳ U+2733 is East-Asian Wide since Unicode 9, the rest narrow),
+ * so ink reserved 2 columns for some frames and 1 for others, making the
+ * gap to the verb jitter between frames.
+ */
+export const SPINNER_FRAMES = ["˙", "·", ".", "∘", "○", "◦"]

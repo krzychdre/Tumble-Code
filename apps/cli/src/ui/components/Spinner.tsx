@@ -27,10 +27,11 @@ interface Props {
 }
 
 /**
- * Loading spinner: brand-colored frame cycling ping-pong through the spinner
- * frames at ~120ms, a verb picked deterministically from the loading-start
- * timestamp, and a dim elapsed/token suffix. Frames stop when isActive is
- * false (e.g. when a dialog steals the frame).
+ * Loading spinner: brand-colored droplet animation cycling forward through
+ * the spinner frames at ~120ms (a drop falls, ripples, fades — direction
+ * matters, so no ping-pong), a verb picked deterministically from the
+ * loading-start timestamp, and a dim elapsed/token suffix. Frames stop when
+ * isActive is false (e.g. when a dialog steals the frame).
  */
 function Spinner({ startTime, tokensOut, verb, isActive = true }: Props) {
 	const [frameIndex, setFrameIndex] = useState(0)
@@ -41,13 +42,8 @@ function Spinner({ startTime, tokensOut, verb, isActive = true }: Props) {
 			return
 		}
 		const timer = setInterval(() => {
-			setFrameIndex((prev) => {
-				// Ping-pong through the frames
-				const frameCount = SPINNER_FRAMES.length
-				const period = frameCount * 2 - 2
-				const step = (prev + 1) % period
-				return step < frameCount ? step : period - step
-			})
+			// Forward cycle — the droplet animation is directional.
+			setFrameIndex((prev) => (prev + 1) % SPINNER_FRAMES.length)
 		}, 120)
 		return () => clearInterval(timer)
 	}, [isActive])
