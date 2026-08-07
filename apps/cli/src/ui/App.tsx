@@ -29,6 +29,7 @@ import {
 // Import components.
 import WelcomeBanner from "./components/WelcomeBanner.js"
 import ChatHistoryItem from "./components/ChatHistoryItem.js"
+import DynamicTailMessage from "./components/DynamicTailMessage.js"
 import Spinner from "./components/Spinner.js"
 import ToastDisplay from "./components/ToastDisplay.js"
 import TodoDisplay from "./components/TodoDisplay.js"
@@ -169,10 +170,11 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		taskHistoryRef.current = taskHistory
 	}, [taskHistory])
 
-	// Terminal size is still exposed via context for any layout-sensitive
-	// children, but the outer flow no longer sets a fixed viewport height —
-	// `<Static>` + the dynamic tail flow naturally into native scrollback.
-	useTerminalSize()
+	// Terminal size drives the dynamic-tail row budget below: if the tail
+	// outgrows the terminal, its top rows scroll into native scrollback where
+	// ink can never erase them again (permanent duplicated lines), and ink
+	// falls back to clearing the whole terminal every frame.
+	const { rows: terminalRows, columns: terminalColumns } = useTerminalSize()
 
 	// Toast notifications for ephemeral messages (e.g., mode changes).
 	const { currentToast, showInfo } = useToast()
@@ -281,6 +283,14 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const effectiveStaticCount = Math.max(prevStaticCount, staticCount)
 	const staticMessages = messages.slice(0, effectiveStaticCount)
 	const dynamicMessages = messages.slice(effectiveStaticCount)
+
+	// Row budget per dynamic-tail message (plan: 2026-08-07 clamp dynamic
+	// tail). Reserve covers spinner + bordered input/footer or dialogs.
+	const TAIL_RESERVED_ROWS = 12
+	const tailRowsPerMessage = Math.max(
+		3,
+		Math.floor((terminalRows - TAIL_RESERVED_ROWS) / Math.max(1, dynamicMessages.length)),
+	)
 
 	// Snapshot the welcome props once — the banner prints into scrollback and
 	// should not reflect later mode/model changes (which are footer concerns).
@@ -488,9 +498,10 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			</Static>
 
 			<Box flexDirection="column">
-				{/* Dynamic tail: in-flight / streaming messages still re-rendering */}
+				{/* Dynamic tail: in-flight / streaming messages still re-rendering.
+				    Height-clamped so the tail never outgrows the terminal. */}
 				{dynamicMessages.map((m) => (
-					<ChatHistoryItem key={m.id} message={m} />
+					<DynamicTailMessage key={m.id} message={m} maxRows={tailRowsPerMessage} columns={terminalColumns} />
 				))}
 
 				{/* Spinner while loading and no dialog is stealing the frame */}
