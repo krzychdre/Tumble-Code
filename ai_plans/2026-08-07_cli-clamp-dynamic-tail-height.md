@@ -96,6 +96,31 @@ justifyContent="flex-end"`, inner `Box flexShrink={0}` (with the default
 - The per-message clamps from the main plan stay as defense in depth (they
   keep the clipped region small and the `… +N lines` indicator meaningful).
 
+## Addendum 2 (same day): the typing "staircase" — raw clear-screen on resize
+
+Field test on e84909c04: every keystroke left a stale `❯ d…` row, stacking
+diagonally down the transcript area. Reproduced under a controlled PTY by
+interleaving SIGWINCH with keystrokes and captured byte-level proof:
+
+```text
+...footer...\r\n
+\x1b[2J\x1b[H        ← useTerminalSize's resize handler, raw write behind ink
+\x1b[5A\x1b[E\x1b[E ❯ dd   ← ink's next frame: cursorUp(5) clamps at row 0,
+                             the input line paints into the transcript area
+```
+
+`useTerminalSize` wrote `\x1b[2J\x1b[H` directly to stdout on every resize —
+a leftover from the pre-feat/14 fixed-viewport UI where full clears were
+harmless. Under the Static-scrollback shell it desyncs ink's cursor tracking
+completely; VSCode fires resize bursts on any panel/layout change (xterm.js
+additionally reflows), so each keystroke frame landed at a new offset — the
+staircase. `2J` also never clears scrollback, so the stale rows persist.
+
+Fix: remove the raw write (ink has its own resize handler and clears when
+needed); keep the debounced React state update. Verified with the same PTY
+repro: 0 raw `2J` writes, screen intact after typing + 12 interleaved
+resizes (pyte replay).
+
 ## Verification
 
 - Unit tests for `clampTail` (fits/no-op, tail slice, wrap estimate, giant

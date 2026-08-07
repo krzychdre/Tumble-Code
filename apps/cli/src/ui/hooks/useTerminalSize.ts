@@ -32,9 +32,13 @@ export function useTerminalSize(): TerminalSize {
 
 			// Debounce resize events by 50ms
 			debounceTimer.current = setTimeout(() => {
-				// Clear the terminal before updating size to prevent artifacts
-				process.stdout.write("\x1b[2J\x1b[H")
-
+				// NOTE: never write raw escape codes (e.g. clear-screen) here.
+				// Ink tracks the cursor relative to its last frame; a raw
+				// \x1b[2J\x1b[H behind its back made every subsequent frame
+				// render at the top of the screen (proven byte-level: 2J+H
+				// followed by ink's cursorUp clamping at row 0), painting the
+				// input line into the transcript on every VSCode panel resize.
+				// Ink has its own resize handler and clears when needed.
 				setSize({
 					columns: process.stdout.columns || 80,
 					rows: process.stdout.rows || 24,
