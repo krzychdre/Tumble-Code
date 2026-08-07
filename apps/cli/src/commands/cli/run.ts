@@ -462,8 +462,15 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 					version: VERSION,
 					createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
 				}),
-				// Handle Ctrl+C in App component for double-press exit.
-				{ exitOnCtrlC: false },
+				{
+					// Handle Ctrl+C in App component for double-press exit.
+					exitOnCtrlC: false,
+					// Diff frames per line instead of erase-all + rewrite —
+					// ink's standard log-update repaints the whole dynamic
+					// region every frame, which blinks on each spinner tick
+					// and stream chunk.
+					incrementalRendering: true,
+				},
 			)
 		} catch (error) {
 			console.error("[CLI] Failed to start TUI:", error instanceof Error ? error.message : String(error))
