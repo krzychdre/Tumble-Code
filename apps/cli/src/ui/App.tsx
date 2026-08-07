@@ -30,6 +30,7 @@ import {
 import WelcomeBanner from "./components/WelcomeBanner.js"
 import ChatHistoryItem from "./components/ChatHistoryItem.js"
 import DynamicTailMessage from "./components/DynamicTailMessage.js"
+import TailViewport from "./components/TailViewport.js"
 import Spinner from "./components/Spinner.js"
 import ToastDisplay from "./components/ToastDisplay.js"
 import TodoDisplay from "./components/TodoDisplay.js"
@@ -497,7 +498,11 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 				}
 			</Static>
 
-			<Box flexDirection="column">
+			{/* Hard bound: the whole tail (messages + spinner + dialogs + input)
+			    must stay under the terminal height, or ink's erase sequences
+			    miss rows and leave permanent duplicates. rows − 2 keeps us off
+			    ink's clearTerminal fallback (triggers at height ≥ rows). */}
+			<TailViewport maxRows={Math.max(6, terminalRows - 2)}>
 				{/* Dynamic tail: in-flight / streaming messages still re-rendering.
 				    Height-clamped so the tail never outgrows the terminal. */}
 				{dynamicMessages.map((m) => (
@@ -593,7 +598,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 				{/* Toast line when a dialog owns input (InputArea/Footer not rendered) */}
 				{!inputActive && currentToast && <ToastDisplay toast={currentToast} />}
-			</Box>
+			</TailViewport>
 		</>
 	)
 }

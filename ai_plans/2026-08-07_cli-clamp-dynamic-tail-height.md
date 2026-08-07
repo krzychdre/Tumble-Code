@@ -69,6 +69,33 @@ own truncated live-preview behavior.
 - Ink's resize handling and the `clearTerminal` fallback itself — with the
   tail clamped, that path should no longer trigger.
 
+## Addendum (same day): per-message clamps are not enough — hard viewport
+
+Field test on build 35abe1507 still corrupted: duplicated rows now appeared
+_inside_ the visible followup dialog (option 1 ×4, option 2 ×2, option 3
+missing). New mechanism, same invariant violation: in a short VSCode terminal
+(~26 rows) the tail with a followup dialog (~17–20 rows) + thinking + spinner
+still reaches the terminal height even with message bodies clamped. When the
+height oscillates around `rows`, ink alternates between its clearTerminal
+fallback and normal rendering with a stale `previousCount > rows`; the
+recovery `cursorUp(previousCount − 1)` clamps at the top of the screen, so
+every subsequent row lands offset — interleaving stale and fresh rows.
+
+Per-component clamping cannot guarantee the invariant (dialogs, margins,
+wraps all add up), so enforce it structurally:
+
+- `src/ui/components/TailViewport.tsx` — wraps the entire dynamic tail.
+  Outer `Box height={min(naturalHeight, maxRows)} overflowY="hidden"
+justifyContent="flex-end"`, inner `Box flexShrink={0}` (with the default
+  flexShrink yoga squashes children instead of overflowing — verified
+  empirically: flex-end + non-shrinking inner shows exactly the last N rows).
+  Natural height is re-measured via `measureElement` after each commit, so a
+  short tail keeps its natural height; the cap (`rows − 2`, below ink's
+  `clearTerminal` trigger at `≥ rows`) always holds, bottom-anchored so input
+  and dialogs stay visible and only the oldest rows are clipped.
+- The per-message clamps from the main plan stay as defense in depth (they
+  keep the clipped region small and the `… +N lines` indicator meaningful).
+
 ## Verification
 
 - Unit tests for `clampTail` (fits/no-op, tail slice, wrap estimate, giant
