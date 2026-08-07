@@ -108,6 +108,50 @@ describe("useMessageHandlers", () => {
 		expect(assistantMessages.map((m) => m.content)).toEqual(["First reply", "Second reply"])
 	})
 
+	it("collapses say:completion_result repeating the streamed say:text answer", () => {
+		// Proven real-world sequence (task 019fddd6, 2026-08-07): the model
+		// repeats its full answer inside attempt_completion's result, so core
+		// emits say:text and say:completion_result with byte-identical text.
+		stateMessage([
+			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
+			{ ts: 1000, type: "say", say: "text", text: "Hi. What do you need help with?", partial: false },
+			{
+				ts: 1001,
+				type: "say",
+				say: "completion_result",
+				text: "Hi. What do you need help with?",
+				partial: false,
+			},
+		])
+
+		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+		expect(assistantMessages).toHaveLength(1)
+		expect(assistantMessages[0]?.content).toBe("Hi. What do you need help with?")
+	})
+
+	it("collapses say:text repeating an earlier say:completion_result (reverse order)", () => {
+		stateMessage([
+			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
+			{ ts: 1000, type: "say", say: "completion_result", text: "Done — see src/app.ts", partial: false },
+			{ ts: 1001, type: "say", say: "text", text: "Done — see src/app.ts", partial: false },
+		])
+
+		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+		expect(assistantMessages).toHaveLength(1)
+	})
+
+	it("does not dedupe a completion_result that differs from the streamed text", () => {
+		stateMessage([
+			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
+			{ ts: 1000, type: "say", say: "text", text: "Working on it…", partial: false },
+			{ ts: 1001, type: "say", say: "completion_result", text: "All done.", partial: false },
+		])
+
+		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+		expect(assistantMessages).toHaveLength(2)
+		expect(assistantMessages.map((m) => m.content)).toEqual(["Working on it…", "All done."])
+	})
+
 	it("renders BOTH byte-identical replies across turns (user_feedback resets the dedupe)", () => {
 		// Turn 1: prompt echo (skipped) + the model's reply.
 		stateMessage([

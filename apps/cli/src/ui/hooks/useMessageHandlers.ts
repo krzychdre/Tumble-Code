@@ -119,10 +119,15 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			// The core streaming pipeline can emit two ClineMessage entries with
 			// the SAME text but DIFFERENT timestamps (a partial text say finalized
 			// after reasoning or grounding sources interleaved), and the ts-based
-			// seenMessageIds dedupe above cannot collapse them. Skip a complete
-			// assistant text message whose text exactly matches the last one we
-			// rendered. Distinct replies (different text) always pass through.
-			if (say === "text" && !partial && lastAssistantText.current === text && text !== "") {
+			// seenMessageIds dedupe above cannot collapse them. The same happens
+			// across say kinds: models (GLM especially) repeat the whole answer
+			// inside attempt_completion's result, so core emits say:text and then
+			// say:completion_result with byte-identical text — both render as an
+			// assistant bullet. Skip a complete assistant message whose text
+			// exactly matches the last one we rendered, whichever kind came
+			// first. Distinct replies (different text) always pass through.
+			const isAssistantAnswer = say === "text" || say === "completion_result"
+			if (isAssistantAnswer && !partial && lastAssistantText.current === text && text !== "") {
 				seenMessageIds.current.add(messageId)
 				return
 			}
@@ -132,7 +137,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			// Remember the last assistant text we actually rendered (partial
 			// included) so a later same-text duplicate with a new ts is not
 			// shown a second time.
-			if (say === "text" && role === "assistant") {
+			if (isAssistantAnswer && role === "assistant") {
 				lastAssistantText.current = text
 			}
 
