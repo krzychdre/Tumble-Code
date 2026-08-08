@@ -29,6 +29,7 @@ import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import type { User } from "@/lib/sdk/index.js"
 import { getProviderSettings } from "@/lib/utils/provider.js"
+import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { createEphemeralStorageDir } from "@/lib/storage/index.js"
 
 import type { WaitingForInputEvent, TaskCompletedEvent } from "./events.js"
@@ -237,25 +238,10 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			),
 		}
 
-		this.initialSettings = this.options.nonInteractive
-			? {
-					autoApprovalEnabled: true,
-					alwaysAllowReadOnly: true,
-					alwaysAllowReadOnlyOutsideWorkspace: true,
-					alwaysAllowWrite: true,
-					alwaysAllowWriteOutsideWorkspace: true,
-					alwaysAllowWriteProtected: true,
-					alwaysAllowMcp: true,
-					alwaysAllowModeSwitch: true,
-					alwaysAllowSubtasks: true,
-					alwaysAllowExecute: true,
-					allowedCommands: ["*"],
-					...baseSettings,
-				}
-			: {
-					autoApprovalEnabled: false,
-					...baseSettings,
-				}
+		this.initialSettings = {
+			...getPermissionSettings(getPermissionMode(this.options.nonInteractive ?? false)),
+			...baseSettings,
+		}
 
 		if (this.options.reasoningEffort && this.options.reasoningEffort !== "unspecified") {
 			if (this.options.reasoningEffort === "disabled") {

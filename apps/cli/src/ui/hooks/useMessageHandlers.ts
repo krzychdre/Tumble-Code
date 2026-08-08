@@ -52,6 +52,11 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	// different ts) collapses to a single block (see handleSayMessage below).
 	const lastAssistantText = useRef<string | null>(null)
 	const firstTextMessageSkipped = useRef(false)
+	// The extension host subscribes to handleExtensionMessage once on mount.
+	// Keep the current session policy in a ref so runtime /permissions changes
+	// affect that stable listener instead of leaving it with the startup value.
+	const nonInteractiveRef = useRef(nonInteractive)
+	nonInteractiveRef.current = nonInteractive
 
 	// Track pending command for injecting into command_output toolData
 	const pendingCommandRef = useRef<string | null>(null)
@@ -240,7 +245,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				pendingCommandRef.current = text
 			}
 
-			if (nonInteractive && ask !== "followup") {
+			if (nonInteractiveRef.current && ask !== "followup") {
 				seenMessageIds.current.add(messageId)
 
 				if (ask === "tool") {
@@ -321,7 +326,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				suggestions,
 			})
 		},
-		[addMessage, setPendingAsk, setComplete, setLoading, setHasStartedTask, nonInteractive, currentTodos, setTodos],
+		[addMessage, setPendingAsk, setComplete, setLoading, setHasStartedTask, currentTodos, setTodos],
 	)
 
 	/**

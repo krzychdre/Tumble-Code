@@ -101,6 +101,12 @@ If you want manual approval prompts, enable approval-required mode:
 tumble "Refactor the utils.ts file" --require-approval -w ~/Documents/my-project
 ```
 
+During an interactive session, use `/permissions` to toggle between automatic
+and manual action approval without restarting the CLI. You can also select the
+mode explicitly with `/permissions allow` or `/permissions ask`. The command
+changes only the active session; startup flags and saved CLI settings still
+determine the initial mode of the next session.
+
 In approval-required mode:
 
 - Tool, command, browser, and MCP actions prompt for yes/no approval

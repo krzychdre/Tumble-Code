@@ -3,6 +3,7 @@ import { randomUUID } from "crypto"
 import type { WebviewMessage } from "@roo-code/types"
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
+import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
 
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
@@ -12,6 +13,8 @@ export interface UseTaskSubmitOptions {
 	runTask: ((prompt: string) => Promise<void>) | null
 	seenMessageIds: React.MutableRefObject<Set<string>>
 	firstTextMessageSkipped: React.MutableRefObject<boolean>
+	permissionMode: PermissionMode
+	onPermissionModeChange: (mode: PermissionMode) => void
 }
 
 export interface UseTaskSubmitReturn {
@@ -35,6 +38,8 @@ export function useTaskSubmit({
 	runTask,
 	seenMessageIds,
 	firstTextMessageSkipped,
+	permissionMode,
+	onPermissionModeChange,
 }: UseTaskSubmitOptions): UseTaskSubmitReturn {
 	const {
 		pendingAsk,
@@ -84,6 +89,31 @@ export function useTaskSubmit({
 						// Re-request state, commands and modes since reset() cleared them.
 						sendToExtension({ type: "requestCommands" })
 						sendToExtension({ type: "requestModes" })
+						return
+					}
+
+					if (globalCommand?.action === "setPermissions") {
+						const argument = trimmedText.slice(commandMatch[0].length).trim()
+						const result = resolvePermissionArgument(argument, permissionMode)
+
+						if (!result.success) {
+							addMessage({ id: randomUUID(), role: "system", content: result.error })
+							return
+						}
+
+						sendToExtension({
+							type: "updateSettings",
+							updatedSettings: getPermissionSettings(result.mode),
+						})
+						onPermissionModeChange(result.mode)
+						addMessage({
+							id: randomUUID(),
+							role: "system",
+							content:
+								result.mode === "allow"
+									? "Permissions: allowing actions without approval for this session."
+									: "Permissions: asking before actions for this session.",
+						})
 						return
 					}
 				}
@@ -146,6 +176,8 @@ export function useTaskSubmit({
 			setIsTransitioningToCustomInput,
 			seenMessageIds,
 			firstTextMessageSkipped,
+			permissionMode,
+			onPermissionModeChange,
 		],
 	)
 

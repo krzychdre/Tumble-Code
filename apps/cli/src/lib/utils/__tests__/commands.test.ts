@@ -15,6 +15,13 @@ describe("globalCommands", () => {
 			expect(newCommand?.description).toBe("Start a new task")
 		})
 
+		it("should contain the /permissions command", () => {
+			const permissionsCommand = GLOBAL_COMMANDS.find((cmd) => cmd.name === "permissions")
+			expect(permissionsCommand).toBeDefined()
+			expect(permissionsCommand?.action).toBe("setPermissions")
+			expect(permissionsCommand?.description).toContain("/permissions ask|allow")
+		})
+
 		it("should have valid structure for all commands", () => {
 			for (const cmd of GLOBAL_COMMANDS) {
 				expect(cmd.name).toBeTruthy()
@@ -80,7 +87,7 @@ describe("globalCommands", () => {
 	describe("type safety", () => {
 		it("should have valid GlobalCommandAction types", () => {
 			// This test ensures the type is properly constrained
-			const validActions: GlobalCommandAction[] = ["clearTask"]
+			const validActions: GlobalCommandAction[] = ["clearTask", "setPermissions"]
 
 			for (const cmd of GLOBAL_COMMANDS) {
 				expect(validActions).toContain(cmd.action)

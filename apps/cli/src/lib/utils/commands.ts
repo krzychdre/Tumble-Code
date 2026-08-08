@@ -10,7 +10,7 @@
  * Action types that can be triggered by global commands.
  * Each action corresponds to a message type sent to the extension host.
  */
-export type GlobalCommandAction = "clearTask"
+export type GlobalCommandAction = "clearTask" | "setPermissions"
 
 /**
  * Definition of a CLI global command
@@ -33,6 +33,11 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 		name: "new",
 		description: "Start a new task",
 		action: "clearTask",
+	},
+	{
+		name: "permissions",
+		description: "Toggle action approvals (/permissions ask|allow)",
+		action: "setPermissions",
 	},
 ]
 

@@ -20,15 +20,17 @@ import { useMessageHandlers, type UseMessageHandlersReturn } from "../useMessage
  */
 describe("useMessageHandlers", () => {
 	let api: UseMessageHandlersReturn
+	let nonInteractive = false
 
 	function Harness() {
-		api = useMessageHandlers({ nonInteractive: false })
+		api = useMessageHandlers({ nonInteractive })
 		return <Text>harness</Text>
 	}
 
 	beforeEach(() => {
 		useCLIStore.getState().reset()
 		useCLIStore.getState().setHasStartedTask(true)
+		nonInteractive = false
 		render(<Harness />)
 	})
 
@@ -85,6 +87,31 @@ describe("useMessageHandlers", () => {
 			type: "tool",
 			content: payload,
 			suggestions: undefined,
+		})
+	})
+
+	it("uses the current permission policy after it changes at runtime", () => {
+		const view = render(<Harness />)
+		const stableHandler = api.handleExtensionMessage
+
+		nonInteractive = true
+		view.rerender(<Harness />)
+
+		stableHandler({
+			type: "messageUpdated",
+			clineMessage: {
+				ts: 501,
+				type: "ask",
+				ask: "command",
+				text: "git status",
+				partial: false,
+			},
+		})
+
+		expect(useCLIStore.getState().pendingAsk).toBeNull()
+		expect(useCLIStore.getState().messages.at(-1)).toMatchObject({
+			role: "assistant",
+			content: "git status",
 		})
 	})
 

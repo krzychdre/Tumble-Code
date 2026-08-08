@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 
 import { getGlobalCommandsForAutocomplete } from "@/lib/utils/commands.js"
+import { getPermissionMode, type PermissionMode } from "@/lib/utils/permissions.js"
 import { arePathsEqual } from "@/lib/utils/path.js"
 import { getContextWindow } from "@/lib/utils/context-window.js"
 
@@ -111,6 +112,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	} = extensionHostOptions
 
 	const { exit } = useApp()
+	const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => getPermissionMode(nonInteractive))
 
 	const {
 		messages,
@@ -186,7 +188,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		pendingCommandRef: _pendingCommandRef,
 		firstTextMessageSkipped,
 	} = useMessageHandlers({
-		nonInteractive,
+		nonInteractive: permissionMode === "allow",
 	})
 
 	const { sendToExtension, runTask, cleanup } = useExtensionHost({
@@ -217,12 +219,15 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		runTask,
 		seenMessageIds,
 		firstTextMessageSkipped,
+		permissionMode,
+		onPermissionModeChange: setPermissionMode,
 	})
 
 	// Initialize countdown hook for followup auto-accept
 	const { cancelCountdown } = useFollowupCountdown({
 		pendingAsk,
 		onAutoSubmit: handleSubmit,
+		autoAcceptEnabled: permissionMode === "allow",
 	})
 
 	// Initialize picker handlers hook

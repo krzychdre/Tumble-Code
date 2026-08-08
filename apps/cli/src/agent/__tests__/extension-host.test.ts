@@ -6,6 +6,7 @@ import fs from "fs"
 import type { ExtensionMessage, WebviewMessage } from "@roo-code/types"
 
 import { DEFAULT_FLAGS } from "@/types/index.js"
+import { getPermissionSettings } from "@/lib/utils/permissions.js"
 
 import { type ExtensionHostOptions, ExtensionHost } from "../extension-host.js"
 import { ExtensionClient } from "../extension-client.js"
@@ -657,17 +658,14 @@ describe("ExtensionHost", () => {
 			const host = createTestHost({ nonInteractive: true })
 
 			const initialSettings = getPrivate<Record<string, unknown>>(host, "initialSettings")
-			expect(initialSettings.autoApprovalEnabled).toBe(true)
-			expect(initialSettings.alwaysAllowReadOnly).toBe(true)
-			expect(initialSettings.alwaysAllowWrite).toBe(true)
-			expect(initialSettings.alwaysAllowExecute).toBe(true)
+			expect(initialSettings).toMatchObject(getPermissionSettings("allow"))
 		})
 
 		it("should disable auto-approval in interactive mode", () => {
 			const host = createTestHost({ nonInteractive: false })
 
 			const initialSettings = getPrivate<Record<string, unknown>>(host, "initialSettings")
-			expect(initialSettings.autoApprovalEnabled).toBe(false)
+			expect(initialSettings).toMatchObject(getPermissionSettings("ask"))
 		})
 
 		it("should set reasoning effort when specified", () => {
