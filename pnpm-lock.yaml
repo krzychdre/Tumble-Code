@@ -114,9 +114,15 @@ importers:
       ink:
         specifier: 6.6.0
         version: 6.6.0(@types/react@18.3.23)(react@19.2.3)
+      json-stream-stringify:
+        specifier: ^3.1.6
+        version: 3.1.6
       p-wait-for:
         specifier: ^5.0.2
         version: 5.0.2
+      proper-lockfile:
+        specifier: ^4.1.2
+        version: 4.1.2
       react:
         specifier: ^19.1.0
         version: 19.2.3

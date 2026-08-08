@@ -81,4 +81,14 @@ describe("cli settings persistence", () => {
 		expect(fs.statSync(pathBefore).mtimeMs).toBe(mtimeBefore)
 		expect(fs.readFileSync(pathBefore, "utf-8")).toBe(contentBefore)
 	})
+
+	it("keeps the settings file valid when concurrent saves overlap", async () => {
+		await Promise.all([
+			saveSettings({ provider: "openai-codex" }),
+			saveSettings({ model: "gpt-5.6-sol" }),
+			saveSettings({ requireApproval: true }),
+		])
+
+		expect(() => JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))).not.toThrow()
+	})
 })

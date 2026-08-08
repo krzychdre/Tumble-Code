@@ -14,6 +14,8 @@ export default defineConfig({
 	// Bundle workspace packages that export TypeScript
 	noExternal: ["@roo-code/core", "@roo-code/core/cli", "@roo-code/types", "@roo-code/vscode-shim"],
 	external: [
+		"proper-lockfile",
+		"json-stream-stringify",
 		// Keep native modules external
 		"@anthropic-ai/sdk",
 		"@anthropic-ai/bedrock-sdk",

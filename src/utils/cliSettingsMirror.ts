@@ -22,6 +22,8 @@ import path from "path"
 import type { ProviderSettings } from "@roo-code/types"
 import type { KnownProviderId } from "@roo-code/types"
 
+import { withLockedJsonTransaction } from "./safeWriteJson"
+
 /**
  * Per-provider model/base-url settings fields (what the CLI reads). Aligned
  * with the CLI's `getModelField()`/`getBaseUrlField()` provider map — the
@@ -140,21 +142,19 @@ export async function writeCliSettingsMirror(apiConfiguration: ProviderSettings)
 	try {
 		const settingsPath = cliSettingsPathOverride ?? getCliSettingsPath()
 		const patch = buildCliSettingsFromApiConfiguration(apiConfiguration)
-
-		let existing: Record<string, unknown> = {}
-		try {
-			const raw = await fs.readFile(settingsPath, "utf-8")
-			const parsed: unknown = JSON.parse(raw)
-			if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-				existing = parsed as Record<string, unknown>
+		await withLockedJsonTransaction(settingsPath, settingsPath, async (writeJson) => {
+			let existing: Record<string, unknown> = {}
+			try {
+				const raw = await fs.readFile(settingsPath, "utf-8")
+				const parsed: unknown = JSON.parse(raw)
+				if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+					existing = parsed as Record<string, unknown>
+				}
+			} catch {
+				// No file yet (or unparseable) — start fresh.
 			}
-		} catch {
-			// No file yet (or unparseable) — start fresh.
-		}
 
-		await fs.mkdir(path.dirname(settingsPath), { recursive: true })
-		await fs.writeFile(settingsPath, JSON.stringify({ ...existing, ...patch }, null, 2), {
-			mode: 0o600,
+			await writeJson({ ...existing, ...patch }, { prettyPrint: true })
 		})
 	} catch {
 		// Best-effort only — a CLI-settings mirror failure must never break

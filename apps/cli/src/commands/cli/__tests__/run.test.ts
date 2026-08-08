@@ -4,7 +4,7 @@ import os from "os"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
 
-import { run, resolveEffectiveModel } from "../run.js"
+import { run, resolveEffectiveBaseUrl, resolveEffectiveModel } from "../run.js"
 import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
 import { getConfigDir } from "@/lib/storage/config-dir.js"
 import type { FlagOptions } from "@/types/index.js"
@@ -287,6 +287,17 @@ describe("resolveEffectiveModel (provider/model coexistence, decision A3)", () =
 	})
 })
 
+describe("resolveEffectiveBaseUrl", () => {
+	it("returns a persisted URL only for the provider it belongs to", () => {
+		expect(resolveEffectiveBaseUrl({ provider: "openai", baseUrl: "http://localhost:1234/v1" }, "openai")).toBe(
+			"http://localhost:1234/v1",
+		)
+		expect(
+			resolveEffectiveBaseUrl({ provider: "openai", baseUrl: "http://localhost:1234/v1" }, "openai-codex"),
+		).toBeUndefined()
+	})
+})
+
 describe("run model persistence — never clobber with defaults (bug 2)", () => {
 	let tempDir: string
 
@@ -368,6 +379,7 @@ describe("run baseUrl persistence (bug 1)", () => {
 		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-baseurl-test-"))
 		mockGetConfigDir.mockReturnValue(tempDir)
 		mockHost.lastOptions = undefined
+		mockGetOpenAiCodexAuthStatus.mockResolvedValue({ authenticated: true })
 	})
 
 	afterEach(() => {
@@ -445,6 +457,28 @@ describe("run baseUrl persistence (bug 1)", () => {
 
 			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
 			expect(after).not.toHaveProperty("baseUrl")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("drops a stale OpenAI-compatible baseUrl when switching to OpenAI Codex", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({
+				provider: "openai",
+				model: "local-model",
+				baseUrl: "http://localhost:1234/v1",
+			})
+
+			await run("hello", baseFlags({ provider: "openai-codex" }))
+
+			expect(mockHost.lastOptions?.provider).toBe("openai-codex")
+			expect(mockHost.lastOptions?.baseUrl).toBeUndefined()
+			const after = await loadSettings()
+			expect(after.provider).toBe("openai-codex")
+			expect(after.baseUrl).toBeUndefined()
 		} finally {
 			exitSpy.mockRestore()
 		}

@@ -90,6 +90,19 @@ export function resolveEffectiveModel(
 	return settings.model
 }
 
+/** A persisted base URL belongs to the provider it was saved with. */
+export function resolveEffectiveBaseUrl(
+	settings: Pick<CliSettings, "provider" | "baseUrl"> | undefined,
+	activeProvider: SupportedProvider,
+): string | undefined {
+	if (!settings?.baseUrl) {
+		return undefined
+	}
+
+	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
+	return persistedProvider === activeProvider ? settings.baseUrl : undefined
+}
+
 /**
  * Whether the active provider's settings schema has a base-url field. Used to
  * gate baseUrl persistence: a provider without a base-url field must never get
@@ -192,7 +205,12 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		resolveEffectiveModel(settings, effectiveProvider) ||
 		vsCodeConfig?.model ||
 		(effectiveProvider === "openai-codex" ? openAiCodexDefaultModelId : DEFAULT_FLAGS.model)
-	const effectiveBaseUrl = flagOptions.baseUrl || settings.baseUrl || vsCodeConfig?.baseUrl || undefined
+	const effectiveBaseUrl =
+		flagOptions.baseUrl ||
+		resolveEffectiveBaseUrl(settings, effectiveProvider) ||
+		(vsCodeConfig?.provider === effectiveProvider && effectiveProviderSupportBaseUrl(effectiveProvider)
+			? vsCodeConfig.baseUrl
+			: undefined)
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
 	// the current working directory. The workspace is intentionally NEVER read
 	// from persisted settings — `tumble` must follow the directory it is run
@@ -358,7 +376,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	// Skip the write entirely when nothing actually changed — an unconditional
 	// saveSettings would rewrite the file (and bump mtime) on every plain run
 	// even when the values are already persisted.
-	const pendingSettings: Partial<Parameters<typeof saveSettings>[0]> = {}
+	const pendingSettings: Parameters<typeof saveSettings>[0] = {}
 	if (persistedProvider && persistedProvider !== settings.provider) {
 		pendingSettings.provider = persistedProvider as typeof settings.provider
 	}
@@ -367,6 +385,9 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	}
 	if (persistedBaseUrl && persistedBaseUrl !== settings.baseUrl) {
 		pendingSettings.baseUrl = persistedBaseUrl
+	}
+	if (!effectiveProviderSupportBaseUrl(effectiveProvider) && settings.baseUrl !== undefined) {
+		pendingSettings.baseUrl = null
 	}
 	if (Object.keys(pendingSettings).length > 0) {
 		await saveSettings(pendingSettings)
