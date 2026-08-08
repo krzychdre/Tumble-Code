@@ -114,6 +114,11 @@ export function ripgrepCandidatePaths(vscodeAppRoot: string): readonly string[] 
  * Returns `undefined` when ripgrep cannot be located.
  */
 export async function getBinPath(vscodeAppRoot: string): Promise<string | undefined> {
+	const cliRipgrepPath = process.env.ROO_RIPGREP_PATH
+	if (cliRipgrepPath && path.isAbsolute(cliRipgrepPath) && (await fileExistsAtPath(cliRipgrepPath))) {
+		return cliRipgrepPath
+	}
+
 	for (const candidate of ripgrepCandidatePaths(vscodeAppRoot)) {
 		if (await fileExistsAtPath(candidate)) return candidate
 	}
