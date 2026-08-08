@@ -12,7 +12,8 @@ The packaged CLI wrapper exposes its bundled ripgrep binary through `ROO_RIPGREP
 
 ## Verification
 
-- Focused ripgrep resolver tests.
-- Backend type-check and lint.
-- Extension bundle and CLI package build.
-- Installed-layout smoke test with `appRoot` deliberately pointed at a directory without `node_modules`, proving the wrapper-provided binary is selected.
+- `cd src && npx vitest run services/ripgrep/__tests__/index.spec.ts` — 10 tests passed.
+- `./apps/cli/scripts/build.sh --install` — extension/CLI build, temporary installation checks, and local installation passed.
+- Installed bundle contains the `ROO_RIPGREP_PATH` resolver branch, its wrapper exports the absolute executable path, and `bin/rg` is executable.
+- Installed OpenAI Codex smoke task completed with `OK`; no `Could not find ripgrep binary` error occurred.
+- The first post-fix installation was stale: its installed extension hash differed from the newly rebuilt tarball and contained no `ROO_RIPGREP_PATH` marker. Installing the current tarball corrected that artifact skew.

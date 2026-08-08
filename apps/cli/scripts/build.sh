@@ -143,25 +143,10 @@ create_tarball() {
 
     # Create package.json for npm install
     info "Creating package.json..."
-    node -e "
-      const pkg = require('$CLI_DIR/package.json');
-      const newPkg = {
-        name: '@tumble-code/cli',
-        version: '$VERSION',
-        type: 'module',
-        dependencies: {
-          '@inkjs/ui': pkg.dependencies['@inkjs/ui'],
-          '@trpc/client': pkg.dependencies['@trpc/client'],
-          'commander': pkg.dependencies.commander,
-          'fuzzysort': pkg.dependencies.fuzzysort,
-          'ink': pkg.dependencies.ink,
-          'p-wait-for': pkg.dependencies['p-wait-for'],
-          'react': pkg.dependencies.react,
-          'superjson': pkg.dependencies.superjson,
-          'zustand': pkg.dependencies.zustand
-        }
-      };
-      console.log(JSON.stringify(newPkg, null, 2));
+    node --input-type=module -e "
+      import { createReleaseManifest } from '$CLI_DIR/dist/lib/utils/release-manifest.js';
+      import pkg from '$CLI_DIR/package.json' with { type: 'json' };
+      console.log(JSON.stringify(createReleaseManifest(pkg, '$VERSION'), null, 2));
     " > "$RELEASE_DIR/package.json"
 
     # Copy extension bundle
