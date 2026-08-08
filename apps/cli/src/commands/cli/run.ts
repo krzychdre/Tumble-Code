@@ -18,6 +18,8 @@ import {
 	type CliSettings,
 	type SupportedProvider,
 } from "@/types/index.js"
+import { openAiCodexDefaultModelId } from "@roo-code/types"
+import { getOpenAiCodexAuthStatus } from "@/commands/auth/openai-codex.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
@@ -189,7 +191,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		flagOptions.model ||
 		resolveEffectiveModel(settings, effectiveProvider) ||
 		vsCodeConfig?.model ||
-		DEFAULT_FLAGS.model
+		(effectiveProvider === "openai-codex" ? openAiCodexDefaultModelId : DEFAULT_FLAGS.model)
 	const effectiveBaseUrl = flagOptions.baseUrl || settings.baseUrl || vsCodeConfig?.baseUrl || undefined
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
 	// the current working directory. The workspace is intentionally NEVER read
@@ -266,6 +268,24 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			`[CLI] Error: Invalid provider: ${rawEffectiveProvider}; must be one of: ${supportedProviders.join(", ")}`,
 		)
 		process.exit(1)
+	}
+
+	// OAuth credentials live in persistent vscode-shim SecretStorage. An
+	// ephemeral host starts with an empty store, so fail here with an actionable
+	// message instead of letting the provider report a generic auth error.
+	if (effectiveProvider === "openai-codex" && flagOptions.ephemeral) {
+		console.error("[CLI] Error: --ephemeral cannot be used with the openai-codex provider.")
+		console.error("[CLI] Run `tumble auth codex login`, then retry without --ephemeral.")
+		process.exit(1)
+	}
+
+	if (effectiveProvider === "openai-codex") {
+		const authStatus = await getOpenAiCodexAuthStatus({ quiet: true })
+		if (!authStatus.authenticated) {
+			console.error("[CLI] Error: OpenAI Codex is not authenticated.")
+			console.error("[CLI] Run `tumble auth codex login`, then retry.")
+			process.exit(1)
+		}
 	}
 
 	// A base-url is only valid where the provider's settings schema has a

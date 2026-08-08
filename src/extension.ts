@@ -130,6 +130,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(outputChannel)
 	outputChannel.appendLine(`${Package.name} extension activated - ${JSON.stringify(Package)}`)
 
+	// Provider-auth commands need the bundled OAuth implementation and the same
+	// SecretStorage as normal CLI runs, but not full extension activation (cloud,
+	// telemetry, indexing, webview, or terminal setup).
+	if (process.env.ROO_CLI_CODEX_AUTH_ONLY === "1") {
+		openAiCodexOAuthManager.initialize(context, (message) => outputChannel.appendLine(message))
+		return {
+			getOpenAiCodexOAuthManager: () => openAiCodexOAuthManager,
+		}
+	}
+
 	// Initialize network proxy configuration early, before any network requests.
 	// When proxyUrl is configured, all HTTP/HTTPS traffic will be routed through it.
 	// Only applied in debug mode (F5).

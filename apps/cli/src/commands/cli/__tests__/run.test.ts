@@ -9,6 +9,8 @@ import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/setti
 import { getConfigDir } from "@/lib/storage/config-dir.js"
 import type { FlagOptions } from "@/types/index.js"
 
+const mockGetOpenAiCodexAuthStatus = vi.hoisted(() => vi.fn(async () => ({ authenticated: true })))
+
 // Point the real settings storage at a temp dir via the leaf config-dir module.
 // The factory needs a concrete default: other storage modules call
 // getConfigDir() at import time (credentials.ts computes its file path).
@@ -19,6 +21,10 @@ vi.mock("@/lib/storage/config-dir.js", () => ({
 // Keep the run deterministic: no VS Code state on disk may leak a provider in.
 vi.mock("@/lib/utils/vscode-config.js", () => ({
 	readVsCodeConfig: vi.fn(() => undefined),
+}))
+
+vi.mock("@/commands/auth/openai-codex.js", () => ({
+	getOpenAiCodexAuthStatus: mockGetOpenAiCodexAuthStatus,
 }))
 
 // Capture what the extension host is constructed with, without booting the
@@ -82,10 +88,11 @@ describe("provider-aware API-key gate", () => {
 		expect(providerRequiresApiKey("bedrock")).toBe(false)
 		expect(providerRequiresApiKey("qwen-code")).toBe(false)
 		expect(providerRequiresApiKey("vertex")).toBe(false)
+		expect(providerRequiresApiKey("openai-codex")).toBe(false)
 	})
 
 	it("every keyless provider is listed in keylessProviders", () => {
-		for (const provider of ["ollama", "lmstudio", "bedrock", "qwen-code", "vertex"]) {
+		for (const provider of ["ollama", "lmstudio", "bedrock", "qwen-code", "vertex", "openai-codex"]) {
 			expect(keylessProviders).toContain(provider)
 		}
 	})
@@ -95,6 +102,71 @@ describe("provider-aware API-key gate", () => {
 		expect(providerRequiresApiKey("openrouter")).toBe(true)
 		expect(getEnvVarName("openrouter")).toBe("OPENROUTER_API_KEY")
 		expect(getEnvVarName("lmstudio")).toBeNull()
+	})
+})
+
+describe("run OpenAI Codex OAuth configuration", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-codex-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+		mockGetOpenAiCodexAuthStatus.mockResolvedValue({ authenticated: true })
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	it("runs keyless with the provider-specific default model", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		try {
+			await run("hello", baseFlags({ provider: "openai-codex", apiKey: undefined }))
+			expect(mockHost.lastOptions?.provider).toBe("openai-codex")
+			expect(mockHost.lastOptions?.model).toBe("gpt-5.6-sol")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("rejects ephemeral mode because it cannot see the persistent OAuth login", async () => {
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		try {
+			await expect(
+				run("hello", baseFlags({ provider: "openai-codex", apiKey: undefined, ephemeral: true })),
+			).rejects.toBe(exitError)
+			expect(errorSpy).toHaveBeenCalledWith(
+				"[CLI] Error: --ephemeral cannot be used with the openai-codex provider.",
+			)
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
+		}
+	})
+
+	it("rejects a normal run until the subscription login has completed", async () => {
+		mockGetOpenAiCodexAuthStatus.mockResolvedValue({ authenticated: false })
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		try {
+			await expect(run("hello", baseFlags({ provider: "openai-codex", apiKey: undefined }))).rejects.toBe(
+				exitError,
+			)
+			expect(errorSpy).toHaveBeenCalledWith("[CLI] Error: OpenAI Codex is not authenticated.")
+			expect(mockHost.lastOptions).toBeUndefined()
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
+		}
 	})
 })
 

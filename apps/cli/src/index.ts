@@ -7,6 +7,9 @@ import {
 	login,
 	logout,
 	status,
+	loginToOpenAiCodex,
+	logoutFromOpenAiCodex,
+	getOpenAiCodexAuthStatus,
 	listCommands,
 	listModes,
 	listModels,
@@ -139,7 +142,7 @@ program
 		await runUpgradeAction(() => upgrade())
 	})
 
-const authCommand = program.command("auth").description("Manage authentication for Tumble Code Cloud")
+const authCommand = program.command("auth").description("Manage Tumble Cloud and provider authentication")
 
 authCommand
 	.command("login")
@@ -148,6 +151,32 @@ authCommand
 	.action(async (options: { verbose: boolean }) => {
 		const result = await login({ verbose: options.verbose })
 		process.exit(result.success ? 0 : 1)
+	})
+
+const codexAuthCommand = authCommand.command("codex").description("Manage ChatGPT subscription access for OpenAI Codex")
+
+codexAuthCommand
+	.command("login")
+	.description("Sign in to OpenAI Codex with ChatGPT Plus, Pro, Team, or Enterprise")
+	.action(async () => {
+		const result = await loginToOpenAiCodex()
+		process.exit(result.success ? 0 : 1)
+	})
+
+codexAuthCommand
+	.command("logout")
+	.description("Remove the stored OpenAI Codex OAuth credentials")
+	.action(async () => {
+		const result = await logoutFromOpenAiCodex()
+		process.exit(result.success ? 0 : 1)
+	})
+
+codexAuthCommand
+	.command("status")
+	.description("Show OpenAI Codex OAuth status")
+	.action(async () => {
+		const result = await getOpenAiCodexAuthStatus()
+		process.exit(result.authenticated ? 0 : 1)
 	})
 
 authCommand

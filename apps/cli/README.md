@@ -270,6 +270,29 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 | `tumble auth logout` | Clear stored authentication token   |
 | `tumble auth status` | Show current authentication status  |
 
+### ChatGPT Plus/Pro (OpenAI Codex OAuth)
+
+ChatGPT subscription access is separate from Tumble Code Cloud authentication
+and from usage billed through an `OPENAI_API_KEY`. Sign in once, then select the
+`openai-codex` provider:
+
+```bash
+tumble auth codex login
+tumble --provider openai-codex --model gpt-5.6-sol
+```
+
+The browser flow supports eligible ChatGPT Plus, Pro, Team, and Enterprise
+accounts. The authorization URL is always printed for remote/headless shells.
+The callback listener uses `127.0.0.1:1455`, so when the CLI runs over SSH that
+port must reach the machine running the CLI. `--ephemeral` is intentionally not
+supported because it discards the OAuth credential store.
+
+| Command                    | Description                                      |
+| -------------------------- | ------------------------------------------------ |
+| `tumble auth codex login`  | Sign in with an eligible ChatGPT subscription    |
+| `tumble auth codex logout` | Remove stored OpenAI Codex credentials           |
+| `tumble auth codex status` | Show the OpenAI Codex subscription sign-in state |
+
 ## Environment Variables
 
 The CLI supports the same inference providers as the VS Code extension. For
@@ -277,7 +300,8 @@ providers that need an API key, the CLI looks for it in the environment
 variable below if not provided via `--api-key`. Provider selection follows:
 `--provider` flag > persisted CLI settings > the provider configured in the VS
 Code extension > default (`openrouter`). Keyless providers (ollama, lmstudio,
-bedrock, qwen-code, vertex) run without any key.
+bedrock, qwen-code, vertex, openai-codex) run without any API key; OAuth-backed
+providers still require their corresponding login.
 
 For providers whose schema has a base-url setting, the CLI also honors a
 `*_BASE_URL` environment variable (and a generic `--base-url` flag).
@@ -287,6 +311,7 @@ For providers whose schema has a base-url setting, the CLI also honors a
 | anthropic         | `ANTHROPIC_API_KEY`           | `ANTHROPIC_BASE_URL`          |
 | openai-native     | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
 | openai            | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
+| openai-codex      | — (`auth codex login`)        | —                             |
 | tumble (alias)    | — (uses openrouter)           | — (uses openrouter)           |
 | gemini            | `GOOGLE_API_KEY`              | `GOOGLE_GEMINI_BASE_URL`      |
 | openrouter        | `OPENROUTER_API_KEY`          | `OPENROUTER_BASE_URL`         |
@@ -314,9 +339,8 @@ Alias: the persisted cloud provider id `tumble` is accepted on the CLI and maps
 to the `openrouter` provider settings (`OPENROUTER_API_KEY`, models, base-url);
 `--provider tumble` behaves like `--provider openrouter`.
 
-Excluded providers: `vscode-lm` (needs the real VS Code LM API), `openai-codex`
-(OAuth via the VS Code extension context), `fake-ai` (hidden internal test
-provider), `gemini-cli` (no runtime handler). Retired providers (groq,
+Excluded providers: `vscode-lm` (needs the real VS Code LM API), `fake-ai`
+(hidden internal test provider), `gemini-cli` (no runtime handler). Retired providers (groq,
 huggingface, deepinfra, cerebras, chutes, doubao, featherless,
 io-intelligence) are rejected with a clear error.
 

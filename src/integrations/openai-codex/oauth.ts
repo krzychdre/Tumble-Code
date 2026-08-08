@@ -71,7 +71,7 @@ function parseJwtClaims(token: string): IdTokenClaims | undefined {
 	if (parts.length !== 3) return undefined
 	try {
 		// Use base64url decoding (Node.js Buffer handles this)
-		const payload = Buffer.from(parts[1], "base64url").toString("utf-8")
+		const payload = Buffer.from(parts[1]!, "base64url").toString("utf-8")
 		return JSON.parse(payload) as IdTokenClaims
 	} catch {
 		return undefined
@@ -659,7 +659,7 @@ export class OpenAiCodexOAuthManager {
 <body>
 <div class="container">
 <h1>&#10003; Authentication Successful</h1>
-<p>You can close this window and return to VS Code.</p>
+<p>You can close this window and return to VS Code or the Tumble CLI.</p>
 </div>
 <script>setTimeout(() => window.close(), 3000);</script>
 </body>

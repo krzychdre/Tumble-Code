@@ -26,21 +26,12 @@ import { activeProviderIds } from "@roo-code/types"
  * - "vscode-lm": requires the real VS Code LM API (vscode.lm.selectChatModels).
  *   The CLI's @roo-code/vscode-shim mock exports no `lm` property, so the
  *   handler would throw at runtime.
- * - "openai-codex": OAuth via OpenAiCodexOAuthManager, initialized with the
- *   VS Code extension context and driven by a browser callback on
- *   localhost:1455 (src/integrations/openai-codex/oauth.ts). No CLI-style auth
- *   path exists.
  * - "fake-ai": hidden internal test provider, not an inference provider.
  * - "gemini-cli": hidden lifecycle without a runtime handler
  *   (providerIdsWithoutRuntimeHandler in src/api/runtime-provider-registry.ts);
  *   the extension falls back to the Anthropic handler, which is misleading.
  */
-export const excludedProviderIds = [
-	"vscode-lm",
-	"openai-codex",
-	"fake-ai",
-	"gemini-cli",
-] as const satisfies readonly string[]
+export const excludedProviderIds = ["vscode-lm", "fake-ai", "gemini-cli"] as const satisfies readonly string[]
 
 export type ExcludedProviderId = (typeof excludedProviderIds)[number]
 
@@ -114,6 +105,14 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		keyEnvVar: "OPENAI_API_KEY",
 		baseUrlField: "openAiNativeBaseUrl",
 		baseUrlEnvVar: "OPENAI_BASE_URL",
+		modelField: "apiModelId",
+	},
+	"openai-codex": {
+		// OpenAI Codex uses ChatGPT subscription OAuth credentials persisted by
+		// `tumble auth codex login`; the extension's OAuth manager resolves and
+		// refreshes them from the CLI shim's SecretStorage at runtime.
+		apiKeyField: null,
+		keyEnvVar: null,
 		modelField: "apiModelId",
 	},
 	gemini: {

@@ -19,7 +19,7 @@ import {
 
 import { activeProviderIds } from "@roo-code/types"
 
-const EXCLUDED = ["vscode-lm", "openai-codex", "fake-ai", "gemini-cli"]
+const EXCLUDED = ["vscode-lm", "fake-ai", "gemini-cli"]
 
 describe("supportedProviders derivation", () => {
 	it("contains every active provider except the documented exclusions", () => {
@@ -86,6 +86,13 @@ describe("env-var map coverage", () => {
 		expect(providerRequiresApiKey("lmstudio")).toBe(false)
 	})
 
+	it("openai-codex is supported and uses OAuth instead of an API key", () => {
+		expect(supportedProviders).toContain("openai-codex")
+		expect(keylessProviders).toContain("openai-codex")
+		expect(providerRequiresApiKey("openai-codex")).toBe(false)
+		expect(getEnvVarName("openai-codex")).toBeNull()
+	})
+
 	it("conventional env vars exist for the flagship providers", () => {
 		expect(getEnvVarName("anthropic")).toBe("ANTHROPIC_API_KEY")
 		expect(getEnvVarName("openrouter")).toBe("OPENROUTER_API_KEY")
@@ -144,6 +151,13 @@ describe("getProviderSettings", () => {
 		expect(settings.openAiNativeApiKey).toBe("sk-test")
 		expect(settings.openAiNativeBaseUrl).toBe("https://openai.example")
 		expect(settings.apiModelId).toBe("gpt-5")
+	})
+
+	it("openai-codex maps only provider and model; credentials stay in OAuth storage", () => {
+		expect(getProviderSettings("openai-codex", undefined, "gpt-5.6-sol")).toEqual({
+			apiProvider: "openai-codex",
+			apiModelId: "gpt-5.6-sol",
+		})
 	})
 
 	it("mistral maps base url to mistralCodestralUrl", () => {
