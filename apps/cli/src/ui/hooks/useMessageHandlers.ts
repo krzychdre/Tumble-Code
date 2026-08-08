@@ -309,13 +309,6 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				} catch {
 					// Use raw text
 				}
-			} else if (ask === "tool") {
-				try {
-					const toolInfo = JSON.parse(text) as Record<string, unknown>
-					questionText = formatToolAskMessage(toolInfo)
-				} catch {
-					// Use raw text if not valid JSON
-				}
 			}
 			// Note: ask === "command" is handled above before the nonInteractive block
 

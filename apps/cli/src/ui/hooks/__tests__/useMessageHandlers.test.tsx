@@ -62,6 +62,32 @@ describe("useMessageHandlers", () => {
 		})
 	}
 
+	it("preserves structured tool details for interactive approval dialogs", () => {
+		const payload = JSON.stringify({
+			tool: "readFile",
+			path: "src/config.ts",
+			toolCallId: "call-read-config",
+		})
+
+		api.handleExtensionMessage({
+			type: "messageUpdated",
+			clineMessage: {
+				ts: 500,
+				type: "ask",
+				ask: "tool",
+				text: payload,
+				partial: false,
+			},
+		})
+
+		expect(useCLIStore.getState().pendingAsk).toEqual({
+			id: "500",
+			type: "tool",
+			content: payload,
+			suggestions: undefined,
+		})
+	})
+
 	it("renders a single block for two ts-distinct identical assistant text messages", () => {
 		// Real flow: the first text say is the user-prompt echo (skipped by
 		// firstTextMessageSkipped), then the model's partial reply, then its
