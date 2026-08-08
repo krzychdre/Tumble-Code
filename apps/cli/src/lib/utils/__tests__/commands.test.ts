@@ -19,7 +19,8 @@ describe("globalCommands", () => {
 			const permissionsCommand = GLOBAL_COMMANDS.find((cmd) => cmd.name === "permissions")
 			expect(permissionsCommand).toBeDefined()
 			expect(permissionsCommand?.action).toBe("setPermissions")
-			expect(permissionsCommand?.description).toContain("/permissions ask|allow")
+			expect(permissionsCommand?.description).toBe("Change action approval mode")
+			expect(permissionsCommand?.argumentHint).toBe("<ask|allow>")
 		})
 
 		it("should have valid structure for all commands", () => {
@@ -75,12 +76,12 @@ describe("globalCommands", () => {
 			expect(newCommand?.action).toBe("clearTask")
 		})
 
-		it("should not include argumentHint for action commands", () => {
+		it("should expose permission options as an argument hint", () => {
 			const commands = getGlobalCommandsForAutocomplete()
-			// Action commands don't have argument hints
-			for (const cmd of commands) {
-				expect(cmd).not.toHaveProperty("argumentHint")
-			}
+			const permissionsCommand = commands.find((cmd) => cmd.name === "permissions")
+
+			expect(permissionsCommand?.argumentHint).toBe("<ask|allow>")
+			expect(commands.find((cmd) => cmd.name === "new")?.argumentHint).toBeUndefined()
 		})
 	})
 

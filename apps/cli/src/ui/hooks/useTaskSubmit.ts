@@ -101,19 +101,24 @@ export function useTaskSubmit({
 							return
 						}
 
-						sendToExtension({
-							type: "updateSettings",
-							updatedSettings: getPermissionSettings(result.mode),
-						})
-						onPermissionModeChange(result.mode)
-						addMessage({
-							id: randomUUID(),
-							role: "system",
-							content:
-								result.mode === "allow"
-									? "Permissions: allowing actions without approval for this session."
-									: "Permissions: asking before actions for this session.",
-						})
+						if ("mode" in result) {
+							sendToExtension({
+								type: "updateSettings",
+								updatedSettings: getPermissionSettings(result.mode),
+							})
+							onPermissionModeChange(result.mode)
+							addMessage({
+								id: randomUUID(),
+								role: "system",
+								content:
+									result.mode === "allow"
+										? "Permissions: allowing actions without approval for this session."
+										: "Permissions: asking before actions for this session.",
+							})
+							return
+						}
+
+						addMessage({ id: randomUUID(), role: "system", content: result.help })
 						return
 					}
 				}

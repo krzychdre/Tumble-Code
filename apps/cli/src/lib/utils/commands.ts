@@ -20,6 +20,8 @@ export interface GlobalCommand {
 	name: string
 	/** Description shown in the autocomplete picker */
 	description: string
+	/** Accepted argument shape shown next to the command name */
+	argumentHint?: string
 	/** Action to trigger when the command is executed */
 	action: GlobalCommandAction
 }
@@ -36,7 +38,8 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 	},
 	{
 		name: "permissions",
-		description: "Toggle action approvals (/permissions ask|allow)",
+		description: "Change action approval mode",
+		argumentHint: "<ask|allow>",
 		action: "setPermissions",
 	},
 ]
@@ -55,12 +58,14 @@ export function getGlobalCommand(name: string): GlobalCommand | undefined {
 export function getGlobalCommandsForAutocomplete(): Array<{
 	name: string
 	description?: string
+	argumentHint?: string
 	source: "global" | "project" | "built-in"
 	action?: string
 }> {
 	return GLOBAL_COMMANDS.map((cmd) => ({
 		name: cmd.name,
 		description: cmd.description,
+		argumentHint: cmd.argumentHint,
 		source: "global" as const,
 		action: cmd.action,
 	}))

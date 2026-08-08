@@ -3,7 +3,12 @@ import { render } from "ink-testing-library"
 import { createRef } from "react"
 import type { WebviewMessage } from "@roo-code/types"
 
-import { getPermissionSettings, type PermissionMode } from "../../../lib/utils/permissions.js"
+import {
+	PERMISSIONS_COMMAND_USAGE,
+	getPermissionSettings,
+	getPermissionsCommandHelp,
+	type PermissionMode,
+} from "../../../lib/utils/permissions.js"
 import { useCLIStore } from "../../store.js"
 import { useTaskSubmit, type UseTaskSubmitReturn } from "../useTaskSubmit.js"
 
@@ -37,8 +42,22 @@ describe("useTaskSubmit permission commands", () => {
 		render(<Harness />)
 	})
 
-	it("toggles to auto-approval locally without starting or continuing a model turn", async () => {
+	it("shows the current mode and available options without changing settings or reaching the model", async () => {
 		await api.handleSubmit("/permissions")
+
+		expect(sendToExtension).not.toHaveBeenCalled()
+		expect(onPermissionModeChange).not.toHaveBeenCalled()
+		expect(runTask).not.toHaveBeenCalled()
+		expect(useCLIStore.getState().messages).toMatchObject([
+			{
+				role: "system",
+				content: getPermissionsCommandHelp("ask"),
+			},
+		])
+	})
+
+	it("enables auto-approval explicitly without starting or continuing a model turn", async () => {
+		await api.handleSubmit("/permissions allow")
 
 		expect(sendToExtension).toHaveBeenCalledOnce()
 		expect(sendToExtension).toHaveBeenCalledWith({
@@ -80,8 +99,6 @@ describe("useTaskSubmit permission commands", () => {
 		expect(sendToExtension).not.toHaveBeenCalled()
 		expect(onPermissionModeChange).not.toHaveBeenCalled()
 		expect(runTask).not.toHaveBeenCalled()
-		expect(useCLIStore.getState().messages).toMatchObject([
-			{ role: "system", content: "Usage: /permissions [ask|allow]" },
-		])
+		expect(useCLIStore.getState().messages).toMatchObject([{ role: "system", content: PERMISSIONS_COMMAND_USAGE }])
 	})
 })

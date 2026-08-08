@@ -2,6 +2,7 @@ import {
 	PERMISSIONS_COMMAND_USAGE,
 	getPermissionMode,
 	getPermissionSettings,
+	getPermissionsCommandHelp,
 	resolvePermissionArgument,
 } from "../permissions.js"
 
@@ -33,9 +34,18 @@ describe("CLI permissions", () => {
 		})
 	})
 
-	it("toggles when no explicit mode is supplied", () => {
-		expect(resolvePermissionArgument("", "ask")).toEqual({ success: true, mode: "allow" })
-		expect(resolvePermissionArgument("  ", "allow")).toEqual({ success: true, mode: "ask" })
+	it("shows the current mode and available options when no explicit mode is supplied", () => {
+		expect(resolvePermissionArgument("", "ask")).toEqual({
+			success: true,
+			help: getPermissionsCommandHelp("ask"),
+		})
+		expect(resolvePermissionArgument("  ", "allow")).toEqual({
+			success: true,
+			help: getPermissionsCommandHelp("allow"),
+		})
+		expect(getPermissionsCommandHelp("ask")).toContain("Current permissions mode: ask")
+		expect(PERMISSIONS_COMMAND_USAGE).toContain("ask    Ask before actions")
+		expect(PERMISSIONS_COMMAND_USAGE).toContain("allow  Allow actions without approval")
 	})
 
 	it("accepts explicit modes case-insensitively", () => {

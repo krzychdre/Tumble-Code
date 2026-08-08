@@ -16,7 +16,8 @@ After startup there is no CLI action that sends an updated approval profile to t
 ## UX and scope
 
 - Add `/permissions` to CLI slash-command autocomplete.
-- `/permissions` toggles between `allow` and `ask` based on the current session policy.
+- Show `<ask|allow>` next to `/permissions` in slash-command autocomplete.
+- `/permissions` displays the current mode and describes every available option without changing the policy.
 - `/permissions allow` explicitly enables the same complete auto-approval profile used by the default CLI startup path.
 - `/permissions ask` explicitly disables auto-approval.
 - Invalid arguments show usage and do not reach the model.
@@ -30,19 +31,20 @@ After startup there is no CLI action that sends an updated approval profile to t
 2. Add a public host operation that sends an `updateSettings` message with the selected profile.
 3. Track the active permission mode in the extension-host hook and expose a stable setter to the TUI.
 4. Make the follow-up auto-accept countdown follow the active permission mode, including cancellation during a runtime switch to `ask`.
-5. Extend the global slash-command parser with `/permissions [ask|allow]`, including toggle and validation behavior.
+5. Extend the global slash-command parser with `/permissions <ask|allow>`, including discoverable no-argument help and validation behavior.
 6. Keep permission commands local: do not add them as user messages and never forward them as model input.
 
 ## Verification
 
-- Unit-test command registration, argument parsing, toggle behavior, explicit modes, and invalid input.
+- Unit-test command registration, visible argument hints, no-argument help, explicit modes, and invalid input.
 - Hook-test that changing the mode sends the complete expected settings profile and updates current session state.
 - Run the focused CLI tests, full CLI suite, type checking, and linting.
 
 Completed:
 
 - Focused permission, command, countdown, message-handler, task-submit, and extension-host tests: 86 tests passed.
-- Full CLI suite: 634 tests passed, 1 skipped.
+- Follow-up discoverability tests: 35 tests passed.
+- Full CLI suite: 636 tests passed, 1 skipped.
 - `pnpm check-types`: passed.
 - `pnpm lint`: passed.
 - `pnpm build`: passed.
