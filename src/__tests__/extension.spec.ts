@@ -262,7 +262,7 @@ describe("extension.ts", () => {
 		expect(dotenvx.config).not.toHaveBeenCalled()
 	})
 
-	test("calls dotenvx.config when optional .env exists", async () => {
+	test("loads the optional .env without emitting dotenvx's success banner", async () => {
 		vi.resetModules()
 		vi.clearAllMocks()
 
@@ -275,6 +275,10 @@ describe("extension.ts", () => {
 		await activate(mockContext)
 
 		expect(dotenvx.config).toHaveBeenCalledTimes(1)
+		expect(dotenvx.config).toHaveBeenCalledWith({
+			path: expect.stringMatching(/\.env$/),
+			quiet: true,
+		})
 	})
 
 	test("does not fetch provider model catalogs during activation", async () => {

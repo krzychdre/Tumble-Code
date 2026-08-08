@@ -10,7 +10,7 @@ import * as path from "path"
 const envPath = path.join(__dirname, "..", ".env")
 if (fs.existsSync(envPath)) {
 	try {
-		dotenvx.config({ path: envPath })
+		dotenvx.config({ path: envPath, quiet: true })
 	} catch (e) {
 		// Best-effort only: never fail extension activation due to optional env loading.
 		console.warn("Failed to load environment variables:", e)

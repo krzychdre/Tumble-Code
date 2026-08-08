@@ -558,6 +558,7 @@
 		"pretty-bytes": "^7.0.0",
 		"proper-lockfile": "^4.1.2",
 		"ps-tree": "^1.2.0",
+		"punycode": "2.3.1",
 		"puppeteer-chromium-resolver": "^24.0.0",
 		"puppeteer-core": "^23.4.0",
 		"reconnecting-eventsource": "^1.6.4",
