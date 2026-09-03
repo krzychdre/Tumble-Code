@@ -59,7 +59,9 @@ describe("memory paths", () => {
 
 		it("uses autoMemoryDirectory override when set (validated + trailing sep)", () => {
 			initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryDirectory: "/custom/mem" }))
-			expect(getMemoryBaseDir()).toBe("/custom/mem/")
+			// validateMemoryPath normalizes with the platform separator, so the
+			// expected value is built the same way (`\custom\mem\` on Windows).
+			expect(getMemoryBaseDir()).toBe(path.normalize("/custom/mem") + path.sep)
 		})
 
 		it("ignores an empty/whitespace override", () => {
@@ -142,8 +144,11 @@ describe("memory paths", () => {
 			expect(() => validateMemoryPath("\\\\host\\share")).toThrow(/UNC/)
 		})
 
-		it("rejects filesystem root on posix", () => {
-			expect(() => validateMemoryPath("/")).toThrow()
+		it("rejects the bare filesystem root on every platform", () => {
+			// "/" is absolute on win32 too (the current drive's root), so it must
+			// be rejected there as well, not only on posix.
+			expect(() => validateMemoryPath("/")).toThrow(/root/)
+			expect(() => validateMemoryPath(path.sep)).toThrow(/root/)
 		})
 
 		it("rejects a path that resolves to the home directory", () => {
