@@ -248,8 +248,8 @@
 		"addToDenied": "Afegeix a la llista denegada",
 		"removeFromDenied": "Elimina de la llista denegada",
 		"abortCommand": "Interrompre l'execució de l'ordre",
-		"expandOutput": "Amplia la sortida",
-		"collapseOutput": "Redueix la sortida",
+		"expandCommand": "Amplia l'ordre",
+		"collapseCommand": "Redueix l'ordre",
 		"expandManagement": "Amplia la secció de gestió de comandaments",
 		"collapseManagement": "Redueix la secció de gestió de comandaments"
 	},

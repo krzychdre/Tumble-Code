@@ -126,7 +126,7 @@ interface ChatRowProps {
 	isExpanded: boolean
 	isLast: boolean
 	isStreaming: boolean
-	onToggleExpand: (ts: number) => void
+	onToggleExpand: (ts: number, expand?: boolean) => void
 	onHeightChange: (isTaller: boolean) => void
 	onSuggestionClick?: (suggestion: SuggestionItem, event?: React.MouseEvent) => void
 	onBatchFileResponse?: (response: { [key: string]: boolean }) => void
@@ -215,9 +215,14 @@ export const ChatRowContent = ({
 	}, [isEditing, message.ts])
 
 	// Memoized callback to prevent re-renders caused by inline arrow functions.
+	// The target state is passed explicitly and derived from what is on screen,
+	// not from the parent's map: a row that opens by default (a command ask
+	// waiting for approval) has no entry there yet, so a bare flip would compute
+	// !undefined === true and leave the row open on the first click. For rows
+	// without a default the result is the same as flipping the stored value.
 	const handleToggleExpand = useCallback(() => {
-		onToggleExpand(message.ts)
-	}, [onToggleExpand, message.ts])
+		onToggleExpand(message.ts, !isExpanded)
+	}, [onToggleExpand, message.ts, isExpanded])
 
 	// Handle edit button click
 	const handleEditClick = useCallback(() => {

@@ -38,8 +38,11 @@ interface CommandExecutionProps {
 	title?: JSX.Element | null
 	// Expansion is owned by the chat row (ChatView's expandedRows map keyed by
 	// message ts), exactly like the other collapsible rows, so the choice
-	// survives virtualized unmount/remount and defaults to collapsed. Command
-	// output can run to thousands of lines, so it must never open on its own.
+	// survives virtualized unmount/remount and defaults to collapsed. The
+	// chevron hides the whole body: the command, its output and the pattern
+	// selector. A command can itself be dozens of lines (a script passed
+	// through a heredoc), so leaving it mounted kept the row half a screen
+	// tall even with the output collapsed.
 	isExpanded?: boolean
 	onToggleExpand?: () => void
 }
@@ -65,6 +68,23 @@ export const CommandExecution = ({
 	// task message (this is the case for completed commands) or from the
 	// streaming output (this is the case for running commands).
 	const output = streamingOutput || parsedOutput
+
+	// A collapsed row hides the command itself, so the header carries a one-line
+	// preview to say what is folded away. Blank lines are skipped (a script
+	// passed through a heredoc often starts with one) and the ellipsis marks
+	// that further lines follow.
+	const commandPreview = useMemo(() => {
+		const lines = command
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0)
+
+		if (lines.length === 0) {
+			return ""
+		}
+
+		return lines.length > 1 ? `${lines[0]}…` : lines[0]
+	}, [command])
 
 	// Extract command patterns from the actual command that was executed
 	const commandPatterns = useMemo<CommandPattern[]>(() => {
@@ -182,7 +202,7 @@ export const CommandExecution = ({
 	return (
 		<>
 			<div className="flex flex-row items-center justify-between gap-2 mb-1">
-				<div className="flex flex-row items-center gap-2">
+				<div className="flex flex-row items-center gap-2 min-w-0 flex-1">
 					{icon}
 					{title}
 					{status?.status === "started" && (
@@ -210,6 +230,11 @@ export const CommandExecution = ({
 							</StandardTooltip>
 						</div>
 					)}
+					{!isExpanded && commandPreview && (
+						<div className="font-mono text-xs text-vscode-descriptionForeground truncate min-w-0">
+							{commandPreview}
+						</div>
+					)}
 				</div>
 				<div className=" flex flex-row items-center justify-between gap-2 px-1">
 					<div className="flex flex-row items-center gap-1">
@@ -231,48 +256,49 @@ export const CommandExecution = ({
 								</StandardTooltip>
 							</div>
 						)}
-						{output.length > 0 && (
-							<Button
-								variant="ghost"
-								size="icon"
-								aria-label={t(
-									isExpanded
-										? "chat:commandExecution.collapseOutput"
-										: "chat:commandExecution.expandOutput",
-								)}
-								aria-expanded={isExpanded}
-								onClick={onToggleExpand}>
-								<ChevronDown
-									className={cn(
-										"size-4 transition-transform duration-300",
-										isExpanded && "rotate-180",
-									)}
-								/>
-							</Button>
-						)}
+						{/* Always shown: a row always has a command to fold away, even
+						    before any output has arrived. */}
+						<Button
+							variant="ghost"
+							size="icon"
+							aria-label={t(
+								isExpanded
+									? "chat:commandExecution.collapseCommand"
+									: "chat:commandExecution.expandCommand",
+							)}
+							aria-expanded={isExpanded}
+							onClick={onToggleExpand}>
+							<ChevronDown
+								className={cn("size-4 transition-transform duration-300", isExpanded && "rotate-180")}
+							/>
+						</Button>
 					</div>
 				</div>
 			</div>
 
-			<div className="bg-vscode-editor-background border border-vscode-border rounded-xs ml-6 mt-2">
-				<div className="p-2">
-					<CodeBlock source={command} language="shell" />
-					{isExpanded && output.length > 0 && (
-						<div className="mt-1 pt-1 border-t border-border/25">
-							<TerminalOutput content={output} />
-						</div>
+			{/* Nothing below the header is mounted while collapsed: no code block,
+			    no ANSI conversion of the output, no pattern selector. */}
+			{isExpanded && (
+				<div className="bg-vscode-editor-background border border-vscode-border rounded-xs ml-6 mt-2">
+					<div className="p-2">
+						<CodeBlock source={command} language="shell" />
+						{output.length > 0 && (
+							<div className="mt-1 pt-1 border-t border-border/25">
+								<TerminalOutput content={output} />
+							</div>
+						)}
+					</div>
+					{command && command.trim() && (
+						<CommandPatternSelector
+							patterns={commandPatterns}
+							allowedCommands={allowedCommands}
+							deniedCommands={deniedCommands}
+							onAllowPatternChange={handleAllowPatternChange}
+							onDenyPatternChange={handleDenyPatternChange}
+						/>
 					)}
 				</div>
-				{command && command.trim() && (
-					<CommandPatternSelector
-						patterns={commandPatterns}
-						allowedCommands={allowedCommands}
-						deniedCommands={deniedCommands}
-						onAllowPatternChange={handleAllowPatternChange}
-						onDenyPatternChange={handleDenyPatternChange}
-					/>
-				)}
-			</div>
+			)}
 		</>
 	)
 }
