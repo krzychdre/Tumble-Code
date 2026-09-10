@@ -65,6 +65,10 @@ const ExtensionStateWrapper = ({ children }: { children: React.ReactNode }) => (
 	</ExtensionStateContext.Provider>
 )
 
+// The whole body (command block, output, pattern selector) is only mounted when
+// the parent marks the row as expanded, so every test that asserts on that body
+// passes isExpanded={true} explicitly.
+
 describe("CommandExecution", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -73,7 +77,7 @@ describe("CommandExecution", () => {
 	it("should render command without output", () => {
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="npm install" />
+				<CommandExecution executionId="test-1" text="npm install" isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
@@ -115,7 +119,7 @@ describe("CommandExecution", () => {
 	it("should show command pattern selector for commands", () => {
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="npm install express" />
+				<CommandExecution executionId="test-1" text="npm install express" isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
@@ -128,7 +132,7 @@ describe("CommandExecution", () => {
 	it("should handle allow command change", () => {
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="git push" />
+				<CommandExecution executionId="test-1" text="git push" isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
@@ -149,7 +153,7 @@ describe("CommandExecution", () => {
 	it("should handle deny command change", () => {
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="docker run" />
+				<CommandExecution executionId="test-1" text="docker run" isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
@@ -177,7 +181,7 @@ describe("CommandExecution", () => {
 
 		render(
 			<ExtensionStateContext.Provider value={stateWithNpmTest as any}>
-				<CommandExecution executionId="test-1" text="npm test" />
+				<CommandExecution executionId="test-1" text="npm test" isExpanded={true} />
 			</ExtensionStateContext.Provider>,
 		)
 
@@ -206,7 +210,7 @@ describe("CommandExecution", () => {
 
 		render(
 			<ExtensionStateContext.Provider value={stateWithRmRf as any}>
-				<CommandExecution executionId="test-1" text="rm -rf" />
+				<CommandExecution executionId="test-1" text="rm -rf" isExpanded={true} />
 			</ExtensionStateContext.Provider>,
 		)
 
@@ -232,7 +236,7 @@ Installing...`
 
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text={commandText} />
+				<CommandExecution executionId="test-1" text={commandText} isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
@@ -267,7 +271,7 @@ Suggested patterns: npm, npm install, npm run`
 	it("should handle commands with pipes", () => {
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="ls -la | grep test" />
+				<CommandExecution executionId="test-1" text="ls -la | grep test" isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
@@ -280,7 +284,7 @@ Suggested patterns: npm, npm install, npm run`
 	it("should handle commands with && operator", () => {
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="npm install && npm test" />
+				<CommandExecution executionId="test-1" text="npm install && npm test" isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
@@ -293,49 +297,90 @@ Suggested patterns: npm, npm install, npm run`
 	it("should not show pattern selector for empty commands", () => {
 		render(
 			<ExtensionStateWrapper>
-				<CommandExecution executionId="test-1" text="" />
+				<CommandExecution executionId="test-1" text="" isExpanded={true} />
 			</ExtensionStateWrapper>,
 		)
 
 		expect(screen.queryByTestId("command-pattern-selector")).not.toBeInTheDocument()
 	})
 
-	describe("output collapsing", () => {
-		// Command output can run to thousands of lines, so the row must behave
-		// like every other collapsible chat row: collapsed until the user opens
-		// it, with the expand state owned by the parent (ChatView's expandedRows).
+	describe("row collapsing", () => {
+		// The row must behave like every other collapsible chat row: collapsed
+		// until the user opens it, with the expand state owned by the parent
+		// (ChatView's expandedRows). Collapsing now hides the whole body, because
+		// a command can itself be dozens of lines when a script is passed through
+		// a heredoc.
 		const commandText = `npm install
 Output:
 Output here`
 
-		it("keeps the output collapsed by default and exposes an expand button", () => {
+		const multiLineCommand = `python3 - <<'EOF'
+print("hello")
+EOF`
+
+		it("mounts nothing below the header while collapsed", () => {
 			render(
 				<ExtensionStateWrapper>
 					<CommandExecution executionId="test-collapsed" text={commandText} />
 				</ExtensionStateWrapper>,
 			)
 
-			// The command itself is always visible.
-			expect(screen.getByTestId("code-block")).toHaveTextContent("npm install")
-
-			// The output is not mounted at all while collapsed (no hidden DOM,
-			// no ANSI conversion work for a row nobody opened).
+			// None of the three parts of the body exists in the DOM: no hidden
+			// markup, no ANSI conversion work for a row nobody opened.
+			expect(screen.queryByTestId("code-block")).not.toBeInTheDocument()
 			expect(screen.queryByTestId("terminal-output")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("command-pattern-selector")).not.toBeInTheDocument()
 
-			const toggle = screen.getByRole("button", { name: "chat:commandExecution.expandOutput" })
+			const toggle = screen.getByRole("button", { name: "chat:commandExecution.expandCommand" })
 			expect(toggle).toHaveAttribute("aria-expanded", "false")
 		})
 
-		it("renders the output when the parent marks the row as expanded", () => {
+		it("previews the first line of a multi-line command with an ellipsis", () => {
+			render(
+				<ExtensionStateWrapper>
+					<CommandExecution executionId="test-preview-multi" text={multiLineCommand} />
+				</ExtensionStateWrapper>,
+			)
+
+			expect(screen.getByText("python3 - <<'EOF'…")).toBeInTheDocument()
+		})
+
+		it("previews a single-line command without an ellipsis", () => {
+			render(
+				<ExtensionStateWrapper>
+					<CommandExecution executionId="test-preview-single" text="npm install" />
+				</ExtensionStateWrapper>,
+			)
+
+			expect(screen.getByText("npm install")).toBeInTheDocument()
+			expect(screen.queryByText(/…/)).not.toBeInTheDocument()
+		})
+
+		it("drops the header preview once the row is expanded", () => {
+			render(
+				<ExtensionStateWrapper>
+					<CommandExecution executionId="test-preview-expanded" text={multiLineCommand} isExpanded={true} />
+				</ExtensionStateWrapper>,
+			)
+
+			// The ellipsis is only ever produced by the collapsed preview, never
+			// by the command block, which shows the command verbatim.
+			expect(screen.queryByText(/…/)).not.toBeInTheDocument()
+			expect(screen.getByTestId("code-block")).toHaveTextContent('print("hello")')
+		})
+
+		it("mounts the command, the output and the pattern selector when expanded", () => {
 			render(
 				<ExtensionStateWrapper>
 					<CommandExecution executionId="test-expanded" text={commandText} isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
+			expect(screen.getByTestId("code-block")).toHaveTextContent("npm install")
 			expect(screen.getByTestId("terminal-output")).toHaveTextContent("Output here")
+			expect(screen.getByTestId("command-pattern-selector")).toBeInTheDocument()
 
-			const toggle = screen.getByRole("button", { name: "chat:commandExecution.collapseOutput" })
+			const toggle = screen.getByRole("button", { name: "chat:commandExecution.collapseCommand" })
 			expect(toggle).toHaveAttribute("aria-expanded", "true")
 		})
 
@@ -353,24 +398,22 @@ Output here`
 				</ExtensionStateWrapper>,
 			)
 
-			fireEvent.click(screen.getByRole("button", { name: "chat:commandExecution.expandOutput" }))
+			fireEvent.click(screen.getByRole("button", { name: "chat:commandExecution.expandCommand" }))
 
 			expect(onToggleExpand).toHaveBeenCalledTimes(1)
 			// Still collapsed: the parent owns the state and has not flipped it.
-			expect(screen.queryByTestId("terminal-output")).not.toBeInTheDocument()
+			expect(screen.queryByTestId("code-block")).not.toBeInTheDocument()
 		})
 
-		it("does not show the expand button when there is no output", () => {
+		it("shows the toggle even when the command produced no output", () => {
 			render(
 				<ExtensionStateWrapper>
 					<CommandExecution executionId="test-no-output" text="npm install" />
 				</ExtensionStateWrapper>,
 			)
 
-			expect(screen.queryByRole("button", { name: "chat:commandExecution.expandOutput" })).not.toBeInTheDocument()
-			expect(
-				screen.queryByRole("button", { name: "chat:commandExecution.collapseOutput" }),
-			).not.toBeInTheDocument()
+			// A command always exists, so the chevron is not tied to the output.
+			expect(screen.getByRole("button", { name: "chat:commandExecution.expandCommand" })).toBeInTheDocument()
 		})
 	})
 
@@ -383,7 +426,7 @@ Output here`
 
 		render(
 			<ExtensionStateContext.Provider value={stateWithUndefined as any}>
-				<CommandExecution executionId="test-1" text="npm install" />
+				<CommandExecution executionId="test-1" text="npm install" isExpanded={true} />
 			</ExtensionStateContext.Provider>,
 		)
 
@@ -401,7 +444,7 @@ Output here`
 
 		render(
 			<ExtensionStateContext.Provider value={stateWithRmInDenied as any}>
-				<CommandExecution executionId="test-1" text="rm file.txt" />
+				<CommandExecution executionId="test-1" text="rm file.txt" isExpanded={true} />
 			</ExtensionStateContext.Provider>,
 		)
 
@@ -424,7 +467,11 @@ Output here`
 		it("should show complex commands with multiple operators", () => {
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-6" text="npm install && npm test || echo 'failed'" />
+					<CommandExecution
+						executionId="test-6"
+						text="npm install && npm test || echo 'failed'"
+						isExpanded={true}
+					/>
 				</ExtensionStateWrapper>,
 			)
 
@@ -447,6 +494,7 @@ Other output here`
 						text={commandWithOutput}
 						icon={<span>icon</span>}
 						title={<span>Run Command</span>}
+						isExpanded={true}
 					/>
 				</ExtensionStateWrapper>,
 			)
@@ -460,7 +508,7 @@ Other output here`
 		it("should handle commands with subshells", () => {
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-7" text="echo $(whoami) && git status" />
+					<CommandExecution executionId="test-7" text="echo $(whoami) && git status" isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -473,7 +521,7 @@ Other output here`
 		it("should handle commands with backtick subshells", () => {
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-8" text="git commit -m `date`" />
+					<CommandExecution executionId="test-8" text="git commit -m `date`" isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -486,7 +534,7 @@ Other output here`
 		it("should handle commands with special characters", () => {
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-9" text="cd ~/projects && npm start" />
+					<CommandExecution executionId="test-9" text="cd ~/projects && npm start" isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -510,6 +558,7 @@ Running tests...
 						text={commandWithMixedContent}
 						icon={<span>icon</span>}
 						title={<span>Run Command</span>}
+						isExpanded={true}
 					/>
 				</ExtensionStateWrapper>,
 			)
@@ -529,7 +578,7 @@ Running tests...
 
 			render(
 				<ExtensionStateContext.Provider value={conflictState as any}>
-					<CommandExecution executionId="test-11" text="git push origin main" />
+					<CommandExecution executionId="test-11" text="git push origin main" isExpanded={true} />
 				</ExtensionStateContext.Provider>,
 			)
 
@@ -548,7 +597,7 @@ Running tests...
 
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-12" text={commandWithQuotes} />
+					<CommandExecution executionId="test-12" text={commandWithQuotes} isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -564,7 +613,7 @@ Running tests...
 		it("should handle empty or whitespace-only commands", () => {
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-13" text="   " />
+					<CommandExecution executionId="test-13" text="   " isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -582,7 +631,7 @@ Without any command prefix`
 
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-14" text={outputOnly} />
+					<CommandExecution executionId="test-14" text={outputOnly} isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -599,7 +648,7 @@ Without any command prefix`
 
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-15" text={plainCommand} />
+					<CommandExecution executionId="test-15" text={plainCommand} isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -830,7 +879,7 @@ Output:
 		it("does not surface stray script-line fragments in the pattern selector", () => {
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-multiline" text={wrappedCommand} />
+					<CommandExecution executionId="test-multiline" text={wrappedCommand} isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 
@@ -859,7 +908,7 @@ Output:
 
 			render(
 				<ExtensionStateWrapper>
-					<CommandExecution executionId="test-heredoc" text={heredocCommand} />
+					<CommandExecution executionId="test-heredoc" text={heredocCommand} isExpanded={true} />
 				</ExtensionStateWrapper>,
 			)
 

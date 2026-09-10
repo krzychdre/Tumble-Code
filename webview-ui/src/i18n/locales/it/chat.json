@@ -248,8 +248,8 @@
 		"addToDenied": "Aggiungi alla lista dei negati",
 		"removeFromDenied": "Rimuovi dalla lista dei negati",
 		"abortCommand": "Interrompi esecuzione del comando",
-		"expandOutput": "Espandi output",
-		"collapseOutput": "Comprimi output",
+		"expandCommand": "Espandi comando",
+		"collapseCommand": "Comprimi comando",
 		"expandManagement": "Espandi sezione gestione comandi",
 		"collapseManagement": "Comprimi sezione gestione comandi"
 	},

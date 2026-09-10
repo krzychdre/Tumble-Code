@@ -248,8 +248,8 @@
 		"addToDenied": "Ajouter à la liste refusée",
 		"removeFromDenied": "Retirer de la liste refusée",
 		"abortCommand": "Abandonner l'exécution de la commande",
-		"expandOutput": "Développer la sortie",
-		"collapseOutput": "Réduire la sortie",
+		"expandCommand": "Développer la commande",
+		"collapseCommand": "Réduire la commande",
 		"expandManagement": "Développer la section de gestion des commandes",
 		"collapseManagement": "Réduire la section de gestion des commandes"
 	},

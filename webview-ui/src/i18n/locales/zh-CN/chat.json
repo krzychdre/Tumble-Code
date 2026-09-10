@@ -249,8 +249,8 @@
 		"addToDenied": "添加到拒绝列表",
 		"removeFromDenied": "从拒绝列表中删除",
 		"abortCommand": "中止命令执行",
-		"expandOutput": "展开输出",
-		"collapseOutput": "折叠输出",
+		"expandCommand": "展开命令",
+		"collapseCommand": "折叠命令",
 		"expandManagement": "展开命令管理部分",
 		"collapseManagement": "折叠命令管理部分"
 	},

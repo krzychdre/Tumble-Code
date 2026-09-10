@@ -1361,10 +1361,12 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[setExpandedRows], // setExpandedRows is stable
 	)
 
-	// Scroll when user toggles certain rows.
+	// Scroll when user toggles certain rows. The row passes the target state
+	// explicitly, because some rows open by default and therefore have no entry
+	// in expandedRows to flip.
 	const toggleRowExpansion = useCallback(
-		(ts: number) => {
-			handleSetExpandedRow(ts)
+		(ts: number, expand?: boolean) => {
+			handleSetExpandedRow(ts, expand)
 			// The logic to set disableAutoScrollRef.current = true on expansion
 			// is now handled by the useEffect hook that observes expandedRows.
 		},
@@ -1464,19 +1466,35 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		})
 	}, [checkpointIndices, enterUserBrowsingHistory])
 
+	// True exactly while the Run Command / Reject buttons are on screen for a
+	// command ask, which is the only moment the user has to read the command
+	// before deciding. An auto-approved ask arrives already stamped isAnswered,
+	// and the last-message effect bails out before touching clineAsk or
+	// enableButtons, so this never flips on and straight back off.
+	const isCommandAwaitingApproval = clineAsk === "command" && enableButtons
+
 	const itemContent = useCallback(
 		(index: number, messageOrGroup: ClineMessage) => {
 			const hasCheckpoint = modifiedMessages.some((message) => message.say === "checkpoint_saved")
+			const isLast = index === groupedMessages.length - 1
 
 			// regular message
 			return (
 				<ChatRow
 					key={messageOrGroup.ts}
 					message={messageOrGroup}
-					isExpanded={expandedRows[messageOrGroup.ts] || false}
+					// `??` and not `||`: an explicit false (the user collapsed the
+					// row) must win over the default-open below.
+					isExpanded={
+						expandedRows[messageOrGroup.ts] ??
+						(isLast &&
+							messageOrGroup.type === "ask" &&
+							messageOrGroup.ask === "command" &&
+							isCommandAwaitingApproval)
+					}
 					onToggleExpand={toggleRowExpansion} // This was already stabilized
 					lastModifiedMessage={modifiedMessages.at(-1)} // Original direct access
-					isLast={index === groupedMessages.length - 1} // Original direct access
+					isLast={isLast}
 					onHeightChange={handleRowHeightChange}
 					isStreaming={isStreaming}
 					onSuggestionClick={handleSuggestionClickInRow} // This was already stabilized
@@ -1517,6 +1535,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			currentFollowUpTs,
 			isFollowUpAutoApprovalPaused,
 			enableButtons,
+			isCommandAwaitingApproval,
 			primaryButtonText,
 			handleScrollToLatestCheckpoint,
 		],

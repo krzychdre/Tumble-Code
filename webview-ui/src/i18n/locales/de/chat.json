@@ -248,8 +248,8 @@
 		"addToDenied": "Zur verweigerten Liste hinzufügen",
 		"removeFromDenied": "Von der verweigerten Liste entfernen",
 		"abortCommand": "Befehlsausführung abbrechen",
-		"expandOutput": "Ausgabe erweitern",
-		"collapseOutput": "Ausgabe reduzieren",
+		"expandCommand": "Befehl erweitern",
+		"collapseCommand": "Befehl reduzieren",
 		"expandManagement": "Befehlsverwaltungsbereich erweitern",
 		"collapseManagement": "Befehlsverwaltungsbereich reduzieren"
 	},
