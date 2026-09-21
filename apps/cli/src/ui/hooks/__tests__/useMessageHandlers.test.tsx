@@ -35,8 +35,17 @@ describe("useMessageHandlers", () => {
 		render(<Harness />)
 	})
 
+	interface ClineMessageLike {
+		ts: number
+		type: string
+		say?: string
+		ask?: string
+		text: string
+		partial: boolean
+	}
+
 	// Minimal ExtensionState shape; the handler only reads clineMessages/type.
-	function stateMessage(msg: Array<{ ts: number; type: string; say: string; text: string; partial: boolean }>): void {
+	function stateMessage(msg: ClineMessageLike[]): void {
 		api.handleExtensionMessage({
 			type: "state",
 			state: {
@@ -341,5 +350,150 @@ describe("useMessageHandlers", () => {
 		const finalized = useCLIStore.getState().messages[0]
 		expect(finalized?.partial).toBe(false)
 		expect(finalized?.content).toBe("Working on it, nearly there.")
+	})
+
+	/**
+	 * Interleaved reasoning: the answer rendered twice (real task 01a0c588).
+	 *
+	 * `Task.say()` only finalizes a partial in place when that partial is still
+	 * the LAST message (src/core/task/TaskAskSay.ts:551-554). GLM interleaves
+	 * reasoning and text, so the core appended a complete reasoning message
+	 * after the text partial, and both the reasoning partial and the text
+	 * partial were orphaned: they keep `partial: true` in `clineMessages`
+	 * forever, and the complete versions arrived with NEW timestamps.
+	 *
+	 * Every new core message posts the whole state
+	 * (TaskHistory.addToClineMessages -> postStateToWebviewWithoutTaskHistory),
+	 * and each state push replays the entire array through `handleSayMessage`.
+	 * The orphan text partial therefore re-ran on every push and reset the
+	 * dedupe marker to its stale text, while the already-seen complete answer
+	 * returned early without restoring it. The next identical
+	 * `say:completion_result` then failed the identical-text test and rendered
+	 * as a second bullet: the reported "result repeated twice".
+	 */
+	describe("interleaved reasoning orphans (real task 01a0c588, 2026-09-21)", () => {
+		// Texts copied from that task's ui_messages.json (em dash replaced by a
+		// hyphen per the repo writing rule; the dedupe is byte-based either way).
+		const THOUGHT = "The user is asking whether it is evening."
+		const THOUGHT_FINAL = `${THOUGHT} Polish.`
+		const ANSWER = "Tak, to wieczor - w Polsce jest teraz **21:54**, czyli prawie 22:00."
+
+		// Mirror the core: a NEW message is appended and the whole state is
+		// pushed; an in-place update of a partial rides `messageUpdated` alone.
+		function replayTurn(): void {
+			const core: ClineMessageLike[] = [
+				{ ts: 1, type: "say", say: "text", text: "jaki mamy dzisiaj dzien?", partial: false },
+				{ ts: 2, type: "say", say: "user_feedback", text: "to wieczor?", partial: false },
+			]
+			const append = (message: ClineMessageLike) => {
+				core.push(message)
+				stateMessage(core)
+			}
+
+			// An in-place update rides `messageUpdated` alone, but the core array
+			// carries the new text from then on, so keep both in sync.
+			const update = (message: ClineMessageLike, text: string, partial: boolean) => {
+				message.text = text
+				message.partial = partial
+				sayUpdate(message.ts, message.say as string, text, partial)
+			}
+
+			// Submitting a turn puts the store in the loading state; the handler
+			// clears it again on the trailing `ask completion_result`.
+			useCLIStore.getState().setLoading(true)
+
+			const reasoning: ClineMessageLike = {
+				ts: 3,
+				type: "say",
+				say: "reasoning",
+				text: "The user is",
+				partial: true,
+			}
+			append(reasoning)
+			update(reasoning, THOUGHT, true)
+
+			// The text stream starts, which makes the reasoning partial no longer
+			// the last message.
+			append({ ts: 4, type: "say", say: "text", text: "Tak", partial: true })
+
+			// More reasoning arrives: the core cannot continue the abandoned
+			// reasoning partial in place, so it appends a new stream that repeats
+			// the accumulated block and finalizes THAT one.
+			const reasoningRestart: ClineMessageLike = {
+				ts: 5,
+				type: "say",
+				say: "reasoning",
+				text: `${THOUGHT} Pol`,
+				partial: true,
+			}
+			append(reasoningRestart)
+			update(reasoningRestart, THOUGHT_FINAL, false)
+
+			// Same story for the answer: the abandoned "Tak" partial is no longer
+			// last, so the rest of the answer streams under a new ts.
+			const textRestart: ClineMessageLike = {
+				ts: 6,
+				type: "say",
+				say: "text",
+				text: "Tak, to wieczor",
+				partial: true,
+			}
+			append(textRestart)
+			update(textRestart, ANSWER, true)
+			update(textRestart, ANSWER, false)
+
+			// The model repeats the answer inside attempt_completion's result.
+			append({ ts: 7, type: "say", say: "completion_result", text: ANSWER, partial: false })
+			append({ ts: 8, type: "ask", ask: "completion_result", text: "", partial: false })
+		}
+
+		it("renders the answer once, not once per orphaned copy", async () => {
+			replayTurn()
+			await new Promise((resolve) => setTimeout(resolve, 250))
+
+			const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+			expect(assistantMessages.map((m) => m.content)).toEqual([ANSWER])
+			expect(assistantMessages[0]?.partial).toBe(false)
+		})
+
+		it("renders one thinking row, not one per orphaned reasoning copy", async () => {
+			replayTurn()
+			await new Promise((resolve) => setTimeout(resolve, 250))
+
+			const thinking = useCLIStore.getState().messages.filter((m) => m.role === "thinking")
+			expect(thinking).toHaveLength(1)
+			expect(thinking[0]?.content).toBe(THOUGHT_FINAL)
+			expect(thinking[0]?.partial).toBe(false)
+		})
+
+		it("leaves nothing partial, so the whole turn can be promoted into scrollback", async () => {
+			replayTurn()
+			await new Promise((resolve) => setTimeout(resolve, 250))
+
+			const messages = useCLIStore.getState().messages
+			expect(messages.filter((m) => m.partial)).toEqual([])
+			expect(getStaticCount(messages, false, false)).toBe(messages.length)
+		})
+	})
+
+	it("keeps deduping the completion_result after a state push replays an unrelated orphan partial", async () => {
+		// Same replay mechanism, but the orphan text is NOT a prefix of the final
+		// answer (two separate text blocks), so it stays its own message. The
+		// dedupe marker must still point at the answer after the replay,
+		// otherwise the identical completion_result renders a second time.
+		const core: ClineMessageLike[] = [
+			{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
+			{ ts: 2, type: "say", say: "text", text: "Working on it", partial: true },
+			{ ts: 3, type: "say", say: "text", text: "All done.", partial: false },
+		]
+		stateMessage(core)
+
+		core.push({ ts: 4, type: "say", say: "completion_result", text: "All done.", partial: false })
+		stateMessage(core)
+
+		await new Promise((resolve) => setTimeout(resolve, 250))
+
+		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+		expect(assistantMessages.map((m) => m.content)).toEqual(["Working on it", "All done."])
 	})
 })
