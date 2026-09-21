@@ -2,6 +2,7 @@ import { Text } from "ink"
 import { render } from "ink-testing-library"
 
 import { useCLIStore } from "../../store.js"
+import { getStaticCount } from "../../transcript.js"
 import { useMessageHandlers, type UseMessageHandlersReturn } from "../useMessageHandlers.js"
 
 /**
@@ -61,6 +62,15 @@ describe("useMessageHandlers", () => {
 				maxImageFileSize: 1,
 				maxTotalImageSize: 1,
 			} as never,
+		})
+	}
+
+	// Single `messageUpdated` delivery, which is how the core pushes every
+	// streaming chunk and every finalization.
+	function sayUpdate(ts: number, say: string, text: string, partial: boolean): void {
+		api.handleExtensionMessage({
+			type: "messageUpdated",
+			clineMessage: { ts, type: "say", say, text, partial } as never,
 		})
 	}
 
@@ -226,5 +236,110 @@ describe("useMessageHandlers", () => {
 		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
 		expect(assistantMessages).toHaveLength(2)
 		expect(assistantMessages.map((m) => m.content)).toEqual(["Same answer", "Same answer"])
+	})
+
+	/**
+	 * Finalization of a streamed message (same ts, partial false).
+	 *
+	 * The core streams an answer as many updates sharing ONE ts and
+	 * `partial: true`, then finalizes it in place with the SAME ts and
+	 * `partial: false`. The ts-based seen guard used to swallow that last
+	 * delivery, so the store copy stayed partial forever, `getStaticCount`
+	 * refused to promote it into <Static>, and the answer was only ever visible
+	 * through the height-clamped dynamic tail (the "… +38 lines" report).
+	 */
+	it("applies the same-ts finalization of a streamed say:text", async () => {
+		sayUpdate(1, "text", "prompt echo", false) // first say:text is swallowed as the prompt echo
+
+		sayUpdate(2, "text", "Conf", true)
+		sayUpdate(2, "text", "Confirmed correct", true)
+		sayUpdate(2, "text", "Confirmed correct: the full answer", true)
+		sayUpdate(2, "text", "Confirmed correct: the full answer", false)
+
+		// The store debounces partial updates for 150 ms; wait past that so a late
+		// flush cannot silently put `partial: true` back.
+		await new Promise((resolve) => setTimeout(resolve, 250))
+
+		const messages = useCLIStore.getState().messages
+		expect(messages).toHaveLength(1)
+		expect(messages[0]?.partial).toBe(false)
+		expect(messages[0]?.content).toBe("Confirmed correct: the full answer")
+		// Promotion into <Static> is what prints the answer in full; while idle
+		// every message must be promotable.
+		expect(getStaticCount(messages, false, false)).toBe(messages.length)
+	})
+
+	it("applies the same-ts finalization of say:reasoning", async () => {
+		// Reasoning is finalized out of band by the stream processor (it finds the
+		// last reasoning message and clears its partial flag), so it hits exactly
+		// the same guard and used to block promotion of everything after it.
+		sayUpdate(10, "reasoning", "Let me", true)
+		sayUpdate(10, "reasoning", "Let me check the config", true)
+		sayUpdate(10, "reasoning", "Let me check the config first.", false)
+
+		await new Promise((resolve) => setTimeout(resolve, 250))
+
+		const thinking = useCLIStore.getState().messages.filter((m) => m.role === "thinking")
+		expect(thinking).toHaveLength(1)
+		expect(thinking[0]?.partial).toBe(false)
+		expect(thinking[0]?.content).toBe("Let me check the config first.")
+	})
+
+	it("still suppresses a ts-distinct identical-text duplicate and finalizes the earlier partial in place", () => {
+		// Same sequence as the dedupe regression above, but now we also assert
+		// what happens to the partial: the duplicate IS the finalization the core
+		// could not apply in place, so the surviving message must end complete.
+		stateMessage([
+			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
+			{ ts: 1000, type: "say", say: "text", text: "Hello there", partial: true },
+			{ ts: 1001, type: "say", say: "text", text: "Hello there", partial: false },
+		])
+
+		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+		expect(assistantMessages).toHaveLength(1)
+		expect(assistantMessages[0]?.content).toBe("Hello there")
+		expect(assistantMessages[0]?.partial).toBe(false)
+	})
+
+	it("keeps a state re-push of a finalized message a no-op", () => {
+		// Every state push replays the whole clineMessages array, so "apply any
+		// final delivery" would rewrite each message on each push. Only a delivery
+		// that finds a still-partial store copy may be applied.
+		const push = () =>
+			stateMessage([
+				{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
+				{ ts: 1000, type: "say", say: "text", text: "Hello there", partial: false },
+			])
+
+		push()
+		const first = useCLIStore.getState().messages
+		push()
+		const second = useCLIStore.getState().messages
+
+		expect(second).toHaveLength(1)
+		expect(second[0]).toBe(first[0]) // identical object: nothing was replaced
+		expect(second[0]?.partial).toBe(false)
+	})
+
+	it("does not finalize across say kinds with different text", async () => {
+		stateMessage([
+			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
+			{ ts: 1000, type: "say", say: "text", text: "Working on it", partial: true },
+			{ ts: 1001, type: "say", say: "completion_result", text: "All done.", partial: false },
+		])
+
+		await new Promise((resolve) => setTimeout(resolve, 250))
+
+		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
+		expect(assistantMessages).toHaveLength(2)
+		expect(assistantMessages[0]?.partial).toBe(true)
+		expect(assistantMessages[1]?.partial).toBe(false)
+
+		// The streamed message stays partial until its OWN finalization arrives.
+		sayUpdate(1000, "text", "Working on it, nearly there.", false)
+
+		const finalized = useCLIStore.getState().messages[0]
+		expect(finalized?.partial).toBe(false)
+		expect(finalized?.content).toBe("Working on it, nearly there.")
 	})
 })

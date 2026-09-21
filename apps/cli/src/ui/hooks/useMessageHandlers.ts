@@ -51,6 +51,11 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	// Track the last assistant text we rendered so a same-text duplicate (with a
 	// different ts) collapses to a single block (see handleSayMessage below).
 	const lastAssistantText = useRef<string | null>(null)
+	// Id (ts as string) of the message that produced `lastAssistantText`. When a
+	// ts-distinct duplicate is suppressed we still have to finalize THAT message,
+	// because the duplicate IS the finalization the core could not apply in place
+	// (it only updates the partial when it is still the last message).
+	const lastAssistantId = useRef<string | null>(null)
 	const firstTextMessageSkipped = useRef(false)
 	// The extension host subscribes to handleExtensionMessage once on mount.
 	// Keep the current session policy in a ref so runtime /permissions changes
@@ -87,6 +92,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				// (partial updates append via `messageUpdated`), so the
 				// in-turn duplicate collapse keeps working.
 				lastAssistantText.current = null
+				lastAssistantId.current = null
 				return
 			}
 
@@ -98,7 +104,21 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				return
 			}
 
-			if (seenMessageIds.current.has(messageId) && !partial) {
+			// The core streams an answer as many updates carrying ONE ts and
+			// partial=true, then finalizes it with the SAME ts and partial=false
+			// (TaskAskSay.ts replaces the partial in place; TaskStreamProcessor.ts
+			// does the same for reasoning). That finalization must reach the store,
+			// otherwise our copy stays partial forever and `getStaticCount` never
+			// promotes the message into <Static>, so the answer only ever renders
+			// through the height-clamped dynamic tail and the user cannot read it.
+			const existing = useCLIStore.getState().messages.find((m) => m.id === messageId)
+			const isFinalizingExisting = !partial && existing?.partial === true
+
+			// Drop a repeated delivery of a message we already rendered, UNLESS it
+			// finalizes a still-partial store copy. Keeping the guard for already
+			// final copies matters because every `state` push replays the whole
+			// clineMessages array through here.
+			if (seenMessageIds.current.has(messageId) && !partial && !isFinalizingExisting) {
 				return
 			}
 
@@ -131,9 +151,36 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			// assistant bullet. Skip a complete assistant message whose text
 			// exactly matches the last one we rendered, whichever kind came
 			// first. Distinct replies (different text) always pass through.
+			// A same-ts finalization is never a duplicate: it is the completion of
+			// the very message it repeats, so it must skip this dedupe and fall
+			// through to addMessage.
 			const isAssistantAnswer = say === "text" || say === "completion_result"
-			if (isAssistantAnswer && !partial && lastAssistantText.current === text && text !== "") {
+			if (
+				isAssistantAnswer &&
+				!partial &&
+				!isFinalizingExisting &&
+				lastAssistantText.current === text &&
+				text !== ""
+			) {
 				seenMessageIds.current.add(messageId)
+
+				// The suppressed duplicate carries the COMPLETE text, so it is also
+				// the finalization the core could not apply in place (it only
+				// updates the partial while that partial is still the last
+				// message). Without applying it here the duplicated message keeps
+				// `partial: true` forever and pins itself plus everything after it
+				// in the height-clamped dynamic tail. Re-adding the store copy
+				// (rather than calling updateMessage) also drops any partial chunk
+				// still queued in the store's 150 ms debounce, which would
+				// otherwise flip the message back to partial a moment later.
+				const duplicated = lastAssistantId.current
+					? useCLIStore.getState().messages.find((m) => m.id === lastAssistantId.current)
+					: undefined
+
+				if (duplicated?.partial === true) {
+					addMessage({ ...duplicated, content: text, partial: false })
+				}
+
 				return
 			}
 
@@ -141,9 +188,11 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 
 			// Remember the last assistant text we actually rendered (partial
 			// included) so a later same-text duplicate with a new ts is not
-			// shown a second time.
+			// shown a second time, and the id it belongs to so that duplicate can
+			// finalize it.
 			if (isAssistantAnswer && role === "assistant") {
 				lastAssistantText.current = text
+				lastAssistantId.current = messageId
 			}
 
 			addMessage({
