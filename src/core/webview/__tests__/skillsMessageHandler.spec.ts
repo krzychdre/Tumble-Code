@@ -56,6 +56,7 @@ describe("skillsMessageHandler", () => {
 	const createMockProvider = (hasSkillsManager: boolean = true): ClineProvider => {
 		const skillsManager = hasSkillsManager
 			? {
+					whenReady: vi.fn().mockResolvedValue(undefined),
 					getSkillsMetadata: mockGetSkillsMetadata,
 					createSkill: mockCreateSkill,
 					deleteSkill: mockDeleteSkill,

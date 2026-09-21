@@ -151,6 +151,12 @@ export const webviewMessageHandler = async (
 			return commandList
 		}
 
+		// Skill discovery is started without being awaited, so the map can still
+		// be empty here. The CLI requests this list once, right after activation,
+		// and caches it, so an unsynchronized read costs the user every skill in
+		// the slash picker for the rest of the session.
+		await skillsManager.whenReady()
+
 		const currentMode = await getCurrentMode()
 		const availableSkills = skillsManager.getSkillsForMode(currentMode)
 
