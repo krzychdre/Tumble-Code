@@ -402,3 +402,109 @@ Only after this passes: slice 8.
   string will again end in `f6ed54afd`), then revert on `main` as above and
   diagnose against the two builds side by side. This is why the rescue branch
   is kept until slice 8.
+
+## Execution record (2026-09-21)
+
+**Status: executed through slice 5.** Branch `integrate/cli-stack-to-main` in
+worktree `/tmp/tumble-cli-integrate` (its own real `pnpm install`, no symlinked
+`node_modules`). Slices 6 (push and PR), 7 (rebuild and verify the installed
+bundle) and 8 (cleanup) are NOT done.
+
+### Gate table
+
+| Gate | Before the merge | After slices 1-5 |
+| --- | --- | --- |
+| `pnpm -C apps/cli check-types` | pass | pass |
+| `pnpm -C apps/cli test` | 682 pass, 1 skipped | 682 pass, 1 skipped |
+| `pnpm -C apps/cli build` | not run | pass |
+| root `pnpm check-types` | not run | 14/14 pass |
+| root `pnpm lint` | not run | 14/14 pass |
+| root `pnpm knip` | FAIL (6 error categories) | pass, exit 0 |
+| `pnpm install --frozen-lockfile` | n/a | pass |
+| `npx changeset status` | ValidationError | exit 0 |
+
+The pre-merge `check-types` pass settles the "group 2" question from the section
+above: `safeWriteJson`, `openExternal` and `string-width` were symlink artifacts,
+exactly as predicted. Neither fallback in slice 2 was needed.
+
+### Conflicts and how each was resolved
+
+Five files, eight hunks (`src/core/webview/ClineProvider.ts` auto-merged, so the
+plan over-predicted by one file):
+
+- `apps/cli/src/lib/utils/provider.ts`, `apps/cli/src/types/types.ts`: took the
+  branch's re-export structure whole. Measured first: main's only change to
+  either file since the merge-base was deleting the `vercel-ai-gateway` entries
+  from code the new structure no longer contains, so nothing of main's was lost.
+- `src/core/assistant-message/presentAssistantMessage.ts` (2 hunks): kept main's
+  `recordToolFailureAsMistake` call and placed the branch's abort guard directly
+  after it. The helper already returns early when `cline.abort` is set
+  (`presentAssistantMessage.ts:85`), so the two are not in tension and the guard
+  cannot drop accounting. Verified by both sides' own specs: all 9 files and 100
+  tests under `src/core/assistant-message/__tests__/` pass, including
+  `presentAssistantMessage-abort.spec.ts` and `-runtime-errors.spec.ts`.
+- `src/package.json`: took main, added back only `"punycode": "2.3.1"`.
+  `git diff main -- src/package.json` is exactly that one line, as the plan's
+  verification requires.
+- `pnpm-lock.yaml`: took one side, regenerated with `pnpm install`.
+
+`git diff --name-only main...HEAD -- src packages` lists only files the branch's
+8 non-CLI commits touched. No resolution took the wrong side.
+
+### Drift found beyond the conflicts
+
+- `src/utils/cliSettingsMirror.ts` carried all seven retired providers in
+  `providerFieldMap`. The plan did not predict this file; it is the one thing
+  root `check-types` caught that `apps/cli` alone did not.
+- `apps/cli/README.md`'s env-var table still advertised the seven retired
+  providers. The `CHANGELOG.md` mention of Unbound was left alone: it records a
+  past release.
+- The knip debt was far smaller than the plan's branch-point list, because
+  main's `knip.json` (from #149/#157) merges in cleanly and fixes most of it.
+  Six error categories became two, five items total.
+
+### Deviation from the plan, with the reason
+
+Slice 4 states the rule "delete if unused, otherwise wire the import, never add
+to ignore lists". Three of the five knip findings were added to
+`ignoreDependencies` instead, because knip's premise was wrong for them: each is
+provably used at runtime but invisible to static analysis, and deleting it would
+break the installed build.
+
+- `proper-lockfile`, `json-stream-stringify`: `tsup.config.ts` marks both
+  `external`, so they are not bundled; `src/utils/safeWriteJson.ts` imports them
+  and the CLI reaches that code through `@roo-code/core`. They must resolve from
+  `apps/cli/package.json` at runtime.
+- `punycode`: never imported by name. `src/esbuild.aliases.mjs` aliases the bare
+  specifier to the userland package so Node stops resolving its deprecated
+  built-in (DEP0040), which is the whole point of `f6ed54afd`.
+
+`knip.json` already uses `ignoreDependencies` for exactly this class
+(`@vscode/ripgrep`, `esbuild-wasm`, `tree-sitter-wasms`), so this follows the
+repository's existing convention rather than working around the gate.
+
+The genuinely dead findings were deleted as the plan intended:
+`apps/cli/src/ui/utils/index.ts` (a barrel nothing imports) and
+`apps/cli/src/ui/utils/views.ts` (the pre-redesign view-state machine, reachable
+only through that barrel), plus the `View` type it was the sole user of.
+`tools.ts` and `tailClamp.ts` in the same directory stay: both have direct
+importers.
+
+### Known-failing, pre-existing, not caused by this merge
+
+`@roo-code/agent-interchange` test "only permits cross-workspace listing after a
+server startup opt-in" fails identically on `main` at `61be588a7` and on this
+branch (same assertion, `expected ... to contain 'Different project'`). Measured
+on both, not assumed. It aborts a plain root `pnpm test`; use
+`npx turbo test --continue` to get past it.
+
+### Residuals
+
+- `apps/cli/README.md` has a pre-existing prettier violation (list indentation
+  around line 382) untouched by this work. CI does not gate on prettier.
+- Slice 3's suggestion to assert the provider count against the registry rather
+  than a literal was not needed: no test asserts a literal count.
+- Two tests used a retired provider purely as an example of "a provider with no
+  base-url field"; both now use `xai`, chosen by reading the merged registry
+  (`xai` and `zai` are the only active providers that take a key and have no
+  base-url field). Assertions unchanged.
