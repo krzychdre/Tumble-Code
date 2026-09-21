@@ -1,31 +1,31 @@
+import { describe, it, expect } from "vitest"
+
 import { getSharedToolUseSection } from "../tool-use"
 
 describe("getSharedToolUseSection", () => {
-	it("should include native tool-calling instructions", () => {
+	it("opens with the section banner", () => {
 		const section = getSharedToolUseSection()
-
-		expect(section).toContain("provider-native tool-calling mechanism")
-		expect(section).toContain("Do not include XML markup or examples")
+		expect(section.startsWith("====\n\nTOOL USE\n\nYou have access")).toBe(true)
 	})
 
-	it("should include multiple tools per message guidance", () => {
-		const section = getSharedToolUseSection()
-
-		expect(section).toContain("You must call at least one tool per assistant response")
-		expect(section).toContain("Prefer calling as many tools as are reasonably needed")
+	it("keeps the provider-native tool-calling instruction", () => {
+		expect(getSharedToolUseSection()).toContain("provider-native tool-calling mechanism")
 	})
 
-	it("should NOT include single tool per message restriction", () => {
+	it("instructs the model to escape non-ASCII characters as \\uXXXX in JSON arguments", () => {
 		const section = getSharedToolUseSection()
-
-		expect(section).not.toContain("You must use exactly one tool call per assistant response")
-		expect(section).not.toContain("Do not call zero tools or more than one tool")
+		expect(section).toContain("character outside the printable ASCII range")
+		expect(section).toContain("\\uXXXX")
+		// The mitigation is an escape, not a strip: the user must still see real characters.
+		expect(section).toContain("decodes escapes")
 	})
 
-	it("should NOT include XML formatting instructions", () => {
-		const section = getSharedToolUseSection()
-
-		expect(section).not.toContain("<actual_tool_name>")
-		expect(section).not.toContain("</actual_tool_name>")
+	// Prompt-prefix stability: the TOOL USE section renders between the stable
+	// opener and the mode sections for every request, so it must itself be a
+	// constant. A non-ASCII character here would defeat the mitigation it
+	// describes (this section is part of the KV-cache prefix) and would add
+	// multi-byte characters to the very prefix whose byte-length we keep stable.
+	it("stays printable-ASCII only", () => {
+		expect(getSharedToolUseSection()).toMatch(/^[\x20-\x7E\n\t]*$/)
 	})
 })
