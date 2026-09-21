@@ -50,20 +50,13 @@ const providerFieldMap: Partial<
 	"openai-native": { modelField: "apiModelId", baseUrlField: "openAiNativeBaseUrl" },
 	mistral: { modelField: "apiModelId", baseUrlField: "mistralCodestralUrl" },
 	deepseek: { modelField: "apiModelId", baseUrlField: "deepSeekBaseUrl" },
-	poe: { modelField: "apiModelId", baseUrlField: "poeBaseUrl" },
 	moonshot: { modelField: "apiModelId", baseUrlField: "moonshotBaseUrl" },
 	minimax: { modelField: "apiModelId", baseUrlField: "minimaxBaseUrl" },
-	requesty: { modelField: "requestyModelId", baseUrlField: "requestyBaseUrl" },
-	unbound: { modelField: "unboundModelId" },
 	"fake-ai": {},
 	xai: { modelField: "apiModelId" },
-	baseten: { modelField: "apiModelId" },
 	litellm: { modelField: "litellmModelId", baseUrlField: "litellmBaseUrl" },
-	sambanova: { modelField: "apiModelId" },
 	zai: { modelField: "apiModelId" },
-	fireworks: { modelField: "apiModelId" },
 	"qwen-code": { modelField: "apiModelId" },
-	"vercel-ai-gateway": { modelField: "vercelAiGatewayModelId" },
 }
 
 /** Same shape the CLI's saveSettings produces/provider union. */
