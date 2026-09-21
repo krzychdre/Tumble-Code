@@ -133,3 +133,47 @@ Files:
   of the analysed sessions), but a latent gap.
 - The approval dialog draws six blank rows inside its border (the `SelectList`
   reserves `maxVisible = 8` rows for two items). Cosmetic, separate.
+
+## Addendum: byte captures before and after, at the user's terminal size
+
+Same driver, same three prompts ("gdzie jest konfiguracja tumble na dysku
+usera?", "konkretnie od aplikacji cli", "jak uzyć skilli pod aplikacją cli?"),
+same model (GLM-5.3 on the local llama.cpp), pseudo terminal sized like the
+user's GNOME Terminal (51 rows x 211 columns) and like the first proof
+(40 x 150). OLD = installed `0.2.0-local.ce2c52c9c`, NEW = installed
+`0.2.0-local.393f9df6e` (this branch). Replayed through pyte; "scrollback"
+is pyte's history size, "filler rows" is the number of blank rows between the
+last non-blank row and the input box after the promotion frame.
+
+51 x 211, turn 0 (answer 14 lines) and turn 2 (answer 8 lines), the promotion
+step (ink erases the tail, prints the promoted transcript, writes the next
+dynamic frame):
+
+| build | turn | erase runs at promotion                | scrollback growth in the promotion step | filler rows above the prompt | what the user sees                                            |
+| ----- | ---- | -------------------------------------- | --------------------------------------- | ---------------------------- | ------------------------------------------------------------- |
+| OLD   | 0    | `eraseLines(50)` then `eraseLines(45)` | +86 rows                                | 45                           | one answer line on row 0, prompt on row 3, empty window below |
+| OLD   | 2    | `eraseLines(50)` then `eraseLines(45)` | +59 rows                                | 45                           | same                                                          |
+| NEW   | 0    | `eraseLines(49)` only                  | 0 rows                                  | 1 (normal margin)            | whole answer on rows 16-44, prompt on row 47                  |
+| NEW   | 1    | `eraseLines(39)` only                  | 0 rows                                  | 1                            | answer above the prompt                                       |
+| NEW   | 2    | `eraseLines(38)` only                  | 0 rows                                  | 1                            | whole answer on rows 24-36, prompt on row 47                  |
+
+40 x 150, turn 0: OLD +47 rows of scrollback and 34 filler rows (the frames
+described in the Evidence section); NEW: the promoted transcript is genuinely
+taller than the window there (tool outputs plus the answer), so scrollback grows
+by what the content needs (+23, +41) and nothing else, 1 filler row, the
+answer's last lines sit right above the prompt. Turns 1 and 2 behave the same.
+
+Whole recordings, both sizes, NEW build: 0 x `ESC[2J`, 0 x `ESC[3J`, 0 x
+cursor-home, no alternate screen, 0 over-erase events, 0 blank-screen events
+(a frame with at most 2 non-blank rows after one with at least 8).
+
+Not changed by this fix, visible in the captures: GLM-5.3 writes the answer
+twice (a `say: text` first, then nearly the same text as `completion_result`),
+so the transcript shows two bullets with slightly different wording. That is
+model behaviour and the existing duplicate guard only suppresses identical
+text; separate topic.
+
+Recordings and tools live in `/tmp/tumble-record` (ephemeral): `driver.py`
+(pexpect + pyte state machine), `trace.py` (screen before/after each large
+`eraseLines` run), `analyze.py` (clear-like sequences, over-erase and
+blank-screen events, screen dumps at given times).
