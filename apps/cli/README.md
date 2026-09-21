@@ -312,34 +312,27 @@ providers still require their corresponding login.
 For providers whose schema has a base-url setting, the CLI also honors a
 `*_BASE_URL` environment variable (and a generic `--base-url` flag).
 
-| Provider          | API Key Environment Variable  | Base URL Environment Variable |
-| ----------------- | ----------------------------- | ----------------------------- |
-| anthropic         | `ANTHROPIC_API_KEY`           | `ANTHROPIC_BASE_URL`          |
-| openai-native     | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
-| openai            | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
-| openai-codex      | — (`auth codex login`)        | —                             |
-| tumble (alias)    | — (uses openrouter)           | — (uses openrouter)           |
-| gemini            | `GOOGLE_API_KEY`              | `GOOGLE_GEMINI_BASE_URL`      |
-| openrouter        | `OPENROUTER_API_KEY`          | `OPENROUTER_BASE_URL`         |
-| vercel-ai-gateway | `VERCEL_AI_GATEWAY_API_KEY`   | —                             |
-| litellm           | `LITELLM_API_KEY`             | `LITELLM_BASE_URL`            |
-| poe               | `POE_API_KEY`                 | `POE_BASE_URL`                |
-| requesty          | `REQUESTY_API_KEY`            | `REQUESTY_BASE_URL`           |
-| unbound           | `UNBOUND_API_KEY`             | —                             |
-| deepseek          | `DEEPSEEK_API_KEY`            | `DEEPSEEK_BASE_URL`           |
-| ollama            | — (keyless)                   | `OLLAMA_BASE_URL`             |
-| lmstudio          | — (keyless)                   | `LMSTUDIO_BASE_URL`           |
-| bedrock           | — (AWS credential chain)      | `AWS_BEDROCK_ENDPOINT`        |
-| baseten           | `BASETEN_API_KEY`             | —                             |
-| fireworks         | `FIREWORKS_API_KEY`           | —                             |
-| mistral           | `MISTRAL_API_KEY`             | `MISTRAL_BASE_URL`            |
-| moonshot          | `MOONSHOT_API_KEY`            | `MOONSHOT_BASE_URL`           |
-| minimax           | `MINIMAX_API_KEY`             | `MINIMAX_BASE_URL`            |
-| qwen-code         | — (OAuth credentials on disk) | —                             |
-| sambanova         | `SAMBANOVA_API_KEY`           | —                             |
-| vertex            | — (gcloud credential chain)   | —                             |
-| xai               | `XAI_API_KEY`                 | —                             |
-| zai               | `ZAI_API_KEY`                 | —                             |
+| Provider       | API Key Environment Variable  | Base URL Environment Variable |
+| -------------- | ----------------------------- | ----------------------------- |
+| anthropic      | `ANTHROPIC_API_KEY`           | `ANTHROPIC_BASE_URL`          |
+| openai-native  | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
+| openai         | `OPENAI_API_KEY`              | `OPENAI_BASE_URL`             |
+| openai-codex   | — (`auth codex login`)        | —                             |
+| tumble (alias) | — (uses openrouter)           | — (uses openrouter)           |
+| gemini         | `GOOGLE_API_KEY`              | `GOOGLE_GEMINI_BASE_URL`      |
+| openrouter     | `OPENROUTER_API_KEY`          | `OPENROUTER_BASE_URL`         |
+| litellm        | `LITELLM_API_KEY`             | `LITELLM_BASE_URL`            |
+| deepseek       | `DEEPSEEK_API_KEY`            | `DEEPSEEK_BASE_URL`           |
+| ollama         | — (keyless)                   | `OLLAMA_BASE_URL`             |
+| lmstudio       | — (keyless)                   | `LMSTUDIO_BASE_URL`           |
+| bedrock        | — (AWS credential chain)      | `AWS_BEDROCK_ENDPOINT`        |
+| mistral        | `MISTRAL_API_KEY`             | `MISTRAL_BASE_URL`            |
+| moonshot       | `MOONSHOT_API_KEY`            | `MOONSHOT_BASE_URL`           |
+| minimax        | `MINIMAX_API_KEY`             | `MINIMAX_BASE_URL`            |
+| qwen-code      | — (OAuth credentials on disk) | —                             |
+| vertex         | — (gcloud credential chain)   | —                             |
+| xai            | `XAI_API_KEY`                 | —                             |
+| zai            | `ZAI_API_KEY`                 | —                             |
 
 Alias: the persisted cloud provider id `tumble` is accepted on the CLI and maps
 to the `openrouter` provider settings (`OPENROUTER_API_KEY`, models, base-url);
