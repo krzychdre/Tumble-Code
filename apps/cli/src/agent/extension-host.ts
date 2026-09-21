@@ -1,5 +1,5 @@
 /**
- * ExtensionHost - Loads and runs the Roo Code extension in CLI mode
+ * ExtensionHost - Loads and runs the Tumble Code extension in CLI mode
  *
  * This class is a thin coordination layer responsible for:
  * 1. Creating the vscode-shim mock
@@ -29,6 +29,7 @@ import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import type { User } from "@/lib/sdk/index.js"
 import { getProviderSettings } from "@/lib/utils/provider.js"
+import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { createEphemeralStorageDir } from "@/lib/storage/index.js"
 
 import type { WaitingForInputEvent, TaskCompletedEvent } from "./events.js"
@@ -71,6 +72,8 @@ export interface ExtensionHostOptions {
 	provider: SupportedProvider
 	apiKey?: string
 	model: string
+	/** Base URL override for the selected provider (applied to its base-url settings field). */
+	baseUrl?: string
 	workspacePath: string
 	extensionPath: string
 	nonInteractive?: boolean
@@ -227,28 +230,18 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			experiments: {
 				customTools: true,
 			},
-			...getProviderSettings(this.options.provider, this.options.apiKey, this.options.model),
+			...getProviderSettings(
+				this.options.provider,
+				this.options.apiKey,
+				this.options.model,
+				this.options.baseUrl,
+			),
 		}
 
-		this.initialSettings = this.options.nonInteractive
-			? {
-					autoApprovalEnabled: true,
-					alwaysAllowReadOnly: true,
-					alwaysAllowReadOnlyOutsideWorkspace: true,
-					alwaysAllowWrite: true,
-					alwaysAllowWriteOutsideWorkspace: true,
-					alwaysAllowWriteProtected: true,
-					alwaysAllowMcp: true,
-					alwaysAllowModeSwitch: true,
-					alwaysAllowSubtasks: true,
-					alwaysAllowExecute: true,
-					allowedCommands: ["*"],
-					...baseSettings,
-				}
-			: {
-					autoApprovalEnabled: false,
-					...baseSettings,
-				}
+		this.initialSettings = {
+			...getPermissionSettings(getPermissionMode(this.options.nonInteractive ?? false)),
+			...baseSettings,
+		}
 
 		if (this.options.reasoningEffort && this.options.reasoningEffort !== "unspecified") {
 			if (this.options.reasoningEffort === "disabled") {
@@ -329,6 +322,19 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		console.warn = () => {}
 		console.debug = () => {}
 		console.info = () => {}
+		// Route console.error to the file-based debug log instead of the
+		// terminal. Extension code logs raw stacks via console.error (e.g.
+		// provider API errors in handleProviderError); in the TUI ink's
+		// patchConsole prints those straight into the transcript. The
+		// user-facing surfacing already happens through the task loop's
+		// ask/error UI — the dump is diagnostics, so it belongs in
+		// ~/.roo/cli-debug.log (written when --debug is passed).
+		console.error = (...args: unknown[]) => {
+			cliLogger.error(
+				"console.error",
+				args.map((arg) => (arg instanceof Error ? (arg.stack ?? String(arg)) : arg)),
+			)
+		}
 	}
 
 	private restoreConsole(): void {

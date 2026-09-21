@@ -31,6 +31,7 @@
 				"@vscode/codicons",
 				"@vscode/ripgrep",
 				"esbuild-wasm",
+				"punycode",
 				"sambanova-ai-provider",
 				"tree-sitter-wasms",
 				"vscode-material-icons",
@@ -55,7 +56,7 @@
 		},
 		"apps/cli": {
 			"project": ["src/**/*.ts", "src/**/*.tsx"],
-			"ignoreDependencies": ["@vscode/ripgrep", "cross-spawn"]
+			"ignoreDependencies": ["@vscode/ripgrep", "cross-spawn", "json-stream-stringify", "proper-lockfile"]
 		},
 		"packages/config-typescript": {
 			"ignoreUnresolved": ["vitest/globals", "next"]

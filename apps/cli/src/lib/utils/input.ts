@@ -68,6 +68,19 @@ export const GLOBAL_INPUT_SEQUENCES: GlobalInputSequence[] = [
 			return false
 		},
 	},
+	{
+		id: "ctrl-o",
+		description: "Toggle verbose transcript (expand tool output and thinking)",
+		matches: (input, key) => {
+			// Standard Ctrl+O detection
+			if (key.ctrl && input === "o") return true
+			// CSI u encoding: ESC [ 111 ; 5 u (kitty keyboard protocol)
+			// 111 = 'o' ASCII code, 5 = Ctrl modifier
+			if (input === "\x1b[111;5u") return true
+			if (input.endsWith("[111;5u")) return true
+			return false
+		},
+	},
 	// Add more global sequences here as needed:
 	// {
 	//   id: "ctrl-n",

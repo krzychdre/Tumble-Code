@@ -8,20 +8,28 @@ interface ToastDisplayProps {
 	toast: Toast | null
 }
 
+/**
+ * Map a toast type to its semantic theme color.
+ * success → theme.success, warning → theme.warning,
+ * error → theme.error, info → theme.suggestion.
+ */
 function getToastColor(type: ToastType): string {
 	switch (type) {
 		case "success":
-			return theme.successColor
+			return theme.success
 		case "warning":
-			return theme.warningColor
+			return theme.warning
 		case "error":
-			return theme.errorColor
+			return theme.error
 		case "info":
 		default:
-			return theme.focusColor // cyan for info
+			return theme.suggestion
 	}
 }
 
+/**
+ * Map a toast type to a single-glyph icon.
+ */
 function getToastIcon(type: ToastType): string {
 	switch (type) {
 		case "success":
@@ -36,6 +44,11 @@ function getToastIcon(type: ToastType): string {
 	}
 }
 
+/**
+ * Single-line toast display, colored by kind (no box).
+ * Toasts are the one element that should pop, so they render at full
+ * intensity (not dim) in their kind color.
+ */
 function ToastDisplay({ toast }: ToastDisplayProps) {
 	if (!toast) {
 		return null

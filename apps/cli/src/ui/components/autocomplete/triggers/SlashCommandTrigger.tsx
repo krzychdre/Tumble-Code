@@ -91,6 +91,7 @@ export function createSlashCommandTrigger(config: SlashCommandTriggerConfig): Au
 				<Box paddingLeft={2}>
 					<Text color={isSelected ? "cyan" : undefined}>
 						{sourceIcon} /{item.name}
+						{item.argumentHint && <Text dimColor> {item.argumentHint}</Text>}
 						{item.description && <Text dimColor> - {item.description}</Text>}
 					</Text>
 				</Box>

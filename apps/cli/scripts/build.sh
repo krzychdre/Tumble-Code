@@ -1,5 +1,5 @@
 #!/bin/bash
-# Roo Code CLI Local Build Script
+# Tumble Code CLI Local Build Script
 #
 # Usage:
 #   ./apps/cli/scripts/build.sh [options]
@@ -116,7 +116,7 @@ build() {
     pnpm bundle
 
     step "3/6" "Building CLI..."
-    pnpm --filter @roo-code/cli build
+    pnpm --filter @tumble-code/cli build
 
     info "Build complete"
 }
@@ -125,8 +125,8 @@ build() {
 create_tarball() {
     step "4/6" "Creating release tarball for $PLATFORM..."
 
-    RELEASE_DIR="$REPO_ROOT/roo-cli-${PLATFORM}"
-    TARBALL="roo-cli-${PLATFORM}.tar.gz"
+    RELEASE_DIR="$REPO_ROOT/tumble-cli-${PLATFORM}"
+    TARBALL="tumble-cli-${PLATFORM}.tar.gz"
 
     # Clean up any previous build
     rm -rf "$RELEASE_DIR"
@@ -143,25 +143,10 @@ create_tarball() {
 
     # Create package.json for npm install
     info "Creating package.json..."
-    node -e "
-      const pkg = require('$CLI_DIR/package.json');
-      const newPkg = {
-        name: '@roo-code/cli',
-        version: '$VERSION',
-        type: 'module',
-        dependencies: {
-          '@inkjs/ui': pkg.dependencies['@inkjs/ui'],
-          '@trpc/client': pkg.dependencies['@trpc/client'],
-          'commander': pkg.dependencies.commander,
-          'fuzzysort': pkg.dependencies.fuzzysort,
-          'ink': pkg.dependencies.ink,
-          'p-wait-for': pkg.dependencies['p-wait-for'],
-          'react': pkg.dependencies.react,
-          'superjson': pkg.dependencies.superjson,
-          'zustand': pkg.dependencies.zustand
-        }
-      };
-      console.log(JSON.stringify(newPkg, null, 2));
+    node --input-type=module -e "
+      import { createReleaseManifest } from '$CLI_DIR/dist/lib/utils/release-manifest.js';
+      import pkg from '$CLI_DIR/package.json' with { type: 'json' };
+      console.log(JSON.stringify(createReleaseManifest(pkg, '$VERSION'), null, 2));
     " > "$RELEASE_DIR/package.json"
 
     # Copy extension bundle
@@ -188,7 +173,7 @@ create_tarball() {
 
     # Create the wrapper script
     info "Creating wrapper script..."
-    cat > "$RELEASE_DIR/bin/roo" << 'WRAPPER_EOF'
+    cat > "$RELEASE_DIR/bin/tumble" << 'WRAPPER_EOF'
 #!/usr/bin/env node
 
 import { fileURLToPath } from 'url';
@@ -210,7 +195,7 @@ if (existsSync(ripgrepPath)) {
 await import(join(__dirname, '..', 'lib', 'index.js'));
 WRAPPER_EOF
 
-    chmod +x "$RELEASE_DIR/bin/roo"
+    chmod +x "$RELEASE_DIR/bin/tumble"
 
     # Create empty .env file
     touch "$RELEASE_DIR/.env"
@@ -268,14 +253,14 @@ verify_local_install() {
     }
 
     # Test --help
-    if ! "$VERIFY_BIN_DIR/roo" --help > /dev/null 2>&1; then
+    if ! "$VERIFY_BIN_DIR/tumble" --help > /dev/null 2>&1; then
         rm -rf "$VERIFY_DIR"
         error "CLI --help check failed!"
     fi
     info "CLI --help check passed"
 
     # Test --version
-    if ! "$VERIFY_BIN_DIR/roo" --version > /dev/null 2>&1; then
+    if ! "$VERIFY_BIN_DIR/tumble" --version > /dev/null 2>&1; then
         rm -rf "$VERIFY_DIR"
         error "CLI --version check failed!"
     fi
@@ -317,11 +302,11 @@ print_summary() {
 
     if [ "$LOCAL_INSTALL" = true ]; then
         echo "  Installed to: ~/.roo/cli"
-        echo "  Binary: ~/.local/bin/roo"
+        echo "  Binary: ~/.local/bin/tumble"
         echo ""
         echo "  Test it out:"
-        echo "    roo --version"
-        echo "    roo --help"
+        echo "    tumble --version"
+        echo "    tumble --help"
     else
         echo "  To install manually:"
         echo "    ROO_LOCAL_TARBALL=$REPO_ROOT/$TARBALL ./apps/cli/install.sh"
@@ -340,7 +325,7 @@ main() {
     echo ""
     printf "${BLUE}${BOLD}"
     echo "  ╭─────────────────────────────────╮"
-    echo "  │   Roo Code CLI Local Build      │"
+    echo "  │  Tumble Code CLI Local Build    │"
     echo "  ╰─────────────────────────────────╯"
     printf "${NC}"
     echo ""

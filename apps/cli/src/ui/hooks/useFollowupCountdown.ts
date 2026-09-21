@@ -6,6 +6,7 @@ import type { PendingAsk } from "../types.js"
 export interface UseFollowupCountdownOptions {
 	pendingAsk: PendingAsk | null
 	onAutoSubmit: (text: string) => void
+	autoAcceptEnabled: boolean
 }
 
 /**
@@ -19,7 +20,7 @@ export interface UseFollowupCountdownOptions {
  * - User switching to custom input mode
  * - Followup question changing/disappearing
  */
-export function useFollowupCountdown({ pendingAsk, onAutoSubmit }: UseFollowupCountdownOptions) {
+export function useFollowupCountdown({ pendingAsk, onAutoSubmit, autoAcceptEnabled }: UseFollowupCountdownOptions) {
 	const { showCustomInput, countdownSeconds, setCountdownSeconds } = useUIStateStore()
 	const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -48,6 +49,7 @@ export function useFollowupCountdown({ pendingAsk, onAutoSubmit }: UseFollowupCo
 
 		// Only start countdown for followup questions with suggestions (not custom input mode)
 		if (
+			autoAcceptEnabled &&
 			pendingAsk?.type === "followup" &&
 			pendingAsk.suggestions &&
 			pendingAsk.suggestions.length > 0 &&
@@ -92,7 +94,7 @@ export function useFollowupCountdown({ pendingAsk, onAutoSubmit }: UseFollowupCo
 		}
 		// Note: countdownSeconds is intentionally NOT in deps - we only read it to avoid
 		// unnecessary state updates, not to react to its changes
-	}, [pendingAsk?.id, pendingAsk?.type, showCustomInput, setCountdownSeconds])
+	}, [pendingAsk?.id, pendingAsk?.type, showCustomInput, setCountdownSeconds, autoAcceptEnabled])
 
 	/**
 	 * Cancel the countdown timer (called when user interacts with the menu)

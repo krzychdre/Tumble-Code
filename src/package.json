@@ -551,6 +551,7 @@
 		"pretty-bytes": "^7.0.0",
 		"proper-lockfile": "^4.1.2",
 		"ps-tree": "^1.2.0",
+		"punycode": "2.3.1",
 		"reconnecting-eventsource": "^1.6.4",
 		"safe-stable-stringify": "^2.5.0",
 		"sambanova-ai-provider": "^1.2.2",

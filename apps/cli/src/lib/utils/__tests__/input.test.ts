@@ -37,6 +37,12 @@ describe("globalInputSequences", () => {
 			expect(seq).toBeDefined()
 			expect(seq?.description).toContain("mode")
 		})
+
+		it("should have ctrl-o registered", () => {
+			const seq = GLOBAL_INPUT_SEQUENCES.find((s) => s.id === "ctrl-o")
+			expect(seq).toBeDefined()
+			expect(seq?.description).toContain("verbose")
+		})
 	})
 
 	describe("isGlobalInputSequence", () => {
@@ -78,6 +84,31 @@ describe("globalInputSequences", () => {
 			})
 		})
 
+		describe("Ctrl+O detection", () => {
+			it("should match standard Ctrl+O", () => {
+				const result = isGlobalInputSequence("o", createKey({ ctrl: true }))
+				expect(result).toBeDefined()
+				expect(result?.id).toBe("ctrl-o")
+			})
+
+			it("should match CSI u encoding for Ctrl+O", () => {
+				const result = isGlobalInputSequence("\x1b[111;5u", createKey())
+				expect(result).toBeDefined()
+				expect(result?.id).toBe("ctrl-o")
+			})
+
+			it("should match input ending with the CSI u sequence", () => {
+				const result = isGlobalInputSequence("[111;5u", createKey())
+				expect(result).toBeDefined()
+				expect(result?.id).toBe("ctrl-o")
+			})
+
+			it("should not match plain 'o' key", () => {
+				const result = isGlobalInputSequence("o", createKey())
+				expect(result).toBeUndefined()
+			})
+		})
+
 		it("should return undefined for non-global sequences", () => {
 			const result = isGlobalInputSequence("a", createKey())
 			expect(result).toBeUndefined()
@@ -108,6 +139,11 @@ describe("globalInputSequences", () => {
 		it("should match ctrl-m with CSI u encoding", () => {
 			const result = matchesGlobalSequence("\x1b[109;5u", createKey(), "ctrl-m")
 			expect(result).toBe(true)
+		})
+
+		it("should match ctrl-o by ID in both encodings", () => {
+			expect(matchesGlobalSequence("o", createKey({ ctrl: true }), "ctrl-o")).toBe(true)
+			expect(matchesGlobalSequence("\x1b[111;5u", createKey(), "ctrl-o")).toBe(true)
 		})
 	})
 

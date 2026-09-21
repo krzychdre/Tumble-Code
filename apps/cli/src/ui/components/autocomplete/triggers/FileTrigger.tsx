@@ -1,7 +1,6 @@
 import { Box, Text } from "ink"
 import Fuzzysort from "fuzzysort"
 
-import { Icon } from "../../Icon.js"
 import type { AutocompleteTrigger, AutocompleteItem, TriggerDetectionResult } from "../types.js"
 
 export interface FileResult extends AutocompleteItem {
@@ -104,12 +103,14 @@ export function createFileTrigger(config: FileTriggerConfig): AutocompleteTrigge
 		},
 
 		renderItem: (item: FileResult, isSelected: boolean) => {
-			const iconName = item.type === "folder" ? "folder" : "file"
+			// Plain text glyph per type — the Nerd Font Icon component was
+			// removed in WP-D; folders use ▶ and files use ●.
+			const glyph = item.type === "folder" ? "▶" : "●"
 			const color = isSelected ? "cyan" : item.type === "folder" ? "blue" : undefined
 
 			return (
 				<Box paddingLeft={2}>
-					<Icon name={iconName} color={color} />
+					<Text color={color}>{glyph}</Text>
 					<Text> </Text>
 					<Text color={color}>{item.path}</Text>
 				</Box>

@@ -50,9 +50,7 @@ describe("TodoChangeDisplay", () => {
 		expect(output).toContain("Task 1")
 		expect(output).toContain("Task 2")
 
-		// Unchanged item should NOT be shown
-		// Note: We can check if "Task 3" appears but since rendering is compact,
-		// we'll check for change labels instead
+		// Change labels present
 		expect(output).toContain("[done]")
 		expect(output).toContain("[started]")
 	})
@@ -88,7 +86,7 @@ describe("TodoChangeDisplay", () => {
 		expect(output).toContain("[new]")
 	})
 
-	it("displays correct status icons", () => {
+	it("displays correct checkbox glyphs", () => {
 		const newTodos: TodoItem[] = [
 			{ id: "1", content: "Completed task", status: "completed" },
 			{ id: "2", content: "In progress task", status: "in_progress" },
@@ -98,10 +96,9 @@ describe("TodoChangeDisplay", () => {
 		const { lastFrame } = render(<TodoChangeDisplay previousTodos={[]} newTodos={newTodos} />)
 		const output = lastFrame()
 
-		// Check status icons
-		expect(output).toContain("✓") // completed
-		expect(output).toContain("→") // in_progress
-		expect(output).toContain("○") // pending
+		// Check checkbox glyphs (completed uses checkboxOn, others use checkboxOff)
+		expect(output).toContain("☒") // completed
+		expect(output).toContain("☐") // in_progress and pending
 	})
 
 	it("shows progress summary in header", () => {

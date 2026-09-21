@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup"
 
 export default defineConfig({
-	entry: ["src/index.ts"],
+	entry: ["src/index.ts", "src/lib/utils/release-manifest.ts"],
 	format: ["esm"],
 	dts: true,
 	clean: true,
@@ -14,6 +14,8 @@ export default defineConfig({
 	// Bundle workspace packages that export TypeScript
 	noExternal: ["@roo-code/core", "@roo-code/core/cli", "@roo-code/types", "@roo-code/vscode-shim"],
 	external: [
+		"proper-lockfile",
+		"json-stream-stringify",
 		// Keep native modules external
 		"@anthropic-ai/sdk",
 		"@anthropic-ai/bedrock-sdk",

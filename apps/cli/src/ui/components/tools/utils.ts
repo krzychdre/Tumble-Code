@@ -1,5 +1,3 @@
-import type { IconName } from "../Icon.js"
-
 /**
  * Truncate text and return truncation info
  */
@@ -92,58 +90,6 @@ export function getToolDisplayName(toolName: string): string {
 	}
 
 	return displayNames[toolName] || toolName
-}
-
-/**
- * Get the IconName for a tool (for use with Icon component)
- */
-export function getToolIconName(toolName: string): IconName {
-	const iconNames: Record<string, IconName> = {
-		// File read operations
-		readFile: "file",
-		read_file: "file",
-		skill: "file",
-		listFilesTopLevel: "folder",
-		listFilesRecursive: "folder",
-		list_files: "folder",
-
-		// File write operations
-		editedExistingFile: "file-edit",
-		appliedDiff: "diff",
-		apply_diff: "diff",
-		newFileCreated: "file-edit",
-		write_to_file: "file-edit",
-		writeToFile: "file-edit",
-
-		// Search operations
-		searchFiles: "search",
-		search_files: "search",
-		codebaseSearch: "search",
-		codebase_search: "search",
-
-		// Command operations
-		execute_command: "terminal",
-		executeCommand: "terminal",
-
-		// Mode operations
-		switchMode: "switch",
-		switch_mode: "switch",
-		newTask: "switch",
-		new_task: "switch",
-		finishTask: "check",
-
-		// Completion operations
-		attempt_completion: "check",
-		attemptCompletion: "check",
-		ask_followup_question: "question",
-		askFollowupQuestion: "question",
-
-		// TODO operations
-		update_todo_list: "check",
-		updateTodoList: "check",
-	}
-
-	return iconNames[toolName] || "gear"
 }
 
 /**

@@ -1,6 +1,8 @@
 import { useRef, useMemo, type ReactNode } from "react"
 import { Box, Text, useInput } from "ink"
 
+import { figures } from "../../figures.js"
+import * as theme from "../../theme.js"
 import type { AutocompleteItem } from "./types.js"
 
 export interface PickerSelectProps<T extends AutocompleteItem> {
@@ -78,7 +80,7 @@ function computeVisibleWindow(
 
 /**
  * Generic picker dropdown component for autocomplete.
- * Uses windowing approach (like @inkjs/ui) - only renders visible items.
+ * Uses windowing approach - only renders visible items.
  * This eliminates flickering caused by ScrollArea's margin-based scrolling.
  *
  * @template T - The type of items to display
@@ -86,7 +88,7 @@ function computeVisibleWindow(
 export function PickerSelect<T extends AutocompleteItem>({
 	results,
 	selectedIndex,
-	maxVisible = 10,
+	maxVisible = 8,
 	onSelect,
 	onEscape,
 	onIndexChange,
@@ -175,7 +177,12 @@ export function PickerSelect<T extends AutocompleteItem>({
 			{visibleItems.map((result, visibleIndex) => {
 				const actualIndex = visibleWindow.from + visibleIndex
 				const isSelected = actualIndex === selectedIndex
-				return <Box key={result.key}>{renderItem(result, isSelected)}</Box>
+				return (
+					<Box key={result.key} flexDirection="row">
+						{isSelected ? <Text color={theme.permission}>{figures.pointer} </Text> : <Text>{"  "}</Text>}
+						{renderItem(result, isSelected)}
+					</Box>
+				)
 			})}
 
 			{/* Scroll indicator - more items below */}

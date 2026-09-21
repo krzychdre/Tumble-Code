@@ -38,6 +38,52 @@ const pendingStreamUpdates: Map<string, PendingStreamUpdate> = new Map()
 let streamingDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 /**
+ * Apply every queued partial update right now and drop the debounce timer.
+ *
+ * Why this is exported and not just the timer body: the promotion rule
+ * (`getStaticCount` in `transcript.ts`) promotes every message into ink's
+ * `<Static>` region as soon as the agent goes idle, and `<Static>` prints each
+ * item exactly once and never re-renders it. A chunk still sitting in the
+ * 150 ms queue when the stream ends would therefore be applied to the store
+ * AFTER the message was already printed, leaving scrollback with a copy of the
+ * answer that is missing its last chunk. Flushing on the loading -> idle edge
+ * closes that window.
+ */
+export function flushPendingStreamUpdates(): void {
+	if (streamingDebounceTimer) {
+		clearTimeout(streamingDebounceTimer)
+		streamingDebounceTimer = null
+	}
+
+	const updates = Array.from(pendingStreamUpdates.values())
+	pendingStreamUpdates.clear()
+
+	if (updates.length === 0) return
+
+	// Apply all pending updates in one state change
+	const newMessages = [...useCLIStore.getState().messages]
+	let hasChanges = false
+
+	for (const update of updates) {
+		const idx = newMessages.findIndex((m) => m.id === update.id)
+		if (idx !== -1 && newMessages[idx]) {
+			newMessages[idx] = {
+				...newMessages[idx],
+				content: update.content,
+				partial: update.partial,
+			}
+			hasChanges = true
+		}
+	}
+
+	// Only write when something actually changed, so an empty flush cannot
+	// invalidate the messages array reference and re-render the whole transcript.
+	if (hasChanges) {
+		useCLIStore.setState({ messages: newMessages })
+	}
+}
+
+/**
  * RouterModels type for context window lookup.
  * Simplified version - we only need contextWindow from ModelInfo.
  */
@@ -177,37 +223,10 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 				timestamp: Date.now(),
 			})
 
-			// Schedule flush if not already scheduled
+			// Schedule flush if not already scheduled. The timer body is the same
+			// code the idle flush runs, so both paths stay in sync by construction.
 			if (!streamingDebounceTimer) {
-				streamingDebounceTimer = setTimeout(() => {
-					// Flush all pending updates as a single batch
-					const currentState = get()
-					const updates = Array.from(pendingStreamUpdates.values())
-					pendingStreamUpdates.clear()
-					streamingDebounceTimer = null
-
-					if (updates.length === 0) return
-
-					// Apply all pending updates in one state change
-					const newMessages = [...currentState.messages]
-					let hasChanges = false
-
-					for (const update of updates) {
-						const idx = newMessages.findIndex((m) => m.id === update.id)
-						if (idx !== -1 && newMessages[idx]) {
-							newMessages[idx] = {
-								...newMessages[idx],
-								content: update.content,
-								partial: update.partial,
-							}
-							hasChanges = true
-						}
-					}
-
-					if (hasChanges) {
-						set({ messages: newMessages })
-					}
-				}, STREAMING_DEBOUNCE_MS)
+				streamingDebounceTimer = setTimeout(flushPendingStreamUpdates, STREAMING_DEBOUNCE_MS)
 			}
 			return
 		}
@@ -247,7 +266,14 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 		}),
 
 	setPendingAsk: (ask) => set({ pendingAsk: ask }),
-	setLoading: (loading) => set({ isLoading: loading }),
+	setLoading: (loading) => {
+		// Going idle is what makes `getStaticCount` promote the trailing messages
+		// into scrollback, and `<Static>` prints an item once: a chunk still in the
+		// debounce queue has to be applied BEFORE that happens, or the printed copy
+		// would be permanently missing its last chunk.
+		if (!loading) flushPendingStreamUpdates()
+		set({ isLoading: loading })
+	},
 	setComplete: (complete) => set({ isComplete: complete }),
 	setHasStartedTask: (started) => set({ hasStartedTask: started }),
 	setError: (error) => set({ error }),

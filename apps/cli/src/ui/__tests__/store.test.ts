@@ -1,10 +1,13 @@
 import { RooCodeSettings } from "@roo-code/types"
 
-import { useCLIStore } from "../store.js"
+import { flushPendingStreamUpdates, useCLIStore } from "../store.js"
 
 describe("useCLIStore", () => {
 	beforeEach(() => {
-		// Reset store to initial state before each test
+		// Reset store to initial state before each test. The debounce queue lives
+		// in module scope, so drain it too or a leftover chunk from the previous
+		// test could land in the middle of this one.
+		flushPendingStreamUpdates()
 		useCLIStore.getState().reset()
 	})
 
@@ -274,6 +277,66 @@ describe("useCLIStore", () => {
 			expect(store().messages).toEqual([])
 			expect(store().taskHistory).toEqual([])
 			expect(store().availableModes).toEqual([])
+		})
+	})
+
+	describe("flushPendingStreamUpdates", () => {
+		// Partial updates to an existing message are debounced for 150 ms. Once the
+		// agent goes idle the promotion rule prints that message into <Static>,
+		// which never re-renders, so a queued chunk MUST be applied before that.
+		function queueSecondChunk() {
+			const store = useCLIStore.getState
+			// first delivery creates the message and is applied immediately
+			store().addMessage({ id: "1", role: "assistant", content: "Hel", partial: true })
+			// second delivery updates an existing message, so it goes to the queue
+			store().addMessage({ id: "1", role: "assistant", content: "Hello world", partial: true })
+			expect(store().messages[0]?.content).toBe("Hel")
+		}
+
+		it("setLoading(false) flushes queued partial updates synchronously", () => {
+			queueSecondChunk()
+
+			useCLIStore.getState().setLoading(false)
+
+			// no timer wait: the chunk is in the store by the time setLoading returns
+			expect(useCLIStore.getState().messages[0]?.content).toBe("Hello world")
+			expect(useCLIStore.getState().isLoading).toBe(false)
+		})
+
+		it("setLoading(true) leaves the queue alone", () => {
+			queueSecondChunk()
+
+			useCLIStore.getState().setLoading(true)
+
+			expect(useCLIStore.getState().messages[0]?.content).toBe("Hel")
+
+			// drain the queue so the pending timer cannot fire during another test
+			flushPendingStreamUpdates()
+			expect(useCLIStore.getState().messages[0]?.content).toBe("Hello world")
+		})
+
+		it("applies the queue when called directly and leaves the array untouched when empty", () => {
+			queueSecondChunk()
+
+			flushPendingStreamUpdates()
+			expect(useCLIStore.getState().messages[0]?.content).toBe("Hello world")
+
+			// a second flush has nothing to apply and must not invalidate the array
+			// reference, otherwise every idle transition would re-render the transcript
+			const messagesAfterFirstFlush = useCLIStore.getState().messages
+			flushPendingStreamUpdates()
+			expect(useCLIStore.getState().messages).toBe(messagesAfterFirstFlush)
+		})
+
+		it("keeps the last queued content when several chunks arrive for one message", () => {
+			const store = useCLIStore.getState
+			store().addMessage({ id: "1", role: "assistant", content: "a", partial: true })
+			store().addMessage({ id: "1", role: "assistant", content: "ab", partial: true })
+			store().addMessage({ id: "1", role: "assistant", content: "abc", partial: true })
+
+			store().setLoading(false)
+
+			expect(store().messages[0]?.content).toBe("abc")
 		})
 	})
 })

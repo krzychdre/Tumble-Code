@@ -10,7 +10,7 @@
  * Action types that can be triggered by global commands.
  * Each action corresponds to a message type sent to the extension host.
  */
-export type GlobalCommandAction = "clearTask"
+export type GlobalCommandAction = "clearTask" | "setPermissions"
 
 /**
  * Definition of a CLI global command
@@ -20,6 +20,8 @@ export interface GlobalCommand {
 	name: string
 	/** Description shown in the autocomplete picker */
 	description: string
+	/** Accepted argument shape shown next to the command name */
+	argumentHint?: string
 	/** Action to trigger when the command is executed */
 	action: GlobalCommandAction
 }
@@ -33,6 +35,12 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 		name: "new",
 		description: "Start a new task",
 		action: "clearTask",
+	},
+	{
+		name: "permissions",
+		description: "Change action approval mode",
+		argumentHint: "<ask|allow>",
+		action: "setPermissions",
 	},
 ]
 
@@ -50,12 +58,14 @@ export function getGlobalCommand(name: string): GlobalCommand | undefined {
 export function getGlobalCommandsForAutocomplete(): Array<{
 	name: string
 	description?: string
+	argumentHint?: string
 	source: "global" | "project" | "built-in"
 	action?: string
 }> {
 	return GLOBAL_COMMANDS.map((cmd) => ({
 		name: cmd.name,
 		description: cmd.description,
+		argumentHint: cmd.argumentHint,
 		source: "global" as const,
 		action: cmd.action,
 	}))
