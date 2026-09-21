@@ -100,8 +100,6 @@ export interface PendingAsk {
 	suggestions?: Array<{ answer: string; mode?: string | null }>
 }
 
-export type View = "UserInput" | "AgentResponse" | "ToolUse" | "Default"
-
 export interface TaskHistoryItem {
 	id: string
 	task: string
