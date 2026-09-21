@@ -15,6 +15,9 @@ export async function handleRequestSkills(provider: ClineProvider): Promise<Skil
 	try {
 		const skillsManager = provider.getSkillsManager()
 		if (skillsManager) {
+			// The initial scan is not awaited by the provider, so an early
+			// request would otherwise render an empty Skills view.
+			await skillsManager.whenReady()
 			const skills = skillsManager.getSkillsMetadata()
 			await provider.postMessageToWebview({ type: "skills", skills })
 			return skills
