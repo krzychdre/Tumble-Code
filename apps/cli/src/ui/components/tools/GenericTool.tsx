@@ -10,8 +10,9 @@ import { sanitizeContent, getToolDisplayName } from "./utils.js"
 
 const MAX_CONTENT_LINES = 12
 
-export function GenericTool({ toolData, rawContent, message }: ToolRendererProps) {
+export function GenericTool({ toolData, rawContent, message, expanded = false }: ToolRendererProps) {
 	const status = toolStatusFromMessage(message)
+	const maxContentLines = expanded ? Number.POSITIVE_INFINITY : MAX_CONTENT_LINES
 	const displayName = getToolDisplayName(toolData.tool)
 	const path = toolData.path
 	const content = toolData.content ? sanitizeContent(toolData.content) : ""
@@ -47,7 +48,7 @@ export function GenericTool({ toolData, rawContent, message }: ToolRendererProps
 						) : null}
 						{toolData.isProtected ? <Text color={theme.error}> (protected)</Text> : null}
 					</Text>
-					{displayContent && <ResultRow maxLines={MAX_CONTENT_LINES}>{displayContent}</ResultRow>}
+					{displayContent && <ResultRow maxLines={maxContentLines}>{displayContent}</ResultRow>}
 				</Box>
 			</Box>
 		</Box>

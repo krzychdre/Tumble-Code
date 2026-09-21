@@ -6,6 +6,12 @@ export interface ToolRendererProps {
 	rawContent?: string
 	/** The originating message, so renderers can read partial/hasPendingToolCalls for bullet status. */
 	message?: TUIMessage
+	/**
+	 * Verbose rendering: lift the renderer's own preview caps so the whole
+	 * output is printed. Only ever set for `<Static>` items; the dynamic tail
+	 * must stay clamped (plan: 2026-09-21 answer lost in dynamic tail, I1).
+	 */
+	expanded?: boolean
 }
 
 export type ToolCategory = "file-read" | "file-write" | "search" | "command" | "mode" | "completion" | "other"

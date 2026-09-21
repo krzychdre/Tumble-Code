@@ -15,6 +15,11 @@ export function sanitizeContent(text: string): string {
 
 interface Props {
 	children: string
+	/**
+	 * Line cap for the body. Pass `Number.POSITIVE_INFINITY` to print every
+	 * line: the slice keeps all of them and the truncated count stays 0, so
+	 * no "… +N lines" tail is rendered.
+	 */
 	maxLines?: number
 }
 

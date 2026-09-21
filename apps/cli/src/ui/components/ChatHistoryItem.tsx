@@ -14,6 +14,12 @@ import UserMessage from "./messages/UserMessage.js"
 
 interface ChatHistoryItemProps {
 	message: TUIMessage
+	/**
+	 * Verbose rendering: lift the tool renderers' preview caps and print the
+	 * reasoning body. Only `<Static>` items may set it; `DynamicTailMessage`
+	 * never does (plan: 2026-09-21 answer lost in dynamic tail, I1 and I8).
+	 */
+	expanded?: boolean
 }
 
 /**
@@ -39,14 +45,14 @@ function tryExtractToolData(content: string, toolName?: string): ToolData | null
  * Thin dispatcher: role → component. Tool messages route to the todo
  * special-case, a structured toolData renderer, or the GenericTool fallback.
  */
-function ChatHistoryItem({ message }: ChatHistoryItemProps) {
+function ChatHistoryItem({ message, expanded = false }: ChatHistoryItemProps) {
 	switch (message.role) {
 		case "user":
 			return <UserMessage content={message.content} />
 		case "assistant":
 			return <AssistantMessage content={message.content} addMargin={true} />
 		case "thinking":
-			return <ThinkingMessage />
+			return <ThinkingMessage content={message.content} expanded={expanded} />
 		case "system":
 			return <SystemMessage content={message.content} />
 		case "tool": {
@@ -62,7 +68,14 @@ function ChatHistoryItem({ message }: ChatHistoryItemProps) {
 			// Structured tool renderers when toolData is available
 			if (message.toolData) {
 				const ToolRenderer = getToolRenderer(message.toolData.tool)
-				return <ToolRenderer toolData={message.toolData} rawContent={message.content} message={message} />
+				return (
+					<ToolRenderer
+						toolData={message.toolData}
+						rawContent={message.content}
+						message={message}
+						expanded={expanded}
+					/>
+				)
 			}
 
 			// Legacy fallback: try to extract toolData from raw JSON content,
@@ -70,7 +83,14 @@ function ChatHistoryItem({ message }: ChatHistoryItemProps) {
 			const extracted = tryExtractToolData(message.content, message.toolName)
 			if (extracted) {
 				const ToolRenderer = getToolRenderer(extracted.tool)
-				return <ToolRenderer toolData={extracted} rawContent={message.content} message={message} />
+				return (
+					<ToolRenderer
+						toolData={extracted}
+						rawContent={message.content}
+						message={message}
+						expanded={expanded}
+					/>
+				)
 			}
 
 			// Final fallback for non-JSON content
@@ -79,6 +99,7 @@ function ChatHistoryItem({ message }: ChatHistoryItemProps) {
 					toolData={{ tool: message.toolName || "unknown", content: message.content }}
 					rawContent={message.content}
 					message={message}
+					expanded={expanded}
 				/>
 			)
 		}

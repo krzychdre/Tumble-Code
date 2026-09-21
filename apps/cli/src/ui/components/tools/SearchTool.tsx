@@ -11,8 +11,9 @@ import { sanitizeContent } from "./utils.js"
 
 const MAX_RESULT_LINES = 15
 
-export function SearchTool({ toolData, message }: ToolRendererProps) {
+export function SearchTool({ toolData, message, expanded = false }: ToolRendererProps) {
 	const status = toolStatusFromMessage(message)
+	const maxResultLines = expanded ? Number.POSITIVE_INFINITY : MAX_RESULT_LINES
 	const regex = toolData.regex || ""
 	const query = toolData.query || ""
 	const filePattern = toolData.filePattern || ""
@@ -21,7 +22,7 @@ export function SearchTool({ toolData, message }: ToolRendererProps) {
 
 	const resultLines = content.split("\n").filter((line) => line.trim())
 	const matchCount = resultLines.length
-	const visible = resultLines.slice(0, MAX_RESULT_LINES)
+	const visible = resultLines.slice(0, maxResultLines)
 
 	return (
 		<Box flexDirection="column">
@@ -65,15 +66,13 @@ export function SearchTool({ toolData, message }: ToolRendererProps) {
 									</ResultRow>
 								)
 							})}
-							{resultLines.length > MAX_RESULT_LINES && (
+							{resultLines.length > visible.length && (
 								<ResultRow
-									maxLines={
-										1
-									}>{`… +${resultLines.length - MAX_RESULT_LINES} more matches`}</ResultRow>
+									maxLines={1}>{`… +${resultLines.length - visible.length} more matches`}</ResultRow>
 							)}
 						</>
 					) : content ? (
-						<ResultRow maxLines={MAX_RESULT_LINES}>{content}</ResultRow>
+						<ResultRow maxLines={maxResultLines}>{content}</ResultRow>
 					) : null}
 				</Box>
 			</Box>

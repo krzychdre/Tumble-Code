@@ -9,8 +9,9 @@ import { sanitizeContent } from "./utils.js"
 
 const MAX_OUTPUT_LINES = 10
 
-export function CommandTool({ toolData, message }: ToolRendererProps) {
+export function CommandTool({ toolData, message, expanded = false }: ToolRendererProps) {
 	const status = toolStatusFromMessage(message)
+	const maxOutputLines = expanded ? Number.POSITIVE_INFINITY : MAX_OUTPUT_LINES
 	const command = toolData.command || ""
 	const output = toolData.output ? sanitizeContent(toolData.output) : ""
 	const content = toolData.content ? sanitizeContent(toolData.content) : ""
@@ -25,7 +26,7 @@ export function CommandTool({ toolData, message }: ToolRendererProps) {
 						<Text bold>Bash</Text>
 						{command ? <Text>({command})</Text> : null}
 					</Text>
-					{displayOutput && <ResultRow maxLines={MAX_OUTPUT_LINES}>{displayOutput}</ResultRow>}
+					{displayOutput && <ResultRow maxLines={maxOutputLines}>{displayOutput}</ResultRow>}
 				</Box>
 			</Box>
 		</Box>

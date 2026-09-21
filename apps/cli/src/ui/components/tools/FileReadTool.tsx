@@ -22,8 +22,10 @@ function isActualContent(content: string, path: string): boolean {
 	return content.includes("\n") || content.length > 200
 }
 
-export function FileReadTool({ toolData, message }: ToolRendererProps) {
+export function FileReadTool({ toolData, message, expanded = false }: ToolRendererProps) {
 	const status = toolStatusFromMessage(message)
+	const maxBatchFiles = expanded ? Number.POSITIVE_INFINITY : MAX_BATCH_FILES
+	const maxPreviewLines = expanded ? Number.POSITIVE_INFINITY : MAX_PREVIEW_LINES
 	const path = toolData.path || ""
 	const rawContent = toolData.content ? sanitizeContent(toolData.content) : ""
 	const isOutsideWorkspace = toolData.isOutsideWorkspace
@@ -33,7 +35,7 @@ export function FileReadTool({ toolData, message }: ToolRendererProps) {
 	// Batch file reads
 	if (toolData.batchFiles && toolData.batchFiles.length > 0) {
 		const files = toolData.batchFiles
-		const visible = files.slice(0, MAX_BATCH_FILES)
+		const visible = files.slice(0, maxBatchFiles)
 		const hidden = files.length - visible.length
 
 		return (
@@ -90,7 +92,7 @@ export function FileReadTool({ toolData, message }: ToolRendererProps) {
 							</Text>
 						) : null}
 					</Text>
-					{resultLine && <ResultRow maxLines={MAX_PREVIEW_LINES}>{resultLine}</ResultRow>}
+					{resultLine && <ResultRow maxLines={maxPreviewLines}>{resultLine}</ResultRow>}
 				</Box>
 			</Box>
 		</Box>

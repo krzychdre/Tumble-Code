@@ -144,6 +144,47 @@ describe("CommandTool", () => {
 		})
 	})
 
+	describe("expanded mode", () => {
+		const longOutput = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n")
+
+		it("caps at 10 lines by default", () => {
+			const props: ToolRendererProps = {
+				toolData: {
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: longOutput,
+				},
+			}
+
+			const { lastFrame } = render(<CommandTool {...props} />)
+			const output = lastFrame()
+
+			expect(output).toContain("line 10")
+			expect(output).not.toContain("line 11")
+			expect(output).toContain("+20 lines")
+		})
+
+		it("shows all output lines when expanded", () => {
+			const props: ToolRendererProps = {
+				toolData: {
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: longOutput,
+				},
+				expanded: true,
+			}
+
+			const { lastFrame } = render(<CommandTool {...props} />)
+			const output = lastFrame()
+
+			expect(output).toContain("line 29")
+			expect(output).toContain("line 30")
+			expect(output).not.toContain("+20 lines")
+			// The infinite cap must never leak into a marker
+			expect(output).not.toContain("Infinity")
+		})
+	})
+
 	describe("header display", () => {
 		it("displays Bash display name when rendered", () => {
 			const props: ToolRendererProps = {

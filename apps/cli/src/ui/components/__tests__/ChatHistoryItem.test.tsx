@@ -361,6 +361,60 @@ describe("ChatHistoryItem", () => {
 			expect(output).toContain("I've completed the task successfully.")
 		})
 
+		it("forwards content and expanded to the thinking renderer", () => {
+			const message: TUIMessage = {
+				id: "14",
+				role: "thinking",
+				content: "Weighing the two options.",
+			}
+
+			const collapsed = render(<ChatHistoryItem message={message} />).lastFrame()
+			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
+
+			expect(collapsed).not.toContain("Weighing the two options.")
+			expect(expanded).toContain("Weighing the two options.")
+		})
+
+		it("forwards expanded to tool renderers", () => {
+			const message: TUIMessage = {
+				id: "15",
+				role: "tool",
+				content: "raw content",
+				toolName: "execute_command",
+				toolData: {
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n"),
+				},
+			}
+
+			const collapsed = render(<ChatHistoryItem message={message} />).lastFrame()
+			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
+
+			expect(collapsed).toContain("+20 lines")
+			expect(collapsed).not.toContain("line 11")
+			expect(expanded).toContain("line 30")
+			expect(expanded).not.toContain("+20 lines")
+		})
+
+		it("forwards expanded to tool renderers resolved from raw JSON content", () => {
+			const message: TUIMessage = {
+				id: "16",
+				role: "tool",
+				content: JSON.stringify({
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n"),
+				}),
+				toolName: "execute_command",
+			}
+
+			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
+
+			expect(expanded).toContain("line 30")
+			expect(expanded).not.toContain("+20 lines")
+		})
+
 		it("renders ask_followup_question tool with CompletionTool renderer", () => {
 			const message: TUIMessage = {
 				id: "13",

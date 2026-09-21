@@ -11,8 +11,10 @@ import { sanitizeContent, parseDiff } from "./utils.js"
 const MAX_HUNK_LINES = 8
 const MAX_HUNKS = 2
 
-export function FileWriteTool({ toolData, message }: ToolRendererProps) {
+export function FileWriteTool({ toolData, message, expanded = false }: ToolRendererProps) {
 	const status = toolStatusFromMessage(message)
+	const maxHunks = expanded ? Number.POSITIVE_INFINITY : MAX_HUNKS
+	const maxHunkLines = expanded ? Number.POSITIVE_INFINITY : MAX_HUNK_LINES
 	const path = toolData.path || ""
 	const diffStats = toolData.diffStats
 	const diff = toolData.diff ? sanitizeContent(toolData.diff) : ""
@@ -24,7 +26,7 @@ export function FileWriteTool({ toolData, message }: ToolRendererProps) {
 	// Batch diff operations
 	if (toolData.batchDiffs && toolData.batchDiffs.length > 0) {
 		const diffs = toolData.batchDiffs
-		const visible = diffs.slice(0, MAX_HUNKS)
+		const visible = diffs.slice(0, maxHunks)
 		const hidden = diffs.length - visible.length
 
 		return (
@@ -79,9 +81,9 @@ export function FileWriteTool({ toolData, message }: ToolRendererProps) {
 					{/* Diff preview: render hunks with bg-colored added/removed lines */}
 					{diffHunks.length > 0 && (
 						<Box flexDirection="column">
-							{diffHunks.slice(0, MAX_HUNKS).map((hunk, hunkIndex) => (
+							{diffHunks.slice(0, maxHunks).map((hunk, hunkIndex) => (
 								<Box key={hunkIndex} flexDirection="column">
-									{hunk.lines.slice(0, MAX_HUNK_LINES).map((line, lineIndex) => (
+									{hunk.lines.slice(0, maxHunkLines).map((line, lineIndex) => (
 										<Text
 											key={lineIndex}
 											backgroundColor={
@@ -97,23 +99,23 @@ export function FileWriteTool({ toolData, message }: ToolRendererProps) {
 											{line.content}
 										</Text>
 									))}
-									{hunk.lines.length > MAX_HUNK_LINES && (
+									{hunk.lines.length > maxHunkLines && (
 										<Text dimColor color={theme.secondaryText}>
-											{`… +${hunk.lines.length - MAX_HUNK_LINES} more lines`}
+											{`… +${hunk.lines.length - maxHunkLines} more lines`}
 										</Text>
 									)}
 								</Box>
 							))}
-							{diffHunks.length > MAX_HUNKS && (
+							{diffHunks.length > maxHunks && (
 								<Text dimColor color={theme.secondaryText}>
-									{`… +${diffHunks.length - MAX_HUNKS} more hunks`}
+									{`… +${diffHunks.length - maxHunks} more hunks`}
 								</Text>
 							)}
 						</Box>
 					)}
 
 					{/* Fallback to raw diff via ResultRow when no hunks parsed */}
-					{diffHunks.length === 0 && diff ? <ResultRow maxLines={MAX_HUNK_LINES}>{diff}</ResultRow> : null}
+					{diffHunks.length === 0 && diff ? <ResultRow maxLines={maxHunkLines}>{diff}</ResultRow> : null}
 				</Box>
 			</Box>
 		</Box>
