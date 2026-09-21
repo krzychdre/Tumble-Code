@@ -19,6 +19,27 @@ export interface UseMessageHandlersReturn {
 }
 
 /**
+ * Say kinds the CLI renders as ONE continuous streaming block.
+ *
+ * The answer class holds both `text` and `completion_result` because models
+ * (GLM especially) repeat the whole answer inside attempt_completion's result,
+ * so the two kinds carry the same block under different timestamps.
+ */
+type StreamClass = "answer" | "reasoning"
+
+function streamClassOf(say: ClineSay): StreamClass | undefined {
+	if (say === "text" || say === "completion_result") {
+		return "answer"
+	}
+
+	if (say === "reasoning") {
+		return "reasoning"
+	}
+
+	return undefined
+}
+
+/**
  * Hook to handle messages from the extension.
  *
  * Processes three types of messages:
@@ -48,14 +69,15 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 
 	// Track seen message timestamps to filter duplicates and the prompt echo
 	const seenMessageIds = useRef<Set<string>>(new Set())
-	// Track the last assistant text we rendered so a same-text duplicate (with a
-	// different ts) collapses to a single block (see handleSayMessage below).
-	const lastAssistantText = useRef<string | null>(null)
-	// Id (ts as string) of the message that produced `lastAssistantText`. When a
-	// ts-distinct duplicate is suppressed we still have to finalize THAT message,
-	// because the duplicate IS the finalization the core could not apply in place
-	// (it only updates the partial when it is still the last message).
-	const lastAssistantId = useRef<string | null>(null)
+	// The message that currently carries each stream class: its id (ts as a
+	// string) and the exact text we rendered for it. The core can continue or
+	// finalize a stream under a NEW ts (see handleSayMessage), so we need the
+	// text to recognise such a delivery and the id to apply it to the message
+	// that is already on screen instead of adding a second one.
+	const lastStreamed = useRef<Record<StreamClass, { id: string; text: string } | null>>({
+		answer: null,
+		reasoning: null,
+	})
 	const firstTextMessageSkipped = useRef(false)
 	// The extension host subscribes to handleExtensionMessage once on mount.
 	// Keep the current session policy in a ref so runtime /permissions changes
@@ -91,8 +113,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				// suppressed. The ref still holds DURING a single assistant turn
 				// (partial updates append via `messageUpdated`), so the
 				// in-turn duplicate collapse keeps working.
-				lastAssistantText.current = null
-				lastAssistantId.current = null
+				lastStreamed.current = { answer: null, reasoning: null }
 				return
 			}
 
@@ -113,12 +134,34 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			// through the height-clamped dynamic tail and the user cannot read it.
 			const existing = useCLIStore.getState().messages.find((m) => m.id === messageId)
 			const isFinalizingExisting = !partial && existing?.partial === true
+			const streamClass = streamClassOf(say)
+			const streamed = streamClass ? lastStreamed.current[streamClass] : null
+
+			// A partial delivery for a message we already rendered as complete is
+			// stale: the core keeps the abandoned partial in `clineMessages`
+			// forever (see the orphan comment below) and every `state` push
+			// replays the whole array, so this delivery arrives again and again
+			// long after we finalized the message. Applying it would flip the
+			// message back to `partial: true`, which pins it and everything after
+			// it in the height-clamped dynamic tail.
+			if (partial && existing && existing.partial !== true) {
+				return
+			}
 
 			// Drop a repeated delivery of a message we already rendered, UNLESS it
 			// finalizes a still-partial store copy. Keeping the guard for already
 			// final copies matters because every `state` push replays the whole
 			// clineMessages array through here.
 			if (seenMessageIds.current.has(messageId) && !partial && !isFinalizingExisting) {
+				// Still record it as the newest text of its class. The replay walks
+				// the array in order, so without this an orphan partial earlier in
+				// the array would leave the marker pointing at its stale text and
+				// the next identical delivery would no longer be recognised as a
+				// duplicate (it would render a second copy of the answer).
+				if (streamClass) {
+					lastStreamed.current[streamClass] = { id: messageId, text }
+				}
+
 				return
 			}
 
@@ -140,59 +183,71 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				role = "thinking"
 			}
 
-			// Deduplicate assistant text rendered twice with identical content.
-			// The core streaming pipeline can emit two ClineMessage entries with
-			// the SAME text but DIFFERENT timestamps (a partial text say finalized
-			// after reasoning or grounding sources interleaved), and the ts-based
-			// seenMessageIds dedupe above cannot collapse them. The same happens
-			// across say kinds: models (GLM especially) repeat the whole answer
-			// inside attempt_completion's result, so core emits say:text and then
-			// say:completion_result with byte-identical text — both render as an
-			// assistant bullet. Skip a complete assistant message whose text
-			// exactly matches the last one we rendered, whichever kind came
-			// first. Distinct replies (different text) always pass through.
-			// A same-ts finalization is never a duplicate: it is the completion of
-			// the very message it repeats, so it must skip this dedupe and fall
-			// through to addMessage.
-			const isAssistantAnswer = say === "text" || say === "completion_result"
+			// Collapse a stream the core could not finalize in place.
+			//
+			// `Task.say()` only replaces a partial with its complete version when
+			// that partial is still the LAST message (TaskAskSay.ts:551-554). A
+			// model that interleaves reasoning and text breaks that condition, so
+			// the core appends the complete version under a NEW ts and leaves the
+			// partial behind as an orphan that stays `partial: true` forever.
+			// Rendering both gives the transcript a truncated fragment ("Tak")
+			// above the full answer, and the orphan's partial flag keeps the whole
+			// rest of the session out of the static scrollback.
+			//
+			// Two shapes of that follow-up delivery are recognised:
+			//  - `continuesOrphan`: the tracked message is still partial and the
+			//    new text starts with what we rendered for it, i.e. this IS the
+			//    rest of the same stream (the orphan text is always a prefix,
+			//    because the core re-says the whole accumulated block);
+			//  - `repeatsLastAnswer`: byte-identical text under a new ts, which is
+			//    the answer repeated inside attempt_completion's result (say:text
+			//    then say:completion_result). This one fires even when the tracked
+			//    message is already complete, and is the older dedupe this fix
+			//    keeps intact.
+			// Either way the new delivery carries the COMPLETE text, so it is
+			// applied to the message already on screen and its own id is dropped.
+			// A same-ts finalization is neither: it is the completion of the very
+			// message it repeats, so it skips this block and falls through to
+			// addMessage.
+			const orphan =
+				streamed && streamed.id !== messageId
+					? useCLIStore.getState().messages.find((m) => m.id === streamed.id)
+					: undefined
+			const continuesOrphan =
+				!!streamed && orphan?.partial === true && text !== "" && text.startsWith(streamed.text)
+			const repeatsLastAnswer = streamClass === "answer" && streamed?.text === text && text !== ""
+
 			if (
-				isAssistantAnswer &&
+				streamClass &&
+				streamed &&
 				!partial &&
 				!isFinalizingExisting &&
-				lastAssistantText.current === text &&
-				text !== ""
+				(continuesOrphan || repeatsLastAnswer)
 			) {
 				seenMessageIds.current.add(messageId)
 
-				// The suppressed duplicate carries the COMPLETE text, so it is also
-				// the finalization the core could not apply in place (it only
-				// updates the partial while that partial is still the last
-				// message). Without applying it here the duplicated message keeps
-				// `partial: true` forever and pins itself plus everything after it
-				// in the height-clamped dynamic tail. Re-adding the store copy
-				// (rather than calling updateMessage) also drops any partial chunk
-				// still queued in the store's 150 ms debounce, which would
-				// otherwise flip the message back to partial a moment later.
-				const duplicated = lastAssistantId.current
-					? useCLIStore.getState().messages.find((m) => m.id === lastAssistantId.current)
-					: undefined
-
-				if (duplicated?.partial === true) {
-					addMessage({ ...duplicated, content: text, partial: false })
+				// Re-adding the store copy (rather than calling updateMessage) also
+				// drops any partial chunk still queued in the store's 150 ms
+				// debounce, which would otherwise flip the message back to partial
+				// a moment later.
+				if (orphan?.partial === true) {
+					addMessage({ ...orphan, content: text, partial: false })
 				}
 
+				// The message on screen now shows this text, so the marker has to
+				// describe it; the id keeps pointing at that message, not at the
+				// delivery we just dropped.
+				lastStreamed.current[streamClass] = { id: streamed.id, text }
 				return
 			}
 
 			seenMessageIds.current.add(messageId)
 
-			// Remember the last assistant text we actually rendered (partial
-			// included) so a later same-text duplicate with a new ts is not
-			// shown a second time, and the id it belongs to so that duplicate can
-			// finalize it.
-			if (isAssistantAnswer && role === "assistant") {
-				lastAssistantText.current = text
-				lastAssistantId.current = messageId
+			// Remember what we actually rendered for this class (partials
+			// included), so a later delivery that continues or repeats the same
+			// stream under a new ts is recognised instead of rendered twice.
+			if (streamClass) {
+				lastStreamed.current[streamClass] = { id: messageId, text }
 			}
 
 			addMessage({
