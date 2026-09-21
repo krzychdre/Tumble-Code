@@ -445,15 +445,12 @@ describe("run baseUrl persistence (bug 1)", () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			// unbound has no base-url field at all (its schema has no base-url key).
-			expect(getBaseUrlField("unbound")).toBeUndefined()
+			// xai has no base-url field at all (its schema has no base-url key).
+			expect(getBaseUrlField("xai")).toBeUndefined()
 
-			await saveSettings({ provider: "unbound" })
+			await saveSettings({ provider: "xai" })
 
-			await run(
-				"hello",
-				baseFlags({ provider: "unbound", apiKey: "unbound-key", baseUrl: "http://should-not-persist" }),
-			)
+			await run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://should-not-persist" }))
 
 			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
 			expect(after).not.toHaveProperty("baseUrl")

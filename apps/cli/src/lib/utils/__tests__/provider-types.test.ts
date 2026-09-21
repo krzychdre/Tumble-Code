@@ -166,11 +166,11 @@ describe("getProviderSettings", () => {
 	})
 
 	it("rejects --base-url for a provider without a base-url field", () => {
-		expect(() => getProviderSettings("vercel-ai-gateway", "k", "m", "https://proxy.example")).toThrow(
-			"Provider 'vercel-ai-gateway' does not support a base URL",
+		expect(() => getProviderSettings("xai", "k", "m", "https://proxy.example")).toThrow(
+			"Provider 'xai' does not support a base URL",
 		)
 		// Custom base-url of "" is treated as absent.
-		expect(() => getProviderSettings("vercel-ai-gateway", "k", "m", "")).not.toThrow()
+		expect(() => getProviderSettings("xai", "k", "m", "")).not.toThrow()
 	})
 	it("maps the model to the provider-specific model field", () => {
 		const settings = getProviderSettings("openrouter", "key", "anthropic/claude-sonnet-4")

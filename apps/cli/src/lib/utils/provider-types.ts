@@ -129,36 +129,12 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		baseUrlEnvVar: "OPENROUTER_BASE_URL",
 		modelField: "openRouterModelId",
 	},
-	"vercel-ai-gateway": {
-		apiKeyField: "vercelAiGatewayApiKey",
-		keyEnvVar: "VERCEL_AI_GATEWAY_API_KEY",
-		modelField: "vercelAiGatewayModelId",
-	},
 	litellm: {
 		apiKeyField: "litellmApiKey",
 		keyEnvVar: "LITELLM_API_KEY",
 		baseUrlField: "litellmBaseUrl",
 		baseUrlEnvVar: "LITELLM_BASE_URL",
 		modelField: "litellmModelId",
-	},
-	poe: {
-		apiKeyField: "poeApiKey",
-		keyEnvVar: "POE_API_KEY",
-		baseUrlField: "poeBaseUrl",
-		baseUrlEnvVar: "POE_BASE_URL",
-		modelField: "apiModelId",
-	},
-	requesty: {
-		apiKeyField: "requestyApiKey",
-		keyEnvVar: "REQUESTY_API_KEY",
-		baseUrlField: "requestyBaseUrl",
-		baseUrlEnvVar: "REQUESTY_BASE_URL",
-		modelField: "requestyModelId",
-	},
-	unbound: {
-		apiKeyField: "unboundApiKey",
-		keyEnvVar: "UNBOUND_API_KEY",
-		modelField: "unboundModelId",
 	},
 	deepseek: {
 		apiKeyField: "deepSeekApiKey",
@@ -202,16 +178,6 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		baseUrlEnvVar: "AWS_BEDROCK_ENDPOINT",
 		modelField: "apiModelId",
 	},
-	baseten: {
-		apiKeyField: "basetenApiKey",
-		keyEnvVar: "BASETEN_API_KEY",
-		modelField: "apiModelId",
-	},
-	fireworks: {
-		apiKeyField: "fireworksApiKey",
-		keyEnvVar: "FIREWORKS_API_KEY",
-		modelField: "apiModelId",
-	},
 	mistral: {
 		apiKeyField: "mistralApiKey",
 		keyEnvVar: "MISTRAL_API_KEY",
@@ -238,13 +204,6 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		// or qwenCodeOauthPath). No API-key env var.
 		apiKeyField: null,
 		keyEnvVar: null,
-		modelField: "apiModelId",
-	},
-	sambanova: {
-		apiKeyField: "sambaNovaApiKey",
-		keyEnvVar: "SAMBANOVA_API_KEY",
-		// SAMBANOVA_URL overrides the base URL at the handler level; the CLI's
-		// generic `--base-url`/`SAMBANOVA_BASE_URL` do not apply to it.
 		modelField: "apiModelId",
 	},
 	vertex: {
