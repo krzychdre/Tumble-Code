@@ -44,7 +44,7 @@ describe("HelpTrigger", () => {
 			const trigger = createHelpTrigger()
 
 			const results = trigger.search("") as HelpShortcutResult[]
-			expect(results.length).toBe(9)
+			expect(results.length).toBe(10)
 			expect(results.map((r) => r.shortcut)).toContain("/")
 			expect(results.map((r) => r.shortcut)).toContain("@")
 			expect(results.map((r) => r.shortcut)).toContain("!")
@@ -54,6 +54,28 @@ describe("HelpTrigger", () => {
 			expect(results.map((r) => r.shortcut)).toContain("ctrl + m")
 			expect(results.map((r) => r.shortcut)).toContain("ctrl + c")
 			expect(results.map((r) => r.shortcut)).toContain("ctrl + t")
+			expect(results.map((r) => r.shortcut)).toContain("ctrl + o")
+		})
+
+		it("should include ctrl+o shortcut for the verbose transcript", () => {
+			const trigger = createHelpTrigger()
+
+			const results = trigger.search("expand") as HelpShortcutResult[]
+			expect(results.length).toBe(1)
+			expect(results[0]?.key).toBe("verbose")
+			expect(results[0]?.shortcut).toBe("ctrl + o")
+			expect(results[0]?.description).toContain("thinking")
+		})
+
+		it("should clear input for the verbose action shortcut", () => {
+			const trigger = createHelpTrigger()
+
+			const verboseItem: HelpShortcutResult = {
+				key: "verbose",
+				shortcut: "ctrl + o",
+				description: "to expand tool output and thinking",
+			}
+			expect(trigger.getReplacementText(verboseItem, "?expand", 0)).toBe("")
 		})
 
 		it("should include ctrl+t shortcut for TODO list", () => {

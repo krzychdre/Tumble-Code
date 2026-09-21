@@ -44,7 +44,11 @@ function DynamicTailMessage({ message, maxRows, columns }: DynamicTailMessagePro
 	return (
 		<Box flexDirection="column">
 			<Box marginTop={1} paddingLeft={2}>
-				<Text dimColor>… +{clamped.hiddenLines} lines</Text>
+				{/* The suffix answers the obvious question: there is no expand
+				    affordance here on purpose, because an unclamped body in the
+				    tail is exactly what breaks ink's erase (I1). The full text
+				    prints into scrollback when the message is promoted. */}
+				<Text dimColor>… +{clamped.hiddenLines} lines (prints in full when this message completes)</Text>
 			</Box>
 			<ChatHistoryItem message={clamped.message} />
 		</Box>

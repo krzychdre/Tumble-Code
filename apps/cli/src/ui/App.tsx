@@ -12,7 +12,7 @@ import * as theme from "./theme.js"
 import { figures } from "./figures.js"
 import { useCLIStore } from "./store.js"
 import { useUIStateStore } from "./stores/uiStateStore.js"
-import { getStaticCount } from "./transcript.js"
+import { getStaticCount, buildStaticItems } from "./transcript.js"
 
 // Import extracted hooks.
 import {
@@ -66,19 +66,8 @@ export interface TUIAppProps extends ExtensionHostOptions {
 	createExtensionHost: (options: ExtensionHostOptions) => ExtensionHostInterface
 }
 
-/**
- * Discriminated item type for the `<Static>` region.
- *
- * The welcome banner is a synthetic first item (`id === "__welcome__"`) so it
- * prints once into native scrollback and scrolls away naturally as the
- * conversation grows. Message items delegate to `ChatHistoryItem`.
- */
-type StaticItem =
-	| { id: "__welcome__"; isWelcome: true; welcomeProps: WelcomeBannerProps }
-	| { id: string; isWelcome: false; message: TUIMessage }
-
 // Imported here to avoid a circular type-only import through components.
-import type { TUIMessage } from "./types.js"
+import type { StaticItem } from "./transcript.js"
 import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
 
 /**
@@ -141,6 +130,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		showTodoViewer,
 		pickerState,
 		setIsTransitioningToCustomInput,
+		verboseTranscript,
+		transcriptReprintEpoch,
 	} = useUIStateStore()
 
 	// Compute context window from router models and API configuration
@@ -316,13 +307,16 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		[],
 	)
 
-	const staticItems = useMemo<StaticItem[]>(() => {
-		const items: StaticItem[] = [{ id: "__welcome__", isWelcome: true, welcomeProps }]
-		for (const m of staticMessages) {
-			items.push({ id: m.id, isWelcome: false, message: m })
-		}
-		return items
-	}, [staticMessages, welcomeProps])
+	const staticItems = useMemo<StaticItem[]>(
+		() =>
+			buildStaticItems({
+				messages: staticMessages,
+				welcomeProps,
+				expanded: verboseTranscript,
+				reprintEpoch: transcriptReprintEpoch,
+			}),
+		[staticMessages, welcomeProps, verboseTranscript, transcriptReprintEpoch],
+	)
 
 	// --- Loading spinner timing -----------------------------------------------
 
@@ -489,18 +483,32 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	return (
 		<>
-			<Static key={staticKey} items={staticItems}>
-				{(item) =>
-					item.isWelcome ? (
-						<Box key="__welcome__">
-							<WelcomeBanner {...item.welcomeProps} />
-						</Box>
-					) : (
+			{/* The key carries the reprint epoch: remounting `<Static>` resets
+			    ink's printed-item index, which is the only way to print the
+			    promoted transcript again (this time expanded). Items already in
+			    scrollback are never rewritten in place. */}
+			<Static key={`${staticKey}:${transcriptReprintEpoch}`} items={staticItems}>
+				{(item) => {
+					if (item.kind === "welcome") {
+						return (
+							<Box key={item.id}>
+								<WelcomeBanner {...item.welcomeProps} />
+							</Box>
+						)
+					}
+					if (item.kind === "divider") {
+						return (
+							<Box key={item.id} marginTop={1}>
+								<Text dimColor>{item.label}</Text>
+							</Box>
+						)
+					}
+					return (
 						<Box key={item.id}>
-							<ChatHistoryItem message={item.message} />
+							<ChatHistoryItem message={item.message} expanded={item.expanded} />
 						</Box>
 					)
-				}
+				}}
 			</Static>
 
 			{/* Hard bound: the whole tail (messages + spinner + dialogs + input)

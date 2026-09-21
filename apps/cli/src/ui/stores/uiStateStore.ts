@@ -23,6 +23,15 @@ interface UIState {
 	// TODO viewer overlay
 	showTodoViewer: boolean
 
+	// Verbose transcript (ctrl+o): tool previews and thinking print in full.
+	// Only ever consumed by the `<Static>` region; the dynamic tail keeps its
+	// clamps in both modes (plan: 2026-09-21 answer lost in dynamic tail, I1).
+	verboseTranscript: boolean
+	// Bumped every time the promoted transcript must be printed again. It feeds
+	// the `<Static>` key in App.tsx, and a key change is the only way to make
+	// ink reprint items it has already written into native scrollback (I2).
+	transcriptReprintEpoch: number
+
 	// Autocomplete picker state
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	pickerState: AutocompletePickerState<any>
@@ -46,6 +55,9 @@ interface UIActions {
 	// TODO viewer actions
 	setShowTodoViewer: (show: boolean) => void
 
+	// Verbose transcript actions
+	toggleVerboseTranscript: () => void
+
 	// Picker state actions
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	setPickerState: (state: AutocompletePickerState<any>) => void
@@ -62,6 +74,8 @@ const initialState: UIState = {
 	isTransitioningToCustomInput: false,
 	manualFocus: null,
 	showTodoViewer: false,
+	verboseTranscript: false,
+	transcriptReprintEpoch: 0,
 	pickerState: {
 		activeTrigger: null,
 		results: [],
@@ -82,6 +96,18 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 	setIsTransitioningToCustomInput: (transitioning) => set({ isTransitioningToCustomInput: transitioning }),
 	setManualFocus: (focus) => set({ manualFocus: focus }),
 	setShowTodoViewer: (show) => set({ showTodoViewer: show }),
+	toggleVerboseTranscript: () =>
+		set((state) => {
+			const next = !state.verboseTranscript
+			// Only turning verbose ON bumps the epoch. Already printed items can
+			// never be re-rendered in place, so the expanded bodies are shown by
+			// reprinting the promoted transcript once. Turning it OFF has nothing
+			// new to show, and a reprint there would duplicate the transcript for
+			// no gain, so the epoch (and with it the `<Static>` key) stays put.
+			return next
+				? { verboseTranscript: true, transcriptReprintEpoch: state.transcriptReprintEpoch + 1 }
+				: { verboseTranscript: false }
+		}),
 	setPickerState: (state) => set({ pickerState: state }),
 	resetUIState: () => set(initialState),
 }))

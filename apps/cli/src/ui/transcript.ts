@@ -1,4 +1,5 @@
 import type { TUIMessage } from "./types.js"
+import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
 
 /**
  * Promotion rule for the static scrollback (plan §3).
@@ -52,4 +53,58 @@ export function getStaticCount(messages: TUIMessage[], isLoading: boolean, hasPe
 export function getStaticMessages(messages: TUIMessage[], isLoading: boolean, hasPendingAsk: boolean): TUIMessage[] {
 	const count = getStaticCount(messages, isLoading, hasPendingAsk)
 	return messages.slice(0, Math.max(0, count))
+}
+
+/**
+ * Discriminated item type for the `<Static>` region.
+ *
+ * The welcome banner and the reprint divider are synthetic items so they print
+ * once into native scrollback and scroll away naturally as the conversation
+ * grows. Message items delegate to `ChatHistoryItem`.
+ */
+export type StaticItem =
+	| { id: string; kind: "welcome"; welcomeProps: WelcomeBannerProps }
+	| { id: string; kind: "divider"; label: string }
+	| { id: string; kind: "message"; message: TUIMessage; expanded: boolean }
+
+interface BuildStaticItemsArgs {
+	/** The promoted prefix of the transcript (see `getStaticMessages`). */
+	messages: TUIMessage[]
+	welcomeProps: WelcomeBannerProps
+	/** Verbose rendering for every message item in this batch. */
+	expanded: boolean
+	/** `useUIStateStore.transcriptReprintEpoch`; 0 is the original printing. */
+	reprintEpoch: number
+}
+
+/**
+ * Build the `<Static>` item list.
+ *
+ * Epoch 0 is the original printing and opens with the welcome banner. Every
+ * later epoch is a reprint triggered by ctrl+o, so it opens with a divider
+ * instead: the banner already sits in scrollback above and repeating it would
+ * read as a second session start. The divider id carries the epoch so React
+ * keys stay unique across reprints.
+ *
+ * The divider stays for an epoch even after verbose is switched back off,
+ * because it describes a batch that is already in scrollback and `<Static>`
+ * never rewrites what it printed (I2).
+ */
+export function buildStaticItems({
+	messages,
+	welcomeProps,
+	expanded,
+	reprintEpoch,
+}: BuildStaticItemsArgs): StaticItem[] {
+	const head: StaticItem =
+		reprintEpoch > 0
+			? {
+					id: `__divider__:${reprintEpoch}`,
+					kind: "divider",
+					// Hyphens only, deliberately: no dash characters beyond "-".
+					label: "-- expanded transcript (ctrl+o to collapse) --",
+				}
+			: { id: "__welcome__", kind: "welcome", welcomeProps }
+
+	return [head, ...messages.map((message): StaticItem => ({ id: message.id, kind: "message", message, expanded }))]
 }

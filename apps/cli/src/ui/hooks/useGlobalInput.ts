@@ -27,6 +27,7 @@ export interface UseGlobalInputOptions {
  * - Ctrl+C: Double-press to exit
  * - Ctrl+M: Cycle through available modes
  * - Ctrl+T: Toggle TODO list viewer
+ * - Ctrl+O: Toggle the verbose transcript (reprints it expanded into scrollback)
  * - Escape: Cancel task (when loading) or close TODO viewer
  *
  * Note: the scroll/input focus toggle (Tab) was removed with the ScrollArea
@@ -52,6 +53,8 @@ export function useGlobalInput({
 		setShowExitHint,
 		pendingExit,
 		setPendingExit,
+		verboseTranscript,
+		toggleVerboseTranscript,
 	} = useUIStateStore()
 
 	// Track Ctrl+C presses for "press again to exit" behavior
@@ -108,6 +111,23 @@ export function useGlobalInput({
 				showInfo("No TODO list available", 2000)
 				setShowTodoViewer(false)
 			}
+			return
+		}
+
+		// Ctrl+O to toggle the verbose transcript
+		if (matchesGlobalSequence(input, key, "ctrl-o")) {
+			// Close picker if open: the reprint writes a whole transcript into
+			// scrollback, which would scroll an open dropdown off the screen.
+			if (pickerIsOpen) {
+				closePicker()
+			}
+			toggleVerboseTranscript()
+			// `verboseTranscript` is the value from before the toggle, so the
+			// message describes the state the user is switching into.
+			showInfo(
+				verboseTranscript ? "Collapsed view" : "Expanded view: tool output and thinking print in full",
+				2000,
+			)
 			return
 		}
 

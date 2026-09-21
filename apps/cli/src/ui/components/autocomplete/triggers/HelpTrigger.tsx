@@ -25,6 +25,7 @@ const HELP_SHORTCUTS: HelpShortcutResult[] = [
 	{ key: "focus", shortcut: "tab", description: "to toggle focus" },
 	{ key: "mode", shortcut: "ctrl + m", description: "to cycle modes" },
 	{ key: "todos", shortcut: "ctrl + t", description: "to view TODO list" },
+	{ key: "verbose", shortcut: "ctrl + o", description: "to expand tool output and thinking" },
 	{ key: "quit", shortcut: "ctrl + c", description: "to quit" },
 ]
 
@@ -95,8 +96,8 @@ export function createHelpTrigger(): AutocompleteTrigger<HelpShortcutResult> {
 
 		getReplacementText: (item: HelpShortcutResult, _lineText: string, _triggerIndex: number): string => {
 			// When a shortcut is selected, replace with the trigger character
-			// For action shortcuts (tab, ctrl+c, shift+enter, ctrl+t), just clear the input
-			if (["newline", "focus", "quit", "todos"].includes(item.key)) {
+			// For action shortcuts (tab, ctrl+c, shift+enter, ctrl+t, ctrl+o), just clear the input
+			if (["newline", "focus", "quit", "todos", "verbose"].includes(item.key)) {
 				return ""
 			}
 			// For trigger shortcuts (/, @, !), insert the trigger character

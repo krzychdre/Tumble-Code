@@ -35,6 +35,20 @@ describe("DynamicTailMessage", () => {
 		expect(output).not.toContain("line 24\n")
 	})
 
+	it("tells the user the clamped body prints in full on completion", () => {
+		// There is deliberately no expand affordance in the tail (I1), so the
+		// marker has to say where the hidden text will show up instead.
+		const message: TUIMessage = {
+			id: "4",
+			role: "assistant",
+			content: Array.from({ length: 30 }, (_, i) => `line ${i}`).join("\n"),
+		}
+
+		const { lastFrame } = render(<DynamicTailMessage message={message} maxRows={5} columns={120} />)
+
+		expect(lastFrame()).toContain("(prints in full when this message completes)")
+	})
+
 	it("does not clamp tool messages (renderers cap their own previews)", () => {
 		const message: TUIMessage = {
 			id: "3",

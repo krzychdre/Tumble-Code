@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest"
 
-import { getStaticCount, getStaticMessages } from "../transcript.js"
+import { buildStaticItems, getStaticCount, getStaticMessages } from "../transcript.js"
 import type { TUIMessage } from "../types.js"
+import type { WelcomeBannerProps } from "../components/WelcomeBanner.js"
 
 function msg(id: string, partial = false): TUIMessage {
 	return { id, role: "assistant", content: `content-${id}`, partial }
@@ -103,5 +104,98 @@ describe("getStaticMessages", () => {
 
 	it("returns an empty array for empty messages", () => {
 		expect(getStaticMessages([], false, false)).toEqual([])
+	})
+})
+
+describe("buildStaticItems", () => {
+	const welcomeProps: WelcomeBannerProps = {
+		workspacePath: "/repo",
+		provider: "openai",
+		model: "gpt-5",
+		mode: "code",
+		version: "1.0.0",
+	}
+
+	it("opens epoch 0 with the welcome banner and no divider", () => {
+		const items = buildStaticItems({
+			messages: [msg("1"), msg("2")],
+			welcomeProps,
+			expanded: false,
+			reprintEpoch: 0,
+		})
+
+		expect(items.map((i) => i.kind)).toEqual(["welcome", "message", "message"])
+		expect(items[0]?.id).toBe("__welcome__")
+		expect(items.some((i) => i.kind === "divider")).toBe(false)
+	})
+
+	it("marks every message item collapsed by default", () => {
+		const items = buildStaticItems({
+			messages: [msg("1"), msg("2")],
+			welcomeProps,
+			expanded: false,
+			reprintEpoch: 0,
+		})
+
+		for (const item of items) {
+			if (item.kind === "message") expect(item.expanded).toBe(false)
+		}
+	})
+
+	it("opens a reprint epoch with the divider instead of the banner", () => {
+		const items = buildStaticItems({
+			messages: [msg("1"), msg("2")],
+			welcomeProps,
+			expanded: true,
+			reprintEpoch: 1,
+		})
+
+		expect(items.map((i) => i.kind)).toEqual(["divider", "message", "message"])
+		expect(items[0]?.id).toBe("__divider__:1")
+		expect(items.some((i) => i.kind === "welcome")).toBe(false)
+		for (const item of items) {
+			if (item.kind === "message") expect(item.expanded).toBe(true)
+		}
+	})
+
+	it("uses hyphens only in the divider label", () => {
+		const [divider] = buildStaticItems({ messages: [], welcomeProps, expanded: true, reprintEpoch: 2 })
+
+		expect(divider?.kind).toBe("divider")
+		if (divider?.kind === "divider") {
+			expect(divider.label).toContain("ctrl+o")
+			// U+2010..U+2015 are the unicode dashes (hyphen, en dash, em dash,
+			// horizontal bar), U+2500..U+257F the box-drawing rules. None of
+			// them may appear in UI strings; a plain "-" must be used instead.
+			expect(divider.label).not.toMatch(/[\u2010-\u2015\u2500-\u257F]/)
+			expect(divider.label).toContain("--")
+		}
+	})
+
+	it("gives every reprint epoch its own divider id", () => {
+		const first = buildStaticItems({ messages: [], welcomeProps, expanded: true, reprintEpoch: 1 })
+		const second = buildStaticItems({ messages: [], welcomeProps, expanded: true, reprintEpoch: 2 })
+
+		expect(first[0]?.id).not.toBe(second[0]?.id)
+	})
+
+	it("keeps the divider for an epoch after verbose is switched back off", () => {
+		// Toggling off does not bump the epoch, and the batch it labels is
+		// already in scrollback, so the divider must not disappear.
+		const items = buildStaticItems({
+			messages: [msg("1")],
+			welcomeProps,
+			expanded: false,
+			reprintEpoch: 1,
+		})
+
+		expect(items.map((i) => i.kind)).toEqual(["divider", "message"])
+		for (const item of items) {
+			if (item.kind === "message") expect(item.expanded).toBe(false)
+		}
+	})
+
+	it("returns just the head item when there are no promoted messages", () => {
+		expect(buildStaticItems({ messages: [], welcomeProps, expanded: false, reprintEpoch: 0 })).toHaveLength(1)
 	})
 })
