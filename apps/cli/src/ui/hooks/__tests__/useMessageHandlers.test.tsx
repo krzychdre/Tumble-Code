@@ -390,15 +390,58 @@ describe("useMessageHandlers", () => {
 				stateMessage(core)
 			}
 
-			append({ ts: 3, type: "say", say: "reasoning", text: "The user is", partial: true })
-			core[2]!.text = THOUGHT
-			sayUpdate(3, "reasoning", THOUGHT, true)
+			// An in-place update rides `messageUpdated` alone, but the core array
+			// carries the new text from then on, so keep both in sync.
+			const update = (message: ClineMessageLike, text: string, partial: boolean) => {
+				message.text = text
+				message.partial = partial
+				sayUpdate(message.ts, message.say as string, text, partial)
+			}
 
+			// Submitting a turn puts the store in the loading state; the handler
+			// clears it again on the trailing `ask completion_result`.
+			useCLIStore.getState().setLoading(true)
+
+			const reasoning: ClineMessageLike = {
+				ts: 3,
+				type: "say",
+				say: "reasoning",
+				text: "The user is",
+				partial: true,
+			}
+			append(reasoning)
+			update(reasoning, THOUGHT, true)
+
+			// The text stream starts, which makes the reasoning partial no longer
+			// the last message.
 			append({ ts: 4, type: "say", say: "text", text: "Tak", partial: true })
-			// Reasoning finalized while the text partial is last: appended anew.
-			append({ ts: 5, type: "say", say: "reasoning", text: THOUGHT_FINAL, partial: false })
-			// Text finalized while the reasoning is last: appended anew as well.
-			append({ ts: 6, type: "say", say: "text", text: ANSWER, partial: false })
+
+			// More reasoning arrives: the core cannot continue the abandoned
+			// reasoning partial in place, so it appends a new stream that repeats
+			// the accumulated block and finalizes THAT one.
+			const reasoningRestart: ClineMessageLike = {
+				ts: 5,
+				type: "say",
+				say: "reasoning",
+				text: `${THOUGHT} Pol`,
+				partial: true,
+			}
+			append(reasoningRestart)
+			update(reasoningRestart, THOUGHT_FINAL, false)
+
+			// Same story for the answer: the abandoned "Tak" partial is no longer
+			// last, so the rest of the answer streams under a new ts.
+			const textRestart: ClineMessageLike = {
+				ts: 6,
+				type: "say",
+				say: "text",
+				text: "Tak, to wieczor",
+				partial: true,
+			}
+			append(textRestart)
+			update(textRestart, ANSWER, true)
+			update(textRestart, ANSWER, false)
+
 			// The model repeats the answer inside attempt_completion's result.
 			append({ ts: 7, type: "say", say: "completion_result", text: ANSWER, partial: false })
 			append({ ts: 8, type: "ask", ask: "completion_result", text: "", partial: false })

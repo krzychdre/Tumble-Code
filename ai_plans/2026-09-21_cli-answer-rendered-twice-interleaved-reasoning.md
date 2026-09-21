@@ -3,7 +3,8 @@
 **Date:** 2026-09-21
 **Branch:** `fix/cli-duplicate-answer-after-state-replay`, stacked on
 `fix/cli-tail-viewport-stale-height` (which is stacked on `main` = `ce2c52c9c`)
-**Status:** implemented, unit tested, manual run on the built CLI still owed
+**Status:** implemented, unit tested, verified on the built CLI against the
+reported model
 
 Writing rule for this repo: no em dash and no en dash anywhere (code, comments,
 tests, commit messages, UI strings). Use a hyphen, a comma, a colon or
@@ -55,20 +56,25 @@ turn 2
 1790020487493 ask completion_result  partial=false len=0
 ```
 
-Two facts proven from that file, not assumed:
+Three facts proven, not assumed:
 
 1. Turn 2 contains two messages that stay `partial: true` forever (`486039`
-   reasoning and `486871` text). They are orphans: their complete versions were
-   appended under NEW timestamps (`486913`, `486935`) instead of replacing them.
+   reasoning and `486871` text). They are abandoned: the rest of the same
+   reasoning block and of the same answer arrived under NEW timestamps
+   (`486913`, `486935`) instead of continuing them.
 2. The answer text at `486935` and the `completion_result` text at `487471` are
    byte-identical (`jq` comparison returned `true`), so the existing
    identical-text dedupe should have collapsed them and did not.
+3. The restarted stream reaches the CLI as a NEW PARTIAL stream, not as one
+   complete message. `ui_messages.json` keeps only the end state of each entry,
+   so the file cannot show this; a trace of every delivery into
+   `handleSayMessage` during a live run does (see "Live evidence" below).
 
 ## Root cause
 
-### Why the core leaves orphans
+### Why the core abandons a partial
 
-`Task.say()` (`src/core/task/TaskAskSay.ts:550-623`) decides between "replace
+`Task.say()` (`src/core/task/TaskAskSay.ts:550-623`) decides between "continue
 the partial in place" and "append a new message" with
 
 ```ts
@@ -78,13 +84,31 @@ const isUpdatingPreviousPartial =
 ```
 
 It only ever looks at the LAST message. GLM interleaves reasoning and text, so
-in turn 2 the order was: reasoning partial, text partial, then the reasoning
-finalization (last message is the text partial, kinds differ, so it appends),
-then the text finalization (last message is the complete reasoning, so it
-appends again). Both partials are abandoned in `clineMessages` and persisted
-that way. Turn 1 had no interleaving, so both finalizations hit the in-place
-path and no orphan exists. This is core-level and affects the webview too; see
-the follow-up section.
+in turn 2 the order was: reasoning partial, text partial, then more reasoning
+(last message is the text partial, kinds differ, so it appends a new reasoning
+stream), then the rest of the answer (last message is now reasoning, so it
+appends a new text stream). Each restarted stream repeats the whole accumulated
+block from the beginning and is finalized in place under its own ts, while the
+abandoned partial keeps `partial: true` in `clineMessages` and is persisted that
+way. Turn 1 had no interleaving, so both streams were continued in place and
+nothing was abandoned. This is core-level and affects the webview too; see the
+follow-up section.
+
+### Live evidence for the restart shape
+
+With a temporary trace of every `handleSayMessage` delivery (a live run against
+the same model, four turns, 1660 deliveries), turn 1 contains:
+
+```text
+enter id=...209597 text partial=true  len=3   "Dzi"      <- stream abandoned here
+enter id=...209662 text partial=true  len=9   "Dziś jest" <- NEW ts, repeats "Dzi"
+enter id=...209662 text partial=true  len=50  ...         <- and keeps streaming
+enter id=...209662 text partial=false len=89  ...         <- finalized in place
+enter id=...210046 completion_result  len=89  ...         <- byte-identical repeat
+```
+
+That is why a fix that only recognises a COMPLETE follow-up delivery removes the
+duplicate but leaves the `Dzi` fragment on screen: the follow-up arrives partial.
 
 ### Why the CLI printed the answer twice
 
@@ -107,20 +131,20 @@ message. Replay of the array after `487471` was appended therefore ran:
 | `486935` text complete (the answer)          | seen guard returns early, marker NOT refreshed  | `"Tak"`                 |
 | `487471` completion_result (the same answer) | marker `"Tak"` != answer, so not a duplicate    | renders a SECOND bullet |
 
-That is the reported duplicate. In turn 1 no orphan partial sat between the
+That is the reported duplicate. In turn 1 no abandoned partial sat between the
 messages, nothing overwrote the marker during the replay, and the
 `completion_result` was correctly suppressed.
 
-The two secondary symptoms come from the same orphans: the `Tak` bullet is the
-orphan text partial rendered as its own message, and the second `Thinking` row
-is the ts-distinct reasoning finalization added as a new message.
+The two secondary symptoms come from the same abandoned partials: the `Tak`
+bullet is the abandoned text stream rendered as its own message, and the second
+`Thinking` row is the restarted reasoning stream.
 
 ### Repro (committed, failed before the fix)
 
 `apps/cli/src/ui/hooks/__tests__/useMessageHandlers.test.tsx`, describe block
 "interleaved reasoning orphans (real task 01a0c588, 2026-09-21)": it replays the
-sequence above the way the core delivers it (a full state push after every
-appended message, `messageUpdated` for in-place partial updates). Before the
+turn the way the core delivers it, restarted streams included (a full state push
+after every appended message, `messageUpdated` for in-place updates). Before the
 fix:
 
 ```text
@@ -134,35 +158,42 @@ x keeps deduping the completion_result after a replay -> 3 assistant bullets
 
 The single answer marker becomes one marker per stream class, where a class is
 a group of say kinds the CLI renders as one continuous block:
-`answer` (`say:text` plus `say:completion_result`) and `reasoning`. Three
+`answer` (`say:text` plus `say:completion_result`) and `reasoning`. Four
 changes, all inside `handleSayMessage`:
 
-1. **Stale partial guard.** A `partial: true` delivery for a message whose store
-   copy is already complete is dropped. The core never moves a message from
-   complete back to partial, so such a delivery can only be the replay of an
-   orphan, and applying it would flip the message back to partial and pin the
-   rest of the session in the height-clamped dynamic tail.
-2. **Marker refresh on the seen-guard early return.** A complete delivery that
+1. **Merge a restarted stream (`mergedStreamIds`).** A delivery with an unknown
+   ts whose text starts with what we already rendered for that class, while that
+   message is still partial, is the rest of the same stream. Its ts is mapped to
+   the message that already carries the stream, and every later delivery for
+   that ts (further chunks and the finalization) is routed there, so the answer
+   stays one message that simply keeps growing. The prefix test is what makes
+   this safe: the core re-says the whole accumulated block on every chunk, so a
+   restart always repeats what came before, while a genuinely new block (for
+   example a second text block after a tool call) does not.
+2. **The merge only fires while the store is loading.** `getStaticCount` never
+   promotes a partial message while loading, so the message being merged into is
+   guaranteed to be still re-rendered. Once idle it may already be printed into
+   scrollback, which ink's `<Static>` never rewrites, so an idle delivery has to
+   render on its own instead of silently disappearing into a printed message.
+3. **Stale partial guard.** A `partial: true` delivery for a message whose store
+   copy is already complete is dropped. The core keeps the abandoned partial in
+   `clineMessages` and replays it on every state push, so without this guard the
+   merged message would be flipped back to partial (and to the abandoned text)
+   seconds after it was completed, which also pins it in the clamped tail.
+4. **Marker refresh on the seen-guard early return.** A complete delivery that
    is dropped as already rendered still records its text as the newest text of
-   its class. The marker now means "the last text of this class seen in the
-   array", which is stable across replays.
-3. **Orphan collapse (`continuesOrphan`).** A complete delivery whose text
-   starts with the text of the tracked message, while that tracked message is
-   still partial, is the rest of the same stream under a new ts. It is applied
-   to the message already on screen and its own id is dropped. The prefix test
-   is what makes this safe: the core re-says the whole accumulated block on
-   every chunk, so the abandoned partial is always a prefix of the final text.
-   Two genuinely different text blocks (for example narration, then a tool call,
-   then a different closing sentence) are not a prefix, so they keep rendering
-   as two messages.
+   its class, so the marker means "the last text of this class seen in the
+   array" and is stable across replays. This is what fixes the reported
+   duplicate.
 
-The older identical-text dedupe survives as `repeatsLastAnswer` with unchanged
-semantics: it applies to the `answer` class only and fires even when the tracked
-message is already complete (that is the `say:text` + `say:completion_result`
-repetition from the 2026-08-07 plan).
+The older identical-text dedupe survives with unchanged semantics: it applies to
+the `answer` class only, fires even when the tracked message is already
+complete, and needs no loading guard because the text is identical either way
+(that is the `say:text` + `say:completion_result` repetition from the
+2026-08-07 plan).
 
-Reasoning now goes through the same collapse, which is why the duplicated
-`Thinking` row disappears as well.
+Reasoning goes through the same merge, which is why the duplicated `Thinking`
+row disappears as well.
 
 ## Invariants kept
 
@@ -172,12 +203,16 @@ Reasoning now goes through the same collapse, which is why the duplicated
   "keeps a state re-push of a finalized message a no-op" still asserts object
   identity, and the new stale-partial guard only ever drops work.
 - Same-ts finalization (the fix that the previous branch shipped) still takes
-  precedence: `isFinalizingExisting` short-circuits the collapse block.
-- Promotion into `<Static>` stays monotonic: the collapse only rewrites a
-  message while it is still partial, and a partial message is never promoted
-  while the agent is loading (`getStaticCount` rules 3 and 4 in
-  `apps/cli/src/ui/transcript.ts`). No message is ever removed from the store,
-  so `<Static>` indices never shift.
+  precedence: `isFinalizingExisting` is computed after the merge, so a merged
+  delivery finalizes the message it was merged into.
+- Promotion into `<Static>` stays monotonic and printed items are never
+  contradicted: the merge only rewrites a message that is still partial AND only
+  while loading, which is exactly the window in which `getStaticCount` (rules 3
+  and 4 in `apps/cli/src/ui/transcript.ts`) cannot have promoted it. No message
+  is ever removed from the store, so `<Static>` indices never shift.
+- The merge map has the lifetime of `seenMessageIds` (cleared on `/new` and on a
+  task switch); the handler mirrors that reset instead of threading a second ref
+  through `useTaskSubmit` and `usePickerHandlers`.
 
 ## Verification
 
@@ -189,22 +224,39 @@ Run from `apps/cli`:
 - `pnpm check-types`, `pnpm lint`: clean.
 - `pnpm knip` from the repo root: clean.
 
-Manual check still owed on a built CLI: ask a short follow-up question of a
-reasoning model that interleaves reasoning and text (GLM at high reasoning
-effort reproduces it within two turns) and confirm one thinking row, one answer
-bullet, no fragment bullet, and that the answer lands in scrollback.
+Manual runs on the built CLI (`apps/cli/dist/index.js`, driven under a pty at
+40x150 by `pexpect` + `pyte`, same provider and model as the report:
+`GLM-5.3-NVFP4` at `192.168.50.194:11111` with `--reasoning-effort high`), four
+turns per run, two of them with a tool call:
 
-## Follow-up, not done here: fix the orphan at the source
+- before the fix: the answer printed twice per turn plus a `Dzi` / `Tak,`
+  fragment bullet and a duplicated `Thinking` row;
+- after the duplicate-only fix: no duplicate, fragment still there (which is how
+  the partial shape of the restart was found);
+- after the merge: one `Thinking` row and one answer bullet per turn, no
+  fragment, across three consecutive runs.
+
+The instrumented run (temporary `TUMBLE_MSG_LOG` trace, removed before commit)
+confirms the guards fire for the right reason: `drop-repeat` once per turn for
+the `completion_result`, and `drop-stale-partial` for the abandoned `Tak` /
+`Dzi` ts on every later state push, which is only possible if the merge
+completed that message.
+
+Unrelated observation from those runs, not touched here: an approved Bash call
+renders two rows (the approval row `Bash(cmd)` with its output and a second
+`Bash` row with the command output), which predates this branch.
+
+## Follow-up, not done here: fix the restart at the source
 
 `Task.say()` could look for the last message of the same say kind that is still
-partial, instead of only checking `clineMessages.at(-1)`. That would remove the
-orphans for every consumer, the webview included (the VS Code chat view renders
-the same abandoned fragment and the duplicated reasoning row).
+partial, instead of only checking `clineMessages.at(-1)`. That would stop the
+abandoned partials for every consumer, the webview included (the VS Code chat
+view renders the same fragment and the duplicated reasoning row).
 
 It is deliberately out of scope here because it changes shared core behavior:
-the backward search must not reach past the current turn (an orphan left by an
+the backward search must not reach past the current turn (a partial left by an
 earlier turn must never be rewritten by a later stream), so it needs a boundary
 such as "stop at the last `user_feedback` or `api_req_started`" plus its own
 evidence and tests. The CLI-side fix above is complete on its own and does not
-depend on it: if the core stops producing orphans, `continuesOrphan` simply
-never fires.
+depend on it: if the core stops abandoning partials, the merge simply never
+fires.

@@ -78,6 +78,11 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 		answer: null,
 		reasoning: null,
 	})
+	// ts (as a string) of a stream the core restarted under a new ts, mapped to
+	// the message that already carries that stream. Every later delivery for the
+	// restarted ts is routed to the merged message, so one answer stays one
+	// message instead of a truncated fragment plus the full text.
+	const mergedStreamIds = useRef<Map<string, string>>(new Map())
 	const firstTextMessageSkipped = useRef(false)
 	// The extension host subscribes to handleExtensionMessage once on mount.
 	// Keep the current session policy in a ref so runtime /permissions changes
@@ -93,8 +98,19 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	 */
 	const handleSayMessage = useCallback(
 		(ts: number, say: ClineSay, text: string, partial: boolean) => {
-			const messageId = ts.toString()
+			const rawMessageId = ts.toString()
 			const isResuming = useCLIStore.getState().isResumingTask
+
+			// `seenMessageIds` is cleared when the task is cleared (/new) or
+			// switched, and the merge map has exactly that lifetime, so mirror the
+			// reset here instead of threading a second ref through every caller.
+			if (seenMessageIds.current.size === 0 && mergedStreamIds.current.size > 0) {
+				mergedStreamIds.current.clear()
+			}
+
+			// Route a delivery for a restarted stream to the message that carries
+			// it (see the merge block below).
+			let messageId = mergedStreamIds.current.get(rawMessageId) ?? rawMessageId
 
 			if (say === "checkpoint_saved") {
 				return
@@ -132,10 +148,50 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			// otherwise our copy stays partial forever and `getStaticCount` never
 			// promotes the message into <Static>, so the answer only ever renders
 			// through the height-clamped dynamic tail and the user cannot read it.
-			const existing = useCLIStore.getState().messages.find((m) => m.id === messageId)
-			const isFinalizingExisting = !partial && existing?.partial === true
+			let existing = useCLIStore.getState().messages.find((m) => m.id === messageId)
 			const streamClass = streamClassOf(say)
 			const streamed = streamClass ? lastStreamed.current[streamClass] : null
+
+			// Merge a stream the core restarted under a new ts.
+			//
+			// `Task.say()` only continues a partial in place while that partial is
+			// still the LAST message (TaskAskSay.ts:551-554). A model that
+			// interleaves reasoning and text breaks that condition, so the core
+			// appends a NEW message for the rest of the same answer and abandons
+			// the old one, which keeps `partial: true` for the rest of the task.
+			// Rendering both puts a truncated fragment ("Dzi") above the full
+			// answer, and the abandoned partial also keeps every later message out
+			// of the static scrollback.
+			//
+			// The rest of a stream always starts with what we have already rendered
+			// for it, because the core re-says the whole accumulated block on every
+			// chunk. That prefix test is what separates a restarted stream from a
+			// genuinely new message (a second text block after a tool call does not
+			// repeat the first one).
+			//
+			// Only while the turn is streaming: `getStaticCount` never promotes a
+			// partial message while loading, so the message we merge into is
+			// guaranteed to be still re-rendered. Once idle it may already be
+			// printed into scrollback, where nothing can rewrite it (ink's <Static>
+			// prints each item once), so the delivery has to render on its own.
+			if (
+				!existing &&
+				streamed &&
+				streamed.id !== messageId &&
+				text !== "" &&
+				text.startsWith(streamed.text) &&
+				useCLIStore.getState().isLoading
+			) {
+				const restarted = useCLIStore.getState().messages.find((m) => m.id === streamed.id)
+
+				if (restarted?.partial === true) {
+					mergedStreamIds.current.set(rawMessageId, streamed.id)
+					messageId = streamed.id
+					existing = restarted
+				}
+			}
+
+			const isFinalizingExisting = !partial && existing?.partial === true
 
 			// A partial delivery for a message we already rendered as complete is
 			// stale: the core keeps the abandoned partial in `clineMessages`
@@ -183,61 +239,43 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				role = "thinking"
 			}
 
-			// Collapse a stream the core could not finalize in place.
-			//
-			// `Task.say()` only replaces a partial with its complete version when
-			// that partial is still the LAST message (TaskAskSay.ts:551-554). A
-			// model that interleaves reasoning and text breaks that condition, so
-			// the core appends the complete version under a NEW ts and leaves the
-			// partial behind as an orphan that stays `partial: true` forever.
-			// Rendering both gives the transcript a truncated fragment ("Tak")
-			// above the full answer, and the orphan's partial flag keeps the whole
-			// rest of the session out of the static scrollback.
-			//
-			// Two shapes of that follow-up delivery are recognised:
-			//  - `continuesOrphan`: the tracked message is still partial and the
-			//    new text starts with what we rendered for it, i.e. this IS the
-			//    rest of the same stream (the orphan text is always a prefix,
-			//    because the core re-says the whole accumulated block);
-			//  - `repeatsLastAnswer`: byte-identical text under a new ts, which is
-			//    the answer repeated inside attempt_completion's result (say:text
-			//    then say:completion_result). This one fires even when the tracked
-			//    message is already complete, and is the older dedupe this fix
-			//    keeps intact.
-			// Either way the new delivery carries the COMPLETE text, so it is
-			// applied to the message already on screen and its own id is dropped.
-			// A same-ts finalization is neither: it is the completion of the very
-			// message it repeats, so it skips this block and falls through to
-			// addMessage.
-			const orphan =
+			// Deduplicate an answer repeated under a new ts with identical text.
+			// Models (GLM especially) repeat the whole answer inside
+			// attempt_completion's result, so the core emits say:text and then
+			// say:completion_result with byte-identical text and both would render
+			// as an assistant bullet. Unlike the merge above this also fires when
+			// the message we already rendered is complete, and it never needs the
+			// loading guard: the text is identical, so nothing can be lost by
+			// dropping the repeat, even if the original is already in scrollback.
+			// A same-ts finalization is not a repeat: it is the completion of the
+			// very message it repeats, so it falls through to addMessage.
+			const repeated =
 				streamed && streamed.id !== messageId
 					? useCLIStore.getState().messages.find((m) => m.id === streamed.id)
 					: undefined
-			const continuesOrphan =
-				!!streamed && orphan?.partial === true && text !== "" && text.startsWith(streamed.text)
-			const repeatsLastAnswer = streamClass === "answer" && streamed?.text === text && text !== ""
 
 			if (
-				streamClass &&
+				streamClass === "answer" &&
 				streamed &&
 				!partial &&
 				!isFinalizingExisting &&
-				(continuesOrphan || repeatsLastAnswer)
+				streamed.text === text &&
+				text !== ""
 			) {
 				seenMessageIds.current.add(messageId)
 
-				// Re-adding the store copy (rather than calling updateMessage) also
-				// drops any partial chunk still queued in the store's 150 ms
-				// debounce, which would otherwise flip the message back to partial
-				// a moment later.
-				if (orphan?.partial === true) {
-					addMessage({ ...orphan, content: text, partial: false })
+				// The repeat carries the COMPLETE text, so it is also the
+				// finalization the core could not apply in place. Re-adding the
+				// store copy (rather than calling updateMessage) also drops any
+				// partial chunk still queued in the store's 150 ms debounce, which
+				// would otherwise flip the message back to partial a moment later.
+				if (repeated?.partial === true) {
+					addMessage({ ...repeated, content: text, partial: false })
 				}
 
-				// The message on screen now shows this text, so the marker has to
-				// describe it; the id keeps pointing at that message, not at the
+				// The marker keeps pointing at the message on screen, not at the
 				// delivery we just dropped.
-				lastStreamed.current[streamClass] = { id: streamed.id, text }
+				lastStreamed.current.answer = { id: streamed.id, text }
 				return
 			}
 
