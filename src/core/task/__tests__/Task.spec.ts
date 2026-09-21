@@ -1,5 +1,6 @@
 // npx vitest core/task/__tests__/Task.spec.ts
 
+import * as fs from "fs"
 import * as os from "os"
 import * as path from "path"
 
@@ -169,6 +170,12 @@ vi.mock("../../condense", async (importOriginal) => {
 	}
 })
 // Mock storagePathManager to prevent dynamic import issues.
+// getStorageBasePath is deliberately NOT mocked: the real ClineProvider used
+// as mockProvider acquires a TaskHistoryStore in its constructor, and the
+// missing export makes that init fail fast BEFORE the store starts fs
+// watchers and self-rescheduling reconcile timers. Completing the mock
+// activates that machinery for every constructed provider and hangs the
+// fake-timer condense tests (runAllTimers loops on the reconcile timer).
 vi.mock("../../../utils/storage", () => ({
 	getTaskDirectoryPath: vi
 		.fn()
@@ -192,6 +199,27 @@ const mockMessages = [
 		text: "historical task",
 	},
 ]
+
+// Several describes below use a REAL ClineProvider as their mock provider, so
+// completing/aborting a task fires the real memory background writers
+// (extraction + autoDream). Those are irrelevant here: autoDream's
+// getTaskHistory round-trip hits the incomplete utils/storage mock and logs
+// "[memory] autoDream trigger failed" after every abort-path test. Kill the
+// writers via the env master switch (TaskLifecycle gates on it before doing
+// any work); save/restore because the Windows CI single fork shares
+// process.env across all test files.
+let priorDisableAutoMemory: string | undefined
+beforeAll(() => {
+	priorDisableAutoMemory = process.env.ROO_DISABLE_AUTO_MEMORY
+	process.env.ROO_DISABLE_AUTO_MEMORY = "1"
+})
+afterAll(() => {
+	if (priorDisableAutoMemory === undefined) {
+		delete process.env.ROO_DISABLE_AUTO_MEMORY
+	} else {
+		process.env.ROO_DISABLE_AUTO_MEMORY = priorDisableAutoMemory
+	}
+})
 
 describe("Cline", () => {
 	let mockProvider: any
@@ -395,7 +423,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(cline as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				const mockStream = {
 					async *[Symbol.asyncIterator]() {
@@ -466,7 +494,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(withImages as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(withImages.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(withImages.api, "getModel").mockReturnValue({
 					id: "claude-3-sonnet",
@@ -489,7 +517,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(withoutImages as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(withoutImages.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(withoutImages.api, "getModel").mockReturnValue({
 					id: "gpt-3.5-turbo",
@@ -568,7 +596,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(cline as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock delay to track countdown timing
 				const mockDelay = vi.fn().mockResolvedValue(undefined)
@@ -656,7 +684,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(cline as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock delay to track countdown timing
 				const mockDelay = vi.fn().mockResolvedValue(undefined)
@@ -891,7 +919,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -928,7 +956,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Spy on child.say to verify the emitted message type
 				const saySpy = vi.spyOn(child.askSay, "say")
@@ -980,7 +1008,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -1017,7 +1045,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1037,7 +1065,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -1071,7 +1099,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child1 as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child1.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child1.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1095,7 +1123,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child2 as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child2.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child2.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1122,7 +1150,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -1156,7 +1184,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1176,7 +1204,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(task as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(task.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -2076,6 +2104,81 @@ describe("pushToolResultToUserContent", () => {
 		expect(task.userMessageContent[0].type).toBe("text")
 		expect(task.userMessageContent[1].type).toBe("image")
 		expect(task.userMessageContent[2]).toEqual(toolResult)
+	})
+
+	describe("tool-result spill policy", () => {
+		/** 400 padded lines: comfortably over any inline budget used here. */
+		const hugeResult = Array.from({ length: 400 }, (_, index) => `line-${index + 1}`.padEnd(80, "x")).join("\n")
+
+		const artifactsDirFor = (taskId: string) => path.join(os.tmpdir(), "test-storage", "tasks", taskId, "artifacts")
+
+		it("spills an oversized tool result and leaves a preview that cites the artifact", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			await task.ensureToolResultSpill(1024)
+
+			task.pushToolResultToUserContent(
+				{ type: "tool_result", tool_use_id: "spill-id", content: hugeResult },
+				{ toolName: "search_files" },
+			)
+
+			const pushed = task.userMessageContent[0] as Anthropic.ToolResultBlockParam
+			const content = pushed.content as string
+
+			expect(content).toMatch(/^\[Tool result: \d+ KB, showing first \d+ and last \d+ lines\./)
+			expect(content).toContain("Use read_artifact (search/offset/limit) to inspect the rest.]")
+			expect(content.length).toBeLessThan(hugeResult.length)
+
+			const artifactId = content.match(/artifact "([^"]+)"/)?.[1]
+			expect(artifactId).toMatch(/^tool-\d+\.txt$/)
+
+			const artifactPath = path.join(artifactsDirFor(task.taskId), artifactId!)
+			expect(fs.readFileSync(artifactPath, "utf8")).toBe(hugeResult)
+
+			fs.rmSync(artifactsDirFor(task.taskId), { recursive: true, force: true })
+		})
+
+		it("never spills a protocol tool's result", async () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			await task.ensureToolResultSpill(1024)
+
+			task.pushToolResultToUserContent(
+				{ type: "tool_result", tool_use_id: "bypass-id", content: hugeResult },
+				{ toolName: "attempt_completion" },
+			)
+
+			const pushed = task.userMessageContent[0] as Anthropic.ToolResultBlockParam
+			expect(pushed.content).toBe(hugeResult)
+			expect(fs.existsSync(artifactsDirFor(task.taskId))).toBe(false)
+		})
+
+		it("keeps everything inline until the policy is prepared", () => {
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+
+			task.pushToolResultToUserContent(
+				{ type: "tool_result", tool_use_id: "unprepared-id", content: hugeResult },
+				{ toolName: "search_files" },
+			)
+
+			const pushed = task.userMessageContent[0] as Anthropic.ToolResultBlockParam
+			expect(pushed.content).toBe(hugeResult)
+		})
 	})
 })
 

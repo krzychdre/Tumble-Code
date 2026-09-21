@@ -86,7 +86,7 @@ __setMockImplementation(
 		// Add language preference if provided
 		if (options?.language) {
 			sections.push(
-				`Language Preference:\nYou should always speak and think in the "${options.language}" language.`,
+				`Language Preference:\nWrite your replies in the language the user writes to you in. If the user's language is unclear, write in the "${options.language}" language.`,
 			)
 		}
 
@@ -316,7 +316,7 @@ describe("SYSTEM_PROMPT", () => {
 		)
 
 		expect(prompt).toContain("Language Preference:")
-		expect(prompt).toContain('You should always speak and think in the "es" language')
+		expect(prompt).toContain('write in the "es" language')
 
 		// Reset mock
 		vscode.env = { language: "en" }
@@ -344,7 +344,10 @@ describe("SYSTEM_PROMPT", () => {
 		}))
 	})
 
-	it("should include custom mode role definition at top and instructions at bottom", async () => {
+	// WS-F moved the role definition out of the opening bytes and into the MODE
+	// section of the variable tail, so the stable head is byte-identical across
+	// modes. The assertions below were flipped deliberately when that landed.
+	it("should include custom mode role definition in the tail and instructions at bottom", async () => {
 		const modeCustomInstructions = "Custom mode instructions"
 
 		const customModes: ModeConfig[] = [
@@ -372,8 +375,9 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // rooIgnoreInstructions
 		)
 
-		// Role definition should be at the top
-		expect(prompt.indexOf("Custom role definition")).toBeLessThan(prompt.indexOf("TOOL USE"))
+		// Role definition now lives in the MODE section, after the stable head
+		expect(prompt.indexOf("Custom role definition")).toBeGreaterThan(prompt.indexOf("TOOL USE"))
+		expect(prompt.indexOf("====\n\nMODE\n\nCustom role definition")).toBeGreaterThan(-1)
 
 		// Custom instructions should be at the bottom
 		const customInstructionsIndex = prompt.indexOf("Custom mode instructions")
@@ -406,8 +410,8 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // rooIgnoreInstructions
 		)
 
-		// Role definition from promptComponent should be at the top
-		expect(prompt.indexOf("Custom prompt role definition")).toBeLessThan(prompt.indexOf("TOOL USE"))
+		// Role definition from promptComponent should be in the MODE section (tail)
+		expect(prompt.indexOf("Custom prompt role definition")).toBeGreaterThan(prompt.indexOf("TOOL USE"))
 		// Should not contain the default mode's role definition
 		expect(prompt).not.toContain(modes[0].roleDefinition)
 	})
@@ -435,8 +439,8 @@ describe("SYSTEM_PROMPT", () => {
 			undefined, // rooIgnoreInstructions
 		)
 
-		// Should use the default mode's role definition
-		expect(prompt.indexOf(modes[0].roleDefinition)).toBeLessThan(prompt.indexOf("TOOL USE"))
+		// Should use the default mode's role definition, in the MODE section (tail)
+		expect(prompt.indexOf(modes[0].roleDefinition)).toBeGreaterThan(prompt.indexOf("TOOL USE"))
 	})
 
 	it("should exclude update_todo_list tool when todoListEnabled is false", async () => {

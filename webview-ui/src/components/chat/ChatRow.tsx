@@ -47,7 +47,13 @@ import { Markdown } from "./Markdown"
 import { CommandExecution } from "./CommandExecution"
 import { CommandExecutionError } from "./CommandExecutionError"
 import { AutoApprovedRequestLimitWarning } from "./AutoApprovedRequestLimitWarning"
-import { InProgressRow, CondensationResultRow, CondensationErrorRow, TruncationResultRow } from "./context-management"
+import {
+	InProgressRow,
+	CondensationResultRow,
+	CondensationErrorRow,
+	TruncationResultRow,
+	PruneResultRow,
+} from "./context-management"
 import CodebaseSearchResultsDisplay from "./CodebaseSearchResultsDisplay"
 import { appendImages } from "@src/utils/imageUtils"
 import { McpExecution } from "./McpExecution"
@@ -74,6 +80,7 @@ import {
 	Check,
 	MessageSquarePlus,
 	ClipboardCheck,
+	History,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PathTooltip } from "../ui/PathTooltip"
@@ -119,7 +126,7 @@ interface ChatRowProps {
 	isExpanded: boolean
 	isLast: boolean
 	isStreaming: boolean
-	onToggleExpand: (ts: number) => void
+	onToggleExpand: (ts: number, expand?: boolean) => void
 	onHeightChange: (isTaller: boolean) => void
 	onSuggestionClick?: (suggestion: SuggestionItem, event?: React.MouseEvent) => void
 	onBatchFileResponse?: (response: { [key: string]: boolean }) => void
@@ -208,9 +215,14 @@ export const ChatRowContent = ({
 	}, [isEditing, message.ts])
 
 	// Memoized callback to prevent re-renders caused by inline arrow functions.
+	// The target state is passed explicitly and derived from what is on screen,
+	// not from the parent's map: a row that opens by default (a command ask
+	// waiting for approval) has no entry there yet, so a bare flip would compute
+	// !undefined === true and leave the row open on the first click. For rows
+	// without a default the result is the same as flipping the stored value.
 	const handleToggleExpand = useCallback(() => {
-		onToggleExpand(message.ts)
-	}, [onToggleExpand, message.ts])
+		onToggleExpand(message.ts, !isExpanded)
+	}, [onToggleExpand, message.ts, isExpanded])
 
 	// Handle edit button click
 	const handleEditClick = useCallback(() => {
@@ -577,6 +589,39 @@ export const ChatRowContent = ({
 									values={{ query: tool.query }}
 								/>
 							)}
+						</span>
+					</div>
+				)
+			}
+			case "webSearch": {
+				const queries = Array.isArray(tool.queries) ? tool.queries.join(", ") : ""
+				return (
+					<div style={headerStyle}>
+						{toolIcon("search")}
+						<span style={{ fontWeight: "bold" }}>
+							<Trans
+								i18nKey={
+									message.type === "ask" ? "chat:webSearch.wantsToSearch" : "chat:webSearch.didSearch"
+								}
+								components={{ code: <code></code> }}
+								values={{ queries }}
+							/>
+						</span>
+					</div>
+				)
+			}
+			case "webFetch": {
+				return (
+					<div style={headerStyle}>
+						{toolIcon("globe")}
+						<span style={{ fontWeight: "bold" }}>
+							<Trans
+								i18nKey={
+									message.type === "ask" ? "chat:webFetch.wantsToFetch" : "chat:webFetch.didFetch"
+								}
+								components={{ code: <code></code> }}
+								values={{ url: tool.fetchedUrl }}
+							/>
 						</span>
 					</div>
 				)
@@ -1426,6 +1471,14 @@ export const ChatRowContent = ({
 						return <TruncationResultRow data={message.contextTruncation} />
 					}
 					return null
+				case "context_pruned":
+					// Deterministic prune: old oversized tool results moved to task
+					// artifacts. There is no in-progress state, the pass is local
+					// and finishes in milliseconds.
+					if (message.contextPrune) {
+						return <PruneResultRow data={message.contextPrune} />
+					}
+					return null
 				case "codebase_search_result":
 					let parsed: {
 						content: {
@@ -1541,6 +1594,22 @@ export const ChatRowContent = ({
 								</>
 							)
 						}
+						case "searchTaskHistory": {
+							return (
+								<div style={headerStyle}>
+									<History className="w-4 shrink-0" aria-label="Search task history icon" />
+									<span style={{ fontWeight: "bold" }}>{t("chat:searchTaskHistory.title")}</span>
+									{sayTool.query && (
+										<span
+											className="text-xs ml-1"
+											style={{ color: "var(--vscode-descriptionForeground)" }}>
+											({sayTool.query})
+										</span>
+									)}
+								</div>
+							)
+						}
+						case "readArtifact":
 						case "readCommandOutput": {
 							const formatBytes = (bytes: number) => {
 								if (bytes < 1024) return `${bytes} B`
@@ -1574,8 +1643,12 @@ export const ChatRowContent = ({
 
 							return (
 								<div style={headerStyle}>
-									<FileCode2 className="w-4 shrink-0" aria-label="Read command output icon" />
-									<span style={{ fontWeight: "bold" }}>{t("chat:readCommandOutput.title")}</span>
+									<FileCode2 className="w-4 shrink-0" aria-label="Read artifact icon" />
+									<span style={{ fontWeight: "bold" }}>
+										{sayTool.tool === "readArtifact"
+											? t("chat:readArtifact.title")
+											: t("chat:readCommandOutput.title")}
+									</span>
 									{infoText && (
 										<span
 											className="text-xs ml-1"
@@ -1653,6 +1726,8 @@ export const ChatRowContent = ({
 							text={message.text}
 							icon={icon}
 							title={title}
+							isExpanded={isExpanded}
+							onToggleExpand={handleToggleExpand}
 						/>
 					)
 				case "use_mcp_server":

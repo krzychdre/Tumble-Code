@@ -1,4 +1,4 @@
-import { useCallback, useState, memo, useMemo } from "react"
+import { useCallback, useState, useMemo } from "react"
 import { useEvent } from "react-use"
 import { t } from "i18next"
 import { ChevronDown, OctagonX } from "lucide-react"
@@ -36,22 +36,29 @@ interface CommandExecutionProps {
 	text?: string
 	icon?: JSX.Element | null
 	title?: JSX.Element | null
+	// Expansion is owned by the chat row (ChatView's expandedRows map keyed by
+	// message ts), exactly like the other collapsible rows, so the choice
+	// survives virtualized unmount/remount and defaults to collapsed. The
+	// chevron hides the whole body: the command, its output and the pattern
+	// selector. A command can itself be dozens of lines (a script passed
+	// through a heredoc), so leaving it mounted kept the row half a screen
+	// tall even with the output collapsed.
+	isExpanded?: boolean
+	onToggleExpand?: () => void
 }
 
-export const CommandExecution = ({ executionId, text, icon, title }: CommandExecutionProps) => {
-	const {
-		terminalShellIntegrationDisabled = false,
-		allowedCommands = [],
-		deniedCommands = [],
-		setAllowedCommands,
-		setDeniedCommands,
-	} = useExtensionState()
+export const CommandExecution = ({
+	executionId,
+	text,
+	icon,
+	title,
+	isExpanded = false,
+	onToggleExpand,
+}: CommandExecutionProps) => {
+	const { allowedCommands = [], deniedCommands = [], setAllowedCommands, setDeniedCommands } = useExtensionState()
 
 	const { command, output: parsedOutput } = useMemo(() => parseCommandAndOutput(text), [text])
 
-	// If we aren't opening the VSCode terminal for this command then we default
-	// to expanding the command execution output.
-	const [isExpanded, setIsExpanded] = useState(terminalShellIntegrationDisabled)
 	const [streamingOutput, setStreamingOutput] = useState("")
 	// Initialize from the module-level cache so that components mounting after
 	// the "started" event was delivered still show the running indicator.
@@ -61,6 +68,23 @@ export const CommandExecution = ({ executionId, text, icon, title }: CommandExec
 	// task message (this is the case for completed commands) or from the
 	// streaming output (this is the case for running commands).
 	const output = streamingOutput || parsedOutput
+
+	// A collapsed row hides the command itself, so the header carries a one-line
+	// preview to say what is folded away. Blank lines are skipped (a script
+	// passed through a heredoc often starts with one) and the ellipsis marks
+	// that further lines follow.
+	const commandPreview = useMemo(() => {
+		const lines = command
+			.split("\n")
+			.map((line) => line.trim())
+			.filter((line) => line.length > 0)
+
+		if (lines.length === 0) {
+			return ""
+		}
+
+		return lines.length > 1 ? `${lines[0]}…` : lines[0]
+	}, [command])
 
 	// Extract command patterns from the actual command that was executed
 	const commandPatterns = useMemo<CommandPattern[]>(() => {
@@ -157,7 +181,8 @@ export const CommandExecution = ({ executionId, text, icon, title }: CommandExec
 							// Not a terminal state -- signals a mid-execution retry
 							// via execa after a shell integration failure. A new
 							// "started" event will follow, so leave the cache intact.
-							setIsExpanded(true)
+							// The output stays collapsed; the user opens it with the
+							// chevron like any other row.
 							break
 						case "output":
 							setStreamingOutput(data.output)
@@ -177,7 +202,7 @@ export const CommandExecution = ({ executionId, text, icon, title }: CommandExec
 	return (
 		<>
 			<div className="flex flex-row items-center justify-between gap-2 mb-1">
-				<div className="flex flex-row items-center gap-2">
+				<div className="flex flex-row items-center gap-2 min-w-0 flex-1">
 					{icon}
 					{title}
 					{status?.status === "started" && (
@@ -205,6 +230,11 @@ export const CommandExecution = ({ executionId, text, icon, title }: CommandExec
 							</StandardTooltip>
 						</div>
 					)}
+					{!isExpanded && commandPreview && (
+						<div className="font-mono text-xs text-vscode-descriptionForeground truncate min-w-0">
+							{commandPreview}
+						</div>
+					)}
 				</div>
 				<div className=" flex flex-row items-center justify-between gap-2 px-1">
 					<div className="flex flex-row items-center gap-1">
@@ -226,52 +256,54 @@ export const CommandExecution = ({ executionId, text, icon, title }: CommandExec
 								</StandardTooltip>
 							</div>
 						)}
-						{output.length > 0 && (
-							<Button variant="ghost" size="icon" onClick={() => setIsExpanded(!isExpanded)}>
-								<ChevronDown
-									className={cn(
-										"size-4 transition-transform duration-300",
-										isExpanded && "rotate-180",
-									)}
-								/>
-							</Button>
-						)}
+						{/* Always shown: a row always has a command to fold away, even
+						    before any output has arrived. */}
+						<Button
+							variant="ghost"
+							size="icon"
+							aria-label={t(
+								isExpanded
+									? "chat:commandExecution.collapseCommand"
+									: "chat:commandExecution.expandCommand",
+							)}
+							aria-expanded={isExpanded}
+							onClick={onToggleExpand}>
+							<ChevronDown
+								className={cn("size-4 transition-transform duration-300", isExpanded && "rotate-180")}
+							/>
+						</Button>
 					</div>
 				</div>
 			</div>
 
-			<div className="bg-vscode-editor-background border border-vscode-border rounded-xs ml-6 mt-2">
-				<div className="p-2">
-					<CodeBlock source={command} language="shell" />
-					<OutputContainer isExpanded={isExpanded} output={output} />
+			{/* Nothing below the header is mounted while collapsed: no code block,
+			    no ANSI conversion of the output, no pattern selector. */}
+			{isExpanded && (
+				<div className="bg-vscode-editor-background border border-vscode-border rounded-xs ml-6 mt-2">
+					<div className="p-2">
+						<CodeBlock source={command} language="shell" />
+						{output.length > 0 && (
+							<div className="mt-1 pt-1 border-t border-border/25">
+								<TerminalOutput content={output} />
+							</div>
+						)}
+					</div>
+					{command && command.trim() && (
+						<CommandPatternSelector
+							patterns={commandPatterns}
+							allowedCommands={allowedCommands}
+							deniedCommands={deniedCommands}
+							onAllowPatternChange={handleAllowPatternChange}
+							onDenyPatternChange={handleDenyPatternChange}
+						/>
+					)}
 				</div>
-				{command && command.trim() && (
-					<CommandPatternSelector
-						patterns={commandPatterns}
-						allowedCommands={allowedCommands}
-						deniedCommands={deniedCommands}
-						onAllowPatternChange={handleAllowPatternChange}
-						onDenyPatternChange={handleDenyPatternChange}
-					/>
-				)}
-			</div>
+			)}
 		</>
 	)
 }
 
 CommandExecution.displayName = "CommandExecution"
-
-const OutputContainerInternal = ({ isExpanded, output }: { isExpanded: boolean; output: string }) => (
-	<div
-		className={cn("overflow-hidden", {
-			"max-h-0": !isExpanded,
-			"max-h-[100%] mt-1 pt-1 border-t border-border/25": isExpanded,
-		})}>
-		{output.length > 0 && <TerminalOutput content={output} />}
-	</div>
-)
-
-const OutputContainer = memo(OutputContainerInternal)
 
 const parseCommandAndOutput = (text: string | undefined) => {
 	if (!text) {

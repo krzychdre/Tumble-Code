@@ -29,6 +29,7 @@ import {
 	executeAutoDream,
 	drainPendingDreams,
 	renderTranscript,
+	isAutoMemoryEnabled,
 	type AutoDreamConfig,
 	type TranscriptMessage,
 } from "../memory"
@@ -685,6 +686,10 @@ export class TaskLifecycle {
 	 * headless, write-sandboxed background task that actually persists memories.
 	 */
 	public triggerMemoryBackgroundWriters(): void {
+		// Both writers hard-gate on the memory master switch internally, but the
+		// prep work here (renderTranscript + a getTaskHistory round-trip) is not
+		// free. Bail before doing any of it when memory is off.
+		if (!isAutoMemoryEnabled()) return
 		const provider = this.access.providerRef.deref()
 		if (!provider) return
 		// The provider's `memorySubTaskRunner` spawns a headless, write-sandboxed
@@ -812,7 +817,13 @@ export class TaskLifecycle {
 			console.error("Error releasing terminals:", error)
 		}
 
-		// Cleanup command output artifacts
+		// Cleanup command output artifacts.
+		//
+		// Deliberately NOT extended to the `artifacts/` directory: dispose() also
+		// runs when the user stops a task, and the very same task can be rehydrated
+		// afterwards with a history that still cites its spilled artifacts. Those
+		// files are reclaimed when the task itself is deleted, because
+		// `deleteTaskWithId` removes the whole task directory.
 		getTaskDirectoryPath(this.access.globalStoragePath, this.access.taskId)
 			.then((taskDir) => {
 				const outputDir = path.join(taskDir, "command-output")

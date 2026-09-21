@@ -41,6 +41,7 @@ const TUMBLE_TOOLS: Record<string, ActionKind> = {
 	search_and_replace: "write",
 	search_replace: "write",
 	execute_command: "command",
+	read_artifact: "command",
 	read_command_output: "command",
 	search_files: "search",
 	codebase_search: "search",
@@ -50,6 +51,8 @@ const TUMBLE_TOOLS: Record<string, ActionKind> = {
 	run_parallel_tasks: "delegate",
 	attempt_completion: "complete",
 	browser_action: "web",
+	web_search: "web",
+	web_fetch: "web",
 	use_mcp_tool: "other",
 	access_mcp_resource: "other",
 	switch_mode: "other",
@@ -242,9 +245,7 @@ function fromXml(text: string, messageIndex: number): ToolAction[] {
 	const actions: ToolAction[] = []
 
 	for (const tool of XML_TOOL_NAMES) {
-		const pattern = new RegExp(`<${tool}>([\\s\\S]*?)</${tool}>`, "g")
-
-		for (const body of matchAll(text, pattern)) {
+		for (const body of extractTagContents(text, `<${tool}>`, `</${tool}>`)) {
 			const kind = actionKindOf(tool)
 			const action: ToolAction = { kind, tool, messageIndex }
 			const paths = unique([
@@ -277,6 +278,49 @@ function fromXml(text: string, messageIndex: number): ToolAction[] {
 	}
 
 	return actions.sort((a, b) => a.tool.localeCompare(b.tool))
+}
+
+/**
+ * Extract the inner content of every `<open>...</close>` pair in `input`,
+ * matching the lazy `[\\s\\S]*?` semantics of the original
+ * `new RegExp(\`<tag>([\\s\\S]*?)</tag>\`, "g")` but with a monotonic
+ * `indexOf` scan that is O(n) instead of O(n²) on orphan open tags.
+ *
+ * Why this exists: the dynamic regex built from `XML_TOOL_NAMES` flagged
+ * CodeQL alert #16 (polynomial ReDoS). Empirically, `"<read_file>".repeat(n)`
+ * with no close tag made `String.matchAll` quadratic (n=1000→10000 was ~x103,
+ * n=10000→20000 was ~x4). This scanner is ~7500× faster at n=10000 and stays
+ * linear. `XML_TOOL_NAMES` are constant plain `[a-z_]+` identifiers, so there
+ * is no regex-injection angle; the scan matches the tags literally.
+ *
+ * Empty/whitespace-only captures are dropped, identical to the old `matchAll`
+ * wrapper which called `.trim()` and skipped falsy values.
+ */
+function extractTagContents(input: string, openTag: string, closeTag: string): string[] {
+	const results: string[] = []
+	const openLen = openTag.length
+	const closeLen = closeTag.length
+	let searchFrom = 0
+	let openIdx = input.indexOf(openTag, searchFrom)
+
+	while (openIdx !== -1) {
+		const closeIdx = input.indexOf(closeTag, openIdx + openLen)
+
+		if (closeIdx === -1) {
+			break
+		}
+
+		const value = input.slice(openIdx + openLen, closeIdx).trim()
+
+		if (value) {
+			results.push(value)
+		}
+
+		searchFrom = closeIdx + closeLen
+		openIdx = input.indexOf(openTag, searchFrom)
+	}
+
+	return results
 }
 
 function matchAll(input: string, pattern: RegExp): string[] {
