@@ -1,6 +1,6 @@
 {
 	"name": "@tumble-code/cli",
-	"version": "0.1.17",
+	"version": "0.2.0",
 	"description": "Tumble Code CLI - Run the Tumble Code agent from the command line",
 	"private": true,
 	"type": "module",
