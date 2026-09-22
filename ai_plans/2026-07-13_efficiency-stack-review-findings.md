@@ -137,6 +137,11 @@ safety WS-5 was built for.
 
 **Severity: no action required.** Shared-helper extraction is optional polish.
 
+> **Superseded 2026-09-10.** Measured over 956 stored tasks, the unconditional gate misfired on
+> the standard finishing pattern (last reminder "In Progress" = the delivery itself) and cost a
+> full regeneration turn each time. The gate now blocks on `pending` items only; see
+> [2026-09-10_text-completion-single-result.md](2026-09-10_text-completion-single-result.md).
+
 ---
 
 ### I-4. WS-5 missing the required subtask e2e — IMPLEMENT
