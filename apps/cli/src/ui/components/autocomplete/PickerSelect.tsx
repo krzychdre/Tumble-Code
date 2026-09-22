@@ -121,7 +121,12 @@ export function PickerSelect<T extends AutocompleteItem>({
 				return
 			}
 
-			if (key.return) {
+			// Enter and Tab both accept the highlighted item. Tab has to be
+			// handled here rather than in AutocompleteInput: while the picker is
+			// open the whole input area is rendered with isActive={false}
+			// (App.tsx), so no handler inside it receives a key press at all.
+			// Shift+Tab is excluded because it cycles modes.
+			if (key.return || (key.tab && !key.shift)) {
 				const selected = results[selectedIndex]
 				if (selected) {
 					onSelect(selected)

@@ -223,8 +223,10 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 				return
 			}
 
-			// Select current item on Enter or Tab
-			if (key.return || key.tab) {
+			// Select current item on Enter or Tab. Shift+Tab is excluded: it is
+			// the mode-cycling shortcut, and accepting an item with it would make
+			// the same key press mean two different things.
+			if (key.return || (key.tab && !key.shift)) {
 				const selected = pickerState.results[pickerState.selectedIndex]
 
 				if (selected) {

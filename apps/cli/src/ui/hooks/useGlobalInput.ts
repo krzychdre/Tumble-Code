@@ -25,7 +25,8 @@ export interface UseGlobalInputOptions {
  *
  * Shortcuts:
  * - Ctrl+C: Double-press to exit
- * - Ctrl+M: Cycle through available modes
+ * - Shift+Tab: Cycle through available modes (only while no picker is open,
+ *   because Tab belongs to the picker then)
  * - Ctrl+T: Toggle TODO list viewer
  * - Ctrl+O: Toggle the verbose transcript (reprints it expanded into scrollback)
  * - Escape: Cancel task (when loading) or close TODO viewer
@@ -71,9 +72,15 @@ export function useGlobalInput({
 
 	// Handle global keyboard shortcuts
 	useInput((input, key) => {
-		// Ctrl+M to cycle through modes (only when not loading and we have available modes)
+		// Shift+Tab to cycle through modes (only when not loading and we have available modes)
 		// Uses centralized global input sequence detection
-		if (matchesGlobalSequence(input, key, "ctrl-m")) {
+		if (matchesGlobalSequence(input, key, "cycle-mode")) {
+			// While a picker is open, Tab accepts the highlighted item, so leave
+			// the whole Tab family to the picker.
+			if (pickerIsOpen) {
+				return
+			}
+
 			// Don't allow mode switching while a task is in progress (loading)
 			if (isLoading) {
 				showInfo("Cannot switch modes while task is in progress", 2000)
