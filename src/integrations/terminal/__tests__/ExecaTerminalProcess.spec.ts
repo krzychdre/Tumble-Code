@@ -117,6 +117,59 @@ describe("ExecaTerminalProcess", () => {
 		})
 	})
 
+	describe("keeping the command away from the terminal", () => {
+		// A command that wants credentials opens /dev/tty by path, so closing
+		// stdin does not stop it. Its own session does: /dev/tty then cannot be
+		// opened at all, and the command fails instead of taking the keyboard
+		// away from the CLI that is drawing on that same terminal.
+		it("gives the command its own session on POSIX, but never on Windows", async () => {
+			await terminalProcess.run("git clone https://example.com/private.git")
+			const calledOptions = vitest.mocked(execa).mock.calls[0][0] as any
+			// `detached` means "new console window" on Windows, so it stays off there.
+			expect(calledOptions.detached).toBe(process.platform !== "win32")
+		})
+
+		it("asks git, ssh and pagers to fail rather than wait for a terminal", async () => {
+			await terminalProcess.run("git clone https://example.com/private.git")
+			const calledOptions = vitest.mocked(execa).mock.calls[0][0] as any
+			expect(calledOptions.env).toMatchObject({
+				GIT_TERMINAL_PROMPT: "0",
+				SSH_ASKPASS_REQUIRE: "never",
+				PAGER: "cat",
+				GIT_PAGER: "cat",
+			})
+			expect(calledOptions.stdin).toBe("ignore")
+		})
+
+		it("overrides an inherited SSH_ASKPASS_REQUIRE that would open a desktop dialog", async () => {
+			process.env.SSH_ASKPASS_REQUIRE = "force"
+			terminalProcess = new ExecaTerminalProcess(mockTerminal)
+			await terminalProcess.run("ssh example.com true")
+			const calledOptions = vitest.mocked(execa).mock.calls[0][0] as any
+			expect(calledOptions.env.SSH_ASKPASS_REQUIRE).toBe("never")
+		})
+	})
+
+	describe("abort", () => {
+		it("signals the whole process group, not just the shell", async () => {
+			if (process.platform === "win32") {
+				return
+			}
+
+			const killSpy = vitest.spyOn(process, "kill").mockImplementation(() => true)
+
+			try {
+				await terminalProcess.run("sleep 100")
+				terminalProcess.abort()
+				// Negative pid means "every process in the group", which covers
+				// children spawned after the psTree walk below started.
+				expect(killSpy).toHaveBeenCalledWith(-mockPid, "SIGKILL")
+			} finally {
+				killSpy.mockRestore()
+			}
+		})
+	})
+
 	describe("basic functionality", () => {
 		it("should create instance with terminal reference", () => {
 			expect(terminalProcess).toBeInstanceOf(ExecaTerminalProcess)
