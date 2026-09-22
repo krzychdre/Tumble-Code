@@ -27,9 +27,10 @@ interface UIState {
 	// Only ever consumed by the `<Static>` region; the dynamic tail keeps its
 	// clamps in both modes (plan: 2026-09-21 answer lost in dynamic tail, I1).
 	verboseTranscript: boolean
-	// Bumped every time the promoted transcript must be printed again. It feeds
-	// the `<Static>` key in App.tsx, and a key change is the only way to make
-	// ink reprint items it has already written into native scrollback (I2).
+	// Bumped every time the promoted transcript must be printed again, which is
+	// on every ctrl+o, in both directions. It feeds the `<Static>` key in
+	// App.tsx, and a key change is the only way to make ink reprint items it has
+	// already written into native scrollback (I2).
 	transcriptReprintEpoch: number
 	// Bumped by /clear, and also part of the `<Static>` key: the region has to
 	// remount so the welcome banner prints again onto the freshly wiped screen.
@@ -104,17 +105,16 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 	setManualFocus: (focus) => set({ manualFocus: focus }),
 	setShowTodoViewer: (show) => set({ showTodoViewer: show }),
 	toggleVerboseTranscript: () =>
-		set((state) => {
-			const next = !state.verboseTranscript
-			// Only turning verbose ON bumps the epoch. Already printed items can
-			// never be re-rendered in place, so the expanded bodies are shown by
-			// reprinting the promoted transcript once. Turning it OFF has nothing
-			// new to show, and a reprint there would duplicate the transcript for
-			// no gain, so the epoch (and with it the `<Static>` key) stays put.
-			return next
-				? { verboseTranscript: true, transcriptReprintEpoch: state.transcriptReprintEpoch + 1 }
-				: { verboseTranscript: false }
-		}),
+		set((state) => ({
+			verboseTranscript: !state.verboseTranscript,
+			// BOTH directions bump the epoch, because both are a reprint: ink's
+			// `<Static>` prints each item once and can never rewrite it, so the
+			// only way to show the transcript at the other verbosity is to print
+			// it again. The caller wipes the screen first (useGlobalInput), which
+			// is what keeps "print it again" from meaning "one more copy": the
+			// reprint lands on an empty screen and is the only copy on it.
+			transcriptReprintEpoch: state.transcriptReprintEpoch + 1,
+		})),
 	clearTranscript: () =>
 		set((state) => ({
 			transcriptClearEpoch: state.transcriptClearEpoch + 1,

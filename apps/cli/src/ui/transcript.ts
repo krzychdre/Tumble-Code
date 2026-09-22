@@ -138,15 +138,13 @@ interface BuildStaticItemsArgs {
 /**
  * Build the `<Static>` item list.
  *
- * Epoch 0 is the original printing and opens with the welcome banner. Every
- * later epoch is a reprint triggered by ctrl+o, so it opens with a divider
- * instead: the banner already sits in scrollback above and repeating it would
- * read as a second session start. The divider id carries the epoch so React
- * keys stay unique across reprints.
+ * Every printing opens with the welcome banner, including the ctrl+o reprints.
+ * They can: the reprint follows a screen wipe that erased the previous banner,
+ * so this is the session's context being restored, not repeated. Only the id
+ * carries the epoch, to keep React keys unique.
  *
- * The divider stays for an epoch even after verbose is switched back off,
- * because it describes a batch that is already in scrollback and `<Static>`
- * never rewrites what it printed (I2).
+ * A reprint then adds a header naming the verbosity it is printed AT and the
+ * way back out of it, because ctrl+o works in both directions.
  */
 export function buildStaticItems({
 	messages,
@@ -154,15 +152,18 @@ export function buildStaticItems({
 	expanded,
 	reprintEpoch,
 }: BuildStaticItemsArgs): StaticItem[] {
-	const head: StaticItem =
-		reprintEpoch > 0
-			? {
-					id: `__divider__:${reprintEpoch}`,
-					kind: "divider",
-					// Hyphens only, deliberately: no dash characters beyond "-".
-					label: "-- expanded transcript (ctrl+o to collapse) --",
-				}
-			: { id: "__welcome__", kind: "welcome", welcomeProps }
+	const head: StaticItem[] = [{ id: `__welcome__:${reprintEpoch}`, kind: "welcome", welcomeProps }]
 
-	return [head, ...messages.map((message): StaticItem => ({ id: message.id, kind: "message", message, expanded }))]
+	if (reprintEpoch > 0) {
+		head.push({
+			id: `__divider__:${reprintEpoch}`,
+			kind: "divider",
+			// Hyphens only, deliberately: no dash characters beyond "-".
+			label: expanded
+				? "-- expanded transcript (ctrl+o to collapse) --"
+				: "-- collapsed transcript (ctrl+o to expand) --",
+		})
+	}
+
+	return [...head, ...messages.map((message): StaticItem => ({ id: message.id, kind: "message", message, expanded }))]
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react"
-import { useInput } from "ink"
+import { useInput, useStdout } from "ink"
 import type { WebviewMessage } from "@roo-code/types"
 
 import { matchesGlobalSequence } from "@/lib/utils/input.js"
@@ -7,6 +7,7 @@ import { matchesGlobalSequence } from "@/lib/utils/input.js"
 import type { ModeResult } from "../components/autocomplete/index.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
 import { useCLIStore } from "../store.js"
+import { CLEAR_TERMINAL } from "../utils/clearTerminal.js"
 
 export interface UseGlobalInputOptions {
 	pickerIsOpen: boolean
@@ -28,7 +29,8 @@ export interface UseGlobalInputOptions {
  * - Shift+Tab: Cycle through available modes (only while no picker is open,
  *   because Tab belongs to the picker then)
  * - Ctrl+T: Toggle TODO list viewer
- * - Ctrl+O: Toggle the verbose transcript (reprints it expanded into scrollback)
+ * - Ctrl+O: Toggle the verbose transcript (clears the screen and prints the
+ *   promoted transcript again at the new verbosity)
  * - Escape: Cancel task (when loading) or close TODO viewer
  *
  * Note: the scroll/input focus toggle (Tab) was removed with the ScrollArea
@@ -47,6 +49,7 @@ export function useGlobalInput({
 	closePicker,
 }: UseGlobalInputOptions): void {
 	const { isLoading, currentTodos } = useCLIStore()
+	const { write } = useStdout()
 	const {
 		showTodoViewer,
 		setShowTodoViewer,
@@ -128,6 +131,13 @@ export function useGlobalInput({
 			if (pickerIsOpen) {
 				closePicker()
 			}
+			// Wipe first, toggle second, exactly as /clear does. A terminal cannot
+			// take back lines it has already printed, so the only honest way to
+			// collapse an expanded transcript is to clear the screen and print the
+			// whole thing again at the new verbosity. Without the wipe the reprint
+			// would simply stack another copy under the old one, which is what made
+			// ctrl+o expand but never collapse.
+			write(CLEAR_TERMINAL)
 			toggleVerboseTranscript()
 			// `verboseTranscript` is the value from before the toggle, so the
 			// message describes the state the user is switching into.

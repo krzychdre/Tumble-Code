@@ -31,7 +31,7 @@ const HELP_SHORTCUTS: HelpShortcutResult[] = [
 	{ key: "newline", shortcut: "alt + ⏎", description: "for newline (shift + ⏎ in some terminals)" },
 	{ key: "history", shortcut: "↑ / ↓", description: "to browse previous prompts" },
 	{ key: "todos", shortcut: "ctrl + t", description: "to view TODO list" },
-	{ key: "verbose", shortcut: "ctrl + o", description: "to expand tool output and thinking" },
+	{ key: "verbose", shortcut: "ctrl + o", description: "to expand or collapse tool output and thinking" },
 	{ key: "cancel", shortcut: "esc", description: "to interrupt the task, or clear the input" },
 	{ key: "quit", shortcut: "ctrl + c", description: "twice to quit" },
 ]
