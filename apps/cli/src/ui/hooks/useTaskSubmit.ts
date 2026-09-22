@@ -1,5 +1,6 @@
 import { useCallback } from "react"
 import { randomUUID } from "crypto"
+import { useStdout } from "ink"
 import type { WebviewMessage } from "@roo-code/types"
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
@@ -22,6 +23,18 @@ export interface UseTaskSubmitReturn {
 	handleApprove: () => void
 	handleReject: () => void
 }
+
+/**
+ * Erase the screen and the scrollback, then home the cursor. Same sequence
+ * `ansi-escapes` uses for `clearTerminal`, inlined so the packaged CLI does not
+ * have to resolve another dependency at install time.
+ *
+ * This must only ever be handed to ink's `useStdout().write`, never written to
+ * `process.stdout` directly: ink positions every frame relative to the previous
+ * one, and a clear behind its back leaves it erasing rows that are no longer
+ * there (see the comment in `useTerminalSize.ts`).
+ */
+const CLEAR_TERMINAL = process.platform === "win32" ? "\x1b[2J\x1b[0f" : "\x1b[2J\x1b[3J\x1b[H"
 
 /**
  * Hook to handle task submission, user responses, and approvals.
@@ -54,6 +67,28 @@ export function useTaskSubmit({
 	} = useCLIStore()
 
 	const { setShowCustomInput, setIsTransitioningToCustomInput } = useUIStateStore()
+	const { write } = useStdout()
+
+	/**
+	 * Drop the current task: reset the CLI state, forget the message ids we
+	 * have already seen, tell the extension host to clear the task, and
+	 * re-request the commands and modes that reset() just wiped.
+	 *
+	 * Shared by /new and /clear; the only thing /clear adds is the screen wipe.
+	 */
+	const resetConversation = useCallback(
+		(send: (msg: WebviewMessage) => void) => {
+			useCLIStore.getState().reset()
+
+			seenMessageIds.current.clear()
+			firstTextMessageSkipped.current = false
+
+			send({ type: "clearTask" })
+			send({ type: "requestCommands" })
+			send({ type: "requestModes" })
+		},
+		[seenMessageIds, firstTextMessageSkipped],
+	)
 
 	/**
 	 * Handle user text submission (from input or followup question)
@@ -78,17 +113,18 @@ export function useTaskSubmit({
 					const globalCommand = getGlobalCommand(commandMatch[1])
 
 					if (globalCommand?.action === "clearTask") {
-						// Reset CLI state and send clearTask to extension.
-						useCLIStore.getState().reset()
+						resetConversation(sendToExtension)
+						return
+					}
 
-						// Reset component-level refs to avoid stale message tracking.
-						seenMessageIds.current.clear()
-						firstTextMessageSkipped.current = false
-						sendToExtension({ type: "clearTask" })
-
-						// Re-request state, commands and modes since reset() cleared them.
-						sendToExtension({ type: "requestCommands" })
-						sendToExtension({ type: "requestModes" })
+					if (globalCommand?.action === "clearConversation") {
+						// Wipe first, reset second: the reset re-renders, the
+						// `<Static>` region remounts on the new clear epoch and
+						// prints the welcome banner, and that banner has to land
+						// on the cleared screen rather than be cleared by it.
+						write(CLEAR_TERMINAL)
+						useUIStateStore.getState().clearTranscript()
+						resetConversation(sendToExtension)
 						return
 					}
 
@@ -179,8 +215,8 @@ export function useTaskSubmit({
 			setError,
 			setShowCustomInput,
 			setIsTransitioningToCustomInput,
-			seenMessageIds,
-			firstTextMessageSkipped,
+			resetConversation,
+			write,
 			permissionMode,
 			onPermissionModeChange,
 		],

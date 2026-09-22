@@ -43,3 +43,38 @@ describe("useUIStateStore verbose transcript", () => {
 		expect(state.transcriptReprintEpoch).toBe(2)
 	})
 })
+
+describe("useUIStateStore clearTranscript", () => {
+	beforeEach(() => {
+		useUIStateStore.getState().resetUIState()
+	})
+
+	it("starts at clear epoch 0", () => {
+		expect(useUIStateStore.getState().transcriptClearEpoch).toBe(0)
+	})
+
+	it("bumps the clear epoch so the Static region remounts", () => {
+		useUIStateStore.getState().clearTranscript()
+		expect(useUIStateStore.getState().transcriptClearEpoch).toBe(1)
+
+		useUIStateStore.getState().clearTranscript()
+		expect(useUIStateStore.getState().transcriptClearEpoch).toBe(2)
+	})
+
+	it("resets the reprint epoch, so the cleared screen opens with the banner", () => {
+		useUIStateStore.getState().toggleVerboseTranscript()
+		expect(useUIStateStore.getState().transcriptReprintEpoch).toBe(1)
+
+		useUIStateStore.getState().clearTranscript()
+
+		expect(useUIStateStore.getState().transcriptReprintEpoch).toBe(0)
+	})
+
+	it("leaves the verbose preference alone", () => {
+		useUIStateStore.getState().toggleVerboseTranscript()
+
+		useUIStateStore.getState().clearTranscript()
+
+		expect(useUIStateStore.getState().verboseTranscript).toBe(true)
+	})
+})

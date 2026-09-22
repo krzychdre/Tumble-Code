@@ -97,10 +97,17 @@ describe("InputFooter", () => {
 			expect(frame).not.toContain("$0.00")
 		})
 
+		it("renders the context gauge next to the percentage", () => {
+			const { lastFrame } = render(<InputFooter mode="code" model="gpt-5" contextPercent={38} />)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain("████░░░░░░ 38%")
+		})
+
 		it("does not render ctx% when null", () => {
 			const { lastFrame } = render(<InputFooter mode="code" model="gpt-5" contextPercent={null} />)
 			const frame = lastFrame() ?? ""
 			expect(frame).not.toContain("%")
+			expect(frame).not.toContain("░")
 		})
 
 		it("renders ctx% text when >= 80 (warning color — text still present)", () => {

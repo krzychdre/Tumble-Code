@@ -31,6 +31,9 @@ interface UIState {
 	// the `<Static>` key in App.tsx, and a key change is the only way to make
 	// ink reprint items it has already written into native scrollback (I2).
 	transcriptReprintEpoch: number
+	// Bumped by /clear, and also part of the `<Static>` key: the region has to
+	// remount so the welcome banner prints again onto the freshly wiped screen.
+	transcriptClearEpoch: number
 
 	// Autocomplete picker state
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -58,6 +61,9 @@ interface UIActions {
 	// Verbose transcript actions
 	toggleVerboseTranscript: () => void
 
+	// Transcript clear (/clear): remount `<Static>` on an empty transcript
+	clearTranscript: () => void
+
 	// Picker state actions
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	setPickerState: (state: AutocompletePickerState<any>) => void
@@ -76,6 +82,7 @@ const initialState: UIState = {
 	showTodoViewer: false,
 	verboseTranscript: false,
 	transcriptReprintEpoch: 0,
+	transcriptClearEpoch: 0,
 	pickerState: {
 		activeTrigger: null,
 		results: [],
@@ -108,6 +115,15 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 				? { verboseTranscript: true, transcriptReprintEpoch: state.transcriptReprintEpoch + 1 }
 				: { verboseTranscript: false }
 		}),
+	clearTranscript: () =>
+		set((state) => ({
+			transcriptClearEpoch: state.transcriptClearEpoch + 1,
+			// The transcript this epoch counted reprints of is gone, so the
+			// `<Static>` head goes back to the welcome banner rather than the
+			// ctrl+o "expanded transcript" divider, which would now be a
+			// divider under nothing.
+			transcriptReprintEpoch: 0,
+		})),
 	setPickerState: (state) => set({ pickerState: state }),
 	resetUIState: () => set(initialState),
 }))
