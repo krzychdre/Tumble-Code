@@ -338,5 +338,24 @@ describe("useCLIStore", () => {
 
 			expect(store().messages[0]?.content).toBe("abc")
 		})
+
+		it("carries the toolData of a queued chunk, so a streaming command row is not frozen", () => {
+			const store = useCLIStore.getState
+			const row = (output: string, partial: boolean) => ({
+				id: "1",
+				role: "tool" as const,
+				content: output,
+				toolName: "execute_command",
+				toolData: { tool: "execute_command", command: "ls -la", output },
+				partial,
+			})
+
+			store().addMessage(row("a\n", true))
+			store().addMessage(row("a\nb\n", true))
+
+			flushPendingStreamUpdates()
+
+			expect(store().messages[0]?.toolData).toMatchObject({ command: "ls -la", output: "a\nb\n" })
+		})
 	})
 })

@@ -125,7 +125,7 @@ describe("buildStaticItems", () => {
 		})
 
 		expect(items.map((i) => i.kind)).toEqual(["welcome", "message", "message"])
-		expect(items[0]?.id).toBe("__welcome__")
+		expect(items[0]?.id).toBe("__welcome__:0")
 		expect(items.some((i) => i.kind === "divider")).toBe(false)
 	})
 
@@ -142,7 +142,9 @@ describe("buildStaticItems", () => {
 		}
 	})
 
-	it("opens a reprint epoch with the divider instead of the banner", () => {
+	it("restores the banner on a reprint and adds the verbosity header", () => {
+		// ctrl+o wipes the screen, banner included, so the reprint is the only
+		// thing that can put the session's context back.
 		const items = buildStaticItems({
 			messages: [msg("1"), msg("2")],
 			welcomeProps,
@@ -150,16 +152,16 @@ describe("buildStaticItems", () => {
 			reprintEpoch: 1,
 		})
 
-		expect(items.map((i) => i.kind)).toEqual(["divider", "message", "message"])
-		expect(items[0]?.id).toBe("__divider__:1")
-		expect(items.some((i) => i.kind === "welcome")).toBe(false)
+		expect(items.map((i) => i.kind)).toEqual(["welcome", "divider", "message", "message"])
+		expect(items[0]?.id).toBe("__welcome__:1")
+		expect(items[1]?.id).toBe("__divider__:1")
 		for (const item of items) {
 			if (item.kind === "message") expect(item.expanded).toBe(true)
 		}
 	})
 
 	it("uses hyphens only in the divider label", () => {
-		const [divider] = buildStaticItems({ messages: [], welcomeProps, expanded: true, reprintEpoch: 2 })
+		const [, divider] = buildStaticItems({ messages: [], welcomeProps, expanded: true, reprintEpoch: 2 })
 
 		expect(divider?.kind).toBe("divider")
 		if (divider?.kind === "divider") {
@@ -172,27 +174,37 @@ describe("buildStaticItems", () => {
 		}
 	})
 
-	it("gives every reprint epoch its own divider id", () => {
+	it("gives every reprint epoch its own item ids", () => {
 		const first = buildStaticItems({ messages: [], welcomeProps, expanded: true, reprintEpoch: 1 })
 		const second = buildStaticItems({ messages: [], welcomeProps, expanded: true, reprintEpoch: 2 })
 
-		expect(first[0]?.id).not.toBe(second[0]?.id)
+		expect(first.map((i) => i.id)).not.toEqual(second.map((i) => i.id))
 	})
 
-	it("keeps the divider for an epoch after verbose is switched back off", () => {
-		// Toggling off does not bump the epoch, and the batch it labels is
-		// already in scrollback, so the divider must not disappear.
+	it("heads a collapsed reprint too, since ctrl+o now works in both directions", () => {
 		const items = buildStaticItems({
 			messages: [msg("1")],
 			welcomeProps,
 			expanded: false,
-			reprintEpoch: 1,
+			reprintEpoch: 2,
 		})
 
-		expect(items.map((i) => i.kind)).toEqual(["divider", "message"])
+		expect(items.map((i) => i.kind)).toEqual(["welcome", "divider", "message"])
 		for (const item of items) {
 			if (item.kind === "message") expect(item.expanded).toBe(false)
 		}
+	})
+
+	it("names the verbosity it is printing at, and the way back out of it", () => {
+		const labelOf = (expanded: boolean) => {
+			const [, header] = buildStaticItems({ messages: [], welcomeProps, expanded, reprintEpoch: 1 })
+			return header?.kind === "divider" ? header.label : ""
+		}
+
+		expect(labelOf(true)).toContain("expanded transcript")
+		expect(labelOf(true)).toContain("ctrl+o to collapse")
+		expect(labelOf(false)).toContain("collapsed transcript")
+		expect(labelOf(false)).toContain("ctrl+o to expand")
 	})
 
 	it("returns just the head item when there are no promoted messages", () => {

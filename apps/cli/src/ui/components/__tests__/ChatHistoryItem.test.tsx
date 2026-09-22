@@ -391,10 +391,10 @@ describe("ChatHistoryItem", () => {
 			const collapsed = render(<ChatHistoryItem message={message} />).lastFrame()
 			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
 
-			expect(collapsed).toContain("+20 lines")
-			expect(collapsed).not.toContain("line 11")
+			expect(collapsed).toContain("+25 lines")
+			expect(collapsed).not.toContain("line 6")
 			expect(expanded).toContain("line 30")
-			expect(expanded).not.toContain("+20 lines")
+			expect(expanded).not.toContain("+25 lines")
 		})
 
 		it("forwards expanded to tool renderers resolved from raw JSON content", () => {

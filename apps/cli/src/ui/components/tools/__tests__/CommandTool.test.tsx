@@ -121,7 +121,7 @@ describe("CommandTool", () => {
 		})
 
 		it("truncates output to MAX_OUTPUT_LINES", () => {
-			// Create output with more than 10 lines (MAX_OUTPUT_LINES = 10)
+			// Create output with more than 5 lines (MAX_OUTPUT_LINES = 5)
 			const longOutput = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n")
 
 			const props: ToolRendererProps = {
@@ -135,19 +135,54 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			// First 10 lines should be visible
+			// First 5 lines should be visible
 			expect(output).toContain("line 1")
-			expect(output).toContain("line 10")
+			expect(output).toContain("line 5")
+			expect(output).not.toContain("line 6")
 
-			// ResultRow uses "… +N lines" truncation indicator
-			expect(output).toContain("+10 lines")
+			// ResultRow uses "… +N lines (ctrl+o)" truncation indicator
+			expect(output).toContain("+15 lines (ctrl+o)")
+		})
+
+		it("closes the block with the truncation tail instead of parking it beside the output", () => {
+			const props: ToolRendererProps = {
+				toolData: {
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: Array.from({ length: 8 }, (_, i) => `line ${i + 1}`).join("\n"),
+				},
+			}
+
+			const lines = (render(<CommandTool {...props} />).lastFrame() ?? "").split("\n")
+			const lastVisible = lines.findIndex((line) => line.includes("line 5"))
+			const tail = lines.findIndex((line) => line.includes("+3 lines"))
+
+			// The tail is its own row, directly under the last output line. It used
+			// to share a row with an earlier line, laid out as a second column.
+			expect(tail).toBe(lastVisible + 1)
+			expect(lines[tail]).not.toContain("line ")
+		})
+
+		it("does not count a trailing newline as a line of output", () => {
+			const props: ToolRendererProps = {
+				toolData: {
+					tool: "execute_command",
+					command: "grep -n torch.save train_gpt.py",
+					output: "2749:    torch.save(log, path)\n",
+				},
+			}
+
+			const output = render(<CommandTool {...props} />).lastFrame()
+
+			expect(output).toContain("2749:")
+			expect(output).not.toContain("+1 lines")
 		})
 	})
 
 	describe("expanded mode", () => {
 		const longOutput = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n")
 
-		it("caps at 10 lines by default", () => {
+		it("caps at 5 lines by default", () => {
 			const props: ToolRendererProps = {
 				toolData: {
 					tool: "execute_command",
@@ -159,9 +194,9 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			expect(output).toContain("line 10")
-			expect(output).not.toContain("line 11")
-			expect(output).toContain("+20 lines")
+			expect(output).toContain("line 5")
+			expect(output).not.toContain("line 6")
+			expect(output).toContain("+25 lines")
 		})
 
 		it("shows all output lines when expanded", () => {
@@ -179,9 +214,65 @@ describe("CommandTool", () => {
 
 			expect(output).toContain("line 29")
 			expect(output).toContain("line 30")
-			expect(output).not.toContain("+20 lines")
+			expect(output).not.toContain("+25 lines")
 			// The infinite cap must never leak into a marker
 			expect(output).not.toContain("Infinity")
+		})
+	})
+
+	describe("the command header", () => {
+		// ink-testing-library renders into an 100-column fake stdout.
+		const longCommand =
+			'curl -s "https://raw.githubusercontent.com/KellerJordan/modded-nanogpt/master/train_gpt.py" | grep -n "dist\\."'
+
+		it("keeps a long command on one row when collapsed", () => {
+			const props: ToolRendererProps = {
+				toolData: { tool: "execute_command", command: longCommand, output: "85:dist.init_process_group()" },
+			}
+
+			const lines = (render(<CommandTool {...props} />).lastFrame() ?? "").split("\n")
+			const header = lines[0] ?? ""
+
+			expect(header).toContain("Bash(curl -s")
+			expect(header).toContain("…)")
+			expect(header.length).toBeLessThanOrEqual(100)
+			// The output belongs to the row below, so the header never spilled.
+			expect(header).not.toContain("85:dist")
+		})
+
+		it("prints the whole command when expanded", () => {
+			const props: ToolRendererProps = {
+				toolData: { tool: "execute_command", command: longCommand, output: "85:dist.init_process_group()" },
+				expanded: true,
+			}
+
+			const output = render(<CommandTool {...props} />).lastFrame() ?? ""
+
+			expect(output.replace(/\s+/g, " ")).toContain('grep -n "dist\\.")')
+			expect(output).not.toContain("…)")
+		})
+
+		it("flattens a multi-line command when collapsed and keeps its lines when expanded", () => {
+			const command = "python3 -c \"\nimport json\nprint(json.load(open('cdk.json')))\n\""
+
+			const collapsed = render(
+				<CommandTool toolData={{ tool: "execute_command", command, output: "{}" }} />,
+			).lastFrame()
+			const expanded = render(
+				<CommandTool toolData={{ tool: "execute_command", command, output: "{}" }} expanded />,
+			).lastFrame()
+
+			expect(collapsed?.split("\n")[0]).toContain('python3 -c " import json')
+			// Expanded keeps the command's own lines, indented under the bullet.
+			expect(expanded).toContain("\n  import json")
+		})
+
+		it("still renders a bare Bash row when the command is missing", () => {
+			const output = render(<CommandTool toolData={{ tool: "execute_command", output: "hello" }} />).lastFrame()
+
+			expect(output).toContain("Bash")
+			expect(output).not.toContain("Bash(")
+			expect(output).toContain("hello")
 		})
 	})
 

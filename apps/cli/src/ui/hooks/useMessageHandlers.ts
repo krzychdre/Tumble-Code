@@ -90,8 +90,15 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	const nonInteractiveRef = useRef(nonInteractive)
 	nonInteractiveRef.current = nonInteractive
 
-	// Track pending command for injecting into command_output toolData
+	// The command of the execution that is currently producing output. Set by
+	// `ask: command` and held until the NEXT `ask: command`, deliberately not
+	// consumed by the first output chunk: `addMessage` replaces a message
+	// wholesale when its finalization arrives, so a command missing from that
+	// last delivery is a command missing from the row.
 	const pendingCommandRef = useRef<string | null>(null)
+	// Id of the row collecting that execution's output, so every later delivery
+	// of the same output is routed to it instead of adding a second row.
+	const commandRowRef = useRef<string | null>(null)
 
 	/**
 	 * Map extension "say" messages to TUI messages
@@ -102,10 +109,13 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			const isResuming = useCLIStore.getState().isResumingTask
 
 			// `seenMessageIds` is cleared when the task is cleared (/new) or
-			// switched, and the merge map has exactly that lifetime, so mirror the
-			// reset here instead of threading a second ref through every caller.
-			if (seenMessageIds.current.size === 0 && mergedStreamIds.current.size > 0) {
+			// switched, and the merge map and the command refs have exactly that
+			// lifetime, so mirror the reset here instead of threading a second ref
+			// through every caller.
+			if (seenMessageIds.current.size === 0) {
 				mergedStreamIds.current.clear()
+				commandRowRef.current = null
+				pendingCommandRef.current = null
 			}
 
 			// Route a delivery for a restarted stream to the message that carries
@@ -191,6 +201,42 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				}
 			}
 
+			// Route every delivery of ONE command execution's output to ONE row.
+			//
+			// The core emits the first chunk as `say: command_output` partial, then
+			// the non-blocking `ask: command_output` ("leave it running?") lands in
+			// the same millisecond, which makes the chunk no longer the last
+			// message. `Task.say()` only continues a partial in place while it IS
+			// the last message, so the completed output is appended under a NEW ts
+			// and the chunk is abandoned as a forever-partial. Keying by ts alone
+			// therefore renders two `Bash` rows per command, the first holding a
+			// single line of output, and the abandoned partial also pins the rest
+			// of the turn in the dynamic tail (`getStaticCount` rule 4).
+			//
+			// The pairing is by execution, not by text: `Terminal.compressTerminalOutput`
+			// can drop the middle of a long output, so the completed text is not
+			// guaranteed to start with the chunk the way a restarted answer stream is.
+			//
+			// Guarded like the answer merge above, plus the resume case: while the
+			// turn is loading a partial row is never promoted, and a resumed task
+			// replays its whole history inside one synchronous loop, so in both
+			// windows the row is still re-renderable. Outside them the delivery
+			// falls through and renders on its own rather than being written into a
+			// row that ink has already printed into scrollback.
+			if (say === "command_output" && !existing && commandRowRef.current && commandRowRef.current !== messageId) {
+				const state = useCLIStore.getState()
+
+				if (state.isLoading || state.isResumingTask) {
+					const row = state.messages.find((m) => m.id === commandRowRef.current)
+
+					if (row) {
+						mergedStreamIds.current.set(rawMessageId, row.id)
+						messageId = row.id
+						existing = row
+					}
+				}
+			}
+
 			const isFinalizingExisting = !partial && existing?.partial === true
 
 			// A partial delivery for a message we already rendered as complete is
@@ -232,9 +278,14 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				toolName = "execute_command"
 				toolDisplayName = "bash"
 				toolDisplayOutput = text
-				const trackedCommand = pendingCommandRef.current
-				toolData = { tool: "execute_command", command: trackedCommand || undefined, output: text }
-				pendingCommandRef.current = null
+				toolData = {
+					tool: "execute_command",
+					command: pendingCommandRef.current || undefined,
+					output: text,
+				}
+				// This delivery owns the execution's row from here on, whether it
+				// created the row or was routed into it above.
+				commandRowRef.current = messageId
 			} else if (say === "reasoning") {
 				role = "thinking"
 			}
@@ -385,6 +436,9 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			// This ensures we capture the command text for later injection into command_output toolData
 			if (ask === "command") {
 				pendingCommandRef.current = text
+				// A new execution starts here, so its output must open a new row
+				// instead of being appended to the previous command's row.
+				commandRowRef.current = null
 			}
 
 			if (nonInteractiveRef.current && ask !== "followup") {

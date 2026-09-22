@@ -21,18 +21,19 @@ describe("useUIStateStore verbose transcript", () => {
 		expect(state.transcriptReprintEpoch).toBe(1)
 	})
 
-	it("turning verbose off leaves the epoch untouched", () => {
-		// Nothing new to print when collapsing, and a reprint would duplicate
-		// the whole transcript in scrollback for no gain.
+	it("turning verbose off bumps the epoch too, because collapsing is a reprint", () => {
+		// Ink prints a `<Static>` item once and can never rewrite it, so the
+		// collapsed transcript has to be printed again (onto the screen that
+		// useGlobalInput wipes first) rather than edited in place.
 		useUIStateStore.getState().toggleVerboseTranscript()
 		useUIStateStore.getState().toggleVerboseTranscript()
 
 		const state = useUIStateStore.getState()
 		expect(state.verboseTranscript).toBe(false)
-		expect(state.transcriptReprintEpoch).toBe(1)
+		expect(state.transcriptReprintEpoch).toBe(2)
 	})
 
-	it("bumps the epoch again on every re-expand", () => {
+	it("bumps the epoch on every toggle", () => {
 		const toggle = () => useUIStateStore.getState().toggleVerboseTranscript()
 		toggle()
 		toggle()
@@ -40,7 +41,7 @@ describe("useUIStateStore verbose transcript", () => {
 
 		const state = useUIStateStore.getState()
 		expect(state.verboseTranscript).toBe(true)
-		expect(state.transcriptReprintEpoch).toBe(2)
+		expect(state.transcriptReprintEpoch).toBe(3)
 	})
 })
 

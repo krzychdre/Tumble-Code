@@ -296,10 +296,14 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		Math.floor((terminalRows - TAIL_RESERVED_ROWS) / Math.max(1, dynamicMessages.length)),
 	)
 
-	// Snapshot the welcome props once — the banner prints into scrollback and
-	// should not reflect later mode/model changes (which are footer concerns).
-	// Empty deps are intentional: this is a one-time snapshot taken on first
-	// render so the printed banner stays stable in native scrollback.
+	// The banner the user is looking at never changes: ink's `<Static>` prints
+	// each item once and cannot rewrite it, so the copy already in scrollback
+	// stays exactly as it was printed no matter what this object says later.
+	// These props therefore only ever decide what a FUTURE printing shows, and
+	// the printings that still lie ahead are the ctrl+o reprints, which follow a
+	// screen wipe that took the old banner with it. Those must state the mode
+	// and model that are current at that moment, not the ones the session
+	// opened with.
 	const welcomeProps = useMemo<WelcomeBannerProps>(
 		() => ({
 			workspacePath,
@@ -311,7 +315,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			nonInteractive,
 			version,
 		}),
-		[],
+		[workspacePath, user, provider, model, currentMode, mode, reasoningEffort, nonInteractive, version],
 	)
 
 	const staticItems = useMemo<StaticItem[]>(

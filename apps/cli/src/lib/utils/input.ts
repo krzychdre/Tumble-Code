@@ -79,7 +79,7 @@ export const GLOBAL_INPUT_SEQUENCES: GlobalInputSequence[] = [
 	},
 	{
 		id: "ctrl-o",
-		description: "Toggle verbose transcript (expand tool output and thinking)",
+		description: "Toggle verbose transcript (expand or collapse tool output and thinking)",
 		matches: (input, key) => {
 			// Standard Ctrl+O detection
 			if (key.ctrl && input === "o") return true
