@@ -4,6 +4,7 @@ import { Box, Text } from "ink"
 import * as theme from "../../theme.js"
 import type { Toast } from "../../hooks/useToast.js"
 import { formatCost } from "../MetricsDisplay.js"
+import ContextGauge from "./ContextGauge.js"
 
 interface InputFooterProps {
 	/** Current toast (highest-priority left hint) */
@@ -54,9 +55,9 @@ const DimDot = () => <Text dimColor>{" · "}</Text>
  * Single dim line below the input box.
  *
  * Left side (priority order): toast (colored by kind) > exitHint (dim) >
- * "? for shortcuts" (dim). Right side: `{mode} · {model}` + ` · {ctx}%`
- * (when not null) + ` · {cost}` (when > 0). Context percent is rendered
- * in `theme.warning` when >= 80, otherwise dim.
+ * "? for shortcuts" (dim). Right side: `{mode} · {model}` + the context
+ * gauge (when the percent is not null) + ` · {cost}` (when > 0). The gauge
+ * owns its own colouring; see ContextGauge.
  */
 function InputFooter({ toast, exitHint, mode, model, contextPercent, cost }: InputFooterProps) {
 	let leftHint: ReactNode
@@ -94,12 +95,7 @@ function InputFooter({ toast, exitHint, mode, model, contextPercent, cost }: Inp
 	}
 	if (contextPercent != null) {
 		if (added) rightParts.push(<DimDot key="sep-ctx" />)
-		const ctxColor = contextPercent >= 80 ? theme.warning : undefined
-		rightParts.push(
-			<Text key="ctx" color={ctxColor} dimColor={ctxColor === undefined}>
-				{contextPercent}%
-			</Text>,
-		)
+		rightParts.push(<ContextGauge key="ctx" percent={contextPercent} />)
 		added = true
 	}
 	if (cost != null && cost > 0) {
