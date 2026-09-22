@@ -5,7 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 
 import { createInterchangeServer } from "../mcp/server.js"
-import { makeTempDir, writeClaudeSession, writeTumbleTask } from "./fixtures.js"
+import { isolateHome, makeTempDir, writeClaudeSession, writeTumbleTask } from "./fixtures.js"
 
 /**
  * The server is exercised through a real MCP client over an in-memory
@@ -34,8 +34,10 @@ describe("agent-interchange MCP server", () => {
 	let claudeDir: string
 	let tumbleDir: string
 	let handoffRoot: string
+	let restoreHome: () => void
 
 	beforeEach(() => {
+		restoreHome = isolateHome()
 		claudeDir = makeTempDir("mcp-cc")
 		tumbleDir = makeTempDir("mcp-tc")
 		handoffRoot = makeTempDir("mcp-handoff")
@@ -57,6 +59,7 @@ describe("agent-interchange MCP server", () => {
 		delete process.env.CLAUDE_CONFIG_DIR
 		delete process.env.AGENT_INTERCHANGE_TUMBLE_STORAGE
 		delete process.env.AGENT_INTERCHANGE_DIR
+		restoreHome()
 
 		for (const dir of [claudeDir, tumbleDir, handoffRoot, workspaceDir]) {
 			fs.rmSync(dir, { recursive: true, force: true })

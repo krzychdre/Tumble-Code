@@ -60,4 +60,5 @@ qdrant_storage/
 plans/
 
 roo-cli-*.tar.gz*
+tumble-cli-*.tar.gz*
 *.pyc
