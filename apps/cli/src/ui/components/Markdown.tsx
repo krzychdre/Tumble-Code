@@ -11,7 +11,9 @@ interface Token {
 	text: string
 }
 
-const INLINE_MARKER_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|_[^_]+_|`[^`]+`|~~[^~]+~~|\[[^\]]*\]\([^)]*\))/
+// `_emphasis_` only at word boundaries, as in CommonMark: otherwise
+// `my_var_name` renders as `myvarname` and `__tests__` as `_tests_`.
+const INLINE_MARKER_RE = /(\*\*[^*]+\*\*|\*[^*]+\*|(?<![\w])_[^_]+_(?![\w])|`[^`]+`|~~[^~]+~~|\[[^\]]*\]\([^)]*\))/
 
 function tokenizeInline(line: string): Token[] {
 	try {
@@ -123,6 +125,16 @@ function renderTokens(tokens: Token[], dimColor: boolean): ReactNode {
 }
 
 /**
+ * Inline formatting (bold, code, links...) for the content of a block element.
+ * List items, blockquotes and headings used to print their content raw, so
+ * `- **Plik:** opis` reached the screen with the asterisks still in it
+ * (plan: 2026-09-22 inline markdown in CLI list items).
+ */
+function renderInline(text: string, dimColor: boolean): ReactNode {
+	return renderTokens(tokenizeInline(text), dimColor)
+}
+
+/**
  * Base text color for a line, honoring the dimColor (thinking-style) mode.
  */
 function baseTextColor(dimColor: boolean): string {
@@ -154,13 +166,13 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 			if (level === 1) {
 				return (
 					<Text bold underline color={base}>
-						{content}
+						{renderInline(content, dimColor)}
 					</Text>
 				)
 			}
 			return (
 				<Text bold color={base}>
-					{content}
+					{renderInline(content, dimColor)}
 				</Text>
 			)
 		}
@@ -171,7 +183,7 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 			return (
 				<Text color={dimColor ? theme.secondaryText : theme.text}>
 					{"  • "}
-					{bulletMatch[2]}
+					{renderInline(bulletMatch[2] ?? "", dimColor)}
 				</Text>
 			)
 		}
@@ -182,7 +194,7 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 			return (
 				<Text color={dimColor ? theme.secondaryText : theme.text}>
 					{"  "}
-					{orderedMatch[1]}. {orderedMatch[2]}
+					{orderedMatch[1]}. {renderInline(orderedMatch[2] ?? "", dimColor)}
 				</Text>
 			)
 		}
@@ -192,7 +204,7 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 		if (quoteMatch) {
 			return (
 				<Text dimColor color={theme.secondaryText}>
-					{figures.blockquote} {quoteMatch[1]}
+					{figures.blockquote} {renderInline(quoteMatch[1] ?? "", true)}
 				</Text>
 			)
 		}
@@ -229,9 +241,7 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 		}
 
 		// Plain inline-formatting line
-		const tokens = tokenizeInline(line)
-		const inline = renderTokens(tokens, dimColor)
-		return <Text color={dimColor ? theme.secondaryText : theme.text}>{inline}</Text>
+		return <Text color={dimColor ? theme.secondaryText : theme.text}>{renderInline(line, dimColor)}</Text>
 	} catch {
 		// Any failure — render the raw line verbatim
 		return <Text color={dimColor ? theme.secondaryText : theme.text}>{line}</Text>

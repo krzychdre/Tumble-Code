@@ -85,4 +85,46 @@ describe("Markdown", () => {
 		const { lastFrame } = render(<Markdown>{"| --- | :---: |"}</Markdown>)
 		expect(lastFrame()).not.toContain("---")
 	})
+
+	// Lists, quotes and headings used to print their content raw, so the model's
+	// `- **Plik:** opis` reached the screen with the asterisks still in it
+	// (plan: 2026-09-22 inline markdown in CLI list items).
+	it("renders bold inside an unordered list item", () => {
+		const { lastFrame } = render(<Markdown>{"- **Plik:** `Markdown.tsx` opis"}</Markdown>)
+		const output = lastFrame()
+		expect(output).toContain("• Plik: Markdown.tsx opis")
+		expect(output).not.toContain("**")
+		expect(output).not.toContain("`")
+	})
+
+	it("renders bold inside an ordered list item", () => {
+		const { lastFrame } = render(<Markdown>{"1. **Krok pierwszy** zbuduj"}</Markdown>)
+		const output = lastFrame()
+		expect(output).toContain("1. Krok pierwszy zbuduj")
+		expect(output).not.toContain("**")
+	})
+
+	it("renders bold inside a blockquote", () => {
+		const { lastFrame } = render(<Markdown>{"> **Uwaga:** ostrożnie"}</Markdown>)
+		const output = lastFrame()
+		expect(output).toContain("▎ Uwaga: ostrożnie")
+		expect(output).not.toContain("**")
+	})
+
+	it("renders inline code inside a heading", () => {
+		const { lastFrame } = render(<Markdown>{"## Plik `Markdown.tsx`"}</Markdown>)
+		const output = lastFrame()
+		expect(output).toContain("Plik Markdown.tsx")
+		expect(output).not.toContain("`")
+	})
+
+	it("keeps underscores inside identifiers and paths", () => {
+		const { lastFrame } = render(<Markdown>{"- edit my_var_name in src/__tests__/a.ts"}</Markdown>)
+		expect(lastFrame()).toContain("• edit my_var_name in src/__tests__/a.ts")
+	})
+
+	it("still renders _emphasis_ at word boundaries", () => {
+		const { lastFrame } = render(<Markdown>{"- _really_ matters"}</Markdown>)
+		expect(lastFrame()).toContain("• really matters")
+	})
 })
