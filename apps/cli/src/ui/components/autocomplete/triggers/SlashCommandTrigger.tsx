@@ -87,10 +87,13 @@ export function createSlashCommandTrigger(config: SlashCommandTriggerConfig): Au
 						? "📁"
 						: "🌐"
 
+			// One row per item: skill descriptions run to several hundred
+			// characters and would otherwise wrap over the input below the picker.
 			return (
 				<Box paddingLeft={2}>
-					<Text color={isSelected ? "cyan" : undefined}>
+					<Text color={isSelected ? "cyan" : undefined} wrap="truncate-end">
 						{sourceIcon} /{item.name}
+						{item.argumentHint && <Text dimColor> {item.argumentHint}</Text>}
 						{item.description && <Text dimColor> - {item.description}</Text>}
 					</Text>
 				</Box>

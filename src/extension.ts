@@ -10,7 +10,7 @@ import * as path from "path"
 const envPath = path.join(__dirname, "..", ".env")
 if (fs.existsSync(envPath)) {
 	try {
-		dotenvx.config({ path: envPath })
+		dotenvx.config({ path: envPath, quiet: true })
 	} catch (e) {
 		// Best-effort only: never fail extension activation due to optional env loading.
 		console.warn("Failed to load environment variables:", e)
@@ -42,6 +42,7 @@ import { MdmService } from "./services/mdm/MdmService"
 import { migrateSettings } from "./utils/migrateSettings"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
+import { writeCliSettingsMirror } from "./utils/cliSettingsMirror"
 import { API } from "./extension/api"
 import { setupRemoteControlBridge } from "./extension/bridge"
 
@@ -128,6 +129,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	outputChannel = vscode.window.createOutputChannel(Package.outputChannel)
 	context.subscriptions.push(outputChannel)
 	outputChannel.appendLine(`${Package.name} extension activated - ${JSON.stringify(Package)}`)
+
+	// Provider-auth commands need the bundled OAuth implementation and the same
+	// SecretStorage as normal CLI runs, but not full extension activation (cloud,
+	// telemetry, indexing, webview, or terminal setup).
+	if (process.env.ROO_CLI_CODEX_AUTH_ONLY === "1") {
+		openAiCodexOAuthManager.initialize(context, (message) => outputChannel.appendLine(message))
+		return {
+			getOpenAiCodexOAuthManager: () => openAiCodexOAuthManager,
+		}
+	}
 
 	// Initialize network proxy configuration early, before any network requests.
 	// When proxyUrl is configured, all HTTP/HTTPS traffic will be routed through it.
@@ -309,6 +320,20 @@ export async function activate(context: vscode.ExtensionContext) {
 	} catch (error) {
 		outputChannel.appendLine(
 			`[AutoImport] Error during auto-import: ${error instanceof Error ? error.message : String(error)}`,
+		)
+	}
+
+	// Mirror the active API configuration into the CLI settings file
+	// (~/.roo/cli-settings.json) so bare `tumble` runs reuse the provider/model/
+	// baseUrl configured in the app without ever writing API keys there.
+	// Best-effort by design — a missing/unwritable home dir must never break
+	// extension startup.
+	try {
+		const { apiConfiguration } = await provider.getState()
+		await writeCliSettingsMirror(apiConfiguration)
+	} catch (error) {
+		outputChannel.appendLine(
+			`[CLI settings mirror] failed at startup: ${error instanceof Error ? error.message : String(error)}`,
 		)
 	}
 

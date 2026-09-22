@@ -300,8 +300,8 @@
 		"addToDenied": "新增至拒絕清單",
 		"removeFromDenied": "從拒絕清單中移除",
 		"abortCommand": "中止命令執行",
-		"expandOutput": "展開輸出",
-		"collapseOutput": "摺疊輸出",
+		"expandCommand": "展開命令",
+		"collapseCommand": "摺疊命令",
 		"expandManagement": "展開命令管理部分",
 		"collapseManagement": "摺疊命令管理部分"
 	},

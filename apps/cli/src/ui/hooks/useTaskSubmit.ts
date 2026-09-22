@@ -1,17 +1,22 @@
 import { useCallback } from "react"
 import { randomUUID } from "crypto"
+import { useStdout } from "ink"
 import type { WebviewMessage } from "@roo-code/types"
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
+import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
 
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
+import { CLEAR_TERMINAL } from "../utils/clearTerminal.js"
 
 export interface UseTaskSubmitOptions {
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	runTask: ((prompt: string) => Promise<void>) | null
 	seenMessageIds: React.MutableRefObject<Set<string>>
 	firstTextMessageSkipped: React.MutableRefObject<boolean>
+	permissionMode: PermissionMode
+	onPermissionModeChange: (mode: PermissionMode) => void
 }
 
 export interface UseTaskSubmitReturn {
@@ -35,6 +40,8 @@ export function useTaskSubmit({
 	runTask,
 	seenMessageIds,
 	firstTextMessageSkipped,
+	permissionMode,
+	onPermissionModeChange,
 }: UseTaskSubmitOptions): UseTaskSubmitReturn {
 	const {
 		pendingAsk,
@@ -49,6 +56,28 @@ export function useTaskSubmit({
 	} = useCLIStore()
 
 	const { setShowCustomInput, setIsTransitioningToCustomInput } = useUIStateStore()
+	const { write } = useStdout()
+
+	/**
+	 * Drop the current task: reset the CLI state, forget the message ids we
+	 * have already seen, tell the extension host to clear the task, and
+	 * re-request the commands and modes that reset() just wiped.
+	 *
+	 * Shared by /new and /clear; the only thing /clear adds is the screen wipe.
+	 */
+	const resetConversation = useCallback(
+		(send: (msg: WebviewMessage) => void) => {
+			useCLIStore.getState().reset()
+
+			seenMessageIds.current.clear()
+			firstTextMessageSkipped.current = false
+
+			send({ type: "clearTask" })
+			send({ type: "requestCommands" })
+			send({ type: "requestModes" })
+		},
+		[seenMessageIds, firstTextMessageSkipped],
+	)
 
 	/**
 	 * Handle user text submission (from input or followup question)
@@ -73,17 +102,48 @@ export function useTaskSubmit({
 					const globalCommand = getGlobalCommand(commandMatch[1])
 
 					if (globalCommand?.action === "clearTask") {
-						// Reset CLI state and send clearTask to extension.
-						useCLIStore.getState().reset()
+						resetConversation(sendToExtension)
+						return
+					}
 
-						// Reset component-level refs to avoid stale message tracking.
-						seenMessageIds.current.clear()
-						firstTextMessageSkipped.current = false
-						sendToExtension({ type: "clearTask" })
+					if (globalCommand?.action === "clearConversation") {
+						// Wipe first, reset second: the reset re-renders, the
+						// `<Static>` region remounts on the new clear epoch and
+						// prints the welcome banner, and that banner has to land
+						// on the cleared screen rather than be cleared by it.
+						write(CLEAR_TERMINAL)
+						useUIStateStore.getState().clearTranscript()
+						resetConversation(sendToExtension)
+						return
+					}
 
-						// Re-request state, commands and modes since reset() cleared them.
-						sendToExtension({ type: "requestCommands" })
-						sendToExtension({ type: "requestModes" })
+					if (globalCommand?.action === "setPermissions") {
+						const argument = trimmedText.slice(commandMatch[0].length).trim()
+						const result = resolvePermissionArgument(argument, permissionMode)
+
+						if (!result.success) {
+							addMessage({ id: randomUUID(), role: "system", content: result.error })
+							return
+						}
+
+						if ("mode" in result) {
+							sendToExtension({
+								type: "updateSettings",
+								updatedSettings: getPermissionSettings(result.mode),
+							})
+							onPermissionModeChange(result.mode)
+							addMessage({
+								id: randomUUID(),
+								role: "system",
+								content:
+									result.mode === "allow"
+										? "Permissions: allowing actions without approval for this session."
+										: "Permissions: asking before actions for this session.",
+							})
+							return
+						}
+
+						addMessage({ id: randomUUID(), role: "system", content: result.help })
 						return
 					}
 				}
@@ -144,8 +204,10 @@ export function useTaskSubmit({
 			setError,
 			setShowCustomInput,
 			setIsTransitioningToCustomInput,
-			seenMessageIds,
-			firstTextMessageSkipped,
+			resetConversation,
+			write,
+			permissionMode,
+			onPermissionModeChange,
 		],
 	)
 

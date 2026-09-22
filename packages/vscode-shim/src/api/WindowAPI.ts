@@ -13,6 +13,7 @@ import { OutputChannel } from "../classes/OutputChannel.js"
 import { StatusBarItem } from "../classes/StatusBarItem.js"
 import { TextEditorDecorationType } from "../classes/TextEditorDecorationType.js"
 import { TabGroupsAPI } from "./TabGroupsAPI.js"
+import { getInputBoxHandler } from "./inputBoxHandler.js"
 import { StatusBarAlignment, ViewColumn } from "../types.js"
 import type { WorkspaceAPI } from "./WorkspaceAPI.js"
 import type { Thenable } from "../types.js"
@@ -138,9 +139,15 @@ export class WindowAPI {
 		return Promise.resolve(items[0])
 	}
 
-	showInputBox(_options?: InputBoxOptions): Thenable<string | undefined> {
-		// Return empty string for CLI
-		return Promise.resolve("")
+	showInputBox(options?: InputBoxOptions): Thenable<string | undefined> {
+		const handler = getInputBoxHandler()
+
+		if (!handler) {
+			// No host is listening, so there is nobody to type an answer.
+			return Promise.resolve("")
+		}
+
+		return handler(options ?? {})
 	}
 
 	showOpenDialog(_options?: OpenDialogOptions): Thenable<Uri[] | undefined> {

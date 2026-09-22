@@ -1,10 +1,10 @@
 import http from "http"
 import { randomBytes } from "crypto"
 import net from "net"
-import { exec } from "child_process"
 
 import { AUTH_BASE_URL } from "@/types/index.js"
 import { saveToken } from "@/lib/storage/index.js"
+import { openExternal } from "@/lib/utils/open-external.js"
 
 export interface LoginOptions {
 	timeout?: number
@@ -99,7 +99,10 @@ export async function login({ timeout = 5 * 60 * 1000, verbose = false }: LoginO
 	console.log(`If the browser doesn't open, visit: ${authUrl.toString()}`)
 
 	try {
-		await openBrowser(authUrl.toString())
+		const opened = await openExternal(authUrl.toString())
+		if (!opened) {
+			throw new Error("No system browser opener is available")
+		}
 	} catch (error) {
 		if (verbose) {
 			console.warn("[Auth] Failed to open browser automatically:", error)
@@ -145,33 +148,5 @@ async function getAvailablePort(startPort = 49152, endPort = 65535): Promise<num
 		}
 
 		tryPort()
-	})
-}
-
-function openBrowser(url: string): Promise<void> {
-	return new Promise((resolve, reject) => {
-		const platform = process.platform
-		let command: string
-
-		switch (platform) {
-			case "darwin":
-				command = `open "${url}"`
-				break
-			case "win32":
-				command = `start "" "${url}"`
-				break
-			default:
-				// Linux and other Unix-like systems.
-				command = `xdg-open "${url}"`
-				break
-		}
-
-		exec(command, (error) => {
-			if (error) {
-				reject(error)
-			} else {
-				resolve()
-			}
-		})
 	})
 }

@@ -1,40 +1,34 @@
-import { Box, Text } from "ink"
+import { Box } from "ink"
 
-import * as theme from "../../theme.js"
+import Bullet from "../primitives/Bullet.js"
+import Markdown from "../Markdown.js"
 
 import type { ToolRendererProps } from "./types.js"
-import { truncateText, sanitizeContent } from "./utils.js"
+import { toolStatusFromMessage } from "./types.js"
+import { sanitizeContent } from "./utils.js"
 
-const MAX_CONTENT_LINES = 15
-
-export function CompletionTool({ toolData }: ToolRendererProps) {
+/**
+ * Render attempt_completion / ask_followup_question as an assistant-style
+ * bullet + markdown body (success-green bullet). Question vs completion both
+ * render the text via Markdown.
+ */
+export function CompletionTool({ toolData, message }: ToolRendererProps) {
+	const status = toolStatusFromMessage(message)
 	const result = toolData.result ? sanitizeContent(toolData.result) : ""
 	const question = toolData.question ? sanitizeContent(toolData.question) : ""
 	const content = toolData.content ? sanitizeContent(toolData.content) : ""
-	const isQuestion = toolData.tool.includes("question") || toolData.tool.includes("Question")
 	const displayContent = result || question || content
-	const { text: previewContent, truncated, hiddenLines } = truncateText(displayContent, MAX_CONTENT_LINES)
 
-	return previewContent ? (
-		<Box flexDirection="column" paddingX={1} marginBottom={1}>
-			{isQuestion ? (
-				<Box flexDirection="column">
-					<Text color={theme.text}>{previewContent}</Text>
-				</Box>
-			) : (
-				<Box flexDirection="column">
-					{previewContent.split("\n").map((line, i) => (
-						<Text key={i} color={theme.toolText}>
-							{line}
-						</Text>
-					))}
-				</Box>
-			)}
-			{truncated && (
-				<Text color={theme.dimText} dimColor>
-					... ({hiddenLines} more lines)
-				</Text>
-			)}
+	if (!displayContent) {
+		return null
+	}
+
+	return (
+		<Box>
+			<Bullet status={status} />
+			<Box flexDirection="column" flexGrow={1}>
+				<Markdown>{displayContent}</Markdown>
+			</Box>
 		</Box>
-	) : null
+	)
 }

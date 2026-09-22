@@ -249,8 +249,8 @@
 		"addToDenied": "Thêm vào danh sách từ chối",
 		"removeFromDenied": "Xóa khỏi danh sách từ chối",
 		"abortCommand": "Hủy bỏ thực thi lệnh",
-		"expandOutput": "Mở rộng kết quả",
-		"collapseOutput": "Thu gọn kết quả",
+		"expandCommand": "Mở rộng lệnh",
+		"collapseCommand": "Thu gọn lệnh",
 		"expandManagement": "Mở rộng phần quản lý lệnh",
 		"collapseManagement": "Thu gọn phần quản lý lệnh"
 	},

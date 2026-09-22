@@ -36,7 +36,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - [Tiếng Việt](locales/vi/README.md)
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
-    </details>
+      </details>
 
 ---
 
@@ -133,6 +133,43 @@ If you prefer to install the VSIX package manually:
     ```sh
     code --install-extension bin/tumble-code-<version>.vsix
     ```
+
+## Working over Remote SSH
+
+When VSCode is connected to a remote machine through Remote SSH, the Tumble Code extension host runs on the **server**, not on your laptop. The extension runs Node code, so it defaults to the `workspace` extension kind, which means everything it does happens where the workspace lives.
+
+### Where state lives
+
+- All persistent state (global storage: task history, API provider profiles, memory, artifacts) lives in `~/.vscode-server/data/User/globalStorage/` **on the server**, separately for each host you connect to.
+- **Task history and provider profiles are per-host.** A task you finished on one server does not exist on another, and profiles saved on one host are not visible from another.
+- The only state that physically lives on your laptop is secret storage (API keys): VSCode proxies it through the SSH channel to the client machine's keychain.
+- The webview UI renders locally, but all extension logic and file access happen on the server.
+- The extension must be installed **"in SSH"**: in the Extensions view, use the button "Install in SSH: [host]" instead of installing it only in the local window. A purely local install does not run on the server.
+
+### Machine-scoped settings
+
+The following settings are scoped `machine`. A value set in User settings on your laptop does **not** apply in a remote window; set them in the **"Remote [SSH: ...]"** settings tab (Settings editor, tab named after your SSH host) so they apply on the server:
+
+- `tumble-code.customStoragePath` (a local disk path, resolved on the server)
+- `tumble-code.autoImportSettingsPath` (same)
+- `tumble-code.debugProxy.serverUrl` (a local proxy address)
+- `tumble-code.cloudApiUrl`
+- `tumble-code.cloudProviderUrl`
+- `tumble-code.clerkBaseUrl`
+
+Remember that in a remote window `localhost` means the **server**, not your laptop, so addresses like `http://127.0.0.1:...` must point at something reachable from the server.
+
+Settings that are not host-specific (for example `allowedCommands`, `deniedCommands`, `commandExecutionTimeout`) keep their normal scope and still apply from User settings or Settings Sync.
+
+### Diagnostic checklist
+
+If task history or settings misbehave in an SSH window, check the server side first, because that is where the storage lives:
+
+1. **Disk space and quota** on the server: `df -h ~` and `quota -s` (a full disk or exceeded quota makes every write fail with `ENOSPC` or `EDQUOT`).
+2. **Filesystem type**: `stat -f ~/.vscode-server`. Network filesystems (NFS) add latency that can make file locks time out.
+3. **inotify limits**: `cat /proc/sys/fs/inotify/max_user_watches` and `/proc/sys/fs/inotify/max_user_instances`. vscode-server itself consumes thousands of watches, which can exhaust the limits and degrade file watching.
+4. **Extension logs**: in the Output panel, check the Tumble Code channel and "Log (Remote Extension Host)". Look for storage errors (`ENOSPC`, `EDQUOT`, `EROFS`, `EACCES`), failed TaskHistoryStore initialization, and lock errors (`Failed to acquire lock for`, `Lock compromised`).
+5. **Effective settings**: in the remote window, open Settings and compare the "Remote" tab against the "User" tab to see which value of a machine-scoped setting actually applies.
 
 ---
 

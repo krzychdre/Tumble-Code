@@ -7,6 +7,9 @@ import {
 	login,
 	logout,
 	status,
+	loginToOpenAiCodex,
+	logoutFromOpenAiCodex,
+	getOpenAiCodexAuthStatus,
 	listCommands,
 	listModes,
 	listModels,
@@ -17,8 +20,10 @@ import {
 const program = new Command()
 
 program
-	.name("roo")
-	.description("Roo Code CLI - starts an interactive session by default, use -p/--print for non-interactive output")
+	.name("tumble")
+	.description(
+		"Tumble Code CLI - starts an interactive session by default, use -p/--print for non-interactive output",
+	)
 	.version(VERSION)
 	.enablePositionalOptions()
 	.passThroughOptions()
@@ -45,8 +50,9 @@ program
 	.option("-d, --debug", "Enable debug output (includes detailed debug information)", false)
 	.option("-a, --require-approval", "Require manual approval for actions", false)
 	.option("-k, --api-key <key>", "API key for the LLM provider")
-	.option("--provider <provider>", "API provider (roo, anthropic, openai, openrouter, etc.)")
-	.option("-m, --model <model>", "Model to use", DEFAULT_FLAGS.model)
+	.option("--provider <provider>", "API provider (anthropic, openrouter, ollama, etc.)")
+	.option("-m, --model <model>", "Model to use (defaults to the persisted/settings model, then the built-in default)")
+	.option("--base-url <url>", "Base URL override for the selected provider")
 	.option("--mode <mode>", "Mode to start in (code, architect, ask, debug, etc.)", DEFAULT_FLAGS.mode)
 	.option("--terminal-shell <path>", "Absolute path to shell executable for inline terminal commands")
 	.option(
@@ -79,7 +85,7 @@ const applyListOptions = (command: Command) =>
 	command
 		.option("-w, --workspace <path>", "Workspace directory path (defaults to current working directory)")
 		.option("-e, --extension <path>", "Path to the extension bundle directory")
-		.option("-k, --api-key <key>", "Roo API key (falls back to saved login/session token)")
+		.option("-k, --api-key <key>", "Tumble API key (falls back to saved login/session token)")
 		.option("--format <format>", 'Output format: "json" (default) or "text"', "json")
 		.option("-d, --debug", "Enable debug output", false)
 
@@ -117,7 +123,7 @@ applyListOptions(listCommand.command("modes").description("List available modes"
 	},
 )
 
-applyListOptions(listCommand.command("models").description("List available Roo models")).action(
+applyListOptions(listCommand.command("models").description("List available Tumble models")).action(
 	async (options: Parameters<typeof listModels>[0]) => {
 		await runListAction(() => listModels(options))
 	},
@@ -131,25 +137,51 @@ applyListOptions(listCommand.command("sessions").description("List task sessions
 
 program
 	.command("upgrade")
-	.description("Upgrade Roo Code CLI to the latest version")
+	.description("Upgrade Tumble Code CLI to the latest version")
 	.action(async () => {
 		await runUpgradeAction(() => upgrade())
 	})
 
-const authCommand = program.command("auth").description("Manage authentication for Roo Code Cloud")
+const authCommand = program.command("auth").description("Manage Tumble Cloud and provider authentication")
 
 authCommand
 	.command("login")
-	.description("Authenticate with Roo Code Cloud")
+	.description("Authenticate with Tumble Code Cloud")
 	.option("-v, --verbose", "Enable verbose output", false)
 	.action(async (options: { verbose: boolean }) => {
 		const result = await login({ verbose: options.verbose })
 		process.exit(result.success ? 0 : 1)
 	})
 
+const codexAuthCommand = authCommand.command("codex").description("Manage ChatGPT subscription access for OpenAI Codex")
+
+codexAuthCommand
+	.command("login")
+	.description("Sign in to OpenAI Codex with ChatGPT Plus, Pro, Team, or Enterprise")
+	.action(async () => {
+		const result = await loginToOpenAiCodex()
+		process.exit(result.success ? 0 : 1)
+	})
+
+codexAuthCommand
+	.command("logout")
+	.description("Remove the stored OpenAI Codex OAuth credentials")
+	.action(async () => {
+		const result = await logoutFromOpenAiCodex()
+		process.exit(result.success ? 0 : 1)
+	})
+
+codexAuthCommand
+	.command("status")
+	.description("Show OpenAI Codex OAuth status")
+	.action(async () => {
+		const result = await getOpenAiCodexAuthStatus()
+		process.exit(result.authenticated ? 0 : 1)
+	})
+
 authCommand
 	.command("logout")
-	.description("Log out from Roo Code Cloud")
+	.description("Log out from Tumble Code Cloud")
 	.option("-v, --verbose", "Enable verbose output", false)
 	.action(async (options: { verbose: boolean }) => {
 		const result = await logout({ verbose: options.verbose })

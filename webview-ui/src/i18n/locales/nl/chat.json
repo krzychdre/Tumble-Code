@@ -243,8 +243,8 @@
 		"addToDenied": "Toevoegen aan geweigerde lijst",
 		"removeFromDenied": "Verwijderen van geweigerde lijst",
 		"abortCommand": "Commando-uitvoering afbreken",
-		"expandOutput": "Uitvoer uitvouwen",
-		"collapseOutput": "Uitvoer samenvouwen",
+		"expandCommand": "Commando uitvouwen",
+		"collapseCommand": "Commando samenvouwen",
 		"expandManagement": "Beheersectie voor commando's uitvouwen",
 		"collapseManagement": "Beheersectie voor commando's samenvouwen"
 	},

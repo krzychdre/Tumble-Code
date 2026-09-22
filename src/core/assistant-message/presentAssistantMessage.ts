@@ -305,7 +305,17 @@ export async function presentAssistantMessage(cline: Task) {
 				// this block already delivered its result: if it did, the tool SUCCEEDED and
 				// this error comes from its trailing cleanup, which is not a model mistake
 				// (and whose envelope `pushToolResult` drops as a duplicate anyway).
+				// On an aborting task this call is already a no-op: the helper returns early
+				// when `cline.abort` is set, so the guard below cannot lose any accounting.
 				recordToolFailureAsMistake(cline, error, toolName, hasToolResult)
+
+				// Silently ignore errors raised while the task is aborting. ask()/say()
+				// throw a plain abort Error when access.abort is set; reporting it via
+				// say() would re-throw (say() is itself abort-gated) and crash the
+				// process. The abort is intentional, so there is nothing to surface.
+				if (cline.abort) {
+					return
+				}
 
 				const errorString = `Error ${action}: ${JSON.stringify(serializeError(error))}`
 
@@ -720,7 +730,17 @@ export async function presentAssistantMessage(cline: Task) {
 				// this block already delivered its result: if it did, the tool SUCCEEDED and
 				// this error comes from its trailing cleanup, which is not a model mistake
 				// (and whose envelope `pushToolResult` drops as a duplicate anyway).
+				// On an aborting task this call is already a no-op: the helper returns early
+				// when `cline.abort` is set, so the guard below cannot lose any accounting.
 				recordToolFailureAsMistake(cline, error, toolName, hasToolResult)
+
+				// Silently ignore errors raised while the task is aborting. ask()/say()
+				// throw a plain abort Error when access.abort is set; reporting it via
+				// say() would re-throw (say() is itself abort-gated) and crash the
+				// process. The abort is intentional, so there is nothing to surface.
+				if (cline.abort) {
+					return
+				}
 
 				const errorString = `Error ${action}: ${JSON.stringify(serializeError(error))}`
 

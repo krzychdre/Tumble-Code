@@ -76,6 +76,24 @@ describe("getBinPath", () => {
 		expect(await getBinPath(appRoot)).toBe(rg)
 	})
 
+	it("prefers the CLI-provided ripgrep path over appRoot candidates", async () => {
+		const previous = process.env.ROO_RIPGREP_PATH
+		const bundledRg = path.join("/fake/tumble-cli", "bin", binName)
+		process.env.ROO_RIPGREP_PATH = bundledRg
+		mockFileExists.mockImplementation(async (p: string) => p === bundledRg)
+
+		try {
+			expect(await getBinPath(appRoot)).toBe(bundledRg)
+			expect(mockFileExists).toHaveBeenCalledTimes(1)
+		} finally {
+			if (previous === undefined) {
+				delete process.env.ROO_RIPGREP_PATH
+			} else {
+				process.env.ROO_RIPGREP_PATH = previous
+			}
+		}
+	})
+
 	it("resolves ripgrep from the @vscode/ripgrep-universal layout (VS Code Insiders)", async () => {
 		const rg = path.join(appRoot, "node_modules/@vscode/ripgrep-universal/bin", platformDir, binName)
 		mockFileExists.mockImplementation(async (p: string) => p === rg)

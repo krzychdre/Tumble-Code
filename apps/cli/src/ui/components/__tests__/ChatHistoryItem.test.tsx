@@ -2,20 +2,8 @@ import { render } from "ink-testing-library"
 
 import type { TUIMessage } from "../../types.js"
 import ChatHistoryItem from "../ChatHistoryItem.js"
-import { resetNerdFontCache } from "../Icon.js"
 
 describe("ChatHistoryItem", () => {
-	beforeEach(() => {
-		// Use fallback icons in tests so they render as visible characters
-		process.env.ROOCODE_NERD_FONT = "0"
-		resetNerdFontCache()
-	})
-
-	afterEach(() => {
-		delete process.env.ROOCODE_NERD_FONT
-		resetNerdFontCache()
-	})
-
 	describe("content sanitization", () => {
 		it("sanitizes tabs in user messages", () => {
 			const message: TUIMessage = {
@@ -27,7 +15,6 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// Tabs should be replaced with 4 spaces
 			expect(output).toContain("function test() {")
 			expect(output).toContain("    return true;") // Tab replaced with 4 spaces
 			expect(output).not.toContain("\t")
@@ -47,7 +34,7 @@ describe("ChatHistoryItem", () => {
 			expect(output).not.toContain("\t")
 		})
 
-		it("sanitizes tabs in thinking messages", () => {
+		it("renders thinking header without showing content (collapsed)", () => {
 			const message: TUIMessage = {
 				id: "3",
 				role: "thinking",
@@ -57,46 +44,53 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// All tabs should be converted to spaces
+			// Collapsed thinking shows the header, not the content
+			expect(output).toContain("Thinking")
 			expect(output).not.toContain("\t")
-			expect(output).toContain("    Markdown example:")
-			expect(output).toContain("        function foo() {}") // Double-indented
+			// Content should NOT be shown in collapsed mode
+			expect(output).not.toContain("Markdown example:")
+			expect(output).not.toContain("function foo() {}")
 		})
 
 		it("sanitizes tabs in tool messages with parsed content", () => {
-			// Tool messages parse JSON content to extract fields like 'content'
+			// Tool messages parse JSON content to extract fields like 'content'.
+			// Use execute_command so the output is rendered via ResultRow
+			// (read_file shows "Read N lines" summary, not the raw content).
 			const message: TUIMessage = {
 				id: "4",
 				role: "tool",
 				content: JSON.stringify({
-					tool: "read_file",
-					path: "test.js",
-					content: "function() {\n\treturn true;\n}",
+					tool: "execute_command",
+					command: "cat test.js",
+					output: "function() {\n\treturn true;\n}",
 				}),
-				toolName: "read_file",
-			}
-
-			const { lastFrame } = render(<ChatHistoryItem message={message} />)
-			const output = lastFrame()
-
-			// The content inside the JSON should be sanitized
-			expect(output).toContain("    return true;")
-			expect(output).not.toContain("\t")
-		})
-
-		it("sanitizes tabs in tool messages with toolDisplayOutput", () => {
-			const message: TUIMessage = {
-				id: "5",
-				role: "tool",
-				content: "raw content",
-				toolDisplayOutput: "function() {\n\treturn;\n}",
 				toolName: "execute_command",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// toolDisplayOutput should be used and sanitized
+			// The output inside the JSON should be sanitized
+			expect(output).toContain("    return true;")
+			expect(output).not.toContain("\t")
+		})
+
+		it("sanitizes tabs in tool messages with structured toolData output", () => {
+			const message: TUIMessage = {
+				id: "5",
+				role: "tool",
+				content: "raw content",
+				toolName: "execute_command",
+				toolData: {
+					tool: "execute_command",
+					command: "ls",
+					output: "function() {\n\treturn;\n}",
+				},
+			}
+
+			const { lastFrame } = render(<ChatHistoryItem message={message} />)
+			const output = lastFrame()
+
 			expect(output).toContain("    return;")
 			expect(output).not.toContain("\t")
 		})
@@ -125,19 +119,16 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// Carriage returns should be stripped
+			// Carriage returns should be stripped (content not shown, but no crash)
 			expect(output).not.toContain("\r")
-			expect(output).toContain("Line 1")
-			expect(output).toContain("Line 2")
-			expect(output).toContain("Line 3")
+			expect(output).toContain("Thinking")
 		})
 
-		it("strips carriage returns from toolDisplayOutput", () => {
+		it("strips carriage returns from tool content", () => {
 			const message: TUIMessage = {
 				id: "8",
 				role: "tool",
-				content: "raw",
-				toolDisplayOutput: "Output\r\nwith\rCR",
+				content: "Output\r\nwith\rCR",
 				toolName: "test_tool",
 			}
 
@@ -150,14 +141,13 @@ describe("ChatHistoryItem", () => {
 		it("handles content with both tabs and carriage returns", () => {
 			const message: TUIMessage = {
 				id: "9",
-				role: "thinking",
+				role: "assistant",
 				content: "Code:\r\n\tfunction() {\r\n\t\treturn;\r\n\t}",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// Both should be sanitized
 			expect(output).not.toContain("\t")
 			expect(output).not.toContain("\r")
 			expect(output).toContain("    function()")
@@ -166,7 +156,7 @@ describe("ChatHistoryItem", () => {
 	})
 
 	describe("message rendering", () => {
-		it("renders user messages with correct header", () => {
+		it("renders user messages with pointer and text", () => {
 			const message: TUIMessage = {
 				id: "1",
 				role: "user",
@@ -176,11 +166,13 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			expect(output).toContain("You said:")
+			// New grammar: pointer ❯ on bg band + text (no "You said:")
+			expect(output).toContain("❯")
 			expect(output).toContain("Hello")
+			expect(output).not.toContain("You said:")
 		})
 
-		it("renders assistant messages with correct header", () => {
+		it("renders assistant messages with bullet and text", () => {
 			const message: TUIMessage = {
 				id: "2",
 				role: "assistant",
@@ -190,11 +182,13 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			expect(output).toContain("Roo said:")
+			// New grammar: ● bullet + text (no "Tumble said:")
+			expect(output).toContain("●")
 			expect(output).toContain("Hi there")
+			expect(output).not.toContain("Tumble said:")
 		})
 
-		it("renders thinking messages with correct header", () => {
+		it("renders thinking messages collapsed (header only, no content)", () => {
 			const message: TUIMessage = {
 				id: "3",
 				role: "thinking",
@@ -204,15 +198,22 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			expect(output).toContain("Roo is thinking:")
-			expect(output).toContain("Let me think...")
+			// Collapsed thinking shows the ∴ Thinking… header, not the content
+			expect(output).toContain("Thinking")
+			expect(output).toContain("∴")
+			// Content is no longer shown
+			expect(output).not.toContain("Let me think...")
 		})
 
-		it("renders tool messages with icon and tool display name", () => {
+		it("renders tool messages with Read display name and path", () => {
 			const message: TUIMessage = {
 				id: "4",
 				role: "tool",
-				content: JSON.stringify({ tool: "read_file", path: "test.txt", content: "Output text" }),
+				content: JSON.stringify({
+					tool: "read_file",
+					path: "test.txt",
+					content: "line one\nline two\nline three",
+				}),
 				toolName: "read_file",
 				toolDisplayName: "Read File",
 			}
@@ -220,12 +221,13 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// ToolDisplay (fallback without toolData) shows display name without icon
-			expect(output).toContain("Read File")
-			expect(output).toContain("Output text")
+			// New grammar: ● Read(path) + ⎿ result
+			expect(output).toContain("Read")
+			expect(output).toContain("test.txt")
+			expect(output).toContain("⎿")
 		})
 
-		it("renders tool messages with path indicator for file tools", () => {
+		it("renders tool messages with path for file tools", () => {
 			const message: TUIMessage = {
 				id: "5",
 				role: "tool",
@@ -237,11 +239,11 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			expect(output).toContain("file:")
+			expect(output).toContain("Read")
 			expect(output).toContain("src/test.ts")
 		})
 
-		it("renders tool messages with directory path indicator for list tools", () => {
+		it("renders tool messages with List display name for list tools", () => {
 			const message: TUIMessage = {
 				id: "6",
 				role: "tool",
@@ -253,11 +255,11 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			expect(output).toContain("dir:")
+			expect(output).toContain("List")
 			expect(output).toContain("src/")
 		})
 
-		it("shows outside workspace warning when applicable", () => {
+		it("shows outside workspace badge when applicable", () => {
 			const message: TUIMessage = {
 				id: "7",
 				role: "tool",
@@ -277,7 +279,7 @@ describe("ChatHistoryItem", () => {
 			expect(output).toContain("outside workspace")
 		})
 
-		it("uses fallback content when message.content is empty", () => {
+		it("uses fallback content when message.content is empty (assistant → …)", () => {
 			const message: TUIMessage = {
 				id: "8",
 				role: "assistant",
@@ -287,7 +289,7 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			expect(output).toContain("...")
+			expect(output).toContain("…")
 		})
 
 		it("returns null for unknown role", () => {
@@ -302,7 +304,7 @@ describe("ChatHistoryItem", () => {
 			expect(lastFrame()).toBe("")
 		})
 
-		it("renders command tools with command icon", () => {
+		it("renders command tools with Bash display name", () => {
 			const message: TUIMessage = {
 				id: "10",
 				role: "tool",
@@ -315,12 +317,11 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// ToolDisplay (fallback without toolData) shows display name without icon
-			expect(output).toContain("Execute Command")
-			expect(output).toContain("command output")
+			// New grammar: ● Bash + ⎿ output
+			expect(output).toContain("Bash")
 		})
 
-		it("renders search tools with search icon", () => {
+		it("renders search tools with Search display name", () => {
 			const message: TUIMessage = {
 				id: "11",
 				role: "tool",
@@ -333,8 +334,7 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// ToolDisplay (fallback without toolData) shows display name without icon
-			expect(output).toContain("Search Files")
+			expect(output).toContain("Search")
 		})
 
 		it("renders attempt_completion tool with CompletionTool renderer", () => {
@@ -357,8 +357,62 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// CompletionTool renders the result content directly without icon or header
+			// CompletionTool renders the result content via Markdown with a bullet
 			expect(output).toContain("I've completed the task successfully.")
+		})
+
+		it("forwards content and expanded to the thinking renderer", () => {
+			const message: TUIMessage = {
+				id: "14",
+				role: "thinking",
+				content: "Weighing the two options.",
+			}
+
+			const collapsed = render(<ChatHistoryItem message={message} />).lastFrame()
+			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
+
+			expect(collapsed).not.toContain("Weighing the two options.")
+			expect(expanded).toContain("Weighing the two options.")
+		})
+
+		it("forwards expanded to tool renderers", () => {
+			const message: TUIMessage = {
+				id: "15",
+				role: "tool",
+				content: "raw content",
+				toolName: "execute_command",
+				toolData: {
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n"),
+				},
+			}
+
+			const collapsed = render(<ChatHistoryItem message={message} />).lastFrame()
+			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
+
+			expect(collapsed).toContain("+25 lines")
+			expect(collapsed).not.toContain("line 6")
+			expect(expanded).toContain("line 30")
+			expect(expanded).not.toContain("+25 lines")
+		})
+
+		it("forwards expanded to tool renderers resolved from raw JSON content", () => {
+			const message: TUIMessage = {
+				id: "16",
+				role: "tool",
+				content: JSON.stringify({
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n"),
+				}),
+				toolName: "execute_command",
+			}
+
+			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
+
+			expect(expanded).toContain("line 30")
+			expect(expanded).not.toContain("+20 lines")
 		})
 
 		it("renders ask_followup_question tool with CompletionTool renderer", () => {
@@ -378,7 +432,7 @@ describe("ChatHistoryItem", () => {
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
 			const output = lastFrame()
 
-			// CompletionTool renders the question content directly without icon or header
+			// CompletionTool renders the question content via Markdown
 			expect(output).toContain("What color would you like?")
 		})
 	})

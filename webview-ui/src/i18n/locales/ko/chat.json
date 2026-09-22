@@ -248,8 +248,8 @@
 		"addToDenied": "거부 목록에 추가",
 		"removeFromDenied": "거부 목록에서 제거",
 		"abortCommand": "명령 실행 중단",
-		"expandOutput": "출력 확장",
-		"collapseOutput": "출력 축소",
+		"expandCommand": "명령 확장",
+		"collapseCommand": "명령 축소",
 		"expandManagement": "명령 관리 섹션 확장",
 		"collapseManagement": "명령 관리 섹션 축소"
 	},

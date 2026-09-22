@@ -9,18 +9,30 @@ import { setLogger } from "@roo-code/vscode-shim"
 
 import {
 	FlagOptions,
-	isSupportedProvider,
+	isAcceptedProvider,
+	resolveProviderIdAlias,
 	supportedProviders,
 	DEFAULT_FLAGS,
 	REASONING_EFFORTS,
 	OutputFormat,
+	type CliSettings,
+	type SupportedProvider,
 } from "@/types/index.js"
+import { openAiCodexDefaultModelId } from "@roo-code/types"
+import { getOpenAiCodexAuthStatus } from "@/commands/auth/openai-codex.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
-import { loadSettings } from "@/lib/storage/index.js"
+import { loadSettings, saveSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
-import { getEnvVarName, getApiKeyFromEnv } from "@/lib/utils/provider.js"
+import {
+	getEnvVarName,
+	getApiKeyFromEnv,
+	getBaseUrlField,
+	providerRequiresApiKey,
+	getProviderSettings,
+} from "@/lib/utils/provider.js"
+import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
@@ -47,6 +59,59 @@ async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: str
 
 function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
+}
+
+/**
+ * Resolve the effective model for a run when no explicit `-m/--model` flag is
+ * given (the caller applies the flag first).
+ *
+ * ▶ Precedence: flag `-m/--model` > persisted cli-settings.json model > mock
+ *   VS Code config model > built-in default (caller chain).
+ * ▶ A persisted model belongs to the provider that was active when it was
+ *   saved — the settings file stores provider + model together. It is applied
+ *   only when the persisted provider resolves to the provider actually
+ *   running; otherwise the built-in default model is used so a model saved for
+ *   another provider never gets sent to the wrong provider (decision A3 of
+ *   ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
+ */
+export function resolveEffectiveModel(
+	settings: Pick<CliSettings, "provider" | "model"> | undefined,
+	activeProvider: SupportedProvider,
+): string | undefined {
+	if (!settings?.model) {
+		return undefined
+	}
+
+	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
+	if (persistedProvider !== activeProvider) {
+		return undefined
+	}
+
+	return settings.model
+}
+
+/** A persisted base URL belongs to the provider it was saved with. */
+export function resolveEffectiveBaseUrl(
+	settings: Pick<CliSettings, "provider" | "baseUrl"> | undefined,
+	activeProvider: SupportedProvider,
+): string | undefined {
+	if (!settings?.baseUrl) {
+		return undefined
+	}
+
+	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
+	return persistedProvider === activeProvider ? settings.baseUrl : undefined
+}
+
+/**
+ * Whether the active provider's settings schema has a base-url field. Used to
+ * gate baseUrl persistence: a provider without a base-url field must never get
+ * a baseUrl key written into cli-settings.json (getProviderSettings would
+ * reject it on the next run — provider-types.ts throws when a baseUrl is given
+ * for a provider that has no base-url field).
+ */
+export function effectiveProviderSupportBaseUrl(provider: SupportedProvider): boolean {
+	return getBaseUrlField(provider) !== undefined
 }
 
 export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
@@ -105,7 +170,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	if (isResumeRequested && prompt) {
 		console.error("[CLI] Error: cannot use prompt or --prompt-file with --session-id/--continue")
-		console.error("[CLI] Usage: roo [--session-id <session-id> | --continue] [options]")
+		console.error("[CLI] Usage: tumble [--session-id <session-id> | --continue] [options]")
 		process.exit(1)
 	}
 
@@ -117,12 +182,40 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const isTuiEnabled = !flagOptions.print && isTuiSupported
 	const isOnboardingEnabled = isTuiEnabled && !flagOptions.provider && !settings.provider
 
+	// Reuse provider/model/key/baseUrl chosen in the VS Code extension
+	// (via the vscode-shim global storage). Precedence for everything below:
+	// CLI flags > settings file > persisted VS Code config > env > defaults.
+	const vsCodeConfig = readVsCodeConfig() ?? {}
+
 	// Determine effective values: CLI flags > settings file > DEFAULT_FLAGS.
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
-	const effectiveModel = flagOptions.model || settings.model || DEFAULT_FLAGS.model
 	const effectiveReasoningEffort =
 		flagOptions.reasoningEffort || settings.reasoningEffort || DEFAULT_FLAGS.reasoningEffort
-	const effectiveProvider = flagOptions.provider ?? settings.provider ?? "openrouter"
+	const rawEffectiveProvider =
+		flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider ?? DEFAULT_FLAGS.provider
+	// Persisted aliases (e.g. the cloud "tumble" id) are accepted and mapped to
+	// the real provider (tumble -> openrouter) before anything else consumes it.
+	const effectiveProvider = resolveProviderIdAlias(rawEffectiveProvider) as SupportedProvider
+	// An explicit -m wins outright; otherwise the persisted model applies only
+	// when its provider matches the active provider (its settings were saved
+	// for) — a model persisted for a different provider must not be sent to it.
+	// Explicit flags > persisted cli-settings.json > mock VS Code config > default.
+	const effectiveModel =
+		flagOptions.model ||
+		resolveEffectiveModel(settings, effectiveProvider) ||
+		vsCodeConfig?.model ||
+		(effectiveProvider === "openai-codex" ? openAiCodexDefaultModelId : DEFAULT_FLAGS.model)
+	const effectiveBaseUrl =
+		flagOptions.baseUrl ||
+		resolveEffectiveBaseUrl(settings, effectiveProvider) ||
+		(vsCodeConfig?.provider === effectiveProvider && effectiveProviderSupportBaseUrl(effectiveProvider)
+			? vsCodeConfig.baseUrl
+			: undefined)
+	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
+	// the current working directory. The workspace is intentionally NEVER read
+	// from persisted settings — `tumble` must follow the directory it is run
+	// in, so a persisted workspace could never override pwd (decision A1 of
+	// ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
 	const effectiveWorkspacePath = flagOptions.workspace ? path.resolve(flagOptions.workspace) : process.cwd()
 	const legacyRequireApprovalFromSettings =
 		settings.requireApproval ??
@@ -162,6 +255,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		model: effectiveModel,
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
+		baseUrl: effectiveBaseUrl,
 		nonInteractive: !effectiveRequireApproval,
 		exitOnError: flagOptions.exitOnError,
 		ephemeral: flagOptions.ephemeral,
@@ -170,7 +264,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		terminalShell,
 	}
 
-	// Roo Code Cloud Authentication
+	// Tumble Code Cloud Authentication
 
 	if (isOnboardingEnabled) {
 		let { onboardingProviderChoice } = settings
@@ -185,20 +279,63 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	// TODO: Validate the API key for the chosen provider.
 	// TODO: Validate the model for the chosen provider.
 
-	if (!isSupportedProvider(extensionHostOptions.provider)) {
+	// The raw (possibly aliased) id must be accepted; the effective provider is
+	// already the resolved alias (tumble -> openrouter).
+	if (!isAcceptedProvider(rawEffectiveProvider)) {
 		console.error(
-			`[CLI] Error: Invalid provider: ${extensionHostOptions.provider}; must be one of: ${supportedProviders.join(", ")}`,
+			`[CLI] Error: Invalid provider: ${rawEffectiveProvider}; must be one of: ${supportedProviders.join(", ")}`,
 		)
 		process.exit(1)
 	}
 
-	extensionHostOptions.apiKey =
-		extensionHostOptions.apiKey || flagOptions.apiKey || getApiKeyFromEnv(extensionHostOptions.provider)
-
-	if (!extensionHostOptions.apiKey) {
-		console.error(`[CLI] Error: No API key provided. Use --api-key or set the appropriate environment variable.`)
-		console.error(`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`)
+	// OAuth credentials live in persistent vscode-shim SecretStorage. An
+	// ephemeral host starts with an empty store, so fail here with an actionable
+	// message instead of letting the provider report a generic auth error.
+	if (effectiveProvider === "openai-codex" && flagOptions.ephemeral) {
+		console.error("[CLI] Error: --ephemeral cannot be used with the openai-codex provider.")
+		console.error("[CLI] Run `tumble auth codex login`, then retry without --ephemeral.")
 		process.exit(1)
+	}
+
+	if (effectiveProvider === "openai-codex") {
+		const authStatus = await getOpenAiCodexAuthStatus({ quiet: true })
+		if (!authStatus.authenticated) {
+			console.error("[CLI] Error: OpenAI Codex is not authenticated.")
+			console.error("[CLI] Run `tumble auth codex login`, then retry.")
+			process.exit(1)
+		}
+	}
+
+	// A base-url is only valid where the provider's settings schema has a
+	// base-url field. Reject early with the provider's name (decision 5).
+	if (effectiveBaseUrl) {
+		try {
+			getProviderSettings(extensionHostOptions.provider, undefined, undefined, effectiveBaseUrl)
+		} catch (error) {
+			console.error(`[CLI] Error: ${(error as Error).message}`)
+			process.exit(1)
+		}
+	}
+
+	// Provider-aware API-key gate. Providers whose settings schema has no
+	// required API-key field (ollama, lmstudio, bedrock, qwen-code, vertex — as
+	// derived in provider-types.ts) run keyless; providers that need a key
+	// hard-exit with the missing-key message when none was supplied.
+	const needsKey = providerRequiresApiKey(extensionHostOptions.provider)
+
+	if (needsKey) {
+		extensionHostOptions.apiKey =
+			flagOptions.apiKey || getApiKeyFromEnv(extensionHostOptions.provider) || vsCodeConfig?.apiKey
+
+		if (!extensionHostOptions.apiKey) {
+			console.error(
+				`[CLI] Error: No API key provided. Use --api-key or set the appropriate environment variable.`,
+			)
+			console.error(
+				`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`,
+			)
+			process.exit(1)
+		}
 	}
 
 	if (!fs.existsSync(extensionHostOptions.workspacePath)) {
@@ -211,6 +348,49 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			`[CLI] Error: Invalid reasoning effort: ${extensionHostOptions.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`,
 		)
 		process.exit(1)
+	}
+
+	// Persist provider/model/base-url for the next run (flags > settings > defaults).
+	// Keys are never persisted — they stay env/flags only.
+	// The provider id is persisted RESOLVED (tumble -> openrouter): the settings
+	// file must only ever contain a registry provider id, never a raw alias. A
+	// missing raw value stays undefined (a later `null` still clears the key).
+	const rawPersistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
+	const persistedProvider =
+		rawPersistedProvider !== undefined ? resolveProviderIdAlias(rawPersistedProvider) : undefined
+	// The model is persisted ONLY when it is explicitly tied to the active
+	// provider — an explicit -m, or the persisted settings model whose provider
+	// matches the active one (the settings file stores provider + model
+	// together). A model read from the mock VS Code config or the built-in
+	// default belongs to "some other provider" and must NEVER be written back
+	// over the settings file (decision A3; bug: model got clobbered to
+	// DEFAULT_FLAGS.model anthropic/claude-opus-4.6 on every run).
+	const persistedModel = flagOptions.model ?? resolveEffectiveModel(settings, effectiveProvider)
+	// baseUrl is persisted only for providers whose settings schema has a
+	// base-url field (getProviderSettings throws otherwise). The effective
+	// flag > settings > VS Code config value is persisted when it differs from
+	// what the file already holds; a provider without a base-url field never
+	// gets a baseUrl key written.
+	const persistedBaseUrl = effectiveProviderSupportBaseUrl(effectiveProvider) ? effectiveBaseUrl : undefined
+
+	// Skip the write entirely when nothing actually changed — an unconditional
+	// saveSettings would rewrite the file (and bump mtime) on every plain run
+	// even when the values are already persisted.
+	const pendingSettings: Parameters<typeof saveSettings>[0] = {}
+	if (persistedProvider && persistedProvider !== settings.provider) {
+		pendingSettings.provider = persistedProvider as typeof settings.provider
+	}
+	if (persistedModel && persistedModel !== settings.model) {
+		pendingSettings.model = persistedModel
+	}
+	if (persistedBaseUrl && persistedBaseUrl !== settings.baseUrl) {
+		pendingSettings.baseUrl = persistedBaseUrl
+	}
+	if (!effectiveProviderSupportBaseUrl(effectiveProvider) && settings.baseUrl !== undefined) {
+		pendingSettings.baseUrl = null
+	}
+	if (Object.keys(pendingSettings).length > 0) {
+		await saveSettings(pendingSettings)
 	}
 
 	// Validate output format
@@ -226,39 +406,41 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	// Output format only works with --print mode
 	if (outputFormat !== "text" && !flagOptions.print && isTuiSupported) {
 		console.error("[CLI] Error: --output-format requires --print mode")
-		console.error("[CLI] Usage: roo --print --output-format json")
+		console.error("[CLI] Usage: tumble --print --output-format json")
 		process.exit(1)
 	}
 
 	if (flagOptions.stdinPromptStream && !flagOptions.print) {
 		console.error("[CLI] Error: --stdin-prompt-stream requires --print mode")
-		console.error("[CLI] Usage: roo --print --output-format stream-json --stdin-prompt-stream [options]")
+		console.error("[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream [options]")
 		process.exit(1)
 	}
 
 	if (flagOptions.signalOnlyExit && !flagOptions.stdinPromptStream) {
 		console.error("[CLI] Error: --signal-only-exit requires --stdin-prompt-stream")
-		console.error("[CLI] Usage: roo --print --output-format stream-json --stdin-prompt-stream --signal-only-exit")
+		console.error(
+			"[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream --signal-only-exit",
+		)
 		process.exit(1)
 	}
 
 	if (flagOptions.stdinPromptStream && outputFormat !== "stream-json") {
 		console.error("[CLI] Error: --stdin-prompt-stream requires --output-format=stream-json")
-		console.error("[CLI] Usage: roo --print --output-format stream-json --stdin-prompt-stream [options]")
+		console.error("[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream [options]")
 		process.exit(1)
 	}
 
 	if (flagOptions.stdinPromptStream && process.stdin.isTTY) {
 		console.error("[CLI] Error: --stdin-prompt-stream requires piped stdin")
 		console.error(
-			'[CLI] Example: printf \'{"command":"start","requestId":"1","prompt":"1+1=?"}\\n\' | roo --print --output-format stream-json --stdin-prompt-stream [options]',
+			'[CLI] Example: printf \'{"command":"start","requestId":"1","prompt":"1+1=?"}\\n\' | tumble --print --output-format stream-json --stdin-prompt-stream [options]',
 		)
 		process.exit(1)
 	}
 
 	if (flagOptions.stdinPromptStream && prompt) {
 		console.error("[CLI] Error: cannot use positional prompt or --prompt-file with --stdin-prompt-stream")
-		console.error("[CLI] Usage: roo --print --output-format stream-json --stdin-prompt-stream [options]")
+		console.error("[CLI] Usage: tumble --print --output-format stream-json --stdin-prompt-stream [options]")
 		process.exit(1)
 	}
 
@@ -286,13 +468,13 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		if (!prompt && !useStdinPromptStream && !isResumeRequested) {
 			if (flagOptions.print) {
 				console.error("[CLI] Error: no prompt provided")
-				console.error("[CLI] Usage: roo --print [options] <prompt>")
+				console.error("[CLI] Usage: tumble --print [options] <prompt>")
 				console.error(
-					"[CLI] For stdin control mode: roo --print --output-format stream-json --stdin-prompt-stream [options]",
+					"[CLI] For stdin control mode: tumble --print --output-format stream-json --stdin-prompt-stream [options]",
 				)
 			} else {
 				console.error("[CLI] Error: prompt is required in non-interactive mode")
-				console.error("[CLI] Usage: roo <prompt> [options]")
+				console.error("[CLI] Usage: tumble <prompt> [options]")
 				console.error("[CLI] Run without -p for interactive mode")
 			}
 
@@ -310,6 +492,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		try {
 			const { render } = await import("ink")
 			const { App } = await import("../../ui/App.js")
+			const { createScrollSafeStdout } = await import("../../ui/utils/scrollSafeStdout.js")
 
 			render(
 				createElement(App, {
@@ -321,8 +504,18 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 					version: VERSION,
 					createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
 				}),
-				// Handle Ctrl+C in App component for double-press exit.
-				{ exitOnCtrlC: false },
+				{
+					// Handle Ctrl+C in App component for double-press exit.
+					exitOnCtrlC: false,
+					// Diff frames per line instead of erase-all + rewrite —
+					// ink's standard log-update repaints the whole dynamic
+					// region every frame, which blinks on each spinner tick
+					// and stream chunk.
+					incrementalRendering: true,
+					// ...which skips unchanged rows with a cursor move that
+					// does not scroll on the bottom row; see scrollSafeStdout.
+					stdout: createScrollSafeStdout(process.stdout),
+				},
 			)
 		} catch (error) {
 			console.error("[CLI] Failed to start TUI:", error instanceof Error ? error.message : String(error))

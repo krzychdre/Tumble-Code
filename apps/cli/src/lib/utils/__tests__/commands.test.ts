@@ -12,7 +12,22 @@ describe("globalCommands", () => {
 			const newCommand = GLOBAL_COMMANDS.find((cmd) => cmd.name === "new")
 			expect(newCommand).toBeDefined()
 			expect(newCommand?.action).toBe("clearTask")
-			expect(newCommand?.description).toBe("Start a new task")
+			expect(newCommand?.description).toBe("Start a new task, leaving this conversation on screen")
+		})
+
+		it("should contain the /clear command", () => {
+			const clearCommand = GLOBAL_COMMANDS.find((cmd) => cmd.name === "clear")
+			expect(clearCommand).toBeDefined()
+			expect(clearCommand?.action).toBe("clearConversation")
+			expect(clearCommand?.description).toBe("Start a new task and clear the screen")
+		})
+
+		it("should contain the /permissions command", () => {
+			const permissionsCommand = GLOBAL_COMMANDS.find((cmd) => cmd.name === "permissions")
+			expect(permissionsCommand).toBeDefined()
+			expect(permissionsCommand?.action).toBe("setPermissions")
+			expect(permissionsCommand?.description).toBe("Change action approval mode")
+			expect(permissionsCommand?.argumentHint).toBe("<ask|allow>")
 		})
 
 		it("should have valid structure for all commands", () => {
@@ -63,24 +78,34 @@ describe("globalCommands", () => {
 			const newCommand = commands.find((cmd) => cmd.name === "new")
 
 			expect(newCommand).toBeDefined()
-			expect(newCommand?.description).toBe("Start a new task")
+			expect(newCommand?.description).toBe("Start a new task, leaving this conversation on screen")
 			expect(newCommand?.source).toBe("global")
 			expect(newCommand?.action).toBe("clearTask")
 		})
 
-		it("should not include argumentHint for action commands", () => {
+		it("should include the /clear command with correct format", () => {
 			const commands = getGlobalCommandsForAutocomplete()
-			// Action commands don't have argument hints
-			for (const cmd of commands) {
-				expect(cmd).not.toHaveProperty("argumentHint")
-			}
+			const clearCommand = commands.find((cmd) => cmd.name === "clear")
+
+			expect(clearCommand).toBeDefined()
+			expect(clearCommand?.description).toBe("Start a new task and clear the screen")
+			expect(clearCommand?.source).toBe("global")
+			expect(clearCommand?.action).toBe("clearConversation")
+		})
+
+		it("should expose permission options as an argument hint", () => {
+			const commands = getGlobalCommandsForAutocomplete()
+			const permissionsCommand = commands.find((cmd) => cmd.name === "permissions")
+
+			expect(permissionsCommand?.argumentHint).toBe("<ask|allow>")
+			expect(commands.find((cmd) => cmd.name === "new")?.argumentHint).toBeUndefined()
 		})
 	})
 
 	describe("type safety", () => {
 		it("should have valid GlobalCommandAction types", () => {
 			// This test ensures the type is properly constrained
-			const validActions: GlobalCommandAction[] = ["clearTask"]
+			const validActions: GlobalCommandAction[] = ["clearTask", "clearConversation", "setPermissions"]
 
 			for (const cmd of GLOBAL_COMMANDS) {
 				expect(validActions).toContain(cmd.action)

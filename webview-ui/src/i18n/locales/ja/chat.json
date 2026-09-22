@@ -248,8 +248,8 @@
 		"addToDenied": "拒否リストに追加",
 		"removeFromDenied": "拒否リストから削除",
 		"abortCommand": "コマンドの実行を中止",
-		"expandOutput": "出力を展開",
-		"collapseOutput": "出力を折りたたむ",
+		"expandCommand": "コマンドを展開",
+		"collapseCommand": "コマンドを折りたたむ",
 		"expandManagement": "コマンド管理セクションを展開",
 		"collapseManagement": "コマンド管理セクションを折りたたむ"
 	},

@@ -1,0 +1,5 @@
+---
+"tumble-code": patch
+---
+
+A command that asks for a password can no longer freeze the CLI. Cloning a private repository used to print `Username for 'https://github.com':` over the interface and then lock it up completely, with no keystroke, esc or ctrl+c getting through until the five-minute command timeout fired. Closing the command's standard input never prevented this, because git, ssh and sudo ask for credentials on `/dev/tty`, a direct handle to the terminal that ignores every redirection; the command and the CLI then read the same keyboard and split the user's typing between them. Commands now run in their own session, with no terminal to reach for, so the same clone fails in under a second with `could not read Username: terminal prompts disabled` and the interface stays usable. Aborting a command also signals the whole process group now, which catches grandchildren that the previous process-tree walk could miss, and any command still running when the CLI exits is stopped rather than left behind.

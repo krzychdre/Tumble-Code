@@ -1,6 +1,6 @@
 import type { SkillsManager } from "../../../services/skills/SkillsManager"
 
-type SkillsManagerLike = Pick<SkillsManager, "getSkillsForMode">
+type SkillsManagerLike = Pick<SkillsManager, "getSkillsForMode"> & Partial<Pick<SkillsManager, "whenReady">>
 
 function escapeXml(value: string): string {
 	return value
@@ -24,6 +24,12 @@ export async function getSkillsSection(
 	currentMode: string | undefined,
 ): Promise<string> {
 	if (!skillsManager || !currentMode) return ""
+
+	// The initial scan runs unawaited, and a one-shot CLI run builds its first
+	// system prompt moments after activation, so wait for it before listing.
+	// `whenReady` is optional to keep the narrow test doubles in this file's
+	// callers valid.
+	await skillsManager.whenReady?.()
 
 	// Get skills filtered by current mode (with override resolution)
 	const skills = skillsManager.getSkillsForMode(currentMode)

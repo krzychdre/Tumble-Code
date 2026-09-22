@@ -1,3 +1,5 @@
+import { render } from "ink-testing-library"
+
 import { type SlashCommandResult, createSlashCommandTrigger, toSlashCommandResult } from "../SlashCommandTrigger.js"
 
 describe("SlashCommandTrigger", () => {
@@ -106,6 +108,38 @@ describe("SlashCommandTrigger", () => {
 			const result = trigger.getReplacementText(item, "  /mo", 2)
 
 			expect(result).toBe("  /mode ")
+		})
+	})
+
+	describe("renderItem", () => {
+		it("should display accepted arguments next to the command", () => {
+			const trigger = createSlashCommandTrigger({ getCommands: () => [] })
+			const item: SlashCommandResult = {
+				key: "permissions",
+				name: "permissions",
+				description: "Change action approval mode",
+				argumentHint: "<ask|allow>",
+				source: "global",
+			}
+			const view = render(<>{trigger.renderItem(item, false)}</>)
+
+			expect(view.lastFrame()).toContain("/permissions <ask|allow> - Change action approval mode")
+		})
+
+		it("keeps a long description on one row", () => {
+			const trigger = createSlashCommandTrigger({ getCommands: () => [] })
+			const item: SlashCommandResult = {
+				key: "skill",
+				name: "skill",
+				description: "word ".repeat(80).trim(),
+				source: "global",
+			}
+			const view = render(<>{trigger.renderItem(item, false)}</>)
+			const lines = view.lastFrame()!.split("\n")
+
+			expect(lines).toHaveLength(1)
+			expect(lines[0]).toContain("/skill")
+			expect(lines[0]!.endsWith("…")).toBe(true)
 		})
 	})
 
