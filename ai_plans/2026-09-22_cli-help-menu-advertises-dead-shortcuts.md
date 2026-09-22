@@ -1,7 +1,11 @@
 # CLI: the "?" shortcuts menu advertises bindings that do not exist
 
 **Date:** 2026-09-22
-**Branch:** `fix/cli-help-menu-lies` (forked from `main` = `de6495c04`)
+**Branch:** `fix/cli-help-menu-lies`, stacked on
+`fix/cli-skills-missing-in-slash-picker` (`1459202ea`), which itself forks from
+`main` (`de6495c04`). The stacking exists so a local build carries the skills fix
+that the installed CLI is already built from; the files the two branches touch do
+not overlap.
 **Status:** implemented
 
 Writing and coding rule for every implementer of this plan: never use an em dash
