@@ -1,4 +1,4 @@
-import { Box, Static, Text, useApp, useInput } from "ink"
+import { Box, Text, useApp, useInput } from "ink"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
 import { setInputBoxHandler } from "@roo-code/vscode-shim"
@@ -31,8 +31,7 @@ import {
 } from "./hooks/index.js"
 
 // Import components.
-import WelcomeBanner from "./components/WelcomeBanner.js"
-import ChatHistoryItem from "./components/ChatHistoryItem.js"
+import TranscriptStatic from "./components/TranscriptStatic.js"
 import DynamicTailMessage from "./components/DynamicTailMessage.js"
 import TailViewport from "./components/TailViewport.js"
 import Spinner from "./components/Spinner.js"
@@ -531,29 +530,11 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			    scrollback are never rewritten in place. The clear epoch is in
 			    the key for the same reason: after /clear wipes the screen, the
 			    welcome banner has to be printed again. */}
-			<Static key={`${staticKey}:${transcriptReprintEpoch}:${transcriptClearEpoch}`} items={staticItems}>
-				{(item) => {
-					if (item.kind === "welcome") {
-						return (
-							<Box key={item.id}>
-								<WelcomeBanner {...item.welcomeProps} />
-							</Box>
-						)
-					}
-					if (item.kind === "divider") {
-						return (
-							<Box key={item.id} marginTop={1}>
-								<Text dimColor>{item.label}</Text>
-							</Box>
-						)
-					}
-					return (
-						<Box key={item.id}>
-							<ChatHistoryItem message={item.message} expanded={item.expanded} />
-						</Box>
-					)
-				}}
-			</Static>
+			<TranscriptStatic
+				key={`${staticKey}:${transcriptReprintEpoch}:${transcriptClearEpoch}`}
+				items={staticItems}
+				columns={terminalColumns}
+			/>
 
 			{/* Hard bound: the whole tail (messages + spinner + dialogs + input)
 			    must stay under the terminal height, or ink's erase sequences
