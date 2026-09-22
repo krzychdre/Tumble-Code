@@ -112,7 +112,9 @@ export function createFileTrigger(config: FileTriggerConfig): AutocompleteTrigge
 				<Box paddingLeft={2}>
 					<Text color={color}>{glyph}</Text>
 					<Text> </Text>
-					<Text color={color}>{item.path}</Text>
+					<Text color={color} wrap="truncate-end">
+						{item.path}
+					</Text>
 				</Box>
 			)
 		},

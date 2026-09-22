@@ -98,7 +98,7 @@ export function createHelpTrigger(): AutocompleteTrigger<HelpShortcutResult> {
 		renderItem: (item: HelpShortcutResult, isSelected: boolean) => {
 			return (
 				<Box paddingLeft={2}>
-					<Text color={isSelected ? "cyan" : undefined}>
+					<Text color={isSelected ? "cyan" : undefined} wrap="truncate-end">
 						<Text bold color={isSelected ? "cyan" : "yellow"}>
 							{item.shortcut}
 						</Text>

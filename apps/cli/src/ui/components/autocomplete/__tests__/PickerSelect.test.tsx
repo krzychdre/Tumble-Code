@@ -1,4 +1,4 @@
-import { Text } from "ink"
+import { Box, Text } from "ink"
 import { render } from "ink-testing-library"
 
 import { PickerSelect } from "../PickerSelect.js"
@@ -35,9 +35,9 @@ describe("PickerSelect", () => {
 		expect(selected).toEqual(["permissions"])
 	})
 
-	// Tab has to be handled here rather than in AutocompleteInput: the whole
-	// input area is rendered with isActive={false} while the picker is open, so
-	// no handler inside it ever sees a key press.
+	// The picker is the only owner of Enter and Tab while it is open; the input
+	// underneath stays active so that typing keeps filtering the list, but it
+	// deliberately has no handler for these two keys.
 	it("accepts the highlighted item on Tab", async () => {
 		const selected: string[] = []
 		const { stdin } = renderPicker(2, (item) => selected.push(item.key))
@@ -57,5 +57,58 @@ describe("PickerSelect", () => {
 		await flush()
 
 		expect(selected).toEqual([])
+	})
+
+	// The dropdown sits directly above the input box. Any row that does not fit
+	// inside the picker's own box is drawn over the input, so the tests below
+	// render a marker line underneath and check it is still intact.
+	describe("layout", () => {
+		const manyResults: AutocompleteItem[] = Array.from({ length: 12 }, (_, i) => ({ key: `item-${i}` }))
+
+		function renderWithMarker(items: AutocompleteItem[], maxVisible: number, renderItem = defaultRenderItem) {
+			return render(
+				<Box flexDirection="column">
+					<PickerSelect
+						results={items}
+						selectedIndex={0}
+						maxVisible={maxVisible}
+						onSelect={() => {}}
+						onEscape={() => {}}
+						onIndexChange={() => {}}
+						renderItem={renderItem}
+					/>
+					<Text>INPUT-MARKER</Text>
+				</Box>,
+			)
+		}
+
+		function defaultRenderItem(item: AutocompleteItem) {
+			return <Text>{item.key}</Text>
+		}
+
+		it("grows for the scroll indicator instead of overflowing onto the input", () => {
+			const { lastFrame } = renderWithMarker(manyResults, 3)
+			const lines = lastFrame()!.split("\n")
+
+			expect(lines.filter((l) => l.includes("item-"))).toHaveLength(3)
+			expect(lines.find((l) => l.includes("↓ 9 more"))).not.toContain("INPUT-MARKER")
+			expect(lines[lines.length - 1]).toBe("INPUT-MARKER")
+		})
+
+		it("clips every item to one row even when renderItem would wrap", () => {
+			const long = "d".repeat(300)
+			const items: AutocompleteItem[] = [{ key: "first" }, { key: "second" }]
+			const { lastFrame } = renderWithMarker(items, 2, (item) => (
+				<Text>
+					{item.key} {long}
+				</Text>
+			))
+			const lines = lastFrame()!.split("\n")
+
+			expect(lines).toHaveLength(3)
+			expect(lines[0]).toContain("first")
+			expect(lines[1]).toContain("second")
+			expect(lines[2]).toBe("INPUT-MARKER")
+		})
 	})
 })

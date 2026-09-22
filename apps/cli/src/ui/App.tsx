@@ -575,7 +575,10 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 				{/* Input area — hidden when a dialog or the TODO viewer owns input.
 				    In followup custom-input mode, the ❯ is accented and the submit
-				    handler clears the custom-input state after sending. */}
+				    handler clears the custom-input state after sending.
+				    The input stays active while the picker is open: typing keeps
+				    filtering the list, and the PickerSelect above owns Enter, Tab,
+				    the arrows and Escape for that time. */}
 				{inputActive && (
 					<InputArea
 						onSubmit={
@@ -591,7 +594,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 										void handleSubmit(text)
 									}
 						}
-						isActive={!pickerState.isOpen && !isLoading}
+						isActive={!isLoading}
 						isLoading={isLoading}
 						placeholder={
 							showFollowupCustomInput ? "Type your response..." : isComplete ? "Type to continue..." : ""

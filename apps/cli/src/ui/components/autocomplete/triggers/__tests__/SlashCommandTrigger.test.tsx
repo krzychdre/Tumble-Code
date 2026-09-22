@@ -125,6 +125,22 @@ describe("SlashCommandTrigger", () => {
 
 			expect(view.lastFrame()).toContain("/permissions <ask|allow> - Change action approval mode")
 		})
+
+		it("keeps a long description on one row", () => {
+			const trigger = createSlashCommandTrigger({ getCommands: () => [] })
+			const item: SlashCommandResult = {
+				key: "skill",
+				name: "skill",
+				description: "word ".repeat(80).trim(),
+				source: "global",
+			}
+			const view = render(<>{trigger.renderItem(item, false)}</>)
+			const lines = view.lastFrame()!.split("\n")
+
+			expect(lines).toHaveLength(1)
+			expect(lines[0]).toContain("/skill")
+			expect(lines[0]!.endsWith("…")).toBe(true)
+		})
 	})
 
 	describe("search", () => {

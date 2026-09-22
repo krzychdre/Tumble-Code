@@ -75,7 +75,7 @@ export function createModeTrigger(config: ModeTriggerConfig): AutocompleteTrigge
 		renderItem: (item: ModeResult, isSelected: boolean) => {
 			return (
 				<Box paddingLeft={2}>
-					<Text color={isSelected ? "cyan" : undefined}>
+					<Text color={isSelected ? "cyan" : undefined} wrap="truncate-end">
 						{item.name}
 						{item.description && <Text dimColor> - {item.description}</Text>}
 					</Text>
