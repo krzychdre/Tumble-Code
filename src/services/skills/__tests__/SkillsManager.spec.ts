@@ -1080,6 +1080,117 @@ description: A test skill
 		})
 	})
 
+	describe("whenReady", () => {
+		const raceSkillDir = p(globalSkillsDir, "race-skill")
+		const raceSkillMd = p(raceSkillDir, "SKILL.md")
+
+		/**
+		 * Put one global skill on disk. When `gate` is passed, every directory
+		 * probe waits on it, so a discovery pass cannot finish until the test
+		 * releases it. That reproduces the real timing: ClineProvider starts
+		 * discovery without awaiting it, and consumers run while it is pending.
+		 */
+		const setupRaceSkill = (gate?: Promise<void>) => {
+			mockDirectoryExists.mockImplementation(async (dir: string) => {
+				if (gate) {
+					await gate
+				}
+				return dir === globalSkillsDir
+			})
+
+			mockRealpath.mockImplementation(async (pathArg: string) => pathArg)
+
+			mockReaddir.mockImplementation(async (dir: string) => (dir === globalSkillsDir ? ["race-skill"] : []))
+
+			mockStat.mockImplementation(async (pathArg: string) => {
+				if (pathArg === raceSkillDir) {
+					return { isDirectory: () => true }
+				}
+				throw new Error("Not found")
+			})
+
+			mockFileExists.mockImplementation(async (file: string) => file === raceSkillMd)
+
+			mockReadFile.mockResolvedValue(`---
+name: race-skill
+description: A skill discovered asynchronously
+---
+
+# Race Skill
+
+Instructions here...`)
+		}
+
+		const createGate = () => {
+			let release!: () => void
+			const gate = new Promise<void>((resolve) => {
+				release = resolve
+			})
+			return { gate, release }
+		}
+
+		it("resolves only once an unawaited initialize() has finished discovering", async () => {
+			const { gate, release } = createGate()
+			setupRaceSkill(gate)
+
+			// Exactly what ClineProvider does: start discovery, do not await it.
+			const initialized = skillsManager.initialize()
+
+			expect(skillsManager.getAllSkills()).toHaveLength(0)
+
+			release()
+			await skillsManager.whenReady()
+
+			expect(skillsManager.getAllSkills()).toHaveLength(1)
+			expect(skillsManager.getSkillsForMode("code").map((skill) => skill.name)).toEqual(["race-skill"])
+
+			await initialized
+		})
+
+		it("makes getSkillContent wait for a pending scan instead of reporting the skill as missing", async () => {
+			const { gate, release } = createGate()
+			setupRaceSkill(gate)
+
+			const initialized = skillsManager.initialize()
+
+			// Same tick as activation, like a one-shot `tumble -p` run whose
+			// first message expands `/race-skill`.
+			const contentPromise = skillsManager.getSkillContent("race-skill", "code")
+
+			release()
+
+			const content = await contentPromise
+			expect(content).not.toBeNull()
+			expect(content?.instructions).toContain("# Race Skill")
+
+			await initialized
+		})
+
+		it("keeps the previous result visible while a rescan is in flight", async () => {
+			setupRaceSkill()
+			await skillsManager.discoverSkills()
+			expect(skillsManager.getAllSkills()).toHaveLength(1)
+
+			const { gate, release } = createGate()
+			setupRaceSkill(gate)
+
+			const rescan = skillsManager.discoverSkills()
+
+			// A reader during the rescan must still see the complete previous
+			// result, never a half-filled map.
+			expect(skillsManager.getAllSkills()).toHaveLength(1)
+
+			release()
+			await rescan
+
+			expect(skillsManager.getAllSkills()).toHaveLength(1)
+		})
+
+		it("resolves immediately when discovery was never started", async () => {
+			await expect(skillsManager.whenReady()).resolves.toBeUndefined()
+		})
+	})
+
 	describe("dispose", () => {
 		it("should clean up resources", async () => {
 			await skillsManager.dispose()

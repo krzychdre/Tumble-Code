@@ -249,8 +249,8 @@
 		"addToDenied": "Reddedilenler listesine ekle",
 		"removeFromDenied": "Reddedilenler listesinden kaldır",
 		"abortCommand": "Komut yürütmeyi iptal et",
-		"expandOutput": "Çıktıyı genişlet",
-		"collapseOutput": "Çıktıyı daralt",
+		"expandCommand": "Komutu genişlet",
+		"collapseCommand": "Komutu daralt",
 		"expandManagement": "Komut yönetimi bölümünü genişlet",
 		"collapseManagement": "Komut yönetimi bölümünü daralt"
 	},

@@ -681,6 +681,7 @@ describe("webviewMessageHandler - requestCommands", () => {
 
 		vi.mocked(mockClineProvider.getSkillsManager).mockReturnValue({
 			getSkillsForMode,
+			whenReady: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ReturnType<ClineProvider["getSkillsManager"]>)
 
 		await webviewMessageHandler(mockClineProvider, { type: "requestCommands" })
@@ -748,6 +749,7 @@ describe("webviewMessageHandler - requestCommands", () => {
 
 		vi.mocked(mockClineProvider.getSkillsManager).mockReturnValue({
 			getSkillsForMode,
+			whenReady: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ReturnType<ClineProvider["getSkillsManager"]>)
 
 		await webviewMessageHandler(mockClineProvider, { type: "requestCommands" })

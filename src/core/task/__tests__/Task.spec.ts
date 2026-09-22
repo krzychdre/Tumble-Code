@@ -170,6 +170,12 @@ vi.mock("../../condense", async (importOriginal) => {
 	}
 })
 // Mock storagePathManager to prevent dynamic import issues.
+// getStorageBasePath is deliberately NOT mocked: the real ClineProvider used
+// as mockProvider acquires a TaskHistoryStore in its constructor, and the
+// missing export makes that init fail fast BEFORE the store starts fs
+// watchers and self-rescheduling reconcile timers. Completing the mock
+// activates that machinery for every constructed provider and hangs the
+// fake-timer condense tests (runAllTimers loops on the reconcile timer).
 vi.mock("../../../utils/storage", () => ({
 	getTaskDirectoryPath: vi
 		.fn()
@@ -193,6 +199,27 @@ const mockMessages = [
 		text: "historical task",
 	},
 ]
+
+// Several describes below use a REAL ClineProvider as their mock provider, so
+// completing/aborting a task fires the real memory background writers
+// (extraction + autoDream). Those are irrelevant here: autoDream's
+// getTaskHistory round-trip hits the incomplete utils/storage mock and logs
+// "[memory] autoDream trigger failed" after every abort-path test. Kill the
+// writers via the env master switch (TaskLifecycle gates on it before doing
+// any work); save/restore because the Windows CI single fork shares
+// process.env across all test files.
+let priorDisableAutoMemory: string | undefined
+beforeAll(() => {
+	priorDisableAutoMemory = process.env.ROO_DISABLE_AUTO_MEMORY
+	process.env.ROO_DISABLE_AUTO_MEMORY = "1"
+})
+afterAll(() => {
+	if (priorDisableAutoMemory === undefined) {
+		delete process.env.ROO_DISABLE_AUTO_MEMORY
+	} else {
+		process.env.ROO_DISABLE_AUTO_MEMORY = priorDisableAutoMemory
+	}
+})
 
 describe("Cline", () => {
 	let mockProvider: any
@@ -396,7 +423,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(cline as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				const mockStream = {
 					async *[Symbol.asyncIterator]() {
@@ -467,7 +494,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(withImages as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(withImages.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(withImages.api, "getModel").mockReturnValue({
 					id: "claude-3-sonnet",
@@ -490,7 +517,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(withoutImages as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(withoutImages.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(withoutImages.api, "getModel").mockReturnValue({
 					id: "gpt-3.5-turbo",
@@ -569,7 +596,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(cline as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock delay to track countdown timing
 				const mockDelay = vi.fn().mockResolvedValue(undefined)
@@ -657,7 +684,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(cline as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock delay to track countdown timing
 				const mockDelay = vi.fn().mockResolvedValue(undefined)
@@ -892,7 +919,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -929,7 +956,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Spy on child.say to verify the emitted message type
 				const saySpy = vi.spyOn(child.askSay, "say")
@@ -981,7 +1008,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -1018,7 +1045,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1038,7 +1065,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -1072,7 +1099,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child1 as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child1.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child1.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1096,7 +1123,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child2 as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child2.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child2.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1123,7 +1150,7 @@ describe("Cline", () => {
 					task: "parent task",
 					startTask: false,
 				})
-				vi.spyOn(parent as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(parent.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {
@@ -1157,7 +1184,7 @@ describe("Cline", () => {
 					rootTask: parent,
 					startTask: false,
 				})
-				vi.spyOn(child as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(child.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				vi.spyOn(child.api, "createMessage").mockReturnValue(mockStream)
 
@@ -1177,7 +1204,7 @@ describe("Cline", () => {
 					task: "test task",
 					startTask: false,
 				})
-				vi.spyOn(task as any, "getSystemPrompt").mockResolvedValue("mock system prompt")
+				vi.spyOn(task.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
 
 				// Mock the API stream response
 				const mockStream = {

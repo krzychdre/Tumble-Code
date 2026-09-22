@@ -147,7 +147,7 @@ export function createHistoryTrigger(config: HistoryTriggerConfig): Autocomplete
 
 			return (
 				<Box paddingLeft={2} flexDirection="row">
-					<Text color={isSelected ? "cyan" : undefined}>
+					<Text color={isSelected ? "cyan" : undefined} wrap="truncate-end">
 						<Text color={statusColor}>{statusIcon}</Text> {truncatedTask}
 						<Text dimColor>{modeText}</Text>
 						<Text dimColor> • {timeAgo}</Text>

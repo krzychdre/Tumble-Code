@@ -21,7 +21,7 @@ import { GenericTool } from "./GenericTool.js"
 
 // Re-export types
 export type { ToolRendererProps } from "./types.js"
-export { getToolCategory } from "./types.js"
+export { getToolCategory, toolStatusFromMessage } from "./types.js"
 
 // Re-export utilities
 export * from "./utils.js"

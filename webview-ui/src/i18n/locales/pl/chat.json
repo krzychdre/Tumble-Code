@@ -268,8 +268,8 @@
 		"addToDenied": "Dodaj do listy odrzuconych",
 		"removeFromDenied": "Usuń z listy odrzuconych",
 		"abortCommand": "Przerwij wykonywanie polecenia",
-		"expandOutput": "Rozwiń wyjście",
-		"collapseOutput": "Zwiń wyjście",
+		"expandCommand": "Rozwiń polecenie",
+		"collapseCommand": "Zwiń polecenie",
 		"expandManagement": "Rozwiń sekcję zarządzania poleceniami",
 		"collapseManagement": "Zwiń sekcję zarządzania poleceniami"
 	},

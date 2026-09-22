@@ -4,7 +4,6 @@ import { Text, Box } from "ink"
 import type { TokenUsage } from "@roo-code/types"
 
 import * as theme from "../theme.js"
-import ProgressBar from "./ProgressBar.js"
 
 interface MetricsDisplayProps {
 	tokenUsage: TokenUsage
@@ -41,25 +40,30 @@ function formatCost(cost: number): string {
 }
 
 /**
- * Displays task metrics in a compact format:
- * $0.12 │ ↓45.2K │ ↑8.7K │ [████████░░░░] 62%
+ * Condensed one-line metrics display: `$cost · ↓in · ↑out · ctx%`.
+ * The full progress-bar variant was removed during the Claude-style UI
+ * redesign (see ai_plans/2026-08-05_cli-claude-code-style-ui-redesign.md,
+ * WP-C). The `formatNumber`/`formatCost` helpers remain the canonical
+ * exports used by InputFooter and other consumers.
  */
 function MetricsDisplay({ tokenUsage, contextWindow }: MetricsDisplayProps) {
 	const { totalCost, totalTokensIn, totalTokensOut, contextTokens } = tokenUsage
+	const ctxPercent = contextWindow > 0 ? Math.min(100, Math.round((contextTokens / contextWindow) * 100)) : 0
+	const ctxColor = ctxPercent >= 80 ? theme.warning : theme.subtle
 
 	return (
 		<Box>
 			<Text color={theme.text}>{formatCost(totalCost)}</Text>
-			<Text color={theme.dimText}> • </Text>
-			<Text color={theme.dimText}>
+			<Text color={theme.subtle}> · </Text>
+			<Text color={theme.subtle}>
 				↓ <Text color={theme.text}>{formatNumber(totalTokensIn)}</Text>
 			</Text>
-			<Text color={theme.dimText}> • </Text>
-			<Text color={theme.dimText}>
+			<Text color={theme.subtle}> · </Text>
+			<Text color={theme.subtle}>
 				↑ <Text color={theme.text}>{formatNumber(totalTokensOut)}</Text>
 			</Text>
-			<Text color={theme.dimText}> • </Text>
-			<ProgressBar value={contextTokens} max={contextWindow} width={12} />
+			<Text color={theme.subtle}> · </Text>
+			<Text color={ctxColor}>{ctxPercent}%</Text>
 		</Box>
 	)
 }

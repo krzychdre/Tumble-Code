@@ -317,8 +317,8 @@
 		"addToDenied": "Add to denied list",
 		"removeFromDenied": "Remove from denied list",
 		"abortCommand": "Abort command execution",
-		"expandOutput": "Expand output",
-		"collapseOutput": "Collapse output",
+		"expandCommand": "Expand command",
+		"collapseCommand": "Collapse command",
 		"expandManagement": "Expand command management section",
 		"collapseManagement": "Collapse command management section"
 	},

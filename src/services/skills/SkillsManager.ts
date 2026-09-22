@@ -23,6 +23,8 @@ export class SkillsManager {
 	private providerRef: WeakRef<ClineProvider>
 	private disposables: vscode.Disposable[] = []
 	private isDisposed = false
+	/** The discovery pass currently in flight, or the last one that ran. */
+	private discoveryPromise: Promise<void> | null = null
 
 	constructor(provider: ClineProvider) {
 		this.providerRef = new WeakRef(provider)
@@ -34,6 +36,21 @@ export class SkillsManager {
 	}
 
 	/**
+	 * Resolve once the current discovery pass has finished.
+	 *
+	 * ClineProvider starts `initialize()` without awaiting it, so every consumer
+	 * that reads the skills map can run while the filesystem scan is still going.
+	 * The CLI hits this reliably: it asks for its slash-command list in the same
+	 * tick as activation and caches the answer, so an unsynchronized read leaves
+	 * the picker without a single skill for the whole session.
+	 *
+	 * When discovery was never started, this resolves immediately.
+	 */
+	async whenReady(): Promise<void> {
+		await this.discoveryPromise
+	}
+
+	/**
 	 * Discover all skills from global and project directories.
 	 * Supports both generic skills (skills/) and mode-specific skills (skills-{mode}/).
 	 * Also supports symlinks:
@@ -41,12 +58,28 @@ export class SkillsManager {
 	 * - .roo/skills/[dirname] can be a symlink to a skill directory
 	 */
 	async discoverSkills(): Promise<void> {
-		this.skills.clear()
+		const pass = this.runDiscovery()
+		this.discoveryPromise = pass
+		await pass
+	}
+
+	/**
+	 * Run one discovery pass into a fresh map and swap it in at the end.
+	 *
+	 * Building aside and swapping keeps the invariant that `this.skills` is
+	 * always a complete result: clearing it up front would let a reader that
+	 * waited for readiness still observe a half-filled map during a rescan
+	 * triggered by create/delete/move.
+	 */
+	private async runDiscovery(): Promise<void> {
+		const discovered = new Map<string, SkillMetadata>()
 		const skillsDirs = await this.getSkillsDirectories()
 
 		for (const { dir, source, mode } of skillsDirs) {
-			await this.scanSkillsDirectory(dir, source, mode)
+			await this.scanSkillsDirectory(discovered, dir, source, mode)
 		}
+
+		this.skills = discovered
 	}
 
 	/**
@@ -55,7 +88,12 @@ export class SkillsManager {
 	 * 1. The skills directory itself is a symlink (resolved by directoryExists using realpath)
 	 * 2. Individual skill subdirectories are symlinks
 	 */
-	private async scanSkillsDirectory(dirPath: string, source: "global" | "project", mode?: string): Promise<void> {
+	private async scanSkillsDirectory(
+		target: Map<string, SkillMetadata>,
+		dirPath: string,
+		source: "global" | "project",
+		mode?: string,
+	): Promise<void> {
 		if (!(await directoryExists(dirPath))) {
 			return
 		}
@@ -75,7 +113,7 @@ export class SkillsManager {
 				if (!stats?.isDirectory()) continue
 
 				// Load skill metadata - the skill name comes from the entry name (symlink name if symlinked)
-				await this.loadSkillMetadata(entryPath, source, mode, entryName)
+				await this.loadSkillMetadata(target, entryPath, source, mode, entryName)
 			}
 		} catch {
 			// Directory doesn't exist or can't be read - this is fine
@@ -84,12 +122,14 @@ export class SkillsManager {
 
 	/**
 	 * Load skill metadata from a skill directory.
+	 * @param target - The map the discovery pass is building
 	 * @param skillDir - The resolved path to the skill directory (target of symlink if symlinked)
 	 * @param source - Whether this is a global or project skill
 	 * @param mode - The mode this skill is specific to (undefined for generic skills)
 	 * @param skillName - The skill name (from symlink name if symlinked, otherwise from directory name)
 	 */
 	private async loadSkillMetadata(
+		target: Map<string, SkillMetadata>,
 		skillDir: string,
 		source: "global" | "project",
 		mode?: string,
@@ -162,7 +202,7 @@ export class SkillsManager {
 			const primaryMode = modeSlugs?.[0]
 			const skillKey = this.getSkillKey(effectiveSkillName, source, primaryMode)
 
-			this.skills.set(skillKey, {
+			target.set(skillKey, {
 				name: effectiveSkillName,
 				description,
 				path: skillMdPath,
@@ -259,6 +299,13 @@ export class SkillsManager {
 	}
 
 	async getSkillContent(name: string, currentMode?: string): Promise<SkillContent | null> {
+		// Callers reach this from the skill tool, run_slash_command and the
+		// `/<skill-name>` mention expansion, all of which can fire before the
+		// initial scan finishes (a one-shot `tumble -p` run starts its task
+		// moments after activation). Waiting here keeps a pending scan from
+		// looking like "no such skill".
+		await this.whenReady()
+
 		// If mode is provided, try to find the best matching skill
 		let skill: SkillMetadata | undefined
 

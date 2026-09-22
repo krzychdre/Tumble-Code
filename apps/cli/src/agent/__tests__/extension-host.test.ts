@@ -1,4 +1,4 @@
-// pnpm --filter @roo-code/cli test src/agent/__tests__/extension-host.test.ts
+// pnpm --filter @tumble-code/cli test src/agent/__tests__/extension-host.test.ts
 
 import { EventEmitter } from "events"
 import fs from "fs"
@@ -6,6 +6,7 @@ import fs from "fs"
 import type { ExtensionMessage, WebviewMessage } from "@roo-code/types"
 
 import { DEFAULT_FLAGS } from "@/types/index.js"
+import { getPermissionSettings } from "@/lib/utils/permissions.js"
 
 import { type ExtensionHostOptions, ExtensionHost } from "../extension-host.js"
 import { ExtensionClient } from "../extension-client.js"
@@ -377,9 +378,12 @@ describe("ExtensionHost", () => {
 				callPrivate(host, "restoreConsole")
 			})
 
-			it("should preserve console.error even when suppressing", () => {
-				const host = createTestHost()
+			it("should redirect console.error away from the terminal when suppressing", () => {
+				// Capture the real console.error before any suppression
 				const originalError = console.error
+
+				// Create host with integrationTest: true to prevent constructor from suppressing
+				const host = createTestHost({ integrationTest: true })
 
 				// Override integrationTest to false
 				const options = getPrivate<ExtensionHostOptions>(host, "options")
@@ -387,9 +391,14 @@ describe("ExtensionHost", () => {
 
 				callPrivate(host, "setupQuietMode")
 
-				expect(console.error).toBe(originalError)
+				// Raw stacks printed via console.error corrupt the TUI
+				// transcript — they must go to the file debug log instead.
+				expect(console.error).not.toBe(originalError)
+				// The redirect must not throw, including on Error arguments.
+				expect(() => console.error("API error:", new Error("boom"))).not.toThrow()
 
 				callPrivate(host, "restoreConsole")
+				expect(console.error).toBe(originalError)
 			})
 		})
 
@@ -649,17 +658,14 @@ describe("ExtensionHost", () => {
 			const host = createTestHost({ nonInteractive: true })
 
 			const initialSettings = getPrivate<Record<string, unknown>>(host, "initialSettings")
-			expect(initialSettings.autoApprovalEnabled).toBe(true)
-			expect(initialSettings.alwaysAllowReadOnly).toBe(true)
-			expect(initialSettings.alwaysAllowWrite).toBe(true)
-			expect(initialSettings.alwaysAllowExecute).toBe(true)
+			expect(initialSettings).toMatchObject(getPermissionSettings("allow"))
 		})
 
 		it("should disable auto-approval in interactive mode", () => {
 			const host = createTestHost({ nonInteractive: false })
 
 			const initialSettings = getPrivate<Record<string, unknown>>(host, "initialSettings")
-			expect(initialSettings.autoApprovalEnabled).toBe(false)
+			expect(initialSettings).toMatchObject(getPermissionSettings("ask"))
 		})
 
 		it("should set reasoning effort when specified", () => {

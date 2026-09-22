@@ -1,4 +1,3 @@
-import { useInput } from "ink"
 import { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useRef, type Ref } from "react"
 
 import { useInputHistory } from "../../hooks/useInputHistory.js"
@@ -21,7 +20,7 @@ export interface AutocompleteInputProps<T extends AutocompleteItem = Autocomplet
 	onSelect?: (item: T) => void
 	/** Called when picker state changes - use this to render PickerSelect externally */
 	onPickerStateChange?: (state: AutocompletePickerState<T>) => void
-	/** Prompt character for the first line (default: "> ") */
+	/** Prompt character for the first line (default: "" — InputArea renders the ❯) */
 	prompt?: string
 }
 
@@ -52,7 +51,7 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 		triggers,
 		onSelect,
 		onPickerStateChange,
-		prompt = "> ",
+		prompt = "",
 	}: AutocompleteInputProps<T>,
 	ref: Ref<AutocompleteInputHandle<T>>,
 ) {
@@ -185,7 +184,9 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 				return
 			}
 
-			// Don't submit if picker is open
+			// Enter belongs to the picker while it is open (PickerSelect accepts
+			// the highlighted item); the input keeps receiving keys meanwhile so
+			// that typing filters the list, which is why this guard is needed.
 			if (pickerState.isOpen) {
 				return
 			}
@@ -216,24 +217,10 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 		resetBrowsing("")
 	}, [pickerState.isOpen, pickerActions, setDraft, resetBrowsing])
 
-	// Handle picker selection with Enter or Tab
-	useInput(
-		(_input, key) => {
-			if (!isActive || !pickerState.isOpen) {
-				return
-			}
-
-			// Select current item on Enter or Tab
-			if (key.return || key.tab) {
-				const selected = pickerState.results[pickerState.selectedIndex]
-
-				if (selected) {
-					handleItemSelect(selected)
-				}
-			}
-		},
-		{ isActive: isActive && pickerState.isOpen },
-	)
+	// No Enter/Tab handler here on purpose: while the picker is open those keys
+	// are owned by the PickerSelect the parent renders, which calls
+	// handleItemSelect through the ref. A second handler on the same key press
+	// would accept the item twice.
 
 	// Expose handle to parent via ref
 	useImperativeHandle(
@@ -263,6 +250,7 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 			onEscape={handleEscape}
 			onUpAtFirstLine={navigateUp}
 			onDownAtLastLine={navigateDown}
+			lineNavigationActive={!pickerState.isOpen}
 			placeholder={placeholder}
 			isActive={isActive}
 			showCursor={true}

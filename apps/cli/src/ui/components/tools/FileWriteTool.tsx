@@ -1,165 +1,191 @@
-import { Box, Text } from "ink"
+import { Box, Text, useStdout } from "ink"
 
+import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
-import { Icon } from "../Icon.js"
+import Bullet from "../primitives/Bullet.js"
+import ResultRow, { ElbowGutter } from "../primitives/ResultRow.js"
 
 import type { ToolRendererProps } from "./types.js"
-import { truncateText, sanitizeContent, getToolDisplayName, getToolIconName, parseDiff } from "./utils.js"
+import { toolStatusFromMessage } from "./types.js"
+import { sanitizeContent, parseAnyDiff, isDiffText, type DiffHunk } from "./utils.js"
 
-const MAX_DIFF_LINES = 15
+const MAX_HUNK_LINES = 8
+const MAX_HUNKS = 2
 
-export function FileWriteTool({ toolData }: ToolRendererProps) {
-	const iconName = getToolIconName(toolData.tool)
-	const displayName = getToolDisplayName(toolData.tool)
+/**
+ * Widest colour band we paint, gutter included. Lines are padded to the widest
+ * line in their hunk so the band is a rectangle instead of a ragged edge, and
+ * this caps that padding on very wide terminals. Anything longer is truncated
+ * by `wrap="truncate-end"` rather than wrapped: a wrapped diff line would spill
+ * a half-coloured second row and blow the dynamic tail's row budget.
+ */
+const MAX_DIFF_WIDTH = 100
+
+/**
+ * Columns the diff body is inset by: the 2-wide bullet column plus the 5-wide
+ * `  ⎿  ` connector. One extra column is reserved on top because ink hands a
+ * `wrap="truncate-end"` text one column more than the row has left, and a band
+ * padded into that column wraps onto a stray row of its own.
+ */
+const DIFF_INSET = 2 + 5 + 1
+
+const DIFF_GUTTER: Record<"added" | "removed" | "context" | "header", string> = {
+	added: "+",
+	removed: "-",
+	context: " ",
+	header: " ",
+}
+
+/** Rendered width of a hunk's body, so every line can be padded to it. */
+function hunkBandWidth(lines: DiffHunk["lines"], columns: number): number {
+	const widest = lines.reduce((max, line) => Math.max(max, line.content.length + 1), 0)
+	return Math.max(1, Math.min(widest, MAX_DIFF_WIDTH, columns - DIFF_INSET))
+}
+
+/**
+ * One diff line as an exactly `width`-wide band. Padding and truncation are
+ * done here rather than left to ink: ink's own `truncate-end` hands the text
+ * one column more than the row has left, which pushes the band onto a second
+ * row and quietly eats a line of the tail's row budget.
+ */
+function bandLine(line: DiffHunk["lines"][number], width: number): string {
+	const text = `${DIFF_GUTTER[line.type]}${line.content}`
+	return text.length > width ? `${text.slice(0, Math.max(0, width - 1))}${figures.ellipsis}` : text.padEnd(width)
+}
+
+export function FileWriteTool({ toolData, message, expanded = false }: ToolRendererProps) {
+	const { stdout } = useStdout()
+	const columns = stdout?.columns || 80
+	const status = toolStatusFromMessage(message)
+	const maxHunks = expanded ? Number.POSITIVE_INFINITY : MAX_HUNKS
+	const maxHunkLines = expanded ? Number.POSITIVE_INFINITY : MAX_HUNK_LINES
 	const path = toolData.path || ""
 	const diffStats = toolData.diffStats
-	const diff = toolData.diff ? sanitizeContent(toolData.diff) : ""
+	// `apply_diff` puts SEARCH/REPLACE blocks in `diff`; `write_to_file` and the
+	// editor-backed edits put a unified diff in `content` and send no `diff` at
+	// all (plan: 2026-09-22 CLI diffs render without colours, D2).
+	const rawDiff = toolData.diff || (isDiffText(toolData.content || "") ? toolData.content! : "")
+	const diff = rawDiff ? sanitizeContent(rawDiff) : ""
 	const isProtected = toolData.isProtected
 	const isOutsideWorkspace = toolData.isOutsideWorkspace
 	const isNewFile = toolData.tool === "newFileCreated" || toolData.tool === "write_to_file"
+	const displayName = isNewFile ? "Create File" : "Edit"
 
-	// Handle batch diff operations
+	// Batch diff operations
 	if (toolData.batchDiffs && toolData.batchDiffs.length > 0) {
-		return (
-			<Box flexDirection="column" paddingX={1}>
-				{/* Header */}
-				<Box>
-					<Icon name={iconName} color={theme.toolHeader} />
-					<Text bold color={theme.toolHeader}>
-						{" "}
-						{displayName}
-					</Text>
-					<Text color={theme.dimText}> ({toolData.batchDiffs.length} files)</Text>
-				</Box>
+		const diffs = toolData.batchDiffs
+		const visible = diffs.slice(0, maxHunks)
+		const hidden = diffs.length - visible.length
 
-				{/* File list with stats */}
-				<Box flexDirection="column" marginLeft={2} marginTop={1}>
-					{toolData.batchDiffs.slice(0, 8).map((file, index) => (
-						<Box key={index}>
-							<Text color={theme.text} bold>
-								{file.path}
-							</Text>
-							{file.diffStats && (
-								<Box marginLeft={1}>
-									<Text color={theme.successColor}>+{file.diffStats.added}</Text>
-									<Text color={theme.dimText}> / </Text>
-									<Text color={theme.errorColor}>-{file.diffStats.removed}</Text>
-								</Box>
-							)}
-						</Box>
-					))}
-					{toolData.batchDiffs.length > 8 && (
-						<Text color={theme.dimText}>... and {toolData.batchDiffs.length - 8} more files</Text>
-					)}
+		return (
+			<Box flexDirection="column">
+				<Box>
+					<Bullet status={status} />
+					<Box flexDirection="column" flexGrow={1}>
+						<Text wrap="truncate-end">
+							<Text bold>{displayName}</Text>
+							<Text> ({diffs.length} files)</Text>
+						</Text>
+						{visible.map((file, index) => (
+							<ResultRow key={index} maxLines={1}>
+								{`${file.path}  +${file.diffStats?.added ?? 0} -${file.diffStats?.removed ?? 0}`}
+							</ResultRow>
+						))}
+						{hidden > 0 && <ResultRow maxLines={1}>{`… +${hidden} more`}</ResultRow>}
+					</Box>
 				</Box>
 			</Box>
 		)
 	}
 
 	// Single file write
-	const { text: previewDiff, truncated, hiddenLines } = truncateText(diff, MAX_DIFF_LINES)
-	const diffHunks = diff ? parseDiff(diff) : []
+	const diffHunks = parseAnyDiff(diff)
+	const visibleHunks = diffHunks.slice(0, maxHunks)
 
 	return (
-		<Box flexDirection="column" paddingX={1} marginBottom={1}>
-			{/* Header row with path on same line */}
+		<Box flexDirection="column">
 			<Box>
-				<Icon name={iconName} color={theme.toolHeader} />
-				<Text bold color={theme.toolHeader}>
-					{displayName}
-				</Text>
-				{path && (
-					<>
-						<Text color={theme.dimText}> · </Text>
-						<Text color={theme.text} bold>
-							{path}
-						</Text>
-					</>
-				)}
-				{isNewFile && (
-					<Text color={theme.successColor} bold>
-						{" "}
-						NEW
-					</Text>
-				)}
-
-				{/* Diff stats badge */}
-				{diffStats && (
-					<>
-						<Text color={theme.dimText}> </Text>
-						<Text color={theme.successColor} bold>
-							+{diffStats.added}
-						</Text>
-						<Text color={theme.dimText}>/</Text>
-						<Text color={theme.errorColor} bold>
-							-{diffStats.removed}
-						</Text>
-					</>
-				)}
-
-				{/* Warning badges */}
-				{isProtected && <Text color={theme.errorColor}> 🔒 protected</Text>}
-				{isOutsideWorkspace && (
-					<Text color={theme.warningColor} dimColor>
-						{" "}
-						⚠ outside workspace
-					</Text>
-				)}
-			</Box>
-
-			{/* Diff preview */}
-			{diffHunks.length > 0 && (
-				<Box flexDirection="column" marginLeft={2} marginTop={1}>
-					{diffHunks.slice(0, 2).map((hunk, hunkIndex) => (
-						<Box key={hunkIndex} flexDirection="column">
-							{/* Hunk header */}
-							<Text color={theme.focusColor} dimColor>
-								{hunk.header}
+				<Bullet status={status} />
+				<Box flexDirection="column" flexGrow={1}>
+					<Text wrap="truncate-end">
+						<Text bold>{displayName}</Text>
+						{path ? <Text>({path})</Text> : null}
+						{diffStats ? (
+							<Text>
+								{" "}
+								<Text color={theme.success}>+{diffStats.added}</Text>
+								<Text> </Text>
+								<Text color={theme.error}>-{diffStats.removed}</Text>
 							</Text>
+						) : null}
+						{isProtected ? <Text color={theme.error}> (protected)</Text> : null}
+						{isOutsideWorkspace ? (
+							<Text dimColor color={theme.warning}>
+								{" "}
+								(outside workspace)
+							</Text>
+						) : null}
+					</Text>
 
-							{/* Diff lines */}
-							{hunk.lines.slice(0, 8).map((line, lineIndex) => (
-								<Text
-									key={lineIndex}
-									color={
-										line.type === "added"
-											? theme.successColor
-											: line.type === "removed"
-												? theme.errorColor
-												: theme.toolText
-									}>
-									{line.type === "added" ? "+" : line.type === "removed" ? "-" : " "}
-									{line.content}
-								</Text>
-							))}
+					{/* Diff preview: every removed line on a red band, every added
+					    line on a green band, context dim and unbanded. */}
+					{visibleHunks.length > 0 && (
+						<Box flexDirection="row">
+							<ElbowGutter />
+							<Box flexDirection="column" flexGrow={1}>
+								{visibleHunks.map((hunk, hunkIndex) => {
+									const visibleLines = hunk.lines.slice(0, maxHunkLines)
+									const bandWidth = hunkBandWidth(visibleLines, columns)
+									const hiddenLines = hunk.lines.length - visibleLines.length
 
-							{hunk.lines.length > 8 && (
-								<Text color={theme.dimText} dimColor>
-									... ({hunk.lines.length - 8} more lines in hunk)
-								</Text>
-							)}
+									return (
+										<Box key={hunkIndex} flexDirection="column">
+											{hunk.header ? (
+												<Text dimColor color={theme.secondaryText}>
+													{hunk.header}
+												</Text>
+											) : null}
+											{visibleLines.map((line, lineIndex) => (
+												<Text
+													key={lineIndex}
+													wrap="truncate-end"
+													backgroundColor={
+														line.type === "added"
+															? theme.diffAdded
+															: line.type === "removed"
+																? theme.diffRemoved
+																: undefined
+													}
+													dimColor={line.type === "context"}
+													color={line.type === "context" ? theme.secondaryText : theme.text}>
+													{bandLine(line, bandWidth)}
+												</Text>
+											))}
+											{hiddenLines > 0 && (
+												<Text dimColor color={theme.secondaryText}>
+													{`… +${hiddenLines} more lines`}
+												</Text>
+											)}
+										</Box>
+									)
+								})}
+								{diffHunks.length > maxHunks && (
+									<Text dimColor color={theme.secondaryText}>
+										{`… +${diffHunks.length - maxHunks} more hunks`}
+									</Text>
+								)}
+							</Box>
 						</Box>
-					))}
-
-					{diffHunks.length > 2 && (
-						<Text color={theme.dimText} dimColor>
-							... ({diffHunks.length - 2} more hunks)
-						</Text>
 					)}
-				</Box>
-			)}
 
-			{/* Fallback to raw diff if no hunks parsed */}
-			{diffHunks.length === 0 && previewDiff && (
-				<Box flexDirection="column" marginLeft={2} marginTop={1}>
-					<Text color={theme.toolText}>{previewDiff}</Text>
-					{truncated && (
-						<Text color={theme.dimText} dimColor>
-							... ({hiddenLines} more lines)
-						</Text>
-					)}
+					{/* Raw fallback, but only for text that is not a diff at all:
+					    dumping a half-streamed SEARCH block's scaffolding on
+					    screen helps nobody. */}
+					{diffHunks.length === 0 && diff && !isDiffText(diff) ? (
+						<ResultRow maxLines={maxHunkLines}>{diff}</ResultRow>
+					) : null}
 				</Box>
-			)}
+			</Box>
 		</Box>
 	)
 }

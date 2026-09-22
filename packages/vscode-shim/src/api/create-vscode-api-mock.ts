@@ -75,6 +75,9 @@ export interface VSCodeAPIMockOptions {
 	 * Set to a temp directory for ephemeral/no-persist mode.
 	 */
 	storageDir?: string
+
+	/** Optional host-provided system URL opener (used by CLI OAuth flows). */
+	openExternal?: (url: string) => Promise<boolean>
 }
 
 /**
@@ -110,6 +113,9 @@ export function createVSCodeAPIMock(
 		uriScheme: "vscode",
 		uiKind: 1, // Desktop
 		openExternal: async (uri: Uri): Promise<boolean> => {
+			if (options?.openExternal) {
+				return options.openExternal(uri.toString())
+			}
 			logs.info(`Would open external URL: ${uri.toString()}`, "VSCode.Env")
 			return true
 		},

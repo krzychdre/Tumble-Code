@@ -244,8 +244,8 @@
 		"addToDenied": "Добавить в список запрещенных",
 		"removeFromDenied": "Удалить из списка запрещенных",
 		"abortCommand": "Прервать выполнение команды",
-		"expandOutput": "Развернуть вывод",
-		"collapseOutput": "Свернуть вывод",
+		"expandCommand": "Развернуть команду",
+		"collapseCommand": "Свернуть команду",
 		"expandManagement": "Развернуть раздел управления командами",
 		"collapseManagement": "Свернуть раздел управления командами"
 	},

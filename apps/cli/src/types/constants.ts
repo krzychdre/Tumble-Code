@@ -4,6 +4,7 @@ export const DEFAULT_FLAGS = {
 	mode: "code",
 	reasoningEffort: "medium" as const,
 	model: "anthropic/claude-opus-4.6",
+	provider: "openrouter" as const,
 	consecutiveMistakeLimit: 10,
 }
 
@@ -22,6 +23,6 @@ export const ASCII_ROO = `  _,'   ___
         //   \\\\
       ,/'     \`\\_,`
 
-export const AUTH_BASE_URL = process.env.ROO_AUTH_BASE_URL ?? "https://app.roocode.com"
+export const AUTH_BASE_URL = process.env.ROO_AUTH_BASE_URL ?? "http://localhost:3000"
 
-export const SDK_BASE_URL = process.env.ROO_SDK_BASE_URL ?? "https://cloud-api.roocode.com"
+export const SDK_BASE_URL = process.env.ROO_SDK_BASE_URL ?? "http://localhost:3001"

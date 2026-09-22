@@ -23,6 +23,19 @@ interface UIState {
 	// TODO viewer overlay
 	showTodoViewer: boolean
 
+	// Verbose transcript (ctrl+o): tool previews and thinking print in full.
+	// Only ever consumed by the `<Static>` region; the dynamic tail keeps its
+	// clamps in both modes (plan: 2026-09-21 answer lost in dynamic tail, I1).
+	verboseTranscript: boolean
+	// Bumped every time the promoted transcript must be printed again, which is
+	// on every ctrl+o, in both directions. It feeds the `<Static>` key in
+	// App.tsx, and a key change is the only way to make ink reprint items it has
+	// already written into native scrollback (I2).
+	transcriptReprintEpoch: number
+	// Bumped by /clear, and also part of the `<Static>` key: the region has to
+	// remount so the welcome banner prints again onto the freshly wiped screen.
+	transcriptClearEpoch: number
+
 	// Autocomplete picker state
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	pickerState: AutocompletePickerState<any>
@@ -46,6 +59,12 @@ interface UIActions {
 	// TODO viewer actions
 	setShowTodoViewer: (show: boolean) => void
 
+	// Verbose transcript actions
+	toggleVerboseTranscript: () => void
+
+	// Transcript clear (/clear): remount `<Static>` on an empty transcript
+	clearTranscript: () => void
+
 	// Picker state actions
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	setPickerState: (state: AutocompletePickerState<any>) => void
@@ -62,6 +81,9 @@ const initialState: UIState = {
 	isTransitioningToCustomInput: false,
 	manualFocus: null,
 	showTodoViewer: false,
+	verboseTranscript: false,
+	transcriptReprintEpoch: 0,
+	transcriptClearEpoch: 0,
 	pickerState: {
 		activeTrigger: null,
 		results: [],
@@ -82,6 +104,26 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 	setIsTransitioningToCustomInput: (transitioning) => set({ isTransitioningToCustomInput: transitioning }),
 	setManualFocus: (focus) => set({ manualFocus: focus }),
 	setShowTodoViewer: (show) => set({ showTodoViewer: show }),
+	toggleVerboseTranscript: () =>
+		set((state) => ({
+			verboseTranscript: !state.verboseTranscript,
+			// BOTH directions bump the epoch, because both are a reprint: ink's
+			// `<Static>` prints each item once and can never rewrite it, so the
+			// only way to show the transcript at the other verbosity is to print
+			// it again. The caller wipes the screen first (useGlobalInput), which
+			// is what keeps "print it again" from meaning "one more copy": the
+			// reprint lands on an empty screen and is the only copy on it.
+			transcriptReprintEpoch: state.transcriptReprintEpoch + 1,
+		})),
+	clearTranscript: () =>
+		set((state) => ({
+			transcriptClearEpoch: state.transcriptClearEpoch + 1,
+			// The transcript this epoch counted reprints of is gone, so the
+			// `<Static>` head goes back to the welcome banner rather than the
+			// ctrl+o "expanded transcript" divider, which would now be a
+			// divider under nothing.
+			transcriptReprintEpoch: 0,
+		})),
 	setPickerState: (state) => set({ pickerState: state }),
 	resetUIState: () => set(initialState),
 }))

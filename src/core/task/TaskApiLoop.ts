@@ -76,6 +76,10 @@ export interface TaskApiLoopAccess {
 	// Conversation history
 	apiConversationHistory: ApiMessage[]
 	clineMessages: ClineMessage[]
+	// Timestamps of cline messages already captured for the cloud; see
+	// Task#cloudSyncedMessageTimestamps. Forgetting one lets a revised message
+	// (same ts) be captured again.
+	cloudSyncedMessageTimestamps: Set<number>
 
 	// Non-destructive microcompaction: transient set of tool_use_ids whose results
 	// are cleared on the outgoing request copy (stored history stays pristine).
@@ -742,14 +746,16 @@ export class TaskApiLoop {
 			)
 
 			if (!didToolUse) {
-				// A text-only response is treated as the completion result when
-				// the task has no incomplete todos: it runs through the real
+				// A text-only response is treated as the completion result unless
+				// the task still has pending todos: it runs through the real
 				// attempt_completion tool (so delegation gates and the
 				// completion ask flow behave identically) instead of paying a
-				// full extra turn on a noToolsUsed retry. With incomplete todos
-				// the retry stays — a weak model narrating mid-task must not
-				// complete the task by accident. See
-				// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5).
+				// full extra turn on a noToolsUsed retry that only regenerates
+				// the same answer. With pending todos the retry stays, a weak
+				// model narrating mid-task must not complete the task by
+				// accident. See
+				// ai_plans/2026-07-12_glm-agent-loop-efficiency-implementation.md (WS-5)
+				// and ai_plans/2026-09-10_text-completion-single-result.md.
 				const fallback = await this.tryTextCompletionFallback()
 
 				if (fallback === "completed") {
@@ -806,25 +812,34 @@ export class TaskApiLoop {
 	 * Runs the REAL AttemptCompletionTool so the delegation gates (subtask →
 	 * parent return, cancel races, re-attach evidence) and the completion ask
 	 * flow behave exactly as if the model had called attempt_completion with
-	 * this text. Returns:
+	 * this text. The text is already on screen as this turn's trailing `text`
+	 * say, so that message is relabelled as the `completion_result` in place
+	 * (same ts) rather than said a second time: the user sees one result
+	 * block, not the same answer twice. Returns:
 	 * - "completed": completion flow ran; nothing to send back to the model
 	 * - "feedback": user answered the completion ask with feedback (already
-	 *   pushed to userMessageContent as plain text — there is no tool_use id
+	 *   pushed to userMessageContent as plain text: there is no tool_use id
 	 *   to attach a tool_result to)
 	 * - "skipped": guards failed; caller falls back to the noToolsUsed retry
 	 */
 	private async tryTextCompletionFallback(): Promise<"completed" | "feedback" | "skipped"> {
 		const task = this.access as unknown as import("./Task").Task
 
-		const text = this.access.streamProcessor.assistantMessage.trim()
-		if (!text || this.access.isPaused || this.access.abort) {
+		const streamedText = this.access.streamProcessor.assistantMessage.trim()
+		if (!streamedText || this.access.isPaused || this.access.abort) {
 			return "skipped"
 		}
 
-		// A narrating model mid-task must not complete by accident: with
-		// incomplete todos the noToolsUsed retry remains the right answer.
+		// Only a `pending` todo blocks: it is work the model itself listed as
+		// not yet started, so a text-only turn cannot be the final answer and
+		// the noToolsUsed retry remains the right answer. An `in_progress` todo
+		// does not block: weak models routinely leave the last item ("deliver
+		// the summary to the user") un-ticked while the text IS that delivery,
+		// and the retry only makes them regenerate the same answer through
+		// attempt_completion (measured over 956 stored tasks, see
+		// ai_plans/2026-09-10_text-completion-single-result.md).
 		const todoList = (task as any).todoList
-		if (Array.isArray(todoList) && todoList.some((todo: any) => todo?.status !== "completed")) {
+		if (Array.isArray(todoList) && todoList.some((todo: any) => todo?.status === "pending")) {
 			return "skipped"
 		}
 
@@ -843,7 +858,12 @@ export class TaskApiLoop {
 		try {
 			const { attemptCompletionTool } = await import("../tools/AttemptCompletionTool")
 
-			await attemptCompletionTool.execute({ result: text }, task, {
+			// Passing the relabelled message's own text lets the tool find a
+			// finalized completion_result with exactly this text and skip its
+			// own say; when nothing was on screen the tool says the result.
+			const result = (await this.relabelStreamedTextAsCompletion()) ?? streamedText
+
+			await attemptCompletionTool.execute({ result }, task, {
 				askApproval: async () => true,
 				handleError: async (action: string, error: Error) => {
 					await this.access.askSay.say("error", `Error ${action}: ${error.message}`)
@@ -867,6 +887,49 @@ export class TaskApiLoop {
 		}
 
 		return this.access.userMessageContent.length > 0 ? "feedback" : "completed"
+	}
+
+	/**
+	 * Relabel this turn's trailing finalized `text` say as the `completion_result`
+	 * say, in place. Same ts, so the webview swaps the row instead of appending
+	 * one, and the persisted transcript records a single result block.
+	 *
+	 * Returns the relabelled text, or undefined when this turn has no finalized
+	 * text say to merge. The scan stops at this turn's `api_req_started`, so a
+	 * text say from an earlier turn is never touched.
+	 */
+	private async relabelStreamedTextAsCompletion(): Promise<string | undefined> {
+		const messages = this.access.clineMessages
+
+		for (let i = messages.length - 1; i >= 0; i--) {
+			const message = messages[i]
+
+			if (message.type === "say" && message.say === "api_req_started") {
+				return undefined
+			}
+
+			if (message.type !== "say" || message.say !== "text") {
+				continue
+			}
+
+			if (message.partial || !message.text?.trim()) {
+				return undefined
+			}
+
+			message.say = "completion_result"
+
+			// The `text` revision of this ts was already captured for the cloud;
+			// forget that so the completion_result revision is captured too (the
+			// API upserts by ts, so the row is corrected, not duplicated).
+			this.access.cloudSyncedMessageTimestamps.delete(message.ts)
+
+			await this.access.history.saveClineMessages()
+			await this.access.history.updateClineMessage(message)
+
+			return message.text
+		}
+
+		return undefined
 	}
 
 	/**

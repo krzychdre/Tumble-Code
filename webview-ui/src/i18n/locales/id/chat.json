@@ -305,8 +305,8 @@
 		"addToDenied": "Tambahkan ke daftar yang ditolak",
 		"removeFromDenied": "Hapus dari daftar yang ditolak",
 		"abortCommand": "Batalkan eksekusi perintah",
-		"expandOutput": "Perluas keluaran",
-		"collapseOutput": "Ciutkan keluaran",
+		"expandCommand": "Perluas perintah",
+		"collapseCommand": "Ciutkan perintah",
 		"expandManagement": "Perluas bagian manajemen perintah",
 		"collapseManagement": "Ciutkan bagian manajemen perintah"
 	},

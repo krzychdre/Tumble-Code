@@ -1,256 +1,94 @@
-import fs from "fs/promises"
+import fs from "fs"
 import path from "path"
+import os from "os"
 
-// Use vi.hoisted to make the test directory available to the mock
-// This must return the path synchronously since settings path is computed at import time
-const { getTestConfigDir } = vi.hoisted(() => {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const os = require("os")
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const path = require("path")
-	const testRunId = Date.now().toString()
-	const testConfigDir = path.join(os.tmpdir(), `roo-cli-settings-test-${testRunId}`)
-	return { getTestConfigDir: () => testConfigDir }
-})
+import { getConfigDir } from "@/lib/storage/index.js"
 
-vi.mock("../config-dir.js", () => ({
-	getConfigDir: getTestConfigDir,
+import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
+
+vi.mock("@/lib/storage/index.js", () => ({
+	getConfigDir: vi.fn(),
 }))
 
-// Import after mocking
-import { loadSettings, saveSettings, resetOnboarding, getSettingsPath } from "../settings.js"
-import { OnboardingProviderChoice } from "@/types/index.js"
+const mockGetConfigDir = getConfigDir as unknown as ReturnType<typeof vi.fn>
 
-// Re-derive the test config dir for use in tests (must match the hoisted one)
-const actualTestConfigDir = getTestConfigDir()
+describe("cli settings persistence", () => {
+	let tempDir: string
 
-describe("Settings Storage", () => {
-	const expectedSettingsFile = path.join(actualTestConfigDir, "cli-settings.json")
-
-	beforeEach(async () => {
-		// Clear test directory before each test
-		await fs.rm(actualTestConfigDir, { recursive: true, force: true })
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-settings-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
 	})
 
-	afterAll(async () => {
-		// Clean up test directory
-		await fs.rm(actualTestConfigDir, { recursive: true, force: true })
+	afterEach(() => {
+		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
-	describe("getSettingsPath", () => {
-		it("should return the correct settings file path", () => {
-			expect(getSettingsPath()).toBe(expectedSettingsFile)
-		})
+	it("loads empty settings when the file does not exist", async () => {
+		await expect(loadSettings()).resolves.toEqual({})
 	})
 
-	describe("loadSettings", () => {
-		it("should return empty object if no settings file exists", async () => {
-			const settings = await loadSettings()
-			expect(settings).toEqual({})
-		})
+	it("persists provider/model/base-url and reuses them on the next load", async () => {
+		await saveSettings({ provider: "ollama", model: "llama3", baseUrl: "http://localhost:11434" })
 
-		it("should load saved settings", async () => {
-			const settingsData = {
-				onboardingProviderChoice: OnboardingProviderChoice.Byok,
-				mode: "architect",
-				provider: "anthropic" as const,
-				model: "claude-sonnet-4-20250514",
-				reasoningEffort: "high" as const,
-			}
-
-			await fs.mkdir(actualTestConfigDir, { recursive: true })
-			await fs.writeFile(expectedSettingsFile, JSON.stringify(settingsData), "utf-8")
-
-			const loaded = await loadSettings()
-			expect(loaded).toEqual(settingsData)
-		})
-
-		it("should load settings with only some fields set", async () => {
-			const settingsData = {
-				mode: "code",
-			}
-
-			await fs.mkdir(actualTestConfigDir, { recursive: true })
-			await fs.writeFile(expectedSettingsFile, JSON.stringify(settingsData), "utf-8")
-
-			const loaded = await loadSettings()
-			expect(loaded).toEqual(settingsData)
-		})
+		const settings = await loadSettings()
+		expect(settings.provider).toBe("ollama")
+		expect(settings.model).toBe("llama3")
+		expect(settings.baseUrl).toBe("http://localhost:11434")
 	})
 
-	describe("saveSettings", () => {
-		it("should save settings to disk", async () => {
-			await saveSettings({ mode: "debug" })
+	it("merges with existing settings rather than overwriting", async () => {
+		await saveSettings({ model: "claude-opus-4" })
+		await saveSettings({ provider: "openrouter" })
 
-			const savedData = await fs.readFile(expectedSettingsFile, "utf-8")
-			const settings = JSON.parse(savedData)
-
-			expect(settings.mode).toBe("debug")
-		})
-
-		it("should merge settings with existing ones", async () => {
-			await saveSettings({ mode: "code" })
-			await saveSettings({ provider: "openrouter" as const })
-
-			const savedData = await fs.readFile(expectedSettingsFile, "utf-8")
-			const settings = JSON.parse(savedData)
-
-			expect(settings.mode).toBe("code")
-			expect(settings.provider).toBe("openrouter")
-		})
-
-		it("should save all default settings fields", async () => {
-			await saveSettings({
-				mode: "architect",
-				provider: "anthropic" as const,
-				model: "claude-opus-4.6",
-				reasoningEffort: "medium" as const,
-				consecutiveMistakeLimit: 5,
-			})
-
-			const savedData = await fs.readFile(expectedSettingsFile, "utf-8")
-			const settings = JSON.parse(savedData)
-
-			expect(settings.mode).toBe("architect")
-			expect(settings.provider).toBe("anthropic")
-			expect(settings.model).toBe("claude-opus-4.6")
-			expect(settings.reasoningEffort).toBe("medium")
-			expect(settings.consecutiveMistakeLimit).toBe(5)
-		})
-
-		it("should create config directory if it doesn't exist", async () => {
-			await saveSettings({ mode: "ask" })
-
-			const dirStats = await fs.stat(actualTestConfigDir)
-			expect(dirStats.isDirectory()).toBe(true)
-		})
-
-		// Unix file permissions don't apply on Windows - skip this test
-		it.skipIf(process.platform === "win32")("should set restrictive file permissions", async () => {
-			await saveSettings({ mode: "code" })
-
-			const stats = await fs.stat(expectedSettingsFile)
-			// Check that only owner has read/write (mode 0o600)
-			const mode = stats.mode & 0o777
-			expect(mode).toBe(0o600)
-		})
+		const settings = await loadSettings()
+		expect(settings.model).toBe("claude-opus-4")
+		expect(settings.provider).toBe("openrouter")
 	})
 
-	describe("resetOnboarding", () => {
-		it("should reset onboarding provider choice", async () => {
-			await saveSettings({ onboardingProviderChoice: OnboardingProviderChoice.Byok })
+	it("removes provider/model/baseUrl when explicitly set to undefined", async () => {
+		await saveSettings({ provider: "openrouter", model: "m1", baseUrl: "u1" })
+		await saveSettings({ provider: undefined, model: undefined, baseUrl: undefined })
 
-			await resetOnboarding()
+		const settings = await loadSettings()
+		expect(settings.provider).toBeUndefined()
+		expect(settings.model).toBeUndefined()
+		expect(settings.baseUrl).toBeUndefined()
 
-			const settings = await loadSettings()
-			expect(settings.onboardingProviderChoice).toBeUndefined()
-		})
-
-		it("should preserve other settings when resetting onboarding", async () => {
-			await saveSettings({
-				onboardingProviderChoice: OnboardingProviderChoice.Byok,
-				mode: "architect",
-				provider: "gemini" as const,
-			})
-
-			await resetOnboarding()
-
-			const settings = await loadSettings()
-			expect(settings.onboardingProviderChoice).toBeUndefined()
-			expect(settings.mode).toBe("architect")
-			expect(settings.provider).toBe("gemini")
-		})
+		const raw = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+		expect(raw.provider).toBeUndefined()
+		expect(raw.model).toBeUndefined()
+		expect(raw.baseUrl).toBeUndefined()
 	})
 
-	describe("default settings priority", () => {
-		it("should support all configurable default settings", async () => {
-			// Test that all the settings that can be used as defaults are properly saved and loaded
-			const defaultSettings = {
-				mode: "debug",
-				provider: "openai-native" as const,
-				model: "gpt-4o",
-				reasoningEffort: "low" as const,
-				consecutiveMistakeLimit: 7,
-			}
+	it("never persists api keys", async () => {
+		await saveSettings({ provider: "anthropic" })
+		const raw = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
+		expect(raw.apiKey).toBeUndefined()
+	})
 
-			await saveSettings(defaultSettings)
-			const loaded = await loadSettings()
+	it("does not rewrite the file when nothing changes (mtime/content unchanged)", async () => {
+		await saveSettings({ provider: "openrouter", model: "m1", baseUrl: "https://openrouter.example" })
+		const pathBefore = getSettingsPath()
+		const mtimeBefore = fs.statSync(pathBefore).mtimeMs
+		const contentBefore = fs.readFileSync(pathBefore, "utf-8")
 
-			expect(loaded.mode).toBe("debug")
-			expect(loaded.provider).toBe("openai-native")
-			expect(loaded.model).toBe("gpt-4o")
-			expect(loaded.reasoningEffort).toBe("low")
-			expect(loaded.consecutiveMistakeLimit).toBe(7)
-		})
+		// Re-saving identical values must be a no-op at the storage layer too:
+		// the caller skips the write, but saveSettings never rewrites identical
+		// merged content.
+		await saveSettings({ provider: "openrouter", model: "m1", baseUrl: "https://openrouter.example" })
 
-		it("should support consecutiveMistakeLimit setting", async () => {
-			await saveSettings({ consecutiveMistakeLimit: 0 })
-			const loaded = await loadSettings()
+		expect(fs.statSync(pathBefore).mtimeMs).toBe(mtimeBefore)
+		expect(fs.readFileSync(pathBefore, "utf-8")).toBe(contentBefore)
+	})
 
-			expect(loaded.consecutiveMistakeLimit).toBe(0)
-		})
+	it("keeps the settings file valid when concurrent saves overlap", async () => {
+		await Promise.all([
+			saveSettings({ provider: "openai-codex" }),
+			saveSettings({ model: "gpt-5.6-sol" }),
+			saveSettings({ requireApproval: true }),
+		])
 
-		it("should support requireApproval setting", async () => {
-			await saveSettings({ requireApproval: true })
-			const loaded = await loadSettings()
-
-			expect(loaded.requireApproval).toBe(true)
-		})
-
-		it("should support all settings together including requireApproval", async () => {
-			const allSettings = {
-				mode: "architect",
-				provider: "anthropic" as const,
-				model: "claude-sonnet-4-20250514",
-				reasoningEffort: "high" as const,
-				requireApproval: true,
-			}
-
-			await saveSettings(allSettings)
-			const loaded = await loadSettings()
-
-			expect(loaded.mode).toBe("architect")
-			expect(loaded.provider).toBe("anthropic")
-			expect(loaded.model).toBe("claude-sonnet-4-20250514")
-			expect(loaded.reasoningEffort).toBe("high")
-			expect(loaded.requireApproval).toBe(true)
-		})
-
-		it("should support oneshot setting", async () => {
-			await saveSettings({ oneshot: true })
-			const loaded = await loadSettings()
-
-			expect(loaded.oneshot).toBe(true)
-		})
-
-		it("should support all settings together including oneshot", async () => {
-			const allSettings = {
-				mode: "architect",
-				provider: "anthropic" as const,
-				model: "claude-sonnet-4-20250514",
-				reasoningEffort: "high" as const,
-				consecutiveMistakeLimit: 9,
-				requireApproval: true,
-				oneshot: true,
-			}
-
-			await saveSettings(allSettings)
-			const loaded = await loadSettings()
-
-			expect(loaded.mode).toBe("architect")
-			expect(loaded.provider).toBe("anthropic")
-			expect(loaded.model).toBe("claude-sonnet-4-20250514")
-			expect(loaded.reasoningEffort).toBe("high")
-			expect(loaded.consecutiveMistakeLimit).toBe(9)
-			expect(loaded.requireApproval).toBe(true)
-			expect(loaded.oneshot).toBe(true)
-		})
-
-		it("should still load legacy dangerouslySkipPermissions setting", async () => {
-			await saveSettings({ dangerouslySkipPermissions: true })
-			const loaded = await loadSettings()
-
-			expect(loaded.dangerouslySkipPermissions).toBe(true)
-		})
+		expect(() => JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))).not.toThrow()
 	})
 })

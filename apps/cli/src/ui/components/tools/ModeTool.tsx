@@ -1,28 +1,30 @@
 import { Box, Text } from "ink"
 
 import * as theme from "../../theme.js"
-import { Icon } from "../Icon.js"
+import Bullet from "../primitives/Bullet.js"
+import ResultRow from "../primitives/ResultRow.js"
 
 import type { ToolRendererProps } from "./types.js"
-import { getToolIconName } from "./utils.js"
+import { toolStatusFromMessage } from "./types.js"
 
-export function ModeTool({ toolData }: ToolRendererProps) {
-	const iconName = getToolIconName(toolData.tool)
+export function ModeTool({ toolData, message }: ToolRendererProps) {
+	const status = toolStatusFromMessage(message)
 	const mode = toolData.mode || ""
-	const isSwitch = toolData.tool.includes("switch") || toolData.tool.includes("Switch")
 
 	return (
-		<Box flexDirection="row" gap={1} paddingX={1} marginBottom={1}>
-			<Icon name={iconName} color={theme.toolHeader} />
-			{isSwitch && mode && (
-				<Box gap={1}>
-					<Text color={theme.dimText}>Switching to</Text>
-					<Text color={theme.userHeader} bold>
-						{mode}
+		<Box flexDirection="column">
+			<Box>
+				<Bullet status={status} />
+				<Box flexDirection="column" flexGrow={1}>
+					<Text wrap="truncate-end">
+						<Text bold>Switch Mode</Text>
+						{mode ? <Text>(</Text> : null}
+						{mode ? <Text color={theme.planMode}>{mode}</Text> : null}
+						{mode ? <Text>)</Text> : null}
 					</Text>
-					<Text color={theme.dimText}>mode</Text>
+					{mode && <ResultRow maxLines={1}>{`Switching to ${mode} mode`}</ResultRow>}
 				</Box>
-			)}
+			</Box>
 		</Box>
 	)
 }
