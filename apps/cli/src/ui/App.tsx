@@ -16,6 +16,7 @@ import { useCLIStore } from "./store.js"
 import { useUIStateStore } from "./stores/uiStateStore.js"
 import { useSecretPromptStore } from "./stores/secretPromptStore.js"
 import { getStaticCount, buildStaticItems, nextPromotion } from "./transcript.js"
+import { advanceStreamCommit, remainderAfterCommit, tailHeads, type StreamCommits } from "./streamCommit.js"
 
 // Import extracted hooks.
 import {
@@ -272,7 +273,12 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// --- Transcript split (plan §3) -------------------------------------------
 
 	const hasPendingAsk = Boolean(pendingAsk)
-	const staticCount = getStaticCount(messages, isLoading, hasPendingAsk)
+	// The collapsed thinking row does not show the reasoning text, so a thinking
+	// message the answer has already moved past can be printed before the core's
+	// late finalization arrives (see `getStaticCount`).
+	const staticCount = getStaticCount(messages, isLoading, hasPendingAsk, {
+		settleSupersededThinking: !verboseTranscript,
+	})
 
 	// Monotonicity + task-switch reset detection. `staticKey` remounts the
 	// `<Static>` region when the message array identity changes (task switch
@@ -290,6 +296,10 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// itself would need it in the dependency list, which would re-run the
 	// effect on its own update.
 	const promotedRef = useRef(0)
+	// What was printed of streaming answers before they completed (see
+	// `streamCommit.ts`). Belongs to the current `<Static>` region, so it is
+	// dropped together with it.
+	const [streamCommits, setStreamCommits] = useState<StreamCommits>({})
 
 	useEffect(() => {
 		const messageIds = messages.map((m) => m.id)
@@ -302,6 +312,9 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		if (next.remount) {
 			setStaticKey((k) => k + 1)
 		}
+		if (next.remount || messageIds.length === 0) {
+			setStreamCommits((commits) => (Object.keys(commits).length === 0 ? commits : {}))
+		}
 		promotedRef.current = next.promoted
 		setPrevStaticCount(next.promoted)
 		prevIdsRef.current = messageIds
@@ -310,6 +323,20 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const effectiveStaticCount = Math.max(prevStaticCount, staticCount)
 	const staticMessages = messages.slice(0, effectiveStaticCount)
 	const dynamicMessages = messages.slice(effectiveStaticCount)
+
+	// Stream the answer into scrollback line by line (plan: 2026-09-22 cli
+	// stream answer into scrollback).
+	const { streaming: streamingHead, committed: committedHead } = tailHeads(dynamicMessages[0], streamCommits)
+
+	useEffect(() => {
+		if (!streamingHead) {
+			return
+		}
+		setStreamCommits((commits) => {
+			const next = advanceStreamCommit(streamingHead.content, commits[streamingHead.id])
+			return next ? { ...commits, [streamingHead.id]: next } : commits
+		})
+	}, [streamingHead])
 
 	// Row budget per dynamic-tail message (plan: 2026-08-07 clamp dynamic
 	// tail). Reserve covers spinner + bordered input/footer or dialogs.
@@ -348,8 +375,10 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 				welcomeProps,
 				expanded: verboseTranscript,
 				reprintEpoch: transcriptReprintEpoch,
+				commits: streamCommits,
+				streamingHead: committedHead,
 			}),
-		[staticMessages, welcomeProps, verboseTranscript, transcriptReprintEpoch],
+		[staticMessages, welcomeProps, verboseTranscript, transcriptReprintEpoch, streamCommits, committedHead],
 	)
 
 	// --- Loading spinner timing -----------------------------------------------
@@ -543,9 +572,21 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			<TailViewport maxRows={Math.max(6, terminalRows - 2)}>
 				{/* Dynamic tail: in-flight / streaming messages still re-rendering.
 				    Height-clamped so the tail never outgrows the terminal. */}
-				{dynamicMessages.map((m) => (
-					<DynamicTailMessage key={m.id} message={m} maxRows={tailRowsPerMessage} columns={terminalColumns} />
-				))}
+				{dynamicMessages.map((m) => {
+					// The head's finished lines are already in scrollback; the
+					// tail keeps only the line the model is still writing.
+					const commit = streamCommits[m.id]
+					const rest = commit && m === committedHead ? remainderAfterCommit(m.content, commit) : null
+					return (
+						<DynamicTailMessage
+							key={m.id}
+							message={rest === null ? m : { ...m, content: rest }}
+							continuation={rest !== null}
+							maxRows={tailRowsPerMessage}
+							columns={terminalColumns}
+						/>
+					)
+				})}
 
 				{/* Spinner while loading and no dialog is stealing the frame */}
 				{isLoading && !pendingAsk && (

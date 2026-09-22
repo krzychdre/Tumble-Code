@@ -2,6 +2,7 @@ import { Box, Static, Text } from "ink"
 
 import type { StaticItem } from "../transcript.js"
 
+import AssistantMessage from "./messages/AssistantMessage.js"
 import ChatHistoryItem from "./ChatHistoryItem.js"
 import WelcomeBanner from "./WelcomeBanner.js"
 
@@ -42,9 +43,22 @@ export default function TranscriptStatic({ items, columns }: TranscriptStaticPro
 						</Box>
 					)
 				}
+				if (item.kind === "chunk") {
+					// A part of an answer printed while it streamed; only the
+					// first part opens the message with its bullet.
+					return (
+						<Box key={item.id}>
+							<AssistantMessage content={item.text} addMargin={item.first} continuation={!item.first} />
+						</Box>
+					)
+				}
 				return (
 					<Box key={item.id}>
-						<ChatHistoryItem message={item.message} expanded={item.expanded} />
+						{item.continuation ? (
+							<AssistantMessage content={item.message.content} continuation />
+						) : (
+							<ChatHistoryItem message={item.message} expanded={item.expanded} />
+						)}
 					</Box>
 				)
 			}}
