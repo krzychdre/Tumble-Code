@@ -1,3 +1,5 @@
+import * as path from "path"
+
 import { describe, expect, it, vi, beforeEach } from "vitest"
 
 import { pauseForPlanReviewIfNeeded } from "../planReviewPause"
@@ -23,6 +25,11 @@ vi.mock("../../webview/planReviewRegistry", () => ({
 }))
 
 const mockPanel = vi.mocked(PlanReviewPanel)
+
+// The product resolves the plan path with `path.resolve(task.cwd, relPath)`,
+// so the expected absolute path is built the same way (drive letter and
+// backslashes on Windows).
+const PLAN_ABS = path.resolve("/ws", "plans/plan.md")
 
 interface TaskOverrides {
 	ask?: ReturnType<typeof vi.fn>
@@ -78,7 +85,7 @@ describe("pauseForPlanReviewIfNeeded", () => {
 	it("seeds the diff baseline from the pre-write content of the saved file", async () => {
 		const task = makeTask()
 		await pauseForPlanReviewIfNeeded(task, "plans/plan.md")
-		expect(mockPanel.seedBaseline).toHaveBeenCalledWith("/ws/plans/plan.md", "old plan content")
+		expect(mockPanel.seedBaseline).toHaveBeenCalledWith(PLAN_ABS, "old plan content")
 	})
 
 	it("does not seed the baseline from another file's edit", async () => {
@@ -93,14 +100,14 @@ describe("pauseForPlanReviewIfNeeded", () => {
 		const task = makeTask()
 		const result = await pauseForPlanReviewIfNeeded(task, "plans/plan.md")
 		expect(result).toContain("approved")
-		expect(mockPanel.closeForFile).toHaveBeenCalledWith("/ws/plans/plan.md")
+		expect(mockPanel.closeForFile).toHaveBeenCalledWith(PLAN_ABS)
 	})
 
 	it("closes the panel after a plain reject", async () => {
 		const task = makeTask({ ask: vi.fn().mockResolvedValue({ response: "noButtonClicked" }) })
 		const result = await pauseForPlanReviewIfNeeded(task, "plans/plan.md")
 		expect(result).toContain("rejected")
-		expect(mockPanel.closeForFile).toHaveBeenCalledWith("/ws/plans/plan.md")
+		expect(mockPanel.closeForFile).toHaveBeenCalledWith(PLAN_ABS)
 	})
 
 	it("closes the panel after feedback text and relays it", async () => {
@@ -109,7 +116,7 @@ describe("pauseForPlanReviewIfNeeded", () => {
 		})
 		const result = await pauseForPlanReviewIfNeeded(task, "plans/plan.md")
 		expect(result).toContain("add rollout step")
-		expect(mockPanel.closeForFile).toHaveBeenCalledWith("/ws/plans/plan.md")
+		expect(mockPanel.closeForFile).toHaveBeenCalledWith(PLAN_ABS)
 	})
 
 	it("delivers draft notes on Approve and still closes the panel", async () => {
@@ -117,6 +124,6 @@ describe("pauseForPlanReviewIfNeeded", () => {
 		const task = makeTask()
 		const result = await pauseForPlanReviewIfNeeded(task, "plans/plan.md")
 		expect(result).toContain("note about step 2")
-		expect(mockPanel.closeForFile).toHaveBeenCalledWith("/ws/plans/plan.md")
+		expect(mockPanel.closeForFile).toHaveBeenCalledWith(PLAN_ABS)
 	})
 })

@@ -16,6 +16,10 @@ import { logger } from "../../../utils/logging"
 
 const GLOBAL_STORAGE = "/home/user/.vscode/ext-storage"
 const CWD = "/home/user/my-project"
+// The isolated layout's real prefix as `getAutoMemPath` builds it: on Windows
+// `path.join` turns the forward-slash literal into backslashes, so a
+// `toContain(GLOBAL_STORAGE)` on the raw literal never matches there.
+const ISOLATED_BASE = path.join(GLOBAL_STORAGE, "memory")
 
 describe("memory shared with Claude Code", () => {
 	let claudeDir: string
@@ -119,7 +123,7 @@ describe("memory shared with Claude Code", () => {
 		const secondPath = getAutoMemPath(second)
 
 		expect(firstPath).toContain(claudeDir)
-		expect(secondPath).toContain(GLOBAL_STORAGE)
+		expect(secondPath).toContain(ISOLATED_BASE)
 		expect(firstPath).not.toBe(secondPath)
 	})
 
@@ -139,7 +143,7 @@ describe("memory shared with Claude Code", () => {
 
 		initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryShareWithClaudeCode: true }))
 
-		expect(getAutoMemPath(CWD)).toContain(GLOBAL_STORAGE)
+		expect(getAutoMemPath(CWD)).toContain(ISOLATED_BASE)
 	})
 
 	it("rechecks an initially safe directory when a colliding session appears later", () => {
@@ -160,7 +164,7 @@ describe("memory shared with Claude Code", () => {
 			"utf8",
 		)
 
-		expect(getAutoMemPath(CWD)).toContain(GLOBAL_STORAGE)
+		expect(getAutoMemPath(CWD)).toContain(ISOLATED_BASE)
 	})
 
 	it("stays quiet when the directory belongs to this workspace", () => {

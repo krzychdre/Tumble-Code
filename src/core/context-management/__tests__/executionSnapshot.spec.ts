@@ -1,5 +1,7 @@
 // cd src && npx vitest run core/context-management/__tests__/executionSnapshot.spec.ts
 
+import * as path from "path"
+
 import type { ApiMessage } from "../../task-persistence/apiMessages"
 import type { ContextLedger, LedgerFact } from "../ledger/types"
 import { buildContextLedger, LEDGER_GOAL_MAX_CHARS } from "../ledger/buildLedger"
@@ -238,7 +240,9 @@ describe("detectStaleFileChanges", () => {
 
 		const stale = await detectStaleFileChanges(ledger, "/repo", lastActivity, stat)
 		expect(stale).toEqual([{ path: "src/a.ts", reason: "modified" }])
-		expect(stat).toHaveBeenCalledWith("/repo/src/a.ts")
+		// The product resolves the subject against cwd with `path.resolve`, which
+		// yields a drive-lettered backslash path on Windows.
+		expect(stat).toHaveBeenCalledWith(path.resolve("/repo", "src/a.ts"))
 	})
 
 	it("does not flag the task's own writes, which land just before the last message", async () => {

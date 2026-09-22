@@ -8,13 +8,18 @@
 // `core/task-persistence/__tests__/TaskHistoryStore.spec.ts`; here we mock the
 // filesystem and lockfile to focus on the in-process per-ID lock ordering.
 
+import * as path from "path"
+
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { HistoryItem } from "@roo-code/types"
 
 // In-memory backing store so atomicReadAndUpdate's "read from disk under lock"
 // contract can be exercised without a real filesystem. Keyed by absolute file
-// path.
+// path, built with `path.join` exactly like the store builds it, so the key
+// matches on Windows too (the store's `path.join` emits backslashes there).
 const backingFiles = new Map<string, string>()
+
+const STORAGE_BASE = "/tmp/test-storage"
 
 vi.mock("fs/promises", () => ({
 	mkdir: vi.fn().mockResolvedValue(undefined),
@@ -88,8 +93,10 @@ vi.mock("../utils/safeWriteJson", () => {
 	}
 })
 
+// Lazy so the hoisted factory does not touch `STORAGE_BASE` before the const
+// above is initialized (vi.mock factories run at import time).
 vi.mock("../utils/storage", () => ({
-	getStorageBasePath: vi.fn().mockResolvedValue("/tmp/test-storage"),
+	getStorageBasePath: vi.fn(async () => STORAGE_BASE),
 }))
 
 import { TaskHistoryStore } from "../core/task-persistence/TaskHistoryStore"
@@ -113,7 +120,7 @@ const makeItem = (id: string, overrides: Partial<HistoryItem> = {}): HistoryItem
 // read returns it. The cache is also seeded so a stale-cache scenario can be
 // constructed when needed.
 function seedOnDisk(store: TaskHistoryStore, item: HistoryItem): void {
-	const filePath = `/tmp/test-storage/tasks/${item.id}/history_item.json`
+	const filePath = path.join(STORAGE_BASE, "tasks", item.id, "history_item.json")
 	backingFiles.set(filePath, JSON.stringify(item))
 	;(store as any).cache.set(item.id, item)
 }
@@ -124,7 +131,7 @@ describe("TaskHistoryStore.atomicReadAndUpdate", () => {
 	beforeEach(() => {
 		backingFiles.clear()
 		vi.clearAllMocks()
-		store = new TaskHistoryStore("/tmp/test-storage")
+		store = new TaskHistoryStore(STORAGE_BASE)
 	})
 
 	it("serializes concurrent operations — second caller reads the state written by the first", async () => {

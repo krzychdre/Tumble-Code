@@ -283,15 +283,15 @@ export function validateMemoryPath(candidate: string): string {
 		throw new Error("Invalid memory directory: must be absolute")
 	}
 	// Reject drive-root ("C:\") and filesystem root ("/", length < 3 on most systems).
+	// The bare-root check runs on every platform: on win32 "/" is absolute too
+	// (the current drive's root, normalized to "\"), and it used to slip past the
+	// drive-letter pattern.
 	const normalized = path.normalize(expanded)
-	if (process.platform === "win32") {
-		if (/^[a-zA-Z]:[\\/]$/.test(normalized)) {
-			throw new Error("Invalid memory directory: drive root is not allowed")
-		}
-	} else {
-		if (normalized === path.sep || normalized.length < 3) {
-			throw new Error("Invalid memory directory: filesystem root is not allowed")
-		}
+	if (process.platform === "win32" && /^[a-zA-Z]:[\\/]$/.test(normalized)) {
+		throw new Error("Invalid memory directory: drive root is not allowed")
+	}
+	if (normalized === path.sep || normalized.length < 3) {
+		throw new Error("Invalid memory directory: filesystem root is not allowed")
 	}
 	// Ensure exactly one trailing separator.
 	const withSep = normalized.endsWith(path.sep) ? normalized : normalized + path.sep

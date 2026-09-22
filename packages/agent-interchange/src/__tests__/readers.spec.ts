@@ -4,7 +4,7 @@ import { claudeSlug } from "../locate.js"
 import { listClaudeSessions, readClaudeSession } from "../readers/claude-code.js"
 import { listTumbleSessions, readTumbleSession } from "../readers/tumble-code.js"
 import { listSessions, readSession } from "../index.js"
-import { makeTempDir, writeClaudeSession, writeTumbleTask } from "./fixtures.js"
+import { isolateHome, makeTempDir, writeClaudeSession, writeTumbleTask } from "./fixtures.js"
 
 describe("claudeSlug", () => {
 	// The empirical table from the real store — the mapping is lossy, and these
@@ -122,14 +122,17 @@ describe("Claude Code reader", () => {
 
 describe("Tumble Code reader", () => {
 	let storageDir: string
+	let restoreHome: () => void
 
 	beforeEach(() => {
+		restoreHome = isolateHome()
 		storageDir = makeTempDir("tc")
 		process.env.AGENT_INTERCHANGE_TUMBLE_STORAGE = storageDir
 	})
 
 	afterEach(() => {
 		delete process.env.AGENT_INTERCHANGE_TUMBLE_STORAGE
+		restoreHome()
 		// Retries for the same Windows handle races as in the Claude block above.
 		fs.rmSync(storageDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
 	})
@@ -185,8 +188,10 @@ describe("Tumble Code reader", () => {
 describe("unified facade", () => {
 	let configDir: string
 	let storageDir: string
+	let restoreHome: () => void
 
 	beforeEach(() => {
+		restoreHome = isolateHome()
 		configDir = makeTempDir("cc")
 		storageDir = makeTempDir("tc")
 		process.env.CLAUDE_CONFIG_DIR = configDir
@@ -196,6 +201,7 @@ describe("unified facade", () => {
 	afterEach(() => {
 		delete process.env.CLAUDE_CONFIG_DIR
 		delete process.env.AGENT_INTERCHANGE_TUMBLE_STORAGE
+		restoreHome()
 		// Retries for the same Windows handle races as in the Claude block above.
 		fs.rmSync(configDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
 		fs.rmSync(storageDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
