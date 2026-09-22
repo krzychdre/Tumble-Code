@@ -106,4 +106,81 @@ real pty (pexpect + pyte, 24x90) with a minimal ink app of the same shape: a
 expanded, a ticking dynamic tail and a prompt line below it, and ctrl+o wired to
 `write(CLEAR_TERMINAL)` followed by the state change.
 
-See the appendix below for the captured screens.
+## Appendix: the pty run
+
+pexpect 4.9.0 at 24 rows by 90 columns, fed into a `pyte` 0.8.2 `HistoryScreen`,
+which also models the scrollback; its `erase_in_display(how=3)` resets that
+history, the same thing xterm does with `\x1b[3J`, so its line count is a
+meaningful answer to "is the scrollback gone". The probe imports react 19.2.3
+and ink 6.6.0 by absolute path from `apps/cli/node_modules`.
+
+One trap ruled out first: ink has a CI mode in which it never moves the cursor,
+which would have made the whole measurement vacuous. `is-in-ci` reads only `CI`
+and `CONTINUOUS_INTEGRATION`, neither of which was set, so ink ran its normal
+cursor-tracking path.
+
+Collapsed (20 messages, one line each) fills the screen exactly; expanded (three
+lines each) is 60 lines, so most of it has to scroll off. Screens, right
+stripped, rows renumbered from 0:
+
+```text
+A  start, collapsed              B  0.8s after ctrl+o          D  0.8s after ctrl+o again
+ 0|MSG-01 collapsed               0|MSG-14 expanded             0|MSG-01 collapsed
+ …                                1|  body line 1 of MSG-14     …
+19|MSG-20 collapsed               …                            19|MSG-20 collapsed
+20|TAIL tick=4                   20|  body line 2 of MSG-20     20|TAIL tick=23
+21|PROMPT >                      21|TAIL tick=7                 21|PROMPT >
+scrollback: 0 lines              22|PROMPT >                    scrollback: 0 lines
+                                 scrollback: 39 lines
+```
+
+At B the 39 scrollback lines are MSG-01 to MSG-13 expanded and nothing else, so
+screen plus scrollback is exactly 60 lines: one copy. At D the scrollback is back
+to 0 and the screen holds 0 rows containing "expanded". That is the direction
+that did not work before.
+
+The tail was sampled every ~250 ms for 3 s in each state. Expanded: `TAIL tick=`
+on row 21 and `PROMPT >` on row 22 in all 11 samples, cursor at (23, 0), while
+the tick ran 8 to 19. Collapsed: rows 20 and 21 in all 11 samples, cursor at
+(22, 0), tick 24 to 35. The tail does not walk and does not duplicate.
+
+The raw byte stream (4004 bytes, complete) shows one toggle as:
+
+```text
+\x1b[2K\x1b[1A\x1b[2K\x1b[1A\x1b[2K\x1b[G   ink's log.clear(): erase the 3-row tail
+\x1b[2J\x1b[3J\x1b[H                        CLEAR_TERMINAL, exactly once per toggle
+TAIL tick=4\r\nPROMPT >\r\n                 ink re-logs lastOutput at the top
+\x1b[2K\x1b[1A\x1b[2K\x1b[1A\x1b[2K\x1b[G   erased again when the new Static output arrives
+MSG-01 expanded\r\n  body line 1 …          the transcript, printed once
+TAIL tick=4\r\nPROMPT >\r\n                 the tail, below it
+```
+
+Counted over the whole stream: the clear triple appears twice and never in
+pieces, `MSG-01 collapsed` twice (start, second toggle) and `MSG-01 expanded`
+once, 40 collapsed and 60 expanded lines in total. One copy per printing, never
+two. React batched the verbosity flip and the epoch bump into one render, so
+`<Static>` remounted once per toggle.
+
+The re-log in the middle of that sequence is worth knowing about: for 16 to
+22 ms the previous tail sits alone at the top of an otherwise empty screen. It
+is inherent to ink's `writeToStdout`, which always reprints the live frame after
+a write, and it is erased before the transcript prints. On a real terminal it
+can show as a faint flash at the top left. Not fixed, because fixing it means
+not going through ink, which is the bug this whole design avoids.
+
+Terminal support is the one thing the probe cannot answer: pyte honours
+`\x1b[3J`, and so do xterm, VTE, kitty, alacritty and the VSCode terminal, but a
+terminal that ignores it would keep the old copy reachable by scrolling up even
+though the visible screen is exactly as captured. The bytes the CLI sends are
+the right ones; what a given terminal does with them is outside its reach.
+
+A geometry margin found along the way: in the expanded state the tail's trailing
+newline leaves the cursor on the very last row. One row more and every tick would
+scroll the screen and push a transcript row into scrollback per frame. That is
+precisely what `TailViewport`'s `rows - 2` clamp in `App.tsx` exists to prevent,
+and it is the thing to watch if the tail ever grows.
+
+What the probe does not cover, stated so nobody reads more into it than it says:
+it mirrors the mechanism and the geometry, not the real app, so the welcome
+banner, the header item, the real `TailViewport`, the picker-close path and the
+`showInfo` toast are not exercised by it.
