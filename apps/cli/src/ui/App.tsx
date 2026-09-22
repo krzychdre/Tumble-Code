@@ -1,6 +1,8 @@
 import { Box, Static, Text, useApp, useInput } from "ink"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
+import { setInputBoxHandler } from "@roo-code/vscode-shim"
+
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 
 import { getGlobalCommandsForAutocomplete } from "@/lib/utils/commands.js"
@@ -12,6 +14,7 @@ import * as theme from "./theme.js"
 import { figures } from "./figures.js"
 import { useCLIStore } from "./store.js"
 import { useUIStateStore } from "./stores/uiStateStore.js"
+import { useSecretPromptStore } from "./stores/secretPromptStore.js"
 import { getStaticCount, buildStaticItems, nextPromotion } from "./transcript.js"
 
 // Import extracted hooks.
@@ -37,6 +40,7 @@ import ToastDisplay from "./components/ToastDisplay.js"
 import TodoDisplay from "./components/TodoDisplay.js"
 import ApprovalDialog from "./components/dialogs/ApprovalDialog.js"
 import FollowupDialog from "./components/dialogs/FollowupDialog.js"
+import SecretPromptDialog from "./components/dialogs/SecretPromptDialog.js"
 import InputArea, { type AutocompleteInputHandle } from "./components/input/InputArea.js"
 import {
 	type AutocompleteTrigger,
@@ -233,6 +237,26 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			firstTextMessageSkipped,
 		})
 
+	// A command with no terminal of its own (git asking for a password, ssh for a
+	// key passphrase) reaches the user through `window.showInputBox` in the core.
+	// Registering a handler is what turns that call into a prompt here instead of
+	// the shim's default "no answer"; unregistering on unmount releases anything
+	// still waiting so the command fails rather than hanging on a dead interface.
+	useEffect(() => {
+		setInputBoxHandler(async (options) =>
+			useSecretPromptStore.getState().ask({
+				title: options.title,
+				prompt: options.prompt ?? "",
+				masked: options.password !== false,
+			}),
+		)
+
+		return () => {
+			setInputBoxHandler(undefined)
+			useSecretPromptStore.getState().cancelAll()
+		}
+	}, [])
+
 	// Initialize global input hook (scroll/focus toggle removed — plan §8)
 	useGlobalInput({
 		pickerIsOpen: pickerState.isOpen,
@@ -347,16 +371,23 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	// --- Dialog / input visibility flags --------------------------------------
 
-	const showApprovalDialog = Boolean(pendingAsk && pendingAsk.type !== "followup")
+	// A command is blocked waiting for a password or a passphrase. It outranks
+	// everything else on screen: nothing else can move until it is answered, and
+	// the command's own timeout is running while it waits.
+	const secretPrompt = useSecretPromptStore((state) => state.current)
+
+	const showApprovalDialog = Boolean(pendingAsk && pendingAsk.type !== "followup") && !secretPrompt
 	const showFollowupDialog =
 		pendingAsk?.type === "followup" &&
 		Boolean(pendingAsk.suggestions && pendingAsk.suggestions.length > 0) &&
-		!showCustomInput
-	const showFollowupCustomInput = pendingAsk?.type === "followup" && (showCustomInput || isTransitioningToCustomInput)
+		!showCustomInput &&
+		!secretPrompt
+	const showFollowupCustomInput =
+		pendingAsk?.type === "followup" && (showCustomInput || isTransitioningToCustomInput) && !secretPrompt
 
 	// Input is owned by whichever dialog is up; the picker renders on top of
 	// the input area only when the input itself is active.
-	const inputActive = !showApprovalDialog && !showFollowupDialog && !showTodoViewer
+	const inputActive = !showApprovalDialog && !showFollowupDialog && !showTodoViewer && !secretPrompt
 
 	// `showFollowupSuggestions` is reused by the arrow-key countdown-cancel
 	// `useInput` below.
@@ -546,6 +577,16 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						<TodoDisplay todos={currentTodos} showProgress={true} title="TODO List" />
 						<Text dimColor>{figures.pointer} Ctrl+T to close</Text>
 					</Box>
+				)}
+
+				{/* A running command is waiting for a password or a passphrase */}
+				{secretPrompt && (
+					<SecretPromptDialog
+						prompt={secretPrompt}
+						onSubmit={(value) => useSecretPromptStore.getState().answer(value)}
+						onCancel={() => useSecretPromptStore.getState().cancel()}
+						isActive
+					/>
 				)}
 
 				{/* Approval dialog (tool/command) */}

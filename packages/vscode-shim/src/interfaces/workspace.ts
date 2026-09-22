@@ -31,6 +31,8 @@ export interface QuickPickOptions {
  * Input box options interface
  */
 export interface InputBoxOptions {
+	/** Shown above the prompt; VS Code renders it as the dialog's heading. */
+	title?: string
 	value?: string
 	valueSelection?: [number, number]
 	prompt?: string

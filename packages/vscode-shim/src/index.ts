@@ -86,6 +86,8 @@ export {
 } from "./vscode.js"
 
 // Export utilities
+export { setInputBoxHandler, type InputBoxHandler } from "./api/inputBoxHandler.js"
+export type { InputBoxOptions } from "./interfaces/workspace.js"
 export { logs, setLogger, type Logger } from "./utils/logger.js"
 export { VSCodeMockPaths } from "./utils/paths.js"
 export { machineIdSync } from "./utils/machine-id.js"

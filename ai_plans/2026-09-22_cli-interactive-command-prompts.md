@@ -123,6 +123,31 @@ transcript instead of five frozen minutes.
    In the VS Code extension the same request opens
    `vscode.window.showInputBox({ password: true })`.
 
+## What stage 2 turned out to be
+
+Built as planned, with three things worth recording.
+
+**One channel for both hosts.** The core asks through
+`vscode.window.showInputBox`, nothing more specific. VS Code answers it natively;
+the CLI's vscode shim used to return `""` from a stub and now delegates to a
+handler the host registers (`setInputBoxHandler`). That kept the core free of
+any CLI-shaped code, and it keeps the headless behaviour honest: with no handler
+registered the old stub answer stands, so an unattended run fails fast instead of
+waiting for a person who is not there.
+
+**The prompt is modal on purpose.** `useGlobalInput` returns early while a
+secret prompt is up, letting only ctrl+c through. Without that, esc would mean
+two things at once: "refuse this prompt" in the dialog and "cancel the task" in
+the global handler, and both would fire on the same keypress.
+
+**The ink stale-closure trap, again.** The dialog first kept the typed answer in
+React state and read it inside `useInput`. That passed on its own and failed in
+the full parallel suite, submitting `""` instead of the password: ink
+re-registers the handler in an effect, so a keypress arriving before that effect
+runs sees the previous render's value. The answer now lives in a ref, with state
+kept only to trigger the redraw. This was a real defect, not a flaky test: a fast
+typist on a loaded machine would have submitted an empty password.
+
 ## Out of scope
 
 Feeding plain stdin of a running command (a script that calls `input()`) is a

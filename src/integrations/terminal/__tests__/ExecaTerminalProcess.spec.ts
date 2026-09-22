@@ -129,24 +129,36 @@ describe("ExecaTerminalProcess", () => {
 			expect(calledOptions.detached).toBe(process.platform !== "win32")
 		})
 
-		it("asks git, ssh and pagers to fail rather than wait for a terminal", async () => {
+		it("leaves the terminal fallback disabled and keeps pagers out of the way", async () => {
 			await terminalProcess.run("git clone https://example.com/private.git")
 			const calledOptions = vitest.mocked(execa).mock.calls[0][0] as any
+			// git tries the askpass helper first and only then the terminal, so
+			// this stays off: it costs nothing and turns a dead end into a
+			// sentence the model can read.
 			expect(calledOptions.env).toMatchObject({
 				GIT_TERMINAL_PROMPT: "0",
-				SSH_ASKPASS_REQUIRE: "never",
 				PAGER: "cat",
 				GIT_PAGER: "cat",
 			})
 			expect(calledOptions.stdin).toBe("ignore")
 		})
 
-		it("overrides an inherited SSH_ASKPASS_REQUIRE that would open a desktop dialog", async () => {
+		it("points the command at the askpass helper instead of a terminal or a desktop dialog", async () => {
+			// An inherited "force" with no helper of ours would send ssh looking
+			// for an X11 dialog; the bridge replaces both ends of that.
 			process.env.SSH_ASKPASS_REQUIRE = "force"
 			terminalProcess = new ExecaTerminalProcess(mockTerminal)
 			await terminalProcess.run("ssh example.com true")
 			const calledOptions = vitest.mocked(execa).mock.calls[0][0] as any
-			expect(calledOptions.env.SSH_ASKPASS_REQUIRE).toBe("never")
+
+			if (process.platform === "win32") {
+				expect(calledOptions.env.SSH_ASKPASS_REQUIRE).toBe("never")
+				return
+			}
+
+			expect(calledOptions.env.SSH_ASKPASS_REQUIRE).toBe("force")
+			expect(calledOptions.env.SSH_ASKPASS).toBe(calledOptions.env.GIT_ASKPASS)
+			expect(calledOptions.env.GIT_ASKPASS).toMatch(/roo-askpass-/)
 		})
 	})
 
