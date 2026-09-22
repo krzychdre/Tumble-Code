@@ -20,6 +20,19 @@ export interface SafeWriteJsonOptions {
 /** An atomic writer bound to one destination for the lifetime of a locked transaction. */
 export type LockedJsonWriter = (data: any, options?: SafeWriteJsonOptions) => Promise<void>
 
+/**
+ * Thrown by a locked transaction whose inter-process lock was compromised
+ * (proper-lockfile invalidated it, e.g. because the lock looked stale on a
+ * slow filesystem). Another process may have written concurrently, so the
+ * transaction's integrity is uncertain even when its own writes succeeded.
+ */
+export class LockCompromisedError extends Error {
+	constructor(lockTargetPath: string, cause: Error) {
+		super(`Inter-process lock was compromised for ${lockTargetPath}`, { cause })
+		this.name = "LockCompromisedError"
+	}
+}
+
 const LOCK_OPTIONS = {
 	stale: 31000,
 	update: 10000,
@@ -97,11 +110,17 @@ export async function withLockedJsonTransaction<T>(
 	await fs.mkdir(path.dirname(absoluteLockTargetPath), { recursive: true })
 
 	let releaseLock: (() => Promise<void>) | undefined
+	// Set when proper-lockfile reports the lock as compromised. It is recorded
+	// here instead of thrown because onCompromised is invoked from a timer
+	// inside proper-lockfile, where a throw would escape as an uncaught
+	// exception instead of reaching the caller.
+	let compromisedError: Error | undefined
 	try {
 		releaseLock = await lockfile.lock(absoluteLockTargetPath, {
 			...LOCK_OPTIONS,
 			onCompromised: (error) => {
-				throw error
+				console.error(`Lock compromised for ${absoluteLockTargetPath}:`, error)
+				compromisedError = error
 			},
 		})
 	} catch (lockError) {
@@ -141,14 +160,23 @@ export async function withLockedJsonTransaction<T>(
 		if (failedWrite) {
 			throw failedWrite.reason
 		}
+		// Even when every write succeeded, the lock can no longer guarantee
+		// exclusivity, so the transaction must never report success.
+		if (compromisedError) {
+			throw new LockCompromisedError(absoluteLockTargetPath, compromisedError)
+		}
 
 		return callbackResult as T
 	} finally {
 		acceptsWrites = false
-		try {
-			await releaseLock()
-		} catch (unlockError) {
-			console.error(`Failed to release lock for ${absoluteLockTargetPath}:`, unlockError)
+		if (!compromisedError) {
+			// When the lock was compromised, proper-lockfile already invalidated
+			// it; releasing it again would only log a second error.
+			try {
+				await releaseLock()
+			} catch (unlockError) {
+				console.error(`Failed to release lock for ${absoluteLockTargetPath}:`, unlockError)
+			}
 		}
 	}
 }

@@ -468,4 +468,73 @@ describe("safeWriteJson", () => {
 		// Verify access was called
 		expect(accessSpy).toHaveBeenCalled()
 	})
+
+	test("reports a compromised lock as LockCompromisedError without an uncaught exception", async () => {
+		vi.resetModules() // Clear module cache to ensure fresh imports for this test
+
+		const compromiseError = new Error("Lock was compromised by another process")
+		let releaseCalls = 0
+
+		// Mock proper-lockfile.lock to invoke the captured onCompromised
+		// asynchronously while the transaction is still running, the way
+		// proper-lockfile does from its update timer on a slow filesystem.
+		vi.doMock("proper-lockfile", async () => {
+			const actual = await vi.importActual<typeof import("proper-lockfile")>("proper-lockfile")
+			return {
+				...actual,
+				lock: vi.fn(async (_target: string, options: any) => {
+					await new Promise((resolve) => setTimeout(resolve, 20))
+					options.onCompromised(compromiseError)
+					return async () => {
+						releaseCalls += 1
+					}
+				}),
+			}
+		})
+
+		// Re-import safeWriteJson to use the mocked proper-lockfile
+		const { withLockedJsonTransaction: mockedWithLockedJsonTransaction, LockCompromisedError } = await import(
+			"../safeWriteJson"
+		)
+
+		const destinationPath = path.join(tempDir, "compromised-transaction.json")
+		const lockTargetPath = path.join(tempDir, "locks", "compromised.lock-target")
+
+		const uncaughtErrors: unknown[] = []
+		const uncaughtHandler = (error: unknown) => {
+			uncaughtErrors.push(error)
+		}
+		process.on("uncaughtException", uncaughtHandler)
+
+		try {
+			const rejection = await mockedWithLockedJsonTransaction(
+				lockTargetPath,
+				destinationPath,
+				async (writeJson) => {
+					await writeJson({ compromised: true })
+				},
+			).then(
+				() => {
+					throw new Error("Transaction should have rejected after its lock was compromised")
+				},
+				(error) => error,
+			)
+
+			expect(rejection).toBeInstanceOf(LockCompromisedError)
+			expect(rejection.message).toContain("compromised.lock-target")
+			expect(rejection.cause).toBe(compromiseError)
+
+			// Give any uncaught exception from the compromise callback a chance to fire.
+			await new Promise((resolve) => setTimeout(resolve, 50))
+			expect(uncaughtErrors).toEqual([])
+
+			// The transaction's write may even have succeeded on disk, but the
+			// transaction itself must report failure, and the invalidated lock
+			// must not be released a second time.
+			expect(releaseCalls).toBe(0)
+		} finally {
+			process.off("uncaughtException", uncaughtHandler)
+			vi.unmock("proper-lockfile") // Ensure the mock is removed after this test
+		}
+	})
 })
