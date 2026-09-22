@@ -5,13 +5,58 @@ import process from "process"
 import type { RooTerminal } from "./types"
 import { BaseTerminal } from "./BaseTerminal"
 import { BaseTerminalProcess } from "./BaseTerminalProcess"
+import { AskpassServer } from "./askpass/AskpassServer"
+import { promptForSecret } from "./askpass/promptForSecret"
+
+// On POSIX the command gets its own session (setsid), so it has no controlling
+// terminal. Without it, `git`, `ssh` and `sudo` open /dev/tty by path to ask for
+// credentials, which bypasses `stdin: "ignore"` entirely: the prompt is printed
+// over whatever the CLI has drawn and the command then blocks forever, while the
+// keyboard is split between it and the CLI's own reader.
+// Not on Windows, where `detached` means "open a new console window" instead.
+const USE_OWN_SESSION = process.platform !== "win32"
+
+// Group-kill every command still running when the process exits. Detached
+// children no longer get SIGHUP when the user's terminal closes, so without this
+// a long-running command would outlive the CLI.
+const runningProcessGroups = new Set<number>()
+let exitHandlerRegistered = false
+
+function killProcessGroup(pgid: number, signal: NodeJS.Signals): boolean {
+	try {
+		process.kill(-pgid, signal)
+		return true
+	} catch (e) {
+		// ESRCH simply means the group is already gone.
+		return false
+	}
+}
+
+function trackProcessGroup(pgid: number) {
+	runningProcessGroups.add(pgid)
+
+	if (!exitHandlerRegistered) {
+		exitHandlerRegistered = true
+
+		process.once("exit", () => {
+			for (const group of runningProcessGroups) {
+				killProcessGroup(group, "SIGKILL")
+			}
+		})
+	}
+}
 
 export class ExecaTerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<RooTerminal>
 	private aborted = false
 	private pid?: number
+	// The shell's own pid, kept separately because `pid` above is later
+	// overwritten with the first child. Negative-signalling this one reaches the
+	// whole process group in a single call.
+	private pgid?: number
 	private subprocess?: ReturnType<typeof execa>
 	private pidUpdatePromise?: Promise<void>
+	private askpassServer?: AskpassServer
 
 	constructor(terminal: RooTerminal) {
 		super()
@@ -39,21 +84,51 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		try {
 			this.isHot = true
 
+			// The command has no terminal to prompt on, so give it somewhere else
+			// to ask: git, ssh and sudo run this helper and take its answer, which
+			// the host collects from the user.
+			let askpassEnv: Record<string, string> = {}
+
+			if (USE_OWN_SESSION) {
+				this.askpassServer = new AskpassServer(command, promptForSecret)
+				askpassEnv = await this.askpassServer.start()
+			}
+
 			this.subprocess = execa({
 				shell: BaseTerminal.getExecaShellPath() || true,
 				cwd: this.terminal.getCurrentWorkingDirectory(),
 				all: true,
-				// Ignore stdin to ensure non-interactive mode and prevent hanging
+				// Closing stdin is not enough on its own: a command that wants
+				// credentials reads /dev/tty, not fd 0. USE_OWN_SESSION is what
+				// actually takes that door away.
 				stdin: "ignore",
+				detached: USE_OWN_SESSION,
 				env: {
 					...process.env,
 					// Ensure UTF-8 encoding for Ruby, CocoaPods, etc.
 					LANG: "en_US.UTF-8",
 					LC_ALL: "en_US.UTF-8",
+					// Fail with a sentence the model can act on instead of the
+					// bare ENXIO that opening a missing /dev/tty produces.
+					GIT_TERMINAL_PROMPT: "0",
+					// Without this, ssh falls back to an X11 askpass dialog when
+					// DISPLAY is set, and the command waits on a window the user
+					// may never see. The bridge below replaces it with "force",
+					// pointing at a helper we control.
+					SSH_ASKPASS_REQUIRE: "never",
+					// A pager would block on the terminal that is now gone.
+					PAGER: "cat",
+					GIT_PAGER: "cat",
+					...askpassEnv,
 				},
 			})`${command}`
 
 			this.pid = this.subprocess.pid
+			this.pgid = this.subprocess.pid
+
+			if (USE_OWN_SESSION && this.pgid) {
+				trackProcessGroup(this.pgid)
+			}
 
 			// When using shell: true, the PID is for the shell, not the actual command
 			// Find the actual command PID after a small delay
@@ -145,6 +220,18 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 			this.subprocess = undefined
 		}
 
+		if (this.pgid) {
+			runningProcessGroups.delete(this.pgid)
+		}
+
+		// Takes the socket and the helper with it, so the token that was in the
+		// command's environment stops being usable the moment the command ends.
+		if (this.askpassServer) {
+			const server = this.askpassServer
+			this.askpassServer = undefined
+			await server.dispose()
+		}
+
 		this.terminal.setActiveStream(undefined)
 		this.emitRemainingBufferIfListening()
 		this.stopHotTimer()
@@ -161,6 +248,16 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 
 	public override abort() {
 		this.aborted = true
+
+		// With its own session the shell is a process group leader, so one
+		// negative signal reaches the shell and every descendant, including the
+		// ones psTree would miss because they were spawned after its walk
+		// started. This needs no pid lookup, so it runs now rather than behind
+		// the pidUpdatePromise delay below.
+		if (USE_OWN_SESSION && this.pgid) {
+			killProcessGroup(this.pgid, "SIGKILL")
+			runningProcessGroups.delete(this.pgid)
+		}
 
 		// Function to perform the kill operations
 		const performKill = () => {

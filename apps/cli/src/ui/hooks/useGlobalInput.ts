@@ -6,6 +6,7 @@ import { matchesGlobalSequence } from "@/lib/utils/input.js"
 
 import type { ModeResult } from "../components/autocomplete/index.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
+import { useSecretPromptStore } from "../stores/secretPromptStore.js"
 import { useCLIStore } from "../store.js"
 import { CLEAR_TERMINAL } from "../utils/clearTerminal.js"
 
@@ -75,6 +76,17 @@ export function useGlobalInput({
 
 	// Handle global keyboard shortcuts
 	useInput((input, key) => {
+		// A command waiting for a password owns the keyboard: its dialog is the
+		// only thing that can move the session forward, and the shortcuts here
+		// would otherwise fire alongside it. Esc is the sharp one, because it
+		// means "refuse this prompt" there and "cancel the whole task" here.
+		// Read through getState() rather than a subscription: this callback is
+		// registered once and would otherwise close over a stale value.
+		// Ctrl+C stays available, it is the way out of anything.
+		if (useSecretPromptStore.getState().current && !(key.ctrl && input === "c")) {
+			return
+		}
+
 		// Shift+Tab to cycle through modes (only when not loading and we have available modes)
 		// Uses centralized global input sequence detection
 		if (matchesGlobalSequence(input, key, "cycle-mode")) {
