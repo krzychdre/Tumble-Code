@@ -34,7 +34,7 @@ Two of those cannot work, one is misleading, and three real bindings are missing
 
 ## Root cause (proven, not inferred)
 
-### 1. `tab to toggle focus`: the feature was deleted, the menu entry stayed
+### 1. `tab to toggle focus`: the feature was deleted, and Tab did nothing at all
 
 `useGlobalInput` documents the removal itself
 (`apps/cli/src/ui/hooks/useGlobalInput.ts:33-35` before this change):
@@ -43,15 +43,26 @@ Two of those cannot work, one is misleading, and three real bindings are missing
 > component - the transcript now flows into native scrollback via `<Static>`,
 > so there is no in-app scroll viewport to focus.
 
-Nothing handles Tab as a focus switch any more. What Tab really does:
+Reading the code suggests Tab at least accepts the highlighted picker item,
+because `AutocompleteInput` handles `key.return || key.tab`
+(`AutocompleteInput.tsx:220-236`). In the running CLI it does not, and the pty
+probe below proved it: with the slash picker open, Tab left the prompt at `/`
+while Enter turned it into the accepted `/new`. Both the old installed build
+(`0.2.0-local.88f5e3e38`) and the current source behave the same, so this is not
+a regression introduced here.
 
-- with a picker open, `AutocompleteInput` accepts the highlighted item
-  (`AutocompleteInput.tsx:220-236`, `key.return || key.tab`);
-- with no picker open, `MultilineTextInput` swallows it
-  (`MultilineTextInput.tsx:282-285`, `if (key.tab) return`).
+The reason is one line in `App.tsx:594`: while the picker is open the input area
+is rendered with `isActive={!pickerState.isOpen && !isLoading}`, i.e. `false`.
+`AutocompleteInput`'s own `useInput` is registered with
+`{ isActive: isActive && pickerState.isOpen }`, which is therefore always
+`false` - ink never calls it. Acceptance is done exclusively by the
+`PickerSelect` that `App` renders next to the input, and that component handled
+only Enter, arrows and Escape. `MultilineTextInput`'s `if (key.tab) return` is
+equally unreachable in that state, so with the picker open or closed Tab was a
+no-op everywhere.
 
-So the entry named a capability that no longer exists while hiding the one Tab
-actually has.
+So the entry named a capability that no longer exists, and the capability a
+reader of the code would expect instead was not wired up either.
 
 ### 2. `ctrl + m to cycle modes`: a terminal cannot send Ctrl+M
 
@@ -120,11 +131,14 @@ a binding that really works.
    this TUI follows. The registry entry is renamed from `ctrl-m` to `cycle-mode`;
    the kitty CSI u form is kept as `ESC [ 9 ; 2 u` for users who enabled that
    encoding themselves.
-2. **Shift+Tab stays out of the picker's way.** Because Tab accepts the
-   highlighted item, the cycle handler returns early while a picker is open, and
-   `AutocompleteInput` now accepts on `key.return || (key.tab && !key.shift)` so
-   one key press never means two things.
-3. **`tab` is documented for what it does:** accept the highlighted suggestion.
+2. **Tab really accepts the highlighted item now.** The handling moved into
+   `PickerSelect`, the component that actually receives key presses while the
+   picker is open, next to the existing Enter branch and guarded with
+   `!key.shift`. The unreachable branch in `AutocompleteInput` keeps the same
+   guard so the two cannot disagree if that component is ever made active again.
+3. **Shift+Tab stays out of the picker's way.** The cycle handler returns early
+   while a picker is open and `PickerSelect` ignores Shift+Tab, so one key press
+   never means two things.
 4. **Newline is advertised as `alt + ⏎`** with "shift + ⏎ in some terminals" in
    the description, which is exactly what the code supports.
 5. **`esc`, `↑ / ↓` and "ctrl + c twice"** are added, so the menu covers every
@@ -164,6 +178,46 @@ ctrl + c     twice to quit
   label is cross-checked against `isGlobalInputSequence` so the advertised key
   and the handled key cannot drift apart again; and every non-character entry
   clears the prompt instead of inserting its label.
+- `PickerSelect.test.tsx` (new): Enter and Tab both accept the highlighted item,
+  Shift+Tab accepts nothing.
+
+## Verification in a real terminal
+
+Unit tests cannot catch this class of bug, because a test can hand a handler any
+`Key` object it likes, including combinations a terminal never produces (that is
+exactly how the old Ctrl+M test passed). Everything above was therefore checked
+end to end in a pty: `script -qfec "node <cli> -e ~/.roo/cli/extension -w <ws> -a
+-k dummy" /dev/null` driven from a Node parent that writes raw bytes into the pty
+and reads the frames back (`/tmp/help-menu-probe/probe.mjs` in the session that
+produced this plan; `/tmp` is ephemeral, so recreate it from this description).
+
+Results, old installed build vs the rebuilt CLI:
+
+| key press (bytes)      | old build                      | after this change                  |
+| ---------------------- | ------------------------------ | ---------------------------------- |
+| Ctrl+M (`0x0d`)        | prompt submitted, task started | unchanged (it is Enter)            |
+| Shift+Tab (`ESC [ Z`)  | nothing                        | `Switched to ❓ Ask`, footer `ask` |
+| Tab, picker open       | nothing, prompt stays `/`      | prompt becomes the accepted `/new` |
+| Shift+Tab, picker open | nothing                        | nothing, mode unchanged            |
+
+A separate ink-only probe confirmed what ink reports for each key: Tab arrives as
+`flags=[tab]`, Shift+Tab as `flags=[shift,tab]`, and Ctrl+M as `input=[0d]
+flags=[return]` with no `ctrl` flag, which is the mechanical proof that Ctrl+M
+and Enter are one and the same event.
+
+Two side observations worth keeping:
+
+- Right after startup the first Shift+Tab can be a silent no-op, because the
+  mode list arrives from the extension asynchronously and the handler requires at
+  least two modes. Pressing it once the session has settled always cycles. The
+  same guard applied to the old Ctrl+M binding, so this is not new.
+- `~/.roo/cli-settings.json` is shared by every CLI session on the machine. While
+  these probes ran, a parallel session rewrote it to `provider: openai-codex`
+  while leaving the `baseUrl` key behind, and in that state every plain `tumble`
+  run aborts at startup with "Provider 'openai-codex' does not support a base
+  URL". That is a separate defect (the base-url clear in `run.ts` is skipped when
+  a run exits early, and concurrent read-modify-write of the settings file has no
+  locking), unrelated to the help menu.
 
 ## Scope boundary (deliberately not fixed here)
 
