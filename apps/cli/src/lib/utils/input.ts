@@ -43,15 +43,24 @@ export const GLOBAL_INPUT_SEQUENCES: GlobalInputSequence[] = [
 		matches: (input, key) => key.ctrl && input === "c",
 	},
 	{
-		id: "ctrl-m",
+		id: "cycle-mode",
 		description: "Cycle through modes",
 		matches: (input, key) => {
-			// Standard Ctrl+M detection
-			if (key.ctrl && input === "m") return true
-			// CSI u encoding: ESC [ 109 ; 5 u (kitty keyboard protocol)
-			// 109 = 'm' ASCII code, 5 = Ctrl modifier
-			if (input === "\x1b[109;5u") return true
-			if (input.endsWith("[109;5u")) return true
+			// Shift+Tab. Terminals send "backtab" (ESC [ Z) for it, which ink
+			// reports as tab + shift, so this arrives everywhere without any
+			// opt-in protocol.
+			//
+			// This used to be Ctrl+M, which can never work in a terminal: Ctrl
+			// plus a letter is encoded as the letter's code masked with 0x1f, and
+			// for 'M' that is 0x0d, the carriage return. ink therefore parses
+			// Ctrl+M as `key.return` with an empty `input`, i.e. it is the very
+			// same event as pressing Enter, and the prompt gets submitted.
+			if (key.tab && key.shift) return true
+			// CSI u encoding: ESC [ 9 ; 2 u (kitty keyboard protocol)
+			// 9 = TAB ASCII code, 2 = Shift modifier. Nothing in the CLI asks a
+			// terminal for this encoding, but a user can enable it by hand.
+			if (input === "\x1b[9;2u") return true
+			if (input.endsWith("[9;2u")) return true
 			return false
 		},
 	},

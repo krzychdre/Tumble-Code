@@ -243,7 +243,7 @@ export function MultilineTextInput({
 			}
 
 			// Ignore inputs that are handled at the App level (global shortcuts)
-			// This includes Ctrl+C (exit), Ctrl+M (mode toggle), etc.
+			// This includes Ctrl+C (exit), Shift+Tab (mode cycling), etc.
 			if (isGlobalInputSequence(input, key)) {
 				return
 			}
@@ -279,7 +279,9 @@ export function MultilineTextInput({
 				return
 			}
 
-			// Tab: ignore for now
+			// Tab: when a picker is open, AutocompleteInput accepts the highlighted
+			// item on Tab. With no picker there is nothing to complete, so swallow
+			// it instead of inserting a literal tab into the prompt.
 			if (key.tab) {
 				return
 			}
