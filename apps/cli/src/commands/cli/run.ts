@@ -492,6 +492,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		try {
 			const { render } = await import("ink")
 			const { App } = await import("../../ui/App.js")
+			const { createScrollSafeStdout } = await import("../../ui/utils/scrollSafeStdout.js")
 
 			render(
 				createElement(App, {
@@ -511,6 +512,9 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 					// region every frame, which blinks on each spinner tick
 					// and stream chunk.
 					incrementalRendering: true,
+					// ...which skips unchanged rows with a cursor move that
+					// does not scroll on the bottom row; see scrollSafeStdout.
+					stdout: createScrollSafeStdout(process.stdout),
 				},
 			)
 		} catch (error) {
