@@ -1,9 +1,8 @@
 import { Box, Text } from "ink"
 
-import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
 import Bullet from "../primitives/Bullet.js"
-import ResultRow from "../primitives/ResultRow.js"
+import ResultRow, { ElbowGutter } from "../primitives/ResultRow.js"
 
 import type { ToolRendererProps } from "./types.js"
 import { toolStatusFromMessage } from "./types.js"
@@ -43,11 +42,7 @@ export function SearchTool({ toolData, message, expanded = false }: ToolRenderer
 									const [, file, lineNum, context] = match
 									return (
 										<Box key={i} flexDirection="row">
-											<Text dimColor color={theme.subtle}>
-												{"  "}
-												{figures.elbow}
-												{"  "}
-											</Text>
+											<ElbowGutter color={theme.subtle} />
 											<Box flexGrow={1}>
 												<Text dimColor color={theme.secondaryText}>
 													<Text color={theme.suggestion}>{file}</Text>
