@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 
-import { buildStaticItems, getStaticCount, getStaticMessages } from "../transcript.js"
+import { buildStaticItems, getStaticCount, getStaticMessages, nextPromotion } from "../transcript.js"
 import type { TUIMessage } from "../types.js"
 import type { WelcomeBannerProps } from "../components/WelcomeBanner.js"
 
@@ -197,5 +197,75 @@ describe("buildStaticItems", () => {
 
 	it("returns just the head item when there are no promoted messages", () => {
 		expect(buildStaticItems({ messages: [], welcomeProps, expanded: false, reprintEpoch: 0 })).toHaveLength(1)
+	})
+})
+
+describe("nextPromotion", () => {
+	const ids = (...names: string[]) => names
+
+	it("promotes nothing and remounts nothing for an untouched empty transcript", () => {
+		expect(nextPromotion({ messageIds: [], previousIds: [], staticCount: 0, promoted: 0 })).toEqual({
+			remount: false,
+			promoted: 0,
+		})
+	})
+
+	it("keeps the watermark monotonic while a task grows", () => {
+		expect(
+			nextPromotion({ messageIds: ids("1", "2", "3"), previousIds: ids("1", "2"), staticCount: 2, promoted: 2 }),
+		).toEqual({ remount: false, promoted: 2 })
+
+		expect(
+			nextPromotion({ messageIds: ids("1", "2", "3"), previousIds: ids("1", "2"), staticCount: 3, promoted: 2 }),
+		).toEqual({ remount: false, promoted: 3 })
+	})
+
+	it("never lets a promoted message fall back into the tail", () => {
+		// staticCount dips (a new partial arrived); what is already in
+		// scrollback cannot be un-printed, so the watermark holds.
+		expect(
+			nextPromotion({ messageIds: ids("1", "2", "3"), previousIds: ids("1", "2"), staticCount: 1, promoted: 3 }),
+		).toEqual({ remount: false, promoted: 3 })
+	})
+
+	it("remounts when the ids diverge (task switch)", () => {
+		expect(
+			nextPromotion({ messageIds: ids("9", "8"), previousIds: ids("1", "2"), staticCount: 2, promoted: 2 }),
+		).toEqual({ remount: true, promoted: 0 })
+	})
+
+	it("remounts when the transcript shrank without emptying", () => {
+		expect(
+			nextPromotion({ messageIds: ids("1"), previousIds: ids("1", "2", "3"), staticCount: 1, promoted: 3 }),
+		).toEqual({ remount: true, promoted: 0 })
+	})
+
+	it("drops the watermark when the store is reset to empty", () => {
+		// /new and /clear both empty the transcript. Keeping the old watermark
+		// here is what promoted the next task's first messages on sight.
+		expect(nextPromotion({ messageIds: [], previousIds: ids("1", "2", "3"), staticCount: 0, promoted: 3 })).toEqual(
+			{ remount: false, promoted: 0 },
+		)
+	})
+
+	it("holds back the first streaming message of the task after a reset", () => {
+		// The reset dropped the watermark to 0, so the message that arrives
+		// next is promoted only when the promotion rule says so (0 while it is
+		// still streaming), not because an old high-water mark covers it.
+		const afterReset = nextPromotion({
+			messageIds: [],
+			previousIds: ids("1", "2", "3"),
+			staticCount: 0,
+			promoted: 3,
+		})
+
+		expect(
+			nextPromotion({
+				messageIds: ids("new-1"),
+				previousIds: [],
+				staticCount: getStaticCount([msg("new-1", true)], true, false),
+				promoted: afterReset.promoted,
+			}),
+		).toEqual({ remount: false, promoted: 0 })
 	})
 })

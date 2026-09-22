@@ -55,6 +55,64 @@ export function getStaticMessages(messages: TUIMessage[], isLoading: boolean, ha
 	return messages.slice(0, Math.max(0, count))
 }
 
+export interface PromotionState {
+	/**
+	 * Remount the `<Static>` region. The transcript no longer extends what was
+	 * printed, so the old scrollback has to stay where it is and a fresh region
+	 * starts below it.
+	 */
+	remount: boolean
+	/**
+	 * How many leading messages count as promoted. Monotonic while a task runs,
+	 * so a message already printed into scrollback can never fall back into the
+	 * re-rendering tail.
+	 */
+	promoted: number
+}
+
+interface NextPromotionArgs {
+	/** Ids of the current transcript, in order. */
+	messageIds: string[]
+	/** Ids as of the previous render. */
+	previousIds: string[]
+	/** What the promotion rule says right now (see `getStaticCount`). */
+	staticCount: number
+	/** The watermark carried over from the previous render. */
+	promoted: number
+}
+
+/**
+ * Advance the `<Static>` promotion watermark for one render.
+ *
+ * Three cases, in order:
+ *
+ *  1. An empty transcript means the store was reset (`/new`, `/clear`, a task
+ *     switch), so the watermark goes back to zero. Without this clause it stays
+ *     at the old task's height, and since the next task's ids trivially extend
+ *     an empty list, `max(watermark, staticCount)` promotes the new task's
+ *     first messages the moment they appear, streaming ones included. A partial
+ *     message baked into scrollback can never be re-rendered, which is the
+ *     "answer rendered twice" failure this rule exists to prevent.
+ *  2. A transcript that is not an extension of what was printed (ids diverged
+ *     or the array shrank) means a task switch replaced the contents; remount
+ *     so the old scrollback is left alone and start counting again.
+ *  3. Otherwise keep the watermark monotonic.
+ */
+export function nextPromotion({ messageIds, previousIds, staticCount, promoted }: NextPromotionArgs): PromotionState {
+	if (messageIds.length === 0) {
+		return { remount: false, promoted: 0 }
+	}
+
+	const isExtension =
+		messageIds.length >= previousIds.length && previousIds.every((id, index) => messageIds[index] === id)
+
+	if (!isExtension) {
+		return { remount: true, promoted: 0 }
+	}
+
+	return { remount: false, promoted: Math.max(promoted, staticCount) }
+}
+
 /**
  * Discriminated item type for the `<Static>` region.
  *

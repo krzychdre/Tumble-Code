@@ -12,7 +12,7 @@ import * as theme from "./theme.js"
 import { figures } from "./figures.js"
 import { useCLIStore } from "./store.js"
 import { useUIStateStore } from "./stores/uiStateStore.js"
-import { getStaticCount, buildStaticItems } from "./transcript.js"
+import { getStaticCount, buildStaticItems, nextPromotion } from "./transcript.js"
 
 // Import extracted hooks.
 import {
@@ -132,6 +132,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		setIsTransitioningToCustomInput,
 		verboseTranscript,
 		transcriptReprintEpoch,
+		transcriptClearEpoch,
 	} = useUIStateStore()
 
 	// Compute context window from router models and API configuration
@@ -252,29 +253,35 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	// Monotonicity + task-switch reset detection. `staticKey` remounts the
 	// `<Static>` region when the message array identity changes (task switch
-	// cleared it), so the old scrollback stays above a fresh region.
+	// cleared it), so the old scrollback stays above a fresh region. The rule
+	// itself lives in `nextPromotion` so it can be tested on its own.
 	const [staticKey, setStaticKey] = useState(0)
 	const [prevStaticCount, setPrevStaticCount] = useState(0)
 	// `prevIds` is only consulted inside the effect below to detect task-switch
-	// resets — it never participates in rendering — so it lives in a ref instead
+	// resets (it never participates in rendering) so it lives in a ref instead
 	// of state. Keeping it in state made it an effect dependency, and since we
 	// rebuild a fresh ids array on every run, the new identity retriggered the
 	// effect unconditionally → "Maximum update depth exceeded".
 	const prevIdsRef = useRef<string[]>([])
+	// Mirror of `prevStaticCount` for the effect to read. Reading the state
+	// itself would need it in the dependency list, which would re-run the
+	// effect on its own update.
+	const promotedRef = useRef(0)
 
 	useEffect(() => {
-		const prevIds = prevIdsRef.current
-		// Detect task-switch reset: the promoted prefix must be an extension
-		// of the previous ids (same ids in the same order). If the array
-		// shrank or ids diverged, the store cleared it — remount Static.
-		const isExtension = messages.length >= prevIds.length && prevIds.every((id, i) => messages[i]?.id === id)
-		if (!isExtension && messages.length > 0) {
+		const messageIds = messages.map((m) => m.id)
+		const next = nextPromotion({
+			messageIds,
+			previousIds: prevIdsRef.current,
+			staticCount,
+			promoted: promotedRef.current,
+		})
+		if (next.remount) {
 			setStaticKey((k) => k + 1)
-			setPrevStaticCount(0)
-		} else {
-			setPrevStaticCount((prev) => Math.max(prev, staticCount))
 		}
-		prevIdsRef.current = messages.map((m) => m.id)
+		promotedRef.current = next.promoted
+		setPrevStaticCount(next.promoted)
+		prevIdsRef.current = messageIds
 	}, [messages, staticCount])
 
 	const effectiveStaticCount = Math.max(prevStaticCount, staticCount)
@@ -486,8 +493,10 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			{/* The key carries the reprint epoch: remounting `<Static>` resets
 			    ink's printed-item index, which is the only way to print the
 			    promoted transcript again (this time expanded). Items already in
-			    scrollback are never rewritten in place. */}
-			<Static key={`${staticKey}:${transcriptReprintEpoch}`} items={staticItems}>
+			    scrollback are never rewritten in place. The clear epoch is in
+			    the key for the same reason: after /clear wipes the screen, the
+			    welcome banner has to be printed again. */}
+			<Static key={`${staticKey}:${transcriptReprintEpoch}:${transcriptClearEpoch}`} items={staticItems}>
 				{(item) => {
 					if (item.kind === "welcome") {
 						return (
