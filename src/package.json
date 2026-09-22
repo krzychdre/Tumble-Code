@@ -390,7 +390,8 @@
 				"tumble-code.customStoragePath": {
 					"type": "string",
 					"default": "",
-					"description": "%settings.customStoragePath.description%"
+					"description": "%settings.customStoragePath.description%",
+					"scope": "machine"
 				},
 				"tumble-code.enableCodeActions": {
 					"type": "boolean",
@@ -400,7 +401,8 @@
 				"tumble-code.autoImportSettingsPath": {
 					"type": "string",
 					"default": "",
-					"description": "%settings.autoImportSettingsPath.description%"
+					"description": "%settings.autoImportSettingsPath.description%",
+					"scope": "machine"
 				},
 				"tumble-code.maximumIndexedFilesForFileSearch": {
 					"type": "number",
@@ -448,7 +450,8 @@
 					"type": "string",
 					"default": "http://127.0.0.1:8888",
 					"description": "%settings.debugProxy.serverUrl.description%",
-					"markdownDescription": "%settings.debugProxy.serverUrl.description%"
+					"markdownDescription": "%settings.debugProxy.serverUrl.description%",
+					"scope": "machine"
 				},
 				"tumble-code.debugProxy.tlsInsecure": {
 					"type": "boolean",
@@ -461,21 +464,24 @@
 					"default": "",
 					"description": "%settings.cloudApiUrl.description%",
 					"markdownDescription": "%settings.cloudApiUrl.description%",
-					"order": 100
+					"order": 100,
+					"scope": "machine"
 				},
 				"tumble-code.cloudProviderUrl": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.cloudProviderUrl.description%",
 					"markdownDescription": "%settings.cloudProviderUrl.description%",
-					"order": 101
+					"order": 101,
+					"scope": "machine"
 				},
 				"tumble-code.clerkBaseUrl": {
 					"type": "string",
 					"default": "",
 					"description": "%settings.clerkBaseUrl.description%",
 					"markdownDescription": "%settings.clerkBaseUrl.description%",
-					"order": 102
+					"order": 102,
+					"scope": "machine"
 				}
 			}
 		}
