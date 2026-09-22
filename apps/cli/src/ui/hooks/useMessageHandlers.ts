@@ -444,6 +444,19 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			if (nonInteractiveRef.current && ask !== "followup") {
 				seenMessageIds.current.add(messageId)
 
+				// An approved command is not a message of its own. The command text
+				// is already on its way to the `Bash(…)` row that `CommandTool`
+				// builds from the `say: command_output` that follows (via
+				// `pendingCommandRef`, set above), so adding it here as assistant
+				// prose printed the same command twice — and rendered as a bare
+				// bullet whenever the command contained a pipe. Interactive mode
+				// never had this row either: there the ask becomes the approval
+				// dialog and disappears once answered (plan: 2026-09-22 empty
+				// bullets in the CLI transcript).
+				if (ask === "command") {
+					return
+				}
+
 				if (ask === "tool") {
 					let toolName: string | undefined
 					let toolDisplayName: string | undefined
