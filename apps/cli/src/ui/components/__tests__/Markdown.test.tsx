@@ -58,4 +58,31 @@ describe("Markdown", () => {
 		const { lastFrame } = render(<Markdown>{"no newline at end"}</Markdown>)
 		expect(lastFrame()).toContain("no newline at end")
 	})
+
+	// A pipe used to be enough to have a line mistaken for a table separator row
+	// and replaced by blank spacing, which is what left bare bullets in the
+	// transcript (plan: 2026-09-22 empty bullets in the CLI transcript).
+	it("renders a shell command containing pipes", () => {
+		const { lastFrame } = render(<Markdown>{'grep -n -E "available|curtail" v29.txt | head -30'}</Markdown>)
+		const output = lastFrame()
+		expect(output).toContain("curtail")
+		expect(output).toContain("head -30")
+	})
+
+	it("renders prose mentioning a pipe", () => {
+		const { lastFrame } = render(<Markdown>{"pipe it: ls -la | wc -l"}</Markdown>)
+		expect(lastFrame()).toContain("pipe it: ls -la | wc -l")
+	})
+
+	it("renders table content rows verbatim", () => {
+		const { lastFrame } = render(<Markdown>{"| register | value |"}</Markdown>)
+		const output = lastFrame()
+		expect(output).toContain("register")
+		expect(output).toContain("value")
+	})
+
+	it("blanks out a real table separator row", () => {
+		const { lastFrame } = render(<Markdown>{"| --- | :---: |"}</Markdown>)
+		expect(lastFrame()).not.toContain("---")
+	})
 })

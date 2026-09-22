@@ -206,9 +206,19 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 			)
 		}
 
-		// Tables and anything unknown (multiple row boundaries):
-		// row-boundary line (cells of only separators) becomes dim spacing
-		const isTableBoundary = line.includes("|") && /[-:|]+/.test(line.replace(/[^\w\s-:|]/g, ""))
+		// Table separator row (`|---|:--:|`) becomes dim spacing.
+		//
+		// The test has to be this strict. An earlier version asked only whether
+		// the line contained a pipe AND anything of `-:|` survived stripping the
+		// punctuation — and the pipe itself always survives, so EVERY line with a
+		// pipe in it was blanked out: shell commands, prose mentioning
+		// `grep foo | head`, table content rows. That is what left bare bullets in
+		// the transcript (plan: 2026-09-22 empty bullets in the CLI transcript).
+		//
+		// Content rows still fall through to the inline tokenizer and print
+		// verbatim, which is what this component's doc comment promises.
+		const trimmedLine = line.trim()
+		const isTableBoundary = trimmedLine.includes("|") && trimmedLine.includes("-") && /^[|\s:-]+$/.test(trimmedLine)
 		if (isTableBoundary) {
 			return (
 				<Text dimColor color={theme.secondaryText}>

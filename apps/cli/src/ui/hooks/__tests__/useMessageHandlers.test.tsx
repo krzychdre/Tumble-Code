@@ -127,11 +127,52 @@ describe("useMessageHandlers", () => {
 			},
 		})
 
+		// The new policy is in force: an interactive handler would have queued
+		// the command as an approval dialog instead of letting it run.
 		expect(useCLIStore.getState().pendingAsk).toBeNull()
-		expect(useCLIStore.getState().messages.at(-1)).toMatchObject({
-			role: "assistant",
-			content: "git status",
+
+		// And the command is not announced as prose either — it reaches the
+		// transcript only as the Bash row built from its output.
+		useCLIStore.getState().setLoading(true)
+		stableHandler({
+			type: "messageUpdated",
+			clineMessage: { ts: 502, type: "say", say: "command_output", text: "M src/app.ts\n", partial: false },
 		})
+
+		expect(useCLIStore.getState().messages.filter((m) => m.role === "assistant")).toEqual([])
+		expect(useCLIStore.getState().messages.at(-1)?.toolData).toMatchObject({
+			tool: "execute_command",
+			command: "git status",
+			output: "M src/app.ts\n",
+		})
+	})
+
+	// A command that contains a pipe used to render as a bare bullet: the ask was
+	// added as assistant prose, and the markdown renderer mistook any line with a
+	// pipe for a table separator row and blanked it out (plan: 2026-09-22 empty
+	// bullets in the CLI transcript).
+	it("leaves no bullet-only row behind an auto-approved piped command", () => {
+		const view = render(<Harness />)
+		nonInteractive = true
+		view.rerender(<Harness />)
+		useCLIStore.getState().setLoading(true)
+
+		const command = 'grep -n -E "available|curtail" v29.txt | head -30'
+
+		api.handleExtensionMessage({
+			type: "messageUpdated",
+			clineMessage: { ts: 600, type: "ask", ask: "command", text: command, partial: false },
+		})
+		api.handleExtensionMessage({
+			type: "messageUpdated",
+			clineMessage: { ts: 1642, type: "say", say: "command_output", text: "704:25\n", partial: false },
+		})
+
+		const messages = useCLIStore.getState().messages
+
+		expect(messages).toHaveLength(1)
+		expect(messages[0]).toMatchObject({ role: "tool", toolName: "execute_command" })
+		expect(messages[0]?.toolData?.command).toBe(command)
 	})
 
 	it("renders a single block for two ts-distinct identical assistant text messages", () => {
