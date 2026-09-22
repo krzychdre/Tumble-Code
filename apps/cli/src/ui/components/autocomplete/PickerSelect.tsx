@@ -109,6 +109,16 @@ export function PickerSelect<T extends AutocompleteItem>({
 		return window
 	}, [selectedIndex, results.length, maxVisible])
 
+	// The key handler reads results and the highlight through refs: ink only
+	// swaps the handler in a passive effect, so right after the debounced
+	// search delivers its results (or the highlight moves) a key press can
+	// still run the closure of the previous render. Without this, Enter typed
+	// immediately after the list filtered accepted nothing.
+	const resultsRef = useRef(results)
+	resultsRef.current = results
+	const selectedIndexRef = useRef(selectedIndex)
+	selectedIndexRef.current = selectedIndex
+
 	// Handle keyboard input
 	useInput(
 		(_input, key) => {
@@ -116,18 +126,22 @@ export function PickerSelect<T extends AutocompleteItem>({
 				return
 			}
 
+			const currentResults = resultsRef.current
+			const currentIndex = selectedIndexRef.current
+
 			if (key.escape) {
 				onEscape()
 				return
 			}
 
-			// Enter and Tab both accept the highlighted item. Tab has to be
-			// handled here rather than in AutocompleteInput: while the picker is
-			// open the whole input area is rendered with isActive={false}
-			// (App.tsx), so no handler inside it receives a key press at all.
+			// Enter and Tab both accept the highlighted item. The picker is the
+			// only owner of these keys while it is open: the input stays active
+			// so that typing keeps filtering, but AutocompleteInput deliberately
+			// has no Enter/Tab handler (it would accept the item a second time)
+			// and its submit path ignores Enter while a picker is open.
 			// Shift+Tab is excluded because it cycles modes.
 			if (key.return || (key.tab && !key.shift)) {
-				const selected = results[selectedIndex]
+				const selected = currentResults[currentIndex]
 				if (selected) {
 					onSelect(selected)
 				}
@@ -135,13 +149,13 @@ export function PickerSelect<T extends AutocompleteItem>({
 			}
 
 			if (key.upArrow) {
-				const newIndex = selectedIndex > 0 ? selectedIndex - 1 : results.length - 1
+				const newIndex = currentIndex > 0 ? currentIndex - 1 : currentResults.length - 1
 				onIndexChange(newIndex)
 				return
 			}
 
 			if (key.downArrow) {
-				const newIndex = selectedIndex < results.length - 1 ? selectedIndex + 1 : 0
+				const newIndex = currentIndex < currentResults.length - 1 ? currentIndex + 1 : 0
 				onIndexChange(newIndex)
 				return
 			}
@@ -168,9 +182,12 @@ export function PickerSelect<T extends AutocompleteItem>({
 	const hasMoreAbove = visibleWindow.from > 0
 	const hasMoreBelow = visibleWindow.to < results.length
 
-	// Render only visible items (windowing approach)
+	// Render only visible items (windowing approach). minHeight keeps the
+	// dropdown from jumping in size between searches, while the two indicator
+	// rows may still extend it: with a fixed height they overflowed the box and
+	// ink drew them over the input below.
 	return (
-		<Box flexDirection="column" height={maxVisible}>
+		<Box flexDirection="column" minHeight={maxVisible}>
 			{/* Scroll indicator - more items above */}
 			{hasMoreAbove && (
 				<Box paddingLeft={2}>
@@ -183,7 +200,10 @@ export function PickerSelect<T extends AutocompleteItem>({
 				const actualIndex = visibleWindow.from + visibleIndex
 				const isSelected = actualIndex === selectedIndex
 				return (
-					<Box key={result.key} flexDirection="row">
+					// One terminal row per item, whatever renderItem produces: a
+					// wrapped description would otherwise push the rows below it out
+					// of the box and over the input.
+					<Box key={result.key} flexDirection="row" height={1} overflow="hidden">
 						{isSelected ? <Text color={theme.permission}>{figures.pointer} </Text> : <Text>{"  "}</Text>}
 						{renderItem(result, isSelected)}
 					</Box>

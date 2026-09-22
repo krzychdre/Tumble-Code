@@ -46,6 +46,12 @@ export interface MultilineTextInputProps {
 	 */
 	onDownAtLastLine?: () => void
 	/**
+	 * Whether Up/Down move the cursor between lines (and reach the
+	 * onUpAtFirstLine / onDownAtLastLine callbacks). Pass false while an
+	 * autocomplete picker is open: those keys move its highlight instead.
+	 */
+	lineNavigationActive?: boolean
+	/**
 	 * Placeholder text when empty
 	 */
 	placeholder?: string
@@ -194,6 +200,7 @@ export function MultilineTextInput({
 	onEscape,
 	onUpAtFirstLine,
 	onDownAtLastLine,
+	lineNavigationActive = true,
 	placeholder = "",
 	isActive = true,
 	showCursor = true,
@@ -279,16 +286,16 @@ export function MultilineTextInput({
 				return
 			}
 
-			// Tab: when a picker is open, AutocompleteInput accepts the highlighted
-			// item on Tab. With no picker there is nothing to complete, so swallow
-			// it instead of inserting a literal tab into the prompt.
+			// Tab: when a picker is open, the PickerSelect rendered next to this
+			// input accepts the highlighted item on Tab. With no picker there is
+			// nothing to complete, so swallow it instead of inserting a literal tab.
 			if (key.tab) {
 				return
 			}
 
 			// Arrow up: move cursor up one line, or trigger history if on first line
 			if (key.upArrow) {
-				if (!showCursor) return
+				if (!showCursor || !lineNavigationActive) return
 				const lines = currentValue.split("\n")
 				const { line, col } = getCursorPosition(currentValue, currentCursorIndex)
 
@@ -308,7 +315,7 @@ export function MultilineTextInput({
 
 			// Arrow down: move cursor down one line, or trigger history if on last line
 			if (key.downArrow) {
-				if (!showCursor) return
+				if (!showCursor || !lineNavigationActive) return
 				const lines = currentValue.split("\n")
 				const { line, col } = getCursorPosition(currentValue, currentCursorIndex)
 
