@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 
-import { buildStaticItems, getStaticCount, getStaticMessages, nextPromotion } from "../transcript.js"
+import { buildStaticItems, getStaticCount, getStaticMessages, nextPromotion, type StaticItem } from "../transcript.js"
+import { advanceStreamCommit, tailHeads, type StreamCommits } from "../streamCommit.js"
 import type { TUIMessage } from "../types.js"
 import type { WelcomeBannerProps } from "../components/WelcomeBanner.js"
 
@@ -279,5 +280,116 @@ describe("nextPromotion", () => {
 				promoted: afterReset.promoted,
 			}),
 		).toEqual({ remount: false, promoted: 0 })
+	})
+})
+
+describe("buildStaticItems with an answer streamed into scrollback", () => {
+	const welcomeProps: WelcomeBannerProps = {
+		workspacePath: "/repo",
+		provider: "openai",
+		model: "gpt-5",
+		mode: "code",
+		version: "1.0.0",
+	}
+	const user: TUIMessage = { id: "u", role: "user", content: "question" }
+
+	/** One App render: promotion rule, tail heads, commit step, item list. */
+	function renderStep(messages: TUIMessage[], isLoading: boolean, commits: StreamCommits) {
+		const staticCount = getStaticCount(messages, isLoading, false)
+		const heads = tailHeads(messages[staticCount], commits)
+		if (heads.streaming) {
+			const next = advanceStreamCommit(heads.streaming.content, commits[heads.streaming.id])
+			if (next) commits = { ...commits, [heads.streaming.id]: next }
+		}
+		// The commit lands in state, so the list reflects it on the next render.
+		const { committed } = tailHeads(messages[staticCount], commits)
+		const items = buildStaticItems({
+			messages: messages.slice(0, staticCount),
+			welcomeProps,
+			expanded: false,
+			reprintEpoch: 0,
+			commits,
+			streamingHead: committed,
+		})
+		return { items, commits }
+	}
+
+	it("only ever appends, and prints every line exactly once", () => {
+		const answer = (content: string, partial: boolean): TUIMessage => ({
+			id: "a",
+			role: "assistant",
+			content,
+			partial,
+		})
+		const steps: Array<[TUIMessage[], boolean]> = [
+			[[user, answer("First para", true)], true],
+			[[user, answer("First paragraph.\nSecond", true)], true],
+			[[user, answer("First paragraph.\nSecond paragraph.\n\nThird", true)], true],
+			// finalized, but held back as the trailing message while loading
+			[[user, answer("First paragraph.\nSecond paragraph.\n\nThird paragraph.", false)], true],
+			// promoted when the turn goes idle
+			[[user, answer("First paragraph.\nSecond paragraph.\n\nThird paragraph.", false)], false],
+		]
+
+		let commits: StreamCommits = {}
+		let previous: StaticItem[] = []
+		for (const [messages, isLoading] of steps) {
+			const step = renderStep(messages, isLoading, commits)
+			commits = step.commits
+			expect(step.items.slice(0, previous.length)).toEqual(previous)
+			previous = step.items
+		}
+
+		const printed = previous
+			.map((item) =>
+				item.kind === "chunk" ? item.text : item.kind === "message" ? item.message.content : undefined,
+			)
+			.filter((text): text is string => text !== undefined)
+		expect(previous.map((item) => item.kind)).toEqual(["welcome", "message", "chunk", "chunk", "message"])
+		expect(printed).toEqual(["question", "First paragraph.", "Second paragraph.\n", "Third paragraph."])
+		expect(
+			previous.filter((item) => item.kind === "chunk").map((item) => item.kind === "chunk" && item.first),
+		).toEqual([true, false])
+		const last = previous[previous.length - 1]
+		expect(last?.kind === "message" && last.continuation).toBe(true)
+	})
+
+	it("prints the whole message when its final text no longer starts with the chunks", () => {
+		const commits: StreamCommits = { a: { chunks: ["Old line"], lines: 1 } }
+		const final: TUIMessage = { id: "a", role: "assistant", content: "New text entirely\nmore" }
+		const items = buildStaticItems({ messages: [final], welcomeProps, expanded: false, reprintEpoch: 0, commits })
+
+		expect(items.map((item) => item.id)).toEqual(["__welcome__:0", "a#chunk0", "a#full"])
+	})
+
+	it("adds no closing item when the chunks already covered the message", () => {
+		const commits: StreamCommits = { a: { chunks: ["All of it.", ""], lines: 2 } }
+		const final: TUIMessage = { id: "a", role: "assistant", content: "All of it.\n\n" }
+		const items = buildStaticItems({ messages: [final], welcomeProps, expanded: false, reprintEpoch: 0, commits })
+
+		expect(items.map((item) => item.id)).toEqual(["__welcome__:0", "a#chunk0", "a#chunk1"])
+	})
+})
+
+describe("getStaticCount with settleSupersededThinking", () => {
+	const thinking = (partial: boolean): TUIMessage => ({ id: "r", role: "thinking", content: "reasoning", partial })
+	const answer: TUIMessage = { id: "a", role: "assistant", content: "Para one.\nPara", partial: true }
+	const user: TUIMessage = { id: "u", role: "user", content: "q" }
+
+	it("lets the answer lead the tail once it follows an unfinalized thinking message", () => {
+		expect(getStaticCount([user, thinking(true), answer], true, false, { settleSupersededThinking: true })).toBe(2)
+	})
+
+	it("keeps the strict rule for the expanded transcript", () => {
+		expect(getStaticCount([user, thinking(true), answer], true, false)).toBe(1)
+	})
+
+	it("still holds a thinking message that nothing follows yet", () => {
+		expect(getStaticCount([user, thinking(true)], true, false, { settleSupersededThinking: true })).toBe(1)
+	})
+
+	it("never settles a partial message of another role", () => {
+		const tool: TUIMessage = { id: "t", role: "tool", content: "out", partial: true }
+		expect(getStaticCount([user, tool, answer], true, false, { settleSupersededThinking: true })).toBe(1)
 	})
 })

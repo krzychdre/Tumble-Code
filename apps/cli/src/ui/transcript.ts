@@ -1,5 +1,6 @@
 import type { TUIMessage } from "./types.js"
 import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
+import { remainderAfterCommit, type StreamCommits } from "./streamCommit.js"
 
 /**
  * Promotion rule for the static scrollback (plan §3).
@@ -31,16 +32,35 @@ import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
  * the debounced partial queue (`flushPendingStreamUpdates` in `store.ts`), so
  * the promoted text is the latest text the CLI ever received.
  *
+ * Superseded thinking (`settleSupersededThinking`, plan: 2026-09-22 cli stream
+ * answer into scrollback): the core finalizes a reasoning block under a new ts
+ * and the CLI only learns about it at the next full state push, typically when
+ * the whole answer after it is done. Until then the thinking message stays
+ * `partial`, and rule 4 held the streaming answer below it in the clamped tail
+ * for its entire length. A partial thinking message that another message
+ * already follows is therefore treated as settled when the caller says its
+ * rendering does not depend on the content, i.e. the collapsed "∴ Thinking…"
+ * one-liner. The expanded transcript prints the reasoning body, which may still
+ * lack its last chunk, so it keeps the strict rule.
+ *
  * The result is clamped to `[0, messages.length]`.
  */
-export function getStaticCount(messages: TUIMessage[], isLoading: boolean, hasPendingAsk: boolean): number {
+export function getStaticCount(
+	messages: TUIMessage[],
+	isLoading: boolean,
+	hasPendingAsk: boolean,
+	{ settleSupersededThinking = false }: { settleSupersededThinking?: boolean } = {},
+): number {
 	let count = messages.length
 	// idle: no stream and no ask can touch any message any more, promote all of them
 	if (!isLoading && !hasPendingAsk) return count
 	// trailing message may still receive in-place updates (finalization, ask answer)
 	if (count > 0) count -= 1
 	// anything from the first streaming message onward stays dynamic
-	const firstPartial = messages.findIndex((m) => m.partial === true)
+	const firstPartial = messages.findIndex(
+		(m, index) =>
+			m.partial === true && !(settleSupersededThinking && m.role === "thinking" && index < messages.length - 1),
+	)
 	if (firstPartial !== -1) count = Math.min(count, firstPartial)
 	return count
 }
@@ -119,11 +139,16 @@ export function nextPromotion({ messageIds, previousIds, staticCount, promoted }
  * The welcome banner and the reprint divider are synthetic items so they print
  * once into native scrollback and scroll away naturally as the conversation
  * grows. Message items delegate to `ChatHistoryItem`.
+ *
+ * A `chunk` is a part of an assistant message printed while it was still
+ * streaming (see `streamCommit.ts`); the first chunk carries the bullet, the
+ * later ones and the message's closing `continuation` item do not.
  */
 export type StaticItem =
 	| { id: string; kind: "welcome"; welcomeProps: WelcomeBannerProps }
 	| { id: string; kind: "divider"; label: string }
-	| { id: string; kind: "message"; message: TUIMessage; expanded: boolean }
+	| { id: string; kind: "message"; message: TUIMessage; expanded: boolean; continuation?: boolean }
+	| { id: string; kind: "chunk"; text: string; first: boolean }
 
 interface BuildStaticItemsArgs {
 	/** The promoted prefix of the transcript (see `getStaticMessages`). */
@@ -133,6 +158,47 @@ interface BuildStaticItemsArgs {
 	expanded: boolean
 	/** `useUIStateStore.transcriptReprintEpoch`; 0 is the original printing. */
 	reprintEpoch: number
+	/** What was printed of streaming messages before they completed. */
+	commits?: StreamCommits
+	/**
+	 * The first message of the dynamic tail, when part of it was printed while
+	 * it streamed: its chunks are in scrollback although the message itself is
+	 * not promoted yet.
+	 */
+	streamingHead?: TUIMessage
+}
+
+function chunkItems(messageId: string, chunks: string[]): StaticItem[] {
+	return chunks.map((text, index) => ({ id: `${messageId}#chunk${index}`, kind: "chunk", text, first: index === 0 }))
+}
+
+/**
+ * The items of one promoted message. A message printed in chunks while it
+ * streamed ends with what follows the chunks, and nothing if the chunks
+ * covered it all. Should its final text no longer start with the chunks
+ * (nothing the core does today), it is printed in full: repeating text is
+ * better than losing it.
+ */
+function messageItems(message: TUIMessage, expanded: boolean, commits: StreamCommits): StaticItem[] {
+	const commit = commits[message.id]
+	if (!commit || commit.chunks.length === 0) {
+		return [{ id: message.id, kind: "message", message, expanded }]
+	}
+
+	const items = chunkItems(message.id, commit.chunks)
+	const rest = remainderAfterCommit(message.content, commit)
+	if (rest === null) {
+		items.push({ id: `${message.id}#full`, kind: "message", message, expanded })
+	} else if (rest.trim() !== "") {
+		items.push({
+			id: `${message.id}#rest`,
+			kind: "message",
+			message: { ...message, content: rest },
+			expanded,
+			continuation: true,
+		})
+	}
+	return items
 }
 
 /**
@@ -145,12 +211,18 @@ interface BuildStaticItemsArgs {
  *
  * A reprint then adds a header naming the verbosity it is printed AT and the
  * way back out of it, because ctrl+o works in both directions.
+ *
+ * The list only ever grows while a task runs (ink prints `items.slice(printed)`
+ * on each render): a streaming head's chunks come last, and when that message
+ * is promoted its closing item lands right after them.
  */
 export function buildStaticItems({
 	messages,
 	welcomeProps,
 	expanded,
 	reprintEpoch,
+	commits = {},
+	streamingHead,
 }: BuildStaticItemsArgs): StaticItem[] {
 	const head: StaticItem[] = [{ id: `__welcome__:${reprintEpoch}`, kind: "welcome", welcomeProps }]
 
@@ -165,5 +237,8 @@ export function buildStaticItems({
 		})
 	}
 
-	return [...head, ...messages.map((message): StaticItem => ({ id: message.id, kind: "message", message, expanded }))]
+	const body = messages.flatMap((message) => messageItems(message, expanded, commits))
+	const streaming = streamingHead ? chunkItems(streamingHead.id, commits[streamingHead.id]?.chunks ?? []) : []
+
+	return [...head, ...body, ...streaming]
 }
