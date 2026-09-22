@@ -45,6 +45,9 @@ jobs:
         name: platform-unit-test (${{ matrix.name }})
         runs-on: ${{ matrix.os }}
         strategy:
+            # A Windows failure used to cancel the Ubuntu run, which left main
+            # without any unit-test result at all.
+            fail-fast: false
             matrix:
                 include:
                     - os: ubuntu-latest
@@ -57,4 +60,6 @@ jobs:
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
             - name: Run unit tests
-              run: pnpm test
+              # --continue: turbo otherwise stops at the first failing package,
+              # so every run showed one package's failures and hid the rest.
+              run: pnpm test --continue

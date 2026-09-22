@@ -159,3 +159,35 @@ export function writeTumbleTask(storageDir: string, spec: TumbleTaskSpec): strin
 
 	return dir
 }
+
+const HOME_VARIABLES = ["HOME", "USERPROFILE", "APPDATA"] as const
+
+/**
+ * Point the home directory (and, on Windows, APPDATA) at an empty temp dir.
+ *
+ * `$AGENT_INTERCHANGE_TUMBLE_STORAGE` adds a store, it does not replace the
+ * VS Code stores `locate.ts` finds under the home directory. Without this a
+ * test that lists sessions across workspaces also read the developer's real
+ * tasks, which pushed its own fixture out of the default page of results.
+ * Returns the function that restores the previous values.
+ */
+export function isolateHome(): () => void {
+	const home = makeTempDir("home")
+	const previous = HOME_VARIABLES.map((name) => [name, process.env[name]] as const)
+
+	for (const name of HOME_VARIABLES) {
+		process.env[name] = home
+	}
+
+	return () => {
+		for (const [name, value] of previous) {
+			if (value === undefined) {
+				delete process.env[name]
+			} else {
+				process.env[name] = value
+			}
+		}
+
+		fs.rmSync(home, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+	}
+}
