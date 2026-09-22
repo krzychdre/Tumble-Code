@@ -496,4 +496,99 @@ describe("useMessageHandlers", () => {
 		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
 		expect(assistantMessages.map((m) => m.content)).toEqual(["Working on it", "All done."])
 	})
+
+	describe("command output (real task 01a0c926, 2026-09-22)", () => {
+		// The recorded shape of ONE command execution. The two say:command_output
+		// entries carry DIFFERENT timestamps because the non-blocking
+		// ask:command_output lands between them, which stops `Task.say()` from
+		// continuing the partial in place.
+		const COMMAND = 'curl -s "https://raw.githubusercontent.com/KellerJordan/modded-nanogpt/master/train_gpt.py"'
+		const FIRST_CHUNK = '85:dist.init_process_group(backend="cuda:nccl,cpu:gloo", device_id=device)\n'
+		const FULL_OUTPUT = `${FIRST_CHUNK}86:dist.barrier()\n87:master_process = (rank == 0)\n`
+
+		function askUpdate(ts: number, ask: string, text: string): void {
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: { ts, type: "ask", ask, text, partial: false } as never,
+			})
+		}
+
+		function runOneCommand(commandTs: number, command: string, chunk: string, full: string): void {
+			askUpdate(commandTs, "command", command)
+			sayUpdate(commandTs + 1042, "command_output", chunk, true)
+			askUpdate(commandTs + 1042, "command_output", "")
+			sayUpdate(commandTs + 1074, "command_output", full, false)
+		}
+
+		beforeEach(() => {
+			// The turn is running, which is when the core delivers command output.
+			useCLIStore.getState().setLoading(true)
+		})
+
+		it("renders ONE Bash row per command, carrying the command and the complete output", () => {
+			runOneCommand(1790082143805, COMMAND, FIRST_CHUNK, FULL_OUTPUT)
+
+			const tools = useCLIStore.getState().messages.filter((m) => m.toolName === "execute_command")
+
+			expect(tools).toHaveLength(1)
+			expect(tools[0]?.toolData).toMatchObject({
+				tool: "execute_command",
+				command: COMMAND,
+				output: FULL_OUTPUT,
+			})
+		})
+
+		it("leaves nothing partial, so the turn can still be promoted into scrollback", () => {
+			runOneCommand(1790082143805, COMMAND, FIRST_CHUNK, FULL_OUTPUT)
+
+			const messages = useCLIStore.getState().messages
+			expect(messages.filter((m) => m.partial)).toEqual([])
+			expect(getStaticCount(messages, true, false)).toBe(messages.length - 1)
+		})
+
+		it("opens a new row for the next command instead of appending to the previous one", () => {
+			runOneCommand(1790082143805, COMMAND, FIRST_CHUNK, FULL_OUTPUT)
+			runOneCommand(1790082149611, "ls -la", "a\n", "a\nb\n")
+
+			const tools = useCLIStore.getState().messages.filter((m) => m.toolName === "execute_command")
+
+			expect(tools.map((m) => m.toolData?.command)).toEqual([COMMAND, "ls -la"])
+			expect(tools.map((m) => m.toolData?.output)).toEqual([FULL_OUTPUT, "a\nb\n"])
+		})
+
+		it("does not write into a row that is already printed, once the agent is idle", () => {
+			askUpdate(1790082143805, "command", COMMAND)
+			sayUpdate(1790082144847, "command_output", FIRST_CHUNK, true)
+			// Escape cancelled the task: the row may already be in scrollback, where
+			// nothing can rewrite it, so a late finalization renders on its own.
+			useCLIStore.getState().setLoading(false)
+			sayUpdate(1790082144879, "command_output", FULL_OUTPUT, false)
+
+			const outputs = useCLIStore
+				.getState()
+				.messages.filter((m) => m.toolName === "execute_command")
+				.map((m) => m.toolData?.output)
+
+			expect(outputs).toEqual([FIRST_CHUNK, FULL_OUTPUT])
+		})
+
+		it("keeps the command on a row replayed from a resumed task's history", () => {
+			useCLIStore.getState().setLoading(false)
+			useCLIStore.getState().setIsResumingTask(true)
+
+			stateMessage([
+				{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
+				{ ts: 1790082143805, type: "ask", ask: "command", text: COMMAND, partial: false },
+				{ ts: 1790082144847, type: "say", say: "command_output", text: FIRST_CHUNK, partial: true },
+				{ ts: 1790082144847, type: "ask", ask: "command_output", text: "", partial: false },
+				{ ts: 1790082144879, type: "say", say: "command_output", text: FULL_OUTPUT, partial: false },
+			])
+
+			const tools = useCLIStore.getState().messages.filter((m) => m.toolName === "execute_command")
+
+			expect(tools).toHaveLength(1)
+			expect(tools[0]?.toolData?.command).toBe(COMMAND)
+			expect(tools[0]?.partial).toBeFalsy()
+		})
+	})
 })

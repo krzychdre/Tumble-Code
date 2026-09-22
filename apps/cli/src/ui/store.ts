@@ -32,6 +32,13 @@ interface PendingStreamUpdate {
 	content: string
 	partial: boolean
 	timestamp: number
+	/**
+	 * Structured tool payload of the delivery, for rows whose body lives in
+	 * `toolData` rather than in `content`. A streaming command row renders
+	 * `toolData.output`, so without this the row would stay frozen on its first
+	 * chunk until the non-partial delivery replaced the whole message.
+	 */
+	toolData?: TUIMessage["toolData"]
 }
 
 const pendingStreamUpdates: Map<string, PendingStreamUpdate> = new Map()
@@ -71,6 +78,7 @@ export function flushPendingStreamUpdates(): void {
 				...newMessages[idx],
 				content: update.content,
 				partial: update.partial,
+				...(update.toolData ? { toolData: update.toolData } : {}),
 			}
 			hasChanges = true
 		}
@@ -221,6 +229,7 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 				content: msg.content,
 				partial: true,
 				timestamp: Date.now(),
+				toolData: msg.toolData,
 			})
 
 			// Schedule flush if not already scheduled. The timer body is the same

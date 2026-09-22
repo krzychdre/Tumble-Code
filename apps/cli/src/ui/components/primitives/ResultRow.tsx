@@ -25,8 +25,17 @@ interface Props {
 
 /**
  * Tool/result output row: dim `⎿` connector followed by dim content,
- * truncated to maxLines (default 5) with a dim "… +N lines" tail.
+ * truncated to maxLines (default 5) with a dim "… +N lines (ctrl+o)" tail.
  * String children are pre-sanitized before display.
+ *
+ * The body and the tail sit in a COLUMN. They used to share the default row
+ * direction, which laid the tail out as a second column beside the body and
+ * one line down, so "… +31 lines" floated at the top right of the block
+ * instead of closing it.
+ *
+ * The tail names ctrl+o unconditionally: it is only ever rendered when
+ * something was cut, and every caller lifts `maxLines` to infinity in the
+ * expanded transcript, so a cut line always means "there is more behind ctrl+o".
  */
 function ResultRow({ children, maxLines = 5 }: Props) {
 	const content = sanitizeContent(children)
@@ -43,15 +52,14 @@ function ResultRow({ children, maxLines = 5 }: Props) {
 				{figures.elbow}
 				{"  "}
 			</Text>
-			<Box flexGrow={1}>
+			<Box flexDirection="column" flexGrow={1}>
 				<Text dimColor color={theme.secondaryText}>
 					{visibleLines.join("\n")}
 				</Text>
 				{truncatedCount > 0 && (
 					<Text dimColor color={theme.secondaryText}>
-						{"\n"}
-						{"…"}
-						{` +${truncatedCount} lines`}
+						{figures.ellipsis}
+						{` +${truncatedCount} lines (ctrl+o)`}
 					</Text>
 				)}
 			</Box>
