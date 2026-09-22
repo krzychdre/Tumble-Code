@@ -3,7 +3,7 @@ import { Box, Text, useStdout } from "ink"
 import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
 import Bullet from "../primitives/Bullet.js"
-import ResultRow from "../primitives/ResultRow.js"
+import ResultRow, { ElbowGutter } from "../primitives/ResultRow.js"
 
 import type { ToolRendererProps } from "./types.js"
 import { toolStatusFromMessage } from "./types.js"
@@ -131,11 +131,7 @@ export function FileWriteTool({ toolData, message, expanded = false }: ToolRende
 					    line on a green band, context dim and unbanded. */}
 					{visibleHunks.length > 0 && (
 						<Box flexDirection="row">
-							<Text dimColor>
-								{"  "}
-								{figures.elbow}
-								{"  "}
-							</Text>
+							<ElbowGutter />
 							<Box flexDirection="column" flexGrow={1}>
 								{visibleHunks.map((hunk, hunkIndex) => {
 									const visibleLines = hunk.lines.slice(0, maxHunkLines)

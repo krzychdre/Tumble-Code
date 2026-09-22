@@ -1,4 +1,5 @@
 import { render } from "ink-testing-library"
+import stringWidth from "string-width"
 
 import type { ToolRendererProps } from "../types.js"
 import { FileWriteTool } from "../FileWriteTool.js"
@@ -136,6 +137,28 @@ describe("FileWriteTool", () => {
 
 			expect(output).toContain("old 11")
 			expect(output).not.toContain("more lines")
+		})
+
+		it("keeps a long diff line inside the terminal width", () => {
+			const diff = [
+				"<<<<<<< SEARCH",
+				":start_line:1",
+				"-------",
+				"a".repeat(300),
+				"=======",
+				"b",
+				">>>>>>> REPLACE",
+			]
+			const props: ToolRendererProps = {
+				toolData: { tool: "appliedDiff", path: "a.txt", diff: diff.join("\n") },
+			}
+
+			// ink-testing-library renders at 100 columns. The band is cut to the
+			// terminal width before layout, so this row never overflowed; the
+			// test keeps it that way now that it shares ResultRow's connector.
+			for (const row of (render(<FileWriteTool {...props} />).lastFrame() ?? "").split("\n")) {
+				expect(stringWidth(row)).toBeLessThanOrEqual(100)
+			}
 		})
 	})
 

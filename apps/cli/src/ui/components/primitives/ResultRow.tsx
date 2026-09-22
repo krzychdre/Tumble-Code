@@ -13,6 +13,29 @@ export function sanitizeContent(text: string): string {
 	return text.replace(/\t/g, "    ").replace(/\r/g, "")
 }
 
+/**
+ * The dim `  ⎿  ` connector in front of a result body.
+ *
+ * It must not shrink (plan: 2026-09-22 cli bash row overflows width). Next
+ * to a body wider than the terminal, yoga shrinks every flex item of the row
+ * in proportion, the connector included, so it got 4 columns instead of 5.
+ * Ink still prints all 5, which left the body one column too wide: every
+ * wrapped row spilled its last character onto a row of its own. The rows
+ * ink does not know about then survive its erase in the live tail, so the
+ * running `Bash(…)` header stayed in scrollback above the finished one.
+ */
+export function ElbowGutter({ color }: { color?: string }) {
+	return (
+		<Box flexShrink={0}>
+			<Text dimColor color={color}>
+				{"  "}
+				{figures.elbow}
+				{"  "}
+			</Text>
+		</Box>
+	)
+}
+
 interface Props {
 	children: string
 	/**
@@ -36,6 +59,12 @@ interface Props {
  * The tail names ctrl+o unconditionally: it is only ever rendered when
  * something was cut, and every caller lifts `maxLines` to infinity in the
  * expanded transcript, so a cut line always means "there is more behind ctrl+o".
+ *
+ * A capped row caps screen rows, not just lines (plan: 2026-09-22 cli bash
+ * row overflows width): each line is cut to one row with an ellipsis, because
+ * a single 4000-character line (a page scraped with curl) otherwise wraps into
+ * twenty rows and the "collapsed" row fills the screen. Uncapped (ctrl+o),
+ * lines wrap in full as before.
  */
 function ResultRow({ children, maxLines = 5 }: Props) {
 	const content = sanitizeContent(children)
@@ -44,18 +73,25 @@ function ResultRow({ children, maxLines = 5 }: Props) {
 
 	const visibleLines = lines.slice(0, Math.max(0, maxLines))
 	const truncatedCount = Math.max(0, totalLines - visibleLines.length)
+	const capped = Number.isFinite(maxLines)
 
 	return (
 		<Box flexDirection="row">
-			<Text dimColor>
-				{"  "}
-				{figures.elbow}
-				{"  "}
-			</Text>
+			<ElbowGutter />
 			<Box flexDirection="column" flexGrow={1}>
-				<Text dimColor color={theme.secondaryText}>
-					{visibleLines.join("\n")}
-				</Text>
+				{capped ? (
+					visibleLines.map((line, index) => (
+						// An empty Text renders no row at all, so a blank line
+						// keeps its row with a space.
+						<Text key={index} dimColor color={theme.secondaryText} wrap="truncate-end">
+							{line || " "}
+						</Text>
+					))
+				) : (
+					<Text dimColor color={theme.secondaryText}>
+						{visibleLines.join("\n")}
+					</Text>
+				)}
 				{truncatedCount > 0 && (
 					<Text dimColor color={theme.secondaryText}>
 						{figures.ellipsis}

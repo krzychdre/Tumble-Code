@@ -1,4 +1,5 @@
 import { render } from "ink-testing-library"
+import stringWidth from "string-width"
 
 import type { ToolRendererProps } from "../types.js"
 import { CommandTool } from "../CommandTool.js"
@@ -176,6 +177,46 @@ describe("CommandTool", () => {
 
 			expect(output).toContain("2749:")
 			expect(output).not.toContain("+1 lines")
+		})
+	})
+
+	// ink-testing-library renders at 100 columns. A row one column wider wraps
+	// in a real terminal onto a row ink does not count, which the live tail
+	// then fails to erase (plan: 2026-09-22 cli bash row overflows width).
+	describe("row geometry", () => {
+		const COLUMNS = 100
+		const scraped = `1${"x".repeat(450)}\n\nshort\n${"y ".repeat(300)}`
+		const props: ToolRendererProps = {
+			toolData: { tool: "execute_command", command: "curl -s https://example.com", output: scraped },
+		}
+
+		it("never renders a row wider than the terminal", () => {
+			for (const expanded of [false, true]) {
+				const rows = (render(<CommandTool {...props} expanded={expanded} />).lastFrame() ?? "").split("\n")
+
+				for (const row of rows) {
+					expect(stringWidth(row)).toBeLessThanOrEqual(COLUMNS)
+				}
+			}
+		})
+
+		it("cuts every line to one row when collapsed", () => {
+			const rows = (render(<CommandTool {...props} />).lastFrame() ?? "").split("\n")
+
+			// Header, the cut 451-character line, the blank line, "short", the
+			// cut 600-character line: 5 rows, not the 13 the wrapped text takes.
+			expect(rows).toHaveLength(5)
+			expect(rows[1]).toMatch(/^ {4}⎿ {2}1x+…$/)
+			expect(rows[2]?.trim()).toBe("")
+			expect(rows[3]?.trim()).toBe("short")
+			expect(rows[4]?.trimEnd()).toMatch(/…$/)
+		})
+
+		it("wraps every line in full when expanded", () => {
+			const output = render(<CommandTool {...props} expanded />).lastFrame() ?? ""
+
+			expect(output.replace(/[\s⎿]/g, "")).toContain(`1${"x".repeat(450)}`)
+			expect(output).not.toContain("…")
 		})
 	})
 
