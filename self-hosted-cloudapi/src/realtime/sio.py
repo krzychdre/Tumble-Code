@@ -23,6 +23,7 @@ from sqlalchemy import select
 
 from config.settings import settings
 from src.auth.jwt_issuer import decode_token
+from src.auth.network_access import client_allowed, scope_client
 from src.auth.static_token import validate_static_token
 from src.auth.web_session import COOKIE_NAME, resolve_web_user
 from src.database import async_session_factory
@@ -122,7 +123,13 @@ async def connect(sid, environ, auth):
         registry.attach(sid, "extension", user_id)
         return True
 
-    # No token → browser; authenticate via the session cookie.
+    # No token → browser; authenticate via the session cookie. The client is
+    # read off the ASGI scope: engine.io fills REMOTE_ADDR with a constant
+    # "127.0.0.1", which would make every browser look local.
+    client = scope_client(environ.get("asgi.scope") or {})
+    if not client_allowed(client):
+        logger.info("[bridge] browser handshake rejected: %s is outside WEB_ALLOWED_NETWORKS", client)
+        return False
     async with async_session_factory() as db:
         web_user = await resolve_web_user(_cookie_from_environ(environ), db)
     if web_user is None:

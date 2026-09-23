@@ -1,10 +1,12 @@
 """Application settings loaded from environment variables."""
 
+import ipaddress
 import json
 from typing import List, Optional
+from urllib.parse import urlsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, HttpUrl, computed_field
+from pydantic import Field, HttpUrl, computed_field, field_validator
 
 
 class Settings(BaseSettings):
@@ -61,6 +63,58 @@ class Settings(BaseSettings):
             return json.loads(self.cors_origins)
         except (json.JSONDecodeError, ValueError):
             return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    # Web panel from other machines. See src/auth/network_access.py.
+    #
+    # Who may open the panel (/app): IP addresses and CIDR networks, comma
+    # separated, e.g. "192.168.50.0/24,10.8.0.7". Empty keeps the panel open to
+    # any client that can reach the port, as it always was. Once set, loopback
+    # and (inside a container) the host's gateway stay allowed as well, because
+    # that is how a browser on the host itself arrives.
+    web_allowed_networks: str = Field(
+        default="", description="Client IPs/CIDR networks allowed to open the web panel"
+    )
+    # The address other machines use to reach this server, e.g.
+    # "http://192.168.50.141:8085". A browser that arrives on that host is sent
+    # to Authentik and back on the same host, instead of to localhost, which on
+    # another machine is that machine. The bundled Authentik blueprint registers
+    # the callback from this same variable.
+    web_public_url: Optional[str] = Field(
+        default=None, description="Public base URL of the web panel for other machines"
+    )
+
+    @field_validator("web_allowed_networks")
+    @classmethod
+    def _check_networks(cls, value: str) -> str:
+        # Parsed here only to fail at startup: a typo in an allowlist must stop
+        # the server, not silently lock everybody out or let everybody in.
+        for entry in value.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            try:
+                ipaddress.ip_network(entry, strict=False)
+            except ValueError as exc:
+                raise ValueError(
+                    f"WEB_ALLOWED_NETWORKS: {entry!r} is not an IP address or a CIDR network"
+                ) from exc
+        return value
+
+    @field_validator("web_public_url")
+    @classmethod
+    def _check_public_url(cls, value: Optional[str]) -> Optional[str]:
+        if not value:
+            return None
+        parts = urlsplit(value)
+        # No path, not even a trailing slash: the Authentik blueprint appends
+        # the callback path to this exact string, so the two must agree to the
+        # character, and "http://host:8085//auth/clerk/callback" routes nowhere.
+        if parts.scheme not in ("http", "https") or not parts.hostname or parts.path or parts.query:
+            raise ValueError(
+                "WEB_PUBLIC_URL must be scheme://host[:port] with no path or trailing slash, "
+                f"e.g. http://192.168.50.141:8085 (got {value!r})"
+            )
+        return value
 
     # LLM Proxy
     default_llm_provider: str = "openai"

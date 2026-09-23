@@ -190,6 +190,37 @@ async def test_connect_browser_without_cookie_is_rejected(patch_session_factory)
     assert registry.meta("brsid") is None
 
 
+async def test_connect_browser_outside_the_allowlist_is_rejected_despite_a_valid_cookie(
+    patch_session_factory, db_session, monkeypatch
+):
+    """The client is read off the ASGI scope. engine.io's own REMOTE_ADDR is a
+    constant "127.0.0.1", so checking that would wave every browser through as
+    local; the environ below carries it exactly as engine.io builds it."""
+    from config.settings import settings
+    from src.auth import network_access
+
+    monkeypatch.setattr(settings, "web_allowed_networks", "192.168.50.0/24")
+    monkeypatch.setattr(network_access, "container_gateway", lambda: None)
+    await _seed_user(db_session, "user_web")
+    sid_val = await _seed_session(db_session, "user_web")
+    cookie = _signed_cookie(sid_val, "user_web")
+
+    def environ(client):
+        return {
+            "HTTP_COOKIE": f"tumble_session={cookie}",
+            "REMOTE_ADDR": "127.0.0.1",
+            "asgi.scope": {"type": "websocket", "client": (client, 40000)},
+        }
+
+    assert await sio_module.connect("outsider", environ("192.168.51.7"), None) is False
+    assert registry.meta("outsider") is None
+    assert await sio_module.connect("insider", environ("192.168.50.20"), None) is True
+    assert registry.meta("insider") == {"role": "browser", "user_id": "user_web"}
+    # The extension authenticates with its token and is not the panel.
+    token = issue_session_token("user_web", expires_in=300)
+    assert await sio_module.connect("ext", environ("192.168.51.7"), {"token": token}) is True
+
+
 # --- (b) task:join is ownership-checked ------------------------------------
 
 

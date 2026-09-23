@@ -21,7 +21,7 @@
     {% if user %}
       <span class="user">{{ user.name }}</span>
       <a class="btn ghost" href="/app/logout">Sign out</a>
-    {% else %}
+    {% elif not hide_sign_in %}
       <a class="btn" href="/app/login">Sign in</a>
     {% endif %}
   </header>

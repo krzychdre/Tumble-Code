@@ -12,7 +12,7 @@ import logging
 import secrets
 import html
 import urllib.parse
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,6 +27,8 @@ from src.services.auth_service import (
     create_ticket,
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
+from src.auth.network_access import client_allowed
+from config.auth import can_sign_in_on, front_channel
 from config.settings import settings
 
 # Marker stored as the OAuth `auth_redirect` for browser (web) logins. The
@@ -148,6 +150,7 @@ def _auth_error_html(reason: str, detail: str = "") -> str:
 
 @router.get("/extension/sign-in")
 async def sign_in_page(
+    request: Request,
     state: str = Query(...),
     auth_redirect: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -159,12 +162,18 @@ async def sign_in_page(
     await store_oauth_state(db, state, auth_redirect, code_verifier)
 
     # Build and redirect to Authentik authorize URL
-    authorize_url = get_authorize_url(state=state, code_challenge=code_challenge, auth_redirect=auth_redirect)
+    authorize_url = get_authorize_url(
+        state=state,
+        code_challenge=code_challenge,
+        auth_redirect=auth_redirect,
+        front=front_channel(request.headers.get("host")),
+    )
     return RedirectResponse(url=authorize_url)
 
 
 @router.get("/extension/provider-sign-up")
 async def provider_sign_up_page(
+    request: Request,
     state: str = Query(...),
     auth_redirect: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -175,7 +184,12 @@ async def provider_sign_up_page(
 
     await store_oauth_state(db, state, auth_redirect, code_verifier)
 
-    authorize_url = get_authorize_url(state=state, code_challenge=code_challenge, auth_redirect=auth_redirect)
+    authorize_url = get_authorize_url(
+        state=state,
+        code_challenge=code_challenge,
+        auth_redirect=auth_redirect,
+        front=front_channel(request.headers.get("host")),
+    )
     # Add screen_hint for registration
     authorize_url += "&screen_hint=signup"
     return RedirectResponse(url=authorize_url)
@@ -184,6 +198,7 @@ async def provider_sign_up_page(
 @router.get("/l/{slug}")
 async def landing_page(
     slug: str,
+    request: Request,
     state: str = Query(...),
     auth_redirect: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -193,24 +208,42 @@ async def landing_page(
 
     await store_oauth_state(db, state, auth_redirect, code_verifier)
 
-    authorize_url = get_authorize_url(state=state, code_challenge=code_challenge, auth_redirect=auth_redirect)
+    authorize_url = get_authorize_url(
+        state=state,
+        code_challenge=code_challenge,
+        auth_redirect=auth_redirect,
+        front=front_channel(request.headers.get("host")),
+    )
     return RedirectResponse(url=authorize_url)
 
 
 @router.get("/app/login")
 async def web_login(
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """Start the Authentik OAuth flow for a browser (web viewer) login.
 
     Uses the same redirect URI as the extension flow; the callback distinguishes
     web logins via the WEB_AUTH_REDIRECT marker stored in the OAuth state.
+
+    A browser that reached us under a name with no registered callback (the
+    machine's second address, say) is first moved to ``WEB_PUBLIC_URL``: a
+    sign-in started there can come back there, and the session cookie lands on
+    the host the reader then keeps using.
     """
+    host = request.headers.get("host")
+    if settings.web_public_url and not can_sign_in_on(host):
+        return RedirectResponse(url=f"{settings.web_public_url}/app/login", status_code=303)
+
     state = secrets.token_urlsafe(32)
     code_verifier, code_challenge = generate_pkce_pair()
     await store_oauth_state(db, state, WEB_AUTH_REDIRECT, code_verifier)
     authorize_url = get_authorize_url(
-        state=state, code_challenge=code_challenge, auth_redirect=WEB_AUTH_REDIRECT
+        state=state,
+        code_challenge=code_challenge,
+        auth_redirect=WEB_AUTH_REDIRECT,
+        front=front_channel(host),
     )
     return RedirectResponse(url=authorize_url)
 
@@ -225,6 +258,7 @@ async def web_logout():
 
 @router.get("/auth/clerk/callback")
 async def auth_callback(
+    request: Request,
     code: str = Query(...),
     state: str = Query(...),
     db: AsyncSession = Depends(get_db),
@@ -254,9 +288,29 @@ async def auth_callback(
             status_code=400,
         )
 
-    # Exchange authorization code for tokens
+    # A web sign-in ends in a panel session cookie, so it is refused to a client
+    # the panel itself would refuse, before the code is spent. The extension's
+    # flow is not the panel and is not gated.
+    client = request.client.host if request.client else None
+    if state_store.auth_redirect == WEB_AUTH_REDIRECT and not client_allowed(client):
+        logger.warning("[web-access] refused a web sign-in callback from %s", client)
+        return HTMLResponse(
+            content=_auth_error_html(
+                "This panel is not open to your address.",
+                "The server answers the web panel only to the networks listed in WEB_ALLOWED_NETWORKS.",
+            ),
+            status_code=403,
+        )
+
+    # Exchange authorization code for tokens. The browser followed the
+    # authorization request's redirect URI to get here, so the host it arrived
+    # on names that same redirect URI.
     try:
-        tokens = await exchange_code_for_tokens(code, state_store.code_verifier)
+        tokens = await exchange_code_for_tokens(
+            code,
+            state_store.code_verifier,
+            redirect_uri=front_channel(request.headers.get("host")).redirect_uri,
+        )
     except Exception as e:
         logger.error("Token exchange failed: %s", e)
         return HTMLResponse(

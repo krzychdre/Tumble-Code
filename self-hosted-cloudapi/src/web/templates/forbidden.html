@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Not available · Tumble Code{% endblock %}
+{% block content %}
+<div class="empty">
+  <h1 class="page-title">This panel is not open to {{ client }}</h1>
+  {# Names the setting: whoever sees this page on their own network is almost
+     always the person who runs the server. #}
+  <p class="empty-hint">The server answers the web panel only to the networks listed in <code>WEB_ALLOWED_NETWORKS</code>.</p>
+</div>
+{% endblock %}
