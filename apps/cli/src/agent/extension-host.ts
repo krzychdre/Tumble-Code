@@ -76,6 +76,8 @@ export interface ExtensionHostOptions {
 	model: string
 	/** Base URL override for the selected provider (applied to its base-url settings field). */
 	baseUrl?: string
+	/** Context window of the model from `models` in cli-settings.json (used by the openai provider). */
+	contextWindow?: number
 	/**
 	 * Provider settings per mode from cli-settings.json. Sent to the extension
 	 * at startup so a mode switch applies them instead of the provider profile

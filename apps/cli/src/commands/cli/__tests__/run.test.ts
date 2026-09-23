@@ -2,6 +2,8 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 
+import { openAiModelInfoSaneDefaults } from "@roo-code/types"
+
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
 
 import { run } from "../run.js"
@@ -41,6 +43,7 @@ const mockHost = vi.hoisted(() => ({
 				mode?: string
 				reasoningEffort?: string
 				apiKey?: string
+				contextWindow?: number
 				mcpSettingsPath?: string
 				modeProviderSettings?: {
 					base: Record<string, unknown>
@@ -711,6 +714,7 @@ describe("run provider settings per mode", () => {
 				openAiApiKey: "1111",
 				enableReasoningEffort: true,
 				reasoningEffort: "max",
+				openAiCustomModelInfo: null,
 			},
 			modes: {
 				architect: {
@@ -720,6 +724,7 @@ describe("run provider settings per mode", () => {
 					openAiApiKey: "1111",
 					enableReasoningEffort: true,
 					reasoningEffort: "high",
+					openAiCustomModelInfo: null,
 				},
 			},
 		})
@@ -797,6 +802,115 @@ describe("run provider settings per mode", () => {
 		expect(outcome).toBe("failed")
 		expect(errors[0]).toContain("modes.architect")
 		expect(errors[0]).toContain("Invalid reasoning effort: maz")
+	})
+})
+
+describe("run context window per model", () => {
+	let tempDir: string
+	const savedEnv = { ...process.env }
+
+	const globalSettings = {
+		provider: "openai" as const,
+		baseUrl: "http://192.168.50.194:11111/v1",
+		model: "GLM-5.3-NVFP4",
+		apiKey: "1111",
+	}
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-models-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+		delete process.env.OPENAI_API_KEY
+		delete process.env.ANTHROPIC_API_KEY
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+		process.env = { ...savedEnv }
+	})
+
+	async function runWithExitThrowing(flags: Partial<FlagOptions> = {}) {
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+		try {
+			await run("hello", baseFlags({ apiKey: undefined, ...flags })).catch((error) => {
+				if (error !== exitError) throw error
+			})
+			const outcome = exitSpy.mock.calls[0]?.[0] === 1 ? "failed" : "ran"
+			return {
+				outcome,
+				errors: errorSpy.mock.calls.map((call) => String(call[0])),
+				warnings: warnSpy.mock.calls.map((call) => String(call[0])),
+			}
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
+			warnSpy.mockRestore()
+		}
+	}
+
+	const sized = (contextWindow: number) => ({ ...openAiModelInfoSaneDefaults, contextWindow })
+
+	it("sizes the model everywhere it runs: the session, the global settings and each mode", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { ask: { model: "GLM-5.3-Flash-NVFP4" }, architect: { reasoningEffort: "high" } },
+			models: { "GLM-5.3-NVFP4": { contextWindow: 262_144 } },
+		})
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		expect(mockHost.lastOptions?.contextWindow).toBe(262_144)
+		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(sized(262_144))
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.architect?.openAiCustomModelInfo).toEqual(
+			sized(262_144),
+		)
+		// Another model, no entry: the provider's default applies.
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.ask?.openAiCustomModelInfo).toBeNull()
+	})
+
+	it("follows --model", async () => {
+		await saveSettings({ ...globalSettings, models: { "Qwen3.8-27B": { contextWindow: 65_536 } } })
+
+		await runWithExitThrowing({ model: "Qwen3.8-27B" })
+
+		expect(mockHost.lastOptions?.contextWindow).toBe(65_536)
+		expect(mockHost.lastOptions?.modeProviderSettings?.base.openAiCustomModelInfo).toEqual(sized(65_536))
+	})
+
+	it("a malformed size fails at startup and names the model", async () => {
+		await saveSettings({ ...globalSettings, models: { "GLM-5.3-NVFP4": { contextWindow: "262k" as never } } })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain("models.GLM-5.3-NVFP4.contextWindow must be a whole number of tokens")
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("warns once that a size is ignored on a provider that sizes its models itself", async () => {
+		process.env.ANTHROPIC_API_KEY = "k"
+		await saveSettings({
+			provider: "anthropic",
+			model: "claude-x",
+			modes: { ask: { reasoningEffort: "low" } },
+			models: { "claude-x": { contextWindow: 1_000_000 } },
+		})
+
+		const { outcome, warnings } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		const ignored = warnings.filter((warning) => warning.includes("models.claude-x.contextWindow"))
+		expect(ignored).toHaveLength(1)
+		expect(ignored[0]).toContain("ignored with the anthropic provider")
+		expect(mockHost.lastOptions?.modeProviderSettings?.base).not.toHaveProperty("openAiCustomModelInfo")
 	})
 })
 

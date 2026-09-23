@@ -330,6 +330,7 @@ to the run they are given on and are never saved.
 | `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                              |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
 | `modes`                   | Settings per mode, see below                                      |
+| `models`                  | Facts per model (its context window), see below                   |
 | `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 
 The file may hold an API key, so keep it readable only by you (`chmod 600
@@ -378,6 +379,36 @@ without an entry use the top level.
 - Passing any of `--provider`, `--model`, `--base-url`, `--api-key` or
   `--reasoning-effort` makes that run use one configuration for every mode: the
   flags on top of the top level, with `modes` ignored.
+
+### Context window per model
+
+An OpenAI-compatible server (the `openai` provider) lists its models without
+their sizes, so without help the CLI assumes 128,000 tokens for every one of
+them. That number decides when the conversation is condensed (summarised to
+free room) and what the footer's context bar measures against. `models` tells
+the CLI the real size, keyed by the model id exactly as the server names it:
+
+```json
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"model": "GLM-5.3-NVFP4",
+	"models": {
+		"GLM-5.3-NVFP4": { "contextWindow": 262144 }
+	}
+}
+```
+
+- An entry applies wherever its model runs: the top level, a `modes` entry or
+  `--model`.
+- Use the size the server actually serves (for vLLM, its `--max-model-len`),
+  which can be smaller than what the model supports. Condensing starts when the
+  context passes about 90% of this size.
+- Only the `openai` provider takes the size from here. Other providers size
+  their models from their own model lists; an entry for a model one of them
+  runs is ignored with a warning at startup.
+- A size that is not a whole number above 0 fails at startup and names the
+  model.
 
 ## MCP Servers
 

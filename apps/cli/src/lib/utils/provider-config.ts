@@ -20,7 +20,7 @@
  * conventional env var (e.g. OPENAI_API_KEY), then the fallback's key.
  */
 
-import { openAiCodexDefaultModelId, type ProviderSettings } from "@roo-code/types"
+import { openAiCodexDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@roo-code/types"
 
 import type { ReasoningEffortFlagOptions } from "@/types/types.js"
 import { DEFAULT_FLAGS } from "@/types/constants.js"
@@ -132,12 +132,14 @@ export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigL
  * The extension's provider settings for a resolved configuration: the
  * provider's own model/base-url/key fields plus the reasoning switches
  * ("unspecified" leaves reasoning to the model's default, "disabled" turns it
- * off). Throws like getProviderSettings for a base URL the provider has no
- * field for.
+ * off), and for the openai provider the model's context window. Throws like
+ * getProviderSettings for a base URL the provider has no field for.
  */
 export function toProviderSettings(
 	config: Pick<ResolvedProviderConfig, "provider" | "model" | "baseUrl" | "apiKey"> & {
 		reasoningEffort?: ReasoningEffortFlagOptions
+		/** From `models` in cli-settings.json; only the openai provider has a field for it. */
+		contextWindow?: number
 	},
 ): ProviderSettings {
 	const settings = getProviderSettings(
@@ -152,6 +154,17 @@ export function toProviderSettings(
 	} else if (config.reasoningEffort && config.reasoningEffort !== "unspecified") {
 		settings.enableReasoningEffort = true
 		settings.reasoningEffort = config.reasoningEffort
+	}
+
+	// The openai provider sizes its model from openAiCustomModelInfo, else from
+	// openAiModelInfoSaneDefaults (128,000 tokens): its model list has ids
+	// only. The field is always written, because the startup settings are
+	// merged into the extension's persisted state, where a size from an earlier
+	// run would otherwise outlive the entry that set it.
+	if (config.provider === "openai") {
+		settings.openAiCustomModelInfo = config.contextWindow
+			? { ...openAiModelInfoSaneDefaults, contextWindow: config.contextWindow }
+			: null
 	}
 
 	return settings
