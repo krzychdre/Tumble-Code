@@ -32,8 +32,9 @@ _CANDIDATES = ("google-chrome", "chromium", "chromium-browser", "google-chrome-s
 # declares the number of checks it is expected to run at minimum.
 _MIN_CHECKS = {
     # The join acknowledgement against the header: registration-only record,
-    # another task's snapshot, a snapshot without figures, this task's snapshot.
-    "live_checks.html": 21,
+    # another task's snapshot, a snapshot without figures, this task's snapshot;
+    # and the run row of the spend table following this task's figures.
+    "live_checks.html": 28,
     "render_checks.html": 26,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,

@@ -56,15 +56,39 @@
   {% if share_url and not live %}<div class="share-note">Shared link · read-only</div>{% endif %}
 </div>
 
-{% if live %}
-<div class="live-header">
-  <span id="live-status" class="live-status">Connecting…</span>
-  <span id="live-activity" class="live-activity" style="display:none"></span>
-  <span class="live-stat">mode <b id="hdr-mode">—</b></span>
-  <span class="live-stat">in <b id="hdr-tokens-in">—</b> / out <b id="hdr-tokens-out">—</b></span>
-  <span class="live-stat">context <b id="hdr-context">—</b></span>
-  <span class="live-stat" id="hdr-cost-wrap">cost <b id="hdr-cost">—</b></span>
-</div>
+{% if live or spend_table %}
+<section class="task-stats panel" aria-label="What this task spent">
+  {% if live %}
+  <div class="live-line">
+    <span id="live-status" class="live-status">Connecting…</span>
+    <span id="live-activity" class="live-activity" style="display:none"></span>
+    <span class="live-stat">mode <b id="hdr-mode">&#8212;</b></span>
+    <span class="live-stat">context <b id="hdr-context">&#8212;</b></span>
+  </div>
+  {% endif %}
+  {% if spend_table %}
+  {# The only place the page totals anything. The run first, as the task list
+     shows it, then the parts it is made of; the quality panel and the subtask
+     rows below are each one of those parts. live.js keeps "this task" current
+     and the run with it (routers/web.py, _spend_summary). #}
+  <table class="spend-table">
+    <thead>
+      <tr><td></td><th scope="col">tokens</th><th scope="col" class="spend-io">in</th><th scope="col" class="spend-io">out</th><th scope="col">cost</th></tr>
+    </thead>
+    <tbody>
+      {% for r in spend_table.rows %}
+      <tr class="spend-{{ r.key }}">
+        <th scope="row">{% if r.key == 'run' %}<span class="rollup-mark">Σ</span>{{ r.label }}{% elif r.key == 'subtasks' %}<a href="#subtasks">{{ r.label }}</a>{% else %}{{ r.label }}{% endif %}</th>
+        <td id="hdr-{{ r.key }}-tokens">{{ r.tokens }}</td>
+        <td id="hdr-{{ r.key }}-in" class="spend-io">{{ r.tokens_in }}</td>
+        <td id="hdr-{{ r.key }}-out" class="spend-io">{{ r.tokens_out }}</td>
+        <td id="hdr-{{ r.key }}-cost" class="spend-cost">{{ r.cost }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
 {% endif %}
 
 {% if quality %}
@@ -73,6 +97,11 @@
     <span class="grade grade-{{ quality.grade }}">{{ quality.grade_label }}</span>
     <span class="quality-why">{{ quality.reasons | join(' · ') }}</span>
   </div>
+  {% if subtask_count %}
+  {# Its cost per turn is this task's cost over this task's turns, which the
+     run total above would otherwise seem to contradict. #}
+  <p class="quality-scope">This task's own conversation only; each subtask below carries its own grade.</p>
+  {% endif %}
   <div class="quality-signals">
     {% for s in quality.signals %}
     <div class="signal{{ ' is-zero' if not s.value else ' tone-' ~ s.tone }}">
@@ -90,12 +119,9 @@
 {% endif %}
 
 {% if subtasks %}
-<section class="subtasks panel">
-  <h2 class="chart-title">Subtasks <span class="count-pill">{{ subtask_count }}</span>
-    {# What the whole run cost, which neither the page's own figures (this task
-       only) nor any single row below adds up to. #}
-    {% if run %}<span class="run-total"><span class="rollup-mark">Σ</span>run <b>{{ run.cost }}</b> · {{ run.tokens }} tok <span class="run-split">= this task {{ run.own_cost }} + subtasks {{ run.subtasks_cost }}</span></span>{% endif %}
-  </h2>
+<section class="subtasks panel" id="subtasks">
+  {# No total here: the rows add up to the "subtasks" line at the top. #}
+  <h2 class="chart-title">Subtasks <span class="count-pill">{{ subtask_count }}</span></h2>
   {# The whole tree, nested: a subtask that delegated further shows its own
      subtasks one level in, rather than being a dead end until opened. #}
   <ul class="subtask-list">
