@@ -1,8 +1,9 @@
 # Cloud web: open the panel from other machines, behind a host/network allowlist
 
 **Status:** done on `feat/cloud-web-remote-access` (stacked on `feat/cloud-web-subtask-tree`), committed, not pushed.
-Second of three stacked branches. **Not yet live:** needs the api image rebuilt, the Authentik containers
-recreated with the new variable, and the blueprint applied (commands below).
+Second of three stacked branches. **Live since 2026-09-23** on the local stack, built from the top branch
+(`feat/cloud-web-run-cost-rollup`), with `WEB_PUBLIC_URL=http://192.168.50.141:8085` and
+`WEB_ALLOWED_NETWORKS=192.168.50.0/24` in `.env` (see "Deployed" below).
 **Related plans:** `2026-06-22_full-stack-docker-compose.md` (front/back-channel split, bundled Authentik and
 its blueprint), `2026-06-19_finish-self-hosted-auth-flow.md` (the OAuth flow itself).
 **Touched:** `self-hosted-cloudapi/config/settings.py`, `config/auth.py`, new `src/auth/network_access.py`,
@@ -114,7 +115,7 @@ this host), 10.9.9.0/24`.
   the LAN address (`302` into its login flow for the registered localhost callback) and rejects the
   public callback with "Redirect URI Error", which is exactly the step still to be applied.
 
-## To make it live
+## Deployed (2026-09-23)
 
 In `self-hosted-cloudapi/.env`:
 
@@ -123,12 +124,31 @@ WEB_PUBLIC_URL=http://192.168.50.141:8085
 WEB_ALLOWED_NETWORKS=192.168.50.0/24
 ```
 
-then
+then, from a checkout of the top branch,
 
 ```bash
 docker compose up -d --build
 docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
 ```
+
+Checked afterwards on the live stack:
+
+- api startup log: `Web panel open to: loopback, 192.168.0.1 (container gateway, i.e. this host),
+192.168.50.0/24` and `Web panel public URL: http://192.168.50.141:8085`; `DB state: MANAGED`, no
+  migration pending (no branch in the stack adds one).
+- The provider's `redirect_uris`: the localhost and the `192.168.50.141:8085` callback, both strict.
+- `/app/login` via localhost goes to `localhost:9000` with the localhost callback; via `192.168.50.141`
+  to `192.168.50.141:9000` with the public callback, and Authentik now answers that with `302` into its
+  login flow (it was "Redirect URI Error" before the blueprint was applied); via the wifi address
+  `192.168.50.134` it is first moved to the public URL.
+- A request from another container on this host (default bridge, `172.17.0.0/16`) arrived as
+  `192.168.0.1` and was admitted as this host: connections that start on the host pass through
+  docker-proxy. The 403 itself was verified on the throwaway container (allowlist `10.9.9.0/24`, the LAN
+  address refused); a genuinely remote client cannot be produced from this machine.
+
+**Keep the checkout off `main` while this runs.** `./authentik/blueprints` is mounted into Authentik from
+the working tree and a changed file is re-applied, so checking out a revision without the `WEB_PUBLIC_URL`
+entry drops the public callback until the stack is back on a branch that has it.
 
 ## Notes / caveats
 

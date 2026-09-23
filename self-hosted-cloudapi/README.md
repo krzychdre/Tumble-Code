@@ -105,6 +105,10 @@ docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
   (it arrives from the compose network's gateway) are always allowed. Public
   share links (`/shared/<id>`) stay public; the extension API is not affected.
 - The startup log prints `Web panel open to: …` with the effective list.
+- `./authentik/blueprints` is mounted into Authentik straight from the
+  checkout, and Authentik re-applies the blueprint whenever the file changes.
+  Checking out a revision without the `WEB_PUBLIC_URL` entry while the stack
+  runs makes Authentik drop the public callback again.
 - The check uses the real client address, which Docker's default port
   publishing preserves. With rootless Docker every client appears as the
   gateway, and behind a reverse proxy uvicorn needs `FORWARDED_ALLOW_IPS` to
