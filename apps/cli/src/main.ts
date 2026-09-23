@@ -67,6 +67,10 @@ program
 		"Consecutive error/repetition limit before guidance prompt (0 disables the limit)",
 		(value) => Number.parseInt(value, 10),
 	)
+	.option(
+		"--command-execution-timeout <seconds>",
+		`Seconds a shell command may run before it is stopped (0 means no limit; defaults to the settings value, then ${DEFAULT_FLAGS.commandExecutionTimeout})`,
+	)
 	.option("--exit-on-error", "Exit on API request errors instead of retrying", false)
 	.option("--ephemeral", "Run without persisting state (uses temporary storage)", false)
 	.option("--oneshot", "Exit upon task completion", false)

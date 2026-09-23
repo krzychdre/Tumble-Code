@@ -724,6 +724,23 @@ describe("ExtensionHost", () => {
 			expect(initialSettings.consecutiveMistakeLimit).toBe(8)
 		})
 
+		it("should use the default commandExecutionTimeout when not provided", () => {
+			const host = createTestHost()
+
+			const initialSettings = getPrivate<Record<string, unknown>>(host, "initialSettings")
+			expect(initialSettings.commandExecutionTimeout).toBe(DEFAULT_FLAGS.commandExecutionTimeout)
+		})
+
+		it("should set commandExecutionTimeout from options, including 0 for no limit", () => {
+			const longHost = createTestHost({ commandExecutionTimeout: 1800 })
+			const unlimitedHost = createTestHost({ commandExecutionTimeout: 0 })
+
+			expect(getPrivate<Record<string, unknown>>(longHost, "initialSettings").commandExecutionTimeout).toBe(1800)
+			expect(getPrivate<Record<string, unknown>>(unlimitedHost, "initialSettings").commandExecutionTimeout).toBe(
+				0,
+			)
+		})
+
 		it("should enable auto-approval in non-interactive mode", () => {
 			const host = createTestHost({ nonInteractive: true })
 

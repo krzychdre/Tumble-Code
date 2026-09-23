@@ -12,6 +12,7 @@ import {
 	isAcceptedProvider,
 	supportedProviders,
 	DEFAULT_FLAGS,
+	MAX_COMMAND_EXECUTION_TIMEOUT_SECONDS,
 	REASONING_EFFORTS,
 	OutputFormat,
 } from "@/types/index.js"
@@ -66,6 +67,22 @@ async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: str
 
 function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
+}
+
+/**
+ * A command execution timeout as whole seconds, or undefined when the value is
+ * not one. Strict on purpose: the extension turns "10m" into NaN and "" into
+ * 0, and both silently remove the limit.
+ */
+function parseCommandExecutionTimeout(value: unknown): number | undefined {
+	const seconds = typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value) : value
+
+	return typeof seconds === "number" &&
+		Number.isInteger(seconds) &&
+		seconds >= 0 &&
+		seconds <= MAX_COMMAND_EXECUTION_TIMEOUT_SECONDS
+		? seconds
+		: undefined
 }
 
 /** The key to hand the extension: only providers that take one get it. */
@@ -283,6 +300,21 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
+	const rawCommandExecutionTimeout =
+		flagOptions.commandExecutionTimeout ?? settings.commandExecutionTimeout ?? DEFAULT_FLAGS.commandExecutionTimeout
+	const effectiveCommandExecutionTimeout = parseCommandExecutionTimeout(rawCommandExecutionTimeout)
+
+	if (effectiveCommandExecutionTimeout === undefined) {
+		const source =
+			flagOptions.commandExecutionTimeout !== undefined
+				? "--command-execution-timeout"
+				: `commandExecutionTimeout in ${getSettingsPath()}`
+		console.error(
+			`[CLI] Error: Invalid command execution timeout: ${JSON.stringify(rawCommandExecutionTimeout)}; ${source} must be a whole number of seconds from 0 (no limit) to ${MAX_COMMAND_EXECUTION_TIMEOUT_SECONDS}`,
+		)
+		process.exit(1)
+	}
+
 	let terminalShell: string | undefined
 	if (flagOptions.terminalShell !== undefined) {
 		const validatedTerminalShell = await validateTerminalShellPath(flagOptions.terminalShell)
@@ -300,6 +332,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		mode: effectiveMode,
 		reasoningEffort: effectiveReasoningEffort === "unspecified" ? undefined : effectiveReasoningEffort,
 		consecutiveMistakeLimit: effectiveConsecutiveMistakeLimit,
+		commandExecutionTimeout: effectiveCommandExecutionTimeout,
 		user: null,
 		provider: effectiveProvider,
 		model: effectiveModel,
