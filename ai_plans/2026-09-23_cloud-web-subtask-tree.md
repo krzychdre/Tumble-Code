@@ -84,6 +84,23 @@ Visual check (the method from `2026-07-30_cloud-web-gui-overhaul.md`): throwaway
 clone of the live DB, session cookie minted locally, page captured with headless Chrome; the tree with
 two runs unfolded and a depth-2 case both render with the figure columns aligned.
 
+## Follow-up fix: a subtask on the same page as its parent
+
+Found while building the cost rollup on top of this branch. The first version of `subtrees()` seeded
+its seen-set with the requested ids, to keep a cycle from walking back into a root. The flat view asks
+for a page of every kind of task at once, so a subtask listed on the same page as its parent was
+already "seen" and never attached: the parent's `data-child-count` read 0 and its child-count pill was
+missing (on `main` the flat view counted with a separate query and was right, so this was a regression
+of the first commit). Rows with the parent and child on one page are the normal case in the flat view,
+since a subtask is written in the same minutes as its parent.
+
+Now the walk starts with nothing placed and, before attaching a child, checks that the child is not
+the new parent itself or one of its ancestors in the tree built so far (`_is_at_or_above`). Only that
+edge could close a loop, so it is the one refused. `test_run_view_nests_subtasks_under_their_run` now
+asserts the flat view's counts (it failed before the fix), and the cycle test covers both ends of a
+loop requested at once plus a task that is its own parent. **Verified by mutation:** without the
+ancestor check the cycle test fails.
+
 ## Notes
 
 - Fold state is not remembered across page loads; a run is folded again after navigating back unless

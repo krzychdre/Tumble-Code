@@ -130,14 +130,16 @@ async def subtrees(
     live corpus). Walked level by level rather than with a recursive CTE so the
     same code runs on SQLite (the test database) and Postgres.
 
-    Each task is placed under exactly one parent, and never under a task beneath
-    it: the seen-set starts with the requested ids, so a cycle in the
-    client-supplied links ends the walk instead of producing a tree that
-    contains itself. ``max_depth`` bounds it for the same reason.
+    The requested ids may include each other's subtasks (the flat view asks for
+    a page of every kind of task at once), and such a task still belongs under
+    its parent. Each task is placed under exactly one parent, and never under a
+    task beneath it: a cycle in the client-supplied links is cut at the edge
+    that would close it, rather than producing a tree that contains itself.
+    ``max_depth`` bounds the walk for the same reason.
     """
-    seen = {t for t in task_ids if t}
     tree: dict[str, list[Task]] = {}
-    frontier = list(seen)
+    parent_of: dict[str, str] = {}
+    frontier = list(dict.fromkeys(t for t in task_ids if t))
     for _ in range(max_depth):
         if not frontier:
             break
@@ -148,12 +150,25 @@ async def subtrees(
         )
         frontier = []
         for child in result.scalars().all():
-            if child.id in seen:
+            if child.id in parent_of or _is_at_or_above(parent_of, child.parent_task_id, child.id):
                 continue
-            seen.add(child.id)
+            parent_of[child.id] = child.parent_task_id
             tree.setdefault(child.parent_task_id, []).append(child)
             frontier.append(child.id)
     return tree
+
+
+def _is_at_or_above(parent_of: dict[str, str], task_id: Optional[str], candidate: str) -> bool:
+    """Is ``candidate`` ``task_id`` itself or one of its ancestors so far?
+
+    Terminates because ``parent_of`` never gains the edge that would close a
+    loop: that is exactly the edge this check refuses.
+    """
+    while task_id is not None:
+        if task_id == candidate:
+            return True
+        task_id = parent_of.get(task_id)
+    return False
 
 
 def subtree_size(tree: dict[str, list[Task]], task_id: str) -> int:

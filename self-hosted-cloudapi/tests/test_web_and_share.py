@@ -2155,6 +2155,10 @@ async def test_run_view_nests_subtasks_under_their_run(client, db_session, sessi
     assert 'class="task-children"' not in flat
     assert 'class="tree-toggle"' not in flat
     assert 'class="subtask-mark"' in flat
+    # Every task is on this one page, subtasks included, and each still counts
+    # the subtasks beneath it: being listed does not detach a task from its parent.
+    assert 'value="run-a"\n               data-child-count="2"' in flat
+    assert 'value="sub-a"\n               data-child-count="1"' in flat
 
 
 async def test_subtrees_groups_by_parent_oldest_first_within_the_users_tasks(
@@ -2202,17 +2206,32 @@ async def test_subtree_walk_survives_a_cycle_on_the_page(client, db_session, ses
         )
         await s.commit()
 
+    await _seed_tree(session_factory, ("self-loop", None, "Its own parent"))
     async with session_factory() as s:
-        tree = await subtrees(s, ["loop-a"], "user_test")
-    assert {parent: [t.id for t in kids] for parent, kids in tree.items()} == {"loop-a": ["loop-b"]}
+        await s.execute(
+            Task.__table__.update().where(Task.id == "self-loop").values(parent_task_id="self-loop")
+        )
+        await s.commit()
+
+    def edges(tree):
+        return {parent: [t.id for t in kids] for parent, kids in tree.items()}
+
+    async with session_factory() as s:
+        assert edges(await subtrees(s, ["loop-a"], "user_test")) == {"loop-a": ["loop-b"]}
+        # Both ends asked for at once, as the flat view does: the loop is cut
+        # at the edge that would close it, so exactly one of the two remains.
+        both = edges(await subtrees(s, ["loop-a", "loop-b", "self-loop"], "user_test"))
+        assert both in ({"loop-a": ["loop-b"]}, {"loop-b": ["loop-a"]})
 
     _override_web_user(client.app)
     try:
         resp = client.get("/app/tasks/loop-a")
+        flat = client.get("/app?scope=all")
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
     assert resp.status_code == 200
     assert resp.text.count('href="/app/tasks/loop-b"') == 2  # breadcrumb + panel
+    assert flat.status_code == 200
 
 
 async def test_the_tree_costs_a_query_per_level_not_per_run(
