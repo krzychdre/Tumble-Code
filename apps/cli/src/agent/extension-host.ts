@@ -31,6 +31,7 @@ import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import type { User } from "@/lib/sdk/index.js"
 import { toProviderSettings } from "@/lib/utils/provider-config.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
+import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
 import type { WaitingForInputEvent, TaskCompletedEvent } from "./events.js"
@@ -158,6 +159,9 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	// Environment variables this host sets for the extension, with the values
 	// they had before, restored on dispose.
 	private previousEnv = new Map<string, string | undefined>()
+
+	// MCP server failures already printed (see takeNewMcpFailures).
+	private reportedMcpFailures = new Set<string>()
 
 	// ==========================================================================
 	// Managers - These do all the heavy lifting
@@ -441,10 +445,33 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		}
 
 		// Set up message listener - forward all messages to client.
-		this.messageListener = (message: ExtensionMessage) => this.client.handleMessage(message)
+		this.messageListener = (message: ExtensionMessage) => {
+			this.reportMcpFailures(message)
+			this.client.handleMessage(message)
+		}
 		this.on("extensionWebviewMessage", this.messageListener)
 
 		await pWaitFor(() => this.isReady, { interval: 100, timeout: 10_000 })
+	}
+
+	/**
+	 * Print mode: tell the user on stderr when an MCP server fails to start,
+	 * which they otherwise never learn. The output manager is disabled in the
+	 * TUI (which shows its own notice) and for JSON output.
+	 */
+	private reportMcpFailures(message: ExtensionMessage): void {
+		const servers = mcpServersFromMessage(message)
+
+		if (!servers) {
+			return
+		}
+
+		for (const server of takeNewMcpFailures(servers, this.reportedMcpFailures)) {
+			this.outputManager.outputError(
+				"[mcp]",
+				`server "${server.name}" (${server.source ?? "global"}) failed to start: ${lastMcpErrorLine(server)}`,
+			)
+		}
 	}
 
 	public registerWebviewProvider(_viewId: string, _provider: WebviewViewProvider): void {}

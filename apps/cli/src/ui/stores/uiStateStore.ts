@@ -23,6 +23,9 @@ interface UIState {
 	// TODO viewer overlay
 	showTodoViewer: boolean
 
+	// MCP server panel overlay (/mcp)
+	showMcpPanel: boolean
+
 	// Verbose transcript (ctrl+o): tool previews and thinking print in full.
 	// Only ever consumed by the `<Static>` region; the dynamic tail keeps its
 	// clamps in both modes (plan: 2026-09-21 answer lost in dynamic tail, I1).
@@ -59,6 +62,9 @@ interface UIActions {
 	// TODO viewer actions
 	setShowTodoViewer: (show: boolean) => void
 
+	// MCP panel actions
+	setShowMcpPanel: (show: boolean) => void
+
 	// Verbose transcript actions
 	toggleVerboseTranscript: () => void
 
@@ -81,6 +87,7 @@ const initialState: UIState = {
 	isTransitioningToCustomInput: false,
 	manualFocus: null,
 	showTodoViewer: false,
+	showMcpPanel: false,
 	verboseTranscript: false,
 	transcriptReprintEpoch: 0,
 	transcriptClearEpoch: 0,
@@ -104,6 +111,7 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 	setIsTransitioningToCustomInput: (transitioning) => set({ isTransitioningToCustomInput: transitioning }),
 	setManualFocus: (focus) => set({ manualFocus: focus }),
 	setShowTodoViewer: (show) => set({ showTodoViewer: show }),
+	setShowMcpPanel: (show) => set({ showMcpPanel: show }),
 	toggleVerboseTranscript: () =>
 		set((state) => ({
 			verboseTranscript: !state.verboseTranscript,

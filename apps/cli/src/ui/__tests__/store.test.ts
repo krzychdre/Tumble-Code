@@ -183,6 +183,21 @@ describe("useCLIStore", () => {
 		})
 	})
 
+	describe("mcpServers", () => {
+		it("survives both resets: the servers belong to the process, not to a task", () => {
+			const servers = [{ name: "s", config: "{}", status: "connected" as const }]
+			useCLIStore.getState().setMcpServers(servers)
+
+			useCLIStore.getState().reset()
+			expect(useCLIStore.getState().mcpServers).toBe(servers)
+
+			useCLIStore.getState().resetForTaskSwitch()
+			expect(useCLIStore.getState().mcpServers).toBe(servers)
+
+			useCLIStore.getState().setMcpServers([])
+		})
+	})
+
 	describe("task resumption flow", () => {
 		it("should support the full task resumption workflow", () => {
 			const store = useCLIStore.getState

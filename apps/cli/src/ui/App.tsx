@@ -1,5 +1,9 @@
+import path from "path"
+
 import { Box, Text, useApp, useInput } from "ink"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+
+import type { McpServer } from "@roo-code/types"
 
 import { setInputBoxHandler } from "@roo-code/vscode-shim"
 
@@ -10,6 +14,8 @@ import { getPermissionMode, type PermissionMode } from "@/lib/utils/permissions.
 import { arePathsEqual } from "@/lib/utils/path.js"
 import { getContextWindow } from "@/lib/utils/context-window.js"
 import { summarizeProviderSettings } from "@/lib/utils/provider-config.js"
+import { takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
+import { getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
 import * as theme from "./theme.js"
 import { figures } from "./figures.js"
@@ -42,6 +48,7 @@ import TodoDisplay from "./components/TodoDisplay.js"
 import ApprovalDialog from "./components/dialogs/ApprovalDialog.js"
 import FollowupDialog from "./components/dialogs/FollowupDialog.js"
 import SecretPromptDialog from "./components/dialogs/SecretPromptDialog.js"
+import McpPanel from "./components/McpPanel.js"
 import InputArea, { type AutocompleteInputHandle } from "./components/input/InputArea.js"
 import {
 	type AutocompleteTrigger,
@@ -107,6 +114,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		routerModels,
 		apiConfiguration,
 		currentTodos,
+		mcpServers,
 	} = useCLIStore()
 
 	// Access UI state from the UI store
@@ -116,6 +124,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		showCustomInput,
 		isTransitioningToCustomInput,
 		showTodoViewer,
+		showMcpPanel,
 		pickerState,
 		setIsTransitioningToCustomInput,
 		verboseTranscript,
@@ -168,7 +177,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const { rows: terminalRows, columns: terminalColumns } = useTerminalSize()
 
 	// Toast notifications for ephemeral messages (e.g., mode changes).
-	const { currentToast, showInfo } = useToast()
+	const { currentToast, showInfo, showWarning } = useToast()
 
 	const {
 		handleExtensionMessage,
@@ -405,7 +414,48 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	// Input is owned by whichever dialog is up; the picker renders on top of
 	// the input area only when the input itself is active.
-	const inputActive = !showApprovalDialog && !showFollowupDialog && !showTodoViewer && !secretPrompt
+	const inputActive = !showApprovalDialog && !showFollowupDialog && !showTodoViewer && !showMcpPanel && !secretPrompt
+
+	// --- MCP servers (/mcp panel, failure notice) ------------------------------
+
+	const mcpGlobalConfigPath = hostOptions.mcpSettingsPath ?? getDefaultMcpSettingsPath()
+	const mcpProjectConfigPath = path.join(workspacePath, ".roo", "mcp.json")
+
+	// A server that fails to start used to fail silently: tell the user once
+	// per failure and point at the panel, which holds the error.
+	const reportedMcpFailures = useRef(new Set<string>())
+	useEffect(() => {
+		for (const server of takeNewMcpFailures(mcpServers, reportedMcpFailures.current)) {
+			showWarning(`MCP server "${server.name}" failed to start ${figures.dot} /mcp for details`, 6000)
+		}
+	}, [mcpServers, showWarning])
+
+	const handleMcpRestart = useCallback(
+		(server: McpServer) => {
+			sendToExtension?.({ type: "restartMcpServer", text: server.name, source: server.source ?? "global" })
+			showInfo(`Restarting ${server.name}${figures.ellipsis}`, 2000)
+		},
+		[sendToExtension, showInfo],
+	)
+
+	const handleMcpToggleDisabled = useCallback(
+		(server: McpServer) => {
+			const disabled = !server.disabled
+			sendToExtension?.({
+				type: "toggleMcpServer",
+				serverName: server.name,
+				source: server.source ?? "global",
+				disabled,
+			})
+			showInfo(`${disabled ? "Disabling" : "Enabling"} ${server.name}${figures.ellipsis}`, 2000)
+		},
+		[sendToExtension, showInfo],
+	)
+
+	const handleMcpReload = useCallback(() => {
+		sendToExtension?.({ type: "refreshAllMcpServers" })
+		showInfo(`Reloading MCP config files${figures.ellipsis}`, 2000)
+	}, [sendToExtension, showInfo])
 
 	// `showFollowupSuggestions` is reused by the arrow-key countdown-cancel
 	// `useInput` below.
@@ -589,6 +639,19 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						<TodoDisplay todos={currentTodos} showProgress={true} title="TODO List" />
 						<Text dimColor>{figures.pointer} Ctrl+T to close</Text>
 					</Box>
+				)}
+
+				{/* MCP servers (/mcp); a dialog that comes up meanwhile takes the keys */}
+				{showMcpPanel && (
+					<McpPanel
+						servers={mcpServers}
+						globalConfigPath={mcpGlobalConfigPath}
+						projectConfigPath={mcpProjectConfigPath}
+						onRestart={handleMcpRestart}
+						onToggleDisabled={handleMcpToggleDisabled}
+						onReload={handleMcpReload}
+						isActive={!showApprovalDialog && !showFollowupDialog && !secretPrompt}
+					/>
 				)}
 
 				{/* A running command is waiting for a password or a passphrase */}

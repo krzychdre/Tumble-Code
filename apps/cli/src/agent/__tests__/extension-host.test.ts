@@ -348,6 +348,46 @@ describe("ExtensionHost", () => {
 		})
 	})
 
+	describe("MCP failure notice (print mode)", () => {
+		const failed = {
+			name: "broken",
+			config: "{}",
+			status: "disconnected",
+			source: "project",
+			error: "spawn x ENOENT",
+		}
+
+		it("prints a failed server once on stderr", () => {
+			const host = createTestHost()
+			const outputError = vi.spyOn(getPrivate<{ outputError: () => void }>(host, "outputManager"), "outputError")
+
+			callPrivate(host, "reportMcpFailures", { type: "mcpServers", mcpServers: [failed] })
+			callPrivate(host, "reportMcpFailures", { type: "state", state: { mcpServers: [failed] } })
+
+			expect(outputError).toHaveBeenCalledTimes(1)
+			expect(outputError).toHaveBeenCalledWith(
+				"[mcp]",
+				'server "broken" (project) failed to start: spawn x ENOENT',
+			)
+		})
+
+		it("ignores messages without a server list and servers that are fine", () => {
+			const host = createTestHost()
+			const outputError = vi.spyOn(getPrivate<{ outputError: () => void }>(host, "outputManager"), "outputError")
+
+			callPrivate(host, "reportMcpFailures", { type: "state", state: { storageErrorMessage: "x" } })
+			callPrivate(host, "reportMcpFailures", {
+				type: "mcpServers",
+				mcpServers: [
+					{ ...failed, status: "connected" },
+					{ ...failed, name: "off", disabled: true },
+				],
+			})
+
+			expect(outputError).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("public agent state API", () => {
 		it("should return agent state from getAgentState()", () => {
 			const host = createTestHost()

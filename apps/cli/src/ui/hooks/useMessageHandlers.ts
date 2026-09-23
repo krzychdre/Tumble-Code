@@ -6,6 +6,7 @@ import type { TUIMessage, ToolData } from "../types.js"
 import type { FileResult, SlashCommandResult, ModeResult } from "../components/autocomplete/index.js"
 import { useCLIStore } from "../store.js"
 import { extractToolData, formatToolOutput, formatToolAskMessage, parseTodosFromToolInfo } from "../utils/tools.js"
+import { mcpServersFromMessage } from "../../lib/utils/mcp-status.js"
 import { parseMcpAsk, type McpAskDetails } from "../../lib/utils/mcp-ask.js"
 
 export interface UseMessageHandlersOptions {
@@ -571,6 +572,12 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	 */
 	const handleExtensionMessage = useCallback(
 		(msg: ExtensionMessage) => {
+			const mcpServers = mcpServersFromMessage(msg)
+
+			if (mcpServers) {
+				useCLIStore.getState().setMcpServers(mcpServers)
+			}
+
 			if (msg.type === "state") {
 				const state = msg.state
 

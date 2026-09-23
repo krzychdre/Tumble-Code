@@ -101,6 +101,23 @@ describe("useMessageHandlers", () => {
 		})
 	})
 
+	it("keeps the MCP server list from mcpServers and full state pushes, not from partial ones", () => {
+		const servers = [{ name: "s", config: "{}", status: "connected" }]
+
+		api.handleExtensionMessage({ type: "mcpServers", mcpServers: servers } as never)
+		expect(useCLIStore.getState().mcpServers).toBe(servers)
+
+		// The core pushes single-field state updates (storageErrorMessage).
+		api.handleExtensionMessage({ type: "state", state: { storageErrorMessage: "x" } } as never)
+		expect(useCLIStore.getState().mcpServers).toBe(servers)
+
+		const reconnected = [{ ...servers[0], status: "disconnected", error: "gone" }]
+		api.handleExtensionMessage({ type: "state", state: { mcpServers: reconnected } } as never)
+		expect(useCLIStore.getState().mcpServers).toBe(reconnected)
+
+		useCLIStore.getState().setMcpServers([])
+	})
+
 	it("preserves structured tool details for interactive approval dialogs", () => {
 		const payload = JSON.stringify({
 			tool: "readFile",

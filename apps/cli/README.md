@@ -180,16 +180,16 @@ The theme is the Tumble "Hardcore" palette mapped to Claude Code's semantic key 
 
 ### Keyboard shortcuts
 
-| Key            | Action                                                    |
-| -------------- | --------------------------------------------------------- |
-| `Ctrl+C` twice | Exit the CLI                                              |
-| `Ctrl+M`       | Cycle modes (code → architect → ask → debug → …)          |
-| `Ctrl+T`       | Toggle the TODO viewer                                    |
-| `Esc`          | Cancel a running task, or close the TODO viewer / dialogs |
-| `y` / `n`      | Approve / reject in approval dialogs (accelerators)       |
-| `↑` / `↓`      | Navigate autocomplete picker and dialog lists             |
-| `1`–`9`        | Jump-select a numbered option in dialogs                  |
-| `Enter`        | Confirm the focused option                                |
+| Key            | Action                                                                |
+| -------------- | --------------------------------------------------------------------- |
+| `Ctrl+C` twice | Exit the CLI                                                          |
+| `Ctrl+M`       | Cycle modes (code → architect → ask → debug → …)                      |
+| `Ctrl+T`       | Toggle the TODO viewer                                                |
+| `Esc`          | Cancel a running task, or close the TODO viewer / MCP panel / dialogs |
+| `y` / `n`      | Approve / reject in approval dialogs (accelerators)                   |
+| `↑` / `↓`      | Navigate autocomplete picker and dialog lists                         |
+| `1`–`9`        | Jump-select a numbered option in dialogs                              |
+| `Enter`        | Confirm the focused option                                            |
 
 ### Approval dialogs
 
@@ -410,6 +410,39 @@ relative path is taken from `~/.roo`. Both then read and write the same file,
 so a server disabled in the VS Code MCP view is disabled in the CLI too. The
 per-tool "always allow" lists in that file do not matter to the CLI: `allow`
 mode approves every MCP tool and `--require-approval` asks for each one.
+
+### Managing servers: `/mcp`
+
+`/mcp` opens a panel with every MCP server of the session, project servers
+first:
+
+```
+╭──────────────────────────────────────────────────────────────╮
+│ MCP servers                                                  │
+│   ● projsrv project connected · 9 tools                      │
+│ ❯ ● broken  project failed                                   │
+│   ● globsrv global  connected · 9 tools                      │
+│   ● offsrv  global  disabled                                 │
+│                                                              │
+│ broken · project · /work/app/.roo/mcp.json                   │
+│ Error: spawn /nonexistent/bin/xyz ENOENT                     │
+│                                                              │
+│ ↑↓ select · r restart · space enable/disable · R reload …    │
+╰──────────────────────────────────────────────────────────────╯
+```
+
+| Key       | Action                                                             |
+| --------- | ------------------------------------------------------------------ |
+| `↑` / `↓` | Select a server; its config file and its tools or error show below |
+| `r`       | Restart the selected server                                        |
+| `space`   | Enable or disable it (written to its config file)                  |
+| `R`       | Reload both config files, after you edit them                      |
+| `Esc`     | Close the panel (a running task keeps running)                     |
+
+The CLI does not watch the config files, so an edit made during a session
+takes effect after `R` in the panel or a restart of the CLI. A server that
+fails to start is reported once: a notice in the terminal interface, and a
+`[mcp] server "…" failed to start: …` line on stderr in print mode.
 
 ## Environment Variables
 

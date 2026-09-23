@@ -152,6 +152,17 @@ describe("useTaskSubmit conversation commands", () => {
 		expect(runTask).not.toHaveBeenCalled()
 	}
 
+	describe("/mcp", () => {
+		it("opens the MCP panel without touching the conversation, the extension or the model", async () => {
+			await api.handleSubmit("/mcp")
+
+			expect(useUIStateStore.getState().showMcpPanel).toBe(true)
+			expect(useCLIStore.getState().messages).toHaveLength(1)
+			expect(sendToExtension).not.toHaveBeenCalled()
+			expect(runTask).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("/clear", () => {
 		it("drops the conversation and re-requests what the reset wiped", async () => {
 			await api.handleSubmit("/clear")

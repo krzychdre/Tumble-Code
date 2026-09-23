@@ -32,7 +32,7 @@ export interface UseGlobalInputOptions {
  * - Ctrl+T: Toggle TODO list viewer
  * - Ctrl+O: Toggle the verbose transcript (clears the screen and prints the
  *   promoted transcript again at the new verbosity)
- * - Escape: Cancel task (when loading) or close TODO viewer
+ * - Escape: Cancel task (when loading), or close the TODO viewer or the MCP panel
  *
  * Note: the scroll/input focus toggle (Tab) was removed with the ScrollArea
  * component — the transcript now flows into native scrollback via `<Static>`,
@@ -54,6 +54,8 @@ export function useGlobalInput({
 	const {
 		showTodoViewer,
 		setShowTodoViewer,
+		showMcpPanel,
+		setShowMcpPanel,
 		showExitHint: _showExitHint,
 		setShowExitHint,
 		pendingExit,
@@ -163,6 +165,13 @@ export function useGlobalInput({
 		// Escape key to close TODO viewer
 		if (key.escape && showTodoViewer) {
 			setShowTodoViewer(false)
+			return
+		}
+
+		// Escape closes the MCP panel, and only that: with a task running below
+		// it, the same key must not also cancel the task.
+		if (key.escape && showMcpPanel) {
+			setShowMcpPanel(false)
 			return
 		}
 

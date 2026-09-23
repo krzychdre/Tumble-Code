@@ -30,6 +30,12 @@ describe("globalCommands", () => {
 			expect(permissionsCommand?.argumentHint).toBe("<ask|allow>")
 		})
 
+		it("should contain the /mcp command", () => {
+			const mcpCommand = GLOBAL_COMMANDS.find((cmd) => cmd.name === "mcp")
+			expect(mcpCommand).toBeDefined()
+			expect(mcpCommand?.action).toBe("openMcpPanel")
+		})
+
 		it("should have valid structure for all commands", () => {
 			for (const cmd of GLOBAL_COMMANDS) {
 				expect(cmd.name).toBeTruthy()
@@ -105,7 +111,12 @@ describe("globalCommands", () => {
 	describe("type safety", () => {
 		it("should have valid GlobalCommandAction types", () => {
 			// This test ensures the type is properly constrained
-			const validActions: GlobalCommandAction[] = ["clearTask", "clearConversation", "setPermissions"]
+			const validActions: GlobalCommandAction[] = [
+				"clearTask",
+				"clearConversation",
+				"setPermissions",
+				"openMcpPanel",
+			]
 
 			for (const cmd of GLOBAL_COMMANDS) {
 				expect(validActions).toContain(cmd.action)

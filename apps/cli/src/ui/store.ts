@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-import type { TokenUsage, ProviderSettings, TodoItem } from "@roo-code/types"
+import type { TokenUsage, ProviderSettings, TodoItem, McpServer } from "@roo-code/types"
 
 import type { TUIMessage, PendingAsk, TaskHistoryItem } from "./types.js"
 import type { FileResult, SlashCommandResult, ModeResult } from "./components/autocomplete/index.js"
@@ -143,6 +143,10 @@ interface CLIState {
 	// Todo list tracking
 	currentTodos: TodoItem[]
 	previousTodos: TodoItem[]
+
+	// MCP servers as McpHub reports them. They belong to the process, not to
+	// a task, so neither reset clears them.
+	mcpServers: McpServer[]
 }
 
 interface CLIActions {
@@ -183,6 +187,9 @@ interface CLIActions {
 
 	// Todo actions
 	setTodos: (todos: TodoItem[]) => void
+
+	// MCP actions
+	setMcpServers: (servers: McpServer[]) => void
 }
 
 const initialState: CLIState = {
@@ -204,6 +211,7 @@ const initialState: CLIState = {
 	apiConfiguration: null,
 	currentTodos: [],
 	previousTodos: [],
+	mcpServers: [],
 }
 
 export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
@@ -286,7 +294,7 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 	setComplete: (complete) => set({ isComplete: complete }),
 	setHasStartedTask: (started) => set({ hasStartedTask: started }),
 	setError: (error) => set({ error }),
-	reset: () => set(initialState),
+	reset: () => set((state) => ({ ...initialState, mcpServers: state.mcpServers })),
 	resetForTaskSwitch: () =>
 		set((state) => ({
 			// Clear task-specific state
@@ -310,6 +318,7 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 			currentMode: state.currentMode,
 			routerModels: state.routerModels,
 			apiConfiguration: state.apiConfiguration,
+			mcpServers: state.mcpServers,
 		})),
 	setIsResumingTask: (isResuming) => set({ isResumingTask: isResuming }),
 	// Use shallow equality to prevent unnecessary re-renders when array content is the same
@@ -327,4 +336,5 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 	setRouterModels: (models) => set({ routerModels: models }),
 	setApiConfiguration: (config) => set({ apiConfiguration: config }),
 	setTodos: (todos) => set((state) => ({ previousTodos: state.currentTodos, currentTodos: todos })),
+	setMcpServers: (servers) => set({ mcpServers: servers }),
 }))
