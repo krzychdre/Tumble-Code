@@ -91,7 +91,7 @@ In interactive mode (see [Terminal UI](#terminal-ui) for the full visual grammar
 - Tool executions are auto-approved
 - Commands are auto-approved
 - Followup questions show suggestions with a 60-second timeout, then auto-select the first suggestion
-- Browser and MCP actions are auto-approved
+- Browser and MCP actions are auto-approved, every MCP tool included, whether or not its server's config lists it under `alwaysAllow`
 
 ### Approval-Required Mode (`--require-approval`)
 
