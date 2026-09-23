@@ -48,6 +48,13 @@ describe("CLI flag defaults do not shadow settings", () => {
 		expect(options.reasoningEffort).toBeUndefined()
 		expect(options.model).toBeUndefined()
 		expect(options.provider).toBeUndefined()
+		expect(options.commandExecutionTimeout).toBeUndefined()
+	})
+
+	it("passes --command-execution-timeout through unparsed, for run() to validate", async () => {
+		const options = await parseArgs(["--command-execution-timeout", "1800", "hello"])
+
+		expect(options.commandExecutionTimeout).toBe("1800")
 	})
 
 	it("passes explicit --mode and --reasoning-effort through", async () => {

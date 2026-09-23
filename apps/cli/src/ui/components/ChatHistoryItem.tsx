@@ -16,8 +16,10 @@ interface ChatHistoryItemProps {
 	message: TUIMessage
 	/**
 	 * Verbose rendering: lift the tool renderers' preview caps and print the
-	 * reasoning body. Only `<Static>` items may set it; `DynamicTailMessage`
-	 * never does (plan: 2026-09-21 answer lost in dynamic tail, I1 and I8).
+	 * reasoning body. `<Static>` items set it freely. `DynamicTailMessage`
+	 * sets it only on a message whose growing body it has already cut to the
+	 * tail's row budget (plans: 2026-09-21 answer lost in dynamic tail, I1;
+	 * 2026-09-23 cli live block under ctrl+o).
 	 */
 	expanded?: boolean
 }

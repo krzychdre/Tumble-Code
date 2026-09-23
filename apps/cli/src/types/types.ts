@@ -34,6 +34,8 @@ export type FlagOptions = {
 	terminalShell?: string
 	reasoningEffort?: ReasoningEffortFlagOptions
 	consecutiveMistakeLimit?: number
+	/** Raw --command-execution-timeout value; run() validates it together with the settings value. */
+	commandExecutionTimeout?: string
 	ephemeral: boolean
 	oneshot: boolean
 	outputFormat?: OutputFormat
@@ -101,6 +103,8 @@ export interface CliSettings {
 	models?: Record<string, CliModelSettings>
 	/** Default consecutive error/repetition limit before guidance prompts */
 	consecutiveMistakeLimit?: number
+	/** Seconds a shell command may run before it is stopped; 0 means no limit (default 300) */
+	commandExecutionTimeout?: number
 	/** Require manual approval for tools/commands/browser/MCP actions */
 	requireApproval?: boolean
 	/** @deprecated Legacy inverse setting kept for backward compatibility */

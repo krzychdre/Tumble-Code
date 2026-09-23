@@ -44,6 +44,7 @@ const mockHost = vi.hoisted(() => ({
 				reasoningEffort?: string
 				apiKey?: string
 				contextWindow?: number
+				commandExecutionTimeout?: number
 				mcpSettingsPath?: string
 				modeProviderSettings?: {
 					base: Record<string, unknown>
@@ -101,6 +102,7 @@ function baseFlags(overrides: Partial<FlagOptions> = {}): FlagOptions {
 		terminalShell: undefined,
 		reasoningEffort: undefined,
 		consecutiveMistakeLimit: undefined,
+		commandExecutionTimeout: undefined,
 		ephemeral: false,
 		oneshot: false,
 		outputFormat: undefined,
@@ -911,6 +913,100 @@ describe("run context window per model", () => {
 		expect(ignored).toHaveLength(1)
 		expect(ignored[0]).toContain("ignored with the anthropic provider")
 		expect(mockHost.lastOptions?.modeProviderSettings?.base).not.toHaveProperty("openAiCustomModelInfo")
+	})
+})
+
+describe("run command execution timeout", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-command-timeout-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	async function runWithExitThrowing(flags: Partial<FlagOptions> = {}) {
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		try {
+			await run("hello", baseFlags(flags)).catch((error) => {
+				if (error !== exitError) throw error
+			})
+			const outcome = exitSpy.mock.calls[0]?.[0] === 1 ? "failed" : "ran"
+			return { outcome, errors: errorSpy.mock.calls.map((call) => String(call[0])) }
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
+		}
+	}
+
+	it("defaults to 300 seconds", async () => {
+		await saveSettings({ provider: "openrouter" })
+
+		await runWithExitThrowing()
+
+		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(300)
+	})
+
+	it("takes the settings value, and 0 for no limit", async () => {
+		await saveSettings({ provider: "openrouter", commandExecutionTimeout: 1800 })
+		await runWithExitThrowing()
+		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(1800)
+
+		await saveSettings({ provider: "openrouter", commandExecutionTimeout: 0 })
+		await runWithExitThrowing()
+		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(0)
+	})
+
+	it("the flag wins over the settings value", async () => {
+		await saveSettings({ provider: "openrouter", commandExecutionTimeout: 1800 })
+
+		await runWithExitThrowing({ commandExecutionTimeout: "3600" })
+
+		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(3600)
+	})
+
+	it.each(["10m", "", "-1", "1.5"])("rejects the flag value %j and names the flag", async (value) => {
+		await saveSettings({ provider: "openrouter" })
+
+		const { outcome, errors } = await runWithExitThrowing({ commandExecutionTimeout: value })
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain("--command-execution-timeout must be a whole number of seconds")
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("rejects a malformed settings value and names the settings file", async () => {
+		await saveSettings({ provider: "openrouter", commandExecutionTimeout: "10m" as never })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain(`commandExecutionTimeout in ${getSettingsPath()} must be a whole number of seconds`)
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("rejects a value too large for a timer, which would stop every command at once", async () => {
+		await saveSettings({ provider: "openrouter" })
+
+		const atMax = await runWithExitThrowing({ commandExecutionTimeout: "2147483" })
+		expect(atMax.outcome).toBe("ran")
+		expect(mockHost.lastOptions?.commandExecutionTimeout).toBe(2_147_483)
+
+		mockHost.lastOptions = undefined
+		const aboveMax = await runWithExitThrowing({ commandExecutionTimeout: "2147484" })
+		expect(aboveMax.outcome).toBe("failed")
+		expect(aboveMax.errors[0]).toContain("from 0 (no limit) to 2147483")
+		expect(mockHost.lastOptions).toBeUndefined()
 	})
 })
 
