@@ -33,9 +33,9 @@ _CANDIDATES = ("google-chrome", "chromium", "chromium-browser", "google-chrome-s
 _MIN_CHECKS = {
     # The join acknowledgement against the header: registration-only record,
     # another task's snapshot, a snapshot without figures, this task's snapshot;
-    # and the run row of the spend table following this task's figures.
-    "live_checks.html": 28,
-    "render_checks.html": 26,
+    # the run row of the spend table following this task's figures; the phone fold.
+    "live_checks.html": 30,
+    "render_checks.html": 28,
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
     "tasktree_checks.html": 19,

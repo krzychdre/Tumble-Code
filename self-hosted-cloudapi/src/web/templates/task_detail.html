@@ -151,7 +151,10 @@
 
 {% if live %}
 <div id="live-controls" class="live-controls offline">
-  <div class="auto-bar">
+  {# Shown on a phone only (app.css): there the six toggles would take a third
+     of a bar that stays on screen, so they fold behind this. #}
+  <button type="button" id="auto-more" class="auto-more" aria-expanded="false" aria-controls="auto-bar">Auto-approve settings</button>
+  <div class="auto-bar" id="auto-bar">
     <label class="auto-main"><input id="auto-enabled" type="checkbox"> Auto-approve</label>
     <label class="auto-mode-wrap">mode
       <select id="auto-mode">
