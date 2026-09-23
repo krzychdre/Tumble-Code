@@ -115,6 +115,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		apiConfiguration,
 		currentTodos,
 		mcpServers,
+		turnStartedAt,
+		stepStartedAt,
 	} = useCLIStore()
 
 	// Access UI state from the UI store
@@ -382,10 +384,12 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	// --- Loading spinner timing -----------------------------------------------
 
-	const loadingStartRef = useRef<number>(0)
-	useEffect(() => {
-		if (isLoading) loadingStartRef.current = Date.now()
-	}, [isLoading])
+	// A step is one request to the model plus the tools it asked for. A start
+	// older than the turn (replayed history) means this turn's first request
+	// has not begun yet, so the step is the turn so far. Both are only read
+	// while loading, when the turn start is always set.
+	const turnStart = turnStartedAt ?? 0
+	const stepStart = Math.max(turnStart, stepStartedAt ?? 0)
 
 	// --- Context percent for the footer ---------------------------------------
 
@@ -630,7 +634,12 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 				{/* Spinner while loading and no dialog is stealing the frame */}
 				{isLoading && !pendingAsk && (
-					<Spinner startTime={loadingStartRef.current} tokensOut={tokenUsage?.totalTokensOut} isActive />
+					<Spinner
+						startTime={turnStart}
+						stepStartTime={stepStart}
+						tokensOut={tokenUsage?.totalTokensOut}
+						isActive
+					/>
 				)}
 
 				{/* TODO viewer overlay (ctrl+t) */}

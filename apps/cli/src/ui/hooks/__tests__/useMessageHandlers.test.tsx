@@ -210,6 +210,23 @@ describe("useMessageHandlers", () => {
 		expect(messages[0]?.toolData?.command).toBe(command)
 	})
 
+	it("starts a step on every api_req_started, and a replay never moves it back", () => {
+		sayUpdate(2_000, "api_req_started", '{"apiProtocol":"openai"}', false)
+		expect(useCLIStore.getState().stepStartedAt).toBe(2_000)
+
+		// The core rewrites the same message with the request's cost.
+		sayUpdate(2_000, "api_req_started", '{"apiProtocol":"openai","tokensIn":85977}', false)
+		expect(useCLIStore.getState().stepStartedAt).toBe(2_000)
+
+		sayUpdate(3_000, "api_req_started", '{"apiProtocol":"openai"}', false)
+		stateMessage([
+			{ ts: 1_000, type: "say", say: "api_req_started", text: "{}", partial: false },
+			{ ts: 2_000, type: "say", say: "api_req_started", text: "{}", partial: false },
+		])
+		expect(useCLIStore.getState().stepStartedAt).toBe(3_000)
+		expect(useCLIStore.getState().messages).toHaveLength(0)
+	})
+
 	describe("MCP calls", () => {
 		const mcpAsk = JSON.stringify({
 			type: "use_mcp_tool",

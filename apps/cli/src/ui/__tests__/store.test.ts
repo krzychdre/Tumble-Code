@@ -373,4 +373,44 @@ describe("useCLIStore", () => {
 			expect(store().messages[0]?.toolData).toMatchObject({ command: "ls -la", output: "a\nb\n" })
 		})
 	})
+
+	describe("turn and step timing", () => {
+		afterEach(() => {
+			vi.useRealTimers()
+		})
+
+		it("stamps the turn start only when loading begins, not on a repeated setLoading(true)", () => {
+			vi.useFakeTimers()
+			vi.setSystemTime(1_000)
+			useCLIStore.getState().setLoading(true)
+			expect(useCLIStore.getState().turnStartedAt).toBe(1_000)
+
+			// An approval re-asserts loading mid-turn; the turn goes on.
+			vi.setSystemTime(5_000)
+			useCLIStore.getState().setLoading(true)
+			expect(useCLIStore.getState().turnStartedAt).toBe(1_000)
+
+			useCLIStore.getState().setLoading(false)
+			vi.setSystemTime(9_000)
+			useCLIStore.getState().setLoading(true)
+			expect(useCLIStore.getState().turnStartedAt).toBe(9_000)
+		})
+
+		it("moves the step start only forward", () => {
+			useCLIStore.getState().markStepStarted(2_000)
+			// The same request re-delivered with its cost, then an older one replayed.
+			useCLIStore.getState().markStepStarted(2_000)
+			useCLIStore.getState().markStepStarted(1_000)
+			expect(useCLIStore.getState().stepStartedAt).toBe(2_000)
+
+			useCLIStore.getState().markStepStarted(3_000)
+			expect(useCLIStore.getState().stepStartedAt).toBe(3_000)
+		})
+
+		it("forgets the step of the previous task on a task switch", () => {
+			useCLIStore.getState().markStepStarted(2_000)
+			useCLIStore.getState().resetForTaskSwitch()
+			expect(useCLIStore.getState().stepStartedAt).toBeNull()
+		})
+	})
 })

@@ -119,6 +119,16 @@ interface CLIState {
 	// Used to modify message processing behavior (e.g., don't skip first text message)
 	isResumingTask: boolean
 
+	// When the agent last started working, i.e. when isLoading last went from
+	// false to true. Kept here rather than in a ref so the first frame of the
+	// spinner already has it.
+	turnStartedAt: number | null
+
+	// When the latest request to the model began (the `ts` of its
+	// `api_req_started`), so the spinner can time the current step next to the
+	// whole turn. Replayed history can deliver older values; see markStepStarted.
+	stepStartedAt: number | null
+
 	// Autocomplete data (from API/extension)
 	fileSearchResults: FileResult[]
 	allSlashCommands: SlashCommandResult[]
@@ -165,6 +175,8 @@ interface CLIActions {
 	resetForTaskSwitch: () => void
 	/** Set the isResumingTask flag - used when resuming a task from history */
 	setIsResumingTask: (isResuming: boolean) => void
+	/** Record the start of a request to the model; an earlier start never replaces a later one. */
+	markStepStarted: (ts: number) => void
 
 	// Autocomplete data actions
 	setFileSearchResults: (results: FileResult[]) => void
@@ -200,6 +212,8 @@ const initialState: CLIState = {
 	hasStartedTask: false,
 	error: null,
 	isResumingTask: false,
+	turnStartedAt: null,
+	stepStartedAt: null,
 	fileSearchResults: [],
 	allSlashCommands: [],
 	availableModes: [],
@@ -289,7 +303,10 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 		// debounce queue has to be applied BEFORE that happens, or the printed copy
 		// would be permanently missing its last chunk.
 		if (!loading) flushPendingStreamUpdates()
-		set({ isLoading: loading })
+		set((state) => ({
+			isLoading: loading,
+			turnStartedAt: loading && !state.isLoading ? Date.now() : state.turnStartedAt,
+		}))
 	},
 	setComplete: (complete) => set({ isComplete: complete }),
 	setHasStartedTask: (started) => set({ hasStartedTask: started }),
@@ -305,6 +322,7 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 			hasStartedTask: false,
 			error: null,
 			isResumingTask: false,
+			stepStartedAt: null,
 			tokenUsage: null,
 			currentTodos: [],
 			previousTodos: [],
@@ -321,6 +339,11 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 			mcpServers: state.mcpServers,
 		})),
 	setIsResumingTask: (isResuming) => set({ isResumingTask: isResuming }),
+	// The core re-delivers `api_req_started` under the same ts when it adds the
+	// request's cost, and a state push replays every earlier one, so only a
+	// later start may move the mark.
+	markStepStarted: (ts) =>
+		set((state) => (state.stepStartedAt !== null && state.stepStartedAt >= ts ? state : { stepStartedAt: ts })),
 	// Use shallow equality to prevent unnecessary re-renders when array content is the same
 	setFileSearchResults: (results) =>
 		set((state) => (shallowArrayEqual(state.fileSearchResults, results) ? state : { fileSearchResults: results })),
