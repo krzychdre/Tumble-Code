@@ -1,4 +1,5 @@
 import fs from "fs/promises"
+import path from "path"
 
 import type { Mock } from "vitest"
 import type { ExtensionContext, Uri } from "vscode"
@@ -342,6 +343,42 @@ describe("McpHub", () => {
 			await expect(mcpHub.callTool("disabled-server", "test-tool", {})).rejects.toThrow(
 				"No connection found for server: disabled-server",
 			)
+		})
+	})
+
+	describe("global settings file location", () => {
+		const originalOverride = process.env.ROO_MCP_SETTINGS_PATH
+
+		afterEach(() => {
+			if (originalOverride === undefined) {
+				delete process.env.ROO_MCP_SETTINGS_PATH
+			} else {
+				process.env.ROO_MCP_SETTINGS_PATH = originalOverride
+			}
+		})
+
+		it("uses mcp_settings.json in the settings directory without an override", async () => {
+			delete process.env.ROO_MCP_SETTINGS_PATH
+
+			expect(await mcpHub.getMcpSettingsFilePath()).toBe(path.join("/mock/settings/path", "mcp_settings.json"))
+		})
+
+		it("uses the file named by ROO_MCP_SETTINGS_PATH (the CLI's ~/.roo/mcp.json)", async () => {
+			const override = path.resolve("/home/user/.roo/mcp.json")
+			process.env.ROO_MCP_SETTINGS_PATH = override
+
+			expect(await mcpHub.getMcpSettingsFilePath()).toBe(override)
+		})
+
+		it("creates a missing override file together with its directory", async () => {
+			const override = path.resolve("/home/user/.roo/mcp.json")
+			process.env.ROO_MCP_SETTINGS_PATH = override
+			vi.mocked(fs.access).mockRejectedValueOnce(Object.assign(new Error("ENOENT"), { code: "ENOENT" }))
+
+			await mcpHub.getMcpSettingsFilePath()
+
+			expect(fs.mkdir).toHaveBeenCalledWith(path.dirname(override), { recursive: true })
+			expect(fs.writeFile).toHaveBeenCalledWith(override, expect.stringContaining('"mcpServers"'))
 		})
 	})
 

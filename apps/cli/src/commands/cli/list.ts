@@ -10,7 +10,7 @@ import { getProviderDefaultModelId } from "@roo-code/types"
 
 import { ExtensionHost, type ExtensionHostOptions } from "@/agent/index.js"
 import { readWorkspaceTaskSessions } from "@/lib/task-history/index.js"
-import { loadToken } from "@/lib/storage/index.js"
+import { loadSettings, loadToken, resolveMcpSettingsPath } from "@/lib/storage/index.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { getApiKeyFromEnv } from "@/lib/utils/provider.js"
 import { isRecord } from "@/lib/utils/guards.js"
@@ -107,6 +107,9 @@ async function createListHost(options: BaseListOptions, hostOptions: ListHostOpt
 	const workspacePath = resolveWorkspacePath(options.workspace)
 	const extensionPath = resolveExtensionPath(options.extension)
 	const apiKey = options.apiKey || (await loadToken()) || getApiKeyFromEnv("anthropic")
+	// The same global MCP file as a run uses. A settings file that does not
+	// parse must not break a listing, so it falls back to the default file.
+	const { mcpSettingsPath } = await loadSettings().catch(() => ({ mcpSettingsPath: undefined }))
 
 	const extensionHostOptions: ExtensionHostOptions = {
 		mode: "code",
@@ -117,6 +120,7 @@ async function createListHost(options: BaseListOptions, hostOptions: ListHostOpt
 		apiKey,
 		workspacePath,
 		extensionPath,
+		mcpSettingsPath: resolveMcpSettingsPath(mcpSettingsPath),
 		nonInteractive: true,
 		ephemeral: hostOptions.ephemeral,
 		debug: options.debug ?? false,

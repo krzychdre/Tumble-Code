@@ -40,6 +40,7 @@ const mockHost = vi.hoisted(() => ({
 				mode?: string
 				reasoningEffort?: string
 				apiKey?: string
+				mcpSettingsPath?: string
 				modeProviderSettings?: {
 					base: Record<string, unknown>
 					modes: Record<string, Record<string, unknown>>
@@ -785,5 +786,48 @@ describe("run provider settings per mode", () => {
 		expect(outcome).toBe("failed")
 		expect(errors[0]).toContain("modes.architect")
 		expect(errors[0]).toContain("Invalid reasoning effort: maz")
+	})
+})
+
+describe("run global MCP settings file", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	it("defaults to mcp.json next to cli-settings.json", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter" })
+
+			await run("hello", baseFlags())
+
+			expect(mockHost.lastOptions?.mcpSettingsPath).toBe(path.join(tempDir, "mcp.json"))
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("uses mcpSettingsPath from the settings file", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter", mcpSettingsPath: "~/shared/mcp_settings.json" })
+
+			await run("hello", baseFlags())
+
+			expect(mockHost.lastOptions?.mcpSettingsPath).toBe(path.join(os.homedir(), "shared", "mcp_settings.json"))
+		} finally {
+			exitSpy.mockRestore()
+		}
 	})
 })

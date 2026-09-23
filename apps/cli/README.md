@@ -317,19 +317,20 @@ to the run they are given on and are never saved.
 }
 ```
 
-| Key                       | Meaning                                                     |
-| ------------------------- | ----------------------------------------------------------- |
-| `provider`                | Provider id, as for `--provider`                            |
-| `model`                   | Model id; used only while `provider` is the active provider |
-| `baseUrl`                 | Base URL; used only while `provider` is the active provider |
-| `apiKey`                  | API key; used only while `provider` is the active provider  |
-| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`    |
-| `reasoningEffort`         | As for `--reasoning-effort` (see the note below)            |
-| `mode`                    | Mode a new session starts in                                |
-| `requireApproval`         | `true` asks before actions, as `--require-approval`         |
-| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                        |
-| `oneshot`                 | `true` exits when the task completes, as `--oneshot`        |
-| `modes`                   | Settings per mode, see below                                |
+| Key                       | Meaning                                                           |
+| ------------------------- | ----------------------------------------------------------------- |
+| `provider`                | Provider id, as for `--provider`                                  |
+| `model`                   | Model id; used only while `provider` is the active provider       |
+| `baseUrl`                 | Base URL; used only while `provider` is the active provider       |
+| `apiKey`                  | API key; used only while `provider` is the active provider        |
+| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`          |
+| `reasoningEffort`         | As for `--reasoning-effort` (see the note below)                  |
+| `mode`                    | Mode a new session starts in                                      |
+| `requireApproval`         | `true` asks before actions, as `--require-approval`               |
+| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                              |
+| `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
+| `modes`                   | Settings per mode, see below                                      |
+| `mcpSettingsPath`         | File with the global MCP servers, see [MCP Servers](#mcp-servers) |
 
 The file may hold an API key, so keep it readable only by you (`chmod 600
 ~/.roo/cli-settings.json`); the CLI warns when other users can read it. To keep
@@ -377,6 +378,38 @@ without an entry use the top level.
 - Passing any of `--provider`, `--model`, `--base-url`, `--api-key` or
   `--reasoning-effort` makes that run use one configuration for every mode: the
   flags on top of the top level, with `modes` ignored.
+
+## MCP Servers
+
+The CLI connects the same MCP servers as the VS Code extension, from two files
+in the same format:
+
+| Scope   | File                      | Applies to                       |
+| ------- | ------------------------- | -------------------------------- |
+| Global  | `~/.roo/mcp.json`         | every workspace                  |
+| Project | `<project>/.roo/mcp.json` | sessions started in that project |
+
+```json
+{
+	"mcpServers": {
+		"searxNcrawl": { "type": "streamable-http", "url": "http://localhost:9555/mcp" },
+		"agent-interchange": { "command": "node", "args": ["/path/to/mcp-server.mjs"] }
+	}
+}
+```
+
+A project server wins over a global server with the same name. The global file
+is created empty on the first run when it does not exist, and it is used by
+`--ephemeral` runs as well.
+
+The VS Code extension keeps its own global list in its storage
+(`~/.config/Code/User/globalStorage/qub-it.tumble-code/settings/mcp_settings.json`
+on Linux). To give the CLI the same list, point `mcpSettingsPath` in
+`cli-settings.json` at that file; a leading `~` is the home directory and a
+relative path is taken from `~/.roo`. Both then read and write the same file,
+so a server disabled in the VS Code MCP view is disabled in the CLI too. The
+per-tool "always allow" lists in that file do not matter to the CLI: `allow`
+mode approves every MCP tool and `--require-approval` asks for each one.
 
 ## Environment Variables
 

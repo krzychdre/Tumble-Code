@@ -32,13 +32,13 @@ import { t } from "../../i18n"
 
 import { ClineProvider } from "../../core/webview/ClineProvider"
 
-import { GlobalFileNames } from "../../shared/globalFileNames"
-
 import { fileExistsAtPath } from "../../utils/fs"
 import { arePathsEqual, getWorkspacePath } from "../../utils/path"
 import { injectVariables } from "../../utils/config"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import { sanitizeMcpName, toolNamesMatch } from "../../utils/mcp-name"
+
+import { getGlobalMcpSettingsPath } from "./mcpSettingsPath"
 
 // Discriminated union for connection states
 export type ConnectedMcpConnection = {
@@ -489,12 +489,12 @@ export class McpHub {
 		if (!provider) {
 			throw new Error("Provider not available")
 		}
-		const mcpSettingsFilePath = path.join(
-			await provider.ensureSettingsDirectoryExists(),
-			GlobalFileNames.mcpSettings,
-		)
+		const mcpSettingsFilePath = getGlobalMcpSettingsPath(await provider.ensureSettingsDirectoryExists())
 		const fileExists = await fileExistsAtPath(mcpSettingsFilePath)
 		if (!fileExists) {
+			// An override's directory may not exist yet (a fresh ~/.roo), and
+			// the watcher set up in the constructor must not fail on it.
+			await fs.mkdir(path.dirname(mcpSettingsFilePath), { recursive: true })
 			await fs.writeFile(
 				mcpSettingsFilePath,
 				`{

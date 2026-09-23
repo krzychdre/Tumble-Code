@@ -91,4 +91,10 @@ export interface CliSettings {
 	dangerouslySkipPermissions?: boolean
 	/** Exit upon task completion */
 	oneshot?: boolean
+	/**
+	 * File with the global MCP servers (same format as a project's
+	 * .roo/mcp.json). Defaults to ~/.roo/mcp.json; point it at the VS Code
+	 * extension's mcp_settings.json to share one list with the editor.
+	 */
+	mcpSettingsPath?: string
 }

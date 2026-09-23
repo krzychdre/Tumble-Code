@@ -5,6 +5,7 @@ import * as yaml from "yaml"
 import type { MarketplaceItem, MarketplaceItemType, InstallMarketplaceItemOptions, McpParameter } from "@roo-code/types"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
+import { getGlobalMcpSettingsPath } from "../mcp/mcpSettingsPath"
 import type { CustomModesManager } from "../../core/config/CustomModesManager"
 
 export interface InstallOptions extends InstallMarketplaceItemOptions {
@@ -378,7 +379,7 @@ export class SimpleInstaller {
 			return path.join(workspaceFolder.uri.fsPath, ".roo", "mcp.json")
 		} else {
 			const globalSettingsPath = await ensureSettingsDirectoryExists(this.context)
-			return path.join(globalSettingsPath, GlobalFileNames.mcpSettings)
+			return getGlobalMcpSettingsPath(globalSettingsPath)
 		}
 	}
 }
