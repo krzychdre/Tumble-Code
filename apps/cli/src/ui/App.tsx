@@ -611,7 +611,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			    ink's clearTerminal fallback (triggers at height ≥ rows). */}
 			<TailViewport maxRows={Math.max(6, terminalRows - 2)}>
 				{/* Dynamic tail: in-flight / streaming messages still re-rendering.
-				    Height-clamped so the tail never outgrows the terminal. */}
+				    Height-clamped so the tail never outgrows the terminal; in the
+				    expanded transcript a running block shows its newest rows live. */}
 				{dynamicMessages.map((m) => {
 					// The head's finished lines are already in scrollback; the
 					// tail keeps only the line the model is still writing.
@@ -624,6 +625,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 							continuation={rest !== null}
 							maxRows={tailRowsPerMessage}
 							columns={terminalColumns}
+							expanded={verboseTranscript}
 						/>
 					)
 				})}

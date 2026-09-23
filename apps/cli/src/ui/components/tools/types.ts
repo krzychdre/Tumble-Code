@@ -8,8 +8,10 @@ export interface ToolRendererProps {
 	message?: TUIMessage
 	/**
 	 * Verbose rendering: lift the renderer's own preview caps so the whole
-	 * output is printed. Only ever set for `<Static>` items; the dynamic tail
-	 * must stay clamped (plan: 2026-09-21 answer lost in dynamic tail, I1).
+	 * output is printed. In the dynamic tail it is set only with the output
+	 * already cut to the tail's row budget, so the tail stays clamped (plans:
+	 * 2026-09-21 answer lost in dynamic tail, I1; 2026-09-23 cli live block
+	 * under ctrl+o).
 	 */
 	expanded?: boolean
 }
