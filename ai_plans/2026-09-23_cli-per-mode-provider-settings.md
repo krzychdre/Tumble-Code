@@ -90,6 +90,12 @@ exit 0; cli-settings.json unchanged
   mode entry, base always sent, flags force one configuration, broken entries fail at
   startup naming the mode.
 - `provider-config.test.ts` (+4): `toProviderSettings`, `summarizeProviderSettings`.
+- `useMessageHandlers.test.tsx` (+1): the TUI store keeps `state.apiConfiguration`.
+  Nothing ever called `setApiConfiguration`, so the store's `apiConfiguration` was always
+  `null`: the footer stayed on the startup model after a switch, and the context gauge
+  (`getContextWindow`) never saw the live settings either. Found by running the TUI under
+  a pty against the fake server: the second request used `GLM-5.3-NVFP4` while the footer
+  still read `architect · GLM-5.3-Flash-NVFP4`.
 
 ## Found, not fixed here
 

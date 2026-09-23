@@ -62,6 +62,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 		setCurrentMode,
 		setTokenUsage,
 		setRouterModels,
+		setApiConfiguration,
 		setTaskHistory,
 		currentTodos,
 		setTodos,
@@ -557,6 +558,12 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 					setCurrentMode(newMode)
 				}
 
+				// The provider settings the extension runs with now; a mode
+				// switch can change them (per-mode entries in cli-settings.json).
+				if (state.apiConfiguration) {
+					setApiConfiguration(state.apiConfiguration)
+				}
+
 				// Extract and update task history from state
 				const newTaskHistory = state.taskHistory
 
@@ -647,6 +654,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			setCurrentMode,
 			setTokenUsage,
 			setRouterModels,
+			setApiConfiguration,
 			setTaskHistory,
 		],
 	)
