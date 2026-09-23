@@ -1,0 +1,157 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!--
+  The run tree on the task list (static/tasklist.js): folding, and how selection
+  treats rows that are folded away. Mirrors the markup templates/tasks_list.html
+  renders for scope=roots:
+
+    run1
+      sub1a
+        leaf1
+      sub1b
+    run2
+    run3
+      sub3a
+-->
+<form id="bulk-form" method="post" action="/app/tasks/bulk-delete">
+  <div class="select-head">
+    <label class="select-all"><input type="checkbox" id="select-all"><span>Select page</span></label>
+    <button type="button" class="tree-expand-all" id="tree-expand-all" hidden>Expand all</button>
+  </div>
+  <ul class="task-list">
+    <li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="run1" data-child-count="3"></label>
+      <span class="tree-gutter"><button type="button" class="tree-toggle" aria-expanded="false" aria-controls="subtree-run1"></button></span>
+      <a class="task-link" href="/app/tasks/run1">Run 1</a>
+    </div>
+    <ul class="task-children" id="subtree-run1" hidden>
+      <li class="task-node"><div class="task-item is-subtask">
+        <label class="task-check"><input type="checkbox" name="task_ids" value="sub1a" data-child-count="1"></label>
+        <span class="tree-gutter"><button type="button" class="tree-toggle" aria-expanded="false" aria-controls="subtree-sub1a"></button></span>
+        <a class="task-link" href="/app/tasks/sub1a">Sub 1a</a>
+      </div>
+      <ul class="task-children" id="subtree-sub1a" hidden>
+        <li class="task-node"><div class="task-item is-subtask">
+          <label class="task-check"><input type="checkbox" name="task_ids" value="leaf1" data-child-count="0"></label>
+          <span class="tree-gutter"></span>
+          <a class="task-link" href="/app/tasks/leaf1">Leaf 1</a>
+        </div></li>
+      </ul>
+      </li>
+      <li class="task-node"><div class="task-item is-subtask">
+        <label class="task-check"><input type="checkbox" name="task_ids" value="sub1b" data-child-count="0"></label>
+        <span class="tree-gutter"></span>
+        <a class="task-link" href="/app/tasks/sub1b">Sub 1b</a>
+      </div></li>
+    </ul>
+    </li>
+    <li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="run2" data-child-count="0"></label>
+      <span class="tree-gutter"></span>
+      <a class="task-link" href="/app/tasks/run2">Run 2</a>
+    </div></li>
+    <li class="task-node"><div class="task-item">
+      <label class="task-check"><input type="checkbox" name="task_ids" value="run3" data-child-count="1"></label>
+      <span class="tree-gutter"><button type="button" class="tree-toggle" aria-expanded="false" aria-controls="subtree-run3"></button></span>
+      <a class="task-link" href="/app/tasks/run3">Run 3</a>
+    </div>
+    <ul class="task-children" id="subtree-run3" hidden>
+      <li class="task-node"><div class="task-item is-subtask">
+        <label class="task-check"><input type="checkbox" name="task_ids" value="sub3a" data-child-count="0"></label>
+        <span class="tree-gutter"></span>
+        <a class="task-link" href="/app/tasks/sub3a">Sub 3a</a>
+      </div></li>
+    </ul>
+    </li>
+  </ul>
+  <div id="bulk-bar" class="bulk-bar" hidden>
+    <span class="bulk-count"><b id="bulk-n">0</b> selected</span>
+    <label class="bulk-subtasks" id="bulk-subtasks-wrap" hidden>
+      <input type="checkbox" name="include_subtasks" value="1" id="include-subtasks">
+      <span>Include their subtasks (<b id="bulk-children">0</b>)</span>
+    </label>
+    <button type="button" class="btn ghost" id="bulk-clear">Clear</button>
+    <button type="submit" class="btn btn-danger" id="bulk-delete">Delete selected</button>
+  </div>
+</form>
+
+<script src="../../src/web/static/tasklist.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+
+  var form = document.getElementById("bulk-form")
+  var selectAll = document.getElementById("select-all")
+  var expandAll = document.getElementById("tree-expand-all")
+  function box(id) { return form.querySelector('input[name="task_ids"][value="' + id + '"]') }
+  function toggle(id) { return form.querySelector('.tree-toggle[aria-controls="subtree-' + id + '"]') }
+  function subtree(id) { return document.getElementById("subtree-" + id) }
+  function checked() {
+    return Array.prototype.slice.call(form.querySelectorAll('input[name="task_ids"]'))
+      .filter(function (b) { return b.checked }).map(function (b) { return b.value }).join(",")
+  }
+  function shiftClick(b) {
+    b.dispatchEvent(new MouseEvent("click", { shiftKey: true, bubbles: true, cancelable: true }))
+  }
+
+  var submits = 0
+  form.addEventListener("submit", function (e) { submits++; e.preventDefault() })
+
+  // Folded shut on arrival: the page reads as a list of runs.
+  check("subtrees start folded", subtree("run1").hidden && subtree("sub1a").hidden && subtree("run3").hidden)
+  check("expand-all is offered when there is a tree", expandAll.hidden === false)
+  check("expand-all starts as 'Expand all'", expandAll.textContent === "Expand all")
+
+  // "Select page" selects what the reader can see, not folded subtasks.
+  selectAll.click()
+  check("select-all picks the visible runs only", checked() === "run1,run2,run3")
+  // The subtasks those runs would drag along: every one of them, once.
+  check("subtask offer counts the whole nested subtree",
+        document.getElementById("bulk-children").textContent === "4")
+
+  // Unfolding one level shows that level, and nothing deeper.
+  toggle("run1").click()
+  check("toggle unfolds its subtree", subtree("run1").hidden === false)
+  check("toggle reports expanded", toggle("run1").getAttribute("aria-expanded") === "true")
+  check("a deeper subtree stays folded", subtree("sub1a").hidden === true)
+  check("folding is not a submit", submits === 0)
+  // Newly visible, unselected rows make the page only partly selected.
+  check("select-all goes indeterminate once subtasks come into view", selectAll.indeterminate === true)
+
+  // A subtask selected in its own right is not also counted as an extra.
+  box("sub1a").click()
+  check("a selected subtask is not counted as an extra",
+        document.getElementById("bulk-children").textContent === "3")
+
+  // A shift-click range walks the visible rows and skips folded ones.
+  document.getElementById("bulk-clear").click()
+  box("run1").click()
+  shiftClick(box("run3"))
+  check("range covers the visible rows between", checked() === "run1,sub1a,sub1b,run2,run3")
+  check("range skips folded rows", !box("leaf1").checked && !box("sub3a").checked)
+
+  // An anchor that has been folded away starts no range.
+  document.getElementById("bulk-clear").click()
+  box("sub1b").click()
+  toggle("run1").click()
+  shiftClick(box("run3"))
+  check("a folded anchor does not start a range", checked() === "sub1b,run3")
+
+  // Expand all / collapse all.
+  expandAll.click()
+  check("expand all unfolds every subtree",
+        !subtree("run1").hidden && !subtree("sub1a").hidden && !subtree("run3").hidden)
+  check("the control then offers to collapse", expandAll.textContent === "Collapse all")
+  expandAll.click()
+  check("collapse all folds every subtree",
+        subtree("run1").hidden && subtree("sub1a").hidden && subtree("run3").hidden)
+  check("the control offers to expand again", expandAll.textContent === "Expand all")
+  check("no toggle ever submitted the form", submits === 0)
+
+  var pre = document.createElement("pre")
+  pre.id = "results"
+  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+  document.body.appendChild(pre)
+})
+</script>
+</body></html>

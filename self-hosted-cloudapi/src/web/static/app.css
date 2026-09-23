@@ -436,6 +436,70 @@ textarea::placeholder {
 	vertical-align: 1px;
 }
 
+/* --- the run tree ----------------------------------------------------------
+   A subtask is the same row as a run, one level in. The indent is a gutter in
+   front of the row's link rather than padding inside it: the figure columns are
+   fixed tracks at the right end of the link, so a narrower link only shortens
+   the title and every number still lines up with the rows above it. */
+.task-node,
+.task-children {
+	list-style: none;
+}
+.task-children {
+	margin: 0;
+	padding: 0;
+}
+.tree-gutter {
+	flex: none;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	width: calc(1.5rem + var(--depth, 0) * 1.5rem);
+}
+.tree-toggle {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.25rem;
+	height: 1.25rem;
+	padding: 0;
+	background: transparent;
+	border: 1px solid transparent;
+	border-radius: var(--r-sm);
+	color: var(--text-faint);
+	cursor: pointer;
+}
+.tree-toggle::before {
+	content: "▸";
+	font-size: 0.8rem;
+	line-height: 1;
+	transition: transform 0.12s ease;
+}
+.tree-toggle[aria-expanded="true"]::before {
+	transform: rotate(90deg);
+}
+.tree-toggle:hover,
+.tree-toggle:focus-visible {
+	color: var(--text);
+	border-color: var(--line-strong);
+}
+/* Set like "Select page" beside it: both act on the page, not on a row. */
+.tree-expand-all {
+	margin-left: auto;
+	padding: 0;
+	background: none;
+	border: none;
+	font-family: var(--mono);
+	font-size: var(--t-label);
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+	color: var(--text-faint);
+	cursor: pointer;
+}
+.tree-expand-all:hover {
+	color: var(--text-dim);
+}
+
 .search {
 	position: relative;
 	display: flex;
@@ -1230,16 +1294,23 @@ textarea::placeholder {
 	margin: 0;
 	padding: 0;
 }
-.subtask-list li + li {
+.subtask-list li + li,
+.subtask-list .subtask-list {
 	border-top: 1px solid var(--line);
 }
+/* Indented by padding, which only narrows the title track: the figure tracks
+   are fixed, so nested rows keep their numbers in the same columns. */
 .subtask-link {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) 4.5rem 4.5rem 5.5rem 5rem 5.5rem;
 	align-items: center;
 	gap: var(--s3);
-	padding: var(--s2) 0;
+	padding: var(--s2) 0 var(--s2) calc(var(--depth, 0) * 1.5rem);
 	color: var(--text);
+}
+.subtask-list .subtask-list .cell-title::before {
+	content: "↳ ";
+	color: var(--text-faint);
 }
 .subtask-link:hover {
 	text-decoration: none;

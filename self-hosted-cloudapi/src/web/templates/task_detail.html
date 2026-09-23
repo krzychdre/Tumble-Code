@@ -90,11 +90,13 @@
 
 {% if subtasks %}
 <section class="subtasks panel">
-  <h2 class="chart-title">Subtasks <span class="count-pill">{{ subtasks|length }}</span></h2>
+  <h2 class="chart-title">Subtasks <span class="count-pill">{{ subtask_count }}</span></h2>
+  {# The whole tree, nested: a subtask that delegated further shows its own
+     subtasks one level in, rather than being a dead end until opened. #}
   <ul class="subtask-list">
-    {% for s in subtasks %}
+    {% for s in subtasks recursive %}
     <li>
-      <a class="subtask-link" href="/app/tasks/{{ s.id }}"{% if s.hover_title %} title="{{ s.hover_title }}"{% endif %}>
+      <a class="subtask-link" style="--depth: {{ loop.depth0 }}" href="/app/tasks/{{ s.id }}"{% if s.hover_title %} title="{{ s.hover_title }}"{% endif %}>
         <span class="cell-title">{{ s.title }}</span>
         <span class="cell-num">{{ s.message_count }}<span class="unit">msg</span></span>
         <span class="cell-num">{{ s.duration or '' }}</span>
@@ -102,6 +104,11 @@
         <span class="cell-num cell-cost">{{ s.cost or '' }}</span>
         <span class="cell-grade"><span class="grade grade-{{ s.grade }}" title="{{ s.grade_title }}">{{ s.grade_label }}</span></span>
       </a>
+      {% if s.children %}
+      <ul class="subtask-list">
+        {{ loop(s.children) }}
+      </ul>
+      {% endif %}
     </li>
     {% endfor %}
   </ul>

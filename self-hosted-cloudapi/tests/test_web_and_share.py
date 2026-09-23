@@ -2081,15 +2081,44 @@ async def test_relation_is_recorded_once_across_many_events(client, db_session, 
         assert count == 1
 
 
-async def test_task_list_hides_subtasks_by_default(client, db_session, session_factory):
-    """150 of 387 tasks on the live deployment are subtasks; listing them flat
-    buried the actual runs among their own fragments."""
-    await _seed_user(db_session)
+async def _seed_tree(session_factory, *specs, user_id="user_test"):
+    """specs: (task_id, parent_task_id or None, title), parents before children.
+
+    ``created_at`` is spelled out, one minute apart in spec order: rows written
+    in one flush can share a server timestamp, and the tree is ordered by it.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    start = datetime(2026, 9, 1, tzinfo=timezone.utc)
     async with session_factory() as s:
-        s.add(Task(id="run-a", user_id="user_test", title="The run"))
-        await s.flush()
-        s.add(Task(id="sub-a", user_id="user_test", title="Its subtask", parent_task_id="run-a"))
+        for n, (task_id, parent, title) in enumerate(specs):
+            s.add(
+                Task(
+                    id=task_id,
+                    user_id=user_id,
+                    title=title,
+                    parent_task_id=parent,
+                    created_at=start + timedelta(minutes=n),
+                    updated_at=start + timedelta(minutes=n),
+                )
+            )
+            await s.flush()
         await s.commit()
+
+
+async def test_run_view_nests_subtasks_under_their_run(client, db_session, session_factory):
+    """150 of 387 tasks on the live deployment are subtasks. Listed flat they
+    buried the runs among their own fragments; hidden, they left no way to see
+    what a run delegated without opening it. The run view nests them instead,
+    folded shut, at every depth."""
+    await _seed_user(db_session)
+    await _seed_tree(
+        session_factory,
+        ("run-a", None, "The run"),
+        ("sub-a", "run-a", "Its subtask"),
+        ("leaf-a", "sub-a", "Its leaf"),
+        ("run-b", None, "A run with no subtasks"),
+    )
 
     _override_web_user(client.app)
     try:
@@ -2098,13 +2127,157 @@ async def test_task_list_hides_subtasks_by_default(client, db_session, session_f
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
-    assert "The run" in roots.text
-    assert "Its subtask" not in roots.text
-    # The run advertises that opening it leads somewhere.
-    assert 'class="child-count"' in roots.text
+    page = roots.text
+    # Both levels are on the page, each inside its parent's folded subtree.
+    assert 'id="subtree-run-a" hidden' in page
+    assert 'id="subtree-sub-a" hidden' in page
+    assert (
+        page.index('id="subtree-run-a"')
+        < page.index("Its subtask")
+        < page.index('id="subtree-sub-a"')
+        < page.index("Its leaf")
+    )
+    # A toggle wherever there is something to unfold, and nowhere else.
+    assert 'aria-controls="subtree-run-a"' in page
+    assert 'aria-controls="subtree-sub-a"' in page
+    assert 'aria-controls="subtree-run-b"' not in page
+    assert 'aria-controls="subtree-leaf-a"' not in page
+    # Still a list of runs: the count and the pill are about the runs.
+    assert '<span class="count-pill">2</span>' in page
+    assert 'class="child-count"' in page
+    # "Include their subtasks" removes the whole subtree, so that is the count.
+    assert 'value="run-a"\n               data-child-count="2"' in page
 
-    assert "The run" in everything.text
-    assert "Its subtask" in everything.text
+    flat = everything.text
+    assert "Its subtask" in flat and "Its leaf" in flat
+    # The flat view lists subtasks as rows of their own; nesting them there as
+    # well would show each one twice.
+    assert 'class="task-children"' not in flat
+    assert 'class="tree-toggle"' not in flat
+    assert 'class="subtask-mark"' in flat
+
+
+async def test_subtrees_groups_by_parent_oldest_first_within_the_users_tasks(
+    db_session, session_factory
+):
+    from src.services.task_tree import subtree_size, subtrees
+
+    await _seed_user(db_session)
+    await _seed_user(db_session, user_id="user_other", email="o@example.com")
+    await _seed_tree(
+        session_factory,
+        ("root", None, "Root"),
+        ("first", "root", "Spawned first"),
+        ("second", "root", "Spawned second"),
+        ("grand", "first", "Grandchild"),
+    )
+    # Written directly: the write paths never link across users, which is why
+    # the read path must not rely on it.
+    await _seed_tree(session_factory, ("foreign", "root", "Not yours"), user_id="user_other")
+
+    async with session_factory() as s:
+        tree = await subtrees(s, ["root"], "user_test")
+
+    assert [t.id for t in tree["root"]] == ["first", "second"]
+    assert [t.id for t in tree["first"]] == ["grand"]
+    assert "second" not in tree and "grand" not in tree
+    assert subtree_size(tree, "root") == 3
+    assert subtree_size(tree, "grand") == 0
+
+
+async def test_subtree_walk_survives_a_cycle_on_the_page(client, db_session, session_factory):
+    """Parent links come from a client. A cycle must neither hang the walk nor
+    render a task inside its own subtree."""
+    from src.services.task_tree import subtrees
+
+    await _seed_user(db_session)
+    await _seed_tree(
+        session_factory,
+        ("loop-a", None, "Loop A"),
+        ("loop-b", "loop-a", "Loop B"),
+    )
+    async with session_factory() as s:
+        await s.execute(
+            Task.__table__.update().where(Task.id == "loop-a").values(parent_task_id="loop-b")
+        )
+        await s.commit()
+
+    async with session_factory() as s:
+        tree = await subtrees(s, ["loop-a"], "user_test")
+    assert {parent: [t.id for t in kids] for parent, kids in tree.items()} == {"loop-a": ["loop-b"]}
+
+    _override_web_user(client.app)
+    try:
+        resp = client.get("/app/tasks/loop-a")
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+    assert resp.status_code == 200
+    assert resp.text.count('href="/app/tasks/loop-b"') == 2  # breadcrumb + panel
+
+
+async def test_the_tree_costs_a_query_per_level_not_per_run(
+    client, db_session, session_factory, test_engine
+):
+    """A page of runs loads their subtrees one tree level at a time. Ten runs
+    must cost exactly what five do, or the list has grown an N+1 again."""
+    from sqlalchemy import event
+
+    await _seed_user(db_session)
+
+    statements: list[str] = []
+
+    def _count(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    async def selects_for_page() -> int:
+        statements.clear()
+        event.listen(test_engine.sync_engine, "before_cursor_execute", _count)
+        try:
+            resp = client.get("/app")
+        finally:
+            event.remove(test_engine.sync_engine, "before_cursor_execute", _count)
+        assert resp.status_code == 200
+        return sum(1 for s in statements if s.lstrip().upper().startswith("SELECT"))
+
+    await _seed_tree(
+        session_factory,
+        *[spec for n in range(5) for spec in ((f"r{n}", None, f"Run {n}"), (f"c{n}", f"r{n}", f"Sub {n}"))],
+    )
+    _override_web_user(client.app)
+    try:
+        five = await selects_for_page()
+        await _seed_tree(
+            session_factory,
+            *[spec for n in range(5, 10) for spec in ((f"r{n}", None, f"Run {n}"), (f"c{n}", f"r{n}", f"Sub {n}"))],
+        )
+        ten = await selects_for_page()
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert ten == five
+
+
+async def test_task_detail_shows_the_whole_subtree(client, db_session, session_factory):
+    await _seed_user(db_session)
+    await _seed_tree(
+        session_factory,
+        ("top", None, "Top run"),
+        ("mid", "top", "Middle subtask"),
+        ("deep", "mid", "Deep subtask"),
+    )
+
+    _override_web_user(client.app)
+    try:
+        resp = client.get("/app/tasks/top")
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    page = resp.text
+    # The grandchild is reachable from the root, one level in from its parent.
+    assert 'href="/app/tasks/deep"' in page
+    assert page.index("Middle subtask") < page.index("Deep subtask")
+    assert 'style="--depth: 1" href="/app/tasks/deep"' in page
+    assert '<h2 class="chart-title">Subtasks <span class="count-pill">2</span></h2>' in page
 
 
 async def test_task_detail_links_up_and_down_the_tree(client, db_session, session_factory):

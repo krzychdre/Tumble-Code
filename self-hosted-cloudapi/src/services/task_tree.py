@@ -117,19 +117,48 @@ async def link_pending_children(db: AsyncSession, parent_task_id: str) -> None:
     )
 
 
-async def child_counts(db: AsyncSession, task_ids: Iterable[str]) -> dict[str, int]:
-    """How many stored subtasks each of these tasks has. One query, not N."""
-    ids = [t for t in task_ids if t]
-    if not ids:
-        return {}
-    from sqlalchemy import func
+async def subtrees(
+    db: AsyncSession,
+    task_ids: Iterable[str],
+    user_id: str,
+    max_depth: int = 20,
+) -> dict[str, list[Task]]:
+    """Every stored task beneath these tasks, grouped by parent, oldest first.
 
-    result = await db.execute(
-        select(Task.parent_task_id, func.count(Task.id))
-        .where(Task.parent_task_id.in_(ids))
-        .group_by(Task.parent_task_id)
-    )
-    return {row[0]: row[1] for row in result.all()}
+    One query per level of the tree rather than one per task, so a page of 25
+    runs costs as many queries as its deepest run is deep (one or two on the
+    live corpus). Walked level by level rather than with a recursive CTE so the
+    same code runs on SQLite (the test database) and Postgres.
+
+    Each task is placed under exactly one parent, and never under a task beneath
+    it: the seen-set starts with the requested ids, so a cycle in the
+    client-supplied links ends the walk instead of producing a tree that
+    contains itself. ``max_depth`` bounds it for the same reason.
+    """
+    seen = {t for t in task_ids if t}
+    tree: dict[str, list[Task]] = {}
+    frontier = list(seen)
+    for _ in range(max_depth):
+        if not frontier:
+            break
+        result = await db.execute(
+            select(Task)
+            .where(Task.parent_task_id.in_(frontier), Task.user_id == user_id)
+            .order_by(Task.created_at)
+        )
+        frontier = []
+        for child in result.scalars().all():
+            if child.id in seen:
+                continue
+            seen.add(child.id)
+            tree.setdefault(child.parent_task_id, []).append(child)
+            frontier.append(child.id)
+    return tree
+
+
+def subtree_size(tree: dict[str, list[Task]], task_id: str) -> int:
+    """How many tasks sit beneath ``task_id`` in a tree from ``subtrees``."""
+    return sum(1 + subtree_size(tree, child.id) for child in tree.get(task_id, []))
 
 
 async def ancestors(db: AsyncSession, task: Task, limit: int = 10) -> list[Task]:
@@ -153,11 +182,3 @@ async def ancestors(db: AsyncSession, task: Task, limit: int = 10) -> list[Task]
         chain.append(parent)
         current = parent
     return chain
-
-
-async def children_of(db: AsyncSession, task_id: str) -> list[Task]:
-    """Stored subtasks of a task, oldest first — the order they were spawned."""
-    result = await db.execute(
-        select(Task).where(Task.parent_task_id == task_id).order_by(Task.created_at)
-    )
-    return list(result.scalars().all())
