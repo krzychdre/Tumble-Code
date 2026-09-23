@@ -610,18 +610,20 @@ export class McpHub {
 	}
 
 	/**
-	 * Creates a placeholder connection for disabled servers or when MCP is globally disabled
+	 * Creates a placeholder connection for disabled servers, when MCP is globally disabled,
+	 * or for a server whose transport failed before its connection was registered
 	 * @param name The server name
 	 * @param config The server configuration
 	 * @param source The source of the server (global or project)
-	 * @param reason The reason for creating a placeholder (mcpDisabled or serverDisabled)
+	 * @param reason The reason for creating a placeholder (mcpDisabled or serverDisabled);
+	 * omitted for a server that failed to start
 	 * @returns A placeholder DisconnectedMcpConnection object
 	 */
 	private createPlaceholderConnection(
 		name: string,
 		config: z.infer<typeof ServerConfigSchema>,
 		source: "global" | "project",
-		reason: DisableReason,
+		reason?: DisableReason,
 	): DisconnectedMcpConnection {
 		return {
 			type: "disconnected",
@@ -885,12 +887,17 @@ export class McpHub {
 			connection.server.resources = await this.fetchResourcesList(name, source)
 			connection.server.resourceTemplates = await this.fetchResourceTemplatesList(name, source)
 		} catch (error) {
-			// Update status with error
-			const connection = this.findConnection(name, source)
-			if (connection) {
-				connection.server.status = "disconnected"
-				this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
+			// Update status with error. A stdio server whose process cannot start
+			// (command not found) fails in transport.start(), before its connection
+			// is registered; without a placeholder it vanished from the server list,
+			// with its error, and could not be restarted either.
+			let connection = this.findConnection(name, source)
+			if (!connection) {
+				connection = this.createPlaceholderConnection(name, config, source)
+				this.connections.push(connection)
 			}
+			connection.server.status = "disconnected"
+			this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
 			throw error
 		}
 	}
