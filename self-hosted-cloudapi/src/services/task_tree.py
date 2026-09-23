@@ -24,6 +24,7 @@ Between them the link survives either ordering, and no event has to be replayed.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Iterable, Optional
 
 from sqlalchemy import select, update
@@ -174,6 +175,72 @@ def _is_at_or_above(parent_of: dict[str, str], task_id: Optional[str], candidate
 def subtree_size(tree: dict[str, list[Task]], task_id: str) -> int:
     """How many tasks sit beneath ``task_id`` in a tree from ``subtrees``."""
     return sum(1 + subtree_size(tree, child.id) for child in tree.get(task_id, []))
+
+
+@dataclass(frozen=True)
+class Spend:
+    """What some tasks consumed: the additive figures of a task row.
+
+    Duration and message count are deliberately absent. A parent's span already
+    encloses the subtasks it waited on (all 17 subtasks on the live corpus lie
+    inside their parent's first/last message), so adding theirs would count the
+    same minutes twice; and a message count is a property of one conversation.
+    """
+
+    cost: float = 0.0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cache_reads: int = 0
+    cache_writes: int = 0
+
+    @classmethod
+    def of(cls, task: Task) -> "Spend":
+        return cls(
+            cost=task.cost or 0.0,
+            tokens_in=task.tokens_in or 0,
+            tokens_out=task.tokens_out or 0,
+            cache_reads=task.cache_reads or 0,
+            cache_writes=task.cache_writes or 0,
+        )
+
+    def __add__(self, other: "Spend") -> "Spend":
+        return Spend(
+            cost=self.cost + other.cost,
+            tokens_in=self.tokens_in + other.tokens_in,
+            tokens_out=self.tokens_out + other.tokens_out,
+            cache_reads=self.cache_reads + other.cache_reads,
+            cache_writes=self.cache_writes + other.cache_writes,
+        )
+
+    def __sub__(self, other: "Spend") -> "Spend":
+        return Spend(
+            cost=self.cost - other.cost,
+            tokens_in=self.tokens_in - other.tokens_in,
+            tokens_out=self.tokens_out - other.tokens_out,
+            cache_reads=self.cache_reads - other.cache_reads,
+            cache_writes=self.cache_writes - other.cache_writes,
+        )
+
+    @property
+    def tokens(self) -> int:
+        return self.tokens_in + self.tokens_out
+
+
+def subtree_spend(tree: dict[str, list[Task]], task: Task) -> Spend:
+    """What ``task`` and every stored task beneath it consumed, together.
+
+    A plain sum is exact because the figures are disjoint: each task's columns
+    add up only its own ``api_req_started`` rows, and a subtask is a separate
+    task with its own conversation. Checked on the live corpus against the
+    ``LLM Completion`` telemetry, where every task's stored cost equals the cost
+    of the completions stamped with its own id (the parent of "Analyse issue
+    described in 1289652 ADO" $0.1656 = 13 completions, its subtasks $1.1940 =
+    46 and $0.0493 = 3), so the run cost $1.4090, not the $0.1656 on its row.
+    """
+    total = Spend.of(task)
+    for child in tree.get(task.id, []):
+        total = total + subtree_spend(tree, child)
+    return total
 
 
 async def ancestors(db: AsyncSession, task: Task, limit: int = 10) -> list[Task]:

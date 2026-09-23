@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_spend.html" as spend %}
 {% block title %}{{ title }} · Tumble Code{% endblock %}
 {% block content %}
 <div class="detail-header">
@@ -90,7 +91,11 @@
 
 {% if subtasks %}
 <section class="subtasks panel">
-  <h2 class="chart-title">Subtasks <span class="count-pill">{{ subtask_count }}</span></h2>
+  <h2 class="chart-title">Subtasks <span class="count-pill">{{ subtask_count }}</span>
+    {# What the whole run cost, which neither the page's own figures (this task
+       only) nor any single row below adds up to. #}
+    {% if run %}<span class="run-total"><span class="rollup-mark">Σ</span>run <b>{{ run.cost }}</b> · {{ run.tokens }} tok <span class="run-split">= this task {{ run.own_cost }} + subtasks {{ run.subtasks_cost }}</span></span>{% endif %}
+  </h2>
   {# The whole tree, nested: a subtask that delegated further shows its own
      subtasks one level in, rather than being a dead end until opened. #}
   <ul class="subtask-list">
@@ -100,8 +105,7 @@
         <span class="cell-title">{{ s.title }}</span>
         <span class="cell-num">{{ s.message_count }}<span class="unit">msg</span></span>
         <span class="cell-num">{{ s.duration or '' }}</span>
-        <span class="cell-num">{{ s.tokens or '' }}{% if s.tokens %}<span class="unit">tok</span>{% endif %}</span>
-        <span class="cell-num cell-cost">{{ s.cost or '' }}</span>
+        {{ spend.cells(s) }}
         <span class="cell-grade"><span class="grade grade-{{ s.grade }}" title="{{ s.grade_title }}">{{ s.grade_label }}</span></span>
       </a>
       {% if s.children %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_spend.html" as spend %}
 {% block title %}Your tasks · Tumble Code{% endblock %}
 {% block content %}
 {# The search terms travel with every scope/page link, so neither switching
@@ -85,8 +86,7 @@
         <span class="cell-model">{% if t.models %}<span class="badge badge-model" title="{{ t.models.title }}"><span class="badge-name">{{ t.models.name }}</span>{% if t.models.more %}<span class="badge-more">{{ t.models.more }}</span>{% endif %}</span>{% endif %}</span>
         <span class="cell-num">{{ t.message_count }}<span class="unit">msg</span></span>
         <span class="cell-num">{{ t.duration or '' }}</span>
-        <span class="cell-num">{{ t.tokens or '' }}{% if t.tokens %}<span class="unit">tok</span>{% endif %}</span>
-        <span class="cell-num cell-cost">{{ t.cost or '' }}</span>
+        {{ spend.cells(t) }}
         <span class="cell-grade"><span class="grade grade-{{ t.grade }}" title="{{ t.grade_title }}">{{ t.grade_label }}</span></span>
         <span class="cell-date"{% if t.updated_at %} data-ts="{{ t.updated_at.isoformat() }}"{% endif %}>{{ t.updated_at.strftime('%Y-%m-%d %H:%M') if t.updated_at else '' }}</span>
       </a>
