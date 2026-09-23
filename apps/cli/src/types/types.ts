@@ -59,6 +59,16 @@ export interface CliModeSettings {
 	reasoningEffort?: ReasoningEffortFlagOptions
 }
 
+/** Facts about one model that the CLI cannot learn from the provider, keyed by model id in cli-settings.json. */
+export interface CliModelSettings {
+	/**
+	 * Context window in tokens. Used with the openai provider (any
+	 * OpenAI-compatible server), whose model list carries ids only, so the
+	 * extension would otherwise assume 128,000.
+	 */
+	contextWindow?: number
+}
+
 export interface CliSettings {
 	onboardingProviderChoice?: OnboardingProviderChoice
 	/** Default mode to use (e.g., "code", "architect", "ask", "debug") */
@@ -83,6 +93,12 @@ export interface CliSettings {
 	 * --model, --base-url, --api-key or --reasoning-effort.
 	 */
 	modes?: Record<string, CliModeSettings>
+	/**
+	 * Per-model facts, keyed by model id exactly as the provider names it
+	 * (e.g. "GLM-5.3-NVFP4"). An entry applies wherever that model runs: the
+	 * global settings, a mode entry or --model.
+	 */
+	models?: Record<string, CliModelSettings>
 	/** Default consecutive error/repetition limit before guidance prompts */
 	consecutiveMistakeLimit?: number
 	/** Require manual approval for tools/commands/browser/MCP actions */

@@ -33,6 +33,11 @@ import {
 	toProviderSettings,
 	type ResolvedProviderConfig,
 } from "@/lib/utils/provider-config.js"
+import {
+	CONTEXT_WINDOW_PROVIDER,
+	findModelSettingsProblems,
+	getConfiguredContextWindow,
+} from "@/lib/utils/model-settings.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
@@ -253,6 +258,9 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const effectiveProvider = providerConfig.provider
 	const effectiveModel = providerConfig.model
 	const effectiveBaseUrl = providerConfig.baseUrl
+	// `models` entries follow the model wherever it runs, flags included.
+	const contextWindowFor = (config: ResolvedProviderConfig) =>
+		getConfiguredContextWindow(settings.models, config.model)
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
 	// the current working directory. The workspace is intentionally NEVER read
 	// from persisted settings — `tumble` must follow the directory it is run
@@ -295,6 +303,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		user: null,
 		provider: effectiveProvider,
 		model: effectiveModel,
+		contextWindow: contextWindowFor(providerConfig),
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
 		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),
@@ -338,6 +347,30 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			),
 	]
 
+	const modelSettingsProblems = findModelSettingsProblems(settings.models)
+	if (modelSettingsProblems.length > 0) {
+		for (const problem of modelSettingsProblems) {
+			console.error(`[CLI] Error: ${problem} (in ${getSettingsPath()})`)
+		}
+		process.exit(1)
+	}
+
+	// A context window set for a model that some configuration runs on another
+	// provider reaches nothing there; say so instead of letting the gauge and
+	// the condensing silently keep the provider's own size.
+	const ignoredContextWindowWarnings = new Set(
+		providerConfigsToCheck
+			.map(([, config]) => config)
+			.filter((config) => config.provider !== CONTEXT_WINDOW_PROVIDER && contextWindowFor(config) !== undefined)
+			.map(
+				(config) =>
+					`[CLI] Warning: models.${config.model}.contextWindow in ${getSettingsPath()} is ignored with the ${config.provider} provider; only ${CONTEXT_WINDOW_PROVIDER} takes the context window from the settings file.`,
+			),
+	)
+	for (const warning of ignoredContextWindowWarnings) {
+		console.warn(warning)
+	}
+
 	for (const [label, config] of providerConfigsToCheck) {
 		const problem = await findProviderConfigProblem(config, { ephemeral: flagOptions.ephemeral })
 
@@ -353,11 +386,15 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	extensionHostOptions.apiKey = keyFor(providerConfig)
 	extensionHostOptions.modeProviderSettings = {
-		base: toProviderSettings({ ...baseProviderConfig, apiKey: keyFor(baseProviderConfig) }),
+		base: toProviderSettings({
+			...baseProviderConfig,
+			apiKey: keyFor(baseProviderConfig),
+			contextWindow: contextWindowFor(baseProviderConfig),
+		}),
 		modes: Object.fromEntries(
 			Object.entries(modeProviderConfigs).map(([modeSlug, config]) => [
 				modeSlug,
-				toProviderSettings({ ...config, apiKey: keyFor(config) }),
+				toProviderSettings({ ...config, apiKey: keyFor(config), contextWindow: contextWindowFor(config) }),
 			]),
 		),
 	}

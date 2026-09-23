@@ -1,4 +1,4 @@
-import { openAiCodexDefaultModelId } from "@roo-code/types"
+import { openAiCodexDefaultModelId, openAiModelInfoSaneDefaults } from "@roo-code/types"
 
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 
@@ -226,7 +226,26 @@ describe("toProviderSettings", () => {
 			openAiApiKey: "1111",
 			enableReasoningEffort: true,
 			reasoningEffort: "high",
+			openAiCustomModelInfo: null,
 		})
+	})
+
+	it("sizes an openai model from its contextWindow, keeping the provider's other defaults", () => {
+		expect(toProviderSettings({ ...connection, contextWindow: 262_144 }).openAiCustomModelInfo).toEqual({
+			...openAiModelInfoSaneDefaults,
+			contextWindow: 262_144,
+		})
+	})
+
+	it("clears a size an earlier run left in the extension state when no contextWindow is set", () => {
+		// The startup settings are merged key by key into persisted state, so an
+		// absent key would keep the old value.
+		expect(toProviderSettings(connection)).toHaveProperty("openAiCustomModelInfo", null)
+	})
+
+	it("sends no model info to providers that size their models themselves", () => {
+		const settings = toProviderSettings({ provider: "anthropic", model: "claude-x", apiKey: "k", contextWindow: 1 })
+		expect(settings).not.toHaveProperty("openAiCustomModelInfo")
 	})
 
 	it("turns reasoning off for disabled and leaves it out for unspecified", () => {

@@ -1,4 +1,4 @@
-import type { ProviderSettings } from "@roo-code/types"
+import { openAiModelInfoSaneDefaults, type ProviderSettings } from "@roo-code/types"
 
 import type { RouterModels } from "@/ui/store.js"
 
@@ -12,6 +12,15 @@ const DEFAULT_CONTEXT_WINDOW = 200_000
  * @returns The context window size, or DEFAULT_CONTEXT_WINDOW (200K) if not found
  */
 export function getContextWindow(routerModels: RouterModels | null, apiConfiguration: ProviderSettings | null): number {
+	// The openai provider never reaches routerModels: its model source returns
+	// ids without sizes. The extension sizes the model from
+	// openAiCustomModelInfo (the CLI fills it from `models` in
+	// cli-settings.json), else from the provider's defaults; read the same
+	// fields, so the gauge measures against the size the condensing uses.
+	if (apiConfiguration?.apiProvider === "openai") {
+		return apiConfiguration.openAiCustomModelInfo?.contextWindow ?? openAiModelInfoSaneDefaults.contextWindow
+	}
+
 	if (!routerModels || !apiConfiguration) {
 		return DEFAULT_CONTEXT_WINDOW
 	}
