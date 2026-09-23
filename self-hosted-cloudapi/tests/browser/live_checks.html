@@ -1,0 +1,175 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!--
+  The live header on a task page (static/live.js): what the join acknowledgement
+  may and may not write into it. The bridge keeps ONE record per extension, not
+  per task: whatever the extension registered with (no figures at all), merged
+  with the last snapshot of whichever task it last reported on. Mirrors the
+  markup templates/task_detail.html renders when the bridge is on; socket.io and
+  the rendered conversation are stubbed, so each scenario loads live.js afresh
+  against its own fake socket.
+-->
+<div class="live-header">
+  <span id="live-status" class="live-status">Connecting…</span>
+  <span id="live-activity" class="live-activity" style="display:none"></span>
+  <span class="live-stat">mode <b id="hdr-mode">&#8212;</b></span>
+  <span class="live-stat">in <b id="hdr-tokens-in">&#8212;</b> / out <b id="hdr-tokens-out">&#8212;</b></span>
+  <span class="live-stat">context <b id="hdr-context">&#8212;</b></span>
+  <span class="live-stat" id="hdr-cost-wrap">cost <b id="hdr-cost">&#8212;</b></span>
+</div>
+<div id="live-controls" class="live-controls offline">
+  <input id="auto-enabled" type="checkbox">
+  <select id="auto-mode"><option value="default">default</option><option value="bypass">bypass</option></select>
+  <input id="auto-ReadOnly" type="checkbox"><input id="auto-Write" type="checkbox">
+  <input id="auto-Execute" type="checkbox"><input id="auto-Mcp" type="checkbox">
+  <input id="auto-ModeSwitch" type="checkbox"><input id="auto-Subtasks" type="checkbox">
+  <textarea id="chat-input"></textarea>
+  <button id="btn-send" type="button">Send</button>
+  <button id="btn-stop" type="button" style="display:none">Stop</button>
+  <button id="btn-resume" type="button">Resume</button>
+</div>
+<script id="live-config" type="application/json">{"taskId": "task-a", "bridgePath": "/bridge/socket.io"}</script>
+<script>
+// What the saved conversation of task-a adds up to (render.js getMetrics).
+window.__tumbleConversation = {
+  getMetrics: function () {
+    return { totalTokensIn: 297800, totalTokensOut: 5900, totalCost: 0.1656, contextTokens: 32200 }
+  },
+  getActivity: function () { return null },
+  upsert: function () {},
+  setActiveAsk: function () {},
+  clearActiveAsk: function () {},
+}
+
+// One fake socket per load of live.js. `join` is what the server acknowledges
+// task:join with; `fire` delivers a server event to the handlers live.js set.
+var sockets = []
+window.io = function () {
+  var handlers = {}
+  var sock = {
+    join: null,
+    emitted: [],
+    on: function (evt, fn) { handlers[evt] = fn },
+    emit: function (evt, payload, ack) {
+      sock.emitted.push({ evt: evt, payload: payload })
+      if (evt === "task:join" && ack) ack(sock.join)
+    },
+    fire: function (evt, data) { if (handlers[evt]) handlers[evt](data) },
+  }
+  sockets.push(sock)
+  return sock
+}
+</script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+  function text(id) { return document.getElementById(id).textContent }
+  function reset() {
+    ;["hdr-mode", "hdr-tokens-in", "hdr-tokens-out", "hdr-context", "hdr-cost"].forEach(function (id) {
+      document.getElementById(id).textContent = "\u2014"
+    })
+    document.querySelectorAll("#live-controls input[type=checkbox]").forEach(function (b) { b.checked = false })
+  }
+
+  // Loads live.js against a fresh socket, joins with `joinAck`, then hands the
+  // socket to `then`. Scenarios run one after another.
+  function scenario(joinAck, then, next) {
+    reset()
+    var s = document.createElement("script")
+    s.src = "../../src/web/static/live.js?n=" + sockets.length
+    s.onload = function () {
+      var sock = sockets[sockets.length - 1]
+      sock.join = joinAck
+      sock.fire("connect")
+      then(sock)
+      next()
+    }
+    document.body.appendChild(s)
+  }
+
+  var otherTask = {
+    taskId: "task-b",
+    mode: "debug",
+    isRunning: true,
+    tokenUsage: { totalTokensIn: 5000000, totalTokensOut: 100000, totalCost: 9.99, contextTokens: 150000 },
+    contextTokens: 150000,
+    contextWindow: 200000,
+    autoApproval: { autoApprovalEnabled: true, autoApprovalMode: "bypass", alwaysAllowReadOnly: true },
+    currentAsk: { ts: 42, type: "ask", ask: "command" },
+  }
+
+  scenario(
+    // The extension registered and has reported on no task since: the record
+    // is its registration only (userId, workspacePath, lastHeartbeat).
+    { success: true, instanceOnline: true, instance: { userId: "u1", workspacePath: "/w", lastHeartbeat: 1 } },
+    function () {
+      check("registration only: tokens in stay the conversation's", text("hdr-tokens-in") === "297.8k")
+      check("registration only: tokens out stay the conversation's", text("hdr-tokens-out") === "5.9k")
+      check("registration only: context stays the conversation's", text("hdr-context") === "32.2k")
+      check("registration only: cost stays the conversation's", text("hdr-cost") === "$0.1656")
+    },
+    function () {
+      scenario(
+        // The extension last reported on another task.
+        { success: true, instanceOnline: true, instance: otherTask },
+        function (sock) {
+          check("another task's snapshot: its tokens in are not shown", text("hdr-tokens-in") === "297.8k")
+          check("another task's snapshot: its tokens out are not shown", text("hdr-tokens-out") === "5.9k")
+          check("another task's snapshot: its cost is not shown", text("hdr-cost") === "$0.1656")
+          check("another task's snapshot: its context is not shown", text("hdr-context") === "32.2k")
+          check("another task's snapshot: its mode is not shown", text("hdr-mode") === "\u2014")
+          check("another task's snapshot: its running state does not offer Stop",
+                document.getElementById("btn-stop").style.display === "none")
+          // Auto-approval is the extension's setting, not the task's, and the
+          // controls push every toggle at once: they must start from the truth.
+          check("another task's snapshot: auto-approval still reflects the extension",
+                document.getElementById("auto-enabled").checked === true &&
+                document.getElementById("auto-ReadOnly").checked === true &&
+                document.getElementById("auto-mode").value === "bypass")
+
+          // A relayed snapshot of THIS task without figures (a mode switch)
+          // must not blank the figures already shown.
+          sock.fire("task:relayed_event", { type: "instanceState", taskId: "task-a", mode: "ask", isRunning: false })
+          check("a snapshot without figures keeps tokens in", text("hdr-tokens-in") === "297.8k")
+          check("a snapshot without figures keeps tokens out", text("hdr-tokens-out") === "5.9k")
+          check("a snapshot without figures keeps the context", text("hdr-context") === "32.2k")
+          check("a snapshot without figures still sets the mode", text("hdr-mode") === "ask")
+        },
+        function () {
+          scenario(
+            // The extension last reported on this very task.
+            {
+              success: true,
+              instanceOnline: true,
+              instance: {
+                taskId: "task-a",
+                mode: "code",
+                isRunning: true,
+                tokenUsage: { totalTokensIn: 310000, totalTokensOut: 6100, totalCost: 0.1702, contextTokens: 33000 },
+                contextTokens: 33000,
+                contextWindow: 200000,
+              },
+            },
+            function () {
+              check("this task's snapshot: tokens in", text("hdr-tokens-in") === "310k")
+              check("this task's snapshot: tokens out", text("hdr-tokens-out") === "6.1k")
+              check("this task's snapshot: cost", text("hdr-cost") === "$0.1702")
+              check("this task's snapshot: context against the window", text("hdr-context") === "33k / 200k")
+              check("this task's snapshot: mode", text("hdr-mode") === "code")
+              check("this task's snapshot: running offers Stop",
+                    document.getElementById("btn-stop").style.display === "")
+            },
+            function () {
+              var pre = document.createElement("pre")
+              pre.id = "results"
+              pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+              document.body.appendChild(pre)
+            },
+          )
+        },
+      )
+    },
+  )
+})
+</script>
+</body></html>

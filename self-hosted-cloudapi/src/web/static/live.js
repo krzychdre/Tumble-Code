@@ -165,9 +165,19 @@
 			setStatus(online ? "Live" : "Extension offline", online ? "live" : "offline")
 			setControlsEnabled(online)
 			if (!online) setRunning(false)
-			if (res.instance) applyInstanceState(res.instance)
+			if (res.instance) applyInstanceState(ownSnapshot(res.instance))
 		})
 	})
+
+	// The bridge keeps one record per extension, not per task: what it registered
+	// with (no figures, no mode) merged with the last snapshot of whichever task
+	// it last reported on. Only a snapshot of this task describes this task; the
+	// auto-approval settings belong to the extension, so they hold for any, and
+	// the controls push all of them at once, so they must start from the truth.
+	function ownSnapshot(inst) {
+		if (inst.taskId === taskId) return inst
+		return inst.autoApproval ? { autoApproval: inst.autoApproval } : null
+	}
 
 	socket.on("disconnect", function () {
 		setStatus("Disconnected", "offline")
@@ -201,13 +211,14 @@
 		if (tu.totalTokensIn != null || tu.totalTokensOut != null || tu.totalCost != null) {
 			haveLiveTokens = true
 		}
-		if (els.tokensIn) els.tokensIn.textContent = fmt(tu.totalTokensIn)
-		if (els.tokensOut) els.tokensOut.textContent = fmt(tu.totalTokensOut)
+		// A figure the snapshot does not carry keeps the value already shown: a
+		// snapshot with no token data says nothing about them, it does not zero them.
+		if (els.tokensIn && tu.totalTokensIn != null) els.tokensIn.textContent = fmt(tu.totalTokensIn)
+		if (els.tokensOut && tu.totalTokensOut != null) els.tokensOut.textContent = fmt(tu.totalTokensOut)
 		if (els.cost && tu.totalCost != null) els.cost.textContent = "$" + Number(tu.totalCost).toFixed(4)
 		var ctx = s.contextTokens != null ? s.contextTokens : tu.contextTokens
-		if (els.context) {
-			els.context.textContent =
-				ctx != null ? fmt(ctx) + (s.contextWindow ? " / " + fmt(s.contextWindow) : "") : "—"
+		if (els.context && ctx != null) {
+			els.context.textContent = fmt(ctx) + (s.contextWindow ? " / " + fmt(s.contextWindow) : "")
 		}
 		if (els.mode && s.mode) els.mode.textContent = s.mode
 
