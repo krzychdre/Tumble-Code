@@ -28,7 +28,8 @@ interface UserMessageProps {
 }
 
 /**
- * User prompt echo: bg band + pointer + sanitized text.
+ * User prompt echo: slate band, orange pointer and bold text, so every turn
+ * boundary is visible at a glance between the assistant's white text.
  * Content >10k chars is truncated to head 5k + "… [+N chars] …" + tail 5k.
  */
 function UserMessage({ content }: UserMessageProps) {
@@ -36,8 +37,12 @@ function UserMessage({ content }: UserMessageProps) {
 
 	return (
 		<Box backgroundColor={theme.userMessageBg} paddingRight={1}>
-			<Text color={theme.subtle}>{figures.pointer} </Text>
-			<Text color={theme.text}>{sanitized}</Text>
+			<Text bold color={theme.brand}>
+				{figures.pointer}{" "}
+			</Text>
+			<Text bold color={theme.text}>
+				{sanitized}
+			</Text>
 		</Box>
 	)
 }

@@ -10,14 +10,20 @@
  */
 
 export const theme = {
-	brand: "#FD971F", // orange — welcome ✻, spinner verb/frames
+	brand: "#FD971F", // orange: welcome ✻, spinner verb/frames, ❯ in user rows
 	text: "#F8F8F2",
-	secondaryText: "#A3BABF", // tool results, descriptions
-	subtle: "#5E7175", // ❯ in user rows, ⎿ connectors
+	secondaryText: "#A3BABF", // descriptions, dialog and panel text
+	// Tool results and "∴ Thinking", the rows the eye should skip. Already dark
+	// on its own, never paired with dimColor: VTE (GNOME Terminal, Ptyxis) dims
+	// only palette colours and draws an RGB colour at full strength, so
+	// `dimColor` + a hex colour was not dim there at all (vte.cc, "Handle dim
+	// colors"). Terminals that do dim RGB would darken it twice.
+	faint: "#6D7C7F",
+	subtle: "#5E7175", // separators, empty gauge cells
 	inactive: "#505354", // placeholder, disabled
 	permission: "#9E6FFE", // dialog borders, select pointer/focus
 	promptBorder: "#5E7175", // input rules + prompt ❯
-	userMessageBg: "#383a3e", // user-turn background band
+	userMessageBg: "#2F3E5A", // user-turn band; slate blue, so it stands out on grey and aubergine backgrounds alike
 	bashBorder: "#F92672", // reserved: `!` bash-style accents
 	success: "#A6E22E", // resolved tool bullets, success toasts
 	error: "#F92672",
@@ -41,6 +47,7 @@ export type Theme = typeof theme
 export const brand = theme.brand
 export const text = theme.text
 export const secondaryText = theme.secondaryText
+export const faint = theme.faint
 export const subtle = theme.subtle
 export const inactive = theme.inactive
 export const permission = theme.permission

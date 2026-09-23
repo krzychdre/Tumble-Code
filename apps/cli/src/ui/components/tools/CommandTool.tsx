@@ -9,11 +9,12 @@ import { toolStatusFromMessage } from "./types.js"
 import { sanitizeContent } from "./utils.js"
 
 /**
- * Output lines kept in the collapsed row. Small on purpose: the row exists to
- * say WHAT ran and to hint at the shape of the answer, and ctrl+o is one
- * keystroke away for the whole thing.
+ * Output lines kept in the collapsed row: none. The row says WHAT ran, and
+ * the "⎿ … +N lines (ctrl+o)" counter says how much it printed; the output
+ * itself is one keystroke away. A preview of a few lines was noise that
+ * pushed the answer off the screen, and the model reads the output anyway.
  */
-const MAX_OUTPUT_LINES = 5
+const MAX_OUTPUT_LINES = 0
 
 /** Columns the bullet column takes before the row's own content starts. */
 const BULLET_INSET = 2
