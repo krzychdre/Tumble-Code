@@ -59,6 +59,10 @@ export interface CliSettings {
 	model?: string
 	/** Default base URL for the selected provider (when the provider's schema has one) */
 	baseUrl?: string
+	/** API key for the provider (keep the file readable only by you: chmod 600) */
+	apiKey?: string
+	/** Name of the environment variable holding the API key (used when apiKey is absent) */
+	apiKeyEnv?: string
 	/** Default reasoning effort level */
 	reasoningEffort?: ReasoningEffortFlagOptions
 	/** Default consecutive error/repetition limit before guidance prompts */

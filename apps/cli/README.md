@@ -311,6 +311,7 @@ to the run they are given on and are never saved.
 	"provider": "openai",
 	"baseUrl": "http://192.168.50.194:11111/v1",
 	"model": "GLM-5.3-Flash-NVFP4",
+	"apiKey": "1111",
 	"reasoningEffort": "high",
 	"mode": "code"
 }
@@ -321,11 +322,18 @@ to the run they are given on and are never saved.
 | `provider`                | Provider id, as for `--provider`                            |
 | `model`                   | Model id; used only while `provider` is the active provider |
 | `baseUrl`                 | Base URL; used only while `provider` is the active provider |
+| `apiKey`                  | API key; used only while `provider` is the active provider  |
+| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`    |
 | `reasoningEffort`         | As for `--reasoning-effort`                                 |
 | `mode`                    | Mode a new session starts in                                |
 | `requireApproval`         | `true` asks before actions, as `--require-approval`         |
 | `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                        |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`        |
+
+The file may hold an API key, so keep it readable only by you (`chmod 600
+~/.roo/cli-settings.json`); the CLI warns when other users can read it. To keep
+the key out of the file, use `"apiKeyEnv": "MY_KEY_VAR"` instead: the CLI reads
+the key from that variable and stops with an error naming it when it is unset.
 
 Precedence: flag > settings file > built-in default. Provider, model and base
 URL also fall back to the CLI's own extension state in
@@ -334,8 +342,8 @@ URL also fall back to the CLI's own extension state in
 ## Environment Variables
 
 The CLI supports the same inference providers as the VS Code extension. For
-providers that need an API key, the CLI looks for it in the environment
-variable below if not provided via `--api-key`. Provider selection follows:
+providers that need an API key, the CLI takes it from `--api-key`, then
+`apiKey`/`apiKeyEnv` in the settings file, then the environment variable below. Provider selection follows:
 `--provider` flag > settings file > the CLI's own extension state > default
 (`openrouter`). Keyless providers (ollama, lmstudio,
 bedrock, qwen-code, vertex, openai-codex) run without any API key; OAuth-backed

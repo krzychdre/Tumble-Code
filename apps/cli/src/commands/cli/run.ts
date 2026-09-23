@@ -10,28 +10,19 @@ import { setLogger } from "@roo-code/vscode-shim"
 import {
 	FlagOptions,
 	isAcceptedProvider,
-	resolveProviderIdAlias,
 	supportedProviders,
 	DEFAULT_FLAGS,
 	REASONING_EFFORTS,
 	OutputFormat,
-	type CliSettings,
-	type SupportedProvider,
 } from "@/types/index.js"
-import { openAiCodexDefaultModelId } from "@roo-code/types"
 import { getOpenAiCodexAuthStatus } from "@/commands/auth/openai-codex.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
-import { loadSettings } from "@/lib/storage/index.js"
+import { getSettingsPath, isSettingsFileReadableByOthers, loadSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
-import {
-	getEnvVarName,
-	getApiKeyFromEnv,
-	getBaseUrlField,
-	providerRequiresApiKey,
-	getProviderSettings,
-} from "@/lib/utils/provider.js"
+import { getEnvVarName, providerRequiresApiKey, getProviderSettings } from "@/lib/utils/provider.js"
+import { pickProviderConfig, resolveProviderConfig } from "@/lib/utils/provider-config.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
@@ -59,57 +50,6 @@ async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: str
 
 function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
-}
-
-/**
- * Resolve the effective model for a run when no explicit `-m/--model` flag is
- * given (the caller applies the flag first).
- *
- * ▶ Precedence: flag `-m/--model` > persisted cli-settings.json model > mock
- *   VS Code config model > built-in default (caller chain).
- * ▶ A persisted model belongs to the provider that was active when it was
- *   saved — the settings file stores provider + model together. It is applied
- *   only when the persisted provider resolves to the provider actually
- *   running; otherwise the built-in default model is used so a model saved for
- *   another provider never gets sent to the wrong provider (decision A3 of
- *   ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
- */
-export function resolveEffectiveModel(
-	settings: Pick<CliSettings, "provider" | "model"> | undefined,
-	activeProvider: SupportedProvider,
-): string | undefined {
-	if (!settings?.model) {
-		return undefined
-	}
-
-	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
-	if (persistedProvider !== activeProvider) {
-		return undefined
-	}
-
-	return settings.model
-}
-
-/** A persisted base URL belongs to the provider it was saved with. */
-export function resolveEffectiveBaseUrl(
-	settings: Pick<CliSettings, "provider" | "baseUrl"> | undefined,
-	activeProvider: SupportedProvider,
-): string | undefined {
-	if (!settings?.baseUrl) {
-		return undefined
-	}
-
-	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
-	return persistedProvider === activeProvider ? settings.baseUrl : undefined
-}
-
-/**
- * Whether the active provider's settings schema has a base-url field. Gates the
- * VS Code config base URL fallback: getProviderSettings throws when a baseUrl
- * is given for a provider that has no base-url field.
- */
-export function effectiveProviderSupportBaseUrl(provider: SupportedProvider): boolean {
-	return getBaseUrlField(provider) !== undefined
 }
 
 export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
@@ -176,39 +116,39 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	const settings = await loadSettings()
 
+	if (settings.apiKey && (await isSettingsFileReadableByOthers())) {
+		console.warn(
+			`[CLI] Warning: ${getSettingsPath()} holds an apiKey and other users can read it. Run: chmod 600 ${getSettingsPath()}`,
+		)
+	}
+
 	const isTuiSupported = process.stdin.isTTY && process.stdout.isTTY
 	const isTuiEnabled = !flagOptions.print && isTuiSupported
 	const isOnboardingEnabled = isTuiEnabled && !flagOptions.provider && !settings.provider
 
-	// Reuse provider/model/key/baseUrl chosen in the VS Code extension
-	// (via the vscode-shim global storage). Precedence for everything below:
-	// CLI flags > settings file > persisted VS Code config > env > defaults.
-	const vsCodeConfig = readVsCodeConfig() ?? {}
+	// Provider connection: flags > settings file > the CLI's own extension
+	// state (~/.vscode-mock) > defaults, with provider-bound values (model,
+	// base URL, key) used only for the provider they were written for.
+	const providerConfig = resolveProviderConfig({
+		fallback: readVsCodeConfig(),
+		layers: [
+			pickProviderConfig(settings),
+			{
+				provider: flagOptions.provider,
+				model: flagOptions.model,
+				baseUrl: flagOptions.baseUrl,
+				apiKey: flagOptions.apiKey,
+				reasoningEffort: flagOptions.reasoningEffort,
+			},
+		],
+	})
 
-	// Determine effective values: CLI flags > settings file > DEFAULT_FLAGS.
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
-	const effectiveReasoningEffort =
-		flagOptions.reasoningEffort || settings.reasoningEffort || DEFAULT_FLAGS.reasoningEffort
-	const rawEffectiveProvider =
-		flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider ?? DEFAULT_FLAGS.provider
-	// Persisted aliases (e.g. the cloud "tumble" id) are accepted and mapped to
-	// the real provider (tumble -> openrouter) before anything else consumes it.
-	const effectiveProvider = resolveProviderIdAlias(rawEffectiveProvider) as SupportedProvider
-	// An explicit -m wins outright; otherwise the persisted model applies only
-	// when its provider matches the active provider (its settings were saved
-	// for) — a model persisted for a different provider must not be sent to it.
-	// Explicit flags > persisted cli-settings.json > mock VS Code config > default.
-	const effectiveModel =
-		flagOptions.model ||
-		resolveEffectiveModel(settings, effectiveProvider) ||
-		vsCodeConfig?.model ||
-		(effectiveProvider === "openai-codex" ? openAiCodexDefaultModelId : DEFAULT_FLAGS.model)
-	const effectiveBaseUrl =
-		flagOptions.baseUrl ||
-		resolveEffectiveBaseUrl(settings, effectiveProvider) ||
-		(vsCodeConfig?.provider === effectiveProvider && effectiveProviderSupportBaseUrl(effectiveProvider)
-			? vsCodeConfig.baseUrl
-			: undefined)
+	const effectiveReasoningEffort = providerConfig.reasoningEffort
+	const rawEffectiveProvider = providerConfig.rawProvider
+	const effectiveProvider = providerConfig.provider
+	const effectiveModel = providerConfig.model
+	const effectiveBaseUrl = providerConfig.baseUrl
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
 	// the current working directory. The workspace is intentionally NEVER read
 	// from persisted settings — `tumble` must follow the directory it is run
@@ -322,16 +262,21 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	const needsKey = providerRequiresApiKey(extensionHostOptions.provider)
 
 	if (needsKey) {
-		extensionHostOptions.apiKey =
-			flagOptions.apiKey || getApiKeyFromEnv(extensionHostOptions.provider) || vsCodeConfig?.apiKey
+		extensionHostOptions.apiKey = providerConfig.apiKey
 
 		if (!extensionHostOptions.apiKey) {
-			console.error(
-				`[CLI] Error: No API key provided. Use --api-key or set the appropriate environment variable.`,
-			)
-			console.error(
-				`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`,
-			)
+			if (providerConfig.missingApiKeyEnv) {
+				console.error(
+					`[CLI] Error: apiKeyEnv names ${providerConfig.missingApiKeyEnv}, but that environment variable is empty or unset.`,
+				)
+			} else {
+				console.error(
+					`[CLI] Error: No API key provided. Use --api-key, set apiKey or apiKeyEnv in ${getSettingsPath()}, or set the provider's environment variable.`,
+				)
+				console.error(
+					`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`,
+				)
+			}
 			process.exit(1)
 		}
 	}

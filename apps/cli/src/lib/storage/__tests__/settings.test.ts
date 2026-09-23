@@ -4,7 +4,7 @@ import os from "os"
 
 import { getConfigDir } from "@/lib/storage/index.js"
 
-import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
+import { loadSettings, saveSettings, getSettingsPath, isSettingsFileReadableByOthers } from "@/lib/storage/settings.js"
 
 vi.mock("@/lib/storage/index.js", () => ({
 	getConfigDir: vi.fn(),
@@ -90,5 +90,41 @@ describe("cli settings persistence", () => {
 		])
 
 		expect(() => JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))).not.toThrow()
+	})
+})
+
+describe.skipIf(process.platform === "win32")("isSettingsFileReadableByOthers", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-settings-mode-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+	})
+
+	afterEach(() => {
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	it("is false when the file is missing", async () => {
+		await expect(isSettingsFileReadableByOthers()).resolves.toBe(false)
+	})
+
+	it("is false for an owner-only file and true once group or others can read it", async () => {
+		fs.writeFileSync(getSettingsPath(), "{}")
+
+		fs.chmodSync(getSettingsPath(), 0o600)
+		await expect(isSettingsFileReadableByOthers()).resolves.toBe(false)
+
+		fs.chmodSync(getSettingsPath(), 0o644)
+		await expect(isSettingsFileReadableByOthers()).resolves.toBe(true)
+	})
+
+	it("keeps an owner-only mode when the CLI rewrites the file", async () => {
+		await saveSettings({ provider: "openai" })
+		fs.chmodSync(getSettingsPath(), 0o600)
+
+		await saveSettings({ onboardingProviderChoice: undefined, mode: "architect" })
+
+		await expect(isSettingsFileReadableByOthers()).resolves.toBe(false)
 	})
 })

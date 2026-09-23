@@ -24,6 +24,23 @@ export async function loadSettings(): Promise<CliSettings> {
 	}
 }
 
+/**
+ * True when the settings file can be read by users other than its owner. The
+ * file may hold an API key, so the run warns in that case. Always false on
+ * Windows, where POSIX mode bits do not describe access.
+ */
+export async function isSettingsFileReadableByOthers(): Promise<boolean> {
+	if (process.platform === "win32") {
+		return false
+	}
+
+	try {
+		return ((await fs.stat(getSettingsPath())).mode & 0o077) !== 0
+	} catch {
+		return false
+	}
+}
+
 export type CliSettingsUpdate = Omit<Partial<CliSettings>, "provider" | "model" | "baseUrl"> & {
 	provider?: CliSettings["provider"] | null
 	model?: string | null

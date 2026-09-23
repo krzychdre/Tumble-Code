@@ -4,7 +4,7 @@ import os from "os"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
 
-import { run, resolveEffectiveBaseUrl, resolveEffectiveModel } from "../run.js"
+import { run } from "../run.js"
 import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
 import { getConfigDir } from "@/lib/storage/config-dir.js"
 import type { FlagOptions } from "@/types/index.js"
@@ -39,6 +39,7 @@ const mockHost = vi.hoisted(() => ({
 				baseUrl?: string
 				mode?: string
 				reasoningEffort?: string
+				apiKey?: string
 		  },
 }))
 
@@ -264,44 +265,6 @@ $((1+1))
 		expect(readContent).toContain("$HOME")
 		expect(readContent).toContain("$(echo dangerous)")
 		expect(readContent).toContain("`rm -rf /`")
-	})
-})
-
-describe("resolveEffectiveModel (provider/model coexistence, decision A3)", () => {
-	it("returns the persisted model when the persisted provider matches the active provider", () => {
-		expect(resolveEffectiveModel({ provider: "openrouter", model: "openai/gpt-4o" }, "openrouter")).toBe(
-			"openai/gpt-4o",
-		)
-	})
-
-	it("returns undefined when the persisted model has no matching provider", () => {
-		// Persisted for openrouter, running openai → the openrouter model must
-		// NOT be sent to openai.
-		expect(resolveEffectiveModel({ provider: "openrouter", model: "openai/gpt-4o" }, "openai")).toBeUndefined()
-	})
-
-	it("resolves persisted aliases before comparing providers", () => {
-		// Persisted "tumble" maps to openrouter.
-		expect(resolveEffectiveModel({ provider: "tumble" as never, model: "openai/gpt-4o" }, "openrouter")).toBe(
-			"openai/gpt-4o",
-		)
-	})
-
-	it("returns undefined when no model or provider is persisted", () => {
-		expect(resolveEffectiveModel({}, "openrouter")).toBeUndefined()
-		expect(resolveEffectiveModel({ provider: "openrouter" }, "openrouter")).toBeUndefined()
-		expect(resolveEffectiveModel(undefined, "openrouter")).toBeUndefined()
-	})
-})
-
-describe("resolveEffectiveBaseUrl", () => {
-	it("returns a persisted URL only for the provider it belongs to", () => {
-		expect(resolveEffectiveBaseUrl({ provider: "openai", baseUrl: "http://localhost:1234/v1" }, "openai")).toBe(
-			"http://localhost:1234/v1",
-		)
-		expect(
-			resolveEffectiveBaseUrl({ provider: "openai", baseUrl: "http://localhost:1234/v1" }, "openai-codex"),
-		).toBeUndefined()
 	})
 })
 
@@ -581,6 +544,84 @@ describe("run mode and reasoning effort come from settings when no flag is given
 			expect(mockHost.lastOptions?.reasoningEffort).toBe("medium")
 		} finally {
 			exitSpy.mockRestore()
+		}
+	})
+})
+
+describe("run API key from the settings file", () => {
+	let tempDir: string
+	const savedEnv = { ...process.env }
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-apikey-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+		delete process.env.OPENAI_API_KEY
+		delete process.env.LOCAL_LLM_KEY
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+		process.env = { ...savedEnv }
+	})
+
+	it("a bare run needs no --api-key when the settings hold apiKey", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({
+				provider: "openai",
+				baseUrl: "http://192.168.50.194:11111/v1",
+				model: "GLM-5.3-Flash-NVFP4",
+				apiKey: "1111",
+				reasoningEffort: "max",
+			})
+
+			await run("hello", baseFlags({ apiKey: undefined }))
+
+			expect(exitSpy).not.toHaveBeenCalledWith(1)
+			expect(mockHost.lastOptions).toMatchObject({
+				provider: "openai",
+				baseUrl: "http://192.168.50.194:11111/v1",
+				model: "GLM-5.3-Flash-NVFP4",
+				apiKey: "1111",
+				reasoningEffort: "max",
+			})
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("reads the key from the variable named by apiKeyEnv", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			process.env.LOCAL_LLM_KEY = "from-env"
+			await saveSettings({ provider: "openai", apiKeyEnv: "LOCAL_LLM_KEY" })
+
+			await run("hello", baseFlags({ apiKey: undefined }))
+
+			expect(mockHost.lastOptions?.apiKey).toBe("from-env")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("names the unset apiKeyEnv variable when it is missing", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		try {
+			await saveSettings({ provider: "openai", apiKeyEnv: "LOCAL_LLM_KEY" })
+
+			await run("hello", baseFlags({ apiKey: undefined }))
+
+			expect(exitSpy).toHaveBeenCalledWith(1)
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("LOCAL_LLM_KEY"))
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
 		}
 	})
 })
