@@ -62,4 +62,9 @@ jobs:
             - name: Run unit tests
               # --continue: turbo otherwise stops at the first failing package,
               # so every run showed one package's failures and hid the rest.
-              run: pnpm test --continue
+              # --log-prefix none: turbo otherwise starts every line with
+              # "<package>:test: ", and GitHub only turns "::error" into an
+              # annotation at the start of a line, so vitest's per-test
+              # annotations were dropped. --log-order grouped already wraps
+              # each package's output in its own ::group:: section.
+              run: pnpm test --continue --log-prefix none
