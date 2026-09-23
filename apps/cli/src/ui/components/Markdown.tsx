@@ -64,10 +64,15 @@ function tokenizeInline(line: string): Token[] {
 	}
 }
 
-function renderTokens(tokens: Token[], dimColor: boolean): ReactNode {
+/**
+ * `faint` recedes every token, code and links included, which is what the SGR
+ * dim on a blockquote used to promise and VTE never drew (theme.dimmed).
+ */
+function renderTokens(tokens: Token[], dimColor: boolean, faint = false): ReactNode {
+	const shade = (color: string) => (faint ? theme.dimmed(color) : color)
 	try {
 		return tokens.map((token, index) => {
-			const baseColor = dimColor ? theme.secondaryText : theme.text
+			const baseColor = shade(dimColor ? theme.secondaryText : theme.text)
 			switch (token.kind) {
 				case "bold":
 					return (
@@ -83,7 +88,7 @@ function renderTokens(tokens: Token[], dimColor: boolean): ReactNode {
 					)
 				case "code":
 					return (
-						<Text key={index} color={theme.code}>
+						<Text key={index} color={shade(theme.code)}>
 							{token.text}
 						</Text>
 					)
@@ -95,13 +100,13 @@ function renderTokens(tokens: Token[], dimColor: boolean): ReactNode {
 					)
 				case "linkText":
 					return (
-						<Text key={index} color={theme.suggestion}>
+						<Text key={index} color={shade(theme.suggestion)}>
 							{token.text}
 						</Text>
 					)
 				case "linkUrl":
 					return (
-						<Text key={index} dimColor color={theme.secondaryText}>
+						<Text key={index} color={theme.faint}>
 							{" "}
 							({token.text})
 						</Text>
@@ -117,7 +122,7 @@ function renderTokens(tokens: Token[], dimColor: boolean): ReactNode {
 	} catch {
 		// Malformed token rendering — fall back to raw text
 		return (
-			<Text color={dimColor ? theme.secondaryText : theme.text}>
+			<Text color={shade(dimColor ? theme.secondaryText : theme.text)}>
 				{tokens.map((token) => token.text).join("")}
 			</Text>
 		)
@@ -130,8 +135,8 @@ function renderTokens(tokens: Token[], dimColor: boolean): ReactNode {
  * `- **Plik:** opis` reached the screen with the asterisks still in it
  * (plan: 2026-09-22 inline markdown in CLI list items).
  */
-function renderInline(text: string, dimColor: boolean): ReactNode {
-	return renderTokens(tokenizeInline(text), dimColor)
+function renderInline(text: string, dimColor: boolean, faint = false): ReactNode {
+	return renderTokens(tokenizeInline(text), dimColor, faint)
 }
 
 /**
@@ -150,11 +155,7 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 		// Fenced code block opener/closer
 		const fenceMatch = line.match(/^\s*(```|~~~)(\S*)?$/)
 		if (fenceMatch) {
-			return (
-				<Text dimColor color={theme.secondaryText}>
-					{fenceMatch[2] ? `lang: ${fenceMatch[2]}` : ""}
-				</Text>
-			)
+			return <Text color={theme.faint}>{fenceMatch[2] ? `lang: ${fenceMatch[2]}` : ""}</Text>
 		}
 
 		// Heading
@@ -203,8 +204,8 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 		const quoteMatch = line.match(/^\s*>\s?(.*)$/)
 		if (quoteMatch) {
 			return (
-				<Text dimColor color={theme.secondaryText}>
-					{figures.blockquote} {renderInline(quoteMatch[1] ?? "", true)}
+				<Text color={theme.faint}>
+					{figures.blockquote} {renderInline(quoteMatch[1] ?? "", true, true)}
 				</Text>
 			)
 		}
@@ -212,7 +213,7 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 		// Horizontal rule
 		if (/^\s*(---+|\*\*\*+)\s*$/.test(line)) {
 			return (
-				<Text dimColor color={theme.secondaryText}>
+				<Text color={theme.faint}>
 					{"───".repeat(13)} {/* 39 dashes, kept under 40 wide */}
 				</Text>
 			)
@@ -233,7 +234,7 @@ function renderLine(line: string, dimColor: boolean): ReactNode {
 		const isTableBoundary = trimmedLine.includes("|") && trimmedLine.includes("-") && /^[|\s:-]+$/.test(trimmedLine)
 		if (isTableBoundary) {
 			return (
-				<Text dimColor color={theme.secondaryText}>
+				<Text color={theme.faint}>
 					{"	"}
 					{"　"}
 				</Text>
@@ -288,11 +289,7 @@ function Markdown({ children, dimColor = false }: MarkdownProps) {
 
 				rendered.push(
 					<Box key={`fence-${rendered.length}`} flexDirection="column">
-						{lang && (
-							<Text dimColor color={theme.secondaryText}>
-								{lang}
-							</Text>
-						)}
+						{lang && <Text color={theme.faint}>{lang}</Text>}
 						{block.map((codeLine, codeIndex) => (
 							<Box key={codeIndex} paddingLeft={2}>
 								<Text color={theme.secondaryText}>{codeLine}</Text>

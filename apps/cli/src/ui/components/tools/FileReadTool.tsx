@@ -86,10 +86,7 @@ export function FileReadTool({ toolData, message, expanded = false }: ToolRender
 						<Text bold>{displayName}</Text>
 						{path ? <Text>({path})</Text> : null}
 						{isOutsideWorkspace ? (
-							<Text dimColor color={theme.warning}>
-								{" "}
-								(outside workspace)
-							</Text>
+							<Text color={theme.dimmed(theme.warning)}> (outside workspace)</Text>
 						) : null}
 					</Text>
 					{resultLine && <ResultRow maxLines={maxPreviewLines}>{resultLine}</ResultRow>}

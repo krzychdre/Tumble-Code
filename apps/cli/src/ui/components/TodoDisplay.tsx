@@ -83,7 +83,7 @@ function TodoDisplay({
 						<Text bold color={theme.text}>
 							{title}
 						</Text>
-						<Text dimColor color={theme.secondaryText}>
+						<Text color={theme.faint}>
 							{" "}
 							({completedCount}/{totalCount})
 						</Text>
@@ -112,7 +112,7 @@ function TodoDisplay({
 							<Text>
 								{checkbox}{" "}
 								{todo.status === "completed" ? (
-									<Text dimColor strikethrough color={theme.subtle}>
+									<Text strikethrough color={theme.dimmed(theme.subtle)}>
 										{todo.content}
 									</Text>
 								) : todo.status === "in_progress" ? (
@@ -123,7 +123,7 @@ function TodoDisplay({
 									<Text color={theme.text}>{todo.content}</Text>
 								)}
 								{statusChanged && (
-									<Text dimColor color={theme.secondaryText}>
+									<Text color={theme.faint}>
 										{" "}
 										[
 										{todo.status === "completed"
@@ -134,12 +134,7 @@ function TodoDisplay({
 										]
 									</Text>
 								)}
-								{isNew && (
-									<Text dimColor color={theme.secondaryText}>
-										{" "}
-										[new]
-									</Text>
-								)}
+								{isNew && <Text color={theme.faint}> [new]</Text>}
 							</Text>
 						</Box>
 					)

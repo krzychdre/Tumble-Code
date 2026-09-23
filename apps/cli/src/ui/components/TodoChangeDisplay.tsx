@@ -64,7 +64,7 @@ function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplayProps) 
 						<Text bold color={theme.text}>
 							{headerLabel}
 						</Text>
-						<Text dimColor color={theme.secondaryText}>
+						<Text color={theme.faint}>
 							{" "}
 							({completedCount}/{totalCount})
 						</Text>
@@ -96,7 +96,7 @@ function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplayProps) 
 							<Text>
 								{checkbox}{" "}
 								{todo.status === "completed" ? (
-									<Text dimColor strikethrough color={theme.subtle}>
+									<Text strikethrough color={theme.dimmed(theme.subtle)}>
 										{todo.content}
 									</Text>
 								) : todo.status === "in_progress" ? (
@@ -106,12 +106,7 @@ function TodoChangeDisplay({ previousTodos, newTodos }: TodoChangeDisplayProps) 
 								) : (
 									<Text color={theme.text}>{todo.content}</Text>
 								)}
-								{changeLabel && (
-									<Text dimColor color={theme.secondaryText}>
-										{" "}
-										[{changeLabel}]
-									</Text>
-								)}
+								{changeLabel && <Text color={theme.faint}> [{changeLabel}]</Text>}
 							</Text>
 						</Box>
 					)

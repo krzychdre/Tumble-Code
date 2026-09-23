@@ -10,16 +10,14 @@ interface SystemMessageProps {
 }
 
 /**
- * Subtle one-line system message (dim secondaryText, indent 2).
+ * Subtle one-line system message (faint, indent 2).
  */
 function SystemMessage({ content }: SystemMessageProps) {
 	const sanitized = sanitizeContent(content)
 
 	return (
 		<Box paddingLeft={2}>
-			<Text dimColor color={theme.secondaryText}>
-				{sanitized}
-			</Text>
+			<Text color={theme.faint}>{sanitized}</Text>
 		</Box>
 	)
 }

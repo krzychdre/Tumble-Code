@@ -58,9 +58,7 @@ function ContextGauge({ percent }: ContextGaugeProps) {
 	return (
 		<Text>
 			<Text color={color}>{FILLED_CELL.repeat(filled)}</Text>
-			<Text dimColor color={theme.inactive}>
-				{EMPTY_CELL.repeat(GAUGE_CELLS - filled)}
-			</Text>
+			<Text color={theme.dimmed(theme.inactive)}>{EMPTY_CELL.repeat(GAUGE_CELLS - filled)}</Text>
 			<Text color={color}> {clamped}%</Text>
 		</Text>
 	)

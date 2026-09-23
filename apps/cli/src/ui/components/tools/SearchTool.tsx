@@ -44,11 +44,14 @@ export function SearchTool({ toolData, message, expanded = false }: ToolRenderer
 										<Box key={i} flexDirection="row">
 											<ElbowGutter color={theme.subtle} />
 											<Box flexGrow={1}>
-												<Text dimColor color={theme.secondaryText}>
-													<Text color={theme.suggestion}>{file}</Text>
-													<Text color={theme.subtle}>:</Text>
-													<Text color={theme.warning}>{lineNum}</Text>
-													<Text color={theme.subtle}>:</Text>
+												{/* Every part recedes with the row, so each colour
+												    is dimmed by value: SGR dim on the parent did
+												    nothing to RGB colours in VTE (theme.dimmed). */}
+												<Text color={theme.faint}>
+													<Text color={theme.dimmed(theme.suggestion)}>{file}</Text>
+													<Text color={theme.dimmed(theme.subtle)}>:</Text>
+													<Text color={theme.dimmed(theme.warning)}>{lineNum}</Text>
+													<Text color={theme.dimmed(theme.subtle)}>:</Text>
 													{context}
 												</Text>
 											</Box>

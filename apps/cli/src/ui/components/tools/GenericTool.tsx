@@ -49,10 +49,7 @@ export function GenericTool({ toolData, rawContent, message, expanded = false }:
 						<Text bold>{displayName}</Text>
 						{primaryArg ? <Text>({primaryArg})</Text> : null}
 						{toolData.isOutsideWorkspace ? (
-							<Text dimColor color={theme.warning}>
-								{" "}
-								(outside workspace)
-							</Text>
+							<Text color={theme.dimmed(theme.warning)}> (outside workspace)</Text>
 						) : null}
 						{toolData.isProtected ? <Text color={theme.error}> (protected)</Text> : null}
 					</Text>

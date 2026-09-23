@@ -120,15 +120,12 @@ export function FileWriteTool({ toolData, message, expanded = false }: ToolRende
 						) : null}
 						{isProtected ? <Text color={theme.error}> (protected)</Text> : null}
 						{isOutsideWorkspace ? (
-							<Text dimColor color={theme.warning}>
-								{" "}
-								(outside workspace)
-							</Text>
+							<Text color={theme.dimmed(theme.warning)}> (outside workspace)</Text>
 						) : null}
 					</Text>
 
 					{/* Diff preview: every removed line on a red band, every added
-					    line on a green band, context dim and unbanded. */}
+					    line on a green band, context faint and unbanded. */}
 					{visibleHunks.length > 0 && (
 						<Box flexDirection="row">
 							<ElbowGutter />
@@ -140,11 +137,7 @@ export function FileWriteTool({ toolData, message, expanded = false }: ToolRende
 
 									return (
 										<Box key={hunkIndex} flexDirection="column">
-											{hunk.header ? (
-												<Text dimColor color={theme.secondaryText}>
-													{hunk.header}
-												</Text>
-											) : null}
+											{hunk.header ? <Text color={theme.faint}>{hunk.header}</Text> : null}
 											{visibleLines.map((line, lineIndex) => (
 												<Text
 													key={lineIndex}
@@ -156,23 +149,18 @@ export function FileWriteTool({ toolData, message, expanded = false }: ToolRende
 																? theme.diffRemoved
 																: undefined
 													}
-													dimColor={line.type === "context"}
-													color={line.type === "context" ? theme.secondaryText : theme.text}>
+													color={line.type === "context" ? theme.faint : theme.text}>
 													{bandLine(line, bandWidth)}
 												</Text>
 											))}
 											{hiddenLines > 0 && (
-												<Text dimColor color={theme.secondaryText}>
-													{`… +${hiddenLines} more lines`}
-												</Text>
+												<Text color={theme.faint}>{`… +${hiddenLines} more lines`}</Text>
 											)}
 										</Box>
 									)
 								})}
 								{diffHunks.length > maxHunks && (
-									<Text dimColor color={theme.secondaryText}>
-										{`… +${diffHunks.length - maxHunks} more hunks`}
-									</Text>
+									<Text color={theme.faint}>{`… +${diffHunks.length - maxHunks} more hunks`}</Text>
 								)}
 							</Box>
 						</Box>
