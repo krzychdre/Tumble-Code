@@ -20,14 +20,28 @@ export interface TailClampResult {
 const INDENT_COLUMNS = 4
 
 /**
+ * The line that stands in for the hidden top of a clamped body. The full text
+ * prints into scrollback when the message is promoted to `<Static>`.
+ */
+export function hiddenLinesMarker(hiddenLines: number): string {
+	return `… +${hiddenLines} lines (prints in full when this message completes)`
+}
+
+/**
  * Clamp `content` to approximately `maxRows` physical terminal rows, keeping
  * the tail (the newest lines). Wrap-aware: a raw line is estimated to occupy
  * `ceil(length / effectiveWidth)` rows. A single raw line wider than the whole
  * budget is tail-sliced by characters so it can never overflow on its own.
+ * `indent` is how many columns the renderer puts in front of the body.
  */
-export function clampTail(content: string, maxRows: number, columns: number): TailClampResult {
+export function clampTail(
+	content: string,
+	maxRows: number,
+	columns: number,
+	indent: number = INDENT_COLUMNS,
+): TailClampResult {
 	const lines = content.split("\n")
-	const effectiveWidth = Math.max(20, columns - INDENT_COLUMNS)
+	const effectiveWidth = Math.max(20, columns - indent)
 	const budget = Math.max(1, maxRows)
 
 	let rowsUsed = 0

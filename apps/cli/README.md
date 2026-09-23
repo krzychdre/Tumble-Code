@@ -264,6 +264,7 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 | `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                                    | Auto-detected shell         |
 | `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh, max) | Settings, else `medium`     |
 | `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)           | `10`                        |
+| `--command-execution-timeout <seconds>` | Seconds a shell command may run before it is stopped (`0` means no limit)                    | Settings, else `300`        |
 | `--ephemeral`                           | Run without persisting state (uses temporary storage)                                        | `false`                     |
 | `--oneshot`                             | Exit upon task completion                                                                    | `false`                     |
 | `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                               | `text`                      |
@@ -328,6 +329,7 @@ to the run they are given on and are never saved.
 | `mode`                    | Mode a new session starts in                                      |
 | `requireApproval`         | `true` asks before actions, as `--require-approval`               |
 | `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                              |
+| `commandExecutionTimeout` | Seconds, as for `--command-execution-timeout`; see the note below |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`              |
 | `modes`                   | Settings per mode, see below                                      |
 | `models`                  | Facts per model (its context window), see below                   |
@@ -347,6 +349,14 @@ information says the model supports a reasoning effort. For the `openai`
 (OpenAI-compatible) provider that information is user-supplied in the VS Code
 settings and the CLI cannot set it yet, so there the value has no effect (GLM
 models get their thinking switch regardless).
+
+Note on `commandExecutionTimeout`: a shell command the agent runs is stopped
+once it has run this many seconds (default 300), and the model is told not to
+run it again. Raise it for long jobs such as builds or scrapers, or set `0` for
+no limit (you can still stop a command yourself). The value is whole seconds,
+at most 2147483; anything else stops the run at startup, because the extension
+would read `"10m"` as no limit and a larger number as an instant timeout. The
+model's own `timeout` parameter does not extend it.
 
 ### Settings per mode
 

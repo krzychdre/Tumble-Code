@@ -46,4 +46,11 @@ describe("clampTail", () => {
 		expect(result.content).toBe("")
 		expect(result.hiddenLines).toBe(0)
 	})
+	it("estimates wrapping from the renderer's indent", () => {
+		// 95 characters fit one row at width 96 (indent 4) but need two at width 93 (indent 7).
+		const content = ["a", "z".repeat(95)].join("\n")
+
+		expect(clampTail(content, 2, 100).hiddenLines).toBe(0)
+		expect(clampTail(content, 2, 100, 7)).toEqual({ content: "z".repeat(95), hiddenLines: 1 })
+	})
 })
