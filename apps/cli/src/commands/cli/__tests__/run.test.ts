@@ -305,81 +305,104 @@ describe("resolveEffectiveBaseUrl", () => {
 	})
 })
 
-describe("run model persistence — never clobber with defaults (bug 2)", () => {
+describe("run never writes cli-settings.json", () => {
 	let tempDir: string
 
 	beforeEach(() => {
-		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-model-test-"))
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-readonly-test-"))
 		mockGetConfigDir.mockReturnValue(tempDir)
 		mockHost.lastOptions = undefined
+		mockGetOpenAiCodexAuthStatus.mockResolvedValue({ authenticated: true })
 	})
 
 	afterEach(() => {
 		mockGetConfigDir.mockReset()
-		if (tempDir) {
-			fs.rmSync(tempDir, { recursive: true, force: true })
-		}
+		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
-	it("bare run with settings {provider: openai, model: DeepSeek-V4-Flash-0731} does NOT rewrite the model in the file", async () => {
+	function snapshotSettingsFile() {
+		return { raw: fs.readFileSync(getSettingsPath(), "utf-8"), mtimeMs: fs.statSync(getSettingsPath()).mtimeMs }
+	}
+
+	it("a bare run leaves the file byte-identical", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			// The user hand-wrote a DeepSeek model under an OpenAI-compatible
-			// provider. A bare run (no -m) must keep it — never replace it with
-			// the built-in DEFAULT_FLAGS.model (anthropic/claude-opus-4.6).
 			await saveSettings({ provider: "openai", model: "DeepSeek-V4-Flash-0731" })
-			const mtimeBefore = fs.statSync(getSettingsPath()).mtimeMs
+			const before = snapshotSettingsFile()
 
 			await run("hello", baseFlags())
 
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.model).toBe("DeepSeek-V4-Flash-0731")
-			expect(after.model).not.toBe("anthropic/claude-opus-4.6")
-			// No rewrite happened at all.
-			expect(fs.statSync(getSettingsPath()).mtimeMs).toBe(mtimeBefore)
+			expect(mockHost.lastOptions?.model).toBe("DeepSeek-V4-Flash-0731")
+			expect(snapshotSettingsFile()).toEqual(before)
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 
-	it("--provider openai with no -m on a file whose provider was openrouter keeps the user's model", async () => {
+	it("provider, model, base-url and reasoning-effort flags apply to this run only", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			// Settings were saved for openrouter; the run switches to openai
-			// without -m. The file's openrouter model must survive — the run's
-			// effective default model must never be written over the user's data.
 			await saveSettings({ provider: "openrouter", model: "openai/gpt-4o" })
+			const before = snapshotSettingsFile()
+
+			await run(
+				"hello",
+				baseFlags({
+					provider: "openai",
+					model: "my-custom-model",
+					baseUrl: "http://localhost:1234/v1",
+					reasoningEffort: "high",
+				}),
+			)
+
+			expect(mockHost.lastOptions).toMatchObject({
+				provider: "openai",
+				model: "my-custom-model",
+				baseUrl: "http://localhost:1234/v1",
+				reasoningEffort: "high",
+			})
+			expect(snapshotSettingsFile()).toEqual(before)
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("--provider without -m never sends the model saved for another provider", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// The model in the file belongs to openrouter; switching the run to
+			// openai must fall back to the default instead (decision A3).
+			await saveSettings({ provider: "openrouter", model: "openai/gpt-4o" })
+			const before = snapshotSettingsFile()
 
 			await run("hello", baseFlags({ provider: "openai" }))
 
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.provider).toBe("openai")
-			expect(after.model).toBe("openai/gpt-4o")
-			expect(after.model).not.toBe("anthropic/claude-opus-4.6")
+			expect(mockHost.lastOptions?.provider).toBe("openai")
+			expect(mockHost.lastOptions?.model).not.toBe("openai/gpt-4o")
+			expect(snapshotSettingsFile()).toEqual(before)
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 
-	it("an explicit --model persists to the file", async () => {
+	it("--provider tumble resolves to openrouter without writing the file", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			await saveSettings({ provider: "openai" })
+			await run("hello", baseFlags({ provider: "tumble" as unknown as FlagOptions["provider"] }))
 
-			await run("hello", baseFlags({ provider: "openai", model: "my-custom-model" }))
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.model).toBe("my-custom-model")
+			expect(mockHost.lastOptions?.provider).toBe("openrouter")
+			expect(fs.existsSync(getSettingsPath())).toBe(false)
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 })
 
-describe("run baseUrl persistence (bug 1)", () => {
+describe("run baseUrl resolution", () => {
 	let tempDir: string
 
 	beforeEach(() => {
@@ -391,9 +414,7 @@ describe("run baseUrl persistence (bug 1)", () => {
 
 	afterEach(() => {
 		mockGetConfigDir.mockReset()
-		if (tempDir) {
-			fs.rmSync(tempDir, { recursive: true, force: true })
-		}
+		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
 	it("openai baseUrl from settings is forwarded into the ExtensionHostOptions (bug 3)", async () => {
@@ -415,54 +436,21 @@ describe("run baseUrl persistence (bug 1)", () => {
 		}
 	})
 
-	it("run with --base-url persists it to the settings file", async () => {
+	it("rejects --base-url for a provider without a base-url field", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
-
-		try {
-			await saveSettings({ provider: "openai" })
-
-			await run("hello", baseFlags({ provider: "openai", baseUrl: "http://localhost:1234/v1" }))
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.baseUrl).toBe("http://localhost:1234/v1")
-		} finally {
-			exitSpy.mockRestore()
-		}
-	})
-
-	it("a baseUrl already in settings is kept on a bare run (and not dropped)", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
-
-		try {
-			// The user hand-edited ~/.roo/cli-settings.json: provider + model
-			// without baseUrl — a bare run must not write a baseUrl key at all
-			// (the key must survive untouched, i.e. stay absent).
-			await saveSettings({ provider: "openai", model: "DeepSeek-V4-Flash-0731" })
-
-			await run("hello", baseFlags())
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after).not.toHaveProperty("baseUrl")
-		} finally {
-			exitSpy.mockRestore()
-		}
-	})
-
-	it("never persists a baseUrl for a provider without a base-url field", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 		try {
 			// xai has no base-url field at all (its schema has no base-url key).
 			expect(getBaseUrlField("xai")).toBeUndefined()
 
-			await saveSettings({ provider: "xai" })
+			await run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://nope" }))
 
-			await run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://should-not-persist" }))
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after).not.toHaveProperty("baseUrl")
+			expect(exitSpy).toHaveBeenCalledWith(1)
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("does not support a base URL"))
 		} finally {
 			exitSpy.mockRestore()
+			errorSpy.mockRestore()
 		}
 	})
 
@@ -481,15 +469,15 @@ describe("run baseUrl persistence (bug 1)", () => {
 			expect(mockHost.lastOptions?.provider).toBe("openai-codex")
 			expect(mockHost.lastOptions?.baseUrl).toBeUndefined()
 			const after = await loadSettings()
-			expect(after.provider).toBe("openai-codex")
-			expect(after.baseUrl).toBeUndefined()
+			expect(after.provider).toBe("openai")
+			expect(after.baseUrl).toBe("http://localhost:1234/v1")
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 })
 
-describe("run --provider alias persistence", () => {
+describe("run bare-run defaults", () => {
 	let tempDir: string
 
 	beforeEach(() => {
@@ -500,39 +488,7 @@ describe("run --provider alias persistence", () => {
 
 	afterEach(() => {
 		mockGetConfigDir.mockReset()
-		if (tempDir) {
-			fs.rmSync(tempDir, { recursive: true, force: true })
-		}
-	})
-
-	it("persists the resolved provider (openrouter) when --provider tumble is passed, and a later run reading it resolves normally", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
-
-		try {
-			// First run: the alias is passed on the flag. The effective host
-			// provider is resolved to openrouter, and the settings file must
-			// persist the RESOLVED id — never the raw alias "tumble".
-			await run("hello", baseFlags({ provider: "tumble" as unknown as FlagOptions["provider"] }))
-
-			expect(mockHost.lastOptions?.provider).toBe("openrouter")
-
-			const persisted = await loadSettings()
-			expect(persisted.provider).toBe("openrouter")
-
-			const raw = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(raw.provider).toBe("openrouter")
-			expect(raw.provider).not.toBe("tumble")
-
-			// Second run: no --provider flag at all. The settings file now holds
-			// the resolved id, so it must resolve normally without any alias.
-			await run("hello again", baseFlags())
-
-			expect(mockHost.lastOptions?.provider).toBe("openrouter")
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.provider).toBe("openrouter")
-		} finally {
-			exitSpy.mockRestore()
-		}
+		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
 	it("bare run (no -w) uses the current working directory as workspace", async () => {

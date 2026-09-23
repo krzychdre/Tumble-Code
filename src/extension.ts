@@ -42,7 +42,6 @@ import { MdmService } from "./services/mdm/MdmService"
 import { migrateSettings } from "./utils/migrateSettings"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
-import { writeCliSettingsMirror } from "./utils/cliSettingsMirror"
 import { API } from "./extension/api"
 import { setupRemoteControlBridge } from "./extension/bridge"
 
@@ -320,20 +319,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	} catch (error) {
 		outputChannel.appendLine(
 			`[AutoImport] Error during auto-import: ${error instanceof Error ? error.message : String(error)}`,
-		)
-	}
-
-	// Mirror the active API configuration into the CLI settings file
-	// (~/.roo/cli-settings.json) so bare `tumble` runs reuse the provider/model/
-	// baseUrl configured in the app without ever writing API keys there.
-	// Best-effort by design — a missing/unwritable home dir must never break
-	// extension startup.
-	try {
-		const { apiConfiguration } = await provider.getState()
-		await writeCliSettingsMirror(apiConfiguration)
-	} catch (error) {
-		outputChannel.appendLine(
-			`[CLI settings mirror] failed at startup: ${error instanceof Error ? error.message : String(error)}`,
 		)
 	}
 

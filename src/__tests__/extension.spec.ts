@@ -104,10 +104,6 @@ vi.mock("../utils/outputChannelLogger", () => ({
 	createDualLogger: vi.fn().mockReturnValue(vi.fn()),
 }))
 
-vi.mock("../utils/cliSettingsMirror", () => ({
-	writeCliSettingsMirror: vi.fn().mockResolvedValue(undefined),
-}))
-
 vi.mock("../shared/package", () => ({
 	Package: {
 		name: "test-extension",

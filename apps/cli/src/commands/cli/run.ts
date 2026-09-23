@@ -23,7 +23,7 @@ import { getOpenAiCodexAuthStatus } from "@/commands/auth/openai-codex.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
-import { loadSettings, saveSettings } from "@/lib/storage/index.js"
+import { loadSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
 import {
 	getEnvVarName,
@@ -104,11 +104,9 @@ export function resolveEffectiveBaseUrl(
 }
 
 /**
- * Whether the active provider's settings schema has a base-url field. Used to
- * gate baseUrl persistence: a provider without a base-url field must never get
- * a baseUrl key written into cli-settings.json (getProviderSettings would
- * reject it on the next run — provider-types.ts throws when a baseUrl is given
- * for a provider that has no base-url field).
+ * Whether the active provider's settings schema has a base-url field. Gates the
+ * VS Code config base URL fallback: getProviderSettings throws when a baseUrl
+ * is given for a provider that has no base-url field.
  */
 export function effectiveProviderSupportBaseUrl(provider: SupportedProvider): boolean {
 	return getBaseUrlField(provider) !== undefined
@@ -348,49 +346,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			`[CLI] Error: Invalid reasoning effort: ${extensionHostOptions.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`,
 		)
 		process.exit(1)
-	}
-
-	// Persist provider/model/base-url for the next run (flags > settings > defaults).
-	// Keys are never persisted — they stay env/flags only.
-	// The provider id is persisted RESOLVED (tumble -> openrouter): the settings
-	// file must only ever contain a registry provider id, never a raw alias. A
-	// missing raw value stays undefined (a later `null` still clears the key).
-	const rawPersistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
-	const persistedProvider =
-		rawPersistedProvider !== undefined ? resolveProviderIdAlias(rawPersistedProvider) : undefined
-	// The model is persisted ONLY when it is explicitly tied to the active
-	// provider — an explicit -m, or the persisted settings model whose provider
-	// matches the active one (the settings file stores provider + model
-	// together). A model read from the mock VS Code config or the built-in
-	// default belongs to "some other provider" and must NEVER be written back
-	// over the settings file (decision A3; bug: model got clobbered to
-	// DEFAULT_FLAGS.model anthropic/claude-opus-4.6 on every run).
-	const persistedModel = flagOptions.model ?? resolveEffectiveModel(settings, effectiveProvider)
-	// baseUrl is persisted only for providers whose settings schema has a
-	// base-url field (getProviderSettings throws otherwise). The effective
-	// flag > settings > VS Code config value is persisted when it differs from
-	// what the file already holds; a provider without a base-url field never
-	// gets a baseUrl key written.
-	const persistedBaseUrl = effectiveProviderSupportBaseUrl(effectiveProvider) ? effectiveBaseUrl : undefined
-
-	// Skip the write entirely when nothing actually changed — an unconditional
-	// saveSettings would rewrite the file (and bump mtime) on every plain run
-	// even when the values are already persisted.
-	const pendingSettings: Parameters<typeof saveSettings>[0] = {}
-	if (persistedProvider && persistedProvider !== settings.provider) {
-		pendingSettings.provider = persistedProvider as typeof settings.provider
-	}
-	if (persistedModel && persistedModel !== settings.model) {
-		pendingSettings.model = persistedModel
-	}
-	if (persistedBaseUrl && persistedBaseUrl !== settings.baseUrl) {
-		pendingSettings.baseUrl = persistedBaseUrl
-	}
-	if (!effectiveProviderSupportBaseUrl(effectiveProvider) && settings.baseUrl !== undefined) {
-		pendingSettings.baseUrl = null
-	}
-	if (Object.keys(pendingSettings).length > 0) {
-		await saveSettings(pendingSettings)
 	}
 
 	// Validate output format

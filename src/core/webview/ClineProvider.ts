@@ -84,7 +84,6 @@ import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
 import { fileExistsAtPath } from "../../utils/fs"
-import { writeCliSettingsMirror } from "../../utils/cliSettingsMirror"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
@@ -1956,11 +1955,6 @@ export class ClineProvider
 
 				// Keep the current task's sticky provider profile in sync with the newly-activated profile.
 				await this.persistStickyProviderProfileToCurrentTask(name)
-
-				// Mirror the active config into the CLI settings file so bare
-				// `tumble` runs reuse the provider/model/baseUrl chosen here.
-				// Best-effort by design — never breaks the save.
-				void writeCliSettingsMirror(providerSettings)
 			} else {
 				await this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig())
 			}
@@ -2054,11 +2048,6 @@ export class ClineProvider
 		if (id && persistModeConfig) {
 			await this.providerSettingsManager.setModeConfig(mode, id)
 		}
-
-		// Mirror the active config into the CLI settings file so bare `tumble`
-		// runs reuse the provider/model/baseUrl chosen here. Best-effort by
-		// design — never breaks activation.
-		void writeCliSettingsMirror(providerSettings)
 
 		// Change the provider for the current task.
 		this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })

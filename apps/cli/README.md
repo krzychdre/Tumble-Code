@@ -299,13 +299,45 @@ supported because it discards the OAuth credential store.
 | `tumble auth codex logout` | Remove stored OpenAI Codex credentials           |
 | `tumble auth codex status` | Show the OpenAI Codex subscription sign-in state |
 
+## Settings File
+
+`~/.roo/cli-settings.json` holds your defaults, so a bare `tumble` needs no
+flags. Only you write it: neither a CLI run nor the VS Code extension changes
+it (the first-run onboarding records its one choice, nothing else). Flags apply
+to the run they are given on and are never saved.
+
+```json
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"model": "GLM-5.3-Flash-NVFP4",
+	"reasoningEffort": "high",
+	"mode": "code"
+}
+```
+
+| Key                       | Meaning                                                     |
+| ------------------------- | ----------------------------------------------------------- |
+| `provider`                | Provider id, as for `--provider`                            |
+| `model`                   | Model id; used only while `provider` is the active provider |
+| `baseUrl`                 | Base URL; used only while `provider` is the active provider |
+| `reasoningEffort`         | As for `--reasoning-effort`                                 |
+| `mode`                    | Mode a new session starts in                                |
+| `requireApproval`         | `true` asks before actions, as `--require-approval`         |
+| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                        |
+| `oneshot`                 | `true` exits when the task completes, as `--oneshot`        |
+
+Precedence: flag > settings file > built-in default. Provider, model and base
+URL also fall back to the CLI's own extension state in
+`~/.vscode-mock/global-storage` before the built-in default.
+
 ## Environment Variables
 
 The CLI supports the same inference providers as the VS Code extension. For
 providers that need an API key, the CLI looks for it in the environment
 variable below if not provided via `--api-key`. Provider selection follows:
-`--provider` flag > persisted CLI settings > the provider configured in the VS
-Code extension > default (`openrouter`). Keyless providers (ollama, lmstudio,
+`--provider` flag > settings file > the CLI's own extension state > default
+(`openrouter`). Keyless providers (ollama, lmstudio,
 bedrock, qwen-code, vertex, openai-codex) run without any API key; OAuth-backed
 providers still require their corresponding login.
 
