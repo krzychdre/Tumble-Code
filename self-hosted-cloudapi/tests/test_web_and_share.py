@@ -2296,7 +2296,149 @@ async def test_task_detail_shows_the_whole_subtree(client, db_session, session_f
     assert 'href="/app/tasks/deep"' in page
     assert page.index("Middle subtask") < page.index("Deep subtask")
     assert 'style="--depth: 1" href="/app/tasks/deep"' in page
-    assert '<h2 class="chart-title">Subtasks <span class="count-pill">2</span></h2>' in page
+    assert '<h2 class="chart-title">Subtasks <span class="count-pill">2</span>' in page
+
+
+# --- what a run cost ----------------------------------------------------------
+
+
+async def _seed_priced_run(session_factory):
+    """A run whose own share is the smallest part of what it cost:
+
+        run       $0.25   1 000 in / 100 out
+          sub-a   $1.00   5 000 / 500
+          sub-b   $0.50   2 000 / 200
+            leaf  $0.25   1 000 / 100
+
+    The run: $2.00 and 9 900 tokens; sub-b with its leaf: $0.75 and 3 300.
+    """
+    await _seed_tree(
+        session_factory,
+        ("run", None, "Priced run"),
+        ("sub-a", "run", "First subtask"),
+        ("sub-b", "run", "Second subtask"),
+        ("leaf", "sub-b", "Its leaf"),
+    )
+    figures = {
+        "run": (0.25, 1000, 100),
+        "sub-a": (1.00, 5000, 500),
+        "sub-b": (0.50, 2000, 200),
+        "leaf": (0.25, 1000, 100),
+    }
+    async with session_factory() as s:
+        for task_id, (cost, tokens_in, tokens_out) in figures.items():
+            await s.execute(
+                Task.__table__.update()
+                .where(Task.id == task_id)
+                .values(cost=cost, tokens_in=tokens_in, tokens_out=tokens_out, cache_reads=10)
+            )
+        await s.commit()
+
+
+def _row(page: str, task_id: str) -> str:
+    """The markup of one list row, from its checkbox to its delete button."""
+    start = page.index(f'value="{task_id}"')
+    return page[start : page.index('class="task-delete"', start)]
+
+
+async def test_a_run_row_shows_what_the_whole_run_cost(client, db_session, session_factory):
+    """The list showed a run's own cost only: on the live corpus a $0.1656 row
+    whose two subtasks cost $1.2434 more. A task that delegated now shows its
+    whole subtree, marked as a sum, with the split in the cell's hover."""
+    await _seed_user(db_session)
+    await _seed_priced_run(session_factory)
+
+    _override_web_user(client.app)
+    try:
+        roots = client.get("/app").text
+        flat = client.get("/app?scope=all").text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    run = _row(roots, "run")
+    assert '<span class="rollup-mark">Σ</span>$2.0000' in run
+    assert '<span class="rollup-mark">Σ</span>9.9k<span class="unit">tok</span>' in run
+    assert 'title="$2.0000 for the run: $0.2500 this task + $1.7500 in 3 subtasks"' in run
+    assert 'title="9,900 tokens for the run: 1,100 this task + 8,800 in 3 subtasks"' in run
+
+    # A subtask that delegated further is a run of its own, one level down.
+    sub_b = _row(roots, "sub-b")
+    assert '<span class="rollup-mark">Σ</span>$0.7500' in sub_b
+    assert "in 1 subtask&#34;" in sub_b or 'in 1 subtask"' in sub_b
+
+    # A task with nothing beneath it shows its own figures, unmarked.
+    for task_id, cost in (("sub-a", "$1.0000"), ("leaf", "$0.2500")):
+        row = _row(roots, task_id)
+        assert f'<span class="cell-num cell-cost">{cost}</span>' in row
+        assert "rollup-mark" not in row
+
+    # The flat view lists the same tasks, so it states the same costs.
+    assert '<span class="rollup-mark">Σ</span>$2.0000' in _row(flat, "run")
+
+
+async def test_the_run_hover_separates_the_task_from_its_subtasks(
+    client, db_session, session_factory
+):
+    await _seed_user(db_session)
+    await _seed_priced_run(session_factory)
+
+    _override_web_user(client.app)
+    try:
+        page = client.get("/app").text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    run = _row(page, "run")
+    hover = run[run.index('class="task-link"') :].split('title="', 1)[1].split('"', 1)[0]
+    assert hover.index("This task") < hover.index("$ Cost: $0.2500")
+    assert hover.index("$ Cost: $0.2500") < hover.index("Σ With its 3 subtasks")
+    assert hover.index("Σ With its 3 subtasks") < hover.index("$ Cost: $2.0000")
+    assert "↑ In: 9,000" in hover and "↓ Out: 900" in hover
+
+    # No subtasks, no split: the hover reads exactly as it always did.
+    leaf = _row(page, "leaf")
+    assert "This task" not in leaf and "With its" not in leaf
+
+
+async def test_the_task_page_states_the_run_total(client, db_session, session_factory):
+    await _seed_user(db_session)
+    await _seed_priced_run(session_factory)
+
+    _override_web_user(client.app)
+    try:
+        page = client.get("/app/tasks/run").text
+        leaf_page = client.get("/app/tasks/leaf").text
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert "run <b>$2.0000</b> · 9.9k tok" in page
+    assert "= this task $0.2500 + subtasks $1.7500" in page
+    # The panel's own rows follow the same rule as the list.
+    assert '<span class="rollup-mark">Σ</span>$0.7500' in page
+    assert '<span class="cell-num cell-cost">$1.0000</span>' in page
+    # A task with no subtasks has no panel and no run beyond itself.
+    assert 'class="run-total"' not in leaf_page
+
+
+def test_subtree_spend_adds_every_level_and_nothing_else():
+    from src.services.task_tree import Spend, subtree_spend
+
+    def task(task_id, cost, tokens_in):
+        return Task(id=task_id, cost=cost, tokens_in=tokens_in, tokens_out=0, cache_reads=0, cache_writes=0)
+
+    root, a, b, leaf, stranger = (
+        task("root", 0.25, 100),
+        task("a", 1.0, 200),
+        task("b", 0.5, 300),
+        task("leaf", 0.25, 400),
+        task("stranger", 9.0, 900),
+    )
+    tree = {"root": [a, b], "b": [leaf]}
+
+    assert subtree_spend(tree, root) == Spend(cost=2.0, tokens_in=1000)
+    assert subtree_spend(tree, b) == Spend(cost=0.75, tokens_in=700)
+    assert subtree_spend(tree, stranger) == Spend.of(stranger)
+    assert subtree_spend(tree, root) - Spend.of(root) == Spend(cost=1.75, tokens_in=900)
 
 
 async def test_task_detail_links_up_and_down_the_tree(client, db_session, session_factory):

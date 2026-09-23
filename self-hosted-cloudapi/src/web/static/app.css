@@ -1312,6 +1312,28 @@ textarea::placeholder {
 	content: "↳ ";
 	color: var(--text-faint);
 }
+/* A figure that includes the task's subtasks: the whole run, not this row's
+   share. Faint, so it qualifies the number without competing with it. */
+.rollup-mark {
+	color: var(--text-faint);
+	margin-right: 0.25em;
+}
+.run-total {
+	margin-left: auto;
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	font-weight: 400;
+	text-transform: none;
+	letter-spacing: 0;
+	color: var(--text-dim);
+}
+.run-total b {
+	color: var(--d-cost);
+	font-weight: 600;
+}
+.run-split {
+	color: var(--text-faint);
+}
 .subtask-link:hover {
 	text-decoration: none;
 	color: var(--signal);
