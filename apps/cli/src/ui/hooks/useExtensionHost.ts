@@ -93,22 +93,14 @@ export function useExtensionHost({
 	initialTaskId,
 	initialSessionId,
 	continueSession,
-	mode,
-	reasoningEffort,
-	user,
-	provider,
-	apiKey,
-	model,
-	baseUrl,
-	workspacePath,
-	extensionPath,
-	nonInteractive,
-	ephemeral,
-	debug,
-	exitOnComplete,
 	onExtensionMessage,
 	createExtensionHost,
+	// Everything else is an ExtensionHostOptions field and goes to the host
+	// untouched: picking fields one by one here silently dropped options
+	// (baseUrl once, consecutiveMistakeLimit/terminalShell/exitOnError later).
+	...hostOptions
 }: UseExtensionHostOptions): UseExtensionHostReturn {
+	const { provider, workspacePath } = hostOptions
 	const { exit } = useApp()
 	const { addMessage, setComplete, setLoading, setHasStartedTask, setError, setCurrentTaskId, setIsResumingTask } =
 		useCLIStore()
@@ -132,22 +124,7 @@ export function useExtensionHost({
 				let taskHistorySnapshot: HistoryItem[] = []
 				let hasReceivedTaskHistory = false
 
-				const host = createExtensionHost({
-					mode,
-					user,
-					reasoningEffort,
-					provider,
-					apiKey,
-					model,
-					baseUrl,
-					workspacePath,
-					extensionPath,
-					nonInteractive,
-					ephemeral,
-					debug,
-					exitOnComplete,
-					disableOutput: true,
-				})
+				const host = createExtensionHost({ ...hostOptions, disableOutput: true })
 
 				hostRef.current = host
 				isReadyRef.current = true
@@ -168,7 +145,7 @@ export function useExtensionHost({
 					setComplete(true)
 					setLoading(false)
 
-					if (exitOnComplete) {
+					if (hostOptions.exitOnComplete) {
 						await cleanup()
 						exit()
 						setTimeout(() => process.exit(0), 100)

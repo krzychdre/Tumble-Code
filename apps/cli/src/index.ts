@@ -1,6 +1,6 @@
 import { Command } from "commander"
 
-import { DEFAULT_FLAGS } from "@/types/constants.js"
+import { DEFAULT_FLAGS, REASONING_EFFORTS } from "@/types/constants.js"
 import { VERSION } from "@/lib/utils/version.js"
 import {
 	run,
@@ -53,12 +53,14 @@ program
 	.option("--provider <provider>", "API provider (anthropic, openrouter, ollama, etc.)")
 	.option("-m, --model <model>", "Model to use (defaults to the persisted/settings model, then the built-in default)")
 	.option("--base-url <url>", "Base URL override for the selected provider")
-	.option("--mode <mode>", "Mode to start in (code, architect, ask, debug, etc.)", DEFAULT_FLAGS.mode)
+	.option(
+		"--mode <mode>",
+		`Mode to start in (code, architect, ask, debug, etc.; defaults to the settings mode, then ${DEFAULT_FLAGS.mode})`,
+	)
 	.option("--terminal-shell <path>", "Absolute path to shell executable for inline terminal commands")
 	.option(
 		"-r, --reasoning-effort <effort>",
-		"Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh)",
-		DEFAULT_FLAGS.reasoningEffort,
+		`Reasoning effort level (${REASONING_EFFORTS.join(", ")}; defaults to the settings value, then ${DEFAULT_FLAGS.reasoningEffort})`,
 	)
 	.option(
 		"--consecutive-mistake-limit <limit>",

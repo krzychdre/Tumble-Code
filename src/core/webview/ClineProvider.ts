@@ -15,6 +15,7 @@ import {
 	type GlobalState,
 	type ProviderName,
 	type ProviderSettings,
+	type CliModeProviderSettings,
 	type RooCodeSettings,
 	type ProviderSettingsEntry,
 	type StaticAppProperties,
@@ -84,7 +85,6 @@ import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
 import { fileExistsAtPath } from "../../utils/fs"
-import { writeCliSettingsMirror } from "../../utils/cliSettingsMirror"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
@@ -184,6 +184,8 @@ export class ClineProvider
 	private _disposed = false
 
 	private recentTasksCache?: string[]
+	/** Set by the CLI host at startup; see {@link setCliModeProviderSettings}. */
+	private cliModeProviderSettings?: CliModeProviderSettings
 	private readonly taskHistoryOrigin = Symbol("ClineProvider.taskHistoryOrigin")
 	/**
 	 * In-flight (or settled-successful) {@link TaskHistoryStore} acquire.
@@ -1446,6 +1448,13 @@ export class ClineProvider
 			)
 		}
 
+		// A task resumed in the CLI (including a parent returning from its
+		// subtask) runs with the provider settings of its own mode.
+		const cliProviderSettings = historyItem.mode ? this.getCliProviderSettingsForMode(historyItem.mode) : undefined
+		if (cliProviderSettings) {
+			await this.contextProxy.setProviderSettings(cliProviderSettings)
+		}
+
 		const { apiConfiguration, enableCheckpoints, checkpointTimeout, experiments, cloudUserInfo, taskSyncEnabled } =
 			await this.getState()
 
@@ -1779,6 +1788,22 @@ export class ClineProvider
 	 * Handle switching to a new mode, including updating the associated API configuration
 	 * @param newMode The mode to switch to
 	 */
+	/**
+	 * Provider settings per mode from the CLI's settings file. While set, mode
+	 * switches, mode-scoped subagents and resumed tasks take their provider
+	 * settings from here (`modes[mode] ?? base`) instead of the profile store.
+	 * The value lives in memory only: the CLI sends it on every start, and the
+	 * profile store is never touched.
+	 */
+	public setCliModeProviderSettings(settings: CliModeProviderSettings | undefined) {
+		this.cliModeProviderSettings = settings
+	}
+
+	private getCliProviderSettingsForMode(mode: string): ProviderSettings | undefined {
+		const settings = this.cliModeProviderSettings
+		return settings ? (settings.modes[mode] ?? settings.base) : undefined
+	}
+
 	public async handleModeSwitch(newMode: Mode) {
 		const task = this.getCurrentTask()
 
@@ -1812,6 +1837,17 @@ export class ClineProvider
 		await this.updateGlobalState("mode", newMode)
 
 		this.emit(RooCodeEventName.ModeChanged, newMode)
+
+		// The CLI resolves provider settings per mode from its own settings
+		// file; they replace the profile store's mode bindings, which the CLI
+		// never configures (every mode may still point at an unrelated profile).
+		const cliProviderSettings = this.getCliProviderSettingsForMode(newMode)
+		if (cliProviderSettings) {
+			await this.contextProxy.setProviderSettings(cliProviderSettings)
+			this.updateTaskApiHandlerIfNeeded(cliProviderSettings, { forceRebuild: true })
+			await this.postStateToWebview()
+			return
+		}
 
 		// If workspace lock is on, keep the current API config — don't load mode-specific config
 		const lockApiConfigAcrossModes = this.context.workspaceState.get("lockApiConfigAcrossModes", false)
@@ -1956,11 +1992,6 @@ export class ClineProvider
 
 				// Keep the current task's sticky provider profile in sync with the newly-activated profile.
 				await this.persistStickyProviderProfileToCurrentTask(name)
-
-				// Mirror the active config into the CLI settings file so bare
-				// `tumble` runs reuse the provider/model/baseUrl chosen here.
-				// Best-effort by design — never breaks the save.
-				void writeCliSettingsMirror(providerSettings)
 			} else {
 				await this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig())
 			}
@@ -2054,11 +2085,6 @@ export class ClineProvider
 		if (id && persistModeConfig) {
 			await this.providerSettingsManager.setModeConfig(mode, id)
 		}
-
-		// Mirror the active config into the CLI settings file so bare `tumble`
-		// runs reuse the provider/model/baseUrl chosen here. Best-effort by
-		// design — never breaks activation.
-		void writeCliSettingsMirror(providerSettings)
 
 		// Change the provider for the current task.
 		this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
@@ -3737,6 +3763,14 @@ export class ClineProvider
 	public async getApiConfigurationForMode(
 		mode: string,
 	): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined> {
+		const cliProviderSettings = this.getCliProviderSettingsForMode(mode)
+		if (cliProviderSettings) {
+			return {
+				apiConfiguration: cliProviderSettings,
+				name: this.getGlobalState("currentApiConfigName") ?? "default",
+			}
+		}
+
 		try {
 			if (this.context.workspaceState.get("lockApiConfigAcrossModes", false)) {
 				return undefined

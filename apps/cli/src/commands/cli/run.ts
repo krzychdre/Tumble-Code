@@ -10,28 +10,24 @@ import { setLogger } from "@roo-code/vscode-shim"
 import {
 	FlagOptions,
 	isAcceptedProvider,
-	resolveProviderIdAlias,
 	supportedProviders,
 	DEFAULT_FLAGS,
 	REASONING_EFFORTS,
 	OutputFormat,
-	type CliSettings,
-	type SupportedProvider,
 } from "@/types/index.js"
-import { openAiCodexDefaultModelId } from "@roo-code/types"
 import { getOpenAiCodexAuthStatus } from "@/commands/auth/openai-codex.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
-import { loadSettings, saveSettings } from "@/lib/storage/index.js"
+import { getSettingsPath, isSettingsFileReadableByOthers, loadSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
+import { getEnvVarName, providerRequiresApiKey, getProviderSettings } from "@/lib/utils/provider.js"
 import {
-	getEnvVarName,
-	getApiKeyFromEnv,
-	getBaseUrlField,
-	providerRequiresApiKey,
-	getProviderSettings,
-} from "@/lib/utils/provider.js"
+	pickProviderConfig,
+	resolveProviderConfig,
+	toProviderSettings,
+	type ResolvedProviderConfig,
+} from "@/lib/utils/provider-config.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
@@ -61,57 +57,71 @@ function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
 }
 
-/**
- * Resolve the effective model for a run when no explicit `-m/--model` flag is
- * given (the caller applies the flag first).
- *
- * ▶ Precedence: flag `-m/--model` > persisted cli-settings.json model > mock
- *   VS Code config model > built-in default (caller chain).
- * ▶ A persisted model belongs to the provider that was active when it was
- *   saved — the settings file stores provider + model together. It is applied
- *   only when the persisted provider resolves to the provider actually
- *   running; otherwise the built-in default model is used so a model saved for
- *   another provider never gets sent to the wrong provider (decision A3 of
- *   ai_plans/2026-08-04_cli-bare-run-settings-sync.md).
- */
-export function resolveEffectiveModel(
-	settings: Pick<CliSettings, "provider" | "model"> | undefined,
-	activeProvider: SupportedProvider,
-): string | undefined {
-	if (!settings?.model) {
-		return undefined
-	}
-
-	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
-	if (persistedProvider !== activeProvider) {
-		return undefined
-	}
-
-	return settings.model
-}
-
-/** A persisted base URL belongs to the provider it was saved with. */
-export function resolveEffectiveBaseUrl(
-	settings: Pick<CliSettings, "provider" | "baseUrl"> | undefined,
-	activeProvider: SupportedProvider,
-): string | undefined {
-	if (!settings?.baseUrl) {
-		return undefined
-	}
-
-	const persistedProvider = settings.provider !== undefined ? resolveProviderIdAlias(settings.provider) : undefined
-	return persistedProvider === activeProvider ? settings.baseUrl : undefined
+/** The key to hand the extension: only providers that take one get it. */
+function keyFor(config: ResolvedProviderConfig): string | undefined {
+	return providerRequiresApiKey(config.provider) ? config.apiKey : undefined
 }
 
 /**
- * Whether the active provider's settings schema has a base-url field. Used to
- * gate baseUrl persistence: a provider without a base-url field must never get
- * a baseUrl key written into cli-settings.json (getProviderSettings would
- * reject it on the next run — provider-types.ts throws when a baseUrl is given
- * for a provider that has no base-url field).
+ * What is wrong with one resolved provider configuration, as the lines to
+ * print (the first becomes the error line), or undefined when it can run.
  */
-export function effectiveProviderSupportBaseUrl(provider: SupportedProvider): boolean {
-	return getBaseUrlField(provider) !== undefined
+async function findProviderConfigProblem(
+	config: ResolvedProviderConfig,
+	{ ephemeral }: { ephemeral: boolean },
+): Promise<string[] | undefined> {
+	// The raw (possibly aliased) id must be accepted; the resolved provider is
+	// already the alias target (tumble -> openrouter).
+	if (!isAcceptedProvider(config.rawProvider)) {
+		return [`Invalid provider: ${config.rawProvider}; must be one of: ${supportedProviders.join(", ")}`]
+	}
+
+	if (config.provider === "openai-codex") {
+		// OAuth credentials live in persistent vscode-shim SecretStorage. An
+		// ephemeral host starts with an empty store, so fail here with an
+		// actionable message instead of a generic provider auth error.
+		if (ephemeral) {
+			return [
+				"--ephemeral cannot be used with the openai-codex provider.",
+				"Run `tumble auth codex login`, then retry without --ephemeral.",
+			]
+		}
+
+		const authStatus = await getOpenAiCodexAuthStatus({ quiet: true })
+		if (!authStatus.authenticated) {
+			return ["OpenAI Codex is not authenticated.", "Run `tumble auth codex login`, then retry."]
+		}
+	}
+
+	// A base-url is only valid where the provider's settings schema has a
+	// base-url field. Reject early with the provider's name (decision 5).
+	if (config.baseUrl) {
+		try {
+			getProviderSettings(config.provider, undefined, undefined, config.baseUrl)
+		} catch (error) {
+			return [(error as Error).message]
+		}
+	}
+
+	// Provider-aware API-key gate: providers whose settings schema has no
+	// API-key field (ollama, lmstudio, bedrock, qwen-code, vertex, as derived
+	// in provider-types.ts) run keyless.
+	if (providerRequiresApiKey(config.provider) && !config.apiKey) {
+		if (config.missingApiKeyEnv) {
+			return [`apiKeyEnv names ${config.missingApiKeyEnv}, but that environment variable is empty or unset.`]
+		}
+
+		return [
+			`No API key provided. Use --api-key, set apiKey or apiKeyEnv in ${getSettingsPath()}, or set the provider's environment variable.`,
+			`For ${config.provider}, set ${getEnvVarName(config.provider)}`,
+		]
+	}
+
+	if (!REASONING_EFFORTS.includes(config.reasoningEffort)) {
+		return [`Invalid reasoning effort: ${config.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`]
+	}
+
+	return undefined
 }
 
 export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
@@ -178,39 +188,57 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	const settings = await loadSettings()
 
+	const settingsHoldAKey = [settings, ...Object.values(settings.modes ?? {})].some((entry) => entry.apiKey)
+	if (settingsHoldAKey && (await isSettingsFileReadableByOthers())) {
+		console.warn(
+			`[CLI] Warning: ${getSettingsPath()} holds an apiKey and other users can read it. Run: chmod 600 ${getSettingsPath()}`,
+		)
+	}
+
 	const isTuiSupported = process.stdin.isTTY && process.stdout.isTTY
 	const isTuiEnabled = !flagOptions.print && isTuiSupported
 	const isOnboardingEnabled = isTuiEnabled && !flagOptions.provider && !settings.provider
 
-	// Reuse provider/model/key/baseUrl chosen in the VS Code extension
-	// (via the vscode-shim global storage). Precedence for everything below:
-	// CLI flags > settings file > persisted VS Code config > env > defaults.
-	const vsCodeConfig = readVsCodeConfig() ?? {}
+	// Provider connection: flags > settings file > the CLI's own extension
+	// state (~/.vscode-mock) > defaults, with provider-bound values (model,
+	// base URL, key) used only for the provider they were written for.
+	const vsCodeConfig = readVsCodeConfig()
+	const settingsProviderConfig = pickProviderConfig(settings)
+	const flagProviderConfig = {
+		provider: flagOptions.provider,
+		model: flagOptions.model,
+		baseUrl: flagOptions.baseUrl,
+		apiKey: flagOptions.apiKey,
+		reasoningEffort: flagOptions.reasoningEffort,
+	}
+	const baseProviderConfig = resolveProviderConfig({
+		fallback: vsCodeConfig,
+		layers: [settingsProviderConfig, flagProviderConfig],
+	})
 
-	// Determine effective values: CLI flags > settings file > DEFAULT_FLAGS.
+	// Per-mode overrides from the settings file, each resolved on top of the
+	// file's global values. Any provider flag makes this run use one
+	// configuration for every mode, so the overrides are dropped.
+	const isProviderForcedByFlags = Object.values(flagProviderConfig).some((value) => value !== undefined)
+	const modeProviderConfigs: Record<string, ResolvedProviderConfig> = isProviderForcedByFlags
+		? {}
+		: Object.fromEntries(
+				Object.entries(settings.modes ?? {}).map(([modeSlug, modeSettings]) => [
+					modeSlug,
+					resolveProviderConfig({
+						fallback: vsCodeConfig,
+						layers: [settingsProviderConfig, pickProviderConfig(modeSettings)],
+					}),
+				]),
+			)
+
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
-	const effectiveReasoningEffort =
-		flagOptions.reasoningEffort || settings.reasoningEffort || DEFAULT_FLAGS.reasoningEffort
-	const rawEffectiveProvider =
-		flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider ?? DEFAULT_FLAGS.provider
-	// Persisted aliases (e.g. the cloud "tumble" id) are accepted and mapped to
-	// the real provider (tumble -> openrouter) before anything else consumes it.
-	const effectiveProvider = resolveProviderIdAlias(rawEffectiveProvider) as SupportedProvider
-	// An explicit -m wins outright; otherwise the persisted model applies only
-	// when its provider matches the active provider (its settings were saved
-	// for) — a model persisted for a different provider must not be sent to it.
-	// Explicit flags > persisted cli-settings.json > mock VS Code config > default.
-	const effectiveModel =
-		flagOptions.model ||
-		resolveEffectiveModel(settings, effectiveProvider) ||
-		vsCodeConfig?.model ||
-		(effectiveProvider === "openai-codex" ? openAiCodexDefaultModelId : DEFAULT_FLAGS.model)
-	const effectiveBaseUrl =
-		flagOptions.baseUrl ||
-		resolveEffectiveBaseUrl(settings, effectiveProvider) ||
-		(vsCodeConfig?.provider === effectiveProvider && effectiveProviderSupportBaseUrl(effectiveProvider)
-			? vsCodeConfig.baseUrl
-			: undefined)
+	// The session starts with the configuration of the mode it starts in.
+	const providerConfig = modeProviderConfigs[effectiveMode] ?? baseProviderConfig
+	const effectiveReasoningEffort = providerConfig.reasoningEffort
+	const effectiveProvider = providerConfig.provider
+	const effectiveModel = providerConfig.model
+	const effectiveBaseUrl = providerConfig.baseUrl
 	// Workspace precedence: explicit -w/--workspace wins; bare runs always use
 	// the current working directory. The workspace is intentionally NEVER read
 	// from persisted settings — `tumble` must follow the directory it is run
@@ -275,122 +303,53 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		}
 	}
 
-	// Validations
-	// TODO: Validate the API key for the chosen provider.
-	// TODO: Validate the model for the chosen provider.
+	// Validations: every configuration this run can switch to is checked now,
+	// so a broken mode entry fails at startup instead of on the mode switch.
+	const providerConfigsToCheck: [label: string | undefined, config: ResolvedProviderConfig][] = [
+		[undefined, providerConfig],
+		...(providerConfig === baseProviderConfig
+			? []
+			: [
+					[
+						`global settings in ${getSettingsPath()} (used by modes without their own entry)`,
+						baseProviderConfig,
+					] as [string, ResolvedProviderConfig],
+				]),
+		...Object.entries(modeProviderConfigs)
+			.filter(([, config]) => config !== providerConfig)
+			.map(
+				([modeSlug, config]) =>
+					[`modes.${modeSlug} in ${getSettingsPath()}`, config] as [string, ResolvedProviderConfig],
+			),
+	]
 
-	// The raw (possibly aliased) id must be accepted; the effective provider is
-	// already the resolved alias (tumble -> openrouter).
-	if (!isAcceptedProvider(rawEffectiveProvider)) {
-		console.error(
-			`[CLI] Error: Invalid provider: ${rawEffectiveProvider}; must be one of: ${supportedProviders.join(", ")}`,
-		)
-		process.exit(1)
-	}
+	for (const [label, config] of providerConfigsToCheck) {
+		const problem = await findProviderConfigProblem(config, { ephemeral: flagOptions.ephemeral })
 
-	// OAuth credentials live in persistent vscode-shim SecretStorage. An
-	// ephemeral host starts with an empty store, so fail here with an actionable
-	// message instead of letting the provider report a generic auth error.
-	if (effectiveProvider === "openai-codex" && flagOptions.ephemeral) {
-		console.error("[CLI] Error: --ephemeral cannot be used with the openai-codex provider.")
-		console.error("[CLI] Run `tumble auth codex login`, then retry without --ephemeral.")
-		process.exit(1)
-	}
-
-	if (effectiveProvider === "openai-codex") {
-		const authStatus = await getOpenAiCodexAuthStatus({ quiet: true })
-		if (!authStatus.authenticated) {
-			console.error("[CLI] Error: OpenAI Codex is not authenticated.")
-			console.error("[CLI] Run `tumble auth codex login`, then retry.")
+		if (problem) {
+			const [first, ...rest] = problem
+			console.error(`[CLI] Error: ${label ? `${label}: ` : ""}${first}`)
+			for (const line of rest) {
+				console.error(`[CLI] ${line}`)
+			}
 			process.exit(1)
 		}
 	}
 
-	// A base-url is only valid where the provider's settings schema has a
-	// base-url field. Reject early with the provider's name (decision 5).
-	if (effectiveBaseUrl) {
-		try {
-			getProviderSettings(extensionHostOptions.provider, undefined, undefined, effectiveBaseUrl)
-		} catch (error) {
-			console.error(`[CLI] Error: ${(error as Error).message}`)
-			process.exit(1)
-		}
-	}
-
-	// Provider-aware API-key gate. Providers whose settings schema has no
-	// required API-key field (ollama, lmstudio, bedrock, qwen-code, vertex — as
-	// derived in provider-types.ts) run keyless; providers that need a key
-	// hard-exit with the missing-key message when none was supplied.
-	const needsKey = providerRequiresApiKey(extensionHostOptions.provider)
-
-	if (needsKey) {
-		extensionHostOptions.apiKey =
-			flagOptions.apiKey || getApiKeyFromEnv(extensionHostOptions.provider) || vsCodeConfig?.apiKey
-
-		if (!extensionHostOptions.apiKey) {
-			console.error(
-				`[CLI] Error: No API key provided. Use --api-key or set the appropriate environment variable.`,
-			)
-			console.error(
-				`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`,
-			)
-			process.exit(1)
-		}
+	extensionHostOptions.apiKey = keyFor(providerConfig)
+	extensionHostOptions.modeProviderSettings = {
+		base: toProviderSettings({ ...baseProviderConfig, apiKey: keyFor(baseProviderConfig) }),
+		modes: Object.fromEntries(
+			Object.entries(modeProviderConfigs).map(([modeSlug, config]) => [
+				modeSlug,
+				toProviderSettings({ ...config, apiKey: keyFor(config) }),
+			]),
+		),
 	}
 
 	if (!fs.existsSync(extensionHostOptions.workspacePath)) {
 		console.error(`[CLI] Error: Workspace path does not exist: ${extensionHostOptions.workspacePath}`)
 		process.exit(1)
-	}
-
-	if (extensionHostOptions.reasoningEffort && !REASONING_EFFORTS.includes(extensionHostOptions.reasoningEffort)) {
-		console.error(
-			`[CLI] Error: Invalid reasoning effort: ${extensionHostOptions.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`,
-		)
-		process.exit(1)
-	}
-
-	// Persist provider/model/base-url for the next run (flags > settings > defaults).
-	// Keys are never persisted — they stay env/flags only.
-	// The provider id is persisted RESOLVED (tumble -> openrouter): the settings
-	// file must only ever contain a registry provider id, never a raw alias. A
-	// missing raw value stays undefined (a later `null` still clears the key).
-	const rawPersistedProvider = flagOptions.provider ?? settings.provider ?? vsCodeConfig?.provider
-	const persistedProvider =
-		rawPersistedProvider !== undefined ? resolveProviderIdAlias(rawPersistedProvider) : undefined
-	// The model is persisted ONLY when it is explicitly tied to the active
-	// provider — an explicit -m, or the persisted settings model whose provider
-	// matches the active one (the settings file stores provider + model
-	// together). A model read from the mock VS Code config or the built-in
-	// default belongs to "some other provider" and must NEVER be written back
-	// over the settings file (decision A3; bug: model got clobbered to
-	// DEFAULT_FLAGS.model anthropic/claude-opus-4.6 on every run).
-	const persistedModel = flagOptions.model ?? resolveEffectiveModel(settings, effectiveProvider)
-	// baseUrl is persisted only for providers whose settings schema has a
-	// base-url field (getProviderSettings throws otherwise). The effective
-	// flag > settings > VS Code config value is persisted when it differs from
-	// what the file already holds; a provider without a base-url field never
-	// gets a baseUrl key written.
-	const persistedBaseUrl = effectiveProviderSupportBaseUrl(effectiveProvider) ? effectiveBaseUrl : undefined
-
-	// Skip the write entirely when nothing actually changed — an unconditional
-	// saveSettings would rewrite the file (and bump mtime) on every plain run
-	// even when the values are already persisted.
-	const pendingSettings: Parameters<typeof saveSettings>[0] = {}
-	if (persistedProvider && persistedProvider !== settings.provider) {
-		pendingSettings.provider = persistedProvider as typeof settings.provider
-	}
-	if (persistedModel && persistedModel !== settings.model) {
-		pendingSettings.model = persistedModel
-	}
-	if (persistedBaseUrl && persistedBaseUrl !== settings.baseUrl) {
-		pendingSettings.baseUrl = persistedBaseUrl
-	}
-	if (!effectiveProviderSupportBaseUrl(effectiveProvider) && settings.baseUrl !== undefined) {
-		pendingSettings.baseUrl = null
-	}
-	if (Object.keys(pendingSettings).length > 0) {
-		await saveSettings(pendingSettings)
 	}
 
 	// Validate output format

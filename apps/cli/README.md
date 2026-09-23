@@ -245,28 +245,28 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ## Options
 
-| Option                                  | Description                                                                             | Default                     |
-| --------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------- |
-| `[prompt]`                              | Your prompt (positional argument, optional)                                             | None                        |
-| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                | None                        |
-| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                  | None                        |
-| `-w, --workspace <path>`                | Workspace path to operate in                                                            | Current directory           |
-| `-p, --print`                           | Print response and exit (non-interactive mode)                                          | `false`                     |
-| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                            | `false`                     |
-| `-e, --extension <path>`                | Path to the extension bundle directory                                                  | Auto-detected               |
-| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)          | `false`                     |
-| `-a, --require-approval`                | Require manual approval before actions execute                                          | `false`                     |
-| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                              | From env var                |
-| `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                              | `openrouter`                |
-| `-m, --model <model>`                   | Model to use                                                                            | `anthropic/claude-opus-4.6` |
-| `--base-url <url>`                      | Base URL override for the selected provider (when supported)                            | None                        |
-| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                    | `code`                      |
-| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                               | Auto-detected shell         |
-| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh) | `medium`                    |
-| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)      | `10`                        |
-| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                   | `false`                     |
-| `--oneshot`                             | Exit upon task completion                                                               | `false`                     |
-| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                          | `text`                      |
+| Option                                  | Description                                                                                  | Default                     |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------- |
+| `[prompt]`                              | Your prompt (positional argument, optional)                                                  | None                        |
+| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                     | None                        |
+| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                       | None                        |
+| `-w, --workspace <path>`                | Workspace path to operate in                                                                 | Current directory           |
+| `-p, --print`                           | Print response and exit (non-interactive mode)                                               | `false`                     |
+| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                                 | `false`                     |
+| `-e, --extension <path>`                | Path to the extension bundle directory                                                       | Auto-detected               |
+| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)               | `false`                     |
+| `-a, --require-approval`                | Require manual approval before actions execute                                               | `false`                     |
+| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                                   | From env var                |
+| `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                                   | `openrouter`                |
+| `-m, --model <model>`                   | Model to use                                                                                 | `anthropic/claude-opus-4.6` |
+| `--base-url <url>`                      | Base URL override for the selected provider (when supported)                                 | None                        |
+| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                         | Settings, else `code`       |
+| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                                    | Auto-detected shell         |
+| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh, max) | Settings, else `medium`     |
+| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)           | `10`                        |
+| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                        | `false`                     |
+| `--oneshot`                             | Exit upon task completion                                                                    | `false`                     |
+| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                               | `text`                      |
 
 ## Auth Commands
 
@@ -299,13 +299,92 @@ supported because it discards the OAuth credential store.
 | `tumble auth codex logout` | Remove stored OpenAI Codex credentials           |
 | `tumble auth codex status` | Show the OpenAI Codex subscription sign-in state |
 
+## Settings File
+
+`~/.roo/cli-settings.json` holds your defaults, so a bare `tumble` needs no
+flags. Only you write it: neither a CLI run nor the VS Code extension changes
+it (the first-run onboarding records its one choice, nothing else). Flags apply
+to the run they are given on and are never saved.
+
+```json
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"model": "GLM-5.3-Flash-NVFP4",
+	"apiKey": "1111",
+	"reasoningEffort": "high",
+	"mode": "code"
+}
+```
+
+| Key                       | Meaning                                                     |
+| ------------------------- | ----------------------------------------------------------- |
+| `provider`                | Provider id, as for `--provider`                            |
+| `model`                   | Model id; used only while `provider` is the active provider |
+| `baseUrl`                 | Base URL; used only while `provider` is the active provider |
+| `apiKey`                  | API key; used only while `provider` is the active provider  |
+| `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`    |
+| `reasoningEffort`         | As for `--reasoning-effort` (see the note below)            |
+| `mode`                    | Mode a new session starts in                                |
+| `requireApproval`         | `true` asks before actions, as `--require-approval`         |
+| `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                        |
+| `oneshot`                 | `true` exits when the task completes, as `--oneshot`        |
+| `modes`                   | Settings per mode, see below                                |
+
+The file may hold an API key, so keep it readable only by you (`chmod 600
+~/.roo/cli-settings.json`); the CLI warns when other users can read it. To keep
+the key out of the file, use `"apiKeyEnv": "MY_KEY_VAR"` instead: the CLI reads
+the key from that variable and stops with an error naming it when it is unset.
+
+Precedence: flag > settings file > built-in default. Provider, model and base
+URL also fall back to the CLI's own extension state in
+`~/.vscode-mock/global-storage` before the built-in default.
+
+Note on `reasoningEffort`: it reaches the model only when the provider's model
+information says the model supports a reasoning effort. For the `openai`
+(OpenAI-compatible) provider that information is user-supplied in the VS Code
+settings and the CLI cannot set it yet, so there the value has no effect (GLM
+models get their thinking switch regardless).
+
+### Settings per mode
+
+`modes` gives a mode its own provider settings. An entry names only what it
+changes and inherits the rest from the top level; switching modes (by you, by
+the model, or into a subtask) applies the entry of the new mode, and modes
+without an entry use the top level.
+
+```json
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"apiKey": "1111",
+	"model": "GLM-5.3-Flash-NVFP4",
+	"reasoningEffort": "max",
+	"modes": {
+		"architect": { "model": "GLM-5.3-NVFP4", "reasoningEffort": "high" },
+		"ask": { "provider": "openai-codex", "model": "gpt-5.6-sol" }
+	}
+}
+```
+
+- An entry may set `provider`, `model`, `baseUrl`, `apiKey`, `apiKeyEnv` and
+  `reasoningEffort`. Keys are mode slugs as listed by `tumble list modes`.
+- An entry that names a different provider inherits none of the top-level
+  `model`, `baseUrl` or key, which belong to the top-level provider; it gets
+  that provider's defaults unless it sets them (`ask` above).
+- Every entry is checked at startup, so a missing key or an invalid value fails
+  immediately and names the mode.
+- Passing any of `--provider`, `--model`, `--base-url`, `--api-key` or
+  `--reasoning-effort` makes that run use one configuration for every mode: the
+  flags on top of the top level, with `modes` ignored.
+
 ## Environment Variables
 
 The CLI supports the same inference providers as the VS Code extension. For
-providers that need an API key, the CLI looks for it in the environment
-variable below if not provided via `--api-key`. Provider selection follows:
-`--provider` flag > persisted CLI settings > the provider configured in the VS
-Code extension > default (`openrouter`). Keyless providers (ollama, lmstudio,
+providers that need an API key, the CLI takes it from `--api-key`, then
+`apiKey`/`apiKeyEnv` in the settings file, then the environment variable below. Provider selection follows:
+`--provider` flag > settings file > the CLI's own extension state > default
+(`openrouter`). Keyless providers (ollama, lmstudio,
 bedrock, qwen-code, vertex, openai-codex) run without any API key; OAuth-backed
 providers still require their corresponding login.
 

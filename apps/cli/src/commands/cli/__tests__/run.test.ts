@@ -4,7 +4,7 @@ import os from "os"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
 
-import { run, resolveEffectiveBaseUrl, resolveEffectiveModel } from "../run.js"
+import { run } from "../run.js"
 import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
 import { getConfigDir } from "@/lib/storage/config-dir.js"
 import type { FlagOptions } from "@/types/index.js"
@@ -32,7 +32,19 @@ vi.mock("@/commands/auth/openai-codex.js", () => ({
 const mockHost = vi.hoisted(() => ({
 	lastOptions: undefined as
 		| undefined
-		| { provider?: string; workspacePath?: string; model?: string; baseUrl?: string },
+		| {
+				provider?: string
+				workspacePath?: string
+				model?: string
+				baseUrl?: string
+				mode?: string
+				reasoningEffort?: string
+				apiKey?: string
+				modeProviderSettings?: {
+					base: Record<string, unknown>
+					modes: Record<string, Record<string, unknown>>
+				}
+		  },
 }))
 
 vi.mock("@/agent/index.js", () => {
@@ -260,119 +272,104 @@ $((1+1))
 	})
 })
 
-describe("resolveEffectiveModel (provider/model coexistence, decision A3)", () => {
-	it("returns the persisted model when the persisted provider matches the active provider", () => {
-		expect(resolveEffectiveModel({ provider: "openrouter", model: "openai/gpt-4o" }, "openrouter")).toBe(
-			"openai/gpt-4o",
-		)
-	})
-
-	it("returns undefined when the persisted model has no matching provider", () => {
-		// Persisted for openrouter, running openai → the openrouter model must
-		// NOT be sent to openai.
-		expect(resolveEffectiveModel({ provider: "openrouter", model: "openai/gpt-4o" }, "openai")).toBeUndefined()
-	})
-
-	it("resolves persisted aliases before comparing providers", () => {
-		// Persisted "tumble" maps to openrouter.
-		expect(resolveEffectiveModel({ provider: "tumble" as never, model: "openai/gpt-4o" }, "openrouter")).toBe(
-			"openai/gpt-4o",
-		)
-	})
-
-	it("returns undefined when no model or provider is persisted", () => {
-		expect(resolveEffectiveModel({}, "openrouter")).toBeUndefined()
-		expect(resolveEffectiveModel({ provider: "openrouter" }, "openrouter")).toBeUndefined()
-		expect(resolveEffectiveModel(undefined, "openrouter")).toBeUndefined()
-	})
-})
-
-describe("resolveEffectiveBaseUrl", () => {
-	it("returns a persisted URL only for the provider it belongs to", () => {
-		expect(resolveEffectiveBaseUrl({ provider: "openai", baseUrl: "http://localhost:1234/v1" }, "openai")).toBe(
-			"http://localhost:1234/v1",
-		)
-		expect(
-			resolveEffectiveBaseUrl({ provider: "openai", baseUrl: "http://localhost:1234/v1" }, "openai-codex"),
-		).toBeUndefined()
-	})
-})
-
-describe("run model persistence — never clobber with defaults (bug 2)", () => {
+describe("run never writes cli-settings.json", () => {
 	let tempDir: string
 
 	beforeEach(() => {
-		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-model-test-"))
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-readonly-test-"))
 		mockGetConfigDir.mockReturnValue(tempDir)
 		mockHost.lastOptions = undefined
+		mockGetOpenAiCodexAuthStatus.mockResolvedValue({ authenticated: true })
 	})
 
 	afterEach(() => {
 		mockGetConfigDir.mockReset()
-		if (tempDir) {
-			fs.rmSync(tempDir, { recursive: true, force: true })
-		}
+		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
-	it("bare run with settings {provider: openai, model: DeepSeek-V4-Flash-0731} does NOT rewrite the model in the file", async () => {
+	function snapshotSettingsFile() {
+		return { raw: fs.readFileSync(getSettingsPath(), "utf-8"), mtimeMs: fs.statSync(getSettingsPath()).mtimeMs }
+	}
+
+	it("a bare run leaves the file byte-identical", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			// The user hand-wrote a DeepSeek model under an OpenAI-compatible
-			// provider. A bare run (no -m) must keep it — never replace it with
-			// the built-in DEFAULT_FLAGS.model (anthropic/claude-opus-4.6).
 			await saveSettings({ provider: "openai", model: "DeepSeek-V4-Flash-0731" })
-			const mtimeBefore = fs.statSync(getSettingsPath()).mtimeMs
+			const before = snapshotSettingsFile()
 
 			await run("hello", baseFlags())
 
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.model).toBe("DeepSeek-V4-Flash-0731")
-			expect(after.model).not.toBe("anthropic/claude-opus-4.6")
-			// No rewrite happened at all.
-			expect(fs.statSync(getSettingsPath()).mtimeMs).toBe(mtimeBefore)
+			expect(mockHost.lastOptions?.model).toBe("DeepSeek-V4-Flash-0731")
+			expect(snapshotSettingsFile()).toEqual(before)
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 
-	it("--provider openai with no -m on a file whose provider was openrouter keeps the user's model", async () => {
+	it("provider, model, base-url and reasoning-effort flags apply to this run only", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			// Settings were saved for openrouter; the run switches to openai
-			// without -m. The file's openrouter model must survive — the run's
-			// effective default model must never be written over the user's data.
 			await saveSettings({ provider: "openrouter", model: "openai/gpt-4o" })
+			const before = snapshotSettingsFile()
+
+			await run(
+				"hello",
+				baseFlags({
+					provider: "openai",
+					model: "my-custom-model",
+					baseUrl: "http://localhost:1234/v1",
+					reasoningEffort: "high",
+				}),
+			)
+
+			expect(mockHost.lastOptions).toMatchObject({
+				provider: "openai",
+				model: "my-custom-model",
+				baseUrl: "http://localhost:1234/v1",
+				reasoningEffort: "high",
+			})
+			expect(snapshotSettingsFile()).toEqual(before)
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("--provider without -m never sends the model saved for another provider", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			// The model in the file belongs to openrouter; switching the run to
+			// openai must fall back to the default instead (decision A3).
+			await saveSettings({ provider: "openrouter", model: "openai/gpt-4o" })
+			const before = snapshotSettingsFile()
 
 			await run("hello", baseFlags({ provider: "openai" }))
 
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.provider).toBe("openai")
-			expect(after.model).toBe("openai/gpt-4o")
-			expect(after.model).not.toBe("anthropic/claude-opus-4.6")
+			expect(mockHost.lastOptions?.provider).toBe("openai")
+			expect(mockHost.lastOptions?.model).not.toBe("openai/gpt-4o")
+			expect(snapshotSettingsFile()).toEqual(before)
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 
-	it("an explicit --model persists to the file", async () => {
+	it("--provider tumble resolves to openrouter without writing the file", async () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
 
 		try {
-			await saveSettings({ provider: "openai" })
+			await run("hello", baseFlags({ provider: "tumble" as unknown as FlagOptions["provider"] }))
 
-			await run("hello", baseFlags({ provider: "openai", model: "my-custom-model" }))
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.model).toBe("my-custom-model")
+			expect(mockHost.lastOptions?.provider).toBe("openrouter")
+			expect(fs.existsSync(getSettingsPath())).toBe(false)
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 })
 
-describe("run baseUrl persistence (bug 1)", () => {
+describe("run baseUrl resolution", () => {
 	let tempDir: string
 
 	beforeEach(() => {
@@ -384,9 +381,7 @@ describe("run baseUrl persistence (bug 1)", () => {
 
 	afterEach(() => {
 		mockGetConfigDir.mockReset()
-		if (tempDir) {
-			fs.rmSync(tempDir, { recursive: true, force: true })
-		}
+		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
 	it("openai baseUrl from settings is forwarded into the ExtensionHostOptions (bug 3)", async () => {
@@ -408,54 +403,26 @@ describe("run baseUrl persistence (bug 1)", () => {
 		}
 	})
 
-	it("run with --base-url persists it to the settings file", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
-
-		try {
-			await saveSettings({ provider: "openai" })
-
-			await run("hello", baseFlags({ provider: "openai", baseUrl: "http://localhost:1234/v1" }))
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.baseUrl).toBe("http://localhost:1234/v1")
-		} finally {
-			exitSpy.mockRestore()
-		}
-	})
-
-	it("a baseUrl already in settings is kept on a bare run (and not dropped)", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
-
-		try {
-			// The user hand-edited ~/.roo/cli-settings.json: provider + model
-			// without baseUrl — a bare run must not write a baseUrl key at all
-			// (the key must survive untouched, i.e. stay absent).
-			await saveSettings({ provider: "openai", model: "DeepSeek-V4-Flash-0731" })
-
-			await run("hello", baseFlags())
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after).not.toHaveProperty("baseUrl")
-		} finally {
-			exitSpy.mockRestore()
-		}
-	})
-
-	it("never persists a baseUrl for a provider without a base-url field", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+	it("rejects --base-url for a provider without a base-url field", async () => {
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 		try {
 			// xai has no base-url field at all (its schema has no base-url key).
 			expect(getBaseUrlField("xai")).toBeUndefined()
 
-			await saveSettings({ provider: "xai" })
+			await expect(
+				run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://nope" })),
+			).rejects.toBe(exitError)
 
-			await run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://should-not-persist" }))
-
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after).not.toHaveProperty("baseUrl")
+			expect(exitSpy).toHaveBeenCalledWith(1)
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("does not support a base URL"))
 		} finally {
 			exitSpy.mockRestore()
+			errorSpy.mockRestore()
 		}
 	})
 
@@ -474,15 +441,15 @@ describe("run baseUrl persistence (bug 1)", () => {
 			expect(mockHost.lastOptions?.provider).toBe("openai-codex")
 			expect(mockHost.lastOptions?.baseUrl).toBeUndefined()
 			const after = await loadSettings()
-			expect(after.provider).toBe("openai-codex")
-			expect(after.baseUrl).toBeUndefined()
+			expect(after.provider).toBe("openai")
+			expect(after.baseUrl).toBe("http://localhost:1234/v1")
 		} finally {
 			exitSpy.mockRestore()
 		}
 	})
 })
 
-describe("run --provider alias persistence", () => {
+describe("run bare-run defaults", () => {
 	let tempDir: string
 
 	beforeEach(() => {
@@ -493,39 +460,7 @@ describe("run --provider alias persistence", () => {
 
 	afterEach(() => {
 		mockGetConfigDir.mockReset()
-		if (tempDir) {
-			fs.rmSync(tempDir, { recursive: true, force: true })
-		}
-	})
-
-	it("persists the resolved provider (openrouter) when --provider tumble is passed, and a later run reading it resolves normally", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
-
-		try {
-			// First run: the alias is passed on the flag. The effective host
-			// provider is resolved to openrouter, and the settings file must
-			// persist the RESOLVED id — never the raw alias "tumble".
-			await run("hello", baseFlags({ provider: "tumble" as unknown as FlagOptions["provider"] }))
-
-			expect(mockHost.lastOptions?.provider).toBe("openrouter")
-
-			const persisted = await loadSettings()
-			expect(persisted.provider).toBe("openrouter")
-
-			const raw = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(raw.provider).toBe("openrouter")
-			expect(raw.provider).not.toBe("tumble")
-
-			// Second run: no --provider flag at all. The settings file now holds
-			// the resolved id, so it must resolve normally without any alias.
-			await run("hello again", baseFlags())
-
-			expect(mockHost.lastOptions?.provider).toBe("openrouter")
-			const after = JSON.parse(fs.readFileSync(getSettingsPath(), "utf-8"))
-			expect(after.provider).toBe("openrouter")
-		} finally {
-			exitSpy.mockRestore()
-		}
+		fs.rmSync(tempDir, { recursive: true, force: true })
 	})
 
 	it("bare run (no -w) uses the current working directory as workspace", async () => {
@@ -559,5 +494,296 @@ describe("run --provider alias persistence", () => {
 		} finally {
 			exitSpy.mockRestore()
 		}
+	})
+})
+
+describe("run mode and reasoning effort come from settings when no flag is given", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-defaults-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	it("uses the settings mode and reasoning effort on a bare run", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter", mode: "architect", reasoningEffort: "max" })
+
+			await run("hello", baseFlags())
+
+			expect(mockHost.lastOptions?.mode).toBe("architect")
+			expect(mockHost.lastOptions?.reasoningEffort).toBe("max")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("explicit flags win over the settings values", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter", mode: "architect", reasoningEffort: "max" })
+
+			await run("hello", baseFlags({ mode: "ask", reasoningEffort: "low" }))
+
+			expect(mockHost.lastOptions?.mode).toBe("ask")
+			expect(mockHost.lastOptions?.reasoningEffort).toBe("low")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("falls back to code and medium without flags or settings", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter" })
+
+			await run("hello", baseFlags())
+
+			expect(mockHost.lastOptions?.mode).toBe("code")
+			expect(mockHost.lastOptions?.reasoningEffort).toBe("medium")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+})
+
+describe("run API key from the settings file", () => {
+	let tempDir: string
+	const savedEnv = { ...process.env }
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-apikey-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+		delete process.env.OPENAI_API_KEY
+		delete process.env.LOCAL_LLM_KEY
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+		process.env = { ...savedEnv }
+	})
+
+	it("a bare run needs no --api-key when the settings hold apiKey", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({
+				provider: "openai",
+				baseUrl: "http://192.168.50.194:11111/v1",
+				model: "GLM-5.3-Flash-NVFP4",
+				apiKey: "1111",
+				reasoningEffort: "max",
+			})
+
+			await run("hello", baseFlags({ apiKey: undefined }))
+
+			expect(exitSpy).not.toHaveBeenCalledWith(1)
+			expect(mockHost.lastOptions).toMatchObject({
+				provider: "openai",
+				baseUrl: "http://192.168.50.194:11111/v1",
+				model: "GLM-5.3-Flash-NVFP4",
+				apiKey: "1111",
+				reasoningEffort: "max",
+			})
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("reads the key from the variable named by apiKeyEnv", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			process.env.LOCAL_LLM_KEY = "from-env"
+			await saveSettings({ provider: "openai", apiKeyEnv: "LOCAL_LLM_KEY" })
+
+			await run("hello", baseFlags({ apiKey: undefined }))
+
+			expect(mockHost.lastOptions?.apiKey).toBe("from-env")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("names the unset apiKeyEnv variable when it is missing", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		try {
+			await saveSettings({ provider: "openai", apiKeyEnv: "LOCAL_LLM_KEY" })
+
+			await run("hello", baseFlags({ apiKey: undefined }))
+
+			expect(exitSpy).toHaveBeenCalledWith(1)
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("LOCAL_LLM_KEY"))
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
+		}
+	})
+})
+
+describe("run provider settings per mode", () => {
+	let tempDir: string
+	const savedEnv = { ...process.env }
+
+	const globalSettings = {
+		provider: "openai" as const,
+		baseUrl: "http://192.168.50.194:11111/v1",
+		model: "GLM-5.3-Flash-NVFP4",
+		apiKey: "1111",
+		reasoningEffort: "max" as const,
+	}
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-modes-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+		mockGetOpenAiCodexAuthStatus.mockResolvedValue({ authenticated: true })
+		delete process.env.OPENAI_API_KEY
+		delete process.env.ANTHROPIC_API_KEY
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+		process.env = { ...savedEnv }
+	})
+
+	/** Runs until the first process.exit and reports its code (print mode always exits). */
+	async function runWithExitThrowing(flags: Partial<FlagOptions> = {}) {
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		try {
+			await run("hello", baseFlags({ apiKey: undefined, ...flags })).catch((error) => {
+				if (error !== exitError) throw error
+			})
+			const outcome = exitSpy.mock.calls[0]?.[0] === 1 ? "failed" : "ran"
+			return { outcome, errors: errorSpy.mock.calls.map((call) => String(call[0])) }
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
+		}
+	}
+
+	it("a mode entry changes only what it names and inherits the rest", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { architect: { model: "GLM-5.3-NVFP4", reasoningEffort: "high" } },
+		})
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		expect(mockHost.lastOptions?.modeProviderSettings).toEqual({
+			base: {
+				apiProvider: "openai",
+				openAiBaseUrl: "http://192.168.50.194:11111/v1",
+				openAiModelId: "GLM-5.3-Flash-NVFP4",
+				openAiApiKey: "1111",
+				enableReasoningEffort: true,
+				reasoningEffort: "max",
+			},
+			modes: {
+				architect: {
+					apiProvider: "openai",
+					openAiBaseUrl: "http://192.168.50.194:11111/v1",
+					openAiModelId: "GLM-5.3-NVFP4",
+					openAiApiKey: "1111",
+					enableReasoningEffort: true,
+					reasoningEffort: "high",
+				},
+			},
+		})
+	})
+
+	it("a mode entry naming another provider carries over no model, base URL or key", async () => {
+		await saveSettings({ ...globalSettings, modes: { ask: { provider: "openai-codex" } } })
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.ask).toEqual({
+			apiProvider: "openai-codex",
+			apiModelId: "gpt-5.6-sol",
+			enableReasoningEffort: true,
+			reasoningEffort: "max",
+		})
+	})
+
+	it("the session starts with the entry of the mode it starts in", async () => {
+		await saveSettings({
+			...globalSettings,
+			mode: "architect",
+			modes: { architect: { model: "GLM-5.3-NVFP4", reasoningEffort: "high" } },
+		})
+
+		await runWithExitThrowing()
+
+		expect(mockHost.lastOptions).toMatchObject({
+			mode: "architect",
+			model: "GLM-5.3-NVFP4",
+			reasoningEffort: "high",
+			apiKey: "1111",
+		})
+	})
+
+	it("sends the base settings even without mode entries, so no mode falls back to a stored profile", async () => {
+		await saveSettings(globalSettings)
+
+		await runWithExitThrowing()
+
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes).toEqual({})
+		expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({ openAiModelId: "GLM-5.3-Flash-NVFP4" })
+	})
+
+	it("any provider flag uses one configuration for every mode", async () => {
+		await saveSettings({ ...globalSettings, modes: { architect: { model: "GLM-5.3-NVFP4" } } })
+
+		await runWithExitThrowing({ model: "Qwen3.8-27B" })
+
+		expect(mockHost.lastOptions?.model).toBe("Qwen3.8-27B")
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes).toEqual({})
+		expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({ openAiModelId: "Qwen3.8-27B" })
+	})
+
+	it("a broken mode entry fails at startup and names the mode", async () => {
+		await saveSettings({ ...globalSettings, modes: { debug: { provider: "anthropic" } } })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain("modes.debug")
+		expect(errors[0]).toContain("No API key provided")
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("a mode entry with an invalid reasoning effort fails at startup", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { architect: { reasoningEffort: "maz" as never } },
+		})
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain("modes.architect")
+		expect(errors[0]).toContain("Invalid reasoning effort: maz")
 	})
 })

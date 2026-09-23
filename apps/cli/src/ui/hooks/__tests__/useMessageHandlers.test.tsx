@@ -83,6 +83,24 @@ describe("useMessageHandlers", () => {
 		})
 	}
 
+	it("keeps the extension's current provider settings in the store", () => {
+		stateMessage([])
+		expect(useCLIStore.getState().apiConfiguration).toEqual({ apiProvider: "openai" })
+
+		api.handleExtensionMessage({
+			type: "state",
+			state: {
+				...useCLIStore.getState(),
+				mode: "architect",
+				apiConfiguration: { apiProvider: "openai", openAiModelId: "GLM-5.3-NVFP4" },
+			} as never,
+		})
+		expect(useCLIStore.getState().apiConfiguration).toEqual({
+			apiProvider: "openai",
+			openAiModelId: "GLM-5.3-NVFP4",
+		})
+	})
+
 	it("preserves structured tool details for interactive approval dialogs", () => {
 		const payload = JSON.stringify({
 			tool: "readFile",
