@@ -10,7 +10,8 @@ import httpx
 
 from config.settings import settings
 from config.auth import (
-    get_authentik_authorize_url,
+    FrontChannel,
+    front_channel,
     get_authentik_token_url,
     get_authentik_userinfo_url,
     get_authentik_end_session_url,
@@ -47,30 +48,41 @@ def get_authorize_url(
     state: str,
     code_challenge: str,
     auth_redirect: str,
+    front: Optional[FrontChannel] = None,
 ) -> str:
-    """Build the Authentik authorization URL for the OAuth2 flow."""
+    """Build the Authentik authorization URL for the OAuth2 flow.
+
+    ``front`` is the round trip for the browser being sent (see
+    ``config.auth.front_channel``); the configured one when omitted.
+    """
+    front = front or front_channel()
     params = {
         "client_id": settings.authentik_client_id,
         "response_type": "code",
-        "redirect_uri": settings.authentik_redirect_uri,
+        "redirect_uri": front.redirect_uri,
         "scope": "openid profile email",
         "state": state,
         "code_challenge": code_challenge,
         "code_challenge_method": "S256",
     }
-    return f"{get_authentik_authorize_url()}?{urlencode(params)}"
+    return f"{front.authorize_url}?{urlencode(params)}"
 
 
 async def exchange_code_for_tokens(
     code: str,
     code_verifier: str,
+    redirect_uri: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Exchange an authorization code for tokens using PKCE."""
+    """Exchange an authorization code for tokens using PKCE.
+
+    ``redirect_uri`` is the one the authorization request carried, as OAuth
+    requires (RFC 6749, 4.1.3); the configured one when omitted.
+    """
     async with httpx.AsyncClient() as client:
         token_data = {
             "grant_type": "authorization_code",
             "code": code,
-            "redirect_uri": settings.authentik_redirect_uri,
+            "redirect_uri": redirect_uri or settings.authentik_redirect_uri,
             "client_id": settings.authentik_client_id,
             "code_verifier": code_verifier,
         }

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import Response
 
 from config.settings import settings
+from src.auth.network_access import client_allowed
 from src.database import get_db
 from src.models.user import Session, User
 
@@ -114,6 +115,11 @@ async def get_web_user_optional(
 ) -> Optional[WebUser]:
     """Resolve the current browser user from the session cookie, or None.
 
-    Web routes redirect to /app/login on None.
+    Web routes redirect to /app/login on None. A cookie presented from outside
+    ``WEB_ALLOWED_NETWORKS`` is ignored, so a session opened on an allowed
+    network does not keep working from anywhere else (on ``/shared`` pages,
+    which are not behind the panel's gate).
     """
+    if not client_allowed(request.client.host if request.client else None):
+        return None
     return await resolve_web_user(request.cookies.get(COOKIE_NAME), db)

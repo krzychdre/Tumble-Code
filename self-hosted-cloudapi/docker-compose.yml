@@ -29,6 +29,10 @@ services:
       AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8085}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # Web panel from other machines (see .env.example): who may open it, and
+      # the address they open it at.
+      WEB_ALLOWED_NETWORKS: ${WEB_ALLOWED_NETWORKS:-}
+      WEB_PUBLIC_URL: ${WEB_PUBLIC_URL:-}
       DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-openai}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -120,6 +124,9 @@ services:
       AUTHENTIK_CLIENT_ID: ${AUTHENTIK_CLIENT_ID:-tumble-code}
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
       AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
+      # When set, the blueprint registers <WEB_PUBLIC_URL>/auth/clerk/callback as
+      # a second redirect URI, so a browser on another machine can sign in.
+      WEB_PUBLIC_URL: ${WEB_PUBLIC_URL:-}
     healthcheck:
       test: ["CMD", "ak", "healthcheck"]
       start_period: 60s

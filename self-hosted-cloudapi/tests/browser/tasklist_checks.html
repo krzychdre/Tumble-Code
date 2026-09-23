@@ -11,38 +11,38 @@
     <label class="select-all"><input type="checkbox" id="select-all"><span>Select page</span></label>
   </div>
   <ul class="task-list">
-    <li class="task-item">
+    <li class="task-node"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t1" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t1"><span class="cell-title">One</span></a>
       <div class="task-delete">
         <button class="btn-delete" type="submit" formaction="/app/tasks/t1/delete"
                 data-confirm="Delete One?">Delete</button>
       </div>
-    </li>
-    <li class="task-item">
+    </div></li>
+    <li class="task-node"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t2" data-child-count="2"></label>
       <a class="task-link" href="/app/tasks/t2"><span class="cell-title">Two</span></a>
       <div class="task-delete">
         <button class="btn-delete" type="submit" formaction="/app/tasks/t2/delete"
                 data-confirm="Delete Two?">Delete</button>
       </div>
-    </li>
-    <li class="task-item">
+    </div></li>
+    <li class="task-node"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t3" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t3"><span class="cell-title">Three</span></a>
       <div class="task-delete">
         <button class="btn-delete" type="submit" formaction="/app/tasks/t3/delete"
                 data-confirm="Delete Three?">Delete</button>
       </div>
-    </li>
-    <li class="task-item">
+    </div></li>
+    <li class="task-node"><div class="task-item">
       <label class="task-check"><input type="checkbox" name="task_ids" value="t4" data-child-count="0"></label>
       <a class="task-link" href="/app/tasks/t4"><span class="cell-title">Four</span></a>
       <div class="task-delete">
         <button class="btn-delete" type="submit" formaction="/app/tasks/t4/delete"
                 data-confirm="Delete Four?">Delete</button>
       </div>
-    </li>
+    </div></li>
   </ul>
   <div id="bulk-bar" class="bulk-bar" hidden>
     <span class="bulk-count"><b id="bulk-n">0</b> selected</span>

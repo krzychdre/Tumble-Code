@@ -24,6 +24,7 @@ Between them the link survives either ordering, and no event has to be replayed.
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Iterable, Optional
 
 from sqlalchemy import select, update
@@ -117,19 +118,129 @@ async def link_pending_children(db: AsyncSession, parent_task_id: str) -> None:
     )
 
 
-async def child_counts(db: AsyncSession, task_ids: Iterable[str]) -> dict[str, int]:
-    """How many stored subtasks each of these tasks has. One query, not N."""
-    ids = [t for t in task_ids if t]
-    if not ids:
-        return {}
-    from sqlalchemy import func
+async def subtrees(
+    db: AsyncSession,
+    task_ids: Iterable[str],
+    user_id: str,
+    max_depth: int = 20,
+) -> dict[str, list[Task]]:
+    """Every stored task beneath these tasks, grouped by parent, oldest first.
 
-    result = await db.execute(
-        select(Task.parent_task_id, func.count(Task.id))
-        .where(Task.parent_task_id.in_(ids))
-        .group_by(Task.parent_task_id)
-    )
-    return {row[0]: row[1] for row in result.all()}
+    One query per level of the tree rather than one per task, so a page of 25
+    runs costs as many queries as its deepest run is deep (one or two on the
+    live corpus). Walked level by level rather than with a recursive CTE so the
+    same code runs on SQLite (the test database) and Postgres.
+
+    The requested ids may include each other's subtasks (the flat view asks for
+    a page of every kind of task at once), and such a task still belongs under
+    its parent. Each task is placed under exactly one parent, and never under a
+    task beneath it: a cycle in the client-supplied links is cut at the edge
+    that would close it, rather than producing a tree that contains itself.
+    ``max_depth`` bounds the walk for the same reason.
+    """
+    tree: dict[str, list[Task]] = {}
+    parent_of: dict[str, str] = {}
+    frontier = list(dict.fromkeys(t for t in task_ids if t))
+    for _ in range(max_depth):
+        if not frontier:
+            break
+        result = await db.execute(
+            select(Task)
+            .where(Task.parent_task_id.in_(frontier), Task.user_id == user_id)
+            .order_by(Task.created_at)
+        )
+        frontier = []
+        for child in result.scalars().all():
+            if child.id in parent_of or _is_at_or_above(parent_of, child.parent_task_id, child.id):
+                continue
+            parent_of[child.id] = child.parent_task_id
+            tree.setdefault(child.parent_task_id, []).append(child)
+            frontier.append(child.id)
+    return tree
+
+
+def _is_at_or_above(parent_of: dict[str, str], task_id: Optional[str], candidate: str) -> bool:
+    """Is ``candidate`` ``task_id`` itself or one of its ancestors so far?
+
+    Terminates because ``parent_of`` never gains the edge that would close a
+    loop: that is exactly the edge this check refuses.
+    """
+    while task_id is not None:
+        if task_id == candidate:
+            return True
+        task_id = parent_of.get(task_id)
+    return False
+
+
+def subtree_size(tree: dict[str, list[Task]], task_id: str) -> int:
+    """How many tasks sit beneath ``task_id`` in a tree from ``subtrees``."""
+    return sum(1 + subtree_size(tree, child.id) for child in tree.get(task_id, []))
+
+
+@dataclass(frozen=True)
+class Spend:
+    """What some tasks consumed: the additive figures of a task row.
+
+    Duration and message count are deliberately absent. A parent's span already
+    encloses the subtasks it waited on (all 17 subtasks on the live corpus lie
+    inside their parent's first/last message), so adding theirs would count the
+    same minutes twice; and a message count is a property of one conversation.
+    """
+
+    cost: float = 0.0
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cache_reads: int = 0
+    cache_writes: int = 0
+
+    @classmethod
+    def of(cls, task: Task) -> "Spend":
+        return cls(
+            cost=task.cost or 0.0,
+            tokens_in=task.tokens_in or 0,
+            tokens_out=task.tokens_out or 0,
+            cache_reads=task.cache_reads or 0,
+            cache_writes=task.cache_writes or 0,
+        )
+
+    def __add__(self, other: "Spend") -> "Spend":
+        return Spend(
+            cost=self.cost + other.cost,
+            tokens_in=self.tokens_in + other.tokens_in,
+            tokens_out=self.tokens_out + other.tokens_out,
+            cache_reads=self.cache_reads + other.cache_reads,
+            cache_writes=self.cache_writes + other.cache_writes,
+        )
+
+    def __sub__(self, other: "Spend") -> "Spend":
+        return Spend(
+            cost=self.cost - other.cost,
+            tokens_in=self.tokens_in - other.tokens_in,
+            tokens_out=self.tokens_out - other.tokens_out,
+            cache_reads=self.cache_reads - other.cache_reads,
+            cache_writes=self.cache_writes - other.cache_writes,
+        )
+
+    @property
+    def tokens(self) -> int:
+        return self.tokens_in + self.tokens_out
+
+
+def subtree_spend(tree: dict[str, list[Task]], task: Task) -> Spend:
+    """What ``task`` and every stored task beneath it consumed, together.
+
+    A plain sum is exact because the figures are disjoint: each task's columns
+    add up only its own ``api_req_started`` rows, and a subtask is a separate
+    task with its own conversation. Checked on the live corpus against the
+    ``LLM Completion`` telemetry, where every task's stored cost equals the cost
+    of the completions stamped with its own id (the parent of "Analyse issue
+    described in 1289652 ADO" $0.1656 = 13 completions, its subtasks $1.1940 =
+    46 and $0.0493 = 3), so the run cost $1.4090, not the $0.1656 on its row.
+    """
+    total = Spend.of(task)
+    for child in tree.get(task.id, []):
+        total = total + subtree_spend(tree, child)
+    return total
 
 
 async def ancestors(db: AsyncSession, task: Task, limit: int = 10) -> list[Task]:
@@ -153,11 +264,3 @@ async def ancestors(db: AsyncSession, task: Task, limit: int = 10) -> list[Task]
         chain.append(parent)
         current = parent
     return chain
-
-
-async def children_of(db: AsyncSession, task_id: str) -> list[Task]:
-    """Stored subtasks of a task, oldest first — the order they were spawned."""
-    result = await db.execute(
-        select(Task).where(Task.parent_task_id == task_id).order_by(Task.created_at)
-    )
-    return list(result.scalars().all())

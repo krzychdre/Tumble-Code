@@ -38,9 +38,26 @@ entries:
         !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
       signing_key:
         !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
-      redirect_uris:
-        - matching_mode: strict
-          url: !Env [AUTHENTIK_REDIRECT_URI, "http://localhost:8085/auth/clerk/callback"]
+      # The local callback, plus the public one when WEB_PUBLIC_URL names the
+      # address other machines open the panel at. Strict matching, one exact
+      # URL each: this list is what stops Authentik from issuing a code to any
+      # other host. The api builds the same "<WEB_PUBLIC_URL>/auth/clerk/callback"
+      # (and refuses to start on a WEB_PUBLIC_URL with a path or trailing slash,
+      # which would make the two disagree).
+      #
+      # Authentik re-applies a blueprint when this FILE changes, not when the
+      # environment does. After changing WEB_PUBLIC_URL, recreate the Authentik
+      # containers and apply it by hand:
+      #   docker compose up -d
+      #   docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
+      redirect_uris: !If
+        - !Env [WEB_PUBLIC_URL, ""]
+        - - matching_mode: strict
+            url: !Env [AUTHENTIK_REDIRECT_URI, "http://localhost:8085/auth/clerk/callback"]
+          - matching_mode: strict
+            url: !Format ["%s/auth/clerk/callback", !Env WEB_PUBLIC_URL]
+        - - matching_mode: strict
+            url: !Env [AUTHENTIK_REDIRECT_URI, "http://localhost:8085/auth/clerk/callback"]
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]

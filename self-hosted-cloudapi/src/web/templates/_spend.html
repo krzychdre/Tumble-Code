@@ -1,0 +1,8 @@
+{# The tokens and cost cells of a task row, shared by the list and the subtask
+   panel. A task that delegated shows its whole run, marked as a sum, and the
+   cell's own hover splits it into this task and its subtasks (routers/web.py,
+   _spend_fields). The hover sits on the cell, so it wins over the row's. #}
+{% macro cells(t) -%}
+<span class="cell-num"{% if t.tokens_title %} title="{{ t.tokens_title }}"{% endif %}>{% if t.rollup and t.tokens %}<span class="rollup-mark">Σ</span>{% endif %}{{ t.tokens or '' }}{% if t.tokens %}<span class="unit">tok</span>{% endif %}</span>
+<span class="cell-num cell-cost"{% if t.cost_title %} title="{{ t.cost_title }}"{% endif %}>{% if t.rollup and t.cost %}<span class="rollup-mark">Σ</span>{% endif %}{{ t.cost or '' }}</span>
+{%- endmacro %}

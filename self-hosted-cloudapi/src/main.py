@@ -2,11 +2,14 @@
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from config.auth import is_loopback_host
 from config.settings import settings
+from src.auth.network_access import WebAccessMiddleware, describe_policy
 from src.middleware.cors import setup_cors
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
@@ -33,6 +36,16 @@ async def lifespan(app: FastAPI):
     print(f"  API Base URL: {settings.api_base_url}")
     print(f"  Authentik URL: {settings.authentik_base_url}")
     print(f"  JWT Algorithm: {settings.jwt_algorithm}")
+    print(f"  Web panel open to: {describe_policy()}")
+    if settings.web_public_url:
+        print(f"  Web panel public URL: {settings.web_public_url}")
+    elif settings.web_allowed_networks and is_loopback_host(urlsplit(settings.authentik_base_url).hostname):
+        # The allowlist lets other machines in, but sign-in would still send
+        # them to localhost, which on their side is themselves.
+        print(
+            "  WARNING: WEB_ALLOWED_NETWORKS is set but WEB_PUBLIC_URL is not; "
+            "other machines can open the panel but cannot sign in"
+        )
     print(f"  Telemetry: {'enabled' if settings.telemetry_enabled else 'disabled'}")
     print(f"  Bridge: {'enabled' if settings.bridge_enabled else 'disabled'}")
     print(f"  Credits: {'enabled' if settings.credit_system_enabled else 'disabled'}")
@@ -75,6 +88,8 @@ app = FastAPI(
 
 # Setup middleware
 setup_cors(app)
+# Inside the request logging, so a refused request is still logged with its 403.
+app.add_middleware(WebAccessMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
 
 # Apply rate limiter if enabled

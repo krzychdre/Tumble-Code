@@ -56,7 +56,7 @@ from src.services.session_quality import (
     quality_of,
 )
 from src.services.task_summary import DEFAULT_TITLE, derive_title, duration_ms
-from src.services.task_tree import ancestors, child_counts, children_of
+from src.services.task_tree import Spend, ancestors, subtree_size, subtree_spend, subtrees
 from src.utils.format import fmt_duration, fmt_tokens
 from src.utils.pagination import page_window
 
@@ -164,24 +164,122 @@ def _quality_panel(task: Task) -> dict:
     }
 
 
-def _tree_entry(task: Task) -> dict:
+def _plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
+    """The tokens and cost cells, and the hover that explains them.
+
+    A task that delegated shows what its whole run consumed: itself plus every
+    subtask beneath it. Its own figures alone were the parent's share only, on
+    the live corpus often a fraction of the run (a $0.1656 row whose two
+    subtasks cost $1.2434 more). The cells are marked as sums and their hover
+    splits them into this task and its subtasks; a task with no subtasks shows
+    its own figures, unmarked, as before.
+    """
+    own = Spend.of(task)
+    total = subtree_spend(tree, task)
+    subtasks = subtree_size(tree, task.id)
+    fields = {
+        "tokens": fmt_tokens(total.tokens) if total.tokens else None,
+        "cost": f"${total.cost:.4f}" if total.cost > 0 else None,
+        "rollup": subtasks > 0,
+        "tokens_title": None,
+        "cost_title": None,
+        # The prompt the run started from, then its figures: the one thing a
+        # row 100 characters wide cannot show.
+        "hover_title": _row_tooltip(task, total if subtasks else None, subtasks),
+    }
+    if subtasks:
+        rest = total - own
+        where = _plural(subtasks, "subtask")
+        fields["tokens_title"] = (
+            f"{total.tokens:,} tokens for the run: {own.tokens:,} this task + {rest.tokens:,} in {where}"
+        )
+        fields["cost_title"] = (
+            f"${total.cost:.4f} for the run: ${own.cost:.4f} this task + ${rest.cost:.4f} in {where}"
+        )
+    return fields
+
+
+def _tree_entry(task: Task, tree: Optional[dict[str, list[Task]]] = None) -> dict:
     """Compact view-model for a task shown as somebody else's relative.
 
     Used by the breadcrumb and the subtask panel, where a task appears as a link
-    with its own headline figures rather than as a full list row.
+    with its own headline figures rather than as a full list row. Given the
+    tree beneath it, a subtask that delegated further shows its run's figures,
+    the same as it would as a list row.
     """
     span = duration_ms(task.first_ts, task.last_ts)
-    tokens = (task.tokens_in or 0) + (task.tokens_out or 0)
     return {
         "id": task.id,
         "title": task.title or DEFAULT_TITLE,
         "message_count": task.message_count or 0,
-        "tokens": fmt_tokens(tokens) if tokens else None,
-        "cost": f"${task.cost:.4f}" if (task.cost or 0) > 0 else None,
         "duration": fmt_duration(span) if span else None,
         # Same hover as a list row: a subtask's title is the least informative
         # of all, since a delegated run is usually named by one instruction.
-        "hover_title": _row_tooltip(task),
+        **_spend_fields(task, tree or {}),
+        **_quality_fields(task),
+    }
+
+
+def _tree_entries(tree: dict[str, list[Task]], task_id: str) -> list[dict]:
+    """The subtasks beneath ``task_id`` as nested tree entries, oldest first."""
+    return [
+        {**_tree_entry(child, tree), "children": _tree_entries(tree, child.id)}
+        for child in tree.get(task_id, [])
+    ]
+
+
+def _run_summary(task: Task, tree: dict[str, list[Task]]) -> Optional[dict]:
+    """The subtask panel's headline: what the whole run cost, and how it splits.
+
+    None for a task with no subtasks, which has no run beyond itself.
+    """
+    subtasks = subtree_size(tree, task.id)
+    if not subtasks:
+        return None
+    own = Spend.of(task)
+    total = subtree_spend(tree, task)
+    rest = total - own
+    return {
+        "cost": f"${total.cost:.4f}",
+        "own_cost": f"${own.cost:.4f}",
+        "subtasks_cost": f"${rest.cost:.4f}",
+        "tokens": fmt_tokens(total.tokens),
+    }
+
+
+def _list_row(task: Task, tree: dict[str, list[Task]], nest: bool) -> dict:
+    """View-model for one row of the task list.
+
+    With ``nest`` the row carries its subtasks as rows of their own, so the run
+    view renders the whole delegation tree under each run. The flat view lists
+    subtasks as ordinary rows instead, so nesting them there would show each
+    one twice.
+    """
+    kids = tree.get(task.id, [])
+    span = duration_ms(task.first_ts, task.last_ts)
+    return {
+        "id": task.id,
+        "title": task.title or DEFAULT_TITLE,
+        "message_count": task.message_count or 0,
+        "updated_at": task.updated_at,
+        "duration": fmt_duration(span) if span else None,
+        **_spend_fields(task, tree),
+        "workspace": task.workspace_path,
+        "workspace_label": _workspace_label(task.workspace_path),
+        # Read straight off the row: the list must never parse an event
+        # payload per task (see services/model_attribution).
+        "models": models_badge(task.models),
+        "child_count": len(kids),
+        # What "include their subtasks" adds to a bulk delete: the whole
+        # subtree, because that is what the delete removes, not only the
+        # direct children the pill counts.
+        "descendant_count": subtree_size(tree, task.id),
+        "is_subtask": task.parent_task_id is not None,
+        "children": [_list_row(kid, tree, nest) for kid in kids] if nest else [],
         **_quality_fields(task),
     }
 
@@ -244,13 +342,30 @@ def _metrics_tooltip(task: Task) -> list[str]:
     return lines
 
 
-def _row_tooltip(task: Task) -> Optional[str]:
+def _run_tooltip(total: Spend, subtasks: int) -> list[str]:
+    """The same breakdown for a task together with its subtasks."""
+    lines = [
+        f"Σ With its {_plural(subtasks, 'subtask')}",
+        f"↑ In: {total.tokens_in:,}",
+        f"↓ Out: {total.tokens_out:,}",
+    ]
+    if total.cache_writes or total.cache_reads:
+        lines.append(f"⚡ Cache: {total.cache_writes:,} write / {total.cache_reads:,} read")
+    lines.append(f"$ Cost: ${total.cost:.4f}")
+    return lines
+
+
+def _row_tooltip(task: Task, total: Optional[Spend] = None, subtasks: int = 0) -> Optional[str]:
     """What hovering a task row says: the request, then what it cost.
 
     The prompt leads because it is the thing the row cannot show — the title
     column carries only its first line, cut at 100 characters. Both halves come
     off the task row itself, so this costs the list nothing (native title
     tooltips honour the newlines).
+
+    With ``total`` (the task and its ``subtasks`` together) the task's own
+    figures are headed as such and the run's follow, so the hover accounts for
+    the sum the row shows.
 
     ``None`` when there is neither an excerpt nor a figure to report, so the
     row gets no empty tooltip.
@@ -260,7 +375,10 @@ def _row_tooltip(task: Task) -> Optional[str]:
     if prompt:
         blocks.append("\n".join(prompt))
     if (task.tokens_in or 0) or (task.tokens_out or 0) or (task.cost or 0):
-        blocks.append("\n".join(_metrics_tooltip(task)))
+        own = _metrics_tooltip(task)
+        blocks.append("\n".join(["This task", *own] if total else own))
+    if total and (total.tokens or total.cost):
+        blocks.append("\n".join(_run_tooltip(total, subtasks)))
     return "\n\n".join(blocks) or None
 
 
@@ -326,10 +444,11 @@ async def task_list(
     many messages the conversations hold. It used to load and JSON-parse the
     entire corpus — 387 queries and 205 MB per request on the live deployment.
 
-    ``scope=roots`` (the default) hides subtasks, which are reached by opening
-    the run that spawned them. On the live deployment 150 of 387 tasks are
+    ``scope=roots`` (the default) lists runs only and nests each run's subtasks
+    under it as a collapsible tree. On the live deployment 150 of 387 tasks are
     subtasks, so listing them flat buried the actual runs among their own
-    fragments. ``scope=all`` restores the flat list.
+    fragments, and hiding them outright left no way to see a run's shape
+    without opening it. ``scope=all`` restores the flat list.
     """
     if user is None:
         return RedirectResponse(url="/app/login", status_code=303)
@@ -356,35 +475,10 @@ async def task_list(
     )
 
     page_tasks = list(result.scalars().all())
-    # One grouped query for the whole page rather than a count per row.
-    counts = await child_counts(db, [t.id for t in page_tasks])
-
-    items = []
-    for task in page_tasks:
-        total_tokens = (task.tokens_in or 0) + (task.tokens_out or 0)
-        span = duration_ms(task.first_ts, task.last_ts)
-        items.append(
-            {
-                "id": task.id,
-                "title": task.title or DEFAULT_TITLE,
-                "message_count": task.message_count or 0,
-                "updated_at": task.updated_at,
-                "tokens": fmt_tokens(total_tokens) if total_tokens else None,
-                "cost": f"${task.cost:.4f}" if (task.cost or 0) > 0 else None,
-                "duration": fmt_duration(span) if span else None,
-                # The prompt the run started from, then its figures: the one
-                # thing a row 100 characters wide cannot show.
-                "hover_title": _row_tooltip(task),
-                "workspace": task.workspace_path,
-                "workspace_label": _workspace_label(task.workspace_path),
-                # Read straight off the row: the list must never parse an event
-                # payload per task (see services/model_attribution).
-                "models": models_badge(task.models),
-                "child_count": counts.get(task.id, 0),
-                "is_subtask": task.parent_task_id is not None,
-                **_quality_fields(task),
-            }
-        )
+    # One query per tree level for the whole page rather than a lookup per row.
+    tree = await subtrees(db, [t.id for t in page_tasks], user["user_id"])
+    nest = scope == "roots"
+    items = [_list_row(task, tree, nest) for task in page_tasks]
 
     # Shown on the scope toggle so the cost of switching is visible up front.
     all_total = await db.scalar(
@@ -400,6 +494,7 @@ async def task_list(
             "nav_active": "tasks",
             "query": search,
             "scope": scope,
+            "tree_view": nest,
             "page": page,
             "page_count": page_count,
             # Numbered links, so any page is one click away rather than N
@@ -542,6 +637,9 @@ async def task_detail(
     live = settings.bridge_enabled
     # Nearest-first from ancestors(); the trail reads root → … → here.
     trail = list(reversed(await ancestors(db, task)))
+    # The whole tree beneath this task, not only its direct children: a
+    # subtask that delegated further is otherwise a dead end until opened.
+    tree = await subtrees(db, [task_id], user["user_id"])
     return templates.TemplateResponse(
         request,
         "task_detail.html",
@@ -549,7 +647,9 @@ async def task_detail(
             "user": user,
             "task": task,
             "ancestors": [_tree_entry(t) for t in trail],
-            "subtasks": [_tree_entry(t) for t in await children_of(db, task_id)],
+            "subtasks": _tree_entries(tree, task_id),
+            "subtask_count": subtree_size(tree, task_id),
+            "run": _run_summary(task, tree),
             "quality": _quality_panel(task),
             # The stored title is authoritative; deriving it again is only a
             # fallback for a row written before the summary columns existed and

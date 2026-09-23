@@ -76,6 +76,40 @@ every back-channel call, so Authentik resolves the brand correctly even though
 the connection targets the internal service name. The provider's `client_type`
 is `confidential`, so a matching `AUTHENTIK_CLIENT_SECRET` is mandatory.
 
+#### Opening the web panel from other machines
+
+Out of the box every URL in the sign-in round trip is `localhost`, which on
+another machine means that machine. To open the panel from, say, a laptop on
+the same LAN, set in `.env` the address the laptop uses and who may use it:
+
+```bash
+WEB_PUBLIC_URL=http://192.168.50.141:8085   # scheme://host[:port], no path, no trailing slash
+WEB_ALLOWED_NETWORKS=192.168.50.0/24        # IPs and CIDR networks, comma separated
+```
+
+then recreate the stack and apply the blueprint (Authentik re-reads it only
+when the file changes, not when the environment does):
+
+```bash
+docker compose up -d --build
+docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
+```
+
+- A browser that opens the panel on `WEB_PUBLIC_URL`'s host signs in through
+  Authentik on that same host (port from `AUTHENTIK_BASE_URL`) and comes back to
+  `<WEB_PUBLIC_URL>/auth/clerk/callback`, which the blueprint registers next to
+  the local callback. Opening `localhost:8085` on the server keeps working as before.
+- `WEB_ALLOWED_NETWORKS` empty means any client that can reach the port. Once
+  set, everything under `/app` answers 403 to other clients, and their session
+  cookie is ignored elsewhere too. Loopback and, in Docker, the host itself
+  (it arrives from the compose network's gateway) are always allowed. Public
+  share links (`/shared/<id>`) stay public; the extension API is not affected.
+- The startup log prints `Web panel open to: …` with the effective list.
+- The check uses the real client address, which Docker's default port
+  publishing preserves. With rootless Docker every client appears as the
+  gateway, and behind a reverse proxy uvicorn needs `FORWARDED_ALLOW_IPS` to
+  trust its `X-Forwarded-For`.
+
 > **Blueprint troubleshooting.** The provider/app are created by the worker on
 > first boot. Check it applied with `docker compose logs auth_worker | grep -i
 blueprint`, or in the Authentik UI under **System → Blueprints**. The blueprint
