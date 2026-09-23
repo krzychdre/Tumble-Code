@@ -84,27 +84,9 @@ import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
  * the bordered `InputArea` with its footer.
  */
 function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps) {
-	const {
-		initialPrompt,
-		initialTaskId,
-		initialSessionId,
-		continueSession,
-		workspacePath,
-		extensionPath,
-		user,
-		provider,
-		apiKey,
-		model,
-		baseUrl,
-		modeProviderSettings,
-		mode,
-		nonInteractive = false,
-		debug,
-		exitOnComplete,
-		reasoningEffort,
-		ephemeral,
-		version,
-	} = extensionHostOptions
+	const { initialPrompt, initialTaskId, initialSessionId, continueSession, version, ...hostOptions } =
+		extensionHostOptions
+	const { workspacePath, user, provider, model, mode, nonInteractive = false, reasoningEffort } = hostOptions
 
 	const { exit } = useApp()
 	const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => getPermissionMode(nonInteractive))
@@ -198,24 +180,11 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	})
 
 	const { sendToExtension, runTask, cleanup } = useExtensionHost({
+		...hostOptions,
 		initialPrompt,
 		initialTaskId,
 		initialSessionId,
 		continueSession,
-		mode,
-		reasoningEffort,
-		user,
-		provider,
-		apiKey,
-		model,
-		baseUrl,
-		modeProviderSettings,
-		workspacePath,
-		extensionPath,
-		debug,
-		nonInteractive,
-		ephemeral,
-		exitOnComplete,
 		onExtensionMessage: handleExtensionMessage,
 		createExtensionHost,
 	})

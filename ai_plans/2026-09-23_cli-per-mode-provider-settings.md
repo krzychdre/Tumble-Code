@@ -59,12 +59,15 @@ With a logged-in Codex (the user's real setup) the task would have continued sil
 - **Extension:** `ClineProvider` keeps it in memory (`setCliModeProviderSettings`). While
   set, `modes[mode] ?? base` replaces the profile store in the three places that map a
   mode to provider settings:
+
     1. `handleModeSwitch` (user `/mode`, `switch_mode`, slash-command modes, `new_task`
        delegation): `setProviderSettings` + forced handler rebuild, no store reads or writes;
     2. `getApiConfigurationForMode` (mode-scoped subagents);
     3. `createTaskWithHistoryItem` (resume, and a parent returning from its subtask).
-       Nothing is persisted, so the mapping is recomputed from the file on every start
-       (transient over persisted, per the mode-switching design rule).
+
+    Nothing is persisted, so the mapping is recomputed from the file on every start
+    (transient over persisted, per the mode-switching design rule).
+
 - **TUI:** the footer model, and the banner on ctrl+o reprints, follow the extension state
   (`summarizeProviderSettings`, reading the active provider's own model field, because the
   state can hold a stale `apiModelId` next to the live `openAiModelId`). The TUI path
@@ -108,3 +111,4 @@ exit 0; cli-settings.json unchanged
   this stack as well; needs a way to declare model info in the settings.
 - **The TUI drops `consecutiveMistakeLimit`, `terminalShell` and `exitOnError`**
   (`App.tsx` / `useExtensionHost.ts` forward a hand-picked subset of host options).
+  Fixed on the next branch, `fix/cli-tui-forwards-all-host-options`.
