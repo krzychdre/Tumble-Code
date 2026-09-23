@@ -19,7 +19,12 @@ import { getOpenAiCodexAuthStatus } from "@/commands/auth/openai-codex.js"
 import { isValidOutputFormat } from "@/types/json-events.js"
 import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 
-import { getSettingsPath, isSettingsFileReadableByOthers, loadSettings } from "@/lib/storage/index.js"
+import {
+	getSettingsPath,
+	isSettingsFileReadableByOthers,
+	loadSettings,
+	resolveMcpSettingsPath,
+} from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
 import { getEnvVarName, providerRequiresApiKey, getProviderSettings } from "@/lib/utils/provider.js"
 import {
@@ -283,6 +288,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		model: effectiveModel,
 		workspacePath: effectiveWorkspacePath,
 		extensionPath: path.resolve(flagOptions.extension || getDefaultExtensionPath(__dirname)),
+		mcpSettingsPath: resolveMcpSettingsPath(settings.mcpSettingsPath),
 		baseUrl: effectiveBaseUrl,
 		nonInteractive: !effectiveRequireApproval,
 		exitOnError: flagOptions.exitOnError,

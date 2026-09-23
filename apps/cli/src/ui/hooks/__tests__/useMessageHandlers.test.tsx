@@ -101,6 +101,23 @@ describe("useMessageHandlers", () => {
 		})
 	})
 
+	it("keeps the MCP server list from mcpServers and full state pushes, not from partial ones", () => {
+		const servers = [{ name: "s", config: "{}", status: "connected" }]
+
+		api.handleExtensionMessage({ type: "mcpServers", mcpServers: servers } as never)
+		expect(useCLIStore.getState().mcpServers).toBe(servers)
+
+		// The core pushes single-field state updates (storageErrorMessage).
+		api.handleExtensionMessage({ type: "state", state: { storageErrorMessage: "x" } } as never)
+		expect(useCLIStore.getState().mcpServers).toBe(servers)
+
+		const reconnected = [{ ...servers[0], status: "disconnected", error: "gone" }]
+		api.handleExtensionMessage({ type: "state", state: { mcpServers: reconnected } } as never)
+		expect(useCLIStore.getState().mcpServers).toBe(reconnected)
+
+		useCLIStore.getState().setMcpServers([])
+	})
+
 	it("preserves structured tool details for interactive approval dialogs", () => {
 		const payload = JSON.stringify({
 			tool: "readFile",
@@ -191,6 +208,71 @@ describe("useMessageHandlers", () => {
 		expect(messages).toHaveLength(1)
 		expect(messages[0]).toMatchObject({ role: "tool", toolName: "execute_command" })
 		expect(messages[0]?.toolData?.command).toBe(command)
+	})
+
+	describe("MCP calls", () => {
+		const mcpAsk = JSON.stringify({
+			type: "use_mcp_tool",
+			serverName: "projsrv",
+			toolName: "list_handoffs",
+			arguments: "{}",
+		})
+
+		function runMcpCall(): void {
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: { ts: 700, type: "ask", ask: "use_mcp_server", text: mcpAsk, partial: false },
+			})
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: {
+					ts: 701,
+					type: "say",
+					say: "mcp_server_response",
+					text: "No handoffs.",
+					partial: false,
+				},
+			})
+		}
+
+		it("renders an auto-approved call as one MCP row, not as the ask's JSON", () => {
+			const view = render(<Harness />)
+			nonInteractive = true
+			view.rerender(<Harness />)
+			useCLIStore.getState().setLoading(true)
+
+			runMcpCall()
+
+			const messages = useCLIStore.getState().messages
+			expect(messages).toHaveLength(1)
+			expect(messages[0]).toMatchObject({ role: "tool", toolName: "use_mcp_server" })
+			expect(messages[0]?.toolData).toEqual({
+				tool: "use_mcp_server",
+				path: "projsrv › list_handoffs",
+				content: "No handoffs.",
+			})
+		})
+
+		it("names the server and tool of an approved call in the response row", () => {
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: { ts: 700, type: "ask", ask: "use_mcp_server", text: mcpAsk, partial: false },
+			})
+			expect(useCLIStore.getState().pendingAsk?.type).toBe("use_mcp_server")
+
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: {
+					ts: 701,
+					type: "say",
+					say: "mcp_server_response",
+					text: "No handoffs.",
+					partial: false,
+				},
+			})
+
+			expect(useCLIStore.getState().messages.at(-1)?.toolData?.path).toBe("projsrv › list_handoffs")
+		})
 	})
 
 	it("renders a single block for two ts-distinct identical assistant text messages", () => {

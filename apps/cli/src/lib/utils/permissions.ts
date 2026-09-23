@@ -5,6 +5,7 @@ export type PermissionMode = "ask" | "allow"
 type AllowPermissionSettings = Pick<
 	RooCodeSettings,
 	| "autoApprovalEnabled"
+	| "autoApprovalMode"
 	| "alwaysAllowReadOnly"
 	| "alwaysAllowReadOnlyOutsideWorkspace"
 	| "alwaysAllowWrite"
@@ -33,6 +34,13 @@ const ASK_PERMISSION_SETTINGS: CliPermissionSettings = {
 
 const ALLOW_PERMISSION_SETTINGS: CliPermissionSettings = {
 	autoApprovalEnabled: true,
+	// "Allow" has to cover every action, and only the bypass tier does: in the
+	// default tier an MCP tool is approved only when it is on its server's
+	// alwaysAllow list, and anything else waits for an answer the CLI never
+	// gives in this mode, so the task hangs. Bypass still asks followup
+	// questions and keeps the plan-approval gate. It also ignores
+	// deniedCommands, which the CLI never sets.
+	autoApprovalMode: "bypass",
 	alwaysAllowReadOnly: true,
 	alwaysAllowReadOnlyOutsideWorkspace: true,
 	alwaysAllowWrite: true,

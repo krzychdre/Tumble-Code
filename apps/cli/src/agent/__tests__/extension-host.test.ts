@@ -2,6 +2,8 @@
 
 import { EventEmitter } from "events"
 import fs from "fs"
+import os from "os"
+import path from "path"
 
 import type { ExtensionMessage, WebviewMessage } from "@roo-code/types"
 
@@ -19,7 +21,8 @@ vi.mock("@roo-code/vscode-shim", () => ({
 	setRuntimeConfigValues: vi.fn(),
 }))
 
-vi.mock("@/lib/storage/index.js", () => ({
+vi.mock("@/lib/storage/index.js", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@/lib/storage/index.js")>()),
 	createEphemeralStorageDir: vi.fn(() => Promise.resolve("/tmp/roo-cli-test-ephemeral")),
 }))
 
@@ -84,25 +87,31 @@ function spyOnPrivate(host: ExtensionHost, method: string) {
 
 describe("ExtensionHost", () => {
 	const initialRooCliRuntimeEnv = process.env.ROO_CLI_RUNTIME
+	const initialMcpSettingsPathEnv = process.env.ROO_MCP_SETTINGS_PATH
 
-	beforeEach(() => {
-		vi.resetAllMocks()
+	const restoreEnv = () => {
 		if (initialRooCliRuntimeEnv === undefined) {
 			delete process.env.ROO_CLI_RUNTIME
 		} else {
 			process.env.ROO_CLI_RUNTIME = initialRooCliRuntimeEnv
 		}
+		if (initialMcpSettingsPathEnv === undefined) {
+			delete process.env.ROO_MCP_SETTINGS_PATH
+		} else {
+			process.env.ROO_MCP_SETTINGS_PATH = initialMcpSettingsPathEnv
+		}
+	}
+
+	beforeEach(() => {
+		vi.resetAllMocks()
+		restoreEnv()
 		// Clean up globals
 		delete (global as Record<string, unknown>).vscode
 		delete (global as Record<string, unknown>).__extensionHost
 	})
 
 	afterAll(() => {
-		if (initialRooCliRuntimeEnv === undefined) {
-			delete process.env.ROO_CLI_RUNTIME
-		} else {
-			process.env.ROO_CLI_RUNTIME = initialRooCliRuntimeEnv
-		}
+		restoreEnv()
 	})
 
 	describe("constructor", () => {
@@ -158,6 +167,17 @@ describe("ExtensionHost", () => {
 			delete process.env.ROO_CLI_RUNTIME
 			createTestHost()
 			expect(process.env.ROO_CLI_RUNTIME).toBe("1")
+		})
+
+		it("should point the core at ~/.roo/mcp.json for global MCP servers by default", () => {
+			delete process.env.ROO_MCP_SETTINGS_PATH
+			createTestHost()
+			expect(process.env.ROO_MCP_SETTINGS_PATH).toBe(path.join(os.homedir(), ".roo", "mcp.json"))
+		})
+
+		it("should point the core at the configured global MCP settings file", () => {
+			createTestHost({ mcpSettingsPath: "/custom/mcp_settings.json" })
+			expect(process.env.ROO_MCP_SETTINGS_PATH).toBe("/custom/mcp_settings.json")
 		})
 
 		it("should set execaShellPath in initialSettings when terminalShell is provided", () => {
@@ -325,6 +345,46 @@ describe("ExtensionHost", () => {
 			// Message listener is set up in activate(), which we can't easily call in unit tests.
 			// But we can verify the client exists and has the handleMessage method.
 			expect(typeof client.handleMessage).toBe("function")
+		})
+	})
+
+	describe("MCP failure notice (print mode)", () => {
+		const failed = {
+			name: "broken",
+			config: "{}",
+			status: "disconnected",
+			source: "project",
+			error: "spawn x ENOENT",
+		}
+
+		it("prints a failed server once on stderr", () => {
+			const host = createTestHost()
+			const outputError = vi.spyOn(getPrivate<{ outputError: () => void }>(host, "outputManager"), "outputError")
+
+			callPrivate(host, "reportMcpFailures", { type: "mcpServers", mcpServers: [failed] })
+			callPrivate(host, "reportMcpFailures", { type: "state", state: { mcpServers: [failed] } })
+
+			expect(outputError).toHaveBeenCalledTimes(1)
+			expect(outputError).toHaveBeenCalledWith(
+				"[mcp]",
+				'server "broken" (project) failed to start: spawn x ENOENT',
+			)
+		})
+
+		it("ignores messages without a server list and servers that are fine", () => {
+			const host = createTestHost()
+			const outputError = vi.spyOn(getPrivate<{ outputError: () => void }>(host, "outputManager"), "outputError")
+
+			callPrivate(host, "reportMcpFailures", { type: "state", state: { storageErrorMessage: "x" } })
+			callPrivate(host, "reportMcpFailures", {
+				type: "mcpServers",
+				mcpServers: [
+					{ ...failed, status: "connected" },
+					{ ...failed, name: "off", disabled: true },
+				],
+			})
+
+			expect(outputError).not.toHaveBeenCalled()
 		})
 	})
 
@@ -516,6 +576,16 @@ describe("ExtensionHost", () => {
 			await host.dispose()
 
 			expect(process.env.ROO_CLI_RUNTIME).toBe("preexisting-value")
+		})
+
+		it("should restore ROO_MCP_SETTINGS_PATH on dispose", async () => {
+			delete process.env.ROO_MCP_SETTINGS_PATH
+			host = createTestHost({ mcpSettingsPath: "/custom/mcp.json" })
+			expect(process.env.ROO_MCP_SETTINGS_PATH).toBe("/custom/mcp.json")
+
+			await host.dispose()
+
+			expect(process.env.ROO_MCP_SETTINGS_PATH).toBeUndefined()
 		})
 	})
 

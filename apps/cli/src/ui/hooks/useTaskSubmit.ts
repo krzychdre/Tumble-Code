@@ -117,6 +117,11 @@ export function useTaskSubmit({
 						return
 					}
 
+					if (globalCommand?.action === "openMcpPanel") {
+						useUIStateStore.getState().setShowMcpPanel(true)
+						return
+					}
+
 					if (globalCommand?.action === "setPermissions") {
 						const argument = trimmedText.slice(commandMatch[0].length).trim()
 						const result = resolvePermissionArgument(argument, permissionMode)

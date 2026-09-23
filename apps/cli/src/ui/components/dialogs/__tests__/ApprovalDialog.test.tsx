@@ -95,6 +95,67 @@ describe("ApprovalDialog", () => {
 		})
 	})
 
+	describe("MCP ask", () => {
+		function mcpToolAsk(args: Record<string, unknown>): PendingAsk {
+			return {
+				id: "ask-mcp",
+				type: "use_mcp_server",
+				content: JSON.stringify({
+					type: "use_mcp_tool",
+					serverName: "searxNcrawl",
+					toolName: "search",
+					arguments: JSON.stringify(args),
+				}),
+			}
+		}
+
+		it("names the server and the tool and shows the arguments", () => {
+			const { lastFrame } = render(
+				<ApprovalDialog ask={mcpToolAsk({ query: "tumble" })} onApprove={() => {}} onReject={() => {}} />,
+			)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain("MCP tool")
+			expect(frame).toContain("searxNcrawl › search")
+			expect(frame).toContain('"query": "tumble"')
+			expect(frame).toContain("Do you want to proceed?")
+			expect(frame).not.toContain("Use_mcp_server")
+		})
+
+		it("caps long argument lists so Yes / No stay in view", () => {
+			const args = Object.fromEntries(Array.from({ length: 30 }, (_, i) => [`key${i}`, i]))
+			const { lastFrame } = render(
+				<ApprovalDialog ask={mcpToolAsk(args)} onApprove={() => {}} onReject={() => {}} />,
+			)
+			const frame = lastFrame() ?? ""
+			// 32 JSON lines ({, 30 keys, }); 12 shown.
+			expect(frame).toContain('"key10": 10')
+			expect(frame).not.toContain('"key11": 11')
+			expect(frame).toContain("… +20 lines")
+			expect(frame).toContain("Yes")
+		})
+
+		it("keeps a long argument on one row", () => {
+			const { lastFrame } = render(
+				<ApprovalDialog ask={mcpToolAsk({ text: "x".repeat(500) })} onApprove={() => {}} onReject={() => {}} />,
+			)
+			const argumentRows = (lastFrame() ?? "").split("\n").filter((row) => row.includes("xxxxxxxx"))
+			expect(argumentRows).toHaveLength(1)
+		})
+
+		it("names the server and the URI of a resource", () => {
+			const ask: PendingAsk = {
+				id: "ask-mcp-resource",
+				type: "use_mcp_server",
+				content: JSON.stringify({ type: "access_mcp_resource", serverName: "docs", uri: "docs://readme" }),
+			}
+			const { lastFrame } = render(<ApprovalDialog ask={ask} onApprove={() => {}} onReject={() => {}} />)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain("MCP resource")
+			expect(frame).toContain("docs")
+			expect(frame).toContain("docs://readme")
+		})
+	})
+
 	describe("SelectList interaction", () => {
 		const ask: PendingAsk = {
 			id: "ask-5",

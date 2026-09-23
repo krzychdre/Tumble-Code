@@ -10,6 +10,7 @@ import { CloudService } from "@roo-code/cloud"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { ensureSettingsDirectoryExists } from "../../utils/globalContext"
+import { getGlobalMcpSettingsPath } from "../mcp/mcpSettingsPath"
 import { t } from "../../i18n"
 import type { CustomModesManager } from "../../core/config/CustomModesManager"
 
@@ -315,7 +316,7 @@ export class MarketplaceManager {
 			}
 
 			// Check global MCPs
-			const globalMcpPath = path.join(globalSettingsPath, GlobalFileNames.mcpSettings)
+			const globalMcpPath = getGlobalMcpSettingsPath(globalSettingsPath)
 			try {
 				const content = await fs.readFile(globalMcpPath, "utf-8")
 				const data = JSON.parse(content)

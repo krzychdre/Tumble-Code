@@ -1,4 +1,5 @@
 import fs from "fs/promises"
+import path from "path"
 
 import type { Mock } from "vitest"
 import type { ExtensionContext, Uri } from "vscode"
@@ -342,6 +343,42 @@ describe("McpHub", () => {
 			await expect(mcpHub.callTool("disabled-server", "test-tool", {})).rejects.toThrow(
 				"No connection found for server: disabled-server",
 			)
+		})
+	})
+
+	describe("global settings file location", () => {
+		const originalOverride = process.env.ROO_MCP_SETTINGS_PATH
+
+		afterEach(() => {
+			if (originalOverride === undefined) {
+				delete process.env.ROO_MCP_SETTINGS_PATH
+			} else {
+				process.env.ROO_MCP_SETTINGS_PATH = originalOverride
+			}
+		})
+
+		it("uses mcp_settings.json in the settings directory without an override", async () => {
+			delete process.env.ROO_MCP_SETTINGS_PATH
+
+			expect(await mcpHub.getMcpSettingsFilePath()).toBe(path.join("/mock/settings/path", "mcp_settings.json"))
+		})
+
+		it("uses the file named by ROO_MCP_SETTINGS_PATH (the CLI's ~/.roo/mcp.json)", async () => {
+			const override = path.resolve("/home/user/.roo/mcp.json")
+			process.env.ROO_MCP_SETTINGS_PATH = override
+
+			expect(await mcpHub.getMcpSettingsFilePath()).toBe(override)
+		})
+
+		it("creates a missing override file together with its directory", async () => {
+			const override = path.resolve("/home/user/.roo/mcp.json")
+			process.env.ROO_MCP_SETTINGS_PATH = override
+			vi.mocked(fs.access).mockRejectedValueOnce(Object.assign(new Error("ENOENT"), { code: "ENOENT" }))
+
+			await mcpHub.getMcpSettingsFilePath()
+
+			expect(fs.mkdir).toHaveBeenCalledWith(path.dirname(override), { recursive: true })
+			expect(fs.writeFile).toHaveBeenCalledWith(override, expect.stringContaining('"mcpServers"'))
 		})
 	})
 
@@ -2016,6 +2053,50 @@ describe("McpHub", () => {
 			expect(server!.server.status).toBe("disconnected")
 			expect(server!.client).toBeNull()
 			expect(server!.transport).toBeNull()
+		})
+	})
+
+	describe("a stdio server whose process cannot start", () => {
+		it("stays listed as disconnected with the spawn error, so it can be seen and restarted", async () => {
+			const stdioModule = await import("@modelcontextprotocol/sdk/client/stdio.js")
+			const clientModule = await import("@modelcontextprotocol/sdk/client/index.js")
+			const spawnError = Object.assign(new Error("spawn /nonexistent/bin/xyz ENOENT"), { code: "ENOENT" })
+
+			// What StdioClientTransport.start() does when the command does not
+			// exist: the child process emits "error" and start() rejects.
+			;(stdioModule.StdioClientTransport as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+				start: vi.fn().mockRejectedValue(spawnError),
+				close: vi.fn().mockResolvedValue(undefined),
+				stderr: undefined,
+				onerror: null,
+				onclose: null,
+			}))
+			;(clientModule.Client as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+				connect: vi.fn(),
+				close: vi.fn().mockResolvedValue(undefined),
+			}))
+			vi.mocked(fs.readFile).mockResolvedValue(
+				JSON.stringify({ mcpServers: { broken: { command: "/nonexistent/bin/xyz" } } }),
+			)
+
+			const hub = new McpHub(mockProvider as ClineProvider)
+			await hub.waitUntilReady()
+
+			const broken = hub.connections.find((conn) => conn.server.name === "broken")
+			expect(broken).toBeDefined()
+			expect(broken!.server.status).toBe("disconnected")
+			expect(broken!.server.error).toBe("spawn /nonexistent/bin/xyz ENOENT")
+			expect(broken!.server.disabled).toBeFalsy()
+			expect(JSON.parse(broken!.server.config)).toMatchObject({ command: "/nonexistent/bin/xyz" })
+
+			// A restart tries to start the process again and keeps the server listed.
+			const starts = (stdioModule.StdioClientTransport as ReturnType<typeof vi.fn>).mock.calls.length
+			await hub.restartConnection("broken", "global")
+			expect((stdioModule.StdioClientTransport as ReturnType<typeof vi.fn>).mock.calls.length).toBe(starts + 1)
+			expect(hub.connections.filter((conn) => conn.server.name === "broken")).toHaveLength(1)
+			expect(hub.connections.find((conn) => conn.server.name === "broken")!.server.error).toBe(
+				"spawn /nonexistent/bin/xyz ENOENT",
+			)
 		})
 	})
 

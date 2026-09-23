@@ -5,9 +5,16 @@ import * as theme from "../../theme.js"
 import SelectList from "../primitives/SelectList.js"
 import { getToolDisplayName } from "../tools/utils.js"
 import type { PendingAsk } from "../../types.js"
+import { parseMcpAsk } from "../../../lib/utils/mcp-ask.js"
+
+/**
+ * Argument lines shown for an MCP tool. The dialog lives in the height-clamped
+ * tail, so a long argument list must not push Yes / No out of view.
+ */
+const MAX_MCP_ARGUMENT_LINES = 12
 
 export interface ApprovalDialogProps {
-	/** The pending ask to display (type "command" or "tool") */
+	/** The pending ask to display (type "command", "tool" or "use_mcp_server") */
 	ask: PendingAsk
 	/** Called when the user approves */
 	onApprove: () => void
@@ -18,11 +25,22 @@ export interface ApprovalDialogProps {
 }
 
 /**
+ * One body line of an approval dialog.
+ */
+interface ApprovalLine {
+	content: React.ReactNode
+	bold?: boolean
+	secondary?: boolean
+	/** Cut at the dialog's width instead of wrapping onto more rows. */
+	truncate?: boolean
+}
+
+/**
  * Parsed body content for an approval dialog.
  */
 interface ApprovalBody {
 	title: string
-	lines: React.ReactNode[]
+	lines: ApprovalLine[]
 }
 
 /**
@@ -47,9 +65,47 @@ function humanizeType(type: string): string {
 			return "Bash command"
 		case "tool":
 			return "Tool use"
+		case "use_mcp_server":
+			return "MCP server"
 		default:
 			return type.charAt(0).toUpperCase() + type.slice(1)
 	}
+}
+
+/**
+ * MCP tool → "server › tool" plus its arguments; MCP resource → server and URI.
+ */
+function buildMcpBody(content: string): ApprovalBody | undefined {
+	const mcp = parseMcpAsk(content)
+
+	if (!mcp) {
+		return undefined
+	}
+
+	if (mcp.kind === "resource") {
+		const lines: ApprovalLine[] = [{ content: mcp.serverName, bold: true }]
+
+		if (mcp.uri) {
+			lines.push({ content: mcp.uri })
+		}
+
+		return { title: "MCP resource", lines }
+	}
+
+	const lines: ApprovalLine[] = [{ content: `${mcp.serverName} › ${mcp.toolName ?? "unknown tool"}`, bold: true }]
+	const shown = mcp.argumentLines.slice(0, MAX_MCP_ARGUMENT_LINES)
+
+	for (const line of shown) {
+		lines.push({ content: line, truncate: true })
+	}
+
+	const hidden = mcp.argumentLines.length - shown.length
+
+	if (hidden > 0) {
+		lines.push({ content: `… +${hidden} lines`, secondary: true })
+	}
+
+	return { title: "MCP tool", lines }
 }
 
 /**
@@ -58,42 +114,42 @@ function humanizeType(type: string): string {
  * For "command" → title "Bash command" + `$ {command}` body line.
  * For "tool" → title via `getToolDisplayName(tool)` + body lines for
  *   path (bold), command, diff stats, mode as present.
+ * For "use_mcp_server" → "MCP tool" / "MCP resource", see `buildMcpBody`.
  * Fallback → humanized type title, no body.
  */
 function buildBody(ask: PendingAsk): ApprovalBody {
 	if (ask.type === "command") {
 		// command ask content is the raw command text
-		const lines: React.ReactNode[] = [<Text key="cmd">$ {ask.content}</Text>]
-		return { title: "Bash command", lines }
+		return { title: "Bash command", lines: [{ content: `$ ${ask.content}` }] }
+	}
+
+	if (ask.type === "use_mcp_server") {
+		const body = buildMcpBody(ask.content)
+
+		if (body) {
+			return body
+		}
 	}
 
 	if (ask.type === "tool") {
 		const info = parseToolInfo(ask.content)
 		const toolName = info ? (info.tool as string) : undefined
 		const title = toolName ? getToolDisplayName(toolName) : "Tool use"
-		const lines: React.ReactNode[] = []
+		const lines: ApprovalLine[] = []
 
 		if (info) {
 			if (typeof info.path === "string" && info.path.length > 0) {
-				lines.push(
-					<Text key="path" bold>
-						{info.path}
-					</Text>,
-				)
+				lines.push({ content: info.path, bold: true })
 			}
 			if (typeof info.command === "string" && info.command.length > 0) {
-				lines.push(<Text key="command">$ {info.command}</Text>)
+				lines.push({ content: `$ ${info.command}` })
 			}
 			if (info.diffStats && typeof info.diffStats === "object") {
 				const stats = info.diffStats as { added: number; removed: number }
-				lines.push(
-					<Text key="diff">
-						+{stats.added} -{stats.removed}
-					</Text>,
-				)
+				lines.push({ content: `+${stats.added} -${stats.removed}` })
 			}
 			if (typeof info.mode === "string" && info.mode.length > 0) {
-				lines.push(<Text key="mode">{info.mode}</Text>)
+				lines.push({ content: info.mode })
 			}
 		}
 
@@ -136,7 +192,12 @@ function ApprovalDialog({ ask, onApprove, onReject, isActive = true }: ApprovalD
 			</Text>
 			{lines.map((line, i) => (
 				<Box key={i}>
-					<Text color={theme.text}>{line}</Text>
+					<Text
+						color={line.secondary ? theme.secondaryText : theme.text}
+						bold={line.bold}
+						wrap={line.truncate ? "truncate-end" : "wrap"}>
+						{line.content}
+					</Text>
 				</Box>
 			))}
 			<Text color={theme.secondaryText}>Do you want to proceed?</Text>

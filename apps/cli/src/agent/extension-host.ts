@@ -31,7 +31,8 @@ import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import type { User } from "@/lib/sdk/index.js"
 import { toProviderSettings } from "@/lib/utils/provider-config.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
-import { createEphemeralStorageDir } from "@/lib/storage/index.js"
+import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
+import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
 import type { WaitingForInputEvent, TaskCompletedEvent } from "./events.js"
 import type { AgentStateInfo } from "./agent-state.js"
@@ -83,6 +84,12 @@ export interface ExtensionHostOptions {
 	modeProviderSettings?: CliModeProviderSettings
 	workspacePath: string
 	extensionPath: string
+	/**
+	 * File with the global MCP servers. Defaults to ~/.roo/mcp.json, so it
+	 * never lives in the shim's storage (hidden, and temporary under
+	 * --ephemeral).
+	 */
+	mcpSettingsPath?: string
 	nonInteractive?: boolean
 	/**
 	 * When true, uses a temporary storage directory that is cleaned up on exit.
@@ -148,7 +155,13 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 	// Ephemeral storage.
 	private ephemeralStorageDir: string | null = null
-	private previousCliRuntimeEnv: string | undefined
+
+	// Environment variables this host sets for the extension, with the values
+	// they had before, restored on dispose.
+	private previousEnv = new Map<string, string | undefined>()
+
+	// MCP server failures already printed (see takeNewMcpFailures).
+	private reportedMcpFailures = new Set<string>()
 
 	// ==========================================================================
 	// Managers - These do all the heavy lifting
@@ -188,8 +201,11 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		this.options = options
 		// Mark this process as CLI runtime so extension code can apply
 		// CLI-specific behavior without affecting VS Code desktop usage.
-		this.previousCliRuntimeEnv = process.env.ROO_CLI_RUNTIME
-		process.env.ROO_CLI_RUNTIME = "1"
+		this.setProcessEnv("ROO_CLI_RUNTIME", "1")
+		// Global MCP servers come from the CLI's own file; the core reads the
+		// variable in src/services/mcp/mcpSettingsPath.ts, before activation
+		// is over, which is why it cannot wait for a webview message.
+		this.setProcessEnv("ROO_MCP_SETTINGS_PATH", options.mcpSettingsPath ?? getDefaultMcpSettingsPath())
 
 		// Enable file-based debug logging only when --debug is passed.
 		if (options.debug) {
@@ -429,10 +445,33 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		}
 
 		// Set up message listener - forward all messages to client.
-		this.messageListener = (message: ExtensionMessage) => this.client.handleMessage(message)
+		this.messageListener = (message: ExtensionMessage) => {
+			this.reportMcpFailures(message)
+			this.client.handleMessage(message)
+		}
 		this.on("extensionWebviewMessage", this.messageListener)
 
 		await pWaitFor(() => this.isReady, { interval: 100, timeout: 10_000 })
+	}
+
+	/**
+	 * Print mode: tell the user on stderr when an MCP server fails to start,
+	 * which they otherwise never learn. The output manager is disabled in the
+	 * TUI (which shows its own notice) and for JSON output.
+	 */
+	private reportMcpFailures(message: ExtensionMessage): void {
+		const servers = mcpServersFromMessage(message)
+
+		if (!servers) {
+			return
+		}
+
+		for (const server of takeNewMcpFailures(servers, this.reportedMcpFailures)) {
+			this.outputManager.outputError(
+				"[mcp]",
+				`server "${server.name}" (${server.source ?? "global"}) failed to start: ${lastMcpErrorLine(server)}`,
+			)
+		}
 	}
 
 	public registerWebviewProvider(_viewId: string, _provider: WebviewViewProvider): void {}
@@ -610,11 +649,23 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			}
 		}
 
-		// Restore previous CLI runtime marker for process hygiene in tests.
-		if (this.previousCliRuntimeEnv === undefined) {
-			delete process.env.ROO_CLI_RUNTIME
-		} else {
-			process.env.ROO_CLI_RUNTIME = this.previousCliRuntimeEnv
+		// Restore the environment for process hygiene in tests.
+		for (const [name, value] of this.previousEnv) {
+			if (value === undefined) {
+				delete process.env[name]
+			} else {
+				process.env[name] = value
+			}
 		}
+
+		this.previousEnv.clear()
+	}
+
+	private setProcessEnv(name: string, value: string): void {
+		if (!this.previousEnv.has(name)) {
+			this.previousEnv.set(name, process.env[name])
+		}
+
+		process.env[name] = value
 	}
 }

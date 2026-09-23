@@ -32,13 +32,13 @@ import { t } from "../../i18n"
 
 import { ClineProvider } from "../../core/webview/ClineProvider"
 
-import { GlobalFileNames } from "../../shared/globalFileNames"
-
 import { fileExistsAtPath } from "../../utils/fs"
 import { arePathsEqual, getWorkspacePath } from "../../utils/path"
 import { injectVariables } from "../../utils/config"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import { sanitizeMcpName, toolNamesMatch } from "../../utils/mcp-name"
+
+import { getGlobalMcpSettingsPath } from "./mcpSettingsPath"
 
 // Discriminated union for connection states
 export type ConnectedMcpConnection = {
@@ -489,12 +489,12 @@ export class McpHub {
 		if (!provider) {
 			throw new Error("Provider not available")
 		}
-		const mcpSettingsFilePath = path.join(
-			await provider.ensureSettingsDirectoryExists(),
-			GlobalFileNames.mcpSettings,
-		)
+		const mcpSettingsFilePath = getGlobalMcpSettingsPath(await provider.ensureSettingsDirectoryExists())
 		const fileExists = await fileExistsAtPath(mcpSettingsFilePath)
 		if (!fileExists) {
+			// An override's directory may not exist yet (a fresh ~/.roo), and
+			// the watcher set up in the constructor must not fail on it.
+			await fs.mkdir(path.dirname(mcpSettingsFilePath), { recursive: true })
 			await fs.writeFile(
 				mcpSettingsFilePath,
 				`{
@@ -610,18 +610,20 @@ export class McpHub {
 	}
 
 	/**
-	 * Creates a placeholder connection for disabled servers or when MCP is globally disabled
+	 * Creates a placeholder connection for disabled servers, when MCP is globally disabled,
+	 * or for a server whose transport failed before its connection was registered
 	 * @param name The server name
 	 * @param config The server configuration
 	 * @param source The source of the server (global or project)
-	 * @param reason The reason for creating a placeholder (mcpDisabled or serverDisabled)
+	 * @param reason The reason for creating a placeholder (mcpDisabled or serverDisabled);
+	 * omitted for a server that failed to start
 	 * @returns A placeholder DisconnectedMcpConnection object
 	 */
 	private createPlaceholderConnection(
 		name: string,
 		config: z.infer<typeof ServerConfigSchema>,
 		source: "global" | "project",
-		reason: DisableReason,
+		reason?: DisableReason,
 	): DisconnectedMcpConnection {
 		return {
 			type: "disconnected",
@@ -885,12 +887,17 @@ export class McpHub {
 			connection.server.resources = await this.fetchResourcesList(name, source)
 			connection.server.resourceTemplates = await this.fetchResourceTemplatesList(name, source)
 		} catch (error) {
-			// Update status with error
-			const connection = this.findConnection(name, source)
-			if (connection) {
-				connection.server.status = "disconnected"
-				this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
+			// Update status with error. A stdio server whose process cannot start
+			// (command not found) fails in transport.start(), before its connection
+			// is registered; without a placeholder it vanished from the server list,
+			// with its error, and could not be restarted either.
+			let connection = this.findConnection(name, source)
+			if (!connection) {
+				connection = this.createPlaceholderConnection(name, config, source)
+				this.connections.push(connection)
 			}
+			connection.server.status = "disconnected"
+			this.appendErrorMessage(connection, error instanceof Error ? error.message : `${error}`)
 			throw error
 		}
 	}

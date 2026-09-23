@@ -6,6 +6,8 @@ import type { TUIMessage, ToolData } from "../types.js"
 import type { FileResult, SlashCommandResult, ModeResult } from "../components/autocomplete/index.js"
 import { useCLIStore } from "../store.js"
 import { extractToolData, formatToolOutput, formatToolAskMessage, parseTodosFromToolInfo } from "../utils/tools.js"
+import { mcpServersFromMessage } from "../../lib/utils/mcp-status.js"
+import { parseMcpAsk, type McpAskDetails } from "../../lib/utils/mcp-ask.js"
 
 export interface UseMessageHandlersOptions {
 	nonInteractive: boolean
@@ -100,6 +102,10 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	// Id of the row collecting that execution's output, so every later delivery
 	// of the same output is routed to it instead of adding a second row.
 	const commandRowRef = useRef<string | null>(null)
+	// The MCP call the next `say: mcp_server_response` answers. The response
+	// carries only the server's output, so the row takes its server and tool
+	// from the `ask: use_mcp_server` that preceded it.
+	const pendingMcpRef = useRef<McpAskDetails | undefined>(undefined)
 
 	/**
 	 * Map extension "say" messages to TUI messages
@@ -287,6 +293,17 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				// This delivery owns the execution's row from here on, whether it
 				// created the row or was routed into it above.
 				commandRowRef.current = messageId
+			} else if (say === "mcp_server_response") {
+				const mcp = pendingMcpRef.current
+				role = "tool"
+				toolName = "use_mcp_server"
+				toolDisplayName = "MCP"
+				toolDisplayOutput = text
+				toolData = {
+					tool: "use_mcp_server",
+					path: mcp ? `${mcp.serverName} › ${mcp.toolName ?? mcp.uri ?? ""}` : undefined,
+					content: text,
+				}
 			} else if (say === "reasoning") {
 				role = "thinking"
 			}
@@ -433,6 +450,10 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				return
 			}
 
+			if (ask === "use_mcp_server") {
+				pendingMcpRef.current = parseMcpAsk(text)
+			}
+
 			// Track pending command BEFORE nonInteractive handling
 			// This ensures we capture the command text for later injection into command_output toolData
 			if (ask === "command") {
@@ -455,6 +476,13 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				// dialog and disappears once answered (plan: 2026-09-22 empty
 				// bullets in the CLI transcript).
 				if (ask === "command") {
+					return
+				}
+
+				// Same for an approved MCP call: its row is built from the
+				// `say: mcp_server_response` that follows (via `pendingMcpRef`),
+				// instead of printing the ask's raw JSON as assistant prose.
+				if (ask === "use_mcp_server") {
 					return
 				}
 
@@ -544,6 +572,12 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	 */
 	const handleExtensionMessage = useCallback(
 		(msg: ExtensionMessage) => {
+			const mcpServers = mcpServersFromMessage(msg)
+
+			if (mcpServers) {
+				useCLIStore.getState().setMcpServers(mcpServers)
+			}
+
 			if (msg.type === "state") {
 				const state = msg.state
 

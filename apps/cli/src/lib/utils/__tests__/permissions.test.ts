@@ -21,6 +21,7 @@ describe("CLI permissions", () => {
 	it("builds the complete auto-approval profile", () => {
 		expect(getPermissionSettings("allow")).toEqual({
 			autoApprovalEnabled: true,
+			autoApprovalMode: "bypass",
 			alwaysAllowReadOnly: true,
 			alwaysAllowReadOnlyOutsideWorkspace: true,
 			alwaysAllowWrite: true,

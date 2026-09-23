@@ -89,3 +89,49 @@ describe("useGlobalInput ctrl+o", () => {
 		expect(order.indexOf("write")).toBeLessThan(order.indexOf("toggle"))
 	})
 })
+
+describe("useGlobalInput escape", () => {
+	const sendToExtension = vi.fn()
+
+	function Harness() {
+		useGlobalInput({
+			pickerIsOpen: false,
+			availableModes: [],
+			currentMode: null,
+			mode: "code",
+			sendToExtension,
+			showInfo: vi.fn(),
+			exit: vi.fn(),
+			cleanup: vi.fn(async () => undefined),
+			closePicker: vi.fn(),
+		})
+		return <Text>harness</Text>
+	}
+
+	beforeEach(() => {
+		useCLIStore.getState().reset()
+		useUIStateStore.getState().resetUIState()
+		sendToExtension.mockClear()
+		useCLIStore.getState().setLoading(true)
+	})
+
+	it("closes the MCP panel without cancelling the running task", async () => {
+		useUIStateStore.getState().setShowMcpPanel(true)
+		const { stdin } = render(<Harness />)
+
+		stdin.write("\x1b")
+		await flush()
+
+		expect(useUIStateStore.getState().showMcpPanel).toBe(false)
+		expect(sendToExtension).not.toHaveBeenCalled()
+	})
+
+	it("cancels the running task when no panel is open", async () => {
+		const { stdin } = render(<Harness />)
+
+		stdin.write("\x1b")
+		await flush()
+
+		expect(sendToExtension).toHaveBeenCalledWith({ type: "cancelTask" })
+	})
+})

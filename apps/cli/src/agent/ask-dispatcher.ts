@@ -27,6 +27,7 @@ import {
 import { debugLog } from "@roo-code/core/cli"
 
 import { FOLLOWUP_TIMEOUT_SECONDS } from "@/types/index.js"
+import { parseMcpAsk } from "@/lib/utils/mcp-ask.js"
 
 import type { OutputManager } from "./output-manager.js"
 import type { PromptManager } from "./prompt-manager.js"
@@ -445,30 +446,21 @@ export class AskDispatcher {
 	 * Handle MCP server access approval.
 	 */
 	private async handleMcpApproval(ts: number, text: string): Promise<AskHandleResult> {
-		let serverName = "unknown"
-		let toolName = ""
-		let resourceUri = ""
-
-		try {
-			const mcpInfo = JSON.parse(text)
-			serverName = mcpInfo.server_name || "unknown"
-
-			if (mcpInfo.type === "use_mcp_tool") {
-				toolName = mcpInfo.tool_name || ""
-			} else if (mcpInfo.type === "access_mcp_resource") {
-				resourceUri = mcpInfo.uri || ""
-			}
-		} catch {
-			// Use raw text if not JSON
-		}
+		const mcp = parseMcpAsk(text)
 
 		this.outputManager.output("\n[mcp request]")
-		this.outputManager.output(`  Server: ${serverName}`)
-		if (toolName) {
-			this.outputManager.output(`  Tool: ${toolName}`)
+		this.outputManager.output(`  Server: ${mcp?.serverName ?? "unknown"}`)
+		if (mcp?.toolName) {
+			this.outputManager.output(`  Tool: ${mcp.toolName}`)
 		}
-		if (resourceUri) {
-			this.outputManager.output(`  Resource: ${resourceUri}`)
+		if (mcp?.uri) {
+			this.outputManager.output(`  Resource: ${mcp.uri}`)
+		}
+		if (mcp && mcp.argumentLines.length > 0) {
+			this.outputManager.output("  Arguments:")
+			for (const line of mcp.argumentLines) {
+				this.outputManager.output(`    ${line}`)
+			}
 		}
 		this.outputManager.markDisplayed(ts, text || "", false)
 
