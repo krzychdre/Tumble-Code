@@ -28,6 +28,13 @@ window.addEventListener("load", function () {
   var rows = document.querySelectorAll("#conversation .msg")
   check("rendered all 11 rows", rows.length === 11)
 
+  // The stamp is split so a phone can drop the date (app.css), and together
+  // the two parts must still read exactly as toLocaleString() did.
+  var stamp = rows[0].querySelector(".msg-time")
+  check("row stamp carries its date apart", !!(stamp && stamp.querySelector(".msg-day")))
+  check("row stamp reads as the full local date and time",
+        !!stamp && stamp.textContent === new Date(1).toLocaleString())
+
   // D3: every row with a body must be collapsible. Before the fix, user
   // feedback, result, error, condensed context and subtask result never were.
   var withBody = 0, foldable = 0, notFoldable = []

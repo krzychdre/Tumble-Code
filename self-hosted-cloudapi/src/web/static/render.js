@@ -55,10 +55,18 @@
 			.replace(/'/g, "&#39;")
 	}
 
-	function fmtTime(ts) {
+	// The date and the time apart, as markup, so a narrow screen can drop the
+	// date (app.css): on a phone the full stamp alone took half of every row.
+	// Together they read exactly as toLocaleString() did.
+	function timeHtml(ts) {
 		const d = new Date(Number(ts))
 		if (isNaN(d)) return ""
-		return d.toLocaleString()
+		return (
+			'<span class="msg-day">' +
+			escapeHtml(d.toLocaleDateString()) +
+			", </span>" +
+			escapeHtml(d.toLocaleTimeString())
+		)
 	}
 
 	function fmtDuration(ms) {
@@ -345,7 +353,7 @@
 		if (ts != null) el.setAttribute("data-ts", String(ts))
 		const spinner = active ? '<span class="spinner" aria-hidden="true"></span>' : ""
 		// Right-aligned meta: absolute time (+ step duration, backfilled later).
-		const time = ts != null ? '<span class="msg-time">' + escapeHtml(fmtTime(ts)) + "</span>" : ""
+		const time = ts != null ? '<span class="msg-time">' + timeHtml(ts) + "</span>" : ""
 		const meta = '<span class="msg-meta">' + time + '<span class="msg-dur"></span></span>'
 		// Role word and content are separate elements so the stylesheet can set
 		// the first as a panel label (uppercase, tracked) without mangling the

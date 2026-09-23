@@ -1950,8 +1950,14 @@ details.env-details > pre {
 	position: sticky;
 	bottom: var(--s4);
 }
-.live-controls.offline {
+/* Dimmed, not see-through: the bar is sticky over the conversation, and an
+   opacity on the panel itself let the rows behind it show through its text. */
+.live-controls.offline > * {
 	opacity: 0.6;
+}
+/* The fold for the auto-approval row; a phone-only control (see Responsive). */
+.auto-more {
+	display: none;
 }
 .auto-bar {
 	display: flex;
@@ -2334,18 +2340,36 @@ table.breakdown tr:last-child td {
 	.user {
 		display: none;
 	}
-	/* Metadata stacks under the title rather than squeezing it to nothing. */
 	/* Below the scanning width the grid stops earning its keep: the title takes
-	   a full line and the figures wrap under it as a run of values. */
-	.task-link {
+	   a full line and the figures wrap under it as a run of values. They used to
+	   stack one per line (eight lines a row), and the title, still nowrap in a
+	   column that sized to it, set the width of the whole page: 738px of it for
+	   one long prompt on a 390px phone. */
+	.task-link,
+	.subtask-link {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: var(--s1);
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--s1) var(--s3);
+	}
+	.task-link .cell-title,
+	.subtask-link .cell-title {
+		flex: 1 0 100%;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+	/* A figure the task does not have leaves no gap in the run. */
+	.task-link > :empty,
+	.subtask-link > :empty {
+		display: none;
 	}
 	.cell-workspace,
 	.cell-model {
 		justify-content: flex-start;
+		max-width: 100%;
 	}
 	.cell-num,
 	.cell-date {
@@ -2363,6 +2387,157 @@ table.breakdown tr:last-child td {
 	}
 	.conversation::before {
 		left: 5px;
+	}
+}
+
+@media (max-width: 640px) {
+	/* The bar was one row as wide as a desktop's (brand, three tabs, sign out):
+	   wider than any phone, so the browser zoomed every page out to fit it and
+	   all of it read at 80% of its size or less. The tabs take a row of their
+	   own, and the bar scrolls away rather than holding two rows of a small
+	   screen. */
+	.topbar {
+		position: static;
+		flex-wrap: wrap;
+		height: auto;
+		padding: var(--s2) var(--s3);
+		row-gap: var(--s2);
+	}
+	.mainnav {
+		order: 1;
+		flex: 1 0 100%;
+	}
+	.mainnav a {
+		flex: 1;
+		text-align: center;
+	}
+	.page-title {
+		font-size: var(--t-lead);
+	}
+	.detail-title-row {
+		flex-direction: column;
+		gap: var(--s2);
+	}
+	.trail a {
+		max-width: 100%;
+	}
+
+	/* A row's own Delete took a third of a phone row's width from the title.
+	   Deleting stays one tick and "Delete selected" away (the bulk bar). */
+	.task-delete {
+		display: none;
+	}
+	.tree-gutter {
+		width: calc(1.25rem + var(--depth, 0) * 0.75rem);
+	}
+	.task-link {
+		padding: var(--s2) var(--s2) var(--s2) var(--s3);
+	}
+	.subtask-link {
+		padding-left: calc(var(--depth, 0) * 0.75rem);
+	}
+	.bulk-bar {
+		flex-wrap: wrap;
+	}
+
+	/* Tokens and cost carry the account; in/out is the detail a phone skips. */
+	.spend-table .spend-io {
+		display: none;
+	}
+	.spend-table th,
+	.spend-table td {
+		padding-left: var(--s4);
+	}
+	.spend-own th,
+	.spend-subtasks th {
+		padding-left: var(--s3);
+	}
+
+	/* A conversation row: the time of day is enough to follow a session; the
+	   date alone was wider than the role label beside it. The row's detail (a
+	   request's figures, a command, a path) takes a line of its own under the
+	   label, model and time: squeezed beside a model badge it was cut to
+	   "↑16462 ↓…", the request's cost included. The time keeps one place on
+	   every row, so the column still scans. */
+	.msg-day {
+		display: none;
+	}
+	.msg-head {
+		flex-wrap: wrap;
+		row-gap: 0;
+		padding: var(--s2);
+	}
+	.msg-role {
+		min-width: 4.5rem;
+	}
+	.msg-model {
+		flex-shrink: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.msg-meta {
+		order: 1;
+	}
+	.msg-detail {
+		order: 2;
+		flex: 1 0 100%;
+	}
+
+	/* A rough run's reason under its title: squeezed beside it, the reason read
+	   "3 corrections fr…" on every row. */
+	.rough-link {
+		grid-template-columns: minmax(0, 1fr) 3rem;
+		row-gap: 0;
+	}
+	.rough-why {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		white-space: normal;
+	}
+
+	/* The controls stay on screen, so they must stay small: the six
+	   auto-approval toggles fold behind one button. */
+	.live-controls {
+		padding: var(--s2) var(--s3) var(--s3);
+		gap: var(--s2);
+		bottom: var(--s2);
+	}
+	.auto-more {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--s1);
+		align-self: flex-start;
+		padding: 0;
+		background: none;
+		border: none;
+		font-family: var(--mono);
+		font-size: var(--t-label);
+		text-transform: uppercase;
+		letter-spacing: 0.09em;
+		color: var(--text-dim);
+		cursor: pointer;
+	}
+	.auto-more::before {
+		content: "▸";
+		font-size: 0.8rem;
+		line-height: 1;
+		transition: transform 0.12s ease;
+	}
+	.auto-more[aria-expanded="true"]::before {
+		transform: rotate(90deg);
+	}
+	.live-controls:not(.show-auto) .auto-bar {
+		display: none;
+	}
+
+	.period-control {
+		max-width: 100%;
+		overflow-x: auto;
+	}
+	.period-opt {
+		padding: var(--s1) var(--s2);
+		white-space: nowrap;
 	}
 }
 

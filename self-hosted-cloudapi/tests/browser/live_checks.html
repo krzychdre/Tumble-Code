@@ -32,6 +32,7 @@
   <button id="btn-send" type="button">Send</button>
   <button id="btn-stop" type="button" style="display:none">Stop</button>
   <button id="btn-resume" type="button">Resume</button>
+  <button type="button" id="auto-more" aria-expanded="false" aria-controls="auto-bar">Auto-approve settings</button>
 </div>
 <script id="live-config" type="application/json">{"taskId": "task-a", "bridgePath": "/bridge/socket.io",
   "subtasks": {"tokensIn": 3000000, "tokensOut": 54200, "cost": 1.2434}}</script>
@@ -179,12 +180,34 @@ window.addEventListener("load", function () {
               check("this task's snapshot: mode", text("hdr-mode") === "code")
               check("this task's snapshot: running offers Stop",
                     document.getElementById("btn-stop").style.display === "")
+
+              // Every load so far bound its own handler to the fold button;
+              // the next scenario gets a fresh one, so exactly one is bound.
+              var old = document.getElementById("auto-more")
+              old.parentNode.replaceChild(old.cloneNode(true), old)
             },
             function () {
-              var pre = document.createElement("pre")
-              pre.id = "results"
-              pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
-              document.body.appendChild(pre)
+              scenario(
+                { success: true, instanceOnline: true, instance: null },
+                function () {
+                  // The phone fold for the auto-approval row: a click opens it
+                  // and says so, the next closes it.
+                  var controls = document.getElementById("live-controls")
+                  var more = document.getElementById("auto-more")
+                  more.click()
+                  check("the auto-approval fold opens", controls.classList.contains("show-auto") &&
+                        more.getAttribute("aria-expanded") === "true")
+                  more.click()
+                  check("the auto-approval fold closes", !controls.classList.contains("show-auto") &&
+                        more.getAttribute("aria-expanded") === "false")
+                },
+                function () {
+                  var pre = document.createElement("pre")
+                  pre.id = "results"
+                  pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+                  document.body.appendChild(pre)
+                },
+              )
             },
           )
         },

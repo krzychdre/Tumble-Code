@@ -373,6 +373,15 @@
 	;[els.autoEnabled, els.autoMode].forEach(function (el) {
 		if (el) el.addEventListener("change", pushAutoApproval)
 	})
+
+	// On a phone the auto-approval row folds behind one button (app.css).
+	var autoMore = document.getElementById("auto-more")
+	if (autoMore && els.controls) {
+		autoMore.addEventListener("click", function () {
+			var open = els.controls.classList.toggle("show-auto")
+			autoMore.setAttribute("aria-expanded", open ? "true" : "false")
+		})
+	}
 	Object.keys(toggles).forEach(function (k) {
 		if (toggles[k]) toggles[k].addEventListener("change", pushAutoApproval)
 	})
