@@ -87,6 +87,9 @@ export function getToolDisplayName(toolName: string): string {
 		// TODO operations
 		update_todo_list: "Update TODO List",
 		updateTodoList: "Update TODO List",
+
+		// MCP server tools and resources
+		use_mcp_server: "MCP",
 	}
 
 	return displayNames[toolName] || toolName
