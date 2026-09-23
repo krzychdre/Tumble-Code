@@ -45,9 +45,13 @@ function Bullet({ status = "plain", dim = false }: Props) {
 			break
 	}
 
+	// SGR dim for the default colour, which every terminal dims; a hex colour is
+	// dimmed by value, because VTE ignores dim on RGB colours (theme.dimmed).
 	return (
 		<Box minWidth={2}>
-			<Text dimColor={dimColor} color={color}>
+			<Text
+				dimColor={dimColor && color === undefined}
+				color={dimColor && color !== undefined ? theme.dimmed(color) : color}>
 				{figures.bullet}
 			</Text>
 		</Box>

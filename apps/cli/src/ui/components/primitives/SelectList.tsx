@@ -156,9 +156,7 @@ function SelectList({
 						</Box>
 						{item.description !== undefined && (
 							<Box paddingLeft={2}>
-								<Text dimColor color={theme.secondaryText}>
-									{item.description}
-								</Text>
+								<Text color={theme.faint}>{item.description}</Text>
 							</Box>
 						)}
 					</Box>

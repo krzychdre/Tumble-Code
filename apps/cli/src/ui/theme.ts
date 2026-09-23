@@ -13,11 +13,8 @@ export const theme = {
 	brand: "#FD971F", // orange: welcome ✻, spinner verb/frames, ❯ in user rows
 	text: "#F8F8F2",
 	secondaryText: "#A3BABF", // descriptions, dialog and panel text
-	// Tool results and "∴ Thinking", the rows the eye should skip. Already dark
-	// on its own, never paired with dimColor: VTE (GNOME Terminal, Ptyxis) dims
-	// only palette colours and draws an RGB colour at full strength, so
-	// `dimColor` + a hex colour was not dim there at all (vte.cc, "Handle dim
-	// colors"). Terminals that do dim RGB would darken it twice.
+	// Tool results and "∴ Thinking", the rows the eye should skip. It is
+	// `dimmed(secondaryText)`, spelled out because the object is a literal.
 	faint: "#6D7C7F",
 	subtle: "#5E7175", // separators, empty gauge cells
 	inactive: "#505354", // placeholder, disabled
@@ -38,6 +35,26 @@ export const theme = {
 } as const
 
 export type Theme = typeof theme
+
+/**
+ * A hex colour the way SGR 2 (dim) draws a palette colour: every channel at
+ * 2/3, xterm's formula, which VTE copies. Use it instead of `dimColor` on a
+ * hex colour. VTE (GNOME Terminal, Ptyxis) dims only palette colours and draws
+ * an RGB colour at full strength (vte.cc, "Handle dim colors"), and chalk sends
+ * every hex colour as RGB once COLORTERM=truecolor, which GNOME Terminal
+ * exports. So `dimColor color="#A3BABF"` was not dim there at all. Never pair
+ * the result with `dimColor`: a terminal that does dim RGB would darken it twice.
+ *
+ * Anything but `#RRGGBB` comes back unchanged: a named colour ("cyan") is a
+ * palette colour, and `dimColor` works on it.
+ */
+export function dimmed(color: string): string {
+	if (!/^#[0-9a-f]{6}$/i.test(color)) {
+		return color
+	}
+	const channels = [1, 3, 5].map((start) => Math.round((parseInt(color.slice(start, start + 2), 16) * 2) / 3))
+	return `#${channels.map((channel) => channel.toString(16).padStart(2, "0").toUpperCase()).join("")}`
+}
 
 // --- Semantic flat re-exports -------------------------------------------------
 // `import * as theme from "../theme.js"` only resolves top-level exports, so

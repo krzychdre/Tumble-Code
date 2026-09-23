@@ -103,7 +103,7 @@ Before/after and four user-band candidates were compared on those images. Script
 - `dimColor` + a hex colour is still used in about 30 other places (Markdown secondary text,
   search match lines, diff context, TODO rows, SelectList descriptions, SystemMessage). All of
   them are not dim in VTE either. Out of scope here; the same `faint`-style fix applies if
-  wanted.
+  wanted. Follow-up: fixed in `2026-09-23_cli-dim-on-rgb-colours.md`.
 - The onboarding screen (first run without a provider) is drawn after the clear, and the main
   UI starts below its last frame, as before.
 - A failed MCP call (for example "Client does not support form elicitation") is hidden with the

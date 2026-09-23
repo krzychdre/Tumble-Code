@@ -66,7 +66,9 @@ function InputArea({
 	toast,
 	exitHint,
 }: InputAreaProps) {
-	const promptColor = accentPrompt ? theme.permission : theme.promptBorder
+	const baseColor = accentPrompt ? theme.permission : theme.promptBorder
+	// Dimmed by value: `dimColor` on a hex colour does nothing in VTE (theme.dimmed).
+	const promptColor = isLoading ? theme.dimmed(baseColor) : baseColor
 
 	return (
 		<Box flexDirection="column" marginTop={1}>
@@ -77,9 +79,7 @@ function InputArea({
 				borderColor={theme.promptBorder}
 				paddingX={1}
 				width="100%">
-				<Text color={promptColor} dimColor={isLoading}>
-					{figures.pointer}{" "}
-				</Text>
+				<Text color={promptColor}>{figures.pointer} </Text>
 				<AutocompleteInput
 					ref={inputRef}
 					placeholder={placeholder}

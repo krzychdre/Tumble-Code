@@ -30,7 +30,7 @@ interface Props {
  * Loading spinner: brand-colored droplet animation cycling forward through
  * the spinner frames at ~120ms (a drop falls, ripples, fades — direction
  * matters, so no ping-pong), a sound picked deterministically from the
- * loading-start timestamp, and a dim elapsed/token suffix. Frames stop when
+ * loading-start timestamp, and a faint elapsed/token suffix. Frames stop when
  * isActive is false (e.g. when a dialog steals the frame).
  */
 function Spinner({ startTime, tokensOut, sound, isActive = true }: Props) {
@@ -67,9 +67,7 @@ function Spinner({ startTime, tokensOut, sound, isActive = true }: Props) {
 		<Box>
 			<Text color={theme.brand}>{frame}</Text>
 			<Text> {chosenSound}…</Text>
-			<Text dimColor color={theme.secondaryText}>
-				{` (esc to interrupt · ${elapsed}s${tokensSuffix})`}
-			</Text>
+			<Text color={theme.faint}>{` (esc to interrupt · ${elapsed}s${tokensSuffix})`}</Text>
 		</Box>
 	)
 }
