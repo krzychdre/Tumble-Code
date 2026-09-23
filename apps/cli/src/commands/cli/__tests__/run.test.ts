@@ -8,6 +8,7 @@ import { run } from "../run.js"
 import { loadSettings, saveSettings, getSettingsPath } from "@/lib/storage/settings.js"
 import { getConfigDir } from "@/lib/storage/config-dir.js"
 import type { FlagOptions } from "@/types/index.js"
+import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
 
 const mockGetOpenAiCodexAuthStatus = vi.hoisted(() => vi.fn(async () => ({ authenticated: true })))
 
@@ -62,6 +63,16 @@ vi.mock("@/agent/index.js", () => {
 
 	return { ExtensionHost: MockExtensionHost }
 })
+
+// The interactive branch imports ink and the App lazily. Keep ink real except
+// for `render`, so no frame is ever drawn, and stub the App so the whole UI
+// tree is not loaded for a test about the startup sequence.
+vi.mock("ink", async (importOriginal) => ({
+	...(await importOriginal<typeof import("ink")>()),
+	render: vi.fn(() => ({ unmount: () => {}, waitUntilExit: async () => {} })),
+}))
+
+vi.mock("@/ui/App.js", () => ({ App: () => null }))
 
 const mockGetConfigDir = getConfigDir as unknown as ReturnType<typeof vi.fn>
 
@@ -829,5 +840,63 @@ describe("run global MCP settings file", () => {
 		} finally {
 			exitSpy.mockRestore()
 		}
+	})
+})
+
+describe("run clears the screen when the interactive UI starts", () => {
+	let tempDir: string
+	const stdinWasTTY = process.stdin.isTTY
+	const stdoutWasTTY = process.stdout.isTTY
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		process.stdin.isTTY = true
+		process.stdout.isTTY = true
+	})
+
+	afterEach(() => {
+		process.stdin.isTTY = stdinWasTTY
+		process.stdout.isTTY = stdoutWasTTY
+		vi.restoreAllMocks()
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	it("erases the screen, but not the scrollback, before any startup warning", async () => {
+		const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+		vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		await saveSettings({ provider: "openrouter" })
+
+		// A relative --terminal-shell is ignored with a warning on every platform.
+		await run("hello", baseFlags({ print: false, terminalShell: "not-absolute" }))
+
+		expect(writeSpy).toHaveBeenCalledWith(CLEAR_SCREEN)
+		expect(writeSpy.mock.calls.map(([chunk]) => String(chunk)).join("")).not.toContain("\x1b[3J")
+
+		const clearOrder = writeSpy.mock.invocationCallOrder[writeSpy.mock.calls.findIndex(([c]) => c === CLEAR_SCREEN)]
+		const warningIndex = errorSpy.mock.calls.findIndex(([line]) => String(line).includes("--terminal-shell"))
+		expect(warningIndex).toBeGreaterThanOrEqual(0)
+		expect(clearOrder).toBeLessThan(errorSpy.mock.invocationCallOrder[warningIndex]!)
+	})
+
+	it("leaves the screen alone in print mode", async () => {
+		// Print mode flushes with `write("", callback)` and waits for the callback.
+		const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
+			_chunk: unknown,
+			encodingOrCallback?: unknown,
+			callback?: unknown,
+		) => {
+			const done = typeof encodingOrCallback === "function" ? encodingOrCallback : callback
+			;(done as (() => void) | undefined)?.()
+			return true
+		}) as typeof process.stdout.write)
+		vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		await saveSettings({ provider: "openrouter" })
+
+		await run("hello", baseFlags({ print: true }))
+
+		expect(writeSpy).not.toHaveBeenCalledWith(CLEAR_SCREEN)
 	})
 })

@@ -36,9 +36,10 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			// Output should be displayed; no command arg shown
-			expect(output).toContain("All tests passed")
+			// No command arg shown; the collapsed row counts the output
 			expect(output).toContain("Bash")
+			expect(output).not.toContain("Bash(")
+			expect(output).toContain("+1 line (ctrl+o)")
 		})
 
 		it("displays Bash without command arg when toolData.command is undefined", () => {
@@ -52,8 +53,9 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			expect(output).toContain("All tests passed")
 			expect(output).toContain("Bash")
+			expect(output).not.toContain("Bash(")
+			expect(output).toContain("+1 line (ctrl+o)")
 		})
 
 		it("displays command with complex arguments", () => {
@@ -74,6 +76,30 @@ describe("CommandTool", () => {
 	})
 
 	describe("output display", () => {
+		it("hides the output behind a line counter when collapsed", () => {
+			const props: ToolRendererProps = {
+				toolData: {
+					tool: "execute_command",
+					command: "cat longfile.txt",
+					output: Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n"),
+				},
+			}
+
+			const rows = (render(<CommandTool {...props} />).lastFrame() ?? "").split("\n")
+
+			// The header and the counter, nothing of the output itself.
+			expect(rows).toHaveLength(2)
+			expect(rows[0]).toContain("Bash(cat longfile.txt)")
+			expect(rows[1]).toMatch(/^ {4}⎿ {2}… \+20 lines \(ctrl\+o\)$/)
+		})
+
+		it("prints no counter for a command without output", () => {
+			const output = render(<CommandTool toolData={{ tool: "execute_command", command: "true" }} />).lastFrame()
+
+			expect(output?.split("\n")).toHaveLength(1)
+			expect(output).not.toContain("⎿")
+		})
+
 		it("displays output when provided", () => {
 			const props: ToolRendererProps = {
 				toolData: {
@@ -81,12 +107,13 @@ describe("CommandTool", () => {
 					command: "echo hello",
 					output: "hello",
 				},
+				expanded: true,
 			}
 
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			expect(output).toContain("hello")
+			expect(output?.split("\n")[1]).toContain("hello")
 		})
 
 		it("displays multi-line output", () => {
@@ -96,6 +123,7 @@ describe("CommandTool", () => {
 					command: "ls",
 					output: "file1.txt\nfile2.txt\nfile3.txt",
 				},
+				expanded: true,
 			}
 
 			const { lastFrame } = render(<CommandTool {...props} />)
@@ -113,55 +141,13 @@ describe("CommandTool", () => {
 					command: "ls",
 					content: "fallback content",
 				},
+				expanded: true,
 			}
 
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
 			expect(output).toContain("fallback content")
-		})
-
-		it("truncates output to MAX_OUTPUT_LINES", () => {
-			// Create output with more than 5 lines (MAX_OUTPUT_LINES = 5)
-			const longOutput = Array.from({ length: 20 }, (_, i) => `line ${i + 1}`).join("\n")
-
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "cat longfile.txt",
-					output: longOutput,
-				},
-			}
-
-			const { lastFrame } = render(<CommandTool {...props} />)
-			const output = lastFrame()
-
-			// First 5 lines should be visible
-			expect(output).toContain("line 1")
-			expect(output).toContain("line 5")
-			expect(output).not.toContain("line 6")
-
-			// ResultRow uses "… +N lines (ctrl+o)" truncation indicator
-			expect(output).toContain("+15 lines (ctrl+o)")
-		})
-
-		it("closes the block with the truncation tail instead of parking it beside the output", () => {
-			const props: ToolRendererProps = {
-				toolData: {
-					tool: "execute_command",
-					command: "cat longfile.txt",
-					output: Array.from({ length: 8 }, (_, i) => `line ${i + 1}`).join("\n"),
-				},
-			}
-
-			const lines = (render(<CommandTool {...props} />).lastFrame() ?? "").split("\n")
-			const lastVisible = lines.findIndex((line) => line.includes("line 5"))
-			const tail = lines.findIndex((line) => line.includes("+3 lines"))
-
-			// The tail is its own row, directly under the last output line. It used
-			// to share a row with an earlier line, laid out as a second column.
-			expect(tail).toBe(lastVisible + 1)
-			expect(lines[tail]).not.toContain("line ")
 		})
 
 		it("does not count a trailing newline as a line of output", () => {
@@ -175,8 +161,8 @@ describe("CommandTool", () => {
 
 			const output = render(<CommandTool {...props} />).lastFrame()
 
-			expect(output).toContain("2749:")
-			expect(output).not.toContain("+1 lines")
+			expect(output).toContain("+1 line (ctrl+o)")
+			expect(output).not.toContain("+2 lines")
 		})
 	})
 
@@ -200,16 +186,12 @@ describe("CommandTool", () => {
 			}
 		})
 
-		it("cuts every line to one row when collapsed", () => {
+		it("collapses to the header and the counter, however wide the output", () => {
 			const rows = (render(<CommandTool {...props} />).lastFrame() ?? "").split("\n")
 
-			// Header, the cut 451-character line, the blank line, "short", the
-			// cut 600-character line: 5 rows, not the 13 the wrapped text takes.
-			expect(rows).toHaveLength(5)
-			expect(rows[1]).toMatch(/^ {4}⎿ {2}1x+…$/)
-			expect(rows[2]?.trim()).toBe("")
-			expect(rows[3]?.trim()).toBe("short")
-			expect(rows[4]?.trimEnd()).toMatch(/…$/)
+			// Not the 13 rows the wrapped text takes, nor one row per line.
+			expect(rows).toHaveLength(2)
+			expect(rows[1]).toMatch(/^ {4}⎿ {2}… \+4 lines \(ctrl\+o\)$/)
 		})
 
 		it("wraps every line in full when expanded", () => {
@@ -223,7 +205,7 @@ describe("CommandTool", () => {
 	describe("expanded mode", () => {
 		const longOutput = Array.from({ length: 30 }, (_, i) => `line ${i + 1}`).join("\n")
 
-		it("caps at 5 lines by default", () => {
+		it("prints no output line by default", () => {
 			const props: ToolRendererProps = {
 				toolData: {
 					tool: "execute_command",
@@ -235,9 +217,8 @@ describe("CommandTool", () => {
 			const { lastFrame } = render(<CommandTool {...props} />)
 			const output = lastFrame()
 
-			expect(output).toContain("line 5")
-			expect(output).not.toContain("line 6")
-			expect(output).toContain("+25 lines")
+			expect(output).not.toContain("line 1")
+			expect(output).toContain("+30 lines (ctrl+o)")
 		})
 
 		it("shows all output lines when expanded", () => {
@@ -255,7 +236,7 @@ describe("CommandTool", () => {
 
 			expect(output).toContain("line 29")
 			expect(output).toContain("line 30")
-			expect(output).not.toContain("+25 lines")
+			expect(output).not.toContain("+30 lines")
 			// The infinite cap must never leak into a marker
 			expect(output).not.toContain("Infinity")
 		})
@@ -313,7 +294,7 @@ describe("CommandTool", () => {
 
 			expect(output).toContain("Bash")
 			expect(output).not.toContain("Bash(")
-			expect(output).toContain("hello")
+			expect(output).toContain("+1 line (ctrl+o)")
 		})
 	})
 

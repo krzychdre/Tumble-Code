@@ -14,7 +14,7 @@ export function sanitizeContent(text: string): string {
 }
 
 /**
- * The dim `  ⎿  ` connector in front of a result body.
+ * The faint `  ⎿  ` connector in front of a result body.
  *
  * It must not shrink (plan: 2026-09-22 cli bash row overflows width). Next
  * to a body wider than the terminal, yoga shrinks every flex item of the row
@@ -24,10 +24,10 @@ export function sanitizeContent(text: string): string {
  * ink does not know about then survive its erase in the live tail, so the
  * running `Bash(…)` header stayed in scrollback above the finished one.
  */
-export function ElbowGutter({ color }: { color?: string }) {
+export function ElbowGutter({ color = theme.faint }: { color?: string }) {
 	return (
 		<Box flexShrink={0}>
-			<Text dimColor color={color}>
+			<Text color={color}>
 				{"  "}
 				{figures.elbow}
 				{"  "}
@@ -47,9 +47,11 @@ interface Props {
 }
 
 /**
- * Tool/result output row: dim `⎿` connector followed by dim content,
- * truncated to maxLines (default 5) with a dim "… +N lines (ctrl+o)" tail.
- * String children are pre-sanitized before display.
+ * Tool/result output row: faint `⎿` connector followed by faint content,
+ * truncated to maxLines (default 5) with a faint "… +N lines (ctrl+o)" tail.
+ * `maxLines={0}` prints the connector and the tail alone, which is how Bash
+ * and MCP rows hide their output until ctrl+o. String children are
+ * pre-sanitized before display.
  *
  * The body and the tail sit in a COLUMN. They used to share the default row
  * direction, which laid the tail out as a second column beside the body and
@@ -83,19 +85,17 @@ function ResultRow({ children, maxLines = 5 }: Props) {
 					visibleLines.map((line, index) => (
 						// An empty Text renders no row at all, so a blank line
 						// keeps its row with a space.
-						<Text key={index} dimColor color={theme.secondaryText} wrap="truncate-end">
+						<Text key={index} color={theme.faint} wrap="truncate-end">
 							{line || " "}
 						</Text>
 					))
 				) : (
-					<Text dimColor color={theme.secondaryText}>
-						{visibleLines.join("\n")}
-					</Text>
+					<Text color={theme.faint}>{visibleLines.join("\n")}</Text>
 				)}
 				{truncatedCount > 0 && (
-					<Text dimColor color={theme.secondaryText}>
+					<Text color={theme.faint}>
 						{figures.ellipsis}
-						{` +${truncatedCount} lines (ctrl+o)`}
+						{` +${truncatedCount} ${truncatedCount === 1 ? "line" : "lines"} (ctrl+o)`}
 					</Text>
 				)}
 			</Box>

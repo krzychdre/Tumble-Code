@@ -2,6 +2,7 @@ import { memo } from "react"
 import { Box, Text } from "ink"
 
 import { figures } from "../../figures.js"
+import * as theme from "../../theme.js"
 
 import { sanitizeContent } from "../primitives/ResultRow.js"
 
@@ -17,9 +18,9 @@ interface ThinkingMessageProps {
 }
 
 /**
- * Thinking indicator. Collapsed (default) it is the dim italic one-liner
+ * Thinking indicator. Collapsed (default) it is the faint italic one-liner
  * "∴ Thinking…". Expanded with non-empty content it becomes a "∴ Thinking"
- * header plus the reasoning body, dim italic, indented under the header.
+ * header plus the reasoning body, faint italic, indented under the header.
  * The body is plain Text, not Markdown: reasoning is free text and Markdown
  * would eat asterisks and underscores.
  */
@@ -29,7 +30,7 @@ function ThinkingMessage({ content = "", expanded = false }: ThinkingMessageProp
 	if (!body) {
 		return (
 			<Box paddingLeft={2}>
-				<Text dimColor italic>
+				<Text color={theme.faint} italic>
 					{figures.therefore} Thinking…
 				</Text>
 			</Box>
@@ -39,12 +40,12 @@ function ThinkingMessage({ content = "", expanded = false }: ThinkingMessageProp
 	return (
 		<Box flexDirection="column">
 			<Box paddingLeft={2}>
-				<Text dimColor italic>
+				<Text color={theme.faint} italic>
 					{figures.therefore} Thinking
 				</Text>
 			</Box>
 			<Box paddingLeft={4}>
-				<Text dimColor italic wrap="wrap">
+				<Text color={theme.faint} italic wrap="wrap">
 					{body}
 				</Text>
 			</Box>

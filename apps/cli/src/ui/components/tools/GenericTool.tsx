@@ -10,9 +10,17 @@ import { sanitizeContent, getToolDisplayName } from "./utils.js"
 
 const MAX_CONTENT_LINES = 12
 
+/**
+ * Tools whose collapsed row prints no result lines, only the
+ * "⎿ … +N lines (ctrl+o)" counter, like a Bash row (see CommandTool). An MCP
+ * result is usually a JSON dump for the model, not for the reader.
+ */
+const OUTPUT_HIDDEN_TOOLS = new Set(["use_mcp_server"])
+
 export function GenericTool({ toolData, rawContent, message, expanded = false }: ToolRendererProps) {
 	const status = toolStatusFromMessage(message)
-	const maxContentLines = expanded ? Number.POSITIVE_INFINITY : MAX_CONTENT_LINES
+	const collapsedLines = OUTPUT_HIDDEN_TOOLS.has(toolData.tool) ? 0 : MAX_CONTENT_LINES
+	const maxContentLines = expanded ? Number.POSITIVE_INFINITY : collapsedLines
 	const displayName = getToolDisplayName(toolData.tool)
 	const path = toolData.path
 	const content = toolData.content ? sanitizeContent(toolData.content) : ""

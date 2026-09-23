@@ -13,3 +13,13 @@
  * ctrl+o transcript toggle (useGlobalInput).
  */
 export const CLEAR_TERMINAL = process.platform === "win32" ? "\x1b[2J\x1b[0f" : "\x1b[2J\x1b[3J\x1b[H"
+
+/**
+ * Erase the visible screen and home the cursor, keeping the scrollback: the
+ * interactive CLI starts on a clean screen without destroying the shell
+ * history above it (VTE even pushes the erased screen into the scrollback).
+ *
+ * The one place this goes to `process.stdout` directly (run.ts), before ink
+ * has drawn its first frame, so there is no frame for it to go stale against.
+ */
+export const CLEAR_SCREEN = process.platform === "win32" ? "\x1b[2J\x1b[0f" : "\x1b[2J\x1b[H"

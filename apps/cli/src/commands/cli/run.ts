@@ -39,6 +39,7 @@ import { validateTerminalShellPath } from "@/lib/utils/shell.js"
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { isValidSessionId } from "@/lib/utils/session-id.js"
 import { VERSION } from "@/lib/utils/version.js"
+import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
 
 import { ExtensionHost, ExtensionHostOptions } from "@/agent/index.js"
 import { isExpectedControlFlowError } from "./cancellation.js"
@@ -191,6 +192,16 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	// Options
 
+	const isTuiSupported = process.stdin.isTTY && process.stdout.isTTY
+	const isTuiEnabled = !flagOptions.print && isTuiSupported
+
+	// The interactive session starts on a clean screen. This runs before any
+	// warning below is printed, so the clear never hides one of them, and
+	// before ink draws its first frame, so writing to stdout directly is safe.
+	if (isTuiEnabled) {
+		process.stdout.write(CLEAR_SCREEN)
+	}
+
 	const settings = await loadSettings()
 
 	const settingsHoldAKey = [settings, ...Object.values(settings.modes ?? {})].some((entry) => entry.apiKey)
@@ -200,8 +211,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		)
 	}
 
-	const isTuiSupported = process.stdin.isTTY && process.stdout.isTTY
-	const isTuiEnabled = !flagOptions.print && isTuiSupported
 	const isOnboardingEnabled = isTuiEnabled && !flagOptions.provider && !settings.provider
 
 	// Provider connection: flags > settings file > the CLI's own extension

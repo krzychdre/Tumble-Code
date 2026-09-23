@@ -67,7 +67,8 @@ describe("ChatHistoryItem", () => {
 				toolName: "execute_command",
 			}
 
-			const { lastFrame } = render(<ChatHistoryItem message={message} />)
+			// Expanded, because a collapsed Bash row prints no output at all.
+			const { lastFrame } = render(<ChatHistoryItem message={message} expanded={true} />)
 			const output = lastFrame()
 
 			// The output inside the JSON should be sanitized
@@ -88,7 +89,7 @@ describe("ChatHistoryItem", () => {
 				},
 			}
 
-			const { lastFrame } = render(<ChatHistoryItem message={message} />)
+			const { lastFrame } = render(<ChatHistoryItem message={message} expanded={true} />)
 			const output = lastFrame()
 
 			expect(output).toContain("    return;")
@@ -391,10 +392,10 @@ describe("ChatHistoryItem", () => {
 			const collapsed = render(<ChatHistoryItem message={message} />).lastFrame()
 			const expanded = render(<ChatHistoryItem message={message} expanded={true} />).lastFrame()
 
-			expect(collapsed).toContain("+25 lines")
-			expect(collapsed).not.toContain("line 6")
+			expect(collapsed).toContain("+30 lines")
+			expect(collapsed).not.toContain("line 1")
 			expect(expanded).toContain("line 30")
-			expect(expanded).not.toContain("+25 lines")
+			expect(expanded).not.toContain("+30 lines")
 		})
 
 		it("forwards expanded to tool renderers resolved from raw JSON content", () => {
