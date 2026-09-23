@@ -32,7 +32,14 @@ vi.mock("@/commands/auth/openai-codex.js", () => ({
 const mockHost = vi.hoisted(() => ({
 	lastOptions: undefined as
 		| undefined
-		| { provider?: string; workspacePath?: string; model?: string; baseUrl?: string },
+		| {
+				provider?: string
+				workspacePath?: string
+				model?: string
+				baseUrl?: string
+				mode?: string
+				reasoningEffort?: string
+		  },
 }))
 
 vi.mock("@/agent/index.js", () => {
@@ -556,6 +563,66 @@ describe("run --provider alias persistence", () => {
 			expect(mockHost.lastOptions?.provider).toBe("openrouter")
 			expect(mockHost.lastOptions?.model).toBe("openai/gpt-4o")
 			expect(mockHost.lastOptions?.workspacePath).toBe(process.cwd())
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+})
+
+describe("run mode and reasoning effort come from settings when no flag is given", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-defaults-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	it("uses the settings mode and reasoning effort on a bare run", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter", mode: "architect", reasoningEffort: "max" })
+
+			await run("hello", baseFlags())
+
+			expect(mockHost.lastOptions?.mode).toBe("architect")
+			expect(mockHost.lastOptions?.reasoningEffort).toBe("max")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("explicit flags win over the settings values", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter", mode: "architect", reasoningEffort: "max" })
+
+			await run("hello", baseFlags({ mode: "ask", reasoningEffort: "low" }))
+
+			expect(mockHost.lastOptions?.mode).toBe("ask")
+			expect(mockHost.lastOptions?.reasoningEffort).toBe("low")
+		} finally {
+			exitSpy.mockRestore()
+		}
+	})
+
+	it("falls back to code and medium without flags or settings", async () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+
+		try {
+			await saveSettings({ provider: "openrouter" })
+
+			await run("hello", baseFlags())
+
+			expect(mockHost.lastOptions?.mode).toBe("code")
+			expect(mockHost.lastOptions?.reasoningEffort).toBe("medium")
 		} finally {
 			exitSpy.mockRestore()
 		}
