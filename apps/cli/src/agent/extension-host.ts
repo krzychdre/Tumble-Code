@@ -70,6 +70,8 @@ export interface ExtensionHostOptions {
 	mode: string
 	reasoningEffort?: ReasoningEffortExtended | "unspecified" | "disabled"
 	consecutiveMistakeLimit?: number
+	/** Seconds a shell command may run before the extension stops it; 0 means no limit. */
+	commandExecutionTimeout?: number
 	user: User | null
 	provider: SupportedProvider
 	apiKey?: string
@@ -250,7 +252,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		const baseSettings: RooCodeSettings = {
 			mode: this.options.mode,
 			consecutiveMistakeLimit: this.options.consecutiveMistakeLimit ?? DEFAULT_FLAGS.consecutiveMistakeLimit,
-			commandExecutionTimeout: 300,
+			commandExecutionTimeout: this.options.commandExecutionTimeout ?? DEFAULT_FLAGS.commandExecutionTimeout,
 			enableCheckpoints: false,
 			experiments: {
 				customTools: true,

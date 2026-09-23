@@ -10,9 +10,9 @@ interface ThinkingMessageProps {
 	/** The reasoning text. Only ever shown in expanded mode. */
 	content?: string
 	/**
-	 * Verbose rendering: print the reasoning body under the header. Only ever
-	 * set for `<Static>` items; the dynamic tail must keep the one-liner
-	 * (plan: 2026-09-21 answer lost in dynamic tail, I1 and I8).
+	 * Verbose rendering: print the reasoning body under the header. In the
+	 * dynamic tail only with a body already cut to the tail's row budget
+	 * (plan: 2026-09-23 cli live block under ctrl+o).
 	 */
 	expanded?: boolean
 }
