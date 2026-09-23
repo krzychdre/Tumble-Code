@@ -20,12 +20,19 @@
  * conventional env var (e.g. OPENAI_API_KEY), then the fallback's key.
  */
 
-import { openAiCodexDefaultModelId } from "@roo-code/types"
+import { openAiCodexDefaultModelId, type ProviderSettings } from "@roo-code/types"
 
 import type { ReasoningEffortFlagOptions } from "@/types/types.js"
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 
-import { getApiKeyFromEnv, resolveProviderIdAlias, type SupportedProvider } from "./provider-types.js"
+import {
+	getApiKeyFromEnv,
+	getModelField,
+	getProviderSettings,
+	isSupportedProvider,
+	resolveProviderIdAlias,
+	type SupportedProvider,
+} from "./provider-types.js"
 
 export interface ProviderConfigLayer {
 	/** Provider id as written; may be an alias such as "tumble". */
@@ -119,4 +126,58 @@ export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfi
 export function pickProviderConfig(source: ProviderConfigLayer): ProviderConfigLayer {
 	const { provider, model, baseUrl, apiKey, apiKeyEnv, reasoningEffort } = source
 	return { provider, model, baseUrl, apiKey, apiKeyEnv, reasoningEffort }
+}
+
+/**
+ * The extension's provider settings for a resolved configuration: the
+ * provider's own model/base-url/key fields plus the reasoning switches
+ * ("unspecified" leaves reasoning to the model's default, "disabled" turns it
+ * off). Throws like getProviderSettings for a base URL the provider has no
+ * field for.
+ */
+export function toProviderSettings(
+	config: Pick<ResolvedProviderConfig, "provider" | "model" | "baseUrl" | "apiKey"> & {
+		reasoningEffort?: ReasoningEffortFlagOptions
+	},
+): ProviderSettings {
+	const settings = getProviderSettings(
+		config.provider,
+		config.apiKey,
+		config.model,
+		config.baseUrl,
+	) as ProviderSettings
+
+	if (config.reasoningEffort === "disabled") {
+		settings.enableReasoningEffort = false
+	} else if (config.reasoningEffort && config.reasoningEffort !== "unspecified") {
+		settings.enableReasoningEffort = true
+		settings.reasoningEffort = config.reasoningEffort
+	}
+
+	return settings
+}
+
+/**
+ * Provider, model and reasoning effort as the extension currently holds them,
+ * for display. The model is read from the active provider's own field: the
+ * extension state can still carry another provider's model id (e.g. a stale
+ * `apiModelId` next to the live `openAiModelId`).
+ */
+export function summarizeProviderSettings(
+	settings: ProviderSettings | null | undefined,
+): { provider: SupportedProvider; model?: string; reasoningEffort?: string } | undefined {
+	const provider = settings?.apiProvider
+	if (!settings || !provider || !isSupportedProvider(provider)) {
+		return undefined
+	}
+
+	const model = settings[getModelField(provider) as keyof ProviderSettings]
+	const reasoningEffort =
+		settings.enableReasoningEffort === false
+			? "disabled"
+			: settings.enableReasoningEffort
+				? settings.reasoningEffort
+				: undefined
+
+	return { provider, model: typeof model === "string" && model ? model : undefined, reasoningEffort }
 }

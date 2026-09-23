@@ -9,6 +9,7 @@ import { getGlobalCommandsForAutocomplete } from "@/lib/utils/commands.js"
 import { getPermissionMode, type PermissionMode } from "@/lib/utils/permissions.js"
 import { arePathsEqual } from "@/lib/utils/path.js"
 import { getContextWindow } from "@/lib/utils/context-window.js"
+import { summarizeProviderSettings } from "@/lib/utils/provider-config.js"
 
 import * as theme from "./theme.js"
 import { figures } from "./figures.js"
@@ -95,6 +96,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		apiKey,
 		model,
 		baseUrl,
+		modeProviderSettings,
 		mode,
 		nonInteractive = false,
 		debug,
@@ -143,6 +145,14 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const contextWindow = useMemo(() => {
 		return getContextWindow(routerModels, apiConfiguration)
 	}, [routerModels, apiConfiguration])
+
+	// A mode switch can change provider, model and reasoning effort (per-mode
+	// entries in cli-settings.json), so show what the extension holds now and
+	// fall back to the startup options until its first state arrives.
+	const liveProviderSettings = useMemo(() => summarizeProviderSettings(apiConfiguration), [apiConfiguration])
+	const activeProvider = liveProviderSettings?.provider ?? provider
+	const activeModel = liveProviderSettings?.model ?? model
+	const activeReasoningEffort = liveProviderSettings ? liveProviderSettings.reasoningEffort : reasoningEffort
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const autocompleteRef = useRef<AutocompleteInputHandle<any>>(null)
@@ -199,6 +209,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		apiKey,
 		model,
 		baseUrl,
+		modeProviderSettings,
 		workspacePath,
 		extensionPath,
 		debug,
@@ -358,14 +369,24 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		() => ({
 			workspacePath,
 			user,
-			provider,
-			model,
+			provider: activeProvider,
+			model: activeModel,
 			mode: currentMode || mode,
-			reasoningEffort,
+			reasoningEffort: activeReasoningEffort,
 			nonInteractive,
 			version,
 		}),
-		[workspacePath, user, provider, model, currentMode, mode, reasoningEffort, nonInteractive, version],
+		[
+			workspacePath,
+			user,
+			activeProvider,
+			activeModel,
+			currentMode,
+			mode,
+			activeReasoningEffort,
+			nonInteractive,
+			version,
+		],
 	)
 
 	const staticItems = useMemo<StaticItem[]>(
@@ -679,7 +700,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						onPickerStateChange={handlePickerStateChange}
 						inputRef={showFollowupCustomInput ? followupAutocompleteRef : autocompleteRef}
 						mode={currentMode || mode}
-						model={model}
+						model={activeModel}
 						contextPercent={contextPercent}
 						cost={footerCost}
 						toast={currentToast}

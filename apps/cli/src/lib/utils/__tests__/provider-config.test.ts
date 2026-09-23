@@ -2,7 +2,12 @@ import { openAiCodexDefaultModelId } from "@roo-code/types"
 
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 
-import { pickProviderConfig, resolveProviderConfig } from "../provider-config.js"
+import {
+	pickProviderConfig,
+	resolveProviderConfig,
+	summarizeProviderSettings,
+	toProviderSettings,
+} from "../provider-config.js"
 
 describe("resolveProviderConfig", () => {
 	const savedEnv = { ...process.env }
@@ -207,5 +212,51 @@ describe("pickProviderConfig", () => {
 			apiKeyEnv: "K",
 			reasoningEffort: undefined,
 		})
+	})
+})
+
+describe("toProviderSettings", () => {
+	const connection = { provider: "openai" as const, model: "GLM-5.3", baseUrl: "http://x/v1", apiKey: "1111" }
+
+	it("maps to the provider's own fields and switches reasoning on for an effort", () => {
+		expect(toProviderSettings({ ...connection, reasoningEffort: "high" })).toEqual({
+			apiProvider: "openai",
+			openAiModelId: "GLM-5.3",
+			openAiBaseUrl: "http://x/v1",
+			openAiApiKey: "1111",
+			enableReasoningEffort: true,
+			reasoningEffort: "high",
+		})
+	})
+
+	it("turns reasoning off for disabled and leaves it out for unspecified", () => {
+		expect(toProviderSettings({ ...connection, reasoningEffort: "disabled" })).toMatchObject({
+			enableReasoningEffort: false,
+		})
+
+		const unspecified = toProviderSettings({ ...connection, reasoningEffort: "unspecified" })
+		expect(unspecified).not.toHaveProperty("enableReasoningEffort")
+		expect(unspecified).not.toHaveProperty("reasoningEffort")
+	})
+})
+
+describe("summarizeProviderSettings", () => {
+	it("reads the model from the active provider's field, not a stale one", () => {
+		expect(
+			summarizeProviderSettings({
+				apiProvider: "openai",
+				apiModelId: "gpt-5.6-sol",
+				openAiModelId: "GLM-5.3-Flash-NVFP4",
+				enableReasoningEffort: true,
+				reasoningEffort: "max",
+			}),
+		).toEqual({ provider: "openai", model: "GLM-5.3-Flash-NVFP4", reasoningEffort: "max" })
+	})
+
+	it("reports disabled reasoning, and nothing before the extension state arrives", () => {
+		expect(
+			summarizeProviderSettings({ apiProvider: "openrouter", enableReasoningEffort: false })?.reasoningEffort,
+		).toBe("disabled")
+		expect(summarizeProviderSettings(null)).toBeUndefined()
 	})
 })

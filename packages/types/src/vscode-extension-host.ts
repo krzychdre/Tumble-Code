@@ -469,6 +469,17 @@ export interface UpdateTodoListPayload {
 	todos: any[]
 }
 
+/**
+ * Provider settings the CLI resolved from ~/.roo/cli-settings.json, sent once
+ * at startup. While set, a mode switch applies `modes[mode] ?? base` instead of
+ * the provider profile bound to the mode, and nothing is written to the
+ * profile store.
+ */
+export interface CliModeProviderSettings {
+	base: ProviderSettings
+	modes: Record<string, ProviderSettings>
+}
+
 export type EditQueuedMessagePayload = Pick<QueuedMessage, "id" | "text" | "images">
 
 export interface WebviewMessage {
@@ -559,6 +570,7 @@ export interface WebviewMessage {
 		| "hasOpenedModeSelector"
 		| "lockApiConfigAcrossModes"
 		| "assignCurrentApiConfigToModes"
+		| "cliModeProviderSettings"
 		| "clearCloudAuthSkipModel"
 		| "cloudButtonClicked"
 		| "rooCloudSignIn"
@@ -657,6 +669,8 @@ export interface WebviewMessage {
 	dataUri?: string
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ProviderSettings
+	/** For `cliModeProviderSettings`: the CLI's provider settings per mode. */
+	cliModeProviderSettings?: CliModeProviderSettings
 	images?: string[]
 	bool?: boolean
 	value?: number

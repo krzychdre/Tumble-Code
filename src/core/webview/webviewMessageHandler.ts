@@ -1529,6 +1529,10 @@ export const webviewMessageHandler = async (
 			break
 		}
 
+		case "cliModeProviderSettings":
+			provider.setCliModeProviderSettings(message.cliModeProviderSettings)
+			break
+
 		case "assignCurrentApiConfigToModes": {
 			const configId = message.values?.configId as string | undefined
 			const modeSlugs = (message.values?.modeSlugs as string[] | undefined) ?? []

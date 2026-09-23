@@ -40,6 +40,10 @@ const mockHost = vi.hoisted(() => ({
 				mode?: string
 				reasoningEffort?: string
 				apiKey?: string
+				modeProviderSettings?: {
+					base: Record<string, unknown>
+					modes: Record<string, Record<string, unknown>>
+				}
 		  },
 }))
 
@@ -400,14 +404,19 @@ describe("run baseUrl resolution", () => {
 	})
 
 	it("rejects --base-url for a provider without a base-url field", async () => {
-		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
 
 		try {
 			// xai has no base-url field at all (its schema has no base-url key).
 			expect(getBaseUrlField("xai")).toBeUndefined()
 
-			await run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://nope" }))
+			await expect(
+				run("hello", baseFlags({ provider: "xai", apiKey: "xai-key", baseUrl: "http://nope" })),
+			).rejects.toBe(exitError)
 
 			expect(exitSpy).toHaveBeenCalledWith(1)
 			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("does not support a base URL"))
@@ -623,5 +632,158 @@ describe("run API key from the settings file", () => {
 			exitSpy.mockRestore()
 			errorSpy.mockRestore()
 		}
+	})
+})
+
+describe("run provider settings per mode", () => {
+	let tempDir: string
+	const savedEnv = { ...process.env }
+
+	const globalSettings = {
+		provider: "openai" as const,
+		baseUrl: "http://192.168.50.194:11111/v1",
+		model: "GLM-5.3-Flash-NVFP4",
+		apiKey: "1111",
+		reasoningEffort: "max" as const,
+	}
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-modes-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+		mockGetOpenAiCodexAuthStatus.mockResolvedValue({ authenticated: true })
+		delete process.env.OPENAI_API_KEY
+		delete process.env.ANTHROPIC_API_KEY
+	})
+
+	afterEach(() => {
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+		process.env = { ...savedEnv }
+	})
+
+	/** Runs until the first process.exit and reports its code (print mode always exits). */
+	async function runWithExitThrowing(flags: Partial<FlagOptions> = {}) {
+		const exitError = new Error("process.exit")
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+
+		try {
+			await run("hello", baseFlags({ apiKey: undefined, ...flags })).catch((error) => {
+				if (error !== exitError) throw error
+			})
+			const outcome = exitSpy.mock.calls[0]?.[0] === 1 ? "failed" : "ran"
+			return { outcome, errors: errorSpy.mock.calls.map((call) => String(call[0])) }
+		} finally {
+			exitSpy.mockRestore()
+			errorSpy.mockRestore()
+		}
+	}
+
+	it("a mode entry changes only what it names and inherits the rest", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { architect: { model: "GLM-5.3-NVFP4", reasoningEffort: "high" } },
+		})
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		expect(mockHost.lastOptions?.modeProviderSettings).toEqual({
+			base: {
+				apiProvider: "openai",
+				openAiBaseUrl: "http://192.168.50.194:11111/v1",
+				openAiModelId: "GLM-5.3-Flash-NVFP4",
+				openAiApiKey: "1111",
+				enableReasoningEffort: true,
+				reasoningEffort: "max",
+			},
+			modes: {
+				architect: {
+					apiProvider: "openai",
+					openAiBaseUrl: "http://192.168.50.194:11111/v1",
+					openAiModelId: "GLM-5.3-NVFP4",
+					openAiApiKey: "1111",
+					enableReasoningEffort: true,
+					reasoningEffort: "high",
+				},
+			},
+		})
+	})
+
+	it("a mode entry naming another provider carries over no model, base URL or key", async () => {
+		await saveSettings({ ...globalSettings, modes: { ask: { provider: "openai-codex" } } })
+
+		const { outcome } = await runWithExitThrowing()
+
+		expect(outcome).toBe("ran")
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes.ask).toEqual({
+			apiProvider: "openai-codex",
+			apiModelId: "gpt-5.6-sol",
+			enableReasoningEffort: true,
+			reasoningEffort: "max",
+		})
+	})
+
+	it("the session starts with the entry of the mode it starts in", async () => {
+		await saveSettings({
+			...globalSettings,
+			mode: "architect",
+			modes: { architect: { model: "GLM-5.3-NVFP4", reasoningEffort: "high" } },
+		})
+
+		await runWithExitThrowing()
+
+		expect(mockHost.lastOptions).toMatchObject({
+			mode: "architect",
+			model: "GLM-5.3-NVFP4",
+			reasoningEffort: "high",
+			apiKey: "1111",
+		})
+	})
+
+	it("sends the base settings even without mode entries, so no mode falls back to a stored profile", async () => {
+		await saveSettings(globalSettings)
+
+		await runWithExitThrowing()
+
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes).toEqual({})
+		expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({ openAiModelId: "GLM-5.3-Flash-NVFP4" })
+	})
+
+	it("any provider flag uses one configuration for every mode", async () => {
+		await saveSettings({ ...globalSettings, modes: { architect: { model: "GLM-5.3-NVFP4" } } })
+
+		await runWithExitThrowing({ model: "Qwen3.8-27B" })
+
+		expect(mockHost.lastOptions?.model).toBe("Qwen3.8-27B")
+		expect(mockHost.lastOptions?.modeProviderSettings?.modes).toEqual({})
+		expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({ openAiModelId: "Qwen3.8-27B" })
+	})
+
+	it("a broken mode entry fails at startup and names the mode", async () => {
+		await saveSettings({ ...globalSettings, modes: { debug: { provider: "anthropic" } } })
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain("modes.debug")
+		expect(errors[0]).toContain("No API key provided")
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("a mode entry with an invalid reasoning effort fails at startup", async () => {
+		await saveSettings({
+			...globalSettings,
+			modes: { architect: { reasoningEffort: "maz" as never } },
+		})
+
+		const { outcome, errors } = await runWithExitThrowing()
+
+		expect(outcome).toBe("failed")
+		expect(errors[0]).toContain("modes.architect")
+		expect(errors[0]).toContain("Invalid reasoning effort: maz")
 	})
 })

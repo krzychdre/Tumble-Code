@@ -49,6 +49,16 @@ export interface OnboardingResult {
 	skipped: boolean
 }
 
+/** Provider settings one mode may override in cli-settings.json. */
+export interface CliModeSettings {
+	provider?: SupportedProvider
+	model?: string
+	baseUrl?: string
+	apiKey?: string
+	apiKeyEnv?: string
+	reasoningEffort?: ReasoningEffortFlagOptions
+}
+
 export interface CliSettings {
 	onboardingProviderChoice?: OnboardingProviderChoice
 	/** Default mode to use (e.g., "code", "architect", "ask", "debug") */
@@ -65,6 +75,14 @@ export interface CliSettings {
 	apiKeyEnv?: string
 	/** Default reasoning effort level */
 	reasoningEffort?: ReasoningEffortFlagOptions
+	/**
+	 * Per-mode overrides, keyed by mode slug. Each entry changes only what it
+	 * names and inherits the rest; an entry that names a different provider
+	 * starts from that provider's defaults (model, baseUrl and key are not
+	 * carried across providers). Ignored for a run given any of --provider,
+	 * --model, --base-url, --api-key or --reasoning-effort.
+	 */
+	modes?: Record<string, CliModeSettings>
 	/** Default consecutive error/repetition limit before guidance prompts */
 	consecutiveMistakeLimit?: number
 	/** Require manual approval for tools/commands/browser/MCP actions */

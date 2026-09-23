@@ -18,6 +18,7 @@ import pWaitFor from "p-wait-for"
 
 import type {
 	ClineMessage,
+	CliModeProviderSettings,
 	ExtensionMessage,
 	ReasoningEffortExtended,
 	RooCodeSettings,
@@ -28,7 +29,7 @@ import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 
 import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import type { User } from "@/lib/sdk/index.js"
-import { getProviderSettings } from "@/lib/utils/provider.js"
+import { toProviderSettings } from "@/lib/utils/provider-config.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { createEphemeralStorageDir } from "@/lib/storage/index.js"
 
@@ -74,6 +75,12 @@ export interface ExtensionHostOptions {
 	model: string
 	/** Base URL override for the selected provider (applied to its base-url settings field). */
 	baseUrl?: string
+	/**
+	 * Provider settings per mode from cli-settings.json. Sent to the extension
+	 * at startup so a mode switch applies them instead of the provider profile
+	 * the extension's own store binds to that mode.
+	 */
+	modeProviderSettings?: CliModeProviderSettings
 	workspacePath: string
 	extensionPath: string
 	nonInteractive?: boolean
@@ -230,26 +237,12 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			experiments: {
 				customTools: true,
 			},
-			...getProviderSettings(
-				this.options.provider,
-				this.options.apiKey,
-				this.options.model,
-				this.options.baseUrl,
-			),
+			...toProviderSettings(this.options),
 		}
 
 		this.initialSettings = {
 			...getPermissionSettings(getPermissionMode(this.options.nonInteractive ?? false)),
 			...baseSettings,
-		}
-
-		if (this.options.reasoningEffort && this.options.reasoningEffort !== "unspecified") {
-			if (this.options.reasoningEffort === "disabled") {
-				this.initialSettings.enableReasoningEffort = false
-			} else {
-				this.initialSettings.enableReasoningEffort = true
-				this.initialSettings.reasoningEffort = this.options.reasoningEffort
-			}
 		}
 
 		if (this.options.terminalShell) {
@@ -455,6 +448,13 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// (apiProvider: "anthropic") instead of the CLI-provided settings.
 		setRuntimeConfigValues("tumble-code", this.initialSettings as Record<string, unknown>)
 		this.sendToExtension({ type: "updateSettings", updatedSettings: this.initialSettings })
+
+		if (this.options.modeProviderSettings) {
+			this.sendToExtension({
+				type: "cliModeProviderSettings",
+				cliModeProviderSettings: this.options.modeProviderSettings,
+			})
+		}
 
 		// Now trigger extension initialization. The context proxy should already
 		// have CLI-provided values when the webviewDidLaunch handler runs.

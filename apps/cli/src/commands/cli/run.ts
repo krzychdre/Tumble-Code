@@ -22,7 +22,12 @@ import { JsonEventEmitter } from "@/agent/json-event-emitter.js"
 import { getSettingsPath, isSettingsFileReadableByOthers, loadSettings } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
 import { getEnvVarName, providerRequiresApiKey, getProviderSettings } from "@/lib/utils/provider.js"
-import { pickProviderConfig, resolveProviderConfig } from "@/lib/utils/provider-config.js"
+import {
+	pickProviderConfig,
+	resolveProviderConfig,
+	toProviderSettings,
+	type ResolvedProviderConfig,
+} from "@/lib/utils/provider-config.js"
 import { readVsCodeConfig } from "@/lib/utils/vscode-config.js"
 import { runOnboarding } from "@/lib/utils/onboarding.js"
 import { validateTerminalShellPath } from "@/lib/utils/shell.js"
@@ -50,6 +55,73 @@ async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: str
 
 function normalizeError(error: unknown): Error {
 	return error instanceof Error ? error : new Error(String(error))
+}
+
+/** The key to hand the extension: only providers that take one get it. */
+function keyFor(config: ResolvedProviderConfig): string | undefined {
+	return providerRequiresApiKey(config.provider) ? config.apiKey : undefined
+}
+
+/**
+ * What is wrong with one resolved provider configuration, as the lines to
+ * print (the first becomes the error line), or undefined when it can run.
+ */
+async function findProviderConfigProblem(
+	config: ResolvedProviderConfig,
+	{ ephemeral }: { ephemeral: boolean },
+): Promise<string[] | undefined> {
+	// The raw (possibly aliased) id must be accepted; the resolved provider is
+	// already the alias target (tumble -> openrouter).
+	if (!isAcceptedProvider(config.rawProvider)) {
+		return [`Invalid provider: ${config.rawProvider}; must be one of: ${supportedProviders.join(", ")}`]
+	}
+
+	if (config.provider === "openai-codex") {
+		// OAuth credentials live in persistent vscode-shim SecretStorage. An
+		// ephemeral host starts with an empty store, so fail here with an
+		// actionable message instead of a generic provider auth error.
+		if (ephemeral) {
+			return [
+				"--ephemeral cannot be used with the openai-codex provider.",
+				"Run `tumble auth codex login`, then retry without --ephemeral.",
+			]
+		}
+
+		const authStatus = await getOpenAiCodexAuthStatus({ quiet: true })
+		if (!authStatus.authenticated) {
+			return ["OpenAI Codex is not authenticated.", "Run `tumble auth codex login`, then retry."]
+		}
+	}
+
+	// A base-url is only valid where the provider's settings schema has a
+	// base-url field. Reject early with the provider's name (decision 5).
+	if (config.baseUrl) {
+		try {
+			getProviderSettings(config.provider, undefined, undefined, config.baseUrl)
+		} catch (error) {
+			return [(error as Error).message]
+		}
+	}
+
+	// Provider-aware API-key gate: providers whose settings schema has no
+	// API-key field (ollama, lmstudio, bedrock, qwen-code, vertex, as derived
+	// in provider-types.ts) run keyless.
+	if (providerRequiresApiKey(config.provider) && !config.apiKey) {
+		if (config.missingApiKeyEnv) {
+			return [`apiKeyEnv names ${config.missingApiKeyEnv}, but that environment variable is empty or unset.`]
+		}
+
+		return [
+			`No API key provided. Use --api-key, set apiKey or apiKeyEnv in ${getSettingsPath()}, or set the provider's environment variable.`,
+			`For ${config.provider}, set ${getEnvVarName(config.provider)}`,
+		]
+	}
+
+	if (!REASONING_EFFORTS.includes(config.reasoningEffort)) {
+		return [`Invalid reasoning effort: ${config.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`]
+	}
+
+	return undefined
 }
 
 export async function run(promptArg: string | undefined, flagOptions: FlagOptions) {
@@ -116,7 +188,8 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	const settings = await loadSettings()
 
-	if (settings.apiKey && (await isSettingsFileReadableByOthers())) {
+	const settingsHoldAKey = [settings, ...Object.values(settings.modes ?? {})].some((entry) => entry.apiKey)
+	if (settingsHoldAKey && (await isSettingsFileReadableByOthers())) {
 		console.warn(
 			`[CLI] Warning: ${getSettingsPath()} holds an apiKey and other users can read it. Run: chmod 600 ${getSettingsPath()}`,
 		)
@@ -129,23 +202,40 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 	// Provider connection: flags > settings file > the CLI's own extension
 	// state (~/.vscode-mock) > defaults, with provider-bound values (model,
 	// base URL, key) used only for the provider they were written for.
-	const providerConfig = resolveProviderConfig({
-		fallback: readVsCodeConfig(),
-		layers: [
-			pickProviderConfig(settings),
-			{
-				provider: flagOptions.provider,
-				model: flagOptions.model,
-				baseUrl: flagOptions.baseUrl,
-				apiKey: flagOptions.apiKey,
-				reasoningEffort: flagOptions.reasoningEffort,
-			},
-		],
+	const vsCodeConfig = readVsCodeConfig()
+	const settingsProviderConfig = pickProviderConfig(settings)
+	const flagProviderConfig = {
+		provider: flagOptions.provider,
+		model: flagOptions.model,
+		baseUrl: flagOptions.baseUrl,
+		apiKey: flagOptions.apiKey,
+		reasoningEffort: flagOptions.reasoningEffort,
+	}
+	const baseProviderConfig = resolveProviderConfig({
+		fallback: vsCodeConfig,
+		layers: [settingsProviderConfig, flagProviderConfig],
 	})
 
+	// Per-mode overrides from the settings file, each resolved on top of the
+	// file's global values. Any provider flag makes this run use one
+	// configuration for every mode, so the overrides are dropped.
+	const isProviderForcedByFlags = Object.values(flagProviderConfig).some((value) => value !== undefined)
+	const modeProviderConfigs: Record<string, ResolvedProviderConfig> = isProviderForcedByFlags
+		? {}
+		: Object.fromEntries(
+				Object.entries(settings.modes ?? {}).map(([modeSlug, modeSettings]) => [
+					modeSlug,
+					resolveProviderConfig({
+						fallback: vsCodeConfig,
+						layers: [settingsProviderConfig, pickProviderConfig(modeSettings)],
+					}),
+				]),
+			)
+
 	const effectiveMode = flagOptions.mode || settings.mode || DEFAULT_FLAGS.mode
+	// The session starts with the configuration of the mode it starts in.
+	const providerConfig = modeProviderConfigs[effectiveMode] ?? baseProviderConfig
 	const effectiveReasoningEffort = providerConfig.reasoningEffort
-	const rawEffectiveProvider = providerConfig.rawProvider
 	const effectiveProvider = providerConfig.provider
 	const effectiveModel = providerConfig.model
 	const effectiveBaseUrl = providerConfig.baseUrl
@@ -213,83 +303,52 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		}
 	}
 
-	// Validations
-	// TODO: Validate the API key for the chosen provider.
-	// TODO: Validate the model for the chosen provider.
+	// Validations: every configuration this run can switch to is checked now,
+	// so a broken mode entry fails at startup instead of on the mode switch.
+	const providerConfigsToCheck: [label: string | undefined, config: ResolvedProviderConfig][] = [
+		[undefined, providerConfig],
+		...(providerConfig === baseProviderConfig
+			? []
+			: [
+					[
+						`global settings in ${getSettingsPath()} (used by modes without their own entry)`,
+						baseProviderConfig,
+					] as [string, ResolvedProviderConfig],
+				]),
+		...Object.entries(modeProviderConfigs)
+			.filter(([, config]) => config !== providerConfig)
+			.map(
+				([modeSlug, config]) =>
+					[`modes.${modeSlug} in ${getSettingsPath()}`, config] as [string, ResolvedProviderConfig],
+			),
+	]
 
-	// The raw (possibly aliased) id must be accepted; the effective provider is
-	// already the resolved alias (tumble -> openrouter).
-	if (!isAcceptedProvider(rawEffectiveProvider)) {
-		console.error(
-			`[CLI] Error: Invalid provider: ${rawEffectiveProvider}; must be one of: ${supportedProviders.join(", ")}`,
-		)
-		process.exit(1)
-	}
+	for (const [label, config] of providerConfigsToCheck) {
+		const problem = await findProviderConfigProblem(config, { ephemeral: flagOptions.ephemeral })
 
-	// OAuth credentials live in persistent vscode-shim SecretStorage. An
-	// ephemeral host starts with an empty store, so fail here with an actionable
-	// message instead of letting the provider report a generic auth error.
-	if (effectiveProvider === "openai-codex" && flagOptions.ephemeral) {
-		console.error("[CLI] Error: --ephemeral cannot be used with the openai-codex provider.")
-		console.error("[CLI] Run `tumble auth codex login`, then retry without --ephemeral.")
-		process.exit(1)
-	}
-
-	if (effectiveProvider === "openai-codex") {
-		const authStatus = await getOpenAiCodexAuthStatus({ quiet: true })
-		if (!authStatus.authenticated) {
-			console.error("[CLI] Error: OpenAI Codex is not authenticated.")
-			console.error("[CLI] Run `tumble auth codex login`, then retry.")
-			process.exit(1)
-		}
-	}
-
-	// A base-url is only valid where the provider's settings schema has a
-	// base-url field. Reject early with the provider's name (decision 5).
-	if (effectiveBaseUrl) {
-		try {
-			getProviderSettings(extensionHostOptions.provider, undefined, undefined, effectiveBaseUrl)
-		} catch (error) {
-			console.error(`[CLI] Error: ${(error as Error).message}`)
-			process.exit(1)
-		}
-	}
-
-	// Provider-aware API-key gate. Providers whose settings schema has no
-	// required API-key field (ollama, lmstudio, bedrock, qwen-code, vertex — as
-	// derived in provider-types.ts) run keyless; providers that need a key
-	// hard-exit with the missing-key message when none was supplied.
-	const needsKey = providerRequiresApiKey(extensionHostOptions.provider)
-
-	if (needsKey) {
-		extensionHostOptions.apiKey = providerConfig.apiKey
-
-		if (!extensionHostOptions.apiKey) {
-			if (providerConfig.missingApiKeyEnv) {
-				console.error(
-					`[CLI] Error: apiKeyEnv names ${providerConfig.missingApiKeyEnv}, but that environment variable is empty or unset.`,
-				)
-			} else {
-				console.error(
-					`[CLI] Error: No API key provided. Use --api-key, set apiKey or apiKeyEnv in ${getSettingsPath()}, or set the provider's environment variable.`,
-				)
-				console.error(
-					`[CLI] For ${extensionHostOptions.provider}, set ${getEnvVarName(extensionHostOptions.provider)}`,
-				)
+		if (problem) {
+			const [first, ...rest] = problem
+			console.error(`[CLI] Error: ${label ? `${label}: ` : ""}${first}`)
+			for (const line of rest) {
+				console.error(`[CLI] ${line}`)
 			}
 			process.exit(1)
 		}
 	}
 
-	if (!fs.existsSync(extensionHostOptions.workspacePath)) {
-		console.error(`[CLI] Error: Workspace path does not exist: ${extensionHostOptions.workspacePath}`)
-		process.exit(1)
+	extensionHostOptions.apiKey = keyFor(providerConfig)
+	extensionHostOptions.modeProviderSettings = {
+		base: toProviderSettings({ ...baseProviderConfig, apiKey: keyFor(baseProviderConfig) }),
+		modes: Object.fromEntries(
+			Object.entries(modeProviderConfigs).map(([modeSlug, config]) => [
+				modeSlug,
+				toProviderSettings({ ...config, apiKey: keyFor(config) }),
+			]),
+		),
 	}
 
-	if (extensionHostOptions.reasoningEffort && !REASONING_EFFORTS.includes(extensionHostOptions.reasoningEffort)) {
-		console.error(
-			`[CLI] Error: Invalid reasoning effort: ${extensionHostOptions.reasoningEffort}, must be one of: ${REASONING_EFFORTS.join(", ")}`,
-		)
+	if (!fs.existsSync(extensionHostOptions.workspacePath)) {
+		console.error(`[CLI] Error: Workspace path does not exist: ${extensionHostOptions.workspacePath}`)
 		process.exit(1)
 	}
 

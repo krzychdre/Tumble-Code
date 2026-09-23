@@ -324,11 +324,12 @@ to the run they are given on and are never saved.
 | `baseUrl`                 | Base URL; used only while `provider` is the active provider |
 | `apiKey`                  | API key; used only while `provider` is the active provider  |
 | `apiKeyEnv`               | Name of the env var holding the key, instead of `apiKey`    |
-| `reasoningEffort`         | As for `--reasoning-effort`                                 |
+| `reasoningEffort`         | As for `--reasoning-effort` (see the note below)            |
 | `mode`                    | Mode a new session starts in                                |
 | `requireApproval`         | `true` asks before actions, as `--require-approval`         |
 | `consecutiveMistakeLimit` | As for `--consecutive-mistake-limit`                        |
 | `oneshot`                 | `true` exits when the task completes, as `--oneshot`        |
+| `modes`                   | Settings per mode, see below                                |
 
 The file may hold an API key, so keep it readable only by you (`chmod 600
 ~/.roo/cli-settings.json`); the CLI warns when other users can read it. To keep
@@ -338,6 +339,44 @@ the key from that variable and stops with an error naming it when it is unset.
 Precedence: flag > settings file > built-in default. Provider, model and base
 URL also fall back to the CLI's own extension state in
 `~/.vscode-mock/global-storage` before the built-in default.
+
+Note on `reasoningEffort`: it reaches the model only when the provider's model
+information says the model supports a reasoning effort. For the `openai`
+(OpenAI-compatible) provider that information is user-supplied in the VS Code
+settings and the CLI cannot set it yet, so there the value has no effect (GLM
+models get their thinking switch regardless).
+
+### Settings per mode
+
+`modes` gives a mode its own provider settings. An entry names only what it
+changes and inherits the rest from the top level; switching modes (by you, by
+the model, or into a subtask) applies the entry of the new mode, and modes
+without an entry use the top level.
+
+```json
+{
+	"provider": "openai",
+	"baseUrl": "http://192.168.50.194:11111/v1",
+	"apiKey": "1111",
+	"model": "GLM-5.3-Flash-NVFP4",
+	"reasoningEffort": "max",
+	"modes": {
+		"architect": { "model": "GLM-5.3-NVFP4", "reasoningEffort": "high" },
+		"ask": { "provider": "openai-codex", "model": "gpt-5.6-sol" }
+	}
+}
+```
+
+- An entry may set `provider`, `model`, `baseUrl`, `apiKey`, `apiKeyEnv` and
+  `reasoningEffort`. Keys are mode slugs as listed by `tumble list modes`.
+- An entry that names a different provider inherits none of the top-level
+  `model`, `baseUrl` or key, which belong to the top-level provider; it gets
+  that provider's defaults unless it sets them (`ask` above).
+- Every entry is checked at startup, so a missing key or an invalid value fails
+  immediately and names the mode.
+- Passing any of `--provider`, `--model`, `--base-url`, `--api-key` or
+  `--reasoning-effort` makes that run use one configuration for every mode: the
+  flags on top of the top level, with `modes` ignored.
 
 ## Environment Variables
 

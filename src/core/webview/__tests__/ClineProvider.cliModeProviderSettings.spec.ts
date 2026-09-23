@@ -1,0 +1,478 @@
+// npx vitest run core/webview/__tests__/ClineProvider.cliModeProviderSettings.spec.ts
+
+import * as vscode from "vscode"
+import { TelemetryService } from "@roo-code/telemetry"
+import { ClineProvider } from "../ClineProvider"
+import type { CliModeProviderSettings, HistoryItem } from "@roo-code/types"
+
+import { ContextProxy } from "../../config/ContextProxy"
+
+vi.mock("vscode", () => ({
+	ExtensionContext: vi.fn(),
+	OutputChannel: vi.fn(),
+	WebviewView: vi.fn(),
+	Uri: {
+		joinPath: vi.fn(),
+		file: vi.fn(),
+	},
+	CodeActionKind: {
+		QuickFix: { value: "quickfix" },
+		RefactorRewrite: { value: "refactor.rewrite" },
+	},
+	commands: {
+		executeCommand: vi.fn().mockResolvedValue(undefined),
+	},
+	window: {
+		showInformationMessage: vi.fn(),
+		showWarningMessage: vi.fn(),
+		showErrorMessage: vi.fn(),
+		onDidChangeActiveTextEditor: vi.fn(() => ({ dispose: vi.fn() })),
+	},
+	workspace: {
+		getConfiguration: vi.fn().mockReturnValue({
+			get: vi.fn().mockReturnValue([]),
+			update: vi.fn(),
+		}),
+		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({
+			dispose: vi.fn(),
+		})),
+		onDidSaveTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+		onDidChangeTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+		onDidOpenTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+		onDidCloseTextDocument: vi.fn(() => ({ dispose: vi.fn() })),
+	},
+	env: {
+		uriScheme: "vscode",
+		language: "en",
+		appName: "Visual Studio Code",
+	},
+	ExtensionMode: {
+		Production: 1,
+		Development: 2,
+		Test: 3,
+	},
+	version: "1.85.0",
+}))
+
+vi.mock("../../task/Task", () => ({
+	Task: vi.fn().mockImplementation((options) => ({
+		taskId: options.taskId || "test-task-id",
+		saveClineMessages: vi.fn(),
+		clineMessages: [],
+		apiConversationHistory: [],
+		overwriteClineMessages: vi.fn(),
+		overwriteApiConversationHistory: vi.fn(),
+		abortTask: vi.fn(),
+		handleWebviewAskResponse: vi.fn(),
+		getTaskNumber: vi.fn().mockReturnValue(0),
+		setTaskNumber: vi.fn(),
+		setParentTask: vi.fn(),
+		setRootTask: vi.fn(),
+		emit: vi.fn(),
+		parentTask: options.parentTask,
+		updateApiConfiguration: vi.fn(),
+		setTaskApiConfigName: vi.fn(),
+		_taskApiConfigName: options.historyItem?.apiConfigName,
+		taskApiConfigName: options.historyItem?.apiConfigName,
+	})),
+}))
+
+vi.mock("../../prompts/sections/custom-instructions")
+
+vi.mock("../../../utils/safeWriteJson", () => {
+	const write = vi.fn().mockResolvedValue(undefined)
+	return {
+		safeWriteJson: write,
+		withLockedJsonTransaction: vi.fn(
+			async <T>(
+				_lockTarget: string,
+				destination: string,
+				body: (writeJson: (data: unknown) => Promise<void>) => Promise<T>,
+			) => body((data) => write(destination, data)),
+		),
+	}
+})
+
+// The JSON transaction gateway is mocked above; keep proper-lockfile inert for
+// unrelated safe-write call sites in these provider-wiring specs.
+vi.mock("proper-lockfile", () => ({
+	lock: vi.fn(async () => async () => {}),
+	unlock: vi.fn(async () => {}),
+	check: vi.fn(async () => false),
+}))
+
+vi.mock("../../../api", () => ({
+	buildApiHandler: vi.fn().mockReturnValue({
+		getModel: vi.fn().mockReturnValue({
+			id: "claude-3-sonnet",
+		}),
+	}),
+}))
+
+vi.mock("../../../integrations/workspace/WorkspaceTracker", () => ({
+	default: vi.fn().mockImplementation(() => ({
+		initializeFilePaths: vi.fn(),
+		dispose: vi.fn(),
+	})),
+}))
+
+vi.mock("../../diff/strategies/multi-search-replace", () => ({
+	MultiSearchReplaceDiffStrategy: vi.fn().mockImplementation(() => ({
+		getName: () => "test-strategy",
+		applyDiff: vi.fn(),
+	})),
+}))
+
+vi.mock("@roo-code/cloud", () => ({
+	CloudService: {
+		hasInstance: vi.fn().mockReturnValue(true),
+		get instance() {
+			return {
+				isAuthenticated: vi.fn().mockReturnValue(false),
+			}
+		},
+	},
+	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
+	getRooCodeProviderUrl: vi.fn().mockReturnValue("http://localhost:8080/proxy"),
+}))
+
+vi.mock("../../../shared/modes", () => {
+	const mockModes = [
+		{
+			slug: "code",
+			name: "Code Mode",
+			roleDefinition: "You are a code assistant",
+			groups: ["read", "edit"],
+		},
+		{
+			slug: "architect",
+			name: "Architect Mode",
+			roleDefinition: "You are an architect",
+			groups: ["read", "edit"],
+		},
+		{
+			slug: "ask",
+			name: "Ask Mode",
+			roleDefinition: "You are an assistant",
+			groups: ["read"],
+		},
+		{
+			slug: "debug",
+			name: "Debug Mode",
+			roleDefinition: "You are a debugger",
+			groups: ["read", "edit"],
+		},
+		{
+			slug: "orchestrator",
+			name: "Orchestrator Mode",
+			roleDefinition: "You are an orchestrator",
+			groups: [],
+		},
+	]
+
+	return {
+		modes: mockModes,
+		getAllModes: vi.fn((customModes?: Array<{ slug: string }>) => {
+			if (!customModes?.length) {
+				return [...mockModes]
+			}
+			const allModes = [...mockModes]
+			customModes.forEach((cm) => {
+				const idx = allModes.findIndex((m) => m.slug === cm.slug)
+				if (idx !== -1) {
+					allModes[idx] = cm as (typeof mockModes)[number]
+				} else {
+					allModes.push(cm as (typeof mockModes)[number])
+				}
+			})
+			return allModes
+		}),
+		getModeBySlug: vi.fn().mockReturnValue({
+			slug: "code",
+			name: "Code Mode",
+			roleDefinition: "You are a code assistant",
+			groups: ["read", "edit"],
+		}),
+		defaultModeSlug: "code",
+	}
+})
+
+vi.mock("../../prompts/system", () => ({
+	SYSTEM_PROMPT: vi.fn().mockResolvedValue("mocked system prompt"),
+	codeMode: "code",
+}))
+
+vi.mock("../../../api/providers/fetchers/modelCache", () => ({
+	getModels: vi.fn().mockResolvedValue({}),
+	flushModels: vi.fn(),
+}))
+
+vi.mock("../../../integrations/misc/extract-text", () => ({
+	extractTextFromFile: vi.fn().mockResolvedValue("Mock file content"),
+}))
+
+vi.mock("p-wait-for", () => ({
+	default: vi.fn().mockImplementation(async () => Promise.resolve()),
+}))
+
+vi.mock("fs/promises", () => ({
+	mkdir: vi.fn().mockResolvedValue(undefined),
+	writeFile: vi.fn().mockResolvedValue(undefined),
+	readFile: vi.fn().mockResolvedValue(""),
+	unlink: vi.fn().mockResolvedValue(undefined),
+	rmdir: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("@roo-code/telemetry", () => ({
+	TelemetryService: {
+		hasInstance: vi.fn().mockReturnValue(true),
+		createInstance: vi.fn(),
+		get instance() {
+			return {
+				trackEvent: vi.fn(),
+				trackError: vi.fn(),
+				setProvider: vi.fn(),
+				captureModeSwitch: vi.fn(),
+			}
+		},
+	},
+}))
+
+describe("ClineProvider - CLI provider settings per mode", () => {
+	let provider: ClineProvider
+	let mockContext: vscode.ExtensionContext
+	let mockOutputChannel: vscode.OutputChannel
+	let mockWebviewView: vscode.WebviewView
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+
+		if (!TelemetryService.hasInstance()) {
+			TelemetryService.createInstance([])
+		}
+
+		const globalState: Record<string, unknown> = {
+			mode: "code",
+			currentApiConfigName: "default-profile",
+		}
+
+		const workspaceState: Record<string, unknown> = {}
+
+		const secrets: Record<string, string | undefined> = {}
+
+		mockContext = {
+			extensionPath: "/test/path",
+			extensionUri: {} as vscode.Uri,
+			globalState: {
+				get: vi.fn().mockImplementation((key: string) => globalState[key]),
+				update: vi.fn().mockImplementation((key: string, value: unknown) => {
+					globalState[key] = value
+					return Promise.resolve()
+				}),
+				keys: vi.fn().mockImplementation(() => Object.keys(globalState)),
+			},
+			secrets: {
+				get: vi.fn().mockImplementation((key: string) => secrets[key]),
+				store: vi.fn().mockImplementation((key: string, value: string | undefined) => {
+					secrets[key] = value
+					return Promise.resolve()
+				}),
+				delete: vi.fn().mockImplementation((key: string) => {
+					delete secrets[key]
+					return Promise.resolve()
+				}),
+			},
+			workspaceState: {
+				get: vi.fn().mockImplementation((key: string, defaultValue?: unknown) => {
+					return key in workspaceState ? workspaceState[key] : defaultValue
+				}),
+				update: vi.fn().mockImplementation((key: string, value: unknown) => {
+					workspaceState[key] = value
+					return Promise.resolve()
+				}),
+				keys: vi.fn().mockImplementation(() => Object.keys(workspaceState)),
+			},
+			subscriptions: [],
+			extension: {
+				packageJSON: { version: "1.0.0" },
+			},
+			globalStorageUri: {
+				fsPath: "/test/storage/path",
+			},
+		} as unknown as vscode.ExtensionContext
+
+		mockOutputChannel = {
+			appendLine: vi.fn(),
+			clear: vi.fn(),
+			dispose: vi.fn(),
+		} as unknown as vscode.OutputChannel
+
+		const mockPostMessage = vi.fn()
+
+		mockWebviewView = {
+			webview: {
+				postMessage: mockPostMessage,
+				html: "",
+				options: {},
+				onDidReceiveMessage: vi.fn(),
+				asWebviewUri: vi.fn(),
+				cspSource: "vscode-webview://test-csp-source",
+			},
+			visible: true,
+			onDidDispose: vi.fn().mockImplementation((callback) => {
+				callback()
+				return { dispose: vi.fn() }
+			}),
+			onDidChangeVisibility: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
+		} as unknown as vscode.WebviewView
+
+		provider = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+
+		// Mock getMcpHub method
+		provider.getMcpHub = vi.fn().mockReturnValue({
+			listTools: vi.fn().mockResolvedValue([]),
+			callTool: vi.fn().mockResolvedValue({ content: [] }),
+			listResources: vi.fn().mockResolvedValue([]),
+			readResource: vi.fn().mockResolvedValue({ contents: [] }),
+			getAllServers: vi.fn().mockReturnValue([]),
+		})
+	})
+
+	const cliSettings: CliModeProviderSettings = {
+		base: {
+			apiProvider: "openai",
+			openAiBaseUrl: "http://192.168.50.194:11111/v1",
+			openAiModelId: "GLM-5.3-Flash-NVFP4",
+			enableReasoningEffort: true,
+			reasoningEffort: "max",
+		},
+		modes: {
+			architect: {
+				apiProvider: "openai",
+				openAiBaseUrl: "http://192.168.50.194:11111/v1",
+				openAiModelId: "GLM-5.3-NVFP4",
+				enableReasoningEffort: true,
+				reasoningEffort: "high",
+			},
+		},
+	}
+
+	beforeEach(async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+	})
+
+	describe("handleModeSwitch", () => {
+		it("applies the mode's CLI settings and never consults the profile store", async () => {
+			provider.setCliModeProviderSettings(cliSettings)
+			const getModeConfigIdSpy = vi.spyOn(provider.providerSettingsManager, "getModeConfigId")
+			const setModeConfigSpy = vi.spyOn(provider.providerSettingsManager, "setModeConfig")
+			const activateSpy = vi.spyOn(provider, "activateProviderProfile")
+
+			await provider.handleModeSwitch("architect")
+
+			expect(provider.contextProxy.getProviderSettings()).toMatchObject(cliSettings.modes.architect)
+			expect(getModeConfigIdSpy).not.toHaveBeenCalled()
+			expect(setModeConfigSpy).not.toHaveBeenCalled()
+			expect(activateSpy).not.toHaveBeenCalled()
+		})
+
+		it("falls back to the base settings for a mode without its own entry", async () => {
+			provider.setCliModeProviderSettings(cliSettings)
+
+			await provider.handleModeSwitch("architect")
+			await provider.handleModeSwitch("debug")
+
+			expect(provider.contextProxy.getProviderSettings()).toMatchObject(cliSettings.base)
+		})
+
+		it("clears a setting the new mode leaves out instead of carrying it over", async () => {
+			provider.setCliModeProviderSettings({
+				base: { apiProvider: "openai", openAiModelId: "GLM-5.3-Flash-NVFP4" },
+				modes: { architect: cliSettings.modes.architect },
+			})
+
+			await provider.handleModeSwitch("architect")
+			await provider.handleModeSwitch("code")
+
+			const settings = provider.contextProxy.getProviderSettings()
+			expect(settings.openAiModelId).toBe("GLM-5.3-Flash-NVFP4")
+			expect(settings.reasoningEffort).toBeUndefined()
+			expect(settings.openAiBaseUrl).toBeUndefined()
+		})
+
+		it("rebuilds the current task's API handler with the new mode's settings", async () => {
+			provider.setCliModeProviderSettings(cliSettings)
+			const task = {
+				taskId: "t1",
+				emit: vi.fn(),
+				updateApiConfiguration: vi.fn(),
+				apiConfiguration: cliSettings.base,
+			}
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(task as never)
+			vi.spyOn(provider as never, "getTaskHistoryStore").mockResolvedValue({
+				get: vi.fn(),
+				getAll: vi.fn(() => []),
+			} as never)
+
+			await provider.handleModeSwitch("architect")
+
+			expect(task.updateApiConfiguration).toHaveBeenCalledWith(cliSettings.modes.architect)
+		})
+
+		it("keeps the profile-store behaviour when the CLI sent nothing", async () => {
+			const getModeConfigIdSpy = vi
+				.spyOn(provider.providerSettingsManager, "getModeConfigId")
+				.mockResolvedValue("architect-profile-id")
+
+			await provider.handleModeSwitch("architect")
+
+			expect(getModeConfigIdSpy).toHaveBeenCalledWith("architect")
+		})
+	})
+
+	describe("getApiConfigurationForMode", () => {
+		it("returns the mode's CLI settings, else the base settings", async () => {
+			provider.setCliModeProviderSettings(cliSettings)
+			const getModeConfigIdSpy = vi.spyOn(provider.providerSettingsManager, "getModeConfigId")
+
+			expect((await provider.getApiConfigurationForMode("architect"))?.apiConfiguration).toBe(
+				cliSettings.modes.architect,
+			)
+			expect((await provider.getApiConfigurationForMode("ask"))?.apiConfiguration).toBe(cliSettings.base)
+			expect(getModeConfigIdSpy).not.toHaveBeenCalled()
+		})
+	})
+
+	describe("createTaskWithHistoryItem", () => {
+		const previousCliRuntime = process.env.ROO_CLI_RUNTIME
+
+		afterEach(() => {
+			if (previousCliRuntime === undefined) {
+				delete process.env.ROO_CLI_RUNTIME
+			} else {
+				process.env.ROO_CLI_RUNTIME = previousCliRuntime
+			}
+		})
+
+		it("resumes a task with the provider settings of its own mode", async () => {
+			process.env.ROO_CLI_RUNTIME = "1"
+			provider.setCliModeProviderSettings(cliSettings)
+
+			const historyItem: HistoryItem = {
+				id: "resumed-task",
+				number: 1,
+				ts: Date.now(),
+				task: "Plan the refactor",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				mode: "architect",
+				apiConfigName: "default-profile",
+			}
+
+			await provider.createTaskWithHistoryItem(historyItem)
+
+			expect(provider.contextProxy.getProviderSettings()).toMatchObject(cliSettings.modes.architect)
+		})
+	})
+})
