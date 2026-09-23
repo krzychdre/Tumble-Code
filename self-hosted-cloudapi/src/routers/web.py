@@ -232,22 +232,43 @@ def _tree_entries(tree: dict[str, list[Task]], task_id: str) -> list[dict]:
     ]
 
 
-def _run_summary(task: Task, tree: dict[str, list[Task]]) -> Optional[dict]:
-    """The subtask panel's headline: what the whole run cost, and how it splits.
+def _spend_row(key: str, label: str, spend: Spend) -> dict:
+    return {
+        "key": key,
+        "label": label,
+        "tokens": fmt_tokens(spend.tokens),
+        "tokens_in": fmt_tokens(spend.tokens_in),
+        "tokens_out": fmt_tokens(spend.tokens_out),
+        "cost": f"${spend.cost:.4f}",
+    }
 
-    None for a task with no subtasks, which has no run beyond itself.
+
+def _spend_summary(task: Task, tree: dict[str, list[Task]]) -> dict:
+    """The task page's one account of what was spent: the run, then its parts.
+
+    The page used to show three kinds of figure with nothing saying which: the
+    header was this task's own conversation ($0.1656 on the ADO run), the
+    subtask panel's header the whole run ($1.4090), the quality panel's cost per
+    turn this task again. The list shows the run. So the top of the page now
+    states the run as the list does and splits it into this task and its
+    subtasks; every other figure on the page is visibly one of those parts.
+
+    A task with no subtasks is its own run: one row. ``subtasks`` is what the
+    live header adds to this task's live figures to keep the run row current.
     """
-    subtasks = subtree_size(tree, task.id)
-    if not subtasks:
-        return None
     own = Spend.of(task)
+    count = subtree_size(tree, task.id)
+    if not count:
+        return {"rows": [_spend_row("own", "this task", own)], "subtasks": None}
     total = subtree_spend(tree, task)
     rest = total - own
     return {
-        "cost": f"${total.cost:.4f}",
-        "own_cost": f"${own.cost:.4f}",
-        "subtasks_cost": f"${rest.cost:.4f}",
-        "tokens": fmt_tokens(total.tokens),
+        "rows": [
+            _spend_row("run", "whole run", total),
+            _spend_row("own", "this task", own),
+            _spend_row("subtasks", _plural(count, "subtask"), rest),
+        ],
+        "subtasks": rest,
     }
 
 
@@ -640,6 +661,15 @@ async def task_detail(
     # The whole tree beneath this task, not only its direct children: a
     # subtask that delegated further is otherwise a dead end until opened.
     tree = await subtrees(db, [task_id], user["user_id"])
+    spend = _spend_summary(task, tree)
+    live_config = {"taskId": task_id, "bridgePath": settings.bridge_path}
+    if spend["subtasks"]:
+        rest = spend["subtasks"]
+        live_config["subtasks"] = {
+            "tokensIn": rest.tokens_in,
+            "tokensOut": rest.tokens_out,
+            "cost": rest.cost,
+        }
     return templates.TemplateResponse(
         request,
         "task_detail.html",
@@ -649,7 +679,7 @@ async def task_detail(
             "ancestors": [_tree_entry(t) for t in trail],
             "subtasks": _tree_entries(tree, task_id),
             "subtask_count": subtree_size(tree, task_id),
-            "run": _run_summary(task, tree),
+            "spend_table": spend,
             "quality": _quality_panel(task),
             # The stored title is authoritative; deriving it again is only a
             # fallback for a row written before the summary columns existed and
@@ -665,7 +695,7 @@ async def task_detail(
             # A conversation is prose, so the page switches to the reading
             # measure instead of the wider scanning column the list uses.
             "read_measure": True,
-            "live_config_json": json.dumps({"taskId": task_id, "bridgePath": settings.bridge_path}),
+            "live_config_json": json.dumps(live_config),
         },
     )
 
@@ -923,6 +953,9 @@ async def shared_task(
             **await _model_context(db, task_id, messages),
             "share_url": share.share_url,
             "live": live,
+            # The live header's figures, for the owner only, as before: a
+            # reader of a shared link is shown the conversation, not its bill.
+            "spend_table": _spend_summary(task, {}) if live and task is not None else None,
             "can_delete": is_owner,
             "read_measure": True,
             "live_config_json": (

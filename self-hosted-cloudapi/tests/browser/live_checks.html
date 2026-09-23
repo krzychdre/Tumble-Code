@@ -8,14 +8,20 @@
   the rendered conversation are stubbed, so each scenario loads live.js afresh
   against its own fake socket.
 -->
-<div class="live-header">
-  <span id="live-status" class="live-status">Connecting…</span>
-  <span id="live-activity" class="live-activity" style="display:none"></span>
-  <span class="live-stat">mode <b id="hdr-mode">&#8212;</b></span>
-  <span class="live-stat">in <b id="hdr-tokens-in">&#8212;</b> / out <b id="hdr-tokens-out">&#8212;</b></span>
-  <span class="live-stat">context <b id="hdr-context">&#8212;</b></span>
-  <span class="live-stat" id="hdr-cost-wrap">cost <b id="hdr-cost">&#8212;</b></span>
-</div>
+<section class="task-stats panel">
+  <div class="live-line">
+    <span id="live-status" class="live-status">Connecting…</span>
+    <span id="live-activity" class="live-activity" style="display:none"></span>
+    <span class="live-stat">mode <b id="hdr-mode">&#8212;</b></span>
+    <span class="live-stat">context <b id="hdr-context">&#8212;</b></span>
+  </div>
+  <!-- As rendered for a task with subtasks, from the stored figures. -->
+  <table class="spend-table"><tbody>
+    <tr class="spend-run"><th>whole run</th><td id="hdr-run-tokens">3.4M</td><td id="hdr-run-in">3.3M</td><td id="hdr-run-out">60.1k</td><td id="hdr-run-cost">$1.4090</td></tr>
+    <tr class="spend-own"><th>this task</th><td id="hdr-own-tokens">303.7k</td><td id="hdr-own-in">297.8k</td><td id="hdr-own-out">5.9k</td><td id="hdr-own-cost">$0.1656</td></tr>
+    <tr class="spend-subtasks"><th>2 subtasks</th><td id="hdr-subtasks-tokens">3.1M</td><td id="hdr-subtasks-in">3M</td><td id="hdr-subtasks-out">54.2k</td><td id="hdr-subtasks-cost">$1.2434</td></tr>
+  </tbody></table>
+</section>
 <div id="live-controls" class="live-controls offline">
   <input id="auto-enabled" type="checkbox">
   <select id="auto-mode"><option value="default">default</option><option value="bypass">bypass</option></select>
@@ -27,7 +33,8 @@
   <button id="btn-stop" type="button" style="display:none">Stop</button>
   <button id="btn-resume" type="button">Resume</button>
 </div>
-<script id="live-config" type="application/json">{"taskId": "task-a", "bridgePath": "/bridge/socket.io"}</script>
+<script id="live-config" type="application/json">{"taskId": "task-a", "bridgePath": "/bridge/socket.io",
+  "subtasks": {"tokensIn": 3000000, "tokensOut": 54200, "cost": 1.2434}}</script>
 <script>
 // What the saved conversation of task-a adds up to (render.js getMetrics).
 window.__tumbleConversation = {
@@ -65,7 +72,11 @@ window.addEventListener("load", function () {
   function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
   function text(id) { return document.getElementById(id).textContent }
   function reset() {
-    ;["hdr-mode", "hdr-tokens-in", "hdr-tokens-out", "hdr-context", "hdr-cost"].forEach(function (id) {
+    ;["hdr-mode", "hdr-context"].concat(
+      ["run", "own"].reduce(function (ids, row) {
+        return ids.concat(["tokens", "in", "out", "cost"].map(function (col) { return "hdr-" + row + "-" + col }))
+      }, [])
+    ).forEach(function (id) {
       document.getElementById(id).textContent = "\u2014"
     })
     document.querySelectorAll("#live-controls input[type=checkbox]").forEach(function (b) { b.checked = false })
@@ -103,19 +114,25 @@ window.addEventListener("load", function () {
     // is its registration only (userId, workspacePath, lastHeartbeat).
     { success: true, instanceOnline: true, instance: { userId: "u1", workspacePath: "/w", lastHeartbeat: 1 } },
     function () {
-      check("registration only: tokens in stay the conversation's", text("hdr-tokens-in") === "297.8k")
-      check("registration only: tokens out stay the conversation's", text("hdr-tokens-out") === "5.9k")
+      check("registration only: tokens in stay the conversation's", text("hdr-own-in") === "297.8k")
+      check("registration only: tokens out stay the conversation's", text("hdr-own-out") === "5.9k")
       check("registration only: context stays the conversation's", text("hdr-context") === "32.2k")
-      check("registration only: cost stays the conversation's", text("hdr-cost") === "$0.1656")
+      check("registration only: cost stays the conversation's", text("hdr-own-cost") === "$0.1656")
+      // The run row is this task's figures plus what the subtasks stored.
+      check("run row: this task's total tokens are in plus out", text("hdr-own-tokens") === "303.7k")
+      check("run row: tokens in add the subtasks'", text("hdr-run-in") === "3.3M")
+      check("run row: cost adds the subtasks'", text("hdr-run-cost") === "$1.4090")
+      check("run row: total tokens add the subtasks'", text("hdr-run-tokens") === "3.4M")
     },
     function () {
       scenario(
         // The extension last reported on another task.
         { success: true, instanceOnline: true, instance: otherTask },
         function (sock) {
-          check("another task's snapshot: its tokens in are not shown", text("hdr-tokens-in") === "297.8k")
-          check("another task's snapshot: its tokens out are not shown", text("hdr-tokens-out") === "5.9k")
-          check("another task's snapshot: its cost is not shown", text("hdr-cost") === "$0.1656")
+          check("another task's snapshot: its tokens in are not shown", text("hdr-own-in") === "297.8k")
+          check("another task's snapshot: its tokens out are not shown", text("hdr-own-out") === "5.9k")
+          check("another task's snapshot: its cost is not shown", text("hdr-own-cost") === "$0.1656")
+          check("another task's snapshot: nor in the run row", text("hdr-run-cost") === "$1.4090")
           check("another task's snapshot: its context is not shown", text("hdr-context") === "32.2k")
           check("another task's snapshot: its mode is not shown", text("hdr-mode") === "\u2014")
           check("another task's snapshot: its running state does not offer Stop",
@@ -130,8 +147,8 @@ window.addEventListener("load", function () {
           // A relayed snapshot of THIS task without figures (a mode switch)
           // must not blank the figures already shown.
           sock.fire("task:relayed_event", { type: "instanceState", taskId: "task-a", mode: "ask", isRunning: false })
-          check("a snapshot without figures keeps tokens in", text("hdr-tokens-in") === "297.8k")
-          check("a snapshot without figures keeps tokens out", text("hdr-tokens-out") === "5.9k")
+          check("a snapshot without figures keeps tokens in", text("hdr-own-in") === "297.8k")
+          check("a snapshot without figures keeps tokens out", text("hdr-own-out") === "5.9k")
           check("a snapshot without figures keeps the context", text("hdr-context") === "32.2k")
           check("a snapshot without figures still sets the mode", text("hdr-mode") === "ask")
         },
@@ -151,9 +168,13 @@ window.addEventListener("load", function () {
               },
             },
             function () {
-              check("this task's snapshot: tokens in", text("hdr-tokens-in") === "310k")
-              check("this task's snapshot: tokens out", text("hdr-tokens-out") === "6.1k")
-              check("this task's snapshot: cost", text("hdr-cost") === "$0.1702")
+              check("this task's snapshot: tokens in", text("hdr-own-in") === "310k")
+              check("this task's snapshot: tokens out", text("hdr-own-out") === "6.1k")
+              check("this task's snapshot: cost", text("hdr-own-cost") === "$0.1702")
+              check("this task's snapshot: the run row follows it",
+                    text("hdr-run-cost") === "$1.4136" && text("hdr-run-in") === "3.3M")
+              check("this task's snapshot: the subtasks row is left as rendered",
+                    text("hdr-subtasks-cost") === "$1.2434")
               check("this task's snapshot: context against the window", text("hdr-context") === "33k / 200k")
               check("this task's snapshot: mode", text("hdr-mode") === "code")
               check("this task's snapshot: running offers Stop",

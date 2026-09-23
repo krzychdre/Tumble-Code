@@ -144,7 +144,6 @@ a:hover {
 .stat-card,
 .chart-card,
 .breakdown-card,
-.live-header,
 .live-controls {
 	background: var(--surface-1);
 	border: 1px solid var(--line);
@@ -845,6 +844,12 @@ textarea::placeholder {
 	font-size: var(--t-micro);
 	color: var(--text-faint);
 }
+/* Which part of the run the panel describes, on a task that has subtasks. */
+.quality-scope {
+	margin: calc(-1 * var(--s2)) 0 var(--s3);
+	font-size: var(--t-micro);
+	color: var(--text-faint);
+}
 
 /* Four across, so eight signals form two even rows rather than a row of seven
    and an orphan. Two across once the column narrows. */
@@ -1317,22 +1322,6 @@ textarea::placeholder {
 .rollup-mark {
 	color: var(--text-faint);
 	margin-right: 0.25em;
-}
-.run-total {
-	margin-left: auto;
-	font-family: var(--mono);
-	font-size: var(--t-micro);
-	font-weight: 400;
-	text-transform: none;
-	letter-spacing: 0;
-	color: var(--text-dim);
-}
-.run-total b {
-	color: var(--d-cost);
-	font-weight: 600;
-}
-.run-split {
-	color: var(--text-faint);
 }
 .subtask-link:hover {
 	text-decoration: none;
@@ -1840,16 +1829,68 @@ details.env-details > pre {
    Live remote control
    ========================================================================== */
 
-.live-header {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--s2) var(--s5);
-	padding: var(--s2) var(--s4);
+/* What the task spent, and while it runs, what it is doing. */
+.task-stats {
+	padding: var(--s2) var(--s4) var(--s3);
 	margin-bottom: var(--s4);
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-faint);
+}
+.live-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--s2) var(--s5);
+	padding-bottom: var(--s2);
+	margin-bottom: var(--s2);
+	border-bottom: 1px solid var(--line);
+}
+
+/* The page's one account of what was spent: the run, then the parts it is
+   made of, indented under it like the rows of a subtotal. Figures right-aligned
+   in their own columns so the parts can be read down against the whole. */
+.spend-table {
+	border-collapse: collapse;
+}
+.spend-table th,
+.spend-table td {
+	padding: 2px 0 2px var(--s5);
+	text-align: right;
+	white-space: nowrap;
+}
+.spend-table thead th {
+	font-size: var(--t-label);
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.09em;
+}
+.spend-table tbody th {
+	padding-left: 0;
+	text-align: left;
+	font-weight: 400;
+	color: var(--text-dim);
+}
+.spend-table td {
+	color: var(--text);
+}
+.spend-table .spend-cost {
+	color: var(--d-cost);
+}
+.spend-own th,
+.spend-subtasks th {
+	padding-left: var(--s4);
+}
+.spend-run th,
+.spend-run td {
+	color: var(--text);
+	font-weight: 600;
+}
+.spend-run .spend-cost {
+	color: var(--d-cost);
+}
+.spend-subtasks a {
+	color: inherit;
 }
 .live-stat b {
 	color: var(--text);

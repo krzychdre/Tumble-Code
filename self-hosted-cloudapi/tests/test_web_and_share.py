@@ -624,6 +624,8 @@ async def test_shared_page_anonymous_never_renders_live_controls(
     body = resp.text
     assert 'id="live-controls"' not in body
     assert "/static/live.js" not in body
+    # Nor what the task cost: a reader of a shared link gets the conversation.
+    assert 'class="spend-table"' not in body
 
 
 async def test_shared_owner_gets_live_controls(
@@ -664,6 +666,8 @@ async def test_shared_owner_gets_live_controls(
     assert '"taskId": "task-own-live"' in body
     # The owner driving their own task is not "read-only".
     assert "read-only" not in body
+    # The live header's figures are there for live.js to keep current.
+    assert 'id="hdr-own-cost"' in body
 
 
 async def test_delete_task_removes_task_messages_and_share(
@@ -2400,7 +2404,26 @@ async def test_the_run_hover_separates_the_task_from_its_subtasks(
     assert "This task" not in leaf and "With its" not in leaf
 
 
-async def test_the_task_page_states_the_run_total(client, db_session, session_factory):
+def _cell(page: str, cell_id: str) -> str:
+    """The text of one cell of the task page's spend table."""
+    start = page.index(">", page.index(f'id="{cell_id}"')) + 1
+    return page[start : page.index("<", start)]
+
+
+def _live_config(page: str) -> dict:
+    """What the task page hands live.js."""
+    start = page.index(">", page.index('<script id="live-config"')) + 1
+    return json.loads(page[start : page.index("</script>", start)])
+
+
+async def test_the_task_page_states_the_run_total(client, db_session, session_factory, monkeypatch):
+    """The page showed this task's own $0.1656 at the top and the run's $1.4090
+    in the subtask panel's header, with nothing saying which was which, while
+    the list showed $1.4090 for the same row. The top now states the run as the
+    list does, then this task and its subtasks as its parts."""
+    from config.settings import settings as app_settings
+
+    monkeypatch.setattr(app_settings, "bridge_enabled", True)
     await _seed_user(db_session)
     await _seed_priced_run(session_factory)
 
@@ -2411,13 +2434,32 @@ async def test_the_task_page_states_the_run_total(client, db_session, session_fa
     finally:
         client.app.dependency_overrides.pop(get_web_user_optional, None)
 
-    assert "run <b>$2.0000</b> · 9.9k tok" in page
-    assert "= this task $0.2500 + subtasks $1.7500" in page
-    # The panel's own rows follow the same rule as the list.
+    # The run first, then its parts, which add up to it.
+    order = [page.index(f'class="spend-{row}"') for row in ("run", "own", "subtasks")]
+    assert order == sorted(order)
+    assert (_cell(page, "hdr-run-cost"), _cell(page, "hdr-run-tokens")) == ("$2.0000", "9.9k")
+    assert (_cell(page, "hdr-run-in"), _cell(page, "hdr-run-out")) == ("9k", "900")
+    assert (_cell(page, "hdr-own-cost"), _cell(page, "hdr-own-tokens")) == ("$0.2500", "1.1k")
+    assert (_cell(page, "hdr-subtasks-cost"), _cell(page, "hdr-subtasks-tokens")) == ("$1.7500", "8.8k")
+    # Every subtask beneath the run is counted, not only the direct ones.
+    assert '<a href="#subtasks">3 subtasks</a>' in page
+    # live.js keeps the run row current by adding the subtasks' part to this
+    # task's live figures, so it ships with the page.
+    assert _live_config(page)["subtasks"] == {"tokensIn": 8000, "tokensOut": 800, "cost": 1.75}
+
+    # The subtask panel no longer carries a second total; its rows keep the
+    # list's rule (a subtask with its own subtasks shows its subtree, marked).
+    assert "run-total" not in page
     assert '<span class="rollup-mark">Σ</span>$0.7500' in page
     assert '<span class="cell-num cell-cost">$1.0000</span>' in page
-    # A task with no subtasks has no panel and no run beyond itself.
-    assert 'class="run-total"' not in leaf_page
+    # The quality panel says which part it describes.
+    assert "This task's own conversation only" in page
+
+    # A task with no subtasks is its own run: one row, no split, no scope note.
+    assert (_cell(leaf_page, "hdr-own-cost"), _cell(leaf_page, "hdr-own-tokens")) == ("$0.2500", "1.1k")
+    assert 'class="spend-run"' not in leaf_page and 'class="spend-subtasks"' not in leaf_page
+    assert "own conversation only" not in leaf_page
+    assert "subtasks" not in _live_config(leaf_page)
 
 
 def test_subtree_spend_adds_every_level_and_nothing_else():

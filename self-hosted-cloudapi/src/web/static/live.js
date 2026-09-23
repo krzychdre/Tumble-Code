@@ -30,11 +30,8 @@
 	var els = {
 		status: document.getElementById("live-status"),
 		activity: document.getElementById("live-activity"),
-		tokensIn: document.getElementById("hdr-tokens-in"),
-		tokensOut: document.getElementById("hdr-tokens-out"),
 		context: document.getElementById("hdr-context"),
 		mode: document.getElementById("hdr-mode"),
-		cost: document.getElementById("hdr-cost"),
 		input: document.getElementById("chat-input"),
 		send: document.getElementById("btn-send"),
 		stop: document.getElementById("btn-stop"),
@@ -68,6 +65,40 @@
 			}
 		}
 		return String(num)
+	}
+
+	// --- the spend table ------------------------------------------------------
+	// This task's figures as last known, and what its stored subtasks add to
+	// them. The subtasks' part is fixed at render (each subtask's own page is the
+	// live one), so the run row is always this task's current figures plus it.
+	var own = { tokensIn: null, tokensOut: null, cost: null }
+	var subtasks = cfg.subtasks || null
+
+	// A figure not known yet keeps what the server rendered.
+	function setCell(id, text) {
+		var el = document.getElementById(id)
+		if (el && text != null) el.textContent = text
+	}
+
+	function showRow(key, s) {
+		var both = s.tokensIn != null && s.tokensOut != null
+		setCell("hdr-" + key + "-tokens", both ? fmt(s.tokensIn + s.tokensOut) : null)
+		setCell("hdr-" + key + "-in", s.tokensIn != null ? fmt(s.tokensIn) : null)
+		setCell("hdr-" + key + "-out", s.tokensOut != null ? fmt(s.tokensOut) : null)
+		setCell("hdr-" + key + "-cost", s.cost != null ? "$" + Number(s.cost).toFixed(4) : null)
+	}
+
+	function showSpend() {
+		showRow("own", own)
+		if (!subtasks) return
+		function plus(a, b) {
+			return a == null ? null : a + (b || 0)
+		}
+		showRow("run", {
+			tokensIn: plus(own.tokensIn, subtasks.tokensIn),
+			tokensOut: plus(own.tokensOut, subtasks.tokensOut),
+			cost: plus(own.cost, subtasks.cost),
+		})
 	}
 
 	function setStatus(text, cls) {
@@ -115,9 +146,8 @@
 		var c = getConvo()
 		if (!c || !c.getMetrics) return
 		var mm = c.getMetrics()
-		if (els.tokensIn) els.tokensIn.textContent = fmt(mm.totalTokensIn)
-		if (els.tokensOut) els.tokensOut.textContent = fmt(mm.totalTokensOut)
-		if (els.cost) els.cost.textContent = mm.totalCost > 0 ? "$" + Number(mm.totalCost).toFixed(4) : "—"
+		own = { tokensIn: mm.totalTokensIn, tokensOut: mm.totalTokensOut, cost: mm.totalCost }
+		showSpend()
 		if (els.context) {
 			els.context.textContent = mm.contextTokens
 				? fmt(mm.contextTokens) + (lastContextWindow ? " / " + fmt(lastContextWindow) : "")
@@ -213,9 +243,10 @@
 		}
 		// A figure the snapshot does not carry keeps the value already shown: a
 		// snapshot with no token data says nothing about them, it does not zero them.
-		if (els.tokensIn && tu.totalTokensIn != null) els.tokensIn.textContent = fmt(tu.totalTokensIn)
-		if (els.tokensOut && tu.totalTokensOut != null) els.tokensOut.textContent = fmt(tu.totalTokensOut)
-		if (els.cost && tu.totalCost != null) els.cost.textContent = "$" + Number(tu.totalCost).toFixed(4)
+		if (tu.totalTokensIn != null) own.tokensIn = tu.totalTokensIn
+		if (tu.totalTokensOut != null) own.tokensOut = tu.totalTokensOut
+		if (tu.totalCost != null) own.cost = tu.totalCost
+		showSpend()
 		var ctx = s.contextTokens != null ? s.contextTokens : tu.contextTokens
 		if (els.context && ctx != null) {
 			els.context.textContent = fmt(ctx) + (s.contextWindow ? " / " + fmt(s.contextWindow) : "")
