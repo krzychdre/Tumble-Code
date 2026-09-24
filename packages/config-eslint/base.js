@@ -4,6 +4,8 @@ import turboPlugin from "eslint-plugin-turbo"
 import tseslint from "typescript-eslint"
 import onlyWarn from "eslint-plugin-only-warn"
 
+import { boundariesPlugin } from "./boundaries.js"
+
 /**
  * A shared ESLint configuration for the repository.
  *
@@ -28,6 +30,15 @@ export const config = [
 	},
 	{
 		ignores: ["dist/**"],
+	},
+	{
+		// PKG-2: a relative import must not leave its workspace; see boundaries.js.
+		plugins: {
+			boundaries: boundariesPlugin,
+		},
+		rules: {
+			"boundaries/no-relative-import-outside-package": "error",
+		},
 	},
 	{
 		rules: {

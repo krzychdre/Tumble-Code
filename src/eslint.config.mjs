@@ -23,6 +23,37 @@ export default [
 		},
 	},
 	{
+		// PKG-2: src/shared is bundled into the webview through the `@roo/*` alias
+		// (webview-ui/tsconfig.json, vite.config.ts), where `vscode` does not exist.
+		// The TEST-8 bundle guard is the runtime backstop.
+		files: ["shared/**/*.ts"],
+		ignores: [
+			// Specs run in the extension test environment and never reach the bundle.
+			"shared/**/__tests__/**",
+			// The webview imports this file today; CORE-R10 (with SVC-16) moves the
+			// vscode-bound parts out. Remove this entry when that lands.
+			"shared/modes.ts",
+			// Extension-only, never imported by the webview; SVC-16 / PKG-6 move them
+			// out of src/shared.
+			"shared/cloud-urls.ts",
+			"shared/vsCodeSelectorUtils.ts",
+		],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					paths: [
+						{
+							name: "vscode",
+							message:
+								"src/shared is bundled into the webview, where the vscode module does not exist. Keep vscode-bound code outside src/shared.",
+						},
+					],
+				},
+			],
+		},
+	},
+	{
 		files: ["__mocks__/**/*.js"],
 		rules: {
 			"no-undef": "off",

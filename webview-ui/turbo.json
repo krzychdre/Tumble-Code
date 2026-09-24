@@ -1,12 +1,29 @@
 {
 	"$schema": "https://turbo.build/schema.json",
 	"extends": ["//"],
+	// The webview compiles ../src/shared through the @roo/* alias, so those files are
+	// task inputs here until PKG-6 turns src/shared into a declared package.
 	"tasks": {
 		"build": {
-			"outputs": ["../src/webview-ui/**"]
+			"outputs": ["../src/webview-ui/**"],
+			"inputs": [
+				"src/**",
+				"package.json",
+				"tsconfig.json",
+				"tsup.config.ts",
+				"vite.config.ts",
+				"$TURBO_ROOT$/src/shared/**"
+			]
 		},
 		"build:nightly": {
-			"outputs": ["../apps/vscode-nightly/build/webview-ui/**"]
+			"outputs": ["../apps/vscode-nightly/build/webview-ui/**"],
+			"inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/src/shared/**"]
+		},
+		"check-types": {
+			"inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/src/shared/**"]
+		},
+		"test": {
+			"inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/src/shared/**"]
 		}
 	}
 }

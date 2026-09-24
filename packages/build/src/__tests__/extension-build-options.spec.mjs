@@ -7,7 +7,11 @@
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
+// This spec compares the build configs of two other workspaces on purpose
+// (DEF-C30), so it reaches them by path. PKG-2 boundary rule exemption.
+// eslint-disable-next-line boundaries/no-relative-import-outside-package
 import { createBuildOptions as createReleaseBuildOptions } from "../../../../src/esbuild.mjs"
+// eslint-disable-next-line boundaries/no-relative-import-outside-package
 import { createBuildOptions as createNightlyBuildOptions } from "../../../../apps/vscode-nightly/esbuild.mjs"
 
 const srcDir = path.resolve(import.meta.dirname, "../../../../src")
