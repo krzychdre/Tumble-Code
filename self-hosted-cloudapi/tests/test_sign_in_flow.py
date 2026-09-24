@@ -133,3 +133,75 @@ async def test_ticket_is_single_use(client, db_session):
         data={"strategy": "ticket", "ticket": ticket_code},
     )
     assert second.status_code == 401
+
+
+async def _sign_in(client, db_session, authentik_id: str, ticket_code: str):
+    """Seed a user with a session and a ticket, sign in, return (user id, session id, token).
+
+    Ids, not ORM objects: the tests expire the seeding session to re-read rows,
+    and touching an expired object's attribute outside the async context fails.
+    """
+    user = User(authentik_id=authentik_id, email=f"{authentik_id}@example.com")
+    db_session.add(user)
+    await db_session.flush()
+    session = SessionModel(user_id=user.id)
+    db_session.add(session)
+    await db_session.flush()
+    db_session.add(
+        Ticket(
+            code=ticket_code,
+            session_id=session.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+        )
+    )
+    await db_session.commit()
+    resp = client.post("/v1/client/sign_ins", data={"strategy": "ticket", "ticket": ticket_code})
+    assert resp.status_code == 200, resp.text
+    return user.id, session.id, (resp.headers.get("Authorization") or "").removeprefix("Bearer ")
+
+
+async def _session_is_active(db_session, session_id: str) -> bool:
+    from sqlalchemy import select
+
+    db_session.expire_all()
+    result = await db_session.execute(select(SessionModel.is_active).where(SessionModel.id == session_id))
+    return bool(result.scalar_one())
+
+
+# DEF-S6: POST /v1/client/sessions/{id}/remove ended whatever session the path
+# named, as long as the caller held any valid client token.
+
+
+async def test_logout_cannot_end_another_users_session(client, db_session):
+    _, _, alice_token = await _sign_in(client, db_session, "ak_alice", "ticket_alice")
+    _, bob_session_id, bob_token = await _sign_in(client, db_session, "ak_bob", "ticket_bob")
+
+    resp = client.post(
+        f"/v1/client/sessions/{bob_session_id}/remove",
+        data={"_is_native": "1"},
+        headers={"Authorization": f"Bearer {alice_token}"},
+    )
+
+    assert resp.status_code == 404, resp.text
+    assert await _session_is_active(db_session, bob_session_id)
+    # Bob is still signed in: his token still mints session JWTs.
+    still = client.post(
+        f"/v1/client/sessions/{bob_session_id}/tokens",
+        data={"_is_native": "1"},
+        headers={"Authorization": f"Bearer {bob_token}"},
+    )
+    assert still.status_code == 200, still.text
+
+
+async def test_logout_ends_own_session(client, db_session):
+    _, session_id, token = await _sign_in(client, db_session, "ak_carol", "ticket_carol")
+
+    resp = client.post(
+        f"/v1/client/sessions/{session_id}/remove",
+        data={"_is_native": "1"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert not await _session_is_active(db_session, session_id)
+
