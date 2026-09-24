@@ -1,0 +1,61 @@
+name: VS Code e2e (manual)
+
+# The apps/vscode-e2e suite: the extension in a real VS Code (downloaded by
+# @vscode/test-electron), under a virtual display. Started by hand only
+# (Actions tab, or `gh workflow run vscode-e2e.yml`), because most of the suite
+# needs a real model.
+#
+# No secrets are passed in, so only the tests that need no API key run:
+# - extension.test: the commands are registered;
+# - providers/zai.test: a Z.ai task answered by a fetch interceptor. It fails
+#   as of 2026-09-24: the task records the model's attempt_completion call but
+#   never runs it, so waitUntilCompleted times out after 30 s.
+# The suites that need OPENROUTER_API_KEY (task, modes, markdown-lists) skip
+# themselves, providers/deepseek-v4.test skips without DEEPSEEK_API_KEY, and the
+# tools/* and subtasks suites are skipped in the code (suite.skip).
+
+on:
+    workflow_dispatch:
+        inputs:
+            test_file:
+                description: "Run one test file only, e.g. extension.test (empty: all)"
+                required: false
+                default: ""
+            grep:
+                description: "Run only the tests whose title matches this pattern (empty: all)"
+                required: false
+                default: ""
+            vscode_version:
+                description: "VS Code version (empty: the oldest one the extension supports, engines.vscode)"
+                required: false
+                default: ""
+
+permissions:
+    contents: read
+
+jobs:
+    vscode-e2e:
+        runs-on: ubuntu-latest
+        timeout-minutes: 60
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+            # Usually preinstalled on ubuntu-latest; installing it keeps the job
+            # independent of the runner image.
+            - name: Install a virtual display
+              run: sudo apt-get update && sudo apt-get install -y xvfb
+            # The extension bundle (src/dist) and, as a dependency of the bundle
+            # task, the webview build it shows.
+            - name: Build the extension and the webview
+              run: pnpm turbo run bundle --filter=tumble-code
+            - name: Run the e2e suite
+              working-directory: apps/vscode-e2e
+              env:
+                  TEST_FILE: ${{ inputs.test_file }}
+                  TEST_GREP: ${{ inputs.grep }}
+                  VSCODE_VERSION: ${{ inputs.vscode_version }}
+              # xvfb-run gives VS Code (Electron) the X display it needs on a
+              # headless runner; -a picks a free display number.
+              run: xvfb-run -a pnpm test:run

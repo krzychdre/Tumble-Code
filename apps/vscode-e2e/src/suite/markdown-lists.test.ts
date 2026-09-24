@@ -3,10 +3,11 @@ import * as assert from "assert"
 import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
 
 import { waitUntilCompleted } from "./utils"
-import { setDefaultSuiteTimeout } from "./test-utils"
+import { requireOpenRouterKey, setDefaultSuiteTimeout } from "./test-utils"
 
 suite("Markdown List Rendering", function () {
 	setDefaultSuiteTimeout(this)
+	requireOpenRouterKey(this)
 
 	test("Should render unordered lists with bullets in chat", async () => {
 		const api = globalThis.api
