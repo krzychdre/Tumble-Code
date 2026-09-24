@@ -87,6 +87,10 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
 	Client: vi.fn(),
 }))
 
+vi.mock("@modelcontextprotocol/sdk/client/sse.js", () => ({
+	SSEClientTransport: vi.fn(),
+}))
+
 // Mock chokidar
 vi.mock("chokidar", () => ({
 	default: {
@@ -343,6 +347,76 @@ describe("McpHub", () => {
 			await expect(mcpHub.callTool("disabled-server", "test-tool", {})).rejects.toThrow(
 				"No connection found for server: disabled-server",
 			)
+		})
+	})
+
+	describe("SSE transport", () => {
+		it("connects without replacing the global EventSource and forwards the configured headers", async () => {
+			// The MCP SDK's SSEClientTransport imports its own EventSource from the
+			// `eventsource` package, so the extension has no reason to touch the global.
+			const globalRef = globalThis as { EventSource?: unknown }
+			const originalEventSource = globalRef.EventSource
+			const sentinel = function SentinelEventSource() {}
+			globalRef.EventSource = sentinel
+
+			const originalFetch = globalThis.fetch
+			const fetchSpy = vi.fn().mockResolvedValue(new Response(""))
+			globalThis.fetch = fetchSpy as unknown as typeof fetch
+
+			try {
+				const sseModule = await import("@modelcontextprotocol/sdk/client/sse.js")
+				const SSEClientTransport = sseModule.SSEClientTransport as unknown as ReturnType<typeof vi.fn>
+				SSEClientTransport.mockImplementation(() => ({
+					start: vi.fn().mockResolvedValue(undefined),
+					close: vi.fn().mockResolvedValue(undefined),
+					onerror: null,
+					onclose: null,
+				}))
+
+				const clientModule = await import("@modelcontextprotocol/sdk/client/index.js")
+				const Client = clientModule.Client as ReturnType<typeof vi.fn>
+				Client.mockImplementation(() => ({
+					connect: vi.fn().mockResolvedValue(undefined),
+					close: vi.fn().mockResolvedValue(undefined),
+					getInstructions: vi.fn().mockReturnValue(undefined),
+					request: vi.fn().mockResolvedValue({ tools: [], resources: [], resourceTemplates: [] }),
+				}))
+
+				vi.mocked(fs.readFile).mockResolvedValue(
+					JSON.stringify({
+						mcpServers: {
+							"sse-server": {
+								type: "sse",
+								url: "https://mcp.example.com/sse",
+								headers: { Authorization: "Bearer secret" },
+							},
+						},
+					}),
+				)
+
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await new Promise((resolve) => setTimeout(resolve, 100))
+
+				const connection = hub.connections.find((conn) => conn.server.name === "sse-server")
+				expect(connection?.type).toBe("connected")
+				expect(globalRef.EventSource).toBe(sentinel)
+
+				expect(SSEClientTransport).toHaveBeenCalledTimes(1)
+				const [url, options] = SSEClientTransport.mock.calls[0]
+				expect(String(url)).toBe("https://mcp.example.com/sse")
+				expect(options.requestInit.headers).toEqual({ Authorization: "Bearer secret" })
+				expect(options.eventSourceInit.withCredentials).toBe(true)
+
+				await options.eventSourceInit.fetch("https://mcp.example.com/sse", {
+					headers: { Accept: "text/event-stream" },
+				})
+				const sentHeaders = fetchSpy.mock.calls[0][1].headers as Headers
+				expect(sentHeaders.get("Authorization")).toBe("Bearer secret")
+				expect(sentHeaders.get("Accept")).toBe("text/event-stream")
+			} finally {
+				globalRef.EventSource = originalEventSource
+				globalThis.fetch = originalFetch
+			}
 		})
 	})
 
