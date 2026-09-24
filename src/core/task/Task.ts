@@ -225,6 +225,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	readonly metadata: TaskMetadata
 
 	todoList?: TodoItem[]
+	/**
+	 * The todo list shown in this task's pending update_todo_list approval
+	 * dialog, replaced by the user's edits (webview "updateTodoList" message)
+	 * until the approval settles. Kept per task (DEF-C3): parallel subagents
+	 * run update_todo_list at the same time as the foreground task.
+	 */
+	pendingTodoList?: TodoItem[]
 
 	readonly rootTask: Task | undefined = undefined
 	readonly parentTask: Task | undefined = undefined

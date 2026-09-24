@@ -1729,7 +1729,18 @@ export const webviewMessageHandler = async (
 			const payload = message.payload as { todos?: any[] }
 			const todos = payload?.todos
 			if (Array.isArray(todos)) {
-				await setPendingTodoList(todos)
+				// Route the edit to the task whose approval dialog it came from
+				// (DEF-C3): a parallel subagent may be waiting on its own
+				// update_todo_list approval at the same time. Without a taskId
+				// the edit belongs to the foreground task.
+				const currentTask = provider.getCurrentTask()
+				const task =
+					message.taskId === undefined || message.taskId === currentTask?.taskId
+						? currentTask
+						: provider.getBackgroundTask(message.taskId)
+				if (task) {
+					setPendingTodoList(task, todos)
+				}
 			}
 			break
 		}
