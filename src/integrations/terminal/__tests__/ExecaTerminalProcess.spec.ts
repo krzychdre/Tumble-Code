@@ -58,7 +58,10 @@ describe("ExecaTerminalProcess", () => {
 	})
 
 	describe("UTF-8 encoding fix", () => {
-		it("should set LANG and LC_ALL to en_US.UTF-8", async () => {
+		it("should set LANG and LC_ALL to en_US.UTF-8 when the host locale is not UTF-8", async () => {
+			delete process.env.LC_ALL
+			delete process.env.LC_CTYPE
+			process.env.LANG = "C"
 			await terminalProcess.run("echo test")
 			const execaMock = vitest.mocked(execa)
 			expect(execaMock).toHaveBeenCalledWith(
@@ -92,6 +95,25 @@ describe("ExecaTerminalProcess", () => {
 			const calledOptions = execaMock.mock.calls[0][0] as any
 			expect(calledOptions.env.LANG).toBe("en_US.UTF-8")
 			expect(calledOptions.env.LC_ALL).toBe("en_US.UTF-8")
+		})
+
+		it("should keep a UTF-8 host locale such as pl_PL.UTF-8", async () => {
+			delete process.env.LC_ALL
+			delete process.env.LC_CTYPE
+			process.env.LANG = "pl_PL.UTF-8"
+			await terminalProcess.run("echo test")
+			const calledOptions = vitest.mocked(execa).mock.calls[0][0] as any
+			expect(calledOptions.env.LANG).toBe("pl_PL.UTF-8")
+			expect(calledOptions.env.LC_ALL).toBeUndefined()
+		})
+
+		it("should keep a UTF-8 LC_ALL set on the host", async () => {
+			process.env.LC_ALL = "C.UTF-8"
+			process.env.LANG = "C"
+			await terminalProcess.run("echo test")
+			const calledOptions = vitest.mocked(execa).mock.calls[0][0] as any
+			expect(calledOptions.env.LC_ALL).toBe("C.UTF-8")
+			expect(calledOptions.env.LANG).toBe("C")
 		})
 
 		it("should use execaShellPath when set", async () => {
