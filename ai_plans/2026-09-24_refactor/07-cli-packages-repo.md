@@ -81,6 +81,13 @@ adds `createRequire`); `src` keeps `proper-lockfile` as a devDependency so `vi.m
 
 **Test first:** a lint fixture showing an escaping import is rejected. **Size** S.
 
+**Status (2026-09-24):** DONE in #266. Local rule `boundaries/no-relative-import-outside-package`
+(`packages/config-eslint/boundaries.js`, error level, nearest-`package.json` check, covers import/export/require/
+`vi.mock`), spec `boundaries.test.mjs`; `vscode` forbidden in `src/shared/**` except `modes.ts` (CORE-R10),
+`cloud-urls.ts` and `vsCodeSelectorUtils.ts` (SVC-16/PKG-6); webview declares `@roo-code/core` (knip-ignored until
+PKG-6); webview turbo inputs include `src/shared/**`. Open: `packages/build` test inputs miss the two esbuild.mjs
+files its spec reads; the vscode rule sees only direct imports.
+
 ### PKG-3 One esbuild configuration for release and nightly
 
 `apps/vscode-nightly/esbuild.mjs` (178 lines) is a hand copy of `src/esbuild.mjs` (156) and drifted (DEF-C30).
