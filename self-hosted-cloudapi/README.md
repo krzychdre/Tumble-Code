@@ -67,7 +67,6 @@ API_BASE_URL=https://app.tumblecode.dev
 AUTHENTIK_BASE_URL=https://auth.tumblecode.dev        # front-channel; also sent as Host on back-channel
 AUTHENTIK_INTERNAL_URL=http://auth_server:9000        # back-channel (in-cluster service name)
 AUTHENTIK_REDIRECT_URI=https://app.tumblecode.dev/auth/clerk/callback
-CORS_ORIGINS=https://app.tumblecode.dev
 AUTHENTIK_CLIENT_SECRET=<openssl rand -hex 32>        # REQUIRED: the provider is confidential
 ```
 
@@ -105,6 +104,13 @@ docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
   (it arrives from the compose network's gateway) are always allowed. Public
   share links (`/shared/<id>`) stay public; the extension API is not affected.
 - The startup log prints `Web panel open to: …` with the effective list.
+- Trusted web origins: `API_BASE_URL`, `WEB_PUBLIC_URL` and the extra entries
+  of `CORS_ORIGINS` (usually empty). Only these pages get a CORS grant, and
+  the live bridge refuses a browser connection from any other page (a page on
+  the address the request was sent to is accepted too). The extension connects
+  from Node without an `Origin` header and is not affected. `CORS_ORIGINS=*`
+  from an older `.env` is ignored with a startup warning; the startup log
+  prints `Trusted web origins: …`.
 - `./authentik/blueprints` is mounted into Authentik straight from the
   checkout, and Authentik re-applies the blueprint whenever the file changes.
   Checking out a revision without the `WEB_PUBLIC_URL` entry while the stack

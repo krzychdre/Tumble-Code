@@ -22,9 +22,9 @@ from typing import Optional
 import socketio
 from sqlalchemy import select
 
-from config.settings import settings
 from src.auth.jwt_issuer import decode_token
 from src.auth.network_access import client_allowed, scope_client
+from src.auth.origins import is_trusted_origin
 from src.auth.static_token import validate_static_token
 from src.auth.web_session import COOKIE_NAME, resolve_web_user
 from src.database import async_session_factory
@@ -51,12 +51,24 @@ EVT_MESSAGE = "message"
 EVT_INSTANCE_STATE = "instanceState"
 
 
+def _origin_allowed(origin: Optional[str], environ: Optional[dict] = None) -> bool:
+    """engine.io's Origin check: the trusted origins of src/auth/origins.py, or
+    the page's own address.
+
+    A browser sends the session cookie on a socket.io connection by itself, so
+    without this check any page could drive the reader's editor (DEF-S8).
+    engine.io only calls this when the handshake carries an ``Origin`` header;
+    the extension's does not (it connects from Node, see
+    tests/test_cors_origins.py), so it is never refused here.
+    """
+    host = (environ or {}).get("HTTP_HOST")
+    return is_trusted_origin(origin, host)
+
+
 def _create_server() -> socketio.AsyncServer:
-    origins = settings.cors_origins_list
     return socketio.AsyncServer(
         async_mode="asgi",
-        # "*" disables the Origin check; a concrete list restricts it.
-        cors_allowed_origins="*" if origins == ["*"] else origins,
+        cors_allowed_origins=_origin_allowed,
         logger=False,
         engineio_logger=False,
     )
