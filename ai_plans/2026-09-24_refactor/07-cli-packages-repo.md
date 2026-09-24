@@ -123,6 +123,13 @@ A small `packages/types` module `cli-runtime.ts` naming the environment variable
 (`vscode`, `__extensionHost`) with their types; the extension and the CLI read them through it. Documented in
 PKG-10. **Size** S.
 
+**Status (2026-09-24):** DONE in #270. `packages/types/src/cli-runtime.ts`: `CLI_RUNTIME_ENV` (6 variables:
+`ROO_CLI_RUNTIME`, `ROO_MCP_SETTINGS_PATH`, `ROO_CLI_CODEX_AUTH_ONLY`, `ROO_CLI_ROOT`, `ROO_EXTENSION_PATH`,
+`ROO_RIPGREP_PATH`), `readCliRuntimeEnv(env)`, `CLI_RUNTIME_GLOBAL_SLOTS` (`vscode`, `__extensionHost`),
+`setCliRuntimeGlobals`/`clearCliRuntimeGlobals`. `packages/vscode-shim` still reads the slots by literal name
+(do-not-touch; `CliExtensionHostSlot` mirrors its `IExtensionHost` by hand); `build.sh` and the integration scripts
+still use literal names.
+
 ### PKG-10 Architecture map
 
 `docs/architecture.md` (one page): the workspaces and what each owns, the allowed dependency directions (enforced
