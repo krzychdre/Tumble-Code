@@ -82,6 +82,11 @@ Move it and its test to `packages/core/src/fs/`; `src`, the CLI and agent-interc
 Export `createExtensionBuildOptions({nightly})` from `packages/build` and use it in both. **Test first:** nightly
 options include the release externals and alias. **Existing:** `packages/build` esbuild spec. **Size** S to M.
 
+**Status (2026-09-24):** already DONE in #245 together with DEF-C30 (`createExtensionBuildOptions` in `packages/build`,
+used by `src/esbuild.mjs` and `apps/vscode-nightly/esbuild.mjs`, spec `extension-build-options.spec.mjs`). Open
+follow-up for the owner: `bundle:nightly` runs without `--production` (never minified), and under `--production`
+the nightly turns sourcemaps off while the release keeps them.
+
 ### PKG-4 Pin every render-critical CLI dependency in the release
 
 `apps/cli/package.json` pins only `ink 6.6.0`; `createReleaseManifest` copies semver ranges and `install.sh:229` runs
