@@ -12,7 +12,7 @@ import { convertToOpenAiMessages } from "../transform/openai-format"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { RouterProvider } from "./router-provider"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
@@ -231,7 +231,7 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 
 			for await (const chunk of completion) {
 				const delta = chunk.choices[0]?.delta
-				const usage = chunk.usage as LiteLLMUsage
+				const usage = chunk.usage
 
 				const reasoningText = extractReasoningFromDelta(delta)
 				if (reasoningText) {
@@ -261,15 +261,14 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			}
 
 			if (lastUsage) {
-				// Extract cache-related information if available
-				// LiteLLM may use different field names for cache tokens
-				const cacheWriteTokens =
-					lastUsage.cache_creation_input_tokens || (lastUsage as any).prompt_cache_miss_tokens || 0
-				const cacheReadTokens =
-					lastUsage.prompt_tokens_details?.cached_tokens ||
-					(lastUsage as any).cache_read_input_tokens ||
-					(lastUsage as any).prompt_cache_hit_tokens ||
-					0
+				// LiteLLM mirrors every upstream cache name into the OpenAI shape
+				// (DeepSeek's `prompt_cache_hit_tokens` into `cached_tokens`, Anthropic's
+				// `cache_creation_input_tokens` into `cache_write_tokens`), so the shared
+				// reader covers it. DeepSeek's `prompt_cache_miss_tokens` is forwarded
+				// too but is ordinary input, never a cache write (DEF-C40).
+				const cacheTokens = openAiCacheTokens(lastUsage)
+				const cacheWriteTokens = cacheTokens.cacheWriteTokens ?? 0
+				const cacheReadTokens = cacheTokens.cacheReadTokens ?? 0
 
 				const { totalCost } = calculateApiCostOpenAI(
 					info,
@@ -337,9 +336,4 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			throw error
 		}
 	}
-}
-
-// LiteLLM usage may include an extra field for Anthropic use cases.
-interface LiteLLMUsage extends OpenAI.CompletionUsage {
-	cache_creation_input_tokens?: number
 }
