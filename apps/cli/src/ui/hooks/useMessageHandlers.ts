@@ -134,6 +134,9 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			}
 
 			if (say === "api_req_started") {
+				// Not a row, but it opens the next request to the model: the
+				// spinner times the current step from here.
+				useCLIStore.getState().markStepStarted(ts)
 				return
 			}
 

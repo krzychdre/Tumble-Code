@@ -1,7 +1,7 @@
 /**
  * Noise list for the loading spinner.
  *
- * The line renders as `{sound}… (esc to interrupt · 12s · ↓ 1.2K tokens)`, so
+ * The line renders as `{sound}… (esc to interrupt · total 2m 05s · step 12s · ↓ 1.2K tokens)`, so
  * the suffix already says that something is running. That frees the word from
  * having to be a verb at all: instead of reporting a sound ("Clunking"), the
  * line simply makes one ("Clunk"). Shorter, and the joke survives.
