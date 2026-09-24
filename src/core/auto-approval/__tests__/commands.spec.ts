@@ -185,6 +185,7 @@ describe("getCommandDecision - denied commands the splitter must not hide (DEF-S
 		["if/then body", "if true; then rm -rf x; fi", ["*"]],
 		["loop body", "for f in a; do rm $f; done", ["*"]],
 		["negation", "! rm -rf x", ["*"]],
+		["coproc", "coproc rm -rf x", ["*"]],
 		["function body", "f() { rm -rf x; }; f", ["*"]],
 		["quoted command name", "'r'm -rf x", ["*"]],
 		["escaped command name", "r\\m -rf x", ["*"]],

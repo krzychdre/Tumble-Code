@@ -58,6 +58,7 @@ const KEYWORDS_BEFORE_A_COMMAND = new Set([
 	"do",
 	"done",
 	"time",
+	"coproc",
 ])
 
 /** A function header written as one word, e.g. `deploy()`. */
