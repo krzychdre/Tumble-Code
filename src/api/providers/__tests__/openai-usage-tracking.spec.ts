@@ -235,4 +235,53 @@ describe("OpenAiHandler with usage tracking fix", () => {
 			expect(usageChunks).toHaveLength(0)
 		})
 	})
+
+	// DEF-C12: the O3 family path (handleStreamResponse) used to yield one
+	// usage chunk per stream chunk. TaskStreamProcessor adds usage chunks
+	// together, so a server that repeats its cumulative usage in every chunk
+	// (the default mock above: 2, 4, then 5 completion tokens) was billed
+	// 10 + 10 + 10 input and 2 + 4 + 5 output tokens instead of 10 and 5.
+	describe("usage metrics with streaming on the O3 family path", () => {
+		const systemPrompt = "You are a helpful assistant."
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+
+		let o3Handler: OpenAiHandler
+
+		beforeEach(() => {
+			o3Handler = new OpenAiHandler({ ...mockOptions, openAiModelId: "o3-mini" })
+		})
+
+		it("reports cumulative usage repeated in every chunk once, with the final values", async () => {
+			const chunks: any[] = []
+			for await (const chunk of o3Handler.createMessage(systemPrompt, messages)) {
+				chunks.push(chunk)
+			}
+
+			// The request really went through the streaming O3 path.
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({ model: "o3-mini", stream: true }),
+				expect.anything(),
+			)
+
+			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
+			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 10, outputTokens: 5 }])
+			expect(chunks[chunks.length - 1].type).toBe("usage")
+		})
+
+		it("yields no usage chunk when the stream carries no usage", async () => {
+			mockCreate.mockImplementationOnce(async () => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "Test response" }, index: 0 }], usage: null }
+					yield { choices: [{ delta: {}, index: 0 }], usage: null }
+				},
+			}))
+
+			const chunks: any[] = []
+			for await (const chunk of o3Handler.createMessage(systemPrompt, messages)) {
+				chunks.push(chunk)
+			}
+
+			expect(chunks.filter((chunk) => chunk.type === "usage")).toHaveLength(0)
+		})
+	})
 })
