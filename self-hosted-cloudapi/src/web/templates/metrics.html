@@ -177,7 +177,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script id="metrics-data" type="application/json">{{ chart_json | safe }}</script>
+<script id="metrics-data" type="application/json">{{ chart_json }}</script>
 {% if metrics.has_data %}
 <script src="/static/vendor/chart.umd.min.js"></script>
 <script src="/static/metrics.js?v={{ asset_v }}"></script>

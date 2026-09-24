@@ -58,6 +58,7 @@ from src.services.session_quality import (
 from src.services.task_summary import DEFAULT_TITLE, derive_title, duration_ms
 from src.services.task_tree import Spend, ancestors, subtree_size, subtree_spend, subtrees
 from src.utils.format import fmt_duration, fmt_tokens
+from src.utils.json_script import json_for_script
 from src.utils.pagination import page_window
 
 logger = logging.getLogger(__name__)
@@ -417,7 +418,9 @@ def _parse_messages(rows: list[TaskMessage]) -> list[dict]:
     return parsed
 
 
-async def _model_context(db: AsyncSession, task_id: str, messages: list[dict]) -> dict:
+async def _model_context(
+    db: AsyncSession, task_id: str, owner_id: Optional[str], messages: list[dict]
+) -> dict:
     """What answered, for one conversation: the rollup and the per-request map.
 
     Both come from the same indexed read of the task's ``LLM Completion``
@@ -427,7 +430,7 @@ async def _model_context(db: AsyncSession, task_id: str, messages: list[dict]) -
     verbatim copy of what the client sent, and derived data is not written back
     into it.
     """
-    completions = await completions_for_task(db, task_id)
+    completions = await completions_for_task(db, task_id, owner_id)
     return {
         "models": models_summary(completions),
         "models_label": models_label(completions),
@@ -435,7 +438,7 @@ async def _model_context(db: AsyncSession, task_id: str, messages: list[dict]) -
         # real models that are not turns, so they are named apart from the
         # conversation rather than mixed into it.
         "side_calls": side_calls_summary(completions),
-        "request_models_json": json.dumps(attribute_requests(messages, completions)),
+        "request_models_json": json_for_script(attribute_requests(messages, completions)),
     }
 
 
@@ -559,7 +562,7 @@ async def metrics_page(
             "metrics": metrics,
             "quality": quality,
             "periods": periods,
-            "chart_json": json.dumps(metrics["chart"]),
+            "chart_json": json_for_script(metrics["chart"]),
         },
     )
 
@@ -687,15 +690,15 @@ async def task_detail(
             "title": task.title or derive_title(messages),
             "workspace": task.workspace_path,
             "workspace_label": _workspace_label(task.workspace_path),
-            "messages_json": json.dumps(messages),
-            **await _model_context(db, task_id, messages),
+            "messages_json": json_for_script(messages),
+            **await _model_context(db, task_id, task.user_id, messages),
             "share_url": None,
             "live": live,
             "can_delete": True,
             # A conversation is prose, so the page switches to the reading
             # measure instead of the wider scanning column the list uses.
             "read_measure": True,
-            "live_config_json": json.dumps(live_config),
+            "live_config_json": json_for_script(live_config),
         },
     )
 
@@ -947,10 +950,12 @@ async def shared_task(
             "user": user,
             "task": {"id": task_id},
             "title": (task.title if task is not None else None) or derive_title(messages),
-            "messages_json": json.dumps(messages),
+            "messages_json": json_for_script(messages),
             # Provenance travels with the transcript: a reader of a shared run
             # should be able to see what produced it, not just what it said.
-            **await _model_context(db, task_id, messages),
+            **await _model_context(
+                db, task_id, task.user_id if task is not None else None, messages
+            ),
             "share_url": share.share_url,
             "live": live,
             # The live header's figures, for the owner only, as before: a
@@ -959,9 +964,9 @@ async def shared_task(
             "can_delete": is_owner,
             "read_measure": True,
             "live_config_json": (
-                json.dumps({"taskId": task_id, "bridgePath": settings.bridge_path})
+                json_for_script({"taskId": task_id, "bridgePath": settings.bridge_path})
                 if live
-                else "{}"
+                else json_for_script({})
             ),
         },
     )

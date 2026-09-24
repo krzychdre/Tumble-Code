@@ -181,14 +181,14 @@
     </div>
   </div>
 </div>
-<script id="live-config" type="application/json">{{ live_config_json | safe }}</script>
+<script id="live-config" type="application/json">{{ live_config_json }}</script>
 {% endif %}
 
-<script id="messages-data" type="application/json">{{ messages_json | safe }}</script>
+<script id="messages-data" type="application/json">{{ messages_json }}</script>
 {# Derived, not stored: message ts -> the model that answered that request.
    Kept apart from the messages so the stored payload stays a verbatim copy of
    what the client sent. #}
-<script id="request-models" type="application/json">{{ request_models_json | default('{}') | safe }}</script>
+<script id="request-models" type="application/json">{{ request_models_json | default("{}") }}</script>
 {% endblock %}
 {% block scripts %}
 <script src="/static/vendor/marked.min.js"></script>
