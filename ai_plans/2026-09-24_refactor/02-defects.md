@@ -270,3 +270,8 @@ where their files are disjoint; the coordinator merges in order.
   before `onIndexChange`; PickerSelect is controlled, so pin the parent contract first.
 - **Process note:** a merge watcher reported success after GitHub refused a merge with "Base branch was modified"
   (two merges at once). `/tmp/merge-when-green.sh` now retries and exits 0 only on MERGED; merges run as one queue.
+- **New finding DEF-C36 (model data, from DEF-C22):** `packages/types` gives glm-4.7, glm-4.6, glm-5 and glm-4.5
+  `maxTokens` 16,384 without `supportsMaxTokens`, while the Z.ai docs state 128K output (96K for glm-4.5); glm-4.5v
+  (16K) and glm-4.6v (32K) need checking too. Relates to the unmerged branch `feat/zai-model-refresh-glm-5-3`.
+  Also noted: `openai.ts` (~:701) sends `modelMaxTokens || modelInfo.maxTokens` when "include max tokens" is on;
+  intentional for custom models, left as is.
