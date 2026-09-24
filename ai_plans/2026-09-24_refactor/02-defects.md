@@ -275,3 +275,8 @@ where their files are disjoint; the coordinator merges in order.
   (16K) and glm-4.6v (32K) need checking too. Relates to the unmerged branch `feat/zai-model-refresh-glm-5-3`.
   Also noted: `openai.ts` (~:701) sends `modelMaxTokens || modelInfo.maxTokens` when "include max tokens" is on;
   intentional for custom models, left as is.
+- **New findings from DEF-C23 (PR #237):** DEF-C37 `deepseek.ts` (~:201) reads the nonexistent
+  `prompt_tokens_details.cache_miss_tokens` as cache writes (always undefined; a miss is not a write anyway).
+  DEF-C38 `openrouter.ts` streaming (~:514) ignores `cache_write_tokens` (cost stays right via the reported `cost`,
+  token display only). DEF-C39 `calculateApiCostOpenAI` prices reported writes at `cacheWritesPrice || 0`, so writes
+  on a model without a write price are free instead of input price (matters more now that more writes are read).
