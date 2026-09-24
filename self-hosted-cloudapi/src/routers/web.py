@@ -41,7 +41,7 @@ from src.services.model_attribution import (
     models_summary,
     side_calls_summary,
 )
-from src.services.retention_service import apply_sweep, get_policy, plan_sweep
+from src.services.retention_service import apply_sweep, get_policy, plan_sweep, read_policy
 from src.services.share_service import delete_shared_task, delete_tasks
 from src.services.metrics_service import (
     DEFAULT_PERIOD,
@@ -740,9 +740,10 @@ async def settings_page(
     if user is None:
         return RedirectResponse(url="/app/login", status_code=303)
 
-    policy = await get_policy(db, user["user_id"])
+    # read_policy, not get_policy: a GET must not write, so a user who has
+    # never saved a policy sees the unsaved default instead of getting a row.
+    policy = await read_policy(db, user["user_id"])
     plan = await plan_sweep(db, user["user_id"], policy)
-    await db.commit()
 
     return templates.TemplateResponse(
         request,
