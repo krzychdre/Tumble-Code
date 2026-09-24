@@ -458,16 +458,29 @@ describe("AI SDK conversion utilities", () => {
 			})
 		})
 
-		it("processes error chunks", () => {
-			const part = { type: "error" as const, error: new Error("Test error") }
-			const chunks = [...processAiSdkStreamPart(part)]
+		// DEF-C14: TaskStreamProcessor has no `error` case, so a yielded error
+		// chunk was silently ignored. Throwing routes it through the same
+		// retry/backoff paths every other provider's stream errors use.
+		it("throws the original Error for error parts", () => {
+			const error = Object.assign(new Error("Test error"), { statusCode: 429 })
+			const part = { type: "error" as const, error }
 
-			expect(chunks).toHaveLength(1)
-			expect(chunks[0]).toEqual({
-				type: "error",
-				error: "StreamError",
-				message: "Test error",
-			})
+			const consume = () => [...processAiSdkStreamPart(part)]
+
+			let thrown: unknown
+			try {
+				consume()
+			} catch (e) {
+				thrown = e
+			}
+
+			expect(thrown).toBe(error)
+		})
+
+		it("wraps non-Error error parts (in-band provider errors arrive as strings) in an Error", () => {
+			const part = { type: "error" as const, error: "engine overloaded" }
+
+			expect(() => [...processAiSdkStreamPart(part)]).toThrow(new Error("engine overloaded"))
 		})
 
 		it("ignores lifecycle events", () => {
