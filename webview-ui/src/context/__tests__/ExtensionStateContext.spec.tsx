@@ -68,6 +68,31 @@ describe("ExtensionStateContext", () => {
 		expect(JSON.parse(screen.getByTestId("sound-enabled").textContent!)).toBe(false)
 	})
 
+	// DEF-C25, owner decisions 4a and 4b: until the host posts its state, the
+	// webview must show the same defaults the host uses.
+	it("initializes the disputed settings to the decided host defaults", () => {
+		const DefaultsProbe = () => {
+			const { terminalShellIntegrationTimeout, soundEnabled, enableCheckpoints } = useExtensionState()
+			return (
+				<div data-testid="defaults">
+					{JSON.stringify({ terminalShellIntegrationTimeout, soundEnabled, enableCheckpoints })}
+				</div>
+			)
+		}
+
+		render(
+			<ExtensionStateContextProvider>
+				<DefaultsProbe />
+			</ExtensionStateContextProvider>,
+		)
+
+		expect(JSON.parse(screen.getByTestId("defaults").textContent!)).toEqual({
+			terminalShellIntegrationTimeout: 30_000,
+			soundEnabled: false,
+			enableCheckpoints: true,
+		})
+	})
+
 	it("initializes with showRooIgnoredFiles set to true", () => {
 		render(
 			<ExtensionStateContextProvider>

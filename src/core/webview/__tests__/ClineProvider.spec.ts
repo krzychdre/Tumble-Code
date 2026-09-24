@@ -980,6 +980,46 @@ describe("ClineProvider", () => {
 		expect(state.writeDelayMs).toBe(1000)
 	})
 
+	// DEF-C25, owner decisions 4a and 4b: a user who never touched these
+	// settings gets the same value from every host path.
+	describe("decided defaults for never-saved settings (DEF-C25)", () => {
+		const decided = {
+			terminalShellIntegrationTimeout: 30_000,
+			soundEnabled: false,
+			enableCheckpoints: true,
+		}
+		const pick = (state: Record<string, unknown>) => ({
+			terminalShellIntegrationTimeout: state.terminalShellIntegrationTimeout,
+			soundEnabled: state.soundEnabled,
+			enableCheckpoints: state.enableCheckpoints,
+		})
+
+		test("getState resolves the decided defaults", async () => {
+			;(mockContext.globalState.get as any).mockImplementation(() => undefined)
+			expect(pick(await provider.getState())).toEqual(decided)
+		})
+
+		test("the state posted to the webview carries the decided defaults", async () => {
+			;(mockContext.globalState.get as any).mockImplementation(() => undefined)
+			expect(pick((await provider.getStateToPostToWebview()) as any)).toEqual(decided)
+		})
+
+		test("the terminal starts with the decided shell integration timeout", () => {
+			expect(Terminal.defaultShellIntegrationTimeout).toBe(30_000)
+		})
+
+		test("resolveWebviewView applies the decided timeout to the terminal when none is saved", async () => {
+			const setTimeoutSpy = vi.spyOn(Terminal, "setShellIntegrationTimeout").mockImplementation(() => {})
+
+			await provider.resolveWebviewView(mockWebviewView)
+			// The hydration runs in a getState().then(...) callback, so flush microtasks.
+			await new Promise((resolve) => setImmediate(resolve))
+
+			expect(setTimeoutSpy).toHaveBeenCalledWith(30_000)
+			setTimeoutSpy.mockRestore()
+		})
+	})
+
 	test("handles writeDelayMs message", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
