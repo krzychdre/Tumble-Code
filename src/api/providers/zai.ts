@@ -103,18 +103,17 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 		const reasoningEffort = canDisableReasoning ? resolvedEffort : (resolvedEffort ?? info.reasoningEffort)
 		const useReasoning = !canDisableReasoning || reasoningEffort !== undefined
 
-		// Honor an explicit user override (the configurable max-output slider); otherwise
-		// fall back to getModelMaxOutputTokens, which clamps to 20% of the context window by
-		// default so GLM models don't over-reserve output budget.
+		// Shared rule, the same one the task uses to reserve output space: the max-output
+		// slider override is honored only on models that have the slider (supportsMaxTokens)
+		// and is capped at the model's own limit; otherwise the 20% context-window clamp
+		// applies. A stale override left over from another model never reaches the request.
 		const max_tokens =
-			this.options.modelMaxTokens ||
-			(getModelMaxOutputTokens({
+			getModelMaxOutputTokens({
 				modelId: model,
 				model: info,
 				settings: this.options,
 				format: "openai",
-			}) ??
-				undefined)
+			}) ?? undefined
 
 		const temperature = this.options.modelTemperature ?? this.defaultTemperature
 

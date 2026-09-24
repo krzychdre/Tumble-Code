@@ -6,7 +6,7 @@ import * as path from "path"
 
 import { type ModelInfo, type QwenCodeModelId, qwenCodeModels, qwenCodeDefaultModelId } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../shared/api"
+import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
@@ -233,7 +233,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 			messages: convertedMessages,
 			stream: true,
 			stream_options: { include_usage: true },
-			max_completion_tokens: model.info.maxTokens,
+			max_completion_tokens: this.getMaxOutputTokens(),
 			tools: this.convertToolsForOpenAI(metadata?.tools),
 			tool_choice: metadata?.tool_choice,
 			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
@@ -316,6 +316,17 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 		}
 	}
 
+	/**
+	 * Shared rule, the same one the task uses to reserve output space. A modelMaxTokens
+	 * value left over from another model or provider is never sent as is.
+	 */
+	private getMaxOutputTokens(): number | undefined {
+		const { id, info } = this.getModel()
+		return (
+			getModelMaxOutputTokens({ modelId: id, model: info, settings: this.options, format: "openai" }) ?? undefined
+		)
+	}
+
 	override getModel(): { id: string; info: ModelInfo } {
 		const id = this.options.apiModelId ?? qwenCodeDefaultModelId
 		const info = qwenCodeModels[id as keyof typeof qwenCodeModels] || qwenCodeModels[qwenCodeDefaultModelId]
@@ -334,7 +345,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 		const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 			model: model.id,
 			messages: [{ role: "user", content: prompt }],
-			max_completion_tokens: model.info.maxTokens,
+			max_completion_tokens: this.getMaxOutputTokens(),
 		}
 
 		const response = await this.callApiWithRetry(() => client.chat.completions.create(requestOptions))
