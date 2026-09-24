@@ -1,0 +1,100 @@
+// knip finds unused files, exports and dependencies. Every ignore entry below says
+// why knip cannot see the use on its own; remove an entry together with its reason.
+{
+	"$schema": "https://unpkg.com/knip@5/schema.json",
+	"ignore": [
+		// Test files run through vitest; knip only checks production code.
+		"**/__tests__/**",
+		// The e2e harness runs under mocha inside a VS Code test instance.
+		"apps/vscode-e2e/**",
+		// Standalone maintenance scripts, started by hand or from CI.
+		"scripts/**",
+		"apps/cli/scripts/**",
+		// Python service, not part of the pnpm workspace graph.
+		"self-hosted-cloudapi/**",
+		// Entry of the standalone MCP server bundle (packages/agent-interchange/esbuild.mjs).
+		"packages/agent-interchange/src/mcp/index.ts",
+	],
+	// Used by .husky/pre-commit together with the "lint-staged" block in package.json.
+	"ignoreDependencies": ["lint-staged"],
+	"ignoreExportsUsedInFile": true,
+	"workspaces": {
+		"src": {
+			"entry": ["extension.ts", "extension/api.ts", "workers/countTokens.ts"],
+			"project": ["**/*.ts", "!**/__tests__/**"],
+			"ignoreDependencies": [
+				// Types for the "vscode" module that the extension host provides at runtime.
+				"@types/vscode",
+				// Loaded with require() in services/ripgrep/internal/loadRipgrep.ts and kept
+				// external in the bundle (packages/build/src/extension.ts).
+				"@vscode/ripgrep",
+				// WASM transpiler copied into dist/bin by packages/build/src/esbuild.ts.
+				"esbuild-wasm",
+				// Alias target "punycode/" in packages/build/src/extension.ts.
+				"punycode",
+				// Grammar .wasm files copied into dist by packages/build/src/esbuild.ts.
+				"tree-sitter-wasms",
+				// Icon files copied into assets/ by src/esbuild.mjs.
+				"vscode-material-icons",
+			],
+		},
+		"webview-ui": {
+			"entry": ["src/index.tsx"],
+			"project": ["src/**/*.{ts,tsx}", "../src/shared/*.ts"],
+			"ignoreDependencies": [
+				// Babel plugin named as a string in vite.config.ts.
+				"babel-plugin-react-compiler",
+				// Stylesheet imported from src/index.css.
+				"katex",
+				// Runtime that babel-plugin-react-compiler injects into compiled components.
+				"react-compiler-runtime",
+				// Imported from src/index.css (@import and @plugin), which knip does not parse.
+				"tailwindcss",
+				"tailwindcss-animate",
+			],
+		},
+		"apps/cli": {
+			"project": ["src/**/*.ts", "src/**/*.tsx"],
+			"ignoreDependencies": [
+				// Binary copied into the release by apps/cli/scripts/build.sh; external in tsup.config.ts.
+				"@vscode/ripgrep",
+				// External in tsup.config.ts, so the CLI install must provide them; the importers
+				// live in src (utils/safeWriteJson.ts, core/task-persistence/TaskHistoryStore.ts).
+				"json-stream-stringify",
+				"proper-lockfile",
+			],
+		},
+		"packages/config-typescript": {
+			// vscode-library.json names vitest/globals; it resolves in the packages that extend it.
+			"ignoreUnresolved": ["vitest/globals"],
+		},
+		"packages/core": {
+			"project": ["src/**/*.ts"],
+		},
+		"packages/vscode-shim": {
+			"project": ["src/**/*.ts"],
+		},
+		"packages/cloud": {
+			"project": ["src/**/*.ts"],
+			// Types for the "vscode" module that the extension host provides at runtime.
+			"ignoreDependencies": ["@types/vscode"],
+		},
+		"packages/telemetry": {
+			"project": ["src/**/*.ts"],
+			// Types for the "vscode" module that the extension host provides at runtime.
+			"ignoreDependencies": ["@types/vscode"],
+		},
+		"packages/{build,types}": {
+			"project": ["src/**/*.ts"],
+		},
+	},
+	"rules": {
+		"classMembers": "off",
+		"duplicates": "warn",
+		"enumMembers": "warn",
+		"exports": "warn",
+		"nsExports": "warn",
+		"types": "warn",
+		"nsTypes": "warn",
+	},
+}

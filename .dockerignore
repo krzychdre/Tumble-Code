@@ -19,7 +19,7 @@ coverage/
 **/mock/
 
 # devtools
-knip.json
+knip.jsonc
 .husky/
 
 # monorepo

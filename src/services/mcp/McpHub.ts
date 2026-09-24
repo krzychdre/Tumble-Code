@@ -6,7 +6,6 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import ReconnectingEventSource from "reconnecting-eventsource"
 import {
 	CallToolResultSchema,
 	ListResourcesResultSchema,
@@ -821,9 +820,9 @@ export class McpHub {
 						headers: configInjected.headers,
 					},
 				}
-				// Configure ReconnectingEventSource options
-				const reconnectingEventSourceOptions = {
-					max_retry_time: 5000, // Maximum retry time in milliseconds
+				// Options for the EventSource the SDK creates itself (it imports it from
+				// the `eventsource` package, so no global override is needed).
+				const eventSourceInit = {
 					withCredentials: configInjected.headers?.["Authorization"] ? true : false, // Enable credentials if Authorization header exists
 					fetch: (url: string | URL, init: RequestInit) => {
 						const headers = new Headers({ ...(init?.headers || {}), ...(configInjected.headers || {}) })
@@ -833,10 +832,9 @@ export class McpHub {
 						})
 					},
 				}
-				global.EventSource = ReconnectingEventSource
 				transport = new SSEClientTransport(new URL(configInjected.url), {
 					...sseOptions,
-					eventSourceInit: reconnectingEventSourceOptions,
+					eventSourceInit,
 				})
 
 				// Set up SSE specific error handling
