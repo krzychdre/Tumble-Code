@@ -24,6 +24,7 @@ import type {
 	RooCodeSettings,
 	WebviewMessage,
 } from "@roo-code/types"
+import { CLI_RUNTIME_ENV, clearCliRuntimeGlobals, readCliRuntimeEnv, setCliRuntimeGlobals } from "@roo-code/types"
 import { createVSCodeAPI, IExtensionHost, ExtensionHostEventMap, setRuntimeConfigValues } from "@roo-code/vscode-shim"
 import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 
@@ -64,7 +65,7 @@ function findCliPackageRoot(): string {
 	return path.resolve(__dirname, "..")
 }
 
-const CLI_PACKAGE_ROOT = process.env.ROO_CLI_ROOT || findCliPackageRoot()
+const CLI_PACKAGE_ROOT = readCliRuntimeEnv(process.env).cliRoot || findCliPackageRoot()
 
 export interface ExtensionHostOptions {
 	mode: string
@@ -205,11 +206,11 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		this.options = options
 		// Mark this process as CLI runtime so extension code can apply
 		// CLI-specific behavior without affecting VS Code desktop usage.
-		this.setProcessEnv("ROO_CLI_RUNTIME", "1")
+		this.setProcessEnv(CLI_RUNTIME_ENV.runtime, "1")
 		// Global MCP servers come from the CLI's own file; the core reads the
 		// variable in src/services/mcp/mcpSettingsPath.ts, before activation
 		// is over, which is why it cannot wait for a webview message.
-		this.setProcessEnv("ROO_MCP_SETTINGS_PATH", options.mcpSettingsPath ?? getDefaultMcpSettingsPath())
+		this.setProcessEnv(CLI_RUNTIME_ENV.mcpSettingsPath, options.mcpSettingsPath ?? getDefaultMcpSettingsPath())
 
 		// Enable file-based debug logging only when --debug is passed.
 		if (options.debug) {
@@ -404,8 +405,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			appRoot: CLI_PACKAGE_ROOT,
 			storageDir,
 		})
-		;(global as Record<string, unknown>).vscode = this.vscode
-		;(global as Record<string, unknown>).__extensionHost = this
+		setCliRuntimeGlobals({ vscode: this.vscode, extensionHost: this })
 
 		// Set up module resolution.
 		const require = createRequire(import.meta.url)
@@ -637,8 +637,7 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		this.extensionAPI = null
 
 		// Clear globals.
-		delete (global as Record<string, unknown>).vscode
-		delete (global as Record<string, unknown>).__extensionHost
+		clearCliRuntimeGlobals()
 
 		// Restore console.
 		this.restoreConsole()

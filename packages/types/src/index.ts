@@ -1,6 +1,7 @@
 export * from "./api.js"
 export * from "./artifact-spill.js"
 export * from "./cli.js"
+export * from "./cli-runtime.js"
 export * from "./cloud.js"
 export * from "./codebase-index.js"
 export * from "./context-management.js"

@@ -1,6 +1,8 @@
 import path from "path"
 import fs from "fs"
 
+import { readCliRuntimeEnv } from "@roo-code/types"
+
 /**
  * Get the default path to the extension bundle.
  * This assumes the CLI is installed alongside the built extension.
@@ -9,9 +11,9 @@ import fs from "fs"
  */
 export function getDefaultExtensionPath(dirname: string): string {
 	// Check for environment variable first (set by install script)
-	if (process.env.ROO_EXTENSION_PATH) {
-		const envPath = process.env.ROO_EXTENSION_PATH
+	const envPath = readCliRuntimeEnv(process.env).extensionPath
 
+	if (envPath) {
 		if (fs.existsSync(path.join(envPath, "extension.js"))) {
 			return envPath
 		}

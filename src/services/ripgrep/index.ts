@@ -4,6 +4,8 @@ import * as readline from "readline"
 
 import * as vscode from "vscode"
 
+import { readCliRuntimeEnv } from "@roo-code/types"
+
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 import { fileExistsAtPath } from "../../utils/fs"
 /*
@@ -120,7 +122,7 @@ export function ripgrepCandidatePaths(vscodeAppRoot: string): readonly string[] 
  * Returns `undefined` when ripgrep cannot be located.
  */
 export async function getBinPath(vscodeAppRoot: string): Promise<string | undefined> {
-	const cliRipgrepPath = process.env.ROO_RIPGREP_PATH
+	const cliRipgrepPath = readCliRuntimeEnv(process.env).ripgrepPath
 	if (cliRipgrepPath && path.isAbsolute(cliRipgrepPath) && (await fileExistsAtPath(cliRipgrepPath))) {
 		return cliRipgrepPath
 	}
