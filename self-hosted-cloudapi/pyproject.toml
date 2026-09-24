@@ -13,14 +13,14 @@ dependencies = [
     "asyncpg>=0.30.0",
     "alembic>=1.14.0",
     "pydantic>=2.10.0",
-    "pydantic-settings>=2.7.0",
+    "pydantic-settings>=2.14.2",
     "python-jose[cryptography]>=3.3.0",
     "httpx>=0.28.0",
     "itsdangerous>=2.2.0",
     "slowapi>=0.1.9",
-    "python-multipart>=0.0.20",
+    "python-multipart>=0.0.31",
     "pyyaml>=6.0.2",
-    "starlette>=0.45.0",
+    "starlette>=1.3.1",
     "jinja2>=3.1.4",
     "python-socketio>=5.11.0",
 ]
@@ -40,6 +40,17 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.uv]
+# Floors for transitive dependencies with known advisories below them (DEP-5).
+# Constraints, not dependencies: they bound what `uv lock` may pick without
+# making these packages direct requirements of the service.
+constraint-dependencies = [
+    "anyio>=4.14.2",
+    "cryptography>=50.0.1",
+    "idna>=3.15",
+    "pyasn1>=0.6.4",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
