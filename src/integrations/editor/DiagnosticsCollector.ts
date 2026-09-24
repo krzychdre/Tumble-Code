@@ -4,7 +4,16 @@ import delay from "delay"
 import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
 
 import { diagnosticsToProblemsString, getNewDiagnostics } from "../diagnostics"
-import { Task } from "../../core/task/Task"
+
+/**
+ * The part of a task (Task) the collector reads: the provider's diagnostic
+ * settings. A narrow interface keeps this module off the Task class.
+ */
+export interface DiagnosticsTask {
+	readonly providerRef: WeakRef<{
+		getState(): Promise<{ includeDiagnosticMessages?: boolean; maxDiagnosticMessages?: number }>
+	}>
+}
 
 /**
  * Owns the pre/post-edit diagnostics capture and comparison flow.
@@ -20,9 +29,9 @@ import { Task } from "../../core/task/Task"
  */
 export class DiagnosticsCollector {
 	private cwd: string
-	private taskRef: WeakRef<Task>
+	private taskRef: WeakRef<DiagnosticsTask>
 
-	constructor(cwd: string, task: Task) {
+	constructor(cwd: string, task: DiagnosticsTask) {
 		this.cwd = cwd
 		this.taskRef = new WeakRef(task)
 	}
