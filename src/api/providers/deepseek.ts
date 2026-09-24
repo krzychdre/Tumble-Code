@@ -192,14 +192,20 @@ export class DeepSeekHandler extends OpenAiHandler {
 		}
 	}
 
-	// Override to handle DeepSeek's usage metrics, including caching.
+	// DeepSeek reports its prompt cache at the top level of `usage`:
+	// prompt_cache_hit_tokens + prompt_cache_miss_tokens = prompt_tokens (both
+	// required), with the hit count optionally mirrored in
+	// prompt_tokens_details.cached_tokens. There are no cache writes: a miss is
+	// ordinary input at the input price, so cacheWriteTokens stays undefined.
+	// https://api-docs.deepseek.com/api/create-chat-completion
 	protected override processUsageMetrics(usage: any, _modelInfo?: any): ApiStreamUsageChunk {
+		const hits = usage?.prompt_cache_hit_tokens ?? usage?.prompt_tokens_details?.cached_tokens
+
 		return {
 			type: "usage",
 			inputTokens: usage?.prompt_tokens || 0,
 			outputTokens: usage?.completion_tokens || 0,
-			cacheWriteTokens: usage?.prompt_tokens_details?.cache_miss_tokens,
-			cacheReadTokens: usage?.prompt_tokens_details?.cached_tokens,
+			cacheReadTokens: typeof hits === "number" ? hits : undefined,
 		}
 	}
 }
