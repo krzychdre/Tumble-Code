@@ -253,3 +253,8 @@ where their files are disjoint; the coordinator merges in order.
   `ClineProvider.ts` ~:1469) applies the profile's mistake limit but does not check the organization allow list.
 - **Owner action (from DEF-C29):** the fork has no `cli-v*` release yet (the CLI Release workflow never ran), so the
   fixed installer stops with "Could not find any CLI releases" until a first CLI release is published.
+- **DEF-C5:** DONE, merged 2026-09-24 as #224 (`a644fdd01`). The forced condense row now carries `condenseId`. The
+  plan's "forced-prune row" wording was off: `ContextPrune` has no id and rewind never links prune rows; the gap was
+  the forced condense row. Impact window: a rewind target between the Summary's ts (last API message + 1) and the
+  condense row kept the Summary, so the chat showed no condense while the model saw only the summary. Round-trip test
+  through the real `MessageManager` and `cleanupAfterTruncation`. Clone drift recorded as DEF-C33.
