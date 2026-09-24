@@ -257,7 +257,7 @@ terminal tests. **Size** M, medium risk. After DEF-C18.
 
 `shared/modes.ts` imports `vscode` (line 1) and core (line 12) but 8 webview files import it; `cloud-urls.ts` and
 `vsCodeSelectorUtils.ts` are also vscode-bound. Move the extension-only functions (`getAllModesWithPrompts` at 185,
-`getFullModeDetails` at 200) to `src/core`. Shared with CORE-R10; prerequisite for PKG-6. **Existing:** `modes`
+`getFullModeDetails` at 200) to `src/core`. Shared with CORE-R10; prerequisite for PKG-6. Measured during TEST-8 (2026-09-24): the webview build graph reaches `src/core/prompts/sections/custom-instructions.ts` and `src/services/roo-config/index.ts` through `src/shared/modes.ts` (Vite stubs their `path`, `fs/promises`, `os` imports); both render 0 characters, and the bundle guard warns about them on every build until this item removes the edge. Done means that warning is gone. **Existing:** `modes`
 (59). TEST-8 guards the bundle. **Size** S to M.
 
 ### SVC-17 DiffViewProvider remainder (low priority)

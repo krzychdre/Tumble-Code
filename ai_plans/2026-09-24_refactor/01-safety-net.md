@@ -6,6 +6,8 @@ developer's private `.env`. All items are size S and change tests, CI or test co
 
 ## TEST-1 Stabilize the load-sensitive tests
 
+**Status:** part 1 DONE, merged 2026-09-24 as #200 (`f8369264b`). Root cause measured: with React 19 and ink 6.6 a state-changing key re-renders in a scheduled task (about 13 ms idle), and the tests slept a fixed 10 or 200 ms; `extension.spec.ts` paid a one-off module-graph transform (1.2 s alone) in its first test. Fixed AutocompleteInput, McpPanel, SelectList (wait for the observable outcome) and extension.spec (warm-up in `beforeAll`); 0 failures in 20 runs with all 12 cores busy (before: about 1 in 12). Part 2 IN REVIEW as #207: `packages/agent-interchange` Windows timeouts are slow durable I/O, not a hang (the same test took 142 ms in one Windows run and 2,846 ms in another); testTimeout 30 s. Found on the way: DEF-C32 (SelectList picks the wrong item after rapid keys).
+
 **Evidence:**
 
 - `apps/cli/src/ui/components/autocomplete/__tests__/AutocompleteInput.test.tsx`: failed in the local full run
@@ -30,6 +32,8 @@ expect(lastFrame()).toContain(...))`, or wait for the picker-state callback) aft
 consecutive green `code-qa` runs on the PR.
 
 ## TEST-2 Run the orphaned webview tests
+
+**Status:** IN REVIEW as #201. The failing case was a wrong literal in the test (the code escapes every space; the same test's other two assertions prove that output round-trips through the mention grammar); files renamed to `.spec.ts` and the config now collects `*.test.*` too. Webview 143 files, 1,604 tests.
 
 **Evidence:** `webview-ui/vitest.config.ts:15` includes only `src/**/*.spec.ts(x)`. Three files never run:
 `src/utils/__tests__/path-mentions.test.ts` (17 cases), `src/components/settings/utils/__tests__/headers.test.ts`
@@ -57,6 +61,8 @@ cannot resolve the package.
 
 ## TEST-3 Quiet the test output
 
+**Status:** test-side part IN REVIEW as #202 (real logger opt-in under test with `ROO_TEST_LOGS=1`; 251 JSON log lines to 0; production unchanged). Production part waits for owner decision 6.
+
 **Evidence:** the full `src` run prints hundreds of structured JSON log lines from the Bedrock provider logger
 (`{"l":"error","m":"GENERIC error in createMessage","c":"bedrock",...}`) with full stack traces, which buries the
 real failure summary. Cause: `src/utils/logging/index.ts:25` is inverted relative to its own comment,
@@ -73,6 +79,8 @@ provider errors appear in the Tumble Code output channel.
 
 ## TEST-4 Isolate the cloud API tests from the developer's `.env`
 
+**Status:** DONE, merged 2026-09-24 as #203 (`1b6fca641`). Reproduced first in the real checkout: 57 failed, 176 passed; after: 233 passed. `CLOUDAPI_ENV_FILE` names the env file, empty reads none.
+
 **Evidence:** `self-hosted-cloudapi/config/settings.py:19` loads `.env` from the working directory and `:160`
 builds `Settings()` at import time. `tests/conftest.py:11-21` sets only 9 variables. A `.env` containing only
 `WEB_ALLOWED_NETWORKS=192.168.50.0/24` makes 57 of 233 tests fail (probe in a copy); the real `.env` sets that key.
@@ -84,6 +92,8 @@ before importing anything from `src`.
 
 ## TEST-5 CI job for the cloud API
 
+**Status:** IN REVIEW as #204. Deviation: `pytest` on Python 3.12 and 3.13 is the gate; `ruff` (59 findings, some automatic fixes would be wrong: E712 on SQLAlchemy comparisons, F401 on model-registering imports) and `pip-audit` run advisory until CAPI-M7 and DEP-5 clear them.
+
 **Evidence:** no workflow under `.github/workflows` mentions `self-hosted-cloudapi`. The `Makefile` lists `lint`
 and `fmt` targets it never defines (`Makefile:12-13`).
 
@@ -93,12 +103,16 @@ browser checks skip themselves when Chrome is absent; install Chrome in the job 
 
 ## TEST-6 Dependency audit in CI
 
+**Status:** IN REVIEW as #205: weekly and on dependency changes, `scripts/audit-summary.mjs` writes a per-package job summary; the high/critical step stays advisory until DEP-1 to DEP-3 land.
+
 **Evidence:** no workflow runs `pnpm audit`; 6 critical production advisories went unnoticed.
 
 **Change:** a job running `pnpm audit --prod --audit-level high`, non-blocking at first. After Phase 2 it becomes
 blocking with an explicit, commented allowlist of accepted advisories (each with an expiry date).
 
 ## TEST-7 One working dependency-update bot
+
+**Status:** NOT STARTED: waits for owner decision 10 and for the owner to install the Renovate GitHub App (an account action).
 
 **Evidence:** both `.github/dependabot.yml` and `renovate.json` exist; none of the last 200 PRs came from a bot.
 The Renovate GitHub App is most likely not installed on the fork [I].
@@ -107,6 +121,8 @@ The Renovate GitHub App is most likely not installed on the fork [I].
 delete `dependabot.yml`, group updates (types, devtools, provider SDKs, webview) so each PR maps to one gate run.
 
 ## TEST-8 Webview bundle guard
+
+**Status:** IN REVIEW as #206. Deviation: unit tests never build the webview, so the guard is a Vite plugin (`webview-ui/src/vite-plugins/bundleBoundaryPlugin.ts`) and code-qa's compile job now bundles the webview. Finding: the build graph already reaches `src/core/prompts/sections/custom-instructions.ts` and `src/services/roo-config/index.ts` through `src/shared/modes.ts`; both render 0 characters today (the plugin warns), a probe import from `src/core` fails the build as intended.
 
 **Evidence:** the webview imports `src/shared` through the `@roo/*` alias; `src/shared/modes.ts:1` imports
 `vscode` and `:12` imports `src/core/prompts`. It builds only because Vite externalizes `vscode` and tree-shaking
@@ -118,6 +134,8 @@ drops the rest. Today's bundle source map contains 14 files from `src/shared`, 4
 state in before PKG-6 and SVC-16 move code.
 
 ## TEST-9 Test-count ratchet (optional, recommended)
+
+**Status:** NOT STARTED (optional).
 
 **Change:** a small script (`scripts/test-count-ratchet.mjs`) that reads vitest's JSON reporter output per
 workspace and compares it with a committed `test-baseline.json`. It fails when a workspace loses tests unless the
