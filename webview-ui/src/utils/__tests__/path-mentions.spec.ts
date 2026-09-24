@@ -55,10 +55,11 @@ describe("Path Mentions Utilities", () => {
 			// 2. unescapeSpaces inverts the transformation exactly.
 			expect(unescapeSpaces(matches[0][1])).toBe(original)
 
-			// 3. Only spaces are escaped; shell metacharacters pass through verbatim
-			//    (they are not meaningful in the mention grammar). If a shell escaper
-			//    were intended, these would have been altered.
-			expect(escaped).toBe("/src/file\\ with\\ spaces & $ HOME `cmd`.txt")
+			// 3. Only spaces are escaped (every one of them); shell metacharacters
+			//    pass through verbatim (they are not meaningful in the mention
+			//    grammar). If a shell escaper were intended, these would have been
+			//    altered.
+			expect(escaped).toBe("/src/file\\ with\\ spaces\\ &\\ $\\ HOME\\ `cmd`.txt")
 			expect(escaped).not.toContain('"')
 			expect(escaped).not.toContain("\\$")
 			expect(escaped).not.toContain("\\`")
