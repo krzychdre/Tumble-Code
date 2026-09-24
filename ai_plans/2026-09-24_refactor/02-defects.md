@@ -375,3 +375,9 @@ where their files are disjoint; the coordinator merges in order.
   `editTypePath` and partial-access cache, EditFileTool `didSendPartialToolAsk`/`partialToolAskRelPath`. Reproduced
   effects with interleaved tasks: no live write preview (0 instead of 1), "newFileCreated" for an existing file
   (bypassing TL-2), an edit row spinning forever. Singletons outside `src/core/tools` not reviewed (rest of CORE-R12).
+- **TEST-11:** DONE, merged 2026-09-24 as #248, and it was a production bug: `new AnthropicVertex()`
+  (`@anthropic-ai/vertex-sdk` 0.7.0) starts `GoogleAuth.getClient()` in its constructor and awaits it only on the first
+  request, so any `buildApiHandler()` for a Vertex profile with a Claude model and missing credentials leaked an
+  unhandled rejection (model-info-only calls too: settings export, system-prompt preview). The CLI treats that as
+  fatal (`shutdown("unhandledRejection", 1)`). Fix: `DeferredErrorGoogleAuth` attaches a no-op catch and returns the
+  same promise, so the first request still reports the real error. Full src suite exits 0 again.
