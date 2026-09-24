@@ -110,7 +110,15 @@ services:
     restart: unless-stopped
 
   auth_server:
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.2.2}
+    # Tag and digest pinned together (the digest is the multi-arch index from
+    # `docker buildx imagetools inspect ghcr.io/goauthentik/server:2026.8.3`).
+    # AUTHENTIK_TAG may override both, with or without a digest suffix.
+    #
+    # Authentik migrates its database on start, one way, and refuses to skip a
+    # release line: an existing install must step through the latest patch of
+    # every line in between (2026.2.x -> 2026.5.x -> 2026.8.x), with a pg_dump
+    # of auth_db first. See the upgrade section of README.md.
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849}
     command: server
     environment: &authentik_env
       AUTHENTIK_POSTGRESQL__HOST: auth_db
@@ -153,7 +161,8 @@ services:
     restart: unless-stopped
 
   auth_worker:
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.2.2}
+    # Must run the same image as auth_server.
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849}
     command: worker
     # The worker is what applies blueprints, so it needs the same env (incl. the
     # AUTHENTIK_CLIENT_* values the blueprint reads via !Env).

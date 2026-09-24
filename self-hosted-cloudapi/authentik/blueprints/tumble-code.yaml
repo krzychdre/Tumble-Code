@@ -12,9 +12,9 @@
 # (jwks, end-session, discovery) are built from it.
 #
 # NOTE: the oauth2provider schema (notably redirect_uris and property_mappings)
-# is Authentik-version-sensitive. This is authored for the pinned AUTHENTIK_TAG
-# (2026.2.2). If the worker logs a blueprint error, this file is the thing to
-# adjust.
+# is Authentik-version-sensitive. This is authored for the Authentik version
+# pinned in docker-compose.yml (2026.8.3). If the worker logs a blueprint error,
+# this file is the thing to adjust.
 version: 1
 metadata:
   name: tumble-code OAuth2 provider + application
@@ -58,6 +58,15 @@ entries:
             url: !Format ["%s/auth/clerk/callback", !Env WEB_PUBLIC_URL]
         - - matching_mode: strict
             url: !Env [AUTHENTIK_REDIRECT_URI, "http://localhost:8085/auth/clerk/callback"]
+      # Authentik 2026.5 added per-provider grant types. The migration gives
+      # providers that already exist every grant type, but a provider created
+      # on 2026.5 or later starts with an EMPTY list, and /authorize then
+      # answers invalid_request. The api only uses the authorization code flow
+      # (no refresh token: it asks for "openid profile email", no
+      # offline_access), so that is the one grant type allowed. Versions
+      # before 2026.5 ignore this attribute.
+      grant_types:
+        - authorization_code
       property_mappings:
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
         - !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]

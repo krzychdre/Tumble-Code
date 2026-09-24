@@ -233,8 +233,35 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to con
     - Client type: Confidential
     - Redirect URI: `{API_BASE_URL}/auth/clerk/callback`
     - Scopes: `openid`, `profile`, `email`
+    - Grant types: Authorization Code (Authentik 2026.5 and later refuse
+      every grant type a provider does not list)
 3. Create an Application using this provider
 4. Set `AUTHENTIK_CLIENT_ID` and `AUTHENTIK_CLIENT_SECRET` in your `.env`
+
+### Upgrading the bundled Authentik
+
+The compose file pins Authentik 2026.8.3 by tag and digest. Authentik
+migrates its database when it starts, the migration cannot be undone, and
+since 2026.8 it refuses to start on a database more than one release line
+behind ("Major version skips are not allowed"). An existing install therefore
+steps through the latest patch of every line in between, for example
+2026.2.x, then 2026.5.7, then 2026.8.3, waiting for each step to finish its
+migrations and report healthy before the next one:
+
+```bash
+# Before the first step: dump Authentik's database.
+docker compose exec -T auth_db pg_dump -U authentik -Fc authentik > authentik-$(date +%F).dump
+
+# Each step: set AUTHENTIK_TAG in .env to the step's tag, then
+docker compose pull auth_server auth_worker
+docker compose up -d --no-deps auth_server auth_worker
+docker compose logs -f auth_server auth_worker   # until both are healthy
+```
+
+Remove `AUTHENTIK_TAG` from `.env` after the last step so the pinned default
+applies again. Rolling back means restoring the dump into an empty `auth_db`
+and starting the previous image; starting an older image on a migrated
+database is not supported.
 
 ## API Endpoints
 
