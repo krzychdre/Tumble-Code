@@ -81,15 +81,19 @@ export abstract class BaseProvider implements ApiHandler {
 			// OpenAI strict mode requires ALL properties to be in required array
 			result.required = allKeys
 
-			// Recursively process nested objects and convert nullable types
+			// Recursively process nested objects and convert nullable types.
+			// Never write into the input: the native tool definitions are shared
+			// module-level objects, so a mutation here would leak into every later
+			// request of every provider (DEF-C10). Changed properties are copied.
 			const newProps = { ...result.properties }
 			for (const key of allKeys) {
-				const prop = newProps[key]
+				let prop = newProps[key]
 
-				// Handle nullable types by removing null
+				// Handle nullable types by removing null (on a copy, keeping key order)
 				if (prop && Array.isArray(prop.type) && prop.type.includes("null")) {
 					const nonNullTypes = prop.type.filter((t: string) => t !== "null")
-					prop.type = nonNullTypes.length === 1 ? nonNullTypes[0] : nonNullTypes
+					prop = { ...prop, type: nonNullTypes.length === 1 ? nonNullTypes[0] : nonNullTypes }
+					newProps[key] = prop
 				}
 
 				// Recursively process nested objects
