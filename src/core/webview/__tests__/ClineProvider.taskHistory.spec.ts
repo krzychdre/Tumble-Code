@@ -1157,4 +1157,39 @@ describe("ClineProvider Task History Synchronization", () => {
 			getAllSpy.mockRestore()
 		})
 	})
+
+	describe("getHistoryItem (no conversation parse)", () => {
+		it("returns the stored history item", async () => {
+			const item = createHistoryItem({ id: "light-1", task: "Light" })
+			await provider.updateTaskHistory(item, { broadcast: false })
+
+			const found = await provider.getHistoryItem("light-1")
+
+			expect(found).toEqual(expect.objectContaining({ id: "light-1", task: "Light" }))
+		})
+
+		it("throws 'Task not found' for an unknown id, like getTaskWithId", async () => {
+			await expect(provider.getHistoryItem("missing")).rejects.toThrow("Task not found")
+		})
+
+		it("getTaskWithAggregatedCosts walks parent and children without the conversation-loading getTaskWithId", async () => {
+			await provider.updateTaskHistory(
+				createHistoryItem({ id: "cost-parent", task: "Parent", totalCost: 1, childIds: ["cost-a", "cost-b"] }),
+				{ broadcast: false },
+			)
+			await provider.updateTaskHistory(createHistoryItem({ id: "cost-a", task: "A", totalCost: 2 }), {
+				broadcast: false,
+			})
+			await provider.updateTaskHistory(createHistoryItem({ id: "cost-b", task: "B", totalCost: 3 }), {
+				broadcast: false,
+			})
+			const heavySpy = vi.spyOn(provider, "getTaskWithId")
+
+			const { historyItem, aggregatedCosts } = await provider.getTaskWithAggregatedCosts("cost-parent")
+
+			expect(historyItem.id).toBe("cost-parent")
+			expect(aggregatedCosts.totalCost).toBe(6)
+			expect(heavySpy).not.toHaveBeenCalled()
+		})
+	})
 })
