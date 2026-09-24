@@ -204,20 +204,23 @@ Please analyze this codebase and create an AGENTS.md file containing:
     └── ... other project files
     \`\`\`
     
+    About the examples below: they are placeholders, not facts about this repository.
+    Every <...> stands for something you must find in THIS repository's files.
+    Never copy an example line into a file you write. Write only rules you verified by reading
+    this repository; if you found nothing non-obvious for a mode, write fewer lines instead of inventing one.
+    
     .roo/rules-code/AGENTS.md - ONLY non-obvious coding rules discovered by reading files:
     - Custom utilities that replace standard approaches
     - Non-standard patterns unique to this project
     - Hidden dependencies or coupling between components
     - Required import orders or naming conventions not enforced by linters
     
-    Example of non-obvious rules worth documenting:
+    Format example (placeholders, not facts about this repository):
     \`\`\`
     # Project Coding Rules (Non-Obvious Only)
-    - Always use safeWriteJson() from src/utils/ instead of JSON.stringify for file writes (prevents corruption)
-    - API retry mechanism in src/api/providers/utils/ is mandatory (not optional as it appears)
-    - Database queries MUST use the query builder in packages/evals/src/db/queries/ (raw SQL will fail)
-    - Provider interface in packages/types/src/ has undocumented required methods
-    - Test files must be in same directory as source for vitest to work (not in separate test folder)
+    - Always use <helperFunction>() from <path/to/helpers> instead of <standard alternative> (<reason found in the code>)
+    - Calls to <module> MUST go through <wrapper> in <path/to/wrapper> (<what breaks otherwise>)
+    - Tests for <package-name> must live in <directory> or <test runner> will not find them
     \`\`\`
     
     .roo/rules-debug/AGENTS.md - ONLY non-obvious debugging discoveries:
@@ -226,14 +229,12 @@ Please analyze this codebase and create an AGENTS.md file containing:
     - Gotchas that cause silent failures
     - Required environment variables for debugging
     
-    Example of non-obvious debug rules worth documenting:
+    Format example (placeholders, not facts about this repository):
     \`\`\`
     # Project Debug Rules (Non-Obvious Only)
-    - Webview dev tools accessed via Command Palette > "Developer: Open Webview Developer Tools" (not F12)
-    - IPC messages fail silently if not wrapped in try/catch in packages/ipc/src/
-    - Production builds require NODE_ENV=production or certain features break without error
-    - Database migrations must run from packages/evals/ directory, not root
-    - Extension logs only visible in "Extension Host" output channel, not Debug Console
+    - Logs for <component> are written to <log location>, not to <where you would expect them>
+    - <command> must be run from <directory>, not from the repository root
+    - <feature> fails silently unless <ENV_VARIABLE>=<value> is set
     \`\`\`
     
     .roo/rules-ask/AGENTS.md - ONLY non-obvious documentation context:
@@ -242,14 +243,12 @@ Please analyze this codebase and create an AGENTS.md file containing:
     - Misleading folder names or structures
     - Important context not evident from file structure
     
-    Example of non-obvious documentation rules worth documenting:
+    Format example (placeholders, not facts about this repository):
     \`\`\`
     # Project Documentation Rules (Non-Obvious Only)
-    - "src/" contains VSCode extension code, not source for web apps (counterintuitive)
-    - Provider examples in src/api/providers/ are the canonical reference (docs are outdated)
-    - UI runs in VSCode webview with restrictions (no localStorage, limited APIs)
-    - Package.json scripts must be run from specific directories, not root
-    - Locales in root are for extension, webview-ui/src/i18n for UI (two separate systems)
+    - "<directory>/" contains <its actual purpose>, not <what the name suggests>
+    - <file or directory> is the canonical reference for <topic> (<other document> is outdated)
+    - <location A> and <location B> hold separate <kind of resource> for <part A> and <part B>
     \`\`\`
     
     .roo/rules-architect/AGENTS.md - ONLY non-obvious architectural constraints:
@@ -258,20 +257,19 @@ Please analyze this codebase and create an AGENTS.md file containing:
     - Non-standard patterns that must be followed
     - Performance bottlenecks discovered through investigation
     
-    Example of non-obvious architecture rules worth documenting:
+    Format example (placeholders, not facts about this repository):
     \`\`\`
     # Project Architecture Rules (Non-Obvious Only)
-    - Providers MUST be stateless - hidden caching layer assumes this
-    - Webview and extension communicate through specific IPC channel patterns only
-    - Database migrations cannot be rolled back - forward-only by design
-    - React hooks required because external state libraries break webview isolation
-    - Monorepo packages have circular dependency on types package (intentional)
+    - <component> MUST stay <constraint> because <other component> relies on it
+    - <part A> and <part B> communicate only through <mechanism>
+    - <package-name> depends on <other package> on purpose (<reason found in the code>)
     \`\`\`
   </mode_specific_files>
 </output_structure>
 
 <quality_criteria>
   - ONLY include non-obvious information discovered by reading files
+  - Never copy example lines from this prompt; every rule must name a real path, command or identifier from this repository
   - Exclude anything that could be guessed from standard practices
   - Focus on gotchas, hidden requirements, and counterintuitive patterns
   - Include specific file paths when referencing custom utilities
