@@ -297,7 +297,7 @@ describe("AwsBedrockHandler Error Handling", () => {
 			// For throttling errors, it should throw immediately without yielding chunks
 			// This allows the retry mechanism to catch and handle it
 			await expect(async () => {
-				for await (const chunk of generator) {
+				for await (const _chunk of generator) {
 					// Should not yield any chunks for throttling errors
 				}
 			}).rejects.toThrow("Bedrock is unable to process your request")
@@ -441,7 +441,7 @@ describe("AwsBedrockHandler Error Handling", () => {
 
 			try {
 				const stream = handler.createMessage("system", [{ role: "user", content: "test" }])
-				for await (const chunk of stream) {
+				for await (const _chunk of stream) {
 					// Should not reach here as it should throw an error
 				}
 				throw new Error("Expected error to be thrown")

@@ -8,7 +8,6 @@ import {
 	openAiCodexDefaultModelId,
 	OpenAiCodexModelId,
 	openAiCodexModels,
-	type ReasoningEffort,
 	type ReasoningEffortExtended,
 	ApiProviderError,
 } from "@roo-code/types"

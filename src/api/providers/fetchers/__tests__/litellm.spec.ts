@@ -606,6 +606,8 @@ describe("getLiteLLMModels", () => {
 		mockedAxios.get.mockResolvedValue(mockResponse)
 
 		const result = await getLiteLLMModels("test-api-key", "http://localhost:4000")
+
+		expect(Object.keys(result).sort()).toEqual(["bedrock-claude", "openrouter-claude", "vertex-claude"])
 	})
 
 	it("prefers max_output_tokens over max_tokens when both are present", async () => {

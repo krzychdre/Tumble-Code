@@ -803,13 +803,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		try {
 			const modelConfig = this.getModel()
 
-			// For completePrompt, thinking is typically not used, but we should still check
-			// if thinking was somehow enabled in the model config
-			const thinkingEnabled =
-				shouldUseReasoningBudget({ model: modelConfig.info, settings: this.options }) &&
-				modelConfig.reasoning &&
-				modelConfig.reasoningBudget
-
 			const inferenceConfig: BedrockInferenceConfig = {
 				maxTokens: modelConfig.maxTokens || (modelConfig.info.maxTokens as number),
 				// Claude 4.7+ (including 4.8) removed sampling parameters entirely —

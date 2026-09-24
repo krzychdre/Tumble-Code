@@ -28,6 +28,10 @@ jobs:
               uses: ./.github/actions/setup-node-pnpm
             - name: Run knip checks
               run: pnpm knip
+            # The dead-code helpers knip does not cover (scripts/find-test-only-exports.mjs and
+            # scripts/check-unused-locals.mjs, the latter runs in src's check-types).
+            - name: Test the dead-code scripts
+              run: node --test 'scripts/__tests__/*.test.mjs'
 
     compile:
         runs-on: ubuntu-latest

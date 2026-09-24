@@ -4,7 +4,7 @@ import { OpenAiHandler, getOpenAiModels } from "../openai"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import { openAiModelInfoSaneDefaults, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import { DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
 import { Package } from "../../../shared/package"
 import axios from "axios"
 
@@ -1888,7 +1888,8 @@ describe("cancelRequest", () => {
 		await handler.completePrompt("test2")
 		const secondClient = (handler as any).client
 
-		// Client should be recreated (not null)
+		// Client should be recreated: a new instance, not the destroyed one
 		expect(secondClient).not.toBeNull()
+		expect(secondClient).not.toBe(firstClient)
 	})
 })

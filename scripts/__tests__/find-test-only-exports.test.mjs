@@ -73,3 +73,35 @@ test("marks an export that its own file still uses, since only the export keywor
 	assert.deepEqual(result.exports, [{ file: "src/a.ts", name: "inner", usedInOwnFile: true }])
 	assert.deepEqual(result.files, [])
 })
+
+test("lists exports that no other file mentions separately, for --unreferenced", () => {
+	const files = new Map([
+		["src/a.ts", "export function nobodyCalls() {}\nexport const selfUsed = 1\nconsole.log(selfUsed)\n"],
+		["src/b.ts", 'import "./a"\n'],
+	])
+
+	const result = findTestOnlyExports(files)
+
+	assert.deepEqual(result.unreferenced, [
+		{ file: "src/a.ts", name: "nobodyCalls", usedInOwnFile: false },
+		{ file: "src/a.ts", name: "selfUsed", usedInOwnFile: true },
+	])
+	assert.deepEqual(result.exports, [])
+	assert.deepEqual(result.files, [])
+})
+
+test("never reports a whole file that also has a default export or an export list", () => {
+	const files = new Map([
+		["src/View.tsx", "export interface ViewProps {}\nconst View = () => null\nexport default View\n"],
+		["src/app.tsx", 'import View from "./View"\n'],
+		["src/__tests__/View.spec.tsx", 'import type { ViewProps } from "../View"\n'],
+	])
+
+	const result = findTestOnlyExports(files)
+
+	assert.deepEqual(result.files, [])
+	assert.deepEqual(
+		result.exports.map((e) => e.name),
+		["ViewProps"],
+	)
+})
