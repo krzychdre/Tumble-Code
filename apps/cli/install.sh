@@ -14,7 +14,7 @@ set -e
 INSTALL_DIR="${ROO_INSTALL_DIR:-$HOME/.roo/cli}"
 BIN_DIR="${ROO_BIN_DIR:-$HOME/.local/bin}"
 REPO="krzychdre/Tumble-Code"
-MIN_NODE_VERSION=20
+MIN_NODE_VERSION=22
 
 # Color output (only if terminal supports it)
 if [ -t 1 ]; then

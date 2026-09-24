@@ -18,7 +18,7 @@ curl -fsSL https://raw.githubusercontent.com/krzychdre/Tumble-Code/main/apps/cli
 
 **Requirements:**
 
-- Node.js 20 or higher
+- Node.js 22 or higher
 - macOS Apple Silicon (M1/M2/M3/M4) or Linux x64
 
 **Custom installation directory:**
