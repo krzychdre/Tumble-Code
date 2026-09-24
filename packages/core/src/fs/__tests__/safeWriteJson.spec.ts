@@ -1,3 +1,6 @@
+// The spec wraps fs mocks and spies whose signatures are loosely typed on purpose.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import * as actualFsPromises from "fs/promises"
 import * as fsSyncActual from "fs"
 import { Writable } from "stream"
@@ -10,7 +13,6 @@ import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from 
 
 const originalFsPromisesWriteFile = actualFsPromises.writeFile
 const _originalFsPromisesAccess = actualFsPromises.access
-const originalFsPromisesMkdir = actualFsPromises.mkdir
 
 vi.mock("fs/promises", async () => {
 	const actual = await vi.importActual<typeof import("fs/promises")>("fs/promises")
