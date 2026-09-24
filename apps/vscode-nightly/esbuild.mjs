@@ -8,18 +8,20 @@ import { getGitSha, copyPaths, copyLocales, copyWasms, generatePackageJson } fro
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-async function main() {
-	const name = "extension-nightly"
-	const production = process.argv.includes("--production")
+const srcDir = path.join(__dirname, "..", "..", "src")
+const buildDir = path.join(__dirname, "build")
+const distDir = path.join(buildDir, "dist")
+
+/**
+ * The esbuild options of the nightly build, without plugins. Exported so a test
+ * can compare them with the release build (src/esbuild.mjs).
+ *
+ * @param {{ production?: boolean, version: string, gitSha?: string }} options
+ * @returns {{ extension: import('esbuild').BuildOptions, worker: import('esbuild').BuildOptions }}
+ */
+export function createBuildOptions({ production = false, version, gitSha }) {
 	const minify = production
 	const sourcemap = !production
-
-	const overrideJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.nightly.json"), "utf8"))
-	console.log(`[${name}] name: ${overrideJson.name}`)
-	console.log(`[${name}] version: ${overrideJson.version}`)
-
-	const gitSha = getGitSha()
-	console.log(`[${name}] gitSha: ${gitSha}`)
 
 	/**
 	 * @type {import('esbuild').BuildOptions}
@@ -34,15 +36,39 @@ async function main() {
 		platform: "node",
 		define: {
 			"process.env.PKG_NAME": '"tumble-code-nightly"',
-			"process.env.PKG_VERSION": `"${overrideJson.version}"`,
+			"process.env.PKG_VERSION": `"${version}"`,
 			"process.env.PKG_OUTPUT_CHANNEL": '"Tumble-Code-Nightly"',
 			...(gitSha ? { "process.env.PKG_SHA": `"${gitSha}"` } : {}),
 		},
 	}
 
-	const srcDir = path.join(__dirname, "..", "..", "src")
-	const buildDir = path.join(__dirname, "build")
-	const distDir = path.join(buildDir, "dist")
+	return {
+		extension: {
+			...buildOptions,
+			entryPoints: [path.join(srcDir, "extension.ts")],
+			outfile: path.join(distDir, "extension.js"),
+			external: ["vscode"],
+		},
+		worker: {
+			...buildOptions,
+			entryPoints: [path.join(srcDir, "workers", "countTokens.ts")],
+			outdir: path.join(distDir, "workers"),
+		},
+	}
+}
+
+async function main() {
+	const name = "extension-nightly"
+	const production = process.argv.includes("--production")
+
+	const overrideJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.nightly.json"), "utf8"))
+	console.log(`[${name}] name: ${overrideJson.name}`)
+	console.log(`[${name}] version: ${overrideJson.version}`)
+
+	const gitSha = getGitSha()
+	console.log(`[${name}] gitSha: ${gitSha}`)
+
+	const { extension, worker } = createBuildOptions({ production, version: overrideJson.version, gitSha })
 
 	console.log(`[${name}] srcDir: ${srcDir}`)
 	console.log(`[${name}] buildDir: ${buildDir}`)
@@ -141,22 +167,12 @@ async function main() {
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const extensionBuildOptions = {
-		...buildOptions,
-		plugins,
-		entryPoints: [path.join(srcDir, "extension.ts")],
-		outfile: path.join(distDir, "extension.js"),
-		external: ["vscode"],
-	}
+	const extensionBuildOptions = { ...extension, plugins }
 
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const workerBuildOptions = {
-		...buildOptions,
-		entryPoints: [path.join(srcDir, "workers", "countTokens.ts")],
-		outdir: path.join(distDir, "workers"),
-	}
+	const workerBuildOptions = worker
 
 	const [extensionBuildContext, workerBuildContext] = await Promise.all([
 		esbuild.context(extensionBuildOptions),
@@ -172,7 +188,10 @@ async function main() {
 	])
 }
 
-main().catch((e) => {
-	console.error(e)
-	process.exit(1)
-})
+// Build only when run as a script (`node esbuild.mjs`), not when a test imports this file.
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(__filename)) {
+	main().catch((e) => {
+		console.error(e)
+		process.exit(1)
+	})
+}

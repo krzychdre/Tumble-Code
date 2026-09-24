@@ -29,10 +29,14 @@ async function removeDirWithRetries(dirPath, retries = 5, retryDelayMs = 200) {
 	}
 }
 
-async function main() {
-	const name = "extension"
-	const production = process.argv.includes("--production")
-	const watch = process.argv.includes("--watch")
+/**
+ * The esbuild options of the release build, without plugins. Exported so a test
+ * can compare them with the nightly build (apps/vscode-nightly/esbuild.mjs).
+ *
+ * @param {{ production?: boolean }} [options]
+ * @returns {{ extension: import('esbuild').BuildOptions, worker: import('esbuild').BuildOptions }}
+ */
+export function createBuildOptions({ production = false } = {}) {
 	const minify = production
 	const sourcemap = true // Always generate source maps for error handling.
 
@@ -48,6 +52,31 @@ async function main() {
 		sourcesContent: false,
 		platform: "node",
 	}
+
+	return {
+		extension: {
+			...buildOptions,
+			entryPoints: ["extension.ts"],
+			outfile: "dist/extension.js",
+			alias: extensionAliases,
+			// global-agent must be external because it dynamically patches Node.js http/https modules
+			// which breaks when bundled. It needs access to the actual Node.js module instances.
+			// undici must be bundled because our VSIX is packaged with `--no-dependencies`.
+			external: ["vscode", "esbuild", "global-agent", "@vscode/ripgrep"],
+		},
+		worker: {
+			...buildOptions,
+			entryPoints: ["workers/countTokens.ts"],
+			outdir: "dist/workers",
+		},
+	}
+}
+
+async function main() {
+	const name = "extension"
+	const production = process.argv.includes("--production")
+	const watch = process.argv.includes("--watch")
+	const { extension, worker } = createBuildOptions({ production })
 
 	const srcDir = __dirname
 	const buildDir = __dirname
@@ -114,26 +143,12 @@ async function main() {
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const extensionConfig = {
-		...buildOptions,
-		plugins,
-		entryPoints: ["extension.ts"],
-		outfile: "dist/extension.js",
-		alias: extensionAliases,
-		// global-agent must be external because it dynamically patches Node.js http/https modules
-		// which breaks when bundled. It needs access to the actual Node.js module instances.
-		// undici must be bundled because our VSIX is packaged with `--no-dependencies`.
-		external: ["vscode", "esbuild", "global-agent", "@vscode/ripgrep"],
-	}
+	const extensionConfig = { ...extension, plugins }
 
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const workerConfig = {
-		...buildOptions,
-		entryPoints: ["workers/countTokens.ts"],
-		outdir: "dist/workers",
-	}
+	const workerConfig = worker
 
 	const [extensionCtx, workerCtx] = await Promise.all([
 		esbuild.context(extensionConfig),
@@ -150,7 +165,10 @@ async function main() {
 	}
 }
 
-main().catch((e) => {
-	console.error(e)
-	process.exit(1)
-})
+// Build only when run as a script (`node esbuild.mjs`), not when a test imports this file.
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(__filename)) {
+	main().catch((e) => {
+		console.error(e)
+		process.exit(1)
+	})
+}
