@@ -344,10 +344,14 @@ export class TaskResumption {
 			const toolUseBlocks = content.filter(
 				(block) => block.type === "tool_use",
 			) as Anthropic.Messages.ToolUseBlock[]
+			// The synthetic results are errors (is_error: true): the task list records the task as
+			// interrupted, so the persisted history must not read like a successful completion of
+			// these calls (for example attempt_completion).
 			const toolResponses: Anthropic.ToolResultBlockParam[] = toolUseBlocks.map((block) => ({
 				type: "tool_result",
 				tool_use_id: block.id,
 				content: "Task was interrupted before this tool call could be completed.",
+				is_error: true,
 			}))
 			return {
 				modifiedApiConversationHistory: [...existingApiConversationHistory],
@@ -392,10 +396,12 @@ export class TaskResumption {
 
 				const missingToolResponses: Anthropic.ToolResultBlockParam[] = toolUseBlocks
 					.filter((toolUse) => !existingToolResults.some((result) => result.tool_use_id === toolUse.id))
+					// is_error: true for the same reason as in handleAssistantLastMessage.
 					.map((toolUse) => ({
 						type: "tool_result",
 						tool_use_id: toolUse.id,
 						content: "Task was interrupted before this tool call could be completed.",
+						is_error: true,
 					}))
 
 				return {
