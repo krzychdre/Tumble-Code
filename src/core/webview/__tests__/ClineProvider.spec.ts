@@ -334,11 +334,15 @@ vi.mock("../diff/strategies/multi-search-replace", () => ({
 
 // The state builder awaits this after it has read the chat messages; the state-order test
 // holds it open to make an older snapshot finish building after a newer one.
-const { mockOpenAiCodexIsAuthenticated } = vi.hoisted(() => ({
+const { mockOpenAiCodexIsAuthenticated, mockOpenAiCodexAuthStatus } = vi.hoisted(() => ({
 	mockOpenAiCodexIsAuthenticated: vi.fn(),
+	mockOpenAiCodexAuthStatus: vi.fn(),
 }))
 vi.mock("../../../integrations/openai-codex/oauth", () => ({
-	openAiCodexOAuthManager: { isAuthenticated: mockOpenAiCodexIsAuthenticated },
+	openAiCodexOAuthManager: {
+		isAuthenticated: mockOpenAiCodexIsAuthenticated,
+		getAuthenticationStatus: mockOpenAiCodexAuthStatus,
+	},
 }))
 
 vi.mock("@roo-code/cloud", () => ({
@@ -740,6 +744,32 @@ describe("ClineProvider", () => {
 			([msg]) => typeof msg === "string" && msg.includes("Disposing ClineProvider..."),
 		)
 		expect(disposeCalls).toHaveLength(1)
+	})
+
+	test("webviewDidLaunch applies the stored telemetry setting without a second full state build", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+		await provider.contextProxy.setValue("telemetrySetting", "disabled")
+		const updateTelemetryState = vi.spyOn(TelemetryService.instance, "updateTelemetryState")
+		const buildState = vi.spyOn(provider, "getStateToPostToWebview")
+
+		await messageHandler({ type: "webviewDidLaunch" })
+
+		await vi.waitFor(() => expect(updateTelemetryState).toHaveBeenCalledWith(false))
+		// Only the state push itself builds the webview state.
+		expect(buildState).toHaveBeenCalledTimes(1)
+	})
+
+	test("the state push takes the codex sign-in flag from the cached status", async () => {
+		mockOpenAiCodexAuthStatus.mockReset()
+		mockOpenAiCodexAuthStatus.mockResolvedValue(true)
+		mockOpenAiCodexIsAuthenticated.mockReset()
+		mockOpenAiCodexIsAuthenticated.mockResolvedValue(false)
+
+		const state = await provider.getStateToPostToWebview()
+
+		expect(state.openAiCodexIsAuthenticated).toBe(true)
+		expect(mockOpenAiCodexIsAuthenticated).not.toHaveBeenCalled()
 	})
 
 	test("handles webviewDidLaunch message", async () => {
