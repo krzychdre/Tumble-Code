@@ -13,6 +13,14 @@ import { ZaiApiLine } from "../provider-settings.js"
 // https://docs.z.ai/guides/overview/pricing
 // https://bigmodel.cn/pricing
 //
+// Output ceilings (`maxTokens`) follow the "maximum max_tokens" table in
+// https://docs.z.ai/guides/overview/concept-param#max_tokens and
+// https://docs.bigmodel.cn/cn/guide/start/concept-param#max_tokens (128K for GLM-4.6 and
+// newer, 96K for the GLM-4.5 family, 32K for GLM-4.6V, 16K for GLM-4.5V and GLM-4-32B).
+// `supportsMaxTokens` (the max-output slider) is set wherever that ceiling is above the
+// default 20%-of-context clamp; src/api/providers/__tests__/zai-model-limits.spec.ts pins
+// every entry.
+//
 // Mainland prices are converted from the CNY list price at 7.0 CNY/USD, using the
 // base tier (input length below 32k tokens) for models with tiered pricing.
 
@@ -20,10 +28,11 @@ export type InternationalZAiModelId = keyof typeof internationalZAiModels
 export const internationalZAiDefaultModelId: InternationalZAiModelId = "glm-5.3"
 export const internationalZAiModels = {
 	"glm-4.5": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.6,
 		outputPrice: 2.2,
 		cacheWritesPrice: 0,
@@ -32,10 +41,11 @@ export const internationalZAiModels = {
 			"GLM-4.5 is Zhipu's latest featured model. Its comprehensive capabilities in reasoning, coding, and agent reach the state-of-the-art (SOTA) level among open-source models, with a context length of up to 128k.",
 	},
 	"glm-4.5-air": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.2,
 		outputPrice: 1.1,
 		cacheWritesPrice: 0,
@@ -44,10 +54,11 @@ export const internationalZAiModels = {
 			"GLM-4.5-Air is the lightweight version of GLM-4.5. It balances performance and cost-effectiveness, and can flexibly switch to hybrid thinking models.",
 	},
 	"glm-4.5-x": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 2.2,
 		outputPrice: 8.9,
 		cacheWritesPrice: 0,
@@ -56,10 +67,11 @@ export const internationalZAiModels = {
 			"GLM-4.5-X is a high-performance variant optimized for strong reasoning with ultra-fast responses.",
 	},
 	"glm-4.5-airx": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 1.1,
 		outputPrice: 4.5,
 		cacheWritesPrice: 0,
@@ -67,10 +79,11 @@ export const internationalZAiModels = {
 		description: "GLM-4.5-AirX is a lightweight, ultra-fast variant delivering strong performance with lower cost.",
 	},
 	"glm-4.5-flash": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0,
 		outputPrice: 0,
 		cacheWritesPrice: 0,
@@ -79,7 +92,7 @@ export const internationalZAiModels = {
 	},
 	"glm-4.5v": {
 		maxTokens: 16_384,
-		contextWindow: 131_072,
+		contextWindow: 65_536,
 		supportsImages: true,
 		supportsPromptCache: true,
 		inputPrice: 0.6,
@@ -90,10 +103,11 @@ export const internationalZAiModels = {
 			"GLM-4.5V is Z.AI's multimodal visual reasoning model (image/video/text/file input), optimized for GUI tasks, grounding, and document/video understanding.",
 	},
 	"glm-4.6v": {
-		maxTokens: 16_384,
+		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: true,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.3,
 		outputPrice: 0.9,
 		cacheWritesPrice: 0,
@@ -102,10 +116,11 @@ export const internationalZAiModels = {
 			"GLM-4.6V is an advanced multimodal vision model with improved performance and cost-efficiency for visual understanding tasks.",
 	},
 	"glm-4.6": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 200_000,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.6,
 		outputPrice: 2.2,
 		cacheWritesPrice: 0,
@@ -114,10 +129,11 @@ export const internationalZAiModels = {
 			"GLM-4.6 is Zhipu's newest model with an extended context window of up to 200k tokens, providing enhanced capabilities for processing longer documents and conversations.",
 	},
 	"glm-4.7": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 200_000,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		supportsReasoningEffort: ["disable", "medium"],
 		reasoningEffort: "medium",
 		preserveReasoning: true,
@@ -129,10 +145,11 @@ export const internationalZAiModels = {
 			"GLM-4.7 is Zhipu's latest model with built-in thinking capabilities enabled by default. It provides enhanced reasoning for complex tasks while maintaining fast response times.",
 	},
 	"glm-5": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 202_752,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		supportsReasoningEffort: ["disable", "medium"],
 		reasoningEffort: "medium",
 		preserveReasoning: true,
@@ -210,10 +227,11 @@ export const internationalZAiModels = {
 			"GLM-5.3 is Zhipu's flagship model, built on the GLM-5.2 base with post-training focused on complex software engineering and long-horizon agent tasks. It has a 1M context window, 128k max output, and always-on reasoning with low/high/max effort levels.",
 	},
 	"glm-4.7-flash": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 200_000,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0,
 		outputPrice: 0,
 		cacheWritesPrice: 0,
@@ -222,10 +240,11 @@ export const internationalZAiModels = {
 			"GLM-4.7-Flash is a free, high-speed variant of GLM-4.7 offering fast responses for reasoning and coding tasks.",
 	},
 	"glm-4.7-flashx": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 200_000,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.07,
 		outputPrice: 0.4,
 		cacheWritesPrice: 0,
@@ -234,10 +253,11 @@ export const internationalZAiModels = {
 			"GLM-4.7-FlashX is an ultra-fast variant of GLM-4.7 with exceptional speed and cost-effectiveness for high-throughput applications.",
 	},
 	"glm-4.6v-flash": {
-		maxTokens: 16_384,
+		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: true,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0,
 		outputPrice: 0,
 		cacheWritesPrice: 0,
@@ -246,10 +266,11 @@ export const internationalZAiModels = {
 			"GLM-4.6V-Flash is a free, high-speed multimodal vision model for rapid image understanding and visual reasoning tasks.",
 	},
 	"glm-4.6v-flashx": {
-		maxTokens: 16_384,
+		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: true,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.04,
 		outputPrice: 0.4,
 		cacheWritesPrice: 0,
@@ -290,10 +311,11 @@ export type MainlandZAiModelId = keyof typeof mainlandZAiModels
 export const mainlandZAiDefaultModelId: MainlandZAiModelId = "glm-5.3"
 export const mainlandZAiModels = {
 	"glm-4.5": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.29,
 		outputPrice: 1.14,
 		cacheWritesPrice: 0,
@@ -302,10 +324,11 @@ export const mainlandZAiModels = {
 			"GLM-4.5 is Zhipu's latest featured model. Its comprehensive capabilities in reasoning, coding, and agent reach the state-of-the-art (SOTA) level among open-source models, with a context length of up to 128k.",
 	},
 	"glm-4.5-air": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.1,
 		outputPrice: 0.6,
 		cacheWritesPrice: 0,
@@ -314,10 +337,11 @@ export const mainlandZAiModels = {
 			"GLM-4.5-Air is the lightweight version of GLM-4.5. It balances performance and cost-effectiveness, and can flexibly switch to hybrid thinking models.",
 	},
 	"glm-4.5-x": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.29,
 		outputPrice: 1.14,
 		cacheWritesPrice: 0,
@@ -326,10 +350,11 @@ export const mainlandZAiModels = {
 			"GLM-4.5-X is a high-performance variant optimized for strong reasoning with ultra-fast responses.",
 	},
 	"glm-4.5-airx": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.1,
 		outputPrice: 0.6,
 		cacheWritesPrice: 0,
@@ -337,10 +362,11 @@ export const mainlandZAiModels = {
 		description: "GLM-4.5-AirX is a lightweight, ultra-fast variant delivering strong performance with lower cost.",
 	},
 	"glm-4.5-flash": {
-		maxTokens: 16_384,
+		maxTokens: 98_304,
 		contextWindow: 131_072,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0,
 		outputPrice: 0,
 		cacheWritesPrice: 0,
@@ -349,7 +375,7 @@ export const mainlandZAiModels = {
 	},
 	"glm-4.5v": {
 		maxTokens: 16_384,
-		contextWindow: 131_072,
+		contextWindow: 65_536,
 		supportsImages: true,
 		supportsPromptCache: true,
 		inputPrice: 0.29,
@@ -360,10 +386,11 @@ export const mainlandZAiModels = {
 			"GLM-4.5V is Z.AI's multimodal visual reasoning model (image/video/text/file input), optimized for GUI tasks, grounding, and document/video understanding.",
 	},
 	"glm-4.6": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 204_800,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.29,
 		outputPrice: 1.14,
 		cacheWritesPrice: 0,
@@ -372,10 +399,11 @@ export const mainlandZAiModels = {
 			"GLM-4.6 is Zhipu's newest model with an extended context window of up to 200k tokens, providing enhanced capabilities for processing longer documents and conversations.",
 	},
 	"glm-4.7": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 204_800,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		supportsReasoningEffort: ["disable", "medium"],
 		reasoningEffort: "medium",
 		preserveReasoning: true,
@@ -387,10 +415,11 @@ export const mainlandZAiModels = {
 			"GLM-4.7 is Zhipu's latest model with built-in thinking capabilities enabled by default. It provides enhanced reasoning for complex tasks while maintaining fast response times.",
 	},
 	"glm-5": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 202_752,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		supportsReasoningEffort: ["disable", "medium"],
 		reasoningEffort: "medium",
 		preserveReasoning: true,
@@ -468,10 +497,11 @@ export const mainlandZAiModels = {
 			"GLM-5.3 is Zhipu's flagship model, built on the GLM-5.2 base with post-training focused on complex software engineering and long-horizon agent tasks. It has a 1M context window, 128k max output, and always-on reasoning with low/high/max effort levels.",
 	},
 	"glm-4.7-flash": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 204_800,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0,
 		outputPrice: 0,
 		cacheWritesPrice: 0,
@@ -480,10 +510,11 @@ export const mainlandZAiModels = {
 			"GLM-4.7-Flash is a free, high-speed variant of GLM-4.7 offering fast responses for reasoning and coding tasks.",
 	},
 	"glm-4.7-flashx": {
-		maxTokens: 16_384,
+		maxTokens: 131_072,
 		contextWindow: 204_800,
 		supportsImages: false,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.035,
 		outputPrice: 0.2,
 		cacheWritesPrice: 0,
@@ -492,10 +523,11 @@ export const mainlandZAiModels = {
 			"GLM-4.7-FlashX is an ultra-fast variant of GLM-4.7 with exceptional speed and cost-effectiveness for high-throughput applications.",
 	},
 	"glm-4.6v": {
-		maxTokens: 16_384,
+		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: true,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.15,
 		outputPrice: 0.45,
 		cacheWritesPrice: 0,
@@ -504,10 +536,11 @@ export const mainlandZAiModels = {
 			"GLM-4.6V is an advanced multimodal vision model with improved performance and cost-efficiency for visual understanding tasks.",
 	},
 	"glm-4.6v-flash": {
-		maxTokens: 16_384,
+		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: true,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0,
 		outputPrice: 0,
 		cacheWritesPrice: 0,
@@ -516,10 +549,11 @@ export const mainlandZAiModels = {
 			"GLM-4.6V-Flash is a free, high-speed multimodal vision model for rapid image understanding and visual reasoning tasks.",
 	},
 	"glm-4.6v-flashx": {
-		maxTokens: 16_384,
+		maxTokens: 32_768,
 		contextWindow: 131_072,
 		supportsImages: true,
 		supportsPromptCache: true,
+		supportsMaxTokens: true,
 		inputPrice: 0.02,
 		outputPrice: 0.2,
 		cacheWritesPrice: 0,
