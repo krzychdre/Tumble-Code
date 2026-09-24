@@ -131,7 +131,7 @@ where their files are disjoint; the coordinator merges in order.
   200 then 500 billed as 500, no delta). Residual for API-2: `TaskStreamProcessor` sums `outputTokens` across usage
   chunks, so the displayed `tokensOut` of the three Anthropic-protocol handlers (and Vertex's computed cost) counts
   the `message_start` preliminary value on top of the cumulative one (usually 1 token).
-- **DEF-S1:** PR #213 open. Scope grew during reproduction: besides escaped quotes, 20 more constructs let a denied
+- **DEF-S1:** DONE, merged 2026-09-24 as #213 (`c127aa111`). Scope grew during reproduction: besides escaped quotes, 20 more constructs let a denied
   command run under auto-approval, all reproduced against bash, among them `echo "$(rm -rf x)"` with only `echo`
   allowed (substitutions inside double quotes were never checked), `$(rm)` in an unquoted heredoc body, an operator
   after a heredoc opener, `$(` or a backtick inside single quotes, `(rm)`, `{ rm; }`, `then rm`, `do rm`, `! rm`,
@@ -139,4 +139,16 @@ where their files are disjoint; the coordinator merges in order.
   `src/shared/shell-command-scanner.ts` (one bash-faithful walk, nested commands listed, `uncertainty` for syntax it
   does not model, nesting limit 64); the deny list is matched also after quote removal; a quoted, escaped or
   expanded command name is never auto-approved. `shell-quote` removed from the extension package. Known limit,
-  unchanged: a prefix list cannot see a command passed as an argument (`eval`, `bash -c`, `xargs`, `sudo`).
+  unchanged: a prefix list cannot see a command passed as an argument (`eval`, `bash -c`, `xargs`, `sudo`). 39 decision cases and 31 split cases added, 10 ordinary commands pinned as still
+  auto-approved; fuzzed with 200,000 random shell-like strings plus 100 kB nesting inputs (a stack overflow found
+  this way led to the nesting limit). Extension suite 7,626 passed, webview 1,611 passed.
+- **DEF-S3, DEF-S6, DEF-S7, DEF-S11:** DONE, merged 2026-09-24 as #212 (`32022334c`). S3: `is_allowed_auth_redirect()`
+  accepts only `scheme://publisher.name` with nothing after it (the extension sends `vscode://QUB-IT.tumble-code`),
+  browser schemes refused, 400 on all three sign-in routes, and the callback also refuses a stored foreign redirect.
+  S6: logout 404s for a session that is not the token's own. S7: `is_member_of()`, a non-member org id gets 403.
+  S11: `.dockerignore` (`.env*` except `.env.example`, `.venv`, caches), non-root `USER app` (uid 10001), startup
+  refuses a missing, `change-me` or shorter-than-32 `SECRET_KEY`/`JWT_SECRET`, client tokens expire after
+  `CLIENT_TOKEN_IDLE_DAYS` (default 30) without use, sliding, pre-existing tokens grandfathered; callback logs the
+  user id, not the e-mail. pytest 233 to 320. **Deployment:** the live `.env` secrets pass the new rule (64
+  characters, not placeholders); the first rebuild is the first real run of the entrypoint as uid 10001. Open
+  follow-ups: no absolute maximum token lifetime; web session cookie lifetime unchanged.
