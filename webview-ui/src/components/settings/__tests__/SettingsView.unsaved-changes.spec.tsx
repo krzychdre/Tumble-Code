@@ -594,4 +594,105 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 		// No dialog should appear
 		expect(screen.queryByText("settings:unsavedChangesDialog.title")).not.toBeInTheDocument()
 	})
+
+	describe("settings import signal (settingsImportedAt)", () => {
+		// The host sets settingsImportedAt to a timestamp for exactly one state
+		// push after an import and then clears it with `undefined`. VS Code's
+		// postMessage JSON-serializes the state, so the `undefined` never reaches
+		// the webview and mergeExtensionState keeps the old timestamp. Every later
+		// state push therefore still carries the same, stale timestamp.
+		const EditableApiOptions = ({ setApiConfigurationField, apiConfiguration }: any) => (
+			<div data-testid="api-options">
+				<span data-testid="model-id">{apiConfiguration?.apiModelId ?? ""}</span>
+				<button onClick={() => setApiConfigurationField("apiModelId", "user-edit")} data-testid="edit-model">
+					Edit
+				</button>
+			</div>
+		)
+
+		const renderView = () => {
+			const view = render(
+				<QueryClientProvider client={queryClient}>
+					<SettingsView onDone={vi.fn()} />
+				</QueryClientProvider>,
+			)
+			const pushState = (state: any) => {
+				;(useExtensionState as any).mockReturnValue(state)
+				view.rerender(
+					<QueryClientProvider client={queryClient}>
+						<SettingsView onDone={vi.fn()} />
+					</QueryClientProvider>,
+				)
+			}
+			return { pushState }
+		}
+
+		const saveButton = () => screen.getByTestId("save-button") as HTMLButtonElement
+
+		beforeEach(() => {
+			vi.mocked(ApiOptions).mockImplementation(EditableApiOptions)
+		})
+
+		it("keeps an edit made after an import when an unrelated state update arrives", async () => {
+			const { pushState } = renderView()
+
+			// The import lands: one state push carrying the imported values and the timestamp.
+			const importedState = {
+				...defaultExtensionState,
+				settingsImportedAt: 1000,
+				apiConfiguration: { apiProvider: "openai", apiModelId: "imported-model" },
+			}
+			pushState(importedState)
+			await waitFor(() => expect(screen.getByTestId("model-id").textContent).toBe("imported-model"))
+
+			// The user edits a field after the import.
+			fireEvent.click(screen.getByTestId("edit-model"))
+			await waitFor(() => expect(screen.getByTestId("model-id").textContent).toBe("user-edit"))
+			expect(saveButton().disabled).toBe(false)
+
+			// An unrelated state push (e.g. a task message) arrives; the stale
+			// timestamp is still in the merged state.
+			pushState({ ...importedState, soundEnabled: true })
+
+			expect(screen.getByTestId("model-id").textContent).toBe("user-edit")
+			expect(saveButton().disabled).toBe(false)
+		})
+
+		it("resets the Save buffer once for each new import", async () => {
+			const { pushState } = renderView()
+
+			// An edit before the first import is replaced by the imported values.
+			fireEvent.click(screen.getByTestId("edit-model"))
+			await waitFor(() => expect(saveButton().disabled).toBe(false))
+
+			const firstImport = {
+				...defaultExtensionState,
+				settingsImportedAt: 1000,
+				apiConfiguration: { apiProvider: "openai", apiModelId: "first-import" },
+			}
+			pushState(firstImport)
+			await waitFor(() => expect(screen.getByTestId("model-id").textContent).toBe("first-import"))
+			expect(saveButton().disabled).toBe(true)
+
+			// Edit again, then a second import with a new timestamp resets the buffer again.
+			fireEvent.click(screen.getByTestId("edit-model"))
+			await waitFor(() => expect(saveButton().disabled).toBe(false))
+
+			const secondImport = {
+				...firstImport,
+				settingsImportedAt: 2000,
+				apiConfiguration: { apiProvider: "openai", apiModelId: "second-import" },
+			}
+			pushState(secondImport)
+			await waitFor(() => expect(screen.getByTestId("model-id").textContent).toBe("second-import"))
+			expect(saveButton().disabled).toBe(true)
+
+			// A later edit survives further pushes that repeat the same timestamp.
+			fireEvent.click(screen.getByTestId("edit-model"))
+			await waitFor(() => expect(saveButton().disabled).toBe(false))
+			pushState({ ...secondImport, soundEnabled: true })
+			expect(screen.getByTestId("model-id").textContent).toBe("user-edit")
+			expect(saveButton().disabled).toBe(false)
+		})
+	})
 })
