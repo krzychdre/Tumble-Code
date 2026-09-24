@@ -31,7 +31,6 @@ import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "../../shared/api"
-import { defaultModeSlug } from "../../shared/modes"
 import { type ClineProvider } from "../webview/ClineProvider"
 import { Package } from "../../shared/package"
 import { type ApiMessage } from "../task-persistence"
@@ -74,6 +73,10 @@ export interface ApiRequestBuilderAccess {
 
 	// Token usage
 	getTokenUsage(): { contextTokens?: number }
+
+	// The task's own mode (see Task#getTaskMode). Provider state holds the FOCUSED
+	// task's mode, which a background subagent or a delegated child does not share.
+	getTaskMode(): Promise<string>
 
 	// Methods
 	emit: (event: any, ...args: any[]) => boolean
@@ -130,7 +133,6 @@ export class ApiRequestBuilder {
 		const state = await this.access.providerRef.deref()?.getState()
 
 		const {
-			mode,
 			customModes,
 			customModePrompts,
 			customInstructions,
@@ -158,7 +160,7 @@ export class ApiRequestBuilder {
 			false,
 			mcpHub,
 			this.access.diffStrategy,
-			mode ?? defaultModeSlug,
+			await this.access.getTaskMode(),
 			customModePrompts,
 			customModes,
 			customInstructions,

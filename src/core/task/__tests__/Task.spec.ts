@@ -1475,6 +1475,24 @@ describe("Cline", () => {
 				expect(handleResponseSpy).toHaveBeenCalledWith("messageResponse", "follow-up message", ["image2.png"])
 			})
 
+			it("switches the task's own mode when a message names one", async () => {
+				// The task reads its own mode (not provider state) for prompts, tools and
+				// validation, so a mode sent with the message must reach the task itself.
+				const task = new Task({
+					provider: mockProvider,
+					apiConfiguration: mockApiConfig,
+					task: "initial task",
+					startTask: false,
+				})
+				vi.spyOn(mockProvider, "getCurrentTask").mockReturnValue(task)
+				const handleModeSwitchSpy = vi.spyOn(mockProvider, "handleModeSwitch").mockResolvedValue(undefined)
+				vi.spyOn(task.askSay, "handleWebviewAskResponse").mockImplementation(() => {})
+
+				await task.submitUserMessage("plan it", [], "architect")
+
+				expect(handleModeSwitchSpy).toHaveBeenCalledWith("architect")
+			})
+
 			it("should handle undefined provider gracefully", async () => {
 				const task = new Task({
 					provider: mockProvider,
@@ -2453,5 +2471,48 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 
 		countTokensSpy.mockRestore()
 		manageContextSpy.mockRestore()
+	})
+
+	it("requests tools and metadata for the task's own mode, not the provider's", async () => {
+		// The provider state holds the focused task's mode. A background subagent (explicit
+		// taskMode) runs in its own mode and must get that mode's tools.
+		vi.spyOn(mockProvider, "getState").mockResolvedValue({
+			apiConfiguration: mockApiConfig,
+			autoApprovalEnabled: false,
+			requestDelaySeconds: 0,
+			mode: "code",
+			autoCondenseContext: true,
+			autoCondenseContextPercent: 100,
+			profileThresholds: {},
+		} as any)
+
+		const cline = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			taskMode: "architect",
+			startTask: false,
+		})
+		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
+		const createMessageSpy = vi.spyOn(cline.api, "createMessage").mockReturnValue({
+			async *[Symbol.asyncIterator]() {
+				yield { type: "text", text: "response" }
+			},
+		} as AsyncGenerator<ApiStreamChunk>)
+		cline.apiConversationHistory = [
+			{ role: "user" as const, content: [{ type: "text" as const, text: "Hello" }], ts: Date.now() },
+		] as any
+		vi.spyOn(cline, "getTokenUsage").mockReturnValue({ contextTokens: 300 } as any)
+		vi.spyOn(cline.contextManager, "manageContextIfNeeded").mockResolvedValue(undefined as any)
+		const buildToolsSpy = vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
+			allTools: [],
+			allowedFunctionNames: undefined,
+		})
+
+		const iterator = cline.attemptApiRequest(0)
+		await iterator.next()
+
+		expect(buildToolsSpy.mock.calls[0][2]).toBe("architect")
+		expect(createMessageSpy.mock.calls[0][2]).toEqual(expect.objectContaining({ mode: "architect" }))
 	})
 })

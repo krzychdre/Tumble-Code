@@ -2,7 +2,7 @@ import delay from "delay"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
-import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
+import { getModeBySlug } from "../../shared/modes"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
 
@@ -38,8 +38,9 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 				return
 			}
 
-			// Check if already in requested mode
-			const currentMode = (await task.providerRef.deref()?.getState())?.mode ?? defaultModeSlug
+			// Check if already in requested mode. The task's own mode: provider state holds the
+			// focused task's mode, and a background subagent or a delegated child may differ.
+			const currentMode = await task.getTaskMode()
 
 			if (currentMode === mode_slug) {
 				task.recordToolError("switch_mode")

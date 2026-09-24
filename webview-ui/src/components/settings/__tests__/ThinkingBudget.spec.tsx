@@ -304,6 +304,179 @@ describe("ThinkingBudget", () => {
 			expect(screen.getByTestId("select-item-medium")).toBeInTheDocument()
 			expect(screen.getByTestId("select-item-high")).toBeInTheDocument()
 		})
+
+		// A stored effort that the current model does not offer (for example "xhigh" left over
+		// after switching models) must not reach the Select: Radix renders an empty trigger for
+		// a value that matches no item.
+		it("should show the model default when the stored effort is not offered by the model", () => {
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ reasoningEffort: "xhigh" }}
+					modelInfo={{
+						...reasoningEffortModelInfo,
+						supportsReasoningEffort: ["low", "medium", "high"],
+						requiredReasoningEffort: true,
+						reasoningEffort: "medium",
+					}}
+				/>,
+			)
+
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "medium")
+		})
+
+		it("should show 'disable' when a stale stored effort meets a model with boolean support", () => {
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ reasoningEffort: "max" }}
+					modelInfo={reasoningEffortModelInfo}
+				/>,
+			)
+
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "disable")
+		})
+
+		it("should fall back to the first option when neither the stored value nor the default is offered", () => {
+			// The default here is "disable", but the explicit array does not offer it.
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{}}
+					modelInfo={{
+						...reasoningEffortModelInfo,
+						supportsReasoningEffort: ["low", "high"],
+					}}
+				/>,
+			)
+
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "low")
+		})
+
+		it("should keep the stored value when the model declares an empty option list", () => {
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ reasoningEffort: "medium" }}
+					modelInfo={{
+						...reasoningEffortModelInfo,
+						supportsReasoningEffort: [] as any,
+					}}
+				/>,
+			)
+
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "medium")
+		})
+
+		// A model's declared default effort applies even when reasoning is optional (e.g. DeepSeek V4
+		// declares "high" and offers "disable"). The UI used to show "None" for these models, and a
+		// stale enableReasoningEffort=false from a previous model kept reasoning off.
+		describe("model default and normalization", () => {
+			const deepSeekLike: ModelInfo = {
+				...reasoningEffortModelInfo,
+				supportsReasoningEffort: ["disable", "low", "medium", "high", "xhigh"],
+				reasoningEffort: "high",
+			}
+
+			it("should show and keep the declared default of an optional reasoning model", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{ enableReasoningEffort: false }}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={deepSeekLike}
+					/>,
+				)
+
+				expect(screen.getByTestId("select")).toHaveAttribute("data-value", "high")
+				expect(setApiConfigurationField).toHaveBeenCalledWith("reasoningEffort", "high", false)
+				expect(setApiConfigurationField).toHaveBeenCalledWith("enableReasoningEffort", true, false)
+			})
+
+			it("should preserve an explicit 'disable' choice on an optional reasoning model", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{ reasoningEffort: "disable", enableReasoningEffort: false }}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={deepSeekLike}
+					/>,
+				)
+
+				expect(screen.getByTestId("select")).toHaveAttribute("data-value", "disable")
+				expect(setApiConfigurationField).not.toHaveBeenCalled()
+			})
+
+			it("should keep reasoning off by default when the model declares no default", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{}}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={reasoningEffortModelInfo}
+					/>,
+				)
+
+				expect(screen.getByTestId("select")).toHaveAttribute("data-value", "disable")
+				expect(setApiConfigurationField).not.toHaveBeenCalled()
+			})
+
+			it("should replace a stale stored effort with the shown value", () => {
+				// The backend drops reasoning when the stored effort is not in the model's list,
+				// so the shown value has to become the stored one.
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{ reasoningEffort: "max" }}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={{
+							...reasoningEffortModelInfo,
+							supportsReasoningEffort: ["low", "medium", "high"],
+							requiredReasoningEffort: true,
+							reasoningEffort: "medium",
+						}}
+					/>,
+				)
+
+				expect(setApiConfigurationField).toHaveBeenCalledWith("reasoningEffort", "medium", false)
+			})
+
+			it("should store the first offered effort when the model offers no 'disable' and no default", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{}}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={{ ...reasoningEffortModelInfo, supportsReasoningEffort: ["low", "high"] }}
+					/>,
+				)
+
+				expect(setApiConfigurationField).toHaveBeenCalledWith("reasoningEffort", "low", false)
+				expect(setApiConfigurationField).toHaveBeenCalledWith("enableReasoningEffort", true, false)
+			})
+		})
+
+		it("should keep a stored 'xhigh' when the model offers it", () => {
+			render(
+				<ThinkingBudget
+					{...defaultProps}
+					apiConfiguration={{ reasoningEffort: "xhigh" }}
+					modelInfo={{
+						...reasoningEffortModelInfo,
+						supportsReasoningEffort: ["none", "low", "medium", "high", "xhigh"],
+					}}
+				/>,
+			)
+
+			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "xhigh")
+			expect(screen.getByTestId("select-item-xhigh")).toBeInTheDocument()
+			expect(screen.queryByTestId("select-item-max")).not.toBeInTheDocument()
+		})
 	})
 
 	describe("configurable max output tokens (supportsMaxTokens)", () => {

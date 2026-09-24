@@ -217,6 +217,78 @@ export const bedrockModels = {
 			},
 		],
 	},
+	"anthropic.claude-opus-5-5": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M context window native (no beta header required)
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		inputPrice: 4.0,
+		outputPrice: 20.0,
+		cacheWritesPrice: 5.0,
+		cacheReadsPrice: 0.2,
+		minTokensPerCachePoint: 1024,
+		maxCachePoints: 4,
+		cachableFields: ["system", "messages", "tools"],
+		description:
+			"Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+	},
+	"anthropic.claude-opus-5": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M context window native (no beta header required)
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		inputPrice: 5.0,
+		outputPrice: 25.0,
+		cacheWritesPrice: 6.25,
+		cacheReadsPrice: 0.5,
+		minTokensPerCachePoint: 1024,
+		maxCachePoints: 4,
+		cachableFields: ["system", "messages", "tools"],
+		description:
+			"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+	},
+	"anthropic.claude-sonnet-5": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M context window native (no beta header required)
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		cacheWritesPrice: 2.5,
+		cacheReadsPrice: 0.2,
+		minTokensPerCachePoint: 1024,
+		maxCachePoints: 4,
+		cachableFields: ["system", "messages", "tools"],
+		description:
+			"Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+	},
+	"anthropic.claude-fable-5-1": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M context window native (no beta header required)
+		supportsImages: true,
+		supportsPromptCache: true,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		inputPrice: 10.0,
+		outputPrice: 50.0,
+		cacheWritesPrice: 12.5,
+		cacheReadsPrice: 0.25,
+		minTokensPerCachePoint: 1024,
+		maxCachePoints: 4,
+		cachableFields: ["system", "messages", "tools"],
+		description:
+			"Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+	},
 	"anthropic.claude-fable-5": {
 		maxTokens: 8192,
 		contextWindow: 1_000_000,
@@ -606,7 +678,9 @@ export const BEDROCK_1M_CONTEXT_MODEL_IDS = [
 // - Claude Opus 4.5
 // - Claude Opus 4.6
 // - Claude Opus 4.7
-// - Claude Fable 5 (cross-region inference only — can only be used through an inference profile)
+// - Claude Sonnet 5
+// - Claude Opus 5 and 5.5
+// - Claude Fable 5 and 5.1 (cross-region inference only, can only be used through an inference profile)
 export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
 	"anthropic.claude-sonnet-4-20250514-v1:0",
 	"anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -616,6 +690,10 @@ export const BEDROCK_GLOBAL_INFERENCE_MODEL_IDS = [
 	"anthropic.claude-opus-4-6-v1",
 	"anthropic.claude-opus-4-7",
 	"anthropic.claude-opus-4-8",
+	"anthropic.claude-sonnet-5",
+	"anthropic.claude-opus-5",
+	"anthropic.claude-opus-5-5",
+	"anthropic.claude-fable-5-1",
 	"anthropic.claude-fable-5",
 ] as const
 

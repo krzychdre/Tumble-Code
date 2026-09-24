@@ -2025,9 +2025,10 @@ export const webviewMessageHandler = async (
 					}
 				}
 
-				// Switch back to default mode after deletion
-				await updateGlobalState("mode", defaultModeSlug)
-				await provider.postStateToWebview()
+				// Switch back to default mode after deletion. Go through handleModeSwitch
+				// (like the mode selector) so the running task follows: it reads its own
+				// mode, not the shared "mode" state, and must not stay in a deleted mode.
+				await provider.handleModeSwitch(defaultModeSlug)
 			}
 			break
 		case "exportMode":

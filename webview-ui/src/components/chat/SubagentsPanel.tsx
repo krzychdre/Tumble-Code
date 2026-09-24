@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import type { ClineMessage, ExtensionMessage, FollowUpData, SubagentSummary } from "@roo-code/types"
+import { hasUsableAnswer } from "@roo-code/types"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger, StandardTooltip } from "@/components/ui"
 import { cn } from "@/lib/utils"
@@ -224,6 +225,10 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 	}, [awaitingInput, messages])
 
 	const pendingFollowUp = pendingAsk?.ask === "followup" ? parseFollowUp(pendingAsk.text ?? "") : undefined
+	// Hide suggestions with a blank, missing or non-string answer (weak models emit them).
+	const usableSuggestions = Array.isArray(pendingFollowUp?.suggest)
+		? pendingFollowUp.suggest.filter(hasUsableAnswer)
+		: []
 	const pendingPermission =
 		pendingAsk && (pendingAsk.ask === "tool" || pendingAsk.ask === "command" || pendingAsk.ask === "use_mcp_server")
 			? pendingAsk
@@ -337,9 +342,9 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 					</button>
 				</div>
 			)}
-			{pendingFollowUp?.suggest && pendingFollowUp.suggest.length > 0 && (
+			{usableSuggestions.length > 0 && (
 				<div className="flex flex-wrap gap-1 px-2 pb-1">
-					{pendingFollowUp.suggest.map((suggestion, index) => (
+					{usableSuggestions.map((suggestion, index) => (
 						<button
 							key={index}
 							type="button"

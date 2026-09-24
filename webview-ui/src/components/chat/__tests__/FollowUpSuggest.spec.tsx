@@ -690,4 +690,42 @@ describe("FollowUpSuggest", () => {
 			expect(mockOnCancelAutoApproval).toHaveBeenCalled()
 		})
 	})
+
+	// Weak models sometimes emit suggestions with a blank, missing or non-string answer.
+	// Those rendered as empty buttons, and "Copy to input" pushed undefined into the chat input.
+	describe("malformed suggestions", () => {
+		const malformed = [
+			{ answer: "" },
+			{ answer: "   " },
+			{ mode: "code" },
+			{ answer: 42 },
+			{ answer: "Usable answer" },
+		] as unknown as React.ComponentProps<typeof FollowUpSuggest>["suggestions"]
+
+		it("renders only suggestions with a usable answer", () => {
+			renderWithTestProviders(
+				<FollowUpSuggest suggestions={malformed} onSuggestionClick={mockOnSuggestionClick} ts={123} />,
+				defaultTestState,
+			)
+
+			const buttons = screen.getAllByRole("button")
+			expect(buttons).toHaveLength(1)
+			expect(buttons[0]).toHaveTextContent("Usable answer")
+		})
+
+		it("renders nothing and starts no countdown when no suggestion is usable", () => {
+			const { container } = renderWithTestProviders(
+				<FollowUpSuggest
+					suggestions={[{ answer: " " }, { mode: "code" }] as any}
+					onSuggestionClick={mockOnSuggestionClick}
+					ts={123}
+					onCancelAutoApproval={mockOnCancelAutoApproval}
+				/>,
+				defaultTestState,
+			)
+
+			expect(container).toBeEmptyDOMElement()
+			expect(screen.queryByText(/Selecting in/)).not.toBeInTheDocument()
+		})
+	})
 })

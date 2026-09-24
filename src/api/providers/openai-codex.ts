@@ -22,7 +22,6 @@ import { getModelParams } from "../transform/model-params"
 
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { responsesApiCompletionUsage } from "./utils/completion-usage"
 import { isMcpTool } from "../../utils/mcp-name"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 import { openAiCodexOAuthManager } from "../../integrations/openai-codex/oauth"
@@ -35,6 +34,13 @@ export type OpenAiCodexModel = ReturnType<OpenAiCodexHandler["getModel"]>
  * Per the implementation guide: requests are routed to chatgpt.com/backend-api/codex
  */
 const CODEX_API_BASE_URL = "https://chatgpt.com/backend-api/codex"
+
+/**
+ * A refusal is streamed as text so the chat still shows why the model declined, but it is not part
+ * of the answer. `completePromptWithUsage` relies on this prefix to leave refusals out, so both
+ * refusal branches must emit it.
+ */
+const REFUSAL_TEXT_PREFIX = "[Refusal] "
 
 /**
  * OpenAiCodexHandler - Uses OpenAI Responses API with OAuth authentication
@@ -71,6 +77,10 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 	private sawTextDeltaInCurrentResponse = false
 	// Tracks tool call IDs emitted via streaming partial events to prevent done-event duplicates.
 	private streamedToolCallIds = new Set<string>()
+	// Tracks whether the SDK stream produced an event. From then on the service has accepted the
+	// request and its output is already with the caller, so neither the SSE fallback nor the
+	// token-refresh retry may replay it: that would append a second generation to the first.
+	private sawSdkEventInCurrentResponse = false
 
 	// Event types handled by the shared event processor
 	private readonly coreHandledEventTypes = new Set<string>([
@@ -162,6 +172,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		this.pendingToolCallName = undefined
 		this.sawTextOutputInCurrentResponse = false
 		this.sawTextDeltaInCurrentResponse = false
+		this.sawSdkEventInCurrentResponse = false
 		this.streamedToolCallIds.clear()
 
 		// Get access token from OAuth manager
@@ -195,7 +206,8 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				const message = error instanceof Error ? error.message : String(error)
 				const isAuthFailure = /unauthorized|invalid token|not authenticated|authentication|401/i.test(message)
 
-				if (attempt === 0 && isAuthFailure) {
+				// Only retry while nothing has come back yet (see sawSdkEventInCurrentResponse).
+				if (attempt === 0 && isAuthFailure && !this.sawSdkEventInCurrentResponse) {
 					// Force refresh the token for retry
 					const refreshed = await openAiCodexOAuthManager.forceRefreshAccessToken()
 					if (!refreshed) {
@@ -392,6 +404,10 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 						break
 					}
 
+					// Set before the event is processed: processEvent also changes the
+					// response state, so a throw from it must not replay the request either.
+					this.sawSdkEventInCurrentResponse = true
+
 					for await (const outChunk of this.processEvent(event, model)) {
 						if (outChunk.type === "text") {
 							this.sawTextOutputInCurrentResponse = true
@@ -399,7 +415,13 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 						yield outChunk
 					}
 				}
-			} catch (_sdkErr) {
+			} catch (sdkErr) {
+				// The SSE fallback is only for an SDK that could not be used at all. Once the
+				// stream has emitted, replaying the request would duplicate its output.
+				if (this.sawSdkEventInCurrentResponse) {
+					throw sdkErr
+				}
+
 				// Fallback to manual SSE via fetch (Codex backend).
 				yield* this.makeCodexRequest(requestBody, model, accessToken, taskId)
 			}
@@ -747,7 +769,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 								if (parsed.delta) {
 									hasContent = true
 									this.sawTextOutputInCurrentResponse = true
-									yield { type: "text", text: `[Refusal] ${parsed.delta}` }
+									yield { type: "text", text: `${REFUSAL_TEXT_PREFIX}${parsed.delta}` }
 								}
 							} else if (parsed.type === "response.output_item.added") {
 								if (parsed.item) {
@@ -939,7 +961,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		if (event?.type === "response.refusal.delta") {
 			if (event?.delta) {
 				this.sawTextOutputInCurrentResponse = true
-				yield { type: "text", text: `[Refusal] ${event.delta}` }
+				yield { type: "text", text: `${REFUSAL_TEXT_PREFIX}${event.delta}` }
 			}
 			return
 		}
@@ -1157,101 +1179,33 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		return (await this.completePromptWithUsage(prompt)).text
 	}
 
+	/**
+	 * The Codex endpoint only accepts streaming requests (a body with `stream: false` is rejected
+	 * with HTTP 400 "Stream must be set to true"), so a one-shot completion is the streaming
+	 * request with its text chunks joined. Reusing `handleResponsesApiMessage` also reuses the
+	 * OAuth refresh-and-retry and the SDK-then-SSE fallback.
+	 */
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		this.abortController = new AbortController()
-
 		try {
 			const model = this.getModel()
+			let text = ""
+			let usage: CompletionResult["usage"]
 
-			// Get access token
-			const accessToken = await openAiCodexOAuthManager.getAccessToken()
-			if (!accessToken) {
-				throw new Error(
-					t("common:errors.openAiCodex.notAuthenticated", {
-						defaultValue:
-							"Not authenticated with OpenAI Codex. Please sign in using the OpenAI Codex OAuth flow.",
-					}),
-				)
-			}
-
-			const reasoningEffort = this.getReasoningEffort(model)
-
-			const requestBody: any = {
-				model: model.id,
-				input: [
-					{
-						role: "user",
-						content: [{ type: "input_text", text: prompt }],
-					},
-				],
-				stream: false,
-				store: false,
-				...(reasoningEffort ? { include: ["reasoning.encrypted_content"] } : {}),
-			}
-
-			if (reasoningEffort) {
-				requestBody.reasoning = {
-					effort: reasoningEffort,
-					summary: "auto" as const,
-				}
-			}
-
-			const url = `${CODEX_API_BASE_URL}/responses`
-
-			// Get ChatGPT account ID for organization subscriptions
-			const accountId = await openAiCodexOAuthManager.getAccountId()
-
-			// Build headers with required Codex-specific fields
-			const headers: Record<string, string> = {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${accessToken}`,
-				originator: "roo-code",
-				session_id: this.sessionId,
-				"User-Agent": `roo-code/${Package.version} (${os.platform()} ${os.release()}; ${os.arch()}) node/${process.version.slice(1)}`,
-			}
-
-			// Add ChatGPT-Account-Id if available
-			if (accountId) {
-				headers["ChatGPT-Account-Id"] = accountId
-			}
-
-			const response = await fetch(url, {
-				method: "POST",
-				headers,
-				body: JSON.stringify(requestBody),
-				signal: this.abortController.signal,
-			})
-
-			if (!response.ok) {
-				const errorText = await response.text()
-				throw new Error(
-					t("common:errors.openAiCodex.genericError", { status: response.status }) +
-						(errorText ? `: ${errorText}` : ""),
-				)
-			}
-
-			const responseData = await response.json()
-
-			// The Responses API names its usage fields input_tokens/output_tokens.
-			const usage = responsesApiCompletionUsage(responseData?.usage)
-
-			if (responseData?.output && Array.isArray(responseData.output)) {
-				for (const outputItem of responseData.output) {
-					if (outputItem.type === "message" && outputItem.content) {
-						for (const content of outputItem.content) {
-							if (content.type === "output_text" && content.text) {
-								return { text: content.text, usage }
-							}
-						}
+			for await (const chunk of this.handleResponsesApiMessage(model, "", [{ role: "user", content: prompt }])) {
+				// Only the answer is wanted: reasoning is dropped, and so are refusals, which
+				// are streamed as text for the chat but are not an answer.
+				if (chunk.type === "text" && !chunk.text.startsWith(REFUSAL_TEXT_PREFIX)) {
+					text += chunk.text
+				} else if (chunk.type === "usage") {
+					usage = {
+						inputTokens: chunk.inputTokens,
+						outputTokens: chunk.outputTokens,
+						...(chunk.cacheReadTokens ? { cacheReadTokens: chunk.cacheReadTokens } : {}),
 					}
 				}
 			}
 
-			if (responseData?.text) {
-				return { text: responseData.text, usage }
-			}
-
-			return { text: "", usage }
+			return { text, usage }
 		} catch (error) {
 			const errorModel = this.getModel()
 			const errorMessage = error instanceof Error ? error.message : String(error)
@@ -1262,8 +1216,6 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				throw new Error(t("common:errors.openAiCodex.completionError", { message: error.message }))
 			}
 			throw error
-		} finally {
-			this.abortController = undefined
 		}
 	}
 }

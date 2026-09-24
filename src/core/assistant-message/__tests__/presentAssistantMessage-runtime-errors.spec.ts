@@ -70,6 +70,7 @@ describe("runtime tool failures are counted and taught", () => {
 			toolRepetitionDetector: {
 				check: vi.fn().mockReturnValue({ allowExecution: true }),
 			},
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			providerRef: {
 				deref: () => ({
 					getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [] }),

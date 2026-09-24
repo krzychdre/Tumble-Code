@@ -174,6 +174,9 @@ export interface TaskContextManagerAccess {
 	// Methods needed
 	getTokenUsage(): TokenUsage
 	getSystemPrompt(): Promise<string>
+	// The task's own mode (see Task#getTaskMode). Provider state holds the FOCUSED
+	// task's mode, which a background subagent or a delegated child does not share.
+	getTaskMode(): Promise<string>
 	emit: EventEmitter["emit"]
 	processQueuedMessages(): void
 }
@@ -275,13 +278,12 @@ export class TaskContextManager {
 		// Get condensing configuration
 		const state = await this.access.providerRef.deref()?.getState()
 		const customCondensingPrompt = state?.customSupportPrompts?.CONDENSE
-		const { mode, apiConfiguration } = state ?? {}
+		const { apiConfiguration } = state ?? {}
 
 		const { contextTokens: prevContextTokens } = this.access.getTokenUsage()
 
 		// Build tools for condensing metadata (same tools used for normal API calls)
 		const metadata = await this.buildCondensingMetadata(
-			mode,
 			state?.customModes,
 			state?.experiments,
 			apiConfiguration,
@@ -400,7 +402,7 @@ export class TaskContextManager {
 	 */
 	public async handleContextWindowExceededError(): Promise<void> {
 		const state = await this.access.providerRef.deref()?.getState()
-		const { profileThresholds = {}, mode, apiConfiguration } = state ?? {}
+		const { profileThresholds = {}, apiConfiguration } = state ?? {}
 
 		const { contextTokens } = this.access.getTokenUsage()
 		const modelInfo = this.access.api.getModel().info
@@ -430,7 +432,6 @@ export class TaskContextManager {
 
 		// Build tools for condensing metadata
 		const metadata = await this.buildCondensingMetadata(
-			mode,
 			state?.customModes,
 			state?.experiments,
 			apiConfiguration,
@@ -592,9 +593,8 @@ export class TaskContextManager {
 		}
 
 		// Build tools for condensing metadata
-		const { mode, apiConfiguration } = state ?? {}
+		const { apiConfiguration } = state ?? {}
 		const metadata = await this.buildCondensingMetadata(
-			mode,
 			state?.customModes,
 			state?.experiments,
 			apiConfiguration,
@@ -872,7 +872,6 @@ export class TaskContextManager {
 	 * This consolidates the duplicated tool-building logic across multiple methods.
 	 */
 	private async buildCondensingMetadata(
-		mode: string | undefined,
 		customModes: any,
 		experiments: Record<string, boolean> | undefined,
 		apiConfiguration: ProviderSettings | undefined,
@@ -881,6 +880,9 @@ export class TaskContextManager {
 	): Promise<ApiHandlerCreateMessageMetadata> {
 		const provider = this.access.providerRef.deref()
 		const modelInfo = this.access.api.getModel().info
+		// Same tools as a normal request of this task, so the task's own mode, not the
+		// focused task's mode that provider state holds.
+		const mode = await this.access.getTaskMode()
 
 		let allTools: OpenAI.Chat.ChatCompletionTool[] = []
 		if (provider) {

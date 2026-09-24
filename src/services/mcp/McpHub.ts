@@ -495,14 +495,24 @@ export class McpHub {
 			// An override's directory may not exist yet (a fresh ~/.roo), and
 			// the watcher set up in the constructor must not fail on it.
 			await fs.mkdir(path.dirname(mcpSettingsFilePath), { recursive: true })
-			await fs.writeFile(
-				mcpSettingsFilePath,
-				`{
+			// Exclusive create ("wx"): another window, or the CLI sharing this file, may have
+			// written its config since the check above. That file must win over the empty stub,
+			// so EEXIST counts as success instead of being overwritten.
+			try {
+				await fs.writeFile(
+					mcpSettingsFilePath,
+					`{
   "mcpServers": {
 
   }
 }`,
-			)
+					{ flag: "wx" },
+				)
+			} catch (error) {
+				if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+					throw error
+				}
+			}
 		}
 		return mcpSettingsFilePath
 	}

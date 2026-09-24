@@ -52,6 +52,7 @@ describe("presentAssistantMessage - search_task_history dispatch", () => {
 			recordToolUsage: vi.fn(),
 			recordToolError: vi.fn(),
 			toolRepetitionDetector: { check: vi.fn().mockReturnValue({ allowExecution: true }) },
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			providerRef: {
 				deref: () => ({
 					getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [] }),

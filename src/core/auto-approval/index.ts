@@ -4,6 +4,7 @@ import {
 	type McpServerUse,
 	type FollowUpData,
 	type ExtensionState,
+	firstUsableSuggestion,
 	isNonBlockingAsk,
 } from "@roo-code/types"
 
@@ -110,7 +111,8 @@ export async function checkAutoApproval({
 				let answer: string | undefined
 
 				try {
-					answer = (JSON.parse(text || "{}") as FollowUpData).suggest?.[0]?.answer
+					// Skip blank, missing or non-string answers (weak models emit them).
+					answer = firstUsableSuggestion((JSON.parse(text || "{}") as FollowUpData).suggest)?.answer
 				} catch {
 					answer = undefined
 				}
@@ -120,7 +122,7 @@ export async function checkAutoApproval({
 						? state.followupAutoApproveTimeoutMs
 						: 0
 
-				// Always proceed: use the first suggestion when present, otherwise
+				// Always proceed: use the first usable suggestion when present, otherwise
 				// respond with empty text so the task continues unattended.
 				return {
 					decision: "timeout",
@@ -136,7 +138,9 @@ export async function checkAutoApproval({
 	if (ask === "followup") {
 		if (state.alwaysAllowFollowupQuestions === true) {
 			try {
-				const suggestion = (JSON.parse(text || "{}") as FollowUpData).suggest?.[0]
+				// Pick the first suggestion with a usable answer: a blank or missing one would
+				// answer the question with no content once the timeout fires.
+				const suggestion = firstUsableSuggestion((JSON.parse(text || "{}") as FollowUpData).suggest)
 
 				if (
 					suggestion &&

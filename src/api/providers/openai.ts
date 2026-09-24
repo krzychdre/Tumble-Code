@@ -289,15 +289,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					const delta = chunk.choices?.[0]?.delta ?? {}
 					const finishReason = chunk.choices?.[0]?.finish_reason
 
+					const reasoningText = extractReasoningFromDelta(delta)
+					if (reasoningText) {
+						yield { type: "reasoning", text: reasoningText }
+					}
+
 					if (delta.content) {
 						for (const chunk of matcher.update(delta.content)) {
 							yield chunk
 						}
-					}
-
-					const reasoningText = extractReasoningFromDelta(delta)
-					if (reasoningText) {
-						yield { type: "reasoning", text: reasoningText }
 					}
 
 					yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
@@ -580,20 +580,22 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			const finishReason = chunk.choices?.[0]?.finish_reason
 
 			if (delta) {
+				// AP-8: Extract reasoning_content/reasoning from the delta the
+				// same way the main streaming path does, so reasoning-capable
+				// servers routed through the O3 branch (DeepSeek-R1 distills,
+				// QwQ behind adapters, etc.) surface reasoning output.
+				// Reasoning goes first: it precedes the answer text when one
+				// delta carries both (the end of thinking).
+				const reasoningText = extractReasoningFromDelta(delta)
+				if (reasoningText) {
+					yield { type: "reasoning", text: reasoningText }
+				}
+
 				if (delta.content) {
 					yield {
 						type: "text",
 						text: delta.content,
 					}
-				}
-
-				// AP-8: Extract reasoning_content/reasoning from the delta the
-				// same way the main streaming path does, so reasoning-capable
-				// servers routed through the O3 branch (DeepSeek-R1 distills,
-				// QwQ behind adapters, etc.) surface reasoning output.
-				const reasoningText = extractReasoningFromDelta(delta)
-				if (reasoningText) {
-					yield { type: "reasoning", text: reasoningText }
 				}
 
 				yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
@@ -649,9 +651,11 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		}
 	}
 
+	// The hostname, without the port, so a base URL with an explicit port
+	// still matches the host checks below.
 	protected _getUrlHost(baseUrl?: string): string {
 		try {
-			return new URL(baseUrl ?? "").host
+			return new URL(baseUrl ?? "").hostname
 		} catch (error) {
 			return ""
 		}
@@ -659,7 +663,9 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	private _isGrokXAI(baseUrl?: string): boolean {
 		const urlHost = this._getUrlHost(baseUrl)
-		return urlHost.includes("x.ai")
+		// Match x.ai and its subdomains only: a substring test also caught hosts
+		// such as box.ai, which then lost stream_options (and token usage).
+		return urlHost === "x.ai" || urlHost.endsWith(".x.ai")
 	}
 
 	protected _isAzureAiInference(baseUrl?: string): boolean {

@@ -434,6 +434,66 @@ export const vertexModels = {
 			},
 		],
 	},
+	"claude-opus-5-5": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M native, no beta flag
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 4.0,
+		outputPrice: 20.0,
+		cacheWritesPrice: 5.0,
+		cacheReadsPrice: 0.2,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+	},
+	"claude-opus-5": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M native, no beta flag
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 5.0,
+		outputPrice: 25.0,
+		cacheWritesPrice: 6.25,
+		cacheReadsPrice: 0.5,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Opus 5 is Anthropic's model for complex agentic coding and enterprise work, strongest on deep reasoning and long-horizon tasks.",
+	},
+	"claude-sonnet-5": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M native, no beta flag
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 2.0,
+		outputPrice: 10.0,
+		cacheWritesPrice: 2.5,
+		cacheReadsPrice: 0.2,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Sonnet 5 offers the best combination of speed and intelligence in the Sonnet tier, reaching near-Opus quality on coding and agentic work.",
+	},
+	"claude-fable-5-1": {
+		maxTokens: 8192,
+		contextWindow: 1_000_000, // 1M native, no beta flag
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0,
+		outputPrice: 50.0,
+		cacheWritesPrice: 12.5,
+		cacheReadsPrice: 0.25,
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
+	},
 	"claude-fable-5": {
 		maxTokens: 8192,
 		contextWindow: 1_000_000,

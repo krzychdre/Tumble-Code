@@ -371,6 +371,36 @@ describe("Shell Detection Tests", () => {
 	})
 
 	// --------------------------------------------------------------------------
+	// Non-string defaultProfile values (settings.json is not type-checked)
+	// --------------------------------------------------------------------------
+	describe("Non-string defaultProfile values", () => {
+		it.each([
+			["number", 1],
+			["boolean", true],
+			["array", ["PowerShell"]],
+			["object", { name: "PowerShell" }],
+		])("Windows: ignores a %s defaultProfile instead of throwing", (_label, value) => {
+			Object.defineProperty(process, "platform", { value: "win32" })
+			mockVsCodeConfig("windows", value as any, {})
+
+			// Treated as "no profile configured": the PowerShell auto-detect default.
+			expect(getShell()).toBe("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe")
+		})
+
+		it("macOS: does not use a profile whose key matches a numeric defaultProfile", () => {
+			Object.defineProperty(process, "platform", { value: "darwin" })
+			mockVsCodeConfig("osx", 1 as any, { "1": { path: "/usr/local/bin/fish" } })
+			expect(getShell()).toBe("/bin/zsh")
+		})
+
+		it("Linux: does not use a profile whose key matches a numeric defaultProfile", () => {
+			Object.defineProperty(process, "platform", { value: "linux" })
+			mockVsCodeConfig("linux", 1 as any, { "1": { path: "/usr/bin/fish" } })
+			expect(getShell()).toBe("/bin/bash")
+		})
+	})
+
+	// --------------------------------------------------------------------------
 	// Shell Validation Tests
 	// --------------------------------------------------------------------------
 	describe("Shell Validation", () => {

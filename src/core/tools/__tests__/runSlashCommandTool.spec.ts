@@ -24,6 +24,7 @@ describe("runSlashCommandTool", () => {
 			sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing parameter error"),
 			ask: vi.fn().mockResolvedValue({}),
 			cwd: "/test/project",
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			providerRef: {
 				deref: vi.fn().mockReturnValue({
 					getState: vi.fn().mockResolvedValue({
@@ -434,6 +435,29 @@ Deploy application to production`,
 		await runSlashCommandTool.handle(mockTask as Task, block, mockCallbacks)
 
 		expect(mockTask.consecutiveMistakeCount).toBe(0)
+	})
+
+	it("falls back to a skill of the task's own mode, not the provider's", async () => {
+		// Provider state holds the focused task's mode; a background subagent or a delegated
+		// child can run in another mode and must see that mode's skills.
+		mockTask.getTaskMode.mockResolvedValue("architect")
+		const getSkillContent = vi.fn().mockResolvedValue(null)
+		mockTask.providerRef.deref = vi.fn().mockReturnValue({
+			getState: vi.fn().mockResolvedValue({ experiments: { runSlashCommand: true }, mode: "code" }),
+			getSkillsManager: vi.fn().mockReturnValue({ getSkillContent }),
+		})
+		vi.mocked(getCommand).mockResolvedValue(undefined)
+		const block: ToolUse<"run_slash_command"> = {
+			type: "tool_use" as const,
+			name: "run_slash_command" as const,
+			params: {},
+			partial: false,
+			nativeArgs: { command: "skill-only" },
+		}
+
+		await runSlashCommandTool.handle(mockTask as Task, block, mockCallbacks)
+
+		expect(getSkillContent).toHaveBeenCalledWith("skill-only", "architect")
 	})
 
 	it("should switch mode when mode is specified in command", async () => {

@@ -60,7 +60,9 @@ export class CodebaseSearchTool extends BaseTool<"codebase_search"> {
 				throw new Error("Extension context is not available.")
 			}
 
-			const manager = CodeIndexManager.getInstance(context)
+			// Same index build-tools.ts checked when it offered this tool: the one of the
+			// task's workspace, not the root of whatever file the active editor shows.
+			const manager = CodeIndexManager.getInstance(context, workspacePath)
 
 			if (!manager) {
 				throw new Error("CodeIndexManager is not available.")

@@ -2,7 +2,7 @@
 Semantics for Reasoning Effort (ThinkingBudget)
 
 Capability surface:
-- modelInfo.supportsReasoningEffort: boolean | Array&lt;"disable" | "none" | "minimal" | "low" | "medium" | "high"&gt;
+- modelInfo.supportsReasoningEffort: boolean | Array&lt;"disable" | "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"&gt;
   - true  → UI shows ["low","medium","high"]
   - array → UI shows exactly the provided values
 
@@ -17,17 +17,21 @@ Selection behavior:
   - set enableReasoningEffort = true
   - persist reasoningEffort = "none"
   - request builders include reasoning with value "none"
-- "minimal" | "low" | "medium" | "high":
+- "minimal" | "low" | "medium" | "high" | "xhigh" | "max":
   - set enableReasoningEffort = true
   - persist the selected value
   - request builders include reasoning with the selected effort
 
 Required:
 - If modelInfo.requiredReasoningEffort is true, do not synthesize a "None" choice. Only show values from the capability.
-- On mount, if unset and a default exists, set enableReasoningEffort = true and use modelInfo.reasoningEffort.
+
+Defaults (required or optional reasoning):
+- If unset, use modelInfo.reasoningEffort when the model declares one; otherwise "medium" when
+  reasoning is required and "disable" when it is optional.
 
 Notes:
-- Current selection is normalized to the capability: unsupported persisted values are not shown.
+- Current selection is normalized to the capability: an unsupported persisted value is replaced by
+  the default (or the first offered value), and the shown value is written back unless it is "disable".
 - Both "disable" and "none" display as the "None" label per UX, but are wired differently as above.
 - "minimal" uses t("settings:providers.reasoningEffort.minimal").
 */
@@ -35,12 +39,7 @@ Notes:
 import { useEffect } from "react"
 import { Checkbox } from "vscrui"
 
-import {
-	type ProviderSettings,
-	type ModelInfo,
-	type ReasoningEffortWithMinimal,
-	reasoningEfforts,
-} from "@roo-code/types"
+import { type ProviderSettings, type ModelInfo, type ReasoningEffortExtended, reasoningEfforts } from "@roo-code/types"
 
 import {
 	DEFAULT_HYBRID_REASONING_MODEL_MAX_TOKENS,
@@ -81,53 +80,60 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 	// max-tokens control, so only surface this standalone slider when that branch is inactive.
 	const isMaxTokensConfigurable = !!modelInfo && modelInfo.supportsMaxTokens && !isReasoningBudgetSupported
 
-	// Build available reasoning efforts list from capability
-	const supports = modelInfo?.supportsReasoningEffort
-	const baseAvailableOptions: ReadonlyArray<ReasoningEffortWithMinimal> =
-		supports === true
-			? (reasoningEfforts as readonly ReasoningEffortWithMinimal[])
-			: Array.isArray(supports)
-				? (supports as ReadonlyArray<ReasoningEffortWithMinimal>)
-				: (reasoningEfforts as readonly ReasoningEffortWithMinimal[])
-
 	// "disable" turns off reasoning entirely; "none" is a valid reasoning level.
 	// Both display as "None" in the UI but behave differently.
+	// Arrays from supportsReasoningEffort may include "disable" (e.g. Z.ai GLM), so the option
+	// type is the full extended set plus "disable".
+	type ReasoningEffortOption = ReasoningEffortExtended | "disable"
+	const supports = modelInfo?.supportsReasoningEffort
+	const baseAvailableOptions: ReadonlyArray<ReasoningEffortOption> =
+		supports === true
+			? (reasoningEfforts as readonly ReasoningEffortOption[])
+			: Array.isArray(supports)
+				? (supports as ReadonlyArray<ReasoningEffortOption>)
+				: (reasoningEfforts as readonly ReasoningEffortOption[])
+
 	// Add "disable" option only when:
 	// 1. requiredReasoningEffort is not true, AND
 	// 2. supportsReasoningEffort is boolean true (not an explicit array)
 	// When the model provides an explicit array, respect those exact values.
-	type ReasoningEffortOption = ReasoningEffortWithMinimal | "none" | "disable"
 	const shouldAutoAddDisable =
-		!modelInfo?.requiredReasoningEffort && supports === true && !baseAvailableOptions.includes("disable" as any)
+		!modelInfo?.requiredReasoningEffort && supports === true && !baseAvailableOptions.includes("disable")
 	const availableOptions: ReadonlyArray<ReasoningEffortOption> = shouldAutoAddDisable
-		? (["disable", ...baseAvailableOptions] as ReasoningEffortOption[])
-		: (baseAvailableOptions as ReadonlyArray<ReasoningEffortOption>)
+		? ["disable", ...baseAvailableOptions]
+		: baseAvailableOptions
 
-	// Default reasoning effort - use model's default if available
-	// GPT-5 models have "medium" as their default in the model configuration
-	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortWithMinimal | undefined
-	const defaultReasoningEffort: ReasoningEffortOption = modelInfo?.requiredReasoningEffort
-		? modelDefaultReasoningEffort || "medium"
-		: "disable"
-	// Current reasoning effort from settings, or fall back to default
+	// Default reasoning effort: the model's declared default whenever it has one (also for
+	// optional reasoning, e.g. DeepSeek V4 declares "high"; the backend applies it too).
+	// Without one, required reasoning falls back to "medium" and optional reasoning to "disable".
+	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortExtended | undefined
+	const defaultReasoningEffort: ReasoningEffortOption =
+		modelDefaultReasoningEffort ?? (modelInfo?.requiredReasoningEffort ? "medium" : "disable")
+	// Current reasoning effort from settings, or fall back to default.
+	// Clamp it to availableOptions: a stored value the model does not offer (e.g. "xhigh" left
+	// over after switching models) would render an empty Select trigger. Prefer the default,
+	// then the first offered option.
 	const storedReasoningEffort = apiConfiguration.reasoningEffort as ReasoningEffortOption | undefined
-	const currentReasoningEffort: ReasoningEffortOption = storedReasoningEffort || defaultReasoningEffort
+	const rawReasoningEffort: ReasoningEffortOption = storedReasoningEffort || defaultReasoningEffort
+	const fallbackReasoningEffort: ReasoningEffortOption = availableOptions.includes(defaultReasoningEffort)
+		? defaultReasoningEffort
+		: (availableOptions[0] ?? rawReasoningEffort)
+	const currentReasoningEffort: ReasoningEffortOption = availableOptions.includes(rawReasoningEffort)
+		? rawReasoningEffort
+		: fallbackReasoningEffort
 
-	// Set default reasoning effort when model supports it and no value is set
+	// Store the shown value when it differs from the stored one (unset, or a stale value the model
+	// does not offer, which the backend would silently drop). "disable" needs no write: unset
+	// already means "no reasoning" when the model declares no default.
 	useEffect(() => {
-		if (isReasoningEffortSupported && !apiConfiguration.reasoningEffort) {
-			// Only set a default if reasoning is required, otherwise leave as undefined (which maps to "disable")
-			if (modelInfo?.requiredReasoningEffort && defaultReasoningEffort !== "disable") {
-				setApiConfigurationField("reasoningEffort", defaultReasoningEffort as ReasoningEffortWithMinimal, false)
-			}
+		if (
+			isReasoningEffortSupported &&
+			storedReasoningEffort !== currentReasoningEffort &&
+			currentReasoningEffort !== "disable"
+		) {
+			setApiConfigurationField("reasoningEffort", currentReasoningEffort, false)
 		}
-	}, [
-		isReasoningEffortSupported,
-		apiConfiguration.reasoningEffort,
-		defaultReasoningEffort,
-		modelInfo?.requiredReasoningEffort,
-		setApiConfigurationField,
-	])
+	}, [isReasoningEffortSupported, storedReasoningEffort, currentReasoningEffort, setApiConfigurationField])
 
 	// Sync enableReasoningEffort based on selection
 	// "disable" turns off reasoning; "none" is a valid level (reasoning enabled)
@@ -280,9 +286,9 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 							setApiConfigurationField("enableReasoningEffort", false)
 							setApiConfigurationField("reasoningEffort", "disable")
 						} else {
-							// "none", "minimal", "low", "medium", "high" all enable reasoning
+							// every other value, including "none", enables reasoning
 							setApiConfigurationField("enableReasoningEffort", true)
-							setApiConfigurationField("reasoningEffort", value as ReasoningEffortWithMinimal)
+							setApiConfigurationField("reasoningEffort", value)
 						}
 					}}>
 					<SelectTrigger className="w-full">

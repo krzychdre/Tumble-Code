@@ -7,6 +7,7 @@ import { BaseTerminal } from "./BaseTerminal"
 import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { AskpassServer } from "./askpass/AskpassServer"
 import { promptForSecret } from "./askpass/promptForSecret"
+import { getUtf8LocaleEnv } from "./localeEnv"
 
 // On POSIX the command gets its own session (setsid), so it has no controlling
 // terminal. Without it, `git`, `ssh` and `sudo` open /dev/tty by path to ask for
@@ -105,9 +106,9 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 				detached: USE_OWN_SESSION,
 				env: {
 					...process.env,
-					// Ensure UTF-8 encoding for Ruby, CocoaPods, etc.
-					LANG: "en_US.UTF-8",
-					LC_ALL: "en_US.UTF-8",
+					// Keep a UTF-8 host locale (e.g. pl_PL.UTF-8); only a non-UTF-8 host gets
+					// en_US.UTF-8, so Ruby, CocoaPods, etc. still emit UTF-8.
+					...getUtf8LocaleEnv(process.env),
 					// Fail with a sentence the model can act on instead of the
 					// bare ENXIO that opening a missing /dev/tty produces.
 					GIT_TERMINAL_PROMPT: "0",

@@ -221,6 +221,15 @@ export const parseOpenRouterModel = ({
 		supportedParameters: supportedParameters ? supportedParameters.filter(isModelParameter) : undefined,
 	}
 
+	// GPT-6 Astra rejects the `none` effort with a 400, so it must always reason.
+	// The `-pro` id is the same model run with reasoning.mode "pro".
+	if (id === "openai/gpt-6-astra" || id === "openai/gpt-6-astra-pro") {
+		modelInfo.supportsReasoningEffort = ["low", "medium", "high", "xhigh", "max"]
+		modelInfo.requiredReasoningEffort = true
+		modelInfo.reasoningEffort = "medium"
+		modelInfo.supportsTemperature = false
+	}
+
 	if (OPEN_ROUTER_REASONING_BUDGET_MODELS.has(id)) {
 		modelInfo.supportsReasoningBudget = true
 	}
@@ -263,9 +272,18 @@ export const parseOpenRouterModel = ({
 		modelInfo.maxTokens = anthropicModels["claude-opus-4-6"].maxTokens
 	}
 
-	// Set claude-fable-5 model to use the correct Anthropic configuration
-	if (id === "anthropic/claude-fable-5") {
-		modelInfo.maxTokens = anthropicModels["claude-fable-5"].maxTokens
+	// The Claude 5 family uses the adaptive-thinking contract (binary toggle, no
+	// temperature). OpenRouter ids use a dotted version, unlike Anthropic's direct API.
+	const claude5AnthropicIds: Record<string, keyof typeof anthropicModels> = {
+		"anthropic/claude-sonnet-5": "claude-sonnet-5",
+		"anthropic/claude-opus-5": "claude-opus-5",
+		"anthropic/claude-opus-5.5": "claude-opus-5-5",
+		"anthropic/claude-fable-5": "claude-fable-5",
+		"anthropic/claude-fable-5.1": "claude-fable-5-1",
+	}
+	const claude5AnthropicId = claude5AnthropicIds[id]
+	if (claude5AnthropicId) {
+		modelInfo.maxTokens = anthropicModels[claude5AnthropicId].maxTokens
 		modelInfo.supportsReasoningBinary = true
 		modelInfo.supportsTemperature = false
 	}

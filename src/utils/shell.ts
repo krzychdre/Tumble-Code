@@ -136,10 +136,20 @@ type LinuxTerminalProfiles = Record<string, LinuxTerminalProfile>
 // 1) VS Code Terminal Configuration Helpers
 // -----------------------------------------------------
 
+/**
+ * Reads `terminal.integrated.defaultProfile.<platform>`. settings.json is not
+ * type-checked, so a number, boolean, array or object can arrive here; only a
+ * string names a profile, anything else counts as "not configured".
+ */
+function getDefaultProfileName(config: vscode.WorkspaceConfiguration, platformKey: string): string | null {
+	const value = config.get<unknown>(`defaultProfile.${platformKey}`)
+	return typeof value === "string" ? value : null
+}
+
 function getWindowsTerminalConfig() {
 	try {
 		const config = vscode.workspace.getConfiguration("terminal.integrated")
-		const defaultProfileName = config.get<string>("defaultProfile.windows")
+		const defaultProfileName = getDefaultProfileName(config, "windows")
 		const profiles = config.get<WindowsTerminalProfiles>("profiles.windows") || {}
 		return { defaultProfileName, profiles }
 	} catch {
@@ -150,7 +160,7 @@ function getWindowsTerminalConfig() {
 function getMacTerminalConfig() {
 	try {
 		const config = vscode.workspace.getConfiguration("terminal.integrated")
-		const defaultProfileName = config.get<string>("defaultProfile.osx")
+		const defaultProfileName = getDefaultProfileName(config, "osx")
 		const profiles = config.get<MacTerminalProfiles>("profiles.osx") || {}
 		return { defaultProfileName, profiles }
 	} catch {
@@ -161,7 +171,7 @@ function getMacTerminalConfig() {
 function getLinuxTerminalConfig() {
 	try {
 		const config = vscode.workspace.getConfiguration("terminal.integrated")
-		const defaultProfileName = config.get<string>("defaultProfile.linux")
+		const defaultProfileName = getDefaultProfileName(config, "linux")
 		const profiles = config.get<LinuxTerminalProfiles>("profiles.linux") || {}
 		return { defaultProfileName, profiles }
 	} catch {

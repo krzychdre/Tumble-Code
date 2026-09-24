@@ -326,6 +326,34 @@ describe("AskFollowupQuestionTool", () => {
 		expect(mockTask.ask).toHaveBeenCalledWith("followup", expectedJson, false)
 	})
 
+	it("should drop suggestions without usable text and accept bare string suggestions", async () => {
+		// Weak models emit blank, missing or non-string text, or plain strings instead of objects.
+		const params = {
+			question: "Which one?",
+			follow_up: [
+				{ text: "" },
+				{ text: "   " },
+				{ mode: "code" },
+				{ text: 5 },
+				null,
+				"Bare string answer",
+				{ text: "Real answer", mode: "code" },
+			] as any,
+		}
+
+		await tool.execute(params, mockTask, mockCallbacks)
+
+		const expectedJson = JSON.stringify({
+			question: "Which one?",
+			suggest: [
+				{ answer: "Bare string answer", mode: undefined },
+				{ answer: "Real answer", mode: "code" },
+			],
+		})
+
+		expect(mockTask.ask).toHaveBeenCalledWith("followup", expectedJson, false)
+	})
+
 	it("should not call askApproval", async () => {
 		const params = { question: "What?", follow_up: [{ text: "A" }] }
 

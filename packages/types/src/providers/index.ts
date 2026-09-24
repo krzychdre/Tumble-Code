@@ -26,6 +26,7 @@ import { litellmDefaultModelId } from "./lite-llm.js"
 import { mistralDefaultModelId } from "./mistral.js"
 import { moonshotDefaultModelId } from "./moonshot.js"
 import { openAiCodexDefaultModelId } from "./openai-codex.js"
+import { openAiNativeDefaultModelId } from "./openai.js"
 import { openRouterDefaultModelId } from "./openrouter.js"
 import { qwenCodeDefaultModelId } from "./qwen-code.js"
 import { vertexDefaultModelId } from "./vertex.js"
@@ -68,7 +69,7 @@ export function getProviderDefaultModelId(
 		case "zai":
 			return options?.isChina ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId
 		case "openai-native":
-			return "gpt-4o" // Based on openai-native patterns
+			return openAiNativeDefaultModelId
 		case "openai-codex":
 			return openAiCodexDefaultModelId
 		case "mistral":

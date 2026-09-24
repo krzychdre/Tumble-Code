@@ -332,6 +332,15 @@ vi.mock("../diff/strategies/multi-search-replace", () => ({
 	})),
 }))
 
+// The state builder awaits this after it has read the chat messages; the state-order test
+// holds it open to make an older snapshot finish building after a newer one.
+const { mockOpenAiCodexIsAuthenticated } = vi.hoisted(() => ({
+	mockOpenAiCodexIsAuthenticated: vi.fn(),
+}))
+vi.mock("../../../integrations/openai-codex/oauth", () => ({
+	openAiCodexOAuthManager: { isAuthenticated: mockOpenAiCodexIsAuthenticated },
+}))
+
 vi.mock("@roo-code/cloud", () => ({
 	CloudService: {
 		hasInstance: vi.fn().mockReturnValue(true),
@@ -884,6 +893,59 @@ describe("ClineProvider", () => {
 
 		// verify current cline instance is the last one added
 		expect(provider.getCurrentTask()).toBe(mockCline2)
+	})
+
+	// Each state push is built asynchronously: the chat messages are read part-way through and
+	// more awaits follow. When two pushes overlap, the one that read the messages first can finish
+	// last. The webview only applies clineMessages whose sequence number is higher than the last
+	// one it applied, so the number must follow the order of the reads, not the order of the
+	// posts. Otherwise the older snapshot (for example a child task with no messages yet) wins and
+	// the chat view falls back to Home.
+	test.each([
+		["postStateToWebview", (p: ClineProvider) => p.postStateToWebview()],
+		["postStateToWebviewWithoutTaskHistory", (p: ClineProvider) => p.postStateToWebviewWithoutTaskHistory()],
+	])("%s numbers chat message snapshots in the order they were read", async (_name, postState) => {
+		const task = new Task(defaultTaskOptions)
+		await provider.addClineToStack(task)
+		const newerMessages: ClineMessage[] = [{ ts: 1, type: "say", say: "text", text: "child ready" }]
+		task.clineMessages = []
+
+		let releaseOlderBuild: ((value: boolean) => void) | undefined
+		mockOpenAiCodexIsAuthenticated.mockReset()
+		mockOpenAiCodexIsAuthenticated
+			.mockImplementationOnce(() => new Promise<boolean>((resolve) => (releaseOlderBuild = resolve)))
+			.mockResolvedValue(false)
+		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+		// The older push reads the empty message list, then stays parked on a later await.
+		const olderPost = postState(provider)
+		await vi.waitFor(() => expect(releaseOlderBuild).toBeDefined())
+
+		// Meanwhile the task gets its first message and a newer push completes.
+		task.clineMessages = newerMessages
+		await postState(provider)
+
+		releaseOlderBuild!(false)
+		await olderPost
+
+		const posted = postMessageSpy.mock.calls
+			.map(([message]) => message)
+			.filter((message) => message.type === "state")
+			.map((message) => message.state!)
+		expect(posted.map((state) => state.clineMessages)).toEqual([newerMessages, []])
+		expect(posted[1].clineMessagesSeq).toBeLessThan(posted[0].clineMessagesSeq!)
+	})
+
+	test("postStateToWebviewWithoutClineMessages carries no message sequence number", async () => {
+		mockOpenAiCodexIsAuthenticated.mockReset()
+		mockOpenAiCodexIsAuthenticated.mockResolvedValue(false)
+		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
+
+		await provider.postStateToWebviewWithoutClineMessages()
+
+		const state = postMessageSpy.mock.calls[0][0].state!
+		expect(state.clineMessages).toBeUndefined()
+		expect(state.clineMessagesSeq).toBeUndefined()
 	})
 
 	test("getState returns correct initial state", async () => {

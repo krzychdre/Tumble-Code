@@ -62,11 +62,19 @@ export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
 				return
 			}
 
-			// Transform follow_up suggestions to the format expected by task.ask
-			const follow_up_json = {
-				question,
-				suggest: follow_up.map((s) => ({ answer: s.text, mode: s.mode })),
-			}
+			// Transform follow_up suggestions to the format expected by task.ask.
+			// Weak models sometimes emit items with blank, missing or non-string text, or plain
+			// strings instead of objects. Keep plain strings as answers and drop items with no
+			// usable text, so the webview never shows empty buttons and auto-approval never
+			// answers with an empty reply.
+			const suggest = follow_up.flatMap((s: unknown) => {
+				if (typeof s === "string") {
+					return s.trim() ? [{ answer: s, mode: undefined }] : []
+				}
+				const item = (typeof s === "object" && s !== null ? s : {}) as Partial<Suggestion>
+				return typeof item.text === "string" && item.text.trim() ? [{ answer: item.text, mode: item.mode }] : []
+			})
+			const follow_up_json = { question, suggest }
 
 			task.consecutiveMistakeCount = 0
 			const { text, images } = await task.ask("followup", JSON.stringify(follow_up_json), false)

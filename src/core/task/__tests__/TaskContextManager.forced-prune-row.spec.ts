@@ -56,6 +56,7 @@ function buildAccess() {
 		fileContextTracker: { getFilesReadByRoo: vi.fn().mockResolvedValue([]) },
 		// No provider: the spinner messages and the tool metadata build are both
 		// optional-chained on it, which keeps this test to the row under test.
+		getTaskMode: vi.fn().mockResolvedValue("code"),
 		providerRef: { deref: () => undefined },
 		history: { overwriteApiConversationHistory },
 		askSay: { say },

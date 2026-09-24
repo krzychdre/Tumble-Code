@@ -334,6 +334,34 @@ describe("BaseOpenAiCompatibleProvider", () => {
 			])
 		})
 
+		it("should yield reasoning before text when one delta carries both", async () => {
+			mockCreate.mockImplementationOnce(() => {
+				return {
+					[Symbol.asyncIterator]: () => ({
+						next: vi
+							.fn()
+							.mockResolvedValueOnce({
+								done: false,
+								value: {
+									choices: [{ delta: { reasoning_content: "thinking...", content: "answer" } }],
+								},
+							})
+							.mockResolvedValueOnce({ done: true }),
+					}),
+				}
+			})
+
+			const chunks = []
+			for await (const chunk of handler.createMessage("system prompt", [])) {
+				chunks.push(chunk)
+			}
+
+			expect(chunks).toEqual([
+				{ type: "reasoning", text: "thinking..." },
+				{ type: "text", text: "answer" },
+			])
+		})
+
 		it("should yield non-empty reasoning_content", async () => {
 			mockCreate.mockImplementationOnce(() => {
 				return {

@@ -1553,6 +1553,14 @@ describe("AwsBedrockHandler", () => {
 				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-4-8")).toBe(true)
 			})
 
+			it("returns true for the Claude 5 family", () => {
+				expect(isAdaptiveThinkingModel("anthropic.claude-sonnet-5")).toBe(true)
+				expect(isAdaptiveThinkingModel("anthropic.claude-opus-5")).toBe(true)
+				expect(isAdaptiveThinkingModel("anthropic.claude-opus-5-5")).toBe(true)
+				expect(isAdaptiveThinkingModel("anthropic.claude-fable-5-1")).toBe(true)
+				expect(isAdaptiveThinkingModel("global.anthropic.claude-opus-5-5")).toBe(true)
+			})
+
 			it("returns true when the id carries a cross-region or global prefix", () => {
 				expect(isAdaptiveThinkingModel("us.anthropic.claude-opus-4-8")).toBe(true)
 				expect(isAdaptiveThinkingModel("global.anthropic.claude-fable-5")).toBe(true)

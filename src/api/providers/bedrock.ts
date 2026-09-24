@@ -304,8 +304,9 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	 * in Opus 4.8 / Sonnet 4.8, Anthropic removed sampling parameters
 	 * (temperature/top_p/top_k) and replaced budget_tokens-based thinking with
 	 * `thinking.type: "adaptive"` plus `output_config.effort`. The migration guide
-	 * from 4.7 → 4.8 confirms there are no further breaking API changes, so a single
-	 * guard matches both generations. Shared by createMessage and completePrompt so
+	 * from 4.7 → 4.8 confirms there are no further breaking API changes, and the
+	 * Claude 5 family (Sonnet 5, Opus 5 / 5.5, Fable 5 / 5.1) keeps the same
+	 * contract, so a single guard matches every generation. Shared by createMessage and completePrompt so
 	 * both request paths omit temperature for these models (sending it causes a 400).
 	 *
 	 * Accepts a model ID (with or without a cross-region/global prefix) and strips
@@ -316,9 +317,11 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		return (
 			baseModelId.includes("opus-4-7") ||
 			baseModelId.includes("opus-4-8") ||
-			baseModelId.includes("fable-5") ||
+			baseModelId.includes("opus-5") || // also matches opus-5-5
+			baseModelId.includes("fable-5") || // also matches fable-5-1
 			baseModelId.includes("sonnet-4-7") ||
-			baseModelId.includes("sonnet-4-8")
+			baseModelId.includes("sonnet-4-8") ||
+			baseModelId.includes("sonnet-5")
 		)
 	}
 

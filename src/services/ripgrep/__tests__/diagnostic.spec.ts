@@ -102,6 +102,15 @@ const expectedCandidates = [
 	path.join(APP_ROOT, "node_modules.asar.unpacked", "@vscode", "ripgrep", "bin", binName),
 	path.join(APP_ROOT, "node_modules", "@vscode", "ripgrep-universal", ...universalRelBin.split("/")),
 	path.join(APP_ROOT, "node_modules.asar.unpacked", "@vscode", "ripgrep-universal", ...universalRelBin.split("/")),
+	path.join(APP_ROOT, "node_modules", "@vscode", `ripgrep-${process.platform}-${process.arch}`, "bin", binName),
+	path.join(
+		APP_ROOT,
+		"node_modules.asar.unpacked",
+		"@vscode",
+		`ripgrep-${process.platform}-${process.arch}`,
+		"bin",
+		binName,
+	),
 ]
 
 describe("getRipgrepDiagnostic", () => {

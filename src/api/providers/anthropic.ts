@@ -30,6 +30,44 @@ import {
 	convertOpenAIToolChoiceToAnthropic,
 } from "../../core/prompts/tools/native-tools/converters"
 
+// Lowercased known model ids plus their undated aliases
+// (claude-haiku-4-5-20251001 also as claude-haiku-4-5), longest first, so a
+// custom id such as "anthropic/claude-sonnet-4-5-20250929" resolves to the
+// closest known model. The ":thinking" variant only matches exactly.
+const ANTHROPIC_MODEL_ID_MATCHERS: ReadonlyArray<readonly [string, AnthropicModelId]> = (
+	Object.keys(anthropicModels) as AnthropicModelId[]
+)
+	.filter((id) => !id.includes(":"))
+	.flatMap((id) => {
+		const undated = id.replace(/-\d{8}$/, "")
+		return undated === id ? [[id, id] as const] : [[id, id] as const, [undated, id] as const]
+	})
+	.map(([alias, id]) => [alias.toLowerCase(), id] as const)
+	.sort((a, b) => b[0].length - a[0].length)
+
+// Model info for an id that is not in `anthropicModels`: the closest known
+// model when the id contains one, otherwise the default model's limits and
+// capabilities without its pricing (so cost is not billed at the rates of a
+// model we are not talking to).
+function guessAnthropicModelInfo(modelId: string): ModelInfo {
+	const lowerModelId = modelId.toLowerCase()
+	const match = ANTHROPIC_MODEL_ID_MATCHERS.find(([alias]) => lowerModelId.includes(alias))
+
+	if (match) {
+		return anthropicModels[match[1]]
+	}
+
+	return {
+		...anthropicModels[anthropicDefaultModelId],
+		inputPrice: undefined,
+		outputPrice: undefined,
+		cacheWritesPrice: undefined,
+		cacheReadsPrice: undefined,
+		tiers: undefined,
+		longContextPricing: undefined,
+	}
+}
+
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
 	private client: Anthropic
@@ -90,140 +128,97 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			tool_choice: convertOpenAIToolChoiceToAnthropic(metadata?.tool_choice, metadata?.parallelToolCalls),
 		}
 
-		switch (modelId) {
-			case "claude-sonnet-4-6":
-			case "claude-sonnet-4-5":
-			case "claude-sonnet-4-20250514":
-			case "claude-opus-4-6":
-			case "claude-opus-4-7":
-			case "claude-opus-4-8":
-			case "claude-fable-5":
-			case "claude-opus-4-5-20251101":
-			case "claude-opus-4-1-20250805":
-			case "claude-opus-4-20250514":
-			case "claude-3-7-sonnet-20250219":
-			case "claude-3-5-sonnet-20241022":
-			case "claude-3-5-haiku-20241022":
-			case "claude-3-opus-20240229":
-			case "claude-haiku-4-5-20251001":
-			case "claude-3-haiku-20240307": {
-				/**
-				 * The latest message will be the new user message, one before
-				 * will be the assistant message from a previous request, and
-				 * the user message before that will be a previously cached user
-				 * message. So we need to mark the latest user message as
-				 * ephemeral to cache it for the next request, and mark the
-				 * second to last user message as ephemeral to let the server
-				 * know the last message to retrieve from the cache for the
-				 * current request.
-				 */
-				const userMsgIndices = sanitizedMessages.reduce(
-					(acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc),
-					[] as number[],
+		// Every Anthropic model we define supports prompt caching. Deriving the
+		// branch from the model info (as the Vertex handler does) keeps newly
+		// added models from silently falling into the uncached path.
+		if (info.supportsPromptCache) {
+			/**
+			 * The latest message will be the new user message, one before
+			 * will be the assistant message from a previous request, and
+			 * the user message before that will be a previously cached user
+			 * message. So we need to mark the latest user message as
+			 * ephemeral to cache it for the next request, and mark the
+			 * second to last user message as ephemeral to let the server
+			 * know the last message to retrieve from the cache for the
+			 * current request.
+			 */
+			const userMsgIndices = sanitizedMessages.reduce(
+				(acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc),
+				[] as number[],
+			)
+
+			const lastUserMsgIndex = userMsgIndices[userMsgIndices.length - 1] ?? -1
+			const secondLastMsgUserIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
+
+			try {
+				const requestParams = {
+					model: modelId,
+					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
+					temperature,
+					thinking,
+					// Setting cache breakpoint for system prompt so new tasks can reuse it.
+					system: [{ text: systemPrompt, type: "text", cache_control: cacheControl }],
+					messages: sanitizedMessages.map((message, index) => {
+						if (index === lastUserMsgIndex || index === secondLastMsgUserIndex) {
+							return {
+								...message,
+								content:
+									typeof message.content === "string"
+										? [{ type: "text", text: message.content, cache_control: cacheControl }]
+										: message.content.map((content, contentIndex) =>
+												contentIndex === message.content.length - 1
+													? { ...content, cache_control: cacheControl }
+													: content,
+											),
+							}
+						}
+						return message
+					}),
+					stream: true,
+					...nativeToolParams,
+				}
+				stream = await this.client.messages.create(
+					requestParams as Anthropic.Messages.MessageCreateParamsStreaming,
+					// prompt caching: https://x.com/alexalbert__/status/1823751995901272068
+					// https://github.com/anthropics/anthropic-sdk-typescript?tab=readme-ov-file#default-headers
+					{ headers: { "anthropic-beta": [...betas, "prompt-caching-2024-07-31"].join(",") } },
 				)
-
-				const lastUserMsgIndex = userMsgIndices[userMsgIndices.length - 1] ?? -1
-				const secondLastMsgUserIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
-
-				try {
-					const requestParams = {
-						model: modelId,
-						max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-						temperature,
-						thinking,
-						// Setting cache breakpoint for system prompt so new tasks can reuse it.
-						system: [{ text: systemPrompt, type: "text", cache_control: cacheControl }],
-						messages: sanitizedMessages.map((message, index) => {
-							if (index === lastUserMsgIndex || index === secondLastMsgUserIndex) {
-								return {
-									...message,
-									content:
-										typeof message.content === "string"
-											? [{ type: "text", text: message.content, cache_control: cacheControl }]
-											: message.content.map((content, contentIndex) =>
-													contentIndex === message.content.length - 1
-														? { ...content, cache_control: cacheControl }
-														: content,
-												),
-								}
-							}
-							return message
-						}),
-						stream: true,
-						...nativeToolParams,
-					}
-					stream = await this.client.messages.create(
-						requestParams as Anthropic.Messages.MessageCreateParamsStreaming,
-						(() => {
-							// prompt caching: https://x.com/alexalbert__/status/1823751995901272068
-							// https://github.com/anthropics/anthropic-sdk-typescript?tab=readme-ov-file#default-headers
-							// https://github.com/anthropics/anthropic-sdk-typescript/commit/c920b77fc67bd839bfeb6716ceab9d7c9bbe7393
-
-							// Then check for models that support prompt caching
-							switch (modelId) {
-								case "claude-sonnet-4-6":
-								case "claude-sonnet-4-5":
-								case "claude-sonnet-4-20250514":
-								case "claude-opus-4-6":
-								case "claude-opus-4-7":
-								case "claude-opus-4-8":
-								case "claude-fable-5":
-								case "claude-opus-4-5-20251101":
-								case "claude-opus-4-1-20250805":
-								case "claude-opus-4-20250514":
-								case "claude-3-7-sonnet-20250219":
-								case "claude-3-5-sonnet-20241022":
-								case "claude-3-5-haiku-20241022":
-								case "claude-3-opus-20240229":
-								case "claude-haiku-4-5-20251001":
-								case "claude-3-haiku-20240307":
-									betas.push("prompt-caching-2024-07-31")
-									return { headers: { "anthropic-beta": betas.join(",") } }
-								default:
-									return undefined
-							}
-						})(),
-					)
-				} catch (error) {
-					TelemetryService.instance.captureException(
-						new ApiProviderError(
-							error instanceof Error ? error.message : String(error),
-							this.providerName,
-							modelId,
-							"createMessage",
-						),
-					)
-					throw error
-				}
-				break
+			} catch (error) {
+				TelemetryService.instance.captureException(
+					new ApiProviderError(
+						error instanceof Error ? error.message : String(error),
+						this.providerName,
+						modelId,
+						"createMessage",
+					),
+				)
+				throw error
 			}
-			default: {
-				try {
-					const requestParams = {
-						model: modelId,
-						max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
-						temperature,
-						thinking,
-						system: [{ text: systemPrompt, type: "text" }],
-						messages: sanitizedMessages,
-						stream: true,
-						...nativeToolParams,
-					}
-					stream = (await this.client.messages.create(
-						requestParams as Anthropic.Messages.MessageCreateParamsStreaming,
-					)) as any
-				} catch (error) {
-					TelemetryService.instance.captureException(
-						new ApiProviderError(
-							error instanceof Error ? error.message : String(error),
-							this.providerName,
-							modelId,
-							"createMessage",
-						),
-					)
-					throw error
+		} else {
+			try {
+				const requestParams = {
+					model: modelId,
+					max_tokens: maxTokens ?? ANTHROPIC_DEFAULT_MAX_TOKENS,
+					temperature,
+					thinking,
+					system: [{ text: systemPrompt, type: "text" }],
+					messages: sanitizedMessages,
+					stream: true,
+					...nativeToolParams,
 				}
-				break
+				stream = (await this.client.messages.create(
+					requestParams as Anthropic.Messages.MessageCreateParamsStreaming,
+				)) as any
+			} catch (error) {
+				TelemetryService.instance.captureException(
+					new ApiProviderError(
+						error instanceof Error ? error.message : String(error),
+						this.providerName,
+						modelId,
+						"createMessage",
+					),
+				)
+				throw error
 			}
 		}
 
@@ -355,8 +350,22 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 
 	getModel() {
 		const modelId = this.options.apiModelId
-		let id = modelId && modelId in anthropicModels ? (modelId as AnthropicModelId) : anthropicDefaultModelId
-		let info: ModelInfo = anthropicModels[id]
+		let id: string
+		let info: ModelInfo
+
+		if (modelId && Object.hasOwn(anthropicModels, modelId)) {
+			id = modelId
+			info = anthropicModels[modelId as AnthropicModelId]
+		} else if (modelId) {
+			// Honor a custom id (custom base URL proxies, dated snapshots,
+			// cli-settings.json model ids) instead of silently sending the
+			// default model to the API.
+			id = modelId
+			info = guessAnthropicModelInfo(modelId)
+		} else {
+			id = anthropicDefaultModelId
+			info = anthropicModels[anthropicDefaultModelId]
+		}
 
 		// If 1M context beta is enabled for supported models, update the model info
 		if (

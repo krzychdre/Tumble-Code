@@ -245,6 +245,9 @@ export class ClineProvider
 	/**
 	 * Monotonically increasing sequence number for clineMessages state pushes.
 	 * Used by the frontend to reject stale state that arrives out-of-order.
+	 * Stamped in getStateToPostToWebview at the moment clineMessages is read, so the
+	 * number follows the age of the snapshot even when overlapping builds finish
+	 * (and are posted) in a different order.
 	 */
 	private clineMessagesSeq = 0
 
@@ -2440,8 +2443,6 @@ export class ClineProvider
 
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview({ includeTaskHistory: true })
-		this.clineMessagesSeq++
-		state.clineMessagesSeq = this.clineMessagesSeq
 		this.postMessageToWebview({ type: "state", state })
 
 		// Check MDM compliance and send user to account tab if not compliant
@@ -2466,8 +2467,6 @@ export class ClineProvider
 	 */
 	async postStateToWebviewWithoutTaskHistory(): Promise<void> {
 		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
-		this.clineMessagesSeq++
-		state.clineMessagesSeq = this.clineMessagesSeq
 		const { taskHistory: _omit, ...rest } = state
 		this.postMessageToWebview({ type: "state", state: rest })
 
@@ -2493,7 +2492,9 @@ export class ClineProvider
 	 */
 	async postStateToWebviewWithoutClineMessages(): Promise<void> {
 		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
-		const { clineMessages: _omitMessages, taskHistory: _omitHistory, ...rest } = state
+		// Drop the sequence number with the messages: a push without messages must not raise the
+		// webview's high-water mark and make it reject an older-numbered push that has them.
+		const { clineMessages: _omitMessages, clineMessagesSeq: _omitSeq, taskHistory: _omitHistory, ...rest } = state
 		this.postMessageToWebview({ type: "state", state: rest })
 
 		// Preserve existing MDM redirect behavior
@@ -2804,6 +2805,8 @@ export class ClineProvider
 			currentTaskId: currentTask?.taskId,
 			currentTaskItem: currentTask?.taskId ? taskHistoryStore?.get(currentTask.taskId) : undefined,
 			clineMessages: currentTask?.clineMessages || [],
+			// Numbered here, synchronously with the read above (see clineMessagesSeq).
+			clineMessagesSeq: ++this.clineMessagesSeq,
 			subagents: this.subagentRegistry.list(),
 			memoryActivity: { ...this.memoryActivityCounts },
 			currentTaskTodos: currentTask?.todoList || [],

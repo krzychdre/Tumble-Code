@@ -441,7 +441,10 @@ export async function presentAssistantMessage(cline: Task) {
 
 			// Fetch state early so it's available for toolDescription and validation
 			const state = await cline.providerRef.deref()?.getState()
-			const { mode, customModes, experiments: stateExperiments, disabledTools } = state ?? {}
+			const { customModes, experiments: stateExperiments, disabledTools } = state ?? {}
+			// The task's own mode, not the one in provider state: that is the focused task's
+			// mode, and a background subagent or a delegated child may run in another one.
+			const taskMode = await cline.getTaskMode()
 
 			// Prepare the tool-result spill policy before the tool runs, so the
 			// (synchronous) push below can move an oversized result to disk.
@@ -797,7 +800,7 @@ export async function presentAssistantMessage(cline: Task) {
 
 					validateToolUse(
 						block.name as ToolName,
-						mode ?? defaultModeSlug,
+						taskMode,
 						customModes ?? [],
 						toolRequirements,
 						block.params,
@@ -1154,7 +1157,7 @@ export async function presentAssistantMessage(cline: Task) {
 							}
 
 							const result = await customTool.execute(customToolArgs, {
-								mode: mode ?? defaultModeSlug,
+								mode: taskMode,
 								task: cline,
 							})
 

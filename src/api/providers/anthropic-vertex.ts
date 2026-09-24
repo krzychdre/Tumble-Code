@@ -308,14 +308,14 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			} as Anthropic.Messages.MessageCreateParamsNonStreaming
 
 			const response = await this.client.messages.create(params)
-			const content = response.content[0]
-			const usage = anthropicCompletionUsage(response.usage)
+			// The first block is not always text: it can be missing (empty
+			// content) or be a thinking block, so look for the text block.
+			const content = response.content.find(({ type }) => type === "text")
 
-			if (content.type === "text") {
-				return { text: content.text, usage }
+			return {
+				text: content?.type === "text" ? content.text : "",
+				usage: anthropicCompletionUsage(response.usage),
 			}
-
-			return { text: "", usage }
 		} catch (error) {
 			if (error instanceof Error) {
 				throw new Error(`Vertex completion error: ${error.message}`)

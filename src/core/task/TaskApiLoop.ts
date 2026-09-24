@@ -35,7 +35,7 @@ import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskConte
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { findLastIndex } from "../../shared/array"
 import { t } from "../../i18n"
-import { getModeBySlug, defaultModeSlug } from "../../shared/modes"
+import { getModeBySlug } from "../../shared/modes"
 import { type ClineProvider } from "../webview/ClineProvider"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
@@ -151,6 +151,9 @@ export interface TaskApiLoopAccess {
 	emit: (event: any, ...args: any[]) => boolean
 	updateApiConfiguration(newApiConfiguration: ProviderSettings): void
 	getTokenUsage(): TokenUsage
+	// The task's own mode (see Task#getTaskMode). Provider state holds the FOCUSED
+	// task's mode, which a background subagent or a delegated child does not share.
+	getTaskMode(): Promise<string>
 	recordToolUsage(toolName: ToolName): void
 	recordToolError(toolName: ToolName, error?: string): void
 	emitFinalTokenUsageUpdate(): void
@@ -238,6 +241,7 @@ export class TaskApiLoop {
 			diffStrategy: access.diffStrategy,
 			contextManager: access.contextManager,
 			getTokenUsage: access.getTokenUsage,
+			getTaskMode: () => access.getTaskMode(),
 			emit: access.emit,
 			materializedDeferredTools: access.materializedDeferredTools,
 			deferredToolDirectory: access.deferredToolDirectory,
@@ -549,7 +553,7 @@ export class TaskApiLoop {
 		const showRooIgnoredFiles = state?.showRooIgnoredFiles ?? false
 		const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
 		const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
-		const currentMode = state?.mode ?? defaultModeSlug
+		const currentMode = await this.access.getTaskMode()
 
 		const { content: parsedUserContent, mode: slashCommandMode } = await processUserContentMentions({
 			userContent: currentUserContent,
@@ -1113,13 +1117,14 @@ export class TaskApiLoop {
 			apiConfiguration,
 			autoApprovalEnabled,
 			requestDelaySeconds,
-			mode,
 			autoCondenseContext = true,
 			autoCondenseContextPercent = 100,
 			profileThresholds = {},
 		} = state ?? {}
 
 		const customCondensingPrompt = state?.customSupportPrompts?.CONDENSE
+		// Tools and request metadata follow the task's own mode, like its system prompt.
+		const mode = await this.access.getTaskMode()
 
 		if (!options.skipProviderRateLimit) {
 			await this.maybeWaitForProviderRateLimit(retryAttempt)
