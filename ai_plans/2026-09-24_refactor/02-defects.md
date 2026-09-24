@@ -333,3 +333,12 @@ where their files are disjoint; the coordinator merges in order.
 - **New finding TEST-11:** `src/api/__tests__/provider-model-id-key.spec.ts` (from #230) raises an unhandled
   exception ("Could not load the default credentials", Google auth) so the src vitest process exits 1 although all
   tests pass. Merged without CI under the owner's rule; fix as its own `test/` item.
+- **DEF-C33:** CONFIRMED and DONE, merged 2026-09-24 as #243 (`e57eacc2e`). Through a real Task: the retry after a
+  context-window error was byte-identical to the rejected request (0 results cleared), because the forced pass never
+  stored its microcompaction decision and the retry's regular pass, fed the stale usage of a request that reported
+  none, emptied the list again. The suggested minimal fix alone did not work (verified). Fix: shared
+  `applyMicrocompactOutcome` for both passes (replaces a stale list from another mode); the retry after a forced
+  pass skips the regular pass (`contextAlreadyManaged`), which also stops a second condense on stale counts; each
+  repeated rejection strips a strict superset. Recorded, unchanged: the forced pass condenses even with
+  `autoCondenseContext` off (upstream #6967, a hard-error recovery; owner may decide) and ignores the circuit breaker
+  (bounded to 3 rounds); the rest of the clone drift waits for the clone merge.
