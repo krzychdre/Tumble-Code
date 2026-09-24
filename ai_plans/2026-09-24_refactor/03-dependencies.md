@@ -106,6 +106,14 @@ unused but part of the published types package (owner decision whether to drop t
 why. Later removals follow their refactors: `ai` and `@ai-sdk/openai-compatible` after API-4, `react-remark` after
 WEB-11, `styled-components` after WEB-2.
 
+**Status (2026-09-24):** DONE in #256. The 14 listed packages removed plus 12 more with no honest reason to stay
+(`@roo-code/config-typescript` in src and webview, `@vscode/codicons` in src (icons ship from `src/assets`),
+`@types/mocha`, `@types/katex`, `only-allow`, root `ovsx`, `cross-spawn` in the CLI, `esbuild` in core); lockfile
+lost 52 packages. `reconnecting-eventsource` claim confirmed (SDK imports its own `eventsource`); a new McpHub test
+pins that the global `EventSource` stays untouched. `knip.json` renamed to `knip.jsonc` so every remaining ignore
+entry carries a reason; a run with all ignores disabled flags each remaining one. Noted for API-4:
+`@ai-sdk/openai-compatible` is a devDependency although runtime code imports it (esbuild inlines it).
+
 ### DEP-3 In-range refresh
 
 **Change:** refresh the lockfile within the declared ranges for the packages in the advisory table (one branch
