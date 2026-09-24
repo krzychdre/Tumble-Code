@@ -311,3 +311,25 @@ where their files are disjoint; the coordinator merges in order.
   `fs.mkdtemp(os.tmpdir()/CheckpointService-)` per run; the CLI credentials test uses `mkdtempSync` (a theoretical
   same-millisecond collision). 3 concurrent processes x 5 rounds: 12 of 15 runs failed before (ENOTEMPTY, "not a git
   repository", `cannot lock ref`), 0 of 15 after. No other colliding fixed temp paths in TS or Python tests.
+- **DEF-C37 and DEF-C38:** DONE, merged 2026-09-24 as #241 (`e6904e049`). DeepSeek reads hits from the documented
+  top-level `prompt_cache_hit_tokens` (fallback `cached_tokens`) and reports no writes; OpenRouter streaming reports
+  writes through `openAiCacheTokens` (cost unchanged, it comes from the reported `cost`). Found: `moonshot.ts`
+  hardcodes `cacheWriteTokens: 0` (kimi-k3 documents writes; no such model in the catalog today).
+- **DEF-C39:** investigated (table in #241's report). Owner decision 2026-09-24: **price reported cache writes at the
+  input price when `cacheWritesPrice` is undefined** (explicit 0, e.g. Nova, Z.ai, stays 0). No catalog model is
+  affected; user-typed or fetched model info is (Claude via LiteLLM or OpenAI Compatible undercounted by 65 to 75%,
+  DashScope explicit cache by 65%). The cloud metrics only sum what the extension sends, so they follow the fix;
+  stored rows keep old values. Do DEF-C40 first.
+- **New finding DEF-C40:** `lite-llm.ts` (~:267) uses `prompt_cache_miss_tokens` as a fallback for cache writes and
+  prices them at `cacheWritesPrice || 0`, so DeepSeek misses via LiteLLM can come out near free (whether LiteLLM
+  forwards that field is unverified).
+- **DEF-C17:** DONE, merged 2026-09-24 as #242 (`149a78b79`), four test/fix pairs: the watcher uses `segmentHash`
+  point ids like the scanner (two chunks of one long line overwrote each other); OpenRouter and Bedrock validation
+  return the probe dimension (shared `measureEmbeddingDimension()`); the incremental scan no longer ignores
+  `batchErrors` (shared `findScanFailure()`; failure leaves the collection incomplete, state Error, retry applies);
+  a change event no longer drops an unchanged file's points (`codebase_search` lost files re-saved with identical
+  content until a real edit or a rebuild). The `orchestrator.spec` i18n mock path was wrong and never applied. Left
+  for SVC-10: watcher batch errors are only logged.
+- **New finding TEST-11:** `src/api/__tests__/provider-model-id-key.spec.ts` (from #230) raises an unhandled
+  exception ("Could not load the default credentials", Google auth) so the src vitest process exits 1 although all
+  tests pass. Merged without CI under the owner's rule; fix as its own `test/` item.
