@@ -194,3 +194,11 @@ where their files are disjoint; the coordinator merges in order.
   stored config compared with the validated config in both stored forms (placeholder: defaults; connected: defaults
   plus injected variables, via the new shared `injectConfigVariables`); watchers keyed by source and name, set up
   only in `connectToServer`, removed per server. 6 tests; MCP 59 passed, extension suite 7,638 passed.
+- **DEF-C10:** DONE, merged 2026-09-24 as #220 (`55251f61b`). The nullable branch of `convertToolSchemaForOpenAI` now
+  writes `{ ...prop, type }` into the already copied property map. Wider impact than recorded: after one conversion
+  every nullable parameter lost `null` for the rest of the process for every provider, Anthropic included (its
+  converter passes the schema by reference), also `skill` args, `new_task` todos, `run_parallel_tasks` mode and
+  maxConcurrency, `codebase_search` path. Tests: structuredClone equality, a deep-frozen input converts without
+  throwing, `getNativeTools()` unchanged, the mode-switch case; a snapshot of the whole converted native tool set,
+  recorded before the fix, is unchanged, so models receive the same schemas. For API-3: openai-native and
+  openai-codex copies do not strip `null` while base-provider does (drift); xai converts parameters twice.
