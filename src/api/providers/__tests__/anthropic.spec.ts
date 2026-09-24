@@ -1099,3 +1099,75 @@ describe("AnthropicHandler", () => {
 		})
 	})
 })
+
+// DEF-C9: the cost the handler reports must bill the final output token count.
+// Anthropic reports a small provisional output count in message_start and the
+// real, cumulative count in message_delta (SDK type MessageDeltaUsage:
+// "The cumulative number of output tokens which were used").
+describe("AnthropicHandler cost accounting", () => {
+	const scriptedStream = (events: any[]) =>
+		mockCreate.mockImplementationOnce(async () => ({
+			async *[Symbol.asyncIterator]() {
+				for (const event of events) {
+					yield event
+				}
+			},
+		}))
+
+	const collectCostChunk = async (handler: AnthropicHandler) => {
+		const chunks: any[] = []
+		for await (const chunk of handler.createMessage("system", [{ role: "user", content: "hi" }])) {
+			chunks.push(chunk)
+		}
+		const costChunks = chunks.filter((chunk) => chunk.type === "usage" && chunk.totalCost !== undefined)
+		expect(costChunks).toHaveLength(1)
+		return costChunks[0]
+	}
+
+	const expectedCost = (handler: AnthropicHandler, inputTokens: number, outputTokens: number) => {
+		const { inputPrice = 0, outputPrice = 0 } = handler.getModel().info
+		expect(outputPrice).toBeGreaterThan(0)
+		return (inputPrice * inputTokens + outputPrice * outputTokens) / 1_000_000
+	}
+
+	let handler: AnthropicHandler
+
+	beforeEach(() => {
+		vitest.clearAllMocks()
+		handler = new AnthropicHandler({ apiKey: "test-api-key", apiModelId: "claude-3-5-sonnet-20241022" })
+	})
+
+	it("bills the output tokens reported in message_delta", async () => {
+		scriptedStream([
+			{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 1 } } },
+			{ type: "content_block_start", index: 0, content_block: { type: "text", text: "Hello" } },
+			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
+			{ type: "message_stop" },
+		])
+
+		const costChunk = await collectCostChunk(handler)
+
+		expect(costChunk.totalCost).toBeCloseTo(expectedCost(handler, 1000, 500), 12)
+	})
+
+	it("treats message_delta output tokens as cumulative and does not double count", async () => {
+		scriptedStream([
+			{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 1 } } },
+			{ type: "message_delta", delta: {}, usage: { output_tokens: 200 } },
+			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
+			{ type: "message_stop" },
+		])
+
+		const costChunk = await collectCostChunk(handler)
+
+		expect(costChunk.totalCost).toBeCloseTo(expectedCost(handler, 1000, 500), 12)
+	})
+
+	it("keeps the message_start output count when no message_delta arrives", async () => {
+		scriptedStream([{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 7 } } }])
+
+		const costChunk = await collectCostChunk(handler)
+
+		expect(costChunk.totalCost).toBeCloseTo(expectedCost(handler, 1000, 7), 12)
+	})
+})
