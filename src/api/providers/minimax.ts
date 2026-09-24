@@ -148,15 +148,25 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 
 					break
 				}
-				case "message_delta":
+				case "message_delta": {
 					// Tells us stop_reason, stop_sequence, and output tokens
+					const deltaOutputTokens = chunk.usage.output_tokens || 0
+
 					yield {
 						type: "usage",
 						inputTokens: 0,
-						outputTokens: chunk.usage.output_tokens || 0,
+						outputTokens: deltaOutputTokens,
 					}
 
+					// message_delta output_tokens is cumulative for the whole
+					// response (it already includes the provisional count from
+					// message_start), so it replaces the running total instead
+					// of adding to it. Math.max keeps a missing or zero value
+					// from lowering the count.
+					outputTokens = Math.max(outputTokens, deltaOutputTokens)
+
 					break
+				}
 				case "message_stop":
 					// No usage data, just an indicator that the message is done.
 					break
