@@ -3334,6 +3334,41 @@ async def test_settings_page_shows_the_preview(client, db_session, session_facto
     assert "older than 30 days" in resp.text
 
 
+async def test_opening_the_settings_page_writes_nothing(client, db_session, session_factory):
+    """A GET must not write. The page used to create the user's default policy
+    row on first view and commit it (DEF-C31); it must render the same defaults
+    without storing them, and the first save creates the row."""
+    from src.models.retention import RetentionPolicy
+
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        await _make_task(s, "r-view-shared", age_days=5, shared=True)
+        await s.commit()
+
+    async def policy_rows():
+        async with session_factory() as s:
+            return await s.scalar(select(func.count()).select_from(RetentionPolicy))
+
+    _override_web_user(client.app)
+    try:
+        first = client.get("/app/settings")
+        second = client.get("/app/settings")
+        assert await policy_rows() == 0, "viewing the page must not create a policy"
+
+        client.post("/app/settings", data={"keep_shared": "1"}, follow_redirects=False)
+        assert await policy_rows() == 1, "the first save creates the row"
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    for resp in (first, second):
+        assert resp.status_code == 200
+        # The unsaved defaults are the stored defaults: switched off, shared
+        # tasks kept, telemetry not purged.
+        assert 'name="enabled" value="1" >' in resp.text
+        assert 'name="keep_shared" value="1" checked>' in resp.text
+        assert 'name="purge_telemetry" value="1" >' in resp.text
+
+
 async def test_saving_settings_never_deletes(client, db_session, session_factory):
     """Arming a policy and running it are separate actions on purpose: switching
     retention on must not remove hundreds of conversations in the same click."""
