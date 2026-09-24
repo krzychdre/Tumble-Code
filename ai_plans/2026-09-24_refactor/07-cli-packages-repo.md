@@ -238,6 +238,15 @@ package `"roo-cline"` instead of `"tumble-code"`.
   dependencies with tsup `noExternal` (not shrinkwrap).
 - `packages/ipc` has 0 tests (moot: DEP-1 removes it, owner decision 1) and `packages/telemetry` has 1 test file for 646 lines.
 
+**Status (2026-09-24):** DONE in #273. CLI integration suite ported to `fake-ai` through `ROO_CLI_FAKE_AI_MODULE`
+(`apps/cli/src/lib/utils/fake-ai-module.ts`, scripted model `scripts/integration/lib/fake-model.ts`, per-case temp HOME),
+15/15 locally incl. with no network; CI job `cli-integration` in `code-qa.yml`. Manual `vscode-e2e.yml`
+(`workflow_dispatch`, xvfb); `runTest.ts` now reads the VS Code version from `engines.vscode` (it defaulted to 1.101.2,
+which rejected the extension after DEP-4). Without keys the OpenRouter suites skip; `providers/zai.test` times out
+(attempt_completion recorded but never executed; cause unknown, own item). Found: CLI stdin echo can precede its
+`requestId` (race in `promoteRequestIdForDequeuedMessages`); integration scripts are not type-checked;
+`packages/telemetry` still has 1 test file.
+
 ## Do not touch
 
 The Ink render pipeline until CLI-9's tests exist; the externals in `src/esbuild.mjs` and `--no-dependencies`
