@@ -17,9 +17,9 @@ somebody, and a sweep should not silently break it.
 
 Telemetry is swept separately and more aggressively, because ``Task Message``
 events carry a full copy of every stored conversation — 146 MB duplicating the
-479 MB in ``task_messages`` on this deployment. ``LLM Completion`` is **never**
-swept: the whole metrics page is built from it, and the tasks cannot
-reconstruct the cost history it holds.
+479 MB in ``task_messages`` on this deployment. ``LLM Completion`` and
+``Embedding Usage`` are **never** swept: the metrics page is built from them,
+and the tasks cannot reconstruct the cost and indexing history they hold.
 """
 
 from __future__ import annotations
@@ -35,14 +35,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.event import TelemetryEvent
 from src.models.retention import RetentionPolicy
 from src.models.task import Task, TaskMessage, TaskShare
+from src.services.metrics_service import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
 from src.services.share_service import delete_tasks
 
 logger = logging.getLogger(__name__)
 
-# Telemetry event types the sweep must never remove, whatever the policy says.
-# The metrics page aggregates LLM Completion exclusively; nothing else in the
-# database can reproduce what it records.
-PROTECTED_EVENT_TYPES = ("LLM Completion",)
+# Telemetry event types the sweep must never remove, whatever the policy says:
+# every type the metrics page reads. LLM Completion holds the conversation
+# totals and cost history, Embedding Usage the code-index figure; nothing else
+# in the database can reproduce either. Taken from metrics_service so the page
+# and this list name the events the same way. Extend, never shrink.
+PROTECTED_EVENT_TYPES = (LLM_COMPLETION_EVENT, EMBEDDING_EVENT)
 
 
 @dataclass
