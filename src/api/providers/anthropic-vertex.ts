@@ -28,6 +28,25 @@ import { parseVertexJsonCredentials } from "./utils/vertex-credentials"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { anthropicCompletionUsage } from "./utils/completion-usage"
 
+const VERTEX_AUTH_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+
+/**
+ * AnthropicVertex calls `googleAuth.getClient()` in its constructor and keeps
+ * the promise until the first request. When the Google credentials cannot be
+ * loaded (missing key file, no application default credentials) that promise
+ * rejects before anything awaits it, and Node reports an unhandled rejection:
+ * the CLI exits on it and the extension host logs it, even when the handler was
+ * only built to read model info. Mark each promise as handled here; the first
+ * request still awaits the same promise and surfaces the error to the task.
+ */
+class DeferredErrorGoogleAuth extends GoogleAuth {
+	override getClient(): ReturnType<GoogleAuth["getClient"]> {
+		const client = super.getClient()
+		client.catch(() => {})
+		return client
+	}
+}
+
 // https://docs.anthropic.com/en/api/claude-on-vertex-ai
 export class AnthropicVertexHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -48,8 +67,8 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			this.client = new AnthropicVertex({
 				projectId,
 				region,
-				googleAuth: new GoogleAuth({
-					scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+				googleAuth: new DeferredErrorGoogleAuth({
+					scopes: VERTEX_AUTH_SCOPES,
 					credentials: parsedVertexCredentials,
 				}),
 				timeout: this.timeoutMs,
@@ -58,14 +77,21 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			this.client = new AnthropicVertex({
 				projectId,
 				region,
-				googleAuth: new GoogleAuth({
-					scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+				googleAuth: new DeferredErrorGoogleAuth({
+					scopes: VERTEX_AUTH_SCOPES,
 					keyFile: this.options.vertexKeyFile,
 				}),
 				timeout: this.timeoutMs,
 			})
 		} else {
-			this.client = new AnthropicVertex({ projectId, region, timeout: this.timeoutMs })
+			// Same default the SDK would build, wrapped so a failed lookup of the
+			// application default credentials is not an unhandled rejection.
+			this.client = new AnthropicVertex({
+				projectId,
+				region,
+				googleAuth: new DeferredErrorGoogleAuth({ scopes: VERTEX_AUTH_SCOPES }),
+				timeout: this.timeoutMs,
+			})
 		}
 	}
 
