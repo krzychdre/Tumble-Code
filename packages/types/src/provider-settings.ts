@@ -390,7 +390,7 @@ export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	bedrock: "apiModelId",
 	vertex: "apiModelId",
 	"openai-codex": "apiModelId",
-	"openai-native": "openAiModelId",
+	"openai-native": "apiModelId",
 	ollama: "ollamaModelId",
 	lmstudio: "lmStudioModelId",
 	gemini: "apiModelId",
@@ -403,6 +403,35 @@ export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
 	xai: "apiModelId",
 	litellm: "litellmModelId",
 	zai: "apiModelId",
+}
+
+/**
+ * The settings field that holds the model id of `provider`, or `undefined` when
+ * the provider has no plain model-id field (`vscode-lm` stores a selector,
+ * `fake-ai` takes its model from the injected handler, retired and unknown
+ * providers have none). It must match the field the provider's handler reads.
+ */
+export const getModelIdKeyForProvider = (provider: string | undefined): ModelIdKey | undefined => {
+	if (isTypicalProvider(provider)) {
+		return modelIdKeysByProvider[provider]
+	}
+
+	return provider === "openai" ? "openAiModelId" : undefined
+}
+
+/**
+ * The model id of the profile's own provider. Unlike `getModelId`, which takes
+ * the first non-empty model-id field, this ignores fields left over from other
+ * providers.
+ */
+export const getProviderModelId = (settings: ProviderSettings): string | undefined => {
+	if (settings.apiProvider === "vscode-lm") {
+		return settings.vsCodeLmModelSelector?.id
+	}
+
+	const modelIdKey = getModelIdKeyForProvider(settings.apiProvider)
+
+	return modelIdKey ? settings[modelIdKey] : undefined
 }
 
 /**

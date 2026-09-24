@@ -1,4 +1,4 @@
-import type { ProviderSettings, OrganizationAllowList } from "@roo-code/types"
+import { type ProviderSettings, type OrganizationAllowList, getProviderModelId } from "@roo-code/types"
 
 export class ProfileValidator {
 	public static isProfileAllowed(profile: ProviderSettings, allowList: OrganizationAllowList): boolean {
@@ -50,32 +50,6 @@ export class ProfileValidator {
 	}
 
 	private static getModelIdFromProfile(profile: ProviderSettings): string | undefined {
-		switch (profile.apiProvider) {
-			case "openai":
-				return profile.openAiModelId
-			case "anthropic":
-			case "openai-native":
-			case "bedrock":
-			case "vertex":
-			case "gemini":
-			case "mistral":
-			case "deepseek":
-			case "xai":
-				return profile.apiModelId
-			case "litellm":
-				return profile.litellmModelId
-			case "lmstudio":
-				return profile.lmStudioModelId
-			case "vscode-lm":
-				// We probably need something more flexible for this one, if we need to really support it here.
-				return profile.vsCodeLmModelSelector?.id
-			case "openrouter":
-				return profile.openRouterModelId
-			case "ollama":
-				return profile.ollamaModelId
-			case "fake-ai":
-			default:
-				return undefined
-		}
+		return getProviderModelId(profile)
 	}
 }
