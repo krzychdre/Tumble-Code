@@ -3,6 +3,8 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import type { ModelInfo } from "@roo-code/types"
 
 import { BaseProvider } from "../base-provider"
+import { getNativeTools } from "../../../core/prompts/tools/native-tools"
+import { convertOpenAIToolsToAnthropic } from "../../../core/prompts/tools/native-tools/converters"
 import type { ApiStream } from "../../transform/stream"
 
 // Create a concrete implementation for testing
@@ -278,6 +280,148 @@ describe("BaseProvider", () => {
 			const result = provider.testConvertToolsForOpenAI(tools)
 
 			expect(result?.[0]).toEqual(tools[0])
+		})
+	})
+
+	// DEF-C10: getNativeTools() hands out the same module-level tool objects on
+	// every call, so a conversion that writes into its input changes the tool
+	// definitions for every later request in the process (any provider, any
+	// mode). These tests pin that the conversion only reads its input, and that
+	// what is sent to the model keeps exactly the shape it has today.
+	describe("does not mutate its input (DEF-C10)", () => {
+		const deepFreeze = <T>(value: T): T => {
+			if (value && typeof value === "object" && !Object.isFrozen(value)) {
+				Object.freeze(value)
+				for (const child of Object.values(value)) {
+					deepFreeze(child)
+				}
+			}
+			return value
+		}
+
+		// Recursively drops "description" keys so the snapshot pins the schema
+		// shape (types, required, additionalProperties, key order) without
+		// breaking every time a tool description is reworded.
+		const withoutDescriptions = (value: unknown): unknown => {
+			if (Array.isArray(value)) {
+				return value.map(withoutDescriptions)
+			}
+			if (value && typeof value === "object") {
+				return Object.fromEntries(
+					Object.entries(value)
+						.filter(([key]) => key !== "description")
+						.map(([key, child]) => [key, withoutDescriptions(child)]),
+				)
+			}
+			return value
+		}
+
+		const nullableSchema = () => ({
+			type: "object",
+			properties: {
+				command: { type: "string" },
+				cwd: { type: ["string", "null"] },
+				either: { type: ["string", "number", "null"] },
+				nested: {
+					type: ["object", "null"],
+					properties: {
+						inner: { type: ["number", "null"] },
+					},
+				},
+				list: {
+					type: ["array", "null"],
+					items: {
+						type: "object",
+						properties: {
+							mode: { type: ["string", "null"] },
+						},
+					},
+				},
+			},
+			required: ["command"],
+		})
+
+		it("converts a nullable schema exactly as before (characterization)", () => {
+			const result = provider.testConvertToolSchemaForOpenAI(nullableSchema())
+
+			expect(result).toEqual({
+				type: "object",
+				properties: {
+					command: { type: "string" },
+					cwd: { type: "string" },
+					either: { type: ["string", "number"] },
+					nested: {
+						type: "object",
+						properties: {
+							inner: { type: "number" },
+						},
+						additionalProperties: false,
+						required: ["inner"],
+					},
+					list: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								mode: { type: "string" },
+							},
+							additionalProperties: false,
+							required: ["mode"],
+						},
+					},
+				},
+				required: ["command", "cwd", "either", "nested", "list"],
+				additionalProperties: false,
+			})
+		})
+
+		it("leaves the input schema deep-equal to itself", () => {
+			const schema = nullableSchema()
+			const before = structuredClone(schema)
+
+			provider.testConvertToolSchemaForOpenAI(schema)
+
+			expect(schema).toEqual(before)
+		})
+
+		it("converts a deep-frozen schema to the same output as an unfrozen one", () => {
+			const expected = provider.testConvertToolSchemaForOpenAI(nullableSchema())
+			const frozen = deepFreeze(nullableSchema())
+
+			expect(provider.testConvertToolSchemaForOpenAI(frozen)).toEqual(expected)
+		})
+
+		it("keeps the shared native tool definitions intact after a conversion", () => {
+			const before = structuredClone(getNativeTools())
+
+			provider.testConvertToolsForOpenAI(getNativeTools())
+
+			expect(getNativeTools()).toEqual(before)
+			const executeCommand = getNativeTools().find(
+				(tool) => tool.type === "function" && tool.function.name === "execute_command",
+			) as any
+			expect(executeCommand.function.parameters.properties.cwd.type).toEqual(["string", "null"])
+		})
+
+		it("keeps execute_command.cwd nullable for the next provider (mode switch to an Anthropic model)", () => {
+			provider.testConvertToolsForOpenAI(getNativeTools())
+
+			const anthropicTools = convertOpenAIToolsToAnthropic(getNativeTools())
+			const executeCommand = anthropicTools.find((tool) => tool.name === "execute_command") as any
+			expect(executeCommand.input_schema.properties.cwd.type).toEqual(["string", "null"])
+			const followup = anthropicTools.find((tool) => tool.name === "ask_followup_question") as any
+			expect(followup.input_schema.properties.follow_up.items.properties.mode.type).toEqual(["string", "null"])
+		})
+
+		it("sends the native tools to OpenAI-compatible models in an unchanged shape", () => {
+			const first = provider.testConvertToolsForOpenAI(getNativeTools())
+			const second = provider.testConvertToolsForOpenAI(getNativeTools())
+
+			// Same output on every request, not only the first one.
+			expect(second).toEqual(first)
+			// JSON text (key order included) pinned against the output of the
+			// implementation that shipped before DEF-C10 was fixed.
+			expect(JSON.stringify(withoutDescriptions(first), null, 2)).toMatchSnapshot()
 		})
 	})
 })
