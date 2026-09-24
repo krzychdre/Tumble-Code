@@ -408,6 +408,7 @@ export class ClineProvider
 						await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
 					}
 				} catch (error) {
+					this.showAllowListViolation(error)
 					this.log(
 						`[onTaskAborted] Failed to rehydrate after streaming failure: ${
 							error instanceof Error ? error.message : String(error)
@@ -1476,15 +1477,34 @@ export class ClineProvider
 			await this.contextProxy.setProviderSettings(cliProviderSettings)
 		}
 
-		const { apiConfiguration, enableCheckpoints, checkpointTimeout, experiments, cloudUserInfo, taskSyncEnabled } =
-			await this.getState()
+		const {
+			apiConfiguration,
+			organizationAllowList,
+			enableCheckpoints,
+			checkpointTimeout,
+			experiments,
+			cloudUserInfo,
+			taskSyncEnabled,
+		} = await this.getState()
+
+		// The profile is known only now, after the saved mode and profile were
+		// restored above. A reopened task obeys the same organization allow
+		// list as a new one. On rejection the current task (when rehydrating
+		// it) is left in place; otherwise it was already closed above, exactly
+		// as `createTask` does, and the webview is told there is no task open.
+		let profileOptions: ReturnType<typeof profileTaskOptions>
+		try {
+			profileOptions = profileTaskOptions(apiConfiguration, organizationAllowList)
+		} catch (error) {
+			await this.postStateToWebview()
+			throw error
+		}
 
 		const task = new Task({
 			provider: this,
-			apiConfiguration,
+			...profileOptions,
 			enableCheckpoints,
 			checkpointTimeout,
-			consecutiveMistakeLimit: apiConfiguration.consecutiveMistakeLimit,
 			historyItem,
 			experiments,
 			rootTask: historyItem.rootTask,
@@ -4196,7 +4216,29 @@ export class ClineProvider
 		}
 
 		// Clears task again, so we need to abortTask manually above.
-		await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+		try {
+			await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+		} catch (error) {
+			// The task's profile is no longer allowed: it stays on screen,
+			// stopped, and the user learns why it cannot be resumed.
+			if (!this.showAllowListViolation(error)) {
+				throw error
+			}
+			this.log(`[cancelTask] Not rehydrating ${task.taskId}: ${(error as Error).message}`)
+		}
+	}
+
+	/**
+	 * Shows an organization allow-list rejection to the user. For callers of
+	 * `createTaskWithHistoryItem` whose own error path would not reach the
+	 * user. Returns whether `error` was such a rejection.
+	 */
+	private showAllowListViolation(error: unknown): boolean {
+		if (!(error instanceof OrganizationAllowListViolationError)) {
+			return false
+		}
+		vscode.window.showErrorMessage(error.message)
+		return true
 	}
 
 	/**
@@ -4958,7 +5000,22 @@ export class ClineProvider
 
 		// 7) Reopen the parent from history as the sole active task (restores saved mode)
 		//    IMPORTANT: startTask=false to suppress resume-from-history ask scheduling
-		const parentInstance = await this.createTaskWithHistoryItem(updatedHistory, { startTask: false })
+		let parentInstance: Task
+		try {
+			parentInstance = await this.createTaskWithHistoryItem(updatedHistory, { startTask: false })
+		} catch (error) {
+			// The parent's profile is no longer allowed. The child is already
+			// closed and the parent's history holds the result (steps 2-5), so
+			// the delegation is complete; the parent just stays closed until
+			// the user reopens it on an allowed profile. Returning true keeps
+			// the closed child from falling through to its own completion ask.
+			if (!this.showAllowListViolation(error)) {
+				throw error
+			}
+			this.log(`[reopenParentFromDelegation] Parent ${parentTaskId} not reopened: ${(error as Error).message}`)
+			this.cancelledDelegationChildIds.delete(childTaskId)
+			return true
+		}
 
 		// 8) Inject restored histories into the in-memory instance before resuming
 		if (parentInstance) {

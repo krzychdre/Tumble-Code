@@ -184,6 +184,7 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		},
 		getState: vi.fn().mockResolvedValue({
 			apiConfiguration: { apiProvider: "anthropic", consecutiveMistakeLimit: 0 },
+			organizationAllowList: { allowAll: true, providers: {} },
 			enableCheckpoints: true,
 			checkpointTimeout: 60,
 			experiments: {},
