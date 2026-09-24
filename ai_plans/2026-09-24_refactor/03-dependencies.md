@@ -11,9 +11,10 @@ its own branch; the lockfile diff is part of the review.
 - `pnpm -r outdated`: 166 outdated, 85 at least one major behind, 4 deprecated
   (`@vscode/webview-ui-toolkit`, `@types/node-cache`, `@types/stacktrace-js`, `@types/diff`).
 - Runtime floor: root `engines.node` is `20.20.2` (`.nvmrc`, `.tool-versions`); Node 20 reached end of life on
-  2026-04-30. The extension declares `engines.vscode ^1.84.0` (`src/package.json:13`); VS Code 1.84 runs
-  extensions on Node 18 [I, check the VS Code release notes for the exact Electron and Node versions], so the
-  shipped bundle must still load on Node 18 while many current library majors require Node 20 or 22.
+  2026-04-30. The extension declares `engines.vscode ^1.84.0` (`src/package.json:13`); VS Code runs
+  extensions on Node 18 up to 1.89 (release notes: 1.86 ships Node 18.17.1, 1.90 is the first with Node 20), so the
+  shipped bundle must still load on Node 18 while many current library majors require Node 20 or 22. Decided:
+  raise the floor to `^1.102.0` (DEP-4).
 - Types: the root `pnpm.overrides` forces `@types/react 18.3.23` on every workspace, including `apps/cli`, which
   runs React 19 with ink 6.6 (ink requires `@types/react >= 19`; lockfile key `ink@6.6.0_@types+react@18.3.23`).
 - Python service: 20 unique advisory IDs in `uv.lock`, vendored DOMPurify 3.1.6 with 20 OSV advisories, floating
@@ -45,14 +46,14 @@ so only the lockfile changes.
 | mdast-util-to-hast 13.2.0                                                                              | moderate                                   | `react-markdown`                                                                              | in range: 13.2.1                                                                                                                         | DEP-3 |
 | undici 6.27.0                                                                                          | moderate                                   | direct in `src`, root override `^6.27.0`                                                      | in range: 6.28+                                                                                                                          | DEP-3 |
 | postcss, nanoid                                                                                        | high                                       | build tooling (`vite`, `styled-components`) and `web-evals`                                   | refresh; the rest goes with DEP-1                                                                                                        | DEP-3 |
-| minimatch 3.x/5.x                                                                                      | high                                       | `packages/ipc > node-ipc` and `web-evals > archiver`                                          | DEP-1, and owner decision 1 for `node-ipc`                                                                                               | DEP-1 |
+| minimatch 3.x/5.x                                                                                      | high                                       | `packages/ipc > node-ipc` and `web-evals > archiver`                                          | DEP-1 (owner decision 1 decided: remove `node-ipc`)                                                                                      | DEP-1 |
 | drizzle-orm 0.44.1 (SQL injection), lodash, js-cookie, sharp, brace-expansion, @isaacs/brace-expansion | high                                       | `packages/evals`, `apps/web-evals`                                                            | delete                                                                                                                                   | DEP-1 |
 | @ai-sdk/provider-utils                                                                                 | low                                        | `src > @ai-sdk/amazon-bedrock`, `@ai-sdk/deepseek`, `sambanova-ai-provider`                   | these packages have zero importers                                                                                                       | DEP-2 |
 | uuid 8.3.2, 9.0.1                                                                                      | moderate                                   | `exceljs`, `gaxios`                                                                           | the fix is a major for those parents: check whether the advisory's code path is used, else accept with an expiry in the TEST-6 allowlist | DEP-3 |
 
 ## Phase 2 items
 
-### DEP-1 Delete `apps/web-evals` and `packages/evals` (owner decisions 1 and 2)
+### DEP-1 Delete `apps/web-evals`, `packages/evals` and `packages/ipc` (owner decisions 1 and 2, decided)
 
 **Evidence:** about 13,600 lines in 141 tracked files; since the rebrand only 3 fork commits touched them, all to
 keep them compiling (#149, #126, #28). Their tests never run (`packages/evals` renamed its script to `_test`,
@@ -64,11 +65,20 @@ type-check still run through turbo, so every change to `@roo-code/types` must ke
 archiver); about a quarter of all advisory entries, including both critical Next.js RCE advisories. `tar` stays
 (the webview also reaches it, see DEP-3).
 
-**Change:** delete both workspaces, `evals.yml`, the root `evals` script, the `apps/web-evals` knip section, then
-`packages/config-eslint/next.js`, `packages/config-typescript/nextjs.json` and `@next/eslint-plugin-next` (only
-web-evals uses them). If owner decision 1 is "remove", also delete `packages/ipc`, its static import at
-`src/extension/api.ts:23` and `node-ipc` (19 packages, bundled into every `extension.js` today). If "keep",
-`packages/ipc` needs tests (0 today).
+**Change (owner decisions 1 and 2: remove all of it):**
+
+1. Delete both workspaces, `.github/workflows/evals.yml`, the root `evals` script and the `apps/web-evals` knip
+   section; then `packages/config-eslint/next.js`, `packages/config-typescript/nextjs.json` and
+   `@next/eslint-plugin-next` (only web-evals uses them).
+2. Delete `packages/ipc` and `node-ipc` (19 packages, bundled into every `extension.js` today). The IPC server is
+   switched on only by the `ROO_CODE_IPC_SOCKET_PATH` environment variable (`src/extension.ts:369`), which only
+   `packages/evals` sets (`runTaskInCli.ts:28`, `runTaskInVscode.ts:30`). In `src/extension/api.ts` remove the
+   `IpcServer` import (`:23`), the `ipc` field (`:36`), the server start and `TaskCommand` handling (`:66-103`) and
+   the broadcast (`:161`); **keep the `API` class itself**, it is the public extension API other extensions call.
+   `enableLogging` is derived from the socket path (`extension.ts:370`): give it its own switch or drop it.
+   Adapt `src/extension/__tests__/api-terminal-profile.spec.ts`. The IPC types in `packages/types`
+   (`IpcMessageType`, `IpcOrigin`, `TaskCommand`, tested by `ipc.test.ts`) go too if knip reports them unused
+   afterwards; check the CLI first.
 
 **Gate:** G1 and G2; `pnpm install --frozen-lockfile` works; lockfile diff shows only removals.
 
@@ -105,9 +115,24 @@ TEST-6 becomes blocking.
 
 1. Node for development and CI: 20.20.2 to the current Node 22 LTS in `engines`, `.nvmrc`, `.tool-versions`
    and the `setup-node` steps; align `@types/node` (packages mix `20.x` and `^24`) with the runtime.
-2. Raise `engines.vscode` from `^1.84.0` to the oldest VS Code release that runs extensions on Node 20 or later
-   [I: verify with the VS Code release notes]. This is a user-visible support decision (it drops very old
-   editors) and it unblocks DEP-6.
+2. **Raise `engines.vscode` from `^1.84.0` to `^1.102.0` (owner decision 12, decided).** Verified in the VS Code
+   release notes on 2026-09-24:
+
+    | VS Code                      | Electron   | Node in the extension host |
+    | ---------------------------- | ---------- | -------------------------- |
+    | 1.84 to 1.89 (today's floor) | 27 at 1.86 | 18.x (1.86: 18.17.1)       |
+    | 1.90                         | 29         | 20.9.0 (first Node 20)     |
+    | 1.98                         | 34         | 20.18.2                    |
+    | 1.101 and 1.102              | 35         | 22.15.1 (first Node 22)    |
+
+    `^1.102.0` gives a Node 22 extension host, which unblocks the library majors in DEP-6, and it matches the
+    `@types/vscode ^1.102.0` that `packages/cloud` already compiles against (while the extension still declared
+    1.84, so cloud code could call APIs older editors lack). Align every `@types/vscode` with the new floor:
+    `src/package.json:599` and `packages/telemetry` (`^1.84.0`), `apps/vscode-e2e` (`^1.95.0`), `packages/cloud`
+    (`^1.102.0`); `vsce` rejects `@types/vscode` newer than `engines.vscode`. Before merging, check the VS Code base
+    version of any fork you want to keep supporting (Cursor, Windsurf, VSCodium); a fork on an older base cannot
+    install the extension afterwards. Update the README's requirements line and add a changeset.
+
 3. Rescope the `@types/react` override to the webview (or drop it and pin per workspace) so `apps/cli`
    type-checks against React 19 types.
 

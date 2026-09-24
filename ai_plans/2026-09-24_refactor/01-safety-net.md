@@ -49,6 +49,12 @@ code also escapes `&`, `$` and the spaces around them.
 
 **Acceptance:** webview test count rises from 1,570 to 1,604, all green.
 
+**How the orphaned files were run without touching the repo** (useful to re-check before renaming): a temporary
+config in `/tmp` that merges the webview config and adds `src/**/*.test.ts` to `include`, run with
+`cd webview-ui && npx vitest run --config /tmp/orphan-vitest.config.mts --root .`. A config outside the repo must
+import `vitest/config` by absolute path (`<repo>/webview-ui/node_modules/vitest/dist/config.js`), otherwise Node
+cannot resolve the package.
+
 ## TEST-3 Quiet the test output
 
 **Evidence:** the full `src` run prints hundreds of structured JSON log lines from the Bedrock provider logger

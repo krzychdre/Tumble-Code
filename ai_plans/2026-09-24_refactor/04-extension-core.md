@@ -118,7 +118,7 @@ fails today and is the acceptance gate. **Size** M, low risk (types only).
 "unset"` only in `getState` (3129), `customSound*` are `?? null` in one and raw in the other. Default literals
 are repeated elsewhere too (`maxDiagnosticMessages ?? 50` at `ClineProvider.ts:2917, 3167`, `TaskApiLoop.ts:555`,
 `DiagnosticsCollector.ts:71`). `getState()` is the de-facto settings accessor for 33 files. The webview adds a
-third copy (DEF-C25).
+third copy (DEF-C25). Decided value for the conflicting terminal timeout: 30,000 ms (owner decision 4a).
 
 **Change:** a typed `SETTINGS_DEFAULTS` table and a pure `resolveSettings(values)` in `packages/types` (so the
 webview and the CLI use the same table); a `ProviderStateBuilder` with narrow dependencies where `getState =

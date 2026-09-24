@@ -1,10 +1,29 @@
 # Refactor master plan (2026-09-24)
 
-**Status:** planned, nothing executed yet. Written on branch `docs/refactor-plan-2026-09-24`.
+**Status:** planned, nothing executed yet; owner decisions 1, 2, 3, 4a and 12 recorded on 2026-09-24. Written on
+branch `docs/refactor-plan-2026-09-24` (commit `b99049cdb` and its follow-up), not pushed, not merged.
 **Supersedes:** `ai_plans/refactor-backend-src.md`, `ai_plans/2026-07-14_src-refactor-plan.md`,
 `ai_plans/2026-07-14_webview-ui-refactor-plan.md`, `ai_plans/refactor-webview-ui.md`,
 `ai_plans/refactor-packages.md`, `ai_plans/new-packages-versions.md`. Their still-open items were re-verified
 against `main @ 0c0b40b15` and folded into the area documents below; items marked DONE there are not repeated.
+
+## Next session: start here
+
+The refactor is executed in new sessions; everything needed is in this directory. Steps for the first session:
+
+1. **Get the plan onto the base branch.** These documents live on `docs/refactor-plan-2026-09-24`, not on `main`.
+   Merge that branch into `main` (or open a PR for it) before creating any item branch, otherwise item branches
+   cut from `main` will not contain the plan.
+2. **Re-measure the baseline** with the commands in "Baseline" below and compare with the recorded numbers; note
+   any difference in this file before changing code (other work may have landed in between).
+3. **Start with Phase 0** (`01-safety-net.md`, TEST-1 first, because main's CI is red for flaky tests), then
+   DEF-S1 and the cloud API security groups from `02-defects.md`.
+4. **One branch per item** (`test/...`, `fix/...`, `refactor/...`, `chore/...`), stacked when files overlap;
+   commit each finished item immediately; `pnpm knip` exits 0 before any push.
+5. **After each item,** add a status line under its heading in the area document (date, branch, commit, test
+   counts before and after, deviations from the plan) and update the Status column of its phase in the roadmap below.
+6. **Before an item that depends on an "Open" owner decision,** ask the owner and record the answer in the
+   decisions table.
 
 ## Request
 
@@ -108,20 +127,20 @@ advisories).
 Phases 0 to 3 are sequential and short. After Phase 3 the area phases (4 to 9) touch mostly disjoint files and can
 run as parallel lanes; inside a lane the listed order matters. Size: S under a day, M one to three days, L more.
 
-| Phase               | Goal                                             | Items (in order)                                                                                                                                                                                                                                                                          | Size            |
-| ------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| 0 Safety net        | Gates tell the truth                             | TEST-1 flaky Ink and extension tests, TEST-2 orphaned webview tests, TEST-3 test-output noise, TEST-4 cloud API env isolation, TEST-5 cloud API CI job, TEST-6 dependency-audit CI job, TEST-7 one working update bot, TEST-8 webview bundle guard                                        | S each          |
-| 1 Defects           | Fix confirmed bugs before code moves             | Security: DEF-S1 to DEF-S12. Correctness: DEF-C1 to DEF-C31 (see `02-defects.md` for order)                                                                                                                                                                                               | S each, a few M |
-| 2 Attack surface    | Remove what nobody uses, patch within ranges     | DEP-1 delete evals apps, DEP-2 dead dependencies, DEP-3 in-range refresh, DEP-4 Node 22, VS Code floor and type overrides, DEP-5 Python and container floors, PKG-8 repository hygiene                                                                                                    | S-M             |
-| 3 Foundations       | Cheap structure that every later phase relies on | PKG-1 `safeWriteJson` into core, PKG-2 boundary rules, PKG-3 shared nightly build config, PKG-4 pin CLI render deps, PKG-5 typed CLI runtime contract, PKG-9 CI gaps, CORE-Q and API-Q dead code and quick wins, CORE-R10 layering, CORE-R5 typed Task access, PKG-10 architecture map    | S-M             |
-| 4 Extension core    | Break up the god objects                         | CORE-R1 settings table and state builder, CORE-R3 message-handler modules, CORE-R2 delegation service, CORE-R9 tool callbacks, CORE-R4 tool descriptors, CORE-R8 edit pipeline, CORE-R12 per-task tool state, CORE-R11 prompt input, CORE-R6 rest of ClineProvider                        | M-L             |
-| 5 Providers         | One adapter per wire protocol                    | API-1 error contract, API-3 strict schema, API-2 Anthropic stream, API-Q quick wins, API-4 retire AI SDK path, API-6 provider definitions (+ PKG-7 schema copies), API-7 Chat Completions adapter, API-5 cancellation, API-13 Responses core, API-18 Bedrock split, then DEP-6 SDK majors | M-L             |
-| 6 Services          | Lifecycles and single implementations            | SVC-8 McpHub, SVC-10 code-index lifecycle, SVC-9 embedder base, SVC-11 `.roo` resolver, SVC-12 ripgrep runner, SVC-15 tree-sitter cache, SVC-14 terminal contract, SVC-16 `src/shared` layering, SVC-17 DiffView remainder                                                                | M-L             |
-| 7 Webview           | Pure data pipeline, small components             | WEB-Q quick wins, WEB-1 row pipeline, WEB-2a pure rows, WEB-4 state context, WEB-3 settings schema, WEB-6 provider forms, WEB-5 code-index form, WEB-2b row renderers, WEB-7 message bus, WEB-8 ChatView hooks, WEB-9 to WEB-11, WEB-12 bundle                                            | M-L             |
-| 8 CLI and packages  | Share logic instead of re-implementing it        | CLI-5 duplicated logic slice by slice, PKG-6 browser-safe `src/shared` package, CLI-9 single state machine, PKG-11 remaining package structure                                                                                                                                            | M-L             |
-| 9 Cloud API         | Maintainable Python service                      | CAPI-M3 telemetry vocabulary, CAPI-M4 formatting, CAPI-M5 split `web.py`, CAPI-M6 route dependencies, CAPI-M7 config, CAPI-M8 cross-language fixtures, CAPI-M10 migration drift test, CAPI-M9 SQL aggregation, CAPI-M11 bridge queries                                                    | S-M             |
-| 10 Performance      | Measured wins only                               | CORE-R7 steps 1 to 4, WEB-1 parse cache (already in Phase 7), API performance items P1 to P9, CORE-R7 step 5 last                                                                                                                                                                         | S-M             |
-| 11 Framework majors | Large upgrades on a clean base                   | DEP-7 toolchain majors, DEP-8 React 19 and zod 4, DEP-9 replace `@vscode/webview-ui-toolkit`                                                                                                                                                                                              | L               |
+| Phase               | Goal                                             | Items (in order)                                                                                                                                                                                                                                                                          | Size            | Status      |
+| ------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----------- |
+| 0 Safety net        | Gates tell the truth                             | TEST-1 flaky Ink and extension tests, TEST-2 orphaned webview tests, TEST-3 test-output noise, TEST-4 cloud API env isolation, TEST-5 cloud API CI job, TEST-6 dependency-audit CI job, TEST-7 one working update bot, TEST-8 webview bundle guard                                        | S each          | not started |
+| 1 Defects           | Fix confirmed bugs before code moves             | Security: DEF-S1 to DEF-S12. Correctness: DEF-C1 to DEF-C31 (see `02-defects.md` for order)                                                                                                                                                                                               | S each, a few M | not started |
+| 2 Attack surface    | Remove what nobody uses, patch within ranges     | DEP-1 delete evals apps, DEP-2 dead dependencies, DEP-3 in-range refresh, DEP-4 Node 22, VS Code floor and type overrides, DEP-5 Python and container floors, PKG-8 repository hygiene                                                                                                    | S-M             | not started |
+| 3 Foundations       | Cheap structure that every later phase relies on | PKG-1 `safeWriteJson` into core, PKG-2 boundary rules, PKG-3 shared nightly build config, PKG-4 pin CLI render deps, PKG-5 typed CLI runtime contract, PKG-9 CI gaps, CORE-Q and API-Q dead code and quick wins, CORE-R10 layering, CORE-R5 typed Task access, PKG-10 architecture map    | S-M             | not started |
+| 4 Extension core    | Break up the god objects                         | CORE-R1 settings table and state builder, CORE-R3 message-handler modules, CORE-R2 delegation service, CORE-R9 tool callbacks, CORE-R4 tool descriptors, CORE-R8 edit pipeline, CORE-R12 per-task tool state, CORE-R11 prompt input, CORE-R6 rest of ClineProvider                        | M-L             | not started |
+| 5 Providers         | One adapter per wire protocol                    | API-1 error contract, API-3 strict schema, API-2 Anthropic stream, API-Q quick wins, API-4 retire AI SDK path, API-6 provider definitions (+ PKG-7 schema copies), API-7 Chat Completions adapter, API-5 cancellation, API-13 Responses core, API-18 Bedrock split, then DEP-6 SDK majors | M-L             | not started |
+| 6 Services          | Lifecycles and single implementations            | SVC-8 McpHub, SVC-10 code-index lifecycle, SVC-9 embedder base, SVC-11 `.roo` resolver, SVC-12 ripgrep runner, SVC-15 tree-sitter cache, SVC-14 terminal contract, SVC-16 `src/shared` layering, SVC-17 DiffView remainder                                                                | M-L             | not started |
+| 7 Webview           | Pure data pipeline, small components             | WEB-Q quick wins, WEB-1 row pipeline, WEB-2a pure rows, WEB-4 state context, WEB-3 settings schema, WEB-6 provider forms, WEB-5 code-index form, WEB-2b row renderers, WEB-7 message bus, WEB-8 ChatView hooks, WEB-9 to WEB-11, WEB-12 bundle                                            | M-L             | not started |
+| 8 CLI and packages  | Share logic instead of re-implementing it        | CLI-5 duplicated logic slice by slice, PKG-6 browser-safe `src/shared` package, CLI-9 single state machine, PKG-11 remaining package structure                                                                                                                                            | M-L             | not started |
+| 9 Cloud API         | Maintainable Python service                      | CAPI-M3 telemetry vocabulary, CAPI-M4 formatting, CAPI-M5 split `web.py`, CAPI-M6 route dependencies, CAPI-M7 config, CAPI-M8 cross-language fixtures, CAPI-M10 migration drift test, CAPI-M9 SQL aggregation, CAPI-M11 bridge queries                                                    | S-M             | not started |
+| 10 Performance      | Measured wins only                               | CORE-R7 steps 1 to 4, WEB-1 parse cache (already in Phase 7), API performance items P1 to P9, CORE-R7 step 5 last                                                                                                                                                                         | S-M             | not started |
+| 11 Framework majors | Large upgrades on a clean base                   | DEP-7 toolchain majors, DEP-8 React 19 and zod 4, DEP-9 replace `@vscode/webview-ui-toolkit`                                                                                                                                                                                              | L               | not started |
 
 ### Why this order
 
@@ -163,24 +182,26 @@ run as parallel lanes; inside a lane the listed order matters. Size: S under a d
   packages, 112.9 MB of upstream release images in `releases/` (81% of the tracked tree), 12 dead message
   handler cases, 35 unused webview state setters.
 
-## Decisions needed from the owner
+## Owner decisions
 
-Each is a product or scope choice the audits could not settle. The plan proceeds with the recommendation unless
-told otherwise.
+Recorded on 2026-09-24. "Decided" rows are binding for execution; "Open" rows proceed with the recommendation
+only after the owner confirms it (ask at the start of the item that depends on it).
 
-| #   | Question                                                                                                                                               | Recommendation                                                           |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| 1   | Keep the external IPC automation socket (`packages/ipc`, `node-ipc`, bundled into every `extension.js`)? Its only in-repo client is the evals package. | Remove together with DEP-1 unless you drive the extension over IPC       |
-| 2   | Delete `apps/web-evals` and `packages/evals`?                                                                                                          | Yes (DEP-1)                                                              |
-| 3   | Delete `releases/` (upstream PNGs, 112.9 MB) from the tree? History stays.                                                                             | Yes, and drop the image links from `CHANGELOG.md`                        |
-| 4   | Settings defaults disagree: `terminalShellIntegrationTimeout` 4,000 / 30,000 / 5,000 ms, `soundEnabled`, `enableCheckpoints`. Which value is intended? | Host default wins (5,000 ms, false, true), defined once (CORE-R1, WEB-3) |
-| 5   | Unknown model ID: keep the ID, substitute the default, or honor it as custom? Providers disagree today.                                                | Honor custom IDs with default capabilities (as Anthropic and Gemini do)  |
-| 6   | Production logging is a no-op (`src/utils/logging/index.ts` returns a real logger only under test). Intended?                                          | Make it real at `info`, behind the existing output channel               |
-| 7   | Remove `migrateSettings` (drops migration for installs older than 2025)?                                                                               | Yes                                                                      |
-| 8   | Keep the cloud API LLM proxy endpoints?                                                                                                                | Put them behind login and a `PROXY_ENABLED=false` default                |
-| 9   | Should `new_task` and `generate_image` create checkpoints (they do in one list, not in the other)?                                                     | Match the call sites (yes), pinned by a test                             |
-| 10  | Renovate or Dependabot? Both are configured, neither opened a PR in the last 200.                                                                      | Renovate (config already tuned), remove `dependabot.yml`                 |
-| 11  | When to take React 19 and zod 4?                                                                                                                       | After Phases 7 and 8 (Phase 11)                                          |
+| #   | Question                                                                                                                                               | Status      | Answer or recommendation                                                                                                            |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Keep the external IPC automation socket (`packages/ipc`, `node-ipc`, bundled into every `extension.js`)? Its only in-repo client is the evals package. | **Decided** | Remove, together with DEP-1 (details in `03-dependencies.md`)                                                                       |
+| 2   | Delete `apps/web-evals` and `packages/evals`?                                                                                                          | **Decided** | Yes (DEP-1)                                                                                                                         |
+| 3   | Delete `releases/` (upstream PNGs, 112.9 MB) from the tree? History stays.                                                                             | **Decided** | Yes, and drop the image links from `CHANGELOG.md` (PKG-8)                                                                           |
+| 4a  | `terminalShellIntegrationTimeout` default: 4,000 (webview initial state) / 30,000 (SettingsView Save fallback) / 5,000 ms (host)?                      | **Decided** | The longest existing value: **30,000 ms**, defined once in the CORE-R1 defaults table and used by the host, the webview and the CLI |
+| 4b  | `soundEnabled` (false / true / false) and `enableCheckpoints` (true / false / true) defaults                                                           | Open        | Recommendation: the host value (`soundEnabled` false, `enableCheckpoints` true); confirm before DEF-C25                             |
+| 5   | Unknown model ID: keep the ID, substitute the default, or honor it as custom? Providers disagree today.                                                | Open        | Honor custom IDs with default capabilities (as Anthropic and Gemini do)                                                             |
+| 6   | Production logging is a no-op (`src/utils/logging/index.ts` returns a real logger only under test). Intended?                                          | Open        | Make it real at `info`, behind the existing output channel (TEST-3)                                                                 |
+| 7   | Remove `migrateSettings` (drops migration for installs older than 2025)?                                                                               | Open        | Yes                                                                                                                                 |
+| 8   | Keep the cloud API LLM proxy endpoints?                                                                                                                | Open        | Put them behind login and a `PROXY_ENABLED=false` default                                                                           |
+| 9   | Should `new_task` and `generate_image` create checkpoints (they do in one list, not in the other)?                                                     | Open        | Match the call sites (yes), pinned by a test                                                                                        |
+| 10  | Renovate or Dependabot? Both are configured, neither opened a PR in the last 200.                                                                      | Open        | Renovate (config already tuned), remove `dependabot.yml`                                                                            |
+| 11  | When to take React 19 and zod 4?                                                                                                                       | Open        | After Phases 7 and 8 (Phase 11)                                                                                                     |
+| 12  | Raise the minimum VS Code version (`engines.vscode ^1.84.0`, a Node 18 extension host) to unblock library upgrades?                                    | **Decided** | Yes: **`^1.102.0`** (Node 22.15.1 extension host; verified in the VS Code release notes, table in `03-dependencies.md` DEP-4)       |
 
 ## Do not touch (collected from all audits)
 
