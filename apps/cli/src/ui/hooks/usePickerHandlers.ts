@@ -12,9 +12,9 @@ import { useUIStateStore } from "../stores/uiStateStore.js"
 
 export interface UsePickerHandlersOptions {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	autocompleteRef: React.RefObject<AutocompleteInputHandle<any>>
+	autocompleteRef: React.RefObject<AutocompleteInputHandle<any> | null>
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	followupAutocompleteRef: React.RefObject<AutocompleteInputHandle<any>>
+	followupAutocompleteRef: React.RefObject<AutocompleteInputHandle<any> | null>
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	showInfo: (msg: string, duration?: number) => void
 	seenMessageIds: React.MutableRefObject<Set<string>>

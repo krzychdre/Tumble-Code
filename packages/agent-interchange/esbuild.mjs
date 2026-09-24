@@ -9,7 +9,7 @@ import * as esbuild from "esbuild"
 const shared = {
 	bundle: true,
 	platform: "node",
-	target: "node20",
+	target: "node22",
 	format: "esm",
 	banner: {
 		// The SDK's dependencies still reach for CommonJS globals in places.
