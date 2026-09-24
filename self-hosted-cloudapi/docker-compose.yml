@@ -1,5 +1,6 @@
 # Full self-hosted stack: cloud API + its Postgres, plus a bundled Authentik
-# (server, worker, Postgres, Redis). `docker compose up -d` brings up everything
+# (server, worker, Postgres; Authentik has not used Redis since 2025.10).
+# `docker compose up -d` brings up everything
 # and the Authentik OAuth2 provider/application is auto-provisioned from the
 # blueprint in ./authentik/blueprints, so no manual Authentik clicking is needed.
 #
@@ -95,29 +96,22 @@ services:
       - ./.vol/auth/postgres:/var/lib/postgresql/data
     restart: unless-stopped
 
-  auth_redis:
-    # Major pinned: bare `alpine` follows every new Redis major.
-    image: docker.io/library/redis:8-alpine
-    command: --save 60 1 --loglevel warning
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    volumes:
-      - ./.vol/auth/redis:/data
-    restart: unless-stopped
-
   auth_server:
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.2.2}
+    # Tag and digest pinned together (the digest is the multi-arch index from
+    # `docker buildx imagetools inspect ghcr.io/goauthentik/server:2026.8.3`).
+    # AUTHENTIK_TAG may override both, with or without a digest suffix.
+    #
+    # Authentik migrates its database on start, one way, and refuses to skip a
+    # release line: an existing install must step through the latest patch of
+    # every line in between (2026.2.x -> 2026.5.x -> 2026.8.x), with a pg_dump
+    # of auth_db first. See the upgrade section of README.md.
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849}
     command: server
     environment: &authentik_env
       AUTHENTIK_POSTGRESQL__HOST: auth_db
       AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
       AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
       AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTH_PG_PASS}
-      AUTHENTIK_REDIS__HOST: auth_redis
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
       # First-run admin (akadmin). Lets you log in to the Authentik UI and is the
       # account you sign in with during the extension OAuth flow.
@@ -148,12 +142,11 @@ services:
     depends_on:
       auth_db:
         condition: service_healthy
-      auth_redis:
-        condition: service_healthy
     restart: unless-stopped
 
   auth_worker:
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.2.2}
+    # Must run the same image as auth_server.
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.8.3@sha256:ab9b4e8cc4ab3f8d1198d2db6aeea66bafea1963b3f2843589e0d163f97d9849}
     command: worker
     # The worker is what applies blueprints, so it needs the same env (incl. the
     # AUTHENTIK_CLIENT_* values the blueprint reads via !Env).
@@ -168,7 +161,5 @@ services:
       - ./authentik/blueprints:/blueprints/custom:ro
     depends_on:
       auth_db:
-        condition: service_healthy
-      auth_redis:
         condition: service_healthy
     restart: unless-stopped
