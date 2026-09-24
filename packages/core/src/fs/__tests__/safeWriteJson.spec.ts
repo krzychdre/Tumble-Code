@@ -6,7 +6,7 @@ import * as os from "os"
 
 import * as lockfile from "proper-lockfile"
 
-import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from "../safeWriteJson"
+import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from "../safeWriteJson.js"
 
 const originalFsPromisesWriteFile = actualFsPromises.writeFile
 const _originalFsPromisesAccess = actualFsPromises.access
@@ -140,7 +140,7 @@ describe("safeWriteJson", () => {
 	})
 
 	test("exports no lock-bypass option or raw atomic writer", async () => {
-		const api = await import("../safeWriteJson")
+		const api = await import("../safeWriteJson.js")
 
 		expect(api).not.toHaveProperty("writeJsonAtomically")
 		expect(api).not.toHaveProperty("alreadyLocked")
@@ -415,7 +415,7 @@ describe("safeWriteJson", () => {
 		}))
 
 		// Re-import safeWriteJson to use the mocked proper-lockfile
-		const { safeWriteJson: mockedSafeWriteJson } = await import("../safeWriteJson")
+		const { safeWriteJson: mockedSafeWriteJson } = await import("../safeWriteJson.js")
 
 		await expect(mockedSafeWriteJson(lockTestFilePath, data)).rejects.toThrow("Failed to get lock.")
 
@@ -494,7 +494,7 @@ describe("safeWriteJson", () => {
 
 		// Re-import safeWriteJson to use the mocked proper-lockfile
 		const { withLockedJsonTransaction: mockedWithLockedJsonTransaction, LockCompromisedError } = await import(
-			"../safeWriteJson"
+			"../safeWriteJson.js"
 		)
 
 		const destinationPath = path.join(tempDir, "compromised-transaction.json")
