@@ -1,4 +1,9 @@
-import { openAiCodexDefaultModelId, openAiModelInfoSaneDefaults } from "@roo-code/types"
+import {
+	anthropicDefaultModelId,
+	internationalZAiDefaultModelId,
+	openAiCodexDefaultModelId,
+	openAiModelInfoSaneDefaults,
+} from "@roo-code/types"
 
 import { DEFAULT_FLAGS } from "@/types/constants.js"
 
@@ -80,6 +85,19 @@ describe("resolveProviderConfig", () => {
 			expect(resolveProviderConfig({ layers: [{ provider: "openai-codex" }] }).model).toBe(
 				openAiCodexDefaultModelId,
 			)
+		})
+
+		// DEF-C27: the OpenRouter id "anthropic/claude-opus-4.6" was the default
+		// for every provider, so `--provider zai` without --model asked Z.ai for
+		// a model it does not serve.
+		it("defaults to the active provider's own default model", () => {
+			expect(resolveProviderConfig({ layers: [{ provider: "zai" }] }).model).toBe(internationalZAiDefaultModelId)
+			expect(resolveProviderConfig({ layers: [{ provider: "anthropic" }] }).model).toBe(anthropicDefaultModelId)
+			expect(
+				resolveProviderConfig({
+					layers: [{ provider: "openrouter", model: "openai/gpt-4o" }, { provider: "zai" }],
+				}).model,
+			).toBe(internationalZAiDefaultModelId)
 		})
 
 		it("uses the fallback model only for the fallback's own provider", () => {

@@ -1,4 +1,10 @@
-import { openAiModelInfoSaneDefaults } from "@roo-code/types"
+import {
+	anthropicDefaultModelId,
+	anthropicModels,
+	internationalZAiModels,
+	mainlandZAiModels,
+	openAiModelInfoSaneDefaults,
+} from "@roo-code/types"
 
 import { DEFAULT_CONTEXT_WINDOW, getContextWindow } from "../context-window.js"
 
@@ -36,5 +42,33 @@ describe("getContextWindow", () => {
 		expect(getContextWindow(null, { apiProvider: "openrouter", openRouterModelId: "x" })).toBe(
 			DEFAULT_CONTEXT_WINDOW,
 		)
+	})
+
+	// DEF-C27: zai, anthropic and the other providers with a built-in model
+	// table never appear in routerModels, so the lookup fell through to 200,000
+	// although the extension sizes the model from the table (1,000,000 for
+	// GLM-5.3), and the gauge read five times too full.
+	it("reads the provider's built-in model table when routerModels has no entry", () => {
+		expect(internationalZAiModels["glm-5.3"].contextWindow).toBe(1_000_000)
+
+		expect(getContextWindow(null, { apiProvider: "zai", apiModelId: "glm-5.3" })).toBe(
+			internationalZAiModels["glm-5.3"].contextWindow,
+		)
+		expect(getContextWindow({}, { apiProvider: "zai", apiModelId: "glm-5.3" })).toBe(
+			internationalZAiModels["glm-5.3"].contextWindow,
+		)
+		expect(getContextWindow(null, { apiProvider: "zai", apiModelId: "glm-5.3", zaiApiLine: "china_coding" })).toBe(
+			mainlandZAiModels["glm-5.3"].contextWindow,
+		)
+	})
+
+	it("sizes the provider's default model when no model id is set", () => {
+		expect(getContextWindow(null, { apiProvider: "anthropic" })).toBe(
+			anthropicModels[anthropicDefaultModelId].contextWindow,
+		)
+	})
+
+	it("keeps the generic default for a model the table does not know", () => {
+		expect(getContextWindow(null, { apiProvider: "zai", apiModelId: "glm-unknown" })).toBe(DEFAULT_CONTEXT_WINDOW)
 	})
 })
