@@ -1,6 +1,7 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 import { LanguageParser, loadRequiredLanguageParsers } from "./languageParser"
+import { hasTreeSitterGrammar } from "./languageGrammars"
 import { fileExistsAtPath } from "../../utils/fs"
 import { parseMarkdown } from "./markdownParser"
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
@@ -133,6 +134,12 @@ export async function parseSourceCodeDefinitionsForFile(
 		if (markdownDefinitions) {
 			return `# ${path.basename(filePath)}\n${markdownDefinitions}`
 		}
+		return undefined
+	}
+
+	// Advertised for code indexing (length-based chunks) but without a usable
+	// grammar, e.g. .vb and .elm: there are no definitions to list.
+	if (!hasTreeSitterGrammar(ext)) {
 		return undefined
 	}
 
