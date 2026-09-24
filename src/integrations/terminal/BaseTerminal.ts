@@ -1,3 +1,5 @@
+import { DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS } from "@roo-code/types"
+
 import { truncateOutput, applyRunLengthEncoding } from "../misc/extract-text"
 
 import type {
@@ -154,7 +156,7 @@ export abstract class BaseTerminal implements RooTerminal {
 		return output
 	}
 
-	public static defaultShellIntegrationTimeout = 5_000
+	public static defaultShellIntegrationTimeout = DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS
 	private static shellIntegrationTimeout: number = BaseTerminal.defaultShellIntegrationTimeout
 	private static shellIntegrationDisabled: boolean = false
 	private static commandDelay: number = 0

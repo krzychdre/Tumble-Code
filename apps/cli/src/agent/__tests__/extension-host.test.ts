@@ -295,6 +295,30 @@ describe("ExtensionHost", () => {
 				expect(payload.type).toBe("updateSettings")
 				expect(payload.updatedSettings?.terminalShellIntegrationDisabled).toBe(true)
 			})
+
+			// DEF-C25: the CLI must not carry its own default for the shell
+			// integration timeout or sound, so the host's decided defaults
+			// (30,000 ms, sound off) apply. Checkpoints stay off in the CLI on
+			// purpose: that is a CLI override, not a competing default.
+			it("leaves the shell integration timeout and sound to the host defaults", () => {
+				const host = createTestHost()
+				const emitSpy = vi.spyOn(host, "emit")
+
+				host.markWebviewReady()
+
+				const updateSettingsCall = emitSpy.mock.calls.find(
+					(call) =>
+						call[0] === "webviewMessage" &&
+						typeof call[1] === "object" &&
+						call[1] !== null &&
+						(call[1] as WebviewMessage).type === "updateSettings",
+				)
+				const settings = (updateSettingsCall?.[1] as WebviewMessage).updatedSettings ?? {}
+
+				expect(settings).not.toHaveProperty("terminalShellIntegrationTimeout")
+				expect(settings).not.toHaveProperty("soundEnabled")
+				expect(settings.enableCheckpoints).toBe(false)
+			})
 		})
 	})
 

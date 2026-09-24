@@ -231,3 +231,19 @@ describe("TerminalSettings VS Code terminal profile (#277)", () => {
 		expect(screen.queryByTestId("terminal-profile-no-profiles-hint")).not.toBeInTheDocument()
 	})
 })
+
+// DEF-C25, owner decision 4a: with no saved value the slider must show the
+// host default (30 s), not a third, webview-only number.
+describe("TerminalSettings shell integration timeout default (DEF-C25)", () => {
+	it("shows 30s when no timeout is saved", () => {
+		render(
+			<TerminalSettings
+				terminalShellIntegrationDisabled={false}
+				onTerminalProfilePickerOpened={vi.fn()}
+				setCachedStateField={vi.fn()}
+			/>,
+		)
+
+		expect(screen.getByText("30s")).toBeInTheDocument()
+	})
+})
