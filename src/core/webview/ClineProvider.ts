@@ -55,6 +55,7 @@ import {
 	resolvePruneToolResultBudget,
 	getModelId,
 	isRetiredProvider,
+	readCliRuntimeEnv,
 } from "@roo-code/types"
 import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -1305,7 +1306,7 @@ export class ClineProvider
 		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
 		options?: { startTask?: boolean },
 	) {
-		const isCliRuntime = process.env.ROO_CLI_RUNTIME === "1"
+		const isCliRuntime = readCliRuntimeEnv(process.env).isCliRuntime
 		// CLI injects runtime provider settings from command flags/env at startup.
 		// Restoring provider profiles from task history can overwrite those
 		// runtime settings with stale/incomplete persisted profiles.

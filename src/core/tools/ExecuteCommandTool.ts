@@ -4,7 +4,12 @@ import * as vscode from "vscode"
 
 import delay from "delay"
 
-import { CommandExecutionStatus, DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE, PersistedCommandOutput } from "@roo-code/types"
+import {
+	CommandExecutionStatus,
+	DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE,
+	PersistedCommandOutput,
+	readCliRuntimeEnv,
+} from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Task } from "../task/Task"
@@ -57,7 +62,7 @@ export function resolveAgentTimeoutMs(timeoutSeconds: number | null | undefined)
 	// In CLI runtime, stdin harnesses expect command lifetime to be governed
 	// solely by commandExecutionTimeout (user setting), not model-provided
 	// background timeouts.
-	return process.env.ROO_CLI_RUNTIME === "1" ? 0 : requestedAgentTimeout
+	return readCliRuntimeEnv(process.env).isCliRuntime ? 0 : requestedAgentTimeout
 }
 
 export class ExecuteCommandTool extends BaseTool<"execute_command"> {
