@@ -13,7 +13,9 @@ import * as fileSearch from "../../../services/search/file-search"
 import { RepoPerTaskCheckpointService } from "../RepoPerTaskCheckpointService"
 import { BLOCKED_ENV_KEYS } from "../ShadowCheckpointService"
 
-const tmpDir = path.join(os.tmpdir(), "CheckpointService")
+// Each run gets its own directory: a fixed path (it used to be /tmp/CheckpointService)
+// let two concurrent vitest runs delete each other's repositories mid-test.
+let tmpDir: string
 
 // simple-git ≥3.36 blocks env vars it considers code-execution vectors.
 // Strip them for the duration of this test suite so tests pass for developers
@@ -22,14 +24,16 @@ const tmpDir = path.join(os.tmpdir(), "CheckpointService")
 // would be fragile under "threads" pool where workers share the same process.
 const savedEnv: Partial<Record<string, string>> = {}
 
-beforeAll(() => {
+beforeAll(async () => {
+	tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "CheckpointService-"))
+
 	for (const key of BLOCKED_ENV_KEYS) {
 		savedEnv[key] = process.env[key]
 		delete process.env[key]
 	}
 })
 
-afterAll(() => {
+afterAll(async () => {
 	for (const key of BLOCKED_ENV_KEYS) {
 		if (savedEnv[key] !== undefined) {
 			process.env[key] = savedEnv[key]
@@ -37,7 +41,9 @@ afterAll(() => {
 			delete process.env[key]
 		}
 	}
-})
+
+	await fs.rm(tmpDir, { recursive: true, force: true })
+}, 60_000) // 60 second timeout for Windows cleanup
 
 const initWorkspaceRepo = async ({
 	workspaceDir,
@@ -97,10 +103,6 @@ describe.each([[RepoPerTaskCheckpointService, "RepoPerTaskCheckpointService"]])(
 		afterEach(async () => {
 			vitest.restoreAllMocks()
 		})
-
-		afterAll(async () => {
-			await fs.rm(tmpDir, { recursive: true, force: true })
-		}, 60_000) // 60 second timeout for Windows cleanup
 
 		describe(`${klass.name}#getDiff`, () => {
 			it("returns the correct diff between commits", async () => {
