@@ -419,8 +419,9 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		systemPrompt?: string,
 		messages?: Anthropic.Messages.MessageParam[],
 	): ApiStream {
-		// Create AbortController for cancellation
-		this.abortController = new AbortController()
+		// Create AbortController for cancellation (cancelRequest() aborts it)
+		const abortController = new AbortController()
+		this.abortController = abortController
 
 		// Build per-request headers using taskId when available, falling back to sessionId
 		const taskId = metadata?.taskId
@@ -434,7 +435,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		try {
 			// Use the official SDK with per-request headers
 			const stream = (await (this.client as any).responses.create(requestBody, {
-				signal: this.abortController.signal,
+				signal: abortController.signal,
 				headers: requestHeaders,
 			})) as AsyncIterable<any>
 
@@ -446,7 +447,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 			for await (const event of stream) {
 				// Check if request was aborted
-				if (this.abortController.signal.aborted) {
+				if (abortController.signal.aborted) {
 					break
 				}
 
@@ -455,10 +456,17 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				}
 			}
 		} catch (sdkErr: any) {
+			// A cancelled request ends here. The SSE fallback below would send the request
+			// again, and after Stop that second request would run to completion.
+			if (abortController.signal.aborted) {
+				throw sdkErr
+			}
 			// For errors, fallback to manual SSE via fetch
 			yield* this.makeResponsesApiRequest(requestBody, model, metadata, systemPrompt, messages)
 		} finally {
-			this.abortController = undefined
+			if (this.abortController === abortController) {
+				this.abortController = undefined
+			}
 		}
 	}
 
@@ -1495,6 +1503,19 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		return {
 			encrypted_content: reasoningItem.encrypted_content,
 			...(reasoningItem.id ? { id: reasoningItem.id } : {}),
+		}
+	}
+
+	/**
+	 * Cancels the in-flight request (the Stop button, via Task.cancelCurrentRequest).
+	 *
+	 * The client is not destroyed: it talks to a hosted API, so there is no local inference
+	 * to sever, and aborting the signal already closes the HTTP connection.
+	 */
+	cancelRequest(): void {
+		if (this.abortController) {
+			this.abortController.abort()
+			this.abortController = undefined
 		}
 	}
 
