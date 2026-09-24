@@ -205,3 +205,57 @@ async def test_logout_ends_own_session(client, db_session):
     assert resp.status_code == 200, resp.text
     assert not await _session_is_active(db_session, session_id)
 
+
+# DEF-S7: the organization_id form field was copied into the session JWT's
+# org claim (r.o) without checking that the user belongs to that organization.
+
+
+async def _org_with_member(db_session, user_id: str | None, name: str) -> str:
+    from src.models.organization import Membership, Organization
+
+    org = Organization(name=name, slug=name)
+    db_session.add(org)
+    await db_session.flush()
+    if user_id is not None:
+        db_session.add(Membership(user_id=user_id, organization_id=org.id))
+    await db_session.commit()
+    return org.id
+
+
+async def test_session_token_refuses_org_the_user_is_not_a_member_of(client, db_session):
+    _, session_id, token = await _sign_in(client, db_session, "ak_dave", "ticket_dave")
+    foreign_org = await _org_with_member(db_session, None, "foreign")
+
+    for org_id in (foreign_org, "org_does_not_exist"):
+        resp = client.post(
+            f"/v1/client/sessions/{session_id}/tokens",
+            data={"_is_native": "1", "organization_id": org_id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code == 403, resp.text
+        assert "jwt" not in resp.text
+
+
+async def test_session_token_carries_org_the_user_belongs_to(client, db_session):
+    user_id, session_id, token = await _sign_in(client, db_session, "ak_erin", "ticket_erin")
+    own_org = await _org_with_member(db_session, user_id, "own")
+
+    resp = client.post(
+        f"/v1/client/sessions/{session_id}/tokens",
+        data={"_is_native": "1", "organization_id": own_org},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert decode_token(resp.json()["jwt"])["r"]["o"] == own_org
+
+
+async def test_session_token_without_org_is_personal(client, db_session):
+    _, session_id, token = await _sign_in(client, db_session, "ak_frank", "ticket_frank")
+
+    resp = client.post(
+        f"/v1/client/sessions/{session_id}/tokens",
+        data={"_is_native": "1", "organization_id": ""},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert "o" not in decode_token(resp.json()["jwt"])["r"]
