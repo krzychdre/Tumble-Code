@@ -1,4 +1,4 @@
-import { getModeAllowedMcpServers, defaultModeSlug } from "../../shared/modes"
+import { getModeAllowedMcpServers } from "../../shared/modes"
 import { Task } from "../task/Task"
 
 /**
@@ -23,12 +23,14 @@ export function isMcpServerAllowed(serverName: string, allowedMcpServers?: strin
 }
 
 /**
- * Resolves the current mode's MCP server allowlist from provider state.
+ * Resolves the MCP server allowlist of the task's own mode (`Task.getTaskMode()`), not of the
+ * mode in provider state: that is the focused task's mode, and a background subagent or a
+ * delegated child may run in another one.
  *
  * Returns `undefined` when the mode does not restrict MCP servers (or when the mode/state
  * cannot be resolved), which the predicate treats as "unrestricted".
  *
- * @param task The current task, used to reach provider state.
+ * @param task The task whose mode controls the allowlist; also used to reach provider state.
  * @returns The mode's `allowedMcpServers` allowlist, or `undefined` when unrestricted.
  */
 export async function getAllowedMcpServersForTask(task: Task): Promise<string[] | undefined> {
@@ -43,7 +45,7 @@ export async function getAllowedMcpServersForTask(task: Task): Promise<string[] 
 
 	try {
 		const state = await provider.getState()
-		const modeSlug = state?.mode ?? defaultModeSlug
+		const modeSlug = await task.getTaskMode()
 		// Resolve for built-in modes (override in customModePrompts) as well as custom modes
 		// (allowlist on the ModeConfig).
 		return getModeAllowedMcpServers(modeSlug, state?.customModes, state?.customModePrompts)

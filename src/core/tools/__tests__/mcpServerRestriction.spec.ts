@@ -13,8 +13,9 @@ import { defaultModeSlug } from "../../../shared/modes"
 
 const toolError = (error: string) => `ERR:${error}`
 
-function makeTask(state: any): Task {
+function makeTask(state: any, taskMode: string = state.mode ?? defaultModeSlug): Task {
 	return {
+		getTaskMode: vi.fn().mockResolvedValue(taskMode),
 		providerRef: {
 			deref: () => ({
 				getState: vi.fn().mockResolvedValue(state),
@@ -83,12 +84,23 @@ describe("getAllowedMcpServersForTask", () => {
 	})
 
 	it("defaults to the default mode slug when state has no mode", async () => {
-		// No `mode` on state → falls back to defaultModeSlug; an override keyed on that slug applies.
+		// No mode anywhere → Task.getTaskMode()'s defaultModeSlug fallback; an override keyed on
+		// that slug applies.
 		const task = makeTask({
 			customModes: [],
 			customModePrompts: { [defaultModeSlug]: { allowedMcpServers: ["srv-default"] } },
 		})
 		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual(["srv-default"])
+	})
+
+	it("uses the task's own mode, not the mode in provider state", async () => {
+		// Provider state holds the focused task's mode ("code", unrestricted here); a background
+		// subagent or a delegated child in the restricted custom mode must get that mode's list.
+		const task = makeTask(
+			{ mode: "code", customModes: [customModeWithAllowlist(["srv-a"])], customModePrompts: {} },
+			"custom-mcp",
+		)
+		await expect(getAllowedMcpServersForTask(task)).resolves.toEqual(["srv-a"])
 	})
 
 	it("returns undefined when the provider has no getState", async () => {

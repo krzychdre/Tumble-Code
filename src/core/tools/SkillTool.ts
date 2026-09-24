@@ -43,9 +43,9 @@ export class SkillTool extends BaseTool<"skill"> {
 				return
 			}
 
-			// Get current mode for skill resolution
-			const state = await provider?.getState()
-			const currentMode = state?.mode ?? "code"
+			// Resolve skills for the task's own mode: provider state holds the focused task's
+			// mode, and a background subagent or a delegated child may run in another one.
+			const currentMode = await task.getTaskMode()
 
 			// Fetch skill content
 			const skillContent = await resolveSkillContentForMode(skillsManager, skillName, currentMode)

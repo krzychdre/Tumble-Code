@@ -23,6 +23,7 @@ describe("skillTool", () => {
 			didToolFailInCurrentTurn: false,
 			sayAndCreateMissingParamError: vi.fn().mockResolvedValue("Missing parameter error"),
 			ask: vi.fn().mockResolvedValue({}),
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			providerRef: {
 				deref: vi.fn().mockReturnValue({
 					getState: vi.fn().mockResolvedValue({ mode: "code" }),
@@ -55,6 +56,25 @@ describe("skillTool", () => {
 		expect(mockTask.recordToolError).toHaveBeenCalledWith("skill")
 		expect(mockTask.sayAndCreateMissingParamError).toHaveBeenCalledWith("skill", "skill")
 		expect(mockCallbacks.pushToolResult).toHaveBeenCalledWith("Missing parameter error")
+	})
+
+	it("resolves the skill for the task's own mode, not the provider's", async () => {
+		// Provider state holds the focused task's mode; a background subagent or a delegated
+		// child can run in another mode and must see that mode's skills.
+		mockTask.getTaskMode.mockResolvedValue("architect")
+		const block: ToolUse<"skill"> = {
+			type: "tool_use" as const,
+			name: "skill" as const,
+			params: {},
+			partial: false,
+			nativeArgs: { skill: "plan-review" },
+		}
+		mockSkillsManager.getSkillContent.mockResolvedValue(null)
+
+		await skillTool.handle(mockTask as Task, block, mockCallbacks)
+
+		expect(mockSkillsManager.getSkillContent).toHaveBeenCalledWith("plan-review", "architect")
+		expect(mockSkillsManager.getSkillsForMode).toHaveBeenCalledWith("architect")
 	})
 
 	it("should handle skill not found", async () => {
