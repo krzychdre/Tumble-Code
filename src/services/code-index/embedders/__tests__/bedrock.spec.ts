@@ -583,6 +583,18 @@ describe("BedrockEmbedder", () => {
 			expect(mockSend).toHaveBeenCalled()
 		})
 
+		it("should report the dimension of the probe embedding (DEF-C17 drift 2)", async () => {
+			mockSend.mockResolvedValue({
+				body: new TextEncoder().encode(
+					JSON.stringify({ embedding: new Array(1024).fill(0.1), inputTextTokenCount: 1 }),
+				),
+			})
+
+			const result = await embedder.validateConfiguration()
+
+			expect(result).toEqual({ valid: true, dimension: 1024 })
+		})
+
 		it("should fail validation with authentication error", async () => {
 			const authError = new Error("Invalid credentials")
 			authError.name = "UnrecognizedClientException"

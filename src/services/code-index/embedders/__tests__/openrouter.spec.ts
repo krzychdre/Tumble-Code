@@ -324,6 +324,18 @@ describe("OpenRouterEmbedder", () => {
 			})
 		})
 
+		it("should report the dimension of the probe embedding (DEF-C17 drift 2)", async () => {
+			// The probe is requested as base64: 3072 float32 values = 12288 bytes.
+			const probe = new Float32Array(3072).fill(0.5)
+			mockEmbeddingsCreate.mockResolvedValue({
+				data: [{ embedding: Buffer.from(probe.buffer).toString("base64") }],
+			})
+
+			const result = await embedder.validateConfiguration()
+
+			expect(result).toEqual({ valid: true, dimension: 3072 })
+		})
+
 		it("should handle validation failure", async () => {
 			const authError = new Error("Invalid API key")
 			;(authError as any).status = 401
