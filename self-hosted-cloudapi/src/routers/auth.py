@@ -209,5 +209,13 @@ async def remove_session(
             detail="Invalid client token",
         )
 
+    # A client token may only end its own session (same answer as the sibling
+    # check in create_session_token), never another user's.
+    if session.id != session_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found",
+        )
+
     await deactivate_session(db, session_id)
     return {"response": "Session removed"}
