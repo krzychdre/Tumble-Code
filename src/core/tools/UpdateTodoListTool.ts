@@ -11,8 +11,6 @@ interface UpdateTodoListParams {
 	todos: string
 }
 
-let approvedTodoList: TodoItem[] | undefined = undefined
-
 export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 	readonly name = "update_todo_list" as const
 
@@ -56,8 +54,17 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 				toolCallId,
 			})
 
-			approvedTodoList = cloneDeep(normalizedTodos)
-			const didApprove = await askApproval("tool", approvalMsg)
+			// The dialog's list lives on this task, so a parallel task running
+			// update_todo_list meanwhile cannot replace it (DEF-C3).
+			task.pendingTodoList = cloneDeep(normalizedTodos)
+			let didApprove: boolean
+			let approvedTodoList: TodoItem[] | undefined
+			try {
+				didApprove = await askApproval("tool", approvalMsg)
+			} finally {
+				approvedTodoList = task.pendingTodoList
+				task.pendingTodoList = undefined
+			}
 			if (!didApprove) {
 				pushToolResult("User declined to update the todoList.")
 				return
@@ -207,8 +214,12 @@ export function parseMarkdownChecklist(md: string): TodoItem[] {
 	return todos
 }
 
-export function setPendingTodoList(todos: TodoItem[]) {
-	approvedTodoList = todos
+/**
+ * Record the user's edit of the list shown in `task`'s pending update_todo_list
+ * approval dialog. The edit is adopted when that approval settles.
+ */
+export function setPendingTodoList(task: Task, todos: TodoItem[]) {
+	task.pendingTodoList = todos
 }
 
 function validateTodos(todos: any[]): { valid: boolean; error?: string } {

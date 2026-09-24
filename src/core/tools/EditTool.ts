@@ -237,14 +237,14 @@ export class EditTool extends BaseTool<"edit"> {
 			// Record successful tool usage and cleanup
 			task.recordToolUsage("edit")
 			await task.diffViewProvider.reset()
-			this.resetPartialState()
+			this.resetPartialState(task)
 
 			// Process any queued messages after file edit completes
 			task.processQueuedMessages()
 		} catch (error) {
 			await handleError("edit", error as Error, this.name)
 			await task.diffViewProvider.reset()
-			this.resetPartialState()
+			this.resetPartialState(task)
 		}
 	}
 
@@ -252,7 +252,7 @@ export class EditTool extends BaseTool<"edit"> {
 		const relPath: string | undefined = block.params.file_path
 
 		// Wait for path to stabilize before showing UI (prevents truncated paths)
-		if (!this.hasPathStabilized(relPath)) {
+		if (!this.hasPathStabilized(task, relPath)) {
 			return
 		}
 

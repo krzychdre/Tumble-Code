@@ -24,25 +24,43 @@ interface WriteToFileParams {
 	content: string
 }
 
-export class WriteToFileTool extends BaseTool<"write_to_file"> {
-	readonly name = "write_to_file" as const
-
+/** Partial-stream state of one task's write_to_file call. */
+interface WriteToFileStreamState {
 	/**
 	 * Memo of the last path validated during partial streaming and its access result.
 	 * Avoids re-validating (and re-emitting any error UI) on every streamed chunk
-	 * for the same path. Reset by resetPartialState().
+	 * for the same path.
 	 */
-	private lastValidatedPartialPath: string | undefined = undefined
-	private lastPartialAccessAllowed: boolean | undefined = undefined
-
+	lastValidatedPartialPath?: string
+	lastPartialAccessAllowed?: boolean
 	/**
 	 * The relPath that diffViewProvider.editType was computed for.
 	 * During partial streaming, partial-json may produce a truncated path that
 	 * differs from the final parsed path.  If editType was set for a different
 	 * path than the final one, execute() must re-check file existence rather than
-	 * trust the stale value.  Reset by resetPartialState().
+	 * trust the stale value.
 	 */
-	private editTypePath: string | undefined = undefined
+	editTypePath?: string
+}
+
+export class WriteToFileTool extends BaseTool<"write_to_file"> {
+	readonly name = "write_to_file" as const
+
+	/**
+	 * Partial-stream state, per task: this tool is a singleton shared by every
+	 * task, and parallel subagents stream writes at the same time as the
+	 * foreground task (DEF-C4). Reset by resetPartialState(task).
+	 */
+	private streamStateByTask = new WeakMap<Task, WriteToFileStreamState>()
+
+	private streamState(task: Task): WriteToFileStreamState {
+		let state = this.streamStateByTask.get(task)
+		if (!state) {
+			state = {}
+			this.streamStateByTask.set(task, state)
+		}
+		return state
+	}
 
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
@@ -84,15 +102,16 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		// the cached editType is stale and must not be trusted.  Re-check file
 		// existence for the actual final path.  When editTypePath is undefined
 		// (editType set externally, not by handlePartial), trust the cache.
+		const streamState = this.streamState(task)
 		if (
 			task.diffViewProvider.editType !== undefined &&
-			(this.editTypePath === undefined || this.editTypePath === relPath)
+			(streamState.editTypePath === undefined || streamState.editTypePath === relPath)
 		) {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
-			this.editTypePath = relPath
+			streamState.editTypePath = relPath
 		}
 
 		// Create parent directories early for new files to prevent ENOENT errors
@@ -214,7 +233,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
 
 			await task.diffViewProvider.reset()
-			this.resetPartialState()
+			this.resetPartialState(task)
 
 			task.processQueuedMessages()
 
@@ -222,7 +241,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		} catch (error) {
 			await handleError("writing file", error as Error, this.name)
 			await task.diffViewProvider.reset()
-			this.resetPartialState()
+			this.resetPartialState(task)
 			return
 		}
 	}
@@ -232,7 +251,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		let newContent: string | undefined = block.params.content
 
 		// Wait for path to stabilize before showing UI (prevents truncated paths)
-		if (!this.hasPathStabilized(relPath) || newContent === undefined) {
+		if (!this.hasPathStabilized(task, relPath) || newContent === undefined) {
 			return
 		}
 
@@ -257,13 +276,14 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 		// Memoize the access check result per path so repeated chunks for the same
 		// rejected path don't re-validate (and won't spam any UI).
+		const partialState = this.streamState(task)
 		let accessAllowed: boolean
-		if (this.lastValidatedPartialPath === relPath && this.lastPartialAccessAllowed !== undefined) {
-			accessAllowed = this.lastPartialAccessAllowed
+		if (partialState.lastValidatedPartialPath === relPath && partialState.lastPartialAccessAllowed !== undefined) {
+			accessAllowed = partialState.lastPartialAccessAllowed
 		} else {
 			accessAllowed = task.rooIgnoreController?.validateAccess(relPath!) ?? true
-			this.lastValidatedPartialPath = relPath
-			this.lastPartialAccessAllowed = accessAllowed
+			partialState.lastValidatedPartialPath = relPath
+			partialState.lastPartialAccessAllowed = accessAllowed
 		}
 
 		if (!accessAllowed) {
@@ -282,15 +302,16 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		// relPath is guaranteed non-null after hasPathStabilized
 		let fileExists: boolean
 
+		const streamState = this.streamState(task)
 		if (
 			task.diffViewProvider.editType !== undefined &&
-			(this.editTypePath === undefined || this.editTypePath === relPath)
+			(streamState.editTypePath === undefined || streamState.editTypePath === relPath)
 		) {
 			fileExists = task.diffViewProvider.editType === "modify"
 		} else {
 			fileExists = await fileExistsAtPath(absolutePath)
 			task.diffViewProvider.editType = fileExists ? "modify" : "create"
-			this.editTypePath = relPath
+			streamState.editTypePath = relPath
 		}
 
 		// Create parent directories early for new files to prevent ENOENT errors
@@ -327,11 +348,13 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		}
 	}
 
-	override resetPartialState(): void {
-		super.resetPartialState()
-		this.lastValidatedPartialPath = undefined
-		this.lastPartialAccessAllowed = undefined
-		this.editTypePath = undefined
+	override resetPartialState(task?: Task): void {
+		super.resetPartialState(task)
+		if (task) {
+			this.streamStateByTask.delete(task)
+		} else {
+			this.streamStateByTask = new WeakMap()
+		}
 	}
 }
 
