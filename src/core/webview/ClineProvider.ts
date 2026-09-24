@@ -15,6 +15,7 @@ import {
 	type GlobalState,
 	type ProviderName,
 	type ProviderSettings,
+	type OrganizationAllowList,
 	type CliModeProviderSettings,
 	type RooCodeSettings,
 	type ProviderSettingsEntry,
@@ -134,6 +135,23 @@ interface PendingEditOperation {
 	apiConversationHistoryIndex: number
 	timeoutId: NodeJS.Timeout
 	createdAt: number
+}
+
+/**
+ * Task options that follow from the provider profile a new task will run on.
+ * Shared by `createTask` and `createBackgroundTask` so that both enforce the
+ * organization allow list and apply the profile's consecutive-mistake limit.
+ *
+ * @throws OrganizationAllowListViolationError when the profile is not allowed.
+ */
+function profileTaskOptions(
+	apiConfiguration: ProviderSettings,
+	organizationAllowList: OrganizationAllowList,
+): { apiConfiguration: ProviderSettings; consecutiveMistakeLimit: number | undefined } {
+	if (!ProfileValidator.isProfileAllowed(apiConfiguration, organizationAllowList)) {
+		throw new OrganizationAllowListViolationError(t("common:errors.violated_organization_allowlist"))
+	}
+	return { apiConfiguration, consecutiveMistakeLimit: apiConfiguration.consecutiveMistakeLimit }
 }
 
 export class ClineProvider
@@ -3560,16 +3578,11 @@ export class ClineProvider
 			}
 		}
 
-		if (!ProfileValidator.isProfileAllowed(apiConfiguration, organizationAllowList)) {
-			throw new OrganizationAllowListViolationError(t("common:errors.violated_organization_allowlist"))
-		}
-
 		const task = new Task({
 			provider: this,
-			apiConfiguration,
+			...profileTaskOptions(apiConfiguration, organizationAllowList),
 			enableCheckpoints,
 			checkpointTimeout,
-			consecutiveMistakeLimit: apiConfiguration.consecutiveMistakeLimit,
 			task: text,
 			images,
 			experiments,
@@ -3649,11 +3662,13 @@ export class ClineProvider
 			}
 		}
 		apiConfiguration ??= state.apiConfiguration
-		const { experiments } = state
+		const { experiments, organizationAllowList } = state
 
 		const task = new Task({
 			provider: this,
-			apiConfiguration,
+			// Same profile rules as a foreground task (allow list + mistake
+			// limit), checked on the profile the background task will run on.
+			...profileTaskOptions(apiConfiguration, organizationAllowList),
 			// Background tasks don't participate in checkpoints (no shadow git per
 			// memory write); keeps them cheap and side-effect-free.
 			enableCheckpoints: false,
