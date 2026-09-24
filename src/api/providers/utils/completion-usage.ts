@@ -15,10 +15,7 @@ type OpenAiShapedUsage =
 			prompt_tokens?: number | null
 			completion_tokens?: number | null
 			total_tokens?: number | null
-			prompt_tokens_details?: {
-				cached_tokens?: number | null
-				cache_creation_tokens?: number | null
-			} | null
+			prompt_tokens_details?: OpenAiPromptTokensDetails | null
 			cache_creation_input_tokens?: number | null
 			cache_read_input_tokens?: number | null
 			cost?: number | null
@@ -26,8 +23,67 @@ type OpenAiShapedUsage =
 	| null
 	| undefined
 
+type OpenAiPromptTokensDetails = {
+	cached_tokens?: number | null
+	cache_write_tokens?: number | null
+	cache_creation_tokens?: number | null
+	cache_creation_input_tokens?: number | null
+}
+
 const numberOrUndefined = (value: unknown): number | undefined =>
 	typeof value === "number" && Number.isFinite(value) ? value : undefined
+
+/**
+ * The first positive figure among `values`; failing that a reported 0; failing
+ * that `undefined`. A server that fills several names keeps them in step, but a
+ * 0 under one name must not hide a count reported under another.
+ */
+const firstReported = (...values: unknown[]): number | undefined => {
+	const numbers = values.map(numberOrUndefined).filter((value): value is number => value !== undefined)
+	return numbers.find((value) => value > 0) ?? numbers[0]
+}
+
+/**
+ * Read the prompt-cache figures of an OpenAI-shaped (Chat Completions) usage
+ * block. Every path that reads such a block goes through here, so one-shot and
+ * streaming usage cannot drift apart again (DEF-C23).
+ *
+ * Cache reads, by the names servers document:
+ * - `prompt_tokens_details.cached_tokens`: OpenAI, OpenRouter, Z.ai, DeepSeek,
+ *   Moonshot, DashScope, LiteLLM, vLLM, llama.cpp.
+ * - `cache_read_input_tokens` (top level): LiteLLM and Anthropic-style gateways.
+ *
+ * Cache writes:
+ * - `prompt_tokens_details.cache_write_tokens`: OpenRouter, Moonshot (kimi-k3),
+ *   LiteLLM.
+ * - `prompt_tokens_details.cache_creation_tokens`: LiteLLM (its Anthropic and
+ *   Bedrock name, mirrored with `cache_write_tokens` in current releases).
+ * - `prompt_tokens_details.cache_creation_input_tokens`: DashScope (Qwen)
+ *   explicit cache.
+ * - `cache_creation_input_tokens` (top level): LiteLLM and Anthropic-style
+ *   gateways.
+ *
+ * DeepSeek's `prompt_cache_miss_tokens` is deliberately not a write: those are
+ * ordinary input tokens at the normal price. Under the OpenAI protocol both
+ * figures are part of `prompt_tokens`, which is what `calculateApiCostOpenAI`
+ * expects.
+ */
+export function openAiCacheTokens(usage: OpenAiShapedUsage): {
+	cacheReadTokens: number | undefined
+	cacheWriteTokens: number | undefined
+} {
+	const details = usage?.prompt_tokens_details
+
+	return {
+		cacheReadTokens: firstReported(details?.cached_tokens, usage?.cache_read_input_tokens),
+		cacheWriteTokens: firstReported(
+			details?.cache_write_tokens,
+			details?.cache_creation_tokens,
+			details?.cache_creation_input_tokens,
+			usage?.cache_creation_input_tokens,
+		),
+	}
+}
 
 /**
  * Map an OpenAI-shaped `usage` block (`prompt_tokens` / `completion_tokens`).
@@ -48,12 +104,7 @@ export function openAiCompletionUsage(usage: OpenAiShapedUsage): CompletionUsage
 		return undefined
 	}
 
-	const cacheReadTokens =
-		numberOrUndefined(usage.prompt_tokens_details?.cached_tokens) ??
-		numberOrUndefined(usage.cache_read_input_tokens)
-	const cacheWriteTokens =
-		numberOrUndefined(usage.prompt_tokens_details?.cache_creation_tokens) ??
-		numberOrUndefined(usage.cache_creation_input_tokens)
+	const { cacheReadTokens, cacheWriteTokens } = openAiCacheTokens(usage)
 
 	return {
 		inputTokens: inputTokens ?? 0,

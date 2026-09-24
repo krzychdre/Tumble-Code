@@ -23,7 +23,7 @@ import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { handleOpenAIError } from "./utils/openai-error-handler"
-import { openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
 /**
@@ -385,16 +385,11 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			console.log(`[openai-compatible] raw usage: ${JSON.stringify(usage)}`)
 		}
 
-		// Cached prompt tokens are reported two different ways by OpenAI-compatible
-		// servers: the OpenAI standard nests them under `prompt_tokens_details`
-		// (vLLM, SGLang, LiteLLM, OpenAI itself), while Anthropic-style gateways
-		// put them at the top level. Read the standard shape first and fall back
-		// to the Anthropic-style fields, otherwise prefix-cache hits from a
-		// self-hosted server are invisible to the client and always read as zero.
-		// Both conventions include cached tokens in `prompt_tokens`, which is what
-		// calculateApiCostOpenAI expects, so nothing is double-counted here.
-		const cacheWriteTokens = usage?.prompt_tokens_details?.cache_write_tokens || usage?.cache_creation_input_tokens
-		const cacheReadTokens = usage?.prompt_tokens_details?.cached_tokens || usage?.cache_read_input_tokens
+		// Servers name the cache figures differently (nested under
+		// `prompt_tokens_details` or Anthropic-style at the top level); the shared
+		// reader knows every documented name, so this path and one-shot
+		// completions report the same figures.
+		const { cacheWriteTokens, cacheReadTokens } = openAiCacheTokens(usage)
 
 		return {
 			type: "usage",

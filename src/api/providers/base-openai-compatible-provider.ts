@@ -12,7 +12,7 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import { handleOpenAIError } from "./utils/openai-error-handler"
-import { openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { calculateApiCostOpenAI } from "../../shared/cost"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
@@ -216,8 +216,9 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 		const inputTokens = usage?.prompt_tokens || 0
 		const outputTokens = usage?.completion_tokens || 0
-		const cacheWriteTokens = usage?.prompt_tokens_details?.cache_write_tokens || 0
-		const cacheReadTokens = usage?.prompt_tokens_details?.cached_tokens || 0
+		const cached = openAiCacheTokens(usage)
+		const cacheWriteTokens = cached.cacheWriteTokens || 0
+		const cacheReadTokens = cached.cacheReadTokens || 0
 
 		const { totalCost } = modelInfo
 			? calculateApiCostOpenAI(modelInfo, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
