@@ -1,0 +1,50 @@
+name: Dependency audit
+
+# Lists known advisories in the dependencies that ship (pnpm audit --prod).
+# Runs when dependencies change and once a week, because new advisories are
+# published without any change in this repository.
+#
+# Advisory for now: the lockfile has known advisories today, and they are
+# removed by the dependency items of the refactor plan. Once those land,
+# drop continue-on-error so a new high or critical advisory fails the run.
+
+on:
+    workflow_dispatch:
+    schedule:
+        - cron: "0 6 * * 1" # Mondays, 06:00 UTC
+    push:
+        branches: [main]
+        paths:
+            - "pnpm-lock.yaml"
+            - "**/package.json"
+            - ".github/workflows/dependency-audit.yml"
+            - "scripts/audit-summary.mjs"
+    pull_request:
+        types: [opened, reopened, ready_for_review, synchronize]
+        branches: [main]
+        paths:
+            - "pnpm-lock.yaml"
+            - "**/package.json"
+            - ".github/workflows/dependency-audit.yml"
+            - "scripts/audit-summary.mjs"
+
+jobs:
+    pnpm-audit:
+        name: pnpm-audit (advisory)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            # pnpm audit reads the lockfile only, so nothing needs installing.
+            - name: Setup Node.js and pnpm
+              uses: ./.github/actions/setup-node-pnpm
+              with:
+                  skip-install: "true"
+            # pnpm audit exits non-zero whenever it finds anything, and the default
+            # shell runs with pipefail; this step only reports, the next one decides.
+            - name: Summarize advisories
+              run: |
+                  { pnpm audit --prod --json || true; } | node scripts/audit-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+            - name: Fail on high or critical advisories
+              continue-on-error: true
+              run: pnpm audit --prod --audit-level high
