@@ -1,8 +1,12 @@
 // npx vitest services/code-index/processors/__tests__/file-watcher.spec.ts
 
 import * as vscode from "vscode"
+import { v5 as uuidv5 } from "uuid"
 
 import { FileWatcher } from "../file-watcher"
+import { codeParser } from "../parser"
+import { QDRANT_CODE_BLOCK_NAMESPACE } from "../../constants"
+import type { CodeBlock } from "../../interfaces"
 
 // Mock TelemetryService
 vi.mock("../../../../../packages/telemetry/src/TelemetryService", () => ({
@@ -274,6 +278,64 @@ describe("FileWatcher", () => {
 			expect(processedFiles).not.toContain("src/.hidden/components/Button.tsx")
 			expect(processedFiles).not.toContain(".hidden/src/components/Button.tsx")
 			expect(processedFiles).not.toContain("src/components/.hidden/Button.tsx")
+		})
+	})
+
+	describe("point ids (DEF-C17 drift 1)", () => {
+		// Two segments of one long line: same file, same start_line, different content.
+		const makeBlock = (overrides: Partial<CodeBlock>): CodeBlock => ({
+			file_path: "/mock/workspace/src/long.ts",
+			identifier: null,
+			type: "chunk",
+			start_line: 7,
+			end_line: 7,
+			content: "segment",
+			fileHash: "file-hash",
+			segmentHash: "segment-hash",
+			...overrides,
+		})
+
+		it("derives point ids from segmentHash, the same way the directory scanner does", async () => {
+			const blocks = [
+				makeBlock({ content: "  first half of a long line  ", segmentHash: "hash-a" }),
+				makeBlock({ content: "second half of a long line", segmentHash: "hash-b" }),
+			]
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce(blocks)
+			mockEmbedder.createEmbeddings.mockResolvedValueOnce({
+				embeddings: [
+					[0.1, 0.2],
+					[0.3, 0.4],
+				],
+			})
+
+			const result = await fileWatcher.processFile("/mock/workspace/src/long.ts")
+
+			expect(result.status).toBe("processed_for_batching")
+			const points = result.pointsToUpsert!
+			// scanner.ts: uuidv5(block.segmentHash, QDRANT_CODE_BLOCK_NAMESPACE)
+			expect(points.map((p) => p.id)).toEqual([
+				uuidv5("hash-a", QDRANT_CODE_BLOCK_NAMESPACE),
+				uuidv5("hash-b", QDRANT_CODE_BLOCK_NAMESPACE),
+			])
+			// Two segments on one line must not collapse into one point.
+			expect(new Set(points.map((p) => p.id)).size).toBe(2)
+			expect(points.map((p) => p.payload.segmentHash)).toEqual(["hash-a", "hash-b"])
+		})
+
+		it("embeds trimmed text and skips whitespace-only blocks, like the directory scanner", async () => {
+			const blocks = [
+				makeBlock({ content: "  const a = 1  ", segmentHash: "hash-a" }),
+				makeBlock({ content: "   \n\t ", segmentHash: "hash-blank", start_line: 9 }),
+			]
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce(blocks)
+			mockEmbedder.createEmbeddings.mockResolvedValueOnce({ embeddings: [[0.1, 0.2]] })
+
+			const result = await fileWatcher.processFile("/mock/workspace/src/long.ts")
+
+			expect(mockEmbedder.createEmbeddings).toHaveBeenCalledWith(["const a = 1"])
+			expect(result.pointsToUpsert!.map((p) => p.id)).toEqual([uuidv5("hash-a", QDRANT_CODE_BLOCK_NAMESPACE)])
+			// The stored chunk keeps the original text, as the scanner stores block.content.
+			expect(result.pointsToUpsert![0].payload.codeChunk).toBe("  const a = 1  ")
 		})
 	})
 
