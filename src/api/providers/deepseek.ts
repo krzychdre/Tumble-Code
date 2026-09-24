@@ -130,54 +130,65 @@ export class DeepSeekHandler extends OpenAiHandler {
 		// Check if base URL is Azure AI Inference (for DeepSeek via Azure)
 		const isAzureAiInference = this._isAzureAiInference(this.options.deepSeekBaseUrl)
 
+		// cancelRequest() (the Stop button) aborts this controller, which ends the HTTP request.
+		this.abortController = new AbortController()
+
 		let stream
 		try {
 			stream = await this.getClient().chat.completions.create(
 				requestOptions as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
-				isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {},
+				{
+					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
+					signal: this.abortController.signal,
+				},
 			)
 		} catch (error) {
+			this.abortController = undefined
 			const { handleOpenAIError } = await import("./utils/openai-error-handler")
 			throw handleOpenAIError(error, "DeepSeek")
 		}
 
 		let lastUsage
 
-		for await (const chunk of stream) {
-			const delta = chunk.choices?.[0]?.delta ?? {}
+		try {
+			for await (const chunk of stream) {
+				const delta = chunk.choices?.[0]?.delta ?? {}
 
-			// Handle reasoning_content from DeepSeek's interleaved thinking
-			// This is the proper way DeepSeek sends thinking content in streaming.
-			// It goes before the text: a delta carrying both is the end of the
-			// thinking followed by the start of the answer.
-			const reasoningText = extractReasoningFromDelta(delta)
-			if (reasoningText) {
-				yield { type: "reasoning", text: reasoningText }
-			}
+				// Handle reasoning_content from DeepSeek's interleaved thinking
+				// This is the proper way DeepSeek sends thinking content in streaming.
+				// It goes before the text: a delta carrying both is the end of the
+				// thinking followed by the start of the answer.
+				const reasoningText = extractReasoningFromDelta(delta)
+				if (reasoningText) {
+					yield { type: "reasoning", text: reasoningText }
+				}
 
-			// Handle regular text content
-			if (delta.content) {
-				yield {
-					type: "text",
-					text: delta.content,
+				// Handle regular text content
+				if (delta.content) {
+					yield {
+						type: "text",
+						text: delta.content,
+					}
+				}
+
+				// Handle tool calls
+				yield* emitToolCallChunks(delta)
+
+				// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
+				// DeepSeek may return "stop" or "tool_calls": both must trigger finalization (AP-6).
+				const finishReason = chunk.choices?.[0]?.finish_reason
+				yield* emitFinishReasonChunk(finishReason)
+
+				if (chunk.usage) {
+					lastUsage = chunk.usage
 				}
 			}
 
-			// Handle tool calls
-			yield* emitToolCallChunks(delta)
-
-			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
-			// DeepSeek may return "stop" or "tool_calls" — both must trigger finalization (AP-6).
-			const finishReason = chunk.choices?.[0]?.finish_reason
-			yield* emitFinishReasonChunk(finishReason)
-
-			if (chunk.usage) {
-				lastUsage = chunk.usage
+			if (lastUsage) {
+				yield this.processUsageMetrics(lastUsage, modelInfo)
 			}
-		}
-
-		if (lastUsage) {
-			yield this.processUsageMetrics(lastUsage, modelInfo)
+		} finally {
+			this.abortController = undefined
 		}
 	}
 

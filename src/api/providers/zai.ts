@@ -137,11 +137,17 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
 		}
 
+		// Same contract as the base createStream: cancelRequest() (the Stop button) aborts this
+		// controller, and the base createMessage clears it once the stream ends.
+		this.abortController = new AbortController()
+
 		try {
 			return this.getClient().chat.completions.create(
 				params as OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming,
+				{ signal: this.abortController.signal },
 			)
 		} catch (error) {
+			this.abortController = undefined
 			throw handleOpenAIError(error, this.providerName)
 		}
 	}

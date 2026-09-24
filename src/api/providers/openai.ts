@@ -75,7 +75,9 @@ function isGLMForcedThinkingModel(modelId: string): boolean {
 export class OpenAiHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	protected client: OpenAI | null = null
-	private abortController?: AbortController
+	// Protected so subclasses that build their own request (DeepSeek) hand the SDK the signal
+	// that cancelRequest() aborts.
+	protected abortController?: AbortController
 	private readonly providerName = "OpenAI"
 
 	constructor(options: ApiHandlerOptions) {

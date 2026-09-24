@@ -359,8 +359,9 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		accessToken: string,
 		taskId?: string,
 	): ApiStream {
-		// Create AbortController for cancellation
-		this.abortController = new AbortController()
+		// Create AbortController for cancellation (cancelRequest() aborts it)
+		const abortController = new AbortController()
+		this.abortController = abortController
 
 		try {
 			// Prefer OpenAI SDK streaming (same approach as openai-native) so event handling
@@ -388,7 +389,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 					})
 
 				const stream = (await (client as any).responses.create(requestBody, {
-					signal: this.abortController.signal,
+					signal: abortController.signal,
 					// If the SDK supports per-request overrides, ensure headers are present.
 					headers: codexHeaders,
 				})) as AsyncIterable<any>
@@ -400,7 +401,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				}
 
 				for await (const event of stream) {
-					if (this.abortController.signal.aborted) {
+					if (abortController.signal.aborted) {
 						break
 					}
 
@@ -417,8 +418,9 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				}
 			} catch (sdkErr) {
 				// The SSE fallback is only for an SDK that could not be used at all. Once the
-				// stream has emitted, replaying the request would duplicate its output.
-				if (this.sawSdkEventInCurrentResponse) {
+				// stream has emitted, replaying the request would duplicate its output; after
+				// Stop (a cancelled request), replaying it would start a request nothing aborts.
+				if (this.sawSdkEventInCurrentResponse || abortController.signal.aborted) {
 					throw sdkErr
 				}
 
@@ -426,6 +428,20 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				yield* this.makeCodexRequest(requestBody, model, accessToken, taskId)
 			}
 		} finally {
+			if (this.abortController === abortController) {
+				this.abortController = undefined
+			}
+		}
+	}
+
+	/**
+	 * Cancels the in-flight request (the Stop button, via Task.cancelCurrentRequest).
+	 *
+	 * There is no long-lived client to destroy: a client is created per request.
+	 */
+	cancelRequest(): void {
+		if (this.abortController) {
+			this.abortController.abort()
 			this.abortController = undefined
 		}
 	}

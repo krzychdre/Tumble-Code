@@ -533,6 +533,7 @@ describe("ZAiHandler", () => {
 					model: "glm-5.1",
 					max_tokens: 100_000,
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 	})
@@ -563,6 +564,7 @@ describe("ZAiHandler", () => {
 					model: "glm-5.1",
 					max_tokens: 40_000,
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -593,6 +595,7 @@ describe("ZAiHandler", () => {
 					model: "glm-4.7",
 					thinking: { type: "enabled" },
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -623,6 +626,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "high",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -654,6 +658,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "max",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -713,6 +718,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "high",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -744,6 +750,7 @@ describe("ZAiHandler", () => {
 					model: "glm-4.7",
 					thinking: { type: "disabled" },
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -775,6 +782,7 @@ describe("ZAiHandler", () => {
 					model: "glm-4.7",
 					thinking: { type: "enabled" },
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -839,6 +847,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "max",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -861,6 +870,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "max",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -881,6 +891,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "max",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -902,6 +913,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "max",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -922,6 +934,7 @@ describe("ZAiHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "low",
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 
@@ -941,6 +954,7 @@ describe("ZAiHandler", () => {
 					model: "glm-4.7",
 					thinking: { type: "disabled" },
 				}),
+				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
 	})
