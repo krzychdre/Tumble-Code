@@ -1,5 +1,6 @@
 {
 	"name": "@roo-code/telemetry",
+	"private": true,
 	"description": "Roo Code telemetry service and clients.",
 	"version": "0.0.1",
 	"type": "module",

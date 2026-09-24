@@ -1,5 +1,6 @@
 {
 	"name": "@roo-code/agent-interchange",
+	"private": true,
 	"description": "Read, brief and hand off coding-agent sessions between Claude Code and Tumble Code.",
 	"version": "0.0.1",
 	"type": "module",
