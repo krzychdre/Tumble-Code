@@ -17,7 +17,7 @@
 
 Two analysis docs exist at the repo root. Their usefulness is uneven, and several of their recommendations are **already shipped**. This plan builds on what remains.
 
-### [`COGNITIVE_COMPLEXITY_ANALYSIS.md`](ai_plans/archive/COGNITIVE_COMPLEXITY_ANALYSIS.md) — partly stale, partly still valid
+### [`COGNITIVE_COMPLEXITY_ANALYSIS.md`](ai_plans/archive/COGNITIVE_COMPLEXITY_ANALYSIS.md) - partly stale, partly still valid
 
 Generated 2026-05-03. Its top-3 "god-class triad" recommendation has been **partially executed**:
 
@@ -34,7 +34,7 @@ Other items from that doc that are **already shipped** (verified by line count +
 
 **Conclusion:** the cognitive-complexity doc is a useful _historical_ map but its line counts and "priority" ordering are stale. This plan re-derives the current state and re-orders priorities around what is **actually unrefactored today**.
 
-### [`MEMORY_SYSTEM_ANALYSIS.md`](ai_plans/archive/MEMORY_SYSTEM_ANALYSIS.md) — out of scope
+### [`MEMORY_SYSTEM_ANALYSIS.md`](ai_plans/archive/MEMORY_SYSTEM_ANALYSIS.md) - out of scope
 
 This is a 3,044-line spec for **porting Claude Code's file-based memory system** into Roo-Code. It is a feature-porting document, not a refactoring analysis. The memory system it describes has since been implemented under [`src/core/memory/`](src/core/memory/:1) (15 modules + tests). **Not used by this plan.** Memory-system bugs (MEM-1…MEM-7) were all fixed in the 2026-07-11 review stacks ([`2026-07-11_codebase-review-findings-register.md`](ai_plans/2026-07-11_codebase-review-findings-register.md)).
 
@@ -432,7 +432,7 @@ Ordered by (leverage × confidence) / risk. Each step is executable by a human w
 ## 6. Explicit non-goals
 
 - **`webview-ui/`, `packages/`, `apps/`, `self-hosted-cloudapi/`** — out of scope; covered by separate plans ([`refactor-webview-ui.md`](ai_plans/refactor-webview-ui:1), [`refactor-packages.md`](ai_plans/refactor-packages.md:1), [`refactor-backend-src.md`](ai_plans/refactor-backend-src.md:1)). Cross-package grep is used only to verify `src/` symbol consumption.
-- **The memory-system port** ([`MEMORY_SYSTEM_ANALYSIS.md`](ai_plans/archive/MEMORY_SYSTEM_ANALYSIS.md:1)) — already implemented in [`src/core/memory/`](src/core/memory/:1); its bugs (MEM-1…7) are fixed. Not re-analyzed.
+- **The memory-system port** ([`MEMORY_SYSTEM_ANALYSIS.md`](ai_plans/archive/MEMORY_SYSTEM_ANALYSIS.md:1)) - already implemented in [`src/core/memory/`](src/core/memory/:1); its bugs (MEM-1…7) are fixed. Not re-analyzed.
 - **Already-shipped refactors** — Task.ts decomposition, DiffViewProvider split, abortTask split, B25–B33 tech-debt stack, and all 38 review-findings (TE/MEM/TL/AP/CB) are **not re-recommended**. This plan explicitly skips them.
 - **Full streaming-impl unification** (raw-SDK vs Vercel-AI-SDK vs `openai.ts` O3) — explicitly deferred in B31 as high regression risk; only the shared delta helper (already shipped) is in scope. Do not force a single streaming impl.
 - **Deferred tool-loading / ToolSearch port** ([`tool-registry-analysis.md`](ai_plans/tool-registry-analysis.md:253)) — a feature, not a readability refactor. The Command-pattern cleanup in Theme C is independent of it.
