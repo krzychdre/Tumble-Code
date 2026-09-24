@@ -196,6 +196,9 @@ package `"roo-cline"` instead of `"tumble-code"`.
   (`workflow_dispatch`) and a nightly schedule.
 - The CLI integration suite (`apps/cli/scripts/integration`, 15 cases) is not in CI and uses `--provider roo`,
   which no longer exists: port it to the `fake-ai` provider or delete it.
+- **Owner decisions (2026-09-24, Phase 3):** vscode-e2e runs from a manual `workflow_dispatch` workflow; the CLI
+  integration suite is ported to the `fake-ai` provider and added to CI; PKG-4 bundles ink, react and their
+  dependencies with tsup `noExternal` (not shrinkwrap).
 - `packages/ipc` has 0 tests (moot: DEP-1 removes it, owner decision 1) and `packages/telemetry` has 1 test file for 646 lines.
 
 ## Do not touch
