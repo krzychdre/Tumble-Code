@@ -409,11 +409,9 @@ async def auth_callback(
     # Browser (web viewer) login: set a signed session cookie and redirect to
     # the task list instead of bouncing back to VS Code.
     if state_store.auth_redirect == WEB_AUTH_REDIRECT:
-        logger.info(
-            "Web auth callback successful for user %s (email=%s)",
-            authentik_id[:8] if authentik_id else "unknown",
-            email,
-        )
+        # The internal user id, never the e-mail address: logs are read and
+        # kept by more people and for longer than the users table.
+        logger.info("Web auth callback successful for user %s", user.id)
         response = RedirectResponse(url="/app", status_code=303)
         set_session_cookie(response, session_id=session.id, user_id=user.id)
         return response
@@ -446,11 +444,7 @@ async def auth_callback(
 
     vscode_uri = redirect_url + callback_path + "?" + params
 
-    logger.info(
-        "Auth callback successful for user %s (email=%s), redirecting to VS Code",
-        authentik_id[:8] if authentik_id else "unknown",
-        email,
-    )
+    logger.info("Auth callback successful for user %s, redirecting to VS Code", user.id)
 
     return HTMLResponse(content=_auth_success_html(vscode_uri))
 

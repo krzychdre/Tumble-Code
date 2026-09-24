@@ -7,7 +7,26 @@ from typing import List, Optional
 from urllib.parse import urlsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, HttpUrl, computed_field, field_validator
+from pydantic import Field, HttpUrl, computed_field, field_validator, model_validator
+
+
+# Secrets shorter than this are refused at startup. The templates suggest
+# `secrets.token_urlsafe(48)` (64 characters).
+MIN_SECRET_LENGTH = 32
+
+
+def _check_secret(name: str, value: Optional[str]) -> None:
+    """Refuse a missing, placeholder or short secret, naming the variable but
+    never echoing its value."""
+    if not value or not value.strip():
+        raise ValueError(f"{name} is not set. Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\"")
+    if "change-me" in value.lower() or "changeme" in value.lower():
+        raise ValueError(
+            f"{name} still holds the placeholder from .env.example or docker-compose.yml. "
+            "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+        )
+    if len(value) < MIN_SECRET_LENGTH:
+        raise ValueError(f"{name} must be at least {MIN_SECRET_LENGTH} characters long")
 
 
 class Settings(BaseSettings):
@@ -37,6 +56,13 @@ class Settings(BaseSettings):
     jwt_private_key: Optional[str] = None
     jwt_public_key: Optional[str] = None
     jwt_secret: Optional[str] = None
+
+    # Client tokens (the extension's long-lived credential, kept in VS Code's
+    # SecretStorage) expire after this many days without use. Every use pushes
+    # the expiry forward, and a running extension uses its token about once a
+    # minute, so only an editor left closed for the whole period has to sign in
+    # again. 0 turns expiry off.
+    client_token_idle_days: int = Field(30, ge=0, description="Days a client token may go unused before it expires; 0 = never")
 
     # Authentik OAuth
     authentik_base_url: str = Field(..., description="Authentik instance URL (browser-facing / front-channel)")
@@ -89,6 +115,16 @@ class Settings(BaseSettings):
     web_public_url: Optional[str] = Field(
         default=None, description="Public base URL of the web panel for other machines"
     )
+
+    @model_validator(mode="after")
+    def _check_secrets(self) -> "Settings":
+        # A placeholder secret is public (it is in the repository), so anyone
+        # could sign web session cookies (SECRET_KEY) or session JWTs
+        # (JWT_SECRET). Fail at startup instead.
+        _check_secret("SECRET_KEY", self.secret_key)
+        if self.jwt_algorithm.upper().startswith("HS"):
+            _check_secret("JWT_SECRET", self.jwt_secret)
+        return self
 
     @field_validator("web_allowed_networks")
     @classmethod
