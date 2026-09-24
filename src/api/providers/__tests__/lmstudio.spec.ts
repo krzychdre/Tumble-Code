@@ -127,6 +127,34 @@ describe("LmStudioHandler", () => {
 		})
 	})
 
+	describe("input token estimate (DEF-C16)", () => {
+		it("counts tool_result content and tool_use arguments, not only text parts", async () => {
+			const fileBody = "export const a = 1\n".repeat(50)
+			const messages: Anthropic.Messages.MessageParam[] = [
+				{ role: "user", content: "Read a.ts" },
+				{
+					role: "assistant",
+					content: [{ type: "tool_use", id: "call_1", name: "read_file", input: { path: "a.ts" } }],
+				},
+				{ role: "user", content: [{ type: "tool_result", tool_use_id: "call_1", content: fileBody }] },
+			]
+			const countTokensSpy = vi.spyOn(handler, "countTokens").mockResolvedValue(7)
+
+			for await (const _chunk of handler.createMessage("system", messages)) {
+				// drain
+			}
+
+			const inputBlocks = countTokensSpy.mock.calls[0][0]
+			expect(inputBlocks[0]).toEqual({ type: "text", text: "system" })
+			expect(inputBlocks).toContainEqual(
+				expect.objectContaining({ type: "tool_result", tool_use_id: "call_1", content: fileBody }),
+			)
+			expect(inputBlocks).toContainEqual(
+				expect.objectContaining({ type: "tool_use", name: "read_file", input: { path: "a.ts" } }),
+			)
+		})
+	})
+
 	describe("completePrompt", () => {
 		it("should complete prompt successfully", async () => {
 			const result = await handler.completePrompt("Test prompt")

@@ -2388,6 +2388,102 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 		manageContextSpy.mockRestore()
 	})
 
+	it("DEF-C16: the zero-usage fallback counts tool_result content, not only text parts", async () => {
+		// Mock getState before creating Task to avoid ClineProvider internals
+		vi.spyOn(mockProvider, "getState").mockResolvedValue({
+			apiConfiguration: mockApiConfig,
+			autoApprovalEnabled: false,
+			requestDelaySeconds: 0,
+			mode: "code",
+			autoCondenseContext: true,
+			autoCondenseContextPercent: 100,
+			profileThresholds: {},
+		} as any)
+
+		const cline = new Task({
+			provider: mockProvider,
+			apiConfiguration: mockApiConfig,
+			task: "test task",
+			startTask: false,
+		})
+		vi.spyOn(cline.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
+
+		// Mock the API to return a simple stream
+		const mockStream = {
+			async *[Symbol.asyncIterator]() {
+				yield { type: "text", text: "response" }
+			},
+		} as AsyncGenerator<ApiStreamChunk>
+		vi.spyOn(cline.api, "createMessage").mockReturnValue(mockStream)
+
+		// Mock getModel to return valid model info
+		vi.spyOn(cline.api, "getModel").mockReturnValue({
+			id: "test-model",
+			info: {
+				contextWindow: 128000,
+				maxTokens: 4096,
+				supportsImages: false,
+				supportsPromptCache: false,
+				inputPrice: 0,
+				outputPrice: 0,
+			} as ModelInfo,
+		})
+
+		// Set up non-empty conversation history
+		const fileBody = "export const a = 1\n".repeat(50)
+		cline.apiConversationHistory = [
+			{ role: "user" as const, content: "Read a.ts", ts: Date.now() },
+			{
+				role: "assistant" as const,
+				content: [{ type: "tool_use" as const, id: "call_1", name: "read_file", input: { path: "a.ts" } }],
+				ts: Date.now(),
+			},
+			{
+				role: "user" as const,
+				content: [{ type: "tool_result" as const, tool_use_id: "call_1", content: fileBody }],
+				ts: Date.now(),
+			},
+		] as any
+
+		// Mock getTokenUsage to return 0 contextTokens (the bug condition)
+		vi.spyOn(cline, "getTokenUsage").mockReturnValue({
+			totalTokensIn: 0,
+			totalTokensOut: 0,
+			contextTokens: 0,
+			totalCost: 0,
+			totalCacheWrites: 0,
+			totalCacheReads: 0,
+		} as any)
+
+		// Spy on countTokens to verify it's called as fallback
+		const countTokensSpy = vi.spyOn(cline.api, "countTokens").mockResolvedValue(500)
+
+		// Spy on manageContextIfNeeded to verify it's called
+		const manageContextSpy = vi
+			.spyOn(cline.contextManager, "manageContextIfNeeded")
+			.mockResolvedValue(undefined as any)
+
+		// Mock buildToolsArray via bracket notation to bypass private access
+		vi.spyOn(cline.apiLoop as any, "buildToolsArray").mockResolvedValue({
+			allTools: [],
+			allowedFunctionNames: undefined,
+		})
+
+		const iterator = cline.attemptApiRequest(0)
+		await iterator.next()
+
+		// The first countTokens call is the fallback over the history; it must see
+		// the tool_result and tool_use blocks, not only the text parts.
+		const fallbackBlocks = countTokensSpy.mock.calls[0][0]
+		expect(fallbackBlocks).toContainEqual(
+			expect.objectContaining({ type: "tool_result", tool_use_id: "call_1", content: fileBody }),
+		)
+		expect(fallbackBlocks).toContainEqual(expect.objectContaining({ type: "tool_use", name: "read_file" }))
+
+		countTokensSpy.mockRestore()
+		manageContextSpy.mockRestore()
+	})
+
 	it("should NOT call countTokens when contextTokens is non-zero (fast path preserved)", async () => {
 		// Mock getState before creating Task
 		vi.spyOn(mockProvider, "getState").mockResolvedValue({
