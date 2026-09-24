@@ -100,6 +100,12 @@ Left for later: `SkillsManager.moveSkill` and `skills:errors.missing_move_fields
 `AttemptCompletionTool.ts:28`. **Size** S to M, low risk. **Tests:** `extension.spec` (4), `McpHub.spec`, the
 webview mode-selector tests; TEST-8 guards the bundle.
 
+**Status (2026-09-24):** DONE in #269. `core/webview/panelRegistry.ts` breaks the ClineProvider/registerCommands cycle;
+`getAllModesWithPrompts` and `getFullModeDetails` moved to `core/prompts/modeDetails.ts`, `shared/modes.ts` is pure and
+its lint exemption is gone (webview build no longer warns about extension-only modules); narrow interfaces
+`McpHubProvider`, `WorkspaceTrackerProvider`, `DiffViewTask`, `DiagnosticsTask`; `src/__tests__/layering.spec.ts`
+pins the edges. Left: unused `taskRef` fields (SVC-17); a general "shared must not import core" rule (SVC-16/PKG-6).
+
 ### CORE-R5 Make the Task access interfaces type-check
 
 **Evidence:** `Task.ts:941-993` has 8 casts `this as unknown as XAccess`; a probe compile shows they hide real
