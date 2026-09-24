@@ -1,6 +1,7 @@
 // npx vitest services/code-index/processors/__tests__/file-watcher.spec.ts
 
 import * as vscode from "vscode"
+import { createHash } from "crypto"
 import { v5 as uuidv5 } from "uuid"
 
 import { FileWatcher } from "../file-watcher"
@@ -336,6 +337,105 @@ describe("FileWatcher", () => {
 			expect(result.pointsToUpsert!.map((p) => p.id)).toEqual([uuidv5("hash-a", QDRANT_CODE_BLOCK_NAMESPACE)])
 			// The stored chunk keeps the original text, as the scanner stores block.content.
 			expect(result.pointsToUpsert![0].payload.codeChunk).toBe("  const a = 1  ")
+		})
+	})
+
+	describe("re-indexing a changed file (DEF-C17 drift 4)", () => {
+		const filePath = "/mock/workspace/src/app.ts"
+		// vscode.workspace.fs.readFile is mocked to return "test content"
+		const currentHash = createHash("sha256").update("test content").digest("hex")
+		const block: CodeBlock = {
+			file_path: filePath,
+			identifier: "main",
+			type: "function",
+			start_line: 1,
+			end_line: 3,
+			content: "test content",
+			fileHash: currentHash,
+			segmentHash: "seg-1",
+		}
+
+		const flushBatch = () => new Promise((resolve) => setTimeout(resolve, 600))
+
+		beforeEach(async () => {
+			await fileWatcher.initialize()
+		})
+
+		it("keeps the points of a file whose change event did not change its content", async () => {
+			// Indexed before with exactly this content (e.g. saved without edits, touched, or
+			// rewritten with identical text by a tool or a git checkout).
+			mockCacheManager.getHash.mockReturnValue(currentHash)
+
+			await mockOnDidChange({ fsPath: filePath })
+			await flushBatch()
+
+			expect(mockVectorStore.deletePointsByMultipleFilePaths).not.toHaveBeenCalled()
+			expect(mockVectorStore.upsertPoints).not.toHaveBeenCalled()
+		})
+
+		it("deletes the old points of a changed file only when it is re-indexed, right before the upsert", async () => {
+			mockCacheManager.getHash.mockReturnValue("old-hash")
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce([block])
+
+			await mockOnDidChange({ fsPath: filePath })
+			await flushBatch()
+
+			expect(mockVectorStore.deletePointsByMultipleFilePaths).toHaveBeenCalledWith([filePath])
+			expect(mockVectorStore.upsertPoints).toHaveBeenCalledTimes(1)
+			const deleteOrder = mockVectorStore.deletePointsByMultipleFilePaths.mock.invocationCallOrder[0]
+			const upsertOrder = mockVectorStore.upsertPoints.mock.invocationCallOrder[0]
+			expect(deleteOrder).toBeLessThan(upsertOrder)
+			// The embedding request comes before the delete: a failing embedder leaves the old points.
+			expect(mockEmbedder.createEmbeddings.mock.invocationCallOrder[0]).toBeLessThan(deleteOrder)
+			expect(mockCacheManager.updateHash).toHaveBeenCalledWith(filePath, currentHash)
+		})
+
+		it("keeps the old points when embedding the changed file fails", async () => {
+			mockCacheManager.getHash.mockReturnValue("old-hash")
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce([block])
+			mockEmbedder.createEmbeddings.mockRejectedValueOnce(new Error("connect ECONNREFUSED"))
+
+			await mockOnDidChange({ fsPath: filePath })
+			await flushBatch()
+
+			expect(mockVectorStore.deletePointsByMultipleFilePaths).not.toHaveBeenCalled()
+			expect(mockVectorStore.upsertPoints).not.toHaveBeenCalled()
+		})
+
+		it("replaces the points of an already indexed file reported by a create event, like the scanner", async () => {
+			// An atomic save (write temp file, rename) or a checkout can surface as delete+create;
+			// the debounce keeps only the last event. The scanner clears every file it had indexed.
+			mockCacheManager.getHash.mockReturnValue("old-hash")
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce([block])
+
+			await mockOnDidCreate({ fsPath: filePath })
+			await flushBatch()
+
+			expect(mockVectorStore.deletePointsByMultipleFilePaths).toHaveBeenCalledWith([filePath])
+			expect(mockVectorStore.upsertPoints).toHaveBeenCalledTimes(1)
+		})
+
+		it("does not delete anything for a brand new file", async () => {
+			mockCacheManager.getHash.mockReturnValue(undefined)
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce([block])
+
+			await mockOnDidCreate({ fsPath: filePath })
+			await flushBatch()
+
+			expect(mockVectorStore.deletePointsByMultipleFilePaths).not.toHaveBeenCalled()
+			expect(mockVectorStore.upsertPoints).toHaveBeenCalledTimes(1)
+		})
+
+		it("does not upsert or update the hash when deleting the old points fails", async () => {
+			mockCacheManager.getHash.mockReturnValue("old-hash")
+			vi.mocked(codeParser.parseFile).mockResolvedValueOnce([block])
+			mockVectorStore.deletePointsByMultipleFilePaths.mockRejectedValueOnce(new Error("Qdrant down"))
+
+			await mockOnDidChange({ fsPath: filePath })
+			await flushBatch()
+
+			expect(mockVectorStore.upsertPoints).not.toHaveBeenCalled()
+			expect(mockCacheManager.updateHash).not.toHaveBeenCalled()
 		})
 	})
 
