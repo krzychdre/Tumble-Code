@@ -1,5 +1,6 @@
 import { execFileSync } from "child_process"
 import path from "path"
+import { pathToFileURL } from "url"
 
 const CLI_ROOT = path.resolve(__dirname, "../../../..")
 const HELPER = path.resolve(__dirname, "../react-production.ts")
@@ -36,7 +37,8 @@ function renderProbe(options: { helper: boolean; nodeEnv?: string }): { measures
 	}
 
 	if (options.helper) {
-		env.PROBE_HELPER = HELPER
+		// import() takes a URL: a bare "D:\..." path reads as scheme "d:" on Windows.
+		env.PROBE_HELPER = pathToFileURL(HELPER).href
 	}
 
 	const output = execFileSync(process.execPath, ["--import", "tsx", "--input-type=module", "-e", RENDER_PROBE], {

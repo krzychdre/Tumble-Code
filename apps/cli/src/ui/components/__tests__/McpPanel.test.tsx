@@ -13,6 +13,8 @@ function flush(): Promise<void> {
 }
 
 const GLOBAL_PATH = path.join(os.homedir(), ".roo", "mcp.json")
+// The panel keeps the native separator after "~" ("~\.roo\mcp.json" on Windows).
+const GLOBAL_PATH_SHOWN = path.join("~", ".roo", "mcp.json")
 const PROJECT_PATH = "/work/app/.roo/mcp.json"
 
 function server(overrides: Partial<McpServer> = {}): McpServer {
@@ -74,7 +76,7 @@ describe("McpPanel", () => {
 		stdin.write("\u001B[B") // down: broken -> searxNcrawl
 		await flush()
 		const frame = lastFrame() ?? ""
-		expect(frame).toContain("searxNcrawl · global · ~/.roo/mcp.json")
+		expect(frame).toContain(`searxNcrawl · global · ${GLOBAL_PATH_SHOWN}`)
 		expect(frame).toContain("Tools: search, crawl")
 	})
 
@@ -123,7 +125,7 @@ describe("McpPanel", () => {
 	it("says where to add servers when there are none", () => {
 		const frame = renderPanel({ servers: [] }).lastFrame() ?? ""
 		expect(frame).toContain("No MCP servers configured")
-		expect(frame).toContain("~/.roo/mcp.json (every project)")
+		expect(frame).toContain(`${GLOBAL_PATH_SHOWN} (every project)`)
 		expect(frame).toContain(`${PROJECT_PATH} (this project)`)
 	})
 
