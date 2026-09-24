@@ -2,5 +2,83 @@
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
 	"extends": ["config:recommended"],
 	"forkProcessing": "enabled",
-	"ignoreDeps": ["@vscode/vsce"]
+	"description": [
+		"Dependency updates for Tumble Code (refactor plan TEST-7, owner decision 10).",
+		"Major versions stay off: they are planned upgrades (plan items DEP-6 to DEP-9), not bot PRs.",
+		"Issues are disabled on this repository, so there is no Dependency Dashboard."
+	],
+	"dependencyDashboard": false,
+	"timezone": "Europe/Warsaw",
+	"schedule": ["before 6am on monday"],
+	"prConcurrentLimit": 6,
+	"prHourlyLimit": 2,
+	"ignoreDeps": ["@vscode/vsce"],
+	"lockFileMaintenance": {
+		"enabled": true,
+		"schedule": ["before 6am on monday"]
+	},
+	"vulnerabilityAlerts": {
+		"enabled": true,
+		"schedule": ["at any time"],
+		"labels": ["security"]
+	},
+	"packageRules": [
+		{
+			"description": "Majors are planned work, see the refactor plan.",
+			"matchUpdateTypes": ["major"],
+			"enabled": false
+		},
+		{
+			"groupName": "type definitions",
+			"matchPackageNames": ["@types/**"]
+		},
+		{
+			"groupName": "dev tooling",
+			"matchPackageNames": [
+				"eslint",
+				"eslint-*",
+				"@eslint/**",
+				"typescript-eslint",
+				"@typescript-eslint/**",
+				"prettier",
+				"vitest",
+				"@vitest/**",
+				"typescript",
+				"knip",
+				"turbo",
+				"tsx",
+				"tsup",
+				"esbuild",
+				"lint-staged",
+				"husky",
+				"@changesets/**"
+			]
+		},
+		{
+			"groupName": "provider SDKs",
+			"matchPackageNames": [
+				"@anthropic-ai/**",
+				"openai",
+				"@google/genai",
+				"google-auth-library",
+				"@aws-sdk/**",
+				"@mistralai/**",
+				"ollama",
+				"@lmstudio/sdk",
+				"@modelcontextprotocol/sdk"
+			]
+		},
+		{
+			"groupName": "webview dependencies",
+			"matchFileNames": ["webview-ui/package.json"]
+		},
+		{
+			"groupName": "cloud API (Python)",
+			"matchFileNames": ["self-hosted-cloudapi/**"]
+		},
+		{
+			"groupName": "GitHub Actions",
+			"matchManagers": ["github-actions"]
+		}
+	]
 }
