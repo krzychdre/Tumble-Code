@@ -197,20 +197,14 @@ export class FileWatcher implements IFileWatcher {
 		processedCountInBatch: number,
 		totalFilesInBatch: number,
 		pathsToExplicitlyDelete: string[],
-		filesToUpsertDetails: Array<{ path: string; uri: vscode.Uri; originalType: "create" | "change" }>,
-	): Promise<{ overallBatchError?: Error; clearedPaths: Set<string>; processedCount: number }> {
+	): Promise<{ overallBatchError?: Error; processedCount: number }> {
 		let overallBatchError: Error | undefined
-		const allPathsToClearFromDB = new Set<string>(pathsToExplicitlyDelete)
 
-		for (const fileDetail of filesToUpsertDetails) {
-			if (fileDetail.originalType === "change") {
-				allPathsToClearFromDB.add(fileDetail.path)
-			}
-		}
-
-		if (allPathsToClearFromDB.size > 0 && this.vectorStore) {
+		// Only deleted files are cleared here. The old points of created/changed files are
+		// cleared in _clearPointsOfReindexedFiles, once we know the file is really re-indexed.
+		if (pathsToExplicitlyDelete.length > 0 && this.vectorStore) {
 			try {
-				await this.vectorStore.deletePointsByMultipleFilePaths(Array.from(allPathsToClearFromDB))
+				await this.vectorStore.deletePointsByMultipleFilePaths(pathsToExplicitlyDelete)
 
 				for (const path of pathsToExplicitlyDelete) {
 					this.cacheManager.deleteHash(path)
@@ -248,7 +242,51 @@ export class FileWatcher implements IFileWatcher {
 			}
 		}
 
-		return { overallBatchError, clearedPaths: allPathsToClearFromDB, processedCount: processedCountInBatch }
+		return { overallBatchError, processedCount: processedCountInBatch }
+	}
+
+	/**
+	 * Deletes the points a file had before it is re-indexed, as the directory scanner does right
+	 * before its upsert. Runs after processFile, so a file whose content did not change (skipped)
+	 * or whose embedding failed keeps its points, and only for files indexed before: a "change"
+	 * event, or any event for a file the cache already knows (e.g. an atomic save seen as create).
+	 * @returns The deletion error, if any; the caller then skips the upsert and the hash update
+	 */
+	private async _clearPointsOfReindexedFiles(
+		successfullyProcessedForUpsert: Array<{ path: string; newHash?: string }>,
+		filesToUpsertDetails: Array<{ path: string; uri: vscode.Uri; originalType: "create" | "change" }>,
+	): Promise<Error | undefined> {
+		if (!this.vectorStore) {
+			return undefined
+		}
+
+		const changedPaths = new Set(
+			filesToUpsertDetails.filter((detail) => detail.originalType === "change").map((detail) => detail.path),
+		)
+		const pathsToClear = successfullyProcessedForUpsert
+			.map(({ path }) => path)
+			.filter((path) => changedPaths.has(path) || this.cacheManager.getHash(path) !== undefined)
+
+		if (pathsToClear.length === 0) {
+			return undefined
+		}
+
+		try {
+			await this.vectorStore.deletePointsByMultipleFilePaths(pathsToClear)
+			return undefined
+		} catch (error: any) {
+			const errorStatus = error?.status || error?.response?.status || error?.statusCode
+			const errorMessage = error instanceof Error ? error.message : String(error)
+
+			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
+				error: sanitizeErrorMessage(errorMessage),
+				location: "deletePointsByMultipleFilePaths",
+				errorType: "deletion_error",
+				errorStatus: errorStatus,
+			})
+
+			return error instanceof Error ? error : new Error(errorMessage)
+		}
 	}
 
 	private async _processFilesAndPrepareUpserts(
@@ -410,7 +448,7 @@ export class FileWatcher implements IFileWatcher {
 					batchResults.push({ path, status: "error", error: err })
 				}
 			}
-		} else if (overallBatchError && pointsForBatchUpsert.length > 0) {
+		} else if (overallBatchError) {
 			for (const { path } of successfullyProcessedForUpsert) {
 				batchResults.push({ path, status: "error", error: overallBatchError })
 			}
@@ -456,7 +494,6 @@ export class FileWatcher implements IFileWatcher {
 			processedCountInBatch,
 			totalFilesInBatch,
 			pathsToExplicitlyDelete,
-			filesToUpsertDetails,
 		)
 		overallBatchError = deletionError
 		processedCountInBatch = deletionCount
@@ -475,7 +512,15 @@ export class FileWatcher implements IFileWatcher {
 		)
 		processedCountInBatch = upsertCount
 
-		// Phase 3: Execute batch upsert
+		// Phase 3: Clear the old points of the files that are really re-indexed
+		if (!overallBatchError) {
+			overallBatchError = await this._clearPointsOfReindexedFiles(
+				successfullyProcessedForUpsert,
+				filesToUpsertDetails,
+			)
+		}
+
+		// Phase 4: Execute batch upsert
 		overallBatchError = await this._executeBatchUpsertOperations(
 			pointsForBatchUpsert,
 			successfullyProcessedForUpsert,
