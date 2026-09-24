@@ -1,14 +1,14 @@
 # Memory System Implementation Plan for Roo Code
 
 **Status:** Planning phase — for implementation by Code mode
-**Source analysis:** [`MEMORY_SYSTEM_ANALYSIS.md`](../MEMORY_SYSTEM_ANALYSIS.md)
+**Source analysis:** [`MEMORY_SYSTEM_ANALYSIS.md`](archive/MEMORY_SYSTEM_ANALYSIS.md)
 **Date:** 2026-06-30
 
 ---
 
 ## 1. Summary of the Analyzed Mechanism
 
-[`MEMORY_SYSTEM_ANALYSIS.md`](../MEMORY_SYSTEM_ANALYSIS.md) reverse-engineers Claude Code's **file-based, model-managed memory system**. The core mechanism is:
+[`MEMORY_SYSTEM_ANALYSIS.md`](archive/MEMORY_SYSTEM_ANALYSIS.md) reverse-engineers Claude Code's **file-based, model-managed memory system**. The core mechanism is:
 
 1. **No dedicated memory tool.** The model reads/writes memory using ordinary file tools (`read_file`, `write_to_file`, `edit_file`, `search_files`) against a special directory.
 2. **`MEMORY.md` is an index, not a store.** Actual content lives in per-topic `.md` files with YAML frontmatter (`name`, `description`, `type`). The index is a one-line-per-topic pointer list, capped at 200 lines / 25 KB.
