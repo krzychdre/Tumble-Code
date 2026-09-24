@@ -6,13 +6,13 @@ Implements endpoints:
 """
 
 import json
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.dependencies import get_current_user
 from src.schemas.telemetry import TelemetryEventRequest
-from src.services.telemetry_service import record_event, backfill_messages
+from src.services.telemetry_service import TaskNotOwnedError, record_event, backfill_messages
 from src.realtime.hub import registry
 from config.settings import settings
 
@@ -76,11 +76,16 @@ async def backfill_events_endpoint(
     if not workspace_path:
         workspace_path = (registry.instance(user_id) or {}).get("workspacePath")
 
-    await backfill_messages(
-        db=db,
-        task_id=task_id,
-        user_id=user_id,
-        messages=messages,
-        workspace_path=workspace_path,
-    )
+    try:
+        await backfill_messages(
+            db=db,
+            task_id=task_id,
+            user_id=user_id,
+            messages=messages,
+            workspace_path=workspace_path,
+        )
+    except TaskNotOwnedError:
+        # Same answer as /api/extension/share for a task the caller does not
+        # own: 404, so the response does not reveal that the id is taken.
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
     return {"status": "ok"}

@@ -288,6 +288,61 @@ async def test_backfill_is_idempotent_on_reshare(client, db_session, session_fac
         assert tasks == 1
 
 
+async def test_backfill_into_another_users_task_is_404_and_changes_nothing(
+    client, db_session, session_factory
+):
+    """DEF-S4: a backfill names its task by id only, so without an ownership
+    check any signed-in user could replace another user's conversation by
+    uploading a task.json under that user's task id. The foreign upload must
+    get the same 404 the share endpoint gives for a task the caller does not
+    own, and the owner's task row and messages must stay exactly as they were.
+    """
+    await _seed_user(db_session, "victim", "victim@example.com")
+    await _seed_user(db_session, "attacker", "attacker@example.com")
+    from src.main import app
+
+    _override_current_user(app, "victim")
+    try:
+        files, data = _backfill_files("task-victim", _msgs())
+        assert client.post("/api/events/backfill", files=files, data=data).status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    async with session_factory() as s:
+        before = (
+            await s.execute(
+                select(TaskMessage.message_data)
+                .where(TaskMessage.task_id == "task-victim")
+                .order_by(TaskMessage.id)
+            )
+        ).scalars().all()
+    assert len(before) == 3
+
+    forged = [{"ts": 9, "type": "say", "say": "text", "text": "overwritten by attacker"}]
+    _override_current_user(app, "attacker")
+    try:
+        files, data = _backfill_files("task-victim", forged)
+        data["workspacePath"] = "/attacker/path"
+        resp = client.post("/api/events/backfill", files=files, data=data)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+    assert resp.status_code == 404
+
+    async with session_factory() as s:
+        task = (await s.execute(select(Task).where(Task.id == "task-victim"))).scalar_one()
+        assert task.user_id == "victim"
+        assert task.workspace_path != "/attacker/path"
+        after = (
+            await s.execute(
+                select(TaskMessage.message_data)
+                .where(TaskMessage.task_id == "task-victim")
+                .order_by(TaskMessage.id)
+            )
+        ).scalars().all()
+    assert after == before
+
+
 async def test_backfill_persists_explicit_workspace_path(client, db_session, session_factory):
     """The explicit client `workspacePath` field is stamped on the task, so an
     offline share (no live bridge) still records its project/worktree."""
