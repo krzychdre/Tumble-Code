@@ -203,7 +203,10 @@ on path changes, so new advisories are not caught without a schedule; Starlette 
 test client.
 Follow-up #255: the cloudapi workflow runs weekly (Monday 06:17 UTC) so pip-audit catches new advisories; the
 FRESH/LEGACY/MANAGED reconciliation moved from `docker-entrypoint.sh` to `db-migrate.sh`, which `make migrate`
-now uses too (plain `alembic upgrade head` fails on an empty database). Still open: the `httpx` deprecation.
+now uses too (plain `alembic upgrade head` fails on an empty database). Still open: the `httpx` deprecation. Owner follow-ups (#261 /init template placeholders, #262 IPC types removed from `@roo-code/types`, #263 Authentik
+2026.8.3 pinned by digest in the compose, `grant_types: [authorization_code]` in the blueprint, `auth_redis`
+removed; direct 2026.2 to 2026.8 is refused, path 2026.2.7 then 2026.5.7 then 2026.8.3, procedure in the #263
+body; merged, not yet deployed on the live stack).
 
 ## Phase 11 items
 
