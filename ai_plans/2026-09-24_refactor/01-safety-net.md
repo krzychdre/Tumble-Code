@@ -6,7 +6,7 @@ developer's private `.env`. All items are size S and change tests, CI or test co
 
 ## TEST-1 Stabilize the load-sensitive tests
 
-**Status:** part 1 DONE, merged 2026-09-24 as #200 (`f8369264b`). Root cause measured: with React 19 and ink 6.6 a state-changing key re-renders in a scheduled task (about 13 ms idle), and the tests slept a fixed 10 or 200 ms; `extension.spec.ts` paid a one-off module-graph transform (1.2 s alone) in its first test. Fixed AutocompleteInput, McpPanel, SelectList (wait for the observable outcome) and extension.spec (warm-up in `beforeAll`); 0 failures in 20 runs with all 12 cores busy (before: about 1 in 12). Part 2 IN REVIEW as #207: `packages/agent-interchange` Windows timeouts are slow durable I/O, not a hang (the same test took 142 ms in one Windows run and 2,846 ms in another); testTimeout 30 s. Found on the way: DEF-C32 (SelectList picks the wrong item after rapid keys).
+**Status:** DONE, merged 2026-09-24 as #200 (`f8369264b`) and #207 (`bf5f4e9ea`). Root cause measured: with React 19 and ink 6.6 a state-changing key re-renders in a scheduled task (about 13 ms idle), and the tests slept a fixed 10 or 200 ms; `extension.spec.ts` paid a one-off module-graph transform (1.2 s alone) in its first test. #200 fixed AutocompleteInput, McpPanel, SelectList (wait for the observable outcome) and extension.spec (warm-up in `beforeAll`): 0 failures in 20 runs with all 12 cores busy (before: about 1 in 12). #207: the `packages/agent-interchange` Windows timeouts are slow durable I/O, not a hang (the same test took 142 ms in one Windows run and 2,846 ms in another), so testTimeout 30 s. Found on the way: DEF-C32 (SelectList picks the wrong item after rapid keys).
 
 **Evidence:**
 
@@ -33,7 +33,7 @@ consecutive green `code-qa` runs on the PR.
 
 ## TEST-2 Run the orphaned webview tests
 
-**Status:** IN REVIEW as #201. The failing case was a wrong literal in the test (the code escapes every space; the same test's other two assertions prove that output round-trips through the mention grammar); files renamed to `.spec.ts` and the config now collects `*.test.*` too. Webview 143 files, 1,604 tests.
+**Status:** DONE, merged 2026-09-24 as #201 (`d8ad39d19`). The failing case was a wrong literal in the test (the code escapes every space; the same test's other two assertions prove that output round-trips through the mention grammar); files renamed to `.spec.ts` and the config now collects `*.test.*` too. Webview 143 files, 1,604 tests before TEST-8's 7 were added.
 
 **Evidence:** `webview-ui/vitest.config.ts:15` includes only `src/**/*.spec.ts(x)`. Three files never run:
 `src/utils/__tests__/path-mentions.test.ts` (17 cases), `src/components/settings/utils/__tests__/headers.test.ts`
@@ -92,7 +92,7 @@ before importing anything from `src`.
 
 ## TEST-5 CI job for the cloud API
 
-**Status:** IN REVIEW as #204. Deviation: `pytest` on Python 3.12 and 3.13 is the gate; `ruff` (59 findings, some automatic fixes would be wrong: E712 on SQLAlchemy comparisons, F401 on model-registering imports) and `pip-audit` run advisory until CAPI-M7 and DEP-5 clear them.
+**Status:** DONE, merged 2026-09-24 as #204 (`ab03b5961`). Deviation: `pytest` on Python 3.12 and 3.13 is the gate; `ruff` (59 findings, some automatic fixes would be wrong: E712 on SQLAlchemy comparisons, F401 on model-registering imports) and `pip-audit` run advisory until CAPI-M7 and DEP-5 clear them.
 
 **Evidence:** no workflow under `.github/workflows` mentions `self-hosted-cloudapi`. The `Makefile` lists `lint`
 and `fmt` targets it never defines (`Makefile:12-13`).
@@ -103,7 +103,7 @@ browser checks skip themselves when Chrome is absent; install Chrome in the job 
 
 ## TEST-6 Dependency audit in CI
 
-**Status:** IN REVIEW as #205: weekly and on dependency changes, `scripts/audit-summary.mjs` writes a per-package job summary; the high/critical step stays advisory until DEP-1 to DEP-3 land.
+**Status:** DONE, merged 2026-09-24 as #205 (`55de43906`): weekly and on dependency changes, `scripts/audit-summary.mjs` writes a per-package job summary; the high/critical step stays advisory until DEP-1 to DEP-3 land, then drop its `continue-on-error`.
 
 **Evidence:** no workflow runs `pnpm audit`; 6 critical production advisories went unnoticed.
 
@@ -122,7 +122,7 @@ delete `dependabot.yml`, group updates (types, devtools, provider SDKs, webview)
 
 ## TEST-8 Webview bundle guard
 
-**Status:** IN REVIEW as #206. Deviation: unit tests never build the webview, so the guard is a Vite plugin (`webview-ui/src/vite-plugins/bundleBoundaryPlugin.ts`) and code-qa's compile job now bundles the webview. Finding: the build graph already reaches `src/core/prompts/sections/custom-instructions.ts` and `src/services/roo-config/index.ts` through `src/shared/modes.ts`; both render 0 characters today (the plugin warns), a probe import from `src/core` fails the build as intended.
+**Status:** DONE, merged 2026-09-24 as #206 (`076e2ba3d`). Deviation: unit tests never build the webview, so the guard is a Vite plugin (`webview-ui/src/vite-plugins/bundleBoundaryPlugin.ts`) and code-qa's compile job now bundles the webview. Finding: the build graph already reaches `src/core/prompts/sections/custom-instructions.ts` and `src/services/roo-config/index.ts` through `src/shared/modes.ts`; both render 0 characters today (the plugin warns), a probe import from `src/core` fails the build as intended.
 
 **Evidence:** the webview imports `src/shared` through the `@roo/*` alias; `src/shared/modes.ts:1` imports
 `vscode` and `:12` imports `src/core/prompts`. It builds only because Vite externalizes `vscode` and tree-shaking
