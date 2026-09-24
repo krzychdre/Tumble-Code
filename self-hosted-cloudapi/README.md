@@ -111,6 +111,12 @@ docker compose exec auth_worker ak apply_blueprint custom/tumble-code.yaml
   from Node without an `Origin` header and is not affected. `CORS_ORIGINS=*`
   from an older `.env` is ignored with a startup warning; the startup log
   prints `Trusted web origins: …`.
+- A state-changing request that carries the panel's session cookie (the
+  delete and retention forms) is refused with 403 unless its `Origin` (or,
+  without one, its `Referer`) is a trusted origin or the address the request
+  was sent to. The session cookie is `Secure` when the browser reached the
+  panel over https (directly, or through a proxy on the host of an https
+  `API_BASE_URL` or `WEB_PUBLIC_URL`).
 - `./authentik/blueprints` is mounted into Authentik straight from the
   checkout, and Authentik re-applies the blueprint whenever the file changes.
   Checking out a revision without the `WEB_PUBLIC_URL` entry while the stack

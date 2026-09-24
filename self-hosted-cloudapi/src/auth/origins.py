@@ -22,6 +22,7 @@ changes the answer without rebuilding the app.
 """
 
 from typing import List, Optional
+from urllib.parse import urlsplit
 
 from config.settings import normalize_origin, settings
 
@@ -57,3 +58,16 @@ def is_trusted_origin(origin: Optional[str], host: Optional[str] = None) -> bool
         return True
     return _same_origin_as_host(normalized, host)
 
+
+
+def origin_of_referer(referer: Optional[str]) -> Optional[str]:
+    """The origin part of a ``Referer`` URL, or None when it has none."""
+    if not referer:
+        return None
+    try:
+        parts = urlsplit(referer.strip())
+    except ValueError:
+        return None
+    if not parts.scheme or not parts.netloc:
+        return None
+    return normalize_origin(f"{parts.scheme}://{parts.netloc}")

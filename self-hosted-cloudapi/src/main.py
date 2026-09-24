@@ -12,6 +12,7 @@ from config.settings import settings
 from src.auth.network_access import WebAccessMiddleware, describe_policy
 from src.auth.origins import trusted_origins
 from src.middleware.cors import setup_cors
+from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
 from src.routers import auth, extension, settings as settings_router, events, marketplace, browser, web
@@ -98,6 +99,9 @@ app = FastAPI(
 
 # Setup middleware
 setup_cors(app)
+# Outside CORS (a preflight is an OPTIONS and passes), inside the request
+# logging, so a refused forgery is still logged with its 403.
+app.add_middleware(CsrfOriginMiddleware)
 # Inside the request logging, so a refused request is still logged with its 403.
 app.add_middleware(WebAccessMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
