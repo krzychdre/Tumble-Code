@@ -5,11 +5,9 @@ import {
 	type OrganizationAllowList,
 	type ProviderName,
 	type RouterModels,
-	modelIdKeysByProvider,
+	getProviderModelId,
 	isProviderName,
 	isRetiredProvider,
-	isFauxProvider,
-	isCustomProvider,
 } from "@roo-code/types"
 
 import { providerValidationRegistry } from "@src/provider-validation-registry"
@@ -94,15 +92,7 @@ function validateProviderAgainstOrganizationSettings(
 }
 
 function getModelIdForProvider(apiConfiguration: ProviderSettings, provider: ProviderName): string | undefined {
-	if (provider === "vscode-lm") {
-		return apiConfiguration.vsCodeLmModelSelector?.id
-	}
-
-	if (isCustomProvider(provider) || isFauxProvider(provider)) {
-		return apiConfiguration.apiModelId
-	}
-
-	return apiConfiguration[modelIdKeysByProvider[provider]]
+	return getProviderModelId({ ...apiConfiguration, apiProvider: provider })
 }
 
 /**
