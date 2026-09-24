@@ -1115,7 +1115,10 @@ export class TaskApiLoop {
 	 * Attempt an API request with retry logic.
 	 * This is an async generator that yields chunks from the API stream.
 	 */
-	async *attemptApiRequest(retryAttempt: number = 0, options: { skipProviderRateLimit?: boolean } = {}): ApiStream {
+	async *attemptApiRequest(
+		retryAttempt: number = 0,
+		options: { skipProviderRateLimit?: boolean; contextAlreadyManaged?: boolean } = {},
+	): ApiStream {
 		const state = await this.access.providerRef.deref()?.getState()
 
 		const {
@@ -1185,7 +1188,12 @@ export class TaskApiLoop {
 			contextTokens += this.access.microcompactStrippedTokens
 		}
 
-		if (contextTokens) {
+		// Skipped on the retry after a context-window error: the forced pass has
+		// already managed the context for this request. A regular pass here would
+		// recompute from the same stale token count (a rejected request reports no
+		// usage) under the user's looser thresholds, conclude nothing is needed and
+		// wipe the forced pass's send-time strip, resending the rejected request.
+		if (contextTokens && !options.contextAlreadyManaged) {
 			await this.handleContextManagement({
 				state,
 				systemPrompt,
@@ -1375,7 +1383,7 @@ export class TaskApiLoop {
 					`Attempting automatic truncation...`,
 			)
 			await this.handleContextWindowExceededError()
-			yield* this.attemptApiRequest(retryAttempt + 1)
+			yield* this.attemptApiRequest(retryAttempt + 1, { contextAlreadyManaged: true })
 			return
 		}
 
