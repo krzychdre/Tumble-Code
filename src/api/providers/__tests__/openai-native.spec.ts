@@ -201,6 +201,30 @@ describe("OpenAiNativeHandler", () => {
 			)
 		})
 
+		// A reasoning effort saved for one model must not be sent to a model that
+		// rejects it: GPT-6 Astra answers `none` with HTTP 400.
+		it.each([
+			["gpt-6-astra", "none", "medium"],
+			["gpt-6-astra", "disable", "medium"],
+			["gpt-6-astra", "minimal", "medium"],
+			["gpt-6-astra", "xhigh", "xhigh"],
+			["gpt-6-sol", "none", "none"],
+			["gpt-6-luna", "minimal", "medium"],
+			["gpt-5.6-sol", "disable", undefined],
+		])("sends a supported reasoning effort for %s when %s is configured", async (modelId, configured, expected) => {
+			mockResponsesCreate.mockResolvedValue({ output: [] })
+			const effortHandler = new OpenAiNativeHandler({
+				openAiNativeApiKey: "test-api-key",
+				apiModelId: modelId,
+				reasoningEffort: configured as any,
+			})
+
+			await effortHandler.completePrompt("Test prompt")
+
+			const requestBody = mockResponsesCreate.mock.calls[mockResponsesCreate.mock.calls.length - 1][0]
+			expect(requestBody.reasoning?.effort).toBe(expected)
+		})
+
 		it("should handle SDK errors in completePrompt", async () => {
 			// Mock SDK to throw an error
 			mockResponsesCreate.mockRejectedValue(new Error("API Error"))
@@ -787,7 +811,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5.1",
+				apiModelId: "gpt-5",
 				reasoningEffort: "minimal" as any, // GPT-5 supports minimal
 			})
 
@@ -958,7 +982,7 @@ describe("OpenAiNativeHandler", () => {
 
 			handler = new OpenAiNativeHandler({
 				...mockOptions,
-				apiModelId: "gpt-5.1",
+				apiModelId: "gpt-5",
 				verbosity: "high",
 				reasoningEffort: "minimal" as any,
 			})
@@ -978,7 +1002,7 @@ describe("OpenAiNativeHandler", () => {
 			)
 			const body3 = (mockFetch.mock.calls[0][1] as any).body as string
 			const parsedBody = JSON.parse(body3)
-			expect(parsedBody.model).toBe("gpt-5.1")
+			expect(parsedBody.model).toBe("gpt-5")
 			expect(parsedBody.reasoning?.effort).toBe("minimal")
 			expect(parsedBody.reasoning?.summary).toBe("auto")
 			expect(parsedBody.text?.verbosity).toBe("high")

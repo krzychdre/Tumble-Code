@@ -345,6 +345,28 @@ describe("OpenRouter API", () => {
 			expect(result.supportsReasoningBinary).toBe(true)
 		})
 
+		it.each(["openai/gpt-6-astra", "openai/gpt-6-astra-pro"])("requires a reasoning effort for %s", (id) => {
+			const result = parseOpenRouterModel({
+				id,
+				model: {
+					name: id,
+					description: "Test model",
+					context_length: 1050000,
+					max_completion_tokens: 128000,
+					pricing: { prompt: "0.00001", completion: "0.00005" },
+				},
+				inputModality: ["text", "image"],
+				outputModality: ["text"],
+				maxTokens: 128000,
+				supportedParameters: ["reasoning", "include_reasoning", "tools"],
+			})
+
+			expect(result.supportsReasoningEffort).toEqual(["low", "medium", "high", "xhigh", "max"])
+			expect(result.requiredReasoningEffort).toBe(true)
+			expect(result.reasoningEffort).toBe("medium")
+			expect(result.supportsTemperature).toBe(false)
+		})
+
 		it("sets horizon-alpha model to 32k max tokens", () => {
 			const mockModel = {
 				name: "Horizon Alpha",

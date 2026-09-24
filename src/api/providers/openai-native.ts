@@ -120,11 +120,18 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		const hasCacheMissTokens = typeof inputDetails?.cache_miss_tokens === "number"
 		const cachedFromDetails = hasCachedTokens ? inputDetails.cached_tokens : 0
 		const missFromDetails = hasCacheMissTokens ? inputDetails.cache_miss_tokens : 0
+		// GPT-5.6+ report billed cache writes only here (1.25x input rate).
+		const writesFromDetails =
+			typeof inputDetails?.cache_write_tokens === "number" ? inputDetails.cache_write_tokens : 0
 
 		// If total input tokens are missing but we have details, derive from them
 		let totalInputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0
-		if (totalInputTokens === 0 && inputDetails && (cachedFromDetails > 0 || missFromDetails > 0)) {
-			totalInputTokens = cachedFromDetails + missFromDetails
+		if (
+			totalInputTokens === 0 &&
+			inputDetails &&
+			(cachedFromDetails > 0 || missFromDetails > 0 || writesFromDetails > 0)
+		) {
+			totalInputTokens = cachedFromDetails + missFromDetails + writesFromDetails
 		}
 
 		const totalOutputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0
@@ -132,7 +139,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		// Note: missFromDetails is NOT used as fallback for cache writes
 		// Cache miss tokens represent tokens that weren't found in cache (part of input)
 		// Cache write tokens represent tokens being written to cache for future use
-		const cacheWriteTokens = usage.cache_creation_input_tokens ?? usage.cache_write_tokens ?? 0
+		const cacheWriteTokens = usage.cache_creation_input_tokens ?? usage.cache_write_tokens ?? writesFromDetails
 
 		const cacheReadTokens =
 			usage.cache_read_input_tokens ?? usage.cache_read_tokens ?? usage.cached_tokens ?? cachedFromDetails ?? 0
@@ -1390,9 +1397,22 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	}
 
 	private getReasoningEffort(model: OpenAiNativeModel): ReasoningEffortExtended | undefined {
-		// Single source of truth: user setting overrides, else model default (from types).
-		const selected = (this.options.reasoningEffort as any) ?? (model.info.reasoningEffort as any)
-		return selected && selected !== "disable" ? (selected as any) : undefined
+		// User setting overrides, else model default (from types). The saved setting
+		// can come from a previously selected model, so it must be one the current
+		// model accepts (GPT-6 Astra rejects `none` with a 400); otherwise fall back
+		// to the model default. `disable` only turns reasoning off when the model
+		// allows that.
+		const configured = this.options.reasoningEffort as ReasoningEffortExtended | "disable" | undefined
+		const fallback = model.info.reasoningEffort as ReasoningEffortExtended | undefined
+		const supported = model.info.supportsReasoningEffort
+
+		if (configured === "disable" && !model.info.requiredReasoningEffort) return undefined
+
+		const selected = configured && configured !== "disable" ? configured : fallback
+		if (Array.isArray(supported) && selected && !supported.includes(selected)) {
+			return fallback && supported.includes(fallback) ? fallback : undefined
+		}
+		return selected
 	}
 
 	/**

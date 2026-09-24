@@ -221,6 +221,15 @@ export const parseOpenRouterModel = ({
 		supportedParameters: supportedParameters ? supportedParameters.filter(isModelParameter) : undefined,
 	}
 
+	// GPT-6 Astra rejects the `none` effort with a 400, so it must always reason.
+	// The `-pro` id is the same model run with reasoning.mode "pro".
+	if (id === "openai/gpt-6-astra" || id === "openai/gpt-6-astra-pro") {
+		modelInfo.supportsReasoningEffort = ["low", "medium", "high", "xhigh", "max"]
+		modelInfo.requiredReasoningEffort = true
+		modelInfo.reasoningEffort = "medium"
+		modelInfo.supportsTemperature = false
+	}
+
 	if (OPEN_ROUTER_REASONING_BUDGET_MODELS.has(id)) {
 		modelInfo.supportsReasoningBudget = true
 	}

@@ -41,6 +41,31 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 			})
 		})
 
+		// GPT-5.6+ bill cache writes at 1.25x input and report them only inside
+		// input_tokens_details (https://developers.openai.com/api/docs/guides/prompt-caching).
+		it("should read cache writes from input_tokens_details and price them", () => {
+			const gpt6SolModel = { id: "gpt-6-sol", info: openAiNativeModels["gpt-6-sol"] }
+			const usage = {
+				input_tokens: 100_000,
+				output_tokens: 0,
+				input_tokens_details: {
+					cached_tokens: 20_000,
+					cache_write_tokens: 40_000,
+				},
+			}
+
+			const result = (handler as any).normalizeUsage(usage, gpt6SolModel)
+
+			expect(result).toMatchObject({
+				inputTokens: 100_000,
+				cacheReadTokens: 20_000,
+				cacheWriteTokens: 40_000,
+			})
+			// Below the 272K long-context threshold: 40K uncached * $2 + 20K reads * $0.20
+			// + 40K writes * $2.50, per million tokens.
+			expect(result.totalCost).toBeCloseTo(0.08 + 0.004 + 0.1, 6)
+		})
+
 		it("should derive total input tokens from details when totals are missing", () => {
 			const usage = {
 				// No input_tokens or prompt_tokens
