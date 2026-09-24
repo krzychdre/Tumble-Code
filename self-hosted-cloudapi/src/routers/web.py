@@ -482,8 +482,14 @@ async def task_list(
     scope = scope if scope in ("roots", "all") else "roots"
     filters = [Task.user_id == user["user_id"]]
     if search:
-        pattern = f"%{search}%"
-        filters.append(or_(Task.title.ilike(pattern), Task.workspace_path.ilike(pattern)))
+        # autoescape: "%" and "_" typed into the box mean those characters,
+        # not LIKE wildcards (SQLAlchemy escapes them, and its escape char).
+        filters.append(
+            or_(
+                Task.title.icontains(search, autoescape=True),
+                Task.workspace_path.icontains(search, autoescape=True),
+            )
+        )
     if scope == "roots":
         filters.append(Task.parent_task_id.is_(None))
 
