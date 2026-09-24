@@ -39,6 +39,7 @@ import { toolsLoadTool } from "../tools/ToolsLoadTool"
 import { generateImageTool } from "../tools/GenerateImageTool"
 import { applyDiffTool as applyDiffToolClass } from "../tools/ApplyDiffTool"
 import { isValidToolName, validateToolUse } from "../tools/validateToolUse"
+import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
 import { codebaseSearchTool } from "../tools/CodebaseSearchTool"
 import { webSearchTool } from "../tools/WebSearchTool"
 import { webFetchTool } from "../tools/WebFetchTool"
@@ -894,9 +895,14 @@ export async function presentAssistantMessage(cline: Task) {
 				}
 			}
 
+			// One list decides which tools get a checkpoint before they run; the
+			// early start in TaskStreamProcessor reads the same list.
+			if (isCheckpointedTool(block.name)) {
+				await checkpointSaveAndMark(cline)
+			}
+
 			switch (block.name) {
 				case "write_to_file":
-					await checkpointSaveAndMark(cline)
 					await writeToFileTool.handle(cline, block as ToolUse<"write_to_file">, {
 						askApproval,
 						handleError,
@@ -913,7 +919,6 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "apply_diff":
-					await checkpointSaveAndMark(cline)
 					await applyDiffToolClass.handle(cline, block as ToolUse<"apply_diff">, {
 						askApproval,
 						handleError,
@@ -923,7 +928,6 @@ export async function presentAssistantMessage(cline: Task) {
 					break
 				case "edit":
 				case "search_and_replace":
-					await checkpointSaveAndMark(cline)
 					await editTool.handle(cline, block as ToolUse<"edit">, {
 						askApproval,
 						handleError,
@@ -932,7 +936,6 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "search_replace":
-					await checkpointSaveAndMark(cline)
 					await searchReplaceTool.handle(cline, block as ToolUse<"search_replace">, {
 						askApproval,
 						handleError,
@@ -941,7 +944,6 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "edit_file":
-					await checkpointSaveAndMark(cline)
 					await editFileTool.handle(cline, block as ToolUse<"edit_file">, {
 						askApproval,
 						handleError,
@@ -950,7 +952,6 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "apply_patch":
-					await checkpointSaveAndMark(cline)
 					await applyPatchTool.handle(cline, block as ToolUse<"apply_patch">, {
 						askApproval,
 						handleError,
@@ -1063,7 +1064,6 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "new_task":
-					await checkpointSaveAndMark(cline)
 					await newTaskTool.handle(cline, block as ToolUse<"new_task">, {
 						askApproval,
 						handleError,
@@ -1119,7 +1119,6 @@ export async function presentAssistantMessage(cline: Task) {
 					})
 					break
 				case "generate_image":
-					await checkpointSaveAndMark(cline)
 					await generateImageTool.handle(cline, block as ToolUse<"generate_image">, {
 						askApproval,
 						handleError,

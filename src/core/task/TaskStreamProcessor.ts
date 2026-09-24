@@ -23,6 +23,7 @@ import { t } from "../../i18n"
 import { sanitizeToolUseId } from "../../utils/tool-id"
 
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
+import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
 import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
 import { type ClineProvider } from "../webview/ClineProvider"
 
@@ -34,28 +35,16 @@ import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 
-// Tools that trigger a pre-edit checkpoint in presentAssistantMessage. Kept in
-// sync with the checkpointSaveAndMark call sites there.
-const CHECKPOINTED_WRITE_TOOLS = new Set([
-	"write_to_file",
-	"apply_diff",
-	"edit",
-	"search_and_replace",
-	"search_replace",
-	"edit_file",
-	"apply_patch",
-])
-
 // Tools that cannot mutate the workspace. An eager pre-edit checkpoint is only
-// safe while every earlier tool block in the turn is in this set — anything
+// safe while every earlier tool block in the turn is in this set: anything
 // else (execute_command, MCP tools, other writes) may still be mutating files
 // when the write tool's arguments start streaming.
-const WORKSPACE_READ_ONLY_TOOLS = new Set([
+// Typed as ToolName so a removed tool name here is a compile error.
+const WORKSPACE_READ_ONLY_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>([
 	"read_file",
 	"list_files",
 	"search_files",
 	"codebase_search",
-	"list_code_definition_names",
 	"read_artifact",
 	"read_command_output",
 	"web_search",
@@ -349,7 +338,7 @@ export class TaskStreamProcessor {
 				// Initialize streaming in the per-task parser
 				this.toolCallParser.startStreamingToolCall(event.id, event.name as ToolName)
 
-				// Eager pre-edit checkpoint: a write tool's arguments (whole file
+				// Eager pre-edit checkpoint: a checkpointed tool's arguments (whole file
 				// contents / diffs) can stream for seconds. Start the checkpoint
 				// now so it overlaps argument streaming instead of blocking the
 				// tool execution in checkpointSaveAndMark. Only safe while every
@@ -360,14 +349,14 @@ export class TaskStreamProcessor {
 				// suppresses an unhandled rejection when no write tool ends up
 				// executing this turn).
 				if (
-					CHECKPOINTED_WRITE_TOOLS.has(event.name) &&
+					isCheckpointedTool(event.name) &&
 					!this.access.currentStreamingDidCheckpoint &&
 					typeof this._task?.checkpointSave === "function" &&
 					this._task.pendingCheckpointSave === undefined &&
 					this.access.assistantMessageContent.every(
 						(b) =>
 							b.type === "text" ||
-							(b.type === "tool_use" && WORKSPACE_READ_ONLY_TOOLS.has(b.name as string)),
+							(b.type === "tool_use" && WORKSPACE_READ_ONLY_TOOLS.has(b.name as ToolName)),
 					)
 				) {
 					const pending: Promise<void> = this._task.checkpointSave(true)
