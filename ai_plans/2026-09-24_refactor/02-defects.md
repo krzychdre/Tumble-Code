@@ -258,3 +258,15 @@ where their files are disjoint; the coordinator merges in order.
   the forced condense row. Impact window: a rewind target between the Summary's ts (last API message + 1) and the
   condense row kept the Summary, so the chat showed no condense while the model saw only the summary. Round-trip test
   through the real `MessageManager` and `cleanupAfterTruncation`. Clone drift recorded as DEF-C33.
+- **DEF-C7:** DONE, merged 2026-09-24 as #225 (`d3ba494b4`), owner decision 9. New
+  `src/core/checkpoints/checkpointedTools.ts` (`CHECKPOINTED_TOOLS: ReadonlySet<ToolName>`, 9 tools) used by
+  `presentAssistantMessage` (one call before the switch replaces 8 per-case calls) and by the early start in
+  `TaskStreamProcessor`; `WORKSPACE_READ_ONLY_TOOLS` typed `ToolName`, so the removed `list_code_definition_names`
+  now fails compilation. User effect of the drift was speed only: `new_task` and `generate_image` were always
+  checkpointed, but the save never overlapped argument streaming. A spec measures both sets over every tool name.
+- **New finding DEF-C35 (from DEF-C32):** `apps/cli/src/ui/components/autocomplete/PickerSelect.tsx` (~:117-160, the
+  slash-command and file picker) never moves `selectedIndexRef` in its arrow handlers (it only syncs on render), so
+  down, down, Enter written back to back selects item 0; reproduced with a throwaway test. Likely fix: assign the ref
+  before `onIndexChange`; PickerSelect is controlled, so pin the parent contract first.
+- **Process note:** a merge watcher reported success after GitHub refused a merge with "Base branch was modified"
+  (two merges at once). `/tmp/merge-when-green.sh` now retries and exits 0 only on MERGED; merges run as one queue.
