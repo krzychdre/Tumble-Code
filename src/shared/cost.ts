@@ -48,7 +48,12 @@ function calculateApiCostInternal(
 	totalInputTokens: number,
 	totalOutputTokens: number,
 ): ApiCostResult {
-	const cacheWritesCost = ((modelInfo.cacheWritesPrice || 0) / 1_000_000) * cacheCreationInputTokens
+	// A model without a write price still pays for the tokens it writes: they
+	// are input the provider processed, so they cost the input price (DEF-C39).
+	// An explicit `cacheWritesPrice: 0` means the provider does not charge for
+	// writes and stays free.
+	const cacheWritesPrice = modelInfo.cacheWritesPrice ?? modelInfo.inputPrice ?? 0
+	const cacheWritesCost = (cacheWritesPrice / 1_000_000) * cacheCreationInputTokens
 	const cacheReadsCost = ((modelInfo.cacheReadsPrice || 0) / 1_000_000) * cacheReadInputTokens
 	const baseInputCost = ((modelInfo.inputPrice || 0) / 1_000_000) * inputTokens
 	const outputCost = ((modelInfo.outputPrice || 0) / 1_000_000) * outputTokens
