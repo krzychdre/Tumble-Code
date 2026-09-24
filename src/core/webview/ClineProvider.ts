@@ -118,6 +118,7 @@ import { readTaskMessages } from "../task-persistence/taskMessages"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
+import { findLastNewTaskToolUse, formatSubtaskResult, hasToolResultFor } from "./delegationHistory"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 
 /**
@@ -4633,23 +4634,9 @@ export class ClineProvider
 			}
 
 			// Same backward scan as reopenParentFromDelegation.
-			let toolUseId: string | undefined
-			let toolUseIndex = -1
-			for (let i = parentApiMessages.length - 1; i >= 0; i--) {
-				const msg = parentApiMessages[i]
-				if (msg.role === "assistant" && Array.isArray(msg.content)) {
-					for (const block of msg.content) {
-						if (block.type === "tool_use" && block.name === "new_task") {
-							toolUseId = block.id
-							toolUseIndex = i
-							break
-						}
-					}
-					if (toolUseId) break
-				}
-			}
+			const lastNewTask = findLastNewTaskToolUse(parentApiMessages)
 
-			if (!toolUseId) {
+			if (!lastNewTask) {
 				this.log(
 					`[tryReattachDelegatedParent] Rejecting: no new_task tool_use found in parent ${parentTaskId} API history (cannot prove frozen state)`,
 				)
@@ -4657,18 +4644,12 @@ export class ClineProvider
 			}
 
 			// Scan ALL messages AFTER the tool_use for a matching tool_result.
-			for (let i = toolUseIndex; i < parentApiMessages.length; i++) {
-				const msg = parentApiMessages[i]
-				if (msg.role === "user" && Array.isArray(msg.content)) {
-					for (const block of msg.content) {
-						if (block.type === "tool_result" && block.tool_use_id === toolUseId) {
-							this.log(
-								`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
-							)
-							return false
-						}
-					}
-				}
+			const { toolUseId, messageIndex } = lastNewTask
+			if (hasToolResultFor(parentApiMessages, toolUseId, messageIndex)) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
+				)
+				return false
 			}
 
 			// All five conditions hold — re-attach.
@@ -4774,19 +4755,8 @@ export class ClineProvider
 		await saveTaskMessages({ messages: parentClineMessages, taskId: parentTaskId, globalStoragePath })
 
 		// Find the tool_use_id from the last assistant message's new_task tool_use
-		let toolUseId: string | undefined
-		for (let i = parentApiMessages.length - 1; i >= 0; i--) {
-			const msg = parentApiMessages[i]
-			if (msg.role === "assistant" && Array.isArray(msg.content)) {
-				for (const block of msg.content) {
-					if (block.type === "tool_use" && block.name === "new_task") {
-						toolUseId = block.id
-						break
-					}
-				}
-				if (toolUseId) break
-			}
-		}
+		const toolUseId = findLastNewTaskToolUse(parentApiMessages)?.toolUseId
+		const subtaskResultText = formatSubtaskResult(childTaskId, completionResultSummary)
 
 		// Preferred: if the parent history contains the native tool_use for new_task,
 		// inject a matching tool_result for the Anthropic message contract:
@@ -4800,7 +4770,7 @@ export class ClineProvider
 				for (const block of lastMsg.content) {
 					if (block.type === "tool_result" && block.tool_use_id === toolUseId) {
 						// Update the existing tool_result content
-						block.content = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+						block.content = subtaskResultText
 						alreadyHasToolResult = true
 						break
 					}
@@ -4815,7 +4785,7 @@ export class ClineProvider
 						{
 							type: "tool_result" as const,
 							tool_use_id: toolUseId,
-							content: `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`,
+							content: subtaskResultText,
 						},
 					],
 					ts,
@@ -4833,7 +4803,7 @@ export class ClineProvider
 		} else {
 			// If there is no corresponding tool_use in the parent API history, we cannot emit a
 			// tool_result. Fall back to a plain user text note so the parent can still resume.
-			const fallbackText = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+			const fallbackText = subtaskResultText
 			const lastParentApiMessage = parentApiMessages.at(-1)
 			const alreadyHasFallback =
 				lastParentApiMessage?.role === "user" &&
