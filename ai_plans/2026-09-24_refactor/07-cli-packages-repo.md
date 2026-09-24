@@ -181,6 +181,15 @@ after CLI-5 and PKG-6, because by then three consumers (extension, webview, CLI)
 | `packages/types/src/cloud.ts:1`  | value import of `EventEmitter` used only as a type                                                                                                                                                                                                       | `import type`                                                                                                  |
 | Publishable flags                | `cloud`, `core`, `ipc`, `telemetry`, `agent-interchange` are not `"private": true`; the fork cannot publish to the `@roo-code` scope [I]                                                                                                                 | mark private                                                                                                   |
 
+**Status (2026-09-24):** DONE in #251. `releases/` and its 75 CHANGELOG image links deleted; analyses moved to
+`ai_plans/archive/`; `progress.txt`, `spotted-errors/`, `ellipsis.yaml`, `update-contributors.yml` and the stale
+`self-host-cloud-backend-run.sh` deleted; CLI `build.sh` writes its tarball into `bin/`; `import type` in
+`cloud.ts`; `cloud`, `core`, `telemetry`, `agent-interchange` marked private (`types` keeps its publish script).
+Local clutter (`memory/`, root tarball, `apps/web-roo-code/`) left in the owner's tree for the owner to delete.
+Found, not done: `self-hosted-cloudapi/README.md:147` and the Makefile `migrate` target still run
+`alembic upgrade head`, which fails on an empty database; `.roo/commands/release.md` still names the changeset
+package `"roo-cline"` instead of `"tumble-code"`.
+
 ### PKG-9 CI gaps
 
 - `apps/vscode-e2e` is never run in CI (maintained, 7 commits since May): decide between a manual workflow
