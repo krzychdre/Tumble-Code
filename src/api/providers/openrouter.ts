@@ -34,7 +34,7 @@ import { getModelEndpoints } from "./fetchers/modelEndpointCache"
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { ApiHandlerCreateMessageMetadata, CompletionResult, SingleCompletionHandler } from "../index"
-import { openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { handleOpenAIError } from "./utils/openai-error-handler"
 import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
@@ -130,6 +130,8 @@ interface CompletionUsage {
 	prompt_tokens?: number
 	prompt_tokens_details?: {
 		cached_tokens?: number
+		// Only returned for models with explicit caching and a cache write price.
+		cache_write_tokens?: number
 	}
 	total_tokens?: number
 	cost?: number
@@ -511,7 +513,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				type: "usage",
 				inputTokens: lastUsage.prompt_tokens || 0,
 				outputTokens: lastUsage.completion_tokens || 0,
-				cacheReadTokens: lastUsage.prompt_tokens_details?.cached_tokens,
+				...openAiCacheTokens(lastUsage),
 				reasoningTokens: lastUsage.completion_tokens_details?.reasoning_tokens,
 				totalCost: (lastUsage.cost_details?.upstream_inference_cost || 0) + (lastUsage.cost || 0),
 			}
