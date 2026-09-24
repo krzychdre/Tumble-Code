@@ -59,7 +59,10 @@ function SelectList({
 	)
 
 	// Mirror the focused index in a ref so rapid key presses (before a render
-	// flush) read the latest selection instead of a stale closure.
+	// flush) read the latest selection instead of a stale closure. The key
+	// handler advances the ref itself before setting state: React runs a
+	// state updater eagerly only for the first update on an idle component,
+	// so a ref written inside the updater would lag behind a second key.
 	const focusedIndexRef = useRef(focusedIndex)
 	focusedIndexRef.current = focusedIndex
 
@@ -83,20 +86,18 @@ function SelectList({
 			}
 
 			if (key.upArrow) {
-				setFocusedIndex((prev) => {
-					const next = prev === 0 ? items.length - 1 : prev - 1
-					focusedIndexRef.current = next
-					return next
-				})
+				const prev = focusedIndexRef.current
+				const next = prev <= 0 ? items.length - 1 : prev - 1
+				focusedIndexRef.current = next
+				setFocusedIndex(next)
 				return
 			}
 
 			if (key.downArrow) {
-				setFocusedIndex((prev) => {
-					const next = prev >= items.length - 1 ? 0 : prev + 1
-					focusedIndexRef.current = next
-					return next
-				})
+				const prev = focusedIndexRef.current
+				const next = prev >= items.length - 1 ? 0 : prev + 1
+				focusedIndexRef.current = next
+				setFocusedIndex(next)
 				return
 			}
 
