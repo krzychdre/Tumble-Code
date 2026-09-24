@@ -241,3 +241,15 @@ where their files are disjoint; the coordinator merges in order.
   the auto-condense circuit breaker and the user's `autoCondenseContext` off switch, omits
   `customCondensingPrompt`, `filesReadByRoo`, `cwd`, `rooIgnoreController`, `previouslyClearedToolUseIds`. Start with
   a test that confirms or closes the microcompaction case; the clone merge stays a later item.
+- **DEF-C31:** DONE, merged 2026-09-24 as #223 (`ccd664a42`), 5 test/fix commit pairs, pytest 380 to 400. (1) bulk-delete
+  redirect built with `urlencode(..., quote_via=quote)` (`&`, `#`, `+` were corrupted); (2) `GET /app/settings` no
+  longer writes: new `read_policy()` returns the row or an unsaved default with every default set explicitly (column
+  defaults apply only on insert), POSTs still use `get_policy()`; (3) search uses `icontains(..., autoescape=True)`;
+  (4) the bridge is mounted at `BRIDGE_PATH` (default `/bridge/socket.io`, identical to before; single-segment or
+  relative paths refused at startup); both clients already read the path from the server; (5) retention protects
+  `Embedding Usage` too (`PROTECTED_EVENT_TYPES` imports the names from `metrics_service`). Embedding history purged
+  on the live system before the rebuild cannot be recovered. Open: `get_policy()` insert race on two first POSTs.
+- **New finding DEF-C34 (from DEF-C6):** reopening a task from history (`createTaskWithHistoryItem`,
+  `ClineProvider.ts` ~:1469) applies the profile's mistake limit but does not check the organization allow list.
+- **Owner action (from DEF-C29):** the fork has no `cli-v*` release yet (the CLI Release workflow never ran), so the
+  fixed installer stops with "Could not find any CLI releases" until a first CLI release is published.
