@@ -829,6 +829,39 @@ describe("VertexHandler", () => {
 			const result = await handler.completePrompt("Test prompt")
 			expect(result).toBe("")
 		})
+
+		it("should return an empty string for an empty content array", async () => {
+			handler = new AnthropicVertexHandler({
+				apiModelId: "claude-3-5-sonnet-v2@20241022",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+			})
+
+			const mockCreate = vitest.fn().mockResolvedValue({ content: [] })
+			;(handler["client"].messages as any).create = mockCreate
+
+			const result = await handler.completePrompt("Test prompt")
+			expect(result).toBe("")
+		})
+
+		it("should return the text block when a thinking block comes first", async () => {
+			handler = new AnthropicVertexHandler({
+				apiModelId: "claude-3-5-sonnet-v2@20241022",
+				vertexProjectId: "test-project",
+				vertexRegion: "us-central1",
+			})
+
+			const mockCreate = vitest.fn().mockResolvedValue({
+				content: [
+					{ type: "thinking", thinking: "internal reasoning" },
+					{ type: "text", text: "visible response" },
+				],
+			})
+			;(handler["client"].messages as any).create = mockCreate
+
+			const result = await handler.completePrompt("Test prompt")
+			expect(result).toBe("visible response")
+		})
 	})
 
 	describe("getModel", () => {
