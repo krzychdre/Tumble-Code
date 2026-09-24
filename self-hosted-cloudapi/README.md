@@ -7,7 +7,7 @@ A self-hosted replacement for the Roo Code Cloud API, compatible with the existi
 ### Running the full stack with Docker Compose (recommended)
 
 `docker compose up` brings up **everything**: this API and its Postgres, plus a
-bundled **Authentik** (server, worker, Postgres, Redis). The Authentik OAuth2
+bundled **Authentik** (server, worker, Postgres). The Authentik OAuth2
 provider and application are **auto-provisioned from a blueprint**
 ([`authentik/blueprints/tumble-code.yaml`](authentik/blueprints/tumble-code.yaml)),
 so there is no manual Authentik OAuth setup.
