@@ -24,10 +24,14 @@ Selection behavior:
 
 Required:
 - If modelInfo.requiredReasoningEffort is true, do not synthesize a "None" choice. Only show values from the capability.
-- On mount, if unset and a default exists, set enableReasoningEffort = true and use modelInfo.reasoningEffort.
+
+Defaults (required or optional reasoning):
+- If unset, use modelInfo.reasoningEffort when the model declares one; otherwise "medium" when
+  reasoning is required and "disable" when it is optional.
 
 Notes:
-- Current selection is normalized to the capability: unsupported persisted values are not shown.
+- Current selection is normalized to the capability: an unsupported persisted value is replaced by
+  the default (or the first offered value), and the shown value is written back unless it is "disable".
 - Both "disable" and "none" display as the "None" label per UX, but are wired differently as above.
 - "minimal" uses t("settings:providers.reasoningEffort.minimal").
 */
@@ -99,12 +103,12 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 		? ["disable", ...baseAvailableOptions]
 		: baseAvailableOptions
 
-	// Default reasoning effort - use model's default if available
-	// GPT-5 models have "medium" as their default in the model configuration
+	// Default reasoning effort: the model's declared default whenever it has one (also for
+	// optional reasoning, e.g. DeepSeek V4 declares "high"; the backend applies it too).
+	// Without one, required reasoning falls back to "medium" and optional reasoning to "disable".
 	const modelDefaultReasoningEffort = modelInfo?.reasoningEffort as ReasoningEffortExtended | undefined
-	const defaultReasoningEffort: ReasoningEffortOption = modelInfo?.requiredReasoningEffort
-		? modelDefaultReasoningEffort || "medium"
-		: "disable"
+	const defaultReasoningEffort: ReasoningEffortOption =
+		modelDefaultReasoningEffort ?? (modelInfo?.requiredReasoningEffort ? "medium" : "disable")
 	// Current reasoning effort from settings, or fall back to default.
 	// Clamp it to availableOptions: a stored value the model does not offer (e.g. "xhigh" left
 	// over after switching models) would render an empty Select trigger. Prefer the default,
@@ -118,21 +122,18 @@ export const ThinkingBudget = ({ apiConfiguration, setApiConfigurationField, mod
 		? rawReasoningEffort
 		: fallbackReasoningEffort
 
-	// Set default reasoning effort when model supports it and no value is set
+	// Store the shown value when it differs from the stored one (unset, or a stale value the model
+	// does not offer, which the backend would silently drop). "disable" needs no write: unset
+	// already means "no reasoning" when the model declares no default.
 	useEffect(() => {
-		if (isReasoningEffortSupported && !apiConfiguration.reasoningEffort) {
-			// Only set a default if reasoning is required, otherwise leave as undefined (which maps to "disable")
-			if (modelInfo?.requiredReasoningEffort && defaultReasoningEffort !== "disable") {
-				setApiConfigurationField("reasoningEffort", defaultReasoningEffort as ReasoningEffortExtended, false)
-			}
+		if (
+			isReasoningEffortSupported &&
+			storedReasoningEffort !== currentReasoningEffort &&
+			currentReasoningEffort !== "disable"
+		) {
+			setApiConfigurationField("reasoningEffort", currentReasoningEffort, false)
 		}
-	}, [
-		isReasoningEffortSupported,
-		apiConfiguration.reasoningEffort,
-		defaultReasoningEffort,
-		modelInfo?.requiredReasoningEffort,
-		setApiConfigurationField,
-	])
+	}, [isReasoningEffortSupported, storedReasoningEffort, currentReasoningEffort, setApiConfigurationField])
 
 	// Sync enableReasoningEffort based on selection
 	// "disable" turns off reasoning; "none" is a valid level (reasoning enabled)

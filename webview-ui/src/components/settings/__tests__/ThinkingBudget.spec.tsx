@@ -368,6 +368,99 @@ describe("ThinkingBudget", () => {
 			expect(screen.getByTestId("select")).toHaveAttribute("data-value", "medium")
 		})
 
+		// A model's declared default effort applies even when reasoning is optional (e.g. DeepSeek V4
+		// declares "high" and offers "disable"). The UI used to show "None" for these models, and a
+		// stale enableReasoningEffort=false from a previous model kept reasoning off.
+		describe("model default and normalization", () => {
+			const deepSeekLike: ModelInfo = {
+				...reasoningEffortModelInfo,
+				supportsReasoningEffort: ["disable", "low", "medium", "high", "xhigh"],
+				reasoningEffort: "high",
+			}
+
+			it("should show and keep the declared default of an optional reasoning model", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{ enableReasoningEffort: false }}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={deepSeekLike}
+					/>,
+				)
+
+				expect(screen.getByTestId("select")).toHaveAttribute("data-value", "high")
+				expect(setApiConfigurationField).toHaveBeenCalledWith("reasoningEffort", "high", false)
+				expect(setApiConfigurationField).toHaveBeenCalledWith("enableReasoningEffort", true, false)
+			})
+
+			it("should preserve an explicit 'disable' choice on an optional reasoning model", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{ reasoningEffort: "disable", enableReasoningEffort: false }}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={deepSeekLike}
+					/>,
+				)
+
+				expect(screen.getByTestId("select")).toHaveAttribute("data-value", "disable")
+				expect(setApiConfigurationField).not.toHaveBeenCalled()
+			})
+
+			it("should keep reasoning off by default when the model declares no default", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{}}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={reasoningEffortModelInfo}
+					/>,
+				)
+
+				expect(screen.getByTestId("select")).toHaveAttribute("data-value", "disable")
+				expect(setApiConfigurationField).not.toHaveBeenCalled()
+			})
+
+			it("should replace a stale stored effort with the shown value", () => {
+				// The backend drops reasoning when the stored effort is not in the model's list,
+				// so the shown value has to become the stored one.
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{ reasoningEffort: "max" }}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={{
+							...reasoningEffortModelInfo,
+							supportsReasoningEffort: ["low", "medium", "high"],
+							requiredReasoningEffort: true,
+							reasoningEffort: "medium",
+						}}
+					/>,
+				)
+
+				expect(setApiConfigurationField).toHaveBeenCalledWith("reasoningEffort", "medium", false)
+			})
+
+			it("should store the first offered effort when the model offers no 'disable' and no default", () => {
+				const setApiConfigurationField = vi.fn()
+				render(
+					<ThinkingBudget
+						{...defaultProps}
+						apiConfiguration={{}}
+						setApiConfigurationField={setApiConfigurationField}
+						modelInfo={{ ...reasoningEffortModelInfo, supportsReasoningEffort: ["low", "high"] }}
+					/>,
+				)
+
+				expect(setApiConfigurationField).toHaveBeenCalledWith("reasoningEffort", "low", false)
+				expect(setApiConfigurationField).toHaveBeenCalledWith("enableReasoningEffort", true, false)
+			})
+		})
+
 		it("should keep a stored 'xhigh' when the model offers it", () => {
 			render(
 				<ThinkingBudget
