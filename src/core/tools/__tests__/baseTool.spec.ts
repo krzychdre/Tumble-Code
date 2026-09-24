@@ -254,3 +254,60 @@ describe("BaseTool partial error handling (TL-4)", () => {
 		})
 	})
 })
+
+describe("BaseTool.recordFailure", () => {
+	class FailingTool extends BaseTool<"edit"> {
+		readonly name = "edit" as const
+
+		async execute(): Promise<void> {
+			// Not used in these tests
+		}
+
+		fail(task: Task, options?: { error?: string; failTurn?: boolean }): void {
+			this.recordFailure(task, "edit", options)
+		}
+	}
+
+	function makeMockTask() {
+		const task = {
+			consecutiveMistakeCount: 2,
+			didToolFailInCurrentTurn: false,
+			countSeenByRecordToolError: undefined as number | undefined,
+			recordToolError: vi.fn(),
+		}
+		task.recordToolError.mockImplementation(() => {
+			task.countSeenByRecordToolError = task.consecutiveMistakeCount
+		})
+		return task
+	}
+
+	it("counts the mistake before recording the tool error, and leaves the turn flag alone by default", () => {
+		const task = makeMockTask()
+
+		new FailingTool().fail(task as unknown as Task)
+
+		expect(task.consecutiveMistakeCount).toBe(3)
+		expect(task.countSeenByRecordToolError).toBe(3)
+		// Exactly one argument, as the replaced `task.recordToolError("edit")` calls passed.
+		expect(task.recordToolError.mock.calls).toEqual([["edit"]])
+		expect(task.didToolFailInCurrentTurn).toBe(false)
+	})
+
+	it("forwards the error kind when one is given", () => {
+		const task = makeMockTask()
+
+		new FailingTool().fail(task as unknown as Task, { error: "no_match" })
+
+		expect(task.recordToolError.mock.calls).toEqual([["edit", "no_match"]])
+	})
+
+	it("marks the turn as failed when failTurn is set", () => {
+		const task = makeMockTask()
+
+		new FailingTool().fail(task as unknown as Task, { failTurn: true })
+
+		expect(task.consecutiveMistakeCount).toBe(3)
+		expect(task.recordToolError.mock.calls).toEqual([["edit"]])
+		expect(task.didToolFailInCurrentTurn).toBe(true)
+	})
+})
