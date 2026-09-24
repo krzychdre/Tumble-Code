@@ -475,8 +475,16 @@ export class TaskContextManager {
 			}
 
 			if (truncateResult.summary) {
-				const { summary, cost, prevContextTokens, newContextTokens = 0 } = truncateResult
-				const contextCondense: ContextCondense = { summary, cost, newContextTokens, prevContextTokens }
+				const { summary, cost, prevContextTokens, newContextTokens = 0, condenseId } = truncateResult
+				// condenseId links this row to the Summary message in the API history;
+				// without it a rewind across the row cannot find and drop that Summary.
+				const contextCondense: ContextCondense = {
+					summary,
+					cost,
+					newContextTokens,
+					prevContextTokens,
+					condenseId,
+				}
 				await this.access.askSay.say(
 					"condense_context",
 					undefined /* text */,
