@@ -448,11 +448,11 @@ export class ClineProvider
 			])
 		}
 
-		// Initialize Roo Code Cloud profile sync.
+		// Initialize Roo Code Cloud profile sync. When CloudService is not
+		// ready yet, extension activation calls
+		// initializeCloudProfileSyncWhenReady() again once it is.
 		if (CloudService.hasInstance()) {
-			this.initializeCloudProfileSync().catch((error) => {
-				this.log(`Failed to initialize cloud profile sync: ${error}`)
-			})
+			void this.initializeCloudProfileSyncWhenReady()
 		} else {
 			this.log("CloudService not ready, deferring cloud profile sync")
 		}
@@ -728,25 +728,6 @@ export class ClineProvider
 	}
 
 	/**
-	 * Initialize cloud profile synchronization
-	 */
-	private async initializeCloudProfileSync() {
-		try {
-			// Check if authenticated and sync profiles
-			if (CloudService.hasInstance() && CloudService.instance.isAuthenticated()) {
-				await this.syncCloudProfiles()
-			}
-
-			// Set up listener for future updates
-			if (CloudService.hasInstance()) {
-				CloudService.instance.on("settings-updated", this.handleCloudSettingsUpdate)
-			}
-		} catch (error) {
-			this.log(`Error in initializeCloudProfileSync: ${error}`)
-		}
-	}
-
-	/**
 	 * Handle cloud settings updates
 	 */
 	private handleCloudSettingsUpdate = async () => {
@@ -795,8 +776,10 @@ export class ClineProvider
 	}
 
 	/**
-	 * Initialize cloud profile synchronization when CloudService is ready
-	 * This method is called externally after CloudService has been initialized
+	 * Initialize cloud profile synchronization: sync now if signed in, and
+	 * (re)subscribe to settings updates. Idempotent, never throws. Called from
+	 * the constructor when CloudService already exists and again by extension
+	 * activation once CloudService has been initialized.
 	 */
 	public async initializeCloudProfileSyncWhenReady(): Promise<void> {
 		try {
