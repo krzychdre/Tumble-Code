@@ -43,17 +43,48 @@ describe("SelectList", () => {
 	})
 
 	it("calls onSelect with the focused value on Enter", async () => {
-		const onSelect = (value: string) => {
-			expect(value).toBe("third")
-		}
+		const onSelect = vi.fn()
+		const { stdin, lastFrame } = render(<SelectList items={items} onSelect={onSelect} />)
+
+		stdin.write("\u001B[B") // down
+		await until(() => expect(lastFrame()).toContain("❯ 2. Second option"))
+		stdin.write("\u001B[B") // down -> third
+		await until(() => expect(lastFrame()).toContain("❯ 3. Third option"))
+		stdin.write("\r") // enter
+
+		await until(() => expect(onSelect).toHaveBeenCalled())
+		expect(onSelect).toHaveBeenCalledTimes(1)
+		expect(onSelect).toHaveBeenCalledWith("third")
+	})
+
+	// Keys a terminal delivers faster than React renders (a held arrow, a
+	// paste, a fast typist) must still move the focus one row each: the
+	// handler has to read the index the previous key produced, not the one
+	// last rendered.
+	it("selects the right item when down, down, Enter arrive without a render in between", async () => {
+		const onSelect = vi.fn()
 		const { stdin } = render(<SelectList items={items} onSelect={onSelect} />)
 
-		stdin.write("[B") // down
-		await flush()
-		stdin.write("[B") // down → third
-		await flush()
+		stdin.write("\u001B[B") // down -> second
+		stdin.write("\u001B[B") // down -> third
 		stdin.write("\r") // enter
-		await flush()
+
+		await until(() => expect(onSelect).toHaveBeenCalled())
+		expect(onSelect).toHaveBeenCalledTimes(1)
+		expect(onSelect).toHaveBeenCalledWith("third")
+	})
+
+	it("selects the right item when up, up, Enter arrive without a render in between", async () => {
+		const onSelect = vi.fn()
+		const { stdin } = render(<SelectList items={items} onSelect={onSelect} />)
+
+		stdin.write("\u001B[A") // up -> wraps to third
+		stdin.write("\u001B[A") // up -> second
+		stdin.write("\r") // enter
+
+		await until(() => expect(onSelect).toHaveBeenCalled())
+		expect(onSelect).toHaveBeenCalledTimes(1)
+		expect(onSelect).toHaveBeenCalledWith("second")
 	})
 
 	it("calls onCancel on Escape when provided", async () => {
