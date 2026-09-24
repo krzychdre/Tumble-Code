@@ -107,3 +107,36 @@ Branch groups: `fix/cmd-approval-escaped-quotes` (S1); `fix/cloudapi-share-xss` 
 2. Cloud API security groups, S2 and S12 first (public pages), then S3, S4 and S10, then the rest.
 3. C9, C1, C2, C10, C11, C13 (visible to users every day).
 4. Everything else, grouped by the area branch it shares files with.
+
+## Status
+
+One line per executed item (date, PR, merge commit, test counts, deviations). Items run in parallel worktrees
+where their files are disjoint; the coordinator merges in order.
+
+- **DEF-S2 and DEF-S12:** DONE, merged 2026-09-24 as #210 (`a19d31381`). One `json_for_script()` helper
+  (`self-hosted-cloudapi/src/utils/json_script.py`, escapes `< > &` and U+2028/2029) at all 6 island call sites;
+  `task_detail.html` and `metrics.html` no longer use `| safe`, and a test fails if a template marks an island
+  `| safe` again. `completions_for_task(db, task_id, user_id)` now filters by the task owner. DOMPurify replaced
+  with the byte-exact upstream 3.4.16 `dist/purify.min.js` (the old 3.1.6 copy had been reformatted by prettier);
+  new root `.prettierignore` excludes `self-hosted-cloudapi/src/web/static/vendor/`. pytest 233 to 240.
+  **Deployment note:** model attribution now counts only events whose `telemetry_events.user_id` equals
+  `tasks.user_id`; check before rebuilding the live image with
+  `SELECT count(*) FROM telemetry_events e JOIN tasks t ON t.id = e.task_id WHERE e.event_type = 'LLM Completion' AND (e.user_id IS DISTINCT FROM t.user_id);`
+  Found on the way: `.prettierrc.json` has an `"ignore"` key prettier never honoured; the other vendored files
+  (chart.js, marked, socket.io) are probably prettier-reformatted too; `routers/browser.py` builds HTML as Python
+  strings and was not audited.
+- **DEF-C9:** DONE, merged 2026-09-24 as #211 (`1c8fca378`). `message_delta.usage.output_tokens` is cumulative
+  (SDK types and docs), so both handlers now set `outputTokens = Math.max(outputTokens, delta)` instead of
+  ignoring it; before, every response was billed as about one output token. 6 new tests (single delta, two deltas
+  200 then 500 billed as 500, no delta). Residual for API-2: `TaskStreamProcessor` sums `outputTokens` across usage
+  chunks, so the displayed `tokensOut` of the three Anthropic-protocol handlers (and Vertex's computed cost) counts
+  the `message_start` preliminary value on top of the cumulative one (usually 1 token).
+- **DEF-S1:** PR #213 open. Scope grew during reproduction: besides escaped quotes, 20 more constructs let a denied
+  command run under auto-approval, all reproduced against bash, among them `echo "$(rm -rf x)"` with only `echo`
+  allowed (substitutions inside double quotes were never checked), `$(rm)` in an unquoted heredoc body, an operator
+  after a heredoc opener, `$(` or a backtick inside single quotes, `(rm)`, `{ rm; }`, `then rm`, `do rm`, `! rm`,
+  `coproc rm`, `|&`, `${x:-$(rm)}`, `$((1 + $(rm)))`, `'r'm`, `FOO=1 rm`, `git "push"`. Fix: new
+  `src/shared/shell-command-scanner.ts` (one bash-faithful walk, nested commands listed, `uncertainty` for syntax it
+  does not model, nesting limit 64); the deny list is matched also after quote removal; a quoted, escaped or
+  expanded command name is never auto-approved. `shell-quote` removed from the extension package. Known limit,
+  unchanged: a prefix list cannot see a command passed as an argument (`eval`, `bash -c`, `xargs`, `sudo`).
