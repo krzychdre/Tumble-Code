@@ -226,6 +226,16 @@ describe("extension.ts", () => {
 		| ((data: { state: AuthState; previousState: AuthState }) => void | Promise<void>)
 		| undefined
 
+	// Every test re-imports the whole extension module graph after
+	// vi.resetModules(). The first import also transforms that graph (about
+	// 1.2 s alone against 0.1 s for the later tests), and under a full
+	// parallel run that one-off cost exceeded the 20 s test timeout on
+	// whichever test happened to run first. Paying it here, with its own
+	// budget, keeps each test's timeout about the test.
+	beforeAll(async () => {
+		await import("../extension")
+	}, 120_000)
+
 	beforeEach(() => {
 		vi.clearAllMocks()
 

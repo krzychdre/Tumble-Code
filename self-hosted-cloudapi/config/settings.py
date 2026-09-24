@@ -2,6 +2,7 @@
 
 import ipaddress
 import json
+import os
 from typing import List, Optional
 from urllib.parse import urlsplit
 
@@ -15,8 +16,14 @@ class Settings(BaseSettings):
     # extra="ignore": the same .env is shared with docker-compose and carries
     # infra-only keys (COMPOSE_PORT_*, AUTHENTIK_BOOTSTRAP_*, AUTH_PG_PASS, …)
     # that this app doesn't define. Ignore them instead of failing to start.
+    # CLOUDAPI_ENV_FILE names another env file; an empty value reads none. The
+    # test suite sets it empty so a developer's .env (WEB_ALLOWED_NETWORKS,
+    # CORS_ORIGINS, ...) cannot change what the tests see: with the live .env
+    # present, 57 of 233 tests failed.
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=os.getenv("CLOUDAPI_ENV_FILE", ".env") or None,
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     # Core

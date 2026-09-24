@@ -12,7 +12,10 @@ export default defineConfig({
 		reporters,
 		silent,
 		environment: "jsdom",
-		include: ["src/**/*.spec.ts", "src/**/*.spec.tsx"],
+		// The convention here is *.spec.*, but *.test.* is collected too (as in
+		// src/): three *.test.ts files once sat here for months without ever
+		// running, and one of them had a wrong expectation nobody saw.
+		include: ["src/**/*.{spec,test}.{ts,tsx}"],
 		onConsoleLog,
 	},
 	resolve: {
