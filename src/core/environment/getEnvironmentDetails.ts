@@ -8,7 +8,7 @@ import delay from "delay"
 import type { ExperimentId } from "@roo-code/types"
 
 import { formatLanguage } from "../../shared/language"
-import { defaultModeSlug, getFullModeDetails } from "../../shared/modes"
+import { getFullModeDetails } from "../../shared/modes"
 import { getApiMetrics } from "../../shared/getApiMetrics"
 import { listFiles } from "../../services/glob/list-files"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
@@ -260,7 +260,6 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 
 	// Add current mode and any mode-specific warnings.
 	const {
-		mode,
 		customModes,
 		customModePrompts,
 		experiments = {} as Record<ExperimentId, boolean>,
@@ -268,7 +267,9 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 		language,
 	} = state ?? {}
 
-	const currentMode = mode ?? defaultModeSlug
+	// The task's own mode, not the one in provider state: that is the focused task's mode,
+	// and a background subagent or a delegated child may run in another one.
+	const currentMode = await cline.getTaskMode()
 
 	const modeDetails = await getFullModeDetails(currentMode, customModes, customModePrompts, {
 		cwd: cline.cwd,

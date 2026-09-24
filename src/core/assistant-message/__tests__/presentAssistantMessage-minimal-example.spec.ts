@@ -47,6 +47,7 @@ describe("presentAssistantMessage attaches minimal valid examples", () => {
 			toolRepetitionDetector: {
 				check: vi.fn().mockReturnValue({ allowExecution: true }),
 			},
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			providerRef: {
 				deref: () => ({
 					getState: vi.fn().mockResolvedValue({ mode: "code", customModes: [] }),

@@ -1353,7 +1353,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 			if (provider) {
 				if (mode) {
-					await provider.setMode(mode)
+					// The task runs in its own mode (not the provider's), so the focused task
+					// switches the way the mode selector does; that also updates provider state.
+					if (provider.getCurrentTask() === this) {
+						await provider.handleModeSwitch(mode)
+					} else {
+						await provider.setMode(mode)
+					}
 				}
 
 				if (providerProfile) {

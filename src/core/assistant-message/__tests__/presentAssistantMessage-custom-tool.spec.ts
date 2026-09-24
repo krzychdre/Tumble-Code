@@ -76,6 +76,7 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 					}),
 				}),
 			},
+			getTaskMode: vi.fn().mockResolvedValue("code"),
 			say: vi.fn().mockResolvedValue(undefined),
 			ask: vi.fn().mockResolvedValue({ response: "yesButtonClicked" }),
 			askSay: {
@@ -94,6 +95,59 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 			}
 			mockTask.userMessageContent.push(toolResult)
 			return true
+		})
+	})
+
+	describe("task-local mode", () => {
+		// The provider state holds the focused task's mode. A background subagent or a
+		// delegated child may run in another mode, and must be judged by its own.
+		beforeEach(() => {
+			mockTask.getTaskMode.mockResolvedValue("architect")
+		})
+
+		it("validates a tool call against the task's mode, not the provider's", async () => {
+			mockTask.assistantMessageContent = [
+				{
+					type: "tool_use",
+					id: "tool_call_mode_1",
+					name: "read_file",
+					params: { path: "a.txt" },
+					nativeArgs: { path: "a.txt" },
+					partial: false,
+				},
+			]
+			vi.mocked(customToolRegistry.has).mockReturnValue(false)
+
+			await presentAssistantMessage(mockTask)
+
+			expect(validateToolUse).toHaveBeenCalledWith(
+				"read_file",
+				"architect",
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				expect.anything(),
+				undefined,
+				mockTask.cwd,
+			)
+		})
+
+		it("hands the task's mode to a custom tool", async () => {
+			const execute = vi.fn().mockResolvedValue("ok")
+			mockTask.assistantMessageContent = [
+				{ type: "tool_use", id: "tool_call_mode_2", name: "my_custom_tool", params: {}, partial: false },
+			]
+			vi.mocked(customToolRegistry.has).mockReturnValue(true)
+			vi.mocked(customToolRegistry.get).mockReturnValue({
+				name: "my_custom_tool",
+				description: "A custom tool",
+				execute,
+			})
+
+			await presentAssistantMessage(mockTask)
+
+			// No parameters schema, so the tool gets no parsed arguments.
+			expect(execute).toHaveBeenCalledWith(undefined, expect.objectContaining({ mode: "architect" }))
 		})
 	})
 
