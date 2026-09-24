@@ -40,6 +40,7 @@ vi.mock("../diagnosticsHandler", () => ({
 import type { ModelRecord } from "@roo-code/types"
 
 import { webviewMessageHandler } from "../webviewMessageHandler"
+import { defaultModeSlug } from "../../../shared/modes"
 import type { ClineProvider } from "../ClineProvider"
 import { getModels } from "../../../api/providers/fetchers/modelCache"
 import { getCommands } from "../../../services/command/commands"
@@ -60,6 +61,7 @@ const mockClineProvider = {
 		getCustomModes: vi.fn(),
 		deleteCustomMode: vi.fn(),
 	},
+	handleModeSwitch: vi.fn().mockResolvedValue(undefined),
 	context: {
 		extensionPath: "/mock/extension/path",
 		globalStorageUri: { fsPath: "/mock/global/storage" },
@@ -326,6 +328,22 @@ describe("webviewMessageHandler - deleteCustomMode", () => {
 		expect(vscode.window.showInformationMessage).not.toHaveBeenCalled()
 		expect(mockClineProvider.customModesManager.deleteCustomMode).toHaveBeenCalledWith(slug)
 		expect(fs.rm).toHaveBeenCalledWith(rulesFolderPath, { recursive: true, force: true })
+	})
+
+	// The running task reads its own mode, so after deleting a mode the switch to the
+	// default mode must go through handleModeSwitch; only overwriting the shared
+	// "mode" state would leave the task running in the deleted mode.
+	it("switches the task to the default mode through handleModeSwitch", async () => {
+		const slug = "test-deleted-mode"
+		vi.mocked(mockClineProvider.customModesManager.getCustomModes).mockResolvedValue([
+			{ name: "Deleted", slug, roleDefinition: "Role", groups: [], source: "global" } as ModeConfig,
+		])
+		vi.mocked(fsUtils.fileExistsAtPath).mockResolvedValue(false)
+		vi.mocked(mockClineProvider.customModesManager.deleteCustomMode).mockResolvedValue(undefined)
+
+		await webviewMessageHandler(mockClineProvider, { type: "deleteCustomMode", slug })
+
+		expect(mockClineProvider.handleModeSwitch).toHaveBeenCalledWith(defaultModeSlug)
 	})
 
 	it("should delete a global mode and its rules folder", async () => {

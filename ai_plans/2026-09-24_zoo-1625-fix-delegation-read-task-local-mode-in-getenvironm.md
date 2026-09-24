@@ -75,3 +75,14 @@ Mock tasks in 9 existing specs gained `getTaskMode`. `core/task`, `core/environm
     task, they switch the user's task instead of the caller.
   - `webviewMessageHandler.ts:1933/2029` (saving or deleting a custom mode) write the provider mode
     without `handleModeSwitch`, so the selector can now show a mode the focused task does not run.
+
+## Follow-up commit: deleting a custom mode
+
+Found while reviewing this port: `deleteCustomMode` in `src/core/webview/webviewMessageHandler.ts` only
+overwrote the shared `mode` state with `defaultModeSlug`. Before this port the task read that shared value,
+so it followed; after it the running task would have stayed in the deleted mode while the selector showed the
+default. The handler now calls `provider.handleModeSwitch(defaultModeSlug)`, the same path the mode selector
+uses (it also posts state). `updateCustomMode` keeps its plain state write: the Modes view already switches to
+a mode through `handleModeSwitch` before editing it, so that write is a no-op in practice.
+Test: `webviewMessageHandler.spec.ts` "switches the task to the default mode through handleModeSwitch"
+(failed before, 28/28 after).
