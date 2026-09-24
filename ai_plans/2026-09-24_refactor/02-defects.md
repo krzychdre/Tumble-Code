@@ -202,3 +202,11 @@ where their files are disjoint; the coordinator merges in order.
   throwing, `getNativeTools()` unchanged, the mode-switch case; a snapshot of the whole converted native tool set,
   recorded before the fix, is unchanged, so models receive the same schemas. For API-3: openai-native and
   openai-codex copies do not strip `null` while base-provider does (drift); xai converts parameters twice.
+- **DEF-C1:** DONE, merged 2026-09-24 as #218 (`9d8e65af2`). `ApiRequestBuilderAccess` gained an optional
+  `rooIgnoreController`; `buildSystemPrompt` passes `getInstructions()` like the preview does; `TaskApiLoop` exposes
+  the controller through a getter so each request reads the current one (`TaskLifecycle` clears it on dispose).
+  3 tests through the real `TaskApiLoop` to `ApiRequestBuilder` wiring with a real `RooIgnoreController`: live prompt
+  contains the instructions, preview and live get the same value, the controller is read at request time. Restores
+  pre-May text only (no new wording for weak models; mode-independent). CI note: the first run failed in `bundle`
+  with `ENOENT src/node_modules/esbuild-wasm/wasm_exec_node.js` (an install glitch; main was green with the same
+  lockfile); `gh pr update-branch` reran it green. If it recurs it becomes a Phase 0 item.
