@@ -10,7 +10,7 @@ import { QDRANT_CODE_BLOCK_NAMESPACE } from "../../constants"
 import type { CodeBlock } from "../../interfaces"
 
 // Mock TelemetryService
-vi.mock("../../../../../packages/telemetry/src/TelemetryService", () => ({
+vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vi.fn(),

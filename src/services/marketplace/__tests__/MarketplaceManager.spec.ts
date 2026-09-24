@@ -21,7 +21,7 @@ vi.mock("@roo-code/cloud", () => ({
 vi.mock("axios")
 
 // Mock TelemetryService
-vi.mock("../../../../packages/telemetry/src/TelemetryService", () => ({
+vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureMarketplaceItemInstalled: vi.fn(),

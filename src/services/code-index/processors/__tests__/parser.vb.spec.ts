@@ -1,7 +1,7 @@
 import { CodeParser } from "../parser"
 
 // Mock TelemetryService
-vi.mock("../../../../../packages/telemetry/src/TelemetryService", () => ({
+vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			captureEvent: vi.fn(),
