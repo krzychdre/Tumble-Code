@@ -479,3 +479,76 @@ describe("MiniMaxHandler", () => {
 		})
 	})
 })
+
+// DEF-C9: MiniMax speaks the Anthropic streaming protocol, so message_delta
+// carries the real, cumulative output token count and the reported cost must
+// bill it.
+describe("MiniMaxHandler cost accounting", () => {
+	let handler: MiniMaxHandler
+	let mockCreate: any
+
+	const scriptedStream = (events: any[]) =>
+		mockCreate.mockResolvedValueOnce({
+			async *[Symbol.asyncIterator]() {
+				for (const event of events) {
+					yield event
+				}
+			},
+		})
+
+	const collectCostChunk = async () => {
+		const chunks: any[] = []
+		for await (const chunk of handler.createMessage("system", [{ role: "user", content: "hi" }])) {
+			chunks.push(chunk)
+		}
+		const costChunks = chunks.filter((chunk) => chunk.type === "usage" && chunk.totalCost !== undefined)
+		expect(costChunks).toHaveLength(1)
+		return costChunks[0]
+	}
+
+	const expectedCost = (inputTokens: number, outputTokens: number) => {
+		const { inputPrice = 0, outputPrice = 0 } = handler.getModel().info
+		expect(outputPrice).toBeGreaterThan(0)
+		return (inputPrice * inputTokens + outputPrice * outputTokens) / 1_000_000
+	}
+
+	beforeEach(() => {
+		vitest.clearAllMocks()
+		mockCreate = (Anthropic as unknown as any)().messages.create
+		handler = new MiniMaxHandler({ minimaxApiKey: "test-minimax-api-key" })
+	})
+
+	it("bills the output tokens reported in message_delta", async () => {
+		scriptedStream([
+			{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 1 } } },
+			{ type: "content_block_start", index: 0, content_block: { type: "text", text: "Hello" } },
+			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
+			{ type: "message_stop" },
+		])
+
+		const costChunk = await collectCostChunk()
+
+		expect(costChunk.totalCost).toBeCloseTo(expectedCost(1000, 500), 12)
+	})
+
+	it("treats message_delta output tokens as cumulative and does not double count", async () => {
+		scriptedStream([
+			{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 1 } } },
+			{ type: "message_delta", delta: {}, usage: { output_tokens: 200 } },
+			{ type: "message_delta", delta: { stop_reason: "end_turn" }, usage: { output_tokens: 500 } },
+			{ type: "message_stop" },
+		])
+
+		const costChunk = await collectCostChunk()
+
+		expect(costChunk.totalCost).toBeCloseTo(expectedCost(1000, 500), 12)
+	})
+
+	it("keeps the message_start output count when no message_delta arrives", async () => {
+		scriptedStream([{ type: "message_start", message: { usage: { input_tokens: 1000, output_tokens: 7 } } }])
+
+		const costChunk = await collectCostChunk()
+
+		expect(costChunk.totalCost).toBeCloseTo(expectedCost(1000, 7), 12)
+	})
+})
