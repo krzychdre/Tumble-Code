@@ -2,7 +2,7 @@
  * @fileoverview Implementation of the compact logging system's main logger class
  */
 
-import { ILogger, LogMeta, CompactLogEntry, LogLevel } from "./types"
+import { ILogger, LogMeta, CompactLogEntry, LogLevel, ICompactTransport } from "./types"
 import { CompactTransport } from "./CompactTransport"
 
 /**
@@ -10,7 +10,7 @@ import { CompactTransport } from "./CompactTransport"
  * @implements {ILogger}
  */
 export class CompactLogger implements ILogger {
-	private transport: CompactTransport
+	private transport: ICompactTransport
 	private parentMeta: LogMeta | undefined
 
 	/**
@@ -18,7 +18,7 @@ export class CompactLogger implements ILogger {
 	 * @param transport - Optional custom transport instance
 	 * @param parentMeta - Optional parent metadata for hierarchical logging
 	 */
-	constructor(transport?: CompactTransport, parentMeta?: LogMeta) {
+	constructor(transport?: ICompactTransport, parentMeta?: LogMeta) {
 		this.transport = transport ?? new CompactTransport()
 		this.parentMeta = parentMeta
 	}
