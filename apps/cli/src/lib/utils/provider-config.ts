@@ -20,7 +20,7 @@
  * conventional env var (e.g. OPENAI_API_KEY), then the fallback's key.
  */
 
-import { openAiCodexDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@roo-code/types"
+import { getProviderDefaultModelId, openAiModelInfoSaneDefaults, type ProviderSettings } from "@roo-code/types"
 
 import type { ReasoningEffortFlagOptions } from "@/types/types.js"
 import { DEFAULT_FLAGS } from "@/types/constants.js"
@@ -76,6 +76,19 @@ function scopeLayers(fallback: ProviderConfigLayer | undefined, layers: Provider
 	})
 }
 
+/**
+ * The model a provider runs when no layer names one: the CLI's own OpenRouter
+ * default, else the provider's default from the shared tables. openai, ollama
+ * and lmstudio have no default model (the user names one); they keep the CLI
+ * default as before.
+ */
+function defaultModelFor(provider: SupportedProvider): string {
+	if (provider === "openrouter") {
+		return DEFAULT_FLAGS.model
+	}
+	return getProviderDefaultModelId(provider) || DEFAULT_FLAGS.model
+}
+
 export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfigInput): ResolvedProviderConfig {
 	const present = layers.filter((layer): layer is ProviderConfigLayer => layer !== undefined)
 	// Highest precedence first from here on.
@@ -94,7 +107,7 @@ export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfi
 	const pick = (key: "model" | "baseUrl"): string | undefined =>
 		own.find((layer) => layer[key])?.[key] ?? (fallbackIsOwn ? fallback?.[key] || undefined : undefined)
 
-	const model = pick("model") ?? (provider === "openai-codex" ? openAiCodexDefaultModelId : DEFAULT_FLAGS.model)
+	const model = pick("model") ?? defaultModelFor(provider)
 
 	let apiKey: string | undefined
 	let missingApiKeyEnv: string | undefined

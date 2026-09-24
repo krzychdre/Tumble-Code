@@ -245,29 +245,29 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 
 ## Options
 
-| Option                                  | Description                                                                                  | Default                     |
-| --------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------- |
-| `[prompt]`                              | Your prompt (positional argument, optional)                                                  | None                        |
-| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                     | None                        |
-| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                       | None                        |
-| `-w, --workspace <path>`                | Workspace path to operate in                                                                 | Current directory           |
-| `-p, --print`                           | Print response and exit (non-interactive mode)                                               | `false`                     |
-| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                                 | `false`                     |
-| `-e, --extension <path>`                | Path to the extension bundle directory                                                       | Auto-detected               |
-| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)               | `false`                     |
-| `-a, --require-approval`                | Require manual approval before actions execute                                               | `false`                     |
-| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                                   | From env var                |
-| `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                                   | `openrouter`                |
-| `-m, --model <model>`                   | Model to use                                                                                 | `anthropic/claude-opus-4.6` |
-| `--base-url <url>`                      | Base URL override for the selected provider (when supported)                                 | None                        |
-| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                         | Settings, else `code`       |
-| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                                    | Auto-detected shell         |
-| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh, max) | Settings, else `medium`     |
-| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)           | `10`                        |
-| `--command-execution-timeout <seconds>` | Seconds a shell command may run before it is stopped (`0` means no limit)                    | Settings, else `300`        |
-| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                        | `false`                     |
-| `--oneshot`                             | Exit upon task completion                                                                    | `false`                     |
-| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                               | `text`                      |
+| Option                                  | Description                                                                                  | Default                 |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------- |
+| `[prompt]`                              | Your prompt (positional argument, optional)                                                  | None                    |
+| `--prompt-file <path>`                  | Read prompt from a file instead of command line argument                                     | None                    |
+| `--create-with-session-id <session-id>` | Create a new task using the provided session ID (UUID)                                       | None                    |
+| `-w, --workspace <path>`                | Workspace path to operate in                                                                 | Current directory       |
+| `-p, --print`                           | Print response and exit (non-interactive mode)                                               | `false`                 |
+| `--stdin-prompt-stream`                 | Read NDJSON control commands from stdin (requires `--print`)                                 | `false`                 |
+| `-e, --extension <path>`                | Path to the extension bundle directory                                                       | Auto-detected           |
+| `-d, --debug`                           | Enable debug output (includes detailed debug information, prompts, paths, etc)               | `false`                 |
+| `-a, --require-approval`                | Require manual approval before actions execute                                               | `false`                 |
+| `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                                   | From env var            |
+| `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                                   | `openrouter`            |
+| `-m, --model <model>`                   | Model to use (openrouter: `anthropic/claude-opus-4.6`; other providers: their own default)   | Provider default        |
+| `--base-url <url>`                      | Base URL override for the selected provider (when supported)                                 | None                    |
+| `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                         | Settings, else `code`   |
+| `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                                    | Auto-detected shell     |
+| `-r, --reasoning-effort <effort>`       | Reasoning effort level (unspecified, disabled, none, minimal, low, medium, high, xhigh, max) | Settings, else `medium` |
+| `--consecutive-mistake-limit <n>`       | Consecutive error/repetition limit before guidance prompt (`0` disables the limit)           | `10`                    |
+| `--command-execution-timeout <seconds>` | Seconds a shell command may run before it is stopped (`0` means no limit)                    | Settings, else `300`    |
+| `--ephemeral`                           | Run without persisting state (uses temporary storage)                                        | `false`                 |
+| `--oneshot`                             | Exit upon task completion                                                                    | `false`                 |
+| `--output-format <format>`              | Output format with `--print`: `text`, `json`, or `stream-json`                               | `text`                  |
 
 ## Auth Commands
 
