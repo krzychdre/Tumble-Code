@@ -2449,4 +2449,112 @@ describe("McpHub", () => {
 			)
 		})
 	})
+
+	// DEF-C13: a failed connect must not leave isConnecting true (every API
+	// request waits up to 10 s for it), an unrelated settings change must not
+	// drop other servers' file watchers, and an unchanged server must not restart.
+	describe("connection bookkeeping (DEF-C13)", () => {
+		const serverA = { command: "node", args: ["a.js"], watchPaths: ["/watch/a"] }
+		const serverB = { command: "node", args: ["b.js"], watchPaths: ["/watch/b"] }
+		let watchersByPath: Map<string, { on: Mock; close: Mock }[]>
+		let transportCount: () => number
+
+		const settleHub = () => new Promise((resolve) => setTimeout(resolve, 100))
+
+		beforeEach(async () => {
+			const chokidar = (await import("chokidar")).default
+			watchersByPath = new Map()
+			vi.mocked(chokidar.watch).mockImplementation((paths: any) => {
+				const watcher = { on: vi.fn().mockReturnThis(), close: vi.fn() }
+				const key = ([] as string[]).concat(paths).join(",")
+				watchersByPath.set(key, [...(watchersByPath.get(key) ?? []), watcher])
+				return watcher as any
+			})
+
+			const stdioModule = await import("@modelcontextprotocol/sdk/client/stdio.js")
+			const StdioClientTransport = stdioModule.StdioClientTransport as ReturnType<typeof vi.fn>
+			StdioClientTransport.mockImplementation(() => ({
+				start: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				stderr: { on: vi.fn() },
+				onerror: null,
+				onclose: null,
+			}))
+			transportCount = () => StdioClientTransport.mock.calls.length
+
+			const clientModule = await import("@modelcontextprotocol/sdk/client/index.js")
+			const Client = clientModule.Client as ReturnType<typeof vi.fn>
+			Client.mockImplementation(() => ({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				getInstructions: vi.fn().mockReturnValue(""),
+				request: vi.fn().mockResolvedValue({ tools: [], resources: [], resourceTemplates: [] }),
+			}))
+
+			vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ mcpServers: { a: serverA, b: serverB } }))
+		})
+
+		it("resets isConnecting when updating connections throws", async () => {
+			const hub = new McpHub(mockProvider as ClineProvider)
+			await settleHub()
+			vi.mocked(fs.readFile).mockResolvedValue("not json")
+
+			await hub.updateServerConnections({ a: { ...serverA, args: ["changed.js"] } }, "global").catch(() => {})
+
+			expect(hub.isConnecting).toBe(false)
+		})
+
+		it("resets isConnecting when a restart throws", async () => {
+			const hub = new McpHub(mockProvider as ClineProvider)
+			await settleHub()
+			vi.mocked(fs.readFile).mockResolvedValue("not json")
+
+			await hub.restartConnection("a", "global").catch(() => {})
+
+			expect(hub.isConnecting).toBe(false)
+		})
+
+		it("creates each server's file watcher once", async () => {
+			new McpHub(mockProvider as ClineProvider)
+			await settleHub()
+
+			expect(watchersByPath.get("/watch/a")).toHaveLength(1)
+			expect(watchersByPath.get("/watch/b")).toHaveLength(1)
+		})
+
+		it("does not restart a server whose configuration did not change", async () => {
+			const hub = new McpHub(mockProvider as ClineProvider)
+			await settleHub()
+			const before = transportCount()
+
+			await hub.updateServerConnections({ a: { ...serverA }, b: { ...serverB } }, "global")
+
+			expect(transportCount()).toBe(before)
+		})
+
+		it("keeps an unchanged server's watcher when another server changes", async () => {
+			const hub = new McpHub(mockProvider as ClineProvider)
+			await settleHub()
+
+			await hub.updateServerConnections({ a: { ...serverA }, b: { ...serverB, args: ["b2.js"] } }, "global")
+
+			const [watcherA] = watchersByPath.get("/watch/a")!
+			expect(watcherA.close).not.toHaveBeenCalled()
+			const watchersB = watchersByPath.get("/watch/b")!
+			expect(watchersB[0].close).toHaveBeenCalled()
+			expect(watchersB.at(-1)!.close).not.toHaveBeenCalled()
+		})
+
+		it("restarts none of the other servers when one server is deleted", async () => {
+			const hub = new McpHub(mockProvider as ClineProvider)
+			await settleHub()
+			const before = transportCount()
+
+			await hub.deleteServer("b", "global")
+
+			expect(transportCount()).toBe(before)
+			expect(hub.connections.map((c) => c.server.name)).toEqual(["a"])
+			expect(watchersByPath.get("/watch/a")![0].close).not.toHaveBeenCalled()
+		})
+	})
 })

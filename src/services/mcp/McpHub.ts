@@ -151,6 +151,7 @@ export class McpHub {
 	private providerRef: WeakRef<ClineProvider>
 	private disposables: vscode.Disposable[] = []
 	private settingsWatcher?: vscode.FileSystemWatcher
+	/** File watchers per server, keyed by `fileWatcherKey(source, name)`. */
 	private fileWatchers: Map<string, FSWatcher[]> = new Map()
 	private projectMcpWatcher?: vscode.FileSystemWatcher
 	private isDisposed: boolean = false
@@ -710,10 +711,7 @@ export class McpHub {
 			let transport: StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport
 
 			// Inject variables to the config (environment, magic variables,...)
-			const configInjected = (await injectVariables(config, {
-				env: process.env,
-				workspaceFolder: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "",
-			})) as typeof config
+			const configInjected = await this.injectConfigVariables(config)
 
 			if (configInjected.type === "stdio") {
 				// On Windows, wrap commands with cmd.exe to handle non-exe executables like npx.ps1
@@ -1090,7 +1088,7 @@ export class McpHub {
 
 	async deleteConnection(name: string, source?: "global" | "project"): Promise<void> {
 		// Clean up file watchers for this server
-		this.removeFileWatchersForServer(name)
+		this.removeFileWatchersForServer(name, source)
 
 		// If source is provided, only delete connections from that source
 		const connections = source
@@ -1131,65 +1129,88 @@ export class McpHub {
 		if (manageConnectingState) {
 			this.isConnecting = true
 		}
-		this.removeAllFileWatchers()
-		// Filter connections by source
-		const currentConnections = this.connections.filter(
-			(conn) => conn.server.source === source || (!conn.server.source && source === "global"),
-		)
-		const currentNames = new Set(currentConnections.map((conn) => conn.server.name))
-		const newNames = new Set(Object.keys(newServers))
+		try {
+			// Filter connections by source
+			const currentConnections = this.connections.filter(
+				(conn) => conn.server.source === source || (!conn.server.source && source === "global"),
+			)
+			const currentNames = new Set(currentConnections.map((conn) => conn.server.name))
+			const newNames = new Set(Object.keys(newServers))
 
-		// Delete removed servers
-		for (const name of currentNames) {
-			if (!newNames.has(name)) {
-				await this.deleteConnection(name, source)
-			}
-		}
-
-		// Update or add servers
-		for (const [name, config] of Object.entries(newServers)) {
-			// Only consider connections that match the current source
-			const currentConnection = this.findConnection(name, source)
-
-			// Validate and transform the config
-			let validatedConfig: z.infer<typeof ServerConfigSchema>
-			try {
-				validatedConfig = this.validateServerConfig(config, name)
-			} catch (error) {
-				this.showErrorMessage(`Invalid configuration for MCP server "${name}"`, error)
-				continue
-			}
-
-			if (!currentConnection) {
-				// New server
-				try {
-					// Only setup file watcher for enabled servers
-					if (!validatedConfig.disabled) {
-						this.setupFileWatcher(name, validatedConfig, source)
-					}
-					await this.connectToServer(name, validatedConfig, source)
-				} catch (error) {
-					this.showErrorMessage(`Failed to connect to new MCP server ${name}`, error)
-				}
-			} else if (!deepEqual(JSON.parse(currentConnection.server.config), config)) {
-				// Existing server with changed config
-				try {
-					// Only setup file watcher for enabled servers
-					if (!validatedConfig.disabled) {
-						this.setupFileWatcher(name, validatedConfig, source)
-					}
+			// Delete removed servers (their file watchers go with them)
+			for (const name of currentNames) {
+				if (!newNames.has(name)) {
 					await this.deleteConnection(name, source)
-					await this.connectToServer(name, validatedConfig, source)
-				} catch (error) {
-					this.showErrorMessage(`Failed to reconnect MCP server ${name}`, error)
 				}
 			}
-			// If server exists with same config, do nothing
+
+			// Update or add servers. connectToServer sets up the file watchers of
+			// enabled servers; unchanged servers keep theirs.
+			for (const [name, config] of Object.entries(newServers)) {
+				// Only consider connections that match the current source
+				const currentConnection = this.findConnection(name, source)
+
+				// Validate and transform the config
+				let validatedConfig: z.infer<typeof ServerConfigSchema>
+				try {
+					validatedConfig = this.validateServerConfig(config, name)
+				} catch (error) {
+					this.showErrorMessage(`Invalid configuration for MCP server "${name}"`, error)
+					continue
+				}
+
+				if (!currentConnection) {
+					// New server
+					try {
+						await this.connectToServer(name, validatedConfig, source)
+					} catch (error) {
+						this.showErrorMessage(`Failed to connect to new MCP server ${name}`, error)
+					}
+				} else if (!(await this.isSameStoredConfig(currentConnection.server.config, validatedConfig))) {
+					// Existing server with changed config
+					try {
+						await this.deleteConnection(name, source)
+						await this.connectToServer(name, validatedConfig, source)
+					} catch (error) {
+						this.showErrorMessage(`Failed to reconnect MCP server ${name}`, error)
+					}
+				}
+				// If server exists with same config, do nothing
+			}
+			await this.notifyWebviewOfServerChanges()
+		} finally {
+			if (manageConnectingState) {
+				this.isConnecting = false
+			}
 		}
-		await this.notifyWebviewOfServerChanges()
-		if (manageConnectingState) {
-			this.isConnecting = false
-		}
+	}
+
+	/**
+	 * Whether a connection's stored config describes the same server as a
+	 * freshly validated config. A connected server stores its config with
+	 * defaults applied and variables injected, a placeholder (disabled) server
+	 * with defaults only, so the validated config is compared in both forms.
+	 */
+	private async isSameStoredConfig(
+		storedConfig: string,
+		validatedConfig: z.infer<typeof ServerConfigSchema>,
+	): Promise<boolean> {
+		const stored = JSON.parse(storedConfig)
+		const asJson = (value: unknown) => JSON.parse(JSON.stringify(value))
+		return (
+			deepEqual(stored, asJson(validatedConfig)) ||
+			deepEqual(stored, asJson(await this.injectConfigVariables(validatedConfig)))
+		)
+	}
+
+	/** Inject environment and magic variables (e.g. `${env:TOKEN}`, `${workspaceFolder}`) into a config. */
+	private async injectConfigVariables(
+		config: z.infer<typeof ServerConfigSchema>,
+	): Promise<z.infer<typeof ServerConfigSchema>> {
+		return (await injectVariables(config, {
+			env: process.env,
+			workspaceFolder: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "",
+		})) as typeof config
 	}
 
 	private setupFileWatcher(
@@ -1197,12 +1218,11 @@ export class McpHub {
 		config: z.infer<typeof ServerConfigSchema>,
 		source: "global" | "project" = "global",
 	) {
-		// Initialize an empty array for this server if it doesn't exist
-		if (!this.fileWatchers.has(name)) {
-			this.fileWatchers.set(name, [])
-		}
-
-		const watchers = this.fileWatchers.get(name) || []
+		// Replace any watchers this server already has, so a reconnect never
+		// leaves two watchers that each restart the server.
+		this.removeFileWatchersForServer(name, source)
+		const key = fileWatcherKey(source, name)
+		const watchers: FSWatcher[] = []
 
 		// Only stdio type has args
 		if (config.type === "stdio") {
@@ -1250,7 +1270,7 @@ export class McpHub {
 
 			// Update the fileWatchers map with all watchers for this server
 			if (watchers.length > 0) {
-				this.fileWatchers.set(name, watchers)
+				this.fileWatchers.set(key, watchers)
 			}
 		}
 	}
@@ -1260,54 +1280,60 @@ export class McpHub {
 		this.fileWatchers.clear()
 	}
 
-	private removeFileWatchersForServer(serverName: string) {
-		const watchers = this.fileWatchers.get(serverName)
-		if (watchers) {
-			watchers.forEach((watcher) => watcher.close())
-			this.fileWatchers.delete(serverName)
+	/** Close a server's file watchers; without a source, those of both sources. */
+	private removeFileWatchersForServer(serverName: string, source?: "global" | "project") {
+		const sources = source ? [source] : (["global", "project"] as const)
+		for (const s of sources) {
+			const key = fileWatcherKey(s, serverName)
+			const watchers = this.fileWatchers.get(key)
+			if (watchers) {
+				watchers.forEach((watcher) => watcher.close())
+				this.fileWatchers.delete(key)
+			}
 		}
 	}
 
 	async restartConnection(serverName: string, source?: "global" | "project"): Promise<void> {
 		this.isConnecting = true
-
-		// Check if MCP is globally enabled
-		const mcpEnabled = await this.isMcpEnabled()
-		if (!mcpEnabled) {
-			this.isConnecting = false
-			return
-		}
-
-		// Get existing connection and update its status
-		const connection = this.findConnection(serverName, source)
-		const config = connection?.server.config
-		if (config) {
-			vscode.window.showInformationMessage(t("mcp:info.server_restarting", { serverName }))
-			connection.server.status = "connecting"
-			connection.server.error = ""
-			await this.notifyWebviewOfServerChanges()
-			await delay(500) // artificial delay to show user that server is restarting
-			try {
-				await this.deleteConnection(serverName, connection.server.source)
-				// Parse the config to validate it
-				const parsedConfig = JSON.parse(config)
-				try {
-					// Validate the config
-					const validatedConfig = this.validateServerConfig(parsedConfig, serverName)
-
-					// Try to connect again using validated config
-					await this.connectToServer(serverName, validatedConfig, connection.server.source || "global")
-					vscode.window.showInformationMessage(t("mcp:info.server_connected", { serverName }))
-				} catch (validationError) {
-					this.showErrorMessage(`Invalid configuration for MCP server "${serverName}"`, validationError)
-				}
-			} catch (error) {
-				this.showErrorMessage(`Failed to restart ${serverName} MCP server connection`, error)
+		try {
+			// Check if MCP is globally enabled
+			const mcpEnabled = await this.isMcpEnabled()
+			if (!mcpEnabled) {
+				return
 			}
-		}
 
-		await this.notifyWebviewOfServerChanges()
-		this.isConnecting = false
+			// Get existing connection and update its status
+			const connection = this.findConnection(serverName, source)
+			const config = connection?.server.config
+			if (config) {
+				vscode.window.showInformationMessage(t("mcp:info.server_restarting", { serverName }))
+				connection.server.status = "connecting"
+				connection.server.error = ""
+				await this.notifyWebviewOfServerChanges()
+				await delay(500) // artificial delay to show user that server is restarting
+				try {
+					await this.deleteConnection(serverName, connection.server.source)
+					// Parse the config to validate it
+					const parsedConfig = JSON.parse(config)
+					try {
+						// Validate the config
+						const validatedConfig = this.validateServerConfig(parsedConfig, serverName)
+
+						// Try to connect again using validated config
+						await this.connectToServer(serverName, validatedConfig, connection.server.source || "global")
+						vscode.window.showInformationMessage(t("mcp:info.server_connected", { serverName }))
+					} catch (validationError) {
+						this.showErrorMessage(`Invalid configuration for MCP server "${serverName}"`, validationError)
+					}
+				} catch (error) {
+					this.showErrorMessage(`Failed to restart ${serverName} MCP server connection`, error)
+				}
+			}
+
+			await this.notifyWebviewOfServerChanges()
+		} finally {
+			this.isConnecting = false
+		}
 	}
 
 	public async refreshAllConnections(): Promise<void> {
@@ -1383,9 +1409,15 @@ export class McpHub {
 	private async notifyWebviewOfServerChanges(): Promise<void> {
 		// Get global server order from settings file
 		const settingsPath = await this.getMcpSettingsFilePath()
-		const content = await fs.readFile(settingsPath, "utf-8")
-		const config = JSON.parse(content)
-		const globalServerOrder = Object.keys(config.mcpServers || {})
+		let globalServerOrder: string[] = []
+		try {
+			const content = await fs.readFile(settingsPath, "utf-8")
+			const config = JSON.parse(content)
+			globalServerOrder = Object.keys(config.mcpServers || {})
+		} catch (error) {
+			// An unreadable or half-written settings file only loses the display order.
+			console.error("Failed to read MCP settings for server order:", error)
+		}
 
 		// Get project server order if available
 		const projectMcpPath = await this.getProjectMcpPath()
@@ -1468,7 +1500,7 @@ export class McpHub {
 					// If disabling a connected server, disconnect it
 					if (disabled && connection.server.status === "connected") {
 						// Clean up file watchers when disabling
-						this.removeFileWatchersForServer(serverName)
+						this.removeFileWatchersForServer(serverName, serverSource)
 						await this.deleteConnection(serverName, serverSource)
 						// Re-add as a disabled connection
 						// Re-read config from file to get updated disabled state
@@ -2009,4 +2041,8 @@ export class McpHub {
 
 		this.disposables.forEach((d) => d.dispose())
 	}
+}
+
+function fileWatcherKey(source: "global" | "project", name: string): string {
+	return `${source}:${name}`
 }
