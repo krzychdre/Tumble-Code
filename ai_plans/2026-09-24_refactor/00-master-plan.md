@@ -1,6 +1,6 @@
 # Refactor master plan (2026-09-24)
 
-**Status:** planned, nothing executed yet; owner decisions 1, 2, 3, 4a, 4b, 6, 10 and 12 recorded on 2026-09-24. Written on
+**Status:** planned, nothing executed yet; owner decisions 1, 2, 3, 4a, 4b, 6, 8, 10 and 12 recorded on 2026-09-24. Written on
 branch `docs/refactor-plan-2026-09-24` (commit `b99049cdb` and its follow-up), not pushed, not merged.
 **Supersedes:** `ai_plans/refactor-backend-src.md`, `ai_plans/2026-07-14_src-refactor-plan.md`,
 `ai_plans/2026-07-14_webview-ui-refactor-plan.md`, `ai_plans/refactor-webview-ui.md`,
@@ -204,7 +204,7 @@ only after the owner confirms it (ask at the start of the item that depends on i
 | 5   | Unknown model ID: keep the ID, substitute the default, or honor it as custom? Providers disagree today.                                                | Open        | Honor custom IDs with default capabilities (as Anthropic and Gemini do)                                                             |
 | 6 | Production logging is a no-op (`src/utils/logging/index.ts` returns a real logger only under test). Intended? | **Decided** | No: write it to the Tumble Code output channel at `info` (TEST-3) |
 | 7   | Remove `migrateSettings` (drops migration for installs older than 2025)?                                                                               | Open        | Yes                                                                                                                                 |
-| 8   | Keep the cloud API LLM proxy endpoints?                                                                                                                | Open        | Put them behind login and a `PROXY_ENABLED=false` default                                                                           |
+| 8   | Keep the cloud API LLM proxy endpoints?                                                                                                                | **Decided** | No: **remove them entirely** (endpoints, `proxy_service`, settings, tests), owner 2026-09-24; DEF-S5 becomes the removal  |
 | 9   | Should `new_task` and `generate_image` create checkpoints (they do in one list, not in the other)?                                                     | Open        | Match the call sites (yes), pinned by a test                                                                                        |
 | 10 | Renovate or Dependabot? Both are configured, neither opened a PR in the last 200. | **Decided** | Renovate; remove `dependabot.yml` (TEST-7). The owner installs the Renovate GitHub App |
 | 11  | When to take React 19 and zod 4?                                                                                                                       | Open        | After Phases 7 and 8 (Phase 11)                                                                                                     |
