@@ -381,3 +381,9 @@ where their files are disjoint; the coordinator merges in order.
   unhandled rejection (model-info-only calls too: settings export, system-prompt preview). The CLI treats that as
   fatal (`shutdown("unhandledRejection", 1)`). Fix: `DeferredErrorGoogleAuth` attaches a no-op catch and returns the
   same promise, so the first request still reports the real error. Full src suite exits 0 again.
+- **DEF-C36:** DONE, merged 2026-09-24 as #249. Both Z.ai tables: glm-4.5 family 98,304, glm-4.6/4.7/4.7-flash(x)/5
+  131,072, glm-4.6v family 32,768 (docs.z.ai concept-param `max_tokens` table and its bigmodel.cn twin, plus model
+  cards for 4.7-flash), `supportsMaxTokens: true` where the limit exceeds the 20% clamp; glm-4.5v context corrected
+  to 65,536 (documented 64K). Sent by default (20% clamp): 16,384 before; after 40,000 (4.6/4.7 intl), 40,960
+  (mainland), 40,551 (glm-5), 26,215 (4.5 and 4.6v families), 13,108 (glm-4.5v). Prices and reasoning settings
+  untouched. Left: GLM-4.5-Flash context (overview 200K vs cards 128K, kept 128K); intl 200,000 vs mainland 204,800.
