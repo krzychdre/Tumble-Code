@@ -255,12 +255,12 @@ export function* processAiSdkStreamPart(part: ExtendedStreamPart): Generator<Api
 			break
 
 		case "error":
-			yield {
-				type: "error",
-				error: "StreamError",
-				message: part.error instanceof Error ? part.error.message : String(part.error),
-			}
-			break
+			// The AI SDK reports request failures (e.g. HTTP 429 after its own
+			// retries) and in-band stream errors as a part instead of throwing.
+			// Throw it, like every other provider's stream error, so the task's
+			// retry/backoff paths see it: TaskStreamProcessor has no "error" case
+			// and would silently ignore a yielded error chunk (DEF-C14).
+			throw part.error instanceof Error ? part.error : new Error(String(part.error))
 
 		// Ignore lifecycle events that don't need to yield chunks
 		case "text-start":
