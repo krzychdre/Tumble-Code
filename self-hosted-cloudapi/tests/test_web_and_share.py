@@ -2011,6 +2011,46 @@ async def test_task_list_search_filters_by_title_and_workspace(client, db_sessio
     assert "Something else" not in resp.text
 
 
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("100%", {"Coverage at 100%"}),
+        ("snake_case", {"Rename to snake_case"}),
+        ("C:\\Users", {"Path C:\\Users\\k"}),
+    ],
+)
+async def test_task_list_search_matches_wildcards_literally(
+    client, db_session, session_factory, query, expected
+):
+    """``%`` and ``_`` are LIKE wildcards; typed into the search box they must
+    mean the characters themselves (DEF-C31). Before the fix "100%" matched
+    every title containing "100" and "snake_case" matched "snake case"."""
+    titles = {
+        "Coverage at 100%",
+        "Raise the limit to 1000",
+        "Rename to snake_case",
+        "Explain snake case vs camel",
+        "Path C:\\Users\\k",
+    }
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        for i, title in enumerate(sorted(titles)):
+            s.add(Task(id=f"t-w{i}", user_id="user_test", title=title))
+        await s.commit()
+
+    _override_web_user(client.app)
+    try:
+        resp = client.get("/app", params={"q": query})
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    import html
+
+    shown = {t for t in titles if html.escape(t, quote=False) in resp.text}
+    assert shown == expected
+
+
 async def test_task_list_does_not_read_message_bodies(client, db_session, session_factory, monkeypatch):
     """The whole point of the summary columns: rendering the list must never touch
     the message corpus. Guards against a future change quietly reintroducing the
