@@ -14,7 +14,14 @@ import {
 } from "@roo-code/types"
 
 import { getModelMaxOutputTokens } from "../../../shared/api"
+import { convertToR1Format } from "../../transform/r1-format"
 import { ZAiHandler } from "../zai"
+
+// Wrap the real converter in a spy so the tests can check which one the handler uses.
+vitest.mock("../../transform/r1-format", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../../transform/r1-format")>()
+	return { ...actual, convertToR1Format: vitest.fn(actual.convertToR1Format) }
+})
 
 vitest.mock("openai", () => {
 	const createMock = vitest.fn()
@@ -1033,6 +1040,66 @@ describe("ZAiHandler", () => {
 			expect(internationalZAiModels["glm-5"].inputPrice).toBe(1.0)
 			expect(internationalZAiModels["glm-5"].outputPrice).toBe(3.2)
 			expect(internationalZAiModels["glm-5"].cacheReadsPrice).toBe(0.2)
+		})
+	})
+
+	describe("message conversion", () => {
+		it("converts GLM thinking history with the shared R1 converter and merges post-tool text", async () => {
+			const handlerWithModel = new ZAiHandler({
+				apiModelId: "glm-4.7",
+				zaiApiKey: "test-zai-api-key",
+				zaiApiLine: "international_coding",
+			})
+
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: () => ({
+					async next() {
+						return { done: true }
+					},
+				}),
+			}))
+
+			const messages = [
+				{ role: "user", content: "Start" },
+				{
+					role: "assistant",
+					reasoning_content: "thinking",
+					content: [{ type: "tool_use", id: "call_1", name: "list_files", input: {} }],
+				},
+				{
+					role: "user",
+					content: [
+						{ type: "tool_result", tool_use_id: "call_1", content: "a.ts" },
+						{ type: "text", text: "<environment_details>x</environment_details>" },
+					],
+				},
+			] as unknown as Anthropic.Messages.MessageParam[]
+
+			await handlerWithModel.createMessage("system prompt", messages).next()
+
+			expect(convertToR1Format).toHaveBeenCalledWith(messages, { mergeToolResultText: true })
+			expect(mockCreate).toHaveBeenCalledWith(
+				expect.objectContaining({
+					messages: [
+						{ role: "system", content: "system prompt" },
+						{ role: "user", content: "Start" },
+						{
+							role: "assistant",
+							content: null,
+							tool_calls: [
+								{ id: "call_1", type: "function", function: { name: "list_files", arguments: "{}" } },
+							],
+							reasoning_content: "thinking",
+						},
+						{
+							role: "tool",
+							tool_call_id: "call_1",
+							content: "a.ts\n\n<environment_details>x</environment_details>",
+						},
+					],
+				}),
+				expect.anything(),
+			)
 		})
 	})
 })

@@ -1,6 +1,7 @@
 // npx vitest run api/transform/__tests__/r1-format.spec.ts
 
 import { convertToR1Format } from "../r1-format"
+import { convertToZAiFormat } from "../zai-format"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
@@ -614,6 +615,133 @@ describe("convertToR1Format", () => {
 				// Most importantly: NO user message after tool message
 				expect(result.filter((m) => m.role === "user")).toHaveLength(1)
 			})
+		})
+	})
+
+	// Z.ai (GLM thinking models) used to have its own copy of this converter. These cases pin
+	// the behavior the Z.ai handler relies on, so the shared converter keeps serving it.
+	describe.each([
+		["convertToR1Format", convertToR1Format],
+		["convertToZAiFormat", convertToZAiFormat],
+	])("Z.ai GLM interleaved thinking (%s)", (_name, convert) => {
+		it("turns a stored reasoning block into reasoning_content next to the tool call", () => {
+			const input = [
+				{ role: "user", content: "List the files" },
+				{
+					role: "assistant",
+					content: [
+						{ type: "reasoning", text: "I should call list_files." },
+						{ type: "text", text: "Listing." },
+						{ type: "tool_use", id: "call_glm_1", name: "list_files", input: { path: "." } },
+					],
+				},
+				{
+					role: "user",
+					content: [
+						{ type: "tool_result", tool_use_id: "call_glm_1", content: "a.ts\nb.ts" },
+						{ type: "text", text: "<environment_details>cwd</environment_details>" },
+					],
+				},
+			]
+
+			const result = convert(input as unknown as Anthropic.Messages.MessageParam[], {
+				mergeToolResultText: true,
+			})
+
+			expect(result).toEqual([
+				{ role: "user", content: "List the files" },
+				{
+					role: "assistant",
+					content: "Listing.",
+					tool_calls: [
+						{
+							id: "call_glm_1",
+							type: "function",
+							function: { name: "list_files", arguments: JSON.stringify({ path: "." }) },
+						},
+					],
+					reasoning_content: "I should call list_files.",
+				},
+				{
+					role: "tool",
+					tool_call_id: "call_glm_1",
+					content: "a.ts\nb.ts\n\n<environment_details>cwd</environment_details>",
+				},
+			])
+		})
+
+		it("prefers the top-level reasoning_content over a reasoning block", () => {
+			const input = [
+				{
+					role: "assistant",
+					reasoning_content: "top level",
+					content: [
+						{ type: "reasoning", text: "from block" },
+						{ type: "text", text: "Answer" },
+					],
+				},
+			]
+
+			const result = convert(input as unknown as Anthropic.Messages.MessageParam[])
+
+			expect(result).toEqual([{ role: "assistant", content: "Answer", reasoning_content: "top level" }])
+		})
+
+		it("merges consecutive plain assistant turns and keeps the latest reasoning_content", () => {
+			const input = [
+				{ role: "assistant", content: "First", reasoning_content: "old thought" },
+				{ role: "assistant", content: "Second", reasoning_content: "new thought" },
+			]
+
+			const result = convert(input as unknown as Anthropic.Messages.MessageParam[])
+
+			expect(result).toEqual([{ role: "assistant", content: "First\nSecond", reasoning_content: "new thought" }])
+		})
+
+		it("keeps a user message when the tool result turn carries an image, even with mergeToolResultText", () => {
+			const input = [
+				{
+					role: "assistant",
+					content: [{ type: "tool_use", id: "call_img", name: "read_file", input: {} }],
+				},
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "call_img",
+							content: [
+								{ type: "text", text: "see image" },
+								{ type: "image", source: { type: "base64", media_type: "image/png", data: "AAA" } },
+							],
+						},
+						{ type: "text", text: "caption" },
+						{ type: "image", source: { type: "base64", media_type: "image/png", data: "BBB" } },
+					],
+				},
+			]
+
+			const result = convert(input as unknown as Anthropic.Messages.MessageParam[], {
+				mergeToolResultText: true,
+			})
+
+			expect(result).toEqual([
+				{
+					role: "assistant",
+					content: null,
+					tool_calls: [
+						{ id: "call_img", type: "function", function: { name: "read_file", arguments: "{}" } },
+					],
+				},
+				{ role: "tool", tool_call_id: "call_img", content: "see image\n(image)" },
+				{
+					role: "user",
+					content: [
+						{ type: "text", text: "caption" },
+						{ type: "image_url", image_url: { url: "data:image/png;base64,BBB" } },
+					],
+				},
+			])
 		})
 	})
 })
