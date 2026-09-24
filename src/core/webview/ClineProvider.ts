@@ -201,6 +201,12 @@ export class ClineProvider
 
 	/** Set by the CLI host at startup; see {@link setCliModeProviderSettings}. */
 	private cliModeProviderSettings?: CliModeProviderSettings
+	/**
+	 * Origin token passed with every task-history mutation this provider
+	 * makes. The shared store echoes it back on the change event, which is
+	 * how {@link subscribeToTaskHistoryStore} recognises (and skips) the
+	 * echo of our own writes.
+	 */
 	private readonly taskHistoryOrigin = Symbol("ClineProvider.taskHistoryOrigin")
 	/**
 	 * In-flight (or settled-successful) {@link TaskHistoryStore} acquire.
@@ -236,12 +242,11 @@ export class ClineProvider
 	 */
 	private storageErrorMessage = ""
 	/**
-	 * IDs of task-history mutations this provider initiated (via
-	 * `updateTaskHistory` / `deleteTaskFromState` /
-	 * `delegateParentAndOpenChild`'s `atomicReadAndUpdate`). Used to
-	 * suppress the `onChange` echo for our own writes so we don't double-send
-	 * the targeted webview message. Entries are consumed (deleted) by the
-	 * `onChange` handler when it sees the matching `external:false` event.
+	 * Chat-message edits waiting for the user to confirm a checkpoint
+	 * restore, keyed by operation ID. Written by
+	 * {@link setPendingEditOperation} (from checkpointRestoreHandler) and
+	 * consumed when the restore finishes; each entry clears itself after
+	 * {@link ClineProvider.PENDING_OPERATION_TIMEOUT_MS}.
 	 */
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
@@ -303,39 +308,6 @@ export class ClineProvider
 			// Already reported by acquireTaskHistoryStore; the eager init
 			// must not surface as an unhandled rejection.
 		})
-
-		// React to cache changes from the shared store. The store fires one
-		// event per change with `external` (filesystem/other-process origin),
-		// `kind` ("upsert" | "delete" | "external"), and the affected
-		// `taskId`/`item` when known.
-		//
-		// - For a LOCAL mutation performed through THIS provider's own
-		//   `updateTaskHistory`/`deleteTaskFromState`/`atomicReadAndUpdate`,
-		//   we already sent the targeted `taskHistoryItemUpdated`/full state
-		//   message ourselves, so we skip the onChange callback to avoid a
-		//   redundant broadcast. (The store still reports `external:false` for
-		//   these, which other providers sharing the store WILL act on.)
-		// - For a mutation performed by ANOTHER provider sharing the store
-		//   (also `external:false` because it's a local mutation — just not
-		//   ours), we push a targeted `taskHistoryItemUpdated` /
-		//   `taskHistoryDeleted` message and refresh `recentTasksCache`, but
-		//   we do NOT rebroadcast the full history.
-		// - For an EXTERNAL change (watcher/periodic reconcile picked up a
-		//   change from another process or an explicit invalidate), we fall
-		//   back to a full `taskHistoryUpdated` broadcast because the watcher
-		//   coalesces IDs and a targeted message per ID is not always
-		//   available.
-		//
-		// We track the IDs of mutations this provider initiated so we can
-		// suppress the echo for our own writes (the store has no notion of
-		// "which provider caused this" — every local mutation is
-		// `external:false`).
-		//
-		// The legacy-history migration now runs inside acquireTaskHistoryStore
-		// (once per successful acquire), which also owns its error reporting.
-
-		// Start configuration loading (which might trigger indexing) in the background.
-		// Don't await, allowing activation to continue immediately.
 
 		// Register this provider with the telemetry service to enable it to add
 		// properties like mode and provider.
@@ -671,6 +643,24 @@ export class ClineProvider
 		this.outputChannel.show(true)
 	}
 
+	/**
+	 * Reacts to changes in the shared store. The store fires one event per
+	 * change with `kind` ("upsert" | "delete" | "external"), the affected
+	 * `taskId`/`item` when known, and the `origin` token of the writer.
+	 *
+	 * - A mutation made through THIS provider (`updateTaskHistory`,
+	 *   `deleteTaskFromState`, `deleteTaskWithId`, the delegation
+	 *   `atomicReadAndUpdate`) carries {@link taskHistoryOrigin}; it is
+	 *   skipped because the caller already sent the targeted webview
+	 *   message. Other providers sharing the store do act on it.
+	 * - A mutation made by ANOTHER provider sharing the store is pushed as a
+	 *   targeted `taskHistoryItemUpdated` / `taskHistoryItemDeleted`
+	 *   message, without rebroadcasting the full history.
+	 * - An `external` change (the watcher or periodic reconcile picked up a
+	 *   change from another process, or an explicit invalidate) falls back
+	 *   to a full `taskHistoryUpdated` broadcast, because the watcher
+	 *   coalesces IDs and a targeted message per ID is not always available.
+	 */
 	private subscribeToTaskHistoryStore(taskHistoryStore: TaskHistoryStore): void {
 		this.taskHistoryStoreUnsubscribe = taskHistoryStore.onChange((event) => {
 			if (event.origin === this.taskHistoryOrigin || !this.isViewLaunched || this._disposed) {
@@ -4642,7 +4632,7 @@ export class ClineProvider
 				return false
 			}
 
-			// Same backward scan as reopenParentFromDelegation (~line 3827-3837).
+			// Same backward scan as reopenParentFromDelegation.
 			let toolUseId: string | undefined
 			let toolUseIndex = -1
 			for (let i = parentApiMessages.length - 1; i >= 0; i--) {
