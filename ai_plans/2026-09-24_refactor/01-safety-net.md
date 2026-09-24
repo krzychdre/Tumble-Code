@@ -61,7 +61,7 @@ cannot resolve the package.
 
 ## TEST-3 Quiet the test output
 
-**Status:** test-side part DONE, merged 2026-09-24 as #202 (`5a579363c`): the real logger is opt-in under test (`ROO_TEST_LOGS=1`), 251 JSON log lines per extension run became 0; production unchanged. Production part (wire the logger to the output channel) waits for owner decision 6.
+**Status:** DONE. Test side merged 2026-09-24 as #202 (`5a579363c`): the real logger is opt-in under test (`ROO_TEST_LOGS=1`), 251 JSON log lines per extension run became 0. Production side (owner decision 6) merged as #208 (`fe927e62d`): `logger` forwards to a destination resolved at call time, `activate()` points it at the Tumble Code output channel right after creating it, and `OutputChannelTransport` writes one readable line per entry at info and above (stack on its own lines, never throws on unserializable metadata); 11 new tests, changeset added. The CLI is unaffected (its shim output channel is silenced).
 
 **Evidence:** the full `src` run prints hundreds of structured JSON log lines from the Bedrock provider logger
 (`{"l":"error","m":"GENERIC error in createMessage","c":"bedrock",...}`) with full stack traces, which buries the
@@ -112,7 +112,7 @@ blocking with an explicit, commented allowlist of accepted advisories (each with
 
 ## TEST-7 One working dependency-update bot
 
-**Status:** NOT STARTED: waits for owner decision 10 and for the owner to install the Renovate GitHub App (an account action).
+**Status:** DONE, merged 2026-09-24 as #209 (`5176955df`), owner decision 10: `dependabot.yml` removed; `renovate.json` weekly (Monday before 06:00 Europe/Warsaw), grouped (types, dev tooling, provider SDKs, webview, cloud API, GitHub Actions), weekly lock file maintenance, vulnerability PRs at any time, majors off (planned in DEP-6 to DEP-9), no Dependency Dashboard because issues are disabled on the repository. Validated with renovate-config-validator 44.112.3. **Takes effect only after the owner installs the Renovate GitHub App on the repository.**
 
 **Evidence:** both `.github/dependabot.yml` and `renovate.json` exist; none of the last 200 PRs came from a bot.
 The Renovate GitHub App is most likely not installed on the fork [I].

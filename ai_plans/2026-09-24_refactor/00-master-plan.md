@@ -11,7 +11,7 @@ against `main @ 0c0b40b15` and folded into the area documents below; items marke
 
 The refactor is executed in new sessions; everything needed is in this directory. Steps for the first session:
 
-1. **Workflow per item (owner rule, 2026-09-24).** The plan stays on `docs/refactor-plan-2026-09-24`; it is
+1. **Workflow per item (owner rules, 2026-09-24; merge each PR as soon as its non-Windows checks pass, never let PRs pile up).** The plan stays on `docs/refactor-plan-2026-09-24`; it is
    not merged into `main`. For every item:
 
     1. `git switch docs/refactor-plan-2026-09-24` and read the item in its area document;
@@ -90,7 +90,7 @@ Item IDs are prefixed by area: `TEST-`, `DEF-`, `DEP-`, `CORE-`, `API-`, `SVC-`,
 | G1 unit tests    | `pnpm turbo test --continue`                   | all green; test count per package not lower than the baseline table unless the item's entry lists the deleted tests and why |
 | G2 static checks | `pnpm check-types`, `pnpm lint`, `pnpm knip`   | exit 0                                                                                                                      |
 | G3 cloud API     | `cd self-hosted-cloudapi && uv run pytest`     | all green, run with the test-isolated environment from TEST-4                                                               |
-| G4 CI            | `code-qa.yml` on the PR                        | green on ubuntu and windows (reachable only after TEST-1)                                                                   |
+| G4 CI | `code-qa.yml` (and the workflows the change triggers) on the PR | every check green except `platform-unit-test (windows-latest)`: owner rule of 2026-09-24, do not wait for Windows before merging; a Windows failure later seen on main becomes its own item |
 | G5 build         | `pnpm vsix` and, for CLI items, the CLI bundle | builds; for UI items a manual smoke of the touched screen                                                                   |
 
 Gate G1 is only meaningful once Phase 0 has removed the flaky and orphaned tests; until then a red run must be
@@ -136,7 +136,7 @@ run as parallel lanes; inside a lane the listed order matters. Size: S under a d
 
 | Phase               | Goal                                             | Items (in order)                                                                                                                                                                                                                                                                          | Size            | Status      |
 | ------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- | ----------- |
-| 0 Safety net        | Gates tell the truth                             | TEST-1 flaky Ink and extension tests, TEST-2 orphaned webview tests, TEST-3 test-output noise, TEST-4 cloud API env isolation, TEST-5 cloud API CI job, TEST-6 dependency-audit CI job, TEST-7 one working update bot, TEST-8 webview bundle guard                                        | S each          | in progress: TEST-1, 2, 3 (test part), 4, 5, 6, 8 merged (#200 to #207); open: TEST-3 production part (decision 6), TEST-7 (decision 10), TEST-9 (optional) |
+| 0 Safety net        | Gates tell the truth                             | TEST-1 flaky Ink and extension tests, TEST-2 orphaned webview tests, TEST-3 test-output noise, TEST-4 cloud API env isolation, TEST-5 cloud API CI job, TEST-6 dependency-audit CI job, TEST-7 one working update bot, TEST-8 webview bundle guard                                        | S each          | DONE 2026-09-24 (#200 to #209); TEST-9 (optional) not done; Renovate needs the owner to install its GitHub App |
 | 1 Defects           | Fix confirmed bugs before code moves             | Security: DEF-S1 to DEF-S12. Correctness: DEF-C1 to DEF-C32 (see `02-defects.md` for order)                                                                                                                                                                                               | S each, a few M | not started |
 | 2 Attack surface    | Remove what nobody uses, patch within ranges     | DEP-1 delete evals apps, DEP-2 dead dependencies, DEP-3 in-range refresh, DEP-4 Node 22, VS Code floor and type overrides, DEP-5 Python and container floors, PKG-8 repository hygiene                                                                                                    | S-M             | not started |
 | 3 Foundations       | Cheap structure that every later phase relies on | PKG-1 `safeWriteJson` into core, PKG-2 boundary rules, PKG-3 shared nightly build config, PKG-4 pin CLI render deps, PKG-5 typed CLI runtime contract, PKG-9 CI gaps, CORE-Q and API-Q dead code and quick wins, CORE-R10 layering, CORE-R5 typed Task access, PKG-10 architecture map    | S-M             | not started |
