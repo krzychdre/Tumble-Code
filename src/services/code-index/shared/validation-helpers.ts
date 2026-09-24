@@ -290,3 +290,19 @@ export function formatEmbeddingError(error: any, maxRetries: number): Error {
 		return new Error(t("embeddings:failedWithError", { attempts: maxRetries, errorMessage }))
 	}
 }
+
+/**
+ * Reports how many dimensions a probe embedding came back with, so callers can compare it
+ * against the configured dimension (see service-factory findDimensionMismatch). A string is a
+ * base64 embedding, where every value is a 4-byte float; an array is a plain vector.
+ * @param embedding The `embedding` field of one embeddings response item
+ * @returns The vector length, or undefined if there was no usable embedding
+ */
+export function measureEmbeddingDimension(embedding: unknown): number | undefined {
+	if (typeof embedding === "string") {
+		const byteLength = Buffer.from(embedding, "base64").byteLength
+		return byteLength >= 4 ? Math.floor(byteLength / 4) : undefined
+	}
+
+	return Array.isArray(embedding) && embedding.length > 0 ? embedding.length : undefined
+}

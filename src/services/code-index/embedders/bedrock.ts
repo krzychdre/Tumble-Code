@@ -1,6 +1,6 @@
 import { BedrockRuntimeClient, InvokeModelCommand, InvokeModelCommandInput } from "@aws-sdk/client-bedrock-runtime"
 import { fromIni, fromNodeProviderChain } from "@aws-sdk/credential-providers"
-import { IEmbedder, EmbeddingResponse, EmbedderInfo } from "../interfaces"
+import { IEmbedder, EmbeddingResponse, EmbedderInfo, EmbedderValidationResult } from "../interfaces"
 import {
 	MAX_BATCH_TOKENS,
 	MAX_ITEM_TOKENS,
@@ -10,7 +10,12 @@ import {
 import { getDefaultModelId } from "../../../shared/embeddingModels"
 import { Package } from "../../../shared/package"
 import { t } from "../../../i18n"
-import { withValidationErrorHandling, formatEmbeddingError, HttpError } from "../shared/validation-helpers"
+import {
+	withValidationErrorHandling,
+	formatEmbeddingError,
+	HttpError,
+	measureEmbeddingDimension,
+} from "../shared/validation-helpers"
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -279,7 +284,7 @@ export class BedrockEmbedder implements IEmbedder {
 	 * Validates the Bedrock embedder configuration by attempting a minimal embedding request
 	 * @returns Promise resolving to validation result with success status and optional error message
 	 */
-	async validateConfiguration(): Promise<{ valid: boolean; error?: string }> {
+	async validateConfiguration(): Promise<EmbedderValidationResult> {
 		return withValidationErrorHandling(async () => {
 			try {
 				// Test with a minimal embedding request
@@ -293,7 +298,8 @@ export class BedrockEmbedder implements IEmbedder {
 					}
 				}
 
-				return { valid: true }
+				// Report the probe length so a configured dimension that disagrees is caught here
+				return { valid: true, dimension: measureEmbeddingDimension(result.embedding) }
 			} catch (error: any) {
 				// Check for specific AWS errors
 				if (error.name === "UnrecognizedClientException") {
