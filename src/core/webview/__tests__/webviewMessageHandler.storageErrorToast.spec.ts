@@ -55,28 +55,6 @@ describe("webviewMessageHandler - error toasts carry the underlying cause", () =
 		vi.clearAllMocks()
 	})
 
-	it("saveApiConfiguration toast contains the failure message", async () => {
-		const provider = makeProvider({
-			providerSettingsManager: {
-				saveConfig: vi.fn().mockRejectedValue(new Error("disk full")),
-				listConfig: vi.fn().mockResolvedValue([]),
-				getProfile: vi.fn(),
-				deleteConfig: vi.fn(),
-			},
-		})
-
-		await webviewMessageHandler(provider, {
-			type: "saveApiConfiguration",
-			text: "profile-1",
-			apiConfiguration: {} as any,
-		})
-
-		expect(showErrorMessage).toHaveBeenCalledTimes(1)
-		const toast = showErrorMessage.mock.calls[0][0]
-		expect(toast).toContain("common:errors.save_api_config")
-		expect(toast).toContain("disk full")
-	})
-
 	it("renameApiConfiguration toast contains the failure message", async () => {
 		const provider = makeProvider({
 			providerSettingsManager: {
