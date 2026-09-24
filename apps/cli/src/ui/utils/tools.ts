@@ -57,9 +57,15 @@ export function extractToolData(toolInfo: Record<string, unknown>): ToolData {
 		toolData.output = toolInfo.output as string
 	}
 
-	// Extract batch file operations
-	if (Array.isArray(toolInfo.files)) {
-		toolData.batchFiles = (toolInfo.files as Array<Record<string, unknown>>).map((f) => ({
+	// Extract batch file operations. The extension sends a multi-file read as
+	// `batchFiles` (ReadFileTool.requestApproval); `files` is the older name.
+	const batchFiles = Array.isArray(toolInfo.batchFiles)
+		? toolInfo.batchFiles
+		: Array.isArray(toolInfo.files)
+			? toolInfo.files
+			: undefined
+	if (batchFiles) {
+		toolData.batchFiles = (batchFiles as Array<Record<string, unknown>>).map((f) => ({
 			path: (f.path as string) || "",
 			lineSnippet: f.lineSnippet as string | undefined,
 			isOutsideWorkspace: f.isOutsideWorkspace as boolean | undefined,
