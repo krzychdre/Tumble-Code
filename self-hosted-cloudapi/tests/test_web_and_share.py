@@ -3272,6 +3272,55 @@ async def test_usage_telemetry_is_never_purged(db_session, session_factory):
     assert kinds == ["LLM Completion"], "usage data must survive a telemetry purge"
 
 
+async def test_a_telemetry_purge_keeps_everything_the_metrics_page_shows(
+    db_session, session_factory
+):
+    """The metrics page reads two event types: ``LLM Completion`` (the
+    conversation totals) and ``Embedding Usage`` (the code-index figure). Only
+    the first was protected, so a purge erased the indexing history (DEF-C31).
+    Whatever the page shows for "All time" must be identical after a purge."""
+    from datetime import datetime, timedelta, timezone
+
+    from src.services.metrics_service import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
+    from src.services.retention_service import PROTECTED_EVENT_TYPES, apply_sweep
+
+    await _seed_user(db_session)
+    old = datetime.now(timezone.utc) - timedelta(days=90)
+    async with session_factory() as s:
+        s.add(TelemetryEvent(
+            user_id="user_test", event_type=LLM_COMPLETION_EVENT, created_at=old,
+            properties=json.dumps({"taskId": "t-m", "modelId": "glm", "inputTokens": 100,
+                                   "outputTokens": 20, "cost": 0.5}),
+        ))
+        s.add(TelemetryEvent(
+            user_id="user_test", event_type=EMBEDDING_EVENT, created_at=old,
+            properties=json.dumps({"promptTokens": 250000, "source": "code-index"}),
+        ))
+        s.add(TelemetryEvent(user_id="user_test", event_type="Task Message", created_at=old,
+                             properties=json.dumps({"message": {}})))
+        await s.commit()
+
+    async with session_factory() as s:
+        before = await compute_user_metrics(s, "user_test", "all")
+    assert before["embeddings"]["tokens"] == 250000, "the fixture must show embeddings"
+    assert before["totals"]["completions"] == 1
+
+    async with session_factory() as s:
+        policy = await _policy(s, purge_telemetry=True, telemetry_max_age_days=7,
+                               max_age_days=None, max_tasks=None)
+        plan = await apply_sweep(s, "user_test", policy)
+        await s.commit()
+    assert plan.event_count == 1, "only the Task Message event is purgeable"
+
+    async with session_factory() as s:
+        after = await compute_user_metrics(s, "user_test", "all")
+        kinds = {r[0] for r in (await s.execute(select(TelemetryEvent.event_type))).all()}
+
+    assert after == before
+    assert kinds == {LLM_COMPLETION_EVENT, EMBEDDING_EVENT}
+    assert {LLM_COMPLETION_EVENT, EMBEDDING_EVENT} <= set(PROTECTED_EVENT_TYPES)
+
+
 async def test_sweep_never_touches_another_users_data(db_session, session_factory):
     from src.services.retention_service import apply_sweep
 
