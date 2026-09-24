@@ -1,11 +1,15 @@
 name: Cloud API (Python)
 
 # The self-hosted cloud API is a separate Python service, so the Node-based
-# Code QA workflow never ran its tests. This one runs only when the service
-# (or this file) changes.
+# Code QA workflow never ran its tests. This one runs when the service (or
+# this file) changes, and weekly so that an advisory published against an
+# unchanged uv.lock still fails the blocking pip-audit step.
 
 on:
     workflow_dispatch:
+    schedule:
+        # Mondays 06:17 UTC (off the hour, when GitHub's scheduler is busiest).
+        - cron: "17 6 * * 1"
     push:
         branches: [main]
         paths:
