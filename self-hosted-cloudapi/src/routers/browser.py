@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.auth.authentik import generate_pkce_pair, get_authorize_url
-from src.auth.web_session import set_session_cookie, clear_session_cookie
+from src.auth.web_session import clear_session_cookie, cookie_should_be_secure, set_session_cookie
 from src.services.auth_service import (
     store_oauth_state,
     get_oauth_state,
@@ -289,10 +289,10 @@ async def web_login(
 
 
 @router.get("/app/logout")
-async def web_logout():
+async def web_logout(request: Request):
     """Clear the browser session cookie and return to the login page."""
     response = RedirectResponse(url="/app/login", status_code=303)
-    clear_session_cookie(response)
+    clear_session_cookie(response, secure=cookie_should_be_secure(request))
     return response
 
 
@@ -413,7 +413,12 @@ async def auth_callback(
         # kept by more people and for longer than the users table.
         logger.info("Web auth callback successful for user %s", user.id)
         response = RedirectResponse(url="/app", status_code=303)
-        set_session_cookie(response, session_id=session.id, user_id=user.id)
+        set_session_cookie(
+            response,
+            session_id=session.id,
+            user_id=user.id,
+            secure=cookie_should_be_secure(request),
+        )
         return response
 
     # Generate ticket for Clerk sign-in flow

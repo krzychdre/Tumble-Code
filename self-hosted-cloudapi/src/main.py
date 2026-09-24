@@ -10,7 +10,9 @@ from fastapi.staticfiles import StaticFiles
 from config.auth import is_loopback_host
 from config.settings import settings
 from src.auth.network_access import WebAccessMiddleware, describe_policy
+from src.auth.origins import trusted_origins
 from src.middleware.cors import setup_cors
+from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
 from src.routers import auth, extension, settings as settings_router, events, marketplace, browser, web
@@ -45,6 +47,15 @@ async def lifespan(app: FastAPI):
         print(
             "  WARNING: WEB_ALLOWED_NETWORKS is set but WEB_PUBLIC_URL is not; "
             "other machines can open the panel but cannot sign in"
+        )
+    print(f"  Trusted web origins: {', '.join(trusted_origins())}")
+    if settings.cors_origins_has_wildcard:
+        # Kept running rather than refused: every .env copied from an older
+        # .env.example carries "*", and a rebuild must not stop the service.
+        print(
+            "  WARNING: CORS_ORIGINS contains '*', which is no longer honoured "
+            "(it let any web page act with a signed-in reader's cookie); "
+            "remove it and list extra origins explicitly if you need any"
         )
     print(f"  Telemetry: {'enabled' if settings.telemetry_enabled else 'disabled'}")
     print(f"  Bridge: {'enabled' if settings.bridge_enabled else 'disabled'}")
@@ -88,6 +99,9 @@ app = FastAPI(
 
 # Setup middleware
 setup_cors(app)
+# Outside CORS (a preflight is an OPTIONS and passes), inside the request
+# logging, so a refused forgery is still logged with its 403.
+app.add_middleware(CsrfOriginMiddleware)
 # Inside the request logging, so a refused request is still logged with its 403.
 app.add_middleware(WebAccessMiddleware)
 app.add_middleware(RequestLoggingMiddleware)

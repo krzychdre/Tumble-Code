@@ -31,7 +31,9 @@ services:
       AUTHENTIK_CLIENT_SECRET: ${AUTHENTIK_CLIENT_SECRET:-}
       AUTHENTIK_REDIRECT_URI: ${AUTHENTIK_REDIRECT_URI:-http://localhost:8085/auth/clerk/callback}
       API_BASE_URL: ${API_BASE_URL:-http://localhost:8085}
-      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      # Extra trusted web origins; API_BASE_URL and WEB_PUBLIC_URL are always
+      # trusted. Empty is the right value for the bundled stack.
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       # Web panel from other machines (see .env.example): who may open it, and
       # the address they open it at.
       WEB_ALLOWED_NETWORKS: ${WEB_ALLOWED_NETWORKS:-}

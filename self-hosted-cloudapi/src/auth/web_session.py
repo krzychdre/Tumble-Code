@@ -13,6 +13,7 @@ against the DB on every request.
 """
 
 from typing import Optional, TypedDict
+from urllib.parse import urlsplit
 
 from fastapi import Depends, Request
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
@@ -41,24 +42,46 @@ class WebUser(TypedDict):
     image_url: Optional[str]
 
 
-def set_session_cookie(response: Response, session_id: str, user_id: str) -> None:
-    """Attach a signed session cookie to a response."""
+def cookie_should_be_secure(request: Request) -> bool:
+    """Should the session cookie set on this request's response be ``Secure``?
+
+    Yes when the browser reached us over https: the request itself is https,
+    or it arrived on the host of a public address configured as https
+    (``API_BASE_URL`` or ``WEB_PUBLIC_URL``), which is how a TLS-terminating
+    proxy in front of uvicorn looks. No for plain http, which the LAN setup
+    uses: a ``Secure`` cookie would never be sent back there and nobody could
+    stay signed in.
+    """
+    if request.url.scheme == "https":
+        return True
+    host = urlsplit(f"//{request.headers.get('host', '')}").hostname
+    if not host:
+        return False
+    for public in (settings.api_base_url, settings.web_public_url):
+        parts = urlsplit(public or "")
+        if parts.scheme == "https" and parts.hostname == host:
+            return True
+    return False
+
+
+def set_session_cookie(response: Response, session_id: str, user_id: str, *, secure: bool = False) -> None:
+    """Attach a signed session cookie to a response. Pass
+    ``secure=cookie_should_be_secure(request)``."""
     token = _serializer.dumps({"sid": session_id, "uid": user_id})
-    # secure=False so it works over http://localhost in dev. Tighten for prod.
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
         max_age=MAX_AGE_SECONDS,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=secure,
         path="/",
     )
 
 
-def clear_session_cookie(response: Response) -> None:
+def clear_session_cookie(response: Response, *, secure: bool = False) -> None:
     """Remove the session cookie (logout)."""
-    response.delete_cookie(key=COOKIE_NAME, path="/")
+    response.delete_cookie(key=COOKIE_NAME, path="/", httponly=True, samesite="lax", secure=secure)
 
 
 def _decode_cookie(raw: str) -> Optional[dict]:

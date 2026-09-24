@@ -29,6 +29,36 @@ def _check_secret(name: str, value: Optional[str]) -> None:
         raise ValueError(f"{name} must be at least {MIN_SECRET_LENGTH} characters long")
 
 
+_DEFAULT_PORTS = {"http": 80, "https": 443, "ws": 80, "wss": 443}
+
+
+def normalize_origin(value: Optional[str]) -> Optional[str]:
+    """``scheme://host[:port]`` the way a browser writes its ``Origin`` header.
+
+    Lowercased, the default port dropped, a single trailing slash tolerated.
+    None for anything that is not a bare origin (no scheme, no host, a path, a
+    query, credentials), including the literal ``null`` a sandboxed page sends.
+    """
+    if not value:
+        return None
+    try:
+        parts = urlsplit(value.strip())
+        port = parts.port
+    except ValueError:
+        return None
+    scheme = parts.scheme.lower()
+    host = parts.hostname
+    if not scheme or not host or parts.path not in ("", "/") or parts.query or parts.fragment:
+        return None
+    if parts.username is not None or parts.password is not None:
+        return None
+    if ":" in host:
+        host = f"[{host}]"
+    if port is not None and port != _DEFAULT_PORTS.get(scheme):
+        return f"{scheme}://{host}:{port}"
+    return f"{scheme}://{host}"
+
+
 class Settings(BaseSettings):
     """Roo Cloud API settings."""
 
@@ -80,22 +110,58 @@ class Settings(BaseSettings):
     authentik_client_secret: Optional[str] = None
     authentik_redirect_uri: str = Field(..., description="OAuth2 redirect URI")
 
-    # CORS - stored as raw string to avoid pydantic-settings v2 JSON-parsing issues
-    # with List[str] env vars. Use cors_origins_list property to get the parsed list.
-    cors_origins: str = Field(default="*", description="Allowed CORS origins (comma-separated or JSON array)")
+    # Extra trusted web origins. The service always trusts its own addresses,
+    # API_BASE_URL and WEB_PUBLIC_URL; list here any other page that must call
+    # the API with the reader's cookie or open the live bridge, as
+    # scheme://host[:port] entries, comma separated or a JSON array. The same
+    # list drives CORS, the bridge's Origin check and the web panel's CSRF
+    # check (src/auth/origins.py). A "*" left over from an older .env is
+    # ignored with a startup warning: with credentials it let every page on
+    # the internet read the panel and drive the bridge (DEF-S8).
+    # Stored as a raw string to avoid pydantic-settings v2 JSON-parsing issues
+    # with List[str] env vars; cors_origins_list is the parsed list.
+    cors_origins: str = Field(default="", description="Extra trusted web origins (comma-separated or JSON array)")
+
+    @staticmethod
+    def _split_origins(raw: str) -> List[str]:
+        raw = (raw or "").strip()
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                parsed = None
+            if isinstance(parsed, list):
+                return [str(entry).strip() for entry in parsed if str(entry).strip()]
+        return [entry.strip() for entry in raw.split(",") if entry.strip()]
+
+    @field_validator("cors_origins")
+    @classmethod
+    def _check_cors_origins(cls, value: str) -> str:
+        # An entry that can never equal a browser's Origin header would
+        # silently trust nothing; refuse it at startup instead.
+        for entry in cls._split_origins(value):
+            if entry != "*" and normalize_origin(entry) is None:
+                raise ValueError(
+                    "CORS_ORIGINS entries must be scheme://host[:port], e.g. "
+                    f"https://panel.example.com (got {entry!r})"
+                )
+        return value
 
     @computed_field(return_type=List[str])
     @property
     def cors_origins_list(self) -> List[str]:
-        """Parse cors_origins string into a list.
+        """The extra trusted origins, normalized, without a "*"."""
+        origins: List[str] = []
+        for entry in self._split_origins(self.cors_origins):
+            origin = normalize_origin(entry) if entry != "*" else None
+            if origin and origin not in origins:
+                origins.append(origin)
+        return origins
 
-        Supports JSON array format (e.g. '["https://a.com","https://b.com"]')
-        or comma-separated format (e.g. 'https://a.com,https://b.com' or '*').
-        """
-        try:
-            return json.loads(self.cors_origins)
-        except (json.JSONDecodeError, ValueError):
-            return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+    @property
+    def cors_origins_has_wildcard(self) -> bool:
+        """True when CORS_ORIGINS still carries the retired "*"."""
+        return "*" in self._split_origins(self.cors_origins)
 
     # Web panel from other machines. See src/auth/network_access.py.
     #
