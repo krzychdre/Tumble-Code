@@ -13,6 +13,23 @@ from src.models.organization import Organization, Membership
 from src.models.oauth import AuthentikStateStore
 from src.auth.jwt_issuer import issue_session_token
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
+from config.settings import settings
+
+# A used token's expiry is rewritten at most once per this interval, so the
+# extension's refresh (about once a minute) does not write a row every time.
+_EXPIRY_REFRESH_INTERVAL = timedelta(days=1)
+
+
+def _client_token_expiry(now: datetime) -> Optional[datetime]:
+    """Expiry for a client token used at ``now``; None when expiry is off."""
+    days = settings.client_token_idle_days
+    return now + timedelta(days=days) if days > 0 else None
+
+
+def _as_utc(value: datetime) -> datetime:
+    # SQLite's aiosqlite driver returns naive datetimes even for
+    # DateTime(timezone=True) columns; Postgres returns aware ones.
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
 async def get_or_create_user(
@@ -73,6 +90,7 @@ async def create_client_token(
     client_token = ClientToken(
         session_id=session_id,
         token_hash=token_hash,
+        expires_at=_client_token_expiry(datetime.now(timezone.utc)),
     )
     db.add(client_token)
     await db.flush()
@@ -140,7 +158,13 @@ async def validate_client_token(
     db: AsyncSession,
     raw_token: str,
 ) -> Optional[Session]:
-    """Validate a client token and return the associated session."""
+    """Validate a client token and return the associated session.
+
+    Client tokens expire after ``client_token_idle_days`` without use (DEF-S11).
+    Each use moves the expiry forward. A token issued before expiry existed
+    (``expires_at`` NULL) is still accepted and gets its first expiry here, so
+    nobody is signed out by the upgrade.
+    """
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
 
     result = await db.execute(
@@ -150,6 +174,18 @@ async def validate_client_token(
 
     if client_token is None:
         return None
+
+    now = datetime.now(timezone.utc)
+    if client_token.expires_at is not None and _as_utc(client_token.expires_at) <= now:
+        return None
+
+    new_expiry = _client_token_expiry(now)
+    if new_expiry is not None and (
+        client_token.expires_at is None
+        or new_expiry - _as_utc(client_token.expires_at) >= _EXPIRY_REFRESH_INTERVAL
+    ):
+        client_token.expires_at = new_expiry
+        await db.flush()
 
     result = await db.execute(
         select(Session).where(Session.id == client_token.session_id, Session.is_active == True)

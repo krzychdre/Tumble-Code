@@ -16,6 +16,9 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-random-secret-key}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_SECRET: ${JWT_SECRET:-change-me-to-a-random-jwt-secret}
+      # The two defaults above are placeholders the api refuses at startup:
+      # set real values in .env (see .env.example).
+      CLIENT_TOKEN_IDLE_DAYS: ${CLIENT_TOKEN_IDLE_DAYS:-30}
       # Browser-facing Authentik URL (front-channel: authorize / logout redirects).
       AUTHENTIK_BASE_URL: ${AUTHENTIK_BASE_URL:-http://localhost:9000}
       # In-network Authentik URL (back-channel: token / userinfo / jwks / discovery).
