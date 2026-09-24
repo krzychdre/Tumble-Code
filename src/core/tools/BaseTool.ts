@@ -33,10 +33,14 @@ export abstract class BaseTool<TName extends ToolName> {
 	abstract readonly name: TName
 
 	/**
-	 * Track the last seen path during streaming to detect when the path has stabilized.
+	 * The last path seen during streaming, per task, to detect when the path has stabilized.
 	 * Used by hasPathStabilized() to prevent displaying truncated paths from partial-json parsing.
+	 *
+	 * Keyed by task because every tool is a singleton shared by all tasks, and parallel
+	 * subagents stream tool calls at the same time as the foreground task (DEF-C4).
+	 * Subclasses with more partial-stream state must key it by task the same way.
 	 */
-	protected lastSeenPartialPath: string | undefined = undefined
+	private lastSeenPartialPathByTask = new WeakMap<Task, string>()
 
 	/**
 	 * Execute the tool with typed parameters.
@@ -73,29 +77,40 @@ export abstract class BaseTool<TName extends ToolName> {
 	 *
 	 * Usage in handlePartial():
 	 * ```typescript
-	 * if (!this.hasPathStabilized(block.params.path)) {
+	 * if (!this.hasPathStabilized(task, block.params.path)) {
 	 *     return // Path still changing, wait for it to stabilize
 	 * }
 	 * // Path is stable, proceed with UI updates
 	 * ```
 	 *
+	 * @param task - The task whose stream this chunk belongs to
 	 * @param path - The current path value from the partial block
 	 * @returns true if path has stabilized (same value seen twice) and is non-empty, false otherwise
 	 */
-	protected hasPathStabilized(path: string | undefined): boolean {
-		const pathHasStabilized = this.lastSeenPartialPath !== undefined && this.lastSeenPartialPath === path
-		this.lastSeenPartialPath = path
+	protected hasPathStabilized(task: Task, path: string | undefined): boolean {
+		const lastSeenPartialPath = this.lastSeenPartialPathByTask.get(task)
+		const pathHasStabilized = lastSeenPartialPath !== undefined && lastSeenPartialPath === path
+		if (path === undefined) {
+			this.lastSeenPartialPathByTask.delete(task)
+		} else {
+			this.lastSeenPartialPathByTask.set(task, path)
+		}
 		return pathHasStabilized && !!path
 	}
 
 	/**
-	 * Reset the partial state tracking.
+	 * Reset the partial state tracking of one task.
 	 *
 	 * Should be called at the end of execute() (both success and error paths)
-	 * to ensure clean state for the next tool invocation.
+	 * to ensure clean state for the task's next tool invocation. Without a task
+	 * it forgets the state of every task (used by tests between cases).
 	 */
-	resetPartialState(): void {
-		this.lastSeenPartialPath = undefined
+	resetPartialState(task?: Task): void {
+		if (task) {
+			this.lastSeenPartialPathByTask.delete(task)
+		} else {
+			this.lastSeenPartialPathByTask = new WeakMap()
+		}
 	}
 
 	/**

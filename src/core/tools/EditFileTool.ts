@@ -134,8 +134,13 @@ function countRegexMatches(content: string, regex: RegExp): number {
 export class EditFileTool extends BaseTool<"edit_file"> {
 	readonly name = "edit_file" as const
 
-	private didSendPartialToolAsk = false
-	private partialToolAskRelPath: string | undefined
+	/**
+	 * Per task (DEF-C4): whether handlePartial() already showed a streaming row
+	 * for this task's call, and for which path, so execute() can finalize that
+	 * row on an early failure. This tool is a singleton shared by every task,
+	 * including parallel subagents. Cleared by resetPartialState(task).
+	 */
+	private partialToolAskRelPathByTask = new WeakMap<Task, string>()
 
 	async execute(params: EditFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		// Coerce old_string/new_string to handle malformed native tool calls where they could be non-strings.
@@ -149,11 +154,8 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		let operationPreviewForErrorHandling: string | undefined
 
 		const finalizePartialToolAskIfNeeded = async (relPath: string): Promise<void> => {
-			if (!this.didSendPartialToolAsk) {
-				return
-			}
-
-			if (this.partialToolAskRelPath && this.partialToolAskRelPath !== relPath) {
+			// Only finalize the row this task's handlePartial() opened, for this path.
+			if (this.partialToolAskRelPathByTask.get(task) !== relPath) {
 				return
 			}
 
@@ -475,7 +477,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			// Record successful tool usage and cleanup
 			task.recordToolUsage("edit_file")
 			await task.diffViewProvider.reset()
-			this.resetPartialState()
+			this.resetPartialState(task)
 
 			// Process any queued messages after file edit completes
 			task.processQueuedMessages()
@@ -487,9 +489,16 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			await task.diffViewProvider.reset()
 			task.didToolFailInCurrentTurn = true
 		} finally {
-			this.didSendPartialToolAsk = false
-			this.partialToolAskRelPath = undefined
-			this.resetPartialState()
+			this.resetPartialState(task)
+		}
+	}
+
+	override resetPartialState(task?: Task): void {
+		super.resetPartialState(task)
+		if (task) {
+			this.partialToolAskRelPathByTask.delete(task)
+		} else {
+			this.partialToolAskRelPathByTask = new WeakMap()
 		}
 	}
 
@@ -498,7 +507,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		const oldString: string | undefined = block.params.old_string
 
 		// Wait for path to stabilize before showing UI (prevents truncated paths)
-		if (!this.hasPathStabilized(filePath)) {
+		if (!this.hasPathStabilized(task, filePath)) {
 			return
 		}
 
@@ -517,8 +526,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		if (path.isAbsolute(relPath)) {
 			relPath = path.relative(task.cwd, relPath)
 		}
-		this.didSendPartialToolAsk = true
-		this.partialToolAskRelPath = relPath
+		this.partialToolAskRelPathByTask.set(task, relPath)
 
 		const absolutePath = path.resolve(task.cwd, relPath)
 		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
