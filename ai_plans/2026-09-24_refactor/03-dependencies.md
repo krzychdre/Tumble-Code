@@ -157,6 +157,16 @@ version, pin `postgres:16.x` and the Redis major; plan the Authentik 2026.2 to 2
 only its two latest release lines [I]). **Test first:** `GET /bridge/socket.io/?EIO=4&transport=polling` returns
 200 (the mount at `main.py:134-143`), so a Starlette upgrade that breaks the bridge fails a test.
 
+**Status (2026-09-24):** DONE in #254. Floors raised (`starlette>=1.3.1`, `python-multipart>=0.0.31`,
+`pydantic-settings>=2.14.2`; transitive floors as `[tool.uv] constraint-dependencies`), `uv lock --upgrade`;
+`python-jose` replaced by PyJWT 2.15 with wire-format tests (hand-built HS256/RS256 tokens plus a fixed token
+issued by python-jose 3.5.0 that must still verify); pip-audit 20 IDs to 0. The bridge polling test already
+existed (DEF-C31), so a WebSocket handshake test was added instead. Images pinned: `python:3.13.15-slim` by digest
+(image moves from 3.12 to 3.13), `uv:0.12.18` by digest, `postgres:16.15-alpine`, `redis:8-alpine`. The pip-audit
+CI step is now blocking. Authentik upgrade: plan only, notes in the PR body. Open: the cloudapi workflow runs only
+on path changes, so new advisories are not caught without a schedule; Starlette 1.7 deprecates `httpx` in its
+test client.
+
 ## Phase 11 items
 
 ### DEP-6 Provider SDK and runtime library majors (after Phase 5 and DEP-4)
