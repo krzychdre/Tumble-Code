@@ -8,8 +8,11 @@ const { getTestConfigDir } = vi.hoisted(() => {
 	const os = require("os")
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const path = require("path")
-	const testRunId = Date.now().toString()
-	const testConfigDir = path.join(os.tmpdir(), `roo-cli-test-${testRunId}`)
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	const fs = require("fs")
+	// mkdtemp picks a name no other run holds; a Date.now() suffix could collide when
+	// two vitest runs loaded this file in the same millisecond.
+	const testConfigDir = fs.mkdtempSync(path.join(os.tmpdir(), "roo-cli-test-"))
 	return { getTestConfigDir: () => testConfigDir }
 })
 
