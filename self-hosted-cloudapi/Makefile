@@ -43,6 +43,15 @@ test: ## Run the test suite
 test-cov: ## Run tests with a coverage report
 	uv run pytest --cov=src --cov-report=term-missing
 
+# Pinned so a new ruff release cannot change the verdict behind your back.
+RUFF ?= ruff@0.15.12
+
+lint: ## Lint with ruff (advisory in CI until the existing findings are cleaned up)
+	uvx $(RUFF) check .
+
+fmt: ## Format the code with ruff
+	uvx $(RUFF) format .
+
 clean: ## Remove caches and build artifacts
 	find . -type d -name __pycache__ -prune -exec rm -rf {} +
 	rm -rf .pytest_cache .coverage htmlcov

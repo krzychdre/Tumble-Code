@@ -1,0 +1,72 @@
+name: Cloud API (Python)
+
+# The self-hosted cloud API is a separate Python service, so the Node-based
+# Code QA workflow never ran its tests. This one runs only when the service
+# (or this file) changes.
+
+on:
+    workflow_dispatch:
+    push:
+        branches: [main]
+        paths:
+            - "self-hosted-cloudapi/**"
+            - ".github/workflows/cloudapi.yml"
+    pull_request:
+        types: [opened, reopened, ready_for_review, synchronize]
+        branches: [main]
+        paths:
+            - "self-hosted-cloudapi/**"
+            - ".github/workflows/cloudapi.yml"
+
+defaults:
+    run:
+        working-directory: self-hosted-cloudapi
+
+jobs:
+    test:
+        name: cloudapi-test (python ${{ matrix.python }})
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                # 3.12 is what the Docker image runs, 3.13 what local development uses.
+                python: ["3.12", "3.13"]
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            - name: Setup uv and Python
+              uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+              with:
+                  python-version: ${{ matrix.python }}
+                  enable-cache: true
+                  cache-dependency-glob: self-hosted-cloudapi/uv.lock
+            - name: Install dependencies
+              run: uv sync --frozen --extra dev
+            # The browser checks drive headless Chrome, which ubuntu-latest ships;
+            # they skip themselves when no Chrome binary is found.
+            - name: Run tests
+              run: uv run pytest
+
+    lint-and-audit:
+        name: cloudapi-lint-and-audit (advisory)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            - name: Setup uv
+              uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+              with:
+                  python-version: "3.12"
+            # Advisory until the existing ruff findings are cleaned up: some of the
+            # automatic fixes are wrong here (E712 on SQLAlchemy column comparisons,
+            # F401 on imports that register models), so they need a reviewed change.
+            - name: Lint with ruff
+              continue-on-error: true
+              run: make lint
+            # Advisory until the dependency floors are raised: the lockfile has
+            # known advisories today, and this step lists them on every run.
+            - name: Audit locked dependencies
+              continue-on-error: true
+              run: |
+                  uv export --frozen --no-hashes --no-emit-project > "$RUNNER_TEMP/requirements.txt"
+                  uvx pip-audit@2.10.1 -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
