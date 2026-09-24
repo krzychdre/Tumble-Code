@@ -205,6 +205,25 @@ describe("AutocompleteInput with an external PickerSelect", () => {
 		})
 	})
 
+	// The real chain is longer than a useState host: the index goes into the
+	// input's picker state, comes back through onPickerStateChange in a passive
+	// effect, and only then reaches PickerSelect as a prop. Keys written back to
+	// back must not wait for that round trip.
+	it("accepts the third command after down, down, Enter written back to back", async () => {
+		const { stdin, lastState, lastFrame, pickerShows } = renderHarness()
+
+		await type(stdin, "/")
+		await pickerShows(["new", "permissions", "init"])
+		stdin.write("\x1b[B")
+		stdin.write("\x1b[B")
+		stdin.write("\r")
+
+		await until(() => {
+			expect(lastState().isOpen).toBe(false)
+			expect(plain(lastFrame())).toBe("/init")
+		})
+	})
+
 	it("closes the picker on Escape without clearing the prompt", async () => {
 		const { stdin, lastState, lastFrame, pickerShows } = renderHarness()
 

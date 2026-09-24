@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Box, Text } from "ink"
 import { render } from "ink-testing-library"
 
@@ -9,6 +10,33 @@ const results: AutocompleteItem[] = [{ key: "new" }, { key: "permissions" }, { k
 /** Yield to React so a written keypress is processed and the frame flushes. */
 function flush(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 10))
+}
+
+/** Wait until `assertion` holds instead of sleeping a fixed time. */
+function until(assertion: () => void): Promise<void> {
+	return vi.waitFor(assertion, { timeout: 10_000, interval: 5 })
+}
+
+const DOWN = "\x1b[B"
+const UP = "\x1b[A"
+
+/**
+ * A parent that owns the highlight in React state, the way every real parent
+ * of PickerSelect does: the new index only comes back as a prop after the
+ * parent has rendered.
+ */
+function StatefulHost({ onSelect, initialIndex = 0 }: { onSelect: (item: AutocompleteItem) => void; initialIndex?: number }) {
+	const [selectedIndex, setSelectedIndex] = useState(initialIndex)
+	return (
+		<PickerSelect
+			results={results}
+			selectedIndex={selectedIndex}
+			onSelect={onSelect}
+			onEscape={() => {}}
+			onIndexChange={setSelectedIndex}
+			renderItem={(item) => <Text>{item.key}</Text>}
+		/>
+	)
 }
 
 function renderPicker(selectedIndex: number, onSelect: (item: AutocompleteItem) => void) {
@@ -57,6 +85,128 @@ describe("PickerSelect", () => {
 		await flush()
 
 		expect(selected).toEqual([])
+	})
+
+	// PickerSelect is controlled: the parent owns the highlight. These tests pin
+	// that contract so the rapid-key fix below cannot quietly change it.
+	describe("parent contract", () => {
+		function renderControlled(selectedIndex: number, onIndexChange: (index: number) => void, onSelect = () => {}) {
+			const element = (index: number) => (
+				<PickerSelect
+					results={results}
+					selectedIndex={index}
+					onSelect={onSelect}
+					onEscape={() => {}}
+					onIndexChange={onIndexChange}
+					renderItem={(item) => <Text>{item.key}</Text>}
+				/>
+			)
+			const view = render(element(selectedIndex))
+			return { ...view, rerenderAt: (index: number) => view.rerender(element(index)) }
+		}
+
+		it("reports the next index on down and wraps from the last item to the first", async () => {
+			const onIndexChange = vi.fn()
+			const { stdin, rerenderAt } = renderControlled(0, onIndexChange)
+
+			stdin.write(DOWN)
+			await until(() => expect(onIndexChange).toHaveBeenCalledTimes(1))
+			expect(onIndexChange).toHaveBeenLastCalledWith(1)
+
+			rerenderAt(2)
+			stdin.write(DOWN)
+			await until(() => expect(onIndexChange).toHaveBeenCalledTimes(2))
+			expect(onIndexChange).toHaveBeenLastCalledWith(0)
+		})
+
+		it("reports the previous index on up and wraps from the first item to the last", async () => {
+			const onIndexChange = vi.fn()
+			const { stdin, rerenderAt } = renderControlled(0, onIndexChange)
+
+			stdin.write(UP)
+			await until(() => expect(onIndexChange).toHaveBeenCalledTimes(1))
+			expect(onIndexChange).toHaveBeenLastCalledWith(2)
+
+			rerenderAt(2)
+			stdin.write(UP)
+			await until(() => expect(onIndexChange).toHaveBeenCalledTimes(2))
+			expect(onIndexChange).toHaveBeenLastCalledWith(1)
+		})
+
+		it("accepts the index the parent provides on the next render", async () => {
+			const onSelect = vi.fn()
+			const { stdin, rerenderAt } = renderControlled(0, () => {}, onSelect)
+
+			rerenderAt(2)
+			await flush()
+			stdin.write("\r")
+
+			await until(() => expect(onSelect).toHaveBeenCalled())
+			expect(onSelect).toHaveBeenCalledTimes(1)
+			expect(onSelect).toHaveBeenCalledWith(results[2])
+		})
+
+		it("lets a parent that keeps its index win once it renders", async () => {
+			const onSelect = vi.fn()
+			const onIndexChange = vi.fn()
+			const { stdin, rerenderAt } = renderControlled(0, onIndexChange, onSelect)
+
+			stdin.write(DOWN)
+			await until(() => expect(onIndexChange).toHaveBeenCalledWith(1))
+			// The parent declines the move and renders with its own index again.
+			rerenderAt(0)
+			await flush()
+			stdin.write("\r")
+
+			await until(() => expect(onSelect).toHaveBeenCalled())
+			expect(onSelect).toHaveBeenCalledWith(results[0])
+		})
+	})
+
+	// Keys a terminal delivers faster than React renders (a held arrow, a
+	// paste, a fast typist) must move the highlight one row each: the handler
+	// has to read the index the previous key produced, not the one the parent
+	// last rendered.
+	describe("keys that arrive before the parent renders", () => {
+		it("selects the third item after down, down, Enter written back to back", async () => {
+			const onSelect = vi.fn()
+			const { stdin } = render(<StatefulHost onSelect={onSelect} />)
+
+			stdin.write(DOWN)
+			stdin.write(DOWN)
+			stdin.write("\r")
+
+			await until(() => expect(onSelect).toHaveBeenCalled())
+			expect(onSelect).toHaveBeenCalledTimes(1)
+			expect(onSelect).toHaveBeenCalledWith(results[2])
+		})
+
+		it("wraps around with up, up, Enter written back to back", async () => {
+			const onSelect = vi.fn()
+			const { stdin } = render(<StatefulHost onSelect={onSelect} />)
+
+			stdin.write(UP) // wraps to the last item
+			stdin.write(UP)
+			stdin.write("\r")
+
+			await until(() => expect(onSelect).toHaveBeenCalled())
+			expect(onSelect).toHaveBeenCalledTimes(1)
+			expect(onSelect).toHaveBeenCalledWith(results[1])
+		})
+
+		it("still follows the parent between keys when a render does happen", async () => {
+			const onSelect = vi.fn()
+			const { stdin, lastFrame } = render(<StatefulHost onSelect={onSelect} />)
+
+			stdin.write(DOWN)
+			await until(() => expect(lastFrame()).toContain("❯ permissions"))
+			stdin.write(DOWN)
+			await until(() => expect(lastFrame()).toContain("❯ init"))
+			stdin.write("\r")
+
+			await until(() => expect(onSelect).toHaveBeenCalled())
+			expect(onSelect).toHaveBeenCalledWith(results[2])
+		})
 	})
 
 	// The dropdown sits directly above the input box. Any row that does not fit
