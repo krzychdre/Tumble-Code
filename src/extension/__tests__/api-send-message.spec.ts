@@ -3,7 +3,6 @@ import * as vscode from "vscode"
 
 import { API } from "../api"
 import { ClineProvider } from "../../core/webview/ClineProvider"
-import { TaskCommandName } from "@roo-code/types"
 
 vi.mock("vscode")
 vi.mock("../../core/webview/ClineProvider")
@@ -35,7 +34,7 @@ describe("API - SendMessage Command", () => {
 		mockLog = vi.fn()
 
 		// Create API instance with logging enabled for testing
-		api = new API(mockOutputChannel, mockProvider, undefined, true)
+		api = new API(mockOutputChannel, mockProvider, true)
 		// Override the log method to use our mock
 		;(api as any).log = mockLog
 	})
@@ -102,32 +101,6 @@ describe("API - SendMessage Command", () => {
 			type: "invoke",
 			invoke: "sendMessage",
 			text: undefined,
-			images: undefined,
-		})
-	})
-
-	it("should log SendMessage command when processed via IPC", async () => {
-		// This test verifies the logging behavior when the command comes through IPC
-		// We need to simulate the IPC handler directly since we can't easily test the full IPC flow
-
-		const messageText = "Test message from IPC"
-		const commandData = {
-			text: messageText,
-			images: undefined,
-		}
-
-		// Simulate the IPC command handler calling sendMessage
-		mockLog(`[API] SendMessage -> ${commandData.text}`)
-		await api.sendMessage(commandData.text, commandData.images)
-
-		// Assert that logging occurred
-		expect(mockLog).toHaveBeenCalledWith(`[API] SendMessage -> ${messageText}`)
-
-		// Assert that the message was sent
-		expect(mockPostMessageToWebview).toHaveBeenCalledWith({
-			type: "invoke",
-			invoke: "sendMessage",
-			text: messageText,
 			images: undefined,
 		})
 	})

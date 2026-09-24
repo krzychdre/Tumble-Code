@@ -368,10 +368,6 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Allows other extensions to activate once Roo is ready.
 	vscode.commands.executeCommand(`${Package.name}.activationCompleted`)
 
-	// Implements the `RooCodeAPI` interface.
-	const socketPath = process.env.ROO_CODE_IPC_SOCKET_PATH
-	const enableLogging = typeof socketPath === "string"
-
 	// Watch the core files and automatically reload the extension host.
 	if (process.env.NODE_ENV === "development") {
 		const watchPaths = [
@@ -424,7 +420,10 @@ export async function activate(context: vscode.ExtensionContext) {
 		})
 	}
 
-	const api = new API(outputChannel, provider, socketPath, enableLogging)
+	// Implements the `RooCodeAPI` interface that other extensions call. Its debug
+	// logging stays off: it used to switch on only together with the external IPC
+	// socket, which has been removed.
+	const api = new API(outputChannel, provider)
 
 	// Wire the opt-in live remote-control bridge (extension ↔ backend ↔ browser).
 	try {

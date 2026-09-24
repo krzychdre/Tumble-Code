@@ -36,7 +36,7 @@ describe("API - DeleteQueuedMessage Command", () => {
 
 		mockLog = vi.fn()
 
-		api = new API(mockOutputChannel, mockProvider, undefined, true)
+		api = new API(mockOutputChannel, mockProvider, true)
 		;(api as any).log = mockLog
 	})
 

@@ -12,37 +12,25 @@ import {
 	type RooCodeEvents,
 	type ProviderSettings,
 	type ProviderSettingsEntry,
-	type TaskEvent,
 	type CreateTaskOptions,
 	RooCodeEventName,
-	TaskCommandName,
 	isSecretStateKey,
-	IpcOrigin,
-	IpcMessageType,
 } from "@roo-code/types"
-import { IpcServer } from "@roo-code/ipc"
 
 import { Package } from "../shared/package"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { Terminal } from "../integrations/terminal/Terminal"
 import { TerminalRegistry } from "../integrations/terminal/TerminalRegistry"
 import { openClineInNewTab } from "../activate/registerCommands"
-import { getCommands } from "../services/command/commands"
 
 export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	private readonly outputChannel: vscode.OutputChannel
 	private readonly sidebarProvider: ClineProvider
 	private readonly context: vscode.ExtensionContext
-	private readonly ipc?: IpcServer
 	private readonly log: (...args: unknown[]) => void
 	private logfile?: string
 
-	constructor(
-		outputChannel: vscode.OutputChannel,
-		provider: ClineProvider,
-		socketPath?: string,
-		enableLogging = false,
-	) {
+	constructor(outputChannel: vscode.OutputChannel, provider: ClineProvider, enableLogging = false) {
 		super()
 
 		this.outputChannel = outputChannel
@@ -61,105 +49,6 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 		}
 
 		this.registerListeners(this.sidebarProvider)
-
-		if (socketPath) {
-			const ipc = (this.ipc = new IpcServer(socketPath, this.log))
-
-			ipc.listen()
-			this.log(`[API] ipc server started: socketPath=${socketPath}, pid=${process.pid}, ppid=${process.ppid}`)
-
-			ipc.on(IpcMessageType.TaskCommand, async (clientId, command) => {
-				const sendResponse = (eventName: RooCodeEventName, payload: unknown[]) => {
-					ipc.send(clientId, {
-						type: IpcMessageType.TaskEvent,
-						origin: IpcOrigin.Server,
-						data: { eventName, payload } as TaskEvent,
-					})
-				}
-
-				switch (command.commandName) {
-					case TaskCommandName.StartNewTask:
-						this.log(
-							`[API] StartNewTask -> ${command.data.text}, ${JSON.stringify(command.data.configuration)}`,
-						)
-						await this.startNewTask(command.data)
-						break
-					case TaskCommandName.CancelTask:
-						this.log(`[API] CancelTask`)
-						await this.cancelCurrentTask()
-						break
-					case TaskCommandName.CloseTask:
-						this.log(`[API] CloseTask`)
-						await vscode.commands.executeCommand("workbench.action.files.saveFiles")
-						await vscode.commands.executeCommand("workbench.action.closeWindow")
-						break
-					case TaskCommandName.ResumeTask:
-						this.log(`[API] ResumeTask -> ${command.data}`)
-						try {
-							await this.resumeTask(command.data)
-						} catch (error) {
-							const errorMessage = error instanceof Error ? error.message : String(error)
-							this.log(`[API] ResumeTask failed for taskId ${command.data}: ${errorMessage}`)
-							// Don't rethrow - we want to prevent IPC server crashes.
-							// The error is logged for debugging purposes.
-						}
-						break
-					case TaskCommandName.SendMessage:
-						this.log(`[API] SendMessage -> ${command.data.text}`)
-						await this.sendMessage(command.data.text, command.data.images)
-						break
-					case TaskCommandName.GetCommands:
-						try {
-							const commands = await getCommands(this.sidebarProvider.cwd)
-
-							sendResponse(RooCodeEventName.CommandsResponse, [
-								commands.map((cmd) => ({
-									name: cmd.name,
-									source: cmd.source,
-									filePath: cmd.filePath,
-									description: cmd.description,
-									argumentHint: cmd.argumentHint,
-								})),
-							])
-						} catch (error) {
-							sendResponse(RooCodeEventName.CommandsResponse, [[]])
-						}
-
-						break
-					case TaskCommandName.GetModes:
-						try {
-							const modes = await this.sidebarProvider.getModes()
-							sendResponse(RooCodeEventName.ModesResponse, [modes])
-						} catch (error) {
-							sendResponse(RooCodeEventName.ModesResponse, [[]])
-						}
-
-						break
-					case TaskCommandName.GetModels:
-						// Router provider removed; no built-in model catalog is fetched here.
-						sendResponse(RooCodeEventName.ModelsResponse, [{}])
-						break
-					case TaskCommandName.DeleteQueuedMessage:
-						this.log(`[API] DeleteQueuedMessage -> ${command.data}`)
-						try {
-							this.deleteQueuedMessage(command.data)
-						} catch (error) {
-							const errorMessage = error instanceof Error ? error.message : String(error)
-							this.log(`[API] DeleteQueuedMessage failed for messageId ${command.data}: ${errorMessage}`)
-						}
-						break
-				}
-			})
-		}
-	}
-
-	public override emit<K extends keyof RooCodeEvents>(
-		eventName: K,
-		...args: K extends keyof RooCodeEvents ? RooCodeEvents[K] : never
-	) {
-		const data = { eventName: eventName as RooCodeEventName, payload: args } as TaskEvent
-		this.ipc?.broadcast({ type: IpcMessageType.TaskEvent, origin: IpcOrigin.Server, data })
-		return super.emit(eventName, ...args)
 	}
 
 	public async startNewTask({

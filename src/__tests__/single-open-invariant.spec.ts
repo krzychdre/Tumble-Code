@@ -134,7 +134,7 @@ describe("Single-open-task invariant", () => {
 		expect(addClineToStack).toHaveBeenCalledTimes(1)
 	})
 
-	it("IPC StartNewTask path closes current before new task", async () => {
+	it("API startNewTask closes current before new task", async () => {
 		const removeClineFromStack = vi.fn().mockResolvedValue(undefined)
 		const createTask = vi.fn().mockResolvedValue({ taskId: "ipc-1" })
 		const provider = {
@@ -154,7 +154,7 @@ describe("Single-open-task invariant", () => {
 		} as unknown as ClineProvider
 
 		const output = { appendLine: vi.fn() } as any
-		const api = new API(output, provider, undefined, false)
+		const api = new API(output, provider, false)
 
 		const taskId = await api.startNewTask({
 			configuration: {},
