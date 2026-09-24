@@ -1,7 +1,6 @@
 // npx vitest run api/transform/__tests__/r1-format.spec.ts
 
 import { convertToR1Format } from "../r1-format"
-import { convertToZAiFormat } from "../zai-format"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
@@ -618,12 +617,11 @@ describe("convertToR1Format", () => {
 		})
 	})
 
-	// Z.ai (GLM thinking models) used to have its own copy of this converter. These cases pin
-	// the behavior the Z.ai handler relies on, so the shared converter keeps serving it.
-	describe.each([
-		["convertToR1Format", convertToR1Format],
-		["convertToZAiFormat", convertToZAiFormat],
-	])("Z.ai GLM interleaved thinking (%s)", (_name, convert) => {
+	// Z.ai (GLM thinking models) had its own byte-for-byte copy of this converter until it was
+	// merged here. These cases pin the behavior the Z.ai handler relies on.
+	describe("Z.ai GLM interleaved thinking", () => {
+		const convert = convertToR1Format
+
 		it("turns a stored reasoning block into reasoning_content next to the tool call", () => {
 			const input = [
 				{ role: "user", content: "List the files" },

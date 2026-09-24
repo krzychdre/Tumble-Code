@@ -12,7 +12,7 @@ import {
 } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
-import { convertToZAiFormat } from "../transform/zai-format"
+import { convertToR1Format } from "../transform/r1-format"
 
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
@@ -117,8 +117,9 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 
 		const temperature = this.options.modelTemperature ?? this.defaultTemperature
 
-		// Use Z.ai format to preserve reasoning_content and merge post-tool text into tool messages
-		const convertedMessages = convertToZAiFormat(messages, { mergeToolResultText: true })
+		// Preserve reasoning_content and merge post-tool text into tool messages. Z.ai's interleaved
+		// thinking has the same contract as DeepSeek's, so both use the shared R1 converter.
+		const convertedMessages = convertToR1Format(messages, { mergeToolResultText: true })
 
 		const params: ZAiChatCompletionParams = {
 			model,
