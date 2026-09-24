@@ -7,6 +7,26 @@ export type AnthropicModelId = keyof typeof anthropicModels
 export const anthropicDefaultModelId: AnthropicModelId = "claude-opus-5"
 
 export const anthropicModels = {
+	"claude-opus-5-5": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000, // 1M native, both the default and the maximum.
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 4.0, // $4 per million input tokens
+		outputPrice: 20.0, // $20 per million output tokens
+		cacheWritesPrice: 5.0, // $5 per million tokens (1.25x input, 5-minute TTL)
+		cacheReadsPrice: 0.2, // $0.20 per million tokens
+		// Thinking cannot be disabled on Opus 5.5: `{type: "disabled"}` and
+		// `budget_tokens` are both rejected. Turning the toggle off omits the
+		// parameter, which the API runs as adaptive thinking, so no request is
+		// rejected. Forced tool_choice (`any`/`tool`) is also rejected; we only
+		// ever send `auto`.
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Opus 5.5 succeeds Opus 5 for long-running agentic coding and knowledge work, at a lower price.",
+	},
 	"claude-opus-5": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
 		contextWindow: 1_000_000, // 1M native, both the default and the maximum.
@@ -31,10 +51,10 @@ export const anthropicModels = {
 		contextWindow: 1_000_000,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens
-		outputPrice: 15.0, // $15 per million output tokens
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
+		inputPrice: 2.0, // $2 per million input tokens
+		outputPrice: 10.0, // $10 per million output tokens
+		cacheWritesPrice: 2.5, // $2.50 per million tokens
+		cacheReadsPrice: 0.2, // $0.20 per million tokens
 		// Adaptive thinking is on by default; manual budget_tokens payloads are
 		// rejected, so the UI presents a binary toggle here too.
 		supportsReasoningBudget: true,
@@ -161,6 +181,23 @@ export const anthropicModels = {
 		// expose reasoning as a binary on/off toggle on this provider path.
 		supportsReasoningBinary: true,
 		supportsTemperature: false,
+	},
+	"claude-fable-5-1": {
+		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.
+		contextWindow: 1_000_000,
+		supportsImages: true,
+		supportsPromptCache: true,
+		inputPrice: 10.0, // $10 per million input tokens
+		outputPrice: 50.0, // $50 per million output tokens
+		cacheWritesPrice: 12.5, // $12.50 per million tokens
+		cacheReadsPrice: 0.25, // $0.25 per million tokens (a quarter of Fable 5's rate)
+		// Same always-on thinking contract as Fable 5; additionally rejects forced
+		// tool_choice (`any`/`tool`), which we never send.
+		supportsReasoningBudget: true,
+		supportsReasoningBinary: true,
+		supportsTemperature: false,
+		description:
+			"Claude Fable 5.1 is Anthropic's most capable widely released model, succeeding Fable 5 with stronger long-running agentic coding and research.",
 	},
 	"claude-fable-5": {
 		maxTokens: 128_000, // Overridden to 8k if `enableReasoningEffort` is false.

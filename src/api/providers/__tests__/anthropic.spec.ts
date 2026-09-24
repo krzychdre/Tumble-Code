@@ -332,6 +332,38 @@ describe("AnthropicHandler", () => {
 			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
 		})
 
+		// Opus 5 (the default model) and Sonnet 5 were missing from the hardcoded
+		// caching switch, so their requests went out with no cache breakpoints.
+		it.each(["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5", "claude-fable-5-1", "claude-fable-5"])(
+			"should send cache breakpoints and adaptive thinking for %s",
+			async (modelId) => {
+				const claude5Handler = new AnthropicHandler({
+					apiKey: "test-api-key",
+					apiModelId: modelId,
+					enableReasoningEffort: true,
+				})
+
+				const stream = claude5Handler.createMessage(systemPrompt, [
+					{ role: "user", content: [{ type: "text" as const, text: "Hello" }] },
+				])
+
+				for await (const _chunk of stream) {
+					// Consume stream
+				}
+
+				const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
+				const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
+				expect(requestBody?.model).toBe(modelId)
+				expect(requestBody?.system).toEqual([
+					{ text: systemPrompt, type: "text", cache_control: { type: "ephemeral" } },
+				])
+				expect(requestBody?.messages[0].content[0].cache_control).toEqual({ type: "ephemeral" })
+				expect(requestBody?.thinking).toEqual({ type: "adaptive" })
+				expect(requestBody?.temperature).toBeUndefined()
+				expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
+			},
+		)
+
 		it("should not require the 1M context beta header for Claude Opus 4.8", async () => {
 			const opus48Handler = new AnthropicHandler({
 				apiKey: "test-api-key",

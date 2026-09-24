@@ -318,6 +318,33 @@ describe("OpenRouter API", () => {
 			expect(result.supportsReasoningBinary).toBe(true)
 		})
 
+		it.each([
+			"anthropic/claude-sonnet-5",
+			"anthropic/claude-opus-5",
+			"anthropic/claude-opus-5.5",
+			"anthropic/claude-fable-5.1",
+		])("applies the adaptive-thinking configuration to %s", (id) => {
+			const result = parseOpenRouterModel({
+				id,
+				model: {
+					name: id,
+					description: "Test model",
+					context_length: 1000000,
+					max_completion_tokens: 128000,
+					pricing: { prompt: "0.000004", completion: "0.00002" },
+				},
+				inputModality: ["text", "image"],
+				outputModality: ["text"],
+				maxTokens: 64000,
+				supportedParameters: ["reasoning", "include_reasoning"],
+			})
+
+			expect(result.maxTokens).toBe(128000)
+			expect(result.supportsTemperature).toBe(false)
+			expect(result.supportsReasoningBudget).toBe(true)
+			expect(result.supportsReasoningBinary).toBe(true)
+		})
+
 		it("sets horizon-alpha model to 32k max tokens", () => {
 			const mockModel = {
 				name: "Horizon Alpha",
