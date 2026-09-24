@@ -6,6 +6,7 @@ import { defineConfig, type PluginOption, type Plugin } from "vite"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 
+import { bundleBoundaryPlugin } from "./src/vite-plugins/bundleBoundaryPlugin"
 import { sourcemapPlugin } from "./src/vite-plugins/sourcemapPlugin"
 
 function getGitSha() {
@@ -91,6 +92,7 @@ export default defineConfig(({ mode }) => {
 		persistPortPlugin(),
 		wasmPlugin(),
 		sourcemapPlugin(),
+		bundleBoundaryPlugin(path.resolve(__dirname, "..", "src")),
 	]
 
 	return {

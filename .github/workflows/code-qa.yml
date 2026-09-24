@@ -40,6 +40,11 @@ jobs:
               run: pnpm lint
             - name: Check types
               run: pnpm check-types
+            # The webview bundle must not ship extension-only code (src/core,
+            # src/services, ...) or import "vscode"; a Vite plugin fails the build
+            # if it does. Types were checked above, so only the bundling runs here.
+            - name: Build webview (bundle boundary guard)
+              run: pnpm --filter @roo-code/vscode-webview exec vite build
 
     unit-test:
         name: platform-unit-test (${{ matrix.name }})
