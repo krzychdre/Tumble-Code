@@ -5,7 +5,13 @@ import fs from "fs"
 import os from "os"
 import path from "path"
 
-import type { ExtensionMessage, WebviewMessage } from "@roo-code/types"
+import {
+	CLI_RUNTIME_ENV,
+	CLI_RUNTIME_GLOBAL_SLOTS,
+	clearCliRuntimeGlobals,
+	type ExtensionMessage,
+	type WebviewMessage,
+} from "@roo-code/types"
 
 import { DEFAULT_FLAGS } from "@/types/index.js"
 import { getPermissionSettings } from "@/lib/utils/permissions.js"
@@ -20,6 +26,11 @@ vi.mock("@roo-code/vscode-shim", () => ({
 	})),
 	setRuntimeConfigValues: vi.fn(),
 }))
+
+vi.mock("@roo-code/types", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@roo-code/types")>()
+	return { ...actual, clearCliRuntimeGlobals: vi.fn(actual.clearCliRuntimeGlobals) }
+})
 
 vi.mock("@/lib/storage/index.js", async (importOriginal) => ({
 	...(await importOriginal<typeof import("@/lib/storage/index.js")>()),
@@ -572,6 +583,22 @@ describe("ExtensionHost", () => {
 			await host.dispose()
 
 			expect((global as Record<string, unknown>).__extensionHost).toBeUndefined()
+		})
+
+		it("clears the global slots through the typed runtime contract", async () => {
+			const globals = global as Record<string, unknown>
+			globals[CLI_RUNTIME_GLOBAL_SLOTS.vscode] = {}
+			globals[CLI_RUNTIME_GLOBAL_SLOTS.extensionHost] = {}
+
+			await host.dispose()
+
+			expect(clearCliRuntimeGlobals).toHaveBeenCalled()
+			expect(globals[CLI_RUNTIME_GLOBAL_SLOTS.vscode]).toBeUndefined()
+			expect(globals[CLI_RUNTIME_GLOBAL_SLOTS.extensionHost]).toBeUndefined()
+		})
+
+		it("marks the process with the contract's runtime variable", () => {
+			expect(process.env[CLI_RUNTIME_ENV.runtime]).toBe("1")
 		})
 
 		it("should call restoreConsole", async () => {
