@@ -334,11 +334,15 @@ vi.mock("../diff/strategies/multi-search-replace", () => ({
 
 // The state builder awaits this after it has read the chat messages; the state-order test
 // holds it open to make an older snapshot finish building after a newer one.
-const { mockOpenAiCodexIsAuthenticated } = vi.hoisted(() => ({
+const { mockOpenAiCodexIsAuthenticated, mockOpenAiCodexAuthStatus } = vi.hoisted(() => ({
 	mockOpenAiCodexIsAuthenticated: vi.fn(),
+	mockOpenAiCodexAuthStatus: vi.fn(),
 }))
 vi.mock("../../../integrations/openai-codex/oauth", () => ({
-	openAiCodexOAuthManager: { isAuthenticated: mockOpenAiCodexIsAuthenticated },
+	openAiCodexOAuthManager: {
+		isAuthenticated: mockOpenAiCodexIsAuthenticated,
+		getAuthenticationStatus: mockOpenAiCodexAuthStatus,
+	},
 }))
 
 vi.mock("@roo-code/cloud", () => ({
@@ -742,6 +746,32 @@ describe("ClineProvider", () => {
 		expect(disposeCalls).toHaveLength(1)
 	})
 
+	test("webviewDidLaunch applies the stored telemetry setting without a second full state build", async () => {
+		await provider.resolveWebviewView(mockWebviewView)
+		const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
+		await provider.contextProxy.setValue("telemetrySetting", "disabled")
+		const updateTelemetryState = vi.spyOn(TelemetryService.instance, "updateTelemetryState")
+		const buildState = vi.spyOn(provider, "getStateToPostToWebview")
+
+		await messageHandler({ type: "webviewDidLaunch" })
+
+		await vi.waitFor(() => expect(updateTelemetryState).toHaveBeenCalledWith(false))
+		// Only the state push itself builds the webview state.
+		expect(buildState).toHaveBeenCalledTimes(1)
+	})
+
+	test("the state push takes the codex sign-in flag from the cached status", async () => {
+		mockOpenAiCodexAuthStatus.mockReset()
+		mockOpenAiCodexAuthStatus.mockResolvedValue(true)
+		mockOpenAiCodexIsAuthenticated.mockReset()
+		mockOpenAiCodexIsAuthenticated.mockResolvedValue(false)
+
+		const state = await provider.getStateToPostToWebview()
+
+		expect(state.openAiCodexIsAuthenticated).toBe(true)
+		expect(mockOpenAiCodexIsAuthenticated).not.toHaveBeenCalled()
+	})
+
 	test("handles webviewDidLaunch message", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 
@@ -911,8 +941,8 @@ describe("ClineProvider", () => {
 		task.clineMessages = []
 
 		let releaseOlderBuild: ((value: boolean) => void) | undefined
-		mockOpenAiCodexIsAuthenticated.mockReset()
-		mockOpenAiCodexIsAuthenticated
+		mockOpenAiCodexAuthStatus.mockReset()
+		mockOpenAiCodexAuthStatus
 			.mockImplementationOnce(() => new Promise<boolean>((resolve) => (releaseOlderBuild = resolve)))
 			.mockResolvedValue(false)
 		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
@@ -937,8 +967,8 @@ describe("ClineProvider", () => {
 	})
 
 	test("postStateToWebviewWithoutClineMessages carries no message sequence number", async () => {
-		mockOpenAiCodexIsAuthenticated.mockReset()
-		mockOpenAiCodexIsAuthenticated.mockResolvedValue(false)
+		mockOpenAiCodexAuthStatus.mockReset()
+		mockOpenAiCodexAuthStatus.mockResolvedValue(false)
 		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
 		await provider.postStateToWebviewWithoutClineMessages()
@@ -1389,10 +1419,8 @@ describe("ClineProvider", () => {
 			mockCline.apiConversationHistory = mockApiHistory // Set API history
 			await provider.addClineToStack(mockCline) // Add the mocked instance to the stack
 
-			// Mock getTaskWithId
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			// Mock getHistoryItem
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			// Mock createTaskWithHistoryItem
 			;(provider as any).createTaskWithHistoryItem = vi.fn()
@@ -1483,10 +1511,8 @@ describe("ClineProvider", () => {
 
 			await provider.addClineToStack(mockCline) // Add the mocked instance to the stack
 
-			// Mock getTaskWithId
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			// Mock getHistoryItem
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			// Trigger message edit
 			// Get the message handler function that was registered with the webview
@@ -2182,41 +2208,48 @@ describe("ClineProvider", () => {
 			])
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
 		})
+	})
 
-		test("handles successful saveApiConfiguration", async () => {
-			await provider.resolveWebviewView(mockWebviewView)
-			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
-
-			;(provider as any).providerSettingsManager = {
-				setModeConfig: vi.fn(),
-				saveConfig: vi.fn().mockResolvedValue(undefined),
-				listConfig: vi
-					.fn()
-					.mockResolvedValue([{ name: "test-config", id: "test-id", apiProvider: "anthropic" }]),
-			} as any
-
-			const testApiConfig = {
-				apiProvider: "anthropic" as const,
-				apiKey: "test-key",
-			}
-
-			// Trigger upsertApiConfiguration
-			await messageHandler({
-				type: "saveApiConfiguration",
-				text: "test-config",
-				apiConfiguration: testApiConfig,
+	describe("cloud profile sync wiring", () => {
+		const installFakeCloudService = async (authenticated: boolean) => {
+			const { EventEmitter } = await import("events")
+			const { CloudService } = await import("@roo-code/cloud")
+			const fake = Object.assign(new EventEmitter(), {
+				isAuthenticated: vi.fn().mockReturnValue(authenticated),
+				getOrganizationSettings: vi.fn().mockReturnValue(undefined),
 			})
+			const descriptor = Object.getOwnPropertyDescriptor(CloudService, "instance")
+			Object.defineProperty(CloudService, "instance", { get: () => fake, configurable: true })
+			const restore = () => Object.defineProperty(CloudService, "instance", descriptor!)
+			return { fake, restore }
+		}
 
-			// Verify config was saved
-			expect(provider.providerSettingsManager.saveConfig).toHaveBeenCalledWith("test-config", testApiConfig)
+		const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
 
-			// Verify state updates
-			expect(mockContext.globalState.update).toHaveBeenCalledWith("listApiConfigMeta", [
-				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
-			])
-			expect(updateGlobalStateSpy).toHaveBeenCalledWith("listApiConfigMeta", [
-				{ name: "test-config", id: "test-id", apiProvider: "anthropic" },
-			])
+		test("construction subscribes once, and initializeCloudProfileSyncWhenReady does not add a second listener", async () => {
+			const { fake, restore } = await installFakeCloudService(false)
+			try {
+				const p = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+				await flush()
+				expect(fake.listenerCount("settings-updated")).toBe(1)
+
+				await p.initializeCloudProfileSyncWhenReady()
+				await p.initializeCloudProfileSyncWhenReady()
+				expect(fake.listenerCount("settings-updated")).toBe(1)
+			} finally {
+				restore()
+			}
+		})
+
+		test("construction syncs cloud profiles right away when already authenticated", async () => {
+			const { fake, restore } = await installFakeCloudService(true)
+			try {
+				new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+				await flush()
+				expect(fake.getOrganizationSettings).toHaveBeenCalledTimes(1)
+			} finally {
+				restore()
+			}
 		})
 	})
 })
@@ -2661,9 +2694,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.submitUserMessage = vi.fn()
 
 			await provider.addClineToStack(mockCline)
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 			await messageHandler({
@@ -2717,9 +2748,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.submitUserMessage = vi.fn()
 
 			await provider.addClineToStack(mockCline)
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 			await messageHandler({
@@ -2767,9 +2796,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.handleWebviewAskResponse = vi.fn().mockRejectedValue(new Error("Network timeout"))
 
 			await provider.addClineToStack(mockCline)
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -2809,9 +2836,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.handleWebviewAskResponse = vi.fn()
 
 			await provider.addClineToStack(mockCline)
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -2861,9 +2886,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.handleWebviewAskResponse = vi.fn()
 
 			await provider.addClineToStack(mockCline)
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -2941,9 +2964,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 			mockCline.handleWebviewAskResponse = vi.fn()
 
 			await provider.addClineToStack(mockCline)
-			;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-				historyItem: { id: "test-task-id" },
-			})
+			;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3063,9 +3084,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.handleWebviewAskResponse = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3107,9 +3126,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3158,9 +3175,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.handleWebviewAskResponse = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3204,9 +3219,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3250,9 +3263,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.submitUserMessage = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3296,9 +3307,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3338,9 +3347,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 				;(provider as any).createTaskWithHistoryItem = vi.fn()
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -3413,9 +3420,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.overwriteApiConversationHistory = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 
@@ -3459,9 +3464,7 @@ describe("ClineProvider - Comprehensive Edit/Delete Edge Cases", () => {
 				mockCline.submitUserMessage = vi.fn()
 
 				await provider.addClineToStack(mockCline)
-				;(provider as any).getTaskWithId = vi.fn().mockResolvedValue({
-					historyItem: { id: "test-task-id" },
-				})
+				;(provider as any).getHistoryItem = vi.fn().mockResolvedValue({ id: "test-task-id" })
 
 				const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
 

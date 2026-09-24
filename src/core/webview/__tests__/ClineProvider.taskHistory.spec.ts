@@ -643,43 +643,6 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(updatedItem?.childIds).toEqual(["child-1"])
 		})
 
-		it("invalidates recentTasksCache on updateTaskHistory (UTH-04)", async () => {
-			const workspace = provider.cwd
-			const tsBase = Date.now()
-
-			await provider.updateTaskHistory(
-				createHistoryItem({
-					id: "cache-seed",
-					task: "Cache seed",
-					workspace,
-					ts: tsBase,
-				}),
-				{ broadcast: false },
-			)
-
-			const initialRecent = await provider.getRecentTasks()
-			expect(initialRecent).toContain("cache-seed")
-
-			// Prime cache and verify internal cache is set.
-			expect((provider as unknown as { recentTasksCache?: string[] }).recentTasksCache).toEqual(initialRecent)
-
-			await provider.updateTaskHistory(
-				createHistoryItem({
-					id: "cache-new",
-					task: "Cache new",
-					workspace,
-					ts: tsBase + 1,
-				}),
-				{ broadcast: false },
-			)
-
-			// Direct assertion for invalidation side-effect.
-			expect((provider as unknown as { recentTasksCache?: string[] }).recentTasksCache).toBeUndefined()
-
-			const recomputedRecent = await provider.getRecentTasks()
-			expect(recomputedRecent).toContain("cache-new")
-		})
-
 		it("updates existing task in history", async () => {
 			await provider.resolveWebviewView(mockWebviewView)
 			provider.isViewLaunched = true
@@ -1192,6 +1155,41 @@ describe("ClineProvider Task History Synchronization", () => {
 			)
 
 			getAllSpy.mockRestore()
+		})
+	})
+
+	describe("getHistoryItem (no conversation parse)", () => {
+		it("returns the stored history item", async () => {
+			const item = createHistoryItem({ id: "light-1", task: "Light" })
+			await provider.updateTaskHistory(item, { broadcast: false })
+
+			const found = await provider.getHistoryItem("light-1")
+
+			expect(found).toEqual(expect.objectContaining({ id: "light-1", task: "Light" }))
+		})
+
+		it("throws 'Task not found' for an unknown id, like getTaskWithId", async () => {
+			await expect(provider.getHistoryItem("missing")).rejects.toThrow("Task not found")
+		})
+
+		it("getTaskWithAggregatedCosts walks parent and children without the conversation-loading getTaskWithId", async () => {
+			await provider.updateTaskHistory(
+				createHistoryItem({ id: "cost-parent", task: "Parent", totalCost: 1, childIds: ["cost-a", "cost-b"] }),
+				{ broadcast: false },
+			)
+			await provider.updateTaskHistory(createHistoryItem({ id: "cost-a", task: "A", totalCost: 2 }), {
+				broadcast: false,
+			})
+			await provider.updateTaskHistory(createHistoryItem({ id: "cost-b", task: "B", totalCost: 3 }), {
+				broadcast: false,
+			})
+			const heavySpy = vi.spyOn(provider, "getTaskWithId")
+
+			const { historyItem, aggregatedCosts } = await provider.getTaskWithAggregatedCosts("cost-parent")
+
+			expect(historyItem.id).toBe("cost-parent")
+			expect(aggregatedCosts.totalCost).toBe(6)
+			expect(heavySpy).not.toHaveBeenCalled()
 		})
 	})
 })

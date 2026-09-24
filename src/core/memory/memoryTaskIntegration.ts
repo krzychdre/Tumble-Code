@@ -20,7 +20,6 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiHandler, type SingleCompletionHandler } from "../../api"
 import { runCompletion } from "../../utils/single-completion-handler"
-import { logger } from "../../utils/logging"
 
 import { type SideQuery } from "./relevance"
 import { startRelevantMemoryPrefetch, type MemoryPrefetch, type PrefetchMessage } from "./prefetch"
@@ -30,7 +29,7 @@ import {
 	type RelevantMemory,
 	type FileStateCache,
 } from "./surfacing"
-import { type SubTaskRunner, type SubTaskResult } from "./extractMemories"
+import { type SubTaskRunner } from "./extractMemories"
 
 /**
  * Build a {@link SideQuery} over a handler that implements
@@ -186,35 +185,5 @@ export class MemoryCoordinator {
  * tests, disabled). Returns an empty written-paths list.
  */
 export const noopSubTaskRunner: SubTaskRunner = async () => ({ writtenPaths: [] })
-
-/**
- * Adapt a real Roo sub-Task spawn into the {@link SubTaskRunner} shape.
- *
- * The concrete spawn lives in the Task layer (it needs the provider, context,
- * etc.); this adapter is injected from there so the memory module stays
- * decoupled. The sandbox (read anywhere; write only inside the memory dir) is
- * enforced by the spawn implementation via the `validateToolUse` carve-out +
- * the sub-Task's tool-approval path.
- *
- * @param spawn The provider-specific sub-Task spawner.
- */
-export function makeSubTaskRunner(
-	spawn: (params: {
-		cwd: string
-		systemPrompt: string
-		userPrompt: string
-		maxTurns: number
-		signal: AbortSignal
-	}) => Promise<{ writtenPaths: string[] }>,
-): SubTaskRunner {
-	return async (params) => {
-		try {
-			return await spawn(params)
-		} catch (e) {
-			logger.error(`[memory] subTaskRunner failed: ${e instanceof Error ? e.message : String(e)}`)
-			return { writtenPaths: [] } as SubTaskResult
-		}
-	}
-}
 
 export { type RelevantMemory }

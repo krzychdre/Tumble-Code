@@ -250,7 +250,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 
 	it("history click: the rejection propagates to the webview handler and the chat view is not opened", async () => {
 		useProfile(DISALLOWED_PROFILE)
-		provider.getTaskWithId = vi.fn().mockResolvedValue({ historyItem: historyItem("old") }) as any
+		provider.getHistoryItem = vi.fn().mockResolvedValue(historyItem("old")) as any
 
 		await expect(provider.showTaskWithId("old")).rejects.toBeInstanceOf(OrganizationAllowListViolationError)
 
@@ -268,7 +268,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 			current.isStreaming = false
 		})
 		stack.push(current)
-		provider.getTaskWithId = vi.fn().mockResolvedValue({ historyItem: historyItem("running") }) as any
+		provider.getHistoryItem = vi.fn().mockResolvedValue(historyItem("running")) as any
 
 		await expect(provider.cancelTask()).resolves.toBeUndefined()
 
@@ -281,8 +281,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		useProfile(DISALLOWED_PROFILE)
 		const failed = fakeTask("streaming", { abortReason: "streaming_failed", isBackground: false })
 		stack.push(failed)
-		provider.getTaskWithId = vi.fn().mockResolvedValue({ historyItem: historyItem("streaming") }) as any
-
+		provider.getHistoryItem = vi.fn().mockResolvedValue(historyItem("streaming")) as any
 		;(provider as any).taskCreationCallback(failed)
 		const onAborted = failed.on.mock.calls.find(([event]: [string]) => event === RooCodeEventName.TaskAborted)[1]
 		await onAborted()
@@ -296,12 +295,11 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		useProfile(DISALLOWED_PROFILE)
 		const child = fakeTask("child", { parentTaskId: "parent" })
 		stack.push(child)
-		provider.getTaskWithId = vi.fn(async (id: string) => ({
-			historyItem:
-				id === "parent"
-					? historyItem("parent", { status: "delegated", awaitingChildId: "child" })
-					: historyItem("child", { status: "active", parentTaskId: "parent" }),
-		})) as any
+		provider.getHistoryItem = vi.fn(async (id: string) =>
+			id === "parent"
+				? historyItem("parent", { status: "delegated", awaitingChildId: "child" })
+				: historyItem("child", { status: "active", parentTaskId: "parent" }),
+		) as any
 		const emitted: string[] = []
 		const originalEmit = provider.emit.bind(provider)
 		provider.emit = ((event: string, ...args: unknown[]) => {

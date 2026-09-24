@@ -118,16 +118,14 @@ import { readTaskMessages } from "../task-persistence/taskMessages"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
+import { findLastNewTaskToolUse, formatSubtaskResult, hasToolResultFor } from "./delegationHistory"
+import { sanitizeCommandList } from "../auto-approval/sanitizeCommandList"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
  * https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/customSidebarViewProvider.ts
  */
-
-export type ClineProviderEvents = {
-	clineCreated: [cline: Task]
-}
 
 interface PendingEditOperation {
 	messageTs: number
@@ -203,9 +201,14 @@ export class ClineProvider
 	private currentWorkspacePath: string | undefined
 	private _disposed = false
 
-	private recentTasksCache?: string[]
 	/** Set by the CLI host at startup; see {@link setCliModeProviderSettings}. */
 	private cliModeProviderSettings?: CliModeProviderSettings
+	/**
+	 * Origin token passed with every task-history mutation this provider
+	 * makes. The shared store echoes it back on the change event, which is
+	 * how {@link subscribeToTaskHistoryStore} recognises (and skips) the
+	 * echo of our own writes.
+	 */
 	private readonly taskHistoryOrigin = Symbol("ClineProvider.taskHistoryOrigin")
 	/**
 	 * In-flight (or settled-successful) {@link TaskHistoryStore} acquire.
@@ -241,12 +244,11 @@ export class ClineProvider
 	 */
 	private storageErrorMessage = ""
 	/**
-	 * IDs of task-history mutations this provider initiated (via
-	 * `updateTaskHistory` / `deleteTaskFromState` /
-	 * `delegateParentAndOpenChild`'s `atomicReadAndUpdate`). Used to
-	 * suppress the `onChange` echo for our own writes so we don't double-send
-	 * the targeted webview message. Entries are consumed (deleted) by the
-	 * `onChange` handler when it sees the matching `external:false` event.
+	 * Chat-message edits waiting for the user to confirm a checkpoint
+	 * restore, keyed by operation ID. Written by
+	 * {@link setPendingEditOperation} (from checkpointRestoreHandler) and
+	 * consumed when the restore finishes; each entry clears itself after
+	 * {@link ClineProvider.PENDING_OPERATION_TIMEOUT_MS}.
 	 */
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
@@ -308,39 +310,6 @@ export class ClineProvider
 			// Already reported by acquireTaskHistoryStore; the eager init
 			// must not surface as an unhandled rejection.
 		})
-
-		// React to cache changes from the shared store. The store fires one
-		// event per change with `external` (filesystem/other-process origin),
-		// `kind` ("upsert" | "delete" | "external"), and the affected
-		// `taskId`/`item` when known.
-		//
-		// - For a LOCAL mutation performed through THIS provider's own
-		//   `updateTaskHistory`/`deleteTaskFromState`/`atomicReadAndUpdate`,
-		//   we already sent the targeted `taskHistoryItemUpdated`/full state
-		//   message ourselves, so we skip the onChange callback to avoid a
-		//   redundant broadcast. (The store still reports `external:false` for
-		//   these, which other providers sharing the store WILL act on.)
-		// - For a mutation performed by ANOTHER provider sharing the store
-		//   (also `external:false` because it's a local mutation — just not
-		//   ours), we push a targeted `taskHistoryItemUpdated` /
-		//   `taskHistoryDeleted` message and refresh `recentTasksCache`, but
-		//   we do NOT rebroadcast the full history.
-		// - For an EXTERNAL change (watcher/periodic reconcile picked up a
-		//   change from another process or an explicit invalidate), we fall
-		//   back to a full `taskHistoryUpdated` broadcast because the watcher
-		//   coalesces IDs and a targeted message per ID is not always
-		//   available.
-		//
-		// We track the IDs of mutations this provider initiated so we can
-		// suppress the echo for our own writes (the store has no notion of
-		// "which provider caused this" — every local mutation is
-		// `external:false`).
-		//
-		// The legacy-history migration now runs inside acquireTaskHistoryStore
-		// (once per successful acquire), which also owns its error reporting.
-
-		// Start configuration loading (which might trigger indexing) in the background.
-		// Don't await, allowing activation to continue immediately.
 
 		// Register this provider with the telemetry service to enable it to add
 		// properties like mode and provider.
@@ -404,7 +373,7 @@ export class ClineProvider
 							return
 						}
 
-						const { historyItem } = await this.getTaskWithId(instance.taskId)
+						const historyItem = await this.getHistoryItem(instance.taskId)
 						const rootTask = instance.rootTask
 						const parentTask = instance.parentTask
 						await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
@@ -480,11 +449,11 @@ export class ClineProvider
 			])
 		}
 
-		// Initialize Roo Code Cloud profile sync.
+		// Initialize Roo Code Cloud profile sync. When CloudService is not
+		// ready yet, extension activation calls
+		// initializeCloudProfileSyncWhenReady() again once it is.
 		if (CloudService.hasInstance()) {
-			this.initializeCloudProfileSync().catch((error) => {
-				this.log(`Failed to initialize cloud profile sync: ${error}`)
-			})
+			void this.initializeCloudProfileSyncWhenReady()
 		} else {
 			this.log("CloudService not ready, deferring cloud profile sync")
 		}
@@ -676,13 +645,30 @@ export class ClineProvider
 		this.outputChannel.show(true)
 	}
 
+	/**
+	 * Reacts to changes in the shared store. The store fires one event per
+	 * change with `kind` ("upsert" | "delete" | "external"), the affected
+	 * `taskId`/`item` when known, and the `origin` token of the writer.
+	 *
+	 * - A mutation made through THIS provider (`updateTaskHistory`,
+	 *   `deleteTaskFromState`, `deleteTaskWithId`, the delegation
+	 *   `atomicReadAndUpdate`) carries {@link taskHistoryOrigin}; it is
+	 *   skipped because the caller already sent the targeted webview
+	 *   message. Other providers sharing the store do act on it.
+	 * - A mutation made by ANOTHER provider sharing the store is pushed as a
+	 *   targeted `taskHistoryItemUpdated` / `taskHistoryItemDeleted`
+	 *   message, without rebroadcasting the full history.
+	 * - An `external` change (the watcher or periodic reconcile picked up a
+	 *   change from another process, or an explicit invalidate) falls back
+	 *   to a full `taskHistoryUpdated` broadcast, because the watcher
+	 *   coalesces IDs and a targeted message per ID is not always available.
+	 */
 	private subscribeToTaskHistoryStore(taskHistoryStore: TaskHistoryStore): void {
 		this.taskHistoryStoreUnsubscribe = taskHistoryStore.onChange((event) => {
 			if (event.origin === this.taskHistoryOrigin || !this.isViewLaunched || this._disposed) {
 				return
 			}
 
-			this.recentTasksCache = undefined
 			if (event.kind === "delete" && event.taskId) {
 				this.postMessageToWebview({
 					type: "taskHistoryItemDeleted",
@@ -743,25 +729,6 @@ export class ClineProvider
 	}
 
 	/**
-	 * Initialize cloud profile synchronization
-	 */
-	private async initializeCloudProfileSync() {
-		try {
-			// Check if authenticated and sync profiles
-			if (CloudService.hasInstance() && CloudService.instance.isAuthenticated()) {
-				await this.syncCloudProfiles()
-			}
-
-			// Set up listener for future updates
-			if (CloudService.hasInstance()) {
-				CloudService.instance.on("settings-updated", this.handleCloudSettingsUpdate)
-			}
-		} catch (error) {
-			this.log(`Error in initializeCloudProfileSync: ${error}`)
-		}
-	}
-
-	/**
 	 * Handle cloud settings updates
 	 */
 	private handleCloudSettingsUpdate = async () => {
@@ -810,8 +777,10 @@ export class ClineProvider
 	}
 
 	/**
-	 * Initialize cloud profile synchronization when CloudService is ready
-	 * This method is called externally after CloudService has been initialized
+	 * Initialize cloud profile synchronization: sync now if signed in, and
+	 * (re)subscribe to settings updates. Idempotent, never throws. Called from
+	 * the constructor when CloudService already exists and again by extension
+	 * activation once CloudService has been initialized.
 	 */
 	public async initializeCloudProfileSyncWhenReady(): Promise<void> {
 		try {
@@ -926,7 +895,7 @@ export class ClineProvider
 			// child and will update the parent to point at the new child.
 			if (parentTaskId && childTaskId && !options?.skipDelegationRepair) {
 				try {
-					const { historyItem: parentHistory } = await this.getTaskWithId(parentTaskId)
+					const parentHistory = await this.getHistoryItem(parentTaskId)
 
 					if (parentHistory.status === "delegated" && parentHistory.awaitingChildId === childTaskId) {
 						await this.updateTaskHistory({
@@ -1126,21 +1095,6 @@ export class ClineProvider
 		}
 
 		return visibleProvider
-	}
-
-	public static async isActiveTask(): Promise<boolean> {
-		const visibleProvider = await ClineProvider.getInstance()
-
-		if (!visibleProvider) {
-			return false
-		}
-
-		// Check if there is a cline instance in the stack (if this provider has an active task)
-		if (visibleProvider.getCurrentTask()) {
-			return true
-		}
-
-		return false
 	}
 
 	public static async handleCodeAction(
@@ -1992,10 +1946,6 @@ export class ClineProvider
 		return this.getProviderProfileEntries().find((profile) => profile.name === name)
 	}
 
-	public hasProviderProfileEntry(name: string): boolean {
-		return !!this.getProviderProfileEntry(name)
-	}
-
 	async upsertProviderProfile(
 		name: string,
 		providerSettings: ProviderSettings,
@@ -2220,13 +2170,12 @@ export class ClineProvider
 
 	// Task history
 
-	async getTaskWithId(id: string): Promise<{
-		historyItem: HistoryItem
-		taskDirPath: string
-		apiConversationHistoryFilePath: string
-		uiMessagesFilePath: string
-		apiConversationHistory: Anthropic.MessageParam[]
-	}> {
+	/**
+	 * Looks up a task's history item without touching its conversation
+	 * file. Use this unless you need the API conversation or its file paths
+	 * (then use {@link getTaskWithId}). Throws "Task not found" like it.
+	 */
+	async getHistoryItem(id: string): Promise<HistoryItem> {
 		// Ensure the store is initialized before reading — an early task lookup
 		// (e.g. resume via command before the constructor's fire-and-forget init
 		// completes) would otherwise miss entries that haven't been loaded yet.
@@ -2237,6 +2186,18 @@ export class ClineProvider
 		if (!historyItem) {
 			throw new Error("Task not found")
 		}
+
+		return historyItem
+	}
+
+	async getTaskWithId(id: string): Promise<{
+		historyItem: HistoryItem
+		taskDirPath: string
+		apiConversationHistoryFilePath: string
+		uiMessagesFilePath: string
+		apiConversationHistory: Anthropic.MessageParam[]
+	}> {
+		const historyItem = await this.getHistoryItem(id)
 
 		const { getTaskDirectoryPath } = await import("../../utils/storage")
 		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
@@ -2274,11 +2235,10 @@ export class ClineProvider
 		historyItem: HistoryItem
 		aggregatedCosts: AggregatedCosts
 	}> {
-		const { historyItem } = await this.getTaskWithId(taskId)
+		const historyItem = await this.getHistoryItem(taskId)
 
 		const aggregatedCosts = await aggregateTaskCostsRecursive(taskId, async (id: string) => {
-			const result = await this.getTaskWithId(id)
-			return result.historyItem
+			return this.getHistoryItem(id)
 		})
 
 		return { historyItem, aggregatedCosts }
@@ -2286,7 +2246,7 @@ export class ClineProvider
 
 	async showTaskWithId(id: string) {
 		if (id !== this.getCurrentTask()?.taskId) {
-			const { historyItem } = await this.getTaskWithId(id)
+			const historyItem = await this.getHistoryItem(id)
 
 			// Resolve rootTask/parentTask references from the active stack so
 			// that subtask delegation metadata survives history-item round-trips
@@ -2351,8 +2311,8 @@ export class ClineProvider
 	// If the task has subtasks (childIds), they will also be deleted recursively
 	async deleteTaskWithId(id: string, cascadeSubtasks: boolean = true) {
 		try {
-			// get the task directory full path and history item
-			const { taskDirPath, historyItem } = await this.getTaskWithId(id)
+			// Existence check: throws "Task not found" (handled below).
+			await this.getHistoryItem(id)
 
 			// Collect all task IDs to delete (parent + all subtasks)
 			const allIdsToDelete: string[] = [id]
@@ -2361,7 +2321,7 @@ export class ClineProvider
 				// Recursively collect all child IDs
 				const collectChildIds = async (taskId: string): Promise<void> => {
 					try {
-						const { historyItem: item } = await this.getTaskWithId(taskId)
+						const item = await this.getHistoryItem(taskId)
 						if (item.childIds && item.childIds.length > 0) {
 							for (const childId of item.childIds) {
 								allIdsToDelete.push(childId)
@@ -2394,7 +2354,6 @@ export class ClineProvider
 			// deletes.
 			const taskHistoryStore = await this.getTaskHistoryStore()
 			await taskHistoryStore.deleteMany(allIdsToDelete, this.taskHistoryOrigin)
-			this.recentTasksCache = undefined
 			// Push a targeted delete message per ID so the webview removes
 			// just these items without a full history resend (the full state
 			// push below still runs for legacy callers).
@@ -2456,7 +2415,6 @@ export class ClineProvider
 		// store still receive the echo and push their own targeted delete.
 		const taskHistoryStore = await this.getTaskHistoryStore()
 		await taskHistoryStore.delete(id, this.taskHistoryOrigin)
-		this.recentTasksCache = undefined
 
 		// Send a targeted delete message so the webview removes just this
 		// item without a full history resend. The full state push below
@@ -2619,18 +2577,10 @@ export class ClineProvider
 		globalStateCommands?: string[],
 	): string[] {
 		try {
-			// Validate and sanitize global state commands
-			const validGlobalCommands = Array.isArray(globalStateCommands)
-				? globalStateCommands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-				: []
-
-			// Get workspace configuration commands
-			const workspaceCommands = vscode.workspace.getConfiguration(Package.name).get<string[]>(configKey) || []
-
-			// Validate and sanitize workspace commands
-			const validWorkspaceCommands = Array.isArray(workspaceCommands)
-				? workspaceCommands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-				: []
+			const validGlobalCommands = sanitizeCommandList(globalStateCommands)
+			const validWorkspaceCommands = sanitizeCommandList(
+				vscode.workspace.getConfiguration(Package.name).get<string[]>(configKey),
+			)
 
 			// Combine and deduplicate commands
 			// Global state takes precedence over workspace configuration
@@ -2968,7 +2918,7 @@ export class ClineProvider
 			openAiCodexIsAuthenticated: await (async () => {
 				try {
 					const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
-					return await openAiCodexOAuthManager.isAuthenticated()
+					return await openAiCodexOAuthManager.getAuthenticationStatus()
 				} catch {
 					return false
 				}
@@ -3242,7 +3192,6 @@ export class ClineProvider
 		// still receive the echo and push their own targeted update.
 		const taskHistoryStore = await this.getTaskHistoryStore()
 		await taskHistoryStore.upsert(item, this.taskHistoryOrigin)
-		this.recentTasksCache = undefined
 
 		// Broadcast the updated item to the webview if requested.
 		// Prefer per-item updates to avoid repeatedly cloning/sending the full history.
@@ -3477,51 +3426,6 @@ export class ClineProvider
 				`  timestamp:    ${new Date().toISOString()}\n` +
 				`If the panel appears gray after this, include this log when reporting the issue.`,
 		)
-	}
-
-	public async getRecentTasks(): Promise<string[]> {
-		if (this.recentTasksCache) {
-			return this.recentTasksCache
-		}
-
-		const history = (await this.getTaskHistoryStore()).getAll()
-		const workspaceTasks: HistoryItem[] = []
-
-		for (const item of history) {
-			if (!item.ts || !item.task || item.workspace !== this.cwd) {
-				continue
-			}
-
-			workspaceTasks.push(item)
-		}
-
-		if (workspaceTasks.length === 0) {
-			this.recentTasksCache = []
-			return this.recentTasksCache
-		}
-
-		workspaceTasks.sort((a, b) => b.ts - a.ts)
-		let recentTaskIds: string[] = []
-
-		if (workspaceTasks.length >= 100) {
-			// If we have at least 100 tasks, return tasks from the last 7 days.
-			const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-
-			for (const item of workspaceTasks) {
-				// Stop when we hit tasks older than 7 days.
-				if (item.ts < sevenDaysAgo) {
-					break
-				}
-
-				recentTaskIds.push(item.id)
-			}
-		} else {
-			// Otherwise, return the most recent 100 tasks (or all if less than 100).
-			recentTaskIds = workspaceTasks.slice(0, Math.min(100, workspaceTasks.length)).map((item) => item.id)
-		}
-
-		this.recentTasksCache = recentTaskIds
-		return this.recentTasksCache
 	}
 
 	// When initializing a new task, (not from history but from a tool command
@@ -4077,8 +3981,7 @@ export class ClineProvider
 
 		let historyItem: HistoryItem | undefined
 		try {
-			const history = await this.getTaskWithId(task.taskId)
-			historyItem = history.historyItem
+			historyItem = await this.getHistoryItem(task.taskId)
 		} catch (error) {
 			// During task startup there is a short window where currentTask exists
 			// but task history has not been persisted yet. Cancelling should still
@@ -4151,17 +4054,6 @@ export class ClineProvider
 			return
 		}
 
-		// Final race check before rehydrate to avoid duplicate rehydration
-		{
-			const currentAfterCheck = this.getCurrentTask()
-			if (currentAfterCheck && currentAfterCheck.instanceId !== originalInstanceId) {
-				this.log(
-					`[cancelTask] Skipping rehydrate after final check: current instance ${currentAfterCheck.instanceId} != original ${originalInstanceId}`,
-				)
-				return
-			}
-		}
-
 		if (!historyItem) {
 			return
 		}
@@ -4170,7 +4062,7 @@ export class ClineProvider
 		// stay stuck in "delegated" awaiting a child that the user just cancelled.
 		if (task.parentTaskId) {
 			try {
-				const { historyItem: parentHistory } = await this.getTaskWithId(task.parentTaskId)
+				const parentHistory = await this.getHistoryItem(task.parentTaskId)
 
 				if (parentHistory?.status === "delegated" && parentHistory?.awaitingChildId === task.taskId) {
 					await this.updateTaskHistory({
@@ -4620,7 +4512,6 @@ export class ClineProvider
 				},
 				this.taskHistoryOrigin,
 			)
-			this.recentTasksCache = undefined
 			if (this.isViewLaunched) {
 				const updatedItem = taskHistoryStore.get(parentTaskId)
 				if (updatedItem) {
@@ -4672,7 +4563,7 @@ export class ClineProvider
 	public async tryReattachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean> {
 		try {
 			// 1-3: Load parent history and check the three metadata conditions.
-			const { historyItem: parentHistory } = await this.getTaskWithId(parentTaskId)
+			const parentHistory = await this.getHistoryItem(parentTaskId)
 
 			if (parentHistory.status !== "active") {
 				this.log(
@@ -4727,24 +4618,10 @@ export class ClineProvider
 				return false
 			}
 
-			// Same backward scan as reopenParentFromDelegation (~line 3827-3837).
-			let toolUseId: string | undefined
-			let toolUseIndex = -1
-			for (let i = parentApiMessages.length - 1; i >= 0; i--) {
-				const msg = parentApiMessages[i]
-				if (msg.role === "assistant" && Array.isArray(msg.content)) {
-					for (const block of msg.content) {
-						if (block.type === "tool_use" && block.name === "new_task") {
-							toolUseId = block.id
-							toolUseIndex = i
-							break
-						}
-					}
-					if (toolUseId) break
-				}
-			}
+			// Same backward scan as reopenParentFromDelegation.
+			const lastNewTask = findLastNewTaskToolUse(parentApiMessages)
 
-			if (!toolUseId) {
+			if (!lastNewTask) {
 				this.log(
 					`[tryReattachDelegatedParent] Rejecting: no new_task tool_use found in parent ${parentTaskId} API history (cannot prove frozen state)`,
 				)
@@ -4752,18 +4629,12 @@ export class ClineProvider
 			}
 
 			// Scan ALL messages AFTER the tool_use for a matching tool_result.
-			for (let i = toolUseIndex; i < parentApiMessages.length; i++) {
-				const msg = parentApiMessages[i]
-				if (msg.role === "user" && Array.isArray(msg.content)) {
-					for (const block of msg.content) {
-						if (block.type === "tool_result" && block.tool_use_id === toolUseId) {
-							this.log(
-								`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
-							)
-							return false
-						}
-					}
-				}
+			const { toolUseId, messageIndex } = lastNewTask
+			if (hasToolResultFor(parentApiMessages, toolUseId, messageIndex)) {
+				this.log(
+					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
+				)
+				return false
 			}
 
 			// All five conditions hold — re-attach.
@@ -4799,7 +4670,7 @@ export class ClineProvider
 		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
 
 		// 1) Load parent from history and current persisted messages
-		const { historyItem } = await this.getTaskWithId(parentTaskId)
+		const historyItem = await this.getHistoryItem(parentTaskId)
 
 		// Guard: re-validate delegation state after the async approval gap.
 		// cancelTask() or removeClineFromStack() may have already detached the parent
@@ -4869,19 +4740,8 @@ export class ClineProvider
 		await saveTaskMessages({ messages: parentClineMessages, taskId: parentTaskId, globalStoragePath })
 
 		// Find the tool_use_id from the last assistant message's new_task tool_use
-		let toolUseId: string | undefined
-		for (let i = parentApiMessages.length - 1; i >= 0; i--) {
-			const msg = parentApiMessages[i]
-			if (msg.role === "assistant" && Array.isArray(msg.content)) {
-				for (const block of msg.content) {
-					if (block.type === "tool_use" && block.name === "new_task") {
-						toolUseId = block.id
-						break
-					}
-				}
-				if (toolUseId) break
-			}
-		}
+		const toolUseId = findLastNewTaskToolUse(parentApiMessages)?.toolUseId
+		const subtaskResultText = formatSubtaskResult(childTaskId, completionResultSummary)
 
 		// Preferred: if the parent history contains the native tool_use for new_task,
 		// inject a matching tool_result for the Anthropic message contract:
@@ -4895,7 +4755,7 @@ export class ClineProvider
 				for (const block of lastMsg.content) {
 					if (block.type === "tool_result" && block.tool_use_id === toolUseId) {
 						// Update the existing tool_result content
-						block.content = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+						block.content = subtaskResultText
 						alreadyHasToolResult = true
 						break
 					}
@@ -4910,7 +4770,7 @@ export class ClineProvider
 						{
 							type: "tool_result" as const,
 							tool_use_id: toolUseId,
-							content: `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`,
+							content: subtaskResultText,
 						},
 					],
 					ts,
@@ -4928,7 +4788,7 @@ export class ClineProvider
 		} else {
 			// If there is no corresponding tool_use in the parent API history, we cannot emit a
 			// tool_result. Fall back to a plain user text note so the parent can still resume.
-			const fallbackText = `Subtask ${childTaskId} completed.\n\nResult:\n${completionResultSummary}`
+			const fallbackText = subtaskResultText
 			const lastParentApiMessage = parentApiMessages.at(-1)
 			const alreadyHasFallback =
 				lastParentApiMessage?.role === "user" &&
@@ -4968,7 +4828,7 @@ export class ClineProvider
 		//    This runs after the abort so it overwrites the stale "active" status
 		//    that saveClineMessages() may have written during step 3.
 		try {
-			const { historyItem: childHistory } = await this.getTaskWithId(childTaskId)
+			const childHistory = await this.getHistoryItem(childTaskId)
 			await this.updateTaskHistory({
 				...childHistory,
 				status: "completed",

@@ -48,9 +48,7 @@ describe("checkpointRestoreHandler", () => {
 		mockProvider = {
 			getCurrentTask: vi.fn(() => mockCline),
 			postMessageToWebview: vi.fn(),
-			getTaskWithId: vi.fn(() => ({
-				historyItem: { id: "test-task-123", messages: mockCline.clineMessages },
-			})),
+			getHistoryItem: vi.fn(() => ({ id: "test-task-123", messages: mockCline.clineMessages })),
 			createTaskWithHistoryItem: vi.fn(),
 			setPendingEditOperation: vi.fn(),
 			contextProxy: {
@@ -186,8 +184,8 @@ describe("checkpointRestoreHandler", () => {
 				operation: "delete",
 			})
 
-			// Verify getTaskWithId was called
-			expect(mockProvider.getTaskWithId).toHaveBeenCalledWith("test-task-123")
+			// Verify getHistoryItem was called
+			expect(mockProvider.getHistoryItem).toHaveBeenCalledWith("test-task-123")
 
 			// Verify createTaskWithHistoryItem was called with the correct history item
 			expect(mockProvider.createTaskWithHistoryItem).toHaveBeenCalledWith(expectedHistoryItem)

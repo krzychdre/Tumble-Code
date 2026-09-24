@@ -206,9 +206,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		const task = makeMockTask({ isStreaming: true })
 		;(provider as any).clineStack = [task]
 
-		provider.getTaskWithId = vi.fn().mockResolvedValue({
-			historyItem: { id: "task-1", status: "active", task: "test" },
-		})
+		provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
 		const createWithHistory = vi.fn().mockResolvedValue(undefined)
 		provider.createTaskWithHistoryItem = createWithHistory as any
 
@@ -242,9 +240,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		})
 		;(provider as any).clineStack = [task]
 
-		provider.getTaskWithId = vi.fn().mockResolvedValue({
-			historyItem: { id: "task-1", status: "active", task: "test" },
-		})
+		provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
 		const createWithHistory = vi.fn().mockResolvedValue(undefined)
 		provider.createTaskWithHistoryItem = createWithHistory as any
 
@@ -287,9 +283,7 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		const task = makeMockTask({ isStreaming: true })
 		;(provider as any).clineStack = [task]
 
-		provider.getTaskWithId = vi.fn().mockResolvedValue({
-			historyItem: { id: "task-1", status: "active", task: "test" },
-		})
+		provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
 		provider.createTaskWithHistoryItem = vi.fn().mockResolvedValue(undefined) as any
 
 		const abandonedAtAbortStart: boolean[] = []

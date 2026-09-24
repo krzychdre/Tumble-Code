@@ -47,9 +47,7 @@ describe("webviewMessageHandler - checkpoint operations", () => {
 		mockProvider = {
 			getCurrentTask: vi.fn(() => mockCline),
 			postMessageToWebview: vi.fn(),
-			getTaskWithId: vi.fn(() => ({
-				historyItem: { id: "test-task-123", messages: mockCline.clineMessages },
-			})),
+			getHistoryItem: vi.fn(() => ({ id: "test-task-123", messages: mockCline.clineMessages })),
 			createTaskWithHistoryItem: vi.fn(),
 			setPendingEditOperation: vi.fn(),
 			contextProxy: {

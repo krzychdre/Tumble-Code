@@ -35,13 +35,13 @@ import {
 	handleRequestSkills,
 	handleCreateSkill,
 	handleDeleteSkill,
-	handleMoveSkill,
 	handleUpdateSkillModes,
 	handleOpenSkillFile,
 } from "./skillsMessageHandler"
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
 import { MessageEnhancer } from "./messageEnhancer"
+import { sanitizeCommandList } from "../auto-approval/sanitizeCommandList"
 
 import { CodeIndexManager } from "../../services/code-index/manager"
 import { checkExistKey } from "../../shared/checkExistApiConfig"
@@ -86,9 +86,7 @@ import {
 	handleGetAvailableBranches,
 	handleGetWorktreeDefaults,
 	handleGetWorktreeIncludeStatus,
-	handleCheckBranchWorktreeInclude,
 	handleCreateWorktreeInclude,
-	handleCheckoutBranch,
 } from "./worktree"
 
 export const webviewMessageHandler = async (
@@ -615,11 +613,7 @@ export const webviewMessageHandler = async (
 				)
 
 			// Enable telemetry by default (when unset) or when explicitly enabled
-			provider.getStateToPostToWebview().then((state) => {
-				const { telemetrySetting } = state
-				const isOptedIn = telemetrySetting !== "disabled"
-				TelemetryService.instance.updateTelemetryState(isOptedIn)
-			})
+			TelemetryService.instance.updateTelemetryState(getGlobalState("telemetrySetting") !== "disabled")
 
 			provider.isViewLaunched = true
 			break
@@ -671,26 +665,12 @@ export const webviewMessageHandler = async (
 					if (key === "language") {
 						newValue = value ?? "en"
 						changeLanguage(newValue as Language)
-					} else if (key === "allowedCommands") {
-						const commands = value ?? []
-
-						newValue = Array.isArray(commands)
-							? commands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-							: []
+					} else if (key === "allowedCommands" || key === "deniedCommands") {
+						newValue = sanitizeCommandList(value)
 
 						await vscode.workspace
 							.getConfiguration(Package.name)
-							.update("allowedCommands", newValue, vscode.ConfigurationTarget.Global)
-					} else if (key === "deniedCommands") {
-						const commands = value ?? []
-
-						newValue = Array.isArray(commands)
-							? commands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-							: []
-
-						await vscode.workspace
-							.getConfiguration(Package.name)
-							.update("deniedCommands", newValue, vscode.ConfigurationTarget.Global)
+							.update(key, newValue, vscode.ConfigurationTarget.Global)
 					} else if (key === "terminalShellIntegrationTimeout") {
 						if (value !== undefined) {
 							Terminal.setShellIntegrationTimeout(value as number)
@@ -1193,38 +1173,6 @@ export const webviewMessageHandler = async (
 			// Cancel any pending auto-approval timeout for the current task
 			provider.getCurrentTask()?.cancelAutoApprovalTimeout()
 			break
-		case "allowedCommands": {
-			// Validate and sanitize the commands array
-			const commands = message.commands ?? []
-			const validCommands = Array.isArray(commands)
-				? commands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-				: []
-
-			await updateGlobalState("allowedCommands", validCommands)
-
-			// Also update workspace settings.
-			await vscode.workspace
-				.getConfiguration(Package.name)
-				.update("allowedCommands", validCommands, vscode.ConfigurationTarget.Global)
-
-			break
-		}
-		case "deniedCommands": {
-			// Validate and sanitize the commands array
-			const commands = message.commands ?? []
-			const validCommands = Array.isArray(commands)
-				? commands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-				: []
-
-			await updateGlobalState("deniedCommands", validCommands)
-
-			// Also update workspace settings.
-			await vscode.workspace
-				.getConfiguration(Package.name)
-				.update("deniedCommands", validCommands, vscode.ConfigurationTarget.Global)
-
-			break
-		}
 		case "openCustomModesSettings": {
 			const customModesFilePath = await provider.customModesManager.getCustomModesFilePath()
 
@@ -1763,21 +1711,6 @@ export const webviewMessageHandler = async (
 
 			break
 		}
-		case "saveApiConfiguration":
-			if (message.text && message.apiConfiguration) {
-				try {
-					await provider.providerSettingsManager.saveConfig(message.text, message.apiConfiguration)
-					const listApiConfig = await provider.providerSettingsManager.listConfig()
-					await updateGlobalState("listApiConfigMeta", listApiConfig)
-				} catch (error) {
-					provider.log(
-						`Error save api configuration: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
-					)
-					const errorMessage = error instanceof Error ? error.message : String(error)
-					vscode.window.showErrorMessage(t("common:errors.save_api_config") + ": " + errorMessage)
-				}
-			}
-			break
 		case "upsertApiConfiguration":
 			if (message.text && message.apiConfiguration) {
 				await provider.upsertProviderProfile(message.text, message.apiConfiguration)
@@ -1899,19 +1832,6 @@ export const webviewMessageHandler = async (
 				)
 			}
 			break
-		case "getListApiConfiguration":
-			try {
-				const listApiConfig = await provider.providerSettingsManager.listConfig()
-				await updateGlobalState("listApiConfigMeta", listApiConfig)
-				provider.postMessageToWebview({ type: "listApiConfig", listApiConfig })
-			} catch (error) {
-				provider.log(
-					`Error get list api configuration: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
-				)
-				vscode.window.showErrorMessage(t("common:errors.list_api_config"))
-			}
-			break
-
 		case "updateMcpTimeout":
 			if (message.serverName && typeof message.timeout === "number") {
 				try {
@@ -2256,11 +2176,6 @@ export const webviewMessageHandler = async (
 			await provider.postStateToWebview()
 			break
 		}
-		case "cloudButtonClicked": {
-			// Navigate to the cloud tab.
-			provider.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
-			break
-		}
 		case "rooCloudSignIn": {
 			try {
 				TelemetryService.instance.captureEvent(TelemetryEventName.AUTHENTICATION_INITIATED)
@@ -2271,17 +2186,6 @@ export const webviewMessageHandler = async (
 				vscode.window.showErrorMessage("Sign in failed.")
 			}
 
-			break
-		}
-		case "cloudLandingPageSignIn": {
-			try {
-				const landingPageSlug = message.text || "supernova"
-				TelemetryService.instance.captureEvent(TelemetryEventName.AUTHENTICATION_INITIATED)
-				await CloudService.instance.login(landingPageSlug)
-			} catch (error) {
-				provider.log(`CloudService#login failed: ${error}`)
-				vscode.window.showErrorMessage("Sign in failed.")
-			}
 			break
 		}
 		case "rooCloudSignOut": {
@@ -2375,12 +2279,6 @@ export const webviewMessageHandler = async (
 				vscode.window.showErrorMessage(`${t("common:errors.manual_url_auth_error")}: ${errorMessage}`)
 			}
 
-			break
-		}
-		case "clearCloudAuthSkipModel": {
-			// Clear the flag that indicates auth completed without model selection
-			await provider.context.globalState.update("roo-auth-skip-model", undefined)
-			await provider.postStateToWebview()
 			break
 		}
 		case "switchOrganization": {
@@ -2891,24 +2789,6 @@ export const webviewMessageHandler = async (
 			break
 		}
 
-		case "installMarketplaceItemWithParameters": {
-			if (marketplaceManager && message.payload && "item" in message.payload && "parameters" in message.payload) {
-				try {
-					const configFilePath = await marketplaceManager.installMarketplaceItem(message.payload.item, {
-						parameters: message.payload.parameters,
-					})
-					await provider.postStateToWebview()
-					console.log(`Marketplace item with parameters installed and config file opened: ${configFilePath}`)
-				} catch (error) {
-					console.error(`Error installing marketplace item with parameters: ${error}`)
-					vscode.window.showErrorMessage(
-						`Failed to install marketplace item: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-			}
-			break
-		}
-
 		case "switchTab": {
 			if (message.tab) {
 				// Capture tab shown event for all switchTab messages (which are user-initiated).
@@ -2955,10 +2835,6 @@ export const webviewMessageHandler = async (
 		}
 		case "deleteSkill": {
 			await handleDeleteSkill(provider, message)
-			break
-		}
-		case "moveSkill": {
-			await handleMoveSkill(provider, message)
 			break
 		}
 		case "updateSkillModes": {
@@ -3129,17 +3005,6 @@ export const webviewMessageHandler = async (
 			break
 		}
 
-		case "insertTextIntoTextarea": {
-			const text = message.text
-			if (text) {
-				// Send message to insert text into the chat textarea
-				await provider.postMessageToWebview({
-					type: "insertTextIntoTextarea",
-					text: text,
-				})
-			}
-			break
-		}
 		case "showMdmAuthRequiredNotification": {
 			// Show notification that organization requires authentication
 			vscode.window.showWarningMessage(t("common:mdm.info.organization_requires_auth"))
@@ -3507,35 +3372,6 @@ export const webviewMessageHandler = async (
 			break
 		}
 
-		case "checkBranchWorktreeInclude": {
-			try {
-				const branch = message.worktreeBranch
-				if (!branch) {
-					await provider.postMessageToWebview({
-						type: "branchWorktreeIncludeResult",
-						hasWorktreeInclude: false,
-						error: "No branch specified",
-					})
-					break
-				}
-				const hasWorktreeInclude = await handleCheckBranchWorktreeInclude(provider, branch)
-				await provider.postMessageToWebview({
-					type: "branchWorktreeIncludeResult",
-					branch,
-					hasWorktreeInclude,
-				})
-			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error)
-				await provider.postMessageToWebview({
-					type: "branchWorktreeIncludeResult",
-					hasWorktreeInclude: false,
-					error: errorMessage,
-				})
-			}
-
-			break
-		}
-
 		case "createWorktreeInclude": {
 			try {
 				const { success, message: text } = await handleCreateWorktreeInclude(
@@ -3547,18 +3383,6 @@ export const webviewMessageHandler = async (
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				provider.log(`Error creating worktree include: ${errorMessage}`)
-				await provider.postMessageToWebview({ type: "worktreeResult", success: false, text: errorMessage })
-			}
-
-			break
-		}
-
-		case "checkoutBranch": {
-			try {
-				const { success, message: text } = await handleCheckoutBranch(provider, message.worktreeBranch!)
-				await provider.postMessageToWebview({ type: "worktreeResult", success, text })
-			} catch (error) {
-				const errorMessage = error instanceof Error ? error.message : String(error)
 				await provider.postMessageToWebview({ type: "worktreeResult", success: false, text: errorMessage })
 			}
 
@@ -3598,26 +3422,17 @@ export const webviewMessageHandler = async (
 			//
 			// Currently unhandled:
 			//
-			// "currentApiConfigName" |
-			// "codebaseIndexEnabled" |
 			// "enhancedPrompt" |
 			// "systemPrompt" |
 			// "exportModeResult" |
 			// "importModeResult" |
 			// "checkRulesDirectoryResult" |
-			// "browserConnectionResult" |
 			// "vsCodeSetting" |
 			// "indexingStatusUpdate" |
 			// "indexCleared" |
 			// "marketplaceInstallResult" |
 			// "shareTaskSuccess" |
-			// "playSound" |
-			// "draggedImages" |
-			// "setApiConfigPassword" |
-			// "setopenAiCustomModelInfo" |
-			// "marketplaceButtonClicked" |
-			// "cancelMarketplaceInstall" |
-			// "imageGenerationSettings"
+			// "draggedImages"
 			break
 		}
 	}

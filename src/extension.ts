@@ -39,7 +39,6 @@ import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
 import { MdmService } from "./services/mdm/MdmService"
-import { migrateSettings } from "./utils/migrateSettings"
 import { configureLogger, createLineLogger } from "./utils/logging"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
@@ -155,9 +154,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	// Set extension path for custom tool registry to find bundled esbuild
 	customToolRegistry.setExtensionPath(context.extensionPath)
-
-	// Migrate old settings to new
-	await migrateSettings(context, outputChannel)
 
 	// One-shot import of settings from a previous Roo Code installation, if present.
 	// Idempotent: flagged in globalState after running so it won't re-prompt.

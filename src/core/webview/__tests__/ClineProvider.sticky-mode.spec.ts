@@ -483,14 +483,8 @@ describe("ClineProvider - Sticky Mode", () => {
 				// No mode field
 			}
 
-			// Mock getTaskWithId
-			vi.spyOn(provider, "getTaskWithId").mockResolvedValue({
-				historyItem,
-				taskDirPath: "/test/path",
-				apiConversationHistoryFilePath: "/test/path/api_history.json",
-				uiMessagesFilePath: "/test/path/ui_messages.json",
-				apiConversationHistory: [],
-			})
+			// Mock getHistoryItem
+			vi.spyOn(provider, "getHistoryItem").mockResolvedValue(historyItem)
 
 			// Mock handleModeSwitch to track calls
 			const handleModeSwitchSpy = vi.spyOn(provider, "handleModeSwitch").mockResolvedValue()
@@ -665,14 +659,8 @@ describe("ClineProvider - Sticky Mode", () => {
 				mode: null as any, // Invalid mode
 			}
 
-			// Mock getTaskWithId
-			vi.spyOn(provider, "getTaskWithId").mockResolvedValue({
-				historyItem,
-				taskDirPath: "/test/path",
-				apiConversationHistoryFilePath: "/test/path/api_history.json",
-				uiMessagesFilePath: "/test/path/ui_messages.json",
-				apiConversationHistory: [],
-			})
+			// Mock getHistoryItem
+			vi.spyOn(provider, "getHistoryItem").mockResolvedValue(historyItem)
 
 			// Mock handleModeSwitch to track calls
 			const handleModeSwitchSpy = vi.spyOn(provider, "handleModeSwitch").mockResolvedValue()
@@ -751,14 +739,8 @@ describe("ClineProvider - Sticky Mode", () => {
 			const { getModeBySlug } = await import("../../../shared/modes")
 			vi.mocked(getModeBySlug).mockReturnValue(undefined)
 
-			// Mock getTaskWithId
-			vi.spyOn(provider, "getTaskWithId").mockResolvedValue({
-				historyItem,
-				taskDirPath: "/test/path",
-				apiConversationHistoryFilePath: "/test/path/api_history.json",
-				uiMessagesFilePath: "/test/path/ui_messages.json",
-				apiConversationHistory: [],
-			})
+			// Mock getHistoryItem
+			vi.spyOn(provider, "getHistoryItem").mockResolvedValue(historyItem)
 
 			// Mock handleModeSwitch to track calls
 			const handleModeSwitchSpy = vi.spyOn(provider, "handleModeSwitch").mockResolvedValue()
@@ -1057,16 +1039,10 @@ describe("ClineProvider - Sticky Mode", () => {
 				mode: "architect",
 			}
 
-			// Mock getTaskWithId to be slow
-			vi.spyOn(provider, "getTaskWithId").mockImplementation(async () => {
+			// Mock getHistoryItem to be slow
+			vi.spyOn(provider, "getHistoryItem").mockImplementation(async () => {
 				await new Promise((resolve) => setTimeout(resolve, 100))
-				return {
-					historyItem,
-					taskDirPath: "/test/path",
-					apiConversationHistoryFilePath: "/test/path/api_history.json",
-					uiMessagesFilePath: "/test/path/ui_messages.json",
-					apiConversationHistory: [],
-				}
+				return historyItem
 			})
 
 			// Clear any previous calls

@@ -14,7 +14,6 @@ import type { TodoItem } from "./todo.js"
 export interface TaskProviderLike {
 	// Tasks
 	getCurrentTask(): TaskLike | undefined
-	getRecentTasks(): Promise<string[]>
 	createTask(
 		text?: string,
 		images?: string[],

@@ -25,7 +25,7 @@ export interface AttemptCompletionCallbacks extends ToolCallbacks {
  * Interface for provider methods needed by AttemptCompletionTool for delegation handling.
  */
 interface DelegationProvider {
-	getTaskWithId(id: string): Promise<{ historyItem: HistoryItem }>
+	getHistoryItem(id: string): Promise<HistoryItem>
 	reopenParentFromDelegation(params: {
 		parentTaskId: string
 		childTaskId: string
@@ -93,7 +93,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 				const provider = task.providerRef.deref() as DelegationProvider | undefined
 				if (provider) {
 					try {
-						const { historyItem } = await provider.getTaskWithId(task.taskId)
+						const historyItem = await provider.getHistoryItem(task.taskId)
 						const status = historyItem?.status
 
 						if (status === "completed") {
@@ -106,7 +106,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 							// cancelled this child) since delegation began. Only delegate if the
 							// parent still awaits this child; otherwise fall through to the normal
 							// completion ask flow.
-							const { historyItem: parentHistory } = await provider.getTaskWithId(task.parentTaskId!)
+							const parentHistory = await provider.getHistoryItem(task.parentTaskId!)
 
 							// `awaitingChildId` is the AUTHORITATIVE delegation signal: it is set only by
 							// delegateParentAndOpenChild and cleared (→ undefined) by every genuine detach

@@ -16,10 +16,6 @@ export function unregisterPlanReviewFile(fsPath: string): void {
 	openPlanReviewFiles.delete(fsPath)
 }
 
-export function hasOpenPlanReviewFiles(): boolean {
-	return openPlanReviewFiles.size > 0
-}
-
 export function isPlanReviewFileOpen(fsPath: string | undefined): boolean {
 	if (!fsPath) {
 		return false
