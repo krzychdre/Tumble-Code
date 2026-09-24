@@ -172,3 +172,25 @@ where their files are disjoint; the coordinator merges in order.
   so two vitest runs at once (parallel worktrees) delete each other's repositories (ENOTEMPTY on rmdir, git errors);
   with a private `TMPDIR` it passes 35 of 35. Fix: a unique temporary directory per run (`fs.mkdtemp`). Needs its
   own `test/` item.
+- **DEF-S5:** DONE, merged 2026-09-24 as #217 (`6d3d0c376`), owner decision 8: the proxy is removed (router and its
+  registration, `proxy_service.py`, the `src/proxy/` package, `schemas/models.py`, five settings, compose and
+  `.env.example` entries, README rows). No consumer existed: the Roo cloud provider that used
+  `ROO_CODE_PROVIDER_URL` was deleted in #28. 9 tests pin the removal (404 on the three paths, settings gone);
+  pytest 327 to 336, no tests deleted (the proxy had none). Left for later items: the `provider_configs` table
+  (dropping a table is its own change), the dead extension setting `tumble-code.cloudProviderUrl` with
+  `set/getRooCodeProviderUrl` and its 18 translations, the `ROO_CODE_PROVIDER_URL` lines in `apps/cli`.
+- **DEF-C11 (interim):** DONE, merged 2026-09-24 as #216 (`c7f465d46`). No signal is plumbed to handlers: Stop
+  reaches them only through `api.cancelRequest()` (`cancelTask` -> `TaskLifecycle.cancelCurrentRequest`), so the four
+  handlers now follow the working pattern (own AbortController, signal to the SDK, abort in `cancelRequest`). zai's
+  thinking path uses the base controller; deepseek sets the (now protected) `openai.ts` controller; openai-native
+  and openai-codex gained `cancelRequest()`. Second bug found: both retried a failed SDK call over `fetch`, so after
+  Stop a new unabortable request started (in codex whenever Stop came before the first event); an aborted call is
+  now rethrown. Still without a signal (API-5): anthropic, anthropic-vertex, gemini, mistral, openrouter, lite-llm,
+  qwen-code, xai, minimax. A handler-level controller is still overwritten by overlapping requests (API-5).
+- **DEF-C13:** DONE, merged 2026-09-24 as #219 (`a05766c83`). Scope was wider than recorded: the raw-versus-defaulted
+  comparison sits in `updateServerConnections`, so every settings-file change restarted every server, and a new
+  server got two watchers per path (one change restarted it twice). Fix: `finally` for `isConnecting` in
+  `updateServerConnections` and `restartConnection`; the server-order read tolerates an unreadable settings file;
+  stored config compared with the validated config in both stored forms (placeholder: defaults; connected: defaults
+  plus injected variables, via the new shared `injectConfigVariables`); watchers keyed by source and name, set up
+  only in `connectToServer`, removed per server. 6 tests; MCP 59 passed, extension suite 7,638 passed.
