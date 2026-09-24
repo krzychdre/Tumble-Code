@@ -64,6 +64,9 @@ step() { printf "${BLUE}${BOLD}[%s]${NC} %s\n" "$1" "$2"; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 CLI_DIR="$REPO_ROOT/apps/cli"
+# Build output goes to the git-ignored bin/ directory (next to the VSIX), not
+# the repository root.
+OUT_DIR="$REPO_ROOT/bin"
 
 # Detect current platform
 detect_platform() {
@@ -125,12 +128,14 @@ build() {
 create_tarball() {
     step "4/6" "Creating release tarball for $PLATFORM..."
 
-    RELEASE_DIR="$REPO_ROOT/tumble-cli-${PLATFORM}"
+    RELEASE_DIR="$OUT_DIR/tumble-cli-${PLATFORM}"
     TARBALL="tumble-cli-${PLATFORM}.tar.gz"
+    TARBALL_PATH="$OUT_DIR/$TARBALL"
 
     # Clean up any previous build
+    mkdir -p "$OUT_DIR"
     rm -rf "$RELEASE_DIR"
-    rm -f "$REPO_ROOT/$TARBALL"
+    rm -f "$TARBALL_PATH"
 
     # Create directory structure
     mkdir -p "$RELEASE_DIR/bin"
@@ -207,7 +212,7 @@ WRAPPER_EOF
 
     # Create tarball
     info "Creating tarball..."
-    cd "$REPO_ROOT"
+    cd "$OUT_DIR"
     COPYFILE_DISABLE=1 tar \
         --exclude="._*" \
         --exclude=".DS_Store" \
@@ -220,9 +225,8 @@ WRAPPER_EOF
     rm -rf "$RELEASE_DIR"
 
     # Show size
-    TARBALL_PATH="$REPO_ROOT/$TARBALL"
     TARBALL_SIZE=$(ls -lh "$TARBALL_PATH" | awk '{print $5}')
-    info "Created: $TARBALL ($TARBALL_SIZE)"
+    info "Created: $TARBALL_PATH ($TARBALL_SIZE)"
 }
 
 # Verify local installation
@@ -241,7 +245,6 @@ verify_local_install() {
     rm -rf "$VERIFY_DIR"
     mkdir -p "$VERIFY_DIR"
 
-    TARBALL_PATH="$REPO_ROOT/$TARBALL"
 
     ROO_LOCAL_TARBALL="$TARBALL_PATH" \
     ROO_INSTALL_DIR="$VERIFY_INSTALL_DIR" \
@@ -281,7 +284,6 @@ install_local() {
 
     step "6/6" "Installing locally..."
 
-    TARBALL_PATH="$REPO_ROOT/$TARBALL"
 
     ROO_LOCAL_TARBALL="$TARBALL_PATH" \
     ROO_VERSION="$VERSION" \
@@ -297,7 +299,7 @@ print_summary() {
     echo ""
     printf "${GREEN}${BOLD}✓ Local build complete for v$VERSION${NC}\n"
     echo ""
-    echo "  Tarball: $REPO_ROOT/$TARBALL"
+    echo "  Tarball: $TARBALL_PATH"
     echo ""
 
     if [ "$LOCAL_INSTALL" = true ]; then
@@ -309,7 +311,7 @@ print_summary() {
         echo "    tumble --help"
     else
         echo "  To install manually:"
-        echo "    ROO_LOCAL_TARBALL=$REPO_ROOT/$TARBALL ./apps/cli/install.sh"
+        echo "    ROO_LOCAL_TARBALL=$TARBALL_PATH ./apps/cli/install.sh"
         echo ""
         echo "  Or re-run with --install:"
         echo "    ./apps/cli/scripts/build.sh --install"

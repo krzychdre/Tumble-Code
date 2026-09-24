@@ -1,5 +1,6 @@
 {
 	"name": "@roo-code/core",
+	"private": true,
 	"description": "Platform agnostic core functionality for Roo Code.",
 	"version": "0.0.1",
 	"type": "module",

@@ -617,7 +617,7 @@ The workflow will:
 
 ### Local Builds
 
-For local development and testing, use the build script:
+For local development and testing, use the build script. It writes the tarball to the git-ignored `bin/` directory at the repository root (for example `bin/tumble-cli-linux-x64.tar.gz`):
 
 ```bash
 # Build tarball for your current platform

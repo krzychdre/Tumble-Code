@@ -1,5 +1,6 @@
 {
 	"name": "@roo-code/cloud",
+	"private": true,
 	"description": "Roo Code Cloud services.",
 	"version": "0.0.1",
 	"type": "module",
