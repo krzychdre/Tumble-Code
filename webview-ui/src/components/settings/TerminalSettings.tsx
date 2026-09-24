@@ -6,7 +6,11 @@ import { Trans } from "react-i18next"
 import { buildDocLink } from "@src/utils/docLinks"
 import { useEvent, useMount } from "react-use"
 
-import { type ExtensionMessage, type TerminalOutputPreviewSize } from "@roo-code/types"
+import {
+	type ExtensionMessage,
+	type TerminalOutputPreviewSize,
+	DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
+} from "@roo-code/types"
 
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider } from "@/components/ui"
@@ -343,7 +347,10 @@ export const TerminalSettings = ({
 											min={1000}
 											max={60000}
 											step={1000}
-											value={[terminalShellIntegrationTimeout ?? 5000]}
+											value={[
+												terminalShellIntegrationTimeout ??
+													DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
+											]}
 											onValueChange={([value]) =>
 												setCachedStateField(
 													"terminalShellIntegrationTimeout",
@@ -352,7 +359,9 @@ export const TerminalSettings = ({
 											}
 										/>
 										<span className="w-10">
-											{(terminalShellIntegrationTimeout ?? 5000) / 1000}s
+											{(terminalShellIntegrationTimeout ??
+												DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS) / 1000}
+											s
 										</span>
 									</div>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">

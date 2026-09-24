@@ -19,6 +19,9 @@ import {
 	type McpServer,
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+	DEFAULT_ENABLE_CHECKPOINTS,
+	DEFAULT_SOUND_ENABLED,
+	DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
 	WEB_TOOLS_DEFAULTS,
 	PRUNE_CONDENSE_DEFAULTS,
 } from "@roo-code/types"
@@ -210,9 +213,9 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		shouldShowAnnouncement: false,
 		allowedCommands: [],
 		deniedCommands: [],
-		soundEnabled: false,
+		soundEnabled: DEFAULT_SOUND_ENABLED,
 		soundVolume: 0.5,
-		enableCheckpoints: true,
+		enableCheckpoints: DEFAULT_ENABLE_CHECKPOINTS,
 		checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS, // Default to 15 seconds
 		autoMemoryEnabled: true,
 		memoryRecallEnabled: true,
@@ -228,7 +231,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		pruneToolResultBudget: PRUNE_CONDENSE_DEFAULTS.DEFAULT_TOOL_RESULT_BUDGET,
 		language: "en", // Default language code
 		writeDelayMs: 1000,
-		terminalShellIntegrationTimeout: 4000,
+		terminalShellIntegrationTimeout: DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
 		mcpEnabled: true,
 		taskSyncEnabled: false,
 		currentApiConfigName: "default",

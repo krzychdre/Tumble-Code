@@ -276,7 +276,9 @@ const saveUntouchedSettings = async () => {
 	return call![0].updatedSettings
 }
 
-describe("SettingsView Save with every setting undefined (DEF-C25)", () => {
+// The full SettingsView tree is heavy to mount; under a parallel full-suite
+// run the first render alone can exceed the 5 s default test timeout.
+describe("SettingsView Save with every setting undefined (DEF-C25)", { timeout: 20_000 }, () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
@@ -292,9 +294,9 @@ describe("SettingsView Save with every setting undefined (DEF-C25)", () => {
 			deniedCommands: [],
 			allowedMaxRequests: null,
 			allowedMaxCost: null,
-			soundEnabled: true,
+			soundEnabled: false, // DEF-C25: was true, now the host default
 			soundVolume: 0.5,
-			enableCheckpoints: false,
+			enableCheckpoints: true, // DEF-C25: was false, now the host default
 			checkpointTimeout: 15,
 			autoMemoryEnabled: true,
 			memoryRecallEnabled: true,

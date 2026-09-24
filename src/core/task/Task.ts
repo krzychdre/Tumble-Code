@@ -48,6 +48,7 @@ import {
 	QueuedMessage,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+	DEFAULT_ENABLE_CHECKPOINTS,
 	MAX_CHECKPOINT_TIMEOUT_SECONDS,
 	MIN_CHECKPOINT_TIMEOUT_SECONDS,
 	ConsecutiveMistakeError,
@@ -808,7 +809,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	constructor({
 		provider,
 		apiConfiguration,
-		enableCheckpoints = true,
+		enableCheckpoints = DEFAULT_ENABLE_CHECKPOINTS,
 		checkpointTimeout = DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 		consecutiveMistakeLimit = DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 		taskId,

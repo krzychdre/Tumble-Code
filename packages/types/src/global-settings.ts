@@ -115,6 +115,29 @@ export const MAX_CHECKPOINT_TIMEOUT_SECONDS = 60
 export const DEFAULT_CHECKPOINT_TIMEOUT_SECONDS = 15
 
 /**
+ * Defaults for settings whose fallback used to differ between the host, the
+ * webview and the Settings Save button (DEF-C25). Every place that needs a
+ * fallback for one of these settings must use the constant, so a user who
+ * never touched the setting sees the same value everywhere.
+ */
+
+/**
+ * Default time, in milliseconds, to wait for VS Code shell integration to
+ * start in a new terminal (owner decision 4a: the longest value that existed).
+ */
+export const DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS = 30_000
+
+/**
+ * Default for notification sounds (owner decision 4b: the host value).
+ */
+export const DEFAULT_SOUND_ENABLED = false
+
+/**
+ * Default for checkpoints (owner decision 4b: the host value).
+ */
+export const DEFAULT_ENABLE_CHECKPOINTS = true
+
+/**
  * GlobalSettings
  */
 

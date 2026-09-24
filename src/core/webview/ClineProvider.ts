@@ -45,6 +45,8 @@ import {
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_MODES,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+	DEFAULT_ENABLE_CHECKPOINTS,
+	DEFAULT_SOUND_ENABLED,
 	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
 	DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
 	WEB_TOOLS_DEFAULTS,
@@ -2861,7 +2863,7 @@ export class ClineProvider
 				includeTaskHistory && taskHistoryStore
 					? taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task)
 					: [],
-			soundEnabled: soundEnabled ?? false,
+			soundEnabled: soundEnabled ?? DEFAULT_SOUND_ENABLED,
 			// Send `null` (not `undefined`) so the webview merge actually clears
 			// the slot after a reset — postMessage drops undefined keys.
 			customSoundCelebration: customSoundCelebration ?? null,
@@ -2871,7 +2873,7 @@ export class ClineProvider
 			customSoundNotification: customSoundNotification ?? null,
 			customSoundNotificationOriginal: customSoundNotificationOriginal ?? null,
 			customSoundUris,
-			enableCheckpoints: enableCheckpoints ?? true,
+			enableCheckpoints: enableCheckpoints ?? DEFAULT_ENABLE_CHECKPOINTS,
 			checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			shouldShowAnnouncement:
 				telemetrySetting !== "unset" && lastShownAnnouncementId !== this.latestAnnouncementId,
@@ -3125,14 +3127,14 @@ export class ClineProvider
 			taskHistory: [],
 			allowedCommands: stateValues.allowedCommands,
 			deniedCommands: stateValues.deniedCommands,
-			soundEnabled: stateValues.soundEnabled ?? false,
+			soundEnabled: stateValues.soundEnabled ?? DEFAULT_SOUND_ENABLED,
 			customSoundCelebration: stateValues.customSoundCelebration,
 			customSoundCelebrationOriginal: stateValues.customSoundCelebrationOriginal,
 			customSoundProgressLoop: stateValues.customSoundProgressLoop,
 			customSoundProgressLoopOriginal: stateValues.customSoundProgressLoopOriginal,
 			customSoundNotification: stateValues.customSoundNotification,
 			customSoundNotificationOriginal: stateValues.customSoundNotificationOriginal,
-			enableCheckpoints: stateValues.enableCheckpoints ?? true,
+			enableCheckpoints: stateValues.enableCheckpoints ?? DEFAULT_ENABLE_CHECKPOINTS,
 			checkpointTimeout: stateValues.checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			soundVolume: stateValues.soundVolume,
 			writeDelayMs: stateValues.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS,
