@@ -267,4 +267,64 @@ describe("checkAutoApproval modes", () => {
 			expect(result.decision).toBe("approve")
 		})
 	})
+
+	// Weak models (GLM, Qwen, local Llamas) sometimes emit follow-up suggestions with a blank,
+	// missing or non-string answer. Auto-approval must never answer the question with that.
+	describe("malformed follow-up suggestions", () => {
+		const malformedFollowup = (suggest: unknown[]) => JSON.stringify({ question: "Pick one", suggest })
+
+		it("default mode skips blank and missing answers and uses the first usable one", async () => {
+			const state = baseState({ alwaysAllowFollowupQuestions: true, followupAutoApproveTimeoutMs: 1000 })
+			const result = await checkAutoApproval({
+				state,
+				ask: "followup",
+				text: malformedFollowup([
+					{ answer: "   " },
+					{ mode: "code" },
+					{ answer: 42 },
+					{ answer: "real answer" },
+				]),
+			})
+			expect(result.decision).toBe("timeout")
+			if (result.decision === "timeout") {
+				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "real answer" })
+			}
+		})
+
+		it("default mode asks the user when no suggestion has a usable answer", async () => {
+			const state = baseState({ alwaysAllowFollowupQuestions: true, followupAutoApproveTimeoutMs: 1000 })
+			const result = await checkAutoApproval({
+				state,
+				ask: "followup",
+				text: malformedFollowup([{ answer: "" }, { mode: "code" }, null]),
+			})
+			expect(result.decision).toBe("ask")
+		})
+
+		it("autonomous mode skips blank and missing answers and uses the first usable one", async () => {
+			const state = baseState({ autoApprovalMode: "autonomous" })
+			const result = await checkAutoApproval({
+				state,
+				ask: "followup",
+				text: malformedFollowup([{ answer: "" }, { answer: 7 }, { answer: "second" }]),
+			})
+			expect(result.decision).toBe("timeout")
+			if (result.decision === "timeout") {
+				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "second" })
+			}
+		})
+
+		it("autonomous mode proceeds with empty text, never a non-string, when nothing is usable", async () => {
+			const state = baseState({ autoApprovalMode: "autonomous" })
+			const result = await checkAutoApproval({
+				state,
+				ask: "followup",
+				text: malformedFollowup([{ answer: 7 }]),
+			})
+			expect(result.decision).toBe("timeout")
+			if (result.decision === "timeout") {
+				expect(result.fn()).toEqual({ askResponse: "messageResponse", text: "" })
+			}
+		})
+	})
 })

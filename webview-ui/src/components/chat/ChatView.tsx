@@ -12,7 +12,7 @@ import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 import { batchConsecutive } from "@src/utils/batchConsecutive"
 
 import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType } from "@roo-code/types"
-import { isRetiredProvider } from "@roo-code/types"
+import { hasUsableAnswer, isRetiredProvider } from "@roo-code/types"
 
 import { findLast } from "@roo/array"
 import { SuggestionItem } from "@roo-code/types"
@@ -1395,6 +1395,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const handleSuggestionClickInRow = useCallback(
 		(suggestion: SuggestionItem, event?: React.MouseEvent) => {
+			// A suggestion without a usable answer (blank, missing or non-string) must not
+			// reach the input: an undefined value crashes the text area.
+			if (!hasUsableAnswer(suggestion)) {
+				return
+			}
+			const answer = suggestion.answer
+
 			// Mark that user has responded if this is a manual click (not auto-approval)
 			if (event) {
 				userRespondedRef.current = true
@@ -1418,13 +1425,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			if (event?.shiftKey) {
 				// Always append to existing text, don't overwrite
 				setInputValue((currentValue: string) => {
-					return currentValue !== "" ? `${currentValue} \n${suggestion.answer}` : suggestion.answer
+					return currentValue !== "" ? `${currentValue} \n${answer}` : answer
 				})
 			} else {
 				// Don't clear the input value when sending a follow-up choice
 				// The message should be sent but the text area should preserve what the user typed
 				const preservedInput = inputValueRef.current
-				handleSendMessage(suggestion.answer, [])
+				handleSendMessage(answer, [])
 				// Restore the input value after sending
 				setInputValue(preservedInput)
 			}
