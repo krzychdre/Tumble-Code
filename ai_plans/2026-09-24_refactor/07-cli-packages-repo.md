@@ -138,6 +138,11 @@ webview to a handler (CORE-R3) and from a provider stream to the chat row (API-7
 list. It is updated by every later item that moves a boundary. This answers the owner's goal directly: a person new
 to the code needs one page before touching it.
 
+**Status (2026-09-24):** DONE in #272. `docs/architecture.md` (workspaces, mermaid dependency graph, the three
+boundary checks, CLI runtime contract, current settings-defaults locations, webview-to-handler and
+stream-to-chat-row paths with the items that will change them, do-not-touch list); linked from README and AGENTS.md.
+The externals list now lives in `packages/build/src/extension.ts` (`extensionExternals`), not `src/esbuild.mjs`.
+
 ## Phase 8 items
 
 ### CLI-5 Remove the CLI's re-implementations, one bug per slice
