@@ -2179,6 +2179,49 @@ describe("ClineProvider", () => {
 			expect(mockContext.globalState.update).toHaveBeenCalledWith("currentApiConfigName", "test-config")
 		})
 	})
+
+	describe("cloud profile sync wiring", () => {
+		const installFakeCloudService = async (authenticated: boolean) => {
+			const { EventEmitter } = await import("events")
+			const { CloudService } = await import("@roo-code/cloud")
+			const fake = Object.assign(new EventEmitter(), {
+				isAuthenticated: vi.fn().mockReturnValue(authenticated),
+				getOrganizationSettings: vi.fn().mockReturnValue(undefined),
+			})
+			const descriptor = Object.getOwnPropertyDescriptor(CloudService, "instance")
+			Object.defineProperty(CloudService, "instance", { get: () => fake, configurable: true })
+			const restore = () => Object.defineProperty(CloudService, "instance", descriptor!)
+			return { fake, restore }
+		}
+
+		const flush = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+		test("construction subscribes once, and initializeCloudProfileSyncWhenReady does not add a second listener", async () => {
+			const { fake, restore } = await installFakeCloudService(false)
+			try {
+				const p = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+				await flush()
+				expect(fake.listenerCount("settings-updated")).toBe(1)
+
+				await p.initializeCloudProfileSyncWhenReady()
+				await p.initializeCloudProfileSyncWhenReady()
+				expect(fake.listenerCount("settings-updated")).toBe(1)
+			} finally {
+				restore()
+			}
+		})
+
+		test("construction syncs cloud profiles right away when already authenticated", async () => {
+			const { fake, restore } = await installFakeCloudService(true)
+			try {
+				new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+				await flush()
+				expect(fake.getOrganizationSettings).toHaveBeenCalledTimes(1)
+			} finally {
+				restore()
+			}
+		})
+	})
 })
 
 describe("Project MCP Settings", () => {
