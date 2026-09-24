@@ -16,6 +16,7 @@ import { ApiStreamChunk } from "../../../api/transform/stream"
 import { ContextProxy } from "../../config/ContextProxy"
 import { processUserContentMentions } from "../../mentions/processUserContentMentions"
 import { MultiSearchReplaceDiffStrategy } from "../../diff/strategies/multi-search-replace"
+import type { ApiMessage } from "../../task-persistence/apiMessages"
 
 // Mock delay before any imports that might use it
 vi.mock("delay", () => ({
@@ -2610,5 +2611,187 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 
 		expect(buildToolsSpy.mock.calls[0][2]).toBe("architect")
 		expect(createMessageSpy.mock.calls[0][2]).toEqual(expect.objectContaining({ mode: "architect" }))
+	})
+
+	// DEF-C33. Nested here to reuse this block's real-provider harness. The provider
+	// rejected a request as too big, and the forced pass decided that clearing old tool
+	// output at send time (microcompaction) is enough. That decision lives only in
+	// transient per-request state, so it has to reach the retry, or the retry resends
+	// exactly the request the provider just rejected.
+	describe("forced condense after a context-window error applies microcompaction to the retry", () => {
+		const CONTEXT_WINDOW = 100_000
+		// Size of each old read_file result: big enough to be clearable (the floor is
+		// 2,000 chars) and small enough that the forced pass clears only a few of them.
+		const RESULT_CHARS = 6_000
+
+		const contextWindowError = () =>
+			Object.assign(new Error("This model's maximum context length is 100000 tokens"), { status: 400 })
+
+		function readFilePair(index: number): ApiMessage[] {
+			const id = `read-${index}`
+			const body = `file ${index}\n` + "const value = compute(input, options) // line of source\n".repeat(100)
+			return [
+				{
+					role: "assistant",
+					content: [{ type: "tool_use", id, name: "read_file", input: { path: `f${index}.ts` } }],
+					ts: 1000 + index * 2,
+				},
+				{
+					role: "user",
+					content: [{ type: "tool_result", tool_use_id: id, content: body.slice(0, RESULT_CHARS) }],
+					ts: 1001 + index * 2,
+				},
+			] as ApiMessage[]
+		}
+
+		function clearedIdsIn(messages: any[]): string[] {
+			const ids: string[] = []
+			for (const msg of messages) {
+				if (!Array.isArray(msg.content)) continue
+				for (const block of msg.content) {
+					if (block.type === "tool_result" && JSON.stringify(block.content).includes("Old tool output cleared")) {
+						ids.push(block.tool_use_id)
+					}
+				}
+			}
+			return ids
+		}
+
+		async function setUpRejectedTask({ contextTokens, rejections = 1 }: { contextTokens: number; rejections?: number }) {
+			vi.spyOn(mockProvider, "getState").mockResolvedValue({
+				apiConfiguration: mockApiConfig,
+				autoApprovalEnabled: false,
+				requestDelaySeconds: 0,
+				mode: "code",
+				// The user's normal threshold: the regular pass only acts near the hard limit.
+				autoCondenseContext: true,
+				autoCondenseContextPercent: 100,
+				profileThresholds: {},
+			} as any)
+
+			const task = new Task({
+				provider: mockProvider,
+				apiConfiguration: mockApiConfig,
+				task: "test task",
+				startTask: false,
+			})
+			vi.spyOn(task.apiLoop, "getSystemPrompt").mockResolvedValue("mock system prompt")
+			vi.spyOn(task.api, "getModel").mockReturnValue({
+				id: "test-model",
+				info: {
+					contextWindow: CONTEXT_WINDOW,
+					maxTokens: 4096,
+					supportsImages: false,
+					supportsPromptCache: false,
+					inputPrice: 0,
+					outputPrice: 0,
+				} as ModelInfo,
+			})
+			vi.spyOn(task.apiLoop as any, "buildToolsArray").mockResolvedValue({
+				allTools: [],
+				allowedFunctionNames: undefined,
+			})
+
+			const history: ApiMessage[] = [{ role: "user", content: [{ type: "text", text: "task" }], ts: 999 }]
+			for (let i = 0; i < 8; i++) {
+				history.push(...readFilePair(i))
+			}
+			history.push({ role: "user", content: [{ type: "text", text: "continue" }], ts: 2000 })
+			task.apiConversationHistory = history
+
+			// The provider-reported size of the last successful request. A failed request
+			// reports no usage, so the retry sees exactly the same number.
+			vi.spyOn(task, "getTokenUsage").mockReturnValue({ contextTokens } as any)
+
+			// The first `rejections` requests: rejected as too big. Every later one: accepted.
+			let calls = 0
+			const createMessage = vi.spyOn(task.api, "createMessage").mockImplementation(() => {
+				calls += 1
+				const reject = calls <= rejections
+				return {
+					async *[Symbol.asyncIterator]() {
+						if (reject) {
+							throw contextWindowError()
+						}
+						yield { type: "text", text: "response" }
+					},
+				} as AsyncGenerator<ApiStreamChunk>
+			})
+
+			return { task, createMessage }
+		}
+
+		it("sends a smaller retry than the rejected request", async () => {
+			// 78% of the window: under the user's thresholds, so the rejected request went
+			// out whole, but over the forced pass's 75% target, and a few old results are
+			// enough to get under it.
+			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000 })
+			const microcompacted = vi.spyOn(TelemetryService.instance, "captureContextMicrocompacted")
+
+			const iterator = task.attemptApiRequest(0)
+			await iterator.next()
+
+			expect(createMessage).toHaveBeenCalledTimes(2)
+			// Guard: the forced pass (and only it, the regular pass stays under its
+			// thresholds) selected old results to clear.
+			expect(microcompacted).toHaveBeenCalledTimes(1)
+			expect(microcompacted.mock.calls[0][1].cleared).toBeGreaterThan(0)
+			const rejected = createMessage.mock.calls[0][1] as any[]
+			const retry = createMessage.mock.calls[1][1] as any[]
+
+			// Guard: the rejected request was sent whole.
+			expect(clearedIdsIn(rejected)).toEqual([])
+			// Guard: the forced pass chose microcompaction alone, so nothing was persisted.
+			expect(task.apiConversationHistory.some((m) => m.isSummary || m.truncationParent)).toBe(false)
+
+			// The retry carries the forced pass's decision: old results are cleared and
+			// the request is smaller than the one the provider rejected.
+			expect(clearedIdsIn(retry).length).toBeGreaterThan(0)
+			expect(JSON.stringify(retry).length).toBeLessThan(JSON.stringify(rejected).length)
+
+			// The transient bookkeeping matches what went over the wire, so the next
+			// request's threshold check adds the stripped size back.
+			expect([...task.microcompactedToolUseIds].sort()).toEqual(clearedIdsIn(retry).sort())
+			expect(task.microcompactStrippedTokens).toBeGreaterThan(0)
+		})
+
+		it("replaces a stale set left by an earlier pass in another mode", async () => {
+			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000 })
+
+			// Left over from an earlier pass under another mode and model: an id that no
+			// longer resolves in this history. Mutate in place: the request builder holds
+			// this very Set.
+			task.microcompactedToolUseIds.add("stale-from-other-mode")
+			task.microcompactStrippedTokens = 0
+
+			const iterator = task.attemptApiRequest(0)
+			await iterator.next()
+
+			expect(createMessage).toHaveBeenCalledTimes(2)
+			const retry = createMessage.mock.calls[1][1] as any[]
+
+			expect(task.microcompactedToolUseIds.has("stale-from-other-mode")).toBe(false)
+			expect(clearedIdsIn(retry).length).toBeGreaterThan(0)
+			expect([...task.microcompactedToolUseIds].sort()).toEqual(clearedIdsIn(retry).sort())
+			// The stripped-size correction now describes this request, not the old one.
+			expect(task.microcompactStrippedTokens).toBeGreaterThan(0)
+		})
+
+		it("strips more on a second rejection in a row instead of resending the same retry", async () => {
+			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000, rejections: 2 })
+
+			const iterator = task.attemptApiRequest(0)
+			await iterator.next()
+
+			expect(createMessage).toHaveBeenCalledTimes(3)
+			const firstRetry = createMessage.mock.calls[1][1] as any[]
+			const secondRetry = createMessage.mock.calls[2][1] as any[]
+
+			// The second forced pass measures the pristine size (the first retry's strip
+			// added back) and keeps the first retry's clears, so it can only add to them.
+			expect(clearedIdsIn(secondRetry)).toEqual(expect.arrayContaining(clearedIdsIn(firstRetry)))
+			expect(clearedIdsIn(secondRetry).length).toBeGreaterThan(clearedIdsIn(firstRetry).length)
+			expect(JSON.stringify(secondRetry).length).toBeLessThan(JSON.stringify(firstRetry).length)
+		})
 	})
 })

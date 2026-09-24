@@ -452,10 +452,16 @@ export class TaskContextManager {
 			// certain to be reached: resolve the store unconditionally here.
 			const pruneOptions = await this.resolvePruneOptions(state, true)
 
+			// Same un-deflation as the regular pass (TaskApiLoop#attemptApiRequest): when
+			// the last reported size came from a microcompacted request, add back what the
+			// strip removed, so this pass measures the pristine history the regular pass
+			// measured and never aims lower than what the rejected request already stripped.
+			const forcedContextTokens = contextTokens ? contextTokens + this.access.microcompactStrippedTokens : 0
+
 			// Force aggressive truncation by keeping only 75% of the conversation history
 			const truncateResult = await manageContext({
 				messages: this.access.apiConversationHistory,
-				totalTokens: contextTokens || 0,
+				totalTokens: forcedContextTokens,
 				maxTokens,
 				contextWindow,
 				apiHandler: condenseApiHandler,
@@ -467,8 +473,16 @@ export class TaskContextManager {
 				currentProfileId,
 				metadata,
 				environmentDetails,
+				// Carry the rejected request's clears forward, as the regular pass does, so
+				// a second rejection in a row strips more instead of the same set again.
+				previouslyClearedToolUseIds: this.access.microcompactedToolUseIds,
 				...pruneOptions,
 			})
+
+			// The retry skips the regular pass (TaskApiLoop passes contextAlreadyManaged),
+			// so this is what it sends: without it a "microcompaction is enough" outcome
+			// was dropped and the retry resent the rejected request unchanged.
+			this.applyMicrocompactOutcome(truncateResult)
 
 			if (truncateResult.messages !== this.access.apiConversationHistory) {
 				await this.access.history.overwriteApiConversationHistory(truncateResult.messages)
@@ -694,27 +708,7 @@ export class TaskContextManager {
 				truncateResult,
 			)
 
-			// Stash the non-destructive microcompaction decision as transient state.
-			// Mutate the EXISTING set in place (rather than reassigning) so the
-			// reference captured by ApiRequestBuilder at construction stays live.
-			// Always overwrite (empty when nothing to clear) so a stale set from a
-			// prior request — or a prior mode with a narrower context window — never
-			// lingers. The send-time chokepoint applies it to the outgoing copy only.
-			this.access.microcompactedToolUseIds.clear()
-			for (const id of truncateResult.microcompactClearedToolUseIds ?? []) {
-				this.access.microcompactedToolUseIds.add(id)
-			}
-
-			// Record how much the strip will remove from the outgoing request, so the
-			// NEXT request can un-deflate the provider-reported context size before
-			// re-running the threshold check (see nextMicrocompactStrippedTokens).
-			// Without this the gate compares a pristine history against a stripped
-			// measurement and flip-flops every other turn (measured: 31% of tasks,
-			// 77M excess input tokens).
-			this.access.microcompactStrippedTokens = nextMicrocompactStrippedTokens(
-				truncateResult,
-				this.access.microcompactedToolUseIds.size,
-			)
+			this.applyMicrocompactOutcome(truncateResult)
 
 			if (truncateResult.messages !== this.access.apiConversationHistory) {
 				await this.access.history.overwriteApiConversationHistory(truncateResult.messages)
@@ -829,6 +823,36 @@ export class TaskContextManager {
 					?.postMessageToWebview({ type: "condenseTaskContextResponse", text: this.access.taskId })
 			}
 		}
+	}
+
+	/**
+	 * Stores the non-destructive microcompaction decision of a `manageContext` pass
+	 * as transient per-request state. Shared by the regular pass and the forced pass
+	 * after a context-window error: the forced pass is the one most likely to end in
+	 * "clearing old tool output is enough", and without this its decision was lost
+	 * and the retry resent the rejected request unchanged.
+	 */
+	private applyMicrocompactOutcome(result: Awaited<ReturnType<typeof manageContext>>): void {
+		// Mutate the EXISTING set in place (rather than reassigning) so the
+		// reference captured by ApiRequestBuilder at construction stays live.
+		// Always overwrite (empty when nothing to clear) so a stale set from a
+		// prior request, or a prior mode with a narrower context window, never
+		// lingers. The send-time chokepoint applies it to the outgoing copy only.
+		this.access.microcompactedToolUseIds.clear()
+		for (const id of result.microcompactClearedToolUseIds ?? []) {
+			this.access.microcompactedToolUseIds.add(id)
+		}
+
+		// Record how much the strip will remove from the outgoing request, so the
+		// NEXT request can un-deflate the provider-reported context size before
+		// re-running the threshold check (see nextMicrocompactStrippedTokens).
+		// Without this the gate compares a pristine history against a stripped
+		// measurement and flip-flops every other turn (measured: 31% of tasks,
+		// 77M excess input tokens).
+		this.access.microcompactStrippedTokens = nextMicrocompactStrippedTokens(
+			result,
+			this.access.microcompactedToolUseIds.size,
+		)
 	}
 
 	/**
