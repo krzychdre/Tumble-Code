@@ -366,3 +366,12 @@ where their files are disjoint; the coordinator merges in order.
 - **Main CI after the no-wait merges (run 36030725574 on `67d0d51e7`):** red on `platform-unit-test`. Reproduced
   locally on `e0ae80b07`: 511 files and 7,830 tests pass; the only failure is TEST-11's unhandled rejection ("Could
   not load the default credentials"), which makes vitest exit 1. No other regression.
+- **DEF-C3 and DEF-C4:** DONE, merged 2026-09-24 as #247 (`40f969504`), minimal part of CORE-R12. C3: the pending todo
+  list lives on `task.pendingTodoList` (cleared in `finally`); the webview handler resolves the task by `taskId`
+  (current, background, or rejected if gone), though nothing sends `updateTodoList` today (sender removed upstream
+  in 98b06d84b), so only the tool-side race was live: a foreground task adopted a parallel subagent's list and the
+  model got a false "User edits todo". C4: per-stream state moved into `WeakMap<Task, ...>` for
+  `BaseTool.lastSeenPartialPath` (write_to_file, edit_file, edit, search_replace, apply_diff), WriteToFileTool
+  `editTypePath` and partial-access cache, EditFileTool `didSendPartialToolAsk`/`partialToolAskRelPath`. Reproduced
+  effects with interleaved tasks: no live write preview (0 instead of 1), "newFileCreated" for an existing file
+  (bypassing TL-2), an edit row spinning forever. Singletons outside `src/core/tools` not reviewed (rest of CORE-R12).
