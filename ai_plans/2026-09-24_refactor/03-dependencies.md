@@ -132,6 +132,15 @@ over 10 MB is now rejected); `glob` override `^13.0.6`; new `fast-xml-parser ^5.
 `@aws-sdk/xml-builder` 3.921 pins 5.2.5 and newer `@aws-sdk/*` need Node 20 (drop it after DEP-4); `undici
 ^6.28.1`. `shell-quote` is declared only by webview-ui. Webview group: separate branch.
 
+**Status (2026-09-24), webview group:** DONE in #258. shell-quote 1.10.0 (own types, `@types/shell-quote` removed),
+axios 1.20.0, mermaid 11.17.2 (dompurify 3.4.16), mdast-util-to-hast 13.2.1, tailwind 4.3.3 (drops `tar`), vite
+8.3.1, webview vitest 3.2.7; `@tailwindcss/vite`, `tailwindcss`, `tailwindcss-animate` moved to devDependencies.
+Whole-repo `pnpm audit --prod`: 2 critical, 17 high, 25 moderate, 4 low to 0, 3, 4, 0. Left: postcss under
+styled-components (6.4+ pins csstype 3.2.3, breaks `CodeBlock.tsx` types with @types/react 18; goes with WEB-2),
+js-cookie 2 under react-use (only `useCookie`, unused), uuid (see above). posthog-js kept at 1.242.1: its
+`dist/module.js` is self-contained, so preact/fflate never reach the bundle; 1.434 adds about 150 KB. Main bundle
++53.5 KB (+0.9%). Not verified: a live render of Mermaid and Markdown (G5).
+
 ### DEP-4 Runtime floor and type overrides
 
 **Change:**
