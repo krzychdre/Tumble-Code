@@ -443,4 +443,53 @@ describe("QwenCodeHandler Native Tools", () => {
 			expect(finishReasonChunks).toHaveLength(1)
 		})
 	})
+
+	// DEF-C12: usage used to be yielded once per stream chunk, and
+	// TaskStreamProcessor adds usage chunks together, so a server repeating its
+	// cumulative usage in every chunk was billed several times over.
+	describe("Streaming usage", () => {
+		it("reports cumulative usage repeated in every chunk once, with the final values", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						choices: [{ delta: { content: "Hello" } }],
+						usage: { prompt_tokens: 100, completion_tokens: 1, total_tokens: 101 },
+					}
+					yield {
+						choices: [{ delta: { content: " world" } }],
+						usage: { prompt_tokens: 100, completion_tokens: 2, total_tokens: 102 },
+					}
+					yield {
+						choices: [{ delta: {}, finish_reason: "stop" }],
+						usage: { prompt_tokens: 100, completion_tokens: 3, total_tokens: 103 },
+					}
+				},
+			}))
+
+			const chunks = []
+			for await (const chunk of handler.createMessage("test prompt", [])) {
+				chunks.push(chunk)
+			}
+
+			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
+			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 100, outputTokens: 3 }])
+			expect(chunks[chunks.length - 1].type).toBe("usage")
+		})
+
+		it("yields no usage chunk when the stream carries no usage", async () => {
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "Hello" } }] }
+					yield { choices: [{ delta: {}, finish_reason: "stop" }] }
+				},
+			}))
+
+			const chunks = []
+			for await (const chunk of handler.createMessage("test prompt", [])) {
+				chunks.push(chunk)
+			}
+
+			expect(chunks.filter((chunk) => chunk.type === "usage")).toHaveLength(0)
+		})
+	})
 })

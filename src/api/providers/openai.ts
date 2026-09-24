@@ -576,6 +576,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
 		const activeToolCallIds = new Set<string>()
+		// Keep only the last usage: some servers repeat the cumulative usage
+		// in every chunk, and TaskStreamProcessor adds usage chunks together,
+		// so yielding each one would bill the request once per chunk (DEF-C12).
+		let lastUsage: OpenAI.CompletionUsage | undefined
 
 		for await (const chunk of stream) {
 			const delta = chunk.choices?.[0]?.delta
@@ -604,11 +608,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 
 			if (chunk.usage) {
-				yield {
-					type: "usage",
-					inputTokens: chunk.usage.prompt_tokens || 0,
-					outputTokens: chunk.usage.completion_tokens || 0,
-				}
+				lastUsage = chunk.usage
+			}
+		}
+
+		if (lastUsage) {
+			yield {
+				type: "usage",
+				inputTokens: lastUsage.prompt_tokens || 0,
+				outputTokens: lastUsage.completion_tokens || 0,
 			}
 		}
 	}

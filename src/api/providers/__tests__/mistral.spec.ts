@@ -496,4 +496,54 @@ describe("MistralHandler", () => {
 			await expect(handler.completePrompt("Test prompt")).rejects.toThrow("Mistral completion error: API Error")
 		})
 	})
+
+	// DEF-C12: usage used to be yielded once per stream event, and
+	// TaskStreamProcessor adds usage chunks together, so a server repeating its
+	// cumulative usage in every event was billed several times over.
+	describe("streaming usage", () => {
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "Hello!" }]
+
+		it("reports cumulative usage repeated in every event once, with the final values", async () => {
+			mockCreate.mockImplementationOnce(async (_options) => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield {
+						data: {
+							choices: [{ delta: { content: "Hello" }, index: 0 }],
+							usage: { promptTokens: 50, completionTokens: 1, totalTokens: 51 },
+						},
+					}
+					yield {
+						data: {
+							choices: [{ delta: { content: " world" }, index: 0 }],
+							usage: { promptTokens: 50, completionTokens: 2, totalTokens: 52 },
+						},
+					}
+					yield {
+						data: {
+							choices: [{ delta: {}, index: 0, finishReason: "stop" }],
+							usage: { promptTokens: 50, completionTokens: 7, totalTokens: 57 },
+						},
+					}
+				},
+			}))
+
+			const chunks: any[] = []
+			for await (const chunk of handler.createMessage("system", messages)) {
+				chunks.push(chunk)
+			}
+
+			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
+			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 50, outputTokens: 7 }])
+			expect(chunks[chunks.length - 1].type).toBe("usage")
+		})
+
+		it("yields no usage chunk when the stream carries no usage", async () => {
+			const chunks: any[] = []
+			for await (const chunk of handler.createMessage("system", messages)) {
+				chunks.push(chunk)
+			}
+
+			expect(chunks.filter((chunk) => chunk.type === "usage")).toHaveLength(0)
+		})
+	})
 })

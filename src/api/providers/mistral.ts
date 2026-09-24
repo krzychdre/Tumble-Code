@@ -112,6 +112,11 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 			throw new Error(`Mistral completion error: ${errorMessage}`)
 		}
 
+		// Keep only the last usage: some servers repeat the cumulative usage
+		// in every event, and TaskStreamProcessor adds usage chunks together,
+		// so yielding each one would bill the request once per event (DEF-C12).
+		let lastUsage: { promptTokens?: number; completionTokens?: number } | undefined
+
 		for await (const event of response) {
 			const delta = event.data.choices[0]?.delta
 
@@ -156,11 +161,15 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 			}
 
 			if (event.data.usage) {
-				yield {
-					type: "usage",
-					inputTokens: event.data.usage.promptTokens || 0,
-					outputTokens: event.data.usage.completionTokens || 0,
-				}
+				lastUsage = event.data.usage
+			}
+		}
+
+		if (lastUsage) {
+			yield {
+				type: "usage",
+				inputTokens: lastUsage.promptTokens || 0,
+				outputTokens: lastUsage.completionTokens || 0,
 			}
 		}
 	}

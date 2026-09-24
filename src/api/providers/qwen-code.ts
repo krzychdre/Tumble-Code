@@ -242,6 +242,10 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 		const stream = await this.callApiWithRetry(() => client.chat.completions.create(requestOptions))
 
 		let fullContent = ""
+		// Keep only the last usage: some servers repeat the cumulative usage
+		// in every chunk, and TaskStreamProcessor adds usage chunks together,
+		// so yielding each one would bill the request once per chunk (DEF-C12).
+		let lastUsage: OpenAI.CompletionUsage | undefined
 
 		for await (const apiChunk of stream) {
 			const delta = apiChunk.choices[0]?.delta ?? {}
@@ -299,11 +303,15 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 			yield* emitFinishReasonChunk(finishReason)
 
 			if (apiChunk.usage) {
-				yield {
-					type: "usage",
-					inputTokens: apiChunk.usage.prompt_tokens || 0,
-					outputTokens: apiChunk.usage.completion_tokens || 0,
-				}
+				lastUsage = apiChunk.usage
+			}
+		}
+
+		if (lastUsage) {
+			yield {
+				type: "usage",
+				inputTokens: lastUsage.prompt_tokens || 0,
+				outputTokens: lastUsage.completion_tokens || 0,
 			}
 		}
 	}
