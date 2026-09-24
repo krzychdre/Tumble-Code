@@ -162,7 +162,8 @@ describe("ZAiHandler", () => {
 			expect(model.info).toEqual(internationalZAiModels[testModelId])
 			expect(model.info.supportsImages).toBe(true)
 			expect(model.info.maxTokens).toBe(16_384)
-			expect(model.info.contextWindow).toBe(131_072)
+			// Documented as 64K (docs.z.ai overview, bigmodel.cn glm-4.5v card), DEF-C36.
+			expect(model.info.contextWindow).toBe(65_536)
 		})
 	})
 
@@ -227,7 +228,8 @@ describe("ZAiHandler", () => {
 			expect(model.info).toEqual(mainlandZAiModels[testModelId])
 			expect(model.info.supportsImages).toBe(true)
 			expect(model.info.maxTokens).toBe(16_384)
-			expect(model.info.contextWindow).toBe(131_072)
+			// Documented as 64K (docs.z.ai overview, bigmodel.cn glm-4.5v card), DEF-C36.
+			expect(model.info.contextWindow).toBe(65_536)
 		})
 
 		it("should return GLM-5.1 China model with thinking support and 128k max output", () => {
@@ -499,13 +501,13 @@ describe("ZAiHandler", () => {
 		it("should advertise supportsMaxTokens for configurable GLM models", () => {
 			expect(internationalZAiModels["glm-5.1"].supportsMaxTokens).toBe(true)
 			expect(mainlandZAiModels["glm-5.1"].supportsMaxTokens).toBe(true)
-			// Models without a large configurable output budget should not advertise the flag.
-			expect((internationalZAiModels["glm-5"] as { supportsMaxTokens?: boolean }).supportsMaxTokens).toBe(
-				undefined,
-			)
-			expect((internationalZAiModels["glm-4.7"] as { supportsMaxTokens?: boolean }).supportsMaxTokens).toBe(
-				undefined,
-			)
+			// glm-5 and glm-4.7 are documented at 128K output (DEF-C36), so they get the slider too.
+			expect((internationalZAiModels["glm-5"] as { supportsMaxTokens?: boolean }).supportsMaxTokens).toBe(true)
+			expect((internationalZAiModels["glm-4.7"] as { supportsMaxTokens?: boolean }).supportsMaxTokens).toBe(true)
+			// A model whose ceiling is already below the 20% clamp has nothing to raise.
+			expect(
+				(internationalZAiModels["glm-4-32b-0414-128k"] as { supportsMaxTokens?: boolean }).supportsMaxTokens,
+			).toBe(undefined)
 		})
 
 		it("should honor an explicit modelMaxTokens override instead of the 20% clamp", async () => {
@@ -547,8 +549,10 @@ describe("ZAiHandler", () => {
 			// glm-5.3 has the slider: the override is honored but capped at 131_072
 			// (Z.ai rejects max_tokens above 131_072).
 			{ modelId: "glm-5.3", stale: 200_000, expected: 131_072 },
-			// glm-4.7 has no slider: a leftover value from glm-5.3 must not leak through.
-			{ modelId: "glm-4.7", stale: 131_072, expected: 16_384 },
+			// glm-4-32b-0414-128k has no slider: a leftover value from glm-5.3 must not leak through.
+			{ modelId: "glm-4-32b-0414-128k", stale: 131_072, expected: 16_384 },
+			// glm-4.6v has the slider but a 32K ceiling (DEF-C36): the override is capped there.
+			{ modelId: "glm-4.6v", stale: 131_072, expected: 32_768 },
 		] as const
 
 		for (const { modelId, stale, expected } of cases) {
