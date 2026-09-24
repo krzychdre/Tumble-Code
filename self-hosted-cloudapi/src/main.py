@@ -140,18 +140,29 @@ app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 # Live remote-control bridge (socket.io). Mounted as a sub-app so `app` stays a
 # FastAPI instance (tests rely on app.dependency_overrides). The engine.io
-# endpoint lands at settings.bridge_path (default /bridge/socket.io).
+# endpoint lands at settings.bridge_path (default /bridge/socket.io), the same
+# value the extension and the web panel are told to connect to.
 #
 # NOTE: starlette's Mount (>=0.50) no longer strips the mount prefix from
 # scope["path"]; it only adjusts root_path. engine.io matches its endpoint
 # against the raw scope["path"] and ignores root_path, so socketio_path must
-# include the "/bridge" prefix or every handshake falls through to a 404 — which
+# repeat the mount prefix or every handshake falls through to a 404, which
 # crashes the WebSocket with "Expected ASGI message 'websocket.accept'...".
-if settings.bridge_enabled:
+def mount_bridge(target: FastAPI, bridge_path: str) -> None:
+    """Mount the socket.io app so its endpoint is exactly ``bridge_path``.
+
+    ``/bridge/socket.io`` mounts at ``/bridge`` with socketio_path
+    ``bridge/socket.io``. Settings guarantees at least two segments.
+    """
     import socketio
     from src.realtime.sio import sio
 
-    app.mount("/bridge", socketio.ASGIApp(sio, socketio_path="bridge/socket.io"))
+    prefix = bridge_path.rsplit("/", 1)[0]
+    target.mount(prefix, socketio.ASGIApp(sio, socketio_path=bridge_path.lstrip("/")))
+
+
+if settings.bridge_enabled:
+    mount_bridge(app, settings.bridge_path)
 
 
 @app.get("/health")

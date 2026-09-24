@@ -239,7 +239,22 @@ class Settings(BaseSettings):
     bridge_enabled: bool = True
     # Path the socket.io ASGI sub-app is mounted at (the engine.io endpoint).
     # The extension and browser connect with socket.io-client using this `path`.
+    # At least two segments ("/<prefix>/socket.io"): everything before the last
+    # segment becomes the mount prefix (see src.main), and a single segment
+    # would have to be mounted at the root, shadowing every later route.
     bridge_path: str = "/bridge/socket.io"
+
+    @field_validator("bridge_path")
+    @classmethod
+    def _check_bridge_path(cls, value: str) -> str:
+        path = value.rstrip("/")
+        segments = path.split("/")[1:]
+        if not path.startswith("/") or len(segments) < 2 or not all(segments):
+            raise ValueError(
+                "BRIDGE_PATH must be an absolute path with at least two segments, "
+                f"e.g. /bridge/socket.io (got {value!r})"
+            )
+        return path
     telemetry_enabled: bool = True
 
     # Task sharing. With no organizations configured (self-hosted single-tenant

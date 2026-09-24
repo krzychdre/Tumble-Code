@@ -2011,6 +2011,46 @@ async def test_task_list_search_filters_by_title_and_workspace(client, db_sessio
     assert "Something else" not in resp.text
 
 
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("100%", {"Coverage at 100%"}),
+        ("snake_case", {"Rename to snake_case"}),
+        ("C:\\Users", {"Path C:\\Users\\k"}),
+    ],
+)
+async def test_task_list_search_matches_wildcards_literally(
+    client, db_session, session_factory, query, expected
+):
+    """``%`` and ``_`` are LIKE wildcards; typed into the search box they must
+    mean the characters themselves (DEF-C31). Before the fix "100%" matched
+    every title containing "100" and "snake_case" matched "snake case"."""
+    titles = {
+        "Coverage at 100%",
+        "Raise the limit to 1000",
+        "Rename to snake_case",
+        "Explain snake case vs camel",
+        "Path C:\\Users\\k",
+    }
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        for i, title in enumerate(sorted(titles)):
+            s.add(Task(id=f"t-w{i}", user_id="user_test", title=title))
+        await s.commit()
+
+    _override_web_user(client.app)
+    try:
+        resp = client.get("/app", params={"q": query})
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 200
+    import html
+
+    shown = {t for t in titles if html.escape(t, quote=False) in resp.text}
+    assert shown == expected
+
+
 async def test_task_list_does_not_read_message_bodies(client, db_session, session_factory, monkeypatch):
     """The whole point of the summary columns: rendering the list must never touch
     the message corpus. Guards against a future change quietly reintroducing the
@@ -3062,6 +3102,39 @@ async def test_bulk_delete_returns_to_the_current_view(client, db_session, sessi
     assert resp.headers["location"] == "/app?scope=all&q=parser"
 
 
+@pytest.mark.parametrize(
+    "query",
+    ["a&scope=roots", "fix #12", "two words", "zażółć gęślą", "100% done+more"],
+)
+async def test_bulk_delete_redirect_keeps_the_search_intact(
+    client, db_session, session_factory, query
+):
+    """The search goes back into the redirect as a query value, so it must be
+    URL-encoded: an unencoded ``&`` starts a new parameter (here overriding the
+    scope), ``#`` cuts everything after it into a fragment the server never
+    sees, and ``+`` would read back as a space (DEF-C31)."""
+    from urllib.parse import parse_qs, urlsplit
+
+    await _seed_user(db_session)
+    await _seed_tasks(session_factory, ("enc1", "user_test", None))
+
+    _override_web_user(client.app)
+    try:
+        resp = client.post(
+            "/app/tasks/bulk-delete",
+            data={"task_ids": ["enc1"], "scope": "all", "q": query},
+            follow_redirects=False,
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 303
+    location = urlsplit(resp.headers["location"])
+    assert location.path == "/app"
+    assert location.fragment == ""
+    assert parse_qs(location.query) == {"scope": ["all"], "q": [query]}
+
+
 async def test_list_offers_selection_controls(client, db_session, session_factory):
     await _seed_user(db_session)
     await _seed_tasks(session_factory, ("s1", "user_test", None))
@@ -3199,6 +3272,55 @@ async def test_usage_telemetry_is_never_purged(db_session, session_factory):
     assert kinds == ["LLM Completion"], "usage data must survive a telemetry purge"
 
 
+async def test_a_telemetry_purge_keeps_everything_the_metrics_page_shows(
+    db_session, session_factory
+):
+    """The metrics page reads two event types: ``LLM Completion`` (the
+    conversation totals) and ``Embedding Usage`` (the code-index figure). Only
+    the first was protected, so a purge erased the indexing history (DEF-C31).
+    Whatever the page shows for "All time" must be identical after a purge."""
+    from datetime import datetime, timedelta, timezone
+
+    from src.services.metrics_service import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
+    from src.services.retention_service import PROTECTED_EVENT_TYPES, apply_sweep
+
+    await _seed_user(db_session)
+    old = datetime.now(timezone.utc) - timedelta(days=90)
+    async with session_factory() as s:
+        s.add(TelemetryEvent(
+            user_id="user_test", event_type=LLM_COMPLETION_EVENT, created_at=old,
+            properties=json.dumps({"taskId": "t-m", "modelId": "glm", "inputTokens": 100,
+                                   "outputTokens": 20, "cost": 0.5}),
+        ))
+        s.add(TelemetryEvent(
+            user_id="user_test", event_type=EMBEDDING_EVENT, created_at=old,
+            properties=json.dumps({"promptTokens": 250000, "source": "code-index"}),
+        ))
+        s.add(TelemetryEvent(user_id="user_test", event_type="Task Message", created_at=old,
+                             properties=json.dumps({"message": {}})))
+        await s.commit()
+
+    async with session_factory() as s:
+        before = await compute_user_metrics(s, "user_test", "all")
+    assert before["embeddings"]["tokens"] == 250000, "the fixture must show embeddings"
+    assert before["totals"]["completions"] == 1
+
+    async with session_factory() as s:
+        policy = await _policy(s, purge_telemetry=True, telemetry_max_age_days=7,
+                               max_age_days=None, max_tasks=None)
+        plan = await apply_sweep(s, "user_test", policy)
+        await s.commit()
+    assert plan.event_count == 1, "only the Task Message event is purgeable"
+
+    async with session_factory() as s:
+        after = await compute_user_metrics(s, "user_test", "all")
+        kinds = {r[0] for r in (await s.execute(select(TelemetryEvent.event_type))).all()}
+
+    assert after == before
+    assert kinds == {LLM_COMPLETION_EVENT, EMBEDDING_EVENT}
+    assert {LLM_COMPLETION_EVENT, EMBEDDING_EVENT} <= set(PROTECTED_EVENT_TYPES)
+
+
 async def test_sweep_never_touches_another_users_data(db_session, session_factory):
     from src.services.retention_service import apply_sweep
 
@@ -3299,6 +3421,41 @@ async def test_settings_page_shows_the_preview(client, db_session, session_facto
     assert resp.status_code == 200
     assert "What would be deleted right now" in resp.text
     assert "older than 30 days" in resp.text
+
+
+async def test_opening_the_settings_page_writes_nothing(client, db_session, session_factory):
+    """A GET must not write. The page used to create the user's default policy
+    row on first view and commit it (DEF-C31); it must render the same defaults
+    without storing them, and the first save creates the row."""
+    from src.models.retention import RetentionPolicy
+
+    await _seed_user(db_session)
+    async with session_factory() as s:
+        await _make_task(s, "r-view-shared", age_days=5, shared=True)
+        await s.commit()
+
+    async def policy_rows():
+        async with session_factory() as s:
+            return await s.scalar(select(func.count()).select_from(RetentionPolicy))
+
+    _override_web_user(client.app)
+    try:
+        first = client.get("/app/settings")
+        second = client.get("/app/settings")
+        assert await policy_rows() == 0, "viewing the page must not create a policy"
+
+        client.post("/app/settings", data={"keep_shared": "1"}, follow_redirects=False)
+        assert await policy_rows() == 1, "the first save creates the row"
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    for resp in (first, second):
+        assert resp.status_code == 200
+        # The unsaved defaults are the stored defaults: switched off, shared
+        # tasks kept, telemetry not purged.
+        assert 'name="enabled" value="1" >' in resp.text
+        assert 'name="keep_shared" value="1" checked>' in resp.text
+        assert 'name="purge_telemetry" value="1" >' in resp.text
 
 
 async def test_saving_settings_never_deletes(client, db_session, session_factory):

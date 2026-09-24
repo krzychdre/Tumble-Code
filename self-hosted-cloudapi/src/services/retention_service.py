@@ -17,9 +17,9 @@ somebody, and a sweep should not silently break it.
 
 Telemetry is swept separately and more aggressively, because ``Task Message``
 events carry a full copy of every stored conversation — 146 MB duplicating the
-479 MB in ``task_messages`` on this deployment. ``LLM Completion`` is **never**
-swept: the whole metrics page is built from it, and the tasks cannot
-reconstruct the cost history it holds.
+479 MB in ``task_messages`` on this deployment. ``LLM Completion`` and
+``Embedding Usage`` are **never** swept: the metrics page is built from them,
+and the tasks cannot reconstruct the cost and indexing history they hold.
 """
 
 from __future__ import annotations
@@ -35,14 +35,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.event import TelemetryEvent
 from src.models.retention import RetentionPolicy
 from src.models.task import Task, TaskMessage, TaskShare
+from src.services.metrics_service import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
 from src.services.share_service import delete_tasks
 
 logger = logging.getLogger(__name__)
 
-# Telemetry event types the sweep must never remove, whatever the policy says.
-# The metrics page aggregates LLM Completion exclusively; nothing else in the
-# database can reproduce what it records.
-PROTECTED_EVENT_TYPES = ("LLM Completion",)
+# Telemetry event types the sweep must never remove, whatever the policy says:
+# every type the metrics page reads. LLM Completion holds the conversation
+# totals and cost history, Embedding Usage the code-index figure; nothing else
+# in the database can reproduce either. Taken from metrics_service so the page
+# and this list name the events the same way. Extend, never shrink.
+PROTECTED_EVENT_TYPES = (LLM_COMPLETION_EVENT, EMBEDDING_EVENT)
 
 
 @dataclass
@@ -74,19 +77,51 @@ class RetentionPlan:
         return not self.task_ids and not self.event_count
 
 
-async def get_policy(db: AsyncSession, user_id: str) -> RetentionPolicy:
-    """The user's policy, creating a disabled default the first time it is read.
+def _default_policy(user_id: str) -> RetentionPolicy:
+    """A fresh policy with the stored defaults spelled out.
 
-    Created rather than returned-as-None so the settings form always has a row
-    to bind to; ``enabled`` is False, so merely opening the page never arms
-    anything.
+    Column defaults are applied only on INSERT, so an object that is never
+    inserted would read ``None`` for ``keep_shared`` and the preview would stop
+    exempting shared tasks. Setting them here keeps the unsaved default and the
+    saved one identical.
     """
+    return RetentionPolicy(
+        user_id=user_id,
+        enabled=False,
+        keep_shared=True,
+        purge_telemetry=False,
+        last_deleted_tasks=0,
+        last_deleted_events=0,
+    )
+
+
+async def _stored_policy(db: AsyncSession, user_id: str) -> Optional[RetentionPolicy]:
     result = await db.execute(
         select(RetentionPolicy).where(RetentionPolicy.user_id == user_id)
     )
-    policy = result.scalar_one_or_none()
+    return result.scalar_one_or_none()
+
+
+async def read_policy(db: AsyncSession, user_id: str) -> RetentionPolicy:
+    """The user's policy for display, without writing anything.
+
+    A user who never saved one gets an unsaved default that is not added to the
+    session, so a GET that renders the settings page leaves the database as it
+    found it. Use ``get_policy`` when the policy is about to be changed.
+    """
+    return await _stored_policy(db, user_id) or _default_policy(user_id)
+
+
+async def get_policy(db: AsyncSession, user_id: str) -> RetentionPolicy:
+    """The user's policy, creating the disabled default if there is none yet.
+
+    For callers that are about to write to it (saving the form, "Run now"): it
+    must be a stored row so the change persists. ``enabled`` is False, so
+    creating it never arms anything.
+    """
+    policy = await _stored_policy(db, user_id)
     if policy is None:
-        policy = RetentionPolicy(user_id=user_id)
+        policy = _default_policy(user_id)
         db.add(policy)
         await db.flush()
     return policy

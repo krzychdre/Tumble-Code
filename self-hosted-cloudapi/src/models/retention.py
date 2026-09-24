@@ -50,8 +50,9 @@ class RetentionPolicy(Base, TimestampMixin):
 
     # Raw telemetry has its own, shorter window: the `Task Message` events
     # duplicate `task_messages` and are the bulk of that table. `LLM Completion`
-    # is never swept — the metrics page is built entirely from it, and losing it
-    # would erase the cost history the tasks themselves cannot reconstruct.
+    # and `Embedding Usage` are never swept: the metrics page is built from them,
+    # and losing them would erase history the tasks themselves cannot
+    # reconstruct (see PROTECTED_EVENT_TYPES in services/retention_service).
     purge_telemetry = Column(Boolean, nullable=False, default=False, server_default="0")
     telemetry_max_age_days = Column(Integer, nullable=True)
 

@@ -15,6 +15,7 @@ import logging
 import textwrap
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -40,7 +41,7 @@ from src.services.model_attribution import (
     models_summary,
     side_calls_summary,
 )
-from src.services.retention_service import apply_sweep, get_policy, plan_sweep
+from src.services.retention_service import apply_sweep, get_policy, plan_sweep, read_policy
 from src.services.share_service import delete_shared_task, delete_tasks
 from src.services.metrics_service import (
     DEFAULT_PERIOD,
@@ -481,8 +482,14 @@ async def task_list(
     scope = scope if scope in ("roots", "all") else "roots"
     filters = [Task.user_id == user["user_id"]]
     if search:
-        pattern = f"%{search}%"
-        filters.append(or_(Task.title.ilike(pattern), Task.workspace_path.ilike(pattern)))
+        # autoescape: "%" and "_" typed into the box mean those characters,
+        # not LIKE wildcards (SQLAlchemy escapes them, and its escape char).
+        filters.append(
+            or_(
+                Task.title.icontains(search, autoescape=True),
+                Task.workspace_path.icontains(search, autoescape=True),
+            )
+        )
     if scope == "roots":
         filters.append(Task.parent_task_id.is_(None))
 
@@ -739,9 +746,10 @@ async def settings_page(
     if user is None:
         return RedirectResponse(url="/app/login", status_code=303)
 
-    policy = await get_policy(db, user["user_id"])
+    # read_policy, not get_policy: a GET must not write, so a user who has
+    # never saved a policy sees the unsaved default instead of getting a row.
+    policy = await read_policy(db, user["user_id"])
     plan = await plan_sweep(db, user["user_id"], policy)
-    await db.commit()
 
     return templates.TemplateResponse(
         request,
@@ -880,11 +888,14 @@ async def bulk_delete_tasks(
 
     # Selecting on page 3 and deleting everything on it would otherwise leave the
     # reader on a page that no longer exists.
-    scope = form.get("scope") or "roots"
+    # Both values are user input going back into a URL, so they are encoded:
+    # a raw "&" would start a new parameter, "#" would cut the rest off into a
+    # fragment and "+" would read back as a space.
+    params = {"scope": form.get("scope") or "roots"}
     query = form.get("q") or ""
-    target = f"/app?scope={scope}"
     if query:
-        target += f"&q={query}"
+        params["q"] = query
+    target = "/app?" + urlencode(params, quote_via=quote)
     return RedirectResponse(url=target, status_code=303)
 
 
