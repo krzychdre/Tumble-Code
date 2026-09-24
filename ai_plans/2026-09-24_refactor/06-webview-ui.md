@@ -61,6 +61,10 @@ automatic memoization.
 11. Housekeeping: stale ESLint override for the nonexistent `BrowserSessionRow.tsx` (`eslint.config.mjs:31-36`),
     rename `useNonInteractiveClick.ts` to match its export, remove the production `console.log` in
     `i18n/setup.ts:30`, fold the `TabButton.tsx:22` inline style into the next settings PR.
+12. Candidate (added 2026-09-24 with TEST-6): replace the few `react-use` hooks the webview uses (for example
+    `useSize`, see "Do not touch", and `useEvent`) with local hooks or a smaller library, so `js-cookie` 2 and its
+    high advisory GHSA-qjx8-664m-686j leave the lockfile; it is accepted until 2026-12-31 in
+    `scripts/audit-allowlist.mjs`. Size and the full hook list are not measured yet.
 
 ## WEB-1 Move the chat-row pipeline out of ChatView into pure functions with a parse cache
 

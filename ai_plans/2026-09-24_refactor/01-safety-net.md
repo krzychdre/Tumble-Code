@@ -103,7 +103,7 @@ browser checks skip themselves when Chrome is absent; install Chrome in the job 
 
 ## TEST-6 Dependency audit in CI
 
-**Status:** DONE, merged 2026-09-24 as #205 (`55de43906`): weekly and on dependency changes, `scripts/audit-summary.mjs` writes a per-package job summary; the high/critical step stays advisory until DEP-1 to DEP-3 land, then drop its `continue-on-error`.
+**Status:** DONE, merged 2026-09-24 as #205 (`55de43906`): weekly and on dependency changes, `scripts/audit-summary.mjs` writes a per-package job summary; the high/critical step stays advisory until DEP-1 to DEP-3 land, then drop its `continue-on-error`. **Blocking since 2026-09-24 (#260):** `scripts/audit-gate.mjs` fails on any high or critical advisory not accepted in `scripts/audit-allowlist.mjs` (reason, removing item, expiry date) and on expired entries; accepted: 2 postcss (styled-components, until WEB-2) and 1 js-cookie (react-use, WEB-Q12 candidate), all expiring 2026-12-31.
 
 **Evidence:** no workflow runs `pnpm audit`; 6 critical production advisories went unnoticed.
 
