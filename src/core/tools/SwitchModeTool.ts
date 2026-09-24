@@ -20,8 +20,7 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 
 		try {
 			if (!mode_slug) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("switch_mode")
+				this.recordFailure(task, "switch_mode")
 				pushToolResult(await task.sayAndCreateMissingParamError("switch_mode", "mode_slug"))
 				return
 			}

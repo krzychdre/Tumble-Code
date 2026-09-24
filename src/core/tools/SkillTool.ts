@@ -23,9 +23,7 @@ export class SkillTool extends BaseTool<"skill"> {
 		try {
 			// Validate skill name parameter
 			if (!skillName) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("skill")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "skill", { failTurn: true })
 				pushToolResult(await task.sayAndCreateMissingParamError("skill", "skill"))
 				return
 			}

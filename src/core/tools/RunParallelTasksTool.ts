@@ -487,9 +487,7 @@ export class RunParallelTasksTool extends BaseTool<"run_parallel_tasks"> {
 
 			const validated = validateParallelParams(params, maxConcurrencyCap)
 			if (!validated.ok) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("run_parallel_tasks")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "run_parallel_tasks", { failTurn: true })
 				pushToolResult(formatResponse.toolError(validated.error))
 				return
 			}

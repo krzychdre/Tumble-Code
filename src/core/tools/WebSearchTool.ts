@@ -38,9 +38,7 @@ export class WebSearchTool extends BaseTool<"web_search"> {
 		const queries = Array.isArray(params?.queries) ? params.queries.filter((q) => typeof q === "string") : []
 
 		if (queries.length === 0) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("web_search")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "web_search", { failTurn: true })
 			pushToolResult(await task.sayAndCreateMissingParamError("web_search", "queries"))
 			return
 		}
@@ -53,9 +51,7 @@ export class WebSearchTool extends BaseTool<"web_search"> {
 		const config = resolveWebToolsConfig(state)
 
 		if (!config.enabled) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("web_search")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "web_search", { failTurn: true })
 			pushToolResult(
 				formatResponse.toolError(
 					"web_search is disabled; ask the user to enable web tools in Settings > Web tools, or continue without web data",
@@ -68,9 +64,7 @@ export class WebSearchTool extends BaseTool<"web_search"> {
 		try {
 			backend = createSearchBackend(config)
 		} catch (error) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("web_search")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "web_search", { failTurn: true })
 
 			const message = error instanceof WebSearchError ? error.message : String(error)
 			await task.say("error", message)
@@ -99,9 +93,7 @@ export class WebSearchTool extends BaseTool<"web_search"> {
 			task.consecutiveMistakeCount = 0
 			pushToolResult(formatSearchResults(blocks))
 		} catch (error) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("web_search")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "web_search", { failTurn: true })
 
 			const message =
 				error instanceof WebSearchError

@@ -57,8 +57,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 		const hasIncompleteTodos = task.todoList && task.todoList.some((todo) => todo.status !== "completed")
 
 		if (preventCompletionWithOpenTodos && hasIncompleteTodos) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("attempt_completion")
+			this.recordFailure(task, "attempt_completion")
 
 			pushToolResult(
 				formatResponse.toolError(
@@ -71,8 +70,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 
 		try {
 			if (!result) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("attempt_completion")
+				this.recordFailure(task, "attempt_completion")
 				pushToolResult(await task.sayAndCreateMissingParamError("attempt_completion", "result"))
 				return
 			}

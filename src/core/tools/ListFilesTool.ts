@@ -25,9 +25,7 @@ export class ListFilesTool extends BaseTool<"list_files"> {
 
 		try {
 			if (!relDirPath) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("list_files")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "list_files", { failTurn: true })
 				pushToolResult(await task.sayAndCreateMissingParamError("list_files", "path"))
 				return
 			}

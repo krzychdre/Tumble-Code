@@ -113,15 +113,13 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 		pushToolResult: (content: string) => void,
 	): Promise<ValidationResult> {
 		if (!params.server_name) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("use_mcp_tool")
+			this.recordFailure(task, "use_mcp_tool")
 			pushToolResult(await task.sayAndCreateMissingParamError("use_mcp_tool", "server_name"))
 			return { isValid: false }
 		}
 
 		if (!params.tool_name) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("use_mcp_tool")
+			this.recordFailure(task, "use_mcp_tool")
 			pushToolResult(await task.sayAndCreateMissingParamError("use_mcp_tool", "tool_name"))
 			return { isValid: false }
 		}
@@ -141,8 +139,7 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 		let parsedArguments: Record<string, unknown> | undefined
 		if (params.arguments !== undefined) {
 			if (typeof params.arguments !== "object" || params.arguments === null || Array.isArray(params.arguments)) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("use_mcp_tool")
+				this.recordFailure(task, "use_mcp_tool")
 				await task.say("error", t("mcp:errors.invalidJsonArgument", { toolName: params.tool_name }))
 				task.didToolFailInCurrentTurn = true
 				pushToolResult(
@@ -189,8 +186,7 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 				const availableServers =
 					availableServersArray.length > 0 ? availableServersArray.join(", ") : "No servers available"
 
-				task.consecutiveMistakeCount++
-				task.recordToolError("use_mcp_tool")
+				this.recordFailure(task, "use_mcp_tool")
 				await task.say("error", t("mcp:errors.serverNotFound", { serverName, availableServers }))
 				task.didToolFailInCurrentTurn = true
 
@@ -201,8 +197,7 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 			// Check if the server has tools defined
 			if (!server.tools || server.tools.length === 0) {
 				// No tools available on this server
-				task.consecutiveMistakeCount++
-				task.recordToolError("use_mcp_tool")
+				this.recordFailure(task, "use_mcp_tool")
 				await task.say(
 					"error",
 					t("mcp:errors.toolNotFound", {
@@ -224,8 +219,7 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 				// Tool not found - provide list of available tools
 				const availableToolNames = server.tools.map((tool) => tool.name)
 
-				task.consecutiveMistakeCount++
-				task.recordToolError("use_mcp_tool")
+				this.recordFailure(task, "use_mcp_tool")
 				await task.say(
 					"error",
 					t("mcp:errors.toolNotFound", {
@@ -246,8 +240,7 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 				const enabledTools = server.tools.filter((t) => t.enabledForPrompt !== false)
 				const enabledToolNames = enabledTools.map((t) => t.name)
 
-				task.consecutiveMistakeCount++
-				task.recordToolError("use_mcp_tool")
+				this.recordFailure(task, "use_mcp_tool")
 				await task.say(
 					"error",
 					t("mcp:errors.toolDisabled", {

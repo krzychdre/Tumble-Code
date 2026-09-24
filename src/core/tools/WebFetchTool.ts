@@ -30,9 +30,7 @@ export class WebFetchTool extends BaseTool<"web_fetch"> {
 		const url = typeof params?.url === "string" ? params.url.trim() : ""
 
 		if (!url) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("web_fetch")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "web_fetch", { failTurn: true })
 			pushToolResult(await task.sayAndCreateMissingParamError("web_fetch", "url"))
 			return
 		}
@@ -43,9 +41,7 @@ export class WebFetchTool extends BaseTool<"web_fetch"> {
 		const config = resolveWebToolsConfig(state)
 
 		if (!config.enabled) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("web_fetch")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "web_fetch", { failTurn: true })
 			pushToolResult(
 				formatResponse.toolError(
 					"web_fetch is disabled; ask the user to enable web tools in Settings > Web tools, or continue without the page contents",
@@ -75,9 +71,7 @@ export class WebFetchTool extends BaseTool<"web_fetch"> {
 			task.consecutiveMistakeCount = 0
 			pushToolResult(`Fetched ${result.url}\n\n${result.markdown}`)
 		} catch (error) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("web_fetch")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "web_fetch", { failTurn: true })
 
 			const message =
 				error instanceof WebFetchError

@@ -27,17 +27,13 @@ export class SearchFilesTool extends BaseTool<"search_files"> {
 		const filePattern = params.file_pattern || undefined
 
 		if (!relDirPath) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("search_files")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "search_files", { failTurn: true })
 			pushToolResult(await task.sayAndCreateMissingParamError("search_files", "path"))
 			return
 		}
 
 		if (!regex) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("search_files")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "search_files", { failTurn: true })
 			pushToolResult(await task.sayAndCreateMissingParamError("search_files", "regex"))
 			return
 		}

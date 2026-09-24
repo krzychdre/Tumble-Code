@@ -90,8 +90,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 
 		// Validate input
 		if (!filePath) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("read_file")
+			this.recordFailure(task, "read_file")
 			const errorMsg = await task.sayAndCreateMissingParamError("read_file", "path")
 			pushToolResult(`Error: ${errorMsg}`)
 			return
@@ -675,8 +674,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 		const modelInfo = task.api.getModel().info
 
 		if (!fileEntries || fileEntries.length === 0) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("read_file")
+			this.recordFailure(task, "read_file")
 			const errorMsg = await task.sayAndCreateMissingParamError("read_file", "files")
 			pushToolResult(`Error: ${errorMsg}`)
 			return

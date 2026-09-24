@@ -128,9 +128,7 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 
 		// Validate required parameters
 		if (!artifact_id) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("read_artifact")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "read_artifact", { failTurn: true })
 			const errorMsg = await task.sayAndCreateMissingParamError("read_artifact", "artifact_id")
 			pushToolResult(`Error: ${errorMsg}`)
 			return
@@ -138,9 +136,7 @@ export class ReadArtifactTool extends BaseTool<"read_artifact"> {
 
 		// Validate artifact_id format to prevent path traversal
 		if (!isValidArtifactId(artifact_id)) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("read_artifact")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "read_artifact", { failTurn: true })
 			const errorMsg = `Invalid artifact_id format: "${artifact_id}". ${ARTIFACT_ID_GUIDANCE}`
 			await task.say("error", errorMsg)
 			pushToolResult(`Error: ${errorMsg}`)

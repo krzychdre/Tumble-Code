@@ -99,6 +99,31 @@ export abstract class BaseTool<TName extends ToolName> {
 	}
 
 	/**
+	 * Record a failed tool call: grow the task's consecutive-mistake count, then
+	 * record the error for `toolName` (telemetry and the mistake guidance's
+	 * example). With `failTurn`, also mark the current turn as failed.
+	 *
+	 * Replaces the inline `consecutiveMistakeCount++` / `recordToolError(...)` /
+	 * `didToolFailInCurrentTurn = true` sequence. `recordToolError` receives the
+	 * error argument only when one is given, exactly like the inline calls did.
+	 */
+	protected recordFailure(
+		task: Task,
+		toolName: ToolName,
+		options: { error?: string; failTurn?: boolean } = {},
+	): void {
+		task.consecutiveMistakeCount++
+		if (options.error === undefined) {
+			task.recordToolError(toolName)
+		} else {
+			task.recordToolError(toolName, options.error)
+		}
+		if (options.failTurn) {
+			task.didToolFailInCurrentTurn = true
+		}
+	}
+
+	/**
 	 * Reset the partial state tracking of one task.
 	 *
 	 * Should be called at the end of execute() (both success and error paths)

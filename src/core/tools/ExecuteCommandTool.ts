@@ -69,8 +69,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 		try {
 			if (!command) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("execute_command")
+				this.recordFailure(task, "execute_command")
 				pushToolResult(await task.sayAndCreateMissingParamError("execute_command", "command"))
 				return
 			}

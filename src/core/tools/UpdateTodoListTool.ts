@@ -24,18 +24,14 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 			try {
 				todos = parseMarkdownChecklist(todosRaw || "")
 			} catch {
-				task.consecutiveMistakeCount++
-				task.recordToolError("update_todo_list")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "update_todo_list", { failTurn: true })
 				pushToolResult(formatResponse.toolError("The todos parameter is not valid markdown checklist or JSON"))
 				return
 			}
 
 			const { valid, error } = validateTodos(todos)
 			if (!valid) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("update_todo_list")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "update_todo_list", { failTurn: true })
 				pushToolResult(formatResponse.toolError(error || "todos parameter validation failed"))
 				return
 			}

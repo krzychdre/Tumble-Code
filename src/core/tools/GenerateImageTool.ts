@@ -42,15 +42,13 @@ export class GenerateImageTool extends BaseTool<"generate_image"> {
 		}
 
 		if (!prompt) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("generate_image")
+			this.recordFailure(task, "generate_image")
 			pushToolResult(await task.sayAndCreateMissingParamError("generate_image", "prompt"))
 			return
 		}
 
 		if (!relPath) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("generate_image")
+			this.recordFailure(task, "generate_image")
 			pushToolResult(await task.sayAndCreateMissingParamError("generate_image", "path"))
 			return
 		}
