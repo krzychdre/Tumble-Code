@@ -422,14 +422,30 @@ describe("TerminalProcess", () => {
 			expect(ctrlCCalls()).toBe(2)
 		})
 
-		it("does nothing when the process is not listening", async () => {
+		it("still interrupts a command that was moved to the background with continue()", async () => {
 			mockTerminalInfo.busy = true
-			terminalProcess["isListening"] = false
+
+			// "Proceed while running" (or the agent timeout) stops listening, but
+			// the command keeps running and must stay abortable: the user timeout
+			// and task cancellation both rely on abort() here.
+			terminalProcess.continue()
+			terminalProcess.abort()
+			expect(ctrlCCalls()).toBe(1)
+
+			await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS * MAX_ATTEMPTS)
+
+			expect(ctrlCCalls()).toBe(MAX_ATTEMPTS)
+		})
+
+		it("does nothing once the command has completed", async () => {
+			mockTerminalInfo.busy = true
+			mockTerminalInfo.shellExecutionComplete({ exitCode: 0 })
 
 			terminalProcess.abort()
 
 			await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS * MAX_ATTEMPTS)
 
+			// No Ctrl+C typed into an idle shell prompt.
 			expect(ctrlCCalls()).toBe(0)
 		})
 
