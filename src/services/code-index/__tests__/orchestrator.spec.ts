@@ -38,7 +38,7 @@ vi.mock("@roo-code/telemetry", () => ({
 }))
 
 // Mock i18n translator used in orchestrator messages
-vi.mock("../../i18n", () => ({
+vi.mock("../../../i18n", () => ({
 	t: (key: string, params?: any) => {
 		if (key === "embeddings:orchestrator.failedDuringInitialScan" && params?.errorMessage) {
 			return `Failed during initial scan: ${params.errorMessage}`
@@ -332,5 +332,126 @@ describe("CodeIndexOrchestrator - stopIndexing", () => {
 		expect(cacheManager.clearCacheFile).not.toHaveBeenCalled()
 		// Collection should NOT be cleared on user-initiated stop
 		expect(vectorStore.clearCollection).not.toHaveBeenCalled()
+	})
+})
+
+describe("CodeIndexOrchestrator - incremental scan batch errors (DEF-C17 drift 3)", () => {
+	const workspacePath = "/test/workspace"
+
+	let configManager: any
+	let stateManager: any
+	let cacheManager: any
+	let vectorStore: any
+	let scanner: any
+	let fileWatcher: any
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+
+		configManager = { isFeatureConfigured: true }
+
+		let currentState = "Standby"
+		stateManager = {
+			get state() {
+				return currentState
+			},
+			setSystemState: vi.fn().mockImplementation((state: string, _msg: string) => {
+				currentState = state
+			}),
+			reportFileQueueProgress: vi.fn(),
+			reportBlockIndexingProgress: vi.fn(),
+		}
+
+		cacheManager = {
+			clearCacheFile: vi.fn().mockResolvedValue(undefined),
+			flush: vi.fn().mockResolvedValue(undefined),
+		}
+
+		// An existing, complete collection: startIndexing takes the incremental path.
+		vectorStore = {
+			initialize: vi.fn().mockResolvedValue(false),
+			hasIndexedData: vi.fn().mockResolvedValue(true),
+			markIndexingIncomplete: vi.fn().mockResolvedValue(undefined),
+			markIndexingComplete: vi.fn().mockResolvedValue(undefined),
+			clearCollection: vi.fn().mockResolvedValue(undefined),
+		}
+
+		scanner = { scanDirectory: vi.fn() }
+
+		fileWatcher = {
+			initialize: vi.fn().mockResolvedValue(undefined),
+			onDidStartBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			onBatchProgressUpdate: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			onDidFinishBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			dispose: vi.fn(),
+		}
+	})
+
+	const makeOrchestrator = () =>
+		new CodeIndexOrchestrator(
+			configManager,
+			stateManager,
+			workspacePath,
+			cacheManager,
+			vectorStore,
+			scanner,
+			fileWatcher,
+		)
+
+	/** Scanner stub: parses `found` blocks, indexes `indexed` of them and reports `errors` batch errors. */
+	const scanReporting = (found: number, indexed: number, errors: string[]) =>
+		scanner.scanDirectory.mockImplementation(
+			async (
+				_dir: string,
+				onError?: (e: Error) => void,
+				onBlocksIndexed?: (n: number) => void,
+				onFileParsed?: (n: number) => void,
+			) => {
+				onFileParsed?.(found)
+				if (indexed > 0) onBlocksIndexed?.(indexed)
+				for (const message of errors) onError?.(new Error(message))
+				return { stats: { processed: 1, skipped: 0 }, totalBlockCount: found }
+			},
+		)
+
+	it("reports Error, not Indexed, when every batch of the incremental scan failed", async () => {
+		scanReporting(40, 0, ["Failed to process batch after 3 attempts: 400 Bad Request"])
+
+		await makeOrchestrator().startIndexing()
+
+		const lastCall = stateManager.setSystemState.mock.calls.at(-1)
+		expect(lastCall[0]).toBe("Error")
+		expect(lastCall[1]).toContain("400 Bad Request")
+		expect(vectorStore.markIndexingComplete).not.toHaveBeenCalled()
+	})
+
+	it("keeps the existing index and cache when the incremental scan fails", async () => {
+		scanReporting(40, 0, ["Failed to process batch after 3 attempts: connect ECONNREFUSED 127.0.0.1:11111"])
+
+		await makeOrchestrator().startIndexing()
+
+		// The collection was complete before this scan; failed files keep their old cache hash,
+		// so the next scan retries them. Wiping everything would turn a hiccup into a full reindex.
+		expect(vectorStore.clearCollection).not.toHaveBeenCalled()
+		expect(cacheManager.clearCacheFile).not.toHaveBeenCalled()
+		expect(cacheManager.flush).toHaveBeenCalled()
+	})
+
+	it("reports Error when more than 10% of the incremental blocks failed, like the full scan", async () => {
+		scanReporting(100, 50, ["Failed to process batch after 3 attempts: timeout"])
+
+		await makeOrchestrator().startIndexing()
+
+		expect(stateManager.setSystemState.mock.calls.at(-1)[0]).toBe("Error")
+		expect(vectorStore.markIndexingComplete).not.toHaveBeenCalled()
+	})
+
+	it("stays Indexed when only a small share of the incremental blocks failed, like the full scan", async () => {
+		scanReporting(100, 95, ["Failed to process batch after 3 attempts: timeout"])
+
+		await makeOrchestrator().startIndexing()
+
+		expect(stateManager.setSystemState.mock.calls.at(-1)[0]).toBe("Indexed")
+		expect(vectorStore.markIndexingComplete).toHaveBeenCalled()
 	})
 })
