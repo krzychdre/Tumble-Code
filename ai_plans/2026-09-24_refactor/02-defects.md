@@ -363,3 +363,6 @@ where their files are disjoint; the coordinator merges in order.
   characterization over all 15 model tables shows no catalog model's cost changes. Noted: the OpenAI Compatible form
   shows "0" for an undefined write price (the user sees 0 while writes are billed at input price); cache reads with
   no read price stay free.
+- **Main CI after the no-wait merges (run 36030725574 on `67d0d51e7`):** red on `platform-unit-test`. Reproduced
+  locally on `e0ae80b07`: 511 files and 7,830 tests pass; the only failure is TEST-11's unhandled rejection ("Could
+  not load the default credentials"), which makes vitest exit 1. No other regression.
