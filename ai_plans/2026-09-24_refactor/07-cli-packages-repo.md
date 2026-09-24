@@ -66,6 +66,11 @@ Move it and its test to `packages/core/src/fs/`; `src`, the CLI and agent-interc
 `src/utils/__tests__/safeWriteJson.test.ts`, `importExport.spec.ts` (mocks it), `agent-interchange install.spec.ts`,
 `apps/cli settings.test.ts`. **Size** S.
 
+**Status (2026-09-24):** DONE in #264. Code in `packages/core/src/fs/safeWriteJson.ts` (exports `@roo-code/core` and
+`@roo-code/core/fs`); `src/utils/safeWriteJson.ts` is a one-line re-export so the ~25 `vi.mock` specs keep working;
+agent-interchange imports `@roo-code/core/fs`; the CLI bundles proper-lockfile and json-stream-stringify (tsup banner
+adds `createRequire`); `src` keeps `proper-lockfile` as a devDependency so `vi.mock("proper-lockfile")` reaches core.
+
 ### PKG-2 Boundary rules
 
 1. `no-restricted-imports` in `packages/config-eslint/base.js` forbidding relative imports that leave a workspace
