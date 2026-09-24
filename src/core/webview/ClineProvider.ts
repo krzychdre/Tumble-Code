@@ -1818,7 +1818,7 @@ export class ClineProvider
 				}
 
 				// Only update the task's mode after successful persistence.
-				;(task as any)._taskMode = newMode
+				task.setTaskMode(newMode)
 			} catch (error) {
 				// If persistence fails, log the error but don't update the in-memory state.
 				this.log(
@@ -1934,7 +1934,7 @@ export class ClineProvider
 			task.updateApiConfiguration(providerSettings)
 		} else {
 			// No rebuild needed, just sync apiConfiguration
-			;(task as any).apiConfiguration = providerSettings
+			task.apiConfiguration = providerSettings
 		}
 	}
 

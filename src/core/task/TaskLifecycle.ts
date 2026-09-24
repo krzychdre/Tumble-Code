@@ -5,6 +5,7 @@ import {
 	type ProviderSettings,
 	type ClineApiReqCancelReason,
 	type ClineMessage,
+	type TaskEvents,
 	RooCodeEventName,
 	getMaxMcpToolsThreshold,
 } from "@roo-code/types"
@@ -21,6 +22,7 @@ import { type TaskContextManager } from "./TaskContextManager"
 import { defaultModeSlug } from "../../shared/modes"
 import { TaskResumption, type TaskResumptionAccess } from "./TaskResumption"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { type MessageQueueService } from "../message-queue/MessageQueueService"
 import { logger } from "../../utils/logging"
 import { t } from "../../i18n"
 import {
@@ -56,7 +58,7 @@ export interface TaskLifecycleAccess {
 
 	// API configuration
 	apiConfiguration: ProviderSettings
-	api: { cancelRequest: ((destroyClient: boolean) => void) | undefined }
+	api: { cancelRequest?: (destroyClient: boolean) => void }
 	// Severs an in-flight condense request on the background model. The condense
 	// handler is a separate ApiHandler from `api`, so cancelling `api` alone
 	// leaves a background-model condense stream running (post-cancel spend,
@@ -65,10 +67,9 @@ export interface TaskLifecycleAccess {
 
 	// Controllers and services
 	rooIgnoreController?: { dispose: () => void }
-	rooProtectedController?: { dispose: () => void }
 	fileContextTracker: { dispose: () => void }
 	diffViewProvider: { isEditing: boolean; revertChanges: () => Promise<void> }
-	messageQueueService: { dispose: () => void; removeListener: (event: string, handler: () => void) => void }
+	messageQueueService: Pick<MessageQueueService, "dispose" | "removeListener">
 
 	// Mutable state arrays (accessed directly for initialization/reset)
 	clineMessages: ClineMessage[]
@@ -117,7 +118,7 @@ export interface TaskLifecycleAccess {
 	contextManager: TaskContextManager
 
 	// Methods needed
-	emit: (event: RooCodeEventName, ...args: any[]) => boolean
+	emit: <K extends keyof TaskEvents>(event: K, ...args: TaskEvents[K]) => boolean
 	updateApiConfiguration: (newApiConfiguration: ProviderSettings) => void
 	initiateTaskLoop: (userContent: Anthropic.Messages.ContentBlockParam[]) => Promise<void>
 	emitFinalTokenUsageUpdate: () => void
@@ -399,6 +400,10 @@ export class TaskLifecycle {
 	 */
 	setTaskApiConfigName(apiConfigName: string | undefined): void {
 		this.access._taskApiConfigName = apiConfigName
+	}
+
+	setTaskMode(mode: string): void {
+		this.access._taskMode = mode
 	}
 
 	// ======================

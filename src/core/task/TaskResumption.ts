@@ -9,7 +9,13 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk"
-import { type ClineMessage, type ClineApiReqInfo, type ClineAskResponse, RooCodeEventName } from "@roo-code/types"
+import {
+	type ClineMessage,
+	type ClineApiReqInfo,
+	type ClineAskResponse,
+	type TaskEvents,
+	RooCodeEventName,
+} from "@roo-code/types"
 import { findLastIndex } from "../../shared/array"
 import { getLatestTodo } from "../../shared/todo"
 import { formatResponse } from "../prompts/responses"
@@ -49,7 +55,7 @@ export interface TaskResumptionAccess {
 	askSay: TaskAskSay
 
 	// Methods
-	emit: (event: RooCodeEventName, ...args: any[]) => boolean
+	emit: <K extends keyof TaskEvents>(event: K, ...args: TaskEvents[K]) => boolean
 	initiateTaskLoop: (userContent: Anthropic.Messages.ContentBlockParam[]) => Promise<void>
 }
 

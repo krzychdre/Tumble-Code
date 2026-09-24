@@ -258,12 +258,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * This property should NOT be accessed directly until `taskModeReady` promise resolves.
 	 * Use `getTaskMode()` for async access or `taskMode` getter for sync access after initialization.
 	 *
-	 * @private
+	 * @internal Not private only because the core/task helper modules read it through their Access interfaces.
 	 * @see {@link getTaskMode} - For safe async access
 	 * @see {@link taskMode} - For sync access after initialization
 	 * @see {@link waitForModeInitialization} - To ensure initialization is complete
 	 */
-	private _taskMode: string | undefined
+	_taskMode: string | undefined
 
 	/**
 	 * Promise that resolves when the task mode has been initialized.
@@ -278,10 +278,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * - For history items: Resolves immediately (sync initialization)
 	 * - For new tasks: Resolves after provider state is fetched (async initialization)
 	 *
-	 * @private
+	 * @internal Not private only because the core/task helper modules read it through their Access interfaces.
 	 * @see {@link waitForModeInitialization} - Public method to await this promise
 	 */
-	private taskModeReady: Promise<void>
+	taskModeReady: Promise<void>
 
 	/**
 	 * The API configuration name (provider profile) associated with this task.
@@ -303,11 +303,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * wait for `taskApiConfigReady` first (or use `getTaskApiConfigName()`).
 	 * The sync `taskApiConfigName` getter may return `undefined` for backward compatibility.
 	 *
-	 * @private
+	 * @internal Not private only because the core/task helper modules read it through their Access interfaces.
 	 * @see {@link getTaskApiConfigName} - For safe async access
 	 * @see {@link taskApiConfigName} - For sync access after initialization
 	 */
-	private _taskApiConfigName: string | undefined
+	_taskApiConfigName: string | undefined
 
 	/**
 	 * Promise that resolves when the task API config name has been initialized.
@@ -322,12 +322,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * - For history items: Resolves immediately (sync initialization)
 	 * - For new tasks: Resolves after provider state is fetched (async initialization)
 	 *
-	 * @private
+	 * @internal Not private only because the core/task helper modules read it through their Access interfaces.
 	 */
-	private taskApiConfigReady: Promise<void>
+	taskApiConfigReady: Promise<void>
 
 	providerRef: WeakRef<ClineProvider>
-	private readonly globalStoragePath: string
+	readonly globalStoragePath: string
 	abort: boolean = false
 	currentRequestAbortController?: AbortController
 	skipPrevResponseIdOnce: boolean = false
@@ -354,7 +354,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// API
 	apiConfiguration: ProviderSettings
 	api: ApiHandler
-	private autoApprovalHandler: AutoApprovalHandler
+	autoApprovalHandler: AutoApprovalHandler
 
 	/**
 	 * Reset the global API request timestamp. This should only be used for testing.
@@ -390,11 +390,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	clineMessages: ClineMessage[] = []
 
 	// Ask
-	private askResponse?: ClineAskResponse
-	private askResponseText?: string
-	private askResponseImages?: string[]
+	askResponse?: ClineAskResponse
+	askResponseText?: string
+	askResponseImages?: string[]
 	public lastMessageTs?: number
-	private autoApprovalTimeoutRef?: NodeJS.Timeout
+	autoApprovalTimeoutRef?: NodeJS.Timeout
 
 	// Tool Use
 	consecutiveMistakeCount: number = 0
@@ -602,7 +602,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	// Message Queue Service
 	public readonly messageQueueService: MessageQueueService
-	private messageQueueStateChangedHandler: (() => void) | undefined
+	messageQueueStateChangedHandler: (() => void) | undefined
 
 	// Streaming
 	isWaitingForFirstChunk = false
@@ -756,13 +756,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didAlreadyUseTool = false
 	didToolFailInCurrentTurn = false
 	didCompleteReadingStream = false
-	private _started = false
+	_started = false
 	// No streaming parser is required.
 	assistantMessageParser?: undefined
-	private providerProfileChangeListener?: (config: { name: string; provider?: string }) => void
+	providerProfileChangeListener?: (config: { name: string; provider?: string }) => void
 
 	// Native tool call streaming state (track which index each tool is at)
-	private streamingToolCallIndices: Map<string, number> = new Map()
+	streamingToolCallIndices: Map<string, number> = new Map()
 
 	// Cached model info for current streaming session (set at start of each API request)
 	// This prevents excessive getModel() calls during tool execution
@@ -772,10 +772,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	public readonly tokenTracking: TaskTokenTracking
 
 	// Cloud Sync Tracking
-	private cloudSyncedMessageTimestamps: Set<number> = new Set()
+	cloudSyncedMessageTimestamps: Set<number> = new Set()
 
 	// Initial status for the task's history item (set at creation time to avoid race conditions)
-	private readonly initialStatus?: "active" | "delegated" | "completed"
+	readonly initialStatus?: "active" | "delegated" | "completed"
 
 	// Callback for TaskHistory to restore todo list (wraps module-level function)
 	readonly restoreTodoListForTask: () => void
@@ -943,10 +943,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		this.messageQueueService.on("stateChanged", this.messageQueueStateChangedHandler)
 
+		// Every helper module below receives `this` typed as its narrow Access
+		// interface, without a cast. Task members those interfaces list are
+		// therefore not `private`; __tests__/Task.access-types.spec.ts pins the
+		// assignability so a drift fails `tsc` instead of hiding behind a cast.
+		//
 		// Initialize TaskLifecycle for lifecycle management FIRST
 		// because it's needed for setupProviderProfileChangeListener and mode/api config initialization
 		// Pass Task as TaskLifecycleAccess for property access.
-		this.lifecycle = new TaskLifecycle(this as unknown as import("./TaskLifecycle").TaskLifecycleAccess)
+		this.lifecycle = new TaskLifecycle(this)
 
 		// Listen for provider profile changes to update parser state
 		this.setupProviderProfileChangeListener(provider)
@@ -963,42 +968,35 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Initialize TokenTracking module (handles token usage, tool usage metrics, and status)
 		// Pass Task as TaskTokenTrackingAccess for property access
-		this.tokenTracking = new TaskTokenTracking(
-			this as unknown as import("./TaskTokenTracking").TaskTokenTrackingAccess,
-		)
+		this.tokenTracking = new TaskTokenTracking(this)
 
 		// Initialize restoreTodoListForTask callback and TaskHistory
 		// Pass Task as TaskHistoryAccess so property reads/writes go through the live
 		// Task instance (critical for mutable primitives like abort, assistantMessageSavedToHistory).
 		this.restoreTodoListForTask = () => restoreTodoListForTask(this)
-		this.history = new TaskHistory(this as unknown as import("./TaskHistory").TaskHistoryAccess)
+		this.history = new TaskHistory(this)
 
 		// Initialize TaskAskSay for the ask/say communication protocol
 		// Pass Task as TaskAskSayAccess so property reads/writes go through the live
 		// Task instance (critical for mutable primitives like askResponse, lastMessageTs).
-		this.askSay = new TaskAskSay(this as unknown as import("./TaskAskSay").TaskAskSayAccess)
+		this.askSay = new TaskAskSay(this)
 
 		// Initialize TaskStreamProcessor for stream processing logic
 		// Pass Task as TaskStreamProcessorAccess for property access, plus the full Task
 		// reference for presentAssistantMessage() calls which require the complete Task object.
-		this.streamProcessor = new TaskStreamProcessor(
-			this as unknown as import("./TaskStreamProcessor").TaskStreamProcessorAccess,
-			this,
-		)
+		this.streamProcessor = new TaskStreamProcessor(this, this)
 
 		// Initialize TaskContextManager for context management logic
 		// Pass Task as TaskContextManagerAccess for property access.
-		this.contextManager = new TaskContextManager(
-			this as unknown as import("./TaskContextManager").TaskContextManagerAccess,
-		)
+		this.contextManager = new TaskContextManager(this)
 
 		// Initialize TaskSubtasks for subtask delegation and resumption logic
 		// Pass Task as TaskSubtasksAccess for property access.
-		this.subtasks = new TaskSubtasks(this as unknown as import("./TaskSubtasks").TaskSubtasksAccess)
+		this.subtasks = new TaskSubtasks(this)
 
 		// Initialize TaskApiLoop for API request loop orchestration
 		// Pass Task as TaskApiLoopAccess for property access.
-		this.apiLoop = new TaskApiLoop(this as unknown as import("./TaskApiLoop").TaskApiLoopAccess)
+		this.apiLoop = new TaskApiLoop(this)
 
 		// Memory background writers: run extraction/consolidation when this task
 		// completes normally. `abortTask` already covers the cancelled/errored
@@ -1187,6 +1185,17 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	public setTaskApiConfigName(apiConfigName: string | undefined): void {
 		this.lifecycle.setTaskApiConfigName(apiConfigName)
+	}
+
+	/**
+	 * Update the task's mode after a mode switch has been persisted.
+	 * Delegates to TaskLifecycle module.
+	 *
+	 * @param mode - The new mode slug
+	 * @internal
+	 */
+	public setTaskMode(mode: string): void {
+		this.lifecycle.setTaskMode(mode)
 	}
 
 	static create(options: TaskOptions): [Task, Promise<void>] {
@@ -1606,7 +1615,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 *
 	 * @param userContent - The initial user content to send
 	 */
-	private async initiateTaskLoop(userContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
+	async initiateTaskLoop(userContent: Anthropic.Messages.ContentBlockParam[]): Promise<void> {
 		return this.apiLoop.initiateTaskLoop(userContent)
 	}
 
@@ -1625,7 +1634,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Build the system prompt with MCP, mode, and custom instructions.
 	 * Delegates to TaskApiLoop module.
 	 */
-	private async getSystemPrompt(): Promise<string> {
+	async getSystemPrompt(): Promise<string> {
 		return this.apiLoop.getSystemPrompt()
 	}
 
