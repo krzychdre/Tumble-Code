@@ -1,5 +1,3 @@
-import { createRequire } from "module"
-
 /**
  * Load the React packages the TUI renders with in their production builds,
  * whatever NODE_ENV the user's shell exports.
@@ -20,24 +18,23 @@ import { createRequire } from "module"
  * they do (`npm install` skips devDependencies). The production builds never
  * read it again.
  *
+ * The packages are loaded with `import()` rather than `require()` so the
+ * release bundle (tsup bundles React and ink, see BUNDLED_DEPENDENCIES) runs
+ * its own bundled copies here; there is no node_modules copy to require.
+ * Loading ink is what loads `react-reconciler` and `scheduler`, resolved the
+ * way ink resolves them.
+ *
  * Must run before anything imports React, which is why `index.ts` loads the
- * rest of the CLI with a dynamic import after calling this.
+ * rest of the CLI with a dynamic import after awaiting this.
  */
-export function loadReactProductionBuilds(): void {
+export async function loadReactProductionBuilds(): Promise<void> {
 	const inherited = process.env.NODE_ENV
 	process.env.NODE_ENV = "production"
 
 	try {
-		const require = createRequire(import.meta.url)
-		require("react")
-		require("react/jsx-runtime")
-
-		// Dependencies of ink rather than of the CLI (pnpm does not hoist them),
-		// so resolve them from ink's location, the way ink's own imports do.
-		// `react-reconciler` loads `scheduler` itself.
-		const requireFromInk = createRequire(require.resolve("ink"))
-		requireFromInk("react-reconciler")
-		requireFromInk("react-reconciler/constants.js")
+		await import("react")
+		await import("react/jsx-runtime")
+		await import("ink")
 	} finally {
 		if (inherited === undefined) {
 			delete process.env.NODE_ENV

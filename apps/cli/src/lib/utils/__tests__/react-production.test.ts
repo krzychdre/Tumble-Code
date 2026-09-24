@@ -11,7 +11,7 @@ const HELPER = path.resolve(__dirname, "../react-production.ts")
 const RENDER_PROBE = `
 if (process.env.PROBE_HELPER) {
 	const { loadReactProductionBuilds } = await import(process.env.PROBE_HELPER)
-	loadReactProductionBuilds()
+	await loadReactProductionBuilds()
 }
 const { createElement } = await import("react")
 const { render, Text } = await import("ink")

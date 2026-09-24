@@ -83,25 +83,13 @@ jobs:
 
         # Create package.json for npm install.
         echo "Creating package.json..."
-        node -e "
-          const pkg = require('./apps/cli/package.json');
-          const newPkg = {
-            name: '@tumble-code/cli',
-            version: '$VERSION',
-            type: 'module',
-            dependencies: {
-              '@inkjs/ui': pkg.dependencies['@inkjs/ui'],
-              '@trpc/client': pkg.dependencies['@trpc/client'],
-              'commander': pkg.dependencies.commander,
-              'fuzzysort': pkg.dependencies.fuzzysort,
-              'ink': pkg.dependencies.ink,
-              'p-wait-for': pkg.dependencies['p-wait-for'],
-              'react': pkg.dependencies.react,
-              'superjson': pkg.dependencies.superjson,
-              'zustand': pkg.dependencies.zustand
-            }
-          };
-          console.log(JSON.stringify(newPkg, null, 2));
+        # Same manifest as apps/cli/scripts/build.sh: the dependencies tsup leaves
+        # external, pinned to the versions pnpm installed from the lockfile.
+        CLI_DIR="$PWD/apps/cli"
+        node --input-type=module -e "
+          import { createReleaseManifest, readInstalledVersion } from '$CLI_DIR/dist/lib/utils/release-manifest.js';
+          import pkg from '$CLI_DIR/package.json' with { type: 'json' };
+          console.log(JSON.stringify(createReleaseManifest(pkg, '$VERSION', readInstalledVersion('$CLI_DIR')), null, 2));
         " > "$RELEASE_DIR/package.json"
 
         # Copy extension bundle.

@@ -1,5 +1,7 @@
 import { defineConfig } from "tsup"
 
+import { BUNDLED_DEPENDENCIES } from "./src/lib/utils/release-manifest.js"
+
 export default defineConfig({
 	entry: ["src/index.ts", "src/lib/utils/release-manifest.ts"],
 	format: ["esm"],
@@ -18,8 +20,11 @@ export default defineConfig({
 			"const require = __cliCreateRequire(import.meta.url)",
 		].join("\n"),
 	},
-	// Bundle workspace packages that export TypeScript
-	noExternal: ["@roo-code/core", "@roo-code/core/cli", "@roo-code/types", "@roo-code/vscode-shim"],
+	// Bundle the workspace packages (they export TypeScript) and the packages the
+	// terminal UI renders with, together with everything they import, at the
+	// lockfile versions; see BUNDLED_DEPENDENCIES. A prefix also covers subpaths
+	// such as "@roo-code/core/cli" and "react/jsx-runtime".
+	noExternal: BUNDLED_DEPENDENCIES,
 	external: [
 		// Keep native modules external
 		"@anthropic-ai/sdk",
@@ -27,7 +32,7 @@ export default defineConfig({
 		"@anthropic-ai/vertex-sdk",
 		// Keep @vscode/ripgrep external - we bundle the binary separately
 		"@vscode/ripgrep",
-		// Optional dev dependency of ink - not needed at runtime
+		// Optional dependency of ink, imported only when DEV=true; not shipped.
 		"react-devtools-core",
 	],
 	esbuildOptions(options) {

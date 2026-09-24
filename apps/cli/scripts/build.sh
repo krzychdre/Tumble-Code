@@ -149,9 +149,9 @@ create_tarball() {
     # Create package.json for npm install
     info "Creating package.json..."
     node --input-type=module -e "
-      import { createReleaseManifest } from '$CLI_DIR/dist/lib/utils/release-manifest.js';
+      import { createReleaseManifest, readInstalledVersion } from '$CLI_DIR/dist/lib/utils/release-manifest.js';
       import pkg from '$CLI_DIR/package.json' with { type: 'json' };
-      console.log(JSON.stringify(createReleaseManifest(pkg, '$VERSION'), null, 2));
+      console.log(JSON.stringify(createReleaseManifest(pkg, '$VERSION', readInstalledVersion('$CLI_DIR')), null, 2));
     " > "$RELEASE_DIR/package.json"
 
     # Copy extension bundle
