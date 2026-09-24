@@ -372,7 +372,7 @@ export class ClineProvider
 							return
 						}
 
-						const { historyItem } = await this.getTaskWithId(instance.taskId)
+						const historyItem = await this.getHistoryItem(instance.taskId)
 						const rootTask = instance.rootTask
 						const parentTask = instance.parentTask
 						await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
@@ -911,7 +911,7 @@ export class ClineProvider
 			// child and will update the parent to point at the new child.
 			if (parentTaskId && childTaskId && !options?.skipDelegationRepair) {
 				try {
-					const { historyItem: parentHistory } = await this.getTaskWithId(parentTaskId)
+					const parentHistory = await this.getHistoryItem(parentTaskId)
 
 					if (parentHistory.status === "delegated" && parentHistory.awaitingChildId === childTaskId) {
 						await this.updateTaskHistory({
@@ -2186,13 +2186,12 @@ export class ClineProvider
 
 	// Task history
 
-	async getTaskWithId(id: string): Promise<{
-		historyItem: HistoryItem
-		taskDirPath: string
-		apiConversationHistoryFilePath: string
-		uiMessagesFilePath: string
-		apiConversationHistory: Anthropic.MessageParam[]
-	}> {
+	/**
+	 * Looks up a task's history item without touching its conversation
+	 * file. Use this unless you need the API conversation or its file paths
+	 * (then use {@link getTaskWithId}). Throws "Task not found" like it.
+	 */
+	async getHistoryItem(id: string): Promise<HistoryItem> {
 		// Ensure the store is initialized before reading — an early task lookup
 		// (e.g. resume via command before the constructor's fire-and-forget init
 		// completes) would otherwise miss entries that haven't been loaded yet.
@@ -2203,6 +2202,18 @@ export class ClineProvider
 		if (!historyItem) {
 			throw new Error("Task not found")
 		}
+
+		return historyItem
+	}
+
+	async getTaskWithId(id: string): Promise<{
+		historyItem: HistoryItem
+		taskDirPath: string
+		apiConversationHistoryFilePath: string
+		uiMessagesFilePath: string
+		apiConversationHistory: Anthropic.MessageParam[]
+	}> {
+		const historyItem = await this.getHistoryItem(id)
 
 		const { getTaskDirectoryPath } = await import("../../utils/storage")
 		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
@@ -2240,11 +2251,10 @@ export class ClineProvider
 		historyItem: HistoryItem
 		aggregatedCosts: AggregatedCosts
 	}> {
-		const { historyItem } = await this.getTaskWithId(taskId)
+		const historyItem = await this.getHistoryItem(taskId)
 
 		const aggregatedCosts = await aggregateTaskCostsRecursive(taskId, async (id: string) => {
-			const result = await this.getTaskWithId(id)
-			return result.historyItem
+			return this.getHistoryItem(id)
 		})
 
 		return { historyItem, aggregatedCosts }
@@ -2252,7 +2262,7 @@ export class ClineProvider
 
 	async showTaskWithId(id: string) {
 		if (id !== this.getCurrentTask()?.taskId) {
-			const { historyItem } = await this.getTaskWithId(id)
+			const historyItem = await this.getHistoryItem(id)
 
 			// Resolve rootTask/parentTask references from the active stack so
 			// that subtask delegation metadata survives history-item round-trips
@@ -2317,8 +2327,8 @@ export class ClineProvider
 	// If the task has subtasks (childIds), they will also be deleted recursively
 	async deleteTaskWithId(id: string, cascadeSubtasks: boolean = true) {
 		try {
-			// get the task directory full path and history item
-			const { taskDirPath, historyItem } = await this.getTaskWithId(id)
+			// Existence check: throws "Task not found" (handled below).
+			await this.getHistoryItem(id)
 
 			// Collect all task IDs to delete (parent + all subtasks)
 			const allIdsToDelete: string[] = [id]
@@ -2327,7 +2337,7 @@ export class ClineProvider
 				// Recursively collect all child IDs
 				const collectChildIds = async (taskId: string): Promise<void> => {
 					try {
-						const { historyItem: item } = await this.getTaskWithId(taskId)
+						const item = await this.getHistoryItem(taskId)
 						if (item.childIds && item.childIds.length > 0) {
 							for (const childId of item.childIds) {
 								allIdsToDelete.push(childId)
@@ -3995,8 +4005,7 @@ export class ClineProvider
 
 		let historyItem: HistoryItem | undefined
 		try {
-			const history = await this.getTaskWithId(task.taskId)
-			historyItem = history.historyItem
+			historyItem = await this.getHistoryItem(task.taskId)
 		} catch (error) {
 			// During task startup there is a short window where currentTask exists
 			// but task history has not been persisted yet. Cancelling should still
@@ -4077,7 +4086,7 @@ export class ClineProvider
 		// stay stuck in "delegated" awaiting a child that the user just cancelled.
 		if (task.parentTaskId) {
 			try {
-				const { historyItem: parentHistory } = await this.getTaskWithId(task.parentTaskId)
+				const parentHistory = await this.getHistoryItem(task.parentTaskId)
 
 				if (parentHistory?.status === "delegated" && parentHistory?.awaitingChildId === task.taskId) {
 					await this.updateTaskHistory({
@@ -4578,7 +4587,7 @@ export class ClineProvider
 	public async tryReattachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean> {
 		try {
 			// 1-3: Load parent history and check the three metadata conditions.
-			const { historyItem: parentHistory } = await this.getTaskWithId(parentTaskId)
+			const parentHistory = await this.getHistoryItem(parentTaskId)
 
 			if (parentHistory.status !== "active") {
 				this.log(
@@ -4685,7 +4694,7 @@ export class ClineProvider
 		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
 
 		// 1) Load parent from history and current persisted messages
-		const { historyItem } = await this.getTaskWithId(parentTaskId)
+		const historyItem = await this.getHistoryItem(parentTaskId)
 
 		// Guard: re-validate delegation state after the async approval gap.
 		// cancelTask() or removeClineFromStack() may have already detached the parent
@@ -4843,7 +4852,7 @@ export class ClineProvider
 		//    This runs after the abort so it overwrites the stale "active" status
 		//    that saveClineMessages() may have written during step 3.
 		try {
-			const { historyItem: childHistory } = await this.getTaskWithId(childTaskId)
+			const childHistory = await this.getHistoryItem(childTaskId)
 			await this.updateTaskHistory({
 				...childHistory,
 				status: "completed",

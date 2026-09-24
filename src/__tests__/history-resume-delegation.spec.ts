@@ -46,21 +46,19 @@ describe("History resume delegation - parent metadata transitions", () => {
 
 	it("reopenParentFromDelegation persists parent metadata (delegated → active) before reopen", async () => {
 		const providerEmit = vi.fn()
-		const getTaskWithId = vi.fn().mockResolvedValue({
-			historyItem: {
-				id: "parent-1",
-				status: "delegated",
-				delegatedToId: "child-1",
-				awaitingChildId: "child-1",
-				childIds: ["child-1"],
-				ts: Date.now(),
-				task: "Parent task",
-				tokensIn: 0,
-				tokensOut: 0,
-				totalCost: 0,
-				mode: "code",
-				workspace: "/tmp",
-			},
+		const getHistoryItem = vi.fn().mockResolvedValue({
+			id: "parent-1",
+			status: "delegated",
+			delegatedToId: "child-1",
+			awaitingChildId: "child-1",
+			childIds: ["child-1"],
+			ts: Date.now(),
+			task: "Parent task",
+			tokensIn: 0,
+			tokensOut: 0,
+			totalCost: 0,
+			mode: "code",
+			workspace: "/tmp",
 		})
 
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
@@ -74,7 +72,7 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId,
+			getHistoryItem,
 			emit: providerEmit,
 			getCurrentTask: vi.fn(() => ({ taskId: "child-1" })),
 			removeClineFromStack,
@@ -124,18 +122,16 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/storage" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					id: "p1",
-					status: "delegated",
-					awaitingChildId: "c1",
-					childIds: [],
-					ts: 100,
-					task: "Parent",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				id: "p1",
+				status: "delegated",
+				awaitingChildId: "c1",
+				childIds: [],
+				ts: 100,
+				task: "Parent",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
 			}),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => ({ taskId: "c1" })),
@@ -208,18 +204,16 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/storage" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					id: "p-tool",
-					status: "delegated",
-					awaitingChildId: "c-tool",
-					childIds: [],
-					ts: 100,
-					task: "Parent with tool_use",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				id: "p-tool",
+				status: "delegated",
+				awaitingChildId: "c-tool",
+				childIds: [],
+				ts: 100,
+				task: "Parent with tool_use",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
 			}),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => ({ taskId: "c-tool" })),
@@ -295,18 +289,16 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/storage" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					id: "p-no-tool",
-					status: "delegated",
-					awaitingChildId: "c-no-tool",
-					childIds: [],
-					ts: 100,
-					task: "Parent without tool_use",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				id: "p-no-tool",
+				status: "delegated",
+				awaitingChildId: "c-no-tool",
+				childIds: [],
+				ts: 100,
+				task: "Parent without tool_use",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
 			}),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => ({ taskId: "c-no-tool" })),
@@ -356,18 +348,16 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					id: "parent-2",
-					status: "delegated",
-					awaitingChildId: "child-2",
-					childIds: [],
-					ts: 200,
-					task: "P",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				id: "parent-2",
+				status: "delegated",
+				awaitingChildId: "child-2",
+				childIds: [],
+				ts: 200,
+				task: "P",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
 			}),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => ({ taskId: "child-2" })),
@@ -397,18 +387,16 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					id: "p3",
-					status: "delegated",
-					awaitingChildId: "c3",
-					childIds: [],
-					ts: 300,
-					task: "P3",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				id: "p3",
+				status: "delegated",
+				awaitingChildId: "c3",
+				childIds: [],
+				ts: 300,
+				task: "P3",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
 			}),
 			emit: emitSpy,
 			getCurrentTask: vi.fn(() => ({ taskId: "c3" })),
@@ -464,33 +452,29 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockImplementation(async (id: string) => {
+			getHistoryItem: vi.fn().mockImplementation(async (id: string) => {
 				if (id === "parent-rpd06") {
 					return {
-						historyItem: {
-							id: "parent-rpd06",
-							status: "delegated",
-							awaitingChildId: "child-rpd06",
-							childIds: ["child-rpd06"],
-							ts: 800,
-							task: "Parent RPD-06",
-							tokensIn: 0,
-							tokensOut: 0,
-							totalCost: 0,
-						},
+						id: "parent-rpd06",
+						status: "delegated",
+						awaitingChildId: "child-rpd06",
+						childIds: ["child-rpd06"],
+						ts: 800,
+						task: "Parent RPD-06",
+						tokensIn: 0,
+						tokensOut: 0,
+						totalCost: 0,
 					}
 				}
 
 				return {
-					historyItem: {
-						id: "child-rpd06",
-						status: "active",
-						ts: 801,
-						task: "Child RPD-06",
-						tokensIn: 0,
-						tokensOut: 0,
-						totalCost: 0,
-					},
+					id: "child-rpd06",
+					status: "active",
+					ts: 801,
+					task: "Child RPD-06",
+					tokensIn: 0,
+					tokensOut: 0,
+					totalCost: 0,
 				}
 			}),
 			emit: emitSpy,
@@ -535,18 +519,16 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					id: "p4",
-					status: "delegated",
-					awaitingChildId: "c4",
-					childIds: [],
-					ts: 400,
-					task: "P4",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				id: "p4",
+				status: "delegated",
+				awaitingChildId: "c4",
+				childIds: [],
+				ts: 400,
+				task: "P4",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
 			}),
 			emit: emitSpy,
 			getCurrentTask: vi.fn(() => ({ taskId: "c4" })),
@@ -589,32 +571,28 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockImplementation(async (id: string) => {
+			getHistoryItem: vi.fn().mockImplementation(async (id: string) => {
 				if (id === "parent-rpd02") {
 					return {
-						historyItem: {
-							id: "parent-rpd02",
-							status: "delegated",
-							awaitingChildId: "child-rpd02",
-							childIds: ["child-rpd02"],
-							ts: 600,
-							task: "Parent RPD-02",
-							tokensIn: 0,
-							tokensOut: 0,
-							totalCost: 0,
-						},
-					}
-				}
-				return {
-					historyItem: {
-						id: "child-rpd02",
-						status: "active",
-						ts: 601,
-						task: "Child RPD-02",
+						id: "parent-rpd02",
+						status: "delegated",
+						awaitingChildId: "child-rpd02",
+						childIds: ["child-rpd02"],
+						ts: 600,
+						task: "Parent RPD-02",
 						tokensIn: 0,
 						tokensOut: 0,
 						totalCost: 0,
-					},
+					}
+				}
+				return {
+					id: "child-rpd02",
+					status: "active",
+					ts: 601,
+					task: "Child RPD-02",
+					tokensIn: 0,
+					tokensOut: 0,
+					totalCost: 0,
 				}
 			}),
 			emit: vi.fn(),
@@ -670,32 +648,28 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockImplementation(async (id: string) => {
+			getHistoryItem: vi.fn().mockImplementation(async (id: string) => {
 				if (id === "parent-rpd04") {
 					return {
-						historyItem: {
-							id: "parent-rpd04",
-							status: "delegated",
-							awaitingChildId: "child-rpd04",
-							childIds: ["child-rpd04"],
-							ts: 700,
-							task: "Parent RPD-04",
-							tokensIn: 0,
-							tokensOut: 0,
-							totalCost: 0,
-						},
-					}
-				}
-				return {
-					historyItem: {
-						id: "child-rpd04",
-						status: "active",
-						ts: 701,
-						task: "Child RPD-04",
+						id: "parent-rpd04",
+						status: "delegated",
+						awaitingChildId: "child-rpd04",
+						childIds: ["child-rpd04"],
+						ts: 700,
+						task: "Parent RPD-04",
 						tokensIn: 0,
 						tokensOut: 0,
 						totalCost: 0,
-					},
+					}
+				}
+				return {
+					id: "child-rpd04",
+					status: "active",
+					ts: 701,
+					task: "Child RPD-04",
+					tokensIn: 0,
+					tokensOut: 0,
+					totalCost: 0,
 				}
 			}),
 			emit: emitSpy,
@@ -737,18 +711,16 @@ describe("History resume delegation - parent metadata transitions", () => {
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set(),
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					id: "p5",
-					status: "delegated",
-					awaitingChildId: "c5",
-					childIds: [],
-					ts: 500,
-					task: "P5",
-					tokensIn: 0,
-					tokensOut: 0,
-					totalCost: 0,
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				id: "p5",
+				status: "delegated",
+				awaitingChildId: "c5",
+				childIds: [],
+				ts: 500,
+				task: "P5",
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
 			}),
 			emit: vi.fn(),
 			getCurrentTask: vi.fn(() => ({ taskId: "c5" })),

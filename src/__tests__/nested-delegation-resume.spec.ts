@@ -131,15 +131,9 @@ describe("Nested delegation resume (A → B → C)", () => {
 				}
 			})
 
-		const getTaskWithId = vi.fn(async (id: string) => {
+		const getHistoryItem = vi.fn(async (id: string) => {
 			if (!historyIndex[id]) throw new Error("Task not found")
-			return {
-				historyItem: historyIndex[id],
-				apiConversationHistory: [],
-				taskDirPath: "/tmp",
-				apiConversationHistoryFilePath: "/tmp/api.json",
-				uiMessagesFilePath: "/tmp/ui.json",
-			}
+			return historyIndex[id]
 		})
 
 		const updateTaskHistory = vi.fn(async (updated: any) => {
@@ -152,7 +146,7 @@ describe("Nested delegation resume (A → B → C)", () => {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
 			cancelledDelegationChildIds: new Set<string>(),
 			log: vi.fn(),
-			getTaskWithId,
+			getHistoryItem,
 			emit: emitSpy,
 			getCurrentTask: vi.fn(() => (currentActiveId ? ({ taskId: currentActiveId } as any) : undefined)),
 			removeClineFromStack,

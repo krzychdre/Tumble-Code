@@ -265,13 +265,11 @@ describe("showTaskWithId – rootTask/parentTask resolution", () => {
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
 			clineStack: [rootTask, parentTask],
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					...baseHistoryItem,
-					id: "subtask-1",
-					rootTaskId: "root-1",
-					parentTaskId: "parent-1",
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				...baseHistoryItem,
+				id: "subtask-1",
+				rootTaskId: "root-1",
+				parentTaskId: "parent-1",
 			}),
 			createTaskWithHistoryItem,
 		})
@@ -289,13 +287,11 @@ describe("showTaskWithId – rootTask/parentTask resolution", () => {
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
 			clineStack: [],
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: {
-					...baseHistoryItem,
-					id: "subtask-1",
-					rootTaskId: "root-1",
-					parentTaskId: "parent-1",
-				},
+			getHistoryItem: vi.fn().mockResolvedValue({
+				...baseHistoryItem,
+				id: "subtask-1",
+				rootTaskId: "root-1",
+				parentTaskId: "parent-1",
 			}),
 			createTaskWithHistoryItem,
 		})
@@ -329,9 +325,7 @@ describe("showTaskWithId – rootTask/parentTask resolution", () => {
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
 			clineStack: [],
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: { ...baseHistoryItem, id: "task-1" },
-			}),
+			getHistoryItem: vi.fn().mockResolvedValue({ ...baseHistoryItem, id: "task-1" }),
 			createTaskWithHistoryItem,
 		})
 
@@ -348,9 +342,7 @@ describe("showTaskWithId – rootTask/parentTask resolution", () => {
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
 			clineStack: [],
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: { ...baseHistoryItem, id: "top-level-1" },
-			}),
+			getHistoryItem: vi.fn().mockResolvedValue({ ...baseHistoryItem, id: "top-level-1" }),
 			createTaskWithHistoryItem,
 		})
 

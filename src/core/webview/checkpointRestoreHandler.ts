@@ -73,7 +73,7 @@ export async function handleCheckpointRestoreOperation(config: CheckpointRestore
 			})
 
 			// Get the updated history item and reinitialize
-			const { historyItem } = await provider.getTaskWithId(currentCline.taskId)
+			const historyItem = await provider.getHistoryItem(currentCline.taskId)
 			await provider.createTaskWithHistoryItem(historyItem)
 		}
 		// For edit operations, the task cancellation in checkpointRestore

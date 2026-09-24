@@ -660,7 +660,7 @@ describe("attemptCompletionTool", () => {
 		const CHILD_ID = "task_1"
 		const PARENT_ID = "parent_1"
 
-		let mockGetTaskWithId: ReturnType<typeof vi.fn>
+		let mockGetHistoryItem: ReturnType<typeof vi.fn>
 		let mockReopenParentFromDelegation: ReturnType<typeof vi.fn>
 		let mockTryReattachDelegatedParent: ReturnType<typeof vi.fn>
 
@@ -668,11 +668,11 @@ describe("attemptCompletionTool", () => {
 			parentHistory: { status?: string; awaitingChildId?: string },
 			options: { tryReattach?: boolean } = {},
 		) => {
-			mockGetTaskWithId = vi.fn(async (id: string) => {
+			mockGetHistoryItem = vi.fn(async (id: string) => {
 				if (id === CHILD_ID) {
-					return { historyItem: { id: CHILD_ID, status: "active" } }
+					return { id: CHILD_ID, status: "active" }
 				}
-				return { historyItem: { id: PARENT_ID, ...parentHistory } }
+				return { id: PARENT_ID, ...parentHistory }
 			})
 			mockReopenParentFromDelegation = vi.fn().mockResolvedValue(true)
 			mockTryReattachDelegatedParent = vi.fn().mockResolvedValue(options.tryReattach ?? false)
@@ -681,7 +681,7 @@ describe("attemptCompletionTool", () => {
 			mockTask.didToolFailInCurrentTurn = false
 			mockTask.providerRef = {
 				deref: () => ({
-					getTaskWithId: mockGetTaskWithId,
+					getHistoryItem: mockGetHistoryItem,
 					reopenParentFromDelegation: mockReopenParentFromDelegation,
 					tryReattachDelegatedParent: mockTryReattachDelegatedParent,
 				}),

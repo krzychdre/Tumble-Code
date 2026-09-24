@@ -154,18 +154,16 @@ describe("ClineProvider flicker-free cancel", () => {
 		;(provider as any).updateGlobalState = vi.fn().mockResolvedValue(undefined)
 		provider.activateProviderProfile = vi.fn().mockResolvedValue(undefined)
 		provider.performPreparationTasks = vi.fn().mockResolvedValue(undefined)
-		provider.getTaskWithId = vi.fn().mockImplementation((id) =>
+		provider.getHistoryItem = vi.fn().mockImplementation((id) =>
 			Promise.resolve({
-				historyItem: {
-					id,
-					number: 1,
-					ts: Date.now(),
-					task: "test task",
-					tokensIn: 100,
-					tokensOut: 200,
-					totalCost: 0.001,
-					workspace: "/test/workspace",
-				},
+				id,
+				number: 1,
+				ts: Date.now(),
+				task: "test task",
+				tokensIn: 100,
+				tokensOut: 200,
+				totalCost: 0.001,
+				workspace: "/test/workspace",
 			}),
 		)
 

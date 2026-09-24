@@ -166,14 +166,15 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		;(provider as any).updateTaskHistory = updateTaskHistory
-		provider.getTaskWithId = vi.fn().mockImplementation((id: string) =>
-			Promise.resolve({
-				historyItem:
+		provider.getHistoryItem = vi
+			.fn()
+			.mockImplementation((id: string) =>
+				Promise.resolve(
 					id === "parent-1"
 						? { id: "parent-1", status: "delegated", awaitingChildId: "child-1" }
 						: { id: "child-1", status: "active", parentTaskId: "parent-1", rootTaskId: "parent-1" },
-			}),
-		)
+				),
+			)
 		const createWithHistory = vi.fn().mockResolvedValue(undefined)
 		provider.createTaskWithHistoryItem = createWithHistory as any
 
@@ -196,9 +197,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			cancelledDelegationChildIds: new Set<string>(),
 			log: vi.fn(),
 			updateTaskHistory,
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: { id: "parent-1", status: "active", awaitingChildId: undefined },
-			}),
+			getHistoryItem: vi.fn().mockResolvedValue({ id: "parent-1", status: "active", awaitingChildId: undefined }),
 		}
 
 		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
@@ -227,14 +226,15 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			removeClineFromStack: vi.fn().mockResolvedValue(undefined),
 			createTaskWithHistoryItem: vi.fn().mockResolvedValue(undefined),
 			emit: vi.fn(),
-			getTaskWithId: vi.fn().mockImplementation((id: string) =>
-				Promise.resolve({
-					historyItem:
+			getHistoryItem: vi
+				.fn()
+				.mockImplementation((id: string) =>
+					Promise.resolve(
 						id === "parent-1"
 							? { id: "parent-1", status: "active", awaitingChildId: "child-1", childIds: [] }
 							: { id: "child-1", status: "active" },
-				}),
-			),
+					),
+				),
 		}
 
 		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
@@ -262,9 +262,9 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			cancelledDelegationChildIds: new Set<string>(),
 			log: vi.fn(),
 			updateTaskHistory,
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: { id: "parent-1", status: "completed", awaitingChildId: "child-1" },
-			}),
+			getHistoryItem: vi
+				.fn()
+				.mockResolvedValue({ id: "parent-1", status: "completed", awaitingChildId: "child-1" }),
 		}
 
 		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
@@ -284,9 +284,9 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			cancelledDelegationChildIds: new Set<string>(["child-1"]),
 			log: vi.fn(),
 			updateTaskHistory,
-			getTaskWithId: vi.fn().mockResolvedValue({
-				historyItem: { id: "parent-1", status: "delegated", awaitingChildId: "child-1" },
-			}),
+			getHistoryItem: vi
+				.fn()
+				.mockResolvedValue({ id: "parent-1", status: "delegated", awaitingChildId: "child-1" }),
 		}
 
 		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
@@ -307,13 +307,11 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
 				log: vi.fn(),
 				updateTaskHistory,
-				getTaskWithId: vi.fn().mockResolvedValue({
-					historyItem: {
-						id: "parent-1",
-						status: "active",
-						awaitingChildId: undefined,
-						delegatedToId: "child-1",
-					},
+				getHistoryItem: vi.fn().mockResolvedValue({
+					id: "parent-1",
+					status: "active",
+					awaitingChildId: undefined,
+					delegatedToId: "child-1",
 				}),
 				getCurrentTaskStack: vi.fn().mockReturnValue([]),
 				...overrides,
@@ -348,13 +346,11 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		it("returns true and re-stamps parent when all five conditions hold", async () => {
 			const apiMessages = makeApiMessagesWithNewTask()
 			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
-				getTaskWithId: vi.fn().mockResolvedValue({
-					historyItem: {
-						id: "parent-1",
-						status: "active",
-						awaitingChildId: undefined,
-						delegatedToId: "child-1",
-					},
+				getHistoryItem: vi.fn().mockResolvedValue({
+					id: "parent-1",
+					status: "active",
+					awaitingChildId: undefined,
+					delegatedToId: "child-1",
 				}),
 			})
 			// Mock readApiMessages to return messages with an unanswered new_task tool_use
@@ -379,13 +375,11 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 
 		it("returns false when delegatedToId is a different child (no update)", async () => {
 			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
-				getTaskWithId: vi.fn().mockResolvedValue({
-					historyItem: {
-						id: "parent-1",
-						status: "active",
-						awaitingChildId: undefined,
-						delegatedToId: "child-OTHER",
-					},
+				getHistoryItem: vi.fn().mockResolvedValue({
+					id: "parent-1",
+					status: "active",
+					awaitingChildId: undefined,
+					delegatedToId: "child-OTHER",
 				}),
 			})
 
@@ -401,13 +395,11 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 
 		it("returns false when parent status is 'delegated' (no update)", async () => {
 			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
-				getTaskWithId: vi.fn().mockResolvedValue({
-					historyItem: {
-						id: "parent-1",
-						status: "delegated",
-						awaitingChildId: undefined,
-						delegatedToId: "child-1",
-					},
+				getHistoryItem: vi.fn().mockResolvedValue({
+					id: "parent-1",
+					status: "delegated",
+					awaitingChildId: undefined,
+					delegatedToId: "child-1",
 				}),
 			})
 
@@ -423,13 +415,11 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 
 		it("returns false when parent status is 'completed' (no update)", async () => {
 			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
-				getTaskWithId: vi.fn().mockResolvedValue({
-					historyItem: {
-						id: "parent-1",
-						status: "completed",
-						awaitingChildId: undefined,
-						delegatedToId: "child-1",
-					},
+				getHistoryItem: vi.fn().mockResolvedValue({
+					id: "parent-1",
+					status: "completed",
+					awaitingChildId: undefined,
+					delegatedToId: "child-1",
 				}),
 			})
 
@@ -445,13 +435,11 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 
 		it("returns false when awaitingChildId is already set (no update)", async () => {
 			const { fakeProvider, updateTaskHistory } = makeFakeProvider({
-				getTaskWithId: vi.fn().mockResolvedValue({
-					historyItem: {
-						id: "parent-1",
-						status: "active",
-						awaitingChildId: "child-1",
-						delegatedToId: "child-1",
-					},
+				getHistoryItem: vi.fn().mockResolvedValue({
+					id: "parent-1",
+					status: "active",
+					awaitingChildId: "child-1",
+					delegatedToId: "child-1",
 				}),
 			})
 
