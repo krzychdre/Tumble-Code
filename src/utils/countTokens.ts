@@ -6,6 +6,15 @@ import { tiktoken } from "./tiktoken"
 
 let pool: workerpool.Pool | null | undefined = undefined
 
+// workerpool (9.x, src/Pool.js exec) throws this synchronously when the task
+// queue is full. It is back-pressure from a burst of calls, not a broken
+// worker: the pool itself is healthy and drains on its own.
+const QUEUE_FULL_MESSAGE = /^Max queue size of \d+ reached$/
+
+export function isQueueFullError(error: unknown): boolean {
+	return error instanceof Error && QUEUE_FULL_MESSAGE.test(error.message)
+}
+
 export type CountTokensOptions = {
 	useWorker?: boolean
 }
@@ -38,8 +47,15 @@ export async function countTokens(
 
 		return result.count
 	} catch (error) {
-		pool = null
-		console.error(error)
+		// A full queue is transient: count this call inline and keep the pool
+		// for the next ones. Anything else (the worker crashed or cannot start,
+		// or it answered with a failure) disables the pool for the session so
+		// every later call does not pay for another failing round trip.
+		if (!isQueueFullError(error)) {
+			pool = null
+			console.error(error)
+		}
+
 		return tiktoken(content)
 	}
 }
