@@ -29,6 +29,16 @@ async def get_user_memberships(
     return list(result.scalars().all())
 
 
+async def is_member_of(db: AsyncSession, user_id: str, org_id: str) -> bool:
+    """True when the user has a Membership in the organization."""
+    result = await db.execute(
+        select(Membership.id)
+        .where(Membership.user_id == user_id, Membership.organization_id == org_id)
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
+
+
 async def get_or_create_org_settings(
     db: AsyncSession, org_id: str
 ) -> OrganizationSettings:

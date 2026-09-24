@@ -26,7 +26,7 @@ from src.auth.clerk_facade import (
     format_me_response,
     format_org_memberships_response,
 )
-from src.services.user_service import get_user_by_id, get_user_memberships
+from src.services.user_service import get_user_by_id, get_user_memberships, is_member_of
 
 router = APIRouter(prefix="/v1", tags=["auth"])
 
@@ -113,6 +113,14 @@ async def create_session_token(
 
     # Determine org_id: empty string means personal account
     org_id = organization_id if organization_id else None
+
+    # The org claim is what every org-scoped check downstream trusts, so the
+    # client may only name an organization the user is a member of.
+    if org_id is not None and not await is_member_of(db, user.id, org_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a member of this organization",
+        )
 
     jwt_token = issue_session_token(user.id, org_id, expires_in=60)
     return format_session_token_response(jwt_token)
