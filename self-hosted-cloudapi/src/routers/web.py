@@ -15,6 +15,7 @@ import logging
 import textwrap
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -880,11 +881,14 @@ async def bulk_delete_tasks(
 
     # Selecting on page 3 and deleting everything on it would otherwise leave the
     # reader on a page that no longer exists.
-    scope = form.get("scope") or "roots"
+    # Both values are user input going back into a URL, so they are encoded:
+    # a raw "&" would start a new parameter, "#" would cut the rest off into a
+    # fragment and "+" would read back as a space.
+    params = {"scope": form.get("scope") or "roots"}
     query = form.get("q") or ""
-    target = f"/app?scope={scope}"
     if query:
-        target += f"&q={query}"
+        params["q"] = query
+    target = "/app?" + urlencode(params, quote_via=quote)
     return RedirectResponse(url=target, status_code=303)
 
 
