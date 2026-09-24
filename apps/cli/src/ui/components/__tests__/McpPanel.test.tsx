@@ -7,9 +7,20 @@ import type { McpServer } from "@roo-code/types"
 
 import McpPanel, { type McpPanelProps } from "../McpPanel.js"
 
-/** Yield to React so a written keypress is processed and the frame flushes. */
+/** Hand the event loop over between keystrokes, the way a terminal delivers them. */
 function flush(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 10))
+}
+
+/**
+ * Wait until `assertion` holds. A key that changes the selection re-renders in
+ * a task React schedules, not synchronously, so a fixed sleep raced that render
+ * and lost on a loaded machine (CI). Keys that only call a callback (r, space,
+ * R) are handled synchronously and need no wait: the handler reads the
+ * selection through refs.
+ */
+function until(assertion: () => void): Promise<void> {
+	return vi.waitFor(assertion, { timeout: 10_000, interval: 5 })
 }
 
 const GLOBAL_PATH = path.join(os.homedir(), ".roo", "mcp.json")
@@ -74,10 +85,8 @@ describe("McpPanel", () => {
 	it("moves the selection with the arrows and shows the tools of a connected server", async () => {
 		const { stdin, lastFrame } = renderPanel()
 		stdin.write("\u001B[B") // down: broken -> searxNcrawl
-		await flush()
-		const frame = lastFrame() ?? ""
-		expect(frame).toContain(`searxNcrawl · global · ${GLOBAL_PATH_SHOWN}`)
-		expect(frame).toContain("Tools: search, crawl")
+		await until(() => expect(lastFrame() ?? "").toContain(`searxNcrawl · global · ${GLOBAL_PATH_SHOWN}`))
+		expect(lastFrame() ?? "").toContain("Tools: search, crawl")
 	})
 
 	it("restarts, toggles and reloads with r, space and R", async () => {

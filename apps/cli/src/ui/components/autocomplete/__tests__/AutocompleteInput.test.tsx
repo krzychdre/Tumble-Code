@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Box } from "ink"
 import { render } from "ink-testing-library"
 
@@ -33,14 +33,20 @@ function plain(frame: string | undefined): string {
 	return (frame ?? "").replace(/\x1b\[[0-9;]*m/g, "")
 }
 
-/** Yield to React so a written keypress is processed and the frame flushes. */
+/** Hand the event loop over between keystrokes, the way a terminal delivers them. */
 function flush(ms = 10): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** The slash trigger debounces its search; wait past that. */
-function settle(): Promise<void> {
-	return flush(200)
+/**
+ * Wait until `assertion` holds. A keypress that changes state does not render
+ * synchronously: React schedules the render, and the passive effects that
+ * report the picker state, as separate tasks. A fixed sleep races those tasks
+ * and lost on a loaded machine (CI); waiting for the observable outcome does
+ * not, and returns as soon as it holds.
+ */
+function until(assertion: () => void): Promise<void> {
+	return vi.waitFor(assertion, { timeout: 10_000, interval: 5 })
 }
 
 /** Type one key at a time, the way a terminal delivers keystrokes. */
@@ -58,13 +64,23 @@ async function type(stdin: { write: (data: string) => void }, text: string): Pro
 function Harness({
 	onSubmit,
 	onPickerState,
+	onPickerRendered,
 }: {
 	onSubmit: (value: string) => void
 	onPickerState: (state: AutocompletePickerState<SlashCommandResult>) => void
+	onPickerRendered: (state: AutocompletePickerState<SlashCommandResult> | null) => void
 }) {
 	const ref = useRef<AutocompleteInputHandle<SlashCommandResult>>(null)
 	const [pickerState, setPickerState] = useState<AutocompletePickerState<SlashCommandResult> | null>(null)
 	const triggers = useMemo(() => [createSlashCommandTrigger({ getCommands: () => commands })], [])
+
+	// Reported after the commit that rendered the PickerSelect with this state.
+	// Child effects run before the parent's, so by now the picker's key
+	// handler is subscribed and holds these results and this highlight: only
+	// then does a key sent to the picker (Enter, arrows, Escape) reach it.
+	useEffect(() => {
+		onPickerRendered(pickerState)
+	}, [pickerState, onPickerRendered])
 
 	return (
 		<TerminalSizeProvider>
@@ -97,94 +113,106 @@ function Harness({
 function renderHarness() {
 	const submitted: string[] = []
 	const states: AutocompletePickerState<SlashCommandResult>[] = []
-	const view = render(<Harness onSubmit={(v) => submitted.push(v)} onPickerState={(s) => states.push(s)} />)
+	const rendered: (AutocompletePickerState<SlashCommandResult> | null)[] = []
+	const onPickerRendered = (state: AutocompletePickerState<SlashCommandResult> | null) => rendered.push(state)
+	const view = render(
+		<Harness
+			onSubmit={(v) => submitted.push(v)}
+			onPickerState={(s) => states.push(s)}
+			onPickerRendered={onPickerRendered}
+		/>,
+	)
 	const lastState = () => {
 		const state = states[states.length - 1]
 		if (!state) throw new Error("picker state was never reported")
 		return state
 	}
-	return { ...view, submitted, lastState }
+	/** Wait until the rendered picker is open and lists exactly `names`. */
+	const pickerShows = (names: string[]) =>
+		until(() => {
+			const state = rendered[rendered.length - 1]
+			expect(state?.isOpen).toBe(true)
+			expect(state?.results.map((r) => r.name)).toEqual(names)
+		})
+	/** Wait until the rendered picker highlights row `index`. */
+	const pickerHighlights = (index: number) =>
+		until(() => expect(rendered[rendered.length - 1]?.selectedIndex).toBe(index))
+	return { ...view, submitted, lastState, pickerShows, pickerHighlights }
 }
 
 describe("AutocompleteInput with an external PickerSelect", () => {
 	it("keeps delivering keystrokes to the prompt while the picker is open", async () => {
-		const { stdin, lastFrame, lastState } = renderHarness()
+		const { stdin, lastFrame, lastState, pickerShows } = renderHarness()
 
 		await type(stdin, "/")
-		await settle()
-		expect(lastState().isOpen).toBe(true)
-		expect(lastState().results.map((r) => r.name)).toEqual(["new", "permissions", "init"])
+		await pickerShows(["new", "permissions", "init"])
 
 		await type(stdin, "perm")
-		await settle()
+		await pickerShows(["permissions"])
 
 		// The typed characters landed in the prompt and narrowed the list.
-		expect(plain(lastFrame())).toContain("/perm")
+		await until(() => expect(plain(lastFrame())).toContain("/perm"))
 		expect(lastState().isOpen).toBe(true)
-		expect(lastState().results.map((r) => r.name)).toEqual(["permissions"])
 	})
 
 	it("lets Enter accept the highlighted item instead of submitting", async () => {
-		const { stdin, lastFrame, submitted, lastState } = renderHarness()
+		const { stdin, lastFrame, submitted, lastState, pickerShows } = renderHarness()
 
 		await type(stdin, "/perm")
-		await settle()
+		await pickerShows(["permissions"])
 		stdin.write("\r")
-		await settle()
 
-		expect(submitted).toEqual([])
-		expect(lastState().isOpen).toBe(false)
 		// The picker is gone and the prompt holds the accepted command. ink
 		// trims the trailing space of the replacement text from the frame; the
 		// submit test below proves it is there. Only one handler accepted the
 		// item: the text was replaced exactly once.
-		expect(plain(lastFrame())).toBe("/permissions")
+		await until(() => {
+			expect(lastState().isOpen).toBe(false)
+			expect(plain(lastFrame())).toBe("/permissions")
+		})
+		expect(submitted).toEqual([])
 	})
 
 	it("submits /permissions ask as one line once the picker has closed", async () => {
-		const { stdin, submitted, lastState } = renderHarness()
+		const { stdin, lastFrame, submitted, lastState, pickerShows } = renderHarness()
 
 		await type(stdin, "/perm")
-		await settle()
+		await pickerShows(["permissions"])
 		stdin.write("\r")
-		await settle()
-		await type(stdin, "ask")
-		await settle()
+		await until(() => expect(lastState().isOpen).toBe(false))
 
+		await type(stdin, "ask")
+		await until(() => expect(plain(lastFrame())).toBe("/permissions ask"))
 		expect(lastState().isOpen).toBe(false)
 
 		stdin.write("\r")
-		await settle()
-
-		expect(submitted).toEqual(["/permissions ask"])
+		await until(() => expect(submitted).toEqual(["/permissions ask"]))
 	})
 
 	it("moves the highlight with the arrow keys while the picker is open", async () => {
-		const { stdin, lastState, lastFrame } = renderHarness()
+		const { stdin, lastState, lastFrame, pickerShows, pickerHighlights } = renderHarness()
 
 		await type(stdin, "/")
-		await settle()
+		await pickerShows(["new", "permissions", "init"])
 		stdin.write("\x1b[B")
-		await settle()
-
+		await pickerHighlights(1)
 		expect(lastState().selectedIndex).toBe(1)
 
 		stdin.write("\r")
-		await settle()
-
-		expect(lastState().isOpen).toBe(false)
-		expect(plain(lastFrame())).toBe("/permissions")
+		await until(() => {
+			expect(lastState().isOpen).toBe(false)
+			expect(plain(lastFrame())).toBe("/permissions")
+		})
 	})
 
 	it("closes the picker on Escape without clearing the prompt", async () => {
-		const { stdin, lastState, lastFrame } = renderHarness()
+		const { stdin, lastState, lastFrame, pickerShows } = renderHarness()
 
 		await type(stdin, "/perm")
-		await settle()
+		await pickerShows(["permissions"])
 		stdin.write("\x1b")
-		await settle()
 
-		expect(lastState().isOpen).toBe(false)
+		await until(() => expect(lastState().isOpen).toBe(false))
 		expect(plain(lastFrame())).toContain("/perm")
 	})
 })

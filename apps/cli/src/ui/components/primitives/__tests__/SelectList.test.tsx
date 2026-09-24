@@ -8,9 +8,18 @@ const items: SelectItem[] = [
 	{ label: "Third option", value: "third" },
 ]
 
-/** Yield to React so a written keypress is processed and the frame flushes. */
+/** Hand the event loop over between keystrokes, the way a terminal delivers them. */
 function flush(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 10))
+}
+
+/**
+ * Wait until `assertion` holds. Moving the focus re-renders in a task React
+ * schedules, not synchronously, so a fixed sleep before reading the frame
+ * races that render on a loaded machine.
+ */
+function until(assertion: () => void): Promise<void> {
+	return vi.waitFor(assertion, { timeout: 10_000, interval: 5 })
 }
 
 describe("SelectList", () => {
@@ -26,7 +35,7 @@ describe("SelectList", () => {
 		const { lastFrame, stdin } = render(<SelectList items={items} onSelect={() => {}} />)
 
 		stdin.write("[B") // down arrow
-		await flush()
+		await until(() => expect(lastFrame()).toContain("❯ 2. Second option"))
 		const output = lastFrame()
 		expect(output).toContain("1. First option")
 		expect(output).toContain("❯ 2. Second option")

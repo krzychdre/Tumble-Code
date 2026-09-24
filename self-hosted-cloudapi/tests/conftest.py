@@ -8,6 +8,10 @@ import os
 
 # Set required env vars BEFORE importing anything from src.
 # (config.settings is loaded at import-time and validates required fields.)
+
+# Read no .env file: the developer's own .env would otherwise override the
+# values below and the defaults the tests rely on.
+os.environ["CLOUDAPI_ENV_FILE"] = ""
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("API_BASE_URL", "http://testserver")
