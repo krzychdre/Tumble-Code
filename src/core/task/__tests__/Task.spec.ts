@@ -2561,7 +2561,7 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			return ids
 		}
 
-		async function setUpRejectedTask({ contextTokens }: { contextTokens: number }) {
+		async function setUpRejectedTask({ contextTokens, rejections = 1 }: { contextTokens: number; rejections?: number }) {
 			vi.spyOn(mockProvider, "getState").mockResolvedValue({
 				apiConfiguration: mockApiConfig,
 				autoApprovalEnabled: false,
@@ -2607,11 +2607,11 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			// reports no usage, so the retry sees exactly the same number.
 			vi.spyOn(task, "getTokenUsage").mockReturnValue({ contextTokens } as any)
 
-			// First request: rejected as too big. Every later request: accepted.
+			// The first `rejections` requests: rejected as too big. Every later one: accepted.
 			let calls = 0
 			const createMessage = vi.spyOn(task.api, "createMessage").mockImplementation(() => {
 				calls += 1
-				const reject = calls === 1
+				const reject = calls <= rejections
 				return {
 					async *[Symbol.asyncIterator]() {
 						if (reject) {
@@ -2666,6 +2666,7 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			// longer resolves in this history. Mutate in place: the request builder holds
 			// this very Set.
 			task.microcompactedToolUseIds.add("stale-from-other-mode")
+			task.microcompactStrippedTokens = 0
 
 			const iterator = task.attemptApiRequest(0)
 			await iterator.next()
@@ -2676,6 +2677,25 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			expect(task.microcompactedToolUseIds.has("stale-from-other-mode")).toBe(false)
 			expect(clearedIdsIn(retry).length).toBeGreaterThan(0)
 			expect([...task.microcompactedToolUseIds].sort()).toEqual(clearedIdsIn(retry).sort())
+			// The stripped-size correction now describes this request, not the old one.
+			expect(task.microcompactStrippedTokens).toBeGreaterThan(0)
+		})
+
+		it("strips more on a second rejection in a row instead of resending the same retry", async () => {
+			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000, rejections: 2 })
+
+			const iterator = task.attemptApiRequest(0)
+			await iterator.next()
+
+			expect(createMessage).toHaveBeenCalledTimes(3)
+			const firstRetry = createMessage.mock.calls[1][1] as any[]
+			const secondRetry = createMessage.mock.calls[2][1] as any[]
+
+			// The second forced pass measures the pristine size (the first retry's strip
+			// added back) and keeps the first retry's clears, so it can only add to them.
+			expect(clearedIdsIn(secondRetry)).toEqual(expect.arrayContaining(clearedIdsIn(firstRetry)))
+			expect(clearedIdsIn(secondRetry).length).toBeGreaterThan(clearedIdsIn(firstRetry).length)
+			expect(JSON.stringify(secondRetry).length).toBeLessThan(JSON.stringify(firstRetry).length)
 		})
 	})
 })
