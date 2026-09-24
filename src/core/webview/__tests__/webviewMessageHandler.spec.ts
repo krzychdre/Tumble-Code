@@ -890,3 +890,53 @@ describe("webviewMessageHandler - downloadErrorDiagnostics", () => {
 		expect(generateErrorDiagnostics).not.toHaveBeenCalled()
 	})
 })
+
+describe("webviewMessageHandler - updateTodoList (DEF-C3)", () => {
+	const edited = [{ id: "e1", content: "edited by user", status: "pending" }]
+	let foreground: { taskId: string; pendingTodoList?: unknown }
+	let background: { taskId: string; pendingTodoList?: unknown }
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+		foreground = { taskId: "fg-task" }
+		background = { taskId: "bg-task" }
+		vi.mocked(mockClineProvider.getCurrentTask).mockReturnValue(
+			foreground as unknown as ReturnType<ClineProvider["getCurrentTask"]>,
+		)
+		;(mockClineProvider as any).getBackgroundTask = vi.fn((id: string) =>
+			id === background.taskId ? background : undefined,
+		)
+	})
+
+	it("stores the edited list on the task named by taskId, not on the foreground task", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTodoList",
+			taskId: "bg-task",
+			payload: { todos: edited },
+		} as any)
+
+		expect(background.pendingTodoList).toEqual(edited)
+		expect(foreground.pendingTodoList).toBeUndefined()
+	})
+
+	it("falls back to the foreground task when no taskId is given", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTodoList",
+			payload: { todos: edited },
+		} as any)
+
+		expect(foreground.pendingTodoList).toEqual(edited)
+		expect(background.pendingTodoList).toBeUndefined()
+	})
+
+	it("drops an edit addressed to a task that no longer exists", async () => {
+		await webviewMessageHandler(mockClineProvider, {
+			type: "updateTodoList",
+			taskId: "gone-task",
+			payload: { todos: edited },
+		} as any)
+
+		expect(foreground.pendingTodoList).toBeUndefined()
+		expect(background.pendingTodoList).toBeUndefined()
+	})
+})
