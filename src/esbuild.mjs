@@ -5,8 +5,15 @@ import { fileURLToPath } from "url"
 import process from "node:process"
 import * as console from "node:console"
 
-import { copyPaths, copyWasms, copyLocales, setupLocaleWatcher } from "@roo-code/build"
-import { extensionAliases } from "./esbuild.aliases.mjs"
+import {
+	copyPaths,
+	copyWasms,
+	copyLocales,
+	setupLocaleWatcher,
+	createBuildOptions as createSharedBuildOptions,
+	createExtensionBuildOptions,
+	isRunAsScript,
+} from "@roo-code/build"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -29,25 +36,34 @@ async function removeDirWithRetries(dirPath, retries = 5, retryDelayMs = 200) {
 	}
 }
 
+/**
+ * The esbuild options of the release build, without plugins. Exported so a test
+ * can compare them with the nightly build (apps/vscode-nightly/esbuild.mjs).
+ *
+ * @param {{ production?: boolean }} [options]
+ * @returns {{ extension: import('esbuild').BuildOptions, worker: import('esbuild').BuildOptions }}
+ */
+export function createBuildOptions({ production = false } = {}) {
+	// Always generate source maps for error handling.
+	return {
+		extension: {
+			...createExtensionBuildOptions({ production, sourcemap: true, srcDir: __dirname }),
+			entryPoints: ["extension.ts"],
+			outfile: "dist/extension.js",
+		},
+		worker: {
+			...createSharedBuildOptions({ production, sourcemap: true }),
+			entryPoints: ["workers/countTokens.ts"],
+			outdir: "dist/workers",
+		},
+	}
+}
+
 async function main() {
 	const name = "extension"
 	const production = process.argv.includes("--production")
 	const watch = process.argv.includes("--watch")
-	const minify = production
-	const sourcemap = true // Always generate source maps for error handling.
-
-	/**
-	 * @type {import('esbuild').BuildOptions}
-	 */
-	const buildOptions = {
-		bundle: true,
-		minify,
-		sourcemap,
-		logLevel: "silent",
-		format: "cjs",
-		sourcesContent: false,
-		platform: "node",
-	}
+	const { extension, worker } = createBuildOptions({ production })
 
 	const srcDir = __dirname
 	const buildDir = __dirname
@@ -114,26 +130,12 @@ async function main() {
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const extensionConfig = {
-		...buildOptions,
-		plugins,
-		entryPoints: ["extension.ts"],
-		outfile: "dist/extension.js",
-		alias: extensionAliases,
-		// global-agent must be external because it dynamically patches Node.js http/https modules
-		// which breaks when bundled. It needs access to the actual Node.js module instances.
-		// undici must be bundled because our VSIX is packaged with `--no-dependencies`.
-		external: ["vscode", "esbuild", "global-agent", "@vscode/ripgrep"],
-	}
+	const extensionConfig = { ...extension, plugins }
 
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const workerConfig = {
-		...buildOptions,
-		entryPoints: ["workers/countTokens.ts"],
-		outdir: "dist/workers",
-	}
+	const workerConfig = worker
 
 	const [extensionCtx, workerCtx] = await Promise.all([
 		esbuild.context(extensionConfig),
@@ -150,7 +152,10 @@ async function main() {
 	}
 }
 
-main().catch((e) => {
-	console.error(e)
-	process.exit(1)
-})
+// Build only when run as a script (`node esbuild.mjs`), not when a test imports this file.
+if (isRunAsScript(import.meta.url)) {
+	main().catch((e) => {
+		console.error(e)
+		process.exit(1)
+	})
+}

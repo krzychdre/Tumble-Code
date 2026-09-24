@@ -2,15 +2,20 @@ import * as esbuild from "esbuild"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
-import { extensionAliases } from "../esbuild.aliases.mjs"
+import { extensionAliases } from "@roo-code/build"
+
+// The extension package, which depends on punycode.
+const srcDir = path.resolve(import.meta.dirname, "../../../../src")
 
 describe("extension esbuild aliases", () => {
 	it("bundles userland Punycode.js instead of Node's deprecated built-in", async () => {
 		const result = await esbuild.build({
 			stdin: {
 				contents: 'module.exports = require("punycode")',
-				resolveDir: path.resolve(import.meta.dirname, ".."),
+				resolveDir: srcDir,
 			},
+			// esbuild resolves alias targets from the working directory.
+			absWorkingDir: srcDir,
 			alias: extensionAliases,
 			bundle: true,
 			format: "cjs",

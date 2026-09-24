@@ -3,16 +3,61 @@ import * as fs from "fs"
 import * as path from "path"
 import { fileURLToPath } from "url"
 
-import { getGitSha, copyPaths, copyLocales, copyWasms, generatePackageJson } from "@roo-code/build"
+import {
+	getGitSha,
+	copyPaths,
+	copyLocales,
+	copyWasms,
+	generatePackageJson,
+	createBuildOptions as createSharedBuildOptions,
+	createExtensionBuildOptions,
+	isRunAsScript,
+} from "@roo-code/build"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const srcDir = path.join(__dirname, "..", "..", "src")
+const buildDir = path.join(__dirname, "build")
+const distDir = path.join(buildDir, "dist")
+
+/**
+ * The esbuild options of the nightly build, without plugins. Exported so a test
+ * can compare them with the release build (src/esbuild.mjs).
+ *
+ * @param {{ production?: boolean, version: string, gitSha?: string }} options
+ * @returns {{ extension: import('esbuild').BuildOptions, worker: import('esbuild').BuildOptions }}
+ */
+export function createBuildOptions({ production = false, version, gitSha }) {
+	const shared = {
+		production,
+		sourcemap: !production,
+		define: {
+			"process.env.PKG_NAME": '"tumble-code-nightly"',
+			"process.env.PKG_VERSION": `"${version}"`,
+			"process.env.PKG_OUTPUT_CHANNEL": '"Tumble-Code-Nightly"',
+			...(gitSha ? { "process.env.PKG_SHA": `"${gitSha}"` } : {}),
+		},
+	}
+
+	return {
+		// Same externals and aliases as the release build (src/esbuild.mjs).
+		extension: {
+			...createExtensionBuildOptions({ ...shared, srcDir }),
+			entryPoints: [path.join(srcDir, "extension.ts")],
+			outfile: path.join(distDir, "extension.js"),
+		},
+		worker: {
+			...createSharedBuildOptions(shared),
+			entryPoints: [path.join(srcDir, "workers", "countTokens.ts")],
+			outdir: path.join(distDir, "workers"),
+		},
+	}
+}
+
 async function main() {
 	const name = "extension-nightly"
 	const production = process.argv.includes("--production")
-	const minify = production
-	const sourcemap = !production
 
 	const overrideJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.nightly.json"), "utf8"))
 	console.log(`[${name}] name: ${overrideJson.name}`)
@@ -21,28 +66,7 @@ async function main() {
 	const gitSha = getGitSha()
 	console.log(`[${name}] gitSha: ${gitSha}`)
 
-	/**
-	 * @type {import('esbuild').BuildOptions}
-	 */
-	const buildOptions = {
-		bundle: true,
-		minify,
-		sourcemap,
-		logLevel: "silent",
-		format: "cjs",
-		sourcesContent: false,
-		platform: "node",
-		define: {
-			"process.env.PKG_NAME": '"tumble-code-nightly"',
-			"process.env.PKG_VERSION": `"${overrideJson.version}"`,
-			"process.env.PKG_OUTPUT_CHANNEL": '"Tumble-Code-Nightly"',
-			...(gitSha ? { "process.env.PKG_SHA": `"${gitSha}"` } : {}),
-		},
-	}
-
-	const srcDir = path.join(__dirname, "..", "..", "src")
-	const buildDir = path.join(__dirname, "build")
-	const distDir = path.join(buildDir, "dist")
+	const { extension, worker } = createBuildOptions({ production, version: overrideJson.version, gitSha })
 
 	console.log(`[${name}] srcDir: ${srcDir}`)
 	console.log(`[${name}] buildDir: ${buildDir}`)
@@ -141,22 +165,12 @@ async function main() {
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const extensionBuildOptions = {
-		...buildOptions,
-		plugins,
-		entryPoints: [path.join(srcDir, "extension.ts")],
-		outfile: path.join(distDir, "extension.js"),
-		external: ["vscode"],
-	}
+	const extensionBuildOptions = { ...extension, plugins }
 
 	/**
 	 * @type {import('esbuild').BuildOptions}
 	 */
-	const workerBuildOptions = {
-		...buildOptions,
-		entryPoints: [path.join(srcDir, "workers", "countTokens.ts")],
-		outdir: path.join(distDir, "workers"),
-	}
+	const workerBuildOptions = worker
 
 	const [extensionBuildContext, workerBuildContext] = await Promise.all([
 		esbuild.context(extensionBuildOptions),
@@ -172,7 +186,10 @@ async function main() {
 	])
 }
 
-main().catch((e) => {
-	console.error(e)
-	process.exit(1)
-})
+// Build only when run as a script (`node esbuild.mjs`), not when a test imports this file.
+if (isRunAsScript(import.meta.url)) {
+	main().catch((e) => {
+		console.error(e)
+		process.exit(1)
+	})
+}
