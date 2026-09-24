@@ -1,6 +1,8 @@
 import { RooCodeEventName, TodoItem } from "@roo-code/types"
 
-import { AttemptCompletionToolUse } from "../../../shared/tools"
+import type { ToolUse } from "../../../shared/tools"
+
+type AttemptCompletionToolUse = ToolUse<"attempt_completion">
 
 // Mock the formatResponse module before importing the tool
 vi.mock("../../prompts/responses", () => ({

@@ -691,8 +691,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		const decoder = new TextDecoder()
 		let buffer = ""
 		let hasContent = false
-		let totalInputTokens = 0
-		let totalOutputTokens = 0
 
 		try {
 			while (true) {

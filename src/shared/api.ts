@@ -171,13 +171,6 @@ const dynamicProviderExtras = {
 	deepseek: {} as { apiKey?: string; baseUrl?: string },
 } as const satisfies Record<FetchableModelSourceId, object>
 
-export function toFetchableModelSourceId(value?: string): FetchableModelSourceId {
-	if (value && value in dynamicProviderExtras) {
-		return value as FetchableModelSourceId
-	}
-	throw new Error(`Invalid model source: ${value}`)
-}
-
 // Build the dynamic options union from the map, intersected with CommonFetchParams
 // so extra fields are always allowed while required ones are enforced.
 export type GetModelsOptions = {

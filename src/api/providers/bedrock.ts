@@ -1257,21 +1257,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		)
 	}
 
-	/**
-	 * Removes any existing cachePoint nodes from content blocks
-	 */
-	private removeCachePoints(content: any): any {
-		if (Array.isArray(content)) {
-			return content.map((block) => {
-				// Use destructuring to remove cachePoint property
-				const { cachePoint: _, ...rest } = block
-				return rest
-			})
-		}
-
-		return content
-	}
-
 	/************************************************************************************
 	 *
 	 *     NATIVE TOOLS

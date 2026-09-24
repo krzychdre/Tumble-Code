@@ -1,5 +1,4 @@
 import * as path from "path"
-import fs from "fs/promises"
 import * as fsSync from "fs"
 
 import NodeCache from "node-cache"
@@ -14,7 +13,6 @@ import { safeWriteJson } from "../../../utils/safeWriteJson"
 import { ContextProxy } from "../../../core/config/ContextProxy"
 import { getCacheDirectoryPath } from "../../../utils/storage"
 import type { GetModelsOptions } from "../../../shared/api"
-import { fileExistsAtPath } from "../../../utils/fs"
 
 import { getOpenRouterModels } from "./openrouter"
 import { getLiteLLMModels } from "./litellm"
@@ -37,14 +35,6 @@ async function writeModels(router: CacheableModelSourceId, data: ModelRecord) {
 	const filename = `${router}_models.json`
 	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
 	await safeWriteJson(path.join(cacheDir, filename), data)
-}
-
-async function readModels(router: CacheableModelSourceId): Promise<ModelRecord | undefined> {
-	const filename = `${router}_models.json`
-	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
-	const filePath = path.join(cacheDir, filename)
-	const exists = await fileExistsAtPath(filePath)
-	return exists ? JSON.parse(await fs.readFile(filePath, "utf8")) : undefined
 }
 
 /**
