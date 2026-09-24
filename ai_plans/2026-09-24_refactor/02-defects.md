@@ -227,3 +227,8 @@ where their files are disjoint; the coordinator merges in order.
   extension's socket.io client sends no Origin (Node `ws` and `xmlhttprequest-ssl`), so it is unaffected; per the
   simulation against the live `.env`, web UI, phone and extension stay accepted. pytest 347 to 380. Not addressed:
   `GET /app/logout` changes state; no `X-Forwarded-Host` support. **All security items DEF-S1 to DEF-S12 are done.**
+- **DEF-C12:** DONE, merged 2026-09-24 as #222 (`197ded7a5`). Three handlers yielded usage per chunk: `openai.ts`
+  O-series path, `qwen-code.ts`, and (not in the plan) `mistral.ts` (reachable through a custom Codestral URL); each
+  now keeps the last usage and yields it once after the stream, mirroring `f30646127`. 6 tests; extension suite
+  7,673 passed. Every other handler already yields usage once (list in the PR). Residual for API-2: the
+  Anthropic-protocol handlers yield usage at `message_start` and `message_delta` and the processor sums both.
