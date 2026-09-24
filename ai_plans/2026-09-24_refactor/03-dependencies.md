@@ -129,9 +129,8 @@ TEST-6 becomes blocking.
     `@types/vscode ^1.102.0` that `packages/cloud` already compiles against (while the extension still declared
     1.84, so cloud code could call APIs older editors lack). Align every `@types/vscode` with the new floor:
     `src/package.json:599` and `packages/telemetry` (`^1.84.0`), `apps/vscode-e2e` (`^1.95.0`), `packages/cloud`
-    (`^1.102.0`); `vsce` rejects `@types/vscode` newer than `engines.vscode`. Before merging, check the VS Code base
-    version of any fork you want to keep supporting (Cursor, Windsurf, VSCodium); a fork on an older base cannot
-    install the extension afterwards. Update the README's requirements line and add a changeset.
+    (`^1.102.0`); `vsce` rejects `@types/vscode` newer than `engines.vscode`. The owner uses VS Code only; forks (Cursor, Windsurf,
+    VSCodium) are out of scope. Update the README's requirements line and add a changeset.
 
 3. Rescope the `@types/react` override to the webview (or drop it and pin per workspace) so `apps/cli`
    type-checks against React 19 types.

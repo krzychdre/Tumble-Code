@@ -1,6 +1,6 @@
 # Refactor master plan (2026-09-24)
 
-**Status:** planned, nothing executed yet; owner decisions 1, 2, 3, 4a and 12 recorded on 2026-09-24. Written on
+**Status:** planned, nothing executed yet; owner decisions 1, 2, 3, 4a, 4b and 12 recorded on 2026-09-24. Written on
 branch `docs/refactor-plan-2026-09-24` (commit `b99049cdb` and its follow-up), not pushed, not merged.
 **Supersedes:** `ai_plans/refactor-backend-src.md`, `ai_plans/2026-07-14_src-refactor-plan.md`,
 `ai_plans/2026-07-14_webview-ui-refactor-plan.md`, `ai_plans/refactor-webview-ui.md`,
@@ -11,17 +11,24 @@ against `main @ 0c0b40b15` and folded into the area documents below; items marke
 
 The refactor is executed in new sessions; everything needed is in this directory. Steps for the first session:
 
-1. **Get the plan onto the base branch.** These documents live on `docs/refactor-plan-2026-09-24`, not on `main`.
-   Merge that branch into `main` (or open a PR for it) before creating any item branch, otherwise item branches
-   cut from `main` will not contain the plan.
+1. **Workflow per item (owner rule, 2026-09-24).** The plan stays on `docs/refactor-plan-2026-09-24`; it is
+   not merged into `main`. For every item:
+
+    1. `git switch docs/refactor-plan-2026-09-24` and read the item in its area document;
+    2. create the item branch from an up-to-date `main` (`git fetch origin && git switch -c <type>/<item>
+origin/main`, type one of `test`, `fix`, `refactor`, `chore`, `docs`);
+    3. implement test-first and run the gates;
+    4. push the branch to GitHub, open a PR, merge it once CI is green;
+    5. switch back to the docs branch, add the item's status line (date, PR number, merge commit, test counts
+       before and after, deviations from the plan) and commit it there.
+
 2. **Re-measure the baseline** with the commands in "Baseline" below and compare with the recorded numbers; note
    any difference in this file before changing code (other work may have landed in between).
 3. **Start with Phase 0** (`01-safety-net.md`, TEST-1 first, because main's CI is red for flaky tests), then
    DEF-S1 and the cloud API security groups from `02-defects.md`.
 4. **One branch per item** (`test/...`, `fix/...`, `refactor/...`, `chore/...`), stacked when files overlap;
    commit each finished item immediately; `pnpm knip` exits 0 before any push.
-5. **After each item,** add a status line under its heading in the area document (date, branch, commit, test
-   counts before and after, deviations from the plan) and update the Status column of its phase in the roadmap below.
+5. **After each item,** also update the Status column of its phase in the roadmap below (on the docs branch).
 6. **Before an item that depends on an "Open" owner decision,** ask the owner and record the answer in the
    decisions table.
 
@@ -193,7 +200,7 @@ only after the owner confirms it (ask at the start of the item that depends on i
 | 2   | Delete `apps/web-evals` and `packages/evals`?                                                                                                          | **Decided** | Yes (DEP-1)                                                                                                                         |
 | 3   | Delete `releases/` (upstream PNGs, 112.9 MB) from the tree? History stays.                                                                             | **Decided** | Yes, and drop the image links from `CHANGELOG.md` (PKG-8)                                                                           |
 | 4a  | `terminalShellIntegrationTimeout` default: 4,000 (webview initial state) / 30,000 (SettingsView Save fallback) / 5,000 ms (host)?                      | **Decided** | The longest existing value: **30,000 ms**, defined once in the CORE-R1 defaults table and used by the host, the webview and the CLI |
-| 4b  | `soundEnabled` (false / true / false) and `enableCheckpoints` (true / false / true) defaults                                                           | Open        | Recommendation: the host value (`soundEnabled` false, `enableCheckpoints` true); confirm before DEF-C25                             |
+| 4b  | `soundEnabled` (false / true / false) and `enableCheckpoints` (true / false / true) defaults                                                           | **Decided** | The host value: `soundEnabled` false, `enableCheckpoints` true                                                                      |
 | 5   | Unknown model ID: keep the ID, substitute the default, or honor it as custom? Providers disagree today.                                                | Open        | Honor custom IDs with default capabilities (as Anthropic and Gemini do)                                                             |
 | 6   | Production logging is a no-op (`src/utils/logging/index.ts` returns a real logger only under test). Intended?                                          | Open        | Make it real at `info`, behind the existing output channel (TEST-3)                                                                 |
 | 7   | Remove `migrateSettings` (drops migration for installs older than 2025)?                                                                               | Open        | Yes                                                                                                                                 |
