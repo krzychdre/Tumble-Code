@@ -1,0 +1,3 @@
+# Vendored third-party files keep their upstream bytes, so they can be
+# checked against the published package. Replace them whole, never reformat.
+self-hosted-cloudapi/src/web/static/vendor/
