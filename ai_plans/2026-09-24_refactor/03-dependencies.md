@@ -166,6 +166,9 @@ existed (DEF-C31), so a WebSocket handshake test was added instead. Images pinne
 CI step is now blocking. Authentik upgrade: plan only, notes in the PR body. Open: the cloudapi workflow runs only
 on path changes, so new advisories are not caught without a schedule; Starlette 1.7 deprecates `httpx` in its
 test client.
+Follow-up #255: the cloudapi workflow runs weekly (Monday 06:17 UTC) so pip-audit catches new advisories; the
+FRESH/LEGACY/MANAGED reconciliation moved from `docker-entrypoint.sh` to `db-migrate.sh`, which `make migrate`
+now uses too (plain `alembic upgrade head` fails on an empty database). Still open: the `httpx` deprecation.
 
 ## Phase 11 items
 
