@@ -76,6 +76,12 @@ entry points (code actions, MDM, code index, marketplace, OAuth callbacks, MCP d
    (`webviewMessageHandler.ts:618-622`).
 9. Remove `migrateSettings` (`extension.ts:157`, its util and 7 tests) if owner decision 7 is yes.
 
+**Status (2026-09-24):** DONE in #267 (all 9 sub-items; `migrateSettings` removed per decision 7). New
+`src/core/webview/delegationHistory.ts`; `getHistoryItem` used by 17 of 18 callers (only `exportTaskWithId` reads the
+conversation); codex auth cache lives in the OAuth manager (invalidated on credential change, incl. other windows).
+Left for later: `SkillsManager.moveSkill` and `skills:errors.missing_move_fields` are now unused; 11 more
+`WebviewMessage` literals without a handler (listed in a comment at the handler `default` branch).
+
 ### CORE-R10 Fix the layering
 
 **Evidence:**
