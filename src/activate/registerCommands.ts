@@ -9,6 +9,7 @@ import { getCommand } from "../utils/commands"
 import { ClineProvider } from "../core/webview/ClineProvider"
 import { ContextProxy } from "../core/config/ContextProxy"
 import { focusPanel } from "../utils/focusPanel"
+import { getPanel, getSidebarPanel, getTabPanel, setPanel } from "../core/webview/panelRegistry"
 import { handleNewTask } from "./handleTask"
 import { CodeIndexManager } from "../services/code-index/manager"
 import { importSettingsWithFeedback } from "../core/config/importExport"
@@ -26,34 +27,6 @@ export function getVisibleProviderOrLog(outputChannel: vscode.OutputChannel): Cl
 		return undefined
 	}
 	return visibleProvider
-}
-
-// Store panel references in both modes
-let sidebarPanel: vscode.WebviewView | undefined = undefined
-let tabPanel: vscode.WebviewPanel | undefined = undefined
-
-/**
- * Get the currently active panel
- * @returns WebviewPanel或WebviewView
- */
-export function getPanel(): vscode.WebviewPanel | vscode.WebviewView | undefined {
-	return tabPanel || sidebarPanel
-}
-
-/**
- * Set panel references
- */
-export function setPanel(
-	newPanel: vscode.WebviewPanel | vscode.WebviewView | undefined,
-	type: "sidebar" | "tab",
-): void {
-	if (type === "sidebar") {
-		sidebarPanel = newPanel as vscode.WebviewView
-		tabPanel = undefined
-	} else {
-		tabPanel = newPanel as vscode.WebviewPanel
-		sidebarPanel = undefined
-	}
 }
 
 export type RegisterCommandOptions = {
@@ -176,9 +149,10 @@ const getCommandsMap = ({
 	},
 	focusInput: async () => {
 		try {
-			await focusPanel(tabPanel, sidebarPanel)
+			await focusPanel(getTabPanel(), getSidebarPanel())
 
 			// Send focus input message only for sidebar panels
+			const sidebarPanel = getSidebarPanel()
 			if (sidebarPanel && getPanel() === sidebarPanel) {
 				provider.postMessageToWebview({ type: "action", action: "focusInput" })
 			}
@@ -188,7 +162,7 @@ const getCommandsMap = ({
 	},
 	focusPanel: async () => {
 		try {
-			await focusPanel(tabPanel, sidebarPanel)
+			await focusPanel(getTabPanel(), getSidebarPanel())
 		} catch (error) {
 			outputChannel.appendLine(`Error focusing panel: ${error}`)
 		}

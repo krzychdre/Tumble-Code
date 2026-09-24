@@ -30,9 +30,6 @@ export default [
 		ignores: [
 			// Specs run in the extension test environment and never reach the bundle.
 			"shared/**/__tests__/**",
-			// The webview imports this file today; CORE-R10 (with SVC-16) moves the
-			// vscode-bound parts out. Remove this entry when that lands.
-			"shared/modes.ts",
 			// Extension-only, never imported by the webview; SVC-16 / PKG-6 move them
 			// out of src/shared.
 			"shared/cloud-urls.ts",

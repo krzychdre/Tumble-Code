@@ -2,20 +2,28 @@ import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { type ClineSay, type ClineSayTool, DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
 
 import { createDirectoriesForFile } from "../../utils/fs"
 import { arePathsEqual, getReadablePath } from "../../utils/path"
 import { formatResponse } from "../../core/prompts/responses"
-import { Task } from "../../core/task/Task"
 
 import { DecorationController } from "./DecorationController"
-import { DiagnosticsCollector } from "./DiagnosticsCollector"
+import { DiagnosticsCollector, type DiagnosticsTask } from "./DiagnosticsCollector"
 import { DiffEditorLifecycleManager, DIFF_VIEW_URI_SCHEME, DIFF_VIEW_LABEL_CHANGES } from "./DiffEditorLifecycleManager"
 import { stripAllBOMs } from "./stripAllBOMs"
 
 // Re-export the constants so existing imports from this module continue to work.
 export { DIFF_VIEW_URI_SCHEME, DIFF_VIEW_LABEL_CHANGES }
+
+/**
+ * The part of a task (Task) the diff view uses: the diagnostics settings (via
+ * DiagnosticsCollector) and `say` for the user-edit feedback. A narrow
+ * interface keeps this module off the Task class.
+ */
+interface DiffViewTask extends DiagnosticsTask {
+	say(type: ClineSay, text?: string): Promise<unknown>
+}
 
 /**
  * All in-flight state for one diff-edit session. Created atomically by `open()`
@@ -65,13 +73,13 @@ export class DiffViewProvider {
 	// saveChanges() must not silently drop an already-approved write.
 	private pendingSave?: { relPath: string; newContent: string }
 	private nextEditId = 0
-	private taskRef: WeakRef<Task>
+	private taskRef: WeakRef<DiffViewTask>
 	private diagnostics: DiagnosticsCollector
 	private lifecycle: DiffEditorLifecycleManager
 
 	constructor(
 		private cwd: string,
-		task: Task,
+		task: DiffViewTask,
 	) {
 		this.taskRef = new WeakRef(task)
 		this.diagnostics = new DiagnosticsCollector(cwd, task)
@@ -449,7 +457,7 @@ export class DiffViewProvider {
 	 * @param isNewFile Whether this is a new file or an existing file being modified
 	 * @returns Formatted message (JSON)
 	 */
-	async pushToolWriteResult(task: Task, cwd: string, isNewFile: boolean): Promise<string> {
+	async pushToolWriteResult(task: DiffViewTask, cwd: string, isNewFile: boolean): Promise<string> {
 		const relPath = this.lastEditedRelPath
 		if (!relPath) {
 			throw new Error("No file path available in DiffViewProvider")

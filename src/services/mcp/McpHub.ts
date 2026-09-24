@@ -25,11 +25,10 @@ import type {
 	McpServer,
 	McpTool,
 	McpToolCallResponse,
+	ExtensionMessage,
 } from "@roo-code/types"
 
 import { t } from "../../i18n"
-
-import { ClineProvider } from "../../core/webview/ClineProvider"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { arePathsEqual, getWorkspacePath } from "../../utils/path"
@@ -146,8 +145,22 @@ const McpSettingsSchema = z.object({
 	mcpServers: z.record(ServerConfigSchema),
 })
 
+/**
+ * The part of the provider (ClineProvider) the hub and McpServerManager use.
+ * Services depend on this instead of the ClineProvider class so the MCP layer
+ * does not import the webview layer.
+ */
+export interface McpHubProvider {
+	readonly cwd: string
+	readonly context: vscode.ExtensionContext
+	ensureMcpServersDirectoryExists(): Promise<string>
+	ensureSettingsDirectoryExists(): Promise<string>
+	getState(): Promise<{ mcpEnabled?: boolean }>
+	postMessageToWebview(message: ExtensionMessage): Promise<void>
+}
+
 export class McpHub {
-	private providerRef: WeakRef<ClineProvider>
+	private providerRef: WeakRef<McpHubProvider>
 	private disposables: vscode.Disposable[] = []
 	private settingsWatcher?: vscode.FileSystemWatcher
 	/** File watchers per server, keyed by `fileWatcherKey(source, name)`. */
@@ -163,7 +176,7 @@ export class McpHub {
 	private sanitizedNameRegistry: Map<string, string> = new Map()
 	private initializationPromise: Promise<void>
 
-	constructor(provider: ClineProvider) {
+	constructor(provider: McpHubProvider) {
 		this.providerRef = new WeakRef(provider)
 		this.watchMcpSettingsFile()
 		this.watchProjectMcpFile().catch(console.error)
@@ -1452,7 +1465,7 @@ export class McpHub {
 		})
 
 		// Send sorted servers to webview
-		const targetProvider: ClineProvider | undefined = this.providerRef.deref()
+		const targetProvider: McpHubProvider | undefined = this.providerRef.deref()
 
 		if (targetProvider) {
 			const serversToSend = sortedConnections.map((connection) => connection.server)

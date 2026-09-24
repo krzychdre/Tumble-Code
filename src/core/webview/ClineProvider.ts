@@ -92,7 +92,7 @@ import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
 
-import { setPanel } from "../../activate/registerCommands"
+import { setPanel } from "./panelRegistry"
 
 import { t } from "../../i18n"
 

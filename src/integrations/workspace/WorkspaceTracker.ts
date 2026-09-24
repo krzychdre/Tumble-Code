@@ -1,15 +1,25 @@
 import * as vscode from "vscode"
 import * as path from "path"
 
+import type { ExtensionMessage } from "@roo-code/types"
+
 import { listFiles } from "../../services/glob/list-files"
-import { ClineProvider } from "../../core/webview/ClineProvider"
 import { toRelativePath, getWorkspacePath } from "../../utils/path"
 
 const MAX_INITIAL_FILES = 1_000
 
+/**
+ * The part of the provider (ClineProvider) the tracker uses: the workspace it
+ * serves and the webview channel for the file list.
+ */
+interface WorkspaceTrackerProvider {
+	readonly cwd: string
+	postMessageToWebview(message: ExtensionMessage): Promise<void>
+}
+
 // Note: this is not a drop-in replacement for listFiles at the start of tasks, since that will be done for Desktops when there is no workspace selected
 class WorkspaceTracker {
-	private providerRef: WeakRef<ClineProvider>
+	private providerRef: WeakRef<WorkspaceTrackerProvider>
 	private disposables: vscode.Disposable[] = []
 	private filePaths: Set<string> = new Set()
 	private updateTimer: NodeJS.Timeout | null = null
@@ -19,7 +29,7 @@ class WorkspaceTracker {
 	get cwd() {
 		return this.providerRef?.deref()?.cwd ?? getWorkspacePath()
 	}
-	constructor(provider: ClineProvider) {
+	constructor(provider: WorkspaceTrackerProvider) {
 		this.providerRef = new WeakRef(provider)
 		this.registerListeners()
 	}
