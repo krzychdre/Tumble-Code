@@ -1,5 +1,12 @@
 import { useCallback, useRef } from "react"
-import type { ExtensionMessage, ClineMessage, ClineAsk, ClineSay, TodoItem } from "@roo-code/types"
+import {
+	hasUsableAnswer,
+	type ExtensionMessage,
+	type ClineMessage,
+	type ClineAsk,
+	type ClineSay,
+	type TodoItem,
+} from "@roo-code/types"
 import { consolidateTokenUsage, consolidateApiRequests, consolidateCommands } from "@roo-code/core/cli"
 
 import type { TUIMessage, ToolData } from "../types.js"
@@ -551,7 +558,9 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				try {
 					const data = JSON.parse(text)
 					questionText = data.question || text
-					suggestions = Array.isArray(data.suggest) ? data.suggest : undefined
+					// Drop suggestions without a usable answer (blank or missing):
+					// they would render as empty rows and could be sent as the reply.
+					suggestions = Array.isArray(data.suggest) ? data.suggest.filter(hasUsableAnswer) : undefined
 				} catch {
 					// Use raw text
 				}

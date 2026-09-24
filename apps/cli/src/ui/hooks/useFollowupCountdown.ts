@@ -1,4 +1,7 @@
 import { useEffect, useRef } from "react"
+
+import { firstUsableSuggestion } from "@roo-code/types"
+
 import { FOLLOWUP_TIMEOUT_SECONDS } from "../../types/constants.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
 import type { PendingAsk } from "../types.js"
@@ -51,8 +54,7 @@ export function useFollowupCountdown({ pendingAsk, onAutoSubmit, autoAcceptEnabl
 		if (
 			autoAcceptEnabled &&
 			pendingAsk?.type === "followup" &&
-			pendingAsk.suggestions &&
-			pendingAsk.suggestions.length > 0 &&
+			firstUsableSuggestion(pendingAsk.suggestions) &&
 			!showCustomInput
 		) {
 			// Start countdown
@@ -67,12 +69,11 @@ export function useFollowupCountdown({ pendingAsk, onAutoSubmit, autoAcceptEnabl
 						countdownIntervalRef.current = null
 					}
 					setCountdownSeconds(null)
-					// Auto-submit the first suggestion
-					if (pendingAsk?.suggestions && pendingAsk.suggestions.length > 0) {
-						const firstSuggestion = pendingAsk.suggestions[0]
-						if (firstSuggestion) {
-							onAutoSubmitRef.current(firstSuggestion.answer)
-						}
+					// Auto-submit the first suggestion with a usable answer; a blank
+					// one would send an empty reply.
+					const firstSuggestion = firstUsableSuggestion(pendingAsk?.suggestions)
+					if (firstSuggestion) {
+						onAutoSubmitRef.current(firstSuggestion.answer)
 					}
 				} else {
 					setCountdownSeconds(currentSeconds - 1)
