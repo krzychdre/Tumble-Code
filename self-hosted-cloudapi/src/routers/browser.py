@@ -9,6 +9,7 @@ Implements the browser-based authentication routes:
 """
 
 import logging
+import re
 import secrets
 import html
 import urllib.parse
@@ -37,6 +38,39 @@ from config.settings import settings
 WEB_AUTH_REDIRECT = "web:/app"
 
 logger = logging.getLogger(__name__)
+
+# DEF-S3. The callback sends the browser, with a one-time sign-in ticket, to
+# the stored auth_redirect, so only an editor's own callback URI may be stored:
+# a custom scheme, then "://publisher.name" and nothing else. That is exactly
+# what the extension builds (packages/cloud/src/WebAuthService.ts:
+# `${vscode.env.uriScheme}://${publisher}.${name}`), e.g.
+# "vscode://QUB-IT.tumble-code", "vscode-insiders://...", "cursor://...".
+# The callback path and the query are appended by the callback itself.
+_AUTH_REDIRECT_RE = re.compile(
+    r"(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*)://[A-Za-z0-9-]+\.[A-Za-z0-9-]+"
+)
+# Schemes a browser opens itself (or that name local files) are never an
+# editor callback, even when the rest of the value has the right shape.
+_NON_EDITOR_SCHEMES = frozenset(
+    {"http", "https", "javascript", "data", "file", "blob", "about", "ftp", "ws", "wss", "vbscript", "web"}
+)
+
+
+def is_allowed_auth_redirect(value: str) -> bool:
+    """True when ``value`` is an editor callback URI we may send a ticket to."""
+    match = _AUTH_REDIRECT_RE.fullmatch(value or "")
+    return bool(match) and match.group("scheme").lower() not in _NON_EDITOR_SCHEMES
+
+
+def _refuse_auth_redirect() -> HTMLResponse:
+    return HTMLResponse(
+        content=_auth_error_html(
+            "Invalid sign-in request.",
+            "The sign-in link does not return to an editor. Start the sign-in again from the extension.",
+        ),
+        status_code=400,
+    )
+
 
 router = APIRouter(tags=["browser-auth"])
 
@@ -156,6 +190,8 @@ async def sign_in_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Redirect to Authentik OAuth authorize URL for sign-in."""
+    if not is_allowed_auth_redirect(auth_redirect):
+        return _refuse_auth_redirect()
     code_verifier, code_challenge = generate_pkce_pair()
 
     # Store state and PKCE verifier
@@ -179,6 +215,8 @@ async def provider_sign_up_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Redirect to Authentik OAuth authorize URL for sign-up."""
+    if not is_allowed_auth_redirect(auth_redirect):
+        return _refuse_auth_redirect()
     # Same flow as sign-in but with a different screen_hint parameter
     code_verifier, code_challenge = generate_pkce_pair()
 
@@ -204,6 +242,8 @@ async def landing_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Redirect to Authentik OAuth authorize URL for landing page flow."""
+    if not is_allowed_auth_redirect(auth_redirect):
+        return _refuse_auth_redirect()
     code_verifier, code_challenge = generate_pkce_pair()
 
     await store_oauth_state(db, state, auth_redirect, code_verifier)
@@ -301,6 +341,12 @@ async def auth_callback(
             ),
             status_code=403,
         )
+
+    # A state row whose redirect is neither the web marker nor an editor
+    # callback (stored before DEF-S3 was fixed, say) never gets a ticket.
+    if state_store.auth_redirect != WEB_AUTH_REDIRECT and not is_allowed_auth_redirect(state_store.auth_redirect):
+        logger.warning("Auth callback refused: the stored auth_redirect is not an editor callback URI")
+        return _refuse_auth_redirect()
 
     # Exchange authorization code for tokens. The browser followed the
     # authorization request's redirect URI to get here, so the host it arrived
