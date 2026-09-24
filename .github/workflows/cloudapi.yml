@@ -49,7 +49,7 @@ jobs:
               run: uv run pytest
 
     lint-and-audit:
-        name: cloudapi-lint-and-audit (advisory)
+        name: cloudapi-lint-and-audit (lint advisory)
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -64,10 +64,9 @@ jobs:
             - name: Lint with ruff
               continue-on-error: true
               run: make lint
-            # Advisory until the dependency floors are raised: the lockfile has
-            # known advisories today, and this step lists them on every run.
+            # Blocking: the floors raised in DEP-5 left the lock with no known
+            # advisory, so a new one should fail the run.
             - name: Audit locked dependencies
-              continue-on-error: true
               run: |
                   uv export --frozen --no-hashes --no-emit-project > "$RUNNER_TEMP/requirements.txt"
                   uvx pip-audit@2.10.1 -r "$RUNNER_TEMP/requirements.txt" --no-deps --disable-pip
