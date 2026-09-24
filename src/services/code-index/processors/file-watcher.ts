@@ -564,17 +564,21 @@ export class FileWatcher implements IFileWatcher {
 			const blocks = await codeParser.parseFile(filePath, { content, fileHash: newHash })
 
 			// Prepare points for batch processing
+			// Points must look exactly like the ones the directory scanner writes (scanner.ts
+			// processBatch): same id source, same embedded text, same payload. Otherwise one block
+			// gets two different points depending on which component indexed it last.
 			let pointsToUpsert: PointStruct[] = []
-			if (this.embedder && blocks.length > 0) {
-				const texts = blocks.map((block) => block.content)
+			const indexableBlocks = blocks.filter((block) => block.content.trim())
+			if (this.embedder && indexableBlocks.length > 0) {
+				const texts = indexableBlocks.map((block) => block.content.trim())
 				const embeddingResponse = await this.embedder.createEmbeddings(texts)
 				const { embeddings } = embeddingResponse
 				reportEmbeddingUsage(this.embedder, embeddingResponse, "index-watch")
 
-				pointsToUpsert = blocks.map((block, index) => {
+				pointsToUpsert = indexableBlocks.map((block, index) => {
 					const normalizedAbsolutePath = generateNormalizedAbsolutePath(block.file_path, this.workspacePath)
-					const stableName = `${normalizedAbsolutePath}:${block.start_line}`
-					const pointId = uuidv5(stableName, QDRANT_CODE_BLOCK_NAMESPACE)
+					// segmentHash, not "path:start_line": segments of one long line share a start line
+					const pointId = uuidv5(block.segmentHash, QDRANT_CODE_BLOCK_NAMESPACE)
 
 					return {
 						id: pointId,
@@ -584,6 +588,7 @@ export class FileWatcher implements IFileWatcher {
 							codeChunk: block.content,
 							startLine: block.start_line,
 							endLine: block.end_line,
+							segmentHash: block.segmentHash,
 						},
 					}
 				})
