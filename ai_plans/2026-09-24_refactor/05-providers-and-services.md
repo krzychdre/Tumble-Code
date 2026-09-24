@@ -176,6 +176,15 @@ and #10719 through both handlers and pin identical output; a codex test for GPT-
 3. Add `tsc --noUnusedLocals` and a "no non-test importer" scan to the dead-code routine; enabling
    `noUnusedLocals` repo-wide means 324 fixes (118 in `core/task`), so do it one folder at a time.
 
+**Status (2026-09-24):** DONE in #265. `zai-format.ts` deleted (Z.ai uses `convertToR1Format`); dead files and symbols
+deleted (plus the unconsumed `tool_call_end` in `openai.ts`, `semver-compare` dependency); 16 `*ToolUse` interfaces
+removed; `scripts/find-test-only-exports.mjs` and `scripts/check-unused-locals.mjs` (noUnusedLocals enforced in
+`src/api` via `check-types`; 282 left elsewhere in src). Candidates found for later: test-only exports
+`generateImageWithImagesApi`, `convertToAnthropicRole`, `processBackspaces`, `processCarriageReturns`,
+`findUnterminatedQuote`, `TOOL_DISPLAY_NAMES`; test-only webview files `SlashCommandItemSimple.tsx`,
+`BatchListFilesPermission.tsx`, `ui/circular-progress.tsx`, `ui/select-dropdown.tsx`, `utils/provider-profile-draft.ts`,
+`packages/types/src/context-management.ts`; unconsumed `tool_call_end` also in `native-ollama.ts` and `ai-sdk.ts`.
+
 ## Phase 6: services
 
 ### SVC-8 McpHub: pin, extract the pure parts, then split
