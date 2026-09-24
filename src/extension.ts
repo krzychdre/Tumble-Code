@@ -17,7 +17,7 @@ if (fs.existsSync(envPath)) {
 	}
 }
 
-import type { CloudUserInfo, AuthState } from "@roo-code/types"
+import { type CloudUserInfo, type AuthState, readCliRuntimeEnv } from "@roo-code/types"
 import { CloudService } from "@roo-code/cloud"
 import { TelemetryService, PostHogTelemetryClient } from "@roo-code/telemetry"
 import { customToolRegistry } from "@roo-code/core"
@@ -134,7 +134,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Provider-auth commands need the bundled OAuth implementation and the same
 	// SecretStorage as normal CLI runs, but not full extension activation (cloud,
 	// telemetry, indexing, webview, or terminal setup).
-	if (process.env.ROO_CLI_CODEX_AUTH_ONLY === "1") {
+	if (readCliRuntimeEnv(process.env).codexAuthOnly) {
 		openAiCodexOAuthManager.initialize(context, (message) => outputChannel.appendLine(message))
 		return {
 			getOpenAiCodexOAuthManager: () => openAiCodexOAuthManager,

@@ -1,6 +1,8 @@
 import { createRequire } from "module"
 import path from "path"
 
+import { CLI_RUNTIME_ENV } from "@roo-code/types"
+
 import { getDefaultExtensionPath } from "@/lib/utils/extension.js"
 import { openExternal } from "@/lib/utils/open-external.js"
 
@@ -97,8 +99,8 @@ async function withManager<T>(
 
 	let activated = false
 	let manager: OpenAiCodexOAuthManager | undefined
-	const previousAuthOnly = process.env.ROO_CLI_CODEX_AUTH_ONLY
-	process.env.ROO_CLI_CODEX_AUTH_ONLY = "1"
+	const previousAuthOnly = process.env[CLI_RUNTIME_ENV.codexAuthOnly]
+	process.env[CLI_RUNTIME_ENV.codexAuthOnly] = "1"
 	const originalConsoleLog = console.log
 	console.log = (...args: unknown[]) => {
 		if (!String(args[0] ?? "").startsWith("Loaded translations for languages:")) {
@@ -118,8 +120,8 @@ async function withManager<T>(
 		activated = true
 	} finally {
 		console.log = originalConsoleLog
-		if (previousAuthOnly === undefined) delete process.env.ROO_CLI_CODEX_AUTH_ONLY
-		else process.env.ROO_CLI_CODEX_AUTH_ONLY = previousAuthOnly
+		if (previousAuthOnly === undefined) delete process.env[CLI_RUNTIME_ENV.codexAuthOnly]
+		else process.env[CLI_RUNTIME_ENV.codexAuthOnly] = previousAuthOnly
 		Module._resolveFilename = originalResolve
 		delete require.cache["vscode-mock-codex-auth"]
 		if (!activated) vscode.context.dispose()
