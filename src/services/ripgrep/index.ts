@@ -90,6 +90,9 @@ export function truncateLine(line: string, maxLength: number = MAX_LINE_LENGTH):
  * resolution) and the diagnostic command (existence report for all paths).
  */
 export function ripgrepCandidatePaths(vscodeAppRoot: string): readonly string[] {
+	// @vscode/ripgrep >=1.18 (VS Code 1.130+) keeps the binary in a per-platform
+	// optional package, e.g. @vscode/ripgrep-linux-x64/bin/rg.
+	const platformPackage = `@vscode/ripgrep-${process.platform}-${process.arch}`
 	return [
 		path.join(vscodeAppRoot, "node_modules/@vscode/ripgrep/bin/", binName),
 		path.join(vscodeAppRoot, "node_modules/vscode-ripgrep/bin", binName),
@@ -101,15 +104,18 @@ export function ripgrepCandidatePaths(vscodeAppRoot: string): readonly string[] 
 			`node_modules.asar.unpacked/@vscode/ripgrep-universal/${ripgrepUniversalBinDir}`,
 			binName,
 		),
+		path.join(vscodeAppRoot, `node_modules/${platformPackage}/bin`, binName),
+		path.join(vscodeAppRoot, `node_modules.asar.unpacked/${platformPackage}/bin`, binName),
 	]
 }
 
 /**
  * Get the path to the ripgrep binary shipped inside the VS Code installation.
  *
- * Both the long-standing `@vscode/ripgrep` layout and the newer
- * `@vscode/ripgrep-universal` layout are checked — the latter is what VS Code
- * Insiders' staged-install builds use (see microsoft/vscode#252063).
+ * Checks the long-standing `@vscode/ripgrep` layout, the
+ * `@vscode/ripgrep-universal` layout used by VS Code Insiders' staged-install
+ * builds (see microsoft/vscode#252063), and the per-platform package layout of
+ * `@vscode/ripgrep` >=1.18 (VS Code 1.130+).
  *
  * Returns `undefined` when ripgrep cannot be located.
  */

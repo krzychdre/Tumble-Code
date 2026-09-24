@@ -308,26 +308,37 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 			if (maxFiles === 0) {
 				details += "(Workspace files context disabled. Use list_files to explore if needed.)"
 			} else {
-				const [files, didHitLimit] = await listFiles(cline.cwd, true, maxFiles)
-				const { showRooIgnoredFiles = false } = state ?? {}
+				// listFiles throws when ripgrep cannot be found. The listing is optional
+				// context, so report it as unavailable instead of failing the whole request.
+				let listing: Awaited<ReturnType<typeof listFiles>> | undefined
+				try {
+					listing = await listFiles(cline.cwd, true, maxFiles)
+				} catch (error) {
+					details += `(File listing unavailable: ${error instanceof Error ? error.message : String(error)})`
+				}
 
-				const result = formatResponse.formatFilesList(
-					cline.cwd,
-					files,
-					didHitLimit,
-					cline.rooIgnoreController,
-					showRooIgnoredFiles,
-				)
+				if (listing) {
+					const [files, didHitLimit] = listing
+					const { showRooIgnoredFiles = false } = state ?? {}
 
-				// Byte-identical to what this task already sent: point at that copy
-				// instead of repeating it. Comparing content rather than counting
-				// emissions means a subtask that actually created files still gets a
-				// fresh listing, which is the only reason to re-emit at all.
-				if (lastFileDetails.get(cline) === result) {
-					details += FILE_DETAILS_UNCHANGED_NOTE
-				} else {
-					lastFileDetails.set(cline, result)
-					details += result
+					const result = formatResponse.formatFilesList(
+						cline.cwd,
+						files,
+						didHitLimit,
+						cline.rooIgnoreController,
+						showRooIgnoredFiles,
+					)
+
+					// Byte-identical to what this task already sent: point at that copy
+					// instead of repeating it. Comparing content rather than counting
+					// emissions means a subtask that actually created files still gets a
+					// fresh listing, which is the only reason to re-emit at all.
+					if (lastFileDetails.get(cline) === result) {
+						details += FILE_DETAILS_UNCHANGED_NOTE
+					} else {
+						lastFileDetails.set(cline, result)
+						details += result
+					}
 				}
 			}
 		}

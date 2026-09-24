@@ -108,6 +108,22 @@ describe("getBinPath", () => {
 		expect(await getBinPath(appRoot)).toBe(rg)
 	})
 
+	// @vscode/ripgrep >=1.18 (VS Code 1.130+) no longer ships a bin/ folder of its own:
+	// the binary lives in a per-platform optional package such as @vscode/ripgrep-linux-x64.
+	it("resolves ripgrep from the @vscode/ripgrep >=1.18 platform-package layout", async () => {
+		const rg = path.join(appRoot, `node_modules/@vscode/ripgrep-${platformDir}/bin`, binName)
+		mockFileExists.mockImplementation(async (p: string) => p === rg)
+
+		expect(await getBinPath(appRoot)).toBe(rg)
+	})
+
+	it("resolves ripgrep from the unpacked @vscode/ripgrep >=1.18 platform-package layout", async () => {
+		const rg = path.join(appRoot, `node_modules.asar.unpacked/@vscode/ripgrep-${platformDir}/bin`, binName)
+		mockFileExists.mockImplementation(async (p: string) => p === rg)
+
+		expect(await getBinPath(appRoot)).toBe(rg)
+	})
+
 	it("returns undefined when ripgrep cannot be found", async () => {
 		mockFileExists.mockResolvedValue(false)
 

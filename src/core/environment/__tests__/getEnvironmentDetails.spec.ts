@@ -484,6 +484,24 @@ describe("getEnvironmentDetails", () => {
 		expect(getGitStatus).toHaveBeenCalledWith(mockCwd, 5)
 	})
 
+	// listFiles throws "Could not find ripgrep binary" when ripgrep is missing (for example
+	// a VS Code layout the resolver does not know). That must not take down the whole
+	// environment-details build, and with it every API request of the task.
+	it("should degrade gracefully when listFiles rejects with an Error", async () => {
+		;(listFiles as Mock).mockRejectedValue(new Error("Could not find ripgrep binary"))
+
+		const result = await getEnvironmentDetails(mockCline as Task, true)
+		expect(result).toContain("(File listing unavailable: Could not find ripgrep binary")
+		expect(result).toContain("# Current Mode")
+	})
+
+	it("should degrade gracefully when listFiles rejects with a non-Error value", async () => {
+		;(listFiles as Mock).mockRejectedValue("unexpected string rejection")
+
+		const result = await getEnvironmentDetails(mockCline as Task, true)
+		expect(result).toContain("(File listing unavailable: unexpected string rejection")
+	})
+
 	describe("change-only sections", () => {
 		it("omits the unchanged mode section on later turns and re-emits it after a mode switch", async () => {
 			const first = await getEnvironmentDetails(mockCline as Task)
