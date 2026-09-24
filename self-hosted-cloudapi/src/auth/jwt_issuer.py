@@ -3,7 +3,7 @@
 import time
 from typing import Optional, Dict, Any
 
-from jose import jwt, JWTError
+import jwt
 
 from config.settings import settings
 
@@ -55,7 +55,7 @@ def issue_session_token(
         claims["r"]["o"] = org_id
 
     return jwt.encode(
-        claims=claims,
+        payload=claims,
         key=get_jwt_key(),
         algorithm=settings.jwt_algorithm,
     )
@@ -88,7 +88,7 @@ def issue_static_token(
         claims["r"]["o"] = org_id
 
     return jwt.encode(
-        claims=claims,
+        payload=claims,
         key=get_jwt_key(),
         algorithm=settings.jwt_algorithm,
     )
@@ -98,10 +98,10 @@ def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """Decode and validate a JWT token. Returns None if invalid."""
     try:
         payload = jwt.decode(
-            token=token,
+            jwt=token,
             key=get_jwt_verify_key(),
             algorithms=[settings.jwt_algorithm],
         )
         return payload
-    except JWTError:
+    except jwt.PyJWTError:
         return None
