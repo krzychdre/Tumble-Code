@@ -256,6 +256,36 @@ describe("MoonshotHandler", () => {
 			countTokensSpy.mockRestore()
 		})
 
+		it("DEF-C16: the fallback estimate counts tool_result content, not only text parts", async () => {
+			async function* mockFullStream() {
+				yield { type: "text-delta", text: "ok" }
+			}
+			mockStreamText.mockReturnValue({ fullStream: mockFullStream(), usage: Promise.resolve(undefined as any) })
+			const countTokensSpy = vi.spyOn(handler, "countTokens").mockResolvedValue(42)
+
+			const fileBody = "export const a = 1\n".repeat(50)
+			const history: Anthropic.Messages.MessageParam[] = [
+				{ role: "user", content: "Read a.ts" },
+				{
+					role: "assistant",
+					content: [{ type: "tool_use", id: "call_1", name: "read_file", input: { path: "a.ts" } }],
+				},
+				{ role: "user", content: [{ type: "tool_result", tool_use_id: "call_1", content: fileBody }] },
+			]
+			for await (const _chunk of handler.createMessage(systemPrompt, history)) {
+				// drain
+			}
+
+			const inputBlocks = countTokensSpy.mock.calls[0][0]
+			expect(inputBlocks[0]).toEqual({ type: "text", text: systemPrompt })
+			expect(inputBlocks).toContainEqual(
+				expect.objectContaining({ type: "tool_result", tool_use_id: "call_1", content: fileBody }),
+			)
+			expect(inputBlocks).toContainEqual(expect.objectContaining({ type: "tool_use", name: "read_file" }))
+
+			countTokensSpy.mockRestore()
+		})
+
 		it("AP-4: should yield exactly one usage chunk with server values when usage IS present (no double)", async () => {
 			async function* mockFullStream() {
 				yield { type: "text-delta", text: "Test response" }
