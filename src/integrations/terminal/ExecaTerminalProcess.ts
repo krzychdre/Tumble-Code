@@ -2,7 +2,7 @@ import { execa, ExecaError } from "execa"
 import psTree from "ps-tree"
 import process from "process"
 
-import type { RooTerminal } from "./types"
+import type { ExitCodeDetails, RooTerminal } from "./types"
 import { BaseTerminal } from "./BaseTerminal"
 import { BaseTerminalProcess } from "./BaseTerminalProcess"
 import { AskpassServer } from "./askpass/AskpassServer"
@@ -50,6 +50,10 @@ function trackProcessGroup(pgid: number) {
 export class ExecaTerminalProcess extends BaseTerminalProcess {
 	private terminalRef: WeakRef<RooTerminal>
 	private aborted = false
+	// Set once the command's output stream has ended. From then on there is no
+	// "rest of the line" still to come, so getUnretrievedOutput() hands out a
+	// trailing partial line too instead of holding it back forever.
+	private outputEnded = false
 	private pid?: number
 	// The shell's own pid, kept separately because `pid` above is later
 	// overwritten with the first child. Negative-signalling this one reaches the
@@ -81,6 +85,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 
 	public override async run(command: string) {
 		this.command = command
+		let exitDetails: ExitCodeDetails
 
 		try {
 			this.isHot = true
@@ -206,17 +211,17 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 				}
 			}
 
-			this.emit("shell_execution_complete", { exitCode: 0 })
+			exitDetails = { exitCode: 0 }
 		} catch (error) {
 			if (error instanceof ExecaError) {
 				console.error(`[ExecaTerminalProcess#run] shell execution error: ${error.message}`)
-				this.emit("shell_execution_complete", { exitCode: error.exitCode ?? 0, signalName: error.signal })
+				exitDetails = { exitCode: error.exitCode ?? 0, signalName: error.signal }
 			} else {
 				console.error(
 					`[ExecaTerminalProcess#run] shell execution error: ${error instanceof Error ? error.message : String(error)}`,
 				)
 
-				this.emit("shell_execution_complete", { exitCode: 1 })
+				exitDetails = { exitCode: 1 }
 			}
 			this.subprocess = undefined
 		}
@@ -234,11 +239,33 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		}
 
 		this.terminal.setActiveStream(undefined)
+		this.outputEnded = true
+		// Hand a foreground caller everything first, so only output nobody has
+		// seen yet (a command moved to the background) is left to be queued.
 		this.emitRemainingBufferIfListening()
 		this.stopHotTimer()
+		this.completeShellExecution(exitDetails)
 		this.emit("completed", this.fullOutput)
 		this.emit("continue")
 		this.subprocess = undefined
+	}
+
+	/**
+	 * Goes through the terminal, like the VS Code backend does from
+	 * TerminalRegistry, so the terminal's bookkeeping is updated: busy and
+	 * running cleared, the process detached, and a process with output the model
+	 * has not seen yet queued for getEnvironmentDetails. Emitting
+	 * shell_execution_complete directly skipped all of that, so a command moved
+	 * to the background never reported its remaining output or its end.
+	 */
+	private completeShellExecution(exitDetails: ExitCodeDetails) {
+		const terminal = this.terminalRef.deref()
+
+		if (terminal && terminal.process === this) {
+			terminal.shellExecutionComplete(exitDetails)
+		} else {
+			this.emit("shell_execution_complete", exitDetails)
+		}
 	}
 
 	public override continue() {
@@ -323,6 +350,12 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 
 	public override getUnretrievedOutput() {
 		let output = this.fullOutput.slice(this.lastRetrievedIndex)
+
+		if (this.outputEnded) {
+			this.lastRetrievedIndex = this.fullOutput.length
+			return output
+		}
+
 		let index = output.lastIndexOf("\n")
 
 		if (index === -1) {
