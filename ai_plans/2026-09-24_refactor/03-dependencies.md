@@ -170,6 +170,17 @@ js-cookie 2 under react-use (only `useCookie`, unused), uuid (see above). postho
 **Gate:** G1, G2, G5; CLI type-check with React 19 types may surface real errors, which are fixed in the same
 branch only if they are type-level; behavior changes get their own DEF entry.
 
+**Status (2026-09-24):** DONE in #259 (changeset `minor`). Node 22.23.3 in `engines`, `.nvmrc`, `.tool-versions`
+and the shared `setup-node-pnpm` action; `@types/node ^22.20.4` everywhere; `engines.vscode ^1.102.0` with
+`@types/vscode ^1.102.0` everywhere (vsce accepts the manifest). The global `@types/react`/`@types/react-dom`
+overrides are gone: the webview keeps 18.3.x, the CLI declares `^19.2.0`; twelve webview libraries that use React
+types without declaring them got an optional `@types/react` peer through `pnpm.packageExtensions` (otherwise
+pnpm's hoisted 19 caused 575 TS errors; a new such library shows up as TS2786). One CLI type-only fix
+(`usePickerHandlers` takes `RefObject<T | null>`). `@aws-sdk/*` refreshed in range to 3.1140.0, which no longer
+depends on `fast-xml-parser`, so the DEP-3 override was dropped. CLI and agent-interchange build target `node22`;
+the CLI installer requires Node 22 (breaking for CLI users on Node 20, owner may revert: three lines). Noted:
+the optional-call guards on `onDidStartTerminalShellExecution` in `TerminalRegistry.ts` are now unnecessary.
+
 ### DEP-5 Python and container floors
 
 See `08-cloudapi.md` section C for the table. **Change:** raise floors in `pyproject.toml`
