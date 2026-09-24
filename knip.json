@@ -8,7 +8,6 @@
 		"self-hosted-cloudapi/**",
 		"packages/agent-interchange/src/mcp/index.ts"
 	],
-	"ignoreBinaries": ["scripts/check-services.sh"],
 	"ignoreDependencies": ["lint-staged", "only-allow", "ovsx"],
 	"ignoreExportsUsedInFile": true,
 	"workspaces": {
@@ -59,7 +58,7 @@
 			"ignoreDependencies": ["@vscode/ripgrep", "cross-spawn", "json-stream-stringify", "proper-lockfile"]
 		},
 		"packages/config-typescript": {
-			"ignoreUnresolved": ["vitest/globals", "next"]
+			"ignoreUnresolved": ["vitest/globals"]
 		},
 		"packages/core": {
 			"project": ["src/**/*.ts"],
@@ -76,18 +75,8 @@
 			"project": ["src/**/*.ts"],
 			"ignoreDependencies": ["@types/vscode"]
 		},
-		"packages/{build,ipc,types}": {
+		"packages/{build,types}": {
 			"project": ["src/**/*.ts"]
-		},
-		"apps/web-evals": {
-			"entry": [
-				"src/app/**/*.{ts,tsx}",
-				"src/lib/**/*.{ts,tsx}",
-				"src/hooks/**/*.{ts,tsx}",
-				"src/actions/**/*.{ts,tsx}"
-			],
-			"project": ["src/**/*.{ts,tsx}"],
-			"ignoreDependencies": ["tailwindcss", "tailwindcss-animate"]
 		}
 	},
 	"rules": {
