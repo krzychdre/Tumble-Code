@@ -99,6 +99,15 @@ describe("vscode imports in src/shared (bundled into the webview)", () => {
 		assert.ok(ruleIds(messages).includes("no-restricted-imports"), JSON.stringify(messages))
 	})
 
+	it("rejects a vscode import in shared/modes.ts (CORE-R10 removed its exemption)", async () => {
+		const messages = await lint(
+			"src",
+			"shared/modes.ts",
+			'import * as vscode from "vscode"\nexport const w = vscode.window\n',
+		)
+		assert.ok(ruleIds(messages).includes("no-restricted-imports"), JSON.stringify(messages))
+	})
+
 	it("accepts a vscode import outside src/shared", async () => {
 		const messages = await lint(
 			"src",
