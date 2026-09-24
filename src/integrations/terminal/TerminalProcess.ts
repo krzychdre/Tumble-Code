@@ -269,7 +269,11 @@ export class TerminalProcess extends BaseTerminalProcess {
 	}
 
 	public override abort() {
-		if (!this.isListening) {
+		// Only interrupt while this command is still the terminal's running one.
+		// Do NOT gate on isListening: continue() ("Proceed while running", the
+		// agent timeout) clears it while the command keeps running, and the user
+		// timeout and task cancellation must still be able to stop it then.
+		if (this.terminalRef.deref()?.process !== this) {
 			return
 		}
 
@@ -304,15 +308,8 @@ export class TerminalProcess extends BaseTerminalProcess {
 		for (let sent = 1; sent < TerminalProcess.CTRL_C_SEND_LIMIT; sent++) {
 			await new Promise((resolve) => setTimeout(resolve, TerminalProcess.ABORT_RETRY_DELAY_MS))
 
-			// Stop as soon as there's nothing left to interrupt. `isListening` (cleared
-			// by continue()) and `terminal.busy` (cleared by shellExecutionComplete() /
-			// the "completed" event) are set on different code paths and can diverge, so
-			// either one being false is a sufficient stop signal — we deliberately check
-			// both rather than collapsing them into one.
-			if (!this.isListening) {
-				return
-			}
-
+			// Stop as soon as there's nothing left to interrupt. Not on isListening:
+			// continue() clears it while the command is still running.
 			const terminal = this.terminalRef.deref()
 
 			// Stop if the terminal is gone, idle, or has already moved on to a different
