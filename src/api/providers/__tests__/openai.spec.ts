@@ -755,6 +755,12 @@ describe("OpenAiHandler", () => {
 			azureApiVersion: "2024-05-01-preview",
 		}
 
+		it("recognizes an Azure AI Inference host that has an explicit port", () => {
+			const handler = new OpenAiHandler(azureOptions)
+			expect(handler["_isAzureAiInference"]("https://test.services.ai.azure.com:443/models")).toBe(true)
+			expect(handler["_isAzureAiInference"]("https://test.services.ai.azure.com:8443/models")).toBe(true)
+		})
+
 		it("should initialize with Azure AI Inference Service configuration", () => {
 			const azureHandler = new OpenAiHandler(azureOptions)
 			expect(azureHandler).toBeInstanceOf(OpenAiHandler)
@@ -909,6 +915,44 @@ describe("OpenAiHandler", () => {
 			const mockCalls = mockCreate.mock.calls
 			const lastCall = mockCalls[mockCalls.length - 1]
 			expect(lastCall[0]).not.toHaveProperty("stream_options")
+		})
+
+		it.each(["https://api.x.ai/v1", "https://custom.x.ai/v1", "https://api.x.ai:8443/v1"])(
+			"detects %s as Grok xAI",
+			(baseUrl) => {
+				const handler = new OpenAiHandler({ ...mockOptions, openAiBaseUrl: baseUrl })
+				expect(handler["_isGrokXAI"](baseUrl)).toBe(true)
+			},
+		)
+
+		it.each([
+			"https://box.ai/v1",
+			"https://inbox.ai/v1",
+			"http://localhost:8000/v1?next=x.ai",
+			"https://x.ai.example.com/v1",
+		])("does not detect %s as Grok xAI", (baseUrl) => {
+			const handler = new OpenAiHandler({ ...mockOptions, openAiBaseUrl: baseUrl })
+			expect(handler["_isGrokXAI"](baseUrl)).toBe(false)
+		})
+
+		it("keeps stream_options for a host that only contains x.ai", async () => {
+			const handler = new OpenAiHandler({ ...mockOptions, openAiBaseUrl: "https://box.ai/v1" })
+			await handler.createMessage("You are a helpful assistant.", [{ role: "user", content: "Hello!" }]).next()
+
+			const lastCall = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]
+			expect(lastCall[0].stream_options).toEqual({ include_usage: true })
+		})
+
+		it("keeps stream_options on the O3 path for a host that only contains x.ai", async () => {
+			const handler = new OpenAiHandler({
+				...mockOptions,
+				openAiModelId: "o3-mini",
+				openAiBaseUrl: "https://box.ai/v1",
+			})
+			await handler.createMessage("You are a helpful assistant.", [{ role: "user", content: "Hello!" }]).next()
+
+			const lastCall = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]
+			expect(lastCall[0].stream_options).toEqual({ include_usage: true })
 		})
 	})
 
