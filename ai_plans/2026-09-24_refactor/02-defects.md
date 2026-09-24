@@ -307,3 +307,7 @@ where their files are disjoint; the coordinator merges in order.
   apply; in-band SSE errors used to end the turn silently; incremental tool-call parts only lost the live preview.
   Residuals for later: Moonshot passes no abort signal (C11 class), SDK `statusCode` not mapped, LM Studio ignores
   server usage, Execa exit code 0 on abort race, Scala uses the Lua query.
+- **TEST-10:** DONE, merged 2026-09-24 as #240 (`64d750b9f`), test-only (2 files). The checkpoint spec now uses
+  `fs.mkdtemp(os.tmpdir()/CheckpointService-)` per run; the CLI credentials test uses `mkdtempSync` (a theoretical
+  same-millisecond collision). 3 concurrent processes x 5 rounds: 12 of 15 runs failed before (ENOTEMPTY, "not a git
+  repository", `cannot lock ref`), 0 of 15 after. No other colliding fixed temp paths in TS or Python tests.
