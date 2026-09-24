@@ -274,6 +274,52 @@ describe("OpenRouterHandler", () => {
 			)
 		})
 
+		it("reports cache writes and reads from the documented usage block, with the reported cost unchanged", async () => {
+			// https://openrouter.ai/docs/use-cases/usage-accounting: cached_tokens are
+			// read from the cache, cache_write_tokens written to it; cost is what the
+			// account was charged.
+			const handler = new OpenRouterHandler(mockOptions)
+
+			const mockStream = {
+				async *[Symbol.asyncIterator]() {
+					yield { id: "test-id", choices: [{ delta: { content: "hi" } }] }
+					yield {
+						id: "test-id",
+						choices: [{ delta: {}, finish_reason: "stop" }],
+						usage: {
+							prompt_tokens: 194,
+							completion_tokens: 2,
+							completion_tokens_details: { reasoning_tokens: 0 },
+							prompt_tokens_details: { cached_tokens: 40, cache_write_tokens: 100, audio_tokens: 0 },
+							total_tokens: 196,
+							cost: 0.00095,
+							cost_details: { upstream_inference_cost: null },
+						},
+					}
+				},
+			}
+
+			;(OpenAI as any).prototype.chat = {
+				completions: { create: vitest.fn().mockResolvedValue(mockStream) },
+			} as any
+
+			const chunks = []
+			for await (const chunk of handler.createMessage("system", [{ role: "user", content: "hi" }])) {
+				chunks.push(chunk)
+			}
+
+			const usage = chunks.find((chunk) => chunk.type === "usage")
+			expect(usage).toEqual({
+				type: "usage",
+				inputTokens: 194,
+				outputTokens: 2,
+				cacheReadTokens: 40,
+				cacheWriteTokens: 100,
+				reasoningTokens: 0,
+				totalCost: 0.00095,
+			})
+		})
+
 		it("adds cache control for supported models", async () => {
 			const handler = new OpenRouterHandler({
 				...mockOptions,
