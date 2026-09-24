@@ -121,6 +121,15 @@ async def record_event(
             await note_completion_model(db, event.task_id, model)
 
 
+class TaskNotOwnedError(Exception):
+    """The task exists but belongs to another user.
+
+    Raised instead of writing, so a caller cannot forget the check: the
+    routers answer it with the same 404 the share endpoint gives, which says
+    nothing about whether the task exists.
+    """
+
+
 async def backfill_messages(
     db: AsyncSession,
     task_id: str,
@@ -139,6 +148,10 @@ async def backfill_messages(
     `workspace_path` is the project/worktree root (explicit client field, with a
     registry fallback resolved by the caller); stamped on the Task so offline
     tasks show their project in the web view.
+
+    Raises TaskNotOwnedError, before touching anything, when the task already
+    belongs to another user: the upload names its task by id only, so without
+    this check any signed-in user could replace someone else's conversation.
     """
     from sqlalchemy import select, delete
     from src.models.task import Task, TaskMessage
@@ -157,6 +170,8 @@ async def backfill_messages(
         db.add(task)
         # Flush the new parent before inserting messages (FK on task_id).
         await db.flush()
+    elif task.user_id != user_id:
+        raise TaskNotOwnedError(task_id)
     _stamp_workspace_path(task, workspace_path)
     await _link_task_tree(db, task_id)
 
@@ -212,8 +227,13 @@ async def upsert_task_message(
     user_id: str,
     message: dict,
     workspace_path: str | None = None,
-) -> None:
+) -> bool:
     """Insert or update a single live-streamed task message.
+
+    Returns whether the task belongs to ``user_id`` (it did, or it did not
+    exist and was just created for them). False means the task is someone
+    else's and nothing was written; the bridge relays an event only on True,
+    and caches the answer so later chunks need no lookup of their own.
 
     Used by the remote-control bridge: a ClineMessage streams through several
     states (created → partial updates → final) under one `ts`. We get-or-create
@@ -252,15 +272,7 @@ async def upsert_task_message(
     from src.services.task_summary import derive_title, message_metrics, refresh_task_summary
 
     if not isinstance(message, dict):
-        return
-
-    ts = message.get("ts")
-    payload = json.dumps(message)
-    metrics = message_metrics(message).as_columns()
-    quality = {
-        "q_kind": await _live_quality_kind(db, task_id, message, ts),
-        "tool_path": tool_path_of(message),
-    }
+        return False
 
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
@@ -269,8 +281,17 @@ async def upsert_task_message(
         db.add(task)
         await db.flush()
     elif task.user_id != user_id:
-        # Never let a bridge event write into another user's task.
-        return
+        # Never let a bridge event write into (or read from) another user's
+        # task.
+        return False
+
+    ts = message.get("ts")
+    payload = json.dumps(message)
+    metrics = message_metrics(message).as_columns()
+    quality = {
+        "q_kind": await _live_quality_kind(db, task_id, message, ts),
+        "tool_path": tool_path_of(message),
+    }
     # Stamp the project/worktree root on first sight (set on create, and fill a
     # legacy NULL the first time the bridge reports a path). Never overwrites.
     _stamp_workspace_path(task, workspace_path)
@@ -311,12 +332,13 @@ async def upsert_task_message(
         await db.execute(stmt)
         await db.flush()
         await _refresh_after_live_write(db, task_id, message, is_final)
-        return
+        return True
 
     # ts is None (legacy/backfill) or an exotic dialect: just append.
     db.add(TaskMessage(task_id=task_id, message_data=payload, message_ts=ts, **metrics, **quality))
     await db.flush()
     await _refresh_after_live_write(db, task_id, message, not message.get("partial"))
+    return True
 
 
 async def _refresh_after_live_write(

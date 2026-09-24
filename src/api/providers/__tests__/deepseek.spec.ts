@@ -585,7 +585,7 @@ describe("DeepSeekHandler", () => {
 				expect.objectContaining({
 					thinking: { type: "enabled" },
 				}),
-				{}, // Empty path options for non-Azure URLs
+				{ signal: expect.any(AbortSignal) }, // No path option for non-Azure URLs
 			)
 		})
 
@@ -625,7 +625,7 @@ describe("DeepSeekHandler", () => {
 					reasoning_effort: "high",
 					max_completion_tokens: 200_000,
 				}),
-				{},
+				{ signal: expect.any(AbortSignal) },
 			)
 		})
 
@@ -662,7 +662,7 @@ describe("DeepSeekHandler", () => {
 					thinking: { type: "enabled" },
 					reasoning_effort: "max",
 				}),
-				{},
+				{ signal: expect.any(AbortSignal) },
 			)
 		})
 

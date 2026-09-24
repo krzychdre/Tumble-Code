@@ -152,7 +152,6 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to con
 | ---------------------------- | ----------------------- | ------------------------------------------------------------------------------------- |
 | `roo-cline.cloudApiUrl`      | `ROO_CODE_API_URL`      | URL of your self-hosted API (e.g., `http://localhost:8085`)                           |
 | `roo-cline.clerkBaseUrl`     | `CLERK_BASE_URL`        | URL of the Clerk-compatible auth facade (auto-detected from `cloudApiUrl` if not set) |
-| `roo-cline.cloudProviderUrl` | `ROO_CODE_PROVIDER_URL` | URL of the LLM proxy (e.g., `http://localhost:8085`)                                  |
 
 > **Auto-detect:** When `clerkBaseUrl` is not explicitly configured, the extension
 > automatically uses the same URL as `cloudApiUrl` for Clerk auth requests. This means
@@ -245,12 +244,6 @@ In VS Code, open Settings (`Ctrl+,` / `Cmd+,`) and search for `roo-cline` to con
 - `POST /api/events/backfill` - Backfill task messages
 - `GET /api/marketplace/modes` - Mode marketplace
 - `GET /api/marketplace/mcps` - MCP marketplace
-
-### LLM Proxy (ROO_CODE_PROVIDER_URL)
-
-- `GET /v1/models` - List available models
-- `POST /v1/chat/completions` - Chat completions (streaming)
-- `POST /v1/images/generations` - Image generation
 
 ## Architecture
 

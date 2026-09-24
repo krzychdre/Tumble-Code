@@ -8,6 +8,7 @@ import { isPathOutsideWorkspace } from "../../../utils/pathUtils"
 import { getReadablePath } from "../../../utils/path"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { searchReplaceTool } from "../SearchReplaceTool"
+import { pauseForPlanReviewIfNeeded } from "../../plan-review/planReviewPause"
 
 vi.mock("fs/promises", () => ({
 	default: {
@@ -55,6 +56,10 @@ vi.mock("../../../utils/path", () => ({
 vi.mock("../../diff/stats", () => ({
 	sanitizeUnifiedDiff: vi.fn((diff) => diff),
 	computeDiffStats: vi.fn(() => ({ additions: 1, deletions: 1 })),
+}))
+
+vi.mock("../../plan-review/planReviewPause", () => ({
+	pauseForPlanReviewIfNeeded: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("vscode", () => ({
@@ -433,6 +438,85 @@ describe("searchReplaceTool", () => {
 
 			expect(mockCline.consecutiveMistakeCount).toBe(0)
 			expect(mockAskApproval).toHaveBeenCalled()
+		})
+	})
+
+	describe("literal replacement of $ patterns", () => {
+		// String.prototype.replace treats $$, $&, $1, $` and $' in a string
+		// replacement as special patterns. The model's new_string is code, so
+		// every one of them must reach the file byte for byte.
+		const cases: Array<[string, string]> = [
+			["$$", "price = $$5"],
+			["$&", "wrap($&)"],
+			["$1", "const re = /(a)/; s.replace(re, \"$1\")"],
+			["$`", "before $` marker"],
+			["$'", "after $' marker"],
+		]
+
+		it.each(cases)("writes %s in new_string literally", async (_label, replacement) => {
+			await executeSearchReplaceTool(
+				{ old_string: "Line 2", new_string: replacement },
+				{ fileContent: "Line 1\nLine 2\nLine 3" },
+			)
+
+			const expected = `Line 1\n${replacement}\nLine 3`
+			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith(expected, true)
+			expect(mockAskApproval).toHaveBeenCalled()
+		})
+
+		it("writes $ patterns literally when the file is saved directly", async () => {
+			mockCline.providerRef.deref.mockReturnValue({
+				getState: vi.fn().mockResolvedValue({
+					diagnosticsEnabled: true,
+					writeDelayMs: 1000,
+					experiments: { preventFocusDisruption: true },
+				}),
+			})
+
+			await executeSearchReplaceTool({ old_string: "10", new_string: "$$5 [$&]" }, { fileContent: "cost 10 now" })
+
+			expect(mockCline.diffViewProvider.saveDirectly).toHaveBeenCalledWith(
+				"test/file.txt",
+				"cost $$5 [$&] now",
+				false,
+				true,
+				1000,
+			)
+		})
+	})
+
+	describe("plan review gate", () => {
+		const mockedPause = pauseForPlanReviewIfNeeded as MockedFunction<typeof pauseForPlanReviewIfNeeded>
+
+		it("pauses for plan review after saving and appends the review note to the result", async () => {
+			mockedPause.mockResolvedValueOnce("The user reviewed the updated plan and approved it.")
+
+			const result = await executeSearchReplaceTool()
+
+			expect(mockedPause).toHaveBeenCalledTimes(1)
+			expect(mockedPause).toHaveBeenCalledWith(mockCline, testFilePath)
+			// The gate runs after the file is saved, like every other write tool.
+			expect(mockCline.diffViewProvider.saveChanges.mock.invocationCallOrder[0]).toBeLessThan(
+				mockedPause.mock.invocationCallOrder[0],
+			)
+			expect(result).toBe("Tool result message\n\nThe user reviewed the updated plan and approved it.")
+		})
+
+		it("returns the plain write result when the gate is skipped", async () => {
+			mockedPause.mockResolvedValueOnce(undefined)
+
+			const result = await executeSearchReplaceTool()
+
+			expect(mockedPause).toHaveBeenCalledTimes(1)
+			expect(result).toBe("Tool result message")
+		})
+
+		it("does not pause when the user rejects the change", async () => {
+			mockAskApproval.mockResolvedValue(false)
+
+			await executeSearchReplaceTool()
+
+			expect(mockedPause).not.toHaveBeenCalled()
 		})
 	})
 })

@@ -25,6 +25,11 @@ class SocketMeta(TypedDict):
 
 
 class ConnectionRegistry:
+    # Most tasks a single extension socket streams in its lifetime; beyond this
+    # the oldest answers are forgotten (and simply looked up again if needed),
+    # so a client naming endless task ids cannot grow the cache without bound.
+    TASK_ACCESS_CACHE_SIZE = 256
+
     def __init__(self) -> None:
         # sid -> {role, user_id}
         self._meta: dict[str, SocketMeta] = {}
@@ -32,6 +37,8 @@ class ConnectionRegistry:
         self._ext_sid_by_user: dict[str, str] = {}
         # user_id -> last registered/updated ExtensionInstance-ish dict
         self._instance_by_user: dict[str, dict] = {}
+        # sid -> {task_id: owned?}; see task_access().
+        self._task_access_by_sid: dict[str, dict[str, bool]] = {}
 
     # --- generic socket metadata ------------------------------------------
 
@@ -44,12 +51,38 @@ class ConnectionRegistry:
     def detach(self, sid: str) -> Optional[SocketMeta]:
         """Remove a socket; if it was the user's registered extension, clear it."""
         meta = self._meta.pop(sid, None)
+        self._task_access_by_sid.pop(sid, None)
         if meta and meta["role"] == "extension":
             uid = meta["user_id"]
             if self._ext_sid_by_user.get(uid) == sid:
                 self._ext_sid_by_user.pop(uid, None)
                 self._instance_by_user.pop(uid, None)
         return meta
+
+    # --- task ownership cache ---------------------------------------------
+
+    def task_access(self, sid: str, task_id: str) -> Optional[bool]:
+        """Whether this socket's user owns ``task_id``: True, False, or None if
+        not known yet.
+
+        The relay asks this for every streamed chunk, so the answer is kept for
+        the lifetime of the socket instead of costing a query per chunk. That is
+        sound because a task's owner never changes once its row exists, and the
+        socket's user is fixed at the handshake. Only definite answers are
+        stored (the caller never stores "no such task", which can change), and
+        the whole map goes away with the socket in detach().
+        """
+        return self._task_access_by_sid.get(sid, {}).get(task_id)
+
+    def remember_task_access(self, sid: str, task_id: str, owned: bool) -> None:
+        if sid not in self._meta:
+            # The socket disconnected while the lookup ran; nothing would ever
+            # clear an entry recreated now.
+            return
+        cache = self._task_access_by_sid.setdefault(sid, {})
+        if task_id not in cache and len(cache) >= self.TASK_ACCESS_CACHE_SIZE:
+            cache.pop(next(iter(cache)))
+        cache[task_id] = owned
 
     # --- extension instance -----------------------------------------------
 

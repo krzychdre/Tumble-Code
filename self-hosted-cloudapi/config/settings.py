@@ -159,13 +159,6 @@ class Settings(BaseSettings):
             )
         return value
 
-    # LLM Proxy
-    default_llm_provider: str = "openai"
-    openai_api_key: Optional[str] = None
-    anthropic_api_key: Optional[str] = None
-    google_api_key: Optional[str] = None
-    xai_api_key: Optional[str] = None
-
     # Marketplace
     marketplace_source: str = "yaml"
     marketplace_yaml_dir: str = "./config/marketplace"

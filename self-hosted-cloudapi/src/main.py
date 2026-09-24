@@ -13,7 +13,7 @@ from src.auth.network_access import WebAccessMiddleware, describe_policy
 from src.middleware.cors import setup_cors
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
-from src.routers import auth, extension, settings as settings_router, events, marketplace, proxy, browser, web
+from src.routers import auth, extension, settings as settings_router, events, marketplace, browser, web
 
 
 @asynccontextmanager
@@ -116,9 +116,6 @@ app.include_router(events.router)
 
 # Marketplace API
 app.include_router(marketplace.router)
-
-# LLM Proxy
-app.include_router(proxy.router)
 
 # Web UI (task list + read-only task viewer)
 app.include_router(web.router)
