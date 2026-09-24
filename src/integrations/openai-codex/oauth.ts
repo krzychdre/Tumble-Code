@@ -343,6 +343,12 @@ export class OpenAiCodexOAuthManager {
 	private credentials: OpenAiCodexCredentials | null = null
 	private logFn: ((message: string) => void) | null = null
 	private refreshPromise: Promise<OpenAiCodexCredentials> | null = null
+	/**
+	 * Cached answer of {@link getAuthenticationStatus}; `undefined` means
+	 * unknown. Kept in sync by saveCredentials / clearCredentials and reset
+	 * when the stored credentials change outside this manager.
+	 */
+	private authStatus: boolean | undefined
 	private pendingAuth: {
 		codeVerifier: string
 		state: string
@@ -370,6 +376,17 @@ export class OpenAiCodexOAuthManager {
 	initialize(context: ExtensionContext, logFn?: (message: string) => void): void {
 		this.context = context
 		this.logFn = logFn ?? null
+		this.authStatus = undefined
+
+		// Another window (same secret storage) may sign in or out.
+		const subscription = context.secrets?.onDidChange?.((event) => {
+			if (event.key === OPENAI_CODEX_CREDENTIALS_KEY) {
+				this.authStatus = undefined
+			}
+		})
+		if (subscription) {
+			context.subscriptions?.push(subscription)
+		}
 	}
 
 	/**
@@ -450,6 +467,7 @@ export class OpenAiCodexOAuthManager {
 
 		await this.context.secrets.store(OPENAI_CODEX_CREDENTIALS_KEY, JSON.stringify(credentials))
 		this.credentials = credentials
+		this.authStatus = true
 	}
 
 	/**
@@ -462,6 +480,7 @@ export class OpenAiCodexOAuthManager {
 
 		await this.context.secrets.delete(OPENAI_CODEX_CREDENTIALS_KEY)
 		this.credentials = null
+		this.authStatus = false
 	}
 
 	/**
@@ -544,6 +563,27 @@ export class OpenAiCodexOAuthManager {
 	async isAuthenticated(): Promise<boolean> {
 		const token = await this.getAccessToken()
 		return token !== null
+	}
+
+	/**
+	 * Cheap sign-in check for UI state (the webview state is rebuilt on every
+	 * push). Answers from a cache once the status is known, so a status read
+	 * neither touches secret storage nor refreshes an expired token; the API
+	 * handler still calls getAccessToken, which refreshes when needed.
+	 *
+	 * Only definitive answers are cached: a valid token, or no stored
+	 * credentials at all. A refresh that failed while the credentials are
+	 * still stored may be transient, so the next call tries again.
+	 */
+	async getAuthenticationStatus(): Promise<boolean> {
+		if (this.authStatus !== undefined) {
+			return this.authStatus
+		}
+		const authenticated = await this.isAuthenticated()
+		if (authenticated || !this.credentials) {
+			this.authStatus = authenticated
+		}
+		return authenticated
 	}
 
 	/**

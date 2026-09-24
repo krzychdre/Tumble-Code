@@ -941,8 +941,8 @@ describe("ClineProvider", () => {
 		task.clineMessages = []
 
 		let releaseOlderBuild: ((value: boolean) => void) | undefined
-		mockOpenAiCodexIsAuthenticated.mockReset()
-		mockOpenAiCodexIsAuthenticated
+		mockOpenAiCodexAuthStatus.mockReset()
+		mockOpenAiCodexAuthStatus
 			.mockImplementationOnce(() => new Promise<boolean>((resolve) => (releaseOlderBuild = resolve)))
 			.mockResolvedValue(false)
 		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
@@ -967,8 +967,8 @@ describe("ClineProvider", () => {
 	})
 
 	test("postStateToWebviewWithoutClineMessages carries no message sequence number", async () => {
-		mockOpenAiCodexIsAuthenticated.mockReset()
-		mockOpenAiCodexIsAuthenticated.mockResolvedValue(false)
+		mockOpenAiCodexAuthStatus.mockReset()
+		mockOpenAiCodexAuthStatus.mockResolvedValue(false)
 		const postMessageSpy = vi.spyOn(provider, "postMessageToWebview").mockResolvedValue(undefined)
 
 		await provider.postStateToWebviewWithoutClineMessages()

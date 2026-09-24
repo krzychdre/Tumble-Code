@@ -2918,7 +2918,7 @@ export class ClineProvider
 			openAiCodexIsAuthenticated: await (async () => {
 				try {
 					const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
-					return await openAiCodexOAuthManager.isAuthenticated()
+					return await openAiCodexOAuthManager.getAuthenticationStatus()
 				} catch {
 					return false
 				}

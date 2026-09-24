@@ -613,11 +613,7 @@ export const webviewMessageHandler = async (
 				)
 
 			// Enable telemetry by default (when unset) or when explicitly enabled
-			provider.getStateToPostToWebview().then((state) => {
-				const { telemetrySetting } = state
-				const isOptedIn = telemetrySetting !== "disabled"
-				TelemetryService.instance.updateTelemetryState(isOptedIn)
-			})
+			TelemetryService.instance.updateTelemetryState(getGlobalState("telemetrySetting") !== "disabled")
 
 			provider.isViewLaunched = true
 			break
