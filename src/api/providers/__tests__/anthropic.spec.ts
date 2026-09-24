@@ -1,5 +1,7 @@
 // npx vitest run src/api/providers/__tests__/anthropic.spec.ts
 
+import { anthropicDefaultModelId, anthropicModels } from "@roo-code/types"
+
 import { AnthropicHandler } from "../anthropic"
 import { ApiHandlerOptions } from "../../../shared/api"
 
@@ -305,6 +307,30 @@ describe("AnthropicHandler", () => {
 			expect(requestBody?.max_tokens).toBe(32768)
 		})
 
+		it("should send a custom model id as-is and keep the cache breakpoints", async () => {
+			const customHandler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "claude-sonnet-4-5-20250929",
+			})
+
+			const stream = customHandler.createMessage(systemPrompt, [
+				{
+					role: "user",
+					content: [{ type: "text" as const, text: "Hello" }],
+				},
+			])
+
+			for await (const _chunk of stream) {
+				// Consume stream
+			}
+
+			const requestBody = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[0]
+			const requestOptions = mockCreate.mock.calls[mockCreate.mock.calls.length - 1]?.[1]
+			expect(requestBody?.model).toBe("claude-sonnet-4-5-20250929")
+			expect(requestBody?.system[0].cache_control).toEqual({ type: "ephemeral" })
+			expect(requestOptions?.headers?.["anthropic-beta"]).toContain("prompt-caching-2024-07-31")
+		})
+
 		it("should use adaptive thinking for Claude Fable 5 when reasoning is enabled", async () => {
 			const fableHandler = new AnthropicHandler({
 				apiKey: "test-api-key",
@@ -571,6 +597,61 @@ describe("AnthropicHandler", () => {
 			expect(model.info.contextWindow).toBe(1000000)
 			expect(model.info.inputPrice).toBe(6.0)
 			expect(model.info.outputPrice).toBe(22.5)
+		})
+
+		it("honors a custom model id that contains a known id and uses that model's info", () => {
+			const handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "Anthropic/Claude-Sonnet-4-5-20250929",
+			})
+			const model = handler.getModel()
+			expect(model.id).toBe("Anthropic/Claude-Sonnet-4-5-20250929")
+			expect(model.info).toEqual(anthropicModels["claude-sonnet-4-5"])
+		})
+
+		it("matches an undated alias to the dated model it names", () => {
+			const handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "claude-haiku-4-5",
+			})
+			const model = handler.getModel()
+			expect(model.id).toBe("claude-haiku-4-5")
+			expect(model.info).toEqual(anthropicModels["claude-haiku-4-5-20251001"])
+		})
+
+		it("prefers the longest known id when several match", () => {
+			const handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "claude-opus-5-5-20261001",
+			})
+			expect(handler.getModel().info).toEqual(anthropicModels["claude-opus-5-5"])
+		})
+
+		it("honors an unrecognized model id with the default model's limits and no pricing", () => {
+			const handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "my-proxy-model",
+			})
+			const model = handler.getModel()
+			const defaultInfo = anthropicModels[anthropicDefaultModelId]
+			expect(model.id).toBe("my-proxy-model")
+			expect(model.info.contextWindow).toBe(defaultInfo.contextWindow)
+			expect(model.info.maxTokens).toBe(defaultInfo.maxTokens)
+			expect(model.info.supportsPromptCache).toBe(true)
+			expect(model.info.inputPrice).toBeUndefined()
+			expect(model.info.outputPrice).toBeUndefined()
+			expect(model.info.cacheWritesPrice).toBeUndefined()
+			expect(model.info.cacheReadsPrice).toBeUndefined()
+		})
+
+		it("does not resolve an inherited object key to a function", () => {
+			const handler = new AnthropicHandler({
+				apiKey: "test-api-key",
+				apiModelId: "toString",
+			})
+			const model = handler.getModel()
+			expect(typeof model.info).toBe("object")
+			expect(model.info.contextWindow).toBe(anthropicModels[anthropicDefaultModelId].contextWindow)
 		})
 	})
 

@@ -30,6 +30,44 @@ import {
 	convertOpenAIToolChoiceToAnthropic,
 } from "../../core/prompts/tools/native-tools/converters"
 
+// Lowercased known model ids plus their undated aliases
+// (claude-haiku-4-5-20251001 also as claude-haiku-4-5), longest first, so a
+// custom id such as "anthropic/claude-sonnet-4-5-20250929" resolves to the
+// closest known model. The ":thinking" variant only matches exactly.
+const ANTHROPIC_MODEL_ID_MATCHERS: ReadonlyArray<readonly [string, AnthropicModelId]> = (
+	Object.keys(anthropicModels) as AnthropicModelId[]
+)
+	.filter((id) => !id.includes(":"))
+	.flatMap((id) => {
+		const undated = id.replace(/-\d{8}$/, "")
+		return undated === id ? [[id, id] as const] : [[id, id] as const, [undated, id] as const]
+	})
+	.map(([alias, id]) => [alias.toLowerCase(), id] as const)
+	.sort((a, b) => b[0].length - a[0].length)
+
+// Model info for an id that is not in `anthropicModels`: the closest known
+// model when the id contains one, otherwise the default model's limits and
+// capabilities without its pricing (so cost is not billed at the rates of a
+// model we are not talking to).
+function guessAnthropicModelInfo(modelId: string): ModelInfo {
+	const lowerModelId = modelId.toLowerCase()
+	const match = ANTHROPIC_MODEL_ID_MATCHERS.find(([alias]) => lowerModelId.includes(alias))
+
+	if (match) {
+		return anthropicModels[match[1]]
+	}
+
+	return {
+		...anthropicModels[anthropicDefaultModelId],
+		inputPrice: undefined,
+		outputPrice: undefined,
+		cacheWritesPrice: undefined,
+		cacheReadsPrice: undefined,
+		tiers: undefined,
+		longContextPricing: undefined,
+	}
+}
+
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
 	private client: Anthropic
@@ -312,8 +350,22 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 
 	getModel() {
 		const modelId = this.options.apiModelId
-		let id = modelId && modelId in anthropicModels ? (modelId as AnthropicModelId) : anthropicDefaultModelId
-		let info: ModelInfo = anthropicModels[id]
+		let id: string
+		let info: ModelInfo
+
+		if (modelId && Object.hasOwn(anthropicModels, modelId)) {
+			id = modelId
+			info = anthropicModels[modelId as AnthropicModelId]
+		} else if (modelId) {
+			// Honor a custom id (custom base URL proxies, dated snapshots,
+			// cli-settings.json model ids) instead of silently sending the
+			// default model to the API.
+			id = modelId
+			info = guessAnthropicModelInfo(modelId)
+		} else {
+			id = anthropicDefaultModelId
+			info = anthropicModels[anthropicDefaultModelId]
+		}
 
 		// If 1M context beta is enabled for supported models, update the model info
 		if (
