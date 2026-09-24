@@ -349,3 +349,17 @@ where their files are disjoint; the coordinator merges in order.
   and returns true (parent not resumed; reopen from history once allowed). New helper `showAllowListViolation`.
   7 tests (6 failed before). Left open: after a rejected reopen the active profile stays switched to the disallowed
   one (the restore runs before the check).
+- **DEF-C30:** DONE, merged 2026-09-24 as #245 (`e0ae80b07`), PKG-3 in the same move: `packages/build/src/extension.ts`
+  (`createBuildOptions`, `createExtensionBuildOptions` with the 4 release externals, the punycode alias and
+  `absWorkingDir` = `src/`, which the alias needs: esbuild resolves alias targets from the working dir, so the nightly
+  build failed with only the alias added). Real builds: release byte-identical; nightly had 16 `global-agent` modules
+  bundled and 2 bare `require("punycode")` (DEP0040), now matches the release. `src/esbuild.aliases.mjs` removed.
+  Follow-ups: the nightly is never minified and turns sourcemaps off under `--production`.
+- **DEF-C40 and DEF-C39:** DONE, merged 2026-09-24 as #246 (`518a26da4`). C40: LiteLLM does forward
+  `prompt_cache_miss_tokens` (`Usage.__init__` sets every raw field), so every miss was billed as a cache write
+  (free for DeepSeek via LiteLLM, too dear with default model info); the streaming path now uses
+  `openAiCacheTokens`. C39 (owner decision): `calculateApiCostInternal` prices writes at
+  `cacheWritesPrice ?? inputPrice ?? 0` (explicit 0 stays 0; long-context tiers use the raised input price). A
+  characterization over all 15 model tables shows no catalog model's cost changes. Noted: the OpenAI Compatible form
+  shows "0" for an undefined write price (the user sees 0 while writes are billed at input price); cache reads with
+  no read price stay free.
