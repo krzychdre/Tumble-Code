@@ -643,43 +643,6 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(updatedItem?.childIds).toEqual(["child-1"])
 		})
 
-		it("invalidates recentTasksCache on updateTaskHistory (UTH-04)", async () => {
-			const workspace = provider.cwd
-			const tsBase = Date.now()
-
-			await provider.updateTaskHistory(
-				createHistoryItem({
-					id: "cache-seed",
-					task: "Cache seed",
-					workspace,
-					ts: tsBase,
-				}),
-				{ broadcast: false },
-			)
-
-			const initialRecent = await provider.getRecentTasks()
-			expect(initialRecent).toContain("cache-seed")
-
-			// Prime cache and verify internal cache is set.
-			expect((provider as unknown as { recentTasksCache?: string[] }).recentTasksCache).toEqual(initialRecent)
-
-			await provider.updateTaskHistory(
-				createHistoryItem({
-					id: "cache-new",
-					task: "Cache new",
-					workspace,
-					ts: tsBase + 1,
-				}),
-				{ broadcast: false },
-			)
-
-			// Direct assertion for invalidation side-effect.
-			expect((provider as unknown as { recentTasksCache?: string[] }).recentTasksCache).toBeUndefined()
-
-			const recomputedRecent = await provider.getRecentTasks()
-			expect(recomputedRecent).toContain("cache-new")
-		})
-
 		it("updates existing task in history", async () => {
 			await provider.resolveWebviewView(mockWebviewView)
 			provider.isViewLaunched = true

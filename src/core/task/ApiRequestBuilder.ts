@@ -20,15 +20,12 @@ import {
 	getModelId,
 	isParallelTasksEnabled,
 } from "@roo-code/types"
-import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
-import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
+import { type ApiHandler } from "../../api"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { SYSTEM_PROMPT } from "../prompts/system"
-import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
-import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { type ClineProvider } from "../webview/ClineProvider"
@@ -420,58 +417,6 @@ export class ApiRequestBuilder {
 		}
 
 		return cleanConversationHistory
-	}
-
-	/**
-	 * Prepare the conversation history for API request.
-	 * This includes getting effective history, merging consecutive messages,
-	 * and removing images if needed.
-	 */
-	prepareConversationHistory(
-		preserveReasoning: boolean = false,
-	): Array<
-		Anthropic.Messages.MessageParam | { type: "reasoning"; encrypted_content: string; id?: string; summary?: any[] }
-	> {
-		// Build clean conversation history
-		const effectiveHistory = getEffectiveApiHistory(this.access.apiConversationHistory)
-		const messagesSinceLastSummary = getMessagesSinceLastSummary(effectiveHistory)
-		const mergedForApi = mergeConsecutiveApiMessages(messagesSinceLastSummary, { roles: ["user"] })
-		const messagesWithoutImages = maybeRemoveImageBlocks(mergedForApi, this.access.api)
-		const cleanConversationHistory = this.buildCleanConversationHistory(
-			messagesWithoutImages as ApiMessage[],
-			preserveReasoning,
-		)
-
-		return cleanConversationHistory
-	}
-
-	/**
-	 * Build the complete API request metadata including tools.
-	 */
-	async buildRequestMetadata(
-		state: any,
-		mode: string | undefined,
-		skipPrevResponseIdOnce: boolean,
-	): Promise<ApiHandlerCreateMessageMetadata> {
-		const apiConfiguration = state?.apiConfiguration ?? this.access.apiConfiguration
-		const modelInfo = this.access.api.getModel().info
-		const { allTools, allowedFunctionNames } = await this.buildToolsArray(state, apiConfiguration, mode, modelInfo)
-
-		const metadata: ApiHandlerCreateMessageMetadata = {
-			mode: mode,
-			taskId: this.access.taskId,
-			suppressPreviousResponseId: skipPrevResponseIdOnce,
-			...(allTools.length > 0
-				? {
-						tools: allTools,
-						tool_choice: "auto",
-						parallelToolCalls: true,
-						...(allowedFunctionNames ? { allowedFunctionNames } : {}),
-					}
-				: {}),
-		}
-
-		return metadata
 	}
 
 	/**

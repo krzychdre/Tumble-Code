@@ -125,10 +125,6 @@ import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
  * https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/customSidebarViewProvider.ts
  */
 
-export type ClineProviderEvents = {
-	clineCreated: [cline: Task]
-}
-
 interface PendingEditOperation {
 	messageTs: number
 	editedContent: string
@@ -203,7 +199,6 @@ export class ClineProvider
 	private currentWorkspacePath: string | undefined
 	private _disposed = false
 
-	private recentTasksCache?: string[]
 	/** Set by the CLI host at startup; see {@link setCliModeProviderSettings}. */
 	private cliModeProviderSettings?: CliModeProviderSettings
 	private readonly taskHistoryOrigin = Symbol("ClineProvider.taskHistoryOrigin")
@@ -682,7 +677,6 @@ export class ClineProvider
 				return
 			}
 
-			this.recentTasksCache = undefined
 			if (event.kind === "delete" && event.taskId) {
 				this.postMessageToWebview({
 					type: "taskHistoryItemDeleted",
@@ -1126,21 +1120,6 @@ export class ClineProvider
 		}
 
 		return visibleProvider
-	}
-
-	public static async isActiveTask(): Promise<boolean> {
-		const visibleProvider = await ClineProvider.getInstance()
-
-		if (!visibleProvider) {
-			return false
-		}
-
-		// Check if there is a cline instance in the stack (if this provider has an active task)
-		if (visibleProvider.getCurrentTask()) {
-			return true
-		}
-
-		return false
 	}
 
 	public static async handleCodeAction(
@@ -1992,10 +1971,6 @@ export class ClineProvider
 		return this.getProviderProfileEntries().find((profile) => profile.name === name)
 	}
 
-	public hasProviderProfileEntry(name: string): boolean {
-		return !!this.getProviderProfileEntry(name)
-	}
-
 	async upsertProviderProfile(
 		name: string,
 		providerSettings: ProviderSettings,
@@ -2394,7 +2369,6 @@ export class ClineProvider
 			// deletes.
 			const taskHistoryStore = await this.getTaskHistoryStore()
 			await taskHistoryStore.deleteMany(allIdsToDelete, this.taskHistoryOrigin)
-			this.recentTasksCache = undefined
 			// Push a targeted delete message per ID so the webview removes
 			// just these items without a full history resend (the full state
 			// push below still runs for legacy callers).
@@ -2456,7 +2430,6 @@ export class ClineProvider
 		// store still receive the echo and push their own targeted delete.
 		const taskHistoryStore = await this.getTaskHistoryStore()
 		await taskHistoryStore.delete(id, this.taskHistoryOrigin)
-		this.recentTasksCache = undefined
 
 		// Send a targeted delete message so the webview removes just this
 		// item without a full history resend. The full state push below
@@ -3242,7 +3215,6 @@ export class ClineProvider
 		// still receive the echo and push their own targeted update.
 		const taskHistoryStore = await this.getTaskHistoryStore()
 		await taskHistoryStore.upsert(item, this.taskHistoryOrigin)
-		this.recentTasksCache = undefined
 
 		// Broadcast the updated item to the webview if requested.
 		// Prefer per-item updates to avoid repeatedly cloning/sending the full history.
@@ -3477,51 +3449,6 @@ export class ClineProvider
 				`  timestamp:    ${new Date().toISOString()}\n` +
 				`If the panel appears gray after this, include this log when reporting the issue.`,
 		)
-	}
-
-	public async getRecentTasks(): Promise<string[]> {
-		if (this.recentTasksCache) {
-			return this.recentTasksCache
-		}
-
-		const history = (await this.getTaskHistoryStore()).getAll()
-		const workspaceTasks: HistoryItem[] = []
-
-		for (const item of history) {
-			if (!item.ts || !item.task || item.workspace !== this.cwd) {
-				continue
-			}
-
-			workspaceTasks.push(item)
-		}
-
-		if (workspaceTasks.length === 0) {
-			this.recentTasksCache = []
-			return this.recentTasksCache
-		}
-
-		workspaceTasks.sort((a, b) => b.ts - a.ts)
-		let recentTaskIds: string[] = []
-
-		if (workspaceTasks.length >= 100) {
-			// If we have at least 100 tasks, return tasks from the last 7 days.
-			const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
-
-			for (const item of workspaceTasks) {
-				// Stop when we hit tasks older than 7 days.
-				if (item.ts < sevenDaysAgo) {
-					break
-				}
-
-				recentTaskIds.push(item.id)
-			}
-		} else {
-			// Otherwise, return the most recent 100 tasks (or all if less than 100).
-			recentTaskIds = workspaceTasks.slice(0, Math.min(100, workspaceTasks.length)).map((item) => item.id)
-		}
-
-		this.recentTasksCache = recentTaskIds
-		return this.recentTasksCache
 	}
 
 	// When initializing a new task, (not from history but from a tool command
@@ -4151,17 +4078,6 @@ export class ClineProvider
 			return
 		}
 
-		// Final race check before rehydrate to avoid duplicate rehydration
-		{
-			const currentAfterCheck = this.getCurrentTask()
-			if (currentAfterCheck && currentAfterCheck.instanceId !== originalInstanceId) {
-				this.log(
-					`[cancelTask] Skipping rehydrate after final check: current instance ${currentAfterCheck.instanceId} != original ${originalInstanceId}`,
-				)
-				return
-			}
-		}
-
 		if (!historyItem) {
 			return
 		}
@@ -4620,7 +4536,6 @@ export class ClineProvider
 				},
 				this.taskHistoryOrigin,
 			)
-			this.recentTasksCache = undefined
 			if (this.isViewLaunched) {
 				const updatedItem = taskHistoryStore.get(parentTaskId)
 				if (updatedItem) {

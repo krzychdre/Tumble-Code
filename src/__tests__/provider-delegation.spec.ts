@@ -72,7 +72,6 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			handleModeSwitch,
 			log: vi.fn(),
 			isViewLaunched: false,
-			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
@@ -139,7 +138,6 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			postMessageToWebview,
 			log: vi.fn(),
 			isViewLaunched: true,
-			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
@@ -174,7 +172,6 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			postMessageToWebview,
 			log: vi.fn(),
 			isViewLaunched: true,
-			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
@@ -216,7 +213,6 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 			handleModeSwitch,
 			log: vi.fn(),
 			isViewLaunched: false,
-			recentTasksCache: undefined,
 			taskHistoryStore,
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)

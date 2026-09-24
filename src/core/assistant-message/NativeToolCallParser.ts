@@ -266,14 +266,6 @@ export class NativeToolCallParser {
 	}
 
 	/**
-	 * Check if there are any active streaming tool calls.
-	 * Useful for debugging and testing.
-	 */
-	public hasActiveStreamingToolCalls(): boolean {
-		return this.streamingToolCalls.size > 0
-	}
-
-	/**
 	 * Process a chunk of JSON arguments for a streaming tool call.
 	 * Uses partial-json-parser to extract values from incomplete JSON immediately.
 	 * Returns a partial ToolUse with currently parsed parameters.
