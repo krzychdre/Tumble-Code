@@ -342,3 +342,10 @@ where their files are disjoint; the coordinator merges in order.
   repeated rejection strips a strict superset. Recorded, unchanged: the forced pass condenses even with
   `autoCondenseContext` off (upstream #6967, a hard-error recovery; owner may decide) and ignores the circuit breaker
   (bounded to 3 rounds); the rest of the clone drift waits for the clone merge.
+- **DEF-C34:** DONE, merged 2026-09-24 as #244 (`3a7c87ee3`). `createTaskWithHistoryItem` (~:1347) builds the Task from
+  `profileTaskOptions()`, after the saved mode and profile are restored. Callers: history click (and CLI
+  `showTaskWithId`) show "task_show_failed"; cancelTask's rehydrate and the streaming-failure rehydrate now show the
+  violation instead of throwing silently; `reopenParentFromDelegation` cannot throw safely, so it shows the message
+  and returns true (parent not resumed; reopen from history once allowed). New helper `showAllowListViolation`.
+  7 tests (6 failed before). Left open: after a rejected reopen the active profile stays switched to the disallowed
+  one (the restore runs before the check).
