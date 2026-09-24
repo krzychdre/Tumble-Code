@@ -17,14 +17,18 @@ vi.mock("openai", () => {
 										index: 0,
 									},
 								],
+								// DeepSeek's documented usage shape: the cache split is
+								// top-level (hit + miss = prompt_tokens), with the hit
+								// count mirrored in prompt_tokens_details.cached_tokens.
 								usage: {
 									prompt_tokens: 10,
 									completion_tokens: 5,
 									total_tokens: 15,
 									prompt_tokens_details: {
-										cache_miss_tokens: 8,
 										cached_tokens: 2,
 									},
+									prompt_cache_hit_tokens: 2,
+									prompt_cache_miss_tokens: 8,
 								},
 							}
 						}
@@ -105,9 +109,10 @@ vi.mock("openai", () => {
 										completion_tokens: 5,
 										total_tokens: 15,
 										prompt_tokens_details: {
-											cache_miss_tokens: 8,
 											cached_tokens: 2,
 										},
+										prompt_cache_hit_tokens: 2,
+										prompt_cache_miss_tokens: 8,
 									},
 								}
 							},
@@ -122,7 +127,9 @@ vi.mock("openai", () => {
 import OpenAI from "openai"
 import type { Anthropic } from "@anthropic-ai/sdk"
 
-import { deepSeekDefaultModelId, DEEP_SEEK_DEFAULT_TEMPERATURE, type ModelInfo } from "@roo-code/types"
+import { deepSeekDefaultModelId, deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE, type ModelInfo } from "@roo-code/types"
+
+import { calculateApiCostOpenAI } from "../../../shared/cost"
 
 import type { ApiHandlerOptions } from "../../../shared/api"
 
@@ -383,7 +390,8 @@ describe("DeepSeekHandler", () => {
 
 			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
 			expect(usageChunks.length).toBeGreaterThan(0)
-			expect(usageChunks[0].cacheWriteTokens).toBe(8)
+			// DeepSeek has no cache writes: the 8 missed tokens are ordinary input.
+			expect(usageChunks[0].cacheWriteTokens).toBeUndefined()
 			expect(usageChunks[0].cacheReadTokens).toBe(2)
 		})
 
@@ -480,42 +488,79 @@ describe("DeepSeekHandler", () => {
 	})
 
 	describe("processUsageMetrics", () => {
-		it("should correctly process usage metrics including cache information", () => {
-			// We need to access the protected method, so we'll create a test subclass
-			class TestDeepSeekHandler extends DeepSeekHandler {
-				public testProcessUsageMetrics(usage: any) {
-					return this.processUsageMetrics(usage)
-				}
+		class TestDeepSeekHandler extends DeepSeekHandler {
+			public testProcessUsageMetrics(usage: any) {
+				return this.processUsageMetrics(usage)
 			}
+		}
 
-			const testHandler = new TestDeepSeekHandler(mockOptions)
+		// https://api-docs.deepseek.com/api/create-chat-completion: prompt_tokens
+		// equals prompt_cache_hit_tokens + prompt_cache_miss_tokens (both required,
+		// top level); prompt_tokens_details.cached_tokens is optional and "same as
+		// prompt_cache_hit_tokens". DeepSeek has no cache writes.
+		const documentedUsage = {
+			prompt_tokens: 100,
+			completion_tokens: 50,
+			total_tokens: 150,
+			prompt_tokens_details: { cached_tokens: 20 },
+			prompt_cache_hit_tokens: 20,
+			prompt_cache_miss_tokens: 80,
+		}
 
-			const usage = {
-				prompt_tokens: 100,
-				completion_tokens: 50,
-				total_tokens: 150,
-				prompt_tokens_details: {
-					cache_miss_tokens: 80,
-					cached_tokens: 20,
-				},
-			}
-
-			const result = testHandler.testProcessUsageMetrics(usage)
+		it("reads the documented cache hit count and reports no cache writes", () => {
+			const result = new TestDeepSeekHandler(mockOptions).testProcessUsageMetrics(documentedUsage)
 
 			expect(result.type).toBe("usage")
 			expect(result.inputTokens).toBe(100)
 			expect(result.outputTokens).toBe(50)
-			expect(result.cacheWriteTokens).toBe(80)
+			expect(result.cacheReadTokens).toBe(20)
+			expect(result.cacheWriteTokens).toBeUndefined()
+		})
+
+		it("reads the top-level prompt_cache_hit_tokens when prompt_tokens_details carries no cached_tokens", () => {
+			// cached_tokens is optional in DeepSeek's schema; prompt_cache_hit_tokens is required.
+			const { prompt_tokens_details: _details, ...usage } = documentedUsage
+
+			const result = new TestDeepSeekHandler(mockOptions).testProcessUsageMetrics(usage)
+
+			expect(result.cacheReadTokens).toBe(20)
+			expect(result.cacheWriteTokens).toBeUndefined()
+		})
+
+		it("never reports cache misses as cache writes", () => {
+			// The shape the handler used to assume. A miss is billed as ordinary input.
+			const usage = {
+				prompt_tokens: 100,
+				completion_tokens: 50,
+				total_tokens: 150,
+				prompt_tokens_details: { cache_miss_tokens: 80, cached_tokens: 20 },
+			}
+
+			const result = new TestDeepSeekHandler(mockOptions).testProcessUsageMetrics(usage)
+
+			expect(result.cacheWriteTokens).toBeUndefined()
 			expect(result.cacheReadTokens).toBe(20)
 		})
 
-		it("should handle missing cache metrics gracefully", () => {
-			class TestDeepSeekHandler extends DeepSeekHandler {
-				public testProcessUsageMetrics(usage: any) {
-					return this.processUsageMetrics(usage)
-				}
-			}
+		it("prices hits at the cache read price and misses at the input price", () => {
+			const { prompt_tokens_details: _details, ...usage } = documentedUsage
+			const info = deepSeekModels[deepSeekDefaultModelId] as ModelInfo
+			const result = new TestDeepSeekHandler(mockOptions).testProcessUsageMetrics(usage)
 
+			const { totalCost } = calculateApiCostOpenAI(
+				info,
+				result.inputTokens,
+				result.outputTokens,
+				result.cacheWriteTokens,
+				result.cacheReadTokens,
+			)
+
+			const expected =
+				(20 * info.cacheReadsPrice! + 80 * info.inputPrice! + 50 * info.outputPrice!) / 1_000_000
+			expect(totalCost).toBeCloseTo(expected, 12)
+		})
+
+		it("should handle missing cache metrics gracefully", () => {
 			const testHandler = new TestDeepSeekHandler(mockOptions)
 
 			const usage = {
