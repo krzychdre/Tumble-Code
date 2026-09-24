@@ -120,6 +120,12 @@ TaskHistory(this)` compiles without a cast; add setters for mode and API configu
 **Test first:** a compile-time assertion file (`const _: TaskHistoryAccess = null as unknown as Task`), which
 fails today and is the acceptance gate. **Size** M, low risk (types only).
 
+**Status (2026-09-24):** DONE in #271. `Task.access-types.spec.ts` (checked by `tsc`) assigns Task to all 8 access
+interfaces without a cast (7 of 8 failed before); 18 members made public with reasons; interface drift fixed
+(`checkpointSave` parameter names, a phantom `dispose`); `Task.setTaskMode()` replaces `(task as any)._taskMode`;
+`BaseTool.recordFailure` replaces 72 of 82 sites. Found, not fixed (behavior change, own item): 7 `EditFileTool` sites
+and 1 `CodebaseSearchTool` site grow the mistake count without `recordToolError`. Access interfaces are still wide.
+
 ## Phase 4 items
 
 ### CORE-R1 One settings-defaults table and one state builder
