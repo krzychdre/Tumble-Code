@@ -109,6 +109,14 @@ This is the documented source of past dev versus installed rendering skew. **Cha
 exact lockfile versions into the manifest and ship `npm-shrinkwrap.json`). **Test first:** the manifest or the
 bundle metafile resolves react, react-reconciler, yoga-layout and ink to the lockfile versions. **Size** S.
 
+**Status (2026-09-24):** DONE in #268. tsup `noExternal` list `BUNDLED_DEPENDENCIES` (workspace packages, ink, react,
+zustand and their deps; yoga WASM is inlined; only `react-devtools-core` stays external); `createReleaseManifest` drops
+bundled packages and pins the rest to lockfile versions (`readInstalledVersion`); `cli-release.yml` and `build.sh` now
+use it (the workflow had a hand-written list with the removed `@inkjs/ui` and without `execa`);
+`loadReactProductionBuilds` is async `import()` so the bundled React still picks the production build. Spec
+`cli-bundle.test.ts` reads the tsup metafile. JS in dist 1.41 to 3.12 MB, release node_modules 59 to 36 MB. Pre-existing,
+not fixed: `--ephemeral` ENOENT "Failed to save Roo messages"; npm installs typescript as a peer of `@trpc/client`.
+
 ### PKG-5 Type and document the CLI runtime contract
 
 A small `packages/types` module `cli-runtime.ts` naming the environment variables and the `globalThis` slots
