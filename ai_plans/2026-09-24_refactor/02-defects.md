@@ -232,3 +232,12 @@ where their files are disjoint; the coordinator merges in order.
   now keeps the last usage and yields it once after the stream, mirroring `f30646127`. 6 tests; extension suite
   7,673 passed. Every other handler already yields usage once (list in the PR). Residual for API-2: the
   Anthropic-protocol handlers yield usage at `message_start` and `message_delta` and the processor sums both.
+- **New finding DEF-C33 [I] (from the DEF-C5 drift review):** the forced condense path
+  (`TaskContextManager.handleContextWindowExceededError`) ignores the microcompaction outcome: when `manageContext`
+  returns "microcompaction alone is enough" (history unchanged plus ids to strip), the forced path persists nothing
+  and applies nothing, so the retry presumably resends the same oversized request; a stale
+  `microcompactedToolUseIds` set from an earlier pass (possibly another mode with another context window) also
+  survives. Other drift of the forced clone versus `manageContextIfNeeded`: silent on `truncateResult.error`, ignores
+  the auto-condense circuit breaker and the user's `autoCondenseContext` off switch, omits
+  `customCondensingPrompt`, `filesReadByRoo`, `cwd`, `rooIgnoreController`, `previouslyClearedToolUseIds`. Start with
+  a test that confirms or closes the microcompaction case; the clone merge stays a later item.
