@@ -50,6 +50,17 @@ vi.mock("../fetchers/modelCache", () => ({
 			"gemini-2.5-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
 			"google/gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
 			"vertex_ai/gemini-3-pro": { ...litellmDefaultModelInfo, maxTokens: 8192 },
+			// What the LiteLLM model fetcher builds for DeepSeek: LiteLLM lists no
+			// cache_creation_input_token_cost for it, so there is no write price.
+			"deepseek-chat": {
+				maxTokens: 8192,
+				contextWindow: 128_000,
+				supportsImages: false,
+				supportsPromptCache: true,
+				inputPrice: 0.27,
+				outputPrice: 1.1,
+				cacheReadsPrice: 0.07,
+			},
 		})
 	}),
 	getModelsFromCache: vi.fn().mockReturnValue(undefined),
@@ -167,6 +178,88 @@ describe("LiteLLMHandler", () => {
 				cacheWriteTokens: 20,
 				cacheReadTokens: 30,
 			})
+		})
+	})
+
+	describe("usage and cost (DEF-C40)", () => {
+		async function usageChunkFor(modelId: string, usage: Record<string, unknown>) {
+			handler = new LiteLLMHandler({ ...mockOptions, litellmModelId: modelId })
+			mockCreate.mockReturnValue({
+				withResponse: vi.fn().mockResolvedValue({
+					data: {
+						async *[Symbol.asyncIterator]() {
+							yield { choices: [{ delta: { content: "ok" } }], usage }
+						},
+					},
+				}),
+			})
+			const results: any[] = []
+			for await (const chunk of handler.createMessage("system", [{ role: "user", content: "hi" }])) {
+				results.push(chunk)
+			}
+			return results.find((chunk) => chunk.type === "usage")
+		}
+
+		// LiteLLM's `Usage.__init__` copies DeepSeek's `prompt_cache_hit_tokens` into
+		// `prompt_tokens_details.cached_tokens` and then `setattr`s every raw field,
+		// so `prompt_cache_miss_tokens` reaches the client too (LiteLLM's own DeepSeek
+		// test asserts prompt_tokens == miss + hit). A miss is ordinary input.
+		const deepSeekViaLiteLLM = {
+			prompt_tokens: 1000,
+			completion_tokens: 50,
+			total_tokens: 1050,
+			prompt_tokens_details: { cached_tokens: 800 },
+			prompt_cache_hit_tokens: 800,
+			prompt_cache_miss_tokens: 200,
+		}
+
+		it("does not report DeepSeek cache misses as cache writes", async () => {
+			const chunk = await usageChunkFor("deepseek-chat", deepSeekViaLiteLLM)
+
+			expect(chunk.cacheReadTokens).toBe(800)
+			expect(chunk.cacheWriteTokens).toBeUndefined()
+		})
+
+		it("prices DeepSeek cache misses at the input price, not as free cache writes", async () => {
+			const chunk = await usageChunkFor("deepseek-chat", deepSeekViaLiteLLM)
+
+			// 200 misses at 0.27, 800 hits at 0.07, 50 output at 1.1 (per million).
+			const expected = (200 * 0.27 + 800 * 0.07 + 50 * 1.1) / 1_000_000
+			expect(chunk.totalCost).toBeCloseTo(expected, 12)
+		})
+
+		it("does not price DeepSeek cache misses at a cache write price", async () => {
+			// The default model info carries Claude's prices, including a write price.
+			const chunk = await usageChunkFor(litellmDefaultModelId, deepSeekViaLiteLLM)
+
+			const expected = (200 * 3.0 + 800 * 0.3 + 50 * 15.0) / 1_000_000
+			expect(chunk.totalCost).toBeCloseTo(expected, 12)
+		})
+
+		it("reads cache writes that LiteLLM reports only under prompt_tokens_details", async () => {
+			// LiteLLM's canonical name is prompt_tokens_details.cache_write_tokens,
+			// mirrored as cache_creation_tokens.
+			const chunk = await usageChunkFor(litellmDefaultModelId, {
+				prompt_tokens: 100,
+				completion_tokens: 50,
+				prompt_tokens_details: { cached_tokens: 30, cache_write_tokens: 20, cache_creation_tokens: 20 },
+			})
+
+			expect(chunk).toMatchObject({ cacheWriteTokens: 20, cacheReadTokens: 30 })
+			const expected = (50 * 3.0 + 20 * 3.75 + 30 * 0.3 + 50 * 15.0) / 1_000_000
+			expect(chunk.totalCost).toBeCloseTo(expected, 12)
+		})
+
+		it("still reads LiteLLM's Anthropic-style top-level cache fields", async () => {
+			const chunk = await usageChunkFor(litellmDefaultModelId, {
+				prompt_tokens: 100,
+				completion_tokens: 50,
+				prompt_tokens_details: { cached_tokens: 30, cache_write_tokens: 20 },
+				cache_creation_input_tokens: 20,
+				cache_read_input_tokens: 30,
+			})
+
+			expect(chunk).toMatchObject({ cacheWriteTokens: 20, cacheReadTokens: 30 })
 		})
 	})
 
