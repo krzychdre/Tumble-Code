@@ -29,7 +29,8 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                # 3.12 is what the Docker image runs, 3.13 what local development uses.
+                # 3.13 is what the Docker image and local development run; 3.12 is
+                # the floor pyproject.toml still declares (requires-python).
                 python: ["3.12", "3.13"]
         steps:
             - name: Checkout code

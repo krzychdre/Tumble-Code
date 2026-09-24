@@ -53,7 +53,10 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    # Minor pinned, so an update is a reviewed change instead of whatever the
+    # tag points at on the next pull. Stay on 16.x: a major upgrade needs a
+    # dump and restore (or pg_upgrade) of the data directory, not a tag change.
+    image: postgres:16.15-alpine
     # Not published to the host: nothing outside the compose network needs it,
     # and 5432 collides with other local Postgres instances. Reachable in-network
     # as postgres:5432.
@@ -72,7 +75,7 @@ services:
 
   # --- Authentik ------------------------------------------------------------
   auth_db:
-    image: docker.io/library/postgres:16-alpine
+    image: docker.io/library/postgres:16.15-alpine
     environment:
       POSTGRES_DB: ${PG_DB:-authentik}
       POSTGRES_USER: ${PG_USER:-authentik}
@@ -93,7 +96,8 @@ services:
     restart: unless-stopped
 
   auth_redis:
-    image: docker.io/library/redis:alpine
+    # Major pinned: bare `alpine` follows every new Redis major.
+    image: docker.io/library/redis:8-alpine
     command: --save 60 1 --loglevel warning
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
