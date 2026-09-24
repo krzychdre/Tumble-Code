@@ -22,6 +22,7 @@ export const fallbackExtensions = [
 	".vb", // Visual Basic .NET - no dedicated WASM parser
 	".scala", // Scala - uses fallback chunking instead of Lua query workaround
 	".swift", // Swift - uses fallback chunking due to parser instability
+	".elm", // Elm - the shipped tree-sitter-elm.wasm is ABI 12, which web-tree-sitter 0.25 rejects
 ]
 
 /**
