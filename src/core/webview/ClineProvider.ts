@@ -119,6 +119,7 @@ import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
 import { findLastNewTaskToolUse, formatSubtaskResult, hasToolResultFor } from "./delegationHistory"
+import { sanitizeCommandList } from "../auto-approval/sanitizeCommandList"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 
 /**
@@ -2576,18 +2577,10 @@ export class ClineProvider
 		globalStateCommands?: string[],
 	): string[] {
 		try {
-			// Validate and sanitize global state commands
-			const validGlobalCommands = Array.isArray(globalStateCommands)
-				? globalStateCommands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-				: []
-
-			// Get workspace configuration commands
-			const workspaceCommands = vscode.workspace.getConfiguration(Package.name).get<string[]>(configKey) || []
-
-			// Validate and sanitize workspace commands
-			const validWorkspaceCommands = Array.isArray(workspaceCommands)
-				? workspaceCommands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-				: []
+			const validGlobalCommands = sanitizeCommandList(globalStateCommands)
+			const validWorkspaceCommands = sanitizeCommandList(
+				vscode.workspace.getConfiguration(Package.name).get<string[]>(configKey),
+			)
 
 			// Combine and deduplicate commands
 			// Global state takes precedence over workspace configuration

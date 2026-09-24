@@ -41,6 +41,7 @@ import {
 import { changeLanguage, t } from "../../i18n"
 import { Package } from "../../shared/package"
 import { MessageEnhancer } from "./messageEnhancer"
+import { sanitizeCommandList } from "../auto-approval/sanitizeCommandList"
 
 import { CodeIndexManager } from "../../services/code-index/manager"
 import { checkExistKey } from "../../shared/checkExistApiConfig"
@@ -668,26 +669,12 @@ export const webviewMessageHandler = async (
 					if (key === "language") {
 						newValue = value ?? "en"
 						changeLanguage(newValue as Language)
-					} else if (key === "allowedCommands") {
-						const commands = value ?? []
-
-						newValue = Array.isArray(commands)
-							? commands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-							: []
+					} else if (key === "allowedCommands" || key === "deniedCommands") {
+						newValue = sanitizeCommandList(value)
 
 						await vscode.workspace
 							.getConfiguration(Package.name)
-							.update("allowedCommands", newValue, vscode.ConfigurationTarget.Global)
-					} else if (key === "deniedCommands") {
-						const commands = value ?? []
-
-						newValue = Array.isArray(commands)
-							? commands.filter((cmd) => typeof cmd === "string" && cmd.trim().length > 0)
-							: []
-
-						await vscode.workspace
-							.getConfiguration(Package.name)
-							.update("deniedCommands", newValue, vscode.ConfigurationTarget.Global)
+							.update(key, newValue, vscode.ConfigurationTarget.Global)
 					} else if (key === "terminalShellIntegrationTimeout") {
 						if (value !== undefined) {
 							Terminal.setShellIntegrationTimeout(value as number)
