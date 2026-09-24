@@ -30,6 +30,10 @@
 				"@vscode/ripgrep",
 				// WASM transpiler copied into dist/bin by packages/build/src/esbuild.ts.
 				"esbuild-wasm",
+				// Only the specs name it, in vi.mock("proper-lockfile"). The mock reaches the lock in
+				// packages/core/src/fs/safeWriteJson.ts only if the id resolves from src, so the
+				// devDependency must stay even though src code no longer imports it.
+				"proper-lockfile",
 				// Alias target "punycode/" in packages/build/src/extension.ts.
 				"punycode",
 				// Grammar .wasm files copied into dist by packages/build/src/esbuild.ts.
@@ -58,10 +62,6 @@
 			"ignoreDependencies": [
 				// Binary copied into the release by apps/cli/scripts/build.sh; external in tsup.config.ts.
 				"@vscode/ripgrep",
-				// External in tsup.config.ts, so the CLI install must provide them; the importers
-				// live in src (utils/safeWriteJson.ts, core/task-persistence/TaskHistoryStore.ts).
-				"json-stream-stringify",
-				"proper-lockfile",
 			],
 		},
 		"packages/config-typescript": {

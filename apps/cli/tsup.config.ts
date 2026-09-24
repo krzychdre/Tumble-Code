@@ -9,13 +9,18 @@ export default defineConfig({
 	target: "node22",
 	platform: "node",
 	banner: {
-		js: "#!/usr/bin/env node",
+		// The createRequire lines give the bundled CommonJS dependencies of @roo-code/core
+		// (proper-lockfile and its graceful-fs) a real `require` for Node built-ins; without
+		// it esbuild's ESM output throws "Dynamic require of \"fs\" is not supported".
+		js: [
+			"#!/usr/bin/env node",
+			"import { createRequire as __cliCreateRequire } from 'node:module'",
+			"const require = __cliCreateRequire(import.meta.url)",
+		].join("\n"),
 	},
 	// Bundle workspace packages that export TypeScript
 	noExternal: ["@roo-code/core", "@roo-code/core/cli", "@roo-code/types", "@roo-code/vscode-shim"],
 	external: [
-		"proper-lockfile",
-		"json-stream-stringify",
 		// Keep native modules external
 		"@anthropic-ai/sdk",
 		"@anthropic-ai/bedrock-sdk",

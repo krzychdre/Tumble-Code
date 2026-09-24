@@ -99,15 +99,9 @@ importers:
       ink:
         specifier: 6.6.0
         version: 6.6.0(@types/react@19.3.0)(react@19.2.3)
-      json-stream-stringify:
-        specifier: ^3.1.6
-        version: 3.1.6
       p-wait-for:
         specifier: ^5.0.2
         version: 5.0.2
-      proper-lockfile:
-        specifier: ^4.1.2
-        version: 4.1.2
       react:
         specifier: ^19.1.0
         version: 19.2.3
@@ -193,6 +187,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.30.1
         version: 1.30.1(zod@3.25.76)
+      '@roo-code/core':
+        specifier: workspace:^
+        version: link:../core
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -312,9 +309,15 @@ importers:
       ignore:
         specifier: ^7.0.3
         version: 7.0.5
+      json-stream-stringify:
+        specifier: ^3.1.6
+        version: 3.1.6
       openai:
         specifier: ^5.12.2
         version: 5.12.2(ws@8.21.3)(zod@3.25.76)
+      proper-lockfile:
+        specifier: ^4.1.2
+        version: 4.1.2
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -328,6 +331,9 @@ importers:
       '@types/node':
         specifier: ^22.20.4
         version: 22.20.4
+      '@types/proper-lockfile':
+        specifier: ^4.1.4
+        version: 4.1.4
       vitest:
         specifier: ^3.2.3
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.20.4)(@vitest/ui@3.2.4)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.33.0)(tsx@4.19.4)(yaml@2.9.0)
@@ -501,9 +507,6 @@ importers:
       isbinaryfile:
         specifier: ^5.0.7
         version: 5.0.7
-      json-stream-stringify:
-        specifier: ^3.1.6
-        version: 3.1.6
       lodash.debounce:
         specifier: ^4.0.8
         version: 4.0.8
@@ -540,9 +543,6 @@ importers:
       pretty-bytes:
         specifier: ^7.0.0
         version: 7.0.0
-      proper-lockfile:
-        specifier: ^4.1.2
-        version: 4.1.2
       ps-tree:
         specifier: ^1.2.0
         version: 1.2.0
@@ -622,9 +622,6 @@ importers:
       '@types/node':
         specifier: ^22.20.4
         version: 22.20.4
-      '@types/proper-lockfile':
-        specifier: ^4.1.4
-        version: 4.1.4
       '@types/ps-tree':
         specifier: ^1.1.6
         version: 1.1.6
@@ -658,6 +655,9 @@ importers:
       ovsx:
         specifier: 0.10.4
         version: 0.10.4
+      proper-lockfile:
+        specifier: ^4.1.2
+        version: 4.1.2
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
