@@ -1,5 +1,7 @@
 # Refactoring Plan — `webview-ui/` (React frontend) for Human Maintainability
 
+> **Superseded on 2026-09-24** by `ai_plans/2026-09-24_refactor/00-master-plan.md`. Its open items were re-verified against the live code and moved there; this file is kept for history only.
+
 > **Date:** 2026-07-14 · **Scope:** [`webview-ui/`](webview-ui/) only · **Mode:** architect (planning, no code changes)
 > **Goal:** Make the React/TypeScript frontend readable and maintainable by a human working alone, without AI assistance. Priorities: (1) low cognitive complexity, (2) design patterns where sensible, (3) dead-code removal, (4) human readability.
 > **Consistency note:** Mirrors the structure of the parallel [`ai_plans/2026-07-14_src-refactor-plan.md`](ai_plans/2026-07-14_src-refactor-plan.md) for the extension host. Cross-references `src/` only to verify host-side message production/consumption — does not plan host refactoring.

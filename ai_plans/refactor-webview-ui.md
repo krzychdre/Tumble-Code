@@ -1,5 +1,7 @@
 # Webview UI Refactor Analysis
 
+> **Superseded on 2026-09-24** by `ai_plans/2026-09-24_refactor/00-master-plan.md`. Its open items were re-verified against the live code and moved there; this file is kept for history only.
+
 **Scope:** `webview-ui/src/` only. No backend, no `apps/cli`, no `self-hosted-cloudapi`.
 **Goal:** Reduce cognitive complexity, shrink the number of change-points per feature, improve seams.
 

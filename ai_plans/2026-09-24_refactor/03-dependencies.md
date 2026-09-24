@@ -1,0 +1,179 @@
+# Dependencies: attack surface, upgrades, runtime floor
+
+Phase 2 (DEP-1 to DEP-5) removes what is unused and patches what can be patched without code changes. Phase 11
+(DEP-6 to DEP-9) takes the large upgrades once the code they touch is smaller and better tested. Every DEP item is
+its own branch; the lockfile diff is part of the review.
+
+## Current state (2026-09-24)
+
+- `pnpm audit`: 267 advisory entries, 10 critical, 121 high. Production trees only (`--prod`): 173 entries,
+  6 critical, 88 high. Raw reports: regenerate with `pnpm audit --json` and `pnpm audit --prod --json`.
+- `pnpm -r outdated`: 166 outdated, 85 at least one major behind, 4 deprecated
+  (`@vscode/webview-ui-toolkit`, `@types/node-cache`, `@types/stacktrace-js`, `@types/diff`).
+- Runtime floor: root `engines.node` is `20.20.2` (`.nvmrc`, `.tool-versions`); Node 20 reached end of life on
+  2026-04-30. The extension declares `engines.vscode ^1.84.0` (`src/package.json:13`); VS Code 1.84 runs
+  extensions on Node 18 [I, check the VS Code release notes for the exact Electron and Node versions], so the
+  shipped bundle must still load on Node 18 while many current library majors require Node 20 or 22.
+- Types: the root `pnpm.overrides` forces `@types/react 18.3.23` on every workspace, including `apps/cli`, which
+  runs React 19 with ink 6.6 (ink requires `@types/react >= 19`; lockfile key `ink@6.6.0_@types+react@18.3.23`).
+- Python service: 20 unique advisory IDs in `uv.lock`, vendored DOMPurify 3.1.6 with 20 OSV advisories, floating
+  container tags (details in `08-cloudapi.md`).
+
+## Production advisories and their fix path
+
+Grouped by package, worst severity first. "In range" means the declared range already admits the fixed version,
+so only the lockfile changes.
+
+| Package (locked)                                                                                       | Severity                                   | Reached through                                                                               | Fix path                                                                                                                                 | Item  |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| next 16.1.6                                                                                            | critical (2 unauthenticated RCE) + 28 more | `apps/web-evals`                                                                              | delete the app                                                                                                                           | DEP-1 |
+| fast-xml-parser 5.2.5                                                                                  | critical                                   | `src > @aws-sdk/client-bedrock-runtime > @aws-sdk/core`                                       | in range: refresh `@aws-sdk/*` (declared `^3.922.0`), or override `>=5.7.0`                                                              | DEP-3 |
+| shell-quote 1.8.3                                                                                      | critical                                   | direct in `src` and `webview-ui` (`^1.8.2`)                                                   | in range: 1.9.x                                                                                                                          | DEP-3 |
+| tar 7.4.3                                                                                              | critical                                   | `webview-ui > @tailwindcss/vite > @tailwindcss/oxide` (build time only) and `web-evals`       | refresh `@tailwindcss/vite` (declared `^4.0.0`); move it to `devDependencies`                                                            | DEP-3 |
+| vitest 3.2.4                                                                                           | critical (dev: UI server file read)        | every workspace                                                                               | in range: 3.2.6+                                                                                                                         | DEP-3 |
+| @xmldom/xmldom 0.8.10                                                                                  | high (15 advisories)                       | `src > mammoth`                                                                               | refresh `mammoth`, else override to the patched 0.8.x                                                                                    | DEP-3 |
+| axios 1.16.1                                                                                           | high (10)                                  | direct in `webview-ui` (`^1.16.1`)                                                            | in range: 1.18+ (the extension already declares `^1.18.0`)                                                                               | DEP-3 |
+| js-yaml 3.14.1                                                                                         | high                                       | `src > gray-matter`                                                                           | override to the patched 3.x                                                                                                              | DEP-3 |
+| jws 4.0.0                                                                                              | high                                       | `src > google-auth-library`                                                                   | in range: 4.0.1                                                                                                                          | DEP-3 |
+| form-data 4.0.4                                                                                        | high                                       | `src > @anthropic-ai/sdk > @types/node-fetch`                                                 | existing override `>=4.0.4`: refresh to 4.0.6                                                                                            | DEP-3 |
+| tmp 0.2.4, underscore 1.13.7                                                                           | high                                       | `exceljs`, `mammoth`                                                                          | in range patches                                                                                                                         | DEP-3 |
+| ws 8.18.x                                                                                              | high                                       | `@google/genai`, `@lmstudio/sdk`                                                              | in range: 8.21+                                                                                                                          | DEP-3 |
+| socket.io-parser 4.2.6                                                                                 | high                                       | `packages/cloud > socket.io-client`                                                           | in range: 4.2.7                                                                                                                          | DEP-3 |
+| hono, @hono/node-server, fast-uri, ip-address, path-to-regexp, qs                                      | high/moderate                              | `@modelcontextprotocol/sdk 1.26.0` (pinned exactly in `src` and `packages/agent-interchange`) | bump the MCP SDK pin in both places together; McpHub and agent-interchange suites as gate                                                | DEP-3 |
+| mermaid 11.15.0, dompurify 3.4.7                                                                       | moderate                                   | `webview-ui`                                                                                  | in range: mermaid 11.16.1+                                                                                                               | DEP-3 |
+| preact, fflate                                                                                         | high/moderate                              | `webview-ui > posthog-js`                                                                     | in range refresh                                                                                                                         | DEP-3 |
+| mdast-util-to-hast 13.2.0                                                                              | moderate                                   | `react-markdown`                                                                              | in range: 13.2.1                                                                                                                         | DEP-3 |
+| undici 6.27.0                                                                                          | moderate                                   | direct in `src`, root override `^6.27.0`                                                      | in range: 6.28+                                                                                                                          | DEP-3 |
+| postcss, nanoid                                                                                        | high                                       | build tooling (`vite`, `styled-components`) and `web-evals`                                   | refresh; the rest goes with DEP-1                                                                                                        | DEP-3 |
+| minimatch 3.x/5.x                                                                                      | high                                       | `packages/ipc > node-ipc` and `web-evals > archiver`                                          | DEP-1, and owner decision 1 for `node-ipc`                                                                                               | DEP-1 |
+| drizzle-orm 0.44.1 (SQL injection), lodash, js-cookie, sharp, brace-expansion, @isaacs/brace-expansion | high                                       | `packages/evals`, `apps/web-evals`                                                            | delete                                                                                                                                   | DEP-1 |
+| @ai-sdk/provider-utils                                                                                 | low                                        | `src > @ai-sdk/amazon-bedrock`, `@ai-sdk/deepseek`, `sambanova-ai-provider`                   | these packages have zero importers                                                                                                       | DEP-2 |
+| uuid 8.3.2, 9.0.1                                                                                      | moderate                                   | `exceljs`, `gaxios`                                                                           | the fix is a major for those parents: check whether the advisory's code path is used, else accept with an expiry in the TEST-6 allowlist | DEP-3 |
+
+## Phase 2 items
+
+### DEP-1 Delete `apps/web-evals` and `packages/evals` (owner decisions 1 and 2)
+
+**Evidence:** about 13,600 lines in 141 tracked files; since the rebrand only 3 fork commits touched them, all to
+keep them compiling (#149, #126, #28). Their tests never run (`packages/evals` renamed its script to `_test`,
+`web-evals` has none); `.github/workflows/evals.yml` needs a paid runner and never ran on the fork. Their lint and
+type-check still run through turbo, so every change to `@roo-code/types` must keep them compiling.
+
+**Savings (lockfile walk):** 149 of 2,076 locked packages are reachable only through them (Next.js with 8
+`@next/swc-*` binaries, drizzle, better-sqlite3, libsql, sharp with 25 `@img/*` binaries, redis, postgres,
+archiver); about a quarter of all advisory entries, including both critical Next.js RCE advisories. `tar` stays
+(the webview also reaches it, see DEP-3).
+
+**Change:** delete both workspaces, `evals.yml`, the root `evals` script, the `apps/web-evals` knip section, then
+`packages/config-eslint/next.js`, `packages/config-typescript/nextjs.json` and `@next/eslint-plugin-next` (only
+web-evals uses them). If owner decision 1 is "remove", also delete `packages/ipc`, its static import at
+`src/extension/api.ts:23` and `node-ipc` (19 packages, bundled into every `extension.js` today). If "keep",
+`packages/ipc` needs tests (0 today).
+
+**Gate:** G1 and G2; `pnpm install --frozen-lockfile` works; lockfile diff shows only removals.
+
+### DEP-2 Remove dependencies with zero importers
+
+**Evidence:** knip's `ignoreDependencies` hides them (`knip.json:19-37` and per-workspace lists).
+
+| Workspace           | Remove                                                                                                                                                                                                          | Proof                                                                                                                  |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `src`               | `@ai-sdk/amazon-bedrock`, `@ai-sdk/baseten`, `@ai-sdk/deepseek`, `@ai-sdk/fireworks`, `@ai-sdk/google`, `@ai-sdk/google-vertex`, `@ai-sdk/mistral`, `@ai-sdk/xai`, `sambanova-ai-provider`, `zhipu-ai-provider` | zero imports, leftovers of the AI SDK revert `6cfa82f57`                                                               |
+| `src`               | `reconnecting-eventsource`                                                                                                                                                                                      | only feeds a global `EventSource` override (`McpHub.ts:838`) that MCP SDK 1.26 never reads; gate on `McpHub.spec` (51) |
+| `packages/cloud`    | `ioredis` (7 packages), `p-wait-for`                                                                                                                                                                            | never imported                                                                                                         |
+| `webview-ui`        | `rehype-highlight`, `source-map`                                                                                                                                                                                | zero imports                                                                                                           |
+| `src`, `webview-ui` | `@types/node-cache`, `@types/stacktrace-js`                                                                                                                                                                     | deprecated stubs; the libraries ship their own types                                                                   |
+
+**Change:** remove them and the matching knip ignore entries; every remaining ignore entry gets a comment saying
+why. Later removals follow their refactors: `ai` and `@ai-sdk/openai-compatible` after API-4, `react-remark` after
+WEB-11, `styled-components` after WEB-2.
+
+### DEP-3 In-range refresh
+
+**Change:** refresh the lockfile within the declared ranges for the packages in the advisory table (one branch
+per workspace group: extension, webview, packages). Move build-only packages in `webview-ui`
+(`@tailwindcss/vite` and other Vite plugins) to `devDependencies` so `pnpm audit --prod` reflects what ships.
+Review the root overrides: `glob >=11.1.0` now resolves to a version npm flags as deprecated, so raise it to the
+current major if every consumer accepts it (check with `pnpm why glob`).
+
+**Gate:** G1, G2, G5 (VSIX builds, the extension activates, one task runs end to end). After DEP-1 to DEP-3,
+TEST-6 becomes blocking.
+
+### DEP-4 Runtime floor and type overrides
+
+**Change:**
+
+1. Node for development and CI: 20.20.2 to the current Node 22 LTS in `engines`, `.nvmrc`, `.tool-versions`
+   and the `setup-node` steps; align `@types/node` (packages mix `20.x` and `^24`) with the runtime.
+2. Raise `engines.vscode` from `^1.84.0` to the oldest VS Code release that runs extensions on Node 20 or later
+   [I: verify with the VS Code release notes]. This is a user-visible support decision (it drops very old
+   editors) and it unblocks DEP-6.
+3. Rescope the `@types/react` override to the webview (or drop it and pin per workspace) so `apps/cli`
+   type-checks against React 19 types.
+
+**Gate:** G1, G2, G5; CLI type-check with React 19 types may surface real errors, which are fixed in the same
+branch only if they are type-level; behavior changes get their own DEF entry.
+
+### DEP-5 Python and container floors
+
+See `08-cloudapi.md` section C for the table. **Change:** raise floors in `pyproject.toml`
+(`starlette>=1.3.1`, `python-multipart>=0.0.31`, `pydantic-settings>=2.14.2`, and transitive floors
+`cryptography>=50.0.1`, `anyio>=4.14.2`, `idna>=3.15`, `pyasn1>=0.6.4`), `uv lock --upgrade`; replace
+`python-jose` with PyJWT (only `jwt_issuer.py:6, 57, 90, 100` use it; removes `ecdsa` with its unfixed
+CVE-2024-23342); pin `python:3.13-slim` by digest (the dev venv is 3.13, the image 3.12), pin the `uv` image
+version, pin `postgres:16.x` and the Redis major; plan the Authentik 2026.2 to 2026.8 upgrade (Authentik supports
+only its two latest release lines [I]). **Test first:** `GET /bridge/socket.io/?EIO=4&transport=polling` returns
+200 (the mount at `main.py:134-143`), so a Starlette upgrade that breaks the bridge fails a test.
+
+## Phase 11 items
+
+### DEP-6 Provider SDK and runtime library majors (after Phase 5 and DEP-4)
+
+One SDK per branch. Gate: the provider's spec files, the golden stream fixtures from API-2, API-7 and API-13, and
+a live smoke test for each provider profile the owner actually uses.
+
+| Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
+| `@anthropic-ai/vertex-sdk`                                                                                         | 0.7.0                      | 0.19.x                    | together with the above                                                                                                      |
+| `openai`                                                                                                           | 5.12.2                     | 7.x                       | also in `packages/core`; after API-7 and API-13                                                                              |
+| `@google/genai`                                                                                                    | 1.29.1                     | 2.x                       | gemini and vertex handlers                                                                                                   |
+| `@mistralai/mistralai`, `ollama`, `@lmstudio/sdk`                                                                  | 1.x, 0.5, 1.x              | 2.x, 0.6, 2.x             | one handler each                                                                                                             |
+| `google-auth-library`                                                                                              | 9.15.1                     | 11.x                      | vertex auth                                                                                                                  |
+| `undici`                                                                                                           | 6.27.0                     | 8.x                       | root override pins `^6`; newer majors need Node 20+ (DEP-4)                                                                  |
+| `web-tree-sitter`                                                                                                  | 0.25.6                     | 0.27.0                    | grammar WASM compatibility; do with SVC-15 real-WASM tests                                                                   |
+| `diff`                                                                                                             | 5.2.2                      | 9.x                       | `src` and `webview-ui`; ships its own types (drop `@types/diff`)                                                             |
+| `pdf-parse`                                                                                                        | 1.1.1                      | 2.x                       | 1.x is unmaintained and imported through `pdf-parse/lib/pdf-parse`; the API changed; add a PDF extraction fixture test first |
+| `chokidar`, `p-limit`, `workerpool`, `serialize-error`, `isbinaryfile`, `os-name`, `delay`, `uuid`, `global-agent` | various                    | next major                | small, mostly ESM or Node-floor changes; batch by risk                                                                       |
+| `i18next`, `react-i18next`                                                                                         | 25, 15                     | 26, 17                    | with DEP-8                                                                                                                   |
+| `mermaid`, `shiki`, `katex`, `react-markdown`, `lucide-react`, `vscrui`                                            | 11, 3, 0.16, 9, 0.518, 0.2 | 12, 4, 0.18, 10, 1.x, 1.x | webview rendering; after WEB-2 golden renders exist                                                                          |
+| `ink`, `commander`                                                                                                 | 6.6.0, 12                  | 7.x, 15                   | CLI; `ink` only after CLI-9's frame snapshots                                                                                |
+
+### DEP-7 Toolchain majors
+
+`vitest` 3 to current (after TEST-1, so new failures are real), `@vitest/ui`; `eslint` 10 with `@eslint/js` 10 and
+`eslint-plugin-react-hooks` 7 (its compiler rule makes WEB-Q10 bailout reporting free); TypeScript 5.8.3 to the
+latest 5.x first, a 6.x or native 7.x compiler only once `typescript-eslint`, vitest and knip support it; `knip`,
+`esbuild`, `@changesets/cli`, `lint-staged`, `jsdom`, `@testing-library/jest-dom`, `@vitejs/plugin-react`,
+`@vscode/vsce` (Renovate ignores it today; record why before changing), `ovsx`.
+
+### DEP-8 React 19 and zod 4 (owner decision 11)
+
+- React 19 in the webview (with `react-dom`, `@types/react` 19, `react-i18next` 17, testing-library); set the React
+  Compiler target to 19 in `webview-ui/vite.config.ts`. After Phase 7, when the heavy components are small and
+  covered by golden renders. This also unifies the monorepo on one React major (the CLI is already on 19).
+- zod 4: the root override pins `zod 3.25.76`, which already ships `zod/v4`, so the migration can go package by
+  package through `zod/v4` imports before the final switch. `packages/types` is consumed by the extension, the
+  webview, the CLI and the cloud package, and `self-hosted-cloudapi/src/schemas` mirrors its shapes, so the
+  cross-language fixtures from CAPI-M8 are the gate. Size L.
+
+### DEP-9 Replace `@vscode/webview-ui-toolkit`
+
+**Evidence:** Microsoft archived and deprecated the toolkit; 89 webview files import it (`VSCodeTextField`,
+`VSCodeCheckbox`, `VSCodeLink`, `VSCodeButton`, `VSCodeDropdown` and others). The webview already has its own
+components in `webview-ui/src/components/ui/` (`input`, `checkbox`, `button`, `select`, `radio-group`,
+`toggle-switch` and more), and `vscrui` is used in 10 files.
+
+**Change:** one toolkit component type per PR, replaced by the existing `ui/` component (add a thin wrapper where
+props differ), with a manual visual check of every touched screen. Start with `VSCodeLink` and `VSCodeCheckbox`
+(simple semantics), leave `VSCodeTextField` (most uses, focus behavior) for last.

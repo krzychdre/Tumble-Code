@@ -1,5 +1,7 @@
 # Refactor Opportunities — `src/` Backend
 
+> **Superseded on 2026-09-24** by `ai_plans/2026-09-24_refactor/00-master-plan.md`. Its open items were re-verified against the live code and moved there; this file is kept for history only.
+
 > **Scope:** `src/` tree of the Roo Code VS Code extension.
 > **Goal:** low cognitive complexity, human-maintainable, elegant, extensible, shrinking number of change-points (open-closed wins).
 > **Method:** every claim grounded in live code (file:line). Built on — and explicitly correcting — the two pre-existing analysis docs at repo root.

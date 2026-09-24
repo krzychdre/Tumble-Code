@@ -1,5 +1,7 @@
 # Packages (`packages/`) Refactor Audit
 
+> **Superseded on 2026-09-24** by `ai_plans/2026-09-24_refactor/00-master-plan.md`. Its open items were re-verified against the live code and moved there; this file is kept for history only.
+
 ## Executive summary
 
 - **`packages/types/src/vscode-extension-host.ts` is a 920-line god-file holding three monolithic message unions** (`ExtensionMessage`, `WebviewMessage` with ~170 inline literals, `WebViewMessagePayload`) in one flat-bag interface — the single biggest blocker to the cross-cutting registry refactor. Splitting it into per-domain discriminated-union modules (mirroring the already-clean `ipc.ts`) is the highest-leverage move. _(cognitive complexity, extensibility)_

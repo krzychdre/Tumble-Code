@@ -1,5 +1,7 @@
 # Refactoring Plan — `src/` (VS Code extension host) for Human Maintainability
 
+> **Superseded on 2026-09-24** by `ai_plans/2026-09-24_refactor/00-master-plan.md`. Its open items were re-verified against the live code and moved there; this file is kept for history only.
+
 > **Date:** 2026-07-14 · **Scope:** [`src/`](src/) only · **Mode:** architect (planning, no code changes)
 > **Goal:** Make the extension host code readable and maintainable by a human working alone, without AI assistance. Priorities: (1) low cognitive complexity, (2) design patterns where sensible, (3) dead-code removal, (4) human readability.
 

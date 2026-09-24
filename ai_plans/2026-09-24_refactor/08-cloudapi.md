@@ -1,0 +1,164 @@
+# Self-hosted cloud API (`self-hosted-cloudapi`, Python)
+
+The service is live and reachable from the LAN (and from the owner's phone). Its security defects are Phase 1
+(`02-defects.md` DEF-S2 to DEF-S12); its test isolation and CI are Phase 0 (TEST-4, TEST-5); dependency floors are
+Phase 2 (DEP-5); the maintainability items below are Phase 9. All findings were checked against the code; the
+security ones were reproduced with probe tests in a copy under `/tmp`. The test suite passed 233/233 in 16.6 s in a
+clean copy.
+
+## Structure
+
+| Area                      | Lines                   | Notes                                                                                                                                                                                                                             |
+| ------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routers` (8 files)   | 1,929                   | `web.py` 967 (Jinja panel), `browser.py` 423 (sign-in flow, HTML built as Python strings), `auth.py` 213 (Clerk-compatible `/v1` facade), `extension.py` 94, `events.py` 86, `proxy.py` 62, `settings.py` 57, `marketplace.py` 27 |
+| `src/services` (16 files) | 2,975                   | business logic and almost all queries (no repository layer); largest `telemetry_service` 355, `model_attribution` 346, `task_summary` 336                                                                                         |
+| `src/models`              | 529                     | the schema's source of truth (`create_all`)                                                                                                                                                                                       |
+| `src/schemas`             | 302                     | Pydantic mirrors of the extension's Zod schemas                                                                                                                                                                                   |
+| `src/auth`                | 651                     | Authentik OAuth, JWT via python-jose, signed web cookie, IP allowlist                                                                                                                                                             |
+| `src/realtime`            | 341                     | socket.io relay and connection registry                                                                                                                                                                                           |
+| `src/proxy`               | 457                     | OpenAI-compatible proxy stub                                                                                                                                                                                                      |
+| Templates, own JS, CSS    | 742, 1,625, 2,552       | JSON islands feed the JS (`render.js` 808, `live.js` 404)                                                                                                                                                                         |
+| Vendored JS               | 15,632                  | chart.js 4.4.7, marked 12.0.2, DOMPurify 3.1.6, socket.io client 4.8.3                                                                                                                                                            |
+| Tests                     | 5,861 Python + 783 HTML | 13 files, 233 collected; browser checks run headless Chrome                                                                                                                                                                       |
+
+No raw SQL anywhere. `web.py` runs 9 queries itself; the network-access middleware imports the router's templates
+(`network_access.py:165`, an inverted dependency); import cycles are dodged with function-level imports
+(`telemetry_service.py:23-32` and 8 more); singletons are built at import time (`settings`, the engine,
+`templates`, the limiter, `sio`); `create_all` runs in `db_bootstrap.py:48` and again on every startup in
+`main.py:33`.
+
+**Not covered by tests:** `/v1/chat/completions`, `/v1/images/generations`, `/v1/models`, the marketplace,
+`PATCH /api/user-settings`, `/bridge/config`, `/credit-balance`, `/v1/client/sessions/{id}/remove`, `/l/{slug}`,
+CORS headers, rate limiting, `db_bootstrap`, alembic migrations, the retention loop, cross-user backfill, and
+`</script>` inside message content (the last two are now DEF-S2 and DEF-S4 tests).
+
+## Maintainability items (Phase 9), ranked by gain over risk
+
+### CAPI-M3 One telemetry vocabulary (also fixes DEF-C31's retention bug)
+
+"LLM Completion" is defined at `metrics_service.py:34` and `model_attribution.py:48` and as a literal at
+`retention_service.py:45`; `TASK_KIND` twice (`metrics_service.py:47`, `model_attribution.py:63`); two label maps
+say the same thing (`KIND_LABELS` `metrics_service.py:48-53`, `SIDE_CALL_LABELS` `model_attribution.py:243-247`);
+the "parse JSON, skip non-dict" loop 3 times (`metrics_service.py:118-124, 207-213`, `model_attribution.py:114-120`);
+`api_req_started` parsed twice (`task_summary.py:194-210`, `model_attribution.py:135-144`); an inline `num()` copy at
+`metrics_service.py:93`; a docstring pointing at the removed `web._compute_metrics` (`:15`). **Change:**
+`services/telemetry_vocab.py` with the names, kinds, labels, `iter_event_props()` and the `api_req_started` parser;
+retention protects both event types. **Test first:** an identity test in the style of
+`test_web_and_share.py:1333-1356`; "Embedding Usage survives a purge". **Size** S.
+
+### CAPI-M4 Formatting helpers, finished
+
+The earlier extraction holds (`num`, `fmt_tokens`, `fmt_duration` exist only in `src/utils/format.py:13, 23, 36`,
+guarded by an identity test). Still copied: cost as `f"${x:.4f}"` 7 times in `web.py` plus `"%.4f"|format` in
+templates; thousands separators in `web.py` and `metrics.html`; `_fmt_bytes` (`web.py:838`) and `_plural`
+(`web.py:167`) in the router; three JS token formatters that disagree (`live.js:51-68` no rounding, `metrics.js:52-65`
+rounds, Python truncates) and cost formatted separately in 3 JS files. **Change:** `fmt_cost`, `fmt_int`,
+`fmt_bytes`, `plural` in `utils/format.py`, registered as Jinja filters; one `static/format.js`; a pytest emits
+golden vectors that a browser check compares against `format.js`. **Size** S to M.
+
+### CAPI-M5 Split `routers/web.py` (967 lines, 31 functions)
+
+9 routes and about 20 presenter helpers; `_quality_overview` (567-631) is business logic; the share access policy
+sits inline (896-938). **Target:** `src/web/templating.py` (templates and filters; also fixes the inverted
+middleware import), `src/web/presenters/{task_rows,task_detail,settings}.py`, `services/quality_overview.py`,
+`services/task_access.py` (one shared-view policy, reused by the bridge's task join), routers `web_tasks`,
+`web_metrics`, `web_settings`, `shared`. Pure moves with re-exports first. **Test first:** direct unit tests for
+`_list_row`, `_spend_summary`, `_row_tooltip`, `_quality_overview` (today asserted only through rendered HTML).
+Split the 3,372-line `test_web_and_share.py` along the same lines. **Existing:** 112 tests in that file plus the
+phone-layout and browser checks. **Size** M, low risk.
+
+### CAPI-M6 Route boilerplate into dependencies
+
+Bearer-token parsing repeated 4 times in `routers/auth.py` (93, 138, 173, 204): a `client_session` dependency. The
+"not logged in, redirect to `/app/login`" check repeated 9 times in `web.py`: `require_web_user` plus one exception
+handler. Three near-identical sign-in handlers (`browser.py:152-217`, the `/l/{slug}` slug unused). Two HTML pages
+built from Python strings (`browser.py:44-148`): templates. `dependencies.py:33-38` decodes the JWT twice and the
+second path skips the issuer and version checks; `:17` and `:64` open a DB session per extension call without using
+it. **Size** S each.
+
+### CAPI-M7 Configuration and bootstrap consistency
+
+`BRIDGE_PATH` is configurable (`config/settings.py:140`) and advertised to clients but `main.py:143` hard-codes the
+mount (DEF-C31); logging is never configured (the startup banner uses `print`, `main.py:35-79`); `README.md:134-135`
+and `make migrate` say to run `alembic upgrade head` on a fresh database, which `db_bootstrap`'s own docstring says
+cannot work; `README.md:257` links a missing `../plans/...`; `alembic/env.py:25-30` has its own `.env` parser; model
+import lists duplicated in `main.py:24-30` and `alembic/env.py:14-20`; `create_all` on every startup hides a
+forgotten migration for any new table [I]; `credit_system_enabled` changes nothing (`extension.py:84-94`); unused
+code (`get_authentik_issuer_url`, `get_openid_configuration`, `issue_static_token`, `adapt_streaming_response`,
+`create_session_and_token`, `count_descendants`, `AuthCallbackParams`, the `ProviderConfig` model); `ruff` reports
+41 issues (38 auto-fixable unused imports); the dev venv is Python 3.13, the image 3.12. **Size** S to M.
+
+### CAPI-M8 Cross-language golden fixtures for token and cost aggregation
+
+Three implementations: TypeScript `consolidateTokenUsage.ts:29` (authoritative), the JS port in `render.js:622-657`,
+Python `task_summary.py:181-217`. **Change:** one shared fixture file (input messages, expected totals) checked by
+vitest, pytest and a browser check. No cross-language code generation. Also the gate for zod 4 (DEP-8). **Size** M,
+no risk.
+
+### CAPI-M10 Guard against model and migration drift
+
+No test touches `db_bootstrap` or alembic. **Change:** test `classify_and_seed` for its three states (fresh,
+legacy, managed) on SQLite; a drift check that builds the baseline, runs migrations to head and expects
+`compare_metadata` to find nothing (the datetime migration may need Postgres). **Size** M.
+
+### CAPI-M9 Metrics: SQL aggregation instead of Python over unbounded rows
+
+`metrics_service.py:170-179` loads full `TelemetryEvent` rows with their JSON blob for the whole period ("all
+time" has no bound) and parses them on the event loop; `models/event.py:14-23` has only single-column indexes
+(`created_at` none); `web.py:583` loads full Task rows for `_quality_overview`. Code comments record 13,164
+completions and a 146 MB `telemetry_events` table. **Way out that keeps SQLite tests:** (1) now, select only
+`(properties, created_at)` and add an index on `(user_id, event_type, created_at)`; (2) next, copy the numeric and
+dimension fields into their own columns at ingest (as `task_id` already is, `event.py:17-21`,
+`telemetry_service.py:92-101`), backfill in a migration, aggregate with `GROUP BY`/`SUM`. **Test first:** pin the
+whole `compute_user_metrics()` result for a seeded dataset including malformed rows. **Size** M (L with the
+backfill), medium risk.
+
+### CAPI-M11 Bridge: stop the per-chunk tree-link queries
+
+`telemetry_service.py:277` runs `_link_task_tree` (2 to 4 queries) on every streamed chunk; run it only when the
+task row is created (`task_tree.py:64-71` already stamps rows that exist when the link arrives). **Test first:**
+ordering permutations (child first, parent first, relation last). **Size** S, medium risk (hot path).
+
+### CAPI-M12 CPU-heavy work off the event loop (lowest priority)
+
+Backfill parsing (the whole upload read into memory at `events.py:65`), full-conversation JSON dumps
+(`web.py:690`), metrics aggregation, the marketplace YAML read on every request (`marketplace_service.py:23, 43`,
+two copied loaders). **Change:** `anyio.to_thread` for pure functions, cache the YAML, cap the upload size.
+
+## Dependencies (DEP-5)
+
+Audit: `pip-audit` against the `uv.lock` pins, 20 unique advisory IDs in 8 packages.
+
+| Package                                                                   | Locked                     | Latest                           | Known vulnerabilities                                                                   | Upgrade risk                                         |
+| ------------------------------------------------------------------------- | -------------------------- | -------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| starlette                                                                 | 1.0.0                      | 1.7.0                            | CVE-2026-48710, -48817, -48818 (Windows), -54282, -54283 (form limits bypass)           | medium; test the bridge mount first                  |
+| python-multipart                                                          | 0.0.27                     | 0.0.32                           | CVE-2026-53538, -53539, -53540 (reachable before login via `/v1/client/sign_ins` forms) | low                                                  |
+| pydantic-settings                                                         | 2.14.0                     | 2.15.0                           | CVE-2026-58203 (nested `secrets_dir`, unused here)                                      | low                                                  |
+| python-jose                                                               | 3.5.0                      | 3.5.0 (no release since 2025-05) | pulls `ecdsa` (CVE-2024-23342, no fix), `pyasn1`, `rsa`                                 | replace with PyJWT (4 call sites in `jwt_issuer.py`) |
+| cryptography                                                              | 48.0.0                     | 50.0.1                           | GHSA-537c-gmf6-5ccf, CVE-2026-69247, -69248, -69249                                     | low                                                  |
+| anyio                                                                     | 4.13.0                     | 4.15.1                           | CVE-2026-63374, -64847                                                                  | low                                                  |
+| idna                                                                      | 3.13                       | 3.20                             | CVE-2026-45409                                                                          | low                                                  |
+| pyasn1                                                                    | 0.6.3                      | 0.6.4                            | CVE-2026-59884, -59885, -59886                                                          | low, or gone with jose                               |
+| fastapi, uvicorn, sqlalchemy, alembic, pydantic, python-socketio, slowapi | current minus a few minors |                                  | none                                                                                    | low                                                  |
+
+Vendored front end: DOMPurify 3.1.6 to 3.4.16 (20 OSV advisories, DEF-S12); chart.js 4.4.7 to 4.5.1; marked 12 to
+18 (six majors, medium); socket.io client current. Containers: `python:3.12-slim` floating (dev is 3.13), `uv:latest`
+unpinned, `postgres:16-alpine` floating minor, `redis:alpine` floating major, Authentik `2026.2.2` while `2026.8.3` is
+current and only the two latest lines get security support [I].
+
+## Do not touch
+
+The monotonic `ON CONFLICT` upsert in `upsert_task_message` (`telemetry_service.py:279-314`) and the final-only
+refresh (`:322-355`), covered by `test_bridge.py:436-544`; `response_model_exclude_none=True` (`extension.py:29`,
+`settings.py:29, 45`; the client's Zod `.optional()` rejects null); share returning 404 for unknown tasks (the
+extension's backfill-then-retry depends on it); the `/bridge` prefix in the socket path and reading the client
+address from the ASGI scope; the fresh/legacy/managed bootstrap and the no-op baseline migration; level-by-level
+tree walks with cycle guards (SQLite compatibility); the denormalized summary and quality columns (they replaced a
+list page that ran 387 queries and read 205 MB); the conservative `attribute_requests` matching; retention's
+plan/apply pairing (extend the protected list, never shrink it); `client_allowed` in its three uses; vendored
+libraries (replace whole files, never hand-edit); SQLite as the test database.
+
+## Suggested order
+
+Phase 0: TEST-4, TEST-5. Phase 1: DEF-S2 and DEF-S12, then S3, S4, S10, then S5 to S9 and S11, DEF-C31. Phase 2:
+DEP-5. Phase 9: CAPI-M3, M4, M6, M7, M5, M8, M10, M11, M9, M12.
