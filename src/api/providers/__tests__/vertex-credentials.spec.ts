@@ -296,10 +296,10 @@ describe("AnthropicVertexHandler vertex credentials wiring", () => {
 
 		expect(warnSpy).toHaveBeenCalledTimes(1)
 		// With only a path-shaped vertexJsonCredentials (no vertexKeyFile),
-		// every branch in the constructor falls through to the bare
-		// `new AnthropicVertex({ projectId, region })` and GoogleAuth is
-		// never instantiated.
-		expect(googleAuthCtor).not.toHaveBeenCalled()
+		// every branch in the constructor falls through to the application
+		// default credentials: GoogleAuth gets only the scopes, never the path.
+		expect(googleAuthCtor).toHaveBeenCalledTimes(1)
+		expect(googleAuthCtor.mock.calls[0][0]).toEqual({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] })
 		expect(errorSpy).not.toHaveBeenCalled()
 	})
 
@@ -324,7 +324,7 @@ describe("AnthropicVertexHandler vertex credentials wiring", () => {
 		expect(errorSpy).not.toHaveBeenCalled()
 	})
 
-	it("does not invoke GoogleAuth when neither credentials nor keyFile is set", () => {
+	it("falls back to the application default credentials when neither credentials nor keyFile is set", () => {
 		new AnthropicVertexHandler({
 			apiModelId: "claude-3-5-sonnet-v2@20241022",
 			vertexProjectId: "p",
@@ -332,6 +332,9 @@ describe("AnthropicVertexHandler vertex credentials wiring", () => {
 		})
 
 		expect(warnSpy).not.toHaveBeenCalled()
-		expect(googleAuthCtor).not.toHaveBeenCalled()
+		// Same GoogleAuth the SDK would build by default (scopes only), created
+		// by the handler so a failed lookup is not an unhandled rejection.
+		expect(googleAuthCtor).toHaveBeenCalledTimes(1)
+		expect(googleAuthCtor.mock.calls[0][0]).toEqual({ scopes: ["https://www.googleapis.com/auth/cloud-platform"] })
 	})
 })
