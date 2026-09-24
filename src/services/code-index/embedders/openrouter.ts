@@ -1,5 +1,5 @@
 import { OpenAI } from "openai"
-import { IEmbedder, EmbeddingResponse, EmbedderInfo } from "../interfaces/embedder"
+import { IEmbedder, EmbeddingResponse, EmbedderInfo, EmbedderValidationResult } from "../interfaces/embedder"
 import {
 	MAX_BATCH_TOKENS,
 	MAX_ITEM_TOKENS,
@@ -8,7 +8,12 @@ import {
 } from "../constants"
 import { getDefaultModelId, getModelQueryPrefix } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
-import { withValidationErrorHandling, HttpError, formatEmbeddingError } from "../shared/validation-helpers"
+import {
+	withValidationErrorHandling,
+	HttpError,
+	formatEmbeddingError,
+	measureEmbeddingDimension,
+} from "../shared/validation-helpers"
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { Mutex } from "async-mutex"
@@ -289,7 +294,7 @@ export class OpenRouterEmbedder implements IEmbedder {
 	 * Validates the OpenRouter embedder configuration by testing API connectivity
 	 * @returns Promise resolving to validation result with success status and optional error message
 	 */
-	async validateConfiguration(): Promise<{ valid: boolean; error?: string }> {
+	async validateConfiguration(): Promise<EmbedderValidationResult> {
 		return withValidationErrorHandling(async () => {
 			try {
 				// Test with a minimal embedding request
@@ -324,7 +329,8 @@ export class OpenRouterEmbedder implements IEmbedder {
 					}
 				}
 
-				return { valid: true }
+				// Report the probe length so a configured dimension that disagrees is caught here
+				return { valid: true, dimension: measureEmbeddingDimension(response.data[0]?.embedding) }
 			} catch (error) {
 				// Capture telemetry for validation errors
 				TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {

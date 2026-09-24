@@ -8,7 +8,12 @@ import {
 } from "../constants"
 import { getDefaultModelId, getModelQueryPrefix } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
-import { withValidationErrorHandling, HttpError, formatEmbeddingError } from "../shared/validation-helpers"
+import {
+	withValidationErrorHandling,
+	HttpError,
+	formatEmbeddingError,
+	measureEmbeddingDimension,
+} from "../shared/validation-helpers"
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { Mutex } from "async-mutex"
@@ -357,24 +362,6 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 	}
 
 	/**
-	 * Reports how many dimensions a probe embedding came back with, so callers can compare it
-	 * against the configured dimension. Embeddings are requested as base64, where every value is
-	 * a 4-byte float.
-	 * @param item A single item from an embeddings response
-	 * @returns The vector length, or undefined if the item carried no usable embedding
-	 */
-	private measureEmbeddingDimension(item: EmbeddingItem | undefined): number | undefined {
-		const embedding = item?.embedding
-
-		if (typeof embedding === "string") {
-			const byteLength = Buffer.from(embedding, "base64").byteLength
-			return byteLength >= 4 ? Math.floor(byteLength / 4) : undefined
-		}
-
-		return Array.isArray(embedding) && embedding.length > 0 ? embedding.length : undefined
-	}
-
-	/**
 	 * Validates the OpenAI-compatible embedder configuration by testing endpoint connectivity and API key
 	 * @returns Promise resolving to validation result with success status and optional error message
 	 */
@@ -407,7 +394,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 					}
 				}
 
-				return { valid: true, dimension: this.measureEmbeddingDimension(response.data[0]) }
+				return { valid: true, dimension: measureEmbeddingDimension(response.data[0]?.embedding) }
 			} catch (error) {
 				// Capture telemetry for validation errors
 				TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
