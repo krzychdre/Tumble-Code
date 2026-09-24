@@ -410,6 +410,62 @@ describe("parseCommand", () => {
 		})
 	})
 
+	// DEF-S1: each case is split the way bash splits it (checked against bash).
+	// Nested commands (substitutions, groups, heredoc bodies) are listed after
+	// the command that contains them.
+	describe("splits exactly where bash splits (DEF-S1)", () => {
+		it.each([
+			["escaped quotes outside quotes", "echo \\' && rm -rf /tmp/x \\'", ["echo \\'", "rm -rf /tmp/x \\'"]],
+			["escaped backticks", "echo \\` && rm x \\`", ["echo \\`", "rm x \\`"]],
+			["$( inside single quotes is text", "echo '$(x' && rm y", ["echo '$(x'", "rm y"]],
+			["substitution inside double quotes", 'echo "$(rm -rf x)"', ['echo "$(rm -rf x)"', "rm -rf x"]],
+			["unquoted substitution", "echo $(whoami) done", ["echo $(whoami) done", "whoami"]],
+			["backtick substitution", "echo `whoami`", ["echo `whoami`", "whoami"]],
+			["nested backticks", "echo `echo \\`id\\``", ["echo `echo \\`id\\``", "echo `id`", "id"]],
+			["process substitution", "diff <(ls a) b", ["diff <(ls a) b", "ls a"]],
+			["substitution in a parameter default", "echo ${x:-$(id)}", ["echo ${x:-$(id)}", "id"]],
+			["substitution in arithmetic", "echo $((1 + $(id)))", ["echo $((1 + $(id)))", "id"]],
+			["|& pipe", "echo a |& grep b", ["echo a", "grep b"]],
+			["redirections stay in the command", "echo a 2>&1 >/dev/null &>log", ["echo a 2>&1 >/dev/null &>log"]],
+			["background &", "sleep 1 & echo b", ["sleep 1", "echo b"]],
+			["subshell group", "(cd a && make) > log", ["cd a", "make", "> log"]],
+			["brace group and keywords", "{ echo a; }", ["echo a"]],
+			["if/then/fi", "if true; then echo x; fi", ["true", "echo x"]],
+			["loop keywords", "for f in a b; do echo $f; done", ["for f in a b", "echo $f"]],
+			["negation", "! grep -q x f", ["grep -q x f"]],
+			["function definition", "f() { echo x; }; f", ["echo x", "f"]],
+			["line continuation", "echo a \\\n  b && echo c", ["echo a b", "echo c"]],
+			["whitespace outside quotes collapses", "git   status", ["git status"]],
+			["array assignment", "files=(a b); echo ok", ["files=(a b)", "echo ok"]],
+			["operator after a heredoc opener", "cat <<EOF && rm x\nbody\nEOF", ["cat <<EOF\nbody\nEOF", "rm x"]],
+			["substitution in an unquoted heredoc body", "cat <<EOF\n$(id)\nEOF", ["cat <<EOF\n$(id)\nEOF", "id"]],
+			["quoted heredoc body is literal", "cat <<'EOF'\n$(id)\nEOF", ["cat <<'EOF'\n$(id)\nEOF"]],
+			[
+				"quoted heredoc inside a substitution inside double quotes",
+				"git commit -m \"$(cat <<'EOF'\nit's done\nEOF\n)\"",
+				["git commit -m \"$(cat <<'EOF'\nit's done\nEOF\n)\"", "cat <<'EOF'\nit's done\nEOF"],
+			],
+		])("%s: %j", (_label, input, expected) => {
+			const result = parseCommand(input)
+			expect(result.commands).toEqual(expected)
+			expect(result.uncertainty).toBeNull()
+		})
+
+		it.each([
+			["case statement", "case x in a) echo y;; esac"],
+			["unmatched closing parenthesis", "echo a ) echo b"],
+			["unterminated substitution", "echo $(id"],
+			["unterminated backtick", "echo `id"],
+			["parenthesis inside a word", "echo a(b)"],
+		])("reports uncertainty for %s: %j", (_label, input) => {
+			expect(parseCommand(input).uncertainty).not.toBeNull()
+		})
+
+		it("reports no uncertainty for ordinary commands", () => {
+			expect(parseCommand("git status && npm test").uncertainty).toBeNull()
+		})
+	})
+
 	describe("findUnterminatedQuote", () => {
 		it("returns null for balanced and quote-free input", () => {
 			expect(findUnterminatedQuote("git status")).toBeNull()
