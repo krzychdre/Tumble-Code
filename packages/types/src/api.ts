@@ -1,10 +1,8 @@
 import type { EventEmitter } from "events"
-import type { Socket } from "net"
 
 import type { RooCodeEvents } from "./events.js"
 import type { RooCodeSettings } from "./global-settings.js"
 import type { ProviderSettingsEntry, ProviderSettings } from "./provider-settings.js"
-import type { IpcMessage, IpcServerEvents } from "./ipc.js"
 
 export type RooCodeAPIEvents = RooCodeEvents
 
@@ -140,12 +138,4 @@ export interface RooCodeAPI extends EventEmitter<RooCodeAPIEvents> {
 	 * closes idle terminals so the next command starts fresh.
 	 */
 	setTerminalProfile(name: string | undefined): void
-}
-
-export interface RooCodeIpcServer extends EventEmitter<IpcServerEvents> {
-	listen(): void
-	broadcast(message: IpcMessage): void
-	send(client: string | Socket, message: IpcMessage): void
-	get socketPath(): string
-	get isListening(): boolean
 }
