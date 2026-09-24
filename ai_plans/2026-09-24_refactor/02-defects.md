@@ -280,3 +280,30 @@ where their files are disjoint; the coordinator merges in order.
   DEF-C38 `openrouter.ts` streaming (~:514) ignores `cache_write_tokens` (cost stays right via the reported `cost`,
   token display only). DEF-C39 `calculateApiCostOpenAI` prices reported writes at `cacheWritesPrice || 0`, so writes
   on a model without a write price are free instead of input price (matters more now that more writes are read).
+- **Owner rule change (2026-09-24 evening):** PRs are merged immediately after opening, without waiting for CI;
+  failures found later on main become their own items. #228 to #239 were merged this way; main's CI must be checked.
+- **Merged 2026-09-24 (details in each PR description):**
+  DEF-C26 to DEF-C29 #226 (`691532fa9`): CLI `batchFiles`, static context-window tables and per-provider default
+  model, usable follow-up suggestions, whole-task JSON cost (a second bug: the cost update of `api_req_started` was
+  dropped by the duplicate filter), extension-equal `arePathsEqual`, installer and README point at the fork.
+  DEF-C6 #227 (`f6a9ae744`): shared `profileTaskOptions()` gives background tasks the allow-list check and the
+  profile's mistake limit (was the built-in 3). DEF-C19 #228 (`6fc991634`): one `getEndpointsFilePath(key)`; effect
+  was offline only, for users pinning an OpenRouter provider. DEF-C20 #229 (`ffc33a546`): queue-full is transient
+  (`isQueueFullError`), a worker crash still disables the pool. DEF-C15 #230 (`572823f6c`): `getModelIdKeyForProvider`
+  / `getProviderModelId` in packages/types used by ProfileValidator and the webview; also fixed OpenAI Compatible
+  reading `apiModelId`; the CLI part of the claim was wrong. DEF-C32 #231 (`6df728d0e`). DEF-C24 #232 (`abdb67a19`):
+  reproduced, ref guard like App.tsx. DEF-C22 #233 (`ce825b780`): zai, moonshot, qwen-code use
+  `getModelMaxOutputTokens`; stale overrides (e.g. 200000 to Z.ai, max 131072) were sent unchanged; kimi-k2-0711
+  default now 26215 (20% rule) instead of 32000. DEF-C21 #234 (`3838b911a`): `languageGrammars.ts` table keyed by
+  extension; `.erb`/`.ejs` were never parsed or indexed, `.htm` threw; `.elm` grammar is format 12 (unsupported) and
+  `.vb` has none, both now fallback-chunked. DEF-C18 #235 (`344d298e6`): Execa completion goes through
+  `terminal.shellExecutionComplete()` (the model never saw a background command's tail or end; the next command lost
+  it), and `TerminalProcess.abort()` works after `continue()` (Kill, timeout and cancel could not stop a backgrounded
+  command). DEF-C35 #236 (`638353916`). DEF-C23 #237 (`5efc30574`): `openAiCacheTokens()` reads every documented
+  cache-write name (OpenRouter/Kimi `cache_write_tokens`, DashScope `cache_creation_input_tokens`, LiteLLM variants) on
+  both paths; neither old name alone was right. DEF-C16 #238 (`d262374b1`): `flattenMessagesForTokenCount` counts
+  tool_result, tool_use and images; on 40 real histories the old count was 5.2 times too low (up to 17.2).
+  DEF-C14 #239 (`67d0d51e7`): AI SDK error parts are thrown (only Moonshot uses the path), so the task's retry paths
+  apply; in-band SSE errors used to end the turn silently; incremental tool-call parts only lost the live preview.
+  Residuals for later: Moonshot passes no abort signal (C11 class), SDK `statusCode` not mapped, LM Studio ignores
+  server usage, Execa exit code 0 on abort race, Scala uses the Lua query.
