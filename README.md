@@ -189,6 +189,8 @@ We use [changesets](https://github.com/changesets/changesets) for versioning and
 
 We love community contributions! Get started by reading our [CONTRIBUTING.md](CONTRIBUTING.md).
 
+New to the code? Read the one-page [architecture map](docs/architecture.md) before you change anything that crosses a folder boundary.
+
 ---
 
 ## Lineage
