@@ -2,7 +2,10 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest"
 
+import type { ClineMessage } from "@roo-code/types"
+
 import type { ApiMessage } from "../../task-persistence/apiMessages"
+import { MessageManager } from "../../message-manager"
 import { TaskContextManager, type TaskContextManagerAccess } from "../TaskContextManager"
 
 /**
@@ -118,6 +121,7 @@ describe("forced truncation announces what it did", () => {
 			cost: 0.02,
 			prevContextTokens: 120_000,
 			newContextTokens: 30_000,
+			condenseId: "forced-condense-1",
 			prunedCount: 2,
 			prunedBytesSaved: 100_000,
 			summarySkipped: false,
@@ -130,11 +134,14 @@ describe("forced truncation announces what it did", () => {
 
 		const condenseRow = say.mock.calls.find((call) => call[0] === "condense_context")
 		expect(condenseRow).toBeDefined()
+		// `condenseId` is the only link between this row and the Summary message the
+		// condense wrote into the API history; rewind needs it (see the round trip below).
 		expect(condenseRow![7]).toEqual({
 			summary: "a summary",
 			cost: 0.02,
 			newContextTokens: 30_000,
 			prevContextTokens: 120_000,
+			condenseId: "forced-condense-1",
 		})
 		// The condense row already tells the story of the whole round.
 		expect(say.mock.calls.some((call) => call[0] === "context_pruned")).toBe(false)
@@ -169,5 +176,71 @@ describe("forced truncation announces what it did", () => {
 			newContextTokens: 80_000,
 		})
 		expect(say.mock.calls.some((call) => call[0] === "context_pruned")).toBe(false)
+	})
+})
+
+describe("forced condense row survives a rewind round trip", () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+		willManageContextMock.mockReturnValue(true)
+	})
+
+	it("a rewind across the forced condense row removes its Summary and restores the hidden history", async () => {
+		// The history as summarizeConversation leaves it: the prefix is tagged with
+		// the condense id, the Summary follows with ts = last message ts + 1, and
+		// the recent raw tail stays untagged.
+		const condenseId = "forced-condense-rt"
+		const condensedHistory: ApiMessage[] = [
+			{ role: "user", content: "task", ts: 100, condenseParent: condenseId },
+			{ role: "assistant", content: "early work", ts: 200, condenseParent: condenseId },
+			{ role: "user", content: "summary text", ts: 1001, isSummary: true, condenseId },
+			{ role: "user", content: "recent tool results", ts: 1000 },
+		]
+		manageContextMock.mockResolvedValue({
+			messages: condensedHistory,
+			summary: "summary text",
+			cost: 0.01,
+			prevContextTokens: 120_000,
+			newContextTokens: 20_000,
+			condenseId,
+		})
+
+		const { access, say } = buildAccess()
+		await new TaskContextManager(access).handleContextWindowExceededError()
+
+		const condenseRow = say.mock.calls.find((call) => call[0] === "condense_context")
+		expect(condenseRow).toBeDefined()
+
+		// Persist the row the way Task.say would, then rewind to a message that sits
+		// AFTER the Summary's timestamp but BEFORE the condense row (for example a
+		// row the rejected attempt emitted before the provider reported the
+		// overflow). The timestamp filter keeps the Summary here, so the row's
+		// condenseId is the only thing that can tell rewind to drop it.
+		const clineMessages: ClineMessage[] = [
+			{ type: "say", say: "text", text: "task", ts: 100 },
+			{ type: "say", say: "api_req_started", text: "{}", ts: 900 },
+			{ type: "say", say: "text", text: "partial answer of the rejected attempt", ts: 1100 },
+			{ type: "say", say: "condense_context", ts: 1200, contextCondense: condenseRow![7] },
+		]
+		const task = {
+			clineMessages,
+			apiConversationHistory: condensedHistory,
+			overwriteClineMessages: vi.fn(async (messages: ClineMessage[]) => {
+				task.clineMessages = messages
+			}),
+			overwriteApiConversationHistory: vi.fn(async (messages: ApiMessage[]) => {
+				task.apiConversationHistory = messages
+			}),
+		}
+
+		await new MessageManager(task as any).rewindToTimestamp(1100)
+
+		// The condense row is gone from the chat...
+		expect(task.clineMessages.some((m) => m.say === "condense_context")).toBe(false)
+		// ...so its Summary must be gone from the API history too, and the prefix it
+		// was hiding must be visible again (no dangling condenseParent tags).
+		expect(task.apiConversationHistory.some((m) => m.isSummary)).toBe(false)
+		expect(task.apiConversationHistory.some((m) => m.condenseParent)).toBe(false)
+		expect(task.apiConversationHistory.map((m) => m.ts)).toEqual([100, 200, 1000])
 	})
 })
