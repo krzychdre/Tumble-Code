@@ -61,7 +61,7 @@ cannot resolve the package.
 
 ## TEST-3 Quiet the test output
 
-**Status:** test-side part IN REVIEW as #202 (real logger opt-in under test with `ROO_TEST_LOGS=1`; 251 JSON log lines to 0; production unchanged). Production part waits for owner decision 6.
+**Status:** test-side part DONE, merged 2026-09-24 as #202 (`5a579363c`): the real logger is opt-in under test (`ROO_TEST_LOGS=1`), 251 JSON log lines per extension run became 0; production unchanged. Production part (wire the logger to the output channel) waits for owner decision 6.
 
 **Evidence:** the full `src` run prints hundreds of structured JSON log lines from the Bedrock provider logger
 (`{"l":"error","m":"GENERIC error in createMessage","c":"bedrock",...}`) with full stack traces, which buries the
