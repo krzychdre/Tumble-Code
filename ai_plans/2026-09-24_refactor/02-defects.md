@@ -216,3 +216,14 @@ where their files are disjoint; the coordinator merges in order.
   real timestamps. The audit read the type, not the call site. Optional follow-up (not in Phase 1): no test covers
   that mapping (`autoDream.spec`/`consolidationLock.spec` feed synthetic `{ lastModified }`); a TaskLifecycle test
   would pin it. Renaming the field is `src/core/memory` work ("Do not touch").
+- **DEF-S8 and DEF-S9:** DONE, merged 2026-09-24 as #221 (`be4319d9f`). One trusted-origins list
+  (`src/auth/origins.py`: origins of `API_BASE_URL` and `WEB_PUBLIC_URL`, plus extra `CORS_ORIGINS`) feeds CORS
+  (`TrustedOriginsCORSMiddleware`), the socket.io origin check (a function instead of `"*"`) and a new CSRF
+  middleware (`src/middleware/csrf.py`: non-safe methods carrying the session cookie need a trusted Origin, else the
+  Referer's origin; `null` refused; no Origin and no Referer let through, pinned by a test). Bridge and CSRF also
+  accept a page whose Origin equals the request Host (keeps the panel working on a new DHCP address). Cookie is
+  `Secure` for https requests or an https public URL. `CORS_ORIGINS` now adds to the service's own origins; a
+  leftover `*` is ignored with a startup warning (the live `.env` has it; delete the line to silence it). The
+  extension's socket.io client sends no Origin (Node `ws` and `xmlhttprequest-ssl`), so it is unaffected; per the
+  simulation against the live `.env`, web UI, phone and extension stay accepted. pytest 347 to 380. Not addressed:
+  `GET /app/logout` changes state; no `X-Forwarded-Host` support. **All security items DEF-S1 to DEF-S12 are done.**
