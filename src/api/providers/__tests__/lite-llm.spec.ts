@@ -2,7 +2,6 @@ vi.mock("../utils/timeout-config", () => ({
 	getApiRequestTimeout: vi.fn().mockReturnValue(600_000),
 }))
 
-import OpenAI from "openai"
 import { Anthropic } from "@anthropic-ai/sdk"
 
 import { LiteLLMHandler } from "../lite-llm"
@@ -347,7 +346,7 @@ describe("LiteLLMHandler", () => {
 				})
 
 				const generator = handler.createMessage(systemPrompt, messages)
-				for await (const chunk of generator) {
+				for await (const _chunk of generator) {
 					// Consume the generator
 				}
 
@@ -392,7 +391,7 @@ describe("LiteLLMHandler", () => {
 				})
 
 				const generator = handler.createMessage(systemPrompt, messages)
-				for await (const chunk of generator) {
+				for await (const _chunk of generator) {
 					// Consume the generator
 				}
 

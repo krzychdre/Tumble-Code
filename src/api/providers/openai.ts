@@ -284,12 +284,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			)
 
 			let lastUsage
-			const activeToolCallIds = new Set<string>()
 
 			try {
 				for await (const chunk of stream) {
 					const delta = chunk.choices?.[0]?.delta ?? {}
-					const finishReason = chunk.choices?.[0]?.finish_reason
 
 					const reasoningText = extractReasoningFromDelta(delta)
 					if (reasoningText) {
@@ -302,7 +300,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 						}
 					}
 
-					yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
+					yield* this.processToolCalls(delta)
 
 					if (chunk.usage) {
 						lastUsage = chunk.usage
@@ -570,7 +568,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
-		const activeToolCallIds = new Set<string>()
 		// Keep only the last usage: some servers repeat the cumulative usage
 		// in every chunk, and TaskStreamProcessor adds usage chunks together,
 		// so yielding each one would bill the request once per chunk (DEF-C12).
@@ -578,7 +575,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 		for await (const chunk of stream) {
 			const delta = chunk.choices?.[0]?.delta
-			const finishReason = chunk.choices?.[0]?.finish_reason
 
 			if (delta) {
 				// AP-8: Extract reasoning_content/reasoning from the delta the
@@ -599,7 +595,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					}
 				}
 
-				yield* this.processToolCalls(delta, finishReason, activeToolCallIds)
+				yield* this.processToolCalls(delta)
 			}
 
 			if (chunk.usage) {
@@ -618,24 +614,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 
 	/**
 	 * Helper generator to process tool calls from a stream chunk.
-	 * Tracks active tool call IDs and yields tool_call_partial and tool_call_end events.
+	 * Yields one tool_call_partial per tool call delta; the task's NativeToolCallParser
+	 * assembles the partials and finalizes the calls at stream end.
 	 * @param delta - The delta object from the stream chunk
-	 * @param finishReason - The finish_reason from the stream chunk
-	 * @param activeToolCallIds - Set to track active tool call IDs (mutated in place)
 	 */
 	private *processToolCalls(
 		delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta | undefined,
-		finishReason: string | null | undefined,
-		activeToolCallIds: Set<string>,
-	): Generator<
-		| { type: "tool_call_partial"; index: number; id?: string; name?: string; arguments?: string }
-		| { type: "tool_call_end"; id: string }
-	> {
+	): Generator<{ type: "tool_call_partial"; index: number; id?: string; name?: string; arguments?: string }> {
 		if (delta?.tool_calls) {
 			for (const toolCall of delta.tool_calls) {
-				if (toolCall.id) {
-					activeToolCallIds.add(toolCall.id)
-				}
 				yield {
 					type: "tool_call_partial",
 					index: toolCall.index,
@@ -644,15 +631,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					arguments: toolCall.function?.arguments,
 				}
 			}
-		}
-
-		// Emit tool_call_end events when finish_reason is "tool_calls"
-		// This ensures tool calls are finalized even if the stream doesn't properly close
-		if (finishReason === "tool_calls" && activeToolCallIds.size > 0) {
-			for (const id of activeToolCallIds) {
-				yield { type: "tool_call_end", id }
-			}
-			activeToolCallIds.clear()
 		}
 	}
 

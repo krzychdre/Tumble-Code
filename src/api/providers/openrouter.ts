@@ -63,16 +63,6 @@ const OpenRouterErrorResponseSchema = z.object({
 		.optional(),
 })
 
-// OpenRouter error structure that may include error.metadata.raw with actual upstream error
-// This is for caught exceptions which have the error wrapped in an "error" property
-interface OpenRouterErrorResponse {
-	error?: {
-		message?: string
-		code?: number
-		metadata?: { raw?: string }
-	}
-}
-
 // Direct error object structure (for streaming errors passed directly)
 interface OpenRouterError {
 	message?: string

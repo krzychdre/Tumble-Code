@@ -10,7 +10,6 @@ import {
 	OpenAiNativeModelId,
 	openAiNativeModels,
 	OPENAI_NATIVE_DEFAULT_TEMPERATURE,
-	type ReasoningEffort,
 	type VerbosityLevel,
 	type ReasoningEffortExtended,
 	type ServiceTier,
@@ -209,7 +208,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		this.streamedToolCallIds.clear()
 
 		// Use Responses API for ALL models
-		const { verbosity, reasoning } = this.getModel()
+		const { verbosity } = this.getModel()
 
 		// Resolve reasoning effort for models that support it
 		const reasoningEffort = this.getReasoningEffort(model)
@@ -691,8 +690,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		const decoder = new TextDecoder()
 		let buffer = ""
 		let hasContent = false
-		let totalInputTokens = 0
-		let totalOutputTokens = 0
 
 		try {
 			while (true) {
@@ -1533,7 +1530,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 		try {
 			const model = this.getModel()
-			const { verbosity, reasoning } = model
+			const { verbosity } = model
 
 			// Resolve reasoning effort for models that support it
 			const reasoningEffort = this.getReasoningEffort(model)

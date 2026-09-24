@@ -917,6 +917,8 @@ describe("getModelParams", () => {
 				settings: {},
 				model,
 			})
+
+			expect(result.reasoning).toBeUndefined()
 		})
 	})
 

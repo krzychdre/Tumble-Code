@@ -3,7 +3,7 @@ import { LLM, LLMInfo, LLMInstanceInfo, LMStudioClient } from "@lmstudio/sdk"
 
 import { type ModelInfo, lMStudioDefaultModelInfo } from "@roo-code/types"
 
-import { flushModels, getModels } from "./modelCache"
+import { flushModels } from "./modelCache"
 
 const modelsWithLoadedDetails = new Set<string>()
 

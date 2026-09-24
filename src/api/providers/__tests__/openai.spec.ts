@@ -4,7 +4,7 @@ import { OpenAiHandler, getOpenAiModels } from "../openai"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import { openAiModelInfoSaneDefaults, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import { DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
 import { Package } from "../../../shared/package"
 import axios from "axios"
 
@@ -396,9 +396,10 @@ describe("OpenAiHandler", () => {
 				arguments: '"value"}',
 			})
 
-			// Verify tool_call_end event is emitted when finish_reason is "tool_calls"
+			// No tool_call_end chunk: TaskStreamProcessor.processChunk has no case for it, the
+			// task's NativeToolCallParser finalizes the tool call at stream end instead.
 			const toolCallEndChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
-			expect(toolCallEndChunks).toHaveLength(1)
+			expect(toolCallEndChunks).toHaveLength(0)
 		})
 
 		it("should yield tool calls even when finish_reason is not set (fallback behavior)", async () => {
@@ -1070,9 +1071,10 @@ describe("OpenAiHandler", () => {
 				arguments: "{}",
 			})
 
-			// Verify tool_call_end event is emitted when finish_reason is "tool_calls"
+			// No tool_call_end chunk: TaskStreamProcessor.processChunk has no case for it, the
+			// task's NativeToolCallParser finalizes the tool call at stream end instead.
 			const toolCallEndChunks = chunks.filter((chunk) => chunk.type === "tool_call_end")
-			expect(toolCallEndChunks).toHaveLength(1)
+			expect(toolCallEndChunks).toHaveLength(0)
 		})
 
 		it("should yield tool calls for O3 model even when finish_reason is not set (fallback behavior)", async () => {
@@ -1886,7 +1888,8 @@ describe("cancelRequest", () => {
 		await handler.completePrompt("test2")
 		const secondClient = (handler as any).client
 
-		// Client should be recreated (not null)
+		// Client should be recreated: a new instance, not the destroyed one
 		expect(secondClient).not.toBeNull()
+		expect(secondClient).not.toBe(firstClient)
 	})
 })

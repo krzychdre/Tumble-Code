@@ -10,9 +10,9 @@ type Message = OpenAI.Chat.ChatCompletionMessageParam
 type AnthropicMessage = Anthropic.Messages.MessageParam
 
 /**
- * Extended assistant message type to support DeepSeek's interleaved thinking.
- * DeepSeek's API returns reasoning_content alongside content and tool_calls,
- * and requires it to be passed back in subsequent requests within the same turn.
+ * Extended assistant message type to support interleaved thinking (DeepSeek, Z.ai GLM).
+ * These APIs return reasoning_content alongside content and tool_calls,
+ * and require it to be passed back in subsequent requests within the same turn.
  */
 export type DeepSeekAssistantMessage = AssistantMessage & {
 	reasoning_content?: string
@@ -21,6 +21,8 @@ export type DeepSeekAssistantMessage = AssistantMessage & {
 /**
  * Converts Anthropic messages to OpenAI format while merging consecutive messages with the same role.
  * This is required for DeepSeek Reasoner which does not support successive messages with the same role.
+ * Z.ai's GLM thinking models use it too: their interleaved thinking has the same contract
+ * (reasoning_content is sent back, and a user message makes the API drop it).
  *
  * For DeepSeek's interleaved thinking mode:
  * - Preserves reasoning_content on assistant messages for tool call continuations

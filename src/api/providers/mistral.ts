@@ -15,7 +15,6 @@ import { ApiHandlerOptions } from "../../shared/api"
 
 import { convertToMistralMessages } from "../transform/mistral-format"
 import { ApiStream } from "../transform/stream"
-import { handleProviderError } from "./utils/error-handler"
 
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
