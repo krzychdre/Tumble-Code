@@ -249,9 +249,17 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		setChangeDetected(false)
 	}, [currentApiConfigName, extensionState])
 
-	// Bust the cache when settings are imported.
+	// Bust the cache when settings are imported, once per import. The host
+	// clears settingsImportedAt with `undefined` right after the import push,
+	// but postMessage drops undefined values and mergeExtensionState keeps the
+	// old timestamp, so the flag stays truthy for every later state push. React
+	// to a new timestamp only, otherwise unrelated updates discard unsaved edits.
+	// Seeded with the value at mount: cachedState already starts from the
+	// imported state, so a timestamp left over from an earlier import is handled.
+	const handledImportRef = useRef(settingsImportedAt)
 	useEffect(() => {
-		if (settingsImportedAt) {
+		if (settingsImportedAt && settingsImportedAt !== handledImportRef.current) {
+			handledImportRef.current = settingsImportedAt
 			setCachedState((prevCachedState) => ({ ...prevCachedState, ...extensionState }))
 			setChangeDetected(false)
 		}
