@@ -30,6 +30,7 @@ import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
 import type { User } from "@/lib/sdk/index.js"
 import { toProviderSettings } from "@/lib/utils/provider-config.js"
+import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
 import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
@@ -390,6 +391,19 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		if (!fs.existsSync(bundlePath)) {
 			this.restoreConsole()
 			throw new Error(`Extension bundle not found at: ${bundlePath}`)
+		}
+
+		// The integration suite's scripted model (see fake-ai-module.ts). It
+		// must be in the settings before the extension loads, because
+		// markWebviewReady sends them during activation. The per-mode settings
+		// are replaced too: a resumed task (after a cancel or --session-id)
+		// and a mode switch take their provider from those, not from the
+		// startup settings.
+		const fakeAiSettings = await loadFakeAiProviderSettings()
+
+		if (fakeAiSettings) {
+			this.initialSettings = { ...this.initialSettings, ...fakeAiSettings }
+			this.options.modeProviderSettings = { base: fakeAiSettings, modes: {} }
 		}
 
 		let storageDir: string | undefined
