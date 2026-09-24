@@ -305,7 +305,7 @@ async def test_completions_for_task_reads_only_that_task_and_only_completions(db
     )
     await db_session.commit()
 
-    found = await completions_for_task(db_session, "task-m4")
+    found = await completions_for_task(db_session, "task-m4", "user_test")
 
     assert [c.model for c in found] == ["wanted"]
 
