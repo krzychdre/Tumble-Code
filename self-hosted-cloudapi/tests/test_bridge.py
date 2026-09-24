@@ -44,12 +44,12 @@ def _clean_registry():
     registry._meta.clear()
     registry._ext_sid_by_user.clear()
     registry._instance_by_user.clear()
-    getattr(registry, "_task_access_by_sid", {}).clear()
+    registry._task_access_by_sid.clear()
     yield
     registry._meta.clear()
     registry._ext_sid_by_user.clear()
     registry._instance_by_user.clear()
-    getattr(registry, "_task_access_by_sid", {}).clear()
+    registry._task_access_by_sid.clear()
 
 
 @pytest.fixture

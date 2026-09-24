@@ -11,8 +11,9 @@ Auth happens once, at the socket.io handshake (`connect`):
 - browser: presents the signed `tumble_session` cookie (sent automatically on a
   same-origin connection). Validated with `resolve_web_user`.
 
-Both resolve to a `user_id`; a browser may only join/drive tasks it owns, and a
-command is relayed only to that same user's extension socket.
+Both resolve to a `user_id`; a browser may only join/drive tasks it owns, a
+command is relayed only to that same user's extension socket, and an
+extension's task event is relayed and saved only for a task its user owns.
 """
 
 import logging
@@ -103,6 +104,18 @@ async def _user_owns_task(user_id: str, task_id: str) -> bool:
         return result.scalar_one_or_none() is not None
 
 
+async def _task_access(user_id: str, task_id: str) -> Optional[bool]:
+    """True if ``user_id`` owns the task, False if another user does, None if
+    there is no such task (yet)."""
+    async with async_session_factory() as db:
+        owner = (
+            await db.execute(select(Task.user_id).where(Task.id == task_id))
+        ).scalar_one_or_none()
+    if owner is None:
+        return None
+    return owner == user_id
+
+
 # --- lifecycle ------------------------------------------------------------
 
 
@@ -172,7 +185,24 @@ async def on_extension_unregister(sid, data=None):
 
 @sio.on(TASK_EVENT)
 async def on_task_event(sid, data):
-    """An event from the extension's task: relay to browsers + persist messages."""
+    """An event from the extension's task: persist messages + relay to browsers.
+
+    An event is relayed only into the room of a task the sending socket's user
+    owns; before, it was broadcast first and checked (by the save) afterwards,
+    so any extension could inject events into another user's live view.
+
+    Ownership comes from the per-socket cache in the registry, so the hot path
+    (every streamed chunk) costs no extra query once it is known:
+    - known owner: relay at once, then save, exactly as before;
+    - known foreign: drop the event (neither relayed nor saved);
+    - not known yet, message event: save first. The save get-or-creates the
+      task for the sender (a new task has no row until its first message) and
+      reports whether the task is theirs; relay only then;
+    - not known yet, other events: look the owner up. With no row yet the
+      event is dropped and nothing is cached: nobody can be watching the room
+      (task:join requires an owned row), and the row may be created by the
+      next message or a backfill, after which the event type flows normally.
+    """
     meta = registry.meta(sid)
     if not meta or meta["role"] != "extension":
         return
@@ -182,31 +212,63 @@ async def on_task_event(sid, data):
     if not task_id:
         return
 
-    # Relay to every browser watching this task.
-    await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
-
     user_id = meta["user_id"]
     evt_type = data.get("type")
 
     if evt_type == EVT_INSTANCE_STATE:
+        # The sender's own instance record: independent of the task it names.
         registry.update_instance_state(user_id, data)
 
-    if evt_type == EVT_MESSAGE and isinstance(data.get("message"), dict):
-        # Worktree root: prefer the value the originating window stamped on the
-        # event — correct even when several windows share one cloud account, since
-        # the registry tracks only one instance per user. Fall back to the
-        # registered instance for older clients that don't send it.
-        workspace_path = data.get("workspacePath") or (
-            registry.instance(user_id) or {}
-        ).get("workspacePath")
+    owned = registry.task_access(sid, task_id)
+    if owned is False:
+        return
+
+    is_message = evt_type == EVT_MESSAGE and isinstance(data.get("message"), dict)
+
+    if owned:
+        await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
+        if is_message and await _save_message(task_id, user_id, data) is False:
+            # Only if the row was deleted and recreated by another user while
+            # this socket was open (task ids are client-chosen UUIDs, so in
+            # practice never); stop relaying from here on.
+            registry.remember_task_access(sid, task_id, False)
+        return
+
+    if is_message:
+        owned = await _save_message(task_id, user_id, data)
+    else:
         try:
-            async with async_session_factory() as db:
-                await upsert_task_message(
-                    db, task_id, user_id, data["message"], workspace_path=workspace_path
-                )
-                await db.commit()
-        except Exception as exc:  # persistence must never break the live relay
-            logger.warning("[bridge] failed to persist task message: %s", exc)
+            owned = await _task_access(user_id, task_id)
+        except Exception as exc:
+            logger.warning("[bridge] failed to look up task ownership: %s", exc)
+            owned = None
+    if owned is None:
+        return
+    registry.remember_task_access(sid, task_id, owned)
+    if owned:
+        await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
+
+
+async def _save_message(task_id: str, user_id: str, data: dict) -> Optional[bool]:
+    """Persist a message event; return whether the task is the user's, or None
+    when the save failed (ownership then stays unknown)."""
+    # Worktree root: prefer the value the originating window stamped on the
+    # event, correct even when several windows share one cloud account, since
+    # the registry tracks only one instance per user. Fall back to the
+    # registered instance for older clients that don't send it.
+    workspace_path = data.get("workspacePath") or (
+        registry.instance(user_id) or {}
+    ).get("workspacePath")
+    try:
+        async with async_session_factory() as db:
+            owned = await upsert_task_message(
+                db, task_id, user_id, data["message"], workspace_path=workspace_path
+            )
+            await db.commit()
+        return owned
+    except Exception as exc:  # persistence must never break the live relay
+        logger.warning("[bridge] failed to persist task message: %s", exc)
+        return None
 
 
 # --- browser → server -----------------------------------------------------
