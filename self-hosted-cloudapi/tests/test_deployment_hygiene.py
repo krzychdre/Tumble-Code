@@ -74,7 +74,7 @@ def test_build_context_excludes_secrets_and_local_state(path):
 
 
 @pytest.mark.parametrize(
-    "path", [".env.example", "src/main.py", "pyproject.toml", "uv.lock", "docker-entrypoint.sh"]
+    "path", [".env.example", "src/main.py", "pyproject.toml", "uv.lock", "docker-entrypoint.sh", "db-migrate.sh"]
 )
 def test_build_context_keeps_the_application(path):
     assert not _dockerignore_excludes(path), path

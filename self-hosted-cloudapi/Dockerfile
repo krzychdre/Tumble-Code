@@ -28,5 +28,5 @@ RUN useradd --create-home --uid 10001 --user-group app && chown -R app:app /app
 USER app
 
 # Reconcile the schema (create_all + stamp on a fresh DB, upgrade on a managed
-# one — see docker-entrypoint.sh / src/db_bootstrap.py), then start the app.
+# one, see db-migrate.sh and src/db_bootstrap.py), then start the app.
 CMD ["./docker-entrypoint.sh"]

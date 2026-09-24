@@ -143,12 +143,20 @@ cp .env.example .env          # set DATABASE_URL + the AUTHENTIK_* values
 # Install dependencies
 uv sync
 
-# Run database migrations
-uv run alembic upgrade head
+# Create the schema on an empty database, or migrate an existing one
+make migrate                  # same as: sh ./db-migrate.sh
 
 # Start the server
 uv run uvicorn src.main:app --reload --host 0.0.0.0 --port 8085
 ```
+
+`make migrate` runs the same schema step as the container on start
+([`db-migrate.sh`](db-migrate.sh)). Do not run a bare `alembic upgrade head` on
+an empty database: the first migration is a no-op baseline and the next one
+alters tables that only the ORM models' `create_all` creates, so it fails.
+[`src/db_bootstrap.py`](src/db_bootstrap.py) tells the three cases apart
+(FRESH: build the schema and stamp head; LEGACY: tables without Alembic
+history, stamp the baseline and upgrade; MANAGED: upgrade).
 
 For a non-compose deployment, leave `AUTHENTIK_INTERNAL_URL` unset — it falls
 back to `AUTHENTIK_BASE_URL`.
