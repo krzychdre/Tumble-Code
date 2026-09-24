@@ -210,3 +210,9 @@ where their files are disjoint; the coordinator merges in order.
   pre-May text only (no new wording for weak models; mode-independent). CI note: the first run failed in `bundle`
   with `ENOENT src/node_modules/esbuild-wasm/wasm_exec_node.js` (an install glitch; main was green with the same
   lockfile); `gh pr update-branch` reran it green. If it recurs it becomes a Phase 0 item.
+- **DEF-C8:** CLOSED, not a bug (verified 2026-09-24 on `9d8e65af2`). `AutoDreamContext.taskHistory` declares its
+  own `{ lastModified?: number }` shape and the only production caller, `TaskLifecycle.ts:728-739`, maps
+  `HistoryItem.ts` into it (added together with the call site in `359ea2407`, #118), so the session gate always saw
+  real timestamps. The audit read the type, not the call site. Optional follow-up (not in Phase 1): no test covers
+  that mapping (`autoDream.spec`/`consolidationLock.spec` feed synthetic `{ lastModified }`); a TaskLifecycle test
+  would pin it. Renaming the field is `src/core/memory` work ("Do not touch").
