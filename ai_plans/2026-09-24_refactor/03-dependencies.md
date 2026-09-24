@@ -82,6 +82,14 @@ archiver); about a quarter of all advisory entries, including both critical Next
 
 **Gate:** G1 and G2; `pnpm install --frozen-lockfile` works; lockfile diff shows only removals.
 
+**Status (2026-09-24):** DONE in #252. `apps/web-evals`, `packages/evals`, `packages/ipc`, `evals.yml`, the root
+`evals` script, the Next.js eslint/tsconfig presets and the `evals-context` skill deleted; lockfile lost 170
+packages, nothing added. `API` keeps every public method; `enableLogging` is a constructor flag defaulting to
+false (today's behaviour for every user). Kept on purpose: the IPC types in `@roo-code/types` (`ipc.ts`,
+`RooCodeIpcServer`, `ipc.test.ts`) and the `CommandsResponse`/`ModesResponse`/`ModelsResponse` event names, now
+unused but part of the published types package (owner decision whether to drop them). Out of scope:
+`src/services/command/built-in-commands.ts` `/init` prompt examples still name `packages/evals` and `packages/ipc`.
+
 ### DEP-2 Remove dependencies with zero importers
 
 **Evidence:** knip's `ignoreDependencies` hides them (`knip.json:19-37` and per-workspace lists).
