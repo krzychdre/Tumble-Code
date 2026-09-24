@@ -125,6 +125,13 @@ current major if every consumer accepts it (check with `pnpm why glob`).
 **Gate:** G1, G2, G5 (VSIX builds, the extension activates, one task runs end to end). After DEP-1 to DEP-3,
 TEST-6 becomes blocking.
 
+**Status (2026-09-24), extension and packages group:** DONE in #257. `pnpm audit --prod` outside webview-ui went
+from 1 critical, 44 high, 24 moderate, 2 low to 1 moderate (`uuid`, accepted: exceljs and gaxios call only `v4()`,
+belongs in the TEST-6 allowlist). MCP SDK 1.26.0 to 1.30.1 in src and agent-interchange (a single stdio message
+over 10 MB is now rejected); `glob` override `^13.0.6`; new `fast-xml-parser ^5.7.0` override because
+`@aws-sdk/xml-builder` 3.921 pins 5.2.5 and newer `@aws-sdk/*` need Node 20 (drop it after DEP-4); `undici
+^6.28.1`. `shell-quote` is declared only by webview-ui. Webview group: separate branch.
+
 ### DEP-4 Runtime floor and type overrides
 
 **Change:**
