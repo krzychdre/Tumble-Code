@@ -19,16 +19,19 @@ const memoryCache = new NodeCache({ stdTTL: 5 * 60, checkperiod: 5 * 60 })
 
 const getCacheKey = (router: FetchableModelSourceId, modelId: string) => sanitize(`${router}_${modelId}`)
 
-async function writeModelEndpoints(key: string, data: ModelRecord) {
-	const filename = `${key}_endpoints.json`
+// The only place that turns a cache key into a file path, so the write and the
+// read fallback can never disagree about which file holds a model's endpoints.
+async function getEndpointsFilePath(key: string): Promise<string> {
 	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
-	await safeWriteJson(path.join(cacheDir, filename), data)
+	return path.join(cacheDir, `${key}_endpoints.json`)
+}
+
+async function writeModelEndpoints(key: string, data: ModelRecord) {
+	await safeWriteJson(await getEndpointsFilePath(key), data)
 }
 
 async function readModelEndpoints(key: string): Promise<ModelRecord | undefined> {
-	const filename = `${key}_endpoints.json`
-	const cacheDir = await getCacheDirectoryPath(ContextProxy.instance.globalStorageUri.fsPath)
-	const filePath = path.join(cacheDir, filename)
+	const filePath = await getEndpointsFilePath(key)
 	const exists = await fileExistsAtPath(filePath)
 	return exists ? JSON.parse(await fs.readFile(filePath, "utf8")) : undefined
 }
@@ -91,7 +94,7 @@ export const getModelEndpoints = async ({
 	}
 
 	try {
-		modelProviders = await readModelEndpoints(router)
+		modelProviders = await readModelEndpoints(key)
 		// console.log(`[getModelProviders] read ${key} endpoints from file cache`)
 	} catch (error) {
 		console.error(`[getModelProviders] error reading ${key} endpoints from file cache`, error)
