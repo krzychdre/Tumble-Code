@@ -70,3 +70,25 @@ def test_a_bridge_path_that_cannot_be_mounted_is_refused(value):
     # shadow every route registered after it; fail at startup instead.
     with pytest.raises(ValidationError, match="BRIDGE_PATH"):
         Settings(bridge_path=value)
+
+
+# The two transports cross the Starlette Mount differently: polling is an HTTP
+# request (pinned by test_the_default_app_still_listens_on_bridge above), the
+# upgrade the extension actually uses is a WebSocket scope. The Mount's path
+# handling changed under us once already (see the NOTE above mount_bridge in
+# src/main.py), so the WebSocket path is pinned too: a Starlette upgrade that
+# breaks it fails here instead of in a live session (DEP-5).
+
+
+def test_the_default_bridge_accepts_a_websocket_handshake():
+    from src.main import app
+
+    with TestClient(app).websocket_connect(
+        "/bridge/socket.io/?EIO=4&transport=websocket",
+        # A real client (the ws package, a browser) sends these; engine.io
+        # refuses the upgrade without them.
+        headers={"Upgrade": "websocket", "Connection": "Upgrade"},
+    ) as ws:
+        opening = ws.receive_text()
+    assert opening.startswith("0{")
+    assert '"sid"' in opening
