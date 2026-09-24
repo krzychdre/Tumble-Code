@@ -114,6 +114,12 @@ export function PickerSelect<T extends AutocompleteItem>({
 	// search delivers its results (or the highlight moves) a key press can
 	// still run the closure of the previous render. Without this, Enter typed
 	// immediately after the list filtered accepted nothing.
+	//
+	// The arrow handlers also advance selectedIndexRef themselves before they
+	// report the move: the parent owns the index and hands it back only after
+	// it has rendered, so keys written faster than that (a held arrow, a fast
+	// typist) would otherwise all start from the old index. The render-time
+	// assignment below still makes the parent's index win at every render.
 	const resultsRef = useRef(results)
 	resultsRef.current = results
 	const selectedIndexRef = useRef(selectedIndex)
@@ -150,12 +156,14 @@ export function PickerSelect<T extends AutocompleteItem>({
 
 			if (key.upArrow) {
 				const newIndex = currentIndex > 0 ? currentIndex - 1 : currentResults.length - 1
+				selectedIndexRef.current = newIndex
 				onIndexChange(newIndex)
 				return
 			}
 
 			if (key.downArrow) {
 				const newIndex = currentIndex < currentResults.length - 1 ? currentIndex + 1 : 0
+				selectedIndexRef.current = newIndex
 				onIndexChange(newIndex)
 				return
 			}
