@@ -13,6 +13,7 @@ import {
 	ZAI_DEFAULT_TEMPERATURE,
 } from "@roo-code/types"
 
+import { getModelMaxOutputTokens } from "../../../shared/api"
 import { ZAiHandler } from "../zai"
 
 vitest.mock("openai", () => {
@@ -536,6 +537,50 @@ describe("ZAiHandler", () => {
 				expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			)
 		})
+	})
+
+	describe("stale modelMaxTokens after a model switch (DEF-C22)", () => {
+		// The override is a profile setting, so it survives switching to another model
+		// (or to a mode whose profile points at another model). The request must use the
+		// same shared rule the task uses to reserve output space.
+		const cases = [
+			// glm-5.3 has the slider: the override is honored but capped at 131_072
+			// (Z.ai rejects max_tokens above 131_072).
+			{ modelId: "glm-5.3", stale: 200_000, expected: 131_072 },
+			// glm-4.7 has no slider: a leftover value from glm-5.3 must not leak through.
+			{ modelId: "glm-4.7", stale: 131_072, expected: 16_384 },
+		] as const
+
+		for (const { modelId, stale, expected } of cases) {
+			it(`caps a stale override of ${stale} to ${expected} for ${modelId}`, async () => {
+				const options = {
+					apiModelId: modelId,
+					zaiApiKey: "test-zai-api-key",
+					zaiApiLine: "international_coding" as const,
+					modelMaxTokens: stale,
+				}
+				const staleHandler = new ZAiHandler(options)
+
+				mockCreate.mockImplementationOnce(() => ({
+					[Symbol.asyncIterator]: () => ({
+						async next() {
+							return { done: true }
+						},
+					}),
+				}))
+
+				await staleHandler.createMessage("system prompt", []).next()
+
+				const shared = getModelMaxOutputTokens({
+					modelId,
+					model: internationalZAiModels[modelId],
+					settings: options,
+					format: "openai",
+				})
+				expect(shared).toBe(expected)
+				expect(mockCreate.mock.calls[0][0].max_tokens).toBe(expected)
+			})
+		}
 	})
 
 	describe("GLM-4.7 Thinking Mode", () => {
