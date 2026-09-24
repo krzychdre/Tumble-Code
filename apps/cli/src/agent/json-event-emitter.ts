@@ -15,6 +15,7 @@
  */
 
 import type { ClineMessage } from "@roo-code/types"
+import { consolidateApiRequests, consolidateTokenUsage } from "@roo-code/core/cli"
 
 import type { JsonEvent, JsonEventCost, JsonEventQueueItem, JsonFinalOutput } from "@/types/json-events.js"
 
@@ -54,24 +55,38 @@ function parseToolInfo(text: string | undefined): { name: string; input: Record<
 	}
 }
 
-/**
- * Parse API request cost information from api_req_started message text.
- */
-function parseApiReqCost(text: string | undefined): JsonEventCost | undefined {
-	if (!text) return undefined
+/** The messages that carry the price of a task (as counted by consolidateTokenUsage). */
+function isCostMessage(msg: ClineMessage): boolean {
+	return msg.type === "say" && (msg.say === "api_req_started" || msg.say === "condense_context")
+}
+
+function hasReportedCost(msg: ClineMessage): boolean {
+	if (msg.say === "condense_context") {
+		return typeof msg.contextCondense?.cost === "number"
+	}
 	try {
-		const parsed = JSON.parse(text)
-		return parsed.cost !== undefined
-			? {
-					totalCost: parsed.cost,
-					inputTokens: parsed.tokensIn,
-					outputTokens: parsed.tokensOut,
-					cacheWrites: parsed.cacheWrites,
-					cacheReads: parsed.cacheReads,
-				}
-			: undefined
+		return typeof JSON.parse(msg.text || "{}").cost === "number"
 	} catch {
+		return false
+	}
+}
+
+/**
+ * The cost of the whole task: every API request (and context condensing),
+ * summed by the same helper the TUI footer and the extension use. Undefined
+ * while no request has reported a price.
+ */
+function computeTaskCost(messages: ClineMessage[]): JsonEventCost | undefined {
+	if (!messages.some(hasReportedCost)) {
 		return undefined
+	}
+	const usage = consolidateTokenUsage(consolidateApiRequests(messages))
+	return {
+		totalCost: usage.totalCost,
+		inputTokens: usage.totalTokensIn,
+		outputTokens: usage.totalTokensOut,
+		cacheWrites: usage.totalCacheWrites,
+		cacheReads: usage.totalCacheReads,
 	}
 }
 
@@ -99,7 +114,13 @@ export class JsonEventEmitter {
 	private events: JsonEvent[] = []
 	private unsubscribers: (() => void)[] = []
 	private pendingWrites = new Set<Promise<void>>()
-	private lastCost: JsonEventCost | undefined
+	/**
+	 * The latest version of each cost-bearing message, keyed by ts. The
+	 * extension writes a request's price into its api_req_started message in
+	 * place, after the message was first sent.
+	 */
+	private costMessages = new Map<number, ClineMessage>()
+	private client: ExtensionClient | undefined
 	private requestIdProvider: () => string | undefined
 	private schemaVersion: number
 	private protocol: string
@@ -145,6 +166,8 @@ export class JsonEventEmitter {
 	 * Attach to an ExtensionClient and subscribe to its events.
 	 */
 	attachToClient(client: ExtensionClient): void {
+		this.client = client
+
 		// Subscribe to message events
 		const unsubMessage = client.on("message", (msg) => this.handleMessage(msg, false))
 		const unsubMessageUpdated = client.on("messageUpdated", (msg) => this.handleMessage(msg, true))
@@ -476,6 +499,12 @@ export class JsonEventEmitter {
 	private handleMessage(msg: ClineMessage, _isUpdate: boolean): void {
 		const isDone = !msg.partial
 
+		// Before the duplicate filter below: a request's cost arrives as an
+		// update of a message that was already seen complete.
+		if (isCostMessage(msg)) {
+			this.costMessages.set(msg.ts, msg)
+		}
+
 		// In json mode, only emit complete (non-partial) messages
 		if (this.mode === "json" && msg.partial) {
 			return
@@ -547,13 +576,9 @@ export class JsonEventEmitter {
 				}
 				break
 
-			case "api_req_started": {
-				const cost = parseApiReqCost(msg.text)
-				if (cost) {
-					this.lastCost = cost
-				}
+			case "api_req_started":
+				// Counted by getTaskCost().
 				break
-			}
 
 			case "mcp_server_response":
 				this.emitEvent({
@@ -788,7 +813,7 @@ export class JsonEventEmitter {
 			content: resultContent,
 			done: true,
 			success: event.success,
-			cost: this.lastCost,
+			cost: this.getTaskCost(),
 		})
 
 		// Prevent stale completion content from leaking into later turns.
@@ -799,6 +824,21 @@ export class JsonEventEmitter {
 		if (this.mode === "json") {
 			this.outputFinalResult(event.success, resultContent)
 		}
+	}
+
+	/**
+	 * The cost of the task so far: the messages seen here, updated with the
+	 * client's current copy of the task's messages (which holds the prices
+	 * written after a message was first sent).
+	 */
+	private getTaskCost(): JsonEventCost | undefined {
+		const byTs = new Map(this.costMessages)
+		for (const msg of this.client?.getMessages() ?? []) {
+			if (isCostMessage(msg)) {
+				byTs.set(msg.ts, msg)
+			}
+		}
+		return computeTaskCost([...byTs.values()].sort((a, b) => a.ts - b.ts))
 	}
 
 	/**
@@ -843,7 +883,7 @@ export class JsonEventEmitter {
 			type: "result",
 			success,
 			content,
-			cost: this.lastCost,
+			cost: this.getTaskCost(),
 			events: this.events.filter((e) => e.type !== "result"), // Exclude the result event itself
 		}
 
@@ -886,7 +926,7 @@ export class JsonEventEmitter {
 	 */
 	clear(): void {
 		this.events = []
-		this.lastCost = undefined
+		this.costMessages.clear()
 		this.seenMessageIds.clear()
 		this.previousContent.clear()
 		this.previousToolUseContent.clear()

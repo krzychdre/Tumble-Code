@@ -1,6 +1,8 @@
 import { memo, useMemo } from "react"
 import { Box, Text } from "ink"
 
+import { firstUsableSuggestion } from "@roo-code/types"
+
 import * as theme from "../../theme.js"
 import SelectList, { type SelectItem } from "../primitives/SelectList.js"
 import type { PendingAsk } from "../../types.js"
@@ -71,7 +73,7 @@ function FollowupDialog({ ask, onSelect, onCustomInput, countdownSeconds, isActi
 		}
 	}
 
-	const firstSuggestion = ask.suggestions?.[0]?.answer ?? ""
+	const firstSuggestion = firstUsableSuggestion(ask.suggestions)?.answer ?? ""
 
 	return (
 		<Box borderStyle="round" borderColor={theme.permission} paddingX={1} flexDirection="column">

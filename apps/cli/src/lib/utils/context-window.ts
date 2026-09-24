@@ -1,15 +1,70 @@
-import { openAiModelInfoSaneDefaults, type ProviderSettings } from "@roo-code/types"
+import {
+	anthropicModels,
+	bedrockModels,
+	deepSeekModels,
+	geminiModels,
+	getProviderDefaultModelId,
+	internationalZAiModels,
+	isProviderName,
+	mainlandZAiModels,
+	minimaxModels,
+	mistralModels,
+	moonshotModels,
+	openAiCodexModels,
+	openAiModelInfoSaneDefaults,
+	openAiNativeModels,
+	qwenCodeModels,
+	vertexModels,
+	xaiModels,
+	zaiApiLineConfigs,
+	type ModelInfo,
+	type ProviderName,
+	type ProviderSettings,
+} from "@roo-code/types"
 
 import type { RouterModels } from "@/ui/store.js"
 
 const DEFAULT_CONTEXT_WINDOW = 200_000
 
 /**
- * Looks up the context window size for the current model from routerModels.
+ * Built-in model tables of the providers that never appear in routerModels
+ * (the same tables the extension's handlers size their models from).
+ */
+const STATIC_MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
+	anthropic: anthropicModels,
+	bedrock: bedrockModels,
+	deepseek: deepSeekModels,
+	moonshot: moonshotModels,
+	gemini: geminiModels,
+	mistral: mistralModels,
+	"openai-native": openAiNativeModels,
+	"openai-codex": openAiCodexModels,
+	"qwen-code": qwenCodeModels,
+	vertex: vertexModels,
+	xai: xaiModels,
+	zai: internationalZAiModels,
+	minimax: minimaxModels,
+}
+
+function isChinaZai(config: ProviderSettings): boolean {
+	return zaiApiLineConfigs[config.zaiApiLine ?? "international_coding"].isChina
+}
+
+function getStaticModels(config: ProviderSettings): Record<string, ModelInfo> | undefined {
+	if (config.apiProvider === "zai" && isChinaZai(config)) {
+		return mainlandZAiModels
+	}
+	return isProviderName(config.apiProvider) ? STATIC_MODELS_BY_PROVIDER[config.apiProvider] : undefined
+}
+
+/**
+ * Looks up the context window size for the current model: routerModels for
+ * the providers whose model list is fetched, else the provider's built-in
+ * model table.
  *
  * @param routerModels - The router models data containing model info per provider
  * @param apiConfiguration - The current API configuration with provider and model ID
- * @returns The context window size, or DEFAULT_CONTEXT_WINDOW (200K) if not found
+ * @returns The context window size, or DEFAULT_CONTEXT_WINDOW (200K) if neither knows the model
  */
 export function getContextWindow(routerModels: RouterModels | null, apiConfiguration: ProviderSettings | null): number {
 	// The openai provider never reaches routerModels: its model source returns
@@ -21,21 +76,32 @@ export function getContextWindow(routerModels: RouterModels | null, apiConfigura
 		return apiConfiguration.openAiCustomModelInfo?.contextWindow ?? openAiModelInfoSaneDefaults.contextWindow
 	}
 
-	if (!routerModels || !apiConfiguration) {
+	if (!apiConfiguration) {
 		return DEFAULT_CONTEXT_WINDOW
 	}
 
 	const provider = apiConfiguration.apiProvider
-	const modelId = getModelIdForProvider(apiConfiguration)
 
-	if (!provider || !modelId) {
+	if (!provider) {
 		return DEFAULT_CONTEXT_WINDOW
 	}
 
-	const providerModels = routerModels[provider]
-	const modelInfo = providerModels?.[modelId]
+	// Without a model id the extension runs the provider's default model.
+	const modelId =
+		getModelIdForProvider(apiConfiguration) ||
+		(isProviderName(provider)
+			? getProviderDefaultModelId(provider, { isChina: provider === "zai" && isChinaZai(apiConfiguration) })
+			: undefined)
 
-	return modelInfo?.contextWindow ?? DEFAULT_CONTEXT_WINDOW
+	if (!modelId) {
+		return DEFAULT_CONTEXT_WINDOW
+	}
+
+	return (
+		routerModels?.[provider]?.[modelId]?.contextWindow ??
+		getStaticModels(apiConfiguration)?.[modelId]?.contextWindow ??
+		DEFAULT_CONTEXT_WINDOW
+	)
 }
 
 /**

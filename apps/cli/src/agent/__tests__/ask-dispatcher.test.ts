@@ -60,3 +60,34 @@ describe("AskDispatcher MCP approval (print mode with --require-approval)", () =
 		expect(sent).toEqual([{ type: "askResponse", askResponse: "noButtonClicked" }])
 	})
 })
+
+describe("AskDispatcher follow-up questions (print mode)", () => {
+	// DEF-C28: the timeout default was suggestions[0].answer, so a blank first
+	// suggestion sent an empty reply although "Yes" was offered.
+	it("defaults to the first suggestion with a usable answer when the prompt times out", async () => {
+		const sent: WebviewMessage[] = []
+		const promptManager = {
+			promptWithTimeout: async (_prompt: string, _timeoutMs: number, defaultValue: string) => ({
+				value: defaultValue,
+				timedOut: true,
+				cancelled: false,
+			}),
+		} as unknown as PromptManager
+		const dispatcher = new AskDispatcher({
+			outputManager: { output: () => {}, markDisplayed: () => {} } as unknown as OutputManager,
+			promptManager,
+			sendMessage: (message) => sent.push(message),
+			nonInteractive: true,
+		})
+
+		await dispatcher.handleAsk({
+			ts: 1,
+			type: "ask",
+			ask: "followup",
+			text: JSON.stringify({ question: "Proceed?", suggest: [{ answer: " " }, { answer: "Yes" }] }),
+			partial: false,
+		})
+
+		expect(sent).toEqual([{ type: "askResponse", askResponse: "messageResponse", text: "Yes" }])
+	})
+})

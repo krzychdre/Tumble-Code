@@ -23,6 +23,8 @@ import {
 	isInteractiveAsk,
 	isResumableAsk,
 	isNonBlockingAsk,
+	firstUsableSuggestion,
+	hasUsableAnswer,
 } from "@roo-code/types"
 import { debugLog } from "@roo-code/core/cli"
 
@@ -295,7 +297,9 @@ export class AskDispatcher {
 		try {
 			const data = JSON.parse(text)
 			question = data.question || text
-			suggestions = Array.isArray(data.suggest) ? data.suggest : []
+			// Only suggestions with a usable answer are offered (and numbered);
+			// a blank one must never become the default reply.
+			suggestions = Array.isArray(data.suggest) ? data.suggest.filter(hasUsableAnswer) : []
 		} catch {
 			// Use raw text if not JSON
 		}
@@ -312,8 +316,7 @@ export class AskDispatcher {
 			this.outputManager.output("")
 		}
 
-		const firstSuggestion = suggestions.length > 0 ? suggestions[0] : null
-		const defaultAnswer = firstSuggestion?.answer ?? ""
+		const defaultAnswer = firstUsableSuggestion(suggestions)?.answer ?? ""
 
 		if (this.nonInteractive) {
 			// Use timeout prompt in non-interactive mode
