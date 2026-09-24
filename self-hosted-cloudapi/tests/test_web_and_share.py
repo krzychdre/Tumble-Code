@@ -3062,6 +3062,39 @@ async def test_bulk_delete_returns_to_the_current_view(client, db_session, sessi
     assert resp.headers["location"] == "/app?scope=all&q=parser"
 
 
+@pytest.mark.parametrize(
+    "query",
+    ["a&scope=roots", "fix #12", "two words", "zażółć gęślą", "100% done+more"],
+)
+async def test_bulk_delete_redirect_keeps_the_search_intact(
+    client, db_session, session_factory, query
+):
+    """The search goes back into the redirect as a query value, so it must be
+    URL-encoded: an unencoded ``&`` starts a new parameter (here overriding the
+    scope), ``#`` cuts everything after it into a fragment the server never
+    sees, and ``+`` would read back as a space (DEF-C31)."""
+    from urllib.parse import parse_qs, urlsplit
+
+    await _seed_user(db_session)
+    await _seed_tasks(session_factory, ("enc1", "user_test", None))
+
+    _override_web_user(client.app)
+    try:
+        resp = client.post(
+            "/app/tasks/bulk-delete",
+            data={"task_ids": ["enc1"], "scope": "all", "q": query},
+            follow_redirects=False,
+        )
+    finally:
+        client.app.dependency_overrides.pop(get_web_user_optional, None)
+
+    assert resp.status_code == 303
+    location = urlsplit(resp.headers["location"])
+    assert location.path == "/app"
+    assert location.fragment == ""
+    assert parse_qs(location.query) == {"scope": ["all"], "q": [query]}
+
+
 async def test_list_offers_selection_controls(client, db_session, session_factory):
     await _seed_user(db_session)
     await _seed_tasks(session_factory, ("s1", "user_test", None))
