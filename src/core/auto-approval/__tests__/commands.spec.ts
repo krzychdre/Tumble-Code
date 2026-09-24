@@ -201,7 +201,7 @@ describe("getCommandDecision - denied commands the splitter must not hide (DEF-S
 		["variable as the command", "$CMD -rf x"],
 		["ANSI-C quoted command name", "$'\\x72m' -rf x"],
 		["glob in the command name", "/bin/r? -rf x"],
-		["case statement", "case x in a) rm -rf y;; esac"],
+		["case statement", "case x in a) echo y;; esac"],
 	])("%s: %j asks the user even with the * allow list", (_label, command) => {
 		expect(getCommandDecision(command, ["*"], deny)).toBe("ask_user")
 	})

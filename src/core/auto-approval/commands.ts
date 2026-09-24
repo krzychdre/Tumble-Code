@@ -1,4 +1,4 @@
-import { parseCommand } from "../../shared/parse-command"
+import { type AnalyzedCommand, analyzeCommand } from "../../shared/parse-command"
 
 /**
  * Detect dangerous parameter substitutions that could lead to command execution.
@@ -215,15 +215,17 @@ export type CommandDecision = "auto_approve" | "auto_deny" | "ask_user" | "malfo
  * to resolve conflicts between allowlist and denylist patterns.
  *
  * **Decision Logic:**
- * 1. **Dangerous Substitution Protection**: Commands with dangerous parameter expansions are never auto-approved
- * 2. **Command Parsing**: Split command chains (&&, ||, ;, |, &) into individual commands
- * 3. **Individual Validation**: For each sub-command, apply longest prefix match rule
- * 4. **Aggregation**: Combine decisions using "any denial blocks all" principle
+ * 1. **Command Parsing**: Split the command into every command bash runs: chains (&&, ||, ;, |, |&, &),
+ *    newlines, and the commands nested in substitutions, groups and unquoted heredoc bodies
+ * 2. **Individual Validation**: For each sub-command, apply longest prefix match rule
+ * 3. **Aggregation**: Combine decisions using "any denial blocks all" principle
+ * 4. **Uncertain split and dangerous substitutions**: never auto-approved
  *
  * **Return Values:**
  * - `"auto_approve"`: All sub-commands are explicitly allowed and no dangerous patterns detected
  * - `"auto_deny"`: At least one sub-command is explicitly denied
- * - `"ask_user"`: Mixed or no matches found, requires user decision, or contains dangerous patterns
+ * - `"ask_user"`: Mixed or no matches found, requires user decision, contains dangerous patterns, or uses
+ *   syntax the parser cannot split with certainty
  * - `"malformed_command"`: Command contains an unterminated quote -- a shell syntax error that must not be auto-approved
  *
  * **Examples:**
@@ -263,10 +265,10 @@ export function getCommandDecision(
 		return "auto_approve"
 	}
 
-	// Parse into sub-commands (split by &&, ||, ;, |). parseCommand also
-	// detects shell syntax errors (unterminated quotes, unclosed heredocs) and
-	// returns a non-null parseError in that case.
-	const { commands: subCommands, parseError } = parseCommand(command)
+	// Split into the commands bash will run, including the ones nested in
+	// substitutions, groups and heredoc bodies. The analysis also detects
+	// shell syntax errors (unterminated quotes, unclosed heredocs).
+	const { commands: subCommands, parseError, uncertainty } = analyzeCommand(command)
 
 	// Reject commands with a shell syntax error. An unterminated quote means
 	// the shell would report a parse error; in a compound command it may
@@ -277,17 +279,18 @@ export function getCommandDecision(
 		return "malformed_command"
 	}
 
-	// Check each sub-command and collect decisions
-	const decisions: CommandDecision[] = subCommands.map((cmd) => {
-		// Remove simple PowerShell-like redirections (e.g. 2>&1) before checking
-		const cmdWithoutRedirection = cmd.replace(/\d*>&\d*/, "").trim()
-
-		return getSingleCommandDecision(cmdWithoutRedirection, allowedCommands, deniedCommands)
-	})
+	const decisions: CommandDecision[] = subCommands.map((cmd) =>
+		getAnalyzedCommandDecision(cmd, allowedCommands, deniedCommands),
+	)
 
 	// If any sub-command is denied, deny the whole command
 	if (decisions.includes("auto_deny")) {
 		return "auto_deny"
+	}
+
+	// The split may differ from what bash runs, so nothing is proven allowed.
+	if (uncertainty !== null) {
+		return "ask_user"
 	}
 
 	// Require explicit user approval for dangerous patterns
@@ -302,6 +305,36 @@ export function getCommandDecision(
 
 	// Otherwise, ask user
 	return "ask_user"
+}
+
+/**
+ * Decision for one analyzed sub-command. The deny list is matched against the
+ * command as written and after quote removal (so `'r'm` or `FOO=1 rm` cannot
+ * dodge a denied `rm`). The allow list is matched only when the command word
+ * is a plain literal: a quoted, escaped or expanded command word could be any
+ * program, so it is never auto-approved.
+ */
+function getAnalyzedCommandDecision(
+	cmd: AnalyzedCommand,
+	allowedCommands: string[],
+	deniedCommands?: string[],
+): CommandDecision {
+	// Remove simple PowerShell-like redirections (e.g. 2>&1) before checking
+	const text = cmd.text.replace(/\d*>&\d*/, "").trim()
+	const matchText = cmd.matchText.replace(/\d*>&\d*/, "").trim()
+
+	if (!text) return "auto_approve"
+
+	const longestAllowedMatch = cmd.commandIsLiteral ? findLongestPrefixMatch(text, allowedCommands || []) : null
+	const deniedMatches = [text, matchText]
+		.map((form) => findLongestPrefixMatch(form, deniedCommands || []))
+		.filter((match): match is string => match !== null)
+	const longestDeniedMatch = deniedMatches.sort((a, b) => b.length - a.length)[0] ?? null
+
+	if (longestDeniedMatch && (!longestAllowedMatch || longestDeniedMatch.length >= longestAllowedMatch.length)) {
+		return "auto_deny"
+	}
+	return longestAllowedMatch ? "auto_approve" : "ask_user"
 }
 
 /**
