@@ -34,6 +34,7 @@ import { getModelMaxOutputTokens } from "../../shared/api"
 import { type ClineProvider } from "../webview/ClineProvider"
 import { Package } from "../../shared/package"
 import { type ApiMessage } from "../task-persistence"
+import { type RooIgnoreController } from "../ignore/RooIgnoreController"
 
 /**
  * Interface for access needed by ApiRequestBuilder.
@@ -70,6 +71,11 @@ export interface ApiRequestBuilderAccess {
 
 	// Context manager for context management
 	contextManager: TaskContextManager
+
+	// The task's .rooignore controller. Its instructions go into the system prompt,
+	// exactly as the "copy system prompt" preview (generateSystemPrompt) sends them.
+	// Undefined once the task is disposed.
+	readonly rooIgnoreController?: RooIgnoreController
 
 	// Token usage
 	getTokenUsage(): { contextTokens?: number }
@@ -150,9 +156,7 @@ export class ApiRequestBuilder {
 
 		const modelInfo = this.access.api.getModel().info
 
-		// Note: rooIgnoreInstructions is not available in this interface yet
-		// TODO: Add to interface if needed
-		const rooIgnoreInstructions = undefined
+		const rooIgnoreInstructions = this.access.rooIgnoreController?.getInstructions()
 
 		return await SYSTEM_PROMPT(
 			provider.context,

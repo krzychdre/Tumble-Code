@@ -240,6 +240,11 @@ export class TaskApiLoop {
 			cwd: access.cwd,
 			diffStrategy: access.diffStrategy,
 			contextManager: access.contextManager,
+			// A getter, so each request reads the Task's current controller
+			// (the Task clears it on dispose) instead of a construction-time copy.
+			get rooIgnoreController() {
+				return access.rooIgnoreController
+			},
 			getTokenUsage: access.getTokenUsage,
 			getTaskMode: () => access.getTaskMode(),
 			emit: access.emit,
