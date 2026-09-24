@@ -159,3 +159,75 @@ describe("getCommandDecision — multi-line script wrapped in a quoted argument"
 		expect(getCommandDecision(malformed, [malformed])).toBe("malformed_command")
 	})
 })
+
+// DEF-S1: the splitter must see the same sub-commands bash runs. Every case
+// below was checked against bash: the denied command after the operator runs.
+// A split that hides it lets a denied command ride on an allowed one.
+describe("getCommandDecision - denied commands the splitter must not hide (DEF-S1)", () => {
+	const deny = ["rm", "git push"]
+
+	it.each([
+		["escaped single quote", "echo \\' && rm -rf /tmp/x \\'", ["echo"]],
+		["escaped double quote", 'echo \\" && rm -rf /tmp/x \\"', ["echo"]],
+		["escaped backtick", "echo \\` && rm -rf /tmp/x \\`", ["*"]],
+		["$( inside single quotes", "echo '$(x' && rm y && echo ')'", ["*"]],
+		["backtick inside single quotes", "echo '`' && rm y && echo '`'", ["*"]],
+		["escaped backtick inside double quotes", 'echo "\\`" && rm y && echo "\\`"', ["*"]],
+		["command substitution inside double quotes", 'echo "$(rm -rf x)"', ["echo"]],
+		["command substitution in an unquoted heredoc body", "cat <<EOF\n$(rm -rf x)\nEOF", ["cat"]],
+		["operator after a heredoc opener", "cat <<EOF && rm -rf x\nbody\nEOF", ["cat"]],
+		["command substitution in a parameter default", "echo ${x:-$(rm -rf x)}", ["echo"]],
+		["command substitution in arithmetic", "echo $((1 + $(rm -rf x)))", ["echo"]],
+		["nested backticks", "echo `echo \\`rm -rf x\\``", ["echo"]],
+		["|& pipe", "echo a |& rm -rf x", ["echo"]],
+		["subshell group", "(rm -rf x)", ["*"]],
+		["brace group", "{ rm -rf x; }", ["*"]],
+		["if/then body", "if true; then rm -rf x; fi", ["*"]],
+		["loop body", "for f in a; do rm $f; done", ["*"]],
+		["negation", "! rm -rf x", ["*"]],
+		["coproc", "coproc rm -rf x", ["*"]],
+		["function body", "f() { rm -rf x; }; f", ["*"]],
+		["quoted command name", "'r'm -rf x", ["*"]],
+		["escaped command name", "r\\m -rf x", ["*"]],
+		["quoted argument of a denied prefix", 'git "push" origin', ["git"]],
+		["environment assignment before the command", "FOO=1 rm -rf x", ["*"]],
+		["line continuation before the operator", "echo a \\\n&& rm x", ["echo"]],
+	])("%s: %j is denied", (_label, command, allow) => {
+		expect(getCommandDecision(command, allow, deny)).toBe("auto_deny")
+	})
+
+	// A command word whose value is only known once the shell expands it cannot
+	// be matched against either list, so it is never auto-approved.
+	it.each([
+		["variable as the command", "$CMD -rf x"],
+		["ANSI-C quoted command name", "$'\\x72m' -rf x"],
+		["glob in the command name", "/bin/r? -rf x"],
+		["case statement", "case x in a) echo y;; esac"],
+	])("%s: %j asks the user even with the * allow list", (_label, command) => {
+		expect(getCommandDecision(command, ["*"], deny)).toBe("ask_user")
+	})
+
+	it.each([
+		["plain chain", "git status && git log --oneline", ["git"]],
+		["apostrophe inside double quotes", `echo "don't" && echo ok`, ["echo"]],
+		["substitution whose command is allowed", "ls $(pwd)", ["ls", "pwd"]],
+		["parameter expansion without a command", 'echo "$HOME"', ["echo"]],
+		["redirection and pipe", "npm test 2>&1 | tail -20", ["npm test", "tail"]],
+		["output redirection", "echo a > /tmp/out 2>&1", ["echo"]],
+		["quoted heredoc delimiter keeps the body literal", "cat <<'EOF' > out.txt\n$(rm -rf x)\nEOF", ["cat"]],
+		["single-quoted script argument", "sh -c 'echo a && rm b'", ["sh"]],
+		["cd then build", "cd src && npm run build", ["cd", "npm run"]],
+		[
+			"commit message from a quoted heredoc inside a substitution",
+			"git commit -m \"$(cat <<'EOF'\nfix: it's done\nEOF\n)\"",
+			["git commit", "cat"],
+		],
+	])("%s: %j is still auto-approved", (_label, command, allow) => {
+		expect(getCommandDecision(command, allow, deny)).toBe("auto_approve")
+	})
+
+	it("asks when a substitution inside a commit message runs a command that is not allowed", () => {
+		const command = "git commit -m \"$(cat <<'EOF'\nfix: it's done\nEOF\n)\""
+		expect(getCommandDecision(command, ["git commit"], deny)).toBe("ask_user")
+	})
+})

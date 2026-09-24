@@ -840,9 +840,6 @@ importers:
       serialize-error:
         specifier: ^12.0.0
         version: 12.0.0
-      shell-quote:
-        specifier: ^1.8.2
-        version: 1.8.3
       simple-git:
         specifier: ^3.36.0
         version: 3.36.0
@@ -925,9 +922,6 @@ importers:
       '@types/semver-compare':
         specifier: ^1.0.3
         version: 1.0.3
-      '@types/shell-quote':
-        specifier: ^1.7.5
-        version: 1.7.5
       '@types/turndown':
         specifier: ^5.0.5
         version: 5.0.5
@@ -8978,10 +8972,6 @@ packages:
 
   shell-quote@1.8.2:
     resolution: {integrity: sha512-AzqKpGKjrj7EM6rKVQEPpB288oCfnrEIuyoT9cyF4nmGa7V8Zk6f7RRqYisX8X9m+Q7bd632aZW4ky7EhbQztA==}
-    engines: {node: '>= 0.4'}
-
-  shell-quote@1.8.3:
-    resolution: {integrity: sha512-ObmnIF4hXNg1BqhnHmgbDETF8dLPCggZWBjkQfhZpbszZnYur5DUljTcCHii5LC3J5E0yeO/1LIMyH+UvHQgyw==}
     engines: {node: '>= 0.4'}
 
   shell-quote@1.8.4:
@@ -19268,8 +19258,6 @@ snapshots:
   shebang-regex@3.0.0: {}
 
   shell-quote@1.8.2: {}
-
-  shell-quote@1.8.3: {}
 
   shell-quote@1.8.4:
     optional: true
