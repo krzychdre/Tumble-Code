@@ -5,8 +5,15 @@ import { fileURLToPath } from "url"
 import process from "node:process"
 import * as console from "node:console"
 
-import { copyPaths, copyWasms, copyLocales, setupLocaleWatcher } from "@roo-code/build"
-import { extensionAliases } from "./esbuild.aliases.mjs"
+import {
+	copyPaths,
+	copyWasms,
+	copyLocales,
+	setupLocaleWatcher,
+	createBuildOptions as createSharedBuildOptions,
+	createExtensionBuildOptions,
+	isRunAsScript,
+} from "@roo-code/build"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -37,35 +44,15 @@ async function removeDirWithRetries(dirPath, retries = 5, retryDelayMs = 200) {
  * @returns {{ extension: import('esbuild').BuildOptions, worker: import('esbuild').BuildOptions }}
  */
 export function createBuildOptions({ production = false } = {}) {
-	const minify = production
-	const sourcemap = true // Always generate source maps for error handling.
-
-	/**
-	 * @type {import('esbuild').BuildOptions}
-	 */
-	const buildOptions = {
-		bundle: true,
-		minify,
-		sourcemap,
-		logLevel: "silent",
-		format: "cjs",
-		sourcesContent: false,
-		platform: "node",
-	}
-
+	// Always generate source maps for error handling.
 	return {
 		extension: {
-			...buildOptions,
+			...createExtensionBuildOptions({ production, sourcemap: true, srcDir: __dirname }),
 			entryPoints: ["extension.ts"],
 			outfile: "dist/extension.js",
-			alias: extensionAliases,
-			// global-agent must be external because it dynamically patches Node.js http/https modules
-			// which breaks when bundled. It needs access to the actual Node.js module instances.
-			// undici must be bundled because our VSIX is packaged with `--no-dependencies`.
-			external: ["vscode", "esbuild", "global-agent", "@vscode/ripgrep"],
 		},
 		worker: {
-			...buildOptions,
+			...createSharedBuildOptions({ production, sourcemap: true }),
 			entryPoints: ["workers/countTokens.ts"],
 			outdir: "dist/workers",
 		},
@@ -166,7 +153,7 @@ async function main() {
 }
 
 // Build only when run as a script (`node esbuild.mjs`), not when a test imports this file.
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(__filename)) {
+if (isRunAsScript(import.meta.url)) {
 	main().catch((e) => {
 		console.error(e)
 		process.exit(1)

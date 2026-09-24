@@ -4,11 +4,13 @@
 // global-agent (which breaks when bundled) and let `require("punycode")` load
 // Node's deprecated built-in instead of Punycode.js.
 
+import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 import { createBuildOptions as createReleaseBuildOptions } from "../../../../src/esbuild.mjs"
 import { createBuildOptions as createNightlyBuildOptions } from "../../../../apps/vscode-nightly/esbuild.mjs"
 
+const srcDir = path.resolve(import.meta.dirname, "../../../../src")
 const nightlyArgs = { version: "0.0.1", gitSha: "abc1234" }
 
 describe.each([false, true])("extension build options (production: %s)", (production) => {
@@ -28,6 +30,11 @@ describe.each([false, true])("extension build options (production: %s)", (produc
 	it("nightly uses the release aliases (Punycode.js instead of Node's built-in punycode)", () => {
 		expect(release.alias).toMatchObject({ punycode: "punycode/" })
 		expect(nightly.alias).toEqual(release.alias)
+	})
+
+	it("both resolve alias targets from the extension package, which depends on punycode", () => {
+		expect(release.absWorkingDir).toBe(srcDir)
+		expect(nightly.absWorkingDir).toBe(srcDir)
 	})
 
 	it("both bundle the same way apart from nightly-only defines and output paths", () => {

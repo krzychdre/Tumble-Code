@@ -3,7 +3,16 @@ import * as fs from "fs"
 import * as path from "path"
 import { fileURLToPath } from "url"
 
-import { getGitSha, copyPaths, copyLocales, copyWasms, generatePackageJson } from "@roo-code/build"
+import {
+	getGitSha,
+	copyPaths,
+	copyLocales,
+	copyWasms,
+	generatePackageJson,
+	createBuildOptions as createSharedBuildOptions,
+	createExtensionBuildOptions,
+	isRunAsScript,
+} from "@roo-code/build"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -20,20 +29,9 @@ const distDir = path.join(buildDir, "dist")
  * @returns {{ extension: import('esbuild').BuildOptions, worker: import('esbuild').BuildOptions }}
  */
 export function createBuildOptions({ production = false, version, gitSha }) {
-	const minify = production
-	const sourcemap = !production
-
-	/**
-	 * @type {import('esbuild').BuildOptions}
-	 */
-	const buildOptions = {
-		bundle: true,
-		minify,
-		sourcemap,
-		logLevel: "silent",
-		format: "cjs",
-		sourcesContent: false,
-		platform: "node",
+	const shared = {
+		production,
+		sourcemap: !production,
 		define: {
 			"process.env.PKG_NAME": '"tumble-code-nightly"',
 			"process.env.PKG_VERSION": `"${version}"`,
@@ -43,14 +41,14 @@ export function createBuildOptions({ production = false, version, gitSha }) {
 	}
 
 	return {
+		// Same externals and aliases as the release build (src/esbuild.mjs).
 		extension: {
-			...buildOptions,
+			...createExtensionBuildOptions({ ...shared, srcDir }),
 			entryPoints: [path.join(srcDir, "extension.ts")],
 			outfile: path.join(distDir, "extension.js"),
-			external: ["vscode"],
 		},
 		worker: {
-			...buildOptions,
+			...createSharedBuildOptions(shared),
 			entryPoints: [path.join(srcDir, "workers", "countTokens.ts")],
 			outdir: path.join(distDir, "workers"),
 		},
@@ -189,7 +187,7 @@ async function main() {
 }
 
 // Build only when run as a script (`node esbuild.mjs`), not when a test imports this file.
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(__filename)) {
+if (isRunAsScript(import.meta.url)) {
 	main().catch((e) => {
 		console.error(e)
 		process.exit(1)
