@@ -26,7 +26,7 @@ vi.mock("openai", () => {
 
 import { promises as fs } from "node:fs"
 import { QwenCodeHandler } from "../qwen-code"
-import type { ApiHandlerOptions } from "../../../shared/api"
+import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../../shared/api"
 
 describe("QwenCodeHandler Native Tools", () => {
 	let handler: QwenCodeHandler
@@ -447,6 +447,39 @@ describe("QwenCodeHandler Native Tools", () => {
 	// DEF-C12: usage used to be yielded once per stream chunk, and
 	// TaskStreamProcessor adds usage chunks together, so a server repeating its
 	// cumulative usage in every chunk was billed several times over.
+	describe("stale modelMaxTokens after a model switch (DEF-C22)", () => {
+		// Qwen Code models expose no max-output slider, so a modelMaxTokens value here can
+		// only be left over from another model or provider and must not reach the request.
+		const stale = 200_000
+		const expected = 65_536 // qwen3-coder-plus: maxTokens 65_536, context 1_000_000
+
+		it("caps a stale override to the model limit in createMessage", async () => {
+			const options = { ...mockOptions, modelMaxTokens: stale }
+			const staleHandler = new QwenCodeHandler(options)
+			mockCreate.mockImplementationOnce(() => ({
+				[Symbol.asyncIterator]: async function* () {
+					yield { choices: [{ delta: { content: "ok" } }] }
+				},
+			}))
+
+			await staleHandler.createMessage("system", []).next()
+
+			const { id, info } = staleHandler.getModel()
+			const shared = getModelMaxOutputTokens({ modelId: id, model: info, settings: options, format: "openai" })
+			expect(shared).toBe(expected)
+			expect(mockCreate.mock.calls[0][0].max_completion_tokens).toBe(expected)
+		})
+
+		it("caps a stale override to the model limit in completePrompt", async () => {
+			const staleHandler = new QwenCodeHandler({ ...mockOptions, modelMaxTokens: stale })
+			mockCreate.mockResolvedValueOnce({ choices: [{ message: { content: "ok" } }] })
+
+			await staleHandler.completePrompt("prompt")
+
+			expect(mockCreate.mock.calls[0][0].max_completion_tokens).toBe(expected)
+		})
+	})
+
 	describe("Streaming usage", () => {
 		it("reports cumulative usage repeated in every chunk once, with the final values", async () => {
 			mockCreate.mockImplementationOnce(() => ({

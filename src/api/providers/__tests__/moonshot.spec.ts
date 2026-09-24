@@ -27,7 +27,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 
 import { moonshotDefaultModelId } from "@roo-code/types"
 
-import type { ApiHandlerOptions } from "../../../shared/api"
+import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../../shared/api"
 
 import { MoonshotHandler } from "../moonshot"
 
@@ -418,23 +418,6 @@ describe("MoonshotHandler", () => {
 			expect(result).toBe(16384)
 		})
 
-		it("should use modelMaxTokens when provided", () => {
-			class TestMoonshotHandler extends MoonshotHandler {
-				public testGetMaxOutputTokens() {
-					return this.getMaxOutputTokens()
-				}
-			}
-
-			const customMaxTokens = 5000
-			const testHandler = new TestMoonshotHandler({
-				...mockOptions,
-				modelMaxTokens: customMaxTokens,
-			})
-
-			const result = testHandler.testGetMaxOutputTokens()
-			expect(result).toBe(customMaxTokens)
-		})
-
 		it("should fall back to modelInfo.maxTokens when modelMaxTokens is not provided", () => {
 			class TestMoonshotHandler extends MoonshotHandler {
 				public testGetMaxOutputTokens() {
@@ -448,6 +431,54 @@ describe("MoonshotHandler", () => {
 			// moonshot-chat has maxTokens of 16384
 			expect(result).toBe(16384)
 		})
+	})
+
+	describe("stale modelMaxTokens after a model switch (DEF-C22)", () => {
+		// Moonshot models expose no max-output slider, so a modelMaxTokens value on a
+		// Moonshot profile can only be left over from another model or provider. The
+		// request must use the same shared rule the task uses to reserve output space.
+		const cases = [
+			// kimi-k2-0711-preview: maxTokens 32_000, context 131_072, 20% clamp = 26_215
+			{ modelId: "kimi-k2-0711-preview", stale: 131_072, expected: 26_215 },
+			// kimi-k2.5: maxTokens 16_384, context 262_144
+			{ modelId: "kimi-k2.5", stale: 131_072, expected: 16_384 },
+		] as const
+
+		function mockEmptyStream() {
+			async function* fullStream() {
+				yield { type: "text-delta", text: "ok" }
+			}
+			mockStreamText.mockReturnValue({
+				fullStream: fullStream(),
+				usage: Promise.resolve({ inputTokens: 1, outputTokens: 1, details: {}, raw: {} }),
+			})
+		}
+
+		for (const { modelId, stale, expected } of cases) {
+			it(`caps a stale override of ${stale} to ${expected} for ${modelId} in createMessage`, async () => {
+				const options: ApiHandlerOptions = { ...mockOptions, apiModelId: modelId, modelMaxTokens: stale }
+				const staleHandler = new MoonshotHandler(options)
+				const { info } = staleHandler.getModel()
+				mockEmptyStream()
+
+				for await (const _chunk of staleHandler.createMessage("system", [])) {
+					// drain
+				}
+
+				const shared = getModelMaxOutputTokens({ modelId, model: info, settings: options, format: "openai" })
+				expect(shared).toBe(expected)
+				expect(mockStreamText.mock.calls[0][0].maxOutputTokens).toBe(expected)
+			})
+
+			it(`caps a stale override of ${stale} to ${expected} for ${modelId} in completePrompt`, async () => {
+				const staleHandler = new MoonshotHandler({ ...mockOptions, apiModelId: modelId, modelMaxTokens: stale })
+				mockGenerateText.mockResolvedValue({ text: "ok", usage: { inputTokens: 1, outputTokens: 1 } })
+
+				await staleHandler.completePrompt("prompt")
+
+				expect(mockGenerateText.mock.calls[0][0].maxOutputTokens).toBe(expected)
+			})
+		}
 	})
 
 	describe("tool handling", () => {

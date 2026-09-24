@@ -65,12 +65,11 @@ export class MoonshotHandler extends OpenAICompatibleHandler {
 	}
 
 	/**
-	 * Override to always include max_tokens for Moonshot (not max_completion_tokens).
-	 * Moonshot requires max_tokens parameter to be sent.
+	 * Moonshot always gets an explicit max tokens value. It comes from the shared
+	 * getModelMaxOutputTokens rule (via getModel), the same one the task uses to reserve
+	 * output space, so a stale modelMaxTokens left over from another model is capped.
 	 */
 	protected override getMaxOutputTokens(): number | undefined {
-		const modelInfo = this.config.modelInfo
-		// Moonshot always requires max_tokens
-		return this.options.modelMaxTokens || modelInfo.maxTokens || undefined
+		return this.getModel().maxTokens ?? undefined
 	}
 }
