@@ -44,10 +44,12 @@ def _clean_registry():
     registry._meta.clear()
     registry._ext_sid_by_user.clear()
     registry._instance_by_user.clear()
+    getattr(registry, "_task_access_by_sid", {}).clear()
     yield
     registry._meta.clear()
     registry._ext_sid_by_user.clear()
     registry._instance_by_user.clear()
+    getattr(registry, "_task_access_by_sid", {}).clear()
 
 
 @pytest.fixture
@@ -572,3 +574,183 @@ async def test_task_event_from_non_extension_is_ignored(stub_emit):
     await sio_module.on_task_event("br1", {"taskId": "t", "type": EVT_MESSAGE,
                                            "message": {"ts": 1}})
     stub_emit.assert_not_awaited()
+
+
+# --- DEF-S10: events for a task the sender does not own ----------------------
+
+
+async def _victim_task_with_one_message(db, session_factory):
+    await _seed_user(db, "victim", "victim@example.com")
+    await _seed_user(db, "attacker", "attacker@example.com")
+    db.add(Task(id="task-victim", user_id="victim"))
+    await db.commit()
+    registry.attach("ext_victim", "extension", "victim")
+    registry.register_extension("ext_victim", "victim")
+    original = {"ts": 1, "type": "say", "say": "text", "text": "the real conversation"}
+    await sio_module.on_task_event(
+        "ext_victim", {"taskId": "task-victim", "type": EVT_MESSAGE, "message": original}
+    )
+    async with session_factory() as s:
+        return (
+            await s.execute(
+                select(TaskMessage.message_data).where(TaskMessage.task_id == "task-victim")
+            )
+        ).scalars().all()
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        {"type": EVT_MESSAGE, "message": {"ts": 1, "type": "say", "say": "text",
+                                          "text": "forged by another user"}},
+        {"type": EVT_MESSAGE, "message": {"ts": 2, "type": "say", "say": "text",
+                                          "text": "forged by another user"}},
+        {"type": EVT_INSTANCE_STATE, "isRunning": True, "mode": "forged"},
+        {"type": "taskInteractive"},
+    ],
+    ids=["message-same-ts", "message-new-ts", "instance-state", "task-interactive"],
+)
+async def test_task_event_for_a_foreign_task_is_neither_relayed_nor_saved(
+    patch_session_factory, db_session, session_factory, stub_emit, event
+):
+    """DEF-S10: the relay used to broadcast into the task room before any
+    ownership check, so any signed-in extension could push forged messages,
+    mode switches or instance state into another user's live view (the save
+    was refused later, the broadcast had already happened)."""
+    before = await _victim_task_with_one_message(db_session, session_factory)
+    stub_emit.reset_mock()
+
+    registry.attach("ext_attacker", "extension", "attacker")
+    registry.register_extension("ext_attacker", "attacker")
+    await sio_module.on_task_event("ext_attacker", {"taskId": "task-victim", **event})
+
+    stub_emit.assert_not_awaited()
+    async with session_factory() as s:
+        after = (
+            await s.execute(
+                select(TaskMessage.message_data).where(TaskMessage.task_id == "task-victim")
+            )
+        ).scalars().all()
+        owner = (
+            await s.execute(select(Task.user_id).where(Task.id == "task-victim"))
+        ).scalar_one()
+    assert after == before
+    assert owner == "victim"
+
+
+async def test_first_message_of_an_unknown_task_creates_it_then_relays(
+    patch_session_factory, db_session, session_factory, stub_emit
+):
+    """A brand-new task has no row until its first message: the save creates
+    it, owned by the sender, and the event is relayed like any owned one."""
+    await _seed_user(db_session, "owner")
+    registry.attach("ext_owner", "extension", "owner")
+    registry.register_extension("ext_owner", "owner")
+
+    event = {"taskId": "task-new", "type": EVT_MESSAGE,
+             "message": {"ts": 7, "type": "say", "say": "text", "text": "first words"}}
+    await sio_module.on_task_event("ext_owner", event)
+
+    stub_emit.assert_awaited_once_with(TASK_RELAYED_EVENT, event, room="task:task-new")
+    async with session_factory() as s:
+        owner = (await s.execute(select(Task.user_id).where(Task.id == "task-new"))).scalar_one()
+    assert owner == "owner"
+
+
+async def test_state_event_for_an_unknown_task_is_held_until_the_task_exists(
+    patch_session_factory, db_session, session_factory, stub_emit
+):
+    """A non-message event cannot create a task. While no row exists nobody can
+    have joined the room (task:join requires ownership), so it is not relayed;
+    "unknown" must not be cached, or the task would stay dark once its row is
+    created by the first message or by a backfill."""
+    await _seed_user(db_session, "owner")
+    registry.attach("ext_owner", "extension", "owner")
+    registry.register_extension("ext_owner", "owner")
+
+    state = {"taskId": "task-later", "type": EVT_INSTANCE_STATE, "isRunning": True}
+    await sio_module.on_task_event("ext_owner", state)
+    stub_emit.assert_not_awaited()
+    # The sender's own instance record still follows its state.
+    assert registry.instance("owner")["isRunning"] is True
+
+    # The row appears later (here: created by a backfill on another connection).
+    db_session.add(Task(id="task-later", user_id="owner"))
+    await db_session.commit()
+
+    await sio_module.on_task_event("ext_owner", state)
+    stub_emit.assert_awaited_once_with(TASK_RELAYED_EVENT, state, room="task:task-later")
+
+
+async def test_task_event_ownership_is_looked_up_once_per_socket_and_task(
+    monkeypatch, session_factory, db_session, stub_emit
+):
+    """The relay is a hot path (every streamed chunk): once a socket's
+    ownership of a task is known, further non-message events open no database
+    session, and a message event opens only the one its save needs."""
+    await _seed_user(db_session, "owner")
+    db_session.add(Task(id="task-own", user_id="owner"))
+    await db_session.commit()
+    registry.attach("ext_owner", "extension", "owner")
+    registry.register_extension("ext_owner", "owner")
+
+    opened = 0
+
+    def counting_factory():
+        nonlocal opened
+        opened += 1
+        return session_factory()
+
+    monkeypatch.setattr(sio_module, "async_session_factory", counting_factory)
+
+    state = {"taskId": "task-own", "type": EVT_INSTANCE_STATE, "isRunning": True}
+    await sio_module.on_task_event("ext_owner", state)
+    assert opened == 1  # the ownership lookup
+    for _ in range(3):
+        await sio_module.on_task_event("ext_owner", state)
+    assert opened == 1
+
+    for ts in (10, 11, 12):
+        await sio_module.on_task_event(
+            "ext_owner",
+            {"taskId": "task-own", "type": EVT_MESSAGE,
+             "message": {"ts": ts, "type": "say", "say": "text", "text": "chunk"}},
+        )
+    assert opened == 4  # one save per message, no extra lookup
+    assert stub_emit.await_count == 7
+
+
+def test_registry_task_access_cache_is_per_socket_and_dropped_on_detach():
+    r = ConnectionRegistry()
+    r.attach("ext1", "extension", "u1")
+    r.attach("ext2", "extension", "u1")
+    r.remember_task_access("ext1", "t1", True)
+    r.remember_task_access("ext1", "t2", False)
+
+    assert r.task_access("ext1", "t1") is True
+    assert r.task_access("ext1", "t2") is False
+    assert r.task_access("ext1", "t3") is None
+    assert r.task_access("ext2", "t1") is None
+
+    r.detach("ext1")
+    assert r.task_access("ext1", "t1") is None
+
+
+def test_registry_task_access_cache_is_bounded_per_socket():
+    r = ConnectionRegistry()
+    r.attach("ext1", "extension", "u1")
+    for i in range(ConnectionRegistry.TASK_ACCESS_CACHE_SIZE + 10):
+        r.remember_task_access("ext1", f"t{i}", True)
+    assert len(r._task_access_by_sid["ext1"]) == ConnectionRegistry.TASK_ACCESS_CACHE_SIZE
+    assert r.task_access("ext1", "t0") is None
+    last = ConnectionRegistry.TASK_ACCESS_CACHE_SIZE + 9
+    assert r.task_access("ext1", f"t{last}") is True
+
+
+def test_registry_ignores_task_access_for_a_detached_socket():
+    """A handler that finishes after its socket disconnected must not
+    resurrect a cache entry that nothing would ever clear."""
+    r = ConnectionRegistry()
+    r.remember_task_access("gone", "t1", True)
+    assert r.task_access("gone", "t1") is None
+    assert "gone" not in r._task_access_by_sid
