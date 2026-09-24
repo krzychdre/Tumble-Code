@@ -168,4 +168,7 @@ where their files are disjoint; the coordinator merges in order.
 - **New finding TEST-10 (Phase 0 follow-up):** `src/services/checkpoints/__tests__/ShadowCheckpointService.spec.ts`
   is flaky under load, seen twice on 2026-09-24 in two different cases ("isolates checkpoint operations from
   simple-git blocked environment variables", "includes untracked files in checkpoints"); each passes alone. Not in
-  the Phase 0 baseline. Needs its own `test/` item.
+  the Phase 0 baseline. Cause found by the DEF-C10 helper: the spec uses the fixed directory `/tmp/CheckpointService`,
+  so two vitest runs at once (parallel worktrees) delete each other's repositories (ENOTEMPTY on rmdir, git errors);
+  with a private `TMPDIR` it passes 35 of 35. Fix: a unique temporary directory per run (`fs.mkdtemp`). Needs its
+  own `test/` item.
