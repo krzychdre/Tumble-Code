@@ -19,6 +19,7 @@ import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { aiSdkCompletionUsage } from "./utils/completion-usage"
+import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
 
 /**
  * Configuration options for creating an OpenAI-compatible provider.
@@ -210,18 +211,10 @@ export abstract class OpenAICompatibleHandler extends BaseProvider implements Si
 			// Mirror lm-studio.ts approach with try/catch-to-0 error handling.
 			let inputTokens = 0
 			try {
-				const inputContent: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: systemPrompt }]
-				for (const msg of messages) {
-					if (typeof msg.content === "string") {
-						inputContent.push({ type: "text", text: msg.content })
-					} else if (Array.isArray(msg.content)) {
-						for (const block of msg.content) {
-							if (block.type === "text") {
-								inputContent.push({ type: "text", text: block.text })
-							}
-						}
-					}
-				}
+				const inputContent: Anthropic.Messages.ContentBlockParam[] = [
+					{ type: "text", text: systemPrompt },
+					...flattenMessagesForTokenCount(messages),
+				]
 				inputTokens = await this.countTokens(inputContent)
 			} catch (err) {
 				console.error(`[${this.config.providerName}] Failed to count input tokens:`, err)

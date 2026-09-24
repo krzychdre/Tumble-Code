@@ -34,6 +34,7 @@ import { type UpdateApiReqMsgFn } from "./StreamProcessorTypes"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { findLastIndex } from "../../shared/array"
+import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
 import { t } from "../../i18n"
 import { getModeBySlug } from "../../shared/modes"
 import { type ClineProvider } from "../webview/ClineProvider"
@@ -1150,18 +1151,7 @@ export class TaskApiLoop {
 			const effectiveHistory = getEffectiveApiHistory(this.access.apiConversationHistory)
 			if (effectiveHistory.length > 0) {
 				try {
-					const fallbackContent: Anthropic.Messages.ContentBlockParam[] = []
-					for (const msg of effectiveHistory) {
-						if (typeof msg.content === "string") {
-							fallbackContent.push({ type: "text", text: msg.content })
-						} else if (Array.isArray(msg.content)) {
-							for (const block of msg.content) {
-								if (block.type === "text") {
-									fallbackContent.push({ type: "text", text: block.text })
-								}
-							}
-						}
-					}
+					const fallbackContent = flattenMessagesForTokenCount(effectiveHistory)
 					if (fallbackContent.length > 0) {
 						contextTokens = await this.access.api.countTokens(fallbackContent)
 					}
