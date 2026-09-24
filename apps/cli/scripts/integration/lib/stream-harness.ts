@@ -2,7 +2,7 @@ import path from "path"
 import { fileURLToPath } from "url"
 import readline from "readline"
 
-import { execa } from "execa"
+import { execa, type Options } from "execa"
 
 export type StreamEvent = {
 	type?: string
@@ -49,6 +49,21 @@ export interface RunStreamCaseOptions {
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const defaultCliRoot = path.resolve(__dirname, "../../..")
 
+/**
+ * The provider flags every case runs with. They only have to pass the CLI's
+ * own checks: run.ts sets ROO_CLI_FAKE_AI_MODULE, so the extension runs on
+ * the scripted model in fake-model.ts instead, with no network or real key.
+ */
+export const PROVIDER_ARGS = ["--provider", "anthropic", "--api-key", "unused-by-the-scripted-model"]
+
+/**
+ * Start the CLI from source. tsx is started directly rather than through
+ * `pnpm dev`, so a signal the case sends reaches the CLI itself.
+ */
+export function startCli(cliRoot: string, args: string[], options: Options = {}) {
+	return execa("tsx", ["src/index.ts", ...args], { cwd: cliRoot, ...options })
+}
+
 function parseEvent(line: string): StreamEvent | null {
 	const trimmed = line.trim()
 
@@ -67,11 +82,10 @@ export async function runStreamCase(options: RunStreamCaseOptions): Promise<void
 	const cliRoot = process.env.ROO_CLI_ROOT ? path.resolve(process.env.ROO_CLI_ROOT) : defaultCliRoot
 	const timeoutMs = options.timeoutMs ?? 120_000
 
-	const child = execa(
-		"pnpm",
-		["dev", "--print", "--stdin-prompt-stream", "--provider", "roo", "--output-format", "stream-json"],
+	const child = startCli(
+		cliRoot,
+		["--print", "--stdin-prompt-stream", ...PROVIDER_ARGS, "--output-format", "stream-json"],
 		{
-			cwd: cliRoot,
 			stdin: "pipe",
 			stdout: "pipe",
 			stderr: "pipe",
@@ -94,7 +108,7 @@ export async function runStreamCase(options: RunStreamCaseOptions): Promise<void
 			return `${prefix}-${Date.now()}-${requestCounter}`
 		},
 		sendCommand(command: StreamCommand): void {
-			if (child.stdin?.destroyed) {
+			if (!child.stdin || child.stdin.destroyed) {
 				return
 			}
 

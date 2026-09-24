@@ -1,4 +1,15 @@
+/**
+ * The CLI integration suite: each file in cases/ drives the real CLI (from
+ * source, through tsx) over the stdin stream protocol. The extension answers
+ * with the scripted model in lib/fake-model.ts, so no network or API key is
+ * needed, but the extension bundle must be built first:
+ *
+ *   pnpm turbo run bundle --filter=tumble-code
+ *   pnpm --filter @tumble-code/cli test:integration [--match <name>] [--list]
+ */
+
 import fs from "fs/promises"
+import os from "os"
 import path from "path"
 import { fileURLToPath } from "url"
 
@@ -7,6 +18,7 @@ import { execa } from "execa"
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const cliRoot = path.resolve(__dirname, "../..")
 const casesDir = path.resolve(__dirname, "cases")
+const fakeModelPath = path.resolve(__dirname, "lib/fake-model.ts")
 
 interface RunnerOptions {
 	listOnly: boolean
@@ -52,17 +64,40 @@ async function runCase(caseFile: string): Promise<void> {
 	const caseName = path.basename(caseFile, ".ts")
 	console.log(`\n[RUN] ${caseName}`)
 
-	await execa("tsx", [caseFile], {
-		cwd: cliRoot,
-		stdio: "inherit",
-		reject: true,
-		env: {
-			...process.env,
-			ROO_CLI_ROOT: cliRoot,
-		},
-	})
+	// Each case gets its own HOME: the CLI keeps its settings, sessions and
+	// the extension's state under it, so no case sees another case's (or the
+	// developer's) state, and nothing is left behind.
+	const home = await fs.mkdtemp(path.join(os.tmpdir(), `cli-integration-${caseName}-`))
+
+	try {
+		await execa("tsx", [caseFile], {
+			cwd: cliRoot,
+			stdio: "inherit",
+			reject: true,
+			env: {
+				...process.env,
+				HOME: home,
+				USERPROFILE: home,
+				ROO_CLI_ROOT: cliRoot,
+				// The extension answers with the scripted model (lib/fake-model.ts).
+				ROO_CLI_FAKE_AI_MODULE: fakeModelPath,
+			},
+		})
+	} finally {
+		await fs.rm(home, { recursive: true, force: true })
+	}
 
 	console.log(`[PASS] ${caseName}`)
+}
+
+async function assertExtensionBuilt(): Promise<void> {
+	const bundle = path.resolve(cliRoot, "../../src/dist/extension.js")
+
+	try {
+		await fs.access(bundle)
+	} catch {
+		throw new Error(`${bundle} is missing; build it first: pnpm turbo run bundle --filter=tumble-code`)
+	}
 }
 
 async function main() {
@@ -82,6 +117,8 @@ async function main() {
 		}
 		return
 	}
+
+	await assertExtensionBuilt()
 
 	const failures: Array<{ caseName: string; error: string }> = []
 

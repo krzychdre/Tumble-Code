@@ -5,8 +5,9 @@ import readline from "readline"
 import { fileURLToPath } from "url"
 import { randomUUID } from "crypto"
 
-import { execa } from "execa"
 import type { TaskSessionEntry } from "@roo-code/core/cli"
+
+import { PROVIDER_ARGS, startCli } from "../lib/stream-harness"
 
 type StreamEvent = {
 	type?: string
@@ -38,8 +39,7 @@ function parseStreamEvent(line: string): StreamEvent | null {
 }
 
 async function listSessions(cliRoot: string, workspacePath: string): Promise<TaskSessionEntry[]> {
-	const result = await execa("pnpm", ["dev", "list", "sessions", "--workspace", workspacePath, "--format", "json"], {
-		cwd: cliRoot,
+	const result = await startCli(cliRoot, ["list", "sessions", "--workspace", workspacePath, "--format", "json"], {
 		reject: false,
 	})
 
@@ -82,13 +82,11 @@ async function createSessionWithCustomId(
 	sessionId: string,
 	prompt: string,
 ): Promise<void> {
-	const result = await execa(
-		"pnpm",
+	const result = await startCli(
+		cliRoot,
 		[
-			"dev",
 			"--print",
-			"--provider",
-			"roo",
+			...PROVIDER_ARGS,
 			"--output-format",
 			"stream-json",
 			"--workspace",
@@ -98,7 +96,6 @@ async function createSessionWithCustomId(
 			prompt,
 		],
 		{
-			cwd: cliRoot,
 			reject: false,
 		},
 	)
@@ -141,14 +138,12 @@ async function resumeSessionAndSendMarker(
 
 	const messagePrompt = `Resume marker token: ${messageToken}. Reply with exactly "ack-${messageToken}".`
 
-	const child = execa(
-		"pnpm",
+	const child = startCli(
+		cliRoot,
 		[
-			"dev",
 			"--print",
 			"--stdin-prompt-stream",
-			"--provider",
-			"roo",
+			...PROVIDER_ARGS,
 			"--output-format",
 			"stream-json",
 			"--workspace",
@@ -157,7 +152,6 @@ async function resumeSessionAndSendMarker(
 			sessionId,
 		],
 		{
-			cwd: cliRoot,
 			stdin: "pipe",
 			stdout: "pipe",
 			stderr: "pipe",
@@ -252,7 +246,13 @@ async function resumeSessionAndSendMarker(
 			return
 		}
 
-		if (event.type === "user" && event.requestId === messageRequestId && event.content?.includes(messageToken)) {
+		// The marker is unique to this run, so it identifies the turn on its
+		// own. The requestId is not required: when the message reaches the
+		// resumed task before its resume question, it is queued, and the CLI
+		// echoes the user turn before the queue update that attributes it
+		// (stdin-stream.ts, promoteRequestIdForDequeuedMessages), so the echo
+		// sometimes has no requestId.
+		if (event.type === "user" && event.content?.includes(messageToken)) {
 			sawUserTurnWithMarker = true
 
 			if (!shutdownSent) {
