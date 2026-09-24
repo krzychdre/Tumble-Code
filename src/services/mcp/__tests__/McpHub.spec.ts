@@ -378,7 +378,7 @@ describe("McpHub", () => {
 			await mcpHub.getMcpSettingsFilePath()
 
 			expect(fs.mkdir).toHaveBeenCalledWith(path.dirname(override), { recursive: true })
-			expect(fs.writeFile).toHaveBeenCalledWith(override, expect.stringContaining('"mcpServers"'))
+			expect(fs.writeFile).toHaveBeenCalledWith(override, expect.stringContaining('"mcpServers"'), { flag: "wx" })
 		})
 	})
 
