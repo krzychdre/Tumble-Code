@@ -72,14 +72,14 @@ export interface TaskHistoryAccess {
 	cloudSyncedMessageTimestamps: Set<number>
 
 	// Task metadata (for saveClineMessages)
-	rootTaskId: string | undefined
-	parentTaskId: string | undefined
+	rootTaskId?: string
+	parentTaskId?: string
 	taskNumber: number
 	cwd: string
 	_taskMode: string | undefined
 	_taskApiConfigName: string | undefined
 	taskApiConfigReady: Promise<void>
-	initialStatus: "active" | "delegated" | "completed" | undefined
+	initialStatus?: "active" | "delegated" | "completed"
 
 	// Token usage (for saveClineMessages)
 	toolUsage: ToolUsage

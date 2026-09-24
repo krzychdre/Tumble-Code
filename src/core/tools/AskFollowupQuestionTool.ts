@@ -25,16 +25,12 @@ export class AskFollowupQuestionTool extends BaseTool<"ask_followup_question"> {
 		const { handleError, pushToolResult } = callbacks
 
 		const recordMissingParamError = async (paramName: string): Promise<void> => {
-			task.consecutiveMistakeCount++
-			task.recordToolError("ask_followup_question")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "ask_followup_question", { failTurn: true })
 			pushToolResult(await task.sayAndCreateMissingParamError("ask_followup_question", paramName))
 		}
 
 		const recordValidationError = async (message: string): Promise<void> => {
-			task.consecutiveMistakeCount++
-			task.recordToolError("ask_followup_question")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "ask_followup_question", { failTurn: true })
 			await task.say("error", message)
 			pushToolResult(formatResponse.toolError(message))
 		}

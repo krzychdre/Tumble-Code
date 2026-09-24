@@ -33,30 +33,26 @@ export class EditTool extends BaseTool<"edit"> {
 		try {
 			// Validate required parameters
 			if (!relPath) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit")
+				this.recordFailure(task, "edit")
 				pushToolResult(await task.sayAndCreateMissingParamError("edit", "file_path"))
 				return
 			}
 
 			if (!oldString) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit")
+				this.recordFailure(task, "edit")
 				pushToolResult(await task.sayAndCreateMissingParamError("edit", "old_string"))
 				return
 			}
 
 			if (newString === undefined) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit")
+				this.recordFailure(task, "edit")
 				pushToolResult(await task.sayAndCreateMissingParamError("edit", "new_string"))
 				return
 			}
 
 			// Check old_string !== new_string
 			if (oldString === newString) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit")
+				this.recordFailure(task, "edit")
 				pushToolResult(
 					formatResponse.toolError(
 						"'old_string' and 'new_string' are identical. No changes needed. If you want to make a change, ensure 'old_string' and 'new_string' are different.",
@@ -80,8 +76,7 @@ export class EditTool extends BaseTool<"edit"> {
 
 			const fileExists = await fileExistsAtPath(absolutePath)
 			if (!fileExists) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit")
+				this.recordFailure(task, "edit")
 				const errorMessage = `File not found: ${relPath}. Cannot perform edit on a non-existent file.`
 				await task.say("error", errorMessage)
 				pushToolResult(formatResponse.toolError(errorMessage))
@@ -94,8 +89,7 @@ export class EditTool extends BaseTool<"edit"> {
 				// Normalize line endings to LF for consistent matching
 				fileContent = fileContent.replace(/\r\n/g, "\n")
 			} catch (error) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit")
+				this.recordFailure(task, "edit")
 				const errorMessage = `Failed to read file '${relPath}'. Please verify file permissions and try again.`
 				await task.say("error", errorMessage)
 				pushToolResult(formatResponse.toolError(errorMessage))
@@ -110,8 +104,7 @@ export class EditTool extends BaseTool<"edit"> {
 			const matchCount = fileContent.split(normalizedOld).length - 1
 
 			if (matchCount === 0) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit", "no_match")
+				this.recordFailure(task, "edit", { error: "no_match" })
 				pushToolResult(
 					formatResponse.toolError(
 						`No match found for 'old_string' in ${relPath}. Make sure the text to find appears exactly in the file, including whitespace and indentation.`,
@@ -122,8 +115,7 @@ export class EditTool extends BaseTool<"edit"> {
 
 			// Uniqueness check when replace_all is not enabled
 			if (!replaceAll && matchCount > 1) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit")
+				this.recordFailure(task, "edit")
 				pushToolResult(
 					formatResponse.toolError(
 						`Found ${matchCount} matches of 'old_string' in the file. Use 'replace_all: true' to replace all occurrences, or provide more context in 'old_string' to make it unique.`,

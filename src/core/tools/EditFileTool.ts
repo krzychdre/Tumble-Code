@@ -188,9 +188,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		try {
 			// Validate required parameters
 			if (!file_path) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("edit_file")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "edit_file", { failTurn: true })
 				pushToolResult(await task.sayAndCreateMissingParamError("edit_file", "file_path"))
 				return
 			}

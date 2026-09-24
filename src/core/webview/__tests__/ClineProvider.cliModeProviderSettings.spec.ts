@@ -405,6 +405,7 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 			const task = {
 				taskId: "t1",
 				emit: vi.fn(),
+				setTaskMode: vi.fn(),
 				updateApiConfiguration: vi.fn(),
 				apiConfiguration: cliSettings.base,
 			}

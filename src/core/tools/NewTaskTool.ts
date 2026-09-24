@@ -43,17 +43,13 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 
 			// Validate required parameters.
 			if (!mode) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("new_task")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "new_task", { failTurn: true })
 				pushToolResult(await task.sayAndCreateMissingParamError("new_task", "mode"))
 				return
 			}
 
 			if (!message) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("new_task")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "new_task", { failTurn: true })
 				pushToolResult(await task.sayAndCreateMissingParamError("new_task", "message"))
 				return
 			}
@@ -77,9 +73,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 			// Check if todos are required based on VSCode setting.
 			// Note: `undefined` means not provided, empty string is valid.
 			if (requireTodos && todos === undefined) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("new_task")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "new_task", { failTurn: true })
 				pushToolResult(await task.sayAndCreateMissingParamError("new_task", "todos"))
 				return
 			}
@@ -90,9 +84,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 				try {
 					todoItems = parseMarkdownChecklist(todos)
 				} catch (error) {
-					task.consecutiveMistakeCount++
-					task.recordToolError("new_task")
-					task.didToolFailInCurrentTurn = true
+					this.recordFailure(task, "new_task", { failTurn: true })
 					pushToolResult(formatResponse.toolError("Invalid todos format: must be a markdown checklist"))
 					return
 				}

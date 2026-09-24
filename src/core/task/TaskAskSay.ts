@@ -55,7 +55,7 @@ export interface TaskAskSayAccess {
 	providerRef: WeakRef<ClineProvider>
 	history: TaskHistory
 	emit: EventEmitter["emit"]
-	checkpointSave: (isSave: boolean, isCreateCheckpoint: boolean) => Promise<void>
+	checkpointSave: (force?: boolean, suppressMessage?: boolean) => Promise<unknown>
 	/**
 	 * Optional per-task auto-approval override (headless background tasks). Checked
 	 * before the global auto-approval state; returns "approve"/"deny" to resolve an

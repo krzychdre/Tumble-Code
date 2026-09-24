@@ -42,9 +42,7 @@ export class RunSlashCommandTool extends BaseTool<"run_slash_command"> {
 
 		try {
 			if (!commandName) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("run_slash_command")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "run_slash_command", { failTurn: true })
 				pushToolResult(await task.sayAndCreateMissingParamError("run_slash_command", "command"))
 				return
 			}

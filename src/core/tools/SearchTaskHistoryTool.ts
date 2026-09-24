@@ -67,9 +67,7 @@ export class SearchTaskHistoryTool extends BaseTool<"search_task_history"> {
 		const query = typeof params?.query === "string" ? params.query : ""
 
 		if (query.trim().length === 0) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("search_task_history")
-			task.didToolFailInCurrentTurn = true
+			this.recordFailure(task, "search_task_history", { failTurn: true })
 			pushToolResult(await task.sayAndCreateMissingParamError("search_task_history", "query"))
 			return
 		}
@@ -113,9 +111,7 @@ export class SearchTaskHistoryTool extends BaseTool<"search_task_history"> {
 			// unusable call, instead of letting the model read a partial result
 			// as a complete one.
 			if (timedOut) {
-				task.consecutiveMistakeCount++
-				task.recordToolError("search_task_history")
-				task.didToolFailInCurrentTurn = true
+				this.recordFailure(task, "search_task_history", { failTurn: true })
 				await task.say("error", text)
 				pushToolResult(formatResponse.toolError(text, "search_task_history"))
 				return

@@ -69,16 +69,14 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		let newContent = typeof params.content === "string" ? params.content : ""
 
 		if (typeof relPath !== "string" || !relPath) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("write_to_file")
+			this.recordFailure(task, "write_to_file")
 			pushToolResult(await task.sayAndCreateMissingParamError("write_to_file", "path"))
 			await task.diffViewProvider.reset()
 			return
 		}
 
 		if (params.content === undefined) {
-			task.consecutiveMistakeCount++
-			task.recordToolError("write_to_file")
+			this.recordFailure(task, "write_to_file")
 			pushToolResult(await task.sayAndCreateMissingParamError("write_to_file", "content"))
 			await task.diffViewProvider.reset()
 			return
