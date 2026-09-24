@@ -387,3 +387,13 @@ where their files are disjoint; the coordinator merges in order.
   to 65,536 (documented 64K). Sent by default (20% clamp): 16,384 before; after 40,000 (4.6/4.7 intl), 40,960
   (mainland), 40,551 (glm-5), 26,215 (4.5 and 4.6v families), 13,108 (glm-4.5v). Prices and reasoning settings
   untouched. Left: GLM-4.5-Flash context (overview 200K vs cards 128K, kept 128K); intl 200,000 vs mainland 204,800.
+- **DEF-C25:** DONE, merged 2026-09-24 as #250 (`c12e4cce4`), owner decisions 4a and 4b. `packages/types`
+  `DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS = 30_000`, `DEFAULT_SOUND_ENABLED = false`,
+  `DEFAULT_ENABLE_CHECKPOINTS = true`, used by BaseTerminal, ClineProvider (getState and the webview state), Task,
+  the webview initial state, the Save payload and the TerminalSettings slider (a fourth drifted default, 5,000 ms,
+  the plan had missed). A characterization test pins the whole Save payload. User effect: shell integration now
+  waits 30 s instead of 5 s before falling back. The CLI keeps its deliberate `enableCheckpoints: false`
+  (`extension-host.ts:256`, upstream #10480; changing it is a separate owner decision). For CORE-R1: other Save
+  fallbacks (e.g. `maxGitStatusFiles ?? 0`) still need comparing with the host.
+- **Phase 1 original scope (DEF-S1 to S12, DEF-C1 to C32): complete on 2026-09-24.** 43 fixed and merged, DEF-C8
+  closed as not a bug. Findings added on the way: DEF-C33 to C40 and TEST-10, TEST-11, all merged.
