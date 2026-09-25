@@ -267,6 +267,20 @@ Differences to reconcile: TUI never removes messages the core deleted (condense)
 completion set twice, and `taskCompleted` also fires for `resume_completed_task` (with `exitOnComplete` resuming a
 completed task exits the CLI: verify).
 
+**Step 3 (2026-09-26):** #435 (merge 21fdd861d) `useMessageHandlers` logic is the pure
+`apps/cli/src/agent/transcript-reducer.ts` (50 tests), `resetTranscript()` replaces the shared refs; #438 (merge
+a2e27cf54) `ExtensionClient.transcript` (`TranscriptReader`) interprets every message, fed from the host constructor so
+it sees messages before `activate()`; the TUI only applies store changes (`useTranscriptSink`, 150 ms debounce kept);
+App snapshots byte-identical. Four bugs fixed test-first: `--oneshot` exited when a completed task was reopened
+(`taskCompleted` on `resume_completed_task`); after `/new`, `/clear`, task switch the first answer vanished if equal to
+the previous task's last answer; `previousTodos` always empty (stale handler); resuming a task opened an approval dialog
+for an old tool ask from history (now only the last message opens a dialog, like `detectAgentState`). Decided: the
+transcript only appends (condensed rows stay, `<Static>` cannot unprint); double completion write kept (idempotent).
+**Not done, needs an owner decision on the stream-json contract:** `JsonEventEmitter` on transcript events and a real
+`ts` diff for the `message` event (both change print/stream-json output, e.g. a resume would print the whole history);
+`useSyncExternalStore`; a MessageProcessor exception still shows the fatal full-screen error; `agent/` imports
+`ui/types` and `ui/utils/tools` (layering).
+
 ### PKG-11 Remaining `packages/*` structure (lowest priority)
 
 Split `vscode-extension-host.ts` into per-domain message unions (additively, superset first); derive the telemetry
