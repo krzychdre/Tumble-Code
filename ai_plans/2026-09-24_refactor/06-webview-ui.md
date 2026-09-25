@@ -244,3 +244,22 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
 - 2026-09-25 WEB-Q11 DONE #357 (`e649a6a33`): `console.log` in `i18n/setup.ts` removed (test-first), stale
   BrowserSessionRow ESLint override removed, `useNonInteractiveClick.ts` renamed to
   `useAddNonInteractiveClickListener.ts`. TabButton inline style left for the next settings PR.
+- 2026-09-25 WEB-Q1 DONE #358 (`87b6a1d38`): `editable` and `hasCheckpoint` were never read; the per-row
+  `checkpoint_saved` scan and JSON parse are gone. New `ChatView.row-props.spec.tsx` (mock row under the same
+  `memo(deepEqual)`, counts renders and mounts).
+- 2026-09-25 WEB-Q2 DONE #359 (`7b9b5e393`): `lastModifiedMessage` only for the last row; that alone did not stop
+  earlier rows re-rendering per token: `onSuggestionClick` and `onJumpToPreviousCheckpoint` changed identity per
+  token, now wrapped by a new `hooks/useStableCallback.ts`. Rows still read `clineMessages` from the context, so they
+  still re-render per token through the context (WEB-2a, WEB-4).
+- 2026-09-25 WEB-Q3 DONE #360 (`c89c8b765`): ChatView passes `supportsImages`; rows no longer read `apiConfiguration`
+  nor post `requestProviderModels`.
+- 2026-09-25 WEB-Q10 DONE #361 (`3965cac27`): condensing row key `CONDENSING_ROW_TS = Number.MAX_SAFE_INTEGER`;
+  test showed 2 mounts before, 1 after; changeset.
+- 2026-09-25 WEB-Q8 DONE #362 (`8ed506d70`): 240 English keys (4,320 entries in 18 locales; 1,657 to 1,417) removed
+  by `scripts/find-unused-i18n-keys.mjs` (`--check`, `--patterns`, `--write`; 9 node:test cases), dynamic-prefix
+  whitelist in the PR body. Found and fixed a rebrand bug: `worktrees.json` in all 18 locales had
+  `multiTumbletNotSupported`/`gitTumblet` (Roo to Tumble replace), so WorktreesView showed raw keys; new
+  `worktreesKeys.spec.ts`. Open (pre-existing, own item): keys the code uses but no locale has:
+  `chat:autoApprove.selectAll`/`selectNone`, `chat:codebaseSearch.didSearch`, `common:dismiss`,
+  `common:dismissAndDontShowAgain`, `common:docsLink.label`, `settings:providers.refreshModels.missingConfig`.
+- Not started yet: WEB-Q9 (compiler bailouts in CI), WEB-Q12 (react-use; blocked by "Do not touch" `useSize`).

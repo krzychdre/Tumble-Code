@@ -289,3 +289,8 @@ the named tests in place.
 - **Change-point count:** the number of places that must be edited to add one feature (a tool, a setting); the
   main maintainability metric used here.
 - **Flaky test:** passes or fails depending on timing or machine load rather than on the code.
+- Decision 17 DONE #363 (`b1b93ba15`): 429 retries do not count toward the background cap (7th non-429 failure ends
+  the task; the backoff exponent still counts all retries, max 600 s; Google `RetryInfo` honored, plain
+  `Retry-After` is not read anywhere: possible item). Also fixed: `RetryHandler` got `abort` as a value copy
+  (always false), now a getter, so cancel during a backoff ends the task as `user_cancelled`. Known cost: the
+  first-chunk retry recursion grows one generator level per request during a long 429 period.
