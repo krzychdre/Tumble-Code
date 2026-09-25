@@ -10,6 +10,7 @@ import { t } from "../../../i18n"
 import { defaultModeSlug } from "../../../shared/modes"
 import { openFile } from "../../../integrations/misc/open-file"
 import { getRooDirectoriesForCwd } from "../../../services/roo-config/index.js"
+import { invalidateRooDirectoryCache } from "../../../services/roo-config/cache"
 import {
 	handleRequestSkills,
 	handleCreateSkill,
@@ -174,6 +175,7 @@ export const commandsAndSkillsHandlers: MessageHandlerMap = {
 				if (command && command.filePath) {
 					// Delete the command file
 					await fs.unlink(command.filePath)
+					invalidateRooDirectoryCache("commands")
 					provider.log(`Deleted command file: ${command.filePath}`)
 				} else {
 					vscode.window.showErrorMessage(t("common:errors.command_not_found", { name: message.text }))
@@ -279,6 +281,8 @@ export const commandsAndSkillsHandlers: MessageHandlerMap = {
 			const templateContent = t("common:errors.command_template_content")
 
 			await fs.writeFile(filePath, templateContent, "utf8")
+			// The list below must include the new file even if the watcher has not reported it yet.
+			invalidateRooDirectoryCache("commands")
 			provider.log(`Created new command file: ${filePath}`)
 
 			// Open the new file in the editor

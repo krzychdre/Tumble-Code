@@ -39,6 +39,7 @@ import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
 import { MdmService } from "./services/mdm/MdmService"
+import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
 import { configureLogger, createLineLogger } from "./utils/logging"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
@@ -372,6 +373,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	registerCodeActions(context)
 	registerTerminalActions(context)
+
+	// Drop cached .roo directory lookups (subfolder rules, slash commands) when they change on disk.
+	context.subscriptions.push(...registerRooDirectoryWatchers())
 
 	// Allows other extensions to activate once Roo is ready.
 	vscode.commands.executeCommand(`${Package.name}.activationCompleted`)

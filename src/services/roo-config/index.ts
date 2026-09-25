@@ -2,6 +2,21 @@ import * as path from "path"
 import * as os from "os"
 import fs from "fs/promises"
 
+import { memoizeRooDirectoryLookup } from "./cache"
+
+export { invalidateRooDirectoryCache, ROO_DIRECTORY_CACHE_TTL_MS } from "./cache"
+
+/**
+ * How many files inside `.roo` directories the subfolder discovery lists
+ * before it stops. Every file counts, including the ones in the workspace root
+ * `.roo` (memory notes, rules, commands), so the file search's default of 500
+ * could run out before ripgrep reached a nested package's `.roo`, and that
+ * package's rules then vanished without a trace. The scan is memoized (see
+ * cache.ts), so the larger limit costs one scan per workspace, not one per
+ * prompt build.
+ */
+export const ROO_DIRECTORY_DISCOVERY_LIMIT = 10_000
+
 /**
  * Gets the global .roo directory path based on the current platform
  *
@@ -158,6 +173,9 @@ export async function readFileIfExists(filePath: string): Promise<string | null>
 /**
  * Discovers all .roo directories in subdirectories of the workspace
  *
+ * Runs a workspace-wide ripgrep scan on every call. Prefer
+ * getAllRooDirectoriesForCwd / getAgentsDirectoriesForCwd, which memoize it.
+ *
  * @param cwd - Current working directory (workspace root)
  * @returns Array of absolute paths to .roo directories found in subdirectories,
  *          sorted alphabetically. Does not include the root .roo directory.
@@ -211,7 +229,14 @@ export async function discoverSubfolderRooDirectories(cwd: string): Promise<stri
 			cwd,
 		]
 
-		const results = await executeRipgrep({ args, workspacePath: cwd })
+		const results = await executeRipgrep({ args, workspacePath: cwd, limit: ROO_DIRECTORY_DISCOVERY_LIMIT })
+
+		const fileCount = results.filter((result) => result.type === "file").length
+		if (fileCount >= ROO_DIRECTORY_DISCOVERY_LIMIT) {
+			console.warn(
+				`[roo-config] Subfolder .roo discovery in ${cwd} stopped after ${ROO_DIRECTORY_DISCOVERY_LIMIT} files; .roo directories past that point are ignored.`,
+			)
+		}
 
 		// Extract unique .roo directory paths
 		const rooDirs = new Set<string>()
@@ -236,6 +261,15 @@ export async function discoverSubfolderRooDirectories(cwd: string): Promise<stri
 		// If discovery fails (e.g., ripgrep not available), return empty array
 		return []
 	}
+}
+
+/**
+ * discoverSubfolderRooDirectories, memoized per working directory. Callers get
+ * a copy, so the cached list cannot be changed through them.
+ */
+async function getCachedSubfolderRooDirectories(cwd: string): Promise<string[]> {
+	const dirs = await memoizeRooDirectoryLookup("subfolders", cwd, () => discoverSubfolderRooDirectories(cwd))
+	return [...dirs]
 }
 
 /**
@@ -312,7 +346,7 @@ export async function getAllRooDirectoriesForCwd(cwd: string): Promise<string[]>
 	directories.push(getProjectRooDirectoryForCwd(cwd))
 
 	// Discover and add subfolder .roo directories
-	const subfolderDirs = await discoverSubfolderRooDirectories(cwd)
+	const subfolderDirs = await getCachedSubfolderRooDirectories(cwd)
 	directories.push(...subfolderDirs)
 
 	return directories
@@ -337,7 +371,7 @@ export async function getAgentsDirectoriesForCwd(cwd: string): Promise<string[]>
 	directories.push(cwd)
 
 	// Get all subfolder .roo directories
-	const subfolderRooDirs = await discoverSubfolderRooDirectories(cwd)
+	const subfolderRooDirs = await getCachedSubfolderRooDirectories(cwd)
 
 	// Extract parent directories (remove .roo from path)
 	for (const rooDir of subfolderRooDirs) {

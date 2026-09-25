@@ -8,12 +8,7 @@ import { isLanguage, SETTINGS_DEFAULTS } from "@roo-code/types"
 import type { SystemPromptSettings } from "../types"
 
 import { LANGUAGES } from "../../../shared/language"
-import {
-	getRooDirectoriesForCwd,
-	getAllRooDirectoriesForCwd,
-	getAgentsDirectoriesForCwd,
-	getGlobalRooDirectory,
-} from "../../../services/roo-config"
+import { RooDirectoryResolver } from "../../../services/roo-config/RooDirectoryResolver"
 
 /**
  * Safely read a file and return its trimmed content
@@ -228,12 +223,14 @@ function formatDirectoryContent(files: Array<{ filename: string; content: string
  */
 export async function loadRuleFiles(cwd: string, enableSubfolderRules: boolean = false): Promise<string> {
 	const rules: string[] = []
-	// Use recursive discovery only if enableSubfolderRules is true
-	const rooDirectories = enableSubfolderRules ? await getAllRooDirectoriesForCwd(cwd) : getRooDirectoriesForCwd(cwd)
+	// Subfolder .roo directories are included only when enableSubfolderRules is true.
+	const rulesDirectories = await RooDirectoryResolver.list(cwd, {
+		kind: "rules",
+		includeSubfolders: enableSubfolderRules,
+	})
 
 	// Check for .roo/rules/ directories in order (global, project-local, and optionally subfolders)
-	for (const rooDir of rooDirectories) {
-		const rulesDir = path.join(rooDir, "rules")
+	for (const { path: rulesDir } of rulesDirectories) {
 		if (await directoryExists(rulesDir)) {
 			const files = await readTextFilesFromDirectory(rulesDir)
 			if (files.length > 0) {
@@ -378,9 +375,9 @@ async function loadAllAgentRulesFiles(cwd: string, enableSubfolderRules: boolean
 	}
 
 	// When enabled, load from root and all subdirectories with .roo folders
-	const directories = await getAgentsDirectoriesForCwd(cwd)
+	const directories = await RooDirectoryResolver.list(cwd, { kind: "agent-rules", includeSubfolders: true })
 
-	for (const directory of directories) {
+	for (const { path: directory } of directories) {
 		// Show path for all directories except the root
 		const showPath = directory !== cwd
 		const content = await loadAgentRulesFileFromDirectory(directory, showPath, cwd)
@@ -413,14 +410,16 @@ export async function addCustomInstructions(
 
 	if (mode) {
 		const modeRules: string[] = []
-		// Use recursive discovery only if enableSubfolderRules is true
-		const rooDirectories = enableSubfolderRules
-			? await getAllRooDirectoriesForCwd(cwd)
-			: getRooDirectoriesForCwd(cwd)
+		// The directory list is cached per workspace; the rules-<mode> names are
+		// derived from it for THIS build's mode, so a mode switch is always honoured.
+		const modeRulesDirectories = await RooDirectoryResolver.list(cwd, {
+			kind: "rules",
+			mode,
+			includeSubfolders: enableSubfolderRules,
+		})
 
 		// Check for .roo/rules-${mode}/ directories in order (global, project-local, and optionally subfolders)
-		for (const rooDir of rooDirectories) {
-			const modeRulesDir = path.join(rooDir, `rules-${mode}`)
+		for (const { path: modeRulesDir } of modeRulesDirectories) {
 			if (await directoryExists(modeRulesDir)) {
 				const files = await readTextFilesFromDirectory(modeRulesDir)
 				if (files.length > 0) {
