@@ -94,3 +94,15 @@ describe("arePathsEqual matches the extension's helper", () => {
 		expect(arePathsEqual("C:\\Users\\Test", "c:\\users\\test")).toBe(true)
 	})
 })
+
+// CLI-5: the CLI's normalizePath stripped every trailing separator in a loop,
+// the extension's strips one. On Linux and macOS a backslash is a file name
+// character, so "/a/b" followed by two backslashes is not "/a/b" for the extension.
+if (process.platform !== "win32") {
+	describe("arePathsEqual keeps the extension's trailing-separator rule", () => {
+		it("strips a single trailing separator only", () => {
+			expect(arePathsEqual("/work/project\\\\", "/work/project")).toBe(false)
+			expect(arePathsEqual("/work/project\\", "/work/project")).toBe(true)
+		})
+	})
+}
