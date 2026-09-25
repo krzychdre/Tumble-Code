@@ -1,76 +1,45 @@
-import * as vscode from "vscode"
-
-import { SETTINGS_DEFAULTS } from "@roo-code/types"
-
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { defaultModeSlug } from "../../shared/modes"
 import { buildApiHandler } from "../../api"
 
 import { SYSTEM_PROMPT } from "../prompts/system"
-import { MultiSearchReplaceDiffStrategy } from "../diff/strategies/multi-search-replace"
-import { Package } from "../../shared/package"
+import { buildSystemPromptInput } from "../prompts/system-prompt-input"
 
 import { ClineProvider } from "./ClineProvider"
 
+/**
+ * The "copy system prompt" preview. It shows exactly what the live request
+ * (ApiRequestBuilder.buildSystemPrompt) would send for the focused task in the
+ * requested mode: both paths share `buildSystemPromptInput`, and
+ * system-prompt-parity.spec.ts compares their bytes.
+ */
 export const generateSystemPrompt = async (provider: ClineProvider, message: WebviewMessage) => {
-	const {
-		apiConfiguration,
-		customModePrompts,
-		customInstructions,
-		mcpEnabled,
-		experiments,
-		language,
-		enableSubfolderRules,
-	} = await provider.getState()
+	const state = await provider.getState()
 
-	const diffStrategy = new MultiSearchReplaceDiffStrategy()
-
-	const cwd = provider.cwd
-
-	const mode = message.mode ?? defaultModeSlug
-	const customModes = await provider.customModesManager.getCustomModes()
-
-	const rooIgnoreInstructions = provider.getCurrentTask()?.rooIgnoreController?.getInstructions()
+	// Task-scoped inputs come from the focused task, as they do for its live requests.
+	const task = provider.getCurrentTask()
 
 	// Create a temporary API handler to check model info for stealth mode.
 	// This avoids relying on an active Cline instance which might not exist during preview.
 	let modelInfo: { isStealthModel?: boolean } | undefined
 	try {
-		const tempApiHandler = buildApiHandler(apiConfiguration)
+		const tempApiHandler = buildApiHandler(state.apiConfiguration)
 		modelInfo = tempApiHandler.getModel().info
 	} catch (error) {
 		console.error("Error fetching model info for system prompt preview:", error)
 	}
 
-	const systemPrompt = await SYSTEM_PROMPT(
-		provider.context,
-		cwd,
-		false, // supportsComputerUse — browser removed
-		mcpEnabled ? provider.getMcpHub() : undefined,
-		diffStrategy,
-		mode,
-		customModePrompts,
-		customModes,
-		customInstructions,
-		experiments,
-		language,
-		rooIgnoreInstructions,
-		{
-			todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
-			useAgentRules: vscode.workspace.getConfiguration(Package.name).get<boolean>("useAgentRules") ?? true,
-			enableSubfolderRules: enableSubfolderRules ?? SETTINGS_DEFAULTS.enableSubfolderRules,
-			newTaskRequireTodos: vscode.workspace
-				.getConfiguration(Package.name)
-				.get<boolean>("newTaskRequireTodos", false),
-			isStealthModel: modelInfo?.isStealthModel,
-			// The preview must show exactly what the active profile would send.
-			slimToolset: apiConfiguration?.slimToolset,
-			slimHidesMcp: apiConfiguration?.slimHidesMcp,
-		},
-		undefined, // todoList
-		undefined, // modelId
-		provider.getSkillsManager(),
+	return SYSTEM_PROMPT(
+		buildSystemPromptInput({
+			context: provider.context,
+			cwd: provider.cwd,
+			mode: message.mode ?? defaultModeSlug,
+			state,
+			mcpHub: provider.getMcpHub(),
+			rooIgnoreController: task?.rooIgnoreController,
+			materializedDeferredTools: task?.materializedDeferredTools,
+			modelInfo,
+			skillsManager: provider.getSkillsManager(),
+		}),
 	)
-
-	return systemPrompt
 }

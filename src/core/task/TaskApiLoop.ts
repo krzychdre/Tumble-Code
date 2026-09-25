@@ -116,7 +116,6 @@ export interface TaskApiLoopAccess {
 
 	// Diff and tools
 	diffViewProvider: any // DiffViewProvider
-	diffStrategy?: any // DiffStrategy
 	toolRepetitionDetector: any // ToolRepetitionDetector
 	autoApprovalHandler: AutoApprovalHandler
 
@@ -240,7 +239,6 @@ export class TaskApiLoop {
 			microcompactedToolUseIds: access.microcompactedToolUseIds,
 			providerRef: access.providerRef,
 			cwd: access.cwd,
-			diffStrategy: access.diffStrategy,
 			contextManager: access.contextManager,
 			// A getter, so each request reads the Task's current controller
 			// (the Task clears it on dispose) instead of a construction-time copy.

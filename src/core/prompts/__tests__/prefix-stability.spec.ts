@@ -157,21 +157,16 @@ async function buildPrompt(
 	experiments: Record<string, boolean> = {},
 	extras: PromptExtras = {},
 ): Promise<string> {
-	return SYSTEM_PROMPT(
-		mockContext,
-		"/test/path",
-		false,
+	return SYSTEM_PROMPT({
+		context: mockContext,
+		cwd: "/test/path",
 		mcpHub,
-		undefined,
-		mode as never,
-		undefined,
-		extras.customModes,
-		undefined,
+		mode: mode as never,
+		customModes: extras.customModes,
 		experiments,
-		"language" in extras ? extras.language : "en",
-		undefined,
+		language: "language" in extras ? extras.language : "en",
 		settings,
-	)
+	})
 }
 
 function commonPrefixLength(a: string, b: string): number {
