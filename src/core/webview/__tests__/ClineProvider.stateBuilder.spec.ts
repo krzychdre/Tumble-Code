@@ -20,6 +20,7 @@ import { ContextProxy } from "../../config/ContextProxy"
 import { TaskHistoryStore } from "../../task-persistence"
 import { ClineProvider } from "../ClineProvider"
 import { checkAutoApproval } from "../../auto-approval"
+import { webviewMessageHandler } from "../webviewMessageHandler"
 
 vi.mock("p-wait-for", () => ({
 	__esModule: true,
@@ -347,8 +348,6 @@ const FULL_SETTINGS = {
  */
 const VIEW_ONLY_TRANSFORMS: Record<string, string> = {
 	taskHistory: "getState() never materializes the history (hot path); the full push carries it",
-	codebaseIndexConfig:
-		"the webview pre-fills codebaseIndexEmbedderModelDimension with 1536; the host reads the raw value",
 }
 
 /** Replace large, fixture-independent constants with markers to keep the snapshots readable. */
@@ -583,5 +582,33 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 			expect(posted.deniedCommands).toEqual(state.deniedCommands)
 			expect(state.deniedCommands).toEqual(["rm", "npm publish", "git push"])
 		})
+	})
+
+	// DEF-C42: an embedding dimension the user never entered must not be stored.
+	it("saving the code-index settings back untouched does not store a dimension the user never entered", async () => {
+		const provider = await makeProvider({ cloudMode: "signedOut" })
+		// An Ollama model the profiles do not know: its dimension comes only from the setting.
+		await provider.contextProxy.setValues({
+			codebaseIndexConfig: {
+				codebaseIndexEnabled: true,
+				codebaseIndexQdrantUrl: "http://localhost:6333",
+				codebaseIndexEmbedderProvider: "ollama",
+				codebaseIndexEmbedderBaseUrl: "http://localhost:11434",
+				codebaseIndexEmbedderModelId: "custom-embedder",
+			},
+		})
+
+		// The popover shows what the webview state carries and sends every field back on save.
+		const posted = await provider.getStateToPostToWebview()
+		await webviewMessageHandler(provider, {
+			type: "saveCodeIndexSettingsAtomic",
+			codeIndexSettings: { ...posted.codebaseIndexConfig, codebaseIndexSearchMaxResults: 25 },
+		} as any)
+
+		const saved = (await provider.getState()).codebaseIndexConfig
+		expect(saved?.codebaseIndexSearchMaxResults).toBe(25)
+		expect(saved?.codebaseIndexEmbedderModelDimension).toBeUndefined()
+		// The dimension field stays empty (its placeholder shows) instead of a made-up 1536.
+		expect(posted.codebaseIndexConfig?.codebaseIndexEmbedderModelDimension).toBeUndefined()
 	})
 })

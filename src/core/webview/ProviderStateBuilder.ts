@@ -60,13 +60,6 @@ const PASSTHROUGH_SETTING_KEYS = [
  */
 const HOST_ONLY_KEYS = ["lastShownAnnouncementId", "apiModelId", "diagnosticsEnabled", "modeApiConfigs"] as const
 
-/**
- * The embedding dimension the code-index settings pre-fill when none is
- * stored. Posted to the webview only; the host itself treats "unset" as "use
- * the model's own dimension", so this value never enters `getState()`.
- */
-const WEBVIEW_PREFILL_EMBEDDING_DIMENSION = 1536
-
 const CLOUD_ORGANIZATIONS_CACHE_DURATION_MS = 5 * 1000
 
 const pick = <T extends object, K extends keyof T>(source: T, keys: readonly K[]): Pick<T, K> => {
@@ -365,12 +358,11 @@ export class ProviderStateBuilder {
 			settingsImportedAt: this.sources.getSettingsImportedAt(),
 			cloudAuthSkipModel: this.sources.getCloudAuthSkipModel() ?? false,
 			cloudOrganizations,
-			codebaseIndexConfig: {
-				...settings.codebaseIndexConfig,
-				codebaseIndexEmbedderModelDimension:
-					settings.codebaseIndexConfig.codebaseIndexEmbedderModelDimension ??
-					WEBVIEW_PREFILL_EMBEDDING_DIMENSION,
-			},
+			// No pre-filled embedding dimension: the code-index form sends every
+			// field back on save, so a view-only default would be stored as if
+			// the user had entered it (DEF-C42). Unset means "use the model's own
+			// dimension"; the form shows its placeholder instead.
+			codebaseIndexConfig: settings.codebaseIndexConfig,
 			// undefined means no MDM policy, true compliant, false non-compliant.
 			mdmCompliant: this.sources.getMdmCompliance(),
 			cloudApiUrl: getRooCodeApiUrl(),
