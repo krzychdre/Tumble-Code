@@ -4,10 +4,9 @@ import { Trans } from "react-i18next"
 
 import type { SkillMetadata } from "@roo-code/types"
 
-import { getAllModes } from "@roo/modes"
-
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useModeSelection } from "@/hooks/useModeSelection"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -45,16 +44,18 @@ export const SkillsSettings: React.FC = () => {
 	// Mode selection modal state
 	const [modeDialogOpen, setModeDialogOpen] = useState(false)
 	const [skillToEditModes, setSkillToEditModes] = useState<SkillMetadata | null>(null)
-	const [selectedModes, setSelectedModes] = useState<string[]>([])
-	const [isAnyMode, setIsAnyMode] = useState(true)
+	const {
+		availableModes,
+		selectedModes,
+		isAnyMode,
+		modeSlugs,
+		toggleAnyMode,
+		toggleMode,
+		reset: resetModes,
+	} = useModeSelection(customModes)
 
 	// Check if we're in a workspace/project
 	const hasWorkspace = Boolean(cwd)
-
-	// Get available modes for the checkboxes (built-in + custom modes)
-	const availableModes = useMemo(() => {
-		return getAllModes(customModes).map((m) => ({ slug: m.slug, name: m.name }))
-	}, [customModes])
 
 	const handleRefresh = useCallback(() => {
 		vscode.postMessage({ type: "requestSkills" })
@@ -98,56 +99,28 @@ export const SkillsSettings: React.FC = () => {
 	}, [])
 
 	// Open mode selection modal
-	const handleOpenModeDialog = useCallback((skill: SkillMetadata) => {
-		setSkillToEditModes(skill)
-		// Initialize state from skill's current modeSlugs
-		const hasModeSlugs = skill.modeSlugs && skill.modeSlugs.length > 0
-		setIsAnyMode(!hasModeSlugs)
-		setSelectedModes(hasModeSlugs ? [...skill.modeSlugs!] : [])
-		setModeDialogOpen(true)
-	}, [])
-
-	// Handle "Any mode" toggle - mutually exclusive with specific modes
-	const handleAnyModeToggle = useCallback((checked: boolean) => {
-		if (checked) {
-			setIsAnyMode(true)
-			setSelectedModes([]) // Clear specific modes when "Any mode" is selected
-		} else {
-			setIsAnyMode(false)
-		}
-	}, [])
-
-	// Handle specific mode toggle - unchecks "Any mode" when a specific mode is selected
-	const handleModeToggle = useCallback((modeSlug: string, checked: boolean) => {
-		if (checked) {
-			setIsAnyMode(false) // Uncheck "Any mode" when selecting a specific mode
-			setSelectedModes((prev) => [...prev, modeSlug])
-		} else {
-			setSelectedModes((prev) => {
-				const newModes = prev.filter((m) => m !== modeSlug)
-				// If no modes selected, default back to "Any mode"
-				if (newModes.length === 0) {
-					setIsAnyMode(true)
-				}
-				return newModes
-			})
-		}
-	}, [])
+	const handleOpenModeDialog = useCallback(
+		(skill: SkillMetadata) => {
+			setSkillToEditModes(skill)
+			resetModes(skill.modeSlugs)
+			setModeDialogOpen(true)
+		},
+		[resetModes],
+	)
 
 	// Save mode changes
 	const handleSaveModes = useCallback(() => {
 		if (skillToEditModes) {
-			const newModeSlugs = isAnyMode ? undefined : selectedModes.length > 0 ? selectedModes : undefined
 			vscode.postMessage({
 				type: "updateSkillModes",
 				skillName: skillToEditModes.name,
 				source: skillToEditModes.source,
-				newSkillModeSlugs: newModeSlugs,
+				newSkillModeSlugs: modeSlugs,
 			})
 			setModeDialogOpen(false)
 			setSkillToEditModes(null)
 		}
-	}, [skillToEditModes, isAnyMode, selectedModes])
+	}, [skillToEditModes, modeSlugs])
 
 	const handleCloseModeDialog = useCallback(() => {
 		setModeDialogOpen(false)
@@ -345,7 +318,7 @@ export const SkillsSettings: React.FC = () => {
 							<Checkbox
 								id="mode-any"
 								checked={isAnyMode}
-								onCheckedChange={(checked) => handleAnyModeToggle(checked === true)}
+								onCheckedChange={(checked) => toggleAnyMode(checked === true)}
 							/>
 							<label htmlFor="mode-any" className="flex-1 cursor-pointer font-medium">
 								{t("settings:skills.modeDialog.anyMode")}
@@ -364,7 +337,7 @@ export const SkillsSettings: React.FC = () => {
 									<Checkbox
 										id={`mode-${mode.slug}`}
 										checked={selectedModes.includes(mode.slug)}
-										onCheckedChange={(checked) => handleModeToggle(mode.slug, checked === true)}
+										onCheckedChange={(checked) => toggleMode(mode.slug, checked === true)}
 									/>
 									<label htmlFor={`mode-${mode.slug}`} className="flex-1 cursor-pointer">
 										{mode.name}
