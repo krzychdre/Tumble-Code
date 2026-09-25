@@ -11,7 +11,7 @@ import {
 
 import { ClineAskResponse } from "../../shared/WebviewMessage"
 
-import { isWriteToolAction, isReadOnlyToolAction } from "./tools"
+import { getToolActionApprovalCategory } from "./tools"
 import { isMcpToolAlwaysAllowed } from "./mcp"
 import { getCommandDecision } from "./commands"
 import { getModeBySlug } from "../../shared/modes"
@@ -94,11 +94,13 @@ export async function checkAutoApproval({
 					tool = undefined
 				}
 
-				if ((tool?.tool === "switchMode" || tool?.tool === "newTask") && isPlanApprovalRequired(state)) {
+				const category = getToolActionApprovalCategory(tool)
+
+				if ((category === "modeSwitch" || category === "subtask") && isPlanApprovalRequired(state)) {
 					return { decision: "ask" }
 				}
 
-				if (tool?.tool === "reviewPlan") {
+				if (category === "planReview") {
 					return { decision: "ask" }
 				}
 			}
@@ -217,64 +219,54 @@ export async function checkAutoApproval({
 			return { decision: "ask" }
 		}
 
-		if (tool.tool === "updateTodoList") {
-			return { decision: "approve" }
-		}
+		// The category comes from the tool descriptors (src/core/tools/toolDescriptors.ts);
+		// an action without one (a tool no toggle covers, an unknown name) asks.
+		switch (getToolActionApprovalCategory(tool)) {
+			// updateTodoList, and skill: it only loads instructions from skills the user
+			// installed, never arbitrary files, so loading one does not interrupt the task.
+			case "alwaysAllowed":
+				return { decision: "approve" }
 
-		// The skill tool only loads pre-defined instructions from global or project skills.
-		// It does not read arbitrary files - skills must be explicitly installed/defined by the user.
-		// Auto-approval is intentional to provide a seamless experience when loading task instructions.
-		if (tool.tool === "skill") {
-			return { decision: "approve" }
-		}
+			case "modeSwitch":
+				// Plan-approval gate: when the current mode requires plan review and
+				// the user hasn't enabled the Plan auto-approve toggle, force an ask
+				// even if alwaysAllowModeSwitch is on.
+				if (isPlanApprovalRequired(state) && state.alwaysApprovePlan !== true) {
+					return { decision: "ask" }
+				}
+				return state.alwaysAllowModeSwitch === true ? { decision: "approve" } : { decision: "ask" }
 
-		if (tool?.tool === "switchMode") {
-			// Plan-approval gate: when the current mode requires plan review and
-			// the user hasn't enabled the Plan auto-approve toggle, force an ask
-			// even if alwaysAllowModeSwitch is on.
-			if (isPlanApprovalRequired(state) && state.alwaysApprovePlan !== true) {
-				return { decision: "ask" }
-			}
-			return state.alwaysAllowModeSwitch === true ? { decision: "approve" } : { decision: "ask" }
-		}
+			case "subtask":
+				// Plan-approval gate: same as a mode switch, a subtask is an
+				// implementation escape hatch from a planning mode.
+				if (isPlanApprovalRequired(state) && state.alwaysApprovePlan !== true) {
+					return { decision: "ask" }
+				}
+				return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
 
-		if (tool?.tool === "newTask") {
-			// Plan-approval gate: same as switchMode — a subtask is an
-			// implementation escape hatch from a planning mode.
-			if (isPlanApprovalRequired(state) && state.alwaysApprovePlan !== true) {
-				return { decision: "ask" }
-			}
-			return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
-		}
+			// finishTask is NOT gated: it returns control to the parent task rather
+			// than starting new work, so plan review is not relevant.
+			case "subtaskFinish":
+				return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
 
-		// finishTask is NOT gated: it returns control to the parent task rather
-		// than starting new work, so plan review is not relevant.
-		if (tool?.tool === "finishTask") {
-			return state.alwaysAllowSubtasks === true ? { decision: "approve" } : { decision: "ask" }
-		}
+			// Post-save plan review pause: the write tool already saved the plan
+			// file and is now asking for review approval. Approve only when the
+			// Plan auto-approve toggle is on; otherwise ask the user.
+			case "planReview":
+				return state.alwaysApprovePlan === true ? { decision: "approve" } : { decision: "ask" }
 
-		// Post-save plan review pause: the write tool already saved the plan
-		// file and is now asking for review approval. Approve only when the
-		// Plan auto-approve toggle is on; otherwise ask the user.
-		if (tool?.tool === "reviewPlan") {
-			return state.alwaysApprovePlan === true ? { decision: "approve" } : { decision: "ask" }
-		}
+			case "readOnly":
+				return state.alwaysAllowReadOnly === true &&
+					(!tool.isOutsideWorkspace || state.alwaysAllowReadOnlyOutsideWorkspace === true)
+					? { decision: "approve" }
+					: { decision: "ask" }
 
-		const isOutsideWorkspace = !!tool.isOutsideWorkspace
-
-		if (isReadOnlyToolAction(tool)) {
-			return state.alwaysAllowReadOnly === true &&
-				(!isOutsideWorkspace || state.alwaysAllowReadOnlyOutsideWorkspace === true)
-				? { decision: "approve" }
-				: { decision: "ask" }
-		}
-
-		if (isWriteToolAction(tool)) {
-			return state.alwaysAllowWrite === true &&
-				(!isOutsideWorkspace || state.alwaysAllowWriteOutsideWorkspace === true) &&
-				(!isProtected || state.alwaysAllowWriteProtected === true)
-				? { decision: "approve" }
-				: { decision: "ask" }
+			case "write":
+				return state.alwaysAllowWrite === true &&
+					(!tool.isOutsideWorkspace || state.alwaysAllowWriteOutsideWorkspace === true) &&
+					(!isProtected || state.alwaysAllowWriteProtected === true)
+					? { decision: "approve" }
+					: { decision: "ask" }
 		}
 	}
 

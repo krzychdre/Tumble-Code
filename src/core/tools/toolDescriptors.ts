@@ -1,4 +1,4 @@
-import type { ModeConfig, ToolName } from "@roo-code/types"
+import type { ClineSayTool, ModeConfig, ToolName } from "@roo-code/types"
 
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import type { ToolParamName } from "../../shared/tools"
@@ -16,7 +16,7 @@ import type { ToolParamName } from "../../shared/tools"
  * - the tool implementation (`src/core/assistant-message/toolHandlers.ts`): the lists
  *   below are read by leaf modules (microcompact, spill policy, the prompt filter) that
  *   must not import every tool and, through them, VS Code and the Task class;
- * - argument parsing and auto-approval (CORE-R4 parts c and d, later items).
+ * - argument parsing (CORE-R4 part c, a later item).
  *
  * Nothing here is sent to a model: tool names, schemas and descriptions are unchanged.
  */
@@ -36,7 +36,46 @@ export interface ToolDescriptionContext {
 	customModes?: ModeConfig[]
 }
 
+/**
+ * How auto-approval (`src/core/auto-approval`) treats the approval ask a tool raises.
+ * The categories answered from a "tool" ask need the actions (`ClineSayTool["tool"]`)
+ * the tool sends, listed in `approvalActions`; the others are answered from the ask type.
+ */
+export type ToolApprovalCategory =
+	/** "tool" ask: alwaysAllowReadOnly, plus alwaysAllowReadOnlyOutsideWorkspace outside the workspace. */
+	| "readOnly"
+	/** "tool" ask: alwaysAllowWrite, plus the outside-workspace and protected-file toggles. */
+	| "write"
+	/** "tool" ask: alwaysAllowModeSwitch, behind the plan-approval gate. */
+	| "modeSwitch"
+	/** "tool" ask: alwaysAllowSubtasks, behind the plan-approval gate. */
+	| "subtask"
+	/** "tool" ask returning control to the parent task: alwaysAllowSubtasks, no plan gate. */
+	| "subtaskFinish"
+	/** "tool" ask approved whenever auto-approval is on, no toggle. */
+	| "alwaysAllowed"
+	/** Not a tool: the plan-review pause after a write saved a plan (alwaysApprovePlan). */
+	| "planReview"
+	/** "command" ask: alwaysAllowExecute and the allowed/denied command lists. */
+	| "execute"
+	/** "use_mcp_server" ask: alwaysAllowMcp (and the tool's own alwaysAllow for use_mcp_tool). */
+	| "mcp"
+	/** "followup" ask: alwaysAllowFollowupQuestions with its timeout. */
+	| "followup"
+	/** A "tool" ask no toggle covers: only the bypass and autonomous tiers approve it. */
+	| "manual"
+	/** Never asks for approval. */
+	| "none"
+
 export interface ToolDescriptor {
+	/** The auto-approval category of the tool's approval ask (see `ToolApprovalCategory`). */
+	approvalCategory: ToolApprovalCategory
+	/**
+	 * The actions the tool's "tool" asks carry. Required for the categories answered from a
+	 * "tool" ask, empty for the others. An action shared by several tools (`appliedDiff`)
+	 * must have the same category in each.
+	 */
+	approvalActions?: readonly ClineSayTool["tool"][]
 	/**
 	 * A checkpoint is saved before the tool runs (presentAssistantMessage) and started
 	 * early while its arguments stream (TaskStreamProcessor). Refactor plan decision 9:
@@ -89,6 +128,8 @@ export function describeReadFile(name: string, source: unknown): string {
 export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescriptor>> = {
 	// read
 	read_file: {
+		approvalCategory: "readOnly",
+		approvalActions: ["readFile"],
 		workspaceReadOnly: true,
 		compactable: true,
 		// Its schema promises whole-file reads and it caps itself.
@@ -98,6 +139,8 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: (block) => describeReadFile(block.name, block.nativeArgs ? block.nativeArgs : block.params),
 	},
 	list_files: {
+		approvalCategory: "readOnly",
+		approvalActions: ["listFilesTopLevel", "listFilesRecursive"],
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
@@ -105,6 +148,8 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("path"),
 	},
 	search_files: {
+		approvalCategory: "readOnly",
+		approvalActions: ["searchFiles"],
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
@@ -115,6 +160,8 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 			}]`,
 	},
 	codebase_search: {
+		approvalCategory: "readOnly",
+		approvalActions: ["codebaseSearch"],
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
@@ -122,6 +169,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("query"),
 	},
 	read_artifact: {
+		approvalCategory: "none",
 		workspaceReadOnly: true,
 		compactable: true,
 		// Windows its own output; spilling a window would chase its own tail.
@@ -131,6 +179,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 	},
 	// Deprecated alias of read_artifact: replayed histories and old habits still send it.
 	read_command_output: {
+		approvalCategory: "none",
 		workspaceReadOnly: true,
 		compactable: true,
 		spillExempt: true,
@@ -138,6 +187,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("artifact_id"),
 	},
 	search_task_history: {
+		approvalCategory: "none",
 		// Reads the task's own stored conversation, never the workspace.
 		workspaceReadOnly: true,
 		compactable: true,
@@ -148,6 +198,8 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 
 	// edit
 	write_to_file: {
+		approvalCategory: "write",
+		approvalActions: ["editedExistingFile", "newFileCreated"],
 		requiresCheckpoint: true,
 		compactable: true,
 		slimAllowed: true,
@@ -155,6 +207,8 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("path"),
 	},
 	apply_diff: {
+		approvalCategory: "write",
+		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
 		compactable: true,
 		slimAllowed: true,
@@ -162,30 +216,40 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: (block) => (block.params?.path ? `[${block.name} for '${block.params.path}']` : `[${block.name}]`),
 	},
 	edit: {
+		approvalCategory: "write",
+		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
 		compactable: true,
 		ledger: "file-mutation",
 		describe: forParam("file_path"),
 	},
 	search_and_replace: {
+		approvalCategory: "write",
+		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
 		compactable: true,
 		ledger: "file-mutation",
 		describe: forParam("file_path"),
 	},
 	search_replace: {
+		approvalCategory: "write",
+		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
 		compactable: true,
 		ledger: "file-mutation",
 		describe: forParam("file_path"),
 	},
 	edit_file: {
+		approvalCategory: "write",
+		approvalActions: ["appliedDiff", "newFileCreated"],
 		requiresCheckpoint: true,
 		compactable: true,
 		ledger: "file-mutation",
 		describe: forParam("file_path"),
 	},
 	apply_patch: {
+		approvalCategory: "write",
+		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
 		compactable: true,
 		ledger: "file-mutation",
@@ -193,21 +257,26 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 	},
 	// Writes the image file.
 	generate_image: {
+		approvalCategory: "write",
+		approvalActions: ["generateImage"],
 		requiresCheckpoint: true,
 		describe: forParam("path"),
 	},
 
 	// command and MCP
 	execute_command: {
+		approvalCategory: "execute",
 		compactable: true,
 		slimAllowed: true,
 		describe: forParam("command"),
 	},
 	use_mcp_tool: {
+		approvalCategory: "mcp",
 		compactable: true,
 		describe: forParam("server_name"),
 	},
 	access_mcp_resource: {
+		approvalCategory: "mcp",
 		compactable: true,
 		// A resource the model asked for by URI, usually needed whole.
 		spillExempt: true,
@@ -216,6 +285,9 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 
 	// web
 	web_search: {
+		// Only reads remote pages, it cannot touch the workspace.
+		approvalCategory: "readOnly",
+		approvalActions: ["webSearch"],
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
@@ -227,6 +299,9 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		},
 	},
 	web_fetch: {
+		// Only reads remote pages, it cannot touch the workspace.
+		approvalCategory: "readOnly",
+		approvalActions: ["webFetch"],
 		workspaceReadOnly: true,
 		compactable: true,
 		slimAllowed: true,
@@ -238,19 +313,28 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 
 	// protocol
 	ask_followup_question: {
+		approvalCategory: "followup",
 		slimAllowed: true,
 		describe: forParam("question"),
 	},
 	attempt_completion: {
+		// Its completion_result ask is the end of the task, never auto-approved; a subtask
+		// finishing (finishTask, returning control to its parent) follows alwaysAllowSubtasks.
+		approvalCategory: "subtaskFinish",
+		approvalActions: ["finishTask"],
 		slimAllowed: true,
 		describe: bare,
 	},
 	switch_mode: {
+		approvalCategory: "modeSwitch",
+		approvalActions: ["switchMode"],
 		slimAllowed: true,
 		describe: (block) =>
 			`[${block.name} to '${block.params.mode_slug}'${block.params.reason ? ` because: ${block.params.reason}` : ""}]`,
 	},
 	new_task: {
+		approvalCategory: "subtask",
+		approvalActions: ["newTask"],
 		// A subtask can change the workspace before control returns.
 		requiresCheckpoint: true,
 		slimAllowed: true,
@@ -262,6 +346,8 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		},
 	},
 	run_parallel_tasks: {
+		// Its runParallelTasks ask has no toggle.
+		approvalCategory: "manual",
 		describe: (block) => {
 			const subtasks = args(block).subtasks
 			const count = Array.isArray(subtasks) ? subtasks.length : 0
@@ -269,17 +355,26 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		},
 	},
 	update_todo_list: {
+		approvalCategory: "alwaysAllowed",
+		approvalActions: ["updateTodoList"],
 		slimAllowed: true,
 		describe: bare,
 	},
 	run_slash_command: {
+		// Loading a command's instructions; a skill found through it asks as `skill`.
+		approvalCategory: "readOnly",
+		approvalActions: ["runSlashCommand"],
 		describe: forParamWithArgs("command"),
 	},
 	skill: {
+		// Only loads instructions from skills the user installed, never arbitrary files.
+		approvalCategory: "alwaysAllowed",
+		approvalActions: ["skill"],
 		slimAllowed: true,
 		describe: forParamWithArgs("skill"),
 	},
 	tools_load: {
+		approvalCategory: "none",
 		slimAllowed: true,
 		describe: (block) => {
 			const names = args(block).names
