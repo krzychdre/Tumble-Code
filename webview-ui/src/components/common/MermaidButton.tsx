@@ -38,6 +38,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 		e.stopPropagation()
 		setShowModal(true)
 		setZoomLevel(1)
+		setDragPosition({ x: 0, y: 0 })
 		setModalViewMode("diagram")
 	}
 
@@ -136,6 +137,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 								setShowModal(true)
 								setModalViewMode("code")
 								setZoomLevel(1)
+								setDragPosition({ x: 0, y: 0 })
 							}}
 							copyFeedback={copyFeedback}
 						/>

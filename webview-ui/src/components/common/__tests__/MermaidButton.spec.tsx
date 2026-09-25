@@ -183,6 +183,35 @@ describe("MermaidButton", () => {
 		expect(panLayer().style.transform).toMatch(/translate\(15px, 6px\)$/)
 	})
 
+	it("resets zoom and pan when the modal is opened again", () => {
+		const { container } = renderButton()
+		openModal(container)
+		fireEvent.wheel(wheelArea(), { deltaY: -100 })
+		fireEvent.mouseDown(panLayer())
+		drag(panLayer(), 10, 4)
+		fireEvent.mouseUp(panLayer())
+		fireEvent.click(button(modal()!, "close")!)
+		expect(modal()).toBeNull()
+
+		openModal(container)
+		expect(zoomBadge()).toBe("100%")
+		expect(panLayer().style.transform).toBe("scale(1) translate(0px, 0px)")
+	})
+
+	it("resets zoom and pan when the modal is opened again through the code button", () => {
+		const { container } = renderButton()
+		openModal(container)
+		fireEvent.mouseDown(panLayer())
+		drag(panLayer(), 10, 4)
+		fireEvent.mouseUp(panLayer())
+		fireEvent.click(button(modal()!, "close")!)
+
+		fireEvent.mouseEnter(wrapper(container))
+		fireEvent.click(button(wrapper(container), "code")!)
+		fireEvent.click(button(modal()!, "graph")!)
+		expect(panLayer().style.transform).toBe("scale(1) translate(0px, 0px)")
+	})
+
 	it("copies the Mermaid source from the hover toolbar and shows a check mark", async () => {
 		const { container } = renderButton()
 		fireEvent.mouseEnter(wrapper(container))
