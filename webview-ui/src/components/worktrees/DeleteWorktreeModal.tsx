@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react"
 
-import type { Worktree } from "@roo-code/types"
+import type { Worktree, ExtensionMessage } from "@roo-code/types"
 
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button, Checkbox } from "@/components/ui"
 import { Folder, GitBranch, TriangleAlert } from "lucide-react"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface DeleteWorktreeModalProps {
 	open: boolean
@@ -22,9 +23,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 	const [error, setError] = useState<string | null>(null)
 
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
-
+		const handleMessage = (message: ExtensionMessage) => {
 			if (message.type === "worktreeResult") {
 				setIsDeleting(false)
 				if (message.success) {
@@ -36,8 +35,7 @@ export const DeleteWorktreeModal = ({ open, onClose, worktree, onSuccess }: Dele
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("worktreeResult", handleMessage)
 	}, [onSuccess, onClose])
 
 	const handleDelete = useCallback(() => {

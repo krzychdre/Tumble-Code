@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import { Share2Icon } from "lucide-react"
 
-import { type HistoryItem, type ShareVisibility, TelemetryEventName } from "@roo-code/types"
+import { type HistoryItem, type ShareVisibility, TelemetryEventName, type ExtensionMessage } from "@roo-code/types"
 
 import { vscode } from "@/utils/vscode"
 import { telemetryClient } from "@/utils/TelemetryClient"
@@ -20,6 +20,7 @@ import {
 	StandardTooltip,
 } from "@/components/ui"
 import { LucideIconButton } from "./LucideIconButton"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface ShareButtonProps {
 	item?: HistoryItem
@@ -60,12 +61,11 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 
 	// Listen for share success messages from the extension
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
+		const handleMessage = (message: ExtensionMessage) => {
 			if (message.type === "shareTaskSuccess") {
 				setShareSuccess({
-					visibility: message.visibility,
-					url: message.text,
+					visibility: message.visibility as ShareVisibility,
+					url: message.text as string,
 				})
 				// Auto-hide success message and close popover after 5 seconds
 				setTimeout(() => {
@@ -75,8 +75,7 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("shareTaskSuccess", handleMessage)
 	}, [])
 
 	const handleShare = (visibility: ShareVisibility) => {

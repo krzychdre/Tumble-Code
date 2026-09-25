@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 
 import { vscode } from "@src/utils/vscode"
+import type { ExtensionMessage } from "@roo-code/types"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 export type ImportLevel = "global" | "project"
 
@@ -36,8 +38,7 @@ export function useModeImportExport({ currentSlug, onImported }: UseModeImportEx
 	}, [currentSlug, hasRulesToExport])
 
 	useEffect(() => {
-		const handler = (event: MessageEvent) => {
-			const message = event.data
+		const handler = (message: ExtensionMessage) => {
 			if (message.type === "exportModeResult") {
 				setIsExporting(false)
 				if (!message.success) {
@@ -54,12 +55,14 @@ export function useModeImportExport({ currentSlug, onImported }: UseModeImportEx
 					console.error("Failed to import mode:", message.error)
 				}
 			} else if (message.type === "checkRulesDirectoryResult") {
-				setHasRulesToExport((prev) => ({ ...prev, [message.slug]: message.hasContent }))
+				// The host always sends both; the casts only restate what the untyped listener assumed.
+				const slug = message.slug as string
+				const hasContent = message.hasContent as boolean
+				setHasRulesToExport((prev) => ({ ...prev, [slug]: hasContent }))
 			}
 		}
 
-		window.addEventListener("message", handler)
-		return () => window.removeEventListener("message", handler)
+		return onExtensionMessage(["exportModeResult", "importModeResult", "checkRulesDirectoryResult"], handler)
 	}, [])
 
 	const exportMode = (slug: string) => {

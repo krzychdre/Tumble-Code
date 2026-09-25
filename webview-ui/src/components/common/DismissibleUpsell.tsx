@@ -3,6 +3,7 @@ import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { telemetryClient } from "@src/utils/TelemetryClient"
 import { TelemetryEventName } from "@roo-code/types"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface DismissibleUpsellProps {
 	/** Required unique identifier for this upsell */
@@ -57,24 +58,21 @@ const DismissibleUpsell = memo(
 			vscode.postMessage({ type: "getDismissedUpsells" })
 
 			// Listen for the response
-			const handleMessage = (event: MessageEvent) => {
+			const unsubscribe = onExtensionMessage("dismissedUpsells", (message) => {
 				// Only update state if component is still mounted
 				if (!isMountedRef.current) return
 
-				const message = event.data
-				// Add null/undefined check for message
-				if (message && message.type === "dismissedUpsells" && Array.isArray(message.list)) {
+				if (Array.isArray(message.list)) {
 					// Check if this upsell has been dismissed
 					if (!message.list.includes(upsellId)) {
 						setIsVisible(true)
 					}
 				}
-			}
+			})
 
-			window.addEventListener("message", handleMessage)
 			return () => {
 				isMountedRef.current = false
-				window.removeEventListener("message", handleMessage)
+				unsubscribe()
 			}
 		}, [upsellId])
 

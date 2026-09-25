@@ -72,17 +72,7 @@ export function MarketplaceView({ stateManager, onDone, targetTab }: Marketplace
 			}
 		})
 
-		const handleVisibilityMessage = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type === "webviewVisible" && message.visible === true) {
-				// Data will be automatically fresh when panel becomes visible
-				// No manual fetching needed since we removed caching
-			}
-		}
-
-		window.addEventListener("message", handleVisibilityMessage)
 		return () => {
-			window.removeEventListener("message", handleVisibilityMessage)
 			unsubscribe()
 		}
 	}, [manager, hasReceivedInitialState, state.allItems.length])

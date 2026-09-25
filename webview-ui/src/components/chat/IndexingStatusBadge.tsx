@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { Database } from "lucide-react"
 
-import type { IndexingStatus, IndexingStatusUpdateMessage } from "@roo-code/types"
+import type { IndexingStatus } from "@roo-code/types"
 
 import { cn } from "@src/lib/utils"
 import { vscode } from "@src/utils/vscode"
@@ -11,6 +11,7 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { PopoverTrigger, StandardTooltip, Button } from "@src/components/ui"
 
 import { CodeIndexPopover } from "@src/components/code-index/CodeIndexPopover"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface IndexingStatusBadgeProps {
 	className?: string
@@ -32,20 +33,12 @@ export const IndexingStatusBadge: React.FC<IndexingStatusBadgeProps> = ({ classN
 		vscode.postMessage({ type: "requestIndexingStatus" })
 
 		// Set up message listener for status updates.
-		const handleMessage = (event: MessageEvent<IndexingStatusUpdateMessage>) => {
-			if (event.data.type === "indexingStatusUpdate") {
-				const status = event.data.values
-				if (!status.workspacePath || status.workspacePath === cwd) {
-					setIndexingStatus(status)
-				}
+		return onExtensionMessage("indexingStatusUpdate", (message) => {
+			const status = message.values as IndexingStatus
+			if (!status.workspacePath || status.workspacePath === cwd) {
+				setIndexingStatus(status)
 			}
-		}
-
-		window.addEventListener("message", handleMessage)
-
-		return () => {
-			window.removeEventListener("message", handleMessage)
-		}
+		})
 	}, [cwd])
 
 	const progressPercentage = useMemo(

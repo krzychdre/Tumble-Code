@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { useEvent } from "react-use"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { RefreshCw, Loader2, FileCode } from "lucide-react"
 
@@ -10,6 +9,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 
 import { Button } from "@/components/ui"
+import { useExtensionMessage } from "@src/utils/extensionBus"
 
 interface ToolParameter {
 	name: string
@@ -44,14 +44,10 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 		}
 	}, [enabled])
 
-	useEvent("message", (event: MessageEvent) => {
-		const message = event.data
-
-		if (message.type === "customToolsResult") {
-			setTools(message.tools || [])
-			setIsRefreshing(false)
-			setRefreshError(message.error ?? null)
-		}
+	useExtensionMessage("customToolsResult", (message) => {
+		setTools(message.tools || [])
+		setIsRefreshing(false)
+		setRefreshError(message.error ?? null)
 	})
 
 	const onRefresh = useCallback(() => {

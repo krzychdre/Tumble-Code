@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import prettyBytes from "pretty-bytes"
 
-import type { WorktreeDefaultsResponse, BranchInfo, WorktreeIncludeStatus } from "@roo-code/types"
+import type { WorktreeDefaultsResponse, BranchInfo, WorktreeIncludeStatus, ExtensionMessage } from "@roo-code/types"
 
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Button, Input } from "@/components/ui"
 import { SearchableSelect, type SearchableSelectOption } from "@/components/ui/searchable-select"
 import { CornerDownRight, Folder, FolderSearch, Info } from "lucide-react"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface CreateWorktreeModalProps {
 	open: boolean
@@ -53,8 +54,7 @@ export const CreateWorktreeModal = ({
 
 	// Handle messages from extension
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
+		const handleMessage = (message: ExtensionMessage) => {
 			switch (message.type) {
 				case "worktreeDefaults": {
 					const data = message as WorktreeDefaultsResponse
@@ -70,7 +70,7 @@ export const CreateWorktreeModal = ({
 					break
 				}
 				case "worktreeIncludeStatus": {
-					setIncludeStatus(message.worktreeIncludeStatus)
+					setIncludeStatus(message.worktreeIncludeStatus ?? null)
 					break
 				}
 				case "folderSelected": {
@@ -107,8 +107,17 @@ export const CreateWorktreeModal = ({
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage(
+			[
+				"worktreeDefaults",
+				"branchList",
+				"worktreeIncludeStatus",
+				"folderSelected",
+				"worktreeCopyProgress",
+				"worktreeResult",
+			],
+			handleMessage,
+		)
 	}, [openAfterCreate, worktreePath, onSuccess, onClose])
 
 	const handleCreate = useCallback(() => {

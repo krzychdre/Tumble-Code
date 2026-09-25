@@ -68,6 +68,7 @@ import McpView from "../mcp/McpView"
 import { WorktreesView } from "../worktrees/WorktreesView"
 import { SettingsSearch } from "./SettingsSearch"
 import { useSearchIndexRegistry, SearchIndexProvider } from "./useSettingsSearch"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
@@ -307,18 +308,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 	// Effect to scroll when the webview becomes visible
 	useLayoutEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type === "action" && message.action === "didBecomeVisible") {
+		return onExtensionMessage("action", (message) => {
+			if (message.action === "didBecomeVisible") {
 				scrollToActiveTab()
 			}
-		}
-
-		window.addEventListener("message", handleMessage)
-
-		return () => {
-			window.removeEventListener("message", handleMessage)
-		}
+		})
 	}, [scrollToActiveTab])
 
 	// Search index registry - settings register themselves on mount

@@ -4,7 +4,12 @@ import { z } from "zod"
 import { VSCodeButton, VSCodeTextField, VSCodeLink, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
-import { type IndexingStatus, type EmbedderProvider, CODEBASE_INDEX_DEFAULTS } from "@roo-code/types"
+import {
+	type IndexingStatus,
+	type EmbedderProvider,
+	CODEBASE_INDEX_DEFAULTS,
+	type ExtensionMessage,
+} from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -40,6 +45,7 @@ import { DiscardChangesDialog } from "@src/components/common/DiscardChangesDialo
 import { DEFAULT_QDRANT_URL, SECRET_PLACEHOLDER, type LocalCodeIndexSettings } from "./codeIndexSettings"
 import { EMBEDDER_PROVIDERS, EMBEDDER_SECRETS, createValidationSchema, getEmbedderForm } from "./embedderForms"
 import type { EmbedderFormContext } from "./EmbedderFormFields"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface CodeIndexPopoverProps {
 	children: React.ReactNode
@@ -144,8 +150,8 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 			vscode.postMessage({ type: "requestIndexingStatus" })
 			vscode.postMessage({ type: "requestCodeIndexSecretStatus" })
 		}
-		const handleMessage = (event: MessageEvent) => {
-			if (event.data.type === "workspaceUpdated") {
+		const handleMessage = (message: ExtensionMessage) => {
+			if (message.type === "workspaceUpdated") {
 				// When workspace changes, request updated indexing status
 				if (open) {
 					vscode.postMessage({ type: "requestIndexingStatus" })
@@ -154,8 +160,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("workspaceUpdated", handleMessage)
 	}, [open])
 
 	// Use a ref to capture current settings for the save handler
@@ -164,19 +169,20 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 
 	// Listen for indexing status updates and save responses
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent<any>) => {
-			if (event.data.type === "indexingStatusUpdate") {
-				if (!event.data.values.workspacePath || event.data.values.workspacePath === cwd) {
+		const handleMessage = (message: ExtensionMessage) => {
+			if (message.type === "indexingStatusUpdate") {
+				const values = message.values as NonNullable<ExtensionMessage["values"]>
+				if (!values.workspacePath || values.workspacePath === cwd) {
 					setIndexingStatus({
-						systemStatus: event.data.values.systemStatus,
-						message: event.data.values.message || "",
-						processedItems: event.data.values.processedItems,
-						totalItems: event.data.values.totalItems,
-						currentItemUnit: event.data.values.currentItemUnit || "items",
+						systemStatus: values.systemStatus,
+						message: values.message || "",
+						processedItems: values.processedItems,
+						totalItems: values.totalItems,
+						currentItemUnit: values.currentItemUnit || "items",
 					})
 				}
-			} else if (event.data.type === "codeIndexSettingsSaved") {
-				if (event.data.success) {
+			} else if (message.type === "codeIndexSettingsSaved") {
+				if (message.success) {
 					setSaveStatus("saved")
 					// Update initial settings to match current settings after successful save
 					// This ensures hasUnsavedChanges becomes false
@@ -192,7 +198,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 					setSaveStatus("idle")
 				} else {
 					setSaveStatus("error")
-					setSaveError(event.data.error || t("settings:codeIndex.saveError"))
+					setSaveError(message.error || t("settings:codeIndex.saveError"))
 					// Clear error message after 5 seconds
 					setSaveStatus("idle")
 					setSaveError(null)
@@ -200,16 +206,15 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage(["indexingStatusUpdate", "codeIndexSettingsSaved"], handleMessage)
 	}, [t, cwd])
 
 	// Listen for secret status
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			if (event.data.type === "codeIndexSecretStatus") {
+		const handleMessage = (message: ExtensionMessage) => {
+			if (message.type === "codeIndexSecretStatus") {
 				// Update settings to show placeholders for existing secrets
-				const secretStatus = event.data.values
+				const secretStatus = message.values as NonNullable<ExtensionMessage["values"]>
 
 				// Update both current and initial settings based on what secrets exist
 				const updateWithSecrets = (prev: LocalCodeIndexSettings): LocalCodeIndexSettings => {
@@ -241,8 +246,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("codeIndexSecretStatus", handleMessage)
 	}, [saveStatus])
 
 	// Generic comparison function that detects changes between initial and current settings

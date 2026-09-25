@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 
-import type { Worktree, WorktreeListResponse, WorktreeIncludeStatus } from "@roo-code/types"
+import type { Worktree, WorktreeListResponse, WorktreeIncludeStatus, ExtensionMessage } from "@roo-code/types"
 
 import { Badge, Button, StandardTooltip, ToggleSwitch } from "@/components/ui"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -13,6 +13,7 @@ import { postImmediateSetting } from "../settings/postImmediateSetting"
 import { CreateWorktreeModal } from "./CreateWorktreeModal"
 import { DeleteWorktreeModal } from "./DeleteWorktreeModal"
 import { Folder, GitBranch, Lock, Plus, SquareArrowOutUpRight, Trash } from "lucide-react"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 export const WorktreesView = () => {
 	const { t } = useAppTranslation()
@@ -47,11 +48,10 @@ export const WorktreesView = () => {
 
 	// Handle messages from extension
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
+		const handleMessage = (message: ExtensionMessage) => {
 			switch (message.type) {
 				case "worktreeList": {
-					const response: WorktreeListResponse = message
+					const response = message as unknown as WorktreeListResponse
 					setWorktrees(response.worktrees || [])
 					setIsGitRepo(response.isGitRepo)
 					setIsMultiRoot(response.isMultiRoot)
@@ -63,7 +63,7 @@ export const WorktreesView = () => {
 				}
 				case "worktreeIncludeStatus": {
 					console.log("[WorktreesView] Received worktreeIncludeStatus:", message)
-					setIncludeStatus(message.worktreeIncludeStatus)
+					setIncludeStatus(message.worktreeIncludeStatus ?? null)
 					break
 				}
 				case "worktreeResult": {
@@ -77,8 +77,7 @@ export const WorktreesView = () => {
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage(["worktreeList", "worktreeIncludeStatus", "worktreeResult"], handleMessage)
 	}, [fetchWorktrees, fetchIncludeStatus])
 
 	// Initial fetch and polling

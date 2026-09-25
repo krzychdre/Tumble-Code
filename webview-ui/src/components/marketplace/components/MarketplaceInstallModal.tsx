@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react"
-import { MarketplaceItem, McpParameter, McpInstallationMethod } from "@roo-code/types"
+import { MarketplaceItem, McpParameter, McpInstallationMethod, type ExtensionMessage } from "@roo-code/types"
 import { vscode } from "@/utils/vscode"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import {
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface MarketplaceInstallModalProps {
 	item: MarketplaceItem | null
@@ -129,8 +130,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 
 	// Listen for installation result messages
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
+		const handleMessage = (message: ExtensionMessage) => {
 			if (message.type === "marketplaceInstallResult" && message.slug === item?.id) {
 				if (message.success) {
 					// Installation succeeded - show success state
@@ -149,8 +149,7 @@ export const MarketplaceInstallModal: React.FC<MarketplaceInstallModalProps> = (
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("marketplaceInstallResult", handleMessage)
 	}, [item?.id])
 
 	const handleInstall = () => {

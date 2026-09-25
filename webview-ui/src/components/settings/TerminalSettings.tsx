@@ -4,7 +4,7 @@ import { vscode } from "@/utils/vscode"
 import { VSCodeCheckbox, VSCodeLink, VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { buildDocLink } from "@src/utils/docLinks"
-import { useEvent, useMount } from "react-use"
+import { useMount } from "react-use"
 
 import {
 	type ExtensionMessage,
@@ -19,6 +19,7 @@ import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { useExtensionMessage } from "@src/utils/extensionBus"
 
 type TerminalSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	terminalOutputPreviewSize?: TerminalOutputPreviewSize
@@ -84,9 +85,7 @@ export const TerminalSettings = ({
 		vscode.postMessage({ type: "requestTerminalProfiles" })
 	})
 
-	const onMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
-
+	const onMessage = useCallback((message: ExtensionMessage) => {
 		switch (message.type) {
 			case "vsCodeSetting":
 				if (message.setting === "terminal.integrated.inheritEnv") {
@@ -102,7 +101,7 @@ export const TerminalSettings = ({
 		}
 	}, [])
 
-	useEvent("message", onMessage)
+	useExtensionMessage(["vsCodeSetting", "terminalProfiles"], onMessage)
 
 	useEffect(() => {
 		if (isProfilesLoaded && terminalProfile && !profileNames.includes(terminalProfile)) {
