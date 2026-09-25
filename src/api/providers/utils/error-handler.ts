@@ -10,6 +10,7 @@
  */
 
 import i18n from "../../../i18n/setup"
+import { getApiErrorStatus } from "../../apiErrors"
 
 /**
  * Handles API provider errors and transforms them into user-friendly messages
@@ -33,6 +34,16 @@ import i18n from "../../../i18n/setup"
  * catch (error) {
  *   throw handleProviderError(error, "Anthropic", { messagePrefix: "streaming" })
  * }
+ *
+ * @example
+ * // Keep a handler's own wording but still carry the status
+ * catch (error) {
+ *   throw handleProviderError(error, "Ollama", { messageTransformer: (msg) => msg })
+ * }
+ *
+ * Every provider handler throws through this function (or rethrows the SDK
+ * error untouched when that already has a numeric `status`): the task retry
+ * loop, the chat error row and the background-model fallback read `.status`.
  */
 export function handleProviderError(
 	error: unknown,
@@ -74,8 +85,13 @@ export function handleProviderError(
 
 		// Preserve HTTP status and structured details for retry/backoff + UI
 		// These fields are used by Task.backoffAndAnnounce() and ChatRow/ErrorRow
-		// to provide status-aware error messages and handling
-		if (anyErr.status !== undefined) {
+		// to provide status-aware error messages and handling. SDKs that name the
+		// status differently (Mistral statusCode, ollama status_code, AWS
+		// $metadata.httpStatusCode) are normalized to `status` here.
+		const status = getApiErrorStatus(error)
+		if (status !== undefined) {
+			;(wrapped as any).status = status
+		} else if (anyErr.status !== undefined) {
 			;(wrapped as any).status = anyErr.status
 		}
 		if (anyErr.errorDetails !== undefined) {
@@ -92,23 +108,19 @@ export function handleProviderError(
 		return wrapped
 	}
 
-	// Non-Error: wrap with provider-specific prefix
+	// Non-Error: wrap with provider-specific prefix (or the caller's own wording)
 	console.error(`[${providerName}] Non-Error exception:`, error)
-	const wrapped = new Error(`${providerName} ${messagePrefix} error: ${String(error)}`)
+	const wrapped = new Error(
+		options?.messageTransformer
+			? options.messageTransformer(String(error))
+			: `${providerName} ${messagePrefix} error: ${String(error)}`,
+	)
 
 	// Also try to preserve status for non-Error exceptions (e.g., plain objects with status)
-	const anyErr = error as any
-	if (typeof anyErr?.status === "number") {
-		;(wrapped as any).status = anyErr.status
+	const status = getApiErrorStatus(error)
+	if (status !== undefined) {
+		;(wrapped as any).status = status
 	}
 
 	return wrapped
-}
-
-/**
- * Specialized handler for OpenAI-compatible providers
- * Re-exports with OpenAI-specific defaults for backward compatibility
- */
-export function handleOpenAIError(error: unknown, providerName: string): Error {
-	return handleProviderError(error, providerName, { messagePrefix: "completion" })
 }

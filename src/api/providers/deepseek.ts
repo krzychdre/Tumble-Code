@@ -17,6 +17,7 @@ import { convertToR1Format } from "../transform/r1-format"
 import { OpenAiHandler } from "./openai"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
+import { handleProviderError } from "./utils/error-handler"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
 // Custom interface for DeepSeek params to support thinking mode
@@ -144,8 +145,7 @@ export class DeepSeekHandler extends OpenAiHandler {
 			)
 		} catch (error) {
 			this.abortController = undefined
-			const { handleOpenAIError } = await import("./utils/openai-error-handler")
-			throw handleOpenAIError(error, "DeepSeek")
+			throw handleProviderError(error, "DeepSeek")
 		}
 
 		let lastUsage

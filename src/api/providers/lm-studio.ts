@@ -16,8 +16,16 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { openAiCompletionUsage } from "./utils/completion-usage"
 import { getModelsFromCache } from "./fetchers/modelCache"
 import { getApiRequestTimeout } from "./utils/timeout-config"
-import { handleOpenAIError } from "./utils/openai-error-handler"
+import { handleProviderError } from "./utils/error-handler"
 import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
+
+/**
+ * LM Studio reports most failures (model not loaded, context too small) only in its own
+ * developer log, so every error shows this hint. The HTTP status still travels on the
+ * error for the retry loop and the background-model fallback.
+ */
+const LM_STUDIO_ERROR_HINT =
+	"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts."
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -113,7 +121,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				})
 			} catch (error) {
 				this.abortController = undefined
-				throw handleOpenAIError(error, this.providerName)
+				throw error
 			}
 
 			const matcher = new TagMatcher(
@@ -165,9 +173,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				this.abortController = undefined
 			}
 		} catch (error) {
-			throw new Error(
-				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",
-			)
+			throw handleProviderError(error, this.providerName, { messageTransformer: () => LM_STUDIO_ERROR_HINT })
 		}
 	}
 
@@ -211,8 +217,6 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				response = await this.getClient().chat.completions.create(params, {
 					signal: this.abortController.signal,
 				})
-			} catch (error) {
-				throw handleOpenAIError(error, this.providerName)
 			} finally {
 				this.abortController = undefined
 			}
@@ -221,9 +225,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				usage: openAiCompletionUsage(response.usage),
 			}
 		} catch (error) {
-			throw new Error(
-				"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts.",
-			)
+			throw handleProviderError(error, this.providerName, { messageTransformer: () => LM_STUDIO_ERROR_HINT })
 		}
 	}
 }

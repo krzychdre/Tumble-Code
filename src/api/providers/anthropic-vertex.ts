@@ -25,6 +25,7 @@ import {
 
 import { BaseProvider } from "./base-provider"
 import { parseVertexJsonCredentials } from "./utils/vertex-credentials"
+import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { anthropicCompletionUsage } from "./utils/completion-usage"
 
@@ -343,11 +344,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				usage: anthropicCompletionUsage(response.usage),
 			}
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`Vertex completion error: ${error.message}`)
-			}
-
-			throw error
+			throw handleProviderError(error, "Vertex")
 		}
 	}
 }

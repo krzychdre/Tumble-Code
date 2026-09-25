@@ -17,6 +17,7 @@ import { convertToMistralMessages } from "../transform/mistral-format"
 import { ApiStream } from "../transform/stream"
 
 import { BaseProvider } from "./base-provider"
+import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { aiSdkCompletionUsage } from "./utils/completion-usage"
 
@@ -108,7 +109,7 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 			const errorMessage = error instanceof Error ? error.message : String(error)
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model, "createMessage")
 			TelemetryService.instance.captureException(apiError)
-			throw new Error(`Mistral completion error: ${errorMessage}`)
+			throw handleProviderError(error, this.providerName)
 		}
 
 		// Keep only the last usage: some servers repeat the cumulative usage
@@ -233,7 +234,7 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 			const errorMessage = error instanceof Error ? error.message : String(error)
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model, "completePrompt")
 			TelemetryService.instance.captureException(apiError)
-			throw new Error(`Mistral completion error: ${errorMessage}`)
+			throw handleProviderError(error, this.providerName)
 		}
 	}
 }

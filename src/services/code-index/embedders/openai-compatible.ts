@@ -17,7 +17,7 @@ import {
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { Mutex } from "async-mutex"
-import { handleOpenAIError } from "../../../api/providers/utils/openai-error-handler"
+import { handleProviderError } from "../../../api/providers/utils/error-handler"
 
 interface EmbeddingItem {
 	embedding: string | number[]
@@ -81,7 +81,7 @@ export class OpenAICompatibleEmbedder implements IEmbedder {
 			})
 		} catch (error) {
 			// Use the error handler to transform ByteString conversion errors
-			throw handleOpenAIError(error, "OpenAI Compatible")
+			throw handleProviderError(error, "OpenAI Compatible")
 		}
 
 		this.defaultModelId = modelId || getDefaultModelId("openai-compatible")

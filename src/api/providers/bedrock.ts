@@ -45,6 +45,8 @@ import { getModelParams } from "../transform/model-params"
 import { shouldUseReasoningBudget } from "../../shared/api"
 import { normalizeToolSchema } from "../../utils/json-schema"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
+import { getApiErrorStatus } from "../apiErrors"
+import { handleProviderError } from "./utils/error-handler"
 
 /************************************************************************************
  *
@@ -757,6 +759,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			// on the first chunk for proper exponential backoff behavior
 			if (errorType === "THROTTLING") {
 				if (error instanceof Error) {
+					// The AWS SDK keeps the HTTP status in $metadata.httpStatusCode only;
+					// the retry loop and the background-model fallback read `status`.
+					const status = getApiErrorStatus(error)
+					if (status !== undefined && (error as any).status === undefined) {
+						;(error as any).status = status
+					}
 					throw error
 				} else {
 					throw new Error("Throttling error occurred")
@@ -772,26 +780,14 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 			// Re-throw with enhanced error message for retry system
 			const enhancedErrorMessage = this.formatErrorMessage(error, this.getErrorType(error), true)
+			// Keeps status ($metadata.httpStatusCode normalized to `status`), $metadata and code.
+			const enhancedError = handleProviderError(error, this.providerName, {
+				messageTransformer: () => (error instanceof Error ? enhancedErrorMessage : "An unknown error occurred"),
+			})
 			if (error instanceof Error) {
-				const enhancedError = new Error(enhancedErrorMessage)
-				// Preserve important properties from the original error
 				enhancedError.name = error.name
-				// Validate and preserve status property
-				if ("status" in error && typeof (error as any).status === "number") {
-					;(enhancedError as any).status = (error as any).status
-				}
-				// Validate and preserve $metadata property
-				if (
-					"$metadata" in error &&
-					typeof (error as any).$metadata === "object" &&
-					(error as any).$metadata !== null
-				) {
-					;(enhancedError as any).$metadata = (error as any).$metadata
-				}
-				throw enhancedError
-			} else {
-				throw new Error("An unknown error occurred")
 			}
+			throw enhancedError
 		}
 	}
 
@@ -871,23 +867,13 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			// Since we're in a non-streaming context, we know the result is a string
 			const errorMessage = errorResult as string
 
-			// Create enhanced error for retry system
-			const enhancedError = new Error(errorMessage)
+			// Create enhanced error for retry system. Keeps status ($metadata.httpStatusCode
+			// normalized to `status`), $metadata and code.
+			const enhancedError = handleProviderError(error, this.providerName, {
+				messageTransformer: () => errorMessage,
+			})
 			if (error instanceof Error) {
-				// Preserve important properties from the original error
 				enhancedError.name = error.name
-				// Validate and preserve status property
-				if ("status" in error && typeof (error as any).status === "number") {
-					;(enhancedError as any).status = (error as any).status
-				}
-				// Validate and preserve $metadata property
-				if (
-					"$metadata" in error &&
-					typeof (error as any).$metadata === "object" &&
-					(error as any).$metadata !== null
-				) {
-					;(enhancedError as any).$metadata = (error as any).$metadata
-				}
 			}
 			throw enhancedError
 		}

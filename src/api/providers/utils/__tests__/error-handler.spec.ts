@@ -1,4 +1,4 @@
-import { handleProviderError, handleOpenAIError } from "../error-handler"
+import { handleProviderError } from "../error-handler"
 
 describe("handleProviderError", () => {
 	const providerName = "TestProvider"
@@ -36,6 +36,40 @@ describe("handleProviderError", () => {
 
 			expect(result).toBeInstanceOf(Error)
 			expect((result as any).status).toBe(500)
+		})
+
+		// Not every SDK names the HTTP status `status`. The retry loop, the chat error row and the
+		// background-model fallback only read `.status`, so the wrapper normalizes it.
+		it("should expose the Mistral SDK's statusCode as status", () => {
+			const error = Object.assign(new Error("Rate limited"), { statusCode: 429 })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(429)
+		})
+
+		it("should expose the ollama ResponseError's status_code as status", () => {
+			const error = Object.assign(new Error("model is too large"), { status_code: 400 })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(400)
+		})
+
+		it("should expose the AWS SDK's $metadata.httpStatusCode as status", () => {
+			const error = Object.assign(new Error("Access denied"), { $metadata: { httpStatusCode: 403 } })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(403)
+		})
+
+		it("should prefer an explicit numeric status over the other spellings", () => {
+			const error = Object.assign(new Error("Mixed"), { status: 429, statusCode: 500 })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(429)
 		})
 
 		it("should not add status field if original error lacks it", () => {
@@ -117,6 +151,14 @@ describe("handleProviderError", () => {
 
 			expect(result.message).toBe("Transformed: Rate limited")
 			expect((result as any).status).toBe(429)
+		})
+
+		it("should apply the transformer to non-Error exceptions too", () => {
+			const result = handleProviderError("socket hang up", providerName, {
+				messageTransformer: (msg) => `Transformed: ${msg}`,
+			})
+
+			expect(result.message).toBe("Transformed: socket hang up")
 		})
 	})
 
@@ -256,28 +298,5 @@ describe("handleProviderError", () => {
 			expect((result as any).status).toBe(401)
 			expect(result.message).toContain("Invalid API key")
 		})
-	})
-})
-
-describe("handleOpenAIError (backward compatibility)", () => {
-	it("should be an alias for handleProviderError with completion prefix", () => {
-		const error = new Error("API failed") as any
-		error.status = 500
-
-		const result = handleOpenAIError(error, "OpenAI")
-
-		expect(result).toBeInstanceOf(Error)
-		expect(result.message).toContain("OpenAI completion error")
-		expect((result as any).status).toBe(500)
-	})
-
-	it("should preserve backward compatibility for existing callers", () => {
-		const error = new Error("Authentication failed") as any
-		error.status = 401
-
-		const result = handleOpenAIError(error, "Roo Code Cloud")
-
-		expect(result.message).toBe("Roo Code Cloud completion error: Authentication failed")
-		expect((result as any).status).toBe(401)
 	})
 })

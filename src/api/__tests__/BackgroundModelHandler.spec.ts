@@ -114,6 +114,18 @@ describe("isFallbackTriggerError", () => {
 		).toBe(true)
 	})
 
+	// SDKs that do not name the HTTP status `status`: Mistral (statusCode), ollama
+	// (status_code), AWS SDK v3 ($metadata.httpStatusCode). A background model on
+	// Ollama or Bedrock must fall back on a 400 or 429 like any other provider.
+	it("reads the HTTP status under the names other SDKs use", () => {
+		expect(isFallbackTriggerError(Object.assign(new Error("rate"), { statusCode: 429 }))).toBe(true)
+		expect(isFallbackTriggerError(Object.assign(new Error("too large"), { status_code: 400 }))).toBe(true)
+		expect(isFallbackTriggerError(Object.assign(new Error("denied"), { $metadata: { httpStatusCode: 403 } }))).toBe(
+			true,
+		)
+		expect(isFallbackTriggerError(Object.assign(new Error("missing"), { status_code: 404 }))).toBe(false)
+	})
+
 	it("returns false for abort / generic / null / 404", () => {
 		const abortErr: any = new Error("aborted")
 		abortErr.name = "AbortError"

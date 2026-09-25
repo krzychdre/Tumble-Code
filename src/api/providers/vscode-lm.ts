@@ -12,6 +12,7 @@ import { ApiStream } from "../transform/stream"
 import { convertToVsCodeLmMessages, extractTextCountFromMessage } from "../transform/vscode-lm-format"
 
 import { BaseProvider } from "./base-provider"
+import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 
 /**
@@ -589,10 +590,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			])
 			return { text: result, usage: { inputTokens, outputTokens } }
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`VSCode LM completion error: ${error.message}`)
-			}
-			throw error
+			throw handleProviderError(error, "VSCode LM")
 		}
 	}
 }

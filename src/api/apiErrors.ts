@@ -1,17 +1,39 @@
 /**
- * Shared API error classification. Used by both the background-model fallback
+ * Shared API error classification. Used by the background-model fallback
  * system ({@linkcode isFallbackTriggerError} in `BackgroundModelHandler.ts`)
- * and the task retry loop ({@linkcode RetryHandler.shouldRetry}) so the two
- * stay in sync instead of drifting.
+ * and by `handleProviderError`, which copies the status onto the errors every
+ * provider handler throws.
  *
- * The shared predicate covers *transient* errors — conditions under which the
+ * The shared predicate covers *transient* errors: conditions under which the
  * same handler is likely to recover if retried (network blips, rate limits,
  * provider 5xx). Callers layer their own policy on top:
- * - RetryHandler retries the SAME handler → uses this predicate directly.
- * - BackgroundModelHandler falls back to a DIFFERENT handler → uses this
- *   predicate plus auth/payload/construction conditions that warrant switching
- *   handlers (401/403, 400).
+ * BackgroundModelHandler falls back to a DIFFERENT handler, so it uses this
+ * predicate plus auth/payload conditions that warrant switching handlers
+ * (401/403, 400).
+ *
+ * The task retry loop (`TaskApiLoop.handleApiRequestError` with `RetryHandler`
+ * for the backoff) does not classify at all: apart from the context-window
+ * case, with auto-approval on it retries every failed request, otherwise it
+ * asks the user.
  */
+
+/**
+ * The HTTP status of a provider error, whatever the SDK calls it:
+ * - `status`: OpenAI, Anthropic and Google GenAI SDKs, and the errors our own
+ *   handlers throw through `handleProviderError`.
+ * - `statusCode`: the Mistral SDK (`SDKError`).
+ * - `status_code`: the ollama package (`ResponseError`).
+ * - `$metadata.httpStatusCode`: the AWS SDK v3 (Bedrock).
+ *
+ * Only numbers count: some libraries put a text such as "RESOURCE_EXHAUSTED"
+ * in `status`.
+ */
+export function getApiErrorStatus(error: unknown): number | undefined {
+	if (error == null || typeof error !== "object") return undefined
+	const e = error as any
+	const candidates = [e.status, e.statusCode, e.status_code, e.$metadata?.httpStatusCode]
+	return candidates.find((value): value is number => typeof value === "number")
+}
 
 /**
  * True iff `error` represents a transient server-side or network condition
@@ -36,11 +58,13 @@ export function isRetryableApiError(error: unknown): boolean {
 		return true
 	}
 
+	const status = getApiErrorStatus(error)
+
 	// Rate limit / service unavailable.
-	if (e.status === 429 || e.status === 503) return true
+	if (status === 429 || status === 503) return true
 
 	// Generic 5xx server errors.
-	if (typeof e.status === "number" && e.status >= 500 && e.status < 600) return true
+	if (status !== undefined && status >= 500 && status < 600) return true
 
 	return false
 }

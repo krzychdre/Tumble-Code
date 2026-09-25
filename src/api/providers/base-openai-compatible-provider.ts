@@ -11,7 +11,7 @@ import { convertToOpenAiMessages } from "../transform/openai-format"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
-import { handleOpenAIError } from "./utils/openai-error-handler"
+import { handleProviderError } from "./utils/error-handler"
 import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { calculateApiCostOpenAI } from "../../shared/cost"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
@@ -132,7 +132,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			return this.getClient().chat.completions.create(params, mergedRequestOptions)
 		} catch (error) {
 			this.abortController = undefined
-			throw handleOpenAIError(error, this.providerName)
+			throw handleProviderError(error, this.providerName)
 		}
 	}
 
@@ -270,7 +270,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 				usage: openAiCompletionUsage(response.usage),
 			}
 		} catch (error) {
-			throw handleOpenAIError(error, this.providerName)
+			throw handleProviderError(error, this.providerName)
 		} finally {
 			this.abortController = undefined
 		}

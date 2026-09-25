@@ -28,6 +28,7 @@ import { toStrictSchema } from "../transform/strict-json-schema"
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { responsesApiCompletionUsage } from "./utils/completion-usage"
+import { handleProviderError } from "./utils/error-handler"
 import { isMcpTool } from "../../utils/mcp-name"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 
@@ -570,7 +571,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					errorMessage += ` - ${errorDetails}`
 				}
 
-				throw new Error(errorMessage)
+				// The status travels on the error for the retry loop and the background-model fallback.
+				throw Object.assign(new Error(errorMessage), { status: response.status })
 			}
 
 			if (!response.body) {
@@ -585,16 +587,17 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
 			TelemetryService.instance.captureException(apiError)
 
-			if (error instanceof Error) {
-				// Re-throw with the original error message if it's already formatted
-				if (error.message.includes("Responses API")) {
-					throw error
-				}
-				// Otherwise, wrap it with context
-				throw new Error(`Failed to connect to Responses API: ${error.message}`)
+			// Re-throw with the original error message if it's already formatted
+			if (error instanceof Error && error.message.includes("Responses API")) {
+				throw error
 			}
-			// Handle non-Error objects
-			throw new Error(`Unexpected error connecting to Responses API`)
+			// Otherwise, wrap it with context (keeping the HTTP status)
+			throw handleProviderError(error, this.providerName, {
+				messageTransformer: (msg) =>
+					error instanceof Error
+						? `Failed to connect to Responses API: ${msg}`
+						: `Unexpected error connecting to Responses API`,
+			})
 		} finally {
 			this.abortController = undefined
 		}
@@ -1065,10 +1068,12 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
 			TelemetryService.instance.captureException(apiError)
 
-			if (error instanceof Error) {
-				throw new Error(`Error processing response stream: ${error.message}`)
-			}
-			throw new Error("Unexpected error processing response stream")
+			throw handleProviderError(error, this.providerName, {
+				messageTransformer: (msg) =>
+					error instanceof Error
+						? `Error processing response stream: ${msg}`
+						: "Unexpected error processing response stream",
+			})
 		} finally {
 			reader.releaseLock()
 		}
@@ -1541,10 +1546,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			const apiError = new ApiProviderError(errorMessage, this.providerName, errorModel.id, "completePrompt")
 			TelemetryService.instance.captureException(apiError)
 
-			if (error instanceof Error) {
-				throw new Error(`OpenAI Native completion error: ${error.message}`)
-			}
-			throw error
+			throw handleProviderError(error, this.providerName)
 		} finally {
 			this.abortController = undefined
 		}

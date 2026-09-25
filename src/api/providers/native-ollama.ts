@@ -6,6 +6,7 @@ import { ApiStream } from "../transform/stream"
 import { BaseProvider } from "./base-provider"
 import type { ApiHandlerOptions } from "../../shared/api"
 import { getOllamaModels } from "./fetchers/ollama"
+import { handleProviderError } from "./utils/error-handler"
 import { TagMatcher } from "../../utils/tag-matcher"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { ollamaCompletionUsage } from "./utils/completion-usage"
@@ -352,7 +353,9 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 				}
 			} catch (streamError: any) {
 				console.error("Error processing Ollama stream:", streamError)
-				throw new Error(`Ollama stream processing error: ${streamError.message || "Unknown error"}`)
+				throw handleProviderError(streamError, "Ollama", {
+					messageTransformer: (msg) => `Ollama stream processing error: ${msg || "Unknown error"}`,
+				})
 			} finally {
 				this.currentStream = undefined
 			}
@@ -372,7 +375,8 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 			}
 
 			console.error(`Ollama API error (${statusCode || "unknown"}): ${errorMessage}`)
-			throw error
+			// Same message, but with the ollama package's status_code carried as `status`.
+			throw handleProviderError(error, "Ollama", { messageTransformer: (msg) => msg })
 		}
 	}
 
@@ -423,10 +427,7 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 				usage: ollamaCompletionUsage(response),
 			}
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`Ollama completion error: ${error.message}`)
-			}
-			throw error
+			throw handleProviderError(error, "Ollama")
 		}
 	}
 }

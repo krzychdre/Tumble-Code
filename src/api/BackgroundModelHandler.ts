@@ -4,7 +4,7 @@ import type { ModelInfo } from "@roo-code/types"
 
 import { ApiHandler, ApiHandlerCreateMessageMetadata } from "./index"
 import { ApiStream, ApiStreamChunk } from "./transform/stream"
-import { isRetryableApiError } from "./apiErrors"
+import { getApiErrorStatus, isRetryableApiError } from "./apiErrors"
 
 /**
  * Error classification for background→foreground fallback decisions. A trigger
@@ -14,10 +14,11 @@ import { isRetryableApiError } from "./apiErrors"
  * programmer errors) propagate unchanged so cancellations and bugs are not
  * silently retried.
  *
- * Layered on top of {@linkcode isRetryableApiError} (shared with
- * `RetryHandler.shouldRetry`): transient server/network errors are always
- * fallback triggers, and on top of those we add conditions that warrant
- * switching handlers specifically (auth, payload-rejection).
+ * Layered on top of {@linkcode isRetryableApiError}: transient server/network
+ * errors are always fallback triggers, and on top of those we add conditions
+ * that warrant switching handlers specifically (auth, payload-rejection). The
+ * HTTP status is read through {@linkcode getApiErrorStatus}, so SDKs that do
+ * not call it `status` (Mistral, ollama, AWS) are classified too.
  */
 export function isFallbackTriggerError(error: unknown): boolean {
 	if (error == null) return false
@@ -25,13 +26,13 @@ export function isFallbackTriggerError(error: unknown): boolean {
 	// Transient server-side / network conditions → retry or fall back.
 	if (isRetryableApiError(error)) return true
 
-	const e = error as any
+	const status = getApiErrorStatus(error)
 
 	// Auth / invalid credentials — the background profile is misconfigured;
 	// fall back rather than surface a 401/403 to the user inside a condense.
 	// (These are NOT in isRetryableApiError because retrying the SAME handler
 	// won't help — but a DIFFERENT handler may have valid creds.)
-	if (e.status === 401 || e.status === 403) return true
+	if (status === 401 || status === 403) return true
 
 	// 400 — the background model rejected the payload. This is exactly the
 	// "cheap small model for compaction" failure mode the feature targets:
@@ -41,7 +42,7 @@ export function isFallbackTriggerError(error: unknown): boolean {
 	// 400, which is not retryable on the same handler but IS worth one attempt
 	// on the foreground (which can accept the payload). Without this, a
 	// mismatched config fails every condense until the circuit breaker trips.
-	if (e.status === 400) return true
+	if (status === 400) return true
 
 	return false
 }
