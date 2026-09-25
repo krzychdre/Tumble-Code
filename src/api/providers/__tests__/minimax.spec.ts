@@ -303,6 +303,7 @@ describe("MiniMaxHandler", () => {
 					messages: expect.any(Array),
 					stream: true,
 				}),
+				{ signal: undefined },
 			)
 		})
 
@@ -322,6 +323,7 @@ describe("MiniMaxHandler", () => {
 				expect.objectContaining({
 					temperature: 1,
 				}),
+				{ signal: undefined },
 			)
 		})
 

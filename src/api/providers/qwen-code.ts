@@ -238,7 +238,10 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
 		}
 
-		const stream = await this.callApiWithRetry(() => client.chat.completions.create(requestOptions))
+		// The task's signal: Stop closes the HTTP request.
+		const stream = await this.callApiWithRetry(() =>
+			client.chat.completions.create(requestOptions, { signal: metadata?.signal }),
+		)
 
 		// Qwen3 models may write their thoughts inline in <think> tags, split
 		// across deltas; reasoning_content goes before the text of the same delta.

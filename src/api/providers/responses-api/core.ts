@@ -4,6 +4,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import type { ApiStream, ApiStreamUsageChunk } from "../../transform/stream"
 import { handleProviderError } from "../utils/error-handler"
 import { isSdkUnusableError } from "../utils/responses-sse-fallback"
+import { createRequestAbortController } from "../utils/request-abort"
 
 /**
  * The token counts of one usage report, as read from the Responses API usage block.
@@ -65,6 +66,8 @@ export interface ResponsesApiStreamParams {
 	body: unknown
 	modelId: string
 	info: ModelInfo
+	/** The task's signal for this request (metadata.signal); Stop aborts it. */
+	signal?: AbortSignal
 	/** Starts the request through the openai SDK. */
 	openSdkStream(body: unknown, signal: AbortSignal): Promise<unknown>
 	/** The same request for a plain fetch, used only when the SDK cannot be used at all. */
@@ -226,9 +229,13 @@ export class ResponsesApiCore {
 		}
 	}
 
-	/** Registers the abort controller of a new request (the one `cancel` aborts). */
-	openRequest(): AbortController {
-		const controller = new AbortController()
+	/**
+	 * Registers the abort controller of a new request (the one `cancel` aborts). It also
+	 * aborts with the task's signal, which stays with this request even when another request
+	 * of the same handler registers its own controller.
+	 */
+	openRequest(taskSignal?: AbortSignal): AbortController {
+		const controller = createRequestAbortController(taskSignal)
 		this.abortController = controller
 		return controller
 	}
@@ -307,7 +314,7 @@ export class ResponsesApiCore {
 	 * event, and never when the server answered (DEF-C44).
 	 */
 	async *streamRequest(params: ResponsesApiStreamParams): ApiStream {
-		const abortController = this.openRequest()
+		const abortController = this.openRequest(params.signal)
 
 		try {
 			try {
@@ -334,7 +341,12 @@ export class ResponsesApiCore {
 				if (abortController.signal.aborted || this.sawSdkEventInResponse || !isSdkUnusableError(sdkErr)) {
 					throw sdkErr
 				}
-				yield* this.fetchSse(await params.fallbackRequest(), params.modelId, params.info)
+				yield* this.fetchSse(
+					await params.fallbackRequest(),
+					params.modelId,
+					params.info,
+					abortController.signal,
+				)
 			}
 		} finally {
 			this.closeRequest(abortController)
@@ -342,7 +354,12 @@ export class ResponsesApiCore {
 	}
 
 	/** The plain-fetch fallback: sends the request and parses the SSE answer. */
-	private async *fetchSse(request: ResponsesApiFallbackRequest, modelId: string, info: ModelInfo): ApiStream {
+	private async *fetchSse(
+		request: ResponsesApiFallbackRequest,
+		modelId: string,
+		info: ModelInfo,
+		signal: AbortSignal,
+	): ApiStream {
 		const { texts, providerName } = this.options
 
 		try {
@@ -350,7 +367,7 @@ export class ResponsesApiCore {
 				method: "POST",
 				headers: { "Content-Type": "application/json", ...request.headers },
 				body: JSON.stringify(request.body),
-				signal: this.abortController?.signal,
+				signal,
 			})
 
 			if (!response.ok) {
@@ -377,7 +394,7 @@ export class ResponsesApiCore {
 				throw new Error(texts.noResponseBody)
 			}
 
-			yield* this.readSse(response.body, modelId, info)
+			yield* this.readSse(response.body, modelId, info, signal)
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
 			TelemetryService.instance.captureException(
@@ -397,7 +414,12 @@ export class ResponsesApiCore {
 	}
 
 	/** Parses an SSE body (`data:` lines of JSON events, or bare JSON lines) into chunks. */
-	private async *readSse(body: ReadableStream<Uint8Array>, modelId: string, info: ModelInfo): ApiStream {
+	private async *readSse(
+		body: ReadableStream<Uint8Array>,
+		modelId: string,
+		info: ModelInfo,
+		signal: AbortSignal,
+	): ApiStream {
 		const { texts, providerName } = this.options
 		const reader = body.getReader()
 		const decoder = new TextDecoder()
@@ -405,7 +427,7 @@ export class ResponsesApiCore {
 
 		try {
 			while (true) {
-				if (this.abortController?.signal.aborted) {
+				if (signal.aborted) {
 					break
 				}
 

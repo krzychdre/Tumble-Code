@@ -421,6 +421,39 @@ describe("VsCodeLmHandler", () => {
 
 			await expect(handler.createMessage(systemPrompt, messages).next()).rejects.toThrow("API Error")
 		})
+
+		// API-5: the task's per-request signal (metadata.signal) is what Stop aborts. VS Code LM
+		// takes a CancellationToken instead of a signal, so the abort must cancel that token.
+		it("cancels the request's CancellationToken when the task's signal aborts", async () => {
+			let tokenOfRequest: unknown
+			mockLanguageModelChat.sendRequest.mockImplementationOnce(async (_messages, _options, token) => {
+				tokenOfRequest = token
+				return {
+					stream: (async function* () {
+						yield new vscode.LanguageModelTextPart("partial answer")
+					})(),
+				}
+			})
+			const task = new AbortController()
+
+			const stream = handler.createMessage("system", [{ role: "user", content: "Hello" }], {
+				taskId: "task-1",
+				signal: task.signal,
+			})
+			await stream.next()
+
+			const source = vi
+				.mocked(vscode.CancellationTokenSource)
+				.mock.results.map((result) => result.value)
+				.find((value) => value.token === tokenOfRequest)
+			expect(source).toBeDefined()
+			expect(source.cancel).not.toHaveBeenCalled()
+
+			task.abort()
+
+			expect(source.cancel).toHaveBeenCalled()
+			await stream.return(undefined)
+		})
 	})
 
 	describe("getModel", () => {

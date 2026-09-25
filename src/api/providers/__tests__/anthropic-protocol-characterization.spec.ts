@@ -286,6 +286,7 @@ describe("Anthropic-protocol handlers (API-2 characterization)", () => {
 				  "headers": {
 				    "anthropic-beta": "fine-grained-tool-streaming-2025-05-14,prompt-caching-2024-07-31",
 				  },
+				  "signal": undefined,
 				}
 			`)
 		})
@@ -366,7 +367,11 @@ describe("Anthropic-protocol handlers (API-2 characterization)", () => {
 				  },
 				]
 			`)
-			expect(options).toMatchInlineSnapshot(`undefined`)
+			expect(options).toMatchInlineSnapshot(`
+				{
+				  "signal": undefined,
+				}
+			`)
 		})
 
 		it("Vertex marks the system prompt and the last text block of the last two user messages", async () => {
@@ -447,7 +452,11 @@ describe("Anthropic-protocol handlers (API-2 characterization)", () => {
 				  },
 				]
 			`)
-			expect(options).toMatchInlineSnapshot(`undefined`)
+			expect(options).toMatchInlineSnapshot(`
+				{
+				  "signal": undefined,
+				}
+			`)
 		})
 
 		it("does not mutate the caller's messages", async () => {

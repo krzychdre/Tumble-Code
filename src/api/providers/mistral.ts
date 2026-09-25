@@ -106,7 +106,11 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 
 		let response
 		try {
-			response = await this.client.chat.stream(requestOptions)
+			// The task's signal: Stop closes the HTTP request.
+			response = await this.client.chat.stream(
+				requestOptions,
+				metadata?.signal ? { fetchOptions: { signal: metadata.signal } } : undefined,
+			)
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model, "createMessage")

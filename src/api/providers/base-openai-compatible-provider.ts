@@ -12,6 +12,7 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import { handleProviderError } from "./utils/error-handler"
+import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
@@ -123,8 +124,9 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			;(params as any).thinking = { type: "enabled" }
 		}
 
-		// Create a fresh AbortController for this request
-		this.abortController = new AbortController()
+		// A fresh controller for this request: the task's signal (the Stop button) or
+		// cancelRequest() aborts it.
+		this.abortController = createRequestAbortController(metadata?.signal)
 		const mergedRequestOptions: OpenAI.RequestOptions = {
 			...requestOptions,
 			signal: this.abortController.signal,

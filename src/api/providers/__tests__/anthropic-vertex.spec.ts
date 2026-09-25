@@ -209,7 +209,7 @@ describe("VertexHandler", () => {
 					tools: expect.any(Array),
 					tool_choice: expect.any(Object),
 				}),
-				undefined,
+				{ signal: undefined },
 			)
 		})
 
@@ -430,7 +430,7 @@ describe("VertexHandler", () => {
 						}),
 					],
 				}),
-				undefined,
+				{ signal: undefined },
 			)
 		})
 
@@ -1138,7 +1138,7 @@ describe("VertexHandler", () => {
 			}
 
 			// Verify the API was called without the beta header
-			expect(mockCreate).toHaveBeenCalledWith(expect.anything(), undefined)
+			expect(mockCreate).toHaveBeenCalledWith(expect.anything(), { signal: undefined })
 		})
 	})
 
@@ -1228,7 +1228,7 @@ describe("VertexHandler", () => {
 					thinking: { type: "enabled", budget_tokens: 4096 },
 					temperature: 1.0, // Thinking requires temperature 1.0
 				}),
-				undefined,
+				{ signal: undefined },
 			)
 		})
 
@@ -1253,7 +1253,7 @@ describe("VertexHandler", () => {
 				expect.objectContaining({
 					thinking: { type: "adaptive" },
 				}),
-				undefined,
+				{ signal: undefined },
 			)
 
 			const request = mockCreate.mock.calls[0][0]
@@ -1344,7 +1344,7 @@ describe("VertexHandler", () => {
 					]),
 					tool_choice: { type: "auto", disable_parallel_tool_use: false },
 				}),
-				undefined,
+				{ signal: undefined },
 			)
 		})
 
@@ -1397,7 +1397,7 @@ describe("VertexHandler", () => {
 						}),
 					]),
 				}),
-				undefined,
+				{ signal: undefined },
 			)
 		})
 

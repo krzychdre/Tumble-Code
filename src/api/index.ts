@@ -101,6 +101,16 @@ export interface ApiHandlerCreateMessageMetadata {
 	 * Only applies to providers that support function calling restrictions (e.g., Gemini).
 	 */
 	allowedFunctionNames?: string[]
+	/**
+	 * Aborts this request. The task passes the signal of its per-request abort
+	 * controller, which Stop aborts. Every handler hands it to its SDK or fetch
+	 * call, so the HTTP request is closed and the server stops generating instead
+	 * of finishing an answer nobody reads (tokens billed, a local GPU kept busy).
+	 * Each request has its own signal, so overlapping requests (a foreground and a
+	 * background request on one handler) are cancelled independently.
+	 * `cancelRequest(destroyClient)` stays for the client-destroy behavior.
+	 */
+	signal?: AbortSignal
 }
 
 export interface ApiHandler {

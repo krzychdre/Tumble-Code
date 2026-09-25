@@ -18,6 +18,7 @@ import { convertToR1Format } from "../transform/r1-format"
 import type { ApiHandlerCreateMessageMetadata, CompletionResult } from "../index"
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 import { handleProviderError } from "./utils/error-handler"
+import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage } from "./utils/completion-usage"
 import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
 
@@ -103,9 +104,10 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 			// No parallel_tool_calls: the field is not in Moonshot's request schema.
 		}
 
-		// Same contract as the base createStream: cancelRequest() (the Stop button) aborts
-		// this controller, and the base createMessage clears it once the stream ends.
-		this.abortController = new AbortController()
+		// Same contract as the base createStream: the task's signal (the Stop button) or
+		// cancelRequest() aborts this controller, and the base createMessage clears it once the
+		// stream ends.
+		this.abortController = createRequestAbortController(metadata?.signal)
 
 		try {
 			return this.getClient().chat.completions.create(params, {

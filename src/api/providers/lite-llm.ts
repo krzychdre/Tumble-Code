@@ -224,7 +224,10 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 		}
 
 		try {
-			const { data: completion } = await this.client.chat.completions.create(requestOptions).withResponse()
+			// The task's signal: Stop closes the HTTP request.
+			const { data: completion } = await this.client.chat.completions
+				.create(requestOptions, { signal: metadata?.signal })
+				.withResponse()
 
 			yield* streamChatCompletion(completion, {
 				// LiteLLM mirrors every upstream cache name into the OpenAI shape

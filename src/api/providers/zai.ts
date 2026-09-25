@@ -19,6 +19,7 @@ import { convertToR1Format } from "../transform/r1-format"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 import { BaseOpenAiCompatibleProvider } from "./base-openai-compatible-provider"
 import { handleProviderError } from "./utils/error-handler"
+import { createRequestAbortController } from "./utils/request-abort"
 
 // Custom interface for Z.ai params to support thinking mode and reasoning effort tiers.
 // Z.ai accepts the standard `reasoning_effort` ladder (none/minimal/low/medium/high/xhigh/max)
@@ -156,9 +157,10 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
 		}
 
-		// Same contract as the base createStream: cancelRequest() (the Stop button) aborts this
-		// controller, and the base createMessage clears it once the stream ends.
-		this.abortController = new AbortController()
+		// Same contract as the base createStream: the task's signal (the Stop button) or
+		// cancelRequest() aborts this controller, and the base createMessage clears it once the
+		// stream ends.
+		this.abortController = createRequestAbortController(metadata?.signal)
 
 		try {
 			return this.getClient().chat.completions.create(

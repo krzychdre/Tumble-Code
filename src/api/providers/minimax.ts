@@ -117,7 +117,8 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 			tool_choice: convertOpenAIToolChoice(metadata?.tool_choice),
 		}
 
-		stream = await this.client.messages.create(requestParams)
+		// The task's signal: Stop closes the HTTP request.
+		stream = await this.client.messages.create(requestParams, { signal: metadata?.signal })
 
 		yield* processAnthropicStream(stream, info)
 	}

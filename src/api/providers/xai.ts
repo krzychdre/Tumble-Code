@@ -147,10 +147,14 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 
 		let stream: AsyncIterable<any>
 		try {
-			stream = (await this.client.responses.create({
-				...requestBody,
-				stream: true,
-			} as any)) as unknown as AsyncIterable<any>
+			stream = (await this.client.responses.create(
+				{
+					...requestBody,
+					stream: true,
+				} as any,
+				// The task's signal: Stop closes the HTTP request.
+				{ signal: metadata?.signal },
+			)) as unknown as AsyncIterable<any>
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error)
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")

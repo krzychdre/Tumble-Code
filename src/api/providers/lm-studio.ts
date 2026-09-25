@@ -17,6 +17,7 @@ import { openAiCompletionUsage } from "./utils/completion-usage"
 import { getModelsFromCache } from "./fetchers/modelCache"
 import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleProviderError } from "./utils/error-handler"
+import { createRequestAbortController } from "./utils/request-abort"
 
 /**
  * LM Studio reports most failures (model not loaded, context too small) only in its own
@@ -112,7 +113,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				params.draft_model = this.options.lmStudioDraftModelId
 			}
 
-			this.abortController = new AbortController()
+			this.abortController = createRequestAbortController(metadata?.signal)
 			let results
 			try {
 				results = await this.getClient().chat.completions.create(params, {
