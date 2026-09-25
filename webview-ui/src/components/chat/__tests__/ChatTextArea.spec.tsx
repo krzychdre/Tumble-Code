@@ -585,6 +585,37 @@ describe("ChatTextArea", () => {
 				expect(setInputValue).toHaveBeenCalledWith("Third prompt")
 			})
 
+			it("keeps the history position while the model streams tokens", () => {
+				const setInputValue = vi.fn()
+				const { container, rerender } = render(
+					<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />,
+				)
+				const textarea = container.querySelector("textarea")!
+
+				fireEvent.keyDown(textarea, { key: "ArrowUp" })
+				expect(setInputValue).toHaveBeenLastCalledWith("Third prompt")
+
+				// Each streamed token delivers a new messages array with the same user prompts.
+				for (const answer of ["H", "He", "Hel"]) {
+					;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: { apiProvider: "anthropic" },
+						taskHistory: [],
+						clineMessages: [
+							...mockClineMessages,
+							{ type: "say", say: "text", text: answer, ts: 4000, partial: true },
+						],
+						cwd: "/test/workspace",
+					})
+					rerender(<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />)
+				}
+
+				textarea.setSelectionRange(0, 0)
+				fireEvent.keyDown(textarea, { key: "ArrowUp" })
+				expect(setInputValue).toHaveBeenLastCalledWith("Second prompt")
+			})
+
 			it("should preserve current input when starting navigation", () => {
 				const setInputValue = vi.fn()
 				const { container } = render(
