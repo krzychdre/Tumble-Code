@@ -231,6 +231,18 @@ describe("MermaidButton", () => {
 		await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(CODE))
 	})
 
+	it("copies the Mermaid source from the code tab footer and shows a check mark", async () => {
+		const { container } = renderButton()
+		fireEvent.mouseEnter(wrapper(container))
+		fireEvent.click(button(wrapper(container), "code")!)
+		const footer = modal()!.querySelector(".absolute.bottom-0") as HTMLElement
+
+		fireEvent.click(button(footer, "copy")!)
+
+		await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(CODE))
+		await waitFor(() => expect(button(footer, "check")).not.toBeNull())
+	})
+
 	it("saves the diagram as a PNG through the extension", async () => {
 		const { container, svgToPng } = renderButton()
 		fireEvent.mouseEnter(wrapper(container))
