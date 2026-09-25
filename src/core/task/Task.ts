@@ -100,6 +100,7 @@ import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { ArtifactStore } from "../artifacts/ArtifactStore"
 import { applyToolResultSpill, type ToolResultSpillContext } from "../artifacts/spillPolicy"
 import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
+import type { TaskToolStreamState } from "../tools/toolStreamState"
 import { restoreTodoListForTask } from "../tools/UpdateTodoListTool"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
@@ -233,6 +234,12 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * run update_todo_list at the same time as the foreground task.
 	 */
 	pendingTodoList?: TodoItem[]
+	/**
+	 * Partial-stream state of this task's tool calls, one entry per tool name.
+	 * Tools are singletons shared by all tasks, so they keep this state here
+	 * (CORE-R12); read and write it through ../tools/toolStreamState.ts.
+	 */
+	toolStreamState?: TaskToolStreamState
 
 	readonly rootTask: Task | undefined = undefined
 	readonly parentTask: Task | undefined = undefined

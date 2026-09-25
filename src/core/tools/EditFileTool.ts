@@ -11,6 +11,7 @@ import { fileExistsAtPath } from "../../utils/fs"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { getToolStreamState } from "./toolStreamState"
 import { applyComputedEdit } from "./helpers/applyComputedEdit"
 import { replaceLiteral } from "./helpers/replaceLiteral"
 
@@ -106,14 +107,6 @@ function countRegexMatches(content: string, regex: RegExp): number {
 export class EditFileTool extends BaseTool<"edit_file"> {
 	readonly name = "edit_file" as const
 
-	/**
-	 * Per task (DEF-C4): whether handlePartial() already showed a streaming row
-	 * for this task's call, and for which path, so execute() can finalize that
-	 * row on an early failure. This tool is a singleton shared by every task,
-	 * including parallel subagents. Cleared by resetPartialState(task).
-	 */
-	private partialToolAskRelPathByTask = new WeakMap<Task, string>()
-
 	async execute(params: EditFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		// Coerce old_string/new_string to handle malformed native tool calls where they could be non-strings.
 		// In native mode, malformed calls can pass numbers/objects; normalize those to "" to avoid later crashes.
@@ -127,7 +120,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 
 		const finalizePartialToolAskIfNeeded = async (relPath: string): Promise<void> => {
 			// Only finalize the row this task's handlePartial() opened, for this path.
-			if (this.partialToolAskRelPathByTask.get(task) !== relPath) {
+			if (getToolStreamState(task, this.name).partialToolAskRelPath !== relPath) {
 				return
 			}
 
@@ -379,15 +372,6 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		}
 	}
 
-	override resetPartialState(task?: Task): void {
-		super.resetPartialState(task)
-		if (task) {
-			this.partialToolAskRelPathByTask.delete(task)
-		} else {
-			this.partialToolAskRelPathByTask = new WeakMap()
-		}
-	}
-
 	override async handlePartial(task: Task, block: ToolUse<"edit_file">): Promise<void> {
 		const filePath: string | undefined = block.params.file_path
 		const oldString: string | undefined = block.params.old_string
@@ -412,7 +396,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		if (path.isAbsolute(relPath)) {
 			relPath = path.relative(task.cwd, relPath)
 		}
-		this.partialToolAskRelPathByTask.set(task, relPath)
+		getToolStreamState(task, this.name).partialToolAskRelPath = relPath
 
 		const absolutePath = path.resolve(task.cwd, relPath)
 		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)

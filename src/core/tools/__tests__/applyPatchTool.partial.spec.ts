@@ -61,7 +61,7 @@ describe("ApplyPatchTool.handlePartial", () => {
 	})
 
 	afterEach(() => {
-		tool.resetPartialState()
+		tool.resetPartialState(mockTask as Task)
 	})
 
 	function createPartialBlock(patchText?: string): ToolUse<"apply_patch"> {
