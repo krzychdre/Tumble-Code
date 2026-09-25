@@ -9,9 +9,7 @@ vi.mock("@src/utils/vscode", () => ({
 }))
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: () => ({
-		theme: "dark",
-	}),
+	useExtensionState: () => ({}),
 }))
 
 describe("MarkdownBlock", () => {

@@ -51,7 +51,6 @@ describe("MarketplaceView", () => {
 			// Add other required properties for the context
 			didHydrateState: true,
 			showWelcome: false,
-			theme: {},
 			mcpServers: [],
 			filePaths: [],
 			openedTabs: [],
@@ -64,9 +63,7 @@ describe("MarketplaceView", () => {
 			alwaysAllowFollowupQuestions: false,
 			setAlwaysAllowFollowupQuestions: vi.fn(),
 			followupAutoApproveTimeoutMs: 60000,
-			setFollowupAutoApproveTimeoutMs: vi.fn(),
 			profileThresholds: {},
-			setProfileThresholds: vi.fn(),
 			checkpointTimeout: DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
 			// ... other required context properties
 		}

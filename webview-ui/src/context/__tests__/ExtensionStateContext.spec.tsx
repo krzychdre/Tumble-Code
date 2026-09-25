@@ -11,8 +11,7 @@ import {
 import { ExtensionStateContextProvider, useExtensionState, mergeExtensionState } from "../ExtensionStateContext"
 
 const TestComponent = () => {
-	const { allowedCommands, setAllowedCommands, soundEnabled, showRooIgnoredFiles, setShowRooIgnoredFiles } =
-		useExtensionState()
+	const { allowedCommands, setAllowedCommands, soundEnabled, showRooIgnoredFiles } = useExtensionState()
 
 	return (
 		<div>
@@ -20,9 +19,6 @@ const TestComponent = () => {
 			<div data-testid="sound-enabled">{JSON.stringify(soundEnabled)}</div>
 			<div data-testid="show-rooignored-files">{JSON.stringify(showRooIgnoredFiles)}</div>
 			<button data-testid="update-button" onClick={() => setAllowedCommands(["npm install", "git status"])}>
-				Update Commands
-			</button>
-			<button data-testid="toggle-rooignore-button" onClick={() => setShowRooIgnoredFiles(!showRooIgnoredFiles)}>
 				Update Commands
 			</button>
 		</div>
@@ -103,7 +99,7 @@ describe("ExtensionStateContext", () => {
 		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(true)
 	})
 
-	it("updates showRooIgnoredFiles through setShowRooIgnoredFiles", () => {
+	it("updates showRooIgnoredFiles from a state message", () => {
 		render(
 			<ExtensionStateContextProvider>
 				<TestComponent />
@@ -111,7 +107,9 @@ describe("ExtensionStateContext", () => {
 		)
 
 		act(() => {
-			screen.getByTestId("toggle-rooignore-button").click()
+			window.dispatchEvent(
+				new MessageEvent("message", { data: { type: "state", state: { showRooIgnoredFiles: false } } }),
+			)
 		})
 
 		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(false)
