@@ -191,16 +191,20 @@ vi.mock("@roo-code/cloud", () => ({
 			return {
 				isCloudAgent: false,
 				isAuthenticated: vi.fn().mockReturnValue(signedIn),
-				getAllowList: vi.fn().mockResolvedValue(
-					signedIn ? { allowAll: false, providers: { openrouter: { allowAll: true } } } : "*",
-				),
+				getAllowList: vi
+					.fn()
+					.mockResolvedValue(
+						signedIn ? { allowAll: false, providers: { openrouter: { allowAll: true } } } : "*",
+					),
 				getUserInfo: vi.fn().mockReturnValue(signedIn ? { name: "Ada", email: "ada@example.com" } : null),
 				canShareTask: vi.fn().mockResolvedValue(signedIn),
 				canSharePublicly: vi.fn().mockResolvedValue(signedIn),
 				getOrganizationSettings: vi.fn().mockReturnValue(signedIn ? { version: 7 } : null),
 				getOrganizationMemberships: vi
 					.fn()
-					.mockResolvedValue(signedIn ? [{ organization: { id: "org-1", name: "Org" }, role: "member" }] : []),
+					.mockResolvedValue(
+						signedIn ? [{ organization: { id: "org-1", name: "Org" }, role: "member" }] : [],
+					),
 				getUserSettings: vi.fn().mockReturnValue(null),
 				isTaskSyncEnabled: vi.fn().mockReturnValue(signedIn),
 				on: vi.fn(),

@@ -3,7 +3,7 @@ import path from "path"
 import * as os from "os"
 import { Dirent } from "fs"
 
-import { isLanguage } from "@roo-code/types"
+import { isLanguage, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import type { SystemPromptSettings } from "../types"
 
@@ -405,8 +405,7 @@ export async function addCustomInstructions(
 ): Promise<string> {
 	const sections = []
 
-	// Get the enableSubfolderRules setting (default: false)
-	const enableSubfolderRules = options.settings?.enableSubfolderRules ?? false
+	const enableSubfolderRules = options.settings?.enableSubfolderRules ?? SETTINGS_DEFAULTS.enableSubfolderRules
 
 	// Load mode-specific rules if mode is provided
 	let modeRuleContent = ""

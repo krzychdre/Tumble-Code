@@ -2,7 +2,7 @@ import path from "path"
 import delay from "delay"
 import fs from "fs/promises"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
@@ -150,7 +150,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 			const provider = task.providerRef.deref()
 			const state = await provider?.getState()
-			const diagnosticsEnabled = state?.diagnosticsEnabled ?? true
+			const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
 			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
 			// Background/memory tasks (`silentWrites`) reuse the focus-disruption
 			// path: it writes straight to disk without opening a diff editor tab.

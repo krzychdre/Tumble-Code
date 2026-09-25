@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import delay from "delay"
 
-import { DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { diagnosticsToProblemsString, getNewDiagnostics } from "../diagnostics"
 
@@ -76,8 +76,9 @@ export class DiagnosticsCollector {
 			// Get diagnostic settings from state
 			const task = this.taskRef.deref()
 			const state = await task?.providerRef.deref()?.getState()
-			const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
-			const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
+			const includeDiagnosticMessages =
+				state?.includeDiagnosticMessages ?? SETTINGS_DEFAULTS.includeDiagnosticMessages
+			const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages
 
 			const newProblems = await diagnosticsToProblemsString(
 				getNewDiagnostics(preDiagnostics ?? [], postDiagnostics),

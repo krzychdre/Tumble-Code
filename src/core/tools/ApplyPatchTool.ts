@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
@@ -168,7 +168,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		// Check experiment settings
 		const provider = task.providerRef.deref()
 		const state = await provider?.getState()
-		const diagnosticsEnabled = state?.diagnosticsEnabled ?? true
+		const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
 		const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
 		const isPreventFocusDisruptionEnabled = experiments.isEnabled(
 			state?.experiments ?? {},
@@ -329,7 +329,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		// Check experiment settings
 		const provider = task.providerRef.deref()
 		const state = await provider?.getState()
-		const diagnosticsEnabled = state?.diagnosticsEnabled ?? true
+		const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
 		const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
 		const isPreventFocusDisruptionEnabled = experiments.isEnabled(
 			state?.experiments ?? {},

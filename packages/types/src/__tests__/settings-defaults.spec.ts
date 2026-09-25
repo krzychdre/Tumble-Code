@@ -82,7 +82,9 @@ describe("resolveSettings", () => {
 	})
 
 	it("applies the clamping resolvers of the spill and prune settings", () => {
-		expect(resolveSettings({}).maxInlineToolResultBytes).toBe(ARTIFACT_SPILL_DEFAULTS.DEFAULT_INLINE_TOOL_RESULT_BYTES)
+		expect(resolveSettings({}).maxInlineToolResultBytes).toBe(
+			ARTIFACT_SPILL_DEFAULTS.DEFAULT_INLINE_TOOL_RESULT_BYTES,
+		)
 		expect(resolveSettings({ maxInlineToolResultBytes: 1 }).maxInlineToolResultBytes).toBe(
 			ARTIFACT_SPILL_DEFAULTS.MIN_INLINE_TOOL_RESULT_BYTES,
 		)

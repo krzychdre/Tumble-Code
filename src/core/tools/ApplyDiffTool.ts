@@ -1,7 +1,7 @@
 import path from "path"
 import fs from "fs/promises"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS } from "@roo-code/types"
+import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { getReadablePath } from "../../utils/path"
@@ -124,7 +124,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			// Check if preventFocusDisruption experiment is enabled
 			const provider = task.providerRef.deref()
 			const state = await provider?.getState()
-			const diagnosticsEnabled = state?.diagnosticsEnabled ?? true
+			const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
 			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
 			const isPreventFocusDisruptionEnabled = experiments.isEnabled(
 				state?.experiments ?? {},

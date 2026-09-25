@@ -5,7 +5,7 @@ import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
 import delay from "delay"
 
-import type { ExperimentId } from "@roo-code/types"
+import { type ExperimentId, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { formatLanguage } from "../../shared/language"
 import { getFullModeDetails } from "../prompts/modeDetails"
@@ -92,7 +92,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 	}
 
 	const { maxOpenTabsContext } = state ?? {}
-	const maxTabs = maxOpenTabsContext ?? 20
+	const maxTabs = maxOpenTabsContext ?? SETTINGS_DEFAULTS.maxOpenTabsContext
 	const openTabPaths = vscode.window.tabGroups.all
 		.flatMap((group) => group.tabs)
 		.filter((tab) => tab.input instanceof vscode.TabInputText)
@@ -303,7 +303,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 			// permission popup.
 			details += "(Desktop files not shown automatically. Use list_files to explore if needed.)"
 		} else {
-			const maxFiles = maxWorkspaceFiles ?? 200
+			const maxFiles = maxWorkspaceFiles ?? SETTINGS_DEFAULTS.maxWorkspaceFiles
 
 			// Early return for limit of 0
 			if (maxFiles === 0) {

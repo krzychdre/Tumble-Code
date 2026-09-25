@@ -1,4 +1,7 @@
 import * as vscode from "vscode"
+
+import { SETTINGS_DEFAULTS } from "@roo-code/types"
+
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { defaultModeSlug } from "../../shared/modes"
 import { buildApiHandler } from "../../api"
@@ -55,7 +58,7 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 		{
 			todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
 			useAgentRules: vscode.workspace.getConfiguration(Package.name).get<boolean>("useAgentRules") ?? true,
-			enableSubfolderRules: enableSubfolderRules ?? false,
+			enableSubfolderRules: enableSubfolderRules ?? SETTINGS_DEFAULTS.enableSubfolderRules,
 			newTaskRequireTodos: vscode.workspace
 				.getConfiguration(Package.name)
 				.get<boolean>("newTaskRequireTodos", false),

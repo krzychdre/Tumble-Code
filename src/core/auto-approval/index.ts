@@ -6,6 +6,7 @@ import {
 	type ExtensionState,
 	firstUsableSuggestion,
 	isNonBlockingAsk,
+	SETTINGS_DEFAULTS,
 } from "@roo-code/types"
 
 import { ClineAskResponse } from "../../shared/WebviewMessage"
@@ -76,7 +77,7 @@ export async function checkAutoApproval({
 	// interactive permission asks — every other ask (api_req_failed, resume_*,
 	// mistake_limit_reached, auto_approval_max_req_reached, ...) intentionally
 	// falls through to the default handling below so it still prompts the user.
-	const mode = state.autoApprovalMode ?? "default"
+	const mode = state.autoApprovalMode ?? SETTINGS_DEFAULTS.autoApprovalMode
 
 	if (mode === "bypass" || mode === "autonomous") {
 		if (ask === "command" || ask === "tool" || ask === "use_mcp_server") {

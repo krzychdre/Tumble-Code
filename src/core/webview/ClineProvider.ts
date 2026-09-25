@@ -13,7 +13,6 @@ import {
 	type TaskProviderLike,
 	type TaskProviderEvents,
 	type GlobalState,
-	type ProviderName,
 	type ProviderSettings,
 	type OrganizationAllowList,
 	type CliModeProviderSettings,
@@ -31,8 +30,6 @@ import {
 	type TerminalActionId,
 	type TerminalActionPromptType,
 	type HistoryItem,
-	type CloudUserInfo,
-	type CloudOrganizationMembership,
 	type CreateTaskOptions,
 	type TokenUsage,
 	type ToolUsage,
@@ -41,39 +38,26 @@ import {
 	type MarketplaceInstalledMetadata,
 	RooCodeEventName,
 	openRouterDefaultModelId,
-	DEFAULT_WRITE_DELAY_MS,
-	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_MODES,
-	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-	DEFAULT_ENABLE_CHECKPOINTS,
-	DEFAULT_SOUND_ENABLED,
-	DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
-	DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
-	WEB_TOOLS_DEFAULTS,
-	resolveMaxInlineToolResultBytes,
-	isPruneBeforeCondenseEnabled,
-	resolvePruneToolResultBudget,
 	getModelId,
 	isRetiredProvider,
 	readCliRuntimeEnv,
 } from "@roo-code/types"
 import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
 import { TelemetryService } from "@roo-code/telemetry"
-import { CloudService, getRooCodeApiUrl } from "@roo-code/cloud"
+import { CloudService } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { findLast } from "../../shared/array"
 import { supportPrompt } from "../../shared/support-prompt"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { Mode, defaultModeSlug, getModeBySlug } from "../../shared/modes"
-import { experimentDefault } from "../../shared/experiments"
-import { formatLanguage } from "../../shared/language"
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { ProfileValidator } from "../../shared/ProfileValidator"
 
 import { Terminal } from "../../integrations/terminal/Terminal"
-import { getCustomSoundsDir, resolveCustomSoundUri } from "../../integrations/misc/custom-sounds"
+import { getCustomSoundsDir } from "../../integrations/misc/custom-sounds"
 import { downloadTask, getTaskFileName } from "../../integrations/misc/export-markdown"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { getTheme } from "../../integrations/theme/getTheme"
@@ -119,8 +103,8 @@ import { readTaskMessages } from "../task-persistence/taskMessages"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
+import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
 import { findLastNewTaskToolUse, formatSubtaskResult, hasToolResultFor } from "./delegationHistory"
-import { sanitizeCommandList } from "../auto-approval/sanitizeCommandList"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
 
 /**
@@ -261,10 +245,6 @@ export class ClineProvider
 	 */
 	private static readonly TASK_HISTORY_STORE_RETRY_COOLDOWN_MS = 5000
 
-	private cloudOrganizationsCache: CloudOrganizationMembership[] | null = null
-	private cloudOrganizationsCacheTimestamp: number | null = null
-	private static readonly CLOUD_ORGANIZATIONS_CACHE_DURATION_MS = 5 * 1000 // 5 seconds
-
 	/**
 	 * Monotonically increasing sequence number for clineMessages state pushes.
 	 * Used by the frontend to reject stale state that arrives out-of-order.
@@ -273,6 +253,9 @@ export class ClineProvider
 	 * (and are posted) in a different order.
 	 */
 	private clineMessagesSeq = 0
+
+	/** Builds getState() and the webview state (CORE-R1). */
+	private readonly stateBuilder: ProviderStateBuilder
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
@@ -293,6 +276,29 @@ export class ClineProvider
 		ClineProvider.activeInstances.add(this)
 
 		this.mdmService = mdmService
+		this.stateBuilder = new ProviderStateBuilder({
+			contextProxy,
+			getCustomModes: () => this.customModesManager.getCustomModes(),
+			getCwd: () => this.cwd,
+			getMcpServers: () => this.mcpHub?.getAllServers() ?? [],
+			isApiConfigLockedAcrossModes: () => this.context.workspaceState.get("lockApiConfigAcrossModes", false),
+			getState: () => this.getState(),
+			getTaskHistoryStore: () => this.getTaskHistoryStore(),
+			log: (message) => this.log(message),
+			getCurrentTask: () => this.getCurrentTask(),
+			nextClineMessagesSeq: () => ++this.clineMessagesSeq,
+			listSubagents: () => this.subagentRegistry.list(),
+			getMemoryActivity: () => this.memoryActivityCounts,
+			getWebview: () => this.view?.webview,
+			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
+			getStorageErrorMessage: () => this.storageErrorMessage,
+			getSettingsImportedAt: () => this.settingsImportedAt,
+			getCloudAuthSkipModel: () => this.context.globalState.get<boolean>("roo-auth-skip-model"),
+			getHasOpenedModeSelector: () => this.getGlobalState("hasOpenedModeSelector"),
+			getMdmCompliance: () => (this.mdmService?.requiresCloudAuth() ? this.checkMdmCompliance() : undefined),
+			latestAnnouncementId: this.latestAnnouncementId,
+			renderContext: this.renderContext,
+		})
 		this.updateGlobalState("codebaseIndexModels", EMBEDDING_MODEL_PROFILES)
 
 		// Acquire a shared, ref-counted TaskHistoryStore for this storage
@@ -2547,627 +2553,17 @@ export class ClineProvider
 		}
 	}
 
-	/**
-	 * Merges allowed commands from global state and workspace configuration
-	 * with proper validation and deduplication
-	 */
-	private mergeAllowedCommands(globalStateCommands?: string[]): string[] {
-		return this.mergeCommandLists("allowedCommands", "allowed", globalStateCommands)
+	getStateToPostToWebview(options: { includeTaskHistory?: boolean } = {}): Promise<ExtensionState> {
+		return this.stateBuilder.getStateToPostToWebview(options)
 	}
 
 	/**
-	 * Merges denied commands from global state and workspace configuration
-	 * with proper validation and deduplication
+	 * The settings accessor of the extension host: every setting with its
+	 * default applied (see SETTINGS_DEFAULTS in @roo-code/types) plus the
+	 * cloud facts. Built by {@link ProviderStateBuilder}.
 	 */
-	private mergeDeniedCommands(globalStateCommands?: string[]): string[] {
-		return this.mergeCommandLists("deniedCommands", "denied", globalStateCommands)
-	}
-
-	/**
-	 * Common utility for merging command lists from global state and workspace configuration.
-	 * Implements the Command Denylist feature's merging strategy with proper validation.
-	 *
-	 * @param configKey - VSCode workspace configuration key
-	 * @param commandType - Type of commands for error logging
-	 * @param globalStateCommands - Commands from global state
-	 * @returns Merged and deduplicated command list
-	 */
-	private mergeCommandLists(
-		configKey: "allowedCommands" | "deniedCommands",
-		commandType: "allowed" | "denied",
-		globalStateCommands?: string[],
-	): string[] {
-		try {
-			const validGlobalCommands = sanitizeCommandList(globalStateCommands)
-			const validWorkspaceCommands = sanitizeCommandList(
-				vscode.workspace.getConfiguration(Package.name).get<string[]>(configKey),
-			)
-
-			// Combine and deduplicate commands
-			// Global state takes precedence over workspace configuration
-			const mergedCommands = [...new Set([...validGlobalCommands, ...validWorkspaceCommands])]
-
-			return mergedCommands
-		} catch (error) {
-			console.error(`Error merging ${commandType} commands:`, error)
-			// Return empty array as fallback to prevent crashes
-			return []
-		}
-	}
-
-	async getStateToPostToWebview(options: { includeTaskHistory?: boolean } = {}): Promise<ExtensionState> {
-		const { includeTaskHistory = true } = options
-		// Ensure the store is initialized before reading task history. Even
-		// when `includeTaskHistory` is false we still await readiness so the
-		// cache is populated for `currentTaskItem` lookups below.
-		//
-		// When the store is down, degrade instead of throwing: the state is
-		// built with an EMPTY history so settings, profiles and chat keep
-		// working when only the history store is unavailable. The failure was
-		// already reported as a persistent storage error by
-		// acquireTaskHistoryStore (surfaced below via `storageErrorMessage`).
-		let taskHistoryStore: TaskHistoryStore | undefined
-		try {
-			taskHistoryStore = await this.getTaskHistoryStore()
-		} catch (error) {
-			this.log(
-				`[state] TaskHistoryStore unavailable, sending empty history: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		const {
-			apiConfiguration,
-			lastShownAnnouncementId,
-			customInstructions,
-			alwaysAllowReadOnly,
-			alwaysAllowReadOnlyOutsideWorkspace,
-			alwaysAllowWrite,
-			alwaysAllowWriteOutsideWorkspace,
-			alwaysAllowWriteProtected,
-			alwaysAllowExecute,
-			allowedCommands,
-			deniedCommands,
-			alwaysAllowMcp,
-			alwaysAllowModeSwitch,
-			alwaysAllowSubtasks,
-			alwaysApprovePlan,
-			allowedMaxRequests,
-			allowedMaxCost,
-			autoCondenseContext,
-			autoCondenseContextPercent,
-			autoCondenseContextApiConfigId,
-			memoryWriterApiConfigId,
-			webToolsEnabled,
-			webSearchBackend,
-			searxngBaseUrl,
-			webSearchMaxResults,
-			webFetchMaxBytes,
-			maxInlineToolResultBytes,
-			pruneBeforeCondense,
-			pruneToolResultBudget,
-			soundEnabled,
-			enableCheckpoints,
-			checkpointTimeout,
-			soundVolume,
-			customSoundCelebration,
-			customSoundCelebrationOriginal,
-			customSoundProgressLoop,
-			customSoundProgressLoopOriginal,
-			customSoundNotification,
-			customSoundNotificationOriginal,
-			writeDelayMs,
-			terminalShellIntegrationTimeout,
-			terminalShellIntegrationDisabled,
-			terminalCommandDelay,
-			terminalPowershellCounter,
-			terminalZshClearEolMark,
-			terminalZshOhMy,
-			terminalZshP10k,
-			terminalZdotdir,
-			terminalProfile,
-			mcpEnabled,
-			currentApiConfigName,
-			listApiConfigMeta,
-			pinnedApiConfigs,
-			mode,
-			customModePrompts,
-			customSupportPrompts,
-			enhancementApiConfigId,
-			autoApprovalEnabled,
-			autoApprovalMode,
-			customModes,
-			experiments,
-			maxOpenTabsContext,
-			maxWorkspaceFiles,
-			disabledTools,
-			telemetrySetting,
-			showRooIgnoredFiles,
-			enableSubfolderRules,
-			language,
-			maxImageFileSize,
-			maxTotalImageSize,
-			historyPreviewCollapsed,
-			reasoningBlockCollapsed,
-			enterBehavior,
-			cloudUserInfo,
-			cloudIsAuthenticated,
-			sharingEnabled,
-			publicSharingEnabled,
-			organizationAllowList,
-			organizationSettingsVersion,
-			customCondensingPrompt,
-			codebaseIndexConfig,
-			codebaseIndexModels,
-			profileThresholds,
-			alwaysAllowFollowupQuestions,
-			followupAutoApproveTimeoutMs,
-			includeDiagnosticMessages,
-			maxDiagnosticMessages,
-			includeTaskHistoryInEnhance,
-			includeCurrentTime,
-			includeCurrentCost,
-			maxGitStatusFiles,
-			parallelTasksMaxConcurrency,
-			subagentFollowupTimeoutSec,
-			taskSyncEnabled,
-			imageGenerationProvider,
-			openRouterImageApiKey,
-			openRouterImageGenerationSelectedModel,
-			lockApiConfigAcrossModes,
-		} = await this.getState()
-
-		let cloudOrganizations: CloudOrganizationMembership[] = []
-
-		try {
-			if (!CloudService.instance.isCloudAgent) {
-				const now = Date.now()
-
-				if (
-					this.cloudOrganizationsCache !== null &&
-					this.cloudOrganizationsCacheTimestamp !== null &&
-					now - this.cloudOrganizationsCacheTimestamp < ClineProvider.CLOUD_ORGANIZATIONS_CACHE_DURATION_MS
-				) {
-					cloudOrganizations = this.cloudOrganizationsCache!
-				} else {
-					cloudOrganizations = await CloudService.instance.getOrganizationMemberships()
-					this.cloudOrganizationsCache = cloudOrganizations
-					this.cloudOrganizationsCacheTimestamp = now
-				}
-			}
-		} catch (error) {
-			// Ignore this error.
-		}
-
-		const telemetryKey = process.env.POSTHOG_API_KEY
-		const machineId = vscode.env.machineId
-		const mergedAllowedCommands = this.mergeAllowedCommands(allowedCommands)
-		const mergedDeniedCommands = this.mergeDeniedCommands(deniedCommands)
-		const cwd = this.cwd
-		const currentTask = this.getCurrentTask()
-
-		// Resolve user-uploaded custom sound files to webview URIs (undefined => use built-in).
-		const customSoundUris: ExtensionState["customSoundUris"] = {}
-		const webview = this.view?.webview
-		if (webview) {
-			const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
-			const [celebrationUri, progressLoopUri, notificationUri] = await Promise.all([
-				resolveCustomSoundUri(webview, globalStoragePath, customSoundCelebration),
-				resolveCustomSoundUri(webview, globalStoragePath, customSoundProgressLoop),
-				resolveCustomSoundUri(webview, globalStoragePath, customSoundNotification),
-			])
-			if (celebrationUri) customSoundUris.celebration = celebrationUri
-			if (progressLoopUri) customSoundUris.progress_loop = progressLoopUri
-			if (notificationUri) customSoundUris.notification = notificationUri
-		}
-
-		return {
-			version: this.context.extension?.packageJSON?.version ?? "",
-			// Empty string means "no storage error" (postMessage drops
-			// undefined keys, so only an explicit value can clear the
-			// webview's banner).
-			storageErrorMessage: this.storageErrorMessage,
-			apiConfiguration,
-			customInstructions,
-			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,
-			alwaysAllowReadOnlyOutsideWorkspace: alwaysAllowReadOnlyOutsideWorkspace ?? false,
-			alwaysAllowWrite: alwaysAllowWrite ?? false,
-			alwaysAllowWriteOutsideWorkspace: alwaysAllowWriteOutsideWorkspace ?? false,
-			alwaysAllowWriteProtected: alwaysAllowWriteProtected ?? false,
-			alwaysAllowExecute: alwaysAllowExecute ?? false,
-			alwaysAllowMcp: alwaysAllowMcp ?? false,
-			alwaysAllowModeSwitch: alwaysAllowModeSwitch ?? false,
-			alwaysAllowSubtasks: alwaysAllowSubtasks ?? false,
-			alwaysApprovePlan: alwaysApprovePlan ?? false,
-			allowedMaxRequests,
-			allowedMaxCost,
-			autoCondenseContext: autoCondenseContext ?? true,
-			autoCondenseContextPercent: autoCondenseContextPercent ?? 100,
-			autoCondenseContextApiConfigId,
-			memoryWriterApiConfigId,
-			webToolsEnabled: webToolsEnabled ?? false,
-			webSearchBackend: webSearchBackend ?? "searxng",
-			searxngBaseUrl: searxngBaseUrl ?? "",
-			webSearchMaxResults: webSearchMaxResults ?? WEB_TOOLS_DEFAULTS.DEFAULT_SEARCH_RESULTS,
-			webFetchMaxBytes: webFetchMaxBytes ?? WEB_TOOLS_DEFAULTS.DEFAULT_FETCH_BYTES,
-			maxInlineToolResultBytes: resolveMaxInlineToolResultBytes({ maxInlineToolResultBytes }),
-			pruneBeforeCondense: isPruneBeforeCondenseEnabled({ pruneBeforeCondense }),
-			pruneToolResultBudget: resolvePruneToolResultBudget({ pruneToolResultBudget }),
-			uriScheme: vscode.env.uriScheme,
-			currentTaskId: currentTask?.taskId,
-			currentTaskItem: currentTask?.taskId ? taskHistoryStore?.get(currentTask.taskId) : undefined,
-			clineMessages: currentTask?.clineMessages || [],
-			// Numbered here, synchronously with the read above (see clineMessagesSeq).
-			clineMessagesSeq: ++this.clineMessagesSeq,
-			subagents: this.subagentRegistry.list(),
-			memoryActivity: { ...this.memoryActivityCounts },
-			currentTaskTodos: currentTask?.todoList || [],
-			messageQueue: currentTask?.messageQueueService?.messages,
-			// Only materialize + sort the full history when the caller
-			// actually needs it. `postStateToWebviewWithoutTaskHistory` and
-			// `postStateToWebviewWithoutClineMessages` pass
-			// `includeTaskHistory: false` so this hot path (every chat
-			// message update, every cloud/mode event) never calls
-			// `getAll()`. The webview keeps its history list in sync via the
-			// targeted `taskHistoryItemUpdated` / `taskHistoryItemDeleted`
-			// messages and the full `taskHistoryUpdated` broadcast.
-			taskHistory:
-				includeTaskHistory && taskHistoryStore
-					? taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task)
-					: [],
-			soundEnabled: soundEnabled ?? DEFAULT_SOUND_ENABLED,
-			// Send `null` (not `undefined`) so the webview merge actually clears
-			// the slot after a reset — postMessage drops undefined keys.
-			customSoundCelebration: customSoundCelebration ?? null,
-			customSoundCelebrationOriginal: customSoundCelebrationOriginal ?? null,
-			customSoundProgressLoop: customSoundProgressLoop ?? null,
-			customSoundProgressLoopOriginal: customSoundProgressLoopOriginal ?? null,
-			customSoundNotification: customSoundNotification ?? null,
-			customSoundNotificationOriginal: customSoundNotificationOriginal ?? null,
-			customSoundUris,
-			enableCheckpoints: enableCheckpoints ?? DEFAULT_ENABLE_CHECKPOINTS,
-			checkpointTimeout: checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-			shouldShowAnnouncement:
-				telemetrySetting !== "unset" && lastShownAnnouncementId !== this.latestAnnouncementId,
-			allowedCommands: mergedAllowedCommands,
-			deniedCommands: mergedDeniedCommands,
-			soundVolume: soundVolume ?? 0.5,
-			writeDelayMs: writeDelayMs ?? DEFAULT_WRITE_DELAY_MS,
-			terminalShellIntegrationTimeout: terminalShellIntegrationTimeout ?? Terminal.defaultShellIntegrationTimeout,
-			terminalShellIntegrationDisabled: terminalShellIntegrationDisabled ?? true,
-			terminalCommandDelay: terminalCommandDelay ?? 0,
-			terminalPowershellCounter: terminalPowershellCounter ?? false,
-			terminalZshClearEolMark: terminalZshClearEolMark ?? true,
-			terminalZshOhMy: terminalZshOhMy ?? false,
-			terminalZshP10k: terminalZshP10k ?? false,
-			terminalZdotdir: terminalZdotdir ?? false,
-			terminalProfile,
-			mcpEnabled: mcpEnabled ?? true,
-			currentApiConfigName: currentApiConfigName ?? "default",
-			listApiConfigMeta: listApiConfigMeta ?? [],
-			pinnedApiConfigs: pinnedApiConfigs ?? {},
-			mode: mode ?? defaultModeSlug,
-			customModePrompts: customModePrompts ?? {},
-			customSupportPrompts: customSupportPrompts ?? {},
-			enhancementApiConfigId,
-			autoApprovalEnabled: autoApprovalEnabled ?? false,
-			autoApprovalMode: autoApprovalMode ?? "default",
-			customModes,
-			experiments: experiments ?? experimentDefault,
-			mcpServers: this.mcpHub?.getAllServers() ?? [],
-			maxOpenTabsContext: maxOpenTabsContext ?? 20,
-			maxWorkspaceFiles: maxWorkspaceFiles ?? 200,
-			cwd,
-			disabledTools,
-			telemetrySetting,
-			telemetryKey,
-			machineId,
-			showRooIgnoredFiles: showRooIgnoredFiles ?? false,
-			enableSubfolderRules: enableSubfolderRules ?? false,
-			language: language ?? formatLanguage(vscode.env.language),
-			renderContext: this.renderContext,
-			maxImageFileSize: maxImageFileSize ?? 5,
-			maxTotalImageSize: maxTotalImageSize ?? 20,
-			settingsImportedAt: this.settingsImportedAt,
-			historyPreviewCollapsed: historyPreviewCollapsed ?? false,
-			reasoningBlockCollapsed: reasoningBlockCollapsed ?? true,
-			enterBehavior: enterBehavior ?? "send",
-			cloudUserInfo,
-			cloudIsAuthenticated: cloudIsAuthenticated ?? false,
-			cloudAuthSkipModel: this.context.globalState.get<boolean>("roo-auth-skip-model") ?? false,
-			cloudOrganizations,
-			sharingEnabled: sharingEnabled ?? false,
-			publicSharingEnabled: publicSharingEnabled ?? false,
-			organizationAllowList,
-			organizationSettingsVersion,
-			customCondensingPrompt,
-			codebaseIndexModels: codebaseIndexModels ?? EMBEDDING_MODEL_PROFILES,
-			codebaseIndexConfig: {
-				codebaseIndexEnabled: codebaseIndexConfig?.codebaseIndexEnabled ?? false,
-				codebaseIndexQdrantUrl: codebaseIndexConfig?.codebaseIndexQdrantUrl ?? "http://localhost:6333",
-				codebaseIndexEmbedderProvider: codebaseIndexConfig?.codebaseIndexEmbedderProvider ?? "openai",
-				codebaseIndexEmbedderBaseUrl: codebaseIndexConfig?.codebaseIndexEmbedderBaseUrl ?? "",
-				codebaseIndexEmbedderModelId: codebaseIndexConfig?.codebaseIndexEmbedderModelId ?? "",
-				codebaseIndexEmbedderModelDimension: codebaseIndexConfig?.codebaseIndexEmbedderModelDimension ?? 1536,
-				codebaseIndexOpenAiCompatibleBaseUrl: codebaseIndexConfig?.codebaseIndexOpenAiCompatibleBaseUrl,
-				codebaseIndexSearchMaxResults: codebaseIndexConfig?.codebaseIndexSearchMaxResults,
-				codebaseIndexSearchMinScore: codebaseIndexConfig?.codebaseIndexSearchMinScore,
-				codebaseIndexBedrockRegion: codebaseIndexConfig?.codebaseIndexBedrockRegion,
-				codebaseIndexBedrockProfile: codebaseIndexConfig?.codebaseIndexBedrockProfile,
-				codebaseIndexOpenRouterSpecificProvider: codebaseIndexConfig?.codebaseIndexOpenRouterSpecificProvider,
-			},
-			// Only set mdmCompliant if there's an actual MDM policy
-			// undefined means no MDM policy, true means compliant, false means non-compliant
-			mdmCompliant: this.mdmService?.requiresCloudAuth() ? this.checkMdmCompliance() : undefined,
-			profileThresholds: profileThresholds ?? {},
-			cloudApiUrl: getRooCodeApiUrl(),
-			hasOpenedModeSelector: this.getGlobalState("hasOpenedModeSelector") ?? false,
-			lockApiConfigAcrossModes: lockApiConfigAcrossModes ?? false,
-			alwaysAllowFollowupQuestions: alwaysAllowFollowupQuestions ?? false,
-			followupAutoApproveTimeoutMs: followupAutoApproveTimeoutMs ?? 60000,
-			includeDiagnosticMessages: includeDiagnosticMessages ?? true,
-			maxDiagnosticMessages: maxDiagnosticMessages ?? 50,
-			includeTaskHistoryInEnhance: includeTaskHistoryInEnhance ?? true,
-			includeCurrentTime: includeCurrentTime ?? true,
-			includeCurrentCost: includeCurrentCost ?? true,
-			maxGitStatusFiles: maxGitStatusFiles ?? 0,
-			parallelTasksMaxConcurrency: parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
-			subagentFollowupTimeoutSec: subagentFollowupTimeoutSec ?? DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
-			taskSyncEnabled,
-			imageGenerationProvider,
-			openRouterImageApiKey,
-			openRouterImageGenerationSelectedModel,
-			openAiCodexIsAuthenticated: await (async () => {
-				try {
-					const { openAiCodexOAuthManager } = await import("../../integrations/openai-codex/oauth")
-					return await openAiCodexOAuthManager.getAuthenticationStatus()
-				} catch {
-					return false
-				}
-			})(),
-			debug: vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false),
-		}
-	}
-
-	/**
-	 * Storage
-	 * https://dev.to/kompotkot/how-to-use-secretstorage-in-your-vscode-extensions-2hco
-	 * https://www.eliostruyf.com/devhack-code-extension-storage-options/
-	 */
-
-	async getState(): Promise<
-		Omit<
-			ExtensionState,
-			"clineMessages" | "renderContext" | "hasOpenedModeSelector" | "version" | "shouldShowAnnouncement"
-		>
-	> {
-		const stateValues = this.contextProxy.getValues()
-		const customModes = await this.customModesManager.getCustomModes()
-
-		// Determine apiProvider with the same logic as before, while filtering retired providers.
-		const apiProvider: ProviderName =
-			stateValues.apiProvider && !isRetiredProvider(stateValues.apiProvider)
-				? stateValues.apiProvider
-				: "anthropic"
-
-		// Build the apiConfiguration object combining state values and secrets.
-		const providerSettings = this.contextProxy.getProviderSettings()
-
-		// Ensure apiProvider is set properly if not already in state
-		if (!providerSettings.apiProvider) {
-			providerSettings.apiProvider = apiProvider
-		}
-
-		let organizationAllowList = ORGANIZATION_ALLOW_ALL
-
-		try {
-			organizationAllowList = await CloudService.instance.getAllowList()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get organization allow list: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let cloudUserInfo: CloudUserInfo | null = null
-
-		try {
-			cloudUserInfo = CloudService.instance.getUserInfo()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get cloud user info: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let cloudIsAuthenticated: boolean = false
-
-		try {
-			cloudIsAuthenticated = CloudService.instance.isAuthenticated()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get cloud authentication state: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let sharingEnabled: boolean = false
-
-		try {
-			sharingEnabled = await CloudService.instance.canShareTask()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get sharing enabled state: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let publicSharingEnabled: boolean = false
-
-		try {
-			publicSharingEnabled = await CloudService.instance.canSharePublicly()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get public sharing enabled state: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let organizationSettingsVersion: number = -1
-
-		try {
-			if (CloudService.hasInstance()) {
-				const settings = CloudService.instance.getOrganizationSettings()
-				organizationSettingsVersion = settings?.version ?? -1
-			}
-		} catch (error) {
-			console.error(
-				`[getState] failed to get organization settings version: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		let taskSyncEnabled: boolean = false
-
-		try {
-			taskSyncEnabled = CloudService.instance.isTaskSyncEnabled()
-		} catch (error) {
-			console.error(
-				`[getState] failed to get task sync enabled state: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		// Return the same structure as before.
-		return {
-			apiConfiguration: providerSettings,
-			// The plan-review write gate (checkAutoApproval) resolves relative
-			// tool paths against cwd; getStateToPostToWebview has it, but this
-			// method is what TaskAskSay/subagent approval consume.
-			cwd: this.cwd,
-			lastShownAnnouncementId: stateValues.lastShownAnnouncementId,
-			customInstructions: stateValues.customInstructions,
-			apiModelId: stateValues.apiModelId,
-			alwaysAllowReadOnly: stateValues.alwaysAllowReadOnly ?? false,
-			alwaysAllowReadOnlyOutsideWorkspace: stateValues.alwaysAllowReadOnlyOutsideWorkspace ?? false,
-			alwaysAllowWrite: stateValues.alwaysAllowWrite ?? false,
-			alwaysAllowWriteOutsideWorkspace: stateValues.alwaysAllowWriteOutsideWorkspace ?? false,
-			alwaysAllowWriteProtected: stateValues.alwaysAllowWriteProtected ?? false,
-			alwaysAllowExecute: stateValues.alwaysAllowExecute ?? false,
-			alwaysAllowMcp: stateValues.alwaysAllowMcp ?? false,
-			alwaysAllowModeSwitch: stateValues.alwaysAllowModeSwitch ?? false,
-			alwaysAllowSubtasks: stateValues.alwaysAllowSubtasks ?? false,
-			alwaysApprovePlan: stateValues.alwaysApprovePlan ?? false,
-			alwaysAllowFollowupQuestions: stateValues.alwaysAllowFollowupQuestions ?? false,
-			followupAutoApproveTimeoutMs: stateValues.followupAutoApproveTimeoutMs ?? 60000,
-			diagnosticsEnabled: stateValues.diagnosticsEnabled ?? true,
-			allowedMaxRequests: stateValues.allowedMaxRequests,
-			allowedMaxCost: stateValues.allowedMaxCost,
-			autoCondenseContext: stateValues.autoCondenseContext ?? true,
-			autoCondenseContextPercent: stateValues.autoCondenseContextPercent ?? 100,
-			autoCondenseContextApiConfigId: stateValues.autoCondenseContextApiConfigId,
-			memoryWriterApiConfigId: stateValues.memoryWriterApiConfigId,
-			webToolsEnabled: stateValues.webToolsEnabled ?? false,
-			webSearchBackend: stateValues.webSearchBackend ?? "searxng",
-			searxngBaseUrl: stateValues.searxngBaseUrl ?? "",
-			webSearchMaxResults: stateValues.webSearchMaxResults ?? WEB_TOOLS_DEFAULTS.DEFAULT_SEARCH_RESULTS,
-			webFetchMaxBytes: stateValues.webFetchMaxBytes ?? WEB_TOOLS_DEFAULTS.DEFAULT_FETCH_BYTES,
-			maxInlineToolResultBytes: resolveMaxInlineToolResultBytes(stateValues),
-			pruneBeforeCondense: isPruneBeforeCondenseEnabled(stateValues),
-			pruneToolResultBudget: resolvePruneToolResultBudget(stateValues),
-			// `getState` is a hot path consumed by many internal call sites
-			// (system prompt building, auto-approval, retry, plan review…)
-			// that never read task history. Materializing and sorting the
-			// full history here on every call was a dominant per-message cost.
-			// Callers that actually need the history must use
-			// {@link getTaskHistory} or {@link getStateToPostToWebview},
-			// both of which read it explicitly. We return an empty array to
-			// satisfy the ExtensionState shape without the I/O.
-			taskHistory: [],
-			allowedCommands: stateValues.allowedCommands,
-			deniedCommands: stateValues.deniedCommands,
-			soundEnabled: stateValues.soundEnabled ?? DEFAULT_SOUND_ENABLED,
-			customSoundCelebration: stateValues.customSoundCelebration,
-			customSoundCelebrationOriginal: stateValues.customSoundCelebrationOriginal,
-			customSoundProgressLoop: stateValues.customSoundProgressLoop,
-			customSoundProgressLoopOriginal: stateValues.customSoundProgressLoopOriginal,
-			customSoundNotification: stateValues.customSoundNotification,
-			customSoundNotificationOriginal: stateValues.customSoundNotificationOriginal,
-			enableCheckpoints: stateValues.enableCheckpoints ?? DEFAULT_ENABLE_CHECKPOINTS,
-			checkpointTimeout: stateValues.checkpointTimeout ?? DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
-			soundVolume: stateValues.soundVolume,
-			writeDelayMs: stateValues.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS,
-			terminalShellIntegrationTimeout:
-				stateValues.terminalShellIntegrationTimeout ?? Terminal.defaultShellIntegrationTimeout,
-			terminalShellIntegrationDisabled: stateValues.terminalShellIntegrationDisabled ?? true,
-			terminalCommandDelay: stateValues.terminalCommandDelay ?? 0,
-			terminalPowershellCounter: stateValues.terminalPowershellCounter ?? false,
-			terminalZshClearEolMark: stateValues.terminalZshClearEolMark ?? true,
-			terminalZshOhMy: stateValues.terminalZshOhMy ?? false,
-			terminalZshP10k: stateValues.terminalZshP10k ?? false,
-			terminalZdotdir: stateValues.terminalZdotdir ?? false,
-			terminalProfile: stateValues.terminalProfile,
-			mode: stateValues.mode ?? defaultModeSlug,
-			language: stateValues.language ?? formatLanguage(vscode.env.language),
-			mcpEnabled: stateValues.mcpEnabled ?? true,
-			mcpServers: this.mcpHub?.getAllServers() ?? [],
-			currentApiConfigName: stateValues.currentApiConfigName ?? "default",
-			listApiConfigMeta: stateValues.listApiConfigMeta ?? [],
-			pinnedApiConfigs: stateValues.pinnedApiConfigs ?? {},
-			modeApiConfigs: stateValues.modeApiConfigs ?? ({} as Record<Mode, string>),
-			customModePrompts: stateValues.customModePrompts ?? {},
-			customSupportPrompts: stateValues.customSupportPrompts ?? {},
-			enhancementApiConfigId: stateValues.enhancementApiConfigId,
-			experiments: stateValues.experiments ?? experimentDefault,
-			autoApprovalEnabled: stateValues.autoApprovalEnabled ?? false,
-			autoApprovalMode: stateValues.autoApprovalMode ?? "default",
-			customModes,
-			maxOpenTabsContext: stateValues.maxOpenTabsContext ?? 20,
-			maxWorkspaceFiles: stateValues.maxWorkspaceFiles ?? 200,
-			disabledTools: stateValues.disabledTools,
-			telemetrySetting: stateValues.telemetrySetting || "unset",
-			showRooIgnoredFiles: stateValues.showRooIgnoredFiles ?? false,
-			enableSubfolderRules: stateValues.enableSubfolderRules ?? false,
-			maxImageFileSize: stateValues.maxImageFileSize ?? 5,
-			maxTotalImageSize: stateValues.maxTotalImageSize ?? 20,
-			historyPreviewCollapsed: stateValues.historyPreviewCollapsed ?? false,
-			reasoningBlockCollapsed: stateValues.reasoningBlockCollapsed ?? true,
-			enterBehavior: stateValues.enterBehavior ?? "send",
-			cloudUserInfo,
-			cloudIsAuthenticated,
-			sharingEnabled,
-			publicSharingEnabled,
-			organizationAllowList,
-			organizationSettingsVersion,
-			customCondensingPrompt: stateValues.customCondensingPrompt,
-			codebaseIndexModels: stateValues.codebaseIndexModels ?? EMBEDDING_MODEL_PROFILES,
-			codebaseIndexConfig: {
-				codebaseIndexEnabled: stateValues.codebaseIndexConfig?.codebaseIndexEnabled ?? false,
-				codebaseIndexQdrantUrl:
-					stateValues.codebaseIndexConfig?.codebaseIndexQdrantUrl ?? "http://localhost:6333",
-				codebaseIndexEmbedderProvider:
-					stateValues.codebaseIndexConfig?.codebaseIndexEmbedderProvider ?? "openai",
-				codebaseIndexEmbedderBaseUrl: stateValues.codebaseIndexConfig?.codebaseIndexEmbedderBaseUrl ?? "",
-				codebaseIndexEmbedderModelId: stateValues.codebaseIndexConfig?.codebaseIndexEmbedderModelId ?? "",
-				codebaseIndexEmbedderModelDimension:
-					stateValues.codebaseIndexConfig?.codebaseIndexEmbedderModelDimension,
-				codebaseIndexOpenAiCompatibleBaseUrl:
-					stateValues.codebaseIndexConfig?.codebaseIndexOpenAiCompatibleBaseUrl,
-				codebaseIndexSearchMaxResults: stateValues.codebaseIndexConfig?.codebaseIndexSearchMaxResults,
-				codebaseIndexSearchMinScore: stateValues.codebaseIndexConfig?.codebaseIndexSearchMinScore,
-				codebaseIndexBedrockRegion: stateValues.codebaseIndexConfig?.codebaseIndexBedrockRegion,
-				codebaseIndexBedrockProfile: stateValues.codebaseIndexConfig?.codebaseIndexBedrockProfile,
-				codebaseIndexOpenRouterSpecificProvider:
-					stateValues.codebaseIndexConfig?.codebaseIndexOpenRouterSpecificProvider,
-			},
-			profileThresholds: stateValues.profileThresholds ?? {},
-			lockApiConfigAcrossModes: this.context.workspaceState.get("lockApiConfigAcrossModes", false),
-			includeDiagnosticMessages: stateValues.includeDiagnosticMessages ?? true,
-			maxDiagnosticMessages: stateValues.maxDiagnosticMessages ?? 50,
-			includeTaskHistoryInEnhance: stateValues.includeTaskHistoryInEnhance ?? true,
-			includeCurrentTime: stateValues.includeCurrentTime ?? true,
-			includeCurrentCost: stateValues.includeCurrentCost ?? true,
-			maxGitStatusFiles: stateValues.maxGitStatusFiles ?? 0,
-			parallelTasksMaxConcurrency:
-				stateValues.parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY,
-			subagentFollowupTimeoutSec: stateValues.subagentFollowupTimeoutSec ?? DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC,
-			taskSyncEnabled,
-			imageGenerationProvider: stateValues.imageGenerationProvider,
-			openRouterImageApiKey: stateValues.openRouterImageApiKey,
-			openRouterImageGenerationSelectedModel: stateValues.openRouterImageGenerationSelectedModel,
-		}
+	getState(): Promise<ProviderState> {
+		return this.stateBuilder.getState()
 	}
 
 	/**
