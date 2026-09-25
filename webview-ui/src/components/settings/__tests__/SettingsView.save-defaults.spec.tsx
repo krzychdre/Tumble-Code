@@ -535,7 +535,6 @@ describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20
 			terminalZdotdir: true,
 			terminalProfile: "zsh",
 			terminalOutputPreviewSize: "large",
-			mcpEnabled: false,
 			maxOpenTabsContext: 500,
 			maxWorkspaceFiles: 0,
 			showRooIgnoredFiles: false,

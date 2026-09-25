@@ -186,7 +186,6 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		experiments,
 		maxOpenTabsContext,
 		maxWorkspaceFiles,
-		mcpEnabled,
 		soundEnabled,
 		soundVolume,
 		telemetrySetting,
@@ -442,7 +441,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					terminalZdotdir,
 					terminalProfile: terminalProfile ?? "", // "" clears a saved profile; undefined is dropped by JSON.stringify
 					terminalOutputPreviewSize: terminalOutputPreviewSize ?? "medium",
-					mcpEnabled,
+					// mcpEnabled is not sent: the MCP tab writes it immediately
+					// and the Save buffer only holds the value from when the
+					// settings opened, so sending it would undo that toggle.
 					maxOpenTabsContext: Math.min(Math.max(0, maxOpenTabsContext ?? 20), 500),
 					maxWorkspaceFiles: Math.min(Math.max(0, maxWorkspaceFiles ?? 200), 500),
 					showRooIgnoredFiles: showRooIgnoredFiles ?? SETTINGS_DEFAULTS.showRooIgnoredFiles,
