@@ -4,7 +4,7 @@
 	"failedWithStatus": "嘗試 {{attempts}} 次後建立內嵌失敗：HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "嘗試 {{attempts}} 次後建立內嵌失敗：{{errorMessage}}",
 	"failedMaxAttempts": "嘗試 {{attempts}} 次後建立內嵌失敗",
-	"textExceedsTokenLimit": "索引 {{index}} 處的文字超過最大權杖限制 ({{itemTokens}} > {{maxTokens}})。正在略過。",
+	"textTruncatedToTokenLimit": "索引 {{index}} 處的文字超過最大權杖限制 ({{itemTokens}} > {{maxTokens}})。正在截斷至限制。",
 	"rateLimitRetry": "已達到速率限制，將在 {{delayMs}} 毫秒後重試（嘗試次數 {{attempt}}/{{maxRetries}}）",
 	"bedrock": {
 		"invalidResponseFormat": "Amazon Bedrock 傳回無效的回應格式",

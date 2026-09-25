@@ -4,7 +4,7 @@
 	"failedWithStatus": "Erstellung von Einbettungen nach {{attempts}} Versuchen fehlgeschlagen: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Erstellung von Einbettungen nach {{attempts}} Versuchen fehlgeschlagen: {{errorMessage}}",
 	"failedMaxAttempts": "Erstellung von Einbettungen nach {{attempts}} Versuchen fehlgeschlagen",
-	"textExceedsTokenLimit": "Text bei Index {{index}} überschreitet das maximale Token-Limit ({{itemTokens}} > {{maxTokens}}). Wird übersprungen.",
+	"textTruncatedToTokenLimit": "Text bei Index {{index}} überschreitet das maximale Token-Limit ({{itemTokens}} > {{maxTokens}}). Wird auf das Limit gekürzt.",
 	"rateLimitRetry": "Ratenlimit erreicht, Wiederholung in {{delayMs}}ms (Versuch {{attempt}}/{{maxRetries}})",
 	"bedrock": {
 		"invalidResponseFormat": "Ungültiges Antwortformat von Amazon Bedrock",

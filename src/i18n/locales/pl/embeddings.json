@@ -4,7 +4,7 @@
 	"failedWithStatus": "Nie udało się utworzyć osadzeń po {{attempts}} próbach: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Nie udało się utworzyć osadzeń po {{attempts}} próbach: {{errorMessage}}",
 	"failedMaxAttempts": "Nie udało się utworzyć osadzeń po {{attempts}} próbach",
-	"textExceedsTokenLimit": "Tekst w indeksie {{index}} przekracza maksymalny limit tokenów ({{itemTokens}} > {{maxTokens}}). Pomijanie.",
+	"textTruncatedToTokenLimit": "Tekst w indeksie {{index}} przekracza maksymalny limit tokenów ({{itemTokens}} > {{maxTokens}}). Przycinanie do limitu.",
 	"rateLimitRetry": "Osiągnięto limit szybkości, ponawianie za {{delayMs}}ms (próba {{attempt}}/{{maxRetries}})",
 	"bedrock": {
 		"invalidResponseFormat": "Nieprawidłowy format odpowiedzi z Amazon Bedrock",

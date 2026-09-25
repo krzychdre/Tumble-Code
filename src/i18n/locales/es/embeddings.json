@@ -4,7 +4,7 @@
 	"failedWithStatus": "No se pudieron crear las incrustaciones después de {{attempts}} intentos: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "No se pudieron crear las incrustaciones después de {{attempts}} intentos: {{errorMessage}}",
 	"failedMaxAttempts": "No se pudieron crear las incrustaciones después de {{attempts}} intentos",
-	"textExceedsTokenLimit": "El texto en el índice {{index}} supera el límite máximo de tokens ({{itemTokens}} > {{maxTokens}}). Omitiendo.",
+	"textTruncatedToTokenLimit": "El texto en el índice {{index}} supera el límite máximo de tokens ({{itemTokens}} > {{maxTokens}}). Se recorta hasta el límite.",
 	"rateLimitRetry": "Límite de velocidad alcanzado, reintentando en {{delayMs}}ms (intento {{attempt}}/{{maxRetries}})",
 	"bedrock": {
 		"invalidResponseFormat": "Formato de respuesta no válido de Amazon Bedrock",

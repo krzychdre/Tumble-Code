@@ -4,7 +4,7 @@
 	"failedWithStatus": "{{attempts}}回試行しましたが、埋め込みの作成に失敗しました：HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "{{attempts}}回試行しましたが、埋め込みの作成に失敗しました：{{errorMessage}}",
 	"failedMaxAttempts": "{{attempts}}回試行しましたが、埋め込みの作成に失敗しました",
-	"textExceedsTokenLimit": "インデックス{{index}}のテキストが最大トークン制限を超えています（{{itemTokens}}> {{maxTokens}}）。スキップします。",
+	"textTruncatedToTokenLimit": "インデックス{{index}}のテキストが最大トークン制限を超えています（{{itemTokens}}> {{maxTokens}}）。制限まで切り詰めます。",
 	"rateLimitRetry": "レート制限に達しました。{{delayMs}}ミリ秒後に再試行します（試行{{attempt}}/{{maxRetries}}）",
 	"bedrock": {
 		"invalidResponseFormat": "Amazon Bedrockからの無効な応答形式",

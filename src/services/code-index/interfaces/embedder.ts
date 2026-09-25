@@ -1,10 +1,13 @@
 /**
  * Interface for code index embedders.
- * This interface is implemented by both OpenAI and Ollama embedders.
+ * Every embedder implements it through BaseHttpEmbedder (embedders/base-http-embedder.ts);
+ * embedders/__tests__/embedder-contract.spec.ts checks the contract for all of them.
  */
 export interface IEmbedder {
 	/**
 	 * Creates embeddings for the given texts.
+	 * The result holds exactly one vector per input, in input order (callers pair vectors with
+	 * code blocks by position), or the call rejects.
 	 * @param texts Array of text strings to create embeddings for
 	 * @param model Optional model ID to use for embeddings
 	 * @returns Promise resolving to an EmbeddingResponse
@@ -25,7 +28,7 @@ export interface IEmbedder {
  *
  * Validation issues a probe embedding, so implementations can report the vector length the
  * model actually returned. Callers use it to catch a configured dimension that disagrees with
- * the model before indexing starts — otherwise the mismatch only surfaces as a rejected upsert.
+ * the model before indexing starts, otherwise the mismatch only surfaces as a rejected upsert.
  */
 export interface EmbedderValidationResult {
 	valid: boolean

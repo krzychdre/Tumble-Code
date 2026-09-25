@@ -1,12 +1,12 @@
 import type { MockedClass } from "vitest"
+import { OpenAI } from "openai"
 
 import { MistralEmbedder } from "../mistral"
-import { OpenAICompatibleEmbedder } from "../openai-compatible"
+import { resetRateLimitGates } from "../rate-limit-gate"
 
-// Mock the OpenAICompatibleEmbedder
-vitest.mock("../openai-compatible")
+// The embedder is the OpenAI-compatible embedder pointed at Mistral, so only the SDK is mocked
+vitest.mock("openai")
 
-// Mock TelemetryService
 vitest.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
@@ -15,51 +15,39 @@ vitest.mock("@roo-code/telemetry", () => ({
 	},
 }))
 
-const MockedOpenAICompatibleEmbedder = OpenAICompatibleEmbedder as MockedClass<typeof OpenAICompatibleEmbedder>
+vitest.mock("../../../../i18n", () => ({
+	t: (key: string) => key,
+}))
+
+const MockedOpenAI = OpenAI as MockedClass<typeof OpenAI>
 
 describe("MistralEmbedder", () => {
-	let embedder: MistralEmbedder
+	let mockEmbeddingsCreate: ReturnType<typeof vitest.fn>
 
 	beforeEach(() => {
 		vitest.clearAllMocks()
+		resetRateLimitGates()
+		vitest.spyOn(console, "warn").mockImplementation(() => {})
+		vitest.spyOn(console, "error").mockImplementation(() => {})
+		mockEmbeddingsCreate = vitest.fn().mockResolvedValue({
+			data: [{ embedding: [0.1, 0.2] }, { embedding: [0.3, 0.4] }],
+			usage: { prompt_tokens: 2, total_tokens: 2 },
+		})
+		MockedOpenAI.mockImplementation(() => ({ embeddings: { create: mockEmbeddingsCreate } }) as any)
+	})
+
+	afterEach(() => {
+		vitest.restoreAllMocks()
 	})
 
 	describe("constructor", () => {
-		it("should create an instance with default model when no model specified", () => {
-			// Arrange
-			const apiKey = "test-mistral-api-key"
+		it("should build its client for the Mistral endpoint", () => {
+			new MistralEmbedder("test-api-key")
 
-			// Act
-			embedder = new MistralEmbedder(apiKey)
-
-			// Assert
-			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
-				"https://api.mistral.ai/v1",
-				apiKey,
-				"codestral-embed-2505",
-				8191,
-			)
-		})
-
-		it("should create an instance with specified model", () => {
-			// Arrange
-			const apiKey = "test-mistral-api-key"
-			const modelId = "custom-embed-model"
-
-			// Act
-			embedder = new MistralEmbedder(apiKey, modelId)
-
-			// Assert
-			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
-				"https://api.mistral.ai/v1",
-				apiKey,
-				"custom-embed-model",
-				8191,
-			)
+			expect(MockedOpenAI).toHaveBeenCalledWith({ baseURL: "https://api.mistral.ai/v1", apiKey: "test-api-key" })
 		})
 
 		it("should throw error when API key is not provided", () => {
-			// Act & Assert
 			expect(() => new MistralEmbedder("")).toThrow("validation.apiKeyRequired")
 			expect(() => new MistralEmbedder(null as any)).toThrow("validation.apiKeyRequired")
 			expect(() => new MistralEmbedder(undefined as any)).toThrow("validation.apiKeyRequired")
@@ -68,126 +56,71 @@ describe("MistralEmbedder", () => {
 
 	describe("embedderInfo", () => {
 		it("should return correct embedder info", () => {
-			// Arrange
-			embedder = new MistralEmbedder("test-api-key")
+			expect(new MistralEmbedder("test-api-key").embedderInfo).toEqual({ name: "mistral" })
+		})
+	})
 
-			// Act
-			const info = embedder.embedderInfo
+	describe("createEmbeddings", () => {
+		it("should use the default model when none is configured or passed", async () => {
+			const result = await new MistralEmbedder("test-api-key").createEmbeddings(["a", "b"])
 
-			// Assert
-			expect(info).toEqual({
-				name: "mistral",
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+				input: ["a", "b"],
+				model: "codestral-embed-2505",
+				encoding_format: "base64",
 			})
+			expect(result.embeddings).toEqual([
+				[0.1, 0.2],
+				[0.3, 0.4],
+			])
 		})
 
-		describe("createEmbeddings", () => {
-			let mockCreateEmbeddings: any
+		it("should use the configured model", async () => {
+			await new MistralEmbedder("test-api-key", "custom-embed-model").createEmbeddings(["a", "b"])
 
-			beforeEach(() => {
-				mockCreateEmbeddings = vitest.fn()
-				MockedOpenAICompatibleEmbedder.prototype.createEmbeddings = mockCreateEmbeddings
-			})
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "custom-embed-model" }))
+		})
 
-			it("should use instance model when no model parameter provided", async () => {
-				// Arrange
-				embedder = new MistralEmbedder("test-api-key")
-				const texts = ["test text 1", "test text 2"]
-				const mockResponse = {
-					embeddings: [
-						[0.1, 0.2],
-						[0.3, 0.4],
-					],
-				}
-				mockCreateEmbeddings.mockResolvedValue(mockResponse)
+		it("should let a model passed to the call win over the configured one", async () => {
+			await new MistralEmbedder("test-api-key").createEmbeddings(["a", "b"], "runtime-model")
 
-				// Act
-				const result = await embedder.createEmbeddings(texts)
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "runtime-model" }))
+		})
 
-				// Assert
-				expect(mockCreateEmbeddings).toHaveBeenCalledWith(texts, "codestral-embed-2505")
-				expect(result).toEqual(mockResponse)
-			})
+		it("should cut an input to 8191 estimated tokens", async () => {
+			mockEmbeddingsCreate.mockResolvedValue({ data: [{ embedding: [0.1] }] })
 
-			it("should use provided model parameter when specified", async () => {
-				// Arrange
-				embedder = new MistralEmbedder("test-api-key", "custom-embed-model")
-				const texts = ["test text 1", "test text 2"]
-				const mockResponse = {
-					embeddings: [
-						[0.1, 0.2],
-						[0.3, 0.4],
-					],
-				}
-				mockCreateEmbeddings.mockResolvedValue(mockResponse)
+			await new MistralEmbedder("test-api-key").createEmbeddings(["a".repeat(8191 * 4 + 10)])
 
-				// Act
-				const result = await embedder.createEmbeddings(texts, "codestral-embed-2505")
+			expect(mockEmbeddingsCreate.mock.calls[0][0].input).toEqual(["a".repeat(8191 * 4)])
+		})
 
-				// Assert
-				expect(mockCreateEmbeddings).toHaveBeenCalledWith(texts, "codestral-embed-2505")
-				expect(result).toEqual(mockResponse)
-			})
+		it("should reject when the request fails", async () => {
+			mockEmbeddingsCreate.mockRejectedValue(new Error("Embedding failed"))
 
-			it("should handle errors from OpenAICompatibleEmbedder", async () => {
-				// Arrange
-				embedder = new MistralEmbedder("test-api-key")
-				const texts = ["test text"]
-				const error = new Error("Embedding failed")
-				mockCreateEmbeddings.mockRejectedValue(error)
-
-				// Act & Assert
-				await expect(embedder.createEmbeddings(texts)).rejects.toThrow("Embedding failed")
-			})
+			await expect(new MistralEmbedder("test-api-key").createEmbeddings(["a"])).rejects.toThrow(
+				"embeddings:failedWithError",
+			)
 		})
 	})
 
 	describe("validateConfiguration", () => {
-		let mockValidateConfiguration: any
+		it("should report the probe dimension", async () => {
+			mockEmbeddingsCreate.mockResolvedValue({ data: [{ embedding: [0.1, 0.2, 0.3] }] })
 
-		beforeEach(() => {
-			mockValidateConfiguration = vitest.fn()
-			MockedOpenAICompatibleEmbedder.prototype.validateConfiguration = mockValidateConfiguration
-		})
-
-		it("should delegate validation to OpenAICompatibleEmbedder", async () => {
-			// Arrange
-			embedder = new MistralEmbedder("test-api-key")
-			mockValidateConfiguration.mockResolvedValue({ valid: true })
-
-			// Act
-			const result = await embedder.validateConfiguration()
-
-			// Assert
-			expect(mockValidateConfiguration).toHaveBeenCalled()
-			expect(result).toEqual({ valid: true })
-		})
-
-		it("should pass through validation errors from OpenAICompatibleEmbedder", async () => {
-			// Arrange
-			embedder = new MistralEmbedder("test-api-key")
-			mockValidateConfiguration.mockResolvedValue({
-				valid: false,
-				error: "embeddings:validation.authenticationFailed",
-			})
-
-			// Act
-			const result = await embedder.validateConfiguration()
-
-			// Assert
-			expect(mockValidateConfiguration).toHaveBeenCalled()
-			expect(result).toEqual({
-				valid: false,
-				error: "embeddings:validation.authenticationFailed",
+			await expect(new MistralEmbedder("test-api-key").validateConfiguration()).resolves.toEqual({
+				valid: true,
+				dimension: 3,
 			})
 		})
 
-		it("should handle validation exceptions", async () => {
-			// Arrange
-			embedder = new MistralEmbedder("test-api-key")
-			mockValidateConfiguration.mockRejectedValue(new Error("Validation failed"))
+		it("should map an authentication failure to a validation error", async () => {
+			mockEmbeddingsCreate.mockRejectedValue(Object.assign(new Error("Unauthorized"), { status: 401 }))
 
-			// Act & Assert
-			await expect(embedder.validateConfiguration()).rejects.toThrow("Validation failed")
+			await expect(new MistralEmbedder("test-api-key").validateConfiguration()).resolves.toEqual({
+				valid: false,
+				error: "embeddings:validation.authenticationFailed",
+			})
 		})
 	})
 })

@@ -4,7 +4,7 @@
 	"failedWithStatus": "{{attempts}}번 시도 후 임베딩 생성 실패: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "{{attempts}}번 시도 후 임베딩 생성 실패: {{errorMessage}}",
 	"failedMaxAttempts": "{{attempts}}번 시도 후 임베딩 생성 실패",
-	"textExceedsTokenLimit": "인덱스 {{index}}의 텍스트가 최대 토큰 제한({{itemTokens}} > {{maxTokens}})을 초과했습니다. 건너뜁니다.",
+	"textTruncatedToTokenLimit": "인덱스 {{index}}의 텍스트가 최대 토큰 제한({{itemTokens}} > {{maxTokens}})을 초과했습니다. 제한에 맞게 잘라냅니다.",
 	"rateLimitRetry": "속도 제한에 도달했습니다. {{delayMs}}ms 후에 다시 시도합니다(시도 {{attempt}}/{{maxRetries}}).",
 	"bedrock": {
 		"invalidResponseFormat": "Amazon Bedrock에서 잘못된 응답 형식",
