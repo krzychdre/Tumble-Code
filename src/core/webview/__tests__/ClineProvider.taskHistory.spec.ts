@@ -9,6 +9,9 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { ContextProxy } from "../../config/ContextProxy"
 import { ClineProvider } from "../ClineProvider"
 import { TaskHistoryStore } from "../../task-persistence"
+import { ShadowCheckpointService } from "../../../services/checkpoints/ShadowCheckpointService"
+import { downloadTask } from "../../../integrations/misc/export-markdown"
+import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export"
 
 // Mock setup
 vi.mock("p-wait-for", () => ({
@@ -51,6 +54,16 @@ vi.mock("../../../utils/storage", () => ({
 	getTaskDirectoryPath: vi.fn().mockResolvedValue("/test/task/path"),
 	getGlobalStoragePath: vi.fn().mockResolvedValue("/test/storage/path"),
 	getStorageBasePath: vi.fn().mockImplementation((defaultPath: string) => defaultPath),
+}))
+
+vi.mock("../../../integrations/misc/export-markdown", () => ({
+	getTaskFileName: vi.fn((ts: number) => `task-${ts}.md`),
+	downloadTask: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("../../../utils/export", () => ({
+	resolveDefaultSaveUri: vi.fn().mockResolvedValue({ fsPath: "/downloads/default.md" }),
+	saveLastExportPath: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("../../../utils/safeWriteJson", () => {
@@ -1190,6 +1203,289 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(historyItem.id).toBe("cost-parent")
 			expect(aggregatedCosts.totalCost).toBe(6)
 			expect(heavySpy).not.toHaveBeenCalled()
+		})
+	})
+
+	// Characterization tests for the task-history gateway (CORE-R6 a). They go
+	// through the public provider API only, so they pin the behavior before
+	// and after the code moves into TaskHistoryGateway.
+	describe("task-history gateway characterization", () => {
+		// A store double whose change listener the test can fire by hand.
+		const makeObservableStoreHandle = () => {
+			const records = new Map<string, HistoryItem>()
+			const listeners: Array<(event: any) => void> = []
+			const unsubscribe = vi.fn()
+			const origins: Array<symbol | undefined> = []
+			const store = {
+				onChange: vi.fn((listener: (event: any) => void) => {
+					listeners.push(listener)
+					return unsubscribe
+				}),
+				migrateFromLegacyHistory: vi.fn().mockResolvedValue(true),
+				upsert: vi.fn(async (item: HistoryItem, origin?: symbol) => {
+					origins.push(origin)
+					records.set(item.id, item)
+				}),
+				get: vi.fn((id: string) => records.get(id)),
+				getAll: vi.fn(() => Array.from(records.values())),
+			} as unknown as TaskHistoryStore
+			const fire = (event: any) => listeners.forEach((listener) => listener(event))
+			return { handle: { store, dispose: vi.fn() }, fire, unsubscribe, origins, records }
+		}
+
+		const launch = async (target: ClineProvider, view: vscode.WebviewView) => {
+			await target.resolveWebviewView(view)
+			target.isViewLaunched = true
+		}
+
+		const seedFamily = async () => {
+			await provider.updateTaskHistory(
+				createHistoryItem({ id: "del-parent", task: "Parent", childIds: ["del-child"] }),
+				{ broadcast: false },
+			)
+			await provider.updateTaskHistory(
+				createHistoryItem({ id: "del-child", task: "Child", childIds: ["del-grandchild"] }),
+				{ broadcast: false },
+			)
+			await provider.updateTaskHistory(createHistoryItem({ id: "del-grandchild", task: "Grandchild" }), {
+				broadcast: false,
+			})
+			await provider.updateTaskHistory(createHistoryItem({ id: "del-unrelated", task: "Unrelated" }), {
+				broadcast: false,
+			})
+		}
+
+		it("deleteTaskWithId cascades to subtasks, closes the current task and sends one targeted delete per id", async () => {
+			await launch(provider, mockWebviewView)
+			await seedFamily()
+			const shadowDelete = vi.spyOn(ShadowCheckpointService, "deleteTask").mockResolvedValue(undefined)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "del-child" } as any)
+			const removeFromStack = vi.spyOn(provider, "removeClineFromStack").mockResolvedValue(undefined)
+			const postState = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+			mockPostMessage.mockClear()
+
+			await provider.deleteTaskWithId("del-parent")
+
+			const store = await (provider as any).getTaskHistoryStore()
+			expect(store.get("del-parent")).toBeUndefined()
+			expect(store.get("del-child")).toBeUndefined()
+			expect(store.get("del-grandchild")).toBeUndefined()
+			expect(store.get("del-unrelated")).toBeDefined()
+			expect(
+				findCallsByType(mockPostMessage.mock.calls, "taskHistoryItemDeleted").map(
+					(call) => call[0].taskHistoryItemId,
+				),
+			).toEqual(["del-parent", "del-child", "del-grandchild"])
+			// The store's change echo of our own delete is suppressed.
+			expect(findCallsByType(mockPostMessage.mock.calls, "taskHistoryUpdated")).toHaveLength(0)
+			expect(removeFromStack).toHaveBeenCalledTimes(1)
+			expect(shadowDelete.mock.calls.map((call) => call[0].taskId)).toEqual([
+				"del-parent",
+				"del-child",
+				"del-grandchild",
+			])
+			expect(shadowDelete).toHaveBeenCalledWith({
+				taskId: "del-parent",
+				globalStorageDir: "/test/storage/path",
+				workspaceDir: provider.cwd,
+			})
+			expect(postState).toHaveBeenCalledTimes(1)
+			shadowDelete.mockRestore()
+		})
+
+		it("deleteTaskWithId without cascade deletes only the item and keeps a task that is not current", async () => {
+			await launch(provider, mockWebviewView)
+			await seedFamily()
+			const shadowDelete = vi.spyOn(ShadowCheckpointService, "deleteTask").mockResolvedValue(undefined)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue({ taskId: "del-unrelated" } as any)
+			const removeFromStack = vi.spyOn(provider, "removeClineFromStack").mockResolvedValue(undefined)
+			vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+			mockPostMessage.mockClear()
+
+			await provider.deleteTaskWithId("del-parent", false)
+
+			const store = await (provider as any).getTaskHistoryStore()
+			expect(store.get("del-parent")).toBeUndefined()
+			expect(store.get("del-child")).toBeDefined()
+			expect(removeFromStack).not.toHaveBeenCalled()
+			expect(
+				findCallsByType(mockPostMessage.mock.calls, "taskHistoryItemDeleted").map(
+					(call) => call[0].taskHistoryItemId,
+				),
+			).toEqual(["del-parent"])
+			shadowDelete.mockRestore()
+		})
+
+		it("deleteTaskWithId of an unknown id only removes it from state", async () => {
+			await launch(provider, mockWebviewView)
+			const shadowDelete = vi.spyOn(ShadowCheckpointService, "deleteTask").mockResolvedValue(undefined)
+			const postState = vi.spyOn(provider, "postStateToWebview").mockResolvedValue(undefined)
+			mockPostMessage.mockClear()
+
+			await provider.deleteTaskWithId("never-existed")
+
+			expect(
+				findCallsByType(mockPostMessage.mock.calls, "taskHistoryItemDeleted").map(
+					(call) => call[0].taskHistoryItemId,
+				),
+			).toEqual(["never-existed"])
+			expect(postState).toHaveBeenCalledTimes(1)
+			expect(shadowDelete).not.toHaveBeenCalled()
+			shadowDelete.mockRestore()
+		})
+
+		it("atomicReadAndUpdateHistoryItem writes with the provider's origin, so its own echo is not pushed", async () => {
+			const observable = makeObservableStoreHandle()
+			const current = createHistoryItem({ id: "atomic", task: "Atomic" })
+			const atomicOrigins: Array<symbol | undefined> = []
+			;(observable.handle.store as any).atomicReadAndUpdate = vi.fn(
+				async (id: string, updater: (item: HistoryItem) => HistoryItem, origin?: symbol) => {
+					atomicOrigins.push(origin)
+					const updated = updater(current)
+					observable.fire({ external: false, kind: "upsert", taskId: id, item: updated, origin })
+					return updated
+				},
+			)
+			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockResolvedValueOnce(observable.handle)
+			const atomic = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const post = vi.fn()
+			await launch(atomic, makeMockWebviewView(post))
+			await atomic.updateTaskHistory(current, { broadcast: false })
+			post.mockClear()
+
+			const updated = await atomic.atomicReadAndUpdateHistoryItem("atomic", (item) => ({
+				...item,
+				parallelChildIds: ["p1"],
+			}))
+
+			expect(updated.parallelChildIds).toEqual(["p1"])
+			expect(atomicOrigins).toEqual([observable.origins[0]])
+			expect(typeof atomicOrigins[0]).toBe("symbol")
+			expect(findCallsByType(post.mock.calls, "taskHistoryItemUpdated")).toHaveLength(0)
+			await atomic.dispose()
+			acquire.mockRestore()
+		})
+
+		it("routes store change events: own origin skipped, foreign upsert/delete targeted, external as a full broadcast", async () => {
+			const observable = makeObservableStoreHandle()
+			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockResolvedValueOnce(observable.handle)
+			const routed = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			const post = vi.fn()
+			await launch(routed, makeMockWebviewView(post))
+			;(routed as any).customModesManager = { getCustomModes: vi.fn().mockResolvedValue([]), dispose: vi.fn() }
+
+			// Learn this provider's origin token from its own write.
+			await routed.updateTaskHistory(createHistoryItem({ id: "own", task: "Own", ts: 1 }), { broadcast: false })
+			const ownOrigin = observable.origins[0]
+			expect(typeof ownOrigin).toBe("symbol")
+			await routed.updateTaskHistory(createHistoryItem({ id: "older", task: "Older", ts: 5 }), {
+				broadcast: false,
+			})
+			observable.records.set("invalid", { id: "invalid", ts: 0, task: "" } as HistoryItem)
+			post.mockClear()
+
+			const item = createHistoryItem({ id: "foreign", task: "Foreign" })
+			observable.fire({ external: false, kind: "upsert", taskId: "own", item, origin: ownOrigin })
+			observable.fire({ external: false, kind: "upsert", taskId: "foreign", item, origin: Symbol("other") })
+			observable.fire({ external: false, kind: "delete", taskId: "gone", origin: Symbol("other") })
+			observable.fire({ external: true, kind: "external" })
+			await vi.waitFor(() => expect(findCallsByType(post.mock.calls, "taskHistoryUpdated")).toHaveLength(1))
+
+			expect(findCallsByType(post.mock.calls, "taskHistoryItemUpdated").map((c) => c[0].taskHistoryItem)).toEqual(
+				[item],
+			)
+			expect(findCallsByType(post.mock.calls, "taskHistoryItemDeleted").map((c) => c[0].taskHistoryItemId)).toEqual(
+				["gone"],
+			)
+			// Sorted newest first, entries without ts or task dropped.
+			expect(
+				findCallsByType(post.mock.calls, "taskHistoryUpdated")[0][0].taskHistory.map((h: HistoryItem) => h.id),
+			).toEqual(["older", "own"])
+
+			// Nothing is pushed once the view is not launched.
+			routed.isViewLaunched = false
+			post.mockClear()
+			observable.fire({ external: true, kind: "external" })
+			observable.fire({ external: false, kind: "delete", taskId: "gone", origin: Symbol("other") })
+			await new Promise((resolve) => setTimeout(resolve, 10))
+			expect(post).not.toHaveBeenCalled()
+
+			await routed.dispose()
+			expect(observable.unsubscribe).toHaveBeenCalledTimes(1)
+			expect(observable.handle.dispose).toHaveBeenCalledTimes(1)
+			acquire.mockRestore()
+		})
+
+		it("migrates a legacy history once the store is ready and then clears the legacy keys", async () => {
+			const observable = makeObservableStoreHandle()
+			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockResolvedValueOnce(observable.handle)
+			const contextProxy = new ContextProxy(mockContext)
+			const legacy = [createHistoryItem({ id: "legacy-1", task: "Legacy" })]
+			vi.spyOn(contextProxy, "hasLegacyTaskHistory").mockReturnValue(true)
+			vi.spyOn(contextProxy, "getLegacyTaskHistory").mockReturnValue(legacy)
+			const clearKeys = vi.spyOn(contextProxy, "clearLegacyTaskHistoryKeys").mockResolvedValue(undefined)
+
+			const migrating = new ClineProvider(mockContext, mockOutputChannel, "editor", contextProxy)
+			await migrating.getTaskHistory()
+
+			expect(observable.handle.store.migrateFromLegacyHistory).toHaveBeenCalledWith(legacy)
+			expect(clearKeys).toHaveBeenCalledTimes(1)
+			await migrating.dispose()
+			acquire.mockRestore()
+		})
+
+		it("clears the legacy keys without migrating when the legacy array is empty", async () => {
+			const observable = makeObservableStoreHandle()
+			const acquire = vi.spyOn(TaskHistoryStore, "acquire").mockResolvedValueOnce(observable.handle)
+			const contextProxy = new ContextProxy(mockContext)
+			vi.spyOn(contextProxy, "hasLegacyTaskHistory").mockReturnValue(true)
+			vi.spyOn(contextProxy, "getLegacyTaskHistory").mockReturnValue([])
+			const clearKeys = vi.spyOn(contextProxy, "clearLegacyTaskHistoryKeys").mockResolvedValue(undefined)
+
+			const migrating = new ClineProvider(mockContext, mockOutputChannel, "editor", contextProxy)
+			await migrating.getTaskHistory()
+
+			expect(observable.handle.store.migrateFromLegacyHistory).not.toHaveBeenCalled()
+			expect(clearKeys).toHaveBeenCalledTimes(1)
+			await migrating.dispose()
+			acquire.mockRestore()
+		})
+
+		it("getTaskHistory returns every stored item, newest first", async () => {
+			await provider.updateTaskHistory(createHistoryItem({ id: "h-old", task: "Old", ts: 100 }), {
+				broadcast: false,
+			})
+			await provider.updateTaskHistory(createHistoryItem({ id: "h-new", task: "New", ts: 200 }), {
+				broadcast: false,
+			})
+
+			const ids = (await provider.getTaskHistory()).map((item) => item.id)
+			expect(ids.indexOf("h-new")).toBeLessThan(ids.indexOf("h-old"))
+		})
+
+		it("exportTaskWithId saves the conversation and remembers the export path only when saved", async () => {
+			const ts = 1_700_000_000_000
+			await provider.updateTaskHistory(createHistoryItem({ id: "export-me", task: "Export", ts }), {
+				broadcast: false,
+			})
+			const savedUri = { fsPath: "/downloads/saved.md" }
+			vi.mocked(downloadTask).mockResolvedValueOnce(savedUri as any)
+
+			await provider.exportTaskWithId("export-me")
+
+			expect(resolveDefaultSaveUri).toHaveBeenCalledWith(
+				provider.contextProxy,
+				"lastTaskExportPath",
+				`task-${ts}.md`,
+				expect.objectContaining({ useWorkspace: false }),
+			)
+			expect(downloadTask).toHaveBeenCalledWith(ts, [], { fsPath: "/downloads/default.md" })
+			expect(saveLastExportPath).toHaveBeenCalledWith(provider.contextProxy, "lastTaskExportPath", savedUri)
+
+			vi.mocked(saveLastExportPath).mockClear()
+			vi.mocked(downloadTask).mockResolvedValueOnce(undefined)
+			await provider.exportTaskWithId("export-me")
+			expect(saveLastExportPath).not.toHaveBeenCalled()
 		})
 	})
 })
