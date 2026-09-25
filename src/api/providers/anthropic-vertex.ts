@@ -4,7 +4,6 @@ import { GoogleAuth } from "google-auth-library"
 
 import {
 	type ModelInfo,
-	providerModelDefinitions,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 	selectAnthropicVertexModel,
 } from "@roo-code/types"

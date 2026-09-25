@@ -4,12 +4,8 @@ import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
 
 import {
 	type ModelInfo,
-	type AnthropicModelId,
-	anthropicDefaultModelId,
-	anthropicModels,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 	ApiProviderError,
-	providerModelDefinitions,
 	selectAnthropicModel,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
