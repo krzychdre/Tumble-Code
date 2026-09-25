@@ -18,9 +18,8 @@
 // - isFallbackTriggerError accepts it (429, 400 and 401 are all triggers),
 // - the message is not prefixed twice ("X completion error: X completion error: ...").
 //
-// Not in the table: VS Code LM (the VS Code API reports no HTTP status),
-// fake-ai (test double) and Moonshot (moving onto BaseOpenAiCompatibleProvider
-// in API-4, which this table already covers through Z.ai).
+// Not in the table: VS Code LM (the VS Code API reports no HTTP status) and
+// fake-ai (test double).
 
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vi.fn() } },
@@ -60,6 +59,7 @@ import { LiteLLMHandler } from "../lite-llm"
 import { LmStudioHandler } from "../lm-studio"
 import { MiniMaxHandler } from "../minimax"
 import { MistralHandler } from "../mistral"
+import { MoonshotHandler } from "../moonshot"
 import { NativeOllamaHandler } from "../native-ollama"
 import { OpenAiHandler } from "../openai"
 import { OpenAiCodexHandler } from "../openai-codex"
@@ -184,6 +184,15 @@ const cases: HandlerCase[] = [
 				zaiApiKey: "k",
 				zaiApiLine: "international_coding",
 			})
+			Reflect.set(handler, "client", chatClient(rejectWith(openAiSdkError(status))))
+			return handler
+		},
+	},
+	{
+		// Own createStream and completePromptWithUsage on the OpenAI-compatible base (API-4).
+		name: "Moonshot",
+		build: (status) => {
+			const handler = new MoonshotHandler({ apiModelId: "kimi-k2-0905-preview", moonshotApiKey: "k" })
 			Reflect.set(handler, "client", chatClient(rejectWith(openAiSdkError(status))))
 			return handler
 		},

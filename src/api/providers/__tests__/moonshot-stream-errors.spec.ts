@@ -1,9 +1,8 @@
-// DEF-C14: Moonshot is the only provider on the Vercel AI SDK path
-// (OpenAICompatibleHandler -> streamText -> processAiSdkStreamPart). The AI SDK
-// does not throw from `fullStream` when the request or the stream fails: it
-// emits an `{ type: "error" }` part and ends the stream. These tests drive the
-// REAL `ai` + `@ai-sdk/openai-compatible` packages against a stubbed `fetch`,
-// so they pin what the installed SDK actually emits, not what a mock claims.
+// DEF-C14: Moonshot stream failures must reach the task as thrown errors. These
+// tests drive the handler's real client library against a stubbed `fetch`, so
+// they pin what the installed client actually does, not what a mock claims. They
+// were written against the Vercel AI SDK path (which emitted `{ type: "error" }`
+// parts instead of throwing) and must keep passing on the OpenAI SDK path (API-4).
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 
@@ -30,7 +29,7 @@ async function drain(handler: MoonshotHandler, metadata?: Parameters<MoonshotHan
 	return { chunks, thrown }
 }
 
-describe("MoonshotHandler stream errors (DEF-C14, real AI SDK)", () => {
+describe("MoonshotHandler stream errors (DEF-C14, real client library)", () => {
 	let fetchMock: ReturnType<typeof vi.fn>
 	let handler: MoonshotHandler
 
@@ -84,7 +83,7 @@ describe("MoonshotHandler stream errors (DEF-C14, real AI SDK)", () => {
 		expect((thrown as Error).message).toContain("engine overloaded")
 	})
 
-	it("delivers an incrementally streamed tool call as exactly one complete tool_call chunk", async () => {
+	it("delivers an incrementally streamed tool call as tool_call_partial chunks plus the finish reason", async () => {
 		fetchMock.mockImplementation(async () =>
 			sse([
 				{
@@ -133,10 +132,15 @@ describe("MoonshotHandler stream errors (DEF-C14, real AI SDK)", () => {
 		})
 
 		expect(thrown).toBeUndefined()
-		// TaskStreamProcessor has no case for tool_call_start/delta/end (only the
-		// NativeToolCallParser emits those, as events), so the tool call reaches
-		// the task through this single complete chunk. It must be there once.
-		const toolCalls = chunks.filter((c) => c.type === "tool_call")
-		expect(toolCalls).toEqual([{ type: "tool_call", id: "call_1", name: "read_file", arguments: '{"path":"a.ts"}' }])
+		// API-4: the tool call arrives the way every Chat Completions provider sends it,
+		// as tool_call_partial chunks (TaskStreamProcessor feeds them to the
+		// NativeToolCallParser, which also drives the live preview) and a finish_reason
+		// that finalizes it. The AI SDK path used to hide the partials and send one
+		// complete tool_call chunk at the end.
+		expect(chunks.filter((c) => c.type === "tool_call")).toEqual([])
+		const partials = chunks.filter((c) => c.type === "tool_call_partial")
+		expect(partials[0]).toMatchObject({ index: 0, id: "call_1", name: "read_file" })
+		expect(partials.map((c) => c.arguments ?? "").join("")).toBe('{"path":"a.ts"}')
+		expect(chunks).toContainEqual({ type: "finish_reason", finishReason: "tool_calls" })
 	})
 })
