@@ -22,7 +22,7 @@ import { getModelParams } from "../transform/model-params"
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { handleOpenAIError } from "./utils/openai-error-handler"
+import { handleProviderError } from "./utils/error-handler"
 import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
@@ -271,7 +271,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				})
 			} catch (error) {
 				this.abortController = undefined
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			}
 
 			const matcher = new TagMatcher(
@@ -345,7 +345,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				})
 			} catch (error) {
 				this.abortController = undefined
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			} finally {
 				this.abortController = undefined
 			}
@@ -436,8 +436,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 					...(isAzureAiInference ? { path: OPENAI_AZURE_AI_INFERENCE_PATH } : {}),
 					signal: this.abortController.signal,
 				})
-			} catch (error) {
-				throw handleOpenAIError(error, this.providerName)
 			} finally {
 				this.abortController = undefined
 			}
@@ -447,11 +445,10 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				usage: openAiCompletionUsage(response.usage),
 			}
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`${this.providerName} completion error: ${error.message}`)
-			}
-
-			throw error
+			// One wrap for the whole method: the request error used to be wrapped here
+			// and again by an inner catch ("OpenAI completion error: OpenAI completion
+			// error: ..."), and the outer wrap dropped the HTTP status.
+			throw handleProviderError(error, this.providerName)
 		}
 	}
 
@@ -500,7 +497,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				})
 			} catch (error) {
 				this.abortController = undefined
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			}
 
 			try {
@@ -540,7 +537,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				})
 			} catch (error) {
 				this.abortController = undefined
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			} finally {
 				this.abortController = undefined
 			}

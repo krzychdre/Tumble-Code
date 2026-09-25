@@ -13,6 +13,7 @@ import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
+import { handleProviderError } from "./utils/error-handler"
 import { RouterProvider } from "./router-provider"
 import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
@@ -290,10 +291,7 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 				yield usageData
 			}
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`LiteLLM streaming error: ${error.message}`)
-			}
-			throw error
+			throw handleProviderError(error, "LiteLLM", { messagePrefix: "streaming" })
 		}
 	}
 
@@ -330,10 +328,7 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 				usage: openAiCompletionUsage(response.usage),
 			}
 		} catch (error) {
-			if (error instanceof Error) {
-				throw new Error(`LiteLLM completion error: ${error.message}`)
-			}
-			throw error
+			throw handleProviderError(error, "LiteLLM")
 		}
 	}
 }

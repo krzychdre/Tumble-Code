@@ -10,7 +10,6 @@
 
 import delay from "delay"
 import { type ProviderSettings } from "@roo-code/types"
-import { isRetryableApiError } from "../../api/apiErrors"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type ClineProvider } from "../webview/ClineProvider"
 
@@ -110,20 +109,6 @@ export class RetryHandler {
 		}
 
 		return Math.max(exponentialDelay, rateLimitDelay)
-	}
-
-	/**
-	 * Determine if an error should trigger a retry (against the SAME handler).
-	 * Delegates to the shared {@linkcode isRetryableApiError} predicate so the
-	 * retry loop and the background-model fallback system stay in sync — see
-	 * `src/api/apiErrors.ts`. Note this intentionally does NOT include 400
-	 * (payload problem) or 401/403 (auth), which are not retryable on the same
-	 * handler but ARE fallback triggers in `isFallbackTriggerError`.
-	 * @param error - The error to check
-	 * @returns Whether the error is retryable
-	 */
-	shouldRetry(error: any): boolean {
-		return isRetryableApiError(error)
 	}
 
 	/**

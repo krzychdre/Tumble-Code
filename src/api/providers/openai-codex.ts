@@ -21,6 +21,7 @@ import { getModelParams } from "../transform/model-params"
 import { toStrictSchema } from "../transform/strict-json-schema"
 
 import { BaseProvider } from "./base-provider"
+import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { isMcpTool } from "../../utils/mcp-name"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
@@ -211,12 +212,14 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 					// Force refresh the token for retry
 					const refreshed = await openAiCodexOAuthManager.forceRefreshAccessToken()
 					if (!refreshed) {
-						throw new Error(
-							t("common:errors.openAiCodex.notAuthenticated", {
-								defaultValue:
-									"Not authenticated with OpenAI Codex. Please sign in using the OpenAI Codex OAuth flow.",
-							}),
-						)
+						// Keeps the 401 of the failed request as `status`.
+						throw handleProviderError(error, this.providerName, {
+							messageTransformer: () =>
+								t("common:errors.openAiCodex.notAuthenticated", {
+									defaultValue:
+										"Not authenticated with OpenAI Codex. Please sign in using the OpenAI Codex OAuth flow.",
+								}),
+						})
 					}
 					accessToken = refreshed
 					continue
@@ -548,7 +551,8 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 					errorMessage += ` - ${errorDetails}`
 				}
 
-				throw new Error(errorMessage)
+				// The status travels on the error for the retry loop and the background-model fallback.
+				throw Object.assign(new Error(errorMessage), { status: response.status })
 			}
 
 			if (!response.body) {
@@ -561,13 +565,15 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
 			TelemetryService.instance.captureException(apiError)
 
-			if (error instanceof Error) {
-				if (error.message.includes("Codex API")) {
-					throw error
-				}
-				throw new Error(t("common:errors.openAiCodex.connectionFailed", { message: error.message }))
+			if (error instanceof Error && error.message.includes("Codex API")) {
+				throw error
 			}
-			throw new Error(t("common:errors.openAiCodex.unexpectedConnectionError"))
+			throw handleProviderError(error, this.providerName, {
+				messageTransformer: (msg) =>
+					error instanceof Error
+						? t("common:errors.openAiCodex.connectionFailed", { message: msg })
+						: t("common:errors.openAiCodex.unexpectedConnectionError"),
+			})
 		}
 	}
 
@@ -838,10 +844,12 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
 			TelemetryService.instance.captureException(apiError)
 
-			if (error instanceof Error) {
-				throw new Error(t("common:errors.openAiCodex.streamProcessingError", { message: error.message }))
-			}
-			throw new Error(t("common:errors.openAiCodex.unexpectedStreamError"))
+			throw handleProviderError(error, this.providerName, {
+				messageTransformer: (msg) =>
+					error instanceof Error
+						? t("common:errors.openAiCodex.streamProcessingError", { message: msg })
+						: t("common:errors.openAiCodex.unexpectedStreamError"),
+			})
 		} finally {
 			reader.releaseLock()
 		}
@@ -1165,10 +1173,9 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 			const apiError = new ApiProviderError(errorMessage, this.providerName, errorModel.id, "completePrompt")
 			TelemetryService.instance.captureException(apiError)
 
-			if (error instanceof Error) {
-				throw new Error(t("common:errors.openAiCodex.completionError", { message: error.message }))
-			}
-			throw error
+			throw handleProviderError(error, this.providerName, {
+				messageTransformer: (msg) => t("common:errors.openAiCodex.completionError", { message: msg }),
+			})
 		}
 	}
 }

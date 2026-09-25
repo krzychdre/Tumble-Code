@@ -35,7 +35,7 @@ import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { ApiHandlerCreateMessageMetadata, CompletionResult, SingleCompletionHandler } from "../index"
 import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
-import { handleOpenAIError } from "./utils/openai-error-handler"
+import { handleProviderError } from "./utils/error-handler"
 import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
 import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
@@ -356,13 +356,13 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				)
 
 				TelemetryService.instance.captureException(apiError)
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			} else {
 				// Fallback for non-OpenRouter errors
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				const apiError = new ApiProviderError(errorMessage, this.providerName, modelId, "createMessage")
 				TelemetryService.instance.captureException(apiError)
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			}
 		}
 
@@ -610,13 +610,13 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 				)
 
 				TelemetryService.instance.captureException(apiError)
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			} else {
 				// Fallback for non-OpenRouter errors
 				const errorMessage = error instanceof Error ? error.message : String(error)
 				const apiError = new ApiProviderError(errorMessage, this.providerName, modelId, "completePrompt")
 				TelemetryService.instance.captureException(apiError)
-				throw handleOpenAIError(error, this.providerName)
+				throw handleProviderError(error, this.providerName)
 			}
 		}
 
