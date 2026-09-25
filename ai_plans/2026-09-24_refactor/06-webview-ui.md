@@ -279,3 +279,8 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   also used by SettingsView. No drift between copies. Found (pinned, not fixed): an empty URL field shows "invalid
   URL", never the `*Required` message (`.url()` overwrites `.min(1)`); an empty openai-compatible dimension shows
   zod's untranslated "Required".
+- 2026-09-25 WEB-6 DONE #367 (`7ec9719b8`, 61-case table test over the 19 "form" registry entries, DOM pinned for the
+  9 key trios), #368 (`b17bfd5a8`, the only drift: Mistral used a `<span>` key label, test-first, changeset), #369
+  (`e3bd8b61f`): `settings/providers/shared.tsx` with `ProviderFormProps`, `useProviderField` (17 copies incl.
+  ApiOptions), `<ApiKeyField grouped?>` for 9 forms (OpenRouter, LiteLLM, Bedrock differ structurally, left alone);
+  +170/-514 lines; 57 innerHTML dumps identical before/after.
