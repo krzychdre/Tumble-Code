@@ -83,6 +83,228 @@ describe("useMessageHandlers", () => {
 		})
 	}
 
+	// Characterization (CLI-9 step 3): the branches below had no spec before the
+	// interpreter moved out of this hook. They pin what the hook does today.
+	describe("characterization of the remaining branches", () => {
+		function askUpdate(ts: number, ask: string, text: string, partial = false): void {
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: { ts, type: "ask", ask, text, partial } as never,
+			})
+		}
+
+		it("turns a completion_result ask into a completion row and ends the turn", () => {
+			useCLIStore.getState().setLoading(true)
+			askUpdate(900, "completion_result", JSON.stringify({ result: "All done." }))
+
+			const state = useCLIStore.getState()
+			expect(state.isComplete).toBe(true)
+			expect(state.isLoading).toBe(false)
+			expect(state.pendingAsk).toBeNull()
+			expect(state.messages).toEqual([
+				{
+					id: "900",
+					role: "tool",
+					content: JSON.stringify({ result: "All done." }),
+					toolName: "attempt_completion",
+					originalType: "completion_result",
+					toolData: { tool: "attempt_completion", result: "All done.", content: "All done." },
+				},
+			])
+		})
+
+		it("keeps a completion_result ask whose text is not JSON as a plain completion row", () => {
+			askUpdate(901, "completion_result", "")
+
+			expect(useCLIStore.getState().messages).toEqual([
+				{
+					id: "901",
+					role: "tool",
+					content: "Task completed",
+					toolName: "attempt_completion",
+					originalType: "completion_result",
+					toolData: { tool: "attempt_completion", content: "" },
+				},
+			])
+		})
+
+		it.each(["resume_task", "resume_completed_task"])(
+			"answers a %s ask with the normal input, not a dialog",
+			(kind) => {
+				useCLIStore.getState().setHasStartedTask(false)
+				useCLIStore.getState().setLoading(true)
+				useCLIStore.getState().setIsResumingTask(true)
+				askUpdate(902, kind, "")
+
+				const state = useCLIStore.getState()
+				expect(state.pendingAsk).toBeNull()
+				expect(state.isLoading).toBe(false)
+				expect(state.hasStartedTask).toBe(true)
+				expect(state.isResumingTask).toBe(false)
+				expect(state.isComplete).toBe(false)
+				expect(state.messages).toEqual([])
+			},
+		)
+
+		it("ignores partial asks, command_output asks and a repeated ask", () => {
+			askUpdate(903, "followup", '{"question":"Q?"}', true)
+			askUpdate(904, "command_output", "")
+			expect(useCLIStore.getState().pendingAsk).toBeNull()
+
+			askUpdate(905, "command", "ls")
+			useCLIStore.getState().setPendingAsk(null)
+			askUpdate(905, "command", "ls")
+			expect(useCLIStore.getState().pendingAsk).toBeNull()
+		})
+
+		it("prints an auto-approved tool ask as a tool row, and other auto-approved asks as prose", () => {
+			const view = render(<Harness />)
+			nonInteractive = true
+			view.rerender(<Harness />)
+
+			askUpdate(906, "tool", JSON.stringify({ tool: "readFile", path: "a.ts" }))
+			askUpdate(907, "tool", "not json")
+			askUpdate(908, "browser_action_launch", "https://example.com")
+
+			const messages = useCLIStore.getState().messages
+			expect(messages.map((m) => [m.id, m.role, m.toolName, m.originalType])).toEqual([
+				["906", "tool", "readFile", "tool"],
+				["907", "tool", undefined, "tool"],
+				["908", "assistant", undefined, "browser_action_launch"],
+			])
+			expect(messages[1]?.content).toBe("not json")
+			expect(messages[2]?.content).toBe("https://example.com")
+			expect(useCLIStore.getState().pendingAsk).toBeNull()
+		})
+
+		it("keeps the todo list of an auto-approved update_todo_list ask, with the todos of the rendering closure as previous", () => {
+			const view = render(<Harness />)
+			nonInteractive = true
+			view.rerender(<Harness />)
+
+			const todos = (one: string, two: string) =>
+				JSON.stringify({
+					tool: "updateTodoList",
+					todos: [
+						{ id: "1", content: "one", status: one },
+						{ id: "2", content: "two", status: two },
+					],
+				})
+
+			askUpdate(910, "tool", todos("pending", "pending"))
+			expect(useCLIStore.getState().currentTodos.map((t) => t.content)).toEqual(["one", "two"])
+			expect(useCLIStore.getState().messages[0]?.previousTodos).toEqual([])
+
+			// The hook reads the todos of the render that created the callback, so a
+			// caller holding an older callback (the extension host subscribes once,
+			// on mount) keeps seeing the todos of that render.
+			const stale = api.handleExtensionMessage
+			view.rerender(<Harness />)
+			stale({
+				type: "messageUpdated",
+				clineMessage: { ts: 911, type: "ask", ask: "tool", text: todos("completed", "pending"), partial: false },
+			} as never)
+			expect(useCLIStore.getState().messages[1]?.previousTodos).toEqual([])
+
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: { ts: 912, type: "ask", ask: "tool", text: todos("completed", "completed"), partial: false },
+			} as never)
+			// The current callback belongs to the render after the first list, so
+			// the list of the second ask, applied since, is not what it reports.
+			expect(useCLIStore.getState().messages[2]?.previousTodos?.map((t) => t.status)).toEqual([
+				"pending",
+				"pending",
+			])
+		})
+
+		it("folds a state push into mode, provider settings, history and token usage", () => {
+			useCLIStore.getState().setIsResumingTask(true)
+			stateMessage([
+				{ ts: 1, type: "say", say: "text", text: "echo", partial: false },
+				{
+					ts: 2,
+					type: "say",
+					say: "api_req_started",
+					text: JSON.stringify({ tokensIn: 10, tokensOut: 5, cost: 0.5 }),
+					partial: false,
+				},
+			])
+
+			const state = useCLIStore.getState()
+			expect(state.currentMode).toBe("code")
+			expect(state.taskHistory).toEqual([])
+			expect(state.tokenUsage).toMatchObject({ totalTokensIn: 10, totalTokensOut: 5, totalCost: 0.5 })
+			expect(state.isResumingTask).toBe(false)
+			// While resuming the first text is history, not the prompt echo.
+			expect(state.messages.map((m) => m.content)).toEqual(["echo"])
+		})
+
+		it("routes file search results, commands, modes and provider models to the store", () => {
+			api.handleExtensionMessage({ type: "fileSearchResults", results: [{ path: "a.ts" }] } as never)
+			api.handleExtensionMessage({ type: "commands", commands: [{ name: "deploy" }] } as never)
+			api.handleExtensionMessage({ type: "modes", modes: [{ slug: "code", name: "Code" }] } as never)
+			api.handleExtensionMessage({
+				type: "providerModels",
+				modelSourceResult: { sourceId: "openrouter", models: { m: { contextWindow: 1000 } } },
+			} as never)
+			api.handleExtensionMessage({ type: "providerModels", modelSourceResult: { sourceId: "x" } } as never)
+
+			const state = useCLIStore.getState()
+			expect(state.fileSearchResults).toEqual([{ path: "a.ts" }])
+			expect(state.allSlashCommands).toEqual([{ name: "deploy" }])
+			expect(state.availableModes).toEqual([{ slug: "code", name: "Code" }])
+			expect(state.routerModels).toEqual({ openrouter: { m: { contextWindow: 1000 } } })
+		})
+
+		it("draws nothing for checkpoint_saved and api_req_started says", () => {
+			sayUpdate(920, "checkpoint_saved", "abc", false)
+			sayUpdate(921, "api_req_started", "{}", false)
+
+			expect(useCLIStore.getState().messages).toEqual([])
+		})
+
+		// The /new and /clear reset (useTaskSubmit.resetConversation) as it is
+		// today: the store is reset and the seen ids and the prompt-echo marker
+		// are forgotten, but the marker of the last rendered answer survives.
+		it("after a conversation reset, drops a first answer identical to the previous task's last answer", () => {
+			stateMessage([
+				{ ts: 1, type: "say", say: "text", text: "Say hi", partial: false },
+				{ ts: 2, type: "say", say: "text", text: "Hi!", partial: false },
+			])
+			expect(useCLIStore.getState().messages.map((m) => m.content)).toEqual(["Hi!"])
+
+			useCLIStore.getState().reset()
+			api.seenMessageIds.current.clear()
+			api.firstTextMessageSkipped.current = false
+
+			stateMessage([
+				{ ts: 10, type: "say", say: "text", text: "Say hi", partial: false },
+				{ ts: 11, type: "say", say: "text", text: "Hi!", partial: false },
+				{ ts: 12, type: "say", say: "text", text: "Anything else?", partial: false },
+			])
+			expect(useCLIStore.getState().messages.map((m) => m.content)).toEqual(["Anything else?"])
+		})
+
+		it("after a conversation reset, opens a new row for command output instead of the old task's row", () => {
+			useCLIStore.getState().setLoading(true)
+			askUpdate(30, "command", "ls")
+			sayUpdate(31, "command_output", "a\n", true)
+
+			useCLIStore.getState().reset()
+			useCLIStore.getState().setLoading(true)
+			api.seenMessageIds.current.clear()
+			api.firstTextMessageSkipped.current = false
+
+			sayUpdate(40, "command_output", "b\n", false)
+
+			const rows = useCLIStore.getState().messages
+			expect(rows.map((m) => [m.id, m.toolData?.command, m.toolData?.output])).toEqual([
+				["40", undefined, "b\n"],
+			])
+		})
+	})
+
 	it("keeps the extension's current provider settings in the store", () => {
 		stateMessage([])
 		expect(useCLIStore.getState().apiConfiguration).toEqual({ apiProvider: "openai" })
