@@ -1,8 +1,7 @@
-import React, { memo, useMemo } from "react"
+import React, { memo, useEffect, useMemo, useSyncExternalStore } from "react"
 import ReactMarkdown from "react-markdown"
 import styled from "styled-components"
 import { visit } from "unist-util-visit"
-import rehypeKatex from "rehype-katex"
 import remarkMath from "remark-math"
 import remarkGfm from "remark-gfm"
 
@@ -28,6 +27,53 @@ const ALERT_LABELS: Record<AlertType, string> = {
 	important: "Important",
 	warning: "Warning",
 	caution: "Caution",
+}
+
+// KaTeX (through rehype-katex) is imported the first time a message may contain
+// math, so it stays out of the startup bundle. remark-math still parses "$...$"
+// eagerly; until the plugin has loaded, a formula shows as its TeX source.
+type RehypeKatex = (typeof import("rehype-katex"))["default"]
+
+let rehypeKatex: RehypeKatex | undefined
+let rehypeKatexLoad: Promise<void> | undefined
+const rehypeKatexListeners = new Set<() => void>()
+
+const loadRehypeKatex = () => {
+	rehypeKatexLoad ??= import("rehype-katex").then(
+		(module) => {
+			rehypeKatex = module.default
+			rehypeKatexListeners.forEach((listener) => listener())
+		},
+		(error) => {
+			rehypeKatexLoad = undefined
+			console.warn("Failed to load KaTeX:", error)
+		},
+	)
+
+	return rehypeKatexLoad
+}
+
+const subscribeRehypeKatex = (listener: () => void) => {
+	rehypeKatexListeners.add(listener)
+	return () => {
+		rehypeKatexListeners.delete(listener)
+	}
+}
+
+const getRehypeKatex = () => rehypeKatex
+
+// remark-math only recognises "$" delimiters, so markdown without "$" has no math.
+const useRehypeKatex = (markdown: string) => {
+	const plugin = useSyncExternalStore(subscribeRehypeKatex, getRehypeKatex)
+	const mayContainMath = markdown.includes("$")
+
+	useEffect(() => {
+		if (mayContainMath && !plugin) {
+			loadRehypeKatex()
+		}
+	}, [mayContainMath, plugin])
+
+	return plugin
 }
 
 interface MarkdownBlockProps {
@@ -274,6 +320,7 @@ const StyledMarkdown = styled.div`
 `
 
 const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
+	const rehypeKatexPlugin = useRehypeKatex(markdown ?? "")
 	const components = useMemo(
 		() => ({
 			table: ({ children, ...props }: any) => {
@@ -415,7 +462,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 						}
 					},
 				]}
-				rehypePlugins={[rehypeKatex as any]}
+				rehypePlugins={rehypeKatexPlugin ? [rehypeKatexPlugin as any] : []}
 				components={components}>
 				{markdown || ""}
 			</ReactMarkdown>
