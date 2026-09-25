@@ -71,6 +71,13 @@ vi.mock("vscode", () => ({
 }))
 
 const CWD = "/ws"
+/**
+ * The absolute path the tools build for a workspace-relative path. The tools
+ * call `path.resolve(task.cwd, relPath)`, which on Windows yields a
+ * drive-letter path with backslashes, so the fake disk and the expectations
+ * must be built the same way instead of as template strings under CWD.
+ */
+const abs = (relPath: string) => path.resolve(CWD, relPath)
 
 const mockedReadFile = fs.readFile as unknown as MockedFunction<(p: string, enc: string) => Promise<string>>
 const mockedFileExists = fileExistsAtPath as MockedFunction<typeof fileExistsAtPath>
@@ -141,8 +148,8 @@ function makeTask() {
 beforeEach(() => {
 	vi.clearAllMocks()
 	disk = {
-		[`${CWD}/src/a.ts`]: "const a = 1\nconst b = 2\n",
-		[`${CWD}/plans/plan.md`]: "# Plan\nstep one\n",
+		[abs("src/a.ts")]: "const a = 1\nconst b = 2\n",
+		[abs("plans/plan.md")]: "# Plan\nstep one\n",
 	}
 	log = []
 	experiments = {}
@@ -497,15 +504,15 @@ describe("edit pipeline: plan-review gate for every edit tool", () => {
 
 		expect(handleError).not.toHaveBeenCalled()
 		expect(mockedPause).toHaveBeenCalledWith(task, "plans/moved.md")
-		expect(fs.writeFile).toHaveBeenCalledWith(`${CWD}/plans/moved.md`, "const a = 1\nconst b = 3\n", "utf8")
-		expect(fs.unlink).toHaveBeenCalledWith(`${CWD}/src/a.ts`)
+		expect(fs.writeFile).toHaveBeenCalledWith(abs("plans/moved.md"), "const a = 1\nconst b = 3\n", "utf8")
+		expect(fs.unlink).toHaveBeenCalledWith(abs("src/a.ts"))
 		expect(task.fileContextTracker.trackFileContext).toHaveBeenCalledWith("plans/moved.md", "roo_edited")
 		expect(task.diffViewProvider.saveChanges).not.toHaveBeenCalled()
 		expect(pushToolResult).toHaveBeenCalledWith("WRITE_RESULT\n\nREVIEW_NOTE")
 	})
 
 	it("edit_file puts the replacement count before the review note", async () => {
-		disk[`${CWD}/plans/plan.md`] = "# Plan\nstep one\nstep one\n"
+		disk[abs("plans/plan.md")] = "# Plan\nstep one\nstep one\n"
 		mockedPause.mockResolvedValue("REVIEW_NOTE")
 
 		await editFileTool.execute(
@@ -524,7 +531,7 @@ describe("edit pipeline: `$` patterns in the replacement stay literal", () => {
 	const expected = `before\n${DOLLAR}\nafter\n`
 
 	beforeEach(() => {
-		disk[`${CWD}/src/a.ts`] = FILE
+		disk[abs("src/a.ts")] = FILE
 	})
 
 	const written = () => task.diffViewProvider.update.mock.calls[0][0]
@@ -535,7 +542,7 @@ describe("edit pipeline: `$` patterns in the replacement stay literal", () => {
 	})
 
 	it("edit (replace_all)", async () => {
-		disk[`${CWD}/src/a.ts`] = "TARGET\nTARGET\n"
+		disk[abs("src/a.ts")] = "TARGET\nTARGET\n"
 		await editTool.execute(
 			{ file_path: "src/a.ts", old_string: "TARGET", new_string: DOLLAR, replace_all: true },
 			task,
@@ -563,7 +570,7 @@ describe("edit pipeline: `$` patterns in the replacement stay literal", () => {
 	})
 
 	it("edit_file (whitespace-tolerant match)", async () => {
-		disk[`${CWD}/src/a.ts`] = "before\nfoo   bar\nafter\n"
+		disk[abs("src/a.ts")] = "before\nfoo   bar\nafter\n"
 		await editFileTool.execute(
 			{ file_path: "src/a.ts", old_string: "foo bar", new_string: DOLLAR },
 			task,
@@ -573,7 +580,7 @@ describe("edit pipeline: `$` patterns in the replacement stay literal", () => {
 	})
 
 	it("edit_file (token match)", async () => {
-		disk[`${CWD}/src/a.ts`] = "before\nfoo\n  bar\nafter\n"
+		disk[abs("src/a.ts")] = "before\nfoo\n  bar\nafter\n"
 		await editFileTool.execute(
 			{ file_path: "src/a.ts", old_string: "foo bar", new_string: DOLLAR },
 			task,
@@ -647,16 +654,18 @@ describe("edit pipeline: drift resolutions", () => {
 	})
 
 	it("edit turns an absolute path inside the workspace into a relative one, like search_replace", async () => {
+		// `path.relative` answers with the platform separator ("src\\a.ts" on Windows).
+		const relPath = path.join("src", "a.ts")
 		for (const tool of [editTool, searchReplaceTool]) {
 			task = makeTask()
 			await tool.execute(
-				{ file_path: path.join(CWD, "src/a.ts"), old_string: "const b = 2", new_string: "const b = 3" },
+				{ file_path: abs("src/a.ts"), old_string: "const b = 2", new_string: "const b = 3" },
 				task,
 				callbacks(),
 			)
-			expect(task.diffViewProvider.open).toHaveBeenCalledWith("src/a.ts")
-			expect(task.fileContextTracker.trackFileContext).toHaveBeenCalledWith("src/a.ts", "roo_edited")
-			expect(mockedPause).toHaveBeenLastCalledWith(task, "src/a.ts")
+			expect(task.diffViewProvider.open).toHaveBeenCalledWith(relPath)
+			expect(task.fileContextTracker.trackFileContext).toHaveBeenCalledWith(relPath, "roo_edited")
+			expect(mockedPause).toHaveBeenLastCalledWith(task, relPath)
 		}
 	})
 })
