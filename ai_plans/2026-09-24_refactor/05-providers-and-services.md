@@ -166,6 +166,22 @@ handlers are rebuilt. The unknown-id policy is owner decision 5. **Tests first:*
 **Existing:** `runtime-provider-registry.spec` (7), `provider-registry.spec` (10), `ProfileValidator.spec` (19).
 **Size** M.
 
+**Status (2026-09-25):** part 1 DONE in #309 (merge 7a4838dca), no behavior change.
+`packages/types/src/provider-models.ts` holds `providerModelDefinitions` (`modelIdField`, static models, default
+id, `unknownModelPolicy`); `modelIdKeysByProvider`, `getProviderModelId`, `getProviderDefaultModelId` and the
+webview maps derive from it (adds the missing openai-codex default). Each runtime registry entry has `{factory,
+capabilities, modelIdField, models?, defaultModelId?, unknownModelPolicy, resolveModel, preloadModel?}`; every
+handler's `getModel` uses the exported resolver, so `resolveProviderModel(settings)` equals `getModel()` without
+building a handler (except Bedrock and fake-ai). `=== "gemini"` became `allowedFunctionNames`, `=== "lmstudio"`
+became `needsModelPreload`/`preloadModel`. `ProviderSettingsManager.export` and the prompt preview no longer build
+handlers. `ApiHandler.dispose()` (VsCodeLm unsubscribes its configuration listener) is called on handler
+replacement, `Task.dispose` and one-shot completion. Tests: related src specs 1,350 to 1,468, types 116 to 191.
+Left: PKG-7 is not mechanical (strict schemas without base fields, an import cycle via `zaiApiLineSchema`, the
+openai `apiModelId` drift, `providerFieldOwnership` as a third copy); the CLI keeps a hand-written
+`providerEnvMap[*].modelField`. Part 2 (owner decision 5, #311) in review: coordinator asked for two fixes first
+(Bedrock `custom-arn` without an ARN must not be sent; `deepseek-chat`/`deepseek-reasoner` are real aliases).
+
+
 ### API-7 One Chat Completions stream adapter and shared usage normalizers
 
 **Evidence:** the 8 loops above; D1, D3, D7; reasoning handled 3 ways (`reasoning_content`, OpenRouter
