@@ -1,6 +1,12 @@
-import type { ModelInfo, OrganizationAllowList, ProviderName, ProviderSettings, RouterModels } from "@roo-code/types"
-
-import { providerValidationRegistry, type ProviderValidationStrategy } from "@src/provider-validation-registry"
+import {
+	providerValidationRegistry,
+	type ModelInfo,
+	type OrganizationAllowList,
+	type ProviderName,
+	type ProviderSettings,
+	type ProviderValidationStrategy,
+	type RouterModels,
+} from "@roo-code/types"
 
 import {
 	Anthropic,

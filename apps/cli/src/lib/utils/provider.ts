@@ -15,6 +15,7 @@ export {
 	getBaseUrlField,
 	getModelField,
 	providerRequiresApiKey,
+	providerRequiresModelId,
 	isSupportedProvider,
 	keylessProviders,
 	providerEnvMap,

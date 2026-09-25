@@ -196,7 +196,7 @@ function readEnvelopeProfile(secrets: Record<string, unknown> | undefined): Reco
  * Only the key field that belongs to the active provider is returned; another
  * profile's (or another provider's) secret is never picked up.
  *
- * @param keyField the provider-specific key settings field (from providerEnvMap)
+ * @param keyField the provider-specific key settings field (from getApiKeyField)
  */
 function readEnvelopeSecret(secrets: Record<string, unknown> | undefined, keyField: string): string | undefined {
 	const envelope = secrets?.[PROVIDER_PROFILES_SECRETS_KEY]

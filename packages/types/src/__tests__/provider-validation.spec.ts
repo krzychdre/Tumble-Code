@@ -1,7 +1,7 @@
 import {
 	activeProviderIds,
 	getProviderApiKeyField,
-	providerModelDefinitions,
+	getProviderModelDefinition,
 	providerRequiresApiKey,
 	providerRequiresModelId,
 	providerSettingsSchemaDiscriminated,
@@ -63,7 +63,7 @@ describe("providerRequiresModelId", () => {
 	it.each([...activeProviderIds].filter((id) => id !== "vscode-lm"))(
 		"%s: a model id is required exactly when there is no default model",
 		(provider) => {
-			expect(providerRequiresModelId(provider)).toBe(providerModelDefinitions[provider].defaultModelId === "")
+			expect(providerRequiresModelId(provider)).toBe(getProviderModelDefinition(provider)?.defaultModelId === "")
 		},
 	)
 

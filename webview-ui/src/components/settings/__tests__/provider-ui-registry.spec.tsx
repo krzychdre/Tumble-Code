@@ -1,6 +1,4 @@
-import { providerNames, type ProviderName } from "@roo-code/types"
-
-import { providerValidationRegistry } from "@src/provider-validation-registry"
+import { providerNames, providerValidationRegistry, type ProviderName } from "@roo-code/types"
 
 import {
 	getProviderUiDefinition,

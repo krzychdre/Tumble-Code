@@ -20,6 +20,7 @@ import {
 import {
 	activeProviderIds,
 	getProviderApiKeyField,
+	providerConfigSchemas,
 	providerModelDefinitions,
 	providerRequiresApiKey as sharedProviderRequiresApiKey,
 } from "@roo-code/types"
@@ -158,6 +159,13 @@ describe("agreement with the shared provider rules (webview validation)", () => 
 
 	it.each([...supportedProviders])("%s: same key requirement as the settings UI", (id) => {
 		expect(providerRequiresApiKey(id)).toBe(sharedProviderRequiresApiKey(id))
+	})
+
+	it.each([...supportedProviders])("%s: the base-url field is a field of the provider's config", (id) => {
+		const field = getBaseUrlField(id)
+		if (field) {
+			expect(Object.keys(providerConfigSchemas[id].shape)).toContain(field)
+		}
 	})
 })
 

@@ -2,6 +2,8 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 
+import type { MockInstance } from "vitest"
+
 import { openAiModelInfoSaneDefaults } from "@roo-code/types"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
@@ -136,8 +138,8 @@ describe("provider-aware API-key gate", () => {
 
 describe("run provider requirements shared with the settings UI", () => {
 	let tempDir: string
-	let exitSpy: ReturnType<typeof vi.spyOn>
-	let errorSpy: ReturnType<typeof vi.spyOn>
+	let exitSpy: MockInstance<typeof process.exit>
+	let errorSpy: MockInstance<typeof console.error>
 	const exitError = new Error("process.exit")
 
 	beforeEach(() => {
@@ -161,10 +163,11 @@ describe("run provider requirements shared with the settings UI", () => {
 		await run("hello", baseFlags(flags)).catch((error) => {
 			if (error !== exitError) throw error
 		})
-		expect(exitSpy).not.toHaveBeenCalledWith(1)
+		// A finished print run exits with 0; a failed start exits with 1 first.
+		expect(exitSpy.mock.calls[0]?.[0]).not.toBe(1)
 	}
 
-	it.each(["ollama", "lmstudio", "openai"])("%s without a model stops with a model error", async (provider) => {
+	it.each(["ollama", "lmstudio", "openai"] as const)("%s without a model stops with a model error", async (provider) => {
 		await expect(run("hello", baseFlags({ provider, baseUrl: "http://localhost:1234/v1" }))).rejects.toBe(
 			exitError,
 		)
@@ -467,7 +470,7 @@ describe("run baseUrl resolution", () => {
 			// the effective baseUrl must reach the extension host so the
 			// OpenAiHandler builds the URL against the custom backend, never
 			// against https://api.openai.com/v1.
-			await saveSettings({ provider: "openai", baseUrl: "http://192.168.50.194:11111/v1" })
+			await saveSettings({ provider: "openai", model: "local-model", baseUrl: "http://192.168.50.194:11111/v1" })
 
 			await run("hello", baseFlags())
 

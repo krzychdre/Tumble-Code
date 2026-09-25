@@ -8,9 +8,9 @@ import {
 	getProviderModelId,
 	isProviderName,
 	isRetiredProvider,
+	providerValidationRegistry,
 } from "@roo-code/types"
 
-import { providerValidationRegistry } from "@src/provider-validation-registry"
 import { getProviderModelSource } from "@src/components/settings/utils/providerModelConfig"
 
 export function validateApiConfiguration(
