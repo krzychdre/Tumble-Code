@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "是，還原檢查點",
 		"proceed": "繼續"
 	},
+	"dismiss": "關閉",
+	"dismissAndDontShowAgain": "關閉且不再顯示",
 	"time_ago": {
 		"just_now": "剛剛",
 		"seconds_ago": "{{count}} 秒前",

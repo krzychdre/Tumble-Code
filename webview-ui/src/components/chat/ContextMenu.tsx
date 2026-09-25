@@ -307,9 +307,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 													)}
 													target="_blank"
 													rel="noopener noreferrer"
-													className="text-vscode-textLink-foreground hover:underline">
-													{t("common:docsLink.label")}
-												</a>
+													className="text-vscode-textLink-foreground hover:underline"
+												/>
 											),
 										}}
 									/>

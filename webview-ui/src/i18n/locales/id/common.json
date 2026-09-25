@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Ya, pulihkan checkpoint",
 		"proceed": "Lanjutkan"
 	},
+	"dismiss": "Tutup",
+	"dismissAndDontShowAgain": "Tutup dan jangan tampilkan lagi",
 	"time_ago": {
 		"just_now": "baru saja",
 		"seconds_ago": "{{count}} detik yang lalu",

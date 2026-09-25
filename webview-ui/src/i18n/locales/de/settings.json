@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Bei OpenAI Codex anmelden",
+			"signOutButton": "Abmelden"
+		},
 		"useCustomBaseUrl": "Benutzerdefinierte Basis-URL verwenden",
 		"useReasoning": "Reasoning aktivieren",
 		"customHeaders": "Benutzerdefinierte Headers",
@@ -339,7 +343,8 @@
 			"label": "Modelle aktualisieren",
 			"loading": "Modellliste wird aktualisiert...",
 			"success": "Modellliste erfolgreich aktualisiert!",
-			"error": "Fehler beim Aktualisieren der Modellliste. Bitte versuche es erneut."
+			"error": "Fehler beim Aktualisieren der Modellliste. Bitte versuche es erneut.",
+			"missingConfig": "Gib die Basis-URL und den API-Schlüssel ein, bevor du die Modellliste aktualisierst."
 		},
 		"anthropicApiKey": "Anthropic API-Schlüssel",
 		"getAnthropicApiKey": "Anthropic API-Schlüssel erhalten",

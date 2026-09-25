@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Masuk ke OpenAI Codex",
+			"signOutButton": "Keluar"
+		},
 		"useCustomBaseUrl": "Gunakan base URL kustom",
 		"useReasoning": "Aktifkan reasoning",
 		"customHeaders": "Header Kustom",
@@ -339,7 +343,8 @@
 			"label": "Refresh Model",
 			"loading": "Merefresh daftar model...",
 			"success": "Daftar model berhasil direfresh!",
-			"error": "Gagal merefresh daftar model. Silakan coba lagi."
+			"error": "Gagal merefresh daftar model. Silakan coba lagi.",
+			"missingConfig": "Masukkan URL dasar dan API key sebelum merefresh daftar model."
 		},
 		"anthropicApiKey": "Anthropic API Key",
 		"getAnthropicApiKey": "Dapatkan Anthropic API Key",

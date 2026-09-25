@@ -355,6 +355,8 @@
 		"title": "Auto-approve",
 		"all": "All",
 		"none": "None",
+		"selectAll": "Select all",
+		"selectNone": "Select none",
 		"description": "Run these actions without asking for permission. Only enable for actions you fully trust.",
 		"toggleAriaLabel": "Toggle auto-approval",
 		"triggerLabelOff": "Auto-approve off",

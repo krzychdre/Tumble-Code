@@ -283,6 +283,8 @@
 		"toggle": "Commuta l'aprovació automàtica",
 		"all": "Tot",
 		"none": "Cap",
+		"selectAll": "Selecciona-ho tot",
+		"selectNone": "No seleccionis res",
 		"description": "Executa aquestes accions sense demanar permís. Activa-ho només per a accions de confiança.",
 		"toggleAriaLabel": "Commuta l'aprovació automàtica",
 		"triggerLabelOff": "Aprovació automàtica desactivada",

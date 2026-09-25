@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Tak, przywróć punkt kontrolny",
 		"proceed": "Kontynuuj"
 	},
+	"dismiss": "Zamknij",
+	"dismissAndDontShowAgain": "Zamknij i nie pokazuj ponownie",
 	"time_ago": {
 		"just_now": "przed chwilą",
 		"seconds_ago": "{{count}} sekund temu",

@@ -284,6 +284,8 @@
 		"toggle": "Otomatik onayı aç/kapat",
 		"all": "Tümü",
 		"none": "Hiçbiri",
+		"selectAll": "Tümünü seç",
+		"selectNone": "Hiçbirini seçme",
 		"description": "İzin istemeden bu eylemleri gerçekleştirin. Bunu yalnızca tamamen güvendiğiniz eylemler için etkinleştirin.",
 		"toggleAriaLabel": "Otomatik onayı aç/kapat",
 		"triggerLabelOff": "Otomatik onay kapalı",

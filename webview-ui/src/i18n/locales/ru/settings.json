@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Войти в OpenAI Codex",
+			"signOutButton": "Выйти"
+		},
 		"useCustomBaseUrl": "Использовать пользовательский базовый URL",
 		"useReasoning": "Включить рассуждения",
 		"customHeaders": "Пользовательские заголовки",
@@ -339,7 +343,8 @@
 			"label": "Обновить модели",
 			"loading": "Обновление списка моделей...",
 			"success": "Список моделей успешно обновлен!",
-			"error": "Не удалось обновить список моделей. Пожалуйста, попробуйте снова."
+			"error": "Не удалось обновить список моделей. Пожалуйста, попробуйте снова.",
+			"missingConfig": "Перед обновлением списка моделей введите базовый URL и API-ключ."
 		},
 		"anthropicApiKey": "Anthropic API-ключ",
 		"getAnthropicApiKey": "Получить Anthropic API-ключ",

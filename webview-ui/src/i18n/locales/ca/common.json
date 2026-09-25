@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Sí, restaurar el punt de control",
 		"proceed": "Continuar"
 	},
+	"dismiss": "Descarta",
+	"dismissAndDontShowAgain": "Descarta i no ho tornis a mostrar",
 	"time_ago": {
 		"just_now": "ara mateix",
 		"seconds_ago": "fa {{count}} segons",

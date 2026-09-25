@@ -283,6 +283,8 @@
 		"toggle": "Alternar aprovação automática",
 		"all": "Todos",
 		"none": "Nenhum",
+		"selectAll": "Selecionar tudo",
+		"selectNone": "Limpar seleção",
 		"description": "Execute estas ações sem pedir permissão. Ative isso apenas para ações em que você confia totalmente.",
 		"toggleAriaLabel": "Alternar aprovação automática",
 		"triggerLabelOff": "Aprovação automática desativada",

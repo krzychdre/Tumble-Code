@@ -338,6 +338,8 @@
 		"title": "自動核准",
 		"all": "全部",
 		"none": "無",
+		"selectAll": "全選",
+		"selectNone": "全部取消",
 		"description": "無需請求權限即可執行這些操作。僅對完全信任的操作啟用此功能。",
 		"toggleAriaLabel": "切換自動核准",
 		"triggerLabelOff": "自動核准已關閉",

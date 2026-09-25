@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Да, восстановить контрольную точку",
 		"proceed": "Продолжить"
 	},
+	"dismiss": "Скрыть",
+	"dismissAndDontShowAgain": "Скрыть и больше не показывать",
 	"time_ago": {
 		"just_now": "только что",
 		"seconds_ago": "{{count}} секунд назад",

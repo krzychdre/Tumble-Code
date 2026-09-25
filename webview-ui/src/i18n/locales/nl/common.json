@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Ja, checkpoint herstellen",
 		"proceed": "Doorgaan"
 	},
+	"dismiss": "Sluiten",
+	"dismissAndDontShowAgain": "Sluiten en niet meer tonen",
 	"time_ago": {
 		"just_now": "zojuist",
 		"seconds_ago": "{{count}} seconden geleden",

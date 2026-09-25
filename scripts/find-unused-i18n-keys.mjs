@@ -7,6 +7,9 @@
  *   node scripts/find-unused-i18n-keys.mjs --patterns also print every dynamic key pattern and what it covers
  *   node scripts/find-unused-i18n-keys.mjs --check    exit 1 when there is at least one candidate
  *   node scripts/find-unused-i18n-keys.mjs --write    delete the candidates from every locale
+ *   node scripts/find-unused-i18n-keys.mjs --missing  the opposite check: list literal keys used by the webview
+ *                                                     (t("ns:key"), i18nKey="ns:key") that the English locale lacks,
+ *                                                     exit 1 when there is one (the user would see the raw key)
  *
  * The scan is deliberately conservative: a key counts as used when
  *   - its dotted path (or its plural base, "count" for "count_one") appears anywhere in the searched sources,
@@ -207,6 +210,79 @@ export function removeKeys(obj, paths) {
 	return { obj: copy, removed }
 }
 
+/**
+ * Literal keys one source text asks for: t("ns:key"), i18n.t('ns:key'), i18nKey="ns:key" and i18nKey={"ns:key"}.
+ * A key without a namespace is resolved against the file's namespace when the file binds exactly one
+ * (useTranslation("ns")); otherwise it is skipped, because its namespace cannot be known statically.
+ * Template literals and keys built at run time are not literal keys and are never reported, and neither are lines
+ * that are comments (JSDoc examples).
+ * @returns {{ ns: string, key: string }[]}
+ */
+export function extractLiteralKeys(source) {
+	const out = []
+	// Examples in JSDoc and line comments are not calls.
+	const text = source.replace(/^\s*(\*|\/\/).*$/gm, "")
+	const bound = [...text.matchAll(/useTranslation\(\s*["']([\w-]+)["']/g)].map((m) => m[1])
+	const fileNs = new Set(bound).size === 1 ? bound[0] : undefined
+	const literals = [
+		...text.matchAll(/(?<![\w$])t\(\s*(["'])([\w-]+:)?([\w-]+(?:\.[\w-]+)*)\1/g),
+		...text.matchAll(/\bi18nKey=\{?\s*(["'])([\w-]+:)?([\w-]+(?:\.[\w-]+)*)\1/g),
+	]
+	for (const m of literals) {
+		const ns = m[2] ? m[2].slice(0, -1) : fileNs
+		// A bare word with no namespace and no dot is too ambiguous to be a key (t("x") in unrelated helpers).
+		if (!ns || (!m[2] && !m[3].includes(".") && !fileNs)) continue
+		out.push({ ns, key: m[3] })
+	}
+	return out
+}
+
+/** True when `key` names a leaf, a plural family (key_one, key_other, ...) or a whole object in `obj`. */
+export function hasKey(obj, key) {
+	const segments = key.split(".")
+	let node = obj
+	for (const seg of segments.slice(0, -1)) {
+		node = node?.[seg]
+		if (!node || typeof node !== "object") return false
+	}
+	const last = segments[segments.length - 1]
+	if (last in node) return true
+	return Object.keys(node).some((k) => k !== last && pluralBase(k) === last)
+}
+
+/**
+ * Literal keys used by the sources that the English locale does not define, so the user would see the raw key.
+ * `ignore` lists "ns:key" strings that are known to be resolved some other way.
+ * @param {{ locales: Record<string, object>, sources: { file: string, text: string }[], ignore?: Iterable<string> }} input
+ * @returns {{ file: string, key: string }[]}
+ */
+export function findMissingKeys({ locales, sources, ignore = [] }) {
+	const skip = new Set(ignore)
+	const missing = []
+	for (const { file, text } of sources) {
+		const seen = new Set()
+		for (const { ns, key } of extractLiteralKeys(text)) {
+			const full = `${ns}:${key}`
+			if (seen.has(full) || skip.has(full)) continue
+			seen.add(full)
+			if (locales[ns] && hasKey(locales[ns], key)) continue
+			missing.push({ file, key: full })
+		}
+	}
+	return missing
+}
+
+/** Webview source files whose literal keys must exist: everything under webview-ui/src except tests and mocks. */
+export function isWebviewProductFile(relativeFile) {
+	const posix = relativeFile.split(path.sep).join("/")
+	return (
+		posix.startsWith("webview-ui/src/") &&
+		/\.(ts|tsx|js|jsx)$/.test(posix) &&
+		!/(^|\/)(__tests__|__mocks__)\//.test(posix) &&
+		!/\.(spec|test)\.[jt]sx?$/.test(posix)
+	)
+}
+
 const SOURCE_ROOTS = ["webview-ui/src", "src", "apps", "packages"]
 const SOURCE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|json|ya?ml|html|snap)$/
 const SKIP_DIRS = new Set(["node_modules", "dist", "out", "build", "coverage", ".turbo", ".vite"])
@@ -231,9 +307,14 @@ function walk(dir, out) {
 	}
 }
 
-function main() {
-	const args = new Set(process.argv.slice(2))
-	const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+/** Repository root, as seen from this script. */
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+
+/**
+ * Reads the English webview locales and every searched source file of the repository.
+ * @returns {{ localesDir: string, locales: Record<string, object>, sources: { file: string, text: string }[] }}
+ */
+export function loadRepo(root = REPO_ROOT) {
 	const localesDir = path.join(root, "webview-ui/src/i18n/locales")
 	const enDir = path.join(localesDir, "en")
 
@@ -251,6 +332,35 @@ function main() {
 		file: path.relative(root, file),
 		text: fs.readFileSync(file, "utf8"),
 	}))
+	return { localesDir, locales, sources }
+}
+
+/**
+ * Literal keys that are resolved some way the static scan cannot see. Keep this list short and explain each entry;
+ * a key that is simply missing belongs in the locales, not here.
+ */
+const MISSING_KEY_IGNORE = []
+
+/** Missing literal keys of the webview product code (tests and mocks excluded). */
+export function findMissingWebviewKeys({ locales, sources }) {
+	return findMissingKeys({
+		locales,
+		sources: sources.filter((s) => isWebviewProductFile(s.file)),
+		ignore: MISSING_KEY_IGNORE,
+	})
+}
+
+function main() {
+	const args = new Set(process.argv.slice(2))
+	const { localesDir, locales, sources } = loadRepo()
+
+	if (args.has("--missing")) {
+		const missing = findMissingWebviewKeys({ locales, sources })
+		console.log(`${missing.length} literal webview key(s) missing from the English locale.`)
+		for (const m of missing) console.log(`  ${m.key}  (${m.file})`)
+		if (missing.length > 0) process.exit(1)
+		return
+	}
 
 	const { unused, patterns } = findUnusedKeys({ locales, sources })
 

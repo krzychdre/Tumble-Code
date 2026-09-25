@@ -345,6 +345,8 @@
 		"toggle": "Beralih persetujuan otomatis",
 		"all": "Semua",
 		"none": "Tidak ada",
+		"selectAll": "Pilih semua",
+		"selectNone": "Hapus semua pilihan",
 		"description": "Jalankan tindakan ini tanpa meminta izin. Hanya aktifkan untuk tindakan yang Anda percayai sepenuhnya.",
 		"toggleAriaLabel": "Beralih persetujuan otomatis",
 		"triggerLabelOff": "Persetujuan otomatis mati",

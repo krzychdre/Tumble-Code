@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Sí, restaurar el punto de control",
 		"proceed": "Continuar"
 	},
+	"dismiss": "Descartar",
+	"dismissAndDontShowAgain": "Descartar y no volver a mostrar",
 	"time_ago": {
 		"just_now": "ahora mismo",
 		"seconds_ago": "hace {{count}} segundos",

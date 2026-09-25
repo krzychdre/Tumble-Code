@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "はい、チェックポイントを復元",
 		"proceed": "続行"
 	},
+	"dismiss": "閉じる",
+	"dismissAndDontShowAgain": "閉じて今後表示しない",
 	"time_ago": {
 		"just_now": "たった今",
 		"seconds_ago": "{{count}}秒前",

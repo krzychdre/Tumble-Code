@@ -385,6 +385,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Sign in to OpenAI Codex",
+			"signOutButton": "Sign out"
+		},
 		"useCustomBaseUrl": "Use custom base URL",
 		"useReasoning": "Enable reasoning",
 		"customHeaders": "Custom Headers",
@@ -395,7 +399,8 @@
 			"label": "Refresh Models",
 			"loading": "Refreshing models list...",
 			"success": "Models list refreshed successfully!",
-			"error": "Failed to refresh models list. Please try again."
+			"error": "Failed to refresh models list. Please try again.",
+			"missingConfig": "Enter the base URL and the API key before refreshing the models list."
 		},
 		"anthropicApiKey": "Anthropic API Key",
 		"getAnthropicApiKey": "Get Anthropic API Key",

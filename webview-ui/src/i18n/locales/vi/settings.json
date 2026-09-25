@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Đăng nhập vào OpenAI Codex",
+			"signOutButton": "Đăng xuất"
+		},
 		"useCustomBaseUrl": "Sử dụng URL cơ sở tùy chỉnh",
 		"useReasoning": "Bật lý luận",
 		"customHeaders": "Tiêu đề tùy chỉnh",
@@ -339,7 +343,8 @@
 			"label": "Làm mới mô hình",
 			"loading": "Đang làm mới danh sách mô hình...",
 			"success": "Danh sách mô hình đã được làm mới thành công!",
-			"error": "Không thể làm mới danh sách mô hình. Vui lòng thử lại."
+			"error": "Không thể làm mới danh sách mô hình. Vui lòng thử lại.",
+			"missingConfig": "Hãy nhập URL cơ sở và khóa API trước khi làm mới danh sách mô hình."
 		},
 		"anthropicApiKey": "Khóa API Anthropic",
 		"getAnthropicApiKey": "Lấy khóa API Anthropic",

@@ -283,6 +283,8 @@
 		"toggle": "Attiva/disattiva approvazione automatica",
 		"all": "Tutti",
 		"none": "Nessuno",
+		"selectAll": "Seleziona tutto",
+		"selectNone": "Deseleziona tutto",
 		"description": "Esegui queste azioni senza chiedere il permesso. Abilita solo per azioni di cui ti fidi completamente.",
 		"toggleAriaLabel": "Attiva/disattiva approvazione automatica",
 		"triggerLabelOff": "Approvazione automatica disattivata",
