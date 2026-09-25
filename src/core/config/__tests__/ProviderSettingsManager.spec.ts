@@ -611,6 +611,54 @@ describe("ProviderSettingsManager", () => {
 		})
 	})
 
+	describe("vertex JSON credentials", () => {
+		const VERTEX_JSON = JSON.stringify({ type: "service_account", client_email: "sa@p.iam.gserviceaccount.com" })
+
+		it("keeps vertexJsonCredentials across save and reload, outside the persisted envelope", async () => {
+			const store = setupKeyAwareSecrets()
+			providerSettingsManager = new ProviderSettingsManager(mockContext)
+			await providerSettingsManager.initialize()
+
+			const id = await providerSettingsManager.saveConfig("vertex", {
+				apiProvider: "vertex",
+				vertexJsonCredentials: VERTEX_JSON,
+				vertexProjectId: "p",
+			})
+
+			// The profile envelope stays free of the credential ...
+			expect(store["roo_cline_config_api_config"]).not.toContain("service_account")
+			// ... because it lives in the per-profile secret store.
+			expect(unwrapStoredProfileSecrets()[id]?.vertexJsonCredentials).toBe(VERTEX_JSON)
+
+			// A fresh manager (next VS Code start) reads it back.
+			const reloaded = await new ProviderSettingsManager(mockContext).getProfile({ name: "vertex" })
+			expect(reloaded.vertexJsonCredentials).toBe(VERTEX_JSON)
+			expect(reloaded.vertexProjectId).toBe("p")
+		})
+
+		it("seeds an inline legacy vertexJsonCredentials into the secret store on first-run migration", async () => {
+			setupKeyAwareSecrets(
+				JSON.stringify({
+					currentApiConfigName: "vertex",
+					apiConfigs: {
+						vertex: {
+							id: "vertex-id",
+							apiProvider: "vertex",
+							vertexJsonCredentials: VERTEX_JSON,
+							vertexProjectId: "p",
+						},
+					},
+				}),
+			)
+			providerSettingsManager = new ProviderSettingsManager(mockContext)
+			await providerSettingsManager.initialize()
+
+			expect(unwrapStoredProfileSecrets()["vertex-id"]?.vertexJsonCredentials).toBe(VERTEX_JSON)
+			const profile = await providerSettingsManager.getProfile({ name: "vertex" })
+			expect(profile.vertexJsonCredentials).toBe(VERTEX_JSON)
+		})
+	})
+
 	describe("DeleteConfig", () => {
 		it("should delete existing config", async () => {
 			const existingConfig: ProviderProfiles = {

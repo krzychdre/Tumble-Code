@@ -418,6 +418,48 @@ describe("ContextProxy", () => {
 		})
 	})
 
+	describe("vertex JSON credentials", () => {
+		const VERTEX_JSON = JSON.stringify({ type: "service_account", client_email: "sa@p.iam.gserviceaccount.com" })
+
+		it("stores vertexJsonCredentials in secret storage, not in global state", async () => {
+			mockGlobalState.update.mockClear()
+			await proxy.setProviderSettings({ apiProvider: "vertex", vertexJsonCredentials: VERTEX_JSON })
+
+			expect(mockSecrets.store).toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
+			expect(mockGlobalState.update).not.toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
+		})
+
+		it("moves a plain-text global state copy into secret storage on initialize", async () => {
+			mockGlobalState.get.mockImplementation((key: string) =>
+				key === "vertexJsonCredentials" ? VERTEX_JSON : undefined,
+			)
+			mockSecrets.get.mockResolvedValue(undefined)
+
+			const migrated = new ContextProxy(mockContext)
+			await migrated.initialize()
+
+			expect(mockSecrets.store).toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("vertexJsonCredentials", undefined)
+			expect(migrated.getProviderSettings().vertexJsonCredentials).toBe(VERTEX_JSON)
+		})
+
+		it("does not overwrite a stored secret with a stale global state copy", async () => {
+			mockGlobalState.get.mockImplementation((key: string) =>
+				key === "vertexJsonCredentials" ? "stale" : undefined,
+			)
+			mockSecrets.get.mockImplementation(async (key: string) =>
+				key === "vertexJsonCredentials" ? VERTEX_JSON : undefined,
+			)
+
+			const migrated = new ContextProxy(mockContext)
+			await migrated.initialize()
+
+			expect(mockSecrets.store).not.toHaveBeenCalledWith("vertexJsonCredentials", "stale")
+			expect(mockGlobalState.update).toHaveBeenCalledWith("vertexJsonCredentials", undefined)
+			expect(migrated.getProviderSettings().vertexJsonCredentials).toBe(VERTEX_JSON)
+		})
+	})
+
 	describe("resetAllState", () => {
 		it("should clear all in-memory caches", async () => {
 			// Setup initial state in caches

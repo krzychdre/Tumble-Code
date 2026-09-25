@@ -57,12 +57,6 @@ const CREDENTIAL_FIELDS: Record<KnownProviderId, readonly string[]> = {
 	"qwen-code": [],
 }
 
-// `vertexJsonCredentials` is a credential of the legacy vertex arm that is in
-// neither the vertex config nor SECRET_STATE_KEYS, so saving a vertex profile
-// drops it. That is a known gap outside this schema test; it is listed here so
-// the arm comparison stays exact.
-const CREDENTIALS_OUTSIDE_SECRET_STORE = ["vertexJsonCredentials"]
-
 const legacyArm = (providerId: KnownProviderId): z.AnyZodObject => {
 	const arm = providerSettingsSchemaDiscriminated.optionsMap.get(providerId)
 	if (!arm) throw new Error(`No legacy arm for ${providerId}`)
@@ -108,10 +102,8 @@ describe("legacy provider settings arms against the provider config schemas", ()
 		}
 	})
 
-	it("stores every other credential field in the secret store", () => {
-		const credentials = Object.values(CREDENTIAL_FIELDS)
-			.flat()
-			.filter((field) => !CREDENTIALS_OUTSIDE_SECRET_STORE.includes(field))
+	it("stores every credential field in the secret store", () => {
+		const credentials = Object.values(CREDENTIAL_FIELDS).flat()
 		for (const field of credentials) {
 			expect(SECRET_STATE_KEYS as readonly string[]).toContain(field)
 		}
