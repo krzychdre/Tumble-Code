@@ -123,6 +123,19 @@ describe("OpenAiNativeHandler sends a request once (DEF-C44)", () => {
 		expect(error.status).toBe(status)
 	})
 
+	it("a connection error from the SDK is not sent again through fetch", async () => {
+		// The SDK counts as having sent the request (it applies its own retry policy).
+		const server = fakeServer(() => {
+			throw new TypeError("fetch failed")
+		})
+		const handler = nativeHandler(server)
+
+		const { error } = await drain(handler.createMessage("System", messages))
+
+		expect(server.requests).toBe(1)
+		expect(error).toBeDefined()
+	})
+
 	it("a stream that breaks off after output is not sent again", async () => {
 		const server = fakeServer(brokenStream)
 		const handler = nativeHandler(server)

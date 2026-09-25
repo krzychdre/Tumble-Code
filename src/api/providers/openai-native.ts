@@ -29,6 +29,7 @@ import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { responsesApiCompletionUsage } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
+import { isSdkUnusableError } from "./utils/responses-sse-fallback"
 import { isMcpTool } from "../../utils/mcp-name"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 
@@ -354,6 +355,10 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			"User-Agent": userAgent,
 		}
 
+		// Set once the SDK stream produced an event: from then on the server has
+		// accepted the request and part of its answer is with the caller.
+		let sawSdkEvent = false
+
 		try {
 			// Use the official SDK with per-request headers
 			const stream = (await (this.client as any).responses.create(requestBody, {
@@ -373,6 +378,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					break
 				}
 
+				sawSdkEvent = true
+
 				for await (const outChunk of this.processEvent(event, model)) {
 					yield outChunk
 				}
@@ -380,10 +387,12 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		} catch (sdkErr: any) {
 			// A cancelled request ends here. The SSE fallback below would send the request
 			// again, and after Stop that second request would run to completion.
-			if (abortController.signal.aborted) {
+			// The SSE fallback below is only for an SDK that could not be used at all. A
+			// request the server answered (429, 401, 5xx) or started to answer must not
+			// be sent a second time.
+			if (abortController.signal.aborted || sawSdkEvent || !isSdkUnusableError(sdkErr)) {
 				throw sdkErr
 			}
-			// For errors, fallback to manual SSE via fetch
 			yield* this.makeResponsesApiRequest(requestBody, model, metadata, systemPrompt, messages)
 		} finally {
 			if (this.abortController === abortController) {

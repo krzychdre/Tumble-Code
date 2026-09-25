@@ -22,6 +22,8 @@ import { toStrictSchema } from "../transform/strict-json-schema"
 
 import { BaseProvider } from "./base-provider"
 import { handleProviderError } from "./utils/error-handler"
+import { isSdkUnusableError } from "./utils/responses-sse-fallback"
+import { getApiErrorStatus } from "../apiErrors"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { isMcpTool } from "../../utils/mcp-name"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
@@ -205,7 +207,9 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				return
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error)
-				const isAuthFailure = /unauthorized|invalid token|not authenticated|authentication|401/i.test(message)
+				const isAuthFailure =
+					getApiErrorStatus(error) === 401 ||
+					/unauthorized|invalid token|not authenticated|authentication|401/i.test(message)
 
 				// Only retry while nothing has come back yet (see sawSdkEventInCurrentResponse).
 				if (attempt === 0 && isAuthFailure && !this.sawSdkEventInCurrentResponse) {
@@ -360,7 +364,12 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 				// The SSE fallback is only for an SDK that could not be used at all. Once the
 				// stream has emitted, replaying the request would duplicate its output; after
 				// Stop (a cancelled request), replaying it would start a request nothing aborts.
-				if (this.sawSdkEventInCurrentResponse || abortController.signal.aborted) {
+				// A request the server answered (429, 401, 5xx) must not be sent again either.
+				if (
+					this.sawSdkEventInCurrentResponse ||
+					abortController.signal.aborted ||
+					!isSdkUnusableError(sdkErr)
+				) {
 					throw sdkErr
 				}
 
