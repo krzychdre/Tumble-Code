@@ -318,9 +318,10 @@ async function parseFile(
 		return `Unsupported file type: ${filePath}`
 	}
 
+	let tree: ReturnType<typeof parser.parse> = null
 	try {
 		// Parse the file content into an Abstract Syntax Tree (AST)
-		const tree = parser.parse(fileContent)
+		tree = parser.parse(fileContent)
 
 		// Apply the query to the AST and get the captures
 		const captures = tree ? query.captures(tree.rootNode) : []
@@ -334,5 +335,9 @@ async function parseFile(
 		console.log(`Error parsing file: ${error}\n`)
 		// Return null on parsing error to avoid showing error messages in the output
 		return null
+	} finally {
+		// The tree lives in WASM memory, which the garbage collector never frees.
+		// processCaptures copies everything it needs into plain strings.
+		tree?.delete()
 	}
 }

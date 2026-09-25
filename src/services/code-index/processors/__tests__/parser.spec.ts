@@ -46,6 +46,7 @@ const mockLanguageParser = {
 					children: [],
 					type: "program",
 				},
+				delete: vi.fn(),
 			})),
 		},
 		query: {
@@ -155,12 +156,12 @@ describe("CodeParser", () => {
 	})
 
 	describe("parseContent", () => {
-		it("should wait for pending parser loads", async () => {
-			const pendingLoad = new Promise((resolve) => setTimeout(() => resolve(mockLanguageParser), 100))
-			parser["pendingLoads"].set(".js", pendingLoad as Promise<any>)
+		it("asks the shared loader for the file's parser and deletes the parse tree", async () => {
+			await parser["parseContent"]("test.js", "const test = 123", "hash")
 
-			const result = await parser["parseContent"]("test.js", "const test = 123", "hash")
-			expect(result).toBeDefined()
+			expect(loadRequiredLanguageParsers).toHaveBeenCalledWith(["test.js"])
+			const tree = mockLanguageParser.js.parser.parse.mock.results[0].value
+			expect(tree.delete).toHaveBeenCalledTimes(1)
 		})
 
 		it("should handle parser load errors", async () => {

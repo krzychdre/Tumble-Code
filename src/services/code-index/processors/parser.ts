@@ -1,7 +1,7 @@
 import { readFile } from "fs/promises"
 import { createHash } from "crypto"
 import * as path from "path"
-import { Node } from "web-tree-sitter"
+import { Node, QueryCapture } from "web-tree-sitter"
 import { LanguageParser, loadRequiredLanguageParsers } from "../../tree-sitter/languageParser"
 import { parseMarkdown } from "../../tree-sitter/markdownParser"
 import { ICodeParser, CodeBlock } from "../interfaces"
@@ -15,8 +15,6 @@ import { sanitizeErrorMessage } from "../shared/validation-helpers"
  * Implementation of the code parser interface
  */
 export class CodeParser implements ICodeParser {
-	private loadedParsers: LanguageParser = {}
-	private pendingLoads: Map<string, Promise<LanguageParser>> = new Map()
 	// Markdown files are now supported using the custom markdown parser
 	// which extracts headers and sections for semantic indexing
 
@@ -106,55 +104,48 @@ export class CodeParser implements ICodeParser {
 			return this._performFallbackChunking(filePath, content, fileHash, seenSegmentHashes)
 		}
 
-		// Check if we already have the parser loaded
-		if (!this.loadedParsers[ext]) {
-			const pendingLoad = this.pendingLoads.get(ext)
-			if (pendingLoad) {
-				try {
-					await pendingLoad
-				} catch (error) {
-					console.error(`Error in pending parser load for ${filePath}:`, error)
-					TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-						error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
-						stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
-						location: "parseContent:loadParser",
-					})
-					return []
-				}
-			} else {
-				const loadPromise = loadRequiredLanguageParsers([filePath])
-				this.pendingLoads.set(ext, loadPromise)
-				try {
-					const newParsers = await loadPromise
-					if (newParsers) {
-						this.loadedParsers = { ...this.loadedParsers, ...newParsers }
-					}
-				} catch (error) {
-					console.error(`Error loading language parser for ${filePath}:`, error)
-					TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-						error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
-						stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
-						location: "parseContent:loadParser",
-					})
-					return []
-				} finally {
-					this.pendingLoads.delete(ext)
-				}
-			}
+		// loadRequiredLanguageParsers caches each grammar (and dedupes concurrent loads),
+		// so asking it for every file costs a map lookup once the grammar is loaded.
+		let parsers: LanguageParser
+		try {
+			parsers = await loadRequiredLanguageParsers([filePath])
+		} catch (error) {
+			console.error(`Error loading language parser for ${filePath}:`, error)
+			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
+				error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
+				stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
+				location: "parseContent:loadParser",
+			})
+			return []
 		}
 
-		const language = this.loadedParsers[ext]
+		const language = parsers[ext]
 		if (!language) {
 			console.warn(`No parser available for file extension: ${ext}`)
 			return []
 		}
 
 		const tree = language.parser.parse(content)
+		try {
+			const captures = tree ? language.query.captures(tree.rootNode) : []
+			return this._blocksFromCaptures(captures, filePath, content, fileHash, seenSegmentHashes)
+		} finally {
+			// The tree lives in WASM memory, which the garbage collector never frees.
+			// The blocks hold plain strings copied out of the nodes, never the nodes.
+			tree?.delete()
+		}
+	}
 
-		// We don't need to get the query string from languageQueries since it's already loaded
-		// in the language object
-		const captures = tree ? language.query.captures(tree.rootNode) : []
-
+	/**
+	 * Turns the query captures of one parsed file into code blocks.
+	 */
+	private _blocksFromCaptures(
+		captures: QueryCapture[],
+		filePath: string,
+		content: string,
+		fileHash: string,
+		seenSegmentHashes: Set<string>,
+	): CodeBlock[] {
 		// Check if captures are empty
 		if (captures.length === 0) {
 			if (content.length >= MIN_BLOCK_CHARS) {
