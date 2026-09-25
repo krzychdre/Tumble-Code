@@ -388,3 +388,13 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   block's `todos = []` default re-created per render looped through `setEditTodos`, and the user-edit variant only
   printed "User Edits". Row parses `{tool, todos}`; default is the stable `NO_TODOS`; read-only list shown; render
   guard in specs throws after 50 renders; golden entry updated to the real payload shape.
+- 2026-09-25 WEB-8 DONE #412 (`51630afdc`, 52-test ask state machine + host message spec; 4 local mutations each
+  failed it), #413 (`f67db446f`, ChatView on the bus; production window listeners 2 to 1, the bus only), #414
+  (`4691b74b7`): `chat/hooks/` `useChatSounds`, `useAskButtons`, `useChatComposer`, `useChatHostMessages`,
+  `useCheckpointNavigation`, `useModeSwitchShortcuts`; ChatView 1,674 to 739 lines; ChatViewComponent now compiles
+  (LRU in a stable `useState` instance, provider passed as a plain value), bailouts 9 to 8; dead refs removed
+  (`autoApproveTimeoutRef`, `userRespondedRef`, `didClickCancel`). Pinned as-is: an unhandled
+  `auto_approval_max_req_reached` ask leaves `sendingDisabled` true. Candidate item: a permanent compiler-on vitest
+  config (recipe in the #414 report: mergeConfig with @vitejs/plugin-react + babel-plugin-react-compiler target 18).
+- Phase 7 remaining: WEB-4 step 3 (optional, only if profiling shows context fan-out cost; rows still re-render per
+  token through the context reads listed under WEB-2a/2b).
