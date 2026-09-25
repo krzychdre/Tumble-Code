@@ -4,10 +4,12 @@ import WorkspaceTracker from "../WorkspaceTracker"
 import { ClineProvider } from "../../../core/webview/ClineProvider"
 import { listFiles } from "../../../services/glob/list-files"
 import { getWorkspacePath } from "../../../utils/path"
+import { noteWorkspaceFileEvent } from "../../../services/search/file-search"
 
 // Mock functions - must be defined before vitest.mock calls
 const mockOnDidCreate = vitest.fn()
 const mockOnDidDelete = vitest.fn()
+const mockOnDidChange = vitest.fn()
 const mockDispose = vitest.fn()
 
 // Store registered tab change callback
@@ -30,6 +32,7 @@ vitest.mock("../../../utils/path", () => ({
 const mockWatcher = {
 	onDidCreate: mockOnDidCreate.mockReturnValue({ dispose: mockDispose }),
 	onDidDelete: mockOnDidDelete.mockReturnValue({ dispose: mockDispose }),
+	onDidChange: mockOnDidChange.mockReturnValue({ dispose: mockDispose }),
 	dispose: mockDispose,
 }
 
@@ -63,6 +66,10 @@ vitest.mock("vscode", () => ({
 
 vitest.mock("../../../services/glob/list-files", () => ({
 	listFiles: vitest.fn(),
+}))
+
+vitest.mock("../../../services/search/file-search", () => ({
+	noteWorkspaceFileEvent: vitest.fn(),
 }))
 
 describe("WorkspaceTracker", () => {
@@ -346,5 +353,28 @@ describe("WorkspaceTracker", () => {
 
 		// No postMessage should be called after dispose
 		expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
+	})
+
+	describe("feeds the @-mention file list cache from the same watcher", () => {
+		it("reports created and deleted paths", async () => {
+			const [[createCallback]] = mockOnDidCreate.mock.calls
+			const [[deleteCallback]] = mockOnDidDelete.mock.calls
+
+			await createCallback({ fsPath: "/test/workspace/new.ts" })
+			await deleteCallback({ fsPath: "/test/workspace/old.ts" })
+
+			expect(noteWorkspaceFileEvent).toHaveBeenCalledWith("create", "/test/workspace/new.ts")
+			expect(noteWorkspaceFileEvent).toHaveBeenCalledWith("delete", "/test/workspace/old.ts")
+		})
+
+		it("reports changed paths and leaves the webview file list alone", async () => {
+			const [[changeCallback]] = mockOnDidChange.mock.calls
+
+			await changeCallback({ fsPath: "/test/workspace/.gitignore" })
+			vitest.runAllTimers()
+
+			expect(noteWorkspaceFileEvent).toHaveBeenCalledWith("change", "/test/workspace/.gitignore")
+			expect(mockProvider.postMessageToWebview).not.toHaveBeenCalled()
+		})
 	})
 })
