@@ -357,6 +357,18 @@ watcher keys, raw vs defaulted diff; the `EventSource` override was already gone
 both files (a global write masks a user edit of the project file for 600 ms); dead
 `McpServerManager.providers/notifyProviders`.
 
+**Status part (3) (2026-09-25):** DONE in #337 (merge a40d26997). `McpConnectionManager.ts` (connections,
+`isConnecting`, name registry, file watchers, connect/restart/delete, settings diff, `createTransport()` for stdio,
+SSE and streamable HTTP with ONE error and close handler) and `McpToolCatalog.ts` (tools, resources, templates,
+alwaysAllow/disabledTools, `callTool`, `readResource`); McpHub is a facade whose `connections`/`isConnecting` are
+getters and setters over the manager (replace-not-mutate pinned). McpHub 1,520 to 705 lines (2,060 before part 1);
+MCP tests 119 to 176. Found and fixed: `dispose` during an in-flight connect left a registered connection with a
+running process, file watchers, a placeholder entry and late webview pushes; the connect now re-checks disposal
+after every await. Dead `McpServerManager.providers/notifyProviders/unregisterProvider` removed.
+`McpConfigStore` builds the project path with `getProjectRooDirectoryForCwd` (no `mcp` kind in the resolver: the
+global MCP file is not under `~/.roo`). Visible timing difference: tools, resources and templates are assigned
+together after the three fetches. Still open: one write-guard flag for both settings files.
+
 ### SVC-10 Code-index lifecycle ownership
 
 **Evidence:** a new `RooIgnoreController` per scan, never disposed (`scanner.ts:88`), each with a FileSystemWatcher
