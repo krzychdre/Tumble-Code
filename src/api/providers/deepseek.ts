@@ -4,6 +4,7 @@ import OpenAI from "openai"
 import {
 	type ModelInfo,
 	deepSeekDefaultModelId,
+	deepSeekModelAliases,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
 	OPENAI_AZURE_AI_INFERENCE_PATH,
 	providerModelDefinitions,
@@ -26,15 +27,24 @@ import type { ApiHandlerCreateMessageMetadata } from "../index"
 // Custom interface for DeepSeek params to support thinking mode
 type DeepSeekChatCompletionParams = Omit<OpenAI.Chat.ChatCompletionCreateParamsStreaming, "reasoning_effort"> & {
 	thinking?: { type: "enabled" | "disabled" }
-	reasoning_effort?: "high" | "max"
+	reasoning_effort?: "low" | "high" | "max"
 }
 
-const deepSeekV4ThinkingModels = new Set(["deepseek-v4-flash", "deepseek-v4-pro"])
-const supportsDeepSeekThinkingToggle = (modelId: string) => deepSeekV4ThinkingModels.has(modelId)
+// The models that take DeepSeek's thinking toggle. A legacy name DeepSeek still
+// serves (deepseek-v4-flash, deepseek-v4-flash-vision-exp: both answered by
+// V4.1 Flash) counts as the model it aliases.
+const deepSeekThinkingModels = new Set(["deepseek-flash", "deepseek-v4-pro"])
+const supportsDeepSeekThinkingToggle = (modelId: string) =>
+	deepSeekThinkingModels.has(
+		Object.hasOwn(deepSeekModelAliases, modelId)
+			? deepSeekModelAliases[modelId as keyof typeof deepSeekModelAliases]
+			: modelId,
+	)
 
-// Only known V4 models and the legacy reasoner alias support DeepSeek's
-// thinking fields. Custom model IDs still fall back to default metadata, but
-// should not receive V4-only request parameters.
+// Only the known thinking models and the retired reasoner name (kept for
+// compatible endpoints that may still serve it) support DeepSeek's thinking
+// fields. Custom model IDs still fall back to default metadata, but should
+// not receive these request parameters.
 const isDeepSeekThinkingEnabled = (modelId: string, options: ApiHandlerOptions) => {
 	if (options.enableReasoningEffort === false || options.reasoningEffort === "disable") {
 		return false
@@ -43,17 +53,21 @@ const isDeepSeekThinkingEnabled = (modelId: string, options: ApiHandlerOptions) 
 	return modelId === "deepseek-reasoner" || supportsDeepSeekThinkingToggle(modelId)
 }
 
-const normalizeDeepSeekReasoningEffort = (reasoningEffort?: string): "high" | "max" | undefined => {
+const normalizeDeepSeekReasoningEffort = (reasoningEffort?: string): "low" | "high" | "max" | undefined => {
 	if (!reasoningEffort || reasoningEffort === "disable") {
 		return undefined
 	}
 
-	// DeepSeek currently maps low/medium to high and xhigh to max in thinking mode.
-	return reasoningEffort === "xhigh" ? "max" : "high"
+	// DeepSeek's thinking levels are low / high / max (since 2026-08-13). Our
+	// "xhigh" is the top option of the settings list, so it asks for max.
+	if (reasoningEffort === "low" || reasoningEffort === "minimal") {
+		return "low"
+	}
+	return reasoningEffort === "xhigh" || reasoningEffort === "max" ? "max" : "high"
 }
 
 // Use the computed maxTokens from getModelParams rather than raw model metadata.
-// V4 advertises a 384K maximum output, but the project convention caps most
+// DeepSeek advertises a 384K maximum output, but the project convention caps most
 // models to 20% of context unless the user explicitly overrides modelMaxTokens.
 const addDeepSeekMaxTokensIfNeeded = (
 	requestOptions: DeepSeekChatCompletionParams,

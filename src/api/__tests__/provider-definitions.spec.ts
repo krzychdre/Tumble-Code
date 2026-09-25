@@ -274,13 +274,22 @@ describe("unknown model id (owner decision 5)", () => {
 		expect(runtimeProviderRegistry.bedrock.resolveModel({ apiModelId: "" }).id).toBe(bedrockDefaultModelId)
 	})
 
-	// DeepSeek's documented aliases for deepseek-v4-flash (non-thinking and
-	// thinking mode) are known ids: sent exactly as configured, with the info
-	// of the model they alias.
-	it.each(["deepseek-chat", "deepseek-reasoner"])("deepseek knows the %s alias", (alias) => {
+	// DeepSeek's legacy Flash names are still accepted and served by
+	// DeepSeek-V4.1-Flash: known ids, sent exactly as configured, with the info
+	// of deepseek-flash.
+	it.each(["deepseek-v4-flash", "deepseek-v4-flash-vision-exp"])("deepseek knows the %s alias", (alias) => {
 		const { id, info } = runtimeProviderRegistry.deepseek.resolveModel({ apiModelId: alias })
 
 		expect(id).toBe(alias)
-		expect(info).toEqual(deepSeekModels["deepseek-v4-flash"])
+		expect(info).toEqual(deepSeekModels["deepseek-flash"])
+	})
+
+	// The retired names still resolve (the id is sent as configured) but carry
+	// the deprecated flag, so the settings say the model is no longer available.
+	it.each(["deepseek-chat", "deepseek-reasoner"])("deepseek resolves the retired %s as deprecated", (legacy) => {
+		const { id, info } = runtimeProviderRegistry.deepseek.resolveModel({ apiModelId: legacy })
+
+		expect(id).toBe(legacy)
+		expect(info.deprecated).toBe(true)
 	})
 })

@@ -10,7 +10,7 @@ import { sleep, waitFor, waitUntilAborted } from "../utils"
 
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 
-type DeepSeekModelId = "deepseek-v4-flash" | "deepseek-v4-pro"
+type DeepSeekModelId = "deepseek-flash" | "deepseek-v4-pro"
 
 type CapturedDeepSeekRequest = {
 	model?: string
@@ -337,8 +337,8 @@ suite("DeepSeek V4 provider", function () {
 	})
 
 	for (const [modelId, reasoningEnabled] of [
-		["deepseek-v4-flash", true],
-		["deepseek-v4-flash", false],
+		["deepseek-flash", true],
+		["deepseek-flash", false],
 		["deepseek-v4-pro", true],
 		["deepseek-v4-pro", false],
 	] as const) {
