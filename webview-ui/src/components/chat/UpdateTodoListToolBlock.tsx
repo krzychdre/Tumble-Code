@@ -76,16 +76,19 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 		}
 	}, [editable, isEditing])
 
-	// Check if onChange is passed
+	// Check if onChange is passed, once: the ref makes later runs (a new onChange) return early.
+	const onChangeCheckedRef = useRef(false)
 	useEffect(() => {
+		if (onChangeCheckedRef.current) {
+			return
+		}
+		onChangeCheckedRef.current = true
 		if (typeof onChange !== "function") {
 			console.warn(
 				"UpdateTodoListToolBlock: onChange callback not passed, cannot notify model after todo changes!",
 			)
 		}
-		// Only check once on mount
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [])
+	}, [onChange])
 
 	// Sync when external props.todos changes
 	useEffect(() => {
