@@ -5,11 +5,11 @@ import { type ModelInfo, openAiModelInfoSaneDefaults, LMSTUDIO_DEFAULT_TEMPERATU
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
-import { TagMatcher } from "../../utils/tag-matcher"
 import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
+import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
@@ -17,7 +17,6 @@ import { openAiCompletionUsage } from "./utils/completion-usage"
 import { getModelsFromCache } from "./fetchers/modelCache"
 import { getApiRequestTimeout } from "./utils/timeout-config"
 import { handleProviderError } from "./utils/error-handler"
-import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 
 /**
  * LM Studio reports most failures (model not loaded, context too small) only in its own
@@ -124,37 +123,19 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 				throw error
 			}
 
-			const matcher = new TagMatcher(
-				["think", "thought"],
-				(chunk) =>
-					({
-						type: chunk.matched ? "reasoning" : "text",
-						text: chunk.data,
-					}) as const,
-			)
-
 			try {
-				for await (const chunk of results) {
-					const delta = chunk.choices?.[0]?.delta
-					const finishReason = chunk.choices?.[0]?.finish_reason
-
-					if (delta?.content) {
-						assistantText += delta.content
-						for (const processedChunk of matcher.update(delta.content)) {
-							yield processedChunk
+				// Local reasoning models write their thoughts inline in <think> tags, or,
+				// with LM Studio's "separate reasoning_content" setting, in reasoning_content.
+				yield* streamChatCompletion(results, {
+					thinkTags: true,
+					// Output tokens are counted locally over the raw content, tags included.
+					onChunk: (chunk) => {
+						const content = chunk.choices?.[0]?.delta?.content
+						if (content) {
+							assistantText += content
 						}
-					}
-
-					// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
-					yield* emitToolCallChunks(delta)
-
-					// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
-					yield* emitFinishReasonChunk(finishReason)
-				}
-
-				for (const processedChunk of matcher.final()) {
-					yield processedChunk
-				}
+					},
+				})
 
 				let outputTokens = 0
 				try {

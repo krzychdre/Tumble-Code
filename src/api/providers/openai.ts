@@ -12,11 +12,10 @@ import {
 
 import { type ApiHandlerOptions, shouldUseReasoningEffort } from "../../shared/api"
 
-import { TagMatcher } from "../../utils/tag-matcher"
-
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { convertToR1Format } from "../transform/r1-format"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { streamChatCompletion } from "../transform/chat-completions-stream"
 import { getModelParams } from "../transform/model-params"
 
 import { DEFAULT_HEADERS } from "./constants"
@@ -24,7 +23,6 @@ import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { handleProviderError } from "./utils/error-handler"
 import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
-import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
 /**
  * Custom interface for GLM params to support thinking mode.
@@ -274,46 +272,11 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				throw handleProviderError(error, this.providerName)
 			}
 
-			const matcher = new TagMatcher(
-				["think", "thought"],
-				(chunk) =>
-					({
-						type: chunk.matched ? "reasoning" : "text",
-						text: chunk.data,
-					}) as const,
-			)
-
-			let lastUsage
-
 			try {
-				for await (const chunk of stream) {
-					const delta = chunk.choices?.[0]?.delta ?? {}
-
-					const reasoningText = extractReasoningFromDelta(delta)
-					if (reasoningText) {
-						yield { type: "reasoning", text: reasoningText }
-					}
-
-					if (delta.content) {
-						for (const chunk of matcher.update(delta.content)) {
-							yield chunk
-						}
-					}
-
-					yield* this.processToolCalls(delta)
-
-					if (chunk.usage) {
-						lastUsage = chunk.usage
-					}
-				}
-
-				for (const chunk of matcher.final()) {
-					yield chunk
-				}
-
-				if (lastUsage) {
-					yield this.processUsageMetrics(lastUsage, modelInfo)
-				}
+				yield* streamChatCompletion(stream, {
+					thinkTags: true,
+					mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
+				})
 			} finally {
 				this.abortController = undefined
 			}
@@ -501,7 +464,15 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 
 			try {
-				yield* this.handleStreamResponse(stream)
+				// Reasoning-capable servers routed through this branch (DeepSeek-R1
+				// distills, QwQ behind adapters) send reasoning_content (AP-8).
+				yield* streamChatCompletion(stream, {
+					mapUsage: (usage) => ({
+						type: "usage",
+						inputTokens: usage.prompt_tokens || 0,
+						outputTokens: usage.completion_tokens || 0,
+					}),
+				})
 			} finally {
 				this.abortController = undefined
 			}
@@ -561,73 +532,6 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				text: message?.content || "",
 			}
 			yield this.processUsageMetrics(response.usage)
-		}
-	}
-
-	private async *handleStreamResponse(stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>): ApiStream {
-		// Keep only the last usage: some servers repeat the cumulative usage
-		// in every chunk, and TaskStreamProcessor adds usage chunks together,
-		// so yielding each one would bill the request once per chunk (DEF-C12).
-		let lastUsage: OpenAI.CompletionUsage | undefined
-
-		for await (const chunk of stream) {
-			const delta = chunk.choices?.[0]?.delta
-
-			if (delta) {
-				// AP-8: Extract reasoning_content/reasoning from the delta the
-				// same way the main streaming path does, so reasoning-capable
-				// servers routed through the O3 branch (DeepSeek-R1 distills,
-				// QwQ behind adapters, etc.) surface reasoning output.
-				// Reasoning goes first: it precedes the answer text when one
-				// delta carries both (the end of thinking).
-				const reasoningText = extractReasoningFromDelta(delta)
-				if (reasoningText) {
-					yield { type: "reasoning", text: reasoningText }
-				}
-
-				if (delta.content) {
-					yield {
-						type: "text",
-						text: delta.content,
-					}
-				}
-
-				yield* this.processToolCalls(delta)
-			}
-
-			if (chunk.usage) {
-				lastUsage = chunk.usage
-			}
-		}
-
-		if (lastUsage) {
-			yield {
-				type: "usage",
-				inputTokens: lastUsage.prompt_tokens || 0,
-				outputTokens: lastUsage.completion_tokens || 0,
-			}
-		}
-	}
-
-	/**
-	 * Helper generator to process tool calls from a stream chunk.
-	 * Yields one tool_call_partial per tool call delta; the task's NativeToolCallParser
-	 * assembles the partials and finalizes the calls at stream end.
-	 * @param delta - The delta object from the stream chunk
-	 */
-	private *processToolCalls(
-		delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta | undefined,
-	): Generator<{ type: "tool_call_partial"; index: number; id?: string; name?: string; arguments?: string }> {
-		if (delta?.tool_calls) {
-			for (const toolCall of delta.tool_calls) {
-				yield {
-					type: "tool_call_partial",
-					index: toolCall.index,
-					id: toolCall.id,
-					name: toolCall.function?.name,
-					arguments: toolCall.function?.arguments,
-				}
-			}
 		}
 	}
 
