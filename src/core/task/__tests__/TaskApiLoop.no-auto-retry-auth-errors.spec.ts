@@ -396,6 +396,251 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 				vi.useRealTimers()
 			}
 		})
+
+		// Owner decision (2026-09-25, after PR #353): HTTP 429 (too many
+		// requests) is excluded from the retry cap. The provider is up and says
+		// "later", so a background task keeps backing off (the backoff itself
+		// stops growing at 600 s, and a RetryInfo delay on the 429 wins) until the
+		// provider answers or the task is aborted. Rule for a mixed sequence: a
+		// 429 retry does not count toward BACKGROUND_MAX_API_RETRIES, every other
+		// retryable failure does; the task ends at the 7th counted failure.
+		describe("429 is not subject to the retry cap", () => {
+			function sequenceLoop(statuses: Array<number | undefined>, autoApprovalEnabled = false) {
+				const failures = statuses.map(apiError)
+				const made = makeLoop(failures[0], autoApprovalEnabled)
+				made.access.isBackground = true
+				made.access.abortTask = vi.fn(async () => {
+					made.access.abort = true
+				})
+				let calls = 0
+				made.createMessage.mockImplementation(async function* () {
+					const failure = failures[calls++]
+					if (failure) throw failure
+					yield { type: "text" as const, text: "recovered" }
+				})
+				return { ...made, failures }
+			}
+
+			const repeat = <T>(value: T, times: number): T[] => Array.from({ length: times }, () => value)
+
+			it.each([true, false])(
+				"429 on every request (auto-approve %s): keeps backing off past the cap until the provider answers",
+				async (autoApprovalEnabled) => {
+					const { loop, access, createMessage, backoff } = sequenceLoop(
+						repeat(429, FAILS_LONGER_THAN_THE_CAP),
+						autoApprovalEnabled,
+					)
+
+					const { chunks, thrown } = await drain(loop.attemptApiRequest())
+
+					expect(thrown).toBeUndefined()
+					expect(chunks).toEqual([{ type: "text", text: "recovered" }])
+					expect(createMessage).toHaveBeenCalledTimes(FAILS_LONGER_THAN_THE_CAP + 1)
+					expect(backoff.mock.calls.map(([attempt]) => attempt)).toEqual(
+						Array.from({ length: FAILS_LONGER_THAN_THE_CAP }, (_, i) => i),
+					)
+					expect(access.askSay.ask).not.toHaveBeenCalled()
+					expect(access.abortTask).not.toHaveBeenCalled()
+					expect(access.apiFailureMessage).toBeUndefined()
+				},
+			)
+
+			it("a streak of 429s does not use up the cap: six 500s after ten 429s still recover", async () => {
+				const { loop, access, createMessage } = sequenceLoop([...repeat(429, 10), ...repeat(500, 6)])
+
+				const { chunks, thrown } = await drain(loop.attemptApiRequest())
+
+				expect(thrown).toBeUndefined()
+				expect(chunks).toEqual([{ type: "text", text: "recovered" }])
+				expect(createMessage).toHaveBeenCalledTimes(17)
+				expect(access.abortTask).not.toHaveBeenCalled()
+			})
+
+			it("a 429 at the cap does not end the task: six 500s, then 429s, then success", async () => {
+				const { loop, access, createMessage } = sequenceLoop([...repeat(500, 6), ...repeat(429, 5)])
+
+				const { chunks, thrown } = await drain(loop.attemptApiRequest())
+
+				expect(thrown).toBeUndefined()
+				expect(chunks).toEqual([{ type: "text", text: "recovered" }])
+				expect(createMessage).toHaveBeenCalledTimes(12)
+				expect(access.abortTask).not.toHaveBeenCalled()
+			})
+
+			it("500 and 429 alternating: the task ends at the 7th 500, the line counts every request", async () => {
+				const statuses = Array.from({ length: FAILS_LONGER_THAN_THE_CAP }, (_, i) => (i % 2 === 0 ? 500 : 429))
+				const { loop, access, createMessage, backoff } = sequenceLoop(statuses)
+
+				const { thrown } = await drain(loop.attemptApiRequest())
+
+				// 500s at requests 1, 3, ..., 13: the 13th request is the 7th 500.
+				expect(createMessage).toHaveBeenCalledTimes(13)
+				expect(backoff).toHaveBeenCalledTimes(12)
+
+				const result = await (loop as any).handleStreamError(thrown, vi.fn(), { retryAttempt: 0 }, [], [])
+
+				expect(result).toBe("return_true")
+				expect(access.abortReason).toBe("streaming_failed")
+				expect(access.abortTask).toHaveBeenCalledTimes(1)
+				expect(access.apiFailureMessage).toContain("API error 500")
+				expect(access.apiFailureMessage).toContain("after 13 attempts")
+			})
+
+			it.each([6, 40])(
+				"mid-stream 429 at retry %s: backs off and requeues, counting the 429",
+				async (attempt) => {
+					const { loop, access, backoff, failures } = sequenceLoop([429])
+					const stack: any[] = []
+
+					const result = await (loop as any).handleStreamError(
+						failures[0],
+						vi.fn(),
+						{ retryAttempt: attempt, rateLimitRetries: 2 },
+						[],
+						stack,
+					)
+
+					expect(result).toBe("continue")
+					expect(backoff).toHaveBeenCalledWith(attempt, failures[0])
+					expect(stack).toHaveLength(1)
+					expect(stack[0]).toMatchObject({ retryAttempt: attempt + 1, rateLimitRetries: 3 })
+					expect(access.abortTask).not.toHaveBeenCalled()
+					expect(access.apiFailureMessage).toBeUndefined()
+				},
+			)
+
+			it("mid-stream 500: the cap counts only the non-429 retries", async () => {
+				// 8 earlier retries, 3 of them for a 429: 5 counted, below the cap.
+				const below = sequenceLoop([500])
+				const stack: any[] = []
+				const result = await (below.loop as any).handleStreamError(
+					below.failures[0],
+					vi.fn(),
+					{ retryAttempt: 8, rateLimitRetries: 3 },
+					[],
+					stack,
+				)
+				expect(result).toBe("continue")
+				expect(stack[0]).toMatchObject({ retryAttempt: 9, rateLimitRetries: 3 })
+
+				// 9 earlier retries, 3 of them for a 429: 6 counted, at the cap.
+				const at = sequenceLoop([500])
+				const atStack: any[] = []
+				const atResult = await (at.loop as any).handleStreamError(
+					at.failures[0],
+					vi.fn(),
+					{ retryAttempt: 9, rateLimitRetries: 3 },
+					[],
+					atStack,
+				)
+				expect(atResult).toBe("return_true")
+				expect(atStack).toEqual([])
+				expect(at.access.abortReason).toBe("streaming_failed")
+				expect(at.access.apiFailureMessage).toContain("after 10 attempts")
+			})
+
+			it("an abort during a 429 backoff past the cap stops the first-chunk retry", async () => {
+				const { loop, access, createMessage, backoff } = sequenceLoop(repeat(429, FAILS_LONGER_THAN_THE_CAP))
+				backoff.mockImplementation(async (attempt: number) => {
+					if (attempt === 9) access.abort = true
+				})
+
+				const { thrown } = await drain(loop.attemptApiRequest())
+
+				expect(createMessage).toHaveBeenCalledTimes(10)
+				expect(String((thrown as Error)?.message)).toContain("aborted during retry")
+				expect(access.apiFailureMessage).toBeUndefined()
+
+				const result = await (loop as any).handleStreamError(thrown, vi.fn(), { retryAttempt: 0 }, [], [])
+				expect(result).toBe("return_true")
+				expect(access.abortReason).toBe("user_cancelled")
+				expect(access.abortTask).toHaveBeenCalledTimes(1)
+				expect(access.apiFailureMessage).toBeUndefined()
+			})
+
+			it("an abort during a mid-stream 429 backoff past the cap ends the task as cancelled", async () => {
+				const { loop, access, backoff, failures } = sequenceLoop([429])
+				backoff.mockImplementation(async () => {
+					access.abort = true
+				})
+				const stack: any[] = []
+
+				const result = await (loop as any).handleStreamError(
+					failures[0],
+					vi.fn(),
+					{ retryAttempt: 12, rateLimitRetries: 12 },
+					[],
+					stack,
+				)
+
+				expect(result).toBe("return_true")
+				expect(stack).toEqual([])
+				expect(access.abortReason).toBe("user_cancelled")
+				expect(access.abortTask).toHaveBeenCalledTimes(1)
+				expect(access.apiFailureMessage).toBeUndefined()
+			})
+
+			it("fake timers: the real backoff for 429 stops growing at 600 s, and an abort ends the wait", async () => {
+				vi.useFakeTimers()
+				try {
+					const { loop, access, createMessage, backoff } = sequenceLoop(
+						repeat(429, FAILS_LONGER_THAN_THE_CAP),
+					)
+					backoff.mockRestore()
+
+					const done = drain(loop.attemptApiRequest())
+					const callsAfter = async (ms: number) => {
+						await vi.advanceTimersByTimeAsync(ms)
+						return createMessage.mock.calls.length
+					}
+
+					expect(await callsAfter(0)).toBe(1)
+					// 5+10+20+40+80+160+320 s: the 8th request, past the old cap of 7.
+					expect(await callsAfter(635_000)).toBe(8)
+					expect(await callsAfter(599_000)).toBe(8)
+					expect(await callsAfter(1_000)).toBe(9) // 600 s, not 640 s
+					expect(await callsAfter(600_000)).toBe(10)
+
+					access.abort = true
+					await callsAfter(2_000)
+					const { thrown } = await done
+					expect(String((thrown as Error)?.message)).toContain("aborted during retry")
+					expect(await callsAfter(600_000)).toBe(10)
+					expect(access.apiFailureMessage).toBeUndefined()
+				} finally {
+					vi.useRealTimers()
+				}
+			})
+
+			it("fake timers: a RetryInfo delay on the 429 sets the wait, past the cap too", async () => {
+				vi.useFakeTimers()
+				try {
+					const statuses = repeat(429, FAILS_LONGER_THAN_THE_CAP)
+					const { loop, createMessage, backoff, failures } = sequenceLoop(statuses)
+					for (const failure of failures) {
+						;(failure as any).errorDetails = [
+							{ "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "30s" },
+						]
+					}
+					backoff.mockRestore()
+
+					const done = drain(loop.attemptApiRequest())
+					const callsAfter = async (ms: number) => {
+						await vi.advanceTimersByTimeAsync(ms)
+						return createMessage.mock.calls.length
+					}
+
+					expect(await callsAfter(0)).toBe(1)
+					expect(await callsAfter(31_000 * 9)).toBe(10) // 31 s apart
+					expect(await callsAfter(31_000 * 11)).toBe(FAILS_LONGER_THAN_THE_CAP + 1)
+					const { chunks, thrown } = await done
+					expect(thrown).toBeUndefined()
+					expect(chunks).toEqual([{ type: "text", text: "recovered" }])
+				} finally {
+					vi.useRealTimers()
+				}
+			})
+		})
 	})
 
 	describe("mid-stream failure with auto-approve on", () => {
