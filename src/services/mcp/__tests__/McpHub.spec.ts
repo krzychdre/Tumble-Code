@@ -7,7 +7,8 @@ import type { ExtensionContext, Uri } from "vscode"
 import type { ClineProvider } from "../../../core/webview/ClineProvider"
 
 import type { McpHub as McpHubType, McpConnection, ConnectedMcpConnection, DisconnectedMcpConnection } from "../McpHub"
-import { ServerConfigSchema, McpHub } from "../McpHub"
+import { McpHub } from "../McpHub"
+import { ServerConfigSchema } from "../mcpConfigSchema"
 
 // Mock fs/promises before importing anything that uses it
 vi.mock("fs/promises", () => ({
@@ -2656,8 +2657,6 @@ describe("McpHub", () => {
 		// What the settings-file watcher does when the file changes on disk.
 		const fireConfigChange = (hub: McpHub, filePath: string, source: "global" | "project") =>
 			(hub as any).debounceConfigChange(filePath, source)
-		const validate = (config: any, serverName?: string) =>
-			(McpHub.prototype as any).validateServerConfig.call({}, config, serverName)
 
 		beforeEach(async () => {
 			const chokidar = (await import("chokidar")).default
@@ -2702,73 +2701,6 @@ describe("McpHub", () => {
 
 		afterEach(() => {
 			vi.useRealTimers()
-		})
-
-		describe("server config validation", () => {
-			it("infers stdio and applies the defaults", () => {
-				const input: any = { command: "node", args: ["a.js"] }
-
-				const config = validate(input, "a")
-
-				expect(config).toMatchObject({
-					type: "stdio",
-					command: "node",
-					args: ["a.js"],
-					timeout: 60,
-					alwaysAllow: [],
-					disabledTools: [],
-				})
-				expect(typeof config.cwd).toBe("string")
-				// The caller's object gets the inferred type too.
-				expect(input.type).toBe("stdio")
-			})
-
-			it.each([
-				[
-					"stdio and url fields mixed",
-					{ command: "node", url: "http://localhost" },
-					"Cannot mix 'stdio' and ('sse' or 'streamable-http') fields. For 'stdio' use 'command', 'args', and 'env'. For 'sse'/'streamable-http' use 'url' and 'headers'",
-				],
-				[
-					"a url without a type",
-					{ url: "http://localhost" },
-					"Configuration with 'url' must explicitly specify 'type' as 'sse' or 'streamable-http'.",
-				],
-				[
-					"an unknown type",
-					{ type: "ws", command: "node" },
-					"Server type must be 'stdio', 'sse', or 'streamable-http'",
-				],
-				[
-					"stdio without a command",
-					{ type: "stdio" },
-					"For 'stdio' type servers, you must provide a 'command' field and can optionally include 'args' and 'env'",
-				],
-				[
-					"sse without a url",
-					{ type: "sse" },
-					"For 'sse' type servers, you must provide a 'url' field and can optionally include 'headers'",
-				],
-				[
-					"streamable-http without a url",
-					{ type: "streamable-http" },
-					"For 'streamable-http' type servers, you must provide a 'url' field and can optionally include 'headers'",
-				],
-				[
-					"neither a command nor a url",
-					{},
-					"Server configuration must include either 'command' (for stdio) or 'url' (for sse/streamable-http) and a corresponding 'type' if 'url' is used.",
-				],
-			])("rejects %s", (_label, config, message) => {
-				expect(() => validate(config, "x")).toThrow(message)
-			})
-
-			it("names the server and joins the schema problems with semicolons", () => {
-				expect(() => validate({ command: "node", timeout: 0 }, "slow")).toThrow(
-					'Invalid configuration for server "slow": ',
-				)
-				expect(() => validate({ command: "node", timeout: 0 })).toThrow("Invalid server configuration: ")
-			})
 		})
 
 		describe("updateServerConnections diff", () => {
@@ -2876,9 +2808,7 @@ describe("McpHub", () => {
 				await flush()
 
 				expect(update).not.toHaveBeenCalled()
-				expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
-					"mcp:errors.invalid_settings_syntax",
-				)
+				expect(vscode.window.showErrorMessage).toHaveBeenCalledWith("mcp:errors.invalid_settings_syntax")
 			})
 
 			it("lists every schema problem of a changed file, one per line, and changes nothing", async () => {
@@ -2921,9 +2851,7 @@ describe("McpHub", () => {
 				await flush()
 
 				expect(hub.connections.map((c) => `${c.server.source}:${c.server.name}`)).toEqual(["global:a"])
-				expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-					"mcp:info.project_config_deleted",
-				)
+				expect(vscode.window.showInformationMessage).toHaveBeenCalledWith("mcp:info.project_config_deleted")
 			})
 		})
 
@@ -2985,7 +2913,9 @@ describe("McpHub", () => {
 		describe("file watchers of a global and a project server with the same name", () => {
 			beforeEach(() => {
 				writeFiles({
-					global: { mcpServers: { same: { command: "node", args: ["g.js"], watchPaths: ["/watch/global"] } } },
+					global: {
+						mcpServers: { same: { command: "node", args: ["g.js"], watchPaths: ["/watch/global"] } },
+					},
 					project: {
 						mcpServers: { same: { command: "node", args: ["p.js"], watchPaths: ["/watch/project"] } },
 					},

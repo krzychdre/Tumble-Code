@@ -16,7 +16,6 @@ import {
 import chokidar, { FSWatcher } from "chokidar"
 import delay from "delay"
 import deepEqual from "fast-deep-equal"
-import { z } from "zod"
 
 import type {
 	McpResource,
@@ -37,6 +36,13 @@ import { injectVariables } from "../../utils/config"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import { sanitizeMcpName, toolNamesMatch } from "../../utils/mcp-name"
 
+import {
+	formatSchemaIssues,
+	McpSettingsSchema,
+	type McpServerConfig,
+	ServerConfigSchema,
+	validateServerConfig,
+} from "./mcpConfigSchema"
 import { getGlobalMcpSettingsPath } from "./mcpSettingsPath"
 
 // Discriminated union for connection states
@@ -61,90 +67,6 @@ export enum DisableReason {
 	MCP_DISABLED = "mcpDisabled",
 	SERVER_DISABLED = "serverDisabled",
 }
-
-// Base configuration schema for common settings
-const BaseConfigSchema = z.object({
-	disabled: z.boolean().optional(),
-	timeout: z.number().min(1).max(3600).optional().default(60),
-	alwaysAllow: z.array(z.string()).default([]),
-	watchPaths: z.array(z.string()).optional(), // paths to watch for changes and restart server
-	disabledTools: z.array(z.string()).default([]),
-})
-
-// Custom error messages for better user feedback
-const typeErrorMessage = "Server type must be 'stdio', 'sse', or 'streamable-http'"
-const stdioFieldsErrorMessage =
-	"For 'stdio' type servers, you must provide a 'command' field and can optionally include 'args' and 'env'"
-const sseFieldsErrorMessage =
-	"For 'sse' type servers, you must provide a 'url' field and can optionally include 'headers'"
-const streamableHttpFieldsErrorMessage =
-	"For 'streamable-http' type servers, you must provide a 'url' field and can optionally include 'headers'"
-const mixedFieldsErrorMessage =
-	"Cannot mix 'stdio' and ('sse' or 'streamable-http') fields. For 'stdio' use 'command', 'args', and 'env'. For 'sse'/'streamable-http' use 'url' and 'headers'"
-const missingFieldsErrorMessage =
-	"Server configuration must include either 'command' (for stdio) or 'url' (for sse/streamable-http) and a corresponding 'type' if 'url' is used."
-
-// Helper function to create a refined schema with better error messages
-const createServerTypeSchema = () => {
-	return z.union([
-		// Stdio config (has command field)
-		BaseConfigSchema.extend({
-			type: z.enum(["stdio"]).optional(),
-			command: z.string().min(1, "Command cannot be empty"),
-			args: z.array(z.string()).optional(),
-			cwd: z.string().default(() => vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath ?? process.cwd()),
-			env: z.record(z.string()).optional(),
-			// Ensure no SSE fields are present
-			url: z.undefined().optional(),
-			headers: z.undefined().optional(),
-		})
-			.transform((data) => ({
-				...data,
-				type: "stdio" as const,
-			}))
-			.refine((data) => data.type === undefined || data.type === "stdio", { message: typeErrorMessage }),
-		// SSE config (has url field)
-		BaseConfigSchema.extend({
-			type: z.enum(["sse"]).optional(),
-			url: z.string().url("URL must be a valid URL format"),
-			headers: z.record(z.string()).optional(),
-			// Ensure no stdio fields are present
-			command: z.undefined().optional(),
-			args: z.undefined().optional(),
-			env: z.undefined().optional(),
-		})
-			.transform((data) => ({
-				...data,
-				type: "sse" as const,
-			}))
-			.refine((data) => data.type === undefined || data.type === "sse", { message: typeErrorMessage }),
-		// StreamableHTTP config (has url field)
-		BaseConfigSchema.extend({
-			type: z.enum(["streamable-http"]).optional(),
-			url: z.string().url("URL must be a valid URL format"),
-			headers: z.record(z.string()).optional(),
-			// Ensure no stdio fields are present
-			command: z.undefined().optional(),
-			args: z.undefined().optional(),
-			env: z.undefined().optional(),
-		})
-			.transform((data) => ({
-				...data,
-				type: "streamable-http" as const,
-			}))
-			.refine((data) => data.type === undefined || data.type === "streamable-http", {
-				message: typeErrorMessage,
-			}),
-	])
-}
-
-// Server configuration schema with automatic type inference and validation
-export const ServerConfigSchema = createServerTypeSchema()
-
-// Settings schema
-const McpSettingsSchema = z.object({
-	mcpServers: z.record(ServerConfigSchema),
-})
 
 /**
  * The part of the provider (ClineProvider) the hub and McpServerManager use.
@@ -220,73 +142,6 @@ export class McpHub {
 	}
 
 	/**
-	 * Validates and normalizes server configuration
-	 * @param config The server configuration to validate
-	 * @param serverName Optional server name for error messages
-	 * @returns The validated configuration
-	 * @throws Error if the configuration is invalid
-	 */
-	private validateServerConfig(config: any, serverName?: string): z.infer<typeof ServerConfigSchema> {
-		// Detect configuration issues before validation
-		const hasStdioFields = config.command !== undefined
-		const hasUrlFields = config.url !== undefined // Covers sse and streamable-http
-
-		// Check for mixed fields (stdio vs url-based)
-		if (hasStdioFields && hasUrlFields) {
-			throw new Error(mixedFieldsErrorMessage)
-		}
-
-		// Infer type for stdio if not provided
-		if (!config.type && hasStdioFields) {
-			config.type = "stdio"
-		}
-
-		// For url-based configs, type must be provided by the user
-		if (hasUrlFields && !config.type) {
-			throw new Error("Configuration with 'url' must explicitly specify 'type' as 'sse' or 'streamable-http'.")
-		}
-
-		// Validate type if provided
-		if (config.type && !["stdio", "sse", "streamable-http"].includes(config.type)) {
-			throw new Error(typeErrorMessage)
-		}
-
-		// Check for type/field mismatch
-		if (config.type === "stdio" && !hasStdioFields) {
-			throw new Error(stdioFieldsErrorMessage)
-		}
-		if (config.type === "sse" && !hasUrlFields) {
-			throw new Error(sseFieldsErrorMessage)
-		}
-		if (config.type === "streamable-http" && !hasUrlFields) {
-			throw new Error(streamableHttpFieldsErrorMessage)
-		}
-
-		// If neither command nor url is present (type alone is not enough)
-		if (!hasStdioFields && !hasUrlFields) {
-			throw new Error(missingFieldsErrorMessage)
-		}
-
-		// Validate the config against the schema
-		try {
-			return ServerConfigSchema.parse(config)
-		} catch (validationError) {
-			if (validationError instanceof z.ZodError) {
-				// Extract and format validation errors
-				const errorMessages = validationError.errors
-					.map((err) => `${err.path.join(".")}: ${err.message}`)
-					.join("; ")
-				throw new Error(
-					serverName
-						? `Invalid configuration for server "${serverName}": ${errorMessages}`
-						: `Invalid server configuration: ${errorMessages}`,
-				)
-			}
-			throw validationError
-		}
-	}
-
-	/**
 	 * Formats and displays error messages to the user
 	 * @param message The error message prefix
 	 * @param error The error object
@@ -352,9 +207,7 @@ export class McpHub {
 			const result = McpSettingsSchema.safeParse(config)
 
 			if (!result.success) {
-				const errorMessages = result.error.errors
-					.map((err) => `${err.path.join(".")}: ${err.message}`)
-					.join("\n")
+				const errorMessages = formatSchemaIssues(result.error, "\n")
 				vscode.window.showErrorMessage(t("mcp:errors.invalid_settings_validation", { errorMessages }))
 				return
 			}
@@ -441,9 +294,7 @@ export class McpHub {
 				await this.updateServerConnections(result.data.mcpServers || {}, "project")
 			} else {
 				// Format validation errors for better user feedback
-				const errorMessages = result.error.errors
-					.map((err) => `${err.path.join(".")}: ${err.message}`)
-					.join("\n")
+				const errorMessages = formatSchemaIssues(result.error, "\n")
 				console.error("Invalid project MCP settings format:", errorMessages)
 				vscode.window.showErrorMessage(t("mcp:errors.invalid_settings_validation", { errorMessages }))
 			}
@@ -584,9 +435,7 @@ export class McpHub {
 				// Pass all servers including disabled ones - they'll be handled in updateServerConnections
 				await this.updateServerConnections(result.data.mcpServers || {}, source, false)
 			} else {
-				const errorMessages = result.error.errors
-					.map((err) => `${err.path.join(".")}: ${err.message}`)
-					.join("\n")
+				const errorMessages = formatSchemaIssues(result.error, "\n")
 				console.error(`Invalid ${source} MCP settings format:`, errorMessages)
 				vscode.window.showErrorMessage(t("mcp:errors.invalid_settings_validation", { errorMessages }))
 
@@ -645,7 +494,7 @@ export class McpHub {
 	 */
 	private createPlaceholderConnection(
 		name: string,
-		config: z.infer<typeof ServerConfigSchema>,
+		config: McpServerConfig,
 		source: "global" | "project",
 		reason?: DisableReason,
 	): DisconnectedMcpConnection {
@@ -680,7 +529,7 @@ export class McpHub {
 
 	private async connectToServer(
 		name: string,
-		config: z.infer<typeof ServerConfigSchema>,
+		config: McpServerConfig,
 		source: "global" | "project" = "global",
 	): Promise<void> {
 		// Remove existing connection if it exists with the same source
@@ -1163,9 +1012,9 @@ export class McpHub {
 				const currentConnection = this.findConnection(name, source)
 
 				// Validate and transform the config
-				let validatedConfig: z.infer<typeof ServerConfigSchema>
+				let validatedConfig: McpServerConfig
 				try {
-					validatedConfig = this.validateServerConfig(config, name)
+					validatedConfig = validateServerConfig(config, name)
 				} catch (error) {
 					this.showErrorMessage(`Invalid configuration for MCP server "${name}"`, error)
 					continue
@@ -1203,10 +1052,7 @@ export class McpHub {
 	 * defaults applied and variables injected, a placeholder (disabled) server
 	 * with defaults only, so the validated config is compared in both forms.
 	 */
-	private async isSameStoredConfig(
-		storedConfig: string,
-		validatedConfig: z.infer<typeof ServerConfigSchema>,
-	): Promise<boolean> {
+	private async isSameStoredConfig(storedConfig: string, validatedConfig: McpServerConfig): Promise<boolean> {
 		const stored = JSON.parse(storedConfig)
 		const asJson = (value: unknown) => JSON.parse(JSON.stringify(value))
 		return (
@@ -1216,20 +1062,14 @@ export class McpHub {
 	}
 
 	/** Inject environment and magic variables (e.g. `${env:TOKEN}`, `${workspaceFolder}`) into a config. */
-	private async injectConfigVariables(
-		config: z.infer<typeof ServerConfigSchema>,
-	): Promise<z.infer<typeof ServerConfigSchema>> {
+	private async injectConfigVariables(config: McpServerConfig): Promise<McpServerConfig> {
 		return (await injectVariables(config, {
 			env: process.env,
 			workspaceFolder: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "",
 		})) as typeof config
 	}
 
-	private setupFileWatcher(
-		name: string,
-		config: z.infer<typeof ServerConfigSchema>,
-		source: "global" | "project" = "global",
-	) {
+	private setupFileWatcher(name: string, config: McpServerConfig, source: "global" | "project" = "global") {
 		// Replace any watchers this server already has, so a reconnect never
 		// leaves two watchers that each restart the server.
 		this.removeFileWatchersForServer(name, source)
@@ -1329,7 +1169,7 @@ export class McpHub {
 					const parsedConfig = JSON.parse(config)
 					try {
 						// Validate the config
-						const validatedConfig = this.validateServerConfig(parsedConfig, serverName)
+						const validatedConfig = validateServerConfig(parsedConfig, serverName)
 
 						// Try to connect again using validated config
 						await this.connectToServer(serverName, validatedConfig, connection.server.source || "global")
@@ -1555,7 +1395,7 @@ export class McpHub {
 	private async readServerConfigFromFile(
 		serverName: string,
 		source: "global" | "project" = "global",
-	): Promise<z.infer<typeof ServerConfigSchema>> {
+	): Promise<McpServerConfig> {
 		// Determine which config file to read
 		let configPath: string
 		if (source === "project") {
@@ -1594,7 +1434,7 @@ export class McpHub {
 		}
 
 		// Validate and return the server config
-		return this.validateServerConfig(config.mcpServers[serverName], serverName)
+		return validateServerConfig(config.mcpServers[serverName], serverName)
 	}
 
 	/**
