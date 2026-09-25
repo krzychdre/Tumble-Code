@@ -39,12 +39,17 @@ import {
 	getAgentsDirectoriesForCwd,
 	discoverSubfolderRooDirectories,
 	loadConfiguration,
+	invalidateRooDirectoryCache,
+	ROO_DIRECTORY_DISCOVERY_LIMIT,
+	ROO_DIRECTORY_CACHE_TTL_MS,
 } from "../index"
 
 describe("RooConfigService", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		mockHomedir.mockReturnValue("/mock/home")
+		// Discovery results are memoized per working directory; every test starts cold.
+		invalidateRooDirectoryCache?.()
 	})
 
 	afterEach(() => {
@@ -435,6 +440,58 @@ describe("RooConfigService", () => {
 				path.join("/project/path", "package-c", ".roo"),
 				path.join("/project/path", "package-d", ".roo"),
 			])
+		})
+	})
+
+	describe("subfolder discovery limit and cache", () => {
+		it("asks ripgrep for more than the 500 entries the file search defaults to", async () => {
+			mockExecuteRipgrep.mockResolvedValue([])
+
+			await discoverSubfolderRooDirectories("/project/path")
+
+			expect(mockExecuteRipgrep.mock.calls[0][0].limit).toBeGreaterThan(500)
+			expect(mockExecuteRipgrep.mock.calls[0][0].limit).toBe(ROO_DIRECTORY_DISCOVERY_LIMIT)
+		})
+
+		it("warns instead of silently dropping .roo directories when the listing hits the limit", async () => {
+			const limit = ROO_DIRECTORY_DISCOVERY_LIMIT ?? 500
+			const files = Array.from({ length: limit }, (_, i) => ({ path: `.roo/memory/f${i}.md`, type: "file" }))
+			mockExecuteRipgrep.mockResolvedValue(files)
+			const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+			await discoverSubfolderRooDirectories("/project/path")
+
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining(String(limit)))
+		})
+
+		it("memoizes getAllRooDirectoriesForCwd and getAgentsDirectoriesForCwd per working directory", async () => {
+			mockExecuteRipgrep.mockResolvedValue([{ path: "pkg/.roo/rules/a.md", type: "file" }])
+
+			await getAllRooDirectoriesForCwd("/project/path")
+			await getAgentsDirectoriesForCwd("/project/path")
+			await getAllRooDirectoriesForCwd("/project/path")
+			expect(mockExecuteRipgrep).toHaveBeenCalledTimes(1)
+
+			await getAllRooDirectoriesForCwd("/other/path")
+			expect(mockExecuteRipgrep).toHaveBeenCalledTimes(2)
+		})
+
+		it("rescans after invalidation and after the time limit", async () => {
+			vi.useFakeTimers()
+			try {
+				mockExecuteRipgrep.mockResolvedValue([])
+				await getAllRooDirectoriesForCwd("/project/path")
+
+				invalidateRooDirectoryCache()
+				await getAllRooDirectoriesForCwd("/project/path")
+				expect(mockExecuteRipgrep).toHaveBeenCalledTimes(2)
+
+				vi.advanceTimersByTime((ROO_DIRECTORY_CACHE_TTL_MS ?? 0) + 1)
+				await getAllRooDirectoriesForCwd("/project/path")
+				expect(mockExecuteRipgrep).toHaveBeenCalledTimes(3)
+			} finally {
+				vi.useRealTimers()
+			}
 		})
 	})
 
