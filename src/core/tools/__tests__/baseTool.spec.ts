@@ -33,11 +33,11 @@ describe("BaseTool partial error handling (TL-4)", () => {
 		override async handlePartial(task: Task): Promise<void> {
 			// Simulate opening the diff editor then optionally throwing during update
 			if (!this.shouldThrow) {
-				await task.diffViewProvider.open("test/file.txt")
+				await task.diffViewProvider.open("test/file.txt", "create")
 				return
 			}
 
-			await task.diffViewProvider.open("test/file.txt")
+			await task.diffViewProvider.open("test/file.txt", "create")
 			throw new Error("update failed during partial")
 		}
 	}
@@ -48,7 +48,6 @@ describe("BaseTool partial error handling (TL-4)", () => {
 				open: vi.fn().mockResolvedValue(undefined),
 				reset: vi.fn().mockResolvedValue(undefined),
 				isEditing: false,
-				editType: undefined,
 			},
 		}
 	}
@@ -82,7 +81,7 @@ describe("BaseTool partial error handling (TL-4)", () => {
 
 		await tool.handle(task, makePartialBlock(), callbacks)
 
-		expect(task.diffViewProvider.open).toHaveBeenCalledWith("test/file.txt")
+		expect(task.diffViewProvider.open).toHaveBeenCalledWith("test/file.txt", "create")
 		expect(callbacks.handleError).toHaveBeenCalledWith(
 			"handling partial write_to_file",
 			expect.any(Error),
@@ -98,7 +97,7 @@ describe("BaseTool partial error handling (TL-4)", () => {
 
 		await tool.handle(task, makePartialBlock(), callbacks)
 
-		expect(task.diffViewProvider.open).toHaveBeenCalledWith("test/file.txt")
+		expect(task.diffViewProvider.open).toHaveBeenCalledWith("test/file.txt", "create")
 		expect(callbacks.handleError).not.toHaveBeenCalled()
 		expect(task.diffViewProvider.reset).not.toHaveBeenCalled()
 	})

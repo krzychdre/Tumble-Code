@@ -135,6 +135,7 @@ describe("DiffViewProvider", () => {
 		;(diffViewProvider as any).activeEdit = {
 			id: 1,
 			relPath: "test.txt",
+			editType: "modify",
 			diffEditor: {
 				document: {
 					uri: { fsPath: `${mockCwd}/test.txt` },
@@ -246,11 +247,8 @@ describe("DiffViewProvider", () => {
 			// Mock window.visibleTextEditors to return our editor
 			vi.mocked(vscode.window).visibleTextEditors = [mockEditor as any]
 
-			// Set up for file
-			;(diffViewProvider as any).editType = "modify"
-
 			// Execute open
-			await diffViewProvider.open("test.md")
+			await diffViewProvider.open("test.md", "modify")
 
 			// Verify that showTextDocument was called before executeCommand
 			expect(callOrder).toEqual(["showTextDocument", "executeCommand"])
@@ -281,11 +279,8 @@ describe("DiffViewProvider", () => {
 			// Mock window.onDidChangeVisibleTextEditors
 			vi.mocked(vscode.window.onDidChangeVisibleTextEditors).mockReturnValue({ dispose: vi.fn() })
 
-			// Set up for file
-			;(diffViewProvider as any).editType = "modify"
-
 			// Try to open and expect rejection
-			await expect(diffViewProvider.open("test.md")).rejects.toThrow(
+			await expect(diffViewProvider.open("test.md", "modify")).rejects.toThrow(
 				"Failed to execute diff command for /mock/cwd/test.md: Cannot open file",
 			)
 		})
@@ -367,7 +362,7 @@ describe("DiffViewProvider", () => {
 			expect(closedTabs.map((t) => t.label)).toContain(`file1.ts: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`)
 			expect(closedTabs.map((t) => t.label)).toContain(`file2.md: ${DIFF_VIEW_LABEL_CHANGES} (Editable)`)
 
-			// A dirty Roo diff tab IS now closed — after its modified document is
+			// A dirty Roo diff tab IS now closed: after its modified document is
 			// reverted to disk. The file is already correctly saved by Roo; leaving
 			// the dirty diff tab open is the user-reported bug. The regular file tab
 			// must still be untouched.
@@ -398,7 +393,7 @@ describe("DiffViewProvider", () => {
 			}
 			Object.setPrototypeOf(rooDiffTab.input, vscode.TabInputTextDiff.prototype)
 
-			// A foreign dirty tab — not a Roo diff view. Must never be closed.
+			// A foreign dirty tab: not a Roo diff view. Must never be closed.
 			const foreignTab = {
 				input: { uri: { fsPath: "/test/user-file.ts" } },
 				label: "user-file.ts",
@@ -432,7 +427,7 @@ describe("DiffViewProvider", () => {
 			// saveChanges() persists the modified document, VS Code clears the
 			// *tab's* isDirty flag asynchronously, on a later turn of the event
 			// loop. closeAllDiffViews() runs immediately after the save, so
-			// tabGroups.close() is invoked while the tab still reports dirty —
+			// tabGroups.close() is invoked while the tab still reports dirty:
 			// VS Code refuses it and the diff tab is orphaned: open, still showing
 			// the unsaved marker, even though the file on disk is already correct.
 			//
@@ -459,7 +454,7 @@ describe("DiffViewProvider", () => {
 			}
 			Object.setPrototypeOf(diffTab.input, vscode.TabInputTextDiff.prototype)
 
-			// The modified document is already clean — saveChanges() persisted it
+			// The modified document is already clean: saveChanges() persisted it
 			// before closeAllDiffViews() ran. Only the tab's flag is lagging.
 			;(vscode.workspace as any).textDocuments = [
 				{ uri: { scheme: "file", fsPath: "/test/new-file.ts" }, isDirty: false },
@@ -484,7 +479,7 @@ describe("DiffViewProvider", () => {
 
 			await (diffViewProvider as any).closeAllDiffViews()
 
-			// The diff tab must end up closed — not orphaned with the unsaved marker.
+			// The diff tab must end up closed: not orphaned with the unsaved marker.
 			expect(openTabs).toHaveLength(0)
 			// The first close() was refused; a later attempt succeeded.
 			expect(closeCalls.length).toBeGreaterThan(1)
@@ -565,7 +560,7 @@ describe("DiffViewProvider", () => {
 		it("should store results for formatFileWriteResponse", async () => {
 			await diffViewProvider.saveDirectly("test.ts", "new content", true, true, 1000)
 
-			// Verify internal state was updated — lastEditedRelPath is the
+			// Verify internal state was updated: lastEditedRelPath is the
 			// private field pushToolWriteResult reads; newContent is returned
 			// directly via finalContent, not stored on the provider.
 			expect((diffViewProvider as any).newProblemsMessage).toBe("")

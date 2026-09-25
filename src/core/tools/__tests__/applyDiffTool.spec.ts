@@ -7,6 +7,11 @@ import { getReadablePath } from "../../../utils/path"
 import { unescapeHtmlEntities } from "../../../utils/text-normalization"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { applyDiffTool } from "../ApplyDiffTool"
+import { pushToolWriteResult } from "../helpers/toolWriteResult"
+
+vi.mock("../helpers/toolWriteResult", () => ({
+	pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
+}))
 
 vi.mock("path", async () => {
 	const originalPath = await vi.importActual("path")
@@ -129,7 +134,6 @@ describe("applyDiffTool", () => {
 			isWriteProtected: vi.fn().mockReturnValue(false),
 		}
 		mockCline.diffViewProvider = {
-			editType: undefined,
 			isEditing: false,
 			originalContent: "",
 			open: vi.fn().mockResolvedValue(undefined),
@@ -142,7 +146,6 @@ describe("applyDiffTool", () => {
 				finalContent: "final content",
 			}),
 			scrollToFirstDiff: vi.fn(),
-			pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
 		}
 		mockCline.api = {
 			getModel: vi.fn().mockReturnValue({ id: "claude-3" }),
@@ -192,6 +195,20 @@ describe("applyDiffTool", () => {
 		return toolResult
 	}
 
+	describe("successful apply through the diff view", () => {
+		it("opens the diff view as a modify, saves, and returns the write result with the single-block notice", async () => {
+			const result = await executeApplyDiffTool()
+
+			expect(mockHandleError).not.toHaveBeenCalled()
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "modify")
+			expect(mockCline.diffViewProvider.saveChanges).toHaveBeenCalledWith(true, 1000)
+			expect(pushToolWriteResult).toHaveBeenCalledWith(mockCline, false)
+			expect(result).toBe(
+				"Tool result message\n<notice>Making multiple related changes in a single apply_diff is more efficient. If other changes are needed in this file, please include them as additional SEARCH/REPLACE blocks.</notice>",
+			)
+		})
+	})
+
 	describe("weak-model param handling", () => {
 		it("passes undefined (not NaN) as startLine when diff has no :start_line: marker", async () => {
 			const diffWithoutStartLine = "<<<<<<< SEARCH\nold\n=======\nnew\n>>>>>>> REPLACE"
@@ -200,7 +217,7 @@ describe("applyDiffTool", () => {
 
 			expect(mockCline.diffStrategy.applyDiff).toHaveBeenCalled()
 			const thirdArg = mockCline.diffStrategy.applyDiff.mock.calls[0][2]
-			// Must NOT be NaN — must be undefined.
+			// Must NOT be NaN: must be undefined.
 			expect(Number.isNaN(thirdArg)).toBe(false)
 			expect(thirdArg).toBeUndefined()
 		})

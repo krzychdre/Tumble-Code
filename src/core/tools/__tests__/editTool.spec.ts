@@ -9,6 +9,10 @@ import { getReadablePath } from "../../../utils/path"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { editTool } from "../EditTool"
 
+vi.mock("../helpers/toolWriteResult", () => ({
+	pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
+}))
+
 vi.mock("fs/promises", () => ({
 	default: {
 		readFile: vi.fn().mockResolvedValue(""),
@@ -120,7 +124,6 @@ describe("editTool", () => {
 			isWriteProtected: vi.fn().mockReturnValue(false),
 		}
 		mockTask.diffViewProvider = {
-			editType: undefined,
 			isEditing: false,
 			originalContent: "",
 			open: vi.fn().mockResolvedValue(undefined),
@@ -134,7 +137,6 @@ describe("editTool", () => {
 			}),
 			saveDirectly: vi.fn().mockResolvedValue(undefined),
 			scrollToFirstDiff: vi.fn(),
-			pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
 		}
 		mockTask.fileContextTracker = {
 			trackFileContext: vi.fn().mockResolvedValue(undefined),
@@ -229,7 +231,7 @@ describe("editTool", () => {
 			)
 
 			expect(mockTask.consecutiveMistakeCount).toBe(0)
-			expect(mockTask.diffViewProvider.editType).toBe("modify")
+			expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "modify")
 			expect(mockAskApproval).toHaveBeenCalled()
 		})
 	})
@@ -242,7 +244,7 @@ describe("editTool", () => {
 			)
 
 			expect(mockTask.consecutiveMistakeCount).toBe(0)
-			expect(mockTask.diffViewProvider.editType).toBe("modify")
+			expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "modify")
 			expect(mockAskApproval).toHaveBeenCalled()
 		})
 	})

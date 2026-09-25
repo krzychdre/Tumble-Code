@@ -23,6 +23,10 @@ import { editTool } from "../EditTool"
 import { searchReplaceTool } from "../SearchReplaceTool"
 import { applyDiffTool } from "../ApplyDiffTool"
 
+vi.mock("../helpers/toolWriteResult", () => ({
+	pushToolWriteResult: vi.fn().mockResolvedValue("written"),
+}))
+
 vi.mock("delay", () => ({ default: vi.fn() }))
 
 vi.mock("../../../utils/fs", () => ({
@@ -56,16 +60,15 @@ function makeTask(name: string): any {
 		rooIgnoreController: { validateAccess: vi.fn().mockReturnValue(true) },
 		rooProtectedController: { isWriteProtected: vi.fn().mockReturnValue(false) },
 		diffViewProvider: {
-			editType: undefined as "create" | "modify" | undefined,
 			isEditing: false,
 			originalContent: "",
 			open: vi.fn().mockResolvedValue(undefined),
+			editTypeOf: vi.fn().mockReturnValue(undefined),
 			update: vi.fn().mockResolvedValue(undefined),
 			reset: vi.fn().mockResolvedValue(undefined),
 			revertChanges: vi.fn().mockResolvedValue(undefined),
 			saveChanges: vi.fn().mockResolvedValue({ newProblemsMessage: "", userEdits: null, finalContent: "" }),
 			scrollToFirstDiff: vi.fn(),
-			pushToolWriteResult: vi.fn().mockResolvedValue("written"),
 		},
 		api: { getModel: () => ({ id: "claude-test" }) },
 		fileContextTracker: { trackFileContext: vi.fn().mockResolvedValue(undefined) },
@@ -180,7 +183,7 @@ describe("CORE-R12: tool partial-stream state lives on the task", () => {
 		})
 	})
 
-	it("write_to_file keeps its create/modify path and access memo on the task", async () => {
+	it("write_to_file keeps its access memo on the task", async () => {
 		const taskA = makeTask("a")
 
 		await writeToFileTool.handlePartial(taskA, STREAMING_TOOLS.write_to_file.partialBlock("src/a.ts"))
@@ -190,7 +193,6 @@ describe("CORE-R12: tool partial-stream state lives on the task", () => {
 			lastSeenPartialPath: "src/a.ts",
 			lastValidatedPartialPath: "src/a.ts",
 			lastPartialAccessAllowed: true,
-			editTypePath: "src/a.ts",
 		})
 	})
 
