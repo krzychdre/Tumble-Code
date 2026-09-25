@@ -1,20 +1,18 @@
 import fs from "fs/promises"
 import path from "path"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
+import { type ClineSayTool } from "@roo-code/types"
 
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
-import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
-import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
-import { sanitizeUnifiedDiff, computeDiffStats } from "../diff/stats"
-import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { applyComputedEdit } from "./helpers/applyComputedEdit"
+import { replaceLiteral } from "./helpers/replaceLiteral"
 
 interface EditFileParams {
 	file_path: string
@@ -40,32 +38,6 @@ function countOccurrences(str: string, substr: string): number {
 		pos = str.indexOf(substr, pos + substr.length)
 	}
 	return count
-}
-
-/**
- * Safely replace all occurrences of a literal string, handling $ escape sequences.
- * Standard String.replaceAll treats $ specially in the replacement string.
- * This function ensures literal replacement.
- *
- * @param str The original string
- * @param oldString The string to replace
- * @param newString The replacement string
- * @returns The string with all occurrences replaced
- */
-function safeLiteralReplace(str: string, oldString: string, newString: string): string {
-	if (oldString === "" || !str.includes(oldString)) {
-		return str
-	}
-
-	// If newString doesn't contain $, we can use replaceAll directly
-	if (!newString.includes("$")) {
-		return str.replaceAll(oldString, newString)
-	}
-
-	// Escape $ to prevent ECMAScript GetSubstitution issues
-	// $$ becomes a single $ in the output, so we double-escape
-	const escapedNewString = newString.replaceAll("$", "$$$$")
-	return str.replaceAll(oldString, escapedNewString)
 }
 
 function detectLineEnding(content: string): LineEnding {
@@ -149,7 +121,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 		const old_string = typeof params.old_string === "string" ? params.old_string : ""
 		const new_string = typeof params.new_string === "string" ? params.new_string : ""
 		const expected_replacements = params.expected_replacements ?? 1
-		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
+		const { handleError, pushToolResult, toolCallId } = callbacks
 		let relPathForErrorHandling: string | undefined
 		let operationPreviewForErrorHandling: string | undefined
 
@@ -220,9 +192,6 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 				pushToolResult(formatResponse.rooIgnoreError(relPath))
 				return
 			}
-
-			// Check if file is write-protected
-			const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
 
 			const absolutePath = path.resolve(task.cwd, relPath)
 			const fileExists = await fileExistsAtPath(absolutePath)
@@ -307,7 +276,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 				const exactOccurrences = countOccurrences(currentContentLF, oldLF)
 				if (exactOccurrences === expectedReplacements) {
 					// Apply literal replacement on LF-normalized content
-					currentContentLF = safeLiteralReplace(currentContentLF, oldLF, newLF)
+					currentContentLF = replaceLiteral(currentContentLF, oldLF, newLF, { all: true })
 				} else {
 					// Strategy 2: whitespace-tolerant regex
 					const wsOccurrences = countRegexMatches(currentContentLF, wsRegex)
@@ -376,101 +345,20 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			task.consecutiveMistakeCount = 0
 			task.consecutiveMistakeCountForEditFile.delete(relPath)
 
-			// Initialize diff view
-			task.diffViewProvider.editType = isNewFile ? "create" : "modify"
-			task.diffViewProvider.originalContent = currentContent || ""
-
-			// Generate and validate diff
-			const diff = formatResponse.createPrettyPatch(relPath, currentContent || "", newContent)
-			if (!diff && !isNewFile) {
-				task.consecutiveMistakeCount = 0
-				task.consecutiveMistakeCountForEditFile.delete(relPath)
-				await finalizePartialToolAskIfNeeded(relPath)
-				pushToolResult(`No changes needed for '${relPath}'`)
-				await task.diffViewProvider.reset()
+			const outcome = await applyComputedEdit(task, relPath, newContent, callbacks, {
+				originalContent: currentContent || "",
+				isNewFile,
+				cardTool: isNewFile ? "newFileCreated" : "appliedDiff",
+				resultSuffix: !isNewFile && expected_replacements > 1 ? ` (${expected_replacements} replacements)` : "",
+				onNoChanges: async () => {
+					task.consecutiveMistakeCount = 0
+					task.consecutiveMistakeCountForEditFile.delete(relPath)
+					await finalizePartialToolAskIfNeeded(relPath)
+				},
+			})
+			if (outcome !== "saved") {
 				return
 			}
-
-			// Check if preventFocusDisruption experiment is enabled
-			const provider = task.providerRef.deref()
-			const state = await provider?.getState()
-			const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
-			const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-			// Background/memory tasks (`silentWrites`) reuse the focus-disruption
-			// path: it writes straight to disk without opening a diff editor tab.
-			const isPreventFocusDisruptionEnabled =
-				task.silentWrites ||
-				experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
-
-			const sanitizedDiff = sanitizeUnifiedDiff(diff || "")
-			const diffStats = computeDiffStats(sanitizedDiff) || undefined
-			const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
-
-			const sharedMessageProps: ClineSayTool = {
-				tool: isNewFile ? "newFileCreated" : "appliedDiff",
-				path: getReadablePath(task.cwd, relPath),
-				diff: sanitizedDiff,
-				isOutsideWorkspace,
-				// Stamp the native tool-call id so the finalized-duplicate dedup
-				// links this complete card to its streaming placeholder.
-				toolCallId,
-			}
-
-			const completeMessage = JSON.stringify({
-				...sharedMessageProps,
-				content: sanitizedDiff,
-				isProtected: isWriteProtected,
-				diffStats,
-			} satisfies ClineSayTool)
-
-			// Show diff view if focus disruption prevention is disabled
-			if (!isPreventFocusDisruptionEnabled) {
-				await task.diffViewProvider.open(relPath)
-				await task.diffViewProvider.update(newContent, true)
-				task.diffViewProvider.scrollToFirstDiff()
-			}
-
-			const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
-
-			if (!didApprove) {
-				// Revert changes if diff view was shown
-				if (!isPreventFocusDisruptionEnabled) {
-					await task.diffViewProvider.revertChanges()
-				}
-				pushToolResult("Changes were rejected by the user.")
-				await task.diffViewProvider.reset()
-				return
-			}
-
-			// Save the changes
-			if (isPreventFocusDisruptionEnabled) {
-				// Direct file write without diff view or opening the file
-				await task.diffViewProvider.saveDirectly(
-					relPath,
-					newContent,
-					isNewFile,
-					diagnosticsEnabled,
-					writeDelayMs,
-				)
-			} else {
-				// Call saveChanges to update the DiffViewProvider properties
-				await task.diffViewProvider.saveChanges(diagnosticsEnabled, writeDelayMs)
-			}
-
-			// Track file edit operation
-			if (relPath) {
-				await task.fileContextTracker.trackFileContext(relPath, "roo_edited" as RecordSource)
-			}
-
-			task.didEditFile = true
-
-			// Get the formatted response message
-			const replacementInfo =
-				!isNewFile && expected_replacements > 1 ? ` (${expected_replacements} replacements)` : ""
-			const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, isNewFile)
-
-			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
-			pushToolResult(message + replacementInfo + (reviewNote ? `\n\n${reviewNote}` : ""))
 
 			// Record successful tool usage and cleanup
 			task.recordToolUsage("edit_file")

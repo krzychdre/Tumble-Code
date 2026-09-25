@@ -1,7 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
+import { type ClineSayTool } from "@roo-code/types"
 
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
@@ -9,10 +9,8 @@ import { Task } from "../task/Task"
 import { formatResponse } from "../prompts/responses"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
-import { EXPERIMENT_IDS, experiments } from "../../shared/experiments"
-import { sanitizeUnifiedDiff, computeDiffStats } from "../diff/stats"
-import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { applyComputedEdit, type EditSaveContext } from "./helpers/applyComputedEdit"
 import type { ToolUse } from "../../shared/tools"
 import { parsePatch, ParseError, processAllHunks } from "./apply-patch"
 import type { ApplyPatchFileChange } from "./apply-patch"
@@ -55,7 +53,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 
 	async execute(params: ApplyPatchParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { patch } = params
-		const { askApproval, handleError, pushToolResult } = callbacks
+		const { handleError, pushToolResult } = callbacks
 
 		try {
 			// Validate required parameters
@@ -113,18 +111,16 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 					return
 				}
 
-				// Check if file is write-protected
-				const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
-
 				if (change.type === "add") {
 					// Create new file
-					await this.handleAddFile(change, absolutePath, relPath, task, callbacks, isWriteProtected)
+					await this.handleAddFile(change, absolutePath, relPath, task, callbacks)
 				} else if (change.type === "delete") {
-					// Delete file
+					// Delete file (add and update check write protection in applyComputedEdit)
+					const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
 					await this.handleDeleteFile(absolutePath, relPath, task, callbacks, isWriteProtected)
 				} else if (change.type === "update") {
 					// Update file
-					await this.handleUpdateFile(change, absolutePath, relPath, task, callbacks, isWriteProtected)
+					await this.handleUpdateFile(change, absolutePath, relPath, task, callbacks)
 				}
 			}
 
@@ -142,9 +138,8 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		relPath: string,
 		task: Task,
 		callbacks: ToolCallbacks,
-		isWriteProtected: boolean,
 	): Promise<void> {
-		const { askApproval, pushToolResult, toolCallId } = callbacks
+		const { pushToolResult } = callbacks
 
 		// Check if file already exists
 		const fileExists = await fileExistsAtPath(absolutePath)
@@ -157,76 +152,16 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		}
 
 		const newContent = change.newContent || ""
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
 
-		// Initialize diff view for new file
-		task.diffViewProvider.editType = "create"
-		task.diffViewProvider.originalContent = undefined
-
-		const diff = formatResponse.createPrettyPatch(relPath, "", newContent)
-
-		// Check experiment settings
-		const provider = task.providerRef.deref()
-		const state = await provider?.getState()
-		const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
-		const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-		const isPreventFocusDisruptionEnabled = experiments.isEnabled(
-			state?.experiments ?? {},
-			EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
-		)
-
-		const sanitizedDiff = sanitizeUnifiedDiff(diff || "")
-		const diffStats = computeDiffStats(sanitizedDiff) || undefined
-
-		const sharedMessageProps: ClineSayTool = {
-			tool: "appliedDiff",
-			path: getReadablePath(task.cwd, relPath),
-			diff: sanitizedDiff,
-			isOutsideWorkspace,
-			// Stamp the native tool-call id so the finalized-duplicate dedup
-			// links this complete card to its streaming placeholder.
-			toolCallId,
-		}
-
-		const completeMessage = JSON.stringify({
-			...sharedMessageProps,
-			content: sanitizedDiff,
-			isProtected: isWriteProtected,
-			diffStats,
-		} satisfies ClineSayTool)
-
-		// Show diff view if focus disruption prevention is disabled
-		if (!isPreventFocusDisruptionEnabled) {
-			await task.diffViewProvider.open(relPath)
-			await task.diffViewProvider.update(newContent, true)
-			task.diffViewProvider.scrollToFirstDiff()
-		}
-
-		const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
-
-		if (!didApprove) {
-			if (!isPreventFocusDisruptionEnabled) {
-				await task.diffViewProvider.revertChanges()
-			}
-			pushToolResult("Changes were rejected by the user.")
-			await task.diffViewProvider.reset()
+		const outcome = await applyComputedEdit(task, relPath, newContent, callbacks, {
+			// A new file: no original content (not even ""), and no empty-diff check.
+			originalContent: undefined,
+			isNewFile: true,
+		})
+		if (outcome !== "saved") {
 			return
 		}
 
-		// Save the changes
-		if (isPreventFocusDisruptionEnabled) {
-			await task.diffViewProvider.saveDirectly(relPath, newContent, true, diagnosticsEnabled, writeDelayMs)
-		} else {
-			await task.diffViewProvider.saveChanges(diagnosticsEnabled, writeDelayMs)
-		}
-
-		// Track file edit operation
-		await task.fileContextTracker.trackFileContext(relPath, "roo_edited" as RecordSource)
-		task.didEditFile = true
-
-		const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, true)
-		const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
-		pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
 		await task.diffViewProvider.reset()
 		task.processQueuedMessages()
 	}
@@ -296,9 +231,8 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 		relPath: string,
 		task: Task,
 		callbacks: ToolCallbacks,
-		isWriteProtected: boolean,
 	): Promise<void> {
-		const { askApproval, pushToolResult, toolCallId } = callbacks
+		const { pushToolResult } = callbacks
 
 		// Check if file exists
 		const fileExists = await fileExistsAtPath(absolutePath)
@@ -312,147 +246,91 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 
 		const originalContent = change.originalContent || ""
 		const newContent = change.newContent || ""
-		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
+		const movePath = change.movePath
 
-		// Initialize diff view
-		task.diffViewProvider.editType = "modify"
-		task.diffViewProvider.originalContent = originalContent
-
-		// Generate and validate diff
-		const diff = formatResponse.createPrettyPatch(relPath, originalContent, newContent)
-		if (!diff) {
-			pushToolResult(`No changes needed for '${relPath}'`)
-			await task.diffViewProvider.reset()
-			return
-		}
-
-		// Check experiment settings
-		const provider = task.providerRef.deref()
-		const state = await provider?.getState()
-		const diagnosticsEnabled = state?.diagnosticsEnabled ?? SETTINGS_DEFAULTS.diagnosticsEnabled
-		const writeDelayMs = state?.writeDelayMs ?? DEFAULT_WRITE_DELAY_MS
-		const isPreventFocusDisruptionEnabled = experiments.isEnabled(
-			state?.experiments ?? {},
-			EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
-		)
-
-		const sanitizedDiff = sanitizeUnifiedDiff(diff)
-		const diffStats = computeDiffStats(sanitizedDiff) || undefined
-
-		const sharedMessageProps: ClineSayTool = {
-			tool: "appliedDiff",
-			path: getReadablePath(task.cwd, relPath),
-			diff: sanitizedDiff,
+		const outcome = await applyComputedEdit(task, relPath, newContent, callbacks, {
 			originalContent,
-			isOutsideWorkspace,
-			// Stamp the native tool-call id so the finalized-duplicate dedup
-			// links this complete card to its streaming placeholder.
-			toolCallId,
-		}
-
-		const completeMessage = JSON.stringify({
-			...sharedMessageProps,
-			content: sanitizedDiff,
-			isProtected: isWriteProtected,
-			diffStats,
-		} satisfies ClineSayTool)
-
-		// Show diff view if focus disruption prevention is disabled
-		if (!isPreventFocusDisruptionEnabled) {
-			await task.diffViewProvider.open(relPath)
-			await task.diffViewProvider.update(newContent, true)
-			task.diffViewProvider.scrollToFirstDiff()
-		}
-
-		const didApprove = await askApproval("tool", completeMessage, undefined, isWriteProtected)
-
-		if (!didApprove) {
-			if (!isPreventFocusDisruptionEnabled) {
-				await task.diffViewProvider.revertChanges()
-			}
-			pushToolResult("Changes were rejected by the user.")
-			await task.diffViewProvider.reset()
+			cardIncludesOriginalContent: true,
+			reviewRelPath: movePath || relPath,
+			// A move writes the new content to the destination and deletes the source.
+			save: movePath
+				? (context) => this.saveMovedFile(task, callbacks, absolutePath, movePath, newContent, context)
+				: undefined,
+		})
+		if (outcome !== "saved") {
 			return
 		}
 
-		// Handle file move if specified
-		if (change.movePath) {
-			const moveAbsolutePath = path.resolve(task.cwd, change.movePath)
-
-			// Validate destination path access permissions
-			const moveAccessAllowed = task.rooIgnoreController?.validateAccess(change.movePath)
-			if (!moveAccessAllowed) {
-				await task.say("rooignore_error", change.movePath)
-				pushToolResult(formatResponse.rooIgnoreError(change.movePath))
-				await task.diffViewProvider.reset()
-				return
-			}
-
-			// Check if destination path is write-protected
-			const isMovePathWriteProtected = task.rooProtectedController?.isWriteProtected(change.movePath) || false
-			if (isMovePathWriteProtected) {
-				this.recordFailure(task, "apply_patch")
-				const errorMessage = `Cannot move file to write-protected path: ${change.movePath}`
-				await task.say("error", errorMessage)
-				pushToolResult(formatResponse.toolError(errorMessage))
-				await task.diffViewProvider.reset()
-				return
-			}
-
-			// Check if destination path is outside workspace
-			const isMoveOutsideWorkspace = isPathOutsideWorkspace(moveAbsolutePath)
-			if (isMoveOutsideWorkspace) {
-				this.recordFailure(task, "apply_patch")
-				const errorMessage = `Cannot move file to path outside workspace: ${change.movePath}`
-				await task.say("error", errorMessage)
-				pushToolResult(formatResponse.toolError(errorMessage))
-				await task.diffViewProvider.reset()
-				return
-			}
-
-			// Save new content to the new path
-			if (isPreventFocusDisruptionEnabled) {
-				await task.diffViewProvider.saveDirectly(
-					change.movePath,
-					newContent,
-					false,
-					diagnosticsEnabled,
-					writeDelayMs,
-				)
-			} else {
-				// Write to new path and delete old file
-				const parentDir = path.dirname(moveAbsolutePath)
-				await fs.mkdir(parentDir, { recursive: true })
-				await fs.writeFile(moveAbsolutePath, newContent, "utf8")
-			}
-
-			// Delete the original file
-			try {
-				await fs.unlink(absolutePath)
-			} catch (error) {
-				console.error(`Failed to delete original file after move: ${error}`)
-			}
-
-			await task.fileContextTracker.trackFileContext(change.movePath, "roo_edited" as RecordSource)
-		} else {
-			// Save changes to the same file
-			if (isPreventFocusDisruptionEnabled) {
-				await task.diffViewProvider.saveDirectly(relPath, newContent, false, diagnosticsEnabled, writeDelayMs)
-			} else {
-				await task.diffViewProvider.saveChanges(diagnosticsEnabled, writeDelayMs)
-			}
-
-			await task.fileContextTracker.trackFileContext(relPath, "roo_edited" as RecordSource)
-		}
-
-		task.didEditFile = true
-
-		const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, false)
-		const reviewRelPath = change.movePath || relPath
-		const reviewNote = await pauseForPlanReviewIfNeeded(task, reviewRelPath)
-		pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
 		await task.diffViewProvider.reset()
 		task.processQueuedMessages()
+	}
+
+	/**
+	 * The save step of an update with "*** Move to:", run after the approval.
+	 * Returns false (after reporting to the model and resetting the diff view)
+	 * when the destination may not be written.
+	 */
+	private async saveMovedFile(
+		task: Task,
+		callbacks: ToolCallbacks,
+		absolutePath: string,
+		movePath: string,
+		newContent: string,
+		{ writesDirectly, diagnosticsEnabled, writeDelayMs }: EditSaveContext,
+	): Promise<boolean> {
+		const { pushToolResult } = callbacks
+		const moveAbsolutePath = path.resolve(task.cwd, movePath)
+
+		// Validate destination path access permissions
+		const moveAccessAllowed = task.rooIgnoreController?.validateAccess(movePath)
+		if (!moveAccessAllowed) {
+			await task.say("rooignore_error", movePath)
+			pushToolResult(formatResponse.rooIgnoreError(movePath))
+			await task.diffViewProvider.reset()
+			return false
+		}
+
+		// Check if destination path is write-protected
+		const isMovePathWriteProtected = task.rooProtectedController?.isWriteProtected(movePath) || false
+		if (isMovePathWriteProtected) {
+			this.recordFailure(task, "apply_patch")
+			const errorMessage = `Cannot move file to write-protected path: ${movePath}`
+			await task.say("error", errorMessage)
+			pushToolResult(formatResponse.toolError(errorMessage))
+			await task.diffViewProvider.reset()
+			return false
+		}
+
+		// Check if destination path is outside workspace
+		const isMoveOutsideWorkspace = isPathOutsideWorkspace(moveAbsolutePath)
+		if (isMoveOutsideWorkspace) {
+			this.recordFailure(task, "apply_patch")
+			const errorMessage = `Cannot move file to path outside workspace: ${movePath}`
+			await task.say("error", errorMessage)
+			pushToolResult(formatResponse.toolError(errorMessage))
+			await task.diffViewProvider.reset()
+			return false
+		}
+
+		// Save new content to the new path
+		if (writesDirectly) {
+			await task.diffViewProvider.saveDirectly(movePath, newContent, false, diagnosticsEnabled, writeDelayMs)
+		} else {
+			// Write to new path and delete old file
+			const parentDir = path.dirname(moveAbsolutePath)
+			await fs.mkdir(parentDir, { recursive: true })
+			await fs.writeFile(moveAbsolutePath, newContent, "utf8")
+		}
+
+		// Delete the original file
+		try {
+			await fs.unlink(absolutePath)
+		} catch (error) {
+			console.error(`Failed to delete original file after move: ${error}`)
+		}
+
+		await task.fileContextTracker.trackFileContext(movePath, "roo_edited" as RecordSource)
+		return true
 	}
 
 	override async handlePartial(task: Task, block: ToolUse<"apply_patch">): Promise<void> {
