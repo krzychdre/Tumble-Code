@@ -384,3 +384,7 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   item): the `user_edit_todos` row renders `UpdateTodoListToolBlock` without `todos`; its default `[]` is a new array
   per render and an effect keyed on it calls `setEditTodos`: endless re-render (hung the test worker), and the row
   shows none of the edited todos.
+- 2026-09-25 user_edit_todos row DONE #411: upstream bug since 7645aad43 (#5182): the row never passed `todos`, the
+  block's `todos = []` default re-created per render looped through `setEditTodos`, and the user-edit variant only
+  printed "User Edits". Row parses `{tool, todos}`; default is the stable `NO_TODOS`; read-only list shown; render
+  guard in specs throws after 50 renders; golden entry updated to the real payload shape.
