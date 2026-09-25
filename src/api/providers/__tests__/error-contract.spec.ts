@@ -86,7 +86,7 @@ function anthropicSdkError(status: number): Error {
 		status,
 		{ type: "error", error: { type: "api_error", message: `upstream says ${status}` } },
 		undefined,
-		{},
+		new Headers(),
 	)
 }
 
