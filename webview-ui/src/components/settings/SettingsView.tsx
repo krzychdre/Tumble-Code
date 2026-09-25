@@ -18,7 +18,6 @@ import {
 	Database,
 	SquareTerminal,
 	FlaskConical,
-	AlertTriangle,
 	Globe,
 	Info,
 	MessageSquare,
@@ -51,25 +50,11 @@ import { vscode } from "@src/utils/vscode"
 import { cn } from "@src/lib/utils"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { ExtensionStateContextType, useExtensionState } from "@src/context/ExtensionStateContext"
-import {
-	AlertDialog,
-	AlertDialogContent,
-	AlertDialogTitle,
-	AlertDialogDescription,
-	AlertDialogCancel,
-	AlertDialogAction,
-	AlertDialogHeader,
-	AlertDialogFooter,
-	Button,
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-	StandardTooltip,
-} from "@src/components/ui"
+import { Button, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, StandardTooltip } from "@src/components/ui"
 
 import { Tab, TabContent, TabHeader, TabList, TabTrigger } from "../common/Tab"
 import StorageErrorBanner from "../common/StorageErrorBanner"
+import { DiscardChangesDialog } from "../common/DiscardChangesDialog"
 import { SetCachedStateField, SetExperimentEnabled } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import ApiConfigManager from "./ApiConfigManager"
@@ -1038,27 +1023,11 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 				</TabContent>
 			</div>
 
-			<AlertDialog open={isDiscardDialogShow} onOpenChange={setDiscardDialogShow}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>
-							<AlertTriangle className="w-5 h-5 text-yellow-500" />
-							{t("settings:unsavedChangesDialog.title")}
-						</AlertDialogTitle>
-						<AlertDialogDescription>
-							{t("settings:unsavedChangesDialog.description")}
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel onClick={() => onConfirmDialogResult(false)}>
-							{t("settings:unsavedChangesDialog.cancelButton")}
-						</AlertDialogCancel>
-						<AlertDialogAction onClick={() => onConfirmDialogResult(true)}>
-							{t("settings:unsavedChangesDialog.discardButton")}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<DiscardChangesDialog
+				open={isDiscardDialogShow}
+				onOpenChange={setDiscardDialogShow}
+				onResult={onConfirmDialogResult}
+			/>
 		</Tab>
 	)
 })

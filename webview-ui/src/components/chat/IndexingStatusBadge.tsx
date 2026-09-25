@@ -10,7 +10,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { PopoverTrigger, StandardTooltip, Button } from "@src/components/ui"
 
-import { CodeIndexPopover } from "./CodeIndexPopover"
+import { CodeIndexPopover } from "@src/components/code-index/CodeIndexPopover"
 
 interface IndexingStatusBadgeProps {
 	className?: string
