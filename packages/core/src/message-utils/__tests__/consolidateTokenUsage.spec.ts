@@ -107,6 +107,47 @@ describe("consolidateTokenUsage", () => {
 			expect(result.totalTokensIn).toBe(0)
 		})
 
+		it("treats a JSON null or scalar payload like an unparseable one", () => {
+			vi.spyOn(console, "error").mockImplementation(() => {})
+			const messages: ClineMessage[] = [
+				createApiReqMessage(1000, { tokensIn: 100, tokensOut: 50, cost: 0.01 }),
+				{ ts: 1001, type: "say", say: "api_req_started", text: "null" },
+				{ ts: 1002, type: "say", say: "api_req_started", text: "42" },
+			]
+
+			const result = consolidateTokenUsage(messages)
+
+			expect(result.totalTokensIn).toBe(100)
+			expect(result.totalTokensOut).toBe(50)
+			expect(result.totalCost).toBe(0.01)
+			// The context scan walks back past the null and scalar payloads to the last real request.
+			expect(result.contextTokens).toBe(150)
+			vi.restoreAllMocks()
+		})
+
+		it("keeps scanning back for context tokens past an unparseable last request", () => {
+			vi.spyOn(console, "error").mockImplementation(() => {})
+			const messages: ClineMessage[] = [
+				createApiReqMessage(1000, { tokensIn: 300, tokensOut: 20 }),
+				{ ts: 1001, type: "say", say: "api_req_started", text: "{broken" },
+			]
+
+			const result = consolidateTokenUsage(messages)
+
+			expect(result.totalTokensIn).toBe(300)
+			expect(result.contextTokens).toBe(320)
+			vi.restoreAllMocks()
+		})
+
+		it("logs an unparseable request once (from the totals pass only)", () => {
+			const error = vi.spyOn(console, "error").mockImplementation(() => {})
+			consolidateTokenUsage([{ ts: 1000, type: "say", say: "api_req_started", text: "{broken" }])
+
+			expect(error).toHaveBeenCalledTimes(1)
+			expect(error.mock.calls[0]?.[0]).toBe("Error parsing JSON:")
+			vi.restoreAllMocks()
+		})
+
 		it("should skip non-api_req_started messages", () => {
 			const messages: ClineMessage[] = [
 				{ ts: 1000, type: "say", say: "text", text: "hello" },

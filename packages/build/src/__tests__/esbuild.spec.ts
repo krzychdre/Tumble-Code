@@ -96,3 +96,82 @@ describe("rmDir Windows attrib path — shell-injection regression (CodeQL #2-#5
 		expect(execSyncMock).not.toHaveBeenCalled()
 	})
 })
+
+describe("rmDir retry schedule (characterization)", () => {
+	const originalPlatform = process.platform
+
+	beforeEach(() => {
+		fsMocks.rmSync.mockReset()
+		fsMocks.lstatSync.mockReset()
+		fsMocks.existsSync.mockReset()
+		fsMocks.mkdirSync.mockReset()
+		fsMocks.readdirSync.mockReset()
+		Object.defineProperty(process, "platform", { value: "linux", configurable: true })
+		fsMocks.lstatSync.mockReturnValue({ isDirectory: () => true } as unknown as Stats)
+		fsMocks.existsSync.mockReturnValue(true)
+		fsMocks.readdirSync.mockReturnValue([])
+		// Advance the clock past every backoff delay so the wait returns at once.
+		let clock = 1_000_000
+		vi.spyOn(Date, "now").mockImplementation(() => (clock += 10_000))
+	})
+
+	afterEach(() => {
+		Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true })
+		vi.restoreAllMocks()
+	})
+
+	const busy = () => {
+		const err = new Error("resource busy") as Error & { code?: string }
+		err.code = "EBUSY"
+		return err
+	}
+
+	it("retries a retryable error with exponential backoff and then succeeds", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+		fsMocks.rmSync
+			.mockImplementationOnce(() => {
+				throw busy()
+			})
+			.mockImplementationOnce(() => {
+				throw busy()
+			})
+			.mockImplementation(() => undefined)
+		vi.spyOn(console, "log").mockImplementation(() => {})
+
+		copyPaths([["src", "dst"]], "/src-root", "/dst-root")
+
+		expect(fsMocks.rmSync).toHaveBeenCalledTimes(3)
+		const retryDelays = warn.mock.calls
+			.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1])
+			.filter(Boolean)
+		expect(retryDelays).toEqual(["100", "200"])
+	})
+
+	it("uses the 100, 200, 400, 800 ms schedule before the final attempt", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+		vi.spyOn(console, "error").mockImplementation(() => {})
+		fsMocks.rmSync.mockImplementation(() => {
+			throw busy()
+		})
+
+		expect(() => copyPaths([["src", "dst"]], "/src-root", "/dst-root")).toThrow("resource busy")
+
+		const retryDelays = warn.mock.calls
+			.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1])
+			.filter(Boolean)
+		expect(retryDelays).toEqual(["100", "200", "400", "800"])
+		// Five plain attempts plus the final alternative-cleanup rmSync.
+		expect(fsMocks.rmSync).toHaveBeenCalledTimes(6)
+	})
+
+	it("does not retry a non-retryable error", () => {
+		fsMocks.rmSync.mockImplementation(() => {
+			const err = new Error("bad") as Error & { code?: string }
+			err.code = "EINVAL"
+			throw err
+		})
+
+		expect(() => copyPaths([["src", "dst"]], "/src-root", "/dst-root")).toThrow("bad")
+		expect(fsMocks.rmSync).toHaveBeenCalledTimes(1)
+	})
+})
