@@ -40,6 +40,7 @@ type FakeTask = EventEmitter & {
 	options: Record<string, any>
 	clineMessages: Array<{ type: string; say?: string; text?: string }>
 	abortReason?: string
+	apiFailureMessage?: string
 	start: ReturnType<typeof vi.fn>
 	abortTask: ReturnType<typeof vi.fn>
 	fileContextTracker: { getAndClearCheckpointPossibleFile: ReturnType<typeof vi.fn> }
@@ -260,6 +261,25 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		expect(rm).not.toHaveBeenCalled()
 	})
 
+	it.each([
+		["a 401", 'API error 401 (invalid or missing API key) from provider "anthropic".'],
+		["exhausted retries", 'API error 500 from provider "anthropic" after 7 attempts.'],
+	])("abort after %s: reports the task's failure message", async (_label, failureMessage) => {
+		const runner = new BackgroundTaskRunner(makeHost().host)
+		const task = await started(runner)
+		const pending = runner.awaitTaskCompletion(task as never)
+
+		task.abortReason = "streaming_failed"
+		task.apiFailureMessage = failureMessage
+		task.emit(RooCodeEventName.TaskAborted)
+
+		await expect(pending).resolves.toMatchObject({
+			completed: false,
+			abortReason: "streaming_failed",
+			failureMessage,
+		})
+	})
+
 	it("cancel: the signal aborts the task (not abandoned) and the first terminal event wins", async () => {
 		const runner = new BackgroundTaskRunner(makeHost().host)
 		const task = await started(runner)
@@ -470,6 +490,65 @@ describe("BackgroundTaskRunner.memorySubTaskRunner retry classification", () => 
 		expect(log).toHaveBeenCalledWith(
 			"[memorySubTaskRunner] failed to load writer profile stale, falling back to foreground: not found",
 		)
+	})
+
+	// A background task that hits 401/403/404 ends as streaming_failed with a
+	// failure message (TaskApiLoop fail-fast). The runner must settle, keep the
+	// one foreground fallback for a writer profile, and log each failure once to
+	// the output channel, with no toast.
+	describe("a writer that fails fast on 401/403/404", () => {
+		const FAILURE = 'API error 401 (invalid or missing API key) from provider "ollama", model "small".'
+
+		async function run(writer: boolean) {
+			const { host, log } = makeHost({
+				getMemoryWriterApiConfigId: vi.fn(() => (writer ? "writer" : undefined)),
+				activateProfile: vi.fn(async () => ({ name: "writer", ...WRITER })),
+			})
+			const runner = new BackgroundTaskRunner(host)
+			const result = runner.memorySubTaskRunner({
+				cwd: "/mem",
+				systemPrompt: "",
+				userPrompt: "U",
+				maxTurns: 3,
+				signal: new AbortController().signal,
+			})
+			const failTask = async (n: number) => {
+				await vi.waitFor(() => expect(Task).toHaveBeenCalledTimes(n))
+				const task = lastTask()
+				task.abortReason = "streaming_failed"
+				task.apiFailureMessage = FAILURE
+				task.emit(RooCodeEventName.TaskAborted)
+			}
+			return { runner, result, log, failTask }
+		}
+
+		it("with a writer profile: one fallback run on the foreground profile, then it settles", async () => {
+			const { runner, result, log, failTask } = await run(true)
+
+			await failTask(1)
+			await failTask(2)
+
+			await expect(result).resolves.toMatchObject({ writtenPaths: expect.any(Array) })
+			expect(Task).toHaveBeenCalledTimes(2)
+			expect(vi.mocked(Task).mock.calls[0][0]).toMatchObject({ apiConfiguration: WRITER })
+			expect(vi.mocked(Task).mock.calls[1][0]).toMatchObject({ apiConfiguration: ACTIVE })
+			const failureLogs = log.mock.calls.filter(([line]) => String(line).includes(FAILURE))
+			expect(failureLogs).toHaveLength(2)
+			expect(showInformationMessage).not.toHaveBeenCalled()
+			expect(runner.memoryActivity.write).toBe(0)
+		})
+
+		it("without a writer profile: one run, logged once, then it settles", async () => {
+			const { result, log, failTask } = await run(false)
+
+			await failTask(1)
+
+			await expect(result).resolves.toMatchObject({ writtenPaths: expect.any(Array) })
+			expect(Task).toHaveBeenCalledTimes(1)
+			const failureLogs = log.mock.calls.filter(([line]) => String(line).includes(FAILURE))
+			expect(failureLogs).toHaveLength(1)
+			expect(showInformationMessage).not.toHaveBeenCalled()
+		})
 	})
 
 	it("a user cancel of a running writer settles without a retry or a second task", async () => {

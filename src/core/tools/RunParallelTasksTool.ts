@@ -246,7 +246,7 @@ interface SubtaskProvider {
 	awaitTaskCompletion(
 		task: Task,
 		options: { signal?: AbortSignal },
-	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[] }>
+	): Promise<{ completed: boolean; lastMessage?: string; writtenPaths: string[]; failureMessage?: string }>
 	getState(): Promise<ApprovalState & { parallelTasksMaxConcurrency?: number }>
 	subagentRegistry: SubtaskRegistry
 	getLiveTaskInstance(taskId: string): { messageQueueService: { addMessage(text: string): unknown } } | undefined
@@ -353,7 +353,7 @@ async function runOneSubtask({
 			registry.markTerminal(registryId, "cancelled")
 			return await finalize(cwd, { index, mode: subtask.mode, status: "cancelled", worktreePath, branch })
 		}
-		const error = outcome.completed ? undefined : "subtask aborted before completion"
+		const error = outcome.completed ? undefined : describeSubtaskFailure(outcome.failureMessage)
 		registry.markTerminal(
 			registryId,
 			outcome.completed ? "completed" : "failed",
@@ -380,6 +380,20 @@ async function runOneSubtask({
 			error: errorMessage,
 		})
 	}
+}
+
+/**
+ * The parent's view of a child that ended without completing. A child that
+ * hit 401, 403 or 404, or kept failing until the background retry cap, stops
+ * (TaskApiLoop) and says why; the hint keeps a weak parent model from
+ * starting the same subtask again.
+ */
+function describeSubtaskFailure(failureMessage: string | undefined): string {
+	if (!failureMessage) return "subtask aborted before completion"
+	return (
+		`${failureMessage} Retrying will not help now (the API key, model or profile needs fixing, ` +
+		"or the provider is down): do this work yourself in this task, or tell the user."
+	)
 }
 
 /** Attach cleanup outcome to a terminal subtask result. */

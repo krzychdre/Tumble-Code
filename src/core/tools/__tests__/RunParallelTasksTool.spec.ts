@@ -159,14 +159,17 @@ class FakeChild {
 		completed: boolean
 		lastMessage?: string
 		writtenPaths: string[]
+		abortReason?: string
+		failureMessage?: string
 	}> {
 		return new Promise((resolve) => {
 			let settled = false
-			const done = (completed: boolean) => {
+			const done = (completed: boolean, failure?: { abortReason: string; failureMessage: string }) => {
 				if (settled) return
 				settled = true
-				resolve({ completed, writtenPaths: [] })
+				resolve({ completed, writtenPaths: [], ...failure })
 			}
+			this._fail = (failureMessage: string) => done(false, { abortReason: "streaming_failed", failureMessage })
 			// If a signal is provided and it aborts, resolve as not-completed.
 			if (options.signal) {
 				if (options.signal.aborted) {
@@ -181,8 +184,13 @@ class FakeChild {
 		})
 	}
 	_resolveNormal: (() => void) | null = null
+	_fail: ((failureMessage: string) => void) | null = null
 	complete() {
 		this._resolveNormal?.()
+	}
+	/** End the child the way a 401/403/404 fail-fast does (TaskApiLoop). */
+	failWithApiError(failureMessage: string) {
+		this._fail?.(failureMessage)
 	}
 }
 
@@ -505,6 +513,35 @@ describe("RunParallelTasksTool.execute", () => {
 		expect(report).toContain("2 parallel subtask(s)")
 		expect(report).toContain("2 completed")
 		expect(report).not.toContain("cancelled")
+	})
+
+	it("a subtask that failed fast on an API error reports that error to the parent", async () => {
+		const provider = makeFakeProvider()
+		const parent = makeFakeParentTask(provider)
+		const callbacks = makeCallbacks()
+		const failure =
+			'API error 401 (invalid or missing API key) from provider "openai", model "gpt-x". Provider message: Incorrect API key provided.'
+
+		const execPromise = runParallelTasksTool.execute(
+			{ subtasks: [{ message: "task A" }, { message: "task B" }] },
+			parent,
+			callbacks,
+		)
+		await vi.waitFor(() => expect(provider.children.length).toBe(2))
+		provider.children[0].failWithApiError(failure)
+		provider.children[1].complete()
+		await execPromise
+
+		const report = callbacks.pushToolResult.mock.calls[0][0] as string
+		expect(report).toContain("1 completed, 1 failed")
+		expect(report).toContain(`Failed: ${failure}`)
+		expect(report).toContain("Retrying will not help")
+		expect(report).not.toContain("subtask aborted before completion")
+		expect(provider.subagentRegistry.markTerminal).toHaveBeenCalledWith(
+			provider.children[0].taskId,
+			"failed",
+			expect.stringContaining(failure),
+		)
 	})
 
 	it("cancel propagation: parent emits TaskAborted mid-run, both subtasks CANCELLED", async () => {

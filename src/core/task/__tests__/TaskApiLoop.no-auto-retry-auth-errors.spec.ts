@@ -15,11 +15,18 @@ function apiError(status: number | undefined): Error {
 	return error
 }
 
-function makeLoop(failure: Error, autoApprovalEnabled = true) {
+/**
+ * Fails more often than the background retry cap, but not forever: an
+ * uncapped loop still ends (and the test fails on the call count) instead of
+ * recursing until the worker dies.
+ */
+const FAILS_LONGER_THAN_THE_CAP = 20
+
+function makeLoop(failure: Error, autoApprovalEnabled = true, failures = 1) {
 	let calls = 0
 	const createMessage = vi.fn(async function* () {
 		calls++
-		if (calls === 1) throw failure
+		if (calls <= failures) throw failure
 		yield { type: "text" as const, text: "recovered" }
 	})
 	const access: any = {
@@ -80,19 +87,22 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 	})
 
 	describe("first-chunk failure with auto-approve on", () => {
-		it.each([401, 403, 404])("status %s: no backoff, no retry, the failure is surfaced as api_req_failed", async (status) => {
-			const failure = apiError(status)
-			const { loop, access, createMessage, backoff } = makeLoop(failure)
+		it.each([401, 403, 404])(
+			"status %s: no backoff, no retry, the failure is surfaced as api_req_failed",
+			async (status) => {
+				const failure = apiError(status)
+				const { loop, access, createMessage, backoff } = makeLoop(failure)
 
-			const { chunks, thrown } = await drain(loop.attemptApiRequest())
+				const { chunks, thrown } = await drain(loop.attemptApiRequest())
 
-			expect(backoff).not.toHaveBeenCalled()
-			expect(createMessage).toHaveBeenCalledTimes(1)
-			expect(access.askSay.ask).toHaveBeenCalledWith("api_req_failed", failure.message)
-			// The user declined the manual retry: the request fails like the non-auto-approve path.
-			expect(chunks).toEqual([])
-			expect((thrown as Error).message).toBe("API request failed")
-		})
+				expect(backoff).not.toHaveBeenCalled()
+				expect(createMessage).toHaveBeenCalledTimes(1)
+				expect(access.askSay.ask).toHaveBeenCalledWith("api_req_failed", failure.message)
+				// The user declined the manual retry: the request fails like the non-auto-approve path.
+				expect(chunks).toEqual([])
+				expect((thrown as Error).message).toBe("API request failed")
+			},
+		)
 
 		it("status 401: the user's manual Retry sends the request again", async () => {
 			const { loop, access, createMessage, backoff } = makeLoop(apiError(401))
@@ -141,17 +151,251 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 		})
 	})
 
-	it("a background task keeps the backoff retry for 401 (nobody watches its asks)", async () => {
-		const failure = apiError(401)
-		const { loop, access, createMessage, backoff } = makeLoop(failure)
-		access.isBackground = true
+	// A background task (memory writer, parallel subagent) has nobody to ask:
+	// its approval policy answers api_req_failed with an instant approve, so the
+	// ask would become a tight loop. For 401, 403 and 404 it fails fast instead:
+	// one request, no backoff, no ask, the task ends as streaming_failed and
+	// records a short failure message for whoever awaits it.
+	describe("background task", () => {
+		function backgroundLoop(status: number | undefined, autoApprovalEnabled = true) {
+			const failure = apiError(status)
+			const made = makeLoop(failure, autoApprovalEnabled)
+			made.access.isBackground = true
+			made.access.abortTask = vi.fn(async () => {
+				made.access.abort = true
+			})
+			return { ...made, failure }
+		}
 
-		const { chunks } = await drain(loop.attemptApiRequest())
+		it.each([
+			[401, true],
+			[403, true],
+			[404, true],
+			[401, false],
+		])(
+			"first-chunk %s (auto-approve %s): one request, no backoff, no ask, the task ends with a failure message",
+			async (status, autoApprovalEnabled) => {
+				const { loop, access, createMessage, backoff, failure } = backgroundLoop(status, autoApprovalEnabled)
 
-		expect(backoff).toHaveBeenCalledWith(0, failure)
-		expect(access.askSay.ask).not.toHaveBeenCalledWith("api_req_failed", expect.anything())
-		expect(createMessage).toHaveBeenCalledTimes(2)
-		expect(chunks).toEqual([{ type: "text", text: "recovered" }])
+				const { chunks, thrown } = await drain(loop.attemptApiRequest())
+
+				expect(chunks).toEqual([])
+				expect(thrown).toBe(failure)
+				expect(createMessage).toHaveBeenCalledTimes(1)
+				expect(backoff).not.toHaveBeenCalled()
+				expect(access.askSay.ask).not.toHaveBeenCalled()
+
+				// processStream hands the thrown error to handleStreamError.
+				const abortStream = vi.fn().mockResolvedValue(undefined)
+				const stack: any[] = []
+				const result = await (loop as any).handleStreamError(
+					thrown,
+					abortStream,
+					{ retryAttempt: 0 },
+					[],
+					stack,
+				)
+
+				expect(result).toBe("return_true")
+				expect(stack).toEqual([])
+				expect(backoff).not.toHaveBeenCalled()
+				expect(access.askSay.ask).not.toHaveBeenCalled()
+				expect(createMessage).toHaveBeenCalledTimes(1)
+				expect(abortStream).toHaveBeenCalledWith("streaming_failed", expect.any(String))
+				expect(access.abortReason).toBe("streaming_failed")
+				expect(access.abortTask).toHaveBeenCalledTimes(1)
+				expect(access.apiFailureMessage).toContain(`API error ${status}`)
+				expect(access.apiFailureMessage).toContain("anthropic")
+				expect(access.apiFailureMessage).toContain("test-model")
+				expect(access.apiFailureMessage).toContain(failure.message)
+			},
+		)
+
+		it("names the reason for each status in the failure message", async () => {
+			const reasons: Record<number, string> = {
+				401: "invalid or missing API key",
+				403: "access forbidden",
+				404: "model or endpoint not found",
+			}
+			for (const [status, reason] of Object.entries(reasons)) {
+				const { loop, access, failure } = backgroundLoop(Number(status))
+				await (loop as any).handleStreamError(failure, vi.fn(), { retryAttempt: 0 }, [], [])
+				expect(access.apiFailureMessage).toContain(reason)
+			}
+		})
+
+		it.each([401, 403, 404])("mid-stream %s: no backoff, no ask, no requeue, the task ends", async (status) => {
+			const { loop, access, backoff, failure } = backgroundLoop(status)
+			const stack: any[] = []
+
+			const result = await (loop as any).handleStreamError(failure, vi.fn(), { retryAttempt: 2 }, [], stack)
+
+			expect(result).toBe("return_true")
+			expect(stack).toEqual([])
+			expect(backoff).not.toHaveBeenCalled()
+			expect(access.askSay.ask).not.toHaveBeenCalled()
+			expect(access.abortReason).toBe("streaming_failed")
+			expect(access.abortTask).toHaveBeenCalledTimes(1)
+			expect(access.apiFailureMessage).toContain(`API error ${status}`)
+		})
+
+		// Background tasks never reach the api_req_failed ask: their approval
+		// policy approves it at once, so with auto-approve off a retryable error
+		// used to re-request in a tight loop with no delay.
+		it.each([
+			["400", 400, true],
+			["429", 429, true],
+			["500", 500, true],
+			["no status", undefined, true],
+			["400", 400, false],
+			["429", 429, false],
+			["500", 500, false],
+			["no status", undefined, false],
+		])(
+			"%s (status %s, auto-approve %s): backs off and retries on both paths, never asks",
+			async (_label, status, autoApprovalEnabled) => {
+				const first = backgroundLoop(status, autoApprovalEnabled)
+				const { chunks, thrown } = await drain(first.loop.attemptApiRequest())
+				expect(thrown).toBeUndefined()
+				expect(first.backoff).toHaveBeenCalledWith(0, first.failure)
+				expect(first.createMessage).toHaveBeenCalledTimes(2)
+				expect(chunks).toEqual([{ type: "text", text: "recovered" }])
+
+				const mid = backgroundLoop(status, autoApprovalEnabled)
+				const stack: any[] = []
+				const result = await (mid.loop as any).handleStreamError(
+					mid.failure,
+					vi.fn(),
+					{ retryAttempt: 2 },
+					[],
+					stack,
+				)
+				expect(result).toBe("continue")
+				expect(mid.backoff).toHaveBeenCalledWith(2, mid.failure)
+				expect(stack).toHaveLength(1)
+
+				for (const run of [first, mid]) {
+					expect(run.access.askSay.ask).not.toHaveBeenCalled()
+					expect(run.access.abortTask).not.toHaveBeenCalled()
+					expect(run.access.apiFailureMessage).toBeUndefined()
+				}
+			},
+		)
+
+		it("an empty model response backs off instead of asking (auto-approve off)", async () => {
+			const { loop, access, backoff } = backgroundLoop(500, false)
+			access.consecutiveNoAssistantMessagesCount = 0
+			access.history = { addToApiConversationHistory: vi.fn().mockResolvedValue(undefined) }
+			const stack: any[] = []
+
+			const result = await (loop as any).handleEmptyAssistantResponse({ retryAttempt: 1 }, [], stack)
+
+			expect(result).toBe("continue")
+			expect(backoff).toHaveBeenCalledWith(1, expect.any(Error))
+			expect(access.askSay.ask).not.toHaveBeenCalled()
+			expect(stack).toHaveLength(1)
+		})
+
+		// Backoff alone is not a bound: the first-chunk retry recurses inside
+		// attemptApiRequest and never counts against maxAgentTurns. After
+		// BACKGROUND_MAX_API_RETRIES retries (5+10+20+40+80+160 s = 315 s of
+		// backoff at the default 5 s base) the task ends like a 401 does.
+		it.each([true, false])(
+			"500 on every request (auto-approve %s): 7 requests, 6 backoffs, then the task ends",
+			async (autoApprovalEnabled) => {
+				const failure = apiError(500)
+				const made = makeLoop(failure, autoApprovalEnabled, FAILS_LONGER_THAN_THE_CAP)
+				made.access.isBackground = true
+				made.access.abortTask = vi.fn(async () => {
+					made.access.abort = true
+				})
+
+				const { thrown } = await drain(made.loop.attemptApiRequest())
+
+				expect(made.createMessage).toHaveBeenCalledTimes(7)
+				expect(made.backoff.mock.calls.map(([attempt]) => attempt)).toEqual([0, 1, 2, 3, 4, 5])
+				expect(made.access.askSay.ask).not.toHaveBeenCalled()
+
+				const stack: any[] = []
+				const result = await (made.loop as any).handleStreamError(
+					thrown,
+					vi.fn(),
+					{ retryAttempt: 0 },
+					[],
+					stack,
+				)
+
+				expect(result).toBe("return_true")
+				expect(stack).toEqual([])
+				expect(made.createMessage).toHaveBeenCalledTimes(7)
+				expect(made.access.abortReason).toBe("streaming_failed")
+				expect(made.access.abortTask).toHaveBeenCalledTimes(1)
+				expect(made.access.apiFailureMessage).toContain("API error 500")
+				expect(made.access.apiFailureMessage).toContain("anthropic")
+				expect(made.access.apiFailureMessage).toContain("after 7 attempts")
+				expect(made.access.apiFailureMessage).toContain(failure.message)
+			},
+		)
+
+		it("mid-stream: a failure at the retry cap ends the task instead of requeueing", async () => {
+			const { loop, access, backoff, failure } = backgroundLoop(500, false)
+			const stack: any[] = []
+
+			const result = await (loop as any).handleStreamError(failure, vi.fn(), { retryAttempt: 6 }, [], stack)
+
+			expect(result).toBe("return_true")
+			expect(stack).toEqual([])
+			expect(backoff).not.toHaveBeenCalled()
+			expect(access.askSay.ask).not.toHaveBeenCalled()
+			expect(access.abortReason).toBe("streaming_failed")
+			expect(access.abortTask).toHaveBeenCalledTimes(1)
+			expect(access.apiFailureMessage).toContain("API error 500")
+			expect(access.apiFailureMessage).toContain("after 7 attempts")
+		})
+
+		it("without a status the failure line says the request failed", async () => {
+			const { loop, access, failure } = backgroundLoop(undefined, false)
+
+			await (loop as any).handleStreamError(failure, vi.fn(), { retryAttempt: 6 }, [], [])
+
+			expect(access.apiFailureMessage).toMatch(/^API request failed from provider "anthropic"/)
+			expect(access.apiFailureMessage).toContain("socket hang up")
+		})
+
+		it("fake timers: auto-approve off, 500: requests are spaced by the real backoff", async () => {
+			vi.useFakeTimers()
+			try {
+				const failure = apiError(500)
+				const made = makeLoop(failure, false, FAILS_LONGER_THAN_THE_CAP)
+				made.access.isBackground = true
+				made.backoff.mockRestore()
+				made.access.abortTask = vi.fn(async () => {
+					made.access.abort = true
+				})
+
+				const done = drain(made.loop.attemptApiRequest())
+				const callsAfter = async (ms: number) => {
+					await vi.advanceTimersByTimeAsync(ms)
+					return made.createMessage.mock.calls.length
+				}
+
+				expect(await callsAfter(0)).toBe(1)
+				expect(await callsAfter(4_900)).toBe(1)
+				expect(await callsAfter(200)).toBe(2) // 5 s after the first failure
+				expect(await callsAfter(9_800)).toBe(2)
+				expect(await callsAfter(200)).toBe(3) // 10 s after the second
+				expect(await callsAfter(20_000)).toBe(4) // 20 s after the third
+				expect(await callsAfter(40_000 + 80_000 + 160_000)).toBe(7)
+				const { thrown } = await done
+				expect(made.access.askSay.ask).not.toHaveBeenCalled()
+
+				await (made.loop as any).handleStreamError(thrown, vi.fn(), { retryAttempt: 0 }, [], [])
+				expect(made.access.abortTask).toHaveBeenCalledTimes(1)
+				expect(made.access.apiFailureMessage).toContain("after 7 attempts")
+			} finally {
+				vi.useRealTimers()
+			}
+		})
 	})
 
 	describe("mid-stream failure with auto-approve on", () => {
@@ -166,16 +410,19 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 			return { run, access, backoff, stack, failure }
 		}
 
-		it.each([401, 403, 404])("status %s: no backoff, asks api_req_failed; declining stops the loop", async (status) => {
-			const { run, access, backoff, stack, failure } = midStream(status, "noButtonClicked")
+		it.each([401, 403, 404])(
+			"status %s: no backoff, asks api_req_failed; declining stops the loop",
+			async (status) => {
+				const { run, access, backoff, stack, failure } = midStream(status, "noButtonClicked")
 
-			const result = await run()
+				const result = await run()
 
-			expect(backoff).not.toHaveBeenCalled()
-			expect(access.askSay.ask).toHaveBeenCalledWith("api_req_failed", failure.message)
-			expect(stack).toEqual([])
-			expect(result).toBe("return_true")
-		})
+				expect(backoff).not.toHaveBeenCalled()
+				expect(access.askSay.ask).toHaveBeenCalledWith("api_req_failed", failure.message)
+				expect(stack).toEqual([])
+				expect(result).toBe("return_true")
+			},
+		)
 
 		it("status 401: the user's manual Retry queues the request again", async () => {
 			const { run, access, backoff, stack } = midStream(401, "yesButtonClicked")

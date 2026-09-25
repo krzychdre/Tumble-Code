@@ -35,6 +35,11 @@ export interface BackgroundTaskOutcome {
 	lastMessage?: string
 	writtenPaths: string[]
 	abortReason?: string
+	/**
+	 * Why the task stopped when its API request failed with 401, 403 or 404
+	 * (Task#apiFailureMessage): status, reason, provider and model in one line.
+	 */
+	failureMessage?: string
 }
 
 /** Live memory-system activity counters ("recalling/writing memory..." badge). */
@@ -218,7 +223,12 @@ export class BackgroundTaskRunner {
 				void task.abortTask().catch(() => {})
 			}
 
-			const finish = (result: { completed: boolean; lastMessage?: string; abortReason?: string }) => {
+			const finish = (result: {
+				completed: boolean
+				lastMessage?: string
+				abortReason?: string
+				failureMessage?: string
+			}) => {
 				if (settled) return
 				settled = true
 				task.off(RooCodeEventName.TaskCompleted, onCompleted)
@@ -262,7 +272,14 @@ export class BackgroundTaskRunner {
 			// Capture the abortReason at abort time so the caller can classify
 			// the failure (Claim 3). task.abortReason is set by TaskApiLoop
 			// before abortTask() fires TaskAborted.
-			const onAborted = () => finish({ completed: false, abortReason: task.abortReason })
+			// A background task that hit 401/403/404 records why (TaskApiLoop
+			// ends it at once instead of retrying): pass that on too.
+			const onAborted = () =>
+				finish({
+					completed: false,
+					abortReason: task.abortReason,
+					...(task.apiFailureMessage ? { failureMessage: task.apiFailureMessage } : {}),
+				})
 
 			task.on(RooCodeEventName.TaskCompleted, onCompleted)
 			task.on(RooCodeEventName.TaskAborted, onAborted)
@@ -392,7 +409,15 @@ export class BackgroundTaskRunner {
 			silentWrites: true,
 			apiConfiguration,
 		})
-		const { completed, writtenPaths, abortReason } = await this.awaitTaskCompletion(task, { signal })
+		const { completed, writtenPaths, abortReason, failureMessage } = await this.awaitTaskCompletion(task, {
+			signal,
+		})
+		// A 401/403/404 ends the writer at once (no retry storm); say why, once,
+		// in the output channel. The caller decides on the foreground fallback.
+		if (failureMessage) {
+			const profile = apiConfiguration ? "memory writer profile" : "foreground profile"
+			this.host.log(`[memorySubTaskRunner] memory writer stopped on the ${profile}: ${failureMessage}`)
+		}
 		return { completed, writtenPaths, abortReason }
 	}
 

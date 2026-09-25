@@ -21,7 +21,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { type ApiStream } from "../../api/transform/stream"
-import { isAutoRetryableApiError } from "../../api/apiErrors"
+import { describeBackgroundApiFailure, isAutoRetryableApiError } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
@@ -67,6 +67,33 @@ class ApiRetryDeclinedError extends Error {
 	}
 }
 
+/**
+ * Retries a background task gets for a retryable API error (400, 429, 5xx, no
+ * status) before it ends: 6 backoffs of 5, 10, 20, 40, 80 and 160 s at the
+ * default 5 s base (315 s in total), so 7 requests. Foreground tasks have no
+ * cap (the user sees the countdown and can cancel). The first-chunk retry
+ * recurses inside attemptApiRequest and never counts against maxAgentTurns,
+ * so without this cap a background task would retry forever.
+ */
+export const BACKGROUND_MAX_API_RETRIES = 6
+
+/**
+ * Thrown out of attemptApiRequest when a background task used up
+ * BACKGROUND_MAX_API_RETRIES. handleStreamError recognises it and ends the
+ * task with the original error and the number of requests made.
+ */
+class BackgroundRetriesExhaustedError extends Error {
+	constructor(
+		readonly apiError: unknown,
+		readonly attempts: number,
+	) {
+		// The request row (abortStream) shows this message: keep the provider's.
+		const original = apiError instanceof Error ? apiError.message : String(apiError)
+		super(`${original} (gave up after ${attempts} attempts)`)
+		this.name = "BackgroundRetriesExhaustedError"
+	}
+}
+
 // Re-export functions for backward compatibility
 export { getLastGlobalApiRequestTime, setLastGlobalApiRequestTime, resetGlobalApiRequestTime } from "./RetryHandler"
 
@@ -83,6 +110,8 @@ export interface TaskApiLoopAccess {
 	abort: boolean
 	abandoned: boolean
 	abortReason?: ClineApiReqCancelReason
+	// Why a background task ended on a non-retryable API error (see Task#apiFailureMessage).
+	apiFailureMessage?: string
 
 	// API configuration and handler
 	apiConfiguration: ProviderSettings
@@ -979,7 +1008,10 @@ export class TaskApiLoop {
 
 		const state = await this.access.providerRef.deref()?.getState()
 
-		if (state?.autoApprovalEnabled) {
+		// A background task never asks (its approval policy would approve the
+		// api_req_failed ask at once, a retry with no delay): it backs off.
+		// Each retry is a new loop turn, so maxAgentTurns bounds it.
+		if (state?.autoApprovalEnabled || this.access.isBackground) {
 			await this.backoffAndAnnounce(
 				currentItem.retryAttempt ?? 0,
 				new Error(
@@ -1068,6 +1100,25 @@ export class TaskApiLoop {
 					return "return_true"
 				}
 
+				// A background task never retries 401, 403 or 404 (first chunk,
+				// rethrown by handleApiRequestError, or mid-stream): it ends now.
+				if (this.mustFailFast(error)) {
+					await this.endBackgroundTaskOnApiError(error)
+					return "return_true"
+				}
+
+				// A background task that used up its retries ends too: on the first
+				// chunk (thrown by handleApiRequestError) or mid-stream.
+				if (error instanceof BackgroundRetriesExhaustedError) {
+					await this.endBackgroundTaskOnApiError(error.apiError, error.attempts)
+					return "return_true"
+				}
+				const midStreamAttempt = currentItem.retryAttempt ?? 0
+				if (this.access.isBackground && midStreamAttempt >= BACKGROUND_MAX_API_RETRIES) {
+					await this.endBackgroundTaskOnApiError(error, midStreamAttempt + 1)
+					return "return_true"
+				}
+
 				console.error(
 					`[Task#${this.access.taskId}.${this.access.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
 				)
@@ -1075,7 +1126,7 @@ export class TaskApiLoop {
 				// 401, 403 and 404 never fix themselves: ask the user instead of
 				// retrying, with or without auto-approval (same ask as the
 				// first-chunk path in handleApiRequestError).
-				if (!this.mayAutoRetry(error)) {
+				if (!isAutoRetryableApiError(error)) {
 					const { response } = await this.access.askSay.ask("api_req_failed", rawErrorMessage)
 
 					if (response !== "yesButtonClicked") {
@@ -1092,8 +1143,11 @@ export class TaskApiLoop {
 					return "continue"
 				}
 
+				// A background task always backs off: without auto-approval a
+				// foreground task retries only when the user clicks Retry, but a
+				// background task has nobody to click it.
 				const stateForBackoff = await this.access.providerRef.deref()?.getState()
-				if (stateForBackoff?.autoApprovalEnabled) {
+				if (stateForBackoff?.autoApprovalEnabled || this.access.isBackground) {
 					await this.backoffAndAnnounce(currentItem.retryAttempt ?? 0, error)
 
 					if (this.access.abort) {
@@ -1420,9 +1474,22 @@ export class TaskApiLoop {
 			return
 		}
 
+		// A background task has nobody to ask (its approval policy answers
+		// api_req_failed with an instant approve, which would retry in a tight
+		// loop): for 401, 403 and 404 hand the error on unchanged, and
+		// handleStreamError ends the task.
+		if (this.mustFailFast(error)) {
+			throw error
+		}
+		if (this.access.isBackground && retryAttempt >= BACKGROUND_MAX_API_RETRIES) {
+			throw new BackgroundRetriesExhaustedError(error, retryAttempt + 1)
+		}
+
 		// 401, 403 and 404 never fix themselves: even with auto-approval on they
 		// go to the user (the api_req_failed ask below) instead of looping.
-		if (autoApprovalEnabled && this.mayAutoRetry(error)) {
+		// A background task never reaches that ask (its approval policy would
+		// approve it at once, a retry with no delay): it always backs off.
+		if ((autoApprovalEnabled || this.access.isBackground) && isAutoRetryableApiError(error)) {
 			await this.backoffAndAnnounce(retryAttempt, error)
 
 			if (this.access.abort) {
@@ -1450,15 +1517,41 @@ export class TaskApiLoop {
 	}
 
 	/**
-	 * Whether a failed request may be retried without asking the user. False
-	 * for 401, 403 and 404 (see isAutoRetryableApiError), but only in a
-	 * foreground task: a background task has nobody watching its asks, and a
-	 * parallel subagent's approval policy answers api_req_failed with an
-	 * instant "retry", so asking there would turn the backoff loop into a
-	 * tight one. Background tasks keep the backoff retry.
+	 * Whether a failed request must end the task instead of being retried: a
+	 * background task (memory writer, parallel subagent) that got 401, 403 or
+	 * 404 (see isAutoRetryableApiError). A foreground task asks the user
+	 * instead; every other error keeps the backoff retry.
 	 */
-	private mayAutoRetry(error: unknown): boolean {
-		return this.access.isBackground || isAutoRetryableApiError(error)
+	private mustFailFast(error: unknown): boolean {
+		return this.access.isBackground && !isAutoRetryableApiError(error)
+	}
+
+	/**
+	 * End a background task after a non-retryable API error, or a retryable
+	 * one after BACKGROUND_MAX_API_RETRIES (`attempts` requests): record one line
+	 * for whoever awaits it (BackgroundTaskRunner.awaitTaskCompletion hands it
+	 * to the parallel-subagent parent and the memory-writer log) and abort as
+	 * `streaming_failed`, so the memory runner keeps its one fallback run on
+	 * the foreground profile.
+	 */
+	private async endBackgroundTaskOnApiError(error: unknown, attempts?: number): Promise<void> {
+		let model: string | undefined
+		try {
+			model = this.access.api.getModel().id
+		} catch {
+			// The message just omits the model.
+		}
+		const message = describeBackgroundApiFailure(error, {
+			provider: this.access.apiConfiguration?.apiProvider,
+			model,
+			attempts,
+		})
+		this.access.apiFailureMessage = message
+		console.error(
+			`[Task#${this.access.taskId}.${this.access.instanceId}] Background task stopped, not retrying: ${message}`,
+		)
+		this.access.abortReason = "streaming_failed"
+		await this.access.abortTask()
 	}
 
 	/**
