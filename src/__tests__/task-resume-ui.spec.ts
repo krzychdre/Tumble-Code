@@ -177,6 +177,8 @@ function makeProvider(overrides: Record<string, any> = {}) {
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		updateGlobalState: vi.fn().mockResolvedValue(undefined),
 		log: vi.fn(),
+		// The mode and profile restore moved to ModeProfileBinding (CORE-R6 c).
+		modeProfiles: { restoreForHistoryItem: vi.fn().mockResolvedValue(undefined) },
 		customModesManager: { getCustomModes: vi.fn().mockResolvedValue([]) },
 		providerSettingsManager: {
 			getModeConfigId: vi.fn().mockResolvedValue(undefined),
