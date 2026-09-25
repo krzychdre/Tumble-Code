@@ -4,9 +4,9 @@ import OpenAI from "openai"
 import type { ModelInfo } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
-import { TagMatcher } from "../../utils/tag-matcher"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { DEFAULT_HEADERS } from "./constants"
@@ -14,8 +14,6 @@ import { BaseProvider } from "./base-provider"
 import { handleProviderError } from "./utils/error-handler"
 import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { calculateApiCostOpenAI } from "../../shared/cost"
-import { extractReasoningFromDelta } from "./utils/extract-reasoning"
-import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
 	providerName: string
@@ -143,63 +141,20 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	): ApiStream {
 		const stream = await this.createStream(systemPrompt, messages, metadata)
 
-		const matcher = new TagMatcher(
-			["think", "thought"],
-			(chunk) =>
-				({
-					type: chunk.matched ? "reasoning" : "text",
-					text: chunk.data,
-				}) as const,
-		)
-
-		let lastUsage: OpenAI.CompletionUsage | undefined
-
 		try {
-			for await (const chunk of stream) {
-				// Check for provider-specific error responses (e.g., MiniMax base_resp)
-				const chunkAny = chunk as any
-				if (chunkAny.base_resp?.status_code && chunkAny.base_resp.status_code !== 0) {
-					throw new Error(
-						`${this.providerName} API Error (${chunkAny.base_resp.status_code}): ${chunkAny.base_resp.status_msg || "Unknown error"}`,
-					)
-				}
-
-				const delta = chunk.choices?.[0]?.delta
-				const finishReason = chunk.choices?.[0]?.finish_reason
-
-				const reasoningText = extractReasoningFromDelta(delta)
-				if (reasoningText) {
-					yield { type: "reasoning", text: reasoningText }
-				}
-
-				if (delta?.content) {
-					for (const processedChunk of matcher.update(delta.content)) {
-						yield processedChunk
+			yield* streamChatCompletion(stream, {
+				thinkTags: true,
+				onChunk: (chunk) => {
+					// Provider-specific error responses inside the stream (e.g. MiniMax base_resp)
+					const baseResp = (chunk as { base_resp?: { status_code?: number; status_msg?: string } }).base_resp
+					if (baseResp?.status_code && baseResp.status_code !== 0) {
+						throw new Error(
+							`${this.providerName} API Error (${baseResp.status_code}): ${baseResp.status_msg || "Unknown error"}`,
+						)
 					}
-				}
-
-				// Emit raw tool call chunks - NativeToolCallParser handles state management
-				yield* emitToolCallChunks(delta)
-
-				// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
-				// This covers ALL finish reasons (not just "tool_calls") — many local/weak
-				// OpenAI-compatible servers (llama.cpp, vLLM, older LM Studio) return "stop"
-				// even after emitting tool_calls deltas (AP-2).
-				yield* emitFinishReasonChunk(finishReason)
-
-				if (chunk.usage) {
-					lastUsage = chunk.usage
-				}
-			}
-
-			if (lastUsage) {
-				yield this.processUsageMetrics(lastUsage, this.getModel().info)
-			}
-
-			// Process any remaining content
-			for (const processedChunk of matcher.final()) {
-				yield processedChunk
-			}
+				},
+				mapUsage: (usage) => this.processUsageMetrics(usage, this.getModel().info),
+			})
 		} finally {
 			this.abortController = undefined
 		}
