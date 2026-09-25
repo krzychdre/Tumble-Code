@@ -82,16 +82,25 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - os: ubuntu-latest
-                      name: ubuntu-latest
                     - os: windows-latest
-                      name: windows-latest
+                      name: windows-a
+                    - os: windows-latest
+                      name: windows-b
+                    - os: windows-latest
+                      name: windows-c
         steps:
             - name: Checkout code
               uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
             - name: Setup Node.js and pnpm
               uses: ./.github/actions/setup-node-pnpm
+            - name: Debug temp dir short names
+              shell: bash
+              run: |
+                  echo "TEMP=$TEMP TMP=$TMP"
+                  node -e "const fs=require('fs'),os=require('os');console.log('tmpdir', os.tmpdir());console.log('realpathSync', fs.realpathSync(os.tmpdir()));console.log('realpathSync.native', fs.realpathSync.native(os.tmpdir()));fs.promises.realpath(os.tmpdir()).then(p=>console.log('promises.realpath', p))"
             - name: Run unit tests
+              env:
+                  VITEST_JSON_REPORT: vitest-report.json
               # --continue: turbo otherwise stops at the first failing package,
               # so every run showed one package's failures and hid the rest.
               # --log-prefix none: turbo otherwise starts every line with
@@ -100,3 +109,9 @@ jobs:
               # annotations were dropped. --log-order grouped already wraps
               # each package's output in its own ::group:: section.
               run: pnpm test --continue --log-prefix none
+            - name: Upload vitest report
+              if: always()
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+              with:
+                  name: vitest-report-${{ matrix.name }}
+                  path: src/vitest-report.json
