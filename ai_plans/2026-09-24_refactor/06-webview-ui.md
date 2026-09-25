@@ -330,3 +330,14 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
 - 2026-09-25 WEB-11 c DONE #395: `hooks/useModeSelection.ts` shared by CreateSkillDialog and SkillsSettings (no drift,
   about 95 lines less; 8 hook tests, 4 new SkillsSettings dialog tests). Found, same in both old copies: unchecking
   "Any mode" with nothing selected saves as "no restriction"; a deleted custom mode stays in a skill's selection.
+- 2026-09-25 WEB-Q9 DONE #373 (`4e3d24498`): `scripts/check-react-compiler-bailouts.mjs` runs the build's compiler
+  (target 18) over webview-ui/src and compares with `webview-ui/react-compiler-bailouts.json` (new bailout or stale
+  entry fails; `--update`), at the end of the webview `lint` script (about 17 s), 3 node:test cases. DEP-7 not done
+  (eslint-plugin-react-hooks still ^5.2). All 7 `eslint-disable react-hooks` removed: #389 useDebounceEffect
+  (`e2f399801`), #390 ModeSelector (`2b477912d`), #391 UpdateTodoListToolBlock (`049d3a4a4`), #392
+  McpServerRestriction (`79aa8569a`; naive deps would snap back a second checkbox edit, refs instead), #393 ModesView
+  (`aa1677148`; still skipped: 19 "existing memoization could not be preserved", for WEB-9), #394 ChatTextArea
+  (`bbe300dd8`; stale `setMode` in `handleMentionSelect`). Bailouts 17 to 12. #389 merged last (GitHub reported it
+  unmergeable right after the force-push; rebased alone, check 12 known). Found: vitest never runs the compiler
+  (a compiler-on test run could be an item); ModesView's create dialog prefill is wiped by `resetFormState()` in the
+  open effect.
