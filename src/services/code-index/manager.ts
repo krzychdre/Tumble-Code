@@ -191,6 +191,12 @@ export class CodeIndexManager {
 	 * @returns Object indicating if a restart is needed
 	 */
 	public async initialize(contextProxy: ContextProxy): Promise<{ requiresRestart: boolean }> {
+		// A disposed manager (its folder was removed, or the extension deactivated) stays dead. The
+		// same check follows every await below: dispose() can land while initialize() is running.
+		if (this._disposed) {
+			return { requiresRestart: false }
+		}
+
 		// Remember the proxy so automatic retries can re-initialize without the webview.
 		this._contextProxy = contextProxy
 
@@ -200,6 +206,9 @@ export class CodeIndexManager {
 		}
 		// Load configuration once to get current state and restart requirements
 		const { requiresRestart } = await this._configManager.loadConfiguration()
+		if (this._disposed) {
+			return { requiresRestart }
+		}
 
 		// 2. Check if feature is enabled
 		if (!this.isFeatureEnabled) {
@@ -226,6 +235,9 @@ export class CodeIndexManager {
 		if (!this._cacheManager) {
 			this._cacheManager = new CacheManager(this.context, this.workspacePath)
 			await this._cacheManager.initialize()
+			if (this._disposed) {
+				return { requiresRestart }
+			}
 		}
 
 		// 6. Determine if Core Services Need Recreation
@@ -233,6 +245,9 @@ export class CodeIndexManager {
 
 		if (needsServiceRecreation) {
 			await this._recreateServices()
+			if (this._disposed) {
+				return { requiresRestart }
+			}
 		}
 
 		// 7. Handle Indexing Start/Restart
@@ -565,6 +580,13 @@ export class CodeIndexManager {
 
 		// Validate embedder configuration before proceeding
 		const validationResult = await this._serviceFactory.validateEmbedder(embedder)
+		if (this._disposed) {
+			// Disposed while validating: nothing will ever dispose these services, so do it here
+			// instead of handing a live FileWatcher to an orchestrator of a dead manager.
+			fileWatcher.dispose()
+			this._disposeServices()
+			return
+		}
 		if (!validationResult.valid) {
 			// These services never reach an orchestrator, so nothing else would dispose them.
 			fileWatcher.dispose()

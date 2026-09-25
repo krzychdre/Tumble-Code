@@ -1,5 +1,6 @@
 // npx vitest run __tests__/extension.spec.ts
 
+import * as path from "path"
 import type * as vscode from "vscode"
 import type { AuthState } from "@roo-code/types"
 
@@ -148,6 +149,8 @@ vi.mock("../services/mcp/McpServerManager", () => ({
 vi.mock("../services/code-index/manager", () => ({
 	CodeIndexManager: {
 		getInstance: vi.fn().mockReturnValue(null),
+		disposeInstance: vi.fn(),
+		disposeAll: vi.fn(),
 	},
 }))
 
@@ -335,5 +338,77 @@ describe("extension.ts", () => {
 		await deactivate()
 
 		expect(disposeLanguageParsers).toHaveBeenCalledTimes(1)
+	})
+
+	describe("code-index managers per workspace folder", () => {
+		const initialFolder = { uri: { fsPath: path.resolve("/ws/initial") }, name: "initial", index: 0 }
+		const addedFolder = { uri: { fsPath: path.resolve("/ws/added") }, name: "added", index: 1 }
+
+		async function activateWithFolders() {
+			vi.resetModules()
+			vi.clearAllMocks()
+
+			const vscodeMock = (await import("vscode")) as any
+			vscodeMock.workspace.workspaceFolders = [initialFolder]
+			vi.mocked(vscodeMock.workspace.onDidChangeWorkspaceFolders).mockReturnValue({ dispose: vi.fn() })
+
+			const { CodeIndexManager } = await import("../services/code-index/manager")
+			const managers = new Map<
+				string,
+				{ initialize: ReturnType<typeof vi.fn>; dispose: ReturnType<typeof vi.fn> }
+			>()
+			vi.mocked(CodeIndexManager.getInstance).mockImplementation(((_ctx: unknown, fsPath: string) => {
+				if (!managers.has(fsPath)) {
+					managers.set(fsPath, {
+						initialize: vi.fn().mockResolvedValue({ requiresRestart: false }),
+						dispose: vi.fn(),
+					})
+				}
+				return managers.get(fsPath)
+			}) as any)
+
+			const { ContextProxy } = await import("../core/config/ContextProxy")
+			const { activate } = await import("../extension")
+			await activate(mockContext)
+
+			const contextProxy = await vi.mocked(ContextProxy.getInstance).mock.results[0].value
+			const [listener] = vi.mocked(vscodeMock.workspace.onDidChangeWorkspaceFolders).mock.calls[0] as [
+				(e: { added: unknown[]; removed: unknown[] }) => void,
+			]
+			return { vscodeMock, CodeIndexManager, managers, contextProxy, listener }
+		}
+
+		test("a folder added after activation gets its manager initialized like the initial folders", async () => {
+			const { vscodeMock, CodeIndexManager, managers, contextProxy, listener } = await activateWithFolders()
+
+			// Activation path: the initial folder's manager is created and initialized eagerly.
+			expect(managers.get(initialFolder.uri.fsPath)?.initialize).toHaveBeenCalledWith(contextProxy)
+
+			vscodeMock.workspace.workspaceFolders = [initialFolder, addedFolder]
+			listener({ added: [addedFolder], removed: [] })
+
+			// Before the fix the added folder only got a manager lazily, never initialized, so its
+			// index never started and codebase_search stayed hidden for tasks in that folder.
+			expect(CodeIndexManager.getInstance).toHaveBeenCalledWith(mockContext, addedFolder.uri.fsPath)
+			const added = managers.get(addedFolder.uri.fsPath)
+			expect(added?.initialize).toHaveBeenCalledTimes(1)
+			expect(added?.initialize).toHaveBeenCalledWith(contextProxy)
+		})
+
+		test("a folder added and removed in one event is disposed, and a failed initialize is only logged", async () => {
+			const { vscodeMock, CodeIndexManager, listener } = await activateWithFolders()
+			vi.mocked(CodeIndexManager.getInstance).mockImplementationOnce((() => ({
+				initialize: vi.fn().mockRejectedValue(new Error("qdrant down")),
+				dispose: vi.fn(),
+			})) as any)
+
+			listener({ added: [addedFolder], removed: [initialFolder] })
+			await new Promise((resolve) => setImmediate(resolve))
+
+			expect(CodeIndexManager.disposeInstance).toHaveBeenCalledWith(initialFolder.uri.fsPath)
+			const channel = vscodeMock.window.createOutputChannel()
+			const lines = channel.appendLine.mock.calls.map((c: any[]) => c[0]) as string[]
+			expect(lines.some((l) => l.includes("qdrant down") && l.includes(addedFolder.uri.fsPath))).toBe(true)
+		})
 	})
 })
