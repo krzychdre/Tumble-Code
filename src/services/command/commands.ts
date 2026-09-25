@@ -2,7 +2,8 @@ import fs from "fs/promises"
 import * as path from "path"
 import { Dirent } from "fs"
 import matter from "gray-matter"
-import { getGlobalRooDirectory, getProjectRooDirectoryForCwd } from "../roo-config"
+import { memoizeRooDirectoryLookup } from "../roo-config/cache"
+import { RooDirectoryResolver } from "../roo-config/RooDirectoryResolver"
 import { getBuiltInCommands, getBuiltInCommand } from "./built-in-commands"
 
 /**
@@ -121,10 +122,31 @@ async function tryResolveSymlinkedCommand(filePath: string): Promise<string | un
 }
 
 /**
+ * The command directories, lowest precedence first (global, then project).
+ * Built-in commands rank below both.
+ */
+async function getCommandDirectories(cwd: string): Promise<Array<{ dir: string; source: "global" | "project" }>> {
+	const dirs = await RooDirectoryResolver.list(cwd, { kind: "commands" })
+	return dirs.map(({ path: dir, source }) => ({
+		dir,
+		source: source === "global" ? ("global" as const) : ("project" as const),
+	}))
+}
+
+/**
  * Get all available commands from built-in, global, and project directories
  * Priority order: project > global > built-in (later sources override earlier ones)
+ *
+ * The chat input asks for this list on every keystroke while the slash menu is
+ * open, so the parsed list is memoized per working directory and dropped by the
+ * `.roo` file watchers (see roo-config/cache.ts).
  */
 export async function getCommands(cwd: string): Promise<Command[]> {
+	const commands = await memoizeRooDirectoryLookup("commands", cwd, () => loadCommands(cwd))
+	return [...commands]
+}
+
+async function loadCommands(cwd: string): Promise<Command[]> {
 	const commands = new Map<string, Command>()
 
 	// Add built-in commands first (lowest priority)
@@ -133,36 +155,27 @@ export async function getCommands(cwd: string): Promise<Command[]> {
 		commands.set(command.name, command)
 	}
 
-	// Scan global commands (override built-in)
-	const globalDir = path.join(getGlobalRooDirectory(), "commands")
-	await scanCommandDirectory(globalDir, "global", commands)
-
-	// Scan project commands (highest priority - override both global and built-in)
-	const projectDir = path.join(getProjectRooDirectoryForCwd(cwd), "commands")
-	await scanCommandDirectory(projectDir, "project", commands)
+	// Global commands override built-in ones, project commands override both.
+	for (const { dir, source } of await getCommandDirectories(cwd)) {
+		await scanCommandDirectory(dir, source, commands)
+	}
 
 	return Array.from(commands.values())
 }
 
 /**
  * Get a specific command by name (optimized to avoid scanning all commands)
- * Priority order: project > global > built-in
+ * Priority order: project > global > built-in, the same order getCommands uses
  */
 export async function getCommand(cwd: string, name: string): Promise<Command | undefined> {
-	// Try to find the command directly without scanning all commands
-	const projectDir = path.join(getProjectRooDirectoryForCwd(cwd), "commands")
-	const globalDir = path.join(getGlobalRooDirectory(), "commands")
+	// Try the directories from the highest precedence down, without scanning all commands
+	const dirs = await getCommandDirectories(cwd)
 
-	// Check project directory first (highest priority)
-	const projectCommand = await tryLoadCommand(projectDir, name, "project")
-	if (projectCommand) {
-		return projectCommand
-	}
-
-	// Check global directory if not found in project
-	const globalCommand = await tryLoadCommand(globalDir, name, "global")
-	if (globalCommand) {
-		return globalCommand
+	for (const { dir, source } of dirs.reverse()) {
+		const command = await tryLoadCommand(dir, name, source)
+		if (command) {
+			return command
+		}
 	}
 
 	// Check built-in commands if not found in project or global (lowest priority)
@@ -328,18 +341,21 @@ async function scanCommandDirectory(
 					commandContent = content.trim()
 				}
 
-				// Project commands override global ones
-				if (source === "project" || !commands.has(commandName)) {
-					commands.set(commandName, {
-						name: commandName,
-						content: commandContent,
-						source,
-						filePath: resolvedPath,
-						description,
-						argumentHint,
-						mode,
-					})
-				}
+				// A later directory overrides an earlier one (and every directory
+				// overrides the built-in commands). This used to be
+				// `source === "project" || !commands.has(name)`, a leftover from
+				// before built-in commands existed: it let a built-in command
+				// shadow ~/.roo/commands/<same name>.md in this list while
+				// getCommand ran the global file.
+				commands.set(commandName, {
+					name: commandName,
+					content: commandContent,
+					source,
+					filePath: resolvedPath,
+					description,
+					argumentHint,
+					mode,
+				})
 			} catch (error) {
 				console.warn(`Failed to read command file ${resolvedPath}:`, error)
 			}

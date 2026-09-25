@@ -2,6 +2,7 @@ import fs from "fs/promises"
 import * as path from "path"
 
 import { getCommand, getCommands } from "../commands"
+import { invalidateRooDirectoryCache } from "../../roo-config/cache"
 
 // Mock fs and path modules
 vi.mock("fs/promises")
@@ -20,6 +21,8 @@ const mockFs = vi.mocked(fs)
 describe("Command loading with frontmatter", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
+		// getCommands memoizes per working directory; each test fakes a new file system.
+		invalidateRooDirectoryCache()
 	})
 
 	describe("getCommand with frontmatter", () => {
