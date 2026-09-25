@@ -63,7 +63,13 @@ describe(".roo directory precedence matrix", () => {
 	let projectRoo: string
 
 	beforeEach(() => {
-		root = fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), "roo-precedence-"))
+		// realpathSync.native, not realpathSync: on the Windows CI runner TEMP is
+		// an 8.3 short path (C:\Users\RUNNER~1\...). The JS realpathSync keeps
+		// the short name, while SkillsManager resolves skill directories with
+		// fs.promises.realpath (native), which expands it to the long name
+		// (C:\Users\runneradmin\...). path.relative(root, skill.path) then
+		// climbed out of root instead of returning "home\...".
+		root = fs.mkdtempSync(path.join(fs.realpathSync.native(os.tmpdir()), "roo-precedence-"))
 		state.home = path.join(root, "home")
 		state.ripgrepCalls = 0
 		cwd = path.join(root, "workspace")
