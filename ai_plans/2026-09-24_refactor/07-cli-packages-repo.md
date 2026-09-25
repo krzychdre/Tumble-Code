@@ -184,6 +184,15 @@ tools); dead snake_case names removed. Found, open: the CLI prints `say: "tool"`
 searchTaskHistory, runSlashCommand) as raw JSON (fix in `useMessageHandlers`, CLI-9); the webview has no row for the
 `runParallelTasks` approval (missing in `TOOL_RENDERERS`); `toolDisplayOutput`/`toolDisplayName` are dead data.
 
+Slice 3 DONE #428 (merge 15454258c); CLI-5 complete. `packages/types/src/provider-validation.ts` holds the validation
+registry (moved from the webview), `providerApiKeyFields`, `providerRequiresApiKey`, `providerRequiresModelId`; the
+CLI's `providerEnvMap` keeps only env var names and base URL fields. Drifts: Ollama key now passed by the CLI
+(`OLLAMA_API_KEY`, optional); **behavior change in the extension:** the settings UI now requires an API key for
+DeepSeek, Moonshot, MiniMax, xAI and Z.ai (the handlers sent `"not-provided"` and every request failed; upstream never
+validated them); openai/ollama/lmstudio without a model no longer get an OpenRouter model id in the CLI, the run stops
+with `No model given for <provider>`. Open product question: CLI OpenRouter default `anthropic/claude-opus-4.6` vs
+extension `anthropic/claude-sonnet-4.5`. Dead: the CLI's Bedrock `--api-key` branch in `getProviderSettings`.
+
 ### PKG-6 Turn the browser-safe part of `src/shared` into a real package
 
 `src/shared` is 2,856 lines in 26 files, imported 50 times by the webview. Move the pure modules (`tools.ts`
