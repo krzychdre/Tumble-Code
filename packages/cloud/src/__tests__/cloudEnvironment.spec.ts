@@ -15,9 +15,9 @@ describe("resolveCloudEnvironment", () => {
 	})
 
 	it("passes both values through unchanged", () => {
-		expect(
-			resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: " tok ", ROO_CODE_CLOUD_ORG_SETTINGS: "e30=" }),
-		).toEqual({ staticToken: " tok ", staticOrgSettings: "e30=" })
+		expect(resolveCloudEnvironment({ ROO_CODE_CLOUD_TOKEN: " tok ", ROO_CODE_CLOUD_ORG_SETTINGS: "e30=" })).toEqual(
+			{ staticToken: " tok ", staticOrgSettings: "e30=" },
+		)
 	})
 
 	it("ignores unrelated variables", () => {
