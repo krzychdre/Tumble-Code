@@ -426,3 +426,16 @@ where their files are disjoint; the coordinator merges in order.
     `code` is an HTTP code, so fallback and retry classification miss them.
   - **Policy question (not a defect):** with auto-approve, `TaskApiLoop.handleApiRequestError` retries every failed
     request including 400 and 401; `RetryHandler.shouldRetry` (deleted in API-1) was never wired.
+- **DEF-C43 to DEF-C45: DONE 2026-09-25**, each reproduced with a failing test first.
+  - DEF-C43, #301 (`264c4faff`): ollama 0.5.17's `ResponseError` carries `status_code`; the 404 branch now uses
+    `getApiErrorStatus`, so users see "Please pull the model first with: ollama pull X" (tested against a real
+    ollama client on a fake 404 server) and the error keeps `status: 404`.
+  - DEF-C44, #302 (`6b0de881c`): the plain-`fetch` fallback (kept since `cda67a86f`, Aug 2025, when GPT-5 moved to
+    the SDK) ran on every SDK failure; with `maxRetries: 0` and a request-counting fake server, 429, 401, 500 and a
+    mid-stream break gave 2 requests instead of 1 (native and codex). `isSdkUnusableError`
+    (`utils/responses-sse-fallback.ts`) now allows the fallback only for a non-`APIError` without an HTTP status;
+    OpenAI native never re-sends after the first stream event; Codex's refresh-and-retry recognizes 401 by status.
+    Open policy question: neither client sets `maxRetries`, so the SDK retries 429/5xx up to 2 times before the
+    task's own retry loop.
+  - DEF-C45, #303 (`13acf44b2`): OpenRouter stream and `completePrompt` errors now set `.status` from an integer
+    HTTP `code` (100 to 599); texts and telemetry unchanged.
