@@ -66,6 +66,19 @@ with `.status` intact from `createMessage` and `completePromptWithUsage`, and `i
 **Existing:** `error-handler.spec` (25), `openai-error-handler.spec` (16), `BackgroundModelHandler.spec` (21).
 **Size** S to M, low risk.
 
+**Status (2026-09-25):** DONE in #298 (merge 52f3af2cb). `error-contract.spec` builds 17 real handlers with a
+fake SDK client throwing 429, 400 and 401 through `createMessage` and `completePromptWithUsage`: 57 of 102 cases
+failed on main (re-wraps dropping `status` in LM Studio, LiteLLM, Mistral, Anthropic Vertex, Gemini, OpenAI native,
+Codex, Ollama; the double prefix in `openai.ts`, inherited by DeepSeek; the `fetch` fallbacks of OpenAI native and
+Codex; SDKs naming the field `statusCode`, `status_code` or `$metadata.httpStatusCode`). `getApiErrorStatus` in
+`apiErrors.ts` reads all four and feeds `isRetryableApiError` and `isFallbackTriggerError`; `handleProviderError`
+always sets `.status`. `openai-error-handler.ts` deleted (10 importers re-pointed); `RetryHandler.shouldRetry`
+deleted (wiring it would change behavior: with auto-approve, `TaskApiLoop.handleApiRequestError` retries every
+failure including 400 and 401, a separate policy decision). Moonshot and the AI SDK path left to API-4. Text
+changes: single prefix in OpenAI and DeepSeek `completePrompt`; non-Error throws wrapped; the invalid-API-key-
+characters message now in every handler. Findings: see DEF-C43 to DEF-C45 in `02-defects.md`.
+
+
 ### API-3 One pure strict-schema converter
 
 `transform/strict-json-schema.ts` exporting `toStrictSchema(schema, {stripNull, mcp})` that copies instead of

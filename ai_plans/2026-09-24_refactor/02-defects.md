@@ -417,3 +417,12 @@ where their files are disjoint; the coordinator merges in order.
     pre-fills the dimension with 1536; the form already handles an empty value (placeholder), validation is
     unchanged. Previously stored 1536 values cannot be told apart from user input and stay; the changeset asks
     users to check the field once.
+- **New findings from API-1 (2026-09-25), code reading, not yet reproduced:**
+  - **DEF-C43:** `native-ollama.ts` 404 branch reads `error.status || error.statusCode`, but ollama's
+    `ResponseError` has `status_code`, so "Model X not found in Ollama. Please pull ..." is never shown.
+  - **DEF-C44:** OpenAI native retries every SDK failure, including 429 and 401, through a plain `fetch`, so the
+    request reaches the server twice (worse rate limiting, double cost on a partial response).
+  - **DEF-C45:** OpenRouter errors arriving inside the stream (`handleStreamingError`) carry no `status` even when
+    `code` is an HTTP code, so fallback and retry classification miss them.
+  - **Policy question (not a defect):** with auto-approve, `TaskApiLoop.handleApiRequestError` retries every failed
+    request including 400 and 401; `RetryHandler.shouldRetry` (deleted in API-1) was never wired.
