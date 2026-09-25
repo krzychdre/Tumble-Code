@@ -97,6 +97,9 @@ export class ContextProxy {
 		// Migration: Check for old nested image generation settings and migrate them
 		await this.migrateImageGenerationSettings()
 
+		// Migration: Move credentials that used to live in global state into secret storage
+		await this.migrateGlobalStateSecrets()
+
 		// Migration: Sanitize invalid/removed API providers
 		await this.migrateInvalidApiProvider()
 
@@ -345,6 +348,29 @@ export class ContextProxy {
 			logger.error(
 				`Error during invalid API provider migration: ${error instanceof Error ? error.message : String(error)}`,
 			)
+		}
+	}
+
+	/**
+	 * `vertexJsonCredentials` was a plain global state key until it joined
+	 * SECRET_STATE_KEYS. Move a leftover copy into secret storage (unless a
+	 * secret is already stored) and always clear the plain-text copy.
+	 */
+	private async migrateGlobalStateSecrets() {
+		for (const key of ["vertexJsonCredentials"] as const) {
+			try {
+				const legacyValue = this.originalContext.globalState.get<unknown>(key)
+				if (legacyValue === undefined) continue
+				if (typeof legacyValue === "string" && legacyValue !== "" && !this.secretCache[key]) {
+					await this.storeSecret(key, legacyValue)
+				}
+				await this.originalContext.globalState.update(key, undefined)
+				logger.info(`Moved ${key} from global state to secret storage`)
+			} catch (error) {
+				logger.error(
+					`Error moving ${key} to secret storage: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
 		}
 	}
 

@@ -118,11 +118,12 @@ describe("ContextProxy", () => {
 		})
 
 		it("should initialize state cache with all global state keys", () => {
-			// +3 for the migration checks:
+			// +4 for the migration checks:
 			// 1. openRouterImageGenerationSettings
-			// 2. customCondensingPrompt
-			// 3. customSupportPrompts (for migrateOldDefaultCondensingPrompt)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 3)
+			// 2. vertexJsonCredentials (plain-text copy moved to secrets)
+			// 3. customCondensingPrompt
+			// 4. customSupportPrompts (for migrateOldDefaultCondensingPrompt)
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 4)
 			for (const key of GLOBAL_STATE_KEYS) {
 				expect(mockGlobalState.get).toHaveBeenCalledWith(key)
 			}
@@ -152,8 +153,8 @@ describe("ContextProxy", () => {
 			const result = proxy.getGlobalState("apiProvider")
 			expect(result).toBe("deepseek")
 
-			// Original context should be called once during updateGlobalState (+3 for migration checks)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 3) // From initialization + migration checks
+			// Original context should be called once during updateGlobalState (+4 for migration checks)
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 4) // From initialization + migration checks
 		})
 
 		it("should handle default values correctly", async () => {
@@ -415,6 +416,48 @@ describe("ContextProxy", () => {
 			// Verify the state cache has been cleared
 			expect(proxy.getGlobalState("apiModelId")).toBeUndefined()
 			expect(proxy.getGlobalState("openAiBaseUrl")).toBeUndefined()
+		})
+	})
+
+	describe("vertex JSON credentials", () => {
+		const VERTEX_JSON = JSON.stringify({ type: "service_account", client_email: "sa@p.iam.gserviceaccount.com" })
+
+		it("stores vertexJsonCredentials in secret storage, not in global state", async () => {
+			mockGlobalState.update.mockClear()
+			await proxy.setProviderSettings({ apiProvider: "vertex", vertexJsonCredentials: VERTEX_JSON })
+
+			expect(mockSecrets.store).toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
+			expect(mockGlobalState.update).not.toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
+		})
+
+		it("moves a plain-text global state copy into secret storage on initialize", async () => {
+			mockGlobalState.get.mockImplementation((key: string) =>
+				key === "vertexJsonCredentials" ? VERTEX_JSON : undefined,
+			)
+			mockSecrets.get.mockResolvedValue(undefined)
+
+			const migrated = new ContextProxy(mockContext)
+			await migrated.initialize()
+
+			expect(mockSecrets.store).toHaveBeenCalledWith("vertexJsonCredentials", VERTEX_JSON)
+			expect(mockGlobalState.update).toHaveBeenCalledWith("vertexJsonCredentials", undefined)
+			expect(migrated.getProviderSettings().vertexJsonCredentials).toBe(VERTEX_JSON)
+		})
+
+		it("does not overwrite a stored secret with a stale global state copy", async () => {
+			mockGlobalState.get.mockImplementation((key: string) =>
+				key === "vertexJsonCredentials" ? "stale" : undefined,
+			)
+			mockSecrets.get.mockImplementation(async (key: string) =>
+				key === "vertexJsonCredentials" ? VERTEX_JSON : undefined,
+			)
+
+			const migrated = new ContextProxy(mockContext)
+			await migrated.initialize()
+
+			expect(mockSecrets.store).not.toHaveBeenCalledWith("vertexJsonCredentials", "stale")
+			expect(mockGlobalState.update).toHaveBeenCalledWith("vertexJsonCredentials", undefined)
+			expect(migrated.getProviderSettings().vertexJsonCredentials).toBe(VERTEX_JSON)
 		})
 	})
 

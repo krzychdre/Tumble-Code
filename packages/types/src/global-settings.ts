@@ -423,6 +423,9 @@ export const SECRET_STATE_KEYS = [
 	"awsApiKey",
 	"awsSecretKey",
 	"awsSessionToken",
+	// The Vertex service-account key pasted as JSON. `vertexKeyFile` is only a
+	// path to such a file, so it stays in the plain profile config.
+	"vertexJsonCredentials",
 	"openAiApiKey",
 	"ollamaApiKey",
 	"geminiApiKey",
