@@ -178,8 +178,19 @@ handlers. `ApiHandler.dispose()` (VsCodeLm unsubscribes its configuration listen
 replacement, `Task.dispose` and one-shot completion. Tests: related src specs 1,350 to 1,468, types 116 to 191.
 Left: PKG-7 is not mechanical (strict schemas without base fields, an import cycle via `zaiApiLineSchema`, the
 openai `apiModelId` drift, `providerFieldOwnership` as a third copy); the CLI keeps a hand-written
-`providerEnvMap[*].modelField`. Part 2 (owner decision 5, #311) in review: coordinator asked for two fixes first
-(Bedrock `custom-arn` without an ARN must not be sent; `deepseek-chat`/`deepseek-reasoner` are real aliases).
+`providerEnvMap[*].modelField`. Part 2 DONE in #311 (merge 37bfe484c), owner decision 5: an unknown model id is always sent as configured
+with the default model's info (and prices: empty prices made the OpenAI-protocol cost paths report $0), never
+silently substituted; an empty id still selects the default. `honor-custom`: Anthropic and Bedrock infer info
+from the id; Gemini keeps the id and drops unverifiable prices. Behavior changed for xai, minimax, openai-native
+(including retired ids like gpt-4o, which used to map to gpt-5.6-sol), openai-codex, zai, vertex (Gemini and
+Claude ids; an unknown Gemini id gets the Claude default's info), gemini (ids without the `gemini-` prefix),
+litellm (ids outside the fetched list), bedrock. Webview: `useSelectedModel` shows the configured id for
+OpenRouter, LiteLLM and DeepSeek and returns `isUnknownModel`; `ApiOptions` shows
+`settings:providers.unknownModelWarning` (English in all 18 locales). Coordinator-requested fixes: Bedrock
+`custom-arn` without an ARN selects the default (never sent to AWS; an empty Bedrock id no longer throws);
+`deepseek-chat`/`deepseek-reasoner` are known aliases of `deepseek-v4-flash` (`deepSeekModelAliases`,
+`modelAliases` in the definitions; the wire id stays as configured). To check: the removed entries in `d4a7f4182`
+said DeepSeek retires these aliases on 2026-07-24, a date already past.
 
 
 ### API-7 One Chat Completions stream adapter and shared usage normalizers
