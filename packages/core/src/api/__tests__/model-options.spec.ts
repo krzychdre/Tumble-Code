@@ -571,9 +571,9 @@ describe("shouldUseReasoningEffort", () => {
 		const model: ModelInfo = {
 			contextWindow: 100_000,
 			supportsPromptCache: true,
-			supportsReasoningEffort: ["disable", "low", "medium", "high"] as unknown as any,
+			supportsReasoningEffort: ["disable", "low", "medium", "high"] as unknown as ModelInfo["supportsReasoningEffort"],
 		}
-		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "disable" as any }
+		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "disable" as unknown as ProviderSettings["reasoningEffort"] }
 		expect(shouldUseReasoningEffort({ model, settings })).toBe(false)
 	})
 
@@ -581,9 +581,9 @@ describe("shouldUseReasoningEffort", () => {
 		const model: ModelInfo = {
 			contextWindow: 100_000,
 			supportsPromptCache: true,
-			supportsReasoningEffort: ["none", "minimal", "low", "medium", "high"] as unknown as any,
+			supportsReasoningEffort: ["none", "minimal", "low", "medium", "high"] as unknown as ModelInfo["supportsReasoningEffort"],
 		}
-		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "none" as any }
+		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"] }
 		expect(shouldUseReasoningEffort({ model, settings })).toBe(true)
 	})
 
@@ -591,9 +591,9 @@ describe("shouldUseReasoningEffort", () => {
 		const model: ModelInfo = {
 			contextWindow: 100_000,
 			supportsPromptCache: true,
-			supportsReasoningEffort: ["none", "minimal", "low", "medium", "high"] as unknown as any,
+			supportsReasoningEffort: ["none", "minimal", "low", "medium", "high"] as unknown as ModelInfo["supportsReasoningEffort"],
 		}
-		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "minimal" as any }
+		const settings: ProviderSettings = { enableReasoningEffort: true, reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"] }
 		expect(shouldUseReasoningEffort({ model, settings })).toBe(true)
 	})
 
@@ -603,7 +603,7 @@ describe("shouldUseReasoningEffort", () => {
 			supportsPromptCache: true,
 			supportsReasoningEffort: true,
 		}
-		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "none" as any } })).toBe(true)
-		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "minimal" as any } })).toBe(true)
+		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "none" as unknown as ProviderSettings["reasoningEffort"] } })).toBe(true)
+		expect(shouldUseReasoningEffort({ model, settings: { reasoningEffort: "minimal" as unknown as ProviderSettings["reasoningEffort"] } })).toBe(true)
 	})
 })
