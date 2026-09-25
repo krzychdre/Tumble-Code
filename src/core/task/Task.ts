@@ -356,6 +356,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 */
 	awaitingCompletionAcceptance = false
 	abortReason?: ClineApiReqCancelReason
+	/**
+	 * Set when a background task ends because its API request failed with a
+	 * status that retrying cannot fix (401, 403, 404): one line naming the
+	 * status, provider and model. Read by `awaitTaskCompletion` so the parent
+	 * of a parallel subagent and the memory-writer log can say why it stopped.
+	 */
+	apiFailureMessage?: string
 	isInitialized = false
 	isPaused: boolean = false
 

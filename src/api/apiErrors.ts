@@ -16,7 +16,10 @@
  * policy, {@linkcode isAutoRetryableApiError}: apart from the context-window
  * case, with auto-approval on it retries every failed request except the
  * statuses that never fix themselves (401, 403, 404), for which it asks the
- * user, like it always does with auto-approval off.
+ * user, like it always does with auto-approval off. A background task (memory
+ * writer, parallel subagent) has nobody to ask: for those statuses it ends at
+ * once, with the text of {@linkcode describeNonRetryableApiError} for whoever
+ * awaits it.
  */
 
 /**
@@ -88,4 +91,40 @@ const NEVER_AUTO_RETRIED_STATUSES = new Set([401, 403, 404])
 export function isAutoRetryableApiError(error: unknown): boolean {
 	const status = getApiErrorStatus(error)
 	return status === undefined || !NEVER_AUTO_RETRIED_STATUSES.has(status)
+}
+
+/** What each never-auto-retried status means, in words a weak model can act on. */
+const NON_RETRYABLE_STATUS_REASONS: Record<number, string> = {
+	401: "invalid or missing API key",
+	403: "access forbidden",
+	404: "model or endpoint not found",
+}
+
+/** Longest provider message quoted in {@linkcode describeNonRetryableApiError}. */
+const MAX_PROVIDER_MESSAGE_LENGTH = 300
+
+/**
+ * One short, factual line about a 401, 403 or 404 that ended a background
+ * task, for the task that waits on it (a parallel subagent's parent) and for
+ * the output channel (memory writers). Example:
+ * `API error 401 (invalid or missing API key) from provider "openai", model
+ * "gpt-x". Provider message: Incorrect API key provided.`
+ */
+export function describeNonRetryableApiError(error: unknown, source: { provider?: string; model?: string }): string {
+	const status = getApiErrorStatus(error)
+	const reason = status !== undefined ? NON_RETRYABLE_STATUS_REASONS[status] : undefined
+	const head = `API error ${status ?? "(no status)"}${reason ? ` (${reason})` : ""}`
+	const from = [
+		source.provider ? `from provider "${source.provider}"` : undefined,
+		source.model ? `model "${source.model}"` : undefined,
+	]
+		.filter(Boolean)
+		.join(", ")
+	const raw = error instanceof Error ? error.message : typeof error === "string" ? error : ""
+	const providerMessage = raw.replace(/\s+/g, " ").trim()
+	const quoted =
+		providerMessage.length > MAX_PROVIDER_MESSAGE_LENGTH
+			? `${providerMessage.slice(0, MAX_PROVIDER_MESSAGE_LENGTH)}...`
+			: providerMessage
+	return `${head}${from ? ` ${from}` : ""}.${quoted ? ` Provider message: ${quoted}` : ""}`
 }

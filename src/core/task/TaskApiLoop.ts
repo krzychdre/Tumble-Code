@@ -21,7 +21,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { type ApiStream } from "../../api/transform/stream"
-import { isAutoRetryableApiError } from "../../api/apiErrors"
+import { describeNonRetryableApiError, isAutoRetryableApiError } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
@@ -83,6 +83,8 @@ export interface TaskApiLoopAccess {
 	abort: boolean
 	abandoned: boolean
 	abortReason?: ClineApiReqCancelReason
+	// Why a background task ended on a non-retryable API error (see Task#apiFailureMessage).
+	apiFailureMessage?: string
 
 	// API configuration and handler
 	apiConfiguration: ProviderSettings
@@ -1068,6 +1070,13 @@ export class TaskApiLoop {
 					return "return_true"
 				}
 
+				// A background task never retries 401, 403 or 404 (first chunk,
+				// rethrown by handleApiRequestError, or mid-stream): it ends now.
+				if (this.mustFailFast(error)) {
+					await this.endBackgroundTaskOnApiError(error)
+					return "return_true"
+				}
+
 				console.error(
 					`[Task#${this.access.taskId}.${this.access.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
 				)
@@ -1075,7 +1084,7 @@ export class TaskApiLoop {
 				// 401, 403 and 404 never fix themselves: ask the user instead of
 				// retrying, with or without auto-approval (same ask as the
 				// first-chunk path in handleApiRequestError).
-				if (!this.mayAutoRetry(error)) {
+				if (!isAutoRetryableApiError(error)) {
 					const { response } = await this.access.askSay.ask("api_req_failed", rawErrorMessage)
 
 					if (response !== "yesButtonClicked") {
@@ -1420,9 +1429,17 @@ export class TaskApiLoop {
 			return
 		}
 
+		// A background task has nobody to ask (its approval policy answers
+		// api_req_failed with an instant approve, which would retry in a tight
+		// loop): for 401, 403 and 404 hand the error on unchanged, and
+		// handleStreamError ends the task.
+		if (this.mustFailFast(error)) {
+			throw error
+		}
+
 		// 401, 403 and 404 never fix themselves: even with auto-approval on they
 		// go to the user (the api_req_failed ask below) instead of looping.
-		if (autoApprovalEnabled && this.mayAutoRetry(error)) {
+		if (autoApprovalEnabled && isAutoRetryableApiError(error)) {
 			await this.backoffAndAnnounce(retryAttempt, error)
 
 			if (this.access.abort) {
@@ -1450,15 +1467,39 @@ export class TaskApiLoop {
 	}
 
 	/**
-	 * Whether a failed request may be retried without asking the user. False
-	 * for 401, 403 and 404 (see isAutoRetryableApiError), but only in a
-	 * foreground task: a background task has nobody watching its asks, and a
-	 * parallel subagent's approval policy answers api_req_failed with an
-	 * instant "retry", so asking there would turn the backoff loop into a
-	 * tight one. Background tasks keep the backoff retry.
+	 * Whether a failed request must end the task instead of being retried: a
+	 * background task (memory writer, parallel subagent) that got 401, 403 or
+	 * 404 (see isAutoRetryableApiError). A foreground task asks the user
+	 * instead; every other error keeps the backoff retry.
 	 */
-	private mayAutoRetry(error: unknown): boolean {
-		return this.access.isBackground || isAutoRetryableApiError(error)
+	private mustFailFast(error: unknown): boolean {
+		return this.access.isBackground && !isAutoRetryableApiError(error)
+	}
+
+	/**
+	 * End a background task after a non-retryable API error: record one line
+	 * for whoever awaits it (BackgroundTaskRunner.awaitTaskCompletion hands it
+	 * to the parallel-subagent parent and the memory-writer log) and abort as
+	 * `streaming_failed`, so the memory runner keeps its one fallback run on
+	 * the foreground profile.
+	 */
+	private async endBackgroundTaskOnApiError(error: unknown): Promise<void> {
+		let model: string | undefined
+		try {
+			model = this.access.api.getModel().id
+		} catch {
+			// The message just omits the model.
+		}
+		const message = describeNonRetryableApiError(error, {
+			provider: this.access.apiConfiguration?.apiProvider,
+			model,
+		})
+		this.access.apiFailureMessage = message
+		console.error(
+			`[Task#${this.access.taskId}.${this.access.instanceId}] Background task stopped, not retrying: ${message}`,
+		)
+		this.access.abortReason = "streaming_failed"
+		await this.access.abortTask()
 	}
 
 	/**
