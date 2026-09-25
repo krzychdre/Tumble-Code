@@ -1,0 +1,3908 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > askResponse 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getState",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "resolveImageMentions",
+      {
+        "cwd": "/workspace",
+        "images": [],
+        "maxImageFileSize": 5,
+        "maxTotalImageSize": 20,
+        "rooIgnoreController": undefined,
+        "text": "yes",
+      },
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).handleWebviewAskResponse",
+      "messageResponse",
+      "yes",
+      [],
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > askResponse#subagent 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getState",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "resolveImageMentions",
+      {
+        "cwd": "/workspace",
+        "images": undefined,
+        "maxImageFileSize": 5,
+        "maxTotalImageSize": 20,
+        "rooIgnoreController": undefined,
+        "text": "child answer",
+      },
+    ],
+    [
+      "provider.getBackgroundTask",
+      "child-1",
+    ],
+    [
+      "task(child-1).handleWebviewAskResponse",
+      "messageResponse",
+      "child answer",
+      [],
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > assignCurrentApiConfigToModes 1`] = `
+{
+  "events": [
+    [
+      "providerSettingsManager.setModeConfigs",
+      [
+        "code",
+        "ask",
+      ],
+      "id-default",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > autoApprovalEnabled 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.setValue",
+      "autoApprovalEnabled",
+      true,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > browseForWorktreePath 1`] = `
+{
+  "events": [
+    [
+      "vscode.window.showOpenDialog",
+      {
+        "canSelectFiles": false,
+        "canSelectFolders": true,
+        "canSelectMany": false,
+        "defaultUri": {
+          "fsPath": "/workspace/..",
+          "path": "/workspace/..",
+          "scheme": "file",
+        },
+        "openLabel": "worktrees:selectWorktreeLocation",
+        "title": "worktrees:selectFolderForWorktree",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > cancelAutoApproval 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).cancelAutoApprovalTimeout",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > cancelSubagent 1`] = `
+{
+  "events": [
+    [
+      "provider.getBackgroundTask",
+      "child-1",
+    ],
+    [
+      "subagentRegistry.markTerminal",
+      "child-1",
+      "cancelled",
+    ],
+    [
+      "task(child-1).abortTask",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > cancelTask 1`] = `
+{
+  "events": [
+    [
+      "provider.cancelTask",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > checkRulesDirectory 1`] = `
+{
+  "events": [
+    [
+      "customModesManager.checkRulesDirectoryHasContent",
+      "code",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "hasContent": true,
+        "slug": "code",
+        "type": "checkRulesDirectoryResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > checkpointDiff 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).checkpointDiff",
+      {
+        "commitHash": "hash-1",
+        "mode": "checkpoint",
+        "ts": 2000,
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > checkpointRestore 1`] = `
+{
+  "events": [
+    [
+      "provider.cancelTask",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).checkpointRestore",
+      {
+        "commitHash": "hash-1",
+        "mode": "restore",
+        "ts": 2000,
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > clearIndexData 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentWorkspaceCodeIndexManager",
+    ],
+    [
+      "provider.log",
+      "Cannot clear index data: No workspace folder open",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "indexCleared",
+        "values": {
+          "error": "embeddings:orchestrator.indexingRequiresWorkspace",
+          "success": false,
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > clearTask 1`] = `
+{
+  "events": [
+    [
+      "provider.clearTask",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > cliModeProviderSettings 1`] = `
+{
+  "events": [
+    [
+      "provider.setCliModeProviderSettings",
+      {
+        "code": {
+          "apiProvider": "openai",
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > condenseTaskContextRequest 1`] = `
+{
+  "events": [
+    [
+      "provider.condenseTaskContext",
+      "task-1",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > copySystemPrompt 1`] = `
+{
+  "events": [
+    [
+      "generateSystemPrompt",
+      "<provider>",
+      {
+        "mode": "code",
+        "type": "copySystemPrompt",
+      },
+    ],
+    [
+      "vscode.env.clipboard.writeText",
+      "SYSTEM PROMPT",
+    ],
+    [
+      "vscode.window.showInformationMessage",
+      "common:info.clipboard_copy",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > createCommand 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "fs.mkdir",
+      "/workspace/.roo/commands",
+      {
+        "recursive": true,
+      },
+    ],
+    [
+      "fs.access",
+      "/workspace/.roo/commands/my-command.md",
+    ],
+    [
+      "fs.writeFile",
+      "/workspace/.roo/commands/my-command.md",
+      "common:errors.command_template_content",
+      "utf8",
+    ],
+    [
+      "provider.log",
+      "Created new command file: /workspace/.roo/commands/my-command.md",
+    ],
+    [
+      "openFile",
+      "/workspace/.roo/commands/my-command.md",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getCommands",
+      "/workspace",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "commands": [
+          {
+            "argumentHint": "env",
+            "description": "Deploy",
+            "filePath": "/workspace/.roo/commands/deploy.md",
+            "name": "deploy",
+            "source": "project",
+          },
+        ],
+        "type": "commands",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > createCommand#global-generated-name 1`] = `
+{
+  "events": [
+    [
+      "fs.mkdir",
+      "/home/user/.roo/commands",
+      {
+        "recursive": true,
+      },
+    ],
+    [
+      "fs.access",
+      "/home/user/.roo/commands/new-command.md",
+    ],
+    [
+      "fs.access",
+      "/home/user/.roo/commands/new-command.md",
+    ],
+    [
+      "fs.writeFile",
+      "/home/user/.roo/commands/new-command.md",
+      "common:errors.command_template_content",
+      "utf8",
+    ],
+    [
+      "provider.log",
+      "Created new command file: /home/user/.roo/commands/new-command.md",
+    ],
+    [
+      "openFile",
+      "/home/user/.roo/commands/new-command.md",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getCommands",
+      "/workspace",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "commands": [
+          {
+            "argumentHint": "env",
+            "description": "Deploy",
+            "filePath": "/workspace/.roo/commands/deploy.md",
+            "name": "deploy",
+            "source": "project",
+          },
+        ],
+        "type": "commands",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > createSkill 1`] = `
+{
+  "events": [
+    [
+      "handleCreateSkill",
+      "<provider>",
+      {
+        "skillName": "s1",
+        "source": "project",
+        "type": "createSkill",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > createWorktree 1`] = `
+{
+  "events": [
+    [
+      "handleCreateWorktree",
+      "<provider>",
+      {
+        "baseBranch": "main",
+        "branch": "wt-1",
+        "createNewBranch": true,
+        "path": "/wt-1",
+      },
+      "[Function]",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "success": true,
+        "text": "created",
+        "type": "worktreeResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > createWorktreeInclude 1`] = `
+{
+  "events": [
+    [
+      "handleCreateWorktreeInclude",
+      "<provider>",
+      "node_modules",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "success": true,
+        "text": "include created",
+        "type": "worktreeResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > customInstructions 1`] = `
+{
+  "events": [
+    [
+      "provider.updateCustomInstructions",
+      "be brief",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > debugSetting 1`] = `
+{
+  "events": [
+    [
+      "vscode.workspace.getConfiguration",
+      "tumble-code",
+    ],
+    [
+      "configuration.update",
+      "debug",
+      true,
+      1,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteApiConfiguration 1`] = `
+{
+  "events": [
+    [
+      "vscode.window.showInformationMessage",
+      "common:confirmation.delete_config_profile",
+      {
+        "modal": true,
+      },
+      "common:answers.yes",
+    ],
+    [
+      "providerSettingsManager.listConfig",
+    ],
+    [
+      "providerSettingsManager.deleteConfig",
+      "default",
+    ],
+    [
+      "provider.activateProviderProfile",
+      {
+        "name": "other",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteCommand 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getCommand",
+      "/workspace",
+      "deploy",
+    ],
+    [
+      "fs.unlink",
+      "/workspace/.roo/commands/deploy.md",
+    ],
+    [
+      "provider.log",
+      "Deleted command file: /workspace/.roo/commands/deploy.md",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteCustomMode 1`] = `
+{
+  "events": [
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "getWorkspacePath",
+    ],
+    [
+      "fileExistsAtPath",
+      "/workspace/.roo/rules-m1",
+    ],
+    [
+      "customModesManager.deleteCustomMode",
+      "m1",
+    ],
+    [
+      "provider.handleModeSwitch",
+      "architect",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteCustomMode#checkOnly 1`] = `
+{
+  "events": [
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "getWorkspacePath",
+    ],
+    [
+      "fileExistsAtPath",
+      "/workspace/.roo/rules-m1",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "rulesFolderPath": undefined,
+        "slug": "m1",
+        "type": "deleteCustomModeCheck",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMcpServer 1`] = `
+{
+  "events": [
+    [
+      "provider.log",
+      "Attempting to delete MCP server: srv",
+    ],
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.deleteServer",
+      "srv",
+      "global",
+    ],
+    [
+      "provider.log",
+      "Successfully deleted MCP server: srv",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMessage 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "hasCheckpoint": true,
+        "messageTs": 1500,
+        "type": "showDeleteMessageDialog",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMessageConfirm 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).messageManager.rewindToTimestamp",
+      1500,
+      {
+        "includeTargetMessage": false,
+      },
+    ],
+    [
+      "saveTaskMessages",
+      {
+        "globalStoragePath": "/storage",
+        "messages": [
+          {
+            "checkpoint": {
+              "hash": "c0",
+            },
+            "say": "text",
+            "text": "start",
+            "ts": 500,
+            "type": "say",
+          },
+          {
+            "say": "user_feedback",
+            "text": "question",
+            "ts": 1000,
+            "type": "say",
+          },
+          {
+            "say": "text",
+            "text": "answer",
+            "ts": 1500,
+            "type": "say",
+          },
+          {
+            "say": "checkpoint_saved",
+            "text": "hash-1",
+            "ts": 2000,
+            "type": "say",
+          },
+        ],
+        "taskId": "task-1",
+      },
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMessageConfirm#restoreCheckpoint 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "handleCheckpointRestoreOperation",
+      {
+        "checkpoint": {
+          "hash": "hash-1",
+        },
+        "currentCline": "<task task-1>",
+        "messageIndex": 2,
+        "messageTs": 1500,
+        "operation": "delete",
+        "provider": "<provider>",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteMultipleTasksWithIds 1`] = `
+{
+  "events": [
+    [
+      "provider.deleteTaskWithId",
+      "a",
+    ],
+    [
+      "provider.deleteTaskWithId",
+      "b",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteSkill 1`] = `
+{
+  "events": [
+    [
+      "handleDeleteSkill",
+      "<provider>",
+      {
+        "skillName": "s1",
+        "source": "project",
+        "type": "deleteSkill",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteTaskWithId 1`] = `
+{
+  "events": [
+    [
+      "provider.deleteTaskWithId",
+      "task-2",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > deleteWorktree 1`] = `
+{
+  "events": [
+    [
+      "handleDeleteWorktree",
+      "<provider>",
+      "/wt-1",
+      true,
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "success": true,
+        "text": "deleted",
+        "type": "worktreeResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > didShowAnnouncement 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.setValue",
+      "lastShownAnnouncementId",
+      "announcement-1",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > dismissUpsell 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "dismissedUpsells",
+    ],
+    [
+      "contextProxy.setValue",
+      "dismissedUpsells",
+      [
+        "seen",
+        "new-upsell",
+      ],
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "list": [
+          "seen",
+          "new-upsell",
+        ],
+        "type": "dismissedUpsells",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > downloadErrorDiagnostics 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "generateErrorDiagnostics",
+      {
+        "globalStoragePath": "/storage",
+        "log": "[Function]",
+        "taskId": "task-1",
+        "values": {
+          "note": "n",
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > editMessageConfirm 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getState",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "resolveImageMentions",
+      {
+        "cwd": "/workspace",
+        "images": [],
+        "maxImageFileSize": 5,
+        "maxTotalImageSize": 20,
+        "rooIgnoreController": undefined,
+        "text": "edited",
+      },
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).messageManager.rewindToTimestamp",
+      1000,
+      {
+        "includeTargetMessage": false,
+      },
+    ],
+    [
+      "saveTaskMessages",
+      {
+        "globalStoragePath": "/storage",
+        "messages": [
+          {
+            "checkpoint": {
+              "hash": "c0",
+            },
+            "say": "text",
+            "text": "start",
+            "ts": 500,
+            "type": "say",
+          },
+          {
+            "say": "user_feedback",
+            "text": "question",
+            "ts": 1000,
+            "type": "say",
+          },
+          {
+            "say": "text",
+            "text": "answer",
+            "ts": 1500,
+            "type": "say",
+          },
+          {
+            "say": "checkpoint_saved",
+            "text": "hash-1",
+            "ts": 2000,
+            "type": "say",
+          },
+        ],
+        "taskId": "task-1",
+      },
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "task(task-1).submitUserMessage",
+      "edited",
+      [],
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > editMessageConfirm#restoreCheckpoint 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getState",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "resolveImageMentions",
+      {
+        "cwd": "/workspace",
+        "images": undefined,
+        "maxImageFileSize": 5,
+        "maxTotalImageSize": 20,
+        "rooIgnoreController": undefined,
+        "text": "edited",
+      },
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "handleCheckpointRestoreOperation",
+      {
+        "checkpoint": {
+          "hash": "hash-1",
+        },
+        "currentCline": "<task task-1>",
+        "editData": {
+          "apiConversationHistoryIndex": 2,
+          "editedContent": "edited",
+          "images": [],
+        },
+        "messageIndex": 2,
+        "messageTs": 1500,
+        "operation": "edit",
+        "provider": "<provider>",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > editQueuedMessage 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).messageQueueService.updateMessage",
+      "queued-1",
+      "changed",
+      [],
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > enhancePrompt 1`] = `
+{
+  "events": [
+    [
+      "provider.getState",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "MessageEnhancer.enhanceMessage",
+      {
+        "apiConfiguration": {
+          "apiKey": "key",
+          "apiProvider": "anthropic",
+        },
+        "currentClineMessages": [
+          {
+            "checkpoint": {
+              "hash": "c0",
+            },
+            "say": "text",
+            "text": "start",
+            "ts": 500,
+            "type": "say",
+          },
+          {
+            "say": "user_feedback",
+            "text": "question",
+            "ts": 1000,
+            "type": "say",
+          },
+          {
+            "say": "text",
+            "text": "answer",
+            "ts": 1500,
+            "type": "say",
+          },
+          {
+            "say": "checkpoint_saved",
+            "text": "hash-1",
+            "ts": 2000,
+            "type": "say",
+          },
+        ],
+        "customSupportPrompts": {},
+        "enhancementApiConfigId": undefined,
+        "includeTaskHistoryInEnhance": true,
+        "listApiConfigMeta": [],
+        "providerSettingsManager": {
+          "deleteConfig": "[Function]",
+          "getProfile": "[Function]",
+          "hasConfig": "[Function]",
+          "listConfig": "[Function]",
+          "saveConfig": "[Function]",
+          "setModeConfigs": "[Function]",
+        },
+        "taskId": "task-1",
+        "text": "make it better",
+      },
+    ],
+    [
+      "MessageEnhancer.captureTelemetry",
+      "task-1",
+      true,
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "text": "enhanced",
+        "type": "enhancedPrompt",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > enhancedPrompt#unhandled 1`] = `
+{
+  "events": [],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > enhancementApiConfigId 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.setValue",
+      "enhancementApiConfigId",
+      "id-other",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > exportCurrentTask 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.exportTaskWithId",
+      "task-1",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > exportMode 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "customModePrompts",
+    ],
+    [
+      "customModesManager.exportModeWithRules",
+      "code",
+      {
+        "roleDefinition": "old",
+      },
+    ],
+    [
+      "resolveDefaultSaveUri",
+      {
+        "getValue": "[Function]",
+        "globalStorageUri": {
+          "fsPath": "/storage",
+        },
+        "setValue": "[Function]",
+        "storeSecret": "[Function]",
+      },
+      "lastModeExportPath",
+      "code-export.yaml",
+      {
+        "fallbackDir": "/home/user/Downloads",
+        "useWorkspace": true,
+      },
+    ],
+    [
+      "vscode.window.showSaveDialog",
+      {
+        "defaultUri": {
+          "fsPath": "/downloads/code-export.yaml",
+        },
+        "filters": {
+          "YAML files": [
+            "yaml",
+            "yml",
+          ],
+        },
+        "title": "Save mode export",
+      },
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "error": "Export cancelled",
+        "slug": "code",
+        "success": false,
+        "type": "exportModeResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > exportSettings 1`] = `
+{
+  "events": [
+    [
+      "exportSettings",
+      {
+        "contextProxy": {
+          "getValue": "[Function]",
+          "globalStorageUri": {
+            "fsPath": "/storage",
+          },
+          "setValue": "[Function]",
+          "storeSecret": "[Function]",
+        },
+        "providerSettingsManager": {
+          "deleteConfig": "[Function]",
+          "getProfile": "[Function]",
+          "hasConfig": "[Function]",
+          "listConfig": "[Function]",
+          "saveConfig": "[Function]",
+          "setModeConfigs": "[Function]",
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > exportTaskWithId 1`] = `
+{
+  "events": [
+    [
+      "provider.exportTaskWithId",
+      "task-2",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > fetchMarketplaceData 1`] = `
+{
+  "events": [
+    [
+      "provider.fetchMarketplaceData",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > filterMarketplaceItems 1`] = `
+{
+  "events": [
+    [
+      "marketplaceManager.updateWithFilteredItems",
+      {
+        "search": "x",
+        "tags": [
+          "a",
+        ],
+        "type": "mcp",
+      },
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > focusPanelRequest 1`] = `
+{
+  "events": [
+    [
+      "vscode.commands.executeCommand",
+      "tumble-code.focusPanel",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > getAvailableBranches 1`] = `
+{
+  "events": [
+    [
+      "handleGetAvailableBranches",
+      "<provider>",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "currentBranch": "main",
+        "localBranches": [
+          "main",
+        ],
+        "remoteBranches": [],
+        "type": "branchList",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > getDismissedUpsells 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "dismissedUpsells",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "list": [
+          "seen",
+        ],
+        "type": "dismissedUpsells",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > getSystemPrompt 1`] = `
+{
+  "events": [
+    [
+      "generateSystemPrompt",
+      "<provider>",
+      {
+        "mode": "code",
+        "type": "getSystemPrompt",
+      },
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "mode": "code",
+        "text": "SYSTEM PROMPT",
+        "type": "systemPrompt",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > getTaskWithAggregatedCosts 1`] = `
+{
+  "events": [
+    [
+      "provider.getTaskWithAggregatedCosts",
+      "task-1",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "aggregatedCosts": {
+          "totalCost": 1,
+        },
+        "historyItem": {
+          "id": "task-1",
+        },
+        "text": "task-1",
+        "type": "taskWithAggregatedCosts",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > getVSCodeSetting 1`] = `
+{
+  "events": [
+    [
+      "vscode.workspace.getConfiguration",
+    ],
+    [
+      "configuration.get",
+      "editor.fontSize",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "setting": "editor.fontSize",
+        "type": "vsCodeSetting",
+        "value": "setting-value",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > getWorktreeDefaults 1`] = `
+{
+  "events": [
+    [
+      "handleGetWorktreeDefaults",
+      "<provider>",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "suggestedBranch": "wt-1",
+        "suggestedPath": "/wt-1",
+        "type": "worktreeDefaults",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > getWorktreeIncludeStatus 1`] = `
+{
+  "events": [
+    [
+      "handleGetWorktreeIncludeStatus",
+      "<provider>",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "worktreeIncludeStatus",
+        "worktreeIncludeStatus": {
+          "exists": true,
+          "hasGitignore": true,
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > hasOpenedModeSelector 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.setValue",
+      "hasOpenedModeSelector",
+      true,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > importMode 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "lastModeImportPath",
+    ],
+    [
+      "vscode.window.showOpenDialog",
+      {
+        "canSelectFiles": true,
+        "canSelectFolders": false,
+        "canSelectMany": false,
+        "defaultUri": {
+          "fsPath": "/workspace",
+          "path": "/workspace",
+          "scheme": "file",
+        },
+        "filters": {
+          "YAML files": [
+            "yaml",
+            "yml",
+          ],
+        },
+        "title": "Select mode export file to import",
+      },
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "error": "cancelled",
+        "success": false,
+        "type": "importModeResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > importSettings 1`] = `
+{
+  "events": [
+    [
+      "importSettingsWithFeedback",
+      {
+        "contextProxy": {
+          "getValue": "[Function]",
+          "globalStorageUri": {
+            "fsPath": "/storage",
+          },
+          "setValue": "[Function]",
+          "storeSecret": "[Function]",
+        },
+        "customModesManager": {
+          "checkRulesDirectoryHasContent": "[Function]",
+          "deleteCustomMode": "[Function]",
+          "exportModeWithRules": "[Function]",
+          "getCustomModes": "[Function]",
+          "getCustomModesFilePath": "[Function]",
+          "importModeWithRules": "[Function]",
+          "updateCustomMode": "[Function]",
+        },
+        "provider": "<provider>",
+        "providerSettingsManager": {
+          "deleteConfig": "[Function]",
+          "getProfile": "[Function]",
+          "hasConfig": "[Function]",
+          "listConfig": "[Function]",
+          "saveConfig": "[Function]",
+          "setModeConfigs": "[Function]",
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > installMarketplaceItem 1`] = `
+{
+  "events": [
+    [
+      "marketplaceManager.installMarketplaceItem",
+      {
+        "content": "c",
+        "description": "d",
+        "id": "item-1",
+        "name": "Item",
+        "type": "mcp",
+        "url": "u",
+      },
+      {
+        "target": "project",
+      },
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "slug": "item-1",
+        "success": true,
+        "type": "marketplaceInstallResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > listWorktrees 1`] = `
+{
+  "events": [
+    [
+      "handleListWorktrees",
+      "<provider>",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "error": undefined,
+        "gitRootPath": "/workspace",
+        "isGitRepo": true,
+        "isMultiRoot": false,
+        "isSubfolder": false,
+        "type": "worktreeList",
+        "worktrees": [],
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > loadApiConfiguration 1`] = `
+{
+  "events": [
+    [
+      "provider.activateProviderProfile",
+      {
+        "name": "other",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > loadApiConfigurationById 1`] = `
+{
+  "events": [
+    [
+      "provider.activateProviderProfile",
+      {
+        "id": "id-other",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > lockApiConfigAcrossModes 1`] = `
+{
+  "events": [
+    [
+      "context.workspaceState.update",
+      "lockApiConfigAcrossModes",
+      true,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > mode 1`] = `
+{
+  "events": [
+    [
+      "provider.handleModeSwitch",
+      "architect",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > newTask 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getState",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "resolveImageMentions",
+      {
+        "cwd": "/workspace",
+        "images": [
+          "data:image/png;base64,AAA",
+        ],
+        "maxImageFileSize": 5,
+        "maxTotalImageSize": 20,
+        "rooIgnoreController": undefined,
+        "text": "build it",
+      },
+    ],
+    [
+      "provider.createTask",
+      "build it",
+      [
+        "data:image/png;base64,AAA",
+      ],
+      undefined,
+      {
+        "taskId": undefined,
+      },
+      undefined,
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "invoke": "newChat",
+        "type": "invoke",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openAiCodexSignIn 1`] = `
+{
+  "events": [
+    [
+      "codexOAuth.startAuthorizationFlow",
+    ],
+    [
+      "vscode.env.openExternal",
+      {
+        "path": "/authorize",
+        "query": "",
+        "scheme": "https",
+      },
+    ],
+    [
+      "codexOAuth.waitForCallback",
+    ],
+    [
+      "vscode.window.showInformationMessage",
+      "Successfully signed in to OpenAI Codex",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openAiCodexSignOut 1`] = `
+{
+  "events": [
+    [
+      "codexOAuth.clearCredentials",
+    ],
+    [
+      "vscode.window.showInformationMessage",
+      "Signed out from OpenAI Codex",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openCommandFile 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getCommand",
+      "/workspace",
+      "deploy",
+    ],
+    [
+      "openFile",
+      "/workspace/.roo/commands/deploy.md",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openCustomModesSettings 1`] = `
+{
+  "events": [
+    [
+      "customModesManager.getCustomModesFilePath",
+    ],
+    [
+      "openFile",
+      "/global/custom_modes.yaml",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openDebugApiHistory 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getTaskDirectoryPath",
+      "/storage",
+      "task-1",
+    ],
+    [
+      "fileExistsAtPath",
+      "/storage/tasks/task-1/api_conversation_history.json",
+    ],
+    [
+      "vscode.window.showErrorMessage",
+      "File not found: api_conversation_history.json",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openDebugUiHistory 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getTaskDirectoryPath",
+      "/storage",
+      "task-1",
+    ],
+    [
+      "fileExistsAtPath",
+      "/storage/tasks/task-1/ui_messages.json",
+    ],
+    [
+      "vscode.window.showErrorMessage",
+      "File not found: ui_messages.json",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openExtensionLogs 1`] = `
+{
+  "events": [
+    [
+      "provider.showOutputChannel",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openExternal 1`] = `
+{
+  "events": [
+    [
+      "vscode.env.openExternal",
+      {
+        "path": "/",
+        "query": "",
+        "scheme": "https",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openFile 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "openFile",
+      "/workspace/src/a.ts",
+      {
+        "line": 3,
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openImage 1`] = `
+{
+  "events": [
+    [
+      "openImage",
+      "data:image/png;base64,AAA",
+      {
+        "values": {
+          "a": 1,
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openKeyboardShortcuts 1`] = `
+{
+  "events": [
+    [
+      "vscode.commands.executeCommand",
+      "workbench.action.openGlobalKeybindings",
+      "tumble",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openMarkdownPreview 1`] = `
+{
+  "events": [
+    [
+      "fs.writeFile",
+      "/tmp/roo-preview-1700000000000.md",
+      "# Title",
+      "utf8",
+    ],
+    [
+      "vscode.workspace.openTextDocument",
+      "/tmp/roo-preview-1700000000000.md",
+    ],
+    [
+      "vscode.commands.executeCommand",
+      "markdown.showPreview",
+      {
+        "fsPath": "/tmp/roo-preview-1700000000000.md",
+        "path": "/tmp/roo-preview-1700000000000.md",
+        "scheme": "file",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openMcpSettings 1`] = `
+{
+  "events": [
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.getMcpSettingsFilePath",
+    ],
+    [
+      "openFile",
+      "/global/mcp_settings.json",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openMention 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "openMention",
+      "/workspace",
+      "/src/a.ts",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openPlanReview 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "PlanReviewPanel.open",
+      {
+        "secrets": {
+          "get": "[Function]",
+        },
+        "workspaceState": {
+          "update": "[Function]",
+        },
+      },
+      {
+        "filePath": "/workspace/plans/plan.md",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openPlanReview#markdown 1`] = `
+{
+  "events": [
+    [
+      "PlanReviewPanel.open",
+      {
+        "secrets": {
+          "get": "[Function]",
+        },
+        "workspaceState": {
+          "update": "[Function]",
+        },
+      },
+      {
+        "markdown": "# Plan",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openProjectMcpSettings 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "fs.mkdir",
+      "/workspace/.roo",
+      {
+        "recursive": true,
+      },
+    ],
+    [
+      "fileExistsAtPath",
+      "/workspace/.roo/mcp.json",
+    ],
+    [
+      "safeWriteJson",
+      "/workspace/.roo/mcp.json",
+      {
+        "mcpServers": {},
+      },
+      {
+        "prettyPrint": true,
+      },
+    ],
+    [
+      "openFile",
+      "/workspace/.roo/mcp.json",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openSkillFile 1`] = `
+{
+  "events": [
+    [
+      "handleOpenSkillFile",
+      "<provider>",
+      {
+        "skillName": "s1",
+        "source": "project",
+        "type": "openSkillFile",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > openTerminalProfilePicker 1`] = `
+{
+  "events": [
+    [
+      "vscode.commands.executeCommand",
+      "workbench.action.terminal.selectDefaultShell",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > queueMessage 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getState",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "resolveImageMentions",
+      {
+        "cwd": "/workspace",
+        "images": [],
+        "maxImageFileSize": 5,
+        "maxTotalImageSize": 20,
+        "rooIgnoreController": undefined,
+        "text": "later",
+      },
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).messageQueueService.addMessage",
+      "later",
+      [],
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > queueSubagentMessage 1`] = `
+{
+  "events": [
+    [
+      "provider.getBackgroundTask",
+      "child-1",
+    ],
+    [
+      "task(child-1).messageQueueService.addMessage",
+      "hint",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > readFileContent 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "isPathOutsideWorkspace",
+      "/workspace/src/a.ts",
+    ],
+    [
+      "fs.readFile",
+      "/workspace/src/a.ts",
+      "utf-8",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "fileContent": {
+          "content": "file-content",
+          "path": "src/a.ts",
+        },
+        "type": "fileContent",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > refreshAllMcpServers 1`] = `
+{
+  "events": [
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.refreshAllConnections",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > refreshCustomTools 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getRooDirectoriesForCwd",
+      "/workspace",
+    ],
+    [
+      "customToolRegistry.loadFromDirectories",
+      [
+        "/workspace/.roo/tools",
+      ],
+    ],
+    [
+      "customToolRegistry.getAllSerialized",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "tools": [],
+        "type": "customToolsResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > removeInstalledMarketplaceItem 1`] = `
+{
+  "events": [
+    [
+      "marketplaceManager.removeInstalledMarketplaceItem",
+      {
+        "content": "c",
+        "description": "d",
+        "id": "item-1",
+        "name": "Item",
+        "type": "mcp",
+        "url": "u",
+      },
+      {
+        "target": "project",
+      },
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "slug": "item-1",
+        "success": true,
+        "type": "marketplaceRemoveResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > removeQueuedMessage 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).messageQueueService.removeMessage",
+      "queued-1",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > renameApiConfiguration 1`] = `
+{
+  "events": [
+    [
+      "providerSettingsManager.getProfile",
+      {
+        "name": "default",
+      },
+    ],
+    [
+      "providerSettingsManager.saveConfig",
+      "renamed",
+      {
+        "apiProvider": "anthropic",
+        "id": "id-default",
+      },
+    ],
+    [
+      "providerSettingsManager.deleteConfig",
+      "default",
+    ],
+    [
+      "provider.activateProviderProfile",
+      {
+        "name": "renamed",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestCodeIndexSecretStatus 1`] = `
+{
+  "events": [
+    [
+      "context.secrets.get",
+      "codeIndexOpenAiKey",
+    ],
+    [
+      "context.secrets.get",
+      "codeIndexQdrantApiKey",
+    ],
+    [
+      "context.secrets.get",
+      "codebaseIndexOpenAiCompatibleApiKey",
+    ],
+    [
+      "context.secrets.get",
+      "codebaseIndexGeminiApiKey",
+    ],
+    [
+      "context.secrets.get",
+      "codebaseIndexMistralApiKey",
+    ],
+    [
+      "context.secrets.get",
+      "codebaseIndexVercelAiGatewayApiKey",
+    ],
+    [
+      "context.secrets.get",
+      "codebaseIndexOpenRouterApiKey",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "codeIndexSecretStatus",
+        "values": {
+          "hasGeminiApiKey": false,
+          "hasMistralApiKey": false,
+          "hasOpenAiCompatibleApiKey": false,
+          "hasOpenAiKey": true,
+          "hasOpenRouterApiKey": false,
+          "hasQdrantApiKey": false,
+          "hasVercelAiGatewayApiKey": false,
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestCommands 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "getCommands",
+      "/workspace",
+    ],
+    [
+      "provider.getSkillsManager",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "commands": [
+          {
+            "argumentHint": "env",
+            "description": "Deploy",
+            "filePath": "/workspace/.roo/commands/deploy.md",
+            "name": "deploy",
+            "source": "project",
+          },
+        ],
+        "type": "commands",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestIndexingStatus 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentWorkspaceCodeIndexManager",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "indexingStatusUpdate",
+        "values": {
+          "currentItemUnit": "items",
+          "message": "embeddings:orchestrator.indexingRequiresWorkspace",
+          "processedItems": 0,
+          "systemStatus": "Error",
+          "totalItems": 0,
+          "workerspacePath": undefined,
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestModes 1`] = `
+{
+  "events": [
+    [
+      "provider.getModes",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "modes": [
+          {
+            "name": "Code",
+            "slug": "code",
+          },
+        ],
+        "type": "modes",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestOpenAiCodexRateLimits 1`] = `
+{
+  "events": [
+    [
+      "codexOAuth.getAccessToken",
+    ],
+    [
+      "codexOAuth.getAccountId",
+    ],
+    [
+      "fetchOpenAiCodexRateLimitInfo",
+      "access-token",
+      {
+        "accountId": "account-1",
+      },
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "openAiCodexRateLimits",
+        "values": {
+          "primary": {
+            "usedPercent": 1,
+          },
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestProviderModels 1`] = `
+{
+  "events": [
+    [
+      "provider.getState",
+    ],
+    [
+      "fetchModelSource",
+      {
+        "requestId": "req-1",
+        "source": {
+          "id": "openrouter",
+        },
+      },
+      {
+        "apiConfiguration": {
+          "apiKey": "key",
+          "apiProvider": "anthropic",
+        },
+      },
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "modelSourceResult": {
+          "models": {
+            "m1": {
+              "contextWindow": 1,
+            },
+          },
+          "requestId": "req-1",
+          "sourceId": "openrouter",
+        },
+        "type": "providerModels",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestSkills 1`] = `
+{
+  "events": [
+    [
+      "handleRequestSkills",
+      "<provider>",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > requestTerminalProfiles 1`] = `
+{
+  "events": [
+    [
+      "Terminal.getAvailableProfileNames",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "profiles": [
+          "bash",
+          "zsh",
+        ],
+        "type": "terminalProfiles",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > resetCustomSound 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "customSound_celebration",
+    ],
+    [
+      "deleteCustomSound",
+      "/storage",
+      undefined,
+    ],
+    [
+      "contextProxy.setValue",
+      "customSound_celebration",
+      undefined,
+    ],
+    [
+      "contextProxy.setValue",
+      "customSoundOriginal_celebration",
+      undefined,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > resetState 1`] = `
+{
+  "events": [
+    [
+      "provider.resetState",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > restartMcpServer 1`] = `
+{
+  "events": [
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.restartConnection",
+      "srv",
+      "project",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudManualUrl 1`] = `
+{
+  "events": [
+    [
+      "CloudService.handleAuthCallback",
+      "c1",
+      "s1",
+      null,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudSignIn 1`] = `
+{
+  "events": [
+    [
+      "Telemetry.captureEvent",
+      "Authentication Initiated",
+    ],
+    [
+      "CloudService.login",
+      undefined,
+      true,
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudSignOut 1`] = `
+{
+  "events": [
+    [
+      "CloudService.logout",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "authenticatedUser",
+        "userInfo": undefined,
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > saveCodeIndexSettingsAtomic 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "codebaseIndexConfig",
+    ],
+    [
+      "contextProxy.setValue",
+      "codebaseIndexConfig",
+      {
+        "codebaseIndexBedrockProfile": undefined,
+        "codebaseIndexBedrockRegion": undefined,
+        "codebaseIndexEmbedderBaseUrl": undefined,
+        "codebaseIndexEmbedderModelDimension": undefined,
+        "codebaseIndexEmbedderModelId": "nomic",
+        "codebaseIndexEmbedderProvider": "ollama",
+        "codebaseIndexEnabled": true,
+        "codebaseIndexOpenAiCompatibleBaseUrl": undefined,
+        "codebaseIndexOpenRouterSpecificProvider": undefined,
+        "codebaseIndexQdrantUrl": "http://qdrant",
+        "codebaseIndexSearchMaxResults": undefined,
+        "codebaseIndexSearchMinScore": undefined,
+      },
+    ],
+    [
+      "contextProxy.storeSecret",
+      "codeIndexOpenAiKey",
+      "sk-new",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "settings": {
+          "codebaseIndexBedrockProfile": undefined,
+          "codebaseIndexBedrockRegion": undefined,
+          "codebaseIndexEmbedderBaseUrl": undefined,
+          "codebaseIndexEmbedderModelDimension": undefined,
+          "codebaseIndexEmbedderModelId": "nomic",
+          "codebaseIndexEmbedderProvider": "ollama",
+          "codebaseIndexEnabled": true,
+          "codebaseIndexOpenAiCompatibleBaseUrl": undefined,
+          "codebaseIndexOpenRouterSpecificProvider": undefined,
+          "codebaseIndexQdrantUrl": "http://qdrant",
+          "codebaseIndexSearchMaxResults": undefined,
+          "codebaseIndexSearchMinScore": undefined,
+        },
+        "success": true,
+        "type": "codeIndexSettingsSaved",
+      },
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "provider.getCurrentWorkspaceCodeIndexManager",
+    ],
+    [
+      "provider.log",
+      "Cannot save code index settings: No workspace folder open",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "indexingStatusUpdate",
+        "values": {
+          "currentItemUnit": "items",
+          "message": "embeddings:orchestrator.indexingRequiresWorkspace",
+          "processedItems": 0,
+          "systemStatus": "Error",
+          "totalItems": 0,
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > saveImage 1`] = `
+{
+  "events": [
+    [
+      "resolveDefaultSaveUri",
+      {
+        "getValue": "[Function]",
+        "globalStorageUri": {
+          "fsPath": "/storage",
+        },
+        "setValue": "[Function]",
+        "storeSecret": "[Function]",
+      },
+      "lastImageSavePath",
+      "img_1700000000000.png",
+      {
+        "fallbackDir": "/home/user/Downloads",
+        "useWorkspace": false,
+      },
+    ],
+    [
+      "saveImage",
+      "data:image/png;base64,AAA",
+      {
+        "fsPath": "/downloads/img_1700000000000.png",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > searchCommits 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "searchCommits",
+      "fix",
+      "/workspace",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "commits": [],
+        "type": "commitSearchResults",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > searchFiles 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "searchWorkspaceFiles",
+      "a",
+      "/workspace",
+      20,
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "new RooIgnoreController",
+      "/workspace",
+    ],
+    [
+      "RooIgnoreController.initialize",
+    ],
+    [
+      "provider.getState",
+    ],
+    [
+      "RooIgnoreController.filterPaths",
+      [
+        "src/a.ts",
+        "secret/b.ts",
+      ],
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "requestId": "search-1",
+        "results": [
+          {
+            "path": "src/a.ts",
+            "type": "file",
+          },
+        ],
+        "type": "fileSearchResults",
+      },
+    ],
+    [
+      "RooIgnoreController.dispose",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > selectCustomSound 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "customSound_notification",
+    ],
+    [
+      "selectAndStoreCustomSound",
+      "/storage",
+      "notification",
+      undefined,
+    ],
+    [
+      "contextProxy.setValue",
+      "customSound_notification",
+      "sound.mp3",
+    ],
+    [
+      "contextProxy.setValue",
+      "customSoundOriginal_notification",
+      "Sound.mp3",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > selectImages 1`] = `
+{
+  "events": [
+    [
+      "selectImages",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "context": "chat",
+        "images": [
+          "data:image/png;base64,AAA",
+        ],
+        "messageTs": 42,
+        "type": "selectedImages",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > setAutoEnableDefault 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentWorkspaceCodeIndexManager",
+    ],
+    [
+      "provider.log",
+      "Cannot set auto-enable default: No workspace folder open",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > shareCurrentTask 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "CloudService.shareTask",
+      "task-1",
+      "public",
+      [
+        {
+          "checkpoint": {
+            "hash": "c0",
+          },
+          "say": "text",
+          "text": "start",
+          "ts": 500,
+          "type": "say",
+        },
+        {
+          "say": "user_feedback",
+          "text": "question",
+          "ts": 1000,
+          "type": "say",
+        },
+        {
+          "say": "text",
+          "text": "answer",
+          "ts": 1500,
+          "type": "say",
+        },
+        {
+          "say": "checkpoint_saved",
+          "text": "hash-1",
+          "ts": 2000,
+          "type": "say",
+        },
+      ],
+    ],
+    [
+      "vscode.window.showInformationMessage",
+      "common:info.public_share_link_copied",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "text": "https://share/1",
+        "type": "shareTaskSuccess",
+        "visibility": "public",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > showMdmAuthRequiredNotification 1`] = `
+{
+  "events": [
+    [
+      "vscode.window.showWarningMessage",
+      "common:mdm.info.organization_requires_auth",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > showTaskWithId 1`] = `
+{
+  "events": [
+    [
+      "provider.showTaskWithId",
+      "task-2",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > startIndexing 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentWorkspaceCodeIndexManager",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "type": "indexingStatusUpdate",
+        "values": {
+          "currentItemUnit": "items",
+          "message": "embeddings:orchestrator.indexingRequiresWorkspace",
+          "processedItems": 0,
+          "systemStatus": "Error",
+          "totalItems": 0,
+        },
+      },
+    ],
+    [
+      "provider.log",
+      "Cannot start indexing: No workspace folder open",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > stopIndexing 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentWorkspaceCodeIndexManager",
+    ],
+    [
+      "provider.log",
+      "Cannot stop indexing: No workspace folder open",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > submitEditedMessage 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "hasCheckpoint": true,
+        "images": [],
+        "messageTs": 1500,
+        "text": "edited",
+        "type": "showEditMessageDialog",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > subscribeSubagentMessages 1`] = `
+{
+  "events": [
+    [
+      "subagentRegistry.watch",
+      "child-1",
+    ],
+    [
+      "provider.getBackgroundTask",
+      "child-1",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "sourceTaskId": "child-1",
+        "subagentMessages": [
+          {
+            "checkpoint": {
+              "hash": "c0",
+            },
+            "say": "text",
+            "text": "start",
+            "ts": 500,
+            "type": "say",
+          },
+          {
+            "say": "user_feedback",
+            "text": "question",
+            "ts": 1000,
+            "type": "say",
+          },
+          {
+            "say": "text",
+            "text": "answer",
+            "ts": 1500,
+            "type": "say",
+          },
+          {
+            "say": "checkpoint_saved",
+            "text": "hash-1",
+            "ts": 2000,
+            "type": "say",
+          },
+        ],
+        "type": "subagentMessages",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > switchOrganization 1`] = `
+{
+  "events": [
+    [
+      "CloudService.switchOrganization",
+      "org-1",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "organizationId": "org-1",
+        "success": true,
+        "type": "organizationSwitchResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > switchTab 1`] = `
+{
+  "events": [
+    [
+      "Telemetry.captureTabShown",
+      "settings",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "action": "switchTab",
+        "tab": "settings",
+        "type": "action",
+        "values": {
+          "section": "about",
+        },
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > switchWorktree 1`] = `
+{
+  "events": [
+    [
+      "handleSwitchWorktree",
+      "<provider>",
+      "/wt-1",
+      false,
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "success": true,
+        "text": "switched",
+        "type": "worktreeResult",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > taskSyncEnabled 1`] = `
+{
+  "events": [
+    [
+      "CloudService.updateUserSettings",
+      {
+        "taskSyncEnabled": true,
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > telemetrySetting 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "telemetrySetting",
+    ],
+    [
+      "Telemetry.captureTelemetrySettingsChanged",
+      "enabled",
+      "disabled",
+    ],
+    [
+      "contextProxy.setValue",
+      "telemetrySetting",
+      "disabled",
+    ],
+    [
+      "Telemetry.updateTelemetryState",
+      false,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > terminalOperation 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "task(task-1).handleTerminalOperation",
+      "continue",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > toggleApiConfigPin 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "pinnedApiConfigs",
+    ],
+    [
+      "contextProxy.setValue",
+      "pinnedApiConfigs",
+      {},
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > toggleMcpServer 1`] = `
+{
+  "events": [
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.toggleServerDisabled",
+      "srv",
+      true,
+      "global",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > toggleToolAlwaysAllow 1`] = `
+{
+  "events": [
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.toggleToolAlwaysAllow",
+      "srv",
+      "global",
+      "tool",
+      true,
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > toggleToolEnabledForPrompt 1`] = `
+{
+  "events": [
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.toggleToolEnabledForPrompt",
+      "srv",
+      "global",
+      "tool",
+      false,
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > toggleWorkspaceIndexing 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentWorkspaceCodeIndexManager",
+    ],
+    [
+      "provider.log",
+      "Cannot toggle workspace indexing: No workspace folder open",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > unsubscribeSubagentMessages 1`] = `
+{
+  "events": [
+    [
+      "subagentRegistry.unwatch",
+      "child-1",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateCustomMode 1`] = `
+{
+  "events": [
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "customModesManager.updateCustomMode",
+      "m1",
+      {
+        "groups": [],
+        "name": "M1 renamed",
+        "roleDefinition": "r",
+        "slug": "m1",
+      },
+    ],
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "contextProxy.setValue",
+      "customModes",
+      [
+        {
+          "groups": [],
+          "name": "M1",
+          "roleDefinition": "r",
+          "slug": "m1",
+          "source": "project",
+        },
+      ],
+    ],
+    [
+      "contextProxy.setValue",
+      "mode",
+      "m1",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "Telemetry.captureModeSettingChanged",
+      "name",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateCustomMode#new 1`] = `
+{
+  "events": [
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "customModesManager.updateCustomMode",
+      "m2",
+      {
+        "groups": [],
+        "name": "M2",
+        "roleDefinition": "r",
+        "slug": "m2",
+      },
+    ],
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "contextProxy.setValue",
+      "customModes",
+      [
+        {
+          "groups": [],
+          "name": "M1",
+          "roleDefinition": "r",
+          "slug": "m1",
+          "source": "project",
+        },
+      ],
+    ],
+    [
+      "contextProxy.setValue",
+      "mode",
+      "m2",
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "Telemetry.captureCustomModeCreated",
+      "m2",
+      "M2",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateMcpTimeout 1`] = `
+{
+  "events": [
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.updateServerTimeout",
+      "srv",
+      30,
+      "global",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updatePrompt 1`] = `
+{
+  "events": [
+    [
+      "contextProxy.getValue",
+      "customModePrompts",
+    ],
+    [
+      "contextProxy.setValue",
+      "customModePrompts",
+      {
+        "code": {
+          "roleDefinition": "new",
+        },
+      },
+    ],
+    [
+      "provider.getStateToPostToWebview",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "state": {
+          "customModePrompts": {
+            "code": {
+              "roleDefinition": "new",
+            },
+          },
+          "hasOpenedModeSelector": false,
+          "mode": "code",
+        },
+        "type": "state",
+      },
+    ],
+    [
+      "Telemetry.captureModeSettingChanged",
+      "roleDefinition",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateSettings 1`] = `
+{
+  "events": [
+    [
+      "changeLanguage",
+      "de",
+    ],
+    [
+      "contextProxy.setValue",
+      "language",
+      "de",
+    ],
+    [
+      "vscode.workspace.getConfiguration",
+      "tumble-code",
+    ],
+    [
+      "configuration.update",
+      "allowedCommands",
+      [
+        "ls",
+        "ls",
+        " git ",
+      ],
+      1,
+    ],
+    [
+      "contextProxy.setValue",
+      "allowedCommands",
+      [
+        "ls",
+        "ls",
+        " git ",
+      ],
+    ],
+    [
+      "Terminal.setShellIntegrationTimeout",
+      1000,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalShellIntegrationTimeout",
+      1000,
+    ],
+    [
+      "Terminal.setShellIntegrationDisabled",
+      true,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalShellIntegrationDisabled",
+      true,
+    ],
+    [
+      "Terminal.setCommandDelay",
+      5,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalCommandDelay",
+      5,
+    ],
+    [
+      "Terminal.setPowershellCounter",
+      true,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalPowershellCounter",
+      true,
+    ],
+    [
+      "Terminal.setTerminalZshClearEolMark",
+      true,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalZshClearEolMark",
+      true,
+    ],
+    [
+      "Terminal.setTerminalZshOhMy",
+      true,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalZshOhMy",
+      true,
+    ],
+    [
+      "Terminal.setTerminalZshP10k",
+      true,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalZshP10k",
+      true,
+    ],
+    [
+      "Terminal.setTerminalZdotdir",
+      true,
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalZdotdir",
+      true,
+    ],
+    [
+      "Terminal.getTerminalProfile",
+    ],
+    [
+      "Terminal.setTerminalProfile",
+      "zsh",
+    ],
+    [
+      "Terminal.getTerminalProfile",
+    ],
+    [
+      "contextProxy.setValue",
+      "terminalProfile",
+      "bash",
+    ],
+    [
+      "Terminal.setExecaShellPath",
+      "/bin/zsh",
+    ],
+    [
+      "contextProxy.setValue",
+      "execaShellPath",
+      "/bin/zsh",
+    ],
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.handleMcpEnabledChange",
+      false,
+    ],
+    [
+      "contextProxy.setValue",
+      "mcpEnabled",
+      false,
+    ],
+    [
+      "contextProxy.getValue",
+      "experiments",
+    ],
+    [
+      "contextProxy.setValue",
+      "experiments",
+      {
+        "imageGeneration": true,
+        "preventFocusDisruption": false,
+      },
+    ],
+    [
+      "contextProxy.setValue",
+      "alwaysAllowReadOnly",
+      true,
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateSkillModes 1`] = `
+{
+  "events": [
+    [
+      "handleUpdateSkillModes",
+      "<provider>",
+      {
+        "skillModeSlugs": [
+          "code",
+        ],
+        "skillName": "s1",
+        "source": "project",
+        "type": "updateSkillModes",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateTodoList 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "setPendingTodoList",
+      "<task task-1>",
+      [
+        {
+          "content": "x",
+          "id": "1",
+          "status": "pending",
+        },
+      ],
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateTodoList#subagent 1`] = `
+{
+  "events": [
+    [
+      "provider.getCurrentTask",
+    ],
+    [
+      "provider.getBackgroundTask",
+      "child-1",
+    ],
+    [
+      "setPendingTodoList",
+      "<task child-1>",
+      [],
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateVSCodeSetting 1`] = `
+{
+  "events": [
+    [
+      "vscode.workspace.getConfiguration",
+    ],
+    [
+      "configuration.update",
+      "terminal.integrated.inheritEnv",
+      false,
+      true,
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateVSCodeSetting#restricted 1`] = `
+{
+  "events": [
+    [
+      "vscode.window.showErrorMessage",
+      "Cannot update restricted VSCode setting: editor.fontSize",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > upsertApiConfiguration 1`] = `
+{
+  "events": [
+    [
+      "provider.upsertProviderProfile",
+      "profile",
+      {
+        "apiProvider": "anthropic",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidLaunch 1`] = `
+{
+  "events": [
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "contextProxy.setValue",
+      "customModes",
+      [
+        {
+          "groups": [],
+          "name": "M1",
+          "roleDefinition": "r",
+          "slug": "m1",
+          "source": "project",
+        },
+      ],
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "workspaceTracker.initializeFilePaths",
+    ],
+    [
+      "getTheme",
+    ],
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.getAllServers",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "mcpServers": [
+          {
+            "name": "srv",
+          },
+        ],
+        "type": "mcpServers",
+      },
+    ],
+    [
+      "providerSettingsManager.listConfig",
+    ],
+    [
+      "contextProxy.getValue",
+      "telemetrySetting",
+    ],
+    [
+      "Telemetry.updateTelemetryState",
+      true,
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "text": "{"name":"theme"}",
+        "type": "theme",
+      },
+    ],
+    [
+      "contextProxy.getValue",
+      "currentApiConfigName",
+    ],
+    [
+      "providerSettingsManager.hasConfig",
+      "default",
+    ],
+    [
+      "contextProxy.setValue",
+      "listApiConfigMeta",
+      [
+        {
+          "apiProvider": "anthropic",
+          "id": "id-default",
+          "name": "default",
+        },
+        {
+          "apiProvider": "openai",
+          "id": "id-other",
+          "name": "other",
+        },
+      ],
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "listApiConfig": [
+          {
+            "apiProvider": "anthropic",
+            "id": "id-default",
+            "name": "default",
+          },
+          {
+            "apiProvider": "openai",
+            "id": "id-other",
+            "name": "other",
+          },
+        ],
+        "type": "listApiConfig",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
