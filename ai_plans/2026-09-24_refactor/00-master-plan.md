@@ -39,7 +39,7 @@ means: work through this list (one branch per item), then strike each line here.
 
 - ~~Windows CI: `src` vitest dies silently~~ DONE: not a crash, two assertion failures hidden by the truncated
   `gh run view --log`; the runner's 8.3 short TEMP path vs `fs.promises.realpath`. Fixed in #341 (merge 99d28803c),
-  its Windows job passed in 20 min. The debug branch `debug/windows-src-vitest-timing` is still on the remote.
+  its Windows job passed in 20 min. The debug branch is gone from the remote.
 - Memory writers: closing VS Code or the CLI on the final `completion_result` ask still skips them: WON'T FIX (owner
   decision 15). ~~`hasMemoryWritesSince` reads `toolUses`~~ DONE #344 (5ead450cb): 0 of 1,042 real task files carry
   `toolUses`; the gate now reads answered tool asks into the memory dir. ~~Chat completions never reach
@@ -64,7 +64,9 @@ means: work through this list (one branch per item), then strike each line here.
   a session for another path is reverted in `handlePartial` and `execute`.
 - Earlier owner questions: ~~dispose leak~~ done in #309; ~~retry policy~~ DONE #343 (5c6a3e517, owner decision 14):
   401/403/404 not auto-retried in foreground tasks, a declined retry ends the loop, the unattended CLI exits 1 instead
-  of hanging (background tasks unchanged, recorded in its plan doc); ~~stale DeepSeek catalog~~ DONE #351 (ea164246e,
+  of hanging; background tasks DONE #353 (47e9fa63d): 401/403/404 end them at once, other errors always back off
+  (with auto-approve off they used to re-request in a tight loop through the auto-approved ask) and stop after 7
+  attempts (about 315 s), the parent or memory drain gets one failure line; ~~stale DeepSeek catalog~~ DONE #351 (ea164246e,
   decision 16): `deepseek-flash` default, `deepseek-v4-flash` alias, `deepseek-chat`/`-reasoner` deprecated, effort
   `low` no longer sent as `high`. Open from #351: the `/models` fetcher ignores the new limit fields; peak/off-peak
   pricing not modeled (peak prices used).
