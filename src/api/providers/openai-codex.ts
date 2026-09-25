@@ -18,6 +18,7 @@ import type { ApiHandlerOptions } from "../../shared/api"
 
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
+import { toStrictSchema } from "../transform/strict-json-schema"
 
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
@@ -232,67 +233,6 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		reasoningEffort: ReasoningEffortExtended | undefined,
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): any {
-		const ensureAllRequired = (schema: any): any => {
-			if (!schema || typeof schema !== "object" || schema.type !== "object") {
-				return schema
-			}
-
-			const result = { ...schema }
-			if (result.additionalProperties !== false) {
-				result.additionalProperties = false
-			}
-
-			if (result.properties) {
-				const allKeys = Object.keys(result.properties)
-				result.required = allKeys
-
-				const newProps = { ...result.properties }
-				for (const key of allKeys) {
-					const prop = newProps[key]
-					if (prop.type === "object") {
-						newProps[key] = ensureAllRequired(prop)
-					} else if (prop.type === "array" && prop.items?.type === "object") {
-						newProps[key] = {
-							...prop,
-							items: ensureAllRequired(prop.items),
-						}
-					}
-				}
-				result.properties = newProps
-			}
-
-			return result
-		}
-
-		const ensureAdditionalPropertiesFalse = (schema: any): any => {
-			if (!schema || typeof schema !== "object" || schema.type !== "object") {
-				return schema
-			}
-
-			const result = { ...schema }
-			if (result.additionalProperties !== false) {
-				result.additionalProperties = false
-			}
-
-			if (result.properties) {
-				const newProps = { ...result.properties }
-				for (const key of Object.keys(result.properties)) {
-					const prop = newProps[key]
-					if (prop && prop.type === "object") {
-						newProps[key] = ensureAdditionalPropertiesFalse(prop)
-					} else if (prop && prop.type === "array" && prop.items?.type === "object") {
-						newProps[key] = {
-							...prop,
-							items: ensureAdditionalPropertiesFalse(prop.items),
-						}
-					}
-				}
-				result.properties = newProps
-			}
-
-			return result
-		}
-
 		interface ResponsesRequestBody {
 			model: string
 			input: Array<{ role: "user" | "assistant"; content: any[] } | { type: string; content: string }>
@@ -339,9 +279,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 						type: "function",
 						name: tool.function.name,
 						description: tool.function.description,
-						parameters: isMcp
-							? ensureAdditionalPropertiesFalse(tool.function.parameters)
-							: ensureAllRequired(tool.function.parameters),
+						parameters: toStrictSchema(tool.function.parameters, { mcp: isMcp }),
 						strict: !isMcp,
 					}
 				}),
