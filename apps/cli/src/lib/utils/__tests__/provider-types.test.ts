@@ -17,7 +17,12 @@ import {
 	isAcceptedProvider,
 } from "@/lib/utils/provider-types.js"
 
-import { activeProviderIds, providerModelDefinitions } from "@roo-code/types"
+import {
+	activeProviderIds,
+	getProviderApiKeyField,
+	providerModelDefinitions,
+	providerRequiresApiKey as sharedProviderRequiresApiKey,
+} from "@roo-code/types"
 
 const EXCLUDED = ["vscode-lm", "fake-ai", "gemini-cli"]
 
@@ -78,18 +83,34 @@ describe("env-var map coverage", () => {
 		}
 	})
 
-	it("keyless providers have no key env var and are not required", () => {
+	it("keyless providers are not required to have a key", () => {
 		for (const id of keylessProviders) {
-			expect(getEnvVarName(id)).toBeNull()
 			expect(providerRequiresApiKey(id)).toBe(false)
 		}
 	})
 
-	it("ollama and lmstudio are keyless", () => {
+	it("providers without a key field have no key env var", () => {
+		for (const id of supportedProviders) {
+			if (getApiKeyField(id) === null) {
+				expect(getEnvVarName(id)).toBeNull()
+			} else {
+				expect(getEnvVarName(id)).toBeTruthy()
+			}
+		}
+	})
+
+	it("ollama and lmstudio run without a key; ollama takes an optional one", () => {
 		expect(keylessProviders).toContain("ollama")
 		expect(keylessProviders).toContain("lmstudio")
 		expect(providerRequiresApiKey("ollama")).toBe(false)
 		expect(providerRequiresApiKey("lmstudio")).toBe(false)
+		expect(getApiKeyField("ollama")).toBe("ollamaApiKey")
+		expect(getEnvVarName("ollama")).toBe("OLLAMA_API_KEY")
+		expect(getProviderSettings("ollama", "ollama-key", "qwen3")).toEqual({
+			apiProvider: "ollama",
+			ollamaApiKey: "ollama-key",
+			ollamaModelId: "qwen3",
+		})
 	})
 
 	it("openai-codex is supported and uses OAuth instead of an API key", () => {
@@ -127,6 +148,16 @@ describe("env-var map coverage", () => {
 			if (oldBase === undefined) delete process.env.ANTHROPIC_BASE_URL
 			else process.env.ANTHROPIC_BASE_URL = oldBase
 		}
+	})
+})
+
+describe("agreement with the shared provider rules (webview validation)", () => {
+	it.each([...supportedProviders])("%s: same API key field as the shared table", (id) => {
+		expect(getApiKeyField(id)).toBe(getProviderApiKeyField(id))
+	})
+
+	it.each([...supportedProviders])("%s: same key requirement as the settings UI", (id) => {
+		expect(providerRequiresApiKey(id)).toBe(sharedProviderRequiresApiKey(id))
 	})
 })
 
