@@ -235,3 +235,12 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   (defaults moved into the initial state). The `setFollowupAutoApproveTimeoutMs` shadow bug was unreachable (no
   caller). 4 characterization tests added; 44 of 44 in the touched specs. Follow-ups: the host still posts `theme`
   (`ClineProvider.ts:961`, now ignored); `marketplaceInstalledMetadata` stays a separate state (WEB-4 step 2).
+- 2026-09-25 WEB-Q6 DONE #355 (`42f48bee2`): the mutation was a real bug, not cosmetics: `initialSettings` and
+  `currentSettings` share one object after load, save and the secret-status reply, so the mutation also changed the
+  baseline and `hasUnsavedChanges` stayed false: a defaulted empty Qdrant URL could not be saved (Save disabled).
+  New spec `CodeIndexPopover.qdrant-default.spec.tsx` failed before the fix; changeset added.
+- 2026-09-25 WEB-Q7 DONE #356 (`1708d8910`): `getRequestyAuthUrl`, `EditMessageWithCheckpointDialog`,
+  `DeleteMessageWithCheckpointDialog`, `scanDOMForSearchableSettings` deleted (knip listed them only as a warning).
+- 2026-09-25 WEB-Q11 DONE #357 (`e649a6a33`): `console.log` in `i18n/setup.ts` removed (test-first), stale
+  BrowserSessionRow ESLint override removed, `useNonInteractiveClick.ts` renamed to
+  `useAddNonInteractiveClickListener.ts`. TabButton inline style left for the next settings PR.
