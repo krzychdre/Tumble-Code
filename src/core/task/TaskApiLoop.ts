@@ -343,7 +343,7 @@ export class TaskApiLoop {
 						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
 					)
 					// Use a distinct abortReason so callers (notably the memory
-					// runner's retry decision in ClineProvider.awaitTaskCompletion)
+					// runner's retry decision in BackgroundTaskRunner.memorySubTaskRunner)
 					// can distinguish "turn budget exhausted" (a weak model that
 					// didn't finish — do NOT retry on expensive foreground, it'll
 					// just exhaust the same budget) from "streaming_failed" (a

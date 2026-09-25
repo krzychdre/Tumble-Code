@@ -1,0 +1,417 @@
+import * as path from "path"
+import fs from "fs/promises"
+import * as vscode from "vscode"
+
+import { type ExtensionMessage, type ProviderSettings, type TodoItem, RooCodeEventName } from "@roo-code/types"
+
+import { Task, type AutoApprovalOverride } from "../task/Task"
+import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from "../memory"
+
+import type { ClineProvider } from "./ClineProvider"
+import type { ProviderState } from "./ProviderStateBuilder"
+import type { SubagentRegistry } from "./SubagentRegistry"
+import { profileTaskOptions } from "./profileTaskOptions"
+
+/** Options of {@link BackgroundTaskRunner.createBackgroundTask}. */
+export interface BackgroundTaskOptions {
+	taskMode?: string
+	workspacePath?: string
+	maxAgentTurns?: number
+	autoApprovalOverride?: AutoApprovalOverride
+	silentWrites?: boolean
+	initialTodos?: TodoItem[]
+	apiConfiguration?: ProviderSettings
+	/**
+	 * Registers the child in the subagent registry so it is visible in
+	 * the webview subagents panel. Omitted for internal background
+	 * tasks (memory writers), which stay invisible.
+	 */
+	subagentInfo?: { parentTaskId: string; index: number; description: string }
+}
+
+/** The terminal state of a background task, see {@link BackgroundTaskRunner.awaitTaskCompletion}. */
+export interface BackgroundTaskOutcome {
+	completed: boolean
+	lastMessage?: string
+	writtenPaths: string[]
+	abortReason?: string
+}
+
+/** Live memory-system activity counters ("recalling/writing memory..." badge). */
+export interface MemoryActivityCounts {
+	recall: number
+	write: number
+}
+
+/**
+ * What the background task runner needs from its provider. The member names
+ * match ClineProvider's, so the provider hands in closures over itself and a
+ * test can hand in a plain object.
+ */
+export interface BackgroundTaskHost {
+	/** The provider every background Task is created for. */
+	readonly provider: ClineProvider
+	/** The extension global storage directory (the parent of `tasks/<id>/`). */
+	readonly globalStoragePath: string
+	readonly subagentRegistry: Pick<SubagentRegistry, "register">
+	/** Attaches the provider's task-event forwarding to a new Task. */
+	readonly taskCreationCallback: (task: Task) => void
+	getState(): Promise<
+		Pick<
+			ProviderState,
+			"apiConfiguration" | "currentApiConfigName" | "experiments" | "organizationAllowList" | "mode"
+		>
+	>
+	getApiConfigurationForMode(mode: string): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined>
+	/** The `memoryWriterApiConfigId` setting. */
+	getMemoryWriterApiConfigId(): string | undefined
+	activateProfile(params: { id: string }): Promise<ProviderSettings & { name: string }>
+	postMessageToWebview(message: ExtensionMessage): Promise<void>
+	log(message: string): void
+}
+
+/**
+ * Runs HEADLESS background tasks: the memory background writers (extraction
+ * and dream) and the `run_parallel_tasks` subagents. Background tasks are
+ * kept off the provider's task stack, so the current task and the webview
+ * stay bound to the foreground task. A user cancel of the foreground task
+ * never reaches this class: the cancelled task skips its memory writers and
+ * the writer drain (see TaskLifecycle.prepareAbort / drainAbort), and running
+ * background tasks are neither awaited nor aborted by it.
+ */
+export class BackgroundTaskRunner {
+	// Headless background tasks (memory writers, parallel subagents). Keyed by
+	// taskId; entries are removed on completion/abort.
+	private readonly backgroundTasks = new Map<string, Task>()
+	private readonly memoryActivityCounts: MemoryActivityCounts = { recall: 0, write: 0 }
+
+	constructor(private readonly host: BackgroundTaskHost) {}
+
+	/** The live memory-activity counters (read by the state builder). */
+	public get memoryActivity(): MemoryActivityCounts {
+		return this.memoryActivityCounts
+	}
+
+	/**
+	 * Create and start a HEADLESS background task: the reusable primitive behind
+	 * the memory background writers and the `run_parallel_tasks` subagents.
+	 *
+	 * Unlike `ClineProvider.createTask`, a background task:
+	 * - is **never** pushed onto `clineStack`, so `getCurrentTask()` and the
+	 *   webview stay bound to the foreground task;
+	 * - runs autonomously via `autoApprovalOverride` (interactive asks never block
+	 *   it: the task isn't the current task, so no webview response would arrive);
+	 * - is bounded by `maxAgentTurns`;
+	 * - can run in its own `workspacePath` (a git worktree) and `taskMode`
+	 *   (e.g. a write-sandboxed mode).
+	 *
+	 * Pair with {@link awaitTaskCompletion} to await its result.
+	 */
+	public async createBackgroundTask(text: string, options: BackgroundTaskOptions = {}): Promise<Task> {
+		const state = await this.host.getState()
+		// Model resolution, most specific wins: explicit apiConfiguration from
+		// the caller, then the subtask mode's pinned API profile (same binding a
+		// foreground mode switch applies), then the currently active profile.
+		// Mode resolution is scoped to panel-visible subagents so internal
+		// background tasks (memory writers) keep their explicit/current config.
+		let apiConfiguration = options.apiConfiguration
+		let apiConfigName = options.apiConfiguration ? undefined : state.currentApiConfigName
+		if (!apiConfiguration && options.subagentInfo && options.taskMode) {
+			const resolved = await this.host.getApiConfigurationForMode(options.taskMode)
+			if (resolved) {
+				apiConfiguration = resolved.apiConfiguration
+				apiConfigName = resolved.name
+			}
+		}
+		apiConfiguration ??= state.apiConfiguration
+		const { experiments, organizationAllowList } = state
+
+		const task = new Task({
+			provider: this.host.provider,
+			// Same profile rules as a foreground task (allow list + mistake
+			// limit), checked on the profile the background task will run on.
+			...profileTaskOptions(apiConfiguration, organizationAllowList),
+			// Background tasks don't participate in checkpoints (no shadow git per
+			// memory write); keeps them cheap and side-effect-free.
+			enableCheckpoints: false,
+			experiments,
+			task: text,
+			taskMode: options.taskMode,
+			workspacePath: options.workspacePath,
+			isBackground: true,
+			maxAgentTurns: options.maxAgentTurns,
+			autoApprovalOverride: options.autoApprovalOverride,
+			silentWrites: options.silentWrites,
+			initialTodos: options.initialTodos,
+			// Start explicitly below (after registry insert), never via the stack.
+			startTask: false,
+			onCreated: this.host.taskCreationCallback,
+		})
+
+		this.backgroundTasks.set(task.taskId, task)
+		if (options.subagentInfo) {
+			// Register BEFORE start() so a tail subscribed on the queued
+			// placeholder streams the child's first messages.
+			const now = Date.now()
+			this.host.subagentRegistry.register({
+				taskId: task.taskId,
+				parentTaskId: options.subagentInfo.parentTaskId,
+				index: options.subagentInfo.index,
+				mode: options.taskMode ?? state.mode,
+				description: options.subagentInfo.description,
+				status: "running",
+				apiConfigName,
+				tokensIn: 0,
+				tokensOut: 0,
+				totalCost: 0,
+				startedAt: now,
+				lastActivityAt: now,
+			})
+		}
+		this.host.log(`[createBackgroundTask] started background task ${task.taskId}.${task.instanceId}`)
+		task.start()
+		return task
+	}
+
+	/** Look up a live headless background task (parallel subagent) by id. */
+	public getBackgroundTask(taskId: string): Task | undefined {
+		return this.backgroundTasks.get(taskId)
+	}
+
+	/**
+	 * Adjust a memory-activity counter and push the change to the webview.
+	 * `active: true` opens an activity window, `false` closes it. Counters,
+	 * not booleans: recall prefetches and background writers can overlap.
+	 */
+	public setMemoryActivity(kind: "recall" | "write", active: boolean): void {
+		this.memoryActivityCounts[kind] = Math.max(0, this.memoryActivityCounts[kind] + (active ? 1 : -1))
+		this.host
+			.postMessageToWebview({
+				type: "memoryActivity",
+				memoryActivity: { ...this.memoryActivityCounts },
+			})
+			.catch(() => {})
+	}
+
+	/**
+	 * Await a background task's terminal state. Resolves `{ completed: true,
+	 * lastMessage }` on `TaskCompleted` (attempt_completion) or `{ completed:
+	 * false, abortReason }` on `TaskAborted`. Removes the registry entry,
+	 * disposes a completed task, and then deletes its on-disk directory
+	 * (aborted tasks keep theirs for post-mortem). An optional `signal` aborts
+	 * the task early.
+	 *
+	 * Claim 3: `abortReason` is propagated so callers can distinguish a genuine
+	 * provider failure (`"streaming_failed"`, worth retrying on a different
+	 * handler) from turn-budget exhaustion (`"max_turns_reached"`: a weak
+	 * model that didn't finish; retrying on an expensive foreground model will
+	 * just exhaust the same budget and double cost) from user cancellation
+	 * (`"user_cancelled"`, never retry). Without this distinction the memory
+	 * runner retried on foreground for EVERY non-completion, doubling cost
+	 * exactly where the feature aimed to save it.
+	 */
+	public awaitTaskCompletion(task: Task, options: { signal?: AbortSignal } = {}): Promise<BackgroundTaskOutcome> {
+		return new Promise((resolve) => {
+			let settled = false
+
+			const onSignalAbort = () => {
+				void task.abortTask().catch(() => {})
+			}
+
+			const finish = (result: { completed: boolean; lastMessage?: string; abortReason?: string }) => {
+				if (settled) return
+				settled = true
+				task.off(RooCodeEventName.TaskCompleted, onCompleted)
+				task.off(RooCodeEventName.TaskAborted, onAborted)
+				options.signal?.removeEventListener("abort", onSignalAbort)
+				// Capture the set of files the task wrote/edited BEFORE disposing it
+				// (dispose tears down the tracker). Resolve to absolute paths.
+				let writtenPaths: string[] = []
+				try {
+					writtenPaths = (task.fileContextTracker?.getAndClearCheckpointPossibleFile?.() ?? []).map((p) =>
+						path.isAbsolute(p) ? p : path.resolve(task.cwd, p),
+					)
+				} catch {
+					// Non-fatal: no written-path reporting for this run.
+				}
+				this.backgroundTasks.delete(task.taskId)
+				// Dispose a completed background task (aborted ones are already torn
+				// down). `isBackground` makes this abort skip the memory writers.
+				// Completed background tasks have no history item and are never
+				// resumed: delete their on-disk directory once the dispose settles
+				// (abortTask saves messages, which would re-create the directory).
+				// Aborted/failed tasks keep their directory for post-mortem. No
+				// ShadowCheckpointService cleanup is needed (background tasks are
+				// created with enableCheckpoints: false).
+				if (result.completed) {
+					void task
+						.abortTask(true)
+						.catch(() => {})
+						.then(() => this.cleanupBackgroundTaskFiles(task.taskId))
+				}
+				resolve({ ...result, writtenPaths })
+			}
+
+			const onCompleted = () => {
+				// Last completion_result say carries the attempt_completion text.
+				const last = [...task.clineMessages]
+					.reverse()
+					.find((m) => m.type === "say" && m.say === "completion_result")
+				finish({ completed: true, lastMessage: last?.text })
+			}
+			// Capture the abortReason at abort time so the caller can classify
+			// the failure (Claim 3). task.abortReason is set by TaskApiLoop
+			// before abortTask() fires TaskAborted.
+			const onAborted = () => finish({ completed: false, abortReason: task.abortReason })
+
+			task.on(RooCodeEventName.TaskCompleted, onCompleted)
+			task.on(RooCodeEventName.TaskAborted, onAborted)
+
+			if (options.signal) {
+				if (options.signal.aborted) onSignalAbort()
+				else options.signal.addEventListener("abort", onSignalAbort, { once: true })
+			}
+		})
+	}
+
+	/**
+	 * Best-effort deletion of a completed background task's on-disk directory.
+	 * Failure is logged and never thrown: the await result is already settled.
+	 */
+	private cleanupBackgroundTaskFiles(taskId: string): void {
+		void (async () => {
+			try {
+				const { getTaskDirectoryPath } = await import("../../utils/storage")
+				const dirPath = await getTaskDirectoryPath(this.host.globalStoragePath, taskId)
+				await fs.rm(dirPath, { recursive: true, force: true })
+				this.host.log(`[cleanupBackgroundTaskFiles] removed task directory for ${taskId}`)
+			} catch (error) {
+				this.host.log(
+					`[cleanupBackgroundTaskFiles] failed to remove task directory for ${taskId}: ${error instanceof Error ? error.message : String(error)}`,
+				)
+			}
+		})()
+	}
+
+	/**
+	 * Surface a non-blocking toast for background-task outcomes (memory writes).
+	 */
+	public notifyBackgroundOutcome(message: string): void {
+		void vscode.window.showInformationMessage(message)
+	}
+
+	/**
+	 * The memory background-writer runner (extraction + dream), consumed by
+	 * `TaskLifecycle.triggerMemoryBackgroundWriters` via `provider.memorySubTaskRunner`.
+	 *
+	 * Spawns a headless, write-sandboxed background task (in "code" mode so the
+	 * read/write tools are available) against the given cwd, runs it autonomously
+	 * with a turn cap, and returns the memory files it wrote. This is the wiring
+	 * that flips memory writes ON, replacing the historical `noopSubTaskRunner`
+	 * fallback. The `autoApprovalOverride` (see {@link memoryWriteSandbox}) confines
+	 * writes to the memory directory, and `silentWrites` keeps the writes off-screen.
+	 */
+	public get memorySubTaskRunner(): SubTaskRunner {
+		return async ({ cwd, systemPrompt, userPrompt, maxTurns, signal }) => {
+			// The real Task builds its own system prompt (which already includes the
+			// memory behavioral section), so fold the extraction/dream system prompt
+			// into the task's initial message alongside the user prompt.
+			const text = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt
+			const backgroundConfig = await this.resolveMemoryWriterApiConfiguration()
+			this.setMemoryActivity("write", true)
+			try {
+				const outcome = await this.runMemorySubTask(text, cwd, maxTurns, signal, backgroundConfig)
+				if (outcome.completed) {
+					return { writtenPaths: filterMemoryWrittenPaths(outcome.writtenPaths, cwd) }
+				}
+				// Claim 3: classify the abort reason before retrying. The old
+				// code retried on foreground for EVERY non-completion (when a
+				// background profile was set and the user hadn't cancelled),
+				// but a weak background model that exhausts its turn budget
+				// (max_turns_reached, typical for memory extraction) looks
+				// identical to "provider offline" at the boolean boundary, so
+				// it triggered a full re-run on the expensive foreground model
+				// every time, doubling cost exactly where savings were the goal.
+				//
+				// Retry on foreground ONLY for a genuine provider failure
+				// (streaming_failed): the background model may be offline. Do
+				// NOT retry on:
+				//  - max_turns_reached: the weak model didn't finish in budget;
+				//    the foreground model will likely also need more turns and
+				//    the retry doubles cost. Accept the partial result.
+				//  - user_cancelled (signal.aborted): never retry a cancel.
+				//  - undefined/other abort reasons: unknown, don't risk a loop.
+				const shouldRetry = backgroundConfig && !signal?.aborted && outcome.abortReason === "streaming_failed"
+				if (shouldRetry) {
+					this.host.log(
+						"[memorySubTaskRunner] background profile failed (streaming_failed), retrying on foreground",
+					)
+					const retry = await this.runMemorySubTask(text, cwd, maxTurns, signal, undefined)
+					// Claim 6: return the UNION of attempt #1 and attempt #2
+					// writtenPaths (filtered). The old code returned only
+					// attempt #2's paths, discarding attempt #1's on-disk
+					// writes, so onSaved/onImproved toasts never fired for
+					// files the first attempt wrote. The extraction cursor
+					// advances independently, so this is "only" a reporting
+					// regression, but a conscious one the diff didn't
+					// compensate for. Dedupe by path in case both attempts
+					// wrote the same file.
+					const unionPaths = [...new Set([...outcome.writtenPaths, ...retry.writtenPaths])]
+					return { writtenPaths: filterMemoryWrittenPaths(unionPaths, cwd) }
+				}
+				// Non-retryable abort: still report attempt #1's written paths
+				// (Claim 6) so toasts fire for files the attempt did write
+				// before aborting. The old code returned [] here, dropping them.
+				return { writtenPaths: filterMemoryWrittenPaths(outcome.writtenPaths, cwd) }
+			} finally {
+				this.setMemoryActivity("write", false)
+			}
+		}
+	}
+
+	/**
+	 * Helper extracted from {@linkcode memorySubTaskRunner} for retry support.
+	 * Spawns a single headless memory-writer sub-task with the given
+	 * `apiConfiguration` (undefined means the foreground profile) and awaits
+	 * its completion. Returns the raw `{ completed, writtenPaths, abortReason }`
+	 * outcome so the caller can decide whether to retry on the foreground
+	 * profile (and only for genuine provider failures, see Claim 3).
+	 */
+	private async runMemorySubTask(
+		text: string,
+		cwd: string,
+		maxTurns: number,
+		signal: AbortSignal | undefined,
+		apiConfiguration: ProviderSettings | undefined,
+	): Promise<{ completed: boolean; writtenPaths: string[]; abortReason?: string }> {
+		const task = await this.createBackgroundTask(text, {
+			taskMode: "code",
+			workspacePath: cwd,
+			maxAgentTurns: maxTurns,
+			autoApprovalOverride: memoryWriteSandbox(cwd),
+			silentWrites: true,
+			apiConfiguration,
+		})
+		const { completed, writtenPaths, abortReason } = await this.awaitTaskCompletion(task, { signal })
+		return { completed, writtenPaths, abortReason }
+	}
+
+	/**
+	 * Resolve the configured memory-writer API profile. Returns undefined when
+	 * no profile is configured or the configured id is stale: callers fall
+	 * back to the foreground profile. Never throws.
+	 */
+	private async resolveMemoryWriterApiConfiguration(): Promise<ProviderSettings | undefined> {
+		const id = this.host.getMemoryWriterApiConfigId()
+		if (!id) return undefined
+		try {
+			const { name: _name, ...profile } = await this.host.activateProfile({ id })
+			return profile
+		} catch (error) {
+			this.host.log(
+				`[memorySubTaskRunner] failed to load writer profile ${id}, falling back to foreground: ${error instanceof Error ? error.message : String(error)}`,
+			)
+			return undefined
+		}
+	}
+}

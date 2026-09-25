@@ -544,7 +544,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * Resolve the configured condense background profile into an `ApiHandler`.
 	 * Returns `undefined` when no profile is configured, the id is stale, or
 	 * `buildApiHandler` throws — never throws. Mirrors
-	 * `ClineProvider.resolveMemoryWriterApiConfiguration` but returns a handler
+	 * `BackgroundTaskRunner.resolveMemoryWriterApiConfiguration` but returns a handler
 	 * (condense is a direct LLM call, not a sub-task).
 	 *
 	 * Claim 2B defense-in-depth: after building the handler, warn (not block)
