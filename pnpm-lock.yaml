@@ -7,7 +7,7 @@ settings:
 overrides:
   tar-fs: '>=3.1.1'
   esbuild: '>=0.25.0'
-  undici: ^6.27.0
+  undici: ^7.29.0
   brace-expansion: ^2.0.2
   form-data: '>=4.0.4'
   bluebird: '>=3.7.2'
@@ -314,7 +314,7 @@ importers:
         version: 3.1.6
       openai:
         specifier: ^7.23.0
-        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@6.28.1)(ws@8.21.3)(zod@3.25.76)
+        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@3.25.76)
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
@@ -439,8 +439,8 @@ importers:
         specifier: 1.30.1
         version: 1.30.1(zod@3.25.76)
       '@qdrant/js-client-rest':
-        specifier: ^1.14.0
-        version: 1.14.0(typescript@5.8.3)
+        specifier: ^1.19.0
+        version: 1.19.0(typescript@5.8.3)
       '@roo-code/agent-interchange':
         specifier: workspace:^
         version: link:../packages/agent-interchange
@@ -524,7 +524,7 @@ importers:
         version: 0.5.17
       openai:
         specifier: ^7.23.0
-        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@6.28.1)(ws@8.21.3)(zod@3.25.76)
+        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@3.25.76)
       os-name:
         specifier: ^6.0.0
         version: 6.1.0
@@ -574,8 +574,8 @@ importers:
         specifier: ^7.2.0
         version: 7.2.0
       undici:
-        specifier: ^6.27.0
-        version: 6.28.1
+        specifier: ^7.29.0
+        version: 7.30.0
       uuid:
         specifier: ^11.1.1
         version: 11.1.1
@@ -1897,9 +1897,9 @@ packages:
   '@protobufjs/utf8@1.1.2':
     resolution: {integrity: sha512-b1UQwcEZ4yCnMCD8DAL1VlbvBJE9/IX4FTIp7BG1xYpf29SLazLSrqUkj4w7Y5y7cCVP6E5tcqqcI0xemPkHug==}
 
-  '@qdrant/js-client-rest@1.14.0':
-    resolution: {integrity: sha512-2sM2g17FSkN2sNCSeAfqxHRr+SPEVnUQLXBjVv/whm4YQ4JjZ53Jiy1iShk95G+xBf3hKBhJdj8itRnor03IYw==}
-    engines: {node: '>=18.0.0', pnpm: '>=8'}
+  '@qdrant/js-client-rest@1.19.0':
+    resolution: {integrity: sha512-1+QLUHsWp+WV4PE35FLnH2ckxotWrQEqi/F3t4goF3cCThR0ZxLVtOC4OoOi/E1iyj/iIYBdbuACWMuQ15NAnA==}
+    engines: {node: '>=22.0.0'}
     peerDependencies:
       typescript: '>=4.7'
 
@@ -2612,9 +2612,6 @@ packages:
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
-
-  '@sevinf/maybe@0.5.0':
-    resolution: {integrity: sha512-ARhyoYDnY1LES3vYI0fiG6e9esWfTNcXcO6+MPJJXcnyMV3bim4lnFt45VXouV7y82F4x3YH8nOQ6VztuvUiWg==}
 
   '@shikijs/core@3.4.1':
     resolution: {integrity: sha512-GCqSd3KXRTKX1sViP7fIyyyf6do2QVg+fTd4IT00ucYCVSKiSN8HbFbfyjGsoZePNKWcQqXe4U4rrz2IVldG5A==}
@@ -6421,7 +6418,7 @@ packages:
       '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
       '@smithy/hash-node': '>=4.3.0 <5'
       '@smithy/signature-v4': '>=5.4.0 <6'
-      undici: ^6.27.0
+      undici: ^7.29.0
       ws: ^8.21.0
       zod: 3.25.76
     peerDependenciesMeta:
@@ -7853,9 +7850,9 @@ packages:
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
 
-  undici@6.28.1:
-    resolution: {integrity: sha512-zWpdTVD54H48CIybL0rWQ3ukpb9d23wM7eH5RtfdmeP70cWHNjtfo7P4vZX+5CoDcO53J4Pu5uXp7lNfjc6DRA==}
-    engines: {node: '>=18.17'}
+  undici@7.30.0:
+    resolution: {integrity: sha512-dkrQXeHSaoamnItlYbmzG0wFYrM0ZwDxCIg0A7aKjTyyhh9svRzCNFEzV+Vm05/yehjCzjDZ31KXfGEjYSztDQ==}
+    engines: {node: '>=20.18.1'}
 
   unicorn-magic@0.3.0:
     resolution: {integrity: sha512-+QBBXBCvifc56fsbuxZQ6Sic3wqqc3WWaqxs58gvJrcOuN83HGTCwz3oS5phzU9LthRNE9VrJCFCLUgHeeFnfA==}
@@ -9695,12 +9692,11 @@ snapshots:
 
   '@protobufjs/utf8@1.1.2': {}
 
-  '@qdrant/js-client-rest@1.14.0(typescript@5.8.3)':
+  '@qdrant/js-client-rest@1.19.0(typescript@5.8.3)':
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
-      '@sevinf/maybe': 0.5.0
       typescript: 5.8.3
-      undici: 6.28.1
+      undici: 7.30.0
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -10330,8 +10326,6 @@ snapshots:
     optional: true
 
   '@sec-ant/readable-stream@0.4.1': {}
-
-  '@sevinf/maybe@0.5.0': {}
 
   '@shikijs/core@3.4.1':
     dependencies:
@@ -11580,7 +11574,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 6.28.1
+      undici: 7.30.0
       whatwg-mimetype: 4.0.0
 
   chokidar@4.0.3:
@@ -14761,11 +14755,11 @@ snapshots:
       is-inside-container: 1.0.0
       is-wsl: 3.1.0
 
-  openai@7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@6.28.1)(ws@8.21.3)(zod@3.25.76):
+  openai@7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@3.25.76):
     optionalDependencies:
       '@aws-sdk/credential-provider-node': 3.972.84
       '@smithy/signature-v4': 5.7.3
-      undici: 6.28.1
+      undici: 7.30.0
       ws: 8.21.3
       zod: 3.25.76
 
@@ -16390,7 +16384,7 @@ snapshots:
 
   undici-types@6.21.0: {}
 
-  undici@6.28.1: {}
+  undici@7.30.0: {}
 
   unicorn-magic@0.3.0: {}
 
