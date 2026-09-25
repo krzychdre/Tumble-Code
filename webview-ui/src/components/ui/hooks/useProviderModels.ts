@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useContext, useMemo } from "react"
+import { QueryClient, QueryClientContext, useQuery } from "@tanstack/react-query"
 
 import { type ModelRecord, type ModelSource, type ModelSourceOptions, type ModelSourceResult } from "@roo-code/types"
 
@@ -23,90 +24,108 @@ const resolveProviderModelSource = (provider?: string): ModelSource | undefined 
 	return getProviderModelSource(provider as Parameters<typeof getProviderModelSource>[0])
 }
 
+/**
+ * Used when a hook renders outside a QueryClientProvider (the app roots have
+ * one; some specs and isolated components do not), so the cache is still
+ * shared between those consumers.
+ */
+const fallbackQueryClient = new QueryClient()
+
+/**
+ * Cache policy, chosen to keep the old per-mount behavior while sharing:
+ * - consumers mounted at the same time share one request and one result
+ *   (`staleTime: Infinity` while anyone observes the entry);
+ * - the entry is dropped once the last consumer unmounts (`gcTime: 0`), so a
+ *   later mount asks the host again, exactly like before;
+ * - the host answers errors in the payload, so there is nothing to retry, and
+ *   webview focus or network state must not trigger requests (a local Ollama
+ *   works offline, so `networkMode: "always"`).
+ */
+const cachePolicy = {
+	staleTime: Infinity,
+	gcTime: 0,
+	retry: false,
+	refetchOnWindowFocus: false,
+	refetchOnReconnect: false,
+	networkMode: "always",
+} as const
+
+type DynamicModelSource = Exclude<ModelSource, { kind: "static" }>
+
+function fetchProviderModels(
+	source: DynamicModelSource,
+	provider: string | undefined,
+	options: ModelSourceOptions | undefined,
+	refresh: boolean,
+	signal: AbortSignal,
+): Promise<ModelSourceResult> {
+	return request({
+		build: (requestId) => ({
+			type: "requestProviderModels",
+			modelSourceRequest: { requestId, source, provider, options, refresh },
+		}),
+		responseType: "providerModels",
+		// A response without a result carries no id, so it never matches.
+		responseId: (message) => message.modelSourceResult?.requestId,
+		signal,
+	}).then((message) => message.modelSourceResult as ModelSourceResult)
+}
+
 export function useProviderModels(provider?: string, options?: ModelSourceOptions): ProviderModelsState {
+	const queryClient = useContext(QueryClientContext) ?? fallbackQueryClient
 	const source = useMemo(() => resolveProviderModelSource(provider), [provider])
-	const [result, setResult] = useState<ModelSourceResult>()
-	const [isLoading, setIsLoading] = useState(false)
 	const serializedOptions = JSON.stringify(options)
 	const requestOptions = useMemo<ModelSourceOptions | undefined>(
 		() => (serializedOptions ? JSON.parse(serializedOptions) : undefined),
 		[serializedOptions],
 	)
-
-	// The request in flight; a newer request or a provider change aborts it, so
-	// only the latest response is applied.
-	const activeRequest = useRef<AbortController>()
-
-	const requestModels = useCallback(
-		(refresh = false) => {
-			activeRequest.current?.abort()
-			activeRequest.current = undefined
-
-			if (!source || source.kind === "static") {
-				setIsLoading(false)
-				return
-			}
-
-			const controller = new AbortController()
-			activeRequest.current = controller
-			setIsLoading(true)
-			// L1: do NOT clear `result` here. Clearing on every request caused
-			// the model dropdown to momentarily empty during `refresh()`.
-			// `result` is cleared in the `useEffect` below only when the
-			// provider/source actually changes; for refresh we keep the stale
-			// result until the new one arrives.
-			request({
-				build: (requestId) => ({
-					type: "requestProviderModels",
-					modelSourceRequest: {
-						requestId,
-						source,
-						provider,
-						options: requestOptions,
-						refresh,
-					},
-				}),
-				responseType: "providerModels",
-				responseId: (message) => message.modelSourceResult?.requestId,
-				signal: controller.signal,
-			}).then(
-				(message) => {
-					if (activeRequest.current === controller) {
-						activeRequest.current = undefined
-					}
-					if (message.modelSourceResult) {
-						setResult(message.modelSourceResult)
-						setIsLoading(false)
-					}
-				},
-				() => {
-					// Aborted by a newer request or by unmount: its response is not wanted.
-				},
-			)
-		},
-		[provider, requestOptions, source],
+	const dynamicSource = source && source.kind !== "static" ? source : undefined
+	const enabled = !!dynamicSource
+	const sourceId = dynamicSource?.id
+	const queryKey = useMemo(
+		() => ["providerModels", provider, sourceId, serializedOptions ?? ""] as const,
+		[provider, sourceId, serializedOptions],
 	)
 
-	useEffect(() => {
-		// Clear any stale result from a different provider/source before
-		// requesting, so switching providers does not briefly show the wrong
-		// model list. Refresh does NOT go through this path (it calls
-		// `requestModels(true)` directly), so refresh keeps the existing
-		// result until the new one arrives (L1).
-		setResult(undefined)
-		requestModels()
-		return () => {
-			activeRequest.current?.abort()
-			activeRequest.current = undefined
-		}
-	}, [provider, requestModels, serializedOptions, source])
+	// A provider or options change is a new key, so the old list disappears
+	// instead of briefly showing the wrong provider's models.
+	const query = useQuery(
+		{
+			queryKey,
+			queryFn: ({ signal }) => fetchProviderModels(dynamicSource!, provider, requestOptions, false, signal),
+			enabled,
+			...cachePolicy,
+		},
+		queryClient,
+	)
 
+	const refresh = () => {
+		if (!dynamicSource) {
+			return
+		}
+		// A refresh replaces a request still in flight, like before. The cached
+		// list stays visible until the new one arrives (L1): the cancel reverts
+		// to the previous data rather than clearing it.
+		void queryClient.cancelQueries({ queryKey, exact: true })
+		queryClient
+			.fetchQuery({
+				queryKey,
+				queryFn: ({ signal }) => fetchProviderModels(dynamicSource!, provider, requestOptions, true, signal),
+				...cachePolicy,
+				staleTime: 0,
+			})
+			.catch(() => {
+				// Cancelled by a newer refresh or by the last consumer leaving.
+			})
+	}
+
+	const result = query.data
 	return {
 		source,
 		models: result?.models,
 		modelIds: result?.modelIds,
-		isLoading,
+		isLoading: enabled && query.fetchStatus === "fetching",
 		error: result?.error,
-		refresh: () => requestModels(true),
+		refresh,
 	}
 }
