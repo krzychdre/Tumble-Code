@@ -2251,6 +2251,117 @@ describe("ClineProvider", () => {
 				restore()
 			}
 		})
+
+		// CORE-R6 b characterization: the whole settings-updated round trip,
+		// driven through the provider, pinned before the sync moves out.
+		const makeSyncedProvider = async (
+			syncResult: { hasChanges: boolean; activeProfileChanged: boolean; activeProfileId?: string },
+			providerProfiles: Record<string, unknown> | null = { cloud: { apiProvider: "anthropic" } },
+		) => {
+			const cloud = await installFakeCloudService(false)
+			cloud.fake.getOrganizationSettings.mockReturnValue(providerProfiles ? { providerProfiles } : {})
+			const p = new ClineProvider(mockContext, mockOutputChannel, "sidebar", new ContextProxy(mockContext))
+			await flush()
+			await p.setValue("currentApiConfigName", "local-profile")
+			const sync = vi.spyOn(p.providerSettingsManager, "syncCloudProfiles").mockResolvedValue(syncResult as any)
+			vi.spyOn(p.providerSettingsManager, "listConfig").mockResolvedValue([
+				{ name: "cloud-profile", id: "cloud-id", apiProvider: "anthropic" },
+			])
+			vi.spyOn(p.providerSettingsManager, "getProfile").mockResolvedValue({
+				name: "cloud-profile",
+				id: "cloud-id",
+			} as any)
+			const activate = vi.spyOn(p, "activateProviderProfile").mockResolvedValue(undefined as any)
+			const postState = vi.spyOn(p, "postStateToWebviewWithoutClineMessages").mockResolvedValue(undefined)
+			return { p, cloud, sync, activate, postState }
+		}
+
+		test("settings-updated with changes refreshes the profile list, activates the new active profile and posts state", async () => {
+			const { p, cloud, sync, activate, postState } = await makeSyncedProvider({
+				hasChanges: true,
+				activeProfileChanged: true,
+				activeProfileId: "cloud-id",
+			})
+			try {
+				cloud.fake.emit("settings-updated")
+				await flush()
+				expect(sync).toHaveBeenCalledWith({ cloud: { apiProvider: "anthropic" } }, "local-profile")
+				expect(p.providerSettingsManager.getProfile).toHaveBeenCalledWith({ id: "cloud-id" })
+				expect(mockContext.globalState.update).toHaveBeenCalledWith("listApiConfigMeta", [
+					{ name: "cloud-profile", id: "cloud-id", apiProvider: "anthropic" },
+				])
+				expect(activate).toHaveBeenCalledWith({ name: "cloud-profile" })
+				expect(postState).toHaveBeenCalledTimes(1)
+			} finally {
+				cloud.restore()
+			}
+		})
+
+		test("settings-updated with changes but the same active profile does not activate a profile", async () => {
+			const { cloud, activate, postState } = await makeSyncedProvider({
+				hasChanges: true,
+				activeProfileChanged: false,
+			})
+			try {
+				cloud.fake.emit("settings-updated")
+				await flush()
+				expect(activate).not.toHaveBeenCalled()
+				expect(postState).toHaveBeenCalledTimes(1)
+			} finally {
+				cloud.restore()
+			}
+		})
+
+		test("settings-updated without changes touches nothing", async () => {
+			const { cloud, activate, postState } = await makeSyncedProvider({
+				hasChanges: false,
+				activeProfileChanged: false,
+			})
+			try {
+				vi.mocked(mockContext.globalState.update).mockClear()
+				cloud.fake.emit("settings-updated")
+				await flush()
+				expect(mockContext.globalState.update).not.toHaveBeenCalledWith("listApiConfigMeta", expect.anything())
+				expect(activate).not.toHaveBeenCalled()
+				expect(postState).not.toHaveBeenCalled()
+			} finally {
+				cloud.restore()
+			}
+		})
+
+		test("settings-updated without provider profiles does not call the settings manager", async () => {
+			const { cloud, sync } = await makeSyncedProvider({ hasChanges: true, activeProfileChanged: false }, null)
+			try {
+				cloud.fake.emit("settings-updated")
+				await flush()
+				expect(sync).not.toHaveBeenCalled()
+			} finally {
+				cloud.restore()
+			}
+		})
+
+		test("a failing sync is logged, not thrown", async () => {
+			const { cloud, sync } = await makeSyncedProvider({ hasChanges: true, activeProfileChanged: false })
+			try {
+				sync.mockRejectedValue(new Error("boom"))
+				cloud.fake.emit("settings-updated")
+				await flush()
+				expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("Error syncing cloud profiles: Error: boom")
+			} finally {
+				cloud.restore()
+			}
+		})
+
+		test("dispose removes the settings-updated listener", async () => {
+			const { p, cloud } = await makeSyncedProvider({ hasChanges: false, activeProfileChanged: false })
+			try {
+				expect(cloud.fake.listenerCount("settings-updated")).toBe(1)
+				await p.dispose()
+				expect(cloud.fake.listenerCount("settings-updated")).toBe(0)
+			} finally {
+				cloud.restore()
+			}
+		})
 	})
 })
 
