@@ -743,4 +743,50 @@ describe("runStdinStreamMode", () => {
 			expect(await h.outcome(5_000)).toBe("rejected: stdin ended while task was waiting for input (followup)")
 		})
 	})
+
+	describe("stdin closed while a started task is still running", () => {
+		// Nobody can answer these asks once stdin is gone (with --require-approval
+		// the CLI's own y/n prompt reads the closed stdin), and runTask only
+		// settles on completion_result or resume_completed_task.
+		it.each(["api_req_failed", "mistake_limit_reached", "auto_approval_max_req_reached"])(
+			"fails instead of waiting forever when the task rests on %s",
+			async (ask) => {
+				const h = startHarness()
+				h.send({ command: "start", requestId: "r1", prompt: "hello", taskId: TASK_ID })
+				await h.waitForControl({ subtype: "ack", command: "start" })
+				h.host.client.setAsk(ask)
+				h.stdin.end()
+
+				expect(await h.outcome(5_000)).toBe(`rejected: stdin ended while task was waiting for input (${ask})`)
+			},
+		)
+
+		it("keeps waiting while such an ask is answered and the task goes on", async () => {
+			const h = startHarness()
+			h.send({ command: "start", requestId: "r1", prompt: "hello", taskId: TASK_ID })
+			await h.waitForControl({ subtype: "ack", command: "start" })
+			h.host.client.setAsk("mistake_limit_reached")
+			h.stdin.end()
+			await new Promise((resolve) => setTimeout(resolve, 300))
+			// The non-interactive ask dispatcher answers "proceed".
+			h.host.client.setAsk(undefined)
+
+			expect(await h.outcome(3_000)).toBe("pending")
+			h.host.client.emit("taskCompleted", { success: true })
+			h.host.runs[0]!.resolve()
+			expect(await h.outcome(1_000)).toBe("resolved")
+		})
+
+		it("fails when the started task failed, like a print mode run does", async () => {
+			const h = startHarness()
+			h.send({ command: "start", requestId: "r1", prompt: "hello", taskId: TASK_ID })
+			await h.waitForControl({ subtype: "ack", command: "start" })
+			h.stdin.end()
+			// An unattended run declines api_req_failed and runTask rejects.
+			h.host.runs[0]!.reject(new Error("API request failed: 401 invalid key"))
+
+			expect(await h.outcome(2_000)).toBe("rejected: API request failed: 401 invalid key")
+			expect(h.controls().at(-1)).toMatchObject({ subtype: "error", code: "task_error" })
+		})
+	})
 })
