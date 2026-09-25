@@ -75,6 +75,18 @@ mutating and replaces the 3 copies (`base-provider.ts:66-109`, `openai-native.ts
 (15), `openai-native-tools` (9), `openai-codex-native-tool-calls` (8), `native-tools/__tests__/converters.spec`.
 **Size** S.
 
+**Status (2026-09-25):** DONE in #297. `transform/strict-json-schema.ts` exports a pure
+`toStrictSchema(schema, {stripNull, mcp})` (never writes to its input, copies only changed objects, keeps key
+order). The copies really differed and the options reproduce each: base-provider strips `null` from union types
+and leaves MCP schemas alone; openai-native and openai-codex keep `null` and add `additionalProperties: false` to
+MCP schemas. `BaseProvider.convertToolSchemaForOpenAI` stays as a delegator (xai and tests use it). Tests first:
+`strict-schema-characterization.spec` (18 tests, 12 snapshots of every path for native tools with and without
+images, real MCP tools and a nullable custom tool; bytes unchanged) plus `strict-json-schema.spec` (9); related
+specs 173 to 200. One deliberate unification: a `null` value in `properties` no longer throws a TypeError in the
+Responses paths. Findings: the Responses path does not recurse into `["object","null"]` (sent strict without
+`additionalProperties`/`required`, may be rejected); xai converts twice (same result; API-13).
+
+
 ### API-2 One Anthropic-protocol stream adapter
 
 **Evidence:** `anthropic.ts:225-350` and `minimax.ts:120-243` differ only in comments; `anthropic-vertex.ts:120-211`
