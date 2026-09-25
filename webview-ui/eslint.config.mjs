@@ -27,11 +27,7 @@ export default [
 		},
 	},
 	{
-		files: [
-			"src/components/chat/ChatRow.tsx",
-			"src/components/chat/ChatView.tsx",
-			"src/components/history/useTaskSearch.ts",
-		],
+		files: ["src/components/chat/ChatRow.tsx", "src/components/history/useTaskSearch.ts"],
 		rules: {
 			"no-case-declarations": "off",
 		},
