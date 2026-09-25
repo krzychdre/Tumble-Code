@@ -348,8 +348,6 @@ const FULL_SETTINGS = {
  */
 const VIEW_ONLY_TRANSFORMS: Record<string, string> = {
 	taskHistory: "getState() never materializes the history (hot path); the full push carries it",
-	codebaseIndexConfig:
-		"the webview pre-fills codebaseIndexEmbedderModelDimension with 1536; the host reads the raw value",
 }
 
 /** Replace large, fixture-independent constants with markers to keep the snapshots readable. */
