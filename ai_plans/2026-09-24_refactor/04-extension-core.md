@@ -149,6 +149,16 @@ difference is resolved on purpose. **Existing:** `ClineProvider.spec.ts` (91, ab
 `ClineProvider.taskHistory` (29), `storageError` (3), `reacquire` (5), `telemetrySettingsTracking` (6).
 **Size** M, low to medium risk (the webview depends on null versus undefined).
 
+**Status (2026-09-25):** DONE in #276 (merge bad00b8fb). `SETTINGS_DEFAULTS` and `resolveSettings` live in
+`packages/types/src/settings-defaults.ts`; `ProviderStateBuilder.ts` (434 lines) builds both views; ClineProvider
+went from 4,946 to 4,342 lines. The posted webview state is byte-identical (snapshots unchanged); only `getState`
+changed: `soundVolume` 0.5 and `customSound*` null in both views, `telemetrySetting ?? "unset"`,
+`lockApiConfigAcrossModes ?? false`. Kept on purpose: the view-only 1536 embedder dimension, the workspace-merged
+command lists (view only), `taskHistory: []` in `getState`. Duplicate default literals replaced in 14 modules. New
+`ClineProvider.stateBuilder.spec` (11 tests); the five named specs stay at 145. Findings: DEF-C41, DEF-C42 in
+`02-defects.md`; `resolveWebviewView` keeps its own terminal defaults (only reached with a stubbed `getState`);
+`logWebviewHiddenDiagnostics` tests depend on the microtask count (the spec's `fs/promises` mock lacks `default`).
+
 ### CORE-R3 Split `webviewMessageHandler` into domain modules behind a lookup map
 
 **Evidence:** 3,613 lines, one function, 149 cases; `WebviewMessage` is one interface with 174 type literals and

@@ -397,3 +397,10 @@ where their files are disjoint; the coordinator merges in order.
   fallbacks (e.g. `maxGitStatusFiles ?? 0`) still need comparing with the host.
 - **Phase 1 original scope (DEF-S1 to S12, DEF-C1 to C32): complete on 2026-09-24.** 43 fixed and merged, DEF-C8
   closed as not a bug. Findings added on the way: DEF-C33 to C40 and TEST-10, TEST-11, all merged.
+- **New findings from CORE-R1 (2026-09-25), code reading only, not yet reproduced:**
+  - **DEF-C41 (security):** `core/auto-approval/index.ts` (~:194) checks only the global allowed/denied command
+    lists from `getState`; the workspace-merged lists (VS Code setting `deniedCommands`) are only in the webview
+    view. A command denied only through the VS Code setting shows as denied in the UI but may be auto-approved when
+    it matches a global allowed prefix.
+  - **DEF-C42:** the webview pre-fills the embedder dimension with 1536, and saving the code-index settings persists
+    it for Ollama and OpenAI-compatible models with another dimension (the "Bad Request = dimension mismatch" class).
