@@ -1663,13 +1663,21 @@ export class McpHub {
 			mcpServers: config.mcpServers,
 		}
 
-		// Set flag to prevent file watcher from triggering server restart
+		await this.writeConfigFile(configPath, updatedConfig)
+	}
+
+	/**
+	 * Writes a config file with the write guard up: the watchers ignore
+	 * changes for 600 ms, so the hub's own write does not update the servers
+	 * a second time.
+	 */
+	private async writeConfigFile(configPath: string, config: unknown): Promise<void> {
 		if (this.flagResetTimer) {
 			clearTimeout(this.flagResetTimer)
 		}
 		this.isProgrammaticUpdate = true
 		try {
-			await safeWriteJson(configPath, updatedConfig, { prettyPrint: true })
+			await safeWriteJson(configPath, config, { prettyPrint: true })
 		} finally {
 			// Reset flag after watcher debounce period (non-blocking)
 			this.flagResetTimer = setTimeout(() => {
@@ -1754,7 +1762,7 @@ export class McpHub {
 					mcpServers: config.mcpServers,
 				}
 
-				await safeWriteJson(configPath, updatedConfig, { prettyPrint: true })
+				await this.writeConfigFile(configPath, updatedConfig)
 
 				// Update server connections with the correct source
 				await this.updateServerConnections(config.mcpServers, serverSource)
@@ -1899,20 +1907,7 @@ export class McpHub {
 			targetList.splice(toolIndex, 1)
 		}
 
-		// Set flag to prevent file watcher from triggering server restart
-		if (this.flagResetTimer) {
-			clearTimeout(this.flagResetTimer)
-		}
-		this.isProgrammaticUpdate = true
-		try {
-			await safeWriteJson(normalizedPath, config, { prettyPrint: true })
-		} finally {
-			// Reset flag after watcher debounce period (non-blocking)
-			this.flagResetTimer = setTimeout(() => {
-				this.isProgrammaticUpdate = false
-				this.flagResetTimer = undefined
-			}, 600)
-		}
+		await this.writeConfigFile(normalizedPath, config)
 
 		if (connection) {
 			connection.server.tools = await this.fetchToolsList(serverName, source)
