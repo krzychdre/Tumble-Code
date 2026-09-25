@@ -1,62 +1,24 @@
-import { useState, useEffect } from "react"
 import { Building2, Plus } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectSeparator } from "@/components/ui/select"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { cn } from "@src/lib/utils"
+import { CREATE_TEAM_VALUE, PERSONAL_ACCOUNT_VALUE, useOrganizationSwitch } from "@src/hooks/useOrganizationSwitch"
 
 export const CloudAccountSwitcher = () => {
 	const { t } = useAppTranslation()
 	const { cloudUserInfo, cloudOrganizations = [], cloudApiUrl } = useExtensionState()
-	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(cloudUserInfo?.organizationId || null)
-	const [isLoading, setIsLoading] = useState(false)
-
-	// Update selected org when userInfo changes
-	useEffect(() => {
-		setSelectedOrgId(cloudUserInfo?.organizationId || null)
-	}, [cloudUserInfo?.organizationId])
+	const { selectedOrgId, isLoading, handleOrganizationChange } = useOrganizationSwitch({
+		organizationId: cloudUserInfo?.organizationId,
+		cloudApiUrl,
+	})
 
 	// Show the switcher whenever user is authenticated
 	if (!cloudUserInfo) {
 		return null
 	}
 
-	const handleOrganizationChange = async (value: string) => {
-		// Handle "Create Team Account" option
-		if (value === "create-team") {
-			if (cloudApiUrl) {
-				const billingUrl = `${cloudApiUrl}/billing`
-				vscode.postMessage({ type: "openExternal", url: billingUrl })
-			}
-			return
-		}
-
-		const newOrgId = value === "personal" ? null : value
-
-		// Don't do anything if selecting the same organization
-		if (newOrgId === selectedOrgId) {
-			return
-		}
-
-		setIsLoading(true)
-
-		// Send message to switch organization
-		vscode.postMessage({
-			type: "switchOrganization",
-			organizationId: newOrgId,
-		})
-
-		// Update local state optimistically
-		setSelectedOrgId(newOrgId)
-
-		// Reset loading state after a delay
-		setTimeout(() => {
-			setIsLoading(false)
-		}, 1000)
-	}
-
-	const currentValue = selectedOrgId || "personal"
+	const currentValue = selectedOrgId || PERSONAL_ACCOUNT_VALUE
 	const currentOrg = cloudOrganizations.find((org) => org.organization.id === selectedOrgId)
 
 	// Render the account icon based on current context
@@ -112,7 +74,7 @@ export const CloudAccountSwitcher = () => {
 
 				<SelectContent>
 					{/* Personal Account Option */}
-					<SelectItem value="personal">
+					<SelectItem value={PERSONAL_ACCOUNT_VALUE}>
 						<div className="flex items-center gap-2">
 							{cloudUserInfo.picture ? (
 								<img
@@ -153,7 +115,7 @@ export const CloudAccountSwitcher = () => {
 					{cloudOrganizations.length === 0 && (
 						<>
 							<SelectSeparator />
-							<SelectItem value="create-team">
+							<SelectItem value={CREATE_TEAM_VALUE}>
 								<div className="flex items-center gap-2">
 									<Plus className="w-4.5 h-4.5" />
 									<span>{t("cloud:createTeamAccount")}</span>
