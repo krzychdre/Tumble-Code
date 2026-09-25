@@ -3,11 +3,9 @@ import {
 	ConverseStreamCommand,
 	ConverseCommand,
 	BedrockRuntimeClientConfig,
-	ContentBlock,
 	Message,
 	SystemContentBlock,
 	Tool,
-	ToolConfiguration,
 	ToolChoice,
 } from "@aws-sdk/client-bedrock-runtime"
 import OpenAI from "openai"
@@ -18,7 +16,6 @@ import {
 	type ModelInfo,
 	type ProviderSettings,
 	type BedrockModelId,
-	type BedrockServiceTier,
 	bedrockDefaultModelId,
 	bedrockModels,
 	bedrockDefaultPromptRouterModelId,
@@ -38,171 +35,25 @@ import { ApiStream } from "../transform/stream"
 import { BaseProvider } from "./base-provider"
 import { logger } from "../../utils/logging"
 import { Package } from "../../shared/package"
-import { MultiPointStrategy } from "../transform/cache-strategy/multi-point-strategy"
-import { ModelInfo as CacheModelInfo } from "../transform/cache-strategy/types"
-import { convertToBedrockConverseMessages as sharedConverter } from "../transform/bedrock-converse-format"
 import { getModelParams } from "../transform/model-params"
-import { shouldUseReasoningBudget } from "../../shared/api"
-import { normalizeToolSchema } from "../../utils/json-schema"
-import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { getApiErrorStatus } from "../apiErrors"
+import type { CompletionResult, SingleCompletionHandler } from "../index"
 import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
+import {
+	type BedrockCreateMessageMetadata,
+	buildConversationId,
+	buildConverseStreamPayload,
+	buildInferenceConfig,
+	convertToConverseMessages,
+	convertToolChoiceForBedrock,
+	convertToolsForBedrock,
+	supportsAwsPromptCache,
+} from "./bedrock/request"
+import { processBedrockStream } from "./bedrock/stream"
+import { type BedrockErrorContext, bedrockStreamFailure, handleBedrockError } from "./bedrock/errors"
 
-/************************************************************************************
- *
- *     TYPES
- *
- *************************************************************************************/
-
-// Define interface for Bedrock inference config
-interface BedrockInferenceConfig {
-	maxTokens: number
-	temperature?: number
-}
-
-// Define interface for Bedrock additional model request fields
-// This includes thinking configuration, 1M context beta, and other model-specific parameters
-interface BedrockAdditionalModelFields {
-	thinking?:
-		| {
-				type: "enabled"
-				budget_tokens: number
-		  }
-		| {
-				// Claude 4.7+ adaptive thinking — no budget_tokens, uses output_config.effort instead
-				type: "adaptive"
-				// "summarized" shows thinking content in UI; omit to keep thinking internal only
-				display?: "summarized" | "none"
-		  }
-	output_config?: {
-		// Claude 4.7+ effort levels: "low" | "medium" | "high" | "xhigh" | "max"
-		effort: string
-	}
-	anthropic_beta?: string[]
-	[key: string]: any // Add index signature to be compatible with DocumentType
-}
-
-// Define interface for Bedrock payload
-interface BedrockPayload {
-	modelId: BedrockModelId | string
-	messages: Message[]
-	system?: SystemContentBlock[]
-	inferenceConfig: BedrockInferenceConfig
-	anthropic_version?: string
-	additionalModelRequestFields?: BedrockAdditionalModelFields
-	toolConfig?: ToolConfiguration
-}
-
-// Extended payload type that includes service_tier as a top-level parameter
-// AWS Bedrock service tiers (STANDARD, FLEX, PRIORITY) are specified at the top level
-// https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html
-type BedrockPayloadWithServiceTier = BedrockPayload & {
-	service_tier?: BedrockServiceTier
-}
-
-// Define specific types for content block events to avoid 'as any' usage
-// These handle the multiple possible structures returned by AWS SDK
-interface ContentBlockStartEvent {
-	start?: {
-		text?: string
-		thinking?: string
-		toolUse?: {
-			toolUseId?: string
-			name?: string
-		}
-	}
-	contentBlockIndex?: number
-	// Alternative structure used by some AWS SDK versions
-	content_block?: {
-		type?: string
-		thinking?: string
-	}
-	// Official AWS SDK structure for reasoning (as documented)
-	contentBlock?: {
-		type?: string
-		thinking?: string
-		reasoningContent?: {
-			text?: string
-		}
-		// Tool use block start
-		toolUse?: {
-			toolUseId?: string
-			name?: string
-		}
-	}
-}
-
-interface ContentBlockDeltaEvent {
-	delta?: {
-		text?: string
-		thinking?: string
-		type?: string
-		// AWS SDK structure for reasoning content deltas
-		reasoningContent?: {
-			text?: string
-		}
-		// Tool use input delta
-		toolUse?: {
-			input?: string
-		}
-	}
-	contentBlockIndex?: number
-}
-
-// Define types for stream events based on AWS SDK
-export interface StreamEvent {
-	messageStart?: {
-		role?: string
-	}
-	messageStop?: {
-		stopReason?: "end_turn" | "tool_use" | "max_tokens" | "stop_sequence"
-		additionalModelResponseFields?: Record<string, unknown>
-	}
-	contentBlockStart?: ContentBlockStartEvent
-	contentBlockDelta?: ContentBlockDeltaEvent
-	metadata?: {
-		usage?: {
-			inputTokens: number
-			outputTokens: number
-			totalTokens?: number // Made optional since we don't use it
-			// New cache-related fields
-			cacheReadInputTokens?: number
-			cacheWriteInputTokens?: number
-			cacheReadInputTokenCount?: number
-			cacheWriteInputTokenCount?: number
-		}
-		metrics?: {
-			latencyMs: number
-		}
-	}
-	// New trace field for prompt router
-	trace?: {
-		promptRouter?: {
-			invokedModelId?: string
-			usage?: {
-				inputTokens: number
-				outputTokens: number
-				totalTokens?: number // Made optional since we don't use it
-				// New cache-related fields
-				cacheReadTokens?: number
-				cacheWriteTokens?: number
-				cacheReadInputTokenCount?: number
-				cacheWriteInputTokenCount?: number
-			}
-		}
-	}
-}
-
-// Type for usage information in stream events
-export type UsageType = {
-	inputTokens?: number
-	outputTokens?: number
-	cacheReadInputTokens?: number
-	cacheWriteInputTokens?: number
-	cacheReadInputTokenCount?: number
-	cacheWriteInputTokenCount?: number
-}
+// Kept for importers of the stream event type (bedrock-invokedModelId.spec)
+export type { StreamEvent } from "./bedrock/stream"
 
 /************************************************************************************
  *
@@ -390,150 +241,33 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	override async *createMessage(
 		systemPrompt: string,
 		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata & {
-			thinking?: {
-				enabled: boolean
-				maxTokens?: number
-				maxThinkingTokens?: number
-			}
-		},
+		metadata?: BedrockCreateMessageMetadata,
 	): ApiStream {
 		const modelConfig = this.getModel()
-		const usePromptCache = Boolean(
-			(this.options.awsUsePromptCache ?? true) && this.supportsAwsPromptCache(modelConfig),
-		)
-
-		const conversationId =
-			messages.length > 0
-				? `conv_${messages[0].role}_${
-						typeof messages[0].content === "string"
-							? messages[0].content.substring(0, 20)
-							: "complex_content"
-					}`
-				: "default_conversation"
+		const usePromptCache = Boolean((this.options.awsUsePromptCache ?? true) && supportsAwsPromptCache(modelConfig))
 
 		const formatted = this.convertToBedrockConverseMessages(
 			messages,
 			systemPrompt,
 			usePromptCache,
 			modelConfig.info,
-			conversationId,
+			buildConversationId(messages),
 		)
 
-		let additionalModelRequestFields: BedrockAdditionalModelFields | undefined
-		let thinkingEnabled = false
-
-		// Detect models that require the adaptive-thinking API contract (Opus/Sonnet
-		// 4.7 and 4.8). See isAdaptiveThinkingModel for details. The same guard is
-		// reused in completePrompt so both request paths stay consistent.
-		const baseModelId = this.parseBaseModelId(modelConfig.id)
-		const isAdaptiveThinkingModel = this.isAdaptiveThinkingModel(modelConfig.id)
-
-		// Determine if thinking should be enabled
-		// metadata?.thinking?.enabled: Explicitly enabled through API metadata (direct request)
-		// shouldUseReasoningBudget(): Enabled through user settings (enableReasoningEffort = true)
-		const isThinkingExplicitlyEnabled = metadata?.thinking?.enabled
-		const isThinkingEnabledBySettings =
-			shouldUseReasoningBudget({ model: modelConfig.info, settings: this.options }) &&
-			modelConfig.reasoning &&
-			modelConfig.reasoningBudget
-
-		if ((isThinkingExplicitlyEnabled || isThinkingEnabledBySettings) && modelConfig.info.supportsReasoningBudget) {
-			thinkingEnabled = true
-			if (isAdaptiveThinkingModel) {
-				// Claude 4.7+ (incl. 4.8) uses adaptive thinking with effort levels —
-				// budget_tokens causes a 400 error.
-				// display: "summarized" surfaces thinking content in the UI.
-				// effort "xhigh" remains the recommended level for agentic coding tasks
-				// across both 4.7 and 4.8 (4.8 changed the API default to "high" but
-				// the model continues to honour "xhigh" for deeper reasoning).
-				additionalModelRequestFields = {
-					thinking: { type: "adaptive", display: "summarized" },
-					output_config: { effort: "xhigh" },
-				}
-			} else {
-				additionalModelRequestFields = {
-					thinking: {
-						type: "enabled",
-						budget_tokens: metadata?.thinking?.maxThinkingTokens || modelConfig.reasoningBudget || 4096,
-					},
-				}
-			}
-			logger.info("Extended thinking enabled for Bedrock request", {
-				ctx: "bedrock",
-				modelId: modelConfig.id,
-				thinking: additionalModelRequestFields?.thinking,
-			})
-		}
-
-		const inferenceConfig: BedrockInferenceConfig = {
-			maxTokens: modelConfig.maxTokens || (modelConfig.info.maxTokens as number),
-			// Claude 4.7+ (including 4.8) removed sampling parameters entirely —
-			// sending temperature causes a 400 error.
-			...(isAdaptiveThinkingModel
-				? {}
-				: { temperature: modelConfig.temperature ?? (this.options.modelTemperature as number) }),
-		}
-
-		// Check if 1M context is enabled for supported Claude 4 models
-		// Use parseBaseModelId to handle cross-region inference prefixes (computed above)
-		const is1MContextEnabled =
-			BEDROCK_1M_CONTEXT_MODEL_IDS.includes(baseModelId as any) && this.options.awsBedrock1MContext
-
-		// Determine if service tier should be applied (checked later when building payload)
-		const useServiceTier =
-			this.options.awsBedrockServiceTier && BEDROCK_SERVICE_TIER_MODEL_IDS.includes(baseModelId as any)
-		if (useServiceTier) {
-			logger.info("Service tier specified for Bedrock request", {
-				ctx: "bedrock",
-				modelId: modelConfig.id,
-				serviceTier: this.options.awsBedrockServiceTier,
-			})
-		}
-
-		// Add anthropic_beta headers for various features
-		// Start with an empty array and add betas as needed
-		const anthropicBetas: string[] = []
-
-		// Add 1M context beta if enabled
-		if (is1MContextEnabled) {
-			anthropicBetas.push("context-1m-2025-08-07")
-		}
-
-		// Add fine-grained tool streaming beta for Claude models
-		// This enables proper tool use streaming for Anthropic models on Bedrock
-		if (baseModelId.includes("claude")) {
-			anthropicBetas.push("fine-grained-tool-streaming-2025-05-14")
-		}
-
-		// Apply anthropic_beta to additionalModelRequestFields if any betas are needed
-		if (anthropicBetas.length > 0) {
-			if (!additionalModelRequestFields) {
-				additionalModelRequestFields = {} as BedrockAdditionalModelFields
-			}
-			additionalModelRequestFields.anthropic_beta = anthropicBetas
-		}
-
-		const toolConfig: ToolConfiguration = {
-			tools: this.convertToolsForBedrock(metadata?.tools ?? []),
-			toolChoice: this.convertToolChoiceForBedrock(metadata?.tool_choice),
-		}
-
-		// Build payload with optional service_tier at top level
-		// Service tier is a top-level parameter per AWS documentation, NOT inside additionalModelRequestFields
-		// https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html
-		const payload: BedrockPayloadWithServiceTier = {
-			modelId: modelConfig.id,
-			messages: formatted.messages,
-			system: formatted.system,
-			inferenceConfig,
-			...(additionalModelRequestFields && { additionalModelRequestFields }),
-			// Add anthropic_version at top level when using thinking features
-			...(thinkingEnabled && { anthropic_version: "bedrock-2023-05-31" }),
-			toolConfig,
-			// Add service_tier as a top-level parameter (not inside additionalModelRequestFields)
-			...(useServiceTier && { service_tier: this.options.awsBedrockServiceTier }),
-		}
+		const payload = buildConverseStreamPayload({
+			model: modelConfig,
+			// Without cross-region inference prefixes, for the 1M context and service tier lists
+			baseModelId: this.parseBaseModelId(modelConfig.id),
+			// The same guard is reused in completePrompt so both request paths stay consistent.
+			isAdaptiveThinkingModel: this.isAdaptiveThinkingModel(modelConfig.id),
+			settings: this.options,
+			formatted,
+			thinking: metadata?.thinking,
+			toolConfig: {
+				tools: this.convertToolsForBedrock(metadata?.tools ?? []),
+				toolChoice: this.convertToolChoiceForBedrock(metadata?.tool_choice),
+			},
+		})
 
 		// Aborted after a 10 minute timeout, or by the task's signal (Stop closes the HTTP request)
 		const controller = createRequestAbortController(metadata?.signal)
@@ -557,238 +291,35 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				throw new Error("No stream available in the response")
 			}
 
-			for await (const chunk of response.stream) {
-				// Parse the chunk as JSON if it's a string (for tests)
-				let streamEvent: StreamEvent
-				try {
-					streamEvent = typeof chunk === "string" ? JSON.parse(chunk) : (chunk as unknown as StreamEvent)
-				} catch (e) {
-					logger.error("Failed to parse stream event", {
-						ctx: "bedrock",
-						error: e instanceof Error ? e : String(e),
-						chunk: typeof chunk === "string" ? chunk : "binary data",
-					})
-					continue
-				}
+			yield* processBedrockStream(response.stream, {
+				onInvokedModelId: (invokedModelId) => this.useInvokedModelForCost(invokedModelId, modelConfig.id),
+			})
 
-				// Handle metadata events first
-				if (streamEvent.metadata?.usage) {
-					const usage = (streamEvent.metadata?.usage || {}) as UsageType
-
-					// Check both field naming conventions for cache tokens
-					const cacheReadTokens = usage.cacheReadInputTokens || usage.cacheReadInputTokenCount || 0
-					const cacheWriteTokens = usage.cacheWriteInputTokens || usage.cacheWriteInputTokenCount || 0
-
-					// Always include all available token information
-					yield {
-						type: "usage",
-						inputTokens: usage.inputTokens || 0,
-						outputTokens: usage.outputTokens || 0,
-						cacheReadTokens: cacheReadTokens,
-						cacheWriteTokens: cacheWriteTokens,
-					}
-					continue
-				}
-
-				if (streamEvent?.trace?.promptRouter?.invokedModelId) {
-					try {
-						//update the in-use model info to be based on the invoked Model Id for the router
-						//so that pricing, context window, caching etc have values that can be used
-						//However, we want to keep the id of the model to be the ID for the router for
-						//subsequent requests so they are sent back through the router
-						let invokedArnInfo = this.parseArn(streamEvent.trace.promptRouter.invokedModelId)
-						let invokedModel = this.getModelById(invokedArnInfo.modelId as string, invokedArnInfo.modelType)
-						if (invokedModel) {
-							invokedModel.id = modelConfig.id
-							this.costModelConfig = invokedModel
-						}
-
-						// Handle metadata events for the promptRouter.
-						if (streamEvent?.trace?.promptRouter?.usage) {
-							const routerUsage = streamEvent.trace.promptRouter.usage
-
-							// Check both field naming conventions for cache tokens
-							const cacheReadTokens =
-								routerUsage.cacheReadTokens || routerUsage.cacheReadInputTokenCount || 0
-							const cacheWriteTokens =
-								routerUsage.cacheWriteTokens || routerUsage.cacheWriteInputTokenCount || 0
-
-							yield {
-								type: "usage",
-								inputTokens: routerUsage.inputTokens || 0,
-								outputTokens: routerUsage.outputTokens || 0,
-								cacheReadTokens: cacheReadTokens,
-								cacheWriteTokens: cacheWriteTokens,
-							}
-						}
-					} catch (error) {
-						logger.error("Error handling Bedrock invokedModelId", {
-							ctx: "bedrock",
-							error: error instanceof Error ? error : String(error),
-						})
-					} finally {
-						// eslint-disable-next-line no-unsafe-finally
-						continue
-					}
-				}
-
-				// Handle message start
-				if (streamEvent.messageStart) {
-					continue
-				}
-
-				// Handle content blocks
-				if (streamEvent.contentBlockStart) {
-					const cbStart = streamEvent.contentBlockStart
-
-					// Check if this is a reasoning block (AWS SDK structure)
-					if (cbStart.contentBlock?.reasoningContent) {
-						if (cbStart.contentBlockIndex && cbStart.contentBlockIndex > 0) {
-							yield { type: "reasoning", text: "\n" }
-						}
-						yield {
-							type: "reasoning",
-							text: cbStart.contentBlock.reasoningContent.text || "",
-						}
-					}
-					// Check for thinking block - handle both possible AWS SDK structures
-					// cbStart.contentBlock: newer structure
-					// cbStart.content_block: alternative structure seen in some AWS SDK versions
-					else if (cbStart.contentBlock?.type === "thinking" || cbStart.content_block?.type === "thinking") {
-						const contentBlock = cbStart.contentBlock || cbStart.content_block
-						if (cbStart.contentBlockIndex && cbStart.contentBlockIndex > 0) {
-							yield { type: "reasoning", text: "\n" }
-						}
-						if (contentBlock?.thinking) {
-							yield {
-								type: "reasoning",
-								text: contentBlock.thinking,
-							}
-						}
-					}
-					// Handle tool use block start
-					else if (cbStart.start?.toolUse || cbStart.contentBlock?.toolUse) {
-						const toolUse = cbStart.start?.toolUse || cbStart.contentBlock?.toolUse
-						if (toolUse) {
-							yield {
-								type: "tool_call_partial",
-								index: cbStart.contentBlockIndex ?? 0,
-								id: toolUse.toolUseId,
-								name: toolUse.name,
-								arguments: undefined,
-							}
-						}
-					} else if (cbStart.start?.text) {
-						yield {
-							type: "text",
-							text: cbStart.start.text,
-						}
-					}
-					continue
-				}
-
-				// Handle content deltas
-				if (streamEvent.contentBlockDelta) {
-					const cbDelta = streamEvent.contentBlockDelta
-					const delta = cbDelta.delta
-
-					// Process reasoning and text content deltas
-					// Multiple structures are supported for AWS SDK compatibility:
-					// - delta.reasoningContent.text: AWS docs structure for reasoning
-					// - delta.thinking: alternative structure for thinking content
-					// - delta.text: standard text content
-					// - delta.toolUse.input: tool input arguments
-					if (delta) {
-						// Check for reasoningContent property (AWS SDK structure)
-						if (delta.reasoningContent?.text) {
-							yield {
-								type: "reasoning",
-								text: delta.reasoningContent.text,
-							}
-							continue
-						}
-
-						// Handle tool use input delta
-						if (delta.toolUse?.input) {
-							yield {
-								type: "tool_call_partial",
-								index: cbDelta.contentBlockIndex ?? 0,
-								id: undefined,
-								name: undefined,
-								arguments: delta.toolUse.input,
-							}
-							continue
-						}
-
-						// Handle alternative thinking structure (fallback for older SDK versions)
-						if (delta.type === "thinking_delta" && delta.thinking) {
-							yield {
-								type: "reasoning",
-								text: delta.thinking,
-							}
-						} else if (delta.text) {
-							yield {
-								type: "text",
-								text: delta.text,
-							}
-						}
-					}
-					continue
-				}
-				// Handle message stop
-				if (streamEvent.messageStop) {
-					continue
-				}
-			}
 			// Clear timeout after stream completes
 			clearTimeout(timeoutId)
 		} catch (error: unknown) {
 			// Clear timeout on error
 			clearTimeout(timeoutId)
 
-			// Capture error in telemetry before processing
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			const apiError = new ApiProviderError(errorMessage, this.providerName, modelConfig.id, "createMessage")
-			TelemetryService.instance.captureException(apiError)
-
-			// Check if this is a throttling error that should trigger retry logic
-			const errorType = this.getErrorType(error)
-
-			// For throttling errors, throw immediately without yielding chunks
-			// This allows the retry mechanism in attemptApiRequest() to catch and handle it
-			// The retry logic in Task.ts (around line 1817) expects errors to be thrown
-			// on the first chunk for proper exponential backoff behavior
-			if (errorType === "THROTTLING") {
-				if (error instanceof Error) {
-					// The AWS SDK keeps the HTTP status in $metadata.httpStatusCode only;
-					// the retry loop and the background-model fallback read `status`.
-					const status = getApiErrorStatus(error)
-					if (status !== undefined && (error as any).status === undefined) {
-						;(error as any).status = status
-					}
-					throw error
-				} else {
-					throw new Error("Throttling error occurred")
-				}
-			}
-
-			// For non-throttling errors, use the standard error handling with chunks
-			const errorChunks = this.handleBedrockError(error, true) // true for streaming context
-			// Yield each chunk individually to ensure type compatibility
-			for (const chunk of errorChunks) {
-				yield chunk as any // Cast to any to bypass type checking since we know the structure is correct
-			}
-
-			// Re-throw with enhanced error message for retry system
-			const enhancedErrorMessage = this.formatErrorMessage(error, this.getErrorType(error), true)
-			// Keeps status ($metadata.httpStatusCode normalized to `status`), $metadata and code.
-			const enhancedError = handleProviderError(error, this.providerName, {
-				messageTransformer: () => (error instanceof Error ? enhancedErrorMessage : "An unknown error occurred"),
+			yield* bedrockStreamFailure(error, {
+				providerName: this.providerName,
+				modelId: modelConfig.id,
+				context: this.errorContext(),
 			})
-			if (error instanceof Error) {
-				enhancedError.name = error.name
-			}
-			throw enhancedError
+		}
+	}
+
+	/**
+	 * A prompt router reported the model it invoked: base pricing, context window, caching etc.
+	 * on that model, but keep the router's id so subsequent requests are sent back through the
+	 * router.
+	 */
+	private useInvokedModelForCost(invokedModelId: string, routerModelId: string): void {
+		const invokedArnInfo = this.parseArn(invokedModelId)
+		const invokedModel = this.getModelById(invokedArnInfo.modelId as string, invokedArnInfo.modelType)
+		if (invokedModel) {
+			invokedModel.id = routerModelId
+			this.costModelConfig = invokedModel
 		}
 	}
 
@@ -800,15 +331,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		try {
 			const modelConfig = this.getModel()
 
-			const inferenceConfig: BedrockInferenceConfig = {
-				maxTokens: modelConfig.maxTokens || (modelConfig.info.maxTokens as number),
-				// Claude 4.7+ (including 4.8) removed sampling parameters entirely —
-				// sending temperature causes a 400 error. Guard the non-stream path the
-				// same way createMessage does so completePrompt also works for these models.
-				...(this.isAdaptiveThinkingModel(modelConfig.id)
-					? {}
-					: { temperature: modelConfig.temperature ?? (this.options.modelTemperature as number) }),
-			}
+			const inferenceConfig = buildInferenceConfig(
+				modelConfig,
+				// Same temperature guard as createMessage: adaptive-thinking models reject it with a 400.
+				{ isAdaptiveThinkingModel: this.isAdaptiveThinkingModel(modelConfig.id) },
+				this.options.modelTemperature as number,
+			)
 
 			// For completePrompt, use a unique conversation ID based on the prompt
 			const conversationId = `prompt_${prompt.substring(0, 20)}`
@@ -864,7 +392,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			TelemetryService.instance.captureException(apiError)
 
 			// Use the extracted error handling method for all errors
-			const errorResult = this.handleBedrockError(error, false) // false for non-streaming context
+			const errorResult = handleBedrockError(error, false, this.errorContext()) // false for non-streaming context
 			// Since we're in a non-streaming context, we know the result is a string
 			const errorMessage = errorResult as string
 
@@ -881,7 +409,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	/**
-	 * Convert Anthropic messages to Bedrock Converse format
+	 * Convert Anthropic messages to Bedrock Converse format, remembering the prompt-cache point
+	 * placements per conversation so consecutive requests keep their cache points stable.
 	 */
 	private convertToBedrockConverseMessages(
 		anthropicMessages: Anthropic.Messages.MessageParam[] | { role: string; content: string }[],
@@ -890,67 +419,20 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		modelInfo?: any,
 		conversationId?: string, // Optional conversation ID to track cache points across messages
 	): { system: SystemContentBlock[]; messages: Message[] } {
-		// First convert messages using shared converter for proper image handling
-		const convertedMessages = sharedConverter(anthropicMessages as Anthropic.Messages.MessageParam[])
-
-		// If prompt caching is disabled, return the converted messages directly
-		if (!usePromptCache) {
-			return {
-				system: systemMessage ? [{ text: systemMessage } as SystemContentBlock] : [],
-				messages: convertedMessages,
-			}
-		}
-
-		// Convert model info to expected format for cache strategy
-		const cacheModelInfo: CacheModelInfo = {
-			maxTokens: modelInfo?.maxTokens || 8192,
-			contextWindow: modelInfo?.contextWindow || 200_000,
-			supportsPromptCache: modelInfo?.supportsPromptCache || false,
-			maxCachePoints: modelInfo?.maxCachePoints || 0,
-			minTokensPerCachePoint: modelInfo?.minTokensPerCachePoint || 50,
-			cachableFields: modelInfo?.cachableFields || [],
-		}
-
-		// Get previous cache point placements for this conversation if available
-		const previousPlacements =
-			conversationId && this.previousCachePointPlacements[conversationId]
-				? this.previousCachePointPlacements[conversationId]
-				: undefined
-
-		// Create config for cache strategy
-		const config = {
-			modelInfo: cacheModelInfo,
+		const result = convertToConverseMessages({
+			messages: anthropicMessages,
 			systemPrompt: systemMessage,
-			messages: anthropicMessages as Anthropic.Messages.MessageParam[],
 			usePromptCache,
-			previousCachePointPlacements: previousPlacements,
-		}
-
-		// Get cache point placements
-		let strategy = new MultiPointStrategy(config)
-		const cacheResult = strategy.determineOptimalCachePoints()
-
-		// Store cache point placements for future use if conversation ID is provided
-		if (conversationId && cacheResult.messageCachePointPlacements) {
-			this.previousCachePointPlacements[conversationId] = cacheResult.messageCachePointPlacements
-		}
-
-		// Apply cache points to the properly converted messages
-		const messagesWithCache = convertedMessages.map((msg, index) => {
-			const placement = cacheResult.messageCachePointPlacements?.find((p) => p.index === index)
-			if (placement) {
-				return {
-					...msg,
-					content: [...(msg.content || []), { cachePoint: { type: "default" } } as ContentBlock],
-				}
-			}
-			return msg
+			modelInfo,
+			previousPlacements: conversationId ? this.previousCachePointPlacements[conversationId] : undefined,
 		})
 
-		return {
-			system: cacheResult.system,
-			messages: messagesWithCache,
+		// Store cache point placements for future use if conversation ID is provided
+		if (conversationId && result.placements) {
+			this.previousCachePointPlacements[conversationId] = result.placements
 		}
+
+		return { system: result.system, messages: result.messages }
 	}
 
 	/************************************************************************************
@@ -1229,85 +711,20 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	// Store previous cache point placements for maintaining consistency across consecutive messages
 	private previousCachePointPlacements: { [conversationId: string]: any[] } = {}
 
-	private supportsAwsPromptCache(modelConfig: { id: BedrockModelId | string; info: ModelInfo }): boolean | undefined {
-		// Check if the model supports prompt cache
-		// The cachableFields property is not part of the ModelInfo type in schemas
-		// but it's used in the bedrockModels object in shared/api.ts
-		return (
-			modelConfig?.info?.supportsPromptCache &&
-			// Use optional chaining and type assertion to access cachableFields
-			(modelConfig?.info as any)?.cachableFields &&
-			(modelConfig?.info as any)?.cachableFields?.length > 0
-		)
-	}
-
 	/************************************************************************************
 	 *
 	 *     NATIVE TOOLS
 	 *
 	 *************************************************************************************/
 
-	/**
-	 * Convert OpenAI tool definitions to Bedrock Converse format
-	 * Transforms JSON Schema to draft 2020-12 compliant format required by Claude models.
-	 * @param tools Array of OpenAI ChatCompletionTool definitions
-	 * @returns Array of Bedrock Tool definitions
-	 */
 	private convertToolsForBedrock(tools: OpenAI.Chat.ChatCompletionTool[]): Tool[] {
-		return tools
-			.filter((tool) => tool.type === "function")
-			.map(
-				(tool) =>
-					({
-						toolSpec: {
-							name: tool.function.name,
-							description: tool.function.description,
-							inputSchema: {
-								// Normalize schema to JSON Schema draft 2020-12 compliant format
-								// This converts type: ["T", "null"] to anyOf: [{type: "T"}, {type: "null"}]
-								json: normalizeToolSchema(tool.function.parameters as Record<string, unknown>),
-							},
-						},
-					}) as Tool,
-			)
+		return convertToolsForBedrock(tools)
 	}
 
-	/**
-	 * Convert OpenAI tool_choice to Bedrock ToolChoice format
-	 * @param toolChoice OpenAI tool_choice parameter
-	 * @returns Bedrock ToolChoice configuration
-	 */
 	private convertToolChoiceForBedrock(
 		toolChoice: OpenAI.Chat.ChatCompletionCreateParams["tool_choice"],
 	): ToolChoice | undefined {
-		if (!toolChoice) {
-			// Default to auto - model decides whether to use tools
-			return { auto: {} } as ToolChoice
-		}
-
-		if (typeof toolChoice === "string") {
-			switch (toolChoice) {
-				case "none":
-					return undefined // Bedrock doesn't have "none", just omit tools
-				case "auto":
-					return { auto: {} } as ToolChoice
-				case "required":
-					return { any: {} } as ToolChoice // Model must use at least one tool
-				default:
-					return { auto: {} } as ToolChoice
-			}
-		}
-
-		// Handle object form { type: "function", function: { name: string } }
-		if (typeof toolChoice === "object" && "function" in toolChoice) {
-			return {
-				tool: {
-					name: toolChoice.function.name,
-				},
-			} as ToolChoice
-		}
-
-		return { auto: {} } as ToolChoice
+		return convertToolChoiceForBedrock(toolChoice)
 	}
 
 	/************************************************************************************
@@ -1344,287 +761,12 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	 *
 	 *************************************************************************************/
 
-	/**
-	 * Error type definitions for Bedrock API errors
-	 */
-	private static readonly ERROR_TYPES: Record<
-		string,
-		{
-			patterns: string[] // Strings to match in lowercase error message or name
-			messageTemplate: string // Template with placeholders like {region}, {modelId}, etc.
-			logLevel: "error" | "warn" | "info" // Log level for this error type
-		}
-	> = {
-		ACCESS_DENIED: {
-			patterns: ["access", "denied", "permission"],
-			messageTemplate: `You don't have access to the model specified.
-
-Please verify:
-1. Try cross-region inference if you're using a foundation model
-2. If using an ARN, verify the ARN is correct and points to a valid model
-3. Your AWS credentials have permission to access this model (check IAM policies)
-4. The region in the ARN matches the region where the model is deployed
-5. If using a provisioned model, ensure it's active and not in a failed state`,
-			logLevel: "error",
-		},
-		NOT_FOUND: {
-			patterns: ["not found", "does not exist"],
-			messageTemplate: `The specified ARN does not exist or is invalid. Please check:
-
-1. The ARN format is correct (arn:aws:bedrock:region:account-id:resource-type/resource-name)
-2. The model exists in the specified region
-3. The account ID in the ARN is correct`,
-			logLevel: "error",
-		},
-		THROTTLING: {
-			patterns: [
-				"throttl",
-				"rate",
-				"limit",
-				"bedrock is unable to process your request", // Amazon Bedrock specific throttling message
-				"please wait",
-				"quota exceeded",
-				"service unavailable",
-				"busy",
-				"overloaded",
-				"too many requests",
-				"request limit",
-				"concurrent requests",
-			],
-			messageTemplate: `Request was throttled or rate limited. Please try:
-1. Reducing the frequency of requests
-2. If using a provisioned model, check its throughput settings
-3. Contact AWS support to request a quota increase if needed
-
-`,
-			logLevel: "error",
-		},
-		TOO_MANY_TOKENS: {
-			patterns: ["too many tokens", "token limit exceeded", "context length", "maximum context length"],
-			messageTemplate: `"Too many tokens" error detected.
-Possible Causes:
-1. Input exceeds model's context window limit
-2. Rate limiting (too many tokens per minute)
-3. Quota exceeded for token usage
-4. Other token-related service limitations
-
-Suggestions:
-1. Reduce the size of your input
-2. Split your request into smaller chunks
-3. Use a model with a larger context window
-4. If rate limited, reduce request frequency
-5. Check your Amazon Bedrock quotas and limits
-
-`,
-			logLevel: "error",
-		},
-		SERVICE_QUOTA_EXCEEDED: {
-			patterns: ["service quota exceeded", "service quota", "quota exceeded for model"],
-			messageTemplate: `Service quota exceeded. This error indicates you've reached AWS service limits.
-
-Please try:
-1. Contact AWS support to request a quota increase
-2. Reduce request frequency temporarily
-3. Check your Amazon Bedrock quotas in the AWS console
-4. Consider using a different model or region with available capacity
-
-`,
-			logLevel: "error",
-		},
-		MODEL_NOT_READY: {
-			patterns: ["model not ready", "model is not ready", "provisioned throughput not ready", "model loading"],
-			messageTemplate: `Model is not ready or still loading. This can happen with:
-1. Provisioned throughput models that are still initializing
-2. Custom models that are being loaded
-3. Models that are temporarily unavailable
-
-Please try:
-1. Wait a few minutes and retry
-2. Check the model status in Amazon Bedrock console
-3. Verify the model is properly provisioned
-
-`,
-			logLevel: "error",
-		},
-		INTERNAL_SERVER_ERROR: {
-			patterns: ["internal server error", "internal error", "server error", "service error"],
-			messageTemplate: `Amazon Bedrock internal server error. This is a temporary service issue.
-
-Please try:
-1. Retry the request after a brief delay
-2. If the error persists, check AWS service health
-3. Contact AWS support if the issue continues
-
-`,
-			logLevel: "error",
-		},
-		ON_DEMAND_NOT_SUPPORTED: {
-			patterns: ["with on-demand throughput isn’t supported."],
-			messageTemplate: `
-1. Try enabling cross-region inference in settings.
-2. Or, create an inference profile and then leverage the "Use custom ARN..." option of the model selector in settings.`,
-			logLevel: "error",
-		},
-		ABORT: {
-			patterns: ["aborterror"], // This will match error.name.toLowerCase() for AbortError
-			messageTemplate: `Request was aborted: The operation timed out or was manually cancelled. Please try again or check your network connection.`,
-			logLevel: "info",
-		},
-		INVALID_ARN_FORMAT: {
-			patterns: ["invalid_arn_format:", "invalid arn format"],
-			messageTemplate: `Invalid ARN format. ARN should follow the pattern: arn:aws:bedrock:region:account-id:resource-type/resource-name`,
-			logLevel: "error",
-		},
-		VALIDATION_ERROR: {
-			patterns: [
-				"input tag",
-				"does not match any of the expected tags",
-				"field required",
-				"validation",
-				"invalid parameter",
-			],
-			messageTemplate: `Parameter validation error: {errorMessage}
-
-This error indicates that the request parameters don't match Amazon Bedrock's expected format.
-
-Common causes:
-1. Extended thinking parameter format is incorrect
-2. Model-specific parameters are not supported by this model
-3. API parameter structure has changed
-
-Please check:
-- Model supports the requested features (extended thinking, etc.)
-- Parameter format matches Amazon Bedrock specification
-- Model ID is correct for the requested features`,
-			logLevel: "error",
-		},
-		// Default/generic error
-		GENERIC: {
-			patterns: [], // Empty patterns array means this is the default
-			messageTemplate: `Unknown Error: {errorMessage}`,
-			logLevel: "error",
-		},
-	}
-
-	/**
-	 * Determines the error type based on the error message or name
-	 */
-	private getErrorType(error: unknown): string {
-		if (!(error instanceof Error)) {
-			return "GENERIC"
-		}
-
-		// Check for HTTP 429 status code (Too Many Requests)
-		if ((error as any).status === 429 || (error as any).$metadata?.httpStatusCode === 429) {
-			return "THROTTLING"
-		}
-
-		// Check for Amazon Bedrock specific throttling exception names
-		if ((error as any).name === "ThrottlingException" || (error as any).__type === "ThrottlingException") {
-			return "THROTTLING"
-		}
-
-		const errorMessage = error.message.toLowerCase()
-		const errorName = error.name.toLowerCase()
-
-		// Check each error type's patterns in order of specificity (most specific first)
-		const errorTypeOrder = [
-			"SERVICE_QUOTA_EXCEEDED", // Most specific - check before THROTTLING
-			"MODEL_NOT_READY",
-			"TOO_MANY_TOKENS",
-			"INTERNAL_SERVER_ERROR",
-			"ON_DEMAND_NOT_SUPPORTED",
-			"NOT_FOUND",
-			"ACCESS_DENIED",
-			"THROTTLING", // Less specific - check after more specific patterns
-		]
-
-		for (const errorType of errorTypeOrder) {
-			const definition = AwsBedrockHandler.ERROR_TYPES[errorType]
-			if (!definition) continue
-
-			// If any pattern matches in either message or name, return this error type
-			if (definition.patterns.some((pattern) => errorMessage.includes(pattern) || errorName.includes(pattern))) {
-				return errorType
-			}
-		}
-
-		// Default to generic error
-		return "GENERIC"
-	}
-
-	/**
-	 * Formats an error message based on the error type and context
-	 */
-	private formatErrorMessage(error: unknown, errorType: string, _isStreamContext: boolean): string {
-		const definition = AwsBedrockHandler.ERROR_TYPES[errorType] || AwsBedrockHandler.ERROR_TYPES.GENERIC
-		let template = definition.messageTemplate
-
-		// Prepare template variables
-		const templateVars: Record<string, string> = {}
-
-		if (error instanceof Error) {
-			templateVars.errorMessage = error.message
-			templateVars.errorName = error.name
-
-			const modelConfig = this.getModel()
-			templateVars.modelId = modelConfig.id
-			templateVars.contextWindow = String(modelConfig.info.contextWindow || "unknown")
-		}
-
-		// Add context-specific template variables
-		const region =
-			typeof this?.client?.config?.region === "function"
-				? this?.client?.config?.region()
-				: this?.client?.config?.region
-		templateVars.regionInfo = `(${region})`
-
-		// Replace template variables
-		for (const [key, value] of Object.entries(templateVars)) {
-			template = template.replace(new RegExp(`{${key}}`, "g"), value || "")
-		}
-
-		return template
-	}
-
-	/**
-	 * Handles Bedrock API errors and generates appropriate error messages
-	 * @param error The error that occurred
-	 * @param isStreamContext Whether the error occurred in a streaming context (true) or not (false)
-	 * @returns Error message string for non-streaming context or array of stream chunks for streaming context
-	 */
-	private handleBedrockError(
-		error: unknown,
-		isStreamContext: boolean,
-	): string | Array<{ type: string; text?: string; inputTokens?: number; outputTokens?: number }> {
-		// Determine error type
-		const errorType = this.getErrorType(error)
-
-		// Format error message
-		const errorMessage = this.formatErrorMessage(error, errorType, isStreamContext)
-
-		// Log the error
-		const definition = AwsBedrockHandler.ERROR_TYPES[errorType]
-		const logMethod = definition.logLevel
-		const contextName = isStreamContext ? "createMessage" : "completePrompt"
-		logger[logMethod](`${errorType} error in ${contextName}`, {
-			ctx: "bedrock",
+	/** What the error messages and logs need from this handler (see bedrock/errors.ts). */
+	private errorContext(): BedrockErrorContext {
+		return {
+			getModel: () => this.getModel(),
+			clientConfig: this.client?.config,
 			customArn: this.options.awsCustomArn,
-			errorType,
-			errorMessage: error instanceof Error ? error.message : String(error),
-			...(error instanceof Error && error.stack ? { errorStack: error.stack } : {}),
-			...(this.client?.config?.region ? { clientRegion: this.client.config.region } : {}),
-		})
-
-		// Return appropriate response based on isStreamContext
-		if (isStreamContext) {
-			return [
-				{ type: "text", text: `Error: ${errorMessage}` },
-				{ type: "usage", inputTokens: 0, outputTokens: 0 },
-			]
-		} else {
-			// For non-streaming context, add the expected prefix
-			return `Bedrock completion error: ${errorMessage}`
 		}
 	}
 }
