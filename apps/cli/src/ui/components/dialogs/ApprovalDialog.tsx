@@ -13,8 +13,11 @@ import { parseMcpAsk } from "../../../lib/utils/mcp-ask.js"
  */
 const MAX_MCP_ARGUMENT_LINES = 12
 
+/** Error lines shown for a failed API request, for the same reason. */
+const MAX_API_ERROR_LINES = 12
+
 export interface ApprovalDialogProps {
-	/** The pending ask to display (type "command", "tool" or "use_mcp_server") */
+	/** The pending ask to display (type "command", "tool", "use_mcp_server" or "api_req_failed") */
 	ask: PendingAsk
 	/** Called when the user approves */
 	onApprove: () => void
@@ -41,6 +44,8 @@ interface ApprovalLine {
 interface ApprovalBody {
 	title: string
 	lines: ApprovalLine[]
+	/** The question above Yes / No (default "Do you want to proceed?"). */
+	question?: string
 }
 
 /**
@@ -156,6 +161,20 @@ function buildBody(ask: PendingAsk): ApprovalBody {
 		return { title, lines }
 	}
 
+	if (ask.type === "api_req_failed") {
+		// The content is the provider's error message; Yes retries the request.
+		const errorLines = ask.content.split("\n").filter((line) => line.trim().length > 0)
+		const shown = errorLines.slice(0, MAX_API_ERROR_LINES)
+		const lines: ApprovalLine[] = shown.map((content) => ({ content }))
+		const hidden = errorLines.length - shown.length
+
+		if (hidden > 0) {
+			lines.push({ content: `… +${hidden} lines`, secondary: true })
+		}
+
+		return { title: "API request failed", lines, question: "Retry the request?" }
+	}
+
 	return { title: humanizeType(ask.type), lines: [] }
 }
 
@@ -169,7 +188,7 @@ function buildBody(ask: PendingAsk): ApprovalBody {
  * the SelectList's arrow + Enter flow.
  */
 function ApprovalDialog({ ask, onApprove, onReject, isActive = true }: ApprovalDialogProps) {
-	const { title, lines } = useMemo(() => buildBody(ask), [ask])
+	const { title, lines, question = "Do you want to proceed?" } = useMemo(() => buildBody(ask), [ask])
 
 	// Legacy y/n accelerators — preserve existing muscle memory.
 	useInput(
@@ -200,7 +219,7 @@ function ApprovalDialog({ ask, onApprove, onReject, isActive = true }: ApprovalD
 					</Text>
 				</Box>
 			))}
-			<Text color={theme.secondaryText}>Do you want to proceed?</Text>
+			<Text color={theme.secondaryText}>{question}</Text>
 			<SelectList
 				items={[
 					{ label: "Yes", value: "yes" },

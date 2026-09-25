@@ -203,4 +203,21 @@ describe("ApprovalDialog", () => {
 			expect(frame).toContain("Do you want to proceed?")
 		})
 	})
+
+	describe("api_req_failed ask", () => {
+		const ask: PendingAsk = {
+			id: "ask-9",
+			type: "api_req_failed",
+			content: "OpenAI completion error: 401 Incorrect API key provided",
+		}
+
+		it("shows the provider's error and asks whether to retry", () => {
+			const { lastFrame } = render(<ApprovalDialog ask={ask} onApprove={() => {}} onReject={() => {}} />)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain("API request failed")
+			expect(frame).toContain("401 Incorrect API key provided")
+			expect(frame).toContain("Retry the request?")
+			expect(frame).not.toContain("Api_req_failed")
+		})
+	})
 })

@@ -11,10 +11,12 @@
  * predicate plus auth/payload conditions that warrant switching handlers
  * (401/403, 400).
  *
- * The task retry loop (`TaskApiLoop.handleApiRequestError` with `RetryHandler`
- * for the backoff) does not classify at all: apart from the context-window
- * case, with auto-approval on it retries every failed request, otherwise it
- * asks the user.
+ * The task retry loop (`TaskApiLoop.handleApiRequestError` and
+ * `handleStreamError`, with `RetryHandler` for the backoff) uses the lightest
+ * policy, {@linkcode isAutoRetryableApiError}: apart from the context-window
+ * case, with auto-approval on it retries every failed request except the
+ * statuses that never fix themselves (401, 403, 404), for which it asks the
+ * user, like it always does with auto-approval off.
  */
 
 /**
@@ -67,4 +69,23 @@ export function isRetryableApiError(error: unknown): boolean {
 	if (status !== undefined && status >= 500 && status < 600) return true
 
 	return false
+}
+
+/**
+ * HTTP statuses that retrying the same request can never fix: 401 (invalid or
+ * missing key), 403 (forbidden) and 404 (unknown model or endpoint). 400 is
+ * deliberately NOT here: some providers and proxies (Z.ai among them) answer
+ * 400 for transient trouble, so it stays auto-retried.
+ */
+const NEVER_AUTO_RETRIED_STATUSES = new Set([401, 403, 404])
+
+/**
+ * Whether the task loop may retry `error` on its own (auto-approval on). False
+ * only for 401, 403 and 404; the loop then shows the failure to the user, who
+ * can fix the key, profile or model and retry by hand. Every other error,
+ * including errors without a status, stays auto-retryable.
+ */
+export function isAutoRetryableApiError(error: unknown): boolean {
+	const status = getApiErrorStatus(error)
+	return status === undefined || !NEVER_AUTO_RETRIED_STATUSES.has(status)
 }
