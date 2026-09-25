@@ -97,7 +97,7 @@ vi.mock("react-i18next", () => ({
 	Trans: ({ i18nKey, children }: { i18nKey: string; children?: React.ReactNode }) => <>{children || i18nKey}</>,
 }))
 
-const hydrateState = (clineMessages: ClineMessage[]) => {
+const hydrateState = (clineMessages: ClineMessage[], extraState: Record<string, unknown> = {}) => {
 	window.postMessage(
 		{
 			type: "state",
@@ -110,6 +110,7 @@ const hydrateState = (clineMessages: ClineMessage[]) => {
 				alwaysAllowExecute: false,
 				cloudIsAuthenticated: false,
 				telemetrySetting: "enabled",
+				...extraState,
 			},
 		},
 		"*",
@@ -236,5 +237,21 @@ describe("ChatView row props", () => {
 		// Every row used to receive the last message, which changes on each
 		// token, so the deepEqual memo let every row re-render per token.
 		expect(rowState.renders.get(EARLIER_TS)).toBe(earlierRenders)
+	})
+
+	it.each([
+		["claude-opus-5", true],
+		["claude-3-5-haiku-20241022", false],
+	])("tells rows whether the selected model %s takes images (%s)", async (apiModelId, supportsImages) => {
+		const { getByTestId } = renderChatView()
+
+		await act(async () => {
+			hydrateState(streamingTask("Hel"), { apiConfiguration: { apiProvider: "anthropic", apiModelId } })
+		})
+
+		await waitFor(() => {
+			expect(getByTestId(`chat-row-${STREAMED_TS}`)).toBeInTheDocument()
+			expect(rowState.props.get(EARLIER_TS)?.supportsImages).toBe(supportsImages)
+		})
 	})
 })
