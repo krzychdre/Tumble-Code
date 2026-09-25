@@ -11,6 +11,35 @@ import {
 	_cursorKeys,
 } from "../extractMemories"
 import { initMemoryPaths, resetMemoryPaths, getAutoMemPath } from "../paths"
+import { getReadablePath } from "../../../utils/path"
+
+/**
+ * A file-write tool ask exactly as it lands in `task.clineMessages`: the write
+ * tools (write_to_file, apply_diff, edit, search_replace, edit_file,
+ * apply_patch) ask for approval with `type: "ask"`, `ask: "tool"` and a JSON
+ * `text` whose `path` is `getReadablePath(cwd, relPath)`. `isAnswered` is set
+ * once the ask is approved (auto-approval or the user's Save click); a
+ * rejected ask keeps it unset.
+ */
+function writeAsk(
+	cwd: string,
+	absPath: string,
+	opts: { tool?: string; partial?: boolean; isAnswered?: boolean } = {},
+): Record<string, unknown> {
+	return {
+		ts: Date.now(),
+		type: "ask",
+		ask: "tool",
+		text: JSON.stringify({
+			tool: opts.tool ?? "newFileCreated",
+			path: getReadablePath(cwd, absPath),
+			content: "---\nname: x\n---\nbody",
+			isOutsideWorkspace: true,
+		}),
+		partial: opts.partial ?? false,
+		isAnswered: "isAnswered" in opts ? opts.isAnswered : true,
+	}
+}
 
 describe("extractMemories", () => {
 	let tmpBase: string
@@ -31,21 +60,89 @@ describe("extractMemories", () => {
 	})
 
 	describe("hasMemoryWritesSince", () => {
-		it("returns true when a tool_use wrote to an isAutoMemPath target", () => {
-			const memDir = getAutoMemPath(cwd)
-			const messages = [
-				{ toolUses: [{ name: "write_to_file", input: { file_path: path.join(memDir, "x.md") } }] },
-			]
-			expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(true)
+		it.each(["newFileCreated", "editedExistingFile", "appliedDiff"])(
+			"returns true for an approved %s ask into the memory dir",
+			(tool) => {
+				const memDir = getAutoMemPath(cwd)
+				const messages = [writeAsk(cwd, path.join(memDir, "x.md"), { tool })]
+				expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(true)
+			},
+		)
+
+		it("resolves a cwd-relative readable path (memory dir inside the workspace)", () => {
+			// getReadablePath stores a path inside the workspace relative to cwd
+			// with POSIX separators. The memory base lives under tmpBase, so with
+			// cwd = tmpBase the memory dir is inside the workspace.
+			const workspace = path.resolve(tmpBase)
+			const file = path.join(getAutoMemPath(workspace), "user.md")
+			const relative = path.relative(workspace, file).split(path.sep).join("/")
+			expect(path.isAbsolute(relative)).toBe(false)
+			const message = {
+				ts: 1,
+				type: "ask",
+				ask: "tool",
+				text: JSON.stringify({ tool: "newFileCreated", path: relative, content: "x" }),
+				partial: false,
+				isAnswered: true,
+			}
+			expect(hasMemoryWritesSince([message] as any, workspace, 0)).toBe(true)
+		})
+
+		it("detects writes into the directory shared with Claude Code", () => {
+			const claudeDir = path.join(tmpBase, "claude-config")
+			vi.stubEnv("CLAUDE_CONFIG_DIR", claudeDir)
+			try {
+				resetMemoryPaths()
+				initMemoryPaths(tmpBase, () => ({ autoMemoryShareWithClaudeCode: true }))
+				const memDir = getAutoMemPath(cwd)
+				expect(memDir.startsWith(path.join(claudeDir, "projects"))).toBe(true)
+				const messages = [writeAsk(cwd, path.join(memDir, "feedback.md"), { tool: "appliedDiff" })]
+				expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(true)
+			} finally {
+				vi.unstubAllEnvs()
+			}
 		})
 
 		it("returns false for writes outside the memory dir", () => {
-			const messages = [{ toolUses: [{ name: "write_to_file", input: { file_path: "/workspace/src/foo.ts" } }] }]
+			const messages = [writeAsk(cwd, path.resolve(cwd, "src", "foo.ts"), { tool: "editedExistingFile" })]
 			expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(false)
 		})
 
-		it("returns false when there are no tool uses", () => {
-			expect(hasMemoryWritesSince([{ toolUses: [] }] as any, cwd, 0)).toBe(false)
+		it("ignores a rejected ask (never answered) into the memory dir", () => {
+			const memDir = getAutoMemPath(cwd)
+			const messages = [writeAsk(cwd, path.join(memDir, "x.md"), { isAnswered: undefined })]
+			expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(false)
+		})
+
+		it("ignores a partial (still streaming) ask into the memory dir", () => {
+			const memDir = getAutoMemPath(cwd)
+			const messages = [writeAsk(cwd, path.join(memDir, "x.md"), { tool: "appliedDiff", partial: true })]
+			expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(false)
+		})
+
+		it("ignores non-write tool asks (a read of a memory file is not a write)", () => {
+			const memDir = getAutoMemPath(cwd)
+			const read = writeAsk(cwd, path.join(memDir, "x.md"), { tool: "readFile" })
+			expect(hasMemoryWritesSince([read] as any, cwd, 0)).toBe(false)
+		})
+
+		it("only looks at messages from the cursor on", () => {
+			const memDir = getAutoMemPath(cwd)
+			const messages = [
+				writeAsk(cwd, path.join(memDir, "x.md")),
+				{ ts: 2, type: "say", say: "text", text: "done" },
+			]
+			expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(true)
+			expect(hasMemoryWritesSince(messages as any, cwd, 1)).toBe(false)
+		})
+
+		it("tolerates messages without text or with non-JSON text", () => {
+			const messages = [
+				{ ts: 1, type: "ask", ask: "tool", isAnswered: true },
+				{ ts: 2, type: "ask", ask: "tool", text: "not json", isAnswered: true },
+				{ ts: 3, type: "ask", ask: "tool", text: "null", isAnswered: true },
+			]
+			expect(hasMemoryWritesSince(messages as any, cwd, 0)).toBe(false)
 			expect(hasMemoryWritesSince([] as any, cwd, 0)).toBe(false)
 		})
 	})
@@ -66,9 +163,7 @@ describe("extractMemories", () => {
 		it("skips when the main agent already wrote a memory (mutual exclusion)", async () => {
 			const memDir = getAutoMemPath(cwd)
 			const runner = vi.fn(async () => ({ writtenPaths: [] as string[] }))
-			const messages = [
-				{ toolUses: [{ name: "write_to_file", input: { file_path: path.join(memDir, "user.md") } }] },
-			]
+			const messages = [writeAsk(cwd, path.join(memDir, "user.md"))]
 			await executeExtractMemories({
 				cwd,
 				isMainAgent: true,
@@ -179,9 +274,7 @@ describe("extractMemories", () => {
 			const memDir = getAutoMemPath(cwd)
 			const runner = vi.fn(async () => ({ writtenPaths: [] as string[] }))
 			// Task "a" wrote a memory directly → cursor advances, runner not called.
-			const messagesA = [
-				{ toolUses: [{ name: "write_to_file", input: { file_path: path.join(memDir, "user.md") } }] },
-			]
+			const messagesA = [writeAsk(cwd, path.join(memDir, "user.md"))]
 			await executeExtractMemories({
 				cwd,
 				isMainAgent: true,
