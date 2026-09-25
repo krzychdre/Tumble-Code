@@ -191,6 +191,13 @@ OpenRouter, LiteLLM and DeepSeek and returns `isUnknownModel`; `ApiOptions` show
 `deepseek-chat`/`deepseek-reasoner` are known aliases of `deepseek-v4-flash` (`deepSeekModelAliases`,
 `modelAliases` in the definitions; the wire id stays as configured). To check: the removed entries in `d4a7f4182`
 said DeepSeek retires these aliases on 2026-07-24, a date already past.
+**Follow-up for a model-refresh item (checked 2026-09-25 on api-docs.deepseek.com/quick_start/pricing):** the
+docs no longer list `deepseek-chat`/`deepseek-reasoner` at all; the current name is `deepseek-flash`
+(DeepSeek-V4.1-Flash), `deepseek-v4-flash` is a legacy name still accepted and served by V4.1-Flash, `deepseek-v4-pro`
+is `DeepSeek-V4-Pro-0813`, context 1M, max output 384K, and prices have peak and off-peak rates (off-peak half;
+peak 01:00-04:00 and 06:00-10:00 UTC on weekdays). Whether the old aliases still answer is unverified: the #311
+alias entries may hide a warning that is now correct. Refresh the DeepSeek catalog (and decide the alias entries)
+in a model-refresh branch, not in the refactor.
 
 
 ### API-7 One Chat Completions stream adapter and shared usage normalizers
