@@ -505,7 +505,8 @@ describe("QwenCodeHandler Native Tools", () => {
 			}
 
 			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
-			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 100, outputTokens: 3 }])
+			// The cost comes with the chunk (API-7); Qwen Code's OAuth models are free.
+			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 100, outputTokens: 3, totalCost: 0 }])
 			expect(chunks[chunks.length - 1].type).toBe("usage")
 		})
 
