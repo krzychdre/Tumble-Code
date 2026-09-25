@@ -1,6 +1,6 @@
-import React, { createContext, useContext, ReactNode, useEffect, useCallback } from "react"
+import React, { createContext, useContext, ReactNode, useEffect, useCallback, useRef, Suspense } from "react"
 import { useTranslation } from "react-i18next"
-import i18next, { loadTranslations } from "./setup"
+import i18next, { loadLanguage } from "./setup"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 
 // Create context for translations
@@ -12,25 +12,65 @@ export const TranslationContext = createContext<{
 	i18n: i18next,
 })
 
+// Loads the language's chunk, then switches i18next to it. Concurrent callers (a
+// suspended render retried by React, the provider effect) share one promise.
+// Only the most recently requested language is applied, so a slow chunk from a
+// quick earlier switch cannot win over the language the user picked last.
+const pendingSwitches = new Map<string, Promise<unknown>>()
+let requestedLanguage: string | undefined
+
+const switchLanguage = (language: string) => {
+	requestedLanguage = language
+	let pending = pendingSwitches.get(language)
+
+	if (!pending) {
+		pending = loadLanguage(language)
+			.then(() => (requestedLanguage === language ? i18next.changeLanguage(language) : undefined))
+			.finally(() => pendingSwitches.delete(language))
+		pendingSwitches.set(language, pending)
+	}
+
+	return pending
+}
+
+/**
+ * Holds back the first render of the hydrated UI until the extension's language is
+ * loaded and active, so the panel never paints English (or raw keys) for a frame
+ * before switching. Suspending keeps the already mounted tree (it is only hidden),
+ * and the chunk is a local file, so the wait is a few milliseconds.
+ */
+const FirstRenderLanguageGate: React.FC<{ language: string; hold: boolean; children: ReactNode }> = ({
+	language,
+	hold,
+	children,
+}) => {
+	if (hold && i18next.language !== language) {
+		throw switchLanguage(language)
+	}
+
+	return <>{children}</>
+}
+
 // Translation provider component
 export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-	// Initialize with default configuration
+	// Subscribes to languageChanged, so the context value refreshes on a switch.
 	const { i18n } = useTranslation()
-	// Get the extension state directly - it already contains all state properties
 	const extensionState = useExtensionState()
+	const language = extensionState.language ?? "en"
+	const didHydrateState = extensionState.didHydrateState
+	const hasShownHydratedUi = useRef(false)
 
-	// Load translations once when the component mounts
 	useEffect(() => {
-		try {
-			loadTranslations()
-		} catch (error) {
-			console.error("Failed to load translations:", error)
+		// Later switches (for example from the settings view) keep showing the
+		// current language until the new locale has loaded.
+		switchLanguage(language).catch((error) => console.error("Failed to switch language:", error))
+	}, [language])
+
+	useEffect(() => {
+		if (didHydrateState && i18n.language === language) {
+			hasShownHydratedUi.current = true
 		}
-	}, [])
-
-	useEffect(() => {
-		i18n.changeLanguage(extensionState.language)
-	}, [i18n, extensionState.language])
+	})
 
 	// Memoize the translation function to prevent unnecessary re-renders
 	const translate = useCallback(
@@ -46,7 +86,13 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
 				t: translate,
 				i18n,
 			}}>
-			{children}
+			<Suspense fallback={null}>
+				<FirstRenderLanguageGate
+					language={language}
+					hold={!!didHydrateState && !hasShownHydratedUi.current}>
+					{children}
+				</FirstRenderLanguageGate>
+			</Suspense>
 		</TranslationContext.Provider>
 	)
 }

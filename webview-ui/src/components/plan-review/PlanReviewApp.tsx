@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { vscode } from "@src/utils/vscode"
-import i18next, { loadTranslations } from "@src/i18n/setup"
+import i18next, { loadLanguage } from "@src/i18n/setup"
 import { ExtensionStateContextProvider } from "@src/context/ExtensionStateContext"
 import { TranslationProvider } from "@src/i18n/TranslationContext"
 import { TooltipProvider } from "@src/components/ui/tooltip"
@@ -32,15 +32,9 @@ const PlanReviewAppInner: React.FC = () => {
 	// Bumped when the host consumed the draft notes (e.g. the user clicked
 	// Approve on the pending review ask) — clears the surface's drafts.
 	const [draftsResetSignal, setDraftsResetSignal] = useState(0)
-
-	// Load translations on mount.
-	useEffect(() => {
-		try {
-			loadTranslations()
-		} catch (error) {
-			console.error("Failed to load translations:", error)
-		}
-	}, [])
+	// Only English ships in the startup bundle; the plan stays on the loading view
+	// until the plan's locale chunk has loaded, so it never flashes English labels.
+	const [languageReady, setLanguageReady] = useState(false)
 
 	// Post ready message on mount.
 	useEffect(() => {
@@ -55,9 +49,11 @@ const PlanReviewAppInner: React.FC = () => {
 
 			if (message.type === "planReviewInit") {
 				const planReview = message.planReview as PlanReviewState
-				if (planReview?.language) {
-					i18next.changeLanguage(planReview.language)
-				}
+				const language = planReview?.language ?? "en"
+				loadLanguage(language)
+					.then(() => i18next.changeLanguage(language))
+					.catch((error) => console.error("Failed to load translations:", error))
+					.finally(() => setLanguageReady(true))
 				setState((prev) => {
 					// A content-mode re-init with a different document must not
 					// inherit the previous document's annotations.
@@ -94,7 +90,7 @@ const PlanReviewAppInner: React.FC = () => {
 		vscode.postMessage({ type: "planReviewDraftsChanged", text: compiledText, values: { count } })
 	}, [])
 
-	if (!state) {
+	if (!state || !languageReady) {
 		return (
 			<div className="fixed inset-0 flex items-center justify-center">
 				<p className="text-sm text-vscode-descriptionForeground">{t("chat:planReview.loading")}</p>

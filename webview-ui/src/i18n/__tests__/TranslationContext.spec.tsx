@@ -98,6 +98,23 @@ describe("TranslationContext", () => {
 			expect(committedTexts).not.toContain("common:answers.yes")
 		})
 
+		it("applies the last requested language when switches overlap", async () => {
+			const { rerender } = renderProvider()
+
+			for (const language of ["ko", "it"]) {
+				extensionState.language = language
+				rerender(
+					<TranslationProvider>
+						<TestComponent />
+					</TranslationProvider>,
+				)
+			}
+
+			await waitFor(() => expect(i18next.hasResourceBundle("ko", "common")).toBe(true))
+			await waitFor(() => expect(screen.getByTestId("translation-test")).toHaveTextContent("Sì"))
+			expect(i18next.language).toBe("it")
+		})
+
 		it("falls back to English for a key the active locale does not have", async () => {
 			extensionState.language = "pl"
 			renderProvider()

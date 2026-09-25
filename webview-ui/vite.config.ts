@@ -117,6 +117,20 @@ export default defineConfig(({ mode }) => {
 				external: ["vscode"],
 				input: resolve(__dirname, "index.html"),
 				output: {
+					// One chunk per non-English locale (src/i18n/setup.ts loads them on
+					// demand) instead of one chunk per namespace file. English stays in
+					// the entry chunk as the fallback.
+					codeSplitting: {
+						groups: [
+							{
+								debugName: "locales",
+								name: (id: string) => {
+									const language = id.match(/\/src\/i18n\/locales\/([^/]+)\/[^/]+\.json$/)?.[1]
+									return language && language !== "en" ? `locale-${language}` : null
+								},
+							},
+						],
+					},
 					entryFileNames: "assets/[name].js",
 					chunkFileNames: "assets/[name]-[hash].js",
 					assetFileNames: (assetInfo) => {
