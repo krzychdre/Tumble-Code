@@ -275,8 +275,7 @@ describe("useMessageHandlers", () => {
 			expect(useCLIStore.getState().messages.map((m) => m.content)).toEqual(["Hi!"])
 
 			useCLIStore.getState().reset()
-			api.seenMessageIds.current.clear()
-			api.firstTextMessageSkipped.current = false
+			api.resetTranscript()
 
 			stateMessage([
 				{ ts: 10, type: "say", say: "text", text: "Say hi", partial: false },
@@ -293,8 +292,7 @@ describe("useMessageHandlers", () => {
 
 			useCLIStore.getState().reset()
 			useCLIStore.getState().setLoading(true)
-			api.seenMessageIds.current.clear()
-			api.firstTextMessageSkipped.current = false
+			api.resetTranscript()
 
 			sayUpdate(40, "command_output", "b\n", false)
 

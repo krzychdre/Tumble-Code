@@ -13,8 +13,8 @@ import { CLEAR_TERMINAL } from "../utils/clearTerminal.js"
 export interface UseTaskSubmitOptions {
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	runTask: ((prompt: string) => Promise<void>) | null
-	seenMessageIds: React.MutableRefObject<Set<string>>
-	firstTextMessageSkipped: React.MutableRefObject<boolean>
+	/** Forget the transcript bookkeeping of the current task (see useMessageHandlers). */
+	resetTranscript: () => void
 	permissionMode: PermissionMode
 	onPermissionModeChange: (mode: PermissionMode) => void
 }
@@ -43,8 +43,7 @@ export interface UseTaskSubmitReturn {
 export function useTaskSubmit({
 	sendToExtension,
 	runTask,
-	seenMessageIds,
-	firstTextMessageSkipped,
+	resetTranscript,
 	permissionMode,
 	onPermissionModeChange,
 }: UseTaskSubmitOptions): UseTaskSubmitReturn {
@@ -74,14 +73,13 @@ export function useTaskSubmit({
 		(send: (msg: WebviewMessage) => void) => {
 			useCLIStore.getState().reset()
 
-			seenMessageIds.current.clear()
-			firstTextMessageSkipped.current = false
+			resetTranscript()
 
 			send({ type: "clearTask" })
 			send({ type: "requestCommands" })
 			send({ type: "requestModes" })
 		},
-		[seenMessageIds, firstTextMessageSkipped],
+		[resetTranscript],
 	)
 
 	/**

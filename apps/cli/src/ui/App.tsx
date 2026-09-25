@@ -141,12 +141,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// Toast notifications for ephemeral messages (e.g., mode changes).
 	const { currentToast, showInfo, showWarning } = useToast()
 
-	const {
-		handleExtensionMessage,
-		seenMessageIds,
-		pendingCommandRef: _pendingCommandRef,
-		firstTextMessageSkipped,
-	} = useMessageHandlers({
+	const { handleExtensionMessage, resetTranscript } = useMessageHandlers({
 		nonInteractive: permissionMode === "allow",
 	})
 
@@ -164,8 +159,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const { handleSubmit, handleSuggestion, handleApprove, handleReject } = useTaskSubmit({
 		sendToExtension,
 		runTask,
-		seenMessageIds,
-		firstTextMessageSkipped,
+		resetTranscript,
 		permissionMode,
 		onPermissionModeChange: setPermissionMode,
 	})
@@ -188,8 +182,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			followupAutocompleteRef,
 			sendToExtension,
 			showInfo,
-			seenMessageIds,
-			firstTextMessageSkipped,
+			resetTranscript,
 		})
 
 	useSecretPromptBridge()
