@@ -25,11 +25,13 @@ const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: "H
 type FakeServer = ((input: unknown, init?: unknown) => Promise<Response>) & { requests: number }
 
 function fakeServer(answer: () => Response): FakeServer {
-	const server = (async () => {
-		server.requests++
-		return answer()
-	}) as FakeServer
-	server.requests = 0
+	const server: FakeServer = Object.assign(
+		async () => {
+			server.requests++
+			return answer()
+		},
+		{ requests: 0 },
+	)
 	return server
 }
 
@@ -51,7 +53,9 @@ function brokenStream(): Response {
 		pull(controller) {
 			if (!sent) {
 				sent = true
-				controller.enqueue(new TextEncoder().encode(sseEvent({ type: "response.output_text.delta", delta: "Hi" })))
+				controller.enqueue(
+					new TextEncoder().encode(sseEvent({ type: "response.output_text.delta", delta: "Hi" })),
+				)
 				return
 			}
 			controller.error(new Error("socket hang up"))
