@@ -169,7 +169,7 @@ class ShellScanner {
 		const words = command.words
 
 		while (words.length > 0) {
-			const first = words[0].raw
+			const first = words[0]!.raw
 			if (KEYWORDS_BEFORE_A_COMMAND.has(first) || FUNCTION_HEADER.test(first)) {
 				words.shift()
 			} else if (first === "function") {
@@ -240,7 +240,7 @@ class ShellScanner {
 		const state: ListState = { command: this.startCommand(), word: null }
 
 		while (this.pos < this.src.length) {
-			const c = this.src[this.pos]
+			const c = this.src[this.pos]!
 			const next = this.src[this.pos + 1]
 
 			if (this.consumeWordPart(state)) {
@@ -723,7 +723,7 @@ class ShellScanner {
 		const start = this.pos
 		let delimiter = ""
 		let quoted = false
-		while (this.pos < this.src.length && !DELIMITER_TERMINATORS.has(this.src[this.pos])) {
+		while (this.pos < this.src.length && !DELIMITER_TERMINATORS.has(this.src[this.pos]!)) {
 			const c = this.src[this.pos]
 			if (c === "'" || c === '"') {
 				quoted = true
