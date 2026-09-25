@@ -6,8 +6,7 @@ import { type Language, type WebviewMessage } from "@roo-code/types"
 
 import { Package } from "../../shared/package"
 import { formatLanguage } from "../../shared/language"
-import { getNonce } from "./getNonce"
-import { getUri } from "./getUri"
+import { getHmrHtml, getProductionHtml, type WebviewHtmlOptions } from "./WebviewHtml"
 import { ClineProvider } from "./ClineProvider"
 import { registerPlanReviewFile, unregisterPlanReviewFile } from "./planReviewRegistry"
 import { arePathsEqual } from "../../utils/path"
@@ -45,123 +44,9 @@ export class PlanReviewPanel {
 	 * review round diffs against so the user sees what the model changed. */
 	private static lastReviewedContent = new Map<string, string>()
 
-	private static async getHtmlContent(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
-		const stylesUri = getUri(webview, extensionUri, ["webview-ui", "build", "assets", "index.css"])
-		const scriptUri = getUri(webview, extensionUri, ["webview-ui", "build", "assets", "index.js"])
-		const codiconsUri = getUri(webview, extensionUri, ["assets", "codicons", "codicon.css"])
-		const materialIconsUri = getUri(webview, extensionUri, ["assets", "vscode-material-icons", "icons"])
-		const imagesUri = getUri(webview, extensionUri, ["assets", "images"])
-		const audioUri = getUri(webview, extensionUri, ["webview-ui", "audio"])
-
-		const nonce = getNonce()
-
-		return /*html*/ `
-		<!DOCTYPE html>
-		<html lang="en">
-			<head>
-				<meta charset="utf-8">
-				<meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
-				<meta name="theme-color" content="#000000">
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'; connect-src ${webview.cspSource} https://api.requesty.ai;">
-				<link rel="stylesheet" type="text/css" href="${stylesUri}">
-				<link href="${codiconsUri}" rel="stylesheet" />
-				<script nonce="${nonce}">
-					window.IMAGES_BASE_URI = "${imagesUri}"
-					window.AUDIO_BASE_URI = "${audioUri}"
-					window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
-					window.PLAN_REVIEW_MODE = true
-				</script>
-				<title>Plan Review</title>
-			</head>
-			<body>
-				<noscript>You need to enable JavaScript to run this app.</noscript>
-				<div id="root"></div>
-				<script nonce="${nonce}" type="module" src="${scriptUri}"></script>
-			</body>
-		</html>
-		`
-	}
-
-	private static async getHMRHtmlContent(webview: vscode.Webview, extensionUri: vscode.Uri): Promise<string> {
-		let localPort = "5173"
-
-		try {
-			const fs = require("fs")
-			const pathMod = require("path")
-			const portFilePath = pathMod.resolve(__dirname, "../../.vite-port")
-
-			if (fs.existsSync(portFilePath)) {
-				localPort = fs.readFileSync(portFilePath, "utf8").trim()
-			}
-		} catch {
-			// Port file not found, use default
-		}
-
-		const localServerUrl = `localhost:${localPort}`
-
-		// Check if local dev server is running; fall back to prod if not.
-		try {
-			const axios = require("axios")
-			await axios.get(`http://${localServerUrl}`)
-		} catch {
-			return this.getHtmlContent(webview, extensionUri)
-		}
-
-		const nonce = getNonce()
-
-		const stylesUri = getUri(webview, extensionUri, ["webview-ui", "build", "assets", "index.css"])
-		const codiconsUri = getUri(webview, extensionUri, ["assets", "codicons", "codicon.css"])
-		const materialIconsUri = getUri(webview, extensionUri, ["assets", "vscode-material-icons", "icons"])
-		const imagesUri = getUri(webview, extensionUri, ["assets", "images"])
-		const audioUri = getUri(webview, extensionUri, ["webview-ui", "audio"])
-
-		const file = "src/index.tsx"
-		const scriptUri = `http://${localServerUrl}/${file}`
-
-		const reactRefresh = /*html*/ `
-			<script nonce="${nonce}" type="module">
-				import RefreshRuntime from "http://localhost:${localPort}/@react-refresh"
-				RefreshRuntime.injectIntoGlobalHook(window)
-				window.$RefreshReg$ = () => {}
-				window.$RefreshSig$ = () => (type) => type
-				window.__vite_plugin_react_preamble_installed__ = true
-			</script>
-		`
-
-		const csp = [
-			"default-src 'none'",
-			`font-src ${webview.cspSource} data:`,
-			`style-src ${webview.cspSource} 'unsafe-inline' https://* http://${localServerUrl} http://0.0.0.0:${localPort}`,
-			`img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:`,
-			`media-src ${webview.cspSource}`,
-			`script-src 'unsafe-eval' ${webview.cspSource} https://* http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,
-			`connect-src ${webview.cspSource} https://* ws://${localServerUrl} ws://0.0.0.0:${localPort} http://${localServerUrl} http://0.0.0.0:${localPort}`,
-		]
-
-		return /*html*/ `
-			<!DOCTYPE html>
-			<html lang="en">
-				<head>
-					<meta charset="utf-8">
-					<meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
-					<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">
-					<link rel="stylesheet" type="text/css" href="${stylesUri}">
-					<link href="${codiconsUri}" rel="stylesheet" />
-					<script nonce="${nonce}">
-						window.IMAGES_BASE_URI = "${imagesUri}"
-						window.AUDIO_BASE_URI = "${audioUri}"
-						window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
-						window.PLAN_REVIEW_MODE = true
-					</script>
-					<title>Plan Review</title>
-				</head>
-				<body>
-					<div id="root"></div>
-					${reactRefresh}
-					<script type="module" src="${scriptUri}"></script>
-				</body>
-			</html>
-		`
+	/** The plan review panel's differences from the other webviews; see {@link getProductionHtml}. */
+	private static htmlOptions(webview: vscode.Webview, extensionUri: vscode.Uri): WebviewHtmlOptions {
+		return { webview, extensionUri, title: "Plan Review", planReviewMode: true }
 	}
 
 	private static isDevMode(): boolean {
@@ -397,9 +282,8 @@ export class PlanReviewPanel {
 			localResourceRoots: [context.extensionUri],
 		})
 
-		panel.webview.html = isDev
-			? await this.getHMRHtmlContent(panel.webview, context.extensionUri)
-			: await this.getHtmlContent(panel.webview, context.extensionUri)
+		const htmlOptions = this.htmlOptions(panel.webview, context.extensionUri)
+		panel.webview.html = isDev ? await getHmrHtml(htmlOptions) : getProductionHtml(htmlOptions)
 
 		this.setupMessageListener(panel, target)
 
