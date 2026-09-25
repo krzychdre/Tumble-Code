@@ -444,6 +444,43 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 				expect(ignoreDispose.mock.contexts).toEqual([ignoreControllerOfCall(0)])
 			})
 
+			it("a manager disposed while initialize() runs does not start a watcher afterwards", async () => {
+				// A workspace folder added and removed again quickly: the folder's manager is
+				// disposed while its initialize() still waits for the embedder validation.
+				let releaseValidation!: (value: { valid: boolean }) => void
+				mockServiceFactoryInstance.validateEmbedder.mockReturnValue(
+					new Promise((resolve) => (releaseValidation = resolve)),
+				)
+				;(manager as any)._cacheManager = { initialize: vi.fn() }
+				const { CodeIndexOrchestrator } = await import("../orchestrator")
+				const startIndexing = vi.spyOn(CodeIndexOrchestrator.prototype, "startIndexing")
+
+				const initializing = manager.initialize({} as any)
+				await vi.waitFor(() => expect(mockServiceFactoryInstance.validateEmbedder).toHaveBeenCalled())
+
+				manager.dispose()
+				releaseValidation({ valid: true })
+				await initializing
+
+				// Before the fix initialize() went on after dispose(): it built an orchestrator that
+				// nothing would ever dispose and started its FileWatcher on the removed folder.
+				expect(startIndexing).not.toHaveBeenCalled()
+				expect((manager as any)._orchestrator).toBeUndefined()
+				expect(mockFileWatcher.dispose).toHaveBeenCalledTimes(1)
+				expect(ignoreDispose.mock.contexts).toEqual([ignoreControllerOfCall(0)])
+				expect(CodeIndexManager.getAllInstances()).not.toContain(manager)
+				startIndexing.mockRestore()
+			})
+
+			it("initialize() on a disposed manager does nothing", async () => {
+				manager.dispose()
+
+				await manager.initialize({} as any)
+
+				expect(mockServiceFactoryInstance.createServices).not.toHaveBeenCalled()
+				expect((manager as any)._orchestrator).toBeUndefined()
+			})
+
 			it("dispose() tears down the chain once and forgets the instance", async () => {
 				await (manager as any)._recreateServices()
 				const stateDispose = (manager as any)._stateManager.dispose
@@ -559,7 +596,12 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			})
 
 			// Mock orchestrator and search service to simulate initialized state
-			;(manager as any)._orchestrator = { stopWatcher: vi.fn(), stopIndexing: vi.fn(), dispose: vi.fn(), state: "Error" }
+			;(manager as any)._orchestrator = {
+				stopWatcher: vi.fn(),
+				stopIndexing: vi.fn(),
+				dispose: vi.fn(),
+				state: "Error",
+			}
 			;(manager as any)._searchService = {}
 			;(manager as any)._serviceFactory = {}
 		})
