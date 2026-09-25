@@ -294,6 +294,18 @@ Fixes DEF-C3 and DEF-C4 structurally: `approvedTodoList` moves onto the Task; to
 shaped like the parser's TL-1 test (`NativeToolCallParser.spec.ts:639`). **Existing:** `updateTodoListTool` (21),
 `writeToFileTool` (26), `editFileTool` (39), `RunParallelTasksTool` (35). **Size** S to M.
 
+**Status (2026-09-25):** DONE in #285. All tool partial-stream state now lives in one place on the task:
+`task.toolStreamState` (transient, never persisted), one entry per tool name, via `toolStreamState.ts`
+(`getToolStreamState`, `clearToolStreamState`). Moved: the last-seen path (`BaseTool.lastSeenPartialPathByTask`,
+used by write_to_file, edit_file, edit/search_and_replace, search_replace, apply_diff), WriteToFileTool's access
+cache and `editTypePath`, EditFileTool's progress-row path. `task.pendingTodoList` (DEF-C3) was already on the task.
+The DEF-C4 race was not reproducible any more (#247 fixed it with three WeakMaps); this is the structural cleanup.
+The test-only `resetPartialState()` without a task is gone. New `toolStreamState.onTask.spec` (19; 9 failed first,
+including a guard that no tool instance has own fields besides `name`). Related specs 418 to 437. Outside tools,
+`getEnvironmentDetails.ts` keeps per-task module-level maps (`lastEnvSnapshot`, `lastFileDetails`): candidate for
+the same pattern.
+
+
 ### CORE-R11 A system-prompt options object and one prompt-input builder
 
 **Evidence:** `system.ts:298-316` takes 17 positional parameters; `supportsComputerUse` is always `false` and
