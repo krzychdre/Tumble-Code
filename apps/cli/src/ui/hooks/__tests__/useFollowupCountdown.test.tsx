@@ -16,7 +16,7 @@ describe("useFollowupCountdown", () => {
 	}
 
 	let autoAcceptEnabled = true
-	let onAutoSubmit: ReturnType<typeof vi.fn<(text: string) => void>>
+	let onAutoSubmit: ReturnType<typeof vi.fn<(suggestion: { answer: string; mode?: string }) => void>>
 
 	function Harness() {
 		useFollowupCountdown({ pendingAsk, onAutoSubmit, autoAcceptEnabled })
@@ -44,7 +44,7 @@ describe("useFollowupCountdown", () => {
 		expect(useUIStateStore.getState().countdownSeconds).toBe(FOLLOWUP_TIMEOUT_SECONDS)
 		vi.advanceTimersByTime(FOLLOWUP_TIMEOUT_SECONDS * 1000)
 
-		expect(onAutoSubmit).toHaveBeenCalledWith("First")
+		expect(onAutoSubmit).toHaveBeenCalledWith({ answer: "First" })
 		expect(useUIStateStore.getState().countdownSeconds).toBeNull()
 	})
 
@@ -80,7 +80,7 @@ describe("useFollowupCountdown", () => {
 		vi.advanceTimersByTime(FOLLOWUP_TIMEOUT_SECONDS * 1000)
 
 		expect(onAutoSubmit).toHaveBeenCalledTimes(1)
-		expect(onAutoSubmit).toHaveBeenCalledWith("Yes")
+		expect(onAutoSubmit).toHaveBeenCalledWith({ answer: "Yes" })
 	})
 
 	it("does not count down when no suggestion has a usable answer", () => {
@@ -90,5 +90,14 @@ describe("useFollowupCountdown", () => {
 		expect(useUIStateStore.getState().countdownSeconds).toBeNull()
 		vi.advanceTimersByTime(FOLLOWUP_TIMEOUT_SECONDS * 1000)
 		expect(onAutoSubmit).not.toHaveBeenCalled()
+	})
+
+	// The chosen suggestion keeps its mode, so the caller can switch to it.
+	it("hands over the suggestion's mode with the answer", () => {
+		pendingAsk = { ...defaultPendingAsk, suggestions: [{ answer: "Build it", mode: "code" }] }
+		render(<Harness />)
+		vi.advanceTimersByTime(FOLLOWUP_TIMEOUT_SECONDS * 1000)
+
+		expect(onAutoSubmit).toHaveBeenCalledWith({ answer: "Build it", mode: "code" })
 	})
 })

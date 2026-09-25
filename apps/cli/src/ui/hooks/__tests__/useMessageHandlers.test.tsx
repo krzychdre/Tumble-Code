@@ -208,6 +208,25 @@ describe("useMessageHandlers", () => {
 		})
 	})
 
+	// CLI-5: the follow-up is parsed by the rule shared with the webview. A
+	// question that is not a string used to become the dialog title as is
+	// (an object crashes the Ink render), and a non-string mode was kept.
+	it("reads a follow-up's question and suggestions by the shared rule", () => {
+		const text = JSON.stringify({
+			question: { text: "Next?" },
+			suggest: [{ answer: "Build it", mode: 7 }, { answer: " " }, { answer: "Plan", mode: "architect" }],
+		})
+
+		api.handleExtensionMessage({
+			type: "messageUpdated",
+			clineMessage: { ts: 602, type: "ask", ask: "followup", text, partial: false } as never,
+		})
+
+		const pendingAsk = useCLIStore.getState().pendingAsk
+		expect(typeof pendingAsk?.content).toBe("string")
+		expect(pendingAsk?.suggestions).toEqual([{ answer: "Build it" }, { answer: "Plan", mode: "architect" }])
+	})
+
 	// A command that contains a pipe used to render as a bare bullet: the ask was
 	// added as assistant prose, and the markdown renderer mistook any line with a
 	// pipe for a table separator row and blanked it out (plan: 2026-09-22 empty
