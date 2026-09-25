@@ -17,7 +17,8 @@
 
 import { RooCodeEventName, type ProviderSettings } from "@roo-code/types"
 
-const { extractSpy, dreamSpy, drainExtractionSpy, drainDreamsSpy } = vi.hoisted(() => ({
+const { extractSpy, dreamSpy, drainExtractionSpy, drainDreamsSpy, captureTaskCompletedSpy } = vi.hoisted(() => ({
+	captureTaskCompletedSpy: vi.fn(),
 	extractSpy: vi.fn().mockResolvedValue(undefined),
 	dreamSpy: vi.fn().mockResolvedValue(undefined),
 	drainExtractionSpy: vi.fn().mockResolvedValue(undefined),
@@ -37,7 +38,12 @@ vi.mock("../../memory", async (importOriginal) => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: () => true,
-		instance: new Proxy({}, { get: () => vi.fn() }),
+		// Every capture method is a no-op, except the completion counter the
+		// telemetry tests below assert on.
+		instance: new Proxy(
+			{},
+			{ get: (_target, name) => (name === "captureTaskCompleted" ? captureTaskCompletedSpy : vi.fn()) },
+		),
 	},
 }))
 
@@ -277,5 +283,140 @@ describe("memory writers after a normally completed task", () => {
 		await provider.clearTask()
 
 		expect(extractSpy).not.toHaveBeenCalled()
+	})
+})
+
+// The same accepted end of a task must also be counted as a completed task in
+// telemetry. `TelemetryService.captureTaskCompleted` is only called next to
+// the `TaskCompleted` emit in `AttemptCompletionTool` (the "yes" answer and
+// delegation), so a top-level chat completion that the user leaves with
+// "Start New Task" (VS Code) or /new and /clear (CLI) was never counted. The
+// public `TaskCompleted` event must stay as it was: API consumers and
+// `BackgroundTaskRunner.awaitTaskCompletion` see `TaskAborted` for this abort.
+describe("task-completed telemetry after a normally completed task", () => {
+	function trackEvents(task: Task) {
+		const completed = vi.fn()
+		const aborted = vi.fn()
+		task.on(RooCodeEventName.TaskCompleted, completed)
+		task.on(RooCodeEventName.TaskAborted, aborted)
+		return { completed, aborted }
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+		drainExtractionSpy.mockReset().mockResolvedValue(undefined)
+		drainDreamsSpy.mockReset().mockResolvedValue(undefined)
+	})
+
+	it("counts the task once when the webview clears a finished task, without emitting TaskCompleted", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider)
+		const events = trackEvents(task)
+
+		await completeAndWaitForAsk(task)
+		expect(captureTaskCompletedSpy).not.toHaveBeenCalled()
+
+		await provider.clearTask()
+
+		expect(captureTaskCompletedSpy).toHaveBeenCalledTimes(1)
+		// The task is already popped when the abort runs, so the provider's
+		// ambient "current task" properties describe no task (or the parent
+		// below it). The task-scoped ones must come from the task itself.
+		expect(captureTaskCompletedSpy).toHaveBeenCalledWith(
+			task.taskId,
+			expect.objectContaining({ modelId: "test-model", isSubtask: false, parentTaskId: undefined }),
+		)
+		expect(events.completed).not.toHaveBeenCalled()
+		expect(events.aborted).toHaveBeenCalledTimes(1)
+	})
+
+	it("attributes a subtask that ends at its own completion ask to itself, not to the parent below it", async () => {
+		const provider = makeProvider()
+		makeTask(provider)
+		// History says the parent no longer awaits this child ("completed"),
+		// so attempt_completion falls through to the normal completion ask.
+		const child = makeTask(provider, { parentTaskId: "parent-task" })
+		await completeAndWaitForAsk(child)
+
+		await provider.removeClineFromStack()
+
+		expect(captureTaskCompletedSpy).toHaveBeenCalledTimes(1)
+		expect(captureTaskCompletedSpy).toHaveBeenCalledWith(
+			child.taskId,
+			expect.objectContaining({ isSubtask: true, parentTaskId: "parent-task" }),
+		)
+	})
+
+	it("counts the task once when the user switches to another task from history", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider)
+		await completeAndWaitForAsk(task)
+
+		await provider.removeClineFromStack()
+
+		expect(captureTaskCompletedSpy).toHaveBeenCalledTimes(1)
+		expect(captureTaskCompletedSpy).toHaveBeenCalledWith(task.taskId, expect.anything())
+	})
+
+	it("counts the task once, not twice, when the ask is accepted with yes and the task is cleared afterwards", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider)
+		const events = trackEvents(task)
+
+		const { run } = await completeAndWaitForAsk(task)
+		task.handleWebviewAskResponse("yesButtonClicked")
+		await run
+
+		expect(captureTaskCompletedSpy).toHaveBeenCalledTimes(1)
+		expect(events.completed).toHaveBeenCalledTimes(1)
+
+		await provider.clearTask()
+
+		expect(captureTaskCompletedSpy).toHaveBeenCalledTimes(1)
+		expect(events.completed).toHaveBeenCalledTimes(1)
+	})
+
+	it("does not count the task when the completion is answered with feedback and then cleared mid-run", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider)
+
+		const { run } = await completeAndWaitForAsk(task)
+		task.handleWebviewAskResponse("messageResponse", "please also add tests")
+		await run
+		await provider.clearTask()
+
+		expect(captureTaskCompletedSpy).not.toHaveBeenCalled()
+	})
+
+	it("does not count the task on Stop (user cancel) while the completion ask is pending", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider)
+		await completeAndWaitForAsk(task)
+
+		task.abortReason = "user_cancelled"
+		await task.abortTask()
+		await provider.removeClineFromStack()
+
+		expect(captureTaskCompletedSpy).not.toHaveBeenCalled()
+	})
+
+	it("does not count a background task left at a completion ask", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider, { isBackground: true })
+		await completeAndWaitForAsk(task)
+
+		await provider.clearTask()
+
+		expect(captureTaskCompletedSpy).not.toHaveBeenCalled()
+	})
+
+	it("does not count a task reopened from history when it is cleared", async () => {
+		const provider = makeProvider()
+		const task = makeTask(provider)
+		task.clineMessages.push({ ts: 1, type: "ask", ask: "completion_result", text: "" })
+
+		await provider.clearTask()
+
+		expect(captureTaskCompletedSpy).not.toHaveBeenCalled()
 	})
 })
