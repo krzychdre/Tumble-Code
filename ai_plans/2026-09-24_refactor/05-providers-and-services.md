@@ -449,7 +449,7 @@ about 277 tests, all with a mocked loader. **Size** S to M. Pairs with the `web-
 queries) keyed by the `.wasm` path, shared by the definitions path and the code-index `CodeParser`; concurrent loads
 share one promise, failures are not cached; `disposeLanguageParsers()` on deactivate; trees are `delete()`d after
 use (web-tree-sitter 0.25.6 has no finalizers). Measured on `Task.ts` (68 KB): `Language.load` per call 1 to 0,
-40 to 98 ms to 17 to 32 ms per call, external memory after 50 calls +177 MB to -2.7 MB. 10 real-WASM tests
+54 to 98 ms to 17 to 32 ms per call, external memory after 50 calls +177 MB to -2.7 MB. 10 real-WASM tests
 (`languageParser.cache.spec.ts`, grammars from `tree-sitter-wasms/out`).
 
 ### SVC-14 Terminal process contract
