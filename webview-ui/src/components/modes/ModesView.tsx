@@ -65,7 +65,15 @@ function getGroupName(group: GroupEntry): ToolGroup {
 	return Array.isArray(group) ? group[0] : group
 }
 
-const ModesView = () => {
+type ModesViewProps = {
+	/**
+	 * Loads another API profile. ModesView lives inside SettingsView, whose Save buffer is
+	 * replaced when the profile changes, so the owner decides whether unsaved edits allow it.
+	 */
+	onSelectApiConfiguration: (configName: string) => void
+}
+
+const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 	const { t } = useAppTranslation()
 
 	const {
@@ -916,12 +924,7 @@ const ModesView = () => {
 						<div className="mb-2">
 							<Select
 								value={currentApiConfigName}
-								onValueChange={(value) => {
-									vscode.postMessage({
-										type: "loadApiConfiguration",
-										text: value,
-									})
-								}}>
+								onValueChange={onSelectApiConfiguration}>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder={t("settings:common.select")} />
 								</SelectTrigger>

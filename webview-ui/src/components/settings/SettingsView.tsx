@@ -654,7 +654,15 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						)}
 
 						{/* Modes Section */}
-						{renderTab === "modes" && <ModesView />}
+						{renderTab === "modes" && (
+							<ModesView
+								onSelectApiConfiguration={(configName: string) =>
+									checkUnsaveChanges(() =>
+										vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
+									)
+								}
+							/>
+						)}
 
 						{/* MCP Section */}
 						{renderTab === "mcp" && <McpView />}

@@ -32,7 +32,7 @@ const mockExtensionState = {
 const renderModesView = (props = {}) => {
 	return render(
 		<ExtensionStateContext.Provider value={{ ...mockExtensionState, ...props } as any}>
-			<ModesView />
+			<ModesView onSelectApiConfiguration={vitest.fn()} />
 		</ExtensionStateContext.Provider>,
 	)
 }
