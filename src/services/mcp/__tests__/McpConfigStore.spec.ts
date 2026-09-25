@@ -232,7 +232,10 @@ describe("McpConfigStore", () => {
 
 			await store.write(projectPath(), { mcpServers: {} })
 
-			expect(store.isWriteGuardUp(path.join(workspaceDir, ".roo", ".", "mcp.json"))).toBe(true)
+			// Built by hand, not with path.join, which would normalize the "." away.
+			const unnormalized = [workspaceDir, ".roo", ".", "mcp.json"].join(path.sep)
+			expect(store.isWriteGuardUp(unnormalized)).toBe(true)
+			expect(store.isWriteGuardUp(path.join(workspaceDir, "mcp.json"))).toBe(false)
 		})
 
 		it("goes down on dispose", async () => {

@@ -81,7 +81,7 @@ export class McpHub {
 		})
 		this.configWatcher = new McpConfigWatcher(
 			options.watcherFactory ?? vscodeWatcherFactory,
-			() => this.configStore.isWriteGuardUp(),
+			(filePath) => this.configStore.isWriteGuardUp(filePath),
 			{
 				onConfigFileChanged: (filePath, source) => this.handleConfigFileChange(filePath, source),
 				onProjectConfigDeleted: () => this.handleProjectConfigDeleted(),

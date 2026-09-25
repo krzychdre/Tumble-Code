@@ -68,8 +68,9 @@ export interface McpConfigWatcherListener {
  * Watches the global and the project MCP settings files and the workspace
  * folders, and reports changes to its listener. A burst of change events for
  * one file becomes one report DEBOUNCE_MS after the last event; events while
- * `isWriteGuardUp()` holds are dropped, because they are the echo of the
- * hub's own write (see McpConfigStore).
+ * `isWriteGuardUp(filePath)` holds for that file are dropped, because they are
+ * the echo of the hub's own write of it (see McpConfigStore). The guard is
+ * asked per file, so the hub's write of one file never hides an edit of the other.
  */
 export class McpConfigWatcher {
 	static readonly DEBOUNCE_MS = 500
@@ -81,7 +82,7 @@ export class McpConfigWatcher {
 
 	constructor(
 		private readonly factory: McpWatcherFactory,
-		private readonly isWriteGuardUp: () => boolean,
+		private readonly isWriteGuardUp: (filePath: string) => boolean,
 		private readonly listener: McpConfigWatcherListener,
 	) {}
 
@@ -139,8 +140,8 @@ export class McpConfigWatcher {
 	}
 
 	private debounce(filePath: string, source: McpConfigSource): void {
-		// The hub's own write: handling it would update the servers a second time.
-		if (this.isWriteGuardUp()) {
+		// The hub's own write of this file: handling it would update the servers a second time.
+		if (this.isWriteGuardUp(filePath)) {
 			return
 		}
 
