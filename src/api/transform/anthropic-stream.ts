@@ -13,8 +13,8 @@ import type { ApiStream } from "./stream"
  *
  * Usage chunks pass the raw counts through as they arrive (message_start with
  * input and cache tokens, each message_delta with its output tokens). When
- * `costInfo` is given and any token was reported, a last usage chunk carries
- * the total cost. message_delta output_tokens is cumulative for the whole
+ * any token was reported, a last usage chunk carries the total cost priced
+ * with `costInfo`. message_delta output_tokens is cumulative for the whole
  * response (it already includes the provisional count from message_start), so
  * it replaces the running total instead of adding to it; Math.max keeps a
  * missing or zero value from lowering the count.
@@ -25,7 +25,7 @@ import type { ApiStream } from "./stream"
  */
 export async function* processAnthropicStream(
 	stream: AsyncIterable<Anthropic.Messages.RawMessageStreamEvent>,
-	costInfo?: ModelInfo,
+	costInfo: ModelInfo,
 ): ApiStream {
 	let inputTokens = 0
 	let outputTokens = 0
@@ -111,7 +111,7 @@ export async function* processAnthropicStream(
 		}
 	}
 
-	if (costInfo && (inputTokens > 0 || outputTokens > 0 || cacheWriteTokens > 0 || cacheReadTokens > 0)) {
+	if (inputTokens > 0 || outputTokens > 0 || cacheWriteTokens > 0 || cacheReadTokens > 0) {
 		const { totalCost } = calculateApiCostAnthropic(
 			costInfo,
 			inputTokens,

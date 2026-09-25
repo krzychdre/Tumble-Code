@@ -146,9 +146,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 
 		const stream = await this.client.messages.create(params, requestOptions)
 
-		// No costInfo: Vertex leaves the cost to the task, which computes it
-		// from the summed usage chunks.
-		yield* processAnthropicStream(stream)
+		yield* processAnthropicStream(stream, info)
 	}
 
 	getModel() {
