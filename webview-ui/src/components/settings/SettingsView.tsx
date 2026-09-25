@@ -42,6 +42,7 @@ import {
 	DEFAULT_SOUND_ENABLED,
 	DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
 	PRUNE_CONDENSE_DEFAULTS,
+	SETTINGS_DEFAULTS,
 	WEB_TOOLS_DEFAULTS,
 	ImageGenerationProvider,
 } from "@roo-code/types"
@@ -444,7 +445,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					mcpEnabled,
 					maxOpenTabsContext: Math.min(Math.max(0, maxOpenTabsContext ?? 20), 500),
 					maxWorkspaceFiles: Math.min(Math.max(0, maxWorkspaceFiles ?? 200), 500),
-					showRooIgnoredFiles: showRooIgnoredFiles ?? true,
+					showRooIgnoredFiles: showRooIgnoredFiles ?? SETTINGS_DEFAULTS.showRooIgnoredFiles,
 					enableSubfolderRules: enableSubfolderRules ?? false,
 					maxImageFileSize: maxImageFileSize ?? 5,
 					maxTotalImageSize: maxTotalImageSize ?? 20,
