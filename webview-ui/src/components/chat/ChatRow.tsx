@@ -59,7 +59,6 @@ import { appendImages } from "@src/utils/imageUtils"
 import { McpExecution } from "./McpExecution"
 import { ChatTextArea } from "./ChatTextArea"
 import { MAX_IMAGES_PER_MESSAGE } from "./ChatView"
-import { useSelectedModel } from "../ui/hooks/useSelectedModel"
 import {
 	Eye,
 	FileDiff,
@@ -126,6 +125,9 @@ interface ChatRowProps {
 	isExpanded: boolean
 	isLast: boolean
 	isStreaming: boolean
+	// Whether the selected model takes images; ChatView computes it once for
+	// all rows (the edit box of a user message needs it).
+	supportsImages?: boolean
 	onToggleExpand: (ts: number, expand?: boolean) => void
 	onHeightChange: (isTaller: boolean) => void
 	onSuggestionClick?: (suggestion: SuggestionItem, event?: React.MouseEvent) => void
@@ -181,6 +183,7 @@ export const ChatRowContent = ({
 	isExpanded,
 	isLast,
 	isStreaming,
+	supportsImages,
 	onToggleExpand,
 	onSuggestionClick,
 	onFollowUpUnmount,
@@ -191,9 +194,7 @@ export const ChatRowContent = ({
 }: ChatRowContentProps) => {
 	const { t, i18n } = useTranslation()
 
-	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, apiConfiguration, clineMessages, currentTaskItem } =
-		useExtensionState()
-	const { info: model } = useSelectedModel(apiConfiguration)
+	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, clineMessages, currentTaskItem } = useExtensionState()
 	const [isEditing, setIsEditing] = useState(false)
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
@@ -1327,7 +1328,7 @@ export const ChatRowContent = ({
 											setSelectedImages={setEditImages}
 											onSend={handleSaveEdit}
 											onSelectImages={handleSelectImages}
-											shouldDisableImages={!model?.supportsImages}
+											shouldDisableImages={!supportsImages}
 											mode={editMode}
 											setMode={setEditMode}
 											modeShortcutText=""

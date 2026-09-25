@@ -913,7 +913,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	const selectImages = useCallback(() => vscode.postMessage({ type: "selectImages" }), [])
 
-	const shouldDisableImages = !model?.supportsImages || selectedImages.length >= MAX_IMAGES_PER_MESSAGE
+	const supportsImages = !!model?.supportsImages
+	const shouldDisableImages = !supportsImages || selectedImages.length >= MAX_IMAGES_PER_MESSAGE
 
 	const handleMessage = useCallback(
 		(e: MessageEvent) => {
@@ -1513,6 +1514,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					isLast={isLast}
 					onHeightChange={handleRowHeightChange}
 					isStreaming={isStreaming}
+					supportsImages={supportsImages}
 					onSuggestionClick={onRowSuggestionClick}
 					onBatchFileResponse={handleBatchFileResponse}
 					onFollowUpUnmount={handleFollowUpUnmount}
@@ -1529,6 +1531,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			groupedMessages.length,
 			handleRowHeightChange,
 			isStreaming,
+			supportsImages,
 			onRowSuggestionClick,
 			handleBatchFileResponse,
 			handleFollowUpUnmount,
