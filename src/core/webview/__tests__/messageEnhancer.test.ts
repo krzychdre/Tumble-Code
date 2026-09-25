@@ -59,8 +59,7 @@ describe("MessageEnhancer", () => {
 		// Mock the instance getter
 		Object.defineProperty(TelemetryService, "instance", {
 			get: vi.fn().mockReturnValue({
-				capturePromptEnhanced: vi.fn(),
-				captureLlmCompletion: vi.fn(),
+				capture: vi.fn(),
 			}),
 			configurable: true,
 		})

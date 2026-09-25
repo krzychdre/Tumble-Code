@@ -180,11 +180,8 @@ vi.mock("@roo-code/telemetry", () => ({
 		hasInstance: () => true,
 		instance: {
 			updateTelemetryState: h.fn("Telemetry.updateTelemetryState"),
-			captureModeSettingChanged: h.fn("Telemetry.captureModeSettingChanged"),
-			captureCustomModeCreated: h.fn("Telemetry.captureCustomModeCreated"),
-			captureTelemetrySettingsChanged: h.fn("Telemetry.captureTelemetrySettingsChanged"),
+			capture: h.fn("Telemetry.capture"),
 			captureEvent: h.fn("Telemetry.captureEvent"),
-			captureTabShown: h.fn("Telemetry.captureTabShown"),
 		},
 	},
 }))

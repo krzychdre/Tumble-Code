@@ -36,6 +36,7 @@ import {
 	openRouterDefaultModelId,
 	DEFAULT_MODES,
 	isRetiredProvider,
+	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService } from "@roo-code/cloud"
@@ -773,7 +774,7 @@ export class ClineProvider
 		params: Record<string, string | any[]>,
 	): Promise<void> {
 		// Capture telemetry for code action usage
-		TelemetryService.instance.captureCodeActionUsed(promptType)
+		TelemetryService.instance.capture(TelemetryEventName.CODE_ACTION_USED, { actionType: promptType })
 
 		const visibleProvider = await ClineProvider.getInstance()
 
@@ -804,7 +805,7 @@ export class ClineProvider
 		promptType: TerminalActionPromptType,
 		params: Record<string, string | any[]>,
 	): Promise<void> {
-		TelemetryService.instance.captureCodeActionUsed(promptType)
+		TelemetryService.instance.capture(TelemetryEventName.CODE_ACTION_USED, { actionType: promptType })
 
 		const visibleProvider = await ClineProvider.getInstance()
 

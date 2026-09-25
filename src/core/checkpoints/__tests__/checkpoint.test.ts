@@ -25,9 +25,7 @@ vi.mock("vscode", () => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureCheckpointCreated: vi.fn(),
-			captureCheckpointRestored: vi.fn(),
-			captureCheckpointDiffed: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

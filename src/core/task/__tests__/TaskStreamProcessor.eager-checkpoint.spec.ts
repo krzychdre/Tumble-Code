@@ -10,7 +10,7 @@ import { TaskStreamProcessor, type TaskStreamProcessorAccess } from "../TaskStre
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureLlmCompletion: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

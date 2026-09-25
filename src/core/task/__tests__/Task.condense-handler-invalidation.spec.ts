@@ -76,13 +76,7 @@ vi.mock("@roo-code/telemetry", () => ({
 		createInstance: vi.fn(),
 		get instance() {
 			return {
-				captureTaskCreated: vi.fn(),
-				captureTaskRestarted: vi.fn(),
-				captureModeSwitch: vi.fn(),
-				captureConversationMessage: vi.fn(),
-				captureLlmCompletion: vi.fn(),
-				captureConsecutiveMistakeError: vi.fn(),
-				captureCodeActionUsed: vi.fn(),
+				capture: vi.fn(),
 				setProvider: vi.fn(),
 			}
 		},

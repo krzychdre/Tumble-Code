@@ -1,11 +1,8 @@
-import { ZodError } from "zod"
-
-import {
-	type CompletionKind,
-	type TelemetryClient,
-	type TelemetryPropertiesProvider,
+import type {
+	TelemetryCaptureArgs,
+	TelemetryClient,
 	TelemetryEventName,
-	type TelemetrySetting,
+	TelemetryPropertiesProvider,
 } from "@roo-code/types"
 
 /**
@@ -67,6 +64,20 @@ export class TelemetryService {
 	}
 
 	/**
+	 * Captures an event with properties typed per event.
+	 *
+	 * Events listed in `TelemetryEventPayloads` (in @roo-code/types) require
+	 * their properties; any other event takes an optional free-form record.
+	 * The properties are forwarded to every client unchanged.
+	 *
+	 * @example
+	 * TelemetryService.instance.capture(TelemetryEventName.TOOL_USED, { taskId, tool: "read_file" })
+	 */
+	public capture<E extends TelemetryEventName>(event: E, ...[properties]: TelemetryCaptureArgs<E>): void {
+		this.captureEvent(event, properties)
+	}
+
+	/**
 	 * Captures an exception using PostHog's error tracking
 	 * @param error The error to capture
 	 * @param additionalProperties Additional properties to include with the exception
@@ -77,271 +88,6 @@ export class TelemetryService {
 		}
 
 		this.clients.forEach((client) => client.captureException(error, additionalProperties))
-	}
-
-	public captureTaskCreated(taskId: string): void {
-		this.captureEvent(TelemetryEventName.TASK_CREATED, { taskId })
-	}
-
-	public captureTaskRestarted(taskId: string): void {
-		this.captureEvent(TelemetryEventName.TASK_RESTARTED, { taskId })
-	}
-
-	/**
-	 * @param properties Task-scoped properties that override the provider's
-	 * ambient ones. Needed when the task is no longer the provider's current
-	 * task at capture time (a finished task counted while it is being cleared).
-	 */
-	public captureTaskCompleted(taskId: string, properties?: Record<string, unknown>): void {
-		this.captureEvent(TelemetryEventName.TASK_COMPLETED, { ...properties, taskId })
-	}
-
-	public captureConversationMessage(taskId: string, source: "user" | "assistant"): void {
-		this.captureEvent(TelemetryEventName.TASK_CONVERSATION_MESSAGE, { taskId, source })
-	}
-
-	public captureLlmCompletion(
-		// Optional: a prompt-enhancement call can happen with no task open at
-		// all, and it still costs tokens that have to be accounted for.
-		taskId: string | undefined,
-		properties: {
-			inputTokens: number
-			outputTokens: number
-			cacheWriteTokens: number
-			cacheReadTokens: number
-			cost?: number
-			ttftMs?: number
-			reasoningChars?: number
-			toolCount?: number
-			/** Which part of the extension made the call; absent means a task turn. */
-			completionKind?: CompletionKind
-			/** False when the provider returned no usage block for this call. */
-			usageReported?: boolean
-			/**
-			 * The model that actually answered.
-			 *
-			 * Normally filled from the provider's *current task*, which is right
-			 * for a conversation turn and wrong for everything else: condensing
-			 * and prompt-enhancement run on their own profile. A call that knows
-			 * its model states it here, and event properties win over the
-			 * provider's in `BaseTelemetryClient.getEventProperties`.
-			 */
-			modelId?: string
-			apiProvider?: string
-		},
-	): void {
-		this.captureEvent(TelemetryEventName.LLM_COMPLETION, { ...(taskId && { taskId }), ...properties })
-	}
-
-	/**
-	 * Tokens spent turning code into vectors.
-	 *
-	 * Its own event rather than an `LLM_COMPLETION` with a kind: indexing a
-	 * repository is hundreds of thousands of input tokens with no output and no
-	 * cost, and folding that into the conversation totals would bury the figures
-	 * it is meant to sit beside.
-	 */
-	public captureEmbeddingUsage(properties: {
-		promptTokens: number
-		totalTokens: number
-		modelId?: string
-		apiProvider?: string
-		source?: string
-	}): void {
-		this.captureEvent(TelemetryEventName.EMBEDDING_USAGE, properties)
-	}
-
-	public captureModeSwitch(taskId: string, newMode: string): void {
-		this.captureEvent(TelemetryEventName.MODE_SWITCH, { taskId, newMode })
-	}
-
-	public captureToolUsage(taskId: string, tool: string): void {
-		this.captureEvent(TelemetryEventName.TOOL_USED, { taskId, tool })
-	}
-
-	public captureCheckpointCreated(taskId: string): void {
-		this.captureEvent(TelemetryEventName.CHECKPOINT_CREATED, { taskId })
-	}
-
-	public captureCheckpointDiffed(taskId: string): void {
-		this.captureEvent(TelemetryEventName.CHECKPOINT_DIFFED, { taskId })
-	}
-
-	public captureCheckpointRestored(taskId: string): void {
-		this.captureEvent(TelemetryEventName.CHECKPOINT_RESTORED, { taskId })
-	}
-
-	/**
-	 * Captures a condense round, i.e. a round that DID call the summarizer.
-	 *
-	 * `prune` describes the deterministic pre-pass that now runs first
-	 * (`src/core/condense/toolResultPruner.ts`) and, on this event, always ran
-	 * and was NOT enough. It is omitted entirely when no pruning happened, so
-	 * the event keeps its historical shape.
-	 *
-	 * Rounds the pruner resolved on its own are reported by
-	 * `captureContextPruned` instead, so this event still counts exactly what it
-	 * always counted: summaries actually written.
-	 */
-	public captureContextCondensed(
-		taskId: string,
-		isAutomaticTrigger: boolean,
-		usedCustomPrompt?: boolean,
-		prune?: { prunedCount: number; bytesSaved: number; summarySkipped: boolean },
-	): void {
-		this.captureEvent(TelemetryEventName.CONTEXT_CONDENSED, {
-			taskId,
-			isAutomaticTrigger,
-			...(usedCustomPrompt !== undefined && { usedCustomPrompt }),
-			...(prune !== undefined && prune),
-		})
-	}
-
-	/**
-	 * Captures a round where the deterministic pruner alone relieved the context
-	 * pressure and no summary was requested.
-	 *
-	 * Paired with `captureContextCondensed`, this is what answers "how often did
-	 * the cheap pass avoid an LLM summary": count these against condense events
-	 * carrying `summarySkipped: false`.
-	 */
-	public captureContextPruned(taskId: string, properties: { prunedCount: number; bytesSaved: number }): void {
-		this.captureEvent(TelemetryEventName.CONTEXT_PRUNED, { taskId, ...properties })
-	}
-
-	public captureSlidingWindowTruncation(taskId: string): void {
-		this.captureEvent(TelemetryEventName.SLIDING_WINDOW_TRUNCATION, { taskId })
-	}
-
-	/**
-	 * Captures a microcompaction pass: the free, non-destructive reclaim that runs before
-	 * condensation is considered. `reclaimRatio` is the share of the pre-pass context it gave
-	 * back, and is the primary signal for whether the selection policy is working.
-	 */
-	public captureContextMicrocompacted(
-		taskId: string,
-		properties: {
-			candidates: number
-			cleared: number
-			protectedResults: number
-			releasedProtected: number
-			tokensCleared: number
-			prevContextTokens: number
-			reclaimRatio: number
-		},
-	): void {
-		this.captureEvent(TelemetryEventName.CONTEXT_MICROCOMPACTED, { taskId, ...properties })
-	}
-
-	public captureCodeActionUsed(actionType: string): void {
-		this.captureEvent(TelemetryEventName.CODE_ACTION_USED, { actionType })
-	}
-
-	public capturePromptEnhanced(taskId?: string): void {
-		this.captureEvent(TelemetryEventName.PROMPT_ENHANCED, { ...(taskId && { taskId }) })
-	}
-
-	public captureSchemaValidationError({ schemaName, error }: { schemaName: string; error: ZodError }): void {
-		// https://zod.dev/ERROR_HANDLING?id=formatting-errors
-		this.captureEvent(TelemetryEventName.SCHEMA_VALIDATION_ERROR, { schemaName, error: error.format() })
-	}
-
-	public captureDiffApplicationError(taskId: string, consecutiveMistakeCount: number): void {
-		this.captureEvent(TelemetryEventName.DIFF_APPLICATION_ERROR, { taskId, consecutiveMistakeCount })
-	}
-
-	public captureShellIntegrationError(taskId: string): void {
-		this.captureEvent(TelemetryEventName.SHELL_INTEGRATION_ERROR, { taskId })
-	}
-
-	public captureConsecutiveMistakeError(taskId: string): void {
-		this.captureEvent(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, { taskId })
-	}
-
-	/**
-	 * Captures when a tab is shown due to user action
-	 * @param tab The tab that was shown
-	 */
-	public captureTabShown(tab: string): void {
-		this.captureEvent(TelemetryEventName.TAB_SHOWN, { tab })
-	}
-
-	/**
-	 * Captures when a setting is changed in ModesView
-	 * @param settingName The name of the setting that was changed
-	 */
-	public captureModeSettingChanged(settingName: string): void {
-		this.captureEvent(TelemetryEventName.MODE_SETTINGS_CHANGED, { settingName })
-	}
-
-	/**
-	 * Captures when a user creates a new custom mode
-	 * @param modeSlug The slug of the custom mode
-	 * @param modeName The name of the custom mode
-	 */
-	public captureCustomModeCreated(modeSlug: string, modeName: string): void {
-		this.captureEvent(TelemetryEventName.CUSTOM_MODE_CREATED, { modeSlug, modeName })
-	}
-
-	/**
-	 * Captures a marketplace item installation event
-	 * @param itemId The unique identifier of the marketplace item
-	 * @param itemType The type of item (mode or mcp)
-	 * @param itemName The human-readable name of the item
-	 * @param target The installation target (project or global)
-	 * @param properties Additional properties like hasParameters, installationMethod
-	 */
-	public captureMarketplaceItemInstalled(
-		itemId: string,
-		itemType: string,
-		itemName: string,
-		target: string,
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		properties?: Record<string, any>,
-	): void {
-		this.captureEvent(TelemetryEventName.MARKETPLACE_ITEM_INSTALLED, {
-			itemId,
-			itemType,
-			itemName,
-			target,
-			...(properties || {}),
-		})
-	}
-
-	/**
-	 * Captures a marketplace item removal event
-	 * @param itemId The unique identifier of the marketplace item
-	 * @param itemType The type of item (mode or mcp)
-	 * @param itemName The human-readable name of the item
-	 * @param target The removal target (project or global)
-	 */
-	public captureMarketplaceItemRemoved(itemId: string, itemType: string, itemName: string, target: string): void {
-		this.captureEvent(TelemetryEventName.MARKETPLACE_ITEM_REMOVED, {
-			itemId,
-			itemType,
-			itemName,
-			target,
-		})
-	}
-
-	/**
-	 * Captures a title button click event
-	 * @param button The button that was clicked
-	 */
-	public captureTitleButtonClicked(button: string): void {
-		this.captureEvent(TelemetryEventName.TITLE_BUTTON_CLICKED, { button })
-	}
-
-	/**
-	 * Captures when telemetry settings are changed
-	 * @param previousSetting The previous telemetry setting
-	 * @param newSetting The new telemetry setting
-	 */
-	public captureTelemetrySettingsChanged(previousSetting: TelemetrySetting, newSetting: TelemetrySetting): void {
-		this.captureEvent(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
-			previousSetting,
-			newSetting,
-		})
 	}
 
 	/**
@@ -381,5 +127,12 @@ export class TelemetryService {
 
 	static hasInstance(): boolean {
 		return this._instance !== null
+	}
+
+	/**
+	 * Drops the singleton so the next `createInstance` starts fresh. For tests only.
+	 */
+	static resetInstance(): void {
+		this._instance = null
 	}
 }

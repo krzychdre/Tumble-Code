@@ -66,11 +66,7 @@ vi.mock("../../integrations/terminal/TerminalRegistry", () => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureTaskCreated: vi.fn(),
-			captureTaskRestarted: vi.fn(),
-			captureConversationMessage: vi.fn(),
-			captureLlmCompletion: vi.fn(),
-			captureConsecutiveMistakeError: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

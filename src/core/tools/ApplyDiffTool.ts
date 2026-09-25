@@ -1,7 +1,7 @@
 import path from "path"
 import fs from "fs/promises"
 
-import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
+import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { getReadablePath } from "../../utils/path"
@@ -82,7 +82,10 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 				const currentCount = (task.consecutiveMistakeCountForApplyDiff.get(relPath) || 0) + 1
 				task.consecutiveMistakeCountForApplyDiff.set(relPath, currentCount)
 				let formattedError = ""
-				TelemetryService.instance.captureDiffApplicationError(task.taskId, currentCount)
+				TelemetryService.instance.capture(TelemetryEventName.DIFF_APPLICATION_ERROR, {
+					taskId: task.taskId,
+					consecutiveMistakeCount: currentCount,
+				})
 
 				if (diffResult.failParts && diffResult.failParts.length > 0) {
 					for (const failPart of diffResult.failParts) {

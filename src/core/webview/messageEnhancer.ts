@@ -86,7 +86,8 @@ export class MessageEnhancer {
 			// task's model, since it has its own profile. Report it so the tokens
 			// it spends stop being invisible.
 			if (TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureLlmCompletion(taskId, {
+				TelemetryService.instance.capture(TelemetryEventName.LLM_COMPLETION, {
+					...(taskId && { taskId }),
 					inputTokens: usage?.inputTokens ?? 0,
 					outputTokens: usage?.outputTokens ?? 0,
 					cacheReadTokens: usage?.cacheReadTokens ?? 0,

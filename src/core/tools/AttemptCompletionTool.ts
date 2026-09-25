@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 
-import { RooCodeEventName, type HistoryItem } from "@roo-code/types"
+import { RooCodeEventName, type HistoryItem, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Task } from "../task/Task"
@@ -251,7 +251,7 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 		// This ensures the latest stats are captured regardless of throttle timer.
 		task.emitFinalTokenUsageUpdate()
 
-		TelemetryService.instance.captureTaskCompleted(task.taskId)
+		TelemetryService.instance.capture(TelemetryEventName.TASK_COMPLETED, { taskId: task.taskId })
 		task.emit(RooCodeEventName.TaskCompleted, task.taskId, task.getTokenUsage(), task.toolUsage)
 	}
 }

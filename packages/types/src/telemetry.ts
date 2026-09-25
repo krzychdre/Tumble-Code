@@ -181,56 +181,154 @@ export type TelemetryEvent = {
 }
 
 /**
+ * The properties `TelemetryService.capture` takes for each event with a known
+ * shape. The payload is sent exactly as given (key order included), so call
+ * sites build it in the order it should be serialized. Events not listed here
+ * accept any property record.
+ */
+export type TelemetryEventPayloads = {
+	[TelemetryEventName.TASK_CREATED]: { taskId: string }
+	[TelemetryEventName.TASK_RESTARTED]: { taskId: string }
+	/**
+	 * Extra task-scoped properties may ride along; they override the provider's
+	 * ambient ones when the task is no longer current at capture time.
+	 */
+	[TelemetryEventName.TASK_COMPLETED]: { taskId: string; [key: string]: unknown }
+	[TelemetryEventName.TASK_CONVERSATION_MESSAGE]: { taskId: string; source: "user" | "assistant" }
+	[TelemetryEventName.LLM_COMPLETION]: {
+		/** Absent when no task is open (a prompt enhancement can run without one). */
+		taskId?: string
+		inputTokens: number
+		outputTokens: number
+		cacheWriteTokens: number
+		cacheReadTokens: number
+		cost?: number
+		ttftMs?: number
+		reasoningChars?: number
+		toolCount?: number
+		/** Which part of the extension made the call; absent means a task turn. */
+		completionKind?: CompletionKind
+		/** False when the provider returned no usage block for this call. */
+		usageReported?: boolean
+		/**
+		 * The model that actually answered. Normally filled from the provider's
+		 * current task, which is wrong for condensing and prompt enhancement (they
+		 * run on their own profile); event properties win over the provider's.
+		 */
+		modelId?: string
+		apiProvider?: string
+	}
+	/**
+	 * Tokens spent turning code into vectors. Its own event rather than an
+	 * LLM completion: indexing is huge input with no output and no cost, and
+	 * would bury the conversation totals.
+	 */
+	[TelemetryEventName.EMBEDDING_USAGE]: {
+		promptTokens: number
+		totalTokens: number
+		modelId?: string
+		apiProvider?: string
+		source?: string
+	}
+	[TelemetryEventName.MODE_SWITCH]: { taskId: string; newMode: string }
+	[TelemetryEventName.TOOL_USED]: { taskId: string; tool: string }
+	[TelemetryEventName.CHECKPOINT_CREATED]: { taskId: string }
+	[TelemetryEventName.CHECKPOINT_DIFFED]: { taskId: string }
+	[TelemetryEventName.CHECKPOINT_RESTORED]: { taskId: string }
+	/**
+	 * A condense round that DID call the summarizer. The prune fields describe
+	 * the deterministic pre-pass that ran first and was not enough; they are
+	 * omitted when no pruning happened, so the event keeps its historical shape.
+	 * Rounds the pruner resolved alone are `CONTEXT_PRUNED` instead.
+	 */
+	[TelemetryEventName.CONTEXT_CONDENSED]: {
+		taskId: string
+		isAutomaticTrigger: boolean
+		usedCustomPrompt?: boolean
+		prunedCount?: number
+		bytesSaved?: number
+		summarySkipped?: boolean
+	}
+	/** The deterministic pruner alone relieved the context pressure; no summary was requested. */
+	[TelemetryEventName.CONTEXT_PRUNED]: { taskId: string; prunedCount: number; bytesSaved: number }
+	[TelemetryEventName.SLIDING_WINDOW_TRUNCATION]: { taskId: string }
+	/**
+	 * A microcompaction pass. `reclaimRatio` is the share of the pre-pass
+	 * context it gave back, the primary signal for the selection policy.
+	 */
+	[TelemetryEventName.CONTEXT_MICROCOMPACTED]: {
+		taskId: string
+		candidates: number
+		cleared: number
+		protectedResults: number
+		releasedProtected: number
+		tokensCleared: number
+		prevContextTokens: number
+		reclaimRatio: number
+	}
+	[TelemetryEventName.CODE_ACTION_USED]: { actionType: string }
+	[TelemetryEventName.PROMPT_ENHANCED]: { taskId?: string }
+	/** `error` is the formatted zod error (`ZodError.format()`). */
+	[TelemetryEventName.SCHEMA_VALIDATION_ERROR]: { schemaName: string; error: unknown }
+	[TelemetryEventName.DIFF_APPLICATION_ERROR]: { taskId: string; consecutiveMistakeCount: number }
+	[TelemetryEventName.SHELL_INTEGRATION_ERROR]: { taskId: string }
+	[TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR]: { taskId: string }
+	[TelemetryEventName.TAB_SHOWN]: { tab: string }
+	[TelemetryEventName.MODE_SETTINGS_CHANGED]: { settingName: string }
+	[TelemetryEventName.CUSTOM_MODE_CREATED]: { modeSlug: string; modeName: string }
+	/** Extra properties such as hasParameters or installationMethodName may follow. */
+	[TelemetryEventName.MARKETPLACE_ITEM_INSTALLED]: {
+		itemId: string
+		itemType: string
+		itemName: string
+		target: string
+		[key: string]: unknown
+	}
+	[TelemetryEventName.MARKETPLACE_ITEM_REMOVED]: {
+		itemId: string
+		itemType: string
+		itemName: string
+		target: string
+	}
+	[TelemetryEventName.TITLE_BUTTON_CLICKED]: { button: string }
+	[TelemetryEventName.TELEMETRY_SETTINGS_CHANGED]: { previousSetting: TelemetrySetting; newSetting: TelemetrySetting }
+}
+
+/**
+ * The argument list after the event name in `TelemetryService.capture`:
+ * required typed properties for events in `TelemetryEventPayloads`, an
+ * optional free-form record for the rest.
+ */
+export type TelemetryCaptureArgs<E extends TelemetryEventName> = E extends keyof TelemetryEventPayloads
+	? [properties: TelemetryEventPayloads[E]]
+	: [properties?: Record<string, unknown>]
+
+/**
  * RooCodeTelemetryEvent
  */
 
+/**
+ * The events whose properties have a dedicated schema below. Every other
+ * `TelemetryEventName` member is validated with the generic property schema,
+ * so adding an event to the enum is enough for it to be accepted.
+ */
+const eventsWithDedicatedSchema = [
+	TelemetryEventName.TELEMETRY_SETTINGS_CHANGED,
+	TelemetryEventName.TASK_MESSAGE,
+	TelemetryEventName.LLM_COMPLETION,
+	TelemetryEventName.EMBEDDING_USAGE,
+] as const
+
+type GenericTelemetryEventName = Exclude<TelemetryEventName, (typeof eventsWithDedicatedSchema)[number]>
+
+const genericTelemetryEventNames = Object.values(TelemetryEventName).filter(
+	(event): event is GenericTelemetryEventName =>
+		!(eventsWithDedicatedSchema as readonly TelemetryEventName[]).includes(event),
+) as [GenericTelemetryEventName, ...GenericTelemetryEventName[]]
+
 export const rooCodeTelemetryEventSchema = z.discriminatedUnion("type", [
 	z.object({
-		type: z.enum([
-			TelemetryEventName.TASK_CREATED,
-			TelemetryEventName.TASK_RESTARTED,
-			TelemetryEventName.TASK_COMPLETED,
-			TelemetryEventName.TASK_CONVERSATION_MESSAGE,
-			TelemetryEventName.MODE_SWITCH,
-			TelemetryEventName.MODE_SELECTOR_OPENED,
-			TelemetryEventName.TOOL_USED,
-			TelemetryEventName.CHECKPOINT_CREATED,
-			TelemetryEventName.CHECKPOINT_RESTORED,
-			TelemetryEventName.CHECKPOINT_DIFFED,
-			TelemetryEventName.CODE_ACTION_USED,
-			TelemetryEventName.PROMPT_ENHANCED,
-			TelemetryEventName.TITLE_BUTTON_CLICKED,
-			TelemetryEventName.AUTHENTICATION_INITIATED,
-			TelemetryEventName.MARKETPLACE_ITEM_INSTALLED,
-			TelemetryEventName.MARKETPLACE_ITEM_REMOVED,
-			TelemetryEventName.MARKETPLACE_TAB_VIEWED,
-			TelemetryEventName.MARKETPLACE_INSTALL_BUTTON_CLICKED,
-			TelemetryEventName.SHARE_BUTTON_CLICKED,
-			TelemetryEventName.SHARE_ORGANIZATION_CLICKED,
-			TelemetryEventName.SHARE_PUBLIC_CLICKED,
-			TelemetryEventName.SHARE_CONNECT_TO_CLOUD_CLICKED,
-			TelemetryEventName.ACCOUNT_CONNECT_CLICKED,
-			TelemetryEventName.ACCOUNT_CONNECT_SUCCESS,
-			TelemetryEventName.ACCOUNT_LOGOUT_CLICKED,
-			TelemetryEventName.ACCOUNT_LOGOUT_SUCCESS,
-			TelemetryEventName.FEATURED_PROVIDER_CLICKED,
-			TelemetryEventName.UPSELL_DISMISSED,
-			TelemetryEventName.UPSELL_CLICKED,
-			TelemetryEventName.SCHEMA_VALIDATION_ERROR,
-			TelemetryEventName.DIFF_APPLICATION_ERROR,
-			TelemetryEventName.SHELL_INTEGRATION_ERROR,
-			TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR,
-			TelemetryEventName.CODE_INDEX_ERROR,
-			TelemetryEventName.MODEL_CACHE_EMPTY_RESPONSE,
-			TelemetryEventName.CONTEXT_CONDENSED,
-			TelemetryEventName.CONTEXT_MICROCOMPACTED,
-			TelemetryEventName.CONTEXT_PRUNED,
-			TelemetryEventName.SLIDING_WINDOW_TRUNCATION,
-			TelemetryEventName.TAB_SHOWN,
-			TelemetryEventName.MODE_SETTINGS_CHANGED,
-			TelemetryEventName.CUSTOM_MODE_CREATED,
-			TelemetryEventName.READ_FILE_LEGACY_FORMAT_USED,
-		]),
+		type: z.enum(genericTelemetryEventNames),
 		properties: telemetryPropertiesSchema,
 	}),
 	z.object({

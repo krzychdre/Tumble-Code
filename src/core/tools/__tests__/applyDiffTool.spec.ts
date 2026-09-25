@@ -69,7 +69,7 @@ vi.mock("vscode", () => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureDiffApplicationError: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

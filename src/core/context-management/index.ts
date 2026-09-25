@@ -14,7 +14,7 @@ import {
 import { pruneToolResults } from "../condense/toolResultPruner"
 import type { ArtifactStore } from "../artifacts/ArtifactStore"
 import { ApiMessage } from "../task-persistence/apiMessages"
-import { ANTHROPIC_DEFAULT_MAX_TOKENS, PRUNE_CONDENSE_DEFAULTS } from "@roo-code/types"
+import { ANTHROPIC_DEFAULT_MAX_TOKENS, PRUNE_CONDENSE_DEFAULTS, TelemetryEventName } from "@roo-code/types"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { microcompactToolResults, microcompactTargetChars, MICROCOMPACT_PLACEHOLDER_TOKENS } from "./microcompact"
 import { buildContextLedger, type ContextLedger } from "./ledger"
@@ -75,7 +75,7 @@ export type TruncationResult = {
  * @returns {TruncationResult} Object containing the tagged messages, truncation ID, and count of messages removed.
  */
 export function truncateConversation(messages: ApiMessage[], fracToRemove: number, taskId: string): TruncationResult {
-	TelemetryService.instance.captureSlidingWindowTruncation(taskId)
+	TelemetryService.instance.capture(TelemetryEventName.SLIDING_WINDOW_TRUNCATION, { taskId })
 
 	const truncationId = crypto.randomUUID()
 
@@ -435,7 +435,8 @@ export async function manageContext({
 				grossTokensCleared - MICROCOMPACT_PLACEHOLDER_TOKENS * mc.clearedCount,
 			)
 
-			TelemetryService.instance.captureContextMicrocompacted(taskId, {
+			TelemetryService.instance.capture(TelemetryEventName.CONTEXT_MICROCOMPACTED, {
+				taskId,
 				candidates: mc.candidateCount,
 				cleared: mc.clearedCount,
 				protectedResults: mc.protectedCount,
@@ -562,7 +563,8 @@ export async function manageContext({
 				// existing condense count and cost chart. How often the summary was
 				// avoided is this event's count against the condense events that
 				// carry `summarySkipped: false`.
-				TelemetryService.instance.captureContextPruned(taskId, {
+				TelemetryService.instance.capture(TelemetryEventName.CONTEXT_PRUNED, {
+					taskId,
 					prunedCount,
 					bytesSaved: prunedBytesSaved,
 				})

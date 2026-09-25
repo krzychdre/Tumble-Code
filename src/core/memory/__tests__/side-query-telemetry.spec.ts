@@ -1,6 +1,7 @@
 // npx vitest run core/memory/__tests__/side-query-telemetry.spec.ts
 
 import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@roo-code/types"
 
 import type { ApiHandler } from "../../../api"
 import { makeSideQuery } from "../memoryTaskIntegration"
@@ -8,7 +9,7 @@ import { makeSideQuery } from "../memoryTaskIntegration"
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
-		instance: { captureLlmCompletion: vi.fn() },
+		instance: { capture: vi.fn() },
 	},
 }))
 
@@ -40,9 +41,10 @@ describe("memory side-query telemetry", () => {
 		const answer = await query("system", "user", new AbortController().signal)
 
 		expect(answer).toBe("1,2")
-		expect(TelemetryService.instance.captureLlmCompletion).toHaveBeenCalledWith(
-			"memory-task",
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(
+			TelemetryEventName.LLM_COMPLETION,
 			expect.objectContaining({
+				taskId: "memory-task",
 				inputTokens: 4_000,
 				outputTokens: 12,
 				completionKind: "memory",
@@ -57,8 +59,9 @@ describe("memory side-query telemetry", () => {
 
 		await query("system", "user", new AbortController().signal)
 
-		const [, properties] = vi.mocked(TelemetryService.instance.captureLlmCompletion).mock.calls[0]
-		expect(properties.usageReported).toBe(false)
+		const [event, properties] = vi.mocked(TelemetryService.instance.capture).mock.calls[0]!
+		expect(event).toBe(TelemetryEventName.LLM_COMPLETION)
+		expect(properties).toMatchObject({ usageReported: false })
 	})
 
 	it("reports nothing when the turn was aborted — there is no answer to account for", async () => {
@@ -67,7 +70,7 @@ describe("memory side-query telemetry", () => {
 		const query = makeSideQuery(handler({ completePrompt: vi.fn().mockResolvedValue("1") }), "memory-task")!
 
 		await expect(query("system", "user", controller.signal)).rejects.toThrow("aborted")
-		expect(TelemetryService.instance.captureLlmCompletion).not.toHaveBeenCalled()
+		expect(TelemetryService.instance.capture).not.toHaveBeenCalled()
 	})
 
 	it("is undefined for a handler that cannot do one-shot completions at all", () => {

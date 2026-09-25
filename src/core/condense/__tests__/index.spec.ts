@@ -4,6 +4,7 @@ import type { Mock } from "vitest"
 
 import { Anthropic } from "@anthropic-ai/sdk"
 import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@roo-code/types"
 
 import { ApiHandler } from "../../../api"
 import { BackgroundModelHandler } from "../../../api/BackgroundModelHandler"
@@ -33,8 +34,7 @@ vi.mock("@roo-code/telemetry", () => ({
 		// has to answer `hasInstance` as well.
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: {
-			captureContextCondensed: vi.fn(),
-			captureLlmCompletion: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))
@@ -1157,7 +1157,7 @@ describe("summarizeConversation with custom settings", () => {
 		vi.clearAllMocks()
 
 		// Reset telemetry mock
-		;(TelemetryService.instance.captureContextCondensed as Mock).mockClear()
+		;(TelemetryService.instance.capture as Mock).mockClear()
 
 		// Setup mock API handler
 		mockMainApiHandler = {
@@ -1264,11 +1264,11 @@ describe("summarizeConversation with custom settings", () => {
 		})
 
 		// Verify telemetry was called with custom prompt flag
-		expect(TelemetryService.instance.captureContextCondensed).toHaveBeenCalledWith(
-			localTaskId,
-			false,
-			true, // usedCustomPrompt
-		)
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.CONTEXT_CONDENSED, {
+			taskId: localTaskId,
+			isAutomaticTrigger: false,
+			usedCustomPrompt: true,
+		})
 	})
 
 	/**
@@ -1285,11 +1285,11 @@ describe("summarizeConversation with custom settings", () => {
 		})
 
 		// Verify telemetry was called with isAutomaticTrigger flag
-		expect(TelemetryService.instance.captureContextCondensed).toHaveBeenCalledWith(
-			localTaskId,
-			true, // isAutomaticTrigger
-			true, // usedCustomPrompt
-		)
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.CONTEXT_CONDENSED, {
+			taskId: localTaskId,
+			isAutomaticTrigger: true,
+			usedCustomPrompt: true,
+		})
 	})
 })
 
@@ -1364,7 +1364,7 @@ describe("summarizeConversation — BackgroundModelHandler fallback integration"
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		;(TelemetryService.instance.captureContextCondensed as Mock).mockClear()
+		;(TelemetryService.instance.capture as Mock).mockClear()
 	})
 
 	it("background handler succeeds → summary comes from background, fallback not called", async () => {

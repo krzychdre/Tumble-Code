@@ -1,5 +1,6 @@
 // Mode switching, per-mode prompts and custom instructions.
 
+import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import type { Mode } from "../../../shared/modes"
 import { serializeError } from "./context"
@@ -41,7 +42,9 @@ export const promptsAndModesHandlers: MessageHandlerMap = {
 				)
 
 				if (changedSettings.length > 0) {
-					TelemetryService.instance.captureModeSettingChanged(changedSettings[0])
+					TelemetryService.instance.capture(TelemetryEventName.MODE_SETTINGS_CHANGED, {
+						settingName: changedSettings[0],
+					})
 				}
 			}
 		}

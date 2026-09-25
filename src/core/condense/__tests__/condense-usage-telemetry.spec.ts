@@ -1,6 +1,7 @@
 // npx vitest run core/condense/__tests__/condense-usage-telemetry.spec.ts
 
 import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@roo-code/types"
 
 import type { ApiHandler } from "../../../api"
 import type { ApiMessage } from "../../task-persistence/apiMessages"
@@ -10,8 +11,7 @@ vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: {
-			captureContextCondensed: vi.fn(),
-			captureLlmCompletion: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))
@@ -56,6 +56,14 @@ function conversation(): ApiMessage[] {
 	]
 }
 
+// The LLM_COMPLETION properties of the first such event.
+const llmCompletionProperties = () => {
+	const call = vi
+		.mocked(TelemetryService.instance.capture)
+		.mock.calls.find(([event]) => event === TelemetryEventName.LLM_COMPLETION)
+	return call![1] as Record<string, unknown>
+}
+
 describe("condense usage telemetry", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -78,9 +86,10 @@ describe("condense usage telemetry", () => {
 			isAutomaticTrigger: true,
 		})
 
-		expect(TelemetryService.instance.captureLlmCompletion).toHaveBeenCalledWith(
-			taskId,
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(
+			TelemetryEventName.LLM_COMPLETION,
 			expect.objectContaining({
+				taskId,
 				inputTokens: 48_000,
 				outputTokens: 900,
 				cacheReadTokens: 32_000,
@@ -101,7 +110,7 @@ describe("condense usage telemetry", () => {
 			isAutomaticTrigger: true,
 		})
 
-		const [, properties] = vi.mocked(TelemetryService.instance.captureLlmCompletion).mock.calls[0]
+		const properties = llmCompletionProperties()
 		expect(properties.modelId).toBe("a-cheap-background-model")
 	})
 
@@ -114,7 +123,7 @@ describe("condense usage telemetry", () => {
 			isAutomaticTrigger: true,
 		})
 
-		const [, properties] = vi.mocked(TelemetryService.instance.captureLlmCompletion).mock.calls[0]
+		const properties = llmCompletionProperties()
 		expect(properties.usageReported).toBe(false)
 		expect(properties.inputTokens).toBe(0)
 	})
@@ -128,6 +137,10 @@ describe("condense usage telemetry", () => {
 			isAutomaticTrigger: false,
 		})
 
-		expect(TelemetryService.instance.captureContextCondensed).toHaveBeenCalledWith(taskId, false, false)
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.CONTEXT_CONDENSED, {
+			taskId,
+			isAutomaticTrigger: false,
+			usedCustomPrompt: false,
+		})
 	})
 })

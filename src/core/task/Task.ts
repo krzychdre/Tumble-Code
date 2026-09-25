@@ -938,7 +938,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			this._taskApiConfigName = historyItem.apiConfigName
 			this.taskModeReady = Promise.resolve()
 			this.taskApiConfigReady = Promise.resolve()
-			TelemetryService.instance.captureTaskRestarted(this.taskId)
+			TelemetryService.instance.capture(TelemetryEventName.TASK_RESTARTED, { taskId: this.taskId })
 		} else if (taskMode) {
 			// Explicit per-task mode (headless background task / subagent): don't
 			// read or mutate the global current mode.
@@ -953,7 +953,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			// Note: lifecycle methods will be called after lifecycle module is initialized below
 			this.taskModeReady = Promise.resolve()
 			this.taskApiConfigReady = Promise.resolve()
-			TelemetryService.instance.captureTaskCreated(this.taskId)
+			TelemetryService.instance.capture(TelemetryEventName.TASK_CREATED, { taskId: this.taskId })
 		}
 
 		this.assistantMessageParser = undefined

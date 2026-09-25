@@ -38,11 +38,21 @@ vi.mock("../../memory", async (importOriginal) => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: () => true,
-		// Every capture method is a no-op, except the completion counter the
-		// telemetry tests below assert on.
+		// Every capture method is a no-op, except that a "Task Completed" event
+		// (TelemetryEventName.TASK_COMPLETED) is forwarded to the completion
+		// counter the telemetry tests below assert on, as (taskId, properties).
 		instance: new Proxy(
 			{},
-			{ get: (_target, name) => (name === "captureTaskCompleted" ? captureTaskCompletedSpy : vi.fn()) },
+			{
+				get: (_target, name) =>
+					name === "capture"
+						? (event: string, properties?: { taskId?: string }) => {
+								if (event === "Task Completed") {
+									captureTaskCompletedSpy(properties?.taskId, properties)
+								}
+							}
+						: vi.fn(),
+			},
 		),
 	},
 }))
@@ -287,7 +297,7 @@ describe("memory writers after a normally completed task", () => {
 })
 
 // The same accepted end of a task must also be counted as a completed task in
-// telemetry. `TelemetryService.captureTaskCompleted` is only called next to
+// telemetry. The TASK_COMPLETED capture is only called next to
 // the `TaskCompleted` emit in `AttemptCompletionTool` (the "yes" answer and
 // delegation), so a top-level chat completion that the user leaves with
 // "Start New Task" (VS Code) or /new and /clear (CLI) was never counted. The

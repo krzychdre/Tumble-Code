@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk"
 import crypto from "crypto"
 
+import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { t } from "../../i18n"
@@ -320,7 +321,8 @@ function reportCondenseUsage(taskId: string, handler: ApiHandler, usage: Condens
 		return
 	}
 	const model = handler.getModel?.()
-	TelemetryService.instance.captureLlmCompletion(taskId, {
+	TelemetryService.instance.capture(TelemetryEventName.LLM_COMPLETION, {
+		...(taskId && { taskId }),
 		inputTokens: usage?.inputTokens ?? 0,
 		outputTokens: usage?.outputTokens ?? 0,
 		cacheReadTokens: usage?.cacheReadTokens ?? 0,
@@ -415,20 +417,12 @@ export async function summarizeConversation(options: SummarizeConversationOption
 	} = options
 	// Only widen the event when a prune actually ran, so rounds that never
 	// reached the pruner keep emitting exactly the properties they always did.
-	if (pruneStats) {
-		TelemetryService.instance.captureContextCondensed(
-			taskId,
-			isAutomaticTrigger ?? false,
-			!!customCondensingPrompt?.trim(),
-			{ ...pruneStats, summarySkipped: false },
-		)
-	} else {
-		TelemetryService.instance.captureContextCondensed(
-			taskId,
-			isAutomaticTrigger ?? false,
-			!!customCondensingPrompt?.trim(),
-		)
-	}
+	TelemetryService.instance.capture(TelemetryEventName.CONTEXT_CONDENSED, {
+		taskId,
+		isAutomaticTrigger: isAutomaticTrigger ?? false,
+		usedCustomPrompt: !!customCondensingPrompt?.trim(),
+		...(pruneStats && { ...pruneStats, summarySkipped: false }),
+	})
 
 	const response: SummarizeResponse = { messages, cost: 0, summary: "" }
 

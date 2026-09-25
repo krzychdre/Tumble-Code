@@ -8,7 +8,7 @@ import { TaskApiLoop } from "../TaskApiLoop"
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureConsecutiveMistakeError: vi.fn(),
+			capture: vi.fn(),
 			captureException: vi.fn(),
 			captureEvent: vi.fn(),
 		},
