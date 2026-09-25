@@ -91,12 +91,6 @@ function applyTranscriptEffects(effects: readonly TranscriptEffect[]): void {
  * (`agent/transcript-reducer.ts`) and applies what it returns to the store.
  */
 export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions): UseMessageHandlersReturn {
-	// The todos of THIS render, not the store's current ones: the reducer used
-	// to live in this hook and read them from the render's closure, and the
-	// extension host keeps the callback of the first render (it subscribes once,
-	// on mount). Kept as is by the move; see the characterization spec.
-	const { currentTodos } = useCLIStore()
-
 	const cursor = useRef<TranscriptCursor>(createTranscriptCursor())
 
 	// The extension host subscribes to handleExtensionMessage once on mount.
@@ -107,7 +101,9 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 
 	const handleExtensionMessage = useCallback(
 		(msg: ExtensionMessage) => {
-			const { messages, isLoading, isResumingTask } = useCLIStore.getState()
+			// Read from the store at call time: the extension host keeps the
+			// callback of the first render (it subscribes once, on mount).
+			const { messages, isLoading, isResumingTask, currentTodos } = useCLIStore.getState()
 			const result = reduceExtensionMessage(
 				cursor.current,
 				{ messages, isLoading, isResumingTask, currentTodos },
@@ -118,7 +114,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 			cursor.current = result.cursor
 			applyTranscriptEffects(result.effects)
 		},
-		[currentTodos],
+		[],
 	)
 
 	const resetTranscript = useCallback(() => {
