@@ -17,7 +17,7 @@ export default [
 		},
 	},
 	{
-		files: ["core/assistant-message/presentAssistantMessage.ts", "core/webview/webviewMessageHandler.ts"],
+		files: ["core/assistant-message/presentAssistantMessage.ts"],
 		rules: {
 			"no-case-declarations": "off",
 		},
