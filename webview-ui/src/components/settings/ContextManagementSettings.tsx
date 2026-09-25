@@ -579,11 +579,12 @@ export const ContextManagementSettings = ({
 								{t("settings:contextManagement.condenseProfile.label")}
 							</label>
 							<Select
-								value={autoCondenseContextApiConfigId ?? UNSET_PROFILE}
+								value={autoCondenseContextApiConfigId || UNSET_PROFILE}
 								onValueChange={(value) => {
+									// "" (not undefined) so Save clears the host's value.
 									setCachedStateField(
 										"autoCondenseContextApiConfigId",
-										value === UNSET_PROFILE ? undefined : value,
+										value === UNSET_PROFILE ? "" : value,
 									)
 								}}
 								data-testid="condense-profile-select">

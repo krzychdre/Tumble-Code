@@ -50,7 +50,11 @@ vi.mock("@/components/ui", () => ({
 		/>
 	),
 	Select: ({ value, onValueChange, children, "data-testid": dataTestId }: any) => (
-		<select data-testid={dataTestId} value={value ?? ""} onChange={(e: any) => onValueChange?.(e.target.value)}>
+		<select
+			data-testid={dataTestId}
+			data-value={value}
+			value={value ?? ""}
+			onChange={(e: any) => onValueChange?.(e.target.value)}>
 			{children}
 		</select>
 	),
@@ -105,13 +109,14 @@ describe("MemorySettings", () => {
 		})
 	})
 
-	it("clears the directory (undefined) when the input is emptied", async () => {
+	// "" (not undefined): JSON drops undefined, so the host would keep the old directory.
+	it("clears the directory to an empty string when the input is emptied", async () => {
 		const setCachedStateField = vi.fn()
 		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} autoMemoryDirectory="/x" />)
 		const input = screen.getByTestId("memory-directory-input")
 		fireEvent.input(input, { target: { value: "" } })
 		await waitFor(() => {
-			expect(setCachedStateField).toHaveBeenCalledWith("autoMemoryDirectory", undefined)
+			expect(setCachedStateField).toHaveBeenCalledWith("autoMemoryDirectory", "")
 		})
 	})
 
@@ -178,7 +183,8 @@ describe("MemorySettings", () => {
 		})
 	})
 
-	it("selecting the 'use current profile' sentinel calls setCachedStateField with undefined", async () => {
+	// "" (not undefined): JSON drops undefined, so the host would keep the old profile.
+	it("selecting the 'use current profile' sentinel calls setCachedStateField with an empty string", async () => {
 		const setCachedStateField = vi.fn()
 		render(
 			<MemorySettings
@@ -190,8 +196,15 @@ describe("MemorySettings", () => {
 		const select = screen.getByTestId("memory-writer-profile-select") as HTMLSelectElement
 		fireEvent.change(select, { target: { value: "-" } })
 		await waitFor(() => {
-			expect(setCachedStateField).toHaveBeenCalledWith("memoryWriterApiConfigId", undefined)
+			expect(setCachedStateField).toHaveBeenCalledWith("memoryWriterApiConfigId", "")
 		})
+	})
+
+	it("shows 'use current profile' for a cleared (empty string) writer profile", () => {
+		render(<MemorySettings {...defaultProps} memoryWriterApiConfigId="" />)
+		// The value handed to Select, not the DOM value: a native select falls
+		// back to its first option by itself, the Radix one shows no item.
+		expect(screen.getByTestId("memory-writer-profile-select")).toHaveAttribute("data-value", "-")
 	})
 	it("toggles sharing the memory directory with Claude Code", async () => {
 		const setCachedStateField = vi.fn()

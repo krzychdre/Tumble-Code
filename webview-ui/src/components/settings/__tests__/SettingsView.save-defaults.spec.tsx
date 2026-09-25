@@ -564,10 +564,10 @@ describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20
 		})
 	})
 
-	// Today's behavior, pinned (not endorsed): an emptied profile or directory
-	// field is sent as undefined, which JSON drops, so the host keeps the old
-	// value. Explicit "" clears for the fields that serialize it that way.
-	it("drops emptied optional ids and directory, sends empty strings where the payload clears", async () => {
+	// Decision 18: an emptied profile or directory field is sent as "", so the
+	// host clears it (undefined would be dropped by JSON and the host would keep
+	// the old value). null clears the two limits.
+	it("sends emptied optional ids and directory as empty strings, so the host clears them", async () => {
 		const messages = await saveWithState({
 			...populatedState(),
 			autoMemoryDirectory: "",
@@ -580,9 +580,9 @@ describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20
 		})
 		const payload = JSON.parse(JSON.stringify(messages[0].updatedSettings))
 
-		expect(payload).not.toHaveProperty("autoMemoryDirectory")
-		expect(payload).not.toHaveProperty("memoryWriterApiConfigId")
-		expect(payload).not.toHaveProperty("autoCondenseContextApiConfigId")
+		expect(payload.autoMemoryDirectory).toBe("")
+		expect(payload.memoryWriterApiConfigId).toBe("")
+		expect(payload.autoCondenseContextApiConfigId).toBe("")
 		expect(payload.searxngBaseUrl).toBe("")
 		expect(payload.terminalProfile).toBe("")
 		expect(payload.allowedMaxRequests).toBeNull()

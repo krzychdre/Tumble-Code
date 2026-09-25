@@ -177,10 +177,13 @@ export class ContextProxy {
 			if (this.stateCache.autoDreamMinHours === undefined) updates.autoDreamMinHours = 24
 			if (this.stateCache.autoDreamMinSessions === undefined) updates.autoDreamMinSessions = 5
 			// If a stored autoMemoryDirectory is invalid (e.g. a leftover from a
-			// removed volume), clear it rather than crash the path module.
-			if (this.stateCache.autoMemoryDirectory !== undefined) {
+			// removed volume), clear it rather than crash the path module. A
+			// blank value is how the Settings view clears the folder (it means
+			// the default folder) and is kept as it is.
+			const storedMemoryDirectory = this.stateCache.autoMemoryDirectory
+			if (typeof storedMemoryDirectory === "string" && storedMemoryDirectory.trim() !== "") {
 				try {
-					validateMemoryPath(this.stateCache.autoMemoryDirectory)
+					validateMemoryPath(storedMemoryDirectory)
 				} catch {
 					updates.autoMemoryDirectory = undefined
 				}

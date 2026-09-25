@@ -52,11 +52,15 @@ const onSave = { apply: "onSave" } as const
 const nullAsUnset = <T>(value: T | null | undefined): T | undefined => value ?? undefined
 
 /**
- * An empty string is sent as undefined, which JSON drops: the host keeps the
- * previous value. Today's behavior for the optional profile ids and the
- * memory directory, pinned by SettingsView.save-defaults.spec.
+ * An optional profile id or folder that "" clears: the value is sent as it is,
+ * so "" reaches the host and clears it (undefined would be dropped by JSON and
+ * the host would keep the old value). A never-set value (undefined) and a
+ * cleared one ("") mean the same thing, so switching between them is no change.
  */
-const emptyAsUnset = (value: string | undefined): string | undefined => value || undefined
+const clearableString = {
+	apply: "onSave",
+	equals: (a: string | undefined, b: string | undefined) => (a || "") === (b || ""),
+} as const
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(min, value), max)
 
@@ -98,14 +102,14 @@ export const SETTINGS_SCHEMA = {
 	checkpointTimeout: { apply: "onSave", default: SETTINGS_DEFAULTS.checkpointTimeout },
 	// The memory defaults live in the host's ContextProxy (first-run migration).
 	autoMemoryEnabled: { apply: "onSave", default: true },
-	autoMemoryDirectory: { apply: "onSave", serialize: emptyAsUnset },
+	autoMemoryDirectory: clearableString,
 	autoMemoryShareWithClaudeCode: onSave,
 	memoryRecallEnabled: { apply: "onSave", default: true },
 	autoDreamEnabled: { apply: "onSave", default: true },
 	autoDreamMinHours: { apply: "onSave", default: 24 },
 	autoDreamMinSessions: { apply: "onSave", default: 5 },
-	memoryWriterApiConfigId: { apply: "onSave", serialize: emptyAsUnset },
-	autoCondenseContextApiConfigId: { apply: "onSave", serialize: emptyAsUnset },
+	memoryWriterApiConfigId: clearableString,
+	autoCondenseContextApiConfigId: clearableString,
 	webToolsEnabled: { apply: "onSave", default: SETTINGS_DEFAULTS.webToolsEnabled },
 	webSearchBackend: { apply: "onSave", default: SETTINGS_DEFAULTS.webSearchBackend },
 	// "" rather than undefined, so clearing the field clears it on the host.

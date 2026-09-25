@@ -64,8 +64,9 @@ describe("memory paths", () => {
 			expect(getMemoryBaseDir()).toBe(path.normalize("/custom/mem") + path.sep)
 		})
 
-		it("ignores an empty/whitespace override", () => {
-			initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryDirectory: "   " }))
+		// "" is how the Settings view clears the folder (decision 18).
+		it.each(["", "   "])("ignores an empty/whitespace override (%j)", (autoMemoryDirectory) => {
+			initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryDirectory }))
 			expect(getMemoryBaseDir()).toBe(path.join(GLOBAL_STORAGE, "memory"))
 		})
 	})
