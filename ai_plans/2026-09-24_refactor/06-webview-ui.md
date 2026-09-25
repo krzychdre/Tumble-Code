@@ -355,3 +355,6 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   #397 (`cb6429413`, PlanReviewApp lazy, -16.8 KB). Open: KaTeX ships twice (0.16.22 via rehype-katex, 0.16.47 via
   Mermaid); lazy `App` in the plan-review panel is the bigger win; `vscode-material-icons` 251 KB and posthog about
   155 KB still eager.
+- 2026-09-25 wave 2 verification on main cb6429413: 38 of 38 turbo tasks green (check-types, lint incl. the compiler
+  bailout check, test); webview 2,102 tests (was 1,730 after wave 1), src 9,855, cli 1,075; knip 0; webview
+  production build OK.
