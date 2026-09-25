@@ -1,29 +1,20 @@
-import path from "path"
-
 import { Box, Text, useApp, useInput } from "ink"
-import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { useState, useCallback, useRef, useMemo } from "react"
 
-import type { McpServer, UsableSuggestion } from "@roo-code/types"
-
-import { arePathsEqual } from "@roo-code/core/cli"
-import { setInputBoxHandler } from "@roo-code/vscode-shim"
+import type { UsableSuggestion } from "@roo-code/types"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 
-import { getGlobalCommandsForAutocomplete } from "@/lib/utils/commands.js"
 import { getPermissionMode, type PermissionMode } from "@/lib/utils/permissions.js"
 import { getContextWindow } from "@/lib/utils/context-window.js"
 import { summarizeProviderSettings } from "@/lib/utils/provider-config.js"
-import { takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
-import { getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
 import * as theme from "./theme.js"
 import { figures } from "./figures.js"
 import { useCLIStore } from "./store.js"
 import { useUIStateStore } from "./stores/uiStateStore.js"
 import { useSecretPromptStore } from "./stores/secretPromptStore.js"
-import { getStaticCount, buildStaticItems, nextPromotion } from "./transcript.js"
-import { advanceStreamCommit, remainderAfterCommit, tailHeads, type StreamCommits } from "./streamCommit.js"
+import { remainderAfterCommit } from "./streamCommit.js"
 
 // Import extracted hooks.
 import {
@@ -36,6 +27,10 @@ import {
 	useGlobalInput,
 	useFollowupCountdown,
 	usePickerHandlers,
+	useTranscriptPromotion,
+	useMcpPanel,
+	useAutocompleteTriggers,
+	useSecretPromptBridge,
 } from "./hooks/index.js"
 
 // Import components.
@@ -50,21 +45,7 @@ import FollowupDialog from "./components/dialogs/FollowupDialog.js"
 import SecretPromptDialog from "./components/dialogs/SecretPromptDialog.js"
 import McpPanel from "./components/McpPanel.js"
 import InputArea, { type AutocompleteInputHandle } from "./components/input/InputArea.js"
-import {
-	type AutocompleteTrigger,
-	type FileResult,
-	type SlashCommandResult,
-	PickerSelect,
-	createFileTrigger,
-	createSlashCommandTrigger,
-	createModeTrigger,
-	createHelpTrigger,
-	createHistoryTrigger,
-	toFileResult,
-	toSlashCommandResult,
-	toModeResult,
-	toHistoryResult,
-} from "./components/autocomplete/index.js"
+import { type FileResult, type SlashCommandResult, PickerSelect } from "./components/autocomplete/index.js"
 
 const PICKER_MAX_VISIBLE = 8
 
@@ -79,7 +60,6 @@ export interface TUIAppProps extends ExtensionHostOptions {
 }
 
 // Imported here to avoid a circular type-only import through components.
-import type { StaticItem } from "./transcript.js"
 import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
 
 /**
@@ -152,26 +132,6 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const followupAutocompleteRef = useRef<AutocompleteInputHandle<any>>(null)
 
-	// Stable refs for autocomplete data - prevents useMemo from recreating triggers on every data change
-	const fileSearchResultsRef = useRef(fileSearchResults)
-	const allSlashCommandsRef = useRef(allSlashCommands)
-	const availableModesRef = useRef(availableModes)
-	const taskHistoryRef = useRef(taskHistory)
-
-	// Keep refs in sync with current state
-	useEffect(() => {
-		fileSearchResultsRef.current = fileSearchResults
-	}, [fileSearchResults])
-	useEffect(() => {
-		allSlashCommandsRef.current = allSlashCommands
-	}, [allSlashCommands])
-	useEffect(() => {
-		availableModesRef.current = availableModes
-	}, [availableModes])
-	useEffect(() => {
-		taskHistoryRef.current = taskHistory
-	}, [taskHistory])
-
 	// Terminal size drives the dynamic-tail row budget below: if the tail
 	// outgrows the terminal, its top rows scroll into native scrollback where
 	// ink can never erase them again (permanent duplicated lines), and ink
@@ -232,25 +192,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			firstTextMessageSkipped,
 		})
 
-	// A command with no terminal of its own (git asking for a password, ssh for a
-	// key passphrase) reaches the user through `window.showInputBox` in the core.
-	// Registering a handler is what turns that call into a prompt here instead of
-	// the shim's default "no answer"; unregistering on unmount releases anything
-	// still waiting so the command fails rather than hanging on a dead interface.
-	useEffect(() => {
-		setInputBoxHandler(async (options) =>
-			useSecretPromptStore.getState().ask({
-				title: options.title,
-				prompt: options.prompt ?? "",
-				masked: options.password !== false,
-			}),
-		)
-
-		return () => {
-			setInputBoxHandler(undefined)
-			useSecretPromptStore.getState().cancelAll()
-		}
-	}, [])
+	useSecretPromptBridge()
 
 	// Initialize global input hook (scroll/focus toggle removed — plan §8)
 	useGlobalInput({
@@ -268,78 +210,6 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// --- Transcript split (plan §3) -------------------------------------------
 
 	const hasPendingAsk = Boolean(pendingAsk)
-	// The collapsed thinking row does not show the reasoning text, so a thinking
-	// message the answer has already moved past can be printed before the core's
-	// late finalization arrives (see `getStaticCount`).
-	const staticCount = getStaticCount(messages, isLoading, hasPendingAsk, {
-		settleSupersededThinking: !verboseTranscript,
-	})
-
-	// Monotonicity + task-switch reset detection. `staticKey` remounts the
-	// `<Static>` region when the message array identity changes (task switch
-	// cleared it), so the old scrollback stays above a fresh region. The rule
-	// itself lives in `nextPromotion` so it can be tested on its own.
-	const [staticKey, setStaticKey] = useState(0)
-	const [prevStaticCount, setPrevStaticCount] = useState(0)
-	// `prevIds` is only consulted inside the effect below to detect task-switch
-	// resets (it never participates in rendering) so it lives in a ref instead
-	// of state. Keeping it in state made it an effect dependency, and since we
-	// rebuild a fresh ids array on every run, the new identity retriggered the
-	// effect unconditionally → "Maximum update depth exceeded".
-	const prevIdsRef = useRef<string[]>([])
-	// Mirror of `prevStaticCount` for the effect to read. Reading the state
-	// itself would need it in the dependency list, which would re-run the
-	// effect on its own update.
-	const promotedRef = useRef(0)
-	// What was printed of streaming answers before they completed (see
-	// `streamCommit.ts`). Belongs to the current `<Static>` region, so it is
-	// dropped together with it.
-	const [streamCommits, setStreamCommits] = useState<StreamCommits>({})
-
-	useEffect(() => {
-		const messageIds = messages.map((m) => m.id)
-		const next = nextPromotion({
-			messageIds,
-			previousIds: prevIdsRef.current,
-			staticCount,
-			promoted: promotedRef.current,
-		})
-		if (next.remount) {
-			setStaticKey((k) => k + 1)
-		}
-		if (next.remount || messageIds.length === 0) {
-			setStreamCommits((commits) => (Object.keys(commits).length === 0 ? commits : {}))
-		}
-		promotedRef.current = next.promoted
-		setPrevStaticCount(next.promoted)
-		prevIdsRef.current = messageIds
-	}, [messages, staticCount])
-
-	const effectiveStaticCount = Math.max(prevStaticCount, staticCount)
-	const staticMessages = messages.slice(0, effectiveStaticCount)
-	const dynamicMessages = messages.slice(effectiveStaticCount)
-
-	// Stream the answer into scrollback line by line (plan: 2026-09-22 cli
-	// stream answer into scrollback).
-	const { streaming: streamingHead, committed: committedHead } = tailHeads(dynamicMessages[0], streamCommits)
-
-	useEffect(() => {
-		if (!streamingHead) {
-			return
-		}
-		setStreamCommits((commits) => {
-			const next = advanceStreamCommit(streamingHead.content, commits[streamingHead.id])
-			return next ? { ...commits, [streamingHead.id]: next } : commits
-		})
-	}, [streamingHead])
-
-	// Row budget per dynamic-tail message (plan: 2026-08-07 clamp dynamic
-	// tail). Reserve covers spinner + bordered input/footer or dialogs.
-	const TAIL_RESERVED_ROWS = 12
-	const tailRowsPerMessage = Math.max(
-		3,
-		Math.floor((terminalRows - TAIL_RESERVED_ROWS) / Math.max(1, dynamicMessages.length)),
-	)
 
 	// The banner the user is looking at never changes: ink's `<Static>` prints
 	// each item once and cannot rewrite it, so the copy already in scrollback
@@ -373,17 +243,21 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		],
 	)
 
-	const staticItems = useMemo<StaticItem[]>(
-		() =>
-			buildStaticItems({
-				messages: staticMessages,
-				welcomeProps,
-				expanded: verboseTranscript,
-				reprintEpoch: transcriptReprintEpoch,
-				commits: streamCommits,
-				streamingHead: committedHead,
-			}),
-		[staticMessages, welcomeProps, verboseTranscript, transcriptReprintEpoch, streamCommits, committedHead],
+	const { staticKey, staticItems, dynamicMessages, streamCommits, committedHead } = useTranscriptPromotion({
+		messages,
+		isLoading,
+		hasPendingAsk,
+		verboseTranscript,
+		transcriptReprintEpoch,
+		welcomeProps,
+	})
+
+	// Row budget per dynamic-tail message (plan: 2026-08-07 clamp dynamic
+	// tail). Reserve covers spinner + bordered input/footer or dialogs.
+	const TAIL_RESERVED_ROWS = 12
+	const tailRowsPerMessage = Math.max(
+		3,
+		Math.floor((terminalRows - TAIL_RESERVED_ROWS) / Math.max(1, dynamicMessages.length)),
 	)
 
 	// --- Loading spinner timing -----------------------------------------------
@@ -426,44 +300,14 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	// --- MCP servers (/mcp panel, failure notice) ------------------------------
 
-	const mcpGlobalConfigPath = hostOptions.mcpSettingsPath ?? getDefaultMcpSettingsPath()
-	const mcpProjectConfigPath = path.join(workspacePath, ".roo", "mcp.json")
-
-	// A server that fails to start used to fail silently: tell the user once
-	// per failure and point at the panel, which holds the error.
-	const reportedMcpFailures = useRef(new Set<string>())
-	useEffect(() => {
-		for (const server of takeNewMcpFailures(mcpServers, reportedMcpFailures.current)) {
-			showWarning(`MCP server "${server.name}" failed to start ${figures.dot} /mcp for details`, 6000)
-		}
-	}, [mcpServers, showWarning])
-
-	const handleMcpRestart = useCallback(
-		(server: McpServer) => {
-			sendToExtension?.({ type: "restartMcpServer", text: server.name, source: server.source ?? "global" })
-			showInfo(`Restarting ${server.name}${figures.ellipsis}`, 2000)
-		},
-		[sendToExtension, showInfo],
-	)
-
-	const handleMcpToggleDisabled = useCallback(
-		(server: McpServer) => {
-			const disabled = !server.disabled
-			sendToExtension?.({
-				type: "toggleMcpServer",
-				serverName: server.name,
-				source: server.source ?? "global",
-				disabled,
-			})
-			showInfo(`${disabled ? "Disabling" : "Enabling"} ${server.name}${figures.ellipsis}`, 2000)
-		},
-		[sendToExtension, showInfo],
-	)
-
-	const handleMcpReload = useCallback(() => {
-		sendToExtension?.({ type: "refreshAllMcpServers" })
-		showInfo(`Reloading MCP config files${figures.ellipsis}`, 2000)
-	}, [sendToExtension, showInfo])
+	const mcpPanel = useMcpPanel({
+		mcpServers,
+		workspacePath,
+		mcpSettingsPath: hostOptions.mcpSettingsPath,
+		sendToExtension,
+		showInfo,
+		showWarning,
+	})
 
 	// `showFollowupSuggestions` is reused by the arrow-key countdown-cancel
 	// `useInput` below.
@@ -474,89 +318,17 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 
 	// --- Autocomplete triggers (unchanged logic) ------------------------------
 
-	// File search handler for the file trigger
-	const handleFileSearch = useCallback(
-		(query: string) => {
-			if (!sendToExtension) {
-				return
-			}
-			sendToExtension({ type: "searchFiles", query })
-		},
-		[sendToExtension],
-	)
-
-	// Create autocomplete triggers
-	// Using 'any' to allow mixing different trigger types (FileResult, SlashCommandResult, ModeResult, HelpShortcutResult, HistoryResult)
-	// IMPORTANT: We use refs here to avoid recreating triggers every time data changes.
-	// This prevents the UI flash caused by: data change -> memo recreation -> re-render with stale state
-	// The getResults/getCommands/getModes/getHistory callbacks always read from refs to get fresh data.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const autocompleteTriggers = useMemo((): AutocompleteTrigger<any>[] => {
-		const fileTrigger = createFileTrigger({
-			onSearch: handleFileSearch,
-			getResults: () => {
-				const results = fileSearchResultsRef.current
-				return results.map(toFileResult)
-			},
-		})
-
-		const slashCommandTrigger = createSlashCommandTrigger({
-			getCommands: () => {
-				// Merge CLI global commands with extension commands
-				const extensionCommands = allSlashCommandsRef.current.map(toSlashCommandResult)
-				const globalCommands = getGlobalCommandsForAutocomplete().map(toSlashCommandResult)
-				// Global commands appear first, then extension commands
-				return [...globalCommands, ...extensionCommands]
-			},
-		})
-
-		const modeTrigger = createModeTrigger({
-			getModes: () => availableModesRef.current.map(toModeResult),
-		})
-
-		const helpTrigger = createHelpTrigger()
-
-		// History trigger - type # to search and resume previous tasks
-		const historyTrigger = createHistoryTrigger({
-			getHistory: () => {
-				// Filter to only show tasks for the current workspace
-				// Use arePathsEqual for proper cross-platform path comparison
-				// (handles trailing slashes, separators, and case sensitivity)
-				const history = taskHistoryRef.current
-				const filtered = history.filter((item) => arePathsEqual(item.workspace, workspacePath))
-				return filtered.map(toHistoryResult)
-			},
-		})
-
-		return [fileTrigger, slashCommandTrigger, modeTrigger, helpTrigger, historyTrigger]
-	}, [handleFileSearch, workspacePath]) // Only depend on handleFileSearch and workspacePath - data accessed via refs
-
-	// Refresh search results when fileSearchResults changes while file picker is open
-	// This handles the async timing where API results arrive after initial search
-	// IMPORTANT: Only run when fileSearchResults array identity changes (new API response)
-	// We use a ref to track this and avoid depending on pickerState in the effect
-	const prevFileSearchResultsRef = useRef(fileSearchResults)
-	const pickerStateRef = useRef(pickerState)
-	pickerStateRef.current = pickerState
-
-	useEffect(() => {
-		// Only run if fileSearchResults actually changed (different array reference)
-		if (fileSearchResults === prevFileSearchResultsRef.current) {
-			return
-		}
-
-		const currentPickerState = pickerStateRef.current
-		const willRefresh =
-			currentPickerState.isOpen && currentPickerState.activeTrigger?.id === "file" && fileSearchResults.length > 0
-
-		prevFileSearchResultsRef.current = fileSearchResults
-
-		// Only refresh when file picker is open and we have new results
-		if (willRefresh) {
-			autocompleteRef.current?.refreshSearch()
-			followupAutocompleteRef.current?.refreshSearch()
-		}
-	}, [fileSearchResults]) // Only depend on fileSearchResults - read pickerState from ref
+	const autocompleteTriggers = useAutocompleteTriggers({
+		fileSearchResults,
+		allSlashCommands,
+		availableModes,
+		taskHistory,
+		workspacePath,
+		sendToExtension,
+		pickerState,
+		autocompleteRef,
+		followupAutocompleteRef,
+	})
 
 	// --- Followup countdown-cancel: any arrow key cancels the auto-accept ------
 	useInput(
@@ -660,11 +432,11 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 				{showMcpPanel && (
 					<McpPanel
 						servers={mcpServers}
-						globalConfigPath={mcpGlobalConfigPath}
-						projectConfigPath={mcpProjectConfigPath}
-						onRestart={handleMcpRestart}
-						onToggleDisabled={handleMcpToggleDisabled}
-						onReload={handleMcpReload}
+						globalConfigPath={mcpPanel.globalConfigPath}
+						projectConfigPath={mcpPanel.projectConfigPath}
+						onRestart={mcpPanel.onRestart}
+						onToggleDisabled={mcpPanel.onToggleDisabled}
+						onReload={mcpPanel.onReload}
 						isActive={!showApprovalDialog && !showFollowupDialog && !secretPrompt}
 					/>
 				)}
