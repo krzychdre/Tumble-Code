@@ -3,10 +3,11 @@ import OpenAI from "openai"
 
 import {
 	type ModelInfo,
-	deepSeekModels,
 	deepSeekDefaultModelId,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
 	OPENAI_AZURE_AI_INFERENCE_PATH,
+	providerModelDefinitions,
+	resolveCatalogModel,
 } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
@@ -76,8 +77,7 @@ export class DeepSeekHandler extends OpenAiHandler {
 	}
 
 	override getModel() {
-		const id = this.options.apiModelId ?? deepSeekDefaultModelId
-		const info = deepSeekModels[id as keyof typeof deepSeekModels] || deepSeekModels[deepSeekDefaultModelId]
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions.deepseek)
 		const params = getModelParams({
 			format: "openai",
 			modelId: id,

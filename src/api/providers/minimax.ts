@@ -3,7 +3,7 @@ import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
 import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
 import OpenAI from "openai"
 
-import { type MinimaxModelId, minimaxDefaultModelId, minimaxModels } from "@roo-code/types"
+import { providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -123,9 +123,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 	}
 
 	getModel() {
-		const modelId = this.options.apiModelId
-		const id = modelId && modelId in minimaxModels ? (modelId as MinimaxModelId) : minimaxDefaultModelId
-		const info = minimaxModels[id]
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions.minimax)
 
 		const params = getModelParams({
 			format: "anthropic",

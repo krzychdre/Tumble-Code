@@ -64,25 +64,44 @@ export abstract class RouterProvider extends BaseProvider {
 	override getModel(): { id: string; info: ModelInfo } {
 		const id = this.modelId ?? this.defaultModelId
 
-		// First check instance models (populated by fetchModel)
-		if (this.models[id]) {
-			return { id, info: this.models[id] }
+		// Instance models are populated by fetchModel. Before that, fall back to
+		// the global (synchronous disk/memory) cache and keep it for future calls.
+		if (!this.models[id]) {
+			const cachedModels = getModelsFromCache(this.name)
+			if (cachedModels?.[id]) {
+				this.models = cachedModels
+			}
 		}
 
-		// Fall back to global cache (synchronous disk/memory cache)
-		// This ensures models are available before fetchModel() is called
-		const cachedModels = getModelsFromCache(this.name)
-		if (cachedModels?.[id]) {
-			// Also populate instance models for future calls
-			this.models = cachedModels
-			return { id, info: cachedModels[id] }
-		}
-
-		// Last resort: return default model
-		return { id: this.defaultModelId, info: this.defaultModelInfo }
+		return resolveRouterModel({
+			modelId: this.modelId,
+			defaultModelId: this.defaultModelId,
+			defaultModelInfo: this.defaultModelInfo,
+			models: this.models,
+		})
 	}
 
 	protected supportsTemperature(modelId: string): boolean {
 		return !modelId.startsWith("openai/o3-mini")
 	}
+}
+
+/**
+ * The model a router provider reports for a model list: the configured id when
+ * the list has it, otherwise the default model.
+ */
+export function resolveRouterModel({
+	modelId,
+	defaultModelId,
+	defaultModelInfo,
+	models,
+}: {
+	modelId?: string
+	defaultModelId: string
+	defaultModelInfo: ModelInfo
+	models: Record<string, ModelInfo>
+}): { id: string; info: ModelInfo } {
+	const id = modelId ?? defaultModelId
+
+	return models[id] ? { id, info: models[id] } : { id: defaultModelId, info: defaultModelInfo }
 }

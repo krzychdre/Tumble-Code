@@ -9,6 +9,8 @@ import {
 	type ModelInfo,
 	ZAI_DEFAULT_TEMPERATURE,
 	zaiApiLineConfigs,
+	providerModelDefinitions,
+	resolveCatalogModel,
 } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
@@ -27,11 +29,27 @@ type ZAiChatCompletionParams = Omit<OpenAI.Chat.ChatCompletionCreateParamsStream
 	reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
 }
 
+/** The Z.ai model list of the profile's API line: the mainland line has its own list and default. */
+function zaiModelCatalog(options: ApiHandlerOptions) {
+	const isChina = zaiApiLineConfigs[options.zaiApiLine ?? "international_coding"].isChina
+
+	return {
+		models: (isChina ? mainlandZAiModels : internationalZAiModels) as unknown as Record<string, ModelInfo>,
+		defaultModelId: (isChina ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId) as string,
+		unknownModelPolicy: providerModelDefinitions.zai.unknownModelPolicy,
+	}
+}
+
+/** The `{ id, info }` that `ZAiHandler.getModel()` reports, without building a handler. */
+export function resolveZAiModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const { id, info } = resolveCatalogModel(options.apiModelId, zaiModelCatalog(options))
+
+	return { id, info }
+}
+
 export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 	constructor(options: ApiHandlerOptions) {
-		const isChina = zaiApiLineConfigs[options.zaiApiLine ?? "international_coding"].isChina
-		const models = (isChina ? mainlandZAiModels : internationalZAiModels) as unknown as Record<string, ModelInfo>
-		const defaultModelId = (isChina ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId) as string
+		const { models, defaultModelId, unknownModelPolicy } = zaiModelCatalog(options)
 
 		super({
 			...options,
@@ -40,6 +58,7 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 			apiKey: options.zaiApiKey ?? "not-provided",
 			defaultProviderModelId: defaultModelId,
 			providerModels: models,
+			unknownModelPolicy,
 			defaultTemperature: ZAI_DEFAULT_TEMPERATURE,
 		})
 	}

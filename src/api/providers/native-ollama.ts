@@ -390,11 +390,7 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 	}
 
 	override getModel(): { id: string; info: ModelInfo } {
-		const modelId = this.options.ollamaModelId || ""
-		return {
-			id: modelId,
-			info: this.models[modelId] || openAiModelInfoSaneDefaults,
-		}
+		return resolveOllamaModel(this.options, this.models)
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
@@ -433,5 +429,20 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 		} catch (error) {
 			throw handleProviderError(error, "Ollama")
 		}
+	}
+}
+
+/**
+ * The `{ id, info }` that `NativeOllamaHandler.getModel()` reports for the
+ * given model list (the handler's fetched list), without building a handler.
+ */
+export function resolveOllamaModel(
+	options: ApiHandlerOptions,
+	models: Record<string, ModelInfo> = {},
+): { id: string; info: ModelInfo } {
+	const modelId = options.ollamaModelId || ""
+	return {
+		id: modelId,
+		info: models[modelId] || openAiModelInfoSaneDefaults,
 	}
 }

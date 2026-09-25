@@ -9,6 +9,8 @@ import {
 	anthropicModels,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 	ApiProviderError,
+	providerModelDefinitions,
+	resolveCatalogModel,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -194,45 +196,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	}
 
 	getModel() {
-		const modelId = this.options.apiModelId
-		let id: string
-		let info: ModelInfo
-
-		if (modelId && Object.hasOwn(anthropicModels, modelId)) {
-			id = modelId
-			info = anthropicModels[modelId as AnthropicModelId]
-		} else if (modelId) {
-			// Honor a custom id (custom base URL proxies, dated snapshots,
-			// cli-settings.json model ids) instead of silently sending the
-			// default model to the API.
-			id = modelId
-			info = guessAnthropicModelInfo(modelId)
-		} else {
-			id = anthropicDefaultModelId
-			info = anthropicModels[anthropicDefaultModelId]
-		}
-
-		// If 1M context beta is enabled for supported models, update the model info
-		if (
-			(id === "claude-sonnet-4-20250514" ||
-				id === "claude-sonnet-4-5" ||
-				id === "claude-sonnet-4-6" ||
-				id === "claude-opus-4-6") &&
-			this.options.anthropicBeta1MContext
-		) {
-			// Use the tier pricing for 1M context
-			const tier = info.tiers?.[0]
-			if (tier) {
-				info = {
-					...info,
-					contextWindow: tier.contextWindow,
-					inputPrice: tier.inputPrice,
-					outputPrice: tier.outputPrice,
-					cacheWritesPrice: tier.cacheWritesPrice,
-					cacheReadsPrice: tier.cacheReadsPrice,
-				}
-			}
-		}
+		const { id, info } = selectAnthropicModel(this.options)
 
 		const params = getModelParams({
 			format: "anthropic",
@@ -242,12 +206,8 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			defaultTemperature: 0,
 		})
 
-		// The `:thinking` suffix indicates that the model is a "Hybrid"
-		// reasoning model and that reasoning is required to be enabled.
-		// The actual model ID honored by Anthropic's API does not have this
-		// suffix.
 		return {
-			id: id === "claude-3-7-sonnet-20250219:thinking" ? "claude-3-7-sonnet-20250219" : id,
+			id: toAnthropicRequestModelId(id),
 			info,
 			betas: id === "claude-3-7-sonnet-20250219:thinking" ? ["output-128k-2025-02-19"] : undefined,
 			...params,
@@ -289,4 +249,54 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			usage: anthropicCompletionUsage(message.usage),
 		}
 	}
+}
+
+/**
+ * The model an Anthropic profile selects, before request parameters: a listed
+ * model, a custom id with guessed info (custom base URL proxies, dated
+ * snapshots, cli-settings.json model ids), or the default; with the 1M context
+ * tier applied when enabled.
+ */
+function selectAnthropicModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const { id, info: listedInfo } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.anthropic, {
+		customModelInfo: guessAnthropicModelInfo,
+	})
+	let info = listedInfo
+
+	// If 1M context beta is enabled for supported models, update the model info
+	if (
+		(id === "claude-sonnet-4-20250514" ||
+			id === "claude-sonnet-4-5" ||
+			id === "claude-sonnet-4-6" ||
+			id === "claude-opus-4-6") &&
+		options.anthropicBeta1MContext
+	) {
+		// Use the tier pricing for 1M context
+		const tier = info.tiers?.[0]
+		if (tier) {
+			info = {
+				...info,
+				contextWindow: tier.contextWindow,
+				inputPrice: tier.inputPrice,
+				outputPrice: tier.outputPrice,
+				cacheWritesPrice: tier.cacheWritesPrice,
+				cacheReadsPrice: tier.cacheReadsPrice,
+			}
+		}
+	}
+
+	return { id, info }
+}
+
+// The `:thinking` suffix indicates that the model is a "Hybrid" reasoning
+// model and that reasoning is required to be enabled. The actual model ID
+// honored by Anthropic's API does not have this suffix.
+const toAnthropicRequestModelId = (id: string) =>
+	id === "claude-3-7-sonnet-20250219:thinking" ? "claude-3-7-sonnet-20250219" : id
+
+/** The `{ id, info }` that `AnthropicHandler.getModel()` reports, without building a handler. */
+export function resolveAnthropicModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const { id, info } = selectAnthropicModel(options)
+
+	return { id: toAnthropicRequestModelId(id), info }
 }

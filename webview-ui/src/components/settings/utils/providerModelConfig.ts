@@ -1,20 +1,10 @@
 import type { ProviderName, ModelInfo, ModelSource, ModelSourceOptions, ProviderSettings } from "@roo-code/types"
 import {
-	anthropicDefaultModelId,
-	bedrockDefaultModelId,
-	deepSeekDefaultModelId,
-	moonshotDefaultModelId,
-	geminiDefaultModelId,
-	mistralDefaultModelId,
-	openAiNativeDefaultModelId,
-	qwenCodeDefaultModelId,
-	vertexDefaultModelId,
-	xaiDefaultModelId,
 	internationalZAiDefaultModelId,
 	mainlandZAiDefaultModelId,
-	minimaxDefaultModelId,
 	getProviderDefinition,
 	modelSources,
+	providerModelDefinitions,
 } from "@roo-code/types"
 
 import { MODELS_BY_PROVIDER } from "../constants"
@@ -45,20 +35,12 @@ export const PROVIDER_SERVICE_CONFIG: Partial<Record<ProviderName, ProviderServi
 	},
 }
 
-export const PROVIDER_DEFAULT_MODEL_IDS: Partial<Record<ProviderName, string>> = {
-	anthropic: anthropicDefaultModelId,
-	bedrock: bedrockDefaultModelId,
-	deepseek: deepSeekDefaultModelId,
-	moonshot: moonshotDefaultModelId,
-	gemini: geminiDefaultModelId,
-	mistral: mistralDefaultModelId,
-	"openai-native": openAiNativeDefaultModelId,
-	"qwen-code": qwenCodeDefaultModelId,
-	vertex: vertexDefaultModelId,
-	xai: xaiDefaultModelId,
-	zai: internationalZAiDefaultModelId,
-	minimax: minimaxDefaultModelId,
-}
+/** The default model of every provider with a static model list, from `providerModelDefinitions`. */
+export const PROVIDER_DEFAULT_MODEL_IDS: Partial<Record<ProviderName, string>> = Object.fromEntries(
+	Object.entries(providerModelDefinitions).flatMap(([provider, definition]) =>
+		"models" in definition ? [[provider, definition.defaultModelId]] : [],
+	),
+)
 
 export const getProviderServiceConfig = (provider: ProviderName): ProviderServiceConfig => {
 	return PROVIDER_SERVICE_CONFIG[provider] ?? { serviceName: provider, serviceUrl: "" }

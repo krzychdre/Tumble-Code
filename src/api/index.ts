@@ -5,8 +5,10 @@ import { classifyProvider, type ProviderSettings, type ModelInfo } from "@roo-co
 
 import { ApiStream } from "./transform/stream"
 import {
+	type ResolvedModel,
+	type RuntimeProviderEntry,
 	defaultRuntimeProviderId,
-	getRuntimeProviderFactory,
+	getRuntimeProviderEntry,
 	runtimeProviderRegistry,
 } from "./runtime-provider-registry"
 
@@ -128,20 +130,47 @@ export interface ApiHandler {
 	 * @param destroyClient - If true, destroy and recreate the client to force connection termination
 	 */
 	cancelRequest?(destroyClient?: boolean): void
+
+	/**
+	 * Releases what the handler holds beyond its own lifetime (event
+	 * subscriptions). Called when the handler is replaced or its owner goes
+	 * away. A request may still be streaming on it, so this must not abort
+	 * anything; stopping a request is `cancelRequest`'s job.
+	 */
+	dispose?(): void
 }
 
-export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
-	const { apiProvider, ...options } = configuration
-	const providerId = apiProvider ?? defaultRuntimeProviderId
+/**
+ * The runtime entry that executes a profile: its provider's, or Anthropic's for
+ * a missing provider and for providers without a runtime handler. Retired and
+ * unknown providers cannot be executed.
+ */
+function getExecutableProviderEntry(configuration: ProviderSettings): RuntimeProviderEntry {
+	const providerId = configuration.apiProvider ?? defaultRuntimeProviderId
 	const classification = classifyProvider(providerId)
 
 	if (classification === "retired" || classification === "unknown") {
 		throw new ProviderUnavailableError(providerId, classification)
 	}
 
-	const providerFactory = getRuntimeProviderFactory(providerId) ?? runtimeProviderRegistry[defaultRuntimeProviderId]
+	return getRuntimeProviderEntry(providerId) ?? runtimeProviderRegistry[defaultRuntimeProviderId]
+}
 
-	return providerFactory(options)
+export function buildApiHandler(configuration: ProviderSettings): ApiHandler {
+	const { apiProvider: _apiProvider, ...options } = configuration
+
+	return getExecutableProviderEntry(configuration).factory(options)
+}
+
+/**
+ * The model a profile selects (`{ id, info }` as its handler's `getModel()`
+ * reports it) without building a handler. Throws like `buildApiHandler` for
+ * retired and unknown providers.
+ */
+export function resolveProviderModel(configuration: ProviderSettings): ResolvedModel {
+	const { apiProvider: _apiProvider, ...options } = configuration
+
+	return getExecutableProviderEntry(configuration).resolveModel(options)
 }
 
 export class ProviderUnavailableError extends Error {

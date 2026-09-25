@@ -4,9 +4,8 @@ import { GoogleAuth } from "google-auth-library"
 
 import {
 	type ModelInfo,
-	type VertexModelId,
-	vertexDefaultModelId,
-	vertexModels,
+	providerModelDefinitions,
+	resolveCatalogModel,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 	VERTEX_1M_CONTEXT_MODEL_IDS,
 } from "@roo-code/types"
@@ -26,6 +25,7 @@ import {
 
 import { BaseProvider } from "./base-provider"
 import { parseVertexJsonCredentials } from "./utils/vertex-credentials"
+import { withoutThinkingSuffix } from "./utils/thinking-suffix"
 import { handleProviderError } from "./utils/error-handler"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { anthropicCompletionUsage } from "./utils/completion-usage"
@@ -150,30 +150,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 	}
 
 	getModel() {
-		const modelId = this.options.apiModelId
-		let id = modelId && modelId in vertexModels ? (modelId as VertexModelId) : vertexDefaultModelId
-		let info: ModelInfo = vertexModels[id]
-
-		// Check if 1M context beta should be enabled for supported models
-		const supports1MContext = VERTEX_1M_CONTEXT_MODEL_IDS.includes(
-			id as (typeof VERTEX_1M_CONTEXT_MODEL_IDS)[number],
-		)
-		const enable1MContext = supports1MContext && this.options.vertex1MContext
-
-		// If 1M context beta is enabled, update the model info with tier pricing
-		if (enable1MContext) {
-			const tier = info.tiers?.[0]
-			if (tier) {
-				info = {
-					...info,
-					contextWindow: tier.contextWindow,
-					inputPrice: tier.inputPrice,
-					outputPrice: tier.outputPrice,
-					cacheWritesPrice: tier.cacheWritesPrice,
-					cacheReadsPrice: tier.cacheReadsPrice,
-				}
-			}
-		}
+		const { id, info, enable1MContext } = selectAnthropicVertexModel(this.options)
 
 		const params = getModelParams({
 			format: "anthropic",
@@ -202,12 +179,8 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			betas.push("context-1m-2025-08-07")
 		}
 
-		// The `:thinking` suffix indicates that the model is a "Hybrid"
-		// reasoning model and that reasoning is required to be enabled.
-		// The actual model ID honored by Anthropic's API does not have this
-		// suffix.
 		return {
-			id: id.endsWith(":thinking") ? id.replace(":thinking", "") : id,
+			id: withoutThinkingSuffix(id),
 			info,
 			betas: betas.length > 0 ? betas : undefined,
 			...params,
@@ -258,4 +231,45 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			throw handleProviderError(error, "Vertex")
 		}
 	}
+}
+
+/**
+ * The Claude model a Vertex profile selects, before request parameters, with
+ * the 1M context tier applied when that beta is enabled for the model.
+ */
+function selectAnthropicVertexModel(options: ApiHandlerOptions): {
+	id: string
+	info: ModelInfo
+	enable1MContext: boolean
+} {
+	const { id, info: listedInfo } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.vertex)
+	let info = listedInfo
+
+	// Check if 1M context beta should be enabled for supported models
+	const supports1MContext = VERTEX_1M_CONTEXT_MODEL_IDS.includes(id as (typeof VERTEX_1M_CONTEXT_MODEL_IDS)[number])
+	const enable1MContext = Boolean(supports1MContext && options.vertex1MContext)
+
+	// If 1M context beta is enabled, update the model info with tier pricing
+	if (enable1MContext) {
+		const tier = info.tiers?.[0]
+		if (tier) {
+			info = {
+				...info,
+				contextWindow: tier.contextWindow,
+				inputPrice: tier.inputPrice,
+				outputPrice: tier.outputPrice,
+				cacheWritesPrice: tier.cacheWritesPrice,
+				cacheReadsPrice: tier.cacheReadsPrice,
+			}
+		}
+	}
+
+	return { id, info, enable1MContext }
+}
+
+/** The `{ id, info }` that `AnthropicVertexHandler.getModel()` reports, without building a handler. */
+export function resolveAnthropicVertexModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const { id, info } = selectAnthropicVertexModel(options)
+
+	return { id: withoutThinkingSuffix(id), info }
 }

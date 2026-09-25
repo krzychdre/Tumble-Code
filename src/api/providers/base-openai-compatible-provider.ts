@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import type { ModelInfo } from "@roo-code/types"
+import { type ModelInfo, type UnknownModelPolicy, resolveCatalogModel } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
@@ -19,6 +19,8 @@ type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerO
 	baseURL: string
 	defaultProviderModelId: ModelName
 	providerModels: Record<ModelName, ModelInfo>
+	/** What `getModel` does with an id missing from `providerModels`; substitutes the default unless set. */
+	unknownModelPolicy?: UnknownModelPolicy
 	defaultTemperature?: number
 }
 
@@ -31,6 +33,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	protected readonly defaultTemperature: number
 	protected readonly defaultProviderModelId: ModelName
 	protected readonly providerModels: Record<ModelName, ModelInfo>
+	protected readonly unknownModelPolicy: UnknownModelPolicy
 
 	protected readonly options: ApiHandlerOptions
 
@@ -42,6 +45,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		baseURL,
 		defaultProviderModelId,
 		providerModels,
+		unknownModelPolicy,
 		defaultTemperature,
 		...options
 	}: BaseOpenAiCompatibleProviderOptions<ModelName>) {
@@ -51,6 +55,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		this.baseURL = baseURL
 		this.defaultProviderModelId = defaultProviderModelId
 		this.providerModels = providerModels
+		this.unknownModelPolicy = unknownModelPolicy ?? "substitute-default"
 		this.defaultTemperature = defaultTemperature ?? 0
 
 		this.options = options
@@ -225,11 +230,12 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	}
 
 	override getModel() {
-		const id =
-			this.options.apiModelId && this.options.apiModelId in this.providerModels
-				? (this.options.apiModelId as ModelName)
-				: this.defaultProviderModelId
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, {
+			models: this.providerModels,
+			defaultModelId: this.defaultProviderModelId,
+			unknownModelPolicy: this.unknownModelPolicy,
+		})
 
-		return { id, info: this.providerModels[id] }
+		return { id: id as ModelName, info }
 	}
 }

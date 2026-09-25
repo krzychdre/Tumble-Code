@@ -159,18 +159,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 	}
 
 	override getModel(): { id: string; info: ModelInfo } {
-		const models = getModelsFromCache("lmstudio")
-		if (models && this.options.lmStudioModelId && models[this.options.lmStudioModelId]) {
-			return {
-				id: this.options.lmStudioModelId,
-				info: models[this.options.lmStudioModelId],
-			}
-		} else {
-			return {
-				id: this.options.lmStudioModelId || "",
-				info: openAiModelInfoSaneDefaults,
-			}
-		}
+		return resolveLmStudioModel(this.options)
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
@@ -208,5 +197,21 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		} catch (error) {
 			throw handleProviderError(error, this.providerName, { messageTransformer: () => LM_STUDIO_ERROR_HINT })
 		}
+	}
+}
+
+/** The `{ id, info }` that `LmStudioHandler.getModel()` reports, without building a handler. */
+export function resolveLmStudioModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const models = getModelsFromCache("lmstudio")
+	if (models && options.lmStudioModelId && models[options.lmStudioModelId]) {
+		return {
+			id: options.lmStudioModelId,
+			info: models[options.lmStudioModelId],
+		}
+	}
+
+	return {
+		id: options.lmStudioModelId || "",
+		info: openAiModelInfoSaneDefaults,
 	}
 }

@@ -29,7 +29,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Mode, modes } from "../../shared/modes"
-import { buildApiHandler } from "../../api"
+import { resolveProviderModel } from "../../api"
 
 // Type-safe model migrations mapping
 type ModelMigrations = {
@@ -714,10 +714,9 @@ export class ProviderSettingsManager {
 						continue
 					}
 
-					// Try to build an API handler to get model information
+					// Resolve the profile's model information (no handler is built)
 					try {
-						const apiHandler = buildApiHandler(providerProfileToLegacySettings(persistedProfile))
-						const modelInfo = apiHandler.getModel().info
+						const modelInfo = resolveProviderModel(providerProfileToLegacySettings(persistedProfile)).info
 
 						// Check if the model supports reasoning budgets
 						const supportsReasoningBudget =
@@ -736,7 +735,7 @@ export class ProviderSettingsManager {
 							delete persistedProfile.shared?.modelMaxTokens
 						}
 					} catch (error) {
-						// If we can't build the API handler or get model info, skip filtering
+						// If we can't resolve the model info, skip filtering
 						// to avoid accidental data loss from incomplete configurations
 						console.warn(`Skipping token field filtering for config '${name}': ${error}`)
 					}

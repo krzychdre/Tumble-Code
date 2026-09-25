@@ -1,10 +1,10 @@
-import { type ModelInfo, type VertexModelId, vertexDefaultModelId, vertexModels } from "@roo-code/types"
+import { type ModelInfo, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
 import { getModelParams } from "../transform/model-params"
 
-import { GeminiHandler } from "./gemini"
+import { GeminiHandler, finishGeminiModel } from "./gemini"
 import { SingleCompletionHandler } from "../index"
 
 export class VertexHandler extends GeminiHandler implements SingleCompletionHandler {
@@ -13,9 +13,7 @@ export class VertexHandler extends GeminiHandler implements SingleCompletionHand
 	}
 
 	override getModel() {
-		const modelId = this.options.apiModelId
-		let id = modelId && modelId in vertexModels ? (modelId as VertexModelId) : vertexDefaultModelId
-		let info: ModelInfo = vertexModels[id]
+		const { id, info } = selectVertexModel(this.options)
 		const params = getModelParams({
 			format: "gemini",
 			modelId: id,
@@ -24,17 +22,18 @@ export class VertexHandler extends GeminiHandler implements SingleCompletionHand
 			defaultTemperature: info.defaultTemperature ?? 1,
 		})
 
-		// Vertex Gemini models perform better with the edit tool instead of apply_diff.
-		info = {
-			...info,
-			excludedTools: [...new Set([...(info.excludedTools || []), "apply_diff"])],
-			includedTools: [...new Set([...(info.includedTools || []), "edit"])],
-		}
-
-		// The `:thinking` suffix indicates that the model is a "Hybrid"
-		// reasoning model and that reasoning is required to be enabled.
-		// The actual model ID honored by Gemini's API does not have this
-		// suffix.
-		return { id: id.endsWith(":thinking") ? id.replace(":thinking", "") : id, info, ...params }
+		return { ...finishGeminiModel({ id, info }), ...params }
 	}
+}
+
+/** The Gemini model a Vertex profile selects, before request parameters. */
+function selectVertexModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const { id, info } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.vertex)
+
+	return { id, info }
+}
+
+/** The `{ id, info }` that `VertexHandler.getModel()` reports, without building a handler. */
+export function resolveVertexModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	return finishGeminiModel(selectVertexModel(options))
 }

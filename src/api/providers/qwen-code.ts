@@ -4,7 +4,7 @@ import OpenAI from "openai"
 import * as os from "os"
 import * as path from "path"
 
-import { type ModelInfo, qwenCodeModels, qwenCodeDefaultModelId } from "@roo-code/types"
+import { type ModelInfo, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
 
@@ -260,8 +260,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 	}
 
 	override getModel(): { id: string; info: ModelInfo } {
-		const id = this.options.apiModelId ?? qwenCodeDefaultModelId
-		const info = qwenCodeModels[id as keyof typeof qwenCodeModels] || qwenCodeModels[qwenCodeDefaultModelId]
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions["qwen-code"])
 		return { id, info }
 	}
 

@@ -35,12 +35,17 @@ export async function singleCompletionWithUsage(
 
 	const handler = buildApiHandler(apiConfiguration)
 
-	// Check if handler supports single completions
-	if (!("completePrompt" in handler)) {
-		throw new Error("The selected API provider does not support prompt enhancement")
-	}
+	try {
+		// Check if handler supports single completions
+		if (!("completePrompt" in handler)) {
+			throw new Error("The selected API provider does not support prompt enhancement")
+		}
 
-	return runCompletion(handler as SingleCompletionHandler, promptText)
+		return await runCompletion(handler as SingleCompletionHandler, promptText)
+	} finally {
+		// The handler lives for this one call only.
+		handler.dispose?.()
+	}
 }
 
 /**

@@ -4,14 +4,13 @@ import OpenAI from "openai"
 
 import {
 	type ModelInfo,
-	openAiNativeDefaultModelId,
-	OpenAiNativeModelId,
-	openAiNativeModels,
 	OPENAI_NATIVE_DEFAULT_TEMPERATURE,
 	type VerbosityLevel,
 	type ReasoningEffortExtended,
 	type ServiceTier,
 	ApiProviderError,
+	providerModelDefinitions,
+	resolveCatalogModel,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -264,12 +263,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	// Removed isResponsesApiModel method as ALL models now use the Responses API
 
 	override getModel() {
-		const modelId = this.options.apiModelId
-
-		let id =
-			modelId && modelId in openAiNativeModels ? (modelId as OpenAiNativeModelId) : openAiNativeDefaultModelId
-
-		const info: ModelInfo = openAiNativeModels[id]
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions["openai-native"])
 
 		const params = getModelParams({
 			format: "openai",

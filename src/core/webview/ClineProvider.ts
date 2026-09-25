@@ -69,7 +69,7 @@ import { setPanel } from "./panelRegistry"
 import { t } from "../../i18n"
 
 import { buildApiHandler } from "../../api"
-import { forceFullModelDetailsLoad, hasLoadedFullDetails } from "../../api/providers/fetchers/lmstudio"
+import { getRuntimeProviderEntry } from "../../api/runtime-provider-registry"
 
 import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
@@ -503,18 +503,14 @@ export class ClineProvider
 	}
 
 	async performPreparationTasks(cline: Task) {
-		// LMStudio: We need to force model loading in order to read its context
+		// Some providers (LM Studio) must load the model to report its context
 		// size; we do it now since we're starting a task with that model selected.
-		if (cline.apiConfiguration && cline.apiConfiguration.apiProvider === "lmstudio") {
+		const providerEntry = getRuntimeProviderEntry(cline.apiConfiguration?.apiProvider)
+		if (cline.apiConfiguration && providerEntry?.capabilities.needsModelPreload && providerEntry.preloadModel) {
 			try {
-				if (!hasLoadedFullDetails(cline.apiConfiguration.lmStudioModelId!)) {
-					await forceFullModelDetailsLoad(
-						cline.apiConfiguration.lmStudioBaseUrl ?? "http://localhost:1234",
-						cline.apiConfiguration.lmStudioModelId!,
-					)
-				}
+				await providerEntry.preloadModel(cline.apiConfiguration)
 			} catch (error) {
-				this.log(`Failed to load full model details for LM Studio: ${error}`)
+				this.log(`Failed to load full model details for ${cline.apiConfiguration.apiProvider}: ${error}`)
 				vscode.window.showErrorMessage(error.message)
 			}
 		}

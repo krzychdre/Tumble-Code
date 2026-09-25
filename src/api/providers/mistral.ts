@@ -4,10 +4,12 @@ import OpenAI from "openai"
 
 import {
 	type MistralModelId,
-	mistralDefaultModelId,
 	mistralModels,
+	mistralDefaultModelId,
 	MISTRAL_DEFAULT_TEMPERATURE,
 	ApiProviderError,
+	providerModelDefinitions,
+	resolveCatalogModel,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -193,8 +195,11 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 	}
 
 	override getModel() {
-		const id = this.options.apiModelId ?? mistralDefaultModelId
-		const info = mistralModels[id as MistralModelId] ?? mistralModels[mistralDefaultModelId]
+		// Every Mistral model, the default included, declares `maxTokens`.
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions.mistral) as {
+			id: string
+			info: (typeof mistralModels)[MistralModelId]
+		}
 
 		// @TODO: Move this to the `getModelParams` function.
 		const maxTokens = this.options.includeMaxTokens ? info.maxTokens : undefined

@@ -354,8 +354,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	override getModel() {
-		const id = this.options.openAiModelId ?? ""
-		const info: ModelInfo = this.options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults
+		const { id, info } = resolveOpenAiModel(this.options)
 		const params = getModelParams({
 			format: "openai",
 			modelId: id,
@@ -648,5 +647,13 @@ export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiH
 		return [...new Set<string>(modelsArray)]
 	} catch (error) {
 		return []
+	}
+}
+
+/** The `{ id, info }` that `OpenAiHandler.getModel()` reports, without building a handler. */
+export function resolveOpenAiModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	return {
+		id: options.openAiModelId ?? "",
+		info: options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults,
 	}
 }

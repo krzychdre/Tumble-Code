@@ -1,37 +1,20 @@
 import {
 	type ProviderName,
 	type ModelInfo,
-	anthropicModels,
-	bedrockModels,
-	deepSeekModels,
-	moonshotModels,
-	geminiModels,
-	mistralModels,
-	openAiNativeModels,
-	openAiCodexModels,
-	qwenCodeModels,
-	vertexModels,
-	xaiModels,
-	internationalZAiModels,
-	minimaxModels,
 	getSelectableProviderDefinitions,
+	providerModelDefinitions,
 } from "@roo-code/types"
 
-export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = {
-	anthropic: anthropicModels,
-	bedrock: bedrockModels,
-	deepseek: deepSeekModels,
-	moonshot: moonshotModels,
-	gemini: geminiModels,
-	mistral: mistralModels,
-	"openai-native": openAiNativeModels,
-	"openai-codex": openAiCodexModels,
-	"qwen-code": qwenCodeModels,
-	vertex: vertexModels,
-	xai: xaiModels,
-	zai: internationalZAiModels,
-	minimax: minimaxModels,
-}
+/**
+ * The static model list of every provider that has one, from
+ * `providerModelDefinitions` (Z.ai shows its international list). Providers
+ * without an entry fetch their models or let the user configure them.
+ */
+export const MODELS_BY_PROVIDER: Partial<Record<ProviderName, Record<string, ModelInfo>>> = Object.fromEntries(
+	Object.entries(providerModelDefinitions).flatMap(([provider, definition]) =>
+		"models" in definition ? [[provider, definition.models]] : [],
+	),
+)
 
 const PROXY_PROVIDER_IDS = new Set<ProviderName>(["openai", "lmstudio", "ollama", "litellm"])
 
