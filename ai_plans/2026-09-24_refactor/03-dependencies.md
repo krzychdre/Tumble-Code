@@ -231,6 +231,15 @@ the real SDK with only `fetch` faked. `google-auth-library` 11 is blocked: from 
 a `Headers` object (spreading it gives `{}`), so vertex-sdk 0.7 would drop Authorization (silent 401); vertex-sdk
 0.19 and genai 2.24 both require ^10, and 11 only adds the Node 22 floor. The Anthropic branch takes it to ^10.
 
+**Status (2026-09-25):** `openai` 5.12.2 to 7.23.0 (src, packages/core) DONE in #316; no snapshot changed. Real
+regression found and fixed: v7 rejects an empty API key ("Missing credentials") before sending, while v5 sent
+`Bearer `; five places used `key ?? "not-provided"` (OpenAI Compatible, OpenAI Native, OpenRouter, xAI, the
+OpenAI code-index embedder), so keyless local servers failed; now `||` (like LiteLLM), pinned with the real SDK
+(most provider specs mock the whole module, which is why they missed it). `OpenAI#apiKey` is `string | null`
+(RouterProvider maps null to ""). Unchanged: `APIError`, retry rules, `fetchOptions`, Azure `api-key`. Noted: an SSE
+`event: error` frame without an `error` field now throws; Azure deployment names are URL-encoded. Owner smoke list
+in the PR body (OpenAI/Codex, Z.ai, llama.cpp/LM Studio incl. an empty-key profile, 401/429 texts, embedder).
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
