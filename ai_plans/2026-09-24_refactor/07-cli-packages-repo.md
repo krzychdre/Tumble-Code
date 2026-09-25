@@ -268,3 +268,10 @@ are gone; `test` depends on `tumble-code#bundle` in the packages' `turbo.json`. 
 `pnpm test` inside `src` or `webview-ui` no longer bundles first (run `pnpm bundle`, or test from the root).
 (4) `ChatView.clear-approval-buttons` was flaky: jsdom delivers `postMessage` via `setTimeout(0)`, after `act()`
 returned; the spec now dispatches the message event inside `act()`.
+
+**Second round (2026-09-25), #282 (merge 34854a324), test-only.** After #275 the Windows job still failed twice.
+The CLI bundle `beforeAll` hooks bundle with a synchronous `execFileSync` (about 11 s on Windows, 1 s on Linux)
+and hit vitest's default 10 s `hookTimeout`; `apps/cli/vitest.config.ts` now sets `hookTimeout: 120_000` like its
+`testTimeout`. The DEF-C4 spec `toolStreamState.perTask` mocked `fileExistsAtPath` with a POSIX suffix, while the
+tool checks `path.resolve(task.cwd, relPath)` (a drive-letter path on Windows); the mock now builds the path the
+same way (reproduced on Linux by substituting `path.win32`). The product was correct in both cases.
