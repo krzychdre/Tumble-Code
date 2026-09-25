@@ -9,6 +9,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
+import { SETTINGS_DEFAULTS } from "@roo-code/types"
 
 // vi.mock is hoisted above the imports, so the spy must be hoisted too.
 const { mockPostMessage } = vi.hoisted(() => ({ mockPostMessage: vi.fn() }))
@@ -327,7 +328,7 @@ describe("SettingsView Save with every setting undefined (DEF-C25)", { timeout: 
 			terminalOutputPreviewSize: "medium",
 			maxOpenTabsContext: 20,
 			maxWorkspaceFiles: 200,
-			showRooIgnoredFiles: true,
+			showRooIgnoredFiles: false, // was true, now the host default
 			enableSubfolderRules: false,
 			maxImageFileSize: 5,
 			maxTotalImageSize: 20,
@@ -351,6 +352,21 @@ describe("SettingsView Save with every setting undefined (DEF-C25)", { timeout: 
 		expect(payload.terminalShellIntegrationTimeout).toBe(30_000)
 		expect(payload.soundEnabled).toBe(false)
 		expect(payload.enableCheckpoints).toBe(true)
+	})
+
+	// Every fallback of a setting that has a static host default must be that
+	// default, or the first Save rewrites a value the user never touched.
+	it("falls back to the host default table for every setting it has", async () => {
+		const payload = await saveUntouchedSettings()
+
+		const drift = Object.entries(payload).filter(
+			([key, value]) =>
+				key in SETTINGS_DEFAULTS &&
+				value !== undefined &&
+				JSON.stringify(value) !== JSON.stringify(SETTINGS_DEFAULTS[key as keyof typeof SETTINGS_DEFAULTS]),
+		)
+
+		expect(drift).toEqual([])
 	})
 })
 
