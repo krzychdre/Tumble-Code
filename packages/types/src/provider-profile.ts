@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
 	narrowedProviderSettingsSchema,
 	opaqueNarrowedProviderSettingsSchema,
+	providerConfigSchemas,
 	type KnownProviderId,
 } from "./provider-config/index.js"
 import { classifyProvider } from "./provider-registry.js"
@@ -114,55 +115,14 @@ const sharedFieldNames = [
 	"codebaseIndexOpenAiCompatibleModelDimension",
 ] as const satisfies readonly (keyof ProviderSettings)[]
 
-export const providerFieldOwnership = {
-	anthropic: ["apiModelId", "anthropicBaseUrl", "anthropicUseAuthToken", "anthropicBeta1MContext"],
-	openrouter: ["openRouterModelId", "openRouterBaseUrl", "openRouterSpecificProvider"],
-	bedrock: [
-		"apiModelId",
-		"awsRegion",
-		"awsUseCrossRegionInference",
-		"awsUseGlobalInference",
-		"awsUsePromptCache",
-		"awsProfile",
-		"awsUseProfile",
-		"awsUseApiKey",
-		"awsCustomArn",
-		"awsModelContextWindow",
-		"awsBedrockEndpointEnabled",
-		"awsBedrockEndpoint",
-		"awsBedrock1MContext",
-		"awsBedrockServiceTier",
-	],
-	vertex: ["apiModelId", "vertexKeyFile", "vertexProjectId", "vertexRegion", "vertex1MContext"],
-	openai: [
-		"apiModelId",
-		"openAiBaseUrl",
-		"openAiR1FormatEnabled",
-		"openAiModelId",
-		"openAiCustomModelInfo",
-		"openAiUseAzure",
-		"azureApiVersion",
-		"openAiStreamingEnabled",
-		"openAiHostHeader",
-		"openAiHeaders",
-	],
-	ollama: ["ollamaModelId", "ollamaBaseUrl", "ollamaNumCtx"],
-	"vscode-lm": ["vsCodeLmModelSelector"],
-	lmstudio: ["lmStudioModelId", "lmStudioBaseUrl", "lmStudioDraftModelId", "lmStudioSpeculativeDecodingEnabled"],
-	gemini: ["apiModelId", "googleGeminiBaseUrl"],
-	"gemini-cli": ["apiModelId", "geminiCliOAuthPath", "geminiCliProjectId"],
-	"openai-codex": ["apiModelId"],
-	"openai-native": ["apiModelId", "openAiNativeBaseUrl", "openAiNativeServiceTier"],
-	mistral: ["apiModelId", "mistralCodestralUrl"],
-	deepseek: ["apiModelId", "deepSeekBaseUrl"],
-	moonshot: ["apiModelId", "moonshotBaseUrl"],
-	minimax: ["apiModelId", "minimaxBaseUrl"],
-	"fake-ai": ["fakeAi"],
-	xai: ["apiModelId"],
-	litellm: ["litellmBaseUrl", "litellmModelId", "litellmUsePromptCache"],
-	zai: ["apiModelId", "zaiApiLine"],
-	"qwen-code": ["apiModelId", "qwenCodeOauthPath"],
-} satisfies { [K in KnownProviderId]: readonly (keyof ProviderSettings)[] }
+/**
+ * The persisted config fields of each provider, read from its config schema
+ * (the one list of them). Shared fields and credentials are not part of it.
+ */
+export const providerFieldOwnership = {} as Record<KnownProviderId, readonly string[]>
+for (const providerId of Object.keys(providerConfigSchemas) as KnownProviderId[]) {
+	providerFieldOwnership[providerId] = Object.keys(providerConfigSchemas[providerId].shape)
+}
 
 const pickPresent = (value: Record<string, unknown>, keys: readonly PropertyKey[]): Record<string, unknown> => {
 	const picked: Record<string, unknown> = {}

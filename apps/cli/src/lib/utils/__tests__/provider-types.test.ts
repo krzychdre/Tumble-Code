@@ -17,7 +17,7 @@ import {
 	isAcceptedProvider,
 } from "@/lib/utils/provider-types.js"
 
-import { activeProviderIds } from "@roo-code/types"
+import { activeProviderIds, providerModelDefinitions } from "@roo-code/types"
 
 const EXCLUDED = ["vscode-lm", "fake-ai", "gemini-cli"]
 
@@ -60,6 +60,12 @@ describe("env-var map coverage", () => {
 	it("has a mapping entry for every supported provider", () => {
 		for (const id of supportedProviders) {
 			expect(typeof getModelField(id)).toBe("string")
+		}
+	})
+
+	it("reads the model id from the field the provider's model definition names", () => {
+		for (const id of supportedProviders) {
+			expect(getModelField(id)).toBe(providerModelDefinitions[id].modelIdField)
 		}
 	})
 

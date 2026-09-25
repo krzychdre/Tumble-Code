@@ -1,13 +1,12 @@
 import { z } from "zod"
 
 import { serviceTierSchema } from "../model.js"
-import { zaiApiLineSchema } from "../provider-settings.js"
 import { apiModelConfigSchema, emptyProviderConfigSchema, openAiCompatibleConfigSchema } from "./shared.js"
 
 export const anthropicConfigSchema = apiModelConfigSchema.extend({
 	anthropicBaseUrl: z.string().optional(),
 	anthropicUseAuthToken: z.boolean().optional(),
-	anthropicBeta1MContext: z.boolean().optional(),
+	anthropicBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
 })
 
 export const openRouterConfigSchema = z
@@ -21,7 +20,7 @@ export const openRouterConfigSchema = z
 export const bedrockConfigSchema = apiModelConfigSchema.extend({
 	awsRegion: z.string().optional(),
 	awsUseCrossRegionInference: z.boolean().optional(),
-	awsUseGlobalInference: z.boolean().optional(),
+	awsUseGlobalInference: z.boolean().optional(), // Enable Global Inference profile routing when supported
 	awsUsePromptCache: z.boolean().optional(),
 	awsProfile: z.string().optional(),
 	awsUseProfile: z.boolean().optional(),
@@ -30,17 +29,21 @@ export const bedrockConfigSchema = apiModelConfigSchema.extend({
 	awsModelContextWindow: z.number().optional(),
 	awsBedrockEndpointEnabled: z.boolean().optional(),
 	awsBedrockEndpoint: z.string().optional(),
-	awsBedrock1MContext: z.boolean().optional(),
-	awsBedrockServiceTier: z.enum(["STANDARD", "FLEX", "PRIORITY"]).optional(),
+	awsBedrock1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
+	awsBedrockServiceTier: z.enum(["STANDARD", "FLEX", "PRIORITY"]).optional(), // AWS Bedrock service tier selection
 })
 
 export const vertexConfigSchema = apiModelConfigSchema.extend({
 	vertexKeyFile: z.string().optional(),
 	vertexProjectId: z.string().optional(),
 	vertexRegion: z.string().optional(),
-	vertex1MContext: z.boolean().optional(),
+	vertex1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
 })
 
+// `apiModelId` is not the field the openai handler reads (that is
+// `openAiModelId`), but the settings UI mirrors the selected model id into it
+// for every provider, so stored openai profiles carry it and the strict config
+// must keep accepting it.
 export const openAiConfigSchema = openAiCompatibleConfigSchema.extend({ apiModelId: z.string().optional() })
 
 export const ollamaConfigSchema = z
@@ -84,6 +87,8 @@ export const openAiCodexConfigSchema = apiModelConfigSchema
 
 export const openAiNativeConfigSchema = apiModelConfigSchema.extend({
 	openAiNativeBaseUrl: z.string().optional(),
+	// OpenAI Responses API service tier for openai-native provider only.
+	// UI should only expose this when the selected model supports flex/priority.
 	openAiNativeServiceTier: serviceTierSchema.optional(),
 })
 
@@ -108,6 +113,10 @@ export const litellmConfigSchema = z
 		litellmUsePromptCache: z.boolean().optional(),
 	})
 	.strict()
+
+export const zaiApiLineSchema = z.enum(["international_coding", "china_coding", "international_api", "china_api"])
+
+export type ZaiApiLine = z.infer<typeof zaiApiLineSchema>
 
 export const zaiConfigSchema = apiModelConfigSchema.extend({ zaiApiLine: zaiApiLineSchema.optional() })
 export const qwenCodeConfigSchema = apiModelConfigSchema.extend({ qwenCodeOauthPath: z.string().optional() })

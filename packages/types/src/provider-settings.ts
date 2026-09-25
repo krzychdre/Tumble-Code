@@ -1,9 +1,10 @@
 import { z } from "zod"
 
-import { modelInfoSchema, reasoningEffortSettingSchema, verbosityLevelsSchema, serviceTierSchema } from "./model.js"
+import { reasoningEffortSettingSchema, verbosityLevelsSchema } from "./model.js"
 import { codebaseIndexProviderSchema } from "./codebase-index.js"
 import { activeProviderIdsForPublicApi, providerIdsForPublicApi, retiredProviderIds } from "./provider-registry.js"
 import { getProviderModelDefinition, providerModelDefinitions } from "./provider-models.js"
+import { providerConfigSchemas } from "./provider-config/index.js"
 
 /**
  * constants
@@ -129,164 +130,50 @@ const baseProviderSettingsSchema = z.object({
 	verbosity: verbosityLevelsSchema.optional(),
 })
 
-// Several of the providers share common model config properties.
-const apiModelIdProviderModelSchema = baseProviderSettingsSchema.extend({
-	apiModelId: z.string().optional(),
+/**
+ * The legacy flat arm of one provider: the shared profile settings above, the
+ * provider's persisted config (`providerConfigSchemas`, the one list of its
+ * fields) and its credentials. Credentials live in the secret store, so they
+ * are the only provider fields the persisted config deliberately leaves out.
+ */
+const legacyProviderArm = <Config extends z.ZodRawShape, Credentials extends z.ZodRawShape>(
+	config: z.ZodObject<Config, z.UnknownKeysParam>,
+	credentials: Credentials,
+) => baseProviderSettingsSchema.extend(config.shape).extend(credentials)
+
+const optionalCredential = () => z.string().optional()
+
+const anthropicSchema = legacyProviderArm(providerConfigSchemas.anthropic, { apiKey: optionalCredential() })
+const openRouterSchema = legacyProviderArm(providerConfigSchemas.openrouter, { openRouterApiKey: optionalCredential() })
+const bedrockSchema = legacyProviderArm(providerConfigSchemas.bedrock, {
+	awsAccessKey: optionalCredential(),
+	awsSecretKey: optionalCredential(),
+	awsSessionToken: optionalCredential(),
+	awsApiKey: optionalCredential(),
 })
-
-const anthropicSchema = apiModelIdProviderModelSchema.extend({
-	apiKey: z.string().optional(),
-	anthropicBaseUrl: z.string().optional(),
-	anthropicUseAuthToken: z.boolean().optional(),
-	anthropicBeta1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
+// `vertexJsonCredentials` is not in SECRET_STATE_KEYS either, so a saved vertex
+// profile does not keep it (a known gap, tracked outside this schema).
+const vertexSchema = legacyProviderArm(providerConfigSchemas.vertex, { vertexJsonCredentials: optionalCredential() })
+const openAiSchema = legacyProviderArm(providerConfigSchemas.openai, { openAiApiKey: optionalCredential() })
+const ollamaSchema = legacyProviderArm(providerConfigSchemas.ollama, { ollamaApiKey: optionalCredential() })
+const vsCodeLmSchema = legacyProviderArm(providerConfigSchemas["vscode-lm"], {})
+const lmStudioSchema = legacyProviderArm(providerConfigSchemas.lmstudio, {})
+const geminiSchema = legacyProviderArm(providerConfigSchemas.gemini, { geminiApiKey: optionalCredential() })
+const geminiCliSchema = legacyProviderArm(providerConfigSchemas["gemini-cli"], {})
+// OpenAI Codex authenticates with OAuth, so it has no credential field.
+const openAiCodexSchema = legacyProviderArm(providerConfigSchemas["openai-codex"], {})
+const openAiNativeSchema = legacyProviderArm(providerConfigSchemas["openai-native"], {
+	openAiNativeApiKey: optionalCredential(),
 })
-
-const openRouterSchema = baseProviderSettingsSchema.extend({
-	openRouterApiKey: z.string().optional(),
-	openRouterModelId: z.string().optional(),
-	openRouterBaseUrl: z.string().optional(),
-	openRouterSpecificProvider: z.string().optional(),
-})
-
-const bedrockSchema = apiModelIdProviderModelSchema.extend({
-	awsAccessKey: z.string().optional(),
-	awsSecretKey: z.string().optional(),
-	awsSessionToken: z.string().optional(),
-	awsRegion: z.string().optional(),
-	awsUseCrossRegionInference: z.boolean().optional(),
-	awsUseGlobalInference: z.boolean().optional(), // Enable Global Inference profile routing when supported
-	awsUsePromptCache: z.boolean().optional(),
-	awsProfile: z.string().optional(),
-	awsUseProfile: z.boolean().optional(),
-	awsApiKey: z.string().optional(),
-	awsUseApiKey: z.boolean().optional(),
-	awsCustomArn: z.string().optional(),
-	awsModelContextWindow: z.number().optional(),
-	awsBedrockEndpointEnabled: z.boolean().optional(),
-	awsBedrockEndpoint: z.string().optional(),
-	awsBedrock1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
-	awsBedrockServiceTier: z.enum(["STANDARD", "FLEX", "PRIORITY"]).optional(), // AWS Bedrock service tier selection
-})
-
-const vertexSchema = apiModelIdProviderModelSchema.extend({
-	vertexKeyFile: z.string().optional(),
-	vertexJsonCredentials: z.string().optional(),
-	vertexProjectId: z.string().optional(),
-	vertexRegion: z.string().optional(),
-	vertex1MContext: z.boolean().optional(), // Enable 'context-1m-2025-08-07' beta for 1M context window.
-})
-
-const openAiSchema = baseProviderSettingsSchema.extend({
-	openAiBaseUrl: z.string().optional(),
-	openAiApiKey: z.string().optional(),
-	openAiR1FormatEnabled: z.boolean().optional(),
-	openAiModelId: z.string().optional(),
-	openAiCustomModelInfo: modelInfoSchema.nullish(),
-	openAiUseAzure: z.boolean().optional(),
-	azureApiVersion: z.string().optional(),
-	openAiStreamingEnabled: z.boolean().optional(),
-	openAiHostHeader: z.string().optional(), // Keep temporarily for backward compatibility during migration.
-	openAiHeaders: z.record(z.string(), z.string()).optional(),
-})
-
-const ollamaSchema = baseProviderSettingsSchema.extend({
-	ollamaModelId: z.string().optional(),
-	ollamaBaseUrl: z.string().optional(),
-	ollamaApiKey: z.string().optional(),
-	ollamaNumCtx: z.number().int().min(128).optional(),
-})
-
-const vsCodeLmSchema = baseProviderSettingsSchema.extend({
-	vsCodeLmModelSelector: z
-		.object({
-			vendor: z.string().optional(),
-			family: z.string().optional(),
-			version: z.string().optional(),
-			id: z.string().optional(),
-		})
-		.optional(),
-})
-
-const lmStudioSchema = baseProviderSettingsSchema.extend({
-	lmStudioModelId: z.string().optional(),
-	lmStudioBaseUrl: z.string().optional(),
-	lmStudioDraftModelId: z.string().optional(),
-	lmStudioSpeculativeDecodingEnabled: z.boolean().optional(),
-})
-
-const geminiSchema = apiModelIdProviderModelSchema.extend({
-	geminiApiKey: z.string().optional(),
-	googleGeminiBaseUrl: z.string().optional(),
-})
-
-const geminiCliSchema = apiModelIdProviderModelSchema.extend({
-	geminiCliOAuthPath: z.string().optional(),
-	geminiCliProjectId: z.string().optional(),
-})
-
-const openAiCodexSchema = apiModelIdProviderModelSchema.extend({
-	// No additional settings needed - uses OAuth authentication
-})
-
-const openAiNativeSchema = apiModelIdProviderModelSchema.extend({
-	openAiNativeApiKey: z.string().optional(),
-	openAiNativeBaseUrl: z.string().optional(),
-	// OpenAI Responses API service tier for openai-native provider only.
-	// UI should only expose this when the selected model supports flex/priority.
-	openAiNativeServiceTier: serviceTierSchema.optional(),
-})
-
-const mistralSchema = apiModelIdProviderModelSchema.extend({
-	mistralApiKey: z.string().optional(),
-	mistralCodestralUrl: z.string().optional(),
-})
-
-const deepSeekSchema = apiModelIdProviderModelSchema.extend({
-	deepSeekBaseUrl: z.string().optional(),
-	deepSeekApiKey: z.string().optional(),
-})
-
-const moonshotSchema = apiModelIdProviderModelSchema.extend({
-	moonshotBaseUrl: z
-		.union([z.literal("https://api.moonshot.ai/v1"), z.literal("https://api.moonshot.cn/v1")])
-		.optional(),
-	moonshotApiKey: z.string().optional(),
-})
-
-const minimaxSchema = apiModelIdProviderModelSchema.extend({
-	minimaxBaseUrl: z
-		.union([z.literal("https://api.minimax.io/v1"), z.literal("https://api.minimaxi.com/v1")])
-		.optional(),
-	minimaxApiKey: z.string().optional(),
-})
-
-const fakeAiSchema = baseProviderSettingsSchema.extend({
-	fakeAi: z.unknown().optional(),
-})
-
-const xaiSchema = apiModelIdProviderModelSchema.extend({
-	xaiApiKey: z.string().optional(),
-})
-
-const litellmSchema = baseProviderSettingsSchema.extend({
-	litellmBaseUrl: z.string().optional(),
-	litellmApiKey: z.string().optional(),
-	litellmModelId: z.string().optional(),
-	litellmUsePromptCache: z.boolean().optional(),
-})
-
-const qwenCodeSchema = apiModelIdProviderModelSchema.extend({
-	qwenCodeOauthPath: z.string().optional(),
-})
-
-export const zaiApiLineSchema = z.enum(["international_coding", "china_coding", "international_api", "china_api"])
-
-export type ZaiApiLine = z.infer<typeof zaiApiLineSchema>
-
-const zaiSchema = apiModelIdProviderModelSchema.extend({
-	zaiApiKey: z.string().optional(),
-	zaiApiLine: zaiApiLineSchema.optional(),
-})
+const mistralSchema = legacyProviderArm(providerConfigSchemas.mistral, { mistralApiKey: optionalCredential() })
+const deepSeekSchema = legacyProviderArm(providerConfigSchemas.deepseek, { deepSeekApiKey: optionalCredential() })
+const moonshotSchema = legacyProviderArm(providerConfigSchemas.moonshot, { moonshotApiKey: optionalCredential() })
+const minimaxSchema = legacyProviderArm(providerConfigSchemas.minimax, { minimaxApiKey: optionalCredential() })
+const fakeAiSchema = legacyProviderArm(providerConfigSchemas["fake-ai"], {})
+const xaiSchema = legacyProviderArm(providerConfigSchemas.xai, { xaiApiKey: optionalCredential() })
+const litellmSchema = legacyProviderArm(providerConfigSchemas.litellm, { litellmApiKey: optionalCredential() })
+const qwenCodeSchema = legacyProviderArm(providerConfigSchemas["qwen-code"], {})
+const zaiSchema = legacyProviderArm(providerConfigSchemas.zai, { zaiApiKey: optionalCredential() })
 
 const defaultSchema = z.object({
 	apiProvider: z.undefined(),
