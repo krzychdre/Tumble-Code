@@ -55,7 +55,7 @@ const catalogModelIds: string[] = [
 
 const resolvedModelId = (provider: RuntimeProviderId, settings: ProviderSettings): string | undefined => {
 	try {
-		return runtimeProviderRegistry[provider]({ ...constructorOptions, ...settings }).getModel().id
+		return runtimeProviderRegistry[provider].factory({ ...constructorOptions, ...settings }).getModel().id
 	} catch {
 		return undefined
 	}

@@ -67,6 +67,17 @@ describe("enhancePrompt", () => {
 		expect((handler as any).completePrompt).toHaveBeenCalledWith(`${customEnhancePrompt}\n\nTest prompt`)
 	})
 
+	// API-6: the handler exists for this one call, so it releases its
+	// subscriptions afterwards, also when the call fails.
+	it("disposes the one-shot handler after the completion", async () => {
+		const dispose = vi.fn()
+		const completePrompt = vi.fn().mockRejectedValue(new Error("boom"))
+		;(buildApiHandler as any).mockReturnValue({ completePrompt, dispose })
+
+		await expect(singleCompletionHandler(mockApiConfig, "Test prompt")).rejects.toThrow("boom")
+		expect(dispose).toHaveBeenCalledTimes(1)
+	})
+
 	it("throws error for empty prompt input", async () => {
 		await expect(singleCompletionHandler(mockApiConfig, "")).rejects.toThrow("No prompt text provided")
 	})

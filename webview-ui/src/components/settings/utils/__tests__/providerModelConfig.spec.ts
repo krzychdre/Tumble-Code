@@ -8,6 +8,9 @@ import {
 	PROVIDERS_WITH_CUSTOM_MODEL_UI,
 	shouldUseGenericModelPicker,
 } from "../providerModelConfig"
+import { MODELS_BY_PROVIDER } from "../../constants"
+
+import * as types from "@roo-code/types"
 
 describe("providerModelConfig", () => {
 	describe("PROVIDER_SERVICE_CONFIG", () => {
@@ -194,6 +197,48 @@ describe("providerModelConfig", () => {
 
 		it("returns false for providers without static models", () => {
 			expect(shouldUseGenericModelPicker("openai")).toBe(false)
+		})
+	})
+
+	// API-6: the static model lists and their defaults are derived from
+	// providerModelDefinitions; these are the maps as they were hand-written.
+	describe("derived from providerModelDefinitions", () => {
+		it("MODELS_BY_PROVIDER holds the same static lists", () => {
+			expect(MODELS_BY_PROVIDER).toEqual({
+				anthropic: types.anthropicModels,
+				bedrock: types.bedrockModels,
+				deepseek: types.deepSeekModels,
+				moonshot: types.moonshotModels,
+				gemini: types.geminiModels,
+				mistral: types.mistralModels,
+				"openai-native": types.openAiNativeModels,
+				"openai-codex": types.openAiCodexModels,
+				"qwen-code": types.qwenCodeModels,
+				vertex: types.vertexModels,
+				xai: types.xaiModels,
+				zai: types.internationalZAiModels,
+				minimax: types.minimaxModels,
+			})
+		})
+
+		it("PROVIDER_DEFAULT_MODEL_IDS names the default of every static list", () => {
+			expect(PROVIDER_DEFAULT_MODEL_IDS).toEqual({
+				anthropic: types.anthropicDefaultModelId,
+				bedrock: types.bedrockDefaultModelId,
+				deepseek: types.deepSeekDefaultModelId,
+				moonshot: types.moonshotDefaultModelId,
+				gemini: types.geminiDefaultModelId,
+				mistral: types.mistralDefaultModelId,
+				"openai-native": types.openAiNativeDefaultModelId,
+				// Missing from the hand-written map; only the generic model
+				// picker reads it and Codex has its own model UI.
+				"openai-codex": types.openAiCodexDefaultModelId,
+				"qwen-code": types.qwenCodeDefaultModelId,
+				vertex: types.vertexDefaultModelId,
+				xai: types.xaiDefaultModelId,
+				zai: types.internationalZAiDefaultModelId,
+				minimax: types.minimaxDefaultModelId,
+			})
 		})
 	})
 })
