@@ -186,7 +186,7 @@ via `legacyProviderArm`; `providerFieldOwnership` derived from `providerConfigSc
 `modelField` column (18 entries) replaced by `providerModelDefinitions`; `zaiApiLineSchema` moved to
 `provider-config/configs.ts` (breaks the cycle). The openai `apiModelId` drift was a stale legacy arm (the webview
 writes `apiModelId` for every provider; runtime never parses through the arms). Flat schema snapshot unchanged
-except key order. Found: `vertexJsonCredentials` dropped on save since #126 (own fix branch); the shared-field list
+except key order. Found: `vertexJsonCredentials` dropped on save since #126, FIXED in #420 (merge 1af172cf2: now in `SECRET_STATE_KEYS`, plain-text global-state copy moved to secret storage at startup; already-migrated profiles lost the value for good, re-enter once); the shared-field list
 still exists three times (`baseProviderSettingsSchema`, `sharedProfileSettingsSchema`, `sharedFieldNames`);
 `discriminatedProviderSettingsWithIdSchema` is unused.
 
