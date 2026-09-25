@@ -20,7 +20,7 @@ import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDial
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
 import { CloudView } from "./components/cloud/CloudView"
-import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useNonInteractiveClick"
+import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useAddNonInteractiveClickListener"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
 
