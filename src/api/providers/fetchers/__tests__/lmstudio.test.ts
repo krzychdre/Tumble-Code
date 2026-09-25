@@ -3,7 +3,7 @@ import { LMStudioClient, LLMInstanceInfo, LLMInfo } from "@lmstudio/sdk"
 
 import { ModelInfo, lMStudioDefaultModelInfo } from "@roo-code/types"
 
-import { getLMStudioModels, parseLMStudioModel } from "../lmstudio"
+import { getLMStudioModels, LM_STUDIO_TIMEOUTS, parseLMStudioModel } from "../lmstudio"
 
 // Mock axios
 vi.mock("axios")
@@ -113,7 +113,9 @@ describe("LMStudio Fetcher", () => {
 			const result = await getLMStudioModels(baseUrl)
 
 			expect(mockedAxios.get).toHaveBeenCalledTimes(1)
-			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`)
+			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`, {
+				timeout: LM_STUDIO_TIMEOUTS.requestMs,
+			})
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledTimes(1)
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledWith({ baseUrl: lmsUrl })
 			expect(mockListDownloadedModels).toHaveBeenCalledTimes(1)
@@ -133,7 +135,9 @@ describe("LMStudio Fetcher", () => {
 			const result = await getLMStudioModels(baseUrl)
 
 			expect(mockedAxios.get).toHaveBeenCalledTimes(1)
-			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`)
+			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`, {
+				timeout: LM_STUDIO_TIMEOUTS.requestMs,
+			})
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledTimes(1)
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledWith({ baseUrl: lmsUrl })
 			expect(mockListDownloadedModels).toHaveBeenCalledTimes(1)
@@ -373,7 +377,9 @@ describe("LMStudio Fetcher", () => {
 
 			await getLMStudioModels("")
 
-			expect(mockedAxios.get).toHaveBeenCalledWith(`${defaultBaseUrl}/v1/models`)
+			expect(mockedAxios.get).toHaveBeenCalledWith(`${defaultBaseUrl}/v1/models`, {
+				timeout: LM_STUDIO_TIMEOUTS.requestMs,
+			})
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledWith({ baseUrl: defaultLmsUrl })
 		})
 
@@ -385,7 +391,9 @@ describe("LMStudio Fetcher", () => {
 
 			await getLMStudioModels(httpsBaseUrl)
 
-			expect(mockedAxios.get).toHaveBeenCalledWith(`${httpsBaseUrl}/v1/models`)
+			expect(mockedAxios.get).toHaveBeenCalledWith(`${httpsBaseUrl}/v1/models`, {
+				timeout: LM_STUDIO_TIMEOUTS.requestMs,
+			})
 			expect(MockedLMStudioClientConstructor).toHaveBeenCalledWith({ baseUrl: wssLmsUrl })
 		})
 
@@ -407,7 +415,9 @@ describe("LMStudio Fetcher", () => {
 			const result = await getLMStudioModels(baseUrl)
 
 			expect(mockedAxios.get).toHaveBeenCalledTimes(1)
-			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`)
+			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`, {
+				timeout: LM_STUDIO_TIMEOUTS.requestMs,
+			})
 			expect(MockedLMStudioClientConstructor).not.toHaveBeenCalled()
 			expect(mockListLoaded).not.toHaveBeenCalled()
 			expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -426,7 +436,9 @@ describe("LMStudio Fetcher", () => {
 			const result = await getLMStudioModels(baseUrl)
 
 			expect(mockedAxios.get).toHaveBeenCalledTimes(1)
-			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`)
+			expect(mockedAxios.get).toHaveBeenCalledWith(`${baseUrl}/v1/models`, {
+				timeout: LM_STUDIO_TIMEOUTS.requestMs,
+			})
 			expect(MockedLMStudioClientConstructor).not.toHaveBeenCalled()
 			expect(mockListLoaded).not.toHaveBeenCalled()
 			expect(consoleInfoSpy).toHaveBeenCalledWith(`Error connecting to LMStudio at ${baseUrl}`)

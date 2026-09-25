@@ -106,7 +106,7 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-	Object.assign(fetcher.LM_STUDIO_TIMEOUTS ?? {}, { requestMs: REQUEST_MS, loadIdleMs: LOAD_IDLE_MS })
+	Object.assign(fetcher.LM_STUDIO_TIMEOUTS, { requestMs: REQUEST_MS, loadIdleMs: LOAD_IDLE_MS })
 	vi.spyOn(console, "warn").mockImplementation(() => {})
 	vi.spyOn(console, "info").mockImplementation(() => {})
 	consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
@@ -115,7 +115,7 @@ beforeEach(() => {
 afterEach(async () => {
 	await server?.stop()
 	server = undefined
-	Object.assign(fetcher.LM_STUDIO_TIMEOUTS ?? {}, originalTimeouts)
+	Object.assign(fetcher.LM_STUDIO_TIMEOUTS, originalTimeouts)
 	vi.restoreAllMocks()
 })
 
@@ -175,11 +175,13 @@ describe("LM Studio fetcher: bounded SDK calls", () => {
 				new RegExp(`^LM Studio at ${baseUrl} did not answer while loading qwen/qwen2\\.5-7b`),
 			)
 			// The load is cancelled on the server too.
-			expect(server!.recorded.map((entry) => entry.message)).toContainEqual({
-				type: "channelSend",
-				channelId: expect.any(Number),
-				message: { type: "cancel" },
-			})
+			await vi.waitFor(() =>
+				expect(server!.recorded.map((entry) => entry.message)).toContainEqual({
+					type: "channelSend",
+					channelId: expect.any(Number),
+					message: { type: "cancel" },
+				}),
+			)
 			await vi.waitFor(() => expect(server!.openSockets()).toBe(0))
 		})
 
