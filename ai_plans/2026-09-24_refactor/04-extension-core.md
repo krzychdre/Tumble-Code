@@ -337,6 +337,17 @@ After CORE-R1 and CORE-R2. Target: ClineProvider under about 1,500 lines, acting
 | e     | `WebviewHtml` (1595-1774), shared with `PlanReviewPanel.ts:116-137` (a clone)  | S    | low    |                                                                                                                                                                                                                                   |
 | f     | Task-event forwarding table (357-459, 14 events attached and detached by hand) | S    | low    |                                                                                                                                                                                                                                   |
 
+**Status (2026-09-25):** (a) DONE in #286. `TaskHistoryGateway.ts` owns the shared store loading (5 s retry
+block after a failure, release on dispose), the legacy migration, echo suppression and change routing, the
+storage-error banner (also used by `upsertProviderProfile` under "ProviderProfile": move it along if the banner
+becomes its own class), and the history operations (`getHistoryItem`, `getTaskWithId`, `deleteTaskWithId`,
+`updateTaskHistory`, `atomicReadAndUpdateHistoryItem`, ...). ClineProvider keeps one-line delegators; the state
+builder and DelegationService reach the store through the gateway. ClineProvider went from 3,815 to 3,316 lines.
+Tests: 9 characterization tests in `ClineProvider.taskHistory.spec` with a real provider plus
+`TaskHistoryGateway.spec` (24); related specs 337 to 370. Known gap: the `fs/promises` mock in
+`ClineProvider.taskHistory.spec` lacks a default export (same as noted in CORE-R1).
+
+
 ### CORE-R7 Performance (Phase 10; mechanism verified, magnitude to be measured)
 
 | #   | Mechanism                                                                                                                                                                                              | Evidence                                                                                                                                                                 |
