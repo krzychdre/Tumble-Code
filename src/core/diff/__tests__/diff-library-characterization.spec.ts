@@ -18,13 +18,15 @@ function toolDiff(relPath: string, oldStr: string | undefined, newStr: string | 
 const prettyPatchCases: Array<[string, string | undefined, string | undefined]> = [
 	["one changed line", "a\nb\nc\n", "a\nB\nc\n"],
 	// Equal edit distance either way: the order of the - and + lines depends on
-	// the library's Myers implementation.
+	// the library's Myers implementation (diff 6+, jsdiff #439, deletes first).
 	["swapped neighbours", "a\nb\nc\nd\n", "a\nc\nb\nd\n"],
 	["repeated lines", "x\ny\nx\ny\nx\n", "y\nx\ny\nx\ny\n"],
 	["old file without trailing newline", "a\nb", "a\nb\nc\n"],
 	["new file without trailing newline", "a\nb\n", "a\nc"],
 	["neither with a trailing newline", "a\nb", "a\nc"],
 	["new file from empty", "", "first\nsecond\n"],
+	// diff 5 also wrote a bogus "\\ No newline at end of file" marker here (a blank
+	// line after sanitizing); diff 6+ (jsdiff #535) does not.
 	["file emptied", "first\nsecond\n", ""],
 	["undefined contents", undefined, undefined],
 	["CRLF on both sides", "a\r\nb\r\nc\r\n", "a\r\nX\r\nc\r\n"],
@@ -40,6 +42,8 @@ const prettyPatchCases: Array<[string, string | undefined, string | undefined]> 
 		"-- a sql comment\n++counter\nkeep\n",
 		"--- not a header\n+++ nor this\nkeep\n",
 	],
+	// diff 5 parsePatch split lines on \v, \f, NEL and a lone \r, so these counted
+	// 0/0; diff 6+ (jsdiff #435) splits on \n only and counts 1/1.
 	["control characters inside lines", "a\vb\nc\fd\ne\x85f\n", "a\vb\nC\fd\ne\x85f\n"],
 	["a lone carriage return inside a line", "a\rb\nc\n", "a\rb\nC\n"],
 ]

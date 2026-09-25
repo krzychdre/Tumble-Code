@@ -18,7 +18,7 @@ function mergedPanelPatch(path: string, originalContent: string, finalContent: s
 const toolPatch = "@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n"
 const toolPatchWithBlankedMarker = "@@ -1,2 +1,2 @@\n a\n-b\n\n+c\n\n"
 
-// Recorded with diff 5.2.2.
+// Recorded with diff 5.2.2, except where a comment says otherwise.
 const expectedPanel: Record<string, { patch: string; rows: DiffLine[] }> = {
 	"one changed line": {
 		patch: "Index: src/a.ts\n===================================================================\n--- src/a.ts\n+++ src/a.ts\n@@ -1,3 +1,3 @@\n a\n-b\n+B\n c\n",
@@ -49,8 +49,10 @@ const expectedPanel: Record<string, { patch: string; rows: DiffLine[] }> = {
 			},
 		],
 	},
+	// diff 6+ (jsdiff #439) prefers deletions before insertions on equal edit
+	// distance: "-b ... +b" instead of 5.x's "+c ... -c".
 	"swapped neighbours": {
-		patch: "Index: src/a.ts\n===================================================================\n--- src/a.ts\n+++ src/a.ts\n@@ -1,4 +1,4 @@\n a\n+c\n b\n-c\n d\n",
+		patch: "Index: src/a.ts\n===================================================================\n--- src/a.ts\n+++ src/a.ts\n@@ -1,4 +1,4 @@\n a\n-b\n c\n+b\n d\n",
 		rows: [
 			{
 				oldLineNum: 1,
@@ -59,22 +61,22 @@ const expectedPanel: Record<string, { patch: string; rows: DiffLine[] }> = {
 				content: "a",
 			},
 			{
-				oldLineNum: null,
-				newLineNum: 2,
-				type: "addition",
-				content: "c",
-			},
-			{
 				oldLineNum: 2,
-				newLineNum: 3,
-				type: "context",
+				newLineNum: null,
+				type: "deletion",
 				content: "b",
 			},
 			{
 				oldLineNum: 3,
-				newLineNum: null,
-				type: "deletion",
+				newLineNum: 2,
+				type: "context",
 				content: "c",
+			},
+			{
+				oldLineNum: null,
+				newLineNum: 3,
+				type: "addition",
+				content: "b",
 			},
 			{
 				oldLineNum: 4,
@@ -170,8 +172,10 @@ const expectedPanel: Record<string, { patch: string; rows: DiffLine[] }> = {
 			},
 		],
 	},
+	// diff 9 C-quotes and octal-escapes such names in the ---/+++ headers. The
+	// panel only renders the parsed rows (unchanged), never the header text.
 	"a non-ASCII file name": {
-		patch: "Index: src/zażółć gęślą.ts\n===================================================================\n--- src/zażółć gęślą.ts\n+++ src/zażółć gęślą.ts\n@@ -1,1 +1,1 @@\n-a\n+b\n",
+		patch: 'Index: src/zażółć gęślą.ts\n===================================================================\n--- "src/za\\305\\274\\303\\263\\305\\202\\304\\207 g\\304\\231\\305\\233l\\304\\205.ts"\n+++ "src/za\\305\\274\\303\\263\\305\\202\\304\\207 g\\304\\231\\305\\233l\\304\\205.ts"\n@@ -1,1 +1,1 @@\n-a\n+b\n',
 		rows: [
 			{
 				oldLineNum: 1,
@@ -187,8 +191,9 @@ const expectedPanel: Record<string, { patch: string; rows: DiffLine[] }> = {
 			},
 		],
 	},
+	// diff 9 quotes and escapes the name in the headers; the rows are unchanged.
 	"a file name with a quote and a backslash": {
-		patch: 'Index: src/quote"and\\backslash.ts\n===================================================================\n--- src/quote"and\\backslash.ts\n+++ src/quote"and\\backslash.ts\n@@ -1,1 +1,1 @@\n-a\n+b\n',
+		patch: 'Index: src/quote"and\\backslash.ts\n===================================================================\n--- "src/quote\\"and\\\\backslash.ts"\n+++ "src/quote\\"and\\\\backslash.ts"\n@@ -1,1 +1,1 @@\n-a\n+b\n',
 		rows: [
 			{
 				oldLineNum: 1,
@@ -229,7 +234,7 @@ const expectedPanel: Record<string, { patch: string; rows: DiffLine[] }> = {
 	},
 }
 
-// Recorded with diff 5.2.2.
+// Recorded with diff 5.2.2, except where a comment says otherwise.
 const expectedRows: Record<string, DiffLine[]> = {
 	"a tool patch": [
 		{
@@ -257,6 +262,9 @@ const expectedRows: Record<string, DiffLine[]> = {
 			content: "c",
 		},
 	],
+	// diff 5 rendered each blanked marker as an extra numbered context row; diff
+	// 6+ rejects the patch (line counts), so parseUnifiedDiff drops the empty
+	// lines and retries: the real rows only.
 	"a tool patch with blanked no-newline markers": [
 		{
 			oldLineNum: 1,
@@ -271,22 +279,10 @@ const expectedRows: Record<string, DiffLine[]> = {
 			content: "b",
 		},
 		{
-			oldLineNum: 3,
-			newLineNum: 2,
-			type: "context",
-			content: "",
-		},
-		{
 			oldLineNum: null,
-			newLineNum: 3,
+			newLineNum: 2,
 			type: "addition",
 			content: "c",
-		},
-		{
-			oldLineNum: 4,
-			newLineNum: 4,
-			type: "context",
-			content: "",
 		},
 	],
 	"two hunks (gap row)": [

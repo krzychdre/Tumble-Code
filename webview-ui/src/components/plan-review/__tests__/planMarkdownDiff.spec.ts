@@ -71,11 +71,12 @@ describe("diffPlanMarkdown", () => {
 	// implementation in the `diff` package.
 	it("marks one of two swapped blocks as moved", () => {
 		const segments = diffPlanMarkdown("A\n\nB\n\nC\n\nD", "A\n\nC\n\nB\n\nD")
+		// diff 6+ (jsdiff #439) removes B and re-adds it after C; 5.x moved C.
 		expect(segments).toEqual([
 			{ kind: "same", markdown: "A" },
-			{ kind: "changed", markdown: "C" },
-			{ kind: "same", markdown: "B" },
-			{ kind: "removed", text: "C" },
+			{ kind: "removed", text: "B" },
+			{ kind: "same", markdown: "C" },
+			{ kind: "changed", markdown: "B" },
 			{ kind: "same", markdown: "D" },
 		])
 	})

@@ -235,8 +235,8 @@ b
 +C
 ",
   "stats": {
-    "added": 0,
-    "removed": 0,
+    "added": 1,
+    "removed": 1,
   },
 }
 `;
@@ -250,8 +250,8 @@ exports[`diff library characterization (extension) > formatResponse.createPretty
  ef
 ",
   "stats": {
-    "added": 0,
-    "removed": 0,
+    "added": 1,
+    "removed": 1,
   },
 }
 `;
@@ -261,7 +261,6 @@ exports[`diff library characterization (extension) > formatResponse.createPretty
   "patch": "@@ -1,2 +0,0 @@
 -first
 -second
-
 ",
   "stats": {
     "added": 0,
@@ -364,12 +363,12 @@ exports[`diff library characterization (extension) > formatResponse.createPretty
 exports[`diff library characterization (extension) > formatResponse.createPrettyPatch + sanitizeUnifiedDiff + computeDiffStats > repeated lines 1`] = `
 {
   "patch": "@@ -1,5 +1,5 @@
-+y
- x
- y
- x
- y
 -x
+ y
+ x
+ y
+ x
++y
 ",
   "stats": {
     "added": 1,
@@ -382,9 +381,9 @@ exports[`diff library characterization (extension) > formatResponse.createPretty
 {
   "patch": "@@ -1,4 +1,4 @@
  a
-+c
- b
--c
+-b
+ c
++b
  d
 ",
   "stats": {
