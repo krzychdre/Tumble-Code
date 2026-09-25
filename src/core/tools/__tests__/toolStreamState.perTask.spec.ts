@@ -6,6 +6,7 @@
 // kept per task: one task's chunks, execute() or reset must never change what
 // another task sees.
 
+import * as path from "path"
 import type { MockedFunction } from "vitest"
 
 import { fileExistsAtPath } from "../../../utils/fs"
@@ -146,8 +147,12 @@ describe("DEF-C4: tool partial-stream state is kept per task", () => {
 		const taskA = makeTask("a")
 		const taskB = makeTask("b")
 
-		// Only task A's final target exists on disk.
-		mockedFileExistsAtPath.mockImplementation(async (p: string) => p.endsWith("/work/a/src/app.tsx"))
+		// Only task A's final target exists on disk. The tool asks about the
+		// native absolute path (path.resolve of cwd + relPath), which on Windows
+		// is "D:\work\a\src\app.tsx", so build the expected path the same way
+		// instead of matching a POSIX "/work/a/src/app.tsx" suffix.
+		const existingFile = path.resolve(taskA.cwd, "src/app.tsx")
+		mockedFileExistsAtPath.mockImplementation(async (p: string) => p === existingFile)
 
 		// Task A streams a path that partial-json truncated ("src/app.ts"); the
 		// file does not exist, so its editType is cached as "create" for that path.
