@@ -396,6 +396,24 @@ lives in TaskLifecycle and stayed. ClineProvider went from 3,058 to 2,759 lines.
 related specs 535 to 562. Finding (pinned, unchanged): `ClineProvider.dispose()` does not abort running background
 tasks or memory writers; decide whether that is a leak.
 
+**Status (2026-09-25):** (c) DONE in #296 (merge 5c077ebb2, rebased by the coordinator onto #294; 796
+`core/webview` tests green after the rebase). `ModeProfileBinding.ts` (566 lines) has one `resolve(mode)` (CLI
+per-mode settings, then the workspace lock, then the profile store, reporting unbound, missing, empty,
+unreadable or usable) and owns `handleModeSwitch`, `restoreForHistoryItem` (from `createTaskWithHistoryItem`),
+`getApiConfigurationForMode`, the CLI per-mode settings, `activateProviderProfile`, `upsertProviderProfile`, the
+sticky task profile and the handler refresh. Tests: a 29-case matrix pinned per copy
+(`ClineProvider.modeProfileBinding.spec`); related specs 322 to 351. Drift fixed on purpose: the history restore
+consulted the profile store despite CLI per-mode settings unless `ROO_CLI_RUNTIME` was set (the shipped CLI always
+sets it, so no user-visible change). Kept per caller: only a mode switch binds the current profile to an unbound
+mode; only the history restore falls back to the default mode; different error handling per caller. Findings
+(pinned, not fixed): switching to a mode bound to a retired-provider profile throws after the mode is saved and
+before the state push (half-done switch); `getApiConfigurationForMode` goes through `activateProfile`, which also
+saves the store's `currentApiConfigName` (visible only in a settings export).
+
+**CORE-R6 result:** ClineProvider went from 4,946 lines (start of Phase 4) to 2,396; the plan's target of about
+1,500 is not reached. Remaining large blocks are candidates for a follow-up split (task stack and creation,
+`cancelTask`, entry points).
+
 
 ### CORE-R7 Performance (Phase 10; mechanism verified, magnitude to be measured)
 
