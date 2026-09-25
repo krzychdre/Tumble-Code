@@ -135,16 +135,6 @@
 					}
 				}
 			},
-			"react-remark": {
-				"peerDependencies": {
-					"@types/react": "*"
-				},
-				"peerDependenciesMeta": {
-					"@types/react": {
-						"optional": true
-					}
-				}
-			},
 			"react-textarea-autosize": {
 				"peerDependencies": {
 					"@types/react": "*"

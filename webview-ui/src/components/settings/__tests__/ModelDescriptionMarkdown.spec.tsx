@@ -43,6 +43,15 @@ describe("ModelDescriptionMarkdown", () => {
 		expect(container.querySelector("script")).toBeNull()
 	})
 
+	it("uses the GFM rules of the chat markdown: bare URLs link, a single tilde stays literal", async () => {
+		const { container } = renderDescription("Docs at https://example.com/docs, context 1~3 M tokens.")
+
+		const link = await screen.findByRole("link", { name: "https://example.com/docs" })
+		expect(link).toHaveAttribute("href", "https://example.com/docs")
+		expect(container.querySelector("del")).toBeNull()
+		expect(container).toHaveTextContent("context 1~3 M tokens.")
+	})
+
 	it("renders nothing for an empty description", () => {
 		const { container } = renderDescription("")
 
