@@ -384,14 +384,15 @@ async function runOneSubtask({
 
 /**
  * The parent's view of a child that ended without completing. A child that
- * hit 401, 403 or 404 stops at once (TaskApiLoop) and says why; the hint
- * keeps a weak parent model from starting the same subtask again.
+ * hit 401, 403 or 404, or kept failing until the background retry cap, stops
+ * (TaskApiLoop) and says why; the hint keeps a weak parent model from
+ * starting the same subtask again.
  */
 function describeSubtaskFailure(failureMessage: string | undefined): string {
 	if (!failureMessage) return "subtask aborted before completion"
 	return (
-		`${failureMessage} Retrying will not help until the API key, model or profile is fixed: ` +
-		"do this work yourself in this task, or tell the user."
+		`${failureMessage} Retrying will not help now (the API key, model or profile needs fixing, ` +
+		"or the provider is down): do this work yourself in this task, or tell the user."
 	)
 }
 

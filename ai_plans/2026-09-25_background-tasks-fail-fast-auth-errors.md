@@ -39,7 +39,7 @@ handler, not in the task request path: unchanged.
 
 ## Change
 
-- `apiErrors.describeNonRetryableApiError(error, { provider, model })`: one
+- `apiErrors.describeBackgroundApiFailure(error, { provider, model, attempts })`: one
   line, e.g. `API error 401 (invalid or missing API key) from provider
 "openai", model "gpt-x". Provider message: ...` (message capped at 300
   characters).
@@ -80,3 +80,42 @@ background tasks.
 The TaskApiLoop tests drive the loop through its access object (as the #343
 spec does), not a full `Task`; the `Task` wiring is the plain
 `apiFailureMessage` field that `TaskApiLoop` receives as its access.
+
+## Follow-up (coordinator review of PR #353): backoff always, retry cap
+
+The same defect in its common form: with auto-approval off, a retryable
+error (400, 429, 5xx, no status) in a background task reached the
+`api_req_failed` ask, the background policy approved it at once, and the
+task re-requested in a tight loop with no delay. The empty model response
+path (`handleEmptyAssistantResponse`) had the same ask.
+
+- Background tasks never reach `api_req_failed`: `handleApiRequestError`,
+  `handleStreamError` and `handleEmptyAssistantResponse` back off
+  (`backoffAndAnnounce`, the delay the auto-approve path uses) whenever the
+  task is a background task, whatever `autoApprovalEnabled` says. Other asks
+  on the request path (`mistake_limit_reached`,
+  `auto_approval_max_req_reached`) are not error retries; they stay as they
+  were.
+- Retry cap: no cap existed (only `MAX_CONTEXT_WINDOW_RETRIES` for the
+  context-window branch and `MAX_EXPONENTIAL_BACKOFF_SECONDS` for one delay;
+  `maxAgentTurns` does not see the first-chunk recursion). New
+  `BACKGROUND_MAX_API_RETRIES = 6` in `TaskApiLoop.ts`: backoffs of 5, 10,
+  20, 40, 80 and 160 s at the default 5 s base (315 s), so 7 requests. Past
+  it, first chunk: `BackgroundRetriesExhaustedError` (carries the original
+  error and the attempt count); mid-stream: `currentItem.retryAttempt` at
+  the cap. Both end the task through `endBackgroundTaskOnApiError`
+  (`streaming_failed` + `apiFailureMessage`), e.g. `API error 500 from
+provider "openai", model "gpt-x" after 7 attempts. Provider message: ...`;
+  without a status the line starts `API request failed`.
+- The empty-response retry is a new loop turn, so `maxAgentTurns` already
+  bounds it; it only gained the backoff.
+- The parent hint became `Retrying will not help now (the API key, model or
+profile needs fixing, or the provider is down): do this work yourself in
+this task, or tell the user.`
+- Foreground tasks: unchanged (no cap, ask without auto-approval).
+
+Tests added: 400/429/500/no status with auto-approve on and off on both
+paths (backoff, no ask); empty response backs off; 500 on every request: 7
+requests, 6 backoffs, then the task ends with "after 7 attempts"; the cap
+mid-stream; the no-status line; fake timers with the real `RetryHandler`
+(requests 5, 10, 20 s apart); `awaitTaskCompletion` passes the line on.
