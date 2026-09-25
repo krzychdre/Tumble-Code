@@ -124,4 +124,27 @@ describe("ChatRow - runSlashCommand tool", () => {
 		expect(getByText("/deploy")).toBeInTheDocument()
 		expect(getByText("global")).toBeInTheDocument()
 	})
+
+	it("renders the say message in the same expandable box as the ask", () => {
+		const payload = {
+			tool: "runSlashCommand",
+			command: "test",
+			args: "focus on unit tests",
+			description: "Run project tests",
+			source: "project",
+		}
+		const ask: any = { type: "ask", ask: "tool", ts: 1, text: JSON.stringify(payload), partial: false }
+		const say: any = { type: "say", say: "tool", ts: 1, text: JSON.stringify(payload), partial: false }
+
+		const askRow = renderChatRowWithProviders(ask, true)
+		const askBox = askRow.container.querySelector(".codicon-play")?.parentElement?.nextElementSibling?.outerHTML
+		askRow.unmount()
+
+		const sayRow = renderChatRowWithProviders(say, true)
+		expect(sayRow.getByText("Arguments:")).toBeInTheDocument()
+		const sayBox = sayRow.container.querySelector(".codicon-play")?.parentElement?.nextElementSibling?.outerHTML
+
+		expect(askBox).toBeDefined()
+		expect(sayBox).toBe(askBox)
+	})
 })
