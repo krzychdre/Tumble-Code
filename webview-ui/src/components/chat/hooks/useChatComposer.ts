@@ -2,7 +2,7 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { ClineMessage, ProviderNameWithRetired, SuggestionItem } from "@roo-code/types"
-import { hasUsableAnswer, isRetiredProvider, suggestionModeToSwitch } from "@roo-code/types"
+import { hasUsableAnswer, isRetiredProvider, isTextResponseAsk, suggestionModeToSwitch } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
 
@@ -170,23 +170,15 @@ export function useChatComposer({
 						markFollowUpAsAnswered()
 					}
 
-					switch (clineAskRef.current) {
-						case "followup":
-						case "tool":
-						case "command": // User can provide feedback to a tool or command use.
-						case "use_mcp_server":
-						case "completion_result": // If this happens then the user has feedback for the completion result.
-						case "resume_task":
-						case "resume_completed_task":
-						case "mistake_limit_reached":
-							vscode.postMessage({
-								type: "askResponse",
-								askResponse: "messageResponse",
-								text,
-								images,
-							})
-							break
-						// There is no other case that a textfield should be enabled.
+					// Feedback on a tool, a command or a completion, a follow-up
+					// answer, a resume; no other ask enables the text field.
+					if (isTextResponseAsk(clineAskRef.current)) {
+						vscode.postMessage({
+							type: "askResponse",
+							askResponse: "messageResponse",
+							text,
+							images,
+						})
 					}
 				} else {
 					// This is a new message in an ongoing task.

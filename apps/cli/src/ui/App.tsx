@@ -5,13 +5,13 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
 import type { McpServer, UsableSuggestion } from "@roo-code/types"
 
+import { arePathsEqual } from "@roo-code/core/cli"
 import { setInputBoxHandler } from "@roo-code/vscode-shim"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
 
 import { getGlobalCommandsForAutocomplete } from "@/lib/utils/commands.js"
 import { getPermissionMode, type PermissionMode } from "@/lib/utils/permissions.js"
-import { arePathsEqual } from "@/lib/utils/path.js"
 import { getContextWindow } from "@/lib/utils/context-window.js"
 import { summarizeProviderSettings } from "@/lib/utils/provider-config.js"
 import { takeNewMcpFailures } from "@/lib/utils/mcp-status.js"

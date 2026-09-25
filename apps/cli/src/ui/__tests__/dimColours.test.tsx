@@ -23,7 +23,6 @@ import * as theme from "../theme.js"
 import Markdown from "../components/Markdown.js"
 import Spinner from "../components/Spinner.js"
 import TodoDisplay from "../components/TodoDisplay.js"
-import TodoChangeDisplay from "../components/TodoChangeDisplay.js"
 import SystemMessage from "../components/messages/SystemMessage.js"
 import ContextGauge from "../components/input/ContextGauge.js"
 import InputArea from "../components/input/InputArea.js"
@@ -213,24 +212,6 @@ const CASES: [string, ReactElement, string, string][] = [
 		"a new TODO's label",
 		<TodoDisplay todos={[...TODOS, { id: "4", content: "Extra", status: "pending" }]} previousTodos={TODOS} />,
 		"[new]",
-		theme.faint,
-	],
-	[
-		"a TODO update's count",
-		<TodoChangeDisplay previousTodos={PREVIOUS_TODOS} newTodos={TODOS} />,
-		"(1/3)",
-		theme.faint,
-	],
-	[
-		"a TODO update's finished item",
-		<TodoChangeDisplay previousTodos={PREVIOUS_TODOS} newTodos={TODOS} />,
-		"Finished work",
-		theme.dimmed(theme.subtle),
-	],
-	[
-		"a TODO update's label",
-		<TodoChangeDisplay previousTodos={PREVIOUS_TODOS} newTodos={TODOS} />,
-		"[started]",
 		theme.faint,
 	],
 	[

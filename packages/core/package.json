@@ -8,7 +8,8 @@
 		".": "./src/index.ts",
 		"./cli": "./src/cli.ts",
 		"./browser": "./src/browser.ts",
-		"./fs": "./src/fs/index.ts"
+		"./fs": "./src/fs/index.ts",
+		"./path": "./src/path/index.ts"
 	},
 	"scripts": {
 		"lint": "eslint src --ext=ts --max-warnings=0",

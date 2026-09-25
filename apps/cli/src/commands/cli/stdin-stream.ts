@@ -2,6 +2,8 @@ import { createInterface } from "readline"
 import { randomUUID } from "crypto"
 
 import {
+	isTextResponseAsk,
+	resumableAsks,
 	rooCliCommandNames,
 	type RooCliCommandName,
 	type RooCliInputCommand,
@@ -233,26 +235,22 @@ export interface StdinStreamModeOptions {
 	setStreamRequestId: (id: string | undefined) => void
 }
 
-const RESUME_ASKS = new Set(["resume_task", "resume_completed_task"])
+// After a cancel the task is reloaded and waits on resume_task, or on
+// resume_completed_task when it had finished. isResumableAsk counts only the
+// first (the second is an idle ask), but both mean the reload is done.
+const RESUME_ASKS: ReadonlySet<string> = new Set([...resumableAsks, "resume_completed_task"])
 const CANCEL_RECOVERY_WAIT_TIMEOUT_MS = 8_000
 const CANCEL_RECOVERY_POLL_INTERVAL_MS = 100
 const STDIN_EOF_RESUME_WAIT_TIMEOUT_MS = 2_000
 const STDIN_EOF_POLL_INTERVAL_MS = 100
-const STDIN_EOF_IDLE_ASKS = new Set(["completion_result", "resume_completed_task"])
+// The idle asks of a finished task. The other idle asks (a failed request,
+// the mistake or request limit) wait for a decision, so EOF does not end on them.
+const STDIN_EOF_IDLE_ASKS: ReadonlySet<string> = new Set(["completion_result", "resume_completed_task"])
 const STDIN_EOF_IDLE_STABLE_POLLS = 2
-const MESSAGE_AS_ASK_RESPONSE_ASKS = new Set([
-	"followup",
-	"tool",
-	"command",
-	"use_mcp_server",
-	"completion_result",
-	"resume_task",
-	"resume_completed_task",
-	"mistake_limit_reached",
-])
 
+/** Match webview behavior: a message answers the pending ask when the chat box would send it as the answer. */
 export function shouldSendMessageAsAskResponse(waitingForInput: boolean, currentAsk: string | undefined): boolean {
-	return waitingForInput && typeof currentAsk === "string" && MESSAGE_AS_ASK_RESPONSE_ASKS.has(currentAsk)
+	return waitingForInput && typeof currentAsk === "string" && isTextResponseAsk(currentAsk)
 }
 
 function isResumableState(host: ExtensionHost): boolean {

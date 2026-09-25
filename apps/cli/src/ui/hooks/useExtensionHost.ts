@@ -10,9 +10,9 @@ import {
 	type WebviewMessage,
 	modelSources,
 } from "@roo-code/types"
+import { arePathsEqual } from "@roo-code/core/cli"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
-import { arePathsEqual } from "@/lib/utils/path.js"
 
 import { useCLIStore } from "../store.js"
 

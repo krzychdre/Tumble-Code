@@ -1,31 +1,6 @@
-import { normalizePath, arePathsEqual } from "../path.js"
-
-// Helper to create platform-specific expected paths
-const expectedPath = (...segments: string[]) => {
-	// On Windows, path.normalize converts forward slashes to backslashes
-	// and paths like /Users become \Users (without a drive letter)
-	if (process.platform === "win32") {
-		return "\\" + segments.join("\\")
-	}
-
-	return "/" + segments.join("/")
-}
-
-describe("normalizePath", () => {
-	it("should remove trailing slashes", () => {
-		expect(normalizePath("/Users/test/project/")).toBe(expectedPath("Users", "test", "project"))
-		expect(normalizePath("/Users/test/project//")).toBe(expectedPath("Users", "test", "project"))
-	})
-
-	it("should handle paths without trailing slashes", () => {
-		expect(normalizePath("/Users/test/project")).toBe(expectedPath("Users", "test", "project"))
-	})
-
-	it("should normalize path separators", () => {
-		// path.normalize handles this
-		expect(normalizePath("/Users//test/project")).toBe(expectedPath("Users", "test", "project"))
-	})
-})
+// Moved from the CLI (apps/cli/src/lib/utils/path.ts, CLI-5): the extension
+// (src/utils/path.ts) and the CLI now share this helper.
+import { arePathsEqual } from "../index.js"
 
 describe("arePathsEqual", () => {
 	it("should return true for identical paths", () => {
@@ -66,11 +41,10 @@ describe("arePathsEqual", () => {
 	})
 })
 
-// DEF-C28: the CLI's copy drifted from the extension's arePathsEqual
-// (src/utils/path.ts): it treated macOS paths as case-insensitive and two
-// missing paths as different, so the CLI and the extension disagreed on which
-// task history belongs to a workspace.
-describe("arePathsEqual matches the extension's helper", () => {
+// DEF-C28: the CLI's former copy treated macOS paths as case-insensitive and
+// two missing paths as different, so the CLI and the extension disagreed on
+// which task history belongs to a workspace.
+describe("arePathsEqual platform rules", () => {
 	const originalPlatform = process.platform
 
 	afterEach(() => {
@@ -95,8 +69,8 @@ describe("arePathsEqual matches the extension's helper", () => {
 	})
 })
 
-// CLI-5: the CLI's normalizePath stripped every trailing separator in a loop,
-// the extension's strips one. On Linux and macOS a backslash is a file name
+// CLI-5: the CLI's former normalizePath stripped every trailing separator in
+// a loop; the shared rule strips one. On Linux and macOS a backslash is a file name
 // character, so "/a/b" followed by two backslashes is not "/a/b" for the extension.
 if (process.platform !== "win32") {
 	describe("arePathsEqual keeps the extension's trailing-separator rule", () => {

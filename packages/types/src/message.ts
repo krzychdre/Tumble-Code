@@ -90,6 +90,31 @@ export function isInteractiveAsk(ask: ClineAsk): ask is InteractiveAsk {
 }
 
 /**
+ * TextResponseAsk
+ *
+ * Asks the user can answer with a typed message (sent as a `messageResponse`
+ * ask response): feedback on a tool, a command or a completion, a follow-up
+ * answer, a resume. A message typed during any other ask is queued instead.
+ */
+
+export const textResponseAsks = [
+	"followup",
+	"tool",
+	"command",
+	"use_mcp_server",
+	"completion_result",
+	"resume_task",
+	"resume_completed_task",
+	"mistake_limit_reached",
+] as const satisfies readonly ClineAsk[]
+
+export type TextResponseAsk = (typeof textResponseAsks)[number]
+
+export function isTextResponseAsk(ask: string): ask is TextResponseAsk {
+	return (textResponseAsks as readonly string[]).includes(ask)
+}
+
+/**
  * NonBlockingAsk
  *
  * Asks that are not associated with an actual approval, and are only used
