@@ -303,6 +303,15 @@ deferred tools). **Change:** an options object and `buildSystemPromptInput(sourc
 **Test first:** preview-equals-live parity. **Existing:** `system-prompt` (16) and `prefix-stability` (25, protects
 the prompt-cache prefix bytes, which must not change). **Size** S to M.
 
+**Status (2026-09-25):** DONE in #284 (merge 4c7e82ee3). `SYSTEM_PROMPT(options: SystemPromptOptions)`;
+`system-prompt-input.ts` has `SystemPromptSource`, `buildSystemPromptInput(source)` and `isMcpEnabledForPrompt`,
+used by both the preview and the live path. Four parameters were ignored by the assembly and are gone
+(`supportsComputerUse`, `diffStrategy`, `todoList`, `modelId`). Drift resolved: the preview now passes the focused
+task's materialized deferred tools (its catalog offered already loaded tools, bytes differed), and both paths
+treat a missing `mcpEnabled` the same way; both read `state.customModes`. Live prompt bytes unchanged (pinned as
+length plus SHA-256 before the change; prefix-stability snapshots untouched). New `system-prompt-parity.spec` (7,
+3 failed first). Kept: the preview still uses the active profile, not the profile bound to the previewed mode.
+
 ### CORE-R6 The rest of the ClineProvider split
 
 After CORE-R1 and CORE-R2. Target: ClineProvider under about 1,500 lines, acting as a facade.
