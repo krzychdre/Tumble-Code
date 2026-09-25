@@ -1,9 +1,18 @@
 import {
 	anthropicDefaultModelId,
 	anthropicModels,
+	deepSeekModelAliases,
+	deepSeekModels,
+	geminiDefaultModelId,
+	geminiModels,
+	internationalZAiDefaultModelId,
 	internationalZAiModels,
+	litellmDefaultModelInfo,
 	mainlandZAiModels,
+	mistralDefaultModelId,
+	mistralModels,
 	openAiModelInfoSaneDefaults,
+	vertexModels,
 } from "@roo-code/types"
 
 import { DEFAULT_CONTEXT_WINDOW, getContextWindow } from "../context-window.js"
@@ -68,7 +77,71 @@ describe("getContextWindow", () => {
 		)
 	})
 
-	it("keeps the generic default for a model the table does not know", () => {
-		expect(getContextWindow(null, { apiProvider: "zai", apiModelId: "glm-unknown" })).toBe(DEFAULT_CONTEXT_WINDOW)
+	// The extension keeps an unknown model id (owner decision 5) and sizes it
+	// like the provider's default model, so condensing runs against that size.
+	it("sizes an unknown model id like the extension: the provider's default model", () => {
+		expect(getContextWindow(null, { apiProvider: "zai", apiModelId: "glm-unknown" })).toBe(
+			internationalZAiModels[internationalZAiDefaultModelId].contextWindow,
+		)
+		expect(getContextWindow(null, { apiProvider: "mistral", apiModelId: "mistral-unknown" })).toBe(
+			mistralModels[mistralDefaultModelId].contextWindow,
+		)
+		expect(getContextWindow(null, { apiProvider: "gemini", apiModelId: "gemini-unknown" })).toBe(
+			geminiModels[geminiDefaultModelId].contextWindow,
+		)
+	})
+
+	it("sizes an unknown router model with the provider's fallback info, as the handler does", () => {
+		expect(getContextWindow({}, { apiProvider: "ollama", ollamaModelId: "not-pulled" })).toBe(
+			openAiModelInfoSaneDefaults.contextWindow,
+		)
+		expect(getContextWindow({}, { apiProvider: "lmstudio", lmStudioModelId: "not-loaded" })).toBe(
+			openAiModelInfoSaneDefaults.contextWindow,
+		)
+		expect(getContextWindow({}, { apiProvider: "litellm", litellmModelId: "missing" })).toBe(
+			litellmDefaultModelInfo.contextWindow,
+		)
+	})
+
+	it("resolves a DeepSeek alias to the model it names", () => {
+		const [alias, target] = Object.entries(deepSeekModelAliases)[0]!
+		expect(getContextWindow(null, { apiProvider: "deepseek", apiModelId: alias })).toBe(
+			deepSeekModels[target as keyof typeof deepSeekModels].contextWindow,
+		)
+	})
+
+	it("applies the 1M context tier when the profile enables it", () => {
+		const sonnetTier = anthropicModels["claude-sonnet-4-5"].tiers![0]!.contextWindow
+		expect(sonnetTier).toBe(1_000_000)
+		expect(
+			getContextWindow(null, {
+				apiProvider: "anthropic",
+				apiModelId: "claude-sonnet-4-5",
+				anthropicBeta1MContext: true,
+			}),
+		).toBe(sonnetTier)
+		expect(
+			getContextWindow(null, {
+				apiProvider: "vertex",
+				apiModelId: "claude-sonnet-4-6",
+				vertex1MContext: true,
+			}),
+		).toBe(vertexModels["claude-sonnet-4-6"].tiers![0]!.contextWindow)
+	})
+
+	it("reads fetched models only for providers whose handler reads them", () => {
+		// DeepSeek's handler sizes from its built-in table, never from a fetched list.
+		expect(
+			getContextWindow(
+				{ deepseek: { "deepseek-v4-pro": { contextWindow: 64_000 } } },
+				{ apiProvider: "deepseek", apiModelId: "deepseek-v4-pro" },
+			),
+		).toBe(deepSeekModels["deepseek-v4-pro"].contextWindow)
+	})
+
+	it("keeps the generic default for a provider this version cannot run", () => {
+		expect(getContextWindow(null, { apiProvider: "retired-or-unknown" as never, apiModelId: "x" })).toBe(
+			DEFAULT_CONTEXT_WINDOW,
+		)
 	})
 })
