@@ -4,6 +4,7 @@ import * as path from "path"
 import type { ExtensionMessage } from "@roo-code/types"
 
 import { listFiles } from "../../services/glob/list-files"
+import { noteWorkspaceFileEvent } from "../../services/search/file-search"
 import { toRelativePath, getWorkspacePath } from "../../utils/path"
 
 const MAX_INITIAL_FILES = 1_000
@@ -51,8 +52,11 @@ class WorkspaceTracker {
 	private registerListeners() {
 		const watcher = vscode.workspace.createFileSystemWatcher("**")
 		this.prevWorkSpacePath = this.cwd
+		// The same watcher keeps the @-mention file list cache (services/search/file-search)
+		// current, so that cache does not need a watcher of its own.
 		this.disposables.push(
 			watcher.onDidCreate(async (uri) => {
+				noteWorkspaceFileEvent("create", uri.fsPath)
 				await this.addFilePath(uri.fsPath)
 				this.workspaceDidUpdate()
 			}),
@@ -61,11 +65,16 @@ class WorkspaceTracker {
 		// Renaming files triggers a delete and create event
 		this.disposables.push(
 			watcher.onDidDelete(async (uri) => {
+				noteWorkspaceFileEvent("delete", uri.fsPath)
 				if (await this.removeFilePath(uri.fsPath)) {
 					this.workspaceDidUpdate()
 				}
 			}),
 		)
+
+		// A change only matters to the file list cache (an edited .gitignore changes what
+		// ripgrep lists); the webview's file list does not track contents.
+		this.disposables.push(watcher.onDidChange((uri) => noteWorkspaceFileEvent("change", uri.fsPath)))
 
 		this.disposables.push(watcher)
 

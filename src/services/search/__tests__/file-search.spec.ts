@@ -203,6 +203,12 @@ describe("searchWorkspaceFiles", () => {
 		}))
 	})
 
+	afterEach(async () => {
+		const { clearWorkspaceFileListCache } = await import("../file-search")
+		clearWorkspaceFileListCache()
+		vi.useRealTimers()
+	})
+
 	it("checks result types with async fs calls, never the sync ones", async () => {
 		const { searchWorkspaceFiles } = await import("../file-search")
 		mockSpawn.mockReturnValue(
@@ -228,5 +234,192 @@ describe("searchWorkspaceFiles", () => {
 		const results = await searchWorkspaceFiles("gone", workspacePath)
 
 		expect(results).toEqual([{ path: "gone.ts", type: "file", label: "gone.ts" }])
+	})
+
+	describe("workspace file list cache", () => {
+		const other = path.resolve("/elsewhere")
+
+		/** Every spawn answers with the given files under `root`, as absolute paths. */
+		function rgListing(root: string, ...files: string[]) {
+			return fakeRg({ stdout: [files.map((f) => path.join(root, f) + "\n").join("")] }) as any
+		}
+
+		function spawnArgs(call: number): string[] {
+			return mockSpawn.mock.calls[call][1] as string[]
+		}
+
+		beforeEach(() => {
+			vi.mocked(fs.promises.lstat).mockResolvedValue({ isDirectory: () => false } as any)
+		})
+
+		it("walks the workspace with the same ignore rules and limit as before (pin)", async () => {
+			const { searchWorkspaceFiles } = await import("../file-search")
+			const limits: unknown[] = []
+			;(vscode.workspace.getConfiguration as any).mockImplementation((section: string) => ({
+				get: (key: string, defaultValue?: unknown) => {
+					if (section === "search" && key === "useIgnoreFiles") return false
+					if (key === "maximumIndexedFilesForFileSearch") {
+						limits.push(defaultValue)
+						return 2
+					}
+					return defaultValue
+				},
+			}))
+			const proc = fakeRg({
+				stdout: [["a.ts", "b.ts", "c.ts"].map((f) => path.join(workspacePath, f) + "\n").join("")],
+				hang: true,
+			})
+			mockSpawn.mockReturnValue(proc as any)
+
+			const results = await searchWorkspaceFiles("", workspacePath)
+
+			expect(spawnArgs(0)).toEqual([
+				"--files",
+				"--follow",
+				"--hidden",
+				"--no-ignore",
+				"-g",
+				"!**/node_modules/**",
+				"-g",
+				"!**/.git/**",
+				"-g",
+				"!**/out/**",
+				"-g",
+				"!**/dist/**",
+				workspacePath,
+			])
+			expect(limits).toEqual([10000])
+			expect(results.map((r) => r.path)).toEqual(["a.ts", "b.ts"])
+			expect(proc.kill).toHaveBeenCalled()
+		})
+
+		it("reuses one walk for the queries of a typed word", async () => {
+			const { searchWorkspaceFiles } = await import("../file-search")
+			mockSpawn.mockImplementation(() => rgListing(workspacePath, "src/mention.ts", "src/other.ts"))
+
+			for (const query of ["m", "me", "men", "ment", "menti", "mentio", "mention"]) {
+				await searchWorkspaceFiles(query, workspacePath)
+			}
+			const results = await searchWorkspaceFiles("mention", workspacePath)
+
+			expect(mockSpawn).toHaveBeenCalledTimes(1)
+			expect(results[0]).toEqual({ path: "src/mention.ts", type: "file", label: "mention.ts" })
+		})
+
+		it("shares one walk between queries that arrive while the cache is cold", async () => {
+			const { searchWorkspaceFiles } = await import("../file-search")
+			mockSpawn.mockImplementation(() => rgListing(workspacePath, "alpha.ts", "beta.ts"))
+
+			const [first, second] = await Promise.all([
+				searchWorkspaceFiles("alpha", workspacePath),
+				searchWorkspaceFiles("beta", workspacePath),
+			])
+
+			expect(mockSpawn).toHaveBeenCalledTimes(1)
+			expect(first.map((r) => r.path)).toEqual(["alpha.ts"])
+			expect(second.map((r) => r.path)).toEqual(["beta.ts"])
+		})
+
+		it("walks again after a file is created or deleted inside the workspace", async () => {
+			const { searchWorkspaceFiles, noteWorkspaceFileEvent } = await import("../file-search")
+			mockSpawn.mockImplementationOnce(() => rgListing(workspacePath, "old.ts"))
+			mockSpawn.mockImplementationOnce(() => rgListing(workspacePath, "old.ts", "fresh.ts"))
+			mockSpawn.mockImplementationOnce(() => rgListing(workspacePath, "fresh.ts"))
+
+			expect((await searchWorkspaceFiles("fresh", workspacePath)).map((r) => r.path)).toEqual([])
+
+			noteWorkspaceFileEvent("create", path.join(workspacePath, "fresh.ts"))
+			expect((await searchWorkspaceFiles("fresh", workspacePath)).map((r) => r.path)).toEqual(["fresh.ts"])
+
+			noteWorkspaceFileEvent("delete", path.join(workspacePath, "old.ts"))
+			expect((await searchWorkspaceFiles("old", workspacePath)).map((r) => r.path)).toEqual([])
+			expect(mockSpawn).toHaveBeenCalledTimes(3)
+		})
+
+		it("keeps the list for events ripgrep never lists, outside the workspace, or plain edits", async () => {
+			const { searchWorkspaceFiles, noteWorkspaceFileEvent } = await import("../file-search")
+			mockSpawn.mockImplementation(() => rgListing(workspacePath, "a.ts"))
+
+			await searchWorkspaceFiles("a", workspacePath)
+			noteWorkspaceFileEvent("create", path.join(workspacePath, "node_modules", "pkg", "index.js"))
+			noteWorkspaceFileEvent("create", path.join(workspacePath, "src", "dist", "bundle.js"))
+			noteWorkspaceFileEvent("delete", path.join(workspacePath, ".git", "index.lock"))
+			noteWorkspaceFileEvent("create", path.join(other, "b.ts"))
+			noteWorkspaceFileEvent("change", path.join(workspacePath, "a.ts"))
+			await searchWorkspaceFiles("a", workspacePath)
+
+			expect(mockSpawn).toHaveBeenCalledTimes(1)
+		})
+
+		it("walks again after an ignore file changes, even one above the workspace", async () => {
+			const { searchWorkspaceFiles, noteWorkspaceFileEvent } = await import("../file-search")
+			mockSpawn.mockImplementation(() => rgListing(workspacePath, "a.ts"))
+
+			await searchWorkspaceFiles("a", workspacePath)
+			noteWorkspaceFileEvent("change", path.join(workspacePath, "src", ".gitignore"))
+			await searchWorkspaceFiles("a", workspacePath)
+			noteWorkspaceFileEvent("change", path.join(path.dirname(workspacePath), ".ignore"))
+			await searchWorkspaceFiles("a", workspacePath)
+
+			expect(mockSpawn).toHaveBeenCalledTimes(3)
+		})
+
+		it("walks again after the time to live, as a backstop for events the watcher misses", async () => {
+			const { searchWorkspaceFiles, WORKSPACE_FILE_LIST_TTL_MS } = await import("../file-search")
+			vi.useFakeTimers({ toFake: ["Date"] })
+			mockSpawn.mockImplementation(() => rgListing(workspacePath, "a.ts"))
+
+			await searchWorkspaceFiles("a", workspacePath)
+			vi.setSystemTime(Date.now() + WORKSPACE_FILE_LIST_TTL_MS - 1)
+			await searchWorkspaceFiles("a", workspacePath)
+			vi.setSystemTime(Date.now() + 2)
+			await searchWorkspaceFiles("a", workspacePath)
+
+			expect(mockSpawn).toHaveBeenCalledTimes(2)
+		})
+
+		it("walks again when the ignore settings change", async () => {
+			const { searchWorkspaceFiles } = await import("../file-search")
+			let useIgnoreFiles = true
+			;(vscode.workspace.getConfiguration as any).mockImplementation((section: string) => ({
+				get: (key: string, defaultValue?: unknown) =>
+					section === "search" && key === "useIgnoreFiles" ? useIgnoreFiles : defaultValue,
+			}))
+			mockSpawn.mockImplementation(() => rgListing(workspacePath, "a.ts"))
+
+			await searchWorkspaceFiles("a", workspacePath)
+			useIgnoreFiles = false
+			await searchWorkspaceFiles("a", workspacePath)
+
+			expect(mockSpawn).toHaveBeenCalledTimes(2)
+			expect(spawnArgs(0)).not.toContain("--no-ignore")
+			expect(spawnArgs(1)).toContain("--no-ignore")
+		})
+
+		it("keeps one list per workspace root", async () => {
+			const { searchWorkspaceFiles } = await import("../file-search")
+			mockSpawn.mockImplementation((_bin: any, args: any) => {
+				const root = (args as string[])[(args as string[]).length - 1]
+				return rgListing(root, root === other ? "there.ts" : "here.ts")
+			})
+
+			expect((await searchWorkspaceFiles("", workspacePath)).map((r) => r.path)).toEqual(["here.ts"])
+			expect((await searchWorkspaceFiles("", other)).map((r) => r.path)).toEqual(["there.ts"])
+			expect((await searchWorkspaceFiles("", workspacePath)).map((r) => r.path)).toEqual(["here.ts"])
+			expect(mockSpawn).toHaveBeenCalledTimes(2)
+		})
+
+		it("does not keep a failed walk", async () => {
+			const { searchWorkspaceFiles } = await import("../file-search")
+			vi.spyOn(console, "error").mockImplementation(() => {})
+			mockSpawn.mockImplementationOnce(
+				() => fakeRg({ stderr: ["rg: IO error\n"], exitCode: 2 }) as any,
+			)
+			mockSpawn.mockImplementationOnce(() => rgListing(workspacePath, "a.ts"))
+
+			expect(await searchWorkspaceFiles("a", workspacePath)).toEqual([])
+			expect((await searchWorkspaceFiles("a", workspacePath)).map((r) => r.path)).toEqual(["a.ts"])
+			expect(mockSpawn).toHaveBeenCalledTimes(2)
+		})
 	})
 })
