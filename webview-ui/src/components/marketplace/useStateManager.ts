@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { MarketplaceViewStateManager, ViewState } from "./MarketplaceViewStateManager"
+import { onAnyExtensionMessage } from "@src/utils/extensionBus"
 
 export function useStateManager(existingManager?: MarketplaceViewStateManager) {
 	const [manager] = useState(() => existingManager || new MarketplaceViewStateManager())
@@ -23,12 +24,8 @@ export function useStateManager(existingManager?: MarketplaceViewStateManager) {
 			})
 		}
 
-		const handleMessage = (event: MessageEvent) => {
-			manager.handleMessage(event.data)
-		}
-
 		// Register message handler immediately
-		window.addEventListener("message", handleMessage)
+		const unsubscribeMessages = onAnyExtensionMessage((message) => manager.handleMessage(message))
 
 		// Register state change handler
 		const unsubscribe = manager.onStateChange(handleStateChange)
@@ -37,7 +34,7 @@ export function useStateManager(existingManager?: MarketplaceViewStateManager) {
 		handleStateChange(manager.getState())
 
 		return () => {
-			window.removeEventListener("message", handleMessage)
+			unsubscribeMessages()
 			unsubscribe()
 			// Don't cleanup the manager if it was provided externally
 			if (!existingManager) {

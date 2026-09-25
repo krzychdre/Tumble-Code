@@ -20,6 +20,8 @@ import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { postImmediateSetting } from "./postImmediateSetting"
+import type { ExtensionMessage } from "@roo-code/types"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface PromptsSettingsProps {
 	customSupportPrompts: Record<string, string | undefined>
@@ -52,8 +54,7 @@ const PromptsSettings = ({
 	const [activeSupportOption, setActiveSupportOption] = useState<SupportPromptType>("ENHANCE")
 
 	useEffect(() => {
-		const handler = (event: MessageEvent) => {
-			const message = event.data
+		const handler = (message: ExtensionMessage) => {
 			if (message.type === "enhancedPrompt") {
 				if (message.text) {
 					setTestPrompt(message.text)
@@ -62,8 +63,7 @@ const PromptsSettings = ({
 			}
 		}
 
-		window.addEventListener("message", handler)
-		return () => window.removeEventListener("message", handler)
+		return onExtensionMessage("enhancedPrompt", handler)
 	}, [])
 
 	const updateSupportPrompt = (type: SupportPromptType, value: string | undefined) => {

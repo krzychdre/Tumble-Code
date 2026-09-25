@@ -3,7 +3,7 @@ import { VSCodeCheckbox, VSCodeTextArea, VSCodeLink, VSCodeTextField } from "@vs
 import { Trans } from "react-i18next"
 import { ChevronDown, X, Upload, Download } from "lucide-react"
 
-import type { ModeConfig, GroupEntry, PromptComponent, ToolGroup } from "@roo-code/types"
+import type { ModeConfig, GroupEntry, PromptComponent, ToolGroup, ExtensionMessage } from "@roo-code/types"
 
 import {
 	Mode,
@@ -47,6 +47,7 @@ import { CreateModeDialog } from "./CreateModeDialog"
 import { ImportModeDialog } from "./ImportModeDialog"
 import { availableGroups, getGroupName } from "./modeGroups"
 import { useModeImportExport } from "./useModeImportExport"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 type ModesViewProps = {
 	/**
@@ -302,8 +303,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 	}, [modeToDelete])
 
 	useEffect(() => {
-		const handler = (event: MessageEvent) => {
-			const message = event.data
+		const handler = (message: ExtensionMessage) => {
 			if (message.type === "systemPrompt") {
 				if (message.text) {
 					setSelectedPromptContent(message.text)
@@ -322,8 +322,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 			}
 		}
 
-		window.addEventListener("message", handler)
-		return () => window.removeEventListener("message", handler)
+		return onExtensionMessage(["systemPrompt", "deleteCustomModeCheck"], handler)
 	}, [])
 
 	const handleAgentReset = (

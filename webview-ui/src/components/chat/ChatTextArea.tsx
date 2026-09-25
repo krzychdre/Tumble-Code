@@ -3,6 +3,8 @@ import DynamicTextArea from "react-textarea-autosize"
 import { Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-react"
 
 import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
+import type { ExtensionMessage } from "@roo-code/types"
+
 import { WebviewMessage } from "@roo/WebviewMessage"
 import { Mode, getAllModes } from "@roo/modes"
 
@@ -30,6 +32,7 @@ import ContextMenu from "./ContextMenu"
 import { IndexingStatusBadge } from "./IndexingStatusBadge"
 import { usePromptHistory } from "./hooks/usePromptHistory"
 import { CloudAccountSwitcher } from "../cloud/CloudAccountSwitcher"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface ChatTextAreaProps {
 	inputValue: string
@@ -132,9 +135,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 		// Handle enhanced prompt response and search results.
 		useEffect(() => {
-			const messageHandler = (event: MessageEvent) => {
-				const message = event.data
-
+			const messageHandler = (message: ExtensionMessage) => {
 				if (message.type === "enhancedPrompt") {
 					if (message.text && textAreaRef.current) {
 						try {
@@ -189,25 +190,29 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						}, 0)
 					}
 				} else if (message.type === "commitSearchResults") {
-					const commits = message.commits.map((commit: any) => ({
-						type: ContextMenuOptionType.Git,
-						value: commit.hash,
-						label: commit.subject,
-						description: `${commit.shortHash} by ${commit.author} on ${commit.date}`,
-						icon: "$(git-commit)",
-					}))
+					const commits = (message.commits as NonNullable<ExtensionMessage["commits"]>).map(
+						(commit: any) => ({
+							type: ContextMenuOptionType.Git,
+							value: commit.hash,
+							label: commit.subject,
+							description: `${commit.shortHash} by ${commit.author} on ${commit.date}`,
+							icon: "$(git-commit)",
+						}),
+					)
 
 					setGitCommits(commits)
 				} else if (message.type === "fileSearchResults") {
 					setSearchLoading(false)
 					if (message.requestId === searchRequestId) {
-						setFileSearchResults(message.results || [])
+						setFileSearchResults((message.results as SearchResult[] | undefined) || [])
 					}
 				}
 			}
 
-			window.addEventListener("message", messageHandler)
-			return () => window.removeEventListener("message", messageHandler)
+			return onExtensionMessage(
+				["enhancedPrompt", "insertTextIntoTextarea", "commitSearchResults", "fileSearchResults"],
+				messageHandler,
+			)
 		}, [setInputValue, searchRequestId, inputValue])
 
 		const [isDraggingOver, setIsDraggingOver] = useState(false)

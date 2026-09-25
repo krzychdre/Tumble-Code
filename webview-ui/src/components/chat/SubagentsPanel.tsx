@@ -22,6 +22,7 @@ import { vscode } from "@src/utils/vscode"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { ProgressIndicator } from "./ProgressIndicator"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface SubagentsPanelProps {
 	subagents: SubagentSummary[] | undefined
@@ -155,8 +156,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 	}, [taskId])
 
 	useEffect(() => {
-		const handler = (event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
+		const handler = (message: ExtensionMessage) => {
 			if (message.sourceTaskId !== taskId) {
 				return
 			}
@@ -175,8 +175,7 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 				})
 			}
 		}
-		window.addEventListener("message", handler)
-		return () => window.removeEventListener("message", handler)
+		return onExtensionMessage(["subagentMessages", "messageUpdated"], handler)
 	}, [taskId])
 
 	// Pin the tail to the latest output — but only while the user is at the

@@ -11,6 +11,8 @@ import { STANDARD_TOOLTIP_DELAY } from "@src/components/ui/standard-tooltip"
 import ErrorBoundary from "@src/components/ErrorBoundary"
 
 import { PlanReviewSurface } from "./PlanReviewSurface"
+import type { ExtensionMessage } from "@roo-code/types"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface PlanReviewState {
 	filePath?: string
@@ -43,10 +45,7 @@ const PlanReviewAppInner: React.FC = () => {
 
 	// Listen for init/update messages from the extension host.
 	useEffect(() => {
-		const handler = (event: MessageEvent) => {
-			const message = event.data
-			if (!message) return
-
+		const handler = (message: ExtensionMessage & { planReview?: PlanReviewState }) => {
 			if (message.type === "planReviewInit") {
 				const planReview = message.planReview as PlanReviewState
 				const language = planReview?.language ?? "en"
@@ -74,8 +73,7 @@ const PlanReviewAppInner: React.FC = () => {
 			}
 		}
 
-		window.addEventListener("message", handler)
-		return () => window.removeEventListener("message", handler)
+		return onExtensionMessage(["planReviewInit", "planReviewUpdate", "planReviewDraftsConsumed"], handler)
 	}, [])
 
 	const handleSubmit = useCallback((text: string) => {

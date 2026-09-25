@@ -1,5 +1,4 @@
 import { useCallback, useState, useMemo } from "react"
-import { useEvent } from "react-use"
 import { t } from "i18next"
 import { ChevronDown, OctagonX } from "lucide-react"
 
@@ -19,6 +18,7 @@ import CodeBlock from "@src/components/common/CodeBlock"
 
 import { CommandPatternSelector } from "./CommandPatternSelector"
 import { TerminalOutput } from "./TerminalOutput"
+import { useExtensionMessage } from "@src/utils/extensionBus"
 
 // Module-level cache of the most recent status for each executionId. Populated
 // by every onMessage handler so that a CommandExecution component that mounts
@@ -145,9 +145,7 @@ export const CommandExecution = ({
 	}
 
 	const onMessage = useCallback(
-		(event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
-
+		(message: ExtensionMessage) => {
 			if (message.type === "commandExecutionStatus") {
 				const result = commandExecutionStatusSchema.safeParse(safeJsonParse(message.text, {}))
 
@@ -197,7 +195,7 @@ export const CommandExecution = ({
 		[executionId],
 	)
 
-	useEvent("message", onMessage)
+	useExtensionMessage("commandExecutionStatus", onMessage)
 
 	return (
 		<>

@@ -8,10 +8,6 @@ import { ExtensionStateContext } from "../../../context/ExtensionStateContext"
 import { TooltipProvider } from "../../ui/tooltip"
 
 // Mock dependencies
-vi.mock("react-use", () => ({
-	useEvent: vi.fn(),
-}))
-
 // The component labels its buttons and tooltips through i18next's bare `t`.
 // i18next is not initialised under vitest and would return undefined, so
 // resolve every key to itself and assert on the keys. With real (truthy)
@@ -21,7 +17,6 @@ vi.mock("i18next", () => ({
 	t: (key: string) => key,
 }))
 
-import { useEvent } from "react-use"
 import { vscode } from "../../../utils/vscode"
 
 vi.mock("../../../utils/vscode", () => ({
@@ -722,17 +717,13 @@ Output:
 	})
 
 	describe("running status indicator", () => {
-		// Since useEvent is mocked as a no-op vi.fn(), the component's onMessage
-		// handler is recorded in mock.calls[last][1]. We invoke it directly to
-		// simulate an incoming extension message. event.data must be an
-		// ExtensionMessage with type "commandExecutionStatus" and text holding
-		// the JSON-serialised CommandExecutionStatus payload.
+		// Simulates an incoming extension message the way the host delivers it:
+		// a window MessageEvent, which reaches the component through the extension
+		// bus. event.data is an ExtensionMessage with type "commandExecutionStatus"
+		// and text holding the JSON-serialised CommandExecutionStatus payload.
 		const sendStatusMessage = (executionId: string, payload: Record<string, unknown>) => {
-			const mockedUseEvent = useEvent as unknown as ReturnType<typeof vi.fn>
-			const lastCall = mockedUseEvent.mock.calls[mockedUseEvent.mock.calls.length - 1]
-			const handler = lastCall?.[1] as ((e: MessageEvent) => void) | undefined
 			const data = { type: "commandExecutionStatus", text: JSON.stringify({ executionId, ...payload }) }
-			handler?.(new MessageEvent("message", { data }))
+			window.dispatchEvent(new MessageEvent("message", { data }))
 		}
 
 		it("should show the pulsing dot when status is started", async () => {

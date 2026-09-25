@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react"
-import { MarketplaceItem, TelemetryEventName } from "@roo-code/types"
+import { MarketplaceItem, TelemetryEventName, type ExtensionMessage } from "@roo-code/types"
 import { vscode } from "@/utils/vscode"
 import { telemetryClient } from "@/utils/TelemetryClient"
 import { ViewState } from "../MarketplaceViewStateManager"
@@ -20,6 +20,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface ItemInstalledMetadata {
 	type: string
@@ -45,8 +46,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 
 	// Listen for removal result messages
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
+		const handleMessage = (message: ExtensionMessage) => {
 			if (message.type === "marketplaceRemoveResult" && message.slug === item.id) {
 				if (message.success) {
 					// Removal succeeded - refresh marketplace data
@@ -60,8 +60,7 @@ export const MarketplaceItemCard: React.FC<MarketplaceItemCardProps> = ({ item, 
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("marketplaceRemoveResult", handleMessage)
 	}, [item.id, t])
 
 	const typeLabel = useMemo(() => {

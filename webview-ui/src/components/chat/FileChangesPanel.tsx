@@ -11,6 +11,7 @@ import { vscode } from "@src/utils/vscode"
 
 import { fileChangesFromMessages, type FileChangeEntry } from "./utils/fileChangesFromMessages"
 import CodeAccordion from "../common/CodeAccordion"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface FileChangesPanelProps {
 	clineMessages: ClineMessage[] | undefined
@@ -89,16 +90,14 @@ const FileChangesPanel = memo(({ clineMessages, className }: FileChangesPanelPro
 
 	// Listen for fileContent responses
 	useEffect(() => {
-		const handler = (event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
+		const handler = (message: ExtensionMessage) => {
 			if (message.type === "fileContent" && message.fileContent?.path != null) {
 				const fc = message.fileContent
 				pendingPathsRef.current.delete(fc.path)
 				setFinalContentByPath((prev) => ({ ...prev, [fc.path]: fc.content ?? null }))
 			}
 		}
-		window.addEventListener("message", handler)
-		return () => window.removeEventListener("message", handler)
+		return onExtensionMessage("fileContent", handler)
 	}, [])
 
 	if (fileChanges.length === 0) return null

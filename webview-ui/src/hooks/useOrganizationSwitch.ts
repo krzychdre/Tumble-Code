@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react"
 import type { ExtensionMessage } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 /** Select values that are not organization ids. */
 export const PERSONAL_ACCOUNT_VALUE = "personal"
@@ -37,8 +38,7 @@ export function useOrganizationSwitch({
 	}, [signedInOrgId])
 
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data as ExtensionMessage
+		const handleMessage = (message: ExtensionMessage) => {
 			if (message?.type !== "organizationSwitchResult") {
 				return
 			}
@@ -46,8 +46,7 @@ export function useOrganizationSwitch({
 			setSelectedOrgId(message.success ? (message.organizationId ?? null) : signedInOrgId)
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("organizationSwitchResult", handleMessage)
 	}, [signedInOrgId])
 
 	const handleOrganizationChange = useCallback(

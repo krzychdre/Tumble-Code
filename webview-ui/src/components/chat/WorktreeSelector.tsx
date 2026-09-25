@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from "react"
 import { GitBranch, Check, ChevronDown, Plus } from "lucide-react"
 
-import type { Worktree, WorktreeListResponse } from "@roo-code/types"
+import type { Worktree, WorktreeListResponse, ExtensionMessage } from "@roo-code/types"
 
 import { cn } from "@/lib/utils"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
@@ -11,6 +11,7 @@ import { vscode } from "@/utils/vscode"
 
 import { CreateWorktreeModal } from "../worktrees/CreateWorktreeModal"
 import { IconButton } from "./IconButton"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface WorktreeSelectorProps {
 	disabled?: boolean
@@ -34,17 +35,15 @@ export const WorktreeSelector = ({ disabled = false }: WorktreeSelectorProps) =>
 
 	// Handle messages from extension
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
+		const handleMessage = (message: ExtensionMessage) => {
 			if (message.type === "worktreeList") {
-				const response: WorktreeListResponse = message
+				const response = message as unknown as WorktreeListResponse
 				setWorktrees(response.worktrees || [])
 				setIsGitRepo(response.isGitRepo)
 			}
 		}
 
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("worktreeList", handleMessage)
 	}, [])
 
 	// Initial fetch and refresh on open

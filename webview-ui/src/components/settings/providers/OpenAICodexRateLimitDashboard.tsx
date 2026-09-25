@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react"
-import type { OpenAiCodexRateLimitInfo } from "@roo-code/types"
+import type { OpenAiCodexRateLimitInfo, ExtensionMessage } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
+import { onExtensionMessage } from "@src/utils/extensionBus"
 
 interface OpenAICodexRateLimitDashboardProps {
 	isAuthenticated: boolean
@@ -102,21 +103,19 @@ export const OpenAICodexRateLimitDashboard: React.FC<OpenAICodexRateLimitDashboa
 	}, [isAuthenticated])
 
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
+		const handleMessage = (message: ExtensionMessage) => {
 			if (message.type === "openAiCodexRateLimits") {
 				setIsLoading(false)
 				if (message.error) {
 					setError(message.error)
 					setRateLimits(null)
 				} else if (message.values) {
-					setRateLimits(message.values)
+					setRateLimits(message.values as OpenAiCodexRateLimitInfo)
 					setError(null)
 				}
 			}
 		}
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
+		return onExtensionMessage("openAiCodexRateLimits", handleMessage)
 	}, [])
 
 	useEffect(() => {

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, memo } from "react"
 import { Server, ChevronDown, ChevronRight } from "lucide-react"
-import { useEvent } from "react-use"
 import { useTranslation } from "react-i18next"
 
 import {
@@ -19,6 +18,7 @@ import CodeBlock from "../common/CodeBlock"
 import McpToolRow from "../mcp/McpToolRow"
 
 import { Markdown } from "./Markdown"
+import { useExtensionMessage } from "@src/utils/extensionBus"
 
 interface McpExecutionProps {
 	executionId: string
@@ -142,9 +142,7 @@ export const McpExecution = ({
 
 	// Listen for MCP execution status messages
 	const onMessage = useCallback(
-		(event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
-
+		(message: ExtensionMessage) => {
 			if (message.type === "mcpExecutionStatus") {
 				try {
 					const result = mcpExecutionStatusSchema.safeParse(safeJsonParse(message.text || "{}", {}))
@@ -171,7 +169,7 @@ export const McpExecution = ({
 		[executionId],
 	)
 
-	useEvent("message", onMessage)
+	useExtensionMessage("mcpExecutionStatus", onMessage)
 
 	// Initialize with text if provided and parse command/response sections
 	useEffect(() => {
