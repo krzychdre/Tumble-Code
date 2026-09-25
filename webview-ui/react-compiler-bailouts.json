@@ -4,7 +4,6 @@
 	"src/components/chat/ChatTextArea.tsx": ["ChatTextArea"],
 	"src/components/chat/ChatView.tsx": ["ChatViewComponent"],
 	"src/components/chat/McpExecution.tsx": ["McpExecution"],
-	"src/components/chat/ModeSelector.tsx": ["ModeSelector"],
 	"src/components/chat/UpdateTodoListToolBlock.tsx": ["UpdateTodoListToolBlock"],
 	"src/components/code-index/CodeIndexPopover.tsx": ["CodeIndexPopover"],
 	"src/components/common/DiffView.tsx": ["DiffView"],
