@@ -297,4 +297,52 @@ describe("ModeSelector", () => {
 		const trigger = screen.getByTestId("mode-selector-trigger")
 		expect(trigger).toHaveTextContent("Code")
 	})
+
+	describe("fallback notification for a mode that does not exist", () => {
+		const twoModes: ModeConfig[] = [
+			{ slug: "code", name: "Code", description: "Code mode", roleDefinition: "r", groups: ["read", "edit"] },
+			{ slug: "other", name: "Other", description: "Other mode", roleDefinition: "r", groups: ["read"] },
+		]
+
+		const renderSelector = (value: string, onChange: (value: Mode) => void) => (
+			<ModeSelector title="Mode Selector" value={value as Mode} onChange={onChange} modeShortcutText="Ctrl+M" />
+		)
+
+		beforeEach(() => {
+			mockModes = twoModes
+		})
+
+		test("does not notify again when only the onChange identity changes (a parent that does not memoize it)", () => {
+			const first = vi.fn()
+			const { rerender } = render(renderSelector("missing", first))
+			expect(first).toHaveBeenCalledTimes(1)
+
+			const second = vi.fn()
+			rerender(renderSelector("missing", second))
+			rerender(renderSelector("missing", vi.fn()))
+
+			expect(first).toHaveBeenCalledTimes(1)
+			expect(second).not.toHaveBeenCalled()
+		})
+
+		test("notifies the latest onChange when the value changes to another missing mode", () => {
+			const first = vi.fn()
+			const { rerender } = render(renderSelector("missing", first))
+
+			const latest = vi.fn()
+			rerender(renderSelector("also-missing", latest))
+
+			expect(first).toHaveBeenCalledTimes(1)
+			expect(latest).toHaveBeenCalledTimes(1)
+			expect(latest).toHaveBeenCalledWith("code")
+		})
+
+		test("does not notify for an existing mode", () => {
+			const onChange = vi.fn()
+			const { rerender } = render(renderSelector("other", onChange))
+			rerender(renderSelector("code", vi.fn()))
+
+			expect(onChange).not.toHaveBeenCalled()
+		})
+	})
 })
