@@ -289,6 +289,21 @@ bytes unchanged. Finding: DEF-C46 in `02-defects.md`.
 
 `createMessage` spans 387-797; a readability-only win after API-1, API-3 and API-5. About 180 tests in 8 specs.
 
+**Status (2026-09-25):** DONE in #313 (rebased by the coordinator onto #311 and #314; 378 Bedrock and contract
+tests green). `providers/bedrock/request.ts` (request building incl. cache points, thinking and inference config,
+now shared with `completePromptWithUsage`, beta headers, service tier, tools), `stream.ts` (same event order and
+the prompt-router try/finally-continue; `useInvokedModelForCost` passed as a hook) and `errors.ts` (the error table
+moved verbatim, checked line by line; `bedrockStreamFailure` is the old catch block). bedrock.ts 1,626 to 768 lines,
+`createMessage` 404 to about 75. `bedrock-characterization.spec` (19) passed before and after unchanged; module
+tests 29. Findings (pinned, not fixed): `VALIDATION_ERROR` and `ABORT` rows never fire because `getErrorType`'s
+order list lacks them ("field required" and `AbortError` get "Unknown Error: ..."); the prompt-router
+`finally { continue }` swallows a consumer `return()`.
+
+**Also 2026-09-25, #314 (d8b9e711b):** main's `check-types` was red after API-13/API-5: `check-unused-locals`
+flagged the private `OpenAiNativeHandler.normalizeUsage` delegator, used only by `openai-native-usage.spec`
+through `as any`; removed, the spec calls `core.normalizeUsage(usage, model.info)`.
+
+
 ### API-Q Quick wins
 
 1. Merge `r1-format.ts` and `zai-format.ts` into one function (`zai-format` has no spec and inherits
