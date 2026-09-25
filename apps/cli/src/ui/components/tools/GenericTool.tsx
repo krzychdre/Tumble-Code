@@ -38,7 +38,8 @@ export function GenericTool({ toolData, rawContent, message, expanded = false }:
 		}
 	}
 
-	const primaryArg = path
+	// The header value the webview row shows (query, URL, skill, ...), else the path.
+	const primaryArg = toolData.subject ?? path
 
 	return (
 		<Box flexDirection="column">

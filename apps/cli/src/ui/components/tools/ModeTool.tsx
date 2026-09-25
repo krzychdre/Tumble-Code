@@ -10,6 +10,7 @@ import { toolStatusFromMessage } from "./types.js"
 export function ModeTool({ toolData, message }: ToolRendererProps) {
 	const status = toolStatusFromMessage(message)
 	const mode = toolData.mode || ""
+	const reason = toolData.reason || ""
 
 	return (
 		<Box flexDirection="column">
@@ -23,6 +24,7 @@ export function ModeTool({ toolData, message }: ToolRendererProps) {
 						{mode ? <Text>)</Text> : null}
 					</Text>
 					{mode && <ResultRow maxLines={1}>{`Switching to ${mode} mode`}</ResultRow>}
+					{reason && <ResultRow maxLines={3}>{reason}</ResultRow>}
 				</Box>
 			</Box>
 		</Box>

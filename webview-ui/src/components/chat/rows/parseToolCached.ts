@@ -1,5 +1,7 @@
 import type { ClineMessage, ClineSayTool } from "@roo-code/types"
 
+import { parseToolPayloadText } from "@roo-code/core/browser"
+
 /** A parsed tool payload. Shared between callers: read it, never mutate it. */
 export type ParsedTool = Readonly<Partial<ClineSayTool>> & Readonly<Record<string, unknown>>
 
@@ -17,15 +19,6 @@ const cache = new Map<number, { text: string; tool: ParsedTool | undefined }>()
 // order, so every lookup evicts the entry the next pass needs), which is the
 // cost of parsing without the cache, not worse.
 export const TOOL_PARSE_CACHE_MAX_ENTRIES = 5000
-
-function parse(text: string): ParsedTool | undefined {
-	try {
-		const value: unknown = JSON.parse(text)
-		return typeof value === "object" && value !== null ? (value as ParsedTool) : undefined
-	} catch {
-		return undefined
-	}
-}
 
 /**
  * The tool payload of a message (`JSON.parse(message.text)`), or undefined when
@@ -48,7 +41,7 @@ export function parseToolCached(message: Pick<ClineMessage, "ts" | "text">): Par
 		return hit.tool
 	}
 
-	const tool = parse(text)
+	const tool = parseToolPayloadText(text) as ParsedTool | undefined
 	if (hit !== undefined) {
 		// Keep the insertion order honest: a re-parsed entry counts as new.
 		cache.delete(message.ts)

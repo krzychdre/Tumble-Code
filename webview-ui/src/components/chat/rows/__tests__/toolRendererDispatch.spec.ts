@@ -1,3 +1,5 @@
+import { getToolPayloadKind } from "@roo-code/core/browser"
+
 import { TOOL_RENDERERS } from "../renderers/tool"
 import { EditFileToolRow, InsertContentToolRow } from "../renderers/tool/EditFileToolRow"
 import {
@@ -74,5 +76,26 @@ describe("say tool rows by payload tool name", () => {
 			readArtifact: ReadArtifactSayRow,
 			readCommandOutput: ReadArtifactSayRow,
 		})
+	})
+})
+
+describe("the shared payload kinds (@roo-code/core)", () => {
+	it.each([
+		["tool ask", TOOL_RENDERERS],
+		["say tool", SAY_TOOL_RENDERERS],
+	] as const)("give every %s row name a kind, and names of one kind the same row", (_label, renderers) => {
+		const rowByKind = new Map<string, unknown>()
+		for (const [name, renderer] of Object.entries(renderers)) {
+			const kind = getToolPayloadKind(name)
+			expect([name, kind !== undefined]).toEqual([name, true])
+			// The two list rows differ only in their title, so they share a kind.
+			if (kind === "listFiles") {
+				continue
+			}
+			if (!rowByKind.has(kind!)) {
+				rowByKind.set(kind!, renderer)
+			}
+			expect([name, rowByKind.get(kind!) === renderer]).toEqual([name, true])
+		}
 	})
 })

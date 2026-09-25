@@ -1,6 +1,8 @@
 import { memo, useMemo } from "react"
 import { Box, Text, useInput } from "ink"
 
+import { describeToolPayload, parseToolPayloadText } from "@roo-code/core/cli"
+
 import * as theme from "../../theme.js"
 import SelectList from "../primitives/SelectList.js"
 import { getToolDisplayName } from "../tools/utils.js"
@@ -46,18 +48,6 @@ interface ApprovalBody {
 	lines: ApprovalLine[]
 	/** The question above Yes / No (default "Do you want to proceed?"). */
 	question?: string
-}
-
-/**
- * Parse a tool name from ask.content JSON, if present.
- */
-function parseToolInfo(content: string): Record<string, unknown> | undefined {
-	try {
-		const parsed = JSON.parse(content) as Record<string, unknown>
-		return parsed
-	} catch {
-		return undefined
-	}
 }
 
 /**
@@ -137,16 +127,24 @@ function buildBody(ask: PendingAsk): ApprovalBody {
 	}
 
 	if (ask.type === "tool") {
-		const info = parseToolInfo(ask.content)
+		const info = parseToolPayloadText(ask.content)
 		const toolName = info ? (info.tool as string) : undefined
 		const title = toolName ? getToolDisplayName(toolName) : "Tool use"
 		const lines: ApprovalLine[] = []
 
 		if (info) {
+			// What the webview row shows next to its title (the queries of a web
+			// search, the URL of a fetch, the name of a skill), when the lines
+			// below would not show it already.
+			const { kind, subject } = describeToolPayload(info)
+			if (subject && subject !== info.path && subject !== info.mode) {
+				lines.push({ content: subject, bold: true })
+			}
 			if (typeof info.path === "string" && info.path.length > 0) {
 				lines.push({ content: info.path, bold: true })
 			}
-			if (typeof info.command === "string" && info.command.length > 0) {
+			// A slash command's name is in its subject, and it is not a shell command.
+			if (typeof info.command === "string" && info.command.length > 0 && kind !== "runSlashCommand") {
 				lines.push({ content: `$ ${info.command}` })
 			}
 			if (info.diffStats && typeof info.diffStats === "object") {
