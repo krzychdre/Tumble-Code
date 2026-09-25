@@ -66,6 +66,20 @@ describe("diffPlanMarkdown", () => {
 		expect(segments).toEqual([{ kind: "same", markdown: "some text here" }])
 	})
 
+	// Characterization (DEP-6): two neighbours swapped have two equally short
+	// edit scripts; which block shows as moved depends on the Myers
+	// implementation in the `diff` package.
+	it("marks one of two swapped blocks as moved", () => {
+		const segments = diffPlanMarkdown("A\n\nB\n\nC\n\nD", "A\n\nC\n\nB\n\nD")
+		expect(segments).toEqual([
+			{ kind: "same", markdown: "A" },
+			{ kind: "changed", markdown: "C" },
+			{ kind: "same", markdown: "B" },
+			{ kind: "removed", text: "C" },
+			{ kind: "same", markdown: "D" },
+		])
+	})
+
 	it("merges consecutive changed blocks", () => {
 		const segments = diffPlanMarkdown("intro", "intro\n\nstep one\n\nstep two")
 		expect(segments).toEqual([
