@@ -254,6 +254,45 @@ describe("NativeOllamaHandler", () => {
 				}
 			}).rejects.toThrow("Model llama2 not found in Ollama")
 		})
+
+		// The real ollama client throws its ResponseError with the HTTP status in
+		// `status_code` (not `status`). Drive the real client against a fake fetch
+		// that answers 404 the way the Ollama server does for a model that is not
+		// pulled, so the spec breaks if the package ever changes that shape.
+		it("shows the pull hint for the real ollama ResponseError (status_code 404)", async () => {
+			const { Ollama: RealOllama } = await vitest.importActual<typeof import("ollama")>("ollama")
+			let requests = 0
+			const realClient = new RealOllama({
+				host: "http://localhost:11434",
+				fetch: (async () => {
+					requests++
+					return new Response(JSON.stringify({ error: 'model "llama2" not found, try pulling it first' }), {
+						status: 404,
+						headers: { "Content-Type": "application/json" },
+					})
+				}) as typeof fetch,
+			})
+			mockChat.mockImplementation((request: any) => realClient.chat(request))
+
+			const stream = handler.createMessage("System", [{ role: "user" as const, content: "Test" }])
+
+			let caught: any
+			try {
+				for await (const _ of stream) {
+					// consume stream
+				}
+			} catch (error) {
+				caught = error
+			}
+
+			expect(requests).toBe(1)
+			expect(caught).toBeInstanceOf(Error)
+			expect(caught.message).toBe(
+				"Model llama2 not found in Ollama. Please pull the model first with: ollama pull llama2",
+			)
+			// The retry loop and the chat error row read `.status`.
+			expect(caught.status).toBe(404)
+		})
 	})
 
 	describe("getModel", () => {
