@@ -9,10 +9,7 @@ export interface LanguageParser {
 	}
 }
 
-async function loadLanguage(langName: string, sourceDirectory?: string) {
-	const baseDir = sourceDirectory || __dirname
-	const wasmPath = path.join(baseDir, `tree-sitter-${langName}.wasm`)
-
+async function loadLanguage(wasmPath: string) {
 	try {
 		const { Language } = require("web-tree-sitter")
 		return await Language.load(wasmPath)
@@ -22,7 +19,110 @@ async function loadLanguage(langName: string, sourceDirectory?: string) {
 	}
 }
 
-let isParserInitialized = false
+let parserInit: Promise<void> | undefined
+
+function initParser(): Promise<void> {
+	if (!parserInit) {
+		const { Parser } = require("web-tree-sitter")
+		parserInit = (Parser.init() as Promise<void>).catch((error: unknown) => {
+			parserInit = undefined
+			console.error(`Error initializing parser: ${error instanceof Error ? error.message : error}`)
+			throw error
+		})
+	}
+	return parserInit
+}
+
+/**
+ * One loaded grammar: its Language, one Parser bound to it, and the tag
+ * queries compiled against it (keyed by query source).
+ *
+ * Sharing one Parser between callers is safe because Parser.parse() is
+ * synchronous in web-tree-sitter 0.25: a caller that has the parser runs
+ * parse() to completion before any other caller can run, and the returned
+ * Tree does not depend on the parser afterwards. The parser is bound to its
+ * language once here and never switched.
+ */
+interface GrammarEntry {
+	language: LanguageT
+	parser: ParserT
+	queries: Map<string, QueryT>
+}
+
+interface CacheSlot {
+	promise: Promise<GrammarEntry>
+	/** Set once the load has finished, so dispose can release it right away. */
+	entry?: GrammarEntry
+}
+
+/** Keyed by the absolute WASM path, so different source directories never mix. */
+const grammarCache = new Map<string, CacheSlot>()
+
+function getGrammar(wasmPath: string): Promise<GrammarEntry> {
+	const cached = grammarCache.get(wasmPath)
+	if (cached) {
+		return cached.promise
+	}
+
+	const slot = {} as CacheSlot
+	slot.promise = (async () => {
+		const language = (await loadLanguage(wasmPath)) as LanguageT
+		const { Parser } = require("web-tree-sitter")
+		const parser: ParserT = new Parser()
+		try {
+			parser.setLanguage(language)
+		} catch (error) {
+			parser.delete()
+			throw error
+		}
+		const entry: GrammarEntry = { language, parser, queries: new Map() }
+		slot.entry = entry
+		return entry
+	})()
+	grammarCache.set(wasmPath, slot)
+
+	// A failed load is not cached: the next call tries again.
+	slot.promise.catch(() => {
+		if (grammarCache.get(wasmPath) === slot) {
+			grammarCache.delete(wasmPath)
+		}
+	})
+
+	return slot.promise
+}
+
+function getQuery(grammar: GrammarEntry, source: string): QueryT {
+	let query = grammar.queries.get(source)
+	if (!query) {
+		const { Query } = require("web-tree-sitter")
+		query = new Query(grammar.language, source) as QueryT
+		grammar.queries.set(source, query)
+	}
+	return query
+}
+
+/**
+ * Releases every cached Parser and Query (their memory lives in the WASM
+ * heap, which the JS garbage collector never frees). Called on extension
+ * deactivate; the next loadRequiredLanguageParsers call loads again.
+ *
+ * web-tree-sitter 0.25 has no Language.delete(): a loaded grammar module
+ * stays in the WASM runtime, so only our references to it are dropped.
+ * A load still in flight is dropped from the cache but not deleted, because
+ * the caller awaiting it is about to use its parser.
+ */
+export function disposeLanguageParsers(): void {
+	const slots = [...grammarCache.values()]
+	grammarCache.clear()
+
+	for (const { entry } of slots) {
+		if (!entry) continue
+		for (const query of entry.queries.values()) {
+			query.delete()
+		}
+		entry.parser.delete()
+	}
+}
 
 /*
 Using node bindings for tree-sitter is problematic in vscode extensions 
@@ -38,7 +138,8 @@ This function loads WASM modules for relevant language parsers based on input fi
 3. Loads corresponding WASM files (containing grammar rules)
 4. Uses WASM modules to initialize tree-sitter parsers
 
-This approach optimizes performance by loading only necessary parsers once for all relevant files.
+Each grammar is loaded once per extension host and cached (see getGrammar);
+disposeLanguageParsers releases the cache on deactivate.
 
 Sources:
 - https://github.com/tree-sitter/node-tree-sitter/issues/169
@@ -48,40 +149,24 @@ Sources:
 - https://github.com/tree-sitter/tree-sitter/blob/master/lib/binding_web/test/query-test.js
 */
 export async function loadRequiredLanguageParsers(filesToParse: string[], sourceDirectory?: string) {
-	const { Parser, Query } = require("web-tree-sitter")
+	await initParser()
 
-	if (!isParserInitialized) {
-		try {
-			await Parser.init()
-			isParserInitialized = true
-		} catch (error) {
-			console.error(`Error initializing parser: ${error instanceof Error ? error.message : error}`)
-			throw error
-		}
-	}
-
+	const baseDir = sourceDirectory || __dirname
 	const extensionsToLoad = new Set(filesToParse.map((file) => path.extname(file).toLowerCase().slice(1)))
 	const parsers: LanguageParser = {}
-
-	// Several extensions share a grammar (.erb/.ejs, .html/.htm, ...): load each WASM once.
-	const languages = new Map<string, LanguageT>()
 
 	for (const ext of extensionsToLoad) {
 		if (!hasTreeSitterGrammar(ext)) {
 			throw new Error(`Unsupported language: ${ext}`)
 		}
-		const grammar = TREE_SITTER_GRAMMARS[ext]
+		const { wasm, query } = TREE_SITTER_GRAMMARS[ext]
 
-		let language = languages.get(grammar.wasm)
-		if (!language) {
-			language = (await loadLanguage(grammar.wasm, sourceDirectory)) as LanguageT
-			languages.set(grammar.wasm, language)
-		}
+		// Cached per grammar: several extensions share one (.erb/.ejs, .html/.htm, ...),
+		// and the definitions listing calls this once per file it reads.
+		const grammar = await getGrammar(path.join(baseDir, `tree-sitter-${wasm}.wasm`))
 
-		const parser = new Parser()
-		parser.setLanguage(language)
 		// Keyed by the file's own extension: parseFile and CodeParser look parsers up that way.
-		parsers[ext] = { parser, query: new Query(language, grammar.query) as QueryT }
+		parsers[ext] = { parser: grammar.parser, query: getQuery(grammar, query) }
 	}
 
 	return parsers

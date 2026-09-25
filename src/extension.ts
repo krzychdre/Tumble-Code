@@ -38,6 +38,7 @@ import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"
 import { openAiCodexOAuthManager } from "./integrations/openai-codex/oauth"
 import { McpServerManager } from "./services/mcp/McpServerManager"
 import { CodeIndexManager } from "./services/code-index/manager"
+import { disposeLanguageParsers } from "./services/tree-sitter/languageParser"
 import { MdmService } from "./services/mdm/MdmService"
 import { configureLogger, createLineLogger } from "./utils/logging"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
@@ -480,4 +481,6 @@ export async function deactivate() {
 	TelemetryService.instance.shutdown()
 	Terminal.setTerminalProfile(undefined)
 	TerminalRegistry.cleanup()
+	// Cached tree-sitter parsers and queries live in WASM memory the GC never frees.
+	disposeLanguageParsers()
 }
