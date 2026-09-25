@@ -121,9 +121,5 @@ why those words are excluded now. A paraphrased duplicate of a real memory is st
 
 ## Open
 
-- Parallel branch `fix/memory-writers-after-completion` (worktree `/tmp/roo-wt-memcomplete`)
-  touches `TaskLifecycle.ts` and `Task.completion-memory-writers.spec.ts`; its spec mocks
-  `memorySubTaskRunner`, which becomes `memoryWriterQuery` here. Whichever merges second
-  adapts the mock.
 - Not measured against a live small model yet; the protocol was designed for one (single
   decision, one example, tolerant parser) but a run against e.g. a 1-3B local model is owed.
