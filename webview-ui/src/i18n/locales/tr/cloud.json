@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "Profil resmi",
 	"logOut": "Çıkış yap",
-	"testApiAuthentication": "API Kimlik Doğrulamayı Test Et",
 	"signIn": "Tumble Code Cloud'a bağlan",
 	"connect": "Başlayın",
 	"cloudBenefitsTitle": "Tumble Code Cloud'u Deneyin",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "Tarayıcından redirect URL'sini kopyala ve buraya yapıştır:",
 	"startOver": "Baştan başla",
 	"personalAccount": "Kişisel Hesap",
-	"switchAccount": "Tumble Code Cloud Hesabını Değiştir",
 	"createTeamAccount": "Takım Hesabı Oluştur",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL'si",
 	"upsell": {
-		"autoApprovePowerUser": "Tumble'ya biraz bağımsızlık mı veriyorsunuz? Tumble Code Cloud ile onu her yerden kontrol edin. <learnMoreLink>Daha fazla bilgi edinin</learnMoreLink>.",
 		"longRunningTask": "Bu biraz zaman alabilir. Bulut ile her yerden devam edin.",
 		"taskList": "Tumble'dan memnun musunuz? Tumble Code Cloud'a göz atın: görevlerinizi her yerden takip edin ve kontrol edin, otonom Bulut ajanlarını çalıştırın, kullanım istatistikleri alın ve daha fazlasını yapın. <learnMoreLink>Daha fazla bilgi edinin</learnMoreLink>."
 	}

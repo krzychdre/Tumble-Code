@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "個人圖片",
 	"logOut": "登出",
-	"testApiAuthentication": "測試 API 認證",
 	"signIn": "連線至 Tumble Code Cloud",
 	"connect": "開始使用",
 	"cloudBenefitsTitle": "試用 Tumble Code Cloud",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "從瀏覽器複製重新導向 URL 並貼到這裡：",
 	"startOver": "重新開始",
 	"personalAccount": "個人帳戶",
-	"switchAccount": "切換 Tumble Code Cloud 帳戶",
 	"createTeamAccount": "建立團隊帳戶",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"autoApprovePowerUser": "給 Tumble 一點獨立性？使用 Tumble Code Cloud 隨時隨地掌控工作進度。<learnMoreLink>了解更多</learnMoreLink>。",
 		"longRunningTask": "這可能需要一些時間。使用雲端隨時隨地繼續。",
 		"taskList": "喜歡 Tumble 嗎？快來看看 Tumble Code Cloud：隨時隨地追蹤和控制您的任務，執行自主雲端代理，取得使用統計資料等等。<learnMoreLink>了解更多</learnMoreLink>。"
 	}

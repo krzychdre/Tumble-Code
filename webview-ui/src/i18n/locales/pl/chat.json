@@ -1,17 +1,14 @@
 {
-	"greeting": "Witamy w Tumble Code",
 	"task": {
 		"title": "Zadanie",
 		"expand": "Rozwiń zadanie",
 		"collapse": "Zwiń zadanie",
 		"seeMore": "Zobacz więcej",
-		"seeLess": "Zobacz mniej",
 		"tokens": "Tokeny",
 		"cache": "Pamięć podręczna",
 		"apiCost": "Koszt API",
 		"size": "Rozmiar",
 		"contextWindow": "Okno kontekstu",
-		"closeAndStart": "Zamknij zadanie i rozpocznij nowe",
 		"export": "Eksportuj historię zadań",
 		"delete": "Usuń zadanie (Shift + Kliknięcie, aby pominąć potwierdzenie)",
 		"condenseContext": "Inteligentnie skondensuj kontekst",
@@ -57,10 +54,7 @@
 	"tokenProgress": {
 		"availableSpace": "Dostępne miejsce: {{amount}} tokenów",
 		"tokensUsed": "Wykorzystane tokeny: {{used}} z {{total}}",
-		"reservedForResponse": "Zarezerwowane dla odpowiedzi modelu: {{amount}} tokenów",
-		"tokensUsedLabel": "Wykorzystane tokeny",
-		"reservedForResponseLabel": "Zarezerwowane dla odpowiedzi",
-		"availableSpaceLabel": "Dostępne miejsce"
+		"reservedForResponse": "Zarezerwowane dla odpowiedzi modelu: {{amount}} tokenów"
 	},
 	"retry": {
 		"title": "Ponów",
@@ -108,19 +102,16 @@
 		"tooltip": "Zakończ bieżące zadanie"
 	},
 	"stop": {
-		"title": "Zatrzymaj",
-		"tooltip": "Zatrzymaj bieżące zadanie"
+		"title": "Zatrzymaj"
 	},
 	"cancel": {
-		"title": "Anuluj",
-		"tooltip": "Anuluj bieżącą operację"
+		"title": "Anuluj"
 	},
 	"enqueueMessage": "Dodaj wiadomość do kolejki (zostanie wysłana po zakończeniu bieżącego zadania)",
 	"scrollToBottom": "Przewiń do dołu czatu",
 	"scrollToLatestCheckpoint": "Przewiń do poprzedniego punktu kontrolnego",
 	"about": "Tumble Code to cały zespół deweloperów AI w Twoim edytorze.",
 	"docs": "Sprawdź naszą <DocsLink>dokumentację</DocsLink>, aby dowiedzieć się więcej.",
-	"onboarding": "Twoja lista zadań w tym obszarze roboczym jest pusta.",
 	"rooTips": {
 		"customizableModes": {
 			"title": "Konfigurowalne tryby",
@@ -148,7 +139,6 @@
 	},
 	"enhancePrompt": "Ulepsz podpowiedź dodatkowym kontekstem",
 	"addImages": "Dodaj obrazy do wiadomości",
-	"sendMessage": "Wyślij wiadomość",
 	"pressToSend": "Naciśnij {{keyCombination}}, aby wysłać",
 	"typeMessage": "Wpisz wiadomość...",
 	"typeTask": "Wpisz swoje zadanie tutaj...",
@@ -166,7 +156,6 @@
 	},
 	"errorReadingFile": "Błąd odczytu pliku",
 	"noValidImages": "Nie przetworzono żadnych prawidłowych obrazów",
-	"separator": "Separator",
 	"edit": "Edytuj...",
 	"forNextMode": "dla następnego trybu",
 	"forPreviousMode": "dla poprzedniego trybu",
@@ -199,7 +188,6 @@
 	},
 	"checkpoint": {
 		"regular": "Punkt kontrolny",
-		"initializingWarning": "Trwa inicjalizacja punktu kontrolnego... Jeśli to trwa zbyt długo, możesz wyłączyć punkty kontrolne w <settingsLink>ustawieniach</settingsLink> i uruchomić zadanie ponownie.",
 		"menu": {
 			"viewDiff": "Zobacz różnice",
 			"more": "Więcej opcji",
@@ -226,10 +214,8 @@
 		"wantsToEdit": "Tumble chce edytować ten plik",
 		"wantsToEditOutsideWorkspace": "Tumble chce edytować ten plik poza obszarem roboczym",
 		"wantsToEditProtected": "Tumble chce edytować chroniony plik konfiguracyjny",
-		"wantsToCreate": "Tumble chce utworzyć nowy plik",
 		"wantsToSearchReplace": "Tumble chce wykonać wyszukiwanie i zamianę w tym pliku",
 		"didSearchReplace": "Tumble wykonał wyszukiwanie i zamianę w tym pliku",
-		"wantsToInsert": "Tumble chce wstawić zawartość do tego pliku",
 		"wantsToInsertWithLineNumber": "Tumble chce wstawić zawartość do tego pliku w linii {{lineNumber}}",
 		"wantsToInsertAtEnd": "Tumble chce dodać zawartość na końcu tego pliku",
 		"wantsToReadAndXMore": "Tumble chce przeczytać ten plik i {{count}} więcej",
@@ -252,14 +238,11 @@
 		"wantsToViewTopLevelOutsideWorkspace": "Tumble chce zobaczyć pliki najwyższego poziomu w tym katalogu (poza obszarem roboczym)",
 		"didViewTopLevelOutsideWorkspace": "Tumble zobaczył pliki najwyższego poziomu w tym katalogu (poza obszarem roboczym)",
 		"wantsToViewRecursiveOutsideWorkspace": "Tumble chce rekurencyjnie zobaczyć wszystkie pliki w tym katalogu (poza obszarem roboczym)",
-		"didViewRecursiveOutsideWorkspace": "Tumble rekurencyjnie zobaczył wszystkie pliki w tym katalogu (poza obszarem roboczym)",
-		"wantsToViewMultipleDirectories": "Tumble chce wyświetlić wiele katalogów"
+		"didViewRecursiveOutsideWorkspace": "Tumble rekurencyjnie zobaczył wszystkie pliki w tym katalogu (poza obszarem roboczym)"
 	},
-	"commandOutput": "Wyjście polecenia",
 	"commandExecution": {
 		"running": "Wykonywanie",
 		"abort": "Przerwij",
-		"pid": "PID: {{pid}}",
 		"exitStatus": "Zakończono ze statusem {{exitCode}}",
 		"malformedCommand": "Nieprawidlowe polecenie: blad skladni shell",
 		"manageCommands": "Polecenia zatwierdzone automatycznie",
@@ -267,14 +250,9 @@
 		"removeFromAllowed": "Usuń z listy dozwolonych",
 		"addToDenied": "Dodaj do listy odrzuconych",
 		"removeFromDenied": "Usuń z listy odrzuconych",
-		"abortCommand": "Przerwij wykonywanie polecenia",
 		"expandCommand": "Rozwiń polecenie",
-		"collapseCommand": "Zwiń polecenie",
-		"expandManagement": "Rozwiń sekcję zarządzania poleceniami",
-		"collapseManagement": "Zwiń sekcję zarządzania poleceniami"
+		"collapseCommand": "Zwiń polecenie"
 	},
-	"response": "Odpowiedź",
-	"arguments": "Argumenty",
 	"text": {
 		"rooSaid": "Tumble powiedział"
 	},
@@ -294,10 +272,8 @@
 	"subtasks": {
 		"wantsToCreate": "Tumble chce utworzyć nowe podzadanie w trybie <code>{{mode}}</code>",
 		"wantsToFinish": "Tumble chce zakończyć to podzadanie",
-		"newTaskContent": "Instrukcje podzadania",
 		"completionContent": "Podzadanie zakończone",
 		"resultContent": "Wyniki podzadania",
-		"defaultResult": "Proszę kontynuować następne zadanie.",
 		"completionInstructions": "Podzadanie zakończone! Możesz przejrzeć wyniki i zasugerować poprawki lub następne kroki. Jeśli wszystko wygląda dobrze, potwierdź, aby zwrócić wynik do zadania nadrzędnego.",
 		"goToSubtask": "Wyświetl zadanie"
 	},
@@ -320,9 +296,6 @@
 		"diagnostics": "Uzyskaj szczegółowe informacje o błędzie",
 		"proxyProvider": "Wygląda na to, że używasz dostawcy opartego na proxy. Pamiętaj, aby sprawdzić jego dzienniki i upewnić się, że nie przepisuje żądań Tumble."
 	},
-	"powershell": {
-		"issues": "Wygląda na to, że masz problemy z Windows PowerShell, proszę zapoznaj się z tym"
-	},
 	"autoApprove": {
 		"tooltipManage": "Zarządzaj ustawieniami automatycznego zatwierdzania",
 		"tooltipStatus": "Automatyczne zatwierdzanie włączone dla: {{toggles}}",
@@ -331,9 +304,7 @@
 		"all": "Wszystkie",
 		"none": "Żadne",
 		"description": "Wykonuj te działania bez pytania o zgodę. Włącz tę opcję tylko dla działań, którym w pełni ufasz.",
-		"selectOptionsFirst": "Wybierz co najmniej jedną opcję poniżej, aby włączyć automatyczne zatwierdzanie",
 		"toggleAriaLabel": "Przełącz automatyczne zatwierdzanie",
-		"disabledAriaLabel": "Automatyczne zatwierdzanie wyłączone - najpierw wybierz opcje",
 		"triggerLabelOff": "Automatyczne zatwierdzanie wyłączone",
 		"triggerLabelOffShort": "Wyłączone",
 		"triggerLabel_zero": "0 automatycznie zatwierdzone",
@@ -358,8 +329,7 @@
 		}
 	},
 	"reasoning": {
-		"thinking": "Myślenie",
-		"seconds": "{{count}} s"
+		"thinking": "Myślenie"
 	},
 	"contextManagement": {
 		"tokens": "tokeny",
@@ -393,13 +363,6 @@
 	"announcement": {
 		"title": "Tumble Code {{version}} wydany",
 		"support": "Wesprzyj Tumble Code, dając nam gwiazdkę na <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Darmowy model stealth na ograniczony czas</bold> - Code Supernova: Teraz ulepszony z <bold>oknem kontekstu 1M tokenów</bold>! Wszechstronny model kodowania agentowego, który obsługuje wprowadzanie obrazów, dostępny przez Tumble Code Cloud.",
-			"note": "(Uwaga: prompty i uzupełnienia są rejestrowane przez twórcę modelu i używane do jego ulepszania)",
-			"connectButton": "Połącz z Tumble Code Cloud",
-			"selectModel": "Wybierz <code>roo/code-supernova</code> od dostawcy Tumble Code Cloud w Ustawieniach, aby rozpocząć.",
-			"goToSettingsButton": "Przejdź do Ustawień"
-		},
 		"handoff": {
 			"heading": "From Roo Code to Tumble Code",
 			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
@@ -410,12 +373,6 @@
 			"gpt55": "GPT-5.5 przez OpenAI Codex: Dodano obsługę GPT-5.5 w dostawcy OpenAI Codex, żebyś mógł korzystać z najnowszego modelu bezpośrednio z Tumble Code.",
 			"claudeOpus47": "Claude Opus 4.7 w Vertex AI: Dodano Claude Opus 4.7 do dostawcy Vertex AI - najnowszy flagowy model rozumowania od Anthropic.",
 			"checkpointNav": "Nawigacja po poprzednich checkpointach: Dodano kontrolki w czacie, żebyś mógł cofać się do wcześniejszych checkpointów, z pełną obsługą i18n."
-		},
-		"cloudAgents": {
-			"heading": "Nowości w chmurze:",
-			"specialized": "Przedstawiamy <bold>Explainer</bold>, <bold>Planner</bold> i <bold>Coder</bold> - trzech wyspecjalizowanych agentów chmurowych, aby ulepszyć Twoje przepływy pracy.",
-			"description": "Agenci pracują razem w chmurze i mogą być uruchamiani z sieci lub przez Slack.",
-			"tryButton": "Wypróbuj agentów chmurowych"
 		}
 	},
 	"costs": {
@@ -498,22 +455,13 @@
 	"editMessage": {
 		"placeholder": "Edytuj swoją wiadomość..."
 	},
-	"command": {
-		"triggerDescription": "Uruchom polecenie {{name}}"
-	},
 	"slashCommands": {
-		"tooltip": "Zarządzaj poleceniami slash",
-		"title": "Polecenia Slash",
 		"description": "Używaj wbudowanych poleceń slash lub twórz niestandardowe dla szybkiego dostępu do często używanych promptów i przepływów pracy. <DocsLink>Dokumentacja</DocsLink>",
 		"manageCommands": "Zarządzaj poleceniami slash w ustawieniach",
-		"builtInCommands": "Polecenia Wbudowane",
 		"globalCommands": "Polecenia Globalne",
 		"workspaceCommands": "Polecenia Obszaru Roboczego",
-		"globalCommand": "Polecenie globalne",
 		"editCommand": "Edytuj polecenie",
 		"deleteCommand": "Usuń polecenie",
-		"newGlobalCommandPlaceholder": "Nowe polecenie globalne...",
-		"newWorkspaceCommandPlaceholder": "Nowe polecenie obszaru roboczego...",
 		"deleteDialog": {
 			"title": "Usuń Polecenie",
 			"description": "Czy na pewno chcesz usunąć polecenie \"{{name}}\"? Tej akcji nie można cofnąć.",
@@ -538,9 +486,7 @@
 	"todo": {
 		"partial": "Ukończono {{completed}} z {{total}} zadań do wykonania",
 		"complete": "Ukończono {{total}} zadań do wykonania",
-		"updated": "Zaktualizowano listę zadań do wykonania",
-		"completed": "Ukończono",
-		"started": "Rozpoczęto"
+		"updated": "Zaktualizowano listę zadań do wykonania"
 	},
 	"tooManyTools": {
 		"title": "Włączono zbyt wiele narzędzi",

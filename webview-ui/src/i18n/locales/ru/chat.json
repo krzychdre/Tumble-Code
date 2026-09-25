@@ -1,17 +1,14 @@
 {
-	"greeting": "Добро пожаловать в Tumble Code",
 	"task": {
 		"title": "Задача",
 		"expand": "Развернуть задачу",
 		"collapse": "Свернуть задачу",
 		"seeMore": "Показать больше",
-		"seeLess": "Показать меньше",
 		"tokens": "Токенов",
 		"cache": "Кэш",
 		"apiCost": "Стоимость API",
 		"size": "Размер",
 		"contextWindow": "Длина контекста",
-		"closeAndStart": "Закрыть задачу и начать новую",
 		"export": "Экспортировать историю задач",
 		"delete": "Удалить задачу (Shift + клик для пропуска подтверждения)",
 		"condenseContext": "Интеллектуально сжать контекст",
@@ -53,10 +50,7 @@
 	"tokenProgress": {
 		"availableSpace": "Доступно места: {{amount}} токенов",
 		"tokensUsed": "Использовано токенов: {{used}} из {{total}}",
-		"reservedForResponse": "Зарезервировано для ответа модели: {{amount}} токенов",
-		"tokensUsedLabel": "Использовано токенов",
-		"reservedForResponseLabel": "Зарезервировано для ответа",
-		"availableSpaceLabel": "Доступно места"
+		"reservedForResponse": "Зарезервировано для ответа модели: {{amount}} токенов"
 	},
 	"reject": {
 		"title": "Отклонить",
@@ -88,19 +82,16 @@
 		"tooltip": "Завершить текущую задачу"
 	},
 	"stop": {
-		"title": "Остановить",
-		"tooltip": "Остановить текущую задачу"
+		"title": "Остановить"
 	},
 	"cancel": {
-		"title": "Отмена",
-		"tooltip": "Отменить текущую операцию"
+		"title": "Отмена"
 	},
 	"enqueueMessage": "Добавить сообщение в очередь (будет отправлено после завершения текущей задачи)",
 	"scrollToBottom": "Прокрутить чат вниз",
 	"scrollToLatestCheckpoint": "Прокрутить к предыдущему чекпоинту",
 	"about": "Tumble Code — это целая команда разработчиков ИИ в вашем редакторе.",
 	"docs": "Ознакомьтесь с нашей <DocsLink>документацией</DocsLink>, чтобы узнать больше.",
-	"onboarding": "Ваш список задач в этом рабочем пространстве пуст.",
 	"rooTips": {
 		"customizableModes": {
 			"title": "Настраиваемые режимы",
@@ -137,7 +128,6 @@
 		"noResults": "Ничего не найдено"
 	},
 	"addImages": "Добавить изображения к сообщению",
-	"sendMessage": "Отправить сообщение",
 	"pressToSend": "Нажми {{keyCombination}} для отправки",
 	"typeMessage": "Введите сообщение...",
 	"typeTask": "Введите вашу задачу здесь...",
@@ -146,7 +136,6 @@
 	"dragFilesImages": "удерживайте shift для перетаскивания файлов/изображений",
 	"errorReadingFile": "Ошибка чтения файла",
 	"noValidImages": "Не удалось обработать ни одно изображение",
-	"separator": "Разделитель",
 	"edit": "Редактировать...",
 	"forNextMode": "для следующего режима",
 	"forPreviousMode": "для предыдущего режима",
@@ -174,7 +163,6 @@
 	},
 	"checkpoint": {
 		"regular": "Точка сохранения",
-		"initializingWarning": "Точка сохранения еще инициализируется... Если это занимает слишком много времени, вы можете отключить точки сохранения в <settingsLink>настройках</settingsLink> и перезапустить задачу.",
 		"menu": {
 			"viewDiff": "Просмотреть различия",
 			"more": "Больше опций",
@@ -201,10 +189,8 @@
 		"wantsToEdit": "Tumble хочет отредактировать этот файл",
 		"wantsToEditOutsideWorkspace": "Tumble хочет отредактировать этот файл вне рабочей области",
 		"wantsToEditProtected": "Tumble хочет отредактировать защищённый файл конфигурации",
-		"wantsToCreate": "Tumble хочет создать новый файл",
 		"wantsToSearchReplace": "Tumble хочет выполнить поиск и замену в этом файле",
 		"didSearchReplace": "Tumble выполнил поиск и замену в этом файле",
-		"wantsToInsert": "Tumble хочет вставить содержимое в этот файл",
 		"wantsToInsertWithLineNumber": "Tumble хочет вставить содержимое в этот файл на строку {{lineNumber}}",
 		"wantsToInsertAtEnd": "Tumble хочет добавить содержимое в конец этого файла",
 		"wantsToReadAndXMore": "Tumble хочет прочитать этот файл и еще {{count}}",
@@ -227,14 +213,11 @@
 		"wantsToViewTopLevelOutsideWorkspace": "Tumble хочет просмотреть файлы верхнего уровня в этой директории (вне рабочего пространства)",
 		"didViewTopLevelOutsideWorkspace": "Tumble просмотрел файлы верхнего уровня в этой директории (вне рабочего пространства)",
 		"wantsToViewRecursiveOutsideWorkspace": "Tumble хочет рекурсивно просмотреть все файлы в этой директории (вне рабочего пространства)",
-		"didViewRecursiveOutsideWorkspace": "Tumble рекурсивно просмотрел все файлы в этой директории (вне рабочего пространства)",
-		"wantsToViewMultipleDirectories": "Tumble хочет просмотреть несколько директорий"
+		"didViewRecursiveOutsideWorkspace": "Tumble рекурсивно просмотрел все файлы в этой директории (вне рабочего пространства)"
 	},
-	"commandOutput": "Вывод команды",
 	"commandExecution": {
 		"running": "Выполняется",
 		"abort": "Прервать",
-		"pid": "PID: {{pid}}",
 		"exitStatus": "Завершено со статусом {{exitCode}}",
 		"malformedCommand": "Некорректная команда: синтаксическая ошибка shell",
 		"manageCommands": "Управление разрешениями команд",
@@ -243,14 +226,9 @@
 		"removeFromAllowed": "Удалить из списка разрешенных",
 		"addToDenied": "Добавить в список запрещенных",
 		"removeFromDenied": "Удалить из списка запрещенных",
-		"abortCommand": "Прервать выполнение команды",
 		"expandCommand": "Развернуть команду",
-		"collapseCommand": "Свернуть команду",
-		"expandManagement": "Развернуть раздел управления командами",
-		"collapseManagement": "Свернуть раздел управления командами"
+		"collapseCommand": "Свернуть команду"
 	},
-	"response": "Ответ",
-	"arguments": "Аргументы",
 	"text": {
 		"rooSaid": "Ру сказал"
 	},
@@ -270,10 +248,8 @@
 	"subtasks": {
 		"wantsToCreate": "Tumble хочет создать новую подзадачу в режиме {{mode}}",
 		"wantsToFinish": "Tumble хочет завершить эту подзадачу",
-		"newTaskContent": "Инструкции по подзадаче",
 		"completionContent": "Подзадача завершена",
 		"resultContent": "Результаты подзадачи",
-		"defaultResult": "Пожалуйста, переходите к следующей задаче.",
 		"completionInstructions": "Подзадача завершена! Вы можете просмотреть результаты и предложить исправления или следующие шаги. Если всё в порядке, подтвердите для возврата результата в родительскую задачу.",
 		"goToSubtask": "Просмотреть задачу"
 	},
@@ -301,9 +277,6 @@
 		"diagnostics": "Получить подробную информацию об ошибке",
 		"proxyProvider": "Похоже, ты используешь провайдера на основе прокси. Убедись, что ты проверил его логи и что он не переписывает запросы Tumble."
 	},
-	"powershell": {
-		"issues": "Похоже, у вас проблемы с Windows PowerShell, пожалуйста, ознакомьтесь с этим"
-	},
 	"autoApprove": {
 		"tooltipManage": "Управление настройками автоматического одобрения",
 		"tooltipStatus": "Авто-одобрение включено для: {{toggles}}",
@@ -312,9 +285,7 @@
 		"all": "Все",
 		"none": "Ни одного",
 		"description": "Выполняйте эти действия, не спрашивая разрешения. Включайте это только для действий, которым вы полностью доверяете.",
-		"selectOptionsFirst": "Выберите хотя бы один вариант ниже, чтобы включить авто-утверждение",
 		"toggleAriaLabel": "Переключить авто-утверждение",
-		"disabledAriaLabel": "Авто-утверждение отключено - сначала выберите опции",
 		"triggerLabelOff": "Авто-утверждение выкл",
 		"triggerLabelOffShort": "Выкл",
 		"triggerLabel_zero": "0 авто-утвержденных",
@@ -341,13 +312,6 @@
 	"announcement": {
 		"title": "Выпущен Tumble Code {{version}}",
 		"support": "Поддержите Tumble Code, поставив нам звезду на <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Бесплатная скрытая модель на ограниченное время</bold> - Code Supernova: Теперь обновлена до <bold>контекстного окна 1M токенов</bold>! Универсальная модель агентного программирования, поддерживающая ввод изображений, доступная через Tumble Code Cloud.",
-			"note": "(Примечание: промпты и дополнения записываются создателем модели и используются для её улучшения)",
-			"connectButton": "Подключиться к Tumble Code Cloud",
-			"selectModel": "Выберите <code>roo/code-supernova</code> от провайдера Tumble Code Cloud в Настройках для начала работы.",
-			"goToSettingsButton": "Перейти к Настройкам"
-		},
 		"handoff": {
 			"heading": "From Roo Code to Tumble Code",
 			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
@@ -358,17 +322,10 @@
 			"gpt55": "GPT-5.5 через OpenAI Codex: Добавлена поддержка GPT-5.5 в провайдере OpenAI Codex, чтобы ты мог использовать новейшую модель прямо из Tumble Code.",
 			"claudeOpus47": "Claude Opus 4.7 в Vertex AI: Добавлен Claude Opus 4.7 в провайдер Vertex AI — новейшую флагманскую модель рассуждений от Anthropic.",
 			"checkpointNav": "Навигация по предыдущим контрольным точкам: Добавлены элементы управления в чат, чтобы переходить назад по предыдущим контрольным точкам, с полной поддержкой i18n."
-		},
-		"cloudAgents": {
-			"heading": "Новое в облаке:",
-			"specialized": "Представляем <bold>Explainer</bold>, <bold>Planner</bold> и <bold>Coder</bold> - трёх специализированных облачных агентов для улучшения ваших рабочих процессов.",
-			"description": "Агенты работают вместе в облаке и могут быть запущены из веб-интерфейса или через Slack.",
-			"tryButton": "Попробовать облачных агентов"
 		}
 	},
 	"reasoning": {
-		"thinking": "Обдумывание",
-		"seconds": "{{count}}с"
+		"thinking": "Обдумывание"
 	},
 	"contextManagement": {
 		"tokens": "токены",
@@ -479,22 +436,13 @@
 	"editMessage": {
 		"placeholder": "Редактировать сообщение..."
 	},
-	"command": {
-		"triggerDescription": "Запустить команду {{name}}"
-	},
 	"slashCommands": {
-		"tooltip": "Управление слэш-командами",
-		"title": "Слэш-команды",
 		"description": "Используйте встроенные слэш-команды или создавайте пользовательские для быстрого доступа к часто используемым промптам и рабочим процессам. <DocsLink>Документация</DocsLink>",
 		"manageCommands": "Управление слэш-командами в настройках",
-		"builtInCommands": "Встроенные команды",
 		"globalCommands": "Глобальные команды",
 		"workspaceCommands": "Команды рабочего пространства",
-		"globalCommand": "Глобальная команда",
 		"editCommand": "Редактировать команду",
 		"deleteCommand": "Удалить команду",
-		"newGlobalCommandPlaceholder": "Новая глобальная команда...",
-		"newWorkspaceCommandPlaceholder": "Новая команда рабочего пространства...",
 		"deleteDialog": {
 			"title": "Удалить команду",
 			"description": "Вы уверены, что хотите удалить команду \"{{name}}\"? Это действие нельзя отменить.",
@@ -519,9 +467,7 @@
 	"todo": {
 		"partial": "{{completed}} из {{total}} задач выполнено",
 		"complete": "{{total}} задач выполнено",
-		"updated": "Список задач обновлен",
-		"completed": "Завершено",
-		"started": "Начато"
+		"updated": "Список задач обновлен"
 	},
 	"tooManyTools": {
 		"title": "Включено слишком много инструментов",

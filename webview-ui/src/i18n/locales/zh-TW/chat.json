@@ -1,18 +1,15 @@
 {
-	"greeting": "歡迎使用 Tumble Code！",
 	"task": {
 		"title": "工作",
 		"expand": "展開工作",
 		"collapse": "收合工作",
 		"seeMore": "顯示更多",
-		"seeLess": "顯示較少",
 		"tokens": "Token",
 		"cache": "快取",
 		"apiCost": "API 費用",
 		"size": "大小",
 		"condenseContext": "智慧壓縮內容",
 		"contextWindow": "上下文長度",
-		"closeAndStart": "關閉現有工作並開始新工作",
 		"export": "匯出工作記錄",
 		"share": "分享工作",
 		"delete": "刪除工作（按住 Shift 並點選可跳過確認）",
@@ -53,10 +50,7 @@
 	"tokenProgress": {
 		"availableSpace": "可用空間：{{amount}} Token",
 		"tokensUsed": "已使用 Token： {{used}} / {{total}}",
-		"reservedForResponse": "模型回應保留：{{amount}} Token",
-		"tokensUsedLabel": "已使用 Token",
-		"reservedForResponseLabel": "為回覆保留",
-		"availableSpaceLabel": "可用空間"
+		"reservedForResponse": "模型回應保留：{{amount}} Token"
 	},
 	"reject": {
 		"title": "拒絕",
@@ -112,12 +106,10 @@
 		"tooltip": "開始新的工作"
 	},
 	"cancel": {
-		"title": "取消",
-		"tooltip": "取消目前操作"
+		"title": "取消"
 	},
 	"stop": {
-		"title": "停止",
-		"tooltip": "停止目前的工作"
+		"title": "停止"
 	},
 	"enqueueMessage": "將訊息加入佇列（會在目前工作完成後傳送）",
 	"editMessage": {
@@ -127,7 +119,6 @@
 	"scrollToLatestCheckpoint": "捲動至上一個檢查點",
 	"about": "Tumble 是編輯器中的完整 AI 開發團隊。",
 	"docs": "請參閱 <DocsLink>說明文件</DocsLink> 開始使用。",
-	"onboarding": "想要做什麼呢？",
 	"rooTips": {
 		"customizableModes": {
 			"title": "可自訂模式，專注任務不偏離",
@@ -164,7 +155,6 @@
 	},
 	"enhancePromptDescription": "「強化提示詞」按鈕可透過提供額外內容、說明或改寫來協助改善提示詞。試著在這裡輸入提示詞，再點選一次按鈕以了解其運作方式。",
 	"addImages": "新增圖片到訊息中",
-	"sendMessage": "傳送訊息",
 	"pressToSend": "按 {{keyCombination}} 傳送",
 	"typeMessage": "輸入訊息...",
 	"typeTask": "在這裡輸入工作...",
@@ -173,7 +163,6 @@
 	"dragFilesImages": "按住 Shift 鍵拖曳檔案／圖片",
 	"errorReadingFile": "讀取檔案時發生錯誤",
 	"noValidImages": "未處理到任何有效圖片",
-	"separator": "分隔符號",
 	"edit": "編輯...",
 	"forNextMode": "用於下一個模式",
 	"forPreviousMode": "用於上一個模式",
@@ -201,7 +190,6 @@
 	},
 	"checkpoint": {
 		"regular": "檢查點",
-		"initializingWarning": "正在初始化檢查點... 如果耗時過長，您可以在 <settingsLink>設定</settingsLink> 中停用檢查點並重新啟動工作。",
 		"menu": {
 			"viewDiff": "檢視差異",
 			"viewDiffFromInit": "檢視所有變更",
@@ -260,8 +248,6 @@
 		"wantsToGenerateImageOutsideWorkspace": "Tumble 想要在工作區外產生圖片",
 		"wantsToGenerateImageProtected": "Tumble 想要在受保護位置產生圖片",
 		"didGenerateImage": "Tumble 已產生圖片",
-		"wantsToCreate": "Tumble 想要建立新檔案",
-		"wantsToInsert": "Tumble 想要在此檔案中插入內容",
 		"wantsToInsertWithLineNumber": "Tumble 想要在此檔案第 {{lineNumber}} 行插入內容",
 		"wantsToInsertAtEnd": "Tumble 想要在此檔案尾端新增內容"
 	},
@@ -277,8 +263,7 @@
 		"wantsToSearch": "Tumble 想要在此目錄中搜尋 <code>{{regex}}</code>",
 		"didSearch": "Tumble 已在此目錄中搜尋 <code>{{regex}}</code>",
 		"wantsToSearchOutsideWorkspace": "Tumble 想要在此目錄（工作區外）中搜尋 <code>{{regex}}</code>",
-		"didSearchOutsideWorkspace": "Tumble 已在此目錄（工作區外）中搜尋 <code>{{regex}}</code>",
-		"wantsToViewMultipleDirectories": "Tumble 想要查看多個目錄"
+		"didSearchOutsideWorkspace": "Tumble 已在此目錄（工作區外）中搜尋 <code>{{regex}}</code>"
 	},
 	"codebaseSearch": {
 		"wantsToSearch": "Tumble 想要在程式碼庫中搜尋 <code>{{query}}</code>",
@@ -287,11 +272,9 @@
 		"didSearch_other": "找到 {{count}} 個結果",
 		"resultTooltip": "相似度評分：{{score}}（點選以開啟檔案）"
 	},
-	"commandOutput": "命令輸出",
 	"commandExecution": {
 		"abort": "中止",
 		"running": "執行中",
-		"pid": "PID: {{pid}}",
 		"exitStatus": "已結束，狀態碼 {{exitCode}}",
 		"malformedCommand": "命令格式錯誤：shell 語法錯誤",
 		"manageCommands": "自動核准的命令",
@@ -299,14 +282,9 @@
 		"removeFromAllowed": "從允許清單中移除",
 		"addToDenied": "新增至拒絕清單",
 		"removeFromDenied": "從拒絕清單中移除",
-		"abortCommand": "中止命令執行",
 		"expandCommand": "展開命令",
-		"collapseCommand": "摺疊命令",
-		"expandManagement": "展開命令管理部分",
-		"collapseManagement": "摺疊命令管理部分"
+		"collapseCommand": "摺疊命令"
 	},
-	"response": "回應",
-	"arguments": "參數",
 	"text": {
 		"rooSaid": "Tumble 說"
 	},
@@ -326,9 +304,7 @@
 	"subtasks": {
 		"wantsToCreate": "Tumble 想要在 {{mode}} 模式下建立新的子任務",
 		"wantsToFinish": "Tumble 想要完成此子任務",
-		"newTaskContent": "子任務指示",
 		"resultContent": "子任務結果",
-		"defaultResult": "請繼續下一個工作。",
 		"completionInstructions": "子任務已完成！您可以檢閱結果並提出修正或後續步驟。如果一切順利，請確認以將結果回傳給主任務。",
 		"goToSubtask": "查看工作"
 	},
@@ -356,9 +332,6 @@
 		"title": "編輯失敗"
 	},
 	"troubleMessage": "Tumble 遇到問題...",
-	"powershell": {
-		"issues": "似乎遇到 Windows PowerShell 問題，請參閱此說明文件"
-	},
 	"autoApprove": {
 		"tooltipManage": "管理自動核准設定",
 		"tooltipStatus": "自動核准已啟用：{{toggles}}",
@@ -366,9 +339,7 @@
 		"all": "全部",
 		"none": "無",
 		"description": "無需請求權限即可執行這些操作。僅對完全信任的操作啟用此功能。",
-		"selectOptionsFirst": "請至少選擇以下一個選項以啟用自動核准",
 		"toggleAriaLabel": "切換自動核准",
-		"disabledAriaLabel": "自動核准已停用，請先選擇選項",
 		"triggerLabelOff": "自動核准已關閉",
 		"triggerLabelOffShort": "關閉",
 		"triggerLabel_zero": "0 個自動核准",
@@ -395,13 +366,6 @@
 	"announcement": {
 		"title": "Tumble Code {{version}} 已發布",
 		"support": "請在 <githubLink>GitHub</githubLink> 上給 Tumble Code 星星支持我們。",
-		"stealthModel": {
-			"feature": "<bold>限時免費隱形模型</bold> - Code Supernova：現已升級為 <bold>1M Token 上下文視窗</bold>！一個支援影像輸入的多功能代理程式設計模型，透過 Tumble Code Cloud 提供。",
-			"note": "（注意：提示詞和回應會被模型建立者記錄並用於改進模型）",
-			"connectButton": "連線到 Tumble Code Cloud",
-			"selectModel": "在設定中從 Tumble Code Cloud 供應商選擇 <code>roo/code-supernova</code> 開始使用。",
-			"goToSettingsButton": "前往設定"
-		},
 		"handoff": {
 			"heading": "From Roo Code to Tumble Code",
 			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
@@ -412,17 +376,10 @@
 			"gpt55": "透過 OpenAI Codex 支援 GPT-5.5：已在 OpenAI Codex 供應商中新增 GPT-5.5 支援，讓你可以直接在 Tumble Code 中使用最新模型。",
 			"claudeOpus47": "Vertex AI 上的 Claude Opus 4.7：已將 Anthropic 最新旗艦推理模型 Claude Opus 4.7 新增至 Vertex AI 供應商。",
 			"checkpointNav": "前一個存檔點導覽：在聊天中新增控制項，可回到此前的存檔點，並提供完整的 i18n 支援。"
-		},
-		"cloudAgents": {
-			"heading": "雲端的新功能：",
-			"specialized": "推出 <bold>Explainer</bold>、<bold>Planner</bold> 和 <bold>Coder</bold>，三個專業雲端代理用來強化工作流程。",
-			"description": "代理在雲端協同工作，可從網頁或透過 Slack 觸發。",
-			"tryButton": "試用雲端代理"
 		}
 	},
 	"reasoning": {
-		"thinking": "思考中",
-		"seconds": "{{count}} 秒"
+		"thinking": "思考中"
 	},
 	"followUpSuggest": {
 		"copyToInput": "複製到輸入欄（或按住 Shift 並點選）",
@@ -469,22 +426,13 @@
 	"versionIndicator": {
 		"ariaLabel": "版本 {{version}} - 點選查看發布說明"
 	},
-	"command": {
-		"triggerDescription": "觸發 {{name}} 命令"
-	},
 	"slashCommands": {
-		"tooltip": "管理斜線命令",
-		"title": "斜線命令",
 		"description": "使用內建斜線命令或建立自訂命令，以便快速存取常用的提示詞和工作流程。<DocsLink>說明文件</DocsLink>",
 		"manageCommands": "在設定中管理斜線命令",
-		"builtInCommands": "內建命令",
 		"globalCommands": "全域命令",
 		"workspaceCommands": "工作區命令",
-		"globalCommand": "全域命令",
 		"editCommand": "編輯命令",
 		"deleteCommand": "刪除命令",
-		"newGlobalCommandPlaceholder": "新增全域命令...",
-		"newWorkspaceCommandPlaceholder": "新增工作區命令...",
 		"deleteDialog": {
 			"title": "刪除命令",
 			"description": "您確定要刪除「{{name}}」命令嗎？此操作無法復原。",
@@ -509,9 +457,7 @@
 	"todo": {
 		"partial": "已完成 {{completed}}／{{total}} 個待辦事項",
 		"complete": "已完成 {{total}} 個待辦事項",
-		"updated": "已更新待辦事項清單",
-		"completed": "已完成",
-		"started": "已開始"
+		"updated": "已更新待辦事項清單"
 	},
 	"tooManyTools": {
 		"title": "啟用的工具過多",

@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "Фото профиля",
 	"logOut": "Выход",
-	"testApiAuthentication": "Проверить аутентификацию API",
 	"signIn": "Подключиться к Tumble Code Cloud",
 	"connect": "Начать",
 	"cloudBenefitsTitle": "Попробуйте Tumble Code Cloud",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "Скопируй URL перенаправления из браузера и вставь его сюда:",
 	"startOver": "Начать заново",
 	"personalAccount": "Личный аккаунт",
-	"switchAccount": "Переключить аккаунт Tumble Code Cloud",
 	"createTeamAccount": "Создать командный аккаунт",
 	"cloudUrlPillLabel": "URL Tumble Code Cloud",
 	"upsell": {
-		"autoApprovePowerUser": "Предоставить Tumble немного независимости? Управляйте им из любого места с помощью Tumble Code Cloud. <learnMoreLink>Узнать больше</learnMoreLink>.",
 		"longRunningTask": "Это может занять некоторое время. Продолжайте из любого места с помощью Облака.",
 		"taskList": "Нравится Tumble? Посмотрите Tumble Code Cloud: отслеживайте и контролируйте свои задачи из любого места, запускайте автономных облачных агентов, получайте статистику использования и многое другое. <learnMoreLink>Узнать больше</learnMoreLink>."
 	}

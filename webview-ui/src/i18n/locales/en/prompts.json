@@ -1,6 +1,4 @@
 {
-	"title": "Modes",
-	"done": "Done",
 	"modes": {
 		"title": "Modes",
 		"createNewMode": "Create new mode",
@@ -54,8 +52,7 @@
 	},
 	"exportMode": {
 		"title": "Export Mode",
-		"description": "Export this mode with rules from the .roo/rules-{{slug}}/ folder combined into a shareable YAML file. The original files remain unchanged.",
-		"exporting": "Exporting..."
+		"description": "Export this mode with rules from the .roo/rules-{{slug}}/ folder combined into a shareable YAML file. The original files remain unchanged."
 	},
 	"importMode": {
 		"selectLevel": "Choose where to import this mode:",
@@ -81,7 +78,6 @@
 		"title": "System Prompt ({{modeName}} mode)"
 	},
 	"supportPrompts": {
-		"title": "Support Prompts",
 		"resetPrompt": "Reset {{promptType}} prompt to default",
 		"prompt": "Prompt",
 		"enhance": {
@@ -93,11 +89,6 @@
 			"testEnhancement": "Test Enhancement",
 			"includeTaskHistory": "Include task history as context",
 			"includeTaskHistoryDescription": "When enabled, the last 10 messages from the current conversation will be included as context when enhancing prompts, helping to generate more relevant and context-aware suggestions."
-		},
-		"condense": {
-			"apiConfiguration": "API Configuration for Context Condensing",
-			"apiConfigDescription": "Select which API configuration to use for context condensing operations. Leave unselected to use the current active configuration.",
-			"useCurrentConfig": "Use currently selected API configuration"
 		},
 		"types": {
 			"ENHANCE": {
@@ -196,7 +187,6 @@
 		"title": "Delete Mode",
 		"message": "Are you sure you want to delete the mode \"{{modeName}}\"?",
 		"rulesFolder": "This mode has a rules folder at {{folderPath}} that will also be deleted.",
-		"descriptionNoRules": "Are you sure you want to delete this custom mode?",
 		"confirm": "Delete",
 		"cancel": "Cancel"
 	}

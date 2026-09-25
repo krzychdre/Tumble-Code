@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "프로필 사진",
 	"logOut": "로그아웃",
-	"testApiAuthentication": "API 인증 테스트",
 	"signIn": "Tumble Code Cloud에 연결",
 	"connect": "시작하기",
 	"cloudBenefitsTitle": "Tumble Code Cloud 체험하기",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "브라우저에서 리다이렉트 URL을 복사하여 여기에 붙여넣으세요:",
 	"startOver": "다시 시작",
 	"personalAccount": "개인 계정",
-	"switchAccount": "Tumble Code Cloud 계정 전환",
 	"createTeamAccount": "팀 계정 만들기",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"autoApprovePowerUser": "Tumble에게 약간의 독립성을 부여하시겠습니까? Tumble Code Cloud로 어디서든 제어하세요. <learnMoreLink>더 알아보기</learnMoreLink>.",
 		"longRunningTask": "시간이 좀 걸릴 수 있습니다. Cloud로 어디서든 계속하세요.",
 		"taskList": "Tumble를 즐기고 계신가요? Tumble Code Cloud를 확인해보세요: 어디서든 작업을 추적하고 제어하며, 자율적인 클라우드 에이전트를 실행하고, 사용 통계를 얻는 등 다양한 기능을 제공합니다. <learnMoreLink>더 알아보기</learnMoreLink>."
 	}

@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "Foto profil",
 	"logOut": "Keluar",
-	"testApiAuthentication": "Uji Autentikasi API",
 	"signIn": "Hubungkan ke Tumble Code Cloud",
 	"connect": "Mulai",
 	"cloudBenefitsTitle": "Coba Tumble Code Cloud",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "Salin URL redirect dari browser dan tempel di sini:",
 	"startOver": "Mulai dari awal",
 	"personalAccount": "Akun Pribadi",
-	"switchAccount": "Ganti Akun Tumble Code Cloud",
 	"createTeamAccount": "Buat Akun Tim",
 	"cloudUrlPillLabel": "URL Tumble Code Cloud",
 	"upsell": {
-		"autoApprovePowerUser": "Memberi Tumble sedikit kebebasan? Kendalikan dari mana saja dengan Tumble Code Cloud. <learnMoreLink>Pelajari lebih lanjut</learnMoreLink>.",
 		"longRunningTask": "Ini mungkin akan memakan waktu cukup lama. Lanjutkan dari mana saja dengan Cloud.",
 		"taskList": "Menikmati Tumble? Coba Tumble Code Cloud: ikuti dan kendalikan tugas Anda dari mana saja, jalankan agen Cloud otonom, dapatkan statistik penggunaan, dan lainnya. <learnMoreLink>Pelajari lebih lanjut</learnMoreLink>."
 	}

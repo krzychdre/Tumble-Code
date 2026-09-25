@@ -1,18 +1,15 @@
 {
-	"greeting": "Welcome to Tumble Code!",
 	"task": {
 		"title": "Task",
 		"expand": "Expand task",
 		"collapse": "Collapse task",
 		"seeMore": "See more",
-		"seeLess": "See less",
 		"tokens": "Tokens",
 		"cache": "Cache",
 		"apiCost": "API Cost",
 		"size": "Size",
 		"condenseContext": "Intelligently condense context",
 		"contextWindow": "Context Length",
-		"closeAndStart": "Close task and start a new one",
 		"export": "Export task history",
 		"share": "Share task",
 		"delete": "Delete Task (Shift + Click to skip confirmation)",
@@ -73,10 +70,7 @@
 	"tokenProgress": {
 		"availableSpace": "Available space: {{amount}} tokens",
 		"tokensUsed": "Tokens used: {{used}} of {{total}}",
-		"reservedForResponse": "Reserved for model response: {{amount}} tokens",
-		"tokensUsedLabel": "Tokens used",
-		"reservedForResponseLabel": "Reserved for response",
-		"availableSpaceLabel": "Available space"
+		"reservedForResponse": "Reserved for model response: {{amount}} tokens"
 	},
 	"reject": {
 		"title": "Deny",
@@ -132,12 +126,10 @@
 		"tooltip": "Start a new task"
 	},
 	"cancel": {
-		"title": "Cancel",
-		"tooltip": "Cancel the current operation"
+		"title": "Cancel"
 	},
 	"stop": {
-		"title": "Stop",
-		"tooltip": "Stop the current task"
+		"title": "Stop"
 	},
 	"enqueueMessage": "Add message to queue (will be sent after current task completes)",
 	"editMessage": {
@@ -147,7 +139,6 @@
 	"scrollToLatestCheckpoint": "Scroll to previous checkpoint",
 	"about": "Tumble is a whole AI dev team in your editor",
 	"docs": "Check our <DocsLink>docs</DocsLink> to get started",
-	"onboarding": "What would you like to do?",
 	"rooTips": {
 		"customizableModes": {
 			"title": "Customizable modes that don't swerve",
@@ -184,7 +175,6 @@
 	},
 	"enhancePromptDescription": "The 'Enhance Prompt' button helps improve your prompt by providing additional context, clarification, or rephrasing. Try typing a prompt in here and clicking the button again to see how it works.",
 	"addImages": "Add images to message",
-	"sendMessage": "Send message",
 	"pressToSend": "Press {{keyCombination}} to send",
 	"typeMessage": "Type a message...",
 	"typeTask": "Type your task here...",
@@ -193,7 +183,6 @@
 	"dragFilesImages": "hold shift to drag in files/images",
 	"errorReadingFile": "Error reading file",
 	"noValidImages": "No valid images were processed",
-	"separator": "Separator",
 	"edit": "Edit...",
 	"forNextMode": "for next mode",
 	"forPreviousMode": "for previous mode",
@@ -221,7 +210,6 @@
 	},
 	"checkpoint": {
 		"regular": "Checkpoint",
-		"initializingWarning": "Still initializing checkpoint... If this takes too long, you can disable checkpoints in <settingsLink>settings</settingsLink> and restart your task.",
 		"menu": {
 			"viewDiff": "View Diff",
 			"viewDiffFromInit": "View All Changes",
@@ -277,8 +265,6 @@
 		"wantsToGenerateImageOutsideWorkspace": "Tumble wants to generate an image outside of the workspace",
 		"wantsToGenerateImageProtected": "Tumble wants to generate an image in a protected location",
 		"didGenerateImage": "Tumble generated an image",
-		"wantsToCreate": "Tumble wants to create a new file",
-		"wantsToInsert": "Tumble wants to insert content into this file",
 		"wantsToInsertWithLineNumber": "Tumble wants to insert content into this file at line {{lineNumber}}",
 		"wantsToInsertAtEnd": "Tumble wants to append content to the end of this file"
 	},
@@ -291,7 +277,6 @@
 		"didViewRecursive": "Tumble recursively viewed all files in this directory",
 		"wantsToViewRecursiveOutsideWorkspace": "Tumble wants to recursively view all files in this directory (outside workspace)",
 		"didViewRecursiveOutsideWorkspace": "Tumble recursively viewed all files in this directory (outside workspace)",
-		"wantsToViewMultipleDirectories": "Tumble wants to view multiple directories",
 		"wantsToSearch": "Tumble wants to search this directory for <code>{{regex}}</code>",
 		"didSearch": "Tumble searched this directory for <code>{{regex}}</code>",
 		"wantsToSearchOutsideWorkspace": "Tumble wants to search this directory (outside workspace) for <code>{{regex}}</code>",
@@ -304,11 +289,9 @@
 		"didSearch_other": "Found {{count}} results",
 		"resultTooltip": "Similarity score: {{score}} (click to open file)"
 	},
-	"commandOutput": "Command Output",
 	"commandExecution": {
 		"abort": "Abort",
 		"running": "Running",
-		"pid": "PID: {{pid}}",
 		"exitStatus": "Exited with status {{exitCode}}",
 		"malformedCommand": "Malformed command: shell syntax error",
 		"manageCommands": "Auto-approved commands",
@@ -316,14 +299,9 @@
 		"removeFromAllowed": "Remove from allowed list",
 		"addToDenied": "Add to denied list",
 		"removeFromDenied": "Remove from denied list",
-		"abortCommand": "Abort command execution",
 		"expandCommand": "Expand command",
-		"collapseCommand": "Collapse command",
-		"expandManagement": "Expand command management section",
-		"collapseManagement": "Collapse command management section"
+		"collapseCommand": "Collapse command"
 	},
-	"response": "Response",
-	"arguments": "Arguments",
 	"text": {
 		"rooSaid": "Tumble said"
 	},
@@ -343,9 +321,7 @@
 	"subtasks": {
 		"wantsToCreate": "Tumble wants to create a new subtask in {{mode}} mode",
 		"wantsToFinish": "Tumble wants to mark this as completed",
-		"newTaskContent": "Subtask Instructions",
 		"resultContent": "Subtask completed",
-		"defaultResult": "Please continue to the next task.",
 		"completionInstructions": "You can review the results and suggest any corrections or next steps. If everything looks good, confirm to return the result to the parent task.",
 		"goToSubtask": "View task"
 	},
@@ -373,9 +349,6 @@
 		"title": "Edit Unsuccessful"
 	},
 	"troubleMessage": "Tumble is having trouble...",
-	"powershell": {
-		"issues": "It seems like you're having Windows PowerShell issues, please see this"
-	},
 	"autoApprove": {
 		"tooltipManage": "Manage auto-approval settings",
 		"tooltipStatus": "Auto-approval enabled for: {{toggles}}",
@@ -383,9 +356,7 @@
 		"all": "All",
 		"none": "None",
 		"description": "Run these actions without asking for permission. Only enable for actions you fully trust.",
-		"selectOptionsFirst": "Select at least one option below to enable auto-approval",
 		"toggleAriaLabel": "Toggle auto-approval",
-		"disabledAriaLabel": "Auto-approval disabled - select options first",
 		"triggerLabelOff": "Auto-approve off",
 		"triggerLabelOffShort": "Off",
 		"triggerLabel_zero": "0 auto-approve",
@@ -412,13 +383,6 @@
 	"announcement": {
 		"title": "Tumble Code {{version}} Released",
 		"support": "Please support Tumble Code by starring us on <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Limited-time FREE stealth model</bold> - Code Supernova: Now upgraded with a <bold>1M token context window</bold>! A versatile agentic coding model that supports image inputs, accessible through Tumble Code Cloud.",
-			"note": "(Note: prompts and completions are logged by the model creator and used to improve the model)",
-			"connectButton": "Connect to Tumble Code Cloud",
-			"selectModel": "Select <code>roo/code-supernova</code> from the Tumble Code Cloud provider in Settings to get started.",
-			"goToSettingsButton": "Go to Settings"
-		},
 		"handoff": {
 			"heading": "From Roo Code to Tumble Code",
 			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
@@ -429,17 +393,10 @@
 			"gpt55": "GPT-5.5 via OpenAI Codex: Added GPT-5.5 support in the OpenAI Codex provider so you can use the latest model straight from Tumble Code.",
 			"claudeOpus47": "Claude Opus 4.7 on Vertex AI: Added Claude Opus 4.7 to the Vertex AI provider for Anthropic's newest flagship reasoning model.",
 			"checkpointNav": "Previous Checkpoint Navigation: Added controls in chat to jump back through prior checkpoints, with full i18n support."
-		},
-		"cloudAgents": {
-			"heading": "New in the Cloud:",
-			"specialized": "Introducing <bold>Explainer</bold>, <bold>Planner</bold>, and <bold>Coder</bold> - three specialized cloud agents to enhance your workflows.",
-			"description": "The agents work together in the cloud and can be triggered from the web or through Slack.",
-			"tryButton": "Try Cloud Agents"
 		}
 	},
 	"reasoning": {
-		"thinking": "Thinking",
-		"seconds": "{{count}}s"
+		"thinking": "Thinking"
 	},
 	"followUpSuggest": {
 		"copyToInput": "Copy to input (same as shift + click)",
@@ -486,22 +443,13 @@
 	"versionIndicator": {
 		"ariaLabel": "Version {{version}} - Click to view release notes"
 	},
-	"command": {
-		"triggerDescription": "Trigger the {{name}} command"
-	},
 	"slashCommands": {
-		"tooltip": "Manage slash commands",
-		"title": "Slash Commands",
 		"description": "Use built-in slash commands or create custom ones for quick access to frequently used prompts and workflows. <DocsLink>Docs</DocsLink>",
 		"manageCommands": "Manage slash commands in settings",
-		"builtInCommands": "Built-in Commands",
 		"globalCommands": "Global Commands",
 		"workspaceCommands": "Workspace Commands",
-		"globalCommand": "Global command",
 		"editCommand": "Edit command",
 		"deleteCommand": "Delete command",
-		"newGlobalCommandPlaceholder": "New global command...",
-		"newWorkspaceCommandPlaceholder": "New workspace command...",
 		"deleteDialog": {
 			"title": "Delete Command",
 			"description": "Are you sure you want to delete the command \"{{name}}\"? This action cannot be undone.",
@@ -534,9 +482,7 @@
 	"todo": {
 		"partial": "{{completed}} of {{total}} to-dos done",
 		"complete": "{{total}} to-dos done",
-		"updated": "Updated the to-do list",
-		"completed": "Completed",
-		"started": "Started"
+		"updated": "Updated the to-do list"
 	},
 	"tooManyTools": {
 		"title": "Too many tools enabled",

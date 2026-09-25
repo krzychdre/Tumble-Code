@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "Immagine del profilo",
 	"logOut": "Disconnetti",
-	"testApiAuthentication": "Verifica autenticazione API",
 	"signIn": "Connetti a Tumble Code Cloud",
 	"connect": "Inizia",
 	"cloudBenefitsTitle": "Prova Tumble Code Cloud",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "Copia l'URL di redirect dal tuo browser e incollalo qui:",
 	"startOver": "Ricomincia",
 	"personalAccount": "Account Personale",
-	"switchAccount": "Cambia Account Tumble Code Cloud",
 	"createTeamAccount": "Crea Account del Team",
 	"cloudUrlPillLabel": "URL di Tumble Code Cloud",
 	"upsell": {
-		"autoApprovePowerUser": "Vuoi dare un po' di indipendenza a Tumble? Controllalo da qualsiasi luogo con Tumble Code Cloud. <learnMoreLink>Scopri di più</learnMoreLink>.",
 		"longRunningTask": "Potrebbe volerci un po' di tempo. Continua da qualsiasi luogo con il Cloud.",
 		"taskList": "Ti piace Tumble? Dai un'occhiata a Tumble Code Cloud: segui e controlla le tue attività da qualsiasi luogo, esegui agenti Cloud autonomi, ottieni statistiche di utilizzo e altro ancora. <learnMoreLink>Scopri di più</learnMoreLink>."
 	}
