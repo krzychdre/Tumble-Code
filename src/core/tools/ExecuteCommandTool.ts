@@ -28,6 +28,7 @@ import {
 } from "../../integrations/terminal/types"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { Terminal } from "../../integrations/terminal/Terminal"
+import { TERMINAL_OUTPUT_THROTTLE_MS } from "../../integrations/terminal/BaseTerminalProcess"
 import { OutputInterceptor } from "../../integrations/terminal/OutputInterceptor"
 import { Package } from "../../shared/package"
 import { t } from "../../i18n"
@@ -288,7 +289,8 @@ export async function executeCommandInTerminal(
 	// Bound accumulated output buffer size to prevent unbounded memory growth for long-running commands.
 	// The interceptor preserves full output; this buffer is only for UI display (100KB limit).
 	const maxAccumulatedOutputSize = 100_000
-	const commandOutputStreamThrottleMs = 150
+	// The same rate at which the terminal process hands out new output.
+	const commandOutputStreamThrottleMs = TERMINAL_OUTPUT_THROTTLE_MS
 	let latestCompressedOutput = ""
 	let lastQueuedCommandOutput = ""
 	let lastCommandOutputEmitAt = 0

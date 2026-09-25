@@ -14,7 +14,13 @@ vitest.mock("execa", () => {
 			kill: mockKill,
 		})
 	})
-	return { execa, ExecaError: class extends Error {} }
+	return {
+		execa,
+		ExecaError: class extends Error {
+			exitCode?: number
+			signal?: string
+		},
+	}
 })
 
 vitest.mock("ps-tree", () => ({
@@ -181,6 +187,82 @@ describe("ExecaTerminalProcess", () => {
 			expect(calledOptions.env.SSH_ASKPASS_REQUIRE).toBe("force")
 			expect(calledOptions.env.SSH_ASKPASS).toBe(calledOptions.env.GIT_ASKPASS)
 			expect(calledOptions.env.GIT_ASKPASS).toMatch(/roo-askpass-/)
+		})
+	})
+
+	describe("exit details", () => {
+		it("reports a command killed by a signal as that signal, not as exit code 0", async () => {
+			const { ExecaError } = await import("execa")
+			const killed = Object.assign(new ExecaError(), {
+				message: "killed",
+				exitCode: undefined,
+				signal: "SIGKILL",
+			})
+
+			vitest.mocked(execa).mockImplementationOnce(
+				() =>
+					((_template: TemplateStringsArray) => ({
+						pid: mockPid,
+						iterable: () =>
+							(async function* () {
+								yield "started\n"
+								throw killed
+							})(),
+						kill: vitest.fn(),
+					})) as any,
+			)
+
+			const spy = vitest.fn()
+			terminalProcess.on("shell_execution_complete", spy)
+			await terminalProcess.run("sleep 100")
+
+			expect(spy).toHaveBeenCalledWith(expect.objectContaining({ exitCode: 137, signalName: "SIGKILL" }))
+		})
+
+		it("reports an aborted command as killed even when the abort is noticed before the stream fails", async () => {
+			if (process.platform === "win32") {
+				return
+			}
+
+			const { ExecaError } = await import("execa")
+			const killed = Object.assign(new ExecaError(), {
+				message: "killed",
+				exitCode: undefined,
+				signal: "SIGKILL",
+			})
+			const killSpy = vitest.spyOn(process, "kill").mockImplementation(() => true)
+
+			// The abort lands between two chunks: run() sees the flag, leaves the
+			// loop and waits for the subprocess, which rejects because it was
+			// killed. That path used to report { exitCode: 0 }.
+			vitest.mocked(execa).mockImplementationOnce(
+				() =>
+					((_template: TemplateStringsArray) => {
+						const subprocess = Promise.reject(killed)
+						subprocess.catch(() => {})
+
+						return Object.assign(subprocess, {
+							pid: mockPid,
+							iterable: () =>
+								(async function* () {
+									yield "started\n"
+									terminalProcess.abort()
+									yield "late\n"
+								})(),
+							kill: vitest.fn(),
+						})
+					}) as any,
+			)
+
+			try {
+				const spy = vitest.fn()
+				terminalProcess.on("shell_execution_complete", spy)
+				await terminalProcess.run("sleep 100")
+
+				expect(spy).toHaveBeenCalledWith(expect.objectContaining({ exitCode: 137, signalName: "SIGKILL" }))
+			} finally {
+				killSpy.mockRestore()
+			}
 		})
 	})
 

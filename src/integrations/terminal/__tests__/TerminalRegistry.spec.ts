@@ -334,6 +334,33 @@ describe("TerminalRegistry", () => {
 			expect(b.taskId).toBe("task-B")
 		})
 
+		// An Execa terminal holds no OS resource and ExecaTerminal.isClosed() is
+		// always false, so without this the CLI (which only uses Execa terminals)
+		// kept every terminal it ever created for the life of the process.
+		it("drops Execa terminals that are idle and have no output left to report", () => {
+			const drained = TerminalRegistry.createTerminal("/drained", "execa")
+			const withOutput = TerminalRegistry.createTerminal("/with-output", "execa") as ExecaTerminal
+			const busy = TerminalRegistry.createTerminal("/busy", "execa")
+			const otherTask = TerminalRegistry.createTerminal("/other", "execa")
+			const vscodeIdle = TerminalRegistry.createTerminal("/vscode", "vscode")
+
+			drained.taskId = "task-prune"
+			withOutput.taskId = "task-prune"
+			busy.taskId = "task-prune"
+			busy.busy = true
+			busy.process = { abort: vi.fn() } as any
+			otherTask.taskId = "task-other"
+			vscodeIdle.taskId = "task-prune"
+
+			// A command moved to the background finished with output the model has
+			// not seen yet: getEnvironmentDetails still has to find this terminal.
+			withOutput.completedProcesses = [{ hasUnretrievedOutput: () => true, trimRetrievedOutput: () => {} } as any]
+
+			TerminalRegistry.releaseTerminalsForTask("task-prune")
+
+			expect(TerminalRegistry["terminals"]).toEqual([withOutput, busy, otherTask, vscodeIdle])
+		})
+
 		it("swallows errors thrown by process.abort() and still disassociates the terminal", () => {
 			const terminal = TerminalRegistry.createTerminal("/test/path", "vscode")
 			terminal.taskId = "task-throw"

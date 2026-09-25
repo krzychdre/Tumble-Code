@@ -192,19 +192,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 			// notice to future programmers: do not add escape sequence
 			// filtering here: fullOutput cannot change in length (see getUnretrievedOutput),
 			// and chunks may not be complete so you cannot rely on detecting or removing escape sequences mid-stream.
-			this.fullOutput += data
-
-			// For non-immediately returning commands we want to show loading spinner
-			// right away but this wouldn't happen until it emits a line break, so
-			// as soon as we get any output we emit to let webview know to show spinner
-			const now = Date.now()
-
-			if (this.isListening && (now - this.lastEmitTime_ms > 100 || this.lastEmitTime_ms === 0)) {
-				this.emitRemainingBufferIfListening()
-				this.lastEmitTime_ms = now
-			}
-
-			this.startHotTimer(data)
+			this.appendOutput(data)
 		}
 
 		// Set streamClosed immediately after stream ends.
@@ -214,10 +202,12 @@ export class TerminalProcess extends BaseTerminalProcess {
 		await shellExecutionComplete
 		this.terminal.activeShellExecution = undefined
 
-		this.isHot = false
-
-		// Emit any remaining output before completing.
-		this.emitRemainingBufferIfListening()
+		// Emit any remaining output before completing. This also stops the hot
+		// timer: for now we don't want this delaying requests since we don't
+		// send diagnostics automatically anymore (previous: "even though the
+		// command is finished, we still want to consider it 'hot' in case so
+		// that api request stalls to let diagnostics catch up").
+		this.flushOutput()
 
 		// fullOutput begins after C marker so we only need to trim off D marker
 		// (if D exists, see VSCode bug# 237208):
@@ -227,13 +217,7 @@ export class TerminalProcess extends BaseTerminalProcess {
 			this.fullOutput = match
 		}
 
-		// For now we don't want this delaying requests since we don't send
-		// diagnostics automatically anymore (previous: "even though the
-		// command is finished, we still want to consider it 'hot' in case
-		// so that api request stalls to let diagnostics catch up").
-		this.stopHotTimer()
-		this.emit("completed", this.stripCursorSequences(this.removeVSCodeShellIntegration(this.fullOutput)))
-		this.emit("continue")
+		this.finishRun(this.cleanOutput(this.fullOutput))
 	}
 
 	/**
@@ -259,13 +243,6 @@ export class TerminalProcess extends BaseTerminalProcess {
 		}
 
 		return `{\n${command}\n}`
-	}
-
-	public override continue() {
-		this.emitRemainingBufferIfListening()
-		this.isListening = false
-		this.removeAllListeners("line")
-		this.emit("continue")
 	}
 
 	public override abort() {
@@ -325,65 +302,30 @@ export class TerminalProcess extends BaseTerminalProcess {
 		}
 	}
 
-	public override hasUnretrievedOutput(): boolean {
-		// If the process is still active or has unretrieved content, return true
-		return this.lastRetrievedIndex < this.fullOutput.length
+	/**
+	 * The stream closing is the VS Code terminal's end of output (the end
+	 * marker may be missing, see VSCode bug#237208).
+	 */
+	protected override isOutputEnded(): boolean {
+		return this.terminal.isStreamClosed
 	}
 
-	public override getUnretrievedOutput(): string {
-		// Get raw unretrieved output
-		let outputToProcess = this.fullOutput.slice(this.lastRetrievedIndex)
-
-		// Check for VSCE command end markers
-		const index633 = outputToProcess.indexOf("\x1b]633;D")
-		const index133 = outputToProcess.indexOf("\x1b]133;D")
-		let endIndex = -1
+	/**
+	 * The command's output ends where a VSCE command end marker (D) starts.
+	 */
+	protected override findOutputEnd(pending: string): number {
+		const index633 = pending.indexOf("\x1b]633;D")
+		const index133 = pending.indexOf("\x1b]133;D")
 
 		if (index633 !== -1 && index133 !== -1) {
-			endIndex = Math.min(index633, index133)
-		} else if (index633 !== -1) {
-			endIndex = index633
-		} else if (index133 !== -1) {
-			endIndex = index133
+			return Math.min(index633, index133)
 		}
 
-		// If no end markers were found yet (possibly due to VSCode bug#237208):
-		//   For active streams: return only complete lines (up to last \n).
-		//   For closed streams: return all remaining content.
-		if (endIndex === -1) {
-			if (!this.terminal.isStreamClosed) {
-				// Stream still running - only process complete lines
-				endIndex = outputToProcess.lastIndexOf("\n")
-
-				if (endIndex === -1) {
-					// No complete lines
-					return ""
-				}
-
-				// Include carriage return
-				endIndex++
-			} else {
-				// Stream closed - process all remaining output
-				endIndex = outputToProcess.length
-			}
-		}
-
-		// Update index and slice output
-		this.lastRetrievedIndex += endIndex
-		outputToProcess = outputToProcess.slice(0, endIndex)
-
-		// Clean and return output
-		return this.stripCursorSequences(this.removeVSCodeShellIntegration(outputToProcess))
+		return index633 !== -1 ? index633 : index133
 	}
 
-	private emitRemainingBufferIfListening() {
-		if (this.isListening) {
-			const remainingBuffer = this.getUnretrievedOutput()
-
-			if (remainingBuffer !== "") {
-				this.emit("line", remainingBuffer)
-			}
-		}
+	protected override cleanOutput(output: string): string {
+		return this.stripCursorSequences(this.removeVSCodeShellIntegration(output))
 	}
 
 	private stringIndexMatch(
