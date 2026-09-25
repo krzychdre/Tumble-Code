@@ -39,6 +39,7 @@ import {
 	type ModeChangedEvent,
 } from "./events.js"
 import { AgentLoopState, type AgentStateInfo } from "./agent-state.js"
+import { TranscriptReader } from "./transcript-reader.js"
 
 // =============================================================================
 // Extension Client Configuration
@@ -119,6 +120,13 @@ export interface ExtensionClientConfig {
  * ```
  */
 export class ExtensionClient {
+	/**
+	 * Reads extension messages into transcript rows for the consumer that
+	 * shows them (the TUI). It is fed by the extension host from construction
+	 * on, not by `handleMessage`: see `ExtensionHost`'s constructor.
+	 */
+	readonly transcript = new TranscriptReader()
+
 	private store: StateStore
 	private processor: MessageProcessor
 	private emitter: TypedEventEmitter
@@ -495,6 +503,7 @@ export class ExtensionClient {
 	 */
 	reset(): void {
 		this.store.reset()
+		this.transcript.reset()
 		this.emitter.removeAllListeners()
 	}
 

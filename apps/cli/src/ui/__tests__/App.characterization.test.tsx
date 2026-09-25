@@ -23,6 +23,7 @@ import { render } from "ink-testing-library"
 import type { ClineMessage, ExtensionMessage, WebviewMessage } from "@roo-code/types"
 
 import type { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
+import { TranscriptReader } from "@/agent/transcript-reader.js"
 
 import { App, type TUIAppProps } from "../App.js"
 import { useCLIStore } from "../store.js"
@@ -50,7 +51,16 @@ const WORKSPACE = path.resolve("/tmp/cli-app-characterization")
 const START = new Date("2026-01-01T12:00:00Z").getTime()
 
 class FakeHost extends EventEmitter {
-	client = new EventEmitter()
+	// Not a real ExtensionClient: its events (taskCompleted, error) are emitted
+	// by the steps themselves. The transcript reader is the real one, fed from
+	// the host's messages from construction on, like ExtensionHost does.
+	client = Object.assign(new EventEmitter(), { transcript: new TranscriptReader() })
+
+	constructor() {
+		super()
+		this.on("extensionWebviewMessage", (message: ExtensionMessage) => this.client.transcript.handleMessage(message))
+	}
+
 	sent: WebviewMessage[] = []
 	runs: string[] = []
 	activate = vi.fn(async () => {})

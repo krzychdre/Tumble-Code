@@ -24,7 +24,7 @@ export type ToolCategory = "file-read" | "file-write" | "search" | "command" | "
  * Derive the bullet status for a tool from its originating message.
  * Running while pending/partial; otherwise success (tool messages are
  * only ever added as completed — there is no error signal in the
- * current message flow; see useMessageHandlers.ts).
+ * current message flow; see agent/transcript-reducer.ts).
  */
 export function toolStatusFromMessage(message?: TUIMessage): BulletStatus {
 	if (message?.hasPendingToolCalls || message?.partial) {

@@ -19,7 +19,7 @@ import { SearchTool } from "../tools/SearchTool.js"
  * ClineSayTool union, the legacy edit names the webview still renders, and
  * `runParallelTasks`, which is sent with no type). Each row says what the
  * webview row for that payload shows (its header values: path, query, URL,
- * mode, ...) and checks that the CLI row, built the way useMessageHandlers
+ * mode, ...) and checks that the CLI row, built the way the transcript reducer
  * builds it for an auto-approved tool ask, shows the same thing under a real
  * title rather than the raw payload name.
  */
@@ -229,7 +229,7 @@ const rows: ParityRow[] = [
 	},
 ]
 
-/** The row useMessageHandlers adds for an auto-approved "tool" ask. */
+/** The row the transcript reducer adds for an auto-approved "tool" ask. */
 function toolAskMessage(payload: Record<string, unknown>): TUIMessage {
 	return {
 		id: "1",

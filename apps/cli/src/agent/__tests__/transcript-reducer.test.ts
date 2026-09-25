@@ -15,7 +15,7 @@ import {
  * The transcript as the TUI store holds it once its debounce has flushed,
  * built only from the reducer's effects. The store actions this mirrors are
  * in ui/store.ts; the store's own timing (the 150 ms debounce) is covered by
- * the useMessageHandlers spec.
+ * the useTranscriptSink spec.
  */
 interface TranscriptModel {
 	messages: TUIMessage[]
@@ -121,7 +121,7 @@ function apply(model: TranscriptModel, effect: TranscriptEffect): void {
 }
 
 /**
- * Specs of the transcript reducer (moved from the useMessageHandlers spec,
+ * Specs of the transcript reducer (moved from the old useMessageHandlers spec,
  * where they ran through the hook and the store).
  *
  * Regression background for the dedupe specs: the extension's streaming

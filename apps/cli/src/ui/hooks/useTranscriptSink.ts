@@ -1,23 +1,11 @@
-import { useCallback, useRef } from "react"
-import type { ExtensionMessage } from "@roo-code/types"
+import { useMemo, useRef } from "react"
 
-import {
-	createTranscriptCursor,
-	reduceExtensionMessage,
-	resetTranscriptCursor,
-	type TranscriptCursor,
-	type TranscriptEffect,
-} from "../../agent/transcript-reducer.js"
+import type { TranscriptEffect } from "../../agent/transcript-reducer.js"
+import type { TranscriptSink } from "../../agent/transcript-reader.js"
 import { useCLIStore } from "../store.js"
 
-export interface UseMessageHandlersOptions {
+export interface UseTranscriptSinkOptions {
 	nonInteractive: boolean
-}
-
-export interface UseMessageHandlersReturn {
-	handleExtensionMessage: (msg: ExtensionMessage) => void
-	/** Forget the current task's bookkeeping (/new, /clear, switching tasks). */
-	resetTranscript: () => void
 }
 
 /**
@@ -87,39 +75,28 @@ function applyTranscriptEffects(effects: readonly TranscriptEffect[]): void {
 }
 
 /**
- * Hook that feeds extension messages to the transcript reducer
- * (`agent/transcript-reducer.ts`) and applies what it returns to the store.
+ * The TUI's side of the transcript reader (`agent/transcript-reader.ts`):
+ * the reader reads each extension message and asks this sink for the
+ * transcript as the store holds it, then hands back the changes, which are
+ * applied to the store. `useExtensionHost` attaches the sink to the client.
+ *
+ * The sink is created once and reads everything at call time: the reader
+ * keeps the sink it was given on mount, and the permission policy can change
+ * at runtime (/permissions).
  */
-export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions): UseMessageHandlersReturn {
-	const cursor = useRef<TranscriptCursor>(createTranscriptCursor())
-
-	// The extension host subscribes to handleExtensionMessage once on mount.
-	// Keep the current session policy in a ref so runtime /permissions changes
-	// affect that stable listener instead of leaving it with the startup value.
+export function useTranscriptSink({ nonInteractive }: UseTranscriptSinkOptions): TranscriptSink {
 	const nonInteractiveRef = useRef(nonInteractive)
 	nonInteractiveRef.current = nonInteractive
 
-	const handleExtensionMessage = useCallback(
-		(msg: ExtensionMessage) => {
-			// Read from the store at call time: the extension host keeps the
-			// callback of the first render (it subscribes once, on mount).
-			const { messages, isLoading, isResumingTask, currentTodos } = useCLIStore.getState()
-			const result = reduceExtensionMessage(
-				cursor.current,
-				{ messages, isLoading, isResumingTask, currentTodos },
-				msg,
-				{ nonInteractive: nonInteractiveRef.current },
-			)
-
-			cursor.current = result.cursor
-			applyTranscriptEffects(result.effects)
-		},
+	return useMemo<TranscriptSink>(
+		() => ({
+			view: () => {
+				const { messages, isLoading, isResumingTask, currentTodos } = useCLIStore.getState()
+				return { messages, isLoading, isResumingTask, currentTodos }
+			},
+			nonInteractive: () => nonInteractiveRef.current,
+			apply: applyTranscriptEffects,
+		}),
 		[],
 	)
-
-	const resetTranscript = useCallback(() => {
-		cursor.current = resetTranscriptCursor()
-	}, [])
-
-	return { handleExtensionMessage, resetTranscript }
 }

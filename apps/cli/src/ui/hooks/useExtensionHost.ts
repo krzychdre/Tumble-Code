@@ -13,6 +13,7 @@ import {
 import { arePathsEqual } from "@roo-code/core/cli"
 
 import { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
+import type { TranscriptSink } from "@/agent/transcript-reader.js"
 
 import { useCLIStore } from "../store.js"
 
@@ -68,7 +69,8 @@ export interface UseExtensionHostOptions extends ExtensionHostOptions {
 	initialTaskId?: string
 	initialSessionId?: string
 	continueSession?: boolean
-	onExtensionMessage: (msg: ExtensionMessage) => void
+	/** Where the client's transcript reader sends the rows (see useTranscriptSink). */
+	transcript: TranscriptSink
 	createExtensionHost: (options: ExtensionHostOptions) => ExtensionHostInterface
 }
 
@@ -77,6 +79,8 @@ export interface UseExtensionHostReturn {
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	runTask: ((prompt: string) => Promise<void>) | null
 	cleanup: () => Promise<void>
+	/** Forget the transcript bookkeeping of the current task (/new, /clear, switching tasks). */
+	resetTranscript: () => void
 }
 
 /**
@@ -93,7 +97,7 @@ export function useExtensionHost({
 	initialTaskId,
 	initialSessionId,
 	continueSession,
-	onExtensionMessage,
+	transcript,
 	createExtensionHost,
 	// Everything else is an ExtensionHostOptions field and goes to the host
 	// untouched: picking fields one by one here silently dropped options
@@ -109,7 +113,12 @@ export function useExtensionHost({
 	const isReadyRef = useRef(false)
 	const pendingInitialTaskIdRef = useRef<string | undefined>(initialTaskId?.trim() || undefined)
 
+	const detachTranscriptRef = useRef<(() => void) | null>(null)
+
 	const cleanup = useCallback(async () => {
+		detachTranscriptRef.current?.()
+		detachTranscriptRef.current = null
+
 		if (hostRef.current) {
 			await hostRef.current.dispose()
 			hostRef.current = null
@@ -129,16 +138,18 @@ export function useExtensionHost({
 				hostRef.current = host
 				isReadyRef.current = true
 
+				// The client reads every message into transcript rows; the sink
+				// applies them to the store.
+				detachTranscriptRef.current = host.client.transcript.attach(transcript)
+
+				// Only for the --session / --continue lookup below.
 				host.on("extensionWebviewMessage", (msg) => {
-					const extensionMessage = msg as ExtensionMessage
-					const taskHistory = extractTaskHistory(extensionMessage)
+					const taskHistory = extractTaskHistory(msg as ExtensionMessage)
 
 					if (taskHistory) {
 						taskHistorySnapshot = taskHistory
 						hasReceivedTaskHistory = true
 					}
-
-					onExtensionMessage(extensionMessage)
 				})
 
 				host.client.on("taskCompleted", async (event) => {
@@ -259,9 +270,14 @@ export function useExtensionHost({
 		return hostRef.current.runTask(prompt, taskId)
 	}, [])
 
+	// Stable resetTranscript - uses ref to always access current host.
+	const resetTranscript = useCallback(() => {
+		hostRef.current?.client.transcript.reset()
+	}, [])
+
 	// Memoized return object to prevent unnecessary re-renders in consumers.
 	return useMemo(
-		() => ({ isReady: isReadyRef.current, sendToExtension, runTask, cleanup }),
-		[sendToExtension, runTask, cleanup],
+		() => ({ isReady: isReadyRef.current, sendToExtension, runTask, cleanup, resetTranscript }),
+		[sendToExtension, runTask, cleanup, resetTranscript],
 	)
 }

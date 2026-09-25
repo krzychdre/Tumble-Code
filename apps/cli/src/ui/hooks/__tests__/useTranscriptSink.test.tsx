@@ -1,33 +1,45 @@
 import { Text } from "ink"
 import { render } from "ink-testing-library"
+import type { ExtensionMessage } from "@roo-code/types"
 
+import { TranscriptReader, type TranscriptSink } from "../../../agent/transcript-reader.js"
 import { useCLIStore } from "../../store.js"
 import { getStaticCount } from "../../transcript.js"
-import { useMessageHandlers, type UseMessageHandlersReturn } from "../useMessageHandlers.js"
+import { useTranscriptSink } from "../useTranscriptSink.js"
 
 /**
- * The hook is the adapter between the extension host and the TUI store: it
- * feeds each message to the transcript reducer and applies the reducer's
- * changes through the store actions. What a message means is specced in
- * agent/__tests__/transcript-reducer.test.ts; these specs keep what depends on
- * the hook and the store around it: the store's 150 ms debounce of partial
- * updates, the stable listener the host subscribes once, the todos of the
- * render, and the reset the other hooks call.
+ * The sink is the TUI's side of the client's transcript reader: the reader
+ * asks it for the transcript as the store holds it and hands back the
+ * changes, which it applies through the store actions. What a message means
+ * is specced in agent/__tests__/transcript-reducer.test.ts; these specs run a
+ * real TranscriptReader against the sink and keep what depends on the store
+ * around it: the store's 150 ms debounce of partial updates, the sink the
+ * reader keeps from the first render, the todos, and the reset.
  */
-describe("useMessageHandlers", () => {
-	let api: UseMessageHandlersReturn
+describe("useTranscriptSink", () => {
+	let sink: TranscriptSink
+	let reader: TranscriptReader
 	let nonInteractive = false
+	let view: ReturnType<typeof render>
 
 	function Harness() {
-		api = useMessageHandlers({ nonInteractive })
+		sink = useTranscriptSink({ nonInteractive })
 		return <Text>harness</Text>
+	}
+
+	// What the extension host and the client do with the sink of the first render.
+	const api = {
+		handleExtensionMessage: (message: ExtensionMessage) => reader.handleMessage(message),
+		resetTranscript: () => reader.reset(),
 	}
 
 	beforeEach(() => {
 		useCLIStore.getState().reset()
 		useCLIStore.getState().setHasStartedTask(true)
 		nonInteractive = false
-		render(<Harness />)
+		view = render(<Harness />)
+		reader = new TranscriptReader()
+		reader.attach(sink)
 	})
 
 	interface ClineMessageLike {
@@ -87,7 +99,6 @@ describe("useMessageHandlers", () => {
 		}
 
 		it("keeps the todo list of an auto-approved update_todo_list ask, with the current todos as previous", () => {
-			const view = render(<Harness />)
 			nonInteractive = true
 			view.rerender(<Harness />)
 
@@ -104,12 +115,10 @@ describe("useMessageHandlers", () => {
 			expect(useCLIStore.getState().currentTodos.map((t) => t.content)).toEqual(["one", "two"])
 			expect(useCLIStore.getState().messages[0]?.previousTodos).toEqual([])
 
-			// The extension host subscribes once, on mount, so it keeps calling the
-			// callback of an older render. That callback must still compare with
-			// the list the transcript holds now, not with the list of its render.
-			const stale = api.handleExtensionMessage
+			// The reader keeps the sink of the first render. It must still compare
+			// with the list the transcript holds now, not with the list of a render.
 			view.rerender(<Harness />)
-			stale({
+			api.handleExtensionMessage({
 				type: "messageUpdated",
 				clineMessage: { ts: 911, type: "ask", ask: "tool", text: todos("completed", "pending"), partial: false },
 			} as never)
@@ -185,7 +194,6 @@ describe("useMessageHandlers", () => {
 	})
 
 	it("uses the current permission policy after it changes at runtime", () => {
-		const view = render(<Harness />)
 		const stableHandler = api.handleExtensionMessage
 
 		nonInteractive = true

@@ -5,9 +5,16 @@ import { render } from "ink-testing-library"
 import pWaitFor from "p-wait-for"
 
 import type { ExtensionHostInterface, ExtensionHostOptions } from "@/agent/index.js"
+import { TranscriptReader, type TranscriptSink } from "@/agent/transcript-reader.js"
 
 import { useCLIStore } from "../../store.js"
 import { useExtensionHost } from "../useExtensionHost.js"
+
+const sink: TranscriptSink = {
+	view: () => ({ messages: [], isLoading: false, isResumingTask: false, currentTodos: [] }),
+	nonInteractive: () => false,
+	apply: () => {},
+}
 
 describe("useExtensionHost", () => {
 	beforeEach(() => {
@@ -38,7 +45,7 @@ describe("useExtensionHost", () => {
 		const createExtensionHost = vi.fn((_options: ExtensionHostOptions) => {
 			const host = {
 				on: vi.fn(),
-				client: { on: vi.fn() },
+				client: { on: vi.fn(), transcript: { attach: vi.fn(() => () => {}) } },
 				activate: vi.fn(async () => {}),
 				sendToExtension: vi.fn(),
 			}
@@ -46,7 +53,7 @@ describe("useExtensionHost", () => {
 		})
 
 		function Harness() {
-			useExtensionHost({ ...options, onExtensionMessage: vi.fn(), createExtensionHost })
+			useExtensionHost({ ...options, transcript: sink, createExtensionHost })
 			return <Text>harness</Text>
 		}
 
@@ -76,7 +83,7 @@ describe("useExtensionHost task completion", () => {
 	})
 
 	async function mount() {
-		const client = new EventEmitter()
+		const client = Object.assign(new EventEmitter(), { transcript: new TranscriptReader() })
 		const dispose = vi.fn(async () => {})
 		const host = {
 			on: vi.fn(),
@@ -88,7 +95,7 @@ describe("useExtensionHost task completion", () => {
 		const createExtensionHost = vi.fn(() => host as unknown as ExtensionHostInterface)
 
 		function Harness() {
-			useExtensionHost({ ...options, onExtensionMessage: vi.fn(), createExtensionHost })
+			useExtensionHost({ ...options, transcript: sink, createExtensionHost })
 			return <Text>harness</Text>
 		}
 
