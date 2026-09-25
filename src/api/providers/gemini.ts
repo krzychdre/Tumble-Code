@@ -659,33 +659,26 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 }
 
 /**
- * Honor a custom/unlisted Gemini model id (e.g. a newly released model not yet
- * in `geminiModels`) instead of silently falling back to the default. This
- * mirrors the settings UI's "use custom model" option and the
- * `useSelectedModel` hook, which both keep the configured id. Ids that don't
- * look like Gemini models fall back to the default.
- *
- * The default model's structural info is the baseline, without the pricing
- * fields we can't verify for an unknown model, so cost reporting shows
- * "unknown" (calculateCost returns undefined) instead of charging the default
- * model's rates against a different model.
+ * An unlisted Gemini model id (e.g. a newly released model not yet in
+ * `geminiModels`) is kept (owner decision 5). The default model's structural
+ * info is the baseline, without the pricing fields we can't verify for an
+ * unknown model, so cost reporting shows "unknown" (calculateCost returns
+ * undefined) instead of charging the default model's rates against a
+ * different model.
  */
-const customGeminiModelInfo = (modelId: string): ModelInfo | undefined =>
-	modelId.toLowerCase().startsWith("gemini-")
-		? {
-				...geminiModels[geminiDefaultModelId],
-				inputPrice: undefined,
-				outputPrice: undefined,
-				cacheReadsPrice: undefined,
-				cacheWritesPrice: undefined,
-				tiers: undefined,
-			}
-		: undefined
+const unknownGeminiModelInfo = (): ModelInfo => ({
+	...geminiModels[geminiDefaultModelId],
+	inputPrice: undefined,
+	outputPrice: undefined,
+	cacheReadsPrice: undefined,
+	cacheWritesPrice: undefined,
+	tiers: undefined,
+})
 
 /** The model a Gemini profile selects, before request parameters. */
 function selectGeminiModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
 	const { id, info } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.gemini, {
-		customModelInfo: customGeminiModelInfo,
+		customModelInfo: unknownGeminiModelInfo,
 	})
 
 	return { id, info }

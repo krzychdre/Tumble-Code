@@ -20,7 +20,7 @@ type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerO
 	baseURL: string
 	defaultProviderModelId: ModelName
 	providerModels: Record<ModelName, ModelInfo>
-	/** What `getModel` does with an id missing from `providerModels`; substitutes the default unless set. */
+	/** What `getModel` does with an id missing from `providerModels`; keeps the id unless set. */
 	unknownModelPolicy?: UnknownModelPolicy
 	defaultTemperature?: number
 }
@@ -56,7 +56,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 		this.baseURL = baseURL
 		this.defaultProviderModelId = defaultProviderModelId
 		this.providerModels = providerModels
-		this.unknownModelPolicy = unknownModelPolicy ?? "substitute-default"
+		this.unknownModelPolicy = unknownModelPolicy ?? "keep-id"
 		this.defaultTemperature = defaultTemperature ?? 0
 
 		this.options = options

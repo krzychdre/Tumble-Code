@@ -320,10 +320,14 @@ describe("OpenAiNativeHandler", () => {
 			"gpt-5-2025-08-07",
 			"gpt-5-mini-2025-08-07",
 			"gpt-5-nano-2025-08-07",
-		])("should reject deprecated model id %s", (apiModelId) => {
+		])("keeps the removed model id %s instead of substituting the default (owner decision 5)", (apiModelId) => {
 			const deprecatedHandler = new OpenAiNativeHandler({ ...mockOptions, apiModelId })
+			const { id, info } = deprecatedHandler.getModel()
 
-			expect(deprecatedHandler.getModel().id).toBe("gpt-5.6-sol")
+			// The settings UI warns that the id is unknown; the request uses it
+			// with the default model's info.
+			expect(id).toBe(apiModelId)
+			expect(info).toEqual(new OpenAiNativeHandler({ ...mockOptions, apiModelId: undefined }).getModel().info)
 		})
 
 		it("should return model info", () => {

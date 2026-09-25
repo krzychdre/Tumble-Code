@@ -57,5 +57,16 @@ export const deepSeekModels = {
 	},
 } as const satisfies Record<string, ModelInfo>
 
+/**
+ * DeepSeek's documented model-name aliases: `deepseek-chat` is the
+ * non-thinking mode and `deepseek-reasoner` the thinking mode of
+ * deepseek-v4-flash. They are sent to the API as configured and described by
+ * the model they alias.
+ */
+export const deepSeekModelAliases = {
+	"deepseek-chat": "deepseek-v4-flash",
+	"deepseek-reasoner": "deepseek-v4-flash",
+} as const satisfies Record<string, DeepSeekModelId>
+
 // https://api-docs.deepseek.com/quick_start/parameter_settings
 export const DEEP_SEEK_DEFAULT_TEMPERATURE = 0.3

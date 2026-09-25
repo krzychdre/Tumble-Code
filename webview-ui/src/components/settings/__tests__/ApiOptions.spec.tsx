@@ -231,6 +231,15 @@ vi.mock("../providers/LiteLLM", () => ({
 
 vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
 	useSelectedModel: vi.fn((apiConfiguration: ProviderSettings) => {
+		if (apiConfiguration.apiModelId === "api6-unknown-model") {
+			return {
+				provider: apiConfiguration.apiProvider,
+				id: apiConfiguration.apiModelId,
+				info: { contextWindow: 4000, supportsPromptCache: true },
+				isUnknownModel: true,
+			}
+		}
+
 		if (apiConfiguration.apiModelId?.includes("thinking")) {
 			const info: ModelInfo = {
 				contextWindow: 4000,
@@ -275,6 +284,19 @@ const renderApiOptions = (props: Partial<ApiOptionsProps> = {}) => {
 }
 
 describe("ApiOptions", () => {
+	// Owner decision 5: an unknown model id is used as is; the settings warn.
+	it("warns when the selected model id is not in the provider's model list", () => {
+		renderApiOptions({ apiConfiguration: { apiProvider: "xai", apiModelId: "api6-unknown-model" } })
+
+		expect(screen.getByTestId("unknown-model-warning")).toBeInTheDocument()
+	})
+
+	it("shows no unknown-model warning for a listed model", () => {
+		renderApiOptions({ apiConfiguration: { apiProvider: "xai", apiModelId: "grok-4.6" } })
+
+		expect(screen.queryByTestId("unknown-model-warning")).not.toBeInTheDocument()
+	})
+
 	it("resets model to provider default when switching to openai-codex with an invalid prior apiModelId", () => {
 		const mockSetApiConfigurationField = vi.fn()
 

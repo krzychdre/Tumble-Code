@@ -29,6 +29,15 @@ describe("providerModelDefinitions", () => {
 		expect(Object.keys(providerModelDefinitions).sort()).toEqual([...activeProviderIds].sort())
 	})
 
+	it("keeps unknown ids everywhere; only providers that derive info from the id honor custom ids", () => {
+		const honorCustom = Object.entries(providerModelDefinitions)
+			.filter(([, definition]) => definition.unknownModelPolicy === "honor-custom")
+			.map(([provider]) => provider)
+
+		expect(honorCustom.sort()).toEqual(["anthropic", "bedrock", "gemini", "gemini-cli"])
+		expect(unknownModelPolicies).toEqual(["keep-id", "honor-custom"])
+	})
+
 	it.each(Object.entries(providerModelDefinitions))("%s declares its model-id field and policy", (_, definition) => {
 		expect(definition).toHaveProperty("modelIdField")
 		expect(unknownModelPolicies).toContain(definition.unknownModelPolicy)
@@ -93,42 +102,76 @@ describe("resolveCatalogModel", () => {
 		unknownModelPolicy,
 	})
 
-	it.each(unknownModelPolicies)("selects the default for an absent id (%s)", (policy) => {
+	it.each(unknownModelPolicies)("selects the default for an absent or empty id (%s)", (policy) => {
 		expect(resolveCatalogModel(undefined, catalog(policy))).toEqual({ id: "base", info: models.base, known: true })
+		expect(resolveCatalogModel("", catalog(policy))).toEqual({ id: "base", info: models.base, known: true })
 	})
 
 	it.each(unknownModelPolicies)("selects a listed id (%s)", (policy) => {
 		expect(resolveCatalogModel("other", catalog(policy))).toEqual({ id: "other", info: models.other, known: true })
 	})
 
-	it("keep-id sends an unknown id with the default info", () => {
-		expect(resolveCatalogModel("new", catalog("keep-id"))).toEqual({ id: "new", info: models.base, known: false })
+	// Owner decision 5: an unknown id is kept with the default capabilities,
+	// never replaced by the default model.
+	const pricedDefault = { ...info(1), inputPrice: 1, outputPrice: 2, cacheReadsPrice: 3, cacheWritesPrice: 4 }
+	const pricedCatalog = (unknownModelPolicy: (typeof unknownModelPolicies)[number]) => ({
+		models: { base: pricedDefault },
+		defaultModelId: "base",
+		unknownModelPolicy,
 	})
 
-	it("substitute-default sends the default model instead", () => {
-		expect(resolveCatalogModel("new", catalog("substitute-default"))).toEqual({
-			id: "base",
-			info: models.base,
+	it("keep-id sends an unknown id with the default model's info", () => {
+		expect(resolveCatalogModel("new", pricedCatalog("keep-id"))).toEqual({
+			id: "new",
+			info: pricedDefault,
 			known: false,
 		})
 	})
 
-	it("honor-custom keeps an id the provider can describe and substitutes the rest", () => {
+	it("honor-custom keeps an unknown id with the info the provider derives, else the default info", () => {
 		const customModelInfo = (id: string) => (id.startsWith("new") ? info(9) : undefined)
 
-		expect(resolveCatalogModel("new-1", catalog("honor-custom"), { customModelInfo })).toEqual({
+		expect(resolveCatalogModel("new-1", pricedCatalog("honor-custom"), { customModelInfo })).toEqual({
 			id: "new-1",
 			info: info(9),
 			known: false,
 		})
-		expect(resolveCatalogModel("odd", catalog("honor-custom"), { customModelInfo })).toEqual({
-			id: "base",
-			info: models.base,
+		expect(resolveCatalogModel("odd", pricedCatalog("honor-custom"), { customModelInfo })).toEqual({
+			id: "odd",
+			info: pricedDefault,
 			known: false,
 		})
 	})
 
+	it("resolves an alias to the info of the model it names, keeping the configured id", () => {
+		const aliased = { ...catalog("keep-id"), modelAliases: { "other-alias": "other" } }
+
+		expect(resolveCatalogModel("other-alias", aliased)).toEqual({
+			id: "other-alias",
+			info: models.other,
+			known: true,
+		})
+	})
+
+	it("declares DeepSeek's documented aliases for deepseek-v4-flash", () => {
+		expect(providerModelDefinitions.deepseek.modelAliases).toEqual({
+			"deepseek-chat": "deepseek-v4-flash",
+			"deepseek-reasoner": "deepseek-v4-flash",
+		})
+	})
+
 	it("does not treat inherited object keys as listed models", () => {
-		expect(resolveCatalogModel("constructor", catalog("substitute-default")).id).toBe("base")
+		expect(resolveCatalogModel("constructor", catalog("keep-id"))).toMatchObject({
+			id: "constructor",
+			known: false,
+		})
+	})
+
+	it("never substitutes the default model for an unknown id, for any provider", () => {
+		for (const definition of Object.values(providerModelDefinitions)) {
+			if ("models" in definition) {
+				expect(resolveCatalogModel("api6-unknown", definition).id).toBe("api6-unknown")
+			}
+		}
 	})
 })

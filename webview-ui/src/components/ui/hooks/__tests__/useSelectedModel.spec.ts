@@ -95,7 +95,9 @@ describe("useSelectedModel", () => {
 			})
 		})
 
-		it("should fall back to default when configured model doesn't exist in available models", () => {
+		// Owner decision 5: the configured id is kept (requests send it as is)
+		// and flagged as unknown so the settings show a warning.
+		it("keeps a configured model that is not in the available models and flags it as unknown", () => {
 			const specificProviderInfo: ModelInfo = {
 				maxTokens: 8192,
 				contextWindow: 16384,
@@ -141,22 +143,10 @@ describe("useSelectedModel", () => {
 			const wrapper = createWrapper()
 			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
 
-			// Should fall back to provider default since "test-model" doesn't exist
-			expect(result.current.id).toBe("anthropic/claude-sonnet-4.5")
-			// Should still use specific provider info for the default model if specified
-			expect(result.current.info).toEqual({
-				...{
-					maxTokens: 8192,
-					contextWindow: 200_000,
-					supportsImages: true,
-					supportsPromptCache: true,
-					inputPrice: 3.0,
-					outputPrice: 15.0,
-					cacheWritesPrice: 3.75,
-					cacheReadsPrice: 0.3,
-				},
-				...specificProviderInfo,
-			})
+			expect(result.current.id).toBe("test-model")
+			// No list entry for the model, so only the specific provider's info is known
+			expect(result.current.info).toEqual(specificProviderInfo)
+			expect(result.current.isUnknownModel).toBe(true)
 		})
 
 		it("should demonstrate the merging behavior validates the comment about missing fields", () => {
@@ -253,7 +243,7 @@ describe("useSelectedModel", () => {
 			expect(result.current.info).toEqual(baseModelInfo)
 		})
 
-		it("should fall back to default when configured model and provider don't exist", () => {
+		it("keeps a configured model when neither it nor its provider exists", () => {
 			mockUseRouterModels.mockReturnValue({
 				models: {
 					"anthropic/claude-sonnet-4.5": {
@@ -288,19 +278,9 @@ describe("useSelectedModel", () => {
 			const wrapper = createWrapper()
 			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
 
-			// Should fall back to provider default since "non-existent-model" doesn't exist
-			expect(result.current.id).toBe("anthropic/claude-sonnet-4.5")
-			// Should use base model info since provider doesn't exist
-			expect(result.current.info).toEqual({
-				maxTokens: 8192,
-				contextWindow: 200_000,
-				supportsImages: true,
-				supportsPromptCache: true,
-				inputPrice: 3.0,
-				outputPrice: 15.0,
-				cacheWritesPrice: 3.75,
-				cacheReadsPrice: 0.3,
-			})
+			expect(result.current.id).toBe("non-existent-model")
+			expect(result.current.info).toBeUndefined()
+			expect(result.current.isUnknownModel).toBe(true)
 		})
 	})
 
@@ -538,10 +518,11 @@ describe("useSelectedModel", () => {
 			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
 
 			expect(result.current.provider).toBe("litellm")
-			// Should fall back to default model ID since "some-model" doesn't exist in empty litellm models
-			expect(result.current.id).toBe("claude-3-7-sonnet-20250219")
+			// The configured id is kept (owner decision 5); an empty list flags nothing
+			expect(result.current.id).toBe("some-model")
 			// Should use litellmDefaultModelInfo as fallback
 			expect(result.current.info).toEqual(litellmDefaultModelInfo)
+			expect(result.current.isUnknownModel).toBe(false)
 		})
 
 		it("should use litellmDefaultModelInfo when selected model not found in routerModels", () => {
@@ -568,10 +549,11 @@ describe("useSelectedModel", () => {
 			const { result } = renderHook(() => useSelectedModel(apiConfiguration), { wrapper })
 
 			expect(result.current.provider).toBe("litellm")
-			// Falls back to default model ID
-			expect(result.current.id).toBe("claude-3-7-sonnet-20250219")
-			// Should use litellmDefaultModelInfo as fallback since default model also not in router models
+			// The configured id is kept (owner decision 5) and flagged as unknown
+			expect(result.current.id).toBe("non-existing-model")
+			// Should use litellmDefaultModelInfo as fallback since the model is not in router models
 			expect(result.current.info).toEqual(litellmDefaultModelInfo)
+			expect(result.current.isUnknownModel).toBe(true)
 		})
 
 		it("should return routerModels info when model exists", () => {
@@ -725,6 +707,36 @@ describe("useSelectedModel", () => {
 			expect(result.current.provider).toBe("minimax")
 			expect(result.current.id).toBe("MiniMax-M2.7")
 			expect(result.current.info).toEqual(minimaxModels["MiniMax-M2.7"])
+		})
+	})
+
+	describe("unknown model ids (owner decision 5)", () => {
+		it.each([
+			["xai", { apiProvider: "xai", apiModelId: "grok-api6" }, true],
+			["xai (listed)", { apiProvider: "xai", apiModelId: "grok-4.6" }, false],
+			["anthropic", { apiProvider: "anthropic", apiModelId: "claude-api6" }, true],
+			["zai (mainland list)", { apiProvider: "zai", zaiApiLine: "china_coding", apiModelId: "glm-api6" }, true],
+			["bedrock custom ARN", { apiProvider: "bedrock", apiModelId: "custom-arn" }, false],
+			["deepseek-chat alias", { apiProvider: "deepseek", apiModelId: "deepseek-chat" }, false],
+			["deepseek-reasoner alias", { apiProvider: "deepseek", apiModelId: "deepseek-reasoner" }, false],
+			["deepseek unknown", { apiProvider: "deepseek", apiModelId: "deepseek-api6" }, true],
+			["no model id", { apiProvider: "gemini" }, false],
+			["OpenAI Compatible (no list)", { apiProvider: "openai", openAiModelId: "anything" }, false],
+		] as const)("%s: isUnknownModel is %s", (_, apiConfiguration, expected) => {
+			mockUseRouterModels.mockReturnValue({ models: undefined, isLoading: false, error: undefined } as any)
+
+			const { result } = renderHook(() => useSelectedModel(apiConfiguration as ProviderSettings), {
+				wrapper: createWrapper(),
+			})
+
+			expect(result.current.isUnknownModel).toBe(expected)
+			if (!expected && String((apiConfiguration as ProviderSettings).apiModelId).startsWith("deepseek-")) {
+				expect(result.current.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
+				expect(result.current.info).toBeDefined()
+			}
+			if (expected) {
+				expect(result.current.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
+			}
 		})
 	})
 })

@@ -165,13 +165,14 @@ describe("GeminiHandler", () => {
 			expect(modelInfo.info).toBeDefined()
 		})
 
-		it("should return default model if invalid model specified", () => {
+		it("keeps an unknown model id instead of substituting the default (owner decision 5)", () => {
 			const invalidHandler = new GeminiHandler({
 				apiModelId: "invalid-model",
 				geminiApiKey: "test-key",
 			})
 			const modelInfo = invalidHandler.getModel()
-			expect(modelInfo.id).toBe(geminiDefaultModelId) // Default model
+			expect(modelInfo.id).toBe("invalid-model")
+			expect(modelInfo.info.inputPrice).toBeUndefined()
 		})
 
 		it("should honor a custom gemini model id not present in geminiModels (#227)", () => {
@@ -202,8 +203,9 @@ describe("GeminiHandler", () => {
 				geminiApiKey: "test-key",
 			})
 			const modelInfo = protoHandler.getModel()
-			expect(modelInfo.id).toBe(geminiDefaultModelId)
-			expect(modelInfo.info).toBeDefined()
+			// Kept as an unknown id with the default capabilities, never a function.
+			expect(modelInfo.id).toBe("toString")
+			expect(modelInfo.info.contextWindow).toBe(geminiModels[geminiDefaultModelId].contextWindow)
 		})
 
 		it("registers gemini-3.5-flash with its verified pricing and no reasoning budget (#331)", () => {

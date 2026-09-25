@@ -5,18 +5,12 @@
 import {
 	type OrganizationAllowList,
 	type ProviderSettings,
-	bedrockDefaultModelId,
-	geminiDefaultModelId,
 	getModelIdKeyForProvider,
-	internationalZAiDefaultModelId,
-	litellmDefaultModelId,
-	minimaxDefaultModelId,
-	openAiCodexDefaultModelId,
-	openAiNativeDefaultModelId,
 	providerModelDefinitions,
 	unknownModelPolicies,
-	vertexDefaultModelId,
 	xaiDefaultModelId,
+	bedrockDefaultModelId,
+	deepSeekModels,
 } from "@roo-code/types"
 
 import { ProfileValidator } from "../../shared/ProfileValidator"
@@ -197,15 +191,15 @@ describe("resolveModel matches the handler's getModel()", () => {
 	})
 })
 
-// Today's unknown-model-id behavior, one row per provider. Three policies
-// exist (owner decision 5 unifies them): keep the id with default info,
-// silently substitute the default model, honor a custom id the provider can
-// describe.
-describe("unknown model id (today's policy)", () => {
-	const kept = { policy: "keep-id", id: UNKNOWN_MODEL_ID } as const
-	const substituted = (id: string) => ({ policy: "substitute-default", id }) as const
+// Owner decision 5 (2026-09-25): an unknown model id is kept (sent as is)
+// with default capabilities, never silently replaced by the default model.
+// Changed from the three policies pinned before: litellm, bedrock, minimax,
+// openai-codex, openai-native, vertex (Gemini and Claude), xai and zai used to
+// substitute their default; gemini did for ids not starting with "gemini-".
+describe("unknown model id (owner decision 5)", () => {
+	const kept = { policy: "keep-id" } as const
 
-	const cases: Record<Exclude<RuntimeProviderId, "fake-ai">, { policy: string; id: string }> = {
+	const cases: Record<Exclude<RuntimeProviderId, "fake-ai">, { policy: string }> = {
 		openrouter: kept,
 		deepseek: kept,
 		ollama: kept,
@@ -215,24 +209,25 @@ describe("unknown model id (today's policy)", () => {
 		mistral: kept,
 		moonshot: kept,
 		"qwen-code": kept,
-		anthropic: { policy: "honor-custom", id: UNKNOWN_MODEL_ID },
-		// Only ids that look like Gemini models are honored.
-		gemini: { policy: "honor-custom", id: geminiDefaultModelId },
-		litellm: substituted(litellmDefaultModelId),
-		bedrock: substituted(bedrockDefaultModelId),
-		minimax: substituted(minimaxDefaultModelId),
-		"openai-codex": substituted(openAiCodexDefaultModelId),
-		"openai-native": substituted(openAiNativeDefaultModelId),
-		vertex: substituted(vertexDefaultModelId),
-		xai: substituted(xaiDefaultModelId),
-		zai: substituted(internationalZAiDefaultModelId),
+		litellm: kept,
+		minimax: kept,
+		"openai-codex": kept,
+		"openai-native": kept,
+		vertex: kept,
+		xai: kept,
+		zai: kept,
+		// These derive the info from the id (model family heuristics; Gemini
+		// drops the prices it cannot verify).
+		anthropic: { policy: "honor-custom" },
+		gemini: { policy: "honor-custom" },
+		bedrock: { policy: "honor-custom" },
 	}
 
 	it("covers every provider with a model-id field", () => {
 		expect(Object.keys(cases).sort()).toEqual(runtimeProviders.filter((p) => p !== "fake-ai").sort())
 	})
 
-	it.each(Object.entries(cases))("%s", (provider, expected) => {
+	it.each(Object.entries(cases))("%s keeps the unknown id", (provider, expected) => {
 		const entry = runtimeProviderRegistry[provider as RuntimeProviderId]
 		const settings = {
 			...constructorOptions,
@@ -240,19 +235,52 @@ describe("unknown model id (today's policy)", () => {
 		}
 
 		expect(entry.unknownModelPolicy).toBe(expected.policy)
-		expect(entry.resolveModel(settings).id).toBe(expected.id)
+		expect(entry.resolveModel(settings).id).toBe(UNKNOWN_MODEL_ID)
 	})
 
-	it("gemini honors an unlisted Gemini id without pricing", () => {
-		const { id, info } = runtimeProviderRegistry.gemini.resolveModel({ apiModelId: "gemini-9-api6" })
+	it.each(["xai", "minimax", "openai-native", "zai", "deepseek"] as const)(
+		"%s gives an unknown id the default model's info",
+		(provider) => {
+			const { info } = runtimeProviderRegistry[provider].resolveModel({ apiModelId: UNKNOWN_MODEL_ID })
 
-		expect(id).toBe("gemini-9-api6")
+			expect(info).toEqual(runtimeProviderRegistry[provider].resolveModel({}).info)
+		},
+	)
+
+	it("gemini gives an unknown id the default model's capabilities without its prices", () => {
+		const { info } = runtimeProviderRegistry.gemini.resolveModel({ apiModelId: UNKNOWN_MODEL_ID })
+
+		expect(info.contextWindow).toBe(runtimeProviderRegistry.gemini.resolveModel({}).info.contextWindow)
 		expect(info.inputPrice).toBeUndefined()
 	})
 
-	it("vertex substitutes the default for an unknown Claude id", () => {
+	it("vertex keeps an unknown Claude id on the Anthropic Vertex handler", () => {
 		expect(runtimeProviderRegistry.vertex.resolveModel({ apiModelId: "claude-api6-unknown" }).id).toBe(
-			vertexDefaultModelId,
+			"claude-api6-unknown",
 		)
+	})
+
+	it("an empty model id still selects the default model", () => {
+		expect(runtimeProviderRegistry.xai.resolveModel({ apiModelId: "" }).id).toBe(xaiDefaultModelId)
+	})
+
+	// `custom-arn` is the settings UI's "use a custom ARN" option, not a model
+	// id: without an ARN it must select the default model, never reach AWS.
+	it("bedrock treats the custom-arn option without an ARN like an empty model id", () => {
+		const settings = { apiModelId: "custom-arn" }
+
+		expect(runtimeProviderRegistry.bedrock.resolveModel(settings).id).toBe(bedrockDefaultModelId)
+		expect(runtimeProviderRegistry.bedrock.factory(settings).getModel().id).toBe(bedrockDefaultModelId)
+		expect(runtimeProviderRegistry.bedrock.resolveModel({ apiModelId: "" }).id).toBe(bedrockDefaultModelId)
+	})
+
+	// DeepSeek's documented aliases for deepseek-v4-flash (non-thinking and
+	// thinking mode) are known ids: sent exactly as configured, with the info
+	// of the model they alias.
+	it.each(["deepseek-chat", "deepseek-reasoner"])("deepseek knows the %s alias", (alias) => {
+		const { id, info } = runtimeProviderRegistry.deepseek.resolveModel({ apiModelId: alias })
+
+		expect(id).toBe(alias)
+		expect(info).toEqual(deepSeekModels["deepseek-v4-flash"])
 	})
 })
