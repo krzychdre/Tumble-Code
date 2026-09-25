@@ -133,8 +133,6 @@ interface ChatRowProps {
 	onFollowUpUnmount?: () => void
 	isFollowUpAnswered?: boolean
 	isFollowUpAutoApprovalPaused?: boolean
-	editable?: boolean
-	hasCheckpoint?: boolean
 	onJumpToPreviousCheckpoint?: () => void
 }
 
