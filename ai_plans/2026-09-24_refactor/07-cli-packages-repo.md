@@ -245,6 +245,15 @@ the injectable `createExtensionHost` prop and ink-testing-library, replaying rec
 snapshotting frames; a stdin-stream test with a fake host. **Size** L, high risk (fragile Ink rendering; see the
 "do not touch" list in the master plan). After CLI-5 and TEST-1.
 
+**Status (2026-09-25), part A (stdin stream):** DONE #432 (merge 71f14c6a5). 36 tests through a fake host
+(`stdin-stream.test.ts`); `stdin-stream.ts` is a ~40-line loop, the rest in `commands/cli/stdin-stream/` (parse,
+session, queue-tracker, session-events, router, one handler per command, eof). Bug fixed: after stdin closes, a task
+stuck on `api_req_failed`, `mistake_limit_reached`, `auto_approval_max_req_reached` (with `--require-approval` the
+readline yes/no prompt on closed stdin never settles) now ends after 2 s with exit 1; a failed task (e.g. 401) used to
+exit 0 when stdin had closed, now exits 1 like `--print`. Open: `--require-approval` with `--stdin-prompt-stream`
+lets the approval prompt steal command lines (reject the combination?); followup/command/tool asks under
+`--require-approval` can still hang after EOF (deliberately not widened).
+
 ### PKG-11 Remaining `packages/*` structure (lowest priority)
 
 Split `vscode-extension-host.ts` into per-domain message unions (additively, superset first); derive the telemetry
