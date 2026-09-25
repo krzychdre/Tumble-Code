@@ -10,6 +10,11 @@ import { Anthropic } from "@anthropic-ai/sdk"
  * - Tool uses become { type: "function_call", call_id, name, arguments } items
  * - System prompt goes via the `instructions` parameter, not as a message
  *
+ * - Standalone encrypted reasoning items ({ type: "reasoning" }) are left out: the task stores
+ *   them only from OpenAI Native or Codex turns, the ciphertext is OpenAI's and xAI cannot
+ *   decrypt it (xAI's own encrypted reasoning is never stored). The request builder already
+ *   leaves them out for xAI; this guard keeps a direct caller from failing (DEF-C46).
+ *
  * @param messages - Array of Anthropic MessageParam objects
  * @returns Array of Responses API input items
  */
@@ -17,6 +22,10 @@ export function convertToResponsesApiInput(messages: Anthropic.Messages.MessageP
 	const input: any[] = []
 
 	for (const message of messages) {
+		if ((message as { type?: string }).type === "reasoning") {
+			continue
+		}
+
 		if (typeof message.content === "string") {
 			if (message.role === "assistant") {
 				// Assistant messages use output_text in the Responses API format

@@ -33,6 +33,15 @@ import { type ApiMessage } from "../task-persistence"
 import { type RooIgnoreController } from "../ignore/RooIgnoreController"
 
 /**
+ * Whether the handler returns encrypted reasoning (OpenAI Native, Codex) and so can take
+ * its own encrypted reasoning items back in the next request. The same check decides in
+ * TaskHistory whether such an item is stored at all.
+ */
+function roundTripsEncryptedReasoning(api: ApiHandler): boolean {
+	return typeof (api as { getEncryptedContent?: unknown }).getEncryptedContent === "function"
+}
+
+/**
  * Interface for access needed by ApiRequestBuilder.
  * This is a narrow interface to minimize coupling.
  */
@@ -268,10 +277,17 @@ export class ApiRequestBuilder {
 				? applyMicrocompactCleared(messages, microcompactedToolUseIds)
 				: messages
 
+		// Encrypted reasoning is OpenAI ciphertext (TaskHistory stores it only from a handler
+		// with getEncryptedContent: OpenAI Native and Codex). Only such a handler can read it
+		// back; any other provider (a mode switch to xAI, Anthropic, Bedrock, ...) gets the
+		// history without it (DEF-C46). Decided per request from the current handler, the
+		// stored history keeps the items for a later OpenAI mode.
+		const sendsEncryptedReasoning = roundTripsEncryptedReasoning(this.access.api)
+
 		for (const msg of sourceMessages) {
 			// Standalone reasoning: send encrypted, skip plain text
 			if (msg.type === "reasoning") {
-				if (msg.encrypted_content) {
+				if (msg.encrypted_content && sendsEncryptedReasoning) {
 					cleanConversationHistory.push({
 						type: "reasoning",
 						summary: msg.summary,
@@ -327,12 +343,14 @@ export class ApiRequestBuilder {
 				if (hasEncryptedReasoning) {
 					const reasoningBlock = first as any
 
-					cleanConversationHistory.push({
-						type: "reasoning",
-						summary: reasoningBlock.summary ?? [],
-						encrypted_content: reasoningBlock.encrypted_content,
-						...(reasoningBlock.id ? { id: reasoningBlock.id } : {}),
-					})
+					if (sendsEncryptedReasoning) {
+						cleanConversationHistory.push({
+							type: "reasoning",
+							summary: reasoningBlock.summary ?? [],
+							encrypted_content: reasoningBlock.encrypted_content,
+							...(reasoningBlock.id ? { id: reasoningBlock.id } : {}),
+						})
+					}
 
 					let assistantContent: Anthropic.Messages.MessageParam["content"]
 
