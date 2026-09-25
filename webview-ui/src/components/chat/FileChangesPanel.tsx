@@ -24,12 +24,16 @@ const FileChangesPanel = memo(({ clineMessages, className }: FileChangesPanelPro
 	const [finalContentByPath, setFinalContentByPath] = useState<Record<string, string | null>>({})
 	const pendingPathsRef = useRef<Set<string>>(new Set())
 
-	// Reset expanded file rows and final content cache when switching to a different task
+	// Reset expanded file rows and final content cache when switching to a different task.
+	// Keyed on the first message ts (the same task identity ChatView uses), not on the
+	// clineMessages array: the extension sends a new array on every state push, including
+	// each streamed token, which would collapse the rows the user just expanded.
+	const taskTs = clineMessages?.[0]?.ts
 	useEffect(() => {
 		setExpandedPaths(new Set())
 		setFinalContentByPath({})
 		pendingPathsRef.current = new Set()
-	}, [clineMessages])
+	}, [taskTs])
 
 	const fileChanges = useMemo(() => fileChangesFromMessages(clineMessages), [clineMessages])
 
