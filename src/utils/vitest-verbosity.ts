@@ -20,7 +20,7 @@ export function resolveVerbosity(argv = process.argv, env = process.env) {
 			"dot",
 			...(wantsVerboseReporter ? ["verbose"] : []),
 			...(onGitHubActions ? ["github-actions"] : []),
-			...(env.VITEST_JSON_REPORT ? [["json", { outputFile: env.VITEST_JSON_REPORT }] as any] : []),
+			...(onGitHubActions ? [["json", { outputFile: "vitest-report.json" }] as any] : []),
 		],
 		onConsoleLog: (_log: string, type: string) => {
 			// When verbose, show everything
