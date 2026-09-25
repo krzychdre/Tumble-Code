@@ -1,5 +1,5 @@
 import type { ModelRecord } from "@roo-code/types"
-import { deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
+import { deepSeekModelAliases, deepSeekModels, DEEP_SEEK_DEFAULT_TEMPERATURE } from "@roo-code/types"
 
 import { DEFAULT_HEADERS } from "../constants"
 
@@ -64,7 +64,13 @@ export async function getDeepSeekModels(baseUrl?: string, apiKey?: string): Prom
 			const modelId = typeof model.id === "string" && model.id ? model.id : null
 			if (!modelId) continue
 
-			const knownSpecs = deepSeekModels[modelId as keyof typeof deepSeekModels]
+			// A legacy name DeepSeek still serves is described by the model it aliases.
+			const catalogId = Object.hasOwn(deepSeekModelAliases, modelId)
+				? deepSeekModelAliases[modelId as keyof typeof deepSeekModelAliases]
+				: modelId
+			const knownSpecs = Object.hasOwn(deepSeekModels, catalogId)
+				? deepSeekModels[catalogId as keyof typeof deepSeekModels]
+				: undefined
 
 			if (knownSpecs) {
 				models[modelId] = { ...knownSpecs }
