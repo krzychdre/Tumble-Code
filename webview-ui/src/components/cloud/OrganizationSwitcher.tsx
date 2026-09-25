@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react"
 import { Building2, User, Plus } from "lucide-react"
 
-import { type CloudUserInfo, type CloudOrganizationMembership, type ExtensionMessage } from "@roo-code/types"
+import { type CloudUserInfo, type CloudOrganizationMembership } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { vscode } from "@src/utils/vscode"
+import { CREATE_TEAM_VALUE, PERSONAL_ACCOUNT_VALUE, useOrganizationSwitch } from "@src/hooks/useOrganizationSwitch"
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select"
 
@@ -22,73 +21,15 @@ export const OrganizationSwitcher = ({
 	cloudApiUrl,
 }: OrganizationSwitcherProps) => {
 	const { t } = useAppTranslation()
-	const [selectedOrgId, setSelectedOrgId] = useState<string | null>(userInfo.organizationId || null)
-	const [isLoading, setIsLoading] = useState(false)
-
-	// Update selected org when userInfo changes
-	useEffect(() => {
-		setSelectedOrgId(userInfo.organizationId || null)
-	}, [userInfo.organizationId])
-
-	// Listen for organization switch results
-	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data as ExtensionMessage
-			if (message.type === "organizationSwitchResult") {
-				// Reset loading state when we receive the result
-				setIsLoading(false)
-
-				if (message.success) {
-					// Update selected org based on the result
-					setSelectedOrgId(message.organizationId ?? null)
-				} else {
-					// Revert to the previous organization on error
-					setSelectedOrgId(userInfo.organizationId || null)
-				}
-			}
-		}
-
-		window.addEventListener("message", handleMessage)
-		return () => window.removeEventListener("message", handleMessage)
-	}, [userInfo.organizationId])
-
-	const handleOrganizationChange = async (value: string) => {
-		// Handle "Create Team Account" option
-		if (value === "create-team") {
-			if (cloudApiUrl) {
-				const billingUrl = `${cloudApiUrl}/billing`
-				vscode.postMessage({ type: "openExternal", url: billingUrl })
-			}
-			return
-		}
-
-		const newOrgId = value === "personal" ? null : value
-
-		// Don't do anything if selecting the same organization
-		if (newOrgId === selectedOrgId) {
-			return
-		}
-
-		setIsLoading(true)
-
-		// Send message to switch organization
-		vscode.postMessage({
-			type: "switchOrganization",
-			organizationId: newOrgId,
-		})
-
-		// Update local state optimistically
-		setSelectedOrgId(newOrgId)
-
-		// Call the callback if provided
-		if (onOrganizationChange) {
-			onOrganizationChange(newOrgId)
-		}
-	}
+	const { selectedOrgId, isLoading, handleOrganizationChange } = useOrganizationSwitch({
+		organizationId: userInfo.organizationId,
+		cloudApiUrl,
+		onOrganizationChange,
+	})
 
 	// Always show the switcher when user is authenticated
 
-	const currentValue = selectedOrgId || "personal"
+	const currentValue = selectedOrgId || PERSONAL_ACCOUNT_VALUE
 
 	return (
 		<div className="w-full">
@@ -130,7 +71,7 @@ export const OrganizationSwitcher = ({
 					</SelectValue>
 				</SelectTrigger>
 				<SelectContent>
-					<SelectItem value="personal">
+					<SelectItem value={PERSONAL_ACCOUNT_VALUE}>
 						<div className="flex items-center gap-2">
 							<User className="w-4.5 h-4.5" />
 							<span>{t("cloud:personalAccount")}</span>
@@ -158,7 +99,7 @@ export const OrganizationSwitcher = ({
 					{organizations.length === 0 && (
 						<>
 							<SelectSeparator />
-							<SelectItem value="create-team">
+							<SelectItem value={CREATE_TEAM_VALUE}>
 								<div className="flex items-center gap-2">
 									<Plus className="w-4.5 h-4.5" />
 									<span>{t("cloud:createTeamAccount")}</span>
