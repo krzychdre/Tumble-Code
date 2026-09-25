@@ -2,6 +2,7 @@
 
 import { describe, it, expect, vi } from "vitest"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { DelegationService } from "../core/webview/DelegationService"
 
 describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 	/**
@@ -38,7 +39,11 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 			log: vi.fn(),
 			getHistoryItem,
 			updateTaskHistory,
+			// The repair transition lives in DelegationService (CORE-R2); it
+			// reads and writes the history through this same fake.
+			delegation: undefined as unknown as DelegationService,
 		}
+		provider.delegation = new DelegationService(provider as any)
 
 		return { provider, childTask, updateTaskHistory, getHistoryItem }
 	}

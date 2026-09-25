@@ -51,6 +51,7 @@ vi.mock("../core/task-persistence", () => ({
 
 import { attemptCompletionTool } from "../core/tools/AttemptCompletionTool"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { DelegationService } from "../core/webview/DelegationService"
 import type { Task } from "../core/task/Task"
 import { readTaskMessages } from "../core/task-persistence/taskMessages"
 import { readApiMessages, saveApiMessages, saveTaskMessages } from "../core/task-persistence"
@@ -144,7 +145,6 @@ describe("Nested delegation resume (A → B → C)", () => {
 
 		const provider = {
 			contextProxy: { globalStorageUri: { fsPath: "/tmp" } },
-			cancelledDelegationChildIds: new Set<string>(),
 			log: vi.fn(),
 			getHistoryItem,
 			emit: emitSpy,
@@ -154,7 +154,7 @@ describe("Nested delegation resume (A → B → C)", () => {
 			updateTaskHistory,
 			// Wire through provider method so attemptCompletionTool can call it
 			reopenParentFromDelegation: vi.fn(async (params: any) => {
-				return await (ClineProvider.prototype as any).reopenParentFromDelegation.call(provider, params)
+				return await new DelegationService(provider as any).complete(params)
 			}),
 		} as unknown as ClineProvider
 
