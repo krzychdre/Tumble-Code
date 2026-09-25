@@ -85,39 +85,7 @@ import { cn } from "@/lib/utils"
 import { PathTooltip } from "../ui/PathTooltip"
 import { OpenMarkdownPreviewButton } from "./OpenMarkdownPreviewButton"
 import { AnnotateButton } from "./AnnotateButton"
-
-// Helper function to get previous todos before a specific message
-function getPreviousTodos(messages: ClineMessage[], currentMessageTs: number): any[] {
-	// Find the previous updateTodoList message before the current one
-	const previousUpdateIndex = messages
-		.slice()
-		.reverse()
-		.findIndex((msg) => {
-			if (msg.ts >= currentMessageTs) return false
-			if (msg.type === "ask" && msg.ask === "tool") {
-				try {
-					const tool = JSON.parse(msg.text || "{}")
-					return tool.tool === "updateTodoList"
-				} catch {
-					return false
-				}
-			}
-			return false
-		})
-
-	if (previousUpdateIndex !== -1) {
-		const previousMessage = messages.slice().reverse()[previousUpdateIndex]
-		try {
-			const tool = JSON.parse(previousMessage.text || "{}")
-			return tool.todos || []
-		} catch {
-			return []
-		}
-	}
-
-	// If no previous updateTodoList message, return empty array
-	return []
-}
+import type { RowMetaEntry } from "./rows/computeRowMeta"
 
 interface ChatRowProps {
 	message: ClineMessage
@@ -136,6 +104,17 @@ interface ChatRowProps {
 	isFollowUpAnswered?: boolean
 	isFollowUpAutoApprovalPaused?: boolean
 	onJumpToPreviousCheckpoint?: () => void
+	// What the row needs from the history around it (next message's ts,
+	// previous todo list, newTask position). ChatView computes it once per
+	// history change (computeRowMeta), so the row never scans clineMessages.
+	meta?: RowMetaEntry
+}
+
+const EMPTY_META: RowMetaEntry = {
+	nextTs: undefined,
+	previousTodos: [],
+	newTaskIndex: undefined,
+	followedBySubtaskResult: false,
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -191,10 +170,11 @@ export const ChatRowContent = ({
 	isFollowUpAnswered,
 	isFollowUpAutoApprovalPaused,
 	onJumpToPreviousCheckpoint,
+	meta = EMPTY_META,
 }: ChatRowContentProps) => {
 	const { t, i18n } = useTranslation()
 
-	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, clineMessages, currentTaskItem } = useExtensionState()
+	const { mcpServers, alwaysAllowMcp, currentCheckpoint, mode, currentTaskItem } = useExtensionState()
 	const [isEditing, setIsEditing] = useState(false)
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")
@@ -284,11 +264,7 @@ export const ChatRowContent = ({
 
 	// Start timestamp of the status block is the message's own `ts`; the block's
 	// end time is the `ts` of the next message in the conversation (if any).
-	const nextMessageTs = useMemo(() => {
-		const currentIndex = clineMessages.findIndex((msg) => msg.ts === message.ts)
-		if (currentIndex < 0) return undefined
-		return clineMessages[currentIndex + 1]?.ts
-	}, [clineMessages, message.ts])
+	const nextMessageTs = meta.nextTs
 
 	const normalColor = "var(--vscode-foreground)"
 	const errorColor = "var(--vscode-errorForeground)"
@@ -627,12 +603,9 @@ export const ChatRowContent = ({
 			}
 			case "updateTodoList" as any: {
 				const todos = (tool as any).todos || []
-				// Get previous todos from the latest todos in the task context
-				const previousTodos = getPreviousTodos(clineMessages, message.ts)
-
 				return (
 					<TodoChangeDisplay
-						previousTodos={previousTodos}
+						previousTodos={meta.previousTodos}
 						newTodos={todos}
 						startTs={message.ts}
 						endTs={nextMessageTs}
@@ -912,15 +885,8 @@ export const ChatRowContent = ({
 					</>
 				)
 			case "newTask":
-				// Find all newTask messages to determine which child task ID corresponds to this message
-				const newTaskMessages = clineMessages.filter((msg) => {
-					if (msg.type === "ask" && msg.ask === "tool") {
-						const t = safeJsonParse<ClineSayTool>(msg.text)
-						return t?.tool === "newTask"
-					}
-					return false
-				})
-				const thisNewTaskIndex = newTaskMessages.findIndex((msg) => msg.ts === message.ts)
+				// The row's position among the newTask asks picks its child task ID.
+				const thisNewTaskIndex = meta.newTaskIndex ?? -1
 				const childIds = currentTaskItem?.childIds || []
 
 				// Only get the child task ID if this newTask has been approved (has a corresponding entry in childIds)
@@ -930,11 +896,9 @@ export const ChatRowContent = ({
 				const childTaskId =
 					thisNewTaskIndex >= 0 && thisNewTaskIndex < childIds.length ? childIds[thisNewTaskIndex] : undefined
 
-				// Check if the next message is a subtask_result - if so, don't show the button
+				// If the next message is a subtask_result, don't show the button
 				// since the result is displayed right after this message
-				const currentMessageIndex = clineMessages.findIndex((msg) => msg.ts === message.ts)
-				const nextMessage = currentMessageIndex >= 0 ? clineMessages[currentMessageIndex + 1] : undefined
-				const isFollowedBySubtaskResult = nextMessage?.type === "say" && nextMessage?.say === "subtask_result"
+				const isFollowedBySubtaskResult = meta.followedBySubtaskResult
 
 				return (
 					<>
