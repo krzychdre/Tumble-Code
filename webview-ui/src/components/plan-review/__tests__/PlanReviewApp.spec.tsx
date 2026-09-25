@@ -61,12 +61,24 @@ vi.mock("react-i18next", () => ({
 	}),
 }))
 
-// Mock i18n setup to avoid loading real translations.
+// Mock i18n setup to avoid loading real translations. loadLanguage resolves when
+// the test says so, to observe what renders while a locale is still loading.
+const { mockChangeLanguage, mockLoadLanguage, languageLoads } = vi.hoisted(() => {
+	const languageLoads: Array<() => void> = []
+	return {
+		languageLoads,
+		mockChangeLanguage: vi.fn(),
+		mockLoadLanguage: vi.fn(
+			(language: string) =>
+				new Promise<void>((resolve) => (language === "en" ? resolve() : languageLoads.push(resolve))),
+		),
+	}
+})
 vi.mock("@src/i18n/setup", () => ({
 	default: {
-		changeLanguage: vi.fn(),
+		changeLanguage: mockChangeLanguage,
 	},
-	loadTranslations: vi.fn(),
+	loadLanguage: mockLoadLanguage,
 }))
 
 // Mock ErrorBoundary to pass through.
@@ -128,6 +140,27 @@ describe("PlanReviewApp", () => {
 		})
 		expect(screen.getByTestId("markdown-block")).toHaveTextContent("My Plan")
 		expect(screen.getByText("plans/plan.md")).toBeInTheDocument()
+	})
+
+	it("loads the plan's language before showing the plan in it", async () => {
+		render(<PlanReviewApp />)
+		dispatchMessage({
+			type: "planReviewInit",
+			planReview: { markdown: "# Plan", filePath: "plans/plan.md", language: "de" },
+		})
+
+		// The German chunk is still loading: keep the loading view instead of
+		// flashing the plan with English (or raw key) labels.
+		expect(mockLoadLanguage).toHaveBeenCalledWith("de")
+		expect(mockChangeLanguage).not.toHaveBeenCalled()
+		expect(screen.queryByTestId("markdown-block")).not.toBeInTheDocument()
+
+		await act(async () => {
+			languageLoads.forEach((resolve) => resolve())
+		})
+
+		await waitFor(() => expect(screen.getByTestId("markdown-block")).toHaveTextContent("Plan"))
+		expect(mockChangeLanguage).toHaveBeenCalledWith("de")
 	})
 
 	it("swaps markdown on planReviewUpdate (surface stays mounted)", async () => {
