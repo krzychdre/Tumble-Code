@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { type ModelRecord, type ModelSource, type ModelSourceOptions, type ModelSourceResult } from "@roo-code/types"
 
-import { vscode } from "@src/utils/vscode"
+import { request } from "@src/utils/extensionBus"
 import { getProviderModelSource } from "@src/components/settings/utils/providerModelConfig"
 
 export { getProviderModelSource } from "@src/components/settings/utils/providerModelConfig"
@@ -16,8 +16,6 @@ type ProviderModelsState = {
 	refresh: () => void
 }
 
-let nextRequestId = 0
-
 const resolveProviderModelSource = (provider?: string): ModelSource | undefined => {
 	if (!provider) {
 		return undefined
@@ -29,39 +27,62 @@ export function useProviderModels(provider?: string, options?: ModelSourceOption
 	const source = useMemo(() => resolveProviderModelSource(provider), [provider])
 	const [result, setResult] = useState<ModelSourceResult>()
 	const [isLoading, setIsLoading] = useState(false)
-	const activeRequestId = useRef<string>()
 	const serializedOptions = JSON.stringify(options)
 	const requestOptions = useMemo<ModelSourceOptions | undefined>(
 		() => (serializedOptions ? JSON.parse(serializedOptions) : undefined),
 		[serializedOptions],
 	)
 
+	// The request in flight; a newer request or a provider change aborts it, so
+	// only the latest response is applied.
+	const activeRequest = useRef<AbortController>()
+
 	const requestModels = useCallback(
 		(refresh = false) => {
+			activeRequest.current?.abort()
+			activeRequest.current = undefined
+
 			if (!source || source.kind === "static") {
-				activeRequestId.current = undefined
 				setIsLoading(false)
 				return
 			}
 
-			const requestId = `provider-models-${++nextRequestId}`
-			activeRequestId.current = requestId
+			const controller = new AbortController()
+			activeRequest.current = controller
 			setIsLoading(true)
 			// L1: do NOT clear `result` here. Clearing on every request caused
 			// the model dropdown to momentarily empty during `refresh()`.
 			// `result` is cleared in the `useEffect` below only when the
 			// provider/source actually changes; for refresh we keep the stale
 			// result until the new one arrives.
-			vscode.postMessage({
-				type: "requestProviderModels",
-				modelSourceRequest: {
-					requestId,
-					source,
-					provider,
-					options: requestOptions,
-					refresh,
+			request({
+				build: (requestId) => ({
+					type: "requestProviderModels",
+					modelSourceRequest: {
+						requestId,
+						source,
+						provider,
+						options: requestOptions,
+						refresh,
+					},
+				}),
+				responseType: "providerModels",
+				responseId: (message) => message.modelSourceResult?.requestId,
+				signal: controller.signal,
+			}).then(
+				(message) => {
+					if (activeRequest.current === controller) {
+						activeRequest.current = undefined
+					}
+					if (message.modelSourceResult) {
+						setResult(message.modelSourceResult)
+						setIsLoading(false)
+					}
 				},
-			})
+				() => {
+					// Aborted by a newer request or by unmount: its response is not wanted.
+				},
+			)
 		},
 		[provider, requestOptions, source],
 	)
@@ -75,33 +96,10 @@ export function useProviderModels(provider?: string, options?: ModelSourceOption
 		setResult(undefined)
 		requestModels()
 		return () => {
-			activeRequestId.current = undefined
+			activeRequest.current?.abort()
+			activeRequest.current = undefined
 		}
 	}, [provider, requestModels, serializedOptions, source])
-
-	useEffect(() => {
-		const handler = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type !== "providerModels" || !message.modelSourceResult) {
-				return
-			}
-
-			const response = message.modelSourceResult as ModelSourceResult
-			if (
-				response.requestId !== activeRequestId.current ||
-				source?.kind === "static" ||
-				response.sourceId !== source?.id
-			) {
-				return
-			}
-
-			setResult(response)
-			setIsLoading(false)
-		}
-
-		window.addEventListener("message", handler)
-		return () => window.removeEventListener("message", handler)
-	}, [source])
 
 	return {
 		source,

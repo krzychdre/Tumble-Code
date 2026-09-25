@@ -8,6 +8,5 @@
 	"src/components/common/MermaidButton.tsx": ["MermaidButton"],
 	"src/components/mcp/McpView.tsx": ["ServerRow"],
 	"src/components/settings/providers/LMStudio.tsx": ["LMStudio"],
-	"src/components/ui/hooks/useProviderModels.ts": ["useProviderModels"],
 	"src/hooks/useScrollLifecycle.ts": ["useScrollLifecycle"]
 }

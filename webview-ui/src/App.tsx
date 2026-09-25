@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from "react"
-import { useEvent } from "react-use"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { type ExtensionMessage, TelemetryEventName } from "@roo-code/types"
@@ -8,6 +7,7 @@ import TranslationProvider from "./i18n/TranslationContext"
 import { MarketplaceViewStateManager } from "./components/marketplace/MarketplaceViewStateManager"
 
 import { vscode } from "./utils/vscode"
+import { useExtensionMessage } from "./utils/extensionBus"
 import { telemetryClient } from "./utils/TelemetryClient"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
@@ -119,9 +119,7 @@ const App = () => {
 	const [currentMarketplaceTab, setCurrentMarketplaceTab] = useState<string | undefined>(undefined)
 
 	const onMessage = useCallback(
-		(e: MessageEvent) => {
-			const message: ExtensionMessage = e.data
-
+		(message: ExtensionMessage) => {
 			if (message.type === "action" && message.action) {
 				// Handle switchTab action with tab parameter
 				if (message.action === "switchTab" && message.tab) {
@@ -170,7 +168,7 @@ const App = () => {
 		[switchTab],
 	)
 
-	useEvent("message", onMessage)
+	useExtensionMessage(["action", "showDeleteMessageDialog", "showEditMessageDialog", "acceptInput"], onMessage)
 
 	useEffect(() => {
 		if (shouldShowAnnouncement && tab === "chat") {

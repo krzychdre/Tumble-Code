@@ -18,6 +18,7 @@ import {
 import { Mode } from "@roo/modes"
 
 import { vscode } from "@src/utils/vscode"
+import { useAnyExtensionMessage } from "@src/utils/extensionBus"
 
 import {
 	applyExtensionMessage,
@@ -139,13 +140,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 	// new value once it is committed.
 	const autoApprovalEchoPending = useRef(false)
 
-	const handleMessage = useCallback((event: MessageEvent) => {
-		const message: ExtensionMessage = event.data
+	useAnyExtensionMessage((message: ExtensionMessage) => {
 		if (message.type === "action" && message.action === "toggleAutoApprove") {
 			autoApprovalEchoPending.current = true
 		}
 		setStore((prev) => applyExtensionMessage(prev, message))
-	}, [])
+	})
 
 	useEffect(() => {
 		if (!autoApprovalEchoPending.current) {
@@ -154,13 +154,6 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		autoApprovalEchoPending.current = false
 		vscode.postMessage({ type: "autoApprovalEnabled", bool: store.extensionState.autoApprovalEnabled ?? false })
 	}, [store])
-
-	useEffect(() => {
-		window.addEventListener("message", handleMessage)
-		return () => {
-			window.removeEventListener("message", handleMessage)
-		}
-	}, [handleMessage])
 
 	useEffect(() => {
 		vscode.postMessage({ type: "webviewDidLaunch" })
