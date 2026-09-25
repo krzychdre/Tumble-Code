@@ -1138,6 +1138,54 @@ describe("transcript reducer", () => {
 		})
 	})
 
+	// A resumed task replays its whole history in one state push, answered asks
+	// included. The core waits only on the LAST message (the client's agent
+	// state reads it the same way, detectAgentState), so an older ask is
+	// history, not a question: turning it into the pending ask showed an
+	// approval dialog for a tool that ran long ago.
+	describe("asks replayed from history", () => {
+		const history = [
+			{ ts: 1, type: "say", say: "text", text: "task", partial: false },
+			{
+				ts: 2,
+				type: "ask",
+				ask: "followup",
+				text: JSON.stringify({ question: "Which?", suggest: [{ answer: "A" }] }),
+				partial: false,
+			},
+			{ ts: 3, type: "say", say: "user_feedback", text: "A", partial: false },
+			{ ts: 4, type: "ask", ask: "tool", text: JSON.stringify({ tool: "readFile", path: "src/old.ts" }), partial: false },
+			{ ts: 5, type: "say", say: "text", text: "done", partial: false },
+		]
+
+		beforeEach(() => {
+			model.isLoading = true
+			model.isResumingTask = true
+		})
+
+		it("opens no dialog for an answered ask when the task is resumed", () => {
+			stateMessage([...history, { ts: 6, type: "ask", ask: "resume_task", text: "", partial: false }])
+
+			expect(model.pendingAsk).toBeNull()
+			expect(model.isLoading).toBe(false)
+			expect(model.messages.map((m) => m.content)).toEqual(["task", "done"])
+		})
+
+		it("still opens the dialog for the ask the history ends with", () => {
+			stateMessage(history.slice(0, 2))
+
+			expect(model.pendingAsk).toMatchObject({ id: "2", type: "followup", content: "Which?" })
+		})
+
+		it("still prints an auto-approved ask from the history as its row", () => {
+			nonInteractive = true
+			stateMessage([...history, { ts: 6, type: "ask", ask: "resume_task", text: "", partial: false }])
+
+			expect(model.pendingAsk).toBeNull()
+			expect(model.messages.map((m) => m.toolName ?? m.content)).toEqual(["task", "readFile", "done"])
+		})
+	})
+
 	describe("purity", () => {
 		it("never changes the cursor or the view it is given", () => {
 			const before = createTranscriptCursor()
