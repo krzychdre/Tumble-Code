@@ -493,6 +493,15 @@ tool layer; remove the `editType` temporal coupling (15 external writes before `
 (68). **Test first:** `revertChanges` for new and existing files, the CRLF user-edit patch. **Existing:** 46 tests
 in 4 specs. **Size** M.
 
+**Status (2026-09-25):** DONE in #336 (merge efa599748). `open(relPath, editType)` replaces the `editType` field
+(6 production writes before `open()`; the other 9 of the plan's 15 were in tests); `write_to_file` asks the open
+session via `diffViewProvider.editTypeOf(relPath)` and `toolStreamState.editTypePath` is gone;
+`pushToolWriteResult` moved to `src/core/tools/helpers/toolWriteResult.ts` (unused `cwd` dropped), its JSON text
+pinned byte for byte; `SaveRecovery.ts` owns `pendingSave`; dead `taskRef` removed. DiffViewProvider 694 to 626
+lines; 400 tests in 22 related specs. Found: the old `apply_diff` specs never reached the successful write path (a
+missing import was swallowed by `handleError`); a success-path test now covers it. Open (pre-existing): when
+streaming opened the diff for a truncated path and the final path differs, `execute()` does not reopen.
+
 ## Performance (Phase 10; mechanism verified)
 
 The per-chunk work inside providers is linear (TagMatcher walks characters, SSE parsers keep only the leftover
