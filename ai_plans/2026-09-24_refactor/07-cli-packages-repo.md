@@ -254,6 +254,19 @@ exit 0 when stdin had closed, now exits 1 like `--print`. Open: `--require-appro
 lets the approval prompt steal command lines (reject the combination?); followup/command/tool asks under
 `--require-approval` can still hang after EOF (deliberately not widened).
 
+**Part B (TUI):** #427 (merge 7e99b917c) App characterization test (8 scenarios through `createExtensionHost` and
+ink-testing-library, frames plus the `<Static>`/tail split snapshotted, fake Date and timers, under 1 s); #434 (merge
+7185a3142, re-opened from #429 which GitHub closed when #427's branch was deleted) `App.tsx` 773 to 545 lines,
+`useTranscriptPromotion`, `useMcpPanel`, `useAutocompleteTriggers`, `useSecretPromptBridge`, snapshots unchanged; #431
+(merge 155e867ee) `say: "tool"` (readArtifact, searchTaskHistory) drawn as tool rows through `describeToolPayload`
+instead of raw JSON; dead `toolDisplayName`/`toolDisplayOutput`/`formatToolOutput` removed. **Still open (CLI-9
+step 3, single interpreter):** design in the cli9tui report: (a) move `useMessageHandlers` into a pure reducer in
+`apps/cli/src/agent/`, (b) `ExtensionClient` owns it with a real `ts` diff (today `emitNewMessageEvents` emits only the
+last message per `state`), TUI subscribes via `useSyncExternalStore`, (c) `JsonEventEmitter` on transcript events.
+Differences to reconcile: TUI never removes messages the core deleted (condense), `pendingAsk` vs `detectAgentState`,
+completion set twice, and `taskCompleted` also fires for `resume_completed_task` (with `exitOnComplete` resuming a
+completed task exits the CLI: verify).
+
 ### PKG-11 Remaining `packages/*` structure (lowest priority)
 
 Split `vscode-extension-host.ts` into per-domain message unions (additively, superset first); derive the telemetry
