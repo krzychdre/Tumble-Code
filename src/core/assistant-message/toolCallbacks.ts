@@ -62,6 +62,48 @@ function recordToolFailureAsMistake(
 	cline.recordToolError(toolName as ToolName, error.message)
 }
 
+/**
+ * The text the MODEL gets for a failed tool: the error's message, never its stack.
+ *
+ * `serializeError` keeps the stack of the error and of every nested `cause`. For the model
+ * that is pure noise: about ten frames of local absolute paths (a leak of the user's
+ * directory layout) that cost context on every failure, and weak models (GLM, Qwen, local
+ * Llamas) tend to reason about the frames instead of the one line that says what went
+ * wrong. The stack still goes to the log (see `handleError`), where a developer reads it.
+ *
+ * - An error with a message: the message, plus the message of its `cause` chain when there
+ *   is one (a bare "fetch failed" says nothing without "connect ECONNREFUSED ...").
+ * - Anything else (a thrown object or string): its serialized form with every `stack` key
+ *   removed, so whatever the value carries is still visible.
+ */
+function describeToolErrorForModel(error: unknown): string {
+	const message = messageOf(error)
+	if (message) {
+		const causes: string[] = []
+		let cause = (error as { cause?: unknown }).cause
+		// A cause chain is short in practice; the bound only guards against a cycle.
+		while (cause !== undefined && cause !== null && causes.length < 5) {
+			const causeMessage = messageOf(cause) ?? (typeof cause === "string" ? cause : undefined)
+			if (!causeMessage) {
+				break
+			}
+			causes.push(causeMessage)
+			cause = (cause as { cause?: unknown }).cause
+		}
+		return causes.length > 0 ? `${message} (cause: ${causes.join("; cause: ")})` : message
+	}
+
+	return JSON.stringify(serializeError(error), (key, value) => (key === "stack" ? undefined : value))
+}
+
+function messageOf(value: unknown): string | undefined {
+	if (typeof value !== "object" || value === null) {
+		return undefined
+	}
+	const message = (value as { message?: unknown }).message
+	return typeof message === "string" && message.length > 0 ? message : undefined
+}
+
 export interface ToolCallbackOptions {
 	/** The block being executed. Only its kind is read, to label the duplicate-result warning. */
 	block: { type: "tool_use" | "mcp_tool_use" }
@@ -222,7 +264,11 @@ export function createToolCallbacks(
 			return
 		}
 
-		const errorString = `Error ${action}: ${JSON.stringify(serializeError(error))}`
+		// The stack is for a developer, not for the model: log it here, and send the model
+		// only the message (see `describeToolErrorForModel`).
+		console.error(`[presentAssistantMessage] Error ${action}:`, error)
+
+		const errorString = `Error ${action}: ${describeToolErrorForModel(error)}`
 
 		await cline.askSay.say(
 			"error",
