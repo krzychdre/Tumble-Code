@@ -28,7 +28,7 @@ import * as vscode from "vscode"
 
 import { setRooCodeApiUrl, setRooCodeProviderUrl, setClerkBaseUrl } from "@roo-code/cloud"
 
-import { Package } from "./package"
+import { Package } from "../shared/package"
 
 /**
  * Read the current VS Code configuration values and push them into the

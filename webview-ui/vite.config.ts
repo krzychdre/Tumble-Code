@@ -111,9 +111,9 @@ export default defineConfig(({ mode }) => {
 			// Use a single combined CSS bundle so all webviews share styles
 			cssCodeSplit: false,
 			rolldownOptions: {
-				// Externalize vscode module - it's imported by file-search.ts which is
-				// dynamically imported by roo-config/index.ts, but should never be bundled
-				// in the webview since it's not available in the browser context
+				// Externalize vscode: it does not exist in the browser context. Nothing in
+				// the webview graph imports it today; keeping it external means a stray
+				// import shows up as a chunk import, which bundleBoundaryPlugin rejects.
 				external: ["vscode"],
 				input: resolve(__dirname, "index.html"),
 				output: {

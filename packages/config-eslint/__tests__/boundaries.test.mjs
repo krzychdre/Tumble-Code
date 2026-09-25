@@ -110,7 +110,11 @@ describe("vscode and extension imports in src/shared (bundled into the webview)"
 
 	for (const file of ["shared/cloud-urls.ts", "shared/vsCodeSelectorUtils.ts"]) {
 		it(`rejects a vscode import in ${file} (SVC-16 removed its exemption)`, async () => {
-			const messages = await lint("src", file, 'import * as vscode from "vscode"\nexport const w = vscode.window\n')
+			const messages = await lint(
+				"src",
+				file,
+				'import * as vscode from "vscode"\nexport const w = vscode.window\n',
+			)
 			assert.ok(ruleIds(messages).includes("no-restricted-imports"), JSON.stringify(messages))
 		})
 	}
