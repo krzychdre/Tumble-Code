@@ -446,3 +446,13 @@ where their files are disjoint; the coordinator merges in order.
     switches from an OpenAI mode to an xAI mode fails. Pinned by "xai: a standalone reasoning item in the history
     fails the request"; the fix belongs in `transform/responses-api-input.ts` (per-protocol converter, "do not
     touch" list: needs a deliberate DEF branch).
+- **DEF-C46: DONE 2026-09-25 in #310.** Wider than xAI: `ApiRequestBuilder.buildCleanConversationHistory` turned
+  every stored OpenAI encrypted reasoning block into a standalone `{type: "reasoning", encrypted_content}` item for
+  every provider; only `toResponsesApiInput` (native, codex) handles it. xAI threw `message.content is not
+  iterable`, the Anthropic filter (also Vertex) and the Bedrock converter threw, Chat Completions, R1 and Mistral
+  dropped it silently, MiniMax forwarded it raw. Now the items go out only when the current handler has
+  `getEncryptedContent` (the same test TaskHistory uses when storing), decided per request without mutating the
+  history (switching back to OpenAI sends them again); the xAI converter also skips them (docs.x.ai: xAI encrypts
+  its own reasoning, OpenAI's is unreadable to it). Tests: `ApiRequestBuilder.reasoning-items.spec` (6 failed
+  first). Caveat: the gate checks what the handler returns, not which provider wrote the blob; if xAI ever stores
+  encrypted reasoning, record the origin provider with the block.
