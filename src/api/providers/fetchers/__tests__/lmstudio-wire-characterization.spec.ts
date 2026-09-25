@@ -2,7 +2,8 @@
 // client: only the LM Studio server is faked (fake-lmstudio-server.ts, HTTP plus the
 // SDK's WebSocket protocol). lmstudio.test.ts replaces LMStudioClient, so nothing else notices
 // when an SDK upgrade changes what goes over the socket or how answers are read.
-// Written before DEP-6 (SDK 1.x to 2.x).
+// Written before DEP-6 (SDK 1.x to 2.x); the 2.x commit updates the three places
+// where the wire really changed and says why next to each.
 
 import nock from "nock"
 
@@ -10,7 +11,7 @@ vi.mock("../modelCache", () => ({
 	flushModels: vi.fn(async () => {}),
 }))
 
-import { forceFullModelDetailsLoad, getLMStudioModels, hasLoadedFullDetails } from "../lmstudio"
+import { forceFullModelDetailsLoad, getLMStudioModels, hasLoadedFullDetails, LM_STUDIO_TIMEOUTS } from "../lmstudio"
 import { flushModels } from "../modelCache"
 import { startFakeLmStudioServer, type FakeLmStudioServer, type Responder } from "./fake-lmstudio-server"
 
@@ -135,12 +136,12 @@ describe("LM Studio fetcher wire characterization (real @lmstudio/sdk, fake serv
 		expect(recorded()).toEqual([
 			{
 				path: "/system",
-				message: { authVersion: 1, clientIdentifier: "<random>", clientPasskey: "<random>" },
+				message: { authVersion: 1, clientIdentifier: "guest:<random>", clientPasskey: "<random>" },
 			},
 			{ path: "/system", message: { type: "rpcCall", endpoint: "listDownloadedModels", callId: 0 } },
 			{
 				path: "/llm",
-				message: { authVersion: 1, clientIdentifier: "<random>", clientPasskey: "<random>" },
+				message: { authVersion: 1, clientIdentifier: "guest:<random>", clientPasskey: "<random>" },
 			},
 			{ path: "/llm", message: { type: "rpcCall", endpoint: "listLoaded", callId: 0 } },
 			{
@@ -193,17 +194,9 @@ describe("LM Studio fetcher wire characterization (real @lmstudio/sdk, fake serv
 							{
 								layerName: "apiOverride",
 								config: {
-									fields: [
-										{
-											key: "load.gpuSplitConfig",
-											value: {
-												strategy: "evenly",
-												disabledGpus: [],
-												priority: [],
-												customRatio: [],
-											},
-										},
-									],
+									// SDK 1.x forced load.gpuSplitConfig { strategy: "evenly" } here;
+									// 2.x leaves the GPU split to LM Studio's own settings.
+									fields: [],
 								},
 							},
 						],
@@ -224,11 +217,28 @@ describe("LM Studio fetcher wire characterization (real @lmstudio/sdk, fake serv
 		expect(recorded()).toEqual([])
 	})
 
-	it("reads model lists from an LM Studio server that predates the 2026 protocol fields", async () => {
+	// SDK 2.x requires the fields LM Studio added to its protocol in 2025 and 2026 (publisher,
+	// indexedModelIdentifier, deviceIdentifier, ttlMs, lastUsedTime). Against an older server it
+	// rejects every answer with a console warning and would never settle the call (1.x read such
+	// answers); LM_STUDIO_TIMEOUTS turns that into an empty list and a clear log.
+	it("gives an empty list and a clear log for an LM Studio that predates the 2026 protocol fields", async () => {
 		oldServerShape = true
+		const requestMs = LM_STUDIO_TIMEOUTS.requestMs
+		LM_STUDIO_TIMEOUTS.requestMs = 200
+		try {
+			const models = await getLMStudioModels(baseUrl)
 
-		const models = await getLMStudioModels(baseUrl)
-
-		expect(Object.keys(models).sort()).toEqual(["llama-3.1-8b", "qwen/qwen2.5-vl-7b"])
+			expect(models).toEqual({})
+			expect(vi.mocked(console.error).mock.calls.flat().join("\n")).toContain(
+				`LM Studio at ${baseUrl} did not answer the list of downloaded models within 0.2 s`,
+			)
+			// Stopped at the first call: listLoaded is never sent.
+			const endpoints = server.recorded.flatMap((entry) =>
+				entry.message.endpoint ? [entry.message.endpoint] : [],
+			)
+			expect(endpoints).toEqual(["listDownloadedModels"])
+		} finally {
+			LM_STUDIO_TIMEOUTS.requestMs = requestMs
+		}
 	})
 })
