@@ -84,6 +84,8 @@ describe("layering (CORE-R10)", () => {
 
 	it.each([
 		"services/mcp/McpHub.ts",
+		"services/mcp/McpConnectionManager.ts",
+		"services/mcp/McpToolCatalog.ts",
 		"services/mcp/McpServerManager.ts",
 		"integrations/workspace/WorkspaceTracker.ts",
 		"integrations/editor/DiffViewProvider.ts",

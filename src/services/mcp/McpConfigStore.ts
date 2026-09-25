@@ -3,6 +3,7 @@ import * as path from "path"
 
 import { fileExistsAtPath } from "../../utils/fs"
 import { safeWriteJson } from "../../utils/safeWriteJson"
+import { getProjectRooDirectoryForCwd } from "../roo-config"
 
 import { formatSchemaIssues, type McpConfigSource, type McpServerConfig, McpSettingsSchema } from "./mcpConfigSchema"
 import { getGlobalMcpSettingsPath } from "./mcpSettingsPath"
@@ -66,7 +67,7 @@ export class McpConfigStore {
 
 	/** The project file (`.roo/mcp.json` in the workspace), or null when there is none. */
 	async getProjectPath(): Promise<string | null> {
-		const projectPath = path.join(this.options.workspacePath(), ".roo", "mcp.json")
+		const projectPath = path.join(getProjectRooDirectoryForCwd(this.options.workspacePath()), "mcp.json")
 		try {
 			await fs.access(projectPath)
 			return projectPath

@@ -3,6 +3,7 @@ import path from "path"
 
 import type { Mock } from "vitest"
 import type { ExtensionContext, Uri } from "vscode"
+import type { McpServer } from "@roo-code/types"
 
 import type { ClineProvider } from "../../../core/webview/ClineProvider"
 
@@ -96,6 +97,10 @@ vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
 
 vi.mock("@modelcontextprotocol/sdk/client/sse.js", () => ({
 	SSEClientTransport: vi.fn(),
+}))
+
+vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+	StreamableHTTPClientTransport: vi.fn(),
 }))
 
 // Mock chokidar
@@ -1107,7 +1112,7 @@ describe("McpHub", () => {
 			mcpHub.connections = [mockConnection]
 
 			// Fetch tools list to test wildcard matching
-			const tools = await mcpHub["fetchToolsList"]("test-server", "global")
+			const tools = await mcpHub["toolCatalog"].fetchToolsList("test-server", "global")
 
 			// All tools should be marked as always allowed
 			expect(tools.length).toBe(3)
@@ -1154,7 +1159,7 @@ describe("McpHub", () => {
 			mcpHub.connections = [mockConnection]
 
 			// Fetch tools list
-			const tools = await mcpHub["fetchToolsList"]("test-server", "global")
+			const tools = await mcpHub["toolCatalog"].fetchToolsList("test-server", "global")
 
 			// All tools should be marked as always allowed due to wildcard
 			expect(tools.length).toBe(2)
@@ -1200,7 +1205,7 @@ describe("McpHub", () => {
 			mcpHub.connections = [mockConnection]
 
 			// Fetch tools list
-			const tools = await mcpHub["fetchToolsList"]("test-server", "global")
+			const tools = await mcpHub["toolCatalog"].fetchToolsList("test-server", "global")
 
 			// Only the specifically allowed tool should be marked as always allowed
 			expect(tools.length).toBe(2)
@@ -3076,6 +3081,445 @@ describe("McpHub", () => {
 				expect(watchersByPath.get("/watch/global")![0].close).not.toHaveBeenCalled()
 				expect(watchersByPath.get("/watch/project")![0].close).toHaveBeenCalled()
 				expect(watchersByPath.get("/watch/project")!.at(-1)!.close).not.toHaveBeenCalled()
+			})
+		})
+	})
+
+	// SVC-8 part 3: McpHub became a facade over McpConnectionManager and
+	// McpToolCatalog. These pin what callers and the webview see.
+	describe("facade contract (SVC-8 part 3)", () => {
+		const globalPath = path.join("/mock/settings/path", "mcp_settings.json")
+		const workspaceDir = path.resolve("/workspace")
+		let files: Record<string, string>
+		let watchers: { paths: string; close: Mock }[]
+		let StdioClientTransport: ReturnType<typeof vi.fn>
+		let Client: ReturnType<typeof vi.fn>
+		let postMessage: Mock
+
+		const settle = () => new Promise((resolve) => setTimeout(resolve, 100))
+		const deferred = <T = void>() => {
+			let resolve!: (value: T) => void
+			let reject!: (error: unknown) => void
+			const promise = new Promise<T>((res, rej) => {
+				resolve = res
+				reject = rej
+			})
+			return { promise, resolve, reject }
+		}
+		const stdioTransport = () => ({
+			start: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+			stderr: { on: vi.fn() },
+			onerror: null as null | ((error: unknown) => Promise<void>),
+			onclose: null as null | (() => Promise<void>),
+		})
+		const connectedClient = () => ({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+			getInstructions: vi.fn().mockReturnValue(""),
+			request: vi.fn().mockResolvedValue({ tools: [], resources: [], resourceTemplates: [] }),
+		})
+		const serverKeys = (hub: McpHub) => hub.connections.map((c) => `${c.server.source}:${c.server.name}`)
+
+		beforeEach(async () => {
+			// The hub of the outer beforeEach would otherwise share these mocks.
+			await Promise.race([mcpHub.waitUntilReady(), settle()])
+			await mcpHub.dispose()
+			vi.clearAllMocks()
+
+			const chokidar = (await import("chokidar")).default
+			watchers = []
+			vi.mocked(chokidar.watch).mockImplementation((paths: any) => {
+				const watcher = { on: vi.fn().mockReturnThis(), close: vi.fn() }
+				watchers.push({ paths: ([] as string[]).concat(paths).join(","), close: watcher.close })
+				return watcher as any
+			})
+
+			StdioClientTransport = (await import("@modelcontextprotocol/sdk/client/stdio.js"))
+				.StdioClientTransport as ReturnType<typeof vi.fn>
+			StdioClientTransport.mockImplementation(stdioTransport)
+			Client = (await import("@modelcontextprotocol/sdk/client/index.js")).Client as ReturnType<typeof vi.fn>
+			Client.mockImplementation(connectedClient)
+
+			Object.assign(mockProvider, { cwd: workspaceDir })
+			postMessage = mockProvider.postMessageToWebview as Mock
+
+			files = { [globalPath]: JSON.stringify({ mcpServers: { a: { command: "node", args: ["a.js"] } } }) }
+			const missing = (filePath: string) => Object.assign(new Error(`ENOENT: ${filePath}`), { code: "ENOENT" })
+			vi.mocked(fs.readFile).mockImplementation((async (filePath: string) => {
+				if (filePath in files) return files[filePath]
+				throw missing(filePath)
+			}) as any)
+			vi.mocked(fs.access).mockImplementation(async (filePath: any) => {
+				if (!(filePath in files)) throw missing(filePath)
+			})
+		})
+
+		describe("restartConnection", () => {
+			let events: string[]
+			let hub: McpHub
+
+			beforeEach(async () => {
+				events = []
+				StdioClientTransport.mockImplementation(() => {
+					events.push(`new transport, isConnecting=${hub?.isConnecting}`)
+					const transport = stdioTransport()
+					transport.close.mockImplementation(async () => {
+						events.push("close transport")
+					})
+					return transport
+				})
+				const vscode = await import("vscode")
+				vi.mocked(vscode.window.showInformationMessage).mockImplementation((message: string) => {
+					events.push(`info ${message}`)
+					return undefined as any
+				})
+				postMessage.mockImplementation(async (message: any) => {
+					const statuses = message.mcpServers.map((s: McpServer) => `${s.name}=${s.status}`).join(",")
+					events.push(`push ${statuses}, isConnecting=${hub.isConnecting}`)
+				})
+
+				hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				events.length = 0
+			})
+
+			it("shows the restart, pushes 'connecting', closes the old transport, then connects a new one", async () => {
+				await hub.restartConnection("a", "global")
+
+				expect(events).toEqual([
+					'info mcp:info.server_restarting {"serverName":"a"}',
+					"push a=connecting, isConnecting=true",
+					"close transport",
+					"new transport, isConnecting=true",
+					'info mcp:info.server_connected {"serverName":"a"}',
+					"push a=connected, isConnecting=true",
+				])
+				expect(hub.isConnecting).toBe(false)
+				expect(serverKeys(hub)).toEqual(["global:a"])
+			})
+
+			it("resets isConnecting and keeps the server listed with its error when the reconnect fails", async () => {
+				Client.mockImplementation(() => ({
+					...connectedClient(),
+					connect: vi.fn().mockRejectedValue(new Error("connection refused")),
+				}))
+
+				await hub.restartConnection("a", "global")
+
+				expect(events).toEqual([
+					'info mcp:info.server_restarting {"serverName":"a"}',
+					"push a=connecting, isConnecting=true",
+					"close transport",
+					"new transport, isConnecting=true",
+					"push a=disconnected, isConnecting=true",
+				])
+				expect(hub.isConnecting).toBe(false)
+				expect(serverKeys(hub)).toEqual(["global:a"])
+				expect(hub.connections[0].server.error).toBe("connection refused")
+			})
+
+			it("does nothing but reset isConnecting for an unknown server", async () => {
+				await hub.restartConnection("nope", "global")
+
+				expect(events).toEqual(["push a=connected, isConnecting=true"])
+				expect(hub.isConnecting).toBe(false)
+			})
+		})
+
+		describe("dispose during an in-flight connect", () => {
+			const serverWithWatcher = { command: "node", args: ["slow.js"], watchPaths: ["/watch/slow"] }
+
+			beforeEach(() => {
+				files[globalPath] = JSON.stringify({ mcpServers: { slow: serverWithWatcher } })
+			})
+
+			const expectNothingLeftBehind = (hub: McpHub, pushesAtDispose: number) => {
+				expect(hub.connections).toEqual([])
+				expect(hub.getAllServers()).toEqual([])
+				expect(postMessage).toHaveBeenCalledTimes(pushesAtDispose)
+				for (const watcher of watchers) {
+					expect(watcher.close, `watcher of ${watcher.paths}`).toHaveBeenCalled()
+				}
+			}
+
+			it("while the MCP-enabled check is pending: no connection, no watcher, no push", async () => {
+				const state = deferred<{ mcpEnabled: boolean }>()
+				mockProvider.getState = vi.fn().mockReturnValue(state.promise)
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await vi.waitFor(() => expect(mockProvider.getState).toHaveBeenCalled())
+
+				await hub.dispose()
+				const pushes = postMessage.mock.calls.length
+				state.resolve({ mcpEnabled: true })
+				await hub.waitUntilReady()
+				await settle()
+
+				expect(StdioClientTransport).not.toHaveBeenCalled()
+				expectNothingLeftBehind(hub, pushes)
+			})
+
+			it("while the stdio process is starting: the new transport is closed and never registered", async () => {
+				const started = deferred()
+				const transport = stdioTransport()
+				transport.start.mockReturnValue(started.promise)
+				StdioClientTransport.mockImplementation(() => transport)
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await vi.waitFor(() => expect(transport.start).toHaveBeenCalled())
+
+				await hub.dispose()
+				const pushes = postMessage.mock.calls.length
+				started.resolve()
+				await hub.waitUntilReady()
+				await settle()
+
+				expect(transport.close).toHaveBeenCalled()
+				expect(Client.mock.results[0]?.value.connect).not.toHaveBeenCalled()
+				expectNothingLeftBehind(hub, pushes)
+			})
+
+			it("while the client handshake is pending: closed by dispose, nothing pushed afterwards", async () => {
+				const handshake = deferred()
+				const client = { ...connectedClient(), connect: vi.fn().mockReturnValue(handshake.promise) }
+				Client.mockImplementation(() => client)
+				const transport = stdioTransport()
+				StdioClientTransport.mockImplementation(() => transport)
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await vi.waitFor(() => expect(client.connect).toHaveBeenCalled())
+
+				await hub.dispose()
+				const pushes = postMessage.mock.calls.length
+				handshake.resolve()
+				await hub.waitUntilReady()
+				await settle()
+
+				expect(transport.close).toHaveBeenCalled()
+				expect(client.close).toHaveBeenCalled()
+				expect(client.request).not.toHaveBeenCalled()
+				expectNothingLeftBehind(hub, pushes)
+			})
+
+			it("when the pending handshake fails after dispose: no placeholder is left behind", async () => {
+				const handshake = deferred()
+				const client = { ...connectedClient(), connect: vi.fn().mockReturnValue(handshake.promise) }
+				Client.mockImplementation(() => client)
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await vi.waitFor(() => expect(client.connect).toHaveBeenCalled())
+
+				await hub.dispose()
+				const pushes = postMessage.mock.calls.length
+				handshake.reject(new Error("Connection closed"))
+				await hub.waitUntilReady()
+				await settle()
+
+				expectNothingLeftBehind(hub, pushes)
+			})
+
+			it("a transport closing during dispose pushes no state", async () => {
+				const transport = stdioTransport()
+				transport.close.mockImplementation(async () => {
+					await transport.onclose?.()
+				})
+				StdioClientTransport.mockImplementation(() => transport)
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				const pushes = postMessage.mock.calls.length
+
+				await hub.dispose()
+				await settle()
+
+				expect(transport.close).toHaveBeenCalled()
+				expectNothingLeftBehind(hub, pushes)
+			})
+		})
+
+		describe("the connections array", () => {
+			it("is replaced, not mutated, when a server is deleted", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				const before = hub.connections
+
+				await hub.deleteConnection("a", "global")
+
+				expect(hub.connections).not.toBe(before)
+				expect(hub.connections).toEqual([])
+				expect(before.map((c) => c.server.name)).toEqual(["a"])
+			})
+
+			it("is replaced when a server is added, and the old array is left as it was", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				const before = hub.connections
+
+				await hub.updateServerConnections({ a: { command: "node", args: ["a.js"] }, b: { command: "node" } })
+
+				expect(hub.connections).not.toBe(before)
+				expect(before.map((c) => c.server.name)).toEqual(["a"])
+				expect(serverKeys(hub)).toEqual(["global:a", "global:b"])
+				// The unchanged server keeps its connection object.
+				expect(hub.connections[0]).toBe(before[0])
+			})
+
+			it("assigned from outside is the array the hub reads and updates", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				const request = vi.fn().mockResolvedValue({ content: [] })
+				const assigned: McpConnection[] = [
+					{
+						type: "connected",
+						server: {
+							name: "x",
+							config: JSON.stringify({ command: "node" }),
+							status: "connected",
+							source: "global",
+						},
+						client: { request } as any,
+						transport: {} as any,
+					},
+				]
+
+				hub.connections = assigned
+
+				expect(hub.connections).toBe(assigned)
+				expect(hub.getAllServers().map((s) => s.name)).toEqual(["x"])
+				expect(hub.getServers().map((s) => s.name)).toEqual(["x"])
+				expect(hub.findServerNameBySanitizedName("x")).toBe("x")
+				await hub.callTool("x", "tool", {}, "global")
+				expect(request).toHaveBeenCalledTimes(1)
+			})
+
+			it("hands the webview a fresh array of the live server objects, project servers first", async () => {
+				const projectPath = path.join(workspaceDir, ".roo", "mcp.json")
+				files[globalPath] = JSON.stringify({
+					mcpServers: { g2: { command: "node" }, g1: { command: "node" } },
+				})
+				files[projectPath] = JSON.stringify({ mcpServers: { p1: { command: "node" } } })
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				postMessage.mockClear()
+
+				await hub.restartConnection("g1", "global")
+
+				const { type, mcpServers } = postMessage.mock.calls.at(-1)![0]
+				expect(type).toBe("mcpServers")
+				expect(mcpServers.map((s: McpServer) => `${s.source}:${s.name}`)).toEqual([
+					"project:p1",
+					"global:g2",
+					"global:g1",
+				])
+				expect(mcpServers).not.toBe(hub.connections)
+				for (const server of mcpServers) {
+					expect(hub.connections.some((c) => c.server === server)).toBe(true)
+				}
+			})
+		})
+
+		describe.each([
+			{ type: "stdio", config: { command: "node", args: ["t.js"] }, label: "" },
+			{ type: "sse", config: { type: "sse", url: "https://mcp.example.com/sse" }, label: "" },
+			{
+				type: "streamable-http",
+				config: { type: "streamable-http", url: "https://mcp.example.com/mcp" },
+				label: " (streamable-http)",
+			},
+		])("$type transport handlers", ({ type, config, label }) => {
+			let transport: ReturnType<typeof stdioTransport>
+			let start: Mock
+			let hub: McpHub
+
+			beforeEach(async () => {
+				transport = stdioTransport()
+				// The hub replaces a started stdio transport's start() with a no-op.
+				start = transport.start
+				const sse = (await import("@modelcontextprotocol/sdk/client/sse.js")).SSEClientTransport
+				const http = (await import("@modelcontextprotocol/sdk/client/streamableHttp.js"))
+					.StreamableHTTPClientTransport
+				for (const ctor of [StdioClientTransport, sse, http]) {
+					vi.mocked(ctor as any).mockImplementation(() => transport)
+				}
+				files[globalPath] = JSON.stringify({ mcpServers: { t: config } })
+				hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				expect(hub.connections[0].transport).toBe(transport)
+				expect(hub.connections[0].server.status).toBe("connected")
+				postMessage.mockClear()
+			})
+
+			it("onerror marks the server disconnected, records the error and pushes the state", async () => {
+				await transport.onerror!(new Error("socket hang up"))
+
+				const server = hub.connections[0].server
+				expect(server.status).toBe("disconnected")
+				expect(server.error).toBe("socket hang up")
+				expect(server.errorHistory!.at(-1)).toMatchObject({ message: "socket hang up", level: "error" })
+				expect(postMessage).toHaveBeenCalledTimes(1)
+				expect(console.error).toHaveBeenCalledWith(`Transport error for "t"${label}:`, expect.any(Error))
+			})
+
+			it("onerror with a non-Error records its string form", async () => {
+				await transport.onerror!("plain failure")
+
+				expect(hub.connections[0].server.error).toBe("plain failure")
+			})
+
+			it("onclose marks the server disconnected without an error and pushes the state", async () => {
+				await transport.onclose!()
+
+				const server = hub.connections[0].server
+				expect(server.status).toBe("disconnected")
+				expect(server.error).toBe("")
+				expect(postMessage).toHaveBeenCalledTimes(1)
+			})
+
+			it("still pushes the state when its server is already gone", async () => {
+				hub.connections = []
+
+				await transport.onerror!(new Error("late"))
+				await transport.onclose!()
+
+				expect(postMessage).toHaveBeenCalledTimes(2)
+			})
+
+			it(`${type === "stdio" ? "is" : "is not"} started before the client connects`, () => {
+				const client = Client.mock.results.at(-1)!.value
+				if (type === "stdio") {
+					expect(start).toHaveBeenCalledTimes(1)
+					expect(start.mock.invocationCallOrder[0]).toBeLessThan(client.connect.mock.invocationCallOrder[0])
+				} else {
+					expect(start).not.toHaveBeenCalled()
+				}
+			})
+		})
+
+		describe("stdio stderr", () => {
+			let onStderr: (data: Buffer) => Promise<void>
+			let hub: McpHub
+
+			beforeEach(async () => {
+				const transport = stdioTransport()
+				transport.stderr.on.mockImplementation((_event: string, listener: any) => {
+					onStderr = listener
+				})
+				StdioClientTransport.mockImplementation(() => transport)
+				hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await hub.waitUntilReady()
+				postMessage.mockClear()
+			})
+
+			it("records a non-INFO line as an error, pushing only for a disconnected server", async () => {
+				await onStderr(Buffer.from("boom"))
+				expect(hub.connections[0].server.error).toBe("boom")
+				expect(postMessage).not.toHaveBeenCalled()
+
+				hub.connections[0].server.status = "disconnected"
+				await onStderr(Buffer.from("boom again"))
+				expect(hub.connections[0].server.error).toBe("boom again")
+				expect(postMessage).toHaveBeenCalledTimes(1)
+			})
+
+			it("does not record INFO lines", async () => {
+				await onStderr(Buffer.from("[info] listening"))
+				expect(hub.connections[0].server.error).toBe("")
 			})
 		})
 	})

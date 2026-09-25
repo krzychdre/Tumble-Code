@@ -142,7 +142,6 @@ vi.mock("../services/mcp/McpServerManager", () => ({
 	McpServerManager: {
 		cleanup: vi.fn().mockResolvedValue(undefined),
 		getInstance: vi.fn().mockResolvedValue(null),
-		unregisterProvider: vi.fn(),
 	},
 }))
 
