@@ -13,10 +13,9 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 import { convertToR1Format } from "../transform/r1-format"
+import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import { OpenAiHandler } from "./openai"
-import { extractReasoningFromDelta } from "./utils/extract-reasoning"
-import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 import { handleProviderError } from "./utils/error-handler"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
@@ -148,45 +147,12 @@ export class DeepSeekHandler extends OpenAiHandler {
 			throw handleProviderError(error, "DeepSeek")
 		}
 
-		let lastUsage
-
 		try {
-			for await (const chunk of stream) {
-				const delta = chunk.choices?.[0]?.delta ?? {}
-
-				// Handle reasoning_content from DeepSeek's interleaved thinking
-				// This is the proper way DeepSeek sends thinking content in streaming.
-				// It goes before the text: a delta carrying both is the end of the
-				// thinking followed by the start of the answer.
-				const reasoningText = extractReasoningFromDelta(delta)
-				if (reasoningText) {
-					yield { type: "reasoning", text: reasoningText }
-				}
-
-				// Handle regular text content
-				if (delta.content) {
-					yield {
-						type: "text",
-						text: delta.content,
-					}
-				}
-
-				// Handle tool calls
-				yield* emitToolCallChunks(delta)
-
-				// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state.
-				// DeepSeek may return "stop" or "tool_calls": both must trigger finalization (AP-6).
-				const finishReason = chunk.choices?.[0]?.finish_reason
-				yield* emitFinishReasonChunk(finishReason)
-
-				if (chunk.usage) {
-					lastUsage = chunk.usage
-				}
-			}
-
-			if (lastUsage) {
-				yield this.processUsageMetrics(lastUsage, modelInfo)
-			}
+			// DeepSeek sends its thinking in reasoning_content, before the answer
+			// text, and may finish with "stop" or "tool_calls" (AP-6).
+			yield* streamChatCompletion(stream, {
+				mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
+			})
 		} finally {
 			this.abortController = undefined
 		}

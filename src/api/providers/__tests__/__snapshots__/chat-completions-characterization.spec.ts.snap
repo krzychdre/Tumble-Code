@@ -159,16 +159,16 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
       "type": "reasoning",
     },
     {
+      "text": "</thi",
+      "type": "reasoning",
+    },
+    {
       "cacheReadTokens": 40,
       "cacheWriteTokens": undefined,
       "inputTokens": 100,
       "outputTokens": 4,
       "totalCost": 0.0000492,
       "type": "usage",
-    },
-    {
-      "text": "</thi",
-      "type": "reasoning",
     },
   ],
 }
