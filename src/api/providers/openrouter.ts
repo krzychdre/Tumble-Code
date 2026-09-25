@@ -124,7 +124,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		this.options = options
 
 		const baseURL = this.options.openRouterBaseUrl || "https://openrouter.ai/api/v1"
-		const apiKey = this.options.openRouterApiKey ?? "not-provided"
+		// `||`, not `??`: openai 7 rejects an empty key before sending, openai 5 did not.
+		const apiKey = this.options.openRouterApiKey || "not-provided"
 
 		this.client = new OpenAI({ baseURL, apiKey, defaultHeaders: DEFAULT_HEADERS, timeout: this.timeoutMs })
 

@@ -52,7 +52,8 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 		super()
 		this.options = options
 
-		const apiKey = this.options.xaiApiKey ?? "not-provided"
+		// `||`, not `??`: openai 7 rejects an empty key before sending, openai 5 did not.
+		const apiKey = this.options.xaiApiKey || "not-provided"
 
 		this.client = new OpenAI({
 			baseURL: "https://api.x.ai/v1",
