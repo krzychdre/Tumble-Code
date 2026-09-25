@@ -38,6 +38,40 @@ describe("handleProviderError", () => {
 			expect((result as any).status).toBe(500)
 		})
 
+		// Not every SDK names the HTTP status `status`. The retry loop, the chat error row and the
+		// background-model fallback only read `.status`, so the wrapper normalizes it.
+		it("should expose the Mistral SDK's statusCode as status", () => {
+			const error = Object.assign(new Error("Rate limited"), { statusCode: 429 })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(429)
+		})
+
+		it("should expose the ollama ResponseError's status_code as status", () => {
+			const error = Object.assign(new Error("model is too large"), { status_code: 400 })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(400)
+		})
+
+		it("should expose the AWS SDK's $metadata.httpStatusCode as status", () => {
+			const error = Object.assign(new Error("Access denied"), { $metadata: { httpStatusCode: 403 } })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(403)
+		})
+
+		it("should prefer an explicit numeric status over the other spellings", () => {
+			const error = Object.assign(new Error("Mixed"), { status: 429, statusCode: 500 })
+
+			const result = handleProviderError(error, providerName)
+
+			expect((result as any).status).toBe(429)
+		})
+
 		it("should not add status field if original error lacks it", () => {
 			const error = new Error("Generic error")
 
@@ -117,6 +151,14 @@ describe("handleProviderError", () => {
 
 			expect(result.message).toBe("Transformed: Rate limited")
 			expect((result as any).status).toBe(429)
+		})
+
+		it("should apply the transformer to non-Error exceptions too", () => {
+			const result = handleProviderError("socket hang up", providerName, {
+				messageTransformer: (msg) => `Transformed: ${msg}`,
+			})
+
+			expect(result.message).toBe("Transformed: socket hang up")
 		})
 	})
 
