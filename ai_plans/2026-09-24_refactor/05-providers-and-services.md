@@ -514,6 +514,26 @@ lines; 400 tests in 22 related specs. Found: the old `apply_diff` specs never re
 missing import was swallowed by `handleError`); a success-path test now covers it. Open (pre-existing): when
 streaming opened the diff for a truncated path and the final path differs, `execute()` does not reopen.
 
+### Phase 6 verification (2026-09-25)
+
+Full local run on main a40d26997 in a fresh worktree with its own `pnpm install`
+(`pnpm turbo run check-types lint test --continue --concurrency=3`): 38 of 38 tasks green; src 9,675 passed
+(37 skipped, 596 files), webview 1,692, cli 1,070, types 439, vscode-shim 408, cloud 304, core 178,
+agent-interchange 114, telemetry 31, build 17; `pnpm knip` exit 0. GitHub on the same commit: CodeQL, Nightly
+Publish, Cloud API (Python), Dependency audit (both dispatched) green; Code QA green except
+`platform-unit-test (windows-latest)`; the manually dispatched `vscode-e2e.yml` failed only in `providers/zai.test`
+(known since 2026-09-24). Follow-ups opened the same day:
+
+- vscode-e2e Z.ai timeout: FIXED in #338 (merge 6f7030210), test harness only. Root cause from a traced run: the
+  tool ran and the task posted the `completion_result` ask; since upstream e6ad7949d (#11817) a top-level task emits
+  `TaskCompleted` only after a `yesButtonClicked` answer, which nothing in the e2e suite sends. `waitUntilCompleted`
+  now also resolves on the task's final `completion_result` ask.
+- Windows `src` vitest dies silently after about 11 minutes (no summary, no error): first seen on 82047c3d7 (#327,
+  chokidar 5 and global-agent 4; its rerun passed), again on a40d26997. Under investigation.
+- Memory writers after a normal completion in the VS Code chat: the writers hang on `TaskCompleted`, which the chat
+  never triggers ("Start new task" clears the task as abandoned, and abandoned aborts skip the writers). Found while
+  fixing #338, under investigation.
+
 ## Performance (Phase 10; mechanism verified)
 
 The per-chunk work inside providers is linear (TagMatcher walks characters, SSE parsers keep only the leftover
