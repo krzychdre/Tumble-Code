@@ -1,6 +1,8 @@
 import * as path from "path"
 import mammoth from "mammoth"
 import fs from "fs/promises"
+import { existsSync } from "fs"
+import { pathToFileURL } from "url"
 import { isBinaryFile } from "isbinaryfile"
 import { extractTextFromXLSX } from "./extract-text-from-xlsx"
 import { readWithSlice } from "./indentation-reader"
@@ -25,7 +27,17 @@ function loadPdfParse(): Promise<typeof import("pdf-parse")> {
 			globals.DOMMatrix = class DOMMatrixStub {}
 		}
 		try {
-			return await import("pdf-parse")
+			const module = await import("pdf-parse")
+			// In the bundle the build copies pdf.js's worker next to
+			// dist/extension.js. pdf.js only finds it on its own when it
+			// thinks it runs in Node; VS Code's extension host is an Electron
+			// utility process, which pdf.js treats as a browser and then
+			// requires an explicit worker URL.
+			const bundledWorker = path.join(__dirname, "pdf.worker.mjs")
+			if (existsSync(bundledWorker)) {
+				module.PDFParse.setWorker(pathToFileURL(bundledWorker).href)
+			}
+			return module
 		} finally {
 			if (stubbed) {
 				delete globals.DOMMatrix

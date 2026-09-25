@@ -1,6 +1,7 @@
 import * as fs from "fs"
 import * as path from "path"
 import { execFileSync } from "child_process"
+import { createRequire } from "module"
 
 import { ViewsContainer, Views, Menus, Configuration, Keybindings, contributesSchema } from "./types.js"
 
@@ -161,6 +162,28 @@ export function copyWasms(srcDir: string, distDir: string): void {
 
 	// Copy esbuild-wasm files for custom tool transpilation (cross-platform).
 	copyEsbuildWasmFiles(nodeModulesDir, distDir)
+
+	copyPdfWorker(nodeModulesDir, distDir)
+}
+
+/**
+ * Copy the pdf.js worker next to the bundle.
+ *
+ * pdf-parse 2.x runs pdf.js 5, which loads "./pdf.worker.mjs" relative to the
+ * running bundle (dist/extension.js) with a dynamic import that esbuild cannot
+ * follow, and runs it in the same thread ("fake worker"). pdf.js rejects a
+ * worker of another version, so the file comes from the pdfjs-dist package
+ * pdf-parse itself depends on (resolved from pdf-parse's real location, as
+ * pnpm does not hoist pdfjs-dist into src/node_modules).
+ */
+export function copyPdfWorker(nodeModulesDir: string, distDir: string): void {
+	const requireFromPdfParse = createRequire(fs.realpathSync(path.join(nodeModulesDir, "pdf-parse", "package.json")))
+	const worker = requireFromPdfParse.resolve("pdfjs-dist/legacy/build/pdf.worker.mjs")
+
+	fs.mkdirSync(distDir, { recursive: true })
+	fs.copyFileSync(worker, path.join(distDir, "pdf.worker.mjs"))
+
+	console.log(`[copyWasms] Copied the pdf.js worker to ${distDir}`)
 }
 
 /**
