@@ -176,6 +176,14 @@ mentions with spaces unescaped (`escapeSpacesForMention` in core). JSON output c
 stream mode after stdin closes waits forever on `api_req_failed`, `mistake_limit_reached`,
 `auto_approval_max_req_reached` (only `completion_result`/`resume_completed_task` end it): own item, candidate for CLI-9.
 
+Slice 1 DONE #425 (merge ebabc1546): `packages/core/src/message-utils/toolPayload.ts` (`TOOL_PAYLOAD_KINDS` typed
+`Record` over `ClineSayTool` names, `describeToolPayload`, subject/diff/queries/scope/read-summary helpers) used by the
+webview `parseToolCached` and rows and by the CLI rows; parity table 34 tool names, 24 drifted on main (appliedDiff,
+legacy edit names, search scope, switchMode reason, newTask/finishTask shown as Switch Mode, raw internal titles for 9
+tools); dead snake_case names removed. Found, open: the CLI prints `say: "tool"` messages (readArtifact,
+searchTaskHistory, runSlashCommand) as raw JSON (fix in `useMessageHandlers`, CLI-9); the webview has no row for the
+`runParallelTasks` approval (missing in `TOOL_RENDERERS`); `toolDisplayOutput`/`toolDisplayName` are dead data.
+
 ### PKG-6 Turn the browser-safe part of `src/shared` into a real package
 
 `src/shared` is 2,856 lines in 26 files, imported 50 times by the webview. Move the pure modules (`tools.ts`
