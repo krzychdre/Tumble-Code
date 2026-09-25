@@ -302,7 +302,9 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		const config: GenerateContentConfig = {
 			systemInstruction,
 			httpOptions: this.options.googleGeminiBaseUrl ? { baseUrl: this.options.googleGeminiBaseUrl } : undefined,
-			thinkingConfig,
+			// The lowercase thinking level goes on the wire as before; the SDK's
+			// enum type is the only difference (see GeminiReasoningParams).
+			thinkingConfig: thinkingConfig as GenerateContentConfig["thinkingConfig"],
 			maxOutputTokens,
 			temperature: temperatureConfig,
 			...(tools.length > 0 ? { tools } : {}),
