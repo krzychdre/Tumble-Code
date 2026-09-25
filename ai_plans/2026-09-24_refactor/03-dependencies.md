@@ -300,6 +300,29 @@ public close; 2.x's waits for a silent server forever). `lmstudio-sdk-timeout.sp
 (rebased onto #323 by the coordinator): an older LM Studio now yields an empty list and a clear log instead of a
 hang. Open: the listing timeout is only logged (the user sees an empty model list, no popup).
 
+**Status (2026-09-25):** merged in sequence, lockfile consistent after each:
+- `@mistralai/mistralai` 1.9.18 to 2.7.0, #319 (`ef45bef7a`): real-SDK characterization (request snapshot,
+  chunk mapping, 429 via `getApiErrorStatus`, abort signal reaches `fetch`) unchanged. The bundle broke (2.x loads
+  an optional `@opentelemetry/api` tracing module): both OpenTelemetry packages are esbuild externals, the SDK
+  catches the missing module and tracing is a no-op (verified by running the bundle). 1.9.18 threw `ZodError`
+  mid-stream on unknown chunk types; 2.x passes them as `UNKNOWN` and the handler skips them.
+- `diff` 5.2.2 to 9.0.0 (and `@types/diff` dropped), #322 (`9a34da211`): every call site characterized first.
+  Regressions found and fixed: since 6, `parsePatch` validates hunk line counts and `sanitizeUnifiedDiff` turned
+  "\ No newline at end of file" into an empty line, so such patches (also stored ones) lost their +/- counts and
+  DiffView showed nothing (strict parse, then a retry without the empty lines, in both extension and webview);
+  CRLF patches keep `\r` per line (stripped in `parseUnifiedDiff`); 9 quotes non-ASCII file names with octal
+  escapes (`convertNewFileToUnifiedDiff` writes its own headers). Unavoidable output changes: deletion before
+  insertion on ties, no bogus "No newline" when emptying a file, lines with `\v`, `\f` or NEL count 1/1.
+- `pdf-parse` 1.1.1 to 2.4.5, #324 (`c8dd94729`): `sample.pdf` fixture text pinned on 1.x first. 1.x failed on
+  PDFs under about 4 KB in plain Node (CLI, vitest: "bad XRef entry", shared Buffer pool; fine in Electron) and its
+  dynamic `require` pulled four pdf.js versions into the bundle (dev bundle 33 MB to 23 MB, plus a 2.0 MB worker
+  file). pdf.js 5 needs `DOMMatrix` at load (from the native `@napi-rs/canvas`, not in the VSIX): `pdf-parse` is
+  loaded lazily with a temporary empty `DOMMatrix` stub (a test checks nothing leaks). `copyWasms` copies
+  `pdf.worker.mjs` into `dist/`, and `workerSrc` is set because the VS Code extension host (`process.type ===
+  "utility"`) looks like a browser to pdf.js ("No workerSrc" reproduced). Verified bundle-only in Node, Electron as
+  Node and Electron with `process.type = "utility"`. Only pinned change: pdf.js 5 inserts a space between two text
+  runs on one row.
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
