@@ -2,15 +2,11 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import {
-	internationalZAiModels,
-	mainlandZAiModels,
-	internationalZAiDefaultModelId,
-	mainlandZAiDefaultModelId,
 	type ModelInfo,
 	ZAI_DEFAULT_TEMPERATURE,
 	zaiApiLineConfigs,
-	providerModelDefinitions,
 	resolveCatalogModel,
+	zaiModelCatalog,
 } from "@roo-code/types"
 
 import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/api"
@@ -28,17 +24,6 @@ import { createRequestAbortController } from "./utils/request-abort"
 type ZAiChatCompletionParams = Omit<OpenAI.Chat.ChatCompletionCreateParamsStreaming, "reasoning_effort"> & {
 	thinking?: { type: "enabled" | "disabled" }
 	reasoning_effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
-}
-
-/** The Z.ai model list of the profile's API line: the mainland line has its own list and default. */
-function zaiModelCatalog(options: ApiHandlerOptions) {
-	const isChina = zaiApiLineConfigs[options.zaiApiLine ?? "international_coding"].isChina
-
-	return {
-		models: (isChina ? mainlandZAiModels : internationalZAiModels) as unknown as Record<string, ModelInfo>,
-		defaultModelId: (isChina ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId) as string,
-		unknownModelPolicy: providerModelDefinitions.zai.unknownModelPolicy,
-	}
 }
 
 /** The `{ id, info }` that `ZAiHandler.getModel()` reports, without building a handler. */

@@ -4,6 +4,7 @@ import {
 	type ProviderModelDefinition,
 	litellmDefaultModelId,
 	litellmDefaultModelInfo,
+	isVertexClaudeModel,
 	providerModelDefinitions,
 	resolveCatalogModel,
 } from "@roo-code/types"
@@ -132,8 +133,6 @@ const resolveByBuilding =
 
 		return { id, info }
 	}
-
-const isVertexClaudeModel = (options: ApiHandlerOptions) => options.apiModelId?.startsWith("claude") ?? false
 
 const buildBedrockHandler: RuntimeProviderFactory = (options) => new AwsBedrockHandler(options)
 const buildFakeAiHandler: RuntimeProviderFactory = (options) => new FakeAIHandler(options)
