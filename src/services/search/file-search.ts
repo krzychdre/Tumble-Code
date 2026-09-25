@@ -87,10 +87,14 @@ function getRipgrepSearchOptions(): string[] {
 	return extraArgs
 }
 
-export async function executeRipgrepForFiles(
-	workspacePath: string,
-	limit?: number,
-): Promise<{ path: string; type: "file" | "folder"; label?: string }[]> {
+/**
+ * Directories the file listing never descends into (the `-g` excludes below). A watcher
+ * event under one of them cannot change the list, so it does not invalidate the cache.
+ */
+const EXCLUDED_DIRECTORIES = ["node_modules", ".git", "out", "dist"]
+
+/** The ripgrep arguments and line limit of a workspace file listing, from the current settings. */
+function fileListingRequest(workspacePath: string, limit?: number): { args: string[]; limit: number } {
 	// Get limit from configuration if not provided
 	const effectiveLimit =
 		limit ?? vscode.workspace.getConfiguration(Package.name).get<number>("maximumIndexedFilesForFileSearch", 10000)
@@ -100,18 +104,166 @@ export async function executeRipgrepForFiles(
 		"--follow",
 		"--hidden",
 		...getRipgrepSearchOptions(),
-		"-g",
-		"!**/node_modules/**",
-		"-g",
-		"!**/.git/**",
-		"-g",
-		"!**/out/**",
-		"-g",
-		"!**/dist/**",
+		...EXCLUDED_DIRECTORIES.flatMap((dir) => ["-g", `!**/${dir}/**`]),
 		workspacePath,
 	]
 
-	return executeRipgrep({ args, workspacePath, limit: effectiveLimit })
+	return { args, limit: effectiveLimit }
+}
+
+export async function executeRipgrepForFiles(
+	workspacePath: string,
+	limit?: number,
+): Promise<{ path: string; type: "file" | "folder"; label?: string }[]> {
+	const request = fileListingRequest(workspacePath, limit)
+	return executeRipgrep({ args: request.args, workspacePath, limit: request.limit })
+}
+
+/**
+ * How long a cached workspace file list is trusted without any watcher event. The watcher
+ * (see `noteWorkspaceFileEvent`) is the main invalidation; this is the backstop for what it
+ * cannot see: `files.watcherExclude`, targets of followed symlinks, a global gitignore, a
+ * workspace root outside the watched folders.
+ */
+export const WORKSPACE_FILE_LIST_TTL_MS = 30_000
+
+/** Distinct workspace roots kept at once (a task can run in a directory of its own). */
+const MAX_CACHED_WORKSPACES = 8
+
+/** File names ripgrep reads ignore rules from: a change to one can change the whole list. */
+const IGNORE_FILE_NAMES = new Set([".gitignore", ".ignore", ".rgignore"])
+
+type FileSearchItem = { original: FileResult; searchStr: string }
+
+/**
+ * A walked file list plus its fuzzy finders. Building an `Fzf` converts every entry to code
+ * points, which on a large list costs more than the match itself, so a finder is built once
+ * per result limit and each query only runs `find` on it.
+ */
+class WorkspaceFileList {
+	private readonly finders = new Map<number, Fzf<FileSearchItem[]>>()
+
+	constructor(readonly items: FileSearchItem[]) {}
+
+	finder(limit: number): Fzf<FileSearchItem[]> {
+		let finder = this.finders.get(limit)
+		if (!finder) {
+			finder = new Fzf(this.items, {
+				selector: (item) => item.searchStr,
+				tiebreakers: [byLengthAsc],
+				limit,
+			})
+			this.finders.set(limit, finder)
+		}
+		return finder
+	}
+}
+
+interface CachedFileList {
+	/** The ripgrep arguments and limit the list was made with; other settings mean a new walk. */
+	requestKey: string
+	/** Pending while the walk runs, so concurrent queries on a cold cache share it. */
+	items: Promise<WorkspaceFileList>
+	/** `Infinity` until the walk finishes: a running walk never expires. */
+	expiresAt: number
+}
+
+/** Keyed by the resolved workspace root. Map order is insertion order, oldest first. */
+const workspaceFileLists = new Map<string, CachedFileList>()
+
+/**
+ * The file list of a workspace for the @-mention search, walked at most once per root until
+ * a watcher event or the time to live invalidates it. Every query used to spawn a full
+ * `rg --files` walk; the fuzzy match still runs per query, on this list.
+ */
+function getWorkspaceFileList(workspacePath: string): Promise<WorkspaceFileList> {
+	const root = path.resolve(workspacePath)
+	const request = fileListingRequest(workspacePath)
+	const requestKey = JSON.stringify(request)
+
+	const cached = workspaceFileLists.get(root)
+	if (cached && cached.requestKey === requestKey && Date.now() < cached.expiresAt) {
+		return cached.items
+	}
+
+	const entry: CachedFileList = {
+		requestKey,
+		items: Promise.resolve(new WorkspaceFileList([])),
+		expiresAt: Infinity,
+	}
+	entry.items = executeRipgrep({ args: request.args, workspacePath, limit: request.limit }).then(
+		(results) => {
+			// An event that arrived during the walk already removed this entry; the callers
+			// waiting on it still get the list, the next query walks again.
+			if (workspaceFileLists.get(root) === entry) {
+				entry.expiresAt = Date.now() + WORKSPACE_FILE_LIST_TTL_MS
+			}
+			return new WorkspaceFileList(
+				results.map((item) => ({ original: item, searchStr: `${item.path} ${item.label || ""}` })),
+			)
+		},
+		(error) => {
+			// A failed walk is not kept: the next query tries again.
+			if (workspaceFileLists.get(root) === entry) {
+				workspaceFileLists.delete(root)
+			}
+			throw error
+		},
+	)
+
+	workspaceFileLists.delete(root)
+	workspaceFileLists.set(root, entry)
+	if (workspaceFileLists.size > MAX_CACHED_WORKSPACES) {
+		const oldest = workspaceFileLists.keys().next().value
+		if (oldest !== undefined) {
+			workspaceFileLists.delete(oldest)
+		}
+	}
+
+	return entry.items
+}
+
+/**
+ * Tells the file list cache about a file system event, from the watcher `WorkspaceTracker`
+ * already runs for the whole workspace.
+ *
+ * - `create` / `delete` (a rename is both) drop the list of every cached root that contains
+ *   the path, unless the path is under a directory the listing excludes (a build writing
+ *   into `dist` or `node_modules` would otherwise empty the cache all the time).
+ * - `change` only matters for an ignore file; since a parent directory's ignore file
+ *   applies too, it drops every cached list.
+ */
+export function noteWorkspaceFileEvent(kind: "create" | "delete" | "change", fsPath: string): void {
+	if (workspaceFileLists.size === 0) {
+		return
+	}
+
+	if (IGNORE_FILE_NAMES.has(path.basename(fsPath))) {
+		workspaceFileLists.clear()
+		return
+	}
+
+	if (kind === "change") {
+		return
+	}
+
+	const changed = path.resolve(fsPath)
+	for (const root of Array.from(workspaceFileLists.keys())) {
+		const relative = path.relative(root, changed)
+		if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+			continue
+		}
+		const parentDirectories = relative.split(path.sep).slice(0, -1)
+		if (parentDirectories.some((dir) => EXCLUDED_DIRECTORIES.includes(dir))) {
+			continue
+		}
+		workspaceFileLists.delete(root)
+	}
+}
+
+/** Drops every cached workspace file list. */
+export function clearWorkspaceFileListCache(): void {
+	workspaceFileLists.clear()
 }
 
 export async function searchWorkspaceFiles(
@@ -120,29 +272,20 @@ export async function searchWorkspaceFiles(
 	limit: number = 20,
 ): Promise<{ path: string; type: "file" | "folder"; label?: string }[]> {
 	try {
-		// Get all files and directories (uses configured limit)
-		const allItems = await executeRipgrepForFiles(workspacePath)
+		// All files and directories (uses the configured limit), walked once per workspace
+		// and shared by the queries that follow.
+		const fileList = await getWorkspaceFileList(workspacePath)
 
 		// If no query, just return the top items
 		if (!query.trim()) {
-			return allItems.slice(0, limit)
+			return fileList.items.slice(0, limit).map((item) => ({ ...item.original }))
 		}
 
-		// Create search items for all files AND directories
-		const searchItems = allItems.map((item) => ({
-			original: item,
-			searchStr: `${item.path} ${item.label || ""}`,
-		}))
-
-		// Run fzf search on all items
-		const fzf = new Fzf(searchItems, {
-			selector: (item) => item.searchStr,
-			tiebreakers: [byLengthAsc],
-			limit: limit,
-		})
-
-		// Get all matching results from fzf
-		const fzfResults = fzf.find(query).map((result) => result.item.original)
+		// Run the fuzzy match for this query on the (cached) list
+		const fzfResults = fileList
+			.finder(limit)
+			.find(query)
+			.map((result) => result.item.original)
 
 		// Verify types of the shortest results
 		const verifiedResults = await Promise.all(
@@ -158,8 +301,8 @@ export async function searchWorkspaceFiles(
 						type: isDirectory ? ("folder" as const) : ("file" as const),
 					}
 				} catch {
-					// If path doesn't exist, keep original type
-					return result
+					// If path doesn't exist, keep original type (a copy: the original is cached)
+					return { ...result }
 				}
 			}),
 		)
