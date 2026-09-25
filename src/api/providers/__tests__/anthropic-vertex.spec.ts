@@ -10,6 +10,7 @@ import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@roo-code/types"
 
 import { ApiStreamChunk } from "../../transform/stream"
+import { calculateApiCostAnthropic } from "../../../shared/cost"
 
 import { AnthropicVertexHandler } from "../anthropic-vertex"
 
@@ -147,7 +148,7 @@ describe("VertexHandler", () => {
 				chunks.push(chunk)
 			}
 
-			expect(chunks.length).toBe(4)
+			expect(chunks.length).toBe(5)
 			expect(chunks[0]).toEqual({
 				type: "usage",
 				inputTokens: 10,
@@ -165,6 +166,13 @@ describe("VertexHandler", () => {
 				type: "usage",
 				inputTokens: 0,
 				outputTokens: 5,
+			})
+			// The handler prices the stream itself (API-2), like the Anthropic handler.
+			expect(chunks[4]).toEqual({
+				type: "usage",
+				inputTokens: 0,
+				outputTokens: 0,
+				totalCost: calculateApiCostAnthropic(handler.getModel().info, 10, 5, 0, 0).totalCost,
 			})
 
 			expect(mockCreate).toHaveBeenCalledWith(
@@ -359,7 +367,7 @@ describe("VertexHandler", () => {
 
 			// Verify usage information
 			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
-			expect(usageChunks).toHaveLength(2)
+			expect(usageChunks).toHaveLength(3)
 			expect(usageChunks[0]).toEqual({
 				type: "usage",
 				inputTokens: 10,
@@ -371,6 +379,12 @@ describe("VertexHandler", () => {
 				type: "usage",
 				inputTokens: 0,
 				outputTokens: 5,
+			})
+			expect(usageChunks[2]).toEqual({
+				type: "usage",
+				inputTokens: 0,
+				outputTokens: 0,
+				totalCost: calculateApiCostAnthropic(handler.getModel().info, 10, 5, 3, 2).totalCost,
 			})
 
 			// Verify text content

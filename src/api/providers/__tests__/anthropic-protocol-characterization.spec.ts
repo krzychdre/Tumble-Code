@@ -126,20 +126,16 @@ const CONVERSATION: Anthropic.Messages.MessageParam[] = [
 type HandlerCase = {
 	name: string
 	build: () => ApiHandler
-	// Whether the handler ends the stream with a usage chunk carrying totalCost.
-	yieldsTotalCost: boolean
 }
 
 const HANDLERS: HandlerCase[] = [
 	{
 		name: "Anthropic",
 		build: () => new AnthropicHandler({ apiKey: "test-key", apiModelId: "claude-sonnet-4-5" }),
-		yieldsTotalCost: true,
 	},
 	{
 		name: "MiniMax",
 		build: () => new MiniMaxHandler({ minimaxApiKey: "test-key", apiModelId: "MiniMax-M2.7" }),
-		yieldsTotalCost: true,
 	},
 	{
 		name: "Anthropic Vertex",
@@ -149,7 +145,6 @@ const HANDLERS: HandlerCase[] = [
 				vertexProjectId: "test-project",
 				vertexRegion: "us-east5",
 			}),
-		yieldsTotalCost: false,
 	},
 ]
 
@@ -167,20 +162,19 @@ describe("Anthropic-protocol handlers (API-2 characterization)", () => {
 		mockCreate.mockImplementation(async () => scriptedStream())
 	})
 
-	describe.each(HANDLERS)("$name", ({ build, yieldsTotalCost }) => {
+	describe.each(HANDLERS)("$name", ({ build }) => {
 		it("yields the pinned chunk list for the scripted stream", async () => {
 			const handler = build()
 			const chunks = await collect(handler, [{ role: "user", content: "Hi" }])
 
-			const expected: ApiStreamChunk[] = [...TOKEN_CHUNKS]
-			if (yieldsTotalCost) {
-				// Cost uses the cumulative message_delta output (120), not 1 + 120.
-				const { totalCost } = calculateApiCostAnthropic(handler.getModel().info, 1000, 120, 200, 300)
-				expect(totalCost).toBeGreaterThan(0)
-				expected.push({ type: "usage", inputTokens: 0, outputTokens: 0, totalCost })
-			}
+			// Every handler ends with the cost of the cumulative message_delta
+			// output (120), not 1 + 120. Vertex yielded no cost chunk before
+			// API-2: the task priced the summed usage chunks instead, counting
+			// the message_start output on top of the cumulative one.
+			const { totalCost } = calculateApiCostAnthropic(handler.getModel().info, 1000, 120, 200, 300)
+			expect(totalCost).toBeGreaterThan(0)
 
-			expect(chunks).toEqual(expected)
+			expect(chunks).toEqual([...TOKEN_CHUNKS, { type: "usage", inputTokens: 0, outputTokens: 0, totalCost }])
 		})
 
 		it("yields no cost chunk when the stream reports no usage at all", async () => {
