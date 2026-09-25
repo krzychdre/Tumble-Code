@@ -77,6 +77,11 @@ means: work through this list (one branch per item), then strike each line here.
   Open owner question from WEB-3: wire format for clearing the condense profile, memory writer profile and memory
   directory (proposal: send `""`, host treats it as unset).
 - Next phases: 8 to 11 in the roadmap above.
+- Phase 8 verification (2026-09-26): full local run on main a2e27cf54: 37 of 38 tasks green (src 9,652 passed, 37
+  skipped; webview 2,362; cli 1,264; types 603; core 466; vscode-shim 408; cloud 315; agent-interchange 114; telemetry
+  71; build 23); `tumble-code#check-types` failed on five imports #419 left unused in `anthropic.ts` and
+  `anthropic-vertex.ts` (check-unused-locals over `api/`), fixed in #439 (merge 78168126c). GitHub CI on main still
+  queued at that time.
 
 ## Request
 
