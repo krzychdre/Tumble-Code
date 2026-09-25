@@ -163,6 +163,19 @@ Each slice: a failing CLI test reproducing the bug, then the shared rule moves i
 deliberately), `useFollowupCountdown.test`, `ask-dispatcher.test`, `json-event-emitter-*.test`, `path.test`.
 **Size** M per slice, medium risk. After PKG-1 and PKG-6 where `src/shared` is involved.
 
+**Status (2026-09-25):** slices 2, 4, 5 DONE. Slice 2 #419 (merge 1509fffa4): the CLI gauge sizes models with the
+shared `resolvePortableProviderModel` (`packages/types/src/provider-model-selection.ts`, helpers moved out of the
+Anthropic, Vertex, Gemini, Z.ai handlers); five drifts fixed (unknown id got 200k instead of the provider default,
+DeepSeek aliases, Anthropic/Vertex 1M option, Ollama/LM Studio/LiteLLM fallback, DeepSeek fetched list); parity spec
+`src/api/__tests__/portable-model-resolution.spec.ts`; Bedrock stays approximate in the CLI. Slice 4 #421 (merge
+705a5e9f8): `parseFollowUpData`, `suggestionModeToSwitch` in `packages/types/src/followup.ts`, used by the four CLI
+sites, `useChatComposer` and `SubagentsPanel`; the CLI now switches mode on a suggestion like the webview. Slice 5 #424
+(merge f13c081ee): `textResponseAsks` in `packages/types/src/message.ts`; `arePathsEqual` in `packages/core/src/path`
+(src re-exports); dead CLI todo checklist parser and `TodoChangeDisplay.tsx` deleted; real bug fixed: CLI inserted file
+mentions with spaces unescaped (`escapeSpacesForMention` in core). JSON output cost: no drift left. Found, open: stdin
+stream mode after stdin closes waits forever on `api_req_failed`, `mistake_limit_reached`,
+`auto_approval_max_req_reached` (only `completion_result`/`resume_completed_task` end it): own item, candidate for CLI-9.
+
 ### PKG-6 Turn the browser-safe part of `src/shared` into a real package
 
 `src/shared` is 2,856 lines in 26 files, imported 50 times by the webview. Move the pure modules (`tools.ts`
