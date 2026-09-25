@@ -2,6 +2,25 @@ import { EventEmitter } from "events"
 
 import type { RooTerminalProcess, RooTerminalProcessEvents, ExitCodeDetails } from "./types"
 
+/**
+ * How often a running command hands its new output to the "line" listener, for
+ * every terminal backend. It matches the rate at which ExecuteCommandTool
+ * publishes partial command_output messages (it imports this constant), so the
+ * producer is neither faster than its consumer (work thrown away) nor slower
+ * (added latency). The backends used to disagree: 100 ms for the VS Code
+ * terminal and 500 ms for Execa, which made the CLI's live output visibly
+ * choppier than the extension's.
+ */
+export const TERMINAL_OUTPUT_THROTTLE_MS = 150
+
+/**
+ * The part of a terminal process that must behave the same whatever runs the
+ * command: the output buffer and what has been handed out of it, the throttled
+ * "line" events, continue() and the end of a run. Subclasses feed output in
+ * with appendOutput() and end a run with finishRun(); the contract spec
+ * (__tests__/TerminalCompletionContract.spec.ts) runs one set of cases
+ * against every backend.
+ */
 export abstract class BaseTerminalProcess extends EventEmitter<RooTerminalProcessEvents> implements RooTerminalProcess {
 	public command: string = ""
 
@@ -12,6 +31,9 @@ export abstract class BaseTerminalProcess extends EventEmitter<RooTerminalProces
 	protected lastEmitTime_ms: number = 0
 	protected fullOutput: string = ""
 	protected lastRetrievedIndex: number = 0
+	// Trailing edge of the throttle: output that arrived inside the window is
+	// handed out when the window closes, not when the command next prints.
+	private pendingEmitTimer: NodeJS.Timeout | undefined
 
 	static interpretExitCode(exitCode: number | undefined): ExitCodeDetails {
 		if (exitCode === undefined) {
@@ -115,27 +137,84 @@ export abstract class BaseTerminalProcess extends EventEmitter<RooTerminalProces
 	abstract run(command: string): Promise<void>
 
 	/**
-	 * Continues the process in the background.
-	 */
-	abstract continue(): void
-
-	/**
-	 * Aborts the process via a SIGINT.
+	 * Stops the command: Ctrl+C for the VS Code terminal, a group kill for Execa.
+	 * Must work after continue() too (the user timeout and task cancellation
+	 * abort commands that were moved to the background).
 	 */
 	abstract abort(): void
+
+	/**
+	 * Whether the command's output is complete, so a trailing partial line can
+	 * be handed out instead of being held back for the rest of the line.
+	 */
+	protected abstract isOutputEnded(): boolean
+
+	/**
+	 * Where, in output not handed out yet, the command's own output ends
+	 * because a backend marker follows (-1 when there is none).
+	 */
+	protected findOutputEnd(_pending: string): number {
+		return -1
+	}
+
+	/**
+	 * Turns a slice of the raw buffer into what callers see.
+	 */
+	protected cleanOutput(output: string): string {
+		return output
+	}
+
+	/**
+	 * Moves the command to the background: the caller is released, the
+	 * command keeps running, and output it prints from now on is left for
+	 * getEnvironmentDetails. Complete lines already received are handed to the
+	 * caller first, because it reports them as "output so far".
+	 */
+	public continue(): void {
+		this.emitRemainingBufferIfListening()
+		this.cancelPendingEmit()
+		this.isListening = false
+		this.removeAllListeners("line")
+		this.emit("continue")
+	}
 
 	/**
 	 * Checks if this process has unretrieved output.
 	 * @returns true if there is output that hasn't been fully retrieved yet
 	 */
-	abstract hasUnretrievedOutput(): boolean
+	public hasUnretrievedOutput(): boolean {
+		return this.lastRetrievedIndex < this.fullOutput.length
+	}
 
 	/**
 	 * Returns complete lines with their carriage returns.
-	 * The final line may lack a carriage return if the program didn't send one.
+	 * The final line may lack a carriage return if the program didn't send one;
+	 * it is only handed out once the output has ended (or a backend end marker
+	 * follows it).
 	 * @returns The unretrieved output
 	 */
-	abstract getUnretrievedOutput(): string
+	public getUnretrievedOutput(): string {
+		const pending = this.fullOutput.slice(this.lastRetrievedIndex)
+		let endIndex = this.findOutputEnd(pending)
+
+		if (endIndex === -1) {
+			if (this.isOutputEnded()) {
+				endIndex = pending.length
+			} else {
+				endIndex = pending.lastIndexOf("\n")
+
+				if (endIndex === -1) {
+					return ""
+				}
+
+				// Include the line feed.
+				endIndex++
+			}
+		}
+
+		this.lastRetrievedIndex += endIndex
+		return this.cleanOutput(pending.slice(0, endIndex))
+	}
 
 	/**
 	 * Clears the internal output buffer when all content has been retrieved.
@@ -152,6 +231,86 @@ export abstract class BaseTerminalProcess extends EventEmitter<RooTerminalProces
 			this.fullOutput = ""
 			this.lastRetrievedIndex = 0
 		}
+	}
+
+	/**
+	 * Adds a chunk of the command's output to the buffer and hands new complete
+	 * lines to the "line" listener, at most once per TERMINAL_OUTPUT_THROTTLE_MS.
+	 */
+	protected appendOutput(data: string): void {
+		this.fullOutput += data
+		this.scheduleEmit()
+		this.startHotTimer(data)
+	}
+
+	protected scheduleEmit(): void {
+		if (!this.isListening) {
+			return
+		}
+
+		const now = Date.now()
+		const elapsed = now - this.lastEmitTime_ms
+
+		if (this.lastEmitTime_ms === 0 || elapsed >= TERMINAL_OUTPUT_THROTTLE_MS) {
+			this.cancelPendingEmit()
+			this.emitRemainingBufferIfListening()
+			this.lastEmitTime_ms = now
+			return
+		}
+
+		if (!this.pendingEmitTimer) {
+			this.pendingEmitTimer = setTimeout(() => {
+				this.pendingEmitTimer = undefined
+				this.lastEmitTime_ms = Date.now()
+
+				try {
+					this.emitRemainingBufferIfListening()
+				} catch (error) {
+					// A timer callback has no caller to throw to.
+					console.error("[BaseTerminalProcess] failed to emit buffered output:", error)
+				}
+			}, TERMINAL_OUTPUT_THROTTLE_MS - elapsed)
+		}
+	}
+
+	private cancelPendingEmit(): void {
+		if (this.pendingEmitTimer) {
+			clearTimeout(this.pendingEmitTimer)
+			this.pendingEmitTimer = undefined
+		}
+	}
+
+	protected emitRemainingBufferIfListening(): void {
+		if (!this.isListening) {
+			return
+		}
+
+		const output = this.getUnretrievedOutput()
+
+		if (output !== "") {
+			this.emit("line", output)
+		}
+	}
+
+	/**
+	 * Hands a foreground caller everything it has not seen yet and stops the
+	 * throttle and the hot timer. The first half of ending a run; call it once
+	 * the output has ended, before reporting the exit.
+	 */
+	protected flushOutput(): void {
+		this.cancelPendingEmit()
+		this.emitRemainingBufferIfListening()
+		this.stopHotTimer()
+	}
+
+	/**
+	 * The second half of ending a run: report the output and release the
+	 * caller. Every backend ends a run with flushOutput(), then its exit
+	 * report, then this.
+	 */
+	protected finishRun(output: string | undefined): void {
+		this.emit("completed", output)
+		this.emit("continue")
 	}
 
 	protected startHotTimer(data: string) {

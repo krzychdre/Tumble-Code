@@ -336,6 +336,28 @@ export class TerminalRegistry {
 				terminal.taskId = undefined
 			}
 		})
+
+		this.pruneIdleExecaTerminals()
+	}
+
+	/**
+	 * Drops Execa terminals nothing refers to any more: no task, not running a
+	 * command, and no finished command whose output the model has not seen.
+	 * An Execa terminal is only bookkeeping (it holds no OS resource) and its
+	 * isClosed() is always false, so getAllTerminals() never removes it; the
+	 * CLI, which only uses Execa terminals, kept every one it ever created.
+	 * A busy terminal aborted above is pruned by a later release, once it has
+	 * finished and its output has been read.
+	 */
+	private static pruneIdleExecaTerminals(): void {
+		this.terminals = this.terminals.filter(
+			(t) =>
+				t.provider !== "execa" ||
+				t.taskId !== undefined ||
+				t.busy ||
+				t.process !== undefined ||
+				t.getProcessesWithOutput().length > 0,
+		)
 	}
 
 	private static getAllTerminals(): RooTerminal[] {

@@ -1,4 +1,5 @@
 import { execa, ExecaError } from "execa"
+import * as os from "os"
 import psTree from "ps-tree"
 import process from "process"
 
@@ -171,51 +172,18 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 					break
 				}
 
-				this.fullOutput += line
-
-				const now = Date.now()
-
-				if (this.isListening && (now - this.lastEmitTime_ms > 500 || this.lastEmitTime_ms === 0)) {
-					this.emitRemainingBufferIfListening()
-					this.lastEmitTime_ms = now
-				}
-
-				this.startHotTimer(line)
+				this.appendOutput(line)
 			}
 
 			if (this.aborted) {
-				let timeoutId: NodeJS.Timeout | undefined
-
-				const kill = new Promise<void>((resolve) => {
-					console.log(`[ExecaTerminalProcess#run] SIGKILL -> ${this.pid}`)
-
-					timeoutId = setTimeout(() => {
-						try {
-							this.subprocess?.kill("SIGKILL")
-						} catch (e) {}
-
-						resolve()
-					}, 5_000)
-				})
-
-				try {
-					await Promise.race([this.subprocess, kill])
-				} catch (error) {
-					console.log(
-						`[ExecaTerminalProcess#run] subprocess termination error: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-
-				if (timeoutId) {
-					clearTimeout(timeoutId)
-				}
+				exitDetails = await this.waitForAbortedSubprocess()
+			} else {
+				exitDetails = { exitCode: 0 }
 			}
-
-			exitDetails = { exitCode: 0 }
 		} catch (error) {
 			if (error instanceof ExecaError) {
 				console.error(`[ExecaTerminalProcess#run] shell execution error: ${error.message}`)
-				exitDetails = { exitCode: error.exitCode ?? 0, signalName: error.signal }
+				exitDetails = ExecaTerminalProcess.exitDetailsFromError(error)
 			} else {
 				console.error(
 					`[ExecaTerminalProcess#run] shell execution error: ${error instanceof Error ? error.message : String(error)}`,
@@ -242,12 +210,84 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		this.outputEnded = true
 		// Hand a foreground caller everything first, so only output nobody has
 		// seen yet (a command moved to the background) is left to be queued.
-		this.emitRemainingBufferIfListening()
-		this.stopHotTimer()
+		this.flushOutput()
 		this.completeShellExecution(exitDetails)
-		this.emit("completed", this.fullOutput)
-		this.emit("continue")
+		this.finishRun(this.fullOutput)
 		this.subprocess = undefined
+	}
+
+	/**
+	 * After abort() the output loop stops at the next chunk, but the command
+	 * may not be gone yet: wait for it (force-killing it after 5 s) and report
+	 * how it really ended. A command that was killed is reported as killed; it
+	 * used to come out as { exitCode: 0 }, which the model and the CLI's JSON
+	 * stream read as success.
+	 */
+	private async waitForAbortedSubprocess(): Promise<ExitCodeDetails> {
+		let timeoutId: NodeJS.Timeout | undefined
+
+		const kill = new Promise<undefined>((resolve) => {
+			console.log(`[ExecaTerminalProcess#run] SIGKILL -> ${this.pid}`)
+
+			timeoutId = setTimeout(() => {
+				try {
+					this.subprocess?.kill("SIGKILL")
+				} catch (e) {}
+
+				resolve(undefined)
+			}, 5_000)
+		})
+
+		try {
+			const result = await Promise.race([this.subprocess, kill])
+
+			// It finished on its own before the kill landed.
+			if (typeof result?.exitCode === "number") {
+				return BaseTerminalProcess.interpretExitCode(result.exitCode)
+			}
+		} catch (error) {
+			if (error instanceof ExecaError) {
+				return ExecaTerminalProcess.exitDetailsFromError(error)
+			}
+
+			console.log(
+				`[ExecaTerminalProcess#run] subprocess termination error: ${error instanceof Error ? error.message : String(error)}`,
+			)
+		} finally {
+			if (timeoutId) {
+				clearTimeout(timeoutId)
+			}
+		}
+
+		return ExecaTerminalProcess.killedExitDetails("SIGKILL")
+	}
+
+	/**
+	 * Execa reports a command killed by a signal with `exitCode` undefined and
+	 * the signal's name. Report it the way the VS Code terminal does (through
+	 * interpretExitCode, as the shell's 128 + signal number), so both backends
+	 * describe the same end the same way.
+	 */
+	private static exitDetailsFromError(error: ExecaError): ExitCodeDetails {
+		if (typeof error.exitCode === "number") {
+			return BaseTerminalProcess.interpretExitCode(error.exitCode)
+		}
+
+		if (error.signal) {
+			return ExecaTerminalProcess.killedExitDetails(error.signal)
+		}
+
+		return { exitCode: 1 }
+	}
+
+	private static killedExitDetails(signalName: string): ExitCodeDetails {
+		const signal = os.constants.signals[signalName as NodeJS.Signals]
+
+		if (typeof signal === "number") {
+			return BaseTerminalProcess.interpretExitCode(128 + signal)
+		}
+
+		return { exitCode: 1, signalName }
 	}
 
 	/**
@@ -266,12 +306,6 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		} else {
 			this.emit("shell_execution_complete", exitDetails)
 		}
-	}
-
-	public override continue() {
-		this.isListening = false
-		this.removeAllListeners("line")
-		this.emit("continue")
 	}
 
 	public override abort() {
@@ -344,44 +378,7 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 		}
 	}
 
-	public override hasUnretrievedOutput() {
-		return this.lastRetrievedIndex < this.fullOutput.length
-	}
-
-	public override getUnretrievedOutput() {
-		let output = this.fullOutput.slice(this.lastRetrievedIndex)
-
-		if (this.outputEnded) {
-			this.lastRetrievedIndex = this.fullOutput.length
-			return output
-		}
-
-		let index = output.lastIndexOf("\n")
-
-		if (index === -1) {
-			return ""
-		}
-
-		index++
-		this.lastRetrievedIndex += index
-
-		// console.log(
-		// 	`[ExecaTerminalProcess#getUnretrievedOutput] fullOutput.length=${this.fullOutput.length} lastRetrievedIndex=${this.lastRetrievedIndex}`,
-		// 	output.slice(0, index),
-		// )
-
-		return output.slice(0, index)
-	}
-
-	private emitRemainingBufferIfListening() {
-		if (!this.isListening) {
-			return
-		}
-
-		const output = this.getUnretrievedOutput()
-
-		if (output !== "") {
-			this.emit("line", output)
-		}
+	protected override isOutputEnded(): boolean {
+		return this.outputEnded
 	}
 }
