@@ -366,3 +366,12 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   now compiles (bailouts 12 to 11). Found: the create payload keeps `allowedMcpServers` after unchecking the mcp
   group; `hasRulesToExport` never shown; `groupsError` unreachable; the `acquireVsCodeApi` stub in
   `SettingsView.unsaved-changes.spec.tsx` is assigned after hoisted imports.
+- 2026-09-25 WEB-7 DONE (except ChatRow/ChatView, pending WEB-2b) #405 (`c6839ee0e`): `utils/extensionBus.ts`, one
+  window listener, `onExtensionMessage`/`useExtensionMessage`, `request()` correlated only where the host already
+  echoes an id (`searchFiles`, `requestProviderModels`); context, App, useProviderModels moved (useProviderModels now
+  compiles: bailouts 11 to 10). #406 (`e3df24144`): `useProviderModels` on one react-query cache (two consumers, one
+  request; `staleTime: Infinity`, `gcTime: 0`, `networkMode: "always"` for offline Ollama). #407 (`c86c32db7`): 28
+  listeners in 26 files moved; production window listeners 33 to 3 (bus, ChatRow, ChatView); a guard spec fails on any
+  new direct listener. Behavior deltas: empty MarketplaceView visibility listener removed; MarketplaceViewStateManager
+  no longer resets on foreign postMessages without a string `type`. `CommandExecution.spec` now dispatches real
+  MessageEvents. Open: `ExtensionMessage` lacks `planReview`; ChatTextArea file search could use `request()`.
