@@ -290,6 +290,16 @@ same way on any reply it cannot validate). A timeout guard with a clear error (a
 `LMStudioClient`, which leaks sockets today) goes first as `fix/lmstudio-sdk-timeout`; #321 follows. 2.0 also stops
 forcing `gpuSplitConfig "evenly"` on preload (LM Studio's own GPU settings apply) and sends `guest:<random>`.
 
+**Status (2026-09-25):** guard DONE in #323 (`72a29cdd6`, on SDK 1.2.0): every @lmstudio/sdk call in
+`fetchers/lmstudio.ts` is bounded (listing 10 s per call, measured 22 to 25 ms for a first list against the fake
+server; model load has no total limit but fails after 60 s without progress, each progress report restarts the
+wait; on timeout the load is cancelled server-side, `showErrorMessage` shows it and the task still starts; the
+`/v1/models` axios check got a timeout), and the per-call client's WebSockets are closed directly (1.2.0 has no
+public close; 2.x's waits for a silent server forever). `lmstudio-sdk-timeout.spec` with the shared
+`fake-lmstudio-server.ts` (HTTP plus WebSocket) failed 7 of 8 first. Then `@lmstudio/sdk` 2.0.0 DONE in #321
+(rebased onto #323 by the coordinator): an older LM Studio now yields an empty list and a clear log instead of a
+hang. Open: the listing timeout is only logged (the user sees an empty model list, no popup).
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
