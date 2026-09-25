@@ -1,20 +1,15 @@
-import { useCallback, useMemo } from "react"
+import { useMemo } from "react"
 import { Trans } from "react-i18next"
 import { Checkbox } from "vscrui"
 import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import type { ProviderSettings } from "@roo-code/types"
-
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
-import { inputEventTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
+import { type ProviderFormProps, useProviderField } from "./shared"
 
-type LMStudioProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
-}
+type LMStudioProps = ProviderFormProps
 
 export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudioProps) => {
 	const { t } = useAppTranslation()
@@ -23,16 +18,7 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 		baseUrl: apiConfiguration.lmStudioBaseUrl,
 	})
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	// Check if the selected model exists in the fetched models
 	const modelNotAvailableError = useMemo(() => {

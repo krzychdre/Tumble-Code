@@ -1,15 +1,11 @@
 import { useMemo } from "react"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
-import type { ProviderSettings } from "@roo-code/types"
-
 import { validateBedrockArn } from "@src/utils/validate"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { type ProviderFormProps } from "./shared"
 
-type BedrockCustomArnProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
-}
+type BedrockCustomArnProps = ProviderFormProps
 
 export const BedrockCustomArn = ({ apiConfiguration, setApiConfigurationField }: BedrockCustomArnProps) => {
 	const { t } = useAppTranslation()

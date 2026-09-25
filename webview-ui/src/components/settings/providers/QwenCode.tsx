@@ -1,11 +1,9 @@
 import React from "react"
 import { VSCodeTextField, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 
-import { type ProviderSettings } from "@roo-code/types"
+import { type ProviderFormProps } from "./shared"
 
-interface QwenCodeProps {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
+type QwenCodeProps = ProviderFormProps & {
 	simplifySettings?: boolean
 }
 

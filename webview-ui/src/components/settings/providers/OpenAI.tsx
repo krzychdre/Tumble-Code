@@ -1,18 +1,15 @@
-import { useCallback, useState } from "react"
+import { useState } from "react"
 import { Checkbox } from "vscrui"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import type { ModelInfo, ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StandardTooltip } from "@src/components/ui"
 
-import { inputEventTransform } from "../transforms"
+import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
 
-type OpenAIProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
+type OpenAIProps = ProviderFormProps & {
 	selectedModelInfo?: ModelInfo
 	simplifySettings?: boolean
 }
@@ -24,16 +21,7 @@ export const OpenAI = ({ apiConfiguration, setApiConfigurationField, selectedMod
 		!!apiConfiguration?.openAiNativeBaseUrl,
 	)
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	return (
 		<>
@@ -59,22 +47,14 @@ export const OpenAI = ({ apiConfiguration, setApiConfigurationField, selectedMod
 					/>
 				</>
 			)}
-			<VSCodeTextField
-				value={apiConfiguration?.openAiNativeApiKey || ""}
-				type="password"
-				onInput={handleInputChange("openAiNativeApiKey")}
-				placeholder={t("settings:placeholders.apiKey")}
-				className="w-full">
-				<label className="block font-medium mb-1">{t("settings:providers.openAiApiKey")}</label>
-			</VSCodeTextField>
-			<div className="text-sm text-vscode-descriptionForeground -mt-2">
-				{t("settings:providers.apiKeyStorageNotice")}
-			</div>
-			{!apiConfiguration?.openAiNativeApiKey && (
-				<VSCodeButtonLink href="https://platform.openai.com/api-keys" appearance="secondary">
-					{t("settings:providers.getOpenAiApiKey")}
-				</VSCodeButtonLink>
-			)}
+			<ApiKeyField
+				apiConfiguration={apiConfiguration}
+				setApiConfigurationField={setApiConfigurationField}
+				field="openAiNativeApiKey"
+				labelKey="settings:providers.openAiApiKey"
+				getKeyUrl="https://platform.openai.com/api-keys"
+				getKeyLabelKey="settings:providers.getOpenAiApiKey"
+			/>
 
 			{(() => {
 				const allowedTiers = (selectedModelInfo?.tiers?.map((t) => t.name).filter(Boolean) || []).filter(

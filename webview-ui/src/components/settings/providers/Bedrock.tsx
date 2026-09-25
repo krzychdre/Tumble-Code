@@ -1,9 +1,8 @@
-import { useCallback, useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Checkbox } from "vscrui"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import {
-	type ProviderSettings,
 	type ModelInfo,
 	type BedrockServiceTier,
 	BEDROCK_REGIONS,
@@ -15,11 +14,10 @@ import {
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StandardTooltip } from "@src/components/ui"
 
-import { inputEventTransform, noTransform } from "../transforms"
+import { noTransform } from "../transforms"
+import { type ProviderFormProps, useProviderField } from "./shared"
 
-type BedrockProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
+type BedrockProps = ProviderFormProps & {
 	selectedModelInfo?: ModelInfo
 	simplifySettings?: boolean
 }
@@ -46,16 +44,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 		setAwsEndpointSelected(!!apiConfiguration?.awsBedrockEndpointEnabled)
 	}, [apiConfiguration?.awsBedrockEndpointEnabled])
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	return (
 		<>

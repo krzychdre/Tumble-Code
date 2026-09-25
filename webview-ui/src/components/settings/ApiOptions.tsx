@@ -62,7 +62,7 @@ import {
 } from "@src/components/ui"
 
 import { MODELS_BY_PROVIDER, PROVIDERS } from "./constants"
-import { inputEventTransform, noTransform } from "./transforms"
+import { noTransform } from "./transforms"
 import { ModelPicker } from "./ModelPicker"
 import { renderProviderForm } from "./provider-ui-registry"
 import { ApiErrorMessage } from "./ApiErrorMessage"
@@ -74,17 +74,14 @@ import { TemperatureControl } from "./TemperatureControl"
 import { RateLimitSecondsControl } from "./RateLimitSecondsControl"
 import { ConsecutiveMistakeLimitControl } from "./ConsecutiveMistakeLimitControl"
 import { BedrockCustomArn } from "./providers/BedrockCustomArn"
+import { type SetApiConfigurationField, useProviderField } from "./providers/shared"
 import { buildDocLink } from "@src/utils/docLinks"
 import { BookOpenText } from "lucide-react"
 
 export interface ApiOptionsProps {
 	uriScheme: string | undefined
 	apiConfiguration: ProviderSettings
-	setApiConfigurationField: <K extends keyof ProviderSettings>(
-		field: K,
-		value: ProviderSettings[K],
-		isUserAction?: boolean,
-	) => void
+	setApiConfigurationField: SetApiConfigurationField
 	fromWelcomeView?: boolean
 	errorMessage: string | undefined
 	setErrorMessage: React.Dispatch<React.SetStateAction<string | undefined>>
@@ -134,16 +131,7 @@ const ApiOptions = ({
 
 	const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false)
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	const {
 		provider: selectedProvider,

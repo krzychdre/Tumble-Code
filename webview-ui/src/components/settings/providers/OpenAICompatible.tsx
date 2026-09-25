@@ -3,7 +3,6 @@ import { Checkbox } from "vscrui"
 import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import {
-	type ProviderSettings,
 	type ModelInfo,
 	type ReasoningEffort,
 	type OrganizationAllowList,
@@ -16,18 +15,13 @@ import { Button, StandardTooltip } from "@src/components/ui"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { convertHeadersToObject } from "../utils/headers"
-import { inputEventTransform, noTransform } from "../transforms"
+import { noTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
 import { R1FormatSetting } from "../R1FormatSetting"
 import { ThinkingBudget } from "../ThinkingBudget"
+import { type ProviderFormProps, useProviderField } from "./shared"
 
-type OpenAICompatibleProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: <K extends keyof ProviderSettings>(
-		field: K,
-		value: ProviderSettings[K],
-		isUserAction?: boolean,
-	) => void
+type OpenAICompatibleProps = ProviderFormProps & {
 	organizationAllowList: OrganizationAllowList
 	modelValidationError?: string
 	simplifySettings?: boolean
@@ -108,16 +102,7 @@ export const OpenAICompatible = ({
 		return () => clearTimeout(timer)
 	}, [customHeaders, setApiConfigurationField])
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	return (
 		<>

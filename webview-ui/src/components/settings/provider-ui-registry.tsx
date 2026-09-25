@@ -23,12 +23,7 @@ import {
 	XAI,
 	ZAi,
 } from "./providers"
-
-type SetApiConfigurationField = <K extends keyof ProviderSettings>(
-	field: K,
-	value: ProviderSettings[K],
-	isUserAction?: boolean,
-) => void
+import type { SetApiConfigurationField } from "./providers/shared"
 
 export type ProviderFormRenderContext = {
 	apiConfiguration: ProviderSettings

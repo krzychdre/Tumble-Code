@@ -1,32 +1,18 @@
-import { useCallback } from "react"
-import { VSCodeTextField, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 
-import { type ProviderSettings, zaiApiLineConfigs, zaiApiLineSchema } from "@roo-code/types"
+import { zaiApiLineConfigs, zaiApiLineSchema } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
-import { inputEventTransform } from "../transforms"
 import { cn } from "@/lib/utils"
+import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
 
-type ZAiProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
-}
+type ZAiProps = ProviderFormProps
 
 export const ZAi = ({ apiConfiguration, setApiConfigurationField }: ZAiProps) => {
 	const { t } = useAppTranslation()
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	return (
 		<>
@@ -49,30 +35,19 @@ export const ZAi = ({ apiConfiguration, setApiConfigurationField }: ZAiProps) =>
 					{t("settings:providers.zaiEntrypointDescription")}
 				</div>
 			</div>
-			<div>
-				<VSCodeTextField
-					value={apiConfiguration?.zaiApiKey || ""}
-					type="password"
-					onInput={handleInputChange("zaiApiKey")}
-					placeholder={t("settings:placeholders.apiKey")}
-					className="w-full">
-					<label className="block font-medium mb-1">{t("settings:providers.zaiApiKey")}</label>
-				</VSCodeTextField>
-				<div className="text-sm text-vscode-descriptionForeground">
-					{t("settings:providers.apiKeyStorageNotice")}
-				</div>
-				{!apiConfiguration?.zaiApiKey && (
-					<VSCodeButtonLink
-						href={
-							zaiApiLineConfigs[apiConfiguration.zaiApiLine ?? "international_coding"].isChina
-								? "https://open.bigmodel.cn/console/overview"
-								: "https://z.ai/manage-apikey/apikey-list"
-						}
-						appearance="secondary">
-						{t("settings:providers.getZaiApiKey")}
-					</VSCodeButtonLink>
-				)}
-			</div>
+			<ApiKeyField
+				apiConfiguration={apiConfiguration}
+				setApiConfigurationField={setApiConfigurationField}
+				field="zaiApiKey"
+				labelKey="settings:providers.zaiApiKey"
+				getKeyUrl={
+					zaiApiLineConfigs[apiConfiguration.zaiApiLine ?? "international_coding"].isChina
+						? "https://open.bigmodel.cn/console/overview"
+						: "https://z.ai/manage-apikey/apikey-list"
+				}
+				getKeyLabelKey="settings:providers.getZaiApiKey"
+				grouped
+			/>
 		</>
 	)
 }

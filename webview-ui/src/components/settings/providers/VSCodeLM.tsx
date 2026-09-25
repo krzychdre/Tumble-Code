@@ -1,16 +1,14 @@
 import { useCallback, useMemo } from "react"
 
-import type { ProviderSettings, ModelInfo } from "@roo-code/types"
+import type { ModelInfo } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { ModelPicker } from "../ModelPicker"
+import { type ProviderFormProps } from "./shared"
 
-type VSCodeLMProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
-}
+type VSCodeLMProps = ProviderFormProps
 
 export const VSCodeLM = ({ apiConfiguration, setApiConfigurationField }: VSCodeLMProps) => {
 	const { t } = useAppTranslation()

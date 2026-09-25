@@ -1,6 +1,6 @@
 import React from "react"
 
-import { type ProviderSettings, openAiCodexDefaultModelId, openAiCodexModels } from "@roo-code/types"
+import { openAiCodexDefaultModelId, openAiCodexModels } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button } from "@src/components/ui"
@@ -8,10 +8,9 @@ import { vscode } from "@src/utils/vscode"
 
 import { ModelPicker } from "../ModelPicker"
 import { OpenAICodexRateLimitDashboard } from "./OpenAICodexRateLimitDashboard"
+import { type ProviderFormProps } from "./shared"
 
-interface OpenAICodexProps {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
+type OpenAICodexProps = ProviderFormProps & {
 	simplifySettings?: boolean
 	openAiCodexIsAuthenticated?: boolean
 }
