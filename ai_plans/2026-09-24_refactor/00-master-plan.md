@@ -37,16 +37,16 @@ origin/main`, type one of `test`, `fix`, `refactor`, `chore`, `docs`);
 One list of everything found but not done; details sit in the named status paragraph. "Take care of the leftovers"
 means: work through this list (one branch per item), then strike each line here.
 
-- Windows CI: `src` vitest dies silently after about 11 min on `platform-unit-test (windows-latest)` (since #327,
-  twice in a row on a40d26997); a helper was investigating on branch `fix/windows-src-vitest-silent-exit`. Check that
-  branch and its PR first. (`05` Phase 6 verification)
-- Memory writers: closing VS Code or the CLI on the final `completion_result` ask still skips them;
+- ~~Windows CI: `src` vitest dies silently~~ DONE: not a crash, two assertion failures hidden by the truncated
+  `gh run view --log`; the runner's 8.3 short TEMP path vs `fs.promises.realpath`. Fixed in #341 (merge 99d28803c),
+  its Windows job passed in 20 min. The debug branch `debug/windows-src-vitest-timing` is still on the remote.
+- Memory writers: closing VS Code or the CLI on the final `completion_result` ask still skips them (WON'T FIX, owner decision 15);
   `hasMemoryWritesSince` reads a `toolUses` field messages never have; chat completions never reach
   `captureTaskCompleted` telemetry; the CLI never answers `completion_result`. (`ai_plans/2026-09-25_memory-writers-after-completion.md` on main)
 - SVC-8: one write-guard flag covers both MCP settings files (a global write masks a project edit for 600 ms). (`05` SVC-8)
 - SVC-10: workspace folders added later get a code-index manager only lazily. (`05` SVC-10)
 - SVC-9: `deletePointsByMultipleFilePaths` untested; the query prefix is also applied to indexed code. (`05` SVC-9)
-- SVC-11: gitignored `.roo` dirs are never found by the subfolder scan (the owner's `~/.gitignore` ignores `.roo`): needs an owner decision. (`05` SVC-11)
+- ~~SVC-11: gitignored `.roo` dirs are never found by the subfolder scan~~ WON'T FIX: owner decision 13, the scan keeps respecting gitignore.
 - SVC-12: `@`-mention search still spawns `rg` per query; `handleError` sends the serialized error with its stack to the model. (`05` SVC-12)
 - SVC-17: a diff opened for a truncated path during streaming is not reopened when the final path differs. (`05` SVC-17)
 - Earlier open owner questions (retry policy for 400/401, dispose leak, stale DeepSeek catalog) in `05` Phase 5 statuses.
