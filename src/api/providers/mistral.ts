@@ -132,7 +132,7 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 					yield { type: "text", text: delta.content }
 				} else if (Array.isArray(delta.content)) {
 					// Handle array of content chunks
-					// The SDK v1.9.18 supports ThinkChunk with type "thinking"
+					// The SDK types ThinkChunk (type "thinking"); unknown chunk types are skipped
 					for (const chunk of delta.content as ContentChunkWithThinking[]) {
 						if (chunk.type === "thinking" && chunk.thinking) {
 							// Handle thinking content as reasoning chunks
@@ -226,7 +226,8 @@ export class MistralHandler extends BaseProvider implements SingleCompletionHand
 				temperature,
 			})
 
-			const content = response.choices?.[0]?.message.content
+			// SDK 2.x types the choice's message as optional.
+			const content = response.choices?.[0]?.message?.content
 			const usage = aiSdkCompletionUsage(response.usage)
 
 			if (Array.isArray(content)) {

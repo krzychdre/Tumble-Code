@@ -1,0 +1,75 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`MistralHandler against the real @mistralai/mistralai client (wire characterization) > sends the same streaming chat request 1`] = `
+{
+  "max_tokens": 8192,
+  "messages": [
+    {
+      "content": "You are helpful.",
+      "role": "system",
+    },
+    {
+      "content": [
+        {
+          "text": "Open a.ts",
+          "type": "text",
+        },
+        {
+          "image_url": {
+            "url": "data:image/png;base64,iVBORw0KGgo=",
+          },
+          "type": "image_url",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "content": "Opening.",
+      "prefix": false,
+      "role": "assistant",
+      "tool_calls": [
+        {
+          "function": {
+            "arguments": "{"path":"a.ts"}",
+            "name": "read_file",
+          },
+          "id": "call5019f",
+          "index": 0,
+          "type": "function",
+        },
+      ],
+    },
+    {
+      "content": "export const a = 1",
+      "role": "tool",
+      "tool_call_id": "call5019f",
+    },
+  ],
+  "model": "magistral-medium-latest",
+  "stream": true,
+  "temperature": 1,
+  "tool_choice": "any",
+  "tools": [
+    {
+      "function": {
+        "description": "Read a file",
+        "name": "read_file",
+        "parameters": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "File path",
+              "type": "string",
+            },
+          },
+          "required": [
+            "path",
+          ],
+          "type": "object",
+        },
+      },
+      "type": "function",
+    },
+  ],
+}
+`;

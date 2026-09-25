@@ -27,6 +27,16 @@ describe.each([false, true])("extension build options (production: %s)", (produc
 		)
 	})
 
+	// @mistralai/mistralai 2.x reaches `@opentelemetry/api` through a dynamic
+	// import inside a try/catch (an optional peer: tracing is a no-op without
+	// it). The package is not installed, so bundling it fails the build; kept
+	// external, the require throws at runtime and the SDK falls back to no-op.
+	it("release keeps the optional OpenTelemetry peers of the Mistral SDK external", () => {
+		expect(release.external).toEqual(
+			expect.arrayContaining(["@opentelemetry/api", "@opentelemetry/semantic-conventions"]),
+		)
+	})
+
 	it("nightly externalizes every module the release externalizes", () => {
 		expect(nightly.external).toEqual(expect.arrayContaining(release.external))
 	})
