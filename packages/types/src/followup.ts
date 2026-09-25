@@ -45,6 +45,55 @@ export const hasUsableAnswer = (suggestion: unknown): suggestion is SuggestionIt
 export const firstUsableSuggestion = (suggestions: unknown): (SuggestionItem & { answer: string }) | undefined =>
 	Array.isArray(suggestions) ? suggestions.find(hasUsableAnswer) : undefined
 
+/** A suggestion that can be offered: a usable answer and, when valid, a mode slug. */
+export type UsableSuggestion = { answer: string; mode?: string }
+
+/**
+ * The question and the offerable suggestions of a follow-up ask's text, read
+ * the same way everywhere. The text is unvalidated model output: anything but
+ * a JSON object yields no question and no suggestions, a question that is not
+ * a string is dropped, suggestions without a usable answer are dropped, and a
+ * mode that is not a non-empty string is dropped.
+ */
+export function parseFollowUpData(text: string | undefined): { question?: string; suggestions: UsableSuggestion[] } {
+	let data: unknown
+
+	try {
+		data = JSON.parse(text ?? "")
+	} catch {
+		return { suggestions: [] }
+	}
+
+	if (typeof data !== "object" || data === null || Array.isArray(data)) {
+		return { suggestions: [] }
+	}
+
+	const { question, suggest } = data as { question?: unknown; suggest?: unknown }
+	const suggestions = (Array.isArray(suggest) ? suggest.filter(hasUsableAnswer) : []).map(({ answer, mode }) =>
+		typeof mode === "string" && mode.length > 0 ? { answer, mode } : { answer },
+	)
+
+	return typeof question === "string" ? { question, suggestions } : { suggestions }
+}
+
+/**
+ * The mode to switch to when a suggestion is chosen, if any. A manual choice
+ * always switches to the suggestion's mode; an automatic one (a countdown or a
+ * timeout default) only when mode switches are auto-approved.
+ */
+export function suggestionModeToSwitch(
+	suggestion: { mode?: unknown },
+	choice: { manual: boolean; alwaysAllowModeSwitch?: boolean },
+): string | undefined {
+	const { mode } = suggestion
+
+	if (typeof mode !== "string" || mode.length === 0) {
+		return undefined
+	}
+
+	return choice.manual || choice.alwaysAllowModeSwitch ? mode : undefined
+}
+
 /**
  * Zod schema for SuggestionItem
  */

@@ -13,8 +13,8 @@ import {
 	XCircle,
 } from "lucide-react"
 
-import type { ClineMessage, ExtensionMessage, FollowUpData, SubagentSummary } from "@roo-code/types"
-import { hasUsableAnswer } from "@roo-code/types"
+import type { ClineMessage, ExtensionMessage, SubagentSummary } from "@roo-code/types"
+import { parseFollowUpData } from "@roo-code/types"
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger, StandardTooltip } from "@/components/ui"
 import { cn } from "@/lib/utils"
@@ -77,7 +77,7 @@ function tailEntryFor(message: ClineMessage): { kind: "markdown" | "dim" | "erro
 	}
 	switch (message.ask) {
 		case "followup":
-			return { kind: "markdown", text: parseFollowUp(text).question ?? text }
+			return { kind: "markdown", text: parseFollowUpData(text).question ?? text }
 		case "tool":
 			return { kind: "label", text: toolLabel(text) }
 		case "command":
@@ -102,15 +102,6 @@ function toolLabel(text: string): string {
 		return `${tool}${path}`
 	} catch {
 		return "tool"
-	}
-}
-
-function parseFollowUp(text: string): FollowUpData {
-	try {
-		const parsed = JSON.parse(text)
-		return typeof parsed === "object" && parsed !== null ? (parsed as FollowUpData) : {}
-	} catch {
-		return {}
 	}
 }
 
@@ -223,11 +214,8 @@ const SubagentTail = ({ summary }: { summary: SubagentSummary }) => {
 		return undefined
 	}, [awaitingInput, messages])
 
-	const pendingFollowUp = pendingAsk?.ask === "followup" ? parseFollowUp(pendingAsk.text ?? "") : undefined
-	// Hide suggestions with a blank, missing or non-string answer (weak models emit them).
-	const usableSuggestions = Array.isArray(pendingFollowUp?.suggest)
-		? pendingFollowUp.suggest.filter(hasUsableAnswer)
-		: []
+	// Suggestions with a blank, missing or non-string answer are dropped (weak models emit them).
+	const usableSuggestions = pendingAsk?.ask === "followup" ? parseFollowUpData(pendingAsk.text).suggestions : []
 	const pendingPermission =
 		pendingAsk && (pendingAsk.ask === "tool" || pendingAsk.ask === "command" || pendingAsk.ask === "use_mcp_server")
 			? pendingAsk

@@ -23,8 +23,9 @@ import {
 	isInteractiveAsk,
 	isResumableAsk,
 	isNonBlockingAsk,
-	firstUsableSuggestion,
-	hasUsableAnswer,
+	type UsableSuggestion,
+	parseFollowUpData,
+	suggestionModeToSwitch,
 } from "@roo-code/types"
 import { debugLog } from "@roo-code/core/cli"
 
@@ -291,32 +292,26 @@ export class AskDispatcher {
 	 * Handle followup questions - prompt for text input with suggestions.
 	 */
 	private async handleFollowupQuestion(ts: number, text: string): Promise<AskHandleResult> {
-		let question = text
-		let suggestions: Array<{ answer: string; mode?: string | null }> = []
-
-		try {
-			const data = JSON.parse(text)
-			question = data.question || text
-			// Only suggestions with a usable answer are offered (and numbered);
-			// a blank one must never become the default reply.
-			suggestions = Array.isArray(data.suggest) ? data.suggest.filter(hasUsableAnswer) : []
-		} catch {
-			// Use raw text if not JSON
-		}
+		// Read by the rule shared with the webview: only suggestions with a
+		// usable answer are offered (and numbered), so a blank one never
+		// becomes the default reply.
+		const parsed = parseFollowUpData(text)
+		const question = parsed.question || text
+		const suggestions = parsed.suggestions
 
 		this.outputManager.output("\n[question]", question)
 
 		if (suggestions.length > 0) {
 			this.outputManager.output("\nSuggested answers:")
 			suggestions.forEach((suggestion, index) => {
-				const suggestionText = suggestion.answer || String(suggestion)
 				const modeHint = suggestion.mode ? ` (mode: ${suggestion.mode})` : ""
-				this.outputManager.output(`  ${index + 1}. ${suggestionText}${modeHint}`)
+				this.outputManager.output(`  ${index + 1}. ${suggestion.answer}${modeHint}`)
 			})
 			this.outputManager.output("")
 		}
 
-		const defaultAnswer = firstUsableSuggestion(suggestions)?.answer ?? ""
+		const defaultSuggestion = suggestions[0]
+		const defaultAnswer = defaultSuggestion?.answer ?? ""
 
 		if (this.nonInteractive) {
 			// Use timeout prompt in non-interactive mode
@@ -329,14 +324,13 @@ export class AskDispatcher {
 				defaultAnswer,
 			)
 
-			let responseText = result.value.trim()
-			responseText = this.resolveNumberedSuggestion(responseText, suggestions)
-
 			if (result.timedOut || result.cancelled) {
 				this.outputManager.output(`[Using default: ${defaultAnswer || "(empty)"}]`)
+				this.sendFollowupAnswer(defaultAnswer, defaultSuggestion, false)
+			} else {
+				this.sendTypedFollowupAnswer(result.value.trim(), suggestions)
 			}
 
-			this.sendFollowupResponse(responseText)
 			return { handled: true, response: "messageResponse" }
 		}
 
@@ -348,14 +342,11 @@ export class AskDispatcher {
 					: "Your answer: ",
 			)
 
-			let responseText = answer.trim()
-			responseText = this.resolveNumberedSuggestion(responseText, suggestions)
-
-			this.sendFollowupResponse(responseText)
+			this.sendTypedFollowupAnswer(answer.trim(), suggestions)
 			return { handled: true, response: "messageResponse" }
 		} catch {
 			this.outputManager.output(`[Using default: ${defaultAnswer || "(empty)"}]`)
-			this.sendFollowupResponse(defaultAnswer)
+			this.sendFollowupAnswer(defaultAnswer, defaultSuggestion, false)
 			return { handled: true, response: "messageResponse" }
 		}
 	}
@@ -645,21 +636,35 @@ export class AskDispatcher {
 	}
 
 	/**
-	 * Resolve a numbered suggestion selection.
+	 * Answer with what the user typed: a suggestion's number picks that
+	 * suggestion (a manual choice), anything else is sent as is.
 	 */
-	private resolveNumberedSuggestion(
-		input: string,
-		suggestions: Array<{ answer: string; mode?: string | null }>,
-	): string {
+	private sendTypedFollowupAnswer(input: string, suggestions: UsableSuggestion[]): void {
 		const num = parseInt(input, 10)
-		if (!isNaN(num) && num >= 1 && num <= suggestions.length) {
-			const selectedSuggestion = suggestions[num - 1]
-			if (selectedSuggestion) {
-				const selected = selectedSuggestion.answer || String(selectedSuggestion)
-				this.outputManager.output(`Selected: ${selected}`)
-				return selected
-			}
+		const selected = !isNaN(num) && num >= 1 && num <= suggestions.length ? suggestions[num - 1] : undefined
+
+		if (selected) {
+			this.outputManager.output(`Selected: ${selected.answer}`)
+			this.sendFollowupAnswer(selected.answer, selected, true)
+		} else {
+			this.sendFollowupAnswer(input, undefined, true)
 		}
-		return input
+	}
+
+	/**
+	 * Send a follow-up answer, switching first to the chosen suggestion's mode
+	 * by the rule the webview follows. In non-interactive mode every action,
+	 * mode switches included, is auto-approved.
+	 */
+	private sendFollowupAnswer(answer: string, suggestion: UsableSuggestion | undefined, manual: boolean): void {
+		const mode = suggestion
+			? suggestionModeToSwitch(suggestion, { manual, alwaysAllowModeSwitch: this.nonInteractive })
+			: undefined
+
+		if (mode) {
+			this.sendMessage({ type: "mode", text: mode })
+		}
+
+		this.sendFollowupResponse(answer)
 	}
 }
