@@ -61,6 +61,18 @@ const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value
 		latestOnChangeRef.current = onChange
 	})
 
+	// The effects below read one value without re-running when it changes: the reconciliation effect
+	// runs only on a host-side change (re-running it on a local edit would overwrite the edit with a
+	// `value` the host has not echoed yet), and the flush timer is not restarted by a `value` change.
+	// These refs hold the values of the current render; this effect is declared first, so it has
+	// already run when they read the refs in the same commit.
+	const latestCachedRef = useRef(cachedAllowedMcpServers)
+	const latestValueRef = useRef(value)
+	useEffect(() => {
+		latestCachedRef.current = cachedAllowedMcpServers
+		latestValueRef.current = value
+	})
+
 	// Reseed when the user switches to a different mode.
 	useEffect(() => {
 		if (lastSlugRef.current !== slug) {
@@ -74,12 +86,11 @@ const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value
 	// External-edit reconciliation.
 	useEffect(() => {
 		if (lastSlugRef.current !== slug) return
-		if (arraysEqualOrBothUndefined(value, cachedAllowedMcpServers)) return
+		if (arraysEqualOrBothUndefined(value, latestCachedRef.current)) return
 		if (arraysEqualOrBothUndefined(value, lastFlushedRef.current)) return
 		setCachedAllowedMcpServers(value)
 		lastFlushedRef.current = value
 		isInitialMountRef.current = true
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [value, slug])
 
 	// Debounced flush: 150 ms after the last local edit, persist to host.
@@ -88,7 +99,7 @@ const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value
 			isInitialMountRef.current = false
 			return
 		}
-		if (arraysEqualOrBothUndefined(cachedAllowedMcpServers, value)) {
+		if (arraysEqualOrBothUndefined(cachedAllowedMcpServers, latestValueRef.current)) {
 			return
 		}
 		const handle = setTimeout(() => {
@@ -96,7 +107,6 @@ const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value
 			latestOnChangeRef.current(cachedAllowedMcpServers)
 		}, 150)
 		return () => clearTimeout(handle)
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [cachedAllowedMcpServers])
 
 	const isRestricted = cachedAllowedMcpServers !== undefined
