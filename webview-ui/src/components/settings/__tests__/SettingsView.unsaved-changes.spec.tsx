@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { vi, describe, it, expect, beforeEach } from "vitest"
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
 
@@ -166,7 +166,11 @@ vi.mock("@src/components/ui", () => ({
 
 // Mock ModesView and McpView since they're rendered during indexing
 vi.mock("@src/components/modes/ModesView", () => ({
-	default: () => null,
+	default: ({ onSelectApiConfiguration }: { onSelectApiConfiguration?: (name: string) => void }) => (
+		<button data-testid="modes-select-profile" onClick={() => onSelectApiConfiguration?.("other-profile")}>
+			Select profile in Modes
+		</button>
+	),
 }))
 
 vi.mock("@src/components/mcp/McpView", () => ({
@@ -242,6 +246,7 @@ vi.mock("../SettingsSearch", () => ({
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import ApiOptions from "../ApiOptions"
+import { vscode } from "@src/utils/vscode"
 
 describe("SettingsView - Unsaved Changes Detection", () => {
 	let queryClient: QueryClient
@@ -593,6 +598,102 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 
 		// No dialog should appear
 		expect(screen.queryByText("settings:unsavedChangesDialog.title")).not.toBeInTheDocument()
+	})
+
+	describe("API profile picked in the Modes tab", () => {
+		// ModesView is a tab of SettingsView and has its own API profile picker. Loading
+		// another profile changes currentApiConfigName, and the profile-switch effect then
+		// overwrites the whole Save buffer and clears the unsaved flag. The Providers tab
+		// asks first (discard dialog); the Modes tab must do the same.
+		const EditableApiOptions = ({ setApiConfigurationField }: any) => (
+			<div data-testid="api-options">
+				<button onClick={() => setApiConfigurationField("apiModelId", "user-edit")} data-testid="edit-model">
+					Edit
+				</button>
+			</div>
+		)
+
+		// The acquireVsCodeApi stub above is assigned after the hoisted imports, so the
+		// vscode wrapper never sees it; spy on the wrapper itself.
+		let postMessageSpy: ReturnType<typeof vi.spyOn>
+		const loadProfileCalls = () =>
+			postMessageSpy.mock.calls.filter(([message]) => (message as any)?.type === "loadApiConfiguration")
+
+		beforeEach(() => {
+			vi.mocked(ApiOptions).mockImplementation(EditableApiOptions)
+			postMessageSpy = vi.spyOn(vscode, "postMessage").mockImplementation(() => {})
+		})
+
+		afterEach(() => {
+			postMessageSpy.mockRestore()
+		})
+
+		const editThenPickProfileInModesTab = async () => {
+			render(
+				<QueryClientProvider client={queryClient}>
+					<SettingsView onDone={vi.fn()} />
+				</QueryClientProvider>,
+			)
+			fireEvent.click(screen.getByTestId("edit-model"))
+			await waitFor(() => expect((screen.getByTestId("save-button") as HTMLButtonElement).disabled).toBe(false))
+
+			fireEvent.click(screen.getByTestId("tab-modes"))
+			fireEvent.click(await screen.findByTestId("modes-select-profile"))
+		}
+
+		it("a loaded profile (new currentApiConfigName) replaces the Save buffer and clears the unsaved flag", async () => {
+			// Why the question matters: once the host has loaded the profile, the edits are gone
+			// without any prompt and the Save button goes grey.
+			const view = render(
+				<QueryClientProvider client={queryClient}>
+					<SettingsView onDone={vi.fn()} />
+				</QueryClientProvider>,
+			)
+			fireEvent.click(screen.getByTestId("edit-model"))
+			await waitFor(() => expect((screen.getByTestId("save-button") as HTMLButtonElement).disabled).toBe(false))
+			;(useExtensionState as any).mockReturnValue({ ...defaultExtensionState, currentApiConfigName: "other" })
+			view.rerender(
+				<QueryClientProvider client={queryClient}>
+					<SettingsView onDone={vi.fn()} />
+				</QueryClientProvider>,
+			)
+
+			await waitFor(() => expect((screen.getByTestId("save-button") as HTMLButtonElement).disabled).toBe(true))
+		})
+
+		it("asks before discarding unsaved edits and loads the profile only on confirm", async () => {
+			await editThenPickProfileInModesTab()
+
+			await waitFor(() => expect(screen.getByText("settings:unsavedChangesDialog.title")).toBeInTheDocument())
+			expect(loadProfileCalls()).toHaveLength(0)
+
+			fireEvent.click(screen.getByText("settings:unsavedChangesDialog.discardButton"))
+
+			expect(loadProfileCalls()).toEqual([[{ type: "loadApiConfiguration", text: "other-profile" }]])
+		})
+
+		it("keeps the unsaved edits and the current profile when the user cancels", async () => {
+			await editThenPickProfileInModesTab()
+
+			await waitFor(() => expect(screen.getByText("settings:unsavedChangesDialog.title")).toBeInTheDocument())
+			fireEvent.click(screen.getByText("settings:unsavedChangesDialog.cancelButton"))
+
+			expect(loadProfileCalls()).toHaveLength(0)
+			expect((screen.getByTestId("save-button") as HTMLButtonElement).disabled).toBe(false)
+		})
+
+		it("loads the profile at once when nothing is unsaved", async () => {
+			render(
+				<QueryClientProvider client={queryClient}>
+					<SettingsView onDone={vi.fn()} />
+				</QueryClientProvider>,
+			)
+			fireEvent.click(screen.getByTestId("tab-modes"))
+			fireEvent.click(await screen.findByTestId("modes-select-profile"))
+
+			expect(screen.queryByText("settings:unsavedChangesDialog.title")).not.toBeInTheDocument()
+			expect(loadProfileCalls()).toEqual([[{ type: "loadApiConfiguration", text: "other-profile" }]])
+		})
 	})
 
 	describe("settings import signal (settingsImportedAt)", () => {
