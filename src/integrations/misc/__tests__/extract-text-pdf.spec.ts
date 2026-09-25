@@ -1,7 +1,8 @@
 // Characterization of PDF text extraction (read_file on a .pdf) with the real
 // pdf-parse and a committed fixture: a hand-written three-page PDF (Helvetica,
 // WinAnsi) with two items on one row, accented Latin-1 text and 45 short rows.
-// Written before DEP-6 (pdf-parse 1.x to 2.x) and expected to pass unchanged.
+// Written before DEP-6 (pdf-parse 1.x to 2.x); passes unchanged on 2.x except
+// where a comment says otherwise.
 
 import * as path from "path"
 
@@ -15,12 +16,14 @@ const rows = Array.from(
 )
 
 // Every page starts with a blank line pair; items on the same row are joined
-// without a separator, a new row starts a new line.
+// without a tab, a new row starts a new line.
 const expectedLines = [
 	"",
 	"",
 	"Hello from the PDF fixture.",
-	"Second line: 42 apples, 7 pears.Same row, right column",
+	// pdf.js 5 (pdf-parse 2.x) adds a space for the gap between two items on
+	// one row; pdf.js 1.10 (pdf-parse 1.x) glued them: "pears.Same row".
+	"Second line: 42 apples, 7 pears. Same row, right column",
 	"",
 	"Page two starts here.",
 	"Café crème brûlée (WinAnsi)",
@@ -39,7 +42,7 @@ describe("PDF text extraction (pdf-parse)", () => {
 			" 1 | ",
 			" 2 | ",
 			" 3 | Hello from the PDF fixture.",
-			" 4 | Second line: 42 apples, 7 pears.Same row, right column",
+			" 4 | Second line: 42 apples, 7 pears. Same row, right column",
 			" 5 | ",
 			" 6 | Page two starts here.",
 			" 7 | Café crème brûlée (WinAnsi)",
@@ -66,6 +69,17 @@ describe("PDF text extraction (pdf-parse)", () => {
 		const tiny = path.join(__dirname, "fixtures", "tiny.pdf")
 
 		expect(await extractTextFromFile(tiny)).toBe(addLineNumbers("\n\nA tiny PDF under 4 KB."))
+	})
+
+	// pdf.js 5 builds a DOMMatrix when it loads; Node has none and the VSIX has
+	// no @napi-rs/canvas to borrow one from, so extract-text sets an empty
+	// stand-in for the load only.
+	it("loads pdf.js without a global DOMMatrix and leaves none behind", async () => {
+		expect((globalThis as { DOMMatrix?: unknown }).DOMMatrix).toBeUndefined()
+
+		await extractTextFromFile(fixture)
+
+		expect((globalThis as { DOMMatrix?: unknown }).DOMMatrix).toBeUndefined()
 	})
 
 	it("rejects a file that is not a PDF", async () => {

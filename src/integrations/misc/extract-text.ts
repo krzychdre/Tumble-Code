@@ -1,6 +1,4 @@
 import * as path from "path"
-// @ts-ignore-next-line
-import pdf from "pdf-parse/lib/pdf-parse"
 import mammoth from "mammoth"
 import fs from "fs/promises"
 import { isBinaryFile } from "isbinaryfile"
@@ -8,10 +6,47 @@ import { extractTextFromXLSX } from "./extract-text-from-xlsx"
 import { readWithSlice } from "./indentation-reader"
 import { DEFAULT_LINE_LIMIT } from "../../core/prompts/tools/native-tools/read_file"
 
+let pdfParse: Promise<typeof import("pdf-parse")> | undefined
+
+/**
+ * Loads pdf-parse on the first PDF read, not at extension activation.
+ *
+ * Its bundled pdf.js 5 builds a `DOMMatrix` when the module loads. Node has no
+ * DOMMatrix; pdf.js borrows one from the optional native `@napi-rs/canvas`,
+ * which the VSIX does not ship, so the load would throw. Text extraction never
+ * uses the matrix (only canvas rendering does), so an empty stand-in is set
+ * for the load and removed right after.
+ */
+function loadPdfParse(): Promise<typeof import("pdf-parse")> {
+	pdfParse ??= (async () => {
+		const globals = globalThis as { DOMMatrix?: unknown }
+		const stubbed = globals.DOMMatrix === undefined
+		if (stubbed) {
+			globals.DOMMatrix = class DOMMatrixStub {}
+		}
+		try {
+			return await import("pdf-parse")
+		} finally {
+			if (stubbed) {
+				delete globals.DOMMatrix
+			}
+		}
+	})()
+	return pdfParse
+}
+
 async function extractTextFromPDF(filePath: string): Promise<string> {
-	const dataBuffer = await fs.readFile(filePath)
-	const data = await pdf(dataBuffer)
-	return addLineNumbers(data.text)
+	const { PDFParse } = await loadPdfParse()
+	const parser = new PDFParse({ data: await fs.readFile(filePath) })
+	try {
+		// No tab between items on one row, as pdf-parse 1.x.
+		const { pages } = await parser.getText({ cellSeparator: "" })
+		// pdf-parse 1.x started every page with a blank line pair and had no
+		// page markers; keep that text (and so the line numbers) unchanged.
+		return addLineNumbers(pages.map((page) => `\n\n${page.text}`).join(""))
+	} finally {
+		await parser.destroy()
+	}
 }
 
 async function extractTextFromDOCX(filePath: string): Promise<string> {
