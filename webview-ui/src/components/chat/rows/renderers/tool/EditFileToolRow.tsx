@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next"
 import { FileDiff, MessageSquarePlus } from "lucide-react"
 
+import { toolPayloadDiffText } from "@roo-code/core/browser"
+
 import { vscode } from "@src/utils/vscode"
 import CodeAccordion from "@src/components/common/CodeAccordion"
 import { BatchDiffApproval } from "@src/components/chat/BatchDiffApproval"
@@ -26,7 +28,7 @@ export const EditFileToolRow = ({ message, tool, isExpanded, toggleExpand }: Too
 	}
 
 	// Unified diff content (provided by backend when relevant)
-	const unifiedDiff = (tool.content ?? tool.diff) as string | undefined
+	const unifiedDiff = toolPayloadDiffText(tool)
 	const onJumpToCreatedFile =
 		tool.tool === "newFileCreated" && tool.path
 			? () => vscode.postMessage({ type: "openFile", text: "./" + tool.path })
@@ -83,7 +85,7 @@ export const EditFileToolRow = ({ message, tool, isExpanded, toggleExpand }: Too
 /** Inserted content (the legacy insert_content tool). */
 export const InsertContentToolRow = ({ message, tool, isExpanded, toggleExpand }: ToolRendererProps) => {
 	const { t } = useTranslation()
-	const unifiedDiff = (tool.content ?? tool.diff) as string | undefined
+	const unifiedDiff = toolPayloadDiffText(tool)
 
 	return (
 		<>

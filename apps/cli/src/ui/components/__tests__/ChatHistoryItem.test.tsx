@@ -55,7 +55,7 @@ describe("ChatHistoryItem", () => {
 		it("sanitizes tabs in tool messages with parsed content", () => {
 			// Tool messages parse JSON content to extract fields like 'content'.
 			// Use execute_command so the output is rendered via ResultRow
-			// (read_file shows "Read N lines" summary, not the raw content).
+			// (readFile shows "Read N lines" summary, not the raw content).
 			const message: TUIMessage = {
 				id: "4",
 				role: "tool",
@@ -211,11 +211,11 @@ describe("ChatHistoryItem", () => {
 				id: "4",
 				role: "tool",
 				content: JSON.stringify({
-					tool: "read_file",
+					tool: "readFile",
 					path: "test.txt",
 					content: "line one\nline two\nline three",
 				}),
-				toolName: "read_file",
+				toolName: "readFile",
 				toolDisplayName: "Read File",
 			}
 
@@ -232,8 +232,8 @@ describe("ChatHistoryItem", () => {
 			const message: TUIMessage = {
 				id: "5",
 				role: "tool",
-				content: JSON.stringify({ tool: "read_file", path: "src/test.ts", content: "file content" }),
-				toolName: "read_file",
+				content: JSON.stringify({ tool: "readFile", path: "src/test.ts", content: "file content" }),
+				toolName: "readFile",
 				toolDisplayName: "Read File",
 			}
 
@@ -265,12 +265,12 @@ describe("ChatHistoryItem", () => {
 				id: "7",
 				role: "tool",
 				content: JSON.stringify({
-					tool: "read_file",
+					tool: "readFile",
 					path: "/etc/hosts",
 					isOutsideWorkspace: true,
 					content: "hosts file",
 				}),
-				toolName: "read_file",
+				toolName: "readFile",
 				toolDisplayName: "Read File",
 			}
 
@@ -326,8 +326,8 @@ describe("ChatHistoryItem", () => {
 			const message: TUIMessage = {
 				id: "11",
 				role: "tool",
-				content: JSON.stringify({ tool: "search_files" }),
-				toolName: "search_files",
+				content: JSON.stringify({ tool: "searchFiles" }),
+				toolName: "searchFiles",
 				toolDisplayName: "Search Files",
 				toolDisplayOutput: "search results",
 			}
@@ -414,27 +414,6 @@ describe("ChatHistoryItem", () => {
 
 			expect(expanded).toContain("line 30")
 			expect(expanded).not.toContain("+20 lines")
-		})
-
-		it("renders ask_followup_question tool with CompletionTool renderer", () => {
-			const message: TUIMessage = {
-				id: "13",
-				role: "tool",
-				content: JSON.stringify({ tool: "ask_followup_question", question: "What color would you like?" }),
-				toolName: "ask_followup_question",
-				toolDisplayName: "Question",
-				toolDisplayOutput: "❓ What color would you like?",
-				toolData: {
-					tool: "ask_followup_question",
-					question: "What color would you like?",
-				},
-			}
-
-			const { lastFrame } = render(<ChatHistoryItem message={message} />)
-			const output = lastFrame()
-
-			// CompletionTool renders the question content via Markdown
-			expect(output).toContain("What color would you like?")
 		})
 	})
 })

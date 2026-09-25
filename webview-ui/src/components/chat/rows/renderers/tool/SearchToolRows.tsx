@@ -1,5 +1,7 @@
 import { Trans } from "react-i18next"
 
+import { toolPayloadQueriesText, toolPayloadSearchScope } from "@roo-code/core/browser"
+
 import CodeAccordion from "@src/components/common/CodeAccordion"
 
 import { headerStyle, toolIcon } from "../shared"
@@ -29,7 +31,7 @@ export const CodebaseSearchToolRow = ({ tool }: ToolRendererProps) => (
 
 /** A web search, with the queries it runs. */
 export const WebSearchToolRow = ({ message, tool }: ToolRendererProps) => {
-	const queries = Array.isArray(tool.queries) ? tool.queries.join(", ") : ""
+	const queries = toolPayloadQueriesText(tool)
 	return (
 		<div style={headerStyle}>
 			{toolIcon("search")}
@@ -89,7 +91,7 @@ export const SearchFilesToolRow = ({ message, tool, isExpanded, toggleExpand }: 
 		</div>
 		<div className="pl-6">
 			<CodeAccordion
-				path={tool.path! + (tool.filePattern ? `/(${tool.filePattern})` : "")}
+				path={toolPayloadSearchScope(tool)}
 				code={tool.content}
 				language="shellsession"
 				isExpanded={isExpanded}

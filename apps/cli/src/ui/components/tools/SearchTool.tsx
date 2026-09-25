@@ -1,5 +1,7 @@
 import { Box, Text } from "ink"
 
+import { toolPayloadSearchScope } from "@roo-code/core/cli"
+
 import * as theme from "../../theme.js"
 import Bullet from "../primitives/Bullet.js"
 import ResultRow, { ElbowGutter } from "../primitives/ResultRow.js"
@@ -15,7 +17,8 @@ export function SearchTool({ toolData, message, expanded = false }: ToolRenderer
 	const maxResultLines = expanded ? Number.POSITIVE_INFINITY : MAX_RESULT_LINES
 	const regex = toolData.regex || ""
 	const query = toolData.query || ""
-	const filePattern = toolData.filePattern || ""
+	// Where it looked: `path/(filePattern)`, as the webview row labels it.
+	const scope = toolPayloadSearchScope(toolData)
 	const content = toolData.content ? sanitizeContent(toolData.content) : ""
 	const primaryArg = regex || query
 
@@ -31,7 +34,7 @@ export function SearchTool({ toolData, message, expanded = false }: ToolRenderer
 					<Text wrap="truncate-end">
 						<Text bold>Search</Text>
 						{primaryArg ? <Text>({primaryArg})</Text> : null}
-						{filePattern ? <Text dimColor> {filePattern}</Text> : null}
+						{scope ? <Text dimColor> {scope}</Text> : null}
 					</Text>
 					{matchCount > 0 ? (
 						<>

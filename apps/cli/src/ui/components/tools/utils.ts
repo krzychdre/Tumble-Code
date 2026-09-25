@@ -1,3 +1,5 @@
+import { getToolPayloadKind, type ToolPayloadKind } from "@roo-code/core/cli"
+
 /**
  * Truncate text and return truncation info
  */
@@ -40,59 +42,51 @@ export function formatDiffStats(stats: { added: number; removed: number }): { ad
 	}
 }
 
+/** Titles of the payload names that differ from their family's title. */
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+	editedExistingFile: "Edit",
+	appliedDiff: "Diff",
+	newFileCreated: "Create File",
+	listFilesRecursive: "List Files (Recursive)",
+	readCommandOutput: "Read Command Output",
+	// The rows the CLI builds itself.
+	execute_command: "Execute Command",
+	attempt_completion: "Task Complete",
+	use_mcp_server: "MCP",
+}
+
+/** Title of each payload row family (see ToolPayloadKind in @roo-code/core). */
+const KIND_DISPLAY_NAMES: Record<ToolPayloadKind, string> = {
+	edit: "Edit",
+	insert: "Insert Content",
+	readFile: "Read",
+	listFiles: "List Files",
+	searchFiles: "Search Files",
+	codebaseSearch: "Codebase Search",
+	webSearch: "Web Search",
+	webFetch: "Web Fetch",
+	updateTodoList: "Update TODO List",
+	switchMode: "Switch Mode",
+	newTask: "New Task",
+	finishTask: "Finish Task",
+	reviewPlan: "Review Plan",
+	runSlashCommand: "Slash Command",
+	skill: "Load Skill",
+	generateImage: "Generate Image",
+	readArtifact: "Read Artifact",
+	searchTaskHistory: "Search Task History",
+	runParallelTasks: "Run Parallel Tasks",
+}
+
 /**
  * Get a friendly display name for a tool
  */
 export function getToolDisplayName(toolName: string): string {
-	const displayNames: Record<string, string> = {
-		// File read operations
-		readFile: "Read",
-		read_file: "Read",
-		skill: "Load Skill",
-		listFilesTopLevel: "List Files",
-		listFilesRecursive: "List Files (Recursive)",
-		list_files: "List Files",
-
-		// File write operations
-		editedExistingFile: "Edit",
-		appliedDiff: "Diff",
-		apply_diff: "Diff",
-		newFileCreated: "Create File",
-		write_to_file: "Write File",
-		writeToFile: "Write File",
-
-		// Search operations
-		searchFiles: "Search Files",
-		search_files: "Search Files",
-		codebaseSearch: "Codebase Search",
-		codebase_search: "Codebase Search",
-
-		// Command operations
-		execute_command: "Execute Command",
-		executeCommand: "Execute Command",
-
-		// Mode operations
-		switchMode: "Switch Mode",
-		switch_mode: "Switch Mode",
-		newTask: "New Task",
-		new_task: "New Task",
-		finishTask: "Finish Task",
-
-		// Completion operations
-		attempt_completion: "Task Complete",
-		attemptCompletion: "Task Complete",
-		ask_followup_question: "Question",
-		askFollowupQuestion: "Question",
-
-		// TODO operations
-		update_todo_list: "Update TODO List",
-		updateTodoList: "Update TODO List",
-
-		// MCP server tools and resources
-		use_mcp_server: "MCP",
+	if (Object.hasOwn(TOOL_DISPLAY_NAMES, toolName)) {
+		return TOOL_DISPLAY_NAMES[toolName]!
 	}
-
-	return displayNames[toolName] || toolName
+	const kind = getToolPayloadKind(toolName)
+	return kind ? KIND_DISPLAY_NAMES[kind] : toolName
 }
 
 /**

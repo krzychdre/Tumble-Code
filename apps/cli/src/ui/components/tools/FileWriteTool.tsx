@@ -1,5 +1,7 @@
 import { Box, Text, useStdout } from "ink"
 
+import { toolPayloadDiffText } from "@roo-code/core/cli"
+
 import { figures } from "../../figures.js"
 import * as theme from "../../theme.js"
 import Bullet from "../primitives/Bullet.js"
@@ -61,14 +63,17 @@ export function FileWriteTool({ toolData, message, expanded = false }: ToolRende
 	const maxHunkLines = expanded ? Number.POSITIVE_INFINITY : MAX_HUNK_LINES
 	const path = toolData.path || ""
 	const diffStats = toolData.diffStats
-	// `apply_diff` puts SEARCH/REPLACE blocks in `diff`; `write_to_file` and the
-	// editor-backed edits put a unified diff in `content` and send no `diff` at
-	// all (plan: 2026-09-22 CLI diffs render without colours, D2).
-	const rawDiff = toolData.diff || (isDiffText(toolData.content || "") ? toolData.content! : "")
+	// The diff the webview shows: the unified diff in `content` when there is
+	// one (`apply_diff` sends it once applied, next to its SEARCH/REPLACE blocks
+	// in `diff`), else `diff`. `content` of a file write still streaming is the
+	// new file, not a diff, so it is skipped (plan: 2026-09-22 CLI diffs render
+	// without colours, D2).
+	const preferred = toolPayloadDiffText(toolData) ?? ""
+	const rawDiff = isDiffText(preferred) ? preferred : toolData.diff || ""
 	const diff = rawDiff ? sanitizeContent(rawDiff) : ""
 	const isProtected = toolData.isProtected
 	const isOutsideWorkspace = toolData.isOutsideWorkspace
-	const isNewFile = toolData.tool === "newFileCreated" || toolData.tool === "write_to_file"
+	const isNewFile = toolData.tool === "newFileCreated"
 	const displayName = isNewFile ? "Create File" : "Edit"
 
 	// Batch diff operations

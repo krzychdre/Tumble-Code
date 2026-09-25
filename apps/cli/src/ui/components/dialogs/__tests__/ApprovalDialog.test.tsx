@@ -71,12 +71,41 @@ describe("ApprovalDialog", () => {
 			const fileAsk: PendingAsk = {
 				id: "ask-3",
 				type: "tool",
-				content: JSON.stringify({ tool: "write_to_file", path: "src/foo.ts" }),
+				content: JSON.stringify({ tool: "newFileCreated", path: "src/foo.ts" }),
 			}
 			const { lastFrame } = render(<ApprovalDialog ask={fileAsk} onApprove={() => {}} onReject={() => {}} />)
 			const frame = lastFrame() ?? ""
-			expect(frame).toContain("Write File")
+			expect(frame).toContain("Create File")
 			expect(frame).toContain("src/foo.ts")
+		})
+
+		it("shows what a web search will look for", () => {
+			const searchAsk: PendingAsk = {
+				id: "ask-3b",
+				type: "tool",
+				content: JSON.stringify({
+					tool: "webSearch",
+					queries: ["ink testing", "vitest"],
+					isOutsideWorkspace: false,
+				}),
+			}
+			const { lastFrame } = render(<ApprovalDialog ask={searchAsk} onApprove={() => {}} onReject={() => {}} />)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain("Web Search")
+			expect(frame).toContain("ink testing, vitest")
+		})
+
+		it("shows a slash command by name, not as a shell command", () => {
+			const slashAsk: PendingAsk = {
+				id: "ask-3c",
+				type: "tool",
+				content: JSON.stringify({ tool: "runSlashCommand", command: "deploy", args: "prod" }),
+			}
+			const { lastFrame } = render(<ApprovalDialog ask={slashAsk} onApprove={() => {}} onReject={() => {}} />)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain("Slash Command")
+			expect(frame).toContain("/deploy")
+			expect(frame).not.toContain("$ deploy")
 		})
 
 		it("renders diff stats when present", () => {

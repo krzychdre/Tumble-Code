@@ -3,7 +3,7 @@ import { FileCode2, History } from "lucide-react"
 
 import type { ClineSayTool } from "@roo-code/types"
 
-import { safeJsonParse } from "@roo-code/core/browser"
+import { safeJsonParse, toolPayloadReadSummary } from "@roo-code/core/browser"
 
 import { RunSlashCommandToolRow } from "../tool/ExpandableToolRows"
 import { headerStyle } from "../shared"
@@ -25,35 +25,11 @@ export const SearchTaskHistorySayRow = ({ tool: sayTool }: ToolRendererProps) =>
 	)
 }
 
-const formatBytes = (bytes: number) => {
-	if (bytes < 1024) return `${bytes} B`
-	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
-
 /** A read of a task artifact (or, in old histories, of a command's output): the range or the search. */
 export const ReadArtifactSayRow = ({ tool: sayTool }: ToolRendererProps) => {
 	const { t } = useTranslation()
 
-	// Determine if this is a search operation
-	const isSearch = sayTool.searchPattern !== undefined
-
-	let infoText = ""
-	if (isSearch) {
-		// Search mode: show pattern and match count
-		const matchText =
-			sayTool.matchCount !== undefined
-				? sayTool.matchCount === 1
-					? "1 match"
-					: `${sayTool.matchCount} matches`
-				: ""
-		infoText = `search: "${sayTool.searchPattern}"${matchText ? ` • ${matchText}` : ""}`
-	} else if (sayTool.readStart !== undefined && sayTool.readEnd !== undefined && sayTool.totalBytes !== undefined) {
-		// Read mode: show byte range
-		infoText = `${formatBytes(sayTool.readStart)} - ${formatBytes(sayTool.readEnd)} of ${formatBytes(sayTool.totalBytes)}`
-	} else if (sayTool.totalBytes !== undefined) {
-		infoText = formatBytes(sayTool.totalBytes)
-	}
+	const infoText = toolPayloadReadSummary(sayTool)
 
 	return (
 		<div style={headerStyle}>

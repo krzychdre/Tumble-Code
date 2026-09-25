@@ -1,167 +1,76 @@
 import type { TodoItem } from "@roo-code/types"
+import { describeToolPayload } from "@roo-code/core/cli"
 
 import type { ToolData } from "../types.js"
 
 /**
- * Extract structured ToolData from parsed tool JSON
- * This provides rich data for tool-specific renderers
+ * Extract structured ToolData from parsed tool JSON: the payload as the shared
+ * reader in @roo-code/core sees it (the webview rows read it the same way),
+ * plus the fields of the rows the CLI builds itself.
  */
 export function extractToolData(toolInfo: Record<string, unknown>): ToolData {
-	const toolName = (toolInfo.tool as string) || "unknown"
+	const toolData: ToolData = describeToolPayload(toolInfo)
 
-	// Base tool data with common fields
-	const toolData: ToolData = {
-		tool: toolName,
-		path: toolInfo.path as string | undefined,
-		isOutsideWorkspace: toolInfo.isOutsideWorkspace as boolean | undefined,
-		isProtected: toolInfo.isProtected as boolean | undefined,
-		content: toolInfo.content as string | undefined,
-		reason: toolInfo.reason as string | undefined,
+	if (typeof toolInfo.output === "string") {
+		toolData.output = toolInfo.output
 	}
-
-	// Extract diff-related fields
-	if (toolInfo.diff !== undefined) {
-		toolData.diff = toolInfo.diff as string
-	}
-	if (toolInfo.diffStats !== undefined) {
-		const stats = toolInfo.diffStats as { added?: number; removed?: number }
-		if (typeof stats.added === "number" && typeof stats.removed === "number") {
-			toolData.diffStats = { added: stats.added, removed: stats.removed }
-		}
-	}
-
-	// Extract search-related fields
-	if (toolInfo.regex !== undefined) {
-		toolData.regex = toolInfo.regex as string
-	}
-	if (toolInfo.filePattern !== undefined) {
-		toolData.filePattern = toolInfo.filePattern as string
-	}
-	if (toolInfo.query !== undefined) {
-		toolData.query = toolInfo.query as string
-	}
-
-	// Extract mode-related fields
-	if (toolInfo.mode !== undefined) {
-		toolData.mode = toolInfo.mode as string
-	}
-	if (toolInfo.mode_slug !== undefined) {
-		toolData.mode = toolInfo.mode_slug as string
-	}
-
-	// Extract command-related fields
-	if (toolInfo.command !== undefined) {
-		toolData.command = toolInfo.command as string
-	}
-	if (toolInfo.output !== undefined) {
-		toolData.output = toolInfo.output as string
-	}
-
-	// Extract batch file operations. The extension sends a multi-file read as
-	// `batchFiles` (ReadFileTool.requestApproval); `files` is the older name.
-	const batchFiles = Array.isArray(toolInfo.batchFiles)
-		? toolInfo.batchFiles
-		: Array.isArray(toolInfo.files)
-			? toolInfo.files
-			: undefined
-	if (batchFiles) {
-		toolData.batchFiles = (batchFiles as Array<Record<string, unknown>>).map((f) => ({
-			path: (f.path as string) || "",
-			lineSnippet: f.lineSnippet as string | undefined,
-			isOutsideWorkspace: f.isOutsideWorkspace as boolean | undefined,
-			key: f.key as string | undefined,
-			content: f.content as string | undefined,
-		}))
-	}
-
-	// Extract batch diff operations
-	if (Array.isArray(toolInfo.batchDiffs)) {
-		toolData.batchDiffs = (toolInfo.batchDiffs as Array<Record<string, unknown>>).map((d) => ({
-			path: (d.path as string) || "",
-			changeCount: d.changeCount as number | undefined,
-			key: d.key as string | undefined,
-			content: d.content as string | undefined,
-			diffStats: d.diffStats as { added: number; removed: number } | undefined,
-			diffs: d.diffs as Array<{ content: string; startLine?: number }> | undefined,
-		}))
-	}
-
-	// Extract question/completion fields
-	if (toolInfo.question !== undefined) {
-		toolData.question = toolInfo.question as string
-	}
-	if (toolInfo.result !== undefined) {
-		toolData.result = toolInfo.result as string
-	}
-
-	// Extract additional display hints
-	if (toolInfo.lineNumber !== undefined) {
-		toolData.lineNumber = toolInfo.lineNumber as number
-	}
-	if (toolInfo.additionalFileCount !== undefined) {
-		toolData.additionalFileCount = toolInfo.additionalFileCount as number
+	if (typeof toolInfo.result === "string") {
+		toolData.result = toolInfo.result
 	}
 
 	return toolData
+}
+
+/** Every param but `tool`, one `key: value` line each, values cut at `max` characters. */
+function formatParams(toolInfo: Record<string, unknown>, max: number, indent: string): string {
+	return Object.entries(toolInfo)
+		.filter(([key]) => key !== "tool")
+		.map(([key, value]) => {
+			const displayValue = typeof value === "string" ? value : JSON.stringify(value)
+			const truncated = displayValue.length > max ? displayValue.substring(0, max) + "..." : displayValue
+			return `${indent}${key}: ${truncated}`
+		})
+		.join("\n")
 }
 
 /**
  * Format tool output for display (used in the message body, header shows tool name separately)
  */
 export function formatToolOutput(toolInfo: Record<string, unknown>): string {
-	const toolName = (toolInfo.tool as string) || "unknown"
+	const payload = describeToolPayload(toolInfo)
 
-	switch (toolName) {
+	// The payload's row family, or the name for the rows the CLI builds itself.
+	switch (payload.kind ?? payload.tool) {
 		case "switchMode": {
-			const mode = (toolInfo.mode as string) || "unknown"
-			const reason = toolInfo.reason as string
-			return `→ ${mode} mode${reason ? `\n  ${reason}` : ""}`
+			const mode = payload.mode || "unknown"
+			return `→ ${mode} mode${payload.reason ? `\n  ${payload.reason}` : ""}`
 		}
 
-		case "switch_mode": {
-			const mode = (toolInfo.mode_slug as string) || (toolInfo.mode as string) || "unknown"
-			const reason = toolInfo.reason as string
-			return `→ ${mode} mode${reason ? `\n  ${reason}` : ""}`
-		}
-
-		case "execute_command": {
-			const command = toolInfo.command as string
-			return `$ ${command || "(no command)"}`
-		}
-
-		case "read_file": {
-			const files = toolInfo.files as Array<{ path: string }> | undefined
-			const path = toolInfo.path as string
+		case "readFile": {
+			const files = payload.batchFiles
 			if (files && files.length > 0) {
 				return files.map((f) => `📄 ${f.path}`).join("\n")
 			}
-			return `📄 ${path || "(no path)"}`
+			return `📄 ${payload.path || "(no path)"}`
 		}
 
-		case "write_to_file": {
-			const writePath = toolInfo.path as string
-			return `📝 ${writePath || "(no path)"}`
+		case "edit":
+		case "insert": {
+			const icon = payload.tool === "newFileCreated" ? "📝" : "✏️"
+			return `${icon} ${payload.path || "(no path)"}`
 		}
 
-		case "apply_diff": {
-			const diffPath = toolInfo.path as string
-			return `✏️ ${diffPath || "(no path)"}`
+		case "searchFiles": {
+			return `🔍 "${payload.regex}" in ${payload.path || "."}`
 		}
 
-		case "search_files": {
-			const searchPath = toolInfo.path as string
-			const regex = toolInfo.regex as string
-			return `🔍 "${regex}" in ${searchPath || "."}`
-		}
-
-		case "list_files": {
-			const listPath = toolInfo.path as string
-			const recursive = toolInfo.recursive as boolean
-			return `📁 ${listPath || "."}${recursive ? " (recursive)" : ""}`
+		case "listFiles": {
+			const recursive = payload.tool === "listFilesRecursive"
+			return `📁 ${payload.path || "."}${recursive ? " (recursive)" : ""}`
 		}
 
 		case "attempt_completion": {
-			const result = toolInfo.result as string
+			const result = typeof toolInfo.result === "string" ? toolInfo.result : ""
 			if (result) {
 				const truncated = result.length > 100 ? result.substring(0, 100) + "..." : result
 				return `✅ ${truncated}`
@@ -169,14 +78,8 @@ export function formatToolOutput(toolInfo: Record<string, unknown>): string {
 			return "✅ Task completed"
 		}
 
-		case "ask_followup_question": {
-			const question = toolInfo.question as string
-			return `❓ ${question || "(no question)"}`
-		}
-
-		case "new_task": {
-			const taskMode = toolInfo.mode as string
-			return `📋 Creating subtask${taskMode ? ` in ${taskMode} mode` : ""}`
+		case "newTask": {
+			return `📋 Creating subtask${payload.mode ? ` in ${payload.mode} mode` : ""}`
 		}
 
 		case "update_todo_list":
@@ -186,15 +89,7 @@ export function formatToolOutput(toolInfo: Record<string, unknown>): string {
 		}
 
 		default: {
-			const params = Object.entries(toolInfo)
-				.filter(([key]) => key !== "tool")
-				.map(([key, value]) => {
-					const displayValue = typeof value === "string" ? value : JSON.stringify(value)
-					const truncated = displayValue.length > 100 ? displayValue.substring(0, 100) + "..." : displayValue
-					return `${key}: ${truncated}`
-				})
-				.join("\n")
-			return params || "(no parameters)"
+			return formatParams(toolInfo, 100, "") || "(no parameters)"
 		}
 	}
 }
@@ -203,50 +98,31 @@ export function formatToolOutput(toolInfo: Record<string, unknown>): string {
  * Format tool ask message for user approval prompt
  */
 export function formatToolAskMessage(toolInfo: Record<string, unknown>): string {
-	const toolName = (toolInfo.tool as string) || "unknown"
+	const payload = describeToolPayload(toolInfo)
 
-	switch (toolName) {
-		case "switchMode":
-		case "switch_mode": {
-			const mode = (toolInfo.mode as string) || (toolInfo.mode_slug as string) || "unknown"
-			const reason = toolInfo.reason as string
-			return `Switch to ${mode} mode?${reason ? `\nReason: ${reason}` : ""}`
+	switch (payload.kind) {
+		case "switchMode": {
+			const mode = payload.mode || "unknown"
+			return `Switch to ${mode} mode?${payload.reason ? `\nReason: ${payload.reason}` : ""}`
 		}
 
-		case "execute_command": {
-			const command = toolInfo.command as string
-			return `Run command?\n$ ${command || "(no command)"}`
-		}
-
-		case "read_file": {
-			const files = toolInfo.files as Array<{ path: string }> | undefined
-			const path = toolInfo.path as string
+		case "readFile": {
+			const files = payload.batchFiles
 			if (files && files.length > 0) {
 				return `Read ${files.length} file(s)?\n${files.map((f) => `  ${f.path}`).join("\n")}`
 			}
-			return `Read file: ${path || "(no path)"}`
+			return `Read file: ${payload.path || "(no path)"}`
 		}
 
-		case "write_to_file": {
-			const writePath = toolInfo.path as string
-			return `Write to file: ${writePath || "(no path)"}`
-		}
-
-		case "apply_diff": {
-			const diffPath = toolInfo.path as string
-			return `Apply changes to: ${diffPath || "(no path)"}`
+		case "edit":
+		case "insert": {
+			const path = payload.path || "(no path)"
+			return payload.tool === "newFileCreated" ? `Write to file: ${path}` : `Apply changes to: ${path}`
 		}
 
 		default: {
-			const params = Object.entries(toolInfo)
-				.filter(([key]) => key !== "tool")
-				.map(([key, value]) => {
-					const displayValue = typeof value === "string" ? value : JSON.stringify(value)
-					const truncated = displayValue.length > 80 ? displayValue.substring(0, 80) + "..." : displayValue
-					return `  ${key}: ${truncated}`
-				})
-				.join("\n")
-			return `${toolName}${params ? `\n${params}` : ""}`
+			const params = formatParams(toolInfo, 80, "  ")
+			return `${payload.tool}${params ? `\n${params}` : ""}`
 		}
 	}
 }

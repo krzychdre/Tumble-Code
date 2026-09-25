@@ -1,3 +1,5 @@
+import { getToolPayloadKind, type ToolPayloadKind } from "@roo-code/core/cli"
+
 import type { BulletStatus } from "../primitives/Bullet.js"
 import type { ToolData, TUIMessage } from "../../types.js"
 
@@ -31,28 +33,29 @@ export function toolStatusFromMessage(message?: TUIMessage): BulletStatus {
 	return "success"
 }
 
+/** The CLI renderer of each payload row family (see ToolPayloadKind in @roo-code/core). */
+const KIND_CATEGORIES: Partial<Record<ToolPayloadKind, ToolCategory>> = {
+	edit: "file-write",
+	insert: "file-write",
+	readFile: "file-read",
+	listFiles: "file-read",
+	searchFiles: "search",
+	codebaseSearch: "search",
+	switchMode: "mode",
+}
+
+/** The rows the CLI builds itself, which carry no payload of the extension's. */
+const CLI_ROW_CATEGORIES: Record<string, ToolCategory> = {
+	execute_command: "command",
+	attempt_completion: "completion",
+}
+
 export function getToolCategory(toolName: string): ToolCategory {
-	const fileReadTools = ["readFile", "read_file", "skill", "listFilesTopLevel", "listFilesRecursive", "list_files"]
-
-	const fileWriteTools = [
-		"editedExistingFile",
-		"appliedDiff",
-		"apply_diff",
-		"newFileCreated",
-		"write_to_file",
-		"writeToFile",
-	]
-
-	const searchTools = ["searchFiles", "search_files", "codebaseSearch", "codebase_search"]
-	const commandTools = ["execute_command", "executeCommand"]
-	const modeTools = ["switchMode", "switch_mode", "newTask", "new_task", "finishTask"]
-	const completionTools = ["attempt_completion", "attemptCompletion", "ask_followup_question", "askFollowupQuestion"]
-
-	if (fileReadTools.includes(toolName)) return "file-read"
-	if (fileWriteTools.includes(toolName)) return "file-write"
-	if (searchTools.includes(toolName)) return "search"
-	if (commandTools.includes(toolName)) return "command"
-	if (modeTools.includes(toolName)) return "mode"
-	if (completionTools.includes(toolName)) return "completion"
-	return "other"
+	const kind = getToolPayloadKind(toolName)
+	const category = kind
+		? KIND_CATEGORIES[kind]
+		: Object.hasOwn(CLI_ROW_CATEGORIES, toolName)
+			? CLI_ROW_CATEGORIES[toolName]
+			: undefined
+	return category ?? "other"
 }
