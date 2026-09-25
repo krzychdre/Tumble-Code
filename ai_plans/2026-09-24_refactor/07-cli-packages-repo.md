@@ -276,6 +276,17 @@ schema list from the enum and remove the 30 `captureXxx` wrappers in favor of a 
 interface; replace the busy-wait at `packages/build/src/esbuild.ts:75`; `safeJsonParse` at the listed sites. Only
 after CLI-5 and PKG-6, because by then three consumers (extension, webview, CLI) share these types. **Size** L.
 
+**Status (2026-09-26):** DONE, four PRs. #430 (merge b4919984c): busy-wait replaced by `sleepSync` (`Atomics.wait`,
+`packages/build/src/sleep-sync.ts`), `safeJsonParse` at the five sites (new `context: false` option keeps them silent;
+a literal JSON `null` entry is now skipped without a log). #433 (merge f1023702d): `resolveCloudEnvironment(env)` in
+`packages/cloud/src/cloudEnvironment.ts`; `RetryQueue` takes a `RetryQueueStorage` (`get`/`update`), no `vscode`
+import, same `roo.retryQueue` key. #436 (merge 67f296a3f): 28 (not 30) `captureXxx` wrappers replaced by
+`TelemetryService.capture(event, props)` typed by `TelemetryEventPayloads` in `@roo-code/types`; payloads pinned
+byte-identical first; schema list derived from `TelemetryEventName`; `resetInstance()`; 81 files, mostly mocks. #437
+(merge 8f908d523): per-domain name unions for `ExtensionMessage`/`WebviewMessage` (`ExtensionMessageType`,
+`WebviewMessageType`), interfaces unchanged, type tests pin both name sets and pairwise disjointness. Possible follow-up:
+`webview-ui/src/utils/extensionBus.ts` local `ExtensionMessageType` can import the new one.
+
 ## Repository hygiene (PKG-8 and PKG-9, Phase 2 or 3)
 
 ### PKG-8 Clean the root and the package metadata
