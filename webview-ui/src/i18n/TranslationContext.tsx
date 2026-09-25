@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode, useEffect, useCallback, useRef, Suspense } from "react"
+import React, { createContext, useContext, ReactNode, useEffect, useCallback, useState, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import i18next, { loadLanguage } from "./setup"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -58,7 +58,9 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
 	const extensionState = useExtensionState()
 	const language = extensionState.language ?? "en"
 	const didHydrateState = extensionState.didHydrateState
-	const hasShownHydratedUi = useRef(false)
+	// Latches once the hydrated UI has rendered in its language; after that a
+	// switch never holds the tree back again.
+	const [hasShownHydratedUi, setHasShownHydratedUi] = useState(false)
 
 	useEffect(() => {
 		// Later switches (for example from the settings view) keep showing the
@@ -66,11 +68,13 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
 		switchLanguage(language).catch((error) => console.error("Failed to switch language:", error))
 	}, [language])
 
+	const hydratedInLanguage = !!didHydrateState && i18n.language === language
+
 	useEffect(() => {
-		if (didHydrateState && i18n.language === language) {
-			hasShownHydratedUi.current = true
+		if (hydratedInLanguage) {
+			setHasShownHydratedUi(true)
 		}
-	})
+	}, [hydratedInLanguage])
 
 	// Memoize the translation function to prevent unnecessary re-renders
 	const translate = useCallback(
@@ -89,7 +93,7 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
 			<Suspense fallback={null}>
 				<FirstRenderLanguageGate
 					language={language}
-					hold={!!didHydrateState && !hasShownHydratedUi.current}>
+					hold={!!didHydrateState && !hasShownHydratedUi}>
 					{children}
 				</FirstRenderLanguageGate>
 			</Suspense>
