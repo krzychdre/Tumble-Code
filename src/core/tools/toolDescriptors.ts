@@ -3,6 +3,37 @@ import type { ClineSayTool, ModeConfig, ToolName } from "@roo-code/types"
 import { defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import type { ToolParamName } from "../../shared/tools"
 
+import {
+	parseAccessMcpResourceArgs,
+	parseApplyDiffArgs,
+	parseApplyPatchArgs,
+	parseAskFollowupQuestionArgs,
+	parseAttemptCompletionArgs,
+	parseCodebaseSearchArgs,
+	parseEditArgs,
+	parseEditFileArgs,
+	parseExecuteCommandArgs,
+	parseGenerateImageArgs,
+	parseListFilesArgs,
+	parseNewTaskArgs,
+	parseReadArtifactArgs,
+	parseReadFileArgs,
+	parseRunParallelTasksArgs,
+	parseRunSlashCommandArgs,
+	parseSearchFilesArgs,
+	parseSearchReplaceArgs,
+	parseSearchTaskHistoryArgs,
+	parseSkillArgs,
+	parseSwitchModeArgs,
+	parseToolsLoadArgs,
+	parseUpdateTodoListArgs,
+	parseUseMcpToolArgs,
+	parseWebFetchArgs,
+	parseWebSearchArgs,
+	parseWriteToFileArgs,
+	type ToolArgParser,
+} from "./toolArgParsers"
+
 /**
  * One row per tool the model can call: every per-tool policy in one place.
  *
@@ -16,7 +47,7 @@ import type { ToolParamName } from "../../shared/tools"
  * - the tool implementation (`src/core/assistant-message/toolHandlers.ts`): the lists
  *   below are read by leaf modules (microcompact, spill policy, the prompt filter) that
  *   must not import every tool and, through them, VS Code and the Task class;
- * - argument parsing (CORE-R4 part c, a later item).
+ * - the argument parsing bodies (`toolArgParsers.ts`); the row only points at them.
  *
  * Nothing here is sent to a model: tool names, schemas and descriptions are unchanged.
  */
@@ -68,6 +99,11 @@ export type ToolApprovalCategory =
 	| "none"
 
 export interface ToolDescriptor {
+	/**
+	 * Turns the model's JSON arguments into `nativeArgs`, both while they stream
+	 * (`partial: true`) and for the complete call (see `toolArgParsers.ts`).
+	 */
+	parseArgs: ToolArgParser
 	/** The auto-approval category of the tool's approval ask (see `ToolApprovalCategory`). */
 	approvalCategory: ToolApprovalCategory
 	/**
@@ -128,6 +164,7 @@ export function describeReadFile(name: string, source: unknown): string {
 export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescriptor>> = {
 	// read
 	read_file: {
+		parseArgs: parseReadFileArgs,
 		approvalCategory: "readOnly",
 		approvalActions: ["readFile"],
 		workspaceReadOnly: true,
@@ -139,6 +176,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: (block) => describeReadFile(block.name, block.nativeArgs ? block.nativeArgs : block.params),
 	},
 	list_files: {
+		parseArgs: parseListFilesArgs,
 		approvalCategory: "readOnly",
 		approvalActions: ["listFilesTopLevel", "listFilesRecursive"],
 		workspaceReadOnly: true,
@@ -148,6 +186,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("path"),
 	},
 	search_files: {
+		parseArgs: parseSearchFilesArgs,
 		approvalCategory: "readOnly",
 		approvalActions: ["searchFiles"],
 		workspaceReadOnly: true,
@@ -160,6 +199,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 			}]`,
 	},
 	codebase_search: {
+		parseArgs: parseCodebaseSearchArgs,
 		approvalCategory: "readOnly",
 		approvalActions: ["codebaseSearch"],
 		workspaceReadOnly: true,
@@ -169,6 +209,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("query"),
 	},
 	read_artifact: {
+		parseArgs: parseReadArtifactArgs,
 		approvalCategory: "none",
 		workspaceReadOnly: true,
 		compactable: true,
@@ -179,6 +220,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 	},
 	// Deprecated alias of read_artifact: replayed histories and old habits still send it.
 	read_command_output: {
+		parseArgs: parseReadArtifactArgs,
 		approvalCategory: "none",
 		workspaceReadOnly: true,
 		compactable: true,
@@ -187,6 +229,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("artifact_id"),
 	},
 	search_task_history: {
+		parseArgs: parseSearchTaskHistoryArgs,
 		approvalCategory: "none",
 		// Reads the task's own stored conversation, never the workspace.
 		workspaceReadOnly: true,
@@ -198,6 +241,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 
 	// edit
 	write_to_file: {
+		parseArgs: parseWriteToFileArgs,
 		approvalCategory: "write",
 		approvalActions: ["editedExistingFile", "newFileCreated"],
 		requiresCheckpoint: true,
@@ -207,6 +251,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("path"),
 	},
 	apply_diff: {
+		parseArgs: parseApplyDiffArgs,
 		approvalCategory: "write",
 		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
@@ -216,6 +261,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: (block) => (block.params?.path ? `[${block.name} for '${block.params.path}']` : `[${block.name}]`),
 	},
 	edit: {
+		parseArgs: parseEditArgs,
 		approvalCategory: "write",
 		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
@@ -224,6 +270,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("file_path"),
 	},
 	search_and_replace: {
+		parseArgs: parseEditArgs,
 		approvalCategory: "write",
 		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
@@ -232,6 +279,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("file_path"),
 	},
 	search_replace: {
+		parseArgs: parseSearchReplaceArgs,
 		approvalCategory: "write",
 		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
@@ -240,6 +288,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("file_path"),
 	},
 	edit_file: {
+		parseArgs: parseEditFileArgs,
 		approvalCategory: "write",
 		approvalActions: ["appliedDiff", "newFileCreated"],
 		requiresCheckpoint: true,
@@ -248,6 +297,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParam("file_path"),
 	},
 	apply_patch: {
+		parseArgs: parseApplyPatchArgs,
 		approvalCategory: "write",
 		approvalActions: ["appliedDiff"],
 		requiresCheckpoint: true,
@@ -257,6 +307,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 	},
 	// Writes the image file.
 	generate_image: {
+		parseArgs: parseGenerateImageArgs,
 		approvalCategory: "write",
 		approvalActions: ["generateImage"],
 		requiresCheckpoint: true,
@@ -265,17 +316,20 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 
 	// command and MCP
 	execute_command: {
+		parseArgs: parseExecuteCommandArgs,
 		approvalCategory: "execute",
 		compactable: true,
 		slimAllowed: true,
 		describe: forParam("command"),
 	},
 	use_mcp_tool: {
+		parseArgs: parseUseMcpToolArgs,
 		approvalCategory: "mcp",
 		compactable: true,
 		describe: forParam("server_name"),
 	},
 	access_mcp_resource: {
+		parseArgs: parseAccessMcpResourceArgs,
 		approvalCategory: "mcp",
 		compactable: true,
 		// A resource the model asked for by URI, usually needed whole.
@@ -285,6 +339,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 
 	// web
 	web_search: {
+		parseArgs: parseWebSearchArgs,
 		// Only reads remote pages, it cannot touch the workspace.
 		approvalCategory: "readOnly",
 		approvalActions: ["webSearch"],
@@ -299,6 +354,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		},
 	},
 	web_fetch: {
+		parseArgs: parseWebFetchArgs,
 		// Only reads remote pages, it cannot touch the workspace.
 		approvalCategory: "readOnly",
 		approvalActions: ["webFetch"],
@@ -313,11 +369,13 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 
 	// protocol
 	ask_followup_question: {
+		parseArgs: parseAskFollowupQuestionArgs,
 		approvalCategory: "followup",
 		slimAllowed: true,
 		describe: forParam("question"),
 	},
 	attempt_completion: {
+		parseArgs: parseAttemptCompletionArgs,
 		// Its completion_result ask is the end of the task, never auto-approved; a subtask
 		// finishing (finishTask, returning control to its parent) follows alwaysAllowSubtasks.
 		approvalCategory: "subtaskFinish",
@@ -326,6 +384,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: bare,
 	},
 	switch_mode: {
+		parseArgs: parseSwitchModeArgs,
 		approvalCategory: "modeSwitch",
 		approvalActions: ["switchMode"],
 		slimAllowed: true,
@@ -333,6 +392,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 			`[${block.name} to '${block.params.mode_slug}'${block.params.reason ? ` because: ${block.params.reason}` : ""}]`,
 	},
 	new_task: {
+		parseArgs: parseNewTaskArgs,
 		approvalCategory: "subtask",
 		approvalActions: ["newTask"],
 		// A subtask can change the workspace before control returns.
@@ -346,6 +406,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		},
 	},
 	run_parallel_tasks: {
+		parseArgs: parseRunParallelTasksArgs,
 		// Its runParallelTasks ask has no toggle.
 		approvalCategory: "manual",
 		describe: (block) => {
@@ -355,18 +416,21 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		},
 	},
 	update_todo_list: {
+		parseArgs: parseUpdateTodoListArgs,
 		approvalCategory: "alwaysAllowed",
 		approvalActions: ["updateTodoList"],
 		slimAllowed: true,
 		describe: bare,
 	},
 	run_slash_command: {
+		parseArgs: parseRunSlashCommandArgs,
 		// Loading a command's instructions; a skill found through it asks as `skill`.
 		approvalCategory: "readOnly",
 		approvalActions: ["runSlashCommand"],
 		describe: forParamWithArgs("command"),
 	},
 	skill: {
+		parseArgs: parseSkillArgs,
 		// Only loads instructions from skills the user installed, never arbitrary files.
 		approvalCategory: "alwaysAllowed",
 		approvalActions: ["skill"],
@@ -374,6 +438,7 @@ export const TOOL_DESCRIPTORS: Readonly<Record<DispatchableToolName, ToolDescrip
 		describe: forParamWithArgs("skill"),
 	},
 	tools_load: {
+		parseArgs: parseToolsLoadArgs,
 		approvalCategory: "none",
 		slimAllowed: true,
 		describe: (block) => {
