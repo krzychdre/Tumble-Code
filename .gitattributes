@@ -23,3 +23,7 @@ src/i18n/locales/en/** linguist-generated=false
 webview-ui/src/i18n/locales/en/** linguist-generated=false
 
 # This approach uses gitattributes' last-match-wins rule to exclude English while including all other locales
+
+# Byte-exact HTML snapshots (CORE-R6 e): keep LF on every platform, a CRLF
+# checkout on Windows would not match the generated HTML.
+src/core/webview/__tests__/__snapshots__/webview-html/*.html text eol=lf
