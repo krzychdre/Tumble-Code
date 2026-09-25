@@ -569,7 +569,7 @@ function reduceSay(r: Reduction, ts: number, say: ClineSay, text: string, partia
 /**
  * Map an extension "ask" message to a dialog, a row, or nothing.
  */
-function reduceAsk(r: Reduction, ts: number, ask: ClineAsk, text: string, partial: boolean): void {
+function reduceAsk(r: Reduction, ts: number, ask: ClineAsk, text: string, partial: boolean, isLast: boolean): void {
 	const messageId = ts.toString()
 
 	if (partial) {
@@ -726,6 +726,16 @@ function reduceAsk(r: Reduction, ts: number, ask: ClineAsk, text: string, partia
 		return
 	}
 
+	r.markSeen(messageId)
+
+	// Only the ask the transcript ends with is a question. A state push
+	// replays the whole history (a resumed task, every new message), and the
+	// core waits only on its last message, as the client's agent state reads
+	// it (detectAgentState): an older ask was answered long ago.
+	if (!isLast) {
+		return
+	}
+
 	let suggestions: UsableSuggestion[] | undefined
 	let questionText = text
 
@@ -736,8 +746,6 @@ function reduceAsk(r: Reduction, ts: number, ask: ClineAsk, text: string, partia
 		questionText = followUp.question || text
 		suggestions = followUp.suggestions
 	}
-
-	r.markSeen(messageId)
 
 	r.emit({
 		type: "setPendingAsk",
@@ -750,14 +758,15 @@ function reduceAsk(r: Reduction, ts: number, ask: ClineAsk, text: string, partia
 	})
 }
 
-function reduceClineMessage(r: Reduction, message: ClineMessage): void {
+/** `isLast`: the message is the last one of the transcript it arrived in (always true for messageUpdated). */
+function reduceClineMessage(r: Reduction, message: ClineMessage, isLast: boolean): void {
 	const text = message.text || ""
 	const partial = message.partial || false
 
 	if (message.type === "say" && message.say) {
 		reduceSay(r, message.ts, message.say, text, partial)
 	} else if (message.type === "ask" && message.ask) {
-		reduceAsk(r, message.ts, message.ask, text, partial)
+		reduceAsk(r, message.ts, message.ask, text, partial, isLast)
 	}
 }
 
@@ -807,9 +816,9 @@ export function reduceExtensionMessage(
 		const clineMessages = state.clineMessages
 
 		if (clineMessages) {
-			for (const clineMessage of clineMessages) {
-				reduceClineMessage(r, clineMessage)
-			}
+			clineMessages.forEach((clineMessage, index) => {
+				reduceClineMessage(r, clineMessage, index === clineMessages.length - 1)
+			})
 
 			// Token usage from clineMessages, skipping the first message (the
 			// task prompt) as the webview does.
@@ -825,7 +834,7 @@ export function reduceExtensionMessage(
 		}
 	} else if (message.type === "messageUpdated") {
 		if (message.clineMessage) {
-			reduceClineMessage(r, message.clineMessage)
+			reduceClineMessage(r, message.clineMessage, true)
 		}
 	} else if (message.type === "fileSearchResults") {
 		r.emit({ type: "setFileSearchResults", results: (message.results as FileResult[]) || [] })
