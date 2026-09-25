@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import mermaid from "mermaid"
+import type { MermaidConfig } from "mermaid"
 import styled from "styled-components"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { vscode } from "@src/utils/vscode"
@@ -8,9 +8,8 @@ import { useCopyToClipboard } from "@src/utils/clipboard"
 import CodeBlock from "./CodeBlock"
 import { MermaidButton } from "@/components/common/MermaidButton"
 
-// Removed previous attempts at static imports for individual diagram types
-// as the paths were incorrect for Mermaid v11.4.1 and caused errors.
-// The primary strategy will now rely on Vite's bundling configuration.
+// Mermaid is imported on first use (see loadMermaid below), so its core stays
+// out of the startup bundle; its diagram types were already lazy chunks.
 
 const MERMAID_THEME = {
 	background: "#1e1e1e", // VS Code dark theme background
@@ -42,7 +41,7 @@ const MERMAID_THEME = {
 	fillType2: "#454545",
 }
 
-mermaid.initialize({
+const MERMAID_CONFIG: MermaidConfig = {
 	startOnLoad: false,
 	securityLevel: "loose",
 	theme: "dark",
@@ -81,7 +80,26 @@ mermaid.initialize({
 		compositeBorder: "#888888",
 		titleColor: "#ffffff",
 	},
-})
+}
+
+let mermaidLoad: Promise<(typeof import("mermaid"))["default"]> | undefined
+
+// Imports and configures Mermaid once, the first time a diagram is rendered.
+const loadMermaid = () => {
+	mermaidLoad ??= import("mermaid").then(
+		({ default: mermaid }) => {
+			mermaid.initialize(MERMAID_CONFIG)
+			return mermaid
+		},
+		(error) => {
+			// Let the next diagram retry instead of caching the failure.
+			mermaidLoad = undefined
+			throw error
+		},
+	)
+
+	return mermaidLoad
+}
 
 interface MermaidBlockProps {
 	code: string
@@ -108,9 +126,9 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 				containerRef.current.innerHTML = ""
 			}
 
-			mermaid
-				.parse(code)
-				.then(() => {
+			loadMermaid()
+				.then(async (mermaid) => {
+					await mermaid.parse(code)
 					const id = `mermaid-${Math.random().toString(36).substring(2)}`
 					return mermaid.render(id, code)
 				})
