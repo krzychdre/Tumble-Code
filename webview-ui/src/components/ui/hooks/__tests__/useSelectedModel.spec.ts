@@ -717,8 +717,11 @@ describe("useSelectedModel", () => {
 			["anthropic", { apiProvider: "anthropic", apiModelId: "claude-api6" }, true],
 			["zai (mainland list)", { apiProvider: "zai", zaiApiLine: "china_coding", apiModelId: "glm-api6" }, true],
 			["bedrock custom ARN", { apiProvider: "bedrock", apiModelId: "custom-arn" }, false],
-			["deepseek-chat alias", { apiProvider: "deepseek", apiModelId: "deepseek-chat" }, false],
-			["deepseek-reasoner alias", { apiProvider: "deepseek", apiModelId: "deepseek-reasoner" }, false],
+			["deepseek current", { apiProvider: "deepseek", apiModelId: "deepseek-flash" }, false],
+			["deepseek-v4-flash legacy alias", { apiProvider: "deepseek", apiModelId: "deepseek-v4-flash" }, false],
+			// Retired: listed as deprecated, so the picker says "no longer available" instead.
+			["deepseek-chat retired", { apiProvider: "deepseek", apiModelId: "deepseek-chat" }, false],
+			["deepseek-reasoner retired", { apiProvider: "deepseek", apiModelId: "deepseek-reasoner" }, false],
 			["deepseek unknown", { apiProvider: "deepseek", apiModelId: "deepseek-api6" }, true],
 			["no model id", { apiProvider: "gemini" }, false],
 			["OpenAI Compatible (no list)", { apiProvider: "openai", openAiModelId: "anything" }, false],

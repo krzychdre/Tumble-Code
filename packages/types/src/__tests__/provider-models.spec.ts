@@ -153,10 +153,13 @@ describe("resolveCatalogModel", () => {
 		})
 	})
 
-	it("declares DeepSeek's documented aliases for deepseek-v4-flash", () => {
+	// DeepSeek's pricing page (read 2026-09-25): the legacy names
+	// deepseek-v4-flash and deepseek-v4-flash-vision-exp are still accepted and
+	// served by DeepSeek-V4.1-Flash (deepseek-flash) at the Flash price.
+	it("declares DeepSeek's legacy Flash names as aliases of deepseek-flash", () => {
 		expect(providerModelDefinitions.deepseek.modelAliases).toEqual({
-			"deepseek-chat": "deepseek-v4-flash",
-			"deepseek-reasoner": "deepseek-v4-flash",
+			"deepseek-v4-flash": "deepseek-flash",
+			"deepseek-v4-flash-vision-exp": "deepseek-flash",
 		})
 	})
 
