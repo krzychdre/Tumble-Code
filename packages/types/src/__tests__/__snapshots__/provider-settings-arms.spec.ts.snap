@@ -1,0 +1,632 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`flat provider settings schema (must not change) > keeps the same fields and field types 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "anthropicBaseUrl": {
+      "type": "string",
+    },
+    "anthropicBeta1MContext": {
+      "type": "boolean",
+    },
+    "anthropicUseAuthToken": {
+      "type": "boolean",
+    },
+    "apiKey": {
+      "type": "string",
+    },
+    "apiModelId": {
+      "type": "string",
+    },
+    "apiProvider": {
+      "enum": [
+        "openrouter",
+        "litellm",
+        "deepseek",
+        "ollama",
+        "lmstudio",
+        "vscode-lm",
+        "openai",
+        "fake-ai",
+        "anthropic",
+        "bedrock",
+        "deepseek",
+        "gemini",
+        "gemini-cli",
+        "mistral",
+        "moonshot",
+        "minimax",
+        "openai-codex",
+        "openai-native",
+        "qwen-code",
+        "vertex",
+        "xai",
+        "zai",
+        "cerebras",
+        "chutes",
+        "deepinfra",
+        "doubao",
+        "featherless",
+        "groq",
+        "huggingface",
+        "io-intelligence",
+        "baseten",
+        "fireworks",
+        "poe",
+        "requesty",
+        "sambanova",
+        "unbound",
+        "vercel-ai-gateway",
+      ],
+      "type": "string",
+    },
+    "awsAccessKey": {
+      "type": "string",
+    },
+    "awsApiKey": {
+      "type": "string",
+    },
+    "awsBedrock1MContext": {
+      "type": "boolean",
+    },
+    "awsBedrockEndpoint": {
+      "type": "string",
+    },
+    "awsBedrockEndpointEnabled": {
+      "type": "boolean",
+    },
+    "awsBedrockServiceTier": {
+      "enum": [
+        "STANDARD",
+        "FLEX",
+        "PRIORITY",
+      ],
+      "type": "string",
+    },
+    "awsCustomArn": {
+      "type": "string",
+    },
+    "awsModelContextWindow": {
+      "type": "number",
+    },
+    "awsProfile": {
+      "type": "string",
+    },
+    "awsRegion": {
+      "type": "string",
+    },
+    "awsSecretKey": {
+      "type": "string",
+    },
+    "awsSessionToken": {
+      "type": "string",
+    },
+    "awsUseApiKey": {
+      "type": "boolean",
+    },
+    "awsUseCrossRegionInference": {
+      "type": "boolean",
+    },
+    "awsUseGlobalInference": {
+      "type": "boolean",
+    },
+    "awsUseProfile": {
+      "type": "boolean",
+    },
+    "awsUsePromptCache": {
+      "type": "boolean",
+    },
+    "azureApiVersion": {
+      "type": "string",
+    },
+    "codeIndexOpenAiKey": {
+      "type": "string",
+    },
+    "codeIndexQdrantApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexGeminiApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexMistralApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexOpenAiCompatibleApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexOpenAiCompatibleBaseUrl": {
+      "type": "string",
+    },
+    "codebaseIndexOpenAiCompatibleModelDimension": {
+      "type": "number",
+    },
+    "codebaseIndexOpenRouterApiKey": {
+      "type": "string",
+    },
+    "codebaseIndexVercelAiGatewayApiKey": {
+      "type": "string",
+    },
+    "consecutiveMistakeLimit": {
+      "minimum": 0,
+      "type": "number",
+    },
+    "deepSeekApiKey": {
+      "type": "string",
+    },
+    "deepSeekBaseUrl": {
+      "type": "string",
+    },
+    "enableReasoningEffort": {
+      "type": "boolean",
+    },
+    "fakeAi": {},
+    "geminiApiKey": {
+      "type": "string",
+    },
+    "geminiCliOAuthPath": {
+      "type": "string",
+    },
+    "geminiCliProjectId": {
+      "type": "string",
+    },
+    "googleGeminiBaseUrl": {
+      "type": "string",
+    },
+    "includeMaxTokens": {
+      "type": "boolean",
+    },
+    "litellmApiKey": {
+      "type": "string",
+    },
+    "litellmBaseUrl": {
+      "type": "string",
+    },
+    "litellmModelId": {
+      "type": "string",
+    },
+    "litellmUsePromptCache": {
+      "type": "boolean",
+    },
+    "lmStudioBaseUrl": {
+      "type": "string",
+    },
+    "lmStudioDraftModelId": {
+      "type": "string",
+    },
+    "lmStudioModelId": {
+      "type": "string",
+    },
+    "lmStudioSpeculativeDecodingEnabled": {
+      "type": "boolean",
+    },
+    "minimaxApiKey": {
+      "type": "string",
+    },
+    "minimaxBaseUrl": {
+      "enum": [
+        "https://api.minimax.io/v1",
+        "https://api.minimaxi.com/v1",
+      ],
+      "type": "string",
+    },
+    "mistralApiKey": {
+      "type": "string",
+    },
+    "mistralCodestralUrl": {
+      "type": "string",
+    },
+    "modelMaxThinkingTokens": {
+      "type": "number",
+    },
+    "modelMaxTokens": {
+      "type": "number",
+    },
+    "modelTemperature": {
+      "type": [
+        "number",
+        "null",
+      ],
+    },
+    "moonshotApiKey": {
+      "type": "string",
+    },
+    "moonshotBaseUrl": {
+      "enum": [
+        "https://api.moonshot.ai/v1",
+        "https://api.moonshot.cn/v1",
+      ],
+      "type": "string",
+    },
+    "ollamaApiKey": {
+      "type": "string",
+    },
+    "ollamaBaseUrl": {
+      "type": "string",
+    },
+    "ollamaModelId": {
+      "type": "string",
+    },
+    "ollamaNumCtx": {
+      "minimum": 128,
+      "type": "integer",
+    },
+    "openAiApiKey": {
+      "type": "string",
+    },
+    "openAiBaseUrl": {
+      "type": "string",
+    },
+    "openAiCustomModelInfo": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "cachableFields": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "cacheReadsPrice": {
+              "type": "number",
+            },
+            "cacheWritesPrice": {
+              "type": "number",
+            },
+            "contextWindow": {
+              "type": "number",
+            },
+            "defaultTemperature": {
+              "type": "number",
+            },
+            "deprecated": {
+              "type": "boolean",
+            },
+            "description": {
+              "type": "string",
+            },
+            "excludedTools": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "includedTools": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "inputPrice": {
+              "type": "number",
+            },
+            "isFree": {
+              "type": "boolean",
+            },
+            "isStealthModel": {
+              "type": "boolean",
+            },
+            "longContextPricing": {
+              "additionalProperties": false,
+              "properties": {
+                "appliesToServiceTiers": {
+                  "items": {
+                    "enum": [
+                      "default",
+                      "flex",
+                      "priority",
+                    ],
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+                "cacheReadsPriceMultiplier": {
+                  "type": "number",
+                },
+                "cacheWritesPriceMultiplier": {
+                  "type": "number",
+                },
+                "inputPriceMultiplier": {
+                  "type": "number",
+                },
+                "outputPriceMultiplier": {
+                  "type": "number",
+                },
+                "thresholdTokens": {
+                  "type": "number",
+                },
+              },
+              "required": [
+                "thresholdTokens",
+              ],
+              "type": "object",
+            },
+            "maxCachePoints": {
+              "type": "number",
+            },
+            "maxThinkingTokens": {
+              "type": [
+                "number",
+                "null",
+              ],
+            },
+            "maxTokens": {
+              "type": [
+                "number",
+                "null",
+              ],
+            },
+            "minTokensPerCachePoint": {
+              "type": "number",
+            },
+            "outputPrice": {
+              "type": "number",
+            },
+            "preserveReasoning": {
+              "type": "boolean",
+            },
+            "promptCacheRetention": {
+              "enum": [
+                "in_memory",
+                "24h",
+              ],
+              "type": "string",
+            },
+            "reasoningEffort": {
+              "enum": [
+                "none",
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max",
+              ],
+              "type": "string",
+            },
+            "requiredReasoningBudget": {
+              "type": "boolean",
+            },
+            "requiredReasoningEffort": {
+              "type": "boolean",
+            },
+            "supportedParameters": {
+              "items": {
+                "enum": [
+                  "max_tokens",
+                  "temperature",
+                  "reasoning",
+                  "include_reasoning",
+                ],
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "supportsImages": {
+              "type": "boolean",
+            },
+            "supportsMaxTokens": {
+              "type": "boolean",
+            },
+            "supportsPromptCache": {
+              "type": "boolean",
+            },
+            "supportsReasoningBinary": {
+              "type": "boolean",
+            },
+            "supportsReasoningBudget": {
+              "type": "boolean",
+            },
+            "supportsReasoningEffort": {
+              "anyOf": [
+                {
+                  "type": "boolean",
+                },
+                {
+                  "items": {
+                    "enum": [
+                      "disable",
+                      "none",
+                      "minimal",
+                      "low",
+                      "medium",
+                      "high",
+                      "xhigh",
+                      "max",
+                    ],
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              ],
+            },
+            "supportsTemperature": {
+              "type": "boolean",
+            },
+            "supportsVerbosity": {
+              "type": "boolean",
+            },
+            "tiers": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "cacheReadsPrice": {
+                    "type": "number",
+                  },
+                  "cacheWritesPrice": {
+                    "type": "number",
+                  },
+                  "contextWindow": {
+                    "type": "number",
+                  },
+                  "inputPrice": {
+                    "type": "number",
+                  },
+                  "name": {
+                    "enum": [
+                      "default",
+                      "flex",
+                      "priority",
+                    ],
+                    "type": "string",
+                  },
+                  "outputPrice": {
+                    "type": "number",
+                  },
+                },
+                "required": [
+                  "contextWindow",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
+          },
+          "required": [
+            "contextWindow",
+            "supportsPromptCache",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "openAiHeaders": {
+      "additionalProperties": {
+        "type": "string",
+      },
+      "type": "object",
+    },
+    "openAiHostHeader": {
+      "type": "string",
+    },
+    "openAiModelId": {
+      "type": "string",
+    },
+    "openAiNativeApiKey": {
+      "type": "string",
+    },
+    "openAiNativeBaseUrl": {
+      "type": "string",
+    },
+    "openAiNativeServiceTier": {
+      "enum": [
+        "default",
+        "flex",
+        "priority",
+      ],
+      "type": "string",
+    },
+    "openAiR1FormatEnabled": {
+      "type": "boolean",
+    },
+    "openAiStreamingEnabled": {
+      "type": "boolean",
+    },
+    "openAiUseAzure": {
+      "type": "boolean",
+    },
+    "openRouterApiKey": {
+      "type": "string",
+    },
+    "openRouterBaseUrl": {
+      "type": "string",
+    },
+    "openRouterModelId": {
+      "type": "string",
+    },
+    "openRouterSpecificProvider": {
+      "type": "string",
+    },
+    "qwenCodeOauthPath": {
+      "type": "string",
+    },
+    "rateLimitSeconds": {
+      "type": "number",
+    },
+    "reasoningEffort": {
+      "enum": [
+        "disable",
+        "none",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+      ],
+      "type": "string",
+    },
+    "slimHidesMcp": {
+      "type": "boolean",
+    },
+    "slimToolset": {
+      "type": "boolean",
+    },
+    "todoListEnabled": {
+      "type": "boolean",
+    },
+    "verbosity": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+      ],
+      "type": "string",
+    },
+    "vertex1MContext": {
+      "type": "boolean",
+    },
+    "vertexJsonCredentials": {
+      "type": "string",
+    },
+    "vertexKeyFile": {
+      "type": "string",
+    },
+    "vertexProjectId": {
+      "type": "string",
+    },
+    "vertexRegion": {
+      "type": "string",
+    },
+    "vsCodeLmModelSelector": {
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "type": "string",
+        },
+        "id": {
+          "type": "string",
+        },
+        "vendor": {
+          "type": "string",
+        },
+        "version": {
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "xaiApiKey": {
+      "type": "string",
+    },
+    "zaiApiKey": {
+      "type": "string",
+    },
+    "zaiApiLine": {
+      "enum": [
+        "international_coding",
+        "china_coding",
+        "international_api",
+        "china_api",
+      ],
+      "type": "string",
+    },
+  },
+  "type": "object",
+}
+`;
