@@ -277,6 +277,19 @@ failure (all 13 fail with undici 8 forced). Also verified under VS Code's Electr
 `pnpm vsix` (vsce's cheerio on undici 7). Qdrant 1.19 removed `search`/`recommend`/`discover` (we use `query()`).
 Pre-existing: in debug-proxy mode Qdrant traffic bypasses the proxy (its per-request agent wins).
 
+**Status (2026-09-25):** `ollama` 0.5.17 to 0.6.3 DONE in #318 (`a38fae640`; lockfile checked consistent after
+#320 with `pnpm install --frozen-lockfile --lockfile-only`). `ollama-wire-characterization.spec` (11, real client,
+only `fetch` faked) failed one case on 0.5.17: a multi-byte character split across two network chunks became two
+U+FFFD (0.5 called `TextDecoder` without `stream: true`); 0.6.3 passes all 11 unchanged. `chat()` still takes no
+AbortSignal (the API-5 Ollama caveat stands); `ResponseError.status_code` unchanged (DEF-C43 hint works). Finding:
+the handler ignores `message.thinking` (reasoning only via `<think>` tags).
+`@lmstudio/sdk` 1.2.0 to 2.0.0 (#321) HELD by the coordinator: 2.x requires protocol fields LM Studio added in
+2025 and 2026; with an older LM Studio every reply fails SDK validation, the SDK only logs a warning and the call
+never settles, so the model list stays empty and `performPreparationTasks` hangs the task start (1.2.0 hangs the
+same way on any reply it cannot validate). A timeout guard with a clear error (and closing the per-call
+`LMStudioClient`, which leaks sockets today) goes first as `fix/lmstudio-sdk-timeout`; #321 follows. 2.0 also stops
+forcing `gpuSplitConfig "evenly"` on preload (LM Studio's own GPU settings apply) and sends `guest:<random>`.
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
