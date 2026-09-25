@@ -2,6 +2,7 @@
 
 import { DirectoryScanner } from "../scanner"
 import { stat } from "fs/promises"
+import { RooIgnoreController } from "../../../../core/ignore/RooIgnoreController"
 
 // Mock TelemetryService
 vi.mock("@roo-code/telemetry", () => ({
@@ -149,6 +150,35 @@ describe("DirectoryScanner", () => {
 		// Get and mock the listFiles function
 		const { listFiles } = await import("../../../glob/list-files")
 		vi.mocked(listFiles).mockResolvedValue([["test/file1.js", "test/file2.js"], false])
+	})
+
+	describe("RooIgnoreController lifecycle (SVC-10)", () => {
+		const spies: Array<{ mockRestore: () => void }> = []
+
+		afterEach(() => {
+			spies.splice(0).forEach((spy) => spy.mockRestore())
+		})
+
+		it("disposes the RooIgnoreController it creates for the scan", async () => {
+			const disposeSpy = vi.spyOn(RooIgnoreController.prototype, "dispose")
+			spies.push(disposeSpy)
+
+			await scanner.scanDirectory("/test")
+
+			// Each controller owns a FileSystemWatcher on .rooignore plus 3 listeners.
+			expect(disposeSpy).toHaveBeenCalledTimes(1)
+		})
+
+		it("disposes the RooIgnoreController even when filtering throws", async () => {
+			const disposeSpy = vi.spyOn(RooIgnoreController.prototype, "dispose")
+			const filterSpy = vi.spyOn(RooIgnoreController.prototype, "filterPaths").mockImplementation(() => {
+				throw new Error("filter failed")
+			})
+			spies.push(disposeSpy, filterSpy)
+
+			await expect(scanner.scanDirectory("/test")).rejects.toThrow("filter failed")
+			expect(disposeSpy).toHaveBeenCalledTimes(1)
+		})
 	})
 
 	describe("scanDirectory", () => {

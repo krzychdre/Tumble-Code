@@ -236,6 +236,18 @@ export async function activate(context: vscode.ExtensionContext) {
 		}
 	}
 
+	// Managers are also created lazily (tools, commands) for other paths, so dispose them all on
+	// deactivate, and dispose a folder's manager (watchers included) when the folder is removed.
+	// Folders added later still get their manager lazily on first use.
+	context.subscriptions.push(
+		{ dispose: () => CodeIndexManager.disposeAll() },
+		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
+			for (const folder of event.removed) {
+				CodeIndexManager.disposeInstance(folder.uri.fsPath)
+			}
+		}),
+	)
+
 	// Initialize the provider *before* the cloud service.
 	const provider = new ClineProvider(context, outputChannel, "sidebar", contextProxy, mdmService)
 

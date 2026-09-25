@@ -23,6 +23,7 @@ vi.mock("../../cache-manager")
 vi.mock("../../../core/ignore/RooIgnoreController", () => ({
 	RooIgnoreController: vi.fn().mockImplementation(() => ({
 		validateAccess: vi.fn().mockReturnValue(true),
+		dispose: vi.fn(),
 	})),
 }))
 vi.mock("ignore")
