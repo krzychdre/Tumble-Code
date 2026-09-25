@@ -1,4 +1,10 @@
 /**
+ * What an input to createEmbeddings is. Asymmetric models embed the two differently: a query
+ * gets the model's query prefix (e.g. nomic-embed-code), indexed code is embedded as it is.
+ */
+export type EmbeddingInputType = "query" | "document"
+
+/**
  * Interface for code index embedders.
  * Every embedder implements it through BaseHttpEmbedder (embedders/base-http-embedder.ts);
  * embedders/__tests__/embedder-contract.spec.ts checks the contract for all of them.
@@ -10,9 +16,10 @@ export interface IEmbedder {
 	 * code blocks by position), or the call rejects.
 	 * @param texts Array of text strings to create embeddings for
 	 * @param model Optional model ID to use for embeddings
+	 * @param inputType "document" (indexed code, the default) or "query" (a search query)
 	 * @returns Promise resolving to an EmbeddingResponse
 	 */
-	createEmbeddings(texts: string[], model?: string): Promise<EmbeddingResponse>
+	createEmbeddings(texts: string[], model?: string, inputType?: EmbeddingInputType): Promise<EmbeddingResponse>
 
 	/**
 	 * Validates the embedder configuration by testing connectivity and credentials.

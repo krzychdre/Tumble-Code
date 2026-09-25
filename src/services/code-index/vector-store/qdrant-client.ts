@@ -85,6 +85,24 @@ function withQdrantDetail(error: unknown): unknown {
 }
 
 /**
+ * Prefix the indexing pipeline puts in front of every code chunk before embedding it. Stored on
+ * the metadata point as `document_prefix`, so a collection whose vectors were embedded with a
+ * different input can be recognized and rebuilt: vectors of prefixed and unprefixed chunks
+ * must not be mixed in one collection.
+ */
+export const CURRENT_DOCUMENT_PREFIX = ""
+
+export interface QdrantVectorStoreOptions {
+	/**
+	 * Prefix the vectors of an index without a `document_prefix` marker were embedded with.
+	 * Before 2026-09-25 indexing also put the model's query prefix in front of every code chunk
+	 * (nomic-embed-code), so this is the configured model's query prefix, or undefined for a
+	 * model without one (whose old vectors are identical to new ones).
+	 */
+	legacyDocumentPrefix?: string
+}
+
+/**
  * Qdrant implementation of the vector store interface
  */
 export class QdrantVectorStore implements IVectorStore {
@@ -95,13 +113,22 @@ export class QdrantVectorStore implements IVectorStore {
 	private readonly collectionName: string
 	private readonly qdrantUrl: string = "http://localhost:6333"
 	private readonly workspacePath: string
+	private readonly legacyDocumentPrefix: string
 
 	/**
 	 * Creates a new Qdrant vector store
 	 * @param workspacePath Path to the workspace
 	 * @param url Optional URL to the Qdrant server
 	 */
-	constructor(workspacePath: string, url: string, vectorSize: number, apiKey?: string) {
+	constructor(
+		workspacePath: string,
+		url: string,
+		vectorSize: number,
+		apiKey?: string,
+		options: QdrantVectorStoreOptions = {},
+	) {
+		this.legacyDocumentPrefix = options.legacyDocumentPrefix ?? ""
+
 		// Parse the URL to determine the appropriate QdrantClient configuration
 		const parsedUrl = this.parseQdrantUrl(url)
 
@@ -262,7 +289,8 @@ export class QdrantVectorStore implements IVectorStore {
 				}
 
 				if (existingVectorSize === this.vectorSize) {
-					created = false // Exists and correct
+					// Right size; rebuild only if its vectors were embedded from different input
+					created = await this._recreateCollectionIfDocumentPrefixChanged(collectionInfo)
 				} else {
 					// Exists but wrong vector size, recreate with enhanced error handling
 					created = await this._recreateCollectionWithNewDimension(existingVectorSize)
@@ -289,6 +317,46 @@ export class QdrantVectorStore implements IVectorStore {
 				t("embeddings:vectorStore.qdrantConnectionFailed", { qdrantUrl: this.qdrantUrl, errorMessage }),
 			)
 		}
+	}
+
+	/**
+	 * Reads which prefix the stored code chunks were embedded with (the `document_prefix` of the
+	 * metadata point; an index without it is legacy) and rebuilds the collection when that differs
+	 * from what indexing sends now. A rebuilt collection is reported as created, so the
+	 * orchestrator clears the file hash cache and runs a full scan.
+	 * @returns Whether the collection was recreated
+	 */
+	private async _recreateCollectionIfDocumentPrefixChanged(
+		collectionInfo: Schemas["CollectionInfo"],
+	): Promise<boolean> {
+		if ((collectionInfo.points_count ?? 0) === 0) {
+			return false
+		}
+
+		let storedPrefix: string
+		try {
+			const metadataId = uuidv5("__indexing_metadata__", QDRANT_CODE_BLOCK_NAMESPACE)
+			const [metadataPoint] = await this.client.retrieve(this.collectionName, { ids: [metadataId] })
+			const recorded = metadataPoint?.payload?.document_prefix
+			storedPrefix = typeof recorded === "string" ? recorded : this.legacyDocumentPrefix
+		} catch (error) {
+			// Not knowing is no reason to throw away an index; keep it.
+			console.warn(
+				`[QdrantVectorStore] Could not read the document prefix marker of ${this.collectionName}, keeping the collection:`,
+				describeQdrantError(error),
+			)
+			return false
+		}
+
+		if (storedPrefix === CURRENT_DOCUMENT_PREFIX) {
+			return false
+		}
+
+		console.warn(
+			`[QdrantVectorStore] Collection ${this.collectionName} was embedded with document prefix ${JSON.stringify(storedPrefix)}, indexing now uses ${JSON.stringify(CURRENT_DOCUMENT_PREFIX)}. Recreating the collection for a full reindex.`,
+		)
+		// Same size, so the dimension helper just deletes and recreates it (with its error handling).
+		return this._recreateCollectionWithNewDimension(this.vectorSize)
 	}
 
 	/**
@@ -720,6 +788,7 @@ export class QdrantVectorStore implements IVectorStore {
 						payload: {
 							type: "metadata",
 							indexing_complete: true,
+							document_prefix: CURRENT_DOCUMENT_PREFIX,
 							completed_at: Date.now(),
 						},
 					},
@@ -751,6 +820,7 @@ export class QdrantVectorStore implements IVectorStore {
 						payload: {
 							type: "metadata",
 							indexing_complete: false,
+							document_prefix: CURRENT_DOCUMENT_PREFIX,
 							started_at: Date.now(),
 						},
 					},
