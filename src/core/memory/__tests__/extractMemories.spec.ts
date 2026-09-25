@@ -154,7 +154,7 @@ describe("extractMemories", () => {
 				cwd,
 				isMainAgent: false,
 				taskId: "a",
-				messages: [{ toolUses: [{ name: "read_file" }] }],
+				messages: [{ type: "say", text: "hi" }],
 				subTaskRunner: runner,
 			})
 			expect(runner).not.toHaveBeenCalled()
