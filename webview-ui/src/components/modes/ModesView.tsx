@@ -1,16 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from "react"
-import {
-	VSCodeCheckbox,
-	VSCodeRadioGroup,
-	VSCodeRadio,
-	VSCodeTextArea,
-	VSCodeLink,
-	VSCodeTextField,
-} from "@vscode/webview-ui-toolkit/react"
+import React, { useState, useEffect, useRef } from "react"
+import { VSCodeCheckbox, VSCodeTextArea, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { ChevronDown, X, Upload, Download } from "lucide-react"
 
-import { ModeConfig, GroupEntry, PromptComponent, ToolGroup, modeConfigSchema } from "@roo-code/types"
+import type { ModeConfig, GroupEntry, PromptComponent, ToolGroup } from "@roo-code/types"
 
 import {
 	Mode,
@@ -19,10 +12,9 @@ import {
 	getDescription,
 	getCustomInstructions,
 	getAllModes,
-	findModeBySlug as findCustomModeBySlug,
+	findModeBySlug,
 	defaultModeSlug,
 } from "@roo/modes"
-import { TOOL_GROUPS } from "@roo/tools"
 
 import { vscode } from "@src/utils/vscode"
 import { buildDocLink } from "@src/utils/docLinks"
@@ -45,25 +37,16 @@ import {
 	CommandEmpty,
 	CommandItem,
 	CommandGroup,
-	Input,
 	StandardTooltip,
 } from "@src/components/ui"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 import McpServerRestriction from "@src/components/modes/McpServerRestriction"
-import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
 
-// Get all available groups that should show in prompts view
-const availableGroups = (Object.keys(TOOL_GROUPS) as ToolGroup[]).filter((group) => !TOOL_GROUPS[group].alwaysAvailable)
-
-type ModeSource = "global" | "project"
-
-type ImportModeResult = { type: "importModeResult"; success: boolean; slug?: string; error?: string }
-
-// Helper to get group name regardless of format
-function getGroupName(group: GroupEntry): ToolGroup {
-	return Array.isArray(group) ? group[0] : group
-}
+import { CreateModeDialog } from "./CreateModeDialog"
+import { ImportModeDialog } from "./ImportModeDialog"
+import { availableGroups, getGroupName } from "./modeGroups"
+import { useModeImportExport } from "./useModeImportExport"
 
 type ModesViewProps = {
 	/**
@@ -103,11 +86,6 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 	const [isToolsEditMode, setIsToolsEditMode] = useState(false)
 	const [showConfigMenu, setShowConfigMenu] = useState(false)
 	const [isCreateModeDialogOpen, setIsCreateModeDialogOpen] = useState(false)
-	const [isExporting, setIsExporting] = useState(false)
-	const [isImporting, setIsImporting] = useState(false)
-	const [showImportDialog, setShowImportDialog] = useState(false)
-	const [importLevel, setImportLevel] = useState<"global" | "project">("project")
-	const [hasRulesToExport, setHasRulesToExport] = useState<Record<string, boolean>>({})
 	const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 	const [modeToDelete, setModeToDelete] = useState<{
 		slug: string
@@ -121,8 +99,6 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 	const [searchValue, setSearchValue] = useState("")
 	const searchInputRef = useRef<HTMLInputElement>(null)
 
-	// removed unused local name state (replaced by inline rename UX)
-
 	// Inline rename state for the mode dropdown row
 	const [isRenamingMode, setIsRenamingMode] = useState(false)
 	const [renameInputValue, setRenameInputValue] = useState("")
@@ -131,96 +107,61 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 	// Optimistic rename map so search reflects new names immediately
 	const [localRenames, setLocalRenames] = useState<Record<string, string>>({})
 	// Display list that overlays optimistic names
-	const displayModes = (modes || []).map((m) => (localRenames[m.slug] ? { ...m, name: localRenames[m.slug] } : m))
+	const displayModes = modes.map((m) => (localRenames[m.slug] ? { ...m, name: localRenames[m.slug] } : m))
 
-	// Direct update functions
-	const updateAgentPrompt = useCallback(
-		(mode: Mode, promptData: PromptComponent) => {
-			const existingPrompt = customModePrompts?.[mode] as PromptComponent
-			const updatedPrompt = { ...existingPrompt, ...promptData }
+	const updateAgentPrompt = (mode: Mode, promptData: PromptComponent) => {
+		const existingPrompt = customModePrompts?.[mode] as PromptComponent
+		const updatedPrompt = { ...existingPrompt, ...promptData }
 
-			// Only include properties that differ from defaults
-			if (updatedPrompt.roleDefinition === getRoleDefinition(mode)) {
-				delete updatedPrompt.roleDefinition
-			}
-			if (updatedPrompt.description === getDescription(mode)) {
-				delete updatedPrompt.description
-			}
-			if (updatedPrompt.whenToUse === getWhenToUse(mode)) {
-				delete updatedPrompt.whenToUse
-			}
+		// Only include properties that differ from defaults
+		if (updatedPrompt.roleDefinition === getRoleDefinition(mode)) {
+			delete updatedPrompt.roleDefinition
+		}
+		if (updatedPrompt.description === getDescription(mode)) {
+			delete updatedPrompt.description
+		}
+		if (updatedPrompt.whenToUse === getWhenToUse(mode)) {
+			delete updatedPrompt.whenToUse
+		}
 
-			vscode.postMessage({
-				type: "updatePrompt",
-				promptMode: mode,
-				customPrompt: updatedPrompt,
-			})
-		},
-		[customModePrompts],
-	)
+		vscode.postMessage({
+			type: "updatePrompt",
+			promptMode: mode,
+			customPrompt: updatedPrompt,
+		})
+	}
 
-	const updateCustomMode = useCallback((slug: string, modeConfig: ModeConfig) => {
-		const source = modeConfig.source || "global"
-
+	const updateCustomMode = (slug: string, modeConfig: ModeConfig) => {
 		vscode.postMessage({
 			type: "updateCustomMode",
 			slug,
 			modeConfig: {
 				...modeConfig,
-				source, // Ensure source is set
+				source: modeConfig.source || "global", // Ensure source is set
 			},
 		})
-	}, [])
+	}
 
-	// Helper function to find a mode by slug
-	const findModeBySlug = useCallback(
-		(searchSlug: string, modes: readonly ModeConfig[] | undefined): ModeConfig | undefined => {
-			return findCustomModeBySlug(searchSlug, modes)
-		},
-		[],
-	)
-
-	const switchMode = useCallback((slug: string) => {
+	const switchMode = (slug: string) => {
 		vscode.postMessage({
 			type: "mode",
 			text: slug,
 		})
-	}, [])
+	}
 
 	// Handle mode switching with explicit state initialization
-	const handleModeSwitch = useCallback(
-		(modeConfig: ModeConfig) => {
-			if (modeConfig.slug === visualMode) return // Prevent unnecessary updates
+	const handleModeSwitch = (modeConfig: ModeConfig) => {
+		if (modeConfig.slug === visualMode) return // Prevent unnecessary updates
 
-			// Immediately update visual state for instant feedback
-			setVisualMode(modeConfig.slug)
+		// Immediately update visual state for instant feedback
+		setVisualMode(modeConfig.slug)
 
-			// Then send the mode change message to the backend
-			switchMode(modeConfig.slug)
+		// Then send the mode change message to the backend
+		switchMode(modeConfig.slug)
 
-			// Exit tools edit mode when switching modes
-			setIsToolsEditMode(false)
-		},
-		[visualMode, switchMode],
-	)
-
-	// Refs to track latest state/functions for message handler (which has no dependencies)
-	const handleModeSwitchRef = useRef(handleModeSwitch)
-	const customModesRef = useRef(customModes)
-	const switchModeRef = useRef(switchMode)
-
-	// Update refs when dependencies change
-	useEffect(() => {
-		handleModeSwitchRef.current = handleModeSwitch
-	}, [handleModeSwitch])
-
-	useEffect(() => {
-		customModesRef.current = customModes
-	}, [customModes])
-
-	useEffect(() => {
-		switchModeRef.current = switchMode
-	}, [switchMode])
+		// Exit tools edit mode when switching modes
+		setIsToolsEditMode(false)
+	}
 
 	// Sync visualMode with backend mode changes to prevent desync
 	useEffect(() => {
@@ -228,22 +169,22 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 	}, [mode])
 
 	// Handler for popover open state change
-	const onOpenChange = useCallback((open: boolean) => {
+	const onOpenChange = (open: boolean) => {
 		setOpen(open)
 		// Reset search when closing the popover
 		if (!open) {
 			setTimeout(() => setSearchValue(""), 100)
 		}
-	}, [])
+	}
 
 	// Use the shared ESC key handler hook
 	useEscapeKey(open, () => setOpen(false))
 
 	// Handler for clearing search input
-	const onClearSearch = useCallback(() => {
+	const onClearSearch = () => {
 		setSearchValue("")
 		searchInputRef.current?.focus()
-	}, [])
+	}
 
 	// Focus rename input when entering rename mode
 	useEffect(() => {
@@ -253,20 +194,20 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 		}
 	}, [isRenamingMode])
 
-	const handleStartRenameMode = useCallback(() => {
+	const handleStartRenameMode = () => {
 		const customMode = findModeBySlug(visualMode, customModes)
 		if (customMode) {
 			setIsRenamingMode(true)
 			setRenameInputValue(customMode.name)
 		}
-	}, [visualMode, customModes, findModeBySlug])
+	}
 
-	const handleCancelRenameMode = useCallback(() => {
+	const handleCancelRenameMode = () => {
 		setIsRenamingMode(false)
 		setRenameInputValue("")
-	}, [])
+	}
 
-	const handleSaveRenameMode = useCallback(() => {
+	const handleSaveRenameMode = () => {
 		const customMode = findModeBySlug(visualMode, customModes)
 		const trimmed = renameInputValue.trim()
 		if (!customMode || !trimmed) {
@@ -289,217 +230,58 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 		// Optimistically reflect rename in UI/search immediately
 		setLocalRenames((prev) => ({ ...prev, [visualMode]: trimmed }))
 		setIsRenamingMode(false)
-	}, [visualMode, customModes, renameInputValue, modes, updateCustomMode, findModeBySlug])
+	}
 
 	// Helper function to get current mode's config
-	const getCurrentMode = useCallback((): ModeConfig | undefined => {
+	const getCurrentMode = (): ModeConfig | undefined => {
 		const findMode = (m: ModeConfig): boolean => m.slug === visualMode
 		return customModes?.find(findMode) || modes.find(findMode)
-	}, [visualMode, customModes, modes])
+	}
 
-	// Check if the current mode has rules to export
-	const checkRulesDirectory = useCallback((slug: string) => {
-		vscode.postMessage({
-			type: "checkRulesDirectory",
-			slug: slug,
-		})
-	}, [])
-
-	// Check rules directory when mode changes
-	useEffect(() => {
-		const currentMode = getCurrentMode()
-		if (currentMode?.slug && hasRulesToExport[currentMode.slug] === undefined) {
-			checkRulesDirectory(currentMode.slug)
-		}
-	}, [getCurrentMode, checkRulesDirectory, hasRulesToExport])
-
-	// State for create mode dialog
-	const [newModeName, setNewModeName] = useState("")
-	const [newModeSlug, setNewModeSlug] = useState("")
-	const [newModeDescription, setNewModeDescription] = useState("")
-	const [newModeRoleDefinition, setNewModeRoleDefinition] = useState("")
-	const [newModeWhenToUse, setNewModeWhenToUse] = useState("")
-	const [newModeCustomInstructions, setNewModeCustomInstructions] = useState("")
-	const [newModeGroups, setNewModeGroups] = useState<GroupEntry[]>(availableGroups)
-	const [newModeSource, setNewModeSource] = useState<ModeSource>("global")
-	const [newModeAllowedMcpServers, setNewModeAllowedMcpServers] = useState<string[] | undefined>(undefined)
-
-	// Field-specific error states
-	const [nameError, setNameError] = useState<string>("")
-	const [slugError, setSlugError] = useState<string>("")
-	const [descriptionError, setDescriptionError] = useState<string>("")
-	const [roleDefinitionError, setRoleDefinitionError] = useState<string>("")
-	const [groupsError, setGroupsError] = useState<string>("")
-
-	// Helper to reset form state
-	const resetFormState = useCallback(() => {
-		// Reset form fields
-		setNewModeName("")
-		setNewModeSlug("")
-		setNewModeDescription("")
-		setNewModeGroups(availableGroups)
-		setNewModeRoleDefinition("")
-		setNewModeWhenToUse("")
-		setNewModeCustomInstructions("")
-		setNewModeSource("global")
-		setNewModeAllowedMcpServers(undefined)
-		// Reset error states
-		setNameError("")
-		setSlugError("")
-		setDescriptionError("")
-		setRoleDefinitionError("")
-		setGroupsError("")
-	}, [])
-
-	// Ensure import dialog defaults to "project" each open
-	useEffect(() => {
-		if (showImportDialog) {
-			setImportLevel("project")
-		}
-	}, [showImportDialog])
-
-	// Helper function to generate a unique slug from a name
-	const generateSlug = useCallback((name: string, attempt = 0): string => {
-		const baseSlug = name
-			.toLowerCase()
-			.replace(/[^a-z0-9-]+/g, "-")
-			.replace(/^-+|-+$/g, "")
-		return attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`
-	}, [])
-
-	// Handler for name changes
-	const handleNameChange = useCallback(
-		(name: string) => {
-			setNewModeName(name)
-			setNewModeSlug(generateSlug(name))
+	const importExport = useModeImportExport({
+		currentSlug: getCurrentMode()?.slug,
+		onImported: (slug) => {
+			const importedMode = modes.find((m) => m.slug === slug)
+			if (importedMode) {
+				handleModeSwitch(importedMode)
+			} else {
+				// Slug not yet in state (race condition): select the default mode
+				setVisualMode(defaultModeSlug)
+				switchMode(defaultModeSlug)
+			}
 		},
-		[generateSlug],
-	)
+	})
 
-	const handleCreateMode = useCallback(() => {
-		// Clear previous errors
-		setNameError("")
-		setSlugError("")
-		setDescriptionError("")
-		setRoleDefinitionError("")
-		setGroupsError("")
-
-		const source = newModeSource
-		const newMode: ModeConfig = {
-			slug: newModeSlug,
-			name: newModeName,
-			description: newModeDescription.trim() || undefined,
-			roleDefinition: newModeRoleDefinition.trim(),
-			whenToUse: newModeWhenToUse.trim() || undefined,
-			customInstructions: newModeCustomInstructions.trim() || undefined,
-			groups: newModeGroups,
-			source,
-			allowedMcpServers: newModeAllowedMcpServers,
-		}
-
-		// Validate the mode against the schema
-		const result = modeConfigSchema.safeParse(newMode)
-
-		if (!result.success) {
-			// Map Zod errors to specific fields
-			result.error.errors.forEach((error) => {
-				const field = error.path[0] as string
-				const message = error.message
-
-				switch (field) {
-					case "name":
-						setNameError(message)
-						break
-					case "slug":
-						setSlugError(message)
-						break
-					case "description":
-						setDescriptionError(message)
-						break
-					case "roleDefinition":
-						setRoleDefinitionError(message)
-						break
-					case "groups":
-						setGroupsError(message)
-						break
-				}
-			})
-			return
-		}
-
-		updateCustomMode(newModeSlug, newMode)
+	const handleCreateMode = (newMode: ModeConfig) => {
+		updateCustomMode(newMode.slug, newMode)
 		// Immediately select the newly created mode in the UI
-		setVisualMode(newModeSlug)
-		switchMode(newModeSlug)
+		setVisualMode(newMode.slug)
+		switchMode(newMode.slug)
 		setIsCreateModeDialogOpen(false)
-		resetFormState()
-	}, [
-		newModeName,
-		newModeSlug,
-		newModeDescription,
-		newModeRoleDefinition,
-		newModeWhenToUse, // Add whenToUse dependency
-		newModeCustomInstructions,
-		newModeGroups,
-		newModeSource,
-		newModeAllowedMcpServers,
-		updateCustomMode,
-		switchMode,
-		resetFormState,
-	])
-
-	const isNameOrSlugTaken = useCallback(
-		(name: string, slug: string) => {
-			return modes.some((m) => m.slug === slug || m.name === name)
-		},
-		[modes],
-	)
-
-	const openCreateModeDialog = useCallback(() => {
-		const baseNamePrefix = "New Custom Mode"
-		// Find unique name and slug
-		let attempt = 0
-		let name = baseNamePrefix
-		let slug = generateSlug(name)
-		while (isNameOrSlugTaken(name, slug)) {
-			attempt++
-			name = `${baseNamePrefix} ${attempt + 1}`
-			slug = generateSlug(name)
-		}
-		// Start from an empty form, then prefill. Resetting here (not in an effect on open)
-		// keeps the prefill: an effect would run after this render and wipe it.
-		resetFormState()
-		setNewModeName(name)
-		setNewModeSlug(slug)
-		setIsCreateModeDialogOpen(true)
-	}, [generateSlug, isNameOrSlugTaken, resetFormState])
+	}
 
 	// Handler for group checkbox changes
-	const handleGroupChange = useCallback(
+	const handleGroupChange =
 		(group: ToolGroup, isCustomMode: boolean, customMode: ModeConfig | undefined) =>
-			(e: Event | React.FormEvent<HTMLElement>) => {
-				if (!isCustomMode) return // Prevent changes to built-in modes
-				const target = (e as CustomEvent)?.detail?.target || (e.target as HTMLInputElement)
-				const checked = target.checked
-				const oldGroups = customMode?.groups || []
-				let newGroups: GroupEntry[]
-				if (checked) {
-					newGroups = [...oldGroups, group]
-				} else {
-					newGroups = oldGroups.filter((g) => getGroupName(g) !== group)
-				}
-				if (customMode) {
-					const source = customMode.source || "global"
-
-					updateCustomMode(customMode.slug, {
-						...customMode,
-						groups: newGroups,
-						source,
-					})
-				}
-			},
-		[updateCustomMode],
-	)
+		(e: Event | React.FormEvent<HTMLElement>) => {
+			if (!isCustomMode) return // Prevent changes to built-in modes
+			const target = (e as CustomEvent)?.detail?.target || (e.target as HTMLInputElement)
+			const checked = target.checked
+			const oldGroups = customMode?.groups || []
+			let newGroups: GroupEntry[]
+			if (checked) {
+				newGroups = [...oldGroups, group]
+			} else {
+				newGroups = oldGroups.filter((g) => getGroupName(g) !== group)
+			}
+			if (customMode) {
+				updateCustomMode(customMode.slug, {
+					...customMode,
+					groups: newGroups,
+					source: customMode.source || "global",
+				})
+			}
+		}
 
 	// Handle clicks outside the config menu
 	useEffect(() => {
@@ -513,10 +295,8 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 		return () => document.removeEventListener("click", handleClickOutside)
 	}, [showConfigMenu])
 
-	// Use a ref to store the current modeToDelete value
+	// The message listener below is registered once; it reads modeToDelete through this ref.
 	const modeToDeleteRef = useRef(modeToDelete)
-
-	// Update the ref whenever modeToDelete changes
 	useEffect(() => {
 		modeToDeleteRef.current = modeToDelete
 	}, [modeToDelete])
@@ -530,46 +310,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 					setSelectedPromptTitle(`System Prompt (${message.mode} mode)`)
 					setIsDialogOpen(true)
 				}
-			} else if (message.type === "exportModeResult") {
-				setIsExporting(false)
-
-				if (!message.success) {
-					// Show error message
-					console.error("Failed to export mode:", message.error)
-				}
-			} else if (message.type === "importModeResult") {
-				setIsImporting(false)
-				setShowImportDialog(false)
-
-				if (message.success) {
-					const { slug } = message as ImportModeResult
-					if (slug) {
-						// Try switching using the freshest mode list available
-						const all = getAllModes(customModesRef.current)
-						const importedMode = all.find((m) => m.slug === slug)
-						if (importedMode) {
-							handleModeSwitchRef.current(importedMode)
-						} else {
-							// Fallback: slug not yet in state (race condition) - select default mode
-							setVisualMode(defaultModeSlug)
-							switchModeRef.current?.(defaultModeSlug)
-						}
-					}
-				} else {
-					// Only log error if it's not a cancellation
-					if (message.error !== "cancelled") {
-						console.error("Failed to import mode:", message.error)
-					}
-				}
-				// Note: Auto-select after import will be handled by PR #9003
-			} else if (message.type === "checkRulesDirectoryResult") {
-				setHasRulesToExport((prev) => ({
-					...prev,
-					[message.slug]: message.hasContent,
-				}))
 			} else if (message.type === "deleteCustomModeCheck") {
-				// Handle the check response
-				// Use the ref to get the current modeToDelete value
 				const currentModeToDelete = modeToDeleteRef.current
 				if (message.slug && currentModeToDelete && currentModeToDelete.slug === message.slug) {
 					setModeToDelete({
@@ -583,7 +324,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 
 		window.addEventListener("message", handler)
 		return () => window.removeEventListener("message", handler)
-	}, [checkRulesDirectory, switchMode])
+	}, [])
 
 	const handleAgentReset = (
 		modeSlug: string,
@@ -687,8 +428,8 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 								<Button
 									variant="ghost"
 									size="icon"
-									onClick={() => setShowImportDialog(true)}
-									disabled={isImporting}
+									onClick={importExport.openImportDialog}
+									disabled={importExport.isImporting}
 									title={t("prompts:modes.importMode")}
 									data-testid="import-mode-toolbar-button">
 									<Download className="h-4 w-4" />
@@ -846,7 +587,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 									<Button
 										variant="ghost"
 										size="icon"
-										onClick={openCreateModeDialog}
+										onClick={() => setIsCreateModeDialogOpen(true)}
 										data-testid="add-mode-button">
 										<span className="codicon codicon-add" />
 									</Button>
@@ -897,15 +638,11 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 										size="icon"
 										onClick={() => {
 											const currentMode = getCurrentMode()
-											if (currentMode?.slug && !isExporting) {
-												setIsExporting(true)
-												vscode.postMessage({
-													type: "exportMode",
-													slug: currentMode.slug,
-												})
+											if (currentMode?.slug) {
+												importExport.exportMode(currentMode.slug)
 											}
 										}}
-										disabled={isExporting}
+										disabled={importExport.isExporting}
 										title={t("prompts:exportMode.title")}
 										data-testid="export-mode-toolbar-button">
 										<Upload className="h-4 w-4" />
@@ -922,9 +659,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 							{t("prompts:apiConfiguration.select")}
 						</div>
 						<div className="mb-2">
-							<Select
-								value={currentApiConfigName}
-								onValueChange={onSelectApiConfiguration}>
+							<Select value={currentApiConfigName} onValueChange={onSelectApiConfiguration}>
 								<SelectTrigger className="w-full">
 									<SelectValue placeholder={t("settings:common.select")} />
 								</SelectTrigger>
@@ -1456,230 +1191,12 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 			</Section>
 
 			{isCreateModeDialogOpen && (
-				<div className="fixed inset-0 flex justify-end bg-black/50 z-[1000]">
-					<div className="w-[calc(100vw-100px)] h-full bg-vscode-editor-background shadow-md flex flex-col relative">
-						<div className="flex-1 p-5 overflow-y-auto min-h-0">
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => setIsCreateModeDialogOpen(false)}
-								className="absolute top-5 right-5">
-								<span className="codicon codicon-close"></span>
-							</Button>
-							<h2 className="mb-4">{t("prompts:createModeDialog.title")}</h2>
-							<div className="mb-4">
-								<div className="font-bold mb-1">{t("prompts:createModeDialog.name.label")}</div>
-								<Input
-									type="text"
-									value={newModeName}
-									onChange={(e) => {
-										handleNameChange(e.target.value)
-									}}
-									className="w-full"
-								/>
-								{nameError && (
-									<div className="text-xs text-vscode-errorForeground mt-1">{nameError}</div>
-								)}
-							</div>
-							<div className="mb-4">
-								<div className="font-bold mb-1">{t("prompts:createModeDialog.slug.label")}</div>
-								<Input
-									type="text"
-									value={newModeSlug}
-									onChange={(e) => {
-										setNewModeSlug(e.target.value)
-									}}
-									className="w-full"
-								/>
-								<div className="text-xs text-vscode-descriptionForeground mt-1">
-									{t("prompts:createModeDialog.slug.description")}
-								</div>
-								{slugError && (
-									<div className="text-xs text-vscode-errorForeground mt-1">{slugError}</div>
-								)}
-							</div>
-							<div className="mb-4">
-								<div className="font-bold mb-1">{t("prompts:createModeDialog.saveLocation.label")}</div>
-								<div className="text-sm text-vscode-descriptionForeground mb-2">
-									{t("prompts:createModeDialog.saveLocation.description")}
-								</div>
-								<VSCodeRadioGroup
-									value={newModeSource}
-									onChange={(e: Event | React.FormEvent<HTMLElement>) => {
-										const target = ((e as CustomEvent)?.detail?.target ||
-											(e.target as HTMLInputElement)) as HTMLInputElement
-										setNewModeSource(target.value as ModeSource)
-									}}>
-									<VSCodeRadio value="global">
-										{t("prompts:createModeDialog.saveLocation.global.label")}
-										<div className="text-xs text-vscode-descriptionForeground mt-0.5">
-											{t("prompts:createModeDialog.saveLocation.global.description")}
-										</div>
-									</VSCodeRadio>
-									<VSCodeRadio value="project">
-										{t("prompts:createModeDialog.saveLocation.project.label")}
-										<div className="text-xs text-vscode-descriptionForeground mt-0.5">
-											{t("prompts:createModeDialog.saveLocation.project.description")}
-										</div>
-									</VSCodeRadio>
-								</VSCodeRadioGroup>
-							</div>
-
-							<div style={{ marginBottom: "16px" }}>
-								<div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-									{t("prompts:createModeDialog.roleDefinition.label")}
-								</div>
-								<div
-									style={{
-										fontSize: "13px",
-										color: "var(--vscode-descriptionForeground)",
-										marginBottom: "8px",
-									}}>
-									{t("prompts:createModeDialog.roleDefinition.description")}
-								</div>
-								<VSCodeTextArea
-									resize="vertical"
-									value={newModeRoleDefinition}
-									onChange={(e) => {
-										setNewModeRoleDefinition((e.target as HTMLTextAreaElement).value)
-									}}
-									rows={4}
-									className="w-full"
-								/>
-								{roleDefinitionError && (
-									<div className="text-xs text-vscode-errorForeground mt-1">
-										{roleDefinitionError}
-									</div>
-								)}
-							</div>
-
-							<div className="mb-4">
-								<div className="font-bold mb-1">{t("prompts:createModeDialog.description.label")}</div>
-								<div className="text-[13px] text-vscode-descriptionForeground mb-2">
-									{t("prompts:createModeDialog.description.description")}
-								</div>
-								<VSCodeTextField
-									value={newModeDescription}
-									onChange={(e) => {
-										setNewModeDescription((e.target as HTMLInputElement).value)
-									}}
-									className="w-full"
-								/>
-								{descriptionError && (
-									<div className="text-xs text-vscode-errorForeground mt-1">{descriptionError}</div>
-								)}
-							</div>
-
-							<div className="mb-4">
-								<div className="font-bold mb-1">{t("prompts:createModeDialog.whenToUse.label")}</div>
-								<div className="text-[13px] text-vscode-descriptionForeground mb-2">
-									{t("prompts:createModeDialog.whenToUse.description")}
-								</div>
-								<VSCodeTextArea
-									resize="vertical"
-									value={newModeWhenToUse}
-									onChange={(e) => {
-										setNewModeWhenToUse((e.target as HTMLTextAreaElement).value)
-									}}
-									rows={3}
-									className="w-full"
-								/>
-							</div>
-							<div className="mb-4">
-								<div className="font-bold mb-1">{t("prompts:createModeDialog.tools.label")}</div>
-								<div className="text-[13px] text-vscode-descriptionForeground mb-2">
-									{t("prompts:createModeDialog.tools.description")}
-								</div>
-								<div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
-									{availableGroups.map((group) => (
-										<VSCodeCheckbox
-											key={group}
-											checked={newModeGroups.some((g) => getGroupName(g) === group)}
-											onChange={(e: Event | React.FormEvent<HTMLElement>) => {
-												const target =
-													(e as CustomEvent)?.detail?.target || (e.target as HTMLInputElement)
-												const checked = target.checked
-												if (checked) {
-													setNewModeGroups([...newModeGroups, group])
-												} else {
-													setNewModeGroups(
-														newModeGroups.filter((g) => getGroupName(g) !== group),
-													)
-												}
-											}}>
-											{t(`prompts:tools.toolNames.${group}`)}
-										</VSCodeCheckbox>
-									))}
-								</div>
-								{groupsError && (
-									<div className="text-xs text-vscode-errorForeground mt-1">{groupsError}</div>
-								)}
-								{/* MCP Server Restriction in create dialog */}
-								{newModeGroups.some((g) => getGroupName(g) === "mcp") && (
-									<div className="mt-3 ml-1" data-testid="create-mcp-server-restriction">
-										<VSCodeCheckbox
-											checked={newModeAllowedMcpServers !== undefined}
-											data-testid="create-restrict-mcp-servers-toggle"
-											onChange={(e: Event | React.FormEvent<HTMLElement>) => {
-												const target =
-													(e as CustomEvent)?.detail?.target || (e.target as HTMLInputElement)
-												const checked = target.checked
-												setNewModeAllowedMcpServers(checked ? [] : undefined)
-											}}>
-											Restrict to specific MCP servers
-										</VSCodeCheckbox>
-										{newModeAllowedMcpServers !== undefined && (
-											<McpServerChecklist
-												allowedMcpServers={newModeAllowedMcpServers}
-												mcpServers={mcpServers}
-												testIdPrefix="create-mcp-server"
-												onServerToggle={(serverName) => (e) => {
-													const target =
-														(e as CustomEvent)?.detail?.target ||
-														(e.target as HTMLInputElement)
-													const checked = target.checked
-													setNewModeAllowedMcpServers((prev) => {
-														const current = prev ?? []
-														return checked
-															? current.includes(serverName)
-																? current
-																: [...current, serverName]
-															: current.filter((s) => s !== serverName)
-													})
-												}}
-											/>
-										)}
-									</div>
-								)}
-							</div>
-							<div className="mb-4">
-								<div className="font-bold mb-1">
-									{t("prompts:createModeDialog.customInstructions.label")}
-								</div>
-								<div className="text-[13px] text-vscode-descriptionForeground mb-2">
-									{t("prompts:createModeDialog.customInstructions.description")}
-								</div>
-								<VSCodeTextArea
-									resize="vertical"
-									value={newModeCustomInstructions}
-									onChange={(e) => {
-										setNewModeCustomInstructions((e.target as HTMLTextAreaElement).value)
-									}}
-									rows={4}
-									className="w-full"
-								/>
-							</div>
-						</div>
-						<div className="flex justify-end p-3 px-5 gap-2 border-t border-vscode-editor-lineHighlightBorder bg-vscode-editor-background">
-							<Button variant="secondary" onClick={() => setIsCreateModeDialogOpen(false)}>
-								{t("prompts:createModeDialog.buttons.cancel")}
-							</Button>
-							<Button variant="primary" onClick={handleCreateMode}>
-								{t("prompts:createModeDialog.buttons.create")}
-							</Button>
-						</div>
-					</div>
-				</div>
+				<CreateModeDialog
+					modes={modes}
+					mcpServers={mcpServers}
+					onCreate={handleCreateMode}
+					onClose={() => setIsCreateModeDialogOpen(false)}
+				/>
 			)}
 
 			{isDialogOpen && (
@@ -1712,69 +1229,14 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 				</div>
 			)}
 
-			{/* Import Mode Dialog */}
-			{showImportDialog && (
-				<div className="fixed inset-0 flex items-center justify-center bg-black/50 z-[1000]">
-					<div className="bg-vscode-editor-background border border-vscode-editor-lineHighlightBorder rounded-lg shadow-lg p-6 max-w-md w-full">
-						<h3 className="text-lg font-semibold mb-4">{t("prompts:modes.importMode")}</h3>
-						<p className="text-sm text-vscode-descriptionForeground mb-4">
-							{t("prompts:importMode.selectLevel")}
-						</p>
-						<div className="space-y-3 mb-6">
-							<label className="flex items-start gap-2 cursor-pointer">
-								<input
-									type="radio"
-									name="importLevel"
-									value="project"
-									className="mt-1"
-									checked={importLevel === "project"}
-									onChange={() => setImportLevel("project")}
-								/>
-								<div>
-									<div className="font-medium">{t("prompts:importMode.project.label")}</div>
-									<div className="text-xs text-vscode-descriptionForeground">
-										{t("prompts:importMode.project.description")}
-									</div>
-								</div>
-							</label>
-							<label className="flex items-start gap-2 cursor-pointer">
-								<input
-									type="radio"
-									name="importLevel"
-									value="global"
-									className="mt-1"
-									checked={importLevel === "global"}
-									onChange={() => setImportLevel("global")}
-								/>
-								<div>
-									<div className="font-medium">{t("prompts:importMode.global.label")}</div>
-									<div className="text-xs text-vscode-descriptionForeground">
-										{t("prompts:importMode.global.description")}
-									</div>
-								</div>
-							</label>
-						</div>
-						<div className="flex justify-end gap-2">
-							<Button variant="secondary" onClick={() => setShowImportDialog(false)}>
-								{t("prompts:createModeDialog.buttons.cancel")}
-							</Button>
-							<Button
-								variant="primary"
-								onClick={() => {
-									if (!isImporting) {
-										setIsImporting(true)
-										vscode.postMessage({
-											type: "importMode",
-											source: importLevel,
-										})
-									}
-								}}
-								disabled={isImporting}>
-								{isImporting ? t("prompts:importMode.importing") : t("prompts:importMode.import")}
-							</Button>
-						</div>
-					</div>
-				</div>
+			{importExport.isImportDialogOpen && (
+				<ImportModeDialog
+					importLevel={importExport.importLevel}
+					onImportLevelChange={importExport.setImportLevel}
+					isImporting={importExport.isImporting}
+					onImport={importExport.startImport}
+					onCancel={importExport.closeImportDialog}
+				/>
 			)}
 
 			{/* Delete Mode Confirmation Dialog */}
