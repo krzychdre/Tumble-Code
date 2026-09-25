@@ -244,4 +244,43 @@ describe("code-index watcher lifecycle", () => {
 		await vi.advanceTimersByTimeAsync(1000)
 		expect(subscribed).not.toHaveBeenCalled()
 	})
+
+	it("a disposed orchestrator does not write state when its aborted scan unwinds", async () => {
+		let releaseScan!: () => void
+		const scanner: any = {
+			scanDirectory: vi.fn(
+				(_d: string, _e: any, _b: any, _f: any, signal: AbortSignal) =>
+					new Promise((resolve) => {
+						releaseScan = () => resolve({ stats: { processed: 0, skipped: 0 }, totalBlockCount: 0 })
+						signal.addEventListener("abort", () => releaseScan())
+					}),
+			),
+		}
+		const old = new CodeIndexOrchestrator(
+			{ isFeatureConfigured: true } as any,
+			stateManager,
+			workspacePath,
+			{ flush: vi.fn().mockResolvedValue(undefined), clearCacheFile: vi.fn() } as any,
+			{
+				initialize: vi.fn().mockResolvedValue(false),
+				hasIndexedData: vi.fn().mockResolvedValue(false),
+				markIndexingIncomplete: vi.fn().mockResolvedValue(undefined),
+			} as any,
+			scanner,
+			fileWatcher,
+		)
+		const running = old.startIndexing()
+		await vi.advanceTimersByTimeAsync(0)
+		expect(scanner.scanDirectory).toHaveBeenCalled()
+
+		// The manager drops this orchestrator (settings change, recovery) and a new one takes over.
+		old.dispose()
+		stateManager.setSystemState("Indexing", "new orchestrator scanning")
+		const writesBefore = stateManager.setSystemState.mock.calls.length
+		await running
+
+		// The unwinding scan must not overwrite the new orchestrator's state with "Standby".
+		expect(stateManager.setSystemState.mock.calls.length).toBe(writesBefore)
+		expect(stateManager.state).toBe("Indexing")
+	})
 })
