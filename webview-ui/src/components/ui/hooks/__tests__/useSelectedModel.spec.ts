@@ -717,6 +717,9 @@ describe("useSelectedModel", () => {
 			["anthropic", { apiProvider: "anthropic", apiModelId: "claude-api6" }, true],
 			["zai (mainland list)", { apiProvider: "zai", zaiApiLine: "china_coding", apiModelId: "glm-api6" }, true],
 			["bedrock custom ARN", { apiProvider: "bedrock", apiModelId: "custom-arn" }, false],
+			["deepseek-chat alias", { apiProvider: "deepseek", apiModelId: "deepseek-chat" }, false],
+			["deepseek-reasoner alias", { apiProvider: "deepseek", apiModelId: "deepseek-reasoner" }, false],
+			["deepseek unknown", { apiProvider: "deepseek", apiModelId: "deepseek-api6" }, true],
 			["no model id", { apiProvider: "gemini" }, false],
 			["OpenAI Compatible (no list)", { apiProvider: "openai", openAiModelId: "anything" }, false],
 		] as const)("%s: isUnknownModel is %s", (_, apiConfiguration, expected) => {
@@ -727,6 +730,10 @@ describe("useSelectedModel", () => {
 			})
 
 			expect(result.current.isUnknownModel).toBe(expected)
+			if (!expected && String((apiConfiguration as ProviderSettings).apiModelId).startsWith("deepseek-")) {
+				expect(result.current.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
+				expect(result.current.info).toBeDefined()
+			}
 			if (expected) {
 				expect(result.current.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
 			}

@@ -143,6 +143,23 @@ describe("resolveCatalogModel", () => {
 		})
 	})
 
+	it("resolves an alias to the info of the model it names, keeping the configured id", () => {
+		const aliased = { ...catalog("keep-id"), modelAliases: { "other-alias": "other" } }
+
+		expect(resolveCatalogModel("other-alias", aliased)).toEqual({
+			id: "other-alias",
+			info: models.other,
+			known: true,
+		})
+	})
+
+	it("declares DeepSeek's documented aliases for deepseek-v4-flash", () => {
+		expect(providerModelDefinitions.deepseek.modelAliases).toEqual({
+			"deepseek-chat": "deepseek-v4-flash",
+			"deepseek-reasoner": "deepseek-v4-flash",
+		})
+	})
+
 	it("does not treat inherited object keys as listed models", () => {
 		expect(resolveCatalogModel("constructor", catalog("keep-id"))).toMatchObject({
 			id: "constructor",
