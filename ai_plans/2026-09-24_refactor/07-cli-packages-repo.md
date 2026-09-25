@@ -172,6 +172,17 @@ into `packages/types` (data) or a browser-safe entry of `packages/core` (logic);
 migration; the webview declares the package. **Gate:** TEST-8 bundle guard, the 17 specs in `src/shared/__tests__`,
 the webview suite. After SVC-16 and CORE-R10. **Size** M.
 
+**Status (2026-09-25):** DONE in #422 (merge 80fadc273), 15 commits. Moved with their specs: `array`, `todo`, `cost`,
+`api` (model options), `context-mentions`, `parse-command` (+ internal `shell-command-scanner`) into `packages/core`
+(exported from `browser`, `cli` and the main entry); `experiments`, `language`, the `tools.ts` constants into
+`packages/types`. Stubs remain in `src/shared` for `api`, `array`, `context-mentions`, `cost`, `experiments`,
+`language`, `parse-command`, `todo` (they import `@roo-code/core/browser` so specs that mock `@roo-code/core` do not
+reach them); `tools.ts` keeps host-only types; `src/shared/core.ts` deleted; webview imports the packages, knip
+ignore of `@roo-code/core` removed. New `browser-entry.spec.ts` fails on any Node builtin or non-types package
+reachable from `browser.ts`. Still on the `@roo/*` alias: `modes`, `support-prompt`, `embeddingModels`,
+`checkExistApiConfig`, `ProfileValidator`, `getApiMetrics`, `combineApiRequests`, `combineCommandSequences`,
+`planFiles`, `skills`, `globalFileNames`, `WebviewMessage`, `package`.
+
 ### PKG-7 One copy of the per-provider settings schemas in `packages/types`
 
 A script comparison found `providerConfigSchemas` (`provider-config/configs.ts`, 21 providers) identical to the arms
