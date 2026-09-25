@@ -408,14 +408,14 @@ describe("ClineProvider persistent storage error state", () => {
 	it("clearStorageError posts state only when an error was set", async () => {
 		await provider.resolveWebviewView(mockWebviewView)
 		mockPostMessage.mockClear()
-		const postSpy = vi.spyOn(provider as any, "postStorageErrorState")
+		const postSpy = vi.spyOn((provider as any).taskHistory, "postStorageErrorState")
 
 		// No error reported yet: clearing must not attempt any state push.
-		;(provider as any).clearStorageError()
+		;(provider as any).taskHistory.clearStorageError()
 		expect(postSpy).not.toHaveBeenCalled()
 
 		// Report an error: the state push carries it.
-		;(provider as any).reportStorageError("TestContext", new Error("disk full"))
+		;(provider as any).taskHistory.reportStorageError("TestContext", new Error("disk full"))
 		expect(postSpy).toHaveBeenCalledTimes(1)
 		const errorStates = await waitForStorageErrorPush()
 		expect(errorStates[errorStates.length - 1].storageErrorMessage).toBe("TestContext: disk full")
@@ -424,7 +424,7 @@ describe("ClineProvider persistent storage error state", () => {
 		// webview-safe "no error" value; undefined would be dropped by
 		// postMessage and could never clear the banner).
 		mockPostMessage.mockClear()
-		;(provider as any).clearStorageError()
+		;(provider as any).taskHistory.clearStorageError()
 		const clearedStates = await waitForStorageErrorPush()
 		expect(clearedStates[clearedStates.length - 1].storageErrorMessage).toBe("")
 	})

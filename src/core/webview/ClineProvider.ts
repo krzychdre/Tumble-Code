@@ -3,7 +3,6 @@ import * as path from "path"
 import fs from "fs/promises"
 import EventEmitter from "events"
 
-import { Anthropic } from "@anthropic-ai/sdk"
 import delay from "delay"
 import axios from "axios"
 import pWaitFor from "p-wait-for"
@@ -43,14 +42,12 @@ import {
 	isRetiredProvider,
 	readCliRuntimeEnv,
 } from "@roo-code/types"
-import { aggregateTaskCostsRecursive, type AggregatedCosts } from "./aggregateTaskCosts"
 import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService } from "@roo-code/cloud"
 
 import { Package } from "../../shared/package"
 import { findLast } from "../../shared/array"
 import { supportPrompt } from "../../shared/support-prompt"
-import { GlobalFileNames } from "../../shared/globalFileNames"
 import { Mode, defaultModeSlug, getModeBySlug } from "../../shared/modes"
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
@@ -58,21 +55,17 @@ import { ProfileValidator } from "../../shared/ProfileValidator"
 
 import { Terminal } from "../../integrations/terminal/Terminal"
 import { getCustomSoundsDir } from "../../integrations/misc/custom-sounds"
-import { downloadTask, getTaskFileName } from "../../integrations/misc/export-markdown"
-import { resolveDefaultSaveUri, saveLastExportPath } from "../../utils/export"
 import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { MarketplaceManager } from "../../services/marketplace"
-import { ShadowCheckpointService } from "../../services/checkpoints/ShadowCheckpointService"
 import { CodeIndexManager } from "../../services/code-index/manager"
 import type { IndexProgressUpdate } from "../../services/code-index/interfaces/manager"
 import { MdmService } from "../../services/mdm/MdmService"
 import { SkillsManager } from "../../services/skills/SkillsManager"
 
-import { fileExistsAtPath } from "../../utils/fs"
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
@@ -92,12 +85,13 @@ import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@roo-code/types"
-import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../task-persistence"
+import type { TaskHistoryStore } from "../task-persistence"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
 import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
 import { DelegationService } from "./DelegationService"
+import { TaskHistoryGateway } from "./TaskHistoryGateway"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -178,45 +172,11 @@ export class ClineProvider
 	/** Set by the CLI host at startup; see {@link setCliModeProviderSettings}. */
 	private cliModeProviderSettings?: CliModeProviderSettings
 	/**
-	 * Origin token passed with every task-history mutation this provider
-	 * makes. The shared store echoes it back on the change event, which is
-	 * how {@link subscribeToTaskHistoryStore} recognises (and skips) the
-	 * echo of our own writes.
+	 * The task-history gateway (CORE-R6 a): the shared TaskHistoryStore
+	 * handle, echo suppression, the storage-error banner and the history
+	 * operations.
 	 */
-	private readonly taskHistoryOrigin = Symbol("ClineProvider.taskHistoryOrigin")
-	/**
-	 * In-flight (or settled-successful) {@link TaskHistoryStore} acquire.
-	 * Unlike the old `taskHistoryStoreReady` promise, a FAILED acquire clears
-	 * this field so the next caller retries the acquire instead of rethrowing
-	 * the same rejection forever (one transient I/O error at window start
-	 * used to kill all task handling until reload).
-	 */
-	private taskHistoryStorePromise: Promise<TaskHistoryStore> | null = null
-	/**
-	 * Timestamp of the last failed acquire. A retry cooldown of
-	 * {@link ClineProvider.TASK_HISTORY_STORE_RETRY_COOLDOWN_MS} keeps a
-	 * permanently broken storage path (disk full, read-only FS) from being
-	 * hammered on every state push.
-	 */
-	private taskHistoryStoreLastFailureTs = 0
-	/** The error remembered from the last failed acquire; rethrown during the cooldown window. */
-	private taskHistoryStoreLastError?: unknown
-	/**
-	 * Ref-counted handle that owns the shared {@link TaskHistoryStore} for
-	 * this storage path. Disposed in {@link dispose} so the final consumer
-	 * tears down the watcher/timers; earlier consumers keep the store alive.
-	 */
-	private taskHistoryStoreHandle?: TaskHistoryStoreHandle
-	/** Unsubscribe for the shared store's change notifications. */
-	private taskHistoryStoreUnsubscribe?: () => void
-	/**
-	 * Last persistent storage failure, formatted as "<context>: <message>".
-	 * Empty string means storage is healthy. Sent to the webview as part of
-	 * the state so the StorageErrorBanner can surface failures (disk full,
-	 * quota, permissions, Remote SSH server storage) that would otherwise
-	 * only show up as a transient toast or a log line.
-	 */
-	private storageErrorMessage = ""
+	private readonly taskHistory: TaskHistoryGateway
 	/**
 	 * Chat-message edits waiting for the user to confirm a checkpoint
 	 * restore, keyed by operation ID. Written by
@@ -226,13 +186,6 @@ export class ClineProvider
 	 */
 	private pendingOperations: Map<string, PendingEditOperation> = new Map()
 	private static readonly PENDING_OPERATION_TIMEOUT_MS = 30000 // 30 seconds
-
-	/**
-	 * Minimum time between TaskHistoryStore acquire retries after a failure.
-	 * Constant on purpose (not configurable): it only guards against a
-	 * hammering loop on a permanently broken FS, it is not a tuning knob.
-	 */
-	private static readonly TASK_HISTORY_STORE_RETRY_COOLDOWN_MS = 5000
 
 	/**
 	 * Monotonically increasing sequence number for clineMessages state pushes.
@@ -268,6 +221,29 @@ export class ClineProvider
 		ClineProvider.activeInstances.add(this)
 
 		this.mdmService = mdmService
+		// Closures, not `this`: they reach private members and pick up
+		// methods that tests replace on the instance after construction.
+		const isViewLaunched = () => this.isViewLaunched
+		const isDisposed = () => this._disposed
+		const getCwd = () => this.cwd
+		this.taskHistory = new TaskHistoryGateway({
+			get isViewLaunched() {
+				return isViewLaunched()
+			},
+			get isDisposed() {
+				return isDisposed()
+			},
+			get cwd() {
+				return getCwd()
+			},
+			contextProxy,
+			log: (message) => this.log(message),
+			postMessageToWebview: (message) => this.postMessageToWebview(message),
+			postStateToWebview: () => this.postStateToWebview(),
+			postStateToWebviewWithoutClineMessages: () => this.postStateToWebviewWithoutClineMessages(),
+			getCurrentTask: () => this.getCurrentTask(),
+			removeClineFromStack: () => this.removeClineFromStack(),
+		})
 		this.stateBuilder = new ProviderStateBuilder({
 			contextProxy,
 			getCustomModes: () => this.customModesManager.getCustomModes(),
@@ -283,7 +259,7 @@ export class ClineProvider
 			getMemoryActivity: () => this.memoryActivityCounts,
 			getWebview: () => this.view?.webview,
 			getExtensionVersion: () => this.context.extension?.packageJSON?.version ?? "",
-			getStorageErrorMessage: () => this.storageErrorMessage,
+			getStorageErrorMessage: () => this.taskHistory.storageErrorMessage,
 			getSettingsImportedAt: () => this.settingsImportedAt,
 			getCloudAuthSkipModel: () => this.context.globalState.get<boolean>("roo-auth-skip-model"),
 			getHasOpenedModeSelector: () => this.getGlobalState("hasOpenedModeSelector"),
@@ -291,15 +267,12 @@ export class ClineProvider
 			latestAnnouncementId: this.latestAnnouncementId,
 			renderContext: this.renderContext,
 		})
-		// Closures, not `this`: they reach private members and pick up
-		// methods that tests replace on the instance after construction.
-		const isViewLaunched = () => this.isViewLaunched
 		this.delegation = new DelegationService({
 			get isViewLaunched() {
 				return isViewLaunched()
 			},
 			contextProxy,
-			taskHistoryOrigin: this.taskHistoryOrigin,
+			taskHistoryOrigin: this.taskHistory.origin,
 			getTaskHistoryStore: () => this.getTaskHistoryStore(),
 			getHistoryItem: (id) => this.getHistoryItem(id),
 			updateTaskHistory: (item) => this.updateTaskHistory(item),
@@ -325,11 +298,11 @@ export class ClineProvider
 		// collapse to one store.
 		//
 		// Eager init stays, but a failure is no longer permanent:
-		// acquireTaskHistoryStore clears the remembered promise on failure so
-		// the next getTaskHistoryStore() retries, and it reports the failure
-		// as a persistent storage error (see reportStorageError).
-		void this.acquireTaskHistoryStore().catch(() => {
-			// Already reported by acquireTaskHistoryStore; the eager init
+		// TaskHistoryGateway.acquire clears the remembered promise on failure
+		// so the next getTaskHistoryStore() retries, and it reports the
+		// failure as a persistent storage error (see TaskHistoryGateway.reportStorageError).
+		void this.taskHistory.acquire().catch(() => {
+			// Already reported by TaskHistoryGateway.acquire; the eager init
 			// must not surface as an unhandled rejection.
 		})
 
@@ -482,182 +455,6 @@ export class ClineProvider
 	}
 
 	/**
-	 * Acquires the shared, ref-counted {@link TaskHistoryStore} for this
-	 * storage path, retrying after failures.
-	 *
-	 * Semantics:
-	 * - Parallel callers share one acquire (no hammering of the store
-	 *   registry).
-	 * - A failed acquire is remembered for
-	 *   {@link ClineProvider.TASK_HISTORY_STORE_RETRY_COOLDOWN_MS}; within
-	 *   that window callers get the remembered error back without a new
-	 *   acquire, after it the acquire is retried.
-	 * - On a successful acquire the legacy-history migration runs once
-	 *   (idempotent, so re-running after a reacquire is safe) and a
-	 *   previously reported storage error is cleared.
-	 * - Failures are reported as a persistent storage error (see
-	 *   {@link reportStorageError}) and rethrown; task operations must fail
-	 *   loudly, the degradation to empty history happens only in
-	 *   {@link getStateToPostToWebview}.
-	 */
-	private async acquireTaskHistoryStore(): Promise<TaskHistoryStore> {
-		// Parallel calls share one acquire attempt; it stays cached until it
-		// settles (a failure clears it below, so the next call retries).
-		if (this.taskHistoryStorePromise) {
-			return this.taskHistoryStorePromise
-		}
-
-		// Cooldown: with a permanently broken storage path every acquire is
-		// doomed, so rethrow the remembered error without touching the FS
-		// again until the window has elapsed.
-		if (Date.now() - this.taskHistoryStoreLastFailureTs < ClineProvider.TASK_HISTORY_STORE_RETRY_COOLDOWN_MS) {
-			throw this.taskHistoryStoreLastError
-		}
-
-		const acquirePromise = TaskHistoryStore.acquire(this.contextProxy.globalStorageUri.fsPath)
-			.then(async (handle) => {
-				if (this._disposed) {
-					handle.dispose()
-					throw new Error("ClineProvider was disposed before TaskHistoryStore became ready")
-				}
-				this.taskHistoryStoreHandle = handle
-				this.subscribeToTaskHistoryStore(handle.store)
-
-				// Legacy migration runs once per successful acquire. A failed
-				// migration does NOT fail the acquire: the store itself is
-				// usable and the legacy keys are retained for the next retry
-				// (the error is reported like any other storage failure).
-				try {
-					await this.initializeTaskHistoryStore(handle.store)
-					this.clearStorageError()
-				} catch (error) {
-					this.log(`Failed to initialize TaskHistoryStore: ${error}`)
-					if (!this._disposed) {
-						this.reportStorageError("TaskHistoryStore", error)
-					}
-				}
-
-				if (this._disposed) {
-					throw new Error("ClineProvider is disposed")
-				}
-				return handle.store
-			})
-			.catch((error) => {
-				this.taskHistoryStorePromise = null
-				this.taskHistoryStoreLastFailureTs = Date.now()
-				this.taskHistoryStoreLastError = error
-				if (!this._disposed) {
-					this.reportStorageError("TaskHistoryStore", error)
-				}
-				throw error
-			})
-
-		this.taskHistoryStorePromise = acquirePromise
-		return acquirePromise
-	}
-
-	/**
-	 * Initialize the shared TaskHistoryStore and, if present, migrate the
-	 * legacy `taskHistory` globalState array into per-task files before
-	 * clearing the legacy key.
-	 *
-	 * Migration safety:
-	 * - The legacy array is only read when {@link ContextProxy.hasLegacyTaskHistory}
-	 *   reports a value, so starts after a successful cleanup never
-	 *   materialize it.
-	 * - {@link TaskHistoryStore.migrateFromLegacyHistory} is idempotent and
-	 *   never overwrites an existing per-task file, so a partially-migrated
-	 *   state resumes without clobbering newer records.
-	 * - The legacy keys are cleared only after migration reports success; on
-	 *   failure they are left intact so the next start can retry.
-	 */
-	private async initializeTaskHistoryStore(taskHistoryStore?: TaskHistoryStore): Promise<void> {
-		// The store parameter is how acquireTaskHistoryStore runs the
-		// migration on its fresh handle; awaiting getTaskHistoryStore() from
-		// inside the acquire chain would deadlock on its own promise.
-		const store = taskHistoryStore ?? (await this.getTaskHistoryStore())
-
-		// One-time backfill from the legacy globalState array. Skipped
-		// entirely (no read, no writes) once cleanup has run.
-		if (this.contextProxy.hasLegacyTaskHistory()) {
-			const legacy = this.contextProxy.getLegacyTaskHistory<HistoryItem>() ?? []
-			if (legacy.length > 0) {
-				this.log(`[initializeTaskHistoryStore] Migrating ${legacy.length} legacy entries`)
-				const ok = await store.migrateFromLegacyHistory(legacy)
-				if (!ok) {
-					this.log("[initializeTaskHistoryStore] Migration incomplete — legacy keys retained for retry")
-					return
-				}
-				this.log("[initializeTaskHistoryStore] Migration complete")
-			}
-			// Only clear after a successful migration (or when the
-			// legacy array was empty — nothing to migrate).
-			await this.contextProxy.clearLegacyTaskHistoryKeys()
-		}
-	}
-
-	/**
-	 * Records a persistent storage failure and makes it visible: it is
-	 * logged to the Output channel and pushed to the webview as part of the
-	 * state, where the StorageErrorBanner renders it until
-	 * {@link clearStorageError} runs.
-	 *
-	 * Reporting the same message twice is a no-op (the constructor wires two
-	 * catch sites onto the same acquire rejection), so the webview is not
-	 * spammed with identical state pushes.
-	 */
-	private reportStorageError(context: string, error: unknown): void {
-		const message = error instanceof Error ? error.message : String(error)
-		const storageErrorMessage = `${context}: ${message}`
-		this.log(`[storage error] ${storageErrorMessage}`)
-
-		if (this.storageErrorMessage === storageErrorMessage) {
-			return
-		}
-
-		this.storageErrorMessage = storageErrorMessage
-		this.postStorageErrorState()
-	}
-
-	/**
-	 * Clears the persistent storage error marker. Posts state only when an
-	 * error was actually set, so healthy paths do not trigger pushes.
-	 */
-	private clearStorageError(): void {
-		if (!this.storageErrorMessage) {
-			return
-		}
-
-		this.storageErrorMessage = ""
-		this.postStorageErrorState()
-	}
-
-	/**
-	 * Pushes the storage error flag to the webview. The full state build
-	 * awaits the TaskHistoryStore, which is often the very component that
-	 * failed here, so the full push can reject until the store recovers. In
-	 * that case fall back to a minimal partial state push (the webview
-	 * merges partial state) so the banner still appears.
-	 */
-	private postStorageErrorState(): void {
-		this.postStateToWebviewWithoutClineMessages().catch((postError) => {
-			this.log(
-				`[storage error] Failed to post full state: ${postError instanceof Error ? postError.message : String(postError)}`,
-			)
-			this.postMessageToWebview({
-				type: "state",
-				// Partial state on purpose: the webview merges it into its
-				// current state instead of replacing it.
-				state: { storageErrorMessage: this.storageErrorMessage } as ExtensionState,
-			}).catch((pushError) => {
-				this.log(
-					`[storage error] Failed to post partial state: ${pushError instanceof Error ? pushError.message : String(pushError)}`,
-				)
-			})
-		})
-	}
-
-	/**
 	 * Reveals the extension's Output channel. Used by the webview's
 	 * StorageErrorBanner so the user can inspect the log entries behind a
 	 * reported storage failure (crucial in Remote SSH windows where storage
@@ -667,67 +464,9 @@ export class ClineProvider
 		this.outputChannel.show(true)
 	}
 
-	/**
-	 * Reacts to changes in the shared store. The store fires one event per
-	 * change with `kind` ("upsert" | "delete" | "external"), the affected
-	 * `taskId`/`item` when known, and the `origin` token of the writer.
-	 *
-	 * - A mutation made through THIS provider (`updateTaskHistory`,
-	 *   `deleteTaskFromState`, `deleteTaskWithId`, the delegation
-	 *   `atomicReadAndUpdate`) carries {@link taskHistoryOrigin}; it is
-	 *   skipped because the caller already sent the targeted webview
-	 *   message. Other providers sharing the store do act on it.
-	 * - A mutation made by ANOTHER provider sharing the store is pushed as a
-	 *   targeted `taskHistoryItemUpdated` / `taskHistoryItemDeleted`
-	 *   message, without rebroadcasting the full history.
-	 * - An `external` change (the watcher or periodic reconcile picked up a
-	 *   change from another process, or an explicit invalidate) falls back
-	 *   to a full `taskHistoryUpdated` broadcast, because the watcher
-	 *   coalesces IDs and a targeted message per ID is not always available.
-	 */
-	private subscribeToTaskHistoryStore(taskHistoryStore: TaskHistoryStore): void {
-		this.taskHistoryStoreUnsubscribe = taskHistoryStore.onChange((event) => {
-			if (event.origin === this.taskHistoryOrigin || !this.isViewLaunched || this._disposed) {
-				return
-			}
-
-			if (event.kind === "delete" && event.taskId) {
-				this.postMessageToWebview({
-					type: "taskHistoryItemDeleted",
-					taskHistoryItemId: event.taskId,
-				}).catch((err) => {
-					this.log(
-						`[TaskHistoryStore onChange] targeted delete push failed: ${err instanceof Error ? err.message : String(err)}`,
-					)
-				})
-			} else if (event.kind === "upsert" && event.item) {
-				this.postMessageToWebview({
-					type: "taskHistoryItemUpdated",
-					taskHistoryItem: event.item,
-				}).catch((err) => {
-					this.log(
-						`[TaskHistoryStore onChange] targeted upsert push failed: ${err instanceof Error ? err.message : String(err)}`,
-					)
-				})
-			} else if (event.kind === "external") {
-				this.broadcastTaskHistoryUpdate().catch((err) => {
-					this.log(
-						`[TaskHistoryStore onChange] broadcast failed: ${err instanceof Error ? err.message : String(err)}`,
-					)
-				})
-			}
-		})
-	}
-
-	private async getTaskHistoryStore(): Promise<TaskHistoryStore> {
-		if (this._disposed) {
-			throw new Error("ClineProvider is disposed")
-		}
-		const taskHistoryStore = await this.acquireTaskHistoryStore()
-		if (this._disposed) {
-			throw new Error("ClineProvider is disposed")
-		}
-		return taskHistoryStore
+	/** The shared TaskHistoryStore, acquired on demand (see {@link TaskHistoryGateway.getStore}). */
+	private getTaskHistoryStore(): Promise<TaskHistoryStore> {
+		return this.taskHistory.getStore()
 	}
 
 	/**
@@ -1069,17 +808,9 @@ export class ClineProvider
 		this.skillsManager = undefined
 		this.marketplaceManager?.cleanup()
 		this.customModesManager?.dispose()
-		this.taskHistoryStoreUnsubscribe?.()
-		this.taskHistoryStoreUnsubscribe = undefined
-		// Release the shared store handle. The final consumer's release
-		// disposes the underlying watcher/timers; earlier consumers only
-		// detach so closing one panel never breaks the others.
-		this.taskHistoryStoreHandle?.dispose()
-		this.taskHistoryStoreHandle = undefined
-		// Hygiene: an acquire still in flight is already caught by the
-		// _disposed guard inside acquireTaskHistoryStore, but a settled
-		// promise must not survive dispose either.
-		this.taskHistoryStorePromise = null
+		// Unsubscribe and release the shared store handle. The final
+		// consumer's release disposes the underlying watcher/timers.
+		this.taskHistory.dispose()
 		this.log("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 
@@ -2008,7 +1739,7 @@ export class ClineProvider
 			// A successful profile save proves storage is writable again, so
 			// drop a previously reported storage error (the banner then
 			// disappears on this state push).
-			this.clearStorageError()
+			this.taskHistory.clearStorageError()
 			return id
 		} catch (error) {
 			this.log(
@@ -2016,7 +1747,7 @@ export class ClineProvider
 			)
 
 			const message = error instanceof Error ? error.message : String(error)
-			this.reportStorageError("ProviderProfile", error)
+			this.taskHistory.reportStorageError("ProviderProfile", error)
 			vscode.window.showErrorMessage(t("common:errors.create_api_config") + ": " + message)
 			return undefined
 		}
@@ -2190,73 +1921,16 @@ export class ClineProvider
 	 * file. Use this unless you need the API conversation or its file paths
 	 * (then use {@link getTaskWithId}). Throws "Task not found" like it.
 	 */
-	async getHistoryItem(id: string): Promise<HistoryItem> {
-		// Ensure the store is initialized before reading — an early task lookup
-		// (e.g. resume via command before the constructor's fire-and-forget init
-		// completes) would otherwise miss entries that haven't been loaded yet.
-		const taskHistoryStore = await this.getTaskHistoryStore()
-
-		const historyItem = taskHistoryStore.get(id)
-
-		if (!historyItem) {
-			throw new Error("Task not found")
-		}
-
-		return historyItem
+	getHistoryItem(id: string): Promise<HistoryItem> {
+		return this.taskHistory.getHistoryItem(id)
 	}
 
-	async getTaskWithId(id: string): Promise<{
-		historyItem: HistoryItem
-		taskDirPath: string
-		apiConversationHistoryFilePath: string
-		uiMessagesFilePath: string
-		apiConversationHistory: Anthropic.MessageParam[]
-	}> {
-		const historyItem = await this.getHistoryItem(id)
-
-		const { getTaskDirectoryPath } = await import("../../utils/storage")
-		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
-		const taskDirPath = await getTaskDirectoryPath(globalStoragePath, id)
-		const apiConversationHistoryFilePath = path.join(taskDirPath, GlobalFileNames.apiConversationHistory)
-		const uiMessagesFilePath = path.join(taskDirPath, GlobalFileNames.uiMessages)
-		const fileExists = await fileExistsAtPath(apiConversationHistoryFilePath)
-
-		let apiConversationHistory: Anthropic.MessageParam[] = []
-
-		if (fileExists) {
-			try {
-				apiConversationHistory = JSON.parse(await fs.readFile(apiConversationHistoryFilePath, "utf8"))
-			} catch (error) {
-				console.warn(
-					`[getTaskWithId] api_conversation_history.json corrupted for task ${id}, returning empty history: ${error instanceof Error ? error.message : String(error)}`,
-				)
-			}
-		} else {
-			console.warn(
-				`[getTaskWithId] api_conversation_history.json missing for task ${id}, returning empty history`,
-			)
-		}
-
-		return {
-			historyItem,
-			taskDirPath,
-			apiConversationHistoryFilePath,
-			uiMessagesFilePath,
-			apiConversationHistory,
-		}
+	getTaskWithId(id: string): ReturnType<TaskHistoryGateway["getTaskWithId"]> {
+		return this.taskHistory.getTaskWithId(id)
 	}
 
-	async getTaskWithAggregatedCosts(taskId: string): Promise<{
-		historyItem: HistoryItem
-		aggregatedCosts: AggregatedCosts
-	}> {
-		const historyItem = await this.getHistoryItem(taskId)
-
-		const aggregatedCosts = await aggregateTaskCostsRecursive(taskId, async (id: string) => {
-			return this.getHistoryItem(id)
-		})
-
-		return { historyItem, aggregatedCosts }
+	getTaskWithAggregatedCosts(taskId: string): ReturnType<TaskHistoryGateway["getTaskWithAggregatedCosts"]> {
+		return this.taskHistory.getTaskWithAggregatedCosts(taskId)
 	}
 
 	async showTaskWithId(id: string) {
@@ -2281,18 +1955,8 @@ export class ClineProvider
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
 	}
 
-	async exportTaskWithId(id: string) {
-		const { historyItem, apiConversationHistory } = await this.getTaskWithId(id)
-		const fileName = getTaskFileName(historyItem.ts)
-		const defaultUri = await resolveDefaultSaveUri(this.contextProxy, "lastTaskExportPath", fileName, {
-			useWorkspace: false,
-			fallbackDir: path.join(os.homedir(), "Downloads"),
-		})
-		const saveUri = await downloadTask(historyItem.ts, apiConversationHistory, defaultUri)
-
-		if (saveUri) {
-			await saveLastExportPath(this.contextProxy, "lastTaskExportPath", saveUri)
-		}
+	exportTaskWithId(id: string): Promise<void> {
+		return this.taskHistory.exportTaskWithId(id)
 	}
 
 	/* Condenses a task's message history to use fewer tokens. */
@@ -2322,131 +1986,16 @@ export class ClineProvider
 		}
 	}
 
-	// this function deletes a task from task history, and deletes its checkpoints and delete the task folder
-	// If the task has subtasks (childIds), they will also be deleted recursively
-	async deleteTaskWithId(id: string, cascadeSubtasks: boolean = true) {
-		try {
-			// Existence check: throws "Task not found" (handled below).
-			await this.getHistoryItem(id)
-
-			// Collect all task IDs to delete (parent + all subtasks)
-			const allIdsToDelete: string[] = [id]
-
-			if (cascadeSubtasks) {
-				// Recursively collect all child IDs
-				const collectChildIds = async (taskId: string): Promise<void> => {
-					try {
-						const item = await this.getHistoryItem(taskId)
-						if (item.childIds && item.childIds.length > 0) {
-							for (const childId of item.childIds) {
-								allIdsToDelete.push(childId)
-								await collectChildIds(childId)
-							}
-						}
-					} catch (error) {
-						// Child task may already be deleted or not found, continue
-						console.log(`[deleteTaskWithId] child task ${taskId} not found, skipping`)
-					}
-				}
-
-				await collectChildIds(id)
-			}
-
-			// Remove from stack if any of the tasks to delete are in the current task stack
-			for (const taskId of allIdsToDelete) {
-				if (taskId === this.getCurrentTask()?.taskId) {
-					// Close the current task instance; delegation flows will be handled via metadata if applicable.
-					await this.removeClineFromStack()
-					break
-				}
-			}
-
-			// Delete all tasks from state in one batch. Mark each as
-			// self-originated so the shared store's onChange echo
-			// (external:false) is suppressed for us — we send our own
-			// targeted delete messages below. Other providers sharing the
-			// store still receive the echo and push their own targeted
-			// deletes.
-			const taskHistoryStore = await this.getTaskHistoryStore()
-			await taskHistoryStore.deleteMany(allIdsToDelete, this.taskHistoryOrigin)
-			// Push a targeted delete message per ID so the webview removes
-			// just these items without a full history resend (the full state
-			// push below still runs for legacy callers).
-			if (this.isViewLaunched) {
-				for (const taskId of allIdsToDelete) {
-					await this.postMessageToWebview({
-						type: "taskHistoryItemDeleted",
-						taskHistoryItemId: taskId,
-					}).catch((err) => {
-						this.log(
-							`[deleteTaskWithId] targeted delete push failed for ${taskId}: ${err instanceof Error ? err.message : String(err)}`,
-						)
-					})
-				}
-			}
-
-			// Delete associated shadow repositories or branches and task directories
-			const globalStorageDir = this.contextProxy.globalStorageUri.fsPath
-			const workspaceDir = this.cwd
-			const { getTaskDirectoryPath } = await import("../../utils/storage")
-			const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
-
-			for (const taskId of allIdsToDelete) {
-				try {
-					await ShadowCheckpointService.deleteTask({ taskId, globalStorageDir, workspaceDir })
-				} catch (error) {
-					console.error(
-						`[deleteTaskWithId${taskId}] failed to delete associated shadow repository or branch: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-
-				// Delete the task directory
-				try {
-					const dirPath = await getTaskDirectoryPath(globalStoragePath, taskId)
-					await fs.rm(dirPath, { recursive: true, force: true })
-					console.log(`[deleteTaskWithId${taskId}] removed task directory`)
-				} catch (error) {
-					console.error(
-						`[deleteTaskWithId${taskId}] failed to remove task directory: ${error instanceof Error ? error.message : String(error)}`,
-					)
-				}
-			}
-
-			await this.postStateToWebview()
-		} catch (error) {
-			// If task is not found, just remove it from state
-			if (error instanceof Error && error.message === "Task not found") {
-				await this.deleteTaskFromState(id)
-				return
-			}
-			throw error
-		}
+	/**
+	 * Deletes a task from the history with its checkpoints and task folder,
+	 * and (by default) its subtasks recursively.
+	 */
+	deleteTaskWithId(id: string, cascadeSubtasks: boolean = true): Promise<void> {
+		return this.taskHistory.deleteTaskWithId(id, cascadeSubtasks)
 	}
 
-	async deleteTaskFromState(id: string) {
-		// Mark this as a self-originated mutation so the shared store's
-		// `onChange` echo (external:false) is suppressed for us — we send
-		// our own targeted delete message below. Other providers sharing the
-		// store still receive the echo and push their own targeted delete.
-		const taskHistoryStore = await this.getTaskHistoryStore()
-		await taskHistoryStore.delete(id, this.taskHistoryOrigin)
-
-		// Send a targeted delete message so the webview removes just this
-		// item without a full history resend. The full state push below
-		// still runs for legacy callers, but the webview's history list is
-		// updated by this lightweight message first.
-		if (this.isViewLaunched) {
-			await this.postMessageToWebview({
-				type: "taskHistoryItemDeleted",
-				taskHistoryItemId: id,
-			}).catch((err) => {
-				this.log(
-					`[deleteTaskFromState] targeted delete push failed: ${err instanceof Error ? err.message : String(err)}`,
-				)
-			})
-		}
-
-		await this.postStateToWebview()
+	deleteTaskFromState(id: string): Promise<void> {
+		return this.taskHistory.deleteTaskFromState(id)
 	}
 
 	async refreshWorkspace() {
@@ -2575,72 +2124,25 @@ export class ClineProvider
 	}
 
 	/**
-	 * Updates a task in the task history and optionally broadcasts the
-	 * updated item to the webview. Delegates persistence to the shared
-	 * {@link TaskHistoryStore}.
-	 *
-	 * Returns `void` — callers that need the full sorted history should call
-	 * {@link getTaskHistory} explicitly. This avoids copying and sorting the
-	 * entire history on every mutation; the webview is kept in sync via the
-	 * targeted `taskHistoryItemUpdated` message and the store's
-	 * {@link TaskHistoryStore.onChange} subscription.
-	 *
-	 * @param item The history item to update or add
-	 * @param options.broadcast Whether to broadcast the updated item to the webview (default: true)
+	 * Upserts a task in the history (with this provider's origin, so the
+	 * store's echo is suppressed) and by default pushes the stored item to
+	 * the webview. See {@link TaskHistoryGateway.updateTaskHistory}.
 	 */
-	async updateTaskHistory(item: HistoryItem, options: { broadcast?: boolean } = {}): Promise<void> {
-		const { broadcast = true } = options
-
-		// Mark this as a self-originated mutation so the shared store's
-		// `onChange` echo (external:false) is suppressed for us — we send
-		// our own targeted message below. Other providers sharing the store
-		// still receive the echo and push their own targeted update.
-		const taskHistoryStore = await this.getTaskHistoryStore()
-		await taskHistoryStore.upsert(item, this.taskHistoryOrigin)
-
-		// Broadcast the updated item to the webview if requested.
-		// Prefer per-item updates to avoid repeatedly cloning/sending the full history.
-		if (broadcast && this.isViewLaunched) {
-			const updatedItem = taskHistoryStore.get(item.id) ?? item
-			await this.postMessageToWebview({ type: "taskHistoryItemUpdated", taskHistoryItem: updatedItem })
-		}
+	updateTaskHistory(item: HistoryItem, options: { broadcast?: boolean } = {}): Promise<void> {
+		return this.taskHistory.updateTaskHistory(item, options)
 	}
 
 	/**
-	 * Broadcasts a task history update to the webview.
-	 * This sends a lightweight message with just the task history, rather than the full state.
-	 * @param history The task history to broadcast (if not provided, reads from the store)
+	 * Sends the whole history (sorted, filtered) as one `taskHistoryUpdated`
+	 * message instead of the full state.
 	 */
-	public async broadcastTaskHistoryUpdate(history?: HistoryItem[]): Promise<void> {
-		if (!this.isViewLaunched) {
-			return
-		}
-
-		const taskHistoryStore = await this.getTaskHistoryStore()
-		const taskHistory = history ?? taskHistoryStore.getAll()
-
-		// Sort and filter the history the same way as getStateToPostToWebview
-		const sortedHistory = taskHistory
-			.filter((item: HistoryItem) => item.ts && item.task)
-			.sort((a: HistoryItem, b: HistoryItem) => b.ts - a.ts)
-
-		await this.postMessageToWebview({
-			type: "taskHistoryUpdated",
-			taskHistory: sortedHistory,
-		})
+	public broadcastTaskHistoryUpdate(history?: HistoryItem[]): Promise<void> {
+		return this.taskHistory.broadcastTaskHistoryUpdate(history)
 	}
 
-	/**
-	 * Focused accessor for the full task history from the store.
-	 *
-	 * Used by consumers (e.g. TaskLifecycle auto-dream) that previously read
-	 * `taskHistory` from globalState. The TaskHistoryStore is the sole
-	 * persistence source, so this replaces those globalState reads.
-	 *
-	 * @returns All history items sorted by timestamp descending (newest first).
-	 */
-	public async getTaskHistory(): Promise<HistoryItem[]> {
-		return (await this.getTaskHistoryStore()).getAll()
+	/** All history items from the store, newest first. */
+	public getTaskHistory(): Promise<HistoryItem[]> {
+		return this.taskHistory.getTaskHistory()
 	}
 
 	// ContextProxy
@@ -3080,12 +2582,11 @@ export class ClineProvider
 	 * without importing the store directly. Throws if the store is missing
 	 * the task; callers (the tool) wrap this in best-effort error handling.
 	 */
-	public async atomicReadAndUpdateHistoryItem(
+	public atomicReadAndUpdateHistoryItem(
 		taskId: string,
 		updater: (current: HistoryItem) => HistoryItem,
 	): Promise<HistoryItem> {
-		const taskHistoryStore = await this.getTaskHistoryStore()
-		return taskHistoryStore.atomicReadAndUpdate(taskId, updater, this.taskHistoryOrigin)
+		return this.taskHistory.atomicReadAndUpdateHistoryItem(taskId, updater)
 	}
 
 	/**

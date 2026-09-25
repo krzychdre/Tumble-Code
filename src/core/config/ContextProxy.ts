@@ -117,7 +117,7 @@ export class ContextProxy {
 	/**
 	 * Reads the legacy `taskHistory` globalState array, if any.
 	 *
-	 * Used by `ClineProvider.initializeTaskHistoryStore()` to backfill
+	 * Used by `TaskHistoryGateway` (its legacy migration) to backfill
 	 * per-task `history_item.json` files before clearing the legacy key.
 	 * Returns `undefined` when the key is absent so callers can avoid
 	 * materializing a potentially large array on every start.
