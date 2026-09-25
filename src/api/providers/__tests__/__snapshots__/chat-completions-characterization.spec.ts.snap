@@ -1,0 +1,1865 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " more",
+      "type": "reasoning",
+    },
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 20,
+      "totalCost": 0.00008439999999999999,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "  return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 6,
+      "totalCost": 0.0000536,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 12,
+      "totalCost": 0.0000668,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Let me ",
+      "type": "reasoning",
+    },
+    {
+      "text": "think.",
+      "type": "reasoning",
+    },
+    {
+      "text": " Done.",
+      "type": "reasoning",
+    },
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 7,
+      "totalCost": 0.0000558,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 4,
+      "totalCost": 0.0000492,
+      "type": "usage",
+    },
+    {
+      "text": "</thi",
+      "type": "reasoning",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " the edit.",
+      "type": "reasoning",
+    },
+    {
+      "text": "Done",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 9,
+      "totalCost": 0.0000602,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 5,
+      "totalCost": 0.0000514,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 3,
+      "totalCost": 0.000047,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " more",
+      "type": "reasoning",
+    },
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 20,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "  return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 6,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 12,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Let me ",
+      "type": "reasoning",
+    },
+    {
+      "text": "think.",
+      "type": "reasoning",
+    },
+    {
+      "text": " Done.",
+      "type": "reasoning",
+    },
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 7,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<think>Plan",
+      "type": "text",
+    },
+    {
+      "text": "</thi",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 4,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<thi",
+      "type": "text",
+    },
+    {
+      "text": "nk>Plan",
+      "type": "text",
+    },
+    {
+      "text": " the edit.</th",
+      "type": "text",
+    },
+    {
+      "text": "ink>Done",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 9,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 5,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "inputTokens": 100,
+      "outputTokens": 3,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 6,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "  return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 23,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 15,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 11,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": "</thi",
+      "type": "reasoning",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 16,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " the edit.",
+      "type": "reasoning",
+    },
+    {
+      "text": "Done",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 33,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 2,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 8,
+      "outputTokens": 5,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " more",
+      "type": "reasoning",
+    },
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 20,
+      "totalCost": 0.000492,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "  return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 6,
+      "totalCost": 0.000282,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 12,
+      "totalCost": 0.00037200000000000004,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Let me ",
+      "type": "reasoning",
+    },
+    {
+      "text": "think.",
+      "type": "reasoning",
+    },
+    {
+      "text": " Done.",
+      "type": "reasoning",
+    },
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 7,
+      "totalCost": 0.000297,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<think>Plan",
+      "type": "text",
+    },
+    {
+      "text": "</thi",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 4,
+      "totalCost": 0.000252,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<thi",
+      "type": "text",
+    },
+    {
+      "text": "nk>Plan",
+      "type": "text",
+    },
+    {
+      "text": " the edit.</th",
+      "type": "text",
+    },
+    {
+      "text": "ink>Done",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 9,
+      "totalCost": 0.00032700000000000003,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+  ],
+  "error": "LiteLLM streaming error: delta.tool_calls is not iterable",
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 3,
+      "totalCost": 0.00023700000000000001,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " more",
+      "type": "reasoning",
+    },
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 20,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "  return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 6,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 12,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Let me ",
+      "type": "reasoning",
+    },
+    {
+      "text": "think.",
+      "type": "reasoning",
+    },
+    {
+      "text": " Done.",
+      "type": "reasoning",
+    },
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 7,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": "</thi",
+      "type": "reasoning",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 4,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " the edit.",
+      "type": "reasoning",
+    },
+    {
+      "text": "Done",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 9,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+  ],
+  "error": "delta.tool_calls is not iterable",
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 3,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " more",
+      "type": "reasoning",
+    },
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 20,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "  return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 6,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 12,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Let me ",
+      "type": "reasoning",
+    },
+    {
+      "text": "think.",
+      "type": "reasoning",
+    },
+    {
+      "text": " Done.",
+      "type": "reasoning",
+    },
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 7,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<think>Plan",
+      "type": "text",
+    },
+    {
+      "text": "</thi",
+      "type": "text",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 4,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<thi",
+      "type": "text",
+    },
+    {
+      "text": "nk>Plan",
+      "type": "text",
+    },
+    {
+      "text": " the edit.</th",
+      "type": "text",
+    },
+    {
+      "text": "ink>Done",
+      "type": "text",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 9,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+  ],
+  "error": "delta.tool_calls is not iterable",
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 3,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " more",
+      "type": "reasoning",
+    },
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 20,
+      "reasoningTokens": 8,
+      "totalCost": 0.003,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": [
+    {
+      "format": "anthropic-claude-v1",
+      "id": undefined,
+      "index": 0,
+      "signature": "sig-1",
+      "text": "Plan more",
+      "type": "reasoning.text",
+    },
+    {
+      "data": "opaque",
+      "format": undefined,
+      "id": "rs_1",
+      "index": 1,
+      "signature": undefined,
+      "type": "reasoning.encrypted",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "  return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 6,
+      "reasoningTokens": undefined,
+      "totalCost": 0,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": null,
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 12,
+      "reasoningTokens": undefined,
+      "totalCost": 0,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": null,
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 7,
+      "reasoningTokens": undefined,
+      "totalCost": 0,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": null,
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<think>Plan",
+      "type": "text",
+    },
+    {
+      "text": "</thi",
+      "type": "text",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 4,
+      "reasoningTokens": undefined,
+      "totalCost": 0,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": null,
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<thi",
+      "type": "text",
+    },
+    {
+      "text": "nk>Plan",
+      "type": "text",
+    },
+    {
+      "text": " the edit.</th",
+      "type": "text",
+    },
+    {
+      "text": "ink>Done",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 9,
+      "reasoningTokens": undefined,
+      "totalCost": 0,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": null,
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 5,
+      "reasoningTokens": undefined,
+      "totalCost": 0,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": null,
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "cacheReadTokens": 40,
+      "cacheWriteTokens": undefined,
+      "inputTokens": 100,
+      "outputTokens": 3,
+      "reasoningTokens": undefined,
+      "totalCost": 0,
+      "type": "usage",
+    },
+  ],
+  "reasoningDetails": null,
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > OpenRouter reasoning_details 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": " more",
+      "type": "reasoning",
+    },
+    {
+      "text": "Answer",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 20,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > a delta that starts with the previous delta 1`] = `
+{
+  "chunks": [
+    {
+      "text": "if (x) {
+",
+      "type": "text",
+    },
+    {
+      "text": "  ",
+      "type": "text",
+    },
+    {
+      "text": "return 1
+",
+      "type": "text",
+    },
+    {
+      "text": "}",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 6,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > finish_reason stop after tool calls 1`] = `
+{
+  "chunks": [
+    {
+      "text": "I will read it.",
+      "type": "text",
+    },
+    {
+      "arguments": "",
+      "id": "call_1",
+      "index": 0,
+      "name": "read_file",
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": "{"path":",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "arguments": ""a.ts"}",
+      "id": undefined,
+      "index": 0,
+      "name": undefined,
+      "type": "tool_call_partial",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 12,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > reasoning_content 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Let me ",
+      "type": "reasoning",
+    },
+    {
+      "text": "think.",
+      "type": "reasoning",
+    },
+    {
+      "text": " Done.",
+      "type": "reasoning",
+    },
+    {
+      "text": "The",
+      "type": "text",
+    },
+    {
+      "text": " answer.",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 7,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > stream ends inside a closing think tag 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Plan",
+      "type": "reasoning",
+    },
+    {
+      "text": "</thi",
+      "type": "text",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 4,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > think block split across chunks 1`] = `
+{
+  "chunks": [
+    {
+      "text": "<thi",
+      "type": "text",
+    },
+    {
+      "text": "nk>Plan",
+      "type": "text",
+    },
+    {
+      "text": " the edit.</th",
+      "type": "text",
+    },
+    {
+      "text": "ink>Done",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 9,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > tool_calls not an array 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hi",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 5,
+      "type": "usage",
+    },
+  ],
+}
+`;
+
+exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > usage repeated in every chunk 1`] = `
+{
+  "chunks": [
+    {
+      "text": "Hel",
+      "type": "text",
+    },
+    {
+      "text": "lo",
+      "type": "text",
+    },
+    {
+      "finishReason": "stop",
+      "type": "finish_reason",
+    },
+    {
+      "inputTokens": 100,
+      "outputTokens": 3,
+      "type": "usage",
+    },
+  ],
+}
+`;
