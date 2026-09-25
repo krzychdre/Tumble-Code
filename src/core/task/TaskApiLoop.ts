@@ -21,6 +21,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { type ApiStream } from "../../api/transform/stream"
+import { isAutoRetryableApiError } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
@@ -1053,6 +1054,26 @@ export class TaskApiLoop {
 					`[Task#${this.access.taskId}.${this.access.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
 				)
 
+				// 401, 403 and 404 never fix themselves: ask the user instead of
+				// retrying, with or without auto-approval (same ask as the
+				// first-chunk path in handleApiRequestError).
+				if (!this.mayAutoRetry(error)) {
+					const { response } = await this.access.askSay.ask("api_req_failed", rawErrorMessage)
+
+					if (response !== "yesButtonClicked") {
+						return "return_true"
+					}
+
+					await this.access.askSay.say("api_req_retried")
+					stack.push({
+						userContent: currentUserContent,
+						includeFileDetails: false,
+						retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
+					})
+
+					return "continue"
+				}
+
 				const stateForBackoff = await this.access.providerRef.deref()?.getState()
 				if (stateForBackoff?.autoApprovalEnabled) {
 					await this.backoffAndAnnounce(currentItem.retryAttempt ?? 0, error)
@@ -1381,7 +1402,9 @@ export class TaskApiLoop {
 			return
 		}
 
-		if (autoApprovalEnabled) {
+		// 401, 403 and 404 never fix themselves: even with auto-approval on they
+		// go to the user (the api_req_failed ask below) instead of looping.
+		if (autoApprovalEnabled && this.mayAutoRetry(error)) {
 			await this.backoffAndAnnounce(retryAttempt, error)
 
 			if (this.access.abort) {
@@ -1406,6 +1429,18 @@ export class TaskApiLoop {
 			yield* this.attemptApiRequest()
 			return
 		}
+	}
+
+	/**
+	 * Whether a failed request may be retried without asking the user. False
+	 * for 401, 403 and 404 (see isAutoRetryableApiError), but only in a
+	 * foreground task: a background task has nobody watching its asks, and a
+	 * parallel subagent's approval policy answers api_req_failed with an
+	 * instant "retry", so asking there would turn the backoff loop into a
+	 * tight one. Background tasks keep the backoff retry.
+	 */
+	private mayAutoRetry(error: unknown): boolean {
+		return this.access.isBackground || isAutoRetryableApiError(error)
 	}
 
 	/**

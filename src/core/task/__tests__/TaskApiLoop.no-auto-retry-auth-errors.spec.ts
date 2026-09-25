@@ -141,6 +141,19 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 		})
 	})
 
+	it("a background task keeps the backoff retry for 401 (nobody watches its asks)", async () => {
+		const failure = apiError(401)
+		const { loop, access, createMessage, backoff } = makeLoop(failure)
+		access.isBackground = true
+
+		const { chunks } = await drain(loop.attemptApiRequest())
+
+		expect(backoff).toHaveBeenCalledWith(0, failure)
+		expect(access.askSay.ask).not.toHaveBeenCalledWith("api_req_failed", expect.anything())
+		expect(createMessage).toHaveBeenCalledTimes(2)
+		expect(chunks).toEqual([{ type: "text", text: "recovered" }])
+	})
+
 	describe("mid-stream failure with auto-approve on", () => {
 		function midStream(status: number | undefined, answer: "yesButtonClicked" | "noButtonClicked") {
 			const failure = apiError(status)
