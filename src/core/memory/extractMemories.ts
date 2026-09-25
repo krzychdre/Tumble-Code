@@ -24,18 +24,24 @@
  * stays decoupled from the `Task` class and unit-testable with a stub.
  */
 
-import { basename } from "path"
+import { basename, resolve } from "path"
+
+import type { ClineMessage } from "@roo-code/types"
 
 import { logger } from "../../utils/logging"
 import { isAutoMemPath, getAutoMemPath, isAutoMemoryEnabled } from "./paths"
 import { ENTRYPOINT_NAME } from "./memoryPrompt"
 import { formatMemoryManifest, scanMemoryFiles } from "./memoryScan"
 
-/** A view of the conversation messages the extractor inspects. */
-export interface ExtractionMessageView {
-	/** Assistant tool-use blocks written by the model. */
-	toolUses?: Array<{ name: string; input?: Record<string, unknown> }>
-}
+/**
+ * The slice of a `ClineMessage` the extractor inspects: file writes show up
+ * as tool-approval asks (`type: "ask"`, `ask: "tool"`) whose JSON `text`
+ * names the tool and the file.
+ */
+export type ExtractionMessageView = Pick<ClineMessage, "type" | "ask" | "text" | "partial" | "isAnswered">
+
+/** The `ClineSayTool.tool` values the file-writing tools ask with. */
+const FILE_WRITE_ASK_TOOLS = new Set(["newFileCreated", "editedExistingFile", "appliedDiff"])
 
 /** The result of a sub-Task run: the file paths the agent wrote/edited. */
 export interface SubTaskResult {
@@ -150,6 +156,12 @@ export async function drainInFlight(
 /**
  * Did the main agent already write to a memory path in the message range since
  * the cursor? If so, skip extraction (mutual exclusion) and advance the cursor.
+ *
+ * A write counts when its tool-approval ask was answered with an approval
+ * (`isAnswered`, set by auto-approval and by the user's Save click; a
+ * rejected ask keeps it unset) and is no longer a streaming partial. The ask
+ * stores `getReadablePath(cwd, relPath)`: relative to `cwd` inside the
+ * workspace, absolute (POSIX separators) outside it, so resolve against `cwd`.
  */
 export function hasMemoryWritesSince(
 	messages: ReadonlyArray<ExtractionMessageView>,
@@ -158,14 +170,18 @@ export function hasMemoryWritesSince(
 ): boolean {
 	for (let i = sinceCursor; i < messages.length; i++) {
 		const m = messages[i]
-		if (!m?.toolUses) continue
-		for (const use of m.toolUses) {
-			const input = use.input ?? {}
-			const filePath = (input.path as string) || (input.file_path as string)
-			if (typeof filePath === "string" && isAutoMemPath(filePath, cwd)) {
-				return true
-			}
+		if (m?.type !== "ask" || m.ask !== "tool" || m.partial || m.isAnswered !== true || !m.text) continue
+		let tool: unknown
+		try {
+			tool = JSON.parse(m.text)
+		} catch {
+			continue
 		}
+		if (!tool || typeof tool !== "object") continue
+		const { tool: name, path: filePath } = tool as { tool?: unknown; path?: unknown }
+		if (typeof name !== "string" || !FILE_WRITE_ASK_TOOLS.has(name)) continue
+		if (typeof filePath !== "string" || filePath.length === 0) continue
+		if (isAutoMemPath(resolve(cwd, filePath), cwd)) return true
 	}
 	return false
 }

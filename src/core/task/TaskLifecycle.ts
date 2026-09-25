@@ -739,8 +739,7 @@ export class TaskLifecycle {
 			cwd: this.access.cwd,
 			isMainAgent: !this.access.parentTaskId,
 			taskId: this.access.taskId,
-			messages: this.access
-				.clineMessages as unknown as import("../memory/extractMemories").ExtractionMessageView[],
+			messages: this.access.clineMessages,
 			transcript,
 			subTaskRunner,
 			onSaved: (count) => {
