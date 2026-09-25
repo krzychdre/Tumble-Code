@@ -378,10 +378,10 @@ describe("transcript reducer", () => {
 			expect(model.messages).toEqual([])
 		})
 
-		// The /new and /clear reset (useTaskSubmit.resetConversation) as it is
-		// today: the store is reset and the seen ids and the prompt-echo marker
-		// are forgotten, but the marker of the last rendered answer survives.
-		it("after a conversation reset, drops a first answer identical to the previous task's last answer", () => {
+		// The /new and /clear reset (useTaskSubmit.resetConversation): the new
+		// task starts with nothing remembered from the old one, including the
+		// marker of the last rendered answer.
+		it("after a conversation reset, shows a first answer identical to the previous task's last answer", () => {
 			stateMessage([
 				{ ts: 1, type: "say", say: "text", text: "Say hi", partial: false },
 				{ ts: 2, type: "say", say: "text", text: "Hi!", partial: false },
@@ -389,14 +389,14 @@ describe("transcript reducer", () => {
 			expect(model.messages.map((m) => m.content)).toEqual(["Hi!"])
 
 			model = emptyModel()
-			cursor = resetTranscriptCursor(cursor)
+			cursor = resetTranscriptCursor()
 
 			stateMessage([
 				{ ts: 10, type: "say", say: "text", text: "Say hi", partial: false },
 				{ ts: 11, type: "say", say: "text", text: "Hi!", partial: false },
 				{ ts: 12, type: "say", say: "text", text: "Anything else?", partial: false },
 			])
-			expect(model.messages.map((m) => m.content)).toEqual(["Anything else?"])
+			expect(model.messages.map((m) => m.content)).toEqual(["Hi!", "Anything else?"])
 		})
 
 		it("after a conversation reset, opens a new row for command output instead of the old task's row", () => {
@@ -406,7 +406,7 @@ describe("transcript reducer", () => {
 
 			model = emptyModel()
 			model.isLoading = true
-			cursor = resetTranscriptCursor(cursor)
+			cursor = resetTranscriptCursor()
 
 			sayUpdate(40, "command_output", "b\n", false)
 
@@ -1192,15 +1192,10 @@ describe("transcript reducer", () => {
 		sayUpdate(52, "text", "echo", false)
 		sayUpdate(53, "text", "Answer", false)
 
-		const reset = resetTranscriptCursor(cursor)
+		const reset = resetTranscriptCursor()
 
-		expect(reset.seenMessageIds.size).toBe(0)
-		expect(reset.firstTextMessageSkipped).toBe(false)
-		expect(reset.mergedStreamIds.size).toBe(0)
-		expect(reset.pendingCommand).toBeNull()
-		expect(reset.commandRowId).toBeNull()
+		expect(cursor.lastStreamed.answer).toEqual({ id: "53", text: "Answer" })
+		expect(cursor.pendingMcp).toMatchObject({ serverName: "s", toolName: "t" })
 		expect(reset).toEqual(createTranscriptCursor())
-		// The cursor that was reset is left as it was.
-		expect(cursor.seenMessageIds.size).toBeGreaterThan(0)
 	})
 })

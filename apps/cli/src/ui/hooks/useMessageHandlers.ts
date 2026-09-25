@@ -122,7 +122,7 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 	)
 
 	const resetTranscript = useCallback(() => {
-		cursor.current = resetTranscriptCursor(cursor.current)
+		cursor.current = resetTranscriptCursor()
 	}, [])
 
 	return { handleExtensionMessage, resetTranscript }

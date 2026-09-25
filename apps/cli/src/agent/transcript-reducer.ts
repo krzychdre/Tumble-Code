@@ -122,20 +122,13 @@ export function createTranscriptCursor(): TranscriptCursor {
 /**
  * Forget the current task (/new, /clear, switching to another task).
  *
- * Mirrors what the TUI did before the reducer existed: the seen ids and the
- * prompt-echo marker are cleared, and with them the restarted-stream map and
- * the command row bookkeeping. The last streamed markers and the pending MCP
- * call are kept, exactly as before (see the reset characterization specs).
+ * Nothing carries over: the last streamed markers used to survive, so a new
+ * task whose first answer repeated the old task's last answer was dropped as
+ * a duplicate, and a pending MCP call could name the response of the next
+ * task's server.
  */
-export function resetTranscriptCursor(cursor: TranscriptCursor): TranscriptCursor {
-	return {
-		...cursor,
-		seenMessageIds: new Set(),
-		firstTextMessageSkipped: false,
-		mergedStreamIds: new Map(),
-		pendingCommand: null,
-		commandRowId: null,
-	}
+export function resetTranscriptCursor(): TranscriptCursor {
+	return createTranscriptCursor()
 }
 
 /** What the reducer reads from the transcript it writes into. */
