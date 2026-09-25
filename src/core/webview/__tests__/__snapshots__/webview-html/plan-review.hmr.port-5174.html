@@ -1,0 +1,32 @@
+
+			<!DOCTYPE html>
+			<html lang="en">
+				<head>
+					<meta charset="utf-8">
+					<meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
+					<meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src vscode-webview://test-csp-source data:; style-src vscode-webview://test-csp-source 'unsafe-inline' https://* http://localhost:5174 http://0.0.0.0:5174; img-src vscode-webview://test-csp-source https://storage.googleapis.com https://img.clerk.com data:; media-src vscode-webview://test-csp-source; script-src 'unsafe-eval' vscode-webview://test-csp-source https://* http://localhost:5174 http://0.0.0.0:5174 'nonce-TESTNONCE0123456789abcdefghijklm'; connect-src vscode-webview://test-csp-source https://* ws://localhost:5174 ws://0.0.0.0:5174 http://localhost:5174 http://0.0.0.0:5174">
+					<link rel="stylesheet" type="text/css" href="vscode-resource:/ext/webview-ui/build/assets/index.css">
+					<link href="vscode-resource:/ext/assets/codicons/codicon.css" rel="stylesheet" />
+					<script nonce="TESTNONCE0123456789abcdefghijklm">
+						window.IMAGES_BASE_URI = "vscode-resource:/ext/assets/images"
+						window.AUDIO_BASE_URI = "vscode-resource:/ext/webview-ui/audio"
+						window.MATERIAL_ICONS_BASE_URI = "vscode-resource:/ext/assets/vscode-material-icons/icons"
+						window.PLAN_REVIEW_MODE = true
+					</script>
+					<title>Plan Review</title>
+				</head>
+				<body>
+					<div id="root"></div>
+					
+			<script nonce="TESTNONCE0123456789abcdefghijklm" type="module">
+				import RefreshRuntime from "http://localhost:5174/@react-refresh"
+				RefreshRuntime.injectIntoGlobalHook(window)
+				window.$RefreshReg$ = () => {}
+				window.$RefreshSig$ = () => (type) => type
+				window.__vite_plugin_react_preamble_installed__ = true
+			</script>
+		
+					<script type="module" src="http://localhost:5174/src/index.tsx"></script>
+				</body>
+			</html>
+		
