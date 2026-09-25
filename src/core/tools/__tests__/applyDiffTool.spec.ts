@@ -96,7 +96,7 @@ describe("applyDiffTool", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		applyDiffTool.resetPartialState()
+		applyDiffTool.resetPartialState(mockCline)
 
 		mockedPathResolve.mockReturnValue(absoluteFilePath)
 		mockedFileExistsAtPath.mockResolvedValue(true)

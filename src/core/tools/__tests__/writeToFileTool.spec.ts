@@ -114,7 +114,7 @@ describe("writeToFileTool", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks()
-		writeToFileTool.resetPartialState()
+		writeToFileTool.resetPartialState(mockCline)
 
 		mockedPathResolve.mockReturnValue(absoluteFilePath)
 		mockedFileExistsAtPath.mockResolvedValue(false)
