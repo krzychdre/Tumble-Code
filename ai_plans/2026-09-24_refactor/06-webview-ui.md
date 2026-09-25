@@ -301,3 +301,8 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   (ref read in the `visibleMessages` memo, then `handleSendMessage` memoization); FileChangesPanel clears expanded rows
   on every token (comment says "on task change"); a row visible only on the task's first render is forgotten by
   the "ever visible" set (pinned, not fixed).
+- 2026-09-25 zoom follow-ups DONE #377 (`3c74742f5`, Mermaid code-tab copy button now shows the check mark) and #378
+  (`e2f539ce4`, `useZoomPan` returns `wheelAreaRef`, a native `{ passive: false }` wheel listener: React 18 makes
+  `onWheel` passive, so `preventDefault` was ignored and the page behind scrolled). FileChangesPanel DONE #379: the
+  reset effect depended on `clineMessages` (every token collapsed expanded rows); now on the first message ts, like
+  ChatView. All test-first with changesets.
