@@ -1,6 +1,27 @@
-import { render, screen } from "@/utils/test-utils"
+import { render, screen, waitFor } from "@/utils/test-utils"
 
 import MarkdownBlock from "../MarkdownBlock"
+
+// Counts when KaTeX (through rehype-katex) and Mermaid are first imported: both are
+// heavy and must stay out of the startup bundle until a message actually needs them.
+const { importCounts } = vi.hoisted(() => ({ importCounts: { katex: 0, mermaid: 0 } }))
+
+vi.mock("rehype-katex", async (importOriginal) => {
+	importCounts.katex++
+	return importOriginal()
+})
+
+// jsdom cannot lay out a real diagram, so Mermaid renders a marker SVG.
+vi.mock("mermaid", () => {
+	importCounts.mermaid++
+	return {
+		default: {
+			initialize: vi.fn(),
+			parse: vi.fn(async () => true),
+			render: vi.fn(async () => ({ svg: '<svg data-testid="mermaid-svg"></svg>' })),
+		},
+	}
+})
 
 vi.mock("@src/utils/vscode", () => ({
 	vscode: {
@@ -214,5 +235,33 @@ describe("MarkdownBlock", () => {
 		expect(screen.getByText("Second level unordered")).toBeInTheDocument()
 		expect(screen.getByText("Third level ordered")).toBeInTheDocument()
 		expect(screen.getByText("Back to first level")).toBeInTheDocument()
+	})
+
+	// These run in order: the first proves nothing heavy loaded for plain markdown.
+	describe("lazy KaTeX and Mermaid", () => {
+		it("does not load KaTeX or Mermaid for markdown without math or diagrams", async () => {
+			render(<MarkdownBlock markdown={"Plain **text** with `code` and a list:\n\n- one\n- two"} />)
+
+			await screen.findByText(/Plain/)
+
+			expect(importCounts.katex).toBe(0)
+			expect(importCounts.mermaid).toBe(0)
+		})
+
+		it("loads KaTeX on demand and renders inline and display math", async () => {
+			const { container } = render(<MarkdownBlock markdown={"Euler: $e^{i\\pi}+1=0$\n\n$$\na^2+b^2=c^2\n$$"} />)
+
+			await waitFor(() => expect(container.querySelectorAll(".katex").length).toBe(2))
+			expect(container.querySelector(".katex-display")).not.toBeNull()
+			expect(importCounts.katex).toBe(1)
+			expect(importCounts.mermaid).toBe(0)
+		})
+
+		it("loads Mermaid on demand and renders the diagram", async () => {
+			render(<MarkdownBlock markdown={"```mermaid\ngraph TD; A-->B\n```"} />)
+
+			expect(await screen.findByTestId("mermaid-svg", {}, { timeout: 3000 })).toBeInTheDocument()
+			expect(importCounts.mermaid).toBe(1)
+		})
 	})
 })
