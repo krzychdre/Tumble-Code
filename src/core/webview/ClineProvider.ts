@@ -30,8 +30,6 @@ import {
 	type TerminalActionPromptType,
 	type HistoryItem,
 	type CreateTaskOptions,
-	type TokenUsage,
-	type ToolUsage,
 	type ExtensionMessage,
 	type ExtensionState,
 	type MarketplaceInstalledMetadata,
@@ -90,6 +88,7 @@ import { SubagentRegistry } from "./SubagentRegistry"
 import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
 import { DelegationService } from "./DelegationService"
 import { CloudProfileSync } from "./CloudProfileSync"
+import { forwardTaskEvents, type TaskEventForwardingHost } from "./taskEventForwarding"
 import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOptions } from "./WebviewHtml"
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
 
@@ -349,112 +348,22 @@ export class ClineProvider
 
 		this.marketplaceManager = new MarketplaceManager(this.context, this.customModesManager)
 
-		// Forward <most> task events to the provider.
-		// We do something fairly similar for the IPC-based API.
+		// Forward <most> task events to the provider (the table lives in
+		// taskEventForwarding.ts, CORE-R6 f). We do something fairly similar
+		// for the IPC-based API.
+		const getSubagentRegistry = () => this.subagentRegistry
+		const forwardingHost: TaskEventForwardingHost = {
+			emit: (event, ...args) => this.emit(event as any, ...(args as any)),
+			get subagentRegistry() {
+				return getSubagentRegistry()
+			},
+			rehydrateAfterStreamingFailure: (task) => this.rehydrateAfterStreamingFailure(task as Task),
+		}
 		this.taskCreationCallback = (instance: Task) => {
 			this.emit(RooCodeEventName.TaskCreated, instance)
 
-			// Create named listener functions so we can remove them later.
-			const onTaskStarted = () => this.emit(RooCodeEventName.TaskStarted, instance.taskId)
-			const onTaskCompleted = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
-				this.subagentRegistry.markTerminal(taskId, "completed")
-				this.emit(RooCodeEventName.TaskCompleted, taskId, tokenUsage, toolUsage)
-			}
-			const onTaskAborted = async () => {
-				// Generic "failed"; RunParallelTasksTool refines to "cancelled"
-				// when the abort turns out to be a fan-out cancellation.
-				this.subagentRegistry.markTerminal(instance.taskId, "failed")
-				this.emit(RooCodeEventName.TaskAborted, instance.taskId)
-
-				try {
-					// Only rehydrate on genuine streaming failures.
-					// User-initiated cancels are handled by cancelTask().
-					// Background tasks (memory writers / subagents) are never on the
-					// stack and must not rehydrate as a foreground task.
-					if (instance.abortReason === "streaming_failed" && !instance.isBackground) {
-						// Defensive safeguard: if another path already replaced this instance, skip
-						const current = this.getCurrentTask()
-						if (current && current.instanceId !== instance.instanceId) {
-							this.log(
-								`[onTaskAborted] Skipping rehydrate: current instance ${current.instanceId} != aborted ${instance.instanceId}`,
-							)
-							return
-						}
-
-						const historyItem = await this.getHistoryItem(instance.taskId)
-						const rootTask = instance.rootTask
-						const parentTask = instance.parentTask
-						await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
-					}
-				} catch (error) {
-					this.showAllowListViolation(error)
-					this.log(
-						`[onTaskAborted] Failed to rehydrate after streaming failure: ${
-							error instanceof Error ? error.message : String(error)
-						}`,
-					)
-				}
-			}
-			const onTaskFocused = () => this.emit(RooCodeEventName.TaskFocused, instance.taskId)
-			const onTaskUnfocused = () => this.emit(RooCodeEventName.TaskUnfocused, instance.taskId)
-			const onTaskActive = (taskId: string) => {
-				this.subagentRegistry.setLiveStatus(taskId, "running")
-				this.emit(RooCodeEventName.TaskActive, taskId)
-			}
-			const onTaskInteractive = (taskId: string) => {
-				this.subagentRegistry.setLiveStatus(taskId, "awaiting_input")
-				this.emit(RooCodeEventName.TaskInteractive, taskId)
-			}
-			const onTaskResumable = (taskId: string) => this.emit(RooCodeEventName.TaskResumable, taskId)
-			const onTaskIdle = (taskId: string) => this.emit(RooCodeEventName.TaskIdle, taskId)
-			const onTaskPaused = (taskId: string) => this.emit(RooCodeEventName.TaskPaused, taskId)
-			const onTaskUnpaused = (taskId: string) => this.emit(RooCodeEventName.TaskUnpaused, taskId)
-			const onTaskSpawned = (taskId: string) => this.emit(RooCodeEventName.TaskSpawned, taskId)
-			const onTaskUserMessage = (taskId: string) => this.emit(RooCodeEventName.TaskUserMessage, taskId)
-			const onTaskTokenUsageUpdated = (taskId: string, tokenUsage: TokenUsage, toolUsage: ToolUsage) => {
-				if (this.subagentRegistry.has(taskId)) {
-					this.subagentRegistry.update(taskId, {
-						tokensIn: tokenUsage.totalTokensIn,
-						tokensOut: tokenUsage.totalTokensOut,
-						totalCost: tokenUsage.totalCost,
-					})
-				}
-				this.emit(RooCodeEventName.TaskTokenUsageUpdated, taskId, tokenUsage, toolUsage)
-			}
-
-			// Attach the listeners.
-			instance.on(RooCodeEventName.TaskStarted, onTaskStarted)
-			instance.on(RooCodeEventName.TaskCompleted, onTaskCompleted)
-			instance.on(RooCodeEventName.TaskAborted, onTaskAborted)
-			instance.on(RooCodeEventName.TaskFocused, onTaskFocused)
-			instance.on(RooCodeEventName.TaskUnfocused, onTaskUnfocused)
-			instance.on(RooCodeEventName.TaskActive, onTaskActive)
-			instance.on(RooCodeEventName.TaskInteractive, onTaskInteractive)
-			instance.on(RooCodeEventName.TaskResumable, onTaskResumable)
-			instance.on(RooCodeEventName.TaskIdle, onTaskIdle)
-			instance.on(RooCodeEventName.TaskPaused, onTaskPaused)
-			instance.on(RooCodeEventName.TaskUnpaused, onTaskUnpaused)
-			instance.on(RooCodeEventName.TaskSpawned, onTaskSpawned)
-			instance.on(RooCodeEventName.TaskUserMessage, onTaskUserMessage)
-			instance.on(RooCodeEventName.TaskTokenUsageUpdated, onTaskTokenUsageUpdated)
-
 			// Store the cleanup functions for later removal.
-			this.taskEventListeners.set(instance, [
-				() => instance.off(RooCodeEventName.TaskStarted, onTaskStarted),
-				() => instance.off(RooCodeEventName.TaskCompleted, onTaskCompleted),
-				() => instance.off(RooCodeEventName.TaskAborted, onTaskAborted),
-				() => instance.off(RooCodeEventName.TaskFocused, onTaskFocused),
-				() => instance.off(RooCodeEventName.TaskUnfocused, onTaskUnfocused),
-				() => instance.off(RooCodeEventName.TaskActive, onTaskActive),
-				() => instance.off(RooCodeEventName.TaskInteractive, onTaskInteractive),
-				() => instance.off(RooCodeEventName.TaskResumable, onTaskResumable),
-				() => instance.off(RooCodeEventName.TaskIdle, onTaskIdle),
-				() => instance.off(RooCodeEventName.TaskUserMessage, onTaskUserMessage),
-				() => instance.off(RooCodeEventName.TaskPaused, onTaskPaused),
-				() => instance.off(RooCodeEventName.TaskUnpaused, onTaskUnpaused),
-				() => instance.off(RooCodeEventName.TaskSpawned, onTaskSpawned),
-				() => instance.off(RooCodeEventName.TaskTokenUsageUpdated, onTaskTokenUsageUpdated),
-			])
+			this.taskEventListeners.set(instance, forwardTaskEvents(instance, forwardingHost))
 		}
 
 		// Initialize Roo Code Cloud profile sync. When CloudService is not
@@ -500,6 +409,40 @@ export class ClineProvider
 		listener: (...args: TaskProviderEvents[K]) => void | Promise<void>,
 	): this {
 		return super.off(event, listener as any)
+	}
+
+	/**
+	 * After a task's abort has been forwarded: rehydrate it from history, but
+	 * only on a genuine streaming failure of a foreground task. User-initiated
+	 * cancels are handled by cancelTask(); background tasks (memory writers,
+	 * subagents) are never on the stack and must not rehydrate as a
+	 * foreground task. Never throws.
+	 */
+	private async rehydrateAfterStreamingFailure(instance: Task): Promise<void> {
+		try {
+			if (instance.abortReason === "streaming_failed" && !instance.isBackground) {
+				// Defensive safeguard: if another path already replaced this instance, skip
+				const current = this.getCurrentTask()
+				if (current && current.instanceId !== instance.instanceId) {
+					this.log(
+						`[onTaskAborted] Skipping rehydrate: current instance ${current.instanceId} != aborted ${instance.instanceId}`,
+					)
+					return
+				}
+
+				const historyItem = await this.getHistoryItem(instance.taskId)
+				const rootTask = instance.rootTask
+				const parentTask = instance.parentTask
+				await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
+			}
+		} catch (error) {
+			this.showAllowListViolation(error)
+			this.log(
+				`[onTaskAborted] Failed to rehydrate after streaming failure: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			)
+		}
 	}
 
 	/**
