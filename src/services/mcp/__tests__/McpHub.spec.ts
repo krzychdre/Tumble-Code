@@ -3367,7 +3367,12 @@ describe("McpHub", () => {
 				const assigned: McpConnection[] = [
 					{
 						type: "connected",
-						server: { name: "x", config: JSON.stringify({ command: "node" }), status: "connected", source: "global" },
+						server: {
+							name: "x",
+							config: JSON.stringify({ command: "node" }),
+							status: "connected",
+							source: "global",
+						},
 						client: { request } as any,
 						transport: {} as any,
 					},
@@ -3479,9 +3484,7 @@ describe("McpHub", () => {
 				const client = Client.mock.results.at(-1)!.value
 				if (type === "stdio") {
 					expect(start).toHaveBeenCalledTimes(1)
-					expect(start.mock.invocationCallOrder[0]).toBeLessThan(
-						client.connect.mock.invocationCallOrder[0],
-					)
+					expect(start.mock.invocationCallOrder[0]).toBeLessThan(client.connect.mock.invocationCallOrder[0])
 				} else {
 					expect(start).not.toHaveBeenCalled()
 				}

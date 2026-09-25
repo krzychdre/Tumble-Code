@@ -8,7 +8,6 @@ import { McpHub, type McpHubProvider } from "./McpHub"
 export class McpServerManager {
 	private static instance: McpHub | null = null
 	private static readonly GLOBAL_STATE_KEY = "mcpHubInstanceId"
-	private static providers: Set<McpHubProvider> = new Set()
 	private static initializationPromise: Promise<McpHub> | null = null
 
 	/**
@@ -17,9 +16,6 @@ export class McpServerManager {
 	 * Thread-safe implementation using a promise-based lock.
 	 */
 	static async getInstance(context: vscode.ExtensionContext, provider: McpHubProvider): Promise<McpHub> {
-		// Register the provider
-		this.providers.add(provider)
-
 		// If we already have an instance, return it
 		if (this.instance) {
 			return this.instance
@@ -53,25 +49,6 @@ export class McpServerManager {
 	}
 
 	/**
-	 * Remove a provider from the tracked set.
-	 * This is called when a webview is disposed.
-	 */
-	static unregisterProvider(provider: McpHubProvider): void {
-		this.providers.delete(provider)
-	}
-
-	/**
-	 * Notify all registered providers of server state changes.
-	 */
-	static notifyProviders(message: any): void {
-		this.providers.forEach((provider) => {
-			provider.postMessageToWebview(message).catch((error) => {
-				console.error("Failed to notify provider:", error)
-			})
-		})
-	}
-
-	/**
 	 * Clean up the singleton instance and all its resources.
 	 */
 	static async cleanup(context: vscode.ExtensionContext): Promise<void> {
@@ -80,6 +57,5 @@ export class McpServerManager {
 			this.instance = null
 			await context.globalState.update(this.GLOBAL_STATE_KEY, undefined)
 		}
-		this.providers.clear()
 	}
 }

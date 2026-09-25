@@ -59,7 +59,6 @@ vi.mock("../../../services/mcp/McpServerManager", () => ({
 			registerClient: vi.fn(),
 			unregisterClient: vi.fn().mockResolvedValue(undefined),
 		}),
-		unregisterProvider: vi.fn(),
 	},
 }))
 vi.mock("../../../services/marketplace")

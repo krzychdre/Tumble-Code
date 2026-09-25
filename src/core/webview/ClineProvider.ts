@@ -733,8 +733,6 @@ export class ClineProvider
 
 		// Clean up any event listeners attached to this provider
 		this.removeAllListeners()
-
-		McpServerManager.unregisterProvider(this)
 	}
 
 	public static getVisibleInstance(): ClineProvider | undefined {

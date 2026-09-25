@@ -31,7 +31,10 @@ describe("McpToolCatalog", () => {
 				connections.find((c) => c.server.name === name && (!source || c.server.source === source)),
 			configStore: {
 				readServerEntries: vi.fn(async () => entries),
-				readForUpdate: vi.fn(async () => ({ path: "/cfg.json", config: { mcpServers: structuredClone(entries) } })),
+				readForUpdate: vi.fn(async () => ({
+					path: "/cfg.json",
+					config: { mcpServers: structuredClone(entries) },
+				})),
 				write: vi.fn(async (path: string, config: any) => {
 					written.push({ path, config })
 					entries = config.mcpServers
@@ -96,7 +99,8 @@ describe("McpToolCatalog", () => {
 		const request = vi.fn(async ({ method }: { method: string }) => ({
 			tools: method === "tools/list" ? [{ name: "t" }] : undefined,
 			resources: method === "resources/list" ? [{ uri: "r://1", name: "r" }] : undefined,
-			resourceTemplates: method === "resources/templates/list" ? [{ uriTemplate: "r://{x}", name: "x" }] : undefined,
+			resourceTemplates:
+				method === "resources/templates/list" ? [{ uriTemplate: "r://{x}", name: "x" }] : undefined,
 		}))
 		connections.push(connected(request))
 

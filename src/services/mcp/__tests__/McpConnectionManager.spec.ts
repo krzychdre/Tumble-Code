@@ -69,9 +69,12 @@ describe("McpConnectionManager", () => {
 	})
 
 	const configs: Record<string, McpServerConfig> = {
-		stdio: { type: "stdio", command: "node", args: ["s.js"] } as McpServerConfig,
-		sse: { type: "sse", url: "https://mcp.example.com/sse", headers: { A: "1" } } as McpServerConfig,
-		"streamable-http": { type: "streamable-http", url: "https://mcp.example.com/mcp" } as McpServerConfig,
+		stdio: { type: "stdio", command: "node", args: ["s.js"] } as unknown as McpServerConfig,
+		sse: { type: "sse", url: "https://mcp.example.com/sse", headers: { A: "1" } } as unknown as McpServerConfig,
+		"streamable-http": {
+			type: "streamable-http",
+			url: "https://mcp.example.com/mcp",
+		} as unknown as McpServerConfig,
 	}
 
 	describe.each(["stdio", "sse", "streamable-http"])("createTransport(%s)", (type) => {
