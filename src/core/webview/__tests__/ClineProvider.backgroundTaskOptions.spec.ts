@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 import type { OrganizationAllowList, ProviderSettings } from "@roo-code/types"
 
-import { ClineProvider } from "../ClineProvider"
+import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
 import { Task } from "../../task/Task"
 import { OrganizationAllowListViolationError } from "../../../utils/errors"
 
@@ -10,10 +10,10 @@ import { OrganizationAllowListViolationError } from "../../../utils/errors"
  * DEF-C6: a background task (parallel subagent or memory writer) must be
  * created under the same profile rules as a foreground task: the organization
  * allow list is enforced and the profile's consecutive-mistake limit is
- * passed to the Task. The test drives the real `createBackgroundTask` on an
- * object whose prototype is ClineProvider, with only the collaborators the
- * method touches stubbed, and a mocked Task constructor that records its
- * options.
+ * passed to the Task. The test drives the real `createBackgroundTask` (in
+ * BackgroundTaskRunner since CORE-R6 d, ClineProvider delegates to it) over a
+ * host that stubs only the collaborators the method touches, and a mocked
+ * Task constructor that records its options.
  */
 
 vi.mock("../../task/Task", () => ({
@@ -47,9 +47,8 @@ function makeProvider(opts: {
 	organizationAllowList?: OrganizationAllowList
 	modeProfile?: { name: string; apiConfiguration: ProviderSettings }
 }) {
-	const provider = Object.create(ClineProvider.prototype) as ClineProvider
 	const register = vi.fn()
-	Object.assign(provider, {
+	const host = {
 		getState: vi.fn(async () => ({
 			apiConfiguration: opts.activeProfile,
 			currentApiConfigName: "active",
@@ -58,11 +57,11 @@ function makeProvider(opts: {
 			mode: "code",
 		})),
 		getApiConfigurationForMode: vi.fn(async () => opts.modeProfile),
-		backgroundTasks: new Map(),
 		subagentRegistry: { register },
 		log: vi.fn(),
 		taskCreationCallback: vi.fn(),
-	})
+	}
+	const provider = new BackgroundTaskRunner(host as unknown as BackgroundTaskHost)
 	return { provider, register }
 }
 

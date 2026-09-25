@@ -3,7 +3,7 @@ import { EventEmitter } from "events"
 
 import { RooCodeEventName } from "@roo-code/types"
 
-import { ClineProvider } from "../ClineProvider"
+import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
 
 // Stub the memory-sandbox path filter so the memorySubTaskRunner retry tests can
 // assert on raw written paths without needing real memory-directory resolution.
@@ -15,11 +15,24 @@ vi.mock("../../memory", () => ({
 
 /**
  * Focused unit tests for the reusable background-task primitive
- * (`awaitTaskCompletion`). The method only touches `this.backgroundTasks` and
- * the task's event/method surface, so we exercise the real implementation via
- * `prototype.call` with a minimal fake `this` and a fake Task — no heavy
- * ClineProvider construction required.
+ * (`awaitTaskCompletion`), which lives in BackgroundTaskRunner since CORE-R6 (d).
+ * The method only touches the runner's task registry and the task's
+ * event/method surface, so a runner over a stub host and a fake Task is
+ * enough: no heavy provider construction required.
  */
+
+function makeRunner(host: Partial<BackgroundTaskHost> = {}): BackgroundTaskRunner {
+	return new BackgroundTaskRunner({ log: vi.fn(), ...host } as unknown as BackgroundTaskHost)
+}
+
+/** The runner's private members these tests reach into. */
+type RunnerInternals = {
+	backgroundTasks: Map<string, unknown>
+	cleanupBackgroundTaskFiles: (taskId: string) => void
+	resolveMemoryWriterApiConfiguration: () => Promise<unknown>
+	setMemoryActivity: (kind: string, active: boolean) => void
+	runMemorySubTask: (...args: any[]) => Promise<unknown>
+}
 
 interface FakeTaskOptions {
 	taskId?: string
@@ -38,7 +51,7 @@ function makeFakeTask({ taskId = "bg-1", completionText }: FakeTaskOptions = {})
 			: [{ type: "say", say: "text", text: "working" }],
 		abortTask: vi.fn(async () => {}),
 	})
-	return task as unknown as Parameters<ClineProvider["awaitTaskCompletion"]>[0] & {
+	return task as unknown as Parameters<BackgroundTaskRunner["awaitTaskCompletion"]>[0] & {
 		abortTask: ReturnType<typeof vi.fn>
 	}
 }
@@ -46,19 +59,19 @@ function makeFakeTask({ taskId = "bg-1", completionText }: FakeTaskOptions = {})
 function invokeAwait(
 	task: ReturnType<typeof makeFakeTask>,
 	options?: { signal?: AbortSignal },
-	backgroundTasks = new Map<string, unknown>(),
+	_unused?: undefined,
 	cleanupSpy?: ReturnType<typeof vi.fn>,
 ) {
-	const fakeThis = {
-		backgroundTasks,
-		cleanupBackgroundTaskFiles: cleanupSpy ?? vi.fn(),
-	} as unknown as ClineProvider
+	const runner = makeRunner()
+	const internals = runner as unknown as RunnerInternals
+	internals.cleanupBackgroundTaskFiles = cleanupSpy ?? vi.fn()
+	const backgroundTasks = internals.backgroundTasks
 	backgroundTasks.set((task as unknown as { taskId: string }).taskId, task)
-	const promise = ClineProvider.prototype.awaitTaskCompletion.call(fakeThis, task as never, options)
+	const promise = runner.awaitTaskCompletion(task as never, options)
 	return { promise, backgroundTasks }
 }
 
-describe("ClineProvider.awaitTaskCompletion", () => {
+describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 	it("resolves completed:true with the last completion_result text on TaskCompleted", async () => {
 		const task = makeFakeTask({ completionText: "saved 2 memories" })
 		const { promise, backgroundTasks } = invokeAwait(task)
@@ -156,9 +169,9 @@ describe("ClineProvider.awaitTaskCompletion", () => {
 	})
 })
 
-describe("ClineProvider.resolveMemoryWriterApiConfiguration", () => {
-	// The method is private but accessible via prototype.call with a fake `this`
-	// that provides `getValue` and `providerSettingsManager`.
+describe("BackgroundTaskRunner.resolveMemoryWriterApiConfiguration", () => {
+	// The method is private but reachable on a runner whose host provides
+	// `getMemoryWriterApiConfigId` and `activateProfile`.
 
 	// `resolveMemoryWriterApiConfiguration` calls `activateProfile`, not
 	// `getProfile`. While the double stubbed only the latter, the two tests that
@@ -169,17 +182,17 @@ describe("ClineProvider.resolveMemoryWriterApiConfiguration", () => {
 		activateProfile?: ReturnType<typeof vi.fn>
 		log?: ReturnType<typeof vi.fn>
 	}) {
-		return {
-			getValue: vi.fn().mockReturnValue(opts.configId),
-			providerSettingsManager: { activateProfile: opts.activateProfile ?? vi.fn() },
+		return makeRunner({
+			getMemoryWriterApiConfigId: vi.fn().mockReturnValue(opts.configId),
+			activateProfile: opts.activateProfile ?? vi.fn(),
 			log: opts.log ?? vi.fn(),
-		} as unknown as ClineProvider
+		}) as unknown as RunnerInternals
 	}
 
 	it("returns undefined when memoryWriterApiConfigId is unset", async () => {
 		const activateProfile = vi.fn()
 		const fakeThis = makeFakeThis({ configId: undefined, activateProfile })
-		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
 		expect(activateProfile).not.toHaveBeenCalled()
 	})
@@ -187,7 +200,7 @@ describe("ClineProvider.resolveMemoryWriterApiConfiguration", () => {
 	it("returns undefined when memoryWriterApiConfigId is empty string", async () => {
 		const activateProfile = vi.fn()
 		const fakeThis = makeFakeThis({ configId: "", activateProfile })
-		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
 		expect(activateProfile).not.toHaveBeenCalled()
 	})
@@ -200,7 +213,7 @@ describe("ClineProvider.resolveMemoryWriterApiConfiguration", () => {
 			apiModelId: "llama3",
 		})
 		const fakeThis = makeFakeThis({ configId: "profile-1", activateProfile })
-		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toEqual({
 			id: "profile-1",
 			apiProvider: "ollama",
@@ -213,7 +226,7 @@ describe("ClineProvider.resolveMemoryWriterApiConfiguration", () => {
 		const activateProfile = vi.fn().mockRejectedValue(new Error("not found"))
 		const log = vi.fn()
 		const fakeThis = makeFakeThis({ configId: "stale-id", activateProfile, log })
-		const result = await (ClineProvider.prototype as any).resolveMemoryWriterApiConfiguration.call(fakeThis)
+		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
 		expect(activateProfile).toHaveBeenCalledWith({ id: "stale-id" })
 		expect(log).toHaveBeenCalledWith(
@@ -222,11 +235,11 @@ describe("ClineProvider.resolveMemoryWriterApiConfiguration", () => {
 	})
 })
 
-describe("ClineProvider.memorySubTaskRunner — background-profile foreground retry", () => {
-	// The runner is a getter returning an async function. We invoke it bound to a
-	// fake `this` that stubs the dependencies the runner touches:
+describe("BackgroundTaskRunner.memorySubTaskRunner: background-profile foreground retry", () => {
+	// The runner is a getter returning an async function. We invoke it on a
+	// runner whose private helpers are stubbed:
 	// resolveMemoryWriterApiConfiguration, setMemoryActivity, runMemorySubTask,
-	// log. runMemorySubTask is itself a private method that we stub directly so
+	// and the host's log. runMemorySubTask is itself a private method that we stub directly so
 	// we can control the { completed, writtenPaths, abortReason } outcome of
 	// each attempt. abortReason classification (Claim 3) drives the retry
 	// decision: only streaming_failed retries on foreground; max_turns_reached
@@ -239,17 +252,18 @@ describe("ClineProvider.memorySubTaskRunner — background-profile foreground re
 		) => Promise<{ completed: boolean; writtenPaths: string[]; abortReason?: string }>
 		log?: ReturnType<typeof vi.fn>
 	}) {
-		return {
+		const runner = makeRunner({ log: opts.log ?? vi.fn() })
+		Object.assign(runner, {
 			resolveMemoryWriterApiConfiguration: vi.fn(async () => opts.backgroundConfig),
 			setMemoryActivity: vi.fn(),
 			runMemorySubTask: vi.fn(opts.runMemorySubTaskImpl),
-			log: opts.log ?? vi.fn(),
-		} as unknown as ClineProvider
+		})
+		return runner
 	}
 
 	/** Invoke the runner function (from the getter) bound to fakeThis. */
 	async function invokeRunner(
-		fakeThis: ClineProvider,
+		fakeThis: BackgroundTaskRunner,
 		args: {
 			cwd?: string
 			systemPrompt?: string
@@ -258,12 +272,8 @@ describe("ClineProvider.memorySubTaskRunner — background-profile foreground re
 			signal?: AbortSignal
 		},
 	) {
-		// Read the getter from the prototype descriptor and call it on fakeThis to
-		// obtain the runner function, then invoke the runner (also bound to
-		// fakeThis so `this`-references inside resolve correctly).
-		const desc = Object.getOwnPropertyDescriptor(ClineProvider.prototype, "memorySubTaskRunner")!
-		const runner = desc.get!.call(fakeThis) as (args: any) => Promise<{ writtenPaths: string[] }>
-		return runner.call(fakeThis, {
+		const runner = fakeThis.memorySubTaskRunner as (args: any) => Promise<{ writtenPaths: string[] }>
+		return runner({
 			cwd: args.cwd ?? "/mem",
 			systemPrompt: args.systemPrompt,
 			userPrompt: args.userPrompt ?? "extract memories",
