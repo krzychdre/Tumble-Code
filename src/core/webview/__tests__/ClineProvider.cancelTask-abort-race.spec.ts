@@ -308,6 +308,76 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 		vi.useRealTimers()
 	})
 
+	describe("user cancel versus background tasks (CORE-R6 d characterization)", () => {
+		function makeBackgroundTaskFake() {
+			const bg: any = {
+				taskId: "bg-writer",
+				instanceId: "bg-1",
+				start: vi.fn(),
+				abortTask: vi.fn().mockResolvedValue(undefined),
+				on: vi.fn(),
+				off: vi.fn(),
+				emit: vi.fn(),
+			}
+			vi.mocked(Task).mockImplementation(() => bg)
+			return bg
+		}
+
+		beforeEach(() => {
+			provider.getState = vi.fn().mockResolvedValue({
+				apiConfiguration: { apiProvider: "anthropic" },
+				currentApiConfigName: "default",
+				organizationAllowList: { allowAll: true, providers: {} },
+				experiments: {},
+				mode: "code",
+			})
+			provider.getHistoryItem = vi.fn().mockResolvedValue({ id: "task-1", status: "active", task: "test" })
+			provider.createTaskWithHistoryItem = vi.fn().mockResolvedValue(undefined) as any
+		})
+
+		it("marks the task user_cancelled before abortTask starts and never spawns a memory writer", async () => {
+			const task = makeMockTask({ isStreaming: true })
+			const reasonAtAbortStart: Array<string | undefined> = []
+			const origAbort = task.abortTask
+			task.abortTask = vi.fn(async () => {
+				reasonAtAbortStart.push(task.abortReason)
+				await origAbort()
+			})
+			;(provider as any).clineStack = [task]
+			const createBackgroundTask = vi.spyOn(provider, "createBackgroundTask")
+
+			await provider.cancelTask()
+
+			// TaskLifecycle skips the memory writers and the drain on exactly this reason.
+			expect(reasonAtAbortStart).toEqual(["user_cancelled"])
+			expect(task.abortTask).toHaveBeenCalledWith()
+			expect(createBackgroundTask).not.toHaveBeenCalled()
+		})
+
+		it("neither waits on nor aborts a running background task", async () => {
+			const bg = makeBackgroundTaskFake()
+			await provider.createBackgroundTask("extract memories", { silentWrites: true })
+			const task = makeMockTask({ isStreaming: true })
+			;(provider as any).clineStack = [task]
+
+			await provider.cancelTask()
+
+			expect(bg.abortTask).not.toHaveBeenCalled()
+			expect(provider.getBackgroundTask("bg-writer")).toBe(bg)
+			expect(provider.createTaskWithHistoryItem).toHaveBeenCalledOnce()
+		})
+
+		it("provider dispose leaves running background tasks alone (today's behavior)", async () => {
+			const bg = makeBackgroundTaskFake()
+			await provider.createBackgroundTask("extract memories")
+
+			await provider.dispose()
+
+			expect(bg.abortTask).not.toHaveBeenCalled()
+			expect(provider.getBackgroundTask("bg-writer")).toBe(bg)
+		})
+	})
+
 	// Mock Task constructor so any rehydration path that constructs a Task is safe.
 	beforeEach(() => {
 		vi.mocked(Task).mockImplementation(
