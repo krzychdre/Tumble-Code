@@ -24,6 +24,7 @@ import { sanitizeToolUseId } from "../../utils/tool-id"
 
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
+import { toolNamesWhere } from "../tools/toolDescriptors"
 import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
 import { type ClineProvider } from "../webview/ClineProvider"
 
@@ -35,23 +36,14 @@ import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 
-// Tools that cannot mutate the workspace. An eager pre-edit checkpoint is only
-// safe while every earlier tool block in the turn is in this set: anything
-// else (execute_command, MCP tools, other writes) may still be mutating files
-// when the write tool's arguments start streaming.
-// Typed as ToolName so a removed tool name here is a compile error.
-const WORKSPACE_READ_ONLY_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>([
-	"read_file",
-	"list_files",
-	"search_files",
-	"codebase_search",
-	"read_artifact",
-	"read_command_output",
-	"web_search",
-	"web_fetch",
-	// Reads the task's own stored conversation, never the workspace.
-	"search_task_history",
-])
+// Tools that cannot mutate the workspace (the `workspaceReadOnly` column of the
+// tool descriptor table). An eager pre-edit checkpoint is only safe while every
+// earlier tool block in the turn is in this set: anything else (execute_command,
+// MCP tools, other writes) may still be mutating files when the write tool's
+// arguments start streaming.
+const WORKSPACE_READ_ONLY_TOOLS: ReadonlySet<ToolName> = new Set<ToolName>(
+	toolNamesWhere((tool) => tool.workspaceReadOnly),
+)
 
 export interface TaskStreamProcessorAccess {
 	taskId: string
