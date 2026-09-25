@@ -80,7 +80,11 @@ describe("the CLI bundle", () => {
 	let tmp: string
 
 	beforeAll(() => {
-		tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-cli-bundle-"))
+		// The parentheses are glob syntax on purpose: the probe entry is a file
+		// path and must not be read as a glob (on Windows its backslashes are
+		// glob escapes, so tsup could not find it there), and parentheses show
+		// that on every platform.
+		tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-cli-bundle-(probe)-"))
 	})
 
 	afterAll(() => {
