@@ -39,7 +39,7 @@ describe("checkBundleBoundary", () => {
 			SRC,
 		)
 
-		expect(report).toEqual({ violations: [], treeShaken: [] })
+		expect(report).toEqual({ violations: [] })
 	})
 
 	it("fails on extension-only code that ships, with or without a query suffix", () => {
@@ -62,10 +62,17 @@ describe("checkBundleBoundary", () => {
 		])
 	})
 
-	it("only reports extension-only modules that tree-shaking reduced to nothing", () => {
+	it("fails on extension-only modules in the build graph even when tree-shaking reduced them to nothing", () => {
+		// SVC-16: CORE-R10 removed the last such edge (shared/modes.ts -> core/prompts,
+		// services/roo-config), so the former warning is now an error and the edge
+		// cannot come back silently.
 		const report = checkBundleBoundary([chunk({ [id("src/services/roo-config/index.ts")]: 0 })], SRC)
 
-		expect(report).toEqual({ violations: [], treeShaken: [shown("src/services/roo-config/index.ts")] })
+		expect(report).toEqual({
+			violations: [
+				`assets/index.js has extension-only module ${shown("src/services/roo-config/index.ts")} in its build graph (tree-shaken to 0 chars)`,
+			],
+		})
 	})
 
 	it("matches module ids written with backslashes", () => {

@@ -5,7 +5,7 @@ import OpenAI from "openai"
 import { type ModelInfo, openAiModelInfoSaneDefaults } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
-import { SELECTOR_SEPARATOR, stringifyVsCodeLmModelSelector } from "../../shared/vsCodeSelectorUtils"
+import { SELECTOR_SEPARATOR, stringifyVsCodeLmModelSelector } from "./utils/vsCodeSelectorUtils"
 import { normalizeToolSchema } from "../../utils/json-schema"
 
 import { ApiStream } from "../transform/stream"

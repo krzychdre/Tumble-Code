@@ -6,12 +6,15 @@ import type { Plugin } from "vite"
  * webview: it runs in a browser sandbox with no Node APIs and no `vscode`
  * module. `src/shared` is the one directory the webview may import from.
  *
- * Today the build graph does pass through `src/shared/modes.ts` into
+ * Until CORE-R10 the build graph passed through `src/shared/modes.ts` into
  * `src/core/prompts/sections/custom-instructions.ts` and
- * `src/services/roo-config/index.ts` (which import `path`, `fs/promises`, `os`),
- * and only tree-shaking keeps their code out: both land in the chunk with 0
- * rendered characters. This guard turns "happens to be shaken out" into "fails
- * the build as soon as any of it ships", and warns about the shaken-out ones.
+ * `src/services/roo-config/index.ts` (which import `path`, `fs/promises`, `os`)
+ * and only tree-shaking kept their code out (0 rendered characters). Since
+ * SVC-16 an extension-only module anywhere in the graph fails the build, even
+ * when it renders to nothing: "happens to be shaken out" is one refactor away
+ * from shipping Node code, and Vite has already stubbed its Node imports.
+ * The same list guards src/shared at lint time (src/eslint.config.mjs) and in
+ * src/__tests__/layering.spec.ts.
  */
 const EXTENSION_ONLY_DIRS = [
 	"activate",
@@ -35,10 +38,8 @@ export interface ChunkModules {
 }
 
 export interface BoundaryReport {
-	/** Extension code or `vscode` imports that ship in the bundle: the build must fail. */
+	/** Extension-only modules in the build graph, or `vscode` imports: the build must fail. */
 	violations: string[]
-	/** Extension-only modules that are in the build graph but render to nothing. */
-	treeShaken: string[]
 }
 
 function toPosix(p: string): string {
@@ -52,7 +53,7 @@ function toPosix(p: string): string {
  */
 export function checkBundleBoundary(chunks: readonly ChunkModules[], extensionSrcDir: string): BoundaryReport {
 	const forbiddenPrefixes = EXTENSION_ONLY_DIRS.map((dir) => toPosix(path.join(extensionSrcDir, dir)) + "/")
-	const report: BoundaryReport = { violations: [], treeShaken: [] }
+	const report: BoundaryReport = { violations: [] }
 
 	for (const chunk of chunks) {
 		for (const [rawId, { renderedLength }] of Object.entries(chunk.modules)) {
@@ -70,7 +71,9 @@ export function checkBundleBoundary(chunks: readonly ChunkModules[], extensionSr
 			if (renderedLength > 0) {
 				report.violations.push(`${chunk.fileName} ships ${renderedLength} chars of extension-only module ${id}`)
 			} else {
-				report.treeShaken.push(id)
+				report.violations.push(
+					`${chunk.fileName} has extension-only module ${id} in its build graph (tree-shaken to 0 chars)`,
+				)
 			}
 		}
 
@@ -84,25 +87,18 @@ export function checkBundleBoundary(chunks: readonly ChunkModules[], extensionSr
 	return report
 }
 
-/** Fails the build when the webview bundle ships extension-only code. */
+/** Fails the build when the webview build graph reaches extension-only code. */
 export function bundleBoundaryPlugin(extensionSrcDir: string): Plugin {
 	return {
 		name: "webview-bundle-boundary",
 		apply: "build",
 		generateBundle(_options, bundle) {
 			const chunks = Object.values(bundle).flatMap((output) => (output.type === "chunk" ? [output] : []))
-			const { violations, treeShaken } = checkBundleBoundary(chunks, extensionSrcDir)
-
-			if (treeShaken.length > 0) {
-				this.warn(
-					`${treeShaken.length} extension-only module(s) are in the webview build graph and only ` +
-						`tree-shaking keeps their code out:\n${treeShaken.join("\n")}`,
-				)
-			}
+			const { violations } = checkBundleBoundary(chunks, extensionSrcDir)
 
 			if (violations.length > 0) {
 				this.error(
-					`The webview bundle ships extension-only code:\n${violations.join("\n")}\n` +
+					`The webview build reaches extension-only code:\n${violations.join("\n")}\n` +
 						"Move what the webview needs into src/shared or a package, or stop importing it.",
 				)
 			}
