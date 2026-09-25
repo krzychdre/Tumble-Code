@@ -327,3 +327,6 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   unlocked after a fixed 1 s; test-first, 17 new tests, the components had no specs) and #387 (ModelDescriptionMarkdown
   on react-markdown + remark-gfm, `react-remark` and its `packageExtensions` entry removed; 5 characterization tests
   unchanged, bare URLs now link). Skipped: `useModeSelection` (after settings work), translation-hook unification.
+- 2026-09-25 WEB-11 c DONE #395: `hooks/useModeSelection.ts` shared by CreateSkillDialog and SkillsSettings (no drift,
+  about 95 lines less; 8 hook tests, 4 new SkillsSettings dialog tests). Found, same in both old copies: unchecking
+  "Any mode" with nothing selected saves as "no restriction"; a deleted custom mode stays in a skill's selection.
