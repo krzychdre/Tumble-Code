@@ -462,12 +462,29 @@ only; Execa may report exit code 0 when an abort wins [I]; Execa terminals never
 `BaseTerminalProcess`, driven by one contract test run against both implementations. **Existing:** about 189
 terminal tests. **Size** M, medium risk. After DEF-C18.
 
+**Status (2026-09-25):** DONE in #335 (merge 13793a39b). `BaseTerminalProcess` owns unretrieved output (with
+`isOutputEnded`/`findOutputEnd`/`cleanOutput` hooks), `appendOutput` with one leading-and-trailing throttle
+`TERMINAL_OUTPUT_THROTTLE_MS = 150` (the rate `ExecuteCommandTool` already published at; it imports the constant),
+`continue()` and run completion; `TerminalCompletionContract.spec` runs against both implementations. Confirmed and
+fixed: neither throttle emitted the tail of a window (a line before a pause waited for more output), Execa
+`continue()` did not flush, Execa reported exit code 0 after an abort (`error.exitCode ?? 0` with
+`signal: "SIGKILL"`, plus a hard-coded `{ exitCode: 0 }`; now 137 via `interpretExitCode`), Execa terminals never
+pruned (`releaseTerminalsForTask` now drops idle ones). Terminal specs 179 to 190 passed. P5 not changed with
+evidence: `compressTerminalOutput` on a 100 KB buffer is about 0.3 ms per call behind the 150 ms throttle.
+
 ### SVC-16 Layering in `src/shared`
 
 `shared/modes.ts` imports `vscode` (line 1) and core (line 12) but 8 webview files import it; `cloud-urls.ts` and
 `vsCodeSelectorUtils.ts` are also vscode-bound. Move the extension-only functions (`getAllModesWithPrompts` at 185,
 `getFullModeDetails` at 200) to `src/core`. Shared with CORE-R10; prerequisite for PKG-6. Measured during TEST-8 (2026-09-24): the webview build graph reaches `src/core/prompts/sections/custom-instructions.ts` and `src/services/roo-config/index.ts` through `src/shared/modes.ts` (Vite stubs their `path`, `fs/promises`, `os` imports); both render 0 characters, and the bundle guard warns about them on every build until this item removes the edge. Done means that warning is gone. **Existing:** `modes`
 (59). TEST-8 guards the bundle. **Size** S to M.
+
+**Status (2026-09-25):** DONE in #334 (merge af355da70). The `modes.ts` edge was already removed by CORE-R10 (#269,
+functions now in `src/core/prompts/modeDetails.ts`). This item moved `cloud-urls.ts` to `src/activate/` and
+`vsCodeSelectorUtils.ts` to `src/api/providers/utils/`, extended the eslint boundary rule to reject imports from
+`src/shared` into extension directories, made `layering.spec` check every `src/shared` file, and turned the webview
+bundle guard warning into a build error. Verified with three worktree webview builds: old `modes.ts` + old guard
+warned about 3 modules, this branch prints nothing, old `modes.ts` + new guard fails the build.
 
 ### SVC-17 DiffViewProvider remainder (low priority)
 
