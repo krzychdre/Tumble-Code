@@ -272,3 +272,10 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   `defaultValue` in every locale) added in 18 locales; `common:docsLink.label` was a dead `t()` child of `<Trans>`
   (removed); `didSearch` was a plural family (false alarm). New `find-unused-i18n-keys.mjs --missing` check with a
   repo-wide node:test run in CI.
+- 2026-09-25 WEB-5 DONE #365 (`4f182c473`, 23 per-provider characterization tests for the 8 embedders) and #366
+  (`f6033ecdb`): moved to `components/code-index/`, 1,748 to about 880 lines; `EMBEDDER_FORMS` registry
+  (`satisfies Record<EmbedderProvider, ...>`) drives the provider list, validation schema, secret masks;
+  `EmbedderFormFields.tsx` with `<ApiKeyAndModelFields>` replaces 5 copies; shared `common/DiscardChangesDialog.tsx`
+  also used by SettingsView. No drift between copies. Found (pinned, not fixed): an empty URL field shows "invalid
+  URL", never the `*Required` message (`.url()` overwrites `.min(1)`); an empty openai-compatible dimension shows
+  zod's untranslated "Required".
