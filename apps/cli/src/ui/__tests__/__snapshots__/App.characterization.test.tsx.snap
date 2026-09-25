@@ -340,6 +340,99 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ? for shortcuts                                                                   code · claude-test"
 `;
 
+exports[`App characterization (recorded message sequences) > draws an artifact read and a history search as tool rows, not as JSON 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== artifact read ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+● Read Artifact(0 B - 1.0 KB of 4.0 KB)
+˙ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== history search ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+● Read Artifact(0 B - 1.0 KB of 4.0 KB)
+● Search Task History(retry)
+. Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer ===
+[static: welcome:__welcome__:0 message:user-1 message:1002 message:1003]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+● Read Artifact(0 B - 1.0 KB of 4.0 KB)
+● Search Task History(retry)
+
+● Found it.
+○ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
+
 exports[`App characterization (recorded message sequences) > prints an auto-approved tool as a tool row in allow mode 1`] = `
 "=== mounted ===
 [static: welcome:__welcome__:0]

@@ -21,8 +21,6 @@ export interface TUIMessage {
 	role: MessageRole
 	content: string
 	toolName?: string
-	toolDisplayName?: string
-	toolDisplayOutput?: string
 	hasPendingToolCalls?: boolean
 	partial?: boolean
 	originalType?: ClineAsk | ClineSay

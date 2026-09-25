@@ -34,67 +34,6 @@ function formatParams(toolInfo: Record<string, unknown>, max: number, indent: st
 }
 
 /**
- * Format tool output for display (used in the message body, header shows tool name separately)
- */
-export function formatToolOutput(toolInfo: Record<string, unknown>): string {
-	const payload = describeToolPayload(toolInfo)
-
-	// The payload's row family, or the name for the rows the CLI builds itself.
-	switch (payload.kind ?? payload.tool) {
-		case "switchMode": {
-			const mode = payload.mode || "unknown"
-			return `→ ${mode} mode${payload.reason ? `\n  ${payload.reason}` : ""}`
-		}
-
-		case "readFile": {
-			const files = payload.batchFiles
-			if (files && files.length > 0) {
-				return files.map((f) => `📄 ${f.path}`).join("\n")
-			}
-			return `📄 ${payload.path || "(no path)"}`
-		}
-
-		case "edit":
-		case "insert": {
-			const icon = payload.tool === "newFileCreated" ? "📝" : "✏️"
-			return `${icon} ${payload.path || "(no path)"}`
-		}
-
-		case "searchFiles": {
-			return `🔍 "${payload.regex}" in ${payload.path || "."}`
-		}
-
-		case "listFiles": {
-			const recursive = payload.tool === "listFilesRecursive"
-			return `📁 ${payload.path || "."}${recursive ? " (recursive)" : ""}`
-		}
-
-		case "attempt_completion": {
-			const result = typeof toolInfo.result === "string" ? toolInfo.result : ""
-			if (result) {
-				const truncated = result.length > 100 ? result.substring(0, 100) + "..." : result
-				return `✅ ${truncated}`
-			}
-			return "✅ Task completed"
-		}
-
-		case "newTask": {
-			return `📋 Creating subtask${payload.mode ? ` in ${payload.mode} mode` : ""}`
-		}
-
-		case "update_todo_list":
-		case "updateTodoList": {
-			// Special marker - actual rendering is handled by the TodoDisplay component
-			return "☑ TODO list updated"
-		}
-
-		default: {
-			return formatParams(toolInfo, 100, "") || "(no parameters)"
-		}
-	}
-}
-
-/**
  * Format tool ask message for user approval prompt
  */
 export function formatToolAskMessage(toolInfo: Record<string, unknown>): string {

@@ -216,7 +216,6 @@ describe("ChatHistoryItem", () => {
 					content: "line one\nline two\nline three",
 				}),
 				toolName: "readFile",
-				toolDisplayName: "Read File",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
@@ -234,7 +233,6 @@ describe("ChatHistoryItem", () => {
 				role: "tool",
 				content: JSON.stringify({ tool: "readFile", path: "src/test.ts", content: "file content" }),
 				toolName: "readFile",
-				toolDisplayName: "Read File",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
@@ -250,7 +248,6 @@ describe("ChatHistoryItem", () => {
 				role: "tool",
 				content: JSON.stringify({ tool: "listFilesRecursive", path: "src/", content: "file1\nfile2" }),
 				toolName: "listFilesRecursive",
-				toolDisplayName: "List Files",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
@@ -271,7 +268,6 @@ describe("ChatHistoryItem", () => {
 					content: "hosts file",
 				}),
 				toolName: "readFile",
-				toolDisplayName: "Read File",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
@@ -311,8 +307,6 @@ describe("ChatHistoryItem", () => {
 				role: "tool",
 				content: JSON.stringify({ tool: "execute_command" }),
 				toolName: "execute_command",
-				toolDisplayName: "Execute Command",
-				toolDisplayOutput: "command output",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
@@ -328,8 +322,6 @@ describe("ChatHistoryItem", () => {
 				role: "tool",
 				content: JSON.stringify({ tool: "searchFiles" }),
 				toolName: "searchFiles",
-				toolDisplayName: "Search Files",
-				toolDisplayOutput: "search results",
 			}
 
 			const { lastFrame } = render(<ChatHistoryItem message={message} />)
@@ -347,8 +339,6 @@ describe("ChatHistoryItem", () => {
 					result: "I've completed the task successfully.",
 				}),
 				toolName: "attempt_completion",
-				toolDisplayName: "Task Complete",
-				toolDisplayOutput: "✅ I've completed the task successfully.",
 				toolData: {
 					tool: "attempt_completion",
 					result: "I've completed the task successfully.",
