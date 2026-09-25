@@ -9,6 +9,27 @@ export interface DiffLine {
 }
 
 /**
+ * parsePatch, retried without empty lines when it rejects the patch.
+ *
+ * The extension's sanitizeUnifiedDiff blanks the "\ No newline at end of file"
+ * marker out of the patches it sends instead of deleting the line, and chat
+ * history keeps those patches. jsdiff 5 counted the empty line as a context
+ * row; jsdiff 6+ checks the hunk line counts and throws, which rendered no
+ * diff at all for any edit of a file without a trailing newline. The retry
+ * only runs after a strict parse failed, so well-formed patches are parsed
+ * exactly as before. Keep in sync with src/core/diff/stats.ts.
+ */
+function parsePatchTolerant(source: string): ReturnType<typeof parsePatch> {
+	try {
+		return parsePatch(source)
+	} catch (error) {
+		const withoutEmptyLines = source.replace(/\r?\n(?=\r?\n|$)/g, "")
+		if (withoutEmptyLines === source) throw error
+		return parsePatch(withoutEmptyLines + "\n")
+	}
+}
+
+/**
  * Parse a unified diff string into a flat list of renderable lines with
  * line numbers, addition/deletion/context flags, and compact "gap" separators
  * between hunks.
@@ -17,7 +38,7 @@ export function parseUnifiedDiff(source: string, filePath?: string): DiffLine[] 
 	if (!source) return []
 
 	try {
-		const patches = parsePatch(source)
+		const patches = parsePatchTolerant(source)
 		if (!patches || patches.length === 0) return []
 
 		const patch = filePath
@@ -54,7 +75,8 @@ export function parseUnifiedDiff(source: string, filePath?: string): DiffLine[] 
 
 			for (const raw of hunk.lines || []) {
 				const firstChar = (raw as string)[0]
-				const content = (raw as string).slice(1)
+				// jsdiff 6+ keeps the "\r" of CRLF patches on each line (5.x split it off).
+				const content = (raw as string).slice(1).replace(/\r$/, "")
 
 				if (firstChar === "-") {
 					lines.push({

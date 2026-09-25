@@ -133,6 +133,30 @@ describe("DiffEditorLifecycleManager", () => {
 
 			expect(mockEditor.revealRange).toHaveBeenCalledOnce()
 		})
+
+		// Characterization of the line the real `diff.diffLines` result leads to
+		// (DEP-6: diff 5.x to 9.x must reveal the same line).
+		it.each([
+			["a changed line", "a\nb\nc\n", "a\nX\nc\n", 1],
+			["an insertion at the top", "a\nb\n", "new\na\nb\n", 0],
+			["a deletion after two lines", "a\nb\nc\nd\n", "a\nb\nd\n", 2],
+			["an append at the end", "a\nb\n", "a\nb\nc\n", 2],
+			["a trailing newline added", "a\nb", "a\nb\n", 1],
+			["swapped neighbours", "a\nb\nc\nd\n", "a\nc\nb\nd\n", 1],
+			["CRLF to LF", "a\r\nb\r\n", "a\nb\n", 0],
+			["an empty original", undefined, "a\nb\n", 0],
+		])("reveals the first changed line for %s", (_name, original, current, expectedLine) => {
+			vi.mocked(vscode.Range).mockClear()
+			const mockEditor = {
+				document: { getText: vi.fn().mockReturnValue(current) },
+				revealRange: vi.fn(),
+			} as any
+
+			manager.scrollToFirstDiff(mockEditor, original)
+
+			expect(mockEditor.revealRange).toHaveBeenCalledOnce()
+			expect(vi.mocked(vscode.Range).mock.calls).toEqual([[expectedLine, 0, expectedLine, 0]])
+		})
 	})
 
 	describe("closeFileTabs", () => {
