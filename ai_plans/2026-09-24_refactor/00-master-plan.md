@@ -260,6 +260,7 @@ only after the owner confirms it (ask at the start of the item that depends on i
 | 15 | Memory writers when VS Code or the CLI closes while a task sits at its final `completion_result` ask | **Decided** | Leave as is, document the limit only (owner 2026-09-25) |
 | 16 | Refresh the stale DeepSeek catalog (`deepseek-flash`, V4-Pro, peak and off-peak prices, alias entries) now or later? | **Decided** | Now, in its own branch during the leftovers round (owner 2026-09-25) |
 | 17 | Background tasks (#353) stop after 7 attempts for retryable errors: should HTTP 429 (too many requests) count toward that cap? | **Decided** | No: 429 is excluded from the cap, a background task keeps backing off (at most 600 s between attempts) until the rate limit clears or it is aborted; 400, 5xx and no-status errors keep the 7-attempt cap (owner 2026-09-25) |
+| 18 | Clearing the condense profile, memory writer profile and memory directory is impossible (`|| undefined` dropped by JSON). Wire format for a cleared value? | **Decided** | The webview sends `""`, the host stores it and treats `""` as not set (current profile / default folder) and sends it back in the state push (owner 2026-09-25) |
 
 ## Do not touch (collected from all audits)
 
