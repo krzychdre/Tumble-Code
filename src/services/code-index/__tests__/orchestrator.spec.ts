@@ -99,6 +99,7 @@ describe("CodeIndexOrchestrator - error path cleanup gating", () => {
 			onDidStartBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 			onBatchProgressUpdate: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 			onDidFinishBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			stop: vi.fn(),
 			dispose: vi.fn(),
 		}
 	})
@@ -211,6 +212,7 @@ describe("CodeIndexOrchestrator - stopIndexing", () => {
 			onDidStartBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 			onBatchProgressUpdate: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 			onDidFinishBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			stop: vi.fn(),
 			dispose: vi.fn(),
 		}
 	})
@@ -383,6 +385,7 @@ describe("CodeIndexOrchestrator - incremental scan batch errors (DEF-C17 drift 3
 			onDidStartBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 			onBatchProgressUpdate: vi.fn().mockReturnValue({ dispose: vi.fn() }),
 			onDidFinishBatchProcessing: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+			stop: vi.fn(),
 			dispose: vi.fn(),
 		}
 	})

@@ -1,5 +1,6 @@
 import { CodeIndexManager } from "../manager"
 import { CodeIndexServiceFactory } from "../service-factory"
+import { RooIgnoreController } from "../../../core/ignore/RooIgnoreController"
 import type { MockedClass } from "vitest"
 import * as path from "path"
 
@@ -340,8 +341,10 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			mockFileWatcher = {
 				onDidStartBatchProcessing: vi.fn(),
 				onBatchProgressUpdate: vi.fn(),
+				onDidFinishBatchProcessing: vi.fn(),
 				watch: vi.fn(),
 				stopWatcher: vi.fn(),
+				stop: vi.fn(),
 				dispose: vi.fn(),
 			}
 
@@ -393,6 +396,64 @@ describe("CodeIndexManager - handleSettingsChange regression", () => {
 			const createdEmbedder = mockServiceFactoryInstance.createServices.mock.results[0].value.embedder
 			expect(mockServiceFactoryInstance.validateEmbedder).toHaveBeenCalledWith(createdEmbedder)
 			expect(mockStateManager.setSystemState).not.toHaveBeenCalledWith("Error", expect.any(String))
+		})
+
+		describe("lifecycle ownership (SVC-10)", () => {
+			let ignoreDispose: ReturnType<typeof vi.spyOn>
+
+			beforeEach(() => {
+				ignoreDispose = vi.spyOn(RooIgnoreController.prototype, "dispose")
+				mockServiceFactoryInstance.validateEmbedder.mockResolvedValue({ valid: true })
+			})
+
+			afterEach(() => {
+				ignoreDispose.mockRestore()
+			})
+
+			const ignoreControllerOfCall = (n: number) =>
+				mockServiceFactoryInstance.createServices.mock.calls[n][3] as RooIgnoreController
+
+			it("recoverFromError disposes the live orchestrator's watcher and the ignore controller", async () => {
+				await (manager as any)._recreateServices()
+				expect((manager as any)._orchestrator).toBeDefined()
+
+				await manager.recoverFromError()
+
+				// Before the fix the orchestrator was only dropped: its FileWatcher kept indexing
+				// next to the one created by the following initialize().
+				expect(mockFileWatcher.dispose).toHaveBeenCalledTimes(1)
+				expect(ignoreDispose.mock.contexts).toContain(ignoreControllerOfCall(0))
+			})
+
+			it("recreating services disposes the previous orchestrator and ignore controller", async () => {
+				await (manager as any)._recreateServices()
+				await (manager as any)._recreateServices()
+
+				expect(mockFileWatcher.dispose).toHaveBeenCalledTimes(1)
+				expect(ignoreDispose.mock.contexts).toEqual([ignoreControllerOfCall(0)])
+			})
+
+			it("disposes the ignore controller and file watcher it created when validation fails", async () => {
+				mockServiceFactoryInstance.validateEmbedder.mockResolvedValue({ valid: false, error: "bad key" })
+
+				await expect((manager as any)._recreateServices()).rejects.toThrow("bad key")
+
+				expect(mockFileWatcher.dispose).toHaveBeenCalledTimes(1)
+				expect(ignoreDispose.mock.contexts).toEqual([ignoreControllerOfCall(0)])
+			})
+
+			it("dispose() tears down the chain once and forgets the instance", async () => {
+				await (manager as any)._recreateServices()
+				const stateDispose = (manager as any)._stateManager.dispose
+
+				manager.dispose()
+				manager.dispose()
+
+				expect(mockFileWatcher.dispose).toHaveBeenCalledTimes(1)
+				expect(ignoreDispose.mock.contexts).toEqual([ignoreControllerOfCall(0)])
+				expect(stateDispose).toHaveBeenCalledTimes(1)
+				expect(CodeIndexManager.getAllInstances()).not.toContain(manager)
+			})
 		})
 
 		it("should set error state when embedder validation fails", async () => {
