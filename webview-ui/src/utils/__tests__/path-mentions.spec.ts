@@ -1,5 +1,5 @@
 import { escapeSpacesForMention, convertToMentionPath } from "../path-mentions"
-import { mentionRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
+import { mentionRegexGlobal, unescapeSpaces } from "@roo-code/core/browser"
 
 describe("Path Mentions Utilities", () => {
 	describe("escapeSpacesForMention", () => {

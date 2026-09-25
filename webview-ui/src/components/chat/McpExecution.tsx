@@ -9,7 +9,7 @@ import {
 	mcpExecutionStatusSchema,
 } from "@roo-code/types"
 
-import { safeJsonParse } from "@roo/core"
+import { safeJsonParse } from "@roo-code/core/browser"
 
 import { cn } from "@src/lib/utils"
 import { Button } from "@src/components/ui"

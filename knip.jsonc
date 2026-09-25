@@ -46,10 +46,6 @@
 			"entry": ["src/index.tsx"],
 			"project": ["src/**/*.{ts,tsx}", "../src/shared/*.ts"],
 			"ignoreDependencies": [
-				// Imported by ../src/shared files (core.ts, getApiMetrics.ts, ...) that the webview
-				// bundles through the @roo/* alias; knip attributes those imports to src. Remove
-				// when PKG-6 makes src/shared a declared package.
-				"@roo-code/core",
 				// Babel plugin named as a string in vite.config.ts.
 				"babel-plugin-react-compiler",
 				// Stylesheet imported from src/index.css.

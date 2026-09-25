@@ -3,7 +3,7 @@ import { ArrowRight, Check, MessageCircle } from "lucide-react"
 
 import type { ClineSayTool } from "@roo-code/types"
 
-import { safeJsonParse } from "@roo/core"
+import { safeJsonParse } from "@roo-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"

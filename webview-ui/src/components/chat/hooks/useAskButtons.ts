@@ -3,7 +3,7 @@ import { useDeepCompareEffect } from "react-use"
 
 import type { AudioType, ClineAsk, ClineMessage, ClineSayTool, HistoryItem } from "@roo-code/types"
 
-import { findLast } from "@roo/array"
+import { findLast } from "@roo-code/core/browser"
 
 type Translate = (key: string) => string
 

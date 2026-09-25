@@ -4,7 +4,7 @@ import deepEqual from "fast-deep-equal"
 
 import type { ClineMessage, SuggestionItem, ClineSayTool } from "@roo-code/types"
 
-import { safeJsonParse } from "@roo/core"
+import { safeJsonParse } from "@roo-code/core/browser"
 
 import type { RowMetaEntry } from "./rows/computeRowMeta"
 import type { RowRendererProps, ToolAskKind } from "./rows/renderers/types"

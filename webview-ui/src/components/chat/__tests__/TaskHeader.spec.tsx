@@ -79,18 +79,6 @@ vi.mock("@src/components/cloud/CloudUpsellDialog", () => ({
 	CloudUpsellDialog: () => null,
 }))
 
-// Mock findLastIndex from @roo/array
-vi.mock("@roo/array", () => ({
-	findLastIndex: (array: any[], predicate: (item: any) => boolean) => {
-		for (let i = array.length - 1; i >= 0; i--) {
-			if (predicate(array[i])) {
-				return i
-			}
-		}
-		return -1
-	},
-}))
-
 // Create a variable to hold the mock model info for useSelectedModel
 let mockModelInfo: { contextWindow: number; maxTokens: number } | undefined = undefined
 
@@ -105,9 +93,11 @@ vi.mock("@/components/ui/hooks/useSelectedModel", () => ({
 	}),
 }))
 
-// Mock getModelMaxOutputTokens from @roo/api
+// Mock getModelMaxOutputTokens; the rest of @roo-code/core/browser (findLastIndex,
+// safeJsonParse, ...) stays real.
 let mockMaxOutputTokens = 0
-vi.mock("@roo/api", () => ({
+vi.mock("@roo-code/core/browser", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@roo-code/core/browser")>()),
 	getModelMaxOutputTokens: () => mockMaxOutputTokens,
 }))
 

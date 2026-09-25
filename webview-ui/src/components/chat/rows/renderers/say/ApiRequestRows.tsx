@@ -3,7 +3,7 @@ import { Repeat2 } from "lucide-react"
 
 import type { ClineApiReqInfo } from "@roo-code/types"
 
-import { safeJsonParse } from "@roo/core"
+import { safeJsonParse } from "@roo-code/core/browser"
 
 import { cn } from "@/lib/utils"
 import ErrorRow from "@src/components/chat/ErrorRow"

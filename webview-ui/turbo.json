@@ -2,7 +2,9 @@
 	"$schema": "https://turbo.build/schema.json",
 	"extends": ["//"],
 	// The webview compiles ../src/shared through the @roo/* alias, so those files are
-	// task inputs here until PKG-6 turns src/shared into a declared package.
+	// task inputs here. PKG-6 moved the pure modules into @roo-code/core/browser and
+	// @roo-code/types (declared dependencies); the rest (modes, package, ...) still
+	// come through the alias.
 	"tasks": {
 		"build": {
 			"outputs": ["../src/webview-ui/**"],

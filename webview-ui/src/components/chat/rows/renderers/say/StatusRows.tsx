@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 
 import type { TodoItem } from "@roo-code/types"
 
-import { safeJsonParse } from "@roo/core"
+import { safeJsonParse } from "@roo-code/core/browser"
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import ErrorRow from "@src/components/chat/ErrorRow"
