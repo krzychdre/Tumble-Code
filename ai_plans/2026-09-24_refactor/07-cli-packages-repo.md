@@ -181,6 +181,15 @@ list. **Change:** build each legacy arm as `configSchema.extend(secretFieldsFor(
 in the same change (DEF-C15). **Test first:** for every provider, legacy fields minus secrets equal config fields
 (fails today on openai). Goes with API-6. **Size** M.
 
+**Status (2026-09-25):** DONE in #418 (merge 845e6b79b). Each legacy arm is `baseProviderSettingsSchema.extend(config.shape).extend(credentials)`
+via `legacyProviderArm`; `providerFieldOwnership` derived from `providerConfigSchemas`; the CLI's hand-written
+`modelField` column (18 entries) replaced by `providerModelDefinitions`; `zaiApiLineSchema` moved to
+`provider-config/configs.ts` (breaks the cycle). The openai `apiModelId` drift was a stale legacy arm (the webview
+writes `apiModelId` for every provider; runtime never parses through the arms). Flat schema snapshot unchanged
+except key order. Found: `vertexJsonCredentials` dropped on save since #126 (own fix branch); the shared-field list
+still exists three times (`baseProviderSettingsSchema`, `sharedProfileSettingsSchema`, `sharedFieldNames`);
+`discriminatedProviderSettingsWithIdSchema` is unused.
+
 ### CLI-9 One state machine and smaller functions in the CLI
 
 **Evidence:** in TUI mode every extension message is interpreted twice: `ExtensionClient` into `MessageProcessor`
