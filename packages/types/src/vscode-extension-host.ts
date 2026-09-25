@@ -24,87 +24,124 @@ import type { SkillMetadata } from "./skills.js"
 import type { SubagentSummary } from "./subagent.js"
 import type { WorktreeIncludeStatus } from "./worktree.js"
 
+/*
+ * ExtensionMessage type names, grouped by domain. Narrow a handler to one
+ * domain (e.g. `Extract<ExtensionMessage, { type: ExtensionWorktreeMessageType }>`
+ * or a `switch` over one of these unions) instead of the whole channel.
+ */
+
+/** Task lifecycle, the chat transcript, subagents and checkpoints. */
+export type ExtensionTaskMessageType =
+	| "state"
+	| "taskHistoryUpdated"
+	| "taskHistoryItemUpdated"
+	| "taskHistoryItemDeleted"
+	| "messageUpdated"
+	| "subagentsUpdated"
+	| "subagentMessages"
+	| "memoryActivity"
+	| "currentCheckpointUpdated"
+	| "checkpointInitWarning"
+	| "commandExecutionStatus"
+	| "mcpExecutionStatus"
+	| "condenseTaskContextStarted"
+	| "condenseTaskContextResponse"
+	| "shareTaskSuccess"
+	| "showDeleteMessageDialog"
+	| "showEditMessageDialog"
+	| "interactionRequired"
+	| "taskWithAggregatedCosts"
+
+/** Webview shell: actions, input box, pickers, search results and editor settings. */
+export type ExtensionUiMessageType =
+	| "action"
+	| "selectedImages"
+	| "theme"
+	| "workspaceUpdated"
+	| "invoke"
+	| "enhancedPrompt"
+	| "commitSearchResults"
+	| "autoApprovalEnabled"
+	| "fileSearchResults"
+	| "acceptInput"
+	| "setHistoryPreviewCollapsed"
+	| "vsCodeSetting"
+	| "terminalProfiles"
+	| "insertTextIntoTextarea"
+	| "dismissedUpsells"
+	| "folderSelected"
+	| "fileContent"
+
+/** Modes, prompts, rules, slash commands, skills and custom tools. */
+export type ExtensionModesMessageType =
+	| "updatePrompt"
+	| "systemPrompt"
+	| "updateCustomMode"
+	| "deleteCustomMode"
+	| "exportModeResult"
+	| "importModeResult"
+	| "checkRulesDirectoryResult"
+	| "deleteCustomModeCheck"
+	| "commands"
+	| "customToolsResult"
+	| "modes"
+	| "skills"
+
+/** Provider profiles, models, cloud account and organization. */
+export type ExtensionProviderMessageType =
+	| "listApiConfig"
+	| "vsCodeLmApiAvailable"
+	| "toggleApiConfigPin"
+	| "authenticatedUser"
+	| "providerModels"
+	| "organizationSwitchResult"
+	| "openAiCodexRateLimits"
+
+/** MCP servers. */
+export type ExtensionMcpMessageType = "mcpServers"
+
+/** Codebase indexing. */
+export type ExtensionCodeIndexMessageType =
+	| "indexingStatusUpdate"
+	| "indexCleared"
+	| "codebaseIndexConfig"
+	| "codeIndexSettingsSaved"
+	| "codeIndexSecretStatus"
+
+/** Marketplace. */
+export type ExtensionMarketplaceMessageType = "marketplaceInstallResult" | "marketplaceRemoveResult" | "marketplaceData"
+
+/** Git worktrees and branches. */
+export type ExtensionWorktreeMessageType =
+	| "worktreeList"
+	| "worktreeResult"
+	| "worktreeCopyProgress"
+	| "branchList"
+	| "worktreeDefaults"
+	| "worktreeIncludeStatus"
+	| "branchWorktreeIncludeResult"
+
+/** Plan review panel. */
+export type ExtensionPlanReviewMessageType = "planReviewInit" | "planReviewUpdate" | "planReviewDraftsConsumed"
+
+/** Every ExtensionMessage type name: the union of the per-domain unions above. */
+export type ExtensionMessageType =
+	| ExtensionTaskMessageType
+	| ExtensionUiMessageType
+	| ExtensionModesMessageType
+	| ExtensionProviderMessageType
+	| ExtensionMcpMessageType
+	| ExtensionCodeIndexMessageType
+	| ExtensionMarketplaceMessageType
+	| ExtensionWorktreeMessageType
+	| ExtensionPlanReviewMessageType
+
 /**
  * ExtensionMessage
  * Extension -> Webview | CLI
  */
 export interface ExtensionMessage {
-	type:
-		| "action"
-		| "state"
-		| "taskHistoryUpdated"
-		| "taskHistoryItemUpdated"
-		| "taskHistoryItemDeleted"
-		| "selectedImages"
-		| "theme"
-		| "workspaceUpdated"
-		| "invoke"
-		| "messageUpdated"
-		| "subagentsUpdated"
-		| "subagentMessages"
-		| "memoryActivity"
-		| "mcpServers"
-		| "enhancedPrompt"
-		| "commitSearchResults"
-		| "listApiConfig"
-		| "vsCodeLmApiAvailable"
-		| "updatePrompt"
-		| "systemPrompt"
-		| "autoApprovalEnabled"
-		| "updateCustomMode"
-		| "deleteCustomMode"
-		| "exportModeResult"
-		| "importModeResult"
-		| "checkRulesDirectoryResult"
-		| "deleteCustomModeCheck"
-		| "currentCheckpointUpdated"
-		| "checkpointInitWarning"
-		| "fileSearchResults"
-		| "toggleApiConfigPin"
-		| "acceptInput"
-		| "setHistoryPreviewCollapsed"
-		| "commandExecutionStatus"
-		| "mcpExecutionStatus"
-		| "vsCodeSetting"
-		| "terminalProfiles"
-		| "authenticatedUser"
-		| "condenseTaskContextStarted"
-		| "condenseTaskContextResponse"
-		| "providerModels"
-		| "indexingStatusUpdate"
-		| "indexCleared"
-		| "codebaseIndexConfig"
-		| "marketplaceInstallResult"
-		| "marketplaceRemoveResult"
-		| "marketplaceData"
-		| "shareTaskSuccess"
-		| "codeIndexSettingsSaved"
-		| "codeIndexSecretStatus"
-		| "showDeleteMessageDialog"
-		| "showEditMessageDialog"
-		| "commands"
-		| "insertTextIntoTextarea"
-		| "dismissedUpsells"
-		| "organizationSwitchResult"
-		| "interactionRequired"
-		| "customToolsResult"
-		| "modes"
-		| "taskWithAggregatedCosts"
-		| "openAiCodexRateLimits"
-		// Worktree response types
-		| "worktreeList"
-		| "worktreeResult"
-		| "worktreeCopyProgress"
-		| "branchList"
-		| "worktreeDefaults"
-		| "worktreeIncludeStatus"
-		| "branchWorktreeIncludeResult"
-		| "folderSelected"
-		| "skills"
-		| "fileContent"
-		| "planReviewInit"
-		| "planReviewUpdate"
-		| "planReviewDraftsConsumed"
+	type: ExtensionMessageType
 	text?: string
 	/** For fileContent: { path, content, error? } */
 	fileContent?: { path: string; content: string | null; error?: string }
@@ -469,6 +506,206 @@ export interface UpdateTodoListPayload {
 	todos: any[]
 }
 
+/*
+ * WebviewMessage type names, grouped by domain, like the ExtensionMessage
+ * ones above.
+ */
+
+/** Task lifecycle, the chat transcript, message queue, subagents and checkpoints. */
+export type WebviewTaskMessageType =
+	| "updateTodoList"
+	| "deleteMultipleTasksWithIds"
+	| "newTask"
+	| "askResponse"
+	| "terminalOperation"
+	| "clearTask"
+	| "exportCurrentTask"
+	| "shareCurrentTask"
+	| "showTaskWithId"
+	| "deleteTaskWithId"
+	| "exportTaskWithId"
+	| "cancelTask"
+	| "subscribeSubagentMessages"
+	| "unsubscribeSubagentMessages"
+	| "cancelSubagent"
+	| "queueSubagentMessage"
+	| "cancelAutoApproval"
+	| "deleteMessage"
+	| "deleteMessageConfirm"
+	| "submitEditedMessage"
+	| "editMessageConfirm"
+	| "taskSyncEnabled"
+	| "checkpointDiff"
+	| "checkpointRestore"
+	| "condenseTaskContextRequest"
+	| "shareTaskSuccess"
+	| "queueMessage"
+	| "removeQueuedMessage"
+	| "editQueuedMessage"
+	| "getTaskWithAggregatedCosts"
+
+/** Webview shell: launch, images, files, search, navigation, sounds and diagnostics. */
+export type WebviewUiMessageType =
+	| "webviewDidLaunch"
+	| "didShowAnnouncement"
+	| "selectImages"
+	| "openImage"
+	| "saveImage"
+	| "openFile"
+	| "readFileContent"
+	| "openMention"
+	| "openKeyboardShortcuts"
+	| "openExtensionLogs"
+	| "enhancePrompt"
+	| "enhancedPrompt"
+	| "draggedImages"
+	| "searchCommits"
+	| "searchFiles"
+	| "hasOpenedModeSelector"
+	| "focusPanelRequest"
+	| "openExternal"
+	| "switchTab"
+	| "showMdmAuthRequiredNotification"
+	| "dismissUpsell"
+	| "getDismissedUpsells"
+	| "openMarkdownPreview"
+	| "openDebugApiHistory"
+	| "openDebugUiHistory"
+	| "downloadErrorDiagnostics"
+	| "selectCustomSound"
+	| "resetCustomSound"
+
+/** Settings, editor settings and telemetry. */
+export type WebviewSettingsMessageType =
+	| "customInstructions"
+	| "importSettings"
+	| "exportSettings"
+	| "resetState"
+	| "updateVSCodeSetting"
+	| "getVSCodeSetting"
+	| "vsCodeSetting"
+	| "requestTerminalProfiles"
+	| "openTerminalProfilePicker"
+	| "enhancementApiConfigId"
+	| "autoApprovalEnabled"
+	| "telemetrySetting"
+	| "updateSettings"
+	| "debugSetting"
+
+/** Provider profiles, models, cloud account and organization. */
+export type WebviewProviderMessageType =
+	| "upsertApiConfiguration"
+	| "deleteApiConfiguration"
+	| "loadApiConfiguration"
+	| "loadApiConfigurationById"
+	| "renameApiConfiguration"
+	| "requestProviderModels"
+	| "toggleApiConfigPin"
+	| "lockApiConfigAcrossModes"
+	| "assignCurrentApiConfigToModes"
+	| "cliModeProviderSettings"
+	| "rooCloudSignIn"
+	| "rooCloudSignOut"
+	| "rooCloudManualUrl"
+	| "openAiCodexSignIn"
+	| "openAiCodexSignOut"
+	| "switchOrganization"
+	| "requestOpenAiCodexRateLimits"
+
+/** Modes, prompts, rules, slash commands, skills and custom tools. */
+export type WebviewModesMessageType =
+	| "mode"
+	| "updatePrompt"
+	| "getSystemPrompt"
+	| "copySystemPrompt"
+	| "systemPrompt"
+	| "updateCustomMode"
+	| "deleteCustomMode"
+	| "openCustomModesSettings"
+	| "exportMode"
+	| "exportModeResult"
+	| "importMode"
+	| "importModeResult"
+	| "checkRulesDirectory"
+	| "checkRulesDirectoryResult"
+	| "requestCommands"
+	| "openCommandFile"
+	| "deleteCommand"
+	| "createCommand"
+	| "refreshCustomTools"
+	| "requestModes"
+	| "requestSkills"
+	| "createSkill"
+	| "deleteSkill"
+	| "updateSkillModes"
+	| "openSkillFile"
+
+/** MCP servers. */
+export type WebviewMcpMessageType =
+	| "openMcpSettings"
+	| "openProjectMcpSettings"
+	| "restartMcpServer"
+	| "refreshAllMcpServers"
+	| "toggleToolAlwaysAllow"
+	| "toggleToolEnabledForPrompt"
+	| "toggleMcpServer"
+	| "updateMcpTimeout"
+	| "deleteMcpServer"
+
+/** Codebase indexing. */
+export type WebviewCodeIndexMessageType =
+	| "requestIndexingStatus"
+	| "startIndexing"
+	| "stopIndexing"
+	| "clearIndexData"
+	| "indexingStatusUpdate"
+	| "indexCleared"
+	| "toggleWorkspaceIndexing"
+	| "setAutoEnableDefault"
+	| "saveCodeIndexSettingsAtomic"
+	| "requestCodeIndexSecretStatus"
+
+/** Marketplace. */
+export type WebviewMarketplaceMessageType =
+	| "filterMarketplaceItems"
+	| "installMarketplaceItem"
+	| "removeInstalledMarketplaceItem"
+	| "marketplaceInstallResult"
+	| "fetchMarketplaceData"
+
+/** Git worktrees and branches. */
+export type WebviewWorktreeMessageType =
+	| "listWorktrees"
+	| "createWorktree"
+	| "deleteWorktree"
+	| "switchWorktree"
+	| "getAvailableBranches"
+	| "getWorktreeDefaults"
+	| "getWorktreeIncludeStatus"
+	| "createWorktreeInclude"
+	| "browseForWorktreePath"
+
+/** Plan review panel. */
+export type WebviewPlanReviewMessageType =
+	| "openPlanReview"
+	| "planReviewReady"
+	| "planReviewSubmit"
+	| "planReviewClose"
+	| "planReviewDraftsChanged"
+
+/** Every WebviewMessage type name: the union of the per-domain unions above. */
+export type WebviewMessageType =
+	| WebviewTaskMessageType
+	| WebviewUiMessageType
+	| WebviewSettingsMessageType
+	| WebviewProviderMessageType
+	| WebviewModesMessageType
+	| WebviewMcpMessageType
+	| WebviewCodeIndexMessageType
+	| WebviewMarketplaceMessageType
+	| WebviewWorktreeMessageType
+	| WebviewPlanReviewMessageType
+
 /**
  * Provider settings the CLI resolved from ~/.roo/cli-settings.json, sent once
  * at startup. While set, a mode switch applies `modes[mode] ?? base` instead of
@@ -483,161 +720,7 @@ export interface CliModeProviderSettings {
 export type EditQueuedMessagePayload = Pick<QueuedMessage, "id" | "text" | "images">
 
 export interface WebviewMessage {
-	type:
-		| "updateTodoList"
-		| "deleteMultipleTasksWithIds"
-		| "upsertApiConfiguration"
-		| "deleteApiConfiguration"
-		| "loadApiConfiguration"
-		| "loadApiConfigurationById"
-		| "renameApiConfiguration"
-		| "customInstructions"
-		| "webviewDidLaunch"
-		| "newTask"
-		| "askResponse"
-		| "terminalOperation"
-		| "clearTask"
-		| "didShowAnnouncement"
-		| "selectImages"
-		| "exportCurrentTask"
-		| "shareCurrentTask"
-		| "showTaskWithId"
-		| "deleteTaskWithId"
-		| "exportTaskWithId"
-		| "importSettings"
-		| "exportSettings"
-		| "resetState"
-		| "requestProviderModels"
-		| "openImage"
-		| "saveImage"
-		| "openFile"
-		| "readFileContent"
-		| "openMention"
-		| "cancelTask"
-		| "subscribeSubagentMessages"
-		| "unsubscribeSubagentMessages"
-		| "cancelSubagent"
-		| "queueSubagentMessage"
-		| "cancelAutoApproval"
-		| "updateVSCodeSetting"
-		| "getVSCodeSetting"
-		| "vsCodeSetting"
-		| "requestTerminalProfiles"
-		| "openTerminalProfilePicker"
-		| "openKeyboardShortcuts"
-		| "openMcpSettings"
-		| "openExtensionLogs"
-		| "openProjectMcpSettings"
-		| "restartMcpServer"
-		| "refreshAllMcpServers"
-		| "toggleToolAlwaysAllow"
-		| "toggleToolEnabledForPrompt"
-		| "toggleMcpServer"
-		| "updateMcpTimeout"
-		| "enhancePrompt"
-		| "enhancedPrompt"
-		| "draggedImages"
-		| "deleteMessage"
-		| "deleteMessageConfirm"
-		| "submitEditedMessage"
-		| "editMessageConfirm"
-		| "taskSyncEnabled"
-		| "searchCommits"
-		| "mode"
-		| "updatePrompt"
-		| "getSystemPrompt"
-		| "copySystemPrompt"
-		| "systemPrompt"
-		| "enhancementApiConfigId"
-		| "autoApprovalEnabled"
-		| "updateCustomMode"
-		| "deleteCustomMode"
-		| "openCustomModesSettings"
-		| "checkpointDiff"
-		| "checkpointRestore"
-		| "deleteMcpServer"
-		| "telemetrySetting"
-		| "searchFiles"
-		| "toggleApiConfigPin"
-		| "hasOpenedModeSelector"
-		| "lockApiConfigAcrossModes"
-		| "assignCurrentApiConfigToModes"
-		| "cliModeProviderSettings"
-		| "rooCloudSignIn"
-		| "rooCloudSignOut"
-		| "rooCloudManualUrl"
-		| "openAiCodexSignIn"
-		| "openAiCodexSignOut"
-		| "switchOrganization"
-		| "condenseTaskContextRequest"
-		| "requestIndexingStatus"
-		| "startIndexing"
-		| "stopIndexing"
-		| "clearIndexData"
-		| "indexingStatusUpdate"
-		| "indexCleared"
-		| "toggleWorkspaceIndexing"
-		| "setAutoEnableDefault"
-		| "focusPanelRequest"
-		| "openExternal"
-		| "filterMarketplaceItems"
-		| "installMarketplaceItem"
-		| "removeInstalledMarketplaceItem"
-		| "marketplaceInstallResult"
-		| "fetchMarketplaceData"
-		| "switchTab"
-		| "shareTaskSuccess"
-		| "exportMode"
-		| "exportModeResult"
-		| "importMode"
-		| "importModeResult"
-		| "checkRulesDirectory"
-		| "checkRulesDirectoryResult"
-		| "saveCodeIndexSettingsAtomic"
-		| "requestCodeIndexSecretStatus"
-		| "requestCommands"
-		| "openCommandFile"
-		| "deleteCommand"
-		| "createCommand"
-		| "showMdmAuthRequiredNotification"
-		| "queueMessage"
-		| "removeQueuedMessage"
-		| "editQueuedMessage"
-		| "dismissUpsell"
-		| "getDismissedUpsells"
-		| "openMarkdownPreview"
-		| "updateSettings"
-		| "getTaskWithAggregatedCosts"
-		| "openDebugApiHistory"
-		| "openDebugUiHistory"
-		| "downloadErrorDiagnostics"
-		| "requestOpenAiCodexRateLimits"
-		| "refreshCustomTools"
-		| "requestModes"
-		| "debugSetting"
-		// Worktree messages
-		| "listWorktrees"
-		| "createWorktree"
-		| "deleteWorktree"
-		| "switchWorktree"
-		| "getAvailableBranches"
-		| "getWorktreeDefaults"
-		| "getWorktreeIncludeStatus"
-		| "createWorktreeInclude"
-		| "browseForWorktreePath"
-		// Skills messages
-		| "requestSkills"
-		| "createSkill"
-		| "deleteSkill"
-		| "updateSkillModes"
-		| "openSkillFile"
-		| "selectCustomSound"
-		| "resetCustomSound"
-		| "openPlanReview"
-		| "planReviewReady"
-		| "planReviewSubmit"
-		| "planReviewClose"
-		| "planReviewDraftsChanged"
+	type: WebviewMessageType
 	text?: string
 	taskId?: string
 	editedMessageContent?: string
