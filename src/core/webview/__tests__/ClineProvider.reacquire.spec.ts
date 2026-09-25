@@ -385,14 +385,14 @@ describe("ClineProvider TaskHistoryStore reacquire", () => {
 		await flush()
 
 		// The eager constructor acquire failed and was reported.
-		expect((provider as any).storageErrorMessage).toBe("TaskHistoryStore: deterministic acquire failure")
+		expect((provider as any).taskHistory.storageErrorMessage).toBe("TaskHistoryStore: deterministic acquire failure")
 
 		// Age out the failure so the next call performs a fresh acquire.
-		;(provider as any).taskHistoryStoreLastFailureTs = Date.now() - 6000
+		;(provider as any).taskHistory.lastFailureTs = Date.now() - 6000
 
 		const store = await (provider as any).getTaskHistoryStore()
 		expect(store).toBe(handle.store)
-		expect((provider as any).storageErrorMessage).toBe("")
+		expect((provider as any).taskHistory.storageErrorMessage).toBe("")
 
 		// The webview saw the error appear and then disappear.
 		const errorStates = await waitForStatePush(

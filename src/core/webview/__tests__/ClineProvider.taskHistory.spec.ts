@@ -8,6 +8,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { ContextProxy } from "../../config/ContextProxy"
 import { ClineProvider } from "../ClineProvider"
+import { TaskHistoryGateway } from "../TaskHistoryGateway"
 import { TaskHistoryStore } from "../../task-persistence"
 import { ShadowCheckpointService } from "../../../services/checkpoints/ShadowCheckpointService"
 import { downloadTask } from "../../../integrations/misc/export-markdown"
@@ -534,8 +535,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			const migrationStore = {
 				migrateFromLegacyHistory: vi.fn().mockResolvedValue(false),
 			}
-			const migrationProvider = {
-				getTaskHistoryStore: vi.fn().mockResolvedValue(migrationStore),
+			const migrationHost = {
 				contextProxy: {
 					hasLegacyTaskHistory: vi.fn().mockReturnValue(true),
 					getLegacyTaskHistory: vi
@@ -546,7 +546,7 @@ describe("ClineProvider Task History Synchronization", () => {
 				log: vi.fn(),
 			}
 
-			await (ClineProvider.prototype as any).initializeTaskHistoryStore.call(migrationProvider)
+			await (new TaskHistoryGateway(migrationHost as any) as any).migrateLegacyHistory(migrationStore)
 
 			expect(migrationStore.migrateFromLegacyHistory).toHaveBeenCalledTimes(1)
 			expect(clearLegacyTaskHistoryKeys).not.toHaveBeenCalled()
