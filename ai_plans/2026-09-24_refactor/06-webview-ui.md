@@ -284,3 +284,6 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   (`e3bd8b61f`): `settings/providers/shared.tsx` with `ProviderFormProps`, `useProviderField` (17 copies incl.
   ApiOptions), `<ApiKeyField grouped?>` for 9 forms (OpenRouter, LiteLLM, Bedrock differ structurally, left alone);
   +170/-514 lines; 57 innerHTML dumps identical before/after.
+- 2026-09-25 code-index validation messages DONE #370: the zod-issue loop now keeps the first issue per field (empty
+  Qdrant/Ollama/openai-compatible URL shows `*Required`, a malformed one still "invalid"); openai-compatible dimension
+  uses `required_error`/`invalid_type_error` = `modelDimensionRequired`. Test-first (3 failed), changeset.
