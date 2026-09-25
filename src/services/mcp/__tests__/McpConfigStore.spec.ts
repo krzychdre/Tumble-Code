@@ -206,6 +206,35 @@ describe("McpConfigStore", () => {
 			expect(store.isWriteGuardUp()).toBe(false)
 		})
 
+		it("is up only for the file that was written", async () => {
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+			const settingsPath = await store.getGlobalPath()
+			await writeProjectFile("{}")
+
+			await store.write(settingsPath, { mcpServers: {} })
+
+			expect(store.isWriteGuardUp(settingsPath)).toBe(true)
+			expect(store.isWriteGuardUp(projectPath())).toBe(false)
+
+			vi.advanceTimersByTime(300)
+			await store.write(projectPath(), { mcpServers: {} })
+			vi.advanceTimersByTime(300)
+			// The global guard runs out on its own clock, the project one keeps going.
+			expect(store.isWriteGuardUp(settingsPath)).toBe(false)
+			expect(store.isWriteGuardUp(projectPath())).toBe(true)
+			vi.advanceTimersByTime(300)
+			expect(store.isWriteGuardUp(projectPath())).toBe(false)
+		})
+
+		it("matches the written file however its path is spelled", async () => {
+			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+			await writeProjectFile("{}")
+
+			await store.write(projectPath(), { mcpServers: {} })
+
+			expect(store.isWriteGuardUp(path.join(workspaceDir, ".roo", ".", "mcp.json"))).toBe(true)
+		})
+
 		it("goes down on dispose", async () => {
 			vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
 			await store.write(await store.getGlobalPath(), { mcpServers: {} })

@@ -3037,6 +3037,58 @@ describe("McpHub", () => {
 
 				expect(update).not.toHaveBeenCalled()
 			})
+
+			// The guard is per file: the hub's write of one settings file must not hide
+			// a user's edit of the other one, made within the 600 ms after that write.
+			it("still reloads the project file edited right after the hub wrote the global file", async () => {
+				writeFiles({
+					global: { mcpServers: { a: { command: "node", args: ["a.js"] } } },
+					project: { mcpServers: { p: { command: "node", args: ["p.js"] } } },
+				})
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await settle()
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				await hub.updateServerTimeout("a", 30, "global")
+				const update = vi.spyOn(hub, "updateServerConnections")
+				files[projectPath] = JSON.stringify({ mcpServers: { q: { command: "node", args: ["q.js"] } } })
+
+				await vi.advanceTimersByTimeAsync(100)
+				fireConfigChange(projectPath)
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(update).toHaveBeenCalledTimes(1)
+				expect(update).toHaveBeenCalledWith(
+					{ q: expect.objectContaining({ command: "node", args: ["q.js"] }) },
+					"project",
+				)
+			})
+
+			it("still reloads the global file edited right after the hub wrote the project file", async () => {
+				writeFiles({
+					global: { mcpServers: { a: { command: "node", args: ["a.js"] } } },
+					project: { mcpServers: { p: { command: "node", args: ["p.js"] } } },
+				})
+				const hub = new McpHub(mockProvider as ClineProvider, { watcherFactory: fakeWatchers.factory })
+				await settle()
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				await hub.updateServerTimeout("p", 30, "project")
+				const update = vi.spyOn(hub, "updateServerConnections")
+				files[globalPath] = JSON.stringify({ mcpServers: { b: { command: "node", args: ["b.js"] } } })
+
+				await vi.advanceTimersByTimeAsync(100)
+				fireConfigChange(globalPath)
+				// The echo of the hub's own project write is still dropped.
+				fireConfigChange(projectPath)
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(update).toHaveBeenCalledTimes(1)
+				expect(update).toHaveBeenCalledWith(
+					{ b: expect.objectContaining({ command: "node", args: ["b.js"] }) },
+					"global",
+				)
+			})
 		})
 
 		describe("file watchers of a global and a project server with the same name", () => {
