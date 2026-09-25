@@ -10,6 +10,8 @@ import {
 	getMaxMcpToolsThreshold,
 } from "@roo-code/types"
 
+import { TelemetryService } from "@roo-code/telemetry"
+
 import { type ClineProvider } from "../webview/ClineProvider"
 import { TerminalRegistry } from "../../integrations/terminal/TerminalRegistry"
 import { OutputInterceptor } from "../../integrations/terminal/OutputInterceptor"
@@ -58,7 +60,8 @@ export interface TaskLifecycleAccess {
 
 	// API configuration
 	apiConfiguration: ProviderSettings
-	api: { cancelRequest?: (destroyClient: boolean) => void }
+	api: { cancelRequest?: (destroyClient: boolean) => void; getModel?: () => { id: string } }
+	diffStrategy?: { getName: () => string }
 	// Severs an in-flight condense request on the background model. The condense
 	// handler is a separate ApiHandler from `api`, so cancelling `api` alone
 	// leaves a background-model condense stream running (post-cancel spend,
@@ -631,7 +634,52 @@ export class TaskLifecycle {
 			}
 		}
 
+		// The same accepted completion is also a completed task for telemetry.
+		// `AttemptCompletionTool` records it only on a "yes" answer (or on
+		// delegation), which neither the VS Code chat nor the CLI ever sends,
+		// so without this a finished top-level chat task was never counted.
+		// Only the telemetry is recorded here: the public `TaskCompleted`
+		// event is NOT emitted, this abort already emitted `TaskAborted` and
+		// API consumers must keep seeing exactly that. A "yes" answer clears
+		// the flag before its own capture, so it is never counted twice.
+		if (isAbandoned && isLeavingCompletedTask && !isUserCancelled && !this.access.isBackground) {
+			try {
+				if (TelemetryService.hasInstance()) {
+					TelemetryService.instance.captureTaskCompleted(
+						this.access.taskId,
+						this.completedTaskTelemetryProperties(),
+					)
+				}
+			} catch (error) {
+				console.error("Error capturing task completed telemetry:", error)
+			}
+		}
+
 		return isUserCancelled
+	}
+
+	/**
+	 * Task-scoped telemetry properties for a completion counted during an
+	 * abort. The provider pops the task off its stack before aborting it, so
+	 * its ambient "current task" properties (read when the event is sent)
+	 * describe no task, or the parent below a subtask. These override them
+	 * with this task's own values, matching what the "yes" path reports
+	 * while the task is still current.
+	 */
+	private completedTaskTelemetryProperties(): Record<string, unknown> {
+		const parentTaskId = this.access.parentTaskId
+		let modelId: string | undefined
+		try {
+			modelId = this.access.api.getModel?.().id
+		} catch {
+			modelId = undefined
+		}
+		return {
+			parentTaskId,
+			isSubtask: !!parentTaskId,
+			modelId,
+			diffStrategy: this.access.diffStrategy?.getName(),
+		}
 	}
 
 	/**

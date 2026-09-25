@@ -87,8 +87,13 @@ export class TelemetryService {
 		this.captureEvent(TelemetryEventName.TASK_RESTARTED, { taskId })
 	}
 
-	public captureTaskCompleted(taskId: string): void {
-		this.captureEvent(TelemetryEventName.TASK_COMPLETED, { taskId })
+	/**
+	 * @param properties Task-scoped properties that override the provider's
+	 * ambient ones. Needed when the task is no longer the provider's current
+	 * task at capture time (a finished task counted while it is being cleared).
+	 */
+	public captureTaskCompleted(taskId: string, properties?: Record<string, unknown>): void {
+		this.captureEvent(TelemetryEventName.TASK_COMPLETED, { ...properties, taskId })
 	}
 
 	public captureConversationMessage(taskId: string, source: "user" | "assistant"): void {
