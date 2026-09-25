@@ -91,22 +91,25 @@ vi.mock("react-i18next", () => ({
 const RUN_BUTTON_LABEL = "chat:runCommand.title"
 const DENY_BUTTON_LABEL = "chat:reject.title"
 
+// Dispatched synchronously (window.postMessage in jsdom delivers on a timer,
+// after act() has returned), so the state lands inside the caller's act().
 const hydrateState = (clineMessages: ClineMessage[]) => {
-	window.postMessage(
-		{
-			type: "state",
-			state: {
-				version: "1.0.0",
-				clineMessages,
-				taskHistory: [],
-				shouldShowAnnouncement: false,
-				allowedCommands: [],
-				alwaysAllowExecute: false,
-				cloudIsAuthenticated: false,
-				telemetrySetting: "enabled",
+	window.dispatchEvent(
+		new MessageEvent("message", {
+			data: {
+				type: "state",
+				state: {
+					version: "1.0.0",
+					clineMessages,
+					taskHistory: [],
+					shouldShowAnnouncement: false,
+					allowedCommands: [],
+					alwaysAllowExecute: false,
+					cloudIsAuthenticated: false,
+					telemetrySetting: "enabled",
+				},
 			},
-		},
-		"*",
+		}),
 	)
 }
 
