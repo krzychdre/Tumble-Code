@@ -35,6 +35,16 @@ const expectedLines = [
 const expectedContent = addLineNumbers(expectedLines.join("\n"))
 
 describe("PDF text extraction (pdf-parse)", () => {
+	// The first PDF read loads pdf-parse and pdf.js 5 (several MB) once per
+	// process; every later read takes milliseconds. On the Windows CI runner,
+	// with other packages' tests running next to src, that one load took 2.6
+	// to 8.2 s in three identical jobs and once passed 20 s, which failed the
+	// first test on its default timeout. Pay the load here, under its own
+	// budget, so each test only measures the extraction it checks.
+	beforeAll(async () => {
+		await extractTextFromFile(fixture)
+	}, 120_000)
+
 	it("extracts the fixture's text with line numbers", async () => {
 		const content = await extractTextFromFile(fixture)
 
