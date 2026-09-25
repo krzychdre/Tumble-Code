@@ -4,6 +4,8 @@ import { SystemMessage } from "@mistralai/mistralai/models/components/systemmess
 import { ToolMessage } from "@mistralai/mistralai/models/components/toolmessage"
 import { UserMessage } from "@mistralai/mistralai/models/components/usermessage"
 
+import { imageSourceToUrl } from "./image-source"
+
 /**
  * Normalizes a tool call ID to be compatible with Mistral's strict ID requirements.
  * Mistral requires tool call IDs to be:
@@ -107,7 +109,7 @@ export function convertToMistralMessages(anthropicMessages: Anthropic.Messages.M
 								return {
 									type: "image_url",
 									imageUrl: {
-										url: `data:${part.source.media_type};base64,${part.source.data}`,
+										url: imageSourceToUrl(part.source),
 									},
 								}
 							}

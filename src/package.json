@@ -500,8 +500,8 @@
 		"clean": "rimraf README.md CHANGELOG.md LICENSE dist logs mock .turbo"
 	},
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.37.0",
-		"@anthropic-ai/vertex-sdk": "^0.7.0",
+		"@anthropic-ai/sdk": "^0.128.0",
+		"@anthropic-ai/vertex-sdk": "^0.19.11",
 		"@aws-sdk/client-bedrock-runtime": "^3.1140.0",
 		"@aws-sdk/credential-providers": "^3.1140.0",
 		"@google/genai": "^2.24.0",
@@ -526,7 +526,7 @@
 		"fzf": "^0.5.2",
 		"get-folder-size": "^5.0.0",
 		"global-agent": "^3.0.0",
-		"google-auth-library": "^9.15.1",
+		"google-auth-library": "^10.5.0",
 		"gray-matter": "^4.0.3",
 		"i18next": "^25.0.0",
 		"ignore": "^7.0.3",

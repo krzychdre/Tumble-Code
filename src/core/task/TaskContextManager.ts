@@ -25,6 +25,10 @@ import { getMessagesSinceLastSummary, summarizeConversation, getEffectiveApiHist
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { type TaskHistory } from "./TaskHistory"
 import { type TaskAskSay } from "./TaskAskSay"
+// The persisted history type itself (not a local copy), so a change in the SDK
+// MessageParam (0.128 added the "system" role) cannot make Task and this
+// access interface disagree.
+import type { ApiMessage } from "../task-persistence/apiMessages"
 import { type ClineProvider } from "../webview/ClineProvider"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
@@ -218,14 +222,6 @@ export interface ManageContextResult {
 	prunedBytesSaved?: number
 	/** True when pruning alone relieved the pressure and no LLM summary ran. */
 	summarySkipped?: boolean
-}
-
-/**
- * Type for messages used in API conversation history
- */
-export interface ApiMessage {
-	role: "user" | "assistant"
-	content: any
 }
 
 /**

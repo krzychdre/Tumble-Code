@@ -1,6 +1,8 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import * as vscode from "vscode"
 
+import { imageSourceMediaType } from "./image-source"
+
 /**
  * Safely converts a value into a plain object.
  */
@@ -73,10 +75,10 @@ export function convertToVsCodeLmMessages(
 								: (toolMessage.content?.map((part) => {
 										if (part.type === "image") {
 											return new vscode.LanguageModelTextPart(
-												`[Image (${part.source?.type || "Unknown source-type"}): ${part.source?.media_type || "unknown media-type"} not supported by VSCode LM API]`,
+												`[Image (${part.source?.type || "Unknown source-type"}): ${imageSourceMediaType(part.source) || "unknown media-type"} not supported by VSCode LM API]`,
 											)
 										}
-										return new vscode.LanguageModelTextPart(part.text)
+										return new vscode.LanguageModelTextPart(part.type === "text" ? part.text : "")
 									}) ?? [new vscode.LanguageModelTextPart("")])
 
 						return new vscode.LanguageModelToolResultPart(toolMessage.tool_use_id, toolContentParts)
@@ -86,7 +88,7 @@ export function convertToVsCodeLmMessages(
 					...nonToolMessages.map((part) => {
 						if (part.type === "image") {
 							return new vscode.LanguageModelTextPart(
-								`[Image (${part.source?.type || "Unknown source-type"}): ${part.source?.media_type || "unknown media-type"} not supported by VSCode LM API]`,
+								`[Image (${part.source?.type || "Unknown source-type"}): ${imageSourceMediaType(part.source) || "unknown media-type"} not supported by VSCode LM API]`,
 							)
 						}
 						return new vscode.LanguageModelTextPart(part.text)

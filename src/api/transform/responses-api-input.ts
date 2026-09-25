@@ -1,5 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 
+import { imageSourceToUrl } from "./image-source"
+
 /**
  * Converts Anthropic-format messages to the OpenAI Responses API input format.
  *
@@ -85,7 +87,7 @@ export function convertToResponsesApiInput(messages: Anthropic.Messages.MessageP
 						contentParts.push({
 							type: "input_image",
 							detail: "auto",
-							image_url: `data:${part.source.media_type};base64,${part.source.data}`,
+							image_url: imageSourceToUrl(part.source),
 						})
 						break
 					case "tool_result": {

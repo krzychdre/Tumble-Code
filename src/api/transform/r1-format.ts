@@ -1,6 +1,8 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
+import { imageSourceToUrl } from "./image-source"
+
 type ContentPartText = OpenAI.Chat.ChatCompletionContentPartText
 type ContentPartImage = OpenAI.Chat.ChatCompletionContentPartImage
 type UserMessage = OpenAI.Chat.ChatCompletionUserMessageParam
@@ -62,7 +64,7 @@ export function convertToR1Format(
 					} else if (part.type === "image") {
 						imageParts.push({
 							type: "image_url",
-							image_url: { url: `data:${part.source.media_type};base64,${part.source.data}` },
+							image_url: { url: imageSourceToUrl(part.source) },
 						})
 					} else if (part.type === "tool_result") {
 						// Convert tool_result to OpenAI tool message format

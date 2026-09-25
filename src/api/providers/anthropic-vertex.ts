@@ -49,6 +49,25 @@ class DeferredErrorGoogleAuth extends GoogleAuth {
 	}
 }
 
+/**
+ * Since vertex-sdk 0.19 a failed Google credential lookup reaches us as an
+ * `APIConnectionError` "Failed to acquire Google OAuth credentials." with the
+ * real reason (missing key file, no default credentials) only on `cause`. Put
+ * the reason back into the message the task shows; the error keeps its class,
+ * so retry decisions do not change.
+ */
+function withGoogleCredentialCause(error: unknown): unknown {
+	if (
+		error instanceof Error &&
+		error.message.startsWith("Failed to acquire Google OAuth credentials") &&
+		error.cause instanceof Error &&
+		!error.message.includes(error.cause.message)
+	) {
+		error.message = `${error.message} ${error.cause.message}`
+	}
+	return error
+}
+
 // https://docs.anthropic.com/en/api/claude-on-vertex-ai
 export class AnthropicVertexHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -147,7 +166,9 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			signal: metadata?.signal,
 		}
 
-		const stream = await this.client.messages.create(params, requestOptions)
+		const stream = await this.client.messages.create(params, requestOptions).catch((error: unknown) => {
+			throw withGoogleCredentialCause(error)
+		})
 
 		yield* processAnthropicStream(stream, info)
 	}
@@ -231,7 +252,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 				usage: anthropicCompletionUsage(response.usage),
 			}
 		} catch (error) {
-			throw handleProviderError(error, "Vertex")
+			throw handleProviderError(withGoogleCredentialCause(error), "Vertex")
 		}
 	}
 }
