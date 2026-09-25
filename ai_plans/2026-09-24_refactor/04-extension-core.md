@@ -385,6 +385,17 @@ missing or extra event fails to compile, `forwardTaskEvents` returns one detach 
 Findings: the "development mode" ClineProvider test never reaches the HMR path; in dev mode the sidebar now reads
 `getState()` once, before probing the dev server.
 
+**Status (2026-09-25):** (d) DONE in #294. `BackgroundTaskRunner.ts` (417 lines) owns the background-task registry
+(`createBackgroundTask`, `getBackgroundTask`), `awaitTaskCompletion` with directory cleanup, the memory-activity
+counters, `notifyBackgroundOutcome` and `memorySubTaskRunner` (profile choice and retry rule) behind a narrow
+`BackgroundTaskHost`; `profileTaskOptions` moved to its own file. The abort drain (`prepareAbort`/`drainAbort`)
+lives in TaskLifecycle and stayed. ClineProvider went from 3,058 to 2,759 lines. Tests: `BackgroundTaskRunner.spec`
+(24, including a 9-case retry table: retry on the main profile only with a separate memory profile, a
+`streaming_failed` first attempt and no abort) and 3 characterization tests on a real provider (a user stop sets
+`user_cancelled` before `abortTask`, never starts a memory writer, never waits for or aborts background tasks);
+related specs 535 to 562. Finding (pinned, unchanged): `ClineProvider.dispose()` does not abort running background
+tasks or memory writers; decide whether that is a leak.
+
 
 ### CORE-R7 Performance (Phase 10; mechanism verified, magnitude to be measured)
 
