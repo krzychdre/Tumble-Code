@@ -10,6 +10,5 @@
 	"src/components/modes/ModesView.tsx": ["ModesView"],
 	"src/components/settings/providers/LMStudio.tsx": ["LMStudio"],
 	"src/components/ui/hooks/useProviderModels.ts": ["useProviderModels"],
-	"src/hooks/useScrollLifecycle.ts": ["useScrollLifecycle"],
-	"src/utils/useDebounceEffect.ts": ["useDebounceEffect"]
+	"src/hooks/useScrollLifecycle.ts": ["useScrollLifecycle"]
 }
