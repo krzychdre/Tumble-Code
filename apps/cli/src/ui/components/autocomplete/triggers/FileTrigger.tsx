@@ -1,6 +1,8 @@
 import { Box, Text } from "ink"
 import Fuzzysort from "fuzzysort"
 
+import { escapeSpacesForMention } from "@roo-code/core/cli"
+
 import type { AutocompleteTrigger, AutocompleteItem, TriggerDetectionResult } from "../types.js"
 
 export interface FileResult extends AutocompleteItem {
@@ -121,7 +123,8 @@ export function createFileTrigger(config: FileTriggerConfig): AutocompleteTrigge
 
 		getReplacementText: (item: FileResult, lineText: string, triggerIndex: number): string => {
 			const beforeAt = lineText.substring(0, triggerIndex)
-			return `${beforeAt}@/${item.path} `
+			// Escaped like the webview's mentions: the grammar ends a path at an unescaped space.
+			return `${beforeAt}@/${escapeSpacesForMention(item.path)} `
 		},
 
 		emptyMessage: "No matching files found",
