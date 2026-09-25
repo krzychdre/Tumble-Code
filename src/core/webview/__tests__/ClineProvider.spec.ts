@@ -48,6 +48,9 @@ vi.mock("fs/promises", () => ({
 	stat: vi.fn().mockResolvedValue({ mtimeMs: 0, size: 0, isDirectory: () => true }),
 }))
 
+// Deterministic nonce so the generated webview HTML can be pinned byte for byte.
+vi.mock("../getNonce", () => ({ getNonce: () => "TESTNONCE0123456789abcdefghijklm" }))
+
 vi.mock("axios", () => ({
 	default: {
 		get: vi.fn().mockResolvedValue({ data: { data: [] } }),
@@ -2361,6 +2364,106 @@ describe("ClineProvider", () => {
 			} finally {
 				cloud.restore()
 			}
+		})
+	})
+
+	// CORE-R6 e characterization: the exact HTML (and CSP) of the sidebar
+	// webview in production and development (HMR) mode, pinned byte for byte
+	// before the generator moves to a module shared with PlanReviewPanel.
+	describe("webview HTML", () => {
+		// The builtin fs object is shared by `import` and `require`, so a spy
+		// here also controls the port-file lookup (a `require("fs")` call).
+		const realFs = require("fs") as typeof import("fs")
+		const originalReadFileSync = realFs.readFileSync
+		const isPortFile = (p: unknown) => typeof p === "string" && p.endsWith(".vite-port")
+
+		const originalExistsSync = realFs.existsSync
+		const spies: Array<{ mockRestore(): void }> = []
+		const stubPortFile = (port: string | undefined) => {
+			spies.push(
+				vi
+					.spyOn(realFs, "existsSync")
+					.mockImplementation((p) => (isPortFile(p) ? port !== undefined : originalExistsSync(p))),
+				vi
+					.spyOn(realFs, "readFileSync")
+					.mockImplementation(((p: any, ...rest: any[]) =>
+						isPortFile(p) ? port : (originalReadFileSync as any)(p, ...rest)) as any),
+			)
+		}
+
+		const renderSidebar = async (development: boolean) => {
+			const context = {
+				...mockContext,
+				extensionUri: { fsPath: "/ext" },
+				extensionMode: development ? vscode.ExtensionMode.Development : vscode.ExtensionMode.Production,
+			} as unknown as vscode.ExtensionContext
+			const p = new ClineProvider(context, mockOutputChannel, "sidebar", new ContextProxy(context))
+			return p
+		}
+
+		beforeEach(() => {
+			vi.mocked(vscode.Uri.joinPath).mockImplementation(
+				(base: any, ...parts: string[]) => ({ path: [base?.fsPath, ...parts].join("/") }) as any,
+			)
+			mockWebviewView.webview.asWebviewUri = vi.fn((uri: any) => `vscode-resource:${uri.path}`)
+			spies.push(vi.spyOn(console, "log").mockImplementation(() => {}))
+			stubPortFile(undefined)
+			// Drop any queued one-shot result an earlier test left behind.
+			vi.mocked(axios.get)
+				.mockReset()
+				.mockResolvedValue({ data: { data: [] } })
+		})
+
+		afterEach(() => {
+			vi.mocked(vscode.Uri.joinPath).mockReset()
+			vi.mocked(axios.get).mockResolvedValue({ data: { data: [] } })
+			while (spies.length) spies.pop()!.mockRestore()
+		})
+
+		test("production", async () => {
+			const p = await renderSidebar(false)
+			await p.resolveWebviewView(mockWebviewView)
+			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
+				"__snapshots__/webview-html/sidebar.production.html",
+			)
+		})
+
+		test("production with a custom OpenRouter base URL", async () => {
+			const p = await renderSidebar(false)
+			await p.contextProxy.setValue("openRouterBaseUrl", "https://router.example.com/api/v1")
+			await p.resolveWebviewView(mockWebviewView)
+			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
+				"__snapshots__/webview-html/sidebar.production.openrouter.html",
+			)
+		})
+
+		test("development with the dev server running on the default port", async () => {
+			const p = await renderSidebar(true)
+			await p.resolveWebviewView(mockWebviewView)
+			expect(axios.get).toHaveBeenCalledWith("http://localhost:5173")
+			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
+				"__snapshots__/webview-html/sidebar.hmr.html",
+			)
+		})
+
+		test("development with the port taken from the .vite-port file", async () => {
+			stubPortFile("5174\n")
+			const p = await renderSidebar(true)
+			await p.resolveWebviewView(mockWebviewView)
+			expect(axios.get).toHaveBeenCalledWith("http://localhost:5174")
+			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
+				"__snapshots__/webview-html/sidebar.hmr.port-5174.html",
+			)
+		})
+
+		test("development without a dev server falls back to production and says so", async () => {
+			vi.mocked(axios.get).mockRejectedValueOnce(new Error("ECONNREFUSED"))
+			const p = await renderSidebar(true)
+			await p.resolveWebviewView(mockWebviewView)
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledTimes(1)
+			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
+				"__snapshots__/webview-html/sidebar.production.html",
+			)
 		})
 	})
 })

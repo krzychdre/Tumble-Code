@@ -86,12 +86,11 @@ import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@roo-code/types"
 import type { TaskHistoryStore } from "../task-persistence"
-import { getNonce } from "./getNonce"
-import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
 import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
 import { DelegationService } from "./DelegationService"
 import { CloudProfileSync } from "./CloudProfileSync"
+import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOptions } from "./WebviewHtml"
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
 
 /**
@@ -1286,185 +1285,31 @@ export class ClineProvider
 		}
 	}
 
-	private async getHMRHtmlContent(webview: vscode.Webview): Promise<string> {
-		let localPort = "5173"
-
-		try {
-			const fs = require("fs")
-			const path = require("path")
-			const portFilePath = path.resolve(__dirname, "../../.vite-port")
-
-			if (fs.existsSync(portFilePath)) {
-				localPort = fs.readFileSync(portFilePath, "utf8").trim()
-				console.log(`[ClineProvider:Vite] Using Vite server port from ${portFilePath}: ${localPort}`)
-			} else {
-				console.log(
-					`[ClineProvider:Vite] Port file not found at ${portFilePath}, using default port: ${localPort}`,
-				)
-			}
-		} catch (err) {
-			console.error("[ClineProvider:Vite] Failed to read Vite port file:", err)
+	/** The sidebar's differences from the other webviews; see {@link getProductionHtml}. */
+	private webviewHtmlOptions(webview: vscode.Webview, openRouterBaseUrl: string | undefined): WebviewHtmlOptions {
+		return {
+			webview,
+			extensionUri: this.contextProxy.extensionUri,
+			title: "Roo Code",
+			connectOrigins: [openRouterOrigin(openRouterBaseUrl)],
+			hmrAnalyticsOrigins: ["https://*.posthog.com"],
 		}
-
-		const localServerUrl = `localhost:${localPort}`
-
-		// Check if local dev server is running.
-		try {
-			await axios.get(`http://${localServerUrl}`)
-		} catch (error) {
-			vscode.window.showErrorMessage(t("common:errors.hmr_not_running"))
-			return this.getHtmlContent(webview)
-		}
-
-		const nonce = getNonce()
-
-		// Get the OpenRouter base URL from configuration
-		const { apiConfiguration } = await this.getState()
-		const openRouterBaseUrl = apiConfiguration.openRouterBaseUrl || "https://openrouter.ai"
-		// Extract the domain for CSP
-		const openRouterDomain = openRouterBaseUrl.match(/^(https?:\/\/[^\/]+)/)?.[1] || "https://openrouter.ai"
-
-		const stylesUri = getUri(webview, this.contextProxy.extensionUri, [
-			"webview-ui",
-			"build",
-			"assets",
-			"index.css",
-		])
-
-		const codiconsUri = getUri(webview, this.contextProxy.extensionUri, ["assets", "codicons", "codicon.css"])
-		const materialIconsUri = getUri(webview, this.contextProxy.extensionUri, [
-			"assets",
-			"vscode-material-icons",
-			"icons",
-		])
-		const imagesUri = getUri(webview, this.contextProxy.extensionUri, ["assets", "images"])
-		const audioUri = getUri(webview, this.contextProxy.extensionUri, ["webview-ui", "audio"])
-
-		const file = "src/index.tsx"
-		const scriptUri = `http://${localServerUrl}/${file}`
-
-		const reactRefresh = /*html*/ `
-			<script nonce="${nonce}" type="module">
-				import RefreshRuntime from "http://localhost:${localPort}/@react-refresh"
-				RefreshRuntime.injectIntoGlobalHook(window)
-				window.$RefreshReg$ = () => {}
-				window.$RefreshSig$ = () => (type) => type
-				window.__vite_plugin_react_preamble_installed__ = true
-			</script>
-		`
-
-		const csp = [
-			"default-src 'none'",
-			`font-src ${webview.cspSource} data:`,
-			`style-src ${webview.cspSource} 'unsafe-inline' https://* http://${localServerUrl} http://0.0.0.0:${localPort}`,
-			`img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:`,
-			`media-src ${webview.cspSource}`,
-			`script-src 'unsafe-eval' ${webview.cspSource} https://* https://*.posthog.com http://${localServerUrl} http://0.0.0.0:${localPort} 'nonce-${nonce}'`,
-			`connect-src ${webview.cspSource} ${openRouterDomain} https://* https://*.posthog.com ws://${localServerUrl} ws://0.0.0.0:${localPort} http://${localServerUrl} http://0.0.0.0:${localPort}`,
-		]
-
-		return /*html*/ `
-			<!DOCTYPE html>
-			<html lang="en">
-				<head>
-					<meta charset="utf-8">
-					<meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
-					<meta http-equiv="Content-Security-Policy" content="${csp.join("; ")}">
-					<link rel="stylesheet" type="text/css" href="${stylesUri}">
-					<link href="${codiconsUri}" rel="stylesheet" />
-					<script nonce="${nonce}">
-						window.IMAGES_BASE_URI = "${imagesUri}"
-						window.AUDIO_BASE_URI = "${audioUri}"
-						window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
-					</script>
-					<title>Roo Code</title>
-				</head>
-				<body>
-					<div id="root"></div>
-					${reactRefresh}
-					<script type="module" src="${scriptUri}"></script>
-				</body>
-			</html>
-		`
 	}
 
-	/**
-	 * Defines and returns the HTML that should be rendered within the webview panel.
-	 *
-	 * @remarks This is also the place where references to the React webview build files
-	 * are created and inserted into the webview HTML.
-	 *
-	 * @param webview A reference to the extension webview
-	 * @param extensionUri The URI of the directory containing the extension
-	 * @returns A template string literal containing the HTML that should be
-	 * rendered within the webview panel
-	 */
-	private async getHtmlContent(webview: vscode.Webview): Promise<string> {
-		// Get the local path to main script run in the webview,
-		// then convert it to a uri we can use in the webview.
-
-		// The CSS file from the React build output
-		const stylesUri = getUri(webview, this.contextProxy.extensionUri, [
-			"webview-ui",
-			"build",
-			"assets",
-			"index.css",
-		])
-
-		const scriptUri = getUri(webview, this.contextProxy.extensionUri, ["webview-ui", "build", "assets", "index.js"])
-		const codiconsUri = getUri(webview, this.contextProxy.extensionUri, ["assets", "codicons", "codicon.css"])
-		const materialIconsUri = getUri(webview, this.contextProxy.extensionUri, [
-			"assets",
-			"vscode-material-icons",
-			"icons",
-		])
-		const imagesUri = getUri(webview, this.contextProxy.extensionUri, ["assets", "images"])
-		const audioUri = getUri(webview, this.contextProxy.extensionUri, ["webview-ui", "audio"])
-
-		// Use a nonce to only allow a specific script to be run.
-		/*
-		content security policy of your webview to only allow scripts that have a specific nonce
-		create a content security policy meta tag so that only loading scripts with a nonce is allowed
-		As your extension grows you will likely want to add custom styles, fonts, and/or images to your webview. If you do, you will need to update the content security policy meta tag to explicitly allow for these resources. E.g.
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; font-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
-		- 'unsafe-inline' is required for styles due to vscode-webview-toolkit's dynamic style injection
-		- since we pass base64 images to the webview, we need to specify img-src ${webview.cspSource} data:;
-
-		in meta tag we add nonce attribute: A cryptographic nonce (only used once) to allow scripts. The server must generate a unique nonce value each time it transmits a policy. It is critical to provide a nonce that cannot be guessed as bypassing a resource's policy is otherwise trivial.
-		*/
-		const nonce = getNonce()
-
-		// Get the OpenRouter base URL from configuration
+	/** The sidebar HTML served by the Vite dev server (CORE-R6 e: built by {@link getHmrHtml}). */
+	private async getHMRHtmlContent(webview: vscode.Webview): Promise<string> {
 		const { apiConfiguration } = await this.getState()
-		const openRouterBaseUrl = apiConfiguration.openRouterBaseUrl || "https://openrouter.ai"
-		// Extract the domain for CSP
-		const openRouterDomain = openRouterBaseUrl.match(/^(https?:\/\/[^\/]+)/)?.[1] || "https://openrouter.ai"
+		return getHmrHtml({
+			...this.webviewHtmlOptions(webview, apiConfiguration.openRouterBaseUrl),
+			logTag: "ClineProvider:Vite",
+			onDevServerMissing: () => vscode.window.showErrorMessage(t("common:errors.hmr_not_running")),
+		})
+	}
 
-		// Tip: Install the es6-string-html VS Code extension to enable code highlighting below
-		return /*html*/ `
-        <!DOCTYPE html>
-        <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
-            <meta name="theme-color" content="#000000">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource} data:; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https://storage.googleapis.com https://img.clerk.com data:; media-src ${webview.cspSource}; script-src ${webview.cspSource} 'wasm-unsafe-eval' 'nonce-${nonce}' 'strict-dynamic'; connect-src ${webview.cspSource} ${openRouterDomain} https://api.requesty.ai;">
-            <link rel="stylesheet" type="text/css" href="${stylesUri}">
-			<link href="${codiconsUri}" rel="stylesheet" />
-			<script nonce="${nonce}">
-				window.IMAGES_BASE_URI = "${imagesUri}"
-				window.AUDIO_BASE_URI = "${audioUri}"
-				window.MATERIAL_ICONS_BASE_URI = "${materialIconsUri}"
-			</script>
-            <title>Roo Code</title>
-          </head>
-          <body>
-            <noscript>You need to enable JavaScript to run this app.</noscript>
-            <div id="root"></div>
-            <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
-          </body>
-        </html>
-      `
+	/** The sidebar HTML for the built webview (CORE-R6 e: built by {@link getProductionHtml}). */
+	private async getHtmlContent(webview: vscode.Webview): Promise<string> {
+		const { apiConfiguration } = await this.getState()
+		return getProductionHtml(this.webviewHtmlOptions(webview, apiConfiguration.openRouterBaseUrl))
 	}
 
 	/**
