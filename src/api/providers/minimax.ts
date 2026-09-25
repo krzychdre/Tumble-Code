@@ -10,11 +10,11 @@ import type { ApiHandlerOptions } from "../../shared/api"
 import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 import { mergeEnvironmentDetailsForMiniMax } from "../transform/minimax-format"
+import { addAnthropicCacheControl, processAnthropicStream } from "../transform/anthropic-stream"
 
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { anthropicCompletionUsage } from "./utils/completion-usage"
-import { calculateApiCostAnthropic } from "../../shared/cost"
 import { convertOpenAIToolsToAnthropic } from "../../core/prompts/tools/native-tools/converters"
 
 /**
@@ -109,7 +109,9 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 			max_tokens: maxTokens ?? 16_384,
 			temperature: temperature ?? 1.0,
 			system: systemBlocks,
-			messages: supportsPromptCache ? this.addCacheControl(processedMessages, cacheControl) : processedMessages,
+			messages: supportsPromptCache
+				? addAnthropicCacheControl(processedMessages, cacheControl)
+				: processedMessages,
 			stream: true,
 			tools: convertOpenAIToolsToAnthropic(metadata?.tools ?? []),
 			tool_choice: convertOpenAIToolChoice(metadata?.tool_choice),
@@ -117,168 +119,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 
 		stream = await this.client.messages.create(requestParams)
 
-		let inputTokens = 0
-		let outputTokens = 0
-		let cacheWriteTokens = 0
-		let cacheReadTokens = 0
-
-		for await (const chunk of stream) {
-			switch (chunk.type) {
-				case "message_start": {
-					// Tells us cache reads/writes/input/output.
-					const {
-						input_tokens = 0,
-						output_tokens = 0,
-						cache_creation_input_tokens,
-						cache_read_input_tokens,
-					} = chunk.message.usage
-
-					yield {
-						type: "usage",
-						inputTokens: input_tokens,
-						outputTokens: output_tokens,
-						cacheWriteTokens: cache_creation_input_tokens || undefined,
-						cacheReadTokens: cache_read_input_tokens || undefined,
-					}
-
-					inputTokens += input_tokens
-					outputTokens += output_tokens
-					cacheWriteTokens += cache_creation_input_tokens || 0
-					cacheReadTokens += cache_read_input_tokens || 0
-
-					break
-				}
-				case "message_delta": {
-					// Tells us stop_reason, stop_sequence, and output tokens
-					const deltaOutputTokens = chunk.usage.output_tokens || 0
-
-					yield {
-						type: "usage",
-						inputTokens: 0,
-						outputTokens: deltaOutputTokens,
-					}
-
-					// message_delta output_tokens is cumulative for the whole
-					// response (it already includes the provisional count from
-					// message_start), so it replaces the running total instead
-					// of adding to it. Math.max keeps a missing or zero value
-					// from lowering the count.
-					outputTokens = Math.max(outputTokens, deltaOutputTokens)
-
-					break
-				}
-				case "message_stop":
-					// No usage data, just an indicator that the message is done.
-					break
-				case "content_block_start":
-					switch (chunk.content_block.type) {
-						case "thinking":
-							// Yield thinking/reasoning content
-							if (chunk.index > 0) {
-								yield { type: "reasoning", text: "\n" }
-							}
-
-							yield { type: "reasoning", text: chunk.content_block.thinking }
-							break
-						case "text":
-							// We may receive multiple text blocks
-							if (chunk.index > 0) {
-								yield { type: "text", text: "\n" }
-							}
-
-							yield { type: "text", text: chunk.content_block.text }
-							break
-						case "tool_use": {
-							// Emit initial tool call partial with id and name
-							yield {
-								type: "tool_call_partial",
-								index: chunk.index,
-								id: chunk.content_block.id,
-								name: chunk.content_block.name,
-								arguments: undefined,
-							}
-							break
-						}
-					}
-					break
-				case "content_block_delta":
-					switch (chunk.delta.type) {
-						case "thinking_delta":
-							yield { type: "reasoning", text: chunk.delta.thinking }
-							break
-						case "text_delta":
-							yield { type: "text", text: chunk.delta.text }
-							break
-						case "input_json_delta": {
-							// Emit tool call partial chunks as arguments stream in
-							yield {
-								type: "tool_call_partial",
-								index: chunk.index,
-								id: undefined,
-								name: undefined,
-								arguments: chunk.delta.partial_json,
-							}
-							break
-						}
-					}
-
-					break
-				case "content_block_stop":
-					// Block is complete - no action needed, NativeToolCallParser handles completion
-					break
-			}
-		}
-
-		// Calculate and yield final cost
-		if (inputTokens > 0 || outputTokens > 0 || cacheWriteTokens > 0 || cacheReadTokens > 0) {
-			const { totalCost } = calculateApiCostAnthropic(
-				this.getModel().info,
-				inputTokens,
-				outputTokens,
-				cacheWriteTokens,
-				cacheReadTokens,
-			)
-
-			yield {
-				type: "usage",
-				inputTokens: 0,
-				outputTokens: 0,
-				totalCost,
-			}
-		}
-	}
-
-	/**
-	 * Add cache control to the last two user messages for prompt caching
-	 */
-	private addCacheControl(
-		messages: Anthropic.Messages.MessageParam[],
-		cacheControl: CacheControlEphemeral,
-	): Anthropic.Messages.MessageParam[] {
-		const userMsgIndices = messages.reduce(
-			(acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc),
-			[] as number[],
-		)
-
-		const lastUserMsgIndex = userMsgIndices[userMsgIndices.length - 1] ?? -1
-		const secondLastMsgUserIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
-
-		return messages.map((message, index) => {
-			if (index === lastUserMsgIndex || index === secondLastMsgUserIndex) {
-				return {
-					...message,
-					content:
-						typeof message.content === "string"
-							? [{ type: "text", text: message.content, cache_control: cacheControl }]
-							: message.content.map((content, contentIndex) =>
-									contentIndex === message.content.length - 1
-										? { ...content, cache_control: cacheControl }
-										: content,
-								),
-				}
-			}
-			return message
-		})
+		yield* processAnthropicStream(stream, info)
 	}
 
 	getModel() {
