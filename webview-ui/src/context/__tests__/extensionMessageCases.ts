@@ -126,6 +126,25 @@ export const extensionMessageCases: ExtensionMessageCase[] = [
 		},
 	},
 	{
+		// The storage-error fallback in TaskHistoryGateway posts only
+		// { storageErrorMessage }; that must not replace the chat with the
+		// welcome screen of a configured user.
+		name: "state: a partial push without apiConfiguration keeps the welcome screen hidden",
+		seed: [statePush({ apiConfiguration: { apiProvider: "anthropic", apiKey: "sk-test" } })],
+		message: statePush({ storageErrorMessage: "Could not write tasks.json" }),
+		check: (view) => {
+			expect(view.showWelcome).toBe(false)
+			expect(view.storageErrorMessage).toBe("Could not write tasks.json")
+			expect(view.apiConfiguration).toEqual({ apiProvider: "anthropic", apiKey: "sk-test" })
+		},
+	},
+	{
+		name: "state: a partial push without apiConfiguration keeps the welcome screen shown",
+		seed: [statePush({ apiConfiguration: { apiProvider: "anthropic" } })],
+		message: statePush({ storageErrorMessage: "Could not write tasks.json" }),
+		check: (view) => expect(view.showWelcome).toBe(true),
+	},
+	{
 		name: "state: copies marketplace items and installed metadata",
 		message: statePush({ marketplaceItems: [marketplaceItem], marketplaceInstalledMetadata: installed }),
 		check: (view) => {

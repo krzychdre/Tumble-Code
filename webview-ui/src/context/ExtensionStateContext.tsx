@@ -287,7 +287,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 				case "state": {
 					const newState = message.state ?? {}
 					setState((prevState) => mergeExtensionState(prevState, newState))
-					setShowWelcome(!checkExistKey(newState.apiConfiguration))
+					// A partial push (for example the storage-error fallback that
+					// carries only storageErrorMessage) has no apiConfiguration:
+					// keep the previous decision instead of reading "no key".
+					if (newState.apiConfiguration !== undefined) {
+						setShowWelcome(!checkExistKey(newState.apiConfiguration))
+					}
 					setDidHydrateState(true)
 					// Handle marketplace data if present in state message
 					if (newState.marketplaceItems !== undefined) {
