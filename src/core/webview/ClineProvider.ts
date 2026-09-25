@@ -91,6 +91,7 @@ import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
 import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
 import { DelegationService } from "./DelegationService"
+import { CloudProfileSync } from "./CloudProfileSync"
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
 
 /**
@@ -201,6 +202,9 @@ export class ClineProvider
 
 	/** The parent/child delegation state machine (CORE-R2). */
 	private readonly delegation: DelegationService
+
+	/** Keeps local provider profiles in step with the cloud organization (CORE-R6 b). */
+	private readonly cloudProfileSync: CloudProfileSync
 
 	public isViewLaunched = false
 	public settingsImportedAt?: number
@@ -313,6 +317,16 @@ export class ClineProvider
 		this._workspaceTracker = new WorkspaceTracker(this)
 
 		this.providerSettingsManager = new ProviderSettingsManager(this.context)
+		const getProviderSettingsManager = () => this.providerSettingsManager
+		this.cloudProfileSync = new CloudProfileSync({
+			contextProxy,
+			get providerSettingsManager() {
+				return getProviderSettingsManager()
+			},
+			activateProviderProfile: (args) => this.activateProviderProfile(args),
+			postStateToWebviewWithoutClineMessages: () => this.postStateToWebviewWithoutClineMessages(),
+			log: (message) => this.log(message),
+		})
 
 		this.customModesManager = new CustomModesManager(this.context, async () => {
 			await this.postStateToWebviewWithoutClineMessages()
@@ -490,72 +504,14 @@ export class ClineProvider
 	}
 
 	/**
-	 * Handle cloud settings updates
-	 */
-	private handleCloudSettingsUpdate = async () => {
-		try {
-			await this.syncCloudProfiles()
-		} catch (error) {
-			this.log(`Error handling cloud settings update: ${error}`)
-		}
-	}
-
-	/**
-	 * Synchronize cloud profiles with local profiles.
-	 */
-	private async syncCloudProfiles() {
-		try {
-			const settings = CloudService.instance.getOrganizationSettings()
-
-			if (!settings?.providerProfiles) {
-				return
-			}
-
-			const currentApiConfigName = this.getGlobalState("currentApiConfigName")
-
-			const result = await this.providerSettingsManager.syncCloudProfiles(
-				settings.providerProfiles,
-				currentApiConfigName,
-			)
-
-			if (result.hasChanges) {
-				// Update list.
-				await this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig())
-
-				if (result.activeProfileChanged && result.activeProfileId) {
-					// Reload full settings for new active profile.
-					const profile = await this.providerSettingsManager.getProfile({
-						id: result.activeProfileId,
-					})
-					await this.activateProviderProfile({ name: profile.name })
-				}
-
-				await this.postStateToWebviewWithoutClineMessages()
-			}
-		} catch (error) {
-			this.log(`Error syncing cloud profiles: ${error}`)
-		}
-	}
-
-	/**
 	 * Initialize cloud profile synchronization: sync now if signed in, and
 	 * (re)subscribe to settings updates. Idempotent, never throws. Called from
 	 * the constructor when CloudService already exists and again by extension
 	 * activation once CloudService has been initialized.
+	 * See {@link CloudProfileSync.initializeWhenReady}.
 	 */
-	public async initializeCloudProfileSyncWhenReady(): Promise<void> {
-		try {
-			if (CloudService.hasInstance() && CloudService.instance.isAuthenticated()) {
-				await this.syncCloudProfiles()
-			}
-
-			if (CloudService.hasInstance()) {
-				CloudService.instance.off("settings-updated", this.handleCloudSettingsUpdate)
-				CloudService.instance.on("settings-updated", this.handleCloudSettingsUpdate)
-			}
-		} catch (error) {
-			this.log(`Failed to initialize cloud profile sync when ready: ${error}`)
-		}
+	public initializeCloudProfileSyncWhenReady(): Promise<void> {
+		return this.cloudProfileSync.initializeWhenReady()
 	}
 
 	// Adds a new Task instance to clineStack, marking the start of a new task.
@@ -788,9 +744,7 @@ export class ClineProvider
 		this.clearWebviewResources()
 
 		// Clean up cloud service event listener
-		if (CloudService.hasInstance()) {
-			CloudService.instance.off("settings-updated", this.handleCloudSettingsUpdate)
-		}
+		this.cloudProfileSync.dispose()
 
 		while (this.disposables.length) {
 			const x = this.disposables.pop()
