@@ -141,11 +141,16 @@ export function useExtensionHost({
 					onExtensionMessage(extensionMessage)
 				})
 
-				host.client.on("taskCompleted", async () => {
+				host.client.on("taskCompleted", async (event) => {
 					setComplete(true)
 					setLoading(false)
 
-					if (hostOptions.exitOnComplete) {
+					// The client also reports a finished task that was opened again
+					// (resume_completed_task). That task now waits for the next
+					// message, so --oneshot must not end the session on it.
+					const resumed = event?.message?.type === "ask" && event.message.ask === "resume_completed_task"
+
+					if (hostOptions.exitOnComplete && !resumed) {
 						await cleanup()
 						exit()
 						setTimeout(() => process.exit(0), 100)
