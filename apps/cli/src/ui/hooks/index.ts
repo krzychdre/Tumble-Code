@@ -5,7 +5,7 @@ export { useInputHistory } from "./useInputHistory.js"
 
 // Export new extracted hooks
 export { useFollowupCountdown } from "./useFollowupCountdown.js"
-export { useMessageHandlers } from "./useMessageHandlers.js"
+export { useTranscriptSink } from "./useTranscriptSink.js"
 export { useExtensionHost } from "./useExtensionHost.js"
 export { useTaskSubmit } from "./useTaskSubmit.js"
 export { useGlobalInput } from "./useGlobalInput.js"
@@ -17,7 +17,7 @@ export { useSecretPromptBridge } from "./useSecretPromptBridge.js"
 
 // Export types
 export type { UseFollowupCountdownOptions } from "./useFollowupCountdown.js"
-export type { UseMessageHandlersOptions, UseMessageHandlersReturn } from "./useMessageHandlers.js"
+export type { UseTranscriptSinkOptions } from "./useTranscriptSink.js"
 export type { UseExtensionHostOptions, UseExtensionHostReturn } from "./useExtensionHost.js"
 export type { UseTaskSubmitOptions, UseTaskSubmitReturn } from "./useTaskSubmit.js"
 export type { UseGlobalInputOptions } from "./useGlobalInput.js"

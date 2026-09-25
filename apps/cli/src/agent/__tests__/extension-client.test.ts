@@ -250,6 +250,27 @@ describe("ExtensionClient", () => {
 	})
 
 	describe("Event emission", () => {
+		// Opening a finished task again ends its history with a
+		// resume_completed_task ask, and the client reports that as taskCompleted,
+		// the same event a task that just finished gets. Consumers that act on
+		// completion (the TUI's --oneshot exit) have to tell the two apart.
+		it("reports taskCompleted for a resumed completed task, carrying the resume ask", () => {
+			const { client } = createMockClient()
+			const completions: Array<string | undefined> = []
+
+			client.on("taskCompleted", (event) => completions.push(event.message?.ask))
+
+			client.handleMessage(
+				createStateMessage([
+					createMessage({ ts: 1, type: "say", say: "text", text: "Say hi" }),
+					createMessage({ ts: 2, type: "ask", ask: "completion_result", text: "" }),
+					createMessage({ ts: 3, type: "ask", ask: "resume_completed_task", partial: false }),
+				]),
+			)
+
+			expect(completions).toEqual(["resume_completed_task"])
+		})
+
 		it("should emit stateChange events", () => {
 			const { client } = createMockClient()
 			const stateChanges: AgentLoopState[] = []

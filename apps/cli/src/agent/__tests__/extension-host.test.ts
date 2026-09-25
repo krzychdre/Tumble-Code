@@ -381,6 +381,24 @@ describe("ExtensionHost", () => {
 			// But we can verify the client exists and has the handleMessage method.
 			expect(typeof client.handleMessage).toBe("function")
 		})
+
+		// The extension can post while it activates, before activate() adds the
+		// client's own listener; the TUI used to listen from before activate and
+		// saw those messages, so the transcript reader has to as well.
+		it("feeds the transcript reader from construction on, before activate", () => {
+			const host = createTestHost()
+			const applied: string[] = []
+
+			host.client.transcript.attach({
+				view: () => ({ messages: [], isLoading: false, isResumingTask: false, currentTodos: [] }),
+				nonInteractive: () => false,
+				apply: (effects) => applied.push(...effects.map((effect) => effect.type)),
+			})
+
+			host.emit("extensionWebviewMessage", { type: "state", state: { mode: "architect" } } as ExtensionMessage)
+
+			expect(applied).toEqual(["setCurrentMode"])
+		})
 	})
 
 	describe("MCP failure notice (print mode)", () => {

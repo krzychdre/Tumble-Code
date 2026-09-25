@@ -15,7 +15,7 @@ import {
  * The transcript as the TUI store holds it once its debounce has flushed,
  * built only from the reducer's effects. The store actions this mirrors are
  * in ui/store.ts; the store's own timing (the 150 ms debounce) is covered by
- * the useMessageHandlers spec.
+ * the useTranscriptSink spec.
  */
 interface TranscriptModel {
 	messages: TUIMessage[]
@@ -121,7 +121,7 @@ function apply(model: TranscriptModel, effect: TranscriptEffect): void {
 }
 
 /**
- * Specs of the transcript reducer (moved from the useMessageHandlers spec,
+ * Specs of the transcript reducer (moved from the old useMessageHandlers spec,
  * where they ran through the hook and the store).
  *
  * Regression background for the dedupe specs: the extension's streaming
@@ -378,10 +378,10 @@ describe("transcript reducer", () => {
 			expect(model.messages).toEqual([])
 		})
 
-		// The /new and /clear reset (useTaskSubmit.resetConversation) as it is
-		// today: the store is reset and the seen ids and the prompt-echo marker
-		// are forgotten, but the marker of the last rendered answer survives.
-		it("after a conversation reset, drops a first answer identical to the previous task's last answer", () => {
+		// The /new and /clear reset (useTaskSubmit.resetConversation): the new
+		// task starts with nothing remembered from the old one, including the
+		// marker of the last rendered answer.
+		it("after a conversation reset, shows a first answer identical to the previous task's last answer", () => {
 			stateMessage([
 				{ ts: 1, type: "say", say: "text", text: "Say hi", partial: false },
 				{ ts: 2, type: "say", say: "text", text: "Hi!", partial: false },
@@ -389,14 +389,14 @@ describe("transcript reducer", () => {
 			expect(model.messages.map((m) => m.content)).toEqual(["Hi!"])
 
 			model = emptyModel()
-			cursor = resetTranscriptCursor(cursor)
+			cursor = resetTranscriptCursor()
 
 			stateMessage([
 				{ ts: 10, type: "say", say: "text", text: "Say hi", partial: false },
 				{ ts: 11, type: "say", say: "text", text: "Hi!", partial: false },
 				{ ts: 12, type: "say", say: "text", text: "Anything else?", partial: false },
 			])
-			expect(model.messages.map((m) => m.content)).toEqual(["Anything else?"])
+			expect(model.messages.map((m) => m.content)).toEqual(["Hi!", "Anything else?"])
 		})
 
 		it("after a conversation reset, opens a new row for command output instead of the old task's row", () => {
@@ -406,7 +406,7 @@ describe("transcript reducer", () => {
 
 			model = emptyModel()
 			model.isLoading = true
-			cursor = resetTranscriptCursor(cursor)
+			cursor = resetTranscriptCursor()
 
 			sayUpdate(40, "command_output", "b\n", false)
 
@@ -1138,6 +1138,72 @@ describe("transcript reducer", () => {
 		})
 	})
 
+	// A resumed task replays its whole history in one state push, answered asks
+	// included. The core waits only on the LAST message (the client's agent
+	// state reads it the same way, detectAgentState), so an older ask is
+	// history, not a question: turning it into the pending ask showed an
+	// approval dialog for a tool that ran long ago.
+	describe("asks replayed from history", () => {
+		const history = [
+			{ ts: 1, type: "say", say: "text", text: "task", partial: false },
+			{
+				ts: 2,
+				type: "ask",
+				ask: "followup",
+				text: JSON.stringify({ question: "Which?", suggest: [{ answer: "A" }] }),
+				partial: false,
+			},
+			{ ts: 3, type: "say", say: "user_feedback", text: "A", partial: false },
+			{ ts: 4, type: "ask", ask: "tool", text: JSON.stringify({ tool: "readFile", path: "src/old.ts" }), partial: false },
+			{ ts: 5, type: "say", say: "text", text: "done", partial: false },
+		]
+
+		beforeEach(() => {
+			model.isLoading = true
+			model.isResumingTask = true
+		})
+
+		it("opens no dialog for an answered ask when the task is resumed", () => {
+			stateMessage([...history, { ts: 6, type: "ask", ask: "resume_task", text: "", partial: false }])
+
+			expect(model.pendingAsk).toBeNull()
+			expect(model.isLoading).toBe(false)
+			expect(model.messages.map((m) => m.content)).toEqual(["task", "done"])
+		})
+
+		it("still opens the dialog for the ask the history ends with", () => {
+			stateMessage(history.slice(0, 2))
+
+			expect(model.pendingAsk).toMatchObject({ id: "2", type: "followup", content: "Which?" })
+		})
+
+		it("still prints an auto-approved ask from the history as its row", () => {
+			nonInteractive = true
+			stateMessage([...history, { ts: 6, type: "ask", ask: "resume_task", text: "", partial: false }])
+
+			expect(model.pendingAsk).toBeNull()
+			expect(model.messages.map((m) => m.toolName ?? m.content)).toEqual(["task", "readFile", "done"])
+		})
+	})
+
+	// Decision (CLI-9): the transcript is append-only. When the core drops or
+	// rewrites earlier messages (context condensing, a checkpoint restore), the
+	// rows already shown stay: finished rows are printed into the terminal's
+	// scrollback by ink's <Static>, which cannot take a printed line back, so
+	// removing them from the store would only desynchronise it from the screen.
+	it("keeps the rows of messages the core no longer lists", () => {
+		stateMessage([
+			{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
+			{ ts: 2, type: "say", say: "text", text: "First answer", partial: false },
+		])
+		stateMessage([
+			{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
+			{ ts: 3, type: "say", say: "text", text: "After condensing", partial: false },
+		])
+
+		expect(model.messages.map((m) => m.id)).toEqual(["2", "3"])
+	})
+
 	describe("purity", () => {
 		it("never changes the cursor or the view it is given", () => {
 			const before = createTranscriptCursor()
@@ -1172,7 +1238,7 @@ describe("transcript reducer", () => {
 		})
 	})
 
-	it("resetTranscriptCursor forgets the task bookkeeping but keeps the stream markers and the MCP call", () => {
+	it("resetTranscriptCursor forgets everything the old task left behind", () => {
 		nonInteractive = true
 		model.isLoading = true
 		handle({
@@ -1192,16 +1258,10 @@ describe("transcript reducer", () => {
 		sayUpdate(52, "text", "echo", false)
 		sayUpdate(53, "text", "Answer", false)
 
-		const reset = resetTranscriptCursor(cursor)
+		const reset = resetTranscriptCursor()
 
-		expect(reset.seenMessageIds.size).toBe(0)
-		expect(reset.firstTextMessageSkipped).toBe(false)
-		expect(reset.mergedStreamIds.size).toBe(0)
-		expect(reset.pendingCommand).toBeNull()
-		expect(reset.commandRowId).toBeNull()
-		expect(reset.lastStreamed.answer).toEqual({ id: "53", text: "Answer" })
-		expect(reset.pendingMcp).toMatchObject({ serverName: "s", toolName: "t" })
-		// The cursor that was reset is left as it was.
-		expect(cursor.seenMessageIds.size).toBeGreaterThan(0)
+		expect(cursor.lastStreamed.answer).toEqual({ id: "53", text: "Answer" })
+		expect(cursor.pendingMcp).toMatchObject({ serverName: "s", toolName: "t" })
+		expect(reset).toEqual(createTranscriptCursor())
 	})
 })

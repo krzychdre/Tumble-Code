@@ -13,7 +13,7 @@ import { CLEAR_TERMINAL } from "../utils/clearTerminal.js"
 export interface UseTaskSubmitOptions {
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	runTask: ((prompt: string) => Promise<void>) | null
-	/** Forget the transcript bookkeeping of the current task (see useMessageHandlers). */
+	/** Forget the transcript bookkeeping of the current task (the client's transcript reader). */
 	resetTranscript: () => void
 	permissionMode: PermissionMode
 	onPermissionModeChange: (mode: PermissionMode) => void

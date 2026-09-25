@@ -17,7 +17,7 @@ export interface UsePickerHandlersOptions {
 	followupAutocompleteRef: React.RefObject<AutocompleteInputHandle<any> | null>
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	showInfo: (msg: string, duration?: number) => void
-	/** Forget the transcript bookkeeping of the current task (see useMessageHandlers). */
+	/** Forget the transcript bookkeeping of the current task (the client's transcript reader). */
 	resetTranscript: () => void
 }
 

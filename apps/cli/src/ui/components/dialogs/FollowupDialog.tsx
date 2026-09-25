@@ -36,7 +36,7 @@ const CUSTOM_VALUE = "__CUSTOM__"
  * Any arrow-key navigation cancels the countdown (also wired in App).
  */
 function FollowupDialog({ ask, onSelect, onCustomInput, countdownSeconds, isActive = true }: FollowupDialogProps) {
-	// ask.content already holds the question (useMessageHandlers parsed the ask).
+	// ask.content already holds the question (the transcript reducer parsed the ask).
 	const question = ask.content
 	const suggestions = useMemo(() => ask.suggestions ?? [], [ask.suggestions])
 

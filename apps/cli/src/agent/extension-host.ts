@@ -256,6 +256,14 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 		// Wire up client events.
 		this.setupClientEventHandlers()
 
+		// Feed the transcript reader every message the extension posts, from
+		// now on. The client's own listener is added only after the extension
+		// has activated (see activate), and the extension can post while it
+		// activates; the transcript has to see those messages, as the TUI did
+		// when it listened here before activate. The reader does nothing until
+		// a consumer attaches to it.
+		this.on("extensionWebviewMessage", (message: ExtensionMessage) => this.client.transcript.handleMessage(message))
+
 		// Populate initial settings.
 		const baseSettings: RooCodeSettings = {
 			mode: this.options.mode,

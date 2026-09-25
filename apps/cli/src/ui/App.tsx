@@ -22,7 +22,7 @@ import {
 	useTerminalSize,
 	useToast,
 	useExtensionHost,
-	useMessageHandlers,
+	useTranscriptSink,
 	useTaskSubmit,
 	useGlobalInput,
 	useFollowupCountdown,
@@ -141,17 +141,17 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// Toast notifications for ephemeral messages (e.g., mode changes).
 	const { currentToast, showInfo, showWarning } = useToast()
 
-	const { handleExtensionMessage, resetTranscript } = useMessageHandlers({
+	const transcript = useTranscriptSink({
 		nonInteractive: permissionMode === "allow",
 	})
 
-	const { sendToExtension, runTask, cleanup } = useExtensionHost({
+	const { sendToExtension, runTask, cleanup, resetTranscript } = useExtensionHost({
 		...hostOptions,
 		initialPrompt,
 		initialTaskId,
 		initialSessionId,
 		continueSession,
-		onExtensionMessage: handleExtensionMessage,
+		transcript,
 		createExtensionHost,
 	})
 
