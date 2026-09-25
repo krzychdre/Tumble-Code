@@ -22,10 +22,10 @@ import {
 } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
+import { postImmediateSetting } from "./postImmediateSetting"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { vscode } from "@/utils/vscode"
 
 const UNSET_PROFILE = "-"
 
@@ -148,7 +148,7 @@ export const ContextManagementSettings = ({
 			}
 
 			setCachedStateField("profileThresholds", newThresholds)
-			vscode.postMessage({ type: "updateSettings", updatedSettings: { profileThresholds: newThresholds } })
+			postImmediateSetting("profileThresholds", newThresholds)
 		}
 	}
 	return (
