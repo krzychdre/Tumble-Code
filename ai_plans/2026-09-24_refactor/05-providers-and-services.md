@@ -228,6 +228,20 @@ the client-destroy behavior. **Test first:** per-handler contract "the SDK call 
 the stream". **Existing:** `openai.spec` cancel cases, `base-openai-compatible-provider.spec`, three `*-timeout`
 specs, `TaskLifecycle` abort specs. **Size** M, mechanical. Easier after API-2, API-4, API-7.
 
+**Status (2026-09-25):** DONE in #312. `ApiHandlerCreateMessageMetadata.signal` is filled by TaskApiLoop from
+`currentRequestAbortController`; `utils/request-abort.ts` `createRequestAbortController(taskSignal)` gives each
+request its own controller linked to the task signal (used by `ResponsesApiCore` too, whose SSE fallback now reads
+its own request's signal). Newly forwarding: Anthropic, MiniMax, Anthropic Vertex, Gemini and Vertex Gemini
+(`config.abortSignal`), Mistral (`fetchOptions.signal`), OpenRouter, LiteLLM, Qwen Code, xAI, Bedrock (linked to its
+timeout controller), VS Code LM (cancels the token), Ollama (client takes no signal: the stream rejects at once and
+the late answer is aborted on arrival). Per-request instead of the overwritten handler-wide controller: the
+OpenAI-compatible family, DeepSeek, Z.ai, Moonshot, LM Studio, OpenAI native, Codex. `cancelRequest` kept for
+client destroy. Tests: `cancellation-contract.spec` (63 over 21 handler paths: abort mid-stream and before the
+response, overlapping requests independent; all failed first) and `TaskApiLoop.request-signal.spec`; related
+specs 1,583 to 1,649. Open: condense requests and `completePrompt*` one-shots get no signal; `openai-native.ts`
+`normalizeUsage` is unused (reported by check-unused-locals, which still exits 0).
+
+
 ### API-13 Shared Responses API core
 
 **Evidence:** D4 plus near-identical pairs: `processEvent` (`openai-native.ts:1153-1398` /
