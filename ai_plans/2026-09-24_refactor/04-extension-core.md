@@ -171,6 +171,14 @@ are posted, against the existing `mockClineProvider`); explicit tests for `saveC
 `skillsMessageHandler` (20), `checkpointRestoreHandler` (7), `messageEnhancer` (17). **Size** M to L, mechanical,
 low risk. Do CORE-Q1 first.
 
+**Status (2026-09-25):** DONE in #274 (merge dd1748a6d). `webviewMessageHandler.ts` is now 25 lines that look up
+a handler in the table built by `messageHandlers/index.ts` from 16 domain modules (the largest, `messageEdits`, has
+418 lines). The switch had 137 cases, not 149. About 40 message types have no handler, so the table type is a
+partial record. There were 21 copies of the error serialization, not 23: 9 became `logAndToast`, 12 became
+`serializeError`. The checkpoint-preservation code is now `rewindKeepingCheckpoints` plus `findNextCheckpoint`.
+Tests first: a routing snapshot (148 tests, unchanged after the split), `saveCodeIndexSettingsAtomic` (10),
+`importMode`/`exportMode` (12), and a registry guard (3). Related specs went from 116 to 289 tests, all green.
+
 ### CORE-R2 A delegation service
 
 **Evidence:** the most race-sensitive state machine in the extension is spread over `delegateParentAndOpenChild`
