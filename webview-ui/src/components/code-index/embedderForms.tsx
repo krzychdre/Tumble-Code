@@ -133,8 +133,13 @@ export const EMBEDDER_FORMS = {
 				.url(t("settings:codeIndex.validation.invalidBaseUrl")),
 			codebaseIndexOpenAiCompatibleApiKey: z.string().min(1, t("settings:codeIndex.validation.apiKeyRequired")),
 			codebaseIndexEmbedderModelId: z.string().min(1, t("settings:codeIndex.validation.modelIdRequired")),
+			// An empty or non-numeric dimension is stored as `undefined`; without `required_error` zod
+			// would show its own untranslated "Required" text.
 			codebaseIndexEmbedderModelDimension: z
-				.number()
+				.number({
+					required_error: t("settings:codeIndex.validation.modelDimensionRequired"),
+					invalid_type_error: t("settings:codeIndex.validation.modelDimensionRequired"),
+				})
 				.min(1, t("settings:codeIndex.validation.modelDimensionRequired")),
 		}),
 		render: (context) => (
