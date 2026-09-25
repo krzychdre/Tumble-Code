@@ -1,5 +1,7 @@
 import type { TokenUsage, ToolUsage, ToolName, ClineMessage } from "@roo-code/types"
 
+import { safeJsonParse } from "./safeJsonParse.js"
+
 export type ParsedApiReqStartedTextType = {
 	tokensIn: number
 	tokensOut: number
@@ -39,8 +41,10 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 	// Calculate running totals.
 	messages.forEach((message) => {
 		if (message.type === "say" && message.say === "api_req_started" && message.text) {
-			try {
-				const parsedText: ParsedApiReqStartedTextType = JSON.parse(message.text)
+			// A JSON null or unparseable payload contributes nothing (the parse error is logged).
+			const parsedText = safeJsonParse<ParsedApiReqStartedTextType | null>(message.text)
+
+			if (parsedText != null) {
 				const { tokensIn, tokensOut, cacheWrites, cacheReads, cost } = parsedText
 
 				if (typeof tokensIn === "number") {
@@ -62,8 +66,6 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 				if (typeof cost === "number") {
 					result.totalCost += cost
 				}
-			} catch (error) {
-				console.error("Error parsing JSON:", error)
 			}
 		} else if (message.type === "say" && message.say === "condense_context") {
 			result.totalCost += message.contextCondense?.cost ?? 0
@@ -79,18 +81,19 @@ export function consolidateTokenUsage(messages: ClineMessage[]): TokenUsage {
 		if (!message) continue
 
 		if (message.type === "say" && message.say === "api_req_started" && message.text) {
-			try {
-				const parsedText: ParsedApiReqStartedTextType = JSON.parse(message.text)
-				const { tokensIn, tokensOut } = parsedText
+			// The totals pass above already logged an unparseable payload; skip it quietly here.
+			const parsedText = safeJsonParse<ParsedApiReqStartedTextType | null>(message.text, undefined, false)
 
-				// Since tokensIn now stores TOTAL input tokens (including cache tokens),
-				// we no longer need to add cacheWrites and cacheReads separately.
-				// This applies to both Anthropic and OpenAI protocols.
-				result.contextTokens = (tokensIn || 0) + (tokensOut || 0)
-			} catch {
-				// Ignore JSON parse errors
+			if (parsedText == null) {
 				continue
 			}
+
+			const { tokensIn, tokensOut } = parsedText
+
+			// Since tokensIn now stores TOTAL input tokens (including cache tokens),
+			// we no longer need to add cacheWrites and cacheReads separately.
+			// This applies to both Anthropic and OpenAI protocols.
+			result.contextTokens = (tokensIn || 0) + (tokensOut || 0)
 		} else if (message.type === "say" && message.say === "condense_context") {
 			result.contextTokens = message.contextCondense?.newContextTokens ?? 0
 		}

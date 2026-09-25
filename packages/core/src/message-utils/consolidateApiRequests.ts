@@ -1,5 +1,7 @@
 import type { ClineMessage } from "@roo-code/types"
 
+import { safeJsonParse } from "./safeJsonParse.js"
+
 /**
  * Consolidates API request start and finish messages in an array of ClineMessages.
  *
@@ -63,24 +65,9 @@ export function consolidateApiRequests(messages: ClineMessage[]): ClineMessage[]
 			const startMessage = result[startIndex]
 			if (!startMessage) continue
 
-			let startData = {}
-			let finishData = {}
-
-			try {
-				if (startMessage.text) {
-					startData = JSON.parse(startMessage.text)
-				}
-			} catch {
-				// Ignore JSON parse errors
-			}
-
-			try {
-				if (message.text) {
-					finishData = JSON.parse(message.text)
-				}
-			} catch {
-				// Ignore JSON parse errors
-			}
+			// Unparseable payloads merge as empty objects, quietly.
+			const startData = safeJsonParse<object>(startMessage.text, {}, false)
+			const finishData = safeJsonParse<object>(message.text, {}, false)
 
 			result[startIndex] = { ...startMessage, text: JSON.stringify({ ...startData, ...finishData }) }
 		}

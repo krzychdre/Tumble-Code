@@ -5,13 +5,14 @@
  * @param defaultValue Value to return if parsing fails
  * @param context Optional label included in the error log so callers can be
  *   identified when something other than valid JSON is supplied (e.g. a user
- *   pasting a file path into a JSON field).
+ *   pasting a file path into a JSON field). Pass `false` to skip the log for
+ *   callers where unparseable input is expected and already handled.
  * @returns Parsed JSON object or defaultValue if parsing fails
  */
 export function safeJsonParse<T>(
 	jsonString: string | null | undefined,
 	defaultValue?: T,
-	context?: string,
+	context?: string | false,
 ): T | undefined {
 	if (!jsonString) {
 		return defaultValue
@@ -20,6 +21,10 @@ export function safeJsonParse<T>(
 	try {
 		return JSON.parse(jsonString) as T
 	} catch (error) {
+		if (context === false) {
+			return defaultValue
+		}
+
 		// Log the error to the console for debugging.
 		console.error(`Error parsing JSON${context ? ` (${context})` : ""}:`, error)
 		return defaultValue

@@ -3,6 +3,8 @@ import * as path from "path"
 
 import type { HistoryItem } from "@roo-code/types"
 
+import { safeJsonParse } from "../message-utils/safeJsonParse.js"
+
 const HISTORY_ITEM_FILENAME = "history_item.json"
 const HISTORY_INDEX_FILENAME = "_index.json"
 
@@ -46,12 +48,16 @@ function extractSessionEntry(value: unknown): TaskSessionEntry | undefined {
 }
 
 async function readJsonFile(filePath: string): Promise<unknown | undefined> {
+	let raw: string
+
 	try {
-		const raw = await fs.readFile(filePath, "utf8")
-		return JSON.parse(raw)
+		raw = await fs.readFile(filePath, "utf8")
 	} catch {
 		return undefined
 	}
+
+	// A corrupt index or history item is skipped quietly; the caller falls back.
+	return safeJsonParse<unknown>(raw, undefined, false)
 }
 
 export async function readTaskSessionsFromStoragePath(storageBasePath: string): Promise<TaskSessionEntry[]> {
