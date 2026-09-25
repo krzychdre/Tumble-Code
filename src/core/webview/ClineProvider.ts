@@ -35,9 +35,7 @@ import {
 	RooCodeEventName,
 	openRouterDefaultModelId,
 	DEFAULT_MODES,
-	getModelId,
 	isRetiredProvider,
-	readCliRuntimeEnv,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { CloudService } from "@roo-code/cloud"
@@ -45,7 +43,7 @@ import { CloudService } from "@roo-code/cloud"
 import { Package } from "../../shared/package"
 import { findLast } from "../../shared/array"
 import { supportPrompt } from "../../shared/support-prompt"
-import { Mode, defaultModeSlug, getModeBySlug } from "../../shared/modes"
+import { Mode } from "../../shared/modes"
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 
@@ -86,6 +84,7 @@ import { SubagentRegistry } from "./SubagentRegistry"
 import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
 import { DelegationService } from "./DelegationService"
 import { CloudProfileSync } from "./CloudProfileSync"
+import { ModeProfileBinding } from "./ModeProfileBinding"
 import { forwardTaskEvents, type TaskEventForwardingHost } from "./taskEventForwarding"
 import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOptions } from "./WebviewHtml"
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
@@ -145,8 +144,11 @@ export class ClineProvider
 	private currentWorkspacePath: string | undefined
 	private _disposed = false
 
-	/** Set by the CLI host at startup; see {@link setCliModeProviderSettings}. */
-	private cliModeProviderSettings?: CliModeProviderSettings
+	/**
+	 * Mode-to-profile binding and profile activation (CORE-R6 c), including
+	 * the CLI's per-mode provider settings.
+	 */
+	private readonly modeProfiles: ModeProfileBinding
 	/**
 	 * The task-history gateway (CORE-R6 a): the shared TaskHistoryStore
 	 * handle, echo suppression, the storage-error banner and the history
@@ -273,6 +275,28 @@ export class ClineProvider
 			emit: (event, ...args) => this.emit(event as any, ...(args as any)),
 			showAllowListViolation: (error) => this.showAllowListViolation(error),
 		})
+		const getProviderSettingsManager = () => this.providerSettingsManager
+		this.modeProfiles = new ModeProfileBinding({
+			contextProxy,
+			get providerSettingsManager() {
+				return getProviderSettingsManager()
+			},
+			isApiConfigLockedAcrossModes: () => this.context.workspaceState.get("lockApiConfigAcrossModes", false),
+			getCustomModes: () => this.customModesManager.getCustomModes(),
+			getState: () => this.getState(),
+			updateGlobalState: (key, value) => this.updateGlobalState(key, value),
+			getGlobalState: (key) => this.getGlobalState(key),
+			getCurrentTask: () => this.getCurrentTask(),
+			getTaskHistoryStore: () => this.getTaskHistoryStore(),
+			updateTaskHistory: (item) => this.updateTaskHistory(item),
+			activateProviderProfile: (...args) => this.activateProviderProfile(...args),
+			postStateToWebview: () => this.postStateToWebview(),
+			emitModeChanged: (mode) => this.emit(RooCodeEventName.ModeChanged, mode),
+			emitProviderProfileChanged: (profile) => this.emit(RooCodeEventName.ProviderProfileChanged, profile),
+			clearStorageError: () => this.taskHistory.clearStorageError(),
+			reportStorageError: (error) => this.taskHistory.reportStorageError("ProviderProfile", error),
+			log: (message) => this.log(message),
+		})
 		this.updateGlobalState("codebaseIndexModels", EMBEDDING_MODEL_PROFILES)
 
 		// Acquire a shared, ref-counted TaskHistoryStore for this storage
@@ -299,7 +323,6 @@ export class ClineProvider
 		this._workspaceTracker = new WorkspaceTracker(this)
 
 		this.providerSettingsManager = new ProviderSettingsManager(this.context)
-		const getProviderSettingsManager = () => this.providerSettingsManager
 		this.cloudProfileSync = new CloudProfileSync({
 			contextProxy,
 			get providerSettingsManager() {
@@ -949,14 +972,6 @@ export class ClineProvider
 		historyItem: HistoryItem & { rootTask?: Task; parentTask?: Task },
 		options?: { startTask?: boolean },
 	) {
-		const isCliRuntime = readCliRuntimeEnv(process.env).isCliRuntime
-		// CLI injects runtime provider settings from command flags/env at startup.
-		// Restoring provider profiles from task history can overwrite those
-		// runtime settings with stale/incomplete persisted profiles. The CLI's
-		// per-mode settings replace the profile store the same way, even when
-		// ROO_CLI_RUNTIME is not set.
-		const skipProfileRestoreFromHistory = isCliRuntime || this.cliModeProviderSettings !== undefined
-
 		// Check if we're rehydrating the current task to avoid flicker
 		const currentTask = this.getCurrentTask()
 		const isRehydratingCurrentTask = currentTask && currentTask.taskId === historyItem.id
@@ -977,107 +992,9 @@ export class ClineProvider
 			await this.removeClineFromStack()
 		}
 
-		// If the history item has a saved mode, restore it and its associated API configuration.
-		if (historyItem.mode) {
-			// Validate that the mode still exists
-			const customModes = await this.customModesManager.getCustomModes()
-			const modeExists = getModeBySlug(historyItem.mode, customModes) !== undefined
-
-			if (!modeExists) {
-				// Mode no longer exists, fall back to default mode.
-				this.log(
-					`Mode '${historyItem.mode}' from history no longer exists. Falling back to default mode '${defaultModeSlug}'.`,
-				)
-				historyItem.mode = defaultModeSlug
-			}
-
-			await this.updateGlobalState("mode", historyItem.mode)
-
-			// Load the saved API config for the restored mode if it exists.
-			// Skip mode-based profile activation if historyItem.apiConfigName exists,
-			// since the task's specific provider profile will override it anyway.
-			const lockApiConfigAcrossModes = this.context.workspaceState.get("lockApiConfigAcrossModes", false)
-
-			if (!historyItem.apiConfigName && !lockApiConfigAcrossModes && !skipProfileRestoreFromHistory) {
-				const savedConfigId = await this.providerSettingsManager.getModeConfigId(historyItem.mode)
-				const listApiConfig = await this.providerSettingsManager.listConfig()
-
-				// Update listApiConfigMeta first to ensure UI has latest data.
-				await this.updateGlobalState("listApiConfigMeta", listApiConfig)
-
-				// If this mode has a saved config, use it.
-				if (savedConfigId) {
-					const profile = listApiConfig.find(({ id }) => id === savedConfigId)
-
-					if (profile?.name) {
-						try {
-							// Check if the profile has actual API configuration (not just an id).
-							// In CLI mode, the ProviderSettingsManager may return empty default profiles
-							// that only contain 'id' and 'name' fields. Activating such a profile would
-							// overwrite the CLI's working API configuration with empty settings.
-							const fullProfile = await this.providerSettingsManager.getProfile({ name: profile.name })
-							const hasActualSettings = !!fullProfile.apiProvider
-
-							if (hasActualSettings) {
-								await this.activateProviderProfile({ name: profile.name })
-							} else {
-								// The task will continue with the current/default configuration.
-							}
-						} catch (error) {
-							// Log the error but continue with task restoration.
-							this.log(
-								`Failed to restore API configuration for mode '${historyItem.mode}': ${
-									error instanceof Error ? error.message : String(error)
-								}. Continuing with default configuration.`,
-							)
-							// The task will continue with the current/default configuration.
-						}
-					}
-				}
-			}
-		}
-
-		// If the history item has a saved API config name (provider profile), restore it.
-		// This overrides any mode-based config restoration above, because the task's
-		// specific provider profile takes precedence over mode defaults.
-		if (historyItem.apiConfigName && !skipProfileRestoreFromHistory) {
-			const listApiConfig = await this.providerSettingsManager.listConfig()
-			// Keep global state/UI in sync with latest profiles for parity with mode restoration above.
-			await this.updateGlobalState("listApiConfigMeta", listApiConfig)
-			const profile = listApiConfig.find(({ name }) => name === historyItem.apiConfigName)
-
-			if (profile?.name) {
-				try {
-					await this.activateProviderProfile(
-						{ name: profile.name },
-						{ persistModeConfig: false, persistTaskHistory: false },
-					)
-				} catch (error) {
-					// Log the error but continue with task restoration.
-					this.log(
-						`Failed to restore API configuration '${historyItem.apiConfigName}' for task: ${
-							error instanceof Error ? error.message : String(error)
-						}. Continuing with current configuration.`,
-					)
-				}
-			} else {
-				// Profile no longer exists, log warning but continue
-				this.log(
-					`Provider profile '${historyItem.apiConfigName}' from history no longer exists. Using current configuration.`,
-				)
-			}
-		} else if (historyItem.apiConfigName && skipProfileRestoreFromHistory) {
-			this.log(
-				`Skipping restore of provider profile '${historyItem.apiConfigName}' for task ${historyItem.id} in CLI runtime.`,
-			)
-		}
-
-		// A task resumed in the CLI (including a parent returning from its
-		// subtask) runs with the provider settings of its own mode.
-		const cliProviderSettings = historyItem.mode ? this.getCliProviderSettingsForMode(historyItem.mode) : undefined
-		if (cliProviderSettings) {
-			await this.contextProxy.setProviderSettings(cliProviderSettings)
-		}
+		// Restore the saved mode and its provider profile (or the CLI's
+		// per-mode settings) before the task reads its configuration.
+		await this.modeProfiles.restoreForHistoryItem(historyItem)
 
 		const {
 			apiConfiguration,
@@ -1274,161 +1191,22 @@ export class ClineProvider
 	}
 
 	/**
+	 * Provider settings per mode from the CLI's settings file; see
+	 * {@link ModeProfileBinding.setCliModeProviderSettings}.
+	 */
+	public setCliModeProviderSettings(settings: CliModeProviderSettings | undefined) {
+		this.modeProfiles.setCliModeProviderSettings(settings)
+	}
+
+	/**
 	 * Handle switching to a new mode, including updating the associated API configuration
 	 * @param newMode The mode to switch to
 	 */
-	/**
-	 * Provider settings per mode from the CLI's settings file. While set, mode
-	 * switches, mode-scoped subagents and resumed tasks take their provider
-	 * settings from here (`modes[mode] ?? base`) instead of the profile store.
-	 * The value lives in memory only: the CLI sends it on every start, and the
-	 * profile store is never touched.
-	 */
-	public setCliModeProviderSettings(settings: CliModeProviderSettings | undefined) {
-		this.cliModeProviderSettings = settings
-	}
-
-	private getCliProviderSettingsForMode(mode: string): ProviderSettings | undefined {
-		const settings = this.cliModeProviderSettings
-		return settings ? (settings.modes[mode] ?? settings.base) : undefined
-	}
-
 	public async handleModeSwitch(newMode: Mode) {
-		const task = this.getCurrentTask()
-
-		if (task) {
-			TelemetryService.instance.captureModeSwitch(task.taskId, newMode)
-			task.emit(RooCodeEventName.TaskModeSwitched, task.taskId, newMode)
-
-			try {
-				// Update the task history with the new mode first.
-				const taskHistoryStore = await this.getTaskHistoryStore()
-				const taskHistoryItem = taskHistoryStore.get(task.taskId)
-
-				if (taskHistoryItem) {
-					await this.updateTaskHistory({ ...taskHistoryItem, mode: newMode })
-				}
-
-				// Only update the task's mode after successful persistence.
-				task.setTaskMode(newMode)
-			} catch (error) {
-				// If persistence fails, log the error but don't update the in-memory state.
-				this.log(
-					`Failed to persist mode switch for task ${task.taskId}: ${error instanceof Error ? error.message : String(error)}`,
-				)
-
-				// Optionally, we could emit an event to notify about the failure.
-				// This ensures the in-memory state remains consistent with persisted state.
-				throw error
-			}
-		}
-
-		await this.updateGlobalState("mode", newMode)
-
-		this.emit(RooCodeEventName.ModeChanged, newMode)
-
-		// The CLI resolves provider settings per mode from its own settings
-		// file; they replace the profile store's mode bindings, which the CLI
-		// never configures (every mode may still point at an unrelated profile).
-		const cliProviderSettings = this.getCliProviderSettingsForMode(newMode)
-		if (cliProviderSettings) {
-			await this.contextProxy.setProviderSettings(cliProviderSettings)
-			this.updateTaskApiHandlerIfNeeded(cliProviderSettings, { forceRebuild: true })
-			await this.postStateToWebview()
-			return
-		}
-
-		// If workspace lock is on, keep the current API config — don't load mode-specific config
-		const lockApiConfigAcrossModes = this.context.workspaceState.get("lockApiConfigAcrossModes", false)
-		if (lockApiConfigAcrossModes) {
-			await this.postStateToWebview()
-			return
-		}
-
-		// Load the saved API config for the new mode if it exists.
-		const savedConfigId = await this.providerSettingsManager.getModeConfigId(newMode)
-		const listApiConfig = await this.providerSettingsManager.listConfig()
-
-		// Update listApiConfigMeta first to ensure UI has latest data.
-		await this.updateGlobalState("listApiConfigMeta", listApiConfig)
-
-		// If this mode has a saved config, use it.
-		if (savedConfigId) {
-			const profile = listApiConfig.find(({ id }) => id === savedConfigId)
-
-			if (profile?.name) {
-				// Check if the profile has actual API configuration (not just an id).
-				// In CLI mode, the ProviderSettingsManager may return empty default profiles
-				// that only contain 'id' and 'name' fields. Activating such a profile would
-				// overwrite the CLI's working API configuration with empty settings.
-				// Skip activation if the profile has no apiProvider set - this indicates
-				// an unconfigured/empty profile.
-				const fullProfile = await this.providerSettingsManager.getProfile({ name: profile.name })
-				const hasActualSettings = !!fullProfile.apiProvider
-
-				if (hasActualSettings) {
-					await this.activateProviderProfile({ name: profile.name })
-				} else {
-					// The task will continue with the current/default configuration.
-				}
-			} else {
-				// The task will continue with the current/default configuration.
-			}
-		} else {
-			// If no saved config for this mode, save current config as default.
-			const currentApiConfigNameAfter = this.getGlobalState("currentApiConfigName")
-
-			if (currentApiConfigNameAfter) {
-				const config = listApiConfig.find((c) => c.name === currentApiConfigNameAfter)
-
-				if (config?.id) {
-					await this.providerSettingsManager.setModeConfig(newMode, config.id)
-				}
-			}
-		}
-
-		await this.postStateToWebview()
+		await this.modeProfiles.handleModeSwitch(newMode)
 	}
 
 	// Provider Profile Management
-
-	/**
-	 * Updates the current task's API handler.
-	 * Rebuilds when:
-	 * - provider or model changes, OR
-	 * - explicitly forced (e.g., user-initiated profile switch/save to apply changed settings like headers/baseUrl/tier).
-	 * Always synchronizes task.apiConfiguration with latest provider settings.
-	 * @param providerSettings The new provider settings to apply
-	 * @param options.forceRebuild Force rebuilding the API handler regardless of provider/model equality
-	 */
-	private updateTaskApiHandlerIfNeeded(
-		providerSettings: ProviderSettings,
-		options: { forceRebuild?: boolean } = {},
-	): void {
-		const task = this.getCurrentTask()
-		if (!task) return
-
-		const { forceRebuild = false } = options
-
-		// Determine if we need to rebuild using the previous configuration snapshot
-		const prevConfig = task.apiConfiguration
-		const prevProvider = prevConfig?.apiProvider
-		const prevModelId = prevConfig ? getModelId(prevConfig) : undefined
-		const newProvider = providerSettings.apiProvider
-		const newModelId = getModelId(providerSettings)
-
-		const needsRebuild = forceRebuild || prevProvider !== newProvider || prevModelId !== newModelId
-
-		if (needsRebuild) {
-			// Use updateApiConfiguration which handles both API handler rebuild and parser sync.
-			// Note: updateApiConfiguration is declared async but has no actual async operations,
-			// so we can safely call it without awaiting.
-			task.updateApiConfiguration(providerSettings)
-		} else {
-			// No rebuild needed, just sync apiConfiguration
-			task.apiConfiguration = providerSettings
-		}
-	}
 
 	getProviderProfileEntries(): ProviderSettingsEntry[] {
 		return this.contextProxy.getValues().listApiConfigMeta || []
@@ -1443,60 +1221,7 @@ export class ClineProvider
 		providerSettings: ProviderSettings,
 		activate: boolean = true,
 	): Promise<string | undefined> {
-		try {
-			// TODO: Do we need to be calling `activateProfile`? It's not
-			// clear to me what the source of truth should be; in some cases
-			// we rely on the `ContextProxy`'s data store and in other cases
-			// we rely on the `ProviderSettingsManager`'s data store. It might
-			// be simpler to unify these two.
-			const id = await this.providerSettingsManager.saveConfig(name, providerSettings)
-
-			if (activate) {
-				const { mode } = await this.getState()
-
-				// These promises do the following:
-				// 1. Adds or updates the list of provider profiles.
-				// 2. Sets the current provider profile.
-				// 3. Sets the current mode's provider profile.
-				// 4. Copies the provider settings to the context.
-				//
-				// Note: 1, 2, and 4 can be done in one `ContextProxy` call:
-				// this.contextProxy.setValues({ ...providerSettings, listApiConfigMeta: ..., currentApiConfigName: ... })
-				// We should probably switch to that and verify that it works.
-				// I left the original implementation in just to be safe.
-				await Promise.all([
-					this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig()),
-					this.updateGlobalState("currentApiConfigName", name),
-					this.providerSettingsManager.setModeConfig(mode, id),
-					this.contextProxy.setProviderSettings(providerSettings),
-				])
-
-				// Change the provider for the current task.
-				// TODO: We should rename `buildApiHandler` for clarity (e.g. `getProviderClient`).
-				this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
-
-				// Keep the current task's sticky provider profile in sync with the newly-activated profile.
-				await this.persistStickyProviderProfileToCurrentTask(name)
-			} else {
-				await this.updateGlobalState("listApiConfigMeta", await this.providerSettingsManager.listConfig())
-			}
-
-			await this.postStateToWebview()
-			// A successful profile save proves storage is writable again, so
-			// drop a previously reported storage error (the banner then
-			// disappears on this state push).
-			this.taskHistory.clearStorageError()
-			return id
-		} catch (error) {
-			this.log(
-				`Error create new api configuration: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
-			)
-
-			const message = error instanceof Error ? error.message : String(error)
-			this.taskHistory.reportStorageError("ProviderProfile", error)
-			vscode.window.showErrorMessage(t("common:errors.create_api_config") + ": " + message)
-			return undefined
-		}
+		return this.modeProfiles.upsertProviderProfile(name, providerSettings, activate)
 	}
 
 	async deleteProviderProfile(profileToDelete: ProviderSettingsEntry) {
@@ -1522,69 +1247,11 @@ export class ClineProvider
 		await this.postStateToWebview()
 	}
 
-	private async persistStickyProviderProfileToCurrentTask(apiConfigName: string): Promise<void> {
-		const task = this.getCurrentTask()
-		if (!task) {
-			return
-		}
-
-		try {
-			// Update in-memory state immediately so sticky behavior works even before the task has
-			// been persisted into taskHistory (it will be captured on the next save).
-			task.setTaskApiConfigName(apiConfigName)
-
-			const taskHistoryStore = await this.getTaskHistoryStore()
-			const taskHistoryItem = taskHistoryStore.get(task.taskId)
-
-			if (taskHistoryItem) {
-				await this.updateTaskHistory({ ...taskHistoryItem, apiConfigName })
-			}
-		} catch (error) {
-			// If persistence fails, log the error but don't fail the profile switch.
-			this.log(
-				`Failed to persist provider profile switch for task ${task.taskId}: ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-		}
-	}
-
 	async activateProviderProfile(
 		args: { name: string } | { id: string },
 		options?: { persistModeConfig?: boolean; persistTaskHistory?: boolean },
 	) {
-		const { name, id, ...providerSettings } = await this.providerSettingsManager.activateProfile(args)
-
-		const persistModeConfig = options?.persistModeConfig ?? true
-		const persistTaskHistory = options?.persistTaskHistory ?? true
-
-		// See `upsertProviderProfile` for a description of what this is doing.
-		await Promise.all([
-			this.contextProxy.setValue("listApiConfigMeta", await this.providerSettingsManager.listConfig()),
-			this.contextProxy.setValue("currentApiConfigName", name),
-			this.contextProxy.setProviderSettings(providerSettings),
-		])
-
-		const { mode } = await this.getState()
-
-		if (id && persistModeConfig) {
-			await this.providerSettingsManager.setModeConfig(mode, id)
-		}
-
-		// Change the provider for the current task.
-		this.updateTaskApiHandlerIfNeeded(providerSettings, { forceRebuild: true })
-
-		// Update the current task's sticky provider profile, unless this activation is
-		// being used purely as a non-persisting restoration (e.g., reopening a task from history).
-		if (persistTaskHistory) {
-			await this.persistStickyProviderProfileToCurrentTask(name)
-		}
-
-		await this.postStateToWebview()
-
-		if (providerSettings.apiProvider) {
-			this.emit(RooCodeEventName.ProviderProfileChanged, { name, provider: providerSettings.apiProvider })
-		}
+		await this.modeProfiles.activateProviderProfile(args, options)
 	}
 
 	async updateCustomInstructions(instructions?: string) {
@@ -2255,46 +1922,14 @@ export class ClineProvider
 	}
 
 	/**
-	 * Resolve the API profile pinned to `mode` (the "use a specific
-	 * configuration for this mode" binding — the same source handleModeSwitch
-	 * applies to foreground tasks). Returns undefined — meaning "use the
-	 * current profile" — when no binding exists, the profile is an empty CLI
-	 * placeholder (no apiProvider), the workspace locks its API config across
-	 * modes, or resolution fails for any reason.
+	 * Resolve the API profile pinned to `mode` for a mode-scoped subagent;
+	 * undefined means "use the current profile". See
+	 * {@link ModeProfileBinding.getApiConfigurationForMode}.
 	 */
 	public async getApiConfigurationForMode(
 		mode: string,
 	): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined> {
-		const cliProviderSettings = this.getCliProviderSettingsForMode(mode)
-		if (cliProviderSettings) {
-			return {
-				apiConfiguration: cliProviderSettings,
-				name: this.getGlobalState("currentApiConfigName") ?? "default",
-			}
-		}
-
-		try {
-			if (this.context.workspaceState.get("lockApiConfigAcrossModes", false)) {
-				return undefined
-			}
-			const configId = await this.providerSettingsManager.getModeConfigId(mode)
-			if (!configId) {
-				return undefined
-			}
-			const persistedProfile = await this.providerSettingsManager.getProfile({ id: configId })
-			if (!persistedProfile.name || !persistedProfile.apiProvider) {
-				return undefined
-			}
-			const { name, ...profile } = await this.providerSettingsManager.activateProfile({ id: configId })
-			return { apiConfiguration: profile, name }
-		} catch (error) {
-			this.log(
-				`[getApiConfigurationForMode] failed for mode "${mode}": ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-			return undefined
-		}
+		return this.modeProfiles.getApiConfigurationForMode(mode)
 	}
 
 	/**
