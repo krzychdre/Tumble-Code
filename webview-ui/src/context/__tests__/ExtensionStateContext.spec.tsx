@@ -11,8 +11,7 @@ import {
 import { ExtensionStateContextProvider, useExtensionState, mergeExtensionState } from "../ExtensionStateContext"
 
 const TestComponent = () => {
-	const { allowedCommands, setAllowedCommands, soundEnabled, showRooIgnoredFiles, setShowRooIgnoredFiles } =
-		useExtensionState()
+	const { allowedCommands, setAllowedCommands, soundEnabled, showRooIgnoredFiles } = useExtensionState()
 
 	return (
 		<div>
@@ -20,9 +19,6 @@ const TestComponent = () => {
 			<div data-testid="sound-enabled">{JSON.stringify(soundEnabled)}</div>
 			<div data-testid="show-rooignored-files">{JSON.stringify(showRooIgnoredFiles)}</div>
 			<button data-testid="update-button" onClick={() => setAllowedCommands(["npm install", "git status"])}>
-				Update Commands
-			</button>
-			<button data-testid="toggle-rooignore-button" onClick={() => setShowRooIgnoredFiles(!showRooIgnoredFiles)}>
 				Update Commands
 			</button>
 		</div>
@@ -103,7 +99,7 @@ describe("ExtensionStateContext", () => {
 		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(true)
 	})
 
-	it("updates showRooIgnoredFiles through setShowRooIgnoredFiles", () => {
+	it("updates showRooIgnoredFiles from a state message", () => {
 		render(
 			<ExtensionStateContextProvider>
 				<TestComponent />
@@ -111,7 +107,9 @@ describe("ExtensionStateContext", () => {
 		)
 
 		act(() => {
-			screen.getByTestId("toggle-rooignore-button").click()
+			window.dispatchEvent(
+				new MessageEvent("message", { data: { type: "state", state: { showRooIgnoredFiles: false } } }),
+			)
 		})
 
 		expect(JSON.parse(screen.getByTestId("show-rooignored-files").textContent!)).toBe(false)
@@ -205,6 +203,114 @@ describe("ExtensionStateContext", () => {
 				modelTemperature: 0.7, // Should add this from partial update
 			}),
 		)
+	})
+})
+
+// The five settings below were once mirrored in separate useState hooks
+// next to the main state object. These tests pin what readers of the context
+// observe, so folding them back into the single state object cannot change it.
+describe("ExtensionStateContext follow-up and prompt settings", () => {
+	const postState = (state: Partial<ExtensionState>) => {
+		act(() => {
+			window.dispatchEvent(new MessageEvent("message", { data: { type: "state", state } }))
+		})
+	}
+
+	const SettingsProbe = () => {
+		const {
+			alwaysAllowFollowupQuestions,
+			setAlwaysAllowFollowupQuestions,
+			followupAutoApproveTimeoutMs,
+			includeTaskHistoryInEnhance,
+			setIncludeTaskHistoryInEnhance,
+			includeCurrentTime,
+			includeCurrentCost,
+		} = useExtensionState()
+		return (
+			<div>
+				<div data-testid="settings">
+					{JSON.stringify({
+						alwaysAllowFollowupQuestions,
+						followupAutoApproveTimeoutMs: followupAutoApproveTimeoutMs ?? null,
+						includeTaskHistoryInEnhance,
+						includeCurrentTime,
+						includeCurrentCost,
+					})}
+				</div>
+				<button data-testid="allow-followups" onClick={() => setAlwaysAllowFollowupQuestions(true)} />
+				<button data-testid="no-history" onClick={() => setIncludeTaskHistoryInEnhance(false)} />
+			</div>
+		)
+	}
+
+	const readSettings = () => JSON.parse(screen.getByTestId("settings").textContent!)
+
+	const renderProbe = () =>
+		render(
+			<ExtensionStateContextProvider>
+				<SettingsProbe />
+			</ExtensionStateContextProvider>,
+		)
+
+	it("exposes the defaults before the host posts its state", () => {
+		renderProbe()
+
+		expect(readSettings()).toEqual({
+			alwaysAllowFollowupQuestions: false,
+			followupAutoApproveTimeoutMs: null,
+			includeTaskHistoryInEnhance: true,
+			includeCurrentTime: true,
+			includeCurrentCost: true,
+		})
+	})
+
+	it("exposes the values the host posts in a state message", () => {
+		renderProbe()
+
+		postState({
+			alwaysAllowFollowupQuestions: true,
+			followupAutoApproveTimeoutMs: 42_000,
+			includeTaskHistoryInEnhance: false,
+			includeCurrentTime: false,
+			includeCurrentCost: false,
+		})
+
+		expect(readSettings()).toEqual({
+			alwaysAllowFollowupQuestions: true,
+			followupAutoApproveTimeoutMs: 42_000,
+			includeTaskHistoryInEnhance: false,
+			includeCurrentTime: false,
+			includeCurrentCost: false,
+		})
+	})
+
+	it("keeps setter values when a later state push omits those keys", () => {
+		renderProbe()
+
+		act(() => {
+			screen.getByTestId("allow-followups").click()
+			screen.getByTestId("no-history").click()
+		})
+		postState({ includeCurrentTime: false })
+
+		expect(readSettings()).toEqual(
+			expect.objectContaining({
+				alwaysAllowFollowupQuestions: true,
+				includeTaskHistoryInEnhance: false,
+				includeCurrentTime: false,
+			}),
+		)
+	})
+
+	it("lets a later state push override setter values", () => {
+		renderProbe()
+
+		act(() => {
+			screen.getByTestId("allow-followups").click()
+		})
+		postState({ alwaysAllowFollowupQuestions: false })
+
+		expect(readSettings().alwaysAllowFollowupQuestions).toBe(false)
 	})
 })
 
