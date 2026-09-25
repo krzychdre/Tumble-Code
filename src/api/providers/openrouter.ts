@@ -3,6 +3,7 @@ import OpenAI from "openai"
 import { z } from "zod"
 
 import {
+	type ModelInfo,
 	type ModelRecord,
 	ApiProviderError,
 	openRouterDefaultModelId,
@@ -396,16 +397,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	override getModel() {
-		const id = this.options.openRouterModelId ?? openRouterDefaultModelId
-		let info = this.models[id] ?? openRouterDefaultModelInfo
-
-		// If a specific provider is requested, use the endpoint for that provider.
-		if (this.options.openRouterSpecificProvider && this.endpoints[this.options.openRouterSpecificProvider]) {
-			info = this.endpoints[this.options.openRouterSpecificProvider]
-		}
-
-		// Apply tool preferences for models accessed through routers (OpenAI, Gemini)
-		info = applyRouterToolPreferences(id, info)
+		const { id, info } = resolveOpenRouterModel(this.options, this.models, this.endpoints)
 
 		const isDeepSeekR1 = id.startsWith("deepseek/deepseek-r1") || id === "perplexity/sonar-reasoning"
 
@@ -533,4 +525,26 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			inputImage,
 		})
 	}
+}
+
+/**
+ * The `{ id, info }` that `OpenRouterHandler.getModel()` reports for the given
+ * model and endpoint lists (the handler's fetched lists), without building a
+ * handler.
+ */
+export function resolveOpenRouterModel(
+	options: ApiHandlerOptions,
+	models: ModelRecord = {},
+	endpoints: ModelRecord = {},
+): { id: string; info: ModelInfo } {
+	const id = options.openRouterModelId ?? openRouterDefaultModelId
+	let info = models[id] ?? openRouterDefaultModelInfo
+
+	// If a specific provider is requested, use the endpoint for that provider.
+	if (options.openRouterSpecificProvider && endpoints[options.openRouterSpecificProvider]) {
+		info = endpoints[options.openRouterSpecificProvider]
+	}
+
+	// Apply tool preferences for models accessed through routers (OpenAI, Gemini)
+	return { id, info: applyRouterToolPreferences(id, info) }
 }

@@ -38,12 +38,14 @@ const { foregroundHandler, backgroundHandler, buildCallCount, resetBuildTracking
 		createMessage: vi.fn(),
 		getModel: vi.fn().mockReturnValue({ id: "fg-model", info: {} }),
 		countTokens: vi.fn().mockResolvedValue(0),
+		dispose: vi.fn(),
 	}
 	const bg = {
 		createMessage: vi.fn(),
 		getModel: vi.fn().mockReturnValue({ id: "bg-model", info: {} }),
 		countTokens: vi.fn().mockResolvedValue(0),
 		cancelRequest: vi.fn(),
+		dispose: vi.fn(),
 	}
 	return {
 		foregroundHandler: fg,
@@ -205,6 +207,8 @@ describe("Task — condenseApiHandler (background model + fallback)", () => {
 
 	beforeEach(() => {
 		resetBuildTracking()
+		foregroundHandler.dispose.mockClear()
+		backgroundHandler.dispose.mockClear()
 	})
 
 	it("sync getter returns a passthrough wrapper when no background is resolved yet", () => {
@@ -307,6 +311,30 @@ describe("Task — condenseApiHandler (background model + fallback)", () => {
 		const cleared = await task.getCondenseApiHandler()
 		expect(cleared).not.toBe(after)
 		expect((cleared as BackgroundModelHandler).background).toBeUndefined()
+	})
+
+	// API-6: a replaced handler releases its subscriptions (VS Code LM listens
+	// to configuration changes for as long as it lives).
+	it("updateApiConfiguration disposes the replaced handler, not the new one", () => {
+		const provider = makeProvider({ condenseProfileId: undefined })
+		const task = new Task({ provider, apiConfiguration: apiConfig, task: "test", startTask: false })
+
+		task.updateApiConfiguration(apiConfigB)
+
+		expect(foregroundHandler.dispose).toHaveBeenCalledTimes(1)
+		expect(backgroundHandler.dispose).not.toHaveBeenCalled()
+		expect(task.api).toBe(backgroundHandler)
+	})
+
+	it("disposing the task disposes its handler and its background condense handler", async () => {
+		const provider = makeProvider({ condenseProfileId: "profile-bg" })
+		const task = new Task({ provider, apiConfiguration: apiConfig, task: "test", startTask: false })
+		await task.getCondenseApiHandler()
+
+		task.dispose()
+
+		expect(foregroundHandler.dispose).toHaveBeenCalledTimes(1)
+		expect(backgroundHandler.dispose).toHaveBeenCalledTimes(1)
 	})
 
 	it("cancelCondenseRequest severs the background handler's in-flight request", async () => {

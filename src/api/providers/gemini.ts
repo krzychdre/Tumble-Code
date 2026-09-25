@@ -9,9 +9,10 @@ import {
 } from "@google/genai"
 import {
 	type ModelInfo,
-	type GeminiModelId,
 	geminiDefaultModelId,
 	geminiModels,
+	providerModelDefinitions,
+	resolveCatalogModel,
 	ApiProviderError,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -28,6 +29,7 @@ import { geminiCompletionUsage } from "./utils/completion-usage"
 import { BaseProvider } from "./base-provider"
 import { parseVertexJsonCredentials } from "./utils/vertex-credentials"
 import { handleProviderError } from "./utils/error-handler"
+import { withoutThinkingSuffix } from "./utils/thinking-suffix"
 
 type GeminiHandlerOptions = ApiHandlerOptions & {
 	isVertex?: boolean
@@ -481,36 +483,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 	}
 
 	override getModel() {
-		const modelId = this.options.apiModelId
-		let id: string
-		let info: ModelInfo
-
-		if (modelId && Object.hasOwn(geminiModels, modelId)) {
-			id = modelId
-			info = geminiModels[modelId as GeminiModelId]
-		} else if (modelId && modelId.toLowerCase().startsWith("gemini-")) {
-			// Honor a custom/unlisted Gemini model id (e.g. a newly released model
-			// not yet in `geminiModels`) instead of silently falling back to the
-			// default. This mirrors the settings UI's "use custom model" option and
-			// the `useSelectedModel` hook, which both keep the configured id. Ids
-			// that don't look like Gemini models still fall back below.
-			id = modelId
-			// Use the default model's structural info as a baseline, but drop the
-			// pricing fields we can't verify for an unknown model so cost reporting
-			// shows "unknown" (calculateCost returns undefined) instead of charging
-			// the default model's rates against a different model.
-			info = {
-				...geminiModels[geminiDefaultModelId],
-				inputPrice: undefined,
-				outputPrice: undefined,
-				cacheReadsPrice: undefined,
-				cacheWritesPrice: undefined,
-				tiers: undefined,
-			}
-		} else {
-			id = geminiDefaultModelId
-			info = geminiModels[geminiDefaultModelId]
-		}
+		const { id, info } = selectGeminiModel(this.options)
 
 		const params = getModelParams({
 			format: "gemini",
@@ -520,18 +493,7 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			defaultTemperature: info.defaultTemperature ?? 1,
 		})
 
-		// Gemini models perform better with the edit tool instead of apply_diff.
-		info = {
-			...info,
-			excludedTools: [...new Set([...(info.excludedTools || []), "apply_diff"])],
-			includedTools: [...new Set([...(info.includedTools || []), "edit"])],
-		}
-
-		// The `:thinking` suffix indicates that the model is a "Hybrid"
-		// reasoning model and that reasoning is required to be enabled.
-		// The actual model ID honored by Gemini's API does not have this
-		// suffix.
-		return { id: id.endsWith(":thinking") ? id.replace(":thinking", "") : id, info, ...params }
+		return { ...finishGeminiModel({ id, info }), ...params }
 	}
 
 	private extractGroundingSources(groundingMetadata?: GroundingMetadata): GroundingSource[] {
@@ -689,4 +651,58 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 		return totalCost
 	}
+}
+
+/**
+ * Honor a custom/unlisted Gemini model id (e.g. a newly released model not yet
+ * in `geminiModels`) instead of silently falling back to the default. This
+ * mirrors the settings UI's "use custom model" option and the
+ * `useSelectedModel` hook, which both keep the configured id. Ids that don't
+ * look like Gemini models fall back to the default.
+ *
+ * The default model's structural info is the baseline, without the pricing
+ * fields we can't verify for an unknown model, so cost reporting shows
+ * "unknown" (calculateCost returns undefined) instead of charging the default
+ * model's rates against a different model.
+ */
+const customGeminiModelInfo = (modelId: string): ModelInfo | undefined =>
+	modelId.toLowerCase().startsWith("gemini-")
+		? {
+				...geminiModels[geminiDefaultModelId],
+				inputPrice: undefined,
+				outputPrice: undefined,
+				cacheReadsPrice: undefined,
+				cacheWritesPrice: undefined,
+				tiers: undefined,
+			}
+		: undefined
+
+/** The model a Gemini profile selects, before request parameters. */
+function selectGeminiModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const { id, info } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.gemini, {
+		customModelInfo: customGeminiModelInfo,
+	})
+
+	return { id, info }
+}
+
+/**
+ * What the Gemini and Vertex (Gemini) handlers report for a selected model:
+ * Gemini models perform better with the edit tool instead of apply_diff, and
+ * the API's model id has no `:thinking` suffix.
+ */
+export function finishGeminiModel({ id, info }: { id: string; info: ModelInfo }): { id: string; info: ModelInfo } {
+	return {
+		id: withoutThinkingSuffix(id),
+		info: {
+			...info,
+			excludedTools: [...new Set([...(info.excludedTools || []), "apply_diff"])],
+			includedTools: [...new Set([...(info.includedTools || []), "edit"])],
+		},
+	}
+}
+
+/** The `{ id, info }` that `GeminiHandler.getModel()` reports, without building a handler. */
+export function resolveGeminiModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	return finishGeminiModel(selectGeminiModel(options))
 }

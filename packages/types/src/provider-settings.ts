@@ -3,6 +3,7 @@ import { z } from "zod"
 import { modelInfoSchema, reasoningEffortSettingSchema, verbosityLevelsSchema, serviceTierSchema } from "./model.js"
 import { codebaseIndexProviderSchema } from "./codebase-index.js"
 import { activeProviderIdsForPublicApi, providerIdsForPublicApi, retiredProviderIds } from "./provider-registry.js"
+import { getProviderModelDefinition, providerModelDefinitions } from "./provider-models.js"
 
 /**
  * constants
@@ -384,26 +385,24 @@ export type TypicalProvider = Exclude<ProviderName, InternalProvider | CustomPro
 export const isTypicalProvider = (key: unknown): key is TypicalProvider =>
 	isProviderName(key) && !isInternalProvider(key) && !isCustomProvider(key) && !isFauxProvider(key)
 
-export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
-	anthropic: "apiModelId",
-	openrouter: "openRouterModelId",
-	bedrock: "apiModelId",
-	vertex: "apiModelId",
-	"openai-codex": "apiModelId",
-	"openai-native": "apiModelId",
-	ollama: "ollamaModelId",
-	lmstudio: "lmStudioModelId",
-	gemini: "apiModelId",
-	"gemini-cli": "apiModelId",
-	mistral: "apiModelId",
-	moonshot: "apiModelId",
-	minimax: "apiModelId",
-	deepseek: "apiModelId",
-	"qwen-code": "apiModelId",
-	xai: "apiModelId",
-	litellm: "litellmModelId",
-	zai: "apiModelId",
-}
+/**
+ * The model-id settings field of every typical provider, derived from
+ * `providerModelDefinitions` (the one place that names it).
+ */
+export const modelIdKeysByProvider = Object.fromEntries(
+	Object.entries(providerModelDefinitions)
+		.filter(([provider]) => isTypicalProvider(provider))
+		.map(([provider, definition]) => [provider, definition.modelIdField]),
+) as Record<TypicalProvider, ModelIdKey>
+
+// Compile-time check: every typical provider stores its model id in a plain
+// model-id field, so the cast above cannot hide a selector or a missing field.
+const typicalProvidersHaveModelIdKeys: {
+	[P in TypicalProvider]: (typeof providerModelDefinitions)[P]["modelIdField"]
+} extends Record<TypicalProvider, ModelIdKey>
+	? true
+	: never = true
+void typicalProvidersHaveModelIdKeys
 
 /**
  * The settings field that holds the model id of `provider`, or `undefined` when
@@ -412,11 +411,9 @@ export const modelIdKeysByProvider: Record<TypicalProvider, ModelIdKey> = {
  * providers have none). It must match the field the provider's handler reads.
  */
 export const getModelIdKeyForProvider = (provider: string | undefined): ModelIdKey | undefined => {
-	if (isTypicalProvider(provider)) {
-		return modelIdKeysByProvider[provider]
-	}
+	const field = getProviderModelDefinition(provider)?.modelIdField
 
-	return provider === "openai" ? "openAiModelId" : undefined
+	return field && field !== "vsCodeLmModelSelector" ? field : undefined
 }
 
 /**
@@ -425,13 +422,13 @@ export const getModelIdKeyForProvider = (provider: string | undefined): ModelIdK
  * providers.
  */
 export const getProviderModelId = (settings: ProviderSettings): string | undefined => {
-	if (settings.apiProvider === "vscode-lm") {
+	const field = getProviderModelDefinition(settings.apiProvider)?.modelIdField
+
+	if (field === "vsCodeLmModelSelector") {
 		return settings.vsCodeLmModelSelector?.id
 	}
 
-	const modelIdKey = getModelIdKeyForProvider(settings.apiProvider)
-
-	return modelIdKey ? settings[modelIdKey] : undefined
+	return field ? settings[field] : undefined
 }
 
 /**

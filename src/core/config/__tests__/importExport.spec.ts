@@ -64,35 +64,36 @@ vi.mock("os", () => ({
 
 vi.mock("../../../utils/safeWriteJson")
 
-// Mock buildApiHandler to avoid issues with provider instantiation in tests
-vi.mock("../../../api", () => ({
-	buildApiHandler: vi.fn().mockImplementation((config) => {
-		// Return different model info based on the provider and model
-		const getModelInfo = () => {
-			if (config.apiProvider === "anthropic" && config.apiModelId === "claude-3-5-sonnet-20241022") {
-				return {
-					id: "claude-3-5-sonnet-20241022",
-					info: {
-						supportsReasoningBudget: true,
-						requiredReasoningBudget: true,
-					},
-				}
-			}
-			// Default fallback
+// Mock the model resolution to avoid provider details in tests
+vi.mock("../../../api", () => {
+	// Return different model info based on the provider and model
+	const resolveModel = (config: { apiProvider?: string; apiModelId?: string }) => {
+		if (config.apiProvider === "anthropic" && config.apiModelId === "claude-3-5-sonnet-20241022") {
 			return {
-				id: config.apiModelId || "claude-sonnet-4-5",
+				id: "claude-3-5-sonnet-20241022",
 				info: {
-					supportsReasoningBudget: false,
-					requiredReasoningBudget: false,
+					supportsReasoningBudget: true,
+					requiredReasoningBudget: true,
 				},
 			}
 		}
-
+		// Default fallback
 		return {
-			getModel: vi.fn().mockReturnValue(getModelInfo()),
+			id: config.apiModelId || "claude-sonnet-4-5",
+			info: {
+				supportsReasoningBudget: false,
+				requiredReasoningBudget: false,
+			},
 		}
-	}),
-}))
+	}
+
+	return {
+		buildApiHandler: vi.fn().mockImplementation((config) => ({
+			getModel: vi.fn().mockReturnValue(resolveModel(config)),
+		})),
+		resolveProviderModel: vi.fn().mockImplementation(resolveModel),
+	}
+})
 
 describe("importExport", () => {
 	let mockProviderSettingsManager: ReturnType<typeof vi.mocked<ProviderSettingsManager>>

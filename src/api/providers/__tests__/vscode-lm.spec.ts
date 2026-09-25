@@ -106,6 +106,32 @@ describe("VsCodeLmHandler", () => {
 		})
 	})
 
+	describe("dispose", () => {
+		// API-6: a handler built through the registry is disposed when it is
+		// replaced (mode or profile switch) or its task goes away. Disposing must
+		// release the configuration listener and leave a still-streaming
+		// request alone.
+		it("releases the configuration listener of a handler built through buildApiHandler", async () => {
+			const { buildApiHandler } = await import("../../index")
+			const built = buildApiHandler({ apiProvider: "vscode-lm", ...defaultOptions })
+			const subscription = (vscode.workspace.onDidChangeConfiguration as Mock).mock.results.at(-1)!.value
+
+			built.dispose?.()
+
+			expect(built.dispose).toBeTypeOf("function")
+			expect(subscription.dispose).toHaveBeenCalledTimes(1)
+		})
+
+		it("does not cancel a request in flight", () => {
+			const request = { cancel: vi.fn(), dispose: vi.fn() }
+			handler["currentRequestCancellation"] = request as unknown as vscode.CancellationTokenSource
+
+			handler.dispose()
+
+			expect(request.cancel).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("createClient", () => {
 		it("should create client with selector", async () => {
 			const mockModel = { ...mockLanguageModelChat }

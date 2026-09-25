@@ -186,15 +186,13 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 	 * converts the messages to VS Code LM format, and streams the response chunks.
 	 * Tool calls handling is currently a work in progress.
 	 */
+	/**
+	 * Releases the configuration listener. A request still streaming on this
+	 * handler keeps running; `cancelRequest` is what stops a request.
+	 */
 	dispose(): void {
-		if (this.disposable) {
-			this.disposable.dispose()
-		}
-
-		if (this.currentRequestCancellation) {
-			this.currentRequestCancellation.cancel()
-			this.currentRequestCancellation.dispose()
-		}
+		this.disposable?.dispose()
+		this.disposable = null
 	}
 
 	/**
@@ -547,20 +545,9 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			return { id: modelId, info: modelInfo }
 		}
 
-		// Fallback when no client is available
-		const fallbackId = this.options.vsCodeLmModelSelector
-			? stringifyVsCodeLmModelSelector(this.options.vsCodeLmModelSelector)
-			: "vscode-lm"
-
 		console.debug("Roo Code <Language Model API>: No client available, using fallback model info")
 
-		return {
-			id: fallbackId,
-			info: {
-				...openAiModelInfoSaneDefaults,
-				description: `VSCode Language Model (Fallback): ${fallbackId}`,
-			},
-		}
+		return resolveVsCodeLmModel(this.options)
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
@@ -607,5 +594,24 @@ export async function getVsCodeLmModels() {
 			`Error fetching VS Code LM models: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`,
 		)
 		return []
+	}
+}
+
+/**
+ * The model `VsCodeLmHandler.getModel()` reports before its language model
+ * client is available (always the case right after construction, because the
+ * client is selected asynchronously), without building a handler.
+ */
+export function resolveVsCodeLmModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
+	const fallbackId = options.vsCodeLmModelSelector
+		? stringifyVsCodeLmModelSelector(options.vsCodeLmModelSelector)
+		: "vscode-lm"
+
+	return {
+		id: fallbackId,
+		info: {
+			...openAiModelInfoSaneDefaults,
+			description: `VSCode Language Model (Fallback): ${fallbackId}`,
+		},
 	}
 }

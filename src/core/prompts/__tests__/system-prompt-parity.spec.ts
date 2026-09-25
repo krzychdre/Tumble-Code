@@ -76,10 +76,18 @@ vi.mock("../../../services/mcp/McpServerManager", () => ({
 	McpServerManager: { getInstance: vi.fn(async () => hub) },
 }))
 
-// The preview builds a throwaway handler from the profile only to read `isStealthModel`.
-vi.mock("../../../api", () => ({
-	buildApiHandler: () => ({ getModel: () => ({ id: "test-model", info: { isStealthModel: false } }) }),
-}))
+// The preview reads `isStealthModel` from the profile's model, resolved from
+// the settings without building a handler (API-6).
+const { api } = vi.hoisted(() => {
+	const model = () => ({ id: "test-model", info: { isStealthModel: false } })
+	return {
+		api: {
+			buildApiHandler: vi.fn(() => ({ getModel: model })),
+			resolveProviderModel: vi.fn(model),
+		},
+	}
+})
+vi.mock("../../../api", () => api)
 
 // Spy on SYSTEM_PROMPT while keeping the real assembly behind it.
 vi.mock("../system", async (importOriginal) => {
@@ -190,6 +198,16 @@ function mcpToolNames(): string[] {
 }
 
 describe("system prompt: preview equals live (CORE-R11)", () => {
+	it("the preview resolves the model without building a provider handler", async () => {
+		api.buildApiHandler.mockClear()
+		api.resolveProviderModel.mockClear()
+
+		await previewAndLive(makeState())
+
+		expect(api.buildApiHandler).not.toHaveBeenCalled()
+		expect(api.resolveProviderModel).toHaveBeenCalledTimes(1)
+	})
+
 	it("builds the same bytes for a plain task", async () => {
 		const { preview, live } = await previewAndLive(makeState())
 

@@ -1,6 +1,6 @@
 import { WebviewMessage } from "../../shared/WebviewMessage"
 import { defaultModeSlug } from "../../shared/modes"
-import { buildApiHandler } from "../../api"
+import { resolveProviderModel } from "../../api"
 
 import { SYSTEM_PROMPT } from "../prompts/system"
 import { buildSystemPromptInput } from "../prompts/system-prompt-input"
@@ -19,12 +19,12 @@ export const generateSystemPrompt = async (provider: ClineProvider, message: Web
 	// Task-scoped inputs come from the focused task, as they do for its live requests.
 	const task = provider.getCurrentTask()
 
-	// Create a temporary API handler to check model info for stealth mode.
-	// This avoids relying on an active Cline instance which might not exist during preview.
+	// Resolve the model info (for stealth mode) from the settings, without
+	// building a handler or relying on an active task, which might not exist
+	// during preview.
 	let modelInfo: { isStealthModel?: boolean } | undefined
 	try {
-		const tempApiHandler = buildApiHandler(state.apiConfiguration)
-		modelInfo = tempApiHandler.getModel().info
+		modelInfo = resolveProviderModel(state.apiConfiguration).info
 	} catch (error) {
 		console.error("Error fetching model info for system prompt preview:", error)
 	}

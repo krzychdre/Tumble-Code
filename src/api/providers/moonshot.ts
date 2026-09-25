@@ -1,7 +1,13 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { moonshotModels, moonshotDefaultModelId, type ModelInfo } from "@roo-code/types"
+import {
+	moonshotModels,
+	moonshotDefaultModelId,
+	type ModelInfo,
+	providerModelDefinitions,
+	resolveCatalogModel,
+} from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -63,9 +69,7 @@ export class MoonshotHandler extends BaseOpenAiCompatibleProvider<string> {
 	 * model is capped (DEF-C22).
 	 */
 	override getModel() {
-		const id = this.options.apiModelId ?? moonshotDefaultModelId
-		const info: ModelInfo =
-			moonshotModels[id as keyof typeof moonshotModels] || moonshotModels[moonshotDefaultModelId]
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions.moonshot)
 		const params = getModelParams({
 			format: "openai",
 			modelId: id,

@@ -20,6 +20,7 @@ import {
 	isParallelTasksEnabled,
 } from "@roo-code/types"
 import { type ApiHandler } from "../../api"
+import { getRuntimeProviderCapabilities } from "../../api/runtime-provider-registry"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { SYSTEM_PROMPT } from "../prompts/system"
@@ -178,7 +179,9 @@ export class ApiRequestBuilder {
 			throw new Error("Provider reference lost during tool building")
 		}
 
-		const supportsAllowedFunctionNames = apiConfiguration?.apiProvider === "gemini"
+		const supportsAllowedFunctionNames = getRuntimeProviderCapabilities(
+			apiConfiguration?.apiProvider,
+		).allowedFunctionNames
 
 		// Background tasks (parallel subagents, memory writers) never get
 		// delegation tools: a subtask is a small one-shot job that must return

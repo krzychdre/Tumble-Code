@@ -514,6 +514,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		if (this._condenseApiHandler && this._condenseApiHandlerConfigId === configId) {
 			return this._condenseApiHandler
 		}
+		// The setting changed: the old background handler is replaced.
+		this._condenseApiHandler?.background?.dispose?.()
 		const background = await this.resolveBackgroundCondenseHandler(configId)
 		this._condenseApiHandler = new BackgroundModelHandler({
 			background,
@@ -1341,9 +1343,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	 * @param newApiConfiguration - The new API configuration to use
 	 */
 	public updateApiConfiguration(newApiConfiguration: ProviderSettings): void {
-		// Update the configuration and rebuild the API handler
+		// Update the configuration and rebuild the API handler. The replaced
+		// handler releases its subscriptions (a request may still be streaming
+		// on it, which dispose leaves alone).
+		const replacedApi = this.api
 		this.apiConfiguration = newApiConfiguration
 		this.api = buildApiHandler(this.apiConfiguration)
+		replacedApi?.dispose?.()
 		// Invalidate the cached MemoryCoordinator so the next lazy-getter
 		// access rebuilds it against the new handler. Without this, memory-recall
 		// side-queries keep running on the old (possibly dead-credentials)
@@ -1354,6 +1360,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// `this.api` (fallback) and re-resolves the background profile. Without
 		// this, a mid-task profile switch would keep condensing on the old
 		// handler.
+		this._condenseApiHandler?.background?.dispose?.()
 		this._condenseApiHandler = undefined
 		this._condenseApiHandlerConfigId = undefined
 		this._condensePassthrough = undefined
@@ -1573,6 +1580,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 		// Delegate most cleanup to lifecycle module
 		this.lifecycle.dispose()
+
+		// Handlers release their subscriptions (e.g. VS Code LM's configuration listener).
+		this.api?.dispose?.()
+		this._condenseApiHandler?.background?.dispose?.()
 
 		// Task-specific cleanup: remove all event listeners
 		// (EventEmitter is on Task itself, not accessible through lifecycle interface)

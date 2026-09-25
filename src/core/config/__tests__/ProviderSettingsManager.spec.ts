@@ -7,6 +7,12 @@ import type { ProviderSettings } from "@roo-code/types"
 import { ProviderSettingsManager, ProviderProfiles, SyncCloudProfilesResult } from "../ProviderSettingsManager"
 
 // Mock VSCode ExtensionContext
+// Export reads model info; spy on buildApiHandler to prove it builds no handler.
+vi.mock("../../../api", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../../../api")>()
+	return { ...actual, buildApiHandler: vi.fn(actual.buildApiHandler) }
+})
+
 const mockSecrets = {
 	get: vi.fn(),
 	store: vi.fn(),
@@ -973,6 +979,28 @@ describe("ProviderSettingsManager", () => {
 			const glm = exported.apiConfigs.glm
 			expect(glm && "shared" in glm ? glm.shared?.modelMaxTokens : undefined).toBe(8192)
 			expect(glm && "shared" in glm ? glm.shared?.modelMaxThinkingTokens : undefined).toBeUndefined()
+		})
+
+		// API-6: building a handler to read model info has side effects (the
+		// OpenRouter handler fetches its model list, VS Code LM subscribes to
+		// configuration changes); the model is resolved from the settings.
+		it("resolves model info without building a provider handler", async () => {
+			const { buildApiHandler } = await import("../../../api")
+			const existingConfig: ProviderProfiles = {
+				currentApiConfigName: "glm",
+				apiConfigs: {
+					glm: { id: "glm-id", apiProvider: "zai", apiModelId: "glm-5.1", modelMaxTokens: 8192 },
+					router: { id: "router-id", apiProvider: "openrouter", openRouterModelId: "a/b" },
+				},
+			}
+			mockSecrets.get.mockResolvedValue(JSON.stringify(existingConfig))
+			vi.mocked(buildApiHandler).mockClear()
+
+			const exported = await providerSettingsManager.export()
+
+			expect(buildApiHandler).not.toHaveBeenCalled()
+			const glm = exported.apiConfigs.glm
+			expect(glm && "shared" in glm ? glm.shared?.modelMaxTokens : undefined).toBe(8192)
 		})
 
 		it("should strip both token fields for models that support neither reasoning budgets nor a configurable max", async () => {

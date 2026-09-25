@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { type XAIModelId, xaiDefaultModelId, xaiModels, ApiProviderError } from "@roo-code/types"
+import { ApiProviderError, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import type { ApiHandlerOptions } from "../../shared/api"
@@ -63,12 +63,7 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 	}
 
 	override getModel() {
-		const id =
-			this.options.apiModelId && this.options.apiModelId in xaiModels
-				? (this.options.apiModelId as XAIModelId)
-				: xaiDefaultModelId
-
-		const info = xaiModels[id]
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions.xai)
 		const params = getModelParams({
 			format: "openai",
 			modelId: id,

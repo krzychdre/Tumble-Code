@@ -3,12 +3,10 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import {
-	type ModelInfo,
-	openAiCodexDefaultModelId,
-	OpenAiCodexModelId,
-	openAiCodexModels,
 	type ReasoningEffortExtended,
 	ApiProviderError,
+	providerModelDefinitions,
+	resolveCatalogModel,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -227,11 +225,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 	}
 
 	override getModel() {
-		const modelId = this.options.apiModelId
-
-		let id = modelId && modelId in openAiCodexModels ? (modelId as OpenAiCodexModelId) : openAiCodexDefaultModelId
-
-		const info: ModelInfo = openAiCodexModels[id]
+		const { id, info } = resolveCatalogModel(this.options.apiModelId, providerModelDefinitions["openai-codex"])
 
 		const params = getModelParams({
 			format: "openai",

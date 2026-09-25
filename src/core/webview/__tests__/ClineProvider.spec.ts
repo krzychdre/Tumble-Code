@@ -212,6 +212,12 @@ vi.mock("../../../api", () => ({
 	buildApiHandler: vi.fn(),
 }))
 
+const lmStudioFetchers = vi.hoisted(() => ({
+	hasLoadedFullDetails: vi.fn(() => false),
+	forceFullModelDetailsLoad: vi.fn(async () => {}),
+}))
+vi.mock("../../../api/providers/fetchers/lmstudio", () => lmStudioFetchers)
+
 vi.mock("../../prompts/system", () => ({
 	SYSTEM_PROMPT: vi.fn().mockImplementation(async () => "mocked system prompt"),
 	codeMode: "code",
@@ -526,6 +532,28 @@ describe("ClineProvider", () => {
 		expect(setTerminalProfileSpy).toHaveBeenCalledWith("Git Bash")
 
 		setTerminalProfileSpy.mockRestore()
+	})
+
+	// API-6: the model preload is the provider's `needsModelPreload`
+	// capability, not a provider-name check.
+	describe("performPreparationTasks", () => {
+		it("preloads the LM Studio model before the task starts", async () => {
+			lmStudioFetchers.forceFullModelDetailsLoad.mockClear()
+			const task = { apiConfiguration: { apiProvider: "lmstudio", lmStudioModelId: "qwen" } } as unknown as Task
+
+			await provider.performPreparationTasks(task)
+
+			expect(lmStudioFetchers.forceFullModelDetailsLoad).toHaveBeenCalledWith("http://localhost:1234", "qwen")
+		})
+
+		it("preloads nothing for providers without the capability", async () => {
+			lmStudioFetchers.forceFullModelDetailsLoad.mockClear()
+			const task = { apiConfiguration: { apiProvider: "ollama", ollamaModelId: "qwen" } } as unknown as Task
+
+			await provider.performPreparationTasks(task)
+
+			expect(lmStudioFetchers.forceFullModelDetailsLoad).not.toHaveBeenCalled()
+		})
 	})
 
 	describe("createTask startTask gating", () => {
