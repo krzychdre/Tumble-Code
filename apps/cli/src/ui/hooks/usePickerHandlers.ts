@@ -17,8 +17,8 @@ export interface UsePickerHandlersOptions {
 	followupAutocompleteRef: React.RefObject<AutocompleteInputHandle<any> | null>
 	sendToExtension: ((msg: WebviewMessage) => void) | null
 	showInfo: (msg: string, duration?: number) => void
-	seenMessageIds: React.MutableRefObject<Set<string>>
-	firstTextMessageSkipped: React.MutableRefObject<boolean>
+	/** Forget the transcript bookkeeping of the current task (see useMessageHandlers). */
+	resetTranscript: () => void
 }
 
 export interface UsePickerHandlersReturn {
@@ -45,8 +45,7 @@ export function usePickerHandlers({
 	followupAutocompleteRef,
 	sendToExtension,
 	showInfo,
-	seenMessageIds,
-	firstTextMessageSkipped,
+	resetTranscript,
 }: UsePickerHandlersOptions): UsePickerHandlersReturn {
 	const { isLoading, currentTaskId, setCurrentTaskId } = useCLIStore()
 	const { pickerState, setPickerState } = useUIStateStore()
@@ -107,9 +106,8 @@ export function usePickerHandlers({
 					useCLIStore.getState().setIsResumingTask(true)
 					// Track which task we're switching to
 					setCurrentTaskId(historyItem.id)
-					// Reset refs to avoid stale state across task switches
-					seenMessageIds.current.clear()
-					firstTextMessageSkipped.current = false
+					// Forget the old task's bookkeeping across the switch
+					resetTranscript()
 
 					// Send message to resume the selected task
 					// This triggers createTaskWithHistoryItem -> postStateToWebview
@@ -135,8 +133,7 @@ export function usePickerHandlers({
 			sendToExtension,
 			autocompleteRef,
 			followupAutocompleteRef,
-			seenMessageIds,
-			firstTextMessageSkipped,
+			resetTranscript,
 		],
 	)
 

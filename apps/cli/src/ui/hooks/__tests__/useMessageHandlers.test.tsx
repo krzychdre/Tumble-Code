@@ -6,18 +6,13 @@ import { getStaticCount } from "../../transcript.js"
 import { useMessageHandlers, type UseMessageHandlersReturn } from "../useMessageHandlers.js"
 
 /**
- * Regression tests for duplicated assistant "Tumble said:" blocks in the CLI.
- *
- * Root cause: the extension's streaming pipeline can append two ClineMessage
- * entries with IDENTICAL text but DIFFERENT timestamps (a partial text say is
- * finalized after reasoning/grounding sources interleave, so the tail-partial
- * update misses and a ts-distinct duplicate is appended). The CLI render path
- * deducededuped ONLY by ts, so a same-text, ts-distinct pair rendered as two
- * "Tumble said:" blocks.
- *
- * The fix lives in handleSayMessage: it collapses a COMPLETE assistant text
- * message whose content exactly matches the last assistant text already
- * rendered. Distinct replies are never merged.
+ * The hook is the adapter between the extension host and the TUI store: it
+ * feeds each message to the transcript reducer and applies the reducer's
+ * changes through the store actions. What a message means is specced in
+ * agent/__tests__/transcript-reducer.test.ts; these specs keep what depends on
+ * the hook and the store around it: the store's 150 ms debounce of partial
+ * updates, the stable listener the host subscribes once, the todos of the
+ * render, and the reset the other hooks call.
  */
 describe("useMessageHandlers", () => {
 	let api: UseMessageHandlersReturn
@@ -83,21 +78,91 @@ describe("useMessageHandlers", () => {
 		})
 	}
 
-	it("keeps the extension's current provider settings in the store", () => {
-		stateMessage([])
-		expect(useCLIStore.getState().apiConfiguration).toEqual({ apiProvider: "openai" })
+	describe("todos and conversation reset", () => {
+		function askUpdate(ts: number, ask: string, text: string, partial = false): void {
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: { ts, type: "ask", ask, text, partial } as never,
+			})
+		}
 
-		api.handleExtensionMessage({
-			type: "state",
-			state: {
-				...useCLIStore.getState(),
-				mode: "architect",
-				apiConfiguration: { apiProvider: "openai", openAiModelId: "GLM-5.3-NVFP4" },
-			} as never,
+		it("keeps the todo list of an auto-approved update_todo_list ask, with the todos of the rendering closure as previous", () => {
+			const view = render(<Harness />)
+			nonInteractive = true
+			view.rerender(<Harness />)
+
+			const todos = (one: string, two: string) =>
+				JSON.stringify({
+					tool: "updateTodoList",
+					todos: [
+						{ id: "1", content: "one", status: one },
+						{ id: "2", content: "two", status: two },
+					],
+				})
+
+			askUpdate(910, "tool", todos("pending", "pending"))
+			expect(useCLIStore.getState().currentTodos.map((t) => t.content)).toEqual(["one", "two"])
+			expect(useCLIStore.getState().messages[0]?.previousTodos).toEqual([])
+
+			// The hook reads the todos of the render that created the callback, so a
+			// caller holding an older callback (the extension host subscribes once,
+			// on mount) keeps seeing the todos of that render.
+			const stale = api.handleExtensionMessage
+			view.rerender(<Harness />)
+			stale({
+				type: "messageUpdated",
+				clineMessage: { ts: 911, type: "ask", ask: "tool", text: todos("completed", "pending"), partial: false },
+			} as never)
+			expect(useCLIStore.getState().messages[1]?.previousTodos).toEqual([])
+
+			api.handleExtensionMessage({
+				type: "messageUpdated",
+				clineMessage: { ts: 912, type: "ask", ask: "tool", text: todos("completed", "completed"), partial: false },
+			} as never)
+			// The current callback belongs to the render after the first list, so
+			// the list of the second ask, applied since, is not what it reports.
+			expect(useCLIStore.getState().messages[2]?.previousTodos?.map((t) => t.status)).toEqual([
+				"pending",
+				"pending",
+			])
 		})
-		expect(useCLIStore.getState().apiConfiguration).toEqual({
-			apiProvider: "openai",
-			openAiModelId: "GLM-5.3-NVFP4",
+
+		// The /new and /clear reset (useTaskSubmit.resetConversation) as it is
+		// today: the store is reset and the seen ids and the prompt-echo marker
+		// are forgotten, but the marker of the last rendered answer survives.
+		it("after a conversation reset, drops a first answer identical to the previous task's last answer", () => {
+			stateMessage([
+				{ ts: 1, type: "say", say: "text", text: "Say hi", partial: false },
+				{ ts: 2, type: "say", say: "text", text: "Hi!", partial: false },
+			])
+			expect(useCLIStore.getState().messages.map((m) => m.content)).toEqual(["Hi!"])
+
+			useCLIStore.getState().reset()
+			api.resetTranscript()
+
+			stateMessage([
+				{ ts: 10, type: "say", say: "text", text: "Say hi", partial: false },
+				{ ts: 11, type: "say", say: "text", text: "Hi!", partial: false },
+				{ ts: 12, type: "say", say: "text", text: "Anything else?", partial: false },
+			])
+			expect(useCLIStore.getState().messages.map((m) => m.content)).toEqual(["Anything else?"])
+		})
+
+		it("after a conversation reset, opens a new row for command output instead of the old task's row", () => {
+			useCLIStore.getState().setLoading(true)
+			askUpdate(30, "command", "ls")
+			sayUpdate(31, "command_output", "a\n", true)
+
+			useCLIStore.getState().reset()
+			useCLIStore.getState().setLoading(true)
+			api.resetTranscript()
+
+			sayUpdate(40, "command_output", "b\n", false)
+
+			const rows = useCLIStore.getState().messages
+			expect(rows.map((m) => [m.id, m.toolData?.command, m.toolData?.output])).toEqual([
+				["40", undefined, "b\n"],
+			])
 		})
 	})
 
@@ -116,32 +181,6 @@ describe("useMessageHandlers", () => {
 		expect(useCLIStore.getState().mcpServers).toBe(reconnected)
 
 		useCLIStore.getState().setMcpServers([])
-	})
-
-	it("preserves structured tool details for interactive approval dialogs", () => {
-		const payload = JSON.stringify({
-			tool: "readFile",
-			path: "src/config.ts",
-			toolCallId: "call-read-config",
-		})
-
-		api.handleExtensionMessage({
-			type: "messageUpdated",
-			clineMessage: {
-				ts: 500,
-				type: "ask",
-				ask: "tool",
-				text: payload,
-				partial: false,
-			},
-		})
-
-		expect(useCLIStore.getState().pendingAsk).toEqual({
-			id: "500",
-			type: "tool",
-			content: payload,
-			suggestions: undefined,
-		})
 	})
 
 	it("uses the current permission policy after it changes at runtime", () => {
@@ -182,302 +221,6 @@ describe("useMessageHandlers", () => {
 		})
 	})
 
-	// With auto-approval on the core asks api_req_failed only for errors a
-	// retry cannot fix (401, 403, 404). "allow" mode used to print the ask as
-	// prose and answer nothing, so the task sat on the ask with no way to
-	// retry. It now gets the Yes/No dialog, like in "ask" mode.
-	it("offers the retry dialog for api_req_failed even when actions are auto-approved", () => {
-		const view = render(<Harness />)
-		nonInteractive = true
-		view.rerender(<Harness />)
-
-		api.handleExtensionMessage({
-			type: "messageUpdated",
-			clineMessage: {
-				ts: 601,
-				type: "ask",
-				ask: "api_req_failed",
-				text: "OpenAI completion error: 401 Incorrect API key provided",
-				partial: false,
-			} as never,
-		})
-
-		expect(useCLIStore.getState().pendingAsk).toMatchObject({
-			type: "api_req_failed",
-			content: "OpenAI completion error: 401 Incorrect API key provided",
-		})
-	})
-
-	// CLI-5: the follow-up is parsed by the rule shared with the webview. A
-	// question that is not a string used to become the dialog title as is
-	// (an object crashes the Ink render), and a non-string mode was kept.
-	it("reads a follow-up's question and suggestions by the shared rule", () => {
-		const text = JSON.stringify({
-			question: { text: "Next?" },
-			suggest: [{ answer: "Build it", mode: 7 }, { answer: " " }, { answer: "Plan", mode: "architect" }],
-		})
-
-		api.handleExtensionMessage({
-			type: "messageUpdated",
-			clineMessage: { ts: 602, type: "ask", ask: "followup", text, partial: false } as never,
-		})
-
-		const pendingAsk = useCLIStore.getState().pendingAsk
-		expect(typeof pendingAsk?.content).toBe("string")
-		expect(pendingAsk?.suggestions).toEqual([{ answer: "Build it" }, { answer: "Plan", mode: "architect" }])
-	})
-
-	// A command that contains a pipe used to render as a bare bullet: the ask was
-	// added as assistant prose, and the markdown renderer mistook any line with a
-	// pipe for a table separator row and blanked it out (plan: 2026-09-22 empty
-	// bullets in the CLI transcript).
-	it("leaves no bullet-only row behind an auto-approved piped command", () => {
-		const view = render(<Harness />)
-		nonInteractive = true
-		view.rerender(<Harness />)
-		useCLIStore.getState().setLoading(true)
-
-		const command = 'grep -n -E "available|curtail" v29.txt | head -30'
-
-		api.handleExtensionMessage({
-			type: "messageUpdated",
-			clineMessage: { ts: 600, type: "ask", ask: "command", text: command, partial: false },
-		})
-		api.handleExtensionMessage({
-			type: "messageUpdated",
-			clineMessage: { ts: 1642, type: "say", say: "command_output", text: "704:25\n", partial: false },
-		})
-
-		const messages = useCLIStore.getState().messages
-
-		expect(messages).toHaveLength(1)
-		expect(messages[0]).toMatchObject({ role: "tool", toolName: "execute_command" })
-		expect(messages[0]?.toolData?.command).toBe(command)
-	})
-
-	it("starts a step on every api_req_started, and a replay never moves it back", () => {
-		sayUpdate(2_000, "api_req_started", '{"apiProtocol":"openai"}', false)
-		expect(useCLIStore.getState().stepStartedAt).toBe(2_000)
-
-		// The core rewrites the same message with the request's cost.
-		sayUpdate(2_000, "api_req_started", '{"apiProtocol":"openai","tokensIn":85977}', false)
-		expect(useCLIStore.getState().stepStartedAt).toBe(2_000)
-
-		sayUpdate(3_000, "api_req_started", '{"apiProtocol":"openai"}', false)
-		stateMessage([
-			{ ts: 1_000, type: "say", say: "api_req_started", text: "{}", partial: false },
-			{ ts: 2_000, type: "say", say: "api_req_started", text: "{}", partial: false },
-		])
-		expect(useCLIStore.getState().stepStartedAt).toBe(3_000)
-		expect(useCLIStore.getState().messages).toHaveLength(0)
-	})
-
-	describe("MCP calls", () => {
-		const mcpAsk = JSON.stringify({
-			type: "use_mcp_tool",
-			serverName: "projsrv",
-			toolName: "list_handoffs",
-			arguments: "{}",
-		})
-
-		function runMcpCall(): void {
-			api.handleExtensionMessage({
-				type: "messageUpdated",
-				clineMessage: { ts: 700, type: "ask", ask: "use_mcp_server", text: mcpAsk, partial: false },
-			})
-			api.handleExtensionMessage({
-				type: "messageUpdated",
-				clineMessage: {
-					ts: 701,
-					type: "say",
-					say: "mcp_server_response",
-					text: "No handoffs.",
-					partial: false,
-				},
-			})
-		}
-
-		it("renders an auto-approved call as one MCP row, not as the ask's JSON", () => {
-			const view = render(<Harness />)
-			nonInteractive = true
-			view.rerender(<Harness />)
-			useCLIStore.getState().setLoading(true)
-
-			runMcpCall()
-
-			const messages = useCLIStore.getState().messages
-			expect(messages).toHaveLength(1)
-			expect(messages[0]).toMatchObject({ role: "tool", toolName: "use_mcp_server" })
-			expect(messages[0]?.toolData).toEqual({
-				tool: "use_mcp_server",
-				path: "projsrv › list_handoffs",
-				content: "No handoffs.",
-			})
-		})
-
-		it("names the server and tool of an approved call in the response row", () => {
-			api.handleExtensionMessage({
-				type: "messageUpdated",
-				clineMessage: { ts: 700, type: "ask", ask: "use_mcp_server", text: mcpAsk, partial: false },
-			})
-			expect(useCLIStore.getState().pendingAsk?.type).toBe("use_mcp_server")
-
-			api.handleExtensionMessage({
-				type: "messageUpdated",
-				clineMessage: {
-					ts: 701,
-					type: "say",
-					say: "mcp_server_response",
-					text: "No handoffs.",
-					partial: false,
-				},
-			})
-
-			expect(useCLIStore.getState().messages.at(-1)?.toolData?.path).toBe("projsrv › list_handoffs")
-		})
-	})
-
-	// ReadArtifactTool and SearchTaskHistoryTool report what they did with a
-	// `say: "tool"` message whose text is a tool payload; old task histories
-	// also carry `runSlashCommand` says. The webview draws them as tool rows
-	// (SayToolRows.tsx); the CLI printed the payload JSON as the answer.
-	describe("say tool messages", () => {
-		const readArtifact = JSON.stringify({ tool: "readArtifact", readStart: 0, readEnd: 1024, totalBytes: 4096 })
-		const searchHistory = JSON.stringify({ tool: "searchTaskHistory", query: "retry budget", totalBytes: 812 })
-		const slashCommand = JSON.stringify({ tool: "runSlashCommand", command: "deploy", args: "prod" })
-
-		it.each([
-			["readArtifact", readArtifact, "0 B - 1.0 KB of 4.0 KB"],
-			["searchTaskHistory", searchHistory, "retry budget"],
-			["runSlashCommand", slashCommand, "/deploy"],
-		])("renders a %s say as a tool row read by the shared payload reader", (tool, text, subject) => {
-			sayUpdate(800, "tool", text, false)
-
-			const messages = useCLIStore.getState().messages
-			expect(messages).toHaveLength(1)
-			expect(messages[0]).toMatchObject({ role: "tool", toolName: tool, originalType: "tool" })
-			expect(messages[0]?.toolData).toMatchObject({ tool, kind: tool, subject })
-		})
-
-		it("prints nothing for a say tool whose text is not a payload yet", () => {
-			sayUpdate(801, "tool", '{"tool":"readArt', true)
-
-			expect(useCLIStore.getState().messages).toEqual([])
-		})
-	})
-
-	it("renders a single block for two ts-distinct identical assistant text messages", () => {
-		// Real flow: the first text say is the user-prompt echo (skipped by
-		// firstTextMessageSkipped), then the model's partial reply, then its
-		// ts-distinct same-text complete duplicate (the bug scenario).
-		stateMessage([
-			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
-			{ ts: 1000, type: "say", say: "text", text: "Hello there", partial: true },
-			{ ts: 1001, type: "say", say: "text", text: "Hello there", partial: false },
-		])
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages).toHaveLength(1)
-		expect(assistantMessages[0]?.content).toBe("Hello there")
-	})
-
-	it("collapses a same-text duplicate delivered via messageUpdated after the full-array loop", () => {
-		// State push renders the echo (skipped) + one assistant message.
-		stateMessage([
-			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
-			{ ts: 1000, type: "say", say: "text", text: "Hello there", partial: false },
-		])
-
-		// The duplicate re-presented in isolation with a NEW ts.
-		api.handleExtensionMessage({
-			type: "messageUpdated",
-			clineMessage: { ts: 2000, type: "say", say: "text", text: "Hello there", partial: false },
-		})
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages).toHaveLength(1)
-		expect(assistantMessages[0]?.content).toBe("Hello there")
-	})
-
-	it("does not dedupe two DISTINCT assistant replies with different text", () => {
-		// Echo first, then two genuinely distinct replies - both must render.
-		stateMessage([
-			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
-			{ ts: 1000, type: "say", say: "text", text: "First reply", partial: false },
-			{ ts: 2000, type: "say", say: "text", text: "Second reply", partial: false },
-		])
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages).toHaveLength(2)
-		expect(assistantMessages.map((m) => m.content)).toEqual(["First reply", "Second reply"])
-	})
-
-	it("collapses say:completion_result repeating the streamed say:text answer", () => {
-		// Proven real-world sequence (task 019fddd6, 2026-08-07): the model
-		// repeats its full answer inside attempt_completion's result, so core
-		// emits say:text and say:completion_result with byte-identical text.
-		stateMessage([
-			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
-			{ ts: 1000, type: "say", say: "text", text: "Hi. What do you need help with?", partial: false },
-			{
-				ts: 1001,
-				type: "say",
-				say: "completion_result",
-				text: "Hi. What do you need help with?",
-				partial: false,
-			},
-		])
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages).toHaveLength(1)
-		expect(assistantMessages[0]?.content).toBe("Hi. What do you need help with?")
-	})
-
-	it("collapses say:text repeating an earlier say:completion_result (reverse order)", () => {
-		stateMessage([
-			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
-			{ ts: 1000, type: "say", say: "completion_result", text: "Done — see src/app.ts", partial: false },
-			{ ts: 1001, type: "say", say: "text", text: "Done — see src/app.ts", partial: false },
-		])
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages).toHaveLength(1)
-	})
-
-	it("does not dedupe a completion_result that differs from the streamed text", () => {
-		stateMessage([
-			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
-			{ ts: 1000, type: "say", say: "text", text: "Working on it…", partial: false },
-			{ ts: 1001, type: "say", say: "completion_result", text: "All done.", partial: false },
-		])
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages).toHaveLength(2)
-		expect(assistantMessages.map((m) => m.content)).toEqual(["Working on it…", "All done."])
-	})
-
-	it("renders BOTH byte-identical replies across turns (user_feedback resets the dedupe)", () => {
-		// Turn 1: prompt echo (skipped) + the model's reply.
-		stateMessage([
-			{ ts: 999, type: "say", say: "text", text: "user prompt echo", partial: false },
-			{ ts: 1000, type: "say", say: "text", text: "Same answer", partial: false },
-		])
-
-		expect(useCLIStore.getState().messages.filter((m) => m.role === "assistant")).toHaveLength(1)
-
-		// Turn 2: the user asks the SAME question again. A new user turn begins
-		// with a `user_feedback` say; the dedupe marker must be reset there so
-		// the byte-identical second answer is NOT treated as an in-turn
-		// duplicate of the first turn's reply.
-		stateMessage([
-			{ ts: 2000, type: "say", say: "user_feedback", text: "Same question", partial: false },
-			{ ts: 2001, type: "say", say: "text", text: "Same answer", partial: false },
-		])
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages).toHaveLength(2)
-		expect(assistantMessages.map((m) => m.content)).toEqual(["Same answer", "Same answer"])
-	})
 
 	/**
 	 * Finalization of a streamed message (same ts, partial false).
@@ -508,22 +251,6 @@ describe("useMessageHandlers", () => {
 		// Promotion into <Static> is what prints the answer in full; while idle
 		// every message must be promotable.
 		expect(getStaticCount(messages, false, false)).toBe(messages.length)
-	})
-
-	it("applies the same-ts finalization of say:reasoning", async () => {
-		// Reasoning is finalized out of band by the stream processor (it finds the
-		// last reasoning message and clears its partial flag), so it hits exactly
-		// the same guard and used to block promotion of everything after it.
-		sayUpdate(10, "reasoning", "Let me", true)
-		sayUpdate(10, "reasoning", "Let me check the config", true)
-		sayUpdate(10, "reasoning", "Let me check the config first.", false)
-
-		await new Promise((resolve) => setTimeout(resolve, 250))
-
-		const thinking = useCLIStore.getState().messages.filter((m) => m.role === "thinking")
-		expect(thinking).toHaveLength(1)
-		expect(thinking[0]?.partial).toBe(false)
-		expect(thinking[0]?.content).toBe("Let me check the config first.")
 	})
 
 	it("still suppresses a ts-distinct identical-text duplicate and finalizes the earlier partial in place", () => {
@@ -705,122 +432,6 @@ describe("useMessageHandlers", () => {
 			const messages = useCLIStore.getState().messages
 			expect(messages.filter((m) => m.partial)).toEqual([])
 			expect(getStaticCount(messages, false, false)).toBe(messages.length)
-		})
-	})
-
-	it("keeps deduping the completion_result after a state push replays an unrelated orphan partial", async () => {
-		// Same replay mechanism, but the orphan text is NOT a prefix of the final
-		// answer (two separate text blocks), so it stays its own message. The
-		// dedupe marker must still point at the answer after the replay,
-		// otherwise the identical completion_result renders a second time.
-		const core: ClineMessageLike[] = [
-			{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
-			{ ts: 2, type: "say", say: "text", text: "Working on it", partial: true },
-			{ ts: 3, type: "say", say: "text", text: "All done.", partial: false },
-		]
-		stateMessage(core)
-
-		core.push({ ts: 4, type: "say", say: "completion_result", text: "All done.", partial: false })
-		stateMessage(core)
-
-		await new Promise((resolve) => setTimeout(resolve, 250))
-
-		const assistantMessages = useCLIStore.getState().messages.filter((m) => m.role === "assistant")
-		expect(assistantMessages.map((m) => m.content)).toEqual(["Working on it", "All done."])
-	})
-
-	describe("command output (real task 01a0c926, 2026-09-22)", () => {
-		// The recorded shape of ONE command execution. The two say:command_output
-		// entries carry DIFFERENT timestamps because the non-blocking
-		// ask:command_output lands between them, which stops `Task.say()` from
-		// continuing the partial in place.
-		const COMMAND = 'curl -s "https://raw.githubusercontent.com/KellerJordan/modded-nanogpt/master/train_gpt.py"'
-		const FIRST_CHUNK = '85:dist.init_process_group(backend="cuda:nccl,cpu:gloo", device_id=device)\n'
-		const FULL_OUTPUT = `${FIRST_CHUNK}86:dist.barrier()\n87:master_process = (rank == 0)\n`
-
-		function askUpdate(ts: number, ask: string, text: string): void {
-			api.handleExtensionMessage({
-				type: "messageUpdated",
-				clineMessage: { ts, type: "ask", ask, text, partial: false } as never,
-			})
-		}
-
-		function runOneCommand(commandTs: number, command: string, chunk: string, full: string): void {
-			askUpdate(commandTs, "command", command)
-			sayUpdate(commandTs + 1042, "command_output", chunk, true)
-			askUpdate(commandTs + 1042, "command_output", "")
-			sayUpdate(commandTs + 1074, "command_output", full, false)
-		}
-
-		beforeEach(() => {
-			// The turn is running, which is when the core delivers command output.
-			useCLIStore.getState().setLoading(true)
-		})
-
-		it("renders ONE Bash row per command, carrying the command and the complete output", () => {
-			runOneCommand(1790082143805, COMMAND, FIRST_CHUNK, FULL_OUTPUT)
-
-			const tools = useCLIStore.getState().messages.filter((m) => m.toolName === "execute_command")
-
-			expect(tools).toHaveLength(1)
-			expect(tools[0]?.toolData).toMatchObject({
-				tool: "execute_command",
-				command: COMMAND,
-				output: FULL_OUTPUT,
-			})
-		})
-
-		it("leaves nothing partial, so the turn can still be promoted into scrollback", () => {
-			runOneCommand(1790082143805, COMMAND, FIRST_CHUNK, FULL_OUTPUT)
-
-			const messages = useCLIStore.getState().messages
-			expect(messages.filter((m) => m.partial)).toEqual([])
-			expect(getStaticCount(messages, true, false)).toBe(messages.length - 1)
-		})
-
-		it("opens a new row for the next command instead of appending to the previous one", () => {
-			runOneCommand(1790082143805, COMMAND, FIRST_CHUNK, FULL_OUTPUT)
-			runOneCommand(1790082149611, "ls -la", "a\n", "a\nb\n")
-
-			const tools = useCLIStore.getState().messages.filter((m) => m.toolName === "execute_command")
-
-			expect(tools.map((m) => m.toolData?.command)).toEqual([COMMAND, "ls -la"])
-			expect(tools.map((m) => m.toolData?.output)).toEqual([FULL_OUTPUT, "a\nb\n"])
-		})
-
-		it("does not write into a row that is already printed, once the agent is idle", () => {
-			askUpdate(1790082143805, "command", COMMAND)
-			sayUpdate(1790082144847, "command_output", FIRST_CHUNK, true)
-			// Escape cancelled the task: the row may already be in scrollback, where
-			// nothing can rewrite it, so a late finalization renders on its own.
-			useCLIStore.getState().setLoading(false)
-			sayUpdate(1790082144879, "command_output", FULL_OUTPUT, false)
-
-			const outputs = useCLIStore
-				.getState()
-				.messages.filter((m) => m.toolName === "execute_command")
-				.map((m) => m.toolData?.output)
-
-			expect(outputs).toEqual([FIRST_CHUNK, FULL_OUTPUT])
-		})
-
-		it("keeps the command on a row replayed from a resumed task's history", () => {
-			useCLIStore.getState().setLoading(false)
-			useCLIStore.getState().setIsResumingTask(true)
-
-			stateMessage([
-				{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
-				{ ts: 1790082143805, type: "ask", ask: "command", text: COMMAND, partial: false },
-				{ ts: 1790082144847, type: "say", say: "command_output", text: FIRST_CHUNK, partial: true },
-				{ ts: 1790082144847, type: "ask", ask: "command_output", text: "", partial: false },
-				{ ts: 1790082144879, type: "say", say: "command_output", text: FULL_OUTPUT, partial: false },
-			])
-
-			const tools = useCLIStore.getState().messages.filter((m) => m.toolName === "execute_command")
-
-			expect(tools).toHaveLength(1)
-			expect(tools[0]?.toolData?.command).toBe(COMMAND)
-			expect(tools[0]?.partial).toBeFalsy()
 		})
 	})
 })

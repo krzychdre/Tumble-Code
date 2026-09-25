@@ -1,6 +1,5 @@
 import { Text } from "ink"
 import { render } from "ink-testing-library"
-import { createRef } from "react"
 import type { WebviewMessage } from "@roo-code/types"
 
 import {
@@ -24,8 +23,7 @@ describe("useTaskSubmit permission commands", () => {
 		api = useTaskSubmit({
 			sendToExtension,
 			runTask,
-			seenMessageIds: createRef<Set<string>>() as React.MutableRefObject<Set<string>>,
-			firstTextMessageSkipped: createRef<boolean>() as React.MutableRefObject<boolean>,
+			resetTranscript: () => {},
 			permissionMode,
 			onPermissionModeChange,
 		})
@@ -108,16 +106,14 @@ describe("useTaskSubmit conversation commands", () => {
 	let api: UseTaskSubmitReturn
 	let sendToExtension: ReturnType<typeof vi.fn<(message: WebviewMessage) => void>>
 	let runTask: ReturnType<typeof vi.fn<(prompt: string) => Promise<void>>>
-	let seenMessageIds: React.MutableRefObject<Set<string>>
-	let firstTextMessageSkipped: React.MutableRefObject<boolean>
+	let resetTranscript: ReturnType<typeof vi.fn<() => void>>
 	let frames: string[]
 
 	function Harness() {
 		api = useTaskSubmit({
 			sendToExtension,
 			runTask,
-			seenMessageIds,
-			firstTextMessageSkipped,
+			resetTranscript,
 			permissionMode: "ask",
 			onPermissionModeChange: vi.fn(),
 		})
@@ -129,8 +125,7 @@ describe("useTaskSubmit conversation commands", () => {
 		useUIStateStore.getState().resetUIState()
 		sendToExtension = vi.fn()
 		runTask = vi.fn(async () => undefined)
-		seenMessageIds = { current: new Set(["seen-1"]) }
-		firstTextMessageSkipped = { current: true }
+		resetTranscript = vi.fn()
 
 		// Stand in for a conversation already in progress.
 		useCLIStore.getState().setHasStartedTask(true)
@@ -142,8 +137,7 @@ describe("useTaskSubmit conversation commands", () => {
 	const expectConversationReset = () => {
 		expect(useCLIStore.getState().messages).toEqual([])
 		expect(useCLIStore.getState().hasStartedTask).toBe(false)
-		expect(seenMessageIds.current.size).toBe(0)
-		expect(firstTextMessageSkipped.current).toBe(false)
+		expect(resetTranscript).toHaveBeenCalledTimes(1)
 		expect(sendToExtension.mock.calls.map(([msg]) => msg.type)).toEqual([
 			"clearTask",
 			"requestCommands",
