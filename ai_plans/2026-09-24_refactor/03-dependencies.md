@@ -323,6 +323,12 @@ hang. Open: the listing timeout is only logged (the user sees an empty model lis
   Node and Electron with `process.type = "utility"`. Only pinned change: pdf.js 5 inserts a space between two text
   runs on one row.
 
+**Full run after the DEP-6 SDK batch (2026-09-25, main c8dd94729, fresh worktree with its own `pnpm install
+--frozen-lockfile`):** `turbo run check-types lint test --continue`: 38 of 38 green; `pnpm knip` exit 0. src 9,356
+passed (8,656 before Phase 5), webview 1,692, cli 1,070, types 439, cloud 304, vscode-shim 408, core 178,
+agent-interchange 114, telemetry 31, build 17. GitHub Code QA (including Windows) green on 7f1a2282d, 8a4f11177,
+a38fae640.
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
