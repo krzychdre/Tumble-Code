@@ -274,6 +274,19 @@ xAI use it). **Tests first:** `$` patterns and the plan-review gate for every ed
 (16), `searchReplaceTool` (18), `editFileTool` (39), `writeToFileTool` (26), `applyPatchTool`, `applyDiffTool`.
 **Size** M, medium risk.
 
+**Status (2026-09-25):** DONE in #283. `helpers/applyComputedEdit.ts` holds the shared sequence (diff view,
+approval, save, plan-review pause) with per-tool options (card type, result suffix, review path, a save hook for
+the `apply_patch` move); `helpers/replaceLiteral.ts` is the one literal replacement (replacer function, so `$&`,
+`$1`, `$$` stay literal) for all tools. `search_replace` calls the shared `runStringReplace()` of EditTool with
+`replace_all` forced to false; its name, schema and model-facing texts are unchanged. A function, not a base class,
+because the tool modules form an import cycle ("Class extends value undefined"). ApplyDiffTool and WriteToFileTool
+untouched. Drift fixed (each pinned by a test that failed first): `task.silentWrites` now keeps every edit tool
+off-screen (a background memory writer using edit, search_replace or apply_patch opened a diff tab); `edit`
+relativizes an absolute path like the others (the file-context tracker kept two entries). Edit tools went from
+1,590 to 1,303 lines; related specs from 367 to 411 tests (new `editPipeline.spec`, 44). Findings kept as is:
+`apply_patch` with several files continues after one is rejected or fails; for a move, the destination checks
+(ignore rules, write protection, outside workspace) run only after the approval (still before writing).
+
 ### CORE-R12 Per-task tool state
 
 Fixes DEF-C3 and DEF-C4 structurally: `approvedTodoList` moves onto the Task; tool partial-stream state moves into
