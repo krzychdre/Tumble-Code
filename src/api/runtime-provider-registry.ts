@@ -249,9 +249,6 @@ const runtimeProviderEntriesById: ReadonlyMap<string, RuntimeProviderEntry> = ne
 export const getRuntimeProviderEntry = (providerId: string | undefined): RuntimeProviderEntry | undefined =>
 	providerId ? runtimeProviderEntriesById.get(providerId) : undefined
 
-export const getRuntimeProviderFactory = (providerId: string | undefined): RuntimeProviderFactory | undefined =>
-	getRuntimeProviderEntry(providerId)?.factory
-
 /** The capabilities of a profile's provider; none for providers without a runtime handler. */
 export const getRuntimeProviderCapabilities = (providerId: string | undefined): RuntimeProviderCapabilities =>
 	getRuntimeProviderEntry(providerId)?.capabilities ?? withoutCapabilities
