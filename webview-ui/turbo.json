@@ -19,6 +19,10 @@
 			"outputs": ["../apps/vscode-nightly/build/webview-ui/**"],
 			"inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/src/shared/**"]
 		},
+		// lint also runs ../scripts/check-react-compiler-bailouts.mjs against react-compiler-bailouts.json.
+		"lint": {
+			"inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/scripts/check-react-compiler-bailouts.mjs"]
+		},
 		"check-types": {
 			"inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/src/shared/**"]
 		},
