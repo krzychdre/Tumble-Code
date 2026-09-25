@@ -2,6 +2,7 @@
 
 exports[`App characterization (recorded message sequences) > asks a follow-up question and answers with the first suggestion 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -15,6 +16,7 @@ exports[`App characterization (recorded message sequences) > asks a follow-up qu
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -28,6 +30,7 @@ exports[`App characterization (recorded message sequences) > asks a follow-up qu
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -41,6 +44,7 @@ exports[`App characterization (recorded message sequences) > asks a follow-up qu
 ? for shortcuts                                                                   code · claude-test
 
 === followup ask ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -59,6 +63,7 @@ exports[`App characterization (recorded message sequences) > asks a follow-up qu
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 === pressed enter ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -73,6 +78,7 @@ exports[`App characterization (recorded message sequences) > asks a follow-up qu
 ? for shortcuts                                                                   code · claude-test
 
 === answer ===
+[static: welcome:__welcome__:0 message:user-1 message:user-2]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -91,6 +97,7 @@ exports[`App characterization (recorded message sequences) > asks a follow-up qu
 
 exports[`App characterization (recorded message sequences) > asks to approve a tool, and approves it with y 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -104,6 +111,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -117,6 +125,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -130,6 +139,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ? for shortcuts                                                                   code · claude-test
 
 === intro ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -145,6 +155,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ? for shortcuts                                                                   code · claude-test
 
 === tool ask ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -167,6 +178,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 === pressed y ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -182,6 +194,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ? for shortcuts                                                                   code · claude-test
 
 === next request ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -197,6 +210,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 ? for shortcuts                                                                   code · claude-test
 
 === answer ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -216,6 +230,7 @@ exports[`App characterization (recorded message sequences) > asks to approve a t
 
 exports[`App characterization (recorded message sequences) > completes the task 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -229,6 +244,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -242,6 +258,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -255,6 +272,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ? for shortcuts                                                                   code · claude-test
 
 === answer ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -270,6 +288,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ? for shortcuts                                                                   code · claude-test
 
 === completion say ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -287,6 +306,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ? for shortcuts                                                                   code · claude-test
 
 === completion ask ===
+[static: welcome:__welcome__:0 message:user-1 message:1002 message:1003 message:1004]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -303,6 +323,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 ? for shortcuts                                                                   code · claude-test
 
 === task completed ===
+[static: welcome:__welcome__:0 message:user-1 message:1002 message:1003 message:1004]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -321,6 +342,7 @@ exports[`App characterization (recorded message sequences) > completes the task 
 
 exports[`App characterization (recorded message sequences) > prints an auto-approved tool as a tool row in allow mode 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code (YOLO)
@@ -334,6 +356,7 @@ exports[`App characterization (recorded message sequences) > prints an auto-appr
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code (YOLO)
@@ -347,6 +370,7 @@ exports[`App characterization (recorded message sequences) > prints an auto-appr
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code (YOLO)
@@ -360,6 +384,7 @@ exports[`App characterization (recorded message sequences) > prints an auto-appr
 ? for shortcuts                                                                   code · claude-test
 
 === tool ask (auto-approved) ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code (YOLO)
@@ -374,6 +399,7 @@ exports[`App characterization (recorded message sequences) > prints an auto-appr
 ? for shortcuts                                                                   code · claude-test
 
 === answer ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code (YOLO)
@@ -392,6 +418,7 @@ exports[`App characterization (recorded message sequences) > prints an auto-appr
 
 exports[`App characterization (recorded message sequences) > runs a command and collects its output into one row 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -405,6 +432,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -418,6 +446,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -431,6 +460,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === command ask ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -451,6 +481,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 === pressed y ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -464,6 +495,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === output chunk ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -479,6 +511,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === output keep-running ask ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -494,6 +527,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === output complete (new ts) ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -509,6 +543,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === next request ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -524,6 +559,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 ? for shortcuts                                                                   code · claude-test
 
 === answer ===
+[static: welcome:__welcome__:0 message:user-1 message:1003]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -543,6 +579,7 @@ exports[`App characterization (recorded message sequences) > runs a command and 
 
 exports[`App characterization (recorded message sequences) > shows a failed API request as a retry dialog, then a host error 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -556,6 +593,7 @@ exports[`App characterization (recorded message sequences) > shows a failed API 
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -569,6 +607,7 @@ exports[`App characterization (recorded message sequences) > shows a failed API 
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -582,6 +621,7 @@ exports[`App characterization (recorded message sequences) > shows a failed API 
 ? for shortcuts                                                                   code · claude-test
 
 === api_req_failed ask ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -602,6 +642,7 @@ exports[`App characterization (recorded message sequences) > shows a failed API 
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 === pressed y (retry) ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -615,6 +656,7 @@ exports[`App characterization (recorded message sequences) > shows a failed API 
 ? for shortcuts                                                                   code · claude-test
 
 === host error ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -627,6 +669,7 @@ exports[`App characterization (recorded message sequences) > shows a failed API 
 
 exports[`App characterization (recorded message sequences) > shows reasoning, then the answer 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -640,6 +683,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -653,6 +697,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -666,6 +711,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 ? for shortcuts                                                                   code · claude-test
 
 === reasoning partial ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -680,6 +726,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 ? for shortcuts                                                                   code · claude-test
 
 === reasoning final ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -694,6 +741,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 ? for shortcuts                                                                   code · claude-test
 
 === answer partial ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -710,6 +758,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 ? for shortcuts                                                                   code · claude-test
 
 === answer final ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -728,6 +777,7 @@ exports[`App characterization (recorded message sequences) > shows reasoning, th
 
 exports[`App characterization (recorded message sequences) > streams a plain answer 1`] = `
 "=== mounted ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -741,6 +791,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 ? for shortcuts                                                                   code · claude-test
 
 === prompt echo ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -754,6 +805,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 ? for shortcuts                                                                   code · claude-test
 
 === request started ===
+[static: welcome:__welcome__:0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -767,6 +819,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 ? for shortcuts                                                                   code · claude-test
 
 === answer partial 1 ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -782,6 +835,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 ? for shortcuts                                                                   code · claude-test
 
 === answer partial 2 ===
+[static: welcome:__welcome__:0 message:user-1]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -797,6 +851,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 ? for shortcuts                                                                   code · claude-test
 
 === answer partial 3 (two lines) ===
+[static: welcome:__welcome__:0 message:user-1 chunk:1002#chunk0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code
@@ -813,6 +868,7 @@ exports[`App characterization (recorded message sequences) > streams a plain ans
 ? for shortcuts                                                                   code · claude-test
 
 === answer final ===
+[static: welcome:__welcome__:0 message:user-1 chunk:1002#chunk0]
 ✻ Welcome to Tumble Code v0.0.0-test
   cwd: <workspace>
   anthropic · claude-test · mode: code

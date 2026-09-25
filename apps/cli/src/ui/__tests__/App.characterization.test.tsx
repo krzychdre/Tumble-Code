@@ -28,6 +28,22 @@ import { App, type TUIAppProps } from "../App.js"
 import { useCLIStore } from "../store.js"
 import { useUIStateStore } from "../stores/uiStateStore.js"
 
+// ink-testing-library renders in ink's debug mode, which writes the whole
+// `<Static>` output and the dynamic tail as one string, so a frame alone
+// cannot tell a promoted message from one still in the tail. Record what the
+// `<Static>` region was asked to print, so the snapshots also pin the split.
+const staticRegion = vi.hoisted(() => ({ last: [] as string[] }))
+
+vi.mock("../components/TranscriptStatic.js", async (importOriginal) => {
+	const { default: Real } = await importOriginal<typeof import("../components/TranscriptStatic.js")>()
+	return {
+		default: (props: Parameters<typeof Real>[0]) => {
+			staticRegion.last = props.items.map((item) => `${item.kind}:${item.id}`)
+			return <Real {...props} />
+		},
+	}
+})
+
 const realSetImmediate = setImmediate
 
 const WORKSPACE = path.resolve("/tmp/cli-app-characterization")
@@ -95,7 +111,7 @@ const state = (clineMessages: ClineMessage[]): ExtensionMessage =>
 
 interface Harness {
 	host: FakeHost
-	frames: Array<{ step: string; frame: string }>
+	frames: Array<{ step: string; frame: string; staticItems: string }>
 	/** Deliver one extension message, settle, and record the frame. */
 	emit: (step: string, message: ExtensionMessage) => Promise<void>
 	/** Type into the terminal, settle, and record the frame. */
@@ -133,7 +149,7 @@ async function start(options: { nonInteractive?: boolean; prompt?: string } = {}
 
 	const snap = async (step: string) => {
 		await flush()
-		frames.push({ step, frame: normalize(view.lastFrame()) })
+		frames.push({ step, frame: normalize(view.lastFrame()), staticItems: staticRegion.last.join(" ") })
 	}
 
 	await snap("mounted")
@@ -164,8 +180,22 @@ async function start(options: { nonInteractive?: boolean; prompt?: string } = {}
 const PROMPT_ECHO = say(1000, "text", "Say hi")
 const REQUEST = say(1001, "api_req_started", JSON.stringify({ request: "Say hi" }))
 
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g
+
 function render_(frames: Harness["frames"]): string {
-	return frames.map(({ step, frame }) => `=== ${step} ===\n${frame}`).join("\n\n")
+	// The TUI gives the user's own messages random ids; number them instead.
+	const ids = new Map<string, string>()
+	const stable = (text: string) =>
+		text.replace(UUID, (id) => {
+			if (!ids.has(id)) {
+				ids.set(id, `user-${ids.size + 1}`)
+			}
+			return ids.get(id)!
+		})
+
+	return frames
+		.map(({ step, frame, staticItems }) => `=== ${step} ===\n[static: ${stable(staticItems)}]\n${stable(frame)}`)
+		.join("\n\n")
 }
 
 describe("App characterization (recorded message sequences)", () => {
@@ -183,6 +213,7 @@ describe("App characterization (recorded message sequences)", () => {
 		Object.defineProperty(process.stdout, "rows", { value: 40, configurable: true })
 		useCLIStore.getState().reset()
 		useUIStateStore.getState().resetUIState()
+		staticRegion.last = []
 	})
 
 	afterEach(() => {
