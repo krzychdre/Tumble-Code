@@ -283,6 +283,8 @@
 		"toggle": "Automatische Genehmigung umschalten",
 		"all": "Alle",
 		"none": "Keine",
+		"selectAll": "Alle auswählen",
+		"selectNone": "Keine auswählen",
 		"description": "Führe diese Aktionen aus, ohne um Erlaubnis zu fragen. Aktiviere dies nur für Aktionen, denen du voll vertraust.",
 		"toggleAriaLabel": "Automatische Genehmigung umschalten",
 		"triggerLabelOff": "Automatische Genehmigung aus",

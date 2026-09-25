@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Inicia sessió a OpenAI Codex",
+			"signOutButton": "Tanca la sessió"
+		},
 		"useCustomBaseUrl": "Utilitzar URL base personalitzada",
 		"useReasoning": "Activar raonament",
 		"customHeaders": "Capçaleres personalitzades",
@@ -339,7 +343,8 @@
 			"label": "Actualitzar models",
 			"loading": "Actualitzant la llista de models...",
 			"success": "Llista de models actualitzada correctament!",
-			"error": "No s'ha pogut actualitzar la llista de models. Si us plau, torneu-ho a provar."
+			"error": "No s'ha pogut actualitzar la llista de models. Si us plau, torneu-ho a provar.",
+			"missingConfig": "Introdueix l'URL base i la clau API abans d'actualitzar la llista de models."
 		},
 		"anthropicApiKey": "Clau API d'Anthropic",
 		"getAnthropicApiKey": "Obtenir clau API d'Anthropic",

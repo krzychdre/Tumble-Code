@@ -283,6 +283,8 @@
 		"toggle": "自動承認を切り替える",
 		"all": "すべて",
 		"none": "なし",
+		"selectAll": "すべて選択",
+		"selectNone": "選択をすべて解除",
 		"description": "許可を求めずにこれらのアクションを実行します。完全に信頼するアクションに対してのみ有効にしてください。",
 		"toggleAriaLabel": "自動承認を切り替える",
 		"triggerLabelOff": "自動承認オフ",

@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Sim, restaurar o checkpoint",
 		"proceed": "Prosseguir"
 	},
+	"dismiss": "Dispensar",
+	"dismissAndDontShowAgain": "Dispensar e não mostrar novamente",
 	"time_ago": {
 		"just_now": "agora mesmo",
 		"seconds_ago": "há {{count}} segundos",

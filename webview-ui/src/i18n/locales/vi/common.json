@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Có, khôi phục checkpoint",
 		"proceed": "Tiếp Tục"
 	},
+	"dismiss": "Bỏ qua",
+	"dismissAndDontShowAgain": "Bỏ qua và không hiển thị lại",
 	"time_ago": {
 		"just_now": "vừa xong",
 		"seconds_ago": "{{count}} giây trước",

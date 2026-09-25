@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "예, 체크포인트 복원",
 		"proceed": "계속"
 	},
+	"dismiss": "닫기",
+	"dismissAndDontShowAgain": "닫고 다시 표시하지 않기",
 	"time_ago": {
 		"just_now": "방금",
 		"seconds_ago": "{{count}}초 전",

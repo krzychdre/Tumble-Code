@@ -284,6 +284,8 @@
 		"toggle": "切换自动批准",
 		"all": "全部",
 		"none": "无",
+		"selectAll": "全选",
+		"selectNone": "全不选",
 		"description": "无需请求权限即可执行这些操作。仅对您完全信任的操作启用此功能。",
 		"toggleAriaLabel": "切换自动批准",
 		"triggerLabelOff": "自动批准已关闭",

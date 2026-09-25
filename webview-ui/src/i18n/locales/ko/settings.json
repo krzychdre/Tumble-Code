@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "OpenAI Codex에 로그인",
+			"signOutButton": "로그아웃"
+		},
 		"useCustomBaseUrl": "사용자 정의 기본 URL 사용",
 		"useReasoning": "추론 활성화",
 		"customHeaders": "사용자 정의 헤더",
@@ -339,7 +343,8 @@
 			"label": "모델 새로고침",
 			"loading": "모델 목록 새로고침 중...",
 			"success": "모델 목록이 성공적으로 새로고침되었습니다!",
-			"error": "모델 목록 새로고침에 실패했습니다. 다시 시도해 주세요."
+			"error": "모델 목록 새로고침에 실패했습니다. 다시 시도해 주세요.",
+			"missingConfig": "모델 목록을 새로고침하기 전에 기본 URL과 API 키를 입력해 주세요."
 		},
 		"anthropicApiKey": "Anthropic API 키",
 		"getAnthropicApiKey": "Anthropic API 키 받기",

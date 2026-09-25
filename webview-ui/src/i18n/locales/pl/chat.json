@@ -303,6 +303,8 @@
 		"toggle": "Przełącz automatyczne zatwierdzanie",
 		"all": "Wszystkie",
 		"none": "Żadne",
+		"selectAll": "Zaznacz wszystkie",
+		"selectNone": "Odznacz wszystkie",
 		"description": "Wykonuj te działania bez pytania o zgodę. Włącz tę opcję tylko dla działań, którym w pełni ufasz.",
 		"toggleAriaLabel": "Przełącz automatyczne zatwierdzanie",
 		"triggerLabelOff": "Automatyczne zatwierdzanie wyłączone",

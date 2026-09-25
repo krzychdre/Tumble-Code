@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "OpenAI Codex'e giriş yap",
+			"signOutButton": "Çıkış yap"
+		},
 		"useCustomBaseUrl": "Özel temel URL kullan",
 		"useReasoning": "Akıl yürütmeyi etkinleştir",
 		"customHeaders": "Özel Başlıklar",
@@ -339,7 +343,8 @@
 			"label": "Modelleri Yenile",
 			"loading": "Model listesi yenileniyor...",
 			"success": "Model listesi başarıyla yenilendi!",
-			"error": "Model listesi yenilenemedi. Lütfen tekrar deneyin."
+			"error": "Model listesi yenilenemedi. Lütfen tekrar deneyin.",
+			"missingConfig": "Model listesini yenilemeden önce temel URL'yi ve API anahtarını girin."
 		},
 		"anthropicApiKey": "Anthropic API Anahtarı",
 		"getAnthropicApiKey": "Anthropic API Anahtarı Al",

@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "是，恢复存档点",
 		"proceed": "继续"
 	},
+	"dismiss": "关闭",
+	"dismissAndDontShowAgain": "关闭且不再显示",
 	"time_ago": {
 		"just_now": "刚刚",
 		"seconds_ago": "{{count}}秒前",

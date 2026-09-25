@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Ja, Checkpoint wiederherstellen",
 		"proceed": "Fortfahren"
 	},
+	"dismiss": "Ausblenden",
+	"dismissAndDontShowAgain": "Ausblenden und nicht mehr anzeigen",
 	"time_ago": {
 		"just_now": "gerade eben",
 		"seconds_ago": "vor {{count}} Sekunden",

@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Accedi a OpenAI Codex",
+			"signOutButton": "Esci"
+		},
 		"useCustomBaseUrl": "Usa URL base personalizzato",
 		"useReasoning": "Abilita ragionamento",
 		"customHeaders": "Intestazioni personalizzate",
@@ -339,7 +343,8 @@
 			"label": "Aggiorna modelli",
 			"loading": "Aggiornamento dell'elenco dei modelli...",
 			"success": "Elenco dei modelli aggiornato con successo!",
-			"error": "Impossibile aggiornare l'elenco dei modelli. Riprova."
+			"error": "Impossibile aggiornare l'elenco dei modelli. Riprova.",
+			"missingConfig": "Inserisci l'URL di base e la chiave API prima di aggiornare l'elenco dei modelli."
 		},
 		"anthropicApiKey": "Chiave API Anthropic",
 		"getAnthropicApiKey": "Ottieni chiave API Anthropic",

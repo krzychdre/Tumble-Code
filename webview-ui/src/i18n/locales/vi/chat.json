@@ -284,6 +284,8 @@
 		"toggle": "Bật/tắt tự động phê duyệt",
 		"all": "Tất cả",
 		"none": "Không có",
+		"selectAll": "Chọn tất cả",
+		"selectNone": "Bỏ chọn tất cả",
 		"description": "Thực hiện các hành động này mà không cần xin phép. Chỉ bật tính năng này cho các hành động bạn hoàn toàn tin tưởng.",
 		"toggleAriaLabel": "Bật/tắt tự động phê duyệt",
 		"triggerLabelOff": "Tự động phê duyệt tắt",

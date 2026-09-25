@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Sì, ripristina il checkpoint",
 		"proceed": "Procedi"
 	},
+	"dismiss": "Ignora",
+	"dismissAndDontShowAgain": "Ignora e non mostrare più",
 	"time_ago": {
 		"just_now": "proprio ora",
 		"seconds_ago": "{{count}} secondi fa",

@@ -55,6 +55,8 @@
 		"restoreToCheckpoint": "Evet, kontrol noktasını geri yükle",
 		"proceed": "Devam Et"
 	},
+	"dismiss": "Kapat",
+	"dismissAndDontShowAgain": "Kapat ve bir daha gösterme",
 	"time_ago": {
 		"just_now": "şimdi",
 		"seconds_ago": "{{count}} saniye önce",

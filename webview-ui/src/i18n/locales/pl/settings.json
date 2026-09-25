@@ -329,6 +329,10 @@
 				"minutes": "{{minutes}}m limit"
 			}
 		},
+		"openAiCodex": {
+			"signInButton": "Zaloguj się do OpenAI Codex",
+			"signOutButton": "Wyloguj się"
+		},
 		"useCustomBaseUrl": "Użyj niestandardowego URL bazowego",
 		"useReasoning": "Włącz rozumowanie",
 		"customHeaders": "Niestandardowe nagłówki",
@@ -339,7 +343,8 @@
 			"label": "Odśwież modele",
 			"loading": "Odświeżanie listy modeli...",
 			"success": "Lista modeli została pomyślnie odświeżona!",
-			"error": "Nie udało się odświeżyć listy modeli. Spróbuj ponownie."
+			"error": "Nie udało się odświeżyć listy modeli. Spróbuj ponownie.",
+			"missingConfig": "Przed odświeżeniem listy modeli wpisz bazowy URL i klucz API."
 		},
 		"anthropicApiKey": "Klucz API Anthropic",
 		"getAnthropicApiKey": "Uzyskaj klucz API Anthropic",
