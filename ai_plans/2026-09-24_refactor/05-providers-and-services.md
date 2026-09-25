@@ -357,6 +357,15 @@ disposed but the watcher reused after Stop; managers never disposed and nothing 
 controller); idempotent `startIndexing`. **Tests first:** Stop then Start event delivery; `recoverFromError` with a
 live watcher asserts dispose. **Existing:** `orchestrator` (5), `file-watcher` (5), thin. **Size** S to M.
 
+**Status (2026-09-25):** DONE in #328 (merge 715d1ccd7). Confirmed: Stop then Start silently lost progress events
+(`FileWatcher.dispose()` killed the emitters of a reused watcher), `initialize()` leaked the previous watcher and
+doubled listeners, `recoverFromError`/`_recreateServices` left the old orchestrator's watcher indexing, and both the
+manager's and the scanner's `RooIgnoreController` were never disposed. Fix: `FileWatcher.stop()` (restartable) vs
+`dispose()` (final), orchestrator `dispose()` that aborts its scan and no longer writes state afterwards, manager
+owns and disposes the ignore controller, idempotent `dispose()`, `disposeAll()` on deactivate and dispose on
+workspace-folder removal. New `lifecycle.spec.ts` plus cases in manager and scanner specs; 118 related tests green.
+Follow-up: folders added later still get a manager lazily (no eager `initialize()`).
+
 ### SVC-9 Code-index embedder base class and contract suite
 
 **Evidence:** the token-budget batching loop exists 4 times, retry 4 times with 3 behaviors, the rate-limit trio
@@ -386,6 +395,15 @@ pinning today's behavior (precedence is user-visible). **Existing:** commands (3
 (`ripgrep/index.ts:162-163, 201-204`); `@`-mention search spawns `rg` per query and runs `existsSync`/`lstatSync` on
 the extension host (`file-search.ts:114-138, 176-177`). **Test first:** timeout, stderr tolerance, limit applied
 across all three callers. **Existing:** ripgrep (34), search (3). **Size** S to M.
+
+**Status (2026-09-25):** DONE in #329 (merge 02272c4ed). New `src/services/ripgrep/runner.ts` (`runRipgrep`: line
+streaming, limit, timeout 30 s default, abort, exit code 1 = no matches, error only on non-zero exit with empty
+stdout) used by `search_files`, `file-search` and `list-files`. Verified with real `rg`: a bad regex (exit 2) now
+reaches the model as a short actionable error instead of "No results found"; a stderr warning no longer hides
+matches. Found beyond the plan: the output limit dropped the whole cut file ("Found 0 results") and the 300 limit
+counted files, not results; both fixed. `@`-mention search uses async `lstat`. Tests: 82 in 8 ripgrep/search/glob
+files. Follow-ups: `executeRipgrep` callers (nested-repo check, `.roo` discovery) now have a 30 s limit; per-query
+`rg` spawn for mentions remains; `handleError` sends the serialized error with stack to the model.
 
 ### SVC-15 Tree-sitter parser cache and memory release
 
