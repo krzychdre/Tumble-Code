@@ -85,6 +85,7 @@ describe("readTaskSessionsFromStoragePath", () => {
 	})
 
 	it("ignores malformed JSON and invalid history entries", async () => {
+		const error = vi.spyOn(console, "error").mockImplementation(() => {})
 		const tasksDir = path.join(tempDir, "tasks")
 		await fs.mkdir(path.join(tasksDir, "good"), { recursive: true })
 		await fs.mkdir(path.join(tasksDir, "bad-json"), { recursive: true })
@@ -106,6 +107,28 @@ describe("readTaskSessionsFromStoragePath", () => {
 		expect(sessions).toEqual([
 			{ id: "good", task: "Good Task", ts: 10, workspace: undefined, mode: undefined, status: "active" },
 		])
+		// Corrupt files are skipped quietly.
+		expect(error).not.toHaveBeenCalled()
+		error.mockRestore()
+	})
+
+	it("treats an empty or null _index.json as no index and falls back to the task directories", async () => {
+		for (const indexText of ["", "null"]) {
+			const tasksDir = path.join(tempDir, "tasks")
+			await fs.rm(tasksDir, { recursive: true, force: true })
+			await fs.mkdir(path.join(tasksDir, "only"), { recursive: true })
+			await fs.writeFile(path.join(tasksDir, "_index.json"), indexText)
+			await fs.writeFile(
+				path.join(tasksDir, "only", "history_item.json"),
+				JSON.stringify({ id: "only", task: "Only Task", ts: 7 }),
+			)
+
+			const sessions = await readTaskSessionsFromStoragePath(tempDir)
+
+			expect(sessions).toEqual([
+				{ id: "only", task: "Only Task", ts: 7, workspace: undefined, mode: undefined, status: undefined },
+			])
+		}
 	})
 
 	it("returns an empty list when tasks directory does not exist", async () => {

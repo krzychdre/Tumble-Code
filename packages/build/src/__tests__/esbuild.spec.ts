@@ -10,7 +10,8 @@ import type { Stats } from "node:fs"
 
 import { copyPaths } from "../esbuild.js"
 
-const { execFileSyncMock, execSyncMock, fsMocks } = vi.hoisted(() => ({
+const { execFileSyncMock, execSyncMock, fsMocks, sleepSyncMock } = vi.hoisted(() => ({
+	sleepSyncMock: vi.fn(),
 	execFileSyncMock: vi.fn(),
 	execSyncMock: vi.fn(),
 	fsMocks: {
@@ -27,6 +28,9 @@ vi.mock("child_process", () => ({
 	execFileSync: execFileSyncMock,
 	execSync: execSyncMock,
 }))
+
+// The backoff between retries must not really wait in tests.
+vi.mock("../sleep-sync.js", () => ({ sleepSync: sleepSyncMock }))
 
 vi.mock("fs", () => ({
 	rmSync: fsMocks.rmSync,
@@ -69,11 +73,6 @@ describe("rmDir Windows attrib path — shell-injection regression (CodeQL #2-#5
 			throw err
 		})
 
-		// Skip the exponential-backoff busy-wait between retries (advancing the
-		// clock past every delay on the first inner Date.now() call).
-		let clock = 1_000_000
-		vi.spyOn(Date, "now").mockImplementation(() => (clock += 10_000))
-
 		// Drive rmDir through the exported copyPaths surface: a source entry
 		// that reports as a directory, plus an existing destination, makes
 		// copyPaths call rmDir(...) before anything else.
@@ -94,5 +93,81 @@ describe("rmDir Windows attrib path — shell-injection regression (CodeQL #2-#5
 			expect.anything(),
 		)
 		expect(execSyncMock).not.toHaveBeenCalled()
+	})
+})
+
+describe("rmDir retry schedule (characterization)", () => {
+	const originalPlatform = process.platform
+
+	beforeEach(() => {
+		fsMocks.rmSync.mockReset()
+		fsMocks.lstatSync.mockReset()
+		fsMocks.existsSync.mockReset()
+		fsMocks.mkdirSync.mockReset()
+		fsMocks.readdirSync.mockReset()
+		Object.defineProperty(process, "platform", { value: "linux", configurable: true })
+		fsMocks.lstatSync.mockReturnValue({ isDirectory: () => true } as unknown as Stats)
+		fsMocks.existsSync.mockReturnValue(true)
+		fsMocks.readdirSync.mockReturnValue([])
+		sleepSyncMock.mockReset()
+	})
+
+	afterEach(() => {
+		Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true })
+		vi.restoreAllMocks()
+	})
+
+	const busy = () => {
+		const err = new Error("resource busy") as Error & { code?: string }
+		err.code = "EBUSY"
+		return err
+	}
+
+	it("retries a retryable error with exponential backoff and then succeeds", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+		fsMocks.rmSync
+			.mockImplementationOnce(() => {
+				throw busy()
+			})
+			.mockImplementationOnce(() => {
+				throw busy()
+			})
+			.mockImplementation(() => undefined)
+		vi.spyOn(console, "log").mockImplementation(() => {})
+
+		copyPaths([["src", "dst"]], "/src-root", "/dst-root")
+
+		expect(fsMocks.rmSync).toHaveBeenCalledTimes(3)
+		const retryDelays = warn.mock.calls.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1]).filter(Boolean)
+		expect(retryDelays).toEqual(["100", "200"])
+		expect(sleepSyncMock.mock.calls).toEqual([[100], [200]])
+	})
+
+	it("uses the 100, 200, 400, 800 ms schedule before the final attempt", () => {
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+		vi.spyOn(console, "error").mockImplementation(() => {})
+		fsMocks.rmSync.mockImplementation(() => {
+			throw busy()
+		})
+
+		expect(() => copyPaths([["src", "dst"]], "/src-root", "/dst-root")).toThrow("resource busy")
+
+		const retryDelays = warn.mock.calls.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1]).filter(Boolean)
+		expect(retryDelays).toEqual(["100", "200", "400", "800"])
+		// The wait between attempts is a real (non-spinning) sleep of the same length.
+		expect(sleepSyncMock.mock.calls).toEqual([[100], [200], [400], [800]])
+		// Five plain attempts plus the final alternative-cleanup rmSync.
+		expect(fsMocks.rmSync).toHaveBeenCalledTimes(6)
+	})
+
+	it("does not retry a non-retryable error", () => {
+		fsMocks.rmSync.mockImplementation(() => {
+			const err = new Error("bad") as Error & { code?: string }
+			err.code = "EINVAL"
+			throw err
+		})
+
+		expect(() => copyPaths([["src", "dst"]], "/src-root", "/dst-root")).toThrow("bad")
+		expect(fsMocks.rmSync).toHaveBeenCalledTimes(1)
 	})
 })

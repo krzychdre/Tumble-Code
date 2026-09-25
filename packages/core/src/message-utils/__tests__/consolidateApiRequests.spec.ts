@@ -119,4 +119,51 @@ describe("consolidateApiRequests", () => {
 		// Should still consolidate, merging what it can
 		expect(result.length).toBe(1)
 	})
+
+	it("merges the finish payload over an unparseable start payload", () => {
+		const messages: ClineMessage[] = [
+			{ ts: 1000, type: "say", say: "api_req_started", text: "invalid json" },
+			createApiReqFinished(1001, { cost: 0.01 }),
+		]
+
+		const result = consolidateApiRequests(messages)
+
+		expect(JSON.parse(result[0]!.text!)).toEqual({ cost: 0.01 })
+	})
+
+	it("keeps the start payload when the finish payload is unparseable, null or empty", () => {
+		for (const finishText of ["{broken", "null", "", undefined]) {
+			const messages: ClineMessage[] = [
+				createApiReqStarted(1000, { request: "r", tokensIn: 5 }),
+				{ ts: 1001, type: "say", say: "api_req_finished", text: finishText },
+			]
+
+			const result = consolidateApiRequests(messages)
+
+			expect(result).toHaveLength(1)
+			expect(JSON.parse(result[0]!.text!)).toEqual({ request: "r", tokensIn: 5 })
+		}
+	})
+
+	it("does not log unparseable payloads", () => {
+		const error = vi.spyOn(console, "error").mockImplementation(() => {})
+		consolidateApiRequests([
+			{ ts: 1000, type: "say", say: "api_req_started", text: "{broken" },
+			{ ts: 1001, type: "say", say: "api_req_finished", text: "{broken" },
+		])
+
+		expect(error).not.toHaveBeenCalled()
+		vi.restoreAllMocks()
+	})
+
+	it("merges the finish payload over a null start payload", () => {
+		const messages: ClineMessage[] = [
+			{ ts: 1000, type: "say", say: "api_req_started", text: "null" },
+			createApiReqFinished(1001, { cost: 0.02 }),
+		]
+
+		const result = consolidateApiRequests(messages)
+
+		expect(JSON.parse(result[0]!.text!)).toEqual({ cost: 0.02 })
+	})
 })

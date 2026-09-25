@@ -40,4 +40,9 @@ describe("safeJsonParse", () => {
 		const message = consoleErrorSpy.mock.calls[0]?.[0]
 		expect(message).toBe("Error parsing JSON (foo):")
 	})
+
+	it("returns the default value without logging when the context is false", () => {
+		expect(safeJsonParse<{ a: number }>("not json", { a: 0 }, false)).toEqual({ a: 0 })
+		expect(consoleErrorSpy).not.toHaveBeenCalled()
+	})
 })
