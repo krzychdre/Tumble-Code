@@ -1,18 +1,16 @@
 import { useCallback, useState, useEffect } from "react"
 import { VSCodeTextField, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 
-import { type ProviderSettings, type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/types"
+import { type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/types"
 
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { Button } from "@src/components/ui"
 
-import { inputEventTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
+import { type ProviderFormProps, useProviderField } from "./shared"
 
-type LiteLLMProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
+type LiteLLMProps = ProviderFormProps & {
 	organizationAllowList: OrganizationAllowList
 	modelValidationError?: string
 	simplifySettings?: boolean
@@ -45,16 +43,7 @@ export const LiteLLM = ({
 		}
 	}, [litellmModels, providerModelsError, refreshStatus])
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	const handleRefreshModels = useCallback(() => {
 		setRefreshStatus("loading")

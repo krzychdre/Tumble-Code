@@ -1,18 +1,13 @@
-import { useCallback, useMemo } from "react"
+import { useMemo } from "react"
 import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-
-import type { ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
-import { inputEventTransform } from "../transforms"
 import { ModelPicker } from "../ModelPicker"
+import { type ProviderFormProps, useProviderField } from "./shared"
 
-type OllamaProps = {
-	apiConfiguration: ProviderSettings
-	setApiConfigurationField: (field: keyof ProviderSettings, value: ProviderSettings[keyof ProviderSettings]) => void
-}
+type OllamaProps = ProviderFormProps
 
 export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaProps) => {
 	const { t } = useAppTranslation()
@@ -22,16 +17,7 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 		apiKey: apiConfiguration.ollamaApiKey,
 	})
 
-	const handleInputChange = useCallback(
-		<K extends keyof ProviderSettings, E>(
-			field: K,
-			transform: (event: E) => ProviderSettings[K] = inputEventTransform,
-		) =>
-			(event: E | Event) => {
-				setApiConfigurationField(field, transform(event as E))
-			},
-		[setApiConfigurationField],
-	)
+	const handleInputChange = useProviderField(setApiConfigurationField)
 
 	// Check if the selected model exists in the fetched models
 	const modelNotAvailableError = useMemo(() => {
