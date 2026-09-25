@@ -264,4 +264,39 @@ describe("PromptsView", () => {
 		// Verify popover remains closed
 		expect(selectTrigger).toHaveAttribute("aria-expanded", "false")
 	})
+
+	it("creates a mode from the dialog: saves it, switches to it, closes and resets the dialog", async () => {
+		renderPromptsView()
+
+		fireEvent.click(screen.getByTestId("add-mode-button"))
+		const dialog = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
+		const [nameInput, slugInput] = Array.from(dialog.querySelectorAll("input[type=text]")) as HTMLInputElement[]
+		fireEvent.change(nameInput, { target: { value: "Reviewer" } })
+		expect(slugInput.value).toBe("reviewer")
+
+		const roleDefinition = dialog.querySelector("vscode-text-area") as HTMLElement & { value: string }
+		roleDefinition.value = "You review code."
+		fireEvent(roleDefinition, new Event("change", { bubbles: true }))
+
+		fireEvent.click(screen.getByRole("button", { name: "prompts:createModeDialog.buttons.create" }))
+
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "updateCustomMode",
+			slug: "reviewer",
+			modeConfig: expect.objectContaining({
+				slug: "reviewer",
+				name: "Reviewer",
+				roleDefinition: "You review code.",
+				source: "global",
+			}),
+		})
+		expect(vscode.postMessage).toHaveBeenCalledWith({ type: "mode", text: "reviewer" })
+		await waitFor(() => expect(dialog).not.toBeInTheDocument())
+
+		// Opening the dialog again starts from an empty form.
+		fireEvent.click(screen.getByTestId("add-mode-button"))
+		const reopened = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
+		const reopenedRole = reopened.querySelector("vscode-text-area") as HTMLElement & { value: string }
+		expect(reopenedRole.value).toBe("")
+	})
 })

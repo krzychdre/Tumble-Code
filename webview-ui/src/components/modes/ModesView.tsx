@@ -432,7 +432,6 @@ const ModesView = () => {
 		switchMode(newModeSlug)
 		setIsCreateModeDialogOpen(false)
 		resetFormState()
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [
 		newModeName,
 		newModeSlug,
@@ -444,6 +443,8 @@ const ModesView = () => {
 		newModeSource,
 		newModeAllowedMcpServers,
 		updateCustomMode,
+		switchMode,
+		resetFormState,
 	])
 
 	const isNameOrSlugTaken = useCallback(
