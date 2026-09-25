@@ -346,6 +346,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 	didFinishAbortingStream = false
 	abandoned = false
+	/**
+	 * True while `attempt_completion` waits on its `completion_result` ask,
+	 * i.e. the task has finished and the user has not answered yet. The VS
+	 * Code chat never answers that ask with "yes" (its "Start New Task"
+	 * button clears the task instead), so an abandoned abort in this state is
+	 * the accepted end of a completed task and must run the memory writers.
+	 * Set and cleared by `AttemptCompletionTool`; consumed by `abortTask`.
+	 */
+	awaitingCompletionAcceptance = false
 	abortReason?: ClineApiReqCancelReason
 	isInitialized = false
 	isPaused: boolean = false
@@ -1008,13 +1017,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		this.apiLoop = new TaskApiLoop(this)
 
 		// Memory background writers: run extraction/consolidation when this task
-		// completes normally. `abortTask` already covers the cancelled/errored
-		// paths, but a normal `attempt_completion` only emits `TaskCompleted` and
-		// leaves the task alive (it is later abandoned-aborted, which skips the
-		// writers) — so hook completion here. The trigger is idempotent
-		// (cursor-based, early-returns on no new messages) and gated to the main
-		// agent internally, so double-firing with a later abort is safe. The
-		// listener is cleaned up by `removeAllListeners()` in dispose().
+		// completes normally. `AttemptCompletionTool` emits `TaskCompleted` only
+		// when the completion_result ask is answered with "yes" (API clients,
+		// delegated subtasks). The VS Code chat never sends that answer: leaving
+		// a finished task there is an abandoned abort, which runs the writers in
+		// `TaskLifecycle.prepareAbort` when `awaitingCompletionAcceptance` is set.
+		// The flag is cleared once the ask is answered, so the two entry points
+		// never both fire for one completion. Gated to the main agent
+		// internally. The listener is cleaned up by `removeAllListeners()` in
+		// dispose().
 		this.on(RooCodeEventName.TaskCompleted, () => {
 			// Background tasks (the memory writer itself, parallel subagents) must
 			// not spawn their own memory writers — that would recurse.

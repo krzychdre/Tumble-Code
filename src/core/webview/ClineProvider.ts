@@ -516,6 +516,15 @@ export class ClineProvider
 		}
 	}
 
+	/**
+	 * True once `dispose()` has started. Read by `TaskLifecycle.drainAbort`:
+	 * an abandoned abort drains in-flight memory writers only during dispose
+	 * (shutdown), never when the user merely navigates away from a task.
+	 */
+	get isDisposed(): boolean {
+		return this._disposed
+	}
+
 	// Removes and destroys the top Cline instance (the current finished task),
 	// activating the previous one (resuming the parent task).
 	async removeClineFromStack(options?: { skipDelegationRepair?: boolean }) {

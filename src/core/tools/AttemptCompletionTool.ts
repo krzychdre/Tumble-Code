@@ -161,7 +161,20 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 				}
 			}
 
-			const { response, text, images } = await task.ask("completion_result", "", false)
+			// While this ask is open the task is finished and waiting for the
+			// user. The VS Code chat never answers it with "yes": "Start New
+			// Task" (or opening another task) abandons the task instead, and
+			// TaskLifecycle treats that abandonment as the accepted completion
+			// and runs the memory writers. Clear the flag once answered so the
+			// "yes" path below (TaskCompleted) and a later abort never both fire.
+			task.awaitingCompletionAcceptance = true
+			let answer: Awaited<ReturnType<Task["ask"]>>
+			try {
+				answer = await task.ask("completion_result", "", false)
+			} finally {
+				task.awaitingCompletionAcceptance = false
+			}
+			const { response, text, images } = answer
 
 			if (response === "yesButtonClicked") {
 				this.emitTaskCompleted(task)

@@ -83,6 +83,9 @@ export interface TaskLifecycleAccess {
 	// Task state flags
 	abort: boolean
 	abandoned: boolean
+	// True while attempt_completion waits on its completion_result ask (the
+	// task finished, the user has not answered yet). See Task.
+	awaitingCompletionAcceptance: boolean
 	abortReason?: ClineApiReqCancelReason
 	isInitialized: boolean
 	isStreaming: boolean
@@ -561,7 +564,7 @@ export class TaskLifecycle {
 	async abortTask(isAbandoned = false): Promise<void> {
 		const isUserCancelled = this.prepareAbort(isAbandoned)
 		await this.cleanupAbort()
-		await this.drainAbort(isUserCancelled)
+		await this.drainAbort(isUserCancelled, isAbandoned)
 	}
 
 	/**
@@ -577,6 +580,12 @@ export class TaskLifecycle {
 	 */
 	private prepareAbort(isAbandoned: boolean): boolean {
 		// Aborting task
+
+		// Read and consume the "finished, waiting for the user" state first: any
+		// abort ends that wait, and consuming it keeps a second abort of the
+		// same instance (cancel followed by the rehydrate pop) from re-firing.
+		const isLeavingCompletedTask = this.access.awaitingCompletionAcceptance === true
+		this.access.awaitingCompletionAcceptance = false
 
 		// Will stop any autonomously running promises.
 		if (isAbandoned) {
@@ -597,8 +606,12 @@ export class TaskLifecycle {
 		// Memory background writers: fire-and-forget extraction + dream at task
 		// end. Both are gated internally (memory enabled, main agent, no direct
 		// writes for extraction; time/session/lock cascade for dream) and run
-		// as sandboxed sub-Tasks. Abandoned tasks skip extraction (no durable
-		// signal to save from an abandoned run). User-cancelled aborts also skip:
+		// as sandboxed sub-Tasks. Abandoned tasks skip them (no durable signal
+		// to save from an abandoned run) with one exception: a task abandoned
+		// while its completion_result ask is still open. That is how the VS Code
+		// chat ends every finished task ("Start New Task", opening another task,
+		// starting a new one all pop it as an abandoned abort), so it is the
+		// accepted completion, not an abandoned run. User-cancelled aborts skip:
 		// the writers spawn a fresh LLM request, so firing them here would put the
 		// inference engine right back to work the moment the user pressed Stop
 		// (completion is the durable extraction signal; a cancelled run has none).
@@ -609,7 +622,8 @@ export class TaskLifecycle {
 		// trigger their own memory writers — that would recurse unboundedly
 		// (aborted background task → new background task → aborted → …).
 		// They also never start extraction, so draining is pointless for them.
-		if (!isAbandoned && !isUserCancelled && !this.access.isBackground) {
+		const isEndOfRun = !isAbandoned || isLeavingCompletedTask
+		if (isEndOfRun && !isUserCancelled && !this.access.isBackground) {
 			try {
 				this.triggerMemoryBackgroundWriters()
 			} catch (error) {
@@ -651,10 +665,12 @@ export class TaskLifecycle {
 	 *
 	 * Ordering constraint: MUST run after cleanupAbort (dispose + save done).
 	 * Skipped on user cancel (holds isStreaming=true past cancelTask's 3s
-	 * pWaitFor and freezes the UI) and for background tasks (they never start
-	 * extraction/dreams, so there is nothing to drain).
+	 * pWaitFor and freezes the UI), for background tasks (they never start
+	 * extraction/dreams, so there is nothing to drain) and for an abandoned
+	 * abort while the provider is alive (the user is navigating away and the
+	 * caller awaits this abort).
 	 */
-	private async drainAbort(isUserCancelled: boolean): Promise<void> {
+	private async drainAbort(isUserCancelled: boolean, isAbandoned: boolean): Promise<void> {
 		// Drain in-flight memory extraction so it isn't orphaned on shutdown.
 		// Soft 60s timeout (unref'd internally) so it never blocks process exit.
 		// Skipped on user cancel: the stream loop awaits abortTask()
@@ -665,7 +681,15 @@ export class TaskLifecycle {
 		// background tasks: they never start extraction, so there is nothing to drain.
 		// Same guards apply to dreams (MEM-2): skip drain on user cancel and for
 		// background tasks — they never start dreams, so there is nothing to drain.
-		if (!isUserCancelled && !this.access.isBackground) {
+		// Also skipped for an abandoned abort while the provider is alive: its
+		// callers (clearTask, createTask, createTaskWithHistoryItem, delegation)
+		// await the abort before the chat moves on, so draining a writer that is
+		// in flight (often the one this very abort just started) would freeze
+		// the chat for up to a minute. The writers keep running without it. An
+		// abandoned abort during provider dispose (shutdown) still drains.
+		const isProviderDisposing = this.access.providerRef.deref()?.isDisposed === true
+		const isNavigationAway = isAbandoned && !isProviderDisposing
+		if (!isUserCancelled && !this.access.isBackground && !isNavigationAway) {
 			try {
 				await drainPendingExtraction(60_000)
 				await drainPendingDreams(60_000)
@@ -682,10 +706,12 @@ export class TaskLifecycle {
 	 * periodically consolidates. Both are best-effort and sandboxed; both are
 	 * skipped when memory is disabled or this isn't the main agent.
 	 *
-	 * Called on normal completion (via the task's `TaskCompleted` subscription)
-	 * and on non-abandoned abort. Both entry points are idempotent: extraction
-	 * is cursor-based and early-returns when there are no new messages, so a
-	 * completion-then-abort sequence never double-writes.
+	 * Called on normal completion (via the task's `TaskCompleted` subscription),
+	 * on non-abandoned abort, and on an abandoned abort of a task that is still
+	 * waiting at its completion_result ask (how the VS Code chat ends a
+	 * finished task). Extraction is cursor-based and early-returns when there
+	 * are no new messages, so a completion-then-abort sequence never
+	 * double-writes.
 	 *
 	 * The runner is `provider.memorySubTaskRunner` (Phase 2), which spawns a
 	 * headless, write-sandboxed background task that actually persists memories.
