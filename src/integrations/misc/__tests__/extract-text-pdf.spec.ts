@@ -58,6 +58,16 @@ describe("PDF text extraction (pdf-parse)", () => {
 		})
 	})
 
+	// pdf-parse 1.1.1 hands pdf.js 1.10 a Node Buffer; in plain Node (the CLI,
+	// this test) a copy under 4 KB comes from Buffer's shared pool and pdf.js
+	// then reads the wrong bytes: "bad XRef entry". VS Code's Electron does
+	// not pool, so the extension was not affected.
+	it("extracts a PDF smaller than 4 KB in plain Node", async () => {
+		const tiny = path.join(__dirname, "fixtures", "tiny.pdf")
+
+		expect(await extractTextFromFile(tiny)).toBe(addLineNumbers("\n\nA tiny PDF under 4 KB."))
+	})
+
 	it("rejects a file that is not a PDF", async () => {
 		const notAPdf = path.join(__dirname, "fixtures", "not-a-pdf.pdf")
 
