@@ -19,14 +19,18 @@ import { xaiDefaultModelId, xaiModels } from "./providers/xai.js"
 import { internationalZAiDefaultModelId, internationalZAiModels } from "./providers/zai.js"
 
 /**
- * What a provider does with a model id that is not in its model list.
+ * What a provider does with a model id that is not in its model list. Owner
+ * decision 5 (2026-09-25): an unknown id is always sent as is, never silently
+ * replaced by the default model; the settings UI warns that the id is unknown.
  *
- * - `keep-id`: the id is sent as is, with the default model's info.
- * - `substitute-default`: the default model is sent instead, silently.
- * - `honor-custom`: the id is sent as is when the provider can describe it
- *   (`customModelInfo`), otherwise the default model is sent.
+ * - `keep-id`: the id is sent with the default model's info (capabilities
+ *   and prices).
+ * - `honor-custom`: the id is sent with the info the provider derives from it
+ *   (`customModelInfo`: Anthropic and Bedrock guess from the model family,
+ *   Gemini drops the prices it cannot verify), or with the default model's
+ *   info when it cannot.
  */
-export const unknownModelPolicies = ["keep-id", "substitute-default", "honor-custom"] as const
+export const unknownModelPolicies = ["keep-id", "honor-custom"] as const
 
 export type UnknownModelPolicy = (typeof unknownModelPolicies)[number]
 
@@ -66,7 +70,7 @@ export const providerModelDefinitions = {
 	litellm: {
 		modelIdField: "litellmModelId",
 		defaultModelId: litellmDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		unknownModelPolicy: "keep-id",
 	},
 	deepseek: {
 		modelIdField: "apiModelId",
@@ -93,7 +97,8 @@ export const providerModelDefinitions = {
 		modelIdField: "apiModelId",
 		models: bedrockModels,
 		defaultModelId: bedrockDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		// The handler guesses the info from the model family.
+		unknownModelPolicy: "honor-custom",
 	},
 	gemini: {
 		modelIdField: "apiModelId",
@@ -123,19 +128,19 @@ export const providerModelDefinitions = {
 		modelIdField: "apiModelId",
 		models: minimaxModels,
 		defaultModelId: minimaxDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		unknownModelPolicy: "keep-id",
 	},
 	"openai-codex": {
 		modelIdField: "apiModelId",
 		models: openAiCodexModels,
 		defaultModelId: openAiCodexDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		unknownModelPolicy: "keep-id",
 	},
 	"openai-native": {
 		modelIdField: "apiModelId",
 		models: openAiNativeModels,
 		defaultModelId: openAiNativeDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		unknownModelPolicy: "keep-id",
 	},
 	"qwen-code": {
 		modelIdField: "apiModelId",
@@ -147,19 +152,19 @@ export const providerModelDefinitions = {
 		modelIdField: "apiModelId",
 		models: vertexModels,
 		defaultModelId: vertexDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		unknownModelPolicy: "keep-id",
 	},
 	xai: {
 		modelIdField: "apiModelId",
 		models: xaiModels,
 		defaultModelId: xaiDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		unknownModelPolicy: "keep-id",
 	},
 	zai: {
 		modelIdField: "apiModelId",
 		models: internationalZAiModels,
 		defaultModelId: internationalZAiDefaultModelId,
-		unknownModelPolicy: "substitute-default",
+		unknownModelPolicy: "keep-id",
 	},
 } as const satisfies Record<ActiveProviderDefinition["id"], ProviderModelDefinition>
 
@@ -178,11 +183,10 @@ export type CatalogModelResolution = {
 }
 
 /**
- * Resolve a configured model id against a static model list, applying the
- * provider's unknown-model policy. An absent id selects the default model; an
- * id that is not in the list (including "") follows `unknownModelPolicy`.
- * `customModelInfo` describes an unknown id for `honor-custom`; returning
- * `undefined` means the provider does not recognize it.
+ * Resolve a configured model id against a static model list. An absent or
+ * empty id selects the default model. An id that is not in the list is kept
+ * (owner decision 5) with the info `unknownModelPolicy` gives it; it is never
+ * replaced by the default model.
  */
 export const resolveCatalogModel = (
 	modelId: string | undefined,
@@ -196,7 +200,7 @@ export const resolveCatalogModel = (
 	const { models, defaultModelId, unknownModelPolicy } = catalog
 	const defaultInfo = models[defaultModelId]!
 
-	if (modelId === undefined) {
+	if (!modelId) {
 		return { id: defaultModelId, info: defaultInfo, known: true }
 	}
 
@@ -204,17 +208,7 @@ export const resolveCatalogModel = (
 		return { id: modelId, info: models[modelId]!, known: true }
 	}
 
-	switch (unknownModelPolicy) {
-		case "keep-id":
-			return { id: modelId, info: defaultInfo, known: false }
-		case "honor-custom": {
-			const customInfo = modelId ? options.customModelInfo?.(modelId) : undefined
+	const customInfo = unknownModelPolicy === "honor-custom" ? options.customModelInfo?.(modelId) : undefined
 
-			return customInfo
-				? { id: modelId, info: customInfo, known: false }
-				: { id: defaultModelId, info: defaultInfo, known: false }
-		}
-		case "substitute-default":
-			return { id: defaultModelId, info: defaultInfo, known: false }
-	}
+	return { id: modelId, info: customInfo ?? defaultInfo, known: false }
 }

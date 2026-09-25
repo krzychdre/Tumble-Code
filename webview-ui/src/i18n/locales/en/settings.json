@@ -377,6 +377,7 @@
 		"noProviderMatchFound": "No providers found",
 		"noMatchFound": "No matching profiles found",
 		"retiredProviderMessage": "Sorry, this provider is no longer supported. We saw very few Tumble users actually using it and we need to reduce the surface area of our codebase so we can keep shipping fast and serving our community well in this space. It was a really hard decision but it lets us focus on what matters most to you. It sucks, we know.",
+		"unknownModelWarning": "The model \"{{modelId}}\" is not in this provider's model list. It is sent as is, with the capabilities and prices of the provider's default model, so the context window, output limit and cost shown may be wrong. Check the model id if requests fail.",
 		"vscodeLmDescription": " The VS Code Language Model API allows you to run models provided by other VS Code extensions (including but not limited to GitHub Copilot). The easiest way to get started is to install the Copilot and Copilot Chat extensions from the VS Code Marketplace.",
 		"awsCustomArnUse": "Enter a valid Amazon Bedrock ARN for the model you want to use. Format examples:",
 		"awsCustomArnDesc": "Make sure the region in the ARN matches your selected AWS Region above.",

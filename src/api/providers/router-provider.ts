@@ -87,8 +87,9 @@ export abstract class RouterProvider extends BaseProvider {
 }
 
 /**
- * The model a router provider reports for a model list: the configured id when
- * the list has it, otherwise the default model.
+ * The model a router provider reports for a model list. The configured id is
+ * always kept (owner decision 5); an id missing from the list (unknown, or the
+ * list is not loaded yet) gets the default model's info.
  */
 export function resolveRouterModel({
 	modelId,
@@ -101,7 +102,7 @@ export function resolveRouterModel({
 	defaultModelInfo: ModelInfo
 	models: Record<string, ModelInfo>
 }): { id: string; info: ModelInfo } {
-	const id = modelId ?? defaultModelId
+	const id = modelId || defaultModelId
 
-	return models[id] ? { id, info: models[id] } : { id: defaultModelId, info: defaultModelInfo }
+	return { id, info: models[id] ?? defaultModelInfo }
 }

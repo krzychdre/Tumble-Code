@@ -27,6 +27,7 @@ import {
 	VERTEX_1M_CONTEXT_MODEL_IDS,
 	isRetiredProvider,
 	getProviderDefaultModelId,
+	providerModelDefinitions,
 } from "@roo-code/types"
 
 import { useOpenRouterModelProviders } from "./useOpenRouterModelProviders"
@@ -39,15 +40,49 @@ import {
 } from "@src/components/settings/utils/providerModelConfig"
 
 /**
- * Helper to get a validated model ID for dynamic providers.
- * Returns the configured model ID if it exists in the available models, otherwise returns the default.
+ * The model list a provider's configured id is checked against, or undefined
+ * when the provider has none to check (Ollama and LM Studio report a missing
+ * model themselves; OpenAI Compatible and VS Code LM have no list).
  */
-function getValidatedModelId(
-	configuredId: string | undefined,
-	availableModels: ModelRecord | undefined,
-	defaultModelId: string,
-): string {
-	return configuredId && availableModels?.[configuredId] ? configuredId : defaultModelId
+function getProviderModelList(
+	provider: ProviderName,
+	apiConfiguration: ProviderSettings,
+	dynamicModels: ModelRecord | undefined,
+): Readonly<Record<string, ModelInfo>> | undefined {
+	switch (provider) {
+		case "openrouter":
+		case "litellm":
+			return dynamicModels
+		case "deepseek":
+			return { ...deepSeekModels, ...dynamicModels }
+		case "zai":
+			return apiConfiguration.zaiApiLine === "china_coding" ? mainlandZAiModels : internationalZAiModels
+		default: {
+			const definition = providerModelDefinitions[provider as keyof typeof providerModelDefinitions]
+			return definition && "models" in definition ? definition.models : undefined
+		}
+	}
+}
+
+/**
+ * Whether the selected model id is missing from the provider's model list.
+ * The id is still used as is (owner decision 5), with the default model's
+ * capabilities; the settings UI shows a warning.
+ */
+function isUnknownModelId(
+	provider: ProviderName,
+	id: string,
+	apiConfiguration: ProviderSettings,
+	dynamicModels: ModelRecord | undefined,
+): boolean {
+	// Bedrock's custom ARN option is a pseudo model: the ARN names the model.
+	if (!id || (provider === "bedrock" && id === "custom-arn")) {
+		return false
+	}
+
+	const models = getProviderModelList(provider, apiConfiguration, dynamicModels)
+
+	return Boolean(models && Object.keys(models).length > 0 && !Object.hasOwn(models, id))
 }
 
 export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
@@ -103,20 +138,31 @@ export const useSelectedModel = (apiConfiguration?: ProviderSettings) => {
 				})
 			: { id: getProviderDefaultModelId(activeProvider ?? "anthropic"), info: undefined }
 
+	const isLoading =
+		(needRouterModels && providerModels.isLoading) ||
+		(needOpenRouterProviders && openRouterModelProviders.isLoading) ||
+		(needLmStudio && lmStudioModels!.isLoading) ||
+		(needOllama && ollamaModels!.isLoading)
+	const isError =
+		(needRouterModels && providerModelsError) ||
+		(needOpenRouterProviders && openRouterModelProviders.isError) ||
+		(needLmStudio && lmStudioModels!.isError) ||
+		(needOllama && ollamaModels!.isError)
+
 	return {
 		provider,
 		id,
 		info,
-		isLoading:
-			(needRouterModels && providerModels.isLoading) ||
-			(needOpenRouterProviders && openRouterModelProviders.isLoading) ||
-			(needLmStudio && lmStudioModels!.isLoading) ||
-			(needOllama && ollamaModels!.isLoading),
-		isError:
-			(needRouterModels && providerModelsError) ||
-			(needOpenRouterProviders && openRouterModelProviders.isError) ||
-			(needLmStudio && lmStudioModels!.isError) ||
-			(needOllama && ollamaModels!.isError),
+		isLoading,
+		isError,
+		isUnknownModel: Boolean(
+			apiConfiguration &&
+				activeProvider &&
+				isReady &&
+				!isLoading &&
+				!isError &&
+				isUnknownModelId(activeProvider, id, apiConfiguration, dynamicModels),
+		),
 	}
 }
 
@@ -140,8 +186,10 @@ function getSelectedModel({
 	// this gives a better UX than showing the default model
 	const defaultModelId = getProviderDefaultModelId(provider)
 	switch (provider) {
+		// A configured id is shown even when it is not in the list: requests
+		// use it as is (owner decision 5) and the settings warn about it.
 		case "openrouter": {
-			const id = getValidatedModelId(apiConfiguration.openRouterModelId, routerModels.openrouter, defaultModelId)
+			const id = apiConfiguration.openRouterModelId || defaultModelId
 			let info = routerModels.openrouter?.[id]
 			const specificProvider = apiConfiguration.openRouterSpecificProvider
 
@@ -157,7 +205,7 @@ function getSelectedModel({
 			return { id, info }
 		}
 		case "litellm": {
-			const id = getValidatedModelId(apiConfiguration.litellmModelId, routerModels.litellm, defaultModelId)
+			const id = apiConfiguration.litellmModelId || defaultModelId
 			const routerInfo = routerModels.litellm?.[id]
 			return { id, info: routerInfo ?? litellmDefaultModelInfo }
 		}
@@ -219,10 +267,7 @@ function getSelectedModel({
 			return { id, info }
 		}
 		case "deepseek": {
-			const availableModels = routerModels.deepseek
-				? { ...deepSeekModels, ...routerModels.deepseek }
-				: deepSeekModels
-			const id = getValidatedModelId(apiConfiguration.apiModelId, availableModels, defaultModelId)
+			const id = apiConfiguration.apiModelId || defaultModelId
 			const routerInfo = routerModels.deepseek?.[id]
 			const staticInfo = deepSeekModels[id as keyof typeof deepSeekModels]
 			return { id, info: routerInfo ?? staticInfo }

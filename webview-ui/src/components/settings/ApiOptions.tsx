@@ -149,6 +149,7 @@ const ApiOptions = ({
 		provider: selectedProvider,
 		id: selectedModelId,
 		info: selectedModelInfo,
+		isUnknownModel,
 	} = useSelectedModel(apiConfiguration)
 	const selectedProviderDefinition = getProviderDefinition(selectedProvider)
 	const providerMetadata =
@@ -475,6 +476,16 @@ const ApiOptions = ({
 								/>
 							)}
 						</>
+					)}
+
+					{/* Owner decision 5: an unknown model id is used as is, never replaced. */}
+					{isUnknownModel && (
+						<div
+							className="flex flex-row items-start gap-1 text-vscode-editorWarning-foreground text-sm"
+							data-testid="unknown-model-warning">
+							<div className="codicon codicon-warning mt-0.5" />
+							<div>{t("settings:providers.unknownModelWarning", { modelId: selectedModelId })}</div>
+						</div>
 					)}
 
 					{!fromWelcomeView && (

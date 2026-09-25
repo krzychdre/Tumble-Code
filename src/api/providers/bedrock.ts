@@ -1082,10 +1082,11 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 				info: JSON.parse(JSON.stringify(bedrockModels[bedrockDefaultPromptRouterModelId])),
 			}
 		} else {
-			// Use heuristics for model info, then allow overrides from ProviderSettings
+			// An unknown model id is kept (owner decision 5). Use heuristics for
+			// the model info, then allow overrides from ProviderSettings.
 			const guessed = this.guessModelInfoFromId(modelId)
 			model = {
-				id: bedrockDefaultModelId,
+				id: baseModelId,
 				info: {
 					...JSON.parse(JSON.stringify(bedrockModels[bedrockDefaultModelId])),
 					...guessed,
