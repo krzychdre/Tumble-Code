@@ -277,4 +277,22 @@ describe("fileChangesFromMessages", () => {
 		]
 		expect(fileChangesFromMessages(messages)).toEqual([])
 	})
+
+	it("parses each tool payload once across passes over fresh copies of the history", () => {
+		const history = (): ClineMessage[] => [
+			msg({ ts: 7_000_001, text: JSON.stringify({ tool: "newFileCreated", path: "a.ts", content: "a" }) }),
+			msg({ ts: 7_000_002, text: JSON.stringify({ tool: "appliedDiff", path: "b.ts", diff: "-b\n+B" }) }),
+		]
+		const parse = vi.spyOn(JSON, "parse")
+		onTestFinished(() => parse.mockRestore())
+
+		const first = fileChangesFromMessages(history())
+		// The panel runs this again on every streamed token, with a new copy of
+		// every message from the host.
+		const second = fileChangesFromMessages(history())
+
+		expect(second).toEqual(first)
+		expect(first.map((entry) => entry.path)).toEqual(["a.ts", "b.ts"])
+		expect(parse).toHaveBeenCalledTimes(2)
+	})
 })
