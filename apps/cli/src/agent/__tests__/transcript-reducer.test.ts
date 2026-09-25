@@ -1186,6 +1186,24 @@ describe("transcript reducer", () => {
 		})
 	})
 
+	// Decision (CLI-9): the transcript is append-only. When the core drops or
+	// rewrites earlier messages (context condensing, a checkpoint restore), the
+	// rows already shown stay: finished rows are printed into the terminal's
+	// scrollback by ink's <Static>, which cannot take a printed line back, so
+	// removing them from the store would only desynchronise it from the screen.
+	it("keeps the rows of messages the core no longer lists", () => {
+		stateMessage([
+			{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
+			{ ts: 2, type: "say", say: "text", text: "First answer", partial: false },
+		])
+		stateMessage([
+			{ ts: 1, type: "say", say: "text", text: "prompt echo", partial: false },
+			{ ts: 3, type: "say", say: "text", text: "After condensing", partial: false },
+		])
+
+		expect(model.messages.map((m) => m.id)).toEqual(["2", "3"])
+	})
+
 	describe("purity", () => {
 		it("never changes the cursor or the view it is given", () => {
 			const before = createTranscriptCursor()
