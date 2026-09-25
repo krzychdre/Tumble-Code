@@ -138,9 +138,7 @@ describe("rmDir retry schedule (characterization)", () => {
 		copyPaths([["src", "dst"]], "/src-root", "/dst-root")
 
 		expect(fsMocks.rmSync).toHaveBeenCalledTimes(3)
-		const retryDelays = warn.mock.calls
-			.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1])
-			.filter(Boolean)
+		const retryDelays = warn.mock.calls.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1]).filter(Boolean)
 		expect(retryDelays).toEqual(["100", "200"])
 		expect(sleepSyncMock.mock.calls).toEqual([[100], [200]])
 	})
@@ -154,9 +152,7 @@ describe("rmDir retry schedule (characterization)", () => {
 
 		expect(() => copyPaths([["src", "dst"]], "/src-root", "/dst-root")).toThrow("resource busy")
 
-		const retryDelays = warn.mock.calls
-			.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1])
-			.filter(Boolean)
+		const retryDelays = warn.mock.calls.map(([msg]) => /retrying in (\d+)ms/.exec(String(msg))?.[1]).filter(Boolean)
 		expect(retryDelays).toEqual(["100", "200", "400", "800"])
 		// The wait between attempts is a real (non-spinning) sleep of the same length.
 		expect(sleepSyncMock.mock.calls).toEqual([[100], [200], [400], [800]])
