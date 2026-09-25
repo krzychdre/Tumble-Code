@@ -261,19 +261,22 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 		expect(rm).not.toHaveBeenCalled()
 	})
 
-	it("abort after a failed API request: reports the task's failure message", async () => {
+	it.each([
+		["a 401", 'API error 401 (invalid or missing API key) from provider "anthropic".'],
+		["exhausted retries", 'API error 500 from provider "anthropic" after 7 attempts.'],
+	])("abort after %s: reports the task's failure message", async (_label, failureMessage) => {
 		const runner = new BackgroundTaskRunner(makeHost().host)
 		const task = await started(runner)
 		const pending = runner.awaitTaskCompletion(task as never)
 
 		task.abortReason = "streaming_failed"
-		task.apiFailureMessage = "API error 401 (invalid or missing API key) from provider anthropic"
+		task.apiFailureMessage = failureMessage
 		task.emit(RooCodeEventName.TaskAborted)
 
 		await expect(pending).resolves.toMatchObject({
 			completed: false,
 			abortReason: "streaming_failed",
-			failureMessage: "API error 401 (invalid or missing API key) from provider anthropic",
+			failureMessage,
 		})
 	})
 
