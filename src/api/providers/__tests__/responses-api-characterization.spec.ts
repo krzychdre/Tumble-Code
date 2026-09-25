@@ -618,6 +618,33 @@ async function requestBodyOf(
 	return create.mock.calls[0][0]
 }
 
+// xAI serves the same Responses API events; its stream must be read like OpenAI Native's
+// (it has no SSE fallback and prices usage in the task, so only the chunks without cost
+// are compared).
+describe("Responses API handlers: xAI reads events like OpenAI Native", () => {
+	afterEach(() => {
+		vitest.restoreAllMocks()
+		vitest.unstubAllGlobals()
+	})
+
+	it.each(Object.entries(fixtures))("%s", async (_name, events) => {
+		const native = await viaSdk(nativeHandler(), events)
+		const xai = await viaSdk(xaiHandler(), events)
+		const withoutCost = (chunks: ApiStreamChunk[]) =>
+			chunks.map((chunk) => {
+				if (chunk.type !== "usage") {
+					return chunk
+				}
+				const { totalCost: _totalCost, ...rest } = chunk
+				return rest
+			})
+		expect({ chunks: withoutCost(xai.chunks), error: xai.error }).toEqual({
+			chunks: withoutCost(native.chunks),
+			error: native.error,
+		})
+	})
+})
+
 // What the fetch fallback reports when the server refuses the request or cannot be reached.
 describe("Responses API handlers: fallback HTTP errors", () => {
 	afterEach(() => {
