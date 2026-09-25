@@ -1,3 +1,5 @@
+import { clineAsks } from "@roo-code/types"
+
 import { parseStdinStreamCommand, shouldSendMessageAsAskResponse } from "../stdin-stream.js"
 
 describe("parseStdinStreamCommand", () => {
@@ -243,5 +245,25 @@ describe("shouldSendMessageAsAskResponse", () => {
 	it("does not route unknown asks", () => {
 		expect(shouldSendMessageAsAskResponse(true, "unknown")).toBe(false)
 		expect(shouldSendMessageAsAskResponse(true, undefined)).toBe(false)
+	})
+})
+
+// CLI-5: a stdin "message" answers the pending ask exactly when the webview's
+// chat box would send its text as the ask's answer (useChatComposer's switch
+// over clineAsk); every other ask queues the message instead.
+describe("shouldSendMessageAsAskResponse matches the webview", () => {
+	const webviewTextAnswerAsks = new Set([
+		"followup",
+		"tool",
+		"command",
+		"use_mcp_server",
+		"completion_result",
+		"resume_task",
+		"resume_completed_task",
+		"mistake_limit_reached",
+	])
+
+	it.each([...clineAsks])("routes %s like the chat box", (ask) => {
+		expect(shouldSendMessageAsAskResponse(true, ask)).toBe(webviewTextAnswerAsks.has(ask))
 	})
 })

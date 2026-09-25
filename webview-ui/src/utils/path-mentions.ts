@@ -2,38 +2,11 @@
  * Utilities for handling path-related operations in mentions
  */
 
-/**
- * Escape spaces in a path so it can be embedded in an `@`-mention token.
- *
- * This is a DISPLAY/TRANSPORT formatter for the webview chat-input grammar,
- * NOT a shell escaper. The mention syntax defined in
- * `src/shared/context-mentions.ts` (`mentionRegex`) treats a literal `\ `
- * (backslash-space) as an escaped space inside an `@/...` path token, and
- * `unescapeSpaces` reverses it. Downstream consumers (extension host) feed the
- * unescaped path to `path.resolve` + VS Code APIs (`openFile`,
- * `revealInExplorer`, `openExternal`); the value is NEVER interpolated into a
- * shell command string.
- *
- * Only spaces are escaped because that is the only character the mention
- * grammar requires escaping — the regex already excludes unescaped whitespace
- * from path tokens. Other shell metacharacters (`"`, `$`, backtick, `&`, `;`,
- * `|`, `\`) are not meaningful in this context and escaping them here would
- * corrupt the displayed path. CodeQL's `js/incomplete-sanitization` alert is a
- * false positive for this non-shell usage; the suppression below documents that
- * this function is intentionally not a general-purpose shell escaper.
- *
- * @param path The path to escape (assumed to contain unescaped spaces only)
- * @returns The path with each space replaced by `\ `
- */
-// codeql[js/incomplete-sanitization]: This function intentionally escapes only
-// spaces to satisfy the @-mention grammar in src/shared/context-mentions.ts.
-// It is a display/transport formatter, not a shell escaper: its output is
-// parsed back by `unescapeSpaces` and consumed by `path.resolve` + VS Code
-// APIs (openFile / revealInExplorer / openExternal), never by a shell. No
-// call site interpolates the result into a command string.
-export function escapeSpacesForMention(path: string): string {
-	return path.replace(/ /g, "\\ ")
-}
+import { escapeSpacesForMention } from "@roo-code/core/browser"
+
+// The mention grammar's escaper lives next to `unescapeSpaces` in @roo-code/core
+// (shared with the CLI's file mentions).
+export { escapeSpacesForMention }
 
 /**
  * Converts an absolute path to a mention-friendly path

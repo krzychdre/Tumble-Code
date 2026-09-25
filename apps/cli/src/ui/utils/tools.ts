@@ -181,7 +181,7 @@ export function formatToolOutput(toolInfo: Record<string, unknown>): string {
 
 		case "update_todo_list":
 		case "updateTodoList": {
-			// Special marker - actual rendering is handled by TodoChangeDisplay component
+			// Special marker - actual rendering is handled by the TodoDisplay component
 			return "☑ TODO list updated"
 		}
 
@@ -252,78 +252,27 @@ export function formatToolAskMessage(toolInfo: Record<string, unknown>): string 
 }
 
 /**
- * Parse TODO items from tool info
- * Handles both array format and markdown checklist string format
+ * The TODO items of an update_todo_list ask. UpdateTodoListTool sends the
+ * list it parsed, as TodoItem[], in both the partial and the final ask; a
+ * payload without a list yields null.
  */
 export function parseTodosFromToolInfo(toolInfo: Record<string, unknown>): TodoItem[] | null {
-	// Try to get todos directly as an array
-	const todosArray = toolInfo.todos as unknown[] | undefined
-	if (Array.isArray(todosArray)) {
-		return todosArray
-			.map((item, index) => {
-				if (typeof item === "object" && item !== null) {
-					const todo = item as Record<string, unknown>
-					return {
-						id: (todo.id as string) || `todo-${index}`,
-						content: (todo.content as string) || "",
-						status: ((todo.status as string) || "pending") as TodoItem["status"],
-					}
+	const todosArray = toolInfo.todos
+	if (!Array.isArray(todosArray)) {
+		return null
+	}
+
+	return todosArray
+		.map((item: unknown, index) => {
+			if (typeof item === "object" && item !== null) {
+				const todo = item as Record<string, unknown>
+				return {
+					id: (todo.id as string) || `todo-${index}`,
+					content: (todo.content as string) || "",
+					status: ((todo.status as string) || "pending") as TodoItem["status"],
 				}
-				return null
-			})
-			.filter((item): item is TodoItem => item !== null)
-	}
-
-	// Try to parse markdown checklist format from todos string
-	const todosString = toolInfo.todos as string | undefined
-	if (typeof todosString === "string") {
-		return parseMarkdownChecklist(todosString)
-	}
-
-	return null
-}
-
-/**
- * Parse a markdown checklist string into TodoItem array
- * Format:
- *   [ ] pending item
- *   [-] in progress item
- *   [x] completed item
- */
-export function parseMarkdownChecklist(markdown: string): TodoItem[] {
-	const lines = markdown.split("\n")
-	const todos: TodoItem[] = []
-
-	for (let i = 0; i < lines.length; i++) {
-		const line = lines[i]
-
-		if (!line) {
-			continue
-		}
-
-		const trimmedLine = line.trim()
-
-		if (!trimmedLine) {
-			continue
-		}
-
-		// Match markdown checkbox patterns
-		const checkboxMatch = trimmedLine.match(/^\[([x\-\s])\]\s*(.+)$/i)
-
-		if (checkboxMatch) {
-			const statusChar = checkboxMatch[1] ?? " "
-			const content = checkboxMatch[2] ?? ""
-			let status: TodoItem["status"] = "pending"
-
-			if (statusChar.toLowerCase() === "x") {
-				status = "completed"
-			} else if (statusChar === "-") {
-				status = "in_progress"
 			}
-
-			todos.push({ id: `todo-${i}`, content: content.trim(), status })
-		}
-	}
-
-	return todos
+			return null
+		})
+		.filter((item): item is TodoItem => item !== null)
 }

@@ -1,4 +1,4 @@
-import { mentionRegex, mentionRegexGlobal } from "../context-mentions.js"
+import { escapeSpacesForMention, mentionRegex, mentionRegexGlobal, unescapeSpaces } from "../context-mentions.js"
 
 describe("mentionRegex and mentionRegexGlobal", () => {
 	// Test cases for various mention types
@@ -145,5 +145,21 @@ After space @/should/match.txt`
 			const matches = Array.from(logEntry.matchAll(mentionRegexGlobal))
 			expect(matches.length).toBe(0)
 		})
+	})
+})
+
+describe("escapeSpacesForMention", () => {
+	it("escapes every space, and unescapeSpaces reverses it", () => {
+		const path = "my docs/read me .md"
+		const escaped = escapeSpacesForMention(path)
+
+		expect(escaped).toBe("my\\ docs/read\\ me\\ .md")
+		expect(unescapeSpaces(escaped)).toBe(path)
+	})
+
+	it("keeps an escaped path in one mention token", () => {
+		const text = `see @/${escapeSpacesForMention("a b/c d.ts")} now`
+
+		expect([...text.matchAll(mentionRegexGlobal)].map((match) => match[1])).toEqual(["/a\\ b/c\\ d.ts"])
 	})
 })

@@ -1,5 +1,7 @@
 import { render } from "ink-testing-library"
 
+import { mentionRegexGlobal, unescapeSpaces } from "@roo-code/core/cli"
+
 import { createFileTrigger, toFileResult, type FileResult } from "../FileTrigger.js"
 
 describe("FileTrigger", () => {
@@ -106,6 +108,20 @@ describe("FileTrigger", () => {
 			const result = trigger.getReplacementText(item, "check @co", 6)
 
 			expect(result).toBe("check @/config.json ")
+		})
+
+		// CLI-5: the mention grammar (mentionRegex) ends a path at an unescaped
+		// space. The webview escapes spaces (escapeSpacesForMention); the CLI
+		// inserted the raw path, so the extension read "@/my" and dropped the rest.
+		it("escapes spaces so the extension reads the whole path back", () => {
+			const item = toFileResult({ path: "my docs/read me.md", type: "file" })
+			const replacement = trigger.getReplacementText(item, "see @rea", 4)
+
+			expect(replacement).toBe("see @/my\\ docs/read\\ me.md ")
+
+			const mentions = [...replacement.matchAll(mentionRegexGlobal)].map((match) => match[1])
+			expect(mentions).toEqual(["/my\\ docs/read\\ me.md"])
+			expect(unescapeSpaces(mentions[0]!.slice(1))).toBe("my docs/read me.md")
 		})
 
 		it("should generate correct replacement text for folders", () => {

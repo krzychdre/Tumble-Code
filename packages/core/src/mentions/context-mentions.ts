@@ -88,3 +88,27 @@ export interface GitMentionSuggestion extends MentionSuggestion {
 export function unescapeSpaces(path: string): string {
 	return path.replace(/\\ /g, " ")
 }
+
+/**
+ * Escape spaces in a path so it can be embedded in an `@`-mention token; the
+ * inverse of `unescapeSpaces`.
+ *
+ * This is a DISPLAY/TRANSPORT formatter for the mention grammar, NOT a shell
+ * escaper. `mentionRegex` treats a literal `\ ` (backslash-space) as an
+ * escaped space inside an `@/...` path token and excludes unescaped
+ * whitespace, so spaces are the only character that needs escaping. The
+ * extension feeds the unescaped path to `path.resolve` and editor APIs; it is
+ * never interpolated into a shell command. Other shell metacharacters are not
+ * meaningful here, and escaping them would corrupt the path.
+ *
+ * @param path The path to escape (assumed to contain unescaped spaces only)
+ * @returns The path with each space replaced by `\ `
+ */
+// codeql[js/incomplete-sanitization]: This function intentionally escapes only
+// spaces to satisfy the @-mention grammar above. It is a display/transport
+// formatter, not a shell escaper: its output is parsed back by
+// `unescapeSpaces` and consumed by `path.resolve` and editor APIs, never by a
+// shell. No call site interpolates the result into a command string.
+export function escapeSpacesForMention(path: string): string {
+	return path.replace(/ /g, "\\ ")
+}
