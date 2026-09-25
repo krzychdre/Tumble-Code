@@ -26,9 +26,8 @@ vi.mock("vscode", async (importOriginal) => {
 	}
 })
 
-// SYSTEM_PROMPT(context, cwd, supportsComputerUse, mcpHub, diffStrategy, mode, customModePrompts,
-//   customModes, customInstructions, experiments, language, rooIgnoreInstructions, ...)
-const ROO_IGNORE_ARG = 11
+/** The rooIgnoreInstructions a SYSTEM_PROMPT({ ... }) call received. */
+const rooIgnoreOf = (call: unknown[]) => (call[0] as { rooIgnoreInstructions?: string }).rooIgnoreInstructions
 
 /**
  * DEF-C1: the live system prompt lost the `.rooignore` section on 2026-05-05 (commit fcdd9bf35
@@ -96,7 +95,7 @@ describe("ApiRequestBuilder .rooignore instructions (DEF-C1)", () => {
 		await loop.getSystemPrompt()
 
 		expect(systemPromptMock).toHaveBeenCalledTimes(1)
-		const live = systemPromptMock.mock.calls[0][ROO_IGNORE_ARG]
+		const live = rooIgnoreOf(systemPromptMock.mock.calls[0])
 		expect(live).toBe(controller.getInstructions())
 		expect(live).toContain("# .rooignore")
 		expect(live).toContain("secrets/")
@@ -114,8 +113,8 @@ describe("ApiRequestBuilder .rooignore instructions (DEF-C1)", () => {
 		await loop.getSystemPrompt()
 
 		expect(systemPromptMock).toHaveBeenCalledTimes(2)
-		const preview = systemPromptMock.mock.calls[0][ROO_IGNORE_ARG]
-		const live = systemPromptMock.mock.calls[1][ROO_IGNORE_ARG]
+		const preview = rooIgnoreOf(systemPromptMock.mock.calls[0])
+		const live = rooIgnoreOf(systemPromptMock.mock.calls[1])
 		expect(preview).toBeDefined()
 		expect(live).toBe(preview)
 	})
@@ -127,10 +126,10 @@ describe("ApiRequestBuilder .rooignore instructions (DEF-C1)", () => {
 		const loop = new TaskApiLoop(task as unknown as TaskApiLoopAccess)
 
 		await loop.getSystemPrompt()
-		expect(systemPromptMock.mock.calls[0][ROO_IGNORE_ARG]).toBeUndefined()
+		expect(rooIgnoreOf(systemPromptMock.mock.calls[0])).toBeUndefined()
 
 		task.rooIgnoreController = controller
 		await loop.getSystemPrompt()
-		expect(systemPromptMock.mock.calls[1][ROO_IGNORE_ARG]).toBe(controller.getInstructions())
+		expect(rooIgnoreOf(systemPromptMock.mock.calls[1])).toBe(controller.getInstructions())
 	})
 })

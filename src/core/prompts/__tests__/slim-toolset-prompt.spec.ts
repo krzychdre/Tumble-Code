@@ -105,21 +105,15 @@ const baseSettings: SystemPromptSettings = {
 }
 
 async function buildPrompt(settings: SystemPromptSettings): Promise<string> {
-	return SYSTEM_PROMPT(
-		mockContext,
-		"/test/path",
-		false,
-		mcpHubWithServer,
-		undefined,
-		"code",
-		undefined,
-		undefined,
-		undefined,
-		{ deferredTools: true },
-		"en",
-		undefined,
+	return SYSTEM_PROMPT({
+		context: mockContext,
+		cwd: "/test/path",
+		mcpHub: mcpHubWithServer,
+		mode: "code",
+		experiments: { deferredTools: true },
+		language: "en",
 		settings,
-	)
+	})
 }
 
 /**

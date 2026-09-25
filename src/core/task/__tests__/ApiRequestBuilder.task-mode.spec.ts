@@ -29,7 +29,7 @@ describe("ApiRequestBuilder system prompt mode", () => {
 		await new ApiRequestBuilder(access).buildSystemPrompt()
 
 		expect(systemPromptMock).toHaveBeenCalledTimes(1)
-		// SYSTEM_PROMPT(context, cwd, supportsComputerUse, mcpHub, diffStrategy, mode, ...)
-		expect(systemPromptMock.mock.calls[0][5]).toBe("architect")
+		// SYSTEM_PROMPT({ context, cwd, mode, ... })
+		expect(systemPromptMock.mock.calls[0][0].mode).toBe("architect")
 	})
 })

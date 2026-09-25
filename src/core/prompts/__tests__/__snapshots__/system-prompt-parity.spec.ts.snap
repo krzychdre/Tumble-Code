@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`system prompt: live bytes are pinned (CORE-R11 must not change them) > deferred tools on, one tool loaded 1`] = `
+{
+  "length": 13727,
+  "sha256": "f01136b43b92b82f705f20998f1b4a266ef2b2c8faf9508c64f5632e6e93b8f5",
+}
+`;
+
+exports[`system prompt: live bytes are pinned (CORE-R11 must not change them) > plain task 1`] = `
+{
+  "length": 12999,
+  "sha256": "4796a6e153ac7b66dd5619b499f52e4c04ac01fa226687e63a420cc03b560047",
+}
+`;
+
+exports[`system prompt: live bytes are pinned (CORE-R11 must not change them) > state without an mcpEnabled value 1`] = `
+{
+  "length": 12999,
+  "sha256": "4796a6e153ac7b66dd5619b499f52e4c04ac01fa226687e63a420cc03b560047",
+}
+`;

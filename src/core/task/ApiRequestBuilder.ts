@@ -10,7 +10,6 @@
 
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
 import {
 	type ProviderSettings,
@@ -19,18 +18,17 @@ import {
 	RooCodeEventName,
 	getModelId,
 	isParallelTasksEnabled,
-	SETTINGS_DEFAULTS,
 } from "@roo-code/types"
 import { type ApiHandler } from "../../api"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
 import { SYSTEM_PROMPT } from "../prompts/system"
+import { buildSystemPromptInput, isMcpEnabledForPrompt } from "../prompts/system-prompt-input"
 import { applyMicrocompactCleared } from "../context-management/microcompact"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { type ClineProvider } from "../webview/ClineProvider"
-import { Package } from "../../shared/package"
 import { type ApiMessage } from "../task-persistence"
 import { type RooIgnoreController } from "../ignore/RooIgnoreController"
 
@@ -65,7 +63,6 @@ export interface ApiRequestBuilderAccess {
 
 	// Workspace
 	cwd: string
-	diffStrategy?: any
 
 	// Context manager for context management
 	contextManager: TaskContextManager
@@ -114,9 +111,8 @@ export class ApiRequestBuilder {
 	 * Build the system prompt with MCP, mode, and custom instructions.
 	 */
 	async buildSystemPrompt(): Promise<string> {
-		const { mcpEnabled } = (await this.access.providerRef.deref()?.getState()) ?? {}
 		let mcpHub: McpHub | undefined
-		if (mcpEnabled ?? SETTINGS_DEFAULTS.mcpEnabled) {
+		if (isMcpEnabledForPrompt(await this.access.providerRef.deref()?.getState())) {
 			const provider = this.access.providerRef.deref()
 
 			if (!provider) {
@@ -134,17 +130,8 @@ export class ApiRequestBuilder {
 			})
 		}
 
+		// Read after the MCP wait above, so settings changed meanwhile are current.
 		const state = await this.access.providerRef.deref()?.getState()
-
-		const {
-			customModes,
-			customModePrompts,
-			customInstructions,
-			experiments,
-			language,
-			apiConfiguration,
-			enableSubfolderRules,
-		} = state ?? {}
 
 		const provider = this.access.providerRef.deref()
 
@@ -152,40 +139,19 @@ export class ApiRequestBuilder {
 			throw new Error("Provider not available")
 		}
 
-		const modelInfo = this.access.api.getModel().info
-
-		const rooIgnoreInstructions = this.access.rooIgnoreController?.getInstructions()
-
+		// The same builder serves the "copy system prompt" preview (generateSystemPrompt).
 		return await SYSTEM_PROMPT(
-			provider.context,
-			this.access.cwd,
-			false,
-			mcpHub,
-			this.access.diffStrategy,
-			await this.access.getTaskMode(),
-			customModePrompts,
-			customModes,
-			customInstructions,
-			experiments,
-			language,
-			rooIgnoreInstructions,
-			{
-				todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
-				useAgentRules: vscode.workspace.getConfiguration(Package.name).get<boolean>("useAgentRules") ?? true,
-				enableSubfolderRules: enableSubfolderRules ?? SETTINGS_DEFAULTS.enableSubfolderRules,
-				newTaskRequireTodos: vscode.workspace
-					.getConfiguration(Package.name)
-					.get<boolean>("newTaskRequireTodos", false),
-				isStealthModel: modelInfo?.isStealthModel,
-				// Slim toolset comes off the ACTIVE profile so it follows every
-				// mode switch through modeApiConfigs (nothing is cached on the task).
-				slimToolset: apiConfiguration?.slimToolset,
-				slimHidesMcp: apiConfiguration?.slimHidesMcp,
-			},
-			undefined, // todoList
-			this.access.api.getModel().id,
-			provider.getSkillsManager(),
-			this.access.materializedDeferredTools,
+			buildSystemPromptInput({
+				context: provider.context,
+				cwd: this.access.cwd,
+				mode: await this.access.getTaskMode(),
+				state,
+				mcpHub,
+				rooIgnoreController: this.access.rooIgnoreController,
+				materializedDeferredTools: this.access.materializedDeferredTools,
+				modelInfo: this.access.api.getModel().info,
+				skillsManager: provider.getSkillsManager(),
+			}),
 		)
 	}
 

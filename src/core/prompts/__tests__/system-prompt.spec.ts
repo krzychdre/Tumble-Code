@@ -214,20 +214,12 @@ describe("SYSTEM_PROMPT", () => {
 	})
 
 	it("should maintain consistent system prompt", async () => {
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false, // supportsImages
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug,
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		})
 
 		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/consistent-system-prompt.snap")
 	})
@@ -235,39 +227,25 @@ describe("SYSTEM_PROMPT", () => {
 	it("should include MCP server info when mcpHub is provided", async () => {
 		mockMcpHub = createMockMcpHub(true)
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			mockMcpHub, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes,
-			undefined, // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mcpHub: mockMcpHub,
+			mode: defaultModeSlug,
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		})
 
 		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-mcp-hub-provided.snap")
 	})
 
 	it("should explicitly handle undefined mcpHub", async () => {
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // explicitly undefined mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes,
-			undefined, // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mcpHub: undefined,
+			mode: defaultModeSlug,
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		})
 
 		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-undefined-mcp-hub.snap")
 	})
@@ -300,20 +278,11 @@ describe("SYSTEM_PROMPT", () => {
 			dispose: vi.fn(),
 		}))
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
-			undefined, // experiments
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug,
+		})
 
 		expect(prompt).toContain("Language Preference:")
 		expect(prompt).toContain('write in the "es" language')
@@ -360,20 +329,14 @@ describe("SYSTEM_PROMPT", () => {
 			},
 		]
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			"custom-mode", // mode
-			undefined, // customModePrompts
-			customModes, // customModes
-			"Global instructions", // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: "custom-mode",
+			customModes,
+			globalCustomInstructions: "Global instructions",
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		})
 
 		// Role definition now lives in the MODE section, after the stable head
 		expect(prompt.indexOf("Custom role definition")).toBeGreaterThan(prompt.indexOf("TOOL USE"))
@@ -395,20 +358,12 @@ describe("SYSTEM_PROMPT", () => {
 			},
 		}
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug as Mode, // mode
-			customModePrompts, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
-			undefined, // experiments
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug as Mode,
+			customModePrompts,
+		})
 
 		// Role definition from promptComponent should be in the MODE section (tail)
 		expect(prompt.indexOf("Custom prompt role definition")).toBeGreaterThan(prompt.indexOf("TOOL USE"))
@@ -424,20 +379,12 @@ describe("SYSTEM_PROMPT", () => {
 			},
 		}
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug as Mode, // mode
-			customModePrompts, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
-			undefined, // experiments
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug as Mode,
+			customModePrompts,
+		})
 
 		// Should use the default mode's role definition, in the MODE section (tail)
 		expect(prompt.indexOf(modes[0].roleDefinition)).toBeGreaterThan(prompt.indexOf("TOOL USE"))
@@ -450,21 +397,13 @@ describe("SYSTEM_PROMPT", () => {
 			newTaskRequireTodos: false,
 		}
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug,
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-			settings, // settings
-		)
+			settings,
+		})
 
 		// Should not contain the tool description
 		expect(prompt).not.toContain("## update_todo_list")
@@ -478,21 +417,13 @@ describe("SYSTEM_PROMPT", () => {
 			newTaskRequireTodos: false,
 		}
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug,
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-			settings, // settings
-		)
+			settings,
+		})
 
 		// update_todo_list is still referenced by mode instructions, but tool catalogs are not embedded.
 		expect(prompt).toContain("update_todo_list")
@@ -506,21 +437,13 @@ describe("SYSTEM_PROMPT", () => {
 			newTaskRequireTodos: false,
 		}
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug,
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-			settings, // settings
-		)
+			settings,
+		})
 
 		// update_todo_list is still referenced by mode instructions, but tool catalogs are not embedded.
 		expect(prompt).toContain("update_todo_list")
@@ -534,21 +457,13 @@ describe("SYSTEM_PROMPT", () => {
 			newTaskRequireTodos: false,
 		}
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			undefined, // mcpHub
-			undefined, // diffStrategy
-			defaultModeSlug, // mode
-			undefined, // customModePrompts
-			undefined, // customModes
-			undefined, // globalCustomInstructions
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mode: defaultModeSlug,
 			experiments,
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-			settings, // settings
-		)
+			settings,
+		})
 
 		// Should contain TOOL USE section with native note
 		expect(prompt).toContain("TOOL USE")
@@ -593,20 +508,14 @@ describe("SYSTEM_PROMPT", () => {
 				},
 			]
 
-			const prompt = await SYSTEM_PROMPT(
-				mockContext,
-				"/test/path",
-				false,
-				mockMcpHub, // mcpHub with servers
-				undefined, // diffStrategy
-				"filtered-mode", // mode
-				undefined, // customModePrompts
-				customModes, // customModes
-				undefined, // globalCustomInstructions
+			const prompt = await SYSTEM_PROMPT({
+				context: mockContext,
+				cwd: "/test/path",
+				mcpHub: mockMcpHub,
+				mode: "filtered-mode",
+				customModes,
 				experiments,
-				undefined, // language
-				undefined, // rooIgnoreInstructions
-			)
+			})
 
 			expect(prompt).not.toContain("MCP servers")
 		})
@@ -624,20 +533,14 @@ describe("SYSTEM_PROMPT", () => {
 				},
 			]
 
-			const prompt = await SYSTEM_PROMPT(
-				mockContext,
-				"/test/path",
-				false,
-				mockMcpHub,
-				undefined,
-				"mcp-mode",
-				undefined,
+			const prompt = await SYSTEM_PROMPT({
+				context: mockContext,
+				cwd: "/test/path",
+				mcpHub: mockMcpHub,
+				mode: "mcp-mode",
 				customModes,
-				undefined,
 				experiments,
-				undefined,
-				undefined,
-			)
+			})
 
 			expect(prompt).toContain("MCP servers")
 		})
@@ -687,20 +590,13 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 	it("advertises every server's tools in the deferred catalog when the built-in mode has no allowlist", async () => {
 		// Control: with no allowlist, both servers' tools appear. This anchors the restricted case
 		// below — without it, the absence assertion could pass vacuously.
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			createTwoServerHub(), // mcpHub
-			undefined, // diffStrategy
-			"code", // built-in mode (has the mcp group)
-			undefined, // customModePrompts — no allowlist
-			undefined, // customModes
-			undefined, // globalCustomInstructions
-			{ deferredTools: true }, // experiments — render the deferred catalog
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mcpHub: createTwoServerHub(),
+			mode: "code",
+			experiments: { deferredTools: true },
+		})
 
 		expect(prompt).toContain("mcp--allowed-srv--ping")
 		expect(prompt).toContain("mcp--blocked-srv--scan")
@@ -709,20 +605,14 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 	it("filters the deferred catalog by a built-in mode's customModePrompts allowlist (leak closed)", async () => {
 		const customModePrompts = { code: { allowedMcpServers: ["allowed-srv"] } }
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			createTwoServerHub(), // mcpHub
-			undefined, // diffStrategy
-			"code", // built-in mode
-			customModePrompts, // customModePrompts — restrict to allowed-srv
-			undefined, // customModes
-			undefined, // globalCustomInstructions
-			{ deferredTools: true }, // experiments
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mcpHub: createTwoServerHub(),
+			mode: "code",
+			customModePrompts,
+			experiments: { deferredTools: true },
+		})
 
 		// Only the allowed server's tool is advertised; the blocked server's tool must NOT leak.
 		expect(prompt).toContain("mcp--allowed-srv--ping")
@@ -734,20 +624,14 @@ describe("SYSTEM_PROMPT per-mode MCP allowlist (built-in modes)", () => {
 		// generic "access to MCP servers" capability line is omitted.
 		const customModePrompts = { code: { allowedMcpServers: [] as string[] } }
 
-		const prompt = await SYSTEM_PROMPT(
-			mockContext,
-			"/test/path",
-			false,
-			createTwoServerHub(), // mcpHub
-			undefined, // diffStrategy
-			"code", // built-in mode
-			customModePrompts, // customModePrompts — restrict to nothing
-			undefined, // customModes
-			undefined, // globalCustomInstructions
-			{}, // experiments
-			undefined, // language
-			undefined, // rooIgnoreInstructions
-		)
+		const prompt = await SYSTEM_PROMPT({
+			context: mockContext,
+			cwd: "/test/path",
+			mcpHub: createTwoServerHub(),
+			mode: "code",
+			customModePrompts,
+			experiments: {},
+		})
 
 		expect(prompt).not.toContain("You have access to MCP servers")
 	})

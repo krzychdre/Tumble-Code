@@ -1,16 +1,12 @@
 import * as vscode from "vscode"
 
-import { type ModeConfig, type PromptComponent, type CustomModePrompts, type TodoItem } from "@roo-code/types"
+import { type PromptComponent, type CustomModePrompts } from "@roo-code/types"
 
 import { Mode, modes, defaultModeSlug, getModeBySlug, getGroupName, getModeSelection } from "../../shared/modes"
-import { DiffStrategy } from "../../shared/tools"
 import { formatLanguage } from "../../shared/language"
 import { isEmpty } from "../../utils/object"
 
-import { McpHub } from "../../services/mcp/McpHub"
-import { SkillsManager } from "../../services/skills/SkillsManager"
-
-import type { SystemPromptSettings } from "./types"
+import type { SystemPromptOptions } from "./types"
 import { slimToolsetHidesMcp } from "./tools/filter-tools-for-mode"
 import {
 	getRulesSection,
@@ -121,28 +117,28 @@ export function getPromptComponent(
 	return component
 }
 
+/**
+ * Assemble the prompt. `mode` is the resolved slug and `promptComponent` the
+ * mode's prompt override, both worked out by `SYSTEM_PROMPT`.
+ */
 async function generatePrompt(
-	context: vscode.ExtensionContext,
-	cwd: string,
-	supportsComputerUse: boolean,
+	options: SystemPromptOptions,
 	mode: Mode,
-	mcpHub?: McpHub,
-	diffStrategy?: DiffStrategy,
-	promptComponent?: PromptComponent,
-	customModeConfigs?: ModeConfig[],
-	globalCustomInstructions?: string,
-	experiments?: Record<string, boolean>,
-	language?: string,
-	rooIgnoreInstructions?: string,
-	settings?: SystemPromptSettings,
-	todoList?: TodoItem[],
-	modelId?: string,
-	skillsManager?: SkillsManager,
-	materializedDeferredTools?: ReadonlySet<string>,
+	promptComponent: PromptComponent | undefined,
 ): Promise<string> {
-	if (!context) {
-		throw new Error("Extension context is required for generating system prompt")
-	}
+	const {
+		context,
+		cwd,
+		mcpHub,
+		customModes: customModeConfigs,
+		globalCustomInstructions,
+		experiments,
+		language,
+		rooIgnoreInstructions,
+		settings,
+		skillsManager,
+		materializedDeferredTools,
+	} = options
 
 	// Get the full mode config to ensure we have the role definition (used for groups, etc.)
 	const modeConfig = getModeBySlug(mode, customModeConfigs) || modes.find((m) => m.slug === mode) || modes[0]
@@ -296,52 +292,25 @@ async function generatePrompt(
 	)
 }
 
-export const SYSTEM_PROMPT = async (
-	context: vscode.ExtensionContext,
-	cwd: string,
-	supportsComputerUse: boolean,
-	mcpHub?: McpHub,
-	diffStrategy?: DiffStrategy,
-	mode: Mode = defaultModeSlug,
-	customModePrompts?: CustomModePrompts,
-	customModes?: ModeConfig[],
-	globalCustomInstructions?: string,
-	experiments?: Record<string, boolean>,
-	language?: string,
-	rooIgnoreInstructions?: string,
-	settings?: SystemPromptSettings,
-	todoList?: TodoItem[],
-	modelId?: string,
-	skillsManager?: SkillsManager,
-	materializedDeferredTools?: ReadonlySet<string>,
-): Promise<string> => {
-	if (!context) {
+/**
+ * Build the system prompt.
+ *
+ * Production callers build `options` with `buildSystemPromptInput`
+ * (system-prompt-input.ts), which both the live request and the "copy system
+ * prompt" preview share.
+ */
+export const SYSTEM_PROMPT = async (options: SystemPromptOptions): Promise<string> => {
+	if (!options.context) {
 		throw new Error("Extension context is required for generating system prompt")
 	}
 
+	const mode = options.mode ?? defaultModeSlug
+
 	// Check if it's a custom mode
-	const promptComponent = getPromptComponent(customModePrompts, mode)
+	const promptComponent = getPromptComponent(options.customModePrompts, mode)
 
 	// Get full mode config from custom modes or fall back to built-in modes
-	const currentMode = getModeBySlug(mode, customModes) || modes.find((m) => m.slug === mode) || modes[0]
+	const currentMode = getModeBySlug(mode, options.customModes) || modes.find((m) => m.slug === mode) || modes[0]
 
-	return generatePrompt(
-		context,
-		cwd,
-		supportsComputerUse,
-		currentMode.slug,
-		mcpHub,
-		diffStrategy,
-		promptComponent,
-		customModes,
-		globalCustomInstructions,
-		experiments,
-		language,
-		rooIgnoreInstructions,
-		settings,
-		todoList,
-		modelId,
-		skillsManager,
-		materializedDeferredTools,
-	)
+	return generatePrompt(options, currentMode.slug, promptComponent)
 }
