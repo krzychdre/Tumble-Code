@@ -3,8 +3,6 @@ import { Anthropic } from "@anthropic-ai/sdk" // Keep for type usage only
 
 import { litellmDefaultModelId, litellmDefaultModelInfo } from "@roo-code/types"
 
-import { calculateApiCostOpenAI } from "../../shared/cost"
-
 import { ApiHandlerOptions } from "../../shared/api"
 
 import { ApiStream } from "../transform/stream"
@@ -13,7 +11,7 @@ import { convertToOpenAiMessages } from "../transform/openai-format"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
 import { RouterProvider } from "./router-provider"
 
@@ -229,33 +227,12 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 			const { data: completion } = await this.client.chat.completions.create(requestOptions).withResponse()
 
 			yield* streamChatCompletion(completion, {
-				mapUsage: (lastUsage) => {
-					// LiteLLM mirrors every upstream cache name into the OpenAI shape
-					// (DeepSeek's `prompt_cache_hit_tokens` into `cached_tokens`, Anthropic's
-					// `cache_creation_input_tokens` into `cache_write_tokens`), so the shared
-					// reader covers it. DeepSeek's `prompt_cache_miss_tokens` is forwarded
-					// too but is ordinary input, never a cache write (DEF-C40).
-					const cacheTokens = openAiCacheTokens(lastUsage)
-					const cacheWriteTokens = cacheTokens.cacheWriteTokens ?? 0
-					const cacheReadTokens = cacheTokens.cacheReadTokens ?? 0
-
-					const { totalCost } = calculateApiCostOpenAI(
-						info,
-						lastUsage.prompt_tokens || 0,
-						lastUsage.completion_tokens || 0,
-						cacheWriteTokens,
-						cacheReadTokens,
-					)
-
-					return {
-						type: "usage",
-						inputTokens: lastUsage.prompt_tokens || 0,
-						outputTokens: lastUsage.completion_tokens || 0,
-						cacheWriteTokens: cacheWriteTokens > 0 ? cacheWriteTokens : undefined,
-						cacheReadTokens: cacheReadTokens > 0 ? cacheReadTokens : undefined,
-						totalCost,
-					}
-				},
+				// LiteLLM mirrors every upstream cache name into the OpenAI shape
+				// (DeepSeek's `prompt_cache_hit_tokens` into `cached_tokens`, Anthropic's
+				// `cache_creation_input_tokens` into `cache_write_tokens`), so the shared
+				// reader covers it. DeepSeek's `prompt_cache_miss_tokens` is forwarded
+				// too but is ordinary input, never a cache write (DEF-C40).
+				mapUsage: (usage) => openAiUsageChunk(usage, { modelInfo: info }),
 			})
 		} catch (error) {
 			throw handleProviderError(error, "LiteLLM", { messagePrefix: "streaming" })

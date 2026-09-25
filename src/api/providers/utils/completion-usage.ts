@@ -1,4 +1,8 @@
+import type { ModelInfo } from "@roo-code/types"
+
+import { calculateApiCostOpenAI } from "../../../shared/cost"
 import type { CompletionUsage } from "../../index"
+import type { ApiStreamUsageChunk } from "../../transform/stream"
 
 /**
  * Read a provider's usage block into the shared {@link CompletionUsage}.
@@ -16,9 +20,12 @@ type OpenAiShapedUsage =
 			completion_tokens?: number | null
 			total_tokens?: number | null
 			prompt_tokens_details?: OpenAiPromptTokensDetails | null
+			completion_tokens_details?: { reasoning_tokens?: number | null } | null
 			cache_creation_input_tokens?: number | null
 			cache_read_input_tokens?: number | null
+			prompt_cache_hit_tokens?: number | null
 			cost?: number | null
+			cost_details?: { upstream_inference_cost?: number | null } | null
 	  }
 	| null
 	| undefined
@@ -52,6 +59,8 @@ const firstReported = (...values: unknown[]): number | undefined => {
  * - `prompt_tokens_details.cached_tokens`: OpenAI, OpenRouter, Z.ai, DeepSeek,
  *   Moonshot, DashScope, LiteLLM, vLLM, llama.cpp.
  * - `cache_read_input_tokens` (top level): LiteLLM and Anthropic-style gateways.
+ * - `prompt_cache_hit_tokens` (top level): DeepSeek (which may mirror it in
+ *   `cached_tokens`).
  *
  * Cache writes:
  * - `prompt_tokens_details.cache_write_tokens`: OpenRouter, Moonshot (kimi-k3),
@@ -75,7 +84,11 @@ export function openAiCacheTokens(usage: OpenAiShapedUsage): {
 	const details = usage?.prompt_tokens_details
 
 	return {
-		cacheReadTokens: firstReported(details?.cached_tokens, usage?.cache_read_input_tokens),
+		cacheReadTokens: firstReported(
+			details?.cached_tokens,
+			usage?.cache_read_input_tokens,
+			usage?.prompt_cache_hit_tokens,
+		),
 		cacheWriteTokens: firstReported(
 			details?.cache_write_tokens,
 			details?.cache_creation_tokens,
@@ -112,6 +125,51 @@ export function openAiCompletionUsage(usage: OpenAiShapedUsage): CompletionUsage
 		...(cacheReadTokens !== undefined && { cacheReadTokens }),
 		...(cacheWriteTokens !== undefined && { cacheWriteTokens }),
 		...(numberOrUndefined(usage.cost) !== undefined && { totalCost: usage.cost as number }),
+	}
+}
+
+/**
+ * The one usage chunk of an OpenAI Chat Completions stream, read with the same
+ * parser as {@link openAiCompletionUsage} so a one-shot completion and a
+ * streamed request report the same figures for the same usage block.
+ *
+ * Differences that belong to streaming: a block without token counts still
+ * yields a chunk of zeros (the stream did report usage), and cache figures of
+ * 0 are left out. The cost:
+ * - `billedCost`: what the router billed (OpenRouter: `cost` plus
+ *   `cost_details.upstream_inference_cost` for bring-your-own-key requests).
+ * - `modelInfo`: computed from the model's prices with `calculateApiCostOpenAI`,
+ *   the same rule the task applies when a chunk carries no cost. It is set on
+ *   the chunk because condensing and the background-model fallback read the
+ *   cost from the chunk only.
+ * - neither: no cost on the chunk.
+ */
+export function openAiUsageChunk(
+	usage: NonNullable<OpenAiShapedUsage>,
+	options: { modelInfo?: ModelInfo; billedCost?: boolean } = {},
+): ApiStreamUsageChunk {
+	const parsed = openAiCompletionUsage(usage)
+	const inputTokens = parsed?.inputTokens ?? 0
+	const outputTokens = parsed?.outputTokens ?? 0
+	const cacheReadTokens = parsed?.cacheReadTokens || undefined
+	const cacheWriteTokens = parsed?.cacheWriteTokens || undefined
+	const reasoningTokens = numberOrUndefined(usage.completion_tokens_details?.reasoning_tokens)
+
+	const totalCost = options.billedCost
+		? (numberOrUndefined(usage.cost_details?.upstream_inference_cost) ?? 0) + (numberOrUndefined(usage.cost) ?? 0)
+		: options.modelInfo
+			? calculateApiCostOpenAI(options.modelInfo, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
+					.totalCost
+			: undefined
+
+	return {
+		type: "usage",
+		inputTokens,
+		outputTokens,
+		...(cacheWriteTokens !== undefined && { cacheWriteTokens }),
+		...(cacheReadTokens !== undefined && { cacheReadTokens }),
+		...(reasoningTokens !== undefined && { reasoningTokens }),
+		...(totalCost !== undefined && { totalCost }),
 	}
 }
 

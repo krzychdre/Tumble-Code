@@ -14,7 +14,7 @@ import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 
 const QWEN_OAUTH_BASE_URL = "https://chat.qwen.ai"
 const QWEN_OAUTH_TOKEN_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/token`
@@ -244,11 +244,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 		// across deltas; reasoning_content goes before the text of the same delta.
 		yield* streamChatCompletion(stream, {
 			thinkTags: true,
-			mapUsage: (usage) => ({
-				type: "usage",
-				inputTokens: usage.prompt_tokens || 0,
-				outputTokens: usage.completion_tokens || 0,
-			}),
+			mapUsage: (usage) => openAiUsageChunk(usage, { modelInfo: model.info }),
 		})
 	}
 

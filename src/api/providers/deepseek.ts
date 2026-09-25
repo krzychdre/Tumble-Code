@@ -2,6 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import {
+	type ModelInfo,
 	deepSeekModels,
 	deepSeekDefaultModelId,
 	DEEP_SEEK_DEFAULT_TEMPERATURE,
@@ -17,6 +18,7 @@ import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import { OpenAiHandler } from "./openai"
 import { handleProviderError } from "./utils/error-handler"
+import { openAiUsageChunk } from "./utils/completion-usage"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
 // Custom interface for DeepSeek params to support thinking mode
@@ -161,17 +163,10 @@ export class DeepSeekHandler extends OpenAiHandler {
 	// DeepSeek reports its prompt cache at the top level of `usage`:
 	// prompt_cache_hit_tokens + prompt_cache_miss_tokens = prompt_tokens (both
 	// required), with the hit count optionally mirrored in
-	// prompt_tokens_details.cached_tokens. There are no cache writes: a miss is
-	// ordinary input at the input price, so cacheWriteTokens stays undefined.
+	// prompt_tokens_details.cached_tokens; the shared reader knows both names.
+	// There are no cache writes: a miss is ordinary input at the input price.
 	// https://api-docs.deepseek.com/api/create-chat-completion
-	protected override processUsageMetrics(usage: any, _modelInfo?: any): ApiStreamUsageChunk {
-		const hits = usage?.prompt_cache_hit_tokens ?? usage?.prompt_tokens_details?.cached_tokens
-
-		return {
-			type: "usage",
-			inputTokens: usage?.prompt_tokens || 0,
-			outputTokens: usage?.completion_tokens || 0,
-			cacheReadTokens: typeof hits === "number" ? hits : undefined,
-		}
+	protected override processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
+		return openAiUsageChunk(usage ?? {}, { modelInfo })
 	}
 }
