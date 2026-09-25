@@ -34,6 +34,7 @@ import {
 	ImageMemoryTracker,
 } from "./helpers/imageHelpers"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { describeReadFile } from "./toolDescriptors"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -624,16 +625,8 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 	getReadFileToolDescription(blockName: string, blockParams: { path?: string }): string
 	getReadFileToolDescription(blockName: string, nativeArgs: ReadFileParams): string
 	getReadFileToolDescription(blockName: string, second: unknown): string {
-		// If native typed args were provided
-		if (second && typeof second === "object" && "path" in second && typeof (second as any).path === "string") {
-			return `[${blockName} for '${(second as any).path}']`
-		}
-
-		const blockParams = second as Record<string, unknown>
-		if (blockParams?.path) {
-			return `[${blockName} for '${blockParams.path}']`
-		}
-		return `[${blockName} with missing path]`
+		// One implementation with the read_file row of the tool descriptor table.
+		return describeReadFile(blockName, second)
 	}
 
 	override async handlePartial(task: Task, block: ToolUse<"read_file">): Promise<void> {

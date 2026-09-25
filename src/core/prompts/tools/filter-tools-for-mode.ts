@@ -6,6 +6,7 @@ import { defaultModeSlug } from "../../../shared/modes"
 import type { CodeIndexManager } from "../../../services/code-index/manager"
 import type { McpHub } from "../../../services/mcp/McpHub"
 import { isToolAllowedForMode } from "../../../core/tools/validateToolUse"
+import { toolNamesWhere } from "../../tools/toolDescriptors"
 
 /**
  * Reverse lookup map - maps alias name to canonical tool name.
@@ -42,36 +43,15 @@ const WEB_GROUP_TOOLS: readonly string[] = TOOL_GROUPS.web.tools
  * doing the work; orchestrating modes run on strong profiles anyway), and the
  * MCP tools, which are governed separately by `slimHidesMcp`.
  *
- * Both `read_artifact` and its legacy alias `read_command_output` are listed so
+ * The list is the `slimAllowed` column of the tool descriptor table
+ * (`src/core/tools/toolDescriptors.ts`).
+ *
+ * Both `read_artifact` and its legacy alias `read_command_output` are allowed so
  * the intersection is correct no matter whether alias resolution ran first. Any
  * OTHER alias pointing at an allowlisted tool is folded in automatically by
  * SLIM_TOOLSET_ALLOWSET below, so this list only has to name canonical intent.
  */
-export const SLIM_TOOLSET_ALLOWLIST: readonly string[] = [
-	// read
-	"read_file",
-	"search_files",
-	"list_files",
-	"codebase_search",
-	// edit
-	"apply_diff",
-	"write_to_file",
-	// command
-	"execute_command",
-	"read_artifact",
-	"read_command_output",
-	// web (still subject to the webToolsEnabled gate above)
-	"web_search",
-	"web_fetch",
-	// protocol / always-available
-	"ask_followup_question",
-	"attempt_completion",
-	"switch_mode",
-	"new_task",
-	"update_todo_list",
-	"skill",
-	"tools_load",
-]
+export const SLIM_TOOLSET_ALLOWLIST: readonly string[] = toolNamesWhere((tool) => tool.slimAllowed)
 
 /**
  * The allowlist as a lookup set, widened with every alias whose TARGET is

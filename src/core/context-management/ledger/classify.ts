@@ -7,6 +7,8 @@
  * only costs reclaim, never data — see `selectMicrocompactTargets`.
  */
 
+import { toolNamesWhere } from "../../tools/toolDescriptors"
+
 export type ToolResultOutcome = "ok" | "error" | "denied"
 
 /**
@@ -111,25 +113,21 @@ export function isValidationCommand(command: string): boolean {
 	return VALIDATION_PATTERNS.some((pattern) => pattern.test(normalized))
 }
 
-/** Tools that create or modify a file. Their subject is the written path. */
+/**
+ * Tools that create or modify a file. Their subject is the written path.
+ * Derived from the `ledger` column of the tool descriptor table
+ * (`src/core/tools/toolDescriptors.ts`), plus `insert_content`, a removed tool that
+ * older histories still contain.
+ */
 export const FILE_MUTATION_TOOLS: ReadonlySet<string> = new Set<string>([
-	"write_to_file",
-	"apply_diff",
-	"apply_patch",
-	"edit",
-	"edit_file",
-	"search_replace",
-	"search_and_replace",
+	...toolNamesWhere((tool) => tool.ledger === "file-mutation"),
 	"insert_content",
 ])
 
 /** Tools that read a file or the codebase. Their subject is the read path or query. */
-export const FILE_READ_TOOLS: ReadonlySet<string> = new Set<string>([
-	"read_file",
-	"list_files",
-	"search_files",
-	"codebase_search",
-])
+export const FILE_READ_TOOLS: ReadonlySet<string> = new Set<string>(
+	toolNamesWhere((tool) => tool.ledger === "file-read"),
+)
 
 const XML_PATH_RE = /<path>([^<]+)<\/path>/
 

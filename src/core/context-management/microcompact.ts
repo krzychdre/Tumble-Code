@@ -3,6 +3,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { extractArtifactNotice } from "../artifacts/spillPolicy"
 import { ApiMessage } from "../task-persistence/apiMessages"
 import { getEffectiveApiHistory } from "../condense"
+import { toolNamesWhere } from "../tools/toolDescriptors"
 
 /**
  * Tool-result microcompaction.
@@ -118,6 +119,8 @@ export function microcompactTargetChars(tokensOverBudget: number): number {
 /**
  * Tool names whose results are bulky and cheaply re-derivable (re-read / re-run),
  * making them safe to clear. Mirrors Claude Code's `COMPACTABLE_TOOLS` set.
+ * Derived from the `compactable` column of the tool descriptor table
+ * (`src/core/tools/toolDescriptors.ts`).
  *
  * This is an ALLOWLIST, so every other tool is preserved by construction. In
  * particular none of `PROTOCOL_TOOL_NAMES` (`src/shared/tools.ts`) appears here,
@@ -130,30 +133,7 @@ export function microcompactTargetChars(tokensOverBudget: number): number {
  * run_slash_command, generate_image, tools_load) are ALWAYS preserved — they
  * carry irreplaceable state or are small enough that clearing them is pointless.
  */
-export const COMPACTABLE_TOOL_NAMES: ReadonlySet<string> = new Set<string>([
-	"read_file",
-	"read_artifact",
-	"read_command_output",
-	"execute_command",
-	"search_files",
-	"list_files",
-	"codebase_search",
-	"use_mcp_tool",
-	"access_mcp_resource",
-	"write_to_file",
-	"apply_diff",
-	"apply_patch",
-	"edit",
-	"edit_file",
-	"search_replace",
-	"search_and_replace",
-	"web_search",
-	"web_fetch",
-	// A history search is the cheapest result in this set to re-derive: the
-	// corpus it reads is on disk and does not move, so the identical call
-	// reproduces it exactly.
-	"search_task_history",
-])
+export const COMPACTABLE_TOOL_NAMES: ReadonlySet<string> = new Set<string>(toolNamesWhere((tool) => tool.compactable))
 
 /** One compactable tool result, as selection sees it. Encounter order, oldest first. */
 export interface MicrocompactCandidate {

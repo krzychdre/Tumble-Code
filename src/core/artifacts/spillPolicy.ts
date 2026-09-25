@@ -1,6 +1,7 @@
 import { ARTIFACT_SPILL_DEFAULTS } from "@roo-code/types"
 
 import { PROTOCOL_TOOL_NAMES } from "../../shared/tools"
+import { toolNamesWhere } from "../tools/toolDescriptors"
 
 import type { ArtifactStore } from "./ArtifactStore"
 
@@ -58,13 +59,10 @@ const SPILL_NOTICE_BYTES = 200
  */
 export const SPILL_BYPASS_TOOLS: ReadonlySet<string> = new Set<string>([
 	...PROTOCOL_TOOL_NAMES,
-	"read_file",
-	"read_artifact",
-	// Deprecated alias of read_artifact; a history replayed from an older
-	// build can still carry this name.
-	"read_command_output",
-	"access_mcp_resource",
-	"search_task_history",
+	// Reasons 2 to 4: the `spillExempt` column of the tool descriptor table
+	// (`src/core/tools/toolDescriptors.ts`), which also covers `read_command_output`,
+	// the deprecated alias of read_artifact that replayed histories still carry.
+	...toolNamesWhere((tool) => tool.spillExempt),
 ])
 
 /**
