@@ -1,6 +1,4 @@
-import * as childProcess from "child_process"
 import * as path from "path"
-import * as readline from "readline"
 
 import * as vscode from "vscode"
 
@@ -8,13 +6,15 @@ import { readCliRuntimeEnv } from "@roo-code/types"
 
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
 import { fileExistsAtPath } from "../../utils/fs"
+
+import { runRipgrep, RipgrepError, RunRipgrepResult } from "./runner"
 /*
 This file provides functionality to perform regex searches on files using ripgrep.
 Inspired by: https://github.com/DiscreteTom/vscode-ripgrep-utils
 
 Key components:
 1. getBinPath: Locates the ripgrep binary inside the VS Code installation.
-2. execRipgrep: Executes the ripgrep command and returns the output.
+2. runRipgrep (./runner): Spawns ripgrep with the shared limit, timeout and error rules.
 3. regexSearchFiles: The main function that performs regex searches on files.
    - Parameters:
      * cwd: The current working directory (for relative path calculation)
@@ -76,6 +76,10 @@ interface SearchLineResult {
 // Constants
 const MAX_RESULTS = 300
 const MAX_LINE_LENGTH = 500
+// ripgrep --json prints begin/match/context/end records; assume at most 5 lines per result.
+const MAX_OUTPUT_LINES = MAX_RESULTS * 5
+/** A search_files run that takes longer than this returns the matches found so far. */
+export const REGEX_SEARCH_TIMEOUT_MS = 30_000
 
 /**
  * Truncates a line if it exceeds the maximum length
@@ -133,46 +137,6 @@ export async function getBinPath(vscodeAppRoot: string): Promise<string | undefi
 	return undefined
 }
 
-async function execRipgrep(bin: string, args: string[]): Promise<string> {
-	return new Promise((resolve, reject) => {
-		const rgProcess = childProcess.spawn(bin, args)
-		// cross-platform alternative to head, which is ripgrep author's recommendation for limiting output.
-		const rl = readline.createInterface({
-			input: rgProcess.stdout,
-			crlfDelay: Infinity, // treat \r\n as a single line break even if it's split across chunks. This ensures consistent behavior across different operating systems.
-		})
-
-		let output = ""
-		let lineCount = 0
-		const maxLines = MAX_RESULTS * 5 // limiting ripgrep output with max lines since there's no other way to limit results. it's okay that we're outputting as json, since we're parsing it line by line and ignore anything that's not part of a match. This assumes each result is at most 5 lines.
-
-		rl.on("line", (line) => {
-			if (lineCount < maxLines) {
-				output += line + "\n"
-				lineCount++
-			} else {
-				rl.close()
-				rgProcess.kill()
-			}
-		})
-
-		let errorOutput = ""
-		rgProcess.stderr.on("data", (data) => {
-			errorOutput += data.toString()
-		})
-		rl.on("close", () => {
-			if (errorOutput) {
-				reject(new Error(`ripgrep process error: ${errorOutput}`))
-			} else {
-				resolve(output)
-			}
-		})
-		rgProcess.on("error", (error) => {
-			reject(new Error(`ripgrep process error: ${error.message}`))
-		})
-	})
-}
-
 export async function regexSearchFiles(
 	cwd: string,
 	directoryPath: string,
@@ -197,72 +161,100 @@ export async function regexSearchFiles(
 
 	args.push("--context", "1", "--no-messages", directoryPath)
 
-	let output: string
+	let run: RunRipgrepResult
 	try {
-		output = await execRipgrep(rgPath, args)
+		run = await runRipgrep({ rgPath, args, limit: MAX_OUTPUT_LINES, timeoutMs: REGEX_SEARCH_TIMEOUT_MS })
 	} catch (error) {
-		console.error("Error executing ripgrep:", error)
-		return "No results found"
+		throw new Error(describeSearchFailure(error, regex))
 	}
 
 	const results: SearchFileResult[] = []
 	let currentFile: SearchFileResult | null = null
 
-	output.split("\n").forEach((line) => {
-		if (line) {
-			try {
-				const parsed = JSON.parse(line)
-				if (parsed.type === "begin") {
-					currentFile = {
-						file: parsed.data.path.text.toString(),
-						searchResults: [],
-					}
-				} else if (parsed.type === "end") {
-					// Reset the current result when a new file is encountered
-					results.push(currentFile as SearchFileResult)
-					currentFile = null
-				} else if ((parsed.type === "match" || parsed.type === "context") && currentFile) {
-					const line = {
-						line: parsed.data.line_number,
-						text: truncateLine(parsed.data.lines.text),
-						isMatch: parsed.type === "match",
-						...(parsed.type === "match" && { column: parsed.data.absolute_offset }),
-					}
+	run.lines.forEach((line) => {
+		try {
+			const parsed = JSON.parse(line)
+			if (parsed.type === "begin") {
+				currentFile = {
+					file: parsed.data.path.text.toString(),
+					searchResults: [],
+				}
+			} else if (parsed.type === "end") {
+				// Reset the current result when a new file is encountered
+				if (currentFile) results.push(currentFile)
+				currentFile = null
+			} else if ((parsed.type === "match" || parsed.type === "context") && currentFile) {
+				const line = {
+					line: parsed.data.line_number,
+					text: truncateLine(parsed.data.lines.text),
+					isMatch: parsed.type === "match",
+					...(parsed.type === "match" && { column: parsed.data.absolute_offset }),
+				}
 
-					const lastResult = currentFile.searchResults[currentFile.searchResults.length - 1]
-					if (lastResult?.lines.length > 0) {
-						const lastLine = lastResult.lines[lastResult.lines.length - 1]
+				const lastResult = currentFile.searchResults[currentFile.searchResults.length - 1]
+				if (lastResult?.lines.length > 0) {
+					const lastLine = lastResult.lines[lastResult.lines.length - 1]
 
-						// If this line is contiguous with the last result, add to it
-						if (parsed.data.line_number <= lastLine.line + 1) {
-							lastResult.lines.push(line)
-						} else {
-							// Otherwise create a new result
-							currentFile.searchResults.push({
-								lines: [line],
-							})
-						}
+					// If this line is contiguous with the last result, add to it
+					if (parsed.data.line_number <= lastLine.line + 1) {
+						lastResult.lines.push(line)
 					} else {
-						// First line in file
+						// Otherwise create a new result
 						currentFile.searchResults.push({
 							lines: [line],
 						})
 					}
+				} else {
+					// First line in file
+					currentFile.searchResults.push({
+						lines: [line],
+					})
 				}
-			} catch (error) {
-				console.error("Error parsing ripgrep output:", error)
 			}
+		} catch (error) {
+			console.error("Error parsing ripgrep output:", error)
 		}
 	})
 
-	// console.log(results)
+	// The output limit or the timeout can cut a file off before its "end" record;
+	// keep the matches it already had.
+	const unfinishedFile = currentFile as SearchFileResult | null
+	if (unfinishedFile && unfinishedFile.searchResults.length > 0) {
+		results.push(unfinishedFile)
+	}
 
 	// Filter results using RooIgnoreController if provided
 	const filteredResults = rooIgnoreController
 		? results.filter((result) => rooIgnoreController.validateAccess(result.file))
 		: results
 
-	return formatResults(filteredResults, cwd)
+	const formatted = formatResults(filteredResults, cwd)
+	if (run.timedOut) {
+		return (
+			`Search timed out after ${REGEX_SEARCH_TIMEOUT_MS / 1000} s, results are incomplete. ` +
+			`Narrow the path or file_pattern for a full result.\n\n${formatted}`
+		)
+	}
+	return formatted
+}
+
+/**
+ * Turns a failed ripgrep run into a short message the model can act on.
+ * Weak models read this text verbatim, so it names the problem and the fix.
+ */
+function describeSearchFailure(error: unknown, regex: string): string {
+	if (!(error instanceof RipgrepError)) {
+		return `ripgrep failed: ${error instanceof Error ? error.message : String(error)}`
+	}
+	if (/regex parse error/i.test(error.stderr)) {
+		const reason = error.stderr.match(/^error: (.+)$/m)?.[1]?.trim() ?? "the pattern is not valid"
+		return (
+			`Invalid regex ${JSON.stringify(regex)}: ${reason}. ` +
+			"The regex uses Rust syntax: escape literal ( ) [ ] { } . * + ? | \\ with a backslash, then retry."
+		)
+	}
+	const detail = error.stderr.trim().slice(0, 300) || error.message
+	return `ripgrep failed (exit code ${error.exitCode ?? "unknown"}): ${detail}`
 }
 
 function formatResults(fileResults: SearchFileResult[], cwd: string): string {
@@ -276,15 +268,17 @@ function formatResults(fileResults: SearchFileResult[], cwd: string): string {
 		output += `Found ${totalResults === 1 ? "1 result" : `${totalResults.toLocaleString()} results`}.\n\n`
 	}
 
-	// Group results by file name
-	fileResults.slice(0, MAX_RESULTS).forEach((file) => {
+	// Group results by file name, showing at most MAX_RESULTS results in total
+	let remaining = MAX_RESULTS
+	for (const file of fileResults) {
+		if (remaining <= 0) break
 		const relativeFilePath = path.relative(cwd, file.file)
 		if (!groupedResults[relativeFilePath]) {
-			groupedResults[relativeFilePath] = []
-
-			groupedResults[relativeFilePath].push(...file.searchResults)
+			const shown = file.searchResults.slice(0, remaining)
+			groupedResults[relativeFilePath] = shown
+			remaining -= shown.length
 		}
-	})
+	}
 
 	for (const [filePath, fileResults] of Object.entries(groupedResults)) {
 		output += `# ${filePath.toPosix()}\n`

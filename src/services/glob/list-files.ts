@@ -1,11 +1,11 @@
 import os from "os"
 import * as path from "path"
 import * as fs from "fs"
-import * as childProcess from "child_process"
 import * as vscode from "vscode"
 import ignore from "ignore"
 import { arePathsEqual } from "../../utils/path"
 import { getBinPath } from "../../services/ripgrep"
+import { runRipgrep, RipgrepError } from "../../services/ripgrep/runner"
 import { directoryExists } from "../../services/roo-config"
 import { DIRS_TO_IGNORE } from "./constants"
 
@@ -648,85 +648,27 @@ function formatAndCombineResults(files: string[], directories: string[], limit: 
 	return [trimmedPaths, trimmedPaths.length >= limit]
 }
 
+/** list_files returns the files found so far after this many ms. */
+const LIST_FILES_TIMEOUT_MS = 10_000
+
 /**
  * Execute ripgrep command and return list of files
  */
 async function execRipgrep(rgPath: string, args: string[], limit: number): Promise<string[]> {
-	return new Promise((resolve, reject) => {
-		// Extract the directory path from args (it's the last argument)
-		const searchDir = args[args.length - 1]
-
-		const rgProcess = childProcess.spawn(rgPath, args)
-		let output = ""
-		let results: string[] = []
-
-		// Set timeout to avoid hanging
-		const timeoutId = setTimeout(() => {
-			rgProcess.kill()
+	try {
+		const run = await runRipgrep({ rgPath, args, limit, timeoutMs: LIST_FILES_TIMEOUT_MS })
+		if (run.timedOut) {
 			console.warn("ripgrep timed out, returning partial results")
-			resolve(results.slice(0, limit))
-		}, 10_000)
-
-		// Process stdout data as it comes in
-		rgProcess.stdout.on("data", (data) => {
-			output += data.toString()
-			processRipgrepOutput()
-
-			// Kill the process if we've reached the limit
-			if (results.length >= limit) {
-				rgProcess.kill()
-				clearTimeout(timeoutId) // Clear the timeout when we kill the process due to reaching the limit
-			}
-		})
-
-		// Process stderr but don't fail on non-zero exit codes
-		rgProcess.stderr.on("data", (data) => {
-			console.error(`ripgrep stderr: ${data}`)
-		})
-
-		// Handle process completion
-		rgProcess.on("close", (code) => {
-			// Clear the timeout to avoid memory leaks
-			clearTimeout(timeoutId)
-
-			// Process any remaining output
-			processRipgrepOutput(true)
-
-			// Log non-zero exit codes but don't fail
-			if (code !== 0 && code !== null && code !== 143 /* SIGTERM */) {
-				console.warn(`ripgrep process exited with code ${code}, returning partial results`)
-			}
-
-			resolve(results.slice(0, limit))
-		})
-
-		// Handle process errors
-		rgProcess.on("error", (error) => {
-			// Clear the timeout to avoid memory leaks
-			clearTimeout(timeoutId)
-			reject(new Error(`ripgrep process error: ${error.message}`))
-		})
-
-		// Helper function to process output buffer
-		function processRipgrepOutput(isFinal = false) {
-			const lines = output.split("\n")
-
-			// Keep the last incomplete line unless this is the final processing
-			if (!isFinal) {
-				output = lines.pop() || ""
-			} else {
-				output = ""
-			}
-
-			// Process each complete line
-			for (const line of lines) {
-				if (line.trim() && results.length < limit) {
-					// Keep the relative path as returned by ripgrep
-					results.push(line)
-				} else if (results.length >= limit) {
-					break
-				}
-			}
 		}
-	})
+		return run.lines
+	} catch (error) {
+		// A listing still has the directory scan to fall back on, so a ripgrep
+		// failure (exit code 2 with no output) degrades to "no files" as before.
+		// Spawn failures are real errors and propagate.
+		if (error instanceof RipgrepError && error.exitCode !== null) {
+			console.warn(`ripgrep failed, listing directories only: ${error.message}`)
+			return []
+		}
+		throw error
+	}
 }
