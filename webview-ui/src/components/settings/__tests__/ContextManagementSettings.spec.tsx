@@ -52,6 +52,7 @@ vi.mock("@/components/ui", () => ({
 		<select
 			role="combobox"
 			data-testid={dataTestId}
+			data-value={value}
 			value={value ?? ""}
 			onChange={(e: any) => onValueChange?.(e.target.value)}>
 			{children}
@@ -434,7 +435,8 @@ describe("ContextManagementSettings", () => {
 			})
 		})
 
-		it("selecting the 'use current profile' sentinel calls setCachedStateField with undefined", async () => {
+		// "" (not undefined): JSON drops undefined, so the host would keep the old profile.
+		it("selecting the 'use current profile' sentinel calls setCachedStateField with an empty string", async () => {
 			const mockSetCachedStateField = vitest.fn()
 			const props = {
 				...profileProps,
@@ -446,8 +448,15 @@ describe("ContextManagementSettings", () => {
 			const select = screen.getByTestId("condense-profile-select") as HTMLSelectElement
 			fireEvent.change(select, { target: { value: "-" } })
 			await waitFor(() => {
-				expect(mockSetCachedStateField).toHaveBeenCalledWith("autoCondenseContextApiConfigId", undefined)
+				expect(mockSetCachedStateField).toHaveBeenCalledWith("autoCondenseContextApiConfigId", "")
 			})
+		})
+
+		it("shows 'use current profile' for a cleared (empty string) compaction profile", () => {
+			render(<ContextManagementSettings {...profileProps} autoCondenseContextApiConfigId="" />)
+			// The value handed to Select, not the DOM value: a native select falls
+			// back to its first option by itself, the Radix one shows no item.
+			expect(screen.getByTestId("condense-profile-select")).toHaveAttribute("data-value", "-")
 		})
 
 		it("never renders a SelectItem with an empty-string value (Radix rejects it at runtime)", () => {

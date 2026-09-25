@@ -237,6 +237,16 @@ describe("Task — condenseApiHandler (background model + fallback)", () => {
 		expect((handler as BackgroundModelHandler).fallback).toBe(foregroundHandler)
 	})
 
+	// Decision 18: "use current profile" is stored as "".
+	it("async resolver returns a passthrough wrapper when the profile id was cleared to an empty string", async () => {
+		const provider = makeProvider({ condenseProfileId: "" })
+		const task = new Task({ provider, apiConfiguration: apiConfig, task: "test", startTask: false })
+		const handler = await task.getCondenseApiHandler()
+		expect((handler as BackgroundModelHandler).background).toBeUndefined()
+		expect((handler as BackgroundModelHandler).fallback).toBe(foregroundHandler)
+		expect(provider.providerSettingsManager.getProfile).not.toHaveBeenCalled()
+	})
+
 	it("async resolver returns a passthrough wrapper (no throw) when the profile id is stale", async () => {
 		const provider = makeProvider({
 			condenseProfileId: "deleted-profile",

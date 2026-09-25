@@ -64,6 +64,13 @@ describe("memory shared with Claude Code", () => {
 		)
 	})
 
+	// "" is how the Settings view clears the folder (decision 18): no explicit directory.
+	it("shares when the directory was cleared to an empty string", () => {
+		initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryShareWithClaudeCode: true, autoMemoryDirectory: "" }))
+
+		expect(getAutoMemPath(CWD)).toBe(path.join(claudeDir, "projects", "-home-user-my-project", "memory") + path.sep)
+	})
+
 	it("takes effect without a reload when the setting is toggled", () => {
 		let shared = false
 		initMemoryPaths(GLOBAL_STORAGE, () => ({ autoMemoryShareWithClaudeCode: shared }))

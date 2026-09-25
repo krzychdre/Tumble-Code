@@ -65,6 +65,27 @@ describe("settings schema (WEB-3)", () => {
 		expect({ ...{ soundEnabled: true }, ...picked }).toEqual({ soundEnabled: true, soundVolume: 0.3 })
 	})
 
+	// Decision 18: "" is how the webview clears these settings. undefined would
+	// be dropped by JSON, so the host would keep the old value.
+	it.each(["autoMemoryDirectory", "memoryWriterApiConfigId", "autoCondenseContextApiConfigId"] as const)(
+		"sends a cleared %s as an empty string, and leaves a never-set one out",
+		(key) => {
+			expect(buildUpdatedSettings({ [key]: "" } as never)[key]).toBe("")
+			expect(buildUpdatedSettings({} as never)[key]).toBeUndefined()
+			expect(buildUpdatedSettings({ [key]: "x" } as never)[key]).toBe("x")
+		},
+	)
+
+	it.each(["autoMemoryDirectory", "memoryWriterApiConfigId", "autoCondenseContextApiConfigId"] as const)(
+		"does not count clearing a never-set %s as a change",
+		(key) => {
+			expect(isSettingChange(key, undefined, "")).toBe(false)
+			expect(isSettingChange(key, "", undefined)).toBe(false)
+			expect(isSettingChange(key, "x", "")).toBe(true)
+			expect(isSettingChange(key, undefined, "x")).toBe(true)
+		},
+	)
+
 	it("compares support prompts by content and everything else by identity", () => {
 		expect(isSettingChange("customSupportPrompts", { ENHANCE: "a" }, { ENHANCE: "a" })).toBe(false)
 		expect(isSettingChange("customSupportPrompts", { ENHANCE: "a" }, { ENHANCE: "b" })).toBe(true)

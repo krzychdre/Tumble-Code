@@ -279,6 +279,39 @@ describe("ContextProxy", () => {
 		})
 	})
 
+	// Decision 18: the Settings view clears the memory folder by saving "".
+	describe("cleared memory directory", () => {
+		it("stores an empty autoMemoryDirectory as an empty string", async () => {
+			await proxy.setValue("autoMemoryDirectory", "")
+
+			expect(proxy.getValue("autoMemoryDirectory")).toBe("")
+			expect(mockGlobalState.update).toHaveBeenCalledWith("autoMemoryDirectory", "")
+		})
+
+		it("keeps a stored empty autoMemoryDirectory on initialize (it means the default folder)", async () => {
+			vi.clearAllMocks()
+			mockGlobalState.get.mockImplementation((key: string) => (key === "autoMemoryDirectory" ? "" : undefined))
+
+			const reloaded = new ContextProxy(mockContext)
+			await reloaded.initialize()
+
+			expect(mockGlobalState.update).not.toHaveBeenCalledWith("autoMemoryDirectory", undefined)
+			expect(reloaded.getValue("autoMemoryDirectory")).toBe("")
+		})
+
+		it("still clears an invalid stored autoMemoryDirectory on initialize", async () => {
+			vi.clearAllMocks()
+			mockGlobalState.get.mockImplementation((key: string) =>
+				key === "autoMemoryDirectory" ? "relative/dir" : undefined,
+			)
+
+			const reloaded = new ContextProxy(mockContext)
+			await reloaded.initialize()
+
+			expect(mockGlobalState.update).toHaveBeenCalledWith("autoMemoryDirectory", undefined)
+		})
+	})
+
 	describe("setValues", () => {
 		it("should process multiple values correctly", async () => {
 			// Spy on setValue

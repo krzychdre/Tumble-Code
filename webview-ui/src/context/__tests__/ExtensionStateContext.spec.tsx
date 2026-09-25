@@ -315,6 +315,27 @@ describe("ExtensionStateContext follow-up and prompt settings", () => {
 })
 
 describe("mergeExtensionState", () => {
+	// Decision 18: the host posts "" for a cleared profile or memory directory,
+	// and the merge must take it (a missing key would keep the old value).
+	it("takes an empty string from a state push over the previous value", () => {
+		const prevState = {
+			autoCondenseContextApiConfigId: "p-condense",
+			memoryWriterApiConfigId: "p-writer",
+			autoMemoryDirectory: "/srv/memories",
+			apiConfiguration: {},
+		} as unknown as ExtensionState
+
+		const result = mergeExtensionState(prevState, {
+			autoCondenseContextApiConfigId: "",
+			memoryWriterApiConfigId: "",
+			autoMemoryDirectory: "",
+		})
+
+		expect(result.autoCondenseContextApiConfigId).toBe("")
+		expect(result.memoryWriterApiConfigId).toBe("")
+		expect(result.autoMemoryDirectory).toBe("")
+	})
+
 	it("should correctly merge extension states", () => {
 		const baseState: ExtensionState = {
 			version: "",

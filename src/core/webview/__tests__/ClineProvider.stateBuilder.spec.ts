@@ -9,6 +9,7 @@
 // the documented view-only transforms.
 
 import * as vscode from "vscode"
+import * as path from "path"
 import { isDeepStrictEqual } from "util"
 
 import type { RooCodeSettings } from "@roo-code/types"
@@ -510,6 +511,59 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 			expect(posted).not.toHaveProperty(key)
 		}
 	})
+	// Decision 18: "use current profile" and an empty memory folder are saved
+	// as "", stored as "" and posted back as "", so the Settings view shows the
+	// cleared value and the host readers fall back to their defaults.
+	it("saving the cleared profile ids and memory directory as empty strings stores and posts them back", async () => {
+		const provider = await makeProvider({ cloudMode: "signedOut" })
+		await provider.contextProxy.setValues({
+			autoCondenseContextApiConfigId: "cfg-condense",
+			memoryWriterApiConfigId: "cfg-memory",
+			autoMemoryDirectory: path.resolve("/srv/memories"),
+		})
+
+		await webviewMessageHandler(provider, {
+			type: "updateSettings",
+			updatedSettings: JSON.parse(
+				JSON.stringify({
+					autoCondenseContextApiConfigId: "",
+					memoryWriterApiConfigId: "",
+					autoMemoryDirectory: "",
+				}),
+			),
+		} as any)
+
+		expect(provider.contextProxy.getValue("autoCondenseContextApiConfigId")).toBe("")
+		expect(provider.contextProxy.getValue("memoryWriterApiConfigId")).toBe("")
+		expect(provider.contextProxy.getValue("autoMemoryDirectory")).toBe("")
+
+		const posted = await provider.getStateToPostToWebview()
+		expect(posted.autoCondenseContextApiConfigId).toBe("")
+		expect(posted.memoryWriterApiConfigId).toBe("")
+		expect(posted.autoMemoryDirectory).toBe("")
+	})
+
+	// Without them in the push, the Memory tab showed its defaults and Save
+	// sent those defaults back (a turned-off memory came back on).
+	it("the posted state carries the stored memory settings", async () => {
+		const provider = await makeProvider({ cloudMode: "signedOut" })
+		const memorySettings = {
+			autoMemoryEnabled: false,
+			autoMemoryDirectory: path.resolve("/srv/memories") + path.sep,
+			autoMemoryShareWithClaudeCode: true,
+			memoryRecallEnabled: false,
+			autoDreamEnabled: false,
+			autoDreamMinHours: 48,
+			autoDreamMinSessions: 9,
+		}
+		await provider.contextProxy.setValues(memorySettings)
+
+		const posted = await provider.getStateToPostToWebview()
+		for (const [key, value] of Object.entries(memorySettings)) {
+			expect(posted).toHaveProperty(key, value)
+		}
+	})
+
 	// DEF-C41: the approval decision must use the command lists the UI shows.
 	describe("command lists (DEF-C41)", () => {
 		/** Sets a configuration value per scope; `get()` returns the most specific one, like VS Code. */
