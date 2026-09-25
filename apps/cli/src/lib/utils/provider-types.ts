@@ -6,7 +6,6 @@
  * provider to:
  *  - its API-key settings field (from the extension's zod schemas),
  *  - its base-url settings field (where the schema has one),
- *  - its model settings field,
  *  - conventional env-var names.
  *
  * Keyless providers (no API-key field, or credentials resolved by an SDK) are
@@ -18,7 +17,7 @@
  *    no cloud handler, so it maps to the openrouter provider settings.
  */
 
-import { activeProviderIds } from "@roo-code/types"
+import { activeProviderIds, providerModelDefinitions } from "@roo-code/types"
 
 /**
  * The providers excluded from the CLI, with the reason for each exclusion.
@@ -81,15 +80,14 @@ export function isSupportedProvider(provider: string): provider is SupportedProv
  * `null` means the provider needs no API key — the gate never requires one.
  *
  * `baseUrlField` is set only where the schema has a base-url field.
- * `modelField` is the settings field the extension reads the model id from
- * (`apiModelId` covers most providers; the routers use provider-specific ones).
+ * The model-id field is not listed here: `getModelField` reads it from the
+ * provider's entry in `providerModelDefinitions`.
  */
 export interface ProviderEnvMapping {
 	readonly apiKeyField: string | null
 	readonly keyEnvVar: string | null
 	readonly baseUrlField?: string
 	readonly baseUrlEnvVar?: string
-	readonly modelField: string
 }
 
 export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
@@ -98,14 +96,12 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		keyEnvVar: "ANTHROPIC_API_KEY",
 		baseUrlField: "anthropicBaseUrl",
 		baseUrlEnvVar: "ANTHROPIC_BASE_URL",
-		modelField: "apiModelId",
 	},
 	"openai-native": {
 		apiKeyField: "openAiNativeApiKey",
 		keyEnvVar: "OPENAI_API_KEY",
 		baseUrlField: "openAiNativeBaseUrl",
 		baseUrlEnvVar: "OPENAI_BASE_URL",
-		modelField: "apiModelId",
 	},
 	"openai-codex": {
 		// OpenAI Codex uses ChatGPT subscription OAuth credentials persisted by
@@ -113,35 +109,30 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		// refreshes them from the CLI shim's SecretStorage at runtime.
 		apiKeyField: null,
 		keyEnvVar: null,
-		modelField: "apiModelId",
 	},
 	gemini: {
 		apiKeyField: "geminiApiKey",
 		keyEnvVar: "GOOGLE_API_KEY",
 		baseUrlField: "googleGeminiBaseUrl",
 		baseUrlEnvVar: "GOOGLE_GEMINI_BASE_URL",
-		modelField: "apiModelId",
 	},
 	openrouter: {
 		apiKeyField: "openRouterApiKey",
 		keyEnvVar: "OPENROUTER_API_KEY",
 		baseUrlField: "openRouterBaseUrl",
 		baseUrlEnvVar: "OPENROUTER_BASE_URL",
-		modelField: "openRouterModelId",
 	},
 	litellm: {
 		apiKeyField: "litellmApiKey",
 		keyEnvVar: "LITELLM_API_KEY",
 		baseUrlField: "litellmBaseUrl",
 		baseUrlEnvVar: "LITELLM_BASE_URL",
-		modelField: "litellmModelId",
 	},
 	deepseek: {
 		apiKeyField: "deepSeekApiKey",
 		keyEnvVar: "DEEPSEEK_API_KEY",
 		baseUrlField: "deepSeekBaseUrl",
 		baseUrlEnvVar: "DEEPSEEK_BASE_URL",
-		modelField: "apiModelId",
 	},
 	ollama: {
 		// Ollama is keyless: localhost-first, and the settings schema has no
@@ -150,7 +141,6 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		keyEnvVar: null,
 		baseUrlField: "ollamaBaseUrl",
 		baseUrlEnvVar: "OLLAMA_BASE_URL",
-		modelField: "ollamaModelId",
 	},
 	lmstudio: {
 		// LM Studio is keyless (the handler sends a hardcoded "noop" key).
@@ -158,7 +148,6 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		keyEnvVar: null,
 		baseUrlField: "lmStudioBaseUrl",
 		baseUrlEnvVar: "LMSTUDIO_BASE_URL",
-		modelField: "lmStudioModelId",
 	},
 	openai: {
 		// "openai" is the OpenAI-compatible provider. It shares OPENAI_* names
@@ -167,7 +156,6 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		keyEnvVar: "OPENAI_API_KEY",
 		baseUrlField: "openAiBaseUrl",
 		baseUrlEnvVar: "OPENAI_BASE_URL",
-		modelField: "openAiModelId",
 	},
 	bedrock: {
 		// Bedrock resolves credentials from the AWS SDK default chain
@@ -176,52 +164,44 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		keyEnvVar: null,
 		baseUrlField: "awsBedrockEndpoint",
 		baseUrlEnvVar: "AWS_BEDROCK_ENDPOINT",
-		modelField: "apiModelId",
 	},
 	mistral: {
 		apiKeyField: "mistralApiKey",
 		keyEnvVar: "MISTRAL_API_KEY",
 		baseUrlField: "mistralCodestralUrl",
 		baseUrlEnvVar: "MISTRAL_BASE_URL",
-		modelField: "apiModelId",
 	},
 	moonshot: {
 		apiKeyField: "moonshotApiKey",
 		keyEnvVar: "MOONSHOT_API_KEY",
 		baseUrlField: "moonshotBaseUrl",
 		baseUrlEnvVar: "MOONSHOT_BASE_URL",
-		modelField: "apiModelId",
 	},
 	minimax: {
 		apiKeyField: "minimaxApiKey",
 		keyEnvVar: "MINIMAX_API_KEY",
 		baseUrlField: "minimaxBaseUrl",
 		baseUrlEnvVar: "MINIMAX_BASE_URL",
-		modelField: "apiModelId",
 	},
 	"qwen-code": {
 		// Qwen Code uses OAuth credentials cached on disk (~/.qwen/oauth_creds.json
 		// or qwenCodeOauthPath). No API-key env var.
 		apiKeyField: null,
 		keyEnvVar: null,
-		modelField: "apiModelId",
 	},
 	vertex: {
 		// Vertex resolves credentials from GOOGLE_APPLICATION_CREDENTIALS or the
 		// gcloud default chain (vertexKeyFile/vertexJsonCredentials).
 		apiKeyField: null,
 		keyEnvVar: null,
-		modelField: "apiModelId",
 	},
 	xai: {
 		apiKeyField: "xaiApiKey",
 		keyEnvVar: "XAI_API_KEY",
-		modelField: "apiModelId",
 	},
 	zai: {
 		apiKeyField: "zaiApiKey",
 		keyEnvVar: "ZAI_API_KEY",
-		modelField: "apiModelId",
 	},
 }
 
@@ -260,9 +240,9 @@ export function getBaseUrlField(provider: SupportedProvider): string | undefined
 	return providerEnvMap[provider]?.baseUrlField
 }
 
-/** The extension settings field for the provider's model id. */
+/** The extension settings field for the provider's model id (the one its handler reads). */
 export function getModelField(provider: SupportedProvider): string {
-	return providerEnvMap[provider].modelField
+	return providerModelDefinitions[provider].modelIdField
 }
 
 export function getApiKeyFromEnv(provider: SupportedProvider): string | undefined {
