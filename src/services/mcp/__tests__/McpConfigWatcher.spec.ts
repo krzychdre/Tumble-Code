@@ -115,6 +115,19 @@ describe("McpConfigWatcher", () => {
 		expect(listener.onConfigFileChanged).not.toHaveBeenCalled()
 	})
 
+	it("asks the write guard about the file that changed, so one file's guard does not hide the other", () => {
+		watcher = new McpConfigWatcher(fake.factory, (filePath) => filePath === settingsPath, listener)
+		watcher.watchGlobalFile(settingsPath)
+		watcher.watchProjectFile(workspaceDir)
+		const [globalWatch, projectWatch] = fake.watches
+
+		globalWatch.listeners.onChange(settingsPath)
+		projectWatch.listeners.onChange(projectPath)
+		vi.advanceTimersByTime(500)
+
+		expect(listener.onConfigFileChanged.mock.calls).toEqual([[projectPath, "project"]])
+	})
+
 	it("debounces the global and the project file separately", () => {
 		watcher.watchGlobalFile(settingsPath)
 		watcher.watchProjectFile(workspaceDir)

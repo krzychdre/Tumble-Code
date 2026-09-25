@@ -2,6 +2,7 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 import { fileExistsAtPath } from "../../utils/fs"
+import { arePathsEqual } from "../../utils/path"
 import { safeWriteJson } from "../../utils/safeWriteJson"
 import { getProjectRooDirectoryForCwd } from "../roo-config"
 
@@ -32,15 +33,17 @@ export interface McpConfigStoreOptions {
  * The MCP settings files on disk: where they are, reading and parsing them,
  * and writing them with the write guard up.
  *
- * The write guard is one flag for both files: while it is up (for
- * WRITE_GUARD_MS after a write ends), McpConfigWatcher ignores change events,
- * so the hub's own edits do not update the servers a second time.
+ * The write guard is kept per file: while it is up for a file (for
+ * WRITE_GUARD_MS after a write of that file ends), McpConfigWatcher ignores
+ * that file's change events, so the hub's own edits do not update the servers
+ * a second time. It is per file so a write of the global file does not hide a
+ * user's edit of the project file made in the same moment, and the reverse.
  */
 export class McpConfigStore {
 	static readonly WRITE_GUARD_MS = 600
 
-	private writeGuardUp = false
-	private writeGuardTimer?: NodeJS.Timeout
+	/** The files whose guard is up, each with the timer that lowers it. */
+	private writeGuards = new Map<string, NodeJS.Timeout | undefined>()
 
 	constructor(private readonly options: McpConfigStoreOptions) {}
 
@@ -147,33 +150,48 @@ export class McpConfigStore {
 		return { path: filePath, config }
 	}
 
-	/** Writes a settings file with the write guard up. */
+	/** Writes a settings file with the write guard of that file up. */
 	async write(filePath: string, config: unknown): Promise<void> {
-		if (this.writeGuardTimer) {
-			clearTimeout(this.writeGuardTimer)
-		}
-		this.writeGuardUp = true
+		const key = this.guardKey(filePath) ?? filePath
+		clearTimeout(this.writeGuards.get(key))
+		// No timer while writing: the guard stays up until the write ends.
+		this.writeGuards.set(key, undefined)
 		try {
 			await safeWriteJson(filePath, config, { prettyPrint: true })
 		} finally {
 			// Lower the guard once the watcher's debounce window has passed (non-blocking).
-			this.writeGuardTimer = setTimeout(() => {
-				this.writeGuardUp = false
-				this.writeGuardTimer = undefined
+			const timer = setTimeout(() => {
+				if (this.writeGuards.get(key) === timer) {
+					this.writeGuards.delete(key)
+				}
 			}, McpConfigStore.WRITE_GUARD_MS)
+			clearTimeout(this.writeGuards.get(key))
+			this.writeGuards.set(key, timer)
 		}
 	}
 
-	/** Whether a change event now is most likely the echo of the store's own write. */
-	isWriteGuardUp(): boolean {
-		return this.writeGuardUp
+	/**
+	 * Whether a change event of `filePath` now is most likely the echo of the
+	 * store's own write of that file. Without a path: whether any file's guard is up.
+	 */
+	isWriteGuardUp(filePath?: string): boolean {
+		return filePath === undefined ? this.writeGuards.size > 0 : this.guardKey(filePath) !== undefined
 	}
 
 	dispose(): void {
-		if (this.writeGuardTimer) {
-			clearTimeout(this.writeGuardTimer)
-			this.writeGuardTimer = undefined
+		for (const timer of this.writeGuards.values()) {
+			clearTimeout(timer)
 		}
-		this.writeGuardUp = false
+		this.writeGuards.clear()
+	}
+
+	/** The guarded path equal to `filePath` (the watcher may spell it differently, e.g. the drive letter case). */
+	private guardKey(filePath: string): string | undefined {
+		for (const key of this.writeGuards.keys()) {
+			if (arePathsEqual(key, filePath)) {
+				return key
+			}
+		}
+		return undefined
 	}
 }
