@@ -13,6 +13,7 @@ import {
 	type ExtensionState,
 	ORGANIZATION_ALLOW_ALL,
 	DEFAULT_CHECKPOINT_TIMEOUT_SECONDS,
+	RooCodeEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -2464,6 +2465,160 @@ describe("ClineProvider", () => {
 			await expect(mockWebviewView.webview.html).toMatchFileSnapshot(
 				"__snapshots__/webview-html/sidebar.production.html",
 			)
+		})
+	})
+
+	// CORE-R6 f characterization: every task event the provider forwards is
+	// attached once when the task is created and detached when it leaves the
+	// stack (a missing detach is a leak), with today's handlers and arguments.
+	describe("task event forwarding", () => {
+		const FORWARDED = [
+			RooCodeEventName.TaskStarted,
+			RooCodeEventName.TaskCompleted,
+			RooCodeEventName.TaskAborted,
+			RooCodeEventName.TaskFocused,
+			RooCodeEventName.TaskUnfocused,
+			RooCodeEventName.TaskActive,
+			RooCodeEventName.TaskInteractive,
+			RooCodeEventName.TaskResumable,
+			RooCodeEventName.TaskIdle,
+			RooCodeEventName.TaskPaused,
+			RooCodeEventName.TaskUnpaused,
+			RooCodeEventName.TaskSpawned,
+			RooCodeEventName.TaskUserMessage,
+			RooCodeEventName.TaskTokenUsageUpdated,
+		] as const
+
+		const tokenUsage = { totalTokensIn: 10, totalTokensOut: 20, totalCost: 0.5 } as any
+		const toolUsage = { read_file: { attempts: 1, failures: 0 } } as any
+
+		const makeTask = async (overrides: Record<string, unknown> = {}) => {
+			const { EventEmitter } = await vi.importActual<typeof import("events")>("events")
+			return Object.assign(new EventEmitter(), {
+				taskId: "task-1",
+				instanceId: "instance-1",
+				abortTask: vi.fn().mockResolvedValue(undefined),
+				...overrides,
+			}) as any
+		}
+
+		const attach = (task: any) => (provider as any).taskCreationCallback(task)
+
+		test("creation emits TaskCreated and attaches exactly one listener per forwarded event", async () => {
+			const task = await makeTask()
+			const emit = vi.spyOn(provider, "emit")
+			attach(task)
+			expect(emit).toHaveBeenCalledWith(RooCodeEventName.TaskCreated, task)
+			expect(Object.fromEntries(task.eventNames().map((e: string) => [e, task.listenerCount(e)]))).toEqual(
+				Object.fromEntries(FORWARDED.map((e) => [e, 1])),
+			)
+		})
+
+		test("each event is forwarded with today's arguments", async () => {
+			const task = await makeTask()
+			attach(task)
+			const emit = vi.spyOn(provider, "emit").mockClear()
+
+			task.emit(RooCodeEventName.TaskStarted)
+			task.emit(RooCodeEventName.TaskFocused)
+			task.emit(RooCodeEventName.TaskUnfocused)
+			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			task.emit(RooCodeEventName.TaskActive, "task-1")
+			task.emit(RooCodeEventName.TaskInteractive, "task-1")
+			task.emit(RooCodeEventName.TaskResumable, "task-1")
+			task.emit(RooCodeEventName.TaskIdle, "task-1")
+			task.emit(RooCodeEventName.TaskPaused, "task-1")
+			task.emit(RooCodeEventName.TaskUnpaused, "task-1")
+			task.emit(RooCodeEventName.TaskSpawned, "child-1")
+			task.emit(RooCodeEventName.TaskUserMessage, "task-1")
+			task.emit(RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
+			task.emit(RooCodeEventName.TaskAborted)
+			await new Promise((resolve) => setTimeout(resolve, 0))
+
+			expect(emit.mock.calls).toEqual([
+				[RooCodeEventName.TaskStarted, "task-1"],
+				[RooCodeEventName.TaskFocused, "task-1"],
+				[RooCodeEventName.TaskUnfocused, "task-1"],
+				[RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage],
+				[RooCodeEventName.TaskActive, "task-1"],
+				[RooCodeEventName.TaskInteractive, "task-1"],
+				[RooCodeEventName.TaskResumable, "task-1"],
+				[RooCodeEventName.TaskIdle, "task-1"],
+				[RooCodeEventName.TaskPaused, "task-1"],
+				[RooCodeEventName.TaskUnpaused, "task-1"],
+				[RooCodeEventName.TaskSpawned, "child-1"],
+				[RooCodeEventName.TaskUserMessage, "task-1"],
+				[RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage],
+				[RooCodeEventName.TaskAborted, "task-1"],
+			])
+		})
+
+		test("lifecycle events update the subagent registry before they are forwarded", async () => {
+			const task = await makeTask()
+			attach(task)
+			const registry = provider.subagentRegistry
+			const markTerminal = vi.spyOn(registry, "markTerminal").mockImplementation(() => {})
+			const setLiveStatus = vi.spyOn(registry, "setLiveStatus").mockImplementation(() => {})
+			const has = vi.spyOn(registry, "has").mockReturnValue(true)
+			const update = vi.spyOn(registry, "update").mockImplementation(() => {})
+
+			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			task.emit(RooCodeEventName.TaskAborted)
+			task.emit(RooCodeEventName.TaskActive, "task-1")
+			task.emit(RooCodeEventName.TaskInteractive, "task-1")
+			task.emit(RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
+			has.mockReturnValue(false)
+			task.emit(RooCodeEventName.TaskTokenUsageUpdated, "task-1", tokenUsage, toolUsage)
+
+			expect(markTerminal.mock.calls).toEqual([
+				["task-1", "completed"],
+				["task-1", "failed"],
+			])
+			expect(setLiveStatus.mock.calls).toEqual([
+				["task-1", "running"],
+				["task-1", "awaiting_input"],
+			])
+			expect(update.mock.calls).toEqual([["task-1", { tokensIn: 10, tokensOut: 20, totalCost: 0.5 }]])
+		})
+
+		test("an abort after a streaming failure rehydrates the foreground task from history", async () => {
+			const task = await makeTask({
+				abortReason: "streaming_failed",
+				isBackground: false,
+				rootTask: { taskId: "root" },
+				parentTask: { taskId: "parent" },
+			})
+			attach(task)
+			vi.spyOn(provider, "getCurrentTask").mockReturnValue(task)
+			vi.spyOn(provider, "getHistoryItem").mockResolvedValue({ id: "task-1", task: "t" } as any)
+			const rehydrate = vi.spyOn(provider, "createTaskWithHistoryItem").mockResolvedValue(task)
+
+			task.emit(RooCodeEventName.TaskAborted)
+			await new Promise((resolve) => setTimeout(resolve, 0))
+
+			expect(rehydrate).toHaveBeenCalledWith({
+				id: "task-1",
+				task: "t",
+				rootTask: { taskId: "root" },
+				parentTask: { taskId: "parent" },
+			})
+		})
+
+		test("removing the task from the stack detaches every forwarded listener", async () => {
+			const task = await makeTask()
+			attach(task)
+			await provider.addClineToStack(task)
+			const emit = vi.spyOn(provider, "emit").mockClear()
+
+			await provider.removeClineFromStack()
+
+			for (const event of FORWARDED) {
+				expect(task.listenerCount(event)).toBe(0)
+			}
+			task.emit(RooCodeEventName.TaskStarted)
+			task.emit(RooCodeEventName.TaskIdle, "task-1")
+			expect(emit).not.toHaveBeenCalledWith(RooCodeEventName.TaskStarted, expect.anything())
+			expect(emit).not.toHaveBeenCalledWith(RooCodeEventName.TaskIdle, expect.anything())
 		})
 	})
 })
