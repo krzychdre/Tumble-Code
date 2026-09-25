@@ -281,3 +281,9 @@ Windows: its fake file system keyed files and expectations on POSIX `${CWD}/src/
 `path.resolve(task.cwd, relPath)`; it now builds keys with the same `path.resolve`. Reproduced on Linux by mapping
 `path` to `path.win32`; the specs added later that day passed under the same mapping. Lesson for helpers: a spec
 that fakes the file system must build its paths with `path.resolve`/`path.join`, never hard-coded POSIX strings.
+
+**Fourth round (2026-09-25), #295, test-only.** CORE-R12's `toolStreamState.onTask.spec` gave its fake tasks a
+POSIX `cwd` (`/work/a`); `getReadablePath` relativizes only when the absolute path contains `cwd`, so on Windows
+(`D:\work\a\src\a.ts`) the partial row showed the absolute path (5 failures). The `path.win32` emulation used in
+round three did not catch it because the `cwd` string itself stayed POSIX. The spec now builds `cwd` with
+`path.resolve`. Rule for fake tasks: `cwd` must be native too.
