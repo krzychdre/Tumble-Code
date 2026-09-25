@@ -1,86 +1,13 @@
 import { useTranslation } from "react-i18next"
 import { FileCode2, History } from "lucide-react"
-import { VSCodeBadge } from "@vscode/webview-ui-toolkit/react"
 
 import type { ClineSayTool } from "@roo-code/types"
 
 import { safeJsonParse } from "@roo/core"
 
-import { ToolUseBlock, ToolUseBlockHeader } from "@src/components/common/ToolUseBlock"
-
+import { RunSlashCommandToolRow } from "../tool/ExpandableToolRows"
 import { headerStyle } from "../shared"
 import type { RowRendererProps, SayToolRendererMap, ToolRendererProps } from "../types"
-
-/** A slash command the model ran. */
-export const RunSlashCommandSayRow = ({ tool: slashCommandInfo }: ToolRendererProps) => {
-	const { t } = useTranslation()
-	return (
-		<>
-			<div style={headerStyle}>
-				<span
-					className="codicon codicon-terminal-cmd"
-					style={{
-						color: "var(--vscode-foreground)",
-						marginBottom: "-1.5px",
-					}}></span>
-				<span style={{ fontWeight: "bold" }}>{t("chat:slashCommand.didRun")}</span>
-			</div>
-			<div className="pl-6">
-				<ToolUseBlock>
-					<ToolUseBlockHeader
-						style={{
-							display: "flex",
-							flexDirection: "column",
-							alignItems: "flex-start",
-							gap: "4px",
-							padding: "10px 12px",
-						}}>
-						<div
-							style={{
-								display: "flex",
-								alignItems: "center",
-								gap: "8px",
-								width: "100%",
-							}}>
-							<span
-								style={{
-									fontWeight: "500",
-									fontSize: "var(--vscode-font-size)",
-								}}>
-								/{slashCommandInfo.command}
-							</span>
-							{slashCommandInfo.args && (
-								<span
-									style={{
-										color: "var(--vscode-descriptionForeground)",
-										fontSize: "var(--vscode-font-size)",
-									}}>
-									{slashCommandInfo.args}
-								</span>
-							)}
-						</div>
-						{slashCommandInfo.description && (
-							<div
-								style={{
-									color: "var(--vscode-descriptionForeground)",
-									fontSize: "calc(var(--vscode-font-size) - 1px)",
-								}}>
-								{slashCommandInfo.description}
-							</div>
-						)}
-						{slashCommandInfo.source && (
-							<div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-								<VSCodeBadge style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
-									{slashCommandInfo.source}
-								</VSCodeBadge>
-							</div>
-						)}
-					</ToolUseBlockHeader>
-				</ToolUseBlock>
-			</div>
-		</>
-	)
-}
 
 /** A search of the task history, with the query. */
 export const SearchTaskHistorySayRow = ({ tool: sayTool }: ToolRendererProps) => {
@@ -145,7 +72,8 @@ export const ReadArtifactSayRow = ({ tool: sayTool }: ToolRendererProps) => {
 
 /** Renderers for a say "tool" message, by the payload's `tool`. A tool with no entry renders nothing. */
 export const SAY_TOOL_RENDERERS: SayToolRendererMap = {
-	runSlashCommand: RunSlashCommandSayRow,
+	// The same row as the tool ask: the say kind only changes the title to "ran".
+	runSlashCommand: RunSlashCommandToolRow,
 	searchTaskHistory: SearchTaskHistorySayRow,
 	readArtifact: ReadArtifactSayRow,
 	readCommandOutput: ReadArtifactSayRow,
