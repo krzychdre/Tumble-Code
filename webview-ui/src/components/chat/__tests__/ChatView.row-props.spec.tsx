@@ -1,6 +1,6 @@
 // pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.row-props.spec.tsx
 
-import React, { memo } from "react"
+import React, { memo, useEffect } from "react"
 import deepEqual from "fast-deep-equal"
 import { render, waitFor, act } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -24,6 +24,7 @@ interface ClineMessage {
 const rowState = vi.hoisted(() => ({
 	props: new Map<number, Record<string, unknown>>(),
 	renders: new Map<number, number>(),
+	condensingMounts: 0,
 }))
 
 vi.mock("@src/utils/vscode", () => ({
@@ -41,6 +42,12 @@ vi.mock("../ChatRow", () => {
 		const ts = props.message.ts
 		rowState.props.set(ts, props)
 		rowState.renders.set(ts, (rowState.renders.get(ts) ?? 0) + 1)
+		const isCondensingRow = props.message.say === "condense_context"
+		useEffect(() => {
+			if (isCondensingRow) {
+				rowState.condensingMounts++
+			}
+		}, [isCondensingRow])
 		return <div data-testid={`chat-row-${ts}`} />
 	}, deepEqual)
 	return { default: MockChatRow }
@@ -177,6 +184,7 @@ describe("ChatView row props", () => {
 		vi.clearAllMocks()
 		rowState.props.clear()
 		rowState.renders.clear()
+		rowState.condensingMounts = 0
 	})
 
 	it("passes rows no props that ChatRow does not read", async () => {
@@ -253,5 +261,45 @@ describe("ChatView row props", () => {
 			expect(getByTestId(`chat-row-${STREAMED_TS}`)).toBeInTheDocument()
 			expect(rowState.props.get(EARLIER_TS)?.supportsImages).toBe(supportsImages)
 		})
+	})
+
+	it("keeps the condensing row mounted while the list recomputes", async () => {
+		// Every call returns a later time, as it would between two tokens.
+		let now = 1_000_000
+		const dateNow = vi.spyOn(Date, "now").mockImplementation(() => (now += 1000))
+		onTestFinished(() => dateNow.mockRestore())
+
+		const { getByTestId } = renderChatView()
+
+		await act(async () => {
+			hydrateState(streamingTask("Hel"))
+		})
+
+		await waitFor(() => {
+			expect(getByTestId(`chat-row-${STREAMED_TS}`)).toBeInTheDocument()
+		})
+
+		await act(async () => {
+			window.postMessage({ type: "condenseTaskContextStarted", text: "task-id" }, "*")
+		})
+
+		await waitFor(() => {
+			expect(rowState.condensingMounts).toBe(1)
+		})
+
+		const streamedRenders = rowState.renders.get(STREAMED_TS) ?? 0
+
+		await act(async () => {
+			streamToken("Hello")
+		})
+
+		await waitFor(() => {
+			expect(rowState.renders.get(STREAMED_TS)).toBeGreaterThan(streamedRenders)
+		})
+
+		// The synthetic row used `ts: Date.now()`, so every recompute of the
+		// list gave it a new key and React mounted a fresh row (the spinner
+		// restarted and the row lost its measured height).
+		expect(rowState.condensingMounts).toBe(1)
 	})
 })
