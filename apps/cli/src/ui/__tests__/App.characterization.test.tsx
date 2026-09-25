@@ -326,6 +326,7 @@ describe("App characterization (recorded message sequences)", () => {
 		expect(last).toContain("Read Artifact(0 B - 1.0 KB of 4.0 KB)")
 		expect(last).toContain("Search Task History(retry)")
 		expect(last).not.toContain('"tool"')
+		expect(render_(h.frames)).toMatchSnapshot()
 		h.unmount()
 	})
 

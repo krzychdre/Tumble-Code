@@ -8,12 +8,17 @@ import {
 	type TodoItem,
 	type UsableSuggestion,
 } from "@roo-code/types"
-import { consolidateTokenUsage, consolidateApiRequests, consolidateCommands } from "@roo-code/core/cli"
+import {
+	consolidateTokenUsage,
+	consolidateApiRequests,
+	consolidateCommands,
+	parseToolPayloadText,
+} from "@roo-code/core/cli"
 
 import type { TUIMessage, ToolData } from "../types.js"
 import type { FileResult, SlashCommandResult, ModeResult } from "../components/autocomplete/index.js"
 import { useCLIStore } from "../store.js"
-import { extractToolData, formatToolOutput, formatToolAskMessage, parseTodosFromToolInfo } from "../utils/tools.js"
+import { extractToolData, formatToolAskMessage, parseTodosFromToolInfo } from "../utils/tools.js"
 import { mcpServersFromMessage } from "../../lib/utils/mcp-status.js"
 import { parseMcpAsk, type McpAskDetails } from "../../lib/utils/mcp-ask.js"
 
@@ -287,15 +292,11 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 
 			let role: TUIMessage["role"] = "assistant"
 			let toolName: string | undefined
-			let toolDisplayName: string | undefined
-			let toolDisplayOutput: string | undefined
 			let toolData: ToolData | undefined
 
 			if (say === "command_output") {
 				role = "tool"
 				toolName = "execute_command"
-				toolDisplayName = "bash"
-				toolDisplayOutput = text
 				toolData = {
 					tool: "execute_command",
 					command: pendingCommandRef.current || undefined,
@@ -308,13 +309,24 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				const mcp = pendingMcpRef.current
 				role = "tool"
 				toolName = "use_mcp_server"
-				toolDisplayName = "MCP"
-				toolDisplayOutput = text
 				toolData = {
 					tool: "use_mcp_server",
 					path: mcp ? `${mcp.serverName} › ${mcp.toolName ?? mcp.uri ?? ""}` : undefined,
 					content: text,
 				}
+			} else if (say === "tool") {
+				// A tool reporting what it did (ReadArtifactTool, SearchTaskHistoryTool;
+				// old histories also carry runSlashCommand): a tool payload, drawn as
+				// the tool row the webview draws for it (SayToolRows.tsx), never as
+				// its JSON. A text that does not parse yet is a payload still
+				// streaming; like the webview, draw nothing for it until it does.
+				const payload = parseToolPayloadText(text)
+				if (!payload) {
+					return
+				}
+				role = "tool"
+				toolData = extractToolData(payload)
+				toolName = toolData.tool
 			} else if (say === "reasoning") {
 				role = "thinking"
 			}
@@ -373,8 +385,6 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				role,
 				content: text || "",
 				toolName,
-				toolDisplayName,
-				toolDisplayOutput,
 				partial,
 				originalType: say,
 				toolData,
@@ -437,8 +447,6 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 						role: "tool",
 						content: text,
 						toolName: "attempt_completion",
-						toolDisplayName: "Task Complete",
-						toolDisplayOutput: formatToolOutput({ tool: "attempt_completion", ...completionInfo }),
 						originalType: ask,
 						toolData,
 					})
@@ -449,8 +457,6 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 						role: "tool",
 						content: text || "Task completed",
 						toolName: "attempt_completion",
-						toolDisplayName: "Task Complete",
-						toolDisplayOutput: "✅ Task completed",
 						originalType: ask,
 						toolData: {
 							tool: "attempt_completion",
@@ -503,8 +509,6 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 
 				if (ask === "tool") {
 					let toolName: string | undefined
-					let toolDisplayName: string | undefined
-					let toolDisplayOutput: string | undefined
 					let formattedContent = text || ""
 					let toolData: ToolData | undefined
 					let todos: TodoItem[] | undefined
@@ -513,8 +517,6 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 					try {
 						const toolInfo = JSON.parse(text) as Record<string, unknown>
 						toolName = toolInfo.tool as string
-						toolDisplayName = toolInfo.tool as string
-						toolDisplayOutput = formatToolOutput(toolInfo)
 						formattedContent = formatToolAskMessage(toolInfo)
 						// Extract structured toolData for rich rendering
 						toolData = extractToolData(toolInfo)
@@ -538,8 +540,6 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 						role: "tool",
 						content: formattedContent,
 						toolName,
-						toolDisplayName,
-						toolDisplayOutput,
 						originalType: ask,
 						toolData,
 						todos,
