@@ -266,6 +266,17 @@ undici 8 also declares `node >=22.19.0`, above the VS Code 1.102 host (22.15.1).
 undici ^7 together with `@qdrant/js-client-rest` 1.14 to 1.19 (undici 7 needs Node >=20.18.1), gated by a new spec
 that runs the real Qdrant client against a fake HTTP server (no module mock).
 
+**Status (2026-09-25):** DEP-6b DONE in #320: root override undici `^6.27.0` to `^7.29.0`,
+`@qdrant/js-client-rest` 1.14.0 to 1.19.0 (undici 7.30.0 resolved); no product code change.
+`qdrant-client.wire.spec` (13) runs the real client through `QdrantVectorStore` against a `node:http` fake server,
+pinning every call (collection get/create/delete with vector size, 6 payload indexes, `upsert ?wait=true`,
+`points/query`, retrieve, delete by filter) and that the `error.data` reason reaches our message; it calls
+`nock.restore()` because nock's fetch interceptor drops the `dispatcher` option and would hide the undici 8
+failure (all 13 fail with undici 8 forced). Also verified under VS Code's Electron (`ELECTRON_RUN_AS_NODE=1`, Node
+24.20.0), with the esbuild-bundled client, the debug `ProxyAgent` path through a local CONNECT proxy, and a full
+`pnpm vsix` (vsce's cheerio on undici 7). Qdrant 1.19 removed `search`/`recommend`/`discover` (we use `query()`).
+Pre-existing: in debug-proxy mode Qdrant traffic bypasses the proxy (its per-request agent wins).
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
