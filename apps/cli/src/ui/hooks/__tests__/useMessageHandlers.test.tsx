@@ -337,6 +337,35 @@ describe("useMessageHandlers", () => {
 		})
 	})
 
+	// ReadArtifactTool and SearchTaskHistoryTool report what they did with a
+	// `say: "tool"` message whose text is a tool payload; old task histories
+	// also carry `runSlashCommand` says. The webview draws them as tool rows
+	// (SayToolRows.tsx); the CLI printed the payload JSON as the answer.
+	describe("say tool messages", () => {
+		const readArtifact = JSON.stringify({ tool: "readArtifact", readStart: 0, readEnd: 1024, totalBytes: 4096 })
+		const searchHistory = JSON.stringify({ tool: "searchTaskHistory", query: "retry budget", totalBytes: 812 })
+		const slashCommand = JSON.stringify({ tool: "runSlashCommand", command: "deploy", args: "prod" })
+
+		it.each([
+			["readArtifact", readArtifact, "0 B - 1.0 KB of 4.0 KB"],
+			["searchTaskHistory", searchHistory, "retry budget"],
+			["runSlashCommand", slashCommand, "/deploy"],
+		])("renders a %s say as a tool row read by the shared payload reader", (tool, text, subject) => {
+			sayUpdate(800, "tool", text, false)
+
+			const messages = useCLIStore.getState().messages
+			expect(messages).toHaveLength(1)
+			expect(messages[0]).toMatchObject({ role: "tool", toolName: tool, originalType: "tool" })
+			expect(messages[0]?.toolData).toMatchObject({ tool, kind: tool, subject })
+		})
+
+		it("prints nothing for a say tool whose text is not a payload yet", () => {
+			sayUpdate(801, "tool", '{"tool":"readArt', true)
+
+			expect(useCLIStore.getState().messages).toEqual([])
+		})
+	})
+
 	it("renders a single block for two ts-distinct identical assistant text messages", () => {
 		// Real flow: the first text say is the user-prompt echo (skipped by
 		// firstTextMessageSkipped), then the model's partial reply, then its

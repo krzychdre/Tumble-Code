@@ -305,6 +305,30 @@ describe("App characterization (recorded message sequences)", () => {
 		h.unmount()
 	})
 
+	it("draws an artifact read and a history search as tool rows, not as JSON", async () => {
+		const h = await start({ nonInteractive: true })
+
+		await h.emit("prompt echo", state([PROMPT_ECHO]))
+		await h.emit("request started", updated(REQUEST))
+		await h.emit(
+			"artifact read",
+			updated(
+				say(1002, "tool", JSON.stringify({ tool: "readArtifact", readStart: 0, readEnd: 1024, totalBytes: 4096 })),
+			),
+		)
+		await h.emit(
+			"history search",
+			updated(say(1003, "tool", JSON.stringify({ tool: "searchTaskHistory", query: "retry", totalBytes: 812 }))),
+		)
+		await h.emit("answer", updated(say(1004, "text", "Found it.", false)))
+
+		const last = h.frames.at(-1)!.frame
+		expect(last).toContain("Read Artifact(0 B - 1.0 KB of 4.0 KB)")
+		expect(last).toContain("Search Task History(retry)")
+		expect(last).not.toContain('"tool"')
+		h.unmount()
+	})
+
 	it("runs a command and collects its output into one row", async () => {
 		const h = await start()
 
