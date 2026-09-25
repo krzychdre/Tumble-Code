@@ -23,7 +23,7 @@ describe("RetryQueue", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
 		mockContext = createMockContext()
-		retryQueue = new RetryQueue(mockContext)
+		retryQueue = new RetryQueue(mockContext.workspaceState)
 	})
 
 	afterEach(() => {
@@ -44,7 +44,7 @@ describe("RetryQueue", () => {
 
 		it("should enforce max queue size with FIFO eviction", async () => {
 			// Create a queue with max size of 3
-			retryQueue = new RetryQueue(mockContext, { maxQueueSize: 3 })
+			retryQueue = new RetryQueue(mockContext.workspaceState, { maxQueueSize: 3 })
 
 			// Add 4 requests
 			for (let i = 1; i <= 4; i++) {
@@ -92,7 +92,7 @@ describe("RetryQueue", () => {
 				},
 			} as unknown as ExtensionContext
 
-			retryQueue = new RetryQueue(mockContext)
+			retryQueue = new RetryQueue(mockContext.workspaceState)
 
 			const stats = retryQueue.getStats()
 			expect(stats.totalQueued).toBe(1)
@@ -366,7 +366,7 @@ describe("RetryQueue", () => {
 
 		it("should enforce max retries limit", async () => {
 			// Create queue with max retries of 2
-			retryQueue = new RetryQueue(mockContext, { maxRetries: 2 })
+			retryQueue = new RetryQueue(mockContext.workspaceState, { maxRetries: 2 })
 
 			const maxRetriesListener = vi.fn()
 			retryQueue.on("request-max-retries-exceeded", maxRetriesListener)
@@ -400,7 +400,7 @@ describe("RetryQueue", () => {
 
 		it("should default to maxRetries=5 and discard after 5 failures", async () => {
 			// Default config should be maxRetries=5 (not 0/infinite)
-			retryQueue = new RetryQueue(mockContext)
+			retryQueue = new RetryQueue(mockContext.workspaceState)
 
 			const maxRetriesListener = vi.fn()
 			retryQueue.on("request-max-retries-exceeded", maxRetriesListener)
@@ -439,7 +439,7 @@ describe("RetryQueue", () => {
 				},
 			} as unknown as ExtensionContext
 
-			const queue1 = new RetryQueue(context1, { maxRetries: 5 })
+			const queue1 = new RetryQueue(context1.workspaceState, { maxRetries: 5 })
 			await queue1.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
 
 			const failFetch = vi.fn().mockRejectedValue(new Error("Network error"))
@@ -465,7 +465,7 @@ describe("RetryQueue", () => {
 				},
 			} as unknown as ExtensionContext
 
-			const queue2 = new RetryQueue(context2, { maxRetries: 5 })
+			const queue2 = new RetryQueue(context2.workspaceState, { maxRetries: 5 })
 			const stats = queue2.getStats()
 			expect(stats.totalQueued).toBe(1)
 
@@ -514,7 +514,7 @@ describe("RetryQueue", () => {
 				Authorization: "Bearer fresh-token",
 			})
 
-			retryQueue = new RetryQueue(mockContext, {}, undefined, authHeaderProvider)
+			retryQueue = new RetryQueue(mockContext.workspaceState, {}, undefined, authHeaderProvider)
 
 			await retryQueue.enqueue(
 				"https://api.example.com/test",
@@ -546,7 +546,7 @@ describe("RetryQueue", () => {
 
 		it("should respect configurable timeout", async () => {
 			// Create queue with custom timeout (short timeout for testing)
-			retryQueue = new RetryQueue(mockContext, { requestTimeout: 100 })
+			retryQueue = new RetryQueue(mockContext.workspaceState, { requestTimeout: 100 })
 
 			await retryQueue.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
 
@@ -776,6 +776,27 @@ describe("RetryQueue", () => {
 			// Queue should be empty
 			const stats = retryQueue.getStats()
 			expect(stats.totalQueued).toBe(0)
+		})
+	})
+
+	describe("storage interface", () => {
+		it("persists to and restores from any get/update store, not only a VS Code Memento", async () => {
+			const data = new Map<string, unknown>()
+			const storage = {
+				get: <T>(key: string) => data.get(key) as T | undefined,
+				update: async (key: string, value: unknown) => {
+					data.set(key, value)
+				},
+			}
+
+			const first = new RetryQueue(storage)
+			await first.enqueue("https://example.test/a", { method: "POST" }, "telemetry")
+			first.dispose()
+
+			const second = new RetryQueue(storage)
+			expect(second.getStats().totalQueued).toBe(1)
+			expect(second.getStats().byType).toEqual({ telemetry: 1 })
+			second.dispose()
 		})
 	})
 })

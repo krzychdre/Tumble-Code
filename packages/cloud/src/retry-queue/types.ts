@@ -1,3 +1,13 @@
+/**
+ * Where the retry queue keeps its requests between sessions. VS Code's
+ * `Memento` (for example `ExtensionContext.workspaceState`) satisfies it
+ * as is; tests and non-VS Code hosts can pass a plain in-memory object.
+ */
+export interface RetryQueueStorage {
+	get<T>(key: string): T | undefined
+	update(key: string, value: unknown): PromiseLike<void>
+}
+
 export interface QueuedRequest {
 	id: string
 	url: string

@@ -1,12 +1,11 @@
 import { EventEmitter } from "events"
-import type { ExtensionContext } from "vscode"
-import type { QueuedRequest, QueueStats, RetryQueueConfig, RetryQueueEvents } from "./types.js"
+import type { QueuedRequest, QueueStats, RetryQueueConfig, RetryQueueEvents, RetryQueueStorage } from "./types.js"
 
 type AuthHeaderProvider = () => Record<string, string> | undefined
 
 export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 	private queue: Map<string, QueuedRequest> = new Map()
-	private context: ExtensionContext
+	private storage: RetryQueueStorage
 	private config: RetryQueueConfig
 	private log: (...args: unknown[]) => void
 	private isProcessing = false
@@ -19,13 +18,13 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 	private hasHadUser = false // Track if we've ever had a user (to distinguish from first login)
 
 	constructor(
-		context: ExtensionContext,
+		storage: RetryQueueStorage,
 		config?: Partial<RetryQueueConfig>,
 		log?: (...args: unknown[]) => void,
 		authHeaderProvider?: AuthHeaderProvider,
 	) {
 		super()
-		this.context = context
+		this.storage = storage
 		this.log = log || console.log
 		this.authHeaderProvider = authHeaderProvider
 
@@ -47,7 +46,7 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		if (!this.config.persistQueue) return
 
 		try {
-			const stored = this.context.workspaceState.get<QueuedRequest[]>(this.STORAGE_KEY)
+			const stored = this.storage.get<QueuedRequest[]>(this.STORAGE_KEY)
 			if (stored && Array.isArray(stored)) {
 				stored.forEach((request) => {
 					this.queue.set(request.id, request)
@@ -64,7 +63,7 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 
 		try {
 			const requests = Array.from(this.queue.values())
-			await this.context.workspaceState.update(this.STORAGE_KEY, requests)
+			await this.storage.update(this.STORAGE_KEY, requests)
 		} catch (error) {
 			this.log("[RetryQueue] Failed to persist queue:", error)
 		}

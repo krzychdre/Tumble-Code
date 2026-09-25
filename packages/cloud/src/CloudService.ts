@@ -26,6 +26,7 @@ import { CloudTelemetryClient as TelemetryClient } from "./TelemetryClient.js"
 import { CloudShareService } from "./CloudShareService.js"
 import { CloudAPI } from "./CloudAPI.js"
 import { RetryQueue } from "./retry-queue/index.js"
+import { resolveCloudEnvironment } from "./cloudEnvironment.js"
 
 type AuthStateChangedPayload = CloudServiceEvents["auth-state-changed"][0]
 type AuthUserInfoPayload = CloudServiceEvents["user-info"][0]
@@ -116,13 +117,10 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 		}
 
 		try {
-			// For testing you can create a token with:
-			// `pnpm --filter @roo-code-cloud/roomote-cli development auth job-token --job-id 1 --user-id user_2xmBhejNeDTwanM8CgIOnMgVxzC --org-id org_2wbhchVXZMQl8OS1yt0mrDazCpW`
-			// The token will last for 1 hour.
-			const cloudToken = process.env.ROO_CODE_CLOUD_TOKEN
+			const { staticToken, staticOrgSettings } = resolveCloudEnvironment()
 
-			if (cloudToken && cloudToken.length > 0) {
-				this._authService = new StaticTokenAuthService(this.context, cloudToken, this.log)
+			if (staticToken) {
+				this._authService = new StaticTokenAuthService(this.context, staticToken, this.log)
 				this._isCloudAgent = true
 			} else {
 				this._authService = new WebAuthService(this.context, this.log)
@@ -132,10 +130,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 			this._authService.on("user-info", this.authUserInfoListener)
 			await this._authService.initialize()
 
-			// Check for static settings environment variable.
-			const staticOrgSettings = process.env.ROO_CODE_CLOUD_ORG_SETTINGS
-
-			if (staticOrgSettings && staticOrgSettings.length > 0) {
+			if (staticOrgSettings) {
 				this._settingsService = new StaticSettingsService(staticOrgSettings, this.log)
 			} else {
 				const cloudSettingsService = new CloudSettingsService(this.context, this._authService, this.log)
@@ -150,7 +145,7 @@ export class CloudService extends EventEmitter<CloudServiceEvents> implements Di
 
 			// Initialize retry queue with auth header provider.
 			this._retryQueue = new RetryQueue(
-				this.context,
+				this.context.workspaceState,
 				undefined, // Use default config.
 				this.log,
 				() => {
