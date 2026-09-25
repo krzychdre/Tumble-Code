@@ -274,7 +274,18 @@ checks in `index.ts` became one switch on the category. A new tool now needs one
 exhaustive 8,192-combination sweep per action, DEF-S1 cases) passed before and after with an untouched snapshot;
 `approvalCategories.spec` failed first. Related specs 265 to 274. Notes: execute, mcp and followup categories are
 declarative only (index.ts decides them by ask type); `run_parallel_tasks` sends `runParallelTasks`, which is not
-in `ClineSayTool`, and is `manual`. Part (c) remains.
+in `ClineSayTool`, and is `manual`.
+
+**Status (2026-09-25):** (c) DONE in #289 (merge 5182d9922). Every descriptor row has a required
+`parseArgs(raw, {partial})` from `src/core/tools/toolArgParsers.ts` (332 lines, plain data only, so no parallel
+table was needed); aliases share the canonical parser. NativeToolCallParser went from 1,205 to 521 lines; the
+read_file coercion has one implementation; every weak-model tolerance kept (numbers and booleans as strings, the
+legacy `files` format including double-encoded, a string for `web_search` queries, empty `tools_load` names,
+non-array `follow_up` passed through). Partial parsing for access_mcp_resource, read_artifact and
+read_command_output deliberately NOT added (their `handlePartial` reads `block.params`, so it would change
+nothing); pinned by the snapshot. Tests: `NativeToolCallParser.args-snapshot.spec` (62, green before and after,
+byte-identical snapshot) and `toolArgParsers.spec`; assistant-message plus TaskStreamProcessor specs 255 to 354.
+CORE-R4 is complete.
 
 ### CORE-R8 Merge the edit-tool pipelines
 
