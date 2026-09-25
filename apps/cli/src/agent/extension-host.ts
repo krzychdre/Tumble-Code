@@ -109,6 +109,12 @@ export interface ExtensionHostOptions {
 	 */
 	exitOnError?: boolean
 	/**
+	 * When true, an api_req_failed ask fails the run (runTask rejects, so the
+	 * CLI exits with code 1) instead of waiting for an answer nobody gives.
+	 * Set for unattended print and JSON runs; the TUI answers the ask itself.
+	 */
+	exitOnApiRequestFailed?: boolean
+	/**
 	 * When true, completely disables all direct stdout/stderr output.
 	 * Use this when running in TUI mode where Ink controls the terminal.
 	 */
@@ -557,6 +563,10 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 				if (messageHandler) {
 					this.client.off("message", messageHandler)
 				}
+
+				if (waitingHandler) {
+					this.client.off("waitingForInput", waitingHandler)
+				}
 			}
 
 			// When exitOnError is enabled, listen for api_req_retry_delayed messages
@@ -572,6 +582,22 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 				}
 
 				this.client.on("message", messageHandler)
+			}
+
+			// An api_req_failed ask in an unattended run (or with --exit-on-error)
+			// has nobody to answer it. With auto-approval on the core asks it only
+			// for errors a retry cannot fix (401, 403, 404), so fail the run.
+			let waitingHandler: ((event: WaitingForInputEvent) => void) | null = null
+
+			if (this.options.exitOnApiRequestFailed || this.options.exitOnError) {
+				waitingHandler = (event: WaitingForInputEvent) => {
+					if (event.ask === "api_req_failed") {
+						cleanup()
+						reject(new Error(`API request failed: ${event.message.text || "unknown error"}`))
+					}
+				}
+
+				this.client.on("waitingForInput", waitingHandler)
 			}
 
 			this.client.once("taskCompleted", completeHandler)

@@ -55,6 +55,18 @@ import {
 } from "./RetryHandler"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 
+/**
+ * Thrown out of attemptApiRequest when the user answers the api_req_failed ask
+ * with anything but Retry. handleStreamError recognises it and ends the task
+ * loop instead of treating it as one more failed request to retry.
+ */
+class ApiRetryDeclinedError extends Error {
+	constructor() {
+		super("API request failed")
+		this.name = "ApiRetryDeclinedError"
+	}
+}
+
 // Re-export functions for backward compatibility
 export { getLastGlobalApiRequestTime, setLastGlobalApiRequestTime, resetGlobalApiRequestTime } from "./RetryHandler"
 
@@ -1050,6 +1062,12 @@ export class TaskApiLoop {
 				this.access.abortReason = cancelReason
 				await this.access.abortTask()
 			} else {
+				// The user declined the retry in the first-chunk api_req_failed ask
+				// (handleApiRequestError): end the loop, do not send the request again.
+				if (error instanceof ApiRetryDeclinedError) {
+					return "return_true"
+				}
+
 				console.error(
 					`[Task#${this.access.taskId}.${this.access.instanceId}] Stream failed, will retry: ${streamingFailedMessage}`,
 				)
@@ -1422,7 +1440,7 @@ export class TaskApiLoop {
 			)
 
 			if (response !== "yesButtonClicked") {
-				throw new Error("API request failed")
+				throw new ApiRetryDeclinedError()
 			}
 
 			await this.access.askSay.say("api_req_retried")

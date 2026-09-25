@@ -473,7 +473,11 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				commandRowRef.current = null
 			}
 
-			if (nonInteractiveRef.current && ask !== "followup") {
+			// api_req_failed is not an action to approve: with auto-approval on the
+			// core asks it only for errors a retry cannot fix (401, 403, 404), so
+			// even in "allow" mode it gets the Retry dialog instead of being
+			// printed and left unanswered.
+			if (nonInteractiveRef.current && ask !== "followup" && ask !== "api_req_failed") {
 				seenMessageIds.current.add(messageId)
 
 				// An approved command is not a message of its own. The command text
