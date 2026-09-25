@@ -408,3 +408,7 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   `parseToolCached`: 28.7 to 4.7 ms per token on a task with 8.7 MB tool JSON (86% of the main thread at 30 tok/s);
   (2) `usePromptHistory` replaces its state per token: a second ChatTextArea commit (0.4 to 1 ms) and Up-arrow
   history navigation resets while streaming. Both taken as S items.
+- 2026-09-25 prompt history DONE #415: the effect in `usePromptHistory` replaced the state and reset `historyIndex`
+  and `tempInput` on every token (messages array identity); now the history is swapped during render only when its
+  content changes. Test-first (4 failed). Delta: switching to a task with an identical prompt list no longer resets
+  navigation.
