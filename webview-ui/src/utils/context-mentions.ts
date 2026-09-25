@@ -2,7 +2,7 @@ import { Fzf } from "fzf"
 
 import type { ModeConfig, Command } from "@roo-code/types"
 
-import { mentionRegex } from "@roo/context-mentions"
+import { mentionRegex } from "@roo-code/core/browser"
 
 import { escapeSpacesForMention } from "./path-mentions"
 

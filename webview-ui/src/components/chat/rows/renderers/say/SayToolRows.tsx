@@ -3,7 +3,7 @@ import { FileCode2, History } from "lucide-react"
 
 import type { ClineSayTool } from "@roo-code/types"
 
-import { safeJsonParse } from "@roo/core"
+import { safeJsonParse } from "@roo-code/core/browser"
 
 import { RunSlashCommandToolRow } from "../tool/ExpandableToolRows"
 import { headerStyle } from "../shared"

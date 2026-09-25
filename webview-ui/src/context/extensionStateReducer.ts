@@ -23,12 +23,12 @@ import {
 	DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
 	WEB_TOOLS_DEFAULTS,
 	PRUNE_CONDENSE_DEFAULTS,
+	experimentDefault,
 } from "@roo-code/types"
 
-import { findLastIndex } from "@roo/array"
+import { findLastIndex } from "@roo-code/core/browser"
 import { checkExistKey } from "@roo/checkExistApiConfig"
 import { defaultModeSlug, defaultPrompts } from "@roo/modes"
-import { experimentDefault } from "@roo/experiments"
 
 /**
  * Everything the context derives from host messages. `extensionState` is the

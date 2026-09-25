@@ -5,9 +5,9 @@ import {
 	type ToolGroup,
 	type PromptComponent,
 	DEFAULT_MODES,
+	TOOL_GROUPS,
+	ALWAYS_AVAILABLE_TOOLS,
 } from "@roo-code/types"
-
-import { TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS } from "./tools"
 
 export type Mode = string
 

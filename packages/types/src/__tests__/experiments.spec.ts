@@ -1,8 +1,6 @@
-// npx vitest run src/shared/__tests__/experiments.spec.ts
+// npx vitest run src/__tests__/experiments.spec.ts
 
-import type { ExperimentId } from "@roo-code/types"
-
-import { EXPERIMENT_IDS, experimentConfigsMap, experiments as Experiments } from "../experiments"
+import { type ExperimentId, EXPERIMENT_IDS, experimentConfigsMap, experiments as Experiments } from "../experiment.js"
 
 describe("experiments", () => {
 	describe("PREVENT_FOCUS_DISRUPTION", () => {

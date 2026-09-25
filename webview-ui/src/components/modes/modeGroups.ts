@@ -1,6 +1,6 @@
 import type { GroupEntry, ToolGroup } from "@roo-code/types"
 
-import { TOOL_GROUPS } from "@roo/tools"
+import { TOOL_GROUPS } from "@roo-code/types"
 
 /** The tool groups a mode can turn on or off (the always-available ones are not listed). */
 export const availableGroups = (Object.keys(TOOL_GROUPS) as ToolGroup[]).filter(

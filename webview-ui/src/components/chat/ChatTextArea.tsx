@@ -2,7 +2,7 @@ import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, us
 import DynamicTextArea from "react-textarea-autosize"
 import { Image, WandSparkles, SendHorizontal, X, ListEnd, Square } from "lucide-react"
 
-import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo/context-mentions"
+import { mentionRegex, mentionRegexGlobal, commandRegexGlobal, unescapeSpaces } from "@roo-code/core/browser"
 import type { ExtensionMessage } from "@roo-code/types"
 
 import { WebviewMessage } from "@roo/WebviewMessage"

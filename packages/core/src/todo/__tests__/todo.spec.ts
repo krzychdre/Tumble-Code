@@ -1,8 +1,8 @@
-// npx vitest run shared/__tests__/todo.spec.ts
+// npx vitest run src/todo/__tests__/todo.spec.ts
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { getLatestTodo } from "../todo"
+import { getLatestTodo } from "../todo.js"
 
 const todo = (content: string) => ({ id: content, content, status: "pending" as const })
 

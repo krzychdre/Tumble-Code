@@ -1,9 +1,9 @@
-// npx vitest utils/__tests__/cost.spec.ts
+// npx vitest run src/api/__tests__/cost.spec.ts
 
 import * as rooTypes from "@roo-code/types"
 import type { ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostAnthropic, calculateApiCostOpenAI } from "../../shared/cost"
+import { calculateApiCostAnthropic, calculateApiCostOpenAI } from "../cost.js"
 
 describe("Cost Utility", () => {
 	describe("calculateApiCostAnthropic", () => {

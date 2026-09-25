@@ -8,8 +8,7 @@ import prettyBytes from "pretty-bytes"
 
 import type { ClineMessage } from "@roo-code/types"
 
-import { getModelMaxOutputTokens } from "@roo/api"
-import { findLastIndex } from "@roo/array"
+import { findLastIndex, getModelMaxOutputTokens } from "@roo-code/core/browser"
 
 import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"

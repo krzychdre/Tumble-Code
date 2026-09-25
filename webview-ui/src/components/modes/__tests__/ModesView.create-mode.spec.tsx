@@ -3,7 +3,7 @@
 
 import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
-import { TOOL_GROUPS } from "@roo/tools"
+import { TOOL_GROUPS } from "@roo-code/types"
 import type { ToolGroup } from "@roo-code/types"
 
 import ModesView from "../ModesView"

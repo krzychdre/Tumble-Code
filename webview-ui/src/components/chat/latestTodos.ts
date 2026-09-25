@@ -1,6 +1,6 @@
 import type { ClineMessage, TodoItem } from "@roo-code/types"
 
-import { getLatestTodo } from "@roo/todo"
+import { getLatestTodo } from "@roo-code/core/browser"
 
 import { parseToolCached } from "./rows/parseToolCached"
 
