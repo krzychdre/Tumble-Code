@@ -1,5 +1,6 @@
-import type { ClineMessage, ClineSayTool } from "@roo-code/types"
-import { safeJsonParse } from "@roo/core"
+import type { ClineMessage } from "@roo-code/types"
+
+import { parseToolCached } from "../rows/parseToolCached"
 
 /** File-edit tool names from ClineSayTool["tool"] (packages/types). */
 const FILE_EDIT_TOOLS = new Set<string>(["editedExistingFile", "appliedDiff", "newFileCreated"])
@@ -31,7 +32,8 @@ export function fileChangesFromMessages(messages: ClineMessage[] | undefined): F
 		// Only include ask "tool" file edits that the user (or auto-approval) has approved
 		if (isAskTool && !msg.isAnswered) continue
 
-		const tool = safeJsonParse<ClineSayTool>(msg.text)
+		// Cached by ts and text: this pass runs on every streamed token too.
+		const tool = parseToolCached(msg)
 		if (!tool || !FILE_EDIT_TOOLS.has(tool.tool as string)) continue
 
 		// Batch diffs
