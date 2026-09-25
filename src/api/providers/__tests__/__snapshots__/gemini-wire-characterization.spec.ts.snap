@@ -1,0 +1,438 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Gemini API (API key) > sends the same generateContent request for completePrompt and reads its usage 1`] = `
+{
+  "cacheReadTokens": 10,
+  "inputTokens": 50,
+  "outputTokens": 5,
+}
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Gemini API (API key) > sends the same generateContent request for completePrompt and reads its usage 2`] = `
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Summarize",
+        },
+      ],
+      "role": "user",
+    },
+  ],
+  "generationConfig": {
+    "temperature": 1,
+  },
+}
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Gemini API (API key) > sends the same streamGenerateContent request 1`] = `
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Open a.ts",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "parts": [
+        {
+          "text": "Opening.",
+        },
+        {
+          "functionCall": {
+            "args": {
+              "path": "a.ts",
+            },
+            "name": "read_file",
+          },
+          "thoughtSignature": "cHJldi1zaWc=",
+        },
+      ],
+      "role": "model",
+    },
+    {
+      "parts": [
+        {
+          "functionResponse": {
+            "name": "read_file",
+            "response": {
+              "content": "export const a = 1",
+              "name": "read_file",
+            },
+          },
+        },
+      ],
+      "role": "user",
+    },
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 65536,
+    "temperature": 1,
+    "thinkingConfig": {
+      "includeThoughts": true,
+      "thinkingLevel": "low",
+    },
+  },
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "You are helpful.",
+      },
+    ],
+    "role": "user",
+  },
+  "toolConfig": {
+    "functionCallingConfig": {
+      "allowedFunctionNames": [
+        "read_file",
+      ],
+      "mode": "ANY",
+    },
+  },
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "description": "Read a file",
+          "name": "read_file",
+          "parametersJsonSchema": {
+            "properties": {
+              "path": {
+                "description": "File path",
+                "nullable": true,
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Vertex AI (Gemini) > sends the same request and hands the JSON key to google-auth-library 1`] = `
+[
+  {
+    "jsonContent": {
+      "client_email": "a@b.c",
+      "type": "service_account",
+    },
+    "keyFilename": undefined,
+    "scopes": [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ],
+  },
+]
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Vertex AI (Gemini) > sends the same request and hands the JSON key to google-auth-library 2`] = `
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Open a.ts",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "parts": [
+        {
+          "text": "Opening.",
+        },
+        {
+          "functionCall": {
+            "args": {
+              "path": "a.ts",
+            },
+            "name": "read_file",
+          },
+          "thoughtSignature": "cHJldi1zaWc=",
+        },
+      ],
+      "role": "model",
+    },
+    {
+      "parts": [
+        {
+          "functionResponse": {
+            "name": "read_file",
+            "response": {
+              "content": "export const a = 1",
+              "name": "read_file",
+            },
+          },
+        },
+      ],
+      "role": "user",
+    },
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 16384,
+    "temperature": 1,
+    "thinkingConfig": {
+      "includeThoughts": true,
+      "thinkingBudget": 128,
+    },
+  },
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "sys",
+      },
+    ],
+    "role": "user",
+  },
+  "toolConfig": {
+    "functionCallingConfig": {
+      "allowedFunctionNames": [
+        "read_file",
+      ],
+      "mode": "ANY",
+    },
+  },
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "description": "Read a file",
+          "name": "read_file",
+          "parametersJsonSchema": {
+            "properties": {
+              "path": {
+                "description": "File path",
+                "nullable": true,
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Vertex AI (Gemini) > sends the same request and hands the application default credentials to google-auth-library 1`] = `
+[
+  {
+    "jsonContent": null,
+    "keyFilename": undefined,
+    "scopes": [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ],
+  },
+]
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Vertex AI (Gemini) > sends the same request and hands the application default credentials to google-auth-library 2`] = `
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Open a.ts",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "parts": [
+        {
+          "text": "Opening.",
+        },
+        {
+          "functionCall": {
+            "args": {
+              "path": "a.ts",
+            },
+            "name": "read_file",
+          },
+          "thoughtSignature": "cHJldi1zaWc=",
+        },
+      ],
+      "role": "model",
+    },
+    {
+      "parts": [
+        {
+          "functionResponse": {
+            "name": "read_file",
+            "response": {
+              "content": "export const a = 1",
+              "name": "read_file",
+            },
+          },
+        },
+      ],
+      "role": "user",
+    },
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 16384,
+    "temperature": 1,
+    "thinkingConfig": {
+      "includeThoughts": true,
+      "thinkingBudget": 128,
+    },
+  },
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "sys",
+      },
+    ],
+    "role": "user",
+  },
+  "toolConfig": {
+    "functionCallingConfig": {
+      "allowedFunctionNames": [
+        "read_file",
+      ],
+      "mode": "ANY",
+    },
+  },
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "description": "Read a file",
+          "name": "read_file",
+          "parametersJsonSchema": {
+            "properties": {
+              "path": {
+                "description": "File path",
+                "nullable": true,
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+        },
+      ],
+    },
+  ],
+}
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Vertex AI (Gemini) > sends the same request and hands the key file to google-auth-library 1`] = `
+[
+  {
+    "jsonContent": null,
+    "keyFilename": "/keys/sa.json",
+    "scopes": [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ],
+  },
+]
+`;
+
+exports[`Gemini handlers against the real @google/genai client (wire characterization) > Vertex AI (Gemini) > sends the same request and hands the key file to google-auth-library 2`] = `
+{
+  "contents": [
+    {
+      "parts": [
+        {
+          "text": "Open a.ts",
+        },
+      ],
+      "role": "user",
+    },
+    {
+      "parts": [
+        {
+          "text": "Opening.",
+        },
+        {
+          "functionCall": {
+            "args": {
+              "path": "a.ts",
+            },
+            "name": "read_file",
+          },
+          "thoughtSignature": "cHJldi1zaWc=",
+        },
+      ],
+      "role": "model",
+    },
+    {
+      "parts": [
+        {
+          "functionResponse": {
+            "name": "read_file",
+            "response": {
+              "content": "export const a = 1",
+              "name": "read_file",
+            },
+          },
+        },
+      ],
+      "role": "user",
+    },
+  ],
+  "generationConfig": {
+    "maxOutputTokens": 16384,
+    "temperature": 1,
+    "thinkingConfig": {
+      "includeThoughts": true,
+      "thinkingBudget": 128,
+    },
+  },
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "sys",
+      },
+    ],
+    "role": "user",
+  },
+  "toolConfig": {
+    "functionCallingConfig": {
+      "allowedFunctionNames": [
+        "read_file",
+      ],
+      "mode": "ANY",
+    },
+  },
+  "tools": [
+    {
+      "functionDeclarations": [
+        {
+          "description": "Read a file",
+          "name": "read_file",
+          "parametersJsonSchema": {
+            "properties": {
+              "path": {
+                "description": "File path",
+                "nullable": true,
+                "type": "string",
+              },
+            },
+            "required": [
+              "path",
+            ],
+            "type": "object",
+          },
+        },
+      ],
+    },
+  ],
+}
+`;

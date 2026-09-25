@@ -26,7 +26,11 @@ export function isGeminiThinkingLevel(value: unknown): value is GeminiThinkingLe
 	return typeof value === "string" && GEMINI_THINKING_LEVELS.includes(value as GeminiThinkingLevel)
 }
 
-export type GeminiReasoningParams = GenerateContentConfig["thinkingConfig"] & {
+// @google/genai 2.x types `thinkingLevel` as its `ThinkingLevel` enum ("LOW",
+// "HIGH", ...). We keep sending the lowercase names the Gemini API documents
+// (the SDK copies `thinkingConfig` to the request body unchanged), so the SDK's
+// field is replaced here instead of intersected (the intersection is `never`).
+export type GeminiReasoningParams = Omit<NonNullable<GenerateContentConfig["thinkingConfig"]>, "thinkingLevel"> & {
 	thinkingLevel?: GeminiThinkingLevel
 }
 
