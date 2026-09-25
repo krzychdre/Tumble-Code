@@ -204,6 +204,16 @@ under `src/__tests__` (34 tests), `ClineProvider.delegation-cancel-races` (14), 
 **Caveat:** 57 test call sites use `ClineProvider.prototype.X.call(fakeThis)`; adapt each in the PR that moves its
 method, never ahead of time. **Size** M, medium risk.
 
+**Status (2026-09-25):** DONE in #280 (merge 8d4d074b7). `DelegationService.ts` (689 lines) owns the transitions
+`delegate`, `detach` (the one copy of the repair that `removeClineFromStack` and `cancelTask` duplicated),
+`detachOnCancel`, `reattach`, `complete`, plus `parentAwaitsChild` (shared with AttemptCompletionTool) and the
+blocked-children set; it reaches the provider through a narrow `DelegationHost`. ClineProvider went from 4,342 to
+3,815 lines and keeps one-line delegators. Deviation: the `parallelChildIds` write in `RunParallelTasksTool` stays,
+it records the parallel relation, not delegation. New `DelegationService.spec` transition table (36 tests); the
+related specs went from 259 to 295 tests. Finding (pinned, not fixed): `detach` requires parent status
+`"delegated"`, while the completion guard (since 2026-06-08) also accepts an `"active"` parent still awaiting the
+child, so cancelling such a child leaves the parent waiting and the child linked.
+
 ### CORE-R9 One tool-callback factory in `presentAssistantMessage`
 
 **Evidence:** the function is 1,163 lines (133-1295); callbacks are built twice, for `mcp_tool_use` (211-332) and
@@ -239,6 +249,19 @@ dispatch test (handler, checkpoint, description per tool), a partial-parse snaps
 pinning today's lists. **Existing:** `presentAssistantMessage-*` (42), `NativeToolCallParser.spec` (32, with a
 completeness guard at `:471`), `eager-checkpoint` (6), `spillPolicy` (21), `microcompact` (30),
 `checkAutoApproval` (35). **Size** L overall, (a) plus (b) is M. Do CORE-R9 first.
+
+**Status (2026-09-25):** (a) and (b) DONE in #281 (merge d4286d1c1). `src/core/tools/toolDescriptors.ts` holds
+`TOOL_DESCRIPTORS` keyed by `Exclude<ToolName, "custom_tool">` (a missing row fails to compile); the dispatch is a
+lookup in `src/core/assistant-message/toolHandlers.ts` (instances kept in a separate table with the same key type,
+because importing every tool pulls `vscode` and Task into microcompact, spillPolicy and the tool filter; own-property
+lookup only). presentAssistantMessage went from 1,016 to 693 lines. Derived now: checkpointed tools (dispatch and
+eager start), the TaskStreamProcessor read-only set, `COMPACTABLE_TOOL_NAMES`, the tool part of
+`SPILL_BYPASS_TOOLS`, `SLIM_TOOLSET_ALLOWLIST`, `FILE_MUTATION_TOOLS`/`FILE_READ_TOOLS` in ledger/classify, and the
+call descriptions. Still hand-kept: `PROTOCOL_TOOL_NAMES` (`src/shared` must not import `core`), the legacy
+`insert_content`, parser switches (c), approval lists (d), prompt/schema lists. Every tool now receives
+`toolCallId` (the seven that did not never read it). Every list kept today's content. Tests: related specs went
+from 381 to 580. Finding for a defect item: `getToolMinimalExample` (`native-tools/examples.ts`) looks names up
+through the prototype chain (`__proto__` yields `{}`, `constructor` yields a `failed_tool`), harmless today.
 
 ### CORE-R8 Merge the edit-tool pipelines
 
