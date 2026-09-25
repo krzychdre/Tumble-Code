@@ -13,7 +13,16 @@ interface ThoughtSignatureBlock {
 	type: "thoughtSignature"
 }
 
-export type ExtendedContentBlock = Anthropic.Messages.ContentBlockParam | ReasoningBlock | ThoughtSignatureBlock
+// Blocks a tool_result may hold (SDK 0.128 added tool_reference and
+// browser_state, which are not ContentBlockParam members); they reach the
+// default branch below.
+type ToolResultContentBlock = Exclude<Anthropic.Messages.ToolResultBlockParam["content"], string | undefined>[number]
+
+export type ExtendedContentBlock =
+	| Anthropic.Messages.ContentBlockParam
+	| ToolResultContentBlock
+	| ReasoningBlock
+	| ThoughtSignatureBlock
 
 export function getTaskFileName(dateTs: number): string {
 	const date = new Date(dateTs)

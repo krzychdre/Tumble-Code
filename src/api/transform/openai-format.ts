@@ -1,6 +1,8 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
+import { imageSourceToUrl } from "./image-source"
+
 /**
  * Type for OpenRouter's reasoning detail elements.
  * @see https://openrouter.ai/docs/use-cases/reasoning-tokens#streaming-response
@@ -361,7 +363,7 @@ export function convertToOpenAiMessages(
 										toolResultImages.push(part)
 										return "(see following user message for image)"
 									}
-									return part.text
+									return part.type === "text" ? part.text : ""
 								})
 								.join("\n") ?? ""
 					}
@@ -384,7 +386,7 @@ export function convertToOpenAiMessages(
 				// 		role: "user",
 				// 		content: toolResultImages.map((part) => ({
 				// 			type: "image_url",
-				// 			image_url: { url: `data:${part.source.media_type};base64,${part.source.data}` },
+				// 			image_url: { url: imageSourceToUrl(part.source) },
 				// 		})),
 				// 	})
 				// }
@@ -424,7 +426,7 @@ export function convertToOpenAiMessages(
 								if (part.type === "image") {
 									return {
 										type: "image_url",
-										image_url: { url: `data:${part.source.media_type};base64,${part.source.data}` },
+										image_url: { url: imageSourceToUrl(part.source) },
 									}
 								}
 								return { type: "text", text: part.text }

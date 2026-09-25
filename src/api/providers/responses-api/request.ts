@@ -8,6 +8,7 @@ import type { ApiHandlerCreateMessageMetadata } from "../../index"
 import { toStrictSchema } from "../../transform/strict-json-schema"
 import { isMcpTool } from "../../../utils/mcp-name"
 import { sanitizeOpenAiCallId } from "../../../utils/tool-id"
+import { imageSourceToUrl } from "../../transform/image-source"
 
 /** The User-Agent OpenAI Native and Codex send, for request tracking on OpenAI's side. */
 export function responsesApiUserAgent(): string {
@@ -78,7 +79,7 @@ export function toResponsesApiInput(messages: Anthropic.Messages.MessageParam[])
 						content.push({ type: "input_text", text: block.text })
 					} else if (block.type === "image") {
 						const image = block as Anthropic.Messages.ImageBlockParam
-						const imageUrl = `data:${image.source.media_type};base64,${image.source.data}`
+						const imageUrl = imageSourceToUrl(image.source)
 						content.push({ type: "input_image", image_url: imageUrl })
 					} else if (block.type === "tool_result") {
 						const result =
