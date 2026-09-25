@@ -13,7 +13,6 @@ import { combineApiRequests } from "@roo/combineApiRequests"
 import { combineCommandSequences } from "@roo/combineCommandSequences"
 import { getApiMetrics } from "@roo/getApiMetrics"
 import { ProfileValidator } from "@roo/ProfileValidator"
-import { getLatestTodo } from "@roo/todo"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
@@ -48,6 +47,7 @@ import { EVER_VISIBLE_VIEWPORT, filterVisible, markEverVisible } from "./rows/fi
 import { groupToolAsks } from "./rows/groupToolAsks"
 import { computeRowMeta } from "./rows/computeRowMeta"
 import { withCondensingRow } from "./rows/condensingRow"
+import { selectLatestTodos } from "./latestTodos"
 import { useChatSounds } from "./hooks/useChatSounds"
 import { useAskButtons } from "./hooks/useAskButtons"
 import { useChatComposer } from "./hooks/useChatComposer"
@@ -114,21 +114,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const task = useMemo(() => messages.at(0), [messages])
 	const taskTs = task?.ts
 
-	const latestTodos = useMemo(() => {
-		// First check if we have initial todos from the state (for new subtasks)
-		if (currentTaskTodos && currentTaskTodos.length > 0) {
-			// Check if there are any todo updates in messages
-			const messageBasedTodos = getLatestTodo(messages)
-			// If there are message-based todos, they take precedence (user has updated them)
-			if (messageBasedTodos && messageBasedTodos.length > 0) {
-				return messageBasedTodos
-			}
-			// Otherwise use the initial todos from state
-			return currentTaskTodos
-		}
-		// Fall back to extracting from messages
-		return getLatestTodo(messages)
-	}, [messages, currentTaskTodos])
+	const latestTodos = useMemo(() => selectLatestTodos(messages, currentTaskTodos), [messages, currentTaskTodos])
 
 	const modifiedMessages = useMemo(() => combineApiRequests(combineCommandSequences(messages.slice(1))), [messages])
 
