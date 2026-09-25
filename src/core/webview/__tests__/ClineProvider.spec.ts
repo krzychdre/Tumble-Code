@@ -546,6 +546,19 @@ describe("ClineProvider", () => {
 			expect(lmStudioFetchers.forceFullModelDetailsLoad).toHaveBeenCalledWith("http://localhost:1234", "qwen")
 		})
 
+		it("shows a failed preload (for example an LM Studio that does not answer) and lets the task start", async () => {
+			lmStudioFetchers.forceFullModelDetailsLoad.mockRejectedValueOnce(
+				new Error("LM Studio at http://localhost:1234 did not answer while loading qwen"),
+			)
+			const task = { apiConfiguration: { apiProvider: "lmstudio", lmStudioModelId: "qwen" } } as unknown as Task
+
+			await expect(provider.performPreparationTasks(task)).resolves.toBeUndefined()
+
+			expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+				"LM Studio at http://localhost:1234 did not answer while loading qwen",
+			)
+		})
+
 		it("preloads nothing for providers without the capability", async () => {
 			lmStudioFetchers.forceFullModelDetailsLoad.mockClear()
 			const task = { apiConfiguration: { apiProvider: "ollama", ollamaModelId: "qwen" } } as unknown as Task
