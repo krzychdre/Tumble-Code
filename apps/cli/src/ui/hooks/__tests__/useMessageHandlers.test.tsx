@@ -86,7 +86,7 @@ describe("useMessageHandlers", () => {
 			})
 		}
 
-		it("keeps the todo list of an auto-approved update_todo_list ask, with the todos of the rendering closure as previous", () => {
+		it("keeps the todo list of an auto-approved update_todo_list ask, with the current todos as previous", () => {
 			const view = render(<Harness />)
 			nonInteractive = true
 			view.rerender(<Harness />)
@@ -104,33 +104,34 @@ describe("useMessageHandlers", () => {
 			expect(useCLIStore.getState().currentTodos.map((t) => t.content)).toEqual(["one", "two"])
 			expect(useCLIStore.getState().messages[0]?.previousTodos).toEqual([])
 
-			// The hook reads the todos of the render that created the callback, so a
-			// caller holding an older callback (the extension host subscribes once,
-			// on mount) keeps seeing the todos of that render.
+			// The extension host subscribes once, on mount, so it keeps calling the
+			// callback of an older render. That callback must still compare with
+			// the list the transcript holds now, not with the list of its render.
 			const stale = api.handleExtensionMessage
 			view.rerender(<Harness />)
 			stale({
 				type: "messageUpdated",
 				clineMessage: { ts: 911, type: "ask", ask: "tool", text: todos("completed", "pending"), partial: false },
 			} as never)
-			expect(useCLIStore.getState().messages[1]?.previousTodos).toEqual([])
+			expect(useCLIStore.getState().messages[1]?.previousTodos?.map((t) => t.status)).toEqual([
+				"pending",
+				"pending",
+			])
 
 			api.handleExtensionMessage({
 				type: "messageUpdated",
 				clineMessage: { ts: 912, type: "ask", ask: "tool", text: todos("completed", "completed"), partial: false },
 			} as never)
-			// The current callback belongs to the render after the first list, so
-			// the list of the second ask, applied since, is not what it reports.
 			expect(useCLIStore.getState().messages[2]?.previousTodos?.map((t) => t.status)).toEqual([
-				"pending",
+				"completed",
 				"pending",
 			])
 		})
 
-		// The /new and /clear reset (useTaskSubmit.resetConversation) as it is
-		// today: the store is reset and the seen ids and the prompt-echo marker
-		// are forgotten, but the marker of the last rendered answer survives.
-		it("after a conversation reset, drops a first answer identical to the previous task's last answer", () => {
+		// The /new and /clear reset (useTaskSubmit.resetConversation): the new
+		// task starts with nothing remembered from the old one, including the
+		// marker of the last rendered answer.
+		it("after a conversation reset, shows a first answer identical to the previous task's last answer", () => {
 			stateMessage([
 				{ ts: 1, type: "say", say: "text", text: "Say hi", partial: false },
 				{ ts: 2, type: "say", say: "text", text: "Hi!", partial: false },
@@ -145,7 +146,7 @@ describe("useMessageHandlers", () => {
 				{ ts: 11, type: "say", say: "text", text: "Hi!", partial: false },
 				{ ts: 12, type: "say", say: "text", text: "Anything else?", partial: false },
 			])
-			expect(useCLIStore.getState().messages.map((m) => m.content)).toEqual(["Anything else?"])
+			expect(useCLIStore.getState().messages.map((m) => m.content)).toEqual(["Hi!", "Anything else?"])
 		})
 
 		it("after a conversation reset, opens a new row for command output instead of the old task's row", () => {

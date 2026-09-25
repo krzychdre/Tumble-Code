@@ -1172,7 +1172,7 @@ describe("transcript reducer", () => {
 		})
 	})
 
-	it("resetTranscriptCursor forgets the task bookkeeping but keeps the stream markers and the MCP call", () => {
+	it("resetTranscriptCursor forgets everything the old task left behind", () => {
 		nonInteractive = true
 		model.isLoading = true
 		handle({
@@ -1199,8 +1199,7 @@ describe("transcript reducer", () => {
 		expect(reset.mergedStreamIds.size).toBe(0)
 		expect(reset.pendingCommand).toBeNull()
 		expect(reset.commandRowId).toBeNull()
-		expect(reset.lastStreamed.answer).toEqual({ id: "53", text: "Answer" })
-		expect(reset.pendingMcp).toMatchObject({ serverName: "s", toolName: "t" })
+		expect(reset).toEqual(createTranscriptCursor())
 		// The cursor that was reset is left as it was.
 		expect(cursor.seenMessageIds.size).toBeGreaterThan(0)
 	})
