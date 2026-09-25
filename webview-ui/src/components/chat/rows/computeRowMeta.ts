@@ -24,8 +24,8 @@ export interface RowMeta {
 const NO_TODOS: readonly TodoItem[] = []
 
 /**
- * Derive the per-row meta that ChatRow computes today by scanning
- * `clineMessages` for every row. `history` is the full `clineMessages` array
+ * Derive the per-row meta ChatRow needs from the history around it, once for
+ * all rows instead of each row scanning `clineMessages`. `history` is the full `clineMessages` array
  * (task message included, nothing combined), `rows` is what the list renders.
  * Messages are looked up by ts; when two share a ts the first one counts.
  */

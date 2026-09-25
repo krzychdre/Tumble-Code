@@ -247,6 +247,91 @@ describe("ChatView row props", () => {
 		expect(rowState.renders.get(EARLIER_TS)).toBe(earlierRenders)
 	})
 
+	it("passes each row its history meta, so the row need not scan clineMessages", async () => {
+		const todos = [{ id: "a", content: "Todo alpha", status: "pending" }]
+		const history: ClineMessage[] = [
+			{ type: "say", say: "task", ts: TASK_TS, text: "Initial task" },
+			{
+				type: "ask",
+				ask: "tool",
+				ts: 10,
+				text: JSON.stringify({ tool: "updateTodoList", todos }),
+				partial: false,
+			},
+			{
+				type: "ask",
+				ask: "tool",
+				ts: 20,
+				text: JSON.stringify({ tool: "newTask", mode: "code", content: "Sub" }),
+				partial: false,
+			},
+			{ type: "say", say: "subtask_result", ts: 30, text: "Done", partial: false },
+			{ type: "say", say: "text", ts: 40, text: "Streaming", partial: true },
+		]
+		const { getByTestId } = renderChatView()
+
+		await act(async () => {
+			hydrateState(history)
+		})
+
+		await waitFor(() => {
+			expect(getByTestId("chat-row-40")).toBeInTheDocument()
+		})
+
+		expect(rowState.props.get(10)?.meta).toEqual({
+			nextTs: 20,
+			previousTodos: [],
+			newTaskIndex: undefined,
+			followedBySubtaskResult: false,
+		})
+		expect(rowState.props.get(20)?.meta).toEqual({
+			nextTs: 30,
+			previousTodos: todos,
+			newTaskIndex: 0,
+			followedBySubtaskResult: true,
+		})
+		expect(rowState.props.get(40)?.meta).toMatchObject({ nextTs: undefined, previousTodos: todos })
+	})
+
+	it("does not re-render an earlier row with history meta when only the streamed last message changes", async () => {
+		const history: ClineMessage[] = [
+			{ type: "say", say: "task", ts: TASK_TS, text: "Initial task" },
+			{
+				type: "ask",
+				ask: "tool",
+				ts: EARLIER_TS,
+				text: JSON.stringify({ tool: "updateTodoList", todos: [{ id: "a", content: "A", status: "pending" }] }),
+				partial: false,
+			},
+			{ type: "say", say: "text", ts: STREAMED_TS, text: "Hel", partial: true },
+		]
+		const { getByTestId } = renderChatView()
+
+		await act(async () => {
+			hydrateState(history)
+		})
+
+		await waitFor(() => {
+			expect(getByTestId(`chat-row-${STREAMED_TS}`)).toBeInTheDocument()
+			expect(rowState.props.get(EARLIER_TS)?.meta).toMatchObject({ nextTs: STREAMED_TS })
+		})
+
+		const earlierRenders = rowState.renders.get(EARLIER_TS)
+		const streamedRenders = rowState.renders.get(STREAMED_TS) ?? 0
+
+		await act(async () => {
+			streamToken("Hello")
+		})
+
+		await waitFor(() => {
+			expect(rowState.renders.get(STREAMED_TS)).toBeGreaterThan(streamedRenders)
+		})
+
+		// The meta is recomputed on every token, but it is equal for the
+		// earlier row, so the deepEqual memo holds.
+		expect(rowState.renders.get(EARLIER_TS)).toBe(earlierRenders)
+	})
+
 	it.each([
 		["claude-opus-5", true],
 		["claude-3-5-haiku-20241022", false],

@@ -12,7 +12,7 @@ interface TodoItem {
 }
 
 interface TodoChangeDisplayProps {
-	previousTodos: TodoItem[]
+	previousTodos: readonly TodoItem[]
 	newTodos: TodoItem[]
 	/** Epoch-ms timestamp marking when this todo-list update started. */
 	startTs?: number

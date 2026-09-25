@@ -1072,8 +1072,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[toolGroupedMessages, isCondensing],
 	)
 
-	// byTs is for ChatRow once it stops scanning clineMessages itself (WEB-2a).
-	const { checkpointIndices } = useMemo(() => computeRowMeta(messages, groupedMessages), [messages, groupedMessages])
+	// byTs goes to the rows, so ChatRow never scans clineMessages itself.
+	const { checkpointIndices, byTs: rowMetaByTs } = useMemo(() => computeRowMeta(messages, groupedMessages), [messages, groupedMessages])
 
 	const hasLatestCheckpoint = checkpointIndices.length > 0
 	const checkpointJumpCursorRef = useRef<number | null>(null)
@@ -1296,6 +1296,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					isFollowUpAnswered={messageOrGroup.isAnswered === true || messageOrGroup.ts === currentFollowUpTs}
 					isFollowUpAutoApprovalPaused={isFollowUpAutoApprovalPaused}
 					onJumpToPreviousCheckpoint={onRowJumpToPreviousCheckpoint}
+					// A new entry object per history change, but equal for rows
+					// whose surroundings did not change, so the memo still holds.
+					meta={rowMetaByTs.get(messageOrGroup.ts)}
 				/>
 			)
 		},
@@ -1314,6 +1317,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			isFollowUpAutoApprovalPaused,
 			isCommandAwaitingApproval,
 			onRowJumpToPreviousCheckpoint,
+			rowMetaByTs,
 		],
 	)
 

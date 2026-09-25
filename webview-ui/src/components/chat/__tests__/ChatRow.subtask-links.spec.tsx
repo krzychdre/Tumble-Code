@@ -2,7 +2,9 @@ import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ChatRowContent } from "../ChatRow"
-import type { HistoryItem, ClineMessage } from "@roo-code/types"
+import type { HistoryItem } from "@roo-code/types"
+
+import type { RowMetaEntry } from "../rows/computeRowMeta"
 
 // Mock vscode API
 const mockPostMessage = vi.fn()
@@ -29,9 +31,9 @@ vi.mock("react-i18next", () => ({
 	initReactI18next: { type: "3rdParty", init: () => {} },
 }))
 
-// Mock extension state context
+// Mock extension state context. It has no clineMessages: the row gets what it
+// needs from the history through its `meta` prop.
 let mockCurrentTaskItem: Partial<HistoryItem> | undefined = undefined
-let mockClineMessages: ClineMessage[] = []
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
 	useExtensionState: () => ({
@@ -39,8 +41,6 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		alwaysAllowMcp: false,
 		currentCheckpoint: null,
 		mode: "code",
-		apiConfiguration: {},
-		clineMessages: mockClineMessages,
 		currentTaskItem: mockCurrentTaskItem,
 	}),
 }))
@@ -52,9 +52,17 @@ vi.mock("@src/components/ui/hooks/useSelectedModel", () => ({
 
 const queryClient = new QueryClient()
 
-function renderChatRow(message: any, currentTaskItem?: Partial<HistoryItem>, clineMessages?: ClineMessage[]) {
+// The meta ChatView computes for a lone newTask ask: the first newTask ask, not
+// followed by a subtask_result.
+const FIRST_NEW_TASK_META: RowMetaEntry = {
+	nextTs: undefined,
+	previousTodos: [],
+	newTaskIndex: 0,
+	followedBySubtaskResult: false,
+}
+
+function renderChatRow(message: any, currentTaskItem?: Partial<HistoryItem>, meta: RowMetaEntry = FIRST_NEW_TASK_META) {
 	mockCurrentTaskItem = currentTaskItem
-	mockClineMessages = clineMessages || [message]
 
 	return render(
 		<QueryClientProvider client={queryClient}>
@@ -68,6 +76,7 @@ function renderChatRow(message: any, currentTaskItem?: Partial<HistoryItem>, cli
 				onBatchFileResponse={() => {}}
 				onFollowUpUnmount={() => {}}
 				isFollowUpAnswered={false}
+				meta={meta}
 			/>
 		</QueryClientProvider>,
 	)
@@ -155,6 +164,32 @@ describe("ChatRow - subtask links", () => {
 			expect(goToSubtaskButton).toBeNull()
 		})
 
+		it("links to the child at the row's newTask index", () => {
+			const message = {
+				ts: 2000,
+				type: "ask" as const,
+				ask: "tool" as const,
+				text: JSON.stringify({
+					tool: "newTask",
+					mode: "code",
+					content: "Second delegated piece",
+				}),
+			}
+
+			renderChatRow(
+				message,
+				{ childIds: ["first-child", "second-child"] },
+				{ ...FIRST_NEW_TASK_META, newTaskIndex: 1 },
+			)
+
+			fireEvent.click(screen.getByText("Go to subtask"))
+
+			expect(mockPostMessage).toHaveBeenCalledWith({
+				type: "showTaskWithId",
+				text: "second-child",
+			})
+		})
+
 		it("should not display 'Go to subtask' link when directly followed by subtask_result", () => {
 			const newTaskMessage = {
 				ts: 1000,
@@ -167,18 +202,12 @@ describe("ChatRow - subtask links", () => {
 				}),
 			}
 
-			const subtaskResultMessage = {
-				ts: 1001,
-				type: "say" as const,
-				say: "subtask_result" as const,
-				text: "The subtask has been completed successfully.",
-			}
-
-			// Pass both messages in the clineMessages array
-			renderChatRow(newTaskMessage, { delegatedToId: "child-task-123" }, [
+			// The child exists, but the result row right after carries the link.
+			renderChatRow(
 				newTaskMessage,
-				subtaskResultMessage,
-			] as ClineMessage[])
+				{ childIds: ["child-task-123"] },
+				{ ...FIRST_NEW_TASK_META, nextTs: 1001, followedBySubtaskResult: true },
+			)
 
 			// Button should be hidden because next message is subtask_result
 			const goToSubtaskButton = screen.queryByText("Go to subtask")
