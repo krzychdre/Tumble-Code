@@ -229,6 +229,10 @@ only after the owner confirms it (ask at the start of the item that depends on i
 | 10 | Renovate or Dependabot? Both are configured, neither opened a PR in the last 200. | **Decided** | Renovate; remove `dependabot.yml` (TEST-7). The owner installs the Renovate GitHub App |
 | 11  | When to take React 19 and zod 4?                                                                                                                       | Open        | After Phases 7 and 8 (Phase 11)                                                                                                     |
 | 12  | Raise the minimum VS Code version (`engines.vscode ^1.84.0`, a Node 18 extension host) to unblock library upgrades?                                    | **Decided** | Yes: **`^1.102.0`** (Node 22.15.1 extension host; verified in the VS Code release notes, table in `03-dependencies.md` DEP-4)       |
+| 13 | SVC-11: gitignored `.roo` dirs (the owner's global `~/.gitignore` = `core.excludesFile` lists `.roo`) are never found by the subfolder scan. Change it? | **Decided** | No: leave as is, the scan keeps respecting all gitignore files (owner 2026-09-25) |
+| 14 | Retry policy: with auto-approve `TaskApiLoop.handleApiRequestError` retries every failure, including 400 and 401 | **Decided** | Stop auto-retry for 401, 403 and 404; keep retrying 400 (some providers and proxies return 400 for transient trouble) (owner 2026-09-25) |
+| 15 | Memory writers when VS Code or the CLI closes while a task sits at its final `completion_result` ask | **Decided** | Leave as is, document the limit only (owner 2026-09-25) |
+| 16 | Refresh the stale DeepSeek catalog (`deepseek-flash`, V4-Pro, peak and off-peak prices, alias entries) now or later? | **Decided** | Now, in its own branch during the leftovers round (owner 2026-09-25) |
 
 ## Do not touch (collected from all audits)
 
