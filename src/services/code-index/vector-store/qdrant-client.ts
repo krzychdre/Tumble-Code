@@ -614,6 +614,11 @@ export class QdrantVectorStore implements IVectorStore {
 				// Include first few file paths for debugging (avoid logging too many)
 				samplePaths: filePaths.slice(0, 3),
 			})
+
+			// Callers must learn about the failure: the file watcher and the scanner skip the
+			// upsert and keep the file hash when the old points could not be removed, otherwise
+			// stale points of deleted or changed files stay in the index for good.
+			throw withQdrantDetail(error)
 		}
 	}
 
