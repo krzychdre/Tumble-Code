@@ -347,8 +347,6 @@ const FULL_SETTINGS = {
  */
 const VIEW_ONLY_TRANSFORMS: Record<string, string> = {
 	taskHistory: "getState() never materializes the history (hot path); the full push carries it",
-	allowedCommands: "the webview shows the global list merged with the workspace configuration",
-	deniedCommands: "the webview shows the global list merged with the workspace configuration",
 	codebaseIndexConfig:
 		"the webview pre-fills codebaseIndexEmbedderModelDimension with 1536; the host reads the raw value",
 }
