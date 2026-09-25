@@ -143,13 +143,7 @@ export function MermaidButton({ containerRef, code, isLoading, svgToPng, childre
 						</>
 					) : (
 						<StandardTooltip content={t("common:mermaid.buttons.copy")}>
-							<IconButton
-								icon={copyFeedback ? "check" : "copy"}
-								onClick={(e) => {
-									e.stopPropagation()
-									copyWithFeedback(code, e)
-								}}
-							/>
+							<IconButton icon={copyFeedback ? "check" : "copy"} onClick={handleCopy} />
 						</StandardTooltip>
 					)
 				}>
