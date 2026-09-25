@@ -1,0 +1,886 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`App characterization (recorded message sequences) > asks a follow-up question and answers with the first suggestion 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== followup ask ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Which language?                                                                                  │
+│ ❯ 1. Polish                                                                                      │
+│   2. English                                                                                     │
+│   3. Type my own answer…                                                                         │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+=== pressed enter ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+❯ Polish
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer ===
+[static: welcome:__welcome__:0 message:user-1 message:user-2]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+❯ Polish
+
+● Cześć!
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
+
+exports[`App characterization (recorded message sequences) > asks to approve a tool, and approves it with y 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== intro ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Let me read the file.
+˙ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== tool ask ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Let me read the file.
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Read                                                                                             │
+│ src/a.ts                                                                                         │
+│ Do you want to proceed?                                                                          │
+│ ❯ 1. Yes                                                                                         │
+│   2. No                                                                                          │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+=== pressed y ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Let me read the file.
+· Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== next request ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Let me read the file.
+∘ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Let me read the file.
+
+● The file exports one function.
+◦ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
+
+exports[`App characterization (recorded message sequences) > completes the task 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● All done here.
+˙ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== completion say ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● All done here.
+
+● Finished the job.
+. Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== completion ask ===
+[static: welcome:__welcome__:0 message:user-1 message:1002 message:1003 message:1004]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● All done here.
+
+● Finished the job.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== task completed ===
+[static: welcome:__welcome__:0 message:user-1 message:1002 message:1003 message:1004]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● All done here.
+
+● Finished the job.
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
+
+exports[`App characterization (recorded message sequences) > prints an auto-approved tool as a tool row in allow mode 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== tool ask (auto-approved) ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+● Read(src/a.ts)
+˙ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code (YOLO)
+
+❯ Say hi
+● Read(src/a.ts)
+
+● Read it.
+. Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
+
+exports[`App characterization (recorded message sequences) > runs a command and collects its output into one row 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== command ask ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Bash command                                                                                     │
+│ $ ls -1                                                                                          │
+│ Do you want to proceed?                                                                          │
+│ ❯ 1. Yes                                                                                         │
+│   2. No                                                                                          │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+=== pressed y ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== output chunk ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+● Bash(ls -1)
+    ⎿  … +1 line (ctrl+o)
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== output keep-running ask ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+● Bash(ls -1)
+    ⎿  … +1 line (ctrl+o)
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== output complete (new ts) ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+● Bash(ls -1)
+    ⎿  … +3 lines (ctrl+o)
+˙ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== next request ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+● Bash(ls -1)
+    ⎿  … +3 lines (ctrl+o)
+. Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer ===
+[static: welcome:__welcome__:0 message:user-1 message:1003]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+● Bash(ls -1)
+    ⎿  … +3 lines (ctrl+o)
+
+● Three files.
+○ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
+
+exports[`App characterization (recorded message sequences) > shows a failed API request as a retry dialog, then a host error 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== api_req_failed ask ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+╭──────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ API request failed                                                                               │
+│ 401 Unauthorized: invalid x-api-key                                                              │
+│ Retry the request?                                                                               │
+│ ❯ 1. Yes                                                                                         │
+│   2. No                                                                                          │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+=== pressed y (retry) ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== host error ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+
+ Error: Provider went away
+ Press Ctrl+C to exit
+"
+`;
+
+exports[`App characterization (recorded message sequences) > shows reasoning, then the answer 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== reasoning partial ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+  ∴ Thinking…
+˙ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== reasoning final ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+  ∴ Thinking…
+. Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer partial ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+  ∴ Thinking…
+
+● Hi
+○ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer final ===
+[static: welcome:__welcome__:0 message:user-1 message:1002]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+  ∴ Thinking…
+
+● Hi there!
+◦ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
+
+exports[`App characterization (recorded message sequences) > streams a plain answer 1`] = `
+"=== mounted ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+· Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== prompt echo ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+∘ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== request started ===
+[static: welcome:__welcome__:0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+◦ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer partial 1 ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Hello
+˙ Tumble… (esc to interrupt · total 0s · step 0s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer partial 2 ===
+[static: welcome:__welcome__:0 message:user-1]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Hello, wor
+. Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer partial 3 (two lines) ===
+[static: welcome:__welcome__:0 message:user-1 chunk:1002#chunk0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Hello, world!
+  Second line is
+○ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test
+
+=== answer final ===
+[static: welcome:__welcome__:0 message:user-1 chunk:1002#chunk0]
+✻ Welcome to Tumble Code v0.0.0-test
+  cwd: <workspace>
+  anthropic · claude-test · mode: code
+
+❯ Say hi
+
+● Hello, world!
+  Second line is here.
+◦ Tumble… (esc to interrupt · total 1s · step 1s)
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+ ❯
+────────────────────────────────────────────────────────────────────────────────────────────────────
+? for shortcuts                                                                   code · claude-test"
+`;
