@@ -371,6 +371,20 @@ Tests: 9 characterization tests in `ClineProvider.taskHistory.spec` with a real 
 `TaskHistoryGateway.spec` (24); related specs 337 to 370. Known gap: the `fs/promises` mock in
 `ClineProvider.taskHistory.spec` lacks a default export (same as noted in CORE-R1).
 
+**Status (2026-09-25):** (b), (e), (f) DONE, merged in order as #288 (`b71715c7f`), #293 (`1c9f6291e`, the
+stacked #290 was closed by GitHub when its base branch was deleted and re-opened as #293 after a rebase) and #292
+(`3c6aa7b87`). ClineProvider: 3,316 to 3,270 (b), 3,115 (e), 3,058 (f).
+(b) `CloudProfileSync.ts` handles `settings-updated`, the organization profile sync and listener disposal;
+ClineProvider keeps `initializeCloudProfileSyncWhenReady`. (e) `WebviewHtml.ts` (`getProductionHtml`,
+`getHmrHtml` with the `.vite-port` read and fallback, `openRouterOrigin`) serves both panels; the panels differ
+only by options (title, `PLAN_REVIEW_MODE`, extra `connect-src`, dev-only analytics sources); PlanReviewPanel went
+from 419 to 303 lines. Seven file snapshots pin HTML and CSP of both panels in both modes; one whitespace-only
+commit re-indented the sidebar production HTML (owner-rule exception approved by the coordinator; `git diff -w`
+empty); `.gitattributes` keeps the HTML snapshots LF. (f) `taskEventForwarding.ts`: a 14-row table typed so a
+missing or extra event fails to compile, `forwardTaskEvents` returns one detach per listener.
+Findings: the "development mode" ClineProvider test never reaches the HMR path; in dev mode the sidebar now reads
+`getState()` once, before probing the dev server.
+
 
 ### CORE-R7 Performance (Phase 10; mechanism verified, magnitude to be measured)
 
