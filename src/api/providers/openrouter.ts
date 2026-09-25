@@ -23,6 +23,7 @@ import {
 import { normalizeMistralToolCallId } from "../transform/mistral-format"
 import { ApiStreamChunk } from "../transform/stream"
 import { convertToR1Format } from "../transform/r1-format"
+import { streamChatCompletion } from "../transform/chat-completions-stream"
 import { addCacheBreakpoints as addAnthropicCacheBreakpoints } from "../transform/caching/anthropic"
 import { addCacheBreakpoints as addGeminiCacheBreakpoints } from "../transform/caching/gemini"
 import type { OpenRouterReasoningParams } from "../transform/reasoning"
@@ -38,7 +39,6 @@ import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usa
 import { handleProviderError } from "./utils/error-handler"
 import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
-import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 
 // Add custom interface for OpenRouter params.
 type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
@@ -383,148 +383,30 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			}
 		}
 
-		let lastUsage: CompletionUsage | undefined = undefined
-		// Accumulator for reasoning_details FROM the API.
-		// We preserve the original shape of reasoning_details to prevent malformed responses.
-		const reasoningDetailsAccumulator = new Map<
-			string,
-			{
-				type: string
-				text?: string
-				summary?: string
-				data?: string
-				id?: string | null
-				format?: string
-				signature?: string
-				index: number
-			}
-		>()
-
-		// Track whether we've yielded displayable text from reasoning_details.
-		// When reasoning_details has displayable content (reasoning.text or reasoning.summary),
-		// we skip yielding the top-level reasoning field to avoid duplicate display.
-		let hasYieldedReasoningFromDetails = false
-
-		for await (const chunk of stream) {
-			// OpenRouter returns an error object instead of the OpenAI SDK throwing an error.
-			if ("error" in chunk) {
-				this.handleStreamingError(chunk.error as OpenRouterError, modelId, "createMessage")
-			}
-
-			const delta = chunk.choices[0]?.delta
-			const finishReason = chunk.choices[0]?.finish_reason
-
-			if (delta) {
-				// Handle reasoning_details array format (used by Gemini 3, Claude, OpenAI o-series, etc.)
-				// See: https://openrouter.ai/docs/use-cases/reasoning-tokens#preserving-reasoning-blocks
-				// Priority: Check for reasoning_details first, as it's the newer format
-				const deltaWithReasoning = delta as typeof delta & {
-					reasoning_details?: Array<{
-						type: string
-						text?: string
-						summary?: string
-						data?: string
-						id?: string | null
-						format?: string
-						signature?: string
-						index?: number
-					}>
+		yield* streamChatCompletion(stream, {
+			reasoning: "openrouter",
+			// OpenRouter returns an error object inside the stream instead of the SDK throwing.
+			onChunk: (chunk) => {
+				if ("error" in chunk) {
+					this.handleStreamingError(chunk.error as OpenRouterError, modelId, "createMessage")
 				}
-
-				if (deltaWithReasoning.reasoning_details && Array.isArray(deltaWithReasoning.reasoning_details)) {
-					for (const detail of deltaWithReasoning.reasoning_details) {
-						const index = detail.index ?? 0
-						const key = `${detail.type}-${index}`
-						const existing = reasoningDetailsAccumulator.get(key)
-
-						if (existing) {
-							// Accumulate text/summary/data for existing reasoning detail
-							if (detail.text !== undefined) {
-								existing.text = (existing.text || "") + detail.text
-							}
-							if (detail.summary !== undefined) {
-								existing.summary = (existing.summary || "") + detail.summary
-							}
-							if (detail.data !== undefined) {
-								existing.data = (existing.data || "") + detail.data
-							}
-							// Update other fields if provided
-							if (detail.id !== undefined) existing.id = detail.id
-							if (detail.format !== undefined) existing.format = detail.format
-							if (detail.signature !== undefined) existing.signature = detail.signature
-						} else {
-							// Start new reasoning detail accumulation
-							reasoningDetailsAccumulator.set(key, {
-								type: detail.type,
-								text: detail.text,
-								summary: detail.summary,
-								data: detail.data,
-								id: detail.id,
-								format: detail.format,
-								signature: detail.signature,
-								index,
-							})
-						}
-
-						// Yield text for display (still fragmented for live streaming)
-						// Only reasoning.text and reasoning.summary have displayable content
-						// reasoning.encrypted is intentionally skipped as it contains redacted content
-						let reasoningText: string | undefined
-						if (detail.type === "reasoning.text" && typeof detail.text === "string") {
-							reasoningText = detail.text
-						} else if (detail.type === "reasoning.summary" && typeof detail.summary === "string") {
-							reasoningText = detail.summary
-						}
-
-						if (reasoningText) {
-							hasYieldedReasoningFromDetails = true
-							yield { type: "reasoning", text: reasoningText }
-						}
-					}
+			},
+			// Kept for the next request; corrupted encrypted blocks (no `data`) are dropped.
+			onReasoningDetails: (details) => {
+				this.currentReasoningDetails = consolidateReasoningDetails(details)
+			},
+			mapUsage: (usage) => {
+				const lastUsage = usage as CompletionUsage
+				return {
+					type: "usage",
+					inputTokens: lastUsage.prompt_tokens || 0,
+					outputTokens: lastUsage.completion_tokens || 0,
+					...openAiCacheTokens(lastUsage),
+					reasoningTokens: lastUsage.completion_tokens_details?.reasoning_tokens,
+					totalCost: (lastUsage.cost_details?.upstream_inference_cost || 0) + (lastUsage.cost || 0),
 				}
-
-				// Handle top-level reasoning field for UI display.
-				// Skip if we've already yielded from reasoning_details to avoid duplicate display.
-				if ("reasoning" in delta && delta.reasoning && typeof delta.reasoning === "string") {
-					if (!hasYieldedReasoningFromDetails) {
-						yield { type: "reasoning", text: delta.reasoning }
-					}
-				}
-
-				// Emit raw tool call chunks - NativeToolCallParser handles state management
-				yield* emitToolCallChunks(delta)
-
-				if (delta.content) {
-					yield { type: "text", text: delta.content }
-				}
-			}
-
-			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
-			// This ensures tool calls are finalized even if the stream doesn't properly close
-			yield* emitFinishReasonChunk(finishReason)
-
-			if (chunk.usage) {
-				lastUsage = chunk.usage
-			}
-		}
-
-		// After streaming completes, consolidate and store reasoning_details from the API.
-		// This filters out corrupted encrypted blocks (missing `data`) and consolidates by index.
-		if (reasoningDetailsAccumulator.size > 0) {
-			const rawDetails = Array.from(reasoningDetailsAccumulator.values())
-			this.currentReasoningDetails = consolidateReasoningDetails(rawDetails)
-		}
-
-		if (lastUsage) {
-			yield {
-				type: "usage",
-				inputTokens: lastUsage.prompt_tokens || 0,
-				outputTokens: lastUsage.completion_tokens || 0,
-				...openAiCacheTokens(lastUsage),
-				reasoningTokens: lastUsage.completion_tokens_details?.reasoning_tokens,
-				totalCost: (lastUsage.cost_details?.upstream_inference_cost || 0) + (lastUsage.cost || 0),
-			}
-		}
+			},
+		})
 	}
 
 	public async fetchModel() {

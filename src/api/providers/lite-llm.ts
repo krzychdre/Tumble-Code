@@ -7,7 +7,8 @@ import { calculateApiCostOpenAI } from "../../shared/cost"
 
 import { ApiHandlerOptions } from "../../shared/api"
 
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { ApiStream } from "../transform/stream"
+import { streamChatCompletion } from "../transform/chat-completions-stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 
@@ -15,7 +16,6 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
 import { RouterProvider } from "./router-provider"
-import { extractReasoningFromDelta } from "./utils/extract-reasoning"
 
 /**
  * LiteLLM provider handler
@@ -228,68 +228,35 @@ export class LiteLLMHandler extends RouterProvider implements SingleCompletionHa
 		try {
 			const { data: completion } = await this.client.chat.completions.create(requestOptions).withResponse()
 
-			let lastUsage
+			yield* streamChatCompletion(completion, {
+				mapUsage: (lastUsage) => {
+					// LiteLLM mirrors every upstream cache name into the OpenAI shape
+					// (DeepSeek's `prompt_cache_hit_tokens` into `cached_tokens`, Anthropic's
+					// `cache_creation_input_tokens` into `cache_write_tokens`), so the shared
+					// reader covers it. DeepSeek's `prompt_cache_miss_tokens` is forwarded
+					// too but is ordinary input, never a cache write (DEF-C40).
+					const cacheTokens = openAiCacheTokens(lastUsage)
+					const cacheWriteTokens = cacheTokens.cacheWriteTokens ?? 0
+					const cacheReadTokens = cacheTokens.cacheReadTokens ?? 0
 
-			for await (const chunk of completion) {
-				const delta = chunk.choices[0]?.delta
-				const usage = chunk.usage
+					const { totalCost } = calculateApiCostOpenAI(
+						info,
+						lastUsage.prompt_tokens || 0,
+						lastUsage.completion_tokens || 0,
+						cacheWriteTokens,
+						cacheReadTokens,
+					)
 
-				const reasoningText = extractReasoningFromDelta(delta)
-				if (reasoningText) {
-					yield { type: "reasoning", text: reasoningText }
-				}
-
-				if (delta?.content) {
-					yield { type: "text", text: delta.content }
-				}
-
-				// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
-				if (delta?.tool_calls) {
-					for (const toolCall of delta.tool_calls) {
-						yield {
-							type: "tool_call_partial",
-							index: toolCall.index,
-							id: toolCall.id,
-							name: toolCall.function?.name,
-							arguments: toolCall.function?.arguments,
-						}
+					return {
+						type: "usage",
+						inputTokens: lastUsage.prompt_tokens || 0,
+						outputTokens: lastUsage.completion_tokens || 0,
+						cacheWriteTokens: cacheWriteTokens > 0 ? cacheWriteTokens : undefined,
+						cacheReadTokens: cacheReadTokens > 0 ? cacheReadTokens : undefined,
+						totalCost,
 					}
-				}
-
-				if (usage) {
-					lastUsage = usage
-				}
-			}
-
-			if (lastUsage) {
-				// LiteLLM mirrors every upstream cache name into the OpenAI shape
-				// (DeepSeek's `prompt_cache_hit_tokens` into `cached_tokens`, Anthropic's
-				// `cache_creation_input_tokens` into `cache_write_tokens`), so the shared
-				// reader covers it. DeepSeek's `prompt_cache_miss_tokens` is forwarded
-				// too but is ordinary input, never a cache write (DEF-C40).
-				const cacheTokens = openAiCacheTokens(lastUsage)
-				const cacheWriteTokens = cacheTokens.cacheWriteTokens ?? 0
-				const cacheReadTokens = cacheTokens.cacheReadTokens ?? 0
-
-				const { totalCost } = calculateApiCostOpenAI(
-					info,
-					lastUsage.prompt_tokens || 0,
-					lastUsage.completion_tokens || 0,
-					cacheWriteTokens,
-					cacheReadTokens,
-				)
-
-				const usageData: ApiStreamUsageChunk = {
-					type: "usage",
-					inputTokens: lastUsage.prompt_tokens || 0,
-					outputTokens: lastUsage.completion_tokens || 0,
-					cacheWriteTokens: cacheWriteTokens > 0 ? cacheWriteTokens : undefined,
-					cacheReadTokens: cacheReadTokens > 0 ? cacheReadTokens : undefined,
-					totalCost,
-				}
-
-				yield usageData
-			}
+				},
+			})
 		} catch (error) {
 			throw handleProviderError(error, "LiteLLM", { messagePrefix: "streaming" })
 		}
