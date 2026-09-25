@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "Ảnh hồ sơ",
 	"logOut": "Đăng xuất",
-	"testApiAuthentication": "Kiểm tra xác thực API",
 	"signIn": "Kết nối với Tumble Code Cloud",
 	"connect": "Bắt đầu",
 	"cloudBenefitsTitle": "Dùng thử Tumble Code Cloud",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "Sao chép URL redirect từ trình duyệt và dán vào đây:",
 	"startOver": "Bắt đầu lại",
 	"personalAccount": "Tài Khoản Cá Nhân",
-	"switchAccount": "Chuyển Tài Khoản Tumble Code Cloud",
 	"createTeamAccount": "Tạo Tài Khoản Nhóm",
 	"cloudUrlPillLabel": "URL Tumble Code Cloud",
 	"upsell": {
-		"autoApprovePowerUser": "Trao cho Tumble một chút độc lập? Kiểm soát nó từ mọi nơi với Tumble Code Cloud. <learnMoreLink>Tìm hiểu thêm</learnMoreLink>.",
 		"longRunningTask": "Việc này có thể mất một lúc. Tiếp tục từ mọi nơi với Cloud.",
 		"taskList": "Bạn có thích Tumble không? Hãy xem Tumble Code Cloud: theo dõi và kiểm soát các tác vụ của bạn từ mọi nơi, chạy các agent đám mây tự trị, nhận số liệu thống kê sử dụng và hơn thế nữa. <learnMoreLink>Tìm hiểu thêm</learnMoreLink>."
 	}

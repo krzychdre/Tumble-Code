@@ -1,17 +1,14 @@
 {
-	"greeting": "Bienvenue sur Tumble Code",
 	"task": {
 		"title": "Tâche",
 		"expand": "Développer la tâche",
 		"collapse": "Réduire la tâche",
 		"seeMore": "Voir plus",
-		"seeLess": "Voir moins",
 		"tokens": "Tokens",
 		"cache": "Cache",
 		"apiCost": "Coût API",
 		"size": "Taille",
 		"contextWindow": "Durée du contexte",
-		"closeAndStart": "Fermer la tâche et en commencer une nouvelle",
 		"export": "Exporter l'historique des tâches",
 		"delete": "Supprimer la tâche (Shift + Clic pour ignorer la confirmation)",
 		"condenseContext": "Condenser intelligemment le contexte",
@@ -37,10 +34,7 @@
 	"tokenProgress": {
 		"availableSpace": "Espace disponible : {{amount}} tokens",
 		"tokensUsed": "Tokens utilisés : {{used}} sur {{total}}",
-		"reservedForResponse": "Réservé pour la réponse du modèle : {{amount}} tokens",
-		"tokensUsedLabel": "Tokens utilisés",
-		"reservedForResponseLabel": "Réservé pour la réponse",
-		"availableSpaceLabel": "Espace disponible"
+		"reservedForResponse": "Réservé pour la réponse du modèle : {{amount}} tokens"
 	},
 	"retry": {
 		"title": "Réessayer",
@@ -88,19 +82,16 @@
 		"tooltip": "Terminer la tâche actuelle"
 	},
 	"stop": {
-		"title": "Arrêter",
-		"tooltip": "Arrêter la tâche en cours"
+		"title": "Arrêter"
 	},
 	"cancel": {
-		"title": "Annuler",
-		"tooltip": "Annuler l'opération actuelle"
+		"title": "Annuler"
 	},
 	"enqueueMessage": "Ajouter le message à la file d'attente (sera envoyé après la fin de la tâche en cours)",
 	"scrollToBottom": "Défiler jusqu'au bas du chat",
 	"scrollToLatestCheckpoint": "Défiler jusqu'au checkpoint précédent",
 	"about": "Tumble Code est une équipe complète de développeurs IA dans votre éditeur.",
 	"docs": "Consultez notre <DocsLink>documentation</DocsLink> pour en savoir plus.",
-	"onboarding": "Votre liste de tâches dans cet espace de travail est vide.",
 	"rooTips": {
 		"customizableModes": {
 			"title": "Modes personnalisables",
@@ -128,7 +119,6 @@
 	},
 	"enhancePrompt": "Améliorer la requête avec un contexte supplémentaire",
 	"addImages": "Ajouter des images au message",
-	"sendMessage": "Envoyer le message",
 	"pressToSend": "Appuie sur {{keyCombination}} pour envoyer",
 	"typeMessage": "Écrivez un message...",
 	"typeTask": "Écrivez votre tâche ici...",
@@ -146,7 +136,6 @@
 	},
 	"errorReadingFile": "Erreur lors de la lecture du fichier",
 	"noValidImages": "Aucune image valide n'a été traitée",
-	"separator": "Séparateur",
 	"edit": "Éditer...",
 	"forNextMode": "pour le prochain mode",
 	"forPreviousMode": "pour le mode précédent",
@@ -179,7 +168,6 @@
 	},
 	"checkpoint": {
 		"regular": "Point de contrôle",
-		"initializingWarning": "Initialisation du point de contrôle en cours... Si cela prend trop de temps, tu peux désactiver les points de contrôle dans les <settingsLink>paramètres</settingsLink> et redémarrer ta tâche.",
 		"menu": {
 			"viewDiff": "Voir les différences",
 			"more": "Plus d'options",
@@ -203,10 +191,8 @@
 		"wantsToEdit": "Tumble veut éditer ce fichier",
 		"wantsToEditOutsideWorkspace": "Tumble veut éditer ce fichier en dehors de l'espace de travail",
 		"wantsToEditProtected": "Tumble veut éditer un fichier de configuration protégé",
-		"wantsToCreate": "Tumble veut créer un nouveau fichier",
 		"wantsToSearchReplace": "Tumble veut effectuer une recherche et remplacement sur ce fichier",
 		"didSearchReplace": "Tumble a effectué une recherche et remplacement sur ce fichier",
-		"wantsToInsert": "Tumble veut insérer du contenu dans ce fichier",
 		"wantsToInsertWithLineNumber": "Tumble veut insérer du contenu dans ce fichier à la ligne {{lineNumber}}",
 		"wantsToInsertAtEnd": "Tumble veut ajouter du contenu à la fin de ce fichier",
 		"wantsToReadAndXMore": "Tumble veut lire ce fichier et {{count}} de plus",
@@ -232,14 +218,11 @@
 		"wantsToViewTopLevelOutsideWorkspace": "Tumble veut voir les fichiers de premier niveau dans ce répertoire (hors espace de travail)",
 		"didViewTopLevelOutsideWorkspace": "Tumble a vu les fichiers de premier niveau dans ce répertoire (hors espace de travail)",
 		"wantsToViewRecursiveOutsideWorkspace": "Tumble veut voir récursivement tous les fichiers dans ce répertoire (hors espace de travail)",
-		"didViewRecursiveOutsideWorkspace": "Tumble a vu récursivement tous les fichiers dans ce répertoire (hors espace de travail)",
-		"wantsToViewMultipleDirectories": "Tumble veut voir plusieurs répertoires"
+		"didViewRecursiveOutsideWorkspace": "Tumble a vu récursivement tous les fichiers dans ce répertoire (hors espace de travail)"
 	},
-	"commandOutput": "Sortie de la Commande",
 	"commandExecution": {
 		"abort": "Abandonner",
 		"running": "En cours d'exécution",
-		"pid": "PID : {{pid}}",
 		"exitStatus": "Terminé avec le statut {{exitCode}}",
 		"malformedCommand": "Commande mal formée : erreur de syntaxe shell",
 		"manageCommands": "Commandes approuvées automatiquement",
@@ -247,14 +230,9 @@
 		"removeFromAllowed": "Retirer de la liste autorisée",
 		"addToDenied": "Ajouter à la liste refusée",
 		"removeFromDenied": "Retirer de la liste refusée",
-		"abortCommand": "Abandonner l'exécution de la commande",
 		"expandCommand": "Développer la commande",
-		"collapseCommand": "Réduire la commande",
-		"expandManagement": "Développer la section de gestion des commandes",
-		"collapseManagement": "Réduire la section de gestion des commandes"
+		"collapseCommand": "Réduire la commande"
 	},
-	"response": "Réponse",
-	"arguments": "Arguments",
 	"text": {
 		"rooSaid": "Tumble a dit"
 	},
@@ -274,10 +252,8 @@
 	"subtasks": {
 		"wantsToCreate": "Tumble veut créer une nouvelle sous-tâche en mode <code>{{mode}}</code>",
 		"wantsToFinish": "Tumble veut terminer cette sous-tâche",
-		"newTaskContent": "Instructions de la sous-tâche",
 		"completionContent": "Sous-tâche terminée",
 		"resultContent": "Résultats de la sous-tâche",
-		"defaultResult": "Veuillez continuer avec la tâche suivante.",
 		"completionInstructions": "Sous-tâche terminée ! Vous pouvez examiner les résultats et suggérer des corrections ou les prochaines étapes. Si tout semble bon, confirmez pour retourner le résultat à la tâche parente.",
 		"goToSubtask": "Afficher la tâche"
 	},
@@ -300,9 +276,6 @@
 		"diagnostics": "Obtenir les détails de l'erreur",
 		"proxyProvider": "Il semble que tu utilises un fournisseur basé sur un proxy. Assure-toi de vérifier ses journaux et de t'assurer qu'il ne réécrit pas les demandes de Tumble."
 	},
-	"powershell": {
-		"issues": "Il semble que vous rencontriez des problèmes avec Windows PowerShell, veuillez consulter ce"
-	},
 	"autoApprove": {
 		"tooltipManage": "Gérer les paramètres d'approbation automatique",
 		"tooltipStatus": "Approbation automatique activée pour : {{toggles}}",
@@ -311,9 +284,7 @@
 		"all": "Tout",
 		"none": "Aucun",
 		"description": "Exécutez ces actions sans demander la permission. N'activez cette option que pour les actions en lesquelles vous avez entièrement confiance.",
-		"selectOptionsFirst": "Sélectionnez au moins une option ci-dessous pour activer l'approbation automatique",
 		"toggleAriaLabel": "Basculer l'approbation automatique",
-		"disabledAriaLabel": "Approbation automatique désactivée - sélectionnez d'abord les options",
 		"triggerLabelOff": "Approbation automatique désactivée",
 		"triggerLabelOffShort": "Désactivé",
 		"triggerLabel_zero": "0 approuvé automatiquement",
@@ -338,8 +309,7 @@
 		}
 	},
 	"reasoning": {
-		"thinking": "Réflexion",
-		"seconds": "{{count}}s"
+		"thinking": "Réflexion"
 	},
 	"contextManagement": {
 		"tokens": "tokens",
@@ -373,13 +343,6 @@
 	"announcement": {
 		"title": "Tumble Code {{version}} est sortie",
 		"support": "Soutiens Tumble Code en nous donnant une étoile sur <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Modèle stealth GRATUIT pour une durée limitée</bold> - Code Supernova : Maintenant amélioré avec une <bold>fenêtre de contexte de 1M tokens</bold> ! Un modèle de codage agentique polyvalent qui prend en charge les entrées d'images, accessible via Tumble Code Cloud.",
-			"note": "(Note : les prompts et complétions sont enregistrés par le créateur du modèle et utilisés pour l'améliorer)",
-			"connectButton": "Se connecter à Tumble Code Cloud",
-			"selectModel": "Sélectionnez <code>roo/code-supernova</code> du fournisseur Tumble Code Cloud dans Paramètres pour commencer.",
-			"goToSettingsButton": "Aller aux Paramètres"
-		},
 		"handoff": {
 			"heading": "From Roo Code to Tumble Code",
 			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
@@ -390,12 +353,6 @@
 			"gpt55": "GPT-5.5 via OpenAI Codex : Le support de GPT-5.5 a été ajouté au fournisseur OpenAI Codex pour que tu puisses utiliser le tout dernier modèle directement depuis Tumble Code.",
 			"claudeOpus47": "Claude Opus 4.7 sur Vertex AI : Claude Opus 4.7 a été ajouté au fournisseur Vertex AI, le tout nouveau modèle de raisonnement phare d'Anthropic.",
 			"checkpointNav": "Navigation vers les checkpoints précédents : Des contrôles ont été ajoutés dans le chat pour revenir en arrière à travers les checkpoints précédents, avec un support i18n complet."
-		},
-		"cloudAgents": {
-			"heading": "Nouveautés dans le Cloud :",
-			"specialized": "Présentation d'<bold>Explainer</bold>, <bold>Planner</bold> et <bold>Coder</bold> - trois agents cloud spécialisés pour améliorer tes workflows.",
-			"description": "Les agents travaillent ensemble dans le cloud et peuvent être déclenchés depuis le web ou via Slack.",
-			"tryButton": "Essayer les Agents Cloud"
 		}
 	},
 	"costs": {
@@ -478,22 +435,13 @@
 	"editMessage": {
 		"placeholder": "Modifiez votre message..."
 	},
-	"command": {
-		"triggerDescription": "Déclencher la commande {{name}}"
-	},
 	"slashCommands": {
-		"tooltip": "Gérer les commandes slash",
-		"title": "Commandes Slash",
 		"description": "Utilisez les commandes slash intégrées ou créez des personnalisées pour accéder rapidement aux prompts et flux de travail fréquemment utilisés. <DocsLink>Documentation</DocsLink>",
 		"manageCommands": "Gérer les commandes slash dans les paramètres",
-		"builtInCommands": "Commandes Intégrées",
 		"globalCommands": "Commandes Globales",
 		"workspaceCommands": "Commandes de l'Espace de Travail",
-		"globalCommand": "Commande globale",
 		"editCommand": "Modifier la commande",
 		"deleteCommand": "Supprimer la commande",
-		"newGlobalCommandPlaceholder": "Nouvelle commande globale...",
-		"newWorkspaceCommandPlaceholder": "Nouvelle commande de l'espace de travail...",
 		"deleteDialog": {
 			"title": "Supprimer la commande",
 			"description": "Êtes-vous sûr de vouloir supprimer la commande \"{{name}}\" ? Cette action ne peut pas être annulée.",
@@ -518,9 +466,7 @@
 	"todo": {
 		"partial": "{{completed}} sur {{total}} tâches terminées",
 		"complete": "{{total}} tâches terminées",
-		"updated": "La liste des tâches a été mise à jour",
-		"completed": "Terminé",
-		"started": "Commencé"
+		"updated": "La liste des tâches a été mise à jour"
 	},
 	"tooManyTools": {
 		"title": "Trop d'outils activés",

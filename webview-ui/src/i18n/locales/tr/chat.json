@@ -1,17 +1,14 @@
 {
-	"greeting": "Tumble Code'a Hoş Geldiniz",
 	"task": {
 		"title": "Görev",
 		"expand": "Görevi genişlet",
 		"collapse": "Görevi daralt",
 		"seeMore": "Daha fazla gör",
-		"seeLess": "Daha az gör",
 		"tokens": "Tokenlar",
 		"cache": "Önbellek",
 		"apiCost": "API Maliyeti",
 		"size": "Boyut",
 		"contextWindow": "Bağlam Uzunluğu",
-		"closeAndStart": "Görevi kapat ve yeni bir görev başlat",
 		"export": "Görev geçmişini dışa aktar",
 		"delete": "Görevi sil (Onayı atlamak için Shift + Tıkla)",
 		"condenseContext": "Bağlamı akıllıca yoğunlaştır",
@@ -37,10 +34,7 @@
 	"tokenProgress": {
 		"availableSpace": "Kullanılabilir alan: {{amount}} token",
 		"tokensUsed": "Kullanılan tokenlar: {{used}} / {{total}}",
-		"reservedForResponse": "Model yanıtı için ayrılan: {{amount}} token",
-		"tokensUsedLabel": "Kullanılan tokenlar",
-		"reservedForResponseLabel": "Yanıt için ayrılan",
-		"availableSpaceLabel": "Kullanılabilir alan"
+		"reservedForResponse": "Model yanıtı için ayrılan: {{amount}} token"
 	},
 	"retry": {
 		"title": "Yeniden Dene",
@@ -88,19 +82,16 @@
 		"tooltip": "Mevcut görevi sonlandır"
 	},
 	"stop": {
-		"title": "Durdur",
-		"tooltip": "Mevcut görevi durdur"
+		"title": "Durdur"
 	},
 	"cancel": {
-		"title": "İptal",
-		"tooltip": "Mevcut işlemi iptal et"
+		"title": "İptal"
 	},
 	"enqueueMessage": "Mesajı kuyruğa ekle (mevcut görev tamamlandıktan sonra gönderilecek)",
 	"scrollToBottom": "Sohbetin altına kaydır",
 	"scrollToLatestCheckpoint": "Önceki checkpoint'e kaydır",
 	"about": "Tumble Code, düzenleyicinizdeki bütün bir yapay zeka geliştirme ekibidir.",
 	"docs": "Daha fazla bilgi için <DocsLink>belgelerimize</DocsLink> göz atın.",
-	"onboarding": "Bu çalışma alanındaki görev listeniz boş.",
 	"rooTips": {
 		"customizableModes": {
 			"title": "Özelleştirilebilir modlar",
@@ -128,7 +119,6 @@
 	},
 	"enhancePrompt": "Ek bağlamla istemi geliştir",
 	"addImages": "Mesaja resim ekle",
-	"sendMessage": "Mesaj gönder",
 	"pressToSend": "Göndermek için {{keyCombination}} tuşuna bas",
 	"typeMessage": "Bir mesaj yazın...",
 	"typeTask": "Görevinizi buraya yazın...",
@@ -146,7 +136,6 @@
 	},
 	"errorReadingFile": "Dosya okuma hatası",
 	"noValidImages": "Hiçbir geçerli resim işlenmedi",
-	"separator": "Ayırıcı",
 	"edit": "Düzenle...",
 	"forNextMode": "sonraki mod için",
 	"forPreviousMode": "önceki mod için",
@@ -179,7 +168,6 @@
 	},
 	"checkpoint": {
 		"regular": "Kontrol Noktası",
-		"initializingWarning": "Kontrol noktası hala başlatılıyor... Bu çok uzun sürerse, <settingsLink>ayarlar</settingsLink> bölümünden kontrol noktalarını devre dışı bırakabilir ve görevinizi yeniden başlatabilirsiniz.",
 		"menu": {
 			"viewDiff": "Farkları Görüntüle",
 			"more": "Daha fazla seçenek",
@@ -206,10 +194,8 @@
 		"wantsToEdit": "Tumble bu dosyayı düzenlemek istiyor",
 		"wantsToEditOutsideWorkspace": "Tumble çalışma alanı dışındaki bu dosyayı düzenlemek istiyor",
 		"wantsToEditProtected": "Tumble korumalı bir yapılandırma dosyasını düzenlemek istiyor",
-		"wantsToCreate": "Tumble yeni bir dosya oluşturmak istiyor",
 		"wantsToSearchReplace": "Tumble bu dosyada arama ve değiştirme yapmak istiyor",
 		"didSearchReplace": "Tumble bu dosyada arama ve değiştirme yaptı",
-		"wantsToInsert": "Tumble bu dosyaya içerik eklemek istiyor",
 		"wantsToInsertWithLineNumber": "Tumble bu dosyanın {{lineNumber}}. satırına içerik eklemek istiyor",
 		"wantsToInsertAtEnd": "Tumble bu dosyanın sonuna içerik eklemek istiyor",
 		"wantsToReadAndXMore": "Tumble bu dosyayı ve {{count}} tane daha okumak istiyor",
@@ -232,14 +218,11 @@
 		"wantsToViewTopLevelOutsideWorkspace": "Tumble bu dizindeki (çalışma alanı dışında) üst düzey dosyaları görüntülemek istiyor",
 		"didViewTopLevelOutsideWorkspace": "Tumble bu dizindeki (çalışma alanı dışında) üst düzey dosyaları görüntüledi",
 		"wantsToViewRecursiveOutsideWorkspace": "Tumble bu dizindeki (çalışma alanı dışında) tüm dosyaları özyinelemeli olarak görüntülemek istiyor",
-		"didViewRecursiveOutsideWorkspace": "Tumble bu dizindeki (çalışma alanı dışında) tüm dosyaları özyinelemeli olarak görüntüledi",
-		"wantsToViewMultipleDirectories": "Tumble birden fazla dizini görüntülemek istiyor"
+		"didViewRecursiveOutsideWorkspace": "Tumble bu dizindeki (çalışma alanı dışında) tüm dosyaları özyinelemeli olarak görüntüledi"
 	},
-	"commandOutput": "Komut Çıktısı",
 	"commandExecution": {
 		"running": "Çalışıyor",
 		"abort": "İptal Et",
-		"pid": "PID: {{pid}}",
 		"exitStatus": "{{exitCode}} durumuyla çıkıldı",
 		"malformedCommand": "Hatalı komut: shell sozdizimi hatasi",
 		"manageCommands": "Komut İzinlerini Yönet",
@@ -248,14 +231,9 @@
 		"removeFromAllowed": "İzin verilenler listesinden kaldır",
 		"addToDenied": "Reddedilenler listesine ekle",
 		"removeFromDenied": "Reddedilenler listesinden kaldır",
-		"abortCommand": "Komut yürütmeyi iptal et",
 		"expandCommand": "Komutu genişlet",
-		"collapseCommand": "Komutu daralt",
-		"expandManagement": "Komut yönetimi bölümünü genişlet",
-		"collapseManagement": "Komut yönetimi bölümünü daralt"
+		"collapseCommand": "Komutu daralt"
 	},
-	"response": "Yanıt",
-	"arguments": "Argümanlar",
 	"text": {
 		"rooSaid": "Tumble dedi"
 	},
@@ -275,10 +253,8 @@
 	"subtasks": {
 		"wantsToCreate": "Tumble <code>{{mode}}</code> modunda yeni bir alt görev oluşturmak istiyor",
 		"wantsToFinish": "Tumble bu alt görevi bitirmek istiyor",
-		"newTaskContent": "Alt Görev Talimatları",
 		"completionContent": "Alt Görev Tamamlandı",
 		"resultContent": "Alt Görev Sonuçları",
-		"defaultResult": "Lütfen sonraki göreve devam edin.",
 		"completionInstructions": "Alt görev tamamlandı! Sonuçları inceleyebilir ve düzeltmeler veya sonraki adımlar önerebilirsiniz. Her şey iyi görünüyorsa, sonucu üst göreve döndürmek için onaylayın.",
 		"goToSubtask": "Görevi görüntüle"
 	},
@@ -301,9 +277,6 @@
 		"diagnostics": "Ayrıntılı hata bilgisi al",
 		"proxyProvider": "Proxy tabanlı bir sağlayıcı kullanıyor gibi görünüyorsun. Günlüklerini kontrol ettiğinden ve Tumble'nun isteklerini yeniden yazmadığından emin ol."
 	},
-	"powershell": {
-		"issues": "Windows PowerShell ile ilgili sorunlar yaşıyor gibi görünüyorsunuz, lütfen şu konuya bakın"
-	},
 	"autoApprove": {
 		"tooltipManage": "Otomatik onay ayarlarını yönet",
 		"tooltipStatus": "Otomatik onay şunlar için etkinleştirildi: {{toggles}}",
@@ -312,9 +285,7 @@
 		"all": "Tümü",
 		"none": "Hiçbiri",
 		"description": "İzin istemeden bu eylemleri gerçekleştirin. Bunu yalnızca tamamen güvendiğiniz eylemler için etkinleştirin.",
-		"selectOptionsFirst": "Otomatik onayı etkinleştirmek için aşağıdan en az bir seçenek seçin",
 		"toggleAriaLabel": "Otomatik onayı aç/kapat",
-		"disabledAriaLabel": "Otomatik onay devre dışı - önce seçenekleri seçin",
 		"triggerLabelOff": "Otomatik onay kapalı",
 		"triggerLabelOffShort": "Kapalı",
 		"triggerLabel_zero": "0 otomatik onaylandı",
@@ -339,8 +310,7 @@
 		}
 	},
 	"reasoning": {
-		"thinking": "Düşünüyor",
-		"seconds": "{{count}}sn"
+		"thinking": "Düşünüyor"
 	},
 	"contextManagement": {
 		"tokens": "token",
@@ -374,13 +344,6 @@
 	"announcement": {
 		"title": "Tumble Code {{version}} Yayınlandı",
 		"support": "<githubLink>GitHub</githubLink>'da yıldız vererek Tumble Code'u destekle.",
-		"stealthModel": {
-			"feature": "<bold>Sınırlı süre ÜCRETSİZ gizli model</bold> - Code Supernova: Artık <bold>1M token bağlam penceresi</bold> ile yükseltildi! Görüntü girişlerini destekleyen çok amaçlı acentik kodlama modeli, Tumble Code Cloud üzerinden kullanılabilir.",
-			"note": "(Not: istemler ve tamamlamalar model yaratıcısı tarafından kaydedilir ve modeli geliştirmek için kullanılır)",
-			"connectButton": "Tumble Code Cloud'a bağlan",
-			"selectModel": "Başlamak için Ayarlar'da Tumble Code Cloud sağlayıcısından <code>roo/code-supernova</code>'yı seçin.",
-			"goToSettingsButton": "Ayarlar'a Git"
-		},
 		"handoff": {
 			"heading": "From Roo Code to Tumble Code",
 			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
@@ -391,12 +354,6 @@
 			"gpt55": "OpenAI Codex üzerinden GPT-5.5: En son modeli doğrudan Tumble Code'dan kullanabilmen için OpenAI Codex sağlayıcısına GPT-5.5 desteği eklendi.",
 			"claudeOpus47": "Vertex AI'da Claude Opus 4.7: Anthropic'in en yeni amiral gemisi akıl yürütme modeli olan Claude Opus 4.7 Vertex AI sağlayıcısına eklendi.",
 			"checkpointNav": "Önceki Checkpoint Navigasyonu: Sohbetten önceki checkpoint'lere geri atlayabilmen için kontroller eklendi ve tam i18n desteği sunuluyor."
-		},
-		"cloudAgents": {
-			"heading": "Cloud'daki yenilikler:",
-			"specialized": "<bold>Explainer</bold>, <bold>Planner</bold> ve <bold>Coder</bold> tanıtımı - iş akışlarını geliştirmek için üç özel bulut ajanı.",
-			"description": "Ajanlar bulutta birlikte çalışır ve web'den veya Slack üzerinden tetiklenebilir.",
-			"tryButton": "Bulut Ajanlarını Dene"
 		}
 	},
 	"costs": {
@@ -479,22 +436,13 @@
 	"editMessage": {
 		"placeholder": "Mesajını düzenle..."
 	},
-	"command": {
-		"triggerDescription": "{{name}} komutunu tetikle"
-	},
 	"slashCommands": {
-		"tooltip": "Eğik çizgi komutlarını yönet",
-		"title": "Eğik Çizgi Komutları",
 		"description": "Yerleşik eğik çizgi komutlarını kullanın veya sık kullanılan komut istemleri ve iş akışlarına hızlı erişim için özel komutlar oluşturun. <DocsLink>Belgeler</DocsLink>",
 		"manageCommands": "Ayarlarda eğik çizgi komutlarını yönet",
-		"builtInCommands": "Yerleşik Komutlar",
 		"globalCommands": "Genel Komutlar",
 		"workspaceCommands": "Çalışma Alanı Komutları",
-		"globalCommand": "Genel komut",
 		"editCommand": "Komutu düzenle",
 		"deleteCommand": "Komutu sil",
-		"newGlobalCommandPlaceholder": "Yeni genel komut...",
-		"newWorkspaceCommandPlaceholder": "Yeni çalışma alanı komutu...",
 		"deleteDialog": {
 			"title": "Komutu Sil",
 			"description": "\"{{name}}\" komutunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
@@ -519,9 +467,7 @@
 	"todo": {
 		"partial": "{{total}} yapılacaklar listesinden {{completed}} tanesi tamamlandı",
 		"complete": "{{total}} yapılacaklar listesi tamamlandı",
-		"updated": "Yapılacaklar listesi güncellendi",
-		"completed": "Tamamlandı",
-		"started": "Başladı"
+		"updated": "Yapılacaklar listesi güncellendi"
 	},
 	"tooManyTools": {
 		"title": "Çok fazla araç etkinleştirildi",

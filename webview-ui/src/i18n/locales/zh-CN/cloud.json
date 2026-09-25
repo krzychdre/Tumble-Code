@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "头像",
 	"logOut": "退出登录",
-	"testApiAuthentication": "测试 API 认证",
 	"signIn": "连接到 Tumble Code Cloud",
 	"connect": "开始使用",
 	"cloudBenefitsTitle": "试用 Tumble Code Cloud",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "从浏览器复制重定向 URL 并粘贴到这里：",
 	"startOver": "重新开始",
 	"personalAccount": "个人账户",
-	"switchAccount": "切换 Tumble Code Cloud 账户",
 	"createTeamAccount": "创建团队账户",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"autoApprovePowerUser": "给 Tumble 一些独立性？使用 Tumble Code Cloud 从任何地方控制它。 <learnMoreLink>了解更多</learnMoreLink>。",
 		"longRunningTask": "这可能需要一段时间。使用 Cloud 从任何地方继续。",
 		"taskList": "喜欢Tumble吗？快来看看Tumble Code Cloud：随时随地关注和控制您的任务，运行自主云代理，获取使用统计数据等等。 <learnMoreLink>了解更多</learnMoreLink>。"
 	}

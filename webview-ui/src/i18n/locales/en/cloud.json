@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "Profile picture",
 	"logOut": "Log out",
-	"testApiAuthentication": "Test API Authentication",
 	"signIn": "Connect to Tumble Code Cloud",
 	"connect": "Get started",
 	"cloudBenefitsTitle": "Try Tumble Code Cloud",
@@ -21,10 +20,8 @@
 	"pasteCallbackUrl": "Copy the redirect URL from your browser and paste it here:",
 	"startOver": "Start over",
 	"personalAccount": "Personal Account",
-	"switchAccount": "Switch Tumble Code Cloud Account",
 	"createTeamAccount": "Create Team Account",
 	"upsell": {
-		"autoApprovePowerUser": "Giving Tumble some independence? Control it from anywhere with Tumble Code Cloud. <learnMoreLink>Learn more</learnMoreLink>.",
 		"longRunningTask": "This might take a while. Continue from anywhere with Cloud.",
 		"taskList": "Enjoying Tumble? Check out Tumble Code Cloud: follow and control your tasks from anywhere, run autonomous Cloud agents, get usage stats and more. <learnMoreLink>Learn more</learnMoreLink>."
 	}

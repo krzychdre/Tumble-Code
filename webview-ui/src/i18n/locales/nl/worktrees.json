@@ -1,39 +1,27 @@
 {
 	"title": "Worktrees",
-	"done": "Klaar",
 	"description": "Met Git worktrees kun je tegelijkertijd aan meerdere branches werken in aparte mappen. Elke worktree krijgt zijn eigen VS Code-venster met Tumble Code.",
-
 	"notGitRepo": "Deze workspace is geen Git-repository. Worktrees vereisen een Git-repository om te werken.",
-	"multiTumbletNotSupported": "Worktrees worden niet ondersteund in multi-root workspaces. Open één map om worktrees te gebruiken.",
+	"multiRootNotSupported": "Worktrees worden niet ondersteund in multi-root workspaces. Open één map om worktrees te gebruiken.",
 	"subfolderNotSupported": "Deze workspace is een submap van een Git-repository. Open de repository-root om worktrees te gebruiken.",
-	"gitTumblet": "Git-root",
-
+	"gitRoot": "Git-root",
 	"includeFileExists": ".worktreeinclude-bestand gevonden — bestanden worden naar nieuwe worktrees gekopieerd",
 	"noIncludeFile": "Geen .worktreeinclude-bestand gevonden",
 	"createFromGitignore": "Aanmaken vanuit .gitignore",
-
 	"primary": "Primair",
-	"current": "Huidig",
 	"locked": "Vergrendeld",
 	"detachedHead": "Detached HEAD",
 	"noBranch": "Geen branch",
-
-	"switchInThisWindow": "Naar worktree wisselen",
 	"openInNewWindow": "Openen in nieuw venster",
 	"delete": "Verwijderen",
 	"newWorktree": "Nieuwe Worktree",
-
 	"createWorktree": "Worktree aanmaken",
 	"branchName": "Branchnaam",
-	"createNewBranch": "Nieuwe branch aanmaken",
-	"checkoutExisting": "Bestaande branch uitchecken",
 	"baseBranch": "Basisbranch",
 	"loadingBranches": "Branches laden...",
 	"selectBranch": "Branch selecteren",
 	"searchBranch": "Branches zoeken...",
 	"noBranchFound": "Geen branch gevonden",
-	"localBranches": "Lokale branches",
-	"remoteBranches": "Remote-branches",
 	"worktreePath": "In",
 	"selectWorktreeLocation": "Locatie Worktree selecteren",
 	"selectFolderForWorktree": "Map voor nieuwe worktree selecteren",
@@ -44,7 +32,6 @@
 	"copyingFiles": "Bestanden kopiëren...",
 	"copyingProgress": "{{item}} — {{copied}} gekopieerd",
 	"cancel": "Annuleren",
-
 	"deleteWorktree": "Worktree verwijderen",
 	"deleteWarning": "Deze actie kan niet ongedaan worden gemaakt. Het volgende wordt verwijderd:",
 	"deleteWarningBranch": "De branch en alle niet-gecommitte wijzigingen",
@@ -53,17 +40,12 @@
 	"forceDelete": "Geforceerd verwijderen",
 	"worktreeIsLocked": "worktree is vergrendeld",
 	"deleting": "Bezig met verwijderen...",
-
-	"close": "Sluiten",
-
 	"showInHomeScreen": "Worktrees weergeven op startscherm",
-
 	"selector": {
 		"worktree": "Worktree",
 		"title": "Worktrees",
 		"tooltip": "Tussen worktrees wisselen",
 		"description": "Met Git worktrees kun je tegelijkertijd aan meerdere branches werken. Klik om van workspace te wisselen.",
-		"settings": "Worktrees beheren",
-		"info": "Met Git worktrees kun je meerdere werkdirectories aan dezelfde repository koppelen."
+		"settings": "Worktrees beheren"
 	}
 }

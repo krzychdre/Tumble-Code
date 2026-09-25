@@ -2,7 +2,6 @@
 	"title": "Cloud",
 	"profilePicture": "Profielfoto",
 	"logOut": "Uitloggen",
-	"testApiAuthentication": "API-authenticatie testen",
 	"signIn": "Verbind met Tumble Code Cloud",
 	"connect": "Aan de slag",
 	"cloudBenefitsTitle": "Probeer Tumble Code Cloud",
@@ -20,11 +19,9 @@
 	"pasteCallbackUrl": "Kopieer de redirect-URL uit je browser en plak hem hier:",
 	"startOver": "Opnieuw beginnen",
 	"personalAccount": "Persoonlijk Account",
-	"switchAccount": "Wissel van Tumble Code Cloud Account",
 	"createTeamAccount": "Teamaccount aanmaken",
 	"cloudUrlPillLabel": "Tumble Code Cloud URL",
 	"upsell": {
-		"autoApprovePowerUser": "Tumble wat onafhankelijkheid geven? Bedien het overal met Tumble Code Cloud. <learnMoreLink>Meer informatie</learnMoreLink>.",
 		"longRunningTask": "Dit kan even duren. Ga overal verder met de Cloud.",
 		"taskList": "Geniet je van Tumble? Bekijk Tumble Code Cloud: volg en beheer je taken overal, voer autonome Cloud-agents uit, krijg gebruiksstatistieken en meer. <learnMoreLink>Meer informatie</learnMoreLink>."
 	}

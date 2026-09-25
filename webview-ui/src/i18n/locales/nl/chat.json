@@ -1,17 +1,14 @@
 {
-	"greeting": "Welkom bij Tumble Code",
 	"task": {
 		"title": "Taak",
 		"expand": "Taak uitvouwen",
 		"collapse": "Taak samenvouwen",
 		"seeMore": "Meer weergeven",
-		"seeLess": "Minder weergeven",
 		"tokens": "Tokens",
 		"cache": "Cache",
 		"apiCost": "API-kosten",
 		"size": "Grootte",
 		"contextWindow": "Contextlengte",
-		"closeAndStart": "Taak sluiten en een nieuwe starten",
 		"export": "Taakgeschiedenis exporteren",
 		"delete": "Taak verwijderen (Shift + Klik om bevestiging over te slaan)",
 		"condenseContext": "Context intelligent samenvatten",
@@ -53,10 +50,7 @@
 	"tokenProgress": {
 		"availableSpace": "Beschikbare ruimte: {{amount}} tokens",
 		"tokensUsed": "Gebruikte tokens: {{used}} van {{total}}",
-		"reservedForResponse": "Gereserveerd voor modelantwoord: {{amount}} tokens",
-		"tokensUsedLabel": "Gebruikte tokens",
-		"reservedForResponseLabel": "Gereserveerd voor antwoord",
-		"availableSpaceLabel": "Beschikbare ruimte"
+		"reservedForResponse": "Gereserveerd voor modelantwoord: {{amount}} tokens"
 	},
 	"reject": {
 		"title": "Weigeren",
@@ -88,19 +82,16 @@
 		"tooltip": "Beëindig de huidige taak"
 	},
 	"stop": {
-		"title": "Stoppen",
-		"tooltip": "Stop de huidige taak"
+		"title": "Stoppen"
 	},
 	"cancel": {
-		"title": "Annuleren",
-		"tooltip": "Annuleer de huidige bewerking"
+		"title": "Annuleren"
 	},
 	"enqueueMessage": "Bericht aan de wachtrij toevoegen (wordt verzonden nadat de huidige taak is voltooid)",
 	"scrollToBottom": "Scroll naar onderaan de chat",
 	"scrollToLatestCheckpoint": "Scroll naar het vorige checkpoint",
 	"about": "Tumble Code is een heel AI-ontwikkelteam in je editor.",
 	"docs": "Bekijk onze <DocsLink>documentatie</DocsLink> voor meer informatie.",
-	"onboarding": "Je takenlijst in deze werkruimte is leeg.",
 	"rooTips": {
 		"customizableModes": {
 			"title": "Aanpasbare modi",
@@ -137,7 +128,6 @@
 		"noResults": "Geen resultaten gevonden"
 	},
 	"addImages": "Afbeeldingen toevoegen aan bericht",
-	"sendMessage": "Bericht verzenden",
 	"pressToSend": "Druk op {{keyCombination}} om te verzenden",
 	"typeMessage": "Typ een bericht...",
 	"typeTask": "Typ hier je taak...",
@@ -146,7 +136,6 @@
 	"dragFilesImages": "houd shift ingedrukt om bestanden/afbeeldingen te slepen",
 	"errorReadingFile": "Fout bij het lezen van bestand",
 	"noValidImages": "Er zijn geen geldige afbeeldingen verwerkt",
-	"separator": "Scheidingsteken",
 	"edit": "Bewerken...",
 	"forNextMode": "voor volgende modus",
 	"forPreviousMode": "voor vorige modus",
@@ -174,7 +163,6 @@
 	},
 	"checkpoint": {
 		"regular": "Checkpoint",
-		"initializingWarning": "Checkpoint wordt nog steeds geïnitialiseerd... Als dit te lang duurt, kun je checkpoints uitschakelen in de <settingsLink>instellingen</settingsLink> en je taak opnieuw starten.",
 		"menu": {
 			"viewDiff": "Bekijk verschil",
 			"more": "Meer opties",
@@ -201,10 +189,8 @@
 		"wantsToEdit": "Tumble wil dit bestand bewerken",
 		"wantsToEditOutsideWorkspace": "Tumble wil dit bestand buiten de werkruimte bewerken",
 		"wantsToEditProtected": "Tumble wil een beveiligd configuratiebestand bewerken",
-		"wantsToCreate": "Tumble wil een nieuw bestand aanmaken",
 		"wantsToSearchReplace": "Tumble wil zoeken en vervangen in dit bestand",
 		"didSearchReplace": "Tumble heeft zoeken en vervangen uitgevoerd op dit bestand",
-		"wantsToInsert": "Tumble wil inhoud invoegen in dit bestand",
 		"wantsToInsertWithLineNumber": "Tumble wil inhoud invoegen in dit bestand op regel {{lineNumber}}",
 		"wantsToInsertAtEnd": "Tumble wil inhoud toevoegen aan het einde van dit bestand",
 		"wantsToReadAndXMore": "Tumble wil dit bestand en nog {{count}} andere lezen",
@@ -227,14 +213,11 @@
 		"wantsToViewTopLevelOutsideWorkspace": "Tumble wil de bovenliggende bestanden in deze map (buiten werkruimte) bekijken",
 		"didViewTopLevelOutsideWorkspace": "Tumble heeft de bovenliggende bestanden in deze map (buiten werkruimte) bekeken",
 		"wantsToViewRecursiveOutsideWorkspace": "Tumble wil alle bestanden in deze map (buiten werkruimte) recursief bekijken",
-		"didViewRecursiveOutsideWorkspace": "Tumble heeft alle bestanden in deze map (buiten werkruimte) recursief bekeken",
-		"wantsToViewMultipleDirectories": "Tumble wil meerdere mappen bekijken"
+		"didViewRecursiveOutsideWorkspace": "Tumble heeft alle bestanden in deze map (buiten werkruimte) recursief bekeken"
 	},
-	"commandOutput": "Commando-uitvoer",
 	"commandExecution": {
 		"running": "Lopend",
 		"abort": "Afbreken",
-		"pid": "PID: {{pid}}",
 		"exitStatus": "Afgesloten met status {{exitCode}}",
 		"malformedCommand": "Ongeldig commando: shell syntaxisfout",
 		"manageCommands": "Automatisch goedgekeurde commando's",
@@ -242,14 +225,9 @@
 		"removeFromAllowed": "Verwijderen van toegestane lijst",
 		"addToDenied": "Toevoegen aan geweigerde lijst",
 		"removeFromDenied": "Verwijderen van geweigerde lijst",
-		"abortCommand": "Commando-uitvoering afbreken",
 		"expandCommand": "Commando uitvouwen",
-		"collapseCommand": "Commando samenvouwen",
-		"expandManagement": "Beheersectie voor commando's uitvouwen",
-		"collapseManagement": "Beheersectie voor commando's samenvouwen"
+		"collapseCommand": "Commando samenvouwen"
 	},
-	"response": "Antwoord",
-	"arguments": "Argumenten",
 	"text": {
 		"rooSaid": "Tumble zei"
 	},
@@ -269,10 +247,8 @@
 	"subtasks": {
 		"wantsToCreate": "Tumble wil een nieuwe subtaak aanmaken in {{mode}} modus",
 		"wantsToFinish": "Tumble wil deze subtaak voltooien",
-		"newTaskContent": "Subtaak-instructies",
 		"completionContent": "Subtaak voltooid",
 		"resultContent": "Subtaakresultaten",
-		"defaultResult": "Ga verder met de volgende taak.",
 		"completionInstructions": "Subtaak voltooid! Je kunt de resultaten bekijken en eventuele correcties of volgende stappen voorstellen. Als alles goed is, bevestig dan om het resultaat terug te sturen naar de hoofdtaak.",
 		"goToSubtask": "Taak weergeven"
 	},
@@ -300,9 +276,6 @@
 		"diagnostics": "Gedetailleerde foutinformatie ophalen",
 		"proxyProvider": "Je lijkt een proxy-gebaseerde provider te gebruiken. Zorg ervoor dat je de logs controleert en dat het geen Tumble-verzoeken herschrijft."
 	},
-	"powershell": {
-		"issues": "Het lijkt erop dat je problemen hebt met Windows PowerShell, zie deze"
-	},
 	"autoApprove": {
 		"tooltipManage": "Beheer instellingen voor automatische goedkeuring",
 		"tooltipStatus": "Automatische goedkeuring ingeschakeld voor: {{toggles}}",
@@ -311,9 +284,7 @@
 		"all": "Alles",
 		"none": "Geen",
 		"description": "Voer deze acties uit zonder om toestemming te vragen. Schakel dit alleen in voor acties die je volledig vertrouwt.",
-		"selectOptionsFirst": "Selecteer hieronder minstens één optie om automatische goedkeuring in te schakelen",
 		"toggleAriaLabel": "Automatische goedkeuring in-/uitschakelen",
-		"disabledAriaLabel": "Automatische goedkeuring uitgeschakeld - selecteer eerst opties",
 		"triggerLabelOff": "Automatisch goedkeuren uit",
 		"triggerLabelOffShort": "Uit",
 		"triggerLabel_zero": "0 automatisch goedgekeurd",
@@ -340,13 +311,6 @@
 	"announcement": {
 		"title": "Tumble Code {{version}} uitgebracht",
 		"support": "Steun Tumble Code door ons een ster te geven op <githubLink>GitHub</githubLink>.",
-		"stealthModel": {
-			"feature": "<bold>Beperkt tijd GRATIS stealth model</bold> - Code Supernova: Nu geüpgraded met een <bold>1M token contextvenster</bold>! Een veelzijdig agentisch codeermodel dat beeldinvoer ondersteunt, beschikbaar via Tumble Code Cloud.",
-			"note": "(Opmerking: prompts en aanvullingen worden gelogd door de modelmaker en gebruikt om het model te verbeteren)",
-			"connectButton": "Verbinden met Tumble Code Cloud",
-			"selectModel": "Selecteer <code>roo/code-supernova</code> van de Tumble Code Cloud provider in Instellingen om te beginnen.",
-			"goToSettingsButton": "Ga naar Instellingen"
-		},
 		"handoff": {
 			"heading": "From Roo Code to Tumble Code",
 			"description": "The original Roo Code team has moved on to focus on Roomote, their new product. Roo Code reached three million installs under their stewardship and we thank them for everything they built. <bold>Tumble Code is the community fork that picked up the codebase from there</bold>. Going forward we're putting the accent on local inference engines — Ollama, LM Studio, llama.cpp, and other locally-hosted LLMs — so you can use AI coding assistance without paying per-token or sending your code to a cloud provider.",
@@ -357,17 +321,10 @@
 			"gpt55": "GPT-5.5 via OpenAI Codex: GPT-5.5-ondersteuning toegevoegd in de OpenAI Codex-provider, zodat je het nieuwste model direct vanuit Tumble Code kunt gebruiken.",
 			"claudeOpus47": "Claude Opus 4.7 op Vertex AI: Claude Opus 4.7 toegevoegd aan de Vertex AI-provider voor Anthropic's nieuwste vlaggenschip-reasoningmodel.",
 			"checkpointNav": "Navigatie naar vorige checkpoints: Bediening toegevoegd in de chat om terug te springen door eerdere checkpoints, met volledige i18n-ondersteuning."
-		},
-		"cloudAgents": {
-			"heading": "Nieuw in de Cloud:",
-			"specialized": "Introductie van <bold>Explainer</bold>, <bold>Planner</bold> en <bold>Coder</bold> - drie gespecialiseerde cloud-agents om je workflows te verbeteren.",
-			"description": "De agents werken samen in de cloud en kunnen worden geactiveerd vanaf het web of via Slack.",
-			"tryButton": "Probeer Cloud-agents"
 		}
 	},
 	"reasoning": {
-		"thinking": "Denkt na",
-		"seconds": "{{count}}s"
+		"thinking": "Denkt na"
 	},
 	"contextManagement": {
 		"tokens": "tokens",
@@ -478,22 +435,13 @@
 	"editMessage": {
 		"placeholder": "Bewerk je bericht..."
 	},
-	"command": {
-		"triggerDescription": "Activeer de {{name}} opdracht"
-	},
 	"slashCommands": {
-		"tooltip": "Slash-opdrachten beheren",
-		"title": "Slash-opdrachten",
 		"description": "Gebruik ingebouwde slash-opdrachten of maak aangepaste voor snelle toegang tot veelgebruikte prompts en workflows. <DocsLink>Documentatie</DocsLink>",
 		"manageCommands": "Beheer slash-opdrachten in instellingen",
-		"builtInCommands": "Ingebouwde Opdrachten",
 		"globalCommands": "Globale Opdrachten",
 		"workspaceCommands": "Werkruimte Opdrachten",
-		"globalCommand": "Globale opdracht",
 		"editCommand": "Opdracht bewerken",
 		"deleteCommand": "Opdracht verwijderen",
-		"newGlobalCommandPlaceholder": "Nieuwe globale opdracht...",
-		"newWorkspaceCommandPlaceholder": "Nieuwe werkruimte opdracht...",
 		"deleteDialog": {
 			"title": "Opdracht Verwijderen",
 			"description": "Weet je zeker dat je de opdracht \"{{name}}\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.",
@@ -518,9 +466,7 @@
 	"todo": {
 		"partial": "{{completed}} van {{total}} to-do's voltooid",
 		"complete": "{{total}} to-do's voltooid",
-		"updated": "De to-do-lijst is bijgewerkt",
-		"completed": "Voltooid",
-		"started": "Gestart"
+		"updated": "De to-do-lijst is bijgewerkt"
 	},
 	"tooManyTools": {
 		"title": "Te veel tools ingeschakeld",
