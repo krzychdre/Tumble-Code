@@ -12,7 +12,7 @@ exports[`Responses API handlers: fallback HTTP errors > 400 with a detail field 
   "native": {
     "chunks": [],
     "encryptedContent": undefined,
-    "error": "Invalid request to Responses API. Please check your input parameters. - {"detail":"Stream must be set to true"}",
+    "error": "Invalid request to Responses API. Please check your input parameters. - Stream must be set to true",
     "responseId": undefined,
     "status": 400,
   },

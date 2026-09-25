@@ -540,6 +540,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 						errorDetails = errorJson.error.message
 					} else if (errorJson.message) {
 						errorDetails = errorJson.message
+					} else if (errorJson.detail) {
+						errorDetails = errorJson.detail
 					} else {
 						errorDetails = errorText
 					}
