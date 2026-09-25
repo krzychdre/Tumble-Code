@@ -28,7 +28,9 @@ await build({
 	...config,
 	...(entry
 		? {
-				entry: [entry],
+				// An object entry is a file path; an array entry would be a glob
+				// pattern, which a Windows path (backslashes) never matches.
+				entry: { "render-probe": entry },
 				// The probe lives outside the CLI, so point bare imports at the CLI's node_modules.
 				esbuildOptions(options, context) {
 					config.esbuildOptions?.(options, context)
