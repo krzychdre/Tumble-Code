@@ -306,3 +306,19 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   `onWheel` passive, so `preventDefault` was ignored and the page behind scrolled). FileChangesPanel DONE #379: the
   reset effect depended on `clineMessages` (every token collapsed expanded rows); now on the first message ts, like
   ChatView. All test-first with changesets.
+- 2026-09-25 WEB-3 DONE #381 (`70b22d14f`, exact Save payload + immediate-write characterization), #382 (`1df2ac6b4`,
+  Save fallback `showRooIgnoredFiles` was `true` vs host `false`, latent), #383 (`1ceb649eb`, real bug: turning MCP
+  off in the MCP tab and then saving any other setting turned MCP back on; `mcpEnabled` left the Save payload), #384
+  (`70fd2c238`): `settings/schema.ts` (rows with `apply`, `default` from `SETTINGS_DEFAULTS`, `serialize`,
+  `equals`; `IMMEDIATE_ONLY_SETTINGS`), `useCachedSettings.ts` (9 setters to 3), typed `postImmediateSetting.ts`,
+  Save buffer no longer seeded with the whole context, `SetCachedStateField` keyed on `ExtensionState`, TabButton
+  class; SettingsView 1,035 to 740 lines. Open: (1) the condense profile, memory writer profile and memory
+  directory cannot be cleared (sent as `|| undefined`, dropped by JSON; `mergeExtensionState` keeps the old value):
+  needs an owner decision on the cleared-value wire format; (2) memory defaults only literals in `ContextProxy`;
+  (3) ModesView's `loadApiConfiguration` silently resets unsaved settings edits; (4) chat components still post
+  `updateSettings` directly.
+- 2026-09-25 WEB-2a DONE #385 (`01b83a1c8`, 4 characterization tests with the real ChatRow, each lookup broken
+  locally to prove sensitivity) and #386 (`4c4ed9203`): rows get `meta` from `computeRowMeta(...).byTs`;
+  `ChatRowContent` no longer reads `clineMessages`, `getPreviousTodos` deleted. Rows still consume the context
+  (`mcpServers`, `alwaysAllowMcp`, `currentCheckpoint`, `mode`, `currentTaskItem`), so they still re-render per token:
+  WEB-4 step 2/3.
