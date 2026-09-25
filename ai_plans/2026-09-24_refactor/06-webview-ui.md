@@ -400,3 +400,11 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   token through the context reads listed under WEB-2a/2b).
 - 2026-09-25 Phase 7 final verification on main 4691b74b7: 38 of 38 turbo tasks green; webview 2,331 tests (1,694
   before Phase 7), src 9,855, cli 1,075; knip 0; webview production build OK; compiler bailouts 17 to 8.
+- 2026-09-25 WEB-4 step 3 MEASURED, SKIPPED (owner asked to measure): Chrome 133 headless, prod `vite build`, real
+  Virtuoso (3 rows mounted), 300 tokens, 3 real tasks: rows off the context saves 0 to 0.1 ms per token (noise);
+  jsdom prod + compiler worst case (60 rows) 0.43 ms. Dev-mode specs without the compiler exaggerate it (C 21.8 to
+  14.3 ms). Per token the host sends one `messageUpdated`; full `state` only per new message. Bigger costs found
+  instead: (1) `getLatestTodo(messages)` in the `latestTodos` memo re-parses all tool JSON per token, bypassing
+  `parseToolCached`: 28.7 to 4.7 ms per token on a task with 8.7 MB tool JSON (86% of the main thread at 30 tok/s);
+  (2) `usePromptHistory` replaces its state per token: a second ChatTextArea commit (0.4 to 1 ms) and Up-arrow
+  history navigation resets while streaming. Both taken as S items.
