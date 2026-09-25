@@ -478,6 +478,35 @@ describe("Responses API handlers: replayed event fixtures", () => {
 	})
 })
 
+// OpenAI Native and OpenAI Codex talk to the same Responses API, so the same events must
+// give the same chunks. Only the price differs (Codex is a subscription: cost 0).
+describe("Responses API handlers: OpenAI Native and Codex agree", () => {
+	afterEach(() => {
+		vitest.restoreAllMocks()
+		vitest.unstubAllGlobals()
+	})
+
+	const withoutCost = (outcome: Outcome) => ({
+		...outcome,
+		chunks: outcome.chunks.map((chunk) => {
+			if (chunk.type !== "usage") {
+				return chunk
+			}
+			const { totalCost: _totalCost, ...rest } = chunk
+			return rest
+		}),
+	})
+
+	it.each(Object.entries(fixtures))("%s", async (_name, events) => {
+		const outcomes = await replay(events)
+		expect(withoutCost(outcomes.codex)).toEqual(withoutCost(outcomes.native))
+		// The error texts of the fallback are each handler's own (Codex translates them).
+		expect(withoutCost({ ...outcomes.codexSse, error: undefined })).toEqual(
+			withoutCost({ ...outcomes.nativeSse, error: undefined }),
+		)
+	})
+})
+
 // Tool definitions exercising both schema paths: a native tool (strict) with a nullable
 // property and a nested object, and an MCP tool (not strict) with an optional property.
 const tools: OpenAI.Chat.ChatCompletionTool[] = [

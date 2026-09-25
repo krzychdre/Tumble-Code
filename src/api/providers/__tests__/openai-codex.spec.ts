@@ -77,6 +77,58 @@ describe("OpenAiCodexHandler.getModel", () => {
 	})
 })
 
+describe("OpenAiCodexHandler usage", () => {
+	afterEach(() => {
+		vitest.restoreAllMocks()
+	})
+
+	// GPT-5.6 reports the tokens it wrote to the prompt cache only in
+	// usage.input_tokens_details.cache_write_tokens. OpenAI Native reads them (7be31a426);
+	// the Codex copy of the usage code did not (D4 in the refactor plan).
+	it("reports GPT-5.6 cache writes from input_tokens_details", async () => {
+		vitest.spyOn(openAiCodexOAuthManager, "getAccessToken").mockResolvedValue("test-token")
+		vitest.spyOn(openAiCodexOAuthManager, "getAccountId").mockResolvedValue("acct_test")
+		const handler = new OpenAiCodexHandler({ apiModelId: "gpt-5.6-sol" })
+		Reflect.set(handler, "client", {
+			responses: {
+				create: vitest.fn().mockResolvedValue({
+					async *[Symbol.asyncIterator]() {
+						yield {
+							type: "response.completed",
+							response: {
+								id: "r1",
+								status: "completed",
+								output: [],
+								usage: {
+									input_tokens: 10000,
+									input_tokens_details: { cached_tokens: 2000, cache_write_tokens: 3000 },
+									output_tokens: 500,
+								},
+							},
+						}
+					},
+				}),
+			},
+		})
+
+		const usage = []
+		for await (const chunk of handler.createMessage("system", [{ role: "user", content: "Hi" }])) {
+			if (chunk.type === "usage") usage.push(chunk)
+		}
+
+		expect(usage).toEqual([
+			{
+				type: "usage",
+				inputTokens: 10000,
+				outputTokens: 500,
+				cacheWriteTokens: 3000,
+				cacheReadTokens: 2000,
+				totalCost: 0,
+			},
+		])
+	})
+})
+
 describe("OpenAiCodexHandler.completePrompt", () => {
 	function asyncStreamFrom(events: unknown[]) {
 		return {
