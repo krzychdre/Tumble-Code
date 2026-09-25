@@ -171,6 +171,9 @@ describe("QdrantVectorStore against a fake Qdrant server (real client)", () => {
 	it("keeps an existing collection whose vector size matches and treats 'already exists' index errors as success", async () => {
 		handler = (req) => {
 			if (req.method === "GET" && req.path === collectionPath) return ok(collectionInfo(768, 3))
+			if (req.method === "POST" && req.path === `${collectionPath}/points`) {
+				return ok([{ id: metadataId, payload: { type: "metadata", document_prefix: "" } }])
+			}
 			if (req.method === "PUT" && req.path === `${collectionPath}/index`) {
 				return qdrantError(400, "Bad request: Index already exists")
 			}
@@ -179,7 +182,12 @@ describe("QdrantVectorStore against a fake Qdrant server (real client)", () => {
 
 		await expect(createStore(768).initialize()).resolves.toBe(false)
 
-		expect(calls()).toEqual([{ method: "GET", path: collectionPath, body: undefined }, ...expectedIndexCalls])
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			// A non-empty collection: which document prefix were its vectors embedded with?
+			{ method: "POST", path: `${collectionPath}/points`, body: { ids: [metadataId], with_payload: true } },
+			...expectedIndexCalls,
+		])
 		// The "already exists" reason lives only on error.data, so being silent proves we read it.
 		expect(console.warn).not.toHaveBeenCalledWith(
 			expect.stringContaining("Could not create payload index"),
@@ -205,6 +213,39 @@ describe("QdrantVectorStore against a fake Qdrant server (real client)", () => {
 
 		expect(calls()).toEqual([
 			{ method: "GET", path: collectionPath, body: undefined },
+			{ method: "DELETE", path: collectionPath, body: undefined },
+			{ method: "GET", path: collectionPath, body: undefined },
+			{ method: "PUT", path: collectionPath, body: expectedCreateBody(768) },
+			...expectedIndexCalls,
+		])
+	})
+
+	it("recreates a same-size collection whose code chunks were embedded with the legacy query prefix", async () => {
+		let deleted = false
+		handler = (req) => {
+			if (req.method === "GET" && req.path === collectionPath) {
+				return deleted ? qdrantError(404, "Not found") : ok(collectionInfo(768, 10))
+			}
+			if (req.method === "POST" && req.path === `${collectionPath}/points`) {
+				// Legacy marker: written before document_prefix existed
+				return ok([{ id: metadataId, payload: { type: "metadata", indexing_complete: true } }])
+			}
+			if (req.method === "DELETE" && req.path === collectionPath) {
+				deleted = true
+				return ok(true)
+			}
+			if (req.method === "PUT") return ok(true)
+			return undefined
+		}
+
+		const store = new QdrantVectorStore(workspacePath, baseUrl, 768, "secret-key", {
+			legacyDocumentPrefix: "Represent this query for searching relevant code: ",
+		})
+		await expect(store.initialize()).resolves.toBe(true)
+
+		expect(calls()).toEqual([
+			{ method: "GET", path: collectionPath, body: undefined },
+			{ method: "POST", path: `${collectionPath}/points`, body: { ids: [metadataId], with_payload: true } },
 			{ method: "DELETE", path: collectionPath, body: undefined },
 			{ method: "GET", path: collectionPath, body: undefined },
 			{ method: "PUT", path: collectionPath, body: expectedCreateBody(768) },
@@ -421,7 +462,12 @@ describe("QdrantVectorStore against a fake Qdrant server (real client)", () => {
 						{
 							id: metadataId,
 							vector: [0, 0, 0],
-							payload: { type: "metadata", indexing_complete: true, completed_at: expect.any(Number) },
+							payload: {
+								type: "metadata",
+								indexing_complete: true,
+								document_prefix: "",
+								completed_at: expect.any(Number),
+							},
 						},
 					],
 				},

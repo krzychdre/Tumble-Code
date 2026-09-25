@@ -2,7 +2,13 @@ import type { EmbedderProvider } from "@roo-code/types"
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { IEmbedder, EmbeddingResponse, EmbedderInfo, EmbedderValidationResult } from "../interfaces/embedder"
+import {
+	IEmbedder,
+	EmbeddingInputType,
+	EmbeddingResponse,
+	EmbedderInfo,
+	EmbedderValidationResult,
+} from "../interfaces/embedder"
 import { MAX_BATCH_TOKENS, MAX_ITEM_TOKENS, MAX_BATCH_RETRIES, INITIAL_RETRY_DELAY_MS } from "../constants"
 import { getModelQueryPrefix } from "../../../shared/embeddingModels"
 import { t } from "../../../i18n"
@@ -56,7 +62,9 @@ export function decodeEmbedding(embedding: string | number[]): number[] {
  * Shared behavior of every code-index embedder. A subclass only says how one batch reaches
  * its backend (`embedBatch`); this class owns the rest, identically for all of them:
  *
- * - the model's query prefix, skipped when it would push an input over the item limit
+ * - the model's query prefix on search queries only (indexed code is embedded without it, as
+ *   asymmetric models like nomic-embed-code expect), skipped when it would push an input over
+ *   the item limit
  * - inputs over the item limit are cut to it (never dropped, so vector i always belongs
  *   to input i; callers pair vectors with code blocks by position)
  * - batching under MAX_BATCH_TOKENS, keeping input order
@@ -112,9 +120,13 @@ export abstract class BaseHttpEmbedder implements IEmbedder {
 		return undefined
 	}
 
-	async createEmbeddings(texts: string[], model?: string): Promise<EmbeddingResponse> {
+	async createEmbeddings(
+		texts: string[],
+		model?: string,
+		inputType: EmbeddingInputType = "document",
+	): Promise<EmbeddingResponse> {
 		const modelToUse = model || this.defaultModelId
-		const prepared = this.prepareTexts(texts, modelToUse)
+		const prepared = this.prepareTexts(texts, modelToUse, inputType)
 
 		const embeddings: number[][] = []
 		const usage = this.reportsUsage ? { promptTokens: 0, totalTokens: 0 } : undefined
@@ -162,8 +174,10 @@ export abstract class BaseHttpEmbedder implements IEmbedder {
 		})
 	}
 
-	private prepareTexts(texts: string[], model: string): string[] {
-		const queryPrefix = getModelQueryPrefix(this.queryPrefixProvider, model)
+	private prepareTexts(texts: string[], model: string, inputType: EmbeddingInputType): string[] {
+		// Only queries get the prefix. Changing what documents are embedded with changes every
+		// stored vector: QdrantVectorStore records it as document_prefix and rebuilds on a change.
+		const queryPrefix = inputType === "query" ? getModelQueryPrefix(this.queryPrefixProvider, model) : undefined
 
 		return texts.map((text, index) => {
 			if (queryPrefix && !text.startsWith(queryPrefix)) {

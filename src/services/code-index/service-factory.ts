@@ -7,7 +7,7 @@ import { TelemetryEventName } from "@roo-code/types"
 
 import { t } from "../../i18n"
 
-import { getDefaultModelId, getModelDimension } from "../../shared/embeddingModels"
+import { getDefaultModelId, getModelDimension, getModelQueryPrefix } from "../../shared/embeddingModels"
 import { Package } from "../../shared/package"
 
 import { RooIgnoreController } from "../../core/ignore/RooIgnoreController"
@@ -223,8 +223,15 @@ export class CodeIndexServiceFactory {
 			throw new Error(t("embeddings:serviceFactory.qdrantUrlMissing"))
 		}
 
-		// Assuming constructor is updated: new QdrantVectorStore(workspacePath, url, vectorSize, apiKey?)
-		return new QdrantVectorStore(this.workspacePath, config.qdrantUrl, vectorSize, config.qdrantApiKey)
+		// Indexes written before code chunks were embedded without the query prefix carry no
+		// document_prefix marker; their vectors were built with the model's query prefix.
+		const provider = config.embedderProvider as EmbedderProvider
+		const modelId = config.modelId ?? getDefaultModelId(provider)
+		const legacyDocumentPrefix = getModelQueryPrefix(provider, modelId)
+
+		return new QdrantVectorStore(this.workspacePath, config.qdrantUrl, vectorSize, config.qdrantApiKey, {
+			legacyDocumentPrefix,
+		})
 	}
 
 	/**

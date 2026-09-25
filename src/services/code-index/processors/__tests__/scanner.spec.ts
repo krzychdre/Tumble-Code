@@ -244,7 +244,12 @@ describe("DirectoryScanner", () => {
 			;(mockCodeParser.parseFile as any).mockResolvedValue(mockBlocks)
 
 			await scanner.scanDirectory("/test")
+			// Code chunks are embedded as documents: no model or input-type argument, so the
+			// embedder never adds the model's query prefix to indexed code.
 			expect(mockEmbedder.createEmbeddings).toHaveBeenCalled()
+			for (const call of mockEmbedder.createEmbeddings.mock.calls) {
+				expect(call).toEqual([expect.arrayContaining(["test content"])])
+			}
 			expect(mockVectorStore.upsertPoints).toHaveBeenCalled()
 		})
 

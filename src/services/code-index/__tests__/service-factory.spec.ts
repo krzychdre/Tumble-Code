@@ -19,6 +19,7 @@ vitest.mock("../vector-store/qdrant-client")
 vitest.mock("../../../shared/embeddingModels", () => ({
 	getDefaultModelId: vitest.fn(),
 	getModelDimension: vitest.fn(),
+	getModelQueryPrefix: vitest.fn(),
 }))
 
 // Mock TelemetryService
@@ -37,9 +38,10 @@ const MockedGeminiEmbedder = GeminiEmbedder as MockedClass<typeof GeminiEmbedder
 const MockedQdrantVectorStore = QdrantVectorStore as MockedClass<typeof QdrantVectorStore>
 
 // Import the mocked functions
-import { getDefaultModelId, getModelDimension } from "../../../shared/embeddingModels"
+import { getDefaultModelId, getModelDimension, getModelQueryPrefix } from "../../../shared/embeddingModels"
 const mockGetDefaultModelId = getDefaultModelId as MockedFunction<typeof getDefaultModelId>
 const mockGetModelDimension = getModelDimension as MockedFunction<typeof getModelDimension>
+const mockGetModelQueryPrefix = getModelQueryPrefix as MockedFunction<typeof getModelQueryPrefix>
 
 describe("CodeIndexServiceFactory", () => {
 	let factory: CodeIndexServiceFactory
@@ -388,6 +390,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -413,6 +416,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				768,
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -438,6 +442,52 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
+			)
+		})
+
+		it("tells the store which prefix legacy vectors of this model were embedded with (the query prefix)", () => {
+			// Before 2026-09-25 indexing put the model's query prefix in front of every code chunk,
+			// so an index without a document_prefix marker holds vectors of prefixed chunks.
+			mockConfigManager.getConfig.mockReturnValue({
+				embedderProvider: "openai-compatible",
+				modelId: "nomic-embed-code",
+				qdrantUrl: "http://localhost:6333",
+				qdrantApiKey: "test-key",
+			} as any)
+			mockGetModelDimension.mockReturnValue(3584)
+			mockGetModelQueryPrefix.mockReturnValue("Represent this query for searching relevant code: ")
+
+			factory.createVectorStore()
+
+			expect(mockGetModelQueryPrefix).toHaveBeenCalledWith("openai-compatible", "nomic-embed-code")
+			expect(MockedQdrantVectorStore).toHaveBeenCalledWith(
+				"/test/workspace",
+				"http://localhost:6333",
+				3584,
+				"test-key",
+				{ legacyDocumentPrefix: "Represent this query for searching relevant code: " },
+			)
+		})
+
+		it("passes no legacy prefix for a model without a query prefix (e.g. qwen3-embed on llama-swap)", () => {
+			mockConfigManager.getConfig.mockReturnValue({
+				embedderProvider: "openai-compatible",
+				modelId: "qwen3-embed",
+				modelDimension: 1024,
+				qdrantUrl: "http://localhost:6333",
+			} as any)
+			mockGetModelDimension.mockReturnValue(undefined)
+			mockGetModelQueryPrefix.mockReturnValue(undefined)
+
+			factory.createVectorStore()
+
+			expect(MockedQdrantVectorStore).toHaveBeenCalledWith(
+				"/test/workspace",
+				"http://localhost:6333",
+				1024,
+				undefined,
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -470,6 +520,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				modelDimension, // Should use model's built-in dimension, not manual
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -501,6 +552,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				manualDimension, // Should use manual dimension as fallback
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -530,6 +582,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				768,
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -599,6 +652,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -624,6 +678,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				3072,
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 
@@ -648,6 +703,7 @@ describe("CodeIndexServiceFactory", () => {
 				"http://localhost:6333",
 				1536,
 				"test-key",
+				{ legacyDocumentPrefix: undefined },
 			)
 		})
 

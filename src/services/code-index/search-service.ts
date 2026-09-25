@@ -43,7 +43,8 @@ export class CodeIndexSearchService {
 
 		try {
 			// Generate embedding for query
-			const embeddingResponse = await this.embedder.createEmbeddings([query])
+			// "query": asymmetric models (e.g. nomic-embed-code) need their query prefix here only
+			const embeddingResponse = await this.embedder.createEmbeddings([query], undefined, "query")
 			reportEmbeddingUsage(this.embedder, embeddingResponse, "search")
 			const vector = embeddingResponse?.embeddings[0]
 			if (!vector) {
