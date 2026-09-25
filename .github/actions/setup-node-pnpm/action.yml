@@ -19,6 +19,10 @@ inputs:
         description: "Additional arguments for pnpm install"
         required: false
         default: ""
+    github-token:
+        description: "Token for GitHub API calls made by install scripts (the @vscode/ripgrep binary download)"
+        required: false
+        default: ${{ github.token }}
 
 runs:
     using: "composite"
@@ -45,4 +49,10 @@ runs:
         - name: Install dependencies
           if: ${{ inputs.skip-install != 'true' }}
           shell: bash
+          # @vscode/ripgrep's postinstall looks up and downloads the rg binary
+          # from the GitHub API. Unauthenticated, the shared runner IPs hit the
+          # rate limit (HTTP 403) and the whole install fails; with GITHUB_TOKEN
+          # set it sends the token (to GitHub hosts only).
+          env:
+              GITHUB_TOKEN: ${{ inputs.github-token }}
           run: pnpm install ${{ inputs.install-args }}

@@ -2,6 +2,14 @@
 	"$schema": "https://turbo.build/schema.json",
 	"extends": ["//"],
 	"tasks": {
+		// Some specs read src/dist (the grammar WASMs, for one). The bundle is a
+		// task dependency rather than a "pretest" script running a nested
+		// "turbo run bundle": the webview's pretest did the same, both ran at
+		// once under "turbo test", and the two bundles raced on the same files
+		// (EBUSY copying README.md on Windows).
+		"test": {
+			"dependsOn": ["@roo-code/types#build", "bundle"]
+		},
 		"bundle": {
 			"dependsOn": ["^build", "@roo-code/vscode-webview#build"],
 			"outputs": ["dist/**"]

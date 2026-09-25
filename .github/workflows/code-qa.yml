@@ -8,6 +8,11 @@ on:
         types: [opened, reopened, ready_for_review, synchronize]
         branches: [main]
 
+# Read-only token: the install step hands it to dependency install scripts
+# (see .github/actions/setup-node-pnpm), and no job here writes to the repo.
+permissions:
+    contents: read
+
 jobs:
     check-translations:
         runs-on: ubuntu-latest

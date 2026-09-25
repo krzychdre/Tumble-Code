@@ -28,7 +28,9 @@ await build({
 	...config,
 	...(entry
 		? {
-				entry: [entry],
+				// An object entry is a file path; an array entry would be a glob
+				// pattern, which a Windows path (backslashes) never matches.
+				entry: { "render-probe": entry },
 				// The probe lives outside the CLI, so point bare imports at the CLI's node_modules.
 				esbuildOptions(options, context) {
 					config.esbuildOptions?.(options, context)
@@ -80,7 +82,11 @@ describe("the CLI bundle", () => {
 	let tmp: string
 
 	beforeAll(() => {
-		tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-cli-bundle-"))
+		// The parentheses are glob syntax on purpose: the probe entry is a file
+		// path and must not be read as a glob (on Windows its backslashes are
+		// glob escapes, so tsup could not find it there), and parentheses show
+		// that on every platform.
+		tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tumble-cli-bundle-(probe)-"))
 	})
 
 	afterAll(() => {

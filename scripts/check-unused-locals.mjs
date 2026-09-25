@@ -17,6 +17,7 @@
  */
 
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -55,6 +56,25 @@ export function filterDiagnostics(output, folders) {
 	return { unused, other, ignoredUnused }
 }
 
+/**
+ * The TypeScript compiler's entry script (typescript/bin/tsc), resolved the way
+ * Node resolves a package: from the package directory upwards, then from this
+ * script's own location (the workspace root, which declares typescript).
+ * A package does not need to declare typescript itself, and no
+ * node_modules/.bin shim (tsc.cmd on Windows) is involved.
+ * @param {string} packageDir
+ */
+export function resolveTsc(packageDir) {
+	for (const from of [path.join(packageDir, "package.json"), import.meta.url]) {
+		try {
+			return createRequire(from).resolve("typescript/bin/tsc")
+		} catch {
+			// Not reachable from here, try the next location.
+		}
+	}
+	throw new Error(`cannot resolve typescript/bin/tsc from ${packageDir} or ${fileURLToPath(import.meta.url)}`)
+}
+
 function main() {
 	const folders = process.argv.slice(2)
 	if (folders.length === 0) {
@@ -62,10 +82,10 @@ function main() {
 		process.exit(2)
 	}
 
-	const tsc = path.join(process.cwd(), "node_modules", ".bin", process.platform === "win32" ? "tsc.cmd" : "tsc")
-	const run = spawnSync(tsc, ["--noEmit", "--noUnusedLocals", "--pretty", "false"], {
+	// Run tsc's entry script with this Node, so no shell is needed on Windows.
+	const tsc = resolveTsc(process.cwd())
+	const run = spawnSync(process.execPath, [tsc, "--noEmit", "--noUnusedLocals", "--pretty", "false"], {
 		encoding: "utf8",
-		shell: process.platform === "win32",
 		maxBuffer: 64 * 1024 * 1024,
 	})
 	if (run.error) throw run.error

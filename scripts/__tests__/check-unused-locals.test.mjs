@@ -1,9 +1,12 @@
 // node --test 'scripts/__tests__/*.test.mjs'
 
 import assert from "node:assert/strict"
+import fs from "node:fs"
+import os from "node:os"
+import path from "node:path"
 import { test } from "node:test"
 
-import { filterDiagnostics } from "../check-unused-locals.mjs"
+import { filterDiagnostics, resolveTsc } from "../check-unused-locals.mjs"
 
 const output = [
 	"api/providers/a.ts(4,1): error TS6133: 'OpenAI' is declared but its value is never read.",
@@ -41,4 +44,17 @@ test("a folder prefix matches whole path segments only", () => {
 
 	assert.deepEqual(result.unused, [])
 	assert.equal(result.ignoredUnused, 1)
+})
+
+// CI (a fresh pnpm install) has no src/node_modules/.bin/tsc: src does not declare
+// typescript, only the workspace root does, so the script has to find it there.
+test("finds the TypeScript compiler for a package that has no node_modules of its own", () => {
+	const packageDir = fs.mkdtempSync(path.join(os.tmpdir(), "check-unused-locals-"))
+	try {
+		const tsc = resolveTsc(packageDir)
+		assert.ok(fs.existsSync(tsc), `${tsc} does not exist`)
+		assert.match(tsc.replace(/\\/g, "/"), /\/typescript\/bin\/tsc$/)
+	} finally {
+		fs.rmSync(packageDir, { recursive: true, force: true })
+	}
 })
