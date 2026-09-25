@@ -54,6 +54,12 @@ import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
 import { useStableCallback } from "@src/hooks/useStableCallback"
 import { Cloud } from "lucide-react"
 
+// Timestamp of the synthetic "condensing context" row. Rows are keyed by
+// their ts, so it must not change between recomputes (Date.now() gave the row
+// a new key on every streamed token and React remounted it each time), and it
+// must not collide with a real message ts.
+const CONDENSING_ROW_TS = Number.MAX_SAFE_INTEGER
+
 export interface ChatViewProps {
 	isHidden: boolean
 	showAnnouncement: boolean
@@ -1283,7 +1289,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			result.push({
 				type: "say",
 				say: "condense_context",
-				ts: Date.now(),
+				ts: CONDENSING_ROW_TS,
 				partial: true,
 			} as ClineMessage)
 		}
