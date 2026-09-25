@@ -1,7 +1,6 @@
 {
 	"src/App.tsx": ["App"],
 	"src/components/chat/ChatRow.tsx": ["ChatRowContent"],
-	"src/components/chat/ChatTextArea.tsx": ["ChatTextArea"],
 	"src/components/chat/ChatView.tsx": ["ChatViewComponent"],
 	"src/components/chat/McpExecution.tsx": ["McpExecution"],
 	"src/components/code-index/CodeIndexPopover.tsx": ["CodeIndexPopover"],

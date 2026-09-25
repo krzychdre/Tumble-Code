@@ -182,6 +182,28 @@ describe("ChatTextArea", () => {
 		})
 	})
 
+	describe("mode selection from the slash menu", () => {
+		const openSlashMenu = () => {
+			const textarea = screen.getByRole("textbox")
+			fireEvent.change(textarea, { target: { value: "/", selectionStart: 1 } })
+		}
+
+		it("switches the mode with the setMode prop of the latest render", () => {
+			const firstSetMode = vi.fn()
+			const latestSetMode = vi.fn()
+			const { rerender } = render(<ChatTextArea {...defaultProps} setMode={firstSetMode} />)
+			openSlashMenu()
+
+			// A parent render passes a new setMode while the menu is open (cursor unchanged).
+			rerender(<ChatTextArea {...defaultProps} setMode={latestSetMode} />)
+			fireEvent.click(screen.getByText("/architect"))
+
+			expect(firstSetMode).not.toHaveBeenCalled()
+			expect(latestSetMode).toHaveBeenCalledWith("architect")
+			expect(mockPostMessage).toHaveBeenCalledWith({ type: "mode", text: "architect" })
+		})
+	})
+
 	describe("enhanced prompt response", () => {
 		it("should update input value using native browser methods when receiving enhanced prompt", () => {
 			const setInputValue = vi.fn()
