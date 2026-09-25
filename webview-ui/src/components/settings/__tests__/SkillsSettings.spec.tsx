@@ -447,4 +447,63 @@ describe("SkillsSettings", () => {
 		const addButtons = buttons.filter((btn) => btn.textContent?.includes("settings:skills.addSkill"))
 		expect(addButtons.length).toBe(1)
 	})
+
+	describe("mode dialog", () => {
+		// Each skill row renders [modes (gear), edit, delete]; the gear holds the lucide settings icon.
+		const openModeDialogFor = (skillIndex: number) => {
+			const gears = screen.getAllByTestId("button").filter((btn) => btn.querySelector(".lucide-settings"))
+			fireEvent.click(gears[skillIndex])
+		}
+
+		it("seeds the checkboxes from the skill's current modes", () => {
+			renderSkillsSettings()
+			openModeDialogFor(1) // project-mode-skill, restricted to architect
+
+			expect(screen.getByTestId("checkbox-mode-any")).not.toBeChecked()
+			expect(screen.getByTestId("checkbox-mode-architect")).toBeChecked()
+			expect(screen.getByTestId("checkbox-mode-code")).not.toBeChecked()
+		})
+
+		it("starts on 'Any mode' for a skill without modes and saves no restriction", () => {
+			renderSkillsSettings()
+			openModeDialogFor(0) // project-skill, any mode
+
+			expect(screen.getByTestId("checkbox-mode-any")).toBeChecked()
+			fireEvent.click(screen.getByText("settings:skills.modeDialog.save"))
+
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "updateSkillModes",
+				skillName: "project-skill",
+				source: "project",
+				newSkillModeSlugs: undefined,
+			})
+		})
+
+		it("saves the edited selection", () => {
+			renderSkillsSettings()
+			openModeDialogFor(1)
+
+			fireEvent.click(screen.getByTestId("checkbox-mode-code"))
+			fireEvent.click(screen.getByText("settings:skills.modeDialog.save"))
+
+			expect(vscode.postMessage).toHaveBeenCalledWith({
+				type: "updateSkillModes",
+				skillName: "project-mode-skill",
+				source: "project",
+				newSkillModeSlugs: ["architect", "code"],
+			})
+		})
+
+		it("reopening after cancel starts from the skill's saved modes, not the discarded edit", () => {
+			renderSkillsSettings()
+			openModeDialogFor(1)
+			fireEvent.click(screen.getByTestId("checkbox-mode-any"))
+			fireEvent.click(screen.getByText("settings:skills.modeDialog.cancel"))
+
+			openModeDialogFor(1)
+
+			expect(screen.getByTestId("checkbox-mode-any")).not.toBeChecked()
+			expect(screen.getByTestId("checkbox-mode-architect")).toBeChecked()
+		})
+	})
 })
