@@ -7,6 +7,7 @@ import { BaseProvider } from "./base-provider"
 import type { ApiHandlerOptions } from "../../shared/api"
 import { getOllamaModels } from "./fetchers/ollama"
 import { handleProviderError } from "./utils/error-handler"
+import { getApiErrorStatus } from "../apiErrors"
 import { TagMatcher } from "../../utils/tag-matcher"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { ollamaCompletionUsage } from "./utils/completion-usage"
@@ -360,8 +361,9 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 				this.currentStream = undefined
 			}
 		} catch (error: any) {
-			// Enhance error reporting
-			const statusCode = error.status || error.statusCode
+			// Enhance error reporting. The ollama package's ResponseError carries
+			// the HTTP status in `status_code`; getApiErrorStatus reads every name.
+			const statusCode = getApiErrorStatus(error)
 			const errorMessage = error.message || "Unknown error"
 
 			if (error.code === "ECONNREFUSED") {
@@ -369,9 +371,11 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 					`Ollama service is not running at ${this.options.ollamaBaseUrl || "http://localhost:11434"}. Please start Ollama first.`,
 				)
 			} else if (statusCode === 404) {
-				throw new Error(
-					`Model ${this.getModel().id} not found in Ollama. Please pull the model first with: ollama pull ${this.getModel().id}`,
-				)
+				// Keep the 404 on the thrown error as `status`.
+				throw handleProviderError(error, "Ollama", {
+					messageTransformer: () =>
+						`Model ${this.getModel().id} not found in Ollama. Please pull the model first with: ollama pull ${this.getModel().id}`,
+				})
 			}
 
 			console.error(`Ollama API error (${statusCode || "unknown"}): ${errorMessage}`)
