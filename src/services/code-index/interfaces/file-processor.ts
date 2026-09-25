@@ -52,9 +52,15 @@ export interface IDirectoryScanner {
  */
 export interface IFileWatcher extends vscode.Disposable {
 	/**
-	 * Initializes the file watcher
+	 * Starts watching. Calling it again replaces (and disposes) the previous file system watcher.
 	 */
 	initialize(): Promise<void>
+
+	/**
+	 * Stops watching but keeps the batch events usable, so initialize() can start it again.
+	 * dispose() is final: it also disposes the batch events.
+	 */
+	stop(): void
 
 	/**
 	 * Event emitted when a batch of files begins processing.

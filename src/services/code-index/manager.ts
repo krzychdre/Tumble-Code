@@ -34,6 +34,9 @@ export class CodeIndexManager {
 	private _orchestrator: CodeIndexOrchestrator | undefined
 	private _searchService: CodeIndexSearchService | undefined
 	private _cacheManager: CacheManager | undefined
+	// Created by _recreateServices() and shared with the FileWatcher; owned (and disposed) here.
+	private _rooIgnoreController: RooIgnoreController | undefined
+	private _disposed = false
 
 	// Flag to prevent race conditions during error recovery
 	private _isRecoveringFromError = false
@@ -85,6 +88,13 @@ export class CodeIndexManager {
 
 	public static getAllInstances(): CodeIndexManager[] {
 		return Array.from(CodeIndexManager.instances.values())
+	}
+
+	/**
+	 * Disposes the manager of one workspace folder (e.g. a folder removed from the workspace).
+	 */
+	public static disposeInstance(workspacePath: string): void {
+		CodeIndexManager.instances.get(workspacePath)?.dispose()
 	}
 
 	public static disposeAll(): void {
@@ -315,11 +325,12 @@ export class CodeIndexManager {
 			console.error("Failed to clear error state during recovery:", error)
 		} finally {
 			// Force re-initialization by clearing service instances
-			// This ensures a clean slate even if state update failed
+			// This ensures a clean slate even if state update failed. The orchestrator is
+			// disposed, not just dropped: its FileWatcher would otherwise keep indexing next to
+			// the one the following initialize() creates.
 			this._configManager = undefined
 			this._serviceFactory = undefined
-			this._orchestrator = undefined
-			this._searchService = undefined
+			this._disposeServices()
 
 			// Reset the flag after recovery is complete
 			this._isRecoveringFromError = false
@@ -440,11 +451,31 @@ export class CodeIndexManager {
 	 * Cleans up the manager instance.
 	 */
 	public dispose(): void {
+		if (this._disposed) {
+			return
+		}
+		this._disposed = true
 		this.stopIndexing()
 		this._cancelAutoRetry()
+		this._disposeServices()
 		this._stateSubscription?.dispose()
 		this._stateSubscription = undefined
 		this._stateManager.dispose()
+		if (CodeIndexManager.instances.get(this.workspacePath) === this) {
+			CodeIndexManager.instances.delete(this.workspacePath)
+		}
+	}
+
+	/**
+	 * Disposes the orchestrator (and with it the FileWatcher) and the RooIgnoreController, and
+	 * drops the services built on them. Leaves the config, cache and state managers alone.
+	 */
+	private _disposeServices(): void {
+		this._orchestrator?.dispose()
+		this._orchestrator = undefined
+		this._searchService = undefined
+		this._rooIgnoreController?.dispose()
+		this._rooIgnoreController = undefined
 	}
 
 	/**
@@ -485,13 +516,8 @@ export class CodeIndexManager {
 	 * Used by both initialize() and handleSettingsChange().
 	 */
 	private async _recreateServices(): Promise<void> {
-		// Stop watcher if it exists
-		if (this._orchestrator) {
-			this.stopWatcher()
-		}
-		// Clear existing services to ensure clean state
-		this._orchestrator = undefined
-		this._searchService = undefined
+		// Dispose the previous orchestrator (stops its watcher for good) and ignore controller
+		this._disposeServices()
 
 		// (Re)Initialize service factory
 		this._serviceFactory = new CodeIndexServiceFactory(
@@ -524,8 +550,9 @@ export class CodeIndexManager {
 			})
 		}
 
-		// Create RooIgnoreController instance
+		// Create RooIgnoreController instance. Owned by this manager from here on.
 		const rooIgnoreController = new RooIgnoreController(workspacePath)
+		this._rooIgnoreController = rooIgnoreController
 		await rooIgnoreController.initialize()
 
 		// (Re)Create shared service instances
@@ -539,6 +566,9 @@ export class CodeIndexManager {
 		// Validate embedder configuration before proceeding
 		const validationResult = await this._serviceFactory.validateEmbedder(embedder)
 		if (!validationResult.valid) {
+			// These services never reach an orchestrator, so nothing else would dispose them.
+			fileWatcher.dispose()
+			this._disposeServices()
 			const errorMessage = validationResult.error || "Embedder configuration validation failed"
 			this._stateManager.setSystemState("Error", errorMessage)
 			throw new Error(errorMessage)

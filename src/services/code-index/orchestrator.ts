@@ -37,6 +37,9 @@ export class CodeIndexOrchestrator {
 
 		this.stateManager.setSystemState("Indexing", "Initializing file watcher...")
 
+		// A repeated start must not stack a second set of subscriptions on the first one.
+		this._disposeFileWatcherSubscriptions()
+
 		try {
 			await this.fileWatcher.initialize()
 
@@ -409,13 +412,31 @@ export class CodeIndexOrchestrator {
 	 * Stops the file watcher and cleans up resources.
 	 */
 	public stopWatcher(): void {
-		this.fileWatcher.dispose()
-		this._fileWatcherSubscriptions.forEach((sub) => sub.dispose())
-		this._fileWatcherSubscriptions = []
+		// stop(), not dispose(): the FileWatcher is started again by the next startIndexing(),
+		// and a disposed one would never deliver its batch events to the new subscriptions.
+		this.fileWatcher.stop()
+		this._disposeFileWatcherSubscriptions()
 
 		if (this.stateManager.state !== "Error" && this.stateManager.state !== "Stopping") {
 			this.stateManager.setSystemState("Standby", t("embeddings:orchestrator.fileWatcherStopped"))
 		}
+		this._isProcessing = false
+	}
+
+	private _disposeFileWatcherSubscriptions(): void {
+		this._fileWatcherSubscriptions.forEach((sub) => sub.dispose())
+		this._fileWatcherSubscriptions = []
+	}
+
+	/**
+	 * Final teardown, used when the owner drops this orchestrator: aborts a running scan and
+	 * disposes the file watcher for good. Leaves the shared state manager alone.
+	 */
+	public dispose(): void {
+		this._abortController?.abort()
+		this._abortController = null
+		this._disposeFileWatcherSubscriptions()
+		this.fileWatcher.dispose()
 		this._isProcessing = false
 	}
 

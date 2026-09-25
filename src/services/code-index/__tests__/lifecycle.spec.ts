@@ -85,18 +85,24 @@ describe("code-index watcher lifecycle", () => {
 		vi.useFakeTimers()
 		fsWatchers = []
 		vi.mocked(vscode.workspace.createFileSystemWatcher).mockImplementation(() => {
+			// Like a real FileSystemWatcher: no events once it or the listener is disposed.
 			let onDelete: ((uri: { fsPath: string }) => void) | undefined
+			let watcherDisposed = false
 			const listenerDisposes: Array<ReturnType<typeof vi.fn>> = []
 			const listen = (store?: (h: any) => void) =>
 				vi.fn().mockImplementation((handler: any) => {
 					store?.(handler)
-					const dispose = vi.fn()
+					const dispose = vi.fn(() => store?.(undefined))
 					listenerDisposes.push(dispose)
 					return { dispose }
 				})
 			const record: FakeFsWatcher = {
-				fireDelete: (fsPath) => onDelete?.({ fsPath }),
-				dispose: vi.fn(),
+				fireDelete: (fsPath) => {
+					if (!watcherDisposed) onDelete?.({ fsPath })
+				},
+				dispose: vi.fn(() => {
+					watcherDisposed = true
+				}),
 				listenerDisposes,
 			}
 			fsWatchers.push(record)

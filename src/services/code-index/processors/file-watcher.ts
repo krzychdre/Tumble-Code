@@ -35,7 +35,10 @@ import { reportEmbeddingUsage } from "../embedding-usage"
 export class FileWatcher implements IFileWatcher {
 	private ignoreInstance?: Ignore
 	private fileWatcher?: vscode.FileSystemWatcher
+	private fileWatcherListeners: vscode.Disposable[] = []
 	private ignoreController: RooIgnoreController
+	/** True when this instance created ignoreController itself, so it must dispose it. */
+	private readonly ownsIgnoreController: boolean
 	private accumulatedEvents: Map<string, { uri: vscode.Uri; type: "create" | "change" | "delete" }> = new Map()
 	private batchProcessDebounceTimer?: NodeJS.Timeout
 	private readonly BATCH_DEBOUNCE_DELAY_MS = 500
@@ -83,6 +86,7 @@ export class FileWatcher implements IFileWatcher {
 		ignoreController?: RooIgnoreController,
 		batchSegmentThreshold?: number,
 	) {
+		this.ownsIgnoreController = !ignoreController
 		this.ignoreController = ignoreController || new RooIgnoreController(workspacePath)
 		if (ignoreInstance) {
 			this.ignoreInstance = ignoreInstance
@@ -104,9 +108,12 @@ export class FileWatcher implements IFileWatcher {
 	}
 
 	/**
-	 * Initializes the file watcher
+	 * Initializes the file watcher. A second call replaces the previous file system watcher
+	 * instead of leaking it (it would keep feeding events into this instance).
 	 */
 	async initialize(): Promise<void> {
+		this.stop()
+
 		// Create file watcher
 		const filePattern = new vscode.RelativePattern(
 			this.workspacePath,
@@ -115,23 +122,40 @@ export class FileWatcher implements IFileWatcher {
 		this.fileWatcher = vscode.workspace.createFileSystemWatcher(filePattern)
 
 		// Register event handlers
-		this.fileWatcher.onDidCreate(this.handleFileCreated.bind(this))
-		this.fileWatcher.onDidChange(this.handleFileChanged.bind(this))
-		this.fileWatcher.onDidDelete(this.handleFileDeleted.bind(this))
+		this.fileWatcherListeners = [
+			this.fileWatcher.onDidCreate(this.handleFileCreated.bind(this)),
+			this.fileWatcher.onDidChange(this.handleFileChanged.bind(this)),
+			this.fileWatcher.onDidDelete(this.handleFileDeleted.bind(this)),
+		]
 	}
 
 	/**
-	 * Disposes the file watcher
+	 * Stops watching: disposes the file system watcher and drops pending events. The batch
+	 * events stay alive so the orchestrator can start this watcher again after a Stop.
 	 */
-	dispose(): void {
+	stop(): void {
+		this.fileWatcherListeners.forEach((listener) => listener.dispose())
+		this.fileWatcherListeners = []
 		this.fileWatcher?.dispose()
+		this.fileWatcher = undefined
 		if (this.batchProcessDebounceTimer) {
 			clearTimeout(this.batchProcessDebounceTimer)
+			this.batchProcessDebounceTimer = undefined
+		}
+		this.accumulatedEvents.clear()
+	}
+
+	/**
+	 * Disposes the file watcher for good, including its batch events.
+	 */
+	dispose(): void {
+		this.stop()
+		if (this.ownsIgnoreController) {
+			this.ignoreController.dispose()
 		}
 		this._onDidStartBatchProcessing.dispose()
 		this._onBatchProgressUpdate.dispose()
 		this._onDidFinishBatchProcessing.dispose()
-		this.accumulatedEvents.clear()
 	}
 
 	/**
