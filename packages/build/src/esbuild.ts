@@ -3,6 +3,7 @@ import * as path from "path"
 import { execFileSync } from "child_process"
 import { createRequire } from "module"
 
+import { sleepSync } from "./sleep-sync.js"
 import { ViewsContainer, Views, Menus, Configuration, Keybindings, contributesSchema } from "./types.js"
 
 function copyDir(srcDir: string, dstDir: string, count: number): number {
@@ -70,12 +71,9 @@ function rmDir(dirPath: string, maxRetries: number = 5): void {
 			const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), 2000) // Cap at 2s
 			console.warn(`[rmDir] Attempt ${attempt} failed for ${dirPath}, retrying in ${delay}ms...`)
 
-			// Synchronous sleep for simplicity in build scripts.
-			const start = Date.now()
-
-			while (Date.now() - start < delay) {
-				/* Busy wait */
-			}
+			// copyPaths is synchronous, so the wait is too, but it parks the
+			// thread instead of spinning a core.
+			sleepSync(delay)
 		}
 	}
 }
