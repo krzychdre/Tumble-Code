@@ -73,7 +73,10 @@ means: work through this list (one branch per item), then strike each line here.
 - Leftovers round verification (2026-09-25): full local run on main 847787e92 (`pnpm turbo run check-types lint
   test --continue --concurrency=3`): 38 of 38 tasks green; src 9,817 passed (37 skipped), webview 1,694, cli 1,075,
   types 451, vscode-shim 408, cloud 304, core 178, agent-interchange 114, telemetry 31, build 17.
-- Next phases: 7 to 11 in the roadmap above.
+- Phase 7 (webview) DONE 2026-09-25, #354 to #414 (statuses in 06-webview-ui.md; WEB-4 step 3 optional, not started).
+  Open owner question from WEB-3: wire format for clearing the condense profile, memory writer profile and memory
+  directory (proposal: send `""`, host treats it as unset).
+- Next phases: 8 to 11 in the roadmap above.
 
 ## Request
 

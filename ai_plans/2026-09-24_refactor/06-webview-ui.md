@@ -398,3 +398,5 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   config (recipe in the #414 report: mergeConfig with @vitejs/plugin-react + babel-plugin-react-compiler target 18).
 - Phase 7 remaining: WEB-4 step 3 (optional, only if profiling shows context fan-out cost; rows still re-render per
   token through the context reads listed under WEB-2a/2b).
+- 2026-09-25 Phase 7 final verification on main 4691b74b7: 38 of 38 turbo tasks green; webview 2,331 tests (1,694
+  before Phase 7), src 9,855, cli 1,075; knip 0; webview production build OK; compiler bailouts 17 to 8.
