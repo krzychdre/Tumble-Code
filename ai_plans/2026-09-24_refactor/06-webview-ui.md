@@ -417,3 +417,10 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   (`chat/latestTodos.ts`) passes `parseToolCached`. Synthetic 2,001 messages / 8.8 MB: 5.15 to 0.043 ms (list at the
   start), 4.99 to 0.001 ms (at the end). Not re-measured in Chrome on the real 8.7 MB task yet. Limit: the parse cache
   holds 5,000 entries.
+- 2026-09-25 decision 18 DONE #417: the webview sends `""` for "use current profile" and an empty memory folder
+  (`clearableString` schema row, `""` equals `undefined` for change detection); host readers already treated `""` as
+  unset (`!id`, `override && override.trim()`), tests added; `ContextProxy.migrateAutoMemoryDefaults` no longer
+  rewrites a stored `""` folder. Found and fixed: the state push never carried the Memory tab settings (only
+  `memoryWriterApiConfigId`), so the tab always showed defaults and Save wrote them back (memory off came back on,
+  a 48 h dream interval went back to 24) since the memory feature (#118/#139); the 7 keys are now in
+  `PASSTHROUGH_SETTING_KEYS`.
