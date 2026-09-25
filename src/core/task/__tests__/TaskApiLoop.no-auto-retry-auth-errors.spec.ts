@@ -205,4 +205,49 @@ describe("TaskApiLoop: no automatic retry for 401, 403 and 404", () => {
 			expect(result).toBe("continue")
 		})
 	})
+
+	// Declining the first-chunk ask throws out of attemptApiRequest; processStream
+	// hands that error to handleStreamError. It used to be treated as a normal
+	// mid-stream failure (no status, so auto-retried or retried at once), which
+	// sent another request and asked again. A declined ask now ends the loop.
+	describe("a declined api_req_failed ask ends the loop", () => {
+		async function declinedError(status: number, autoApprovalEnabled: boolean) {
+			const { loop, access, createMessage, backoff } = makeLoop(apiError(status), autoApprovalEnabled)
+			const { thrown } = await drain(loop.attemptApiRequest())
+			expect(access.askSay.ask).toHaveBeenCalledTimes(1)
+			return { loop, access, createMessage, backoff, thrown }
+		}
+
+		it.each([
+			["401 with auto-approve on", 401, true],
+			["500 with auto-approve off", 500, false],
+		])("%s: no further request, no further ask", async (_label, status, autoApprovalEnabled) => {
+			const { loop, access, createMessage, backoff, thrown } = await declinedError(status, autoApprovalEnabled)
+			const abortStream = vi.fn().mockResolvedValue(undefined)
+			const stack: any[] = []
+
+			const result = await (loop as any).handleStreamError(thrown, abortStream, { retryAttempt: 0 }, [], stack)
+
+			expect(result).toBe("return_true")
+			expect(stack).toEqual([])
+			expect(backoff).not.toHaveBeenCalled()
+			expect(access.askSay.ask).toHaveBeenCalledTimes(1)
+			expect(createMessage).toHaveBeenCalledTimes(1)
+			// The request row is still closed, as before.
+			expect(abortStream).toHaveBeenCalledWith("streaming_failed", expect.any(String))
+		})
+
+		it("webview decline (Start New Task aborts the task): still the user-cancel path", async () => {
+			const { loop, access, thrown } = await declinedError(401, true)
+			access.abort = true
+			const abortStream = vi.fn().mockResolvedValue(undefined)
+
+			const result = await (loop as any).handleStreamError(thrown, abortStream, { retryAttempt: 0 }, [], [])
+
+			expect(result).toBe("return_true")
+			expect(abortStream).toHaveBeenCalledWith("user_cancelled", undefined)
+			expect(access.abortReason).toBe("user_cancelled")
+			expect(access.abortTask).toHaveBeenCalledTimes(1)
+		})
+	})
 })

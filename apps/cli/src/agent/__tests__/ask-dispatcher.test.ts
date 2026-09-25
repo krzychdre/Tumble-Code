@@ -91,3 +91,44 @@ describe("AskDispatcher follow-up questions (print mode)", () => {
 		expect(sent).toEqual([{ type: "askResponse", askResponse: "messageResponse", text: "Yes" }])
 	})
 })
+
+describe("AskDispatcher api_req_failed in non-interactive print mode", () => {
+	// Non-interactive print mode always runs with auto-approval on (permission
+	// mode "allow"), where the core retries every transient error itself and
+	// asks api_req_failed only for errors a retry cannot fix (401, 403, 404).
+	// The dispatcher used to print "[retrying api request]" and send nothing,
+	// so the task waited on the ask forever.
+	it("declines the retry and says why, instead of leaving the ask unanswered", async () => {
+		const output: string[] = []
+		const sent: WebviewMessage[] = []
+		const promptForYesNo = vi.fn()
+		const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never)
+		const dispatcher = new AskDispatcher({
+			outputManager: {
+				output: (...parts: string[]) => output.push(parts.join(" ")),
+				markDisplayed: () => {},
+			} as unknown as OutputManager,
+			promptManager: { promptForYesNo } as unknown as PromptManager,
+			sendMessage: (message) => sent.push(message),
+			nonInteractive: true,
+		})
+
+		const result = await dispatcher.handleAsk({
+			ts: 7,
+			type: "ask",
+			ask: "api_req_failed",
+			text: "OpenAI completion error: 401 Incorrect API key provided",
+			partial: false,
+		})
+
+		expect(sent).toEqual([{ type: "askResponse", askResponse: "noButtonClicked" }])
+		expect(result).toMatchObject({ handled: true, response: "noButtonClicked" })
+		expect(promptForYesNo).not.toHaveBeenCalled()
+		expect(output.join("\n")).toContain("401 Incorrect API key provided")
+		expect(output.join("\n")).not.toContain("[retrying api request]")
+		expect(output.join("\n")).toContain("not retrying")
+		// The exit itself belongs to the host (run.ts shuts down cleanly with code 1).
+		expect(exit).not.toHaveBeenCalled()
+		exit.mockRestore()
+	})
+})
