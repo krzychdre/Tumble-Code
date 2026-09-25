@@ -1,22 +1,30 @@
 import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs"
-import * as childProcess from "child_process"
-import * as readline from "readline"
 import { byLengthAsc, Fzf } from "fzf"
 import { getBinPath } from "../ripgrep"
+import { runRipgrep, RIPGREP_DEFAULT_TIMEOUT_MS } from "../ripgrep/runner"
 import { Package } from "../../shared/package"
 
 export type FileResult = { path: string; type: "file" | "folder"; label?: string }
+
+/**
+ * A file listing returns what it found so far after this many ms. Generous on
+ * purpose: callers such as the nested-git check of checkpoints need the full
+ * list, and the line limit usually ends the run long before.
+ */
+export const FILE_SEARCH_TIMEOUT_MS = RIPGREP_DEFAULT_TIMEOUT_MS
 
 export async function executeRipgrep({
 	args,
 	workspacePath,
 	limit = 500,
+	timeoutMs = FILE_SEARCH_TIMEOUT_MS,
 }: {
 	args: string[]
 	workspacePath: string
 	limit?: number
+	timeoutMs?: number
 }): Promise<FileResult[]> {
 	const rgPath = await getBinPath(vscode.env.appRoot)
 
@@ -24,66 +32,34 @@ export async function executeRipgrep({
 		throw new Error(`ripgrep not found: ${rgPath}`)
 	}
 
-	return new Promise((resolve, reject) => {
-		const rgProcess = childProcess.spawn(rgPath, args)
-		const rl = readline.createInterface({ input: rgProcess.stdout, crlfDelay: Infinity })
-		const fileResults: FileResult[] = []
-		const dirSet = new Set<string>() // Track unique directory paths.
+	const { lines } = await runRipgrep({ rgPath, args, limit, timeoutMs })
 
-		let count = 0
+	const fileResults: FileResult[] = []
+	const dirSet = new Set<string>() // Track unique directory paths.
 
-		rl.on("line", (line) => {
-			if (count < limit) {
-				try {
-					const relativePath = path.relative(workspacePath, line)
+	for (const line of lines) {
+		const relativePath = path.relative(workspacePath, line)
 
-					// Add the file itself.
-					fileResults.push({ path: relativePath, type: "file", label: path.basename(relativePath) })
+		// Add the file itself.
+		fileResults.push({ path: relativePath, type: "file", label: path.basename(relativePath) })
 
-					// Extract and store all parent directory paths.
-					let dirPath = path.dirname(relativePath)
+		// Extract and store all parent directory paths.
+		let dirPath = path.dirname(relativePath)
 
-					while (dirPath && dirPath !== "." && dirPath !== "/") {
-						dirSet.add(dirPath)
-						dirPath = path.dirname(dirPath)
-					}
+		while (dirPath && dirPath !== "." && dirPath !== "/") {
+			dirSet.add(dirPath)
+			dirPath = path.dirname(dirPath)
+		}
+	}
 
-					count++
-				} catch (error) {
-					// Silently ignore errors processing individual paths.
-				}
-			} else {
-				rl.close()
-				rgProcess.kill()
-			}
-		})
+	// Convert directory set to array of directory objects.
+	const dirResults = Array.from(dirSet).map((dirPath) => ({
+		path: dirPath,
+		type: "folder" as const,
+		label: path.basename(dirPath),
+	}))
 
-		let errorOutput = ""
-
-		rgProcess.stderr.on("data", (data) => {
-			errorOutput += data.toString()
-		})
-
-		rl.on("close", () => {
-			if (errorOutput && fileResults.length === 0) {
-				reject(new Error(`ripgrep process error: ${errorOutput}`))
-			} else {
-				// Convert directory set to array of directory objects.
-				const dirResults = Array.from(dirSet).map((dirPath) => ({
-					path: dirPath,
-					type: "folder" as const,
-					label: path.basename(dirPath),
-				}))
-
-				// Combine files and directories and resolve.
-				resolve([...fileResults, ...dirResults])
-			}
-		})
-
-		rgProcess.on("error", (error) => {
-			reject(new Error(`ripgrep process error: ${error.message}`))
-		})
-	})
+	return [...fileResults, ...dirResults]
 }
 
 /**
@@ -172,17 +148,19 @@ export async function searchWorkspaceFiles(
 		const verifiedResults = await Promise.all(
 			fzfResults.map(async (result) => {
 				const fullPath = path.join(workspacePath, result.path)
-				// Verify if the path exists and is actually a directory
-				if (fs.existsSync(fullPath)) {
-					const isDirectory = fs.lstatSync(fullPath).isDirectory()
+				// Verify if the path exists and is actually a directory (async: this
+				// runs on the extension host for every keystroke of an @-mention).
+				try {
+					const isDirectory = (await fs.promises.lstat(fullPath)).isDirectory()
 					return {
 						...result,
 						path: result.path.toPosix(),
 						type: isDirectory ? ("folder" as const) : ("file" as const),
 					}
+				} catch {
+					// If path doesn't exist, keep original type
+					return result
 				}
-				// If path doesn't exist, keep original type
-				return result
 			}),
 		)
 
