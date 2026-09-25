@@ -111,6 +111,19 @@ and one `addAnthropicCacheControl(messages)`. **Test first:** one scripted event
 pinning the exact chunk list. **Existing:** `anthropic.spec` (48), `minimax.spec` (30), `anthropic-vertex.spec`
 (37). **Size** S to M, low risk.
 
+**Status (2026-09-25):** DONE in #300. `transform/anthropic-stream.ts` has `processAnthropicStream(stream,
+costInfo)` (cost computed once with the DEF-C9 rule) and a non-mutating `addAnthropicCacheControl(messages)`
+replacing the Anthropic and MiniMax copies. Line counts: anthropic 455 to 292, minimax 325 to 166,
+anthropic-vertex 350 to 261, adapter 166. Tests first: one scripted event sequence (cache usage, thinking with
+signature delta, redacted thinking, text, tool_use with input_json deltas, message_delta) replayed through all
+three handlers with pinned chunk lists and request snapshots (unchanged by the refactor); related specs 266 to 283.
+Behavior change on purpose: Anthropic Vertex now ends its stream with the cost chunk like the others (before, the
+task summed usage chunks and counted the `message_start` output token twice, 121 instead of 120). Kept: Vertex marks
+only the last text block with `cache_control` (the others mark the last block of any type); `signature_delta`,
+`redacted_thinking` and stop reason stay unhandled. Residual (DEF-C9 display only): `TaskStreamProcessor` still adds
+the `message_start` output token to the cumulative `message_delta` value in the displayed `tokensOut`.
+
+
 ### API-4 Retire the Vercel AI SDK path
 
 **Evidence:** `openai-compatible.ts` (270 lines) and `transform/ai-sdk.ts` (282) serve only `moonshot.ts`; that path
