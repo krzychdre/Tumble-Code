@@ -215,6 +215,12 @@ body; merged, not yet deployed on the live stack).
 One SDK per branch. Gate: the provider's spec files, the golden stream fixtures from API-2, API-7 and API-13, and
 a live smoke test for each provider profile the owner actually uses.
 
+**Owner decision (2026-09-25):** do DEP-6 now and merge each SDK branch once its unit and golden-stream gates pass;
+the owner smoke-tests at the next VSIX install, and a live regression becomes its own item. Profiles the owner uses
+daily (smoke-test scope): local servers (LM Studio, Ollama, llama.cpp), OpenAI / Codex, Z.ai (GLM). Rows tied to
+later phases stay there: `web-tree-sitter` (SVC-15), `i18next` (DEP-8), webview rendering libraries (WEB-2), `ink`
+(CLI-9).
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
