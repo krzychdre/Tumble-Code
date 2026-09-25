@@ -341,3 +341,17 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   unmergeable right after the force-push; rebased alone, check 12 known). Found: vitest never runs the compiler
   (a compiler-on test run could be an item); ModesView's create dialog prefill is wiped by `resetFormState()` in the
   open effect.
+- 2026-09-25 WEB-4 step 2 DONE #398 (`5c5e63b39`, table test for all 15 handled message types, 13 had none; rows in
+  `extensionMessageCases.ts`), #399 (`8d60b9718`, bug: a partial state push (`postStorageErrorState`, only
+  `storageErrorMessage`) recomputed `showWelcome` from an undefined `apiConfiguration`, so a configured user saw the
+  welcome screen; changeset), #400 (`f36245c97`): pure `applyExtensionMessage(prev, msg)` in
+  `context/extensionStateReducer.ts` (returns `prev` on no-ops; `mergeExtensionState` moved verbatim; reducer spec on
+  deep-frozen input); ExtensionStateContext 569 to 238 lines; the toggle echo no longer posts from inside a setState
+  updater (StrictMode dev double post). Step 3 not started. Found: the state push carries `mcpServers` but the context
+  only uses the `mcpServers` message.
+- 2026-09-25 WEB-12 DONE #388 (`61cc45a11`, only English + the active locale eager, 17 lazy `locale-<lang>` chunks;
+  index.js 5,443,483 to 3,517,885 B, -35%; also fixed a one-frame English flash before the user's language),
+  #396 (`802417365`, KaTeX and Mermaid on first use: -439 KB; first formula shows raw TeX until KaTeX arrives),
+  #397 (`cb6429413`, PlanReviewApp lazy, -16.8 KB). Open: KaTeX ships twice (0.16.22 via rehype-katex, 0.16.47 via
+  Mermaid); lazy `App` in the plan-review panel is the bigger win; `vscode-material-icons` 251 KB and posthog about
+  155 KB still eager.
