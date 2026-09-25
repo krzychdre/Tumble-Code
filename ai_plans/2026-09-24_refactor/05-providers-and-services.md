@@ -387,6 +387,17 @@ contract `describe.each` (output length and order, split under `MAX_BATCH_TOKENS
 timers, telemetry count per failure, dimension present or absent). **Existing:** about 486 code-index tests;
 `deletePointsByMultipleFilePaths` has 0. **Size** M to L. After DEF-C17.
 
+**Status (2026-09-25):** DONE in #333 (merge ebdc4ab95). `BaseHttpEmbedder` with shared batching, retry, per-URL
+rate-limit gate (`rate-limit-gate.ts`), prefix and validation; Gemini, Mistral and Vercel are thin subclasses of the
+OpenAI-compatible embedder; `OpenAiEmbedder` no longer extends the chat handler. Embedders dir 2,114 to 1,250 lines.
+A request-bytes pin (real OpenAI SDK, fake `fetch`) proves the llama.cpp path is byte-identical. The contract suite
+(`describe.each` over 9 paths) failed 46 of 83 cases on main: over-limit texts were dropped (shifting
+`embeddings[index]` onto the wrong blocks; now truncated), three 429 policies (unified: 3 tries, 429 only,
+max(500 ms * 2^n, shared per-URL pause 5 s doubling to 5 min)), the backoff counter reset so pauses never grew, up to 4
+telemetry events per failure (now 1), raw i18n keys in validation, short responses accepted, Ollama's empty probe
+accepted. 627 code-index tests green. Visible change: OpenAI and Bedrock wait 5 s/10 s after a 429 instead of
+0.5 s/1 s. Open: `deletePointsByMultipleFilePaths` still untested; the query prefix is also applied to indexed code.
+
 ### SVC-11 One `.roo` directory resolver with explicit precedence
 
 **Evidence:** 5 implementations with different precedence (skills, commands with two conflicting orders at
@@ -397,6 +408,17 @@ runs 3 full-workspace `rg --files --hidden --follow` scans with no cache (`custo
 `**/.roo/**` watcher. **Test first:** a precedence matrix (project, global, built-in, mode-specific) per kind,
 pinning today's behavior (precedence is user-visible). **Existing:** commands (31), roo-config (43), skills (59).
 **Size** M, medium risk.
+
+**Status (2026-09-25):** DONE in #331 (merge d10f3c6c6). `RooDirectoryResolver.list(cwd, {kind, mode, modes,
+includeSubfolders})` serves rules, AGENTS.md, commands and skills; `roo-config/cache.ts` keyed by (kind, cwd) holds
+only the subfolder `.roo` list and the parsed command list, mode filters apply after the cache (mid-task mode switch
+covered by a test); `roo-config/watcher.ts` (`**/.roo/**` and `~/.roo/commands`) invalidates, plus a 30 s expiry
+because the CLI shim's watchers never fire. Measured: two prompt builds 6 ripgrep scans to 1; slash menu no longer
+re-reads command files per keystroke. Discovery cap 500 to 10,000 with a warning (root `.roo/memory` files used to
+crowd out nested `.roo` dirs). Deviation: commands had two orders (menu showed built-in `/init` over
+`~/.roo/commands/init.md`, execution used the global file); unified on the documented project > global > built-in.
+Open: MCP config paths not moved to the resolver (SVC-8 part 3); gitignored `.roo` dirs (the owner's `~/.gitignore`
+ignores `.roo`) are never found by the subfolder scan.
 
 ### SVC-12 One ripgrep runner
 
@@ -422,6 +444,13 @@ every call on the definitions path (called by condense per read file; typescript
 `.delete()` anywhere, so WASM memory grows. **Change:** cache per language, release on dispose. **Test first:**
 real-WASM tests for `.erb`, `.ejs`, `.htm`, `.elm` (DEF-C21) and a spy on `Language.load` call counts. **Existing:**
 about 277 tests, all with a mocked loader. **Size** S to M. Pairs with the `web-tree-sitter` upgrade in DEP-6.
+
+**Status (2026-09-25):** DONE in #332 (merge 0d5c5ff7b). One cache entry per grammar (Language, one Parser, compiled
+queries) keyed by the `.wasm` path, shared by the definitions path and the code-index `CodeParser`; concurrent loads
+share one promise, failures are not cached; `disposeLanguageParsers()` on deactivate; trees are `delete()`d after
+use (web-tree-sitter 0.25.6 has no finalizers). Measured on `Task.ts` (68 KB): `Language.load` per call 1 to 0,
+40 to 98 ms to 17 to 32 ms per call, external memory after 50 calls +177 MB to -2.7 MB. 10 real-WASM tests
+(`languageParser.cache.spec.ts`, grammars from `tree-sitter-wasms/out`).
 
 ### SVC-14 Terminal process contract
 
