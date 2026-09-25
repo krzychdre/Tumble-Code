@@ -115,8 +115,6 @@ type ProviderCase = {
 	dropdownModel?: string
 	/** Translated validation messages shown when the required fields stay empty. */
 	emptyErrors: string[]
-	/** Inputs (by placeholder) marked red with an untranslated message when empty. */
-	emptyMarkedOnly?: string[]
 	/** Fields the payload must carry after filling. */
 	payload: Record<string, unknown>
 	/** The secret field of this provider, if it has an API key. */
@@ -145,9 +143,9 @@ const CASES: ProviderCase[] = [
 			{ placeholder: "settings:codeIndex.modelPlaceholder", value: "nomic-embed-text" },
 			{ placeholder: "settings:codeIndex.modelDimensionPlaceholder", value: "768" },
 		],
-		// An empty URL fails both `min(1)` and `url()`; the last zod issue wins, so the "invalid" text shows.
+		// An empty URL fails both `min(1)` and `url()`; the "required" message must win over "invalid".
 		emptyErrors: [
-			"settings:codeIndex.validation.invalidOllamaUrl",
+			"settings:codeIndex.validation.ollamaBaseUrlRequired",
 			"settings:codeIndex.validation.modelIdRequired",
 		],
 		payload: {
@@ -168,12 +166,12 @@ const CASES: ProviderCase[] = [
 			{ placeholder: "settings:codeIndex.modelDimensionPlaceholder", value: "1024" },
 		],
 		emptyErrors: [
-			"settings:codeIndex.validation.invalidBaseUrl",
+			"settings:codeIndex.validation.baseUrlRequired",
 			"settings:codeIndex.validation.apiKeyRequired",
 			"settings:codeIndex.validation.modelIdRequired",
+			// An empty dimension is `undefined`; the translated message must show, not zod's own "Required".
+			"settings:codeIndex.validation.modelDimensionRequired",
 		],
-		// An empty dimension is `undefined`, which zod reports with its own "Required" text.
-		emptyMarkedOnly: ["settings:codeIndex.modelDimensionPlaceholder"],
 		payload: {
 			codebaseIndexOpenAiCompatibleBaseUrl: "http://embeddings.local/v1",
 			codebaseIndexOpenAiCompatibleApiKey: "sk-compat",
@@ -256,7 +254,14 @@ const CASES: ProviderCase[] = [
 	},
 ]
 
-const ALL_ERROR_KEYS = Array.from(new Set(CASES.flatMap((c) => c.emptyErrors)))
+/** The "invalid URL" messages must never show for an empty URL field. */
+const INVALID_URL_KEYS = [
+	"settings:codeIndex.validation.invalidQdrantUrl",
+	"settings:codeIndex.validation.invalidOllamaUrl",
+	"settings:codeIndex.validation.invalidBaseUrl",
+]
+
+const ALL_ERROR_KEYS = Array.from(new Set([...CASES.flatMap((c) => c.emptyErrors), ...INVALID_URL_KEYS]))
 
 function renderFor(provider: EmbedderProvider) {
 	mockExtensionState.codebaseIndexConfig = {
@@ -325,11 +330,10 @@ describe("CodeIndexPopover per embedder provider", () => {
 			for (const key of testCase.emptyErrors) {
 				expect(screen.getByText(key)).toBeInTheDocument()
 			}
-			for (const key of ALL_ERROR_KEYS.filter((k) => !testCase.emptyErrors.includes(k))) {
+			for (const key of ALL_ERROR_KEYS.filter(
+				(k) => !testCase.emptyErrors.includes(k) && k !== "settings:codeIndex.validation.invalidQdrantUrl",
+			)) {
 				expect(screen.queryByText(key)).not.toBeInTheDocument()
-			}
-			for (const placeholder of testCase.emptyMarkedOnly ?? []) {
-				expect(screen.getByPlaceholderText(placeholder)).toHaveClass("border-red-500")
 			}
 			if (testCase.dropdownModel) {
 				expect(screen.getByTestId("model-dropdown")).toHaveClass("border-red-500")
@@ -396,5 +400,44 @@ describe("CodeIndexPopover per embedder provider", () => {
 				expect(payloads[0]).toEqual(expect.objectContaining(rest))
 			})
 		}
+	})
+
+	describe("URL fields", () => {
+		it("shows the Qdrant URL required message, not the invalid one, when the Qdrant URL is empty", () => {
+			renderFor("openai")
+
+			// Any edit enables Save; the Qdrant URL stays empty.
+			typeInto("settings:codeIndex.openAiKeyPlaceholder", "sk-openai")
+			clickSave()
+
+			expect(screen.getByText("settings:codeIndex.validation.qdrantUrlRequired")).toBeInTheDocument()
+			expect(screen.queryByText("settings:codeIndex.validation.invalidQdrantUrl")).not.toBeInTheDocument()
+			expect(savedPayloads()).toHaveLength(0)
+		})
+
+		it.each([
+			{
+				provider: "ollama" as const,
+				placeholder: "settings:codeIndex.ollamaUrlPlaceholder",
+				invalid: "settings:codeIndex.validation.invalidOllamaUrl",
+				required: "settings:codeIndex.validation.ollamaBaseUrlRequired",
+			},
+			{
+				provider: "openai-compatible" as const,
+				placeholder: "settings:codeIndex.openAiCompatibleBaseUrlPlaceholder",
+				invalid: "settings:codeIndex.validation.invalidBaseUrl",
+				required: "settings:codeIndex.validation.baseUrlRequired",
+			},
+		])("$provider: a non-empty malformed base URL still shows the invalid message", (urlCase) => {
+			renderFor(urlCase.provider)
+
+			typeInto("settings:codeIndex.qdrantUrlPlaceholder", QDRANT_URL)
+			typeInto(urlCase.placeholder, "not-a-url")
+			clickSave()
+
+			expect(screen.getByText(urlCase.invalid)).toBeInTheDocument()
+			expect(screen.queryByText(urlCase.required)).not.toBeInTheDocument()
+			expect(savedPayloads()).toHaveLength(0)
+		})
 	})
 })
