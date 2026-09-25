@@ -10,6 +10,10 @@ export { useExtensionHost } from "./useExtensionHost.js"
 export { useTaskSubmit } from "./useTaskSubmit.js"
 export { useGlobalInput } from "./useGlobalInput.js"
 export { usePickerHandlers } from "./usePickerHandlers.js"
+export { useTranscriptPromotion } from "./useTranscriptPromotion.js"
+export { useMcpPanel } from "./useMcpPanel.js"
+export { useAutocompleteTriggers } from "./useAutocompleteTriggers.js"
+export { useSecretPromptBridge } from "./useSecretPromptBridge.js"
 
 // Export types
 export type { UseFollowupCountdownOptions } from "./useFollowupCountdown.js"
