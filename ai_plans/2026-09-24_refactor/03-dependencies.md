@@ -240,6 +240,21 @@ OpenAI code-index embedder), so keyless local servers failed; now `||` (like Lit
 `event: error` frame without an `error` field now throws; Azure deployment names are URL-encoded. Owner smoke list
 in the PR body (OpenAI/Codex, Z.ai, llama.cpp/LM Studio incl. an empty-key profile, 401/429 texts, embedder).
 
+**Status (2026-09-25):** `@anthropic-ai/sdk` 0.37.0 to 0.128.0, `@anthropic-ai/vertex-sdk` 0.7.0 to 0.19.11 and
+`google-auth-library` (src) 9.15.1 to ^10.5.0 DONE in #317 (one shared 10.5.0 copy with @google/genai). Proven
+pairing: vertex-sdk 0.7 with auth 10 sends no Authorization (401); 0.19 with 10 does (new
+`anthropic-vertex-auth-header.spec`). Breaking changes handled: `ImageBlockParam.source` may be a URL or a Files
+API file (`transform/image-source.ts` in six converters; base64 gives the same `data:` URL, so wire unchanged);
+new `tool_result` block types (converters read text blocks only); `MessageParam.role` allows "system"
+(TaskContextManager now imports the stored `ApiMessage`); vertex-sdk 0.19 wraps credential failures in a generic
+message (the handler appends `cause`; the SDK retries it twice, so the error surfaces seconds later).
+`anthropic-sdk-wire.spec` runs the real SDKs (Anthropic, MiniMax, Vertex) on the API-2 event script via a fake
+`fetch` (same chunks, endpoint, auth, `anthropic-beta`, Opus 5 cache_control placement, no request on a pre-aborted
+signal). Related specs 1,856 to 1,905. Unit gates only (owner does not use Anthropic daily). Note: the SDK reads
+`ANTHROPIC_BASE_URL`, `ANTHROPIC_CUSTOM_HEADERS` and `~/.config/anthropic` profiles from the environment when the
+profile gives no base URL or key (the base URL part was already true in 0.37); VS Code started from a shell that
+exports `ANTHROPIC_BASE_URL` (Claude Code setups do) sends Anthropic-profile requests there.
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
