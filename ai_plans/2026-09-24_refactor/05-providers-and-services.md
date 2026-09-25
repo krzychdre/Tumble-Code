@@ -122,6 +122,19 @@ temperature, tools) and usage mapping with top-level `cached_tokens`; check reas
 **Existing:** `moonshot.spec` (22), `base-openai-compatible-provider.spec` (23), `zai.spec` (56); `ai-sdk.spec` (23)
 is deleted with the code. **Size** M.
 
+**Status (2026-09-25):** DONE in #299. MoonshotHandler extends `BaseOpenAiCompatibleProvider` like Z.ai (own
+`getModel` keeping unknown ids, `createStream` with `max_tokens`, `stream_options` and no `parallel_tool_calls`,
+messages through `convertToR1Format`, `processUsageMetrics` reading `prompt_tokens_details.cached_tokens` and
+`cache_write_tokens` first and the legacy top-level `cached_tokens` as fallback). Deleted `openai-compatible.ts`,
+`transform/ai-sdk.ts`, `ai-sdk.spec` and the `ai` and `@ai-sdk/openai-compatible` packages (lockfile -94 lines).
+`moonshot-wire.spec` (29, stubbing global `fetch` so old and new clients run the same tests) failed 5 on the AI SDK
+path, confirming DEF-C14: no abort signal and no `cancelRequest`, `apiRequestTimeout` ignored, no
+`include_usage`, documented cache fields ignored, tool calls only when complete, no `reasoning_content`
+round-trip for kimi-k2-thinking. Wire changes: tools now carry explicit `strict` (true, MCP false). Finding for a
+model refresh item: kimi-k2.5 lacks `preserveReasoning`; kimi-k2.6, kimi-k2.7-code and kimi-k3 are missing;
+`max_tokens` is deprecated in favor of `max_completion_tokens`.
+
+
 ### API-6 Complete the provider definitions
 
 **Evidence:** the 2 hard-coded provider checks; DEF-C15; 3 unknown-model-id policies (keep the id with default
