@@ -1,6 +1,7 @@
 // npx vitest src/components/settings/__tests__/ContextManagementSettings.spec.tsx
 
 import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
+import { vscode } from "@/utils/vscode"
 import { ContextManagementSettings } from "../ContextManagementSettings"
 
 // Mock the translation hook
@@ -543,5 +544,52 @@ describe("ContextManagementSettings", () => {
 			expect(screen.getByText("settings:contextManagement.workspaceFiles.label")).toBeInTheDocument()
 			expect(screen.getByText("settings:contextManagement.rooignore.label")).toBeInTheDocument()
 		})
+	})
+})
+
+// Characterization (WEB-3): a per-profile condensing threshold is written to
+// the host immediately (and kept in the Save buffer); the default threshold
+// only goes into the Save buffer.
+describe("ContextManagementSettings immediate writes (WEB-3)", () => {
+	const props = {
+		autoCondenseContext: true,
+		autoCondenseContextPercent: 80,
+		listApiConfigMeta: [{ id: "p1", name: "work", apiProvider: "anthropic" as const }],
+		maxOpenTabsContext: 20,
+		maxWorkspaceFiles: 200,
+		profileThresholds: { other: 30 },
+		writeDelayMs: 1000,
+		customSupportPrompts: {},
+		setCustomSupportPrompts: vi.fn(),
+	}
+
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("posts profileThresholds as soon as a profile threshold changes", () => {
+		const setCachedStateField = vi.fn()
+		render(<ContextManagementSettings {...props} setCachedStateField={setCachedStateField} />)
+
+		fireEvent.change(screen.getByTestId("threshold-profile-select"), { target: { value: "p1" } })
+		fireEvent.change(screen.getByTestId("condense-threshold-slider"), { target: { value: "55" } })
+
+		const thresholds = { other: 30, p1: 55 }
+		expect(setCachedStateField).toHaveBeenCalledWith("profileThresholds", thresholds)
+		expect(vscode.postMessage).toHaveBeenCalledTimes(1)
+		expect(vscode.postMessage).toHaveBeenCalledWith({
+			type: "updateSettings",
+			updatedSettings: { profileThresholds: thresholds },
+		})
+	})
+
+	it("keeps the default threshold in the Save buffer without posting", () => {
+		const setCachedStateField = vi.fn()
+		render(<ContextManagementSettings {...props} setCachedStateField={setCachedStateField} />)
+
+		fireEvent.change(screen.getByTestId("condense-threshold-slider"), { target: { value: "55" } })
+
+		expect(setCachedStateField).toHaveBeenCalledWith("autoCondenseContextPercent", 55)
+		expect(vscode.postMessage).not.toHaveBeenCalled()
 	})
 })

@@ -1,7 +1,10 @@
-// DEF-C25: what the Settings "Save" button sends when the webview state has
-// no value for a setting. The payload falls back to a hard-coded default per
-// field; those fallbacks must agree with the host defaults, otherwise the
-// first Save silently rewrites settings the user never touched.
+// What the Settings "Save" button sends (characterization for WEB-3).
+//
+// DEF-C25: when the webview state has no value for a setting, the payload
+// falls back to a default per field; those fallbacks must agree with the host
+// defaults, otherwise the first Save silently rewrites settings the user never
+// touched. The second suite pins the exact payload for a fully populated state,
+// so moving the payload into a declarative schema cannot drop or rename a key.
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -256,8 +259,10 @@ const untouchedState = () => ({
 	apiConfiguration: {},
 })
 
-const saveUntouchedSettings = async () => {
-	;(useExtensionState as any).mockReturnValue(untouchedState())
+// Marks the form dirty without changing a value, presses Save and returns
+// every message the view posted, in order.
+const saveWithState = async (state: Record<string, unknown>) => {
+	;(useExtensionState as any).mockReturnValue(state)
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
 	render(
@@ -269,11 +274,18 @@ const saveUntouchedSettings = async () => {
 	fireEvent.click(await screen.findByTestId("open-profile-picker"))
 	const saveButton = screen.getByTestId("save-button") as HTMLButtonElement
 	await waitFor(() => expect(saveButton.disabled).toBe(false))
+	// Forget what the sections posted while mounting (skills, worktrees).
+	mockPostMessage.mockClear()
 	fireEvent.click(saveButton)
 
-	const call = mockPostMessage.mock.calls.find(([message]) => message.type === "updateSettings")
-	expect(call).toBeDefined()
-	return call![0].updatedSettings
+	return mockPostMessage.mock.calls.map(([message]) => message)
+}
+
+const saveUntouchedSettings = async () => {
+	const messages = await saveWithState(untouchedState())
+	const update = messages.find((message) => message.type === "updateSettings")
+	expect(update).toBeDefined()
+	return update.updatedSettings
 }
 
 // The full SettingsView tree is heavy to mount; under a parallel full-suite
@@ -339,5 +351,226 @@ describe("SettingsView Save with every setting undefined (DEF-C25)", { timeout: 
 		expect(payload.terminalShellIntegrationTimeout).toBe(30_000)
 		expect(payload.soundEnabled).toBe(false)
 		expect(payload.enableCheckpoints).toBe(true)
+	})
+})
+
+// Every setting the Save payload carries, each with a value that differs from
+// its fallback, plus fields the view must never forward (chat messages, task
+// history, context setters).
+const populatedState = () => ({
+	currentApiConfigName: "work",
+	listApiConfigMeta: [{ id: "p1", name: "work", apiProvider: "anthropic" }],
+	uriScheme: "vscode",
+	settingsImportedAt: undefined,
+	apiConfiguration: { apiProvider: "anthropic", apiModelId: "claude-test", apiKey: "sk-test" },
+	clineMessages: [{ ts: 1, type: "say", say: "text", text: "must not be sent" }],
+	taskHistory: [{ id: "t1", ts: 1, task: "must not be sent" }],
+	setSoundEnabled: vi.fn(),
+	telemetrySetting: "enabled",
+	debug: true,
+
+	language: "pl",
+	alwaysAllowReadOnly: true,
+	alwaysAllowReadOnlyOutsideWorkspace: true,
+	alwaysAllowWrite: true,
+	alwaysAllowWriteOutsideWorkspace: true,
+	alwaysAllowWriteProtected: true,
+	alwaysAllowExecute: true,
+	alwaysAllowMcp: true,
+	alwaysAllowModeSwitch: true,
+	allowedCommands: ["git status"],
+	deniedCommands: ["rm -rf"],
+	allowedMaxRequests: 7,
+	allowedMaxCost: 1.5,
+	autoCondenseContext: false,
+	autoCondenseContextPercent: 64,
+	soundEnabled: true,
+	soundVolume: 0.25,
+	enableCheckpoints: false,
+	checkpointTimeout: 42,
+	autoMemoryEnabled: false,
+	autoMemoryDirectory: "/tmp/memory",
+	autoMemoryShareWithClaudeCode: true,
+	memoryRecallEnabled: false,
+	autoDreamEnabled: false,
+	autoDreamMinHours: 12,
+	autoDreamMinSessions: 3,
+	memoryWriterApiConfigId: "p-writer",
+	autoCondenseContextApiConfigId: "p-condense",
+	webToolsEnabled: true,
+	webSearchBackend: "searxng",
+	searxngBaseUrl: "http://searx.local",
+	webSearchMaxResults: 9,
+	webFetchMaxBytes: 1234,
+	pruneBeforeCondense: false,
+	pruneToolResultBudget: 999,
+	writeDelayMs: 250,
+	terminalShellIntegrationTimeout: 7000,
+	terminalShellIntegrationDisabled: false,
+	terminalCommandDelay: 30,
+	terminalPowershellCounter: true,
+	terminalZshClearEolMark: false,
+	terminalZshOhMy: true,
+	terminalZshP10k: true,
+	terminalZdotdir: true,
+	terminalProfile: "zsh",
+	terminalOutputPreviewSize: "large",
+	mcpEnabled: false,
+	maxOpenTabsContext: 900, // clamped to 500
+	maxWorkspaceFiles: -3, // clamped to 0
+	showRooIgnoredFiles: false,
+	enableSubfolderRules: true,
+	maxImageFileSize: 8,
+	maxTotalImageSize: 40,
+	includeDiagnosticMessages: false,
+	maxDiagnosticMessages: 11,
+	alwaysAllowSubtasks: true,
+	alwaysApprovePlan: true,
+	alwaysAllowFollowupQuestions: true,
+	followupAutoApproveTimeoutMs: 4000,
+	includeTaskHistoryInEnhance: false,
+	reasoningBlockCollapsed: false,
+	enterBehavior: "newline",
+	includeCurrentTime: false,
+	includeCurrentCost: false,
+	maxGitStatusFiles: 33,
+	parallelTasksMaxConcurrency: 6,
+	subagentFollowupTimeoutSec: 90,
+	profileThresholds: { p1: 55 },
+	imageGenerationProvider: "openrouter",
+	openRouterImageApiKey: "or-key",
+	openRouterImageGenerationSelectedModel: "img-model",
+	experiments: { preventFocusDisruption: true },
+	customSupportPrompts: { ENHANCE: "better" },
+})
+
+describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20_000 }, () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("posts exactly these four messages", async () => {
+		const messages = await saveWithState(populatedState())
+
+		expect(messages.map((message) => message.type)).toEqual([
+			"updateSettings",
+			"upsertApiConfiguration",
+			"telemetrySetting",
+			"debugSetting",
+		])
+		expect(messages[1]).toEqual({
+			type: "upsertApiConfiguration",
+			text: "work",
+			apiConfiguration: { apiProvider: "anthropic", apiModelId: "claude-test", apiKey: "sk-test" },
+		})
+		expect(messages[2]).toEqual({ type: "telemetrySetting", text: "enabled" })
+		expect(messages[3]).toEqual({ type: "debugSetting", bool: true })
+	})
+
+	// Characterization: toStrictEqual also fails on a key that is present with
+	// the value undefined, so an added or dropped key is a visible diff.
+	it("sends every setting with its own value", async () => {
+		const messages = await saveWithState(populatedState())
+
+		expect(messages[0].updatedSettings).toStrictEqual({
+			language: "pl",
+			alwaysAllowReadOnly: true,
+			alwaysAllowReadOnlyOutsideWorkspace: true,
+			alwaysAllowWrite: true,
+			alwaysAllowWriteOutsideWorkspace: true,
+			alwaysAllowWriteProtected: true,
+			alwaysAllowExecute: true,
+			alwaysAllowMcp: true,
+			alwaysAllowModeSwitch: true,
+			allowedCommands: ["git status"],
+			deniedCommands: ["rm -rf"],
+			allowedMaxRequests: 7,
+			allowedMaxCost: 1.5,
+			autoCondenseContext: false,
+			autoCondenseContextPercent: 64,
+			soundEnabled: true,
+			soundVolume: 0.25,
+			enableCheckpoints: false,
+			checkpointTimeout: 42,
+			autoMemoryEnabled: false,
+			autoMemoryDirectory: "/tmp/memory",
+			autoMemoryShareWithClaudeCode: true,
+			memoryRecallEnabled: false,
+			autoDreamEnabled: false,
+			autoDreamMinHours: 12,
+			autoDreamMinSessions: 3,
+			memoryWriterApiConfigId: "p-writer",
+			autoCondenseContextApiConfigId: "p-condense",
+			webToolsEnabled: true,
+			webSearchBackend: "searxng",
+			searxngBaseUrl: "http://searx.local",
+			webSearchMaxResults: 9,
+			webFetchMaxBytes: 1234,
+			pruneBeforeCondense: false,
+			pruneToolResultBudget: 999,
+			writeDelayMs: 250,
+			terminalShellIntegrationTimeout: 7000,
+			terminalShellIntegrationDisabled: false,
+			terminalCommandDelay: 30,
+			terminalPowershellCounter: true,
+			terminalZshClearEolMark: false,
+			terminalZshOhMy: true,
+			terminalZshP10k: true,
+			terminalZdotdir: true,
+			terminalProfile: "zsh",
+			terminalOutputPreviewSize: "large",
+			mcpEnabled: false,
+			maxOpenTabsContext: 500,
+			maxWorkspaceFiles: 0,
+			showRooIgnoredFiles: false,
+			enableSubfolderRules: true,
+			maxImageFileSize: 8,
+			maxTotalImageSize: 40,
+			includeDiagnosticMessages: false,
+			maxDiagnosticMessages: 11,
+			alwaysAllowSubtasks: true,
+			alwaysApprovePlan: true,
+			alwaysAllowFollowupQuestions: true,
+			followupAutoApproveTimeoutMs: 4000,
+			includeTaskHistoryInEnhance: false,
+			reasoningBlockCollapsed: false,
+			enterBehavior: "newline",
+			includeCurrentTime: false,
+			includeCurrentCost: false,
+			maxGitStatusFiles: 33,
+			parallelTasksMaxConcurrency: 6,
+			subagentFollowupTimeoutSec: 90,
+			profileThresholds: { p1: 55 },
+			imageGenerationProvider: "openrouter",
+			openRouterImageApiKey: "or-key",
+			openRouterImageGenerationSelectedModel: "img-model",
+			experiments: { preventFocusDisruption: true },
+			customSupportPrompts: { ENHANCE: "better" },
+		})
+	})
+
+	// Today's behavior, pinned (not endorsed): an emptied profile or directory
+	// field is sent as undefined, which JSON drops, so the host keeps the old
+	// value. Explicit "" clears for the fields that serialize it that way.
+	it("drops emptied optional ids and directory, sends empty strings where the payload clears", async () => {
+		const messages = await saveWithState({
+			...populatedState(),
+			autoMemoryDirectory: "",
+			memoryWriterApiConfigId: "",
+			autoCondenseContextApiConfigId: "",
+			searxngBaseUrl: "",
+			terminalProfile: "",
+			allowedMaxRequests: undefined,
+			allowedMaxCost: undefined,
+		})
+		const payload = JSON.parse(JSON.stringify(messages[0].updatedSettings))
+
+		expect(payload).not.toHaveProperty("autoMemoryDirectory")
+		expect(payload).not.toHaveProperty("memoryWriterApiConfigId")
+		expect(payload).not.toHaveProperty("autoCondenseContextApiConfigId")
+		expect(payload.searxngBaseUrl).toBe("")
+		expect(payload.terminalProfile).toBe("")
+		expect(payload.allowedMaxRequests).toBeNull()
+		expect(payload.allowedMaxCost).toBeNull()
 	})
 })
