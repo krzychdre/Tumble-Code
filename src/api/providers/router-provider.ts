@@ -57,7 +57,12 @@ export abstract class RouterProvider extends BaseProvider {
 	}
 
 	public async fetchModel() {
-		this.models = await getModels({ provider: this.name, apiKey: this.client.apiKey, baseUrl: this.client.baseURL })
+		this.models = await getModels({
+			provider: this.name,
+			// openai 7 types the key as `string | null`; null means a function key, which we never pass.
+			apiKey: this.client.apiKey ?? "",
+			baseUrl: this.client.baseURL,
+		})
 		return this.getModel()
 	}
 

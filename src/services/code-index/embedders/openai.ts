@@ -28,7 +28,8 @@ export class OpenAiEmbedder extends OpenAiNativeHandler implements IEmbedder {
 	 */
 	constructor(options: ApiHandlerOptions & { openAiEmbeddingModelId?: string }) {
 		super(options)
-		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
+		// `||`, not `??`: openai 7 rejects an empty key before sending, openai 5 did not.
+		const apiKey = this.options.openAiNativeApiKey || "not-provided"
 
 		// Wrap OpenAI client creation to handle invalid API key characters
 		try {

@@ -92,7 +92,8 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	 */
 	private createClient(): OpenAI {
 		const baseURL = this.options.openAiBaseUrl || "https://api.openai.com/v1"
-		const apiKey = this.options.openAiApiKey ?? "not-provided"
+		// `||`, not `??`: openai 7 rejects an empty key before sending, openai 5 did not.
+		const apiKey = this.options.openAiApiKey || "not-provided"
 		const isAzureAiInference = this._isAzureAiInference(this.options.openAiBaseUrl)
 		const urlHost = this._getUrlHost(this.options.openAiBaseUrl)
 		const isAzureOpenAi = urlHost === "azure.com" || urlHost.endsWith(".azure.com") || this.options.openAiUseAzure

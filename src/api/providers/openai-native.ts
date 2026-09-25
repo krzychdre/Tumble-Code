@@ -97,7 +97,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		if (this.options.enableResponsesReasoningSummary === undefined) {
 			this.options.enableResponsesReasoningSummary = true
 		}
-		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
+		// `||`, not `??`: openai 7 rejects an empty key before sending, openai 5 did not.
+		const apiKey = this.options.openAiNativeApiKey || "not-provided"
 		// Include originator, session_id, and User-Agent headers for API tracking and debugging
 		this.client = new OpenAI({
 			baseURL: this.options.openAiNativeBaseUrl || undefined,
