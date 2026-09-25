@@ -404,3 +404,16 @@ where their files are disjoint; the coordinator merges in order.
     it matches a global allowed prefix.
   - **DEF-C42:** the webview pre-fills the embedder dimension with 1536, and saving the code-index settings persists
     it for Ollama and OpenAI-compatible models with another dimension (the "Bad Request = dimension mismatch" class).
+- **DEF-C41 and DEF-C42: DONE 2026-09-25**, both reproduced with failing tests first.
+  - DEF-C41 merged as #278 (`d50df5856`). With a global allowed prefix `git` and `git push` denied in
+    `tumble-code.deniedCommands`, `git push origin main` got `approve`. `checkAutoApproval` is the only decision path
+    (TaskAskSay and subagentApproval) and read `getState()`, which carried only the global lists. Now
+    `resolveCommandList()` in `ProviderStateBuilder` computes both lists inside `getState()` and the webview reuses
+    them. Deliberate asymmetry: denied entries come from every configuration scope (user, workspace, folder);
+    allowed entries only from the user scope, so a cloned repository cannot grant itself `allowedCommands: ["*"]`
+    through `.vscode/settings.json` (the old UI showed such entries although they never applied). A failed
+    configuration read keeps the global list. The CLI is unaffected (its allow mode bypasses the lists).
+  - DEF-C42 merged as #279 (`2e8182fd0`, rebased onto #278 by the coordinator). The webview state no longer
+    pre-fills the dimension with 1536; the form already handles an empty value (placeholder), validation is
+    unchanged. Previously stored 1536 values cannot be told apart from user input and stay; the changeset asks
+    users to check the field once.
