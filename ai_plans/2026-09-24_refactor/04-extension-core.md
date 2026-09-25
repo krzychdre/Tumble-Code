@@ -212,6 +212,15 @@ and the `if (toolCallId)` guard). **Change:** `createToolCallbacks(task, {block,
 **Test first:** feedback-image merge for both block kinds. **Existing:** 42 `presentAssistantMessage-*` tests.
 **Size** S to M.
 
+**Status (2026-09-25):** DONE in #277 (merge e110d685b). `toolCallbacks.ts` holds `createToolCallbacks(task, {block,
+toolCallId, toolName})` (askApproval, handleError, pushToolResult, askFinishSubTaskApproval, hasToolResult) and
+`recordToolFailureAsMistake`; presentAssistantMessage went from 1,315 to 1,016 lines. Drift resolved without
+behavior change: `feedbackImages` was a dead parameter (removed); the `if (toolCallId)` guard is kept for both kinds;
+the two duplicate-result warning texts stay per block type. Tests: 15 characterization tests for both block kinds
+plus 5 factory tests; `src/core/assistant-message` went from 102 to 122 tests. For CORE-R4: the dispatch switch
+passes `toolCallId` only to some tools (not execute_command, read_artifact, use_mcp_tool, access_mcp_resource,
+ask_followup_question, generate_image, attempt_completion); decide deliberately when the switch becomes a table.
+
 ### CORE-R4 Tool descriptor table (in slices)
 
 **Evidence:** tool names are hand-listed in about 15 places: `packages/types` `tool.ts`; four lists in
