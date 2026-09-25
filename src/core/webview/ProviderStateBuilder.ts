@@ -43,8 +43,21 @@ const PASSTHROUGH_SETTING_KEYS = [
 	"apiModelId",
 	"allowedMaxRequests",
 	"allowedMaxCost",
+	// "" means "use the current profile" (decision 18); it is posted as "" so
+	// the Settings view shows the cleared value.
 	"autoCondenseContextApiConfigId",
 	"memoryWriterApiConfigId",
+	// The Memory tab edits these. Without them in the push it showed its own
+	// defaults and Save sent those back over the stored values. The migration
+	// in ContextProxy gives the flags and thresholds their defaults; an unset
+	// or "" autoMemoryDirectory means the default folder.
+	"autoMemoryEnabled",
+	"autoMemoryDirectory",
+	"autoMemoryShareWithClaudeCode",
+	"memoryRecallEnabled",
+	"autoDreamEnabled",
+	"autoDreamMinHours",
+	"autoDreamMinSessions",
 	"terminalProfile",
 	"enhancementApiConfigId",
 	"disabledTools",

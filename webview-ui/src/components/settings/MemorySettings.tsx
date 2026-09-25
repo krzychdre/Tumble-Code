@@ -112,7 +112,8 @@ export const MemorySettings = ({
 								value={autoMemoryDirectory ?? ""}
 								placeholder={t("settings:memory.directory.placeholder")}
 								onInput={(e: any) => {
-									setCachedStateField("autoMemoryDirectory", e.target.value || undefined)
+									// "" (not undefined) so Save clears the host's value.
+									setCachedStateField("autoMemoryDirectory", e.target.value)
 								}}
 								className="w-full"
 								data-testid="memory-directory-input"
@@ -152,12 +153,10 @@ export const MemorySettings = ({
 								{t("settings:memory.writerProfile.label")}
 							</label>
 							<Select
-								value={memoryWriterApiConfigId ?? UNSET_PROFILE}
+								value={memoryWriterApiConfigId || UNSET_PROFILE}
 								onValueChange={(value) => {
-									setCachedStateField(
-										"memoryWriterApiConfigId",
-										value === UNSET_PROFILE ? undefined : value,
-									)
+									// "" (not undefined) so Save clears the host's value.
+									setCachedStateField("memoryWriterApiConfigId", value === UNSET_PROFILE ? "" : value)
 								}}
 								data-testid="memory-writer-profile-select">
 								<SelectTrigger className="w-full">

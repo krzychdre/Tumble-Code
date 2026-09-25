@@ -260,6 +260,13 @@ const FULL_SETTINGS = {
 	autoCondenseContextPercent: 75,
 	autoCondenseContextApiConfigId: "cfg-condense",
 	memoryWriterApiConfigId: "cfg-memory",
+	autoMemoryEnabled: false,
+	autoMemoryDirectory: "/srv/memories/",
+	autoMemoryShareWithClaudeCode: true,
+	memoryRecallEnabled: false,
+	autoDreamEnabled: false,
+	autoDreamMinHours: 48,
+	autoDreamMinSessions: 9,
 	webToolsEnabled: true,
 	webSearchBackend: "searxng",
 	searxngBaseUrl: "http://searx.local",
@@ -361,6 +368,10 @@ const normalize = (state: Record<string, unknown>): Record<string, unknown> => {
 	if (isDeepStrictEqual(out.experiments, experimentDefault)) out.experiments = "<experimentDefault>"
 	if (isDeepStrictEqual(out.codebaseIndexModels, EMBEDDING_MODEL_PROFILES)) {
 		out.codebaseIndexModels = "<EMBEDDING_MODEL_PROFILES>"
+	}
+	// The host stores the memory folder with the platform separator (validateMemoryPath).
+	if (typeof out.autoMemoryDirectory === "string") {
+		out.autoMemoryDirectory = out.autoMemoryDirectory.split(path.sep).join("/")
 	}
 	// Sort keys so the snapshot does not depend on the builder's key order.
 	return Object.fromEntries(Object.entries(out).sort(([a], [b]) => a.localeCompare(b)))
