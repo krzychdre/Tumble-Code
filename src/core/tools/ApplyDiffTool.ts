@@ -16,6 +16,7 @@ import { pauseForPlanReviewIfNeeded } from "../plan-review/planReviewPause"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
+import { pushToolWriteResult } from "./helpers/toolWriteResult"
 
 interface ApplyDiffParams {
 	path: string
@@ -173,7 +174,6 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 				}
 
 				// Save directly without showing diff view or opening the file
-				task.diffViewProvider.editType = "modify"
 				task.diffViewProvider.originalContent = originalContent
 				await task.diffViewProvider.saveDirectly(
 					relPath,
@@ -185,8 +185,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			} else {
 				// Original behavior with diff view
 				// Show diff view before asking for approval
-				task.diffViewProvider.editType = "modify"
-				await task.diffViewProvider.open(relPath)
+				await task.diffViewProvider.open(relPath, "modify")
 				await task.diffViewProvider.update(diffResult.content, true)
 				task.diffViewProvider.scrollToFirstDiff()
 
@@ -237,7 +236,7 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			}
 
 			// Get the formatted response message
-			const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, !fileExists)
+			const message = await pushToolWriteResult(task, !fileExists)
 
 			// Check for single SEARCH/REPLACE block warning
 			const searchBlocks = (diffContent.match(/<<<<<<< SEARCH/g) || []).length

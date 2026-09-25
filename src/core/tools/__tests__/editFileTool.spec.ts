@@ -9,6 +9,10 @@ import { getReadablePath } from "../../../utils/path"
 import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { editFileTool } from "../EditFileTool"
 
+vi.mock("../helpers/toolWriteResult", () => ({
+	pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
+}))
+
 vi.mock("fs/promises", () => ({
 	default: {
 		readFile: vi.fn().mockResolvedValue(""),
@@ -128,7 +132,6 @@ describe("editFileTool", () => {
 			isWriteProtected: vi.fn().mockReturnValue(false),
 		}
 		mockTask.diffViewProvider = {
-			editType: undefined,
 			isEditing: false,
 			originalContent: "",
 			open: vi.fn().mockResolvedValue(undefined),
@@ -142,7 +145,6 @@ describe("editFileTool", () => {
 			}),
 			saveDirectly: vi.fn().mockResolvedValue(undefined),
 			scrollToFirstDiff: vi.fn(),
-			pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
 		}
 		mockTask.fileContextTracker = {
 			trackFileContext: vi.fn().mockResolvedValue(undefined),
@@ -304,7 +306,7 @@ describe("editFileTool", () => {
 				)
 
 				expect(mockTask.consecutiveMistakeCount).toBe(0)
-				expect(mockTask.diffViewProvider.editType).toBe("create")
+				expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 				expect(mockAskApproval).toHaveBeenCalled()
 			})
 
@@ -326,7 +328,7 @@ describe("editFileTool", () => {
 
 				// Both undefined means: old_string = "" (create file), new_string = "" (empty file)
 				expect(mockTask.consecutiveMistakeCount).toBe(0)
-				expect(mockTask.diffViewProvider.editType).toBe("create")
+				expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 				expect(mockAskApproval).toHaveBeenCalled()
 			})
 
@@ -338,7 +340,7 @@ describe("editFileTool", () => {
 
 				// null is coerced to "" via ?? operator
 				expect(mockTask.consecutiveMistakeCount).toBe(0)
-				expect(mockTask.diffViewProvider.editType).toBe("create")
+				expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 				expect(mockAskApproval).toHaveBeenCalled()
 			})
 		})
@@ -408,7 +410,7 @@ describe("editFileTool", () => {
 			)
 
 			expect(mockTask.consecutiveMistakeCount).toBe(0)
-			expect(mockTask.diffViewProvider.editType).toBe("modify")
+			expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "modify")
 			expect(mockAskApproval).toHaveBeenCalled()
 		})
 
@@ -422,7 +424,7 @@ describe("editFileTool", () => {
 			)
 
 			expect(mockTask.consecutiveMistakeCount).toBe(0)
-			expect(mockTask.diffViewProvider.editType).toBe("modify")
+			expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "modify")
 			expect(mockAskApproval).toHaveBeenCalled()
 		})
 
@@ -536,7 +538,7 @@ describe("editFileTool", () => {
 			await executeEditFileTool({ old_string: "", new_string: "New file content" }, { fileExists: false })
 
 			expect(mockTask.consecutiveMistakeCount).toBe(0)
-			expect(mockTask.diffViewProvider.editType).toBe("create")
+			expect(mockTask.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 			expect(mockAskApproval).toHaveBeenCalled()
 		})
 

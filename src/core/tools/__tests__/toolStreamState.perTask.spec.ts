@@ -13,6 +13,11 @@ import { fileExistsAtPath } from "../../../utils/fs"
 import type { ToolUse } from "../../../shared/tools"
 import { writeToFileTool } from "../WriteToFileTool"
 import { editFileTool } from "../EditFileTool"
+import { pushToolWriteResult } from "../helpers/toolWriteResult"
+
+vi.mock("../helpers/toolWriteResult", () => ({
+	pushToolWriteResult: vi.fn().mockResolvedValue("written"),
+}))
 
 vi.mock("delay", () => ({ default: vi.fn() }))
 
@@ -38,6 +43,9 @@ vi.mock("vscode", () => ({
 const mockedFileExistsAtPath = fileExistsAtPath as MockedFunction<typeof fileExistsAtPath>
 
 function makeTask(name: string): any {
+	// A minimal diff session: open() records the create/modify decision for
+	// its path, editTypeOf() answers it back, reset() forgets it.
+	let session: { relPath: string; editType: "create" | "modify" } | undefined
 	return {
 		taskId: name,
 		cwd: `/work/${name}`,
@@ -53,16 +61,19 @@ function makeTask(name: string): any {
 		rooIgnoreController: { validateAccess: vi.fn().mockReturnValue(true) },
 		rooProtectedController: { isWriteProtected: vi.fn().mockReturnValue(false) },
 		diffViewProvider: {
-			editType: undefined as "create" | "modify" | undefined,
 			isEditing: false,
 			originalContent: "",
-			open: vi.fn().mockResolvedValue(undefined),
+			open: vi.fn(async (relPath: string, editType: "create" | "modify") => {
+				session = { relPath, editType }
+			}),
+			editTypeOf: vi.fn((relPath: string) => (session?.relPath === relPath ? session.editType : undefined)),
 			update: vi.fn().mockResolvedValue(undefined),
-			reset: vi.fn().mockResolvedValue(undefined),
+			reset: vi.fn(async () => {
+				session = undefined
+			}),
 			revertChanges: vi.fn().mockResolvedValue(undefined),
 			saveChanges: vi.fn().mockResolvedValue({ newProblemsMessage: "", userEdits: null, finalContent: "" }),
 			scrollToFirstDiff: vi.fn(),
-			pushToolWriteResult: vi.fn().mockResolvedValue("written"),
 		},
 		api: { getModel: () => ({ id: "claude-test" }) },
 		fileContextTracker: { trackFileContext: vi.fn().mockResolvedValue(undefined) },
@@ -139,8 +150,8 @@ describe("DEF-C4: tool partial-stream state is kept per task", () => {
 		// its streaming preview (one partial "tool" ask with its own path).
 		expect(taskA.ask).toHaveBeenCalledTimes(1)
 		expect(taskB.ask).toHaveBeenCalledTimes(1)
-		expect(taskA.diffViewProvider.open).toHaveBeenCalledWith("src/a.ts")
-		expect(taskB.diffViewProvider.open).toHaveBeenCalledWith("src/b.ts")
+		expect(taskA.diffViewProvider.open).toHaveBeenCalledWith("src/a.ts", "create")
+		expect(taskB.diffViewProvider.open).toHaveBeenCalledWith("src/b.ts", "create")
 	})
 
 	it("write_to_file: another task finishing its write does not make this task trust a stale create/modify", async () => {
@@ -155,11 +166,11 @@ describe("DEF-C4: tool partial-stream state is kept per task", () => {
 		mockedFileExistsAtPath.mockImplementation(async (p: string) => p === existingFile)
 
 		// Task A streams a path that partial-json truncated ("src/app.ts"); the
-		// file does not exist, so its editType is cached as "create" for that path.
+		// file does not exist, so its diff view is opened as "create" for that path.
 		const cbA = callbacks()
 		await writeToFileTool.handle(taskA, writeBlock("src/app.ts", "x", true), cbA)
 		await writeToFileTool.handle(taskA, writeBlock("src/app.ts", "x y", true), cbA)
-		expect(taskA.diffViewProvider.editType).toBe("create")
+		expect(taskA.diffViewProvider.open).toHaveBeenCalledWith("src/app.ts", "create")
 
 		// Meanwhile a parallel subagent streams and completes its own write.
 		const cbB = callbacks()
@@ -172,8 +183,8 @@ describe("DEF-C4: tool partial-stream state is kept per task", () => {
 		// dialog must say "edited existing file", not "created new file".
 		await writeToFileTool.handle(taskA, writeBlock("src/app.tsx", "x y z", false), cbA)
 		expect(approvalLabel(cbA.askApproval)).toBe("editedExistingFile")
-		expect(taskA.diffViewProvider.editType).toBe("modify")
-		expect(taskA.diffViewProvider.pushToolWriteResult).toHaveBeenCalledWith(taskA, taskA.cwd, false)
+		expect(taskA.diffViewProvider.open).toHaveBeenLastCalledWith("src/app.tsx", "modify")
+		expect(pushToolWriteResult).toHaveBeenCalledWith(taskA, false)
 	})
 
 	it("edit_file: another task finishing its edit does not leave this task's streaming row unfinalized", async () => {

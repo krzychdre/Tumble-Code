@@ -139,13 +139,23 @@ describe("writeToFileTool", () => {
 		mockCline.rooIgnoreController = {
 			validateAccess: vi.fn().mockReturnValue(true),
 		}
+		let session: { relPath: string; editType: "create" | "modify" } | undefined
 		mockCline.diffViewProvider = {
-			editType: undefined,
+			lastSavedRelPath: testFilePath,
+			userEdits: undefined,
+			newProblemsMessage: "",
 			isEditing: false,
 			originalContent: "",
-			open: vi.fn().mockResolvedValue(undefined),
+			// A minimal diff session: open() records the create/modify decision
+			// for its path, editTypeOf() answers it back, reset() forgets it.
+			open: vi.fn(async (relPath: string, editType: "create" | "modify") => {
+				session = { relPath, editType }
+			}),
+			editTypeOf: vi.fn((relPath: string) => (session?.relPath === relPath ? session.editType : undefined)),
 			update: vi.fn().mockResolvedValue(undefined),
-			reset: vi.fn().mockResolvedValue(undefined),
+			reset: vi.fn(async () => {
+				session = undefined
+			}),
 			revertChanges: vi.fn().mockResolvedValue(undefined),
 			saveChanges: vi.fn().mockResolvedValue({
 				newProblemsMessage: "",
@@ -154,25 +164,6 @@ describe("writeToFileTool", () => {
 			}),
 			scrollToFirstDiff: vi.fn(),
 			updateDiagnosticSettings: vi.fn(),
-			pushToolWriteResult: vi.fn().mockImplementation(async function (
-				this: any,
-				task: any,
-				cwd: string,
-				isNewFile: boolean,
-			) {
-				// Simulate the behavior of pushToolWriteResult
-				if (this.userEdits) {
-					await task.say(
-						"user_feedback_diff",
-						JSON.stringify({
-							tool: isNewFile ? "newFileCreated" : "editedExistingFile",
-							path: "test/path.txt",
-							diff: this.userEdits,
-						}),
-					)
-				}
-				return "Tool result message"
-			}),
 		}
 		mockCline.api = {
 			getModel: vi.fn().mockReturnValue({ id: "claude-3" }),
@@ -245,7 +236,7 @@ describe("writeToFileTool", () => {
 			await executeWriteFileTool({}, { accessAllowed: true })
 
 			expect(mockCline.rooIgnoreController.validateAccess).toHaveBeenCalledWith(testFilePath)
-			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 		})
 	})
 
@@ -254,18 +245,18 @@ describe("writeToFileTool", () => {
 			await executeWriteFileTool({}, { fileExists: true })
 
 			expect(mockedFileExistsAtPath).toHaveBeenCalledWith(absoluteFilePath)
-			expect(mockCline.diffViewProvider.editType).toBe("modify")
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "modify")
 		})
 
 		it.skipIf(process.platform === "win32")("detects new file and sets editType to create", async () => {
 			await executeWriteFileTool({}, { fileExists: false })
 
 			expect(mockedFileExistsAtPath).toHaveBeenCalledWith(absoluteFilePath)
-			expect(mockCline.diffViewProvider.editType).toBe("create")
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 		})
 
-		it("uses cached editType without filesystem check", async () => {
-			mockCline.diffViewProvider.editType = "modify"
+		it("uses the open diff session's editType without filesystem check", async () => {
+			mockCline.diffViewProvider.editTypeOf.mockReturnValue("modify")
 
 			await executeWriteFileTool({})
 
@@ -302,21 +293,24 @@ describe("writeToFileTool", () => {
 			expect(mockedCreateDirectoriesForFile).not.toHaveBeenCalled()
 		})
 
-		it("does not create directories when editType is cached as modify", async () => {
-			mockCline.diffViewProvider.editType = "modify"
+		it("does not create directories when the open diff session modifies the file", async () => {
+			mockCline.diffViewProvider.editTypeOf.mockReturnValue("modify")
 
 			await executeWriteFileTool({})
 
 			expect(mockedCreateDirectoriesForFile).not.toHaveBeenCalled()
 		})
 
-		it.skipIf(process.platform === "win32")("creates directories when editType is cached as create", async () => {
-			mockCline.diffViewProvider.editType = "create"
+		it.skipIf(process.platform === "win32")(
+			"creates directories when the open diff session creates the file",
+			async () => {
+				mockCline.diffViewProvider.editTypeOf.mockReturnValue("create")
 
-			await executeWriteFileTool({})
+				await executeWriteFileTool({})
 
-			expect(mockedCreateDirectoriesForFile).toHaveBeenCalledWith(absoluteFilePath)
-		})
+				expect(mockedCreateDirectoriesForFile).toHaveBeenCalledWith(absoluteFilePath)
+			},
+		)
 	})
 
 	describe("content preprocessing", () => {
@@ -366,7 +360,7 @@ describe("writeToFileTool", () => {
 			await executeWriteFileTool({}, { fileExists: false })
 
 			expect(mockCline.consecutiveMistakeCount).toBe(0)
-			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith(testContent, true)
 			expect(mockAskApproval).toHaveBeenCalled()
 			expect(mockCline.diffViewProvider.saveChanges).toHaveBeenCalled()
@@ -413,7 +407,7 @@ describe("writeToFileTool", () => {
 			// Second call with same path - path is now stabilized, file operations proceed
 			await executeWriteFileTool({}, { isPartial: true })
 			expect(mockCline.ask).toHaveBeenCalled()
-			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 			expect(mockCline.diffViewProvider.update).toHaveBeenCalledWith(testContent, false)
 		})
 	})
@@ -451,7 +445,7 @@ describe("writeToFileTool", () => {
 			await executeWriteFileTool({}, { isPartial: true, accessAllowed: true })
 
 			expect(mockCline.rooIgnoreController.validateAccess).toHaveBeenCalledWith(testFilePath)
-			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath)
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "create")
 		})
 
 		it("does not re-validate on repeated partial chunks for the same rejected path", async () => {
@@ -549,7 +543,7 @@ describe("writeToFileTool", () => {
 		})
 	})
 
-	describe("stale editType from partial phase (TL-2)", () => {
+	describe("create/modify decision from the partial phase (TL-2)", () => {
 		it.skipIf(process.platform === "win32")(
 			"re-checks file existence when final path differs from partial-phase path",
 			async () => {
@@ -563,11 +557,10 @@ describe("writeToFileTool", () => {
 				// Phase 1: handlePartial with path A (existing file)
 				// First call - path not yet stabilized
 				await executeWriteFileTool({ path: partialPath }, { fileExists: true, isPartial: true })
-				// Second call - path stabilized, fileExists=true → editType="modify", editTypePath=partialPath
+				// Second call - path stabilized, fileExists=true, diff view opened for partialPath as "modify"
 				await executeWriteFileTool({ path: partialPath }, { fileExists: true, isPartial: true })
 
-				// Verify partial phase set editType to "modify"
-				expect(mockCline.diffViewProvider.editType).toBe("modify")
+				expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(partialPath, "modify")
 
 				// Phase 2: execute with path B (non-existent file)
 				await executeWriteFileTool({ path: finalPath }, { fileExists: false })
@@ -575,7 +568,7 @@ describe("writeToFileTool", () => {
 				// Post-fix: fileExistsAtPath should have been called for the final absolute path
 				expect(mockedFileExistsAtPath).toHaveBeenCalledWith(finalAbs)
 				// editType should be corrected to "create"
-				expect(mockCline.diffViewProvider.editType).toBe("create")
+				expect(mockCline.diffViewProvider.open).toHaveBeenLastCalledWith(finalPath, "create")
 			},
 		)
 
@@ -586,17 +579,17 @@ describe("writeToFileTool", () => {
 			await executeWriteFileTool({ path: samePath }, { fileExists: true, isPartial: true })
 			await executeWriteFileTool({ path: samePath }, { fileExists: true, isPartial: true })
 
-			expect(mockCline.diffViewProvider.editType).toBe("modify")
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(samePath, "modify")
 
 			// Clear mock call history to track execute-phase calls only
 			mockedFileExistsAtPath.mockClear()
 
-			// Phase 2: execute with same path — fast path, no redundant re-check
+			// Phase 2: execute with same path, fast path, no redundant re-check
 			await executeWriteFileTool({ path: samePath }, { fileExists: true })
 
-			// Fast path: fileExistsAtPath should NOT be called (editType already correct for this path)
+			// Fast path: fileExistsAtPath should NOT be called (the open session for this path answers)
 			expect(mockedFileExistsAtPath).not.toHaveBeenCalled()
-			expect(mockCline.diffViewProvider.editType).toBe("modify")
+			expect(mockCline.diffViewProvider.open).toHaveBeenLastCalledWith(samePath, "modify")
 		})
 	})
 })

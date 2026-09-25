@@ -12,6 +12,8 @@ import { sanitizeUnifiedDiff, computeDiffStats } from "../../diff/stats"
 import { pauseForPlanReviewIfNeeded } from "../../plan-review/planReviewPause"
 import type { ToolCallbacks } from "../BaseTool"
 
+import { pushToolWriteResult } from "./toolWriteResult"
+
 /** Settings the save step needs, read once per edit. */
 export interface EditSaveContext {
 	/** True when the edit is written straight to disk without a diff editor. */
@@ -72,7 +74,6 @@ export async function applyComputedEdit(
 	const { askApproval, pushToolResult, toolCallId } = callbacks
 	const { originalContent, isNewFile = false } = options
 
-	task.diffViewProvider.editType = isNewFile ? "create" : "modify"
 	task.diffViewProvider.originalContent = originalContent
 
 	const diff = formatResponse.createPrettyPatch(relPath, originalContent ?? "", newContent)
@@ -116,7 +117,7 @@ export async function applyComputedEdit(
 	} satisfies ClineSayTool)
 
 	if (!writesDirectly) {
-		await task.diffViewProvider.open(relPath)
+		await task.diffViewProvider.open(relPath, isNewFile ? "create" : "modify")
 		await task.diffViewProvider.update(newContent, true)
 		task.diffViewProvider.scrollToFirstDiff()
 	}
@@ -148,7 +149,7 @@ export async function applyComputedEdit(
 
 	task.didEditFile = true
 
-	const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, isNewFile)
+	const message = await pushToolWriteResult(task, isNewFile)
 	const reviewNote = await pauseForPlanReviewIfNeeded(task, options.reviewRelPath ?? relPath)
 	pushToolResult(message + (options.resultSuffix ?? "") + (reviewNote ? `\n\n${reviewNote}` : ""))
 	return "saved"

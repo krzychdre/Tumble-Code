@@ -10,6 +10,10 @@ import { ToolUse, ToolResponse } from "../../../shared/tools"
 import { searchReplaceTool } from "../SearchReplaceTool"
 import { pauseForPlanReviewIfNeeded } from "../../plan-review/planReviewPause"
 
+vi.mock("../helpers/toolWriteResult", () => ({
+	pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
+}))
+
 vi.mock("fs/promises", () => ({
 	default: {
 		readFile: vi.fn().mockResolvedValue(""),
@@ -127,7 +131,6 @@ describe("searchReplaceTool", () => {
 			isWriteProtected: vi.fn().mockReturnValue(false),
 		}
 		mockCline.diffViewProvider = {
-			editType: undefined,
 			isEditing: false,
 			originalContent: "",
 			open: vi.fn().mockResolvedValue(undefined),
@@ -141,7 +144,6 @@ describe("searchReplaceTool", () => {
 			}),
 			saveDirectly: vi.fn().mockResolvedValue(undefined),
 			scrollToFirstDiff: vi.fn(),
-			pushToolWriteResult: vi.fn().mockResolvedValue("Tool result message"),
 		}
 		mockCline.fileContextTracker = {
 			trackFileContext: vi.fn().mockResolvedValue(undefined),
@@ -304,7 +306,7 @@ describe("searchReplaceTool", () => {
 			)
 
 			expect(mockCline.consecutiveMistakeCount).toBe(0)
-			expect(mockCline.diffViewProvider.editType).toBe("modify")
+			expect(mockCline.diffViewProvider.open).toHaveBeenCalledWith(testFilePath, "modify")
 			expect(mockAskApproval).toHaveBeenCalled()
 		})
 	})
@@ -448,7 +450,7 @@ describe("searchReplaceTool", () => {
 		const cases: Array<[string, string]> = [
 			["$$", "price = $$5"],
 			["$&", "wrap($&)"],
-			["$1", "const re = /(a)/; s.replace(re, \"$1\")"],
+			["$1", 'const re = /(a)/; s.replace(re, "$1")'],
 			["$`", "before $` marker"],
 			["$'", "after $' marker"],
 		]

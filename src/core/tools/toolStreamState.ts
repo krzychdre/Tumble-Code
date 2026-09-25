@@ -29,12 +29,6 @@ interface ToolSpecificStreamState {
 		lastValidatedPartialPath?: string
 		/** The access result for `lastValidatedPartialPath`. */
 		lastPartialAccessAllowed?: boolean
-		/**
-		 * The path that `diffViewProvider.editType` was computed for. partial-json may
-		 * stream a truncated path that differs from the final one; then execute() must
-		 * re-check the file's existence instead of trusting the stale create/modify.
-		 */
-		editTypePath?: string
 	}
 	edit_file: {
 		/**

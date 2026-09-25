@@ -18,6 +18,7 @@ import type { MockedFunction } from "vitest"
 
 import { fileExistsAtPath } from "../../../utils/fs"
 import { pauseForPlanReviewIfNeeded } from "../../plan-review/planReviewPause"
+import { pushToolWriteResult } from "../helpers/toolWriteResult"
 import { editTool } from "../EditTool"
 import { searchReplaceTool } from "../SearchReplaceTool"
 import { editFileTool } from "../EditFileTool"
@@ -60,6 +61,10 @@ vi.mock("../../diff/stats", () => ({
 	computeDiffStats: vi.fn(() => ({ added: 1, removed: 1 })),
 }))
 
+vi.mock("../helpers/toolWriteResult", () => ({
+	pushToolWriteResult: vi.fn(),
+}))
+
 vi.mock("../../plan-review/planReviewPause", () => ({
 	pauseForPlanReviewIfNeeded: vi.fn().mockResolvedValue(undefined),
 }))
@@ -82,6 +87,7 @@ const abs = (relPath: string) => path.resolve(CWD, relPath)
 const mockedReadFile = fs.readFile as unknown as MockedFunction<(p: string, enc: string) => Promise<string>>
 const mockedFileExists = fileExistsAtPath as MockedFunction<typeof fileExistsAtPath>
 const mockedPause = pauseForPlanReviewIfNeeded as MockedFunction<typeof pauseForPlanReviewIfNeeded>
+const mockedPushToolWriteResult = pushToolWriteResult as MockedFunction<typeof pushToolWriteResult>
 
 /** Files on the fake disk, keyed by absolute path. */
 let disk: Record<string, string>
@@ -119,7 +125,6 @@ function makeTask() {
 		rooIgnoreController: { validateAccess: vi.fn().mockReturnValue(true) },
 		rooProtectedController: { isWriteProtected: vi.fn().mockReturnValue(false) },
 		diffViewProvider: {
-			editType: undefined as string | undefined,
 			originalContent: undefined as string | undefined,
 			open: vi.fn(async () => void log.push("open")),
 			update: vi.fn(async () => void log.push("update")),
@@ -127,10 +132,6 @@ function makeTask() {
 			revertChanges: vi.fn(async () => void log.push("revertChanges")),
 			saveChanges: vi.fn(async () => void log.push("saveChanges")),
 			saveDirectly: vi.fn(async () => void log.push("saveDirectly")),
-			pushToolWriteResult: vi.fn(async () => {
-				log.push("pushToolWriteResult")
-				return "WRITE_RESULT"
-			}),
 			reset: vi.fn(async () => void log.push("reset")),
 		},
 		fileContextTracker: {
@@ -158,6 +159,10 @@ beforeEach(() => {
 		return disk[p]
 	})
 	mockedFileExists.mockImplementation(async (p: string) => p in disk)
+	mockedPushToolWriteResult.mockImplementation(async () => {
+		log.push("pushToolWriteResult")
+		return "WRITE_RESULT"
+	})
 	mockedPause.mockImplementation(async () => {
 		log.push("pauseForPlanReview")
 		return undefined
@@ -291,12 +296,11 @@ describe("edit pipeline: approval, diff view and save sequence", () => {
 				"pushToolResult",
 				...c.tail,
 			])
-			expect(task.diffViewProvider.editType).toBe(c.isNewFile ? "create" : "modify")
-			expect(task.diffViewProvider.open).toHaveBeenCalledWith(c.relPath)
+			expect(task.diffViewProvider.open).toHaveBeenCalledWith(c.relPath, c.isNewFile ? "create" : "modify")
 			expect(task.diffViewProvider.update).toHaveBeenCalledWith(c.newContent, true)
 			expect(task.diffViewProvider.saveChanges).toHaveBeenCalledWith(true, 50)
 			expect(task.fileContextTracker.trackFileContext).toHaveBeenCalledWith(c.relPath, "roo_edited")
-			expect(task.diffViewProvider.pushToolWriteResult).toHaveBeenCalledWith(task, CWD, c.isNewFile)
+			expect(mockedPushToolWriteResult).toHaveBeenCalledWith(task, c.isNewFile)
 			expect(mockedPause).toHaveBeenCalledWith(task, c.relPath)
 			expect(pushToolResult).toHaveBeenCalledWith("WRITE_RESULT")
 			expect(task.didEditFile).toBe(true)
@@ -474,6 +478,10 @@ describe("edit pipeline: plan-review gate for every edit tool", () => {
 				),
 		],
 	])("%s pauses after the save and appends the review note", async (_name, run) => {
+		mockedPushToolWriteResult.mockImplementation(async () => {
+			log.push("pushToolWriteResult")
+			return "WRITE_RESULT"
+		})
 		mockedPause.mockImplementation(async () => {
 			log.push("pauseForPlanReview")
 			return "REVIEW_NOTE"
@@ -663,7 +671,7 @@ describe("edit pipeline: drift resolutions", () => {
 				task,
 				callbacks(),
 			)
-			expect(task.diffViewProvider.open).toHaveBeenCalledWith(relPath)
+			expect(task.diffViewProvider.open).toHaveBeenCalledWith(relPath, "modify")
 			expect(task.fileContextTracker.trackFileContext).toHaveBeenCalledWith(relPath, "roo_edited")
 			expect(mockedPause).toHaveBeenLastCalledWith(task, relPath)
 		}

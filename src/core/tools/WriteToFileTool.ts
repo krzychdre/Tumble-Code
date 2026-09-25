@@ -19,6 +19,7 @@ import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import { getToolStreamState } from "./toolStreamState"
+import { pushToolWriteResult } from "./helpers/toolWriteResult"
 
 interface WriteToFileParams {
 	path: string
@@ -31,7 +32,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	async execute(params: WriteToFileParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { pushToolResult, handleError, askApproval, toolCallId } = callbacks
 		const relPath = params.path
-		// Coerce content to string safely — weak models can emit null/numbers.
+		// Coerce content to string safely: weak models can emit null/numbers.
 		let newContent = typeof params.content === "string" ? params.content : ""
 
 		if (typeof relPath !== "string" || !relPath) {
@@ -58,25 +59,9 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 		const isWriteProtected = task.rooProtectedController?.isWriteProtected(relPath) || false
 
-		let fileExists: boolean
 		const absolutePath = path.resolve(task.cwd, relPath)
 
-		// TL-2: If editType was set during the partial phase but for a DIFFERENT
-		// path than the final relPath (partial-json truncated-string behavior),
-		// the cached editType is stale and must not be trusted.  Re-check file
-		// existence for the actual final path.  When editTypePath is undefined
-		// (editType set externally, not by handlePartial), trust the cache.
-		const streamState = getToolStreamState(task, this.name)
-		if (
-			task.diffViewProvider.editType !== undefined &&
-			(streamState.editTypePath === undefined || streamState.editTypePath === relPath)
-		) {
-			fileExists = task.diffViewProvider.editType === "modify"
-		} else {
-			fileExists = await fileExistsAtPath(absolutePath)
-			task.diffViewProvider.editType = fileExists ? "modify" : "create"
-			streamState.editTypePath = relPath
-		}
+		const fileExists = await this.existsForEdit(task, relPath, absolutePath)
 
 		// Create parent directories early for new files to prevent ENOENT errors
 		// in subsequent operations (e.g., diffViewProvider.open, fs.readFile)
@@ -125,7 +110,6 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 				experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
 
 			if (isPreventFocusDisruptionEnabled) {
-				task.diffViewProvider.editType = fileExists ? "modify" : "create"
 				if (fileExists) {
 					const absolutePath = path.resolve(task.cwd, relPath)
 					task.diffViewProvider.originalContent = await fs.readFile(absolutePath, "utf-8")
@@ -154,7 +138,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 				if (!task.diffViewProvider.isEditing) {
 					const partialMessage = JSON.stringify(sharedMessageProps)
 					await task.ask("tool", partialMessage, true).catch(() => {})
-					await task.diffViewProvider.open(relPath)
+					await task.diffViewProvider.open(relPath, fileExists ? "modify" : "create")
 				}
 
 				await task.diffViewProvider.update(
@@ -191,7 +175,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 			task.didEditFile = true
 
-			const message = await task.diffViewProvider.pushToolWriteResult(task, task.cwd, !fileExists)
+			const message = await pushToolWriteResult(task, !fileExists)
 
 			const reviewNote = await pauseForPlanReviewIfNeeded(task, relPath)
 			pushToolResult(reviewNote ? `${message}\n\n${reviewNote}` : message)
@@ -208,6 +192,21 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			this.resetPartialState(task)
 			return
 		}
+	}
+
+	/**
+	 * Whether `relPath` is an existing file. Once the diff view is open for
+	 * this path, its session answers: open() creates an empty file for a new
+	 * one, so asking the disk again would turn "create" into "modify". A
+	 * session for a different path (partial-json streamed a truncated path,
+	 * TL-2) or no session at all means the disk decides.
+	 */
+	private async existsForEdit(task: Task, relPath: string, absolutePath: string): Promise<boolean> {
+		const sessionEditType = task.diffViewProvider.editTypeOf(relPath)
+		if (sessionEditType !== undefined) {
+			return sessionEditType === "modify"
+		}
+		return await fileExistsAtPath(absolutePath)
 	}
 
 	override async handlePartial(task: Task, block: ToolUse<"write_to_file">): Promise<void> {
@@ -234,7 +233,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		// roo-ignored secrets file or a path outside the workspace.  Opening the
 		// diff editor reads the file's content into the UI before execute()'s
 		// access checks run.  Guard the partial phase by skipping open() when
-		// access is denied or the path is outside the workspace — execute() will
+		// access is denied or the path is outside the workspace: execute() will
 		// produce the proper structured error in the final phase.
 		const absolutePath = path.resolve(task.cwd, relPath!)
 
@@ -258,25 +257,13 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		const isOutsideWorkspace = isPathOutsideWorkspace(absolutePath)
 		if (isOutsideWorkspace) {
 			// Outside-workspace writes may be legitimate with approval, but in the
-			// partial phase we skip opening the diff editor — defer to execute()'s
+			// partial phase we skip opening the diff editor: defer to execute()'s
 			// approval flow which can properly gate the operation.
 			return
 		}
 
 		// relPath is guaranteed non-null after hasPathStabilized
-		let fileExists: boolean
-
-		const streamState = getToolStreamState(task, this.name)
-		if (
-			task.diffViewProvider.editType !== undefined &&
-			(streamState.editTypePath === undefined || streamState.editTypePath === relPath)
-		) {
-			fileExists = task.diffViewProvider.editType === "modify"
-		} else {
-			fileExists = await fileExistsAtPath(absolutePath)
-			task.diffViewProvider.editType = fileExists ? "modify" : "create"
-			streamState.editTypePath = relPath
-		}
+		const fileExists = await this.existsForEdit(task, relPath!, absolutePath)
 
 		// Create parent directories early for new files to prevent ENOENT errors
 		// in subsequent operations (e.g., diffViewProvider.open)
@@ -302,7 +289,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 		if (newContent) {
 			if (!task.diffViewProvider.isEditing) {
-				await task.diffViewProvider.open(relPath!)
+				await task.diffViewProvider.open(relPath!, fileExists ? "modify" : "create")
 			}
 
 			await task.diffViewProvider.update(
