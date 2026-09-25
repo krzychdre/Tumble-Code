@@ -275,3 +275,9 @@ and hit vitest's default 10 s `hookTimeout`; `apps/cli/vitest.config.ts` now set
 `testTimeout`. The DEF-C4 spec `toolStreamState.perTask` mocked `fileExistsAtPath` with a POSIX suffix, while the
 tool checks `path.resolve(task.cwd, relPath)` (a drive-letter path on Windows); the mock now builds the path the
 same way (reproduced on Linux by substituting `path.win32`). The product was correct in both cases.
+
+**Third round (2026-09-25), #291, test-only.** CORE-R8's new `editPipeline.spec` (36 of 44 tests) failed on
+Windows: its fake file system keyed files and expectations on POSIX `${CWD}/src/a.ts` while the tools use
+`path.resolve(task.cwd, relPath)`; it now builds keys with the same `path.resolve`. Reproduced on Linux by mapping
+`path` to `path.win32`; the specs added later that day passed under the same mapping. Lesson for helpers: a spec
+that fakes the file system must build its paths with `path.resolve`/`path.join`, never hard-coded POSIX strings.
