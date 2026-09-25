@@ -86,9 +86,8 @@ vi.mock("../BlockTimestamp", () => ({
 	),
 }))
 
-// A stub: rendered without `todos` (as the user_edit_todos row does) the real
-// block re-renders forever, because its `todos = []` default is a new array on
-// every render and an effect keyed on it sets state. Out of scope here.
+// A stub, so the golden records which todos each row hands the block (the
+// block's own rendering is covered by UpdateTodoListToolBlock.spec.tsx).
 vi.mock("../UpdateTodoListToolBlock", () => ({
 	default: (props: { todos?: unknown[]; userEdited?: boolean; startTs?: number; endTs?: number }) => (
 		<div
@@ -497,7 +496,10 @@ const SAY_CASES: Case[] = [
 	{ name: "codebase_search_result unparsable", message: say("codebase_search_result", "{oops") },
 	{
 		name: "user_edit_todos",
-		message: say("user_edit_todos", "[]"),
+		message: say(
+			"user_edit_todos",
+			JSON.stringify({ tool: "updateTodoList", todos: [{ id: "1", content: "Edited", status: "completed" }] }),
+		),
 		meta: { nextTs: TS + 900, previousTodos: [], newTaskIndex: undefined, followedBySubtaskResult: false },
 	},
 	{

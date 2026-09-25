@@ -51,8 +51,62 @@ const STATUS_OPTIONS = [
 
 const genId = () => Math.random().toString(36).slice(2, 10)
 
+// The default for a missing `todos` prop. It must be one shared array: the
+// effect that copies `todos` into state is keyed on it, so a fresh `[]` per
+// render would set state on every render and loop forever.
+const NO_TODOS: TodoItem[] = []
+
+const todoStatusColor = (status?: string) =>
+	status === "completed"
+		? "var(--vscode-charts-green)"
+		: status === "in_progress"
+			? "var(--vscode-charts-yellow)"
+			: "var(--vscode-foreground)"
+
+/** The coloured dot in front of a todo: filled green, filled yellow, or an empty ring. */
+const TodoStatusDot = ({ status }: { status?: string }) => (
+	<span
+		style={{
+			display: "inline-block",
+			width: 8,
+			height: 8,
+			borderRadius: "50%",
+			background:
+				status === "completed"
+					? "var(--vscode-charts-green)"
+					: status === "in_progress"
+						? "var(--vscode-charts-yellow)"
+						: "transparent",
+			border:
+				status === "completed" || status === "in_progress"
+					? undefined
+					: "1px solid var(--vscode-descriptionForeground)",
+			marginRight: 6,
+			marginTop: 7,
+			flexShrink: 0,
+		}}
+	/>
+)
+
+/** A todo's text, coloured by its status. */
+const TodoText = ({ todo }: { todo: TodoItem }) => (
+	<span
+		style={{
+			flex: 1,
+			minWidth: 0,
+			fontWeight: 500,
+			color: todoStatusColor(todo.status),
+			fontSize: 13,
+			marginRight: 6,
+			padding: "1px 3px",
+			lineHeight: "1.4",
+		}}>
+		{todo.content}
+	</span>
+)
+
 const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
-	todos = [],
+	todos = NO_TODOS,
 	content,
 	onChange,
 	editable = true,
@@ -170,9 +224,24 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						<div className="flex-grow" />
 					</div>
 				</ToolUseBlockHeader>
-				<div className="overflow-x-auto max-w-full" style={{ padding: "12px 0 8px 0" }}>
-					<span className="text-vscode-descriptionForeground">User Edits</span>
-				</div>
+				{editTodos.length > 0 ? (
+					<div className="overflow-x-auto max-w-full" style={{ padding: "6px 0 2px 0" }}>
+						<ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
+							{editTodos.map((todo, idx) => (
+								<li
+									key={todo.id || idx}
+									style={{ marginBottom: 2, display: "flex", alignItems: "flex-start", minHeight: 20 }}>
+									<TodoStatusDot status={todo.status} />
+									<TodoText todo={todo} />
+								</li>
+							))}
+						</ul>
+					</div>
+				) : (
+					<div className="overflow-x-auto max-w-full" style={{ padding: "12px 0 8px 0" }}>
+						<span className="text-vscode-descriptionForeground">User Edits</span>
+					</div>
+				)}
 			</ToolUseBlock>
 		)
 	}
@@ -219,54 +288,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 					{Array.isArray(editTodos) && editTodos.length > 0 ? (
 						<ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
 							{editTodos.map((todo, idx) => {
-								let icon
-								if (todo.status === "completed") {
-									icon = (
-										<span
-											style={{
-												display: "inline-block",
-												width: 8,
-												height: 8,
-												borderRadius: "50%",
-												background: "var(--vscode-charts-green)",
-												marginRight: 6,
-												marginTop: 7,
-												flexShrink: 0,
-											}}
-										/>
-									)
-								} else if (todo.status === "in_progress") {
-									icon = (
-										<span
-											style={{
-												display: "inline-block",
-												width: 8,
-												height: 8,
-												borderRadius: "50%",
-												background: "var(--vscode-charts-yellow)",
-												marginRight: 6,
-												marginTop: 7,
-												flexShrink: 0,
-											}}
-										/>
-									)
-								} else {
-									icon = (
-										<span
-											style={{
-												display: "inline-block",
-												width: 8,
-												height: 8,
-												borderRadius: "50%",
-												border: "1px solid var(--vscode-descriptionForeground)",
-												background: "transparent",
-												marginRight: 6,
-												marginTop: 7,
-												flexShrink: 0,
-											}}
-										/>
-									)
-								}
 								return (
 									<li
 										key={todo.id || idx}
@@ -276,7 +297,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 											alignItems: "flex-start",
 											minHeight: 20,
 										}}>
-										{icon}
+										<TodoStatusDot status={todo.status} />
 										{isEditing ? (
 											<input
 												type="text"
@@ -303,24 +324,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 												}}
 											/>
 										) : (
-											<span
-												style={{
-													flex: 1,
-													minWidth: 0,
-													fontWeight: 500,
-													color:
-														todo.status === "completed"
-															? "var(--vscode-charts-green)"
-															: todo.status === "in_progress"
-																? "var(--vscode-charts-yellow)"
-																: "var(--vscode-foreground)",
-													fontSize: 13,
-													marginRight: 6,
-													padding: "1px 3px",
-													lineHeight: "1.4",
-												}}>
-												{todo.content}
-											</span>
+											<TodoText todo={todo} />
 										)}
 										{isEditing && (
 											<select
