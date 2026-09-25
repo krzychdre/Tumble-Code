@@ -3,7 +3,7 @@ import type { ModelIdKey } from "./provider-settings.js"
 import type { ActiveProviderDefinition } from "./provider-registry.js"
 import { anthropicDefaultModelId, anthropicModels } from "./providers/anthropic.js"
 import { bedrockDefaultModelId, bedrockModels } from "./providers/bedrock.js"
-import { deepSeekDefaultModelId, deepSeekModels } from "./providers/deepseek.js"
+import { deepSeekDefaultModelId, deepSeekModelAliases, deepSeekModels } from "./providers/deepseek.js"
 import { geminiDefaultModelId, geminiModels } from "./providers/gemini.js"
 import { litellmDefaultModelId } from "./providers/lite-llm.js"
 import { minimaxDefaultModelId, minimaxModels } from "./providers/minimax.js"
@@ -46,6 +46,12 @@ export type ProviderModelDefinition = {
 	readonly modelIdField: ProviderModelIdField
 	/** The static model list; absent when the list is fetched at runtime or configured by the user. */
 	readonly models?: Readonly<Record<string, ModelInfo>>
+	/**
+	 * Other names the provider's API accepts for listed models (alias to model
+	 * id). An alias is a known id: it is sent as configured, with the info of
+	 * the model it names.
+	 */
+	readonly modelAliases?: Readonly<Record<string, string>>
 	/** The model used when the profile names none; "" when the user must pick one. */
 	readonly defaultModelId?: string
 	readonly unknownModelPolicy: UnknownModelPolicy
@@ -75,6 +81,7 @@ export const providerModelDefinitions = {
 	deepseek: {
 		modelIdField: "apiModelId",
 		models: deepSeekModels,
+		modelAliases: deepSeekModelAliases,
 		defaultModelId: deepSeekDefaultModelId,
 		unknownModelPolicy: "keep-id",
 	},
@@ -192,12 +199,13 @@ export const resolveCatalogModel = (
 	modelId: string | undefined,
 	catalog: {
 		models: Readonly<Record<string, ModelInfo>>
+		modelAliases?: Readonly<Record<string, string>>
 		defaultModelId: string
 		unknownModelPolicy: UnknownModelPolicy
 	},
 	options: { customModelInfo?: (modelId: string) => ModelInfo | undefined } = {},
 ): CatalogModelResolution => {
-	const { models, defaultModelId, unknownModelPolicy } = catalog
+	const { models, modelAliases, defaultModelId, unknownModelPolicy } = catalog
 	const defaultInfo = models[defaultModelId]!
 
 	if (!modelId) {
@@ -206,6 +214,11 @@ export const resolveCatalogModel = (
 
 	if (Object.hasOwn(models, modelId)) {
 		return { id: modelId, info: models[modelId]!, known: true }
+	}
+
+	const aliasedModelId = modelAliases && Object.hasOwn(modelAliases, modelId) ? modelAliases[modelId] : undefined
+	if (aliasedModelId && Object.hasOwn(models, aliasedModelId)) {
+		return { id: modelId, info: models[aliasedModelId]!, known: true }
 	}
 
 	const customInfo = unknownModelPolicy === "honor-custom" ? options.customModelInfo?.(modelId) : undefined

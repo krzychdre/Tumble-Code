@@ -1136,8 +1136,11 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			//Otherwise the ARN is not a foundation-model resource type that ARN should be used as the identifier in Bedrock interactions
 			if (this.arnInfo.modelType !== "foundation-model") modelConfig.id = this.options.awsCustomArn
 		} else {
-			//a model was selected from the drop down
-			modelConfig = this.getModelById(this.options.apiModelId as string)
+			//a model was selected from the drop down. `custom-arn` is the settings
+			//UI's "use a custom ARN" option, not a model id: without an ARN it
+			//selects the default model, like an empty model id.
+			const selectedModelId = this.options.apiModelId === "custom-arn" ? undefined : this.options.apiModelId
+			modelConfig = this.getModelById(selectedModelId || bedrockDefaultModelId)
 
 			// Apply Global Inference prefix if enabled and supported (takes precedence over cross-region)
 			const baseIdForGlobal = this.parseBaseModelId(modelConfig.id)

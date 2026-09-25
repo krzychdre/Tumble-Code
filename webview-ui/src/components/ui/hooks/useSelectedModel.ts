@@ -7,6 +7,7 @@ import {
 	anthropicModels,
 	bedrockModels,
 	deepSeekModels,
+	deepSeekModelAliases,
 	moonshotModels,
 	minimaxModels,
 	geminiModels,
@@ -39,6 +40,12 @@ import {
 	getProviderModelSourceOptions,
 } from "@src/components/settings/utils/providerModelConfig"
 
+// DeepSeek's documented aliases (deepseek-chat, deepseek-reasoner) with the
+// info of the model each one names.
+const deepSeekAliasModels: Record<string, ModelInfo> = Object.fromEntries(
+	Object.entries(deepSeekModelAliases).map(([alias, modelId]) => [alias, deepSeekModels[modelId]]),
+)
+
 /**
  * The model list a provider's configured id is checked against, or undefined
  * when the provider has none to check (Ollama and LM Studio report a missing
@@ -54,7 +61,7 @@ function getProviderModelList(
 		case "litellm":
 			return dynamicModels
 		case "deepseek":
-			return { ...deepSeekModels, ...dynamicModels }
+			return { ...deepSeekModels, ...deepSeekAliasModels, ...dynamicModels }
 		case "zai":
 			return apiConfiguration.zaiApiLine === "china_coding" ? mainlandZAiModels : internationalZAiModels
 		default: {
@@ -269,7 +276,7 @@ function getSelectedModel({
 		case "deepseek": {
 			const id = apiConfiguration.apiModelId || defaultModelId
 			const routerInfo = routerModels.deepseek?.[id]
-			const staticInfo = deepSeekModels[id as keyof typeof deepSeekModels]
+			const staticInfo = deepSeekModels[id as keyof typeof deepSeekModels] ?? deepSeekAliasModels[id]
 			return { id, info: routerInfo ?? staticInfo }
 		}
 		case "moonshot": {
