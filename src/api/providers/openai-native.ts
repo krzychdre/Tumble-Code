@@ -1,9 +1,7 @@
-import * as os from "os"
 import { v7 as uuidv7 } from "uuid"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
-import { Package } from "../../shared/package"
 import {
 	type ModelInfo,
 	openAiNativeDefaultModelId,
@@ -23,17 +21,46 @@ import { calculateApiCostOpenAI } from "../../shared/cost"
 
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
-import { toStrictSchema } from "../transform/strict-json-schema"
 
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { responsesApiCompletionUsage } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
-import { isSdkUnusableError } from "./utils/responses-sse-fallback"
-import { isMcpTool } from "../../utils/mcp-name"
-import { sanitizeOpenAiCallId } from "../../utils/tool-id"
+import { ResponsesApiCore, type ResponsesApiErrorTexts } from "./responses-api/core"
+import { buildResponsesApiRequestBody, responsesApiUserAgent, toResponsesApiInput } from "./responses-api/request"
 
 export type OpenAiNativeModel = ReturnType<OpenAiNativeHandler["getModel"]>
+
+const OPENAI_NATIVE_ERROR_TEXTS: ResponsesApiErrorTexts = {
+	httpError: (status) => {
+		switch (status) {
+			case 400:
+				return "Invalid request to Responses API. Please check your input parameters."
+			case 401:
+				return "Authentication failed. Please check your OpenAI API key."
+			case 403:
+				return "Access denied. Your API key may not have access to this endpoint."
+			case 404:
+				return "Responses API endpoint not found. The endpoint may not be available yet or requires a different configuration."
+			case 429:
+				return "Rate limit exceeded. Please try again later."
+			case 500:
+			case 502:
+			case 503:
+				return "OpenAI service error. Please try again later."
+			default:
+				return `Responses API error (${status})`
+		}
+	},
+	noResponseBody: "Responses API error: No response body",
+	ownTextMarker: "Responses API",
+	connectionFailed: (message) => `Failed to connect to Responses API: ${message}`,
+	unexpectedConnectionError: "Unexpected error connecting to Responses API",
+	streamErrorEvent: (message) => `Responses API error: ${message}`,
+	responseFailed: (message) => `Response failed: ${message}`,
+	streamProcessingError: (message) => `Error processing response stream: ${message}`,
+	unexpectedStreamError: "Unexpected error processing response stream",
+}
 
 export class OpenAiNativeHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
@@ -41,50 +68,25 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	private readonly providerName = "OpenAI Native"
 	// Session ID for request tracking (persists for the lifetime of the handler)
 	private readonly sessionId: string
-	/**
-	 * Some Responses streams emit tool-call argument deltas without stable call id/name.
-	 * Track the last observed tool identity from output_item events so we can still
-	 * emit `tool_call_partial` chunks (tool-call-only streams).
-	 */
-	private pendingToolCallId: string | undefined
-	private pendingToolCallName: string | undefined
-	// Tracks whether this response already emitted text to avoid duplicate done-event rendering.
-	private sawTextOutputInCurrentResponse = false
-	// Tracks whether text arrived through delta events so content_part events can be treated as fallback-only.
-	private sawTextDeltaInCurrentResponse = false
-	// Tracks tool call IDs emitted via streaming partial events to prevent done-event duplicates.
-	private streamedToolCallIds = new Set<string>()
-	// Resolved service tier from Responses API (actual tier used by OpenAI)
-	private lastServiceTier: ServiceTier | undefined
-	// Complete response output array (includes reasoning items with encrypted_content)
-	private lastResponseOutput: any[] | undefined
-	// Last top-level response id from Responses API (for troubleshooting)
-	private lastResponseId: string | undefined
-	// Abort controller for cancelling ongoing requests
-	private abortController?: AbortController
-
-	// Event types handled by the shared event processor to avoid duplication
-	private readonly coreHandledEventTypes = new Set<string>([
-		"response.text.delta",
-		"response.output_text.delta",
-		"response.text.done",
-		"response.output_text.done",
-		"response.content_part.added",
-		"response.content_part.done",
-		"response.reasoning.delta",
-		"response.reasoning_text.delta",
-		"response.reasoning_summary.delta",
-		"response.reasoning_summary_text.delta",
-		"response.refusal.delta",
-		"response.output_item.added",
-		"response.output_item.done",
-		"response.done",
-		"response.completed",
-		"response.tool_call_arguments.delta",
-		"response.function_call_arguments.delta",
-		"response.tool_call_arguments.done",
-		"response.function_call_arguments.done",
-	])
+	// Responses API plumbing shared with Codex; priced here with the service tiers.
+	private readonly core = new ResponsesApiCore({
+		providerName: this.providerName,
+		texts: OPENAI_NATIVE_ERROR_TEXTS,
+		totalCost: (tokens, info, serviceTier) => {
+			// Prefer the tier the server used; otherwise the requested one.
+			const effectiveTier =
+				serviceTier || (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
+			// calculateApiCostOpenAI subtracts cache reads and writes from the input total itself.
+			return calculateApiCostOpenAI(
+				this.applyServiceTierPricing(info, effectiveTier),
+				tokens.inputTokens,
+				tokens.outputTokens,
+				tokens.cacheWriteTokens,
+				tokens.cacheReadTokens,
+				effectiveTier,
+			).totalCost
+		},
+	})
 
 	constructor(options: ApiHandlerOptions) {
 		super()
@@ -98,86 +100,20 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
 		// Include originator, session_id, and User-Agent headers for API tracking and debugging
-		const userAgent = `roo-code/${Package.version} (${os.platform()} ${os.release()}; ${os.arch()}) node/${process.version.slice(1)}`
 		this.client = new OpenAI({
 			baseURL: this.options.openAiNativeBaseUrl || undefined,
 			apiKey,
 			defaultHeaders: {
 				originator: "roo-code",
 				session_id: this.sessionId,
-				"User-Agent": userAgent,
+				"User-Agent": responsesApiUserAgent(),
 			},
 			timeout: this.timeoutMs,
 		})
 	}
 
 	private normalizeUsage(usage: any, model: OpenAiNativeModel): ApiStreamUsageChunk | undefined {
-		if (!usage) return undefined
-
-		// Prefer detailed shapes when available (Responses API)
-		const inputDetails = usage.input_tokens_details ?? usage.prompt_tokens_details
-
-		// Extract cache information from details with better readability
-		const hasCachedTokens = typeof inputDetails?.cached_tokens === "number"
-		const hasCacheMissTokens = typeof inputDetails?.cache_miss_tokens === "number"
-		const cachedFromDetails = hasCachedTokens ? inputDetails.cached_tokens : 0
-		const missFromDetails = hasCacheMissTokens ? inputDetails.cache_miss_tokens : 0
-		// GPT-5.6+ report billed cache writes only here (1.25x input rate).
-		const writesFromDetails =
-			typeof inputDetails?.cache_write_tokens === "number" ? inputDetails.cache_write_tokens : 0
-
-		// If total input tokens are missing but we have details, derive from them
-		let totalInputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0
-		if (
-			totalInputTokens === 0 &&
-			inputDetails &&
-			(cachedFromDetails > 0 || missFromDetails > 0 || writesFromDetails > 0)
-		) {
-			totalInputTokens = cachedFromDetails + missFromDetails + writesFromDetails
-		}
-
-		const totalOutputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0
-
-		// Note: missFromDetails is NOT used as fallback for cache writes
-		// Cache miss tokens represent tokens that weren't found in cache (part of input)
-		// Cache write tokens represent tokens being written to cache for future use
-		const cacheWriteTokens = usage.cache_creation_input_tokens ?? usage.cache_write_tokens ?? writesFromDetails
-
-		const cacheReadTokens =
-			usage.cache_read_input_tokens ?? usage.cache_read_tokens ?? usage.cached_tokens ?? cachedFromDetails ?? 0
-
-		// Resolve effective tier: prefer actual tier from response; otherwise requested tier
-		const effectiveTier =
-			this.lastServiceTier || (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
-		const effectiveInfo = this.applyServiceTierPricing(model.info, effectiveTier)
-
-		// Pass total input tokens directly to calculateApiCostOpenAI
-		// The function handles subtracting both cache reads and writes internally
-		const { totalCost } = calculateApiCostOpenAI(
-			effectiveInfo,
-			totalInputTokens,
-			totalOutputTokens,
-			cacheWriteTokens,
-			cacheReadTokens,
-			effectiveTier,
-		)
-
-		const reasoningTokens =
-			typeof usage.output_tokens_details?.reasoning_tokens === "number"
-				? usage.output_tokens_details.reasoning_tokens
-				: undefined
-
-		const out: ApiStreamUsageChunk = {
-			type: "usage",
-			// Keep inputTokens as TOTAL input to preserve correct context length
-			inputTokens: totalInputTokens,
-			outputTokens: totalOutputTokens,
-			cacheWriteTokens,
-			cacheReadTokens,
-			...(typeof reasoningTokens === "number" ? { reasoningTokens } : {}),
-			totalCost,
-		}
-		return out
+		return this.core.normalizeUsage(usage, model.info)
 	}
 
 	override async *createMessage(
@@ -185,52 +121,41 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
+		// Use Responses API for ALL models
 		const model = this.getModel()
+		this.core.startResponse()
 
-		// Use Responses API for ALL models
-		yield* this.handleResponsesApiMessage(model, systemPrompt, messages, metadata)
-	}
-
-	private async *handleResponsesApiMessage(
-		model: OpenAiNativeModel,
-		systemPrompt: string,
-		messages: Anthropic.Messages.MessageParam[],
-		metadata?: ApiHandlerCreateMessageMetadata,
-	): ApiStream {
-		// Reset resolved tier for this request; will be set from response if present
-		this.lastServiceTier = undefined
-		// Reset output array to capture current response output items
-		this.lastResponseOutput = undefined
-		// Reset last response id for this request
-		this.lastResponseId = undefined
-		// Reset pending tool identity for this request
-		this.pendingToolCallId = undefined
-		this.pendingToolCallName = undefined
-		this.sawTextOutputInCurrentResponse = false
-		this.sawTextDeltaInCurrentResponse = false
-		this.streamedToolCallIds.clear()
-
-		// Use Responses API for ALL models
-		const { verbosity } = this.getModel()
-
-		// Resolve reasoning effort for models that support it
-		const reasoningEffort = this.getReasoningEffort(model)
-
-		// Format full conversation (messages already include reasoning items from API history)
-		const formattedInput = this.formatFullConversation(systemPrompt, messages)
-
-		// Build request body
 		const requestBody = this.buildRequestBody(
 			model,
-			formattedInput,
+			toResponsesApiInput(messages),
 			systemPrompt,
-			verbosity,
-			reasoningEffort,
+			model.verbosity,
+			this.getReasoningEffort(model),
 			metadata,
 		)
 
-		// Make the request (pass systemPrompt and messages for potential retry)
-		yield* this.executeRequest(requestBody, model, metadata, systemPrompt, messages)
+		// Per-request headers: the task id when there is one, else the session id.
+		const requestHeaders: Record<string, string> = {
+			originator: "roo-code",
+			session_id: metadata?.taskId || this.sessionId,
+			"User-Agent": responsesApiUserAgent(),
+		}
+
+		yield* this.core.streamRequest({
+			body: requestBody,
+			modelId: model.id,
+			info: model.info,
+			openSdkStream: (body, signal) =>
+				(this.client as any).responses.create(body, { signal, headers: requestHeaders }),
+			fallbackRequest: async () => ({
+				url: `${this.options.openAiNativeBaseUrl || "https://api.openai.com"}/v1/responses`,
+				headers: {
+					Authorization: `Bearer ${this.options.openAiNativeApiKey ?? "not-provided"}`,
+					...requestHeaders,
+				},
+				body: requestBody,
+			}),
+		})
 	}
 
 	private buildRequestBody(
@@ -241,31 +166,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		reasoningEffort: ReasoningEffortExtended | undefined,
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): any {
-		interface ResponsesRequestBody {
-			model: string
-			input: Array<{ role: "user" | "assistant"; content: any[] } | { type: string; content: string }>
-			stream: boolean
-			reasoning?: { effort?: ReasoningEffortExtended; summary?: "auto" }
-			text?: { verbosity: VerbosityLevel }
-			temperature?: number
-			max_output_tokens?: number
-			store?: boolean
-			instructions?: string
-			service_tier?: ServiceTier
-			include?: string[]
-			/** Prompt cache retention policy: "in_memory" (default) or "24h" for extended caching */
-			prompt_cache_retention?: "in_memory" | "24h"
-			tools?: Array<{
-				type: "function"
-				name: string
-				description?: string
-				parameters?: any
-				strict?: boolean
-			}>
-			tool_choice?: any
-			parallel_tool_calls?: boolean
-		}
-
 		// Validate requested tier against model support; if not supported, omit.
 		const requestedTier = (this.options.openAiNativeServiceTier as ServiceTier | undefined) || undefined
 		const allowedTierNames = new Set(model.info.tiers?.map((t) => t.name).filter(Boolean) || [])
@@ -273,59 +173,29 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		// Decide whether to enable extended prompt cache retention for this request
 		const promptCacheRetention = this.getPromptCacheRetention(model)
 
-		const body: ResponsesRequestBody = {
-			model: model.id,
+		const body = buildResponsesApiRequestBody({
+			modelId: model.id,
 			input: formattedInput,
-			stream: true,
-			// Always use stateless operation with encrypted reasoning
-			store: false,
-			// Always include instructions (system prompt) for Responses API.
-			// Unlike Chat Completions, system/developer roles in input have no special semantics here.
-			// The official way to set system behavior is the top-level `instructions` field.
 			instructions: systemPrompt,
-			// Only include encrypted reasoning content when reasoning effort is set
-			...(reasoningEffort ? { include: ["reasoning.encrypted_content"] } : {}),
-			...(reasoningEffort
-				? {
-						reasoning: {
-							...(reasoningEffort ? { effort: reasoningEffort } : {}),
-							...(this.options.enableResponsesReasoningSummary ? { summary: "auto" as const } : {}),
-						},
-					}
-				: {}),
-			// Only include temperature if the model supports it
-			...(model.info.supportsTemperature !== false && {
-				temperature: this.options.modelTemperature ?? OPENAI_NATIVE_DEFAULT_TEMPERATURE,
-			}),
-			// Explicitly include the calculated max output tokens.
-			// Use the per-request reserved output computed by Roo (params.maxTokens from getModelParams).
-			...(model.maxTokens ? { max_output_tokens: model.maxTokens } : {}),
-			// Include tier when selected and supported by the model, or when explicitly "default"
-			...(requestedTier &&
-				(requestedTier === "default" || allowedTierNames.has(requestedTier)) && {
-					service_tier: requestedTier,
+			reasoningEffort,
+			reasoningSummary: !!this.options.enableResponsesReasoningSummary,
+			settings: {
+				// Only include temperature if the model supports it
+				...(model.info.supportsTemperature !== false && {
+					temperature: this.options.modelTemperature ?? OPENAI_NATIVE_DEFAULT_TEMPERATURE,
 				}),
-			// Enable extended prompt cache retention for models that support it.
-			// This uses the OpenAI Responses API `prompt_cache_retention` parameter.
-			...(promptCacheRetention ? { prompt_cache_retention: promptCacheRetention } : {}),
-			tools: (metadata?.tools ?? [])
-				.filter((tool) => tool.type === "function")
-				.map((tool) => {
-					// MCP tools use the 'mcp--' prefix - disable strict mode for them
-					// to preserve optional parameters from the MCP server schema
-					// But we still need to add additionalProperties: false for OpenAI Responses API
-					const isMcp = isMcpTool(tool.function.name)
-					return {
-						type: "function",
-						name: tool.function.name,
-						description: tool.function.description,
-						parameters: toStrictSchema(tool.function.parameters, { mcp: isMcp }),
-						strict: !isMcp,
-					}
-				}),
-			tool_choice: metadata?.tool_choice,
-			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
-		}
+				// The per-request reserved output computed by getModelParams.
+				...(model.maxTokens ? { max_output_tokens: model.maxTokens } : {}),
+				// Include tier when selected and supported by the model, or when explicitly "default"
+				...(requestedTier &&
+					(requestedTier === "default" || allowedTierNames.has(requestedTier)) && {
+						service_tier: requestedTier,
+					}),
+				// Extended prompt cache retention for the models that support it.
+				...(promptCacheRetention ? { prompt_cache_retention: promptCacheRetention } : {}),
+			},
+			metadata,
+		})
 
 		// Include text.verbosity only when the model explicitly supports it
 		if (model.info.supportsVerbosity === true) {
@@ -333,1014 +203,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 		}
 
 		return body
-	}
-
-	private async *executeRequest(
-		requestBody: any,
-		model: OpenAiNativeModel,
-		metadata?: ApiHandlerCreateMessageMetadata,
-		systemPrompt?: string,
-		messages?: Anthropic.Messages.MessageParam[],
-	): ApiStream {
-		// Create AbortController for cancellation (cancelRequest() aborts it)
-		const abortController = new AbortController()
-		this.abortController = abortController
-
-		// Build per-request headers using taskId when available, falling back to sessionId
-		const taskId = metadata?.taskId
-		const userAgent = `roo-code/${Package.version} (${os.platform()} ${os.release()}; ${os.arch()}) node/${process.version.slice(1)}`
-		const requestHeaders: Record<string, string> = {
-			originator: "roo-code",
-			session_id: taskId || this.sessionId,
-			"User-Agent": userAgent,
-		}
-
-		// Set once the SDK stream produced an event: from then on the server has
-		// accepted the request and part of its answer is with the caller.
-		let sawSdkEvent = false
-
-		try {
-			// Use the official SDK with per-request headers
-			const stream = (await (this.client as any).responses.create(requestBody, {
-				signal: abortController.signal,
-				headers: requestHeaders,
-			})) as AsyncIterable<any>
-
-			if (typeof (stream as any)[Symbol.asyncIterator] !== "function") {
-				throw new Error(
-					"OpenAI SDK did not return an AsyncIterable for Responses API streaming. Falling back to SSE.",
-				)
-			}
-
-			for await (const event of stream) {
-				// Check if request was aborted
-				if (abortController.signal.aborted) {
-					break
-				}
-
-				sawSdkEvent = true
-
-				for await (const outChunk of this.processEvent(event, model)) {
-					yield outChunk
-				}
-			}
-		} catch (sdkErr: any) {
-			// A cancelled request ends here. The SSE fallback below would send the request
-			// again, and after Stop that second request would run to completion.
-			// The SSE fallback below is only for an SDK that could not be used at all. A
-			// request the server answered (429, 401, 5xx) or started to answer must not
-			// be sent a second time.
-			if (abortController.signal.aborted || sawSdkEvent || !isSdkUnusableError(sdkErr)) {
-				throw sdkErr
-			}
-			yield* this.makeResponsesApiRequest(requestBody, model, metadata, systemPrompt, messages)
-		} finally {
-			if (this.abortController === abortController) {
-				this.abortController = undefined
-			}
-		}
-	}
-
-	private formatFullConversation(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): any {
-		// Format the entire conversation history for the Responses API using structured format
-		// The Responses API (like Realtime API) accepts a list of items, which can be messages, function calls, or function call outputs.
-		const formattedInput: any[] = []
-
-		// Do NOT embed the system prompt as a developer message in the Responses API input.
-		// The Responses API treats roles as free-form; use the top-level `instructions` field instead.
-
-		// Process each message
-		for (const message of messages) {
-			// Check if this is a reasoning item (already formatted in API history)
-			if ((message as any).type === "reasoning") {
-				// Pass through reasoning items as-is
-				formattedInput.push(message)
-				continue
-			}
-
-			if (message.role === "user") {
-				const content: any[] = []
-				const toolResults: any[] = []
-
-				if (typeof message.content === "string") {
-					content.push({ type: "input_text", text: message.content })
-				} else if (Array.isArray(message.content)) {
-					for (const block of message.content) {
-						if (block.type === "text") {
-							content.push({ type: "input_text", text: block.text })
-						} else if (block.type === "image") {
-							const image = block as Anthropic.Messages.ImageBlockParam
-							const imageUrl = `data:${image.source.media_type};base64,${image.source.data}`
-							content.push({ type: "input_image", image_url: imageUrl })
-						} else if (block.type === "tool_result") {
-							// Map Anthropic tool_result to Responses API function_call_output item
-							const result =
-								typeof block.content === "string"
-									? block.content
-									: block.content?.map((c) => (c.type === "text" ? c.text : "")).join("") || ""
-							toolResults.push({
-								type: "function_call_output",
-								// Sanitize and truncate call_id to fit OpenAI's 64-char limit
-								call_id: sanitizeOpenAiCallId(block.tool_use_id),
-								output: result,
-							})
-						}
-					}
-				}
-
-				// Add user message first
-				if (content.length > 0) {
-					formattedInput.push({ role: "user", content })
-				}
-
-				// Add tool results as separate items
-				if (toolResults.length > 0) {
-					formattedInput.push(...toolResults)
-				}
-			} else if (message.role === "assistant") {
-				const content: any[] = []
-				const toolCalls: any[] = []
-
-				if (typeof message.content === "string") {
-					content.push({ type: "output_text", text: message.content })
-				} else if (Array.isArray(message.content)) {
-					for (const block of message.content) {
-						if (block.type === "text") {
-							content.push({ type: "output_text", text: block.text })
-						} else if (block.type === "tool_use") {
-							// Map Anthropic tool_use to Responses API function_call item
-							toolCalls.push({
-								type: "function_call",
-								// Sanitize and truncate call_id to fit OpenAI's 64-char limit
-								call_id: sanitizeOpenAiCallId(block.id),
-								name: block.name,
-								arguments: JSON.stringify(block.input),
-							})
-						}
-					}
-				}
-
-				// Add assistant message if it has content
-				if (content.length > 0) {
-					formattedInput.push({ role: "assistant", content })
-				}
-
-				// Add tool calls as separate items
-				if (toolCalls.length > 0) {
-					formattedInput.push(...toolCalls)
-				}
-			}
-		}
-
-		return formattedInput
-	}
-
-	private async *makeResponsesApiRequest(
-		requestBody: any,
-		model: OpenAiNativeModel,
-		metadata?: ApiHandlerCreateMessageMetadata,
-		systemPrompt?: string,
-		messages?: Anthropic.Messages.MessageParam[],
-	): ApiStream {
-		const apiKey = this.options.openAiNativeApiKey ?? "not-provided"
-		const baseUrl = this.options.openAiNativeBaseUrl || "https://api.openai.com"
-		const url = `${baseUrl}/v1/responses`
-
-		// Create AbortController for cancellation
-		this.abortController = new AbortController()
-
-		// Build per-request headers using taskId when available, falling back to sessionId
-		const taskId = metadata?.taskId
-		const userAgent = `roo-code/${Package.version} (${os.platform()} ${os.release()}; ${os.arch()}) node/${process.version.slice(1)}`
-
-		try {
-			const response = await fetch(url, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${apiKey}`,
-					originator: "roo-code",
-					session_id: taskId || this.sessionId,
-					"User-Agent": userAgent,
-				},
-				body: JSON.stringify(requestBody),
-				signal: this.abortController.signal,
-			})
-
-			if (!response.ok) {
-				const errorText = await response.text()
-
-				let errorMessage = `OpenAI Responses API request failed (${response.status})`
-				let errorDetails = ""
-
-				// Try to parse error as JSON for better error messages
-				try {
-					const errorJson = JSON.parse(errorText)
-					if (errorJson.error?.message) {
-						errorDetails = errorJson.error.message
-					} else if (errorJson.message) {
-						errorDetails = errorJson.message
-					} else if (errorJson.detail) {
-						errorDetails = errorJson.detail
-					} else {
-						errorDetails = errorText
-					}
-				} catch {
-					// If not JSON, use the raw text
-					errorDetails = errorText
-				}
-
-				// Provide user-friendly error messages based on status code
-				switch (response.status) {
-					case 400:
-						errorMessage = "Invalid request to Responses API. Please check your input parameters."
-						break
-					case 401:
-						errorMessage = "Authentication failed. Please check your OpenAI API key."
-						break
-					case 403:
-						errorMessage = "Access denied. Your API key may not have access to this endpoint."
-						break
-					case 404:
-						errorMessage =
-							"Responses API endpoint not found. The endpoint may not be available yet or requires a different configuration."
-						break
-					case 429:
-						errorMessage = "Rate limit exceeded. Please try again later."
-						break
-					case 500:
-					case 502:
-					case 503:
-						errorMessage = "OpenAI service error. Please try again later."
-						break
-					default:
-						errorMessage = `Responses API error (${response.status})`
-				}
-
-				// Append details if available
-				if (errorDetails) {
-					errorMessage += ` - ${errorDetails}`
-				}
-
-				// The status travels on the error for the retry loop and the background-model fallback.
-				throw Object.assign(new Error(errorMessage), { status: response.status })
-			}
-
-			if (!response.body) {
-				throw new Error("Responses API error: No response body")
-			}
-
-			// Handle streaming response
-			yield* this.handleStreamResponse(response.body, model)
-		} catch (error) {
-			const model = this.getModel()
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
-			TelemetryService.instance.captureException(apiError)
-
-			// Re-throw with the original error message if it's already formatted
-			if (error instanceof Error && error.message.includes("Responses API")) {
-				throw error
-			}
-			// Otherwise, wrap it with context (keeping the HTTP status)
-			throw handleProviderError(error, this.providerName, {
-				messageTransformer: (msg) =>
-					error instanceof Error
-						? `Failed to connect to Responses API: ${msg}`
-						: `Unexpected error connecting to Responses API`,
-			})
-		} finally {
-			this.abortController = undefined
-		}
-	}
-
-	/**
-	 * Handles the streaming response from the Responses API.
-	 *
-	 * This function iterates through the Server-Sent Events (SSE) stream, parses each event,
-	 * and yields structured data chunks (`ApiStream`). It handles a wide variety of event types,
-	 * including text deltas, reasoning, usage data, and various status/tool events.
-	 */
-	private async *handleStreamResponse(body: ReadableStream<Uint8Array>, model: OpenAiNativeModel): ApiStream {
-		const reader = body.getReader()
-		const decoder = new TextDecoder()
-		let buffer = ""
-		let hasContent = false
-
-		try {
-			while (true) {
-				// Check if request was aborted
-				if (this.abortController?.signal.aborted) {
-					break
-				}
-
-				const { done, value } = await reader.read()
-				if (done) break
-
-				buffer += decoder.decode(value, { stream: true })
-				const lines = buffer.split("\n")
-				buffer = lines.pop() || ""
-
-				for (const line of lines) {
-					if (line.startsWith("data: ")) {
-						const data = line.slice(6).trim()
-						if (data === "[DONE]") {
-							continue
-						}
-
-						try {
-							const parsed = JSON.parse(data)
-
-							// Capture resolved service tier if present
-							if (parsed.response?.service_tier) {
-								this.lastServiceTier = parsed.response.service_tier as ServiceTier
-							}
-							// Capture complete output array (includes reasoning items with encrypted_content)
-							if (parsed.response?.output && Array.isArray(parsed.response.output)) {
-								this.lastResponseOutput = parsed.response.output
-							}
-							// Capture top-level response id
-							if (parsed.response?.id) {
-								this.lastResponseId = parsed.response.id as string
-							}
-
-							// Delegate standard event types to the shared processor to avoid duplication.
-							// This applies to both SDK and raw SSE fallback paths.
-							if (parsed?.type && this.coreHandledEventTypes.has(parsed.type)) {
-								for await (const outChunk of this.processEvent(parsed, model)) {
-									// Track whether we've emitted any content so fallback handling can decide appropriately
-									// Include tool calls so tool-call-only responses aren't treated as empty
-									if (
-										outChunk.type === "text" ||
-										outChunk.type === "reasoning" ||
-										outChunk.type === "tool_call" ||
-										outChunk.type === "tool_call_partial"
-									) {
-										hasContent = true
-									}
-									yield outChunk
-								}
-								continue
-							}
-
-							// Check if this is a complete response (non-streaming format)
-							if (parsed.response && parsed.response.output && Array.isArray(parsed.response.output)) {
-								// Handle complete response in the initial event
-								for (const outputItem of parsed.response.output) {
-									if (outputItem.type === "text" && outputItem.content) {
-										for (const content of outputItem.content) {
-											if (content.type === "text" && content.text) {
-												hasContent = true
-												this.sawTextOutputInCurrentResponse = true
-												yield {
-													type: "text",
-													text: content.text,
-												}
-											}
-										}
-									}
-									// Additionally handle reasoning summaries if present (non-streaming summary output)
-									if (outputItem.type === "reasoning" && Array.isArray(outputItem.summary)) {
-										for (const summary of outputItem.summary) {
-											if (summary?.type === "summary_text" && typeof summary.text === "string") {
-												hasContent = true
-												yield {
-													type: "reasoning",
-													text: summary.text,
-												}
-											}
-										}
-									}
-								}
-								// Check for usage in the complete response
-								if (parsed.response.usage) {
-									const usageData = this.normalizeUsage(parsed.response.usage, model)
-									if (usageData) {
-										yield usageData
-									}
-								}
-							}
-							// Handle streaming delta events for text content
-							else if (
-								parsed.type === "response.text.delta" ||
-								parsed.type === "response.output_text.delta"
-							) {
-								// Primary streaming event for text deltas
-								if (parsed.delta) {
-									hasContent = true
-									yield {
-										type: "text",
-										text: parsed.delta,
-									}
-								}
-							} else if (
-								parsed.type === "response.text.done" ||
-								parsed.type === "response.output_text.done"
-							) {
-								// Text streaming completed - final text already streamed via deltas
-							}
-							// Handle reasoning delta events
-							else if (
-								parsed.type === "response.reasoning.delta" ||
-								parsed.type === "response.reasoning_text.delta"
-							) {
-								// Streaming reasoning content
-								if (parsed.delta) {
-									hasContent = true
-									yield {
-										type: "reasoning",
-										text: parsed.delta,
-									}
-								}
-							} else if (
-								parsed.type === "response.reasoning.done" ||
-								parsed.type === "response.reasoning_text.done"
-							) {
-								// Reasoning streaming completed
-							}
-							// Handle reasoning summary events
-							else if (
-								parsed.type === "response.reasoning_summary.delta" ||
-								parsed.type === "response.reasoning_summary_text.delta"
-							) {
-								// Streaming reasoning summary
-								if (parsed.delta) {
-									hasContent = true
-									yield {
-										type: "reasoning",
-										text: parsed.delta,
-									}
-								}
-							} else if (
-								parsed.type === "response.reasoning_summary.done" ||
-								parsed.type === "response.reasoning_summary_text.done"
-							) {
-								// Reasoning summary completed
-							}
-							// Handle refusal delta events
-							else if (parsed.type === "response.refusal.delta") {
-								// Model is refusing to answer
-								if (parsed.delta) {
-									hasContent = true
-									yield {
-										type: "text",
-										text: `[Refusal] ${parsed.delta}`,
-									}
-								}
-							} else if (parsed.type === "response.refusal.done") {
-								// Refusal completed
-							}
-							// Handle audio delta events (for multimodal responses)
-							else if (parsed.type === "response.audio.delta") {
-								// Audio streaming - we'll skip for now as we focus on text
-								// Could be handled in future for voice responses
-							} else if (parsed.type === "response.audio.done") {
-								// Audio completed
-							}
-							// Handle audio transcript delta events
-							else if (parsed.type === "response.audio_transcript.delta") {
-								// Audio transcript streaming
-								if (parsed.delta) {
-									hasContent = true
-									this.sawTextOutputInCurrentResponse = true
-									yield {
-										type: "text",
-										text: parsed.delta,
-									}
-								}
-							} else if (parsed.type === "response.audio_transcript.done") {
-								// Audio transcript completed
-							}
-							// Handle content part events (for structured content)
-							else if (parsed.type === "response.content_part.added") {
-								// New content part added - could be text, image, etc.
-								if (parsed.part?.type === "text" && parsed.part.text) {
-									hasContent = true
-									yield {
-										type: "text",
-										text: parsed.part.text,
-									}
-								}
-							} else if (parsed.type === "response.content_part.done") {
-								// Content part completed
-							}
-							// Handle output item events (alternative format)
-							else if (parsed.type === "response.output_item.added") {
-								// This is where the actual content comes through in some test cases
-								if (parsed.item) {
-									if (parsed.item.type === "text" && parsed.item.text) {
-										hasContent = true
-										yield { type: "text", text: parsed.item.text }
-									} else if (parsed.item.type === "reasoning" && parsed.item.text) {
-										hasContent = true
-										yield { type: "reasoning", text: parsed.item.text }
-									} else if (parsed.item.type === "message" && parsed.item.content) {
-										// Handle message type items
-										for (const content of parsed.item.content) {
-											if (content.type === "text" && content.text) {
-												hasContent = true
-												yield { type: "text", text: content.text }
-											}
-										}
-									}
-								}
-							} else if (parsed.type === "response.output_item.done") {
-								// Output item completed
-							}
-							// Handle function/tool call events
-							else if (
-								parsed.type === "response.function_call_arguments.delta" ||
-								parsed.type === "response.tool_call_arguments.delta" ||
-								parsed.type === "response.function_call_arguments.done" ||
-								parsed.type === "response.tool_call_arguments.done"
-							) {
-								// Delegated to processEvent (handles accumulation and completion)
-								for await (const outChunk of this.processEvent(parsed, model)) {
-									yield outChunk
-								}
-							}
-							// Handle MCP (Model Context Protocol) tool events
-							else if (parsed.type === "response.mcp_call_arguments.delta") {
-								// MCP tool call arguments streaming
-							} else if (parsed.type === "response.mcp_call_arguments.done") {
-								// MCP tool call completed
-							} else if (parsed.type === "response.mcp_call.in_progress") {
-								// MCP tool call in progress
-							} else if (
-								parsed.type === "response.mcp_call.completed" ||
-								parsed.type === "response.mcp_call.failed"
-							) {
-								// MCP tool call status events
-							} else if (parsed.type === "response.mcp_list_tools.in_progress") {
-								// MCP list tools in progress
-							} else if (
-								parsed.type === "response.mcp_list_tools.completed" ||
-								parsed.type === "response.mcp_list_tools.failed"
-							) {
-								// MCP list tools status events
-							}
-							// Handle web search events
-							else if (parsed.type === "response.web_search_call.searching") {
-								// Web search in progress
-							} else if (parsed.type === "response.web_search_call.in_progress") {
-								// Processing web search results
-							} else if (parsed.type === "response.web_search_call.completed") {
-								// Web search completed
-							}
-							// Handle code interpreter events
-							else if (parsed.type === "response.code_interpreter_call_code.delta") {
-								// Code interpreter code streaming
-								if (parsed.delta) {
-									// Could yield as a special code type if needed
-								}
-							} else if (parsed.type === "response.code_interpreter_call_code.done") {
-								// Code interpreter code completed
-							} else if (parsed.type === "response.code_interpreter_call.interpreting") {
-								// Code interpreter running
-							} else if (parsed.type === "response.code_interpreter_call.in_progress") {
-								// Code execution in progress
-							} else if (parsed.type === "response.code_interpreter_call.completed") {
-								// Code interpreter completed
-							}
-							// Handle file search events
-							else if (parsed.type === "response.file_search_call.searching") {
-								// File search in progress
-							} else if (parsed.type === "response.file_search_call.in_progress") {
-								// Processing file search results
-							} else if (parsed.type === "response.file_search_call.completed") {
-								// File search completed
-							}
-							// Handle image generation events
-							else if (parsed.type === "response.image_gen_call.generating") {
-								// Image generation in progress
-							} else if (parsed.type === "response.image_gen_call.in_progress") {
-								// Processing image generation
-							} else if (parsed.type === "response.image_gen_call.partial_image") {
-								// Image partially generated
-							} else if (parsed.type === "response.image_gen_call.completed") {
-								// Image generation completed
-							}
-							// Handle computer use events
-							else if (
-								parsed.type === "response.computer_tool_call.output_item" ||
-								parsed.type === "response.computer_tool_call.output_screenshot"
-							) {
-								// Computer use tool events
-							}
-							// Handle annotation events
-							else if (
-								parsed.type === "response.output_text_annotation.added" ||
-								parsed.type === "response.text_annotation.added"
-							) {
-								// Text annotation events - could be citations, references, etc.
-							}
-							// Handle error events
-							else if (parsed.type === "response.error" || parsed.type === "error") {
-								// Error event from the API
-								if (parsed.error || parsed.message) {
-									throw new Error(
-										`Responses API error: ${parsed.error?.message || parsed.message || "Unknown error"}`,
-									)
-								}
-							}
-							// Handle incomplete event
-							else if (parsed.type === "response.incomplete") {
-								// Response was incomplete - might need to handle specially
-							}
-							// Handle queued event
-							else if (parsed.type === "response.queued") {
-								// Response is queued
-							}
-							// Handle in_progress event
-							else if (parsed.type === "response.in_progress") {
-								// Response is being processed
-							}
-							// Handle failed event
-							else if (parsed.type === "response.failed") {
-								// Response failed
-								if (parsed.error || parsed.message) {
-									throw new Error(
-										`Response failed: ${parsed.error?.message || parsed.message || "Unknown failure"}`,
-									)
-								}
-							} else if (parsed.type === "response.completed" || parsed.type === "response.done") {
-								// Capture resolved service tier if present
-								if (parsed.response?.service_tier) {
-									this.lastServiceTier = parsed.response.service_tier as ServiceTier
-								}
-								// Capture top-level response id
-								if (parsed.response?.id) {
-									this.lastResponseId = parsed.response.id as string
-								}
-								// Capture complete output array (includes reasoning items with encrypted_content)
-								if (parsed.response?.output && Array.isArray(parsed.response.output)) {
-									this.lastResponseOutput = parsed.response.output
-								}
-
-								// Check if the done event contains the complete output (as a fallback)
-								if (
-									!hasContent &&
-									parsed.response &&
-									parsed.response.output &&
-									Array.isArray(parsed.response.output)
-								) {
-									for (const outputItem of parsed.response.output) {
-										if (outputItem.type === "message" && outputItem.content) {
-											for (const content of outputItem.content) {
-												if (content.type === "output_text" && content.text) {
-													hasContent = true
-													yield {
-														type: "text",
-														text: content.text,
-													}
-												}
-											}
-										}
-										// Also surface reasoning summaries if present in the final output
-										if (outputItem.type === "reasoning" && Array.isArray(outputItem.summary)) {
-											for (const summary of outputItem.summary) {
-												if (
-													summary?.type === "summary_text" &&
-													typeof summary.text === "string"
-												) {
-													hasContent = true
-													yield {
-														type: "reasoning",
-														text: summary.text,
-													}
-												}
-											}
-										}
-									}
-								}
-
-								// Usage for done/completed is already handled by processEvent in the SDK path.
-								// For SSE path, usage often arrives separately; avoid double-emitting here.
-							}
-							// These are structural or status events, we can just log them at a lower level or ignore.
-							else if (parsed.type === "response.created" || parsed.type === "response.in_progress") {
-								// Status events - no action needed
-							}
-							// Fallback for older formats or unexpected responses
-							else if (parsed.choices?.[0]?.delta?.content) {
-								hasContent = true
-								this.sawTextOutputInCurrentResponse = true
-								yield {
-									type: "text",
-									text: parsed.choices[0].delta.content,
-								}
-							}
-							// Additional fallback: some events place text under 'item.text' even if type isn't matched above
-							else if (
-								parsed.item &&
-								typeof parsed.item.text === "string" &&
-								parsed.item.text.length > 0
-							) {
-								hasContent = true
-								this.sawTextOutputInCurrentResponse = true
-								yield {
-									type: "text",
-									text: parsed.item.text,
-								}
-							} else if (parsed.usage) {
-								// Handle usage if it arrives in a separate, non-completed event
-								const usageData = this.normalizeUsage(parsed.usage, model)
-								if (usageData) {
-									yield usageData
-								}
-							}
-						} catch (e) {
-							// Only ignore JSON parsing errors, re-throw actual API errors
-							if (!(e instanceof SyntaxError)) {
-								throw e
-							}
-						}
-					}
-					// Also try to parse non-SSE formatted lines
-					else if (line.trim() && !line.startsWith(":")) {
-						try {
-							const parsed = JSON.parse(line)
-
-							// Try to extract content from various possible locations
-							if (parsed.content || parsed.text || parsed.message) {
-								hasContent = true
-								yield {
-									type: "text",
-									text: parsed.content || parsed.text || parsed.message,
-								}
-							}
-						} catch {
-							// Not JSON, might be plain text - ignore
-						}
-					}
-				}
-			}
-
-			// If we didn't get any content, don't throw - the API might have returned an empty response
-			// This can happen in certain edge cases and shouldn't break the flow
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
-			TelemetryService.instance.captureException(apiError)
-
-			throw handleProviderError(error, this.providerName, {
-				messageTransformer: (msg) =>
-					error instanceof Error
-						? `Error processing response stream: ${msg}`
-						: "Unexpected error processing response stream",
-			})
-		} finally {
-			reader.releaseLock()
-		}
-	}
-
-	/**
-	 * Shared processor for Responses API events.
-	 */
-	private async *processEvent(event: any, model: OpenAiNativeModel): ApiStream {
-		// Capture resolved service tier when available
-		if (event?.response?.service_tier) {
-			this.lastServiceTier = event.response.service_tier as ServiceTier
-		}
-		// Capture complete output array (includes reasoning items with encrypted_content)
-		if (event?.response?.output && Array.isArray(event.response.output)) {
-			this.lastResponseOutput = event.response.output
-		}
-		// Capture top-level response id
-		if (event?.response?.id) {
-			this.lastResponseId = event.response.id as string
-		}
-
-		// Handle text deltas
-		if (event?.type === "response.text.delta" || event?.type === "response.output_text.delta") {
-			if (event?.delta) {
-				this.sawTextDeltaInCurrentResponse = true
-				this.sawTextOutputInCurrentResponse = true
-				yield { type: "text", text: event.delta }
-			}
-			return
-		}
-
-		// Handle done-only text for variants that skip delta events.
-		if (event?.type === "response.text.done" || event?.type === "response.output_text.done") {
-			const doneText =
-				typeof event?.text === "string"
-					? event.text
-					: typeof event?.output_text === "string"
-						? event.output_text
-						: typeof event?.delta === "string"
-							? event.delta
-							: undefined
-			if (!this.sawTextOutputInCurrentResponse && doneText) {
-				this.sawTextOutputInCurrentResponse = true
-				yield { type: "text", text: doneText }
-			}
-			return
-		}
-
-		// Handle content-part text for structured streaming payloads.
-		if (event?.type === "response.content_part.added" || event?.type === "response.content_part.done") {
-			const part = event?.part
-			if (
-				!this.sawTextDeltaInCurrentResponse &&
-				(part?.type === "text" || part?.type === "output_text") &&
-				(typeof part?.text === "string" || typeof part?.text?.value === "string")
-			) {
-				const partText = typeof part.text === "string" ? part.text : part.text.value
-				if (partText) {
-					this.sawTextOutputInCurrentResponse = true
-					yield { type: "text", text: partText }
-				}
-			}
-			return
-		}
-
-		// Handle reasoning deltas (including summary variants)
-		if (
-			event?.type === "response.reasoning.delta" ||
-			event?.type === "response.reasoning_text.delta" ||
-			event?.type === "response.reasoning_summary.delta" ||
-			event?.type === "response.reasoning_summary_text.delta"
-		) {
-			if (event?.delta) {
-				yield { type: "reasoning", text: event.delta }
-			}
-			return
-		}
-
-		// Handle refusal deltas
-		if (event?.type === "response.refusal.delta") {
-			if (event?.delta) {
-				this.sawTextOutputInCurrentResponse = true
-				yield { type: "text", text: `[Refusal] ${event.delta}` }
-			}
-			return
-		}
-
-		// Handle tool/function call deltas - emit as partial chunks
-		if (
-			event?.type === "response.tool_call_arguments.delta" ||
-			event?.type === "response.function_call_arguments.delta"
-		) {
-			// Some streams omit stable identity on delta events; fall back to the
-			// most recently observed tool identity from output_item events.
-			const callId = event.call_id || event.tool_call_id || event.id || this.pendingToolCallId || undefined
-			const name = event.name || event.function_name || this.pendingToolCallName || undefined
-			const args = event.delta || event.arguments
-
-			// Avoid emitting incomplete tool_call_partial chunks; the downstream
-			// NativeToolCallParser needs a name to start a call.
-			if (typeof name === "string" && name.length > 0 && typeof callId === "string" && callId.length > 0) {
-				this.streamedToolCallIds.add(callId)
-				yield {
-					type: "tool_call_partial",
-					index: event.index ?? 0,
-					id: callId,
-					name,
-					arguments: typeof args === "string" ? args : "",
-				}
-			}
-			return
-		}
-
-		// Handle tool/function call completion events
-		if (
-			event?.type === "response.tool_call_arguments.done" ||
-			event?.type === "response.function_call_arguments.done"
-		) {
-			// Tool call complete - no action needed, NativeToolCallParser handles completion
-			return
-		}
-
-		// Handle output item additions/completions (SDK or Responses API alternative format)
-		if (event?.type === "response.output_item.added" || event?.type === "response.output_item.done") {
-			const item = event?.item
-			if (item) {
-				// Capture tool identity so subsequent argument deltas can be attributed.
-				if (item.type === "function_call" || item.type === "tool_call") {
-					const callId = item.call_id || item.tool_call_id || item.id
-					const name = item.name || item.function?.name || item.function_name
-					if (typeof callId === "string" && callId.length > 0) {
-						this.pendingToolCallId = callId
-						this.pendingToolCallName = typeof name === "string" ? name : undefined
-					}
-				}
-
-				// For "added" events, yield text/reasoning content (streaming path).
-				// For "done" events, normally text was already streamed via deltas, but some models
-				// only provide assistant text on done events. Emit fallback text only if none was emitted yet.
-				if (event.type === "response.output_item.added") {
-					if (item.type === "text" && item.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: item.text }
-					} else if (item.type === "output_text" && item.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: item.text }
-					} else if (item.type === "reasoning" && item.text) {
-						yield { type: "reasoning", text: item.text }
-					} else if (item.type === "message" && Array.isArray(item.content)) {
-						for (const content of item.content) {
-							// Some implementations send 'text'; others send 'output_text'
-							if ((content?.type === "text" || content?.type === "output_text") && content?.text) {
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: content.text }
-							}
-						}
-					}
-				} else if (
-					event.type === "response.output_item.done" &&
-					(item.type === "function_call" || item.type === "tool_call")
-				) {
-					const callId = item.call_id || item.tool_call_id || item.id
-					const name = item.name || item.function?.name || item.function_name
-					const argsRaw = item.arguments || item.function?.arguments || item.input
-					const args =
-						typeof argsRaw === "string"
-							? argsRaw
-							: argsRaw && typeof argsRaw === "object"
-								? JSON.stringify(argsRaw)
-								: ""
-
-					// Fallback for models that only emit a complete function_call in output_item.done.
-					// If we already streamed partials for this ID, skip to avoid duplicate tool execution.
-					if (
-						typeof callId === "string" &&
-						callId.length > 0 &&
-						typeof name === "string" &&
-						name.length > 0 &&
-						!this.streamedToolCallIds.has(callId)
-					) {
-						yield {
-							type: "tool_call",
-							id: callId,
-							name,
-							arguments: args,
-						}
-					}
-				} else if (!this.sawTextOutputInCurrentResponse) {
-					if ((item.type === "text" || item.type === "output_text") && item.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: item.text }
-					} else if (item.type === "message" && Array.isArray(item.content)) {
-						for (const content of item.content) {
-							if ((content?.type === "text" || content?.type === "output_text") && content?.text) {
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: content.text }
-							}
-						}
-					}
-				}
-
-				// Note: We intentionally do NOT emit tool_call from response.output_item.done
-				// for function_call/tool_call items if we already saw streaming partials.
-			}
-			return
-		}
-
-		// Completion events that may carry usage
-		if (event?.type === "response.done" || event?.type === "response.completed") {
-			// Some OpenAI variants only provide assistant text in the final completed payload.
-			if (!this.sawTextOutputInCurrentResponse && Array.isArray(event?.response?.output)) {
-				for (const outputItem of event.response.output) {
-					if ((outputItem?.type === "text" || outputItem?.type === "output_text") && outputItem?.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: outputItem.text }
-						continue
-					}
-
-					if (outputItem?.type === "message" && Array.isArray(outputItem.content)) {
-						for (const content of outputItem.content) {
-							if ((content?.type === "text" || content?.type === "output_text") && content?.text) {
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: content.text }
-							}
-						}
-					}
-				}
-			}
-
-			const usage = event?.response?.usage || event?.usage || undefined
-			const usageData = this.normalizeUsage(usage, model)
-			if (usageData) {
-				yield usageData
-			}
-			return
-		}
-
-		// Fallbacks for older formats or unexpected objects
-		if (event?.choices?.[0]?.delta?.content) {
-			this.sawTextDeltaInCurrentResponse = true
-			this.sawTextOutputInCurrentResponse = true
-			yield { type: "text", text: event.choices[0].delta.content }
-			return
-		}
-
-		if (event?.usage) {
-			const usageData = this.normalizeUsage(event.usage, model)
-			if (usageData) {
-				yield usageData
-			}
-		}
 	}
 
 	private getReasoningEffort(model: OpenAiNativeModel): ReasoningEffortExtended | undefined {
@@ -1430,19 +292,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	 * @returns Object with encrypted_content and id, or undefined if not available
 	 */
 	getEncryptedContent(): { encrypted_content: string; id?: string } | undefined {
-		if (!this.lastResponseOutput) return undefined
-
-		// Find the first reasoning item with encrypted_content
-		const reasoningItem = this.lastResponseOutput.find(
-			(item) => item.type === "reasoning" && item.encrypted_content,
-		)
-
-		if (!reasoningItem?.encrypted_content) return undefined
-
-		return {
-			encrypted_content: reasoningItem.encrypted_content,
-			...(reasoningItem.id ? { id: reasoningItem.id } : {}),
-		}
+		return this.core.getEncryptedContent()
 	}
 
 	/**
@@ -1452,14 +302,11 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	 * to sever, and aborting the signal already closes the HTTP connection.
 	 */
 	cancelRequest(): void {
-		if (this.abortController) {
-			this.abortController.abort()
-			this.abortController = undefined
-		}
+		this.core.cancel()
 	}
 
 	getResponseId(): string | undefined {
-		return this.lastResponseId
+		return this.core.getResponseId()
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
@@ -1467,8 +314,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 	}
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		// Create AbortController for cancellation
-		this.abortController = new AbortController()
+		// Registered so that cancelRequest() aborts it
+		const abortController = this.core.openRequest()
 
 		try {
 			const model = this.getModel()
@@ -1530,7 +377,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 			// Make the non-streaming request
 			const response = await (this.client as any).responses.create(requestBody, {
-				signal: this.abortController.signal,
+				signal: abortController.signal,
 			})
 
 			// The Responses API names its usage fields input_tokens/output_tokens.
@@ -1563,7 +410,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 
 			throw handleProviderError(error, this.providerName)
 		} finally {
-			this.abortController = undefined
+			this.core.closeRequest()
 		}
 	}
 }

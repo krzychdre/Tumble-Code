@@ -1,4 +1,3 @@
-import * as os from "os"
 import { v7 as uuidv7 } from "uuid"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
@@ -13,22 +12,19 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { Package } from "../../shared/package"
 import type { ApiHandlerOptions } from "../../shared/api"
 
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
-import { toStrictSchema } from "../transform/strict-json-schema"
 
 import { BaseProvider } from "./base-provider"
 import { handleProviderError } from "./utils/error-handler"
-import { isSdkUnusableError } from "./utils/responses-sse-fallback"
 import { getApiErrorStatus } from "../apiErrors"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
-import { isMcpTool } from "../../utils/mcp-name"
-import { sanitizeOpenAiCallId } from "../../utils/tool-id"
 import { openAiCodexOAuthManager } from "../../integrations/openai-codex/oauth"
 import { t } from "../../i18n"
+import { REFUSAL_TEXT_PREFIX, ResponsesApiCore, type ResponsesApiErrorTexts } from "./responses-api/core"
+import { buildResponsesApiRequestBody, responsesApiUserAgent, toResponsesApiInput } from "./responses-api/request"
 
 export type OpenAiCodexModel = ReturnType<OpenAiCodexHandler["getModel"]>
 
@@ -38,58 +34,42 @@ export type OpenAiCodexModel = ReturnType<OpenAiCodexHandler["getModel"]>
  */
 const CODEX_API_BASE_URL = "https://chatgpt.com/backend-api/codex"
 
-/**
- * A refusal is streamed as text so the chat still shows why the model declined, but it is not part
- * of the answer. `completePromptWithUsage` relies on this prefix to leave refusals out, so both
- * refusal branches must emit it.
- */
-const REFUSAL_TEXT_PREFIX = "[Refusal] "
-
-/**
- * Status events of the SSE fallback that carry nothing to show. OpenAI Native lists the same
- * events; without the list their fields (for example `item.text`) would be taken for answer text.
- */
-const IGNORED_SSE_EVENT_TYPES = new Set<string>([
-	"response.reasoning.done",
-	"response.reasoning_text.done",
-	"response.reasoning_summary.done",
-	"response.reasoning_summary_text.done",
-	"response.refusal.done",
-	"response.audio.delta",
-	"response.audio.done",
-	"response.audio_transcript.done",
-	"response.mcp_call_arguments.delta",
-	"response.mcp_call_arguments.done",
-	"response.mcp_call.in_progress",
-	"response.mcp_call.completed",
-	"response.mcp_call.failed",
-	"response.mcp_list_tools.in_progress",
-	"response.mcp_list_tools.completed",
-	"response.mcp_list_tools.failed",
-	"response.web_search_call.searching",
-	"response.web_search_call.in_progress",
-	"response.web_search_call.completed",
-	"response.code_interpreter_call_code.delta",
-	"response.code_interpreter_call_code.done",
-	"response.code_interpreter_call.interpreting",
-	"response.code_interpreter_call.in_progress",
-	"response.code_interpreter_call.completed",
-	"response.file_search_call.searching",
-	"response.file_search_call.in_progress",
-	"response.file_search_call.completed",
-	"response.image_gen_call.generating",
-	"response.image_gen_call.in_progress",
-	"response.image_gen_call.partial_image",
-	"response.image_gen_call.completed",
-	"response.computer_tool_call.output_item",
-	"response.computer_tool_call.output_screenshot",
-	"response.output_text_annotation.added",
-	"response.text_annotation.added",
-	"response.incomplete",
-	"response.queued",
-	"response.in_progress",
-	"response.created",
-])
+const CODEX_ERROR_TEXTS: ResponsesApiErrorTexts = {
+	httpError: (status) => {
+		switch (status) {
+			case 400:
+				return t("common:errors.openAiCodex.invalidRequest")
+			case 401:
+				return t("common:errors.openAiCodex.authenticationFailed")
+			case 403:
+				return t("common:errors.openAiCodex.accessDenied")
+			case 404:
+				return t("common:errors.openAiCodex.endpointNotFound")
+			case 429:
+				return t("common:errors.openAiCodex.rateLimitExceeded")
+			case 500:
+			case 502:
+			case 503:
+				return t("common:errors.openAiCodex.serviceError")
+			default:
+				return t("common:errors.openAiCodex.genericError", { status })
+		}
+	},
+	get noResponseBody() {
+		return t("common:errors.openAiCodex.noResponseBody")
+	},
+	ownTextMarker: "Codex API",
+	connectionFailed: (message) => t("common:errors.openAiCodex.connectionFailed", { message }),
+	get unexpectedConnectionError() {
+		return t("common:errors.openAiCodex.unexpectedConnectionError")
+	},
+	streamErrorEvent: (message) => t("common:errors.openAiCodex.apiError", { message }),
+	responseFailed: (message) => t("common:errors.openAiCodex.responseFailed", { message }),
+	streamProcessingError: (message) => t("common:errors.openAiCodex.streamProcessingError", { message }),
+	get unexpectedStreamError() {
+		return t("common:errors.openAiCodex.unexpectedStreamError")
+	},
+}
 
 /**
  * OpenAiCodexHandler - Uses OpenAI Responses API with OAuth authentication
@@ -105,105 +85,20 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 	protected options: ApiHandlerOptions
 	private readonly providerName = "OpenAI Codex"
 	private client?: OpenAI
-	// Complete response output array
-	private lastResponseOutput: any[] | undefined
-	// Last top-level response id
-	private lastResponseId: string | undefined
-	// Abort controller for cancelling ongoing requests
-	private abortController?: AbortController
 	// Session ID for the Codex API (persists for the lifetime of the handler)
 	private readonly sessionId: string
-	/**
-	 * Some Codex/Responses streams emit tool-call argument deltas without stable call id/name.
-	 * Track the last observed tool identity from output_item events so we can still
-	 * emit `tool_call_partial` chunks (tool-call-only streams).
-	 */
-	private pendingToolCallId: string | undefined
-	private pendingToolCallName: string | undefined
-	// Tracks whether this response already emitted text to avoid duplicate done-event rendering.
-	private sawTextOutputInCurrentResponse = false
-	// Tracks whether text arrived through delta events so content_part events can be treated as fallback-only.
-	private sawTextDeltaInCurrentResponse = false
-	// Tracks tool call IDs emitted via streaming partial events to prevent done-event duplicates.
-	private streamedToolCallIds = new Set<string>()
-	// Tracks whether the SDK stream produced an event. From then on the service has accepted the
-	// request and its output is already with the caller, so neither the SSE fallback nor the
-	// token-refresh retry may replay it: that would append a second generation to the first.
-	private sawSdkEventInCurrentResponse = false
-
-	// Event types handled by the shared event processor
-	private readonly coreHandledEventTypes = new Set<string>([
-		"response.text.delta",
-		"response.output_text.delta",
-		"response.text.done",
-		"response.output_text.done",
-		"response.content_part.added",
-		"response.content_part.done",
-		"response.reasoning.delta",
-		"response.reasoning_text.delta",
-		"response.reasoning_summary.delta",
-		"response.reasoning_summary_text.delta",
-		"response.refusal.delta",
-		"response.output_item.added",
-		"response.output_item.done",
-		"response.done",
-		"response.completed",
-		"response.tool_call_arguments.delta",
-		"response.function_call_arguments.delta",
-		"response.tool_call_arguments.done",
-		"response.function_call_arguments.done",
-	])
+	// Responses API plumbing shared with OpenAI Native. Subscription: no per-token cost.
+	private readonly core = new ResponsesApiCore({
+		providerName: this.providerName,
+		texts: CODEX_ERROR_TEXTS,
+		totalCost: () => 0,
+	})
 
 	constructor(options: ApiHandlerOptions) {
 		super()
 		this.options = options
 		// Generate a new session ID for standalone handler usage (fallback)
 		this.sessionId = uuidv7()
-	}
-
-	private normalizeUsage(usage: any, model: OpenAiCodexModel): ApiStreamUsageChunk | undefined {
-		if (!usage) return undefined
-
-		const inputDetails = usage.input_tokens_details ?? usage.prompt_tokens_details
-
-		const hasCachedTokens = typeof inputDetails?.cached_tokens === "number"
-		const hasCacheMissTokens = typeof inputDetails?.cache_miss_tokens === "number"
-		const cachedFromDetails = hasCachedTokens ? inputDetails.cached_tokens : 0
-		const missFromDetails = hasCacheMissTokens ? inputDetails.cache_miss_tokens : 0
-		// GPT-5.6+ report cache writes only here.
-		const writesFromDetails =
-			typeof inputDetails?.cache_write_tokens === "number" ? inputDetails.cache_write_tokens : 0
-
-		let totalInputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0
-		if (
-			totalInputTokens === 0 &&
-			inputDetails &&
-			(cachedFromDetails > 0 || missFromDetails > 0 || writesFromDetails > 0)
-		) {
-			totalInputTokens = cachedFromDetails + missFromDetails + writesFromDetails
-		}
-
-		const totalOutputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0
-		const cacheWriteTokens = usage.cache_creation_input_tokens ?? usage.cache_write_tokens ?? writesFromDetails
-		const cacheReadTokens =
-			usage.cache_read_input_tokens ?? usage.cache_read_tokens ?? usage.cached_tokens ?? cachedFromDetails ?? 0
-
-		const reasoningTokens =
-			typeof usage.output_tokens_details?.reasoning_tokens === "number"
-				? usage.output_tokens_details.reasoning_tokens
-				: undefined
-
-		// Subscription-based: no per-token costs
-		const out: ApiStreamUsageChunk = {
-			type: "usage",
-			inputTokens: totalInputTokens,
-			outputTokens: totalOutputTokens,
-			cacheWriteTokens,
-			cacheReadTokens,
-			...(typeof reasoningTokens === "number" ? { reasoningTokens } : {}),
-			totalCost: 0, // Subscription-based pricing
-		}
-		return out
 	}
 
 	override async *createMessage(
@@ -221,15 +116,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		// Reset state for this request
-		this.lastResponseOutput = undefined
-		this.lastResponseId = undefined
-		this.pendingToolCallId = undefined
-		this.pendingToolCallName = undefined
-		this.sawTextOutputInCurrentResponse = false
-		this.sawTextDeltaInCurrentResponse = false
-		this.sawSdkEventInCurrentResponse = false
-		this.streamedToolCallIds.clear()
+		this.core.startResponse()
 
 		// Get access token from OAuth manager
 		let accessToken = await openAiCodexOAuthManager.getAccessToken()
@@ -242,16 +129,16 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 			)
 		}
 
-		// Resolve reasoning effort
-		const reasoningEffort = this.getReasoningEffort(model)
-
-		// Format conversation
-		const formattedInput = this.formatFullConversation(systemPrompt, messages)
-
-		// Build request body
-		// Per the implementation guide: Codex backend may reject some parameters
-		// Notably: max_output_tokens and prompt_cache_retention may be rejected
-		const requestBody = this.buildRequestBody(model, formattedInput, systemPrompt, reasoningEffort, metadata)
+		// Per the implementation guide: the Codex backend may reject max_output_tokens and
+		// prompt_cache_retention, so they are not sent; the reasoning summary always is.
+		const requestBody = buildResponsesApiRequestBody({
+			modelId: model.id,
+			input: toResponsesApiInput(messages),
+			instructions: systemPrompt,
+			reasoningEffort: this.getReasoningEffort(model),
+			reasoningSummary: true,
+			metadata,
+		})
 
 		// Make the request with retry on auth failure
 		for (let attempt = 0; attempt < 2; attempt++) {
@@ -264,8 +151,8 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 					getApiErrorStatus(error) === 401 ||
 					/unauthorized|invalid token|not authenticated|authentication|401/i.test(message)
 
-				// Only retry while nothing has come back yet (see sawSdkEventInCurrentResponse).
-				if (attempt === 0 && isAuthFailure && !this.sawSdkEventInCurrentResponse) {
+				// Only retry while nothing has come back yet (see ResponsesApiCore.sawSdkEvent).
+				if (attempt === 0 && isAuthFailure && !this.core.sawSdkEvent) {
 					// Force refresh the token for retry
 					const refreshed = await openAiCodexOAuthManager.forceRefreshAccessToken()
 					if (!refreshed) {
@@ -286,154 +173,43 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		}
 	}
 
-	private buildRequestBody(
-		model: OpenAiCodexModel,
-		formattedInput: any,
-		systemPrompt: string,
-		reasoningEffort: ReasoningEffortExtended | undefined,
-		metadata?: ApiHandlerCreateMessageMetadata,
-	): any {
-		interface ResponsesRequestBody {
-			model: string
-			input: Array<{ role: "user" | "assistant"; content: any[] } | { type: string; content: string }>
-			stream: boolean
-			reasoning?: { effort?: ReasoningEffortExtended; summary?: "auto" }
-			temperature?: number
-			store?: boolean
-			instructions?: string
-			include?: string[]
-			tools?: Array<{
-				type: "function"
-				name: string
-				description?: string
-				parameters?: any
-				strict?: boolean
-			}>
-			tool_choice?: any
-			parallel_tool_calls?: boolean
+	private executeRequest(requestBody: any, model: OpenAiCodexModel, accessToken: string, taskId?: string): ApiStream {
+		const codexHeaders = async (): Promise<Record<string, string>> => {
+			// ChatGPT account ID, needed for organization subscriptions
+			const accountId = await openAiCodexOAuthManager.getAccountId()
+			return {
+				originator: "roo-code",
+				session_id: taskId || this.sessionId,
+				"User-Agent": responsesApiUserAgent(),
+				...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
+			}
 		}
 
-		// Per the implementation guide: Codex backend may reject max_output_tokens
-		// and prompt_cache_retention, so we omit them
-		const body: ResponsesRequestBody = {
-			model: model.id,
-			input: formattedInput,
-			stream: true,
-			store: false,
-			instructions: systemPrompt,
-			// Only include encrypted reasoning content when reasoning effort is set
-			...(reasoningEffort ? { include: ["reasoning.encrypted_content"] } : {}),
-			...(reasoningEffort
-				? {
-						reasoning: {
-							...(reasoningEffort ? { effort: reasoningEffort } : {}),
-							summary: "auto" as const,
-						},
-					}
-				: {}),
-			tools: (metadata?.tools ?? [])
-				.filter((tool) => tool.type === "function")
-				.map((tool) => {
-					const isMcp = isMcpTool(tool.function.name)
-					return {
-						type: "function",
-						name: tool.function.name,
-						description: tool.function.description,
-						parameters: toStrictSchema(tool.function.parameters, { mcp: isMcp }),
-						strict: !isMcp,
-					}
-				}),
-			tool_choice: metadata?.tool_choice,
-			parallel_tool_calls: metadata?.parallelToolCalls ?? true,
-		}
-
-		return body
-	}
-
-	private async *executeRequest(
-		requestBody: any,
-		model: OpenAiCodexModel,
-		accessToken: string,
-		taskId?: string,
-	): ApiStream {
-		// Create AbortController for cancellation (cancelRequest() aborts it)
-		const abortController = new AbortController()
-		this.abortController = abortController
-
-		try {
-			// Prefer OpenAI SDK streaming (same approach as openai-native) so event handling
-			// is consistent across providers.
-			try {
-				// Get ChatGPT account ID for organization subscriptions
-				const accountId = await openAiCodexOAuthManager.getAccountId()
-
-				// Build Codex-specific headers. Authorization is provided by the SDK apiKey.
-				const codexHeaders: Record<string, string> = {
-					originator: "roo-code",
-					session_id: taskId || this.sessionId,
-					"User-Agent": `roo-code/${Package.version} (${os.platform()} ${os.release()}; ${os.arch()}) node/${process.version.slice(1)}`,
-					...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
-				}
-
-				// Allow tests to inject a client. If none is injected, create one for this request.
+		return this.core.streamRequest({
+			body: requestBody,
+			modelId: model.id,
+			info: model.info,
+			openSdkStream: async (body, signal) => {
+				const headers = await codexHeaders()
+				// Tests inject a client; otherwise one is created per request. Authorization
+				// is the SDK apiKey.
 				const client =
 					this.client ??
 					new OpenAI({
 						apiKey: accessToken,
 						baseURL: CODEX_API_BASE_URL,
-						defaultHeaders: codexHeaders,
+						defaultHeaders: headers,
 						timeout: this.timeoutMs,
 					})
-
-				const stream = (await (client as any).responses.create(requestBody, {
-					signal: abortController.signal,
-					// If the SDK supports per-request overrides, ensure headers are present.
-					headers: codexHeaders,
-				})) as AsyncIterable<any>
-
-				if (typeof (stream as any)?.[Symbol.asyncIterator] !== "function") {
-					throw new Error(
-						"OpenAI SDK did not return an AsyncIterable for Responses API streaming. Falling back to SSE.",
-					)
-				}
-
-				for await (const event of stream) {
-					if (abortController.signal.aborted) {
-						break
-					}
-
-					// Set before the event is processed: processEvent also changes the
-					// response state, so a throw from it must not replay the request either.
-					this.sawSdkEventInCurrentResponse = true
-
-					for await (const outChunk of this.processEvent(event, model)) {
-						if (outChunk.type === "text") {
-							this.sawTextOutputInCurrentResponse = true
-						}
-						yield outChunk
-					}
-				}
-			} catch (sdkErr) {
-				// The SSE fallback is only for an SDK that could not be used at all. Once the
-				// stream has emitted, replaying the request would duplicate its output; after
-				// Stop (a cancelled request), replaying it would start a request nothing aborts.
-				// A request the server answered (429, 401, 5xx) must not be sent again either.
-				if (
-					this.sawSdkEventInCurrentResponse ||
-					abortController.signal.aborted ||
-					!isSdkUnusableError(sdkErr)
-				) {
-					throw sdkErr
-				}
-
-				// Fallback to manual SSE via fetch (Codex backend).
-				yield* this.makeCodexRequest(requestBody, model, accessToken, taskId)
-			}
-		} finally {
-			if (this.abortController === abortController) {
-				this.abortController = undefined
-			}
-		}
+				return (client as any).responses.create(body, { signal, headers })
+			},
+			// Per the implementation guide: the Codex backend with a Bearer token.
+			fallbackRequest: async () => ({
+				url: `${CODEX_API_BASE_URL}/responses`,
+				headers: { Authorization: `Bearer ${accessToken}`, ...(await codexHeaders()) },
+				body: requestBody,
+			}),
+		})
 	}
 
 	/**
@@ -442,726 +218,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 	 * There is no long-lived client to destroy: a client is created per request.
 	 */
 	cancelRequest(): void {
-		if (this.abortController) {
-			this.abortController.abort()
-			this.abortController = undefined
-		}
-	}
-
-	private formatFullConversation(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): any {
-		const formattedInput: any[] = []
-
-		for (const message of messages) {
-			// Check if this is a reasoning item
-			if ((message as any).type === "reasoning") {
-				formattedInput.push(message)
-				continue
-			}
-
-			if (message.role === "user") {
-				const content: any[] = []
-				const toolResults: any[] = []
-
-				if (typeof message.content === "string") {
-					content.push({ type: "input_text", text: message.content })
-				} else if (Array.isArray(message.content)) {
-					for (const block of message.content) {
-						if (block.type === "text") {
-							content.push({ type: "input_text", text: block.text })
-						} else if (block.type === "image") {
-							const image = block as Anthropic.Messages.ImageBlockParam
-							const imageUrl = `data:${image.source.media_type};base64,${image.source.data}`
-							content.push({ type: "input_image", image_url: imageUrl })
-						} else if (block.type === "tool_result") {
-							const result =
-								typeof block.content === "string"
-									? block.content
-									: block.content?.map((c) => (c.type === "text" ? c.text : "")).join("") || ""
-							toolResults.push({
-								type: "function_call_output",
-								// Sanitize and truncate call_id to fit OpenAI's 64-char limit
-								call_id: sanitizeOpenAiCallId(block.tool_use_id),
-								output: result,
-							})
-						}
-					}
-				}
-
-				if (content.length > 0) {
-					formattedInput.push({ role: "user", content })
-				}
-
-				if (toolResults.length > 0) {
-					formattedInput.push(...toolResults)
-				}
-			} else if (message.role === "assistant") {
-				const content: any[] = []
-				const toolCalls: any[] = []
-
-				if (typeof message.content === "string") {
-					content.push({ type: "output_text", text: message.content })
-				} else if (Array.isArray(message.content)) {
-					for (const block of message.content) {
-						if (block.type === "text") {
-							content.push({ type: "output_text", text: block.text })
-						} else if (block.type === "tool_use") {
-							toolCalls.push({
-								type: "function_call",
-								// Sanitize and truncate call_id to fit OpenAI's 64-char limit
-								call_id: sanitizeOpenAiCallId(block.id),
-								name: block.name,
-								arguments: JSON.stringify(block.input),
-							})
-						}
-					}
-				}
-
-				if (content.length > 0) {
-					formattedInput.push({ role: "assistant", content })
-				}
-
-				if (toolCalls.length > 0) {
-					formattedInput.push(...toolCalls)
-				}
-			}
-		}
-
-		return formattedInput
-	}
-
-	private async *makeCodexRequest(
-		requestBody: any,
-		model: OpenAiCodexModel,
-		accessToken: string,
-		taskId?: string,
-	): ApiStream {
-		// Per the implementation guide: route to Codex backend with Bearer token
-		const url = `${CODEX_API_BASE_URL}/responses`
-
-		// Get ChatGPT account ID for organization subscriptions
-		const accountId = await openAiCodexOAuthManager.getAccountId()
-
-		// Build headers with required Codex-specific fields
-		const headers: Record<string, string> = {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${accessToken}`,
-			originator: "roo-code",
-			session_id: taskId || this.sessionId,
-			"User-Agent": `roo-code/${Package.version} (${os.platform()} ${os.release()}; ${os.arch()}) node/${process.version.slice(1)}`,
-		}
-
-		// Add ChatGPT-Account-Id if available (required for organization subscriptions)
-		if (accountId) {
-			headers["ChatGPT-Account-Id"] = accountId
-		}
-
-		try {
-			const response = await fetch(url, {
-				method: "POST",
-				headers,
-				body: JSON.stringify(requestBody),
-				signal: this.abortController?.signal,
-			})
-
-			if (!response.ok) {
-				const errorText = await response.text()
-
-				let errorMessage = t("common:errors.api.apiRequestFailed", { status: response.status })
-				let errorDetails = ""
-
-				try {
-					const errorJson = JSON.parse(errorText)
-					if (errorJson.error?.message) {
-						errorDetails = errorJson.error.message
-					} else if (errorJson.message) {
-						errorDetails = errorJson.message
-					} else if (errorJson.detail) {
-						errorDetails = errorJson.detail
-					} else {
-						errorDetails = errorText
-					}
-				} catch {
-					errorDetails = errorText
-				}
-
-				switch (response.status) {
-					case 400:
-						errorMessage = t("common:errors.openAiCodex.invalidRequest")
-						break
-					case 401:
-						errorMessage = t("common:errors.openAiCodex.authenticationFailed")
-						break
-					case 403:
-						errorMessage = t("common:errors.openAiCodex.accessDenied")
-						break
-					case 404:
-						errorMessage = t("common:errors.openAiCodex.endpointNotFound")
-						break
-					case 429:
-						errorMessage = t("common:errors.openAiCodex.rateLimitExceeded")
-						break
-					case 500:
-					case 502:
-					case 503:
-						errorMessage = t("common:errors.openAiCodex.serviceError")
-						break
-					default:
-						errorMessage = t("common:errors.openAiCodex.genericError", { status: response.status })
-				}
-
-				if (errorDetails) {
-					errorMessage += ` - ${errorDetails}`
-				}
-
-				// The status travels on the error for the retry loop and the background-model fallback.
-				throw Object.assign(new Error(errorMessage), { status: response.status })
-			}
-
-			if (!response.body) {
-				throw new Error(t("common:errors.openAiCodex.noResponseBody"))
-			}
-
-			yield* this.handleStreamResponse(response.body, model)
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
-			TelemetryService.instance.captureException(apiError)
-
-			if (error instanceof Error && error.message.includes("Codex API")) {
-				throw error
-			}
-			throw handleProviderError(error, this.providerName, {
-				messageTransformer: (msg) =>
-					error instanceof Error
-						? t("common:errors.openAiCodex.connectionFailed", { message: msg })
-						: t("common:errors.openAiCodex.unexpectedConnectionError"),
-			})
-		}
-	}
-
-	private async *handleStreamResponse(body: ReadableStream<Uint8Array>, model: OpenAiCodexModel): ApiStream {
-		const reader = body.getReader()
-		const decoder = new TextDecoder()
-		let buffer = ""
-		let hasContent = false
-
-		try {
-			while (true) {
-				if (this.abortController?.signal.aborted) {
-					break
-				}
-
-				const { done, value } = await reader.read()
-				if (done) break
-
-				buffer += decoder.decode(value, { stream: true })
-				const lines = buffer.split("\n")
-				buffer = lines.pop() || ""
-
-				for (const line of lines) {
-					if (line.startsWith("data: ")) {
-						const data = line.slice(6).trim()
-						if (data === "[DONE]") {
-							continue
-						}
-
-						try {
-							const parsed = JSON.parse(data)
-
-							// Capture response metadata
-							if (parsed.response?.output && Array.isArray(parsed.response.output)) {
-								this.lastResponseOutput = parsed.response.output
-							}
-							if (parsed.response?.id) {
-								this.lastResponseId = parsed.response.id as string
-							}
-
-							// Delegate standard event types
-							if (parsed?.type && this.coreHandledEventTypes.has(parsed.type)) {
-								// Capture tool call identity from output_item events so we can
-								// emit tool_call_partial for subsequent function_call_arguments.delta events
-								if (
-									parsed.type === "response.output_item.added" ||
-									parsed.type === "response.output_item.done"
-								) {
-									const item = parsed.item
-									if (item && (item.type === "function_call" || item.type === "tool_call")) {
-										const callId = item.call_id || item.tool_call_id || item.id
-										const name = item.name || item.function?.name || item.function_name
-										if (typeof callId === "string" && callId.length > 0) {
-											this.pendingToolCallId = callId
-											this.pendingToolCallName = typeof name === "string" ? name : undefined
-										}
-									}
-								}
-
-								// Some Codex streams only return tool calls (no text). Treat tool output as content.
-								if (
-									parsed.type === "response.function_call_arguments.delta" ||
-									parsed.type === "response.tool_call_arguments.delta" ||
-									parsed.type === "response.output_item.added" ||
-									parsed.type === "response.output_item.done"
-								) {
-									hasContent = true
-								}
-
-								for await (const outChunk of this.processEvent(parsed, model)) {
-									if (outChunk.type === "text" || outChunk.type === "reasoning") {
-										hasContent = true
-										if (outChunk.type === "text") {
-											this.sawTextOutputInCurrentResponse = true
-										}
-									}
-									yield outChunk
-								}
-								continue
-							}
-
-							// Handle complete response
-							if (parsed.response && parsed.response.output && Array.isArray(parsed.response.output)) {
-								for (const outputItem of parsed.response.output) {
-									if (outputItem.type === "text" && outputItem.content) {
-										for (const content of outputItem.content) {
-											if (content.type === "text" && content.text) {
-												hasContent = true
-												this.sawTextOutputInCurrentResponse = true
-												yield { type: "text", text: content.text }
-											}
-										}
-									}
-									if (outputItem.type === "reasoning" && Array.isArray(outputItem.summary)) {
-										for (const summary of outputItem.summary) {
-											if (summary?.type === "summary_text" && typeof summary.text === "string") {
-												hasContent = true
-												yield { type: "reasoning", text: summary.text }
-											}
-										}
-									}
-								}
-								if (parsed.response.usage) {
-									const usageData = this.normalizeUsage(parsed.response.usage, model)
-									if (usageData) {
-										yield usageData
-									}
-								}
-							} else if (
-								parsed.type === "response.text.delta" ||
-								parsed.type === "response.output_text.delta"
-							) {
-								if (parsed.delta) {
-									hasContent = true
-									this.sawTextOutputInCurrentResponse = true
-									yield { type: "text", text: parsed.delta }
-								}
-							} else if (
-								(parsed.type === "response.text.done" || parsed.type === "response.output_text.done") &&
-								!hasContent
-							) {
-								const doneText =
-									typeof parsed.text === "string"
-										? parsed.text
-										: typeof parsed.output_text === "string"
-											? parsed.output_text
-											: typeof parsed.delta === "string"
-												? parsed.delta
-												: undefined
-								if (doneText) {
-									hasContent = true
-									this.sawTextOutputInCurrentResponse = true
-									yield { type: "text", text: doneText }
-								}
-							} else if (
-								parsed.type === "response.reasoning.delta" ||
-								parsed.type === "response.reasoning_text.delta"
-							) {
-								if (parsed.delta) {
-									hasContent = true
-									yield { type: "reasoning", text: parsed.delta }
-								}
-							} else if (
-								parsed.type === "response.reasoning_summary.delta" ||
-								parsed.type === "response.reasoning_summary_text.delta"
-							) {
-								if (parsed.delta) {
-									hasContent = true
-									yield { type: "reasoning", text: parsed.delta }
-								}
-							} else if (parsed.type === "response.refusal.delta") {
-								if (parsed.delta) {
-									hasContent = true
-									this.sawTextOutputInCurrentResponse = true
-									yield { type: "text", text: `${REFUSAL_TEXT_PREFIX}${parsed.delta}` }
-								}
-							} else if (parsed.type === "response.output_item.added") {
-								if (parsed.item) {
-									if (parsed.item.type === "text" && parsed.item.text) {
-										hasContent = true
-										this.sawTextOutputInCurrentResponse = true
-										yield { type: "text", text: parsed.item.text }
-									} else if (parsed.item.type === "reasoning" && parsed.item.text) {
-										hasContent = true
-										yield { type: "reasoning", text: parsed.item.text }
-									} else if (parsed.item.type === "message" && parsed.item.content) {
-										for (const content of parsed.item.content) {
-											if (content.type === "text" && content.text) {
-												hasContent = true
-												this.sawTextOutputInCurrentResponse = true
-												yield { type: "text", text: content.text }
-											}
-										}
-									}
-								}
-							} else if (parsed.type === "response.audio_transcript.delta") {
-								if (parsed.delta) {
-									hasContent = true
-									this.sawTextOutputInCurrentResponse = true
-									yield { type: "text", text: parsed.delta }
-								}
-							} else if (IGNORED_SSE_EVENT_TYPES.has(parsed.type)) {
-								// Status events: nothing to show, and their fields are not answer text.
-							} else if (parsed.type === "response.error" || parsed.type === "error") {
-								if (parsed.error || parsed.message) {
-									throw new Error(
-										t("common:errors.openAiCodex.apiError", {
-											message: parsed.error?.message || parsed.message || "Unknown error",
-										}),
-									)
-								}
-							} else if (parsed.type === "response.failed") {
-								if (parsed.error || parsed.message) {
-									throw new Error(
-										t("common:errors.openAiCodex.responseFailed", {
-											message: parsed.error?.message || parsed.message || "Unknown failure",
-										}),
-									)
-								}
-							} else if (parsed.type === "response.completed" || parsed.type === "response.done") {
-								if (parsed.response?.output && Array.isArray(parsed.response.output)) {
-									this.lastResponseOutput = parsed.response.output
-								}
-								if (parsed.response?.id) {
-									this.lastResponseId = parsed.response.id as string
-								}
-
-								if (
-									!hasContent &&
-									parsed.response &&
-									parsed.response.output &&
-									Array.isArray(parsed.response.output)
-								) {
-									for (const outputItem of parsed.response.output) {
-										if (outputItem.type === "message" && outputItem.content) {
-											for (const content of outputItem.content) {
-												if (content.type === "output_text" && content.text) {
-													hasContent = true
-													this.sawTextOutputInCurrentResponse = true
-													yield { type: "text", text: content.text }
-												}
-											}
-										}
-										if (outputItem.type === "reasoning" && Array.isArray(outputItem.summary)) {
-											for (const summary of outputItem.summary) {
-												if (
-													summary?.type === "summary_text" &&
-													typeof summary.text === "string"
-												) {
-													hasContent = true
-													yield { type: "reasoning", text: summary.text }
-												}
-											}
-										}
-									}
-								}
-							} else if (parsed.choices?.[0]?.delta?.content) {
-								hasContent = true
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: parsed.choices[0].delta.content }
-							} else if (
-								parsed.item &&
-								typeof parsed.item.text === "string" &&
-								parsed.item.text.length > 0
-							) {
-								hasContent = true
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: parsed.item.text }
-							} else if (parsed.usage) {
-								const usageData = this.normalizeUsage(parsed.usage, model)
-								if (usageData) {
-									yield usageData
-								}
-							}
-						} catch (e) {
-							if (!(e instanceof SyntaxError)) {
-								throw e
-							}
-						}
-					} else if (line.trim() && !line.startsWith(":")) {
-						try {
-							const parsed = JSON.parse(line)
-							if (parsed.content || parsed.text || parsed.message) {
-								hasContent = true
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: parsed.content || parsed.text || parsed.message }
-							}
-						} catch {
-							// Not JSON, ignore
-						}
-					}
-				}
-			}
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			const apiError = new ApiProviderError(errorMessage, this.providerName, model.id, "createMessage")
-			TelemetryService.instance.captureException(apiError)
-
-			throw handleProviderError(error, this.providerName, {
-				messageTransformer: (msg) =>
-					error instanceof Error
-						? t("common:errors.openAiCodex.streamProcessingError", { message: msg })
-						: t("common:errors.openAiCodex.unexpectedStreamError"),
-			})
-		} finally {
-			reader.releaseLock()
-		}
-	}
-
-	private async *processEvent(event: any, model: OpenAiCodexModel): ApiStream {
-		if (event?.response?.output && Array.isArray(event.response.output)) {
-			this.lastResponseOutput = event.response.output
-		}
-		if (event?.response?.id) {
-			this.lastResponseId = event.response.id as string
-		}
-
-		// Handle text deltas
-		if (event?.type === "response.text.delta" || event?.type === "response.output_text.delta") {
-			if (event?.delta) {
-				this.sawTextDeltaInCurrentResponse = true
-				this.sawTextOutputInCurrentResponse = true
-				yield { type: "text", text: event.delta }
-			}
-			return
-		}
-
-		if (event?.type === "response.text.done" || event?.type === "response.output_text.done") {
-			const doneText =
-				typeof event?.text === "string"
-					? event.text
-					: typeof event?.output_text === "string"
-						? event.output_text
-						: typeof event?.delta === "string"
-							? event.delta
-							: undefined
-			if (!this.sawTextOutputInCurrentResponse && doneText) {
-				this.sawTextOutputInCurrentResponse = true
-				yield { type: "text", text: doneText }
-			}
-			return
-		}
-
-		if (event?.type === "response.content_part.added" || event?.type === "response.content_part.done") {
-			const part = event?.part
-			if (
-				!this.sawTextDeltaInCurrentResponse &&
-				(part?.type === "text" || part?.type === "output_text") &&
-				(typeof part?.text === "string" || typeof part?.text?.value === "string")
-			) {
-				const partText = typeof part.text === "string" ? part.text : part.text.value
-				if (partText) {
-					this.sawTextOutputInCurrentResponse = true
-					yield { type: "text", text: partText }
-				}
-			}
-			return
-		}
-
-		// Handle reasoning deltas
-		if (
-			event?.type === "response.reasoning.delta" ||
-			event?.type === "response.reasoning_text.delta" ||
-			event?.type === "response.reasoning_summary.delta" ||
-			event?.type === "response.reasoning_summary_text.delta"
-		) {
-			if (event?.delta) {
-				yield { type: "reasoning", text: event.delta }
-			}
-			return
-		}
-
-		// Handle refusal deltas
-		if (event?.type === "response.refusal.delta") {
-			if (event?.delta) {
-				this.sawTextOutputInCurrentResponse = true
-				yield { type: "text", text: `${REFUSAL_TEXT_PREFIX}${event.delta}` }
-			}
-			return
-		}
-
-		// Handle tool/function call deltas
-		if (
-			event?.type === "response.tool_call_arguments.delta" ||
-			event?.type === "response.function_call_arguments.delta"
-		) {
-			const callId = event.call_id || event.tool_call_id || event.id || this.pendingToolCallId
-			const name = event.name || event.function_name || this.pendingToolCallName
-			const args = event.delta || event.arguments
-
-			// Codex/Responses may stream tool-call arguments, but these delta events are not guaranteed
-			// to include a stable id/name. Avoid emitting incomplete tool_call_partial chunks because
-			// NativeToolCallParser requires a name to start a call.
-			if (typeof callId === "string" && callId.length > 0 && typeof name === "string" && name.length > 0) {
-				this.streamedToolCallIds.add(callId)
-				yield {
-					type: "tool_call_partial",
-					index: event.index ?? 0,
-					id: callId,
-					name,
-					arguments: typeof args === "string" ? args : "",
-				}
-			}
-			return
-		}
-
-		// Handle tool/function call completion
-		if (
-			event?.type === "response.tool_call_arguments.done" ||
-			event?.type === "response.function_call_arguments.done"
-		) {
-			return
-		}
-
-		// Handle output item events
-		if (event?.type === "response.output_item.added" || event?.type === "response.output_item.done") {
-			const item = event?.item
-			if (item) {
-				// Capture tool identity so subsequent argument deltas can be attributed.
-				if (item.type === "function_call" || item.type === "tool_call") {
-					const callId = item.call_id || item.tool_call_id || item.id
-					const name = item.name || item.function?.name || item.function_name
-					if (typeof callId === "string" && callId.length > 0) {
-						this.pendingToolCallId = callId
-						this.pendingToolCallName = typeof name === "string" ? name : undefined
-					}
-				}
-
-				// For "added" events, yield text/reasoning content (streaming path).
-				// For "done" events, normally text was already streamed via deltas, but some models
-				// only provide assistant text on done events. Emit fallback text only if none was emitted yet.
-				if (event.type === "response.output_item.added") {
-					if (item.type === "text" && item.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: item.text }
-					} else if (item.type === "output_text" && item.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: item.text }
-					} else if (item.type === "reasoning" && item.text) {
-						yield { type: "reasoning", text: item.text }
-					} else if (item.type === "message" && Array.isArray(item.content)) {
-						for (const content of item.content) {
-							if ((content?.type === "text" || content?.type === "output_text") && content?.text) {
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: content.text }
-							}
-						}
-					}
-				} else if (
-					event.type === "response.output_item.done" &&
-					(item.type === "function_call" || item.type === "tool_call")
-				) {
-					const callId = item.call_id || item.tool_call_id || item.id
-					const name = item.name || item.function?.name || item.function_name
-					const argsRaw = item.arguments || item.function?.arguments || item.input
-					const args =
-						typeof argsRaw === "string"
-							? argsRaw
-							: argsRaw && typeof argsRaw === "object"
-								? JSON.stringify(argsRaw)
-								: ""
-
-					// Fallback for models that only emit a complete function_call in output_item.done.
-					// If we already streamed partials for this ID, skip to avoid duplicate tool execution.
-					if (
-						typeof callId === "string" &&
-						callId.length > 0 &&
-						typeof name === "string" &&
-						name.length > 0 &&
-						!this.streamedToolCallIds.has(callId)
-					) {
-						yield {
-							type: "tool_call",
-							id: callId,
-							name,
-							arguments: args,
-						}
-					}
-				} else if (!this.sawTextOutputInCurrentResponse) {
-					if ((item.type === "text" || item.type === "output_text") && item.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: item.text }
-					} else if (item.type === "message" && Array.isArray(item.content)) {
-						for (const content of item.content) {
-							if ((content?.type === "text" || content?.type === "output_text") && content?.text) {
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: content.text }
-							}
-						}
-					}
-				}
-
-				// Note: We intentionally do NOT emit tool_call from response.output_item.done
-				// for function_call/tool_call items. The streaming path handles tool calls via:
-				// 1. tool_call_partial events during argument deltas
-				// 2. NativeToolCallParser.finalizeRawChunks() at stream end emitting tool_call_end
-				// 3. NativeToolCallParser.finalizeStreamingToolCall() creating the final ToolUse
-				// Emitting tool_call here would cause duplicate tool rendering.
-			}
-			return
-		}
-
-		// Handle completion events
-		if (event?.type === "response.done" || event?.type === "response.completed") {
-			// Some Codex variants only provide assistant text in the final completed payload.
-			if (!this.sawTextOutputInCurrentResponse && Array.isArray(event?.response?.output)) {
-				for (const outputItem of event.response.output) {
-					if ((outputItem?.type === "text" || outputItem?.type === "output_text") && outputItem?.text) {
-						this.sawTextOutputInCurrentResponse = true
-						yield { type: "text", text: outputItem.text }
-						continue
-					}
-
-					if (outputItem?.type === "message" && Array.isArray(outputItem.content)) {
-						for (const content of outputItem.content) {
-							if ((content?.type === "text" || content?.type === "output_text") && content?.text) {
-								this.sawTextOutputInCurrentResponse = true
-								yield { type: "text", text: content.text }
-							}
-						}
-					}
-				}
-			}
-
-			const usage = event?.response?.usage || event?.usage || undefined
-			const usageData = this.normalizeUsage(usage, model)
-			if (usageData) {
-				yield usageData
-			}
-			return
-		}
-
-		// Fallbacks
-		if (event?.choices?.[0]?.delta?.content) {
-			this.sawTextDeltaInCurrentResponse = true
-			this.sawTextOutputInCurrentResponse = true
-			yield { type: "text", text: event.choices[0].delta.content }
-			return
-		}
-
-		if (event?.usage) {
-			const usageData = this.normalizeUsage(event.usage, model)
-			if (usageData) {
-				yield usageData
-			}
-		}
+		this.core.cancel()
 	}
 
 	private getReasoningEffort(model: OpenAiCodexModel): ReasoningEffortExtended | undefined {
@@ -1188,22 +245,11 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 	}
 
 	getEncryptedContent(): { encrypted_content: string; id?: string } | undefined {
-		if (!this.lastResponseOutput) return undefined
-
-		const reasoningItem = this.lastResponseOutput.find(
-			(item) => item.type === "reasoning" && item.encrypted_content,
-		)
-
-		if (!reasoningItem?.encrypted_content) return undefined
-
-		return {
-			encrypted_content: reasoningItem.encrypted_content,
-			...(reasoningItem.id ? { id: reasoningItem.id } : {}),
-		}
+		return this.core.getEncryptedContent()
 	}
 
 	getResponseId(): string | undefined {
-		return this.lastResponseId
+		return this.core.getResponseId()
 	}
 
 	async completePrompt(prompt: string): Promise<string> {
