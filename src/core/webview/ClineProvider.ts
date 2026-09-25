@@ -952,8 +952,10 @@ export class ClineProvider
 		const isCliRuntime = readCliRuntimeEnv(process.env).isCliRuntime
 		// CLI injects runtime provider settings from command flags/env at startup.
 		// Restoring provider profiles from task history can overwrite those
-		// runtime settings with stale/incomplete persisted profiles.
-		const skipProfileRestoreFromHistory = isCliRuntime
+		// runtime settings with stale/incomplete persisted profiles. The CLI's
+		// per-mode settings replace the profile store the same way, even when
+		// ROO_CLI_RUNTIME is not set.
+		const skipProfileRestoreFromHistory = isCliRuntime || this.cliModeProviderSettings !== undefined
 
 		// Check if we're rehydrating the current task to avoid flicker
 		const currentTask = this.getCurrentTask()
