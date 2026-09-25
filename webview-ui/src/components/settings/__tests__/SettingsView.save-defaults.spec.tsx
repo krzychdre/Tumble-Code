@@ -590,3 +590,36 @@ describe("SettingsView Save with every setting populated (WEB-3)", { timeout: 20
 		expect(payload.allowedMaxCost).toBeNull()
 	})
 })
+
+// The "Enable MCP" checkbox in the MCP tab writes mcpEnabled to the host and
+// the live state at once; nothing in the settings form edits it.
+describe("SettingsView Save after the MCP tab toggled MCP", { timeout: 20_000 }, () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it("does not send the value mcpEnabled had when the settings opened", async () => {
+		;(useExtensionState as any).mockReturnValue({ ...populatedState(), mcpEnabled: true })
+		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+		const view = (
+			<QueryClientProvider client={queryClient}>
+				<SettingsView onDone={vi.fn()} targetSection="terminal" />
+			</QueryClientProvider>
+		)
+		const { rerender } = render(view)
+
+		// The toggle turned MCP off: the host pushes the new state.
+		;(useExtensionState as any).mockReturnValue({ ...populatedState(), mcpEnabled: false })
+		rerender(view)
+
+		fireEvent.click(await screen.findByTestId("open-profile-picker"))
+		const saveButton = screen.getByTestId("save-button") as HTMLButtonElement
+		await waitFor(() => expect(saveButton.disabled).toBe(false))
+		mockPostMessage.mockClear()
+		fireEvent.click(saveButton)
+
+		const update = mockPostMessage.mock.calls.map(([message]) => message).find((m) => m.type === "updateSettings")
+		expect(update.updatedSettings.mcpEnabled).not.toBe(true)
+	})
+})
+
