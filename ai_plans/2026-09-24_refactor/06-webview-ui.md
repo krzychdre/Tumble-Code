@@ -358,3 +358,11 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
 - 2026-09-25 wave 2 verification on main cb6429413: 38 of 38 turbo tasks green (check-types, lint incl. the compiler
   bailout check, test); webview 2,102 tests (was 1,730 after wave 1), src 9,855, cli 1,075; knip 0; webview
   production build OK.
+- 2026-09-25 WEB-9 DONE #401 (`4e25379b0`, create dialog prefill wiped by `resetFormState()` in the open effect),
+  #402 (`a9aeca430`, real: ModesView is a SettingsView tab; its profile picker posted `loadApiConfiguration`
+  directly, so edits in other tabs were silently lost; now goes through `checkUnsaveChanges` like the Providers tab),
+  #403 (`77bf99210`, 12 create-dialog/import-export characterization tests), #404 (`9de2c269a`): `CreateModeDialog`,
+  `ImportModeDialog`, `useModeImportExport`, `modeGroups`; ModesView 1,801 to 1,262 lines, 33 to 14 `useState`, and it
+  now compiles (bailouts 12 to 11). Found: the create payload keeps `allowedMcpServers` after unchecking the mcp
+  group; `hasRulesToExport` never shown; `groupsError` unreachable; the `acquireVsCodeApi` stub in
+  `SettingsView.unsaved-changes.spec.tsx` is assigned after hoisted imports.
