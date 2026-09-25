@@ -215,37 +215,34 @@ export async function activate(context: vscode.ExtensionContext) {
 		autoMemoryShareWithClaudeCode: contextProxy.getValue("autoMemoryShareWithClaudeCode"),
 	}))
 
-	// Initialize code index managers for all workspace folders.
-	const codeIndexManagers: CodeIndexManager[] = []
+	// One code index manager per workspace folder, created and initialized in the background (never
+	// blocking activation). initialize() applies the enablement gates itself (feature enabled and
+	// configured, folder enabled), so this is the whole start-up path for a folder, at activation and
+	// for a folder added later. Managers created lazily elsewhere (tools, commands) are covered by
+	// disposeAll() on deactivate; a removed folder's manager (watchers included) is disposed at once.
+	const startCodeIndexForFolder = (folder: vscode.WorkspaceFolder) => {
+		const manager = CodeIndexManager.getInstance(context, folder.uri.fsPath)
 
-	if (vscode.workspace.workspaceFolders) {
-		for (const folder of vscode.workspace.workspaceFolders) {
-			const manager = CodeIndexManager.getInstance(context, folder.uri.fsPath)
-
-			if (manager) {
-				codeIndexManagers.push(manager)
-
-				// Initialize in background; do not block extension activation
-				void manager.initialize(contextProxy).catch((error) => {
-					const message = error instanceof Error ? error.message : String(error)
-					outputChannel.appendLine(
-						`[CodeIndexManager] Error during background CodeIndexManager configuration/indexing for ${folder.uri.fsPath}: ${message}`,
-					)
-				})
-
-				context.subscriptions.push(manager)
-			}
-		}
+		void manager?.initialize(contextProxy).catch((error) => {
+			const message = error instanceof Error ? error.message : String(error)
+			outputChannel.appendLine(
+				`[CodeIndexManager] Error during background CodeIndexManager configuration/indexing for ${folder.uri.fsPath}: ${message}`,
+			)
+		})
 	}
 
-	// Managers are also created lazily (tools, commands) for other paths, so dispose them all on
-	// deactivate, and dispose a folder's manager (watchers included) when the folder is removed.
-	// Folders added later still get their manager lazily on first use.
+	for (const folder of vscode.workspace.workspaceFolders ?? []) {
+		startCodeIndexForFolder(folder)
+	}
+
 	context.subscriptions.push(
 		{ dispose: () => CodeIndexManager.disposeAll() },
 		vscode.workspace.onDidChangeWorkspaceFolders((event) => {
 			for (const folder of event.removed) {
 				CodeIndexManager.disposeInstance(folder.uri.fsPath)
+			}
+			for (const folder of event.added) {
+				startCodeIndexForFolder(folder)
 			}
 		}),
 	)
