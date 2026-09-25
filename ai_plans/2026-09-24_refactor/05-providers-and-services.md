@@ -530,9 +530,15 @@ Publish, Cloud API (Python), Dependency audit (both dispatched) green; Code QA g
   now also resolves on the task's final `completion_result` ask.
 - Windows `src` vitest dies silently after about 11 minutes (no summary, no error): first seen on 82047c3d7 (#327,
   chokidar 5 and global-agent 4; its rerun passed), again on a40d26997. Under investigation.
-- Memory writers after a normal completion in the VS Code chat: the writers hang on `TaskCompleted`, which the chat
-  never triggers ("Start new task" clears the task as abandoned, and abandoned aborts skip the writers). Found while
-  fixing #338, under investigation.
+- Memory writers after a normal completion in the VS Code chat: FIXED in #339 (merge 0db249c8b). The writers hung on
+  `TaskCompleted`, which the chat never triggers ("Start new task" clears the task as abandoned, and abandoned aborts
+  skip the writers). Real data: the only full session log (2026-09-24 22:20 to 09-25 08:49) has 5 top-level tasks
+  ending on an unanswered `completion_result` and zero `createBackgroundTask`/`[memory]` lines; 251 of 693 VS Code
+  tasks since 2026-07-14 end that way. Fix: `Task.awaitingCompletionAcceptance`, consumed in `prepareAbort`; an
+  abandon while it is set runs the writers once; Stop and background tasks still skip; the abandon drain no longer
+  waits for writers while the provider is alive. Open (in `ai_plans/2026-09-25_memory-writers-after-completion.md`):
+  closing VS Code or the CLI on the final ask; `hasMemoryWritesSince` reads a `toolUses` field messages never have;
+  chat completions never reach `captureTaskCompleted` telemetry; the CLI never answers `completion_result` either.
 
 ## Performance (Phase 10; mechanism verified)
 
