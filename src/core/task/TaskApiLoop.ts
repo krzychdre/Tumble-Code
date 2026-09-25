@@ -21,7 +21,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
 import { type ApiStream } from "../../api/transform/stream"
-import { describeBackgroundApiFailure, isAutoRetryableApiError } from "../../api/apiErrors"
+import { describeBackgroundApiFailure, getApiErrorStatus, isAutoRetryableApiError } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
@@ -68,14 +68,26 @@ class ApiRetryDeclinedError extends Error {
 }
 
 /**
- * Retries a background task gets for a retryable API error (400, 429, 5xx, no
+ * Retries a background task gets for a retryable API error (400, 5xx, no
  * status) before it ends: 6 backoffs of 5, 10, 20, 40, 80 and 160 s at the
  * default 5 s base (315 s in total), so 7 requests. Foreground tasks have no
  * cap (the user sees the countdown and can cancel). The first-chunk retry
  * recurses inside attemptApiRequest and never counts against maxAgentTurns,
  * so without this cap a background task would retry forever.
+ *
+ * HTTP 429 (too many requests) is not capped (owner decision 2026-09-25): the
+ * provider is up and asks us to slow down, so the task keeps backing off (one
+ * wait never exceeds MAX_EXPONENTIAL_BACKOFF_SECONDS, 600 s, unless a RetryInfo
+ * delay on the 429 asks for more) until the provider answers or the task is
+ * aborted. In a mixed sequence a 429 retry does not count toward the cap:
+ * the task ends at the 7th failure that is not a 429 (see isCappedRetry).
  */
 export const BACKGROUND_MAX_API_RETRIES = 6
+
+/** HTTP 429: the one retryable status a background task retries without a cap. */
+function isRateLimitError(error: unknown): boolean {
+	return getApiErrorStatus(error) === 429
+}
 
 /**
  * Thrown out of attemptApiRequest when a background task used up
@@ -217,6 +229,9 @@ interface StackItem {
 	userContent: Anthropic.Messages.ContentBlockParam[]
 	includeFileDetails: boolean
 	retryAttempt?: number
+	// How many of the retryAttempt retries were for HTTP 429, which a
+	// background task does not count toward BACKGROUND_MAX_API_RETRIES.
+	rateLimitRetries?: number
 	userMessageWasRemoved?: boolean
 }
 
@@ -297,7 +312,12 @@ export class TaskApiLoop {
 		this.retryHandler = new RetryHandler({
 			taskId: access.taskId,
 			instanceId: access.instanceId,
-			abort: access.abort,
+			// Read live: a copy taken here stays false, so the backoff countdown
+			// would never see an abort (it ended only because say() throws on an
+			// aborted task). An uncapped 429 backoff must stop on abort.
+			get abort() {
+				return access.abort
+			},
 			apiConfiguration: access.apiConfiguration,
 			providerRef: access.providerRef,
 			askSay: access.askSay,
@@ -1030,6 +1050,7 @@ export class TaskApiLoop {
 				userContent: currentUserContent,
 				includeFileDetails: false,
 				retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
+				rateLimitRetries: currentItem.rateLimitRetries,
 				userMessageWasRemoved: true,
 			})
 
@@ -1108,13 +1129,15 @@ export class TaskApiLoop {
 				}
 
 				// A background task that used up its retries ends too: on the first
-				// chunk (thrown by handleApiRequestError) or mid-stream.
+				// chunk (thrown by handleApiRequestError) or mid-stream. A 429 never
+				// ends it (see BACKGROUND_MAX_API_RETRIES).
 				if (error instanceof BackgroundRetriesExhaustedError) {
 					await this.endBackgroundTaskOnApiError(error.apiError, error.attempts)
 					return "return_true"
 				}
 				const midStreamAttempt = currentItem.retryAttempt ?? 0
-				if (this.access.isBackground && midStreamAttempt >= BACKGROUND_MAX_API_RETRIES) {
+				const midStreamRateLimitRetries = currentItem.rateLimitRetries ?? 0
+				if (this.isCappedRetry(error, midStreamAttempt, midStreamRateLimitRetries)) {
 					await this.endBackgroundTaskOnApiError(error, midStreamAttempt + 1)
 					return "return_true"
 				}
@@ -1163,7 +1186,8 @@ export class TaskApiLoop {
 				stack.push({
 					userContent: currentUserContent,
 					includeFileDetails: false,
-					retryAttempt: (currentItem.retryAttempt ?? 0) + 1,
+					retryAttempt: midStreamAttempt + 1,
+					rateLimitRetries: midStreamRateLimitRetries + (isRateLimitError(error) ? 1 : 0),
 				})
 
 				return "continue"
@@ -1211,7 +1235,12 @@ export class TaskApiLoop {
 	 */
 	async *attemptApiRequest(
 		retryAttempt: number = 0,
-		options: { skipProviderRateLimit?: boolean; contextAlreadyManaged?: boolean } = {},
+		options: {
+			skipProviderRateLimit?: boolean
+			contextAlreadyManaged?: boolean
+			// How many of the retryAttempt retries were for HTTP 429 (not capped).
+			rateLimitRetries?: number
+		} = {},
 	): ApiStream {
 		const state = await this.access.providerRef.deref()?.getState()
 
@@ -1375,7 +1404,13 @@ export class TaskApiLoop {
 			this.access.currentRequestAbortController = undefined
 
 			// Handle errors with retry logic
-			yield* this.handleApiRequestError(error, retryAttempt, autoApprovalEnabled, iterator)
+			yield* this.handleApiRequestError(
+				error,
+				retryAttempt,
+				autoApprovalEnabled,
+				iterator,
+				options.rateLimitRetries ?? 0,
+			)
 			return
 		}
 
@@ -1460,6 +1495,7 @@ export class TaskApiLoop {
 		retryAttempt: number,
 		autoApprovalEnabled: boolean | undefined,
 		iterator: AsyncIterator<any>,
+		rateLimitRetries: number = 0,
 	): ApiStream {
 		const isContextWindowExceededError = checkContextWindowExceededError(error)
 
@@ -1470,7 +1506,7 @@ export class TaskApiLoop {
 					`Attempting automatic truncation...`,
 			)
 			await this.handleContextWindowExceededError()
-			yield* this.attemptApiRequest(retryAttempt + 1, { contextAlreadyManaged: true })
+			yield* this.attemptApiRequest(retryAttempt + 1, { contextAlreadyManaged: true, rateLimitRetries })
 			return
 		}
 
@@ -1481,7 +1517,7 @@ export class TaskApiLoop {
 		if (this.mustFailFast(error)) {
 			throw error
 		}
-		if (this.access.isBackground && retryAttempt >= BACKGROUND_MAX_API_RETRIES) {
+		if (this.isCappedRetry(error, retryAttempt, rateLimitRetries)) {
 			throw new BackgroundRetriesExhaustedError(error, retryAttempt + 1)
 		}
 
@@ -1498,7 +1534,9 @@ export class TaskApiLoop {
 				)
 			}
 
-			yield* this.attemptApiRequest(retryAttempt + 1)
+			yield* this.attemptApiRequest(retryAttempt + 1, {
+				rateLimitRetries: rateLimitRetries + (isRateLimitError(error) ? 1 : 0),
+			})
 			return
 		} else {
 			const { response } = await this.access.askSay.ask(
@@ -1524,6 +1562,20 @@ export class TaskApiLoop {
 	 */
 	private mustFailFast(error: unknown): boolean {
 		return this.access.isBackground && !isAutoRetryableApiError(error)
+	}
+
+	/**
+	 * Whether a background task has used up BACKGROUND_MAX_API_RETRIES and must
+	 * end on this failure instead of retrying. `retryAttempt` is the number of
+	 * retries already made, `rateLimitRetries` how many of them were for a 429.
+	 * A 429 never ends the task, and earlier 429 retries do not count: only the
+	 * other retryable failures (400, 5xx, no status) use up the cap.
+	 */
+	private isCappedRetry(error: unknown, retryAttempt: number, rateLimitRetries: number): boolean {
+		if (!this.access.isBackground || isRateLimitError(error)) {
+			return false
+		}
+		return retryAttempt - rateLimitRetries >= BACKGROUND_MAX_API_RETRIES
 	}
 
 	/**

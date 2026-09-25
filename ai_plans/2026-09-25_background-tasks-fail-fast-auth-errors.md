@@ -119,3 +119,51 @@ paths (backoff, no ask); empty response backs off; 500 on every request: 7
 requests, 6 backoffs, then the task ends with "after 7 attempts"; the cap
 mid-stream; the no-status line; fake timers with the real `RetryHandler`
 (requests 5, 10, 20 s apart); `awaitTaskCompletion` passes the line on.
+
+## Owner decision: 429 excluded from the cap
+
+Branch: `fix/background-429-no-retry-cap` (after PR #353, merge 47e9fa63d).
+
+The owner decided (2026-09-25) that HTTP 429 (too many requests) is not
+subject to `BACKGROUND_MAX_API_RETRIES`. A 429 means the provider is up and
+asks the caller to slow down; ending a memory writer or a parallel subagent
+after 7 attempts throws away work that succeeds a few minutes later.
+
+- Backoff stays bounded per wait (verified in `RetryHandler.calculateBackoffDelay`):
+  `min(base * 2^attempt, MAX_EXPONENTIAL_BACKOFF_SECONDS = 600)`, so after the
+  7th request a background task retrying 429 waits 600 s between requests. A
+  Google `RetryInfo` detail on the 429 replaces that delay (delay + 1 s, not
+  capped at 600 s). A plain `Retry-After` header is not read anywhere
+  (unchanged, out of scope).
+- Rule for mixed sequences: a 429 retry does not count toward the cap, every
+  other retryable failure (400, 5xx, no status) does. The task ends at the 7th
+  counted failure; a 429 itself never ends it. Examples: 500 and 429
+  alternating ends at the 13th request (the 7th 500); ten 429s followed by
+  six 500s still recover; six 500s followed by 429s still recover. The failure
+  line reports every request made ("after 13 attempts"). The backoff exponent
+  still uses the total retry count, so a 500 after a long 429 streak waits the
+  capped 600 s, not 5 s.
+- Implementation (`TaskApiLoop.ts`): `isCappedRetry(error, retryAttempt,
+rateLimitRetries)` replaces the two `retryAttempt >= BACKGROUND_MAX_API_RETRIES`
+  checks. First chunk: `attemptApiRequest` options gain `rateLimitRetries`,
+  passed through `handleApiRequestError` (incremented on a 429 retry, kept on
+  the context-window retry). Mid-stream: `StackItem.rateLimitRetries`,
+  incremented on a 429 requeue and kept on the empty-response requeue.
+  401/403/404 still fail fast; foreground tasks are unchanged (no cap).
+- Abort during an uncapped 429 backoff: `TaskApiLoop` handed `RetryHandler` a
+  copy of `access.abort` taken at construction (always false), so the
+  countdown's own abort check never fired; the countdown ended only because
+  `TaskAskSay.say` throws on an aborted task (logged as "Exponential backoff
+  failed"). `abort` is now a live getter, so the countdown stops within a
+  second and the loop ends as `user_cancelled` on both paths.
+- Known cost: the first-chunk retry recurses (`yield*`) once per attempt, so a
+  429 that lasts for hours builds a deeper generator chain (one level per
+  request, at most one per 600 s without RetryInfo). Not changed here.
+
+Tests (`TaskApiLoop.no-auto-retry-auth-errors.spec.ts`, "429 is not subject to
+the retry cap"): 429 on 20 requests (auto-approve on and off) recovers on the
+21st; the mixed sequences above; mid-stream 429 at retry 6 and 40 requeues with
+`rateLimitRetries + 1`; mid-stream 500 counts only non-429 retries; abort
+during a 429 backoff past the cap on both paths; fake timers with the real
+`RetryHandler`: 5..320 s then 600 s, abort stops further requests, RetryInfo
+"30s" spaces requests 31 s apart past the old cap.
