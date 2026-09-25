@@ -93,8 +93,10 @@ three places. CORE-R1 will replace the copies with one defaults table.
 1. A component calls `vscode.postMessage({ type: ..., ... })` (`webview-ui/src/utils/vscode.ts`) with a
    `WebviewMessage` (`packages/types/src/vscode-extension-host.ts`).
 2. `ClineProvider.setWebviewMessageListener` receives it and calls `webviewMessageHandler`
-   (`src/core/webview/webviewMessageHandler.ts`), one large `switch (message.type)`. Find your case there by the
-   message type string. CORE-R3 will split it into domain modules behind a lookup table.
+   (`src/core/webview/webviewMessageHandler.ts`), which looks the type up in the routing table of
+   `src/core/webview/messageHandlers/` (one module per domain, assembled in `index.ts`). Find your handler by the
+   message type string; a new message gets its handler in the module of its domain.
+   `webviewMessageHandler.routing.spec.ts` snapshots the side effects of every routed type.
 3. The answer goes back as an `ExtensionMessage` through `ClineProvider.postMessageToWebview` or one of the
    `postStateToWebview*` methods, and `ExtensionStateContext.tsx` merges it into React state (`case "state"`,
    `case "messageUpdated"`).
