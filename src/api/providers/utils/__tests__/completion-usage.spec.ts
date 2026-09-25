@@ -6,8 +6,10 @@ import {
 	geminiCompletionUsage,
 	ollamaCompletionUsage,
 	openAiCompletionUsage,
+	openAiUsageChunk,
 	responsesApiCompletionUsage,
 } from "../completion-usage"
+import type { ModelInfo } from "@roo-code/types"
 
 /**
  * The property under test throughout: a figure the provider did not report must
@@ -36,6 +38,17 @@ describe("completion usage mappers", () => {
 
 		it.each([[null], [undefined], [{}]])("returns undefined for %p rather than zeros", (input) => {
 			expect(openAiCompletionUsage(input as any)).toBeUndefined()
+		})
+
+		it("reads DeepSeek's top-level prompt_cache_hit_tokens as cache reads", () => {
+			expect(
+				openAiCompletionUsage({
+					prompt_tokens: 1200,
+					completion_tokens: 34,
+					prompt_cache_hit_tokens: 1024,
+					prompt_cache_miss_tokens: 176,
+				} as any),
+			).toEqual({ inputTokens: 1200, outputTokens: 34, cacheReadTokens: 1024 })
 		})
 
 		it("does not turn a non-numeric field into a number", () => {
@@ -110,6 +123,76 @@ describe("completion usage mappers", () => {
 				inputTokens: 10,
 				outputTokens: 2,
 			})
+		})
+	})
+
+	describe("openAiUsageChunk (streaming)", () => {
+		// $1 per million input, $2 per million output, $0.10 per million cache reads, $1.25 per million writes.
+		const priced: ModelInfo = {
+			contextWindow: 128_000,
+			supportsPromptCache: true,
+			inputPrice: 1,
+			outputPrice: 2,
+			cacheReadsPrice: 0.1,
+			cacheWritesPrice: 1.25,
+		}
+
+		it("reads the same figures as the one-shot parser and computes the cost from the model's prices", () => {
+			const usage = {
+				prompt_tokens: 1_000_000,
+				completion_tokens: 1_000_000,
+				prompt_tokens_details: { cached_tokens: 400_000 },
+			}
+
+			expect(openAiUsageChunk(usage, { modelInfo: priced })).toEqual({
+				type: "usage",
+				inputTokens: 1_000_000,
+				outputTokens: 1_000_000,
+				cacheReadTokens: 400_000,
+				// 600k uncached input at $1 + 400k cache reads at $0.10 + 1M output at $2
+				totalCost: 0.6 + 0.04 + 2,
+			})
+			expect(openAiCompletionUsage(usage)).toMatchObject({ cacheReadTokens: 400_000 })
+		})
+
+		it("reads DeepSeek's prompt_cache_hit_tokens like the one-shot parser", () => {
+			expect(
+				openAiUsageChunk({ prompt_tokens: 100, completion_tokens: 5, prompt_cache_hit_tokens: 60 } as any),
+			).toEqual({ type: "usage", inputTokens: 100, outputTokens: 5, cacheReadTokens: 60 })
+		})
+
+		it("uses the billed cost, including the upstream cost of bring-your-own-key requests", () => {
+			expect(
+				openAiUsageChunk(
+					{
+						prompt_tokens: 100,
+						completion_tokens: 20,
+						completion_tokens_details: { reasoning_tokens: 8 },
+						cost: 0.002,
+						cost_details: { upstream_inference_cost: 0.001 },
+					},
+					{ billedCost: true, modelInfo: priced },
+				),
+			).toEqual({ type: "usage", inputTokens: 100, outputTokens: 20, reasoningTokens: 8, totalCost: 0.003 })
+		})
+
+		it("carries no cost without model info or billing", () => {
+			expect(openAiUsageChunk({ prompt_tokens: 100, completion_tokens: 5 })).toEqual({
+				type: "usage",
+				inputTokens: 100,
+				outputTokens: 5,
+			})
+		})
+
+		it("leaves out cache figures of 0 and still yields zeros for a block without token counts", () => {
+			expect(
+				openAiUsageChunk({
+					prompt_tokens: 100,
+					completion_tokens: 5,
+					prompt_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
+				}),
+			).toEqual({ type: "usage", inputTokens: 100, outputTokens: 5 })
+			expect(openAiUsageChunk({})).toEqual({ type: "usage", inputTokens: 0, outputTokens: 0 })
 		})
 	})
 })

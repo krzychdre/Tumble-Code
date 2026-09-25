@@ -12,8 +12,7 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import { handleProviderError } from "./utils/error-handler"
-import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
-import { calculateApiCostOpenAI } from "../../shared/cost"
+import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
 	providerName: string
@@ -169,24 +168,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			console.log(`[${this.providerName}] raw usage: ${JSON.stringify(usage)}`)
 		}
 
-		const inputTokens = usage?.prompt_tokens || 0
-		const outputTokens = usage?.completion_tokens || 0
-		const cached = openAiCacheTokens(usage)
-		const cacheWriteTokens = cached.cacheWriteTokens || 0
-		const cacheReadTokens = cached.cacheReadTokens || 0
-
-		const { totalCost } = modelInfo
-			? calculateApiCostOpenAI(modelInfo, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens)
-			: { totalCost: 0 }
-
-		return {
-			type: "usage",
-			inputTokens,
-			outputTokens,
-			cacheWriteTokens: cacheWriteTokens || undefined,
-			cacheReadTokens: cacheReadTokens || undefined,
-			totalCost,
-		}
+		return openAiUsageChunk(usage ?? {}, { modelInfo })
 	}
 
 	async completePrompt(prompt: string): Promise<string> {

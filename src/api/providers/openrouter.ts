@@ -35,7 +35,7 @@ import { getModelEndpoints } from "./fetchers/modelEndpointCache"
 import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { ApiHandlerCreateMessageMetadata, CompletionResult, SingleCompletionHandler } from "../index"
-import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
 import { generateImageWithProvider, ImageGenerationResult } from "./utils/image-generation"
 import { applyRouterToolPreferences } from "./utils/router-tool-preferences"
@@ -107,27 +107,6 @@ function extractErrorFromMetadataRaw(raw: string | undefined): string | undefine
 	} catch {
 		// If it's not valid JSON, return as-is
 		return raw
-	}
-}
-
-// See `OpenAI.Chat.Completions.ChatCompletionChunk["usage"]`
-// `CompletionsAPI.CompletionUsage`
-// See also: https://openrouter.ai/docs/use-cases/usage-accounting
-interface CompletionUsage {
-	completion_tokens?: number
-	completion_tokens_details?: {
-		reasoning_tokens?: number
-	}
-	prompt_tokens?: number
-	prompt_tokens_details?: {
-		cached_tokens?: number
-		// Only returned for models with explicit caching and a cache write price.
-		cache_write_tokens?: number
-	}
-	total_tokens?: number
-	cost?: number
-	cost_details?: {
-		upstream_inference_cost?: number
 	}
 }
 
@@ -395,17 +374,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 			onReasoningDetails: (details) => {
 				this.currentReasoningDetails = consolidateReasoningDetails(details)
 			},
-			mapUsage: (usage) => {
-				const lastUsage = usage as CompletionUsage
-				return {
-					type: "usage",
-					inputTokens: lastUsage.prompt_tokens || 0,
-					outputTokens: lastUsage.completion_tokens || 0,
-					...openAiCacheTokens(lastUsage),
-					reasoningTokens: lastUsage.completion_tokens_details?.reasoning_tokens,
-					totalCost: (lastUsage.cost_details?.upstream_inference_cost || 0) + (lastUsage.cost || 0),
-				}
-			},
+			// OpenRouter bills the request itself: its cost, not one computed from model prices.
+			mapUsage: (usage) => openAiUsageChunk(usage, { billedCost: true }),
 		})
 	}
 

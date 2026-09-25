@@ -22,7 +22,7 @@ import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { handleProviderError } from "./utils/error-handler"
-import { openAiCacheTokens, openAiCompletionUsage } from "./utils/completion-usage"
+import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 
 /**
  * Custom interface for GLM params to support thinking mode.
@@ -337,7 +337,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		}
 	}
 
-	protected processUsageMetrics(usage: any, _modelInfo?: ModelInfo): ApiStreamUsageChunk {
+	protected processUsageMetrics(usage: any, modelInfo?: ModelInfo): ApiStreamUsageChunk {
 		// Spike instrumentation: dump the endpoint's raw usage object so cache
 		// reporting can be verified endpoint-by-endpoint (e.g. whether a local
 		// vLLM server reports prefix-cache hits). Mirrors the same switch in
@@ -350,15 +350,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 		// `prompt_tokens_details` or Anthropic-style at the top level); the shared
 		// reader knows every documented name, so this path and one-shot
 		// completions report the same figures.
-		const { cacheWriteTokens, cacheReadTokens } = openAiCacheTokens(usage)
-
-		return {
-			type: "usage",
-			inputTokens: usage?.prompt_tokens || 0,
-			outputTokens: usage?.completion_tokens || 0,
-			cacheWriteTokens: cacheWriteTokens || undefined,
-			cacheReadTokens: cacheReadTokens || undefined,
-		}
+		return openAiUsageChunk(usage ?? {}, { modelInfo })
 	}
 
 	override getModel() {
@@ -467,11 +459,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				// Reasoning-capable servers routed through this branch (DeepSeek-R1
 				// distills, QwQ behind adapters) send reasoning_content (AP-8).
 				yield* streamChatCompletion(stream, {
-					mapUsage: (usage) => ({
-						type: "usage",
-						inputTokens: usage.prompt_tokens || 0,
-						outputTokens: usage.completion_tokens || 0,
-					}),
+					mapUsage: (usage) => this.processUsageMetrics(usage, modelInfo),
 				})
 			} finally {
 				this.abortController = undefined
@@ -531,7 +519,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 				type: "text",
 				text: message?.content || "",
 			}
-			yield this.processUsageMetrics(response.usage)
+			yield this.processUsageMetrics(response.usage, modelInfo)
 		}
 	}
 

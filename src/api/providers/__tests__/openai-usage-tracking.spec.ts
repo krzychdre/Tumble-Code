@@ -132,10 +132,12 @@ describe("OpenAiHandler with usage tracking fix", () => {
 			// Check we only have one usage chunk and it's the last one
 			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
 			expect(usageChunks).toHaveLength(1)
+			// The cost comes with the chunk (API-7), computed from the model's prices.
 			expect(usageChunks[0]).toEqual({
 				type: "usage",
 				inputTokens: 10,
 				outputTokens: 5,
+				totalCost: 0,
 			})
 
 			// Check the usage chunk is the last one reported from the API
@@ -192,10 +194,12 @@ describe("OpenAiHandler with usage tracking fix", () => {
 			// Check usage metrics
 			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
 			expect(usageChunks).toHaveLength(1)
+			// The cost comes with the chunk (API-7), computed from the model's prices.
 			expect(usageChunks[0]).toEqual({
 				type: "usage",
 				inputTokens: 10,
 				outputTokens: 5,
+				totalCost: 0,
 			})
 		})
 
@@ -264,7 +268,7 @@ describe("OpenAiHandler with usage tracking fix", () => {
 			)
 
 			const usageChunks = chunks.filter((chunk) => chunk.type === "usage")
-			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 10, outputTokens: 5 }])
+			expect(usageChunks).toEqual([{ type: "usage", inputTokens: 10, outputTokens: 5, totalCost: 0 }])
 			expect(chunks[chunks.length - 1].type).toBe("usage")
 		})
 
