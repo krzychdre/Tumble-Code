@@ -10,10 +10,9 @@ import { type ApiHandlerOptions, getModelMaxOutputTokens } from "../../shared/ap
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
+import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import { BaseProvider } from "./base-provider"
-import { extractReasoningFromDelta } from "./utils/extract-reasoning"
-import { emitToolCallChunks, emitFinishReasonChunk } from "./utils/openai-stream-chunks"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { openAiCompletionUsage } from "./utils/completion-usage"
 
@@ -241,79 +240,16 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 
 		const stream = await this.callApiWithRetry(() => client.chat.completions.create(requestOptions))
 
-		let fullContent = ""
-		// Keep only the last usage: some servers repeat the cumulative usage
-		// in every chunk, and TaskStreamProcessor adds usage chunks together,
-		// so yielding each one would bill the request once per chunk (DEF-C12).
-		let lastUsage: OpenAI.CompletionUsage | undefined
-
-		for await (const apiChunk of stream) {
-			const delta = apiChunk.choices[0]?.delta ?? {}
-			const finishReason = apiChunk.choices[0]?.finish_reason
-
-			// Reasoning goes before the text: a delta carrying both is the end
-			// of the thinking followed by the start of the answer.
-			const reasoningText = extractReasoningFromDelta(delta)
-			if (reasoningText) {
-				yield { type: "reasoning", text: reasoningText }
-			}
-
-			if (delta.content) {
-				let newText = delta.content
-				if (newText.startsWith(fullContent)) {
-					newText = newText.substring(fullContent.length)
-				}
-				fullContent = delta.content
-
-				if (newText) {
-					// Check for thinking blocks
-					if (newText.includes("<think>") || newText.includes("</think>")) {
-						// Simple parsing for thinking blocks
-						const parts = newText.split(/<\/?think>/g)
-						for (let i = 0; i < parts.length; i++) {
-							if (parts[i]) {
-								if (i % 2 === 0) {
-									// Outside thinking block
-									yield {
-										type: "text",
-										text: parts[i],
-									}
-								} else {
-									// Inside thinking block
-									yield {
-										type: "reasoning",
-										text: parts[i],
-									}
-								}
-							}
-						}
-					} else {
-						yield {
-							type: "text",
-							text: newText,
-						}
-					}
-				}
-			}
-
-			// Handle tool calls in stream - emit partial chunks for NativeToolCallParser
-			yield* emitToolCallChunks(delta)
-
-			// Yield finish_reason so TaskStreamProcessor can handle it with per-task parser state
-			yield* emitFinishReasonChunk(finishReason)
-
-			if (apiChunk.usage) {
-				lastUsage = apiChunk.usage
-			}
-		}
-
-		if (lastUsage) {
-			yield {
+		// Qwen3 models may write their thoughts inline in <think> tags, split
+		// across deltas; reasoning_content goes before the text of the same delta.
+		yield* streamChatCompletion(stream, {
+			thinkTags: true,
+			mapUsage: (usage) => ({
 				type: "usage",
-				inputTokens: lastUsage.prompt_tokens || 0,
-				outputTokens: lastUsage.completion_tokens || 0,
-			}
-		}
+				inputTokens: usage.prompt_tokens || 0,
+				outputTokens: usage.completion_tokens || 0,
+			}),
+		})
 	}
 
 	/**

@@ -1670,7 +1670,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
       "type": "text",
     },
     {
-      "text": "return 1
+      "text": "  return 1
 ",
       "type": "text",
     },
@@ -1777,7 +1777,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
     },
     {
       "text": "</thi",
-      "type": "text",
+      "type": "reasoning",
     },
     {
       "inputTokens": 100,
@@ -1792,19 +1792,15 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 {
   "chunks": [
     {
-      "text": "<thi",
-      "type": "text",
+      "text": "Plan",
+      "type": "reasoning",
     },
     {
-      "text": "nk>Plan",
-      "type": "text",
+      "text": " the edit.",
+      "type": "reasoning",
     },
     {
-      "text": " the edit.</th",
-      "type": "text",
-    },
-    {
-      "text": "ink>Done",
+      "text": "Done",
       "type": "text",
     },
     {
