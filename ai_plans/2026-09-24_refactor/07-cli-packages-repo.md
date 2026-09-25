@@ -276,7 +276,7 @@ App snapshots byte-identical. Four bugs fixed test-first: `--oneshot` exited whe
 the previous task's last answer; `previousTodos` always empty (stale handler); resuming a task opened an approval dialog
 for an old tool ask from history (now only the last message opens a dialog, like `detectAgentState`). Decided: the
 transcript only appends (condensed rows stay, `<Static>` cannot unprint); double completion write kept (idempotent).
-**Not done, needs an owner decision on the stream-json contract:** `JsonEventEmitter` on transcript events and a real
+**Not done, owner decision 19 (2026-09-26): the output format stays, so these stay undone for now:** `JsonEventEmitter` on transcript events and a real
 `ts` diff for the `message` event (both change print/stream-json output, e.g. a resume would print the whole history);
 `useSyncExternalStore`; a MessageProcessor exception still shows the fatal full-screen error; `agent/` imports
 `ui/types` and `ui/utils/tools` (layering).
