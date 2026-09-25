@@ -40,16 +40,37 @@ means: work through this list (one branch per item), then strike each line here.
 - ~~Windows CI: `src` vitest dies silently~~ DONE: not a crash, two assertion failures hidden by the truncated
   `gh run view --log`; the runner's 8.3 short TEMP path vs `fs.promises.realpath`. Fixed in #341 (merge 99d28803c),
   its Windows job passed in 20 min. The debug branch `debug/windows-src-vitest-timing` is still on the remote.
-- Memory writers: closing VS Code or the CLI on the final `completion_result` ask still skips them (WON'T FIX, owner decision 15);
-  `hasMemoryWritesSince` reads a `toolUses` field messages never have; chat completions never reach
-  `captureTaskCompleted` telemetry; the CLI never answers `completion_result`. (`ai_plans/2026-09-25_memory-writers-after-completion.md` on main)
-- SVC-8: one write-guard flag covers both MCP settings files (a global write masks a project edit for 600 ms). (`05` SVC-8)
-- SVC-10: workspace folders added later get a code-index manager only lazily. (`05` SVC-10)
-- SVC-9: `deletePointsByMultipleFilePaths` untested; the query prefix is also applied to indexed code. (`05` SVC-9)
+- Memory writers: closing VS Code or the CLI on the final `completion_result` ask still skips them: WON'T FIX (owner
+  decision 15). ~~`hasMemoryWritesSince` reads `toolUses`~~ DONE #344 (5ead450cb): 0 of 1,042 real task files carry
+  `toolUses`; the gate now reads answered tool asks into the memory dir. ~~Chat completions never reach
+  `captureTaskCompleted`~~ DONE #346 (00a24b428): the accepted abandon records it once, no public `TaskCompleted`;
+  self-hosted DB had 63 Task Created, 0 Task Completed. The CLI clears through the same `clearTask` path, so
+  "the CLI never answers `completion_result`" is covered by #339 and #346.
+- ~~SVC-8: one write-guard flag covers both MCP settings files~~ DONE #342 (ca3e0fb0a): one guard timer per file.
+- ~~SVC-10: folders added later get a manager only lazily~~ DONE #345 (b2735d167): they were never indexed at all in a
+  multi-root window; `startCodeIndexForFolder` on `event.added`; also fixed dispose during `initialize()` leaking a
+  watcher.
+- ~~SVC-9: `deletePointsByMultipleFilePaths` untested~~ DONE #348 (406b68c29): 22 tests; found it swallowed Qdrant
+  errors since upstream 11c454ffa (stale points forever), now rethrows. ~~Query prefix applied to indexed code~~ DONE
+  #350 (2d10090e9): only `nomic-embed-code` has a prefix; documents now embed without it, legacy collections carry
+  no `document_prefix` marker and are rebuilt once. Open: `collectionExists` treats any error as "missing".
 - ~~SVC-11: gitignored `.roo` dirs are never found by the subfolder scan~~ WON'T FIX: owner decision 13, the scan keeps respecting gitignore.
-- SVC-12: `@`-mention search still spawns `rg` per query; `handleError` sends the serialized error with its stack to the model. (`05` SVC-12)
-- SVC-17: a diff opened for a truncated path during streaming is not reopened when the final path differs. (`05` SVC-17)
-- Earlier open owner questions (retry policy for 400/401, dispose leak, stale DeepSeek catalog) in `05` Phase 5 statuses.
+- ~~SVC-12: `@`-mention search spawns `rg` per query~~ DONE #352 (847787e92): file list plus fzf index cached per root,
+  invalidated by `WorkspaceTracker` create/delete and ignore-file events, 30 s TTL; typing "mention" 7 walks to 0,
+  about 390 to 185 ms on this repo. ~~`handleError` sends the stack to the model~~ DONE #349 (90135414d): message and
+  cause chain only, full error to the log.
+- ~~SVC-17: a diff opened for a truncated path is not reopened~~ DONE #347 (208e4da3b): reproduced with the real
+  parser (partial-json drops a split `\u002e` escape, so `write_to_file` wrote `a/b` instead of `a/b.ts`);
+  a session for another path is reverted in `handlePartial` and `execute`.
+- Earlier owner questions: ~~dispose leak~~ done in #309; ~~retry policy~~ DONE #343 (5c6a3e517, owner decision 14):
+  401/403/404 not auto-retried in foreground tasks, a declined retry ends the loop, the unattended CLI exits 1 instead
+  of hanging (background tasks unchanged, recorded in its plan doc); ~~stale DeepSeek catalog~~ DONE #351 (ea164246e,
+  decision 16): `deepseek-flash` default, `deepseek-v4-flash` alias, `deepseek-chat`/`-reasoner` deprecated, effort
+  `low` no longer sent as `high`. Open from #351: the `/models` fetcher ignores the new limit fields; peak/off-peak
+  pricing not modeled (peak prices used).
+- Leftovers round verification (2026-09-25): full local run on main 847787e92 (`pnpm turbo run check-types lint
+  test --continue --concurrency=3`): 38 of 38 tasks green; src 9,817 passed (37 skipped), webview 1,694, cli 1,075,
+  types 451, vscode-shim 408, cloud 304, core 178, agent-interchange 114, telemetry 31, build 17.
 - Next phases: 7 to 11 in the roadmap above.
 
 ## Request
