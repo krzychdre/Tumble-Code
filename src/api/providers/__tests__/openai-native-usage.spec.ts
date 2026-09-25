@@ -30,7 +30,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -54,7 +54,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, gpt6SolModel)
+			const result = (handler as any).core.normalizeUsage(usage, gpt6SolModel.info)
 
 			expect(result).toMatchObject({
 				inputTokens: 100_000,
@@ -76,7 +76,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -97,7 +97,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -119,7 +119,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -139,7 +139,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -159,7 +159,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				cache_read_input_tokens: 30,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -178,7 +178,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				cache_read_tokens: 30,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -196,7 +196,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				cached_tokens: 30,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -212,7 +212,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				completion_tokens: 50,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -231,7 +231,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				output_tokens: 50,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -248,7 +248,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				completion_tokens: 50,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -262,19 +262,19 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 
 	describe("edge cases", () => {
 		it("should handle undefined usage", () => {
-			const result = (handler as any).normalizeUsage(undefined, mockModel)
+			const result = (handler as any).core.normalizeUsage(undefined, mockModel.info)
 			expect(result).toBeUndefined()
 		})
 
 		it("should handle null usage", () => {
-			const result = (handler as any).normalizeUsage(null, mockModel)
+			const result = (handler as any).core.normalizeUsage(null, mockModel.info)
 			expect(result).toBeUndefined()
 		})
 
 		it("should handle empty usage object", () => {
 			const usage = {}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -293,7 +293,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				// No input_tokens_details
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -315,7 +315,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			// The implementation uses nullish coalescing, so it will use the first non-nullish value:
 			// cache_read_input_tokens ?? cache_read_tokens ?? cached_tokens ?? cachedFromDetails
@@ -340,7 +340,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -361,7 +361,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				},
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -427,7 +427,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				cache_creation_input_tokens: 20,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toHaveProperty("totalCost")
 			expect(result.totalCost).toBeGreaterThan(0)
@@ -441,7 +441,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				output_tokens: 50,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, mockModel)
+			const result = (handler as any).core.normalizeUsage(usage, mockModel.info)
 
 			expect(result).toHaveProperty("totalCost")
 			expect(result.totalCost).toBeGreaterThan(0)
@@ -455,7 +455,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				cache_read_input_tokens: 20_000,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, gpt54Model)
+			const result = (handler as any).core.normalizeUsage(usage, gpt54Model.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -473,7 +473,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				cache_read_input_tokens: 100_000,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, gpt54Model)
+			const result = (handler as any).core.normalizeUsage(usage, gpt54Model.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
@@ -496,7 +496,7 @@ describe("OpenAiNativeHandler - normalizeUsage", () => {
 				cache_read_input_tokens: 100_000,
 			}
 
-			const result = (handler as any).normalizeUsage(usage, gpt54Model)
+			const result = (handler as any).core.normalizeUsage(usage, gpt54Model.info)
 
 			expect(result).toMatchObject({
 				type: "usage",
