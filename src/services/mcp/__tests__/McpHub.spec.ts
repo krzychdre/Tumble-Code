@@ -77,6 +77,11 @@ vi.mock("vscode", () => ({
 vi.mock("fs/promises")
 vi.mock("../../../core/webview/ClineProvider")
 
+// Echo the key and its options, so a test can see what a message would say.
+vi.mock("../../../i18n", () => ({
+	t: (key: string, options?: Record<string, unknown>) => (options ? `${key} ${JSON.stringify(options)}` : key),
+}))
+
 // Mock the MCP SDK modules
 vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 	StdioClientTransport: vi.fn(),
@@ -2629,6 +2634,395 @@ describe("McpHub", () => {
 			expect(transportCount()).toBe(before)
 			expect(hub.connections.map((c) => c.server.name)).toEqual(["a"])
 			expect(watchersByPath.get("/watch/a")![0].close).not.toHaveBeenCalled()
+		})
+	})
+
+	describe("config files, watching and the write guard (SVC-8)", () => {
+		// Built with path.join like the product code, so the keys match on Windows too.
+		const globalPath = path.join("/mock/settings/path", "mcp_settings.json")
+		const projectPath = path.join("", ".roo", "mcp.json")
+		let files: Record<string, string>
+		let watchersByPath: Map<string, { on: Mock; close: Mock }[]>
+		let transportCount: () => number
+
+		const settle = () => new Promise((resolve) => setTimeout(resolve, 100))
+		// setImmediate stays real under the fake timers below, so this drains every pending promise.
+		const flush = () => new Promise((resolve) => setImmediate(resolve))
+		const writeFiles = (next: { global?: object; project?: object }) => {
+			files = {}
+			if (next.global) files[globalPath] = JSON.stringify(next.global)
+			if (next.project) files[projectPath] = JSON.stringify(next.project)
+		}
+		// What the settings-file watcher does when the file changes on disk.
+		const fireConfigChange = (hub: McpHub, filePath: string, source: "global" | "project") =>
+			(hub as any).debounceConfigChange(filePath, source)
+		const validate = (config: any, serverName?: string) =>
+			(McpHub.prototype as any).validateServerConfig.call({}, config, serverName)
+
+		beforeEach(async () => {
+			const chokidar = (await import("chokidar")).default
+			watchersByPath = new Map()
+			vi.mocked(chokidar.watch).mockImplementation((paths: any) => {
+				const watcher = { on: vi.fn().mockReturnThis(), close: vi.fn() }
+				const key = ([] as string[]).concat(paths).join(",")
+				watchersByPath.set(key, [...(watchersByPath.get(key) ?? []), watcher])
+				return watcher as any
+			})
+
+			const stdioModule = await import("@modelcontextprotocol/sdk/client/stdio.js")
+			const StdioClientTransport = stdioModule.StdioClientTransport as ReturnType<typeof vi.fn>
+			StdioClientTransport.mockImplementation(() => ({
+				start: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				stderr: { on: vi.fn() },
+				onerror: null,
+				onclose: null,
+			}))
+			transportCount = () => StdioClientTransport.mock.calls.length
+
+			const clientModule = await import("@modelcontextprotocol/sdk/client/index.js")
+			const Client = clientModule.Client as ReturnType<typeof vi.fn>
+			Client.mockImplementation(() => ({
+				connect: vi.fn().mockResolvedValue(undefined),
+				close: vi.fn().mockResolvedValue(undefined),
+				getInstructions: vi.fn().mockReturnValue(""),
+				request: vi.fn().mockResolvedValue({ tools: [], resources: [], resourceTemplates: [] }),
+			}))
+
+			writeFiles({ global: { mcpServers: { a: { command: "node", args: ["a.js"] } } } })
+			const missing = (filePath: string) => Object.assign(new Error(`ENOENT: ${filePath}`), { code: "ENOENT" })
+			vi.mocked(fs.readFile).mockImplementation((async (filePath: string) => {
+				if (filePath in files) return files[filePath]
+				throw missing(filePath)
+			}) as any)
+			vi.mocked(fs.access).mockImplementation(async (filePath: any) => {
+				if (!(filePath in files)) throw missing(filePath)
+			})
+		})
+
+		afterEach(() => {
+			vi.useRealTimers()
+		})
+
+		describe("server config validation", () => {
+			it("infers stdio and applies the defaults", () => {
+				const input: any = { command: "node", args: ["a.js"] }
+
+				const config = validate(input, "a")
+
+				expect(config).toMatchObject({
+					type: "stdio",
+					command: "node",
+					args: ["a.js"],
+					timeout: 60,
+					alwaysAllow: [],
+					disabledTools: [],
+				})
+				expect(typeof config.cwd).toBe("string")
+				// The caller's object gets the inferred type too.
+				expect(input.type).toBe("stdio")
+			})
+
+			it.each([
+				[
+					"stdio and url fields mixed",
+					{ command: "node", url: "http://localhost" },
+					"Cannot mix 'stdio' and ('sse' or 'streamable-http') fields. For 'stdio' use 'command', 'args', and 'env'. For 'sse'/'streamable-http' use 'url' and 'headers'",
+				],
+				[
+					"a url without a type",
+					{ url: "http://localhost" },
+					"Configuration with 'url' must explicitly specify 'type' as 'sse' or 'streamable-http'.",
+				],
+				[
+					"an unknown type",
+					{ type: "ws", command: "node" },
+					"Server type must be 'stdio', 'sse', or 'streamable-http'",
+				],
+				[
+					"stdio without a command",
+					{ type: "stdio" },
+					"For 'stdio' type servers, you must provide a 'command' field and can optionally include 'args' and 'env'",
+				],
+				[
+					"sse without a url",
+					{ type: "sse" },
+					"For 'sse' type servers, you must provide a 'url' field and can optionally include 'headers'",
+				],
+				[
+					"streamable-http without a url",
+					{ type: "streamable-http" },
+					"For 'streamable-http' type servers, you must provide a 'url' field and can optionally include 'headers'",
+				],
+				[
+					"neither a command nor a url",
+					{},
+					"Server configuration must include either 'command' (for stdio) or 'url' (for sse/streamable-http) and a corresponding 'type' if 'url' is used.",
+				],
+			])("rejects %s", (_label, config, message) => {
+				expect(() => validate(config, "x")).toThrow(message)
+			})
+
+			it("names the server and joins the schema problems with semicolons", () => {
+				expect(() => validate({ command: "node", timeout: 0 }, "slow")).toThrow(
+					'Invalid configuration for server "slow": ',
+				)
+				expect(() => validate({ command: "node", timeout: 0 })).toThrow("Invalid server configuration: ")
+			})
+		})
+
+		describe("updateServerConnections diff", () => {
+			it("keeps a disabled server's placeholder when its raw config did not change", async () => {
+				writeFiles({ global: { mcpServers: { off: { command: "node", args: ["off.js"], disabled: true } } } })
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				const placeholder = hub.connections.find((c) => c.server.name === "off")
+
+				await hub.updateServerConnections({ off: { command: "node", args: ["off.js"], disabled: true } })
+
+				expect(placeholder?.type).toBe("disconnected")
+				expect(hub.connections.find((c) => c.server.name === "off")).toBe(placeholder)
+			})
+
+			it("does not restart a server whose config uses variables that did not change", async () => {
+				process.env.SVC8_TOKEN = "secret"
+				try {
+					const server = { command: "node", args: ["${env:SVC8_TOKEN}"] }
+					writeFiles({ global: { mcpServers: { v: server } } })
+					const hub = new McpHub(mockProvider as ClineProvider)
+					await settle()
+					const before = transportCount()
+					const connection = hub.connections.find((c) => c.server.name === "v")
+					expect(JSON.parse(connection!.server.config).args).toEqual(["secret"])
+
+					await hub.updateServerConnections({ v: { ...server } })
+
+					expect(transportCount()).toBe(before)
+					expect(hub.connections.find((c) => c.server.name === "v")).toBe(connection)
+				} finally {
+					delete process.env.SVC8_TOKEN
+				}
+			})
+
+			it("still starts the valid servers of a global file that fails the schema", async () => {
+				writeFiles({
+					global: { mcpServers: { good: { command: "node", args: ["good.js"] }, bad: { command: "" } } },
+				})
+				const vscode = await import("vscode")
+
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+
+				expect(hub.connections.map((c) => `${c.server.source}:${c.server.name}:${c.server.status}`)).toEqual([
+					"global:good:connected",
+				])
+				expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+					`mcp:errors.invalid_settings_validation ${JSON.stringify({ errorMessages: "mcpServers.bad: Invalid input" })}`,
+				)
+			})
+		})
+
+		describe("config-file watching", () => {
+			it("debounces a burst of changes into one update 500 ms after the last one", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				const update = vi.spyOn(hub, "updateServerConnections")
+
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(300)
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(499)
+				await flush()
+				expect(update).not.toHaveBeenCalled()
+
+				await vi.advanceTimersByTimeAsync(1)
+				await flush()
+				expect(update).toHaveBeenCalledTimes(1)
+				expect(update).toHaveBeenCalledWith(
+					{ a: expect.objectContaining({ command: "node", args: ["a.js"] }) },
+					"global",
+				)
+			})
+
+			it("debounces the global and the project file separately", async () => {
+				writeFiles({
+					global: { mcpServers: { a: { command: "node", args: ["a.js"] } } },
+					project: { mcpServers: { p: { command: "node", args: ["p.js"] } } },
+				})
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				const update = vi.spyOn(hub, "updateServerConnections")
+
+				fireConfigChange(hub, globalPath, "global")
+				fireConfigChange(hub, projectPath, "project")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(update.mock.calls.map(([, source]) => source).sort()).toEqual(["global", "project"])
+			})
+
+			it("reports invalid JSON in a changed file and changes nothing", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				const vscode = await import("vscode")
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				const update = vi.spyOn(hub, "updateServerConnections")
+				files[globalPath] = "{ not json"
+
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(update).not.toHaveBeenCalled()
+				expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+					"mcp:errors.invalid_settings_syntax",
+				)
+			})
+
+			it("lists every schema problem of a changed file, one per line, and changes nothing", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				const vscode = await import("vscode")
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				const update = vi.spyOn(hub, "updateServerConnections")
+				files[globalPath] = JSON.stringify({ mcpServers: { a: { command: "" }, b: { command: "" } } })
+
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(update).not.toHaveBeenCalled()
+				expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+					`mcp:errors.invalid_settings_validation ${JSON.stringify({
+						errorMessages: "mcpServers.a: Invalid input\nmcpServers.b: Invalid input",
+					})}`,
+				)
+			})
+
+			it("removes the project servers when the project file is gone", async () => {
+				writeFiles({
+					global: { mcpServers: { a: { command: "node", args: ["a.js"] } } },
+					project: { mcpServers: { p: { command: "node", args: ["p.js"] } } },
+				})
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				expect(hub.connections.map((c) => `${c.server.source}:${c.server.name}`).sort()).toEqual([
+					"global:a",
+					"project:p",
+				])
+				const vscode = await import("vscode")
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				delete files[projectPath]
+
+				fireConfigChange(hub, projectPath, "project")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(hub.connections.map((c) => `${c.server.source}:${c.server.name}`)).toEqual(["global:a"])
+				expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+					"mcp:info.project_config_deleted",
+				)
+			})
+		})
+
+		describe("write guard", () => {
+			it("ignores file changes for 600 ms after its own write, then handles them again", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				await hub.updateServerTimeout("a", 30, "global")
+				const update = vi.spyOn(hub, "updateServerConnections")
+
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(599)
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+				expect(update).not.toHaveBeenCalled()
+
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+				expect(update).toHaveBeenCalledTimes(1)
+			})
+
+			it("guards the write of a tool-list toggle", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				await hub.toggleToolAlwaysAllow("a", "global", "tool", true)
+				const update = vi.spyOn(hub, "updateServerConnections")
+
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(update).not.toHaveBeenCalled()
+			})
+
+			it("guards the write of deleteServer, so its own change event does not update the servers again", async () => {
+				writeFiles({
+					global: {
+						mcpServers: { a: { command: "node", args: ["a.js"] }, b: { command: "node", args: ["b.js"] } },
+					},
+				})
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+				vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+				await hub.deleteServer("b", "global")
+				const update = vi.spyOn(hub, "updateServerConnections")
+
+				fireConfigChange(hub, globalPath, "global")
+				await vi.advanceTimersByTimeAsync(500)
+				await flush()
+
+				expect(update).not.toHaveBeenCalled()
+			})
+		})
+
+		describe("file watchers of a global and a project server with the same name", () => {
+			beforeEach(() => {
+				writeFiles({
+					global: { mcpServers: { same: { command: "node", args: ["g.js"], watchPaths: ["/watch/global"] } } },
+					project: {
+						mcpServers: { same: { command: "node", args: ["p.js"], watchPaths: ["/watch/project"] } },
+					},
+				})
+			})
+
+			it("gives each server its own watcher", async () => {
+				new McpHub(mockProvider as ClineProvider)
+				await settle()
+
+				expect(watchersByPath.get("/watch/global")).toHaveLength(1)
+				expect(watchersByPath.get("/watch/project")).toHaveLength(1)
+			})
+
+			it("closes only the project server's watcher when the project server goes", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+
+				await hub.deleteConnection("same", "project")
+
+				expect(watchersByPath.get("/watch/project")![0].close).toHaveBeenCalled()
+				expect(watchersByPath.get("/watch/global")![0].close).not.toHaveBeenCalled()
+			})
+
+			it("leaves the global server's watcher open when the project server restarts", async () => {
+				const hub = new McpHub(mockProvider as ClineProvider)
+				await settle()
+
+				await hub.updateServerConnections(
+					{ same: { command: "node", args: ["p2.js"], watchPaths: ["/watch/project"] } },
+					"project",
+				)
+
+				expect(watchersByPath.get("/watch/global")![0].close).not.toHaveBeenCalled()
+				expect(watchersByPath.get("/watch/project")![0].close).toHaveBeenCalled()
+				expect(watchersByPath.get("/watch/project")!.at(-1)!.close).not.toHaveBeenCalled()
+			})
 		})
 	})
 })
