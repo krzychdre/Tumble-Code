@@ -3,7 +3,7 @@ import path from "path"
 import { Box, Text, useApp, useInput } from "ink"
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
-import type { McpServer } from "@roo-code/types"
+import type { McpServer, UsableSuggestion } from "@roo-code/types"
 
 import { setInputBoxHandler } from "@roo-code/vscode-shim"
 
@@ -201,7 +201,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	})
 
 	// Initialize task submit hook
-	const { handleSubmit, handleApprove, handleReject } = useTaskSubmit({
+	const { handleSubmit, handleSuggestion, handleApprove, handleReject } = useTaskSubmit({
 		sendToExtension,
 		runTask,
 		seenMessageIds,
@@ -211,9 +211,13 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	})
 
 	// Initialize countdown hook for followup auto-accept
+	const autoSubmitSuggestion = useCallback(
+		(suggestion: UsableSuggestion) => handleSuggestion(suggestion, false),
+		[handleSuggestion],
+	)
 	const { cancelCountdown } = useFollowupCountdown({
 		pendingAsk,
-		onAutoSubmit: handleSubmit,
+		onAutoSubmit: autoSubmitSuggestion,
 		autoAcceptEnabled: permissionMode === "allow",
 	})
 
@@ -684,9 +688,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 				{showFollowupDialog && pendingAsk && (
 					<FollowupDialog
 						ask={pendingAsk}
-						onSelect={(ans) => {
-							void handleSubmit(ans)
-						}}
+						onSelect={(suggestion) => handleSuggestion(suggestion, true)}
 						onCustomInput={() => {
 							cancelCountdown()
 							setIsTransitioningToCustomInput(true)

@@ -92,6 +92,87 @@ describe("AskDispatcher follow-up questions (print mode)", () => {
 	})
 })
 
+describe("AskDispatcher follow-up answers match the shared rule (CLI-5)", () => {
+	function followupDispatcher(options: { nonInteractive: boolean; typed?: string }) {
+		const output: string[] = []
+		const sent: WebviewMessage[] = []
+		const promptManager = {
+			promptForInput: async () => options.typed ?? "",
+			promptWithTimeout: async (_prompt: string, _timeoutMs: number, defaultValue: string) => ({
+				value: options.typed ?? defaultValue,
+				timedOut: options.typed === undefined,
+				cancelled: false,
+			}),
+		} as unknown as PromptManager
+		const dispatcher = new AskDispatcher({
+			outputManager: {
+				output: (...parts: unknown[]) => output.push(parts.map((part) => String(part)).join(" ")),
+				markDisplayed: () => {},
+			} as unknown as OutputManager,
+			promptManager,
+			sendMessage: (message) => sent.push(message),
+			nonInteractive: options.nonInteractive,
+		})
+
+		return { dispatcher, output, sent }
+	}
+
+	const followup = (data: unknown): ClineMessage => ({
+		ts: 1,
+		type: "ask",
+		ask: "followup",
+		text: JSON.stringify(data),
+		partial: false,
+	})
+
+	// The webview switches to a suggestion's mode when the user picks it; the
+	// CLI printed "(mode: code)" and never switched.
+	it("switches to the mode of the suggestion the user picks by number", async () => {
+		const { dispatcher, sent } = followupDispatcher({ nonInteractive: false, typed: "2" })
+
+		await dispatcher.handleAsk(
+			followup({ question: "Next?", suggest: [{ answer: "Plan more" }, { answer: "Build it", mode: "code" }] }),
+		)
+
+		expect(sent).toEqual([
+			{ type: "mode", text: "code" },
+			{ type: "askResponse", askResponse: "messageResponse", text: "Build it" },
+		])
+	})
+
+	it("switches mode for the default answer when actions are auto-approved", async () => {
+		const { dispatcher, sent } = followupDispatcher({ nonInteractive: true })
+
+		await dispatcher.handleAsk(followup({ question: "Next?", suggest: [{ answer: "Build it", mode: "code" }] }))
+
+		expect(sent).toEqual([
+			{ type: "mode", text: "code" },
+			{ type: "askResponse", askResponse: "messageResponse", text: "Build it" },
+		])
+	})
+
+	it("does not switch mode for a typed answer", async () => {
+		const { dispatcher, sent } = followupDispatcher({ nonInteractive: false, typed: "something else" })
+
+		await dispatcher.handleAsk(followup({ question: "Next?", suggest: [{ answer: "Build it", mode: "code" }] }))
+
+		expect(sent).toEqual([{ type: "askResponse", askResponse: "messageResponse", text: "something else" }])
+	})
+
+	// Model output is unvalidated: a non-string question or mode must not be
+	// printed as "[object Object]" or sent as a mode slug.
+	it("ignores a question or a mode that is not a string", async () => {
+		const data = { question: { text: "Next?" }, suggest: [{ answer: "Build it", mode: 7 }] }
+		const { dispatcher, output, sent } = followupDispatcher({ nonInteractive: false, typed: "1" })
+
+		await dispatcher.handleAsk(followup(data))
+
+		expect(output.join("\n")).not.toContain("[object Object]")
+		expect(output.join("\n")).not.toContain("(mode: 7)")
+		expect(sent).toEqual([{ type: "askResponse", askResponse: "messageResponse", text: "Build it" }])
+	})
+})
+
 describe("AskDispatcher api_req_failed in non-interactive print mode", () => {
 	// Non-interactive print mode always runs with auto-approval on (permission
 	// mode "allow"), where the core retries every transient error itself and

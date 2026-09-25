@@ -1,11 +1,12 @@
 import { useCallback, useRef } from "react"
 import {
-	hasUsableAnswer,
+	parseFollowUpData,
 	type ExtensionMessage,
 	type ClineMessage,
 	type ClineAsk,
 	type ClineSay,
 	type TodoItem,
+	type UsableSuggestion,
 } from "@roo-code/types"
 import { consolidateTokenUsage, consolidateApiRequests, consolidateCommands } from "@roo-code/core/cli"
 
@@ -555,19 +556,15 @@ export function useMessageHandlers({ nonInteractive }: UseMessageHandlersOptions
 				return
 			}
 
-			let suggestions: Array<{ answer: string; mode?: string | null }> | undefined
+			let suggestions: UsableSuggestion[] | undefined
 			let questionText = text
 
 			if (ask === "followup") {
-				try {
-					const data = JSON.parse(text)
-					questionText = data.question || text
-					// Drop suggestions without a usable answer (blank or missing):
-					// they would render as empty rows and could be sent as the reply.
-					suggestions = Array.isArray(data.suggest) ? data.suggest.filter(hasUsableAnswer) : undefined
-				} catch {
-					// Use raw text
-				}
+				// The rule shared with the webview: suggestions without a usable
+				// answer would render as empty rows and could be sent as the reply.
+				const followUp = parseFollowUpData(text)
+				questionText = followUp.question || text
+				suggestions = followUp.suggestions
 			}
 			// Note: ask === "command" is handled above before the nonInteractive block
 

@@ -1,4 +1,4 @@
-import type { ClineAsk, ClineSay, TodoItem } from "@roo-code/types"
+import type { ClineAsk, ClineSay, TodoItem, UsableSuggestion } from "@roo-code/types"
 
 export type MessageRole = "system" | "user" | "assistant" | "tool" | "thinking"
 
@@ -97,7 +97,7 @@ export interface PendingAsk {
 	id: string
 	type: ClineAsk
 	content: string
-	suggestions?: Array<{ answer: string; mode?: string | null }>
+	suggestions?: UsableSuggestion[]
 }
 
 export interface TaskHistoryItem {

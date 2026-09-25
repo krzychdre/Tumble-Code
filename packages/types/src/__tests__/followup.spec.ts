@@ -1,4 +1,10 @@
-import { firstUsableSuggestion, hasUsableAnswer, suggestionItemSchema } from "../followup.js"
+import {
+	firstUsableSuggestion,
+	hasUsableAnswer,
+	parseFollowUpData,
+	suggestionItemSchema,
+	suggestionModeToSwitch,
+} from "../followup.js"
 
 describe("hasUsableAnswer", () => {
 	it("accepts a non-blank string answer", () => {
@@ -35,5 +41,46 @@ describe("firstUsableSuggestion", () => {
 describe("suggestionItemSchema", () => {
 	it("accepts an item without an answer", () => {
 		expect(suggestionItemSchema.safeParse({ mode: "code" }).success).toBe(true)
+	})
+})
+
+describe("parseFollowUpData", () => {
+	it("reads the question and the usable suggestions", () => {
+		const text = JSON.stringify({
+			question: "Next?",
+			suggest: [{ answer: "Build", mode: "code" }, { answer: " " }, { answer: "Plan" }, { mode: "ask" }],
+		})
+
+		expect(parseFollowUpData(text)).toEqual({
+			question: "Next?",
+			suggestions: [{ answer: "Build", mode: "code" }, { answer: "Plan" }],
+		})
+	})
+
+	it("drops a question or a mode that is not a string", () => {
+		const text = JSON.stringify({ question: 42, suggest: [{ answer: "A", mode: 7 }, { answer: "B", mode: "" }] })
+
+		expect(parseFollowUpData(text)).toEqual({ suggestions: [{ answer: "A" }, { answer: "B" }] })
+	})
+
+	it.each([undefined, "", "not json", "null", "[1]", '"text"', "42"])("yields nothing for %j", (text) => {
+		expect(parseFollowUpData(text)).toEqual({ suggestions: [] })
+	})
+})
+
+describe("suggestionModeToSwitch", () => {
+	it("switches on a manual choice", () => {
+		expect(suggestionModeToSwitch({ mode: "code" }, { manual: true })).toBe("code")
+	})
+
+	it("switches on an automatic choice only when mode switches are auto-approved", () => {
+		expect(suggestionModeToSwitch({ mode: "code" }, { manual: false })).toBeUndefined()
+		expect(suggestionModeToSwitch({ mode: "code" }, { manual: false, alwaysAllowModeSwitch: true })).toBe("code")
+	})
+
+	it("never switches without a mode", () => {
+		expect(suggestionModeToSwitch({}, { manual: true })).toBeUndefined()
+		expect(suggestionModeToSwitch({ mode: "" }, { manual: true })).toBeUndefined()
+		expect(suggestionModeToSwitch({ mode: 3 }, { manual: true })).toBeUndefined()
 	})
 })

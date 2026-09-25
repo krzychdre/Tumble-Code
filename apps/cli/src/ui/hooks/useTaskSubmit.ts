@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 import { randomUUID } from "crypto"
 import { useStdout } from "ink"
-import type { WebviewMessage } from "@roo-code/types"
+import { suggestionModeToSwitch, type UsableSuggestion, type WebviewMessage } from "@roo-code/types"
 
 import { getGlobalCommand } from "../../lib/utils/commands.js"
 import { getPermissionSettings, resolvePermissionArgument, type PermissionMode } from "../../lib/utils/permissions.js"
@@ -21,6 +21,11 @@ export interface UseTaskSubmitOptions {
 
 export interface UseTaskSubmitReturn {
 	handleSubmit: (text: string) => Promise<void>
+	/**
+	 * Answer a follow-up with one of its suggestions, switching to the
+	 * suggestion's mode first. `manual` is false for the countdown's pick.
+	 */
+	handleSuggestion: (suggestion: UsableSuggestion, manual: boolean) => void
 	handleApprove: () => void
 	handleReject: () => void
 }
@@ -216,6 +221,23 @@ export function useTaskSubmit({
 		],
 	)
 
+	const handleSuggestion = useCallback(
+		(suggestion: UsableSuggestion, manual: boolean) => {
+			// "allow" turns on alwaysAllowModeSwitch (getPermissionSettings).
+			const mode = suggestionModeToSwitch(suggestion, {
+				manual,
+				alwaysAllowModeSwitch: permissionMode === "allow",
+			})
+
+			if (mode) {
+				sendToExtension?.({ type: "mode", text: mode })
+			}
+
+			void handleSubmit(suggestion.answer)
+		},
+		[sendToExtension, permissionMode, handleSubmit],
+	)
+
 	/**
 	 * Handle approval (Y key)
 	 */
@@ -244,6 +266,7 @@ export function useTaskSubmit({
 
 	return {
 		handleSubmit,
+		handleSuggestion,
 		handleApprove,
 		handleReject,
 	}

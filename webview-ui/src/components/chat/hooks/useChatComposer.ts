@@ -2,7 +2,7 @@ import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import type { ClineMessage, ProviderNameWithRetired, SuggestionItem } from "@roo-code/types"
-import { hasUsableAnswer, isRetiredProvider } from "@roo-code/types"
+import { hasUsableAnswer, isRetiredProvider, suggestionModeToSwitch } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
 
@@ -368,14 +368,12 @@ export function useChatComposer({
 				markFollowUpAsAnswered()
 			}
 
-			// Check if we need to switch modes
-			if (suggestion.mode) {
-				// Only switch modes if it's a manual click (event exists) or auto-approval is allowed
-				const isManualClick = !!event
-				if (isManualClick || alwaysAllowModeSwitch) {
-					// Switch mode without waiting
-					switchToMode(suggestion.mode)
-				}
+			// A manual click (event exists) always switches to the suggestion's
+			// mode, an auto-approved one only when mode switches are allowed.
+			const mode = suggestionModeToSwitch(suggestion, { manual: !!event, alwaysAllowModeSwitch })
+			if (mode) {
+				// Switch mode without waiting
+				switchToMode(mode)
 			}
 
 			if (event?.shiftKey) {

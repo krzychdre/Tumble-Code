@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react"
 import { Box, Text } from "ink"
 
-import { firstUsableSuggestion } from "@roo-code/types"
+import { firstUsableSuggestion, type UsableSuggestion } from "@roo-code/types"
 
 import * as theme from "../../theme.js"
 import SelectList, { type SelectItem } from "../primitives/SelectList.js"
@@ -10,8 +10,8 @@ import type { PendingAsk } from "../../types.js"
 export interface FollowupDialogProps {
 	/** The pending followup ask (type "followup") with suggestions */
 	ask: PendingAsk
-	/** Called when the user selects a suggestion answer */
-	onSelect: (answer: string) => void
+	/** Called with the suggestion (answer and mode) the user selects */
+	onSelect: (suggestion: UsableSuggestion) => void
 	/** Called when the user picks "Type my own answer…" — reveals InputArea */
 	onCustomInput: () => void
 	/** Countdown seconds until auto-select of the first suggestion; null = inactive */
@@ -22,22 +22,6 @@ export interface FollowupDialogProps {
 
 /** Sentinel value for the "Type my own answer…" option. */
 const CUSTOM_VALUE = "__CUSTOM__"
-
-/**
- * Parse the question text from a followup ask.
- * The ask.content may be a JSON string with a `question` field, or plain text.
- */
-function parseQuestion(content: string): string {
-	try {
-		const parsed = JSON.parse(content) as Record<string, unknown>
-		if (typeof parsed.question === "string" && parsed.question.length > 0) {
-			return parsed.question
-		}
-	} catch {
-		// not JSON
-	}
-	return content
-}
 
 /**
  * Permission-bordered followup question dialog for `ask_followup_question`.
@@ -52,24 +36,31 @@ function parseQuestion(content: string): string {
  * Any arrow-key navigation cancels the countdown (also wired in App).
  */
 function FollowupDialog({ ask, onSelect, onCustomInput, countdownSeconds, isActive = true }: FollowupDialogProps) {
-	const question = useMemo(() => parseQuestion(ask.content), [ask.content])
+	// ask.content already holds the question (useMessageHandlers parsed the ask).
+	const question = ask.content
+	const suggestions = useMemo(() => ask.suggestions ?? [], [ask.suggestions])
 
+	// Items are keyed by position: two suggestions may share an answer and
+	// differ only in their mode.
 	const items: SelectItem[] = useMemo(() => {
-		const suggestions = ask.suggestions ?? []
-		const list: SelectItem[] = suggestions.map((s) => ({
+		const list: SelectItem[] = suggestions.map((s, index) => ({
 			label: s.answer,
 			description: s.mode ? `→ ${s.mode} mode` : undefined,
-			value: s.answer,
+			value: String(index),
 		}))
 		list.push({ label: "Type my own answer…", value: CUSTOM_VALUE })
 		return list
-	}, [ask.suggestions])
+	}, [suggestions])
 
 	const handleSelect = (value: string) => {
 		if (value === CUSTOM_VALUE) {
 			onCustomInput()
-		} else if (value.trim()) {
-			onSelect(value)
+			return
+		}
+
+		const suggestion = suggestions[Number(value)]
+		if (suggestion?.answer.trim()) {
+			onSelect(suggestion)
 		}
 	}
 
