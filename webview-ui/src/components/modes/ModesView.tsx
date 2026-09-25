@@ -343,13 +343,6 @@ const ModesView = () => {
 		setGroupsError("")
 	}, [])
 
-	// Reset form fields when dialog opens
-	useEffect(() => {
-		if (isCreateModeDialogOpen) {
-			resetFormState()
-		}
-	}, [isCreateModeDialogOpen, resetFormState])
-
 	// Ensure import dialog defaults to "project" each open
 	useEffect(() => {
 		if (showImportDialog) {
@@ -465,10 +458,13 @@ const ModesView = () => {
 			name = `${baseNamePrefix} ${attempt + 1}`
 			slug = generateSlug(name)
 		}
+		// Start from an empty form, then prefill. Resetting here (not in an effect on open)
+		// keeps the prefill: an effect would run after this render and wipe it.
+		resetFormState()
 		setNewModeName(name)
 		setNewModeSlug(slug)
 		setIsCreateModeDialogOpen(true)
-	}, [generateSlug, isNameOrSlugTaken])
+	}, [generateSlug, isNameOrSlugTaken, resetFormState])
 
 	// Handler for group checkbox changes
 	const handleGroupChange = useCallback(

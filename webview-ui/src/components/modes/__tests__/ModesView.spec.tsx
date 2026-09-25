@@ -299,4 +299,38 @@ describe("PromptsView", () => {
 		const reopenedRole = reopened.querySelector("vscode-text-area") as HTMLElement & { value: string }
 		expect(reopenedRole.value).toBe("")
 	})
+
+	it("prefills the create dialog with a unique default name and slug", async () => {
+		renderPromptsView({
+			customModes: [{ slug: "new-custom-mode", name: "New Custom Mode", roleDefinition: "r", groups: [] }],
+		})
+
+		fireEvent.click(screen.getByTestId("add-mode-button"))
+		const dialog = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
+		const [nameInput, slugInput] = Array.from(dialog.querySelectorAll("input[type=text]")) as HTMLInputElement[]
+
+		// "New Custom Mode" is taken, so the dialog offers the next free name.
+		expect(nameInput.value).toBe("New Custom Mode 2")
+		expect(slugInput.value).toBe("new-custom-mode-2")
+	})
+
+	it("reopening the create dialog after cancel drops the previous input and prefills again", async () => {
+		renderPromptsView()
+
+		fireEvent.click(screen.getByTestId("add-mode-button"))
+		let dialog = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
+		const roleDefinition = dialog.querySelector("vscode-text-area") as HTMLElement & { value: string }
+		roleDefinition.value = "Leftover role"
+		fireEvent(roleDefinition, new Event("change", { bubbles: true }))
+		fireEvent.change(dialog.querySelectorAll("input[type=text]")[0], { target: { value: "Leftover" } })
+		fireEvent.click(screen.getByRole("button", { name: "prompts:createModeDialog.buttons.cancel" }))
+		await waitFor(() => expect(dialog).not.toBeInTheDocument())
+
+		fireEvent.click(screen.getByTestId("add-mode-button"))
+		dialog = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
+		const [nameInput, slugInput] = Array.from(dialog.querySelectorAll("input[type=text]")) as HTMLInputElement[]
+		expect(nameInput.value).toBe("New Custom Mode")
+		expect(slugInput.value).toBe("new-custom-mode")
+		expect((dialog.querySelector("vscode-text-area") as HTMLElement & { value: string }).value).toBe("")
+	})
 })
