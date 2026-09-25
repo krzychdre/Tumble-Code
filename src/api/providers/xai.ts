@@ -8,7 +8,6 @@ import type { ApiHandlerOptions } from "../../shared/api"
 
 import { ApiStream } from "../transform/stream"
 import { convertToResponsesApiInput } from "../transform/responses-api-input"
-import { processResponsesApiStream, createUsageNormalizer } from "../transform/responses-api-stream"
 import { getModelParams } from "../transform/model-params"
 
 import { DEFAULT_HEADERS } from "./constants"
@@ -17,13 +16,37 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { responsesApiCompletionUsage } from "./utils/completion-usage"
 import { handleProviderError } from "./utils/error-handler"
 import { isMcpTool } from "../../utils/mcp-name"
+import { ResponsesApiCore, type ResponsesApiErrorTexts } from "./responses-api/core"
 
 const XAI_DEFAULT_TEMPERATURE = 0
+
+/**
+ * xAI has no plain-fetch fallback, so only the texts of stream failures can be shown; they
+ * are the same English texts OpenAI Native uses.
+ */
+const XAI_ERROR_TEXTS: ResponsesApiErrorTexts = {
+	httpError: (status) => `Responses API error (${status})`,
+	noResponseBody: "Responses API error: No response body",
+	ownTextMarker: "Responses API",
+	connectionFailed: (message) => `Failed to connect to Responses API: ${message}`,
+	unexpectedConnectionError: "Unexpected error connecting to Responses API",
+	streamErrorEvent: (message) => `Responses API error: ${message}`,
+	responseFailed: (message) => `Response failed: ${message}`,
+	streamProcessingError: (message) => `Error processing response stream: ${message}`,
+	unexpectedStreamError: "Unexpected error processing response stream",
+}
 
 export class XAIHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: OpenAI
 	private readonly providerName = "xAI"
+	// Responses API event processing shared with OpenAI Native and Codex. No cost here: the
+	// task prices xAI usage from the model info (long-context pricing included).
+	private readonly core = new ResponsesApiCore({
+		providerName: this.providerName,
+		texts: XAI_ERROR_TEXTS,
+		totalCost: () => undefined,
+	})
 
 	constructor(options: ApiHandlerOptions) {
 		super()
@@ -61,15 +84,15 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 	 * Chat Completions: { type: "function", function: { name, description, parameters } }
 	 * Responses API: { type: "function", name, description, parameters }
 	 *
-	 * Uses base provider's convertToolSchemaForOpenAI() for schema hardening
-	 * (additionalProperties: false, ensureAllRequired) and handles MCP tools.
+	 * Native tools get the Chat Completions strict schema (convertToolSchemaForOpenAI:
+	 * additionalProperties: false, every property required, `null` removed from union
+	 * types); MCP tools keep their server schema and are sent non-strict.
 	 */
 	private mapResponseTools(tools?: any[]): any[] | undefined {
-		const converted = this.convertToolsForOpenAI(tools)
-		if (!converted?.length) {
+		if (!tools?.length) {
 			return undefined
 		}
-		return converted
+		return tools
 			.filter((tool) => tool?.type === "function")
 			.map((tool) => {
 				const isMcp = isMcpTool(tool.function.name)
@@ -91,6 +114,7 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
 		const model = this.getModel()
+		this.core.startResponse()
 
 		// Convert directly from Anthropic format to Responses API input format
 		const input = convertToResponsesApiInput(messages)
@@ -139,8 +163,9 @@ export class XAIHandler extends BaseProvider implements SingleCompletionHandler 
 			throw handleProviderError(error, this.providerName)
 		}
 
-		const normalizeUsage = createUsageNormalizer()
-		yield* processResponsesApiStream(stream, normalizeUsage)
+		for await (const event of stream) {
+			yield* this.core.processEvent(event, model.info)
+		}
 	}
 
 	async completePrompt(prompt: string): Promise<string> {

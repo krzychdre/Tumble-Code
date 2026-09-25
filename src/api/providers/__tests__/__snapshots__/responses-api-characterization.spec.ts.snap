@@ -252,10 +252,18 @@ exports[`Responses API handlers: replayed event fixtures > #10719 argument delta
   "xai": {
     "chunks": [
       {
-        "arguments": "{"path":"/tmp/test.txt"}",
+        "arguments": "{"path":",
         "id": "call_123",
+        "index": 0,
         "name": "read_file",
-        "type": "tool_call",
+        "type": "tool_call_partial",
+      },
+      {
+        "arguments": ""/tmp/test.txt"}",
+        "id": "call_123",
+        "index": 0,
+        "name": "read_file",
+        "type": "tool_call_partial",
       },
     ],
   },
@@ -338,6 +346,10 @@ exports[`Responses API handlers: replayed event fixtures > #11621 assistant mess
   },
   "xai": {
     "chunks": [
+      {
+        "text": "hello from done item",
+        "type": "text",
+      },
       {
         "cacheReadTokens": 0,
         "cacheWriteTokens": 0,
@@ -733,6 +745,10 @@ exports[`Responses API handlers: replayed event fixtures > #11621 text only in r
   "xai": {
     "chunks": [
       {
+        "text": "content part text",
+        "type": "text",
+      },
+      {
         "cacheReadTokens": 0,
         "cacheWriteTokens": 0,
         "inputTokens": 1,
@@ -820,6 +836,10 @@ exports[`Responses API handlers: replayed event fixtures > #11621 text only in r
   },
   "xai": {
     "chunks": [
+      {
+        "text": "done-event text only",
+        "type": "text",
+      },
       {
         "cacheReadTokens": 0,
         "cacheWriteTokens": 0,
@@ -909,6 +929,10 @@ exports[`Responses API handlers: replayed event fixtures > #11621 text only in t
   "xai": {
     "chunks": [
       {
+        "text": "final payload only",
+        "type": "text",
+      },
+      {
         "cacheReadTokens": 0,
         "cacheWriteTokens": 0,
         "inputTokens": 1,
@@ -963,7 +987,12 @@ exports[`Responses API handlers: replayed event fixtures > Chat Completions chun
     "responseId": undefined,
   },
   "xai": {
-    "chunks": [],
+    "chunks": [
+      {
+        "text": "chat chunk",
+        "type": "text",
+      },
+    ],
   },
 }
 `;
@@ -1050,7 +1079,7 @@ exports[`Responses API handlers: replayed event fixtures > GPT-5.6 cache writes 
       },
       {
         "cacheReadTokens": 2000,
-        "cacheWriteTokens": 0,
+        "cacheWriteTokens": 3000,
         "inputTokens": 10000,
         "outputTokens": 500,
         "type": "usage",
@@ -1781,6 +1810,10 @@ exports[`Responses API handlers: replayed event fixtures > refusal 1`] = `
   "xai": {
     "chunks": [
       {
+        "text": "[Refusal] I cannot help with that.",
+        "type": "text",
+      },
+      {
         "cacheReadTokens": 0,
         "cacheWriteTokens": 0,
         "inputTokens": 1,
@@ -1937,10 +1970,18 @@ exports[`Responses API handlers: replayed event fixtures > streamed function cal
   "xai": {
     "chunks": [
       {
-        "arguments": "{"path":"a.ts"}",
+        "arguments": "{"path":",
         "id": "call_1",
+        "index": 0,
         "name": "read_file",
-        "type": "tool_call",
+        "type": "tool_call_partial",
+      },
+      {
+        "arguments": ""a.ts"}",
+        "id": "call_1",
+        "index": 0,
+        "name": "read_file",
+        "type": "tool_call_partial",
       },
       {
         "cacheReadTokens": 0,
@@ -2063,6 +2104,18 @@ exports[`Responses API handlers: replayed event fixtures > text and reasoning it
   "xai": {
     "chunks": [
       {
+        "text": "item reasoning",
+        "type": "reasoning",
+      },
+      {
+        "text": "item text",
+        "type": "text",
+      },
+      {
+        "text": "message text",
+        "type": "text",
+      },
+      {
         "cacheReadTokens": 0,
         "cacheWriteTokens": 0,
         "inputTokens": 1,
@@ -2149,7 +2202,19 @@ exports[`Responses API handlers: replayed event fixtures > usage in a separate e
     "responseId": undefined,
   },
   "xai": {
-    "chunks": [],
+    "chunks": [
+      {
+        "text": "chat chunk",
+        "type": "text",
+      },
+      {
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "inputTokens": 3,
+        "outputTokens": 4,
+        "type": "usage",
+      },
+    ],
   },
 }
 `;
@@ -2288,8 +2353,8 @@ exports[`Responses API handlers: replayed event fixtures > usage with only token
     "chunks": [
       {
         "cacheReadTokens": 30,
-        "cacheWriteTokens": 0,
-        "inputTokens": 0,
+        "cacheWriteTokens": 5,
+        "inputTokens": 105,
         "outputTokens": 9,
         "type": "usage",
       },
