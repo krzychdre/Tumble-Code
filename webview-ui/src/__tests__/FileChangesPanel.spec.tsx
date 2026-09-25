@@ -196,4 +196,55 @@ describe("FileChangesPanel", () => {
 		expect(screen.getByTestId("total-added")).toHaveTextContent("+5")
 		expect(screen.getByTestId("total-removed")).toHaveTextContent("-6")
 	})
+
+	describe("expanded rows across message updates", () => {
+		function taskStart(ts: number): ClineMessage {
+			return { type: "say", say: "text", ts, partial: false, text: "task" }
+		}
+
+		function fileEdit(ts: number, path: string, diff: string): ClineMessage {
+			return { ...createFileEditMessage(path, diff), ts }
+		}
+
+		function panel(messages: ClineMessage[]) {
+			return (
+				<TranslationProvider>
+					<FileChangesPanel clineMessages={messages} />
+				</TranslationProvider>
+			)
+		}
+
+		function expandFirstRow() {
+			fireEvent.click(screen.getByText("1 file(s) changed in this conversation").closest("button")!)
+			fireEvent.click(screen.getByTestId("accordian-toggle"))
+			expect(screen.getByTestId("accordian-toggle")).toHaveTextContent("expanded")
+		}
+
+		it("keeps an expanded row expanded when new messages stream in for the same task", () => {
+			const initial = [taskStart(1000), fileEdit(1001, "src/foo.ts", "diff")]
+			const { rerender } = render(panel(initial))
+			expandFirstRow()
+
+			// Every state push from the extension delivers a new array, also while
+			// the model streams text: a new partial message is appended...
+			const streaming: ClineMessage[] = [
+				...initial,
+				{ type: "say", say: "text", ts: 1002, partial: true, text: "Now I" },
+			]
+			rerender(panel(streaming))
+			expect(screen.getByTestId("accordian-toggle")).toHaveTextContent("expanded")
+
+			// ...and then updated in place with more tokens.
+			rerender(panel([...initial, { type: "say", say: "text", ts: 1002, partial: true, text: "Now I will" }]))
+			expect(screen.getByTestId("accordian-toggle")).toHaveTextContent("expanded")
+		})
+
+		it("collapses expanded rows when switching to a different task", () => {
+			const { rerender } = render(panel([taskStart(1000), fileEdit(1001, "src/foo.ts", "diff")]))
+			expandFirstRow()
+
+			rerender(panel([taskStart(2000), fileEdit(2001, "src/foo.ts", "other diff")]))
+			expect(screen.getByTestId("accordian-toggle")).toHaveTextContent("collapsed")
+		})
+	})
 })
