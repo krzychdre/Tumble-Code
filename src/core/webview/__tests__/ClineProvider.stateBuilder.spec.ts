@@ -19,6 +19,7 @@ import { EMBEDDING_MODEL_PROFILES } from "../../../shared/embeddingModels"
 import { ContextProxy } from "../../config/ContextProxy"
 import { TaskHistoryStore } from "../../task-persistence"
 import { ClineProvider } from "../ClineProvider"
+import { checkAutoApproval } from "../../auto-approval"
 
 vi.mock("p-wait-for", () => ({
 	__esModule: true,
@@ -113,7 +114,12 @@ vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
 }))
 
 // Workspace configuration seen by the command-list merge and the `debug` flag.
+// `get()` returns the value in `workspaceConfig`; `inspect()` reports the
+// per-scope values from `configScopes`, or treats a plain `workspaceConfig`
+// entry as a workspace-scope value (what `.vscode/settings.json` sets).
 const workspaceConfig: Record<string, unknown> = {}
+type ConfigScopes = { globalValue?: unknown; workspaceValue?: unknown; workspaceFolderValue?: unknown }
+const configScopes: Record<string, ConfigScopes> = {}
 
 vi.mock("vscode", () => ({
 	ExtensionContext: vi.fn(),
@@ -131,6 +137,13 @@ vi.mock("vscode", () => ({
 	workspace: {
 		getConfiguration: vi.fn().mockImplementation(() => ({
 			get: vi.fn().mockImplementation((key: string, fallback?: unknown) => workspaceConfig[key] ?? fallback),
+			inspect: vi.fn().mockImplementation((key: string) =>
+				configScopes[key]
+					? { key, ...configScopes[key] }
+					: workspaceConfig[key] !== undefined
+						? { key, workspaceValue: workspaceConfig[key] }
+						: undefined,
+			),
 			update: vi.fn(),
 		})),
 		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
@@ -334,8 +347,6 @@ const FULL_SETTINGS = {
  */
 const VIEW_ONLY_TRANSFORMS: Record<string, string> = {
 	taskHistory: "getState() never materializes the history (hot path); the full push carries it",
-	allowedCommands: "the webview shows the global list merged with the workspace configuration",
-	deniedCommands: "the webview shows the global list merged with the workspace configuration",
 	codebaseIndexConfig:
 		"the webview pre-fills codebaseIndexEmbedderModelDimension with 1536; the host reads the raw value",
 }
@@ -400,6 +411,7 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 		vi.spyOn(console, "error").mockImplementation(() => {})
 		delete process.env.POSTHOG_API_KEY
 		for (const key of Object.keys(workspaceConfig)) delete workspaceConfig[key]
+		for (const key of Object.keys(configScopes)) delete configScopes[key]
 
 		if (!TelemetryService.hasInstance()) {
 			TelemetryService.createInstance([])
@@ -498,5 +510,78 @@ describe("ClineProvider state builders (CORE-R1 characterization)", () => {
 		for (const key of ["lastShownAnnouncementId", "apiModelId", "diagnosticsEnabled", "modeApiConfigs"]) {
 			expect(posted).not.toHaveProperty(key)
 		}
+	})
+	// DEF-C41: the approval decision must use the command lists the UI shows.
+	describe("command lists (DEF-C41)", () => {
+		/** Sets a configuration value per scope; `get()` returns the most specific one, like VS Code. */
+		const setConfigScopes = (key: "allowedCommands" | "deniedCommands", scopes: ConfigScopes) => {
+			configScopes[key] = scopes
+			workspaceConfig[key] = scopes.workspaceFolderValue ?? scopes.workspaceValue ?? scopes.globalValue
+		}
+
+		const makeExecuteProvider = async (allowedCommands: string[], deniedCommands: string[] = []) => {
+			const provider = await makeProvider({ cloudMode: "signedOut" })
+			await provider.contextProxy.setValues({
+				autoApprovalEnabled: true,
+				alwaysAllowExecute: true,
+				allowedCommands,
+				deniedCommands,
+			})
+			return provider
+		}
+
+		const decide = async (provider: ClineProvider, command: string) =>
+			(await checkAutoApproval({ state: await provider.getState(), ask: "command", text: command })).decision
+
+		it("denies a command denied only in the workspace settings although a global allowed prefix matches", async () => {
+			const provider = await makeExecuteProvider(["git"])
+			setConfigScopes("deniedCommands", { workspaceValue: ["git push"] })
+
+			// The UI lists the command as denied ...
+			const posted = await provider.getStateToPostToWebview()
+			expect(posted.deniedCommands).toContain("git push")
+			// ... so the approval decision must deny it too.
+			expect(await decide(provider, "git push origin main")).toBe("deny")
+			expect(await decide(provider, "git status")).toBe("approve")
+		})
+
+		it("denies a command denied in the user settings of VS Code only", async () => {
+			const provider = await makeExecuteProvider(["npm"])
+			setConfigScopes("deniedCommands", { globalValue: ["npm publish"] })
+
+			expect(await decide(provider, "npm publish")).toBe("deny")
+		})
+
+		it("never auto-approves a command allowed only by the workspace settings, and the UI does not list it", async () => {
+			// A cloned repository can ship .vscode/settings.json; it must not be
+			// able to grant itself auto-execution.
+			const provider = await makeExecuteProvider(["git status"])
+			setConfigScopes("allowedCommands", { workspaceValue: ["curl"] })
+
+			expect(await decide(provider, "curl https://example.com/x.sh")).toBe("ask")
+			const posted = await provider.getStateToPostToWebview()
+			expect(posted.allowedCommands).not.toContain("curl")
+		})
+
+		it("honours a command allowed in the user settings of VS Code", async () => {
+			const provider = await makeExecuteProvider([])
+			setConfigScopes("allowedCommands", { globalValue: ["pnpm test"] })
+
+			expect(await decide(provider, "pnpm test")).toBe("approve")
+			const posted = await provider.getStateToPostToWebview()
+			expect(posted.allowedCommands).toContain("pnpm test")
+		})
+
+		it("the UI and the approval decision see the same lists", async () => {
+			const provider = await makeExecuteProvider(["git", "ls"], ["rm"])
+			setConfigScopes("allowedCommands", { globalValue: ["pnpm test"], workspaceValue: ["curl"] })
+			setConfigScopes("deniedCommands", { globalValue: ["npm publish"], workspaceValue: ["git push"] })
+
+			const state = await provider.getState()
+			const posted = await provider.getStateToPostToWebview()
+			expect(posted.allowedCommands).toEqual(state.allowedCommands)
+			expect(posted.deniedCommands).toEqual(state.deniedCommands)
+			expect(state.deniedCommands).toEqual(["rm", "npm publish", "git push"])
+		})
 	})
 })

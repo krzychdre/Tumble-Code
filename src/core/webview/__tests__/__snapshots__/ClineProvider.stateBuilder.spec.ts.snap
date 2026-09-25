@@ -80,6 +80,7 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a fully 
   "cwd": "",
   "deniedCommands": [
     "rm -rf",
+    "git push --force",
   ],
   "diagnosticsEnabled": false,
   "disabledTools": [
@@ -179,7 +180,6 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a fully 
 {
   "allowedCommands": [
     "git status",
-    "npm test",
   ],
   "allowedMaxCost": 3.5,
   "allowedMaxRequests": 42,
@@ -383,7 +383,7 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a fully 
 
 exports[`ClineProvider state builders (CORE-R1 characterization) > with a missing CloudService > getState() matches the golden snapshot 1`] = `
 {
-  "allowedCommands": undefined,
+  "allowedCommands": [],
   "allowedMaxCost": undefined,
   "allowedMaxRequests": undefined,
   "alwaysAllowExecute": false,
@@ -437,7 +437,7 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a missin
   "customSoundProgressLoopOriginal": null,
   "customSupportPrompts": {},
   "cwd": "",
-  "deniedCommands": undefined,
+  "deniedCommands": [],
   "diagnosticsEnabled": true,
   "disabledTools": undefined,
   "enableCheckpoints": true,
@@ -660,7 +660,7 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with a missin
 
 exports[`ClineProvider state builders (CORE-R1 characterization) > with an empty ContextProxy > getState() matches the golden snapshot 1`] = `
 {
-  "allowedCommands": undefined,
+  "allowedCommands": [],
   "allowedMaxCost": undefined,
   "allowedMaxRequests": undefined,
   "alwaysAllowExecute": false,
@@ -714,7 +714,7 @@ exports[`ClineProvider state builders (CORE-R1 characterization) > with an empty
   "customSoundProgressLoopOriginal": null,
   "customSupportPrompts": {},
   "cwd": "",
-  "deniedCommands": undefined,
+  "deniedCommands": [],
   "diagnosticsEnabled": true,
   "disabledTools": undefined,
   "enableCheckpoints": true,

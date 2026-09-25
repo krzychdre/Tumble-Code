@@ -45,8 +45,6 @@ const PASSTHROUGH_SETTING_KEYS = [
 	"allowedMaxCost",
 	"autoCondenseContextApiConfigId",
 	"memoryWriterApiConfigId",
-	"allowedCommands",
-	"deniedCommands",
 	"terminalProfile",
 	"enhancementApiConfigId",
 	"disabledTools",
@@ -179,20 +177,28 @@ async function readCloudFacts(): Promise<CloudFacts> {
 }
 
 /**
- * Merges a command list from global state with the one in the VS Code
- * configuration (global state first, duplicates and invalid entries dropped).
- * Used for the webview state only.
+ * The allowed and denied command lists that apply: the global-state list
+ * merged with the VS Code setting of the same name (global state first,
+ * duplicates and invalid entries dropped). `getState()` returns them, so the
+ * approval decision (`checkAutoApproval`) and the webview see the same lists.
+ *
+ * The scopes differ on purpose. A denied command counts from every scope,
+ * including a workspace's `.vscode/settings.json`: denying is always safe. An
+ * allowed command counts only from the user settings: a cloned repository
+ * must not be able to grant itself auto-execution.
  */
-function mergeCommandLists(configKey: "allowedCommands" | "deniedCommands", globalStateCommands?: string[]): string[] {
+function resolveCommandList(key: "allowedCommands" | "deniedCommands", globalStateCommands?: string[]): string[] {
+	const fromGlobalState = sanitizeCommandList(globalStateCommands)
 	try {
-		const validGlobalCommands = sanitizeCommandList(globalStateCommands)
-		const validWorkspaceCommands = sanitizeCommandList(
-			vscode.workspace.getConfiguration(Package.name).get<string[]>(configKey),
-		)
-		return [...new Set([...validGlobalCommands, ...validWorkspaceCommands])]
+		const scopes = vscode.workspace.getConfiguration(Package.name).inspect<string[]>(key)
+		const fromSettings =
+			key === "deniedCommands"
+				? [scopes?.globalValue, scopes?.workspaceValue, scopes?.workspaceFolderValue].flatMap(sanitizeCommandList)
+				: sanitizeCommandList(scopes?.globalValue)
+		return [...new Set([...fromGlobalState, ...fromSettings])]
 	} catch (error) {
-		console.error(`Error merging ${configKey === "allowedCommands" ? "allowed" : "denied"} commands:`, error)
-		return []
+		console.error(`Error reading the ${key} setting:`, error)
+		return [...new Set(fromGlobalState)]
 	}
 }
 
@@ -259,6 +265,8 @@ export class ProviderStateBuilder {
 			...pick(settings, SETTINGS_DEFAULT_KEYS),
 			...pick(settings, PASSTHROUGH_SETTING_KEYS),
 			...hostDefaults,
+			allowedCommands: resolveCommandList("allowedCommands", settings.allowedCommands),
+			deniedCommands: resolveCommandList("deniedCommands", settings.deniedCommands),
 			maxInlineToolResultBytes: settings.maxInlineToolResultBytes,
 			pruneBeforeCondense: settings.pruneBeforeCondense,
 			pruneToolResultBudget: settings.pruneToolResultBudget,
@@ -350,8 +358,6 @@ export class ProviderStateBuilder {
 			shouldShowAnnouncement:
 				settings.telemetrySetting !== "unset" &&
 				state.lastShownAnnouncementId !== this.sources.latestAnnouncementId,
-			allowedCommands: mergeCommandLists("allowedCommands", state.allowedCommands),
-			deniedCommands: mergeCommandLists("deniedCommands", state.deniedCommands),
 			mcpServers: this.sources.getMcpServers(),
 			telemetryKey: process.env.POSTHOG_API_KEY,
 			machineId: vscode.env.machineId,
