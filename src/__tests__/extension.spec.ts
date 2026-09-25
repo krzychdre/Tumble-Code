@@ -152,6 +152,10 @@ vi.mock("../services/code-index/manager", () => ({
 	},
 }))
 
+vi.mock("../services/tree-sitter/languageParser", () => ({
+	disposeLanguageParsers: vi.fn(),
+}))
+
 vi.mock("../services/mdm/MdmService", () => ({
 	MdmService: {
 		createInstance: vi.fn().mockResolvedValue(null),
@@ -319,5 +323,18 @@ describe("extension.ts", () => {
 		expect(
 			lines.some((l) => l.includes("[CloudService] initialization failed") && l.includes("local-only mode")),
 		).toBe(true)
+	})
+
+	test("deactivate releases the cached tree-sitter parsers", async () => {
+		vi.resetModules()
+		vi.clearAllMocks()
+
+		const { activate, deactivate } = await import("../extension")
+		const { disposeLanguageParsers } = await import("../services/tree-sitter/languageParser")
+		await activate(mockContext)
+
+		await deactivate()
+
+		expect(disposeLanguageParsers).toHaveBeenCalledTimes(1)
 	})
 })
