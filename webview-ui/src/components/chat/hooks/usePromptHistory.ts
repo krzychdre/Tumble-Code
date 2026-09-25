@@ -1,5 +1,7 @@
 import { ClineMessage, HistoryItem } from "@roo-code/types"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
+
+const sameStrings = (a: string[], b: string[]) => a.length === b.length && a.every((value, i) => value === b[i])
 
 interface UsePromptHistoryProps {
 	clineMessages: ClineMessage[] | undefined
@@ -37,7 +39,6 @@ export const usePromptHistory = ({
 	// Prompt history navigation state
 	const [historyIndex, setHistoryIndex] = useState(-1)
 	const [tempInput, setTempInput] = useState("")
-	const [promptHistory, setPromptHistory] = useState<string[]>([])
 
 	// Initialize prompt history with hybrid approach: conversation messages if in task, otherwise task history
 	const filteredPromptHistory = useMemo(() => {
@@ -69,13 +70,18 @@ export const usePromptHistory = ({
 			.slice(0, MAX_PROMPT_HISTORY_SIZE)
 	}, [clineMessages, taskHistory, cwd])
 
-	// Update prompt history when filtered history changes and reset navigation
-	useEffect(() => {
+	// The host sends a new clineMessages array on every streamed token, so
+	// filteredPromptHistory is a new array each time even when the prompts are
+	// the same. Keep the previous array (and the navigation position) unless the
+	// prompts really changed: a new user prompt or another task. Adjusting state
+	// during render avoids the extra commit an effect would cause.
+	const [promptHistory, setPromptHistory] = useState<string[]>(filteredPromptHistory)
+	if (promptHistory !== filteredPromptHistory && !sameStrings(promptHistory, filteredPromptHistory)) {
 		setPromptHistory(filteredPromptHistory)
-		// Reset navigation state when switching between history sources
+		// Reset navigation state when the history content changes
 		setHistoryIndex(-1)
 		setTempInput("")
-	}, [filteredPromptHistory])
+	}
 
 	// Reset history navigation when user types (but not when we're setting it programmatically)
 	const resetOnInputChange = useCallback(() => {
