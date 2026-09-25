@@ -2,6 +2,8 @@ import fs from "fs"
 import path from "path"
 import os from "os"
 
+import type { MockInstance } from "vitest"
+
 import { openAiModelInfoSaneDefaults } from "@roo-code/types"
 
 import { providerRequiresApiKey, getEnvVarName, keylessProviders, getBaseUrlField } from "@/lib/utils/provider-types.js"
@@ -131,6 +133,65 @@ describe("provider-aware API-key gate", () => {
 		expect(providerRequiresApiKey("openrouter")).toBe(true)
 		expect(getEnvVarName("openrouter")).toBe("OPENROUTER_API_KEY")
 		expect(getEnvVarName("lmstudio")).toBeNull()
+	})
+})
+
+describe("run provider requirements shared with the settings UI", () => {
+	let tempDir: string
+	let exitSpy: MockInstance<typeof process.exit>
+	let errorSpy: MockInstance<typeof console.error>
+	const exitError = new Error("process.exit")
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-requirements-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+		mockHost.lastOptions = undefined
+		exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {
+			throw exitError
+		}) as unknown as typeof process.exit)
+		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+	})
+
+	afterEach(() => {
+		exitSpy.mockRestore()
+		errorSpy.mockRestore()
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	async function runToEnd(flags: Partial<FlagOptions>) {
+		await run("hello", baseFlags(flags)).catch((error) => {
+			if (error !== exitError) throw error
+		})
+		// A finished print run exits with 0; a failed start exits with 1 first.
+		expect(exitSpy.mock.calls[0]?.[0]).not.toBe(1)
+	}
+
+	it.each(["ollama", "lmstudio", "openai"] as const)("%s without a model stops with a model error", async (provider) => {
+		await expect(run("hello", baseFlags({ provider, baseUrl: "http://localhost:1234/v1" }))).rejects.toBe(
+			exitError,
+		)
+
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining(`No model given for ${provider}`))
+		expect(mockHost.lastOptions).toBeUndefined()
+	})
+
+	it("ollama passes an API key on to its settings", async () => {
+		await runToEnd({ provider: "ollama", model: "qwen3", apiKey: "ollama-key" })
+
+		expect(mockHost.lastOptions?.apiKey).toBe("ollama-key")
+		expect(mockHost.lastOptions?.modeProviderSettings?.base).toMatchObject({
+			apiProvider: "ollama",
+			ollamaModelId: "qwen3",
+			ollamaApiKey: "ollama-key",
+		})
+	})
+
+	it("ollama still runs without an API key", async () => {
+		await runToEnd({ provider: "ollama", model: "qwen3", apiKey: undefined })
+
+		expect(mockHost.lastOptions?.provider).toBe("ollama")
+		expect(mockHost.lastOptions?.apiKey).toBeUndefined()
 	})
 })
 
@@ -409,7 +470,7 @@ describe("run baseUrl resolution", () => {
 			// the effective baseUrl must reach the extension host so the
 			// OpenAiHandler builds the URL against the custom backend, never
 			// against https://api.openai.com/v1.
-			await saveSettings({ provider: "openai", baseUrl: "http://192.168.50.194:11111/v1" })
+			await saveSettings({ provider: "openai", model: "local-model", baseUrl: "http://192.168.50.194:11111/v1" })
 
 			await run("hello", baseFlags())
 

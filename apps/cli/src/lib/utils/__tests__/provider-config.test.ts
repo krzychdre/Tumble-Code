@@ -42,7 +42,7 @@ describe("resolveProviderConfig", () => {
 			})
 
 			expect(resolved.provider).toBe("openai")
-			expect(resolved.model).toBe(DEFAULT_FLAGS.model)
+			expect(resolved.model).toBe("")
 		})
 
 		it("keeps the settings model when a flag names the same provider", () => {
@@ -104,9 +104,17 @@ describe("resolveProviderConfig", () => {
 			const fallback = { provider: "openai-codex", model: "gpt-5.6-sol", baseUrl: undefined }
 
 			expect(resolveProviderConfig({ fallback, layers: [] }).model).toBe("gpt-5.6-sol")
-			expect(resolveProviderConfig({ fallback, layers: [{ provider: "openai" }] }).model).toBe(
-				DEFAULT_FLAGS.model,
-			)
+			expect(resolveProviderConfig({ fallback, layers: [{ provider: "openai" }] }).model).toBe("")
+		})
+
+		// The OpenRouter id "anthropic/claude-opus-4.6" was sent to Ollama, LM
+		// Studio and OpenAI-compatible servers when no model was named. They
+		// have no default model (the settings UI requires one); the model stays
+		// empty so the run can say that a model is needed.
+		it("leaves the model empty for providers without a default model", () => {
+			for (const provider of ["openai", "ollama", "lmstudio"]) {
+				expect(resolveProviderConfig({ layers: [{ provider }] }).model).toBe("")
+			}
 		})
 	})
 

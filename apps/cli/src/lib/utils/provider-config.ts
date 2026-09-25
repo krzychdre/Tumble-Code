@@ -79,14 +79,14 @@ function scopeLayers(fallback: ProviderConfigLayer | undefined, layers: Provider
 /**
  * The model a provider runs when no layer names one: the CLI's own OpenRouter
  * default, else the provider's default from the shared tables. openai, ollama
- * and lmstudio have no default model (the user names one); they keep the CLI
- * default as before.
+ * and lmstudio have no default model ("", the user names one); the run stops
+ * with an error for them instead of sending another provider's model id.
  */
 function defaultModelFor(provider: SupportedProvider): string {
 	if (provider === "openrouter") {
 		return DEFAULT_FLAGS.model
 	}
-	return getProviderDefaultModelId(provider) || DEFAULT_FLAGS.model
+	return getProviderDefaultModelId(provider)
 }
 
 export function resolveProviderConfig({ fallback, layers }: ResolveProviderConfigInput): ResolvedProviderConfig {

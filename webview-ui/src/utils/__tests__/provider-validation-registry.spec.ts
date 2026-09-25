@@ -12,7 +12,7 @@ const dynamicModelIds: Partial<Record<ProviderName, keyof ProviderSettings>> = {
 const validProviderConfigurations = {
 	openrouter: { openRouterApiKey: "key" },
 	litellm: { litellmApiKey: "key" },
-	deepseek: {},
+	deepseek: { deepSeekApiKey: "key" },
 	ollama: { ollamaModelId: "model" },
 	lmstudio: { lmStudioModelId: "model" },
 	"vscode-lm": { vsCodeLmModelSelector: { vendor: "vendor", family: "family" } },
@@ -23,14 +23,14 @@ const validProviderConfigurations = {
 	gemini: { geminiApiKey: "key" },
 	"gemini-cli": {},
 	mistral: { mistralApiKey: "key" },
-	moonshot: {},
-	minimax: {},
+	moonshot: { moonshotApiKey: "key" },
+	minimax: { minimaxApiKey: "key" },
 	"openai-codex": {},
 	"openai-native": { openAiNativeApiKey: "key" },
 	"qwen-code": { qwenCodeOauthPath: "/oauth" },
 	vertex: { vertexProjectId: "project", vertexRegion: "region" },
-	xai: {},
-	zai: {},
+	xai: { xaiApiKey: "key" },
+	zai: { zaiApiKey: "key" },
 } as const satisfies Record<ProviderName, Partial<ProviderSettings>>
 
 describe("validateApiConfiguration provider registry", () => {
@@ -59,6 +59,13 @@ describe("validateApiConfiguration provider registry", () => {
 		["gemini", {}, "settings:validation.apiKey"],
 		["mistral", {}, "settings:validation.apiKey"],
 		["openai-native", {}, "settings:validation.apiKey"],
+		// The hosted DeepSeek, Moonshot, MiniMax, xAI and Z.ai APIs reject a
+		// request without a key; a profile without one used to pass.
+		["deepseek", {}, "settings:validation.apiKey"],
+		["moonshot", {}, "settings:validation.apiKey"],
+		["minimax", {}, "settings:validation.apiKey"],
+		["xai", {}, "settings:validation.apiKey"],
+		["zai", {}, "settings:validation.apiKey"],
 		["qwen-code", {}, "settings:validation.qwenCodeOauthPath"],
 		["vertex", {}, "settings:validation.googleCloud"],
 		["vertex", { vertexProjectId: "project" }, "settings:validation.googleCloud"],

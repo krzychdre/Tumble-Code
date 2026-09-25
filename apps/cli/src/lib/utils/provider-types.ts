@@ -1,23 +1,28 @@
 /**
  * Provider tables for the CLI.
  *
- * All provider IDs come from the shared @roo-code/types registry — the CLI never
- * hand-maintains its own provider allowlist. This module maps each supported
- * provider to:
- *  - its API-key settings field (from the extension's zod schemas),
- *  - its base-url settings field (where the schema has one),
- *  - conventional env-var names.
+ * All provider IDs come from the shared @roo-code/types registry; the CLI never
+ * hand-maintains its own provider allowlist. From the shared tables come:
+ *  - the API-key settings field (`providerApiKeyFields`),
+ *  - whether a run needs the key (`providerRequiresApiKey`, the rule the
+ *    settings UI validates profiles with),
+ *  - the model-id settings field (`providerModelDefinitions`).
  *
- * Keyless providers (no API-key field, or credentials resolved by an SDK) are
- * marked with `keyField: null`; the API-key gate in run.ts derives from this
- * table rather than a second hand-maintained list.
+ * Only CLI data is written here: the conventional env-var names and the
+ * base-url field the `--base-url` flag writes.
  *
  * Persisted aliases:
  *  - "tumble" — the cloud provider id shipped by BR-09 (rebrand). The CLI has
  *    no cloud handler, so it maps to the openrouter provider settings.
  */
 
-import { activeProviderIds, providerModelDefinitions } from "@roo-code/types"
+import {
+	activeProviderIds,
+	getProviderApiKeyField,
+	providerModelDefinitions,
+	providerRequiresApiKey as sharedProviderRequiresApiKey,
+	providerRequiresModelId as sharedProviderRequiresModelId,
+} from "@roo-code/types"
 
 /**
  * The providers excluded from the CLI, with the reason for each exclusion.
@@ -73,18 +78,16 @@ export function isSupportedProvider(provider: string): provider is SupportedProv
 }
 
 /**
- * Per-provider mapping: settings field names + env vars.
+ * Per-provider CLI data: env vars and the base-url field.
  *
- * `keyField` is the extension's settings field that holds the API key
- * (from each provider's zod schema in packages/types/src/provider-config).
- * `null` means the provider needs no API key — the gate never requires one.
+ * `keyEnvVar` is the conventional env var holding the API key; it is null
+ * exactly when the provider has no API-key field in the shared table.
  *
  * `baseUrlField` is set only where the schema has a base-url field.
- * The model-id field is not listed here: `getModelField` reads it from the
- * provider's entry in `providerModelDefinitions`.
+ * The API-key and model-id fields are not listed here: they come from the
+ * shared tables (`getApiKeyField`, `getModelField`).
  */
 export interface ProviderEnvMapping {
-	readonly apiKeyField: string | null
 	readonly keyEnvVar: string | null
 	readonly baseUrlField?: string
 	readonly baseUrlEnvVar?: string
@@ -92,13 +95,11 @@ export interface ProviderEnvMapping {
 
 export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 	anthropic: {
-		apiKeyField: "apiKey",
 		keyEnvVar: "ANTHROPIC_API_KEY",
 		baseUrlField: "anthropicBaseUrl",
 		baseUrlEnvVar: "ANTHROPIC_BASE_URL",
 	},
 	"openai-native": {
-		apiKeyField: "openAiNativeApiKey",
 		keyEnvVar: "OPENAI_API_KEY",
 		baseUrlField: "openAiNativeBaseUrl",
 		baseUrlEnvVar: "OPENAI_BASE_URL",
@@ -107,44 +108,37 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 		// OpenAI Codex uses ChatGPT subscription OAuth credentials persisted by
 		// `tumble auth codex login`; the extension's OAuth manager resolves and
 		// refreshes them from the CLI shim's SecretStorage at runtime.
-		apiKeyField: null,
 		keyEnvVar: null,
 	},
 	gemini: {
-		apiKeyField: "geminiApiKey",
 		keyEnvVar: "GOOGLE_API_KEY",
 		baseUrlField: "googleGeminiBaseUrl",
 		baseUrlEnvVar: "GOOGLE_GEMINI_BASE_URL",
 	},
 	openrouter: {
-		apiKeyField: "openRouterApiKey",
 		keyEnvVar: "OPENROUTER_API_KEY",
 		baseUrlField: "openRouterBaseUrl",
 		baseUrlEnvVar: "OPENROUTER_BASE_URL",
 	},
 	litellm: {
-		apiKeyField: "litellmApiKey",
 		keyEnvVar: "LITELLM_API_KEY",
 		baseUrlField: "litellmBaseUrl",
 		baseUrlEnvVar: "LITELLM_BASE_URL",
 	},
 	deepseek: {
-		apiKeyField: "deepSeekApiKey",
 		keyEnvVar: "DEEPSEEK_API_KEY",
 		baseUrlField: "deepSeekBaseUrl",
 		baseUrlEnvVar: "DEEPSEEK_BASE_URL",
 	},
 	ollama: {
-		// Ollama is keyless: localhost-first, and the settings schema has no
-		// key field (the handler sends no Authorization header at all).
-		apiKeyField: null,
-		keyEnvVar: null,
+		// Ollama runs without a key on localhost; a remote or cloud Ollama
+		// takes an optional one (the handler sends it as a bearer token).
+		keyEnvVar: "OLLAMA_API_KEY",
 		baseUrlField: "ollamaBaseUrl",
 		baseUrlEnvVar: "OLLAMA_BASE_URL",
 	},
 	lmstudio: {
 		// LM Studio is keyless (the handler sends a hardcoded "noop" key).
-		apiKeyField: null,
 		keyEnvVar: null,
 		baseUrlField: "lmStudioBaseUrl",
 		baseUrlEnvVar: "LMSTUDIO_BASE_URL",
@@ -152,7 +146,6 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 	openai: {
 		// "openai" is the OpenAI-compatible provider. It shares OPENAI_* names
 		// with "openai-native" (only one is active per run).
-		apiKeyField: "openAiApiKey",
 		keyEnvVar: "OPENAI_API_KEY",
 		baseUrlField: "openAiBaseUrl",
 		baseUrlEnvVar: "OPENAI_BASE_URL",
@@ -160,25 +153,21 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 	bedrock: {
 		// Bedrock resolves credentials from the AWS SDK default chain
 		// (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or ~/.aws). No CLI key needed.
-		apiKeyField: null,
 		keyEnvVar: null,
 		baseUrlField: "awsBedrockEndpoint",
 		baseUrlEnvVar: "AWS_BEDROCK_ENDPOINT",
 	},
 	mistral: {
-		apiKeyField: "mistralApiKey",
 		keyEnvVar: "MISTRAL_API_KEY",
 		baseUrlField: "mistralCodestralUrl",
 		baseUrlEnvVar: "MISTRAL_BASE_URL",
 	},
 	moonshot: {
-		apiKeyField: "moonshotApiKey",
 		keyEnvVar: "MOONSHOT_API_KEY",
 		baseUrlField: "moonshotBaseUrl",
 		baseUrlEnvVar: "MOONSHOT_BASE_URL",
 	},
 	minimax: {
-		apiKeyField: "minimaxApiKey",
 		keyEnvVar: "MINIMAX_API_KEY",
 		baseUrlField: "minimaxBaseUrl",
 		baseUrlEnvVar: "MINIMAX_BASE_URL",
@@ -186,41 +175,40 @@ export const providerEnvMap: Record<SupportedProvider, ProviderEnvMapping> = {
 	"qwen-code": {
 		// Qwen Code uses OAuth credentials cached on disk (~/.qwen/oauth_creds.json
 		// or qwenCodeOauthPath). No API-key env var.
-		apiKeyField: null,
 		keyEnvVar: null,
 	},
 	vertex: {
 		// Vertex resolves credentials from GOOGLE_APPLICATION_CREDENTIALS or the
 		// gcloud default chain (vertexKeyFile/vertexJsonCredentials).
-		apiKeyField: null,
 		keyEnvVar: null,
 	},
 	xai: {
-		apiKeyField: "xaiApiKey",
 		keyEnvVar: "XAI_API_KEY",
 	},
 	zai: {
-		apiKeyField: "zaiApiKey",
 		keyEnvVar: "ZAI_API_KEY",
 	},
 }
 
-/**
- * Providers whose settings schema has no required API key — the run gate must
- * not hard-exit for them. Derived from providerEnvMap (apiKeyField === null),
- * plus ollama/lmstudio which run keyless by design.
- */
+/** Providers a run can start without an API key (the shared rule, see below). */
 export const keylessProviders: readonly SupportedProvider[] = supportedProviders.filter(
-	(id) => providerEnvMap[id].apiKeyField === null,
+	(id) => !providerRequiresApiKey(id),
 )
 
-/** True when the provider's own schema requires an API key. */
+/**
+ * True when a run needs the provider's API key: the rule the settings UI
+ * validates profiles with (`providerValidationRegistry` in @roo-code/types).
+ */
 export function providerRequiresApiKey(provider: SupportedProvider): boolean {
-	const mapping = providerEnvMap[provider]
-	return !mapping || mapping.apiKeyField !== null
+	return sharedProviderRequiresApiKey(provider)
 }
 
-/** The env var that holds the API key for a provider (null when keyless). */
+/** True when the provider has no default model, so a run must name one. */
+export function providerRequiresModelId(provider: SupportedProvider): boolean {
+	return sharedProviderRequiresModelId(provider)
+}
+
+/** The env var that holds the API key for a provider (null when it has no key field). */
 export function getEnvVarName(provider: SupportedProvider): string | null {
 	return providerEnvMap[provider]?.keyEnvVar ?? null
 }
@@ -230,9 +218,9 @@ export function getBaseUrlEnvVarName(provider: SupportedProvider): string | unde
 	return providerEnvMap[provider]?.baseUrlEnvVar
 }
 
-/** The extension settings field for the provider's API key (null when keyless). */
+/** The extension settings field for the provider's API key (null when it has none). */
 export function getApiKeyField(provider: SupportedProvider): string | null {
-	return providerEnvMap[provider]?.apiKeyField ?? null
+	return getProviderApiKeyField(provider)
 }
 
 /** The extension settings field for the provider's base URL (undefined if none). */

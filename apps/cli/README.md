@@ -258,7 +258,7 @@ Tokens are valid for 90 days. The CLI will prompt you to re-authenticate when yo
 | `-a, --require-approval`                | Require manual approval before actions execute                                               | `false`                 |
 | `-k, --api-key <key>`                   | API key for the LLM provider (keyless providers ignore it)                                   | From env var            |
 | `--provider <provider>`                 | API provider (anthropic, openrouter, ollama, gemini, etc.)                                   | `openrouter`            |
-| `-m, --model <model>`                   | Model to use (openrouter: `anthropic/claude-opus-4.6`; other providers: their own default)   | Provider default        |
+| `-m, --model <model>`                   | Model to use (openrouter: `anthropic/claude-opus-4.6`; openai, ollama, lmstudio: required)   | Provider default        |
 | `--base-url <url>`                      | Base URL override for the selected provider (when supported)                                 | None                    |
 | `--mode <mode>`                         | Mode to start in (code, architect, ask, debug, etc.)                                         | Settings, else `code`   |
 | `--terminal-shell <path>`               | Absolute shell path for inline terminal command execution                                    | Auto-detected shell     |
@@ -491,9 +491,13 @@ The CLI supports the same inference providers as the VS Code extension. For
 providers that need an API key, the CLI takes it from `--api-key`, then
 `apiKey`/`apiKeyEnv` in the settings file, then the environment variable below. Provider selection follows:
 `--provider` flag > settings file > the CLI's own extension state > default
-(`openrouter`). Keyless providers (ollama, lmstudio,
-bedrock, qwen-code, vertex, openai-codex) run without any API key; OAuth-backed
-providers still require their corresponding login.
+(`openrouter`). Keyless providers (lmstudio, bedrock, qwen-code, vertex,
+openai-codex) run without any API key; OAuth-backed providers still require
+their corresponding login. Ollama runs without a key too, but passes one on
+(for a remote or cloud Ollama) when you give it. The providers that need a key
+are the ones the extension's settings require one for. openai, ollama and
+lmstudio have no default model, so name one with `--model` or `model` in the
+settings file.
 
 For providers whose schema has a base-url setting, the CLI also honors a
 `*_BASE_URL` environment variable (and a generic `--base-url` flag).
@@ -509,7 +513,7 @@ For providers whose schema has a base-url setting, the CLI also honors a
 | openrouter     | `OPENROUTER_API_KEY`          | `OPENROUTER_BASE_URL`         |
 | litellm        | `LITELLM_API_KEY`             | `LITELLM_BASE_URL`            |
 | deepseek       | `DEEPSEEK_API_KEY`            | `DEEPSEEK_BASE_URL`           |
-| ollama         | - (keyless)                   | `OLLAMA_BASE_URL`             |
+| ollama         | `OLLAMA_API_KEY` (optional)   | `OLLAMA_BASE_URL`             |
 | lmstudio       | - (keyless)                   | `LMSTUDIO_BASE_URL`           |
 | bedrock        | - (AWS credential chain)      | `AWS_BEDROCK_ENDPOINT`        |
 | mistral        | `MISTRAL_API_KEY`             | `MISTRAL_BASE_URL`            |

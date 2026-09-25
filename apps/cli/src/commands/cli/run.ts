@@ -27,7 +27,13 @@ import {
 	resolveMcpSettingsPath,
 } from "@/lib/storage/index.js"
 import { readWorkspaceTaskSessions, resolveWorkspaceResumeSessionId } from "@/lib/task-history/index.js"
-import { getEnvVarName, providerRequiresApiKey, getProviderSettings } from "@/lib/utils/provider.js"
+import {
+	getApiKeyField,
+	getEnvVarName,
+	getProviderSettings,
+	providerRequiresApiKey,
+	providerRequiresModelId,
+} from "@/lib/utils/provider.js"
 import {
 	pickProviderConfig,
 	resolveProviderConfig,
@@ -85,9 +91,9 @@ function parseCommandExecutionTimeout(value: unknown): number | undefined {
 		: undefined
 }
 
-/** The key to hand the extension: only providers that take one get it. */
+/** The key to hand the extension: only providers with an API-key field get it. */
 function keyFor(config: ResolvedProviderConfig): string | undefined {
-	return providerRequiresApiKey(config.provider) ? config.apiKey : undefined
+	return getApiKeyField(config.provider) !== null ? config.apiKey : undefined
 }
 
 /**
@@ -131,9 +137,9 @@ async function findProviderConfigProblem(
 		}
 	}
 
-	// Provider-aware API-key gate: providers whose settings schema has no
-	// API-key field (ollama, lmstudio, bedrock, qwen-code, vertex, as derived
-	// in provider-types.ts) run keyless.
+	// API-key gate: the rule the settings UI validates profiles with. OAuth,
+	// local and SDK-credential providers (openai-codex, qwen-code, lmstudio,
+	// bedrock, vertex) and Ollama, whose key is optional, run without one.
 	if (providerRequiresApiKey(config.provider) && !config.apiKey) {
 		if (config.missingApiKeyEnv) {
 			return [`apiKeyEnv names ${config.missingApiKeyEnv}, but that environment variable is empty or unset.`]
@@ -142,6 +148,14 @@ async function findProviderConfigProblem(
 		return [
 			`No API key provided. Use --api-key, set apiKey or apiKeyEnv in ${getSettingsPath()}, or set the provider's environment variable.`,
 			`For ${config.provider}, set ${getEnvVarName(config.provider)}`,
+		]
+	}
+
+	// The provider needs a model named when it has no default model (openai,
+	// ollama, lmstudio); the settings UI requires one for the same providers.
+	if (!config.model && providerRequiresModelId(config.provider)) {
+		return [
+			`No model given for ${config.provider}. Use --model or set model in ${getSettingsPath()}.`,
 		]
 	}
 
