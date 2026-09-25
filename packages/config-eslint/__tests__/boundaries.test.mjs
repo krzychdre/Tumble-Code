@@ -6,8 +6,8 @@
 //    knip cannot see the edge, so caches go stale and the dependency is never
 //    declared.
 // 2. Files in src/shared are bundled into the webview through the `@roo/*`
-//    alias, so they must not import `vscode` (the TEST-8 bundle guard is the
-//    runtime backstop).
+//    alias, so they must not import `vscode` or extension code under src/core,
+//    src/services, ... (the TEST-8 bundle guard is the build-time backstop).
 //
 // The cases lint in-memory code through ESLint's Node API against the real
 // workspace configs (src/eslint.config.mjs, webview-ui/eslint.config.mjs), so
@@ -89,7 +89,7 @@ describe("relative imports that leave the workspace", () => {
 	})
 })
 
-describe("vscode imports in src/shared (bundled into the webview)", () => {
+describe("vscode and extension imports in src/shared (bundled into the webview)", () => {
 	it("rejects a vscode import in a shared file", async () => {
 		const messages = await lint(
 			"src",
@@ -106,6 +106,41 @@ describe("vscode imports in src/shared (bundled into the webview)", () => {
 			'import * as vscode from "vscode"\nexport const w = vscode.window\n',
 		)
 		assert.ok(ruleIds(messages).includes("no-restricted-imports"), JSON.stringify(messages))
+	})
+
+	for (const file of ["shared/cloud-urls.ts", "shared/vsCodeSelectorUtils.ts"]) {
+		it(`rejects a vscode import in ${file} (SVC-16 removed its exemption)`, async () => {
+			const messages = await lint("src", file, 'import * as vscode from "vscode"\nexport const w = vscode.window\n')
+			assert.ok(ruleIds(messages).includes("no-restricted-imports"), JSON.stringify(messages))
+		})
+	}
+
+	it("rejects a shared file importing extension code (the CORE-R10 modes.ts edge)", async () => {
+		for (const specifier of [
+			"../core/prompts/sections/custom-instructions",
+			"../services/roo-config",
+			"../api/providers/utils/vsCodeSelectorUtils",
+			"../activate/cloud-urls",
+			"../utils/path",
+		]) {
+			const messages = await lint("src", "shared/example.ts", `export * from "${specifier}"\n`)
+			assert.ok(ruleIds(messages).includes("no-restricted-imports"), `${specifier}: ${JSON.stringify(messages)}`)
+		}
+	})
+
+	it("accepts a shared file importing shared siblings, package.json and packages", async () => {
+		const messages = await lint(
+			"src",
+			"shared/example.ts",
+			[
+				'import { TOOL_GROUPS } from "./tools"',
+				'import pkg from "../package.json"',
+				'import type { ModeConfig } from "@roo-code/types"',
+				"export const x = [TOOL_GROUPS, pkg] as unknown as ModeConfig",
+				"",
+			].join("\n"),
+		)
+		assert.deepEqual(ruleIds(messages), [], JSON.stringify(messages))
 	})
 
 	it("accepts a vscode import outside src/shared", async () => {

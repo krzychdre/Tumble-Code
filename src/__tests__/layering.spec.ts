@@ -5,8 +5,9 @@
 // 1. ClineProvider must not import from src/activate: activate/registerCommands
 //    constructs ClineProvider, so the edge back is a real runtime cycle. The
 //    panel references live in core/webview/panelRegistry instead.
-// 2. src/shared is bundled into the webview (the `@roo/*` alias), so
-//    shared/modes.ts must not import `vscode` or extension code under src/core.
+// 2. src/shared is bundled into the webview (the `@roo/*` alias), so no file
+//    in it may import `vscode` or extension code (CORE-R10 fixed shared/modes.ts,
+//    SVC-16 moved the last two vscode-bound files out and widened the check).
 // 3. Services depend on narrow provider/task interfaces, not on the
 //    ClineProvider and Task classes.
 //
@@ -51,6 +52,9 @@ function resolvedImports(relativeFile: string): string[] {
 	return importSpecifiers(relativeFile).map((specifier) => resolved(relativeFile, specifier))
 }
 
+/** Top-level src/ directories that never reach the webview bundle (mirrors webview-ui's bundleBoundaryPlugin). */
+const EXTENSION_ONLY = /^(activate|api|core|extension|i18n|integrations|services|utils|workers)(\/|$)/
+
 describe("layering (CORE-R10)", () => {
 	it("ClineProvider does not import from src/activate", () => {
 		const offending = resolvedImports("core/webview/ClineProvider.ts").filter((target) =>
@@ -60,9 +64,19 @@ describe("layering (CORE-R10)", () => {
 		expect(offending).toEqual([])
 	})
 
-	it("shared/modes.ts imports neither vscode nor extension code", () => {
-		const offending = resolvedImports("shared/modes.ts").filter(
-			(target) => target === "vscode" || /^(core|services|integrations|activate|api|utils)\//.test(target),
+	it("no src/shared file imports vscode or extension code", () => {
+		const sharedFiles = fs
+			.readdirSync(path.join(srcDir, "shared"), { recursive: true, encoding: "utf8" })
+			.map((file) => `shared/${file.replace(/\\/g, "/")}`)
+			.filter((file) => /\.tsx?$/.test(file) && !file.includes("__tests__/"))
+
+		// Guards against a vacuous pass if the directory walk ever finds nothing.
+		expect(sharedFiles).toContain("shared/modes.ts")
+
+		const offending = sharedFiles.flatMap((file) =>
+			resolvedImports(file)
+				.filter((target) => target === "vscode" || EXTENSION_ONLY.test(target))
+				.map((target) => `${file} -> ${target}`),
 		)
 
 		expect(offending).toEqual([])
