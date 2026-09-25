@@ -37,7 +37,7 @@ export const Mistral = ({ apiConfiguration, setApiConfigurationField }: MistralP
 				onInput={handleInputChange("mistralApiKey")}
 				placeholder={t("settings:placeholders.apiKey")}
 				className="w-full">
-				<span className="font-medium">{t("settings:providers.mistralApiKey")}</span>
+				<label className="block font-medium mb-1">{t("settings:providers.mistralApiKey")}</label>
 			</VSCodeTextField>
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.apiKeyStorageNotice")}

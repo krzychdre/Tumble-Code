@@ -184,7 +184,6 @@ const keyTrios: Partial<Record<FormProvider, KeyTrioCase[]>> = {
 			labelKey: "settings:providers.mistralApiKey",
 			getKeyLabelKey: "settings:providers.getMistralApiKey",
 			getKeyUrl: "https://console.mistral.ai/",
-			label: { tag: "SPAN", className: "font-medium" },
 		},
 	],
 	minimax: [
@@ -321,8 +320,8 @@ describe("provider forms table", () => {
 		expect(field.querySelector("input")).toHaveValue("")
 
 		const label = screen.getByText(trio.labelKey)
-		expect(label.tagName).toBe(trio.label?.tag ?? "LABEL")
-		expect(label).toHaveAttribute("class", trio.label?.className ?? "block font-medium mb-1")
+		expect(label.tagName).toBe("LABEL")
+		expect(label).toHaveAttribute("class", "block font-medium mb-1")
 
 		const notice = field.nextElementSibling as HTMLElement
 		expect(notice.tagName).toBe("DIV")
