@@ -6,6 +6,7 @@ import type { ApiHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { ApiStream } from "../transform/stream"
 import { countTokens } from "../../utils/countTokens"
 import { isMcpTool } from "../../utils/mcp-name"
+import { toStrictSchema } from "../transform/strict-json-schema"
 import { getApiRequestTimeout } from "./utils/timeout-config"
 
 /**
@@ -55,61 +56,12 @@ export abstract class BaseProvider implements ApiHandler {
 	}
 
 	/**
-	 * Converts tool schemas to be compatible with OpenAI's strict mode by:
-	 * - Ensuring all properties are in the required array (strict mode requirement)
-	 * - Converting nullable types (["type", "null"]) to non-nullable ("type")
-	 * - Adding additionalProperties: false to all object schemas (required by OpenAI Responses API)
-	 * - Recursively processing nested objects and arrays
-	 *
-	 * This matches the behavior of ensureAllRequired in openai-native.ts
+	 * Converts a tool schema to OpenAI's strict mode shape (all properties
+	 * required, nullable types made non-nullable, additionalProperties: false on
+	 * every object schema, recursively). See toStrictSchema.
 	 */
 	protected convertToolSchemaForOpenAI(schema: any): any {
-		if (!schema || typeof schema !== "object" || schema.type !== "object") {
-			return schema
-		}
-
-		const result = { ...schema }
-
-		// OpenAI Responses API requires additionalProperties: false on all object schemas
-		// Only add if not already set to false (to avoid unnecessary mutations)
-		if (result.additionalProperties !== false) {
-			result.additionalProperties = false
-		}
-
-		if (result.properties) {
-			const allKeys = Object.keys(result.properties)
-			// OpenAI strict mode requires ALL properties to be in required array
-			result.required = allKeys
-
-			// Recursively process nested objects and convert nullable types.
-			// Never write into the input: the native tool definitions are shared
-			// module-level objects, so a mutation here would leak into every later
-			// request of every provider (DEF-C10). Changed properties are copied.
-			const newProps = { ...result.properties }
-			for (const key of allKeys) {
-				let prop = newProps[key]
-
-				// Handle nullable types by removing null (on a copy, keeping key order)
-				if (prop && Array.isArray(prop.type) && prop.type.includes("null")) {
-					const nonNullTypes = prop.type.filter((t: string) => t !== "null")
-					prop = { ...prop, type: nonNullTypes.length === 1 ? nonNullTypes[0] : nonNullTypes }
-					newProps[key] = prop
-				}
-
-				// Recursively process nested objects
-				if (prop && prop.type === "object") {
-					newProps[key] = this.convertToolSchemaForOpenAI(prop)
-				} else if (prop && prop.type === "array" && prop.items?.type === "object") {
-					newProps[key] = {
-						...prop,
-						items: this.convertToolSchemaForOpenAI(prop.items),
-					}
-				}
-			}
-			result.properties = newProps
-		}
-
-		return result
+		return toStrictSchema(schema, { stripNull: true })
 	}
 
 	/**
