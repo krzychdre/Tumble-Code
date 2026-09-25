@@ -412,3 +412,8 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   and `tempInput` on every token (messages array identity); now the history is swapped during render only when its
   content changes. Test-first (4 failed). Delta: switching to a task with an identical prompt list no longer resets
   navigation.
+- 2026-09-25 latest todos DONE #416: `getLatestTodo` scans from the end and takes an optional parser (host callers
+  `UpdateTodoListTool`, `TaskResumption` keep `JSON.parse`); the webview's new `selectLatestTodos`
+  (`chat/latestTodos.ts`) passes `parseToolCached`. Synthetic 2,001 messages / 8.8 MB: 5.15 to 0.043 ms (list at the
+  start), 4.99 to 0.001 ms (at the end). Not re-measured in Chrome on the real 8.7 MB task yet. Limit: the parse cache
+  holds 5,000 entries.
