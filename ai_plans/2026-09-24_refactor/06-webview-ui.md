@@ -287,3 +287,8 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
 - 2026-09-25 code-index validation messages DONE #370: the zod-issue loop now keeps the first issue per field (empty
   Qdrant/Ollama/openai-compatible URL shows `*Required`, a malformed one still "invalid"); openai-compatible dimension
   uses `required_error`/`invalid_type_error` = `modelDimensionRequired`. Test-first (3 failed), changeset.
+- 2026-09-25 WEB-10 DONE #371 (`92f5995d5`, 30 characterization tests; first MermaidButton spec), #372
+  (`8b4721429`, drift: Mermaid reopened at 100% but kept the old pan offset, test-first, changeset), #374
+  (`c0daf0fe1`): `hooks/useZoomPan.ts` + `common/ZoomableModal.tsx`; zoom state lives in a child mounted only while
+  open, so every open starts fresh; about 155 lines less. Found: Mermaid code-tab copy button shows no check-mark
+  feedback; `onWheel` `preventDefault` is a no-op (React wheel listeners are passive), so the page may scroll too.
