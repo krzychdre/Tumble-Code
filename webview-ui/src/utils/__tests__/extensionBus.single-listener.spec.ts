@@ -9,11 +9,9 @@ import path from "path"
 
 const srcRoot = path.resolve(__dirname, "../..")
 
-// Still on its own listener until its refactor lands (WEB-8 for ChatView);
-// remove an entry when its file moves to the bus.
-const allowed = new Set(
-	["utils/extensionBus.ts", "components/chat/ChatView.tsx"].map((file) => path.join(srcRoot, file)),
-)
+// Every component is on the bus now (ChatView was the last, WEB-8). Add an
+// entry here only for a file that must own a listener of its own.
+const allowed = new Set(["utils/extensionBus.ts"].map((file) => path.join(srcRoot, file)))
 
 const listenerPattern = /addEventListener\(\s*["'`]message["'`]|useEvent\(\s*["'`]message["'`]/
 
@@ -30,7 +28,7 @@ function productionFiles(dir: string): string[] {
 }
 
 describe("extension message listeners", () => {
-	it("only utils/extensionBus.ts (and the files not migrated yet) listen to window messages", () => {
+	it("only utils/extensionBus.ts listens to window messages", () => {
 		const offenders = productionFiles(srcRoot)
 			.filter((file) => !allowed.has(file))
 			.filter((file) => listenerPattern.test(fs.readFileSync(file, "utf8")))
