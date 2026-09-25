@@ -9,10 +9,7 @@ import {
 } from "@google/genai"
 import {
 	type ModelInfo,
-	geminiDefaultModelId,
-	geminiModels,
-	providerModelDefinitions,
-	resolveCatalogModel,
+	selectGeminiModel,
 	ApiProviderError,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -658,32 +655,6 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 
 		return totalCost
 	}
-}
-
-/**
- * An unlisted Gemini model id (e.g. a newly released model not yet in
- * `geminiModels`) is kept (owner decision 5). The default model's structural
- * info is the baseline, without the pricing fields we can't verify for an
- * unknown model, so cost reporting shows "unknown" (calculateCost returns
- * undefined) instead of charging the default model's rates against a
- * different model.
- */
-const unknownGeminiModelInfo = (): ModelInfo => ({
-	...geminiModels[geminiDefaultModelId],
-	inputPrice: undefined,
-	outputPrice: undefined,
-	cacheReadsPrice: undefined,
-	cacheWritesPrice: undefined,
-	tiers: undefined,
-})
-
-/** The model a Gemini profile selects, before request parameters. */
-function selectGeminiModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
-	const { id, info } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.gemini, {
-		customModelInfo: unknownGeminiModelInfo,
-	})
-
-	return { id, info }
 }
 
 /**

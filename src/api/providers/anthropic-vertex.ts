@@ -5,9 +5,8 @@ import { GoogleAuth } from "google-auth-library"
 import {
 	type ModelInfo,
 	providerModelDefinitions,
-	resolveCatalogModel,
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
-	VERTEX_1M_CONTEXT_MODEL_IDS,
+	selectAnthropicVertexModel,
 } from "@roo-code/types"
 
 import { ApiHandlerOptions } from "../../shared/api"
@@ -255,40 +254,6 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 			throw handleProviderError(withGoogleCredentialCause(error), "Vertex")
 		}
 	}
-}
-
-/**
- * The Claude model a Vertex profile selects, before request parameters, with
- * the 1M context tier applied when that beta is enabled for the model.
- */
-function selectAnthropicVertexModel(options: ApiHandlerOptions): {
-	id: string
-	info: ModelInfo
-	enable1MContext: boolean
-} {
-	const { id, info: listedInfo } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.vertex)
-	let info = listedInfo
-
-	// Check if 1M context beta should be enabled for supported models
-	const supports1MContext = VERTEX_1M_CONTEXT_MODEL_IDS.includes(id as (typeof VERTEX_1M_CONTEXT_MODEL_IDS)[number])
-	const enable1MContext = Boolean(supports1MContext && options.vertex1MContext)
-
-	// If 1M context beta is enabled, update the model info with tier pricing
-	if (enable1MContext) {
-		const tier = info.tiers?.[0]
-		if (tier) {
-			info = {
-				...info,
-				contextWindow: tier.contextWindow,
-				inputPrice: tier.inputPrice,
-				outputPrice: tier.outputPrice,
-				cacheWritesPrice: tier.cacheWritesPrice,
-				cacheReadsPrice: tier.cacheReadsPrice,
-			}
-		}
-	}
-
-	return { id, info, enable1MContext }
 }
 
 /** The `{ id, info }` that `AnthropicVertexHandler.getModel()` reports, without building a handler. */

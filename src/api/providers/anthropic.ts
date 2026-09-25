@@ -10,7 +10,7 @@ import {
 	ANTHROPIC_DEFAULT_MAX_TOKENS,
 	ApiProviderError,
 	providerModelDefinitions,
-	resolveCatalogModel,
+	selectAnthropicModel,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -29,44 +29,6 @@ import {
 	convertOpenAIToolsToAnthropic,
 	convertOpenAIToolChoiceToAnthropic,
 } from "../../core/prompts/tools/native-tools/converters"
-
-// Lowercased known model ids plus their undated aliases
-// (claude-haiku-4-5-20251001 also as claude-haiku-4-5), longest first, so a
-// custom id such as "anthropic/claude-sonnet-4-5-20250929" resolves to the
-// closest known model. The ":thinking" variant only matches exactly.
-const ANTHROPIC_MODEL_ID_MATCHERS: ReadonlyArray<readonly [string, AnthropicModelId]> = (
-	Object.keys(anthropicModels) as AnthropicModelId[]
-)
-	.filter((id) => !id.includes(":"))
-	.flatMap((id) => {
-		const undated = id.replace(/-\d{8}$/, "")
-		return undated === id ? [[id, id] as const] : [[id, id] as const, [undated, id] as const]
-	})
-	.map(([alias, id]) => [alias.toLowerCase(), id] as const)
-	.sort((a, b) => b[0].length - a[0].length)
-
-// Model info for an id that is not in `anthropicModels`: the closest known
-// model when the id contains one, otherwise the default model's limits and
-// capabilities without its pricing (so cost is not billed at the rates of a
-// model we are not talking to).
-function guessAnthropicModelInfo(modelId: string): ModelInfo {
-	const lowerModelId = modelId.toLowerCase()
-	const match = ANTHROPIC_MODEL_ID_MATCHERS.find(([alias]) => lowerModelId.includes(alias))
-
-	if (match) {
-		return anthropicModels[match[1]]
-	}
-
-	return {
-		...anthropicModels[anthropicDefaultModelId],
-		inputPrice: undefined,
-		outputPrice: undefined,
-		cacheWritesPrice: undefined,
-		cacheReadsPrice: undefined,
-		tiers: undefined,
-		longContextPricing: undefined,
-	}
-}
 
 export class AnthropicHandler extends BaseProvider implements SingleCompletionHandler {
 	private options: ApiHandlerOptions
@@ -254,43 +216,6 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 			usage: anthropicCompletionUsage(message.usage),
 		}
 	}
-}
-
-/**
- * The model an Anthropic profile selects, before request parameters: a listed
- * model, a custom id with guessed info (custom base URL proxies, dated
- * snapshots, cli-settings.json model ids), or the default; with the 1M context
- * tier applied when enabled.
- */
-function selectAnthropicModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
-	const { id, info: listedInfo } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.anthropic, {
-		customModelInfo: guessAnthropicModelInfo,
-	})
-	let info = listedInfo
-
-	// If 1M context beta is enabled for supported models, update the model info
-	if (
-		(id === "claude-sonnet-4-20250514" ||
-			id === "claude-sonnet-4-5" ||
-			id === "claude-sonnet-4-6" ||
-			id === "claude-opus-4-6") &&
-		options.anthropicBeta1MContext
-	) {
-		// Use the tier pricing for 1M context
-		const tier = info.tiers?.[0]
-		if (tier) {
-			info = {
-				...info,
-				contextWindow: tier.contextWindow,
-				inputPrice: tier.inputPrice,
-				outputPrice: tier.outputPrice,
-				cacheWritesPrice: tier.cacheWritesPrice,
-				cacheReadsPrice: tier.cacheReadsPrice,
-			}
-		}
-	}
-
-	return { id, info }
 }
 
 // The `:thinking` suffix indicates that the model is a "Hybrid" reasoning

@@ -1,4 +1,4 @@
-import { type ModelInfo, providerModelDefinitions, resolveCatalogModel } from "@roo-code/types"
+import { type ModelInfo, selectVertexModel } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../shared/api"
 
@@ -24,13 +24,6 @@ export class VertexHandler extends GeminiHandler implements SingleCompletionHand
 
 		return { ...finishGeminiModel({ id, info }), ...params }
 	}
-}
-
-/** The Gemini model a Vertex profile selects, before request parameters. */
-function selectVertexModel(options: ApiHandlerOptions): { id: string; info: ModelInfo } {
-	const { id, info } = resolveCatalogModel(options.apiModelId, providerModelDefinitions.vertex)
-
-	return { id, info }
 }
 
 /** The `{ id, info }` that `VertexHandler.getModel()` reports, without building a handler. */
