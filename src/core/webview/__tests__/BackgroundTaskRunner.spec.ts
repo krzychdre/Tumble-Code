@@ -101,7 +101,7 @@ function makeHost(overrides: Partial<BackgroundTaskHost> = {}) {
 		})),
 		getApiConfigurationForMode: vi.fn(async () => undefined),
 		getMemoryWriterApiConfigId: vi.fn(() => undefined),
-		activateProfile: vi.fn(),
+		getProfile: vi.fn(),
 		postMessageToWebview,
 		log,
 		...overrides,
@@ -341,7 +341,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 	}) {
 		const { host, postMessageToWebview, log } = makeHost({
 			getMemoryWriterApiConfigId: vi.fn(() => (opts.writerProfile ? "writer" : undefined)),
-			activateProfile: vi.fn(async () => ({ name: "writer", ...opts.writerProfile! })),
+			getProfile: vi.fn(async () => ({ name: "writer", ...opts.writerProfile! })),
 		})
 		const configs: ProviderSettings[] = []
 		const disposed: ProviderSettings[] = []
@@ -425,7 +425,7 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 	it("a stale writer profile falls back to the foreground profile and logs why", async () => {
 		const { host, log } = makeHost({
 			getMemoryWriterApiConfigId: vi.fn(() => "stale"),
-			activateProfile: vi.fn(async () => {
+			getProfile: vi.fn(async () => {
 				throw new Error("not found")
 			}),
 		})

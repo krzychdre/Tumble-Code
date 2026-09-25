@@ -164,64 +164,75 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 
 describe("BackgroundTaskRunner.resolveMemoryWriterApiConfiguration", () => {
 	// The method is private but reachable on a runner whose host provides
-	// `getMemoryWriterApiConfigId` and `activateProfile`.
+	// `getMemoryWriterApiConfigId` and `getProfile`.
 
-	// `resolveMemoryWriterApiConfiguration` calls `activateProfile`, not
-	// `getProfile`. While the double stubbed only the latter, the two tests that
-	// resolve a profile were asserting on the TypeError the catch block swallowed
-	// — both "passed" through the failure path they were written to avoid.
+	// It must READ the writer profile: it used to call activateProfile, which
+	// also stores the writer profile as the user's current profile.
 	function makeFakeThis(opts: {
 		configId?: string
-		activateProfile?: ReturnType<typeof vi.fn>
+		getProfile?: ReturnType<typeof vi.fn>
 		log?: ReturnType<typeof vi.fn>
 	}) {
 		return makeRunner({
 			getMemoryWriterApiConfigId: vi.fn().mockReturnValue(opts.configId),
-			activateProfile: opts.activateProfile ?? vi.fn(),
+			getProfile: opts.getProfile ?? vi.fn(),
 			log: opts.log ?? vi.fn(),
 		}) as unknown as RunnerInternals
 	}
 
-	it("returns undefined when memoryWriterApiConfigId is unset", async () => {
+	it("reads the writer profile without activating it (regression)", async () => {
 		const activateProfile = vi.fn()
-		const fakeThis = makeFakeThis({ configId: undefined, activateProfile })
+		const getProfile = vi.fn().mockResolvedValue({ name: "cheap", apiProvider: "ollama" })
+		const runner = makeRunner({
+			getMemoryWriterApiConfigId: vi.fn().mockReturnValue("profile-1"),
+			getProfile,
+			activateProfile,
+		} as never) as unknown as RunnerInternals
+		await expect(runner.resolveMemoryWriterApiConfiguration()).resolves.toEqual({ apiProvider: "ollama" })
+		expect(getProfile).toHaveBeenCalledWith({ id: "profile-1" })
+		expect(activateProfile).not.toHaveBeenCalled()
+	})
+
+	it("returns undefined when memoryWriterApiConfigId is unset", async () => {
+		const getProfile = vi.fn()
+		const fakeThis = makeFakeThis({ configId: undefined, getProfile })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
-		expect(activateProfile).not.toHaveBeenCalled()
+		expect(getProfile).not.toHaveBeenCalled()
 	})
 
 	it("returns undefined when memoryWriterApiConfigId is empty string", async () => {
-		const activateProfile = vi.fn()
-		const fakeThis = makeFakeThis({ configId: "", activateProfile })
+		const getProfile = vi.fn()
+		const fakeThis = makeFakeThis({ configId: "", getProfile })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
-		expect(activateProfile).not.toHaveBeenCalled()
+		expect(getProfile).not.toHaveBeenCalled()
 	})
 
-	it("returns the resolved profile (minus name) when activateProfile succeeds", async () => {
-		const activateProfile = vi.fn().mockResolvedValue({
+	it("returns the resolved profile (minus name) when getProfile succeeds", async () => {
+		const getProfile = vi.fn().mockResolvedValue({
 			name: "cheap-local",
 			id: "profile-1",
 			apiProvider: "ollama",
 			apiModelId: "llama3",
 		})
-		const fakeThis = makeFakeThis({ configId: "profile-1", activateProfile })
+		const fakeThis = makeFakeThis({ configId: "profile-1", getProfile })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toEqual({
 			id: "profile-1",
 			apiProvider: "ollama",
 			apiModelId: "llama3",
 		})
-		expect(activateProfile).toHaveBeenCalledWith({ id: "profile-1" })
+		expect(getProfile).toHaveBeenCalledWith({ id: "profile-1" })
 	})
 
-	it("falls back to undefined and logs when activateProfile throws", async () => {
-		const activateProfile = vi.fn().mockRejectedValue(new Error("not found"))
+	it("falls back to undefined and logs when getProfile throws", async () => {
+		const getProfile = vi.fn().mockRejectedValue(new Error("not found"))
 		const log = vi.fn()
-		const fakeThis = makeFakeThis({ configId: "stale-id", activateProfile, log })
+		const fakeThis = makeFakeThis({ configId: "stale-id", getProfile, log })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
-		expect(activateProfile).toHaveBeenCalledWith({ id: "stale-id" })
+		expect(getProfile).toHaveBeenCalledWith({ id: "stale-id" })
 		expect(log).toHaveBeenCalledWith(
 			expect.stringContaining("[memoryWriterQuery] failed to load writer profile stale-id"),
 		)

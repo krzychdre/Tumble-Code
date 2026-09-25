@@ -71,7 +71,8 @@ export interface BackgroundTaskHost {
 	getApiConfigurationForMode(mode: string): Promise<{ apiConfiguration: ProviderSettings; name: string } | undefined>
 	/** The `memoryWriterApiConfigId` setting. */
 	getMemoryWriterApiConfigId(): string | undefined
-	activateProfile(params: { id: string }): Promise<ProviderSettings & { name: string }>
+	/** Read a stored profile without making it the active one. */
+	getProfile(params: { id: string }): Promise<ProviderSettings & { name: string }>
 	postMessageToWebview(message: ExtensionMessage): Promise<void>
 	log(message: string): void
 }
@@ -378,7 +379,9 @@ export class BackgroundTaskRunner {
 		const id = this.host.getMemoryWriterApiConfigId()
 		if (!id) return undefined
 		try {
-			const { name: _name, ...profile } = await this.host.activateProfile({ id })
+			// getProfile, not activateProfile: activating also stores the writer
+			// profile as the user's current profile (`currentApiConfigName`).
+			const { name: _name, ...profile } = await this.host.getProfile({ id })
 			return profile
 		} catch (error) {
 			this.host.log(

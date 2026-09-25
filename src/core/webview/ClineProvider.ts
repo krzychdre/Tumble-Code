@@ -346,7 +346,7 @@ export class ClineProvider
 			getState: () => this.getState(),
 			getApiConfigurationForMode: (mode) => this.getApiConfigurationForMode(mode),
 			getMemoryWriterApiConfigId: () => this.getValue("memoryWriterApiConfigId"),
-			activateProfile: (params) => this.providerSettingsManager.activateProfile(params),
+			getProfile: (params) => this.providerSettingsManager.getProfile(params),
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
 			log: (message) => this.log(message),
 		})
