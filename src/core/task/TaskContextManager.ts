@@ -11,6 +11,7 @@ import {
 	countEnabledMcpTools,
 	isPruneBeforeCondenseEnabled,
 	resolvePruneToolResultBudget,
+	SETTINGS_DEFAULTS,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -373,7 +374,7 @@ export class TaskContextManager {
 			}
 
 			const { mcpEnabled } = (await provider.getState()) ?? {}
-			if (!(mcpEnabled ?? true)) {
+			if (!(mcpEnabled ?? SETTINGS_DEFAULTS.mcpEnabled)) {
 				return { enabledToolCount: 0, enabledServerCount: 0 }
 			}
 

@@ -27,6 +27,7 @@ import type {
 	McpToolCallResponse,
 	ExtensionMessage,
 } from "@roo-code/types"
+import { SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { t } from "../../i18n"
 
@@ -674,7 +675,7 @@ export class McpHub {
 			return true // Default to enabled if provider is not available
 		}
 		const state = await provider.getState()
-		return state.mcpEnabled ?? true
+		return state.mcpEnabled ?? SETTINGS_DEFAULTS.mcpEnabled
 	}
 
 	private async connectToServer(

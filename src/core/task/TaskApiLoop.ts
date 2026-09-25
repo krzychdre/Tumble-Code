@@ -16,6 +16,7 @@ import {
 	getModelId,
 	isRetiredProvider,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
+	SETTINGS_DEFAULTS,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
@@ -556,9 +557,10 @@ export class TaskApiLoop {
 		currentItem: StackItem,
 	): Promise<{ finalUserContent: Anthropic.Messages.ContentBlockParam[]; shouldAddUserMessage: boolean }> {
 		const provider = this.access.providerRef.deref()
-		const showRooIgnoredFiles = state?.showRooIgnoredFiles ?? false
-		const includeDiagnosticMessages = state?.includeDiagnosticMessages ?? true
-		const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? 50
+		const showRooIgnoredFiles = state?.showRooIgnoredFiles ?? SETTINGS_DEFAULTS.showRooIgnoredFiles
+		const includeDiagnosticMessages =
+			state?.includeDiagnosticMessages ?? SETTINGS_DEFAULTS.includeDiagnosticMessages
+		const maxDiagnosticMessages = state?.maxDiagnosticMessages ?? SETTINGS_DEFAULTS.maxDiagnosticMessages
 		const currentMode = await this.access.getTaskMode()
 
 		const { content: parsedUserContent, mode: slashCommandMode } = await processUserContentMentions({

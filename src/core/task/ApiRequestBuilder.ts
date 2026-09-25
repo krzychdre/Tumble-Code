@@ -19,6 +19,7 @@ import {
 	RooCodeEventName,
 	getModelId,
 	isParallelTasksEnabled,
+	SETTINGS_DEFAULTS,
 } from "@roo-code/types"
 import { type ApiHandler } from "../../api"
 import { McpHub } from "../../services/mcp/McpHub"
@@ -115,7 +116,7 @@ export class ApiRequestBuilder {
 	async buildSystemPrompt(): Promise<string> {
 		const { mcpEnabled } = (await this.access.providerRef.deref()?.getState()) ?? {}
 		let mcpHub: McpHub | undefined
-		if (mcpEnabled ?? true) {
+		if (mcpEnabled ?? SETTINGS_DEFAULTS.mcpEnabled) {
 			const provider = this.access.providerRef.deref()
 
 			if (!provider) {
@@ -171,7 +172,7 @@ export class ApiRequestBuilder {
 			{
 				todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
 				useAgentRules: vscode.workspace.getConfiguration(Package.name).get<boolean>("useAgentRules") ?? true,
-				enableSubfolderRules: enableSubfolderRules ?? false,
+				enableSubfolderRules: enableSubfolderRules ?? SETTINGS_DEFAULTS.enableSubfolderRules,
 				newTaskRequireTodos: vscode.workspace
 					.getConfiguration(Package.name)
 					.get<boolean>("newTaskRequireTodos", false),
