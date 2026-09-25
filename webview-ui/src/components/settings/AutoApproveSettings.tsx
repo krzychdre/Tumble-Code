@@ -9,6 +9,7 @@ import { vscode } from "@/utils/vscode"
 import { Button, Input, Slider } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
+import { postImmediateSetting } from "./postImmediateSetting"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
@@ -88,7 +89,7 @@ export const AutoApproveSettings = ({
 
 	const handleModeChange = (mode: typeof autoApprovalMode) => {
 		setAutoApprovalMode(mode)
-		vscode.postMessage({ type: "updateSettings", updatedSettings: { autoApprovalMode: mode } })
+		postImmediateSetting("autoApprovalMode", mode)
 
 		if (mode !== "default" && !autoApprovalEnabled) {
 			setAutoApprovalEnabled(true)
@@ -107,7 +108,7 @@ export const AutoApproveSettings = ({
 			const newCommands = [...currentCommands, commandInput]
 			setCachedStateField("allowedCommands", newCommands)
 			setCommandInput("")
-			vscode.postMessage({ type: "updateSettings", updatedSettings: { allowedCommands: newCommands } })
+			postImmediateSetting("allowedCommands", newCommands)
 		}
 	}
 
@@ -118,7 +119,7 @@ export const AutoApproveSettings = ({
 			const newCommands = [...currentCommands, deniedCommandInput]
 			setCachedStateField("deniedCommands", newCommands)
 			setDeniedCommandInput("")
-			vscode.postMessage({ type: "updateSettings", updatedSettings: { deniedCommands: newCommands } })
+			postImmediateSetting("deniedCommands", newCommands)
 		}
 	}
 
@@ -340,11 +341,7 @@ export const AutoApproveSettings = ({
 									onClick={() => {
 										const newCommands = (allowedCommands ?? []).filter((_, i) => i !== index)
 										setCachedStateField("allowedCommands", newCommands)
-
-										vscode.postMessage({
-											type: "updateSettings",
-											updatedSettings: { allowedCommands: newCommands },
-										})
+										postImmediateSetting("allowedCommands", newCommands)
 									}}>
 									<div className="flex flex-row items-center gap-1">
 										<div>{cmd}</div>
@@ -399,11 +396,7 @@ export const AutoApproveSettings = ({
 									onClick={() => {
 										const newCommands = (deniedCommands ?? []).filter((_, i) => i !== index)
 										setCachedStateField("deniedCommands", newCommands)
-
-										vscode.postMessage({
-											type: "updateSettings",
-											updatedSettings: { deniedCommands: newCommands },
-										})
+										postImmediateSetting("deniedCommands", newCommands)
 									}}>
 									<div className="flex flex-row items-center gap-1">
 										<div>{cmd}</div>

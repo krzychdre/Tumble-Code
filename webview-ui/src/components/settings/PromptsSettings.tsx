@@ -19,6 +19,7 @@ import {
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
+import { postImmediateSetting } from "./postImmediateSetting"
 
 interface PromptsSettingsProps {
 	customSupportPrompts: Record<string, string | undefined>
@@ -208,11 +209,7 @@ const PromptsSettings = ({
 										}
 
 										setIncludeTaskHistoryInEnhance(target.checked)
-
-										vscode.postMessage({
-											type: "updateSettings",
-											updatedSettings: { includeTaskHistoryInEnhance: target.checked },
-										})
+										postImmediateSetting("includeTaskHistoryInEnhance", target.checked)
 									}}>
 									<span className="font-medium">
 										{t("prompts:supportPrompts.enhance.includeTaskHistory")}

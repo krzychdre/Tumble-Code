@@ -8,6 +8,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 
 import { SectionHeader } from "../settings/SectionHeader"
+import { postImmediateSetting } from "../settings/postImmediateSetting"
 
 import { CreateWorktreeModal } from "./CreateWorktreeModal"
 import { DeleteWorktreeModal } from "./DeleteWorktreeModal"
@@ -126,10 +127,7 @@ export const WorktreesView = () => {
 	const handleToggleShowInHomeScreen = useCallback(() => {
 		const newValue = !showWorktreesInHomeScreen
 		setShowWorktreesInHomeScreen(newValue)
-		vscode.postMessage({
-			type: "updateSettings",
-			updatedSettings: { showWorktreesInHomeScreen: newValue },
-		})
+		postImmediateSetting("showWorktreesInHomeScreen", newValue)
 	}, [showWorktreesInHomeScreen, setShowWorktreesInHomeScreen])
 
 	// Render error states

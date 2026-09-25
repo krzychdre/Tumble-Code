@@ -1,10 +1,9 @@
-import type { ExperimentId } from "@roo-code/types"
+import type { ExperimentId, ExtensionState } from "@roo-code/types"
 
-import { ExtensionStateContextType } from "@/context/ExtensionStateContext"
-
-export type SetCachedStateField<K extends keyof ExtensionStateContextType> = (
-	field: K,
-	value: ExtensionStateContextType[K],
-) => void
+/**
+ * Writes one field of the Settings view's Save buffer. Keyed on the webview
+ * state's data (not the context type), so a context setter name is not a key.
+ */
+export type SetCachedStateField<K extends keyof ExtensionState> = (field: K, value: ExtensionState[K]) => void
 
 export type SetExperimentEnabled = (id: ExperimentId, enabled: boolean) => void
