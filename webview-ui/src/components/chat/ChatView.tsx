@@ -51,6 +51,7 @@ import MemoryActivityBadge from "./MemoryActivityBadge"
 import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
+import { useStableCallback } from "@src/hooks/useStableCallback"
 import { Cloud } from "lucide-react"
 
 export interface ChatViewProps {
@@ -1480,6 +1481,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// enableButtons, so this never flips on and straight back off.
 	const isCommandAwaitingApproval = clineAsk === "command" && enableButtons
 
+	// Both handlers get a new identity whenever a message streams in (the
+	// suggestion handler through handleSendMessage, the checkpoint jump
+	// through checkpointIndices). Rows get stable wrappers so ChatRow's memo
+	// can skip every row but the streamed one.
+	const onRowSuggestionClick = useStableCallback(handleSuggestionClickInRow)
+	const onRowJumpToPreviousCheckpoint = useStableCallback(handleScrollToLatestCheckpoint)
+
 	const itemContent = useCallback(
 		(index: number, messageOrGroup: ClineMessage) => {
 			const isLast = index === groupedMessages.length - 1
@@ -1499,16 +1507,18 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 							isCommandAwaitingApproval)
 					}
 					onToggleExpand={toggleRowExpansion} // This was already stabilized
-					lastModifiedMessage={modifiedMessages.at(-1)} // Original direct access
+					// Only the last row reads it, and it changes on every streamed
+					// token: passing it to every row would defeat ChatRow's memo.
+					lastModifiedMessage={isLast ? modifiedMessages.at(-1) : undefined}
 					isLast={isLast}
 					onHeightChange={handleRowHeightChange}
 					isStreaming={isStreaming}
-					onSuggestionClick={handleSuggestionClickInRow} // This was already stabilized
+					onSuggestionClick={onRowSuggestionClick}
 					onBatchFileResponse={handleBatchFileResponse}
 					onFollowUpUnmount={handleFollowUpUnmount}
 					isFollowUpAnswered={messageOrGroup.isAnswered === true || messageOrGroup.ts === currentFollowUpTs}
 					isFollowUpAutoApprovalPaused={isFollowUpAutoApprovalPaused}
-					onJumpToPreviousCheckpoint={handleScrollToLatestCheckpoint}
+					onJumpToPreviousCheckpoint={onRowJumpToPreviousCheckpoint}
 				/>
 			)
 		},
@@ -1519,13 +1529,13 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			groupedMessages.length,
 			handleRowHeightChange,
 			isStreaming,
-			handleSuggestionClickInRow,
+			onRowSuggestionClick,
 			handleBatchFileResponse,
 			handleFollowUpUnmount,
 			currentFollowUpTs,
 			isFollowUpAutoApprovalPaused,
 			isCommandAwaitingApproval,
-			handleScrollToLatestCheckpoint,
+			onRowJumpToPreviousCheckpoint,
 		],
 	)
 

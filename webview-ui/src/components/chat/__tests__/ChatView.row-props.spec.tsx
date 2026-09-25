@@ -151,6 +151,26 @@ const todoTask = (): ClineMessage[] => [
 	},
 ]
 
+const EARLIER_TS = 2
+const STREAMED_TS = 3
+
+// An earlier finished text row and a last text row that is still streaming.
+const streamingTask = (streamedText: string): ClineMessage[] => [
+	{ type: "say", say: "task", ts: TASK_TS, text: "Initial task" },
+	{ type: "say", say: "text", ts: EARLIER_TS, text: "Earlier answer", partial: false },
+	{ type: "say", say: "text", ts: STREAMED_TS, text: streamedText, partial: true },
+]
+
+const streamToken = (text: string) => {
+	window.postMessage(
+		{
+			type: "messageUpdated",
+			clineMessage: { type: "say", say: "text", ts: STREAMED_TS, text, partial: true },
+		},
+		"*",
+	)
+}
+
 describe("ChatView row props", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
@@ -174,5 +194,47 @@ describe("ChatView row props", () => {
 			expect(props).not.toHaveProperty("editable")
 			expect(props).not.toHaveProperty("hasCheckpoint")
 		}
+	})
+
+	it("gives lastModifiedMessage only to the last row", async () => {
+		const { getByTestId } = renderChatView()
+
+		await act(async () => {
+			hydrateState(streamingTask("Hel"))
+		})
+
+		await waitFor(() => {
+			expect(getByTestId(`chat-row-${STREAMED_TS}`)).toBeInTheDocument()
+		})
+
+		expect(rowState.props.get(EARLIER_TS)?.lastModifiedMessage).toBeUndefined()
+		expect(rowState.props.get(STREAMED_TS)?.lastModifiedMessage).toMatchObject({ ts: STREAMED_TS })
+	})
+
+	it("does not re-render earlier rows when only the streamed last message changes", async () => {
+		const { getByTestId } = renderChatView()
+
+		await act(async () => {
+			hydrateState(streamingTask("Hel"))
+		})
+
+		await waitFor(() => {
+			expect(getByTestId(`chat-row-${STREAMED_TS}`)).toBeInTheDocument()
+		})
+
+		const earlierRenders = rowState.renders.get(EARLIER_TS)
+		const streamedRenders = rowState.renders.get(STREAMED_TS) ?? 0
+
+		await act(async () => {
+			streamToken("Hello")
+		})
+
+		await waitFor(() => {
+			expect(rowState.renders.get(STREAMED_TS)).toBeGreaterThan(streamedRenders)
+		})
+
+		// Every row used to receive the last message, which changes on each
+		// token, so the deepEqual memo let every row re-render per token.
+		expect(rowState.renders.get(EARLIER_TS)).toBe(earlierRenders)
 	})
 })
