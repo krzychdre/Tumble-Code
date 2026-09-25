@@ -347,6 +347,16 @@ ordering with `isConnecting` reset on error, per-source watcher keys, `dispose` 
 **Existing:** `McpHub.spec` (51), `McpHub.settingsCreation.spec` (2). **Size** M for (1) and (2), L overall,
 medium to medium-high risk. After DEF-C13.
 
+**Status (2026-09-25):** parts (1) and (2) DONE in #330 (merge 257b4640f); part (3) open. `mcpConfigSchema.ts`
+(schemas, `validateServerConfig`, one `formatSchemaIssues` for three copies), `McpConfigStore` (path resolution for
+seven copies, read/parse, `readForUpdate`, write with the 600 ms guard), `McpConfigWatcher` (per-file 500 ms
+debounce, guard-aware) behind an injectable `watcherFactory` that replaced the three `NODE_ENV === "test"` branches.
+McpHub 2,060 to 1,520 lines; MCP tests 65 to 119. Confirmed and fixed: `deleteServer` bypassed the write guard (a
+second `updateServerConnections` 500 ms later). Already fixed on main by DEF-C13 (#219), now pinned: per-source
+watcher keys, raw vs defaulted diff; the `EventSource` override was already gone. Open: one guard flag still covers
+both files (a global write masks a user edit of the project file for 600 ms); dead
+`McpServerManager.providers/notifyProviders`.
+
 ### SVC-10 Code-index lifecycle ownership
 
 **Evidence:** a new `RooIgnoreController` per scan, never disposed (`scanner.ts:88`), each with a FileSystemWatcher
