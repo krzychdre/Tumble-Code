@@ -38,8 +38,7 @@ function renderButton(props: { isLoading?: boolean; svgToPng?: (svg: SVGElement)
 /** The block wrapper that toggles the hover toolbar. */
 const wrapper = (container: HTMLElement) => container.firstElementChild as HTMLElement
 
-const button = (root: ParentNode, icon: string) =>
-	root.querySelector(`.codicon-${icon}`)?.closest("button") ?? null
+const button = (root: ParentNode, icon: string) => root.querySelector(`.codicon-${icon}`)?.closest("button") ?? null
 
 /** jsdom has no movementX/movementY on MouseEvent, so set them on the event itself. */
 function drag(el: HTMLElement, movementX: number, movementY: number) {
