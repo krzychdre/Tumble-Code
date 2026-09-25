@@ -497,9 +497,15 @@ export class AskDispatcher {
 		}
 
 		if (this.nonInteractive) {
-			this.outputManager.output("\n[retrying api request]")
-			// Auto-retry in non-interactive mode
-			return { handled: true }
+			// Non-interactive runs with auto-approval on, where the core retries
+			// transient errors itself and asks only for errors a retry cannot fix
+			// (401 invalid key, 403 forbidden, 404 unknown model or endpoint).
+			// Decline, so the task loop ends; the host then fails the run.
+			this.outputManager.output(
+				"[not retrying: this error needs a fix first, e.g. the API key, profile or model]",
+			)
+			this.sendApprovalResponse(false)
+			return { handled: true, response: "noButtonClicked" }
 		}
 
 		try {

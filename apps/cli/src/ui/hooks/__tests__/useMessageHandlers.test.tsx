@@ -182,6 +182,32 @@ describe("useMessageHandlers", () => {
 		})
 	})
 
+	// With auto-approval on the core asks api_req_failed only for errors a
+	// retry cannot fix (401, 403, 404). "allow" mode used to print the ask as
+	// prose and answer nothing, so the task sat on the ask with no way to
+	// retry. It now gets the Yes/No dialog, like in "ask" mode.
+	it("offers the retry dialog for api_req_failed even when actions are auto-approved", () => {
+		const view = render(<Harness />)
+		nonInteractive = true
+		view.rerender(<Harness />)
+
+		api.handleExtensionMessage({
+			type: "messageUpdated",
+			clineMessage: {
+				ts: 601,
+				type: "ask",
+				ask: "api_req_failed",
+				text: "OpenAI completion error: 401 Incorrect API key provided",
+				partial: false,
+			} as never,
+		})
+
+		expect(useCLIStore.getState().pendingAsk).toMatchObject({
+			type: "api_req_failed",
+			content: "OpenAI completion error: 401 Incorrect API key provided",
+		})
+	})
+
 	// A command that contains a pipe used to render as a bare bullet: the ask was
 	// added as assistant prose, and the markdown renderer mistook any line with a
 	// pipe for a table separator row and blanked it out (plan: 2026-09-22 empty

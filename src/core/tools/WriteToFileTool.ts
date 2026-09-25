@@ -49,6 +49,9 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			return
 		}
 
+		// The diff view handlePartial() opened may belong to a truncated path.
+		await this.dropDiffSessionForOtherPath(task, relPath)
+
 		const accessAllowed = task.rooIgnoreController?.validateAccess(relPath)
 
 		if (!accessAllowed) {
@@ -195,6 +198,26 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 	}
 
 	/**
+	 * Close the diff session if it is open for a path other than `relPath`,
+	 * undoing what its open() did (the empty file of a "create", the original
+	 * content of a "modify").
+	 *
+	 * partial-json drops an unfinished escape sequence at the end of a string,
+	 * so `"a/b\u0` and `"a/b\u002` both parse as "a/b". When the model streams
+	 * `content` before `path`, hasPathStabilized() can accept such a truncated
+	 * path and handlePartial() opens the diff view for it. Reusing that session
+	 * for the final path would show and save the content under the truncated
+	 * one, so both handlePartial() and execute() call this before deciding
+	 * whether a session is already open.
+	 */
+	private async dropDiffSessionForOtherPath(task: Task, relPath: string): Promise<void> {
+		const diffViewProvider = task.diffViewProvider
+		if (diffViewProvider.isEditing && diffViewProvider.editTypeOf(relPath) === undefined) {
+			await diffViewProvider.revertChanges()
+		}
+	}
+
+	/**
 	 * Whether `relPath` is an existing file. Once the diff view is open for
 	 * this path, its session answers: open() creates an empty file for a new
 	 * one, so asking the disk again would turn "create" into "modify". A
@@ -261,6 +284,9 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			// approval flow which can properly gate the operation.
 			return
 		}
+
+		// The path may have grown since a truncated prefix of it opened the diff view.
+		await this.dropDiffSessionForOtherPath(task, relPath!)
 
 		// relPath is guaranteed non-null after hasPathStabilized
 		const fileExists = await this.existsForEdit(task, relPath!, absolutePath)

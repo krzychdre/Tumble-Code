@@ -575,6 +575,8 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		const signalOnlyExit = flagOptions.signalOnlyExit
 
 		extensionHostOptions.disableOutput = useJsonOutput
+		// Nobody answers an api_req_failed ask in an unattended print or JSON run.
+		extensionHostOptions.exitOnApiRequestFailed = extensionHostOptions.nonInteractive
 
 		const host = new ExtensionHost(extensionHostOptions)
 		let streamRequestId: string | undefined

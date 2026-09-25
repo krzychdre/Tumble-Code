@@ -753,6 +753,62 @@ describe("ExtensionHost", () => {
 		})
 	})
 
+	// Print and JSON mode (not the TUI) with auto-approval on: the core asks
+	// api_req_failed only for errors a retry cannot fix (401, 403, 404), and
+	// nobody is there to answer. The run must fail (exit code 1 through
+	// run.ts) instead of waiting forever.
+	describe("api_req_failed in an unattended run", () => {
+		const waitingEvent = (text: string) => ({
+			ask: "api_req_failed" as const,
+			stateInfo: {
+				state: AgentLoopState.IDLE,
+				isWaitingForInput: true,
+				isRunning: false,
+				isStreaming: false,
+				requiredAction: "retry_or_new_task" as const,
+				description: "API request failed",
+			},
+			message: { ts: 9, type: "ask" as const, ask: "api_req_failed" as const, text, partial: false },
+		})
+
+		it("rejects runTask with the provider's error when exitOnApiRequestFailed is set", async () => {
+			const host = createTestHost({ exitOnApiRequestFailed: true })
+			host.markWebviewReady()
+			const client = getPrivate(host, "client") as ExtensionClient
+
+			const taskPromise = host.runTask("test prompt")
+			setTimeout(() => client.getEmitter().emit("waitingForInput", waitingEvent("401 Incorrect API key")), 10)
+
+			await expect(taskPromise).rejects.toThrow("API request failed: 401 Incorrect API key")
+		}, 5000)
+
+		it("keeps waiting when the option is off (the TUI answers the ask itself)", async () => {
+			const host = createTestHost()
+			host.markWebviewReady()
+			const client = getPrivate(host, "client") as ExtensionClient
+
+			const taskPromise = host.runTask("test prompt")
+			setTimeout(() => client.getEmitter().emit("waitingForInput", waitingEvent("401 Incorrect API key")), 10)
+			setTimeout(
+				() =>
+					client.getEmitter().emit("taskCompleted", {
+						success: true,
+						stateInfo: {
+							state: AgentLoopState.IDLE,
+							isWaitingForInput: false,
+							isRunning: false,
+							isStreaming: false,
+							requiredAction: "start_task" as const,
+							description: "Task completed",
+						},
+					}),
+				30,
+			)
+
+			await expect(taskPromise).resolves.toBeUndefined()
+		})
+	})
+
 	describe("initial settings", () => {
 		it("should set mode from options", () => {
 			const host = createTestHost({ mode: "architect" })
