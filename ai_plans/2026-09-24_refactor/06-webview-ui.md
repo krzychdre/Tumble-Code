@@ -292,3 +292,12 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   (`c0daf0fe1`): `hooks/useZoomPan.ts` + `common/ZoomableModal.tsx`; zoom state lives in a child mounted only while
   open, so every open starts fresh; about 155 lines less. Found: Mermaid code-tab copy button shows no check-mark
   feedback; `onWheel` `preventDefault` is a no-op (React wheel listeners are passive), so the page may scroll too.
+- 2026-09-25 WEB-1 DONE #375 (`a1d319c99`, row-pipeline characterization, 10 cases over sanitized fixtures) and #376
+  (`8a933deb4`): `components/chat/rows/` (`parseToolCached` keyed by ts+text, 5,000 entries; `filterVisible`,
+  `markEverVisible`, `groupToolAsks` reusing unchanged batches, `withCondensingRow`, `computeRowMeta` with a `byTs`
+  map ready for WEB-2a); ref mutation moved to an effect declared before the clearing effects; FileChangesPanel
+  uses the cache. Measured per token on real tasks: 93.7 to 0.34 ms (405 messages, 9.4 MB), 65.6 to 0.33 ms (783);
+  FileChangesPanel 32.8 to 0.05 ms; rows deep-equal on 12 real histories. Findings: ChatView is still not compiled
+  (ref read in the `visibleMessages` memo, then `handleSendMessage` memoization); FileChangesPanel clears expanded rows
+  on every token (comment says "on task change"); a row visible only on the task's first render is forgotten by
+  the "ever visible" set (pinned, not fixed).
