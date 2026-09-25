@@ -21,6 +21,25 @@ vitest.mock("@roo-code/telemetry", () => ({
 	TelemetryService: { instance: { captureException: vitest.fn() } },
 }))
 
+// Tests run without loaded translations (t returns the key). Codex builds its error texts
+// with t, and it recognizes its own texts by their words, so the English texts are needed
+// to pin what users see.
+vitest.mock("../../../i18n", async (importOriginal) => {
+	const original = await importOriginal<typeof import("../../../i18n")>()
+	const english: Record<string, any> = { common: (await import("../../../i18n/locales/en/common.json")).default }
+	return {
+		...original,
+		t: (key: string, options: Record<string, unknown> = {}) => {
+			const [namespace, path] = key.split(":")
+			const template = path.split(".").reduce((node: any, part) => node?.[part], english[namespace])
+			if (typeof template !== "string") {
+				return (options.defaultValue as string | undefined) ?? key
+			}
+			return template.replace(/\{\{(\w+)\}\}/g, (_match, name) => String(options[name]))
+		},
+	}
+})
+
 import type { Anthropic } from "@anthropic-ai/sdk"
 import type OpenAI from "openai"
 
@@ -113,6 +132,8 @@ function nativeHandler(options: Partial<ApiHandlerOptions> = {}) {
 function codexHandler(options: Partial<ApiHandlerOptions> = {}) {
 	vitest.spyOn(openAiCodexOAuthManager, "getAccessToken").mockResolvedValue("test-token")
 	vitest.spyOn(openAiCodexOAuthManager, "getAccountId").mockResolvedValue("acct_test")
+	// A 401 makes Codex refresh the token once; here the refresh fails (signed out).
+	vitest.spyOn(openAiCodexOAuthManager, "forceRefreshAccessToken").mockResolvedValue(null)
 	return new OpenAiCodexHandler({ apiModelId: "gpt-5.4", ...options })
 }
 
@@ -596,6 +617,53 @@ async function requestBodyOf(
 	}
 	return create.mock.calls[0][0]
 }
+
+// What the fetch fallback reports when the server refuses the request or cannot be reached.
+describe("Responses API handlers: fallback HTTP errors", () => {
+	afterEach(() => {
+		vitest.restoreAllMocks()
+		vitest.unstubAllGlobals()
+	})
+
+	const answers: Array<[string, () => Promise<Response>]> = [
+		[
+			"400 with a detail field",
+			async () => new Response('{"detail":"Stream must be set to true"}', { status: 400 }),
+		],
+		["401 with an error message", async () => new Response('{"error":{"message":"bad key"}}', { status: 401 })],
+		["403 with a message field", async () => new Response('{"message":"no access"}', { status: 403 })],
+		["404 with plain text", async () => new Response("not found", { status: 404 })],
+		["429 with an empty body", async () => new Response("", { status: 429 })],
+		["502 with JSON without a message", async () => new Response('{"code":1}', { status: 502 })],
+		["418 (no dedicated text)", async () => new Response("teapot", { status: 418 })],
+		["a 200 without a body", async () => new Response(null, { status: 200 })],
+		[
+			"a network failure",
+			async () => {
+				throw new TypeError("fetch failed")
+			},
+		],
+	]
+
+	it.each(answers)("%s", async (_name, answer) => {
+		const outcomes: Record<string, Outcome> = {}
+		for (const [name, handler, sdkFailure] of [
+			["native", nativeHandler(), "missing"],
+			["codex", codexHandler(), "error"],
+		] as const) {
+			Reflect.set(
+				handler,
+				"client",
+				sdkFailure === "missing"
+					? {}
+					: { responses: { create: vitest.fn().mockRejectedValue(new Error("SDK unavailable")) } },
+			)
+			vitest.stubGlobal("fetch", vitest.fn().mockImplementation(answer))
+			outcomes[name] = await drain(handler)
+		}
+		expect(outcomes).toMatchSnapshot()
+	})
+})
 
 describe("Responses API handlers: request bodies", () => {
 	afterEach(() => {

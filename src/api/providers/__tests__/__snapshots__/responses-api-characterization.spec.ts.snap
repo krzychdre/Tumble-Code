@@ -1,5 +1,172 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`Responses API handlers: fallback HTTP errors > 400 with a detail field 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Invalid request to Codex API. Please check your input parameters. - Stream must be set to true",
+    "responseId": undefined,
+    "status": 400,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Invalid request to Responses API. Please check your input parameters. - {"detail":"Stream must be set to true"}",
+    "responseId": undefined,
+    "status": 400,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > 401 with an error message 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Not authenticated with OpenAI Codex. Please sign in using the OpenAI Codex OAuth flow.",
+    "responseId": undefined,
+    "status": 401,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Responses API: Authentication failed. Please check your OpenAI API key. - bad key",
+    "responseId": undefined,
+    "status": 401,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > 403 with a message field 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Codex API: Access denied. Your ChatGPT subscription may not include Codex access. - no access",
+    "responseId": undefined,
+    "status": 403,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Responses API: Access denied. Your API key may not have access to this endpoint. - no access",
+    "responseId": undefined,
+    "status": 403,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > 404 with plain text 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Codex API endpoint not found. - not found",
+    "responseId": undefined,
+    "status": 404,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Responses API endpoint not found. The endpoint may not be available yet or requires a different configuration. - not found",
+    "responseId": undefined,
+    "status": 404,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > 418 (no dedicated text) 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Codex API error (418) - teapot",
+    "responseId": undefined,
+    "status": 418,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Responses API error (418) - teapot",
+    "responseId": undefined,
+    "status": 418,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > 429 with an empty body 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Codex API: Rate limit exceeded. Please try again later.",
+    "responseId": undefined,
+    "status": 429,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Responses API: Rate limit exceeded. Please try again later.",
+    "responseId": undefined,
+    "status": 429,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > 502 with JSON without a message 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Codex API: OpenAI Codex service error. Please try again later. - {"code":1}",
+    "responseId": undefined,
+    "status": 502,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Responses API: OpenAI service error. Please try again later. - {"code":1}",
+    "responseId": undefined,
+    "status": 502,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > a 200 without a body 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Codex API error: No response body",
+    "responseId": undefined,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Responses API error: No response body",
+    "responseId": undefined,
+  },
+}
+`;
+
+exports[`Responses API handlers: fallback HTTP errors > a network failure 1`] = `
+{
+  "codex": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Codex API: fetch failed",
+    "responseId": undefined,
+  },
+  "native": {
+    "chunks": [],
+    "encryptedContent": undefined,
+    "error": "Failed to connect to Responses API: fetch failed",
+    "responseId": undefined,
+  },
+}
+`;
+
 exports[`Responses API handlers: replayed event fixtures > #10719 argument deltas without any identity 1`] = `
 {
   "codex": {
@@ -1104,7 +1271,7 @@ exports[`Responses API handlers: replayed event fixtures > error event 1`] = `
       },
     ],
     "encryptedContent": undefined,
-    "error": "errors.openAiCodex.connectionFailed",
+    "error": "Error processing response stream: Codex API error: The server had an error",
     "responseId": undefined,
   },
   "native": {
