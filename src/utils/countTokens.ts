@@ -6,7 +6,7 @@ import { tiktoken } from "./tiktoken"
 
 let pool: workerpool.Pool | null | undefined = undefined
 
-// workerpool (9.x, src/Pool.js exec) throws this synchronously when the task
+// workerpool (10.x, src/Pool.js exec) throws this synchronously when the task
 // queue is full. It is back-pressure from a burst of calls, not a broken
 // worker: the pool itself is healthy and drains on its own.
 const QUEUE_FULL_MESSAGE = /^Max queue size of \d+ reached$/
