@@ -221,6 +221,16 @@ daily (smoke-test scope): local servers (LM Studio, Ollama, llama.cpp), OpenAI /
 later phases stay there: `web-tree-sitter` (SVC-15), `i18next` (DEP-8), webview rendering libraries (WEB-2), `ink`
 (CLI-9).
 
+**Status (2026-09-25):** `@google/genai` 1.29.1 to 2.24.0 DONE in #315. The 2.0 breaking changes touch only the
+Interactions API (unused). A fake-`fetch` comparison of both versions gave identical URLs, headers (except the SDK
+version), bodies, chunks, thought parts and signatures, usage and `ApiError` status; no snapshot changed. Types:
+`thinkingLevel` is an enum in 2.x (types fixed in `transform/reasoning.ts`, one cast in `gemini.ts`; the wire
+value stays lowercase). 2.x checks the abort signal before each attempt (1.x sent the request even after an early
+Stop: the red test). SDK retries stay off (no `retryOptions`). New `gemini-wire-characterization.spec` (10) runs
+the real SDK with only `fetch` faked. `google-auth-library` 11 is blocked: from v10 `getRequestHeaders()` returns
+a `Headers` object (spreading it gives `{}`), so vertex-sdk 0.7 would drop Authorization (silent 401); vertex-sdk
+0.19 and genai 2.24 both require ^10, and 11 only adds the Node 22 floor. The Anthropic branch takes it to ^10.
+
 | Package                                                                                                            | Locked                     | Latest                    | Notes                                                                                                                        |
 | ------------------------------------------------------------------------------------------------------------------ | -------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `@anthropic-ai/sdk`                                                                                                | 0.37.0                     | 0.128.0                   | 70 non-test files import it, most for message types; do after API-2 (one stream loop)                                        |
