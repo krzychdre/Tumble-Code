@@ -489,7 +489,6 @@
 	"scripts": {
 		"lint": "eslint . --ext=ts --max-warnings=0",
 		"check-types": "node ../scripts/check-unused-locals.mjs api",
-		"pretest": "turbo run bundle --cwd ..",
 		"test": "vitest run",
 		"format": "prettier --write .",
 		"bundle": "node esbuild.mjs",
