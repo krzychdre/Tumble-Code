@@ -7,7 +7,3 @@ export function getCallbackUrl(provider: string, uriScheme?: string) {
 export function getOpenRouterAuthUrl(uriScheme?: string) {
 	return `https://openrouter.ai/auth?callback_url=${getCallbackUrl("openrouter", uriScheme)}`
 }
-
-export function getRequestyAuthUrl(uriScheme?: string) {
-	return `https://app.requesty.ai/oauth/authorize?callback_url=${getCallbackUrl("requesty", uriScheme)}`
-}
