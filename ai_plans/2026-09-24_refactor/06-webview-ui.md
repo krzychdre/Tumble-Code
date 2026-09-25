@@ -224,3 +224,14 @@ outside code being moved; the "ever visible" LRU semantics in `visibleMessages`.
 
 WEB-Q (1 to 8), WEB-1, WEB-2a, WEB-4 (1, 2), WEB-3, WEB-6, WEB-5, WEB-2b, WEB-7, WEB-8, WEB-9, WEB-10, WEB-11,
 WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost.
+
+## Status
+
+- 2026-09-25 WEB-Q5 (DEF-C24): already done in #232 (`abdb67a19`).
+- 2026-09-25 WEB-Q4 DONE #354 (`e012971b5`): 40 dead context setters removed (the 35 listed plus
+  `setListApiConfigMeta` (kept local), `setShowAnnouncement`, `setExperimentEnabled`, `setTelemetrySetting`,
+  `setCustomSupportPrompts`; grep hits were local `useState`s or props); `theme` state and `utils/textMateToHljs.ts`
+  removed; the no-op `prevCloudIsAuthenticated` effect removed; the 5 shadow `useState`s and 11 `as any` casts gone
+  (defaults moved into the initial state). The `setFollowupAutoApproveTimeoutMs` shadow bug was unreachable (no
+  caller). 4 characterization tests added; 44 of 44 in the touched specs. Follow-ups: the host still posts `theme`
+  (`ClineProvider.ts:961`, now ignored); `marketplaceInstalledMetadata` stays a separate state (WEB-4 step 2).
