@@ -1,6 +1,6 @@
-// npx vitest run shared/__tests__/array.spec.ts
+// npx vitest run src/utils/__tests__/array.spec.ts
 
-import { findLast, findLastIndex } from "../array"
+import { findLast, findLastIndex } from "../array.js"
 
 describe("findLastIndex", () => {
 	it("returns the index of the last element that matches", () => {
@@ -36,7 +36,7 @@ describe("findLastIndex", () => {
 			["y", 1, array],
 			["x", 0, array],
 		])
-		expect(calls[0][2]).toBe(array)
+		expect(calls[0]![2]).toBe(array)
 	})
 })
 
