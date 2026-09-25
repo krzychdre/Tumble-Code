@@ -94,9 +94,16 @@ function geminiSdkError(status: number): Error {
 	return new GoogleApiError({ message: `upstream says ${status}`, status })
 }
 
-/** The Mistral SDK reports the status as `statusCode`. */
+/**
+ * The Mistral SDK reports the status as `statusCode`. SDK 2.x takes the HTTP
+ * metadata as one object (1.x took the response and the body positionally).
+ */
 function mistralSdkError(status: number): Error {
-	return new MistralSDKError(`upstream says ${status}`, new Response("", { status }), "")
+	return new MistralSDKError(`upstream says ${status}`, {
+		response: new Response("", { status }),
+		request: new Request("https://api.mistral.ai/v1/chat/completions"),
+		body: "",
+	})
 }
 
 /** The ollama package's ResponseError (not exported) carries the status as `status_code`. */

@@ -276,6 +276,29 @@ describe("MistralHandler against the real @mistralai/mistralai client (wire char
 		])
 	})
 
+	// SDK 2.x passes content chunk types it does not know through as
+	// `{ type: "UNKNOWN", raw }` (1.x rejected them in its response schema);
+	// the handler only reads "thinking" and "text", so they are skipped.
+	it("skips content chunk types the SDK does not know", async () => {
+		const original = streamChunks[1].choices[0].delta.content
+		streamChunks[1].choices[0].delta.content = [
+			{ type: "brand_new_chunk", foo: 1 } as any,
+			{ type: "text", text: "Reading " },
+		]
+		try {
+			const handler = new MistralHandler(options)
+
+			const chunks = await collect(handler.createMessage("sys", history, metadata()))
+
+			expect(chunks.filter((chunk) => chunk.type === "text")).toEqual([
+				{ type: "text", text: "Reading " },
+				{ type: "text", text: "it now." },
+			])
+		} finally {
+			streamChunks[1].choices[0].delta.content = original
+		}
+	})
+
 	it("sends the same non-streaming request for completePrompt and keeps only the text parts", async () => {
 		const handler = new MistralHandler({ mistralApiKey: "test-key", apiModelId: "codestral-latest" })
 
