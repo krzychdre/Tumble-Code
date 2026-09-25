@@ -9,12 +9,10 @@ import path from "path"
 
 const srcRoot = path.resolve(__dirname, "../..")
 
-// Still on their own listener until their refactors land (WEB-2b for ChatRow,
-// WEB-8 for ChatView); remove an entry when its file moves to the bus.
+// Still on its own listener until its refactor lands (WEB-8 for ChatView);
+// remove an entry when its file moves to the bus.
 const allowed = new Set(
-	["utils/extensionBus.ts", "components/chat/ChatRow.tsx", "components/chat/ChatView.tsx"].map((file) =>
-		path.join(srcRoot, file),
-	),
+	["utils/extensionBus.ts", "components/chat/ChatView.tsx"].map((file) => path.join(srcRoot, file)),
 )
 
 const listenerPattern = /addEventListener\(\s*["'`]message["'`]|useEvent\(\s*["'`]message["'`]/
