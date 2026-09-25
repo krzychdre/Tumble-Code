@@ -602,7 +602,8 @@ const history: Anthropic.Messages.MessageParam[] = [
 	{ role: "assistant", content: "It exports one function." },
 ]
 
-// The xAI converter cannot read the standalone reasoning item (see the last test).
+// The xAI request leaves the standalone reasoning item out (see the last test), so the
+// xAI snapshots are taken from the history without it.
 const historyWithoutReasoningItem = history.filter((message) => (message as any).type !== "reasoning")
 
 async function requestBodyOf(
@@ -756,11 +757,14 @@ describe("Responses API handlers: request bodies", () => {
 		expect(await requestBodyOf(xaiHandler(), { taskId: "task-1" }, historyWithoutReasoningItem)).toMatchSnapshot()
 	})
 
-	// Today's behavior, pinned as found (not fixed here): the task history sends an OpenAI
-	// encrypted reasoning item as a standalone `{ type: "reasoning" }` entry, for example
-	// after a task switched from an OpenAI Native or Codex mode to an xAI mode, and the xAI
-	// converter treats it as a user message without content.
-	it("xai: a standalone reasoning item in the history fails the request", async () => {
-		await expect(requestBodyOf(xaiHandler())).rejects.toThrow("message.content is not iterable")
+	// DEF-C46: the task history can hold an OpenAI encrypted reasoning item as a standalone
+	// `{ type: "reasoning" }` entry, for example after a task switched from an OpenAI Native or
+	// Codex mode to an xAI mode. The ciphertext is OpenAI's, xAI cannot decrypt it, so the xAI
+	// request leaves it out and is otherwise the same request as without it (it used to fail
+	// with "message.content is not iterable").
+	it("xai: a standalone reasoning item in the history is left out of the request", async () => {
+		const body = await requestBodyOf(xaiHandler())
+		expect(body).toEqual(await requestBodyOf(xaiHandler(), undefined, historyWithoutReasoningItem))
+		expect(JSON.stringify(body)).not.toContain("enc_prev")
 	})
 })
