@@ -41,9 +41,14 @@ describe("copyPdfWorker", () => {
 		expect(pdfjsVersionOf(copied)).toBe(pdfjsVersion)
 	})
 
+	// copyWasms copies every WASM the extension ships (tiktoken, 35 tree-sitter
+	// grammars, esbuild-wasm, the pdf.js worker: about 75 MB). On the Windows CI
+	// runner, where all packages start their tests at once, this whole spec
+	// file took 0.2 to 1.9 s in most runs, but this test alone once took 6.5 s,
+	// past vitest's 5 s default.
 	it("is part of copyWasms, which the release and the nightly build both run", () => {
 		copyWasms(path.dirname(srcNodeModules), distDir)
 
 		expect(fs.existsSync(path.join(distDir, "pdf.worker.mjs"))).toBe(true)
-	})
+	}, 60_000)
 })
