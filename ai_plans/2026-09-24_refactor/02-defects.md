@@ -439,3 +439,10 @@ where their files are disjoint; the coordinator merges in order.
     task's own retry loop.
   - DEF-C45, #303 (`13acf44b2`): OpenRouter stream and `completePrompt` errors now set `.status` from an integer
     HTTP `code` (100 to 599); texts and telemetry unchanged.
+- **New finding from API-13 (2026-09-25), reproduced and pinned by a test, not fixed:**
+  - **DEF-C46:** xAI fails with `TypeError: message.content is not iterable` when the history holds a standalone
+    encrypted reasoning item (`{type: "reasoning", encrypted_content}`), which
+    `ApiRequestBuilder.buildCleanConversationHistory` creates from an OpenAI Native or Codex turn. A task that
+    switches from an OpenAI mode to an xAI mode fails. Pinned by "xai: a standalone reasoning item in the history
+    fails the request"; the fix belongs in `transform/responses-api-input.ts` (per-protocol converter, "do not
+    touch" list: needs a deliberate DEF branch).

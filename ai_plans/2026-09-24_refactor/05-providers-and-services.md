@@ -184,6 +184,22 @@ output including the bugs. **Existing:** `openai.spec` (77), `deepseek` (36), `l
 `lite-llm` (29), `base-openai-compatible` (28), `zai` (56), `tag-matcher` (18), `extract-reasoning` (9),
 `TaskStreamProcessor.*` (16). **Size** L, medium risk. After API-1 and API-3.
 
+**Status (2026-09-25):** DONE in #304 (`092090dbf`), #305 (`77ac4c187`) and #307 (`45e4f6c64`), a stack merged in
+order (coordinator retargeted the upper PRs to main first and rebased each with `--onto`; provider and transform
+specs green after each rebase: 1,987 and 2,410 tests). `transform/chat-completions-stream.ts` exports
+`streamChatCompletion(stream, {thinkTags, reasoning: "reasoning_content" | "openrouter" | "none", mapUsage,
+onChunk, onReasoningDetails})` (always keeps the last usage block; `onChunk` carries the MiniMax-style
+`base_resp` check, OpenRouter in-stream errors, LM Studio local token count); each of the 8 loops is one
+`yield*` call (7 files 2,876 to 2,375 lines). `openAiUsageChunk` in `utils/completion-usage.ts` shares the
+one-shot parser. Bugs confirmed on main by golden SSE tests and fixed on purpose: qwen-code leaked split `<think>`
+blocks as text and dropped leading characters (a resend guard from the 2025 port); LiteLLM and both OpenAI paths
+crashed on a non-array `tool_calls` and sent no finish reason; LM Studio dropped `reasoning_content`; OpenRouter
+yielded tool calls before same-chunk text; usage chunks for OpenAI compatible, DeepSeek and Qwen Code lacked
+`totalCost` (condensing reported $0), o-series and Qwen missed cache reads. Deviation: cost stays in the chunks
+(condensing and BackgroundModelHandler read it from there), computed by one shared normalizer. Open: LM Studio
+counts output tokens over `content` only; the Moonshot legacy `cached_tokens` wrapper remains.
+
+
 ### API-5 Cancellation contract in the request metadata
 
 **Evidence:** `ApiHandlerCreateMessageMetadata` has no signal (`api/index.ts:57-102`); anthropic,
@@ -207,6 +223,19 @@ and #10719 through both handlers and pin identical output; a codex test for GPT-
 **Existing:** `openai-native` (51), `openai-native-usage` (27), `openai-native-tools` (9), `openai-codex` (14),
 `openai-codex-native-tool-calls` (8), `xai` (15), `responses-api-stream` (28), `responses-api-input` (14).
 **Size** L, medium-high risk.
+
+**Status (2026-09-25):** DONE in #306 (`6da233a4c`) and #308 (`68cae5824`, xAI), rebased and merged in order.
+`providers/responses-api/core.ts` (`ResponsesApiCore`, 769 lines) and `request.ts` (182) with hooks for error
+texts (English in native, translated in codex), pricing (native service tiers, codex 0), the SDK call and the
+fallback request (codex OAuth token and account header); codex keeps its 401 refresh retry via
+`core.sawSdkEvent`. openai-native 1,563 to 416 lines, openai-codex 1,190 to 297; `transform/responses-api-stream.ts`
+deleted (its cases moved to `responses-api/__tests__/core.spec.ts`). Tests first: 23 recorded event sequences
+(including #11621 and #10719) through five paths and request-body snapshots; related specs 343 to 439. Drift
+resolved: codex reads `cache_write_tokens` (GPT-5.6); `tool_call_partial` arguments always strings; codex SSE no
+longer turns status events into answer text; native SSE no longer shows some text twice; native reads the error
+`detail`. xAI now streams tool calls as partials, shows end-only text and refusals, counts cache writes; request
+bytes unchanged. Finding: DEF-C46 in `02-defects.md`.
+
 
 ### API-18 Bedrock split (lowest priority)
 
