@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import type React from "react"
 
 export const MIN_ZOOM = 0.5
@@ -21,13 +21,35 @@ export function useZoomPan() {
 	}, [])
 
 	const handleWheel = useCallback(
-		(e: React.WheelEvent) => {
+		(e: Pick<WheelEvent, "deltaY" | "preventDefault" | "stopPropagation">) => {
 			e.preventDefault()
 			e.stopPropagation()
 			// Negative deltaY means scrolling up (zoom in), positive means scrolling down (zoom out).
 			adjustZoom(e.deltaY > 0 ? -WHEEL_ZOOM_STEP : WHEEL_ZOOM_STEP)
 		},
 		[adjustZoom],
+	)
+
+	/**
+	 * Ref for the element that zooms on the wheel. React registers onWheel as
+	 * a passive listener, where preventDefault is ignored and the page behind
+	 * the modal scrolls along, so this attaches a native listener with
+	 * passive: false instead. React calls the ref with null when the element
+	 * goes away or the ref is removed, which detaches the listener.
+	 */
+	const detachWheelListener = useRef<(() => void) | null>(null)
+	const wheelAreaRef = useCallback(
+		(element: HTMLElement | null) => {
+			detachWheelListener.current?.()
+			detachWheelListener.current = null
+			if (!element) {
+				return
+			}
+			const listener = (e: WheelEvent) => handleWheel(e)
+			element.addEventListener("wheel", listener, { passive: false })
+			detachWheelListener.current = () => element.removeEventListener("wheel", listener)
+		},
+		[handleWheel],
 	)
 
 	const stopDragging = useCallback(() => setIsDragging(false), [])
@@ -55,5 +77,5 @@ export function useZoomPan() {
 		onMouseLeave: stopDragging,
 	}
 
-	return { zoomLevel, adjustZoom, handleWheel, panLayerProps }
+	return { zoomLevel, adjustZoom, handleWheel, wheelAreaRef, panLayerProps }
 }

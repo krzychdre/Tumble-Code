@@ -46,7 +46,7 @@ function ZoomableModalContent({
 	children,
 }: Omit<ZoomableModalProps, "isOpen">) {
 	const { t } = useAppTranslation()
-	const { zoomLevel, adjustZoom, handleWheel, panLayerProps } = useZoomPan()
+	const { zoomLevel, adjustZoom, wheelAreaRef, panLayerProps } = useZoomPan()
 
 	return (
 		<>
@@ -61,7 +61,7 @@ function ZoomableModalContent({
 			</div>
 			<div
 				className="flex-1 p-4 pb-[60px] overflow-auto flex items-center justify-center"
-				onWheel={zoomable ? handleWheel : undefined}>
+				ref={zoomable ? wheelAreaRef : undefined}>
 				{zoomable ? (
 					<>
 						<div {...panLayerProps}>{children}</div>
