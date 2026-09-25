@@ -106,10 +106,11 @@ function applyTlsVerificationOverride(config: ProxyConfig): void {
 	// debug proxy, and restored on disable/deactivate (see restoreTlsVerificationOverride).
 	//
 	// A scoped per-https.Agent `rejectUnauthorized:false` is INFEASIBLE here because
-	// global-agent v3.0.0 reads NODE_TLS_REJECT_UNAUTHORIZED directly inside
-	// Agent.addRequest (node_modules/.pnpm/global-agent@3.0.0/.../dist/classes/Agent.js)
-	// and exposes no per-agent TLS option in createGlobalProxyAgent's config
-	// (only environmentVariableNamespace/forceGlobalAgent/socketConnectionTimeout).
+	// global-agent (4.x) reads NODE_TLS_REJECT_UNAUTHORIZED inside Agent.addRequest
+	// (Agent.getRejectUnauthorized in dist/classes/Agent.js) when the request sets no
+	// rejectUnauthorized itself, and exposes no per-agent rejectUnauthorized option in
+	// createGlobalProxyAgent's config (only environmentVariableNamespace, forceGlobalAgent,
+	// socketConnectionTimeout, ca and logger).
 	// Per global-agent's own comment, this indirection exists because clients such
 	// as `got` pre-configure rejectUnauthorized, making a per-request global override
 	// impossible. The undici/fetch path (configureUndiciProxy) IS scoped via
