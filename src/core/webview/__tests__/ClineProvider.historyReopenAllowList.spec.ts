@@ -67,7 +67,7 @@ vi.mock("../../config/ProviderSettingsManager")
 vi.mock("../../config/CustomModesManager")
 vi.mock("../../../utils/path", () => ({ getWorkspacePath: vi.fn().mockReturnValue("/test/workspace") }))
 vi.mock("@roo-code/telemetry", () => ({
-	TelemetryService: { instance: { setProvider: vi.fn(), captureTaskCreated: vi.fn() } },
+	TelemetryService: { instance: { setProvider: vi.fn(), capture: vi.fn() } },
 }))
 vi.mock("@roo-code/cloud", () => ({
 	CloudService: { hasInstance: vi.fn().mockReturnValue(false), instance: { isAuthenticated: vi.fn() } },

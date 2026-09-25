@@ -16,6 +16,7 @@
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
+import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiHandler, type SingleCompletionHandler } from "../../api"
@@ -67,7 +68,8 @@ export function makeSideQuery(handler: ApiHandler, taskId?: string): SideQuery |
 		// only showing up on the inference server's own counters.
 		if (TelemetryService.hasInstance()) {
 			const usage = result.usage
-			TelemetryService.instance.captureLlmCompletion(taskId, {
+			TelemetryService.instance.capture(TelemetryEventName.LLM_COMPLETION, {
+				...(taskId && { taskId }),
 				inputTokens: usage?.inputTokens ?? 0,
 				outputTokens: usage?.outputTokens ?? 0,
 				cacheReadTokens: usage?.cacheReadTokens ?? 0,

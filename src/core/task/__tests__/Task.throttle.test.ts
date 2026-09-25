@@ -26,8 +26,7 @@ vi.mock("../../../api", () => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureTaskCreated: vi.fn(),
-			captureTaskRestarted: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

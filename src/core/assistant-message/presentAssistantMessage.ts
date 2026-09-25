@@ -139,7 +139,10 @@ export async function presentAssistantMessage(cline: Task) {
 
 			if (!mcpBlock.partial) {
 				cline.recordToolUsage("use_mcp_tool") // Record as use_mcp_tool for analytics
-				TelemetryService.instance.captureToolUsage(cline.taskId, "use_mcp_tool")
+				TelemetryService.instance.capture(TelemetryEventName.TOOL_USED, {
+					taskId: cline.taskId,
+					tool: "use_mcp_tool",
+				})
 
 				// Prepare the tool-result spill policy before the tool runs: MCP
 				// servers are a classic source of multi-hundred-KB payloads.
@@ -357,7 +360,10 @@ export async function presentAssistantMessage(cline: Task) {
 				const isCustomTool = stateExperiments?.customTools && customToolRegistry.has(block.name)
 				const recordName = isCustomTool ? "custom_tool" : block.name
 				cline.recordToolUsage(recordName)
-				TelemetryService.instance.captureToolUsage(cline.taskId, recordName)
+				TelemetryService.instance.capture(TelemetryEventName.TOOL_USED, {
+					taskId: cline.taskId,
+					tool: recordName,
+				})
 
 				// Track legacy format usage for read_file tool (for migration monitoring)
 				if (block.name === "read_file" && block.usedLegacyFormat) {
@@ -465,7 +471,9 @@ export async function presentAssistantMessage(cline: Task) {
 					}
 
 					// Track tool repetition in telemetry via PostHog exception tracking and event.
-					TelemetryService.instance.captureConsecutiveMistakeError(cline.taskId)
+					TelemetryService.instance.capture(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {
+						taskId: cline.taskId,
+					})
 					TelemetryService.instance.captureException(
 						new ConsecutiveMistakeError(
 							`Tool repetition limit reached for ${block.name}`,

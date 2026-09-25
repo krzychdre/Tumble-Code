@@ -14,8 +14,7 @@ vi.mock("@roo-code/telemetry", () => ({
 		// has to answer `hasInstance` as well.
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: {
-			captureContextCondensed: vi.fn(),
-			captureLlmCompletion: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

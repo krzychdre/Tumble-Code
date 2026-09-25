@@ -24,8 +24,7 @@ vi.mock("axios")
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureMarketplaceItemInstalled: vi.fn(),
-			captureMarketplaceItemRemoved: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

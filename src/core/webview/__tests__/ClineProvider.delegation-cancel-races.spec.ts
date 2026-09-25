@@ -62,7 +62,7 @@ vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
 			setProvider: vi.fn(),
-			captureTaskCreated: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

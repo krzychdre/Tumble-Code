@@ -10,6 +10,7 @@ import {
 	RooCodeEventName,
 	getModelId,
 	readCliRuntimeEnv,
+	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -170,7 +171,7 @@ export class ModeProfileBinding {
 		const task = this.host.getCurrentTask()
 
 		if (task) {
-			TelemetryService.instance.captureModeSwitch(task.taskId, newMode)
+			TelemetryService.instance.capture(TelemetryEventName.MODE_SWITCH, { taskId: task.taskId, newMode })
 			task.emit(RooCodeEventName.TaskModeSwitched, task.taskId, newMode)
 
 			try {

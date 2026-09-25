@@ -25,6 +25,7 @@ import {
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	getModelId,
 	type ProviderName,
+	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -835,9 +836,9 @@ export class ProviderSettingsManager {
 			return envelope.data
 		} catch (error) {
 			if (error instanceof ZodError) {
-				TelemetryService.instance.captureSchemaValidationError({
+				TelemetryService.instance.capture(TelemetryEventName.SCHEMA_VALIDATION_ERROR, {
 					schemaName: "ProviderProfiles",
-					error,
+					error: error.format(),
 				})
 			}
 

@@ -8,6 +8,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ModelInfo } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@roo-code/types"
 
 import { BaseProvider } from "../../../api/providers/base-provider"
 import { ArtifactStore } from "../../artifacts/ArtifactStore"
@@ -22,11 +23,7 @@ vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: {
-			captureContextCondensed: vi.fn(),
-			captureContextMicrocompacted: vi.fn(),
-			captureContextPruned: vi.fn(),
-			captureSlidingWindowTruncation: vi.fn(),
-			captureLlmCompletion: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))
@@ -207,12 +204,16 @@ describe("prune before condense", () => {
 			artifactStore: store,
 		})
 
-		expect(TelemetryService.instance.captureContextPruned).toHaveBeenCalledWith(taskId, {
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.CONTEXT_PRUNED, {
+			taskId,
 			prunedCount: result.prunedCount,
 			bytesSaved: result.prunedBytesSaved,
 		})
 		// No summary was written, so the condense counters must not move.
-		expect(TelemetryService.instance.captureContextCondensed).not.toHaveBeenCalled()
+		expect(TelemetryService.instance.capture).not.toHaveBeenCalledWith(
+			TelemetryEventName.CONTEXT_CONDENSED,
+			expect.anything(),
+		)
 	})
 
 	it("spares the newest results right after a condense, when the boundary is a sentinel", async () => {

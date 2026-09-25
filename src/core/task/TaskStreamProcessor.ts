@@ -11,6 +11,7 @@ import {
 	getModelId,
 	getApiProtocol,
 	isRetiredProvider,
+	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -724,7 +725,10 @@ export class TaskStreamProcessor {
 			)
 			this.access.assistantMessageSavedToHistory = true
 
-			TelemetryService.instance.captureConversationMessage(this.access.taskId, "assistant")
+			TelemetryService.instance.capture(TelemetryEventName.TASK_CONVERSATION_MESSAGE, {
+				taskId: this.access.taskId,
+				source: "assistant",
+			})
 		}
 	}
 
@@ -917,7 +921,8 @@ export class TaskStreamProcessor {
 									tokens.cacheRead,
 								)
 
-					TelemetryService.instance.captureLlmCompletion(access.taskId, {
+					TelemetryService.instance.capture(TelemetryEventName.LLM_COMPLETION, {
+						...(access.taskId && { taskId: access.taskId }),
 						inputTokens: costResult.totalInputTokens,
 						outputTokens: costResult.totalOutputTokens,
 						cacheWriteTokens: tokens.cacheWrite,

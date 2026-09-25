@@ -7,7 +7,7 @@ import * as path from "path"
 import * as vscode from "vscode"
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import type { GlobalState, ProviderSettings, ModelInfo } from "@roo-code/types"
+import { type GlobalState, type ProviderSettings, type ModelInfo, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Task } from "../Task"
@@ -2649,7 +2649,10 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			for (const msg of messages) {
 				if (!Array.isArray(msg.content)) continue
 				for (const block of msg.content) {
-					if (block.type === "tool_result" && JSON.stringify(block.content).includes("Old tool output cleared")) {
+					if (
+						block.type === "tool_result" &&
+						JSON.stringify(block.content).includes("Old tool output cleared")
+					) {
 						ids.push(block.tool_use_id)
 					}
 				}
@@ -2657,7 +2660,13 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			return ids
 		}
 
-		async function setUpRejectedTask({ contextTokens, rejections = 1 }: { contextTokens: number; rejections?: number }) {
+		async function setUpRejectedTask({
+			contextTokens,
+			rejections = 1,
+		}: {
+			contextTokens: number
+			rejections?: number
+		}) {
 			vi.spyOn(mockProvider, "getState").mockResolvedValue({
 				apiConfiguration: mockApiConfig,
 				autoApprovalEnabled: false,
@@ -2726,7 +2735,9 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			// out whole, but over the forced pass's 75% target, and a few old results are
 			// enough to get under it.
 			const { task, createMessage } = await setUpRejectedTask({ contextTokens: 78_000 })
-			const microcompacted = vi.spyOn(TelemetryService.instance, "captureContextMicrocompacted")
+			const capture = vi.spyOn(TelemetryService.instance, "capture")
+			const microcompactedCalls = () =>
+				capture.mock.calls.filter(([event]) => event === TelemetryEventName.CONTEXT_MICROCOMPACTED)
 
 			const iterator = task.attemptApiRequest(0)
 			await iterator.next()
@@ -2734,8 +2745,8 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			expect(createMessage).toHaveBeenCalledTimes(2)
 			// Guard: the forced pass (and only it, the regular pass stays under its
 			// thresholds) selected old results to clear.
-			expect(microcompacted).toHaveBeenCalledTimes(1)
-			expect(microcompacted.mock.calls[0][1].cleared).toBeGreaterThan(0)
+			expect(microcompactedCalls()).toHaveLength(1)
+			expect((microcompactedCalls()[0]![1] as { cleared: number }).cleared).toBeGreaterThan(0)
 			const rejected = createMessage.mock.calls[0][1] as any[]
 			const retry = createMessage.mock.calls[1][1] as any[]
 

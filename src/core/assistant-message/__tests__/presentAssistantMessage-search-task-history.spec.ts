@@ -16,8 +16,7 @@ vi.mock("../../tools/SearchTaskHistoryTool", () => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureToolUsage: vi.fn(),
-			captureConsecutiveMistakeError: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

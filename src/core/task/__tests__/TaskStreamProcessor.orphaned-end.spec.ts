@@ -18,8 +18,7 @@ import type { ToolName } from "@roo-code/types"
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureLlmCompletion: vi.fn(),
-			captureConversationMessage: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

@@ -1,3 +1,4 @@
+import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import type { EmbeddingResponse, IEmbedder } from "./interfaces/embedder"
@@ -35,7 +36,7 @@ export function reportEmbeddingUsage(
 	if (!usage.promptTokens && !usage.totalTokens) {
 		return
 	}
-	TelemetryService.instance.captureEmbeddingUsage({
+	TelemetryService.instance.capture(TelemetryEventName.EMBEDDING_USAGE, {
 		promptTokens: usage.promptTokens ?? 0,
 		totalTokens: usage.totalTokens ?? 0,
 		apiProvider: embedder.embedderInfo?.name,

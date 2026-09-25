@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import delay from "delay"
 
 import type { CommandId } from "@roo-code/types"
+import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Package } from "../shared/package"
@@ -71,7 +72,7 @@ const getCommandsMap = ({
 			return
 		}
 
-		TelemetryService.instance.captureTitleButtonClicked("cloud")
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "cloud" })
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
 	},
@@ -82,7 +83,7 @@ const getCommandsMap = ({
 			return
 		}
 
-		TelemetryService.instance.captureTitleButtonClicked("plus")
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "plus" })
 
 		await visibleProvider.removeClineFromStack()
 		await visibleProvider.refreshWorkspace()
@@ -92,7 +93,7 @@ const getCommandsMap = ({
 		await visibleProvider.postMessageToWebview({ type: "action", action: "focusInput" })
 	},
 	popoutButtonClicked: () => {
-		TelemetryService.instance.captureTitleButtonClicked("popout")
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "popout" })
 
 		return openClineInNewTab({ context, outputChannel })
 	},
@@ -104,7 +105,7 @@ const getCommandsMap = ({
 			return
 		}
 
-		TelemetryService.instance.captureTitleButtonClicked("settings")
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "settings" })
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
 		// Also explicitly post the visibility message to trigger scroll reliably
@@ -117,7 +118,7 @@ const getCommandsMap = ({
 			return
 		}
 
-		TelemetryService.instance.captureTitleButtonClicked("history")
+		TelemetryService.instance.capture(TelemetryEventName.TITLE_BUTTON_CLICKED, { button: "history" })
 
 		visibleProvider.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
 	},

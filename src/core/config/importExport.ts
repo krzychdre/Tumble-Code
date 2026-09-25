@@ -16,6 +16,7 @@ import {
 	type PersistedProviderProfile,
 	type ProviderSettingsWithId,
 	SECRET_STATE_KEYS,
+	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -268,7 +269,10 @@ export async function importSettingsFromPath(
 
 		if (e instanceof ZodError) {
 			error = e.issues.map((issue) => `[${issue.path.join(".")}]: ${issue.message}`).join("\n")
-			TelemetryService.instance.captureSchemaValidationError({ schemaName: "ImportExport", error: e })
+			TelemetryService.instance.capture(TelemetryEventName.SCHEMA_VALIDATION_ERROR, {
+				schemaName: "ImportExport",
+				error: e.format(),
+			})
 		} else if (e instanceof Error) {
 			error = e.message
 		}

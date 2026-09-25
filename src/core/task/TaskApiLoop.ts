@@ -455,7 +455,9 @@ export class TaskApiLoop {
 			this.access.consecutiveMistakeCount >= this.access.consecutiveMistakeLimit
 		) {
 			// Track consecutive mistake errors in telemetry
-			TelemetryService.instance.captureConsecutiveMistakeError(this.access.taskId)
+			TelemetryService.instance.capture(TelemetryEventName.CONSECUTIVE_MISTAKE_ERROR, {
+				taskId: this.access.taskId,
+			})
 			TelemetryService.instance.captureException(
 				new ConsecutiveMistakeError(
 					`Task reached consecutive mistake limit (${this.access.consecutiveMistakeLimit})`,
@@ -552,7 +554,10 @@ export class TaskApiLoop {
 		// Add user message to history if needed
 		if (shouldAddUserMessage) {
 			await this.access.history.addToApiConversationHistory({ role: "user", content: finalUserContent })
-			TelemetryService.instance.captureConversationMessage(this.access.taskId, "user")
+			TelemetryService.instance.capture(TelemetryEventName.TASK_CONVERSATION_MESSAGE, {
+				taskId: this.access.taskId,
+				source: "user",
+			})
 		}
 
 		// Update API request message

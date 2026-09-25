@@ -1,4 +1,4 @@
-import { RooCodeEventName, TodoItem } from "@roo-code/types"
+import { RooCodeEventName, TelemetryEventName, TodoItem } from "@roo-code/types"
 
 import type { ToolUse } from "../../../shared/tools"
 
@@ -13,13 +13,13 @@ vi.mock("../../prompts/responses", () => ({
 	},
 }))
 
-const { mockCaptureTaskCompleted } = vi.hoisted(() => ({
-	mockCaptureTaskCompleted: vi.fn(),
+const { mockCapture } = vi.hoisted(() => ({
+	mockCapture: vi.fn(),
 }))
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureTaskCompleted: mockCaptureTaskCompleted,
+			capture: mockCapture,
 		},
 	},
 }))
@@ -54,7 +54,7 @@ describe("attemptCompletionTool", () => {
 	let mockGetConfiguration: ReturnType<typeof vi.fn>
 
 	beforeEach(() => {
-		mockCaptureTaskCompleted.mockReset()
+		mockCapture.mockReset()
 		mockPushToolResult = vi.fn()
 		mockAskApproval = vi.fn()
 		mockHandleError = vi.fn()
@@ -508,7 +508,7 @@ describe("attemptCompletionTool", () => {
 				await attemptCompletionTool.handle(mockTask as Task, block, callbacks)
 
 				expect(mockHandleError).not.toHaveBeenCalled()
-				expect(mockCaptureTaskCompleted).toHaveBeenCalledWith("task_1")
+				expect(mockCapture).toHaveBeenCalledWith(TelemetryEventName.TASK_COMPLETED, { taskId: "task_1" })
 				expect(mockTask.emit).toHaveBeenCalledWith(
 					RooCodeEventName.TaskCompleted,
 					"task_1",
@@ -639,7 +639,7 @@ describe("attemptCompletionTool", () => {
 				await attemptCompletionTool.handle(mockTask as Task, block, callbacks)
 
 				expect(mockHandleError).not.toHaveBeenCalled()
-				expect(mockCaptureTaskCompleted).not.toHaveBeenCalled()
+				expect(mockCapture).not.toHaveBeenCalledWith(TelemetryEventName.TASK_COMPLETED, expect.anything())
 				expect(mockTask.emit).not.toHaveBeenCalledWith(
 					RooCodeEventName.TaskCompleted,
 					expect.anything(),

@@ -1,6 +1,7 @@
 // Settings writes, VS Code settings, terminal profiles, sounds, telemetry and small UI actions.
 
 import * as vscode from "vscode"
+import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import type { Language, TelemetrySetting, AudioType, RooCodeSettings, ExperimentId } from "@roo-code/types"
 import { changeLanguage, t } from "../../../i18n"
@@ -270,7 +271,10 @@ export const settingsHandlers: MessageHandlerMap = {
 
 		// If turning telemetry OFF, fire event BEFORE disabling
 		if (wasPreviouslyOptedIn && !isOptedIn && TelemetryService.hasInstance()) {
-			TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, telemetrySetting)
+			TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+				previousSetting,
+				newSetting: telemetrySetting,
+			})
 		}
 
 		// Update the telemetry state
@@ -282,7 +286,10 @@ export const settingsHandlers: MessageHandlerMap = {
 
 		// If turning telemetry ON, fire event AFTER enabling
 		if (!wasPreviouslyOptedIn && isOptedIn && TelemetryService.hasInstance()) {
-			TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, telemetrySetting)
+			TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+				previousSetting,
+				newSetting: telemetrySetting,
+			})
 		}
 
 		await provider.postStateToWebview()
@@ -306,7 +313,7 @@ export const settingsHandlers: MessageHandlerMap = {
 		if (message.tab) {
 			// Capture tab shown event for all switchTab messages (which are user-initiated).
 			if (TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTabShown(message.tab)
+				TelemetryService.instance.capture(TelemetryEventName.TAB_SHOWN, { tab: message.tab })
 			}
 
 			await provider.postMessageToWebview({

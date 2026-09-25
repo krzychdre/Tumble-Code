@@ -4,6 +4,7 @@ import * as path from "path"
 import * as os from "os"
 import * as fs from "fs/promises"
 import * as vscode from "vscode"
+import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { t } from "../../../i18n"
 import { openFile } from "../../../integrations/misc/open-file"
@@ -42,10 +43,10 @@ export const customModesHandlers: MessageHandlerMap = {
 				if (TelemetryService.hasInstance()) {
 					if (isNewMode) {
 						// This is a new custom mode
-						TelemetryService.instance.captureCustomModeCreated(
-							message.modeConfig.slug,
-							message.modeConfig.name,
-						)
+						TelemetryService.instance.capture(TelemetryEventName.CUSTOM_MODE_CREATED, {
+							modeSlug: message.modeConfig.slug,
+							modeName: message.modeConfig.name,
+						})
 					} else {
 						// Determine which setting was changed by comparing objects
 						const existingMode = existingModes.find((mode) => mode.slug === message.modeConfig?.slug)
@@ -58,7 +59,9 @@ export const customModesHandlers: MessageHandlerMap = {
 							: []
 
 						if (changedSettings.length > 0) {
-							TelemetryService.instance.captureModeSettingChanged(changedSettings[0])
+							TelemetryService.instance.capture(TelemetryEventName.MODE_SETTINGS_CHANGED, {
+								settingName: changedSettings[0],
+							})
 						}
 					}
 				}

@@ -12,7 +12,7 @@ vi.mock("safe-stable-stringify", () => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureTaskCompleted: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))

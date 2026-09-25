@@ -8,6 +8,7 @@ import {
 	type TaskEvents,
 	RooCodeEventName,
 	getMaxMcpToolsThreshold,
+	TelemetryEventName,
 } from "@roo-code/types"
 
 import { TelemetryService } from "@roo-code/telemetry"
@@ -645,10 +646,10 @@ export class TaskLifecycle {
 		if (isAbandoned && isLeavingCompletedTask && !isUserCancelled && !this.access.isBackground) {
 			try {
 				if (TelemetryService.hasInstance()) {
-					TelemetryService.instance.captureTaskCompleted(
-						this.access.taskId,
-						this.completedTaskTelemetryProperties(),
-					)
+					TelemetryService.instance.capture(TelemetryEventName.TASK_COMPLETED, {
+						...this.completedTaskTelemetryProperties(),
+						taskId: this.access.taskId,
+					})
 				}
 			} catch (error) {
 				console.error("Error capturing task completed telemetry:", error)

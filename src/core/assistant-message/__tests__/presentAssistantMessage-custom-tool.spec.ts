@@ -26,13 +26,13 @@ vi.mock("@roo-code/core", () => ({
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureToolUsage: vi.fn(),
-			captureConsecutiveMistakeError: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))
 
 import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@roo-code/types"
 import { customToolRegistry } from "@roo-code/core"
 
 describe("presentAssistantMessage - Custom Tool Recording", () => {
@@ -176,7 +176,10 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 
 			// Should record as "custom_tool", not "my_custom_tool"
 			expect(mockTask.recordToolUsage).toHaveBeenCalledWith("custom_tool")
-			expect(TelemetryService.instance.captureToolUsage).toHaveBeenCalledWith(mockTask.taskId, "custom_tool")
+			expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TOOL_USED, {
+				taskId: mockTask.taskId,
+				tool: "custom_tool",
+			})
 		})
 	})
 
@@ -229,7 +232,10 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 
 			// Should record as "read_file", not "custom_tool"
 			expect(mockTask.recordToolUsage).toHaveBeenCalledWith("read_file")
-			expect(TelemetryService.instance.captureToolUsage).toHaveBeenCalledWith(mockTask.taskId, "read_file")
+			expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TOOL_USED, {
+				taskId: mockTask.taskId,
+				tool: "read_file",
+			})
 		})
 
 		it("should record MCP tool usage as 'use_mcp_tool' (not custom_tool)", async () => {
@@ -271,7 +277,10 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 
 			// Should record as "use_mcp_tool", not "custom_tool"
 			expect(mockTask.recordToolUsage).toHaveBeenCalledWith("use_mcp_tool")
-			expect(TelemetryService.instance.captureToolUsage).toHaveBeenCalledWith(mockTask.taskId, "use_mcp_tool")
+			expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.TOOL_USED, {
+				taskId: mockTask.taskId,
+				tool: "use_mcp_tool",
+			})
 		})
 	})
 
@@ -413,7 +422,10 @@ describe("presentAssistantMessage - Custom Tool Recording", () => {
 
 			// Should not record usage for partial blocks
 			expect(mockTask.recordToolUsage).not.toHaveBeenCalled()
-			expect(TelemetryService.instance.captureToolUsage).not.toHaveBeenCalled()
+			expect(TelemetryService.instance.capture).not.toHaveBeenCalledWith(
+				TelemetryEventName.TOOL_USED,
+				expect.anything(),
+			)
 		})
 	})
 })

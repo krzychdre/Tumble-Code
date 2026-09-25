@@ -1,6 +1,7 @@
 // cd src && npx vitest run core/condense/__tests__/condense-prune-telemetry.spec.ts
 
 import { TelemetryService } from "@roo-code/telemetry"
+import { TelemetryEventName } from "@roo-code/types"
 
 import type { ApiHandler } from "../../../api"
 import type { ApiMessage } from "../../task-persistence/apiMessages"
@@ -10,8 +11,7 @@ vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		hasInstance: vi.fn().mockReturnValue(true),
 		instance: {
-			captureContextCondensed: vi.fn(),
-			captureLlmCompletion: vi.fn(),
+			capture: vi.fn(),
 		},
 	},
 }))
@@ -64,7 +64,10 @@ describe("condense telemetry: prune fields", () => {
 			pruneStats: { prunedCount: 3, bytesSaved: 123_456 },
 		})
 
-		expect(TelemetryService.instance.captureContextCondensed).toHaveBeenCalledWith(taskId, true, false, {
+		expect(TelemetryService.instance.capture).toHaveBeenCalledWith(TelemetryEventName.CONTEXT_CONDENSED, {
+			taskId,
+			isAutomaticTrigger: true,
+			usedCustomPrompt: false,
 			prunedCount: 3,
 			bytesSaved: 123_456,
 			// The summary DID run: pruning alone did not relieve the pressure.
@@ -81,15 +84,15 @@ describe("condense telemetry: prune fields", () => {
 			isAutomaticTrigger: false,
 		})
 
-		expect(TelemetryService.instance.captureContextCondensed).toHaveBeenCalledWith(taskId, false, false)
-
-		// Exactly three positional arguments: not even an `undefined` fourth one.
-		// A regression that always passes a zeroed `pruneStats` (or an empty
-		// object) would widen every historical dashboard row, so the arity is
-		// part of the contract and is asserted directly rather than left to the
-		// matcher above.
-		const calls = vi.mocked(TelemetryService.instance.captureContextCondensed).mock.calls
+		// Exactly the three historical properties, not even an `undefined` prune
+		// field. A regression that always spreads a zeroed `pruneStats` (or an
+		// empty object) would widen every historical dashboard row, so the key
+		// list is part of the contract and is asserted directly.
+		const calls = vi
+			.mocked(TelemetryService.instance.capture)
+			.mock.calls.filter(([event]) => event === TelemetryEventName.CONTEXT_CONDENSED)
 		expect(calls).toHaveLength(1)
-		expect(calls[0]).toHaveLength(3)
+		expect(calls[0]![1]).toStrictEqual({ taskId, isAutomaticTrigger: false, usedCustomPrompt: false })
+		expect(Object.keys(calls[0]![1]!)).toEqual(["taskId", "isAutomaticTrigger", "usedCustomPrompt"])
 	})
 })

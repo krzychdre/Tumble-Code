@@ -241,7 +241,7 @@ vi.mock("@roo-code/telemetry", () => ({
 				trackEvent: vi.fn(),
 				trackError: vi.fn(),
 				setProvider: vi.fn(),
-				captureModeSwitch: vi.fn(),
+				capture: vi.fn(),
 			}
 		},
 	},

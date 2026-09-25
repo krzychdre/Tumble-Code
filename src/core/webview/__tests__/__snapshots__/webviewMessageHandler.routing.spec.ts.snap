@@ -3165,8 +3165,11 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > switchTab 1
 {
   "events": [
     [
-      "Telemetry.captureTabShown",
-      "settings",
+      "Telemetry.capture",
+      "Tab Shown",
+      {
+        "tab": "settings",
+      },
     ],
     [
       "provider.postMessageToWebview",
@@ -3228,9 +3231,12 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > telemetrySe
       "telemetrySetting",
     ],
     [
-      "Telemetry.captureTelemetrySettingsChanged",
-      "enabled",
-      "disabled",
+      "Telemetry.capture",
+      "Telemetry Settings Changed",
+      {
+        "newSetting": "disabled",
+        "previousSetting": "enabled",
+      },
     ],
     [
       "contextProxy.setValue",
@@ -3405,8 +3411,11 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateCusto
       "provider.postStateToWebview",
     ],
     [
-      "Telemetry.captureModeSettingChanged",
-      "name",
+      "Telemetry.capture",
+      "Mode Setting Changed",
+      {
+        "settingName": "name",
+      },
     ],
   ],
   "outcome": "resolved",
@@ -3454,9 +3463,12 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > updateCusto
       "provider.postStateToWebview",
     ],
     [
-      "Telemetry.captureCustomModeCreated",
-      "m2",
-      "M2",
+      "Telemetry.capture",
+      "Custom Mode Created",
+      {
+        "modeName": "M2",
+        "modeSlug": "m2",
+      },
     ],
   ],
   "outcome": "resolved",
@@ -3515,8 +3527,11 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > updatePromp
       },
     ],
     [
-      "Telemetry.captureModeSettingChanged",
-      "roleDefinition",
+      "Telemetry.capture",
+      "Mode Setting Changed",
+      {
+        "settingName": "roleDefinition",
+      },
     ],
   ],
   "outcome": "resolved",

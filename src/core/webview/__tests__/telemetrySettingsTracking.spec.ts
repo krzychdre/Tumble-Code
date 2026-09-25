@@ -4,7 +4,7 @@ import { TelemetryEventName, type TelemetrySetting } from "@roo-code/types"
 
 describe("Telemetry Settings Tracking", () => {
 	let mockTelemetryService: {
-		captureTelemetrySettingsChanged: ReturnType<typeof vi.fn>
+		capture: ReturnType<typeof vi.fn>
 		updateTelemetryState: ReturnType<typeof vi.fn>
 		hasInstance: ReturnType<typeof vi.fn>
 	}
@@ -15,7 +15,7 @@ describe("Telemetry Settings Tracking", () => {
 
 		// Create mock service
 		mockTelemetryService = {
-			captureTelemetrySettingsChanged: vi.fn(),
+			capture: vi.fn(),
 			updateTelemetryState: vi.fn(),
 			hasInstance: vi.fn().mockReturnValue(true),
 		}
@@ -36,15 +36,21 @@ describe("Telemetry Settings Tracking", () => {
 
 			// If turning telemetry OFF, fire event BEFORE disabling
 			if (wasPreviouslyOptedIn && !isOptedIn && TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, newSetting)
+				TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+					previousSetting,
+					newSetting,
+				})
 			}
 
 			// Update the telemetry state
 			TelemetryService.instance.updateTelemetryState(isOptedIn)
 
 			// Verify the event was captured before updateTelemetryState
-			expect(mockTelemetryService.captureTelemetrySettingsChanged).toHaveBeenCalledWith("enabled", "disabled")
-			expect(mockTelemetryService.captureTelemetrySettingsChanged).toHaveBeenCalledBefore(
+			expect(mockTelemetryService.capture).toHaveBeenCalledWith(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+				previousSetting: "enabled",
+				newSetting: "disabled",
+			})
+			expect(mockTelemetryService.capture).toHaveBeenCalledBefore(
 				mockTelemetryService.updateTelemetryState as any,
 			)
 			expect(mockTelemetryService.updateTelemetryState).toHaveBeenCalledWith(false)
@@ -58,12 +64,18 @@ describe("Telemetry Settings Tracking", () => {
 			const wasPreviouslyOptedIn = previousSetting !== "disabled"
 
 			if (wasPreviouslyOptedIn && !isOptedIn && TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, newSetting)
+				TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+					previousSetting,
+					newSetting,
+				})
 			}
 
 			TelemetryService.instance.updateTelemetryState(isOptedIn)
 
-			expect(mockTelemetryService.captureTelemetrySettingsChanged).toHaveBeenCalledWith("unset", "disabled")
+			expect(mockTelemetryService.capture).toHaveBeenCalledWith(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+				previousSetting: "unset",
+				newSetting: "disabled",
+			})
 		})
 	})
 
@@ -80,14 +92,20 @@ describe("Telemetry Settings Tracking", () => {
 
 			// If turning telemetry ON, fire event AFTER enabling
 			if (!wasPreviouslyOptedIn && isOptedIn && TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, newSetting)
+				TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+					previousSetting,
+					newSetting,
+				})
 			}
 
 			// Verify the event was captured after updateTelemetryState
 			expect(mockTelemetryService.updateTelemetryState).toHaveBeenCalledWith(true)
-			expect(mockTelemetryService.captureTelemetrySettingsChanged).toHaveBeenCalledWith("disabled", "enabled")
+			expect(mockTelemetryService.capture).toHaveBeenCalledWith(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+				previousSetting: "disabled",
+				newSetting: "enabled",
+			})
 			expect(mockTelemetryService.updateTelemetryState).toHaveBeenCalledBefore(
-				mockTelemetryService.captureTelemetrySettingsChanged as any,
+				mockTelemetryService.capture as any,
 			)
 		})
 
@@ -100,17 +118,23 @@ describe("Telemetry Settings Tracking", () => {
 
 			// Neither condition should be met
 			if (wasPreviouslyOptedIn && !isOptedIn && TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, newSetting)
+				TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+					previousSetting,
+					newSetting,
+				})
 			}
 
 			TelemetryService.instance.updateTelemetryState(isOptedIn)
 
 			if (!wasPreviouslyOptedIn && isOptedIn && TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, newSetting)
+				TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+					previousSetting,
+					newSetting,
+				})
 			}
 
 			// Should not fire any telemetry events
-			expect(mockTelemetryService.captureTelemetrySettingsChanged).not.toHaveBeenCalled()
+			expect(mockTelemetryService.capture).not.toHaveBeenCalled()
 			expect(mockTelemetryService.updateTelemetryState).toHaveBeenCalledWith(true)
 		})
 
@@ -123,28 +147,37 @@ describe("Telemetry Settings Tracking", () => {
 
 			// For unset -> enabled, both are opted in, so no event should fire
 			if (wasPreviouslyOptedIn && !isOptedIn && TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, newSetting)
+				TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+					previousSetting,
+					newSetting,
+				})
 			}
 
 			TelemetryService.instance.updateTelemetryState(isOptedIn)
 
 			if (!wasPreviouslyOptedIn && isOptedIn && TelemetryService.hasInstance()) {
-				TelemetryService.instance.captureTelemetrySettingsChanged(previousSetting, newSetting)
+				TelemetryService.instance.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+					previousSetting,
+					newSetting,
+				})
 			}
 
 			// unset is treated as opted-in, so no event should fire
-			expect(mockTelemetryService.captureTelemetrySettingsChanged).not.toHaveBeenCalled()
+			expect(mockTelemetryService.capture).not.toHaveBeenCalled()
 		})
 	})
 
-	describe("TelemetryService.captureTelemetrySettingsChanged", () => {
-		it("should call captureEvent with correct parameters", () => {
+	describe("TelemetryService.capture", () => {
+		it("should call captureEvent with the event and its properties unchanged", () => {
 			// Create a real instance to test the method
 			const mockCaptureEvent = vi.fn()
 			const service = new (TelemetryService as any)([])
 			service.captureEvent = mockCaptureEvent
 
-			service.captureTelemetrySettingsChanged("enabled", "disabled")
+			service.capture(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
+				previousSetting: "enabled",
+				newSetting: "disabled",
+			})
 
 			expect(mockCaptureEvent).toHaveBeenCalledWith(TelemetryEventName.TELEMETRY_SETTINGS_CHANGED, {
 				previousSetting: "enabled",
