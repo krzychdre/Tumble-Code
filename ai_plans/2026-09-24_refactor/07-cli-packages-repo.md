@@ -254,3 +254,17 @@ packaging (align nightly to them); the security pins in the root overrides; the 
 `TelemetryEventName` enum; the flat `providerSettingsSchema` (partial profiles are valid); the public shape of
 `ExtensionMessage` and `WebviewMessage` until PKG-6 and CLI-5 are done; `packages/vscode-shim`; `apps/vscode-nightly`,
 `scripts/agent-bench` and the root `locales/` READMEs (active).
+
+**Follow-up (2026-09-25): red main after Phase 3, fixed in #275 (merge c283b0a30).** Main's Code QA was red for
+four reasons, none of them flaky tests. (1) `scripts/check-unused-locals.mjs` (API-Q, #265) spawned
+`src/node_modules/.bin/tsc`, which exists only by accident on a developer machine because `src` does not declare
+`typescript`; it now resolves `typescript/bin/tsc` like Node does and runs it with `process.execPath`. (2) The
+`@vscode/ripgrep` postinstall got HTTP 403 from GitHub (anonymous rate limit); the shared `setup-node-pnpm` action
+now passes `GITHUB_TOKEN` to the install step, and `code-qa.yml` got `permissions: contents: read`. (3) Windows:
+the CLI test lockfile reader split on `\n` only (CRLF checkout); tsup treats array entries as globs, so a
+backslash path never matched (the probe is now passed as an object entry); and `src` and `webview-ui` each ran a
+nested `turbo run bundle` in `pretest`, so two bundles copied `README.md` at once (EBUSY). Both `pretest` scripts
+are gone; `test` depends on `tumble-code#bundle` in the packages' `turbo.json`. Consequence for developers:
+`pnpm test` inside `src` or `webview-ui` no longer bundles first (run `pnpm bundle`, or test from the root).
+(4) `ChatView.clear-approval-buttons` was flaky: jsdom delivers `postMessage` via `setTimeout(0)`, after `act()`
+returned; the spec now dispatches the message event inside `act()`.
