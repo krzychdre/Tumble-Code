@@ -10,6 +10,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
 import { OpenRouterHandler } from "../openrouter"
+import { isRetryableApiError } from "../../apiErrors"
 import { ApiHandlerOptions } from "../../../shared/api"
 import { Package } from "../../../shared/package"
 
@@ -731,6 +732,59 @@ describe("OpenRouterHandler", () => {
 					status: 429,
 				}),
 			)
+		})
+	})
+
+	// DEF-C45: an error that OpenRouter sends inside the stream (or in place of a completion)
+	// carries its HTTP status in `code`. The retry loop, the chat error row and the
+	// background-model fallback read `.status`, so the thrown error must carry it there.
+	describe("errors sent in the stream keep their HTTP status", () => {
+		function streamYielding(chunk: unknown) {
+			const mockCreate = vitest.fn().mockResolvedValue({
+				async *[Symbol.asyncIterator]() {
+					yield chunk
+				},
+			})
+			;(OpenAI as any).prototype.chat = { completions: { create: mockCreate } } as any
+		}
+
+		it.each([429, 502, 503])("createMessage: code %i becomes status, message unchanged", async (code) => {
+			const handler = new OpenRouterHandler(mockOptions)
+			streamYielding({ error: { message: "Upstream failed", code } })
+
+			const error: any = await handler
+				.createMessage("test", [])
+				.next()
+				.catch((e) => e)
+
+			expect(error).toBeInstanceOf(Error)
+			expect(error.message).toBe(`OpenRouter API Error ${code}: Upstream failed`)
+			expect(error.status).toBe(code)
+			expect(isRetryableApiError(error)).toBe(true)
+		})
+
+		it("completePrompt: code 429 in place of a completion becomes status", async () => {
+			const handler = new OpenRouterHandler(mockOptions)
+			const mockCreate = vitest.fn().mockResolvedValue({ error: { message: "Rate limit exceeded", code: 429 } })
+			;(OpenAI as any).prototype.chat = { completions: { create: mockCreate } } as any
+
+			const error: any = await handler.completePrompt("test prompt").catch((e) => e)
+
+			expect(error.message).toBe("OpenRouter API Error 429: Rate limit exceeded")
+			expect(error.status).toBe(429)
+		})
+
+		it("a code that is not an HTTP status sets no status", async () => {
+			const handler = new OpenRouterHandler(mockOptions)
+			streamYielding({ error: { message: "Something broke", code: "server_error" } })
+
+			const error: any = await handler
+				.createMessage("test", [])
+				.next()
+				.catch((e) => e)
+
+			expect(error.message).toBe("OpenRouter API Error server_error: Something broke")
+			expect(error.status).toBeUndefined()
 		})
 	})
 })

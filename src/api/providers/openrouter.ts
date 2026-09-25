@@ -66,7 +66,8 @@ const OpenRouterErrorResponseSchema = z.object({
 // Direct error object structure (for streaming errors passed directly)
 interface OpenRouterError {
 	message?: string
-	code?: number
+	/** Usually the HTTP status (429, 502, ...), sometimes a text code. */
+	code?: number | string
 	metadata?: { raw?: string }
 }
 
@@ -188,14 +189,30 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 		const parsedError = extractErrorFromMetadataRaw(rawString)
 		const rawErrorMessage = parsedError || error?.message || "Unknown error"
 
+		// Only an HTTP status counts as `status`: the retry loop, the chat error
+		// row and the background-model fallback read it from the thrown error.
+		const code = error?.code
+		const status =
+			typeof code === "number" && Number.isInteger(code) && code >= 100 && code <= 599 ? code : undefined
+
 		const apiError = Object.assign(
-			new ApiProviderError(rawErrorMessage, this.providerName, modelId, operation, error?.code),
+			new ApiProviderError(
+				rawErrorMessage,
+				this.providerName,
+				modelId,
+				operation,
+				typeof code === "number" ? code : undefined,
+			),
 			{ status: error?.code, error },
 		)
 
 		TelemetryService.instance.captureException(apiError)
 
-		throw new Error(`OpenRouter API Error ${error?.code}: ${rawErrorMessage}`)
+		const thrown = new Error(`OpenRouter API Error ${error?.code}: ${rawErrorMessage}`)
+		if (status !== undefined) {
+			;(thrown as Error & { status?: number }).status = status
+		}
+		throw thrown
 	}
 
 	override async *createMessage(
