@@ -10,6 +10,8 @@
 // (NativeToolCallParser.spec.ts, "per-task instance isolation"): two tasks
 // feed the same singleton alternately, and each must see only its own state.
 
+import * as path from "path"
+
 import { fileExistsAtPath } from "../../../utils/fs"
 import type { ToolUse } from "../../../shared/tools"
 import { TOOL_DESCRIPTORS, type DispatchableToolName } from "../toolDescriptors"
@@ -39,7 +41,9 @@ vi.mock("../../plan-review/planReviewPause", () => ({
 function makeTask(name: string): any {
 	return {
 		taskId: name,
-		cwd: `/work/${name}`,
+		// A native absolute path, like a real workspace: on Windows `path.resolve`
+		// adds the drive letter, and getReadablePath only relativizes paths under cwd.
+		cwd: path.resolve(`/work/${name}`),
 		consecutiveMistakeCount: 0,
 		consecutiveMistakeCountForEditFile: new Map<string, number>(),
 		didEditFile: false,
