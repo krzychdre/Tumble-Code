@@ -77,7 +77,9 @@ export const ModeSelector = ({
 		return modes.find((mode) => mode.slug === value) ?? modes.find((mode) => mode.slug === defaultModeSlug)
 	}, [modes, value])
 
-	// Notify parent when current mode is invalid so it can update its state
+	// Notify parent when current mode is invalid so it can update its state. A parent that does not
+	// memoize onChange re-runs this effect on every render; lastNotifiedInvalidModeRef keeps that to one
+	// notification per missing mode, so there is no loop.
 	React.useEffect(() => {
 		const isValidMode = modes.some((mode) => mode.slug === value)
 
@@ -95,8 +97,7 @@ export const ModeSelector = ({
 			lastNotifiedInvalidModeRef.current = value
 			onChange(fallbackMode.slug as Mode)
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- onChange omitted to prevent loops when parent doesn't memoize
-	}, [modes, value])
+	}, [modes, value, onChange])
 
 	// Memoize searchable items for fuzzy search with separate name and
 	// description search.
