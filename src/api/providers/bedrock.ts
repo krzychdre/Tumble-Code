@@ -47,6 +47,7 @@ import { normalizeToolSchema } from "../../utils/json-schema"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { getApiErrorStatus } from "../apiErrors"
 import { handleProviderError } from "./utils/error-handler"
+import { createRequestAbortController } from "./utils/request-abort"
 
 /************************************************************************************
  *
@@ -534,8 +535,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			...(useServiceTier && { service_tier: this.options.awsBedrockServiceTier }),
 		}
 
-		// Create AbortController with 10 minute timeout
-		const controller = new AbortController()
+		// Aborted after a 10 minute timeout, or by the task's signal (Stop closes the HTTP request)
+		const controller = createRequestAbortController(metadata?.signal)
 		let timeoutId: NodeJS.Timeout | undefined
 
 		try {

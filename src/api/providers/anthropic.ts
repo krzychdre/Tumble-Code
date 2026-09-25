@@ -151,7 +151,11 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 					requestParams as Anthropic.Messages.MessageCreateParamsStreaming,
 					// prompt caching: https://x.com/alexalbert__/status/1823751995901272068
 					// https://github.com/anthropics/anthropic-sdk-typescript?tab=readme-ov-file#default-headers
-					{ headers: { "anthropic-beta": [...betas, "prompt-caching-2024-07-31"].join(",") } },
+					{
+						headers: { "anthropic-beta": [...betas, "prompt-caching-2024-07-31"].join(",") },
+						// The task's signal: Stop closes the HTTP request.
+						signal: metadata?.signal,
+					},
 				)
 			} catch (error) {
 				TelemetryService.instance.captureException(
@@ -178,6 +182,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 				}
 				stream = (await this.client.messages.create(
 					requestParams as Anthropic.Messages.MessageCreateParamsStreaming,
+					{ signal: metadata?.signal },
 				)) as any
 			} catch (error) {
 				TelemetryService.instance.captureException(

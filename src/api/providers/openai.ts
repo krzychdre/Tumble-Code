@@ -22,6 +22,7 @@ import { DEFAULT_HEADERS } from "./constants"
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { handleProviderError } from "./utils/error-handler"
+import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 
 /**
@@ -74,7 +75,8 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 	protected options: ApiHandlerOptions
 	protected client: OpenAI | null = null
 	// Protected so subclasses that build their own request (DeepSeek) hand the SDK the signal
-	// that cancelRequest() aborts.
+	// that cancelRequest() aborts. Each request's controller is also tied to the task's signal
+	// (metadata.signal), see createRequestAbortController.
 	protected abortController?: AbortController
 	private readonly providerName = "OpenAI"
 
@@ -260,7 +262,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// when reasoning is enabled via settings
 			this.addGLMThinkingIfNeeded(requestOptions as GLMChatCompletionParams, modelId, modelInfo)
 
-			this.abortController = new AbortController()
+			this.abortController = createRequestAbortController(metadata?.signal)
 			let stream
 			try {
 				stream = await this.getClient().chat.completions.create(requestOptions, {
@@ -299,7 +301,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// when reasoning is enabled via settings
 			this.addGLMThinkingIfNeeded(requestOptions as unknown as GLMChatCompletionParams, modelId, modelInfo)
 
-			this.abortController = new AbortController()
+			this.abortController = createRequestAbortController(metadata?.signal)
 			let response
 			try {
 				response = await this.getClient().chat.completions.create(requestOptions, {
@@ -442,7 +444,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-			this.abortController = new AbortController()
+			this.abortController = createRequestAbortController(metadata?.signal)
 			let stream
 			try {
 				stream = await this.getClient().chat.completions.create(requestOptions, {
@@ -486,7 +488,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 			// This allows O3 models to limit response length when includeMaxTokens is enabled
 			this.addMaxTokensIfNeeded(requestOptions, modelInfo)
 
-			this.abortController = new AbortController()
+			this.abortController = createRequestAbortController(metadata?.signal)
 			let response
 			try {
 				response = await this.getClient().chat.completions.create(requestOptions, {

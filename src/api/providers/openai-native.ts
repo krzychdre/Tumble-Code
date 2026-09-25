@@ -144,6 +144,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			body: requestBody,
 			modelId: model.id,
 			info: model.info,
+			signal: metadata?.signal,
 			openSdkStream: (body, signal) =>
 				(this.client as any).responses.create(body, { signal, headers: requestHeaders }),
 			fallbackRequest: async () => ({

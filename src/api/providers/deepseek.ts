@@ -19,6 +19,7 @@ import { streamChatCompletion } from "../transform/chat-completions-stream"
 
 import { OpenAiHandler } from "./openai"
 import { handleProviderError } from "./utils/error-handler"
+import { createRequestAbortController } from "./utils/request-abort"
 import { openAiUsageChunk } from "./utils/completion-usage"
 import type { ApiHandlerCreateMessageMetadata } from "../index"
 
@@ -132,8 +133,9 @@ export class DeepSeekHandler extends OpenAiHandler {
 		// Check if base URL is Azure AI Inference (for DeepSeek via Azure)
 		const isAzureAiInference = this._isAzureAiInference(this.options.deepSeekBaseUrl)
 
-		// cancelRequest() (the Stop button) aborts this controller, which ends the HTTP request.
-		this.abortController = new AbortController()
+		// The task's signal (the Stop button) or cancelRequest() aborts this controller, which ends
+		// the HTTP request.
+		this.abortController = createRequestAbortController(metadata?.signal)
 
 		let stream
 		try {

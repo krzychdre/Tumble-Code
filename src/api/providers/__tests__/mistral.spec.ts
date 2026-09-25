@@ -129,6 +129,7 @@ describe("MistralHandler", () => {
 					tools: expect.any(Array),
 					toolChoice: "any",
 				}),
+				undefined,
 			)
 
 			expect(result.value).toBeDefined()
@@ -290,6 +291,7 @@ describe("MistralHandler", () => {
 					]),
 					toolChoice: "any",
 				}),
+				undefined,
 			)
 		})
 
@@ -307,6 +309,7 @@ describe("MistralHandler", () => {
 					tools: expect.any(Array),
 					toolChoice: "any",
 				}),
+				undefined,
 			)
 		})
 
@@ -450,6 +453,7 @@ describe("MistralHandler", () => {
 				expect.objectContaining({
 					toolChoice: "any",
 				}),
+				undefined,
 			)
 		})
 	})

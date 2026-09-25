@@ -1220,10 +1220,17 @@ export class TaskApiLoop {
 		const modelInfo = this.access.api.getModel().info
 		const { allTools, allowedFunctionNames } = await this.buildToolsArray(state, apiConfiguration, mode, modelInfo)
 
+		// One abort controller per request. Stop (TaskLifecycle.cancelCurrentRequest) aborts it;
+		// its signal goes to the provider in the metadata, so the abort closes the HTTP request
+		// itself and the server stops generating, instead of the loop only no longer reading.
+		this.access.currentRequestAbortController = new AbortController()
+		const abortSignal = this.access.currentRequestAbortController.signal
+
 		const metadata: ApiHandlerCreateMessageMetadata = {
 			mode: mode,
 			taskId: this.access.taskId,
 			suppressPreviousResponseId: this.access.skipPrevResponseIdOnce,
+			signal: abortSignal,
 			...(allTools.length > 0
 				? {
 						tools: allTools,
@@ -1234,9 +1241,6 @@ export class TaskApiLoop {
 				: {}),
 		}
 
-		// Create abort controller
-		this.access.currentRequestAbortController = new AbortController()
-		const abortSignal = this.access.currentRequestAbortController.signal
 		this.access.skipPrevResponseIdOnce = false
 
 		// Create API stream

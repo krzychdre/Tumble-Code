@@ -141,7 +141,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		// Make the request with retry on auth failure
 		for (let attempt = 0; attempt < 2; attempt++) {
 			try {
-				yield* this.executeRequest(requestBody, model, accessToken, metadata?.taskId)
+				yield* this.executeRequest(requestBody, model, accessToken, metadata)
 				return
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error)
@@ -171,13 +171,18 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		}
 	}
 
-	private executeRequest(requestBody: any, model: OpenAiCodexModel, accessToken: string, taskId?: string): ApiStream {
+	private executeRequest(
+		requestBody: any,
+		model: OpenAiCodexModel,
+		accessToken: string,
+		metadata?: ApiHandlerCreateMessageMetadata,
+	): ApiStream {
 		const codexHeaders = async (): Promise<Record<string, string>> => {
 			// ChatGPT account ID, needed for organization subscriptions
 			const accountId = await openAiCodexOAuthManager.getAccountId()
 			return {
 				originator: "roo-code",
-				session_id: taskId || this.sessionId,
+				session_id: metadata?.taskId || this.sessionId,
 				"User-Agent": responsesApiUserAgent(),
 				...(accountId ? { "ChatGPT-Account-Id": accountId } : {}),
 			}
@@ -187,6 +192,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 			body: requestBody,
 			modelId: model.id,
 			info: model.info,
+			signal: metadata?.signal,
 			openSdkStream: async (body, signal) => {
 				const headers = await codexHeaders()
 				// Tests inject a client; otherwise one is created per request. Authorization

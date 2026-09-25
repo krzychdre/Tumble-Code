@@ -103,6 +103,7 @@ describe("XAIHandler", () => {
 				store: false,
 				include: ["reasoning.encrypted_content"],
 			}),
+			{ signal: undefined },
 		)
 	})
 
@@ -232,6 +233,7 @@ describe("XAIHandler", () => {
 				tool_choice: "auto",
 				parallel_tool_calls: true,
 			}),
+			{ signal: undefined },
 		)
 	})
 
@@ -269,6 +271,7 @@ describe("XAIHandler", () => {
 					reasoning_effort: "high",
 				}),
 			}),
+			{ signal: undefined },
 		)
 	})
 

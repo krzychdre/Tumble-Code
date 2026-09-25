@@ -347,7 +347,12 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 			}
 		}
 
-		const params: GenerateContentParameters = { model, contents, config }
+		// The task's signal: Stop closes the HTTP request.
+		const params: GenerateContentParameters = {
+			model,
+			contents,
+			config: { ...config, ...(metadata?.signal ? { abortSignal: metadata.signal } : {}) },
+		}
 
 		try {
 			const result = await this.client.models.generateContentStream(params)

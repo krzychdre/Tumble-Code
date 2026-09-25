@@ -382,8 +382,16 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			...convertToVsCodeLmMessages(cleanedMessages),
 		]
 
-		// Initialize cancellation token for the request
-		this.currentRequestCancellation = new vscode.CancellationTokenSource()
+		// Initialize cancellation token for the request. VS Code LM takes a token, not a signal:
+		// the task's signal (Stop) cancels it, which ends the request.
+		const cancellation = new vscode.CancellationTokenSource()
+		this.currentRequestCancellation = cancellation
+		const taskSignal = metadata?.signal
+		const cancelOnTaskAbort = () => cancellation.cancel()
+		taskSignal?.addEventListener("abort", cancelOnTaskAbort, { once: true })
+		if (taskSignal?.aborted) {
+			cancellation.cancel()
+		}
 
 		// Calculate input tokens before starting the stream
 		const totalInputTokens: number = await this.calculateTotalInputTokens(vsCodeLmMessages)
@@ -401,7 +409,7 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 			const response: vscode.LanguageModelChatResponse = await client.sendRequest(
 				vsCodeLmMessages,
 				requestOptions,
-				this.currentRequestCancellation.token,
+				cancellation.token,
 			)
 
 			// Consume the stream and handle both text and tool call chunks
@@ -501,6 +509,8 @@ export class VsCodeLmHandler extends BaseProvider implements SingleCompletionHan
 				console.error("Roo Code <Language Model API>: Unknown stream error:", errorMessage)
 				throw new Error(`Roo Code <Language Model API>: Response stream error: ${errorMessage}`)
 			}
+		} finally {
+			taskSignal?.removeEventListener("abort", cancelOnTaskAbort)
 		}
 	}
 

@@ -148,6 +148,61 @@ function convertToOllamaMessages(anthropicMessages: Anthropic.Messages.MessagePa
 	return ollamaMessages
 }
 
+function abortError(): Error {
+	const error = new Error("Request was aborted.")
+	error.name = "AbortError"
+	return error
+}
+
+/**
+ * Waits for the ollama client's streamed answer, tied to the task's signal. The client takes
+ * no signal: its answer is an iterator with abort(), which closes the HTTP connection (the
+ * server stops generating). Aborting before the server answers (prompt processing) rejects at
+ * once, and the late answer is aborted the moment it arrives. `unlink` drops the listener
+ * once the stream is done.
+ */
+async function openAbortableStream<T extends { abort(): void }>(
+	request: Promise<T>,
+	signal: AbortSignal | undefined,
+): Promise<{ stream: T; unlink: () => void }> {
+	if (!signal) {
+		return { stream: await request, unlink: () => {} }
+	}
+
+	const stream = await new Promise<T>((resolve, reject) => {
+		const onAbort = () => {
+			reject(abortError())
+			request.then(
+				(late) => late.abort(),
+				() => {},
+			)
+		}
+		if (signal.aborted) {
+			onAbort()
+			return
+		}
+		signal.addEventListener("abort", onAbort, { once: true })
+		request.then(
+			(answer) => {
+				signal.removeEventListener("abort", onAbort)
+				resolve(answer)
+			},
+			(error) => {
+				signal.removeEventListener("abort", onAbort)
+				reject(error)
+			},
+		)
+	})
+
+	const abortStream = () => stream.abort()
+	signal.addEventListener("abort", abortStream, { once: true })
+	// The signal may have fired between the answer and this line.
+	if (signal.aborted) {
+		abortStream()
+	}
+	return { stream, unlink: () => signal.removeEventListener("abort", abortStream) }
+}
+
 export class NativeOllamaHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
 	private client: Ollama | undefined
@@ -276,14 +331,17 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 				chatOptions.num_ctx = this.options.ollamaNumCtx
 			}
 
-			// Create the actual API request promise
-			const stream = await client.chat({
-				model: modelId,
-				messages: ollamaMessages,
-				stream: true,
-				options: chatOptions,
-				tools: this.convertToolsToOllama(metadata?.tools),
-			})
+			// Create the actual API request promise, tied to the task's signal (Stop)
+			const { stream, unlink } = await openAbortableStream(
+				client.chat({
+					model: modelId,
+					messages: ollamaMessages,
+					stream: true,
+					options: chatOptions,
+					tools: this.convertToolsToOllama(metadata?.tools),
+				}),
+				metadata?.signal,
+			)
 
 			// Store stream reference so cancelRequest() can abort it
 			this.currentStream = stream as any
@@ -359,6 +417,7 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 				})
 			} finally {
 				this.currentStream = undefined
+				unlink()
 			}
 		} catch (error: any) {
 			// Enhance error reporting. The ollama package's ResponseError carries
