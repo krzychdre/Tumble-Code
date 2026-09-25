@@ -266,3 +266,9 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
 - 2026-09-25 wave 1 verification: full local run on main b1b93ba15 (`pnpm turbo run check-types lint test
   --continue --concurrency=3`): 38 of 38 tasks green; src 9,855 passed (37 skipped), webview 1,730, cli 1,075,
   types 451, vscode-shim 408, cloud 304, core 178, agent-interchange 114, telemetry 31, build 17; knip exit 0.
+- 2026-09-25 missing webview keys DONE #364 (`82bfe819c`): all upstream bugs, not the rebrand: `chat:autoApprove.selectAll`/
+  `selectNone` (#7894), `common:dismiss`/`dismissAndDontShowAgain` (#7850, hidden by a hard-coded test mock),
+  `settings:providers.refreshModels.missingConfig` (#3852), plus `openAiCodex.signInButton`/`signOutButton` (English
+  `defaultValue` in every locale) added in 18 locales; `common:docsLink.label` was a dead `t()` child of `<Trans>`
+  (removed); `didSearch` was a plural family (false alarm). New `find-unused-i18n-keys.mjs --missing` check with a
+  repo-wide node:test run in CI.
