@@ -123,7 +123,7 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 		}
 	})
 
-	it("keeps skipping writers for abandoned aborts (pre-existing behavior)", async () => {
+	it("keeps skipping writers for abandoned aborts of a task that is not at a completion ask", async () => {
 		const access = buildAccessStub()
 		const lifecycle = new TaskLifecycle(access)
 
@@ -131,11 +131,31 @@ describe("TaskLifecycle.abortTask — memory writers vs user cancel", () => {
 
 		expect(executeExtractMemories).not.toHaveBeenCalled()
 		expect(executeAutoDream).not.toHaveBeenCalled()
-		// Drain still runs for abandoned aborts — that path covers extension
-		// shutdown, where orphaning in-flight extraction is the concern.
+		expect(access.abandoned).toBe(true)
+	})
+
+	it("does not drain on an abandoned abort while the provider is alive (clear, history switch, new task)", async () => {
+		// The caller (clearTask, createTask, createTaskWithHistoryItem,
+		// delegation) awaits the abort before the UI moves on, so a drain here
+		// would freeze the chat for up to 60 s whenever a writer is in flight.
+		const access = buildAccessStub()
+		const lifecycle = new TaskLifecycle(access)
+
+		await lifecycle.abortTask(true)
+
+		expect(drainPendingExtraction).not.toHaveBeenCalled()
+		expect(drainPendingDreams).not.toHaveBeenCalled()
+	})
+
+	it("still drains on an abandoned abort while the provider is being disposed (shutdown)", async () => {
+		const access = buildAccessStub()
+		;(access.providerRef.deref() as unknown as { isDisposed: boolean }).isDisposed = true
+		const lifecycle = new TaskLifecycle(access)
+
+		await lifecycle.abortTask(true)
+
 		expect(drainPendingExtraction).toHaveBeenCalledTimes(1)
 		expect(drainPendingDreams).toHaveBeenCalledTimes(1)
-		expect(access.abandoned).toBe(true)
 	})
 })
 
