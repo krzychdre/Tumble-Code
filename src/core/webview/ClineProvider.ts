@@ -91,21 +91,13 @@ import { Task, type AutoApprovalOverride } from "../task/Task"
 import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from "../memory"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
-import type { ClineMessage, TodoItem } from "@roo-code/types"
-import {
-	readApiMessages,
-	saveApiMessages,
-	saveTaskMessages,
-	TaskHistoryStore,
-	type TaskHistoryStoreHandle,
-} from "../task-persistence"
-import { readTaskMessages } from "../task-persistence/taskMessages"
+import type { TodoItem } from "@roo-code/types"
+import { TaskHistoryStore, type TaskHistoryStoreHandle } from "../task-persistence"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
 import { SubagentRegistry } from "./SubagentRegistry"
 import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
-import { findLastNewTaskToolUse, formatSubtaskResult, hasToolResultFor } from "./delegationHistory"
-import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
+import { DelegationService } from "./DelegationService"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -171,9 +163,6 @@ export class ClineProvider
 	)
 	// Live memory-system activity counters ("recalling/writing memory…" badge).
 	private memoryActivityCounts = { recall: 0, write: 0 }
-	// Children whose delegated parent could not be proven detached on cancel.
-	// reopenParentFromDelegation() refuses to reopen a parent for any child here.
-	private cancelledDelegationChildIds = new Set<string>()
 	private codeIndexStatusSubscription?: vscode.Disposable
 	private codeIndexManager?: CodeIndexManager
 	private _workspaceTracker?: WorkspaceTracker // workSpaceTracker read-only for access outside this class
@@ -257,6 +246,9 @@ export class ClineProvider
 	/** Builds getState() and the webview state (CORE-R1). */
 	private readonly stateBuilder: ProviderStateBuilder
 
+	/** The parent/child delegation state machine (CORE-R2). */
+	private readonly delegation: DelegationService
+
 	public isViewLaunched = false
 	public settingsImportedAt?: number
 	public readonly latestAnnouncementId = "apr-2026-v3.53.0-community-handoff-gpt55-opus47" // v3.53.0 Community handoff, GPT-5.5, Claude Opus 4.7, checkpoint navigation
@@ -298,6 +290,29 @@ export class ClineProvider
 			getMdmCompliance: () => (this.mdmService?.requiresCloudAuth() ? this.checkMdmCompliance() : undefined),
 			latestAnnouncementId: this.latestAnnouncementId,
 			renderContext: this.renderContext,
+		})
+		// Closures, not `this`: they reach private members and pick up
+		// methods that tests replace on the instance after construction.
+		const isViewLaunched = () => this.isViewLaunched
+		this.delegation = new DelegationService({
+			get isViewLaunched() {
+				return isViewLaunched()
+			},
+			contextProxy,
+			taskHistoryOrigin: this.taskHistoryOrigin,
+			getTaskHistoryStore: () => this.getTaskHistoryStore(),
+			getHistoryItem: (id) => this.getHistoryItem(id),
+			updateTaskHistory: (item) => this.updateTaskHistory(item),
+			postMessageToWebview: (message) => this.postMessageToWebview(message),
+			log: (message) => this.log(message),
+			getCurrentTask: () => this.getCurrentTask(),
+			getCurrentTaskStack: () => this.getCurrentTaskStack(),
+			removeClineFromStack: (options) => this.removeClineFromStack(options),
+			createTask: (text, images, parentTask, options) => this.createTask(text, images, parentTask, options),
+			createTaskWithHistoryItem: (item, options) => this.createTaskWithHistoryItem(item, options),
+			handleModeSwitch: (mode) => this.handleModeSwitch(mode),
+			emit: (event, ...args) => this.emit(event as any, ...(args as any)),
+			showAllowListViolation: (error) => this.showAllowListViolation(error),
 		})
 		this.updateGlobalState("codebaseIndexModels", EMBEDDING_MODEL_PROFILES)
 
@@ -902,14 +917,7 @@ export class ClineProvider
 			// child and will update the parent to point at the new child.
 			if (parentTaskId && childTaskId && !options?.skipDelegationRepair) {
 				try {
-					const parentHistory = await this.getHistoryItem(parentTaskId)
-
-					if (parentHistory.status === "delegated" && parentHistory.awaitingChildId === childTaskId) {
-						await this.updateTaskHistory({
-							...parentHistory,
-							status: "active",
-							awaitingChildId: undefined,
-						})
+					if (await this.delegation.detach(parentTaskId, childTaskId)) {
 						this.log(
 							`[ClineProvider#removeClineFromStack] Repaired parent ${parentTaskId} metadata: delegated → active (child ${childTaskId} removed)`,
 						)
@@ -3458,51 +3466,11 @@ export class ClineProvider
 		// If this is a delegated subtask, detach its parent so the parent does not
 		// stay stuck in "delegated" awaiting a child that the user just cancelled.
 		if (task.parentTaskId) {
-			try {
-				const parentHistory = await this.getHistoryItem(task.parentTaskId)
-
-				if (parentHistory?.status === "delegated" && parentHistory?.awaitingChildId === task.taskId) {
-					await this.updateTaskHistory({
-						...parentHistory,
-						status: "active",
-						awaitingChildId: undefined,
-					})
-
-					this.log(
-						`[cancelTask] Detached delegated parent ${task.parentTaskId}: delegated → active (child ${task.taskId} cancelled)`,
-					)
-					parentTask = undefined
-					rootTask = undefined
-					// Clear any stale fail-closed entry from a prior failed cancel attempt.
-					this.cancelledDelegationChildIds.delete(task.taskId)
-				}
-			} catch (error) {
-				// Fail closed: if we cannot prove the parent was detached, make the
-				// rehydrated child standalone so later completions cannot reopen a
-				// stale delegated parent, even after a provider reload.
+			const outcome = await this.delegation.detachOnCancel(task.taskId, task.parentTaskId, historyItem)
+			historyItem = outcome.childHistory
+			if (outcome.dropLineage) {
 				parentTask = undefined
 				rootTask = undefined
-				this.cancelledDelegationChildIds.add(task.taskId)
-				historyItem = {
-					...historyItem,
-					parentTaskId: undefined,
-					rootTaskId: undefined,
-				}
-				try {
-					await this.updateTaskHistory(historyItem)
-				} catch (historyError) {
-					this.log(
-						`[cancelTask] Failed to persist standalone child state for ${task.taskId}: ${
-							historyError instanceof Error ? historyError.message : String(historyError)
-						}`,
-					)
-					throw historyError
-				}
-				this.log(
-					`[cancelTask] Failed to detach delegated parent for ${task.taskId}: ${
-						error instanceof Error ? error.message : String(error)
-					}`,
-				)
 			}
 		}
 
@@ -3777,12 +3745,8 @@ export class ClineProvider
 	}
 
 	/**
-	 * Delegate parent task and open child task.
-	 *
-	 * - Enforce single-open invariant
-	 * - Persist parent delegation metadata
-	 * - Emit TaskDelegated (task-level; API forwards to provider/bridge)
-	 * - Create child as sole active and switch mode to child's mode
+	 * Delegate the current (parent) task to a new child task and open the
+	 * child. See {@link DelegationService.delegate}.
 	 */
 	public async delegateParentAndOpenChild(params: {
 		parentTaskId: string
@@ -3790,518 +3754,27 @@ export class ClineProvider
 		initialTodos: TodoItem[]
 		mode: string
 	}): Promise<Task> {
-		const { parentTaskId, message, initialTodos, mode } = params
-
-		// Metadata-driven delegation is always enabled
-
-		// 1) Get parent (must be current task)
-		const parent = this.getCurrentTask()
-		if (!parent) {
-			throw new Error("[delegateParentAndOpenChild] No current task")
-		}
-		if (parent.taskId !== parentTaskId) {
-			throw new Error(
-				`[delegateParentAndOpenChild] Parent mismatch: expected ${parentTaskId}, current ${parent.taskId}`,
-			)
-		}
-		// 2) Flush pending tool results to API history BEFORE disposing the parent.
-		//    This is critical: when tools are called before new_task,
-		//    their tool_result blocks are in userMessageContent but not yet saved to API history.
-		//    If we don't flush them, the parent's API conversation will be incomplete and
-		//    cause 400 errors when resumed (missing tool_result for tool_use blocks).
-		//
-		//    NOTE: We do NOT pass the assistant message here because the assistant message
-		//    is already added to apiConversationHistory by the normal flow in
-		//    recursivelyMakeClineRequests BEFORE tools start executing. We only need to
-		//    flush the pending user message with tool_results.
-		try {
-			const flushSuccess = await parent.flushPendingToolResultsToHistory()
-
-			if (!flushSuccess) {
-				console.warn(`[delegateParentAndOpenChild] Flush failed for parent ${parentTaskId}, retrying...`)
-				const retrySuccess = await parent.retrySaveApiConversationHistory()
-
-				if (!retrySuccess) {
-					console.error(
-						`[delegateParentAndOpenChild] CRITICAL: Parent ${parentTaskId} API history not persisted to disk. Child return may produce stale state.`,
-					)
-					vscode.window.showWarningMessage(
-						"Warning: Parent task state could not be saved. The parent task may lose recent context when resumed.",
-					)
-				}
-			}
-		} catch (error) {
-			this.log(
-				`[delegateParentAndOpenChild] Error flushing pending tool results (non-fatal): ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-		}
-
-		// 3) Enforce single-open invariant by closing/disposing the parent first
-		//    This ensures we never have >1 tasks open at any time during delegation.
-		//    Await abort completion to ensure clean disposal and prevent unhandled rejections.
-		try {
-			await this.removeClineFromStack({ skipDelegationRepair: true })
-		} catch (error) {
-			this.log(
-				`[delegateParentAndOpenChild] Error during parent disposal (non-fatal): ${
-					error instanceof Error ? error.message : String(error)
-				}`,
-			)
-			// Non-fatal: proceed with child creation even if parent cleanup had issues
-		}
-
-		// 3) Switch provider mode to child's requested mode BEFORE creating the child task
-		//    This ensures the child's system prompt and configuration are based on the correct mode.
-		//    The mode switch must happen before createTask() because the Task constructor
-		//    initializes its mode from provider.getState() during initializeTaskMode().
-		try {
-			await this.handleModeSwitch(mode as any)
-		} catch (e) {
-			this.log(
-				`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
-					(e as Error)?.message ?? String(e)
-				}`,
-			)
-		}
-
-		// 4) Create child as sole active (parent reference preserved for lineage)
-		// Pass initialStatus: "active" to ensure the child task's historyItem is created
-		// with status from the start, avoiding race conditions where the task might
-		// call attempt_completion before status is persisted separately.
-		//
-		// Pass startTask: false to prevent the child from beginning its task loop
-		// (and persisting its own history_item.json via saveClineMessages →
-		// updateTaskHistory) before we persist the parent's delegation
-		// metadata in step 5. Without this, the child's fire-and-forget
-		// startTask() races with step 5's atomicReadAndUpdate, and the last
-		// writer to the parent's history_item.json overwrites the other's
-		// changes — causing the parent's delegation fields to be lost.
-		const child = await this.createTask(message, undefined, parent as any, {
-			initialTodos,
-			initialStatus: "active",
-			startTask: false,
-		})
-
-		// 5) Persist parent delegation metadata BEFORE the child starts writing.
-		//    atomicReadAndUpdate reads from the in-memory cache and writes back within a
-		//    single lock acquisition — no concurrent writer can slip between the read and
-		//    write, and the pure updater cannot re-enter the lock (no deadlock).
-		//    Broadcast and cache invalidation happen outside the lock after it releases.
-		try {
-			// Mark self-originated so the shared store's onChange echo
-			// (external:false) is suppressed for us — we send our own
-			// targeted message below. Other providers sharing the store
-			// still receive the echo and push their own targeted update.
-			const taskHistoryStore = await this.getTaskHistoryStore()
-			await taskHistoryStore.atomicReadAndUpdate(
-				parentTaskId,
-				(historyItem) => {
-					const childIds = Array.from(new Set([...(historyItem.childIds ?? []), child.taskId]))
-					return {
-						...historyItem,
-						status: "delegated",
-						delegatedToId: child.taskId,
-						awaitingChildId: child.taskId,
-						childIds,
-					}
-				},
-				this.taskHistoryOrigin,
-			)
-			if (this.isViewLaunched) {
-				const updatedItem = taskHistoryStore.get(parentTaskId)
-				if (updatedItem) {
-					await this.postMessageToWebview({ type: "taskHistoryItemUpdated", taskHistoryItem: updatedItem })
-				}
-			}
-		} catch (err) {
-			this.log(
-				`[delegateParentAndOpenChild] Failed to persist parent metadata for ${parentTaskId} -> ${child.taskId}: ${
-					(err as Error)?.message ?? String(err)
-				}`,
-			)
-		}
-
-		// 6) Start the child task now that parent metadata is safely persisted.
-		child.start()
-
-		// 7) Emit TaskDelegated (provider-level)
-		try {
-			this.emit(RooCodeEventName.TaskDelegated, parentTaskId, child.taskId)
-		} catch {
-			// non-fatal
-		}
-
-		return child
+		return this.delegation.delegate(params)
 	}
 
 	/**
-	 * Attempt to re-attach a detached parent when its cancelled/resumed child later completes.
-	 *
-	 * Both `cancelTask` and `removeClineFromStack` deliberately detach the parent
-	 * (status → "active", awaitingChildId → undefined) so the parent is not stuck
-	 * waiting for a dead child. But if the child is later resumed and completes,
-	 * nothing re-establishes delegation — so the child falls through to standalone
-	 * completion instead of returning its result to the parent.
-	 *
-	 * This method re-stamps the parent `{status: "delegated", awaitingChildId: childTaskId}`
-	 * ONLY when ALL five evidence conditions hold (see ai_plans/2026-07-12_delegated-child-return-after-cancel.md):
-	 *   1. parentHistory.status === "active" (not completed; not already delegated to someone else);
-	 *   2. parentHistory.awaitingChildId === undefined (no live delegation);
-	 *   3. parentHistory.delegatedToId === childTaskId (the parent's LAST delegation was to THIS child);
-	 *   4. parent is not currently open in the task stack (user is not actively working in it);
-	 *   5. untouched-tail proof: the parent's persisted API messages still end frozen at the
-	 *      delegation — the last `new_task` tool_use has NO tool_result answering it in any
-	 *      later message (same backward scan as reopenParentFromDelegation).
-	 *
-	 * Returns true on successful re-attach, false otherwise (never throws).
+	 * Re-attach a detached parent to its resumed child when all evidence
+	 * holds; never throws. See {@link DelegationService.reattach}.
 	 */
 	public async tryReattachDelegatedParent(parentTaskId: string, childTaskId: string): Promise<boolean> {
-		try {
-			// 1-3: Load parent history and check the three metadata conditions.
-			const parentHistory = await this.getHistoryItem(parentTaskId)
-
-			if (parentHistory.status !== "active") {
-				this.log(
-					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} status is "${parentHistory.status}", not "active"`,
-				)
-				return false
-			}
-
-			if (parentHistory.awaitingChildId !== undefined) {
-				this.log(
-					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has awaitingChildId="${parentHistory.awaitingChildId}"`,
-				)
-				return false
-			}
-
-			if (parentHistory.delegatedToId !== childTaskId) {
-				this.log(
-					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} delegatedToId="${parentHistory.delegatedToId}" !== child "${childTaskId}"`,
-				)
-				return false
-			}
-
-			// 4: Parent must not be currently open in the task stack.
-			const stackIds = this.getCurrentTaskStack()
-			if (stackIds.includes(parentTaskId)) {
-				this.log(
-					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} is currently open in the task stack [${stackIds.join(", ")}]`,
-				)
-				return false
-			}
-
-			// 5: Untouched-tail proof — read the parent's persisted API messages and scan
-			//    backward for the last `new_task` tool_use, then verify NO later message
-			//    contains a `tool_result` with that tool_use_id.
-			let parentApiMessages: any[] = []
-			try {
-				parentApiMessages = (await readApiMessages({
-					taskId: parentTaskId,
-					globalStoragePath: this.contextProxy.globalStorageUri.fsPath,
-				})) as any[]
-			} catch (readErr) {
-				this.log(
-					`[tryReattachDelegatedParent] Rejecting: failed to read parent API messages for ${parentTaskId}: ${
-						readErr instanceof Error ? readErr.message : String(readErr)
-					}`,
-				)
-				return false
-			}
-
-			if (!Array.isArray(parentApiMessages)) {
-				this.log(`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} API messages is not an array`)
-				return false
-			}
-
-			// Same backward scan as reopenParentFromDelegation.
-			const lastNewTask = findLastNewTaskToolUse(parentApiMessages)
-
-			if (!lastNewTask) {
-				this.log(
-					`[tryReattachDelegatedParent] Rejecting: no new_task tool_use found in parent ${parentTaskId} API history (cannot prove frozen state)`,
-				)
-				return false
-			}
-
-			// Scan ALL messages AFTER the tool_use for a matching tool_result.
-			const { toolUseId, messageIndex } = lastNewTask
-			if (hasToolResultFor(parentApiMessages, toolUseId, messageIndex)) {
-				this.log(
-					`[tryReattachDelegatedParent] Rejecting: parent ${parentTaskId} already has a tool_result for new_task tool_use_id="${toolUseId}" (parent was resumed)`,
-				)
-				return false
-			}
-
-			// All five conditions hold — re-attach.
-			await this.updateTaskHistory({
-				...parentHistory,
-				status: "delegated",
-				awaitingChildId: childTaskId,
-			})
-
-			this.log(
-				`[tryReattachDelegatedParent] Re-attached parent ${parentTaskId} to child ${childTaskId} (status: active → delegated, awaitingChildId: undefined → ${childTaskId})`,
-			)
-			return true
-		} catch (err) {
-			this.log(
-				`[tryReattachDelegatedParent] Error re-attaching parent ${parentTaskId} to child ${childTaskId}: ${
-					err instanceof Error ? err.message : String(err)
-				}`,
-			)
-			return false
-		}
+		return this.delegation.reattach(parentTaskId, childTaskId)
 	}
 
 	/**
-	 * Reopen parent task from delegation with write-back and events.
+	 * Hand a completed child's result back to its parent and reopen the
+	 * parent. See {@link DelegationService.complete}.
 	 */
 	public async reopenParentFromDelegation(params: {
 		parentTaskId: string
 		childTaskId: string
 		completionResultSummary: string
 	}): Promise<boolean> {
-		const { parentTaskId, childTaskId, completionResultSummary } = params
-		const globalStoragePath = this.contextProxy.globalStorageUri.fsPath
-
-		// 1) Load parent from history and current persisted messages
-		const historyItem = await this.getHistoryItem(parentTaskId)
-
-		// Guard: re-validate delegation state after the async approval gap.
-		// cancelTask() or removeClineFromStack() may have already detached the parent
-		// (status → "active", awaitingChildId → undefined) while the user was
-		// approving the subtask finish. Routing output back now would corrupt an
-		// unrelated task.
-		//
-		// `awaitingChildId` is the authoritative signal and must still point at this child;
-		// a genuine detach clears it. We intentionally do NOT require status === "delegated"
-		// (and instead only reject status === "completed"): a late background usage-drain save
-		// on the disposed parent can clobber status "delegated" → "active" while preserving
-		// awaitingChildId. This mirrors the AttemptCompletionTool gate so delegateToParent does
-		// not get a false `didReopen === false`. See ai_plans/2026-06-08_delegated-subtask-no-return.md.
-		if (
-			this.cancelledDelegationChildIds.has(childTaskId) ||
-			historyItem.awaitingChildId !== childTaskId ||
-			historyItem.status === "completed"
-		) {
-			this.log(
-				`[reopenParentFromDelegation] Aborting: parent ${parentTaskId} is no longer delegated to child ${childTaskId} ` +
-					`(status=${historyItem.status}, awaitingChildId=${historyItem.awaitingChildId})`,
-			)
-			return false
-		}
-
-		let parentClineMessages: ClineMessage[] = []
-		try {
-			parentClineMessages = await readTaskMessages({
-				taskId: parentTaskId,
-				globalStoragePath,
-			})
-		} catch {
-			parentClineMessages = []
-		}
-
-		let parentApiMessages: any[] = []
-		try {
-			parentApiMessages = (await readApiMessages({
-				taskId: parentTaskId,
-				globalStoragePath,
-			})) as any[]
-		} catch {
-			parentApiMessages = []
-		}
-
-		// 2) Inject synthetic records: UI subtask_result and update API tool_result
-		const ts = Date.now()
-
-		// Defensive: ensure arrays
-		if (!Array.isArray(parentClineMessages)) parentClineMessages = []
-		if (!Array.isArray(parentApiMessages)) parentApiMessages = []
-
-		const subtaskUiMessage: ClineMessage = {
-			type: "say",
-			say: "subtask_result",
-			text: completionResultSummary,
-			ts,
-		}
-		const lastParentClineMessage = parentClineMessages.at(-1)
-		if (
-			lastParentClineMessage?.type !== "say" ||
-			lastParentClineMessage.say !== "subtask_result" ||
-			lastParentClineMessage.text !== completionResultSummary
-		) {
-			parentClineMessages.push(subtaskUiMessage)
-		}
-		await saveTaskMessages({ messages: parentClineMessages, taskId: parentTaskId, globalStoragePath })
-
-		// Find the tool_use_id from the last assistant message's new_task tool_use
-		const toolUseId = findLastNewTaskToolUse(parentApiMessages)?.toolUseId
-		const subtaskResultText = formatSubtaskResult(childTaskId, completionResultSummary)
-
-		// Preferred: if the parent history contains the native tool_use for new_task,
-		// inject a matching tool_result for the Anthropic message contract:
-		// user → assistant (tool_use) → user (tool_result)
-		if (toolUseId) {
-			// Check if the last message is already a user message with a tool_result for this tool_use_id
-			// (in case this is a retry or the history was already updated)
-			const lastMsg = parentApiMessages[parentApiMessages.length - 1]
-			let alreadyHasToolResult = false
-			if (lastMsg?.role === "user" && Array.isArray(lastMsg.content)) {
-				for (const block of lastMsg.content) {
-					if (block.type === "tool_result" && block.tool_use_id === toolUseId) {
-						// Update the existing tool_result content
-						block.content = subtaskResultText
-						alreadyHasToolResult = true
-						break
-					}
-				}
-			}
-
-			// If no existing tool_result found, create a NEW user message with the tool_result
-			if (!alreadyHasToolResult) {
-				parentApiMessages.push({
-					role: "user",
-					content: [
-						{
-							type: "tool_result" as const,
-							tool_use_id: toolUseId,
-							content: subtaskResultText,
-						},
-					],
-					ts,
-				})
-			}
-
-			// Validate the newly injected tool_result against the preceding assistant message.
-			// This ensures the tool_result's tool_use_id matches a tool_use in the immediately
-			// preceding assistant message (Anthropic API requirement).
-			const lastMessage = parentApiMessages[parentApiMessages.length - 1]
-			if (lastMessage?.role === "user") {
-				const validatedMessage = validateAndFixToolResultIds(lastMessage, parentApiMessages.slice(0, -1))
-				parentApiMessages[parentApiMessages.length - 1] = validatedMessage
-			}
-		} else {
-			// If there is no corresponding tool_use in the parent API history, we cannot emit a
-			// tool_result. Fall back to a plain user text note so the parent can still resume.
-			const fallbackText = subtaskResultText
-			const lastParentApiMessage = parentApiMessages.at(-1)
-			const alreadyHasFallback =
-				lastParentApiMessage?.role === "user" &&
-				Array.isArray(lastParentApiMessage.content) &&
-				lastParentApiMessage.content.some(
-					(block: { type?: string; text?: string }) => block.type === "text" && block.text === fallbackText,
-				)
-			if (!alreadyHasFallback) {
-				parentApiMessages.push({
-					role: "user",
-					content: [
-						{
-							type: "text" as const,
-							text: fallbackText,
-						},
-					],
-					ts,
-				})
-			}
-		}
-
-		await saveApiMessages({ messages: parentApiMessages as any, taskId: parentTaskId, globalStoragePath })
-
-		// 3) Close child instance if still open (single-open-task invariant).
-		//    This MUST happen BEFORE updating the child's status to "completed" because
-		//    removeClineFromStack() → abortTask(true) → saveClineMessages() writes
-		//    the historyItem with initialStatus (typically "active"), which would
-		//    overwrite a "completed" status set earlier.
-		const current = this.getCurrentTask()
-		if (current?.taskId === childTaskId) {
-			// This method explicitly persists the parent's active state below, so the
-			// generic delegated→active repair in removeClineFromStack would be redundant.
-			await this.removeClineFromStack({ skipDelegationRepair: true })
-		}
-
-		// 4) Update child metadata to "completed" status.
-		//    This runs after the abort so it overwrites the stale "active" status
-		//    that saveClineMessages() may have written during step 3.
-		try {
-			const childHistory = await this.getHistoryItem(childTaskId)
-			await this.updateTaskHistory({
-				...childHistory,
-				status: "completed",
-			})
-		} catch (err) {
-			this.log(
-				`[reopenParentFromDelegation] Failed to persist child completed status for ${childTaskId}: ${
-					(err as Error)?.message ?? String(err)
-				}`,
-			)
-		}
-
-		// 5) Update parent metadata and persist BEFORE emitting completion event
-		const childIds = Array.from(new Set([...(historyItem.childIds ?? []), childTaskId]))
-		const updatedHistory: typeof historyItem = {
-			...historyItem,
-			status: "active",
-			completedByChildId: childTaskId,
-			completionResultSummary,
-			awaitingChildId: undefined,
-			childIds,
-		}
-		await this.updateTaskHistory(updatedHistory)
-
-		// 6) Emit TaskDelegationCompleted (provider-level)
-		try {
-			this.emit(RooCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, completionResultSummary)
-		} catch {
-			// non-fatal
-		}
-
-		// 7) Reopen the parent from history as the sole active task (restores saved mode)
-		//    IMPORTANT: startTask=false to suppress resume-from-history ask scheduling
-		let parentInstance: Task
-		try {
-			parentInstance = await this.createTaskWithHistoryItem(updatedHistory, { startTask: false })
-		} catch (error) {
-			// The parent's profile is no longer allowed. The child is already
-			// closed and the parent's history holds the result (steps 2-5), so
-			// the delegation is complete; the parent just stays closed until
-			// the user reopens it on an allowed profile. Returning true keeps
-			// the closed child from falling through to its own completion ask.
-			if (!this.showAllowListViolation(error)) {
-				throw error
-			}
-			this.log(`[reopenParentFromDelegation] Parent ${parentTaskId} not reopened: ${(error as Error).message}`)
-			this.cancelledDelegationChildIds.delete(childTaskId)
-			return true
-		}
-
-		// 8) Inject restored histories into the in-memory instance before resuming
-		if (parentInstance) {
-			try {
-				await parentInstance.overwriteClineMessages(parentClineMessages)
-			} catch {
-				// non-fatal
-			}
-			try {
-				await parentInstance.overwriteApiConversationHistory(parentApiMessages as any)
-			} catch {
-				// non-fatal
-			}
-
-			// Auto-resume parent without ask("resume_task")
-			await parentInstance.resumeAfterDelegation()
-		}
-
-		// 9) Emit TaskDelegationResumed (provider-level)
-		try {
-			this.emit(RooCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
-		} catch {
-			// non-fatal
-		}
-
-		this.cancelledDelegationChildIds.delete(childTaskId)
-		return true
+		return this.delegation.complete(params)
 	}
 
 	/**

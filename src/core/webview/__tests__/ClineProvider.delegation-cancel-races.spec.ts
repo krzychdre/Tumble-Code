@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ClineProvider } from "../ClineProvider"
+import { DelegationService } from "../DelegationService"
 import { Task } from "../../task/Task"
 
 // Mock dependencies (mirrors ClineProvider.flicker-free-cancel.spec.ts)
@@ -194,13 +195,12 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			cancelledDelegationChildIds: new Set<string>(),
 			log: vi.fn(),
 			updateTaskHistory,
 			getHistoryItem: vi.fn().mockResolvedValue({ id: "parent-1", status: "active", awaitingChildId: undefined }),
 		}
 
-		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
+		const result = await new DelegationService(fakeProvider as any).complete({
 			parentTaskId: "parent-1",
 			childTaskId: "child-1",
 			completionResultSummary: "done",
@@ -219,7 +219,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			cancelledDelegationChildIds: new Set<string>(),
 			log: vi.fn(),
 			updateTaskHistory,
 			getCurrentTask: vi.fn().mockReturnValue(undefined),
@@ -237,7 +236,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				),
 		}
 
-		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
+		const result = await new DelegationService(fakeProvider as any).complete({
 			parentTaskId: "parent-1",
 			childTaskId: "child-1",
 			completionResultSummary: "done",
@@ -259,7 +258,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			cancelledDelegationChildIds: new Set<string>(),
 			log: vi.fn(),
 			updateTaskHistory,
 			getHistoryItem: vi
@@ -267,7 +265,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				.mockResolvedValue({ id: "parent-1", status: "completed", awaitingChildId: "child-1" }),
 		}
 
-		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
+		const result = await new DelegationService(fakeProvider as any).complete({
 			parentTaskId: "parent-1",
 			childTaskId: "child-1",
 			completionResultSummary: "done",
@@ -281,7 +279,6 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		const fakeProvider: any = {
 			contextProxy: { globalStorageUri: { fsPath: "/test/storage" } },
-			cancelledDelegationChildIds: new Set<string>(["child-1"]),
 			log: vi.fn(),
 			updateTaskHistory,
 			getHistoryItem: vi
@@ -289,7 +286,11 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				.mockResolvedValue({ id: "parent-1", status: "delegated", awaitingChildId: "child-1" }),
 		}
 
-		const result = await (ClineProvider.prototype as any).reopenParentFromDelegation.call(fakeProvider, {
+		// A failed cancel fenced this child (see detachOnCancel).
+		const delegation = new DelegationService(fakeProvider as any)
+		delegation.cancelledChildIds.add("child-1")
+
+		const result = await delegation.complete({
 			parentTaskId: "parent-1",
 			childTaskId: "child-1",
 			completionResultSummary: "done",
@@ -357,11 +358,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			const { readApiMessages } = await import("../../task-persistence")
 			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(true)
 			expect(updateTaskHistory).toHaveBeenCalledWith(
@@ -383,11 +380,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				}),
 			})
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -403,11 +396,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				}),
 			})
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -423,11 +412,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				}),
 			})
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -443,11 +428,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 				}),
 			})
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -461,11 +442,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			const { readApiMessages } = await import("../../task-persistence")
 			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -477,11 +454,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			const { readApiMessages } = await import("../../task-persistence")
 			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -496,11 +469,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			const { readApiMessages } = await import("../../task-persistence")
 			vi.mocked(readApiMessages).mockResolvedValue(apiMessages as any)
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()
@@ -511,11 +480,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			const { readApiMessages } = await import("../../task-persistence")
 			vi.mocked(readApiMessages).mockRejectedValue(new Error("disk error"))
 
-			const result = await (ClineProvider.prototype as any).tryReattachDelegatedParent.call(
-				fakeProvider,
-				"parent-1",
-				"child-1",
-			)
+			const result = await new DelegationService(fakeProvider as any).reattach("parent-1", "child-1")
 
 			expect(result).toBe(false)
 			expect(updateTaskHistory).not.toHaveBeenCalled()

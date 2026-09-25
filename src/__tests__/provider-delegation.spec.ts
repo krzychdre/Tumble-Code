@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from "vitest"
 import type { HistoryItem } from "@roo-code/types"
 import { RooCodeEventName } from "@roo-code/types"
 import { ClineProvider } from "../core/webview/ClineProvider"
+import { DelegationService } from "../core/webview/DelegationService"
 
 const parentHistoryItem: HistoryItem = {
 	id: "parent-1",
@@ -76,7 +77,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
-		const child = await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+		const child = await new DelegationService(provider as any).delegate({
 			parentTaskId: "parent-1",
 			message: "Do something",
 			initialTodos: [],
@@ -142,7 +143,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
-		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+		await new DelegationService(provider as any).delegate({
 			parentTaskId: "parent-1",
 			message: "Do something",
 			initialTodos: [],
@@ -176,7 +177,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
-		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+		await new DelegationService(provider as any).delegate({
 			parentTaskId: "parent-1",
 			message: "Do something",
 			initialTodos: [],
@@ -217,7 +218,7 @@ describe("ClineProvider.delegateParentAndOpenChild()", () => {
 		} as unknown as ClineProvider
 		;(provider as any).getTaskHistoryStore.mockResolvedValue(taskHistoryStore)
 
-		await (ClineProvider.prototype as any).delegateParentAndOpenChild.call(provider, {
+		await new DelegationService(provider as any).delegate({
 			parentTaskId: "parent-1",
 			message: "Do something",
 			initialTodos: [],
