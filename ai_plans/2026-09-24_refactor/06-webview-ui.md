@@ -322,3 +322,8 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   `ChatRowContent` no longer reads `clineMessages`, `getPreviousTodos` deleted. Rows still consume the context
   (`mcpServers`, `alwaysAllowMcp`, `currentCheckpoint`, `mode`, `currentTaskItem`), so they still re-render per token:
   WEB-4 step 2/3.
+- 2026-09-25 WEB-11 (a, b) DONE #380 (`useOrganizationSwitch`; drift fixed: the chat-area CloudAccountSwitcher ignored
+  `organizationSwitchResult`, so after a failed switch it kept showing the organization the user did not get, and it
+  unlocked after a fixed 1 s; test-first, 17 new tests, the components had no specs) and #387 (ModelDescriptionMarkdown
+  on react-markdown + remark-gfm, `react-remark` and its `packageExtensions` entry removed; 5 characterization tests
+  unchanged, bare URLs now link). Skipped: `useModeSelection` (after settings work), translation-hook unification.
