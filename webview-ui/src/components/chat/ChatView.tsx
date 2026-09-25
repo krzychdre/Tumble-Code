@@ -1,5 +1,5 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
-import { useDeepCompareEffect, useEvent } from "react-use"
+import { useDeepCompareEffect } from "react-use"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import useSound from "use-sound"
@@ -10,7 +10,7 @@ import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { appendImages } from "@src/utils/imageUtils"
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
 
-import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType } from "@roo-code/types"
+import type { ClineAsk, ClineSayTool, ClineMessage, AudioType } from "@roo-code/types"
 import { hasUsableAnswer, isRetiredProvider } from "@roo-code/types"
 
 import { findLast } from "@roo/array"
@@ -23,6 +23,7 @@ import { ProfileValidator } from "@roo/ProfileValidator"
 import { getLatestTodo } from "@roo/todo"
 
 import { vscode } from "@src/utils/vscode"
+import { useExtensionMessage, type ExtensionMessageOf } from "@src/utils/extensionBus"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
@@ -73,6 +74,20 @@ const CHAT_VIEWPORT_BUFFER = {
 	top: 600,
 	bottom: 800,
 } as const
+
+// The host messages ChatView handles; the bus delivers only these.
+const CHAT_VIEW_MESSAGE_TYPES = [
+	"action",
+	"selectedImages",
+	"invoke",
+	"condenseTaskContextStarted",
+	"condenseTaskContextResponse",
+	"checkpointInitWarning",
+	"interactionRequired",
+	"taskWithAggregatedCosts",
+] as const
+
+type ChatViewMessageType = (typeof CHAT_VIEW_MESSAGE_TYPES)[number]
 
 const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
 
@@ -936,9 +951,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const shouldDisableImages = !supportsImages || selectedImages.length >= MAX_IMAGES_PER_MESSAGE
 
 	const handleMessage = useCallback(
-		(e: MessageEvent) => {
-			const message: ExtensionMessage = e.data
-
+		(message: ExtensionMessageOf<ChatViewMessageType>) => {
 			switch (message.type) {
 				case "action":
 					switch (message.action!) {
@@ -1036,7 +1049,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		],
 	)
 
-	useEvent("message", handleMessage)
+	useExtensionMessage(CHAT_VIEW_MESSAGE_TYPES, handleMessage)
 
 	useEffect(() => {
 		const cleanupInterval = setInterval(() => {
@@ -1073,7 +1086,10 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	)
 
 	// byTs goes to the rows, so ChatRow never scans clineMessages itself.
-	const { checkpointIndices, byTs: rowMetaByTs } = useMemo(() => computeRowMeta(messages, groupedMessages), [messages, groupedMessages])
+	const { checkpointIndices, byTs: rowMetaByTs } = useMemo(
+		() => computeRowMeta(messages, groupedMessages),
+		[messages, groupedMessages],
+	)
 
 	const hasLatestCheckpoint = checkpointIndices.length > 0
 	const checkpointJumpCursorRef = useRef<number | null>(null)
