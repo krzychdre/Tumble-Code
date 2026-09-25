@@ -4,9 +4,9 @@
 	"description": "Git worktrees позволяют одновременно работать с несколькими ветками в отдельных каталогах. У каждого worktree есть своё окно VS Code с Tumble Code.",
 
 	"notGitRepo": "Этот workspace не является Git-репозиторием. Для работы worktrees нужен Git-репозиторий.",
-	"multiTumbletNotSupported": "Worktrees не поддерживаются в multi-root workspace. Открой один каталог, чтобы использовать worktrees.",
+	"multiRootNotSupported": "Worktrees не поддерживаются в multi-root workspace. Открой один каталог, чтобы использовать worktrees.",
 	"subfolderNotSupported": "Этот workspace является подпапкой Git-репозитория. Открой корень репозитория, чтобы использовать worktrees.",
-	"gitTumblet": "Корень Git",
+	"gitRoot": "Корень Git",
 
 	"includeFileExists": "Найден файл .worktreeinclude — файлы будут скопированы в новые worktrees",
 	"noIncludeFile": "Файл .worktreeinclude не найден",

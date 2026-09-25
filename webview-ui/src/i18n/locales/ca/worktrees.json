@@ -4,9 +4,9 @@
 	"description": "Els worktrees de Git et permeten treballar en diverses branques alhora en directoris separats. Cada worktree té la seva pròpia finestra de VS Code amb Tumble Code.",
 
 	"notGitRepo": "Aquest espai de treball no és un repositori Git. Els worktrees necessiten un repositori Git per funcionar.",
-	"multiTumbletNotSupported": "Els worktrees no són compatibles amb espais de treball de múltiples arrels. Obre una sola carpeta per fer servir worktrees.",
+	"multiRootNotSupported": "Els worktrees no són compatibles amb espais de treball de múltiples arrels. Obre una sola carpeta per fer servir worktrees.",
 	"subfolderNotSupported": "Aquest espai de treball és una subcarpeta d'un repositori Git. Obre l'arrel del repositori per fer servir worktrees.",
-	"gitTumblet": "Arrel de Git",
+	"gitRoot": "Arrel de Git",
 
 	"includeFileExists": "S'ha trobat el fitxer .worktreeinclude: es copiaran fitxers als worktrees nous",
 	"noIncludeFile": "No s'ha trobat cap fitxer .worktreeinclude",

@@ -4,9 +4,9 @@
 	"description": "Git worktrees, ayrı dizinlerde aynı anda birden fazla branch üzerinde çalışmana olanak tanır. Her worktree, Tumble Code ile kendi VS Code penceresine sahip olur.",
 
 	"notGitRepo": "Bu çalışma alanı bir Git deposu değil. Worktrees'in çalışması için bir Git deposu gerekir.",
-	"multiTumbletNotSupported": "Worktrees, multi-root çalışma alanlarında desteklenmez. Worktrees kullanmak için tek bir klasör aç.",
+	"multiRootNotSupported": "Worktrees, multi-root çalışma alanlarında desteklenmez. Worktrees kullanmak için tek bir klasör aç.",
 	"subfolderNotSupported": "Bu çalışma alanı bir Git deposunun alt klasörü. Worktrees kullanmak için deponun kökünü aç.",
-	"gitTumblet": "Git kökü",
+	"gitRoot": "Git kökü",
 
 	"includeFileExists": ".worktreeinclude dosyası bulundu — dosyalar yeni worktrees'e kopyalanacak",
 	"noIncludeFile": ".worktreeinclude dosyası bulunamadı",

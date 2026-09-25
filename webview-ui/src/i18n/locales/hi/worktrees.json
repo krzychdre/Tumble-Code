@@ -4,9 +4,9 @@
 	"description": "Git worktrees आपको अलग-अलग डायरेक्टरी में एक साथ कई ब्रांच पर काम करने देते हैं। हर worktree को Tumble Code के साथ अपनी अलग VS Code विंडो मिलती है।",
 
 	"notGitRepo": "यह workspace Git repository नहीं है। worktrees को काम करने के लिए Git repository चाहिए।",
-	"multiTumbletNotSupported": "Multi-root workspaces में worktrees समर्थित नहीं हैं। worktrees उपयोग करने के लिए एक ही फ़ोल्डर खोलें।",
+	"multiRootNotSupported": "Multi-root workspaces में worktrees समर्थित नहीं हैं। worktrees उपयोग करने के लिए एक ही फ़ोल्डर खोलें।",
 	"subfolderNotSupported": "यह workspace Git repository का subfolder है। worktrees उपयोग करने के लिए repository root खोलें।",
-	"gitTumblet": "Git root",
+	"gitRoot": "Git root",
 
 	"includeFileExists": ".worktreeinclude फ़ाइल मिली — नए worktrees में फ़ाइलें कॉपी की जाएँगी",
 	"noIncludeFile": ".worktreeinclude फ़ाइल नहीं मिली",
