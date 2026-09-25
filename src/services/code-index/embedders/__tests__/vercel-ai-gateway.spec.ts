@@ -1,174 +1,130 @@
-// npx vitest run src/services/code-index/embedders/__tests__/vercel-ai-gateway.spec.ts
+import type { MockedClass } from "vitest"
+import { OpenAI } from "openai"
 
 import { VercelAiGatewayEmbedder } from "../vercel-ai-gateway"
-import { OpenAICompatibleEmbedder } from "../openai-compatible"
+import { resetRateLimitGates } from "../rate-limit-gate"
 
-// Mock the OpenAICompatibleEmbedder
-vi.mock("../openai-compatible", () => ({
-	OpenAICompatibleEmbedder: vi.fn(),
-}))
+// The embedder is the OpenAI-compatible embedder pointed at Vercel AI Gateway, so only the SDK is mocked
+vitest.mock("openai")
 
-// Mock the TelemetryService
-vi.mock("@roo-code/telemetry", () => ({
+vitest.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
 		instance: {
-			captureEvent: vi.fn(),
+			captureEvent: vitest.fn(),
 		},
 	},
 }))
 
-const MockedOpenAICompatibleEmbedder = vi.mocked(OpenAICompatibleEmbedder)
+vitest.mock("../../../../i18n", () => ({
+	t: (key: string) => key,
+}))
+
+const MockedOpenAI = OpenAI as MockedClass<typeof OpenAI>
 
 describe("VercelAiGatewayEmbedder", () => {
-	let embedder: VercelAiGatewayEmbedder
-	let mockOpenAICompatibleEmbedder: any
+	let mockEmbeddingsCreate: ReturnType<typeof vitest.fn>
 
 	beforeEach(() => {
-		vi.clearAllMocks()
-		mockOpenAICompatibleEmbedder = {
-			createEmbeddings: vi.fn(),
-			validateConfiguration: vi.fn(),
-		}
-		MockedOpenAICompatibleEmbedder.mockImplementation(() => mockOpenAICompatibleEmbedder)
+		vitest.clearAllMocks()
+		resetRateLimitGates()
+		vitest.spyOn(console, "warn").mockImplementation(() => {})
+		vitest.spyOn(console, "error").mockImplementation(() => {})
+		mockEmbeddingsCreate = vitest.fn().mockResolvedValue({
+			data: [{ embedding: [0.1, 0.2] }, { embedding: [0.3, 0.4] }],
+			usage: { prompt_tokens: 2, total_tokens: 2 },
+		})
+		MockedOpenAI.mockImplementation(() => ({ embeddings: { create: mockEmbeddingsCreate } }) as any)
+	})
+
+	afterEach(() => {
+		vitest.restoreAllMocks()
 	})
 
 	describe("constructor", () => {
-		it("should create VercelAiGatewayEmbedder with default model", () => {
-			// Arrange
-			const apiKey = "test-vercel-api-key"
+		it("should build its client for the Vercel AI Gateway endpoint", () => {
+			new VercelAiGatewayEmbedder("test-api-key")
 
-			// Act
-			embedder = new VercelAiGatewayEmbedder(apiKey)
-
-			// Assert
-			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
-				"https://ai-gateway.vercel.sh/v1",
-				apiKey,
-				"openai/text-embedding-3-large",
-				8191,
-			)
+			expect(MockedOpenAI).toHaveBeenCalledWith({
+				baseURL: "https://ai-gateway.vercel.sh/v1",
+				apiKey: "test-api-key",
+			})
 		})
 
-		it("should create VercelAiGatewayEmbedder with custom model", () => {
-			// Arrange
-			const apiKey = "test-vercel-api-key"
-			const modelId = "openai/text-embedding-3-small"
-
-			// Act
-			embedder = new VercelAiGatewayEmbedder(apiKey, modelId)
-
-			// Assert
-			expect(MockedOpenAICompatibleEmbedder).toHaveBeenCalledWith(
-				"https://ai-gateway.vercel.sh/v1",
-				apiKey,
-				"openai/text-embedding-3-small",
-				8191,
-			)
-		})
-
-		it("should throw error when API key is missing", () => {
-			// Act & Assert
+		it("should throw error when API key is not provided", () => {
 			expect(() => new VercelAiGatewayEmbedder("")).toThrow("validation.apiKeyRequired")
-		})
-	})
-
-	describe("createEmbeddings", () => {
-		beforeEach(() => {
-			embedder = new VercelAiGatewayEmbedder("test-api-key")
-		})
-
-		it("should delegate to OpenAICompatibleEmbedder with default model", async () => {
-			// Arrange
-			const texts = ["test text 1", "test text 2"]
-			const expectedResponse = {
-				embeddings: [
-					[0.1, 0.2],
-					[0.3, 0.4],
-				],
-			}
-			mockOpenAICompatibleEmbedder.createEmbeddings.mockResolvedValue(expectedResponse)
-
-			// Act
-			const result = await embedder.createEmbeddings(texts)
-
-			// Assert
-			expect(mockOpenAICompatibleEmbedder.createEmbeddings).toHaveBeenCalledWith(
-				texts,
-				"openai/text-embedding-3-large",
-			)
-			expect(result).toBe(expectedResponse)
-		})
-
-		it("should delegate to OpenAICompatibleEmbedder with custom model", async () => {
-			// Arrange
-			const texts = ["test text"]
-			const customModel = "google/gemini-embedding-001"
-			const expectedResponse = { embeddings: [[0.1, 0.2, 0.3]] }
-			mockOpenAICompatibleEmbedder.createEmbeddings.mockResolvedValue(expectedResponse)
-
-			// Act
-			const result = await embedder.createEmbeddings(texts, customModel)
-
-			// Assert
-			expect(mockOpenAICompatibleEmbedder.createEmbeddings).toHaveBeenCalledWith(texts, customModel)
-			expect(result).toBe(expectedResponse)
-		})
-
-		it("should handle errors from OpenAICompatibleEmbedder", async () => {
-			// Arrange
-			const texts = ["test text"]
-			const error = new Error("API request failed")
-			mockOpenAICompatibleEmbedder.createEmbeddings.mockRejectedValue(error)
-
-			// Act & Assert
-			await expect(embedder.createEmbeddings(texts)).rejects.toThrow("API request failed")
-			expect(mockOpenAICompatibleEmbedder.createEmbeddings).toHaveBeenCalledWith(
-				texts,
-				"openai/text-embedding-3-large",
-			)
-		})
-	})
-
-	describe("validateConfiguration", () => {
-		beforeEach(() => {
-			embedder = new VercelAiGatewayEmbedder("test-api-key")
-		})
-
-		it("should delegate to OpenAICompatibleEmbedder", async () => {
-			// Arrange
-			const expectedResult = { valid: true }
-			mockOpenAICompatibleEmbedder.validateConfiguration.mockResolvedValue(expectedResult)
-
-			// Act
-			const result = await embedder.validateConfiguration()
-
-			// Assert
-			expect(mockOpenAICompatibleEmbedder.validateConfiguration).toHaveBeenCalled()
-			expect(result).toBe(expectedResult)
-		})
-
-		it("should handle validation errors", async () => {
-			// Arrange
-			const error = new Error("Validation failed")
-			mockOpenAICompatibleEmbedder.validateConfiguration.mockRejectedValue(error)
-
-			// Act & Assert
-			await expect(embedder.validateConfiguration()).rejects.toThrow("Validation failed")
-			expect(mockOpenAICompatibleEmbedder.validateConfiguration).toHaveBeenCalled()
+			expect(() => new VercelAiGatewayEmbedder(null as any)).toThrow("validation.apiKeyRequired")
+			expect(() => new VercelAiGatewayEmbedder(undefined as any)).toThrow("validation.apiKeyRequired")
 		})
 	})
 
 	describe("embedderInfo", () => {
 		it("should return correct embedder info", () => {
-			// Arrange
-			embedder = new VercelAiGatewayEmbedder("test-api-key")
+			expect(new VercelAiGatewayEmbedder("test-api-key").embedderInfo).toEqual({ name: "vercel-ai-gateway" })
+		})
+	})
 
-			// Act
-			const info = embedder.embedderInfo
+	describe("createEmbeddings", () => {
+		it("should use the default model when none is configured or passed", async () => {
+			const result = await new VercelAiGatewayEmbedder("test-api-key").createEmbeddings(["a", "b"])
 
-			// Assert
-			expect(info).toEqual({
-				name: "vercel-ai-gateway",
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
+				input: ["a", "b"],
+				model: "openai/text-embedding-3-large",
+				encoding_format: "base64",
+			})
+			expect(result.embeddings).toEqual([
+				[0.1, 0.2],
+				[0.3, 0.4],
+			])
+		})
+
+		it("should use the configured model", async () => {
+			await new VercelAiGatewayEmbedder("test-api-key", "mistral/codestral-embed").createEmbeddings(["a", "b"])
+
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith(
+				expect.objectContaining({ model: "mistral/codestral-embed" }),
+			)
+		})
+
+		it("should let a model passed to the call win over the configured one", async () => {
+			await new VercelAiGatewayEmbedder("test-api-key").createEmbeddings(["a", "b"], "runtime-model")
+
+			expect(mockEmbeddingsCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "runtime-model" }))
+		})
+
+		it("should cut an input to 8191 estimated tokens", async () => {
+			mockEmbeddingsCreate.mockResolvedValue({ data: [{ embedding: [0.1] }] })
+
+			await new VercelAiGatewayEmbedder("test-api-key").createEmbeddings(["a".repeat(8191 * 4 + 10)])
+
+			expect(mockEmbeddingsCreate.mock.calls[0][0].input).toEqual(["a".repeat(8191 * 4)])
+		})
+
+		it("should reject when the request fails", async () => {
+			mockEmbeddingsCreate.mockRejectedValue(new Error("Embedding failed"))
+
+			await expect(new VercelAiGatewayEmbedder("test-api-key").createEmbeddings(["a"])).rejects.toThrow(
+				"embeddings:failedWithError",
+			)
+		})
+	})
+
+	describe("validateConfiguration", () => {
+		it("should report the probe dimension", async () => {
+			mockEmbeddingsCreate.mockResolvedValue({ data: [{ embedding: [0.1, 0.2, 0.3] }] })
+
+			await expect(new VercelAiGatewayEmbedder("test-api-key").validateConfiguration()).resolves.toEqual({
+				valid: true,
+				dimension: 3,
+			})
+		})
+
+		it("should map an authentication failure to a validation error", async () => {
+			mockEmbeddingsCreate.mockRejectedValue(Object.assign(new Error("Unauthorized"), { status: 401 }))
+
+			await expect(new VercelAiGatewayEmbedder("test-api-key").validateConfiguration()).resolves.toEqual({
+				valid: false,
+				error: "embeddings:validation.authenticationFailed",
 			})
 		})
 	})

@@ -10,7 +10,9 @@ import { QdrantVectorStore } from "../vector-store/qdrant-client"
 vitest.mock("../embedders/openai")
 vitest.mock("../embedders/ollama")
 vitest.mock("../embedders/openai-compatible")
-vitest.mock("../embedders/gemini")
+// An explicit factory: automocking a subclass of OpenAICompatibleEmbedder runs its real
+// constructor against the mocked parent instead of recording the call on GeminiEmbedder.
+vitest.mock("../embedders/gemini", () => ({ GeminiEmbedder: vitest.fn() }))
 vitest.mock("../vector-store/qdrant-client")
 
 // Mock the embedding models module

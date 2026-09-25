@@ -2,7 +2,8 @@ import type { MockedFunction } from "vitest"
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime"
 
 import { BedrockEmbedder } from "../bedrock"
-import { MAX_ITEM_TOKENS, INITIAL_RETRY_DELAY_MS } from "../../constants"
+import { MAX_ITEM_TOKENS } from "../../constants"
+import { resetRateLimitGates } from "../rate-limit-gate"
 
 // Mock the AWS SDK
 vitest.mock("@aws-sdk/client-bedrock-runtime", () => {
@@ -38,7 +39,7 @@ vitest.mock("../../../../i18n", () => ({
 			"embeddings:failedWithStatus": `Failed to create embeddings after ${params?.attempts} attempts: HTTP ${params?.statusCode} - ${params?.errorMessage}`,
 			"embeddings:failedWithError": `Failed to create embeddings after ${params?.attempts} attempts: ${params?.errorMessage}`,
 			"embeddings:failedMaxAttempts": `Failed to create embeddings after ${params?.attempts} attempts`,
-			"embeddings:textExceedsTokenLimit": `Text at index ${params?.index} exceeds maximum token limit (${params?.itemTokens} > ${params?.maxTokens}). Skipping.`,
+			"embeddings:textTruncatedToTokenLimit": `Text at index ${params?.index} exceeds maximum token limit (${params?.itemTokens} > ${params?.maxTokens}). Truncating it to the limit.`,
 			"embeddings:rateLimitRetry": `Rate limit hit, retrying in ${params?.delayMs}ms (attempt ${params?.attempt}/${params?.maxRetries})`,
 			"embeddings:bedrock.invalidResponseFormat": "Invalid response format from Bedrock",
 			"embeddings:bedrock.invalidCredentials": "Invalid AWS credentials",
@@ -65,6 +66,7 @@ describe("BedrockEmbedder", () => {
 
 	beforeEach(() => {
 		vitest.clearAllMocks()
+		resetRateLimitGates()
 		consoleMocks.error.mockClear()
 		consoleMocks.warn.mockClear()
 
@@ -375,55 +377,30 @@ describe("BedrockEmbedder", () => {
 		 * Test batching logic when texts exceed token limits
 		 */
 		describe("batching logic", () => {
-			it("should warn and skip texts exceeding maximum token limit", async () => {
+			it("should warn and truncate texts exceeding maximum token limit", async () => {
 				// Create a text that exceeds MAX_ITEM_TOKENS (4 characters ≈ 1 token)
 				const oversizedText = "a".repeat(MAX_ITEM_TOKENS * 4 + 100)
 				const normalText = "normal text"
 				const testTexts = [normalText, oversizedText, "another normal"]
 
-				const mockResponses = [
-					{
-						body: new TextEncoder().encode(
-							JSON.stringify({
-								embedding: [0.1, 0.2, 0.3],
-								inputTextTokenCount: 3,
-							}),
-						),
-					},
-					{
-						body: new TextEncoder().encode(
-							JSON.stringify({
-								embedding: [0.4, 0.5, 0.6],
-								inputTextTokenCount: 3,
-							}),
-						),
-					},
-				]
-
-				mockSend.mockResolvedValueOnce(mockResponses[0]).mockResolvedValueOnce(mockResponses[1])
+				const response = (embedding: number[]) => ({
+					body: new TextEncoder().encode(JSON.stringify({ embedding, inputTextTokenCount: 3 })),
+				})
+				mockSend
+					.mockResolvedValueOnce(response([0.1, 0.2, 0.3]))
+					.mockResolvedValueOnce(response([0.4, 0.5, 0.6]))
+					.mockResolvedValueOnce(response([0.7, 0.8, 0.9]))
 
 				const result = await embedder.createEmbeddings(testTexts)
 
 				// Verify warning was logged
 				expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("exceeds maximum token limit"))
 
-				// Verify only normal texts were processed
-				expect(mockSend).toHaveBeenCalledTimes(2)
-				expect(result.embeddings).toHaveLength(2)
-			})
-
-			it("should handle all texts being skipped due to size", async () => {
-				const oversizedText = "a".repeat(MAX_ITEM_TOKENS * 4 + 100)
-				const testTexts = [oversizedText, oversizedText]
-
-				const result = await embedder.createEmbeddings(testTexts)
-
-				expect(console.warn).toHaveBeenCalledTimes(2)
-				expect(mockSend).not.toHaveBeenCalled()
-				expect(result).toEqual({
-					embeddings: [],
-					usage: { promptTokens: 0, totalTokens: 0 },
-				})
+				// The oversized text is cut to the limit, not dropped, so vectors stay aligned
+				expect(mockSend).toHaveBeenCalledTimes(3)
+				const sentText = JSON.parse((mockSend.mock.calls[1][0] as any).input.body).inputText
+				expect(sentText).toBe("a".repeat(MAX_ITEM_TOKENS * 4))
+				expect(result.embeddings).toHaveLength(3)
 			})
 		})
 
@@ -458,9 +435,10 @@ describe("BedrockEmbedder", () => {
 
 				const resultPromise = embedder.createEmbeddings(testTexts)
 
-				// Fast-forward through the delays
-				await vitest.advanceTimersByTimeAsync(INITIAL_RETRY_DELAY_MS) // First retry delay
-				await vitest.advanceTimersByTimeAsync(INITIAL_RETRY_DELAY_MS * 2) // Second retry delay
+				// Fast-forward through the delays: the endpoint's shared backoff (5 s, then 10 s)
+				// is longer than the exponential floor (INITIAL_RETRY_DELAY_MS, then twice that)
+				await vitest.advanceTimersByTimeAsync(5_000) // First retry delay
+				await vitest.advanceTimersByTimeAsync(10_000) // Second retry delay
 
 				const result = await resultPromise
 
@@ -503,7 +481,7 @@ describe("BedrockEmbedder", () => {
 				)
 
 				expect(console.error).toHaveBeenCalledWith(
-					expect.stringContaining("Bedrock embedder error"),
+					expect.stringContaining("BedrockEmbedder error"),
 					expect.any(Error),
 				)
 			})

@@ -4,7 +4,7 @@
 	"failedWithStatus": "Falha ao criar embeddings após {{attempts}} tentativas: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Falha ao criar embeddings após {{attempts}} tentativas: {{errorMessage}}",
 	"failedMaxAttempts": "Falha ao criar embeddings após {{attempts}} tentativas",
-	"textExceedsTokenLimit": "O texto no índice {{index}} excede o limite máximo de tokens ({{itemTokens}} > {{maxTokens}}). Ignorando.",
+	"textTruncatedToTokenLimit": "O texto no índice {{index}} excede o limite máximo de tokens ({{itemTokens}} > {{maxTokens}}). Truncando até o limite.",
 	"rateLimitRetry": "Limite de taxa atingido, tentando novamente em {{delayMs}}ms (tentativa {{attempt}}/{{maxRetries}})",
 	"bedrock": {
 		"invalidResponseFormat": "Formato de resposta inválido do Amazon Bedrock",

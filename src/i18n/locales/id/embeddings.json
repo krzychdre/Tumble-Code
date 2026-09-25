@@ -4,7 +4,7 @@
 	"failedWithStatus": "Gagal membuat embeddings setelah {{attempts}} percobaan: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Gagal membuat embeddings setelah {{attempts}} percobaan: {{errorMessage}}",
 	"failedMaxAttempts": "Gagal membuat embeddings setelah {{attempts}} percobaan",
-	"textExceedsTokenLimit": "Teks pada indeks {{index}} melebihi batas maksimum token ({{itemTokens}} > {{maxTokens}}). Dilewati.",
+	"textTruncatedToTokenLimit": "Teks pada indeks {{index}} melebihi batas maksimum token ({{itemTokens}} > {{maxTokens}}). Dipotong hingga batas.",
 	"rateLimitRetry": "Batas rate tercapai, mencoba lagi dalam {{delayMs}}ms (percobaan {{attempt}}/{{maxRetries}})",
 	"bedrock": {
 		"invalidResponseFormat": "Format respons tidak valid dari Amazon Bedrock",

@@ -1,11 +1,8 @@
 import { ApiHandlerOptions } from "../../../shared/api"
-import { EmbedderInfo, EmbedderValidationResult, EmbeddingResponse, IEmbedder } from "../interfaces"
-import { getModelQueryPrefix } from "../../../shared/embeddingModels"
-import { MAX_ITEM_TOKENS } from "../constants"
+import { EmbedderInfo, EmbedderValidationResult } from "../interfaces"
 import { t } from "../../../i18n"
-import { withValidationErrorHandling, sanitizeErrorMessage } from "../shared/validation-helpers"
-import { TelemetryService } from "@roo-code/telemetry"
-import { TelemetryEventName } from "@roo-code/types"
+import { withValidationErrorHandling, HttpError } from "../shared/validation-helpers"
+import { BaseHttpEmbedder, EmbedBatchResult } from "./base-http-embedder"
 
 // Timeout constants for Ollama API requests
 const OLLAMA_EMBEDDING_TIMEOUT_MS = 60000 // 60 seconds for embedding requests
@@ -13,135 +10,102 @@ const OLLAMA_VALIDATION_TIMEOUT_MS = 30000 // 30 seconds for validation requests
 
 /**
  * Implements the IEmbedder interface using a local Ollama instance.
+ * Batching, retry and rate limiting come from BaseHttpEmbedder; validation is Ollama's own,
+ * because it first checks that the service runs and the model is installed.
  */
-export class CodeIndexOllamaEmbedder implements IEmbedder {
+export class CodeIndexOllamaEmbedder extends BaseHttpEmbedder {
 	private readonly baseUrl: string
-	private readonly defaultModelId: string
 
 	constructor(options: ApiHandlerOptions) {
-		// Ensure ollamaBaseUrl and ollamaModelId exist on ApiHandlerOptions or add defaults
-		let baseUrl = options.ollamaBaseUrl || "http://localhost:11434"
-
 		// Normalize the baseUrl by removing all trailing slashes
-		baseUrl = baseUrl.replace(/\/+$/, "")
+		const baseUrl = (options.ollamaBaseUrl || "http://localhost:11434").replace(/\/+$/, "")
+
+		super({
+			defaultModelId: options.ollamaModelId || "nomic-embed-text:latest",
+			queryPrefixProvider: "ollama",
+			rateLimitKey: baseUrl,
+			reportsUsage: false,
+		})
 
 		this.baseUrl = baseUrl
-		this.defaultModelId = options.ollamaModelId || "nomic-embed-text:latest"
 	}
 
-	/**
-	 * Creates embeddings for the given texts using the specified Ollama model.
-	 * @param texts - An array of strings to embed.
-	 * @param model - Optional model ID to override the default.
-	 * @returns A promise that resolves to an EmbeddingResponse containing the embeddings and usage data.
-	 */
-	async createEmbeddings(texts: string[], model?: string): Promise<EmbeddingResponse> {
-		const modelToUse = model || this.defaultModelId
-		const url = `${this.baseUrl}/api/embed` // Endpoint as specified
+	get embedderInfo(): EmbedderInfo {
+		return {
+			name: "ollama",
+		}
+	}
 
-		// Apply model-specific query prefix if required
-		const queryPrefix = getModelQueryPrefix("ollama", modelToUse)
-		const processedTexts = queryPrefix
-			? texts.map((text, index) => {
-					// Prevent double-prefixing
-					if (text.startsWith(queryPrefix)) {
-						return text
-					}
-					const prefixedText = `${queryPrefix}${text}`
-					const estimatedTokens = Math.ceil(prefixedText.length / 4)
-					if (estimatedTokens > MAX_ITEM_TOKENS) {
-						console.warn(
-							t("embeddings:textWithPrefixExceedsTokenLimit", {
-								index,
-								estimatedTokens,
-								maxTokens: MAX_ITEM_TOKENS,
-							}),
-						)
-						// Return original text if adding prefix would exceed limit
-						return text
-					}
-					return prefixedText
-				})
-			: texts
+	protected get telemetryName(): string {
+		return "OllamaEmbedder"
+	}
 
+	protected async embedBatch(texts: string[], model: string): Promise<EmbedBatchResult> {
+		// Add timeout to prevent indefinite hanging
+		const controller = new AbortController()
+		const timeoutId = setTimeout(() => controller.abort(), OLLAMA_EMBEDDING_TIMEOUT_MS)
+
+		let response: Response
 		try {
-			// Note: Standard Ollama API uses 'prompt' for single text, not 'input' for array.
-			// Implementing based on user's specific request structure.
-
-			// Add timeout to prevent indefinite hanging
-			const controller = new AbortController()
-			const timeoutId = setTimeout(() => controller.abort(), OLLAMA_EMBEDDING_TIMEOUT_MS)
-
-			const response = await fetch(url, {
+			response = await fetch(`${this.baseUrl}/api/embed`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					model: modelToUse,
-					input: processedTexts, // Using 'input' as requested
+					model,
+					input: texts,
 				}),
 				signal: controller.signal,
 			})
+		} finally {
 			clearTimeout(timeoutId)
-
-			if (!response.ok) {
-				let errorBody = t("embeddings:ollama.couldNotReadErrorBody")
-				try {
-					errorBody = await response.text()
-				} catch (e) {
-					// Ignore error reading body
-				}
-				throw new Error(
-					t("embeddings:ollama.requestFailed", {
-						status: response.status,
-						statusText: response.statusText,
-						errorBody,
-					}),
-				)
-			}
-
-			const data = await response.json()
-
-			// Extract embeddings using 'embeddings' key as requested
-			const embeddings = data.embeddings
-			if (!embeddings || !Array.isArray(embeddings)) {
-				throw new Error(t("embeddings:ollama.invalidResponseStructure"))
-			}
-
-			return {
-				embeddings: embeddings,
-			}
-		} catch (error: any) {
-			// Capture telemetry before reformatting the error
-			TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-				error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
-				stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
-				location: "OllamaEmbedder:createEmbeddings",
-			})
-
-			// Log the original error for debugging purposes
-			console.error("Ollama embedding failed:", error)
-
-			// Handle specific error types with better messages
-			if (error.name === "AbortError") {
-				throw new Error(t("embeddings:validation.connectionFailed"))
-			} else if (error.message?.includes("fetch failed") || error.code === "ECONNREFUSED") {
-				throw new Error(t("embeddings:ollama.serviceNotRunning", { baseUrl: this.baseUrl }))
-			} else if (error.code === "ENOTFOUND") {
-				throw new Error(t("embeddings:ollama.hostNotFound", { baseUrl: this.baseUrl }))
-			}
-
-			// Re-throw a more specific error for the caller
-			throw new Error(t("embeddings:ollama.embeddingFailed", { message: error.message }))
 		}
+
+		if (!response.ok) {
+			let errorBody = t("embeddings:ollama.couldNotReadErrorBody")
+			try {
+				errorBody = await response.text()
+			} catch (e) {
+				// Ignore error reading body
+			}
+			const error = new Error(
+				t("embeddings:ollama.requestFailed", {
+					status: response.status,
+					statusText: response.statusText,
+					errorBody,
+				}),
+			) as HttpError
+			// Keep the status so a 429 is retried like everywhere else
+			error.status = response.status
+			throw error
+		}
+
+		const data = await response.json()
+		const embeddings = data.embeddings
+		if (!embeddings || !Array.isArray(embeddings)) {
+			throw new Error(t("embeddings:ollama.invalidResponseStructure"))
+		}
+
+		return { embeddings }
+	}
+
+	protected override formatError(error: any): Error {
+		if (error?.name === "AbortError") {
+			return new Error(t("embeddings:validation.connectionFailed"))
+		} else if (error?.message?.includes("fetch failed") || error?.code === "ECONNREFUSED") {
+			return new Error(t("embeddings:ollama.serviceNotRunning", { baseUrl: this.baseUrl }))
+		} else if (error?.code === "ENOTFOUND") {
+			return new Error(t("embeddings:ollama.hostNotFound", { baseUrl: this.baseUrl }))
+		}
+		return new Error(t("embeddings:ollama.embeddingFailed", { message: error?.message }))
 	}
 
 	/**
 	 * Validates the Ollama embedder configuration by checking service availability and model existence
 	 * @returns Promise resolving to validation result with success status and optional error message
 	 */
-	async validateConfiguration(): Promise<EmbedderValidationResult> {
+	override async validateConfiguration(): Promise<EmbedderValidationResult> {
 		return withValidationErrorHandling(
 			async () => {
 				// First check if Ollama service is running by trying to list models
@@ -230,15 +194,21 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 
 				// Report the probe's vector length so a wrong manually-entered dimension is caught
 				// here rather than as a rejected upsert halfway through the scan.
-				let dimension: number | undefined
+				let body: any
 				try {
-					const probe = (await testResponse.json())?.embeddings?.[0]
-					dimension = Array.isArray(probe) && probe.length > 0 ? probe.length : undefined
+					body = await testResponse.json()
 				} catch {
 					// A model that embeds but answers with an unreadable body still validates.
+					return { valid: true }
 				}
 
-				return { valid: true, dimension }
+				const probe = body?.embeddings?.[0]
+				if (!Array.isArray(probe) || probe.length === 0) {
+					// The model answered but returned no vector: indexing would fail on every batch.
+					return { valid: false, error: t("embeddings:validation.invalidResponse") }
+				}
+
+				return { valid: true, dimension: probe.length }
 			},
 			"ollama",
 			{
@@ -251,33 +221,21 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 						error?.message?.includes("ECONNREFUSED")
 					) {
 						// Capture telemetry for connection failed error
-						TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-							error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
-							stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
-							location: "OllamaEmbedder:validateConfiguration:connectionFailed",
-						})
+						this.captureError(error, "validateConfiguration:connectionFailed")
 						return {
 							valid: false,
 							error: t("embeddings:ollama.serviceNotRunning", { baseUrl: this.baseUrl }),
 						}
 					} else if (error?.code === "ENOTFOUND" || error?.message?.includes("ENOTFOUND")) {
 						// Capture telemetry for host not found error
-						TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-							error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
-							stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
-							location: "OllamaEmbedder:validateConfiguration:hostNotFound",
-						})
+						this.captureError(error, "validateConfiguration:hostNotFound")
 						return {
 							valid: false,
 							error: t("embeddings:ollama.hostNotFound", { baseUrl: this.baseUrl }),
 						}
 					} else if (error?.name === "AbortError") {
 						// Capture telemetry for timeout error
-						TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-							error: sanitizeErrorMessage(error instanceof Error ? error.message : String(error)),
-							stack: error instanceof Error ? sanitizeErrorMessage(error.stack || "") : undefined,
-							location: "OllamaEmbedder:validateConfiguration:timeout",
-						})
+						this.captureError(error, "validateConfiguration:timeout")
 						// Handle timeout
 						return {
 							valid: false,
@@ -289,11 +247,5 @@ export class CodeIndexOllamaEmbedder implements IEmbedder {
 				},
 			},
 		)
-	}
-
-	get embedderInfo(): EmbedderInfo {
-		return {
-			name: "ollama",
-		}
 	}
 }

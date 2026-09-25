@@ -1,6 +1,7 @@
 import type { MockedClass, MockedFunction } from "vitest"
 import { OpenAI } from "openai"
 import { OpenAICompatibleEmbedder } from "../openai-compatible"
+import { resetRateLimitGates } from "../rate-limit-gate"
 import { MAX_ITEM_TOKENS, INITIAL_RETRY_DELAY_MS } from "../../constants"
 
 // Mock the OpenAI SDK
@@ -27,7 +28,7 @@ vitest.mock("../../../../i18n", () => ({
 			"embeddings:failedWithStatus": `Failed to create embeddings after ${params?.attempts} attempts: HTTP ${params?.statusCode} - ${params?.errorMessage}`,
 			"embeddings:failedWithError": `Failed to create embeddings after ${params?.attempts} attempts: ${params?.errorMessage}`,
 			"embeddings:failedMaxAttempts": `Failed to create embeddings after ${params?.attempts} attempts`,
-			"embeddings:textExceedsTokenLimit": `Text at index ${params?.index} exceeds maximum token limit (${params?.itemTokens} > ${params?.maxTokens}). Skipping.`,
+			"embeddings:textTruncatedToTokenLimit": `Text at index ${params?.index} exceeds maximum token limit (${params?.itemTokens} > ${params?.maxTokens}). Truncating it to the limit.`,
 			"embeddings:rateLimitRetry": `Rate limit hit, retrying in ${params?.delayMs}ms (attempt ${params?.attempt}/${params?.maxRetries})`,
 			"embeddings:unknownError": "Unknown error",
 			"common:errors.api.invalidKeyInvalidChars":
@@ -76,15 +77,8 @@ describe("OpenAICompatibleEmbedder", () => {
 
 		MockedOpenAI.mockImplementation(() => mockOpenAIInstance)
 
-		// Reset global rate limit state to prevent interference between tests
-		const tempEmbedder = new OpenAICompatibleEmbedder(testBaseUrl, testApiKey, testModelId)
-		;(tempEmbedder as any).constructor.globalRateLimitState = {
-			isRateLimited: false,
-			rateLimitResetTime: 0,
-			consecutiveRateLimitErrors: 0,
-			lastRateLimitError: 0,
-			mutex: (tempEmbedder as any).constructor.globalRateLimitState.mutex,
-		}
+		// Reset the shared rate limit state to prevent interference between tests
+		resetRateLimitGates()
 	})
 
 	afterEach(() => {
@@ -359,24 +353,32 @@ describe("OpenAICompatibleEmbedder", () => {
 				expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(1)
 			})
 
-			it("should skip texts that exceed MAX_ITEM_TOKENS", async () => {
+			it("should truncate texts that exceed MAX_ITEM_TOKENS instead of dropping them", async () => {
 				const normalText = "Hello world"
 				const oversizedText = "a".repeat(MAX_ITEM_TOKENS * 5) // Exceeds MAX_ITEM_TOKENS
 				const testTexts = [normalText, oversizedText, normalText]
 
 				const mockResponse = {
-					data: [{ embedding: [0.1, 0.2, 0.3] }, { embedding: [0.4, 0.5, 0.6] }],
+					data: [
+						{ embedding: [0.1, 0.2, 0.3] },
+						{ embedding: [0.4, 0.5, 0.6] },
+						{ embedding: [0.7, 0.8, 0.9] },
+					],
 					usage: { prompt_tokens: 10, total_tokens: 15 },
 				}
 				mockEmbeddingsCreate.mockResolvedValue(mockResponse)
 
-				await embedder.createEmbeddings(testTexts)
+				const result = await embedder.createEmbeddings(testTexts)
 
 				// Should warn about oversized text
 				expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("exceeds maximum token limit"))
 
-				// Should only process normal texts (1 call for 2 normal texts batched together)
+				// All three texts go out in one batch, the oversized one cut to the item limit,
+				// so every vector still belongs to the input at the same position
 				expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(1)
+				const sent = (mockEmbeddingsCreate.mock.calls[0][0] as { input: string[] }).input
+				expect(sent).toEqual([normalText, "a".repeat(MAX_ITEM_TOKENS * 4), normalText])
+				expect(result.embeddings).toHaveLength(3)
 			})
 
 			it("should return correct usage statistics", async () => {
@@ -493,7 +495,7 @@ describe("OpenAICompatibleEmbedder", () => {
 				)
 
 				expect(console.error).toHaveBeenCalledWith(
-					expect.stringContaining("OpenAI Compatible embedder error"),
+					expect.stringContaining("OpenAICompatibleEmbedder error"),
 					apiError,
 				)
 			})
@@ -509,7 +511,7 @@ describe("OpenAICompatibleEmbedder", () => {
 				)
 
 				expect(console.error).toHaveBeenCalledWith(
-					expect.stringContaining("OpenAI Compatible embedder error"),
+					expect.stringContaining("OpenAICompatibleEmbedder error"),
 					expect.any(Error),
 				)
 			})

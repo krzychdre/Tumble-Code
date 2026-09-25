@@ -1,30 +1,17 @@
 import { BedrockRuntimeClient, InvokeModelCommand, InvokeModelCommandInput } from "@aws-sdk/client-bedrock-runtime"
 import { fromIni, fromNodeProviderChain } from "@aws-sdk/credential-providers"
-import { IEmbedder, EmbeddingResponse, EmbedderInfo, EmbedderValidationResult } from "../interfaces"
-import {
-	MAX_BATCH_TOKENS,
-	MAX_ITEM_TOKENS,
-	MAX_BATCH_RETRIES as MAX_RETRIES,
-	INITIAL_RETRY_DELAY_MS as INITIAL_DELAY_MS,
-} from "../constants"
+import { EmbedderInfo, EmbedderValidationResult } from "../interfaces"
 import { getDefaultModelId } from "../../../shared/embeddingModels"
 import { Package } from "../../../shared/package"
 import { t } from "../../../i18n"
-import {
-	withValidationErrorHandling,
-	formatEmbeddingError,
-	HttpError,
-	measureEmbeddingDimension,
-} from "../shared/validation-helpers"
-import { TelemetryEventName } from "@roo-code/types"
-import { TelemetryService } from "@roo-code/telemetry"
+import { BaseHttpEmbedder, EmbedBatchResult } from "./base-http-embedder"
 
 /**
- * Amazon Bedrock implementation of the embedder interface with batching and rate limiting
+ * Amazon Bedrock implementation of the embedder interface.
+ * Batching, retry, rate limiting and validation come from BaseHttpEmbedder.
  */
-export class BedrockEmbedder implements IEmbedder {
-	private bedrockClient: BedrockRuntimeClient
-	private readonly defaultModelId: string
+export class BedrockEmbedder extends BaseHttpEmbedder {
+	private readonly bedrockClient: BedrockRuntimeClient
 
 	/**
 	 * Creates a new Amazon Bedrock embedder
@@ -32,154 +19,74 @@ export class BedrockEmbedder implements IEmbedder {
 	 * @param profile AWS profile name for credentials (optional - uses default credential chain if not provided)
 	 * @param modelId Optional model ID override
 	 */
-	constructor(
-		private readonly region: string,
-		private readonly profile?: string,
-		modelId?: string,
-	) {
+	constructor(region: string, profile?: string, modelId?: string) {
 		if (!region) {
 			throw new Error("Region is required for AWS Bedrock embedder")
 		}
 
+		super({
+			defaultModelId: modelId || getDefaultModelId("bedrock"),
+			queryPrefixProvider: "bedrock",
+			rateLimitKey: `bedrock:${region}`,
+		})
+
 		// Initialize the Bedrock client with credentials
 		// If profile is specified, use it; otherwise use default credential chain
-		const credentials = this.profile ? fromIni({ profile: this.profile }) : fromNodeProviderChain()
+		const credentials = profile ? fromIni({ profile }) : fromNodeProviderChain()
 
 		this.bedrockClient = new BedrockRuntimeClient({
 			userAgentAppId: `RooCode#${Package.version}`,
-			region: this.region,
+			region,
 			credentials,
 		})
+	}
 
-		this.defaultModelId = modelId || getDefaultModelId("bedrock")
+	get embedderInfo(): EmbedderInfo {
+		return {
+			name: "bedrock",
+		}
+	}
+
+	protected get telemetryName(): string {
+		return "BedrockEmbedder"
+	}
+
+	protected override isRateLimitError(error: unknown): boolean {
+		return (error as { name?: string } | undefined)?.name === "ThrottlingException"
+	}
+
+	protected override invalidResponseMessage(): string {
+		return t("embeddings:bedrock.invalidResponseFormat")
+	}
+
+	protected override describeValidationError(error: unknown): EmbedderValidationResult | undefined {
+		switch ((error as { name?: string } | undefined)?.name) {
+			case "UnrecognizedClientException":
+				return { valid: false, error: t("embeddings:bedrock.invalidCredentials") }
+			case "AccessDeniedException":
+				return { valid: false, error: t("embeddings:bedrock.accessDenied") }
+			case "ResourceNotFoundException":
+				return { valid: false, error: t("embeddings:bedrock.modelNotFound", { model: this.defaultModelId }) }
+			default:
+				return undefined
+		}
 	}
 
 	/**
-	 * Creates embeddings for the given texts with batching and rate limiting
-	 * @param texts Array of text strings to embed
-	 * @param model Optional model identifier
-	 * @returns Promise resolving to embedding response
+	 * Embeds a batch one text at a time: Amazon Titan models typically don't support batch
+	 * embedding in a single request.
 	 */
-	async createEmbeddings(texts: string[], model?: string): Promise<EmbeddingResponse> {
-		const modelToUse = model || this.defaultModelId
+	protected async embedBatch(texts: string[], model: string): Promise<EmbedBatchResult> {
+		const embeddings: number[][] = []
+		let tokens = 0
 
-		const allEmbeddings: number[][] = []
-		const usage = { promptTokens: 0, totalTokens: 0 }
-		const remainingTexts = [...texts]
-
-		while (remainingTexts.length > 0) {
-			const currentBatch: string[] = []
-			let currentBatchTokens = 0
-			const processedIndices: number[] = []
-
-			for (let i = 0; i < remainingTexts.length; i++) {
-				const text = remainingTexts[i]
-				const itemTokens = Math.ceil(text.length / 4)
-
-				if (itemTokens > MAX_ITEM_TOKENS) {
-					console.warn(
-						t("embeddings:textExceedsTokenLimit", {
-							index: i,
-							itemTokens,
-							maxTokens: MAX_ITEM_TOKENS,
-						}),
-					)
-					processedIndices.push(i)
-					continue
-				}
-
-				if (currentBatchTokens + itemTokens <= MAX_BATCH_TOKENS) {
-					currentBatch.push(text)
-					currentBatchTokens += itemTokens
-					processedIndices.push(i)
-				} else {
-					break
-				}
-			}
-
-			// Remove processed items from remainingTexts (in reverse order to maintain correct indices)
-			for (let i = processedIndices.length - 1; i >= 0; i--) {
-				remainingTexts.splice(processedIndices[i], 1)
-			}
-
-			if (currentBatch.length > 0) {
-				const batchResult = await this._embedBatchWithRetries(currentBatch, modelToUse)
-				allEmbeddings.push(...batchResult.embeddings)
-				usage.promptTokens += batchResult.usage.promptTokens
-				usage.totalTokens += batchResult.usage.totalTokens
-			}
+		for (const text of texts) {
+			const result = await this._invokeEmbeddingModel(text, model)
+			embeddings.push(result.embedding)
+			tokens += result.inputTextTokenCount || 0
 		}
 
-		return { embeddings: allEmbeddings, usage }
-	}
-
-	/**
-	 * Helper method to handle batch embedding with retries and exponential backoff
-	 * @param batchTexts Array of texts to embed in this batch
-	 * @param model Model identifier to use
-	 * @returns Promise resolving to embeddings and usage statistics
-	 */
-	private async _embedBatchWithRetries(
-		batchTexts: string[],
-		model: string,
-	): Promise<{ embeddings: number[][]; usage: { promptTokens: number; totalTokens: number } }> {
-		for (let attempts = 0; attempts < MAX_RETRIES; attempts++) {
-			try {
-				const embeddings: number[][] = []
-				let totalPromptTokens = 0
-				let totalTokens = 0
-
-				// Process each text in the batch
-				// Note: Amazon Titan models typically don't support batch embedding in a single request
-				// So we process them individually
-				for (const text of batchTexts) {
-					const embedding = await this._invokeEmbeddingModel(text, model)
-					embeddings.push(embedding.embedding)
-					totalPromptTokens += embedding.inputTextTokenCount || 0
-					totalTokens += embedding.inputTextTokenCount || 0
-				}
-
-				return {
-					embeddings,
-					usage: {
-						promptTokens: totalPromptTokens,
-						totalTokens,
-					},
-				}
-			} catch (error: any) {
-				const hasMoreAttempts = attempts < MAX_RETRIES - 1
-
-				// Check if it's a rate limit error
-				if (error.name === "ThrottlingException" && hasMoreAttempts) {
-					const delayMs = INITIAL_DELAY_MS * Math.pow(2, attempts)
-					console.warn(
-						t("embeddings:rateLimitRetry", {
-							delayMs,
-							attempt: attempts + 1,
-							maxRetries: MAX_RETRIES,
-						}),
-					)
-					await new Promise((resolve) => setTimeout(resolve, delayMs))
-					continue
-				}
-
-				// Capture telemetry before reformatting the error
-				TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-					error: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-					location: "BedrockEmbedder:_embedBatchWithRetries",
-					attempt: attempts + 1,
-				})
-
-				// Log the error for debugging
-				console.error(`Bedrock embedder error (attempt ${attempts + 1}/${MAX_RETRIES}):`, error)
-
-				// Format and throw the error
-				throw formatEmbeddingError(error, MAX_RETRIES)
-			}
-		}
-
-		throw new Error(t("embeddings:failedMaxAttempts", { attempts: MAX_RETRIES }))
+		return { embeddings, usage: { promptTokens: tokens, totalTokens: tokens } }
 	}
 
 	/**
@@ -277,66 +184,6 @@ export class BedrockEmbedder implements IEmbedder {
 				embedding: responseBody.embedding,
 				inputTextTokenCount: responseBody.inputTextTokenCount,
 			}
-		}
-	}
-
-	/**
-	 * Validates the Bedrock embedder configuration by attempting a minimal embedding request
-	 * @returns Promise resolving to validation result with success status and optional error message
-	 */
-	async validateConfiguration(): Promise<EmbedderValidationResult> {
-		return withValidationErrorHandling(async () => {
-			try {
-				// Test with a minimal embedding request
-				const result = await this._invokeEmbeddingModel("test", this.defaultModelId)
-
-				// Check if we got a valid response
-				if (!result.embedding || result.embedding.length === 0) {
-					return {
-						valid: false,
-						error: t("embeddings:bedrock.invalidResponseFormat"),
-					}
-				}
-
-				// Report the probe length so a configured dimension that disagrees is caught here
-				return { valid: true, dimension: measureEmbeddingDimension(result.embedding) }
-			} catch (error: any) {
-				// Check for specific AWS errors
-				if (error.name === "UnrecognizedClientException") {
-					return {
-						valid: false,
-						error: t("embeddings:bedrock.invalidCredentials"),
-					}
-				}
-
-				if (error.name === "AccessDeniedException") {
-					return {
-						valid: false,
-						error: t("embeddings:bedrock.accessDenied"),
-					}
-				}
-
-				if (error.name === "ResourceNotFoundException") {
-					return {
-						valid: false,
-						error: t("embeddings:bedrock.modelNotFound", { model: this.defaultModelId }),
-					}
-				}
-
-				// Capture telemetry for validation errors
-				TelemetryService.instance.captureEvent(TelemetryEventName.CODE_INDEX_ERROR, {
-					error: error instanceof Error ? error.message : String(error),
-					stack: error instanceof Error ? error.stack : undefined,
-					location: "BedrockEmbedder:validateConfiguration",
-				})
-				throw error
-			}
-		}, "bedrock")
-	}
-
-	get embedderInfo(): EmbedderInfo {
-		return {
-			name: "bedrock",
 		}
 	}
 }

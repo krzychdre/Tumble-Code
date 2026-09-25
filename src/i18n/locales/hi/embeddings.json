@@ -4,7 +4,7 @@
 	"failedWithStatus": "{{attempts}} प्रयासों के बाद एम्बेडिंग बनाने में विफल: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "{{attempts}} प्रयासों के बाद एम्बेडिंग बनाने में विफल: {{errorMessage}}",
 	"failedMaxAttempts": "{{attempts}} प्रयासों के बाद एम्बेडिंग बनाने में विफल",
-	"textExceedsTokenLimit": "अनुक्रमणिका {{index}} पर पाठ अधिकतम टोकन सीमा ({{itemTokens}} > {{maxTokens}}) से अधिक है। छोड़ा जा रहा है।",
+	"textTruncatedToTokenLimit": "अनुक्रमणिका {{index}} पर पाठ अधिकतम टोकन सीमा ({{itemTokens}} > {{maxTokens}}) से अधिक है। इसे सीमा तक छोटा किया जा रहा है।",
 	"rateLimitRetry": "दर सीमा समाप्त, {{delayMs}}ms में पुन: प्रयास किया जा रहा है (प्रयास {{attempt}}/{{maxRetries}})",
 	"bedrock": {
 		"invalidResponseFormat": "Amazon Bedrock से अमान्य प्रतिसाद प्रारूप",

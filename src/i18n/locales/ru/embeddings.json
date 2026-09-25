@@ -4,7 +4,7 @@
 	"failedWithStatus": "Не удалось создать вложения после {{attempts}} попыток: HTTP {{statusCode}} - {{errorMessage}}",
 	"failedWithError": "Не удалось создать вложения после {{attempts}} попыток: {{errorMessage}}",
 	"failedMaxAttempts": "Не удалось создать вложения после {{attempts}} попыток",
-	"textExceedsTokenLimit": "Текст в индексе {{index}} превышает максимальный лимит токенов ({{itemTokens}} > {{maxTokens}}). Пропускается.",
+	"textTruncatedToTokenLimit": "Текст в индексе {{index}} превышает максимальный лимит токенов ({{itemTokens}} > {{maxTokens}}). Обрезается до лимита.",
 	"rateLimitRetry": "Достигнут лимит скорости, повторная попытка через {{delayMs}} мс (попытка {{attempt}}/{{maxRetries}})",
 	"bedrock": {
 		"invalidResponseFormat": "Неверный формат ответа от Amazon Bedrock",

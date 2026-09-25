@@ -2,7 +2,8 @@ import type { MockedClass, MockedFunction } from "vitest"
 import { OpenAI } from "openai"
 
 import { OpenAiEmbedder } from "../openai"
-import { MAX_ITEM_TOKENS, INITIAL_RETRY_DELAY_MS } from "../../constants"
+import { MAX_ITEM_TOKENS } from "../../constants"
+import { resetRateLimitGates } from "../rate-limit-gate"
 
 // Mock the OpenAI SDK
 vitest.mock("openai")
@@ -25,7 +26,7 @@ vitest.mock("../../../../i18n", () => ({
 			"embeddings:failedWithStatus": `Failed to create embeddings after ${params?.attempts} attempts: HTTP ${params?.statusCode} - ${params?.errorMessage}`,
 			"embeddings:failedWithError": `Failed to create embeddings after ${params?.attempts} attempts: ${params?.errorMessage}`,
 			"embeddings:failedMaxAttempts": `Failed to create embeddings after ${params?.attempts} attempts`,
-			"embeddings:textExceedsTokenLimit": `Text at index ${params?.index} exceeds maximum token limit (${params?.itemTokens} > ${params?.maxTokens}). Skipping.`,
+			"embeddings:textTruncatedToTokenLimit": `Text at index ${params?.index} exceeds maximum token limit (${params?.itemTokens} > ${params?.maxTokens}). Truncating it to the limit.`,
 			"embeddings:rateLimitRetry": `Rate limit hit, retrying in ${params?.delayMs}ms (attempt ${params?.attempt}/${params?.maxRetries})`,
 		}
 		return translations[key] || key
@@ -45,6 +46,7 @@ describe("OpenAiEmbedder", () => {
 
 	beforeEach(() => {
 		vitest.clearAllMocks()
+		resetRateLimitGates()
 		consoleMocks.error.mockClear()
 		consoleMocks.warn.mockClear()
 
@@ -187,14 +189,18 @@ describe("OpenAiEmbedder", () => {
 				expect(result.usage?.promptTokens).toBe(30)
 			})
 
-			it("should warn and skip texts exceeding maximum token limit", async () => {
+			it("should warn and truncate texts exceeding maximum token limit", async () => {
 				// Create a text that exceeds MAX_ITEM_TOKENS (4 characters ≈ 1 token)
 				const oversizedText = "a".repeat(MAX_ITEM_TOKENS * 4 + 100)
 				const normalText = "normal text"
 				const testTexts = [normalText, oversizedText, "another normal"]
 
 				mockEmbeddingsCreate.mockResolvedValue({
-					data: [{ embedding: [0.1, 0.2, 0.3] }, { embedding: [0.4, 0.5, 0.6] }],
+					data: [
+						{ embedding: [0.1, 0.2, 0.3] },
+						{ embedding: [0.4, 0.5, 0.6] },
+						{ embedding: [0.7, 0.8, 0.9] },
+					],
 					usage: { prompt_tokens: 20, total_tokens: 30 },
 				})
 
@@ -203,12 +209,12 @@ describe("OpenAiEmbedder", () => {
 				// Verify warning was logged
 				expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(`exceeds maximum token limit`))
 
-				// Verify only normal texts were processed
+				// The oversized text is cut to the limit, not dropped, so vectors stay aligned
 				expect(mockEmbeddingsCreate).toHaveBeenCalledWith({
-					input: [normalText, "another normal"],
+					input: [normalText, "a".repeat(MAX_ITEM_TOKENS * 4), "another normal"],
 					model: testModelId,
 				})
-				expect(result.embeddings).toHaveLength(2)
+				expect(result.embeddings).toHaveLength(3)
 			})
 
 			it("should handle multiple batches when total tokens exceed batch limit", async () => {
@@ -246,17 +252,23 @@ describe("OpenAiEmbedder", () => {
 				expect(result.usage?.totalTokens).toBe(120000)
 			})
 
-			it("should handle all texts being skipped due to size", async () => {
+			it("should handle all texts being truncated due to size", async () => {
 				const oversizedText = "a".repeat(MAX_ITEM_TOKENS * 4 + 100)
 				const testTexts = [oversizedText, oversizedText]
+
+				mockEmbeddingsCreate.mockResolvedValue({
+					data: [{ embedding: [0.1] }, { embedding: [0.2] }],
+					usage: { prompt_tokens: 2, total_tokens: 2 },
+				})
 
 				const result = await embedder.createEmbeddings(testTexts)
 
 				expect(console.warn).toHaveBeenCalledTimes(2)
-				expect(mockEmbeddingsCreate).not.toHaveBeenCalled()
+				// Two items at the limit (8191 tokens each) fit in one batch
+				expect(mockEmbeddingsCreate).toHaveBeenCalledTimes(1)
 				expect(result).toEqual({
-					embeddings: [],
-					usage: { promptTokens: 0, totalTokens: 0 },
+					embeddings: [[0.1], [0.2]],
+					usage: { promptTokens: 2, totalTokens: 2 },
 				})
 			})
 		})
@@ -287,9 +299,10 @@ describe("OpenAiEmbedder", () => {
 
 				const resultPromise = embedder.createEmbeddings(testTexts)
 
-				// Fast-forward through the delays
-				await vitest.advanceTimersByTimeAsync(INITIAL_RETRY_DELAY_MS) // First retry delay
-				await vitest.advanceTimersByTimeAsync(INITIAL_RETRY_DELAY_MS * 2) // Second retry delay
+				// Fast-forward through the delays: the endpoint's shared backoff (5 s, then 10 s)
+				// is longer than the exponential floor (INITIAL_RETRY_DELAY_MS, then twice that)
+				await vitest.advanceTimersByTimeAsync(5_000) // First retry delay
+				await vitest.advanceTimersByTimeAsync(10_000) // Second retry delay
 
 				const result = await resultPromise
 
@@ -346,7 +359,7 @@ describe("OpenAiEmbedder", () => {
 				)
 
 				expect(console.error).toHaveBeenCalledWith(
-					expect.stringContaining("OpenAI embedder error"),
+					expect.stringContaining("OpenAiEmbedder error"),
 					expect.any(Error),
 				)
 			})
