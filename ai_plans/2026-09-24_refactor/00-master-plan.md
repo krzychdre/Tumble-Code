@@ -32,6 +32,26 @@ origin/main`, type one of `test`, `fix`, `refactor`, `chore`, `docs`);
 6. **Before an item that depends on an "Open" owner decision,** ask the owner and record the answer in the
    decisions table.
 
+## Open leftovers (collected 2026-09-25, after Phase 6)
+
+One list of everything found but not done; details sit in the named status paragraph. "Take care of the leftovers"
+means: work through this list (one branch per item), then strike each line here.
+
+- Windows CI: `src` vitest dies silently after about 11 min on `platform-unit-test (windows-latest)` (since #327,
+  twice in a row on a40d26997); a helper was investigating on branch `fix/windows-src-vitest-silent-exit`. Check that
+  branch and its PR first. (`05` Phase 6 verification)
+- Memory writers: closing VS Code or the CLI on the final `completion_result` ask still skips them;
+  `hasMemoryWritesSince` reads a `toolUses` field messages never have; chat completions never reach
+  `captureTaskCompleted` telemetry; the CLI never answers `completion_result`. (`ai_plans/2026-09-25_memory-writers-after-completion.md` on main)
+- SVC-8: one write-guard flag covers both MCP settings files (a global write masks a project edit for 600 ms). (`05` SVC-8)
+- SVC-10: workspace folders added later get a code-index manager only lazily. (`05` SVC-10)
+- SVC-9: `deletePointsByMultipleFilePaths` untested; the query prefix is also applied to indexed code. (`05` SVC-9)
+- SVC-11: gitignored `.roo` dirs are never found by the subfolder scan (the owner's `~/.gitignore` ignores `.roo`): needs an owner decision. (`05` SVC-11)
+- SVC-12: `@`-mention search still spawns `rg` per query; `handleError` sends the serialized error with its stack to the model. (`05` SVC-12)
+- SVC-17: a diff opened for a truncated path during streaming is not reopened when the final path differs. (`05` SVC-17)
+- Earlier open owner questions (retry policy for 400/401, dispose leak, stale DeepSeek catalog) in `05` Phase 5 statuses.
+- Next phases: 7 to 11 in the roadmap above.
+
 ## Request
 
 "Plan the refactor of the application. Find evident architecture problems, places where the code can be
