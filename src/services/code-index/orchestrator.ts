@@ -16,6 +16,9 @@ export class CodeIndexOrchestrator {
 	private _fileWatcherSubscriptions: vscode.Disposable[] = []
 	private _isProcessing: boolean = false
 	private _abortController: AbortController | null = null
+	// Set by dispose(): the state manager is shared with the orchestrator that replaces this one,
+	// so a scan still unwinding here must not write state any more.
+	private _disposed = false
 
 	constructor(
 		private readonly configManager: CodeIndexConfigManager,
@@ -190,7 +193,7 @@ export class CodeIndexOrchestrator {
 				if (signal.aborted) {
 					await this.cacheManager.flush()
 					this.stopWatcher()
-					this.stateManager.setSystemState("Standby", t("embeddings:orchestrator.indexingStopped"))
+					this.setStateIfLive("Standby", t("embeddings:orchestrator.indexingStopped"))
 					return
 				}
 
@@ -273,7 +276,7 @@ export class CodeIndexOrchestrator {
 				if (signal.aborted) {
 					await this.cacheManager.flush()
 					this.stopWatcher()
-					this.stateManager.setSystemState("Standby", t("embeddings:orchestrator.indexingStopped"))
+					this.setStateIfLive("Standby", t("embeddings:orchestrator.indexingStopped"))
 					return
 				}
 
@@ -305,7 +308,7 @@ export class CodeIndexOrchestrator {
 				console.log("[CodeIndexOrchestrator] Indexing aborted by user.")
 				await this.cacheManager.flush()
 				this.stopWatcher()
-				this.stateManager.setSystemState("Standby", t("embeddings:orchestrator.indexingStopped"))
+				this.setStateIfLive("Standby", t("embeddings:orchestrator.indexingStopped"))
 				return
 			}
 
@@ -418,9 +421,15 @@ export class CodeIndexOrchestrator {
 		this._disposeFileWatcherSubscriptions()
 
 		if (this.stateManager.state !== "Error" && this.stateManager.state !== "Stopping") {
-			this.stateManager.setSystemState("Standby", t("embeddings:orchestrator.fileWatcherStopped"))
+			this.setStateIfLive("Standby", t("embeddings:orchestrator.fileWatcherStopped"))
 		}
 		this._isProcessing = false
+	}
+
+	private setStateIfLive(state: IndexingState, message: string): void {
+		if (!this._disposed) {
+			this.stateManager.setSystemState(state, message)
+		}
 	}
 
 	private _disposeFileWatcherSubscriptions(): void {
@@ -433,6 +442,7 @@ export class CodeIndexOrchestrator {
 	 * disposes the file watcher for good. Leaves the shared state manager alone.
 	 */
 	public dispose(): void {
+		this._disposed = true
 		this._abortController?.abort()
 		this._abortController = null
 		this._disposeFileWatcherSubscriptions()
