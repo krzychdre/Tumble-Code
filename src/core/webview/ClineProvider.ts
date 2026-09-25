@@ -75,7 +75,7 @@ import { ContextProxy } from "../config/ContextProxy"
 import { ProviderSettingsManager } from "../config/ProviderSettingsManager"
 import { CustomModesManager } from "../config/CustomModesManager"
 import { Task } from "../task/Task"
-import type { SubTaskRunner } from "../memory"
+import type { SideQuery } from "../memory"
 
 import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@roo-code/types"
@@ -1951,12 +1951,12 @@ export class ClineProvider
 	}
 
 	/**
-	 * The memory background-writer runner (extraction + dream), consumed by
-	 * `TaskLifecycle.triggerMemoryBackgroundWriters`; see
-	 * {@link BackgroundTaskRunner.memorySubTaskRunner}.
+	 * The one-shot completion of the memory background writers (extraction +
+	 * dream), consumed by `TaskLifecycle.triggerMemoryBackgroundWriters`; see
+	 * {@link BackgroundTaskRunner.memoryWriterQuery}.
 	 */
-	public get memorySubTaskRunner(): SubTaskRunner {
-		return this.backgroundTaskRunner.memorySubTaskRunner
+	public memoryWriterQuery(foreground: ProviderSettings, taskId?: string): SideQuery {
+		return this.backgroundTaskRunner.memoryWriterQuery(foreground, taskId)
 	}
 
 	public async cancelTask(): Promise<void> {

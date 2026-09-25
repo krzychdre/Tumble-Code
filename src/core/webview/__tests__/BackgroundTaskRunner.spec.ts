@@ -10,11 +10,10 @@ import { OrganizationAllowListViolationError } from "../../../utils/errors"
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
 
 /**
- * CORE-R6 (d): the headless background-task runner (memory writers and
- * parallel subagents) as its own class. These tests pin today's behavior of
- * the code that lived in ClineProvider: the memory runner's retry
- * classification, and the start / complete / cancel / dispose ordering of a
- * background task. A user cancel must never wait on or trigger a memory
+ * CORE-R6 (d): the headless background-task runner (parallel subagents) and
+ * the memory writers' one-shot query as its own class. These tests pin the
+ * memory query's profile choice and fallback, and the start / complete /
+ * cancel / dispose ordering of a background task. A user cancel must never wait on or trigger a memory
  * writer (see ai_plans/2026-07-11_fix-stop-button-memory-writers-on-cancel.md).
  */
 
@@ -28,10 +27,11 @@ vi.mock("../../../utils/storage", () => ({
 const showInformationMessage = vi.hoisted(() => vi.fn())
 vi.mock("vscode", () => ({ window: { showInformationMessage } }))
 
-vi.mock("../../memory", () => ({
-	memoryWriteSandbox: vi.fn((cwd: string) => ({ sandboxFor: cwd })),
-	filterMemoryWrittenPaths: vi.fn((paths: ReadonlyArray<string>) => paths.filter((p) => !p.endsWith(".ts"))),
-}))
+const buildApiHandler = vi.hoisted(() => vi.fn())
+vi.mock("../../../api", () => ({ buildApiHandler }))
+
+const makeSideQuery = vi.hoisted(() => vi.fn())
+vi.mock("../../memory/memoryTaskIntegration", () => ({ makeSideQuery }))
 
 type FakeTask = EventEmitter & {
 	taskId: string
@@ -327,139 +327,94 @@ describe("BackgroundTaskRunner.awaitTaskCompletion ordering", () => {
 	})
 })
 
-describe("BackgroundTaskRunner.memorySubTaskRunner retry classification", () => {
-	type Outcome = { completed: boolean; writtenPaths: string[]; abortReason?: string }
+describe("BackgroundTaskRunner.memoryWriterQuery", () => {
+	const WRITER: ProviderSettings = { apiProvider: "ollama", apiModelId: "small" }
 
 	/**
-	 * Drives the real memory runner: every background task it creates ends
-	 * with the outcome `outcomeFor(apiConfiguration)` returns.
+	 * Every handler built for a query answers through `answerFor(config)`;
+	 * returns the configs the calls ran on, in order.
 	 */
-	function runWith(opts: {
+	function queryWith(opts: {
 		writerProfile?: ProviderSettings
-		outcomeFor: (apiConfiguration: ProviderSettings | undefined) => Outcome
-		signal?: AbortSignal
+		answerFor: (config: ProviderSettings) => Promise<string>
+		noSingleCompletion?: boolean
 	}) {
 		const { host, postMessageToWebview, log } = makeHost({
 			getMemoryWriterApiConfigId: vi.fn(() => (opts.writerProfile ? "writer" : undefined)),
 			activateProfile: vi.fn(async () => ({ name: "writer", ...opts.writerProfile! })),
 		})
+		const configs: ProviderSettings[] = []
+		const disposed: ProviderSettings[] = []
+		buildApiHandler.mockImplementation((config: ProviderSettings) => ({
+			config,
+			dispose: () => disposed.push(config),
+		}))
+		makeSideQuery.mockImplementation((handler: { config: ProviderSettings }) =>
+			opts.noSingleCompletion
+				? undefined
+				: async () => {
+						configs.push(handler.config)
+						return opts.answerFor(handler.config)
+					},
+		)
 		const runner = new BackgroundTaskRunner(host)
-		const configs: Array<ProviderSettings | undefined> = []
-		const created: Array<Record<string, unknown>> = []
-		vi.spyOn(runner, "createBackgroundTask").mockImplementation(async (text, options) => {
-			configs.push(options?.apiConfiguration)
-			created.push({ text, ...options })
-			return { options } as never
-		})
-		vi.spyOn(runner, "awaitTaskCompletion").mockImplementation(async (task) => {
-			const outcome = opts.outcomeFor((task as unknown as FakeTask).options.apiConfiguration)
-			return { lastMessage: undefined, ...outcome }
-		})
-		const result = runner.memorySubTaskRunner({
-			cwd: "/mem",
-			systemPrompt: "SYSTEM",
-			userPrompt: "USER",
-			maxTurns: 6,
-			signal: opts.signal ?? new AbortController().signal,
-		})
-		return { result, configs, created, postMessageToWebview, log }
+		return { query: runner.memoryWriterQuery(ACTIVE, "task-1"), runner, configs, disposed, postMessageToWebview, log }
 	}
 
-	const WRITER: ProviderSettings = { apiProvider: "ollama", apiModelId: "small" }
-	const aborted = () => {
-		const controller = new AbortController()
-		controller.abort()
-		return controller.signal
-	}
-
-	it.each([
-		{ name: "writer profile completes", writer: true, first: { completed: true }, attempts: 1 },
-		{
-			name: "writer profile streaming_failed",
-			writer: true,
-			first: { abortReason: "streaming_failed" },
-			attempts: 2,
-		},
-		{
-			name: "writer profile max_turns_reached",
-			writer: true,
-			first: { abortReason: "max_turns_reached" },
-			attempts: 1,
-		},
-		{ name: "writer profile user_cancelled", writer: true, first: { abortReason: "user_cancelled" }, attempts: 1 },
-		{ name: "writer profile unknown reason", writer: true, first: { abortReason: undefined }, attempts: 1 },
-		{ name: "writer profile other reason", writer: true, first: { abortReason: "tool_error" }, attempts: 1 },
-		{
-			name: "writer profile streaming_failed after the signal aborted",
-			writer: true,
-			first: { abortReason: "streaming_failed" },
-			signalAborted: true,
-			attempts: 1,
-		},
-		{
-			name: "no writer profile, streaming_failed",
-			writer: false,
-			first: { abortReason: "streaming_failed" },
-			attempts: 1,
-		},
-		{ name: "no writer profile, completes", writer: false, first: { completed: true }, attempts: 1 },
-	])("$name: $attempts attempt(s)", async ({ writer, first, signalAborted, attempts }) => {
-		const { result, configs } = runWith({
-			writerProfile: writer ? WRITER : undefined,
-			signal: signalAborted ? aborted() : undefined,
-			outcomeFor: (config) =>
-				config === undefined && writer
-					? { completed: true, writtenPaths: ["/mem/second.md", "/mem/shared.md"] }
-					: {
-							completed: first.completed ?? false,
-							writtenPaths: ["/mem/first.md", "/mem/shared.md", "/mem/skip.ts"],
-							abortReason: first.abortReason,
-						},
-		})
-
-		const { writtenPaths } = await result
-
-		expect(configs).toHaveLength(attempts)
-		expect(configs[0]).toEqual(writer ? WRITER : undefined)
-		if (attempts === 2) {
-			// The retry runs on the foreground profile and reports the union.
-			expect(configs[1]).toBeUndefined()
-			expect(writtenPaths).toEqual(["/mem/first.md", "/mem/shared.md", "/mem/second.md"])
-		} else {
-			expect(writtenPaths).toEqual(["/mem/first.md", "/mem/shared.md"])
-		}
+	it("asks one completion on the writer profile and never creates a Task", async () => {
+		const { query, configs, disposed } = queryWith({ writerProfile: WRITER, answerFor: async () => "NONE" })
+		await expect(query("S", "U", new AbortController().signal)).resolves.toBe("NONE")
+		expect(configs).toEqual([WRITER])
+		expect(disposed).toEqual([WRITER])
+		expect(Task).not.toHaveBeenCalled()
 	})
 
-	it("spawns a write-sandboxed, silent, turn-capped code task in the memory directory", async () => {
-		const { result, created } = runWith({ outcomeFor: () => ({ completed: true, writtenPaths: [] }) })
-		await result
-		expect(created).toEqual([
-			{
-				text: "SYSTEM\n\n---\n\nUSER",
-				taskMode: "code",
-				workspacePath: "/mem",
-				maxAgentTurns: 6,
-				autoApprovalOverride: { sandboxFor: "/mem" },
-				silentWrites: true,
-				apiConfiguration: undefined,
+	it("without a writer profile, asks on the finishing task's profile", async () => {
+		const { query, configs } = queryWith({ answerFor: async () => "NONE" })
+		await query("S", "U", new AbortController().signal)
+		expect(configs).toEqual([ACTIVE])
+	})
+
+	it("a failing writer profile is retried once on the foreground profile, and logged", async () => {
+		const { query, configs, log } = queryWith({
+			writerProfile: WRITER,
+			answerFor: async (config) => {
+				if (config.apiModelId === WRITER.apiModelId) throw new Error("connection refused")
+				return "KEEP"
 			},
-		])
+		})
+		await expect(query("S", "U", new AbortController().signal)).resolves.toBe("KEEP")
+		expect(configs).toEqual([WRITER, ACTIVE])
+		expect(log).toHaveBeenCalledWith(
+			"[memoryWriterQuery] memory writer profile failed, retrying on foreground: connection refused",
+		)
 	})
 
-	it("opens and closes the write-activity window around the run, even when it throws", async () => {
-		const { host, postMessageToWebview } = makeHost()
-		const runner = new BackgroundTaskRunner(host)
-		vi.spyOn(runner, "createBackgroundTask").mockRejectedValue(new OrganizationAllowListViolationError("no"))
+	it("a cancelled call is never retried", async () => {
+		const controller = new AbortController()
+		const { query, configs } = queryWith({
+			writerProfile: WRITER,
+			answerFor: async () => {
+				controller.abort()
+				throw new Error("aborted")
+			},
+		})
+		await expect(query("S", "U", controller.signal)).rejects.toThrow("aborted")
+		expect(configs).toEqual([WRITER])
+	})
 
-		await expect(
-			runner.memorySubTaskRunner({
-				cwd: "/mem",
-				systemPrompt: "",
-				userPrompt: "U",
-				maxTurns: 1,
-				signal: new AbortController().signal,
-			}),
-		).rejects.toBeInstanceOf(OrganizationAllowListViolationError)
+	it("a provider without single completions fails the call instead of hanging", async () => {
+		const { query } = queryWith({ answerFor: async () => "", noSingleCompletion: true })
+		await expect(query("S", "U", new AbortController().signal)).rejects.toThrow("no single-completion support")
+	})
+
+	it("opens and closes the write-activity window around the call, even when it throws", async () => {
+		const { query, runner, postMessageToWebview } = queryWith({
+			answerFor: async () => {
+				throw new Error("boom")
+			},
+		})
+		await expect(query("S", "U", new AbortController().signal)).rejects.toThrow("boom")
 		expect(postMessageToWebview.mock.calls).toEqual([
 			[{ type: "memoryActivity", memoryActivity: { recall: 0, write: 1 } }],
 			[{ type: "memoryActivity", memoryActivity: { recall: 0, write: 0 } }],
@@ -474,109 +429,17 @@ describe("BackgroundTaskRunner.memorySubTaskRunner retry classification", () => 
 				throw new Error("not found")
 			}),
 		})
-		const runner = new BackgroundTaskRunner(host)
-		const create = vi.spyOn(runner, "createBackgroundTask").mockResolvedValue({ options: {} } as never)
-		vi.spyOn(runner, "awaitTaskCompletion").mockResolvedValue({ completed: true, writtenPaths: [] })
-
-		await runner.memorySubTaskRunner({
-			cwd: "/mem",
-			systemPrompt: "",
-			userPrompt: "U",
-			maxTurns: 1,
-			signal: new AbortController().signal,
+		const configs: ProviderSettings[] = []
+		buildApiHandler.mockImplementation((config: ProviderSettings) => ({ config }))
+		makeSideQuery.mockImplementation((handler: { config: ProviderSettings }) => async () => {
+			configs.push(handler.config)
+			return "NONE"
 		})
-
-		expect(create.mock.calls[0][1]?.apiConfiguration).toBeUndefined()
+		await new BackgroundTaskRunner(host).memoryWriterQuery(ACTIVE)("S", "U", new AbortController().signal)
+		expect(configs).toEqual([ACTIVE])
 		expect(log).toHaveBeenCalledWith(
-			"[memorySubTaskRunner] failed to load writer profile stale, falling back to foreground: not found",
+			"[memoryWriterQuery] failed to load writer profile stale, falling back to foreground: not found",
 		)
-	})
-
-	// A background task that hits 401/403/404 ends as streaming_failed with a
-	// failure message (TaskApiLoop fail-fast). The runner must settle, keep the
-	// one foreground fallback for a writer profile, and log each failure once to
-	// the output channel, with no toast.
-	describe("a writer that fails fast on 401/403/404", () => {
-		const FAILURE = 'API error 401 (invalid or missing API key) from provider "ollama", model "small".'
-
-		async function run(writer: boolean) {
-			const { host, log } = makeHost({
-				getMemoryWriterApiConfigId: vi.fn(() => (writer ? "writer" : undefined)),
-				activateProfile: vi.fn(async () => ({ name: "writer", ...WRITER })),
-			})
-			const runner = new BackgroundTaskRunner(host)
-			const result = runner.memorySubTaskRunner({
-				cwd: "/mem",
-				systemPrompt: "",
-				userPrompt: "U",
-				maxTurns: 3,
-				signal: new AbortController().signal,
-			})
-			const failTask = async (n: number) => {
-				await vi.waitFor(() => expect(Task).toHaveBeenCalledTimes(n))
-				const task = lastTask()
-				task.abortReason = "streaming_failed"
-				task.apiFailureMessage = FAILURE
-				task.emit(RooCodeEventName.TaskAborted)
-			}
-			return { runner, result, log, failTask }
-		}
-
-		it("with a writer profile: one fallback run on the foreground profile, then it settles", async () => {
-			const { runner, result, log, failTask } = await run(true)
-
-			await failTask(1)
-			await failTask(2)
-
-			await expect(result).resolves.toMatchObject({ writtenPaths: expect.any(Array) })
-			expect(Task).toHaveBeenCalledTimes(2)
-			expect(vi.mocked(Task).mock.calls[0][0]).toMatchObject({ apiConfiguration: WRITER })
-			expect(vi.mocked(Task).mock.calls[1][0]).toMatchObject({ apiConfiguration: ACTIVE })
-			const failureLogs = log.mock.calls.filter(([line]) => String(line).includes(FAILURE))
-			expect(failureLogs).toHaveLength(2)
-			expect(showInformationMessage).not.toHaveBeenCalled()
-			expect(runner.memoryActivity.write).toBe(0)
-		})
-
-		it("without a writer profile: one run, logged once, then it settles", async () => {
-			const { result, log, failTask } = await run(false)
-
-			await failTask(1)
-
-			await expect(result).resolves.toMatchObject({ writtenPaths: expect.any(Array) })
-			expect(Task).toHaveBeenCalledTimes(1)
-			const failureLogs = log.mock.calls.filter(([line]) => String(line).includes(FAILURE))
-			expect(failureLogs).toHaveLength(1)
-			expect(showInformationMessage).not.toHaveBeenCalled()
-		})
-	})
-
-	it("a user cancel of a running writer settles without a retry or a second task", async () => {
-		const { host } = makeHost({
-			getMemoryWriterApiConfigId: vi.fn(() => "writer"),
-			activateProfile: vi.fn(async () => ({ name: "writer", ...WRITER })),
-		})
-		const runner = new BackgroundTaskRunner(host)
-		const controller = new AbortController()
-
-		const result = runner.memorySubTaskRunner({
-			cwd: "/mem",
-			systemPrompt: "",
-			userPrompt: "U",
-			maxTurns: 3,
-			signal: controller.signal,
-		})
-		await vi.waitFor(() => expect(Task).toHaveBeenCalledTimes(1))
-		const task = lastTask()
-		controller.abort()
-		// The cancel reaches the writer task at once (the drain never waits on it).
-		expect(task.abortTask).toHaveBeenCalledTimes(1)
-		task.abortReason = "streaming_failed"
-		task.emit(RooCodeEventName.TaskAborted)
-
-		await expect(result).resolves.toEqual({ writtenPaths: [path.resolve("/mem", "notes/a.md"), "/abs/b.md"] })
-		expect(Task).toHaveBeenCalledTimes(1)
-		expect(runner.memoryActivity.write).toBe(0)
 	})
 })
 

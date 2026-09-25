@@ -41,7 +41,7 @@ import { logger } from "../../../utils/logging"
 
 function buildAccessStub(overrides: Partial<TaskLifecycleAccess> = {}): TaskLifecycleAccess {
 	const provider = {
-		memorySubTaskRunner: vi.fn(),
+		memoryWriterQuery: vi.fn(() => async () => "NONE"),
 		getValue: vi.fn().mockReturnValue(undefined),
 		getTaskHistory: vi.fn().mockResolvedValue([]),
 		notifyBackgroundOutcome: vi.fn(),

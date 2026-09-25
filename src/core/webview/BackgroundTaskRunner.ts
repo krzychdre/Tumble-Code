@@ -4,8 +4,10 @@ import * as vscode from "vscode"
 
 import { type ExtensionMessage, type ProviderSettings, type TodoItem, RooCodeEventName } from "@roo-code/types"
 
+import { buildApiHandler } from "../../api"
 import { Task, type AutoApprovalOverride } from "../task/Task"
-import { memoryWriteSandbox, filterMemoryWrittenPaths, type SubTaskRunner } from "../memory"
+import { type SideQuery } from "../memory"
+import { makeSideQuery } from "../memory/memoryTaskIntegration"
 
 import type { ClineProvider } from "./ClineProvider"
 import type { ProviderState } from "./ProviderStateBuilder"
@@ -23,8 +25,7 @@ export interface BackgroundTaskOptions {
 	apiConfiguration?: ProviderSettings
 	/**
 	 * Registers the child in the subagent registry so it is visible in
-	 * the webview subagents panel. Omitted for internal background
-	 * tasks (memory writers), which stay invisible.
+	 * the webview subagents panel.
 	 */
 	subagentInfo?: { parentTaskId: string; index: number; description: string }
 }
@@ -76,16 +77,17 @@ export interface BackgroundTaskHost {
 }
 
 /**
- * Runs HEADLESS background tasks: the memory background writers (extraction
- * and dream) and the `run_parallel_tasks` subagents. Background tasks are
- * kept off the provider's task stack, so the current task and the webview
- * stay bound to the foreground task. A user cancel of the foreground task
- * never reaches this class: the cancelled task skips its memory writers and
- * the writer drain (see TaskLifecycle.prepareAbort / drainAbort), and running
- * background tasks are neither awaited nor aborted by it.
+ * Runs HEADLESS background tasks (the `run_parallel_tasks` subagents) and
+ * the one-shot completions of the memory background writers (extraction and
+ * dream). Background tasks are kept off the provider's task stack, so the
+ * current task and the webview stay bound to the foreground task. A user
+ * cancel of the foreground task never reaches this class: the cancelled task
+ * skips its memory writers and the writer drain (see
+ * TaskLifecycle.prepareAbort / drainAbort), and running background tasks are
+ * neither awaited nor aborted by it.
  */
 export class BackgroundTaskRunner {
-	// Headless background tasks (memory writers, parallel subagents). Keyed by
+	// Headless background tasks (parallel subagents). Keyed by
 	// taskId; entries are removed on completion/abort.
 	private readonly backgroundTasks = new Map<string, Task>()
 	private readonly memoryActivityCounts: MemoryActivityCounts = { recall: 0, write: 0 }
@@ -98,8 +100,8 @@ export class BackgroundTaskRunner {
 	}
 
 	/**
-	 * Create and start a HEADLESS background task: the reusable primitive behind
-	 * the memory background writers and the `run_parallel_tasks` subagents.
+	 * Create and start a HEADLESS background task: the primitive behind the
+	 * `run_parallel_tasks` subagents.
 	 *
 	 * Unlike `ClineProvider.createTask`, a background task:
 	 * - is **never** pushed onto `clineStack`, so `getCurrentTask()` and the
@@ -117,8 +119,8 @@ export class BackgroundTaskRunner {
 		// Model resolution, most specific wins: explicit apiConfiguration from
 		// the caller, then the subtask mode's pinned API profile (same binding a
 		// foreground mode switch applies), then the currently active profile.
-		// Mode resolution is scoped to panel-visible subagents so internal
-		// background tasks (memory writers) keep their explicit/current config.
+		// Mode resolution is scoped to panel-visible subagents so other
+		// background tasks keep their explicit/current config.
 		let apiConfiguration = options.apiConfiguration
 		let apiConfigName = options.apiConfiguration ? undefined : state.currentApiConfigName
 		if (!apiConfiguration && options.subagentInfo && options.taskMode) {
@@ -206,14 +208,9 @@ export class BackgroundTaskRunner {
 	 * (aborted tasks keep theirs for post-mortem). An optional `signal` aborts
 	 * the task early.
 	 *
-	 * Claim 3: `abortReason` is propagated so callers can distinguish a genuine
-	 * provider failure (`"streaming_failed"`, worth retrying on a different
-	 * handler) from turn-budget exhaustion (`"max_turns_reached"`: a weak
-	 * model that didn't finish; retrying on an expensive foreground model will
-	 * just exhaust the same budget and double cost) from user cancellation
-	 * (`"user_cancelled"`, never retry). Without this distinction the memory
-	 * runner retried on foreground for EVERY non-completion, doubling cost
-	 * exactly where the feature aimed to save it.
+	 * `abortReason` is propagated so callers can tell a provider failure
+	 * (`"streaming_failed"`) from turn-budget exhaustion
+	 * (`"max_turns_reached"`) and user cancellation (`"user_cancelled"`).
 	 */
 	public awaitTaskCompletion(task: Task, options: { signal?: AbortSignal } = {}): Promise<BackgroundTaskOutcome> {
 		return new Promise((resolve) => {
@@ -318,107 +315,58 @@ export class BackgroundTaskRunner {
 	}
 
 	/**
-	 * The memory background-writer runner (extraction + dream), consumed by
-	 * `TaskLifecycle.triggerMemoryBackgroundWriters` via `provider.memorySubTaskRunner`.
+	 * The one-shot completion the memory background writers (extraction and
+	 * dream) ask, consumed by `TaskLifecycle.triggerMemoryBackgroundWriters`.
 	 *
-	 * Spawns a headless, write-sandboxed background task (in "code" mode so the
-	 * read/write tools are available) against the given cwd, runs it autonomously
-	 * with a turn cap, and returns the memory files it wrote. This is the wiring
-	 * that flips memory writes ON, replacing the historical `noopSubTaskRunner`
-	 * fallback. The `autoApprovalOverride` (see {@link memoryWriteSandbox}) confines
-	 * writes to the memory directory, and `silentWrites` keeps the writes off-screen.
+	 * The writers are not agents: each call is one small prompt answered in
+	 * plain text, and the writers do the file work in code. So there is no
+	 * Task, no tool list and no agent system prompt here, only a handler
+	 * built for the call and disposed after it.
+	 *
+	 * The memory-writer profile (`memoryWriterApiConfigId`) is used when set,
+	 * otherwise `foreground` (the finishing task's profile). A failed call on
+	 * the writer profile is retried once on `foreground`: the cheap model may
+	 * be offline, and a retry costs one small prompt. A cancel never retries.
 	 */
-	public get memorySubTaskRunner(): SubTaskRunner {
-		return async ({ cwd, systemPrompt, userPrompt, maxTurns, signal }) => {
-			// The real Task builds its own system prompt (which already includes the
-			// memory behavioral section), so fold the extraction/dream system prompt
-			// into the task's initial message alongside the user prompt.
-			const text = systemPrompt ? `${systemPrompt}\n\n---\n\n${userPrompt}` : userPrompt
-			const backgroundConfig = await this.resolveMemoryWriterApiConfiguration()
+	public memoryWriterQuery(foreground: ProviderSettings, taskId?: string): SideQuery {
+		return async (system, user, signal) => {
+			const writerConfig = await this.resolveMemoryWriterApiConfiguration()
 			this.setMemoryActivity("write", true)
 			try {
-				const outcome = await this.runMemorySubTask(text, cwd, maxTurns, signal, backgroundConfig)
-				if (outcome.completed) {
-					return { writtenPaths: filterMemoryWrittenPaths(outcome.writtenPaths, cwd) }
+				if (writerConfig) {
+					try {
+						return await this.runMemoryWriterQuery(writerConfig, taskId, system, user, signal)
+					} catch (error) {
+						if (signal.aborted) throw error
+						this.host.log(
+							`[memoryWriterQuery] memory writer profile failed, retrying on foreground: ${error instanceof Error ? error.message : String(error)}`,
+						)
+					}
 				}
-				// Claim 3: classify the abort reason before retrying. The old
-				// code retried on foreground for EVERY non-completion (when a
-				// background profile was set and the user hadn't cancelled),
-				// but a weak background model that exhausts its turn budget
-				// (max_turns_reached, typical for memory extraction) looks
-				// identical to "provider offline" at the boolean boundary, so
-				// it triggered a full re-run on the expensive foreground model
-				// every time, doubling cost exactly where savings were the goal.
-				//
-				// Retry on foreground ONLY for a genuine provider failure
-				// (streaming_failed): the background model may be offline. Do
-				// NOT retry on:
-				//  - max_turns_reached: the weak model didn't finish in budget;
-				//    the foreground model will likely also need more turns and
-				//    the retry doubles cost. Accept the partial result.
-				//  - user_cancelled (signal.aborted): never retry a cancel.
-				//  - undefined/other abort reasons: unknown, don't risk a loop.
-				const shouldRetry = backgroundConfig && !signal?.aborted && outcome.abortReason === "streaming_failed"
-				if (shouldRetry) {
-					this.host.log(
-						"[memorySubTaskRunner] background profile failed (streaming_failed), retrying on foreground",
-					)
-					const retry = await this.runMemorySubTask(text, cwd, maxTurns, signal, undefined)
-					// Claim 6: return the UNION of attempt #1 and attempt #2
-					// writtenPaths (filtered). The old code returned only
-					// attempt #2's paths, discarding attempt #1's on-disk
-					// writes, so onSaved/onImproved toasts never fired for
-					// files the first attempt wrote. The extraction cursor
-					// advances independently, so this is "only" a reporting
-					// regression, but a conscious one the diff didn't
-					// compensate for. Dedupe by path in case both attempts
-					// wrote the same file.
-					const unionPaths = [...new Set([...outcome.writtenPaths, ...retry.writtenPaths])]
-					return { writtenPaths: filterMemoryWrittenPaths(unionPaths, cwd) }
-				}
-				// Non-retryable abort: still report attempt #1's written paths
-				// (Claim 6) so toasts fire for files the attempt did write
-				// before aborting. The old code returned [] here, dropping them.
-				return { writtenPaths: filterMemoryWrittenPaths(outcome.writtenPaths, cwd) }
+				return await this.runMemoryWriterQuery(foreground, taskId, system, user, signal)
 			} finally {
 				this.setMemoryActivity("write", false)
 			}
 		}
 	}
 
-	/**
-	 * Helper extracted from {@linkcode memorySubTaskRunner} for retry support.
-	 * Spawns a single headless memory-writer sub-task with the given
-	 * `apiConfiguration` (undefined means the foreground profile) and awaits
-	 * its completion. Returns the raw `{ completed, writtenPaths, abortReason }`
-	 * outcome so the caller can decide whether to retry on the foreground
-	 * profile (and only for genuine provider failures, see Claim 3).
-	 */
-	private async runMemorySubTask(
-		text: string,
-		cwd: string,
-		maxTurns: number,
-		signal: AbortSignal | undefined,
-		apiConfiguration: ProviderSettings | undefined,
-	): Promise<{ completed: boolean; writtenPaths: string[]; abortReason?: string }> {
-		const task = await this.createBackgroundTask(text, {
-			taskMode: "code",
-			workspacePath: cwd,
-			maxAgentTurns: maxTurns,
-			autoApprovalOverride: memoryWriteSandbox(cwd),
-			silentWrites: true,
-			apiConfiguration,
-		})
-		const { completed, writtenPaths, abortReason, failureMessage } = await this.awaitTaskCompletion(task, {
-			signal,
-		})
-		// A 401/403/404 ends the writer at once (no retry storm); say why, once,
-		// in the output channel. The caller decides on the foreground fallback.
-		if (failureMessage) {
-			const profile = apiConfiguration ? "memory writer profile" : "foreground profile"
-			this.host.log(`[memorySubTaskRunner] memory writer stopped on the ${profile}: ${failureMessage}`)
+	private async runMemoryWriterQuery(
+		apiConfiguration: ProviderSettings,
+		taskId: string | undefined,
+		system: string,
+		user: string,
+		signal: AbortSignal,
+	): Promise<string> {
+		const handler = buildApiHandler(apiConfiguration)
+		try {
+			const query = makeSideQuery(handler, taskId)
+			if (!query) {
+				throw new Error(`provider ${apiConfiguration.apiProvider} has no single-completion support`)
+			}
+			return await query(system, user, signal)
+		} finally {
+			handler.dispose?.()
 		}
-		return { completed, writtenPaths, abortReason }
 	}
 
 	/**
@@ -434,7 +382,7 @@ export class BackgroundTaskRunner {
 			return profile
 		} catch (error) {
 			this.host.log(
-				`[memorySubTaskRunner] failed to load writer profile ${id}, falling back to foreground: ${error instanceof Error ? error.message : String(error)}`,
+				`[memoryWriterQuery] failed to load writer profile ${id}, falling back to foreground: ${error instanceof Error ? error.message : String(error)}`,
 			)
 			return undefined
 		}

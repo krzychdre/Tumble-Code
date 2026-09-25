@@ -7,6 +7,8 @@
  * `edit_file` / `search_files` / `list_files` tools against a per-workspace
  * directory under VS Code globalStorage, gated by the behavioral prompt
  * (`getMemorySection`) and the `validateToolUse` carve-out (`isAutoMemPath`).
+ * The background writers (extraction, dream) are not agents: they ask one
+ * small completion each and write the files in code (memoryFiles.ts).
  */
 
 export {
@@ -48,14 +50,7 @@ export {
 	type EntrypointTruncation,
 } from "./memoryPrompt"
 export { scanMemoryFiles, formatMemoryManifest, type MemoryHeader } from "./memoryScan"
-export {
-	renderTranscript,
-	DEFAULT_MAX_MESSAGES,
-	DEFAULT_MAX_CHARS_PER_MESSAGE,
-	type TranscriptMessage,
-	type RenderTranscriptOptions,
-} from "./transcript"
-export { memoryWriteSandbox, filterMemoryWrittenPaths, type SandboxDecision } from "./memorySandbox"
+export { renderTranscript, type TranscriptMessage, type RenderTranscriptOptions } from "./transcript"
 export {
 	findRelevantMemories,
 	selectRelevantMemories,
@@ -92,13 +87,10 @@ export {
 	resetExtractionState,
 	type ExtractionContext,
 	type ExtractionMessageView,
-	type SubTaskRunner,
-	type SubTaskResult,
 } from "./extractMemories"
 export {
 	executeAutoDream,
 	drainPendingDreams,
-	buildConsolidationPrompt,
 	resetAutoDreamState,
 	type AutoDreamConfig,
 	type AutoDreamContext,

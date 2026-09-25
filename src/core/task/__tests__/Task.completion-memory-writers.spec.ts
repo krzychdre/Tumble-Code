@@ -99,7 +99,7 @@ function makeProvider(): ProviderStandIn {
 		postStateToWebview: vi.fn().mockResolvedValue(undefined),
 		postMessageToWebview: vi.fn().mockResolvedValue(undefined),
 		updateTaskHistory: vi.fn().mockResolvedValue([]),
-		memorySubTaskRunner: vi.fn(),
+		memoryWriterQuery: vi.fn(() => async () => "NONE"),
 		getCurrentTask(this: ProviderStandIn) {
 			return this.clineStack.at(-1)
 		},

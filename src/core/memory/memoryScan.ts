@@ -60,7 +60,13 @@ async function readHeadAndMtime(
 export async function scanMemoryFiles(memoryDir: string, signal?: AbortSignal): Promise<MemoryHeader[]> {
 	try {
 		const entries = await fs.readdir(memoryDir, { recursive: true })
-		const mdFiles = (entries as string[]).filter((f) => f.endsWith(".md") && basename(f) !== "MEMORY.md")
+		// Dot directories (the writers' `.archive/`) hold retired memories.
+		const mdFiles = (entries as string[]).filter(
+			(f) =>
+				f.endsWith(".md") &&
+				basename(f) !== "MEMORY.md" &&
+				!f.split(/[\\/]/).some((part) => part.startsWith(".")),
+		)
 
 		const headerResults = await Promise.allSettled(
 			mdFiles.map(async (relativePath): Promise<MemoryHeader> => {

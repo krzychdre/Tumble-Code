@@ -5,7 +5,6 @@ import path from "path"
 import {
 	executeAutoDream,
 	drainPendingDreams,
-	buildConsolidationPrompt,
 	resetAutoDreamState,
 	_inFlightDreamsCount,
 	type AutoDreamConfig,
@@ -13,11 +12,23 @@ import {
 import { initMemoryPaths, resetMemoryPaths } from "../paths"
 import * as lock from "../consolidationLock"
 
+/** Two memories the candidate finder pairs up, so a dream asks the model once. */
+async function seedSimilarPair(memDir: string) {
+	await fs.writeFile(
+		path.join(memDir, "feedback_pnpm_only.md"),
+		"---\ndescription: Use pnpm, never npm, in this repo\ntype: feedback\n---\n\nUse pnpm.\n",
+	)
+	await fs.writeFile(
+		path.join(memDir, "feedback_pnpm_not_npm.md"),
+		"---\ndescription: Use pnpm not npm in this repo\ntype: feedback\n---\n\nnpm breaks the lockfile.\n",
+	)
+}
+
 describe("autoDream gate cascade", () => {
 	let tmpBase: string
 	const cwd = "/fake/cwd"
 	const baseConfig: AutoDreamConfig = { enabled: true, minHours: 24, minSessions: 5 }
-	const noopRunner = async () => ({ writtenPaths: [] as string[] })
+	const noopRunner = async () => "KEEP"
 
 	afterEach(async () => {
 		resetAutoDreamState()
@@ -31,6 +42,7 @@ describe("autoDream gate cascade", () => {
 		initMemoryPaths(tmpBase, () => ({}))
 		const memDir = path.join(tmpBase, "memory", "projects", "_fake_cwd", "memory")
 		await fs.mkdir(memDir, { recursive: true })
+		await seedSimilarPair(memDir)
 		if (lastConsolidatedAt > 0) {
 			const lockPath = path.join(memDir, ".consolidate-lock")
 			await fs.writeFile(lockPath, "999999") // dead PID
@@ -49,7 +61,7 @@ describe("autoDream gate cascade", () => {
 			isMainAgent: true,
 			config: { ...baseConfig, enabled: false },
 			taskHistory: [],
-			subTaskRunner: noopRunner,
+			query: noopRunner,
 			onImproved: (n) => (improved = n),
 		})
 		expect(improved).toBe(0)
@@ -64,7 +76,7 @@ describe("autoDream gate cascade", () => {
 			isMainAgent: false,
 			config: baseConfig,
 			taskHistory: [],
-			subTaskRunner: noopRunner,
+			query: noopRunner,
 			onImproved: (n) => (improved = n),
 		})
 		expect(improved).toBe(0)
@@ -81,7 +93,7 @@ describe("autoDream gate cascade", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: noopRunner,
+			query: noopRunner,
 			onImproved: (n) => (improved = n),
 		})
 		expect(improved).toBe(0)
@@ -100,13 +112,13 @@ describe("autoDream gate cascade", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 2 }, () => ({ lastModified: now - 1000 })), // 2 < 5
 			currentTaskId: "current",
-			subTaskRunner: noopRunner,
+			query: noopRunner,
 			onImproved: (n) => (improved = n),
 		})
 		expect(improved).toBe(0)
 	})
 
-	it("rolls back the lock on sub-Task failure (non-abort)", async () => {
+	it("rolls back the lock when the model call fails (non-abort)", async () => {
 		const now = Date.now()
 		vi.setSystemTime(now)
 		const memDir = await setup(now - 48 * 3_600_000)
@@ -122,21 +134,12 @@ describe("autoDream gate cascade", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: failingRunner,
+			query: failingRunner,
 			onImproved: () => {},
 		})
+		await drainPendingDreams(1000)
 		expect(rollbackSpy).toHaveBeenCalled()
 		rollbackSpy.mockRestore()
-	})
-
-	it("buildConsolidationPrompt is self-contained and names the memory dir", () => {
-		const prompt = buildConsolidationPrompt("/mem/dir/", "/transcripts", "extra context")
-		expect(prompt).toContain("# Dream: Memory Consolidation")
-		expect(prompt).toContain("/mem/dir/")
-		expect(prompt).toContain("/transcripts")
-		expect(prompt).toContain("Phase 1 — Orient")
-		expect(prompt).toContain("Phase 4 — Prune and index")
-		expect(prompt).toContain("extra context")
 	})
 })
 
@@ -157,6 +160,7 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 		initMemoryPaths(tmpBase, () => ({}))
 		const memDir = path.join(tmpBase, "memory", "projects", "_fake_cwd", "memory")
 		await fs.mkdir(memDir, { recursive: true })
+		await seedSimilarPair(memDir)
 		if (lastConsolidatedAt > 0) {
 			const lockPath = path.join(memDir, ".consolidate-lock")
 			await fs.writeFile(lockPath, "999999") // dead PID
@@ -166,7 +170,7 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 		return memDir
 	}
 
-	it("invokes the sub-task runner exactly ONCE when called twice rapidly (don't await the first)", async () => {
+	it("asks the model exactly ONCE when called twice rapidly (don't await the first)", async () => {
 		const now = Date.now()
 		vi.setSystemTime(now)
 		await setup(now - 48 * 3_600_000) // time-gate passed
@@ -182,7 +186,7 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 		const firstPromise = new Promise<void>((r) => (resolveFirst = r))
 		const runner = vi.fn(async () => {
 			await firstPromise
-			return { writtenPaths: [] as string[] }
+			return "KEEP"
 		})
 
 		const ctx = {
@@ -191,7 +195,7 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: runner,
+			query: runner,
 			onImproved: () => {},
 		}
 
@@ -224,7 +228,7 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 		const acquireSpy = vi.spyOn(lock, "tryAcquireConsolidationLock").mockResolvedValue(0)
 		const rollbackSpy = vi.spyOn(lock, "rollbackConsolidationLock").mockResolvedValue(undefined)
 
-		const runner = vi.fn(async () => ({ writtenPaths: [] as string[] }))
+		const runner = vi.fn(async () => "KEEP")
 
 		const ctx = {
 			cwd,
@@ -232,12 +236,13 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: runner,
+			query: runner,
 			onImproved: () => {},
 		}
 
 		// First dream — let it complete fully.
 		await executeAutoDream(ctx)
+		await drainPendingDreams(1000)
 		expect(runner).toHaveBeenCalledTimes(1)
 
 		// Reset scan throttle so the second call can pass the gates.
@@ -246,6 +251,7 @@ describe("autoDream double-fire guard (MEM-3)", () => {
 
 		// Second dream — should run now that the guard released.
 		await executeAutoDream(ctx)
+		await drainPendingDreams(1000)
 		expect(runner).toHaveBeenCalledTimes(2)
 
 		acquireSpy.mockRestore()
@@ -270,6 +276,7 @@ describe("drainPendingDreams (MEM-2)", () => {
 		initMemoryPaths(tmpBase, () => ({}))
 		const memDir = path.join(tmpBase, "memory", "projects", "_fake_cwd", "memory")
 		await fs.mkdir(memDir, { recursive: true })
+		await seedSimilarPair(memDir)
 		if (lastConsolidatedAt > 0) {
 			const lockPath = path.join(memDir, ".consolidate-lock")
 			await fs.writeFile(lockPath, "999999") // dead PID
@@ -295,9 +302,9 @@ describe("drainPendingDreams (MEM-2)", () => {
 		let aborted = false
 		// Runner that never resolves on its own — only the abort signal can end it.
 		const runner = vi.fn(
-			(params: { signal: AbortSignal }) =>
-				new Promise<any>((_resolve, reject) => {
-					params.signal.addEventListener("abort", () => {
+			(_system: string, _user: string, signal: AbortSignal) =>
+				new Promise<string>((_resolve, reject) => {
+					signal.addEventListener("abort", () => {
 						aborted = true
 						reject(new Error("aborted"))
 					})
@@ -310,7 +317,7 @@ describe("drainPendingDreams (MEM-2)", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: runner,
+			query: runner,
 			onImproved: () => {},
 		})
 		// Give the dream a tick to register the controller.
@@ -336,11 +343,11 @@ describe("drainPendingDreams (MEM-2)", () => {
 		const rollbackSpy = vi.spyOn(lock, "rollbackConsolidationLock").mockResolvedValue(undefined)
 
 		let aborted = false
-		const runner = vi.fn(async (params: { signal: AbortSignal }) => {
-			params.signal.addEventListener("abort", () => {
+		const runner = vi.fn(async (_system: string, _user: string, signal: AbortSignal) => {
+			signal.addEventListener("abort", () => {
 				aborted = true
 			})
-			return { writtenPaths: [] as string[] }
+			return "KEEP"
 		})
 
 		void executeAutoDream({
@@ -349,7 +356,7 @@ describe("drainPendingDreams (MEM-2)", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: runner,
+			query: runner,
 			onImproved: () => {},
 		})
 		// Wait long enough for the runner to resolve naturally.
@@ -374,9 +381,9 @@ describe("drainPendingDreams (MEM-2)", () => {
 		// abort-responsive work. Pre-fix the drain returned while the registry
 		// was still non-empty (the finally cleanup hadn't run yet).
 		const runner = vi.fn(
-			(params: { signal: AbortSignal }) =>
-				new Promise<any>((_resolve, reject) => {
-					params.signal.addEventListener("abort", () => {
+			(_system: string, _user: string, signal: AbortSignal) =>
+				new Promise<string>((_resolve, reject) => {
+					signal.addEventListener("abort", () => {
 						reject(new Error("aborted"))
 					})
 				}),
@@ -388,7 +395,7 @@ describe("drainPendingDreams (MEM-2)", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: runner,
+			query: runner,
 			onImproved: () => {},
 		})
 		// Wait for the dream to register in the in-flight set.
@@ -417,8 +424,8 @@ describe("drainPendingDreams (MEM-2)", () => {
 		// Runner that NEVER settles — not even on abort. The drain must
 		// still return after main-timeout + grace (it must not hang).
 		const runner = vi.fn(
-			(_params: { signal: AbortSignal }) =>
-				new Promise<any>(() => {
+			(_system: string, _user: string, _signal: AbortSignal) =>
+				new Promise<string>(() => {
 					// intentionally never resolves or rejects
 				}),
 		)
@@ -429,7 +436,7 @@ describe("drainPendingDreams (MEM-2)", () => {
 			config: baseConfig,
 			taskHistory: Array.from({ length: 10 }, () => ({ lastModified: now - 1000 })),
 			currentTaskId: "current",
-			subTaskRunner: runner,
+			query: runner,
 			onImproved: () => {},
 		})
 		// Wait for the dream to register in the in-flight set (it has async

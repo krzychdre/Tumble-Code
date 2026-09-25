@@ -396,23 +396,20 @@ export class TaskApiLoop {
 				)
 			}
 
-			// Headless turn cap: a background task (memory writer / parallel
-			// subagent) aborts cleanly once it exhausts its assistant-turn budget.
+			// Headless turn cap: a background task (parallel subagent) aborts
+			// cleanly once it exhausts its assistant-turn budget.
 			// Foreground tasks pass `maxAgentTurns === undefined` and are unaffected.
 			if (this.access.maxAgentTurns !== undefined) {
 				if (this.access.agentTurnCount >= this.access.maxAgentTurns) {
 					console.log(
 						`[Task#${this.access.taskId}.${this.access.instanceId}] maxAgentTurns (${this.access.maxAgentTurns}) reached; aborting background task`,
 					)
-					// Use a distinct abortReason so callers (notably the memory
-					// runner's retry decision in BackgroundTaskRunner.memorySubTaskRunner)
-					// can distinguish "turn budget exhausted" (a weak model that
-					// didn't finish — do NOT retry on expensive foreground, it'll
-					// just exhaust the same budget) from "streaming_failed" (a
-					// genuine provider outage — DO retry on foreground). The
-					// primary guard is the isBackground check in abortTask, but a
-					// distinct reason makes the intent explicit and
-					// belt-and-suspenders safe against the isUserCancelled guard.
+					// Use a distinct abortReason so callers can distinguish
+					// "turn budget exhausted" from "streaming_failed" (a genuine
+					// provider outage). The primary guard is the isBackground
+					// check in abortTask, but a distinct reason makes the intent
+					// explicit and belt-and-suspenders safe against the
+					// isUserCancelled guard.
 					this.access.abortReason = "max_turns_reached"
 					await this.access.abortTask()
 					return true

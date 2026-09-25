@@ -761,8 +761,9 @@ export class TaskLifecycle {
 	 * are no new messages, so a completion-then-abort sequence never
 	 * double-writes.
 	 *
-	 * The runner is `provider.memorySubTaskRunner` (Phase 2), which spawns a
-	 * headless, write-sandboxed background task that actually persists memories.
+	 * Each writer asks `provider.memoryWriterQuery`: one small completion on
+	 * the memory-writer profile (or this task's profile), no agent, no tools;
+	 * the writers write the memory files in code.
 	 */
 	public triggerMemoryBackgroundWriters(): void {
 		// Both writers hard-gate on the memory master switch internally, but the
@@ -771,12 +772,9 @@ export class TaskLifecycle {
 		if (!isAutoMemoryEnabled()) return
 		const provider = this.access.providerRef.deref()
 		if (!provider) return
-		// The provider's `memorySubTaskRunner` spawns a headless, write-sandboxed
-		// background task and returns the memory files it wrote (Phase 2). This is
-		// what makes the writers actually persist memories.
-		const subTaskRunner = provider.memorySubTaskRunner
-		// Render the recent conversation so the *fresh* extraction sub-agent has
-		// content to analyze (it can't fork the parent's context — see the plan).
+		const query = provider.memoryWriterQuery(this.access.apiConfiguration, this.access.taskId)
+		// The user-prose signal of the conversation (task statement, replies,
+		// short assistant context), bounded to a few thousand characters.
 		const transcript = renderTranscript(this.access.apiConversationHistory as unknown as TranscriptMessage[])
 		// Fire-and-forget, but never let a rejection escape as an unhandledRejection
 		// in the extension host (e.g. memory paths not initialized at activation).
@@ -789,7 +787,7 @@ export class TaskLifecycle {
 			taskId: this.access.taskId,
 			messages: this.access.clineMessages,
 			transcript,
-			subTaskRunner,
+			query,
 			onSaved: (count) => {
 				if (count > 0) {
 					console.log(`[memory] extractMemories saved ${count} memor${count === 1 ? "y" : "ies"}`)
@@ -817,7 +815,7 @@ export class TaskLifecycle {
 						lastModified: typeof h.ts === "number" ? h.ts : undefined,
 					})),
 					currentTaskId: this.access.taskId,
-					subTaskRunner,
+					query,
 					onImproved: (count) => {
 						if (count > 0) {
 							console.log(`[memory] autoDream improved ${count} memor${count === 1 ? "y" : "ies"}`)
