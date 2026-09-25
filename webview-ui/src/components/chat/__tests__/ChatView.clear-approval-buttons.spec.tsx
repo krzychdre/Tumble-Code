@@ -1,7 +1,7 @@
 // pnpm --filter @roo-code/vscode-webview test src/components/chat/__tests__/ChatView.clear-approval-buttons.spec.tsx
 
 import React from "react"
-import { render, waitFor, act } from "@/utils/test-utils"
+import { render, act } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { ExtensionStateContextProvider } from "@src/context/ExtensionStateContext"
@@ -140,6 +140,9 @@ const autoApprovedCommandAsk = (): ClineMessage[] => [
 describe("ChatView approval button behavior", () => {
 	beforeEach(() => vi.clearAllMocks())
 
+	// The state is applied inside act(), so the assertions need no time budget:
+	// with a waitFor, the whole render of the hydrated ChatView had to finish
+	// within its 1 s default, which a heavily loaded machine missed.
 	it("shows Run/Deny buttons for a command ask that requires manual approval", async () => {
 		const { queryByText } = renderChatView()
 
@@ -147,25 +150,23 @@ describe("ChatView approval button behavior", () => {
 			hydrateState(commandAsk())
 		})
 
-		await waitFor(() => {
-			expect(queryByText(RUN_BUTTON_LABEL)).toBeInTheDocument()
-			expect(queryByText(DENY_BUTTON_LABEL)).toBeInTheDocument()
-		})
+		expect(queryByText(RUN_BUTTON_LABEL)).toBeInTheDocument()
+		expect(queryByText(DENY_BUTTON_LABEL)).toBeInTheDocument()
 	})
 
 	it("never shows Run/Deny buttons when the command ask is already answered (auto-approved)", async () => {
-		const { queryByText } = renderChatView()
+		const { queryByText, getAllByTestId } = renderChatView()
 
 		await act(async () => {
 			hydrateState(autoApprovedCommandAsk())
 		})
 
+		// The answered ask is on screen, so the state has been applied.
+		expect(getAllByTestId("chat-row").some((row) => row.textContent?.includes('"isAnswered":true'))).toBe(true)
 		// isAnswered:true on the message means the ask was resolved before the
 		// webview rendered it -- buttons must never appear.
-		await waitFor(() => {
-			expect(queryByText(RUN_BUTTON_LABEL)).not.toBeInTheDocument()
-			expect(queryByText(DENY_BUTTON_LABEL)).not.toBeInTheDocument()
-		})
+		expect(queryByText(RUN_BUTTON_LABEL)).not.toBeInTheDocument()
+		expect(queryByText(DENY_BUTTON_LABEL)).not.toBeInTheDocument()
 
 		// No askResponse should have been sent, since the backend already responded.
 		const askResponseCalls = (vscode.postMessage as ReturnType<typeof vi.fn>).mock.calls.filter(
