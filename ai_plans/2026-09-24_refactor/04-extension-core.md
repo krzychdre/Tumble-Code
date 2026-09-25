@@ -263,6 +263,19 @@ call descriptions. Still hand-kept: `PROTOCOL_TOOL_NAMES` (`src/shared` must not
 from 381 to 580. Finding for a defect item: `getToolMinimalExample` (`native-tools/examples.ts`) looks names up
 through the prototype chain (`__proto__` yields `{}`, `constructor` yields a `failed_tool`), harmless today.
 
+**Status (2026-09-25):** (d) DONE in #287. Auto-approval receives the ask's action name (`ClineSayTool.tool`, e.g.
+`editedExistingFile`), not the tool name, and the mapping is many-to-many (six tools send `appliedDiff`), so each
+descriptor row got a required `approvalCategory` (readOnly, write, modeSwitch, subtask, subtaskFinish,
+alwaysAllowed, execute, mcp, followup, manual, none; plus planReview for the non-tool pause) and, where the action
+decides, `approvalActions`. `auto-approval/tools.ts` derives the action-to-category map (a `Map`, so prototype
+names get nothing); only `reviewPlan` and the legacy `listFiles` stay outside the table. The eight `tool.tool ===`
+checks in `index.ts` became one switch on the category. A new tool now needs one row for auto-approval (was 1 to
+3 edits in 2 files). Tests first: `approvalMatrix.spec` (29 actions x 23 named settings combinations plus an
+exhaustive 8,192-combination sweep per action, DEF-S1 cases) passed before and after with an untouched snapshot;
+`approvalCategories.spec` failed first. Related specs 265 to 274. Notes: execute, mcp and followup categories are
+declarative only (index.ts decides them by ask type); `run_parallel_tasks` sends `runParallelTasks`, which is not
+in `ClineSayTool`, and is `manual`. Part (c) remains.
+
 ### CORE-R8 Merge the edit-tool pipelines
 
 **Evidence:** `EditTool.ts:147-233` and `SearchReplaceTool.ts:142-228` are an 87-line clone that drifted
