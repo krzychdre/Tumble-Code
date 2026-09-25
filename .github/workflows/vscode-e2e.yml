@@ -7,9 +7,10 @@ name: VS Code e2e (manual)
 #
 # No secrets are passed in, so only the tests that need no API key run:
 # - extension.test: the commands are registered;
-# - providers/zai.test: a Z.ai task answered by a fetch interceptor. It fails
-#   as of 2026-09-24: the task records the model's attempt_completion call but
-#   never runs it, so waitUntilCompleted times out after 30 s.
+# - providers/zai.test: a Z.ai task answered by a fetch interceptor. A finished
+#   top-level task waits on its completion_result ask and emits TaskCompleted
+#   only once that ask is accepted, which nothing does here, so the helper
+#   waitUntilCompleted (suite/utils.ts) also treats that ask as completion.
 # The suites that need OPENROUTER_API_KEY (task, modes, markdown-lists) skip
 # themselves, providers/deepseek-v4.test skips without DEEPSEEK_API_KEY, and the
 # tools/* and subtasks suites are skipped in the code (suite.skip).

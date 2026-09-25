@@ -2,7 +2,7 @@ import * as assert from "assert"
 
 import { RooCodeEventName, type ClineMessage } from "@roo-code/types"
 
-import { waitUntilCompleted } from "../utils"
+import { waitFor, waitUntilCompleted } from "../utils"
 import { setDefaultSuiteTimeout } from "../test-utils"
 
 // ---------------------------------------------------------------------------
@@ -197,9 +197,13 @@ suite("Z.ai GLM provider", function () {
 
 		await waitUntilCompleted({ api, taskId })
 
-		const completionMessage = messages.find(
-			({ say, text }) => (say === "completion_result" || say === "text") && text?.trim() === "4",
-		)
+		// The task posts its completion_result ask a moment before the finalized
+		// completion_result say reaches the Message event, so give the say a moment.
+		const isAnswer = ({ say, text }: ClineMessage) =>
+			(say === "completion_result" || say === "text") && text?.trim() === "4"
+		await waitFor(() => messages.some(isAnswer), { timeout: 5_000 }).catch(() => undefined)
+
+		const completionMessage = messages.find(isAnswer)
 
 		assert.ok(completionMessage, "Task should complete with the expected Z.ai GLM response")
 

@@ -1,4 +1,4 @@
-import { RooCodeEventName, type RooCodeAPI } from "@roo-code/types"
+import { RooCodeEventName, type ClineMessage, type RooCodeAPI } from "@roo-code/types"
 
 type WaitForOptions = {
 	timeout?: number
@@ -55,10 +55,35 @@ type WaitUntilCompletedOptions = WaitForOptions & {
 	taskId: string
 }
 
+/**
+ * Resolves when the task has finished its work.
+ *
+ * A top-level task that calls attempt_completion does NOT emit `TaskCompleted`
+ * by itself: it says the result, then waits on a `completion_result` ask, and
+ * `TaskCompleted` fires only when that ask is answered with "yes" (the CLI does
+ * that; the VS Code chat never does, its button starts a new task instead).
+ * Nothing answers the ask in these tests, so the task's own
+ * `completion_result` ask counts as completion too. A subtask handing its
+ * result back to its parent still emits `TaskCompleted` directly.
+ */
 export const waitUntilCompleted = async ({ api, taskId, ...options }: WaitUntilCompletedOptions) => {
 	const set = new Set<string>()
-	api.on(RooCodeEventName.TaskCompleted, (taskId) => set.add(taskId))
-	await waitFor(() => set.has(taskId), options)
+	const onCompleted = (id: string) => set.add(id)
+	const onMessage = ({ taskId: id, message }: { taskId: string; message: ClineMessage }) => {
+		if (message.type === "ask" && message.ask === "completion_result" && message.partial !== true) {
+			set.add(id)
+		}
+	}
+
+	api.on(RooCodeEventName.TaskCompleted, onCompleted)
+	api.on(RooCodeEventName.Message, onMessage)
+
+	try {
+		await waitFor(() => set.has(taskId), options)
+	} finally {
+		api.off(RooCodeEventName.TaskCompleted, onCompleted)
+		api.off(RooCodeEventName.Message, onMessage)
+	}
 }
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
