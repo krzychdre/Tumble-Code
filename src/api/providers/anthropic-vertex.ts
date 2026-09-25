@@ -18,6 +18,7 @@ import { addCacheBreakpoints } from "../transform/caching/vertex"
 import { getModelParams } from "../transform/model-params"
 import { getAnthropicProviderReasoning } from "../transform/reasoning"
 import { filterNonAnthropicBlocks } from "../transform/anthropic-filter"
+import { processAnthropicStream } from "../transform/anthropic-stream"
 import {
 	convertOpenAIToolsToAnthropic,
 	convertOpenAIToolChoiceToAnthropic,
@@ -145,97 +146,9 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 
 		const stream = await this.client.messages.create(params, requestOptions)
 
-		for await (const chunk of stream) {
-			switch (chunk.type) {
-				case "message_start": {
-					const usage = chunk.message!.usage
-
-					yield {
-						type: "usage",
-						inputTokens: usage.input_tokens || 0,
-						outputTokens: usage.output_tokens || 0,
-						cacheWriteTokens: usage.cache_creation_input_tokens || undefined,
-						cacheReadTokens: usage.cache_read_input_tokens || undefined,
-					}
-
-					break
-				}
-				case "message_delta": {
-					yield {
-						type: "usage",
-						inputTokens: 0,
-						outputTokens: chunk.usage!.output_tokens || 0,
-					}
-
-					break
-				}
-				case "content_block_start": {
-					switch (chunk.content_block!.type) {
-						case "text": {
-							if (chunk.index! > 0) {
-								yield { type: "text", text: "\n" }
-							}
-
-							yield { type: "text", text: chunk.content_block!.text }
-							break
-						}
-						case "thinking": {
-							if (chunk.index! > 0) {
-								yield { type: "reasoning", text: "\n" }
-							}
-
-							yield { type: "reasoning", text: (chunk.content_block as any).thinking }
-							break
-						}
-						case "tool_use": {
-							// Emit initial tool call partial with id and name
-							yield {
-								type: "tool_call_partial",
-								index: chunk.index,
-								id: chunk.content_block!.id,
-								name: chunk.content_block!.name,
-								arguments: undefined,
-							}
-							break
-						}
-					}
-
-					break
-				}
-				case "content_block_delta": {
-					switch (chunk.delta!.type) {
-						case "text_delta": {
-							yield { type: "text", text: chunk.delta!.text }
-							break
-						}
-						case "thinking_delta": {
-							yield { type: "reasoning", text: (chunk.delta as any).thinking }
-							break
-						}
-						case "input_json_delta": {
-							// Emit tool call partial chunks as arguments stream in
-							yield {
-								type: "tool_call_partial",
-								index: chunk.index,
-								id: undefined,
-								name: undefined,
-								arguments: (chunk.delta as any).partial_json,
-							}
-							break
-						}
-					}
-
-					break
-				}
-				case "content_block_stop": {
-					// Block complete - no action needed for now.
-					// NativeToolCallParser handles tool call completion
-					// Note: Signature for multi-turn thinking would require using stream.finalMessage()
-					// after iteration completes, which requires restructuring the streaming approach.
-					break
-				}
-			}
-		}
+		// No costInfo: Vertex leaves the cost to the task, which computes it
+		// from the summed usage chunks.
+		yield* processAnthropicStream(stream)
 	}
 
 	getModel() {
