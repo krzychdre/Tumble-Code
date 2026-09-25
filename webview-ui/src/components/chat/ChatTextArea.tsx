@@ -113,6 +113,10 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [fileSearchResults, setFileSearchResults] = useState<SearchResult[]>([])
 		const [searchLoading, setSearchLoading] = useState(false)
 		const [searchRequestId, setSearchRequestId] = useState<string>("")
+		// Declared before the message handler below, which uses both: the React Compiler skips a component
+		// that reads a value above its declaration.
+		const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
+		const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false)
 
 		// Close dropdown when clicking outside.
 		useEffect(() => {
@@ -211,7 +215,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [showContextMenu, setShowContextMenu] = useState(false)
 		const [cursorPosition, setCursorPosition] = useState(0)
 		const [searchQuery, setSearchQuery] = useState("")
-		const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
 		const [isMouseDownOnMenu, setIsMouseDownOnMenu] = useState(false)
 		const highlightLayerRef = useRef<HTMLDivElement>(null)
 		const [selectedMenuIndex, setSelectedMenuIndex] = useState(-1)
@@ -219,7 +222,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [justDeletedSpaceAfterMention, setJustDeletedSpaceAfterMention] = useState(false)
 		const [intendedCursorPosition, setIntendedCursorPosition] = useState<number | null>(null)
 		const contextMenuContainerRef = useRef<HTMLDivElement>(null)
-		const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false)
 		const [isFocused, setIsFocused] = useState(false)
 
 		// Use custom hook for prompt history navigation
@@ -404,8 +406,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					}, 0)
 				}
 			},
-			// eslint-disable-next-line react-hooks/exhaustive-deps
-			[setInputValue, cursorPosition],
+			[setInputValue, cursorPosition, setMode],
 		)
 
 		const handleKeyDown = useCallback(
