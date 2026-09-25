@@ -18,7 +18,7 @@ import type { ApiHandlerOptions } from "../../shared/api"
 
 import { calculateApiCostOpenAI } from "../../shared/cost"
 
-import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
+import { ApiStream } from "../transform/stream"
 import { getModelParams } from "../transform/model-params"
 
 import { BaseProvider } from "./base-provider"
@@ -109,10 +109,6 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			},
 			timeout: this.timeoutMs,
 		})
-	}
-
-	private normalizeUsage(usage: any, model: OpenAiNativeModel): ApiStreamUsageChunk | undefined {
-		return this.core.normalizeUsage(usage, model.info)
 	}
 
 	override async *createMessage(
