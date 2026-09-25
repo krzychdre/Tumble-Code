@@ -49,9 +49,9 @@ export const EXPERIMENT_IDS = {
 
 type _AssertExperimentIds = AssertEqual<Equals<ExperimentId, Values<typeof EXPERIMENT_IDS>>>
 
-type ExperimentKey = Keys<typeof EXPERIMENT_IDS>
+export type ExperimentKey = Keys<typeof EXPERIMENT_IDS>
 
-interface ExperimentConfig {
+export interface ExperimentConfig {
 	enabled: boolean
 }
 
