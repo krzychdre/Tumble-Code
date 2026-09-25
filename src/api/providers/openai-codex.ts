@@ -46,6 +46,52 @@ const CODEX_API_BASE_URL = "https://chatgpt.com/backend-api/codex"
 const REFUSAL_TEXT_PREFIX = "[Refusal] "
 
 /**
+ * Status events of the SSE fallback that carry nothing to show. OpenAI Native lists the same
+ * events; without the list their fields (for example `item.text`) would be taken for answer text.
+ */
+const IGNORED_SSE_EVENT_TYPES = new Set<string>([
+	"response.reasoning.done",
+	"response.reasoning_text.done",
+	"response.reasoning_summary.done",
+	"response.reasoning_summary_text.done",
+	"response.refusal.done",
+	"response.audio.delta",
+	"response.audio.done",
+	"response.audio_transcript.done",
+	"response.mcp_call_arguments.delta",
+	"response.mcp_call_arguments.done",
+	"response.mcp_call.in_progress",
+	"response.mcp_call.completed",
+	"response.mcp_call.failed",
+	"response.mcp_list_tools.in_progress",
+	"response.mcp_list_tools.completed",
+	"response.mcp_list_tools.failed",
+	"response.web_search_call.searching",
+	"response.web_search_call.in_progress",
+	"response.web_search_call.completed",
+	"response.code_interpreter_call_code.delta",
+	"response.code_interpreter_call_code.done",
+	"response.code_interpreter_call.interpreting",
+	"response.code_interpreter_call.in_progress",
+	"response.code_interpreter_call.completed",
+	"response.file_search_call.searching",
+	"response.file_search_call.in_progress",
+	"response.file_search_call.completed",
+	"response.image_gen_call.generating",
+	"response.image_gen_call.in_progress",
+	"response.image_gen_call.partial_image",
+	"response.image_gen_call.completed",
+	"response.computer_tool_call.output_item",
+	"response.computer_tool_call.output_screenshot",
+	"response.output_text_annotation.added",
+	"response.text_annotation.added",
+	"response.incomplete",
+	"response.queued",
+	"response.in_progress",
+	"response.created",
+])
+
+/**
  * OpenAiCodexHandler - Uses OpenAI Responses API with OAuth authentication
  *
  * Key differences from OpenAiNativeHandler:
@@ -124,14 +170,21 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 		const hasCacheMissTokens = typeof inputDetails?.cache_miss_tokens === "number"
 		const cachedFromDetails = hasCachedTokens ? inputDetails.cached_tokens : 0
 		const missFromDetails = hasCacheMissTokens ? inputDetails.cache_miss_tokens : 0
+		// GPT-5.6+ report cache writes only here.
+		const writesFromDetails =
+			typeof inputDetails?.cache_write_tokens === "number" ? inputDetails.cache_write_tokens : 0
 
 		let totalInputTokens = usage.input_tokens ?? usage.prompt_tokens ?? 0
-		if (totalInputTokens === 0 && inputDetails && (cachedFromDetails > 0 || missFromDetails > 0)) {
-			totalInputTokens = cachedFromDetails + missFromDetails
+		if (
+			totalInputTokens === 0 &&
+			inputDetails &&
+			(cachedFromDetails > 0 || missFromDetails > 0 || writesFromDetails > 0)
+		) {
+			totalInputTokens = cachedFromDetails + missFromDetails + writesFromDetails
 		}
 
 		const totalOutputTokens = usage.output_tokens ?? usage.completion_tokens ?? 0
-		const cacheWriteTokens = usage.cache_creation_input_tokens ?? usage.cache_write_tokens ?? 0
+		const cacheWriteTokens = usage.cache_creation_input_tokens ?? usage.cache_write_tokens ?? writesFromDetails
 		const cacheReadTokens =
 			usage.cache_read_input_tokens ?? usage.cache_read_tokens ?? usage.cached_tokens ?? cachedFromDetails ?? 0
 
@@ -758,6 +811,14 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 										}
 									}
 								}
+							} else if (parsed.type === "response.audio_transcript.delta") {
+								if (parsed.delta) {
+									hasContent = true
+									this.sawTextOutputInCurrentResponse = true
+									yield { type: "text", text: parsed.delta }
+								}
+							} else if (IGNORED_SSE_EVENT_TYPES.has(parsed.type)) {
+								// Status events: nothing to show, and their fields are not answer text.
 							} else if (parsed.type === "response.error" || parsed.type === "error") {
 								if (parsed.error || parsed.message) {
 									throw new Error(

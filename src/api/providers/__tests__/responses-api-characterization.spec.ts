@@ -430,6 +430,13 @@ const fixtures: Record<string, unknown[]> = {
 		{ choices: [{ delta: { content: "chat chunk" } }] },
 		{ type: "response.usage", usage: { input_tokens: 3, output_tokens: 4 } },
 	],
+	"Chat Completions chunk followed by a done message": [
+		{ choices: [{ delta: { content: "chat chunk" } }] },
+		{
+			type: "response.output_item.done",
+			item: { type: "message", role: "assistant", content: [{ type: "output_text", text: "chat chunk" }] },
+		},
+	],
 	"audio transcript and tool status events": [
 		{ type: "response.audio_transcript.delta", delta: "spoken words" },
 		{ type: "response.web_search_call.completed", item: { text: "search status" } },

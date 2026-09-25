@@ -689,6 +689,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 										for (const content of outputItem.content) {
 											if (content.type === "text" && content.text) {
 												hasContent = true
+												this.sawTextOutputInCurrentResponse = true
 												yield {
 													type: "text",
 													text: content.text,
@@ -799,6 +800,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 								// Audio transcript streaming
 								if (parsed.delta) {
 									hasContent = true
+									this.sawTextOutputInCurrentResponse = true
 									yield {
 										type: "text",
 										text: parsed.delta,
@@ -1020,6 +1022,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 							// Fallback for older formats or unexpected responses
 							else if (parsed.choices?.[0]?.delta?.content) {
 								hasContent = true
+								this.sawTextOutputInCurrentResponse = true
 								yield {
 									type: "text",
 									text: parsed.choices[0].delta.content,
@@ -1032,6 +1035,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 								parsed.item.text.length > 0
 							) {
 								hasContent = true
+								this.sawTextOutputInCurrentResponse = true
 								yield {
 									type: "text",
 									text: parsed.item.text,
@@ -1191,7 +1195,7 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 					index: event.index ?? 0,
 					id: callId,
 					name,
-					arguments: args,
+					arguments: typeof args === "string" ? args : "",
 				}
 			}
 			return

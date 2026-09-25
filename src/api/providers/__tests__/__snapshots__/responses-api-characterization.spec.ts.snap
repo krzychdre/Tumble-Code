@@ -753,6 +753,54 @@ exports[`Responses API handlers: replayed event fixtures > #11621 text only in t
 }
 `;
 
+exports[`Responses API handlers: replayed event fixtures > Chat Completions chunk followed by a done message 1`] = `
+{
+  "codex": {
+    "chunks": [
+      {
+        "text": "chat chunk",
+        "type": "text",
+      },
+    ],
+    "encryptedContent": undefined,
+    "responseId": undefined,
+  },
+  "codexSse": {
+    "chunks": [
+      {
+        "text": "chat chunk",
+        "type": "text",
+      },
+    ],
+    "encryptedContent": undefined,
+    "responseId": undefined,
+  },
+  "native": {
+    "chunks": [
+      {
+        "text": "chat chunk",
+        "type": "text",
+      },
+    ],
+    "encryptedContent": undefined,
+    "responseId": undefined,
+  },
+  "nativeSse": {
+    "chunks": [
+      {
+        "text": "chat chunk",
+        "type": "text",
+      },
+    ],
+    "encryptedContent": undefined,
+    "responseId": undefined,
+  },
+  "xai": {
+    "chunks": [],
+  },
+}
+`;
+
 exports[`Responses API handlers: replayed event fixtures > GPT-5.6 cache writes in input_tokens_details 1`] = `
 {
   "codex": {
@@ -763,7 +811,7 @@ exports[`Responses API handlers: replayed event fixtures > GPT-5.6 cache writes 
       },
       {
         "cacheReadTokens": 2000,
-        "cacheWriteTokens": 0,
+        "cacheWriteTokens": 3000,
         "inputTokens": 10000,
         "outputTokens": 500,
         "totalCost": 0,
@@ -781,7 +829,7 @@ exports[`Responses API handlers: replayed event fixtures > GPT-5.6 cache writes 
       },
       {
         "cacheReadTokens": 2000,
-        "cacheWriteTokens": 0,
+        "cacheWriteTokens": 3000,
         "inputTokens": 10000,
         "outputTokens": 500,
         "totalCost": 0,
@@ -897,7 +945,7 @@ exports[`Responses API handlers: replayed event fixtures > argument deltas that 
         "type": "tool_call_partial",
       },
       {
-        "arguments": undefined,
+        "arguments": "",
         "id": "call_own",
         "index": 2,
         "name": "list_files",
@@ -917,7 +965,7 @@ exports[`Responses API handlers: replayed event fixtures > argument deltas that 
         "type": "tool_call_partial",
       },
       {
-        "arguments": undefined,
+        "arguments": "",
         "id": "call_own",
         "index": 2,
         "name": "list_files",
@@ -967,11 +1015,7 @@ exports[`Responses API handlers: replayed event fixtures > audio transcript and 
   "codexSse": {
     "chunks": [
       {
-        "text": "search status",
-        "type": "text",
-      },
-      {
-        "text": "summary done",
+        "text": "spoken words",
         "type": "text",
       },
       {
@@ -2021,8 +2065,8 @@ exports[`Responses API handlers: replayed event fixtures > usage with only token
     "chunks": [
       {
         "cacheReadTokens": 30,
-        "cacheWriteTokens": 0,
-        "inputTokens": 100,
+        "cacheWriteTokens": 5,
+        "inputTokens": 105,
         "outputTokens": 9,
         "totalCost": 0,
         "type": "usage",
@@ -2035,8 +2079,8 @@ exports[`Responses API handlers: replayed event fixtures > usage with only token
     "chunks": [
       {
         "cacheReadTokens": 30,
-        "cacheWriteTokens": 0,
-        "inputTokens": 100,
+        "cacheWriteTokens": 5,
+        "inputTokens": 105,
         "outputTokens": 9,
         "totalCost": 0,
         "type": "usage",
