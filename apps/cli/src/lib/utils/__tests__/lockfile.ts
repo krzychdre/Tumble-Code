@@ -39,7 +39,8 @@ const bareVersion = (version: string) => version.replace(/\(.*$/, "")
  * from node_modules, so a stale install cannot agree with itself.
  */
 export function lockedVersions(): Record<string, string> {
-	const lines = fs.readFileSync(LOCKFILE, "utf8").split("\n")
+	// Split on CRLF as well: git on Windows checks the lockfile out with CRLF.
+	const lines = fs.readFileSync(LOCKFILE, "utf8").split(/\r?\n/)
 	const versions: Record<string, string> = {}
 
 	// importers: apps/cli: dependencies: <name>: specifier / version
