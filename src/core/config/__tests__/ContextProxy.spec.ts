@@ -118,11 +118,12 @@ describe("ContextProxy", () => {
 		})
 
 		it("should initialize state cache with all global state keys", () => {
-			// +3 for the migration checks:
+			// +4 for the migration checks:
 			// 1. openRouterImageGenerationSettings
-			// 2. customCondensingPrompt
-			// 3. customSupportPrompts (for migrateOldDefaultCondensingPrompt)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 3)
+			// 2. vertexJsonCredentials (plain-text copy moved to secrets)
+			// 3. customCondensingPrompt
+			// 4. customSupportPrompts (for migrateOldDefaultCondensingPrompt)
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 4)
 			for (const key of GLOBAL_STATE_KEYS) {
 				expect(mockGlobalState.get).toHaveBeenCalledWith(key)
 			}
@@ -152,8 +153,8 @@ describe("ContextProxy", () => {
 			const result = proxy.getGlobalState("apiProvider")
 			expect(result).toBe("deepseek")
 
-			// Original context should be called once during updateGlobalState (+3 for migration checks)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 3) // From initialization + migration checks
+			// Original context should be called once during updateGlobalState (+4 for migration checks)
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 4) // From initialization + migration checks
 		})
 
 		it("should handle default values correctly", async () => {

@@ -151,8 +151,6 @@ const bedrockSchema = legacyProviderArm(providerConfigSchemas.bedrock, {
 	awsSessionToken: optionalCredential(),
 	awsApiKey: optionalCredential(),
 })
-// `vertexJsonCredentials` is not in SECRET_STATE_KEYS either, so a saved vertex
-// profile does not keep it (a known gap, tracked outside this schema).
 const vertexSchema = legacyProviderArm(providerConfigSchemas.vertex, { vertexJsonCredentials: optionalCredential() })
 const openAiSchema = legacyProviderArm(providerConfigSchemas.openai, { openAiApiKey: optionalCredential() })
 const ollamaSchema = legacyProviderArm(providerConfigSchemas.ollama, { ollamaApiKey: optionalCredential() })
