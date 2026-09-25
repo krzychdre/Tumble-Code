@@ -1443,7 +1443,6 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 											onBlur={(e: any) => {
 												// Set default Qdrant URL if field is empty
 												if (!e.target.value.trim()) {
-													currentSettings.codebaseIndexQdrantUrl = DEFAULT_QDRANT_URL
 													updateSetting("codebaseIndexQdrantUrl", DEFAULT_QDRANT_URL)
 												}
 											}}
