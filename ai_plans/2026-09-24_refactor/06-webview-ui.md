@@ -375,3 +375,12 @@ WEB-12, WEB-4 (3) if the profiling after WEB-2a still shows context fan-out cost
   new direct listener. Behavior deltas: empty MarketplaceView visibility listener removed; MarketplaceViewStateManager
   no longer resets on foreign postMessages without a string `type`. `CommandExecution.spec` now dispatches real
   MessageEvents. Open: `ExtensionMessage` lacks `planReview`; ChatTextArea file search could use `request()`.
+- 2026-09-25 WEB-2b DONE #408 (`9c7bf09ef`, 131 golden renders in `__golden__/ChatRow.golden.json`, `UPDATE_GOLDEN=1`;
+  vitest snapshots fail in linked-node_modules worktrees; plus `ChatRow.edit-images.spec.tsx`), #409 (`87aec4823`):
+  `chat/rows/renderers/{tool,say,ask}/` behind `TOOL_RENDERERS`, `SAY_RENDERERS` (fallback `DefaultSayRow`),
+  `SAY_TOOL_RENDERERS`, `ASK_RENDERERS`; ChatRow.tsx 1,805 to 150 lines; ChatRowContent no longer reads the context and
+  compiles (bailouts 10 to 9); UserFeedbackRow's image listener on the bus (ChatRow off the listener allowlist).
+  #410 (`4db5f7434`): one runSlashCommand renderer (nothing emits the say form since #7473). Found (real, own fix
+  item): the `user_edit_todos` row renders `UpdateTodoListToolBlock` without `todos`; its default `[]` is a new array
+  per render and an effect keyed on it calls `setEditTodos`: endless re-render (hung the test worker), and the row
+  shows none of the edited todos.
