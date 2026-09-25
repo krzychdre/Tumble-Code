@@ -414,6 +414,10 @@ saves the store's `currentApiConfigName` (visible only in a settings export).
 1,500 is not reached. Remaining large blocks are candidates for a follow-up split (task stack and creation,
 `cancelTask`, entry points).
 
+**Phase 4 final full run (2026-09-25, main 5c077ebb2):** `pnpm turbo run check-types lint test --continue
+--concurrency=3`: 38 of 38 tasks green. src 8,656 passed (was 7,977 on fcce04c56 before Phase 4), webview 1,658,
+cli 1,070, types 363, cloud 304, vscode-shim 408, core 178, agent-interchange 114, telemetry 31, build 13.
+
 
 ### CORE-R7 Performance (Phase 10; mechanism verified, magnitude to be measured)
 
