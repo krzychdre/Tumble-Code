@@ -19,7 +19,7 @@ vi.mock("../tiktoken", () => ({
 
 const content: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: "hello world" }]
 
-// The exact errors workerpool 9.x produces, see node_modules/workerpool/src/Pool.js (exec)
+// The exact errors workerpool 10.x produces, see node_modules/workerpool/src/Pool.js (exec)
 // and src/WorkerHandler.js (the worker "exit" listener).
 const queueFullError = () => new Error("Max queue size of 10 reached")
 const workerCrashError = () =>
