@@ -9,7 +9,6 @@ import { Trans } from "react-i18next"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { appendImages } from "@src/utils/imageUtils"
 import { getCostBreakdownIfNeeded } from "@src/utils/costFormatting"
-import { batchConsecutive } from "@src/utils/batchConsecutive"
 
 import type { ClineAsk, ClineSayTool, ClineMessage, ExtensionMessage, AudioType } from "@roo-code/types"
 import { hasUsableAnswer, isRetiredProvider } from "@roo-code/types"
@@ -52,13 +51,11 @@ import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { useScrollLifecycle } from "@src/hooks/useScrollLifecycle"
 import { useStableCallback } from "@src/hooks/useStableCallback"
+import { EVER_VISIBLE_VIEWPORT, filterVisible, markEverVisible } from "./rows/filterVisible"
+import { groupToolAsks } from "./rows/groupToolAsks"
+import { computeRowMeta } from "./rows/computeRowMeta"
+import { withCondensingRow } from "./rows/condensingRow"
 import { Cloud } from "lucide-react"
-
-// Timestamp of the synthetic "condensing context" row. Rows are keyed by
-// their ts, so it must not change between recomputes (Date.now() gave the row
-// a new key on every streamed token and React remounted it each time), and it
-// must not collide with a real message ts.
-const CONDENSING_ROW_TS = Number.MAX_SAFE_INTEGER
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -154,6 +151,28 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	// Has to be after api_req_finished are all reduced into api_req_started messages.
 	const apiMetrics = useMemo(() => getApiMetrics(modifiedMessages), [modifiedMessages])
 
+	// ts of rows the list has shown ("ever visible"): such a row stays visible
+	// even when its kind would now be filtered (see filterVisible).
+	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
+		new LRUCache({
+			max: 100,
+			ttl: 1000 * 60 * 5,
+		}),
+	)
+
+	const visibleMessages = useMemo(
+		() => filterVisible(modifiedMessages, everVisibleMessagesTsRef.current),
+		[modifiedMessages],
+	)
+
+	// Remember the rows just shown. This used to happen inside the useMemo
+	// above; as an effect it runs after the render instead. It is declared
+	// before the effects that clear the set (task change, hidden view), so when
+	// both run in one commit the clear still comes last, as it did before.
+	useEffect(() => {
+		markEverVisible(visibleMessages, everVisibleMessagesTsRef.current)
+	}, [visibleMessages])
+
 	const [inputValue, setInputValue] = useState("")
 	const inputValueRef = useRef(inputValue)
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
@@ -178,12 +197,6 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	>(undefined)
 	const [isCondensing, setIsCondensing] = useState<boolean>(false)
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
-	const everVisibleMessagesTsRef = useRef<LRUCache<number, boolean>>(
-		new LRUCache({
-			max: 100,
-			ttl: 1000 * 60 * 5,
-		}),
-	)
 	const autoApproveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 	const userRespondedRef = useRef<boolean>(false)
 	const [currentFollowUpTs, setCurrentFollowUpTs] = useState<number | null>(null)
@@ -1025,106 +1038,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useEvent("message", handleMessage)
 
-	const visibleMessages = useMemo(() => {
-		// Pre-compute checkpoint hashes that have associated user messages for O(1) lookup
-		const userMessageCheckpointHashes = new Set<string>()
-		modifiedMessages.forEach((msg) => {
-			if (
-				msg.say === "user_feedback" &&
-				msg.checkpoint &&
-				msg.checkpoint["type"] === "user_message" &&
-				msg.checkpoint["hash"]
-			) {
-				userMessageCheckpointHashes.add(msg.checkpoint["hash"] as string)
-			}
-		})
-
-		// Remove the 500-message limit to prevent array index shifting
-		// Virtuoso is designed to efficiently handle large lists through virtualization
-		const newVisibleMessages = modifiedMessages.filter((message) => {
-			// Filter out checkpoint_saved messages that should be suppressed
-			if (message.say === "checkpoint_saved") {
-				// Check if this checkpoint has the suppressMessage flag set
-				if (
-					message.checkpoint &&
-					typeof message.checkpoint === "object" &&
-					"suppressMessage" in message.checkpoint &&
-					message.checkpoint.suppressMessage
-				) {
-					return false
-				}
-				// Also filter out checkpoint messages associated with user messages (legacy behavior)
-				if (message.text && userMessageCheckpointHashes.has(message.text)) {
-					return false
-				}
-			}
-
-			if (everVisibleMessagesTsRef.current.has(message.ts)) {
-				const alwaysHiddenOnceProcessedAsk: ClineAsk[] = [
-					"api_req_failed",
-					"resume_task",
-					"resume_completed_task",
-				]
-				const alwaysHiddenOnceProcessedSay = [
-					"api_req_finished",
-					"api_req_retried",
-					"api_req_deleted",
-					"mcp_server_request_started",
-				]
-				if (message.ask && alwaysHiddenOnceProcessedAsk.includes(message.ask)) return false
-				if (message.say && alwaysHiddenOnceProcessedSay.includes(message.say)) return false
-				if (message.say === "text" && (message.text ?? "") === "" && (message.images?.length ?? 0) === 0) {
-					return false
-				}
-				return true
-			}
-
-			switch (message.ask) {
-				case "completion_result":
-					if (message.text === "") return false
-					break
-				case "api_req_failed":
-				case "resume_task":
-				case "resume_completed_task":
-					return false
-			}
-			switch (message.say) {
-				case "api_req_finished":
-				case "api_req_retried":
-				case "api_req_deleted":
-					return false
-				case "api_req_retry_delayed":
-				case "api_req_rate_limit_wait":
-					const last1 = modifiedMessages.at(-1)
-					const last2 = modifiedMessages.at(-2)
-					if (last1?.ask === "resume_task" && last2 === message) {
-						return true
-					} else if (message !== last1) {
-						return false
-					}
-					break
-				case "text":
-					if ((message.text ?? "") === "" && (message.images?.length ?? 0) === 0) return false
-					break
-				case "mcp_server_request_started":
-					return false
-			}
-			return true
-		})
-
-		const viewportStart = Math.max(0, newVisibleMessages.length - 100)
-		newVisibleMessages
-			.slice(viewportStart)
-			.forEach((msg: ClineMessage) => everVisibleMessagesTsRef.current.set(msg.ts, true))
-
-		return newVisibleMessages
-	}, [modifiedMessages])
-
 	useEffect(() => {
 		const cleanupInterval = setInterval(() => {
 			const cache = everVisibleMessagesTsRef.current
 			const currentMessageIds = new Set(modifiedMessages.map((m: ClineMessage) => m.ts))
-			const viewportMessages = visibleMessages.slice(Math.max(0, visibleMessages.length - 100))
+			const viewportMessages = visibleMessages.slice(Math.max(0, visibleMessages.length - EVER_VISIBLE_VIEWPORT))
 			const viewportMessageIds = new Set(viewportMessages.map((m: ClineMessage) => m.ts))
 
 			cache.forEach((_value: boolean, key: number) => {
@@ -1147,164 +1065,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		[isHidden, sendingDisabled, enableButtons],
 	)
 
-	const groupedMessages = useMemo(() => {
-		const filtered: ClineMessage[] = visibleMessages
+	const toolGroupedMessages = useMemo(() => groupToolAsks(visibleMessages), [visibleMessages])
 
-		// Helper to check if a message is a read_file ask that should be batched
-		const isReadFileAsk = (msg: ClineMessage): boolean => {
-			if (msg.type !== "ask" || msg.ask !== "tool") return false
-			try {
-				const tool = JSON.parse(msg.text || "{}")
-				return tool.tool === "readFile" && !tool.batchFiles // Don't re-batch already batched
-			} catch {
-				return false
-			}
-		}
+	const groupedMessages = useMemo(
+		() => withCondensingRow(toolGroupedMessages, isCondensing),
+		[toolGroupedMessages, isCondensing],
+	)
 
-		// Helper to check if a message is a list_files ask that should be batched
-		const isListFilesAsk = (msg: ClineMessage): boolean => {
-			if (msg.type !== "ask" || msg.ask !== "tool") return false
-			try {
-				const tool = JSON.parse(msg.text || "{}")
-				return (
-					(tool.tool === "listFilesTopLevel" || tool.tool === "listFilesRecursive") && !tool.batchDirs // Don't re-batch already batched
-				)
-			} catch {
-				return false
-			}
-		}
-
-		// Set of tool names that represent file-editing operations
-		const editFileTools = new Set([
-			"editedExistingFile",
-			"appliedDiff",
-			"newFileCreated",
-			"insertContent",
-			"searchAndReplace",
-		])
-
-		// Helper to check if a message is a file-edit ask that should be batched
-		const isEditFileAsk = (msg: ClineMessage): boolean => {
-			if (msg.type !== "ask" || msg.ask !== "tool") return false
-			try {
-				const tool = JSON.parse(msg.text || "{}")
-				return editFileTools.has(tool.tool) && !tool.batchDiffs // Don't re-batch already batched
-			} catch {
-				return false
-			}
-		}
-
-		// Synthesize a batch of consecutive read_file asks into a single message
-		const synthesizeReadFileBatch = (batch: ClineMessage[]): ClineMessage => {
-			const batchFiles = batch.map((batchMsg) => {
-				try {
-					const tool = JSON.parse(batchMsg.text || "{}")
-					return {
-						path: tool.path || "",
-						lineSnippet: tool.reason || "",
-						isOutsideWorkspace: tool.isOutsideWorkspace || false,
-						key: `${tool.path}${tool.reason ? ` (${tool.reason})` : ""}`,
-						content: tool.content || "",
-					}
-				} catch {
-					return { path: "", lineSnippet: "", key: "", content: "" }
-				}
-			})
-
-			let firstTool
-			try {
-				firstTool = JSON.parse(batch[0].text || "{}")
-			} catch {
-				return batch[0]
-			}
-			return {
-				...batch[0],
-				text: JSON.stringify({ ...firstTool, batchFiles }),
-			}
-		}
-
-		// Synthesize a batch of consecutive list_files asks into a single message
-		const synthesizeListFilesBatch = (batch: ClineMessage[]): ClineMessage => {
-			const batchDirs = batch.map((batchMsg) => {
-				try {
-					const tool = JSON.parse(batchMsg.text || "{}")
-					return {
-						path: tool.path || "",
-						recursive: tool.tool === "listFilesRecursive",
-						isOutsideWorkspace: tool.isOutsideWorkspace || false,
-						key: tool.path || "",
-					}
-				} catch {
-					return { path: "", recursive: false, key: "" }
-				}
-			})
-
-			let firstTool
-			try {
-				firstTool = JSON.parse(batch[0].text || "{}")
-			} catch {
-				return batch[0]
-			}
-			return {
-				...batch[0],
-				text: JSON.stringify({ ...firstTool, batchDirs }),
-			}
-		}
-
-		// Synthesize a batch of consecutive file-edit asks into a single message
-		const synthesizeEditFileBatch = (batch: ClineMessage[]): ClineMessage => {
-			const batchDiffs = batch.map((batchMsg) => {
-				try {
-					const tool = JSON.parse(batchMsg.text || "{}")
-					return {
-						path: tool.path || "",
-						changeCount: 1,
-						key: tool.path || "",
-						content: tool.content || tool.diff || "",
-						diffStats: tool.diffStats,
-					}
-				} catch {
-					return { path: "", changeCount: 0, key: "", content: "" }
-				}
-			})
-
-			let firstTool
-			try {
-				firstTool = JSON.parse(batch[0].text || "{}")
-			} catch {
-				return batch[0]
-			}
-			return {
-				...batch[0],
-				text: JSON.stringify({ ...firstTool, batchDiffs }),
-			}
-		}
-
-		// Consolidate consecutive ask messages into batches
-		const readFileBatched = batchConsecutive(filtered, isReadFileAsk, synthesizeReadFileBatch)
-		const listFilesBatched = batchConsecutive(readFileBatched, isListFilesAsk, synthesizeListFilesBatch)
-		const result = batchConsecutive(listFilesBatched, isEditFileAsk, synthesizeEditFileBatch)
-
-		if (isCondensing) {
-			result.push({
-				type: "say",
-				say: "condense_context",
-				ts: CONDENSING_ROW_TS,
-				partial: true,
-			} as ClineMessage)
-		}
-		return result
-	}, [isCondensing, visibleMessages])
-
-	const checkpointIndices = useMemo(() => {
-		const indices: number[] = []
-		for (let i = 0; i < groupedMessages.length; i++) {
-			if (groupedMessages[i]?.say === "checkpoint_saved") {
-				indices.push(i)
-			}
-		}
-		return indices
-	}, [groupedMessages])
+	// byTs is for ChatRow once it stops scanning clineMessages itself (WEB-2a).
+	const { checkpointIndices } = useMemo(() => computeRowMeta(messages, groupedMessages), [messages, groupedMessages])
 
 	const hasLatestCheckpoint = checkpointIndices.length > 0
 	const checkpointJumpCursorRef = useRef<number | null>(null)
