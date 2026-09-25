@@ -61,4 +61,33 @@ describe("useZoomPan", () => {
 		act(() => result.current.panLayerProps.onMouseMove(mouse(10, 4)))
 		expect(result.current.panLayerProps.style.transform).toBe("scale(2) translate(5px, 2px)")
 	})
+
+	it("zooms through a non-passive native wheel listener attached by wheelAreaRef", () => {
+		const { result } = renderHook(() => useZoomPan())
+		const area = document.createElement("div")
+		const addSpy = vi.spyOn(area, "addEventListener")
+		const removeSpy = vi.spyOn(area, "removeEventListener")
+
+		act(() => result.current.wheelAreaRef(area))
+
+		// React registers onWheel as a passive listener, where preventDefault is
+		// ignored, so the hook attaches its own listener with passive: false.
+		expect(addSpy).toHaveBeenCalledWith("wheel", expect.any(Function), { passive: false })
+
+		const event = new WheelEvent("wheel", { deltaY: -100, bubbles: true, cancelable: true })
+		act(() => {
+			area.dispatchEvent(event)
+		})
+		expect(event.defaultPrevented).toBe(true)
+		expect(result.current.zoomLevel).toBeCloseTo(1.2)
+
+		// Detaching the element removes the same listener.
+		const listener = addSpy.mock.calls.find(([type]) => type === "wheel")![1]
+		act(() => result.current.wheelAreaRef(null))
+		expect(removeSpy).toHaveBeenCalledWith("wheel", listener)
+		act(() => {
+			area.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, cancelable: true }))
+		})
+		expect(result.current.zoomLevel).toBeCloseTo(1.2)
+	})
 })

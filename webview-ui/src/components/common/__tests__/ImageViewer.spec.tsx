@@ -192,6 +192,16 @@ describe("ImageViewer", () => {
 			expect(panLayer().style.transform).toBe("scale(20) translate(0px, 0px)")
 		})
 
+		it("cancels the wheel event while zooming, so the page behind does not scroll", () => {
+			const { container } = render(<ImageViewer imageUri={URI} />)
+			openModal(container)
+
+			// fireEvent returns false when a listener called preventDefault. React's
+			// own onWheel is passive, so preventDefault there is ignored.
+			expect(fireEvent.wheel(wheelArea(), { deltaY: -100 })).toBe(false)
+			expect(zoomBadge()).toBe("120%")
+		})
+
 		it("zooms with the footer buttons in steps of 0.2", () => {
 			const { container } = render(<ImageViewer imageUri={URI} />)
 			openModal(container)
