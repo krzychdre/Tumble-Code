@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next"
 
+import type { TodoItem } from "@roo-code/types"
+
 import { safeJsonParse } from "@roo/core"
 
 import { useExtensionState } from "@src/context/ExtensionStateContext"
@@ -158,10 +160,23 @@ export const CodebaseSearchResultRow = ({ message }: RowRendererProps) => {
 	return <CodebaseSearchResultsDisplay results={results} />
 }
 
-/** The user edited the todo list while approving an update. */
-export const UserEditTodosRow = ({ message, meta }: RowRendererProps) => (
-	<UpdateTodoListToolBlock userEdited onChange={() => {}} startTs={message.ts} endTs={meta.nextTs} />
-)
+/**
+ * The user edited the todo list while approving an update. UpdateTodoListTool
+ * says {tool: "updateTodoList", todos} with the list as the user left it.
+ */
+export const UserEditTodosRow = ({ message, meta }: RowRendererProps) => {
+	const parsed = safeJsonParse<{ todos?: unknown }>(message.text || "{}")
+	const todos = Array.isArray(parsed?.todos) ? (parsed.todos as TodoItem[]) : undefined
+	return (
+		<UpdateTodoListToolBlock
+			userEdited
+			todos={todos}
+			onChange={() => {}}
+			startTs={message.ts}
+			endTs={meta.nextTs}
+		/>
+	)
+}
 
 /** Too many MCP tools are enabled, with a shortcut to the MCP settings. */
 export const TooManyToolsWarningRow = ({ message }: RowRendererProps) => {
