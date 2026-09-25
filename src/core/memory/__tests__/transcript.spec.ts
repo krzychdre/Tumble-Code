@@ -1,96 +1,110 @@
-import { describe, it, expect } from "vitest"
+import { renderTranscript, MAX_ASSISTANT_ENTRY_CHARS, type TranscriptMessage } from "../transcript"
 
-import { renderTranscript, DEFAULT_MAX_MESSAGES, type TranscriptMessage } from "../transcript"
+const userText = (text: string): TranscriptMessage => ({
+	role: "user",
+	content: [{ type: "text", text: `<user_message>\n${text}\n</user_message>` }],
+})
 
 describe("renderTranscript", () => {
-	it("returns empty string for empty / non-array history", () => {
+	it("returns an empty string for empty or invalid history", () => {
 		expect(renderTranscript([])).toBe("")
 		expect(renderTranscript(undefined as unknown as TranscriptMessage[])).toBe("")
 	})
 
-	it("renders string-content messages with speaker labels, preserving order", () => {
+	it("keeps user prose and drops environment details, tool output and reasoning", () => {
 		const out = renderTranscript([
-			{ role: "user", content: "hello" },
-			{ role: "assistant", content: "hi there" },
-		])
-		expect(out).toBe("User: hello\n\nAssistant: hi there")
-	})
-
-	it("renders tool_use and tool_result blocks compactly", () => {
-		const out = renderTranscript([
+			{
+				role: "user",
+				content: [
+					{ type: "text", text: "<user_message>\nfix the login bug\n</user_message>" },
+					{ type: "text", text: "<environment_details>\n# Open tabs\nsrc/a.ts\n</environment_details>" },
+				],
+			},
+			{ role: "assistant", type: "reasoning", content: "secret deliberation" },
 			{
 				role: "assistant",
 				content: [
-					{ type: "text", text: "let me read it" },
-					{ type: "tool_use", id: "t1", name: "read_file", input: { path: "a.ts" } },
+					{ type: "text", text: "Reading the file." },
+					{ type: "tool_use", id: "t1", name: "read_file", input: { path: "src/a.ts" } },
 				],
 			},
 			{
 				role: "user",
-				content: [{ type: "tool_result", tool_use_id: "t1", content: "file body" }],
+				content: [{ type: "tool_result", tool_use_id: "t1", content: "1 | export const a = 1" }],
 			},
 		])
-		expect(out).toContain("Assistant: let me read it")
-		expect(out).toContain('→ tool read_file({"path":"a.ts"})')
-		expect(out).toContain("← result: file body")
+		expect(out).toBe("User: fix the login bug\n\nAssistant: Reading the file.")
 	})
 
-	it("renders tool_result whose content is an array of parts", () => {
+	it("picks up user replies that arrive inside a tool result, and the completion result", () => {
 		const out = renderTranscript([
+			userText("add a retry"),
+			{
+				role: "assistant",
+				content: [{ type: "tool_use", id: "c1", name: "attempt_completion", input: { result: "Added a retry." } }],
+			},
 			{
 				role: "user",
 				content: [
 					{
 						type: "tool_result",
-						tool_use_id: "t1",
-						content: [{ type: "text", text: "line one" }],
+						tool_use_id: "c1",
+						content: [{ type: "text", text: "<user_message>\nno, always use exponential backoff\n</user_message>" }],
 					},
 				],
 			},
 		])
-		expect(out).toContain("← result: line one")
+		expect(out).toBe(
+			"User: add a retry\n\nAssistant: Added a retry.\n\nUser: no, always use exponential backoff",
+		)
 	})
 
-	it("drops reasoning-tagged messages entirely", () => {
-		const out = renderTranscript([
-			{ role: "assistant", content: "thinking...", type: "reasoning" },
-			{ role: "assistant", content: "the answer" },
-		])
-		expect(out).toBe("Assistant: the answer")
+	it("drops bare acknowledgements", () => {
+		expect(renderTranscript([userText("do it"), userText("ok")])).toBe("User: do it")
 	})
 
-	it("skips messages that render to nothing (e.g. only unknown blocks)", () => {
-		const out = renderTranscript([
-			{ role: "assistant", content: [{ type: "thinking", thinking: "x", signature: "s" } as never] },
-			{ role: "user", content: "real" },
-		])
-		expect(out).toBe("User: real")
+	it("returns empty when there is no user prose at all", () => {
+		expect(renderTranscript([{ role: "assistant", content: "hello" }])).toBe("")
 	})
 
-	it("keeps only the last maxMessages entries", () => {
-		const history: TranscriptMessage[] = Array.from({ length: DEFAULT_MAX_MESSAGES + 5 }, (_, i) => ({
-			role: "user" as const,
-			content: `m${i}`,
+	it("caps assistant entries and keeps the newest entries within the budget", () => {
+		const long = "x".repeat(MAX_ASSISTANT_ENTRY_CHARS * 3)
+		const capped = renderTranscript([userText("go"), { role: "assistant", content: long }])
+		expect(capped.length).toBeLessThan(MAX_ASSISTANT_ENTRY_CHARS + 40)
+
+		const history = Array.from({ length: 50 }, (_, i) => userText(`message number ${i}`))
+		const out = renderTranscript(history, { maxChars: 200 })
+		expect(out.length).toBeLessThanOrEqual(200)
+		// the task statement always, then the newest replies; the middle drops out
+		expect(out).toContain("message number 0\n")
+		expect(out).toContain("message number 49")
+		expect(out).not.toContain("message number 25")
+		expect(out.indexOf("number 48")).toBeLessThan(out.indexOf("number 49"))
+	})
+
+	it("a long autonomous run cannot push the task statement out (regression)", () => {
+		// 250 assistant turns of narration after one task statement: the old
+		// newest-first walk filled the budget with narration and returned "".
+		const narration: TranscriptMessage[] = Array.from({ length: 250 }, (_, i) => ({
+			role: "assistant",
+			content: [{ type: "text", text: `Step ${i}: reading more files. ${"x".repeat(200)}` }],
 		}))
-		const out = renderTranscript(history)
-		expect(out).not.toContain("User: m0")
-		expect(out).toContain(`User: m${DEFAULT_MAX_MESSAGES + 4}`)
-		expect(out.split("\n\n")).toHaveLength(DEFAULT_MAX_MESSAGES)
+		const out = renderTranscript([userText("port the Phase 2D fixes, never touch prod state"), ...narration])
+		expect(out).toContain("User: port the Phase 2D fixes, never touch prod state")
+		expect(out).toContain("Step 249")
+		expect(out).not.toContain("Step 100")
 	})
 
-	it("respects a custom maxMessages", () => {
-		const history: TranscriptMessage[] = [
-			{ role: "user", content: "a" },
-			{ role: "assistant", content: "b" },
-			{ role: "user", content: "c" },
-		]
-		expect(renderTranscript(history, { maxMessages: 1 })).toBe("User: c")
-	})
-
-	it("truncates long message bodies with a marker", () => {
-		const long = "x".repeat(5000)
-		const out = renderTranscript([{ role: "user", content: long }], { maxCharsPerMessage: 100 })
-		expect(out).toContain("…[truncated]")
-		expect(out.length).toBeLessThan(200)
+	it("pairs each user reply with the assistant line right before it", () => {
+		const out = renderTranscript([
+			userText("set up CI"),
+			{ role: "assistant", content: "Narration nobody needs." },
+			{ role: "assistant", content: "Should I use npm or pnpm?" },
+			userText("pnpm, always"),
+			{ role: "assistant", content: "Done." },
+		])
+		expect(out).toBe(
+			"User: set up CI\n\nAssistant: Should I use npm or pnpm?\n\nUser: pnpm, always\n\nAssistant: Done.",
+		)
 	})
 })

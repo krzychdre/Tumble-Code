@@ -5,13 +5,6 @@ import { RooCodeEventName } from "@roo-code/types"
 
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
 
-// Stub the memory-sandbox path filter so the memorySubTaskRunner retry tests can
-// assert on raw written paths without needing real memory-directory resolution.
-// memoryWriteSandbox is unused by the runner tests; provide a minimal stub.
-vi.mock("../../memory", () => ({
-	memoryWriteSandbox: vi.fn(() => ({ autoApprove: "path" })),
-	filterMemoryWrittenPaths: vi.fn((paths: ReadonlyArray<string>) => [...paths]),
-}))
 
 /**
  * Focused unit tests for the reusable background-task primitive
@@ -171,257 +164,77 @@ describe("BackgroundTaskRunner.awaitTaskCompletion", () => {
 
 describe("BackgroundTaskRunner.resolveMemoryWriterApiConfiguration", () => {
 	// The method is private but reachable on a runner whose host provides
-	// `getMemoryWriterApiConfigId` and `activateProfile`.
+	// `getMemoryWriterApiConfigId` and `getProfile`.
 
-	// `resolveMemoryWriterApiConfiguration` calls `activateProfile`, not
-	// `getProfile`. While the double stubbed only the latter, the two tests that
-	// resolve a profile were asserting on the TypeError the catch block swallowed
-	// — both "passed" through the failure path they were written to avoid.
+	// It must READ the writer profile: it used to call activateProfile, which
+	// also stores the writer profile as the user's current profile.
 	function makeFakeThis(opts: {
 		configId?: string
-		activateProfile?: ReturnType<typeof vi.fn>
+		getProfile?: ReturnType<typeof vi.fn>
 		log?: ReturnType<typeof vi.fn>
 	}) {
 		return makeRunner({
 			getMemoryWriterApiConfigId: vi.fn().mockReturnValue(opts.configId),
-			activateProfile: opts.activateProfile ?? vi.fn(),
+			getProfile: opts.getProfile ?? vi.fn(),
 			log: opts.log ?? vi.fn(),
 		}) as unknown as RunnerInternals
 	}
 
-	it("returns undefined when memoryWriterApiConfigId is unset", async () => {
+	it("reads the writer profile without activating it (regression)", async () => {
 		const activateProfile = vi.fn()
-		const fakeThis = makeFakeThis({ configId: undefined, activateProfile })
+		const getProfile = vi.fn().mockResolvedValue({ name: "cheap", apiProvider: "ollama" })
+		const runner = makeRunner({
+			getMemoryWriterApiConfigId: vi.fn().mockReturnValue("profile-1"),
+			getProfile,
+			activateProfile,
+		} as never) as unknown as RunnerInternals
+		await expect(runner.resolveMemoryWriterApiConfiguration()).resolves.toEqual({ apiProvider: "ollama" })
+		expect(getProfile).toHaveBeenCalledWith({ id: "profile-1" })
+		expect(activateProfile).not.toHaveBeenCalled()
+	})
+
+	it("returns undefined when memoryWriterApiConfigId is unset", async () => {
+		const getProfile = vi.fn()
+		const fakeThis = makeFakeThis({ configId: undefined, getProfile })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
-		expect(activateProfile).not.toHaveBeenCalled()
+		expect(getProfile).not.toHaveBeenCalled()
 	})
 
 	it("returns undefined when memoryWriterApiConfigId is empty string", async () => {
-		const activateProfile = vi.fn()
-		const fakeThis = makeFakeThis({ configId: "", activateProfile })
+		const getProfile = vi.fn()
+		const fakeThis = makeFakeThis({ configId: "", getProfile })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
-		expect(activateProfile).not.toHaveBeenCalled()
+		expect(getProfile).not.toHaveBeenCalled()
 	})
 
-	it("returns the resolved profile (minus name) when activateProfile succeeds", async () => {
-		const activateProfile = vi.fn().mockResolvedValue({
+	it("returns the resolved profile (minus name) when getProfile succeeds", async () => {
+		const getProfile = vi.fn().mockResolvedValue({
 			name: "cheap-local",
 			id: "profile-1",
 			apiProvider: "ollama",
 			apiModelId: "llama3",
 		})
-		const fakeThis = makeFakeThis({ configId: "profile-1", activateProfile })
+		const fakeThis = makeFakeThis({ configId: "profile-1", getProfile })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toEqual({
 			id: "profile-1",
 			apiProvider: "ollama",
 			apiModelId: "llama3",
 		})
-		expect(activateProfile).toHaveBeenCalledWith({ id: "profile-1" })
+		expect(getProfile).toHaveBeenCalledWith({ id: "profile-1" })
 	})
 
-	it("falls back to undefined and logs when activateProfile throws", async () => {
-		const activateProfile = vi.fn().mockRejectedValue(new Error("not found"))
+	it("falls back to undefined and logs when getProfile throws", async () => {
+		const getProfile = vi.fn().mockRejectedValue(new Error("not found"))
 		const log = vi.fn()
-		const fakeThis = makeFakeThis({ configId: "stale-id", activateProfile, log })
+		const fakeThis = makeFakeThis({ configId: "stale-id", getProfile, log })
 		const result = await fakeThis.resolveMemoryWriterApiConfiguration()
 		expect(result).toBeUndefined()
-		expect(activateProfile).toHaveBeenCalledWith({ id: "stale-id" })
+		expect(getProfile).toHaveBeenCalledWith({ id: "stale-id" })
 		expect(log).toHaveBeenCalledWith(
-			expect.stringContaining("[memorySubTaskRunner] failed to load writer profile stale-id"),
+			expect.stringContaining("[memoryWriterQuery] failed to load writer profile stale-id"),
 		)
-	})
-})
-
-describe("BackgroundTaskRunner.memorySubTaskRunner: background-profile foreground retry", () => {
-	// The runner is a getter returning an async function. We invoke it on a
-	// runner whose private helpers are stubbed:
-	// resolveMemoryWriterApiConfiguration, setMemoryActivity, runMemorySubTask,
-	// and the host's log. runMemorySubTask is itself a private method that we stub directly so
-	// we can control the { completed, writtenPaths, abortReason } outcome of
-	// each attempt. abortReason classification (Claim 3) drives the retry
-	// decision: only streaming_failed retries on foreground; max_turns_reached
-	// and user_cancelled do not.
-
-	function makeFakeThis(opts: {
-		backgroundConfig?: any
-		runMemorySubTaskImpl: (
-			...args: any[]
-		) => Promise<{ completed: boolean; writtenPaths: string[]; abortReason?: string }>
-		log?: ReturnType<typeof vi.fn>
-	}) {
-		const runner = makeRunner({ log: opts.log ?? vi.fn() })
-		Object.assign(runner, {
-			resolveMemoryWriterApiConfiguration: vi.fn(async () => opts.backgroundConfig),
-			setMemoryActivity: vi.fn(),
-			runMemorySubTask: vi.fn(opts.runMemorySubTaskImpl),
-		})
-		return runner
-	}
-
-	/** Invoke the runner function (from the getter) bound to fakeThis. */
-	async function invokeRunner(
-		fakeThis: BackgroundTaskRunner,
-		args: {
-			cwd?: string
-			systemPrompt?: string
-			userPrompt?: string
-			maxTurns?: number
-			signal?: AbortSignal
-		},
-	) {
-		const runner = fakeThis.memorySubTaskRunner as (args: any) => Promise<{ writtenPaths: string[] }>
-		return runner({
-			cwd: args.cwd ?? "/mem",
-			systemPrompt: args.systemPrompt,
-			userPrompt: args.userPrompt ?? "extract memories",
-			maxTurns: args.maxTurns ?? 5,
-			signal: args.signal,
-		})
-	}
-
-	it("background profile completes → no retry, returns its written paths", async () => {
-		const runMemorySubTask = vi.fn(async () => ({
-			completed: true,
-			writtenPaths: ["/mem/a.md"],
-		}))
-		const fakeThis = makeFakeThis({
-			backgroundConfig: { apiProvider: "ollama" },
-			runMemorySubTaskImpl: runMemorySubTask as any,
-		})
-		const result = await invokeRunner(fakeThis, {})
-		expect(result.writtenPaths).toEqual(["/mem/a.md"])
-		expect(runMemorySubTask).toHaveBeenCalledTimes(1)
-	})
-
-	it("background profile streaming_failed + backgroundConfig set → retries once on foreground", async () => {
-		// Claim 3: a genuine provider failure (streaming_failed) on the
-		// background model is retried on the foreground model — the background
-		// model may be offline.
-		const runMemorySubTask = vi.fn(
-			async (_text: string, _cwd: string, _maxTurns: number, _signal: any, apiConfiguration: any) => ({
-				completed: apiConfiguration === undefined, // foreground attempt completes
-				writtenPaths: apiConfiguration === undefined ? ["/mem/recovered.md"] : [],
-				abortReason: apiConfiguration === undefined ? undefined : "streaming_failed",
-			}),
-		)
-		const log = vi.fn()
-		const fakeThis = makeFakeThis({
-			backgroundConfig: { apiProvider: "ollama" },
-			runMemorySubTaskImpl: runMemorySubTask as any,
-			log,
-		})
-		const result = await invokeRunner(fakeThis, {})
-		expect(runMemorySubTask).toHaveBeenCalledTimes(2)
-		// Second call must pass apiConfiguration === undefined (foreground).
-		expect(runMemorySubTask.mock.calls[1][4]).toBeUndefined()
-		expect(result.writtenPaths).toEqual(["/mem/recovered.md"])
-		expect(log).toHaveBeenCalledWith(
-			expect.stringContaining("background profile failed (streaming_failed), retrying on foreground"),
-		)
-	})
-
-	it("background profile max_turns_reached + backgroundConfig set → NO retry (weak model didn't finish)", async () => {
-		// Claim 3: a weak background model that exhausts its turn budget
-		// (max_turns_reached, typical for memory extraction) must NOT be retried
-		// on the expensive foreground model — it would just exhaust the same
-		// budget and double cost exactly where the feature aimed to save it.
-		// Accept the partial result (attempt #1's written paths).
-		const runMemorySubTask = vi.fn(async () => ({
-			completed: false,
-			writtenPaths: ["/mem/partial.md"],
-			abortReason: "max_turns_reached",
-		}))
-		const log = vi.fn()
-		const fakeThis = makeFakeThis({
-			backgroundConfig: { apiProvider: "ollama" },
-			runMemorySubTaskImpl: runMemorySubTask as any,
-			log,
-		})
-		const result = await invokeRunner(fakeThis, {})
-		expect(runMemorySubTask).toHaveBeenCalledTimes(1)
-		// Claim 6: partial written paths are still reported (no longer []).
-		expect(result.writtenPaths).toEqual(["/mem/partial.md"])
-		expect(log).not.toHaveBeenCalledWith(expect.stringContaining("retrying on foreground"))
-	})
-
-	it("retry returns the UNION of attempt #1 and attempt #2 written paths (Claim 6)", async () => {
-		// Claim 6: the old code returned only attempt #2's paths, discarding
-		// attempt #1's on-disk writes so onSaved/onImproved toasts never fired.
-		// The fix returns the union (deduped) so files either attempt wrote are
-		// reported.
-		const runMemorySubTask = vi.fn(
-			async (_text: string, _cwd: string, _maxTurns: number, _signal: any, apiConfiguration: any) => ({
-				completed: apiConfiguration === undefined,
-				writtenPaths: apiConfiguration === undefined ? ["/mem/recovered.md"] : ["/mem/first.md"],
-				abortReason: apiConfiguration === undefined ? undefined : "streaming_failed",
-			}),
-		)
-		const fakeThis = makeFakeThis({
-			backgroundConfig: { apiProvider: "ollama" },
-			runMemorySubTaskImpl: runMemorySubTask as any,
-		})
-		const result = await invokeRunner(fakeThis, {})
-		expect(runMemorySubTask).toHaveBeenCalledTimes(2)
-		// Union of both attempts' paths, deduped.
-		expect(result.writtenPaths).toEqual(["/mem/first.md", "/mem/recovered.md"])
-	})
-
-	it("retry union dedupes paths written by both attempts", async () => {
-		// If both attempts write the same file, the union must not duplicate it.
-		const runMemorySubTask = vi.fn(
-			async (_text: string, _cwd: string, _maxTurns: number, _signal: any, apiConfiguration: any) => ({
-				completed: apiConfiguration === undefined,
-				writtenPaths: ["/mem/shared.md", apiConfiguration === undefined ? "/mem/second.md" : "/mem/first.md"],
-				abortReason: apiConfiguration === undefined ? undefined : "streaming_failed",
-			}),
-		)
-		const fakeThis = makeFakeThis({
-			backgroundConfig: { apiProvider: "ollama" },
-			runMemorySubTaskImpl: runMemorySubTask as any,
-		})
-		const result = await invokeRunner(fakeThis, {})
-		expect(result.writtenPaths).toEqual(["/mem/shared.md", "/mem/first.md", "/mem/second.md"])
-	})
-
-	it("foreground-only run does not complete → no retry, returns attempt's written paths", async () => {
-		// No background config: a non-completing run must NOT retry (would loop
-		// on the same failing handler). Claim 6: still report the written paths.
-		const runMemorySubTask = vi.fn(async () => ({
-			completed: false,
-			writtenPaths: ["/mem/fg-partial.md"],
-			abortReason: "streaming_failed",
-		}))
-		const fakeThis = makeFakeThis({
-			backgroundConfig: undefined,
-			runMemorySubTaskImpl: runMemorySubTask as any,
-		})
-		const result = await invokeRunner(fakeThis, {})
-		expect(runMemorySubTask).toHaveBeenCalledTimes(1)
-		expect(result.writtenPaths).toEqual(["/mem/fg-partial.md"])
-	})
-
-	it("signal already aborted → no retry even with background config", async () => {
-		const runMemorySubTask = vi.fn(async () => ({
-			completed: false,
-			writtenPaths: ["/mem/partial.md"],
-			abortReason: "streaming_failed",
-		}))
-		const log = vi.fn()
-		const controller = new AbortController()
-		controller.abort()
-		const fakeThis = makeFakeThis({
-			backgroundConfig: { apiProvider: "ollama" },
-			runMemorySubTaskImpl: runMemorySubTask as any,
-			log,
-		})
-		const result = await invokeRunner(fakeThis, { signal: controller.signal })
-		expect(runMemorySubTask).toHaveBeenCalledTimes(1)
-		// No retry, but the partial paths are still reported (Claim 6).
-		expect(result.writtenPaths).toEqual(["/mem/partial.md"])
-		// No retry log because the abort was user-initiated.
-		expect(log).not.toHaveBeenCalledWith(expect.stringContaining("retrying on foreground"))
 	})
 })

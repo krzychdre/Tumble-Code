@@ -15,24 +15,31 @@
  * effective backoff. On abort (user kill), no double-rollback — the killer
  * already rolled back.
  *
- * Runs as a sandboxed sub-Task (same `SubTaskRunner` as extractMemories) with
- * `buildConsolidationPrompt` (self-contained, ported verbatim).
+ * The consolidation itself is small and mostly deterministic, so it works on
+ * small local models (the earlier design ran a 10-turn agent that re-sent a
+ * 25-60k token prompt on every turn):
+ * 1. the code picks at most {@link MAX_DREAM_QUERIES} pairs of memories that
+ *    look like the same topic (same type, overlapping name + description words);
+ * 2. for each pair ONE small completion answers KEEP, DROP 1/2 or MERGE with
+ *    the merged text; a merge that loses too much text is refused;
+ * 3. the code repairs the MEMORY.md index (dead links out, unindexed files in).
+ * A folded or dropped memory moves to `.archive/`, it is never deleted.
  */
 
-import { basename } from "path"
+import fs from "fs/promises"
 
 import { logger } from "../../utils/logging"
 import { getAutoMemPath, isAutoMemoryEnabled } from "./paths"
-import { ENTRYPOINT_NAME, MAX_ENTRYPOINT_LINES, DIR_EXISTS_GUIDANCE } from "./memoryPrompt"
 import {
 	readLastConsolidatedAt,
 	tryAcquireConsolidationLock,
 	rollbackConsolidationLock,
 	countSessionsSince,
 } from "./consolidationLock"
-import { type SubTaskRunner, type SubTaskResult, drainInFlight } from "./extractMemories"
-
-export { type SubTaskRunner, type SubTaskResult } from "./extractMemories"
+import { drainInFlight } from "./extractMemories"
+import { type MemoryHeader, scanMemoryFiles } from "./memoryScan"
+import { archiveMemory, rewriteMemoryBody, syncMemoryIndex } from "./memoryFiles"
+import { type SideQuery } from "./relevance"
 
 /** Scan throttle: don't re-check the session gate more often than this. */
 const SESSION_SCAN_INTERVAL_MS = 10 * 60 * 1000 // 10 min
@@ -53,8 +60,8 @@ export interface AutoDreamContext {
 	taskHistory: ReadonlyArray<{ lastModified?: number }>
 	/** The current session's task id — excluded from the session count. */
 	currentTaskId?: string
-	/** The sandboxed sub-Task spawner. */
-	subTaskRunner: SubTaskRunner
+	/** The one-shot completion each merge decision asks. */
+	query: SideQuery
 	/** Called with an "Improved N memories" notice on success (may be a no-op). */
 	onImproved?: (count: number, paths: string[]) => void
 }
@@ -87,56 +94,173 @@ export function _inFlightDreamsCount(): number {
 	return inFlightDreams.size
 }
 
+/** Upper bound on model calls per dream. */
+export const MAX_DREAM_QUERIES = 3
+/** Word-overlap (Jaccard) at or above which two memories are a merge candidate. */
+export const MERGE_CANDIDATE_SIMILARITY = 0.35
+/** A merge must keep at least this share of the longer original's text. */
+const MIN_MERGED_SHARE = 0.6
+const MAX_BODY_CHARS_IN_PROMPT = 3000
+
+// Filler plus the status vocabulary project memories share ("MERGED to main
+// via squash", "branch pushed"): on a real 77-memory store these words alone
+// paired unrelated topics.
+const STOPWORDS = new Set(
+	(
+		"the and for with that this from into not are was but its use user feedback project reference " +
+		"when what how why all one new now has have via per any can never always " +
+		"merged main branch branches pushed stack stacked squash live deployed copy after before still see " +
+		"fixed open done local"
+	).split(" "),
+)
+
+/** Topic words of a memory: name + description, minus filler, status words and anything with a digit (dates, PR and branch numbers). */
+function topicWords(memory: MemoryHeader): Set<string> {
+	const text = `${memory.filename.replace(/\.md$/, "")} ${memory.description ?? ""}`.toLowerCase()
+	return new Set(
+		text.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3 && !STOPWORDS.has(w) && !/\d/.test(w)),
+	)
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+	if (a.size === 0 || b.size === 0) return 0
+	let shared = 0
+	for (const w of a) if (b.has(w)) shared++
+	return shared / (a.size + b.size - shared)
+}
+
 /**
- * Build the consolidation prompt. Ported verbatim from
- * `services/autoDream/consolidationPrompt.ts` — it's self-contained.
- *
- * @param memoryRoot The memory directory.
- * @param transcriptDir The session transcript/project dir (informational).
- * @param extra Additional context appended to the prompt.
+ * Pairs of memories that probably cover one topic, most similar first, each
+ * memory in at most one pair. Pure code, no model call.
  */
-export function buildConsolidationPrompt(memoryRoot: string, transcriptDir: string, extra: string): string {
-	return `# Dream: Memory Consolidation
+export function findMergeCandidates(
+	memories: ReadonlyArray<MemoryHeader>,
+	limit: number = MAX_DREAM_QUERIES,
+): Array<[MemoryHeader, MemoryHeader]> {
+	const words = memories.map(topicWords)
+	const scored: Array<{ i: number; j: number; score: number }> = []
+	for (let i = 0; i < memories.length; i++) {
+		for (let j = i + 1; j < memories.length; j++) {
+			const ti = memories[i].type
+			const tj = memories[j].type
+			if (ti && tj && ti !== tj) continue
+			const score = jaccard(words[i], words[j])
+			if (score >= MERGE_CANDIDATE_SIMILARITY) scored.push({ i, j, score })
+		}
+	}
+	scored.sort((a, b) => b.score - a.score)
+	const used = new Set<number>()
+	const pairs: Array<[MemoryHeader, MemoryHeader]> = []
+	for (const { i, j } of scored) {
+		if (pairs.length >= limit) break
+		if (used.has(i) || used.has(j)) continue
+		used.add(i)
+		used.add(j)
+		// Older first: a merge keeps the older file, whose name other notes link to.
+		const [a, b] =
+			memories[i].mtimeMs <= memories[j].mtimeMs ? [memories[i], memories[j]] : [memories[j], memories[i]]
+		pairs.push([a, b])
+	}
+	return pairs
+}
 
-You are performing a dream — a reflective pass over your memory files. Synthesize what you've learned recently into durable, well-organized memories so that future sessions can orient quickly.
+export const DREAM_SYSTEM_PROMPT = [
+	"You tidy a memory store. You get two memory files that may cover the same topic.",
+	"Answer with exactly one of these:",
+	"",
+	"KEEP",
+	"(they are about different things, or you are not sure)",
+	"",
+	"DROP 1",
+	"or",
+	"DROP 2",
+	"(that file says nothing the other one does not, or the other, newer file replaces it)",
+	"",
+	"MERGE",
+	"<one-line summary>",
+	"<merged text: every fact from both files; when they disagree, the newer file wins>",
+	"",
+	"Write nothing else.",
+].join("\n")
 
-Memory directory: \`${memoryRoot}\`
-${DIR_EXISTS_GUIDANCE}
+function stripFrontmatter(content: string): string {
+	return content.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/, "").trim()
+}
 
-Session transcripts: \`${transcriptDir}\` (large JSONL files — grep narrowly, don't read whole files)
+export type DreamVerdict =
+	| { kind: "keep" }
+	| { kind: "drop"; which: 1 | 2 }
+	| { kind: "merge"; description: string; body: string }
 
----
+/** Parse a dream answer; anything unrecognised is KEEP (the safe default). */
+export function parseDreamVerdict(answer: string): DreamVerdict {
+	const text = (typeof answer === "string" ? answer : "")
+		.replace(/<think>[\s\S]*?<\/think>/gi, "")
+		.replace(/```[a-z]*\n?/gi, "")
+		.trim()
+	const lines = text.split("\n")
+	const first = (lines[0] ?? "").replace(/[*#`]/g, "").trim().toUpperCase()
+	const drop = /^DROP\s*(?:FILE\s*)?([12])\b/.exec(first)
+	if (drop) return { kind: "drop", which: drop[1] === "1" ? 1 : 2 }
+	if (/^MERGE\b/.test(first)) {
+		const rest = lines.slice(1).map((l) => l.trimEnd())
+		while (rest.length > 0 && !rest[0].trim()) rest.shift()
+		const description = (rest[0] ?? "").replace(/^(?:summary|description)\s*:\s*/i, "").trim()
+		const body = rest.slice(1).join("\n").trim()
+		if (description && body) return { kind: "merge", description, body }
+	}
+	return { kind: "keep" }
+}
 
-## Phase 1 — Orient
-- \`list_files\` the memory directory to see what already exists
-- Read \`${ENTRYPOINT_NAME}\` to understand the current index
-- Skim existing topic files so you improve them rather than creating duplicates
-- If \`logs/\` or \`sessions/\` subdirectories exist, review recent entries there
+async function decidePair(
+	memoryDir: string,
+	pair: [MemoryHeader, MemoryHeader],
+	query: SideQuery,
+	signal: AbortSignal,
+): Promise<string[]> {
+	const [a, b] = pair
+	const [bodyA, bodyB] = await Promise.all(
+		pair.map(async (m) => stripFrontmatter(await fs.readFile(m.filePath, "utf-8"))),
+	)
+	// A body cut for the prompt cannot be merged without losing its tail.
+	const truncated = bodyA.length > MAX_BODY_CHARS_IN_PROMPT || bodyB.length > MAX_BODY_CHARS_IN_PROMPT
+	const show = (n: number, m: MemoryHeader, body: string) =>
+		[
+			`File ${n}: ${m.filename} (last changed ${new Date(m.mtimeMs).toISOString().slice(0, 10)})`,
+			`Summary: ${m.description ?? ""}`,
+			body.slice(0, MAX_BODY_CHARS_IN_PROMPT),
+		].join("\n")
+	const answer = await query(DREAM_SYSTEM_PROMPT, `${show(1, a, bodyA)}\n\n${show(2, b, bodyB)}`, signal)
+	const verdict = parseDreamVerdict(answer)
+	if (verdict.kind === "drop") {
+		const dropped = verdict.which === 1 ? a : b
+		await archiveMemory(memoryDir, dropped)
+		return [dropped.filePath]
+	}
+	if (verdict.kind === "merge") {
+		if (truncated || verdict.body.length < MIN_MERGED_SHARE * Math.max(bodyA.length, bodyB.length)) {
+			logger.info(`[memory] autoDream refused a lossy merge of ${a.filename} and ${b.filename}`)
+			return []
+		}
+		await rewriteMemoryBody(a, verdict.body, verdict.description)
+		await archiveMemory(memoryDir, b)
+		return [a.filePath, b.filePath]
+	}
+	return []
+}
 
-## Phase 2 — Gather recent signal
-Sources in rough priority order:
-1. **Daily logs** (\`logs/YYYY/MM/YYYY-MM-DD.md\`) if present
-2. **Existing memories that drifted** — facts that contradict something you see in the codebase now
-3. **Transcript search** — \`search_files with regex="<narrow term>" path="${transcriptDir}/" file_pattern="*.jsonl"\`
-Don't exhaustively read transcripts.
-
-## Phase 3 — Consolidate
-For each thing worth remembering, write or update a memory file at the top level of the memory directory. Use the memory file format and type conventions from your system prompt's auto-memory section.
-Focus on:
-- Merging new signal into existing topic files rather than creating near-duplicates
-- Converting relative dates ("yesterday", "last week") to absolute dates
-- Deleting contradicted facts — if today's investigation disproves an old memory, fix it at the source
-
-## Phase 4 — Prune and index
-Update \`${ENTRYPOINT_NAME}\` so it stays under ${MAX_ENTRYPOINT_LINES} lines AND under ~25KB. It's an **index**, not a dump — each entry one line under ~150 characters: \`- [Title](file.md) — one-line hook\`. Never write memory content directly into it.
-- Remove pointers to memories that are now stale, wrong, or superseded
-- Demote verbose entries: if an index line is over ~200 chars, shorten the line, move the detail
-- Add pointers to newly important memories
-- Resolve contradictions — if two files disagree, fix the wrong one
-
----
-
-Return a brief summary of what you consolidated, updated, or pruned. If nothing changed, say so.${extra ? `\n\n## Additional context\n\n${extra}` : ""}`
+/**
+ * One consolidation pass: merge decisions on the candidate pairs, then the
+ * index repair. Returns the memory files changed (archived ones included).
+ */
+export async function consolidateMemories(memoryDir: string, query: SideQuery, signal: AbortSignal): Promise<string[]> {
+	const changed: string[] = []
+	for (const pair of findMergeCandidates(await scanMemoryFiles(memoryDir, signal))) {
+		if (signal.aborted) throw new Error("aborted")
+		changed.push(...(await decidePair(memoryDir, pair, query, signal)))
+	}
+	await syncMemoryIndex(memoryDir, await scanMemoryFiles(memoryDir, signal))
+	return changed
 }
 
 /**
@@ -187,25 +311,15 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 	activeDreamDirs.add(memoryDir)
 
 	const controller = new AbortController()
-	const extra =
-		"Tool constraints: read_file / search_files / list_files unrestricted; execute_command read-only only; write_to_file / edit_file only inside the memory directory."
-	const prompt = buildConsolidationPrompt(memoryDir, context.cwd, extra)
 
 	// Declare the promise holder first so the `finally` can deregister itself
 	// without a use-before-assignment error.
 	let run: Promise<void> | undefined
 	run = (async () => {
 		try {
-			const result = await context.subTaskRunner({
-				cwd: context.cwd,
-				systemPrompt: buildDreamSystemPrompt(memoryDir),
-				userPrompt: prompt,
-				maxTurns: 10,
-				signal: controller.signal,
-			})
-			const memoryPaths = result.writtenPaths.filter((p) => basename(p) !== ENTRYPOINT_NAME)
-			if (memoryPaths.length > 0 && context.onImproved) {
-				context.onImproved(memoryPaths.length, memoryPaths)
+			const changed = await consolidateMemories(memoryDir, context.query, controller.signal)
+			if (changed.length > 0 && context.onImproved) {
+				context.onImproved(changed.length, changed)
 			}
 		} catch (e) {
 			if (controller.signal.aborted) {
@@ -226,17 +340,6 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 	// Registered together so the `finally` above always deregisters both.
 	inFlightDreamControllers.add(controller)
 	inFlightDreams.add(run)
-}
-
-function buildDreamSystemPrompt(memoryDir: string): string {
-	return [
-		"You are the memory consolidation (dream) subagent. You review and reorganize the memory directory: merge near-duplicates, delete contradicted facts, prune stale entries, and keep the MEMORY.md index concise.",
-		"",
-		`Memory directory: ${memoryDir}`,
-		"You may only write to files inside this directory. You may read anywhere and run read-only shell commands.",
-		"",
-		"Use the memory file format and the four types (user / feedback / project / reference) from your system prompt's auto-memory section.",
-	].join("\n")
 }
 
 /**

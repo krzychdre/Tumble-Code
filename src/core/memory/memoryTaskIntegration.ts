@@ -6,9 +6,9 @@
  * sub-Task wiring here. It wires:
  * - a {@link SideQuery} adapter over the task's `ApiHandler.completePrompt`;
  * - the recall prefetch start/consume against the task's `readFileState` and
- *   abort controller;
- * - a sandboxed {@link SubTaskRunner} for extract/dream that delegates to a
- *   real `Task` spawn with a memory-write-only sandbox.
+ *   abort controller.
+ * The same SideQuery adapter serves the background writers (extract/dream),
+ * see BackgroundTaskRunner.memoryWriterQuery.
  *
  * The Task classes hold a single `MemoryCoordinator` instance; the loop/lifecycle
  * call into it at the documented hook points.
@@ -29,7 +29,6 @@ import {
 	type RelevantMemory,
 	type FileStateCache,
 } from "./surfacing"
-import { type SubTaskRunner } from "./extractMemories"
 
 /**
  * Build a {@link SideQuery} over a handler that implements
@@ -63,9 +62,9 @@ export function makeSideQuery(handler: ApiHandler, taskId?: string): SideQuery |
 				else signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true })
 			}),
 		])
-		// Ranking memories is an LLM call on the task's model like any other, and
-		// one that runs on every user turn. Reported so its cost is visible
-		// instead of only showing up on the inference server's own counters.
+		// Ranking and writing memories are LLM calls like any other (ranking runs
+		// on every user turn). Reported so their cost is visible instead of
+		// only showing up on the inference server's own counters.
 		if (TelemetryService.hasInstance()) {
 			const usage = result.usage
 			TelemetryService.instance.captureLlmCompletion(taskId, {
@@ -179,11 +178,5 @@ export class MemoryCoordinator {
 		this.endActivity = undefined
 	}
 }
-
-/**
- * A no-op SubTaskRunner used when background writers can't run (no handler,
- * tests, disabled). Returns an empty written-paths list.
- */
-export const noopSubTaskRunner: SubTaskRunner = async () => ({ writtenPaths: [] })
 
 export { type RelevantMemory }

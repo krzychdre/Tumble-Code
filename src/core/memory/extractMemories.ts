@@ -1,12 +1,16 @@
 /**
  * Background memory extraction.
  *
- * Ported from Claude Code's `services/extractMemories/extractMemories.ts`.
  * Runs once at task completion (main agent only) to save memories the main
- * agent didn't get around to writing. It runs as a sandboxed sub-Task:
- * - read_file / search_files / list_files unrestricted;
- * - execute_command read-only;
- * - write_to_file / edit_file only inside `isAutoMemPath`.
+ * agent didn't get around to writing. It is ONE small completion, not an
+ * agent: the model sees a short instruction, the list of existing memories
+ * (file name + one-line description) and the user-prose signal of the
+ * conversation (see transcript.ts), and answers `NONE` or up to
+ * {@link MAX_DRAFTS_PER_RUN} memories in a plain `## <type>: <name>` block
+ * format. The code writes the files (memoryFiles.ts). A typical run costs
+ * 2-4k input tokens, so it works on small local models too; the earlier
+ * design spawned a full "code"-mode sub-Task that paid the whole agent
+ * system prompt on every one of up to five turns (40-50k tokens each).
  *
  * Design notes:
  * - **Mutual exclusion**: if the main agent already wrote to a memory path
@@ -14,24 +18,27 @@
  *   re-extract). Detected via `hasMemoryWritesSince`.
  * - **Cursor**: each run only considers messages since the previous
  *   extraction. The cursor advances only on success.
- * - **`maxTurns: 5`**: expects read-all (turn 1) → write-all (turn 2).
+ * - **No signal, no call**: an empty transcript (no user prose) skips the
+ *   model call entirely.
  * - **Fire-and-forget**: the lifecycle hook calls `executeExtractMemories`
  *   with `void` — it never blocks the main response.
  * - **Drain**: on shutdown, `drainPendingExtraction()` awaits in-flight
  *   extractions with a 60s soft timeout (`.unref()`'d so it never blocks exit).
  *
- * The sub-Task spawn is injected via {@link SubTaskRunner} so this module
- * stays decoupled from the `Task` class and unit-testable with a stub.
+ * The completion is injected as a {@link SideQuery} (the same contract the
+ * recall ranker uses) so this module stays decoupled from the API layer.
  */
 
-import { basename, resolve } from "path"
+import { resolve } from "path"
 
 import type { ClineMessage } from "@roo-code/types"
 
 import { logger } from "../../utils/logging"
 import { isAutoMemPath, getAutoMemPath, isAutoMemoryEnabled } from "./paths"
-import { ENTRYPOINT_NAME } from "./memoryPrompt"
-import { formatMemoryManifest, scanMemoryFiles } from "./memoryScan"
+import { type MemoryHeader, scanMemoryFiles } from "./memoryScan"
+import { MEMORY_TYPES, parseMemoryType } from "./memoryTypes"
+import { type MemoryDraft, saveMemoryDraft } from "./memoryFiles"
+import { type SideQuery } from "./relevance"
 
 /**
  * The slice of a `ClineMessage` the extractor inspects: file writes show up
@@ -43,25 +50,6 @@ export type ExtractionMessageView = Pick<ClineMessage, "type" | "ask" | "text" |
 /** The `ClineSayTool.tool` values the file-writing tools ask with. */
 const FILE_WRITE_ASK_TOOLS = new Set(["newFileCreated", "editedExistingFile", "appliedDiff"])
 
-/** The result of a sub-Task run: the file paths the agent wrote/edited. */
-export interface SubTaskResult {
-	/** Absolute paths the sub-agent wrote or edited. */
-	writtenPaths: string[]
-}
-
-/**
- * Spawn a sandboxed sub-Task with the given system prompt + user prompt and
- * return the file paths it wrote. The implementation (in the lifecycle hook)
- * wires the sandbox to Roo's tool-approval path and `maxTurns: 5`.
- */
-export type SubTaskRunner = (params: {
-	cwd: string
-	systemPrompt: string
-	userPrompt: string
-	maxTurns: number
-	signal: AbortSignal
-}) => Promise<SubTaskResult>
-
 export interface ExtractionContext {
 	cwd: string
 	/** Whether this is the main agent (sub-agents are excluded). */
@@ -69,14 +57,13 @@ export interface ExtractionContext {
 	/** The conversation messages to inspect (for mutual-exclusion detection). */
 	messages: ReadonlyArray<ExtractionMessageView>
 	/**
-	 * A bounded, pre-rendered transcript of the recent conversation, embedded in
-	 * the extraction prompt so the *fresh* sub-agent has content to analyze. Built
-	 * by the caller (TaskLifecycle) via `renderTranscript(apiConversationHistory)`.
-	 * Empty/undefined → the prompt omits the transcript section.
+	 * The bounded user-prose signal of the conversation, built by the caller
+	 * (TaskLifecycle) via `renderTranscript(apiConversationHistory)`. Empty or
+	 * undefined means there is nothing to extract: no model call is made.
 	 */
 	transcript?: string
-	/** The sandboxed sub-Task spawner. */
-	subTaskRunner: SubTaskRunner
+	/** The one-shot completion the extraction asks. */
+	query: SideQuery
 	/** Called with a "Saved N memories" notice on success (may be a no-op). */
 	onSaved?: (count: number, paths: string[]) => void
 	/** The task this extraction belongs to; the extraction cursor is tracked per task. */
@@ -186,29 +173,103 @@ export function hasMemoryWritesSince(
 	return false
 }
 
-function buildExtractionPrompt(newMessageCount: number, existingManifest: string, transcript?: string): string {
-	const lines = [
-		"You are now acting as the memory extraction subagent. Analyze the recent conversation below (the ~" +
-			newMessageCount +
-			" most recent messages) and save any durable memories the main agent should have saved but didn't.",
-		"",
-		"Available tools: read_file, search_files, list_files (unrestricted), execute_command (read-only only — ls/find/cat/stat/wc/head/tail), and write_to_file / edit_file for paths inside the memory directory only. All other tools will be denied.",
-		"",
-		"You have a limited turn budget. edit_file requires a prior read_file of the same file, so the efficient strategy is: turn 1 — issue all read_file calls in parallel for every file you might update; turn 2 — issue all write_to_file / edit_file calls in parallel. Do not interleave reads and writes across multiple turns.",
-		"",
-		"You MUST only use content from the recent conversation below to update your persistent memories. Do not waste any turns attempting to investigate or verify that content further — no grepping source files, no reading code to confirm a pattern exists, no git commands.",
-		"",
-		"If the user explicitly asks you to remember something, save it immediately.",
-		"",
-		"Existing memories — check this list before writing; update an existing file rather than creating a duplicate:",
-		existingManifest || "(none yet)",
-	]
+/** Cap on memories written per extraction; a chat rarely holds more than one. */
+export const MAX_DRAFTS_PER_RUN = 3
+/** Manifest lines shown to the model (most recently modified first). */
+const MAX_MANIFEST_ENTRIES = 50
+const MAX_MANIFEST_DESCRIPTION_CHARS = 80
+const MAX_DRAFT_BODY_CHARS = 1500
 
-	if (transcript && transcript.trim()) {
-		lines.push("", "## Recent conversation", "", transcript.trim())
+/**
+ * The extraction instruction. Kept short and literal for small models: one
+ * decision (NONE or blocks), one output shape, one example.
+ */
+export const EXTRACTION_SYSTEM_PROMPT = [
+	"You pick facts worth remembering from a chat between a user and a coding assistant.",
+	"Save ONLY what helps in future chats and cannot be found by reading the code:",
+	"- user: who the user is, their role and preferences",
+	'- feedback: a correction or a confirmed approach from the user ("do not X", "always Y"), with the reason',
+	"- project: goals, deadlines, decisions, who owns what; write dates as YYYY-MM-DD",
+	"- reference: where information lives in external systems (URLs, trackers, dashboards)",
+	"Do NOT save code details, file paths, git history, fix recipes, or progress of the current task.",
+	"",
+	"Most chats hold nothing worth saving. Then answer exactly: NONE",
+	"",
+	`Otherwise write each memory (at most ${MAX_DRAFTS_PER_RUN}) as:`,
+	"## <type>: <short_name>",
+	"<one-line summary>",
+	"<details, 1 to 5 lines>",
+	"",
+	"To add to an existing memory, use its file name as <short_name>.",
+	"Write nothing else.",
+	"",
+	"Example answer:",
+	"## feedback: real_db_in_tests",
+	"Integration tests must use a real database, not mocks.",
+	"Why: mocked tests passed while a broken migration shipped.",
+].join("\n")
+
+function formatManifest(existing: ReadonlyArray<MemoryHeader>): string {
+	return existing
+		.slice(0, MAX_MANIFEST_ENTRIES)
+		.map((m) => {
+			const description = (m.description ?? "").replace(/\s+/g, " ").trim()
+			const short =
+				description.length > MAX_MANIFEST_DESCRIPTION_CHARS
+					? description.slice(0, MAX_MANIFEST_DESCRIPTION_CHARS).trimEnd() + "..."
+					: description
+			return short ? `- ${m.filename}: ${short}` : `- ${m.filename}`
+		})
+		.join("\n")
+}
+
+export function buildExtractionUserPrompt(existing: ReadonlyArray<MemoryHeader>, transcript: string): string {
+	return ["Existing memories:", formatManifest(existing) || "(none)", "", "Chat:", transcript.trim()].join("\n")
+}
+
+const DRAFT_HEADER_RE = new RegExp(
+	`^\\s*(?:#{1,4}\\s*|\\*\\*)\\s*(${MEMORY_TYPES.join("|")})\\s*[:\\-]\\s*(.+?)\\s*(?:\\*\\*)?\\s*$`,
+	"i",
+)
+
+/**
+ * Parse the model's answer into drafts. Tolerant of what small models add:
+ * a `<think>` block, code fences, bold instead of a heading, a
+ * `description:` label. Anything that is not a well-formed block is ignored,
+ * so prose or `NONE` yields no drafts.
+ */
+export function parseMemoryDrafts(answer: string): MemoryDraft[] {
+	if (typeof answer !== "string") return []
+	const text = answer.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/```[a-z]*\n?/gi, "")
+	const drafts: MemoryDraft[] = []
+	let current: { type: MemoryDraft["type"]; name: string; lines: string[] } | undefined
+	const flush = () => {
+		if (!current) return
+		const lines = current.lines.map((l) => l.trim()).filter(Boolean)
+		const description = (lines[0] ?? "").replace(/^(?:summary|description)\s*:\s*/i, "")
+		const body = lines.slice(1).join("\n") || description
+		if (description) {
+			drafts.push({
+				type: current.type,
+				name: current.name,
+				description,
+				body: body.slice(0, MAX_DRAFT_BODY_CHARS),
+			})
+		}
+		current = undefined
 	}
-
-	return lines.join("\n")
+	for (const line of text.split("\n")) {
+		const header = DRAFT_HEADER_RE.exec(line)
+		const type = header ? parseMemoryType(header[1].toLowerCase()) : undefined
+		if (header && type) {
+			flush()
+			current = { type, name: header[2].replace(/[`*]/g, "").trim(), lines: [] }
+		} else if (current) {
+			current.lines.push(line)
+		}
+	}
+	flush()
+	return drafts.slice(0, MAX_DRAFTS_PER_RUN)
 }
 
 /**
@@ -258,31 +319,38 @@ export async function executeExtractMemories(context: ExtractionContext): Promis
 		return
 	}
 
+	const transcript = context.transcript?.trim() ?? ""
+	if (!transcript) {
+		// No user prose since the task started: nothing a memory could hold.
+		setCursor(context.taskId, lengthAtStart)
+		return
+	}
+
 	const memoryDir = getAutoMemPath(context.cwd)
 	const controller = new AbortController()
 	const existing = await scanMemoryFiles(memoryDir, controller.signal)
-	const manifest = formatMemoryManifest(existing)
-	const prompt = buildExtractionPrompt(newMessageCount, manifest, context.transcript)
 
 	// Declare the promise holder first so the `finally` can deregister itself
 	// without a use-before-assignment error.
 	let run: Promise<void> | undefined
 	run = (async () => {
 		try {
-			const result = await context.subTaskRunner({
-				cwd: context.cwd,
-				systemPrompt: buildExtractionSystemPrompt(memoryDir),
-				userPrompt: prompt,
-				maxTurns: 5,
-				signal: controller.signal,
-			})
+			const answer = await context.query(
+				EXTRACTION_SYSTEM_PROMPT,
+				buildExtractionUserPrompt(existing, transcript),
+				controller.signal,
+			)
+			const today = new Date().toISOString().slice(0, 10)
+			const written: string[] = []
+			for (const draft of parseMemoryDrafts(answer)) {
+				const filePath = await saveMemoryDraft(memoryDir, draft, existing, today)
+				if (filePath && !written.includes(filePath)) written.push(filePath)
+			}
 			// Advance cursor only on success, using the T0 snapshot so messages
 			// appended mid-run are reconsidered next time.
 			setCursor(context.taskId, lengthAtStart)
-			// Index touches aren't "memories" — filter MEMORY.md out of the count.
-			const memoryPaths = result.writtenPaths.filter((p) => basename(p) !== ENTRYPOINT_NAME)
-			if (memoryPaths.length > 0 && context.onSaved) {
-				context.onSaved(memoryPaths.length, memoryPaths)
+			if (written.length > 0 && context.onSaved) {
+				context.onSaved(written.length, written)
 			}
 		} catch (e) {
 			// Cursor stays put on error so those messages are reconsidered next time.
@@ -295,18 +363,6 @@ export async function executeExtractMemories(context: ExtractionContext): Promis
 	// Registered together so the `finally` above always deregisters both.
 	inFlightControllers.add(controller)
 	inFlightExtractions.add(run)
-}
-
-function buildExtractionSystemPrompt(memoryDir: string): string {
-	return [
-		"You are the memory extraction subagent. You save durable memories about the user, their feedback, the project, and external references to the memory directory.",
-		"",
-		`Memory directory: ${memoryDir}`,
-		"You may only write to files inside this directory. You may read anywhere and run read-only shell commands.",
-		"",
-		"Save only what is durable and non-obvious: user role/preferences, explicit feedback/corrections, non-derivable project context, and external-system pointers.",
-		"Do NOT save code patterns, architecture, file paths, git history, debugging recipes, or ephemeral task state.",
-	].join("\n")
 }
 
 /**

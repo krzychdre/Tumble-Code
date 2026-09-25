@@ -1,22 +1,33 @@
 /**
- * Recent-conversation transcript renderer for the memory extraction sub-agent.
+ * The conversation signal handed to the memory extraction query.
  *
- * Phase 1 of ai_plans/2026-07-01_memory-hook-and-headless-subagent.md.
+ * Extraction is one small completion (no agent loop, no tools), and the rules
+ * of what is worth remembering (see memoryTypes.ts) all point at what the
+ * USER said: preferences, corrections, decisions, external pointers. Tool
+ * results, file contents, reasoning and the editor state are exactly the
+ * material the rules exclude, so they are dropped here instead of being paid
+ * for in every extraction and then ignored by the model.
  *
- * The extraction sub-agent runs *fresh* (Roo can't fork the parent's context —
- * see the parallel-subagents plan), so the prompt that asks it to "analyze the
- * recent messages" must actually *carry* those messages. This module renders a
- * bounded, cheap, weak-model-friendly transcript from the task's
- * `apiConversationHistory` (Anthropic message format).
+ * What is kept, in this priority until the budget runs out:
+ * 1. the task statement (the first piece of user prose);
+ * 2. the assistant's last entry (usually its completion result);
+ * 3. the other user prose, newest first: each `<user_message>` body,
+ *    including the ones that arrive inside a tool result (answers to
+ *    ask_followup_question / attempt_completion, text typed at a running
+ *    command), plus the note attached to an approval or denial. Each comes
+ *    with the assistant entry right before it, so a reply like "no, use
+ *    pnpm" still has the question it answers.
+ * The rest of the assistant's narration is left out: in a long autonomous
+ * run it would fill the budget and push the user's words out.
  *
- * Bounds (keep it small — this rides inside a prompt):
- * - only the last {@link DEFAULT_MAX_MESSAGES} messages,
- * - each message capped at {@link DEFAULT_MAX_CHARS_PER_MESSAGE} chars,
- * - reasoning/thinking blocks dropped (not durable signal),
- * - tool inputs/results summarized and truncated.
+ * The output stays in chronological order and is bounded by
+ * {@link DEFAULT_MAX_SIGNAL_CHARS} (about 1.5k tokens), small enough for a
+ * local model with a 4k context window.
  */
 
 import type { Anthropic } from "@anthropic-ai/sdk"
+
+import { extractEnvelopeFeedback, extractUserInstructions } from "../context-management/ledger/classify"
 
 /** An Anthropic message, optionally carrying Roo's `ts` and reasoning fields. */
 export interface TranscriptMessage {
@@ -26,92 +37,110 @@ export interface TranscriptMessage {
 	type?: string
 }
 
-export const DEFAULT_MAX_MESSAGES = 30
-export const DEFAULT_MAX_CHARS_PER_MESSAGE = 2000
+export const DEFAULT_MAX_SIGNAL_CHARS = 6000
+export const MAX_USER_ENTRY_CHARS = 1500
+export const MAX_ASSISTANT_ENTRY_CHARS = 300
 
 export interface RenderTranscriptOptions {
-	maxMessages?: number
-	maxCharsPerMessage?: number
+	maxChars?: number
 }
 
-/** Truncate `s` to `max` chars with a marker, collapsing trailing whitespace. */
+/** Truncate `s` to `max` chars with a marker, collapsing whitespace runs. */
 function clamp(s: string, max: number): string {
-	const trimmed = s.trimEnd()
-	if (trimmed.length <= max) return trimmed
-	return trimmed.slice(0, max) + " …[truncated]"
+	const collapsed = s.replace(/\n{3,}/g, "\n\n").trim()
+	if (collapsed.length <= max) return collapsed
+	return collapsed.slice(0, max).trimEnd() + " [...]"
 }
 
-/** Best-effort compact stringify of a tool-use input object. */
-function summarizeInput(input: unknown, max: number): string {
-	if (input === undefined || input === null) return ""
-	let text: string
-	try {
-		text = typeof input === "string" ? input : JSON.stringify(input)
-	} catch {
-		text = String(input)
+function textOfToolResult(block: Anthropic.Messages.ToolResultBlockParam): string {
+	const c = block.content
+	if (typeof c === "string") return c
+	if (Array.isArray(c)) return c.map((part) => (part.type === "text" ? part.text : "")).join("\n")
+	return ""
+}
+
+/** The user prose inside one user message (task statement, replies, approval notes). */
+function userEntries(msg: TranscriptMessage): string[] {
+	const texts =
+		typeof msg.content === "string"
+			? [msg.content]
+			: msg.content.flatMap((block) => {
+					if (block.type === "text") return [block.text ?? ""]
+					if (block.type === "tool_result") return [textOfToolResult(block)]
+					return []
+				})
+	const entries: string[] = []
+	for (const text of texts) {
+		entries.push(...extractUserInstructions(text))
+		const feedback = extractEnvelopeFeedback(text)
+		if (feedback) entries.push(feedback)
 	}
-	return clamp(text, max)
+	return entries
 }
 
-/** Render a single content block to a compact line, or "" to skip it. */
-function renderBlock(block: Anthropic.Messages.ContentBlockParam, maxChars: number): string {
-	switch (block.type) {
-		case "text":
-			return clamp(block.text ?? "", maxChars)
-		case "tool_use":
-			return `→ tool ${block.name}(${summarizeInput(block.input, Math.min(maxChars, 600))})`
-		case "tool_result": {
-			const c = block.content
-			let text: string
-			if (typeof c === "string") {
-				text = c
-			} else if (Array.isArray(c)) {
-				text = c.map((part) => (part.type === "text" ? part.text : `[${part.type}]`)).join("\n")
-			} else {
-				text = ""
-			}
-			return `← result: ${clamp(text, maxChars)}`
+/** The assistant's visible text and its completion result, if any. */
+function assistantEntries(msg: TranscriptMessage): string[] {
+	if (msg.type === "reasoning") return []
+	if (typeof msg.content === "string") return [msg.content]
+	const entries: string[] = []
+	for (const block of msg.content) {
+		if (block.type === "text" && block.text?.trim()) entries.push(block.text)
+		if (block.type === "tool_use" && block.name === "attempt_completion") {
+			const result = (block.input as { result?: unknown } | undefined)?.result
+			if (typeof result === "string" && result.trim()) entries.push(result)
 		}
-		case "image":
-			return "[image]"
-		default:
-			// thinking / reasoning / redacted_thinking / anything else → skip.
-			return ""
 	}
-}
-
-/** Render one message ("User:" / "Assistant:" + body), or "" to skip. */
-function renderMessage(msg: TranscriptMessage, maxChars: number): string {
-	// Drop reasoning-only messages — not durable memory signal.
-	if (msg.type === "reasoning") return ""
-
-	const speaker = msg.role === "assistant" ? "Assistant" : "User"
-	let body: string
-	if (typeof msg.content === "string") {
-		body = clamp(msg.content, maxChars)
-	} else {
-		body = msg.content
-			.map((b) => renderBlock(b, maxChars))
-			.filter((line) => line.length > 0)
-			.join("\n")
-	}
-	if (!body.trim()) return ""
-	return `${speaker}: ${body}`
+	return entries
 }
 
 /**
- * Render the last N messages of `history` into a bounded plain-text transcript.
- * Returns "" when there is nothing worth including.
+ * Render the memory-relevant part of `history` into a bounded plain-text
+ * transcript. Returns "" when the history holds no user prose at all, which
+ * the caller treats as "nothing to extract" and skips the model call.
  */
 export function renderTranscript(
 	history: ReadonlyArray<TranscriptMessage>,
 	options: RenderTranscriptOptions = {},
 ): string {
-	const maxMessages = options.maxMessages ?? DEFAULT_MAX_MESSAGES
-	const maxChars = options.maxCharsPerMessage ?? DEFAULT_MAX_CHARS_PER_MESSAGE
+	const maxChars = options.maxChars ?? DEFAULT_MAX_SIGNAL_CHARS
 	if (!Array.isArray(history) || history.length === 0) return ""
 
-	const recent = history.slice(-Math.max(0, maxMessages))
-	const rendered = recent.map((m) => renderMessage(m, maxChars)).filter((line) => line.length > 0)
-	return rendered.join("\n\n")
+	// Every entry as its rendered line, in chronological order.
+	const lines: Array<{ isUser: boolean; line: string }> = []
+	for (const msg of history) {
+		const isUser = msg.role === "user"
+		for (const entry of isUser ? userEntries(msg) : assistantEntries(msg)) {
+			const line = isUser
+				? `User: ${clamp(entry, MAX_USER_ENTRY_CHARS)}`
+				: `Assistant: ${clamp(entry, MAX_ASSISTANT_ENTRY_CHARS)}`
+			lines.push({ isUser, line })
+		}
+	}
+	const userIndexes = lines.flatMap((l, i) => (l.isUser ? [i] : []))
+	if (userIndexes.length === 0) return ""
+
+	const selected = new Set<number>()
+	let used = 0
+	const take = (i: number): boolean => {
+		if (i < 0 || selected.has(i)) return true
+		const cost = lines[i].line.length + 2
+		if (used + cost > maxChars) return false
+		selected.add(i)
+		used += cost
+		return true
+	}
+	take(userIndexes[0])
+	let lastAssistant = lines.length - 1
+	while (lastAssistant >= 0 && lines[lastAssistant].isUser) lastAssistant--
+	take(lastAssistant)
+	for (let k = userIndexes.length - 1; k >= 1; k--) {
+		const i = userIndexes[k]
+		if (!take(i)) break
+		const before = i - 1
+		if (before >= 0 && !lines[before].isUser) take(before)
+	}
+	return [...selected]
+		.sort((a, b) => a - b)
+		.map((i) => lines[i].line)
+		.join("\n\n")
 }
