@@ -408,3 +408,12 @@ undefined", enum errors no longer echo the received value, MCP config says "expe
 tool input schemas lost top-level `additionalProperties: false` (MCP SDK converts zod 4 in input mode; extra args
 are still stripped). Fixed on the way: custom tools built against zod 3.25 lost their parameter descriptions.
 Deprecated-but-working zod 4 APIs (`.passthrough`, `.strict`, `.merge`, `z.nativeEnum`) left for later.
+
+**Status (2026-09-26), DEP-9 slice 2:** `VSCodeCheckbox` replaced by `components/ui/labeled-checkbox` (native
+`<input type="checkbox">` in a `<label>`, same call-site API: `checked`, `disabled`, children as label,
+`onChange(e)` reading `e.target.checked`) in #473 (`549a93eb4`), 47 call sites. The toolkit (FAST
+`checkedChanged`) fired `change` on every `checked` prop change, not only on user input; that echo caused two bugs
+on main, both fixed by the move and pinned by regression specs that fail on main: selecting a mode in ModesView
+after an unrestricted one wiped its MCP server allowlist; switching to a profile without a custom temperature
+stored `modelTemperature: null`. The native box also follows its prop (the toolkit box could drift out of sync)
+and keeps its 18px square next to wrapping labels. Headless Chrome: 7 of 8 patterns pixel-identical in all states.
