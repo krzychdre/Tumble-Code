@@ -445,3 +445,15 @@ pixel-checked (CSS copied from the toolkit source).
 **Status (2026-09-26), DEP-7 TypeScript 5.9:** DONE in #478 (`4da7c31bd`): 5.8.3 to 5.9.3 (the only pin is in the
 root `package.json`), no source change; check-types 0 errors in all 11 packages before and after, bundle, webview
 build and CLI tsup DTS build green. Next: TypeScript 6.0 evaluation (typescript-eslint 8.70 allows <6.1); no 7.x.
+
+**Status (2026-09-26), DEP-9 slices 4-5:** `VSCodeBadge` to `ThemedBadge` #479 (`a14150c76`, 3 uses),
+`VSCodeProgressRing` to `ThemedProgressRing` #480 (`2f0c80689`, 3 uses, keeps role="alert" "Loading"); both
+pixel-identical in headless Chrome.
+
+**Status (2026-09-26), DEP-7 TypeScript 6:** DONE in #481 (`cbe7895d3`): 5.9.3 to 6.0.3. Found: i18next's optional
+peer `typescript ^5` made pnpm give webview-ui its own TypeScript 5.9, so the webview `tsc` silently ran an older
+compiler; root override `"typescript": "$typescript"` pins one copy. `baseUrl` removed (cli, webview; paths now
+relative to the tsconfig); tsup's DTS step always injects `baseUrl`, so cli and types tsup configs carry
+`ignoreDeprecations: "6.0"` (must be solved before TS 7); `rootDir` set in packages/build and vscode-e2e (TS5011);
+vscode-e2e `moduleResolution` Node to Bundler plus `types: ["node","mocha"]` (emitted JS byte-identical). Open:
+`packages/config-typescript/cjs.json` still uses `moduleResolution: Node` (unused).
