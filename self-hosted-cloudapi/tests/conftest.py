@@ -26,6 +26,7 @@ os.environ.setdefault("JWT_SECRET", "test-jwt-secret-please-ignore-0123456789")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import pytest  # noqa: E402
+from sqlalchemy import event  # noqa: E402
 from sqlalchemy.ext.asyncio import (  # noqa: E402
     AsyncSession,
     create_async_engine,
@@ -38,16 +39,42 @@ from src.database import Base, get_db  # noqa: E402
 import src.models  # noqa: E402, F401
 
 
+def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
+    """Make SQLite enforce foreign keys (and ON DELETE actions) like Postgres.
+
+    SQLite ignores FOREIGN KEY clauses unless each connection opts in, so a
+    write that Postgres rejects (a child row whose parent does not exist yet)
+    would pass here unnoticed. The pragma is a no-op inside a transaction,
+    which is why it runs on connect, before anything else touches the
+    connection.
+    """
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
+
+
 @pytest.fixture
 async def test_engine():
     """Per-test async SQLite engine. StaticPool keeps a single in-memory DB
-    shared across the test client request and the seeding session."""
+    shared across the test client request and the seeding session.
+
+    Every connection enforces foreign keys, the way Postgres does (the
+    production database); see ``_enable_sqlite_foreign_keys``.
+    """
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    event.listen(engine.sync_engine, "connect", _enable_sqlite_foreign_keys)
     async with engine.begin() as conn:
+        # Guard against a silent no-op (for example a driver that opens the
+        # connection inside a transaction): fail loudly instead of letting
+        # the whole suite run without foreign key checks.
+        enforced = (await conn.exec_driver_sql("PRAGMA foreign_keys")).scalar()
+        assert enforced == 1, "SQLite foreign key enforcement is off"
         await conn.run_sync(Base.metadata.create_all)
     yield engine
     await engine.dispose()

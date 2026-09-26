@@ -36,6 +36,9 @@ async def test_org_less_settings_enable_sharing_with_nonzero_version(db_session)
     non-zero, content-derived version. The client caches org settings and only
     replaces them when `version` changes; a constant 0 leaves an already-cached
     (cloudSettings=null) client with the Share button permanently disabled."""
+    # A token is only ever issued to a signed-in user, so the user row exists;
+    # user_settings.user_id is a foreign key to it.
+    await _seed_user(db_session)
     res = await get_extension_settings(db=db_session, user_id="user_test", org_id=None)
     data = res.model_dump(by_alias=True)
     org = data["organization"]
