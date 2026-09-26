@@ -475,3 +475,10 @@ the toolkit's tab padding, border, focus frame and 10px view padding never showe
 padding and border on the host elements; mirrored, so keyboard focus on a tab stays invisible (pre-existing
 accessibility gap, follow-up DEP-9-F1). Remaining: Dropdown/Option, TextArea, TextField, then remove the package
 (new helper started 2026-09-26). The previous helper's visual comparison kit: `/home/krzych/wt-roo/visual-kit`.
+
+**Status (2026-09-26), DEP-7 esbuild and a red CLI build:** esbuild 0.25.9 to 0.28.2 #486 (`2719d07fb`), override
+`^0.28.2`, prod `extension.js` 1.7 KB smaller, dist file list identical, loads under Node 22 and Electron 43;
+`esbuild-wasm` (runtime transpiler) stays at 0.25 (own item). #484 broke the CLI tsup DTS build (TS2591 `fs`/`path`:
+vitest 3 globals had pulled in `@types/node`, vitest 5 does not, TS 6 no longer auto-includes); `check-types` stayed
+green. Fixed in #488 (`73cd79720`): `types` gains `"node"` in apps/cli, packages/core, vscode-shim, src, webview-ui
+(webview uses Node builtins only in specs and vite plugins); unused `packages/config-typescript/cjs.json` deleted.
