@@ -1,6 +1,6 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeCheckbox, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 
 import type { ProviderSettingsEntry } from "@roo-code/types"
@@ -9,7 +9,7 @@ import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider } from "@/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Link } from "@/components/ui"
 
 type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
 	autoMemoryEnabled?: boolean
@@ -74,9 +74,9 @@ export const MemorySettings = ({
 					</VSCodeCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						<Trans i18nKey="settings:memory.enable.description">
-							<VSCodeLink href="https://docs.roocode.com/features/memory" style={{ display: "inline" }}>
+							<Link href="https://docs.roocode.com/features/memory" style={{ display: "inline" }}>
 								{" "}
-							</VSCodeLink>
+							</Link>
 						</Trans>
 					</div>
 				</SearchableSetting>

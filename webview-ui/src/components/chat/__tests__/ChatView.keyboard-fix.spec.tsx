@@ -88,7 +88,6 @@ vi.mock("../ChatTextArea", () => {
 // Mock VSCode components
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
-	VSCodeLink: ({ children, href }: any) => <a href={href}>{children}</a>,
 }))
 
 // Mock window.postMessage to trigger state hydration

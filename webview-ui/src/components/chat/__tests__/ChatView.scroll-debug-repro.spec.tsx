@@ -99,9 +99,8 @@ vi.mock("./CheckpointWarning", () => ({ CheckpointWarning: () => null }))
 vi.mock("./QueuedMessages", () => ({ QueuedMessages: () => null }))
 vi.mock("./WorktreeSelector", () => ({ WorktreeSelector: () => null }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeLink: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
+// Keep the real toolkit (FAST web components) out of this spec.
+vi.mock("@vscode/webview-ui-toolkit/react", () => ({}))
 
 vi.mock("@/components/ui", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("@/components/ui")>()

@@ -273,6 +273,70 @@
 	.animate-smooth-tumble {
 		animation: smooth-tumble 1s linear infinite;
 	}
+
+	/*
+	 * Text link (components/ui/link.tsx), the same look as the deprecated
+	 * toolkit's <vscode-link>: VS Code link colours, the VS Code font, underline
+	 * on hover only, a 1px focusBorder frame on focus. `.ui-link` mirrors the
+	 * toolkit's host element and `.ui-link-content` its inner anchor (the frame
+	 * sits there, so a call site's `inline-block` does not grow the height).
+	 * Kept in this layer so a call site's utility classes always win (see the
+	 * component's comment).
+	 */
+	.ui-link {
+		display: inline-flex;
+		box-sizing: border-box;
+		outline: none;
+		background: transparent;
+		color: var(--vscode-textLink-foreground, #3794ff);
+		fill: currentcolor;
+		cursor: pointer;
+		font-family: var(--vscode-font-family, sans-serif);
+		font-size: var(--vscode-font-size, 13px);
+		line-height: normal;
+	}
+
+	.ui-link[hidden] {
+		display: none;
+	}
+
+	.ui-link:hover,
+	.ui-link:active {
+		color: var(--vscode-textLink-activeForeground, #3794ff);
+	}
+
+	.ui-link-content {
+		box-sizing: border-box;
+		padding: 0;
+		border: 1px solid transparent;
+		border-radius: 0;
+		text-decoration: none;
+		word-break: break-word;
+	}
+
+	.ui-link:hover > .ui-link-content {
+		text-decoration: underline;
+	}
+
+	.ui-link:focus > .ui-link-content,
+	.ui-link:focus-visible > .ui-link-content {
+		border-color: var(--vscode-focusBorder, #007fd4);
+	}
+}
+
+/*
+ * VS Code before 1.104 injects its default webview link styles (`a` colour,
+ * `a:hover` colour, `p > a` decoration, `a:focus` outline) without a cascade
+ * layer, so they would beat every layered rule above. `revert-layer` hands
+ * these properties back to the layers (the .ui-link rules and the call
+ * site's utilities). From 1.104 on VS Code layers those defaults itself and
+ * this rule changes nothing.
+ */
+a.ui-link {
+	color: revert-layer;
+	text-decoration: revert-layer;
+	outline: revert-layer;
+	outline-offset: revert-layer;
 }
 
 /* Form Element Focus States */

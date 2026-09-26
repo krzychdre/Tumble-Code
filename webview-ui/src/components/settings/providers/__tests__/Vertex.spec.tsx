@@ -11,7 +11,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			<input type={type} value={value} onChange={(e) => onInput(e)} />
 		</div>
 	),
-	VSCodeLink: ({ children, href }: any) => <a href={href}>{children}</a>,
 }))
 
 vi.mock("vscrui", () => ({
@@ -49,6 +48,7 @@ vi.mock("react-i18next", () => ({
 }))
 
 vi.mock("@src/components/ui", () => ({
+	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange }: any) => (
 		<div data-value={value} data-onvaluechange={onValueChange}>
 			{children}

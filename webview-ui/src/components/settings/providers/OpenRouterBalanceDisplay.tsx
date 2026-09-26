@@ -1,4 +1,4 @@
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { Link } from "@src/components/ui"
 
 import { useOpenRouterKeyInfo } from "@/components/ui/hooks/useOpenRouterKeyInfo"
 
@@ -12,8 +12,8 @@ export const OpenRouterBalanceDisplay = ({ apiKey, baseUrl }: { apiKey: string; 
 	const formattedBalance = (keyInfo.limit - keyInfo.usage).toFixed(2)
 
 	return (
-		<VSCodeLink href="https://openrouter.ai/settings/keys" className="text-vscode-foreground hover:underline">
+		<Link href="https://openrouter.ai/settings/keys" className="text-vscode-foreground hover:underline">
 			${formattedBalance}
-		</VSCodeLink>
+		</Link>
 	)
 }

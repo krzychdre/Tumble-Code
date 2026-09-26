@@ -28,6 +28,7 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 // Mock UI components
 vi.mock("@src/components/ui", () => ({
+	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>
 			Toggle

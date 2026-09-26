@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Trans } from "react-i18next"
 import { z } from "zod"
-import { VSCodeButton, VSCodeTextField, VSCodeLink, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeTextField, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import {
@@ -36,6 +36,7 @@ import {
 	Slider,
 	StandardTooltip,
 	Button,
+	Link,
 } from "@src/components/ui"
 import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
@@ -460,7 +461,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						</div>
 						<p className="my-0 pr-4 text-sm w-full">
 							<Trans i18nKey="settings:codeIndex.description">
-								<VSCodeLink
+								<Link
 									href={buildDocLink("features/experimental/codebase-indexing", "settings")}
 									style={{ display: "inline" }}
 								/>

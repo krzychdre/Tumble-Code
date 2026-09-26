@@ -19,10 +19,6 @@ vi.mock("react-i18next", () => ({
 	},
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeLink: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
-}))
-
 describe("RooTips Component", () => {
 	beforeEach(() => {
 		vi.useFakeTimers()

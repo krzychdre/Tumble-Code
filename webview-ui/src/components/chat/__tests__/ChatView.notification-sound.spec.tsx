@@ -233,9 +233,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			/>
 		)
 	},
-	VSCodeLink: function MockVSCodeLink({ children, href }: { children: React.ReactNode; href?: string }) {
-		return <a href={href}>{children}</a>
-	},
 }))
 
 // Mock window.postMessage to trigger state hydration

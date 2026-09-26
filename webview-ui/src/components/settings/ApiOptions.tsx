@@ -1,7 +1,6 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react"
 import { convertHeadersToObject } from "./utils/headers"
 import { useDebounce } from "react-use"
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { ExternalLinkIcon } from "@radix-ui/react-icons"
 
 import {
@@ -59,6 +58,7 @@ import {
 	Collapsible,
 	CollapsibleTrigger,
 	CollapsibleContent,
+	Link,
 } from "@src/components/ui"
 
 import { MODELS_BY_PROVIDER, PROVIDERS } from "./constants"
@@ -386,10 +386,10 @@ const ApiOptions = ({
 				<div className="flex justify-between items-center">
 					<label className="block font-medium">{t("settings:providers.apiProvider")}</label>
 					{docs && (
-						<VSCodeLink href={docs.url} target="_blank" className="flex gap-2">
+						<Link href={docs.url} target="_blank" className="flex gap-2">
 							{t("settings:providers.apiProviderDocs")}
 							<BookOpenText className="size-4 inline ml-2" />
-						</VSCodeLink>
+						</Link>
 					)}
 				</div>
 				<SearchableSelect

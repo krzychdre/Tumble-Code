@@ -42,7 +42,6 @@ vi.mock("@/components/ui/hooks/useOpenRouterModelProviders", () => ({
 
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
-	VSCodeLink: ({ children }: any) => <a>{children}</a>,
 	VSCodeCheckbox: ({ checked, onChange, children }: any) => (
 		<label>
 			<input

@@ -1,5 +1,6 @@
 import React from "react"
-import { VSCodeTextField, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { Link } from "@src/components/ui"
 
 import { type ProviderFormProps } from "./shared"
 
@@ -55,11 +56,11 @@ export const QwenCode: React.FC<QwenCodeProps> = ({ apiConfiguration, setApiConf
 					3. OAuth credentials will be stored automatically
 				</div>
 
-				<VSCodeLink
+				<Link
 					href="https://github.com/QwenLM/qwen-code/blob/main/README.md"
 					className="text-vscode-textLink-foreground mt-2 inline-block text-xs">
 					Setup Instructions
-				</VSCodeLink>
+				</Link>
 			</div>
 		</div>
 	)

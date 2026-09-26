@@ -1,6 +1,6 @@
 import { memo, useState } from "react"
 import { Trans } from "react-i18next"
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { Link } from "@src/components/ui"
 
 import type { TelemetrySetting } from "@roo-code/types"
 
@@ -43,7 +43,7 @@ const TelemetryBanner = () => {
 				<Trans
 					i18nKey="welcome:telemetry.helpImproveMessage"
 					components={{
-						settingsLink: <VSCodeLink href="#" onClick={handleOpenSettings} />,
+						settingsLink: <Link href="#" onClick={handleOpenSettings} />,
 					}}
 				/>
 			</div>

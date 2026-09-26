@@ -51,7 +51,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			{children}
 		</label>
 	),
-	VSCodeLink: ({ children, href }: any) => <a href={href}>{children}</a>,
 }))
 
 const availableGroups = (Object.keys(TOOL_GROUPS) as ToolGroup[]).filter((group) => !TOOL_GROUPS[group].alwaysAvailable)

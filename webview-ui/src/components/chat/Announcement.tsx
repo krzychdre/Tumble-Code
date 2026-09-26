@@ -1,12 +1,11 @@
 import { memo, type ReactNode, useState } from "react"
 import { Trans } from "react-i18next"
 import { SiDiscord, SiReddit, SiX } from "react-icons/si"
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 
 import { Package } from "@roo/package"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@src/components/ui"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, Link } from "@src/components/ui"
 
 interface AnnouncementProps {
 	hideAnnouncement: () => void
@@ -48,7 +47,7 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 						<p className="text-sm mb-2">
 							<Trans i18nKey="chat:announcement.handoff.description" components={{ bold: <strong /> }} />
 						</p>
-						<VSCodeLink
+						<Link
 							href="https://x.com/mattrubens/status/2046636598859559114"
 							onClick={(e) => {
 								e.preventDefault()
@@ -58,7 +57,7 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 								})
 							}}>
 							{t("chat:announcement.handoff.readMore")}
-						</VSCodeLink>
+						</Link>
 					</div>
 
 					{/* Regular Release Highlights */}
@@ -101,7 +100,7 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 }
 
 const SocialLink = ({ icon, label, href }: { icon: ReactNode; label: string; href: string }) => (
-	<VSCodeLink
+	<Link
 		href={href}
 		className="inline-flex items-center gap-1"
 		onClick={(e) => {
@@ -110,18 +109,18 @@ const SocialLink = ({ icon, label, href }: { icon: ReactNode; label: string; hre
 		}}>
 		{icon}
 		<span className="sr-only">{label}</span>
-	</VSCodeLink>
+	</Link>
 )
 
 const GitHubLink = ({ children }: { children?: ReactNode }) => (
-	<VSCodeLink
+	<Link
 		href="https://github.com/RooCodeInc/Roo-Code"
 		onClick={(e) => {
 			e.preventDefault()
 			vscode.postMessage({ type: "openExternal", url: "https://github.com/RooCodeInc/Roo-Code" })
 		}}>
 		{children}
-	</VSCodeLink>
+	</Link>
 )
 
 export default memo(Announcement)

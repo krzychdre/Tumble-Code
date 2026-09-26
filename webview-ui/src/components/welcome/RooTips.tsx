@@ -1,4 +1,4 @@
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { Link } from "@src/components/ui"
 import { useTranslation } from "react-i18next"
 import { Trans } from "react-i18next"
 
@@ -33,9 +33,9 @@ const RooTips = () => {
 					<div key={tip.titleKey} className="flex items-start gap-2 mt-2 mr-6 leading-relaxed">
 						{tip.icon}
 						<span>
-							<VSCodeLink className="text-muted-foreground underline" href={tip.href}>
+							<Link className="text-muted-foreground underline" href={tip.href}>
 								{t(tip.titleKey)}
-							</VSCodeLink>
+							</Link>
 							: {t(tip.descriptionKey)}
 						</span>
 					</div>
@@ -46,10 +46,7 @@ const RooTips = () => {
 					i18nKey="chat:docs"
 					components={{
 						DocsLink: (
-							<VSCodeLink
-								className="text-muted-foreground underline"
-								href={buildDocLink("", "welcome")}
-							/>
+							<Link className="text-muted-foreground underline" href={buildDocLink("", "welcome")} />
 						),
 					}}
 				/>

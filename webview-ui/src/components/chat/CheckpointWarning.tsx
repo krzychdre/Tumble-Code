@@ -1,4 +1,4 @@
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { Link } from "@src/components/ui"
 import { Trans } from "react-i18next"
 
 interface CheckpointWarningProps {
@@ -10,7 +10,7 @@ interface CheckpointWarningProps {
 
 export const CheckpointWarning = ({ warning }: CheckpointWarningProps) => {
 	const settingsLink = (
-		<VSCodeLink
+		<Link
 			href="#"
 			onClick={(e) => {
 				e.preventDefault()

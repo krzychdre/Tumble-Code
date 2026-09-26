@@ -2,7 +2,7 @@ import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Trans } from "react-i18next"
 import { Download, Upload, TriangleAlert, Bug, Lightbulb, Shield, MessagesSquare } from "lucide-react"
-import { VSCodeCheckbox, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 
 import type { TelemetrySetting } from "@roo-code/types"
 
@@ -10,7 +10,7 @@ import { Package } from "@roo/package"
 
 import { vscode } from "@/utils/vscode"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui"
+import { Button, Link } from "@/components/ui"
 
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
@@ -52,7 +52,7 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 						<Trans
 							i18nKey="settings:footer.telemetry.description"
 							components={{
-								privacyLink: <VSCodeLink href="https://roocode.com/privacy" />,
+								privacyLink: <Link href="https://roocode.com/privacy" />,
 							}}
 						/>
 					</p>
@@ -66,27 +66,27 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 						<Bug className="size-4 text-vscode-descriptionForeground shrink-0" />
 						<span>
 							{t("settings:about.bugReport.label")}{" "}
-							<VSCodeLink href="https://github.com/RooCodeInc/Roo-Code/issues/new?template=bug_report.yml">
+							<Link href="https://github.com/RooCodeInc/Roo-Code/issues/new?template=bug_report.yml">
 								{t("settings:about.bugReport.link")}
-							</VSCodeLink>
+							</Link>
 						</span>
 					</div>
 					<div className="flex items-start gap-2">
 						<Lightbulb className="size-4 text-vscode-descriptionForeground shrink-0" />
 						<span>
 							{t("settings:about.featureRequest.label")}{" "}
-							<VSCodeLink href="https://github.com/RooCodeInc/Roo-Code/issues/new?template=feature_request.yml">
+							<Link href="https://github.com/RooCodeInc/Roo-Code/issues/new?template=feature_request.yml">
 								{t("settings:about.featureRequest.link")}
-							</VSCodeLink>
+							</Link>
 						</span>
 					</div>
 					<div className="flex items-start gap-2">
 						<Shield className="size-4 text-vscode-descriptionForeground shrink-0" />
 						<span>
 							{t("settings:about.securityIssue.label")}{" "}
-							<VSCodeLink href="https://github.com/RooCodeInc/Roo-Code/security/policy">
+							<Link href="https://github.com/RooCodeInc/Roo-Code/security/policy">
 								{t("settings:about.securityIssue.link")}
-							</VSCodeLink>
+							</Link>
 						</span>
 					</div>
 					<div className="flex items-start gap-2">
@@ -95,8 +95,8 @@ export const About = ({ telemetrySetting, setTelemetrySetting, debug, setDebug, 
 							<Trans
 								i18nKey="settings:about.community"
 								components={{
-									redditLink: <VSCodeLink href="https://reddit.com/r/RooCode" />,
-									discordLink: <VSCodeLink href="https://discord.gg/roocode" />,
+									redditLink: <Link href="https://reddit.com/r/RooCode" />,
+									discordLink: <Link href="https://discord.gg/roocode" />,
 								}}
 							/>
 						</span>

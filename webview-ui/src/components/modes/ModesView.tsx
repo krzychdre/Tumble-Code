@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
-import { VSCodeCheckbox, VSCodeTextArea, VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeCheckbox, VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { ChevronDown, X, Upload, Download } from "lucide-react"
 
@@ -38,6 +38,7 @@ import {
 	CommandItem,
 	CommandGroup,
 	StandardTooltip,
+	Link,
 } from "@src/components/ui"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 import McpServerRestriction from "@src/components/modes/McpServerRestriction"
@@ -439,14 +440,14 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 
 					<div className="text-sm text-vscode-descriptionForeground mb-3">
 						<Trans i18nKey="prompts:modes.createModeHelpText">
-							<VSCodeLink
+							<Link
 								href={buildDocLink("basic-usage/using-modes", "prompts_view_modes")}
 								style={{ display: "inline" }}
-								aria-label="Learn about using modes"></VSCodeLink>
-							<VSCodeLink
+								aria-label="Learn about using modes"></Link>
+							<Link
 								href={buildDocLink("features/custom-modes", "prompts_view_modes")}
 								style={{ display: "inline" }}
-								aria-label="Learn about customizing modes"></VSCodeLink>
+								aria-label="Learn about customizing modes"></Link>
 						</Trans>
 					</div>
 
@@ -1073,7 +1074,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 									/>
 								),
 								"0": (
-									<VSCodeLink
+									<Link
 										href={buildDocLink(
 											"features/custom-instructions#global-rules-directory",
 											"prompts_mode_specific_global_rules",
@@ -1128,13 +1129,13 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 
 					<div className="text-sm text-vscode-descriptionForeground mb-2">
 						<Trans i18nKey="prompts:globalCustomInstructions.description">
-							<VSCodeLink
+							<Link
 								href={buildDocLink(
 									"features/custom-instructions#setting-up-global-rules",
 									"prompts_global_custom_instructions",
 								)}
 								style={{ display: "inline" }}
-								aria-label="Learn more about global custom instructions"></VSCodeLink>
+								aria-label="Learn more about global custom instructions"></Link>
 						</Trans>
 					</div>
 					<VSCodeTextArea
@@ -1174,7 +1175,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 									/>
 								),
 								"0": (
-									<VSCodeLink
+									<Link
 										href={buildDocLink(
 											"features/custom-instructions#setting-up-global-rules",
 											"prompts_global_rules",
