@@ -42,7 +42,7 @@
 		"rimraf": "^6.0.1",
 		"tsx": "^4.19.3",
 		"turbo": "^2.9.16",
-		"typescript": "5.9.3"
+		"typescript": "6.0.3"
 	},
 	"lint-staged": {
 		"*.{js,jsx,ts,tsx,json,css,md}": [
@@ -64,7 +64,8 @@
 			"zod": "4.6.5",
 			"knip>zod": "3.25.76",
 			"@lmstudio/sdk>zod": "3.25.76",
-			"picomatch@>=4": "4.0.4"
+			"picomatch@>=4": "4.0.4",
+			"typescript": "$typescript"
 		},
 		"packageExtensions": {
 			"@microsoft/fast-react-wrapper": {
