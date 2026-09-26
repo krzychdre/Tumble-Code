@@ -18,6 +18,7 @@ import json
 import pytest
 
 from src.services import metrics_service, model_attribution, task_summary
+from src.services.telemetry_vocab import TASK_KIND
 
 # --- characterization: the two label maps -----------------------------------
 
@@ -31,10 +32,10 @@ def test_the_two_kind_label_maps_agree_on_every_side_call_kind():
     side_labels = model_attribution.SIDE_CALL_LABELS
 
     for kind in set(kind_labels) | set(side_labels):
-        if kind == metrics_service.TASK_KIND:
+        if kind == TASK_KIND:
             continue
         assert kind_labels.get(kind) == side_labels.get(kind), kind
-    assert kind_labels[metrics_service.TASK_KIND] == "Conversation"
+    assert kind_labels[TASK_KIND] == "Conversation"
 
 
 def test_side_calls_summary_labels_known_and_unknown_kinds():
@@ -243,7 +244,6 @@ def test_telemetry_vocabulary_is_single_source_of_truth():
 
     assert metrics_service.LLM_COMPLETION_EVENT is vocab.LLM_COMPLETION_EVENT
     assert metrics_service.EMBEDDING_EVENT is vocab.EMBEDDING_EVENT
-    assert metrics_service.TASK_KIND is vocab.TASK_KIND
     assert metrics_service.KIND_LABELS is vocab.KIND_LABELS
     assert metrics_service.iter_event_props is vocab.iter_event_props
     assert metrics_service.parse_event_props is vocab.parse_event_props

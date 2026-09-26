@@ -44,6 +44,21 @@ KIND_LABELS: dict[str, str] = {
     "memory": "Memory recall",
 }
 
+def completion_kind(props: dict) -> str:
+    """The kind of the completion an ``LLM Completion`` event records.
+
+    Any non-empty string is taken as is (an unknown one still gets its own row,
+    see ``KIND_LABELS``). A missing, null or empty kind, and one that is not a
+    string at all (a number, a boolean, a list), is an ordinary conversation
+    turn, ``TASK_KIND``: the extension only ever sends ``CompletionKind``
+    strings, and an event from before it reported the kind has none. The
+    metrics page and the task detail page both read the kind through this
+    function, so they count the same event the same way (owner decision 25).
+    """
+    kind = props.get("completionKind")
+    return kind if isinstance(kind, str) and kind else TASK_KIND
+
+
 # The ``say`` of the stored message that records one API request.
 API_REQ_STARTED = "api_req_started"
 
