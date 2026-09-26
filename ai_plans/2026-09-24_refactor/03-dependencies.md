@@ -441,3 +441,7 @@ double-painted pressed icon background) in #477 (`7cec4909d`): 7 real uses in 5 
 our own wrapper around `ui/Button`, not the toolkit (rename only, not done). ErrorRow copy button: padding became
 margin, so a 3px strip around it now expands the row like the rest of the header. High-contrast themes not
 pixel-checked (CSS copied from the toolkit source).
+
+**Status (2026-09-26), DEP-7 TypeScript 5.9:** DONE in #478 (`4da7c31bd`): 5.8.3 to 5.9.3 (the only pin is in the
+root `package.json`), no source change; check-types 0 errors in all 11 packages before and after, bundle, webview
+build and CLI tsup DTS build green. Next: TypeScript 6.0 evaluation (typescript-eslint 8.70 allows <6.1); no 7.x.
