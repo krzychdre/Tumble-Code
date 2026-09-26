@@ -18,14 +18,10 @@ async def get_current_user(
     are JWTs signed with the same key, so one decode serves both. Returns a
     dict with user_id, org_id, and token_type.
 
-    The token is decoded once. It used to be decoded twice, first through
-    ``validate_static_token`` (which also requires ``iss == "rcc"`` and
-    ``v == 1``) and, when that refused, again without those checks; both paths
-    built the same dict, so the issuer and version never decided the outcome.
-    That is kept as found: a token signed with our key is accepted whatever
-    its ``iss``/``v`` (see tests/test_route_boilerplate.py). Requiring them
-    would refuse any such token a client already holds, a decision for the
-    owner rather than for a refactor.
+    The token is decoded once, by ``decode_token``, which also requires
+    ``iss == "rcc"`` and ``v == 1``: every token this server issues carries
+    both, so a token signed with our key without them is refused (owner
+    decision 24; it used to be accepted by a second, unchecked decode).
 
     Reads nothing from the database, so it asks for no session.
     """
