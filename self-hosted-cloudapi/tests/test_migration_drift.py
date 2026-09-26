@@ -71,19 +71,16 @@ _REQUIRED_ENV = {
 }
 
 # Differences between the migrated database and the models that exist today.
-# Each entry is (operation, table, name); see _drift_key.
+# Each entry is (operation, table, name); see _drift_key. Empty: an entry may
+# only be added with the reason it cannot be closed yet, and
+# test_migrated_database_matches_the_models_exactly must then carry a strict
+# xfail until it is.
 #
-# uq_task_messages_task_ts: the model declares a UniqueConstraint on
-# task_messages (task_id, message_ts) (src/models/task.py), so a FRESH
-# database gets a table-level UNIQUE constraint. Migration d4e5f6a7b8c9
-# creates a unique INDEX of the same name instead, so every migrated database
-# has an index where the model has a constraint. Both enforce uniqueness and
-# both can serve the ON CONFLICT (task_id, message_ts) upsert, but they are
-# different schema objects, and autogenerate would try to "fix" it.
-KNOWN_DRIFT = {
-    ("remove_index", "task_messages", "uq_task_messages_task_ts"),
-    ("add_constraint", "task_messages", "uq_task_messages_task_ts"),
-}
+# The last entry, uq_task_messages_task_ts, was closed by declaring it in the
+# model as the unique INDEX migration d4e5f6a7b8c9 creates, instead of a
+# UniqueConstraint (a FRESH database used to get a table constraint where
+# every migrated one has an index).
+KNOWN_DRIFT: frozenset = frozenset()
 
 
 def _head_revision() -> str:
@@ -362,15 +359,6 @@ def test_migrations_reach_the_models(migrated_db):
     assert unexpected == []
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Known drift, see KNOWN_DRIFT: migration d4e5f6a7b8c9 builds "
-        "uq_task_messages_task_ts as a unique index, the model declares a "
-        "UniqueConstraint. When a migration closes it this test passes: "
-        "remove the entry from KNOWN_DRIFT and this marker."
-    ),
-)
 def test_migrated_database_matches_the_models_exactly(migrated_db):
     assert _drift(migrated_db) == []
 
