@@ -558,6 +558,8 @@ buffer). The hot spots are elsewhere:
 
 **Status (2026-09-26):** P1 and P8 already done by #331; P5 skipped in #335; P2 DONE #456 (9ed27b73d, parses 12,637 to 1,604, 319 M to 18 M characters for a 50 KB write); P3 DONE #461 (29159d7af, 5.48e11 to 4.32e9 characters over 13,598 real reasoning messages; the whole-text partial post is left, a protocol or throttle decision); P4 DONE #462 (eda567548, last message counted once; LM Studio full-history count left as a follow-up, worker pool already fixed by #229); P6 `.rooignore` DONE #464 (65ebf2aba, 34,498 to 7,852 fs calls on 3,650 paths), scanner mtime shortcut skipped (cache format change, misses mtime-preserving edits, 27 MB per full scan); P7 skipped (crash burst only, about 2 KB of config per notify). There is no P9 (the roadmap's "P1 to P9" was a typo).
 
+**Follow-ups DONE (2026-09-26 afternoon):** P3 partial reasoning posts throttled to at most one per 100 ms in #467 (scripted 44 KB stream 10,946 to 550 posts, 245 M to 12.4 M characters; final text and persisted messages unchanged; each remaining post still carries the whole text, a delta protocol would be a contract change). P4 LM Studio input estimate cached per block in #469 (key: encoding, model id and block parts; pruned to the current history on every call; real histories 9,567 MB to 251 MB tokenized; Moonshot's fallback `estimateUsage` could reuse `BlockTokenCountCache`).
+
 ## Do not touch
 
 The two provider registries (portable versus runtime, intentional split with a compile-time check); the type
