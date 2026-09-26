@@ -25,8 +25,16 @@ def num(value) -> float:
     ``bool`` is excluded because in Python ``bool`` is a subclass of ``int``
     (``isinstance(True, (int, float))`` is ``True``), and a malformed
     ``tokensIn: true`` should not add 1.0 to the total.
+
+    A non-finite float (NaN, infinity) is 0 too: ``json.loads`` produces one
+    from ``NaN``/``Infinity`` or an out-of-range literal like ``1e999``, it is
+    no token count or price, and ``int()`` raises on it.
     """
-    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else 0
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return 0
+    if isinstance(value, float) and not math.isfinite(value):
+        return 0
+    return value
 
 
 def round_half_up(value: float) -> int:
