@@ -457,3 +457,14 @@ relative to the tsconfig); tsup's DTS step always injects `baseUrl`, so cli and 
 `ignoreDeprecations: "6.0"` (must be solved before TS 7); `rootDir` set in packages/build and vscode-e2e (TS5011);
 vscode-e2e `moduleResolution` Node to Bundler plus `types: ["node","mocha"]` (emitted JS byte-identical). Open:
 `packages/config-typescript/cjs.json` still uses `moduleResolution: Node` (unused).
+
+**Status (2026-09-26), DEP-9 slice 6 and DEP-7 knip/vitest:** `VSCodeRadio`/`VSCodeRadioGroup` #482 (`2e6c14677`,
+one call site, no echo dependency). knip 5.60 to 6.38 #483 (`d4f2c1583`), `knip>zod` override gone; exit 0, but
+the warning-level report grew (unused exports 28 to 144, types 15 to 120: knip 6 reports unused barrel re-exports;
+follow-up DEP-7-F3). vitest 3.2 to 5.0.2 and `@vitest/ui` 5.0.2 #484 (`c1b05fd50`, 153 files, test code and configs
+only): `poolOptions` became `maxWorkers: 1` on Windows CI, `dist/` excluded again, `types: ["node"]` where vitest
+no longer leaked it, about 220 arrow-function class mocks became `function` (vitest 4 calls them with `new`; some
+failures were hidden by product catch blocks), nested `vi.mock`/`vi.unmock` fixed, 21 un-awaited async assertions
+awaited, `restoreAllMocks` now only restores spies. Wrong-but-green specs exposed: CommandsAPI `.resolves` without
+await, safeWriteJson `vi.unmock` that never worked, ClineProvider fs/promises mock without `default`. Trap: in vitest
+5 `vitest -u <file>` treats the path as the `-u` value and updates the whole package.
