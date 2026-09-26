@@ -8,6 +8,7 @@ import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 
 import SettingsView from "../SettingsView"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
@@ -28,16 +29,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			onChange={(e) => onInput({ target: { value: e.target.value } })}
 			placeholder={placeholder}
 			data-testid={dataTestId}
-		/>
-	),
-	VSCodeTextArea: ({ value, onChange, rows, className, "data-testid": dataTestId }: any) => (
-		<textarea
-			value={value}
-			onChange={onChange}
-			rows={rows}
-			className={className}
-			data-testid={dataTestId}
-			role="textbox"
 		/>
 	),
 }))
@@ -88,6 +79,7 @@ vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
+	ThemedTextArea: (props: any) => <RealThemedTextArea {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>

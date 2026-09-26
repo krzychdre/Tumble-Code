@@ -274,7 +274,7 @@ describe("PromptsView", () => {
 		fireEvent.change(nameInput, { target: { value: "Reviewer" } })
 		expect(slugInput.value).toBe("reviewer")
 
-		const roleDefinition = dialog.querySelector("vscode-text-area") as HTMLElement & { value: string }
+		const roleDefinition = dialog.querySelector("textarea") as HTMLElement & { value: string }
 		roleDefinition.value = "You review code."
 		fireEvent(roleDefinition, new Event("change", { bubbles: true }))
 
@@ -296,7 +296,7 @@ describe("PromptsView", () => {
 		// Opening the dialog again starts from an empty form.
 		fireEvent.click(screen.getByTestId("add-mode-button"))
 		const reopened = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
-		const reopenedRole = reopened.querySelector("vscode-text-area") as HTMLElement & { value: string }
+		const reopenedRole = reopened.querySelector("textarea") as HTMLElement & { value: string }
 		expect(reopenedRole.value).toBe("")
 	})
 
@@ -319,7 +319,7 @@ describe("PromptsView", () => {
 
 		fireEvent.click(screen.getByTestId("add-mode-button"))
 		let dialog = (await screen.findByText("prompts:createModeDialog.title")).closest(".fixed") as HTMLElement
-		const roleDefinition = dialog.querySelector("vscode-text-area") as HTMLElement & { value: string }
+		const roleDefinition = dialog.querySelector("textarea") as HTMLElement & { value: string }
 		roleDefinition.value = "Leftover role"
 		fireEvent(roleDefinition, new Event("change", { bubbles: true }))
 		fireEvent.change(dialog.querySelectorAll("input[type=text]")[0], { target: { value: "Leftover" } })
@@ -331,6 +331,6 @@ describe("PromptsView", () => {
 		const [nameInput, slugInput] = Array.from(dialog.querySelectorAll("input[type=text]")) as HTMLInputElement[]
 		expect(nameInput.value).toBe("New Custom Mode")
 		expect(slugInput.value).toBe("new-custom-mode")
-		expect((dialog.querySelector("vscode-text-area") as HTMLElement & { value: string }).value).toBe("")
+		expect((dialog.querySelector("textarea") as HTMLElement & { value: string }).value).toBe("")
 	})
 })

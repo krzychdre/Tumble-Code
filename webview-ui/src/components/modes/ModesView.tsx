@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
-import { VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { ChevronDown, X, Upload, Download } from "lucide-react"
 
@@ -40,6 +40,7 @@ import {
 	StandardTooltip,
 	Link,
 	LabeledCheckbox,
+	ThemedTextArea,
 } from "@src/components/ui"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 import McpServerRestriction from "@src/components/modes/McpServerRestriction"
@@ -700,7 +701,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 					<div className="text-sm text-vscode-descriptionForeground mb-2">
 						{t("prompts:roleDefinition.description")}
 					</div>
-					<VSCodeTextArea
+					<ThemedTextArea
 						resize="vertical"
 						value={(() => {
 							const customMode = findModeBySlug(visualMode, customModes)
@@ -810,7 +811,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 					<div className="text-sm text-vscode-descriptionForeground mb-2">
 						{t("prompts:whenToUse.description")}
 					</div>
-					<VSCodeTextArea
+					<ThemedTextArea
 						resize="vertical"
 						value={(() => {
 							const customMode = findModeBySlug(visualMode, customModes)
@@ -1010,7 +1011,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 							modeName: getCurrentMode()?.name || "Code",
 						})}
 					</div>
-					<VSCodeTextArea
+					<ThemedTextArea
 						resize="vertical"
 						value={(() => {
 							const customMode = findModeBySlug(visualMode, customModes)
@@ -1139,7 +1140,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 								aria-label="Learn more about global custom instructions"></Link>
 						</Trans>
 					</div>
-					<VSCodeTextArea
+					<ThemedTextArea
 						resize="vertical"
 						value={customInstructions || ""}
 						onChange={(e) => {
