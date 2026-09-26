@@ -389,3 +389,11 @@ components in `webview-ui/src/components/ui/` (`input`, `checkbox`, `button`, `s
 **Change:** one toolkit component type per PR, replaced by the existing `ui/` component (add a thin wrapper where
 props differ), with a manual visual check of every touched screen. Start with `VSCodeLink` and `VSCodeCheckbox`
 (simple semantics), leave `VSCodeTextField` (most uses, focus behavior) for last.
+
+**Status (2026-09-26), DEP-9 slice 1:** `VSCodeLink` replaced by `components/ui/link.tsx` in #470 (`a53118351`): 48 JSX
+uses in 22 components. Link styles copy the toolkit's (`.ui-link` in the `components` cascade layer, so call-site
+Tailwind wins, plus an unlayered `revert-layer` rule because VS Code 1.102/1.103 inject unlayered default link
+styles). Headless Chrome comparison of 12 call-site patterns in normal/hover/focus: pixel-identical except that the
+toolkit also underlined a trailing space of inline links. Characterization `link.call-sites.spec` runs the real
+toolkit. Owner visual check owed at VSIX install (RooTips, telemetry banner, checkpoint warning, command error,
+Announcement, Settings About/API/Terminal/Checkpoints/Memory, Modes, MCP, code-index popover, marketplace footer).
