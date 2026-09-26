@@ -91,9 +91,10 @@ describe("SelectList", () => {
 		let cancelled = false
 		const { stdin } = render(<SelectList items={items} onSelect={() => {}} onCancel={() => (cancelled = true)} />)
 
-		stdin.write("") // escape
-		await flush()
-		expect(cancelled).toBe(true)
+		// Ink 7 holds a lone ESC byte for 20 ms (it may start an escape
+		// sequence) before it reports Escape, so wait for it instead of sleeping.
+		stdin.write("\x1b") // escape
+		await until(() => expect(cancelled).toBe(true))
 	})
 
 	it("jump-selects a single digit within range", async () => {
