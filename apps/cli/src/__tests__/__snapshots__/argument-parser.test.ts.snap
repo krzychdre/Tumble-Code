@@ -1,0 +1,226 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CLI argument parser (commander characterization) > handles an unknown list subcommand 1`] = `
+{
+  "exitCode": 1,
+  "stderr": "error: unknown command 'nope'
+",
+  "stdout": "",
+}
+`;
+
+exports[`CLI argument parser (commander characterization) > handles excess arguments to a list subcommand 1`] = `
+{
+  "exitCode": 1,
+  "listed": 0,
+  "stderr": "error: too many arguments for 'modes'. Expected 0 arguments but got 1: extra.
+",
+}
+`;
+
+exports[`CLI argument parser (commander characterization) > handles excess arguments to a subcommand 1`] = `
+{
+  "exitCode": 1,
+  "stderr": "error: too many arguments for 'upgrade'. Expected 0 arguments but got 1: now.
+",
+  "upgraded": 0,
+}
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["--help"] 1`] = `
+"Usage: tumble [options] [command] [prompt]
+
+Tumble Code CLI - starts an interactive session by default, use -p/--print for
+non-interactive output
+
+Arguments:
+  prompt                                 Your prompt
+
+Options:
+  -V, --version                          output the version number
+  --prompt-file <path>                   Read prompt from a file instead of command line argument
+  --create-with-session-id <session-id>  Create a new task with a specific session ID (must be a UUID)
+  --session-id <session-id>              Resume a specific task by session ID
+  -c, --continue                         Resume the most recent task in the current workspace (default: false)
+  -w, --workspace <path>                 Workspace directory path (defaults to current working directory)
+  -p, --print                            Print response and exit (non-interactive mode) (default: false)
+  --stdin-prompt-stream                  Read NDJSON commands from stdin (requires --print and --output-format stream-json) (default: false)
+  --signal-only-exit                     Do not exit from normal completion/errors; only terminate on SIGINT/SIGTERM (intended for stdin stream harnesses) (default: false)
+  -e, --extension <path>                 Path to the extension bundle directory
+  -d, --debug                            Enable debug output (includes detailed debug information) (default: false)
+  -a, --require-approval                 Require manual approval for actions (default: false)
+  -k, --api-key <key>                    API key for the LLM provider
+  --provider <provider>                  API provider (anthropic, openrouter, ollama, etc.)
+  -m, --model <model>                    Model to use (defaults to the persisted/settings model, then the provider's default model)
+  --base-url <url>                       Base URL override for the selected provider
+  --mode <mode>                          Mode to start in (code, architect, ask, debug, etc.; defaults to the settings mode, then code)
+  --terminal-shell <path>                Absolute path to shell executable for inline terminal commands
+  -r, --reasoning-effort <effort>        Reasoning effort level (none, minimal, low, medium, high, xhigh, max, unspecified, disabled; defaults to the settings value, then medium)
+  --consecutive-mistake-limit <limit>    Consecutive error/repetition limit before guidance prompt (0 disables the limit)
+  --command-execution-timeout <seconds>  Seconds a shell command may run before it is stopped (0 means no limit; defaults to the settings value, then 300)
+  --exit-on-error                        Exit on API request errors instead of retrying (default: false)
+  --ephemeral                            Run without persisting state (uses temporary storage) (default: false)
+  --oneshot                              Exit upon task completion (default: false)
+  --output-format <format>               Output format (only works with --print): "text" (default), "json" (single result), or "stream-json" (realtime streaming) (default: "text")
+  -h, --help                             display help for command
+
+Commands:
+  list                                   List commands, modes, models, or sessions
+  upgrade                                Upgrade Tumble Code CLI to the latest version
+  auth                                   Manage Tumble Cloud and provider authentication
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["auth","--help"] 1`] = `
+"Usage: tumble auth [options] [command]
+
+Manage Tumble Cloud and provider authentication
+
+Options:
+  -h, --help        display help for command
+
+Commands:
+  login [options]   Authenticate with Tumble Code Cloud
+  codex             Manage ChatGPT subscription access for OpenAI Codex
+  logout [options]  Log out from Tumble Code Cloud
+  status [options]  Show authentication status
+  help [command]    display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["auth","codex","--help"] 1`] = `
+"Usage: tumble auth codex [options] [command]
+
+Manage ChatGPT subscription access for OpenAI Codex
+
+Options:
+  -h, --help      display help for command
+
+Commands:
+  login           Sign in to OpenAI Codex with ChatGPT Plus, Pro, Team, or
+                  Enterprise
+  logout          Remove the stored OpenAI Codex OAuth credentials
+  status          Show OpenAI Codex OAuth status
+  help [command]  display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["auth","codex","status","--help"] 1`] = `
+"Usage: tumble auth codex status [options]
+
+Show OpenAI Codex OAuth status
+
+Options:
+  -h, --help  display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["auth","login","--help"] 1`] = `
+"Usage: tumble auth login [options]
+
+Authenticate with Tumble Code Cloud
+
+Options:
+  -v, --verbose  Enable verbose output (default: false)
+  -h, --help     display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["list","--help"] 1`] = `
+"Usage: tumble list [options] [command]
+
+List commands, modes, models, or sessions
+
+Options:
+  -h, --help          display help for command
+
+Commands:
+  commands [options]  List available slash commands
+  modes [options]     List available modes
+  models [options]    List available Tumble models
+  sessions [options]  List task sessions
+  help [command]      display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["list","commands","--help"] 1`] = `
+"Usage: tumble list commands [options]
+
+List available slash commands
+
+Options:
+  -w, --workspace <path>  Workspace directory path (defaults to current working
+                          directory)
+  -e, --extension <path>  Path to the extension bundle directory
+  -k, --api-key <key>     Tumble API key (falls back to saved login/session
+                          token)
+  --format <format>       Output format: "json" (default) or "text" (default:
+                          "json")
+  -d, --debug             Enable debug output (default: false)
+  -h, --help              display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["list","sessions","--help"] 1`] = `
+"Usage: tumble list sessions [options]
+
+List task sessions
+
+Options:
+  -w, --workspace <path>  Workspace directory path (defaults to current working
+                          directory)
+  -e, --extension <path>  Path to the extension bundle directory
+  -k, --api-key <key>     Tumble API key (falls back to saved login/session
+                          token)
+  --format <format>       Output format: "json" (default) or "text" (default:
+                          "json")
+  -d, --debug             Enable debug output (default: false)
+  -h, --help              display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > help output > ["upgrade","--help"] 1`] = `
+"Usage: tumble upgrade [options]
+
+Upgrade Tumble Code CLI to the latest version
+
+Options:
+  -h, --help  display help for command
+"
+`;
+
+exports[`CLI argument parser (commander characterization) > passes options that follow the prompt through as arguments (passThroughOptions) 1`] = `
+{
+  "exitCode": 1,
+  "runArgs": undefined,
+  "stderr": "error: too many arguments. Expected 1 argument but got 2: hello, -p.
+",
+}
+`;
+
+exports[`CLI argument parser (commander characterization) > reads a prompt that is a negative number 1`] = `
+{
+  "exitCode": 1,
+  "prompt": undefined,
+  "stderr": "error: unknown option '-5'
+",
+}
+`;
+
+exports[`CLI argument parser (commander characterization) > reads a prompt that starts with a dash and a digit 1`] = `
+{
+  "exitCode": 1,
+  "runArgs": undefined,
+  "stderr": "error: unknown option '-5 degrees outside'
+",
+}
+`;
+
+exports[`CLI argument parser (commander characterization) > treats a second positional argument as excess 1`] = `
+{
+  "exitCode": 1,
+  "runArgs": undefined,
+  "stderr": "error: too many arguments. Expected 1 argument but got 2: hello, world.
+",
+}
+`;

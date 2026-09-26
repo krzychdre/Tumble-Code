@@ -77,8 +77,12 @@ By default, the CLI auto-approves actions and runs in interactive TUI mode:
 ```bash
 export OPENROUTER_API_KEY=sk-or-v1-...
 
-tumble "What is this project?" -w ~/Documents/my-project
+tumble -w ~/Documents/my-project "What is this project?"
 ```
+
+Options go before the prompt. Anything after the prompt is treated as an
+extra argument, and the CLI stops with `error: too many arguments` instead of
+silently ignoring it.
 
 You can also run without a prompt and enter it interactively in TUI mode:
 
@@ -98,7 +102,7 @@ In interactive mode (see [Terminal UI](#terminal-ui) for the full visual grammar
 If you want manual approval prompts, enable approval-required mode:
 
 ```bash
-tumble "Refactor the utils.ts file" --require-approval -w ~/Documents/my-project
+tumble --require-approval -w ~/Documents/my-project "Refactor the utils.ts file"
 ```
 
 During an interactive session, use `/permissions` to see the current approval
