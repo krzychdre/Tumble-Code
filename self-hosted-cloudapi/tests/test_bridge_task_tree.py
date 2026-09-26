@@ -15,9 +15,10 @@ a task that already exists runs no tree-link queries at all, because nothing a
 chunk carries can change the link.
 
 ``tasks.parent_task_id`` is a foreign key to ``tasks.id``. Postgres enforces it,
-SQLite does not unless the connection asks for it, so every test here runs with
-``PRAGMA foreign_keys=ON``: without it an ordering that writes a parent id before
-the parent row exists passes here and fails in production (DEF-C47).
+SQLite does not unless the connection asks for it; the shared ``test_engine``
+fixture (tests/conftest.py) switches ``PRAGMA foreign_keys=ON`` on for every
+connection. Without it an ordering that writes a parent id before the parent
+row exists passes here and fails in production (DEF-C47).
 """
 
 import itertools
@@ -52,19 +53,6 @@ def _clean_registry():
     registry._ext_sid_by_user.clear()
     registry._instance_by_user.clear()
     registry._task_access_by_sid.clear()
-
-
-@pytest.fixture(autouse=True)
-async def _enforce_foreign_keys(test_engine):
-    """Make SQLite enforce foreign keys the way Postgres does.
-
-    The test engine keeps one in-memory connection (StaticPool), so switching
-    the pragma on once covers every session of the test. SQLite ignores the
-    pragma inside a transaction, hence the check that it really took effect.
-    """
-    async with test_engine.connect() as conn:
-        await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
-        assert (await conn.exec_driver_sql("PRAGMA foreign_keys")).scalar() == 1
 
 
 @pytest.fixture
