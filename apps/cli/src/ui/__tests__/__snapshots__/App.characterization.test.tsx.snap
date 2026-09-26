@@ -750,10 +750,6 @@ exports[`App characterization (recorded message sequences) > shows a failed API 
 
 === host error ===
 [static: welcome:__welcome__:0]
-✻ Welcome to Tumble Code v0.0.0-test
-  cwd: <workspace>
-  anthropic · claude-test · mode: code
-
 
  Error: Provider went away
  Press Ctrl+C to exit
