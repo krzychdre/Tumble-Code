@@ -468,3 +468,10 @@ failures were hidden by product catch blocks), nested `vi.mock`/`vi.unmock` fixe
 awaited, `restoreAllMocks` now only restores spies. Wrong-but-green specs exposed: CommandsAPI `.resolves` without
 await, safeWriteJson `vi.unmock` that never worked, ClineProvider fs/promises mock without `default`. Trap: in vitest
 5 `vitest -u <file>` treats the path as the `-u` value and updates the whole package.
+
+**Status (2026-09-26), DEP-9 slice 7:** `VSCodePanels`/`PanelTab`/`PanelView` to `ThemedPanels`/`ThemedPanelTab`/
+`ThemedPanelView` #485 (`3fe582522`), one call site (MCP server tabs), pixel- and keyboard-identical. Finding:
+the toolkit's tab padding, border, focus frame and 10px view padding never showed because `preflight.css` resets
+padding and border on the host elements; mirrored, so keyboard focus on a tab stays invisible (pre-existing
+accessibility gap, follow-up DEP-9-F1). Remaining: Dropdown/Option, TextArea, TextField, then remove the package
+(new helper started 2026-09-26). The previous helper's visual comparison kit: `/home/krzych/wt-roo/visual-kit`.
