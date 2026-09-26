@@ -1,5 +1,5 @@
 import { memo, useEffect, useRef, useCallback, useState } from "react"
-import styled, { type CSSObject } from "styled-components"
+import styled from "styled-components"
 import { useCopyToClipboard } from "@src/utils/clipboard"
 import { getHighlighter, isLanguageLoaded, normalizeLanguage } from "@src/utils/highlighter"
 import type { ShikiTransformer } from "shiki"
@@ -113,8 +113,6 @@ const CodeBlockContainer = styled.div`
 	}
 `
 
-// `preStyle` is spread as a CSSObject: React 19's CSSProperties come from csstype 3.2 and the types of
-// styled-components 6.1 from csstype 3.1. The values are the same CSS strings; only the type packages differ.
 export const StyledPre = styled.div<{
 	preStyle?: React.CSSProperties
 	wordwrap?: "true" | "false" | undefined
@@ -127,7 +125,7 @@ export const StyledPre = styled.div<{
 	overflow-y: auto;
 	padding: 8px 3px;
 	border-radius: 6px;
-	${({ preStyle }) => preStyle && ({ ...preStyle } as CSSObject)}
+	${({ preStyle }) => preStyle && { ...preStyle }}
 
 	pre {
 		background-color: ${CODE_BLOCK_BG_COLOR};
