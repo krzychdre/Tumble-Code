@@ -574,3 +574,14 @@ react 19.3 and would split the monorepo again); golden diffs are attribute order
 img and `type` on input last). Follow-ups: React 19.3 for CLI and webview together; styled-components 6.4 (removes a
 cast in CodeBlock and two `postcss` audit allowlist entries, the React 18 types blocker is gone); replace `vscrui`
 with `LabeledCheckbox` (DEP-9 style); first Escape in the mode popover only closes the tooltip (pre-existing).
+
+**Status (2026-09-26), Phase 11 DONE:** DEF-P11-2 dollar amounts #510 (`fe2ce4bde`: remark-math keeps `$$...$$`,
+single-dollar math by an own micromark construct with Pandoc's rule; known limits "For $5 you get $x^2$" and
+`$HOST:$PORT`). DEF-P11-3 #512 (`f974086dc`): react-markdown's default `urlTransform` emptied `file://` hrefs and the
+slash-less `name.ext:line` links the system prompt asks for (354 of 9,445 model links in the local history), so
+clicking them opened `./`; `markdownUrlTransform` keeps `file:` and `name.ext:line` for `href` only, dangerous
+schemes stay empty. Open: Windows `C:/...` paths still stripped. Final coordinator run on main f974086dc (fresh
+install, `turbo run check-types lint test build --force`): 39 of 39 tasks green, knip exit 0; tests: src 9,771
+(+37 skipped), webview 2,955, cli 1,297 (+1), types 633, core 487, vscode-shim 408, cloud 319, agent-interchange
+116, telemetry 71, build 23. Owed: VSIX rebuild + install and the owner's visual check (screens listed in the
+DEP-9 and React 19 statuses); CLI-F2 blank-row decision (a/b/c).
