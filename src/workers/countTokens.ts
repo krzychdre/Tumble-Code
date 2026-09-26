@@ -2,9 +2,9 @@ import workerpool from "workerpool"
 
 import { Anthropic } from "@anthropic-ai/sdk"
 
-import { tiktoken } from "../utils/tiktoken"
+import { tiktoken, tiktokenPerBlock } from "../utils/tiktoken"
 
-import { type CountTokensResult } from "./types"
+import { type CountTokensPerBlockResult, type CountTokensResult } from "./types"
 
 async function countTokens(content: Anthropic.Messages.ContentBlockParam[]): Promise<CountTokensResult> {
 	try {
@@ -18,4 +18,18 @@ async function countTokens(content: Anthropic.Messages.ContentBlockParam[]): Pro
 	}
 }
 
-workerpool.worker({ countTokens })
+async function countTokensPerBlock(
+	content: Anthropic.Messages.ContentBlockParam[],
+): Promise<CountTokensPerBlockResult> {
+	try {
+		const counts = await tiktokenPerBlock(content)
+		return { success: true, counts }
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : "Unknown error",
+		}
+	}
+}
+
+workerpool.worker({ countTokens, countTokensPerBlock })

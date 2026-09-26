@@ -1,6 +1,6 @@
 // npx vitest utils/__tests__/tiktoken.spec.ts
 
-import { tiktoken } from "../tiktoken"
+import { applyTokenFudge, blockCountKeyParts, tiktoken, tiktokenPerBlock } from "../tiktoken"
 import { Anthropic } from "@anthropic-ai/sdk"
 
 describe("tiktoken", () => {
@@ -292,5 +292,98 @@ describe("tiktoken", () => {
 			// Large content should have more tokens
 			expect(largeResult).toBeGreaterThan(smallResult)
 		})
+	})
+})
+
+describe("tiktokenPerBlock", () => {
+	// Every branch of the tokenizer: text, empty text, tool_use, tool_result with
+	// an error flag and mixed array content, plain tool_result, base64 image,
+	// url image and an ignored block type.
+	const blocks = [
+		{ type: "text", text: "You are a coding agent.\n".repeat(50) },
+		{ type: "text", text: "" },
+		{ type: "tool_use", id: "c1", name: "read_file", input: { path: "a.ts", lines: [1, 2] } },
+		{
+			type: "tool_result",
+			tool_use_id: "c1",
+			is_error: true,
+			content: [
+				{ type: "text", text: "x = 1\n".repeat(30) },
+				{ type: "image", source: { type: "base64", media_type: "image/png", data: "QUJD".repeat(100) } },
+			],
+		},
+		{ type: "tool_result", tool_use_id: "c2", content: "plain result" },
+		{ type: "image", source: { type: "base64", media_type: "image/png", data: "A".repeat(12345) } },
+		{ type: "image", source: { type: "url", url: "https://example.com/a.png" } },
+		{ type: "thinking", thinking: "ignored", signature: "s" },
+	] as unknown as Anthropic.Messages.ContentBlockParam[]
+
+	it("keeps the whole-array count it had before per-block counting existed", async () => {
+		// Pinned on main before the refactor.
+		await expect(tiktoken(blocks)).resolves.toBe(1353)
+	})
+
+	it("sums to the same total once the fudge factor is applied to the sum", async () => {
+		const perBlock = await tiktokenPerBlock(blocks)
+		expect(perBlock).toHaveLength(blocks.length)
+		expect(applyTokenFudge(perBlock.reduce((a, b) => a + b, 0))).toBe(await tiktoken(blocks))
+	})
+
+	it("differs from summing per-block fudged counts, so the fudge must be applied once", async () => {
+		let fudgedPerBlock = 0
+		for (const block of blocks) {
+			fudgedPerBlock += await tiktoken([block])
+		}
+		expect(fudgedPerBlock).toBe(1354)
+	})
+
+	it("returns an empty array for no blocks", async () => {
+		await expect(tiktokenPerBlock([])).resolves.toEqual([])
+	})
+})
+
+describe("blockCountKeyParts", () => {
+	// Blocks that differ in any value the tokenizer reads must get different
+	// parts; blocks that only differ in values it ignores may share them.
+	const base = { type: "tool_result", tool_use_id: "c1", content: [{ type: "text", text: "a" }] }
+	const variants = [
+		base,
+		{ ...base, tool_use_id: "c2" },
+		{ ...base, is_error: true },
+		{ ...base, content: [{ type: "text", text: "b" }] },
+		{ ...base, content: [{ type: "text", text: "a" }, { type: "image" }] },
+		{ ...base, content: "a" },
+		{ type: "text", text: "a" },
+		{ type: "tool_use", id: "c1", name: "read_file", input: { path: "a" } },
+		{ type: "tool_use", id: "c1", name: "read_file", input: { path: "b" } },
+		{ type: "image", source: { type: "base64", media_type: "image/png", data: "AAAA" } },
+		{ type: "image", source: { type: "base64", media_type: "image/png", data: "AAAAAAAA" } },
+		{ type: "image", source: { type: "url", url: "https://example.com/a.png" } },
+	] as unknown as Anthropic.Messages.ContentBlockParam[]
+
+	it("gives every block that reads differently its own parts", () => {
+		const keys = variants.map((block) => JSON.stringify(blockCountKeyParts(block)))
+		expect(new Set(keys).size).toBe(variants.length)
+	})
+
+	it("gives equal parts only to blocks with equal counts", async () => {
+		const pairs: Array<[unknown, unknown]> = [
+			// The tool_use id is not read, only name and arguments.
+			[
+				{ type: "tool_use", id: "x", name: "n", input: { a: 1 } },
+				{ type: "tool_use", id: "y", name: "n", input: { a: 1 } },
+			],
+			// Image data is counted by length only.
+			[
+				{ type: "image", source: { type: "base64", media_type: "image/png", data: "AAAA" } },
+				{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: "BBBB" } },
+			],
+		]
+		for (const [a, b] of pairs as Array<
+			[Anthropic.Messages.ContentBlockParam, Anthropic.Messages.ContentBlockParam]
+		>) {
+			expect(blockCountKeyParts(a)).toEqual(blockCountKeyParts(b))
+			expect(await tiktokenPerBlock([a])).toEqual(await tiktokenPerBlock([b]))
+		}
 	})
 })
