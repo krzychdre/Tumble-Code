@@ -63,6 +63,14 @@ rounds, Python truncates) and cost formatted separately in 3 JS files. **Change:
 `fmt_bytes`, `plural` in `utils/format.py`, registered as Jinja filters; one `static/format.js`; a pytest emits
 golden vectors that a browser check compares against `format.js`. **Size** S to M.
 
+**Status CAPI-M4:** DONE 2026-09-26, #446 (merge b04316070), pytest 587 to 642 on the branch (plus 2 strict xfails from
+M8). `fmt_cost`, `fmt_int`, `fmt_bytes`, `plural`, `round_half_up` in `utils/format.py`, registered as Jinja filters;
+one `static/format.js` (`window.TumbleFormat`) replaces the JS copies; 29 token and 10 cost golden vectors checked
+against both Python and `format.js` in headless Chrome. Deliberate output changes: token counts below 1000 round
+half up in both languages; exact decimal ties now round half up in Python too (as JS `toFixed` does), so 1,250 tokens
+read "1.3k" and $0.03125 reads "$0.0313" everywhere (before, the server printed "1.2k"/"$0.0312" and the live header
+"1.3k"). Left alone: the chart tooltip's `toLocaleString()` and the cost axis label.
+
 ### CAPI-M5 Split `routers/web.py` (967 lines, 31 functions)
 
 9 routes and about 20 presenter helpers; `_quality_overview` (567-631) is business logic; the share access policy
