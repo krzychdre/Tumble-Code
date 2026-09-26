@@ -403,6 +403,113 @@
 	.ui-checkbox[data-disabled] .ui-checkbox-label {
 		cursor: not-allowed;
 	}
+
+	/*
+	 * Button (components/ui/themed-button.tsx), the same look as the
+	 * deprecated toolkit's <vscode-button> with appearance primary, secondary
+	 * or icon. The toolkit's host and inner button are one element here.
+	 * Fallbacks are the toolkit's defaults. The font size is Chromium's default
+	 * button size, which the toolkit's inner <button> kept.
+	 */
+	.ui-themed-button {
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
+		box-sizing: border-box;
+		margin: 0;
+		padding: 4px 11px;
+		border: 1px solid var(--vscode-button-border, transparent);
+		border-radius: 2px;
+		outline: none;
+		background: var(--vscode-button-background, #0e639c);
+		color: var(--vscode-button-foreground, #ffffff);
+		fill: currentColor;
+		cursor: pointer;
+		font-family: var(--vscode-font-family, sans-serif);
+		font-size: 13.333333px;
+		line-height: normal;
+		text-decoration: none;
+		white-space: wrap;
+	}
+
+	.ui-themed-button:hover {
+		background: var(--vscode-button-hoverBackground, #1177bb);
+	}
+
+	.ui-themed-button:active {
+		background: var(--vscode-button-background, #0e639c);
+	}
+
+	.ui-themed-button:focus-visible {
+		outline: 1px solid var(--vscode-focusBorder, #007fd4);
+		outline-offset: 2px;
+	}
+
+	.ui-themed-button:disabled {
+		opacity: 0.4;
+		background: var(--vscode-button-background, #0e639c);
+		cursor: not-allowed;
+	}
+
+	.ui-themed-button[data-appearance="secondary"] {
+		background: var(--vscode-button-secondaryBackground, #3a3d41);
+		color: var(--vscode-button-secondaryForeground, #ffffff);
+	}
+
+	.ui-themed-button[data-appearance="secondary"]:hover {
+		background: var(--vscode-button-secondaryHoverBackground, #45494e);
+	}
+
+	.ui-themed-button[data-appearance="secondary"]:active,
+	.ui-themed-button[data-appearance="secondary"]:disabled {
+		background: var(--vscode-button-secondaryBackground, #3a3d41);
+	}
+
+	.ui-themed-button[data-appearance="icon"] {
+		padding: 3px;
+		border: none;
+		border-radius: 5px;
+		background-color: transparent;
+		color: var(--vscode-foreground, #cccccc);
+	}
+
+	.ui-themed-button[data-appearance="icon"]:hover {
+		background-color: rgba(90, 93, 94, 0.31);
+	}
+
+	/*
+	 * While pressed the toolkit painted the hover fill twice (host and inner
+	 * button); the gradient is the second layer. It is an image, so it also
+	 * shows over a background colour set by the call site.
+	 */
+	.ui-themed-button[data-appearance="icon"]:active {
+		background-image: linear-gradient(rgba(90, 93, 94, 0.31), rgba(90, 93, 94, 0.31));
+	}
+
+	.ui-themed-button[data-appearance="icon"]:focus-visible {
+		outline-offset: 0;
+	}
+
+	.ui-themed-button[data-appearance="icon"]:disabled {
+		background: transparent;
+	}
+
+	/* High contrast themes: no hover fill, a dotted contrast outline instead. */
+	body[data-vscode-theme-kind^="vscode-high-contrast"] .ui-themed-button[data-appearance="icon"]:hover {
+		background: transparent;
+		outline: 1px dotted var(--vscode-contrastActiveBorder, #f38518);
+		outline-offset: -1px;
+	}
+
+	.ui-themed-button-content {
+		display: flex;
+	}
+
+	.ui-themed-button-content > span,
+	.ui-themed-button-content > svg {
+		width: 16px;
+		height: 16px;
+	}
 }
 
 /*

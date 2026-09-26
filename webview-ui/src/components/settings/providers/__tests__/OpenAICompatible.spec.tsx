@@ -2,6 +2,7 @@ import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { OpenAICompatible } from "../OpenAICompatible"
 import { ProviderSettings } from "@roo-code/types"
+import { ThemedButton as RealThemedButton } from "@/components/ui/themed-button"
 
 // Mock the vscrui Checkbox component
 vi.mock("vscrui", () => ({
@@ -18,7 +19,7 @@ vi.mock("vscrui", () => ({
 	),
 }))
 
-// Mock the VSCodeTextField and VSCodeButton components
+// Mock the VSCodeTextField component
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeTextField: ({
 		children,
@@ -47,11 +48,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			</div>
 		)
 	},
-	VSCodeButton: ({ children, onClick, appearance, title }: any) => (
-		<button onClick={onClick} title={title} data-testid={`vscode-button-${appearance}`}>
-			{children}
-		</button>
-	),
 }))
 
 // Mock the translation hook
@@ -63,6 +59,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 // Mock the UI components
 vi.mock("@src/components/ui", () => ({
+	// The real button, not a stub: only the barrel is mocked.
+	ThemedButton: (props: any) => <RealThemedButton {...props} />,
 	Button: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
 	StandardTooltip: ({ children, content }: any) => <div title={content}>{children}</div>,
 }))

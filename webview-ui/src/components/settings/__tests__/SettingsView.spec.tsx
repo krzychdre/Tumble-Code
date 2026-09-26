@@ -21,20 +21,6 @@ vi.mock("../ApiConfigManager", () => ({
 }))
 
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeButton: ({ children, onClick, appearance, "data-testid": dataTestId }: any) =>
-		appearance === "icon" ? (
-			<button
-				onClick={onClick}
-				className="codicon codicon-close"
-				aria-label="Remove command"
-				data-testid={dataTestId}>
-				<span className="codicon codicon-close" />
-			</button>
-		) : (
-			<button onClick={onClick} data-appearance={appearance} data-testid={dataTestId}>
-				{children}
-			</button>
-		),
 	VSCodeTextField: ({ value, onInput, placeholder, "data-testid": dataTestId }: any) => (
 		<input
 			type="text"

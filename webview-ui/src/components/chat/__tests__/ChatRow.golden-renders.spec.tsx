@@ -63,7 +63,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", async () => {
 	return Object.fromEntries(
 		[
 			"VSCodeBadge",
-			"VSCodeButton",
 			"VSCodePanels",
 			"VSCodePanelTab",
 			"VSCodePanelView",

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import {
 	type ModelInfo,
@@ -11,7 +11,7 @@ import {
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, StandardTooltip } from "@src/components/ui"
+import { Button, StandardTooltip, ThemedButton } from "@src/components/ui"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { convertHeadersToObject } from "../utils/headers"
@@ -185,9 +185,9 @@ export const OpenAICompatible = ({
 				<div className="flex justify-between items-center mb-2">
 					<label className="block font-medium">{t("settings:providers.customHeaders")}</label>
 					<StandardTooltip content={t("settings:common.add")}>
-						<VSCodeButton appearance="icon" onClick={handleAddCustomHeader}>
+						<ThemedButton appearance="icon" onClick={handleAddCustomHeader}>
 							<span className="codicon codicon-add"></span>
-						</VSCodeButton>
+						</ThemedButton>
 					</StandardTooltip>
 				</div>
 				{!customHeaders.length ? (
@@ -210,9 +210,9 @@ export const OpenAICompatible = ({
 								onInput={(e: any) => handleUpdateHeaderValue(index, e.target.value)}
 							/>
 							<StandardTooltip content={t("settings:common.remove")}>
-								<VSCodeButton appearance="icon" onClick={() => handleRemoveCustomHeader(index)}>
+								<ThemedButton appearance="icon" onClick={() => handleRemoveCustomHeader(index)}>
 									<span className="codicon codicon-trash"></span>
-								</VSCodeButton>
+								</ThemedButton>
 							</StandardTooltip>
 						</div>
 					))
