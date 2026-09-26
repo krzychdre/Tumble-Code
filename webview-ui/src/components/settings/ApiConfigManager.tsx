@@ -1,5 +1,4 @@
 import { memo, useEffect, useRef, useState } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { AlertTriangle } from "lucide-react"
 
 import type { ProviderSettingsEntry, OrganizationAllowList } from "@roo-code/types"
@@ -14,6 +13,7 @@ import {
 	DialogTitle,
 	StandardTooltip,
 	SearchableSelect,
+	ThemedTextField,
 } from "@/components/ui"
 
 interface ApiConfigManagerProps {
@@ -187,7 +187,7 @@ const ApiConfigManager = ({
 			{isRenaming ? (
 				<div data-testid="rename-form">
 					<div className="flex items-center gap-1">
-						<VSCodeTextField
+						<ThemedTextField
 							ref={inputRef}
 							value={inputValue}
 							onInput={(e: unknown) => {

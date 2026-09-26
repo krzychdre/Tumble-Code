@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { LabeledCheckbox, ThemedDropdown, ThemedOption } from "@src/components/ui"
+import { LabeledCheckbox, ThemedDropdown, ThemedOption, ThemedTextField } from "@src/components/ui"
 import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider } from "@roo-code/types"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -90,7 +89,7 @@ export const ImageGenerationSettings = ({
 						<label className="block font-medium mb-1">
 							{t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyLabel")}
 						</label>
-						<VSCodeTextField
+						<ThemedTextField
 							value={openRouterImageApiKey || ""}
 							onInput={(e: any) => handleApiKeyChange(e.target.value)}
 							placeholder={t("settings:experimental.IMAGE_GENERATION.openRouterApiKeyPlaceholder")}

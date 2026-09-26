@@ -1,9 +1,9 @@
 import { useCallback } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import type { ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedTextField } from "@src/components/ui"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
 import { inputEventTransform } from "../transforms"
@@ -72,14 +72,14 @@ export const ApiKeyField = ({
 
 	const trio = (
 		<>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiKey || ""}
 				type="password"
 				onInput={handleInputChange(field)}
 				placeholder={t("settings:placeholders.apiKey")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t(labelKey)}</label>
-			</VSCodeTextField>
+			</ThemedTextField>
 			<div
 				className={
 					grouped

@@ -1,8 +1,7 @@
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-
 import { type RouterModels, mistralDefaultModelId } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedTextField } from "@src/components/ui"
 
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
 
@@ -29,14 +28,14 @@ export const Mistral = ({ apiConfiguration, setApiConfigurationField }: MistralP
 			{(apiConfiguration?.apiModelId?.startsWith("codestral-") ||
 				(!apiConfiguration?.apiModelId && mistralDefaultModelId.startsWith("codestral-"))) && (
 				<>
-					<VSCodeTextField
+					<ThemedTextField
 						value={apiConfiguration?.mistralCodestralUrl || ""}
 						type="url"
 						onInput={handleInputChange("mistralCodestralUrl")}
 						placeholder="https://codestral.mistral.ai"
 						className="w-full">
 						<label className="block font-medium mb-1">{t("settings:providers.codestralBaseUrl")}</label>
-					</VSCodeTextField>
+					</ThemedTextField>
 					<div className="text-sm text-vscode-descriptionForeground -mt-2">
 						{t("settings:providers.codestralBaseUrlDesc")}
 					</div>

@@ -1,6 +1,5 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { WEB_TOOLS_DEFAULTS } from "@roo-code/types"
 
@@ -8,7 +7,7 @@ import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { Slider, LabeledCheckbox } from "@/components/ui"
+import { Slider, LabeledCheckbox, ThemedTextField } from "@/components/ui"
 
 type WebToolsSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	webToolsEnabled?: boolean
@@ -55,7 +54,7 @@ export const WebToolsSettings = ({
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:web.searxngBaseUrl.label")}
 							</label>
-							<VSCodeTextField
+							<ThemedTextField
 								value={searxngBaseUrl ?? ""}
 								placeholder={t("settings:web.searxngBaseUrl.placeholder")}
 								onInput={(e: any) => {

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { ChevronDown, X, Upload, Download } from "lucide-react"
 
@@ -41,6 +40,7 @@ import {
 	Link,
 	LabeledCheckbox,
 	ThemedTextArea,
+	ThemedTextField,
 } from "@src/components/ui"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 import McpServerRestriction from "@src/components/modes/McpServerRestriction"
@@ -456,7 +456,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 					<div className="flex items-center gap-1 mb-3">
 						{isRenamingMode ? (
 							<>
-								<VSCodeTextField
+								<ThemedTextField
 									ref={renameInputRef}
 									value={renameInputValue}
 									onInput={(e: unknown) => {
@@ -757,7 +757,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 					<div className="text-sm text-vscode-descriptionForeground mb-2">
 						{t("prompts:description.description")}
 					</div>
-					<VSCodeTextField
+					<ThemedTextField
 						value={(() => {
 							const customMode = findModeBySlug(visualMode, customModes)
 							const prompt = customModePrompts?.[visualMode] as PromptComponent

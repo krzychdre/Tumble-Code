@@ -14,6 +14,7 @@ import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import ApiOptions from "../ApiOptions"
 import { MODELS_BY_PROVIDER } from "../constants"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock the extension state context
 vi.mock("@src/context/ExtensionStateContext", () => ({
@@ -64,6 +65,8 @@ vi.mock("@src/components/ui/hooks/useOpenRouterModelProviders", () => ({
 
 // Mock the SearchableSelect component to capture the options passed to it
 vi.mock("@src/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,

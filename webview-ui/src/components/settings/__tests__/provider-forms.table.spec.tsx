@@ -19,21 +19,6 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ children, value, onInput, onBlur, placeholder, type, className }: any) => (
-		<div data-testid="vscode-text-field" data-type={type} data-class={className}>
-			{children}
-			<input
-				type={type}
-				value={value}
-				placeholder={placeholder}
-				onChange={(e) => onInput?.(e)}
-				onBlur={(e) => onBlur?.(e)}
-			/>
-		</div>
-	),
-}))
-
 vi.mock("vscrui", () => ({
 	Checkbox: ({ children, checked, onChange }: any) => (
 		<label>
@@ -253,7 +238,7 @@ const renderForm = (provider: FormProvider, apiConfiguration: ProviderSettings =
 }
 
 const textFieldByLabel = (label: string) => {
-	const field = screen.getByText(label).closest<HTMLElement>('[data-testid="vscode-text-field"]')
+	const field = screen.getByText(label).closest<HTMLElement>(".ui-text-field")
 	if (!field) {
 		throw new Error(`no text field labelled ${label}`)
 	}
@@ -273,7 +258,7 @@ describe("provider forms table", () => {
 		const { setApiConfigurationField } = renderForm(provider, config)
 
 		const input = textFieldByLabel(label).querySelector("input")!
-		fireEvent.change(input, { target: { value: "typed-secret" } })
+		fireEvent.input(input, { target: { value: "typed-secret" } })
 
 		expect(setApiConfigurationField).toHaveBeenCalledWith(field, "typed-secret")
 		expect(setApiConfigurationField.mock.calls.filter(([key]) => key === field)).toEqual([[field, "typed-secret"]])
@@ -289,7 +274,7 @@ describe("provider forms table", () => {
 	it.each(withoutCredential)("%s: renders without a typed credential field", (provider) => {
 		const { container } = renderForm(provider)
 		expect(container).not.toBeEmptyDOMElement()
-		expect(container.querySelector('[data-testid="vscode-text-field"][data-type="password"]')).toBeNull()
+		expect(container.querySelector('input.ui-text-field-control[type="password"]')).toBeNull()
 	})
 
 	const trioCases = Object.entries(keyTrios).flatMap(([provider, cases]) =>
@@ -300,8 +285,8 @@ describe("provider forms table", () => {
 		renderForm(provider, trio.config)
 
 		const field = textFieldByLabel(trio.labelKey)
-		expect(field).toHaveAttribute("data-type", "password")
-		expect(field).toHaveAttribute("data-class", "w-full")
+		expect(field.querySelector("input")).toHaveAttribute("type", "password")
+		expect(field).toHaveClass("ui-text-field", "w-full")
 		expect(field.querySelector("input")).toHaveAttribute("placeholder", "settings:placeholders.apiKey")
 		expect(field.querySelector("input")).toHaveValue("")
 

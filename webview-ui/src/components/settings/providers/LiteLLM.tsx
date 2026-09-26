@@ -1,11 +1,10 @@
 import { useCallback, useState, useEffect } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { type OrganizationAllowList, litellmDefaultModelId } from "@roo-code/types"
 
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, LabeledCheckbox } from "@src/components/ui"
+import { Button, LabeledCheckbox, ThemedTextField } from "@src/components/ui"
 
 import { ModelPicker } from "../ModelPicker"
 import { type ProviderFormProps, useProviderField } from "./shared"
@@ -63,22 +62,22 @@ export const LiteLLM = ({
 
 	return (
 		<>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.litellmBaseUrl || ""}
 				onInput={handleInputChange("litellmBaseUrl")}
 				placeholder={t("settings:placeholders.baseUrl")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t("settings:providers.litellmBaseUrl")}</label>
-			</VSCodeTextField>
+			</ThemedTextField>
 
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.litellmApiKey || ""}
 				type="password"
 				onInput={handleInputChange("litellmApiKey")}
 				placeholder={t("settings:placeholders.apiKey")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t("settings:providers.litellmApiKey")}</label>
-			</VSCodeTextField>
+			</ThemedTextField>
 
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.apiKeyStorageNotice")}

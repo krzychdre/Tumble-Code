@@ -21,6 +21,7 @@ vi.mock("@src/utils/vscode", () => ({
 import SettingsView from "../SettingsView"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock the extension state context
 vi.mock("@src/context/ExtensionStateContext", () => ({
@@ -36,6 +37,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 // Mock UI components
 vi.mock("@src/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,

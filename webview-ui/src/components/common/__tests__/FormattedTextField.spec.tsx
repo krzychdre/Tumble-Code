@@ -3,19 +3,6 @@ import { render, screen, fireEvent } from "@testing-library/react"
 import { FormattedTextField, unlimitedIntegerFormatter, unlimitedDecimalFormatter } from "../FormattedTextField"
 
 // Mock VSCodeTextField to render as regular HTML input for testing
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ value, onInput, onBlur, placeholder, "data-testid": dataTestId }: any) => (
-		<input
-			type="text"
-			value={value}
-			onChange={(e) => onInput({ target: { value: e.target.value } })}
-			onBlur={onBlur}
-			placeholder={placeholder}
-			data-testid={dataTestId}
-		/>
-	),
-}))
-
 describe("FormattedTextField", () => {
 	describe("unlimitedIntegerFormatter", () => {
 		it("should parse valid integers", () => {

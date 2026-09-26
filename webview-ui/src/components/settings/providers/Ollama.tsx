@@ -1,7 +1,7 @@
 import { useMemo } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedTextField } from "@src/components/ui"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { ModelPicker } from "../ModelPicker"
@@ -39,16 +39,16 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 
 	return (
 		<>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.ollamaBaseUrl || ""}
 				type="url"
 				onInput={handleInputChange("ollamaBaseUrl")}
 				placeholder={t("settings:defaults.ollamaUrl")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t("settings:providers.ollama.baseUrl")}</label>
-			</VSCodeTextField>
+			</ThemedTextField>
 			{apiConfiguration?.ollamaBaseUrl && (
-				<VSCodeTextField
+				<ThemedTextField
 					value={apiConfiguration?.ollamaApiKey || ""}
 					type="password"
 					onInput={handleInputChange("ollamaApiKey")}
@@ -58,7 +58,7 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 					<div className="text-xs text-vscode-descriptionForeground mt-1">
 						{t("settings:providers.ollama.apiKeyHelp")}
 					</div>
-				</VSCodeTextField>
+				</ThemedTextField>
 			)}
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
@@ -71,7 +71,7 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 				errorMessage={modelNotAvailableError}
 				hidePricing
 			/>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.ollamaNumCtx?.toString() || ""}
 				onInput={(e) => {
 					const value = (e.target as HTMLInputElement)?.value
@@ -90,7 +90,7 @@ export const Ollama = ({ apiConfiguration, setApiConfigurationField }: OllamaPro
 				<div className="text-xs text-vscode-descriptionForeground mt-1">
 					{t("settings:providers.ollama.numCtxHelp")}
 				</div>
-			</VSCodeTextField>
+			</ThemedTextField>
 			<div className="text-sm text-vscode-descriptionForeground">
 				{t("settings:providers.ollama.description")}
 				<span className="text-vscode-errorForeground ml-1">{t("settings:providers.ollama.warning")}</span>

@@ -3,22 +3,14 @@
 import { render, screen, fireEvent, within } from "@/utils/test-utils"
 
 import ApiConfigManager from "../ApiConfigManager"
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock VSCode components
-vitest.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ value, onInput, placeholder, onKeyDown, "data-testid": dataTestId }: any) => (
-		<input
-			value={value}
-			onChange={(e) => onInput(e)}
-			placeholder={placeholder}
-			onKeyDown={onKeyDown}
-			data-testid={dataTestId}
-			ref={undefined} // Explicitly set ref to undefined to avoid warning
-		/>
-	),
-}))
+vitest.mock("@vscode/webview-ui-toolkit/react", () => ({}))
 
 vitest.mock("@/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	...vitest.importActual("@/components/ui"),
 	Dialog: ({ children, open }: any) => (
 		<div role="dialog" aria-modal="true" style={{ display: open ? "block" : "none" }} data-testid="dialog">

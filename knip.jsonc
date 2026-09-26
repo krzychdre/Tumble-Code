@@ -47,6 +47,10 @@
 			"ignoreDependencies": [
 				// Runtime that babel-plugin-react-compiler injects into compiled components.
 				"react-compiler-runtime",
+				// DEP-9: no component imports the deprecated toolkit any more; only spec
+				// mocks and characterization specs still name it. The next DEP-9 step
+				// removes the dependency and this entry together.
+				"@vscode/webview-ui-toolkit",
 			],
 		},
 		"apps/cli": {

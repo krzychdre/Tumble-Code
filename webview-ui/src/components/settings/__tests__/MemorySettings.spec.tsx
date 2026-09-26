@@ -3,27 +3,18 @@
 import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
 import { MemorySettings } from "../MemorySettings"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock the translation hook — return the key so assertions can match on it.
 vi.mock("@/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ value, onInput, placeholder, "data-testid": dataTestId }: any) => (
-		<input
-			type="text"
-			data-testid={dataTestId ?? "memory-directory-input"}
-			value={value ?? ""}
-			placeholder={placeholder}
-			onInput={(e: any) => onInput?.({ target: { value: e.target.value } })}
-		/>
-	),
-}))
-
 // Mock the UI components used by MemorySettings. SelectValue renders nothing —
 // the real Radix SelectValue is a display slot, not an option.
 vi.mock("@/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,

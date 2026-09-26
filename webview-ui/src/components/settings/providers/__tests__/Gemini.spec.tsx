@@ -2,15 +2,6 @@ import { render, screen } from "@testing-library/react"
 import { Gemini } from "../Gemini"
 import type { ProviderSettings } from "@roo-code/types"
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ children, value, onInput, type }: any) => (
-		<div>
-			{children}
-			<input type={type} value={value} onChange={(e) => onInput(e)} />
-		</div>
-	),
-}))
-
 vi.mock("vscrui", () => ({
 	Checkbox: ({ children, checked, onChange, "data-testid": testId, _ }: any) => (
 		<label data-testid={testId}>

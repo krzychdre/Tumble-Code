@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Trans } from "react-i18next"
 import { z } from "zod"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import {
@@ -39,6 +38,7 @@ import {
 	Link,
 	LabeledCheckbox,
 	ThemedButton,
+	ThemedTextField,
 } from "@src/components/ui"
 import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
@@ -600,7 +600,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 										<label className="text-sm font-medium">
 											{t("settings:codeIndex.qdrantUrlLabel")}
 										</label>
-										<VSCodeTextField
+										<ThemedTextField
 											value={currentSettings.codebaseIndexQdrantUrl || ""}
 											onInput={(e: any) =>
 												updateSetting("codebaseIndexQdrantUrl", e.target.value)
@@ -627,7 +627,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 										<label className="text-sm font-medium">
 											{t("settings:codeIndex.qdrantApiKeyLabel")}
 										</label>
-										<VSCodeTextField
+										<ThemedTextField
 											type="password"
 											value={currentSettings.codeIndexQdrantApiKey || ""}
 											onInput={(e: any) => updateSetting("codeIndexQdrantApiKey", e.target.value)}

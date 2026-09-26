@@ -1,11 +1,18 @@
 import { useState } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import type { ModelInfo, ProviderSettings } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StandardTooltip } from "@src/components/ui"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	StandardTooltip,
+	ThemedTextField,
+} from "@src/components/ui"
 
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
 
@@ -38,7 +45,7 @@ export const OpenAI = ({ apiConfiguration, setApiConfigurationField, selectedMod
 			</Checkbox>
 			{openAiNativeBaseUrlSelected && (
 				<>
-					<VSCodeTextField
+					<ThemedTextField
 						value={apiConfiguration?.openAiNativeBaseUrl || ""}
 						type="url"
 						onInput={handleInputChange("openAiNativeBaseUrl")}

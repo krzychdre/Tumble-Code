@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import {
 	type ModelInfo,
@@ -11,7 +10,7 @@ import {
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, StandardTooltip, ThemedButton } from "@src/components/ui"
+import { Button, StandardTooltip, ThemedButton, ThemedTextField } from "@src/components/ui"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 
 import { convertHeadersToObject } from "../utils/headers"
@@ -106,22 +105,22 @@ export const OpenAICompatible = ({
 
 	return (
 		<>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.openAiBaseUrl || ""}
 				type="url"
 				onInput={handleInputChange("openAiBaseUrl")}
 				placeholder={t("settings:placeholders.baseUrl")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t("settings:providers.openAiBaseUrl")}</label>
-			</VSCodeTextField>
-			<VSCodeTextField
+			</ThemedTextField>
+			<ThemedTextField
 				value={apiConfiguration?.openAiApiKey || ""}
 				type="password"
 				onInput={handleInputChange("openAiApiKey")}
 				placeholder={t("settings:placeholders.apiKey")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t("settings:providers.apiKey")}</label>
-			</VSCodeTextField>
+			</ThemedTextField>
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField}
@@ -171,7 +170,7 @@ export const OpenAICompatible = ({
 					{t("settings:modelInfo.azureApiVersion")}
 				</Checkbox>
 				{azureApiVersionSelected && (
-					<VSCodeTextField
+					<ThemedTextField
 						value={apiConfiguration?.azureApiVersion || ""}
 						onInput={handleInputChange("azureApiVersion")}
 						placeholder={`Default: ${azureOpenAiDefaultApiVersion}`}
@@ -197,13 +196,13 @@ export const OpenAICompatible = ({
 				) : (
 					customHeaders.map(([key, value], index) => (
 						<div key={index} className="flex items-center mb-2">
-							<VSCodeTextField
+							<ThemedTextField
 								value={key}
 								className="flex-1 mr-2"
 								placeholder={t("settings:providers.headerName")}
 								onInput={(e: any) => handleUpdateHeaderKey(index, e.target.value)}
 							/>
-							<VSCodeTextField
+							<ThemedTextField
 								value={value}
 								className="flex-1 mr-2"
 								placeholder={t("settings:providers.headerValue")}
@@ -264,7 +263,7 @@ export const OpenAICompatible = ({
 				</div>
 
 				<div>
-					<VSCodeTextField
+					<ThemedTextField
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.maxTokens?.toString() ||
 							openAiModelInfoSaneDefaults.maxTokens?.toString() ||
@@ -295,14 +294,14 @@ export const OpenAICompatible = ({
 						<label className="block font-medium mb-1">
 							{t("settings:providers.customModel.maxTokens.label")}
 						</label>
-					</VSCodeTextField>
+					</ThemedTextField>
 					<div className="text-sm text-vscode-descriptionForeground">
 						{t("settings:providers.customModel.maxTokens.description")}
 					</div>
 				</div>
 
 				<div>
-					<VSCodeTextField
+					<ThemedTextField
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.contextWindow?.toString() ||
 							openAiModelInfoSaneDefaults.contextWindow?.toString() ||
@@ -334,7 +333,7 @@ export const OpenAICompatible = ({
 						<label className="block font-medium mb-1">
 							{t("settings:providers.customModel.contextWindow.label")}
 						</label>
-					</VSCodeTextField>
+					</ThemedTextField>
 					<div className="text-sm text-vscode-descriptionForeground">
 						{t("settings:providers.customModel.contextWindow.description")}
 					</div>
@@ -394,7 +393,7 @@ export const OpenAICompatible = ({
 				</div>
 
 				<div>
-					<VSCodeTextField
+					<ThemedTextField
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.inputPrice?.toString() ??
 							openAiModelInfoSaneDefaults.inputPrice?.toString() ??
@@ -434,11 +433,11 @@ export const OpenAICompatible = ({
 								/>
 							</StandardTooltip>
 						</div>
-					</VSCodeTextField>
+					</ThemedTextField>
 				</div>
 
 				<div>
-					<VSCodeTextField
+					<ThemedTextField
 						value={
 							apiConfiguration?.openAiCustomModelInfo?.outputPrice?.toString() ||
 							openAiModelInfoSaneDefaults.outputPrice?.toString() ||
@@ -478,13 +477,13 @@ export const OpenAICompatible = ({
 								/>
 							</StandardTooltip>
 						</div>
-					</VSCodeTextField>
+					</ThemedTextField>
 				</div>
 
 				{apiConfiguration?.openAiCustomModelInfo?.supportsPromptCache && (
 					<>
 						<div>
-							<VSCodeTextField
+							<ThemedTextField
 								value={apiConfiguration?.openAiCustomModelInfo?.cacheReadsPrice?.toString() ?? "0"}
 								type="text"
 								style={{
@@ -523,10 +522,10 @@ export const OpenAICompatible = ({
 										/>
 									</StandardTooltip>
 								</div>
-							</VSCodeTextField>
+							</ThemedTextField>
 						</div>
 						<div>
-							<VSCodeTextField
+							<ThemedTextField
 								value={apiConfiguration?.openAiCustomModelInfo?.cacheWritesPrice?.toString() ?? "0"}
 								type="text"
 								style={{
@@ -565,7 +564,7 @@ export const OpenAICompatible = ({
 										/>
 									</StandardTooltip>
 								</div>
-							</VSCodeTextField>
+							</ThemedTextField>
 						</div>
 					</>
 				)}

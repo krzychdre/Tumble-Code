@@ -4,8 +4,6 @@ import { DeleteTaskDialog } from "./DeleteTaskDialog"
 import { BatchDeleteTaskDialog } from "./BatchDeleteTaskDialog"
 import { Virtuoso } from "react-virtuoso"
 
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-
 import {
 	Button,
 	Checkbox,
@@ -15,6 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 	StandardTooltip,
+	ThemedTextField,
 } from "@/components/ui"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -133,7 +132,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 					</StandardTooltip>
 				</div>
 				<div className="flex flex-col gap-2">
-					<VSCodeTextField
+					<ThemedTextField
 						className="w-full"
 						placeholder={t("history:searchPlaceholder")}
 						value={searchQuery}
@@ -155,7 +154,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 								slot="end"
 							/>
 						)}
-					</VSCodeTextField>
+					</ThemedTextField>
 					<div className="flex gap-2">
 						<Select
 							value={showAllWorkspaces ? "all" : "current"}

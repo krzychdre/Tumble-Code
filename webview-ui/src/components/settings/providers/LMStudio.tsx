@@ -1,8 +1,7 @@
 import { useMemo } from "react"
 import { Trans } from "react-i18next"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { Link } from "@src/components/ui"
+import { Link, ThemedTextField } from "@src/components/ui"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
@@ -59,14 +58,14 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 
 	return (
 		<>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.lmStudioBaseUrl || ""}
 				type="url"
 				onInput={handleInputChange("lmStudioBaseUrl")}
 				placeholder={t("settings:defaults.lmStudioUrl")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t("settings:providers.lmStudio.baseUrl")}</label>
-			</VSCodeTextField>
+			</ThemedTextField>
 			<ModelPicker
 				apiConfiguration={apiConfiguration}
 				setApiConfigurationField={setApiConfigurationField}

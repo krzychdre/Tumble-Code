@@ -1,10 +1,17 @@
 import React, { useState } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { type GroupEntry, type McpServer, type ModeConfig, modeConfigSchema } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, Input, LabeledCheckbox, ThemedRadio, ThemedRadioGroup, ThemedTextArea } from "@src/components/ui"
+import {
+	Button,
+	Input,
+	LabeledCheckbox,
+	ThemedRadio,
+	ThemedRadioGroup,
+	ThemedTextArea,
+	ThemedTextField,
+} from "@src/components/ui"
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 
 import { availableGroups, getGroupName } from "./modeGroups"
@@ -178,7 +185,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.description.description")}
 						</div>
-						<VSCodeTextField
+						<ThemedTextField
 							value={description}
 							onChange={(e) => setDescription((e.target as HTMLInputElement).value)}
 							className="w-full"
