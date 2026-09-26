@@ -112,6 +112,16 @@ Python `task_summary.py:181-217`. **Change:** one shared fixture file (input mes
 vitest, pytest and a browser check. No cross-language code generation. Also the gate for zod 4 (DEP-8). **Size** M,
 no risk.
 
+**Status CAPI-M8:** DONE 2026-09-26, #444 (merge be1adbf47), test-only: `self-hosted-cloudapi/tests/fixtures/token_usage_golden.json`
+(19 cases, TypeScript values authoritative) checked by vitest (`consolidateTokenUsage.golden.spec.ts` in
+`packages/core`), pytest (`test_token_golden_fixtures.py`, sum of `message_metrics`) and headless Chrome
+(`tests/browser/token_golden.js` against `render.js` `getMetrics`); pytest 561 to 580 plus 2 strict xfails. Known
+divergences recorded in the fixture: (1) Python truncates fractional tokens (harmless, tokens are integers);
+(2) Python raises on `NaN` in the request text, which would crash a whole backfill (fix branch
+`fix/capi-backfill-nan-tokens`); (3) `render.js` picks contextTokens by highest `ts`, TypeScript by array order;
+(4) `render.js` counts two requests with the same `ts` once (rows are keyed by `ts`). (3) and (4) are display-only
+edge cases, left as they are.
+
 ### CAPI-M10 Guard against model and migration drift
 
 No test touches `db_bootstrap` or alembic. **Change:** test `classify_and_seed` for its three states (fresh,
