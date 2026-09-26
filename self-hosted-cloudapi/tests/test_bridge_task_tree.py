@@ -13,12 +13,18 @@ claims its waiting children. The permutation tests below pin that the final
 linkage is the same for every ordering; the counting tests pin that a chunk for
 a task that already exists runs no tree-link queries at all, because nothing a
 chunk carries can change the link.
+
+``tasks.parent_task_id`` is a foreign key to ``tasks.id``. Postgres enforces it,
+SQLite does not unless the connection asks for it, so every test here runs with
+``PRAGMA foreign_keys=ON``: without it an ordering that writes a parent id before
+the parent row exists passes here and fails in production (DEF-C47).
 """
 
 import itertools
 
 import pytest
-from sqlalchemy import event, select
+from sqlalchemy import event, select, text
+from sqlalchemy.exc import IntegrityError
 
 from src.models.relation import TaskRelation
 from src.models.task import Task
@@ -46,6 +52,19 @@ def _clean_registry():
     registry._ext_sid_by_user.clear()
     registry._instance_by_user.clear()
     registry._task_access_by_sid.clear()
+
+
+@pytest.fixture(autouse=True)
+async def _enforce_foreign_keys(test_engine):
+    """Make SQLite enforce foreign keys the way Postgres does.
+
+    The test engine keeps one in-memory connection (StaticPool), so switching
+    the pragma on once covers every session of the test. SQLite ignores the
+    pragma inside a transaction, hence the check that it really took effect.
+    """
+    async with test_engine.connect() as conn:
+        await conn.exec_driver_sql("PRAGMA foreign_keys=ON")
+        assert (await conn.exec_driver_sql("PRAGMA foreign_keys")).scalar() == 1
 
 
 @pytest.fixture
@@ -130,6 +149,44 @@ async def _parent_of(session_factory, task_id: str):
         return (
             await db.execute(select(Task.parent_task_id).where(Task.id == task_id))
         ).scalar_one()
+
+
+async def test_the_test_database_enforces_the_parent_foreign_key(bridge):
+    """Guard for the fixture above: a parent id that names no row is refused,
+    as Postgres refuses it. If this passes vacuously, the ordering tests below
+    cannot catch a write that only Postgres would reject."""
+    async with bridge() as db:
+        db.add(Task(id=CHILD, user_id=USER, parent_task_id="no-such-task"))
+        with pytest.raises(IntegrityError):
+            await db.flush()
+
+
+async def test_a_relation_for_a_stored_child_whose_parent_is_not_stored_yet_is_kept(bridge):
+    """DEF-C47: the child streams (its row exists), then its relation event
+    arrives while the parent has no row yet. Stamping the child's
+    ``parent_task_id`` then would violate the foreign key and roll back the
+    whole telemetry request, losing the event and the relation with it. The
+    event and the relation must be stored, the child left unstamped for now,
+    and the parent's first chunk must claim it."""
+    await _stream(CHILD, 200)
+    await _relation(bridge, CHILD, PARENT)
+
+    async with bridge() as db:
+        relation = (
+            await db.execute(
+                select(TaskRelation.parent_task_id).where(TaskRelation.child_task_id == CHILD)
+            )
+        ).scalar_one_or_none()
+        events = (
+            await db.execute(text("SELECT count(*) FROM telemetry_events WHERE task_id = :t"), {"t": CHILD})
+        ).scalar_one()
+    assert relation == PARENT
+    assert events == 1
+    assert await _parent_of(bridge, CHILD) is None
+
+    await _stream(PARENT, 100)
+
+    assert await _parent_of(bridge, CHILD) == PARENT
 
 
 STEPS = ("parent_streams", "child_streams", "relation")
