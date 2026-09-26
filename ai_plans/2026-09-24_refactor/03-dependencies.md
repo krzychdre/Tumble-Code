@@ -504,3 +504,13 @@ error texts byte-identical; excess arguments now error, including options after 
 dropped (`tumble "prompt" -p` ignored `-p` because the root command uses `passThroughOptions`); README examples
 fixed. Follow-up CLI-F1: decide whether options after the prompt should work (drop root `passThroughOptions`,
 keep `enablePositionalOptions` for `list`).
+
+**Status (2026-09-26):** `@vitejs/plugin-react` 5.2 to 6.1.1 #496 (`06008110a`): React Compiler via
+`@rolldown/plugin-babel` + `reactCompilerPreset({ target: "18" })` (switch the target with React 19), bailout
+script loads Babel the same way (still 8), production webview build byte-identical (841 files). DEP-9
+`VSCodeTextArea` #497 (`39e06021b`): real bug fixed, the toolkit's React wrapper rewrote `value` on every
+re-render, so ModesView prompt typing was lost or old text saved when a state push arrived (regression spec fails
+on main); `onChange` keeps the toolkit's on-leave semantics, `onInput` per keystroke. CLI ink 6.6.0 to 7.1.1
+(exact pin) #498 (`5f55c6a9c`): tests only, full CLI suite 1,297; real-pty A/B (main build, ink 7 dist, build.sh
+tarball in a temp dir): same transcript, no staircase, ghost rows or duplicates; one extra non-accumulating blank
+row under the footer after a turn settles (being investigated as `fix/cli-ink7-extra-footer-row`).
