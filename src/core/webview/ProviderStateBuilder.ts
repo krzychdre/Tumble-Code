@@ -215,7 +215,9 @@ function resolveCommandList(key: "allowedCommands" | "deniedCommands", globalSta
 		const scopes = vscode.workspace.getConfiguration(Package.name).inspect<string[]>(key)
 		const fromSettings =
 			key === "deniedCommands"
-				? [scopes?.globalValue, scopes?.workspaceValue, scopes?.workspaceFolderValue].flatMap(sanitizeCommandList)
+				? [scopes?.globalValue, scopes?.workspaceValue, scopes?.workspaceFolderValue].flatMap(
+						sanitizeCommandList,
+					)
 				: sanitizeCommandList(scopes?.globalValue)
 		return [...new Set([...fromGlobalState, ...fromSettings])]
 	} catch (error) {
@@ -469,7 +471,11 @@ export class ProviderStateBuilder {
 
 		const revision = typeof taskHistoryStore.revision === "number" ? taskHistoryStore.revision : undefined
 
-		if (includeTaskHistory === "whenChanged" && revision !== undefined && revision === this.viewTaskHistoryRevision) {
+		if (
+			includeTaskHistory === "whenChanged" &&
+			revision !== undefined &&
+			revision === this.viewTaskHistoryRevision
+		) {
 			return { items: undefined, revision }
 		}
 

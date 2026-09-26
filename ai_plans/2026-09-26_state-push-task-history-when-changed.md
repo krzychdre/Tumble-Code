@@ -30,10 +30,10 @@ real items, counted by `perfCounters` (`statePostBytes`): webview launch,
 three settings pushes, one history write (`updateTaskHistory`), three more
 pushes (7 full pushes):
 
-| | bytes posted in `state` messages | pushes carrying the history |
-| --- | ---: | ---: |
-| before | 31,533,271 | 7 |
-| after | 9,039,811 | 2 (launch, after the write) |
+|        | bytes posted in `state` messages | pushes carrying the history |
+| ------ | -------------------------------: | --------------------------: |
+| before |                       31,533,271 |                           7 |
+| after  |                        9,039,811 | 2 (launch, after the write) |
 
 A full push with an unchanged history shrinks from about 4,504,753 bytes to
 about 6,075 bytes (the rest of the state).
