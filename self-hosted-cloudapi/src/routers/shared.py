@@ -17,7 +17,12 @@ from src.database import get_db
 from src.services.task_access import ShareVerdict, shared_view_access
 from src.services.task_summary import derive_title
 from src.utils.json_script import json_for_script
-from src.web.presenters.task_detail import _load_task_messages, _model_context, _spend_summary
+from src.web.presenters.task_detail import (
+    _load_task_messages,
+    _model_context,
+    _spend_summary,
+    conversation_json,
+)
 from src.web.templating import templates
 
 router = APIRouter(tags=["web"])
@@ -53,7 +58,7 @@ async def shared_task(
             "user": user,
             "task": {"id": task_id},
             "title": (task.title if task is not None else None) or derive_title(messages),
-            "messages_json": json_for_script(messages),
+            "messages_json": await conversation_json(messages),
             # Provenance travels with the transcript: a reader of a shared run
             # should be able to see what produced it, not just what it said.
             **await _model_context(

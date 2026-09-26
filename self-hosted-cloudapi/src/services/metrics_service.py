@@ -19,8 +19,9 @@ dialect-portable. Event names, kinds, labels and the payload decoding come from
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Iterable, Optional, Sequence
 
+import anyio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,9 +81,20 @@ def _event_ts_ms(props: dict, fallback: datetime) -> float:
     return fallback.timestamp() * 1000.0
 
 
-async def _embedding_totals(
+async def _embedding_payloads(
     db: AsyncSession, user_id: str, start: Optional[datetime]
-) -> dict:
+) -> list:
+    """The ``properties`` blobs of the user's embedding events in the period."""
+    stmt = select(TelemetryEvent.properties).where(
+        TelemetryEvent.user_id == user_id,
+        TelemetryEvent.event_type == EMBEDDING_EVENT,
+    )
+    if start is not None:
+        stmt = stmt.where(TelemetryEvent.created_at >= start)
+    return [payload for (payload,) in (await db.execute(stmt)).all()]
+
+
+def _embedding_totals(payloads: Iterable) -> dict:
     """Tokens spent on code-index embeddings in the period, by source.
 
     Reported apart from the completion totals rather than inside them. An index
@@ -90,17 +102,9 @@ async def _embedding_totals(
     large enough to hide everything it sits next to; the question it answers
     ("what is indexing costing me?") is also a different question.
     """
-    stmt = select(TelemetryEvent.properties).where(
-        TelemetryEvent.user_id == user_id,
-        TelemetryEvent.event_type == EMBEDDING_EVENT,
-    )
-    if start is not None:
-        stmt = stmt.where(TelemetryEvent.created_at >= start)
-
     total = 0
     calls = 0
     by_source: dict[str, dict] = {}
-    payloads = (payload for (payload,) in (await db.execute(stmt)).all())
     for props in iter_event_props(payloads):
         tokens = int(_num(props.get("promptTokens")))
         total += tokens
@@ -160,7 +164,28 @@ async def compute_user_metrics(
     stmt = stmt.order_by(TelemetryEvent.created_at)
 
     rows = (await db.execute(stmt)).all()
+    embedding_payloads = await _embedding_payloads(db, user_id, start)
 
+    # The loop below is pure Python over every completion in the period (about
+    # 58 ms for all time on the live deployment); in a worker thread it no
+    # longer holds up every other request while it runs.
+    return await anyio.to_thread.run_sync(
+        aggregate_user_metrics, rows, embedding_payloads, period, now
+    )
+
+
+def aggregate_user_metrics(
+    rows: Sequence[tuple],
+    embedding_payloads: Sequence,
+    period: str,
+    now: Optional[datetime] = None,
+) -> dict:
+    """The metrics page's figures from the fetched rows; see compute_user_metrics.
+
+    ``rows`` are ``(properties, created_at)`` pairs of the period's ``LLM
+    Completion`` events, oldest first; ``embedding_payloads`` the
+    ``properties`` of its embedding events. Pure: no database, no I/O.
+    """
     totals = {
         "input": 0,
         "output": 0,
@@ -243,7 +268,7 @@ async def compute_user_metrics(
     for row in kinds:
         row["label"] = KIND_LABELS.get(row["name"], row["name"])
     days = sorted(by_day.values(), key=lambda d: d["day"])
-    embeddings = await _embedding_totals(db, user_id, start)
+    embeddings = _embedding_totals(embedding_payloads)
 
     total_tokens = totals["input"] + totals["output"]
 

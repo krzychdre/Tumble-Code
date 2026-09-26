@@ -5,8 +5,10 @@ The shared-link page renders the same template, so it uses these too.
 """
 
 import json
-from typing import Optional
+from typing import Iterable, Optional
 
+import anyio
+from markupsafe import Markup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -138,18 +140,32 @@ def _spend_summary(task: Task, tree: dict[str, list[Task]]) -> dict:
 
 
 
-def _parse_messages(rows: list[TaskMessage]) -> list[dict]:
-    """Decode and sort stored TaskMessage rows into ClineMessage dicts."""
+def _parse_messages(payloads: Iterable[Optional[str]]) -> list[dict]:
+    """Decode and sort stored ``message_data`` blobs into ClineMessage dicts."""
     parsed: list[dict] = []
-    for row in rows:
+    for payload in payloads:
         try:
-            data = json.loads(row.message_data)
+            data = json.loads(payload)
         except (json.JSONDecodeError, TypeError):
             continue
         if isinstance(data, dict):
             parsed.append(data)
     parsed.sort(key=lambda m: m.get("ts", 0))
     return parsed
+
+
+def _conversation_json(messages: list[dict]) -> Markup:
+    """The page's ClineMessage[] island (the whole conversation)."""
+    return json_for_script(messages)
+
+
+async def conversation_json(messages: list[dict]) -> Markup:
+    """``_conversation_json`` in a worker thread.
+
+    A real conversation runs to 10 MB of JSON; serializing it on the event
+    loop would hold up every other request for as long as it takes.
+    """
+    return await anyio.to_thread.run_sync(_conversation_json, messages)
 
 
 async def _model_context(
@@ -177,7 +193,14 @@ async def _model_context(
 
 
 async def _load_task_messages(db: AsyncSession, task_id: str) -> list[dict]:
+    """The task's conversation, oldest first.
+
+    Only the JSON column is read, and it is decoded in a worker thread: the
+    decode is pure and grows with the conversation (10 MB for the largest
+    real one).
+    """
     result = await db.execute(
-        select(TaskMessage).where(TaskMessage.task_id == task_id)
+        select(TaskMessage.message_data).where(TaskMessage.task_id == task_id)
     )
-    return _parse_messages(list(result.scalars().all()))
+    payloads = [payload for (payload,) in result.all()]
+    return await anyio.to_thread.run_sync(_parse_messages, payloads)
