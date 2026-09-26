@@ -1,6 +1,7 @@
 import React from "react"
 import { useTranslation } from "react-i18next"
 import { vscode } from "@src/utils/vscode"
+import { toOpenFileLinkText } from "@src/utils/windows-file-links"
 import { StandardTooltip } from "@/components/ui"
 
 interface CodebaseSearchResultProps {
@@ -16,10 +17,9 @@ const CodebaseSearchResult: React.FC<CodebaseSearchResultProps> = ({ filePath, s
 	const { t } = useTranslation("chat")
 
 	const handleClick = () => {
-		console.log(filePath)
 		vscode.postMessage({
 			type: "openFile",
-			text: "./" + filePath,
+			text: toOpenFileLinkText(filePath),
 			values: {
 				line: startLine,
 			},

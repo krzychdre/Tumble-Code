@@ -1,6 +1,8 @@
 import { defaultUrlTransform } from "react-markdown"
 import { visit } from "unist-util-visit"
 
+import { isWindowsAbsolutePath } from "./windows-file-links"
+
 /**
  * Counts the number of markdown headings in the given text.
  * Matches headings from level 1 to 6 (e.g. #, ##, ###, etc.).
@@ -240,9 +242,11 @@ const FILE_WITH_LINE = /^[^:/?#]+\.[^:/?#]*:\d+(-\d+)?$/
  * react-markdown's urlTransform, widened to the links MarkdownBlock opens in the
  * editor. The default keeps http(s), mailto, irc(s), xmpp and relative URLs and
  * empties everything else, which also emptied "file:///abs/a.ts" and the
- * "README.md:6" links the system prompt asks for. Those two now pass for
- * links (href) only; javascript:, data:, vbscript: and every other scheme
- * stay empty.
+ * "README.md:6" links the system prompt asks for. Windows absolute paths are
+ * emptied too: the drive letter parses as a URL scheme ("C:" is not a known
+ * scheme), so "C:/Users/a.ts" never reaches the click handler. file:,
+ * file-with-line and Windows drive/UNC paths now pass for links (href) only;
+ * javascript:, data:, vbscript: and every other scheme stay empty.
  */
 export function markdownUrlTransform(url: string, key: string): string {
 	const safe = defaultUrlTransform(url)
@@ -251,5 +255,5 @@ export function markdownUrlTransform(url: string, key: string): string {
 		return safe
 	}
 
-	return /^file:/i.test(url) || FILE_WITH_LINE.test(url) ? url : ""
+	return /^file:/i.test(url) || FILE_WITH_LINE.test(url) || isWindowsAbsolutePath(url) ? url : ""
 }

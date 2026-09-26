@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm"
 
 import { vscode } from "@src/utils/vscode"
 import { type AlertType, markdownUrlTransform, remarkGithubAlerts, remarkSingleDollarMath } from "@src/utils/markdown"
+import { decodeFilePath, isWindowsAbsolutePath, toOpenFileLinkText } from "@src/utils/windows-file-links"
 
 import CodeBlock from "./CodeBlock"
 import MermaidBlock from "./MermaidBlock"
@@ -332,8 +333,13 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 			},
 			a: ({ href, children, ...props }: any) => {
 				const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-					// Only process file:// protocol or local file paths
-					const isLocalPath = href?.startsWith("file://") || href?.startsWith("/") || !href?.includes("://")
+					// Only process file:// protocol or local file paths (including
+					// Windows drive/UNC paths, which contain no "://").
+					const isLocalPath =
+						href?.startsWith("file://") ||
+						href?.startsWith("/") ||
+						isWindowsAbsolutePath(href ?? "") ||
+						!href?.includes("://")
 
 					if (!isLocalPath) {
 						return
@@ -341,8 +347,15 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 
 					e.preventDefault()
 
-					// Handle absolute vs project-relative paths
-					let filePath = href.replace("file://", "")
+					// Handle absolute vs project-relative paths. file:///C:/a.ts
+					// must strip exactly the "file://" scheme prefix (one slash),
+					// then drop the now-leading slash before the drive letter.
+					// Markdown percent-encodes backslashes (C:\Users arrives as
+					// C:%5CUsers), so decode before classifying the path.
+					let filePath = decodeFilePath(href.replace(/^file:\/\//, ""))
+					if (/^\/[a-zA-Z]:[\\/]/.test(filePath)) {
+						filePath = filePath.slice(1)
+					}
 
 					// Extract line number if present
 					const match = filePath.match(/(.*):(\d+)(-\d+)?$/)
@@ -352,10 +365,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 						values = { line: parseInt(match[2]) }
 					}
 
-					// Add ./ prefix if needed
-					if (!filePath.startsWith("/") && !filePath.startsWith("./")) {
-						filePath = "./" + filePath
-					}
+					filePath = toOpenFileLinkText(filePath)
 
 					vscode.postMessage({
 						type: "openFile",

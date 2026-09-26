@@ -8,6 +8,7 @@ import type { ClineMessage, ExtensionMessage } from "@roo-code/types"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui"
 import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
+import { toOpenFileLinkText } from "@src/utils/windows-file-links"
 
 import { fileChangesFromMessages, type FileChangeEntry } from "./utils/fileChangesFromMessages"
 import CodeAccordion from "../common/CodeAccordion"
@@ -168,7 +169,7 @@ const FileChangesPanel = memo(({ clineMessages, className }: FileChangesPanelPro
 											? () =>
 													vscode.postMessage({
 														type: "openFile",
-														text: path.startsWith("./") ? path : "./" + path,
+														text: toOpenFileLinkText(path),
 													})
 											: undefined
 									}

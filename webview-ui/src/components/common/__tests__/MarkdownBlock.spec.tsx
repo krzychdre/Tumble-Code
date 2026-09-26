@@ -345,6 +345,29 @@ describe("MarkdownBlock", () => {
 			],
 			["[README.md](README.md:6)", "README.md:6", { type: "openFile", text: "./README.md", values: { line: 6 } }],
 			["[f](src/a.ts:3)", "src/a.ts:3", { type: "openFile", text: "./src/a.ts", values: { line: 3 } }],
+			[
+				"[a](file:///C:/Users/test/app/a.ts)",
+				"file:///C:/Users/test/app/a.ts",
+				{ type: "openFile", text: "C:/Users/test/app/a.ts", values: undefined },
+			],
+			[
+				"[a](file:///C:/Users/test/app/a.ts:12)",
+				"file:///C:/Users/test/app/a.ts:12",
+				{ type: "openFile", text: "C:/Users/test/app/a.ts", values: { line: 12 } },
+			],
+			[
+				"[a](C:/Users/test/app/a.ts)",
+				"C:/Users/test/app/a.ts",
+				{ type: "openFile", text: "C:/Users/test/app/a.ts", values: undefined },
+			],
+			// Markdown percent-encodes backslashes in the destination, so the
+			// href attribute carries the encoded form while the click handler
+			// must decode it back before posting the openFile message.
+			[
+				"[a](C:\\Users\\test\\app\\a.ts)",
+				"C:%5CUsers%5Ctest%5Capp%5Ca.ts",
+				{ type: "openFile", text: "C:\\Users\\test\\app\\a.ts", values: undefined },
+			],
 		])("keeps the href of %s and opens the file on click", (markdown, href, message) => {
 			render(<MarkdownBlock markdown={markdown} />)
 			const link = screen.getByRole("link")
