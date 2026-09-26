@@ -1,0 +1,631 @@
+{
+	"$comment": [
+		"Golden cases for the token and cost totals of a task (CAPI-M8).",
+		"One file, three readers: packages/core consolidateTokenUsage (vitest, authoritative), self-hosted-cloudapi task_summary.message_metrics summed over the messages (pytest) and render.js getMetrics (headless Chrome, tests/browser/token_golden.js).",
+		"expected is what consolidateTokenUsage returns; null means undefined (a cache total no request reported).",
+		"Python compares totalTokensIn/Out, totalCacheWrites/Reads (null read as 0) and totalCost; it does not compute contextTokens. JS compares totalTokensIn/Out, totalCost and contextTokens; it does not compute cache totals.",
+		"knownDivergences.<python|js> records a case where that implementation disagrees with TypeScript today. Its check expects the mismatch (strict xfail), so fixing the divergence turns the check red until the entry is removed.",
+		"Message ts values are unique and increasing unless a case is about exactly that."
+	],
+	"cases": [
+		{
+			"name": "empty-conversation",
+			"note": "No messages: every total is zero and the cache totals stay unreported (null).",
+			"messages": [],
+			"expected": {
+				"totalTokensIn": 0,
+				"totalTokensOut": 0,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0,
+				"contextTokens": 0
+			}
+		},
+		{
+			"name": "plain-requests",
+			"note": "Two finished requests between text messages. Totals are sums; contextTokens is the last request's tokensIn + tokensOut.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "text",
+					"text": "Fix the failing test"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"apiProtocol\":\"anthropic\",\"tokensIn\":1000,\"tokensOut\":200,\"cost\":0.01}"
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "text",
+					"text": "Looking at the test now"
+				},
+				{
+					"ts": 4,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"apiProtocol\":\"anthropic\",\"tokensIn\":1500,\"tokensOut\":300,\"cost\":0.02}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 2500,
+				"totalTokensOut": 500,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.03,
+				"contextTokens": 1800
+			}
+		},
+		{
+			"name": "cache-tokens",
+			"note": "Cache writes and reads are summed on their own. tokensIn already includes cache tokens, so contextTokens does not add them again.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":5000,\"tokensOut\":100,\"cacheWrites\":4000,\"cacheReads\":0,\"cost\":0.05}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":5200,\"tokensOut\":150,\"cacheWrites\":200,\"cacheReads\":4000,\"cost\":0.012}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 10200,
+				"totalTokensOut": 250,
+				"totalCacheWrites": 4200,
+				"totalCacheReads": 4000,
+				"totalCost": 0.062,
+				"contextTokens": 5350
+			}
+		},
+		{
+			"name": "cache-reported-on-some-requests-only",
+			"note": "A cache total becomes a number as soon as one request reports it; one that no request reports stays null. The Python columns and the JS header have no null: they read null as 0.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":100,\"tokensOut\":10}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":200,\"tokensOut\":20,\"cacheReads\":50}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 300,
+				"totalTokensOut": 30,
+				"totalCacheWrites": null,
+				"totalCacheReads": 50,
+				"totalCost": 0,
+				"contextTokens": 220
+			}
+		},
+		{
+			"name": "cost-absent-and-zero",
+			"note": "A request without a cost adds nothing to totalCost; a cost of 0 is a real zero.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":100,\"tokensOut\":10,\"cost\":0.004}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":50,\"tokensOut\":5}"
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":20,\"tokensOut\":2,\"cost\":0}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 170,
+				"totalTokensOut": 17,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.004,
+				"contextTokens": 22
+			}
+		},
+		{
+			"name": "in-flight-request-falls-back-for-context",
+			"note": "The newest request has no figures yet (only the request text), so contextTokens comes from the request before it.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":800,\"tokensOut\":80,\"cost\":0.008}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"apiProtocol\":\"openai\",\"request\":\"Continue with the refactor\"}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 800,
+				"totalTokensOut": 80,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.008,
+				"contextTokens": 880
+			}
+		},
+		{
+			"name": "partial-requests",
+			"note": "A partial request with no text contributes nothing; a partial whose text already parses is counted like a final one.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":300,\"tokensOut\":30}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"partial": true
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":40,\"tokensOut\":4}",
+					"partial": true
+				}
+			],
+			"expected": {
+				"totalTokensIn": 340,
+				"totalTokensOut": 34,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0,
+				"contextTokens": 44
+			}
+		},
+		{
+			"name": "condense-context-sets-cost-and-context",
+			"note": "A condense_context message adds its cost and, when it is the newest contributor, sets contextTokens to newContextTokens.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":90000,\"tokensOut\":1000,\"cost\":0.3}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "condense_context",
+					"contextCondense": {
+						"cost": 0.05,
+						"prevContextTokens": 91000,
+						"newContextTokens": 12000,
+						"summary": "Summary of the work so far"
+					}
+				}
+			],
+			"expected": {
+				"totalTokensIn": 90000,
+				"totalTokensOut": 1000,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.35,
+				"contextTokens": 12000
+			}
+		},
+		{
+			"name": "request-after-condense-sets-context",
+			"note": "A request after the condense is newer, so contextTokens comes from the request again.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":90000,\"tokensOut\":1000,\"cost\":0.3}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "condense_context",
+					"contextCondense": {
+						"cost": 0.05,
+						"prevContextTokens": 91000,
+						"newContextTokens": 12000,
+						"summary": "Summary of the work so far"
+					}
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":13000,\"tokensOut\":500,\"cost\":0.04}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 103000,
+				"totalTokensOut": 1500,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.39,
+				"contextTokens": 13500
+			}
+		},
+		{
+			"name": "condense-without-payload",
+			"note": "A condense_context with no contextCondense, or with no cost and newContextTokens 0, adds nothing and does not stop the contextTokens search.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":400,\"tokensOut\":40,\"cost\":0.001}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "condense_context"
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "condense_context",
+					"contextCondense": {
+						"prevContextTokens": 440,
+						"newContextTokens": 0,
+						"summary": "Nothing to keep"
+					}
+				}
+			],
+			"expected": {
+				"totalTokensIn": 400,
+				"totalTokensOut": 40,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.001,
+				"contextTokens": 440
+			}
+		},
+		{
+			"name": "ask-typed-messages-ignored",
+			"note": "Only type say counts. An ask that carries say api_req_started or condense_context (model_attribution would read the former, see CAPI-M3) contributes nothing.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":100,\"tokensOut\":10,\"cost\":0.001}"
+				},
+				{
+					"ts": 2,
+					"type": "ask",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":999,\"tokensOut\":99,\"cost\":9}"
+				},
+				{
+					"ts": 3,
+					"type": "ask",
+					"ask": "api_req_failed",
+					"text": "Connection reset"
+				},
+				{
+					"ts": 4,
+					"type": "ask",
+					"say": "condense_context",
+					"contextCondense": {
+						"cost": 5,
+						"prevContextTokens": 9000,
+						"newContextTokens": 7777,
+						"summary": "s"
+					}
+				}
+			],
+			"expected": {
+				"totalTokensIn": 100,
+				"totalTokensOut": 10,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.001,
+				"contextTokens": 110
+			}
+		},
+		{
+			"name": "malformed-request-text",
+			"note": "Text that is not JSON, a truncated partial, JSON null, an array, a bare number, a string and an empty text all contribute nothing, and the contextTokens search moves past them.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":250,\"tokensOut\":25,\"cost\":0.002}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{not json"
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\": 40, \"tokensOut\""
+				},
+				{
+					"ts": 4,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "null"
+				},
+				{
+					"ts": 5,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "[1,2,3]"
+				},
+				{
+					"ts": 6,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "42"
+				},
+				{
+					"ts": 7,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "\"just a string\""
+				},
+				{
+					"ts": 8,
+					"type": "say",
+					"say": "api_req_started",
+					"text": ""
+				}
+			],
+			"expected": {
+				"totalTokensIn": 250,
+				"totalTokensOut": 25,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.002,
+				"contextTokens": 275
+			}
+		},
+		{
+			"name": "non-numeric-figures-ignored",
+			"note": "Figures that are strings, booleans or null are not numbers and are not summed (Python's num() excludes bool on purpose, CB-7).",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":\"100\",\"tokensOut\":\"10\",\"cost\":\"0.5\",\"cacheWrites\":\"5\",\"cacheReads\":null}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":true,\"tokensOut\":false,\"cost\":true,\"cacheReads\":true}"
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":60,\"tokensOut\":6,\"cost\":0.0006}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 60,
+				"totalTokensOut": 6,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.0006,
+				"contextTokens": 66
+			}
+		},
+		{
+			"name": "boolean-figure-context-quirk",
+			"note": "Pins current behaviour: the totals skip tokensIn true, but contextTokens computes (tokensIn || 0) + (tokensOut || 0) and true + 0 is 1. A fix in consolidateTokenUsage must update this case.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":500,\"tokensOut\":50}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":true}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 500,
+				"totalTokensOut": 50,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0,
+				"contextTokens": 1
+			}
+		},
+		{
+			"name": "deleted-retried-finished-ignored",
+			"note": "api_req_deleted (the figures of requests removed by a checkpoint restore), api_req_retried, api_req_retry_delayed and an unconsolidated api_req_finished all carry no figures that count.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":700,\"tokensOut\":70,\"cost\":0.007}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_retried"
+				},
+				{
+					"ts": 3,
+					"type": "say",
+					"say": "api_req_deleted",
+					"text": "{\"tokensIn\":5000,\"tokensOut\":500,\"cacheWrites\":0,\"cacheReads\":0,\"cost\":0.5}"
+				},
+				{
+					"ts": 4,
+					"type": "say",
+					"say": "api_req_finished",
+					"text": "{\"tokensIn\":111,\"tokensOut\":11,\"cost\":0.1}"
+				},
+				{
+					"ts": 5,
+					"type": "say",
+					"say": "api_req_retry_delayed",
+					"text": "Retrying in 5 seconds"
+				},
+				{
+					"ts": 6,
+					"type": "say",
+					"say": "text",
+					"text": "{\"tokensIn\":5,\"tokensOut\":5,\"cost\":1}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 700,
+				"totalTokensOut": 70,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.007,
+				"contextTokens": 770
+			}
+		},
+		{
+			"name": "fractional-token-counts",
+			"note": "Token figures are summed as reported, fractions included.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":10.5,\"tokensOut\":2.25,\"cacheReads\":1.5,\"cost\":0.01}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 10.5,
+				"totalTokensOut": 2.25,
+				"totalCacheWrites": null,
+				"totalCacheReads": 1.5,
+				"totalCost": 0.01,
+				"contextTokens": 12.75
+			},
+			"knownDivergences": {
+				"python": "message_metrics truncates every token figure with int(), so it reports 10 / 2 and cache reads 1 instead of 10.5 / 2.25 / 1.5."
+			}
+		},
+		{
+			"name": "non-standard-json-constants",
+			"note": "NaN and Infinity are not JSON: JSON.parse rejects the text, so the request contributes nothing.",
+			"messages": [
+				{
+					"ts": 1,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":100,\"tokensOut\":10,\"cost\":0.001}"
+				},
+				{
+					"ts": 2,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":NaN,\"tokensOut\":Infinity,\"cost\":NaN}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 100,
+				"totalTokensOut": 10,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.001,
+				"contextTokens": 110
+			},
+			"knownDivergences": {
+				"python": "json.loads accepts NaN and Infinity, num() passes the float through and int(nan) raises ValueError, so message_metrics throws instead of returning zero (an uploaded conversation with such a message fails the whole backfill)."
+			}
+		},
+		{
+			"name": "messages-out-of-ts-order",
+			"note": "consolidateTokenUsage walks the array in its order, so contextTokens comes from the last message in the array even when an earlier one has a larger ts.",
+			"messages": [
+				{
+					"ts": 20,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":100,\"tokensOut\":10}"
+				},
+				{
+					"ts": 10,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":50,\"tokensOut\":5}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 150,
+				"totalTokensOut": 15,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0,
+				"contextTokens": 55
+			},
+			"knownDivergences": {
+				"js": "getMetrics sorts the stored messages by ts before the contextTokens search, so it reports the ts 20 request (110) instead of the last one in the array (55)."
+			}
+		},
+		{
+			"name": "duplicate-ts",
+			"note": "Two different requests sharing one ts are both counted.",
+			"messages": [
+				{
+					"ts": 5,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":100,\"tokensOut\":10,\"cost\":0.01}"
+				},
+				{
+					"ts": 5,
+					"type": "say",
+					"say": "api_req_started",
+					"text": "{\"tokensIn\":200,\"tokensOut\":20,\"cost\":0.02}"
+				}
+			],
+			"expected": {
+				"totalTokensIn": 300,
+				"totalTokensOut": 30,
+				"totalCacheWrites": null,
+				"totalCacheReads": null,
+				"totalCost": 0.03,
+				"contextTokens": 220
+			},
+			"knownDivergences": {
+				"js": "The web view keys rows by ts (a streamed message is revised in place under one ts), so the second request replaces the first: 200 / 20 / 0.02 instead of 300 / 30 / 0.03."
+			}
+		}
+	]
+}
