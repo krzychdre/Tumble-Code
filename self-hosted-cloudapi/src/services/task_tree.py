@@ -13,10 +13,11 @@ Recording is two-sided because the event and the task row do not arrive in a
 fixed order:
 
   * ``record_relation`` runs on every telemetry event that names a parent. It
-    writes ``task_relations`` (which needs neither task to exist) and, if the
-    child's row happens to be there already, stamps it.
+    writes ``task_relations`` (which needs neither task to exist) and, if both
+    rows happen to be there already, stamps the child.
   * ``adopt_from_relations`` runs when a task row is created, and stamps it from
-    whatever ``task_relations`` already knows.
+    whatever ``task_relations`` already knows; ``link_pending_children`` runs at
+    the same moment and claims the children that were stored first.
 
 Between them the link survives either ordering, and no event has to be replayed.
 """
@@ -29,6 +30,7 @@ from typing import Iterable, Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from src.models.relation import TaskRelation
 from src.models.task import Task
@@ -64,9 +66,18 @@ async def record_relation(
     # The child's row may already exist (a live task streams messages while its
     # events fire). Stamp it now so the tree is right without waiting for a
     # later write. Never overwrites an existing parent.
+    #
+    # Only when the parent's row exists too: ``tasks.parent_task_id`` is a
+    # foreign key, and a child routinely streams before its parent's row is
+    # created. Stamping then would raise inside the telemetry request and roll
+    # back the event and the relation with it (DEF-C47). Skipping loses
+    # nothing: the relation is stored above, and the parent's row claims its
+    # waiting children when it is created (``link_pending_children``).
+    parent_task = aliased(Task, name="parent_task")
+    parent_row = select(parent_task.id).where(parent_task.id == parent).exists()
     await db.execute(
         update(Task)
-        .where(Task.id == child, Task.parent_task_id.is_(None))
+        .where(Task.id == child, Task.parent_task_id.is_(None), parent_row)
         .values(parent_task_id=parent)
     )
 
