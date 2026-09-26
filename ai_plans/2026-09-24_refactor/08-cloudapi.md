@@ -148,6 +148,16 @@ No test touches `db_bootstrap` or alembic. **Change:** test `classify_and_seed` 
 legacy, managed) on SQLite; a drift check that builds the baseline, runs migrations to head and expects
 `compare_metadata` to find nothing (the datetime migration may need Postgres). **Size** M.
 
+**Status CAPI-M10:** DONE 2026-09-26, #449 (merge 16161bdc6), test-only, pytest 642 to 653 plus 1 strict xfail.
+`tests/test_migration_drift.py`: `classify_and_seed` in FRESH/LEGACY/MANAGED, `db-migrate.sh` end to end with a fake
+`uv`, and a drift check (frozen pre-alembic schema `tests/fixtures/baseline_schema_sqlite.sql`, stamp b2c3d4e5f6a7,
+upgrade to head, `compare_metadata` with type and default comparison; a `KNOWN_DRIFT` allowance list that must stay
+accurate). Findings: (1) real drift, the model declares `UniqueConstraint uq_task_messages_task_ts`, migration
+`d4e5f6a7b8c9` creates a unique index of that name (follow-up branch); (2) `b2c3d4e5f6a7` (datetime timezone) cannot
+run on SQLite, so the LEGACY path stops there on SQLite (Postgres fine). Untested (owner decision 23, SQLite only):
+`b2c3d4e5f6a7` itself, the Postgres-only branches of the data migrations (`d4e5f6a7b8c9` duplicate cleanup,
+`e1f2a3b4c5d6`, `f6a7b8c9d0e1`), timezone flags and `String` lengths (not seen by `compare_metadata` on SQLite).
+
 ### CAPI-M9 Metrics: SQL aggregation instead of Python over unbounded rows
 
 `metrics_service.py:170-179` loads full `TelemetryEvent` rows with their JSON blob for the whole period ("all
