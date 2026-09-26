@@ -82,6 +82,15 @@ middleware import), `src/web/presenters/{task_rows,task_detail,settings}.py`, `s
 Split the 3,372-line `test_web_and_share.py` along the same lines. **Existing:** 112 tests in that file plus the
 phone-layout and browser checks. **Size** M, low risk.
 
+**Status CAPI-M5:** DONE 2026-09-26, #453 (merge f403c5339), pytest 720 to 769. `routers/web.py` 959 to 89 lines (re-exports
+only); `src/web/templating.py` 36 (the middleware now imports templates from here), presenters `task_rows` 215,
+`task_detail` 183, `settings` 20; `services/quality_overview.py` 101 (with M9's `_QUALITY_COLUMNS`),
+`services/task_access.py` 81 (`shared_view_access` verdict); routers `web_tasks` 250, `web_metrics` 46,
+`web_settings` 114, `shared` 75; tests split, helpers in `tests/web_helpers.py`, same 123 test ids; route-table and
+14-case share-policy tests; moved functions AST-identical, 10 pages and 4 redirects byte-identical. Not changed: the
+bridge `task:join` is owner-only, a different policy than the share page; a stored visibility other than "public" is
+treated as "organization"; `routers/browser.py` still builds its own `Jinja2Templates`.
+
 ### CAPI-M6 Route boilerplate into dependencies
 
 Bearer-token parsing repeated 4 times in `routers/auth.py` (93, 138, 173, 204): a `client_session` dependency. The
