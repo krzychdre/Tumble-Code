@@ -276,7 +276,8 @@ async def upsert_task_message(
 
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
-    if task is None:
+    created = task is None
+    if created:
         task = Task(id=task_id, user_id=user_id)
         db.add(task)
         await db.flush()
@@ -295,7 +296,15 @@ async def upsert_task_message(
     # Stamp the project/worktree root on first sight (set on create, and fill a
     # legacy NULL the first time the bridge reports a path). Never overwrites.
     _stamp_workspace_path(task, workspace_path)
-    await _link_task_tree(db, task_id)
+    if created:
+        # Wire the new row into the subtask tree, once. A chunk carries no
+        # parent information, so for a row that already exists the link queries
+        # could only find what the moments that change the tree already
+        # handled: a relation arriving later stamps the existing row itself
+        # (record_relation), and a parent row created later claims this one
+        # (its own first chunk or backfill). Running them on every streamed
+        # revision cost two to four queries per chunk for nothing.
+        await _link_task_tree(db, task_id)
 
     dialect = db.bind.dialect.name
     if ts is not None and dialect in ("postgresql", "sqlite"):
