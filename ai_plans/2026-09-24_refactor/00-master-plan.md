@@ -273,6 +273,7 @@ only after the owner confirms it (ask at the start of the item that depends on i
 | 23 | CAPI-M10: add a Postgres service container to the cloud API CI job for the migration drift test? | **Decided** | No: SQLite only; whatever needs Postgres (the datetime migration) stays untested and is documented in `08-cloudapi.md` (owner 2026-09-26) |
 | 24 | CAPI-M6 finding: the JWT issuer (`iss == "rcc"`) and version (`v == 1`) checks are bypassed by a second decode without them (API and bridge). Enforce? | **Decided** | Yes: one decode with mandatory issuer and version checks in the API and the bridge, own `fix/` branch; every token ever issued carries both claims, so nobody is logged out (owner 2026-09-26) |
 | 25 | CAPI-M3 finding: a non-string `completionKind` is its own row on the metrics page but a conversation turn on the task detail page. Unify? | **Decided** | Yes: both pages treat it as an ordinary conversation turn, one function in `telemetry_vocab.py` (owner 2026-09-26) |
+| 26 | DEF-C49: a shared-conversation upload fails (unique `task_id, message_ts`) when two messages share a `ts` (653 of the owner's 1,212 tasks, mostly ask plus say `command_output`). Collapse like the bridge or keep both? | **Decided** | Collapse like the live bridge: of several messages with one `ts` the later one wins, no schema change (owner 2026-09-26) |
 
 ## Do not touch (collected from all audits)
 

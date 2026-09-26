@@ -184,6 +184,15 @@ to 0. All 6 arrival orders, a three-level tree and the concurrent miss (repaired
 streams, relation, parent" should raise an IntegrityError (foreign key); SQLite tests do not enforce it. Not yet
 reproduced on Postgres.
 
+**Follow-ups merged 2026-09-26:** #447 (merge 3bdaa6af7, decision 24) one JWT decode in `jwt_issuer.decode_token`
+requiring `iss == "rcc"` and integer `v == 1` for the extension API and the bridge, `static_token.py` removed;
+#448 (merge c2827ef25, decision 25) `telemetry_vocab.completion_kind()` used by both pages; #451 (merge 4b66a863e)
+NaN/Infinity in a request text is ignored like malformed JSON (TypeScript parity) and `num()` maps non-finite
+floats to 0, so a backfill no longer fails; main pytest 711 passed, 2 xfailed. **New defects:** DEF-C48, live logs
+show `tasks_pkey` violations from two concurrent first bridge chunks (the losing message is dropped); DEF-C49, a
+shared-conversation upload fails with 500 when two messages share a `ts` (decision 26). Both plus the
+`uq_task_messages_task_ts` model/migration drift are on one stacked fix branch set.
+
 ### CAPI-M12 CPU-heavy work off the event loop (lowest priority)
 
 Backfill parsing (the whole upload read into memory at `events.py:65`), full-conversation JSON dumps
