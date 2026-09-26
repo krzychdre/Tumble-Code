@@ -64,7 +64,7 @@
 			"glob": "^13.0.6",
 			"zod": "4.6.5",
 			"@lmstudio/sdk>zod": "3.25.76",
-			"picomatch@>=4": "4.0.4",
+			"picomatch@>=4": "^4.0.7",
 			"typescript": "$typescript"
 		},
 		"packageExtensions": {
