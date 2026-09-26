@@ -134,7 +134,11 @@ describe("useExtensionHost task completion", () => {
 			message: { ts: 1, type: "ask", ask: "completion_result", text: "" },
 			stateInfo: {},
 		})
-		await new Promise((resolve) => setTimeout(resolve, 150))
+		// The hook calls process.exit 100 ms after ink's exit(). Under
+		// ink-testing-library ink 7 spends more time around that (its fake stdout
+		// has no rows, so every layout asks terminal-size, which probes /dev/tty
+		// and may run tput), so wait for the call instead of a fixed 150 ms.
+		await pWaitFor(() => exit.mock.calls.length > 0, { timeout: 2000 })
 
 		expect(dispose).toHaveBeenCalled()
 		expect(exit).toHaveBeenCalledWith(0)

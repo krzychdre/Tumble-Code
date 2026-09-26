@@ -48,3 +48,48 @@ describe("MultilineTextInput", () => {
 		expect(lastFrame()).toContain("hello")
 	})
 })
+
+// Ink 7 reports the Backspace byte (0x7F) as key.backspace; ink 6 reported it
+// as key.delete. The input treats both the same way, so every one of these
+// keys removes the character before the cursor on both versions.
+describe("MultilineTextInput deleting keys", () => {
+	function renderEditable(initial: string) {
+		let value = initial
+		const view = render(
+			<MultilineTextInput
+				value={initial}
+				onChange={(next) => {
+					value = next
+				}}
+				columns={80}
+			/>,
+		)
+		return { ...view, value: () => value }
+	}
+
+	it.each([
+		["Backspace (0x7F)", "\x7f"],
+		["ctrl+h (0x08)", "\x08"],
+		["Delete (CSI 3 ~)", "\x1b[3~"],
+	])("%s removes the character before the cursor", async (_name, sequence) => {
+		const { stdin, value } = renderEditable("")
+
+		stdin.write("abc")
+		await vi.waitFor(() => expect(value()).toBe("abc"), { timeout: 10_000, interval: 5 })
+		stdin.write(sequence)
+
+		await vi.waitFor(() => expect(value()).toBe("ab"), { timeout: 10_000, interval: 5 })
+	})
+
+	it("removes one character per Backspace press when a held key sends them in one chunk", async () => {
+		const { stdin, value } = renderEditable("")
+
+		stdin.write("abcd")
+		await vi.waitFor(() => expect(value()).toBe("abcd"), { timeout: 10_000, interval: 5 })
+		stdin.write("\x7f\x7f")
+		await flush()
+		await flush()
+
+		expect(value()).toMatchSnapshot()
+	})
+})

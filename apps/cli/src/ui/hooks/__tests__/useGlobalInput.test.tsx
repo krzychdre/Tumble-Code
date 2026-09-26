@@ -10,6 +10,15 @@ function flush(): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, 10))
 }
 
+/**
+ * Ink 7 holds a lone ESC byte for 20 ms, because it may be the start of an
+ * escape sequence, and only then reports it as Escape. Wait for the effect
+ * instead of sleeping a fixed time.
+ */
+function untilEscape(assertion: () => void): Promise<void> {
+	return vi.waitFor(assertion, { timeout: 10_000, interval: 5 })
+}
+
 /** Ctrl+O as a terminal sends it: 'o' masked with 0x1f. */
 const CTRL_O = "\x0f"
 
@@ -120,9 +129,8 @@ describe("useGlobalInput escape", () => {
 		const { stdin } = render(<Harness />)
 
 		stdin.write("\x1b")
-		await flush()
+		await untilEscape(() => expect(useUIStateStore.getState().showMcpPanel).toBe(false))
 
-		expect(useUIStateStore.getState().showMcpPanel).toBe(false)
 		expect(sendToExtension).not.toHaveBeenCalled()
 	})
 
@@ -130,8 +138,6 @@ describe("useGlobalInput escape", () => {
 		const { stdin } = render(<Harness />)
 
 		stdin.write("\x1b")
-		await flush()
-
-		expect(sendToExtension).toHaveBeenCalledWith({ type: "cancelTask" })
+		await untilEscape(() => expect(sendToExtension).toHaveBeenCalledWith({ type: "cancelTask" }))
 	})
 })
