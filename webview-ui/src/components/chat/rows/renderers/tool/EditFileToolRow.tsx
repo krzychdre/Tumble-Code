@@ -4,6 +4,7 @@ import { FileDiff, MessageSquarePlus } from "lucide-react"
 import { toolPayloadDiffText } from "@roo-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
+import { toOpenFileLinkText } from "@src/utils/windows-file-links"
 import CodeAccordion from "@src/components/common/CodeAccordion"
 import { BatchDiffApproval } from "@src/components/chat/BatchDiffApproval"
 
@@ -31,7 +32,7 @@ export const EditFileToolRow = ({ message, tool, isExpanded, toggleExpand }: Too
 	const unifiedDiff = toolPayloadDiffText(tool)
 	const onJumpToCreatedFile =
 		tool.tool === "newFileCreated" && tool.path
-			? () => vscode.postMessage({ type: "openFile", text: "./" + tool.path })
+			? () => vscode.postMessage({ type: "openFile", text: toOpenFileLinkText(tool.path as string) })
 			: undefined
 
 	// Regular single file diff
