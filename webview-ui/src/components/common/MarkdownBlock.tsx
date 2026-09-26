@@ -6,7 +6,7 @@ import remarkMath from "remark-math"
 import remarkGfm from "remark-gfm"
 
 import { vscode } from "@src/utils/vscode"
-import { type AlertType, remarkGithubAlerts } from "@src/utils/markdown"
+import { type AlertType, remarkGithubAlerts, remarkSingleDollarMath } from "@src/utils/markdown"
 
 import CodeBlock from "./CodeBlock"
 import MermaidBlock from "./MermaidBlock"
@@ -448,7 +448,9 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 					// singleTilde: false so a single "~" around text (e.g. "1~3", "~10") is not
 					// rendered as strikethrough; only "~~text~~" is. Matches VS Code's markdown. (#154)
 					[remarkGfm, { singleTilde: false }],
-					remarkMath,
+					// "$$...$$" stays with remark-math; "$...$" follows Pandoc's rule so prices stay text.
+					[remarkMath, { singleDollarTextMath: false }],
+					remarkSingleDollarMath,
 					remarkGithubAlerts,
 					() => {
 						return (tree: any) => {
