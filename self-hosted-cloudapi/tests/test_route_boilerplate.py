@@ -457,13 +457,6 @@ def test_extension_routes_accept_a_session_token(client):
     [
         {"iss": "rcc", "v": 1, "r": {"u": "user_x", "o": "org_y", "t": "cj"}},
         {"iss": "rcc", "v": 1, "sub": "user_x"},
-        # Pinned as found: a token signed with our key but naming another
-        # issuer or version is still accepted (the second decode path in
-        # get_current_user has no issuer/version check). Tightening this could
-        # sign out existing clients, so it is a decision for the owner.
-        {"iss": "someone-else", "v": 1, "sub": "user_x"},
-        {"iss": "rcc", "v": 2, "sub": "user_x"},
-        {"sub": "user_x"},
     ],
 )
 async def test_get_current_user_result(claims):
@@ -474,6 +467,50 @@ async def test_get_current_user_result(claims):
     expected = {"user_id": r.get("u") or claims.get("sub"), "org_id": r.get("o"), "token_type": r.get("t", "auth")}
     assert await get_current_user(creds) == expected
     assert await get_current_user_optional(creds) == expected
+
+
+# Every token the server issues carries iss "rcc" and v 1 (jwt_issuer has
+# stamped both since it was written), so a token signed with our key that lacks
+# either, or names another issuer or version, was not issued by this server and
+# is refused (owner decision 24).
+FOREIGN_CLAIMS = [
+    pytest.param({"v": 1, "sub": "user_x"}, id="missing-iss"),
+    pytest.param({"iss": "someone-else", "v": 1, "sub": "user_x"}, id="wrong-iss"),
+    pytest.param({"iss": "rcc", "sub": "user_x"}, id="missing-v"),
+    pytest.param({"iss": "rcc", "v": 2, "sub": "user_x"}, id="wrong-v"),
+    pytest.param({"iss": "rcc", "v": "1", "sub": "user_x"}, id="string-v"),
+    pytest.param({"iss": "rcc", "v": True, "sub": "user_x"}, id="boolean-v"),
+    pytest.param({"sub": "user_x"}, id="neither"),
+]
+
+
+@pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
+def test_extension_routes_refuse_a_token_without_our_issuer_and_version(client, claims):
+    resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {_jwt(claims)}"})
+    assert resp.status_code == 401
+    assert resp.json() == {"detail": "Invalid or expired token"}
+
+
+@pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
+async def test_get_current_user_refuses_a_token_without_our_issuer_and_version(claims):
+    from fastapi import HTTPException
+
+    from src.dependencies import get_current_user, get_current_user_optional
+
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=_jwt(claims))
+    with pytest.raises(HTTPException) as exc:
+        await get_current_user(creds)
+    assert exc.value.status_code == 401
+    assert await get_current_user_optional(creds) is None
+
+
+def test_extension_routes_accept_a_static_token(client):
+    # The shape the retired issue_static_token gave long-lived
+    # ROO_CODE_CLOUD_TOKEN values, some of which users still hold.
+    token = _jwt({"iss": "rcc", "v": 1, "sub": "cj_user_static", "r": {"u": "user_static", "o": "org_s", "t": "cj"}})
+    resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    assert resp.json() == {"balance": 0}
 
 
 async def test_get_current_user_optional_is_none_without_a_good_token():
