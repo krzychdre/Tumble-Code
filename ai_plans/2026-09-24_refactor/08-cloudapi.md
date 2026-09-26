@@ -170,6 +170,15 @@ dimension fields into their own columns at ingest (as `task_id` already is, `eve
 whole `compute_user_metrics()` result for a seeded dataset including malformed rows. **Size** M (L with the
 backfill), medium risk.
 
+**Status CAPI-M9:** step 1 DONE 2026-09-26, #452 (merge e22f06097), pytest 711 to 720. The metrics computation selects
+only `(properties, created_at)`, `_quality_overview` only `id`, `title` and the ten `q_*` counters; composite index
+`ix_telemetry_events_user_type_created` on the model and in migration a3b4c5d6e7f8. Measured on a copy of the live
+database (2,811 completions for the heaviest user, 20,328 rows, 36 MB; median of 3 x 40 warm runs): all time 64.6 to
+58.5 ms (DB 9.5 to 8.6 ms), 30 days 64.9 to 56.2, 7 days 25.5 to 20.5 (EXPLAIN 4.1 to 0.96 ms), today 3.9 to 2.2. The
+time is the Python loop (about 18 us per event, mostly `json.loads`), not the database. **Step 2 not needed**
+(decision 20): revisit at roughly 10,000 events per user per period. `ix_telemetry_events_user_id` is now redundant
+(left in place). The plan's 13,164 completions and 146 MB are stale (retention).
+
 ### CAPI-M11 Bridge: stop the per-chunk tree-link queries
 
 `telemetry_service.py:277` runs `_link_task_tree` (2 to 4 queries) on every streamed chunk; run it only when the
