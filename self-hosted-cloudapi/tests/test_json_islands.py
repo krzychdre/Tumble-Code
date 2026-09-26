@@ -149,6 +149,19 @@ def test_json_for_script_escapes_everything_that_can_end_or_confuse_an_island():
     assert json.loads(rendered) == data
 
 
+def test_json_for_script_output_is_pinned():
+    """The exact text, so a faster implementation cannot drift from it."""
+    from src.utils.json_script import json_for_script
+
+    data = {"text": f"{BREAKOUT} {COMMENT} & {LINE_SEPARATORS} ]]>", "n": [1, 2.5, None]}
+
+    assert str(json_for_script(data)) == (
+        '{"text": "\\u003c/script\\u003e\\u003cimg src=x onerror=alert(1)\\u003e '
+        '\\u003c!--\\u003cscript\\u003e \\u0026 \\u2028 and \\u2029 ]]\\u003e", '
+        '"n": [1, 2.5, null]}'
+    )
+
+
 def test_no_template_marks_an_island_safe_by_hand():
     """Every island goes through json_for_script, never ``| safe``.
 
