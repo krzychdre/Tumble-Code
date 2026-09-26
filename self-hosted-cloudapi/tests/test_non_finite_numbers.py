@@ -79,7 +79,7 @@ async def test_backfill_imports_a_conversation_with_a_nan_request(client, db_ses
     """The NaN request contributes nothing; every message, it included, is stored."""
     from src.dependencies import get_current_user
     from src.main import app
-    from tests.test_web_and_share import _backfill_files, _override_current_user, _seed_user
+    from tests.web_helpers import _backfill_files, _override_current_user, _seed_user
 
     messages = [
         {"ts": 1, "type": "say", "say": "text", "text": "Build me a feature"},

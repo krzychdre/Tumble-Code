@@ -101,7 +101,7 @@ def test_completion_kind_on_the_task_detail_page(raw, kind):
 async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_turn(db_session):
     """A numeric, boolean, list or empty kind lands in the Conversation row,
     exactly as the task detail page counts it, instead of a row of its own."""
-    from tests.test_web_and_share import _seed_user
+    from tests.web_helpers import _seed_user
     from src.models.event import TelemetryEvent
 
     await _seed_user(db_session)
@@ -126,7 +126,7 @@ async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_
 
 
 async def test_metrics_and_attribution_skip_payloads_that_are_not_json_objects(db_session):
-    from tests.test_web_and_share import _seed_user
+    from tests.web_helpers import _seed_user
     from src.models.event import TelemetryEvent
 
     await _seed_user(db_session)

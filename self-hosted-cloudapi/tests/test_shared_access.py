@@ -11,7 +11,7 @@ from src.auth.web_session import get_web_user_optional
 from src.models.organization import Membership, Organization
 from src.models.task import Task, TaskShare
 
-from tests.test_web_and_share import _add_message, _msgs, _override_web_user, _seed_user, _summarize
+from tests.web_helpers import _add_message, _msgs, _override_web_user, _seed_user, _summarize
 
 
 async def _seed(session_factory, db_session, visibility: str, task_org: str | None):

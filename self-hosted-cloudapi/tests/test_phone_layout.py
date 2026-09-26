@@ -26,7 +26,7 @@ import pytest
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task
 from tests.test_browser_js import _find_browser
-from tests.test_web_and_share import (
+from tests.web_helpers import (
     _add_message,
     _llm_event,
     _override_web_user,

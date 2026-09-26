@@ -16,7 +16,7 @@ from src.models.task import Task
 from src.routers import web
 from src.services.task_tree import Spend
 
-from tests.test_web_and_share import _seed_user
+from tests.web_helpers import _seed_user
 
 UPDATED = datetime(2026, 9, 1, 12, 0, tzinfo=timezone.utc)
 
