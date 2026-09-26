@@ -171,7 +171,9 @@ describe("StandardTooltip", () => {
 			() => {
 				const tooltips = screen.getAllByText("Long tooltip text")
 				const visibleTooltip = tooltips.find((el) => el.getAttribute("role") !== "tooltip")
-				expect(visibleTooltip).toHaveStyle({ maxWidth: "15rem" })
+				// The inline style is the contract; toHaveStyle compares the computed
+				// value, which jsdom 30 resolves to pixels (240px).
+				expect((visibleTooltip as HTMLElement).style.maxWidth).toBe("15rem")
 			},
 			{ timeout: 1000 },
 		)

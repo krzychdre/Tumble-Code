@@ -824,7 +824,7 @@ describe("ChatTextArea", () => {
 
 			it("should reset navigation position when switching between history sources", () => {
 				const setInputValue = vi.fn()
-				const { rerender } = render(
+				const { rerender, container } = render(
 					<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />,
 				)
 
@@ -845,7 +845,10 @@ describe("ChatTextArea", () => {
 
 				rerender(<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />)
 
-				const textarea = document.querySelector("textarea")!
+				// container, not document: react-textarea-autosize keeps one hidden
+				// measuring <textarea> appended to <body> for the whole file, so
+				// document.querySelector can return it instead of this render's textarea.
+				const textarea = container.querySelector("textarea")!
 
 				// Navigate in task history
 				fireEvent.keyDown(textarea, { key: "ArrowUp" })
