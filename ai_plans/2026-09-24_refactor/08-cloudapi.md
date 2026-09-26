@@ -250,7 +250,9 @@ a freshly issued session token passes the new `iss`/`v` check inside the contain
 bridge stays down after a server restart until VS Code reloads: the stale token (60 s lifetime) was rejected, and
 `src/extension/bridge.ts:106-108` only logs "[bridge] failed to start"; socket.io-client 4.8.3 destroys the socket on a
 server CONNECT_ERROR (no auto-reconnect), and the 50 s token refresh emits no `auth-state-changed`, so nothing restarts
-it. Pre-existing (an expired token was rejected before Phase 9 too); needs a retry path and a VSIX rebuild.
+it. Pre-existing (an expired token was rejected before Phase 9 too); needs a retry path and a VSIX rebuild. **FIXED 2026-09-26, #465 (merge 3e336cc7e):** `bridgeRetryDelayMs` (1 s doubling, cap 60 s);
+the orchestrator calls `socket.connect()` after a refused handshake (`socket.active` false), `bridge.ts` retries a
+failed start while signed in; tests fail on main (3) and pass after. Live only after a VSIX rebuild and install.
 
 ## Dependencies (DEP-5)
 
