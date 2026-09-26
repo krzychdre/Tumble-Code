@@ -105,6 +105,18 @@ code (`get_authentik_issuer_url`, `get_openid_configuration`, `issue_static_toke
 `create_session_and_token`, `count_descendants`, `AuthCallbackParams`, the `ProviderConfig` model); `ruff` reports
 41 issues (38 auto-fixable unused imports); the dev venv is Python 3.13, the image 3.12. **Size** S to M.
 
+**Status CAPI-M7:** DONE 2026-09-26, #445 (merge bb6a0fd8e), pytest 561 to 568 on the branch; `ruff check .` 58 to 0
+findings, the CI lint step is now blocking. Stdlib logging configured once (`src/logging_setup.py`, `LOG_LEVEL`,
+default INFO; the INFO lines of retention, bridge and sign-in were silently dropped before; request middleware moved
+to DEBUG because uvicorn's access log already has it); banner through a logger. `create_all` removed from startup
+(Docker runs `db-migrate.sh` first; running the server on an empty DB before `make migrate` produced tables without
+`alembic_version`, classified LEGACY); README says run `make migrate` before first start. `alembic/env.py` uses the
+app settings and `import src.models` (its own model list had drifted: `TaskRelation`, `RetentionPolicy` missing).
+`credit_system_enabled` removed, `/credit-balance` kept and tested. Dead code removed (incl. three unused Authentik URL
+helpers); `ProviderConfig` kept (real table). Already done before: `BRIDGE_PATH` mount, Python 3.13 image, `make
+migrate`, PyJWT, `adapt_streaming_response`. **Deploy check:** confirm the live container starts through
+`docker-entrypoint.sh` (migrations before uvicorn), since startup no longer creates tables.
+
 ### CAPI-M8 Cross-language golden fixtures for token and cost aggregation
 
 Three implementations: TypeScript `consolidateTokenUsage.ts:29` (authoritative), the JS port in `render.js:622-657`,
