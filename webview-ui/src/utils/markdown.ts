@@ -95,3 +95,138 @@ function annotateAlertBlockquote(node: any): void {
 	hProperties.className = `markdown-alert markdown-alert-${alertType}`
 	hProperties["data-alert-type"] = alertType
 }
+
+// Minimal shapes of the micromark tokenizer API (micromark-util-types is not a
+// direct dependency of the webview).
+type MicromarkCode = number | null
+type MicromarkState = (code: MicromarkCode) => MicromarkState | undefined
+interface MicromarkEffects {
+	enter(type: string): void
+	exit(type: string): void
+	consume(code: MicromarkCode): void
+	attempt(
+		construct: { tokenize: MicromarkTokenizer; partial: boolean },
+		ok: MicromarkState,
+		nok: MicromarkState,
+	): MicromarkState
+}
+type MicromarkTokenizer = (effects: MicromarkEffects, ok: MicromarkState, nok: MicromarkState) => MicromarkState
+
+// micromark codes: null is the end of input; -5, -4 and -3 are line endings;
+// -2 is a tab and -1 a virtual space; 32 is a space.
+const DOLLAR = 36
+const BACKSLASH = 92
+const isLineEnding = (code: MicromarkCode) => code !== null && code < -2
+const isSpace = (code: MicromarkCode) => code === 32 || code === -2 || code === -1
+const isDigit = (code: MicromarkCode) => code !== null && code >= 48 && code <= 57
+
+// A closing "$" may not be followed by another "$" or by a digit ("$5 and $10").
+const closingDollar = {
+	partial: true,
+	tokenize: ((effects, ok, nok) => (code) => {
+		effects.enter("mathTextSequence")
+		effects.consume(code)
+		effects.exit("mathTextSequence")
+		return (next) => (next === DOLLAR || isDigit(next) ? nok(next) : ok(next))
+	}) as MicromarkTokenizer,
+}
+
+// "$...$" inline math with Pandoc's tex_math_dollars rule.
+const tokenizeSingleDollarMath: MicromarkTokenizer = (effects, ok, nok) => {
+	// Whether the last character inside the math was a space or a line ending.
+	let afterSpace = false
+
+	const data: MicromarkState = (code) => {
+		if (code === null || code === DOLLAR || isLineEnding(code)) {
+			effects.exit("mathTextData")
+			return between(code)
+		}
+		effects.consume(code)
+		afterSpace = isSpace(code)
+		return code === BACKSLASH ? escaped : data
+	}
+
+	// "\$" (or any escaped character) inside the math is TeX, not the closing "$".
+	const escaped: MicromarkState = (code) => {
+		if (code === null || isLineEnding(code)) {
+			return data(code)
+		}
+		effects.consume(code)
+		afterSpace = false
+		return data
+	}
+
+	const dollarAsData: MicromarkState = (code) => {
+		effects.enter("mathTextData")
+		effects.consume(code)
+		afterSpace = false
+		return data
+	}
+
+	const close: MicromarkState = (code) => {
+		effects.exit("mathText")
+		return ok(code)
+	}
+
+	const between: MicromarkState = (code) => {
+		if (code === null) {
+			return nok(code)
+		}
+		if (isLineEnding(code)) {
+			effects.enter("lineEnding")
+			effects.consume(code)
+			effects.exit("lineEnding")
+			afterSpace = true
+			return between
+		}
+		if (code === DOLLAR) {
+			// A "$" after a space never closes ("$5 and $10").
+			return afterSpace ? dollarAsData(code) : effects.attempt(closingDollar, close, dollarAsData)(code)
+		}
+		effects.enter("mathTextData")
+		return data(code)
+	}
+
+	const afterOpening: MicromarkState = (code) => {
+		// "$$" belongs to remark-math; "$ 5" is not math.
+		if (code === null || code === DOLLAR || isSpace(code) || isLineEnding(code)) {
+			return nok(code)
+		}
+		return between(code)
+	}
+
+	return (code) => {
+		effects.enter("mathText")
+		effects.enter("mathTextSequence")
+		effects.consume(code)
+		effects.exit("mathTextSequence")
+		return afterOpening
+	}
+}
+
+/**
+ * Single-dollar inline math with Pandoc's rule, so prices stay text. Use with
+ * `[remarkMath, { singleDollarTextMath: false }]`, which keeps "$$...$$" (inline
+ * and display) and leaves "$...$" to this plugin.
+ *
+ * Pandoc (tex_math_dollars): the opening "$" must be followed by a non-space,
+ * the closing "$" must be preceded by a non-space and must not be followed by
+ * a digit. "$5 and $10" has no valid closing "$", so both stay literal, while
+ * "$x^2$" and "$2^n$" are math. It emits the tokens remark-math's own
+ * construct emits, so mdast-util-math builds the same inlineMath node.
+ */
+export function remarkSingleDollarMath(this: { data(): object }) {
+	// The unified processor's data; remark-parse reads its micromarkExtensions.
+	const data = this.data() as { micromarkExtensions?: unknown[] }
+
+	;(data.micromarkExtensions ??= []).push({
+		text: {
+			[DOLLAR]: {
+				name: "singleDollarMath",
+				tokenize: tokenizeSingleDollarMath,
+				// Never open at the second "$" of "$$".
+				previous: (code: MicromarkCode) => code !== DOLLAR,
+			},
+		},
+	})
+}
