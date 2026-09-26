@@ -16,21 +16,6 @@ vi.mock("@/i18n/TranslationContext", () => ({
 	}),
 }))
 
-// Mock VSCodeCheckbox
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ children, onChange, checked, ...props }: any) => (
-		<label>
-			<input
-				type="checkbox"
-				checked={checked}
-				onChange={(e) => onChange({ target: { checked: e.target.checked } })}
-				{...props}
-			/>
-			{children}
-		</label>
-	),
-}))
-
 describe("TodoListSettingsControl", () => {
 	it("renders with default props", () => {
 		const onChange = vi.fn()

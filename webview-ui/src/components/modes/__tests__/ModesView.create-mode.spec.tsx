@@ -23,17 +23,6 @@ vi.mock("react-i18next", () => ({
 // The toolkit's web components do not behave in jsdom; native stand-ins keep the
 // product's event handling (it reads `target.value` / `target.checked`).
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ children, onChange, checked, ...props }: any) => (
-		<label>
-			<input
-				type="checkbox"
-				checked={checked || false}
-				onChange={(e: any) => onChange?.({ target: { checked: e.target.checked } })}
-				{...props}
-			/>
-			{children}
-		</label>
-	),
 	VSCodeTextArea: ({ value, onChange, resize: _resize, ...props }: any) => (
 		<textarea value={value ?? ""} onChange={onChange} {...props} />
 	),

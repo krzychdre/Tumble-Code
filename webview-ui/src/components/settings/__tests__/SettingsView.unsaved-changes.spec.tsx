@@ -29,6 +29,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 // Mock UI components
 vi.mock("@src/components/ui", () => ({
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>
@@ -248,6 +250,7 @@ vi.mock("../SettingsSearch", () => ({
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import ApiOptions from "../ApiOptions"
 import { vscode } from "@src/utils/vscode"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 describe("SettingsView - Unsaved Changes Detection", () => {
 	let queryClient: QueryClient

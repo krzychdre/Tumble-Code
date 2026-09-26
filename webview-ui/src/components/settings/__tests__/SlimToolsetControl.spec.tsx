@@ -17,20 +17,6 @@ vi.mock("@/i18n/TranslationContext", () => ({
 	}),
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ children, onChange, checked, ...props }: any) => (
-		<label>
-			<input
-				type="checkbox"
-				checked={checked}
-				onChange={(e) => onChange({ target: { checked: e.target.checked } })}
-				{...props}
-			/>
-			{children}
-		</label>
-	),
-}))
-
 describe("SlimToolsetControl", () => {
 	it("is off by default and hides the MCP sub-control", () => {
 		render(<SlimToolsetControl onChange={vi.fn()} />)

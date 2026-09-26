@@ -5,6 +5,7 @@ import * as React from "react"
 import { render, screen, fireEvent, act } from "@/utils/test-utils"
 
 import { TerminalSettings } from "../TerminalSettings"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 // Mock translation hook to echo keys
 vi.mock("@/i18n/TranslationContext", () => ({
@@ -22,6 +23,8 @@ vi.mock("@/utils/vscode", () => ({
 
 // Render Select as a list of buttons so we can drive onValueChange in tests.
 vi.mock("@/components/ui", () => ({
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange, "data-testid": testId }: any) => (
 		<div data-testid={testId ?? "select"} data-value={value}>
@@ -38,12 +41,6 @@ vi.mock("@/components/ui", () => ({
 }))
 
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ checked, onChange, children }: any) => (
-		<label>
-			<input type="checkbox" checked={!!checked} onChange={(e: any) => onChange?.(e)} />
-			{children}
-		</label>
-	),
 	VSCodeButton: ({ children, onClick, ...rest }: any) => (
 		<button onClick={onClick} {...rest}>
 			{children}

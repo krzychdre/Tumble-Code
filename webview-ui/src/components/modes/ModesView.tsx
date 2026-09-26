@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
-import { VSCodeCheckbox, VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { ChevronDown, X, Upload, Download } from "lucide-react"
 
@@ -39,6 +39,7 @@ import {
 	CommandGroup,
 	StandardTooltip,
 	Link,
+	LabeledCheckbox,
 } from "@src/components/ui"
 import { DeleteModeDialog } from "@src/components/modes/DeleteModeDialog"
 import McpServerRestriction from "@src/components/modes/McpServerRestriction"
@@ -879,7 +880,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 											: currentMode?.groups?.some((g) => getGroupName(g) === group)
 
 										return (
-											<VSCodeCheckbox
+											<LabeledCheckbox
 												key={group}
 												checked={isGroupEnabled}
 												onChange={handleGroupChange(group, Boolean(isCustomMode), customMode)}
@@ -904,7 +905,7 @@ const ModesView = ({ onSelectApiConfiguration }: ModesViewProps) => {
 														})()}
 													</div>
 												)}
-											</VSCodeCheckbox>
+											</LabeledCheckbox>
 										)
 									})}
 								</div>

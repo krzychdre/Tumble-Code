@@ -1,5 +1,5 @@
 import React, { useCallback } from "react"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { LabeledCheckbox } from "@src/components/ui"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -40,9 +40,9 @@ export const SlimToolsetControl: React.FC<SlimToolsetControlProps> = ({ slimTool
 	return (
 		<div className="flex flex-col gap-1">
 			<div>
-				<VSCodeCheckbox checked={slimToolset ?? false} onChange={handleSlimToolsetChange}>
+				<LabeledCheckbox checked={slimToolset ?? false} onChange={handleSlimToolsetChange}>
 					<span className="font-medium">{t("settings:advanced.slimToolset.label")}</span>
-				</VSCodeCheckbox>
+				</LabeledCheckbox>
 				<div className="text-vscode-descriptionForeground text-sm">
 					{t("settings:advanced.slimToolset.description")}
 				</div>
@@ -51,9 +51,9 @@ export const SlimToolsetControl: React.FC<SlimToolsetControlProps> = ({ slimTool
 				<div className="ml-6">
 					{/* Undefined means "hide MCP" while the slim toolset is on, so the
 					    checkbox reads an unset value as checked. */}
-					<VSCodeCheckbox checked={slimHidesMcp !== false} onChange={handleSlimHidesMcpChange}>
+					<LabeledCheckbox checked={slimHidesMcp !== false} onChange={handleSlimHidesMcpChange}>
 						<span className="font-medium">{t("settings:advanced.slimToolset.hideMcp.label")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm">
 						{t("settings:advanced.slimToolset.hideMcp.description")}
 					</div>

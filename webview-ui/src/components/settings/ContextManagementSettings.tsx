@@ -1,7 +1,7 @@
 import { HTMLAttributes } from "react"
 import React from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
 import { FoldVertical } from "lucide-react"
 
 import { PRUNE_CONDENSE_DEFAULTS } from "@roo-code/types"
@@ -19,6 +19,7 @@ import {
 	Slider,
 	Button,
 	StandardTooltip,
+	LabeledCheckbox,
 } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
@@ -229,14 +230,14 @@ export const ContextManagementSettings = ({
 					settingId="context-show-rooignored-files"
 					section="contextManagement"
 					label={t("settings:contextManagement.rooignore.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={showRooIgnoredFiles}
 						onChange={(e: any) => setCachedStateField("showRooIgnoredFiles", e.target.checked)}
 						data-testid="show-rooignored-files-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.rooignore.label")}
 						</label>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
 						{t("settings:contextManagement.rooignore.description")}
 					</div>
@@ -246,14 +247,14 @@ export const ContextManagementSettings = ({
 					settingId="context-enable-subfolder-rules"
 					section="contextManagement"
 					label={t("settings:contextManagement.enableSubfolderRules.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={enableSubfolderRules}
 						onChange={(e: any) => setCachedStateField("enableSubfolderRules", e.target.checked)}
 						data-testid="enable-subfolder-rules-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.enableSubfolderRules.label")}
 						</label>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
 						{t("settings:contextManagement.enableSubfolderRules.description")}
 					</div>
@@ -325,14 +326,14 @@ export const ContextManagementSettings = ({
 					settingId="context-include-diagnostic-messages"
 					section="contextManagement"
 					label={t("settings:contextManagement.diagnostics.includeMessages.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={includeDiagnosticMessages}
 						onChange={(e: any) => setCachedStateField("includeDiagnosticMessages", e.target.checked)}
 						data-testid="include-diagnostic-messages-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.diagnostics.includeMessages.label")}
 						</label>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
 						{t("settings:contextManagement.diagnostics.includeMessages.description")}
 					</div>
@@ -423,14 +424,14 @@ export const ContextManagementSettings = ({
 					settingId="context-include-current-time"
 					section="contextManagement"
 					label={t("settings:contextManagement.includeCurrentTime.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={includeCurrentTime}
 						onChange={(e: any) => setCachedStateField("includeCurrentTime", e.target.checked)}
 						data-testid="include-current-time-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.includeCurrentTime.label")}
 						</label>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
 						{t("settings:contextManagement.includeCurrentTime.description")}
 					</div>
@@ -440,14 +441,14 @@ export const ContextManagementSettings = ({
 					settingId="context-include-current-cost"
 					section="contextManagement"
 					label={t("settings:contextManagement.includeCurrentCost.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={includeCurrentCost}
 						onChange={(e: any) => setCachedStateField("includeCurrentCost", e.target.checked)}
 						data-testid="include-current-cost-checkbox">
 						<label className="block font-medium mb-1">
 							{t("settings:contextManagement.includeCurrentCost.label")}
 						</label>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
 						{t("settings:contextManagement.includeCurrentCost.description")}
 					</div>
@@ -490,12 +491,12 @@ export const ContextManagementSettings = ({
 					settingId="context-auto-condense"
 					section="contextManagement"
 					label={t("settings:contextManagement.autoCondenseContext.name")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={autoCondenseContext}
 						onChange={(e: any) => setCachedStateField("autoCondenseContext", e.target.checked)}
 						data-testid="auto-condense-context-checkbox">
 						<span className="font-medium">{t("settings:contextManagement.autoCondenseContext.name")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 				</SearchableSetting>
 				{autoCondenseContext && (
 					<div className="flex flex-col gap-3 pl-3 border-l-2 border-vscode-button-background">
@@ -616,12 +617,12 @@ export const ContextManagementSettings = ({
 					settingId="context-prune-before-condense"
 					section="contextManagement"
 					label={t("settings:contextManagement.pruneBeforeCondense.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={pruneBeforeCondense !== false}
 						onChange={(e: any) => setCachedStateField("pruneBeforeCondense", e.target.checked)}
 						data-testid="prune-before-condense-checkbox">
 						<span className="font-medium">{t("settings:contextManagement.pruneBeforeCondense.label")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:contextManagement.pruneBeforeCondense.description")}
 					</div>

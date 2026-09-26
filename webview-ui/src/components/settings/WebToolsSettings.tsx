@@ -1,6 +1,6 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { WEB_TOOLS_DEFAULTS } from "@roo-code/types"
 
@@ -8,7 +8,7 @@ import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { Slider } from "@/components/ui"
+import { Slider, LabeledCheckbox } from "@/components/ui"
 
 type WebToolsSettingsProps = HTMLAttributes<HTMLDivElement> & {
 	webToolsEnabled?: boolean
@@ -32,14 +32,14 @@ export const WebToolsSettings = ({
 
 			<Section>
 				<SearchableSetting settingId="web-enable" section="web" label={t("settings:web.enable.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={webToolsEnabled ?? false}
 						onChange={(e: any) => {
 							setCachedStateField("webToolsEnabled", e.target.checked)
 						}}
 						data-testid="web-tools-enabled-checkbox">
 						<span className="font-medium">{t("settings:web.enable.label")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:web.enable.description")}
 					</div>

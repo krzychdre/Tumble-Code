@@ -1,6 +1,6 @@
 import React, { useCallback } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { LabeledCheckbox } from "@src/components/ui"
 
 interface TodoListSettingsControlProps {
 	todoListEnabled?: boolean
@@ -23,9 +23,9 @@ export const TodoListSettingsControl: React.FC<TodoListSettingsControlProps> = (
 	return (
 		<div className="flex flex-col gap-1">
 			<div>
-				<VSCodeCheckbox checked={todoListEnabled} onChange={handleTodoListEnabledChange}>
+				<LabeledCheckbox checked={todoListEnabled} onChange={handleTodoListEnabledChange}>
 					<span className="font-medium">{t("settings:advanced.todoList.label")}</span>
-				</VSCodeCheckbox>
+				</LabeledCheckbox>
 				<div className="text-vscode-descriptionForeground text-sm">
 					{t("settings:advanced.todoList.description")}
 				</div>

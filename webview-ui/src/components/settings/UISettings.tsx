@@ -1,6 +1,6 @@
 import { HTMLAttributes, useMemo } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { LabeledCheckbox } from "@src/components/ui"
 import { telemetryClient } from "@/utils/TelemetryClient"
 
 import { SetCachedStateField } from "./types"
@@ -59,12 +59,12 @@ export const UISettings = ({
 						section="ui"
 						label={t("settings:ui.collapseThinking.label")}>
 						<div className="flex flex-col gap-1">
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={reasoningBlockCollapsed}
 								onChange={(e: any) => handleReasoningBlockCollapsedChange(e.target.checked)}
 								data-testid="collapse-thinking-checkbox">
 								<span className="font-medium">{t("settings:ui.collapseThinking.label")}</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
 								{t("settings:ui.collapseThinking.description")}
 							</div>
@@ -77,14 +77,14 @@ export const UISettings = ({
 						section="ui"
 						label={t("settings:ui.requireCtrlEnterToSend.label", { primaryMod })}>
 						<div className="flex flex-col gap-1">
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={enterBehavior === "newline"}
 								onChange={(e: any) => handleEnterBehaviorChange(e.target.checked)}
 								data-testid="enter-behavior-checkbox">
 								<span className="font-medium">
 									{t("settings:ui.requireCtrlEnterToSend.label", { primaryMod })}
 								</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm ml-5 mt-1">
 								{t("settings:ui.requireCtrlEnterToSend.description", { primaryMod })}
 							</div>

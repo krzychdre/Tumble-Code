@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Trans } from "react-i18next"
 import { z } from "zod"
-import { VSCodeButton, VSCodeTextField, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import {
@@ -37,6 +37,7 @@ import {
 	StandardTooltip,
 	Button,
 	Link,
+	LabeledCheckbox,
 } from "@src/components/ui"
 import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
@@ -473,11 +474,11 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 						{/* Enable/Disable Toggle */}
 						<div className="mb-4">
 							<div className="flex items-center gap-2">
-								<VSCodeCheckbox
+								<LabeledCheckbox
 									checked={currentSettings.codebaseIndexEnabled}
 									onChange={(e: any) => updateSetting("codebaseIndexEnabled", e.target.checked)}>
 									<span className="font-medium">{t("settings:codeIndex.enableLabel")}</span>
-								</VSCodeCheckbox>
+								</LabeledCheckbox>
 								<StandardTooltip content={t("settings:codeIndex.enableDescription")}>
 									<span className="codicon codicon-info text-xs text-vscode-descriptionForeground cursor-help" />
 								</StandardTooltip>
