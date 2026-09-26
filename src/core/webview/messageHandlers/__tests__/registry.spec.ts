@@ -20,9 +20,9 @@ describe("message handler registry", () => {
 		expect(claimedTwice).toEqual([])
 	})
 
-	it("routes the 137 message types the old switch handled, each to a function", () => {
+	it("routes the 137 message types the old switch handled plus resyncClineMessages, each to a function", () => {
 		const entries = Object.entries(messageHandlers)
-		expect(entries).toHaveLength(137)
+		expect(entries).toHaveLength(138)
 		for (const [, handler] of entries) {
 			expect(typeof handler).toBe("function")
 		}
