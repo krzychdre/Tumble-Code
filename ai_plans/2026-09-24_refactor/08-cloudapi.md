@@ -46,6 +46,13 @@ the "parse JSON, skip non-dict" loop 3 times (`metrics_service.py:118-124, 207-2
 retention protects both event types. **Test first:** an identity test in the style of
 `test_web_and_share.py:1333-1356`; "Embedding Usage survives a purge". **Size** S.
 
+**Status CAPI-M3:** DONE 2026-09-26, #441 (merge d5bc8cf21), pytest 414 to 442 on the branch. `services/telemetry_vocab.py`
+holds the event names, kinds, labels, `parse_event_props`/`iter_event_props` and `api_req_started_payload`; old names
+re-exported. Already done before: the inline `num()` copy, retention protecting both event types (DEF-C31). Pinned,
+not unified: `task_summary` requires `type == "say"` for `api_req_started`, `model_attribution` does not; a
+non-string `completionKind` shows as its own row on the metrics page but counts as a conversation turn on the task
+detail page (owner question).
+
 ### CAPI-M4 Formatting helpers, finished
 
 The earlier extraction holds (`num`, `fmt_tokens`, `fmt_duration` exist only in `src/utils/format.py:13, 23, 36`,
@@ -118,6 +125,14 @@ backfill), medium risk.
 `telemetry_service.py:277` runs `_link_task_tree` (2 to 4 queries) on every streamed chunk; run it only when the
 task row is created (`task_tree.py:64-71` already stamps rows that exist when the link arrives). **Test first:**
 ordering permutations (child first, parent first, relation last). **Size** S, medium risk (hot path).
+
+**Status CAPI-M11:** DONE 2026-09-26, #440 (merge 8a9863ab1), pytest 414 to 424 on the branch. `_link_task_tree` runs only
+when the bridge creates the task row: 20 chunks of an existing task went from 20 calls and 40 `task_relations` queries
+to 0. All 6 arrival orders, a three-level tree and the concurrent miss (repaired by the next telemetry event with
+`parentTaskId`) are tested. **Finding (new item, DEF-C47):** `record_relation` (`task_tree.py`) writes
+`tasks.parent_task_id` on an existing child without checking the parent row exists; on Postgres the order "child
+streams, relation, parent" should raise an IntegrityError (foreign key); SQLite tests do not enforce it. Not yet
+reproduced on Postgres.
 
 ### CAPI-M12 CPU-heavy work off the event loop (lowest priority)
 
