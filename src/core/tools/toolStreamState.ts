@@ -29,6 +29,11 @@ interface ToolSpecificStreamState {
 		lastValidatedPartialPath?: string
 		/** The access result for `lastValidatedPartialPath`. */
 		lastPartialAccessAllowed?: boolean
+		/**
+		 * The prevent-focus-disruption experiment, read once per streamed call
+		 * instead of once per chunk (CORE-R7 step 3).
+		 */
+		partialPreventFocusDisruption?: boolean
 	}
 	edit_file: {
 		/**

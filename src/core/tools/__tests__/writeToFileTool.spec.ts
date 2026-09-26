@@ -231,6 +231,32 @@ describe("writeToFileTool", () => {
 		return toolResult
 	}
 
+	describe("settings reads while the call streams (CORE-R7 step 3)", () => {
+		it("reads the settings once per streamed call instead of once per chunk", async () => {
+			const getState = mockCline.providerRef.deref().getState
+
+			for (let chunk = 0; chunk < 5; chunk++) {
+				await executeWriteFileTool({}, { isPartial: true })
+			}
+
+			// The first chunk only records the path; the next four reached the read (4 before).
+			expect(getState).toHaveBeenCalledTimes(1)
+			expect(mockCline.diffViewProvider.update).toHaveBeenCalledTimes(4)
+		})
+
+		it("reads them again for the next call", async () => {
+			const getState = mockCline.providerRef.deref().getState
+			await executeWriteFileTool({}, { isPartial: true })
+			await executeWriteFileTool({}, { isPartial: true })
+			writeToFileTool.resetPartialState(mockCline)
+
+			await executeWriteFileTool({}, { isPartial: true })
+			await executeWriteFileTool({}, { isPartial: true })
+
+			expect(getState).toHaveBeenCalledTimes(2)
+		})
+	})
+
 	describe("access control", () => {
 		it("validates and allows access when rooIgnoreController permits", async () => {
 			await executeWriteFileTool({}, { accessAllowed: true })

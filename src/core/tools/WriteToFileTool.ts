@@ -241,13 +241,17 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			return
 		}
 
-		const provider = task.providerRef.deref()
-		const state = await provider?.getState()
-		const isPreventFocusDisruptionEnabled =
-			task.silentWrites ||
-			experiments.isEnabled(state?.experiments ?? {}, EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION)
+		// The experiment is read once per streamed call, not once per chunk (CORE-R7 step 3).
+		const partialState = getToolStreamState(task, this.name)
+		if (partialState.partialPreventFocusDisruption === undefined) {
+			const state = await task.providerRef.deref()?.getState()
+			partialState.partialPreventFocusDisruption = experiments.isEnabled(
+				state?.experiments ?? {},
+				EXPERIMENT_IDS.PREVENT_FOCUS_DISRUPTION,
+			)
+		}
 
-		if (isPreventFocusDisruptionEnabled) {
+		if (task.silentWrites || partialState.partialPreventFocusDisruption) {
 			return
 		}
 
@@ -262,7 +266,6 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 
 		// Memoize the access check result per path so repeated chunks for the same
 		// rejected path don't re-validate (and won't spam any UI).
-		const partialState = getToolStreamState(task, this.name)
 		let accessAllowed: boolean
 		if (partialState.lastValidatedPartialPath === relPath && partialState.lastPartialAccessAllowed !== undefined) {
 			accessAllowed = partialState.lastPartialAccessAllowed
