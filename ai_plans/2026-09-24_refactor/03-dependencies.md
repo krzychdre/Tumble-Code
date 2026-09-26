@@ -520,3 +520,13 @@ override from #65 was a dedupe, not a security pin; six tools require ^4.0.7). D
 deferred eslint and React Compiler rules one per PR, F2 `rules-of-hooks` in the CLI, F3 knip barrel re-exports,
 F4 `esbuild-wasm` 0.28, F5 replace tsup's DTS step before TypeScript 7. Started: DEP-6 webview rows (lucide-react,
 katex, react-markdown, shiki, mermaid, i18next + react-i18next), one PR each.
+
+**Finding (2026-09-26), CLI blank row under the footer after a turn (pre-existing, not an ink 7 regression):** the
+row is the spinner row. At turn end the live frame loses the spinner (1 row) while the completion moves into
+`<Static>`, so static plus frame is one row shorter than the frame ink erases; at the terminal bottom ink cannot
+move content down, so the freed row stays empty. main with ink 6.6 shows it on every turn whose completion streams
+over about a second; ink 7 shows it also on fast turns because its host config sets `supportsMicrotasks: true`
+(each zustand set commits in a microtask; micro-test renders [4,5,6] vs [5,6] on 6.6). Options: (a) InputArea
+`marginTop={spinner ? 0 : 1}` so busy and idle frames have equal height (no gap between spinner and input rule
+while busy), (b) batch transcript changes per event-loop turn (masks it on fast turns only), (c) accept.
+Recommendation (a); OWNER DECISION PENDING (item CLI-F2).
