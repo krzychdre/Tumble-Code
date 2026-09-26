@@ -3510,6 +3510,9 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > updatePromp
     ],
     [
       "provider.getStateToPostToWebview",
+      {
+        "includeTaskHistory": "whenChanged",
+      },
     ],
     [
       "provider.postMessageToWebview",
@@ -3815,6 +3818,9 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > upsertApiCo
 exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidLaunch 1`] = `
 {
   "events": [
+    [
+      "provider.forgetWebviewTaskHistory",
+    ],
     [
       "customModesManager.getCustomModes",
     ],

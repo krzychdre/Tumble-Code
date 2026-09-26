@@ -158,6 +158,41 @@ function sharedStoreKey(storagePath: string, context: string | undefined): strin
  */
 type ReadResult = { status: "ok"; item: HistoryItem } | { status: "missing" } | { status: "error"; error: unknown }
 
+/** The last revision handed out by any {@link TaskHistoryStore} in this process. */
+let lastRevision = 0
+
+/**
+ * The cache map of a {@link TaskHistoryStore}: a Map that takes a new revision
+ * on every change of its contents. Every mutation of the cached history goes
+ * through `set`, `delete` or `clear`, so the revision cannot miss one; a
+ * delete of an absent key or a clear of an empty map changes nothing and
+ * keeps it. Revisions come from one process-wide counter, so two stores (or a
+ * store and its reacquired successor) never share one.
+ */
+class RevisionedMap<K, V> extends Map<K, V> {
+	revision = ++lastRevision
+
+	override set(key: K, value: V): this {
+		this.revision = ++lastRevision
+		return super.set(key, value)
+	}
+
+	override delete(key: K): boolean {
+		const deleted = super.delete(key)
+		if (deleted) {
+			this.revision = ++lastRevision
+		}
+		return deleted
+	}
+
+	override clear(): void {
+		if (this.size > 0) {
+			this.revision = ++lastRevision
+		}
+		super.clear()
+	}
+}
+
 /**
  * TaskHistoryStore encapsulates all task history persistence logic.
  *
@@ -193,7 +228,7 @@ type ReadResult = { status: "ok"; item: HistoryItem } | { status: "missing" } | 
  */
 export class TaskHistoryStore {
 	private readonly globalStoragePath: string
-	private cache: Map<string, HistoryItem> = new Map()
+	private readonly cache = new RevisionedMap<string, HistoryItem>()
 	/** Cheap revision token per task ID, used to skip unchanged re-reads. */
 	private fileMeta: Map<string, TaskFileMeta> = new Map()
 	/**
@@ -480,6 +515,18 @@ export class TaskHistoryStore {
 	}
 
 	// ────────────────────────────── Reads ──────────────────────────────
+
+	/**
+	 * A token that changes whenever the cached history changes (an upsert, a
+	 * delete, a reconcile or watcher refresh that altered an entry, a clear)
+	 * and never on a read. Equal revisions of the same store mean
+	 * {@link getAll} returns the same items; a provider uses it to skip
+	 * resending an unchanged history to its webview. Unique across store
+	 * instances in this process.
+	 */
+	get revision(): number {
+		return this.cache.revision
+	}
 
 	/**
 	 * Get a single history item by task ID.
