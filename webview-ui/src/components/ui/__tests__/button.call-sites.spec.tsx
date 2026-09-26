@@ -1,3 +1,7 @@
+// Since the last DEP-9 step the toolkit is no longer installed: these specs
+// now run on the replacement components and keep pinning the behaviour the
+// toolkit had (the toolkit-only branches in the helpers are unused).
+
 // Characterization of what users rely on at the webview's VSCodeButton call
 // sites (refactor DEP-9: the deprecated `VSCodeButton` from
 // @vscode/webview-ui-toolkit is being replaced by a native button).

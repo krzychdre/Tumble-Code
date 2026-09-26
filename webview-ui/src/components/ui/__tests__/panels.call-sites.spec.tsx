@@ -1,3 +1,7 @@
+// Since the last DEP-9 step the toolkit is no longer installed: these specs
+// now run on the replacement components and keep pinning the behaviour the
+// toolkit had (the toolkit-only branches in the helpers are unused).
+
 // Characterization of the webview's VSCodePanels / VSCodePanelTab /
 // VSCodePanelView call site (refactor DEP-9: the deprecated toolkit tabs are
 // being replaced). The only user is the expanded MCP server row in McpView.

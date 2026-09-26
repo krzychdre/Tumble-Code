@@ -1282,34 +1282,6 @@ body:focus-within .code-block-scrollable {
 	display: none; /* Chrome, Safari and Opera */
 }
 
-/**
- * Dropdown label
- * https://github.com/microsoft/vscode-webview-ui-toolkit/tree/main/src/dropdown#with-label
- */
-
-.dropdown-container {
-	box-sizing: border-box;
-	display: flex;
-	flex-flow: column nowrap;
-	align-items: flex-start;
-	justify-content: flex-start;
-}
-
-.dropdown-container label {
-	display: block;
-	color: var(--vscode-foreground);
-	cursor: pointer;
-	font-size: var(--vscode-font-size);
-	line-height: normal;
-	margin-bottom: 2px;
-}
-
-/* Fix dropdown double scrollbar overflow */
-
-#api-provider > div > ul {
-	overflow: unset;
-}
-
 /* Faded icon buttons in textfields */
 .input-icon-button {
 	cursor: pointer;

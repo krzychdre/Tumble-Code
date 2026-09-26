@@ -6,8 +6,6 @@ import ApiConfigManager from "../ApiConfigManager"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock VSCode components
-vitest.mock("@vscode/webview-ui-toolkit/react", () => ({}))
-
 vitest.mock("@/components/ui", () => ({
 	// The real text field (a native input), not a stub.
 	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
