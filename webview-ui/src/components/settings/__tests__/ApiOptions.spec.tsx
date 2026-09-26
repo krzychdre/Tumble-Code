@@ -11,6 +11,7 @@ const { ExtensionStateContextProvider } = ExtensionStateContext
 
 import ApiOptions, { ApiOptionsProps } from "../ApiOptions"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedButton as RealThemedButton } from "@/components/ui/themed-button"
 
 // Mock VSCode components
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
@@ -22,7 +23,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	),
 	VSCodeRadio: ({ value, checked }: any) => <input type="radio" value={value} checked={checked} />,
 	VSCodeRadioGroup: ({ children }: any) => <div>{children}</div>,
-	VSCodeButton: ({ children }: any) => <div>{children}</div>,
 }))
 
 // Mock other components
@@ -42,6 +42,8 @@ vi.mock("vscrui", () => ({
 
 // Mock @shadcn/ui components
 vi.mock("@/components/ui", () => ({
+	// The real button, not a stub: only the barrel is mocked.
+	ThemedButton: (props: any) => <RealThemedButton {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,

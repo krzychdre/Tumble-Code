@@ -38,7 +38,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 		</select>
 	),
 	VSCodeOption: ({ children, value }: any) => <option value={value}>{children}</option>,
-	VSCodeButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
 }))
 
 vi.mock("vscrui", () => ({

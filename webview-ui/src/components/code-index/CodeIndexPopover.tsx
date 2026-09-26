@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Trans } from "react-i18next"
 import { z } from "zod"
-import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import * as ProgressPrimitive from "@radix-ui/react-progress"
 
 import {
@@ -38,6 +38,7 @@ import {
 	Button,
 	Link,
 	LabeledCheckbox,
+	ThemedButton,
 } from "@src/components/ui"
 import { useRooPortal } from "@src/components/ui/hooks/useRooPortal"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
@@ -692,7 +693,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_MIN_SCORE
 												).toFixed(2)}
 											</span>
-											<VSCodeButton
+											<ThemedButton
 												appearance="icon"
 												title={t("settings:codeIndex.resetToDefault")}
 												onClick={() =>
@@ -702,7 +703,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													)
 												}>
 												<span className="codicon codicon-discard" />
-											</VSCodeButton>
+											</ThemedButton>
 										</div>
 									</div>
 
@@ -736,7 +737,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 												{currentSettings.codebaseIndexSearchMaxResults ??
 													CODEBASE_INDEX_DEFAULTS.DEFAULT_SEARCH_RESULTS}
 											</span>
-											<VSCodeButton
+											<ThemedButton
 												appearance="icon"
 												title={t("settings:codeIndex.resetToDefault")}
 												onClick={() =>
@@ -746,7 +747,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 													)
 												}>
 												<span className="codicon codicon-discard" />
-											</VSCodeButton>
+											</ThemedButton>
 										</div>
 									</div>
 								</div>

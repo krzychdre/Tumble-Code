@@ -1,7 +1,6 @@
 import { HTMLAttributes, useState, useCallback, useEffect, useId } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { buildDocLink } from "@src/utils/docLinks"
 import { useMount } from "react-use"
@@ -22,6 +21,7 @@ import {
 	Slider,
 	Link,
 	LabeledCheckbox,
+	ThemedButton,
 } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
@@ -201,7 +201,7 @@ export const TerminalSettings = ({
 									<label htmlFor={defaultProfileId} className="cursor-pointer">
 										{t("settings:terminal.profile.default")}
 									</label>
-									<VSCodeButton
+									<ThemedButton
 										appearance="secondary"
 										onClick={() => {
 											onTerminalProfilePickerOpened?.()
@@ -209,7 +209,7 @@ export const TerminalSettings = ({
 										}}
 										data-testid="terminal-profile-configure-button">
 										{t("settings:terminal.profile.configureButton")}
-									</VSCodeButton>
+									</ThemedButton>
 								</div>
 
 								{/* Level 2: Override */}

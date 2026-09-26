@@ -200,21 +200,6 @@ vi.mock("../ChatTextArea", () => {
 
 // Mock VSCode components
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeButton: function MockVSCodeButton({
-		children,
-		onClick,
-		appearance,
-	}: {
-		children: React.ReactNode
-		onClick?: () => void
-		appearance?: string
-	}) {
-		return (
-			<button onClick={onClick} data-appearance={appearance}>
-				{children}
-			</button>
-		)
-	},
 	VSCodeTextField: function MockVSCodeTextField({
 		value,
 		onInput,

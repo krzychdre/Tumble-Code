@@ -41,7 +41,6 @@ vi.mock("@/components/ui/hooks/useOpenRouterModelProviders", () => ({
 }))
 
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
 	VSCodeTextField: ({ value, onInput, onBlur, placeholder, className, type }: any) => (
 		<input
 			type={type ?? "text"}

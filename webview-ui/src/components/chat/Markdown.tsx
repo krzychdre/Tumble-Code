@@ -1,8 +1,7 @@
 import { memo, useState } from "react"
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 
 import { useCopyToClipboard } from "@src/utils/clipboard"
-import { StandardTooltip } from "@src/components/ui"
+import { StandardTooltip, ThemedButton } from "@src/components/ui"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 
@@ -36,13 +35,13 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 					}}>
 					<style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1.0; } }`}</style>
 					<StandardTooltip content="Copy as markdown">
-						<VSCodeButton
+						<ThemedButton
 							className="copy-button"
 							appearance="icon"
 							style={{
 								height: "24px",
 								border: "none",
-								background: "var(--vscode-editor-background)",
+								backgroundColor: "var(--vscode-editor-background)",
 								transition: "background 0.2s ease-in-out",
 							}}
 							onClick={async () => {
@@ -58,7 +57,7 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 								}
 							}}>
 							<span className="codicon codicon-copy" />
-						</VSCodeButton>
+						</ThemedButton>
 					</StandardTooltip>
 				</div>
 			)}
