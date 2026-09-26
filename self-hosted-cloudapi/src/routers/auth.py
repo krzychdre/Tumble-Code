@@ -26,9 +26,38 @@ from src.auth.clerk_facade import (
     format_me_response,
     format_org_memberships_response,
 )
+from src.models.user import Session as SessionModel
 from src.services.user_service import get_user_by_id, get_user_memberships, is_member_of
 
 router = APIRouter(prefix="/v1", tags=["auth"])
+
+
+async def client_session(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> SessionModel:
+    """The active session behind the request's ``Authorization: Bearer`` client token.
+
+    The client token is the one POST /v1/client/sign_ins hands back; every
+    other Clerk route sends it. A missing header, one not starting with
+    exactly ``"Bearer "``, or a token matching no active session is a 401.
+    The route shares this request's database session (FastAPI caches
+    ``get_db`` per request), so it sees what this lookup saw.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid Authorization header",
+        )
+
+    session = await validate_client_token(db, auth_header[7:])
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid client token",
+        )
+    return session
 
 
 @router.post("/client/sign_ins")
@@ -72,9 +101,9 @@ async def sign_in(
 @router.post("/client/sessions/{session_id}/tokens")
 async def create_session_token(
     session_id: str,
-    request: Request,
     is_native: str = Form("1", alias="_is_native"),
     organization_id: str = Form(""),
+    session: SessionModel = Depends(client_session),
     db: AsyncSession = Depends(get_db),
 ):
     """Clerk-compatible session token creation.
@@ -83,21 +112,6 @@ async def create_session_token(
     Header: Authorization: Bearer {clientToken}
     Returns: { jwt: "..." }
     """
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    raw_token = auth_header[7:]
-    session = await validate_client_token(db, raw_token)
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client token",
-        )
-
     if session.id != session_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -128,7 +142,7 @@ async def create_session_token(
 
 @router.get("/me")
 async def get_me(
-    request: Request,
+    session: SessionModel = Depends(client_session),
     db: AsyncSession = Depends(get_db),
 ):
     """Clerk-compatible user profile endpoint.
@@ -136,21 +150,6 @@ async def get_me(
     Header: Authorization: Bearer {clientToken}
     Returns: { response: { id, first_name, last_name, image_url, ... } }
     """
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    raw_token = auth_header[7:]
-    session = await validate_client_token(db, raw_token)
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client token",
-        )
-
     user = await get_user_by_id(db, session.user_id)
     if user is None:
         raise HTTPException(
@@ -163,7 +162,7 @@ async def get_me(
 
 @router.get("/me/organization_memberships")
 async def get_organization_memberships(
-    request: Request,
+    session: SessionModel = Depends(client_session),
     db: AsyncSession = Depends(get_db),
 ):
     """Clerk-compatible org memberships endpoint.
@@ -171,21 +170,6 @@ async def get_organization_memberships(
     Header: Authorization: Bearer {clientToken}
     Returns: { response: [{ id, role, organization: { id, name, slug, ... } }] }
     """
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    raw_token = auth_header[7:]
-    session = await validate_client_token(db, raw_token)
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client token",
-        )
-
     memberships = await get_user_memberships(db, session.user_id)
     return format_org_memberships_response(memberships)
 
@@ -193,8 +177,8 @@ async def get_organization_memberships(
 @router.post("/client/sessions/{session_id}/remove")
 async def remove_session(
     session_id: str,
-    request: Request,
     is_native: str = Form("1", alias="_is_native"),
+    session: SessionModel = Depends(client_session),
     db: AsyncSession = Depends(get_db),
 ):
     """Clerk-compatible logout endpoint.
@@ -202,21 +186,6 @@ async def remove_session(
     Accepts form-urlencoded: _is_native=1
     Header: Authorization: Bearer {clientToken}
     """
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid Authorization header",
-        )
-
-    raw_token = auth_header[7:]
-    session = await validate_client_token(db, raw_token)
-    if session is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid client token",
-        )
-
     # A client token may only end its own session (same answer as the sibling
     # check in create_session_token), never another user's.
     if session.id != session_id:

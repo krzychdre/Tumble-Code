@@ -19,7 +19,7 @@ from fastapi import Depends, Request
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 
 from config.settings import settings
 from src.auth.network_access import client_allowed
@@ -138,7 +138,7 @@ async def get_web_user_optional(
 ) -> Optional[WebUser]:
     """Resolve the current browser user from the session cookie, or None.
 
-    Web routes redirect to /app/login on None. A cookie presented from outside
+    ``require_web_user`` turns None into the redirect to /app/login. A cookie presented from outside
     ``WEB_ALLOWED_NETWORKS`` is ignored, so a session opened on an allowed
     network does not keep working from anywhere else (on ``/shared`` pages,
     which are not behind the panel's gate).
@@ -146,3 +146,35 @@ async def get_web_user_optional(
     if not client_allowed(request.client.host if request.client else None):
         return None
     return await resolve_web_user(request.cookies.get(COOKIE_NAME), db)
+
+
+# Where a reader without a session is sent. Exactly this path: no "next"
+# parameter, so after signing in the reader lands on /app.
+LOGIN_PATH = "/app/login"
+
+
+class LoginRequired(Exception):
+    """Raised by a web route (or ``require_web_user``) when nobody is signed in.
+
+    ``redirect_to_login``, registered on the app in main.py, turns it into the
+    303 to ``LOGIN_PATH``, so the redirect is written once instead of in every
+    route.
+    """
+
+
+async def require_web_user(
+    user: Optional[WebUser] = Depends(get_web_user_optional),
+) -> WebUser:
+    """The signed-in browser user; raises ``LoginRequired`` when there is none.
+
+    Built on ``get_web_user_optional``, so overriding that dependency (as the
+    tests do) also signs a reader in here.
+    """
+    if user is None:
+        raise LoginRequired()
+    return user
+
+
+async def redirect_to_login(request: Request, exc: LoginRequired) -> RedirectResponse:
+    """Exception handler for ``LoginRequired``: 303 to the login page."""
+    return RedirectResponse(url=LOGIN_PATH, status_code=303)

@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import settings
 from src.database import get_db
-from src.auth.web_session import WebUser, get_web_user_optional
+from src.auth.web_session import LoginRequired, WebUser, get_web_user_optional, require_web_user
 from src.models.task import Task, TaskMessage, TaskShare
 from src.models.organization import Membership
 from src.models.retention import (
@@ -459,7 +459,7 @@ async def task_list(
     page: int = Query(1),
     q: str = Query("", max_length=200),
     scope: str = Query("roots"),
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List the logged-in user's shared tasks, newest first, one page at a time.
@@ -475,9 +475,6 @@ async def task_list(
     fragments, and hiding them outright left no way to see a run's shape
     without opening it. ``scope=all`` restores the flat list.
     """
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     search = q.strip()
     scope = scope if scope in ("roots", "all") else "roots"
     filters = [Task.user_id == user["user_id"]]
@@ -543,7 +540,7 @@ async def task_list(
 async def metrics_page(
     request: Request,
     period: str = DEFAULT_PERIOD,
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Usage-metrics dashboard for the logged-in user.
@@ -551,9 +548,6 @@ async def metrics_page(
     Aggregates LLM Completion telemetry (tokens / cost / duration / models /
     modes) over the selected period. See services/metrics_service.py.
     """
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     metrics = await compute_user_metrics(db, user["user_id"], period)
     periods = [
         {"key": key, "label": label, "active": key == metrics["period"]}
@@ -645,13 +639,10 @@ async def _quality_overview(db: AsyncSession, user_id: str, period: str) -> dict
 async def task_detail(
     task_id: str,
     request: Request,
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Read-only conversation view for a task the user owns."""
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     result = await db.execute(select(Task).where(Task.id == task_id))
     task = result.scalar_one_or_none()
     if task is None or task.user_id != user["user_id"]:
@@ -713,7 +704,7 @@ async def task_detail(
 @router.post("/app/tasks/{task_id}/delete")
 async def delete_task(
     task_id: str,
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Permanently delete a task the user owns (row + messages + share).
@@ -722,9 +713,6 @@ async def delete_task(
     ``delete_shared_task``). Always redirects back to the task list, so the
     POST is idempotent and refresh-safe.
     """
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     await delete_shared_task(db, task_id, user["user_id"])
     return RedirectResponse(url="/app", status_code=303)
 
@@ -733,7 +721,7 @@ async def delete_task(
 async def settings_page(
     request: Request,
     ran: str = Query(""),
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Retention settings, with a preview of exactly what a sweep would remove.
@@ -743,9 +731,6 @@ async def settings_page(
     or not retention is switched on — before you arm it is the one moment the
     preview is genuinely worth reading.
     """
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     # read_policy, not get_policy: a GET must not write, so a user who has
     # never saved a policy sees the unsaved default instead of getting a row.
     policy = await read_policy(db, user["user_id"])
@@ -772,7 +757,7 @@ async def settings_page(
 @router.post("/app/settings")
 async def save_settings(
     request: Request,
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Save the retention policy. Saving never deletes anything.
@@ -782,9 +767,6 @@ async def save_settings(
     same click that turned it on. Deleting happens on "Run now", or on the
     scheduled sweep.
     """
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     form = await request.form()
     policy = await get_policy(db, user["user_id"])
 
@@ -801,7 +783,7 @@ async def save_settings(
 
 @router.post("/app/settings/run")
 async def run_retention_now(
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Apply the saved policy immediately.
@@ -809,9 +791,6 @@ async def run_retention_now(
     Runs regardless of the ``enabled`` switch: the button is an explicit
     instruction, and the switch only governs the scheduled sweep.
     """
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     policy = await get_policy(db, user["user_id"])
     plan = await apply_sweep(db, user["user_id"], policy)
     await db.commit()
@@ -859,7 +838,7 @@ def _fmt_bytes(n: int) -> str:
 @router.post("/app/tasks/bulk-delete")
 async def bulk_delete_tasks(
     request: Request,
-    user: Optional[WebUser] = Depends(get_web_user_optional),
+    user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Permanently delete every selected task the user owns.
@@ -872,9 +851,6 @@ async def bulk_delete_tasks(
 
     Always redirects back to the list, so the POST is refresh-safe.
     """
-    if user is None:
-        return RedirectResponse(url="/app/login", status_code=303)
-
     form = await request.form()
     task_ids = [t for t in form.getlist("task_ids") if isinstance(t, str) and t]
     include_subtasks = form.get("include_subtasks") == "1"
@@ -920,7 +896,7 @@ async def shared_task(
 
     if share.visibility != "public" and user is None:
         # Organization/private share viewed anonymously → require login.
-        return RedirectResponse(url="/app/login", status_code=303)
+        raise LoginRequired()
 
     # The share link is live (remote-controllable) only for the task's owner — so a
     # freshly-shared task is drivable straight from its share URL. Anonymous and

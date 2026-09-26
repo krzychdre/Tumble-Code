@@ -10,6 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from config.auth import is_loopback_host
 from config.settings import settings
 from src.auth.network_access import WebAccessMiddleware, describe_policy
+from src.auth.web_session import LoginRequired, redirect_to_login
 from src.auth.origins import trusted_origins
 from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
@@ -111,6 +112,10 @@ if settings.rate_limit_enabled and limiter is not None:
     app.state.limiter = limiter
     from slowapi.middleware import SlowAPIMiddleware
     app.add_middleware(SlowAPIMiddleware)
+
+# A web route that needs a signed-in reader raises LoginRequired (usually via
+# the require_web_user dependency); this sends the browser to the login page.
+app.add_exception_handler(LoginRequired, redirect_to_login)
 
 # Register routers
 # Clerk-compatible auth facade
