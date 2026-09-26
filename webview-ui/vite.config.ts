@@ -88,7 +88,7 @@ export default defineConfig(({ mode }) => {
 		// plugin-react 6 no longer runs Babel itself; the React Compiler runs through
 		// @rolldown/plugin-babel. Keep the options in sync with
 		// scripts/check-react-compiler-bailouts.mjs (COMPILER_OPTIONS).
-		babel({ presets: [reactCompilerPreset({ target: "18" })] }),
+		babel({ presets: [reactCompilerPreset({ target: "19" })] }),
 		tailwindcss(),
 		persistPortPlugin(),
 		wasmPlugin(),
