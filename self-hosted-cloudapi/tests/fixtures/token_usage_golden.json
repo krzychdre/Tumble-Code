@@ -564,9 +564,6 @@
 				"totalCacheReads": null,
 				"totalCost": 0.001,
 				"contextTokens": 110
-			},
-			"knownDivergences": {
-				"python": "json.loads accepts NaN and Infinity, num() passes the float through and int(nan) raises ValueError, so message_metrics throws instead of returning zero (an uploaded conversation with such a message fails the whole backfill)."
 			}
 		},
 		{
