@@ -55,11 +55,12 @@ export function listSourceFiles(root) {
 
 /**
  * Loads Babel and the compiler plugin the way the package's own build does: the compiler from the
- * package, Babel from @vitejs/plugin-react (the Babel that Vite runs the compiler with).
+ * package, Babel from @rolldown/plugin-babel (the Babel that Vite runs the compiler with; since
+ * @vitejs/plugin-react 6 the compiler runs there, plugin-react itself has no Babel any more).
  */
 function loadToolchain(root) {
 	const req = createRequire(path.join(root, "package.json"))
-	const babel = createRequire(req.resolve("@vitejs/plugin-react"))("@babel/core")
+	const babel = createRequire(req.resolve("@rolldown/plugin-babel"))("@babel/core")
 	return { babel, compilerPath: req.resolve("babel-plugin-react-compiler") }
 }
 

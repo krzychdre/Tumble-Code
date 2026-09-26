@@ -3,7 +3,8 @@ import fs from "fs"
 import { execSync } from "child_process"
 
 import { defineConfig, type PluginOption, type Plugin } from "vite"
-import react from "@vitejs/plugin-react"
+import react, { reactCompilerPreset } from "@vitejs/plugin-react"
+import babel from "@rolldown/plugin-babel"
 import tailwindcss from "@tailwindcss/vite"
 
 import { bundleBoundaryPlugin } from "./src/vite-plugins/bundleBoundaryPlugin"
@@ -83,11 +84,11 @@ export default defineConfig(({ mode }) => {
 	}
 
 	const plugins: PluginOption[] = [
-		react({
-			babel: {
-				plugins: [["babel-plugin-react-compiler", { target: "18" }]],
-			},
-		}),
+		react(),
+		// plugin-react 6 no longer runs Babel itself; the React Compiler runs through
+		// @rolldown/plugin-babel. Keep the options in sync with
+		// scripts/check-react-compiler-bailouts.mjs (COMPILER_OPTIONS).
+		babel({ presets: [reactCompilerPreset({ target: "18" })] }),
 		tailwindcss(),
 		persistPortPlugin(),
 		wasmPlugin(),
