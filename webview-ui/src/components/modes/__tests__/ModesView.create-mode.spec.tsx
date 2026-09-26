@@ -29,17 +29,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 	VSCodeTextField: ({ value, onChange, ...props }: any) => (
 		<input type="text" value={value ?? ""} onChange={onChange} {...props} />
 	),
-	VSCodeRadioGroup: ({ value, onChange, children }: any) => (
-		<div role="radiogroup" data-value={value} onChange={onChange}>
-			{children}
-		</div>
-	),
-	VSCodeRadio: ({ value, children }: any) => (
-		<label>
-			<input type="radio" name="mode-source" value={value} />
-			{children}
-		</label>
-	),
 }))
 
 const availableGroups = (Object.keys(TOOL_GROUPS) as ToolGroup[]).filter((group) => !TOOL_GROUPS[group].alwaysAvailable)

@@ -1,10 +1,10 @@
 import React, { useState } from "react"
-import { VSCodeRadioGroup, VSCodeRadio, VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { type GroupEntry, type McpServer, type ModeConfig, modeConfigSchema } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, Input, LabeledCheckbox } from "@src/components/ui"
+import { Button, Input, LabeledCheckbox, ThemedRadio, ThemedRadioGroup } from "@src/components/ui"
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 
 import { availableGroups, getGroupName } from "./modeGroups"
@@ -136,26 +136,26 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-sm text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.saveLocation.description")}
 						</div>
-						<VSCodeRadioGroup
+						<ThemedRadioGroup
 							value={source}
 							onChange={(e: Event | React.FormEvent<HTMLElement>) => {
 								const target = ((e as CustomEvent)?.detail?.target ||
 									(e.target as HTMLInputElement)) as HTMLInputElement
 								setSource(target.value as ModeSource)
 							}}>
-							<VSCodeRadio value="global">
+							<ThemedRadio value="global">
 								{t("prompts:createModeDialog.saveLocation.global.label")}
 								<div className="text-xs text-vscode-descriptionForeground mt-0.5">
 									{t("prompts:createModeDialog.saveLocation.global.description")}
 								</div>
-							</VSCodeRadio>
-							<VSCodeRadio value="project">
+							</ThemedRadio>
+							<ThemedRadio value="project">
 								{t("prompts:createModeDialog.saveLocation.project.label")}
 								<div className="text-xs text-vscode-descriptionForeground mt-0.5">
 									{t("prompts:createModeDialog.saveLocation.project.description")}
 								</div>
-							</VSCodeRadio>
-						</VSCodeRadioGroup>
+							</ThemedRadio>
+						</ThemedRadioGroup>
 					</div>
 
 					<div className="mb-4">
