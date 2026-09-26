@@ -547,3 +547,10 @@ pixel-identical); ELK is a new 1.46 MB lazy chunk never fetched with this config
 removed in #506 (`44873608c`): package, mocks, the vitest `focus()` stub (jsdom focus is real again; new
 real-focus specs fail with the stub), dead toolkit CSS; webview `index.js` 3,087,781 to 2,919,632 bytes (-5.4%,
 gzip -39 kB), no FAST code left. React 19 (DEP-8 part 1) started.
+
+**Coordinator full run (2026-09-26, main 44873608c after DEP-7/DEP-9/most of DEP-6, fresh install,
+`turbo run check-types lint test build --force`):** 38 of 39 tasks green; the only failure was webview
+`FormattedTextField.spec` (5 of 18): the spec fired `change` while the component listens via `onInput` (native
+`input` only); the removed toolkit mock had bridged them. Test-side, fixed in #507 (`59aa622d4`). DEP-9 follow-up
+F2: the toolkit text field had no border, so the red error border and coloured price borders in OpenAI Compatible
+never showed (kept as is).
