@@ -672,6 +672,9 @@ export class TaskContextManager {
 			truncateResult = await manageContext({
 				messages: this.access.apiConversationHistory,
 				totalTokens: contextTokens,
+				// TaskApiLoop counted the last message with the task's own handler: reuse
+				// the count when manageContext counts with that handler too (API P4).
+				lastMessageTokens: condenseApiHandler === this.access.api ? lastMessageTokens : undefined,
 				maxTokens,
 				contextWindow,
 				apiHandler: condenseApiHandler,
