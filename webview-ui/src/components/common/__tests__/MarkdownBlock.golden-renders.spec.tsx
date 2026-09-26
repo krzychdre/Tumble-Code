@@ -64,6 +64,17 @@ const CASES: Array<{ name: string; markdown: string }> = [
 	},
 	{ name: "math with an unknown command", markdown: "Bad: $\\notacommand{x}$" },
 	{ name: "dollar amounts", markdown: "It costs $5 and $10 today." },
+	{
+		name: "link protocols",
+		markdown:
+			"[js](javascript:alert(1)) [data](data:text/html,x) [vscode](vscode://file/a) [file](file:///tmp/a.ts) [mail](mailto:a@b.c) [rel](./a.md#top)",
+	},
+	{ name: "hard line break and entities", markdown: "line one  \nline two &amp; &copy; &#x41; &nbsp;end" },
+	{ name: "table with inline markup", markdown: "| **k** | v |\n|---|---|\n| `c` | [l](https://x.y) ~~s~~ |" },
+	{
+		name: "angle bracket autolink and reference link",
+		markdown: '<https://a.b/c> and [ref][r]\n\n[r]: https://r.example "R"',
+	},
 ]
 
 // styled-components names its classes after a per-process counter.
