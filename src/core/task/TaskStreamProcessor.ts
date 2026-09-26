@@ -34,6 +34,7 @@ import { type TaskHistory } from "./TaskHistory"
 import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
 
 import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "./StreamProcessorTypes"
+import { IncrementalReasoningFormatter } from "./reasoningFormatter"
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
 
@@ -107,6 +108,8 @@ export class TaskStreamProcessor {
 
 	// Accumulation state for the current streaming session
 	private _reasoningMessage: string = ""
+	/** Formats the streamed reasoning line by line instead of whole per chunk (API P3). */
+	private readonly reasoningFormatter = new IncrementalReasoningFormatter()
 	private _requestStartTs: number = 0
 	private _firstChunkTs: number | undefined
 	private _assistantMessage: string = ""
@@ -189,6 +192,7 @@ export class TaskStreamProcessor {
 		this._requestStartTs = performance.now()
 		this._firstChunkTs = undefined
 		this._reasoningMessage = ""
+		this.reasoningFormatter.reset()
 		this._assistantMessage = ""
 		this._inputTokens = 0
 		this._outputTokens = 0
@@ -209,15 +213,11 @@ export class TaskStreamProcessor {
 		}
 		switch (chunk.type) {
 			case "reasoning": {
-				this._reasoningMessage += chunk.text
-				// Only apply formatting if the message contains sentence-ending punctuation followed by **
-				let formattedReasoning = this._reasoningMessage
-				if (this._reasoningMessage.includes("**")) {
-					// Add line breaks before **Title** patterns that appear after sentence endings
-					// This targets section headers like "...end of sentence.**Title Here**"
-					// Handles periods, exclamation marks, and question marks
-					formattedReasoning = this._reasoningMessage.replace(/([.!?])\*\*([^*\n]+)\*\*/g, "$1\n\n**$2**")
-				}
+				const text = String(chunk.text)
+				this._reasoningMessage += text
+				// Line breaks before "...end of sentence.**Title Here**" section titles,
+				// formatted incrementally (the same result as formatting the whole text).
+				const formattedReasoning = this.reasoningFormatter.append(text)
 				this.access.askSay.say("reasoning", formattedReasoning, undefined, true)
 				break
 			}
