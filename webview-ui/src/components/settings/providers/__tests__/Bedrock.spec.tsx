@@ -48,8 +48,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			</div>
 		)
 	},
-	VSCodeRadio: () => <div>Radio</div>,
-	VSCodeRadioGroup: ({ children }: any) => <div>{children}</div>,
 }))
 
 // Mock the translation hook

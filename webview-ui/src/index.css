@@ -535,6 +535,101 @@
 	}
 
 	/*
+	 * Radio group (components/ui/themed-radio.tsx), the same look as the
+	 * deprecated toolkit's <vscode-radio-group> / <vscode-radio>. Fallbacks are
+	 * the toolkit's defaults.
+	 */
+	.ui-radio-group {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		margin: 4px 0;
+	}
+
+	.ui-radio-group-options {
+		display: flex;
+		flex-wrap: wrap;
+		flex-direction: row;
+	}
+
+	.ui-radio-group[data-orientation="vertical"] .ui-radio-group-options {
+		flex-direction: column;
+	}
+
+	.ui-radio {
+		position: relative;
+		display: inline-flex;
+		flex-direction: row;
+		align-items: center;
+		margin: 4px 0;
+		outline: none;
+		user-select: none;
+		transition: all 0.2s ease-in-out;
+		font-size: var(--vscode-font-size, 13px);
+		line-height: normal;
+	}
+
+	.ui-radio-control {
+		position: relative;
+		display: block;
+		flex-shrink: 0;
+		width: 16px;
+		height: 16px;
+	}
+
+	.ui-radio-input {
+		appearance: none;
+		display: block;
+		box-sizing: border-box;
+		width: 16px;
+		height: 16px;
+		margin: 0;
+		padding: 0;
+		border: 1px solid var(--vscode-checkbox-border, #3c3c3c);
+		border-radius: 999px;
+		outline: none;
+		background: var(--vscode-checkbox-background, #3c3c3c);
+		cursor: pointer;
+	}
+
+	.ui-radio-input:enabled:active,
+	.ui-radio-input:focus-visible {
+		border-color: var(--vscode-focusBorder, #007fd4);
+	}
+
+	/* 4px inside the 1px border, like the toolkit's indicator inside its control. */
+	.ui-radio-indicator {
+		position: absolute;
+		inset: 5px;
+		display: inline-block;
+		border-radius: 999px;
+		background: var(--vscode-foreground, #cccccc);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.ui-radio-input:checked + .ui-radio-indicator {
+		opacity: 1;
+	}
+
+	.ui-radio-label {
+		padding-inline-start: 10px;
+		margin-inline-end: 10px;
+		font-family: var(--vscode-font-family, sans-serif);
+		color: var(--vscode-foreground, #cccccc);
+		cursor: pointer;
+	}
+
+	.ui-radio[data-disabled] {
+		opacity: 0.4;
+	}
+
+	.ui-radio[data-disabled] .ui-radio-input,
+	.ui-radio[data-disabled] .ui-radio-label {
+		cursor: not-allowed;
+	}
+
+	/*
 	 * Progress ring (components/ui/themed-progress-ring.tsx), the same look and
 	 * animation as the deprecated toolkit's <vscode-progress-ring>.
 	 */
@@ -615,7 +710,8 @@ a.ui-link {
 }
 
 /* Same for VS Code's unlayered `input:focus` outline before 1.104. */
-input.ui-checkbox-input {
+input.ui-checkbox-input,
+input.ui-radio-input {
 	outline: revert-layer;
 	outline-offset: revert-layer;
 }
