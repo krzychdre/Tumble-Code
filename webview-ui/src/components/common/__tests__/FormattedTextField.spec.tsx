@@ -77,7 +77,7 @@ describe("FormattedTextField", () => {
 			)
 
 			const input = screen.getByTestId("test-input")
-			fireEvent.change(input, { target: { value: "456" } })
+			fireEvent.input(input, { target: { value: "456" } })
 			expect(mockOnChange).toHaveBeenCalledWith(456)
 		})
 
@@ -93,7 +93,7 @@ describe("FormattedTextField", () => {
 			)
 
 			const input = screen.getByTestId("test-input") as HTMLInputElement
-			fireEvent.change(input, { target: { value: "123abc" } })
+			fireEvent.input(input, { target: { value: "123abc" } })
 			expect(mockOnChange).toHaveBeenCalledWith(123)
 		})
 	})
@@ -148,7 +148,7 @@ describe("FormattedTextField", () => {
 			const input = screen.getByTestId("decimal-input") as HTMLInputElement
 
 			// Type "1."
-			fireEvent.change(input, { target: { value: "1." } })
+			fireEvent.input(input, { target: { value: "1." } })
 
 			// The input should show "1." (preserving the dot)
 			expect(input.value).toBe("1.")
@@ -173,7 +173,7 @@ describe("FormattedTextField", () => {
 			expect(input.value).toBe("1")
 
 			// Type "1."
-			fireEvent.change(input, { target: { value: "1." } })
+			fireEvent.input(input, { target: { value: "1." } })
 			expect(input.value).toBe("1.")
 
 			// On blur, should format back to "1"
@@ -198,7 +198,7 @@ describe("FormattedTextField", () => {
 			)
 
 			const input = screen.getByTestId("test-input")
-			fireEvent.change(input, { target: { value: "12.34" } })
+			fireEvent.input(input, { target: { value: "12.34" } })
 			expect(mockOnChange).toHaveBeenCalledWith(12.34)
 		})
 	})
