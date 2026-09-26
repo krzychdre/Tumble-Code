@@ -503,6 +503,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 						}
 						isActive={!isLoading}
 						isLoading={isLoading}
+						compactSeparator={isLoading && !pendingAsk}
 						placeholder={
 							showFollowupCustomInput ? "Type your response..." : isComplete ? "Type to continue..." : ""
 						}

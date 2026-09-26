@@ -16,6 +16,8 @@ export interface InputAreaProps {
 	isActive: boolean
 	/** Dim the ❯ prompt while loading */
 	isLoading: boolean
+	/** Drop the blank separator row above the border (spinner shown above) */
+	compactSeparator?: boolean
 	/** Placeholder text when input is empty */
 	placeholder?: string
 	/** Autocomplete triggers — forwarded to AutocompleteInput */
@@ -53,6 +55,7 @@ function InputArea({
 	onSubmit,
 	isActive,
 	isLoading,
+	compactSeparator = false,
 	placeholder,
 	triggers,
 	onSelect,
@@ -71,7 +74,7 @@ function InputArea({
 	const promptColor = isLoading ? theme.dimmed(baseColor) : baseColor
 
 	return (
-		<Box flexDirection="column" marginTop={1}>
+		<Box flexDirection="column" marginTop={compactSeparator ? 0 : 1}>
 			<Box
 				borderStyle="round"
 				borderLeft={false}
