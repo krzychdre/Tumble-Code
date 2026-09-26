@@ -83,7 +83,12 @@ import { webviewMessageHandler } from "./webviewMessageHandler"
 import type { TodoItem } from "@roo-code/types"
 import type { TaskHistoryStore } from "../task-persistence"
 import { SubagentRegistry } from "./SubagentRegistry"
-import { ProviderStateBuilder, type ProviderState } from "./ProviderStateBuilder"
+import {
+	ProviderStateBuilder,
+	type ProviderState,
+	type TaskHistoryInclusion,
+	type WebviewStatePush,
+} from "./ProviderStateBuilder"
 import { DelegationService } from "./DelegationService"
 import { CloudProfileSync } from "./CloudProfileSync"
 import { ModeProfileBinding } from "./ModeProfileBinding"
@@ -841,6 +846,8 @@ export class ClineProvider
 
 	async resolveWebviewView(webviewView: vscode.WebviewView | vscode.WebviewPanel) {
 		this.view = webviewView
+		// A new webview starts without the task history.
+		this.forgetWebviewTaskHistory()
 		const inTabMode = "onDidChangeViewState" in webviewView
 
 		if (inTabMode) {
@@ -1424,8 +1431,14 @@ export class ClineProvider
 		await this.postStateToWebview()
 	}
 
+	/**
+	 * Pushes the whole state to the view. The task history goes along only
+	 * when it changed since the last full push to this view (CORE-R7, see
+	 * {@link ProviderStateBuilder.getStateToPostToWebview}); a new or reloaded
+	 * webview always receives it ({@link forgetWebviewTaskHistory}).
+	 */
 	async postStateToWebview() {
-		const state = await this.getStateToPostToWebview({ includeTaskHistory: true })
+		const state = await this.getStateToPostToWebview({ includeTaskHistory: "whenChanged" })
 		this.postMessageToWebview({ type: "state", state })
 
 		// Check MDM compliance and send user to account tab if not compliant
@@ -1531,8 +1544,18 @@ export class ClineProvider
 		}
 	}
 
-	getStateToPostToWebview(options: { includeTaskHistory?: boolean } = {}): Promise<ExtensionState> {
-		return this.stateBuilder.getStateToPostToWebview(options)
+	getStateToPostToWebview(options?: { includeTaskHistory?: boolean }): Promise<ExtensionState>
+	getStateToPostToWebview(options: { includeTaskHistory: TaskHistoryInclusion }): Promise<WebviewStatePush>
+	getStateToPostToWebview(options: { includeTaskHistory?: TaskHistoryInclusion } = {}): Promise<WebviewStatePush> {
+		return this.stateBuilder.getStateToPostToWebview(options as { includeTaskHistory: TaskHistoryInclusion })
+	}
+
+	/**
+	 * The view may hold no history (a webview was just resolved, or it
+	 * reported that it launched): its next full push carries the whole one.
+	 */
+	forgetWebviewTaskHistory(): void {
+		this.stateBuilder.forgetViewTaskHistory()
 	}
 
 	/**

@@ -23,7 +23,8 @@ export const promptsAndModesHandlers: MessageHandlerMap = {
 			const existingPrompts = getGlobalState("customModePrompts") ?? {}
 			const updatedPrompts = { ...existingPrompts, [message.promptMode]: message.customPrompt }
 			await updateGlobalState("customModePrompts", updatedPrompts)
-			const currentState = await provider.getStateToPostToWebview()
+			// A full push: the history goes along only when it changed (CORE-R7).
+			const currentState = await provider.getStateToPostToWebview({ includeTaskHistory: "whenChanged" })
 			const stateWithPrompts = {
 				...currentState,
 				customModePrompts: updatedPrompts,

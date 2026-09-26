@@ -37,6 +37,21 @@ export type ProviderState = Omit<
 	"clineMessages" | "renderContext" | "hasOpenedModeSelector" | "version" | "shouldShowAnnouncement"
 >
 
+/**
+ * A state for a full push to the webview: the whole `ExtensionState`, except
+ * that `taskHistory` is left out when the view already holds the current one
+ * (see {@link ProviderStateBuilder.getStateToPostToWebview}).
+ */
+export type WebviewStatePush = Omit<ExtensionState, "taskHistory"> & Partial<Pick<ExtensionState, "taskHistory">>
+
+/**
+ * Which task history a webview state carries: `true` the whole history,
+ * `false` an empty placeholder (the caller strips it), `"whenChanged"` the
+ * whole history only when it changed since the last full push to this
+ * provider's view, and no `taskHistory` key otherwise.
+ */
+export type TaskHistoryInclusion = boolean | "whenChanged"
+
 /** Settings that `getState()` exposes as stored, without a default. */
 const PASSTHROUGH_SETTING_KEYS = [
 	"lastShownAnnouncementId",
@@ -200,7 +215,9 @@ function resolveCommandList(key: "allowedCommands" | "deniedCommands", globalSta
 		const scopes = vscode.workspace.getConfiguration(Package.name).inspect<string[]>(key)
 		const fromSettings =
 			key === "deniedCommands"
-				? [scopes?.globalValue, scopes?.workspaceValue, scopes?.workspaceFolderValue].flatMap(sanitizeCommandList)
+				? [scopes?.globalValue, scopes?.workspaceValue, scopes?.workspaceFolderValue].flatMap(
+						sanitizeCommandList,
+					)
 				: sanitizeCommandList(scopes?.globalValue)
 		return [...new Set([...fromGlobalState, ...fromSettings])]
 	} catch (error) {
@@ -219,7 +236,7 @@ interface ProviderStateSources {
 
 	/** The provider's own `getState()`, so the webview state follows it (and test spies on it). */
 	getState(): Promise<ProviderState>
-	getTaskHistoryStore(): Promise<Pick<TaskHistoryStore, "get" | "getAll">>
+	getTaskHistoryStore(): Promise<Pick<TaskHistoryStore, "get" | "getAll"> & { readonly revision?: number }>
 	log(message: string): void
 	getCurrentTask(): Pick<Task, "taskId" | "clineMessages" | "todoList" | "messageQueueService"> | undefined
 	/** Advances and returns the clineMessages sequence number (see ClineProvider.clineMessagesSeq). */
@@ -246,8 +263,24 @@ interface ProviderStateSources {
 export class ProviderStateBuilder {
 	private cloudOrganizationsCache: CloudOrganizationMembership[] | null = null
 	private cloudOrganizationsCacheTimestamp: number | null = null
+	/**
+	 * The {@link TaskHistoryStore.revision} of the history this provider's
+	 * view received with its last full push, or undefined when the view may
+	 * not hold the current one (nothing sent yet, a new or reloaded webview,
+	 * an unavailable store). See {@link getStateToPostToWebview}.
+	 */
+	private viewTaskHistoryRevision: number | undefined
 
 	constructor(private readonly sources: ProviderStateSources) {}
+
+	/**
+	 * Forgets which history the view holds, so its next full push carries the
+	 * whole one. Called when a webview is resolved and when it reports that it
+	 * launched (a reload starts from an empty history).
+	 */
+	forgetViewTaskHistory(): void {
+		this.viewTaskHistoryRevision = undefined
+	}
 
 	async getState(): Promise<ProviderState> {
 		perfCounters.add("getState")
@@ -295,7 +328,23 @@ export class ProviderStateBuilder {
 		}
 	}
 
-	async getStateToPostToWebview(options: { includeTaskHistory?: boolean } = {}): Promise<ExtensionState> {
+	/**
+	 * The state for the webview. `includeTaskHistory` (default `true`) picks
+	 * the history it carries, see {@link TaskHistoryInclusion}.
+	 *
+	 * `"whenChanged"` is for full pushes to this provider's view (CORE-R7):
+	 * the history (about 4.5 MB on 1,000 tasks) goes out only when the store's
+	 * {@link TaskHistoryStore.revision} differs from the one the view last
+	 * received, and the key is left out otherwise; the webview keeps its copy
+	 * for an absent key and follows the targeted history messages in between.
+	 * The revision is remembered only once the state is fully built, and
+	 * {@link forgetViewTaskHistory} clears it for a new or reloaded webview.
+	 */
+	getStateToPostToWebview(options?: { includeTaskHistory?: boolean }): Promise<ExtensionState>
+	getStateToPostToWebview(options: { includeTaskHistory: TaskHistoryInclusion }): Promise<WebviewStatePush>
+	async getStateToPostToWebview(
+		options: { includeTaskHistory?: TaskHistoryInclusion } = {},
+	): Promise<WebviewStatePush> {
 		const { includeTaskHistory = true } = options
 		// Ensure the store is initialized before reading task history. Even
 		// when `includeTaskHistory` is false we still await readiness so the
@@ -306,7 +355,7 @@ export class ProviderStateBuilder {
 		// working when only the history store is unavailable. The failure was
 		// already reported as a persistent storage error by the provider
 		// (surfaced below via `storageErrorMessage`).
-		let taskHistoryStore: Pick<TaskHistoryStore, "get" | "getAll"> | undefined
+		let taskHistoryStore: (Pick<TaskHistoryStore, "get" | "getAll"> & { readonly revision?: number }) | undefined
 		try {
 			taskHistoryStore = await this.sources.getTaskHistoryStore()
 		} catch (error) {
@@ -330,8 +379,9 @@ export class ProviderStateBuilder {
 		const cloudOrganizations = await this.getCloudOrganizations()
 		const currentTask = this.sources.getCurrentTask()
 		const customSoundUris = await this.resolveCustomSoundUris(settings)
+		const history = this.selectTaskHistory(includeTaskHistory, taskHistoryStore)
 
-		return {
+		const webviewState: WebviewStatePush = {
 			...(shared as unknown as ExtensionState),
 			...hostDefaults,
 			version: this.sources.getExtensionVersion(),
@@ -357,11 +407,9 @@ export class ProviderStateBuilder {
 			// `postStateToWebviewWithout*` variants pass `includeTaskHistory:
 			// false`, so this hot path (every chat message update, every
 			// cloud or mode event) never calls `getAll()`; the webview keeps
-			// its list in sync through the targeted history messages.
-			taskHistory:
-				includeTaskHistory && taskHistoryStore
-					? taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task)
-					: [],
+			// its list in sync through the targeted history messages. Left
+			// out below when the view already holds it ("whenChanged").
+			taskHistory: history.items ?? [],
 			customSoundUris,
 			shouldShowAnnouncement:
 				settings.telemetrySetting !== "unset" &&
@@ -391,6 +439,49 @@ export class ProviderStateBuilder {
 				}
 			})(),
 			debug: vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false),
+		}
+
+		if (includeTaskHistory === "whenChanged") {
+			if (history.items === undefined) {
+				delete webviewState.taskHistory
+			} else {
+				// Remembered only now that the state is built: the caller posts it next.
+				this.viewTaskHistoryRevision = history.revision
+			}
+		}
+
+		return webviewState
+	}
+
+	/**
+	 * The history a webview state carries, read synchronously with the rest of
+	 * the view state. `items` undefined means "leave the key out"; `revision`
+	 * is what the view holds once it received `items` (undefined when unknown:
+	 * no store, or a store without revisions).
+	 */
+	private selectTaskHistory(
+		includeTaskHistory: TaskHistoryInclusion,
+		taskHistoryStore: (Pick<TaskHistoryStore, "getAll"> & { readonly revision?: number }) | undefined,
+	): { items: HistoryItem[] | undefined; revision: number | undefined } {
+		if (!includeTaskHistory || !taskHistoryStore) {
+			// No store: the degraded empty history, which the view must not
+			// mistake for the current one later.
+			return { items: [], revision: undefined }
+		}
+
+		const revision = typeof taskHistoryStore.revision === "number" ? taskHistoryStore.revision : undefined
+
+		if (
+			includeTaskHistory === "whenChanged" &&
+			revision !== undefined &&
+			revision === this.viewTaskHistoryRevision
+		) {
+			return { items: undefined, revision }
+		}
+
+		return {
+			items: taskHistoryStore.getAll().filter((item: HistoryItem) => item.ts && item.task),
+			revision,
 		}
 	}
 

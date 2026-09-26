@@ -354,6 +354,17 @@ describe("transcript reducer", () => {
 			expect(state.messages.map((m) => m.content)).toEqual(["echo"])
 		})
 
+		it("keeps the history it has when a state push omits taskHistory (the host omits an unchanged one)", () => {
+			const history = [{ id: "t1", task: "earlier", workspace: "/ws", ts: 1 }]
+			handle({ type: "state", state: { taskHistory: history as never } })
+			expect(model.taskHistory).toEqual(history)
+
+			handle({ type: "state", state: { mode: "architect" } })
+
+			expect(model.taskHistory).toEqual(history)
+			expect(model.currentMode).toBe("architect")
+		})
+
 		it("routes file search results, commands, modes and provider models to the store", () => {
 			handle({ type: "fileSearchResults", results: [{ path: "a.ts" }] } as never)
 			handle({ type: "commands", commands: [{ name: "deploy" }] } as never)

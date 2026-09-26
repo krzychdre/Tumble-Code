@@ -504,6 +504,7 @@ function createProvider() {
 			maxTotalImageSize: 20,
 		}),
 		getStateToPostToWebview: async () => ({ mode: "code", hasOpenedModeSelector: undefined }),
+		forgetWebviewTaskHistory: () => undefined,
 		postMessageToWebview: async () => undefined,
 		postStateToWebview: async () => undefined,
 		log: () => undefined,

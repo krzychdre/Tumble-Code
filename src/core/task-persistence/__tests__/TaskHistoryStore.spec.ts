@@ -654,6 +654,75 @@ describe("TaskHistoryStore", () => {
 		})
 	})
 
+	describe("revision (CORE-R7: a full state push resends the history only when it changed)", () => {
+		it("changes on every mutation of the cached history and never on a read", async () => {
+			await store.initialize()
+			const seen = [store.revision]
+			const expectChanged = () => {
+				expect(seen).not.toContain(store.revision)
+				seen.push(store.revision)
+			}
+
+			await store.upsert(makeHistoryItem({ id: "rev-a", ts: 1000 }))
+			expectChanged()
+
+			store.get("rev-a")
+			store.getAll()
+			store.getByWorkspace("/test/workspace")
+			expect(store.revision).toBe(seen[seen.length - 1])
+
+			await store.upsert(makeHistoryItem({ id: "rev-a", ts: 1000, task: "renamed" }))
+			expectChanged()
+
+			await store.atomicReadAndUpdate("rev-a", (current) => ({ ...current, tokensIn: 7 }))
+			expectChanged()
+
+			await store.upsert(makeHistoryItem({ id: "rev-b", ts: 2000 }))
+			expectChanged()
+
+			await store.delete("rev-b")
+			expectChanged()
+
+			// Another process removes a task on disk; the reconcile pass drops it.
+			await fs.rm(path.join(tmpDir, "tasks", "rev-a"), { recursive: true, force: true })
+			await store.reconcile()
+			expect(store.get("rev-a")).toBeUndefined()
+			expectChanged()
+
+			await store.upsert(makeHistoryItem({ id: "rev-c", ts: 3000 }))
+			expectChanged()
+
+			store.invalidateAll()
+			expectChanged()
+			// Empty cache: clearing it again changes nothing.
+			store.invalidateAll()
+			expect(store.revision).toBe(seen[seen.length - 1])
+		})
+
+		it("stays the same through a reconcile that finds nothing new", async () => {
+			await store.initialize()
+			await store.upsert(makeHistoryItem({ id: "rev-quiet" }))
+			const before = store.revision
+
+			await store.reconcile()
+
+			expect(store.revision).toBe(before)
+		})
+
+		it("never repeats across store instances, so a reacquired store cannot look unchanged", async () => {
+			await store.initialize()
+			const other = new TaskHistoryStore(tmpDir)
+			try {
+				await other.initialize()
+				expect(other.revision).not.toBe(store.revision)
+				await store.upsert(makeHistoryItem({ id: "rev-one" }))
+				expect(store.revision).not.toBe(other.revision)
+			} finally {
+				other.dispose()
+			}
+		})
+	})
+
 	describe("record transaction cleanup", () => {
 		it("releases per-ID lock tails for many unique IDs", async () => {
 			await store.initialize()

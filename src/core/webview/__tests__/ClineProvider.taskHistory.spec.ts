@@ -9,6 +9,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { ContextProxy } from "../../config/ContextProxy"
 import { ClineProvider } from "../ClineProvider"
 import { TaskHistoryGateway } from "../TaskHistoryGateway"
+import { webviewMessageHandler } from "../webviewMessageHandler"
 import { TaskHistoryStore } from "../../task-persistence"
 import { ShadowCheckpointService } from "../../../services/checkpoints/ShadowCheckpointService"
 import { downloadTask } from "../../../integrations/misc/export-markdown"
@@ -1486,6 +1487,202 @@ describe("ClineProvider Task History Synchronization", () => {
 			vi.mocked(downloadTask).mockResolvedValueOnce(undefined)
 			await provider.exportTaskWithId("export-me")
 			expect(saveLastExportPath).not.toHaveBeenCalled()
+		})
+	})
+
+	describe("full state pushes carry the task history only when it changed since the last push to the view (CORE-R7)", () => {
+		const statePushes = (post: ReturnType<typeof vi.fn> = mockPostMessage) =>
+			post.mock.calls.map((call) => call[0]).filter((message) => message?.type === "state")
+		const lastState = (post: ReturnType<typeof vi.fn> = mockPostMessage) => statePushes(post).at(-1)!.state
+		const historyIds = (state: { taskHistory?: HistoryItem[] }) => state.taskHistory?.map((item) => item.id)
+		const storeIds = async () =>
+			((await (provider as any).getTaskHistoryStore()) as TaskHistoryStore)
+				.getAll()
+				.filter((item) => item.ts && item.task)
+				.map((item) => item.id)
+
+		const launchView = async (target: ClineProvider = provider, view: vscode.WebviewView = mockWebviewView) => {
+			await target.resolveWebviewView(view)
+			target.isViewLaunched = true
+		}
+
+		beforeEach(async () => {
+			await provider.updateTaskHistory(createHistoryItem({ id: "push-a", task: "A", ts: 1_000 }), {
+				broadcast: false,
+			})
+			await provider.updateTaskHistory(createHistoryItem({ id: "push-b", task: "B", ts: 2_000 }), {
+				broadcast: false,
+			})
+		})
+
+		it("the first full push carries the whole history; a push with nothing changed omits the key and keeps the rest", async () => {
+			await launchView()
+			mockPostMessage.mockClear()
+
+			await provider.postStateToWebview()
+			expect(historyIds(lastState())).toEqual(["push-b", "push-a"])
+
+			await provider.postStateToWebview()
+			const second = lastState()
+			expect("taskHistory" in second).toBe(false)
+			// Everything else is still a full state.
+			expect(second).toHaveProperty("mode")
+			expect(second).toHaveProperty("clineMessages")
+			expect(second).toHaveProperty("currentTaskId")
+		})
+
+		it("every history writer makes the next full push carry the current history", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+			const store = (await (provider as any).getTaskHistoryStore()) as TaskHistoryStore
+
+			// atomicReadAndUpdate reads the record from disk, which this spec's fs
+			// mock cannot serve; the store spec pins that it changes the revision.
+			const writers: Array<[string, () => Promise<unknown>]> = [
+				[
+					"updateTaskHistory (broadcast)",
+					() => provider.updateTaskHistory(createHistoryItem({ id: "push-c", task: "C", ts: 3_000 })),
+				],
+				[
+					"updateTaskHistory (no broadcast)",
+					() =>
+						provider.updateTaskHistory(createHistoryItem({ id: "push-c", task: "C2", ts: 3_000 }), {
+							broadcast: false,
+						}),
+				],
+				[
+					"another provider's write to the shared store",
+					() => store.upsert(createHistoryItem({ id: "push-d", task: "D", ts: 4_000 }), Symbol("other")),
+				],
+				["another provider's delete", () => store.delete("push-d", Symbol("other"))],
+				["an external change picked up by the store", async () => store.invalidateAll()],
+			]
+
+			for (const [name, write] of writers) {
+				await provider.postStateToWebview()
+				expect("taskHistory" in lastState(), `${name}: settled before the write`).toBe(false)
+
+				await write()
+				mockPostMessage.mockClear()
+				await provider.postStateToWebview()
+
+				expect(historyIds(lastState()), name).toEqual(await storeIds())
+			}
+		})
+
+		it("deleteTaskFromState's own full push carries the history without the deleted task", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+			mockPostMessage.mockClear()
+
+			await provider.deleteTaskFromState("push-a")
+
+			expect(historyIds(lastState())).toEqual(["push-b"])
+		})
+
+		it("a push without the history does not count as having delivered it", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+			await provider.updateTaskHistory(createHistoryItem({ id: "push-e", task: "E", ts: 5_000 }), {
+				broadcast: false,
+			})
+
+			await provider.postStateToWebviewWithoutTaskHistory()
+			await provider.postStateToWebviewWithoutClineMessages()
+			mockPostMessage.mockClear()
+			await provider.postStateToWebview()
+
+			expect(historyIds(lastState())).toEqual(["push-e", "push-b", "push-a"])
+		})
+
+		it("webviewDidLaunch (a reloaded webview) always receives the whole history", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+			await provider.postStateToWebview()
+			expect("taskHistory" in lastState()).toBe(false)
+			mockPostMessage.mockClear()
+
+			await webviewMessageHandler(provider, { type: "webviewDidLaunch" })
+			await vi.waitFor(() => expect(statePushes()).toHaveLength(1))
+
+			expect(historyIds(lastState())).toEqual(["push-b", "push-a"])
+		})
+
+		it("a new webview resolved for the same provider receives the whole history", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+
+			const newPost = vi.fn()
+			await launchView(provider, makeMockWebviewView(newPost))
+			await provider.postStateToWebview()
+
+			expect(historyIds(lastState(newPost))).toEqual(["push-b", "push-a"])
+		})
+
+		it("each view keeps its own record: the tab panel's first push carries the history the sidebar already has", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+
+			const tab = new ClineProvider(mockContext, mockOutputChannel, "editor", new ContextProxy(mockContext))
+			;(tab as any).customModesManager = (provider as any).customModesManager
+			tab.getMcpHub = provider.getMcpHub
+			const tabPost = vi.fn()
+			await launchView(tab, makeMockWebviewView(tabPost))
+			await tab.postStateToWebview()
+
+			expect(historyIds(lastState(tabPost))).toEqual(["push-b", "push-a"])
+			await tab.dispose()
+		})
+
+		it("the updatePrompt handler's full push follows the same rule", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+			mockPostMessage.mockClear()
+
+			await webviewMessageHandler(provider, {
+				type: "updatePrompt",
+				promptMode: "code",
+				customPrompt: { roleDefinition: "be brief" },
+			})
+
+			const state = lastState()
+			expect("taskHistory" in state).toBe(false)
+			expect(state.customModePrompts?.code).toEqual({ roleDefinition: "be brief" })
+		})
+
+		it("an unavailable store sends an empty history, and the first push after it recovers sends the whole one", async () => {
+			await launchView()
+			await provider.postStateToWebview()
+			const getStore = vi
+				.spyOn(provider as any, "getTaskHistoryStore")
+				.mockRejectedValueOnce(new Error("disk gone"))
+			mockPostMessage.mockClear()
+
+			await provider.postStateToWebview()
+			expect(lastState().taskHistory).toEqual([])
+
+			await provider.postStateToWebview()
+			expect(historyIds(lastState())).toEqual(["push-b", "push-a"])
+			getStore.mockRestore()
+		})
+
+		it("a scripted cycle of user actions sends the history only on the pushes that follow a change", async () => {
+			await launchView()
+			mockPostMessage.mockClear()
+
+			// Launch, three settings changes, a task writes its history item, two more actions.
+			await provider.postStateToWebview()
+			for (let i = 0; i < 3; i++) {
+				await provider.postStateToWebview()
+			}
+			await provider.updateTaskHistory(createHistoryItem({ id: "push-f", task: "F", ts: 6_000 }))
+			await provider.postStateToWebview()
+			await provider.postStateToWebview()
+			await provider.postStateToWebview()
+
+			const pushes = statePushes()
+			expect(pushes).toHaveLength(7)
+			expect(pushes.filter((message) => "taskHistory" in message.state)).toHaveLength(2)
 		})
 	})
 })

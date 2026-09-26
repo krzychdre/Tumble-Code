@@ -13,6 +13,10 @@ import type { MessageHandlerMap } from "./types"
 export const taskLifecycleHandlers: MessageHandlerMap = {
 	webviewDidLaunch: async (ctx) => {
 		const { provider, getGlobalState, updateGlobalState } = ctx
+		// A (re)loaded webview starts without the task history: the state push
+		// below must carry the whole one. Before any await, so no push that
+		// started earlier can be taken for having delivered it.
+		provider.forgetWebviewTaskHistory()
 		// Load custom modes first
 		const customModes = await provider.customModesManager.getCustomModes()
 		await updateGlobalState("customModes", customModes)
