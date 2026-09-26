@@ -13,6 +13,7 @@ services:
       - "${PORT:-8085}:${PORT:-8085}"
     environment:
       PORT: ${PORT:-8085}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: postgresql://roo:password@postgres:5432/roo_cloud
       SECRET_KEY: ${SECRET_KEY:-change-me-to-a-random-secret-key}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
@@ -41,7 +42,6 @@ services:
       WEB_PUBLIC_URL: ${WEB_PUBLIC_URL:-}
       MARKETPLACE_SOURCE: ${MARKETPLACE_SOURCE:-yaml}
       MARKETPLACE_YAML_DIR: ${MARKETPLACE_YAML_DIR:-./config/marketplace}
-      CREDIT_SYSTEM_ENABLED: ${CREDIT_SYSTEM_ENABLED:-false}
       BRIDGE_ENABLED: ${BRIDGE_ENABLED:-false}
       TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}

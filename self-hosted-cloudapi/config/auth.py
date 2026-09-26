@@ -164,23 +164,3 @@ def get_authentik_token_url() -> str:
 def get_authentik_userinfo_url() -> str:
     """Get the Authentik userinfo endpoint URL (back-channel / server)."""
     return f"{_back_channel_base()}/application/o/userinfo/"
-
-
-def get_authentik_issuer_url() -> str:
-    """Get the Authentik issuer URL."""
-    return f"{_front_channel_base()}/application/o/{settings.authentik_app_slug}/"
-
-
-def get_authentik_end_session_url() -> str:
-    """Get the Authentik end-session (logout) endpoint URL (front-channel / browser)."""
-    return f"{_front_channel_base()}/application/o/{settings.authentik_app_slug}/end-session/"
-
-
-def get_authentik_jwks_url() -> str:
-    """Get the Authentik JWKS endpoint URL (back-channel / server)."""
-    return f"{_back_channel_base()}/application/o/{settings.authentik_app_slug}/jwks/"
-
-
-def get_authentik_discovery_url() -> str:
-    """Get the Authentik OpenID discovery document URL (back-channel / server)."""
-    return f"{_back_channel_base()}/application/o/{settings.authentik_app_slug}/.well-known/openid-configuration"

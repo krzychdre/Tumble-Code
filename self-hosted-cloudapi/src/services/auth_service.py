@@ -9,10 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.models.user import User, Session, ClientToken, Ticket
-from src.models.organization import Organization, Membership
 from src.models.oauth import AuthentikStateStore
-from src.auth.jwt_issuer import issue_session_token
-from src.auth.authentik import exchange_code_for_tokens, get_userinfo
 from config.settings import settings
 
 # A used token's expiry is rewritten at most once per this interval, so the
@@ -98,16 +95,6 @@ async def create_client_token(
     return client_token, raw_token
 
 
-async def create_session_and_token(
-    db: AsyncSession,
-    user_id: str,
-) -> tuple[Session, str]:
-    """Create a new session and an initial client token for a user."""
-    session = await create_session(db, user_id)
-    _, raw_token = await create_client_token(db, session.id)
-    return session, raw_token
-
-
 async def create_ticket(
     db: AsyncSession,
     session_id: str,
@@ -131,7 +118,7 @@ async def validate_ticket(
 ) -> Optional[Session]:
     """Validate a ticket and return the associated session. Marks ticket as used."""
     result = await db.execute(
-        select(Ticket).where(Ticket.code == code, Ticket.used == False)
+        select(Ticket).where(Ticket.code == code, Ticket.used.is_(False))
     )
     ticket = result.scalar_one_or_none()
 
@@ -188,7 +175,7 @@ async def validate_client_token(
         await db.flush()
 
     result = await db.execute(
-        select(Session).where(Session.id == client_token.session_id, Session.is_active == True)
+        select(Session).where(Session.id == client_token.session_id, Session.is_active.is_(True))
     )
     return result.scalar_one_or_none()
 

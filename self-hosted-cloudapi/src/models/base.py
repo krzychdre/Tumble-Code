@@ -1,7 +1,6 @@
 """Base model with common mixins."""
 
-from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, func
+from sqlalchemy import Column, DateTime, func
 import uuid
 
 from src.database import Base  # noqa: F401 – re-export for model imports

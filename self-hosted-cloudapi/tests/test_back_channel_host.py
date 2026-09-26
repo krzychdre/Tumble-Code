@@ -9,7 +9,6 @@ lock that in so the OAuth callback can't silently regress to a 502.
 
 import pytest
 
-import config.auth as auth_cfg
 from config.auth import get_back_channel_host_header
 from config.settings import settings
 import src.auth.authentik as authentik
@@ -93,9 +92,3 @@ async def test_userinfo_sends_brand_host(capture_httpx):
     headers = capture_httpx.last_headers
     assert headers["Host"] == "auth.tumblecode.dev"
     assert headers["Authorization"] == "Bearer access-token"
-
-
-async def test_discovery_sends_brand_host(capture_httpx):
-    await authentik.get_openid_configuration()
-
-    assert capture_httpx.last_headers["Host"] == "auth.tumblecode.dev"

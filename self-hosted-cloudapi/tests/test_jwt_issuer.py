@@ -1,6 +1,14 @@
 """Tests for JWT issuance and validation."""
 
+import base64
+import hashlib
+import hmac
+import json
+import time
+
 import pytest
+
+from config.settings import settings
 from src.auth.jwt_issuer import issue_session_token, decode_token
 
 
@@ -49,14 +57,6 @@ def test_token_expiry():
 # The JWT library is swapped (python-jose to PyJWT), so the tests below pin
 # what the tokens look like on the wire and which tokens are refused without
 # using any JWT library: tokens are built by hand with hmac and base64.
-
-import base64
-import hashlib
-import hmac
-import json
-import time
-
-from config.settings import settings
 
 # A long-lived static token issued by python-jose 3.5.0 before the swap, with
 # the test-suite secret below. Static tokens live for a year in users'
@@ -117,16 +117,6 @@ def test_token_header_and_signature_on_the_wire(legacy_secret):
         LEGACY_SECRET.encode(), f"{header_part}.{payload_part}".encode(), hashlib.sha256
     ).digest()
     assert sig_part == _b64(expected)
-
-
-def test_static_token_claims_on_the_wire(legacy_secret):
-    from src.auth.jwt_issuer import issue_static_token
-
-    token = issue_static_token(user_id="u9", token_type="cj", expires_in=100)
-    payload = _unb64(token.split(".")[1])
-    assert payload["sub"] == "cj_u9"
-    assert payload["r"] == {"u": "u9", "t": "cj"}
-    assert payload["exp"] - payload["iat"] == 100
 
 
 def test_a_token_issued_by_python_jose_still_verifies(legacy_secret):

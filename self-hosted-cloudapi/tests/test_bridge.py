@@ -474,7 +474,6 @@ async def test_task_event_reasoning_stream_collapses_and_finalizes(
     """Reproduces the stuck-spinner bug: many rapid `partial:true` reasoning
     chunks followed by a `partial:false` finalize must yield exactly one row,
     stored with partial=false (so the web view never spins forever)."""
-    import json
 
     await _seed_user(db_session, "owner")
     db_session.add(Task(id="task-own", user_id="owner"))
@@ -512,7 +511,6 @@ async def test_task_event_upsert_never_regresses_to_shorter_partial(
     partial — would otherwise win and freeze the row at truncated text. The
     monotonic length guard must reject any payload shorter than what is stored,
     so the full/finalized text is preserved regardless of commit order."""
-    import json
 
     await _seed_user(db_session, "owner")
     db_session.add(Task(id="task-own", user_id="owner"))

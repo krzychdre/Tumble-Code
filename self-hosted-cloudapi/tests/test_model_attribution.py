@@ -16,7 +16,7 @@ from sqlalchemy import select
 
 from src.auth.web_session import get_web_user_optional
 from src.models.event import TelemetryEvent
-from src.models.task import Task, TaskMessage
+from src.models.task import Task
 from src.services.model_attribution import (
     Completion,
     attribute_requests,

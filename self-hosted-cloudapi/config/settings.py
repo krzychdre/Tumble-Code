@@ -2,12 +2,13 @@
 
 import ipaddress
 import json
+import logging
 import os
 from typing import List, Optional
 from urllib.parse import urlsplit
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field, HttpUrl, computed_field, field_validator, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 
 # Secrets shorter than this are refused at startup. The templates suggest
@@ -80,6 +81,18 @@ class Settings(BaseSettings):
     secret_key: str = Field(..., description="Secret key for signing tickets, etc.")
     api_base_url: str = Field(..., description="Public URL of this API")
     port: int = Field(8085, description="Port to run the API server on")
+    # Level of the service's own log lines (stdlib names, case-insensitive).
+    log_level: str = Field("INFO", description="DEBUG, INFO, WARNING, ERROR or CRITICAL")
+
+    @field_validator("log_level")
+    @classmethod
+    def _check_log_level(cls, value: str) -> str:
+        level = value.strip().upper()
+        if level not in logging.getLevelNamesMapping() or level == "NOTSET":
+            raise ValueError(
+                f"LOG_LEVEL must be DEBUG, INFO, WARNING, ERROR or CRITICAL (got {value!r})"
+            )
+        return level
 
     # JWT
     jwt_algorithm: str = "HS256"
@@ -230,7 +243,6 @@ class Settings(BaseSettings):
     marketplace_yaml_dir: str = "./config/marketplace"
 
     # Optional features
-    credit_system_enabled: bool = False
     # Live remote-control bridge (socket.io). When enabled the API mounts a
     # socket.io server that relays events/commands between the extension and the
     # web task viewer. Defaults on for self-hosted: the relay is inert until an

@@ -2641,19 +2641,25 @@ def _quality_msgs(**counts):
                      "text": json.dumps({"tokensIn": 1000, "tokensOut": 100, "cost": 0.01})})
         ts += 10
     for _ in range(counts.get("errors", 0)):
-        msgs.append({"ts": ts, "type": "say", "say": "error", "text": "boom"}); ts += 10
+        msgs.append({"ts": ts, "type": "say", "say": "error", "text": "boom"})
+        ts += 10
     for _ in range(counts.get("retries", 0)):
-        msgs.append({"ts": ts, "type": "say", "say": "api_req_retry_delayed", "text": "waiting"}); ts += 10
+        msgs.append({"ts": ts, "type": "say", "say": "api_req_retry_delayed", "text": "waiting"})
+        ts += 10
     for _ in range(counts.get("condense", 0)):
         msgs.append({"ts": ts, "type": "say", "say": "condense_context",
-                     "contextCondense": {"summary": "s", "cost": 0.001}}); ts += 10
+                     "contextCondense": {"summary": "s", "cost": 0.001}})
+        ts += 10
     for _ in range(counts.get("interventions", 0)):
         # Preceded by a request, so it is a mid-run correction, not a rejection.
-        msgs.append({"ts": ts, "type": "say", "say": "api_req_started", "text": "{}"}); ts += 10
-        msgs.append({"ts": ts, "type": "say", "say": "user_feedback", "text": "no, like this"}); ts += 10
+        msgs.append({"ts": ts, "type": "say", "say": "api_req_started", "text": "{}"})
+        ts += 10
+        msgs.append({"ts": ts, "type": "say", "say": "user_feedback", "text": "no, like this"})
+        ts += 10
     for path in counts.get("tool_paths", []):
         msgs.append({"ts": ts, "type": "say", "say": "tool",
-                     "text": json.dumps({"tool": "readFile", "path": path})}); ts += 10
+                     "text": json.dumps({"tool": "readFile", "path": path})})
+        ts += 10
     if counts.get("completed", True):
         msgs.append({"ts": ts, "type": "say", "say": "completion_result", "text": "done"})
     return msgs

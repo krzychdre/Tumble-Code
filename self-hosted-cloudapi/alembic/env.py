@@ -1,46 +1,29 @@
 """Alembic environment configuration."""
 
 import asyncio
-import os
 from logging import config as logging_config
-from pathlib import Path
 
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
-from src.database import Base
-from src.models import (  # noqa: F401
-    User, Session, ClientToken, Ticket,
-    Organization, Membership,
-    OrganizationSettings, UserSettings,
-    Task, TaskMessage, TaskShare,
-    TelemetryEvent, ProviderConfig, AuthentikStateStore,
-)
+# The app's own settings (DATABASE_URL from the environment or the env file
+# CLOUDAPI_ENV_FILE names, default .env), so alembic and the server always
+# talk to the same database.
+from src.database import ASYNC_DATABASE_URL, Base
+import src.models  # noqa: F401 - registers every table on Base.metadata
 
 config = context.config
-
-# Load .env file if it exists (for running alembic outside docker)
-_env_path = Path(__file__).resolve().parent.parent / ".env"
-if _env_path.exists():
-    for _line in _env_path.read_text().splitlines():
-        _line = _line.strip()
-        if _line and not _line.startswith("#") and "=" in _line:
-            os.environ.setdefault(*[part.strip() for part in _line.split("=", 1)])
 
 # Only configure file-based logging if the config file defines loggers
 # (avoids errors when running alembic without a full ini config)
 if config.config_file_name:
     logging_config.fileConfig(config.config_file_name)
 
-# Override sqlalchemy.url from DATABASE_URL environment variable at runtime
-database_url = os.environ.get("DATABASE_URL")
-if database_url:
-    # Convert postgresql:// to postgresql+asyncpg:// for async support
-    if database_url.startswith("postgresql://"):
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    config.set_main_option("sqlalchemy.url", database_url)
+# "%" is configparser interpolation syntax; a percent-encoded password must
+# reach SQLAlchemy unchanged.
+config.set_main_option("sqlalchemy.url", ASYNC_DATABASE_URL.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

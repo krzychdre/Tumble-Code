@@ -157,7 +157,7 @@ class TestSignInPageRedirect:
         mock_get_authorize.return_value = "https://auth.example.com/authorize?params"
         mock_store.return_value = AsyncMock()
 
-        response = client.get(
+        client.get(
             "/extension/sign-in",
             params={"state": "test-state", "auth_redirect": "vscode://RooVeterinaryInc.roo-cline"},
             follow_redirects=False,
@@ -180,7 +180,7 @@ class TestSignInPageRedirect:
         mock_get_authorize.return_value = "https://auth.example.com/authorize?params"
         mock_store.return_value = AsyncMock()
 
-        response = client.get(
+        client.get(
             "/extension/provider-sign-up",
             params={"state": "test-state", "auth_redirect": "vscode://RooVeterinaryInc.roo-cline"},
             follow_redirects=False,

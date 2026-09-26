@@ -2,7 +2,7 @@
 
 from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from src.models.base import Base, TimestampMixin, generate_id
 

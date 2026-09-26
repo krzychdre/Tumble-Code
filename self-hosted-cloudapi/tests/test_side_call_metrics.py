@@ -9,7 +9,6 @@ the figures they sit beside.
 
 import json
 
-import pytest
 
 from src.auth.web_session import get_web_user_optional
 from src.models.event import TelemetryEvent

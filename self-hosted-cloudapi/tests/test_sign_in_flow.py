@@ -8,7 +8,6 @@ See ai_plans/2026-05-16_fix-self-hosted-auth-404.md.
 
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
 from src.auth.jwt_issuer import decode_token
 from src.models.user import Session as SessionModel, Ticket, User

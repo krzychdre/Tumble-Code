@@ -14,9 +14,6 @@ from config.auth import (
     front_channel,
     get_authentik_token_url,
     get_authentik_userinfo_url,
-    get_authentik_end_session_url,
-    get_authentik_jwks_url,
-    get_authentik_discovery_url,
     get_back_channel_host_header,
 )
 
@@ -109,17 +106,6 @@ async def get_userinfo(access_token: str) -> Dict[str, Any]:
             headers=_back_channel_headers(
                 {"Authorization": f"Bearer {access_token}"}
             ),
-        )
-        response.raise_for_status()
-        return response.json()
-
-
-async def get_openid_configuration() -> Dict[str, Any]:
-    """Fetch the OpenID Connect discovery document from Authentik."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            get_authentik_discovery_url(),
-            headers=_back_channel_headers(),
         )
         response.raise_for_status()
         return response.json()

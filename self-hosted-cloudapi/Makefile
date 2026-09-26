@@ -49,7 +49,7 @@ test-cov: ## Run tests with a coverage report
 # Pinned so a new ruff release cannot change the verdict behind your back.
 RUFF ?= ruff@0.15.12
 
-lint: ## Lint with ruff (advisory in CI until the existing findings are cleaned up)
+lint: ## Lint with ruff (blocking in CI)
 	uvx $(RUFF) check .
 
 fmt: ## Format the code with ruff

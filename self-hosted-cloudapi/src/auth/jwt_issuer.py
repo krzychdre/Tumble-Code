@@ -61,39 +61,6 @@ def issue_session_token(
     )
 
 
-def issue_static_token(
-    user_id: str,
-    org_id: Optional[str] = None,
-    token_type: str = "auth",
-    expires_in: int = 86400 * 365,  # 1 year default for static tokens
-) -> str:
-    """Issue a long-lived static token for ROO_CODE_CLOUD_TOKEN.
-
-    Same format as session tokens but with longer expiry.
-    """
-    now = int(time.time())
-    claims: Dict[str, Any] = {
-        "iss": "rcc",
-        "sub": user_id if token_type == "auth" else f"cj_{user_id}",
-        "exp": now + expires_in,
-        "iat": now,
-        "nbf": now,
-        "v": 1,
-        "r": {
-            "u": user_id,
-            "t": token_type,
-        },
-    }
-    if org_id is not None:
-        claims["r"]["o"] = org_id
-
-    return jwt.encode(
-        payload=claims,
-        key=get_jwt_key(),
-        algorithm=settings.jwt_algorithm,
-    )
-
-
 def decode_token(token: str) -> Optional[Dict[str, Any]]:
     """Decode and validate a JWT token. Returns None if invalid."""
     try:

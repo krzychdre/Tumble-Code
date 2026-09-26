@@ -57,7 +57,6 @@ async def backfill_events_endpoint(
 
     form = await request.form()
     task_id = form.get("taskId", "")
-    properties = form.get("properties", "{}")
     file = form.get("file")
 
     messages = []

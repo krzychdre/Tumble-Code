@@ -1,7 +1,5 @@
 """Task sharing service."""
 
-import json
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
@@ -199,14 +197,3 @@ async def _with_descendants(
         seen.update(frontier)
         collected.extend(frontier)
     return collected
-
-
-async def count_descendants(db: AsyncSession, task_ids: list[str], user_id: str) -> int:
-    """How many extra tasks ``include_subtasks`` would add to this selection.
-
-    Shown on the confirmation so the scope of a delete is stated before it runs.
-    """
-    if not task_ids:
-        return 0
-    owned = await _owned_ids(db, task_ids, user_id)
-    return len(await _with_descendants(db, owned, user_id)) - len(owned)
