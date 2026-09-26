@@ -268,6 +268,14 @@ class Settings(BaseSettings):
             )
         return path
     telemetry_enabled: bool = True
+    # Largest task upload POST /api/events/backfill accepts, in bytes; above it
+    # the answer is 413 before the body is read into memory. The extension
+    # uploads a whole conversation (ui_messages.json) in one request: the
+    # largest of 1212 real ones measured 10 046 249 bytes, so the default
+    # leaves about five times that.
+    backfill_max_bytes: int = Field(
+        50 * 1024 * 1024, ge=1, description="Largest accepted task backfill upload, in bytes"
+    )
 
     # Task sharing. With no organizations configured (self-hosted single-tenant
     # dev), org-level cloud settings are absent, which would leave the extension's

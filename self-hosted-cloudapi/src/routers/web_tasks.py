@@ -28,6 +28,7 @@ from src.web.presenters.task_detail import (
     _spend_summary,
     _tree_entries,
     _tree_entry,
+    conversation_json,
 )
 from src.web.presenters.task_rows import _list_row, _workspace_label
 from src.web.templating import templates
@@ -181,7 +182,7 @@ async def task_detail(
             "title": task.title or derive_title(messages),
             "workspace": task.workspace_path,
             "workspace_label": _workspace_label(task.workspace_path),
-            "messages_json": json_for_script(messages),
+            "messages_json": await conversation_json(messages),
             **await _model_context(db, task_id, task.user_id, messages),
             "share_url": None,
             "live": live,
