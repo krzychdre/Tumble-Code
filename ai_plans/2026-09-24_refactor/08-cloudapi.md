@@ -218,6 +218,14 @@ live yet (no FK errors in the logs, all 19 live relations stamped). Fix: one UPD
 a missing parent leaves the relation waiting for `link_pending_children` (the CAPI-M11 path). The task tree spec now
 runs with `PRAGMA foreign_keys=ON`; suite-wide enforcement is a follow-up branch `test/capi-sqlite-foreign-keys`.
 
+**DEF-C48, DEF-C49, index drift:** DONE 2026-09-26. #455 (merge faac9a2f0) `_get_or_create_task` with
+`INSERT ... ON CONFLICT (id) DO NOTHING` for the bridge and the backfill (`created` only when our insert inserted, so
+the CAPI-M11 link rule holds); the race is replayed deterministically on a file SQLite DB. DEF-C49 (decision 26: one
+row per `ts`, the later message wins; `classify_conversation` still walks the full conversation) and the model
+declaring `uq_task_messages_task_ts` as the unique index the migration creates (`KNOWN_DRIFT` now empty, drift check
+exact) landed together in #458 (merge 738a38abd): #458 was stacked on #457 and got merged first after the #457 merge
+was refused, so #457 was closed as included. main: pytest 781 passed, 1 xfailed.
+
 ### CAPI-M12 CPU-heavy work off the event loop (lowest priority)
 
 Backfill parsing (the whole upload read into memory at `events.py:65`), full-conversation JSON dumps
