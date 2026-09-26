@@ -65,7 +65,7 @@
 		"shell-quote": "^1.10.0",
 		"shiki": "^4.4.3",
 		"stacktrace-js": "^2.0.2",
-		"styled-components": "^6.1.13",
+		"styled-components": "~6.4.4",
 		"tailwind-merge": "^3.0.0",
 		"unist-util-visit": "^5.0.0",
 		"use-sound": "^5.0.0",
