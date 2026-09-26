@@ -42,10 +42,6 @@ vi.mock("i18next", () => ({
 	},
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeBadge: ({ children, ...props }: { children: React.ReactNode }) => <span {...props}>{children}</span>,
-}))
-
 vi.mock("@src/components/common/CodeBlock", () => ({
 	default: ({ source }: { source: string }) => <div data-testid="code-block">{source}</div>,
 }))

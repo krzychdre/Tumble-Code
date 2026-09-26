@@ -30,11 +30,6 @@ vi.mock("@/utils/vscode", () => ({
 	},
 }))
 
-// Mock the VSCodeBadge component
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeBadge: ({ children }: { children: React.ReactNode }) => <div data-testid="vscode-badge">{children}</div>,
-}))
-
 // Create a variable to hold the mock state
 let mockExtensionState: {
 	apiConfiguration: ProviderSettings

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { VSCodeBadge } from "@vscode/webview-ui-toolkit/react"
+import { ThemedBadge } from "@src/components/ui"
 import { FoldVertical } from "lucide-react"
 
 import type { ContextCondense } from "@roo-code/types"
@@ -40,9 +40,9 @@ export function CondensationResultRow({ data }: CondensationResultRowProps) {
 						{prevTokens.toLocaleString()} → {newTokens.toLocaleString()}{" "}
 						{t("chat:contextManagement.tokens")}
 					</span>
-					<VSCodeBadge className={displayCost > 0 ? "opacity-100" : "opacity-0"}>
+					<ThemedBadge className={displayCost > 0 ? "opacity-100" : "opacity-0"}>
 						${displayCost.toFixed(2)}
-					</VSCodeBadge>
+					</ThemedBadge>
 				</div>
 				<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
 			</div>

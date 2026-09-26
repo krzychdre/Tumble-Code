@@ -10,11 +10,6 @@ vi.mock("@/utils/format", () => ({
 	formatLargeNumber: vi.fn((num) => num.toString()),
 }))
 
-// Mock VSCodeBadge component for all tests
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeBadge: ({ children }: { children: React.ReactNode }) => <div data-testid="vscode-badge">{children}</div>,
-}))
-
 // Mock ExtensionStateContext since we use useExtensionState
 vi.mock("@src/context/ExtensionStateContext", () => ({
 	useExtensionState: vi.fn(() => ({
