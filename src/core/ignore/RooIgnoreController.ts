@@ -7,6 +7,55 @@ import * as vscode from "vscode"
 
 export const LOCK_TEXT_SYMBOL = "\u{1F512}"
 
+/** The real path of `absolutePath` (symlinks followed), or `absolutePath` itself when it cannot be resolved. */
+function resolveRealPath(absolutePath: string): string {
+	try {
+		return fsSync.realpathSync(absolutePath)
+	} catch {
+		return absolutePath
+	}
+}
+
+/**
+ * {@link resolveRealPath} for many paths at once (API P6). Node's
+ * `realpathSync` checks every component of the path, about 8 file-system calls
+ * per path, although the paths of one listing share their directories. The
+ * parent directory is resolved once per `realDirectories` map, and only the
+ * entry itself is checked for a symlink. Same result as `resolveRealPath`.
+ */
+function resolveWithDirectoryCache(absolutePath: string, realDirectories: Map<string, string | null>): string {
+	const directory = path.dirname(absolutePath)
+	if (directory === absolutePath) {
+		return resolveRealPath(absolutePath)
+	}
+
+	let realDirectory = realDirectories.get(directory)
+	if (realDirectory === undefined) {
+		try {
+			realDirectory = fsSync.realpathSync(directory)
+		} catch {
+			realDirectory = null
+		}
+		realDirectories.set(directory, realDirectory)
+	}
+
+	// The directory cannot be resolved: neither can the entry, the answer is the input.
+	if (realDirectory === null) {
+		return absolutePath
+	}
+
+	try {
+		if (fsSync.lstatSync(absolutePath).isSymbolicLink()) {
+			return resolveRealPath(absolutePath)
+		}
+	} catch {
+		// The entry does not exist: realpathSync fails on it too.
+		return absolutePath
+	}
+
+	return path.join(realDirectory, path.basename(absolutePath))
+}
+
 /**
  * Controls LLM access to files by enforcing ignore patterns.
  * Designed to be instantiated once in Cline.ts and passed to file manipulation services.
@@ -86,7 +135,7 @@ export class RooIgnoreController {
 	 * @param filePath - Path to check (relative to cwd)
 	 * @returns true if file is accessible, false if ignored
 	 */
-	validateAccess(filePath: string): boolean {
+	validateAccess(filePath: string, realDirectories?: Map<string, string | null>): boolean {
 		// Always allow access if .rooignore does not exist
 		if (!this.rooIgnoreContent) {
 			return true
@@ -94,15 +143,11 @@ export class RooIgnoreController {
 		try {
 			const absolutePath = path.resolve(this.cwd, filePath)
 
-			// Follow symlinks to get the real path
-			let realPath: string
-			try {
-				realPath = fsSync.realpathSync(absolutePath)
-			} catch {
-				// If realpath fails (file doesn't exist, broken symlink, etc.),
-				// use the original path
-				realPath = absolutePath
-			}
+			// Follow symlinks to get the real path. If that fails (file doesn't
+			// exist, broken symlink, etc.), use the original path.
+			const realPath = realDirectories
+				? resolveWithDirectoryCache(absolutePath, realDirectories)
+				: resolveRealPath(absolutePath)
 
 			// Convert real path to relative for .rooignore checking
 			const relativePath = path.relative(this.cwd, realPath).toPosix()
@@ -178,10 +223,12 @@ export class RooIgnoreController {
 	 */
 	filterPaths(paths: string[]): string[] {
 		try {
+			// Real paths of the parent directories, resolved once for this call.
+			const realDirectories = new Map<string, string | null>()
 			return paths
 				.map((p) => ({
 					path: p,
-					allowed: this.validateAccess(p),
+					allowed: this.validateAccess(p, realDirectories),
 				}))
 				.filter((x) => x.allowed)
 				.map((x) => x.path)
