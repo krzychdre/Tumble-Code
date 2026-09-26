@@ -1,6 +1,5 @@
-import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedDropdown, ThemedOption } from "@src/components/ui"
 
 import { cn } from "@/lib/utils"
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
@@ -16,17 +15,17 @@ export const MiniMax = ({ apiConfiguration, setApiConfigurationField }: MiniMaxP
 		<>
 			<div>
 				<label className="block font-medium mb-1">{t("settings:providers.minimaxBaseUrl")}</label>
-				<VSCodeDropdown
+				<ThemedDropdown
 					value={apiConfiguration.minimaxBaseUrl}
 					onChange={handleInputChange("minimaxBaseUrl")}
 					className={cn("w-full")}>
-					<VSCodeOption value="https://api.minimax.io/v1" className="p-2">
+					<ThemedOption value="https://api.minimax.io/v1" className="p-2">
 						api.minimax.io
-					</VSCodeOption>
-					<VSCodeOption value="https://api.minimaxi.com/v1" className="p-2">
+					</ThemedOption>
+					<ThemedOption value="https://api.minimaxi.com/v1" className="p-2">
 						api.minimaxi.com
-					</VSCodeOption>
-				</VSCodeDropdown>
+					</ThemedOption>
+				</ThemedDropdown>
 			</div>
 			<ApiKeyField
 				apiConfiguration={apiConfiguration}
