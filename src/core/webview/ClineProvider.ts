@@ -63,6 +63,7 @@ import { SkillsManager } from "../../services/skills/SkillsManager"
 
 import { getWorkspaceGitInfo } from "../../utils/git"
 import { getWorkspacePath } from "../../utils/path"
+import { perfCounters } from "../../utils/perfCounters"
 import { OrganizationAllowListViolationError } from "../../utils/errors"
 
 import { setPanel } from "./panelRegistry"
@@ -1147,6 +1148,9 @@ export class ClineProvider
 		}
 
 		try {
+			if (this.view) {
+				perfCounters.recordWebviewPost(message)
+			}
 			await this.view?.webview.postMessage(message)
 		} catch {
 			// View disposed, drop message silently

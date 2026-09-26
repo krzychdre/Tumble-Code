@@ -1,4 +1,5 @@
 import { safeWriteJson } from "../../utils/safeWriteJson"
+import { perfCounters } from "../../utils/perfCounters"
 import * as path from "path"
 import * as fs from "fs/promises"
 
@@ -52,5 +53,6 @@ export type SaveTaskMessagesOptions = {
 export async function saveTaskMessages({ messages, taskId, globalStoragePath }: SaveTaskMessagesOptions) {
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, taskId)
 	const filePath = path.join(taskDir, GlobalFileNames.uiMessages)
+	perfCounters.recordSave("uiMessages", messages)
 	await safeWriteJson(filePath, messages)
 }

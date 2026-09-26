@@ -1,4 +1,5 @@
 import { safeWriteJson } from "../../utils/safeWriteJson"
+import { perfCounters } from "../../utils/perfCounters"
 import * as path from "path"
 import * as fs from "fs/promises"
 
@@ -117,5 +118,6 @@ export async function saveApiMessages({
 }) {
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, taskId)
 	const filePath = path.join(taskDir, GlobalFileNames.apiConversationHistory)
+	perfCounters.recordSave("apiHistory", messages)
 	await safeWriteJson(filePath, messages)
 }
