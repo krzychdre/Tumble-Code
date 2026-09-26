@@ -42,6 +42,7 @@ import { disposeLanguageParsers } from "./services/tree-sitter/languageParser"
 import { MdmService } from "./services/mdm/MdmService"
 import { registerRooDirectoryWatchers } from "./services/roo-config/watcher"
 import { configureLogger, createLineLogger } from "./utils/logging"
+import { perfCounters } from "./utils/perfCounters"
 import { migrateFromRooCode } from "./utils/migrateFromRooCode"
 import { autoImportSettings } from "./utils/autoImportSettings"
 import { API } from "./extension/api"
@@ -132,6 +133,18 @@ export async function activate(context: vscode.ExtensionContext) {
 	// Before anything below can log (settings migrations run during activation).
 	configureLogger(createLineLogger((line) => outputChannel.appendLine(line)))
 	outputChannel.appendLine(`${Package.name} extension activated - ${JSON.stringify(Package)}`)
+
+	// The debug setting also turns on the [perf] counters (CORE-R7 step 1).
+	const syncPerfCounters = () =>
+		perfCounters.setEnabled(vscode.workspace.getConfiguration(Package.name).get<boolean>("debug", false) === true)
+	syncPerfCounters()
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration((event) => {
+			if (event.affectsConfiguration(`${Package.name}.debug`)) {
+				syncPerfCounters()
+			}
+		}),
+	)
 
 	// Provider-auth commands need the bundled OAuth implementation and the same
 	// SecretStorage as normal CLI runs, but not full extension activation (cloud,

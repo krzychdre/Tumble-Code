@@ -8,6 +8,7 @@ import { combineCommandSequences } from "../../shared/combineCommandSequences"
 import { getApiMetrics } from "../../shared/getApiMetrics"
 import { findLastIndex } from "../../shared/array"
 import { getTaskDirectoryPath } from "../../utils/storage"
+import { perfCounters } from "../../utils/perfCounters"
 import { t } from "../../i18n"
 import { readTaskMessages } from "./taskMessages"
 
@@ -40,6 +41,7 @@ export async function taskMetadata({
 	apiConfigName,
 	initialStatus,
 }: TaskMetadataOptions) {
+	perfCounters.add("taskMetadataRuns")
 	const taskDir = await getTaskDirectoryPath(globalStoragePath, id)
 
 	// If the in-memory messages array is empty (e.g. abortTask fires after

@@ -24,6 +24,7 @@ import { experimentDefault } from "../../shared/experiments"
 import { formatLanguage } from "../../shared/language"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { resolveCustomSoundUri } from "../../integrations/misc/custom-sounds"
+import { perfCounters } from "../../utils/perfCounters"
 
 import type { ContextProxy } from "../config/ContextProxy"
 import type { Task } from "../task/Task"
@@ -249,6 +250,7 @@ export class ProviderStateBuilder {
 	constructor(private readonly sources: ProviderStateSources) {}
 
 	async getState(): Promise<ProviderState> {
+		perfCounters.add("getState")
 		const stateValues = this.sources.contextProxy.getValues()
 		const customModes = await this.sources.getCustomModes()
 

@@ -37,6 +37,7 @@ import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskConte
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { findLastIndex } from "../../shared/array"
 import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
+import { perfCounters, diffPerfCounters, formatPerfCounters } from "../../utils/perfCounters"
 import { t } from "../../i18n"
 import { getModeBySlug } from "../../shared/modes"
 import { type ClineProvider } from "../webview/ClineProvider"
@@ -420,13 +421,25 @@ export class TaskApiLoop {
 			// Handle consecutive mistake limit
 			await this.handleConsecutiveMistakeLimit(currentUserContent)
 
-			// Prepare and execute the API request
-			const result = await this.executeApiRequestCycle(
-				currentItem,
-				currentUserContent,
-				currentIncludeFileDetails,
-				stack,
-			)
+			// Prepare and execute the API request. With the debug setting on,
+			// log the host-side work the cycle caused (CORE-R7 step 1).
+			const countersBefore = perfCounters.isEnabled() ? perfCounters.snapshot() : undefined
+			let result: "continue" | "return_true" | "return_false"
+			try {
+				result = await this.executeApiRequestCycle(
+					currentItem,
+					currentUserContent,
+					currentIncludeFileDetails,
+					stack,
+				)
+			} finally {
+				if (countersBefore) {
+					const delta = diffPerfCounters(countersBefore, perfCounters.snapshot())
+					this.access.providerRef
+						.deref()
+						?.log(`[perf] task ${this.access.taskId} request cycle: ${formatPerfCounters(delta)}`)
+				}
+			}
 
 			if (result === "continue") {
 				continue

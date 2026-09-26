@@ -13,6 +13,7 @@ vi.mock("../../../utils/safeWriteJson", () => ({
 
 // Import after mocks
 import { saveTaskMessages, readTaskMessages } from "../taskMessages"
+import { perfCounters } from "../../../utils/perfCounters"
 
 let tmpBaseDir: string
 
@@ -64,6 +65,24 @@ describe("taskMessages.saveTaskMessages", () => {
 
 		const [, persisted] = hoisted.safeWriteJsonMock.mock.calls[0]
 		expect(persisted).toEqual(messages)
+	})
+
+	it("counts the write and its size for the debug perf counters (CORE-R7)", async () => {
+		const messages: any[] = [{ ts: 1, type: "say", say: "text", text: "hi" }]
+		perfCounters.reset()
+		perfCounters.setEnabled(true)
+
+		try {
+			await saveTaskMessages({ messages, taskId: "task-3", globalStoragePath: tmpBaseDir })
+
+			expect(perfCounters.snapshot()).toMatchObject({
+				uiMessagesSaves: 1,
+				uiMessagesSaveBytes: JSON.stringify(messages).length,
+			})
+		} finally {
+			perfCounters.setEnabled(false)
+			perfCounters.reset()
+		}
 	})
 })
 
