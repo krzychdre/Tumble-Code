@@ -561,3 +561,11 @@ helper, not fixed (follow-up items): DEF-P11-1 Polish locale lacks `_few`/`_many
 result count shows English for 2+ results; DEF-P11-2 markdown renders "$5 and $10" partly as math; DEF-P11-3
 `file://` links get an empty `href`, so the webview's file-link handling never sees them; PERF-P11-1 Shiki loads all
 65 themes at start although two are used; mermaid still brings its own KaTeX 0.16 (two copies in the bundle).
+
+**Status (2026-09-26), DEP-8 React 19 DONE:** #511 (`7d44d574f`): react/react-dom 18.3 to 19.2.3 (the CLI's
+version; one copy each of react, react-dom, @types/react, @types/react-dom in the lock), React Compiler target 19,
+`react-compiler-runtime` removed, the 11 `packageExtensions` for `@types/react` removed, bailouts still 8. Found:
+`vscrui` 0.2.2 bundles React 18's jsx-runtime and crashes at import under React 19 (the production webview would
+not start); bumped to vscrui 1.1.0 (same Checkbox source), pinned by a real-vscrui characterization spec. Type-only
+fixes in 11 webview files, valid on 18 and 19. Full webview suite 219 files / 2,929 tests; index.js +45 KB
+(+12.8 KB gzip); headless Chrome smoke identical. Polish plural forms (DEF-P11-1) fixed in #509 (`39afbde56`).
