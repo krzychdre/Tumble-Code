@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { VSCodeProgressRing, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { ThemedProgressRing } from "@src/components/ui"
 
 import { type CloudUserInfo, type CloudOrganizationMembership, TelemetryEventName } from "@roo-code/types"
 
@@ -240,7 +241,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 								// Timeout message with "Having trouble?" link
 								<div className="flex flex-col items-start gap-1">
 									<div className="flex items-center gap-2 text-base text-vscode-descriptionForeground">
-										<VSCodeProgressRing className="size-3 text-vscode-foreground" />
+										<ThemedProgressRing className="size-3 text-vscode-foreground" />
 										{t("cloud:authWaiting")}
 									</div>
 									{!showManualEntry && (

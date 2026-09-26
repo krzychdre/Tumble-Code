@@ -1,4 +1,4 @@
-import { VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
+import { ThemedProgressRing } from "@src/components/ui"
 
 export const ProgressIndicator = () => (
 	<div
@@ -10,7 +10,7 @@ export const ProgressIndicator = () => (
 			justifyContent: "center",
 		}}>
 		<div style={{ transform: "scale(0.55)", transformOrigin: "center" }}>
-			<VSCodeProgressRing />
+			<ThemedProgressRing />
 		</div>
 	</div>
 )
