@@ -417,3 +417,8 @@ on main, both fixed by the move and pinned by regression specs that fail on main
 after an unrestricted one wiped its MCP server allowlist; switching to a profile without a custom temperature
 stored `modelTemperature: null`. The native box also follows its prop (the toolkit box could drift out of sync)
 and keeps its 18px square next to wrapping labels. Headless Chrome: 7 of 8 patterns pixel-identical in all states.
+
+**Coordinator run (2026-09-26, main 549a93eb4, fresh worktree with its own install):** types 633, core 487, cloud
+319, webview 2,401 (193 files) green; src 9 failed of 9,803 in two stale specs from the parallel Phase 10 follow-ups
+(the API-7 characterization mocked `countTokens`, which LM Studio no longer calls after #469; the registry count
+after #472 added `resyncClineMessages`), fixed in #474 (`e8334ad22`), no product defect.
