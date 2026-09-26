@@ -24,7 +24,7 @@ import { fileURLToPath } from "node:url"
 export const BASELINE_FILE = "react-compiler-bailouts.json"
 
 // Keep in sync with the babel-plugin-react-compiler options in webview-ui/vite.config.ts.
-const COMPILER_OPTIONS = { target: "18" }
+const COMPILER_OPTIONS = { target: "19" }
 
 // Logger events that mean "this function was not compiled". CompileSuccess and CompileDiagnostic
 // (a non-fatal note) are not bailouts.

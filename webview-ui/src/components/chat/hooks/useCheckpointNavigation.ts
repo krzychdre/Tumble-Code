@@ -6,7 +6,7 @@ interface CheckpointNavigationOptions {
 	/** Indices (in the rendered list) of the rows with a checkpoint, oldest first. */
 	checkpointIndices: number[]
 	taskTs: number | undefined
-	virtuosoRef: React.RefObject<VirtuosoHandle>
+	virtuosoRef: React.RefObject<VirtuosoHandle | null>
 	enterUserBrowsingHistory: (reason: "keyboard-nav-up") => void
 	handleScrollToBottomClick: () => void
 }

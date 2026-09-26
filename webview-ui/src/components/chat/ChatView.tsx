@@ -148,7 +148,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const virtuosoRef = useRef<VirtuosoHandle>(null)
 	const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({})
-	const prevExpandedRowsRef = useRef<Record<number, boolean>>()
+	const prevExpandedRowsRef = useRef<Record<number, boolean> | undefined>(undefined)
 	const scrollContainerRef = useRef<HTMLDivElement>(null)
 	const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
 

@@ -44,10 +44,6 @@
 		},
 		"webview-ui": {
 			"project": ["src/**/*.{ts,tsx}", "../src/shared/*.ts"],
-			"ignoreDependencies": [
-				// Runtime that babel-plugin-react-compiler injects into compiled components.
-				"react-compiler-runtime",
-			],
 		},
 		"apps/cli": {
 			"project": ["src/**/*.ts", "src/**/*.tsx"],

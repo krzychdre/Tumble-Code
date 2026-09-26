@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 
-import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
+import { act, render, screen, fireEvent, waitFor } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
 
 import { ShareButton } from "../ShareButton"
@@ -240,8 +240,9 @@ describe("ShareButton", () => {
 			expect(screen.getByText("chat:task.shareSuccessOrganization")).toBeInTheDocument()
 		})
 
-		// Fast-forward 5 seconds
-		await vi.advanceTimersByTimeAsync(5000)
+		// Fast-forward 5 seconds. The auto-hide timer sets state outside any React event, so the
+		// advance runs inside act(), which flushes the resulting render before the assertions.
+		await act(() => vi.advanceTimersByTimeAsync(5000))
 
 		// The success message and share options should both be gone (popover closed)
 		expect(screen.queryByText("chat:task.shareSuccessOrganization")).not.toBeInTheDocument()
@@ -301,7 +302,7 @@ describe("ShareButton", () => {
 		})
 
 		// Wait for success message to auto-hide after 5 seconds
-		await vi.advanceTimersByTimeAsync(5000)
+		await act(() => vi.advanceTimersByTimeAsync(5000))
 
 		// Success message should be gone and popover should be closed
 		expect(screen.queryByText("chat:task.shareSuccessOrganization")).not.toBeInTheDocument()

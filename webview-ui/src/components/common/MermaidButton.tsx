@@ -9,7 +9,7 @@ import { IconButton } from "./IconButton"
 import { StandardTooltip } from "@/components/ui"
 
 export interface MermaidButtonProps {
-	containerRef: React.RefObject<HTMLDivElement>
+	containerRef: React.RefObject<HTMLDivElement | null>
 	code: string
 	isLoading: boolean
 	svgToPng: (svgEl: SVGElement) => Promise<string>

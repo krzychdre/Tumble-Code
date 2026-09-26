@@ -1,7 +1,7 @@
 // npx vitest src/components/chat/__tests__/TaskHeader.spec.tsx
 
 import React from "react"
-import { render, screen, fireEvent } from "@/utils/test-utils"
+import { act, render, screen, fireEvent } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import type { ProviderSettings } from "@roo-code/types"
@@ -207,6 +207,10 @@ describe("TaskHeader", () => {
 			vi.useRealTimers()
 		})
 
+		// The 2-minute timer sets state outside any React event, so every fake-timer advance runs
+		// inside act(): act flushes the resulting render before the assertion. Without it the
+		// render lands one real tick later under React 19 (React 18 happened to flush it earlier).
+
 		it("should show DismissibleUpsell after 2 minutes when task is not complete", async () => {
 			renderTaskHeader()
 
@@ -214,7 +218,7 @@ describe("TaskHeader", () => {
 			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
 
 			// Fast-forward time by 2 minutes to match component timeout
-			await vi.advanceTimersByTimeAsync(120_000)
+			await act(() => vi.advanceTimersByTimeAsync(120_000))
 
 			// The upsell should now be visible
 			expect(screen.getByTestId("dismissible-upsell")).toBeInTheDocument()
@@ -238,7 +242,7 @@ describe("TaskHeader", () => {
 			renderTaskHeader()
 
 			// Fast-forward time by more than 2 minutes
-			await vi.advanceTimersByTimeAsync(130_000)
+			await act(() => vi.advanceTimersByTimeAsync(130_000))
 
 			// The upsell should not appear
 			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
@@ -254,7 +258,7 @@ describe("TaskHeader", () => {
 			renderTaskHeader()
 
 			// Fast-forward time by more than 2 minutes
-			await vi.advanceTimersByTimeAsync(130_000)
+			await act(() => vi.advanceTimersByTimeAsync(130_000))
 
 			// The upsell should not appear
 			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
@@ -283,7 +287,7 @@ describe("TaskHeader", () => {
 			renderTaskHeader()
 
 			// Fast-forward time by more than 2 minutes
-			await vi.advanceTimersByTimeAsync(130_000)
+			await act(() => vi.advanceTimersByTimeAsync(130_000))
 
 			// The upsell should not appear because the task is complete
 			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
@@ -324,7 +328,7 @@ describe("TaskHeader", () => {
 			renderTaskHeader()
 
 			// Fast-forward time by more than 2 minutes
-			await vi.advanceTimersByTimeAsync(130_000)
+			await act(() => vi.advanceTimersByTimeAsync(130_000))
 
 			// The upsell should not appear because the last relevant message (skipping resume messages) is completion_result
 			expect(screen.queryByTestId("dismissible-upsell")).not.toBeInTheDocument()
@@ -359,7 +363,7 @@ describe("TaskHeader", () => {
 			renderTaskHeader()
 
 			// Fast-forward time by 2 minutes to trigger the upsell
-			await vi.advanceTimersByTimeAsync(120_000)
+			await act(() => vi.advanceTimersByTimeAsync(120_000))
 
 			// The upsell should appear because the last relevant message (skipping resume messages) is not completion_result
 			expect(screen.getByTestId("dismissible-upsell")).toBeInTheDocument()

@@ -26,6 +26,11 @@ const mockUseTaskSearch = useTaskSearch as any
 const mockUseGroupedTasks = useGroupedTasks as any
 const mockTaskGroupItem = TaskGroupItem as any
 
+// The props of every TaskGroupItem render. React calls a function component with a second
+// argument that is an implementation detail (legacy context `{}` in React 18, `undefined` in
+// React 19), so the assertions look at the props only.
+const taskGroupItemProps = () => mockTaskGroupItem.mock.calls.map((call: unknown[]) => call[0])
+
 const mockTasks: HistoryItem[] = [
 	{
 		id: "task-1",
@@ -241,26 +246,23 @@ describe("HistoryPreview", () => {
 		render(<HistoryPreview />)
 
 		// Verify TaskGroupItem was called with correct props for first 3 groups
-		expect(mockTaskGroupItem).toHaveBeenCalledWith(
+		expect(taskGroupItemProps()).toContainEqual(
 			expect.objectContaining({
 				group: mockGroups[0],
 				variant: "compact",
 			}),
-			expect.anything(),
 		)
-		expect(mockTaskGroupItem).toHaveBeenCalledWith(
+		expect(taskGroupItemProps()).toContainEqual(
 			expect.objectContaining({
 				group: mockGroups[1],
 				variant: "compact",
 			}),
-			expect.anything(),
 		)
-		expect(mockTaskGroupItem).toHaveBeenCalledWith(
+		expect(taskGroupItemProps()).toContainEqual(
 			expect.objectContaining({
 				group: mockGroups[2],
 				variant: "compact",
 			}),
-			expect.anything(),
 		)
 	})
 
@@ -318,11 +320,10 @@ describe("HistoryPreview", () => {
 		render(<HistoryPreview />)
 
 		// Verify TaskGroupItem received onToggleExpand prop
-		expect(mockTaskGroupItem).toHaveBeenCalledWith(
+		expect(taskGroupItemProps()).toContainEqual(
 			expect.objectContaining({
 				onToggleExpand: expect.any(Function),
 			}),
-			expect.anything(),
 		)
 
 		// Call the onToggleExpand function passed to TaskGroupItem
