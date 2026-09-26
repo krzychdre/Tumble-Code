@@ -291,6 +291,7 @@
 		"triggerLabelOffShort": "Desativada",
 		"triggerLabel_zero": "0 aprovados automaticamente",
 		"triggerLabel_one": "1 aprovado automaticamente",
+		"triggerLabel_many": "{{count}} aprovados automaticamente",
 		"triggerLabel_other": "{{count}} aprovados automaticamente",
 		"triggerLabelAll": "BRRR",
 		"mode": {
@@ -324,12 +325,14 @@
 			"title": "Contexto truncado",
 			"inProgress": "Truncando contexto...",
 			"messagesRemoved": "{{count}} mensagem removida",
+			"messagesRemoved_many": "{{count}} mensagens removidas",
 			"messagesRemoved_other": "{{count}} mensagens removidas",
 			"description": "Mensagens mais antigas foram removidas da conversa para permanecer dentro do limite da janela de contexto. Esta é uma abordagem rápida, mas menos preservadora de contexto em comparação com a condensação."
 		},
 		"prune": {
 			"title": "Saída antiga de ferramentas movida para o disco",
 			"summary": "{{count}} resultado de ferramenta, cerca de {{kb}} KB liberados",
+			"summary_many": "{{count}} resultados de ferramentas, cerca de {{kb}} KB liberados",
 			"summary_other": "{{count}} resultados de ferramentas, cerca de {{kb}} KB liberados",
 			"description": "Resultados antigos e muito grandes de ferramentas foram salvos como artefatos de tarefa e substituídos por uma prévia curta. Nada foi perdido: cada prévia nomeia seu artefato, e o modelo pode reler o texto completo com read_artifact. Isso rodou em vez de um resumo por IA, então nenhum texto da conversa foi reescrito."
 		}
@@ -390,7 +393,8 @@
 	"codebaseSearch": {
 		"wantsToSearch": "Tumble quer pesquisar na base de código por <code>{{query}}</code>",
 		"wantsToSearchWithPath": "Tumble quer pesquisar na base de código por <code>{{query}}</code> em <code>{{path}}</code>",
-		"didSearch_one": "Encontrado 1 resultado",
+		"didSearch_one": "Encontrado {{count}} resultado",
+		"didSearch_many": "Encontrados {{count}} resultados",
 		"didSearch_other": "Encontrados {{count}} resultados",
 		"resultTooltip": "Pontuação de similaridade: {{score}} (clique para abrir o arquivo)"
 	},
@@ -473,8 +477,10 @@
 	"tooManyTools": {
 		"title": "Muitas ferramentas habilitadas",
 		"toolsPart_one": "{{count}} ferramenta",
+		"toolsPart_many": "{{count}} ferramentas",
 		"toolsPart_other": "{{count}} ferramentas",
 		"serversPart_one": "{{count}} servidor MCP",
+		"serversPart_many": "{{count}} servidores MCP",
 		"serversPart_other": "{{count}} servidores MCP",
 		"messageTemplate": "Você tem {{tools}} habilitadas via {{servers}}. Um número tão alto pode confundir o modelo e levar a erros. Tente mantê-lo abaixo de {{threshold}}.",
 		"openMcpSettings": "Abrir Configurações MCP"

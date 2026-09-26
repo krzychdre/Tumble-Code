@@ -291,7 +291,9 @@
 		"triggerLabelOff": "Авто-утверждение выкл",
 		"triggerLabelOffShort": "Выкл",
 		"triggerLabel_zero": "0 авто-утвержденных",
-		"triggerLabel_one": "1 авто-утвержден",
+		"triggerLabel_one": "{{count}} авто-утвержден",
+		"triggerLabel_few": "{{count}} авто-утвержденных",
+		"triggerLabel_many": "{{count}} авто-утвержденных",
 		"triggerLabel_other": "{{count}} авто-утвержденных",
 		"triggerLabelAll": "BRRR",
 		"mode": {
@@ -340,13 +342,19 @@
 			"title": "Контекст усечён",
 			"inProgress": "Усечение контекста...",
 			"messagesRemoved": "{{count}} сообщение удалено",
-			"messagesRemoved_other": "{{count}} сообщений удалено",
+			"messagesRemoved_one": "{{count}} сообщение удалено",
+			"messagesRemoved_few": "{{count}} сообщения удалено",
+			"messagesRemoved_many": "{{count}} сообщений удалено",
+			"messagesRemoved_other": "{{count}} сообщения удалено",
 			"description": "Более старые сообщения были удалены из разговора, чтобы остаться в пределах контекстного окна. Это быстрый, но менее сохраняющий контекст подход по сравнению со сжатием."
 		},
 		"prune": {
 			"title": "Старый вывод инструментов перемещён на диск",
 			"summary": "{{count}} результат инструмента, освобождено около {{kb}} КБ",
-			"summary_other": "{{count}} результатов инструмента, освобождено около {{kb}} КБ",
+			"summary_one": "{{count}} результат инструмента, освобождено около {{kb}} КБ",
+			"summary_few": "{{count}} результата инструмента, освобождено около {{kb}} КБ",
+			"summary_many": "{{count}} результатов инструмента, освобождено около {{kb}} КБ",
+			"summary_other": "{{count}} результата инструмента, освобождено около {{kb}} КБ",
 			"description": "Старые слишком большие результаты инструментов сохранены как артефакты задачи и заменены коротким preview. Ничего не потеряно: каждый preview указывает имя своего артефакта, а модель может прочитать полный текст обратно через read_artifact. Это запустилось вместо AI-резюме, поэтому ни один текст разговора не был переписан."
 		}
 	},
@@ -391,8 +399,10 @@
 	"codebaseSearch": {
 		"wantsToSearch": "Tumble хочет выполнить поиск в кодовой базе по <code>{{query}}</code>",
 		"wantsToSearchWithPath": "Tumble хочет выполнить поиск в кодовой базе по <code>{{query}}</code> в <code>{{path}}</code>",
-		"didSearch_one": "Найден 1 результат",
-		"didSearch_other": "Найдено {{count}} результатов",
+		"didSearch_one": "Найден {{count}} результат",
+		"didSearch_few": "Найдено {{count}} результата",
+		"didSearch_many": "Найдено {{count}} результатов",
+		"didSearch_other": "Найдено {{count}} результата",
 		"resultTooltip": "Оценка схожести: {{score}} (нажмите, чтобы открыть файл)"
 	},
 	"read-batch": {
@@ -474,9 +484,13 @@
 	"tooManyTools": {
 		"title": "Включено слишком много инструментов",
 		"toolsPart_one": "{{count}} инструмент",
-		"toolsPart_other": "{{count}} инструментов",
+		"toolsPart_few": "{{count}} инструмента",
+		"toolsPart_many": "{{count}} инструментов",
+		"toolsPart_other": "{{count}} инструмента",
 		"serversPart_one": "{{count}} сервер MCP",
-		"serversPart_other": "{{count}} серверов MCP",
+		"serversPart_few": "{{count}} сервера MCP",
+		"serversPart_many": "{{count}} серверов MCP",
+		"serversPart_other": "{{count}} сервера MCP",
 		"messageTemplate": "У тебя включено {{tools}} через {{servers}}. Такое большое количество может сбить модель с толку и привести к ошибкам. Постарайся держать это ниже {{threshold}}.",
 		"openMcpSettings": "Открыть настройки MCP"
 	},

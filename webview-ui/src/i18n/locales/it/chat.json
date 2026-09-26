@@ -291,6 +291,7 @@
 		"triggerLabelOffShort": "Disattivata",
 		"triggerLabel_zero": "0 approvati automaticamente",
 		"triggerLabel_one": "1 approvato automaticamente",
+		"triggerLabel_many": "{{count}} approvati automaticamente",
 		"triggerLabel_other": "{{count}} approvati automaticamente",
 		"triggerLabelAll": "BRRR",
 		"mode": {
@@ -324,12 +325,14 @@
 			"title": "Contesto troncato",
 			"inProgress": "Troncamento del contesto...",
 			"messagesRemoved": "{{count}} messaggio rimosso",
+			"messagesRemoved_many": "{{count}} messaggi rimossi",
 			"messagesRemoved_other": "{{count}} messaggi rimossi",
 			"description": "I messaggi più vecchi sono stati rimossi dalla conversazione per rimanere entro il limite della finestra di contesto. Questo è un approccio veloce ma meno conservativo del contesto rispetto alla condensazione."
 		},
 		"prune": {
 			"title": "Vecchio output degli strumenti spostato su disco",
 			"summary": "{{count}} risultato di strumento, circa {{kb}} KB liberati",
+			"summary_many": "{{count}} risultati di strumento, circa {{kb}} KB liberati",
 			"summary_other": "{{count}} risultati di strumento, circa {{kb}} KB liberati",
 			"description": "I vecchi risultati di strumenti troppo grandi sono stati salvati come artefatti di attività e sostituiti con una breve anteprima. Non è stato perso nulla: ogni anteprima nomina il suo artefatto e il modello può rileggere il testo completo con read_artifact. Questo è stato eseguito al posto di un riassunto con IA, quindi nessun testo della conversazione è stato riscritto."
 		}
@@ -391,6 +394,7 @@
 		"wantsToSearch": "Tumble vuole cercare nella base di codice <code>{{query}}</code>",
 		"wantsToSearchWithPath": "Tumble vuole cercare nella base di codice <code>{{query}}</code> in <code>{{path}}</code>",
 		"didSearch_one": "Trovato 1 risultato",
+		"didSearch_many": "Trovati {{count}} risultati",
 		"didSearch_other": "Trovati {{count}} risultati",
 		"resultTooltip": "Punteggio di somiglianza: {{score}} (clicca per aprire il file)"
 	},
@@ -473,8 +477,10 @@
 	"tooManyTools": {
 		"title": "Troppi strumenti abilitati",
 		"toolsPart_one": "{{count}} strumento",
+		"toolsPart_many": "{{count}} strumenti",
 		"toolsPart_other": "{{count}} strumenti",
 		"serversPart_one": "{{count}} server MCP",
+		"serversPart_many": "{{count}} server MCP",
 		"serversPart_other": "{{count}} server MCP",
 		"messageTemplate": "Hai {{tools}} abilitate via {{servers}}. Un numero così alto può confondere il modello e portare a errori. Prova a mantenerlo sotto {{threshold}}.",
 		"openMcpSettings": "Apri impostazioni MCP"

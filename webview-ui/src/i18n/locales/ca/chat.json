@@ -291,6 +291,7 @@
 		"triggerLabelOffShort": "Off",
 		"triggerLabel_zero": "0 aprovacions automàtiques",
 		"triggerLabel_one": "1 aprovació automàtica",
+		"triggerLabel_many": "{{count}} aprovacions automàtiques",
 		"triggerLabel_other": "{{count}} aprovacions automàtiques",
 		"triggerLabelAll": "BRRR",
 		"mode": {
@@ -324,12 +325,14 @@
 			"title": "Context truncat",
 			"inProgress": "Truncant context...",
 			"messagesRemoved": "{{count}} missatge eliminat",
+			"messagesRemoved_many": "{{count}} missatges eliminats",
 			"messagesRemoved_other": "{{count}} missatges eliminats",
 			"description": "S'han eliminat missatges més antics de la conversa per mantenir-se dins del límit de la finestra de context. Aquest és un enfocament ràpid però menys conservador del context en comparació amb la condensació."
 		},
 		"prune": {
 			"title": "Sortida antiga d'eines moguda al disc",
 			"summary": "{{count}} resultat d'eina, uns {{kb}} KB alliberats",
+			"summary_many": "{{count}} resultats d'eines, uns {{kb}} KB alliberats",
 			"summary_other": "{{count}} resultats d'eines, uns {{kb}} KB alliberats",
 			"description": "Els resultats d'eines antics i grans s'han desat com a artefactes de tasca i substituïts per una vista prèvia breu. No s'ha perdut res: cada vista prèvia anomena el seu artefacte, i el model pot tornar a llegir el text complet amb read_artifact. Això s'ha executat en lloc d'un resum amb IA, de manera que no s'ha reescrit cap text de la conversa."
 		}
@@ -391,6 +394,7 @@
 		"wantsToSearch": "Tumble vol cercar a la base de codi <code>{{query}}</code>",
 		"wantsToSearchWithPath": "Tumble vol cercar a la base de codi <code>{{query}}</code> a <code>{{path}}</code>",
 		"didSearch_one": "S'ha trobat 1 resultat",
+		"didSearch_many": "S'han trobat {{count}} resultats",
 		"didSearch_other": "S'han trobat {{count}} resultats",
 		"resultTooltip": "Puntuació de similitud: {{score}} (fes clic per obrir el fitxer)"
 	},
@@ -473,8 +477,10 @@
 	"tooManyTools": {
 		"title": "Massa eines habilitades",
 		"toolsPart_one": "{{count}} eina",
+		"toolsPart_many": "{{count}} eines",
 		"toolsPart_other": "{{count}} eines",
 		"serversPart_one": "{{count}} servidor MCP",
+		"serversPart_many": "{{count}} servidors MCP",
 		"serversPart_other": "{{count}} servidors MCP",
 		"messageTemplate": "Tens {{tools}} habilitades via {{servers}}. Un nombre tant alt pot confondre el model i portar a errors. Intenta mantenir-lo per sota de {{threshold}}.",
 		"openMcpSettings": "Obrir configuració de MCP"

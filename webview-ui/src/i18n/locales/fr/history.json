@@ -50,6 +50,7 @@
 	},
 	"viewAllHistory": "Voir tout",
 	"subtasks_one": "{{count}} sous-tâche",
+	"subtasks_many": "{{count}} sous-tâches",
 	"subtasks_other": "{{count}} sous-tâches",
 	"subtaskTag": "Sous-tâche",
 	"deleteWithSubtasks": "Cela supprimera aussi {{count}} sous-tâche(s). Êtes-vous sûr ?",
