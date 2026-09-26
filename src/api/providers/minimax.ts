@@ -1,5 +1,4 @@
 import { Anthropic } from "@anthropic-ai/sdk"
-import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
 import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
 import OpenAI from "openai"
 

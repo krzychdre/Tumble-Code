@@ -517,7 +517,6 @@ describe("ClineProvider", () => {
 			},
 		}
 
-		// @ts-expect-error - Access private property for testing
 		updateGlobalStateSpy = vi.spyOn(provider.contextProxy, "setValue")
 
 		// @ts-expect-error - Accessing private property for testing.
