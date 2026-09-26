@@ -514,3 +514,9 @@ on main); `onChange` keeps the toolkit's on-leave semantics, `onInput` per keyst
 (exact pin) #498 (`5f55c6a9c`): tests only, full CLI suite 1,297; real-pty A/B (main build, ink 7 dist, build.sh
 tarball in a temp dir): same transcript, no staircase, ghost rows or duplicates; one extra non-accumulating blank
 row under the footer after a turn settles (being investigated as `fix/cli-ink7-extra-footer-row`).
+
+**Status (2026-09-26), DEP-7 DONE:** last item `picomatch` override 4.0.4 to `^4.0.7` #499 (`fc70d7556`; the
+override from #65 was a dedupe, not a security pin; six tools require ^4.0.7). DEP-7 follow-ups: F1 re-enable the
+deferred eslint and React Compiler rules one per PR, F2 `rules-of-hooks` in the CLI, F3 knip barrel re-exports,
+F4 `esbuild-wasm` 0.28, F5 replace tsup's DTS step before TypeScript 7. Started: DEP-6 webview rows (lucide-react,
+katex, react-markdown, shiki, mermaid, i18next + react-i18next), one PR each.
