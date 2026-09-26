@@ -4,9 +4,8 @@ import { Trans } from "react-i18next"
 import { Package } from "@roo/package"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "@/utils/vscode"
-import { Button, Input, Slider } from "@/components/ui"
+import { Button, Input, Slider, LabeledCheckbox } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
 import { postImmediateSetting } from "./postImmediateSetting"
@@ -133,7 +132,7 @@ export const AutoApproveSettings = ({
 						settingId="auto-approve-enabled"
 						section="autoApprove"
 						label={t("settings:autoApprove.enabled")}>
-						<VSCodeCheckbox
+						<LabeledCheckbox
 							checked={effectiveAutoApprovalEnabled}
 							aria-label={t("settings:autoApprove.toggleAriaLabel")}
 							onChange={() => {
@@ -142,7 +141,7 @@ export const AutoApproveSettings = ({
 								vscode.postMessage({ type: "autoApprovalEnabled", bool: newValue })
 							}}>
 							<span className="font-medium">{t("settings:autoApprove.enabled")}</span>
-						</VSCodeCheckbox>
+						</LabeledCheckbox>
 						<div className="text-vscode-descriptionForeground text-sm mt-1">
 							<p>{t("settings:autoApprove.description")}</p>
 							<p>
@@ -204,7 +203,7 @@ export const AutoApproveSettings = ({
 							settingId="auto-approve-readonly-outside-workspace"
 							section="autoApprove"
 							label={t("settings:autoApprove.readOnly.outsideWorkspace.label")}>
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={alwaysAllowReadOnlyOutsideWorkspace}
 								onChange={(e: any) =>
 									setCachedStateField("alwaysAllowReadOnlyOutsideWorkspace", e.target.checked)
@@ -213,7 +212,7 @@ export const AutoApproveSettings = ({
 								<span className="font-medium">
 									{t("settings:autoApprove.readOnly.outsideWorkspace.label")}
 								</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								{t("settings:autoApprove.readOnly.outsideWorkspace.description")}
 							</div>
@@ -231,7 +230,7 @@ export const AutoApproveSettings = ({
 							settingId="auto-approve-write-outside-workspace"
 							section="autoApprove"
 							label={t("settings:autoApprove.write.outsideWorkspace.label")}>
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={alwaysAllowWriteOutsideWorkspace}
 								onChange={(e: any) =>
 									setCachedStateField("alwaysAllowWriteOutsideWorkspace", e.target.checked)
@@ -240,7 +239,7 @@ export const AutoApproveSettings = ({
 								<span className="font-medium">
 									{t("settings:autoApprove.write.outsideWorkspace.label")}
 								</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								{t("settings:autoApprove.write.outsideWorkspace.description")}
 							</div>
@@ -249,14 +248,14 @@ export const AutoApproveSettings = ({
 							settingId="auto-approve-write-protected"
 							section="autoApprove"
 							label={t("settings:autoApprove.write.protected.label")}>
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={alwaysAllowWriteProtected}
 								onChange={(e: any) =>
 									setCachedStateField("alwaysAllowWriteProtected", e.target.checked)
 								}
 								data-testid="always-allow-write-protected-checkbox">
 								<span className="font-medium">{t("settings:autoApprove.write.protected.label")}</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
 								{t("settings:autoApprove.write.protected.description")}
 							</div>

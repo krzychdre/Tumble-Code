@@ -1,16 +1,10 @@
 import React, { useState } from "react"
-import {
-	VSCodeCheckbox,
-	VSCodeRadioGroup,
-	VSCodeRadio,
-	VSCodeTextArea,
-	VSCodeTextField,
-} from "@vscode/webview-ui-toolkit/react"
+import { VSCodeRadioGroup, VSCodeRadio, VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { type GroupEntry, type McpServer, type ModeConfig, modeConfigSchema } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, Input } from "@src/components/ui"
+import { Button, Input, LabeledCheckbox } from "@src/components/ui"
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 
 import { availableGroups, getGroupName } from "./modeGroups"
@@ -212,7 +206,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						</div>
 						<div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-2">
 							{availableGroups.map((group) => (
-								<VSCodeCheckbox
+								<LabeledCheckbox
 									key={group}
 									checked={groups.some((g) => getGroupName(g) === group)}
 									onChange={(e: Event | React.FormEvent<HTMLElement>) => {
@@ -225,13 +219,13 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 										}
 									}}>
 									{t(`prompts:tools.toolNames.${group}`)}
-								</VSCodeCheckbox>
+								</LabeledCheckbox>
 							))}
 						</div>
 						{fieldError("groups")}
 						{groups.some((g) => getGroupName(g) === "mcp") && (
 							<div className="mt-3 ml-1" data-testid="create-mcp-server-restriction">
-								<VSCodeCheckbox
+								<LabeledCheckbox
 									checked={allowedMcpServers !== undefined}
 									data-testid="create-restrict-mcp-servers-toggle"
 									onChange={(e: Event | React.FormEvent<HTMLElement>) => {
@@ -240,7 +234,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 										setAllowedMcpServers(target.checked ? [] : undefined)
 									}}>
 									Restrict to specific MCP servers
-								</VSCodeCheckbox>
+								</LabeledCheckbox>
 								{allowedMcpServers !== undefined && (
 									<McpServerChecklist
 										allowedMcpServers={allowedMcpServers}

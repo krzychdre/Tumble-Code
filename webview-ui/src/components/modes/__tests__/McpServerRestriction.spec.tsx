@@ -4,20 +4,6 @@ import type { McpServer } from "@roo-code/types"
 
 import { McpServerRestrictionImpl as McpServerRestriction } from "../McpServerRestriction"
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ children, onChange, checked, ...props }: any) => (
-		<label>
-			<input
-				type="checkbox"
-				checked={checked || false}
-				onChange={(e: any) => onChange?.({ target: { checked: e.target.checked } })}
-				{...props}
-			/>
-			{children}
-		</label>
-	),
-}))
-
 const servers = [{ name: "a" }, { name: "b" }] as McpServer[]
 
 type Props = { slug?: string; value: string[] | undefined; onChange: (next: string[] | undefined) => void }

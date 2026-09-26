@@ -64,7 +64,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", async () => {
 		[
 			"VSCodeBadge",
 			"VSCodeButton",
-			"VSCodeCheckbox",
 			"VSCodePanels",
 			"VSCodePanelTab",
 			"VSCodePanelView",

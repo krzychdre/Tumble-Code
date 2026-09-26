@@ -7,6 +7,7 @@ import { vscode } from "@/utils/vscode"
 import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 
 import SettingsView from "../SettingsView"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
@@ -34,18 +35,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 				{children}
 			</button>
 		),
-	VSCodeCheckbox: ({ children, onChange, checked, "data-testid": dataTestId }: any) => (
-		<label>
-			<input
-				type="checkbox"
-				checked={checked}
-				onChange={(e) => onChange({ target: { checked: e.target.checked } })}
-				aria-label={typeof children === "string" ? children : undefined}
-				data-testid={dataTestId}
-			/>
-			{children}
-		</label>
-	),
 	VSCodeTextField: ({ value, onInput, placeholder, "data-testid": dataTestId }: any) => (
 		<input
 			type="text"
@@ -115,6 +104,8 @@ vi.mock("../../../components/common/Tab", () => ({
 
 vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>

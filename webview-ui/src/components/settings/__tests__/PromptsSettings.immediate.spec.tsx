@@ -4,6 +4,7 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
 import PromptsSettings from "../PromptsSettings"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 const { mockPostMessage, mockSetEnhancementApiConfigId } = vi.hoisted(() => ({
 	mockPostMessage: vi.fn(),
@@ -33,6 +34,8 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 }))
 
 vi.mock("@src/components/ui", () => ({
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Button: ({ children, onClick, ...props }: any) => (
 		<button onClick={onClick} {...props}>
 			{children}
@@ -51,17 +54,6 @@ vi.mock("@src/components/ui", () => ({
 }))
 
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ checked, onChange, children }: any) => (
-		<label>
-			<input
-				type="checkbox"
-				data-testid="include-task-history-checkbox"
-				checked={checked}
-				onChange={(e) => onChange?.({ target: { checked: e.target.checked } })}
-			/>
-			{children}
-		</label>
-	),
 	VSCodeTextArea: ({ value, onInput }: any) => (
 		<textarea data-testid="support-prompt-textarea" value={value} onChange={(e) => onInput?.(e)} />
 	),
@@ -83,7 +75,7 @@ describe("PromptsSettings immediate writes (WEB-3)", () => {
 			/>,
 		)
 
-		fireEvent.click(screen.getByTestId("include-task-history-checkbox"))
+		fireEvent.click(screen.getByRole("checkbox", { name: "prompts:supportPrompts.enhance.includeTaskHistory" }))
 
 		expect(setIncludeTaskHistoryInEnhance).toHaveBeenCalledWith(false)
 		expect(mockPostMessage.mock.calls.map(([message]) => message)).toEqual([

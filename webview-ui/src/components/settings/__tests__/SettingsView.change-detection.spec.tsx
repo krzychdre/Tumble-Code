@@ -13,6 +13,7 @@ const mockVscode = {
 // Import the actual component
 import SettingsView from "../SettingsView"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 // Mock the extension state context
 vi.mock("@src/context/ExtensionStateContext", () => ({
@@ -28,6 +29,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 // Mock UI components
 vi.mock("@src/components/ui", () => ({
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { LabeledCheckbox } from "@src/components/ui"
 import type { McpServer } from "@roo-code/types"
 import McpServerChecklist from "./McpServerChecklist"
 
@@ -134,9 +134,9 @@ const McpServerRestriction: React.FC<McpServerRestrictionProps> = ({ slug, value
 
 	return (
 		<div className="mt-3 ml-1" data-testid="mcp-server-restriction">
-			<VSCodeCheckbox checked={isRestricted} data-testid="restrict-mcp-servers-toggle" onChange={handleToggle}>
+			<LabeledCheckbox checked={isRestricted} data-testid="restrict-mcp-servers-toggle" onChange={handleToggle}>
 				Restrict to specific MCP servers
-			</VSCodeCheckbox>
+			</LabeledCheckbox>
 			{isRestricted && (
 				<McpServerChecklist
 					allowedMcpServers={cachedAllowedMcpServers ?? []}

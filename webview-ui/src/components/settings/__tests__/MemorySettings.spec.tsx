@@ -2,6 +2,7 @@
 
 import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
 import { MemorySettings } from "../MemorySettings"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 // Mock the translation hook — return the key so assertions can match on it.
 vi.mock("@/i18n/TranslationContext", () => ({
@@ -9,16 +10,6 @@ vi.mock("@/i18n/TranslationContext", () => ({
 }))
 
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ checked, onChange, children, "data-testid": dataTestId }: any) => (
-		<label data-testid={dataTestId}>
-			<input
-				type="checkbox"
-				checked={checked || false}
-				onChange={(e: any) => onChange?.({ target: { checked: e.target.checked } })}
-			/>
-			{children}
-		</label>
-	),
 	VSCodeTextField: ({ value, onInput, placeholder, "data-testid": dataTestId }: any) => (
 		<input
 			type="text"
@@ -33,6 +24,8 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 // Mock the UI components used by MemorySettings. SelectValue renders nothing —
 // the real Radix SelectValue is a display slot, not an option.
 vi.mock("@/components/ui", () => ({
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Slider: ({ defaultValue, onValueChange, "data-testid": dataTestId, min, max }: any) => (
 		<input
@@ -206,7 +199,7 @@ describe("MemorySettings", () => {
 		const setCachedStateField = vi.fn()
 		render(<MemorySettings {...defaultProps} setCachedStateField={setCachedStateField} />)
 
-		fireEvent.click(screen.getByTestId("memory-share-claude-code-checkbox").querySelector("input")!)
+		fireEvent.click(screen.getByTestId("memory-share-claude-code-checkbox"))
 
 		await waitFor(() => {
 			expect(setCachedStateField).toHaveBeenCalledWith("autoMemoryShareWithClaudeCode", true)

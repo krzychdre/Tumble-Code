@@ -3,6 +3,7 @@
 import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
 import { ContextManagementSettings } from "../ContextManagementSettings"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 // Mock the translation hook
 vi.mock("@/hooks/useAppTranslation", () => ({
@@ -20,6 +21,8 @@ vi.mock("@/hooks/useAppTranslation", () => ({
 // Mock the UI components
 vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Slider: ({ value, onValueChange, "data-testid": dataTestId, disabled, min, max }: any) => (
 		<input
 			type="range"
@@ -79,18 +82,6 @@ vi.mock("@/utils/vscode", () => ({
 
 // Mock VSCode components to behave like standard HTML elements
 vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ checked, onChange, children, "data-testid": dataTestId, ...props }: any) => (
-		<label data-testid={dataTestId} {...props}>
-			<input
-				type="checkbox"
-				role="checkbox"
-				checked={checked || false}
-				aria-checked={checked || false}
-				onChange={(e: any) => onChange?.({ target: { checked: e.target.checked } })}
-			/>
-			{children}
-		</label>
-	),
 	VSCodeTextArea: ({ value, onChange, ...props }: any) => <textarea value={value} onChange={onChange} {...props} />,
 }))
 
@@ -131,7 +122,7 @@ describe("ContextManagementSettings", () => {
 		render(<ContextManagementSettings {...defaultProps} includeDiagnosticMessages={true} />)
 
 		const checkbox = screen.getByTestId("include-diagnostic-messages-checkbox")
-		expect(checkbox.querySelector("input")).toBeChecked()
+		expect(checkbox).toBeChecked()
 
 		const slider = screen.getByTestId("max-diagnostic-messages-slider")
 		expect(slider).toBeInTheDocument()
@@ -142,7 +133,7 @@ describe("ContextManagementSettings", () => {
 		render(<ContextManagementSettings {...defaultProps} includeDiagnosticMessages={false} />)
 
 		const checkbox = screen.getByTestId("include-diagnostic-messages-checkbox")
-		expect(checkbox.querySelector("input")).not.toBeChecked()
+		expect(checkbox).not.toBeChecked()
 
 		// Slider should still be rendered when diagnostics are disabled
 		expect(screen.getByTestId("max-diagnostic-messages-slider")).toBeInTheDocument()
@@ -153,7 +144,7 @@ describe("ContextManagementSettings", () => {
 		const setCachedStateField = vi.fn()
 		render(<ContextManagementSettings {...defaultProps} setCachedStateField={setCachedStateField} />)
 
-		const checkbox = screen.getByTestId("include-diagnostic-messages-checkbox").querySelector("input")!
+		const checkbox = screen.getByTestId("include-diagnostic-messages-checkbox")
 		fireEvent.click(checkbox)
 
 		await waitFor(() => {
@@ -366,8 +357,7 @@ describe("ContextManagementSettings", () => {
 			render(<ContextManagementSettings {...props} />)
 
 			const checkbox = screen.getByTestId("auto-condense-context-checkbox")
-			const input = checkbox.querySelector('input[type="checkbox"]')
-			expect(input).toBeChecked()
+			expect(checkbox).toBeChecked()
 
 			// Toggle off
 			fireEvent.click(checkbox)

@@ -1,9 +1,8 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { buildDocLink } from "@src/utils/docLinks"
-import { Slider, Link } from "@/components/ui"
+import { Slider, Link, LabeledCheckbox } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
@@ -37,13 +36,13 @@ export const CheckpointSettings = ({
 					settingId="checkpoints-enable"
 					section="checkpoints"
 					label={t("settings:checkpoints.enable.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={enableCheckpoints}
 						onChange={(e: any) => {
 							setCachedStateField("enableCheckpoints", e.target.checked)
 						}}>
 						<span className="font-medium">{t("settings:checkpoints.enable.label")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						<Trans i18nKey="settings:checkpoints.enable.description">
 							<Link

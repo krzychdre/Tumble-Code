@@ -1,10 +1,8 @@
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
-
 import type { McpTool } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
-import { StandardTooltip, ToggleSwitch } from "@/components/ui"
+import { StandardTooltip, ToggleSwitch, LabeledCheckbox } from "@/components/ui"
 
 type McpToolRowProps = {
 	tool: McpTool
@@ -71,7 +69,7 @@ const McpToolRow = ({ tool, serverName, serverSource, alwaysAllowMcp, isInChatCo
 					<div className="flex items-center gap-4 flex-shrink-0">
 						{/* Always Allow checkbox - only show when tool is enabled */}
 						{alwaysAllowMcp && isToolEnabled && (
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={tool.alwaysAllow}
 								onChange={handleAlwaysAllowChange}
 								data-tool={tool.name}
@@ -79,7 +77,7 @@ const McpToolRow = ({ tool, serverName, serverSource, alwaysAllowMcp, isInChatCo
 								<span className="text-vscode-descriptionForeground whitespace-nowrap">
 									{t("mcp:tool.alwaysAllow")}
 								</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 						)}
 
 						{/* Enabled toggle switch - only show in settings context */}

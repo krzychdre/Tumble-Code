@@ -1,12 +1,11 @@
 import { HTMLAttributes, useEffect, useState } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 
 import type { AudioType } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
-import { Button } from "@/components/ui"
+import { Button, LabeledCheckbox } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
@@ -167,12 +166,12 @@ export const NotificationSettings = ({
 					settingId="notifications-sound"
 					section="notifications"
 					label={t("settings:notifications.sound.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={soundEnabled}
 						onChange={(e: any) => setCachedStateField("soundEnabled", e.target.checked)}
 						data-testid="sound-enabled-checkbox">
 						<span className="font-medium">{t("settings:notifications.sound.label")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						{t("settings:notifications.sound.description")}
 					</div>

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { RefreshCw, Loader2, FileCode } from "lucide-react"
 
 import type { SerializedCustomToolDefinition } from "@roo-code/types"
@@ -8,7 +7,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 
 import { vscode } from "@/utils/vscode"
 
-import { Button } from "@/components/ui"
+import { Button, LabeledCheckbox } from "@/components/ui"
 import { useExtensionMessage } from "@src/utils/extensionBus"
 
 interface ToolParameter {
@@ -82,9 +81,9 @@ export const CustomToolsSettings = ({ enabled, onChange }: CustomToolsSettingsPr
 		<div className="space-y-4">
 			<div>
 				<div className="flex items-center gap-2">
-					<VSCodeCheckbox checked={enabled} onChange={(e: any) => onChange(e.target.checked)}>
+					<LabeledCheckbox checked={enabled} onChange={(e: any) => onChange(e.target.checked)}>
 						<span className="font-medium">{t("settings:experimental.CUSTOM_TOOLS.name")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 				</div>
 				<p className="text-vscode-descriptionForeground text-sm mt-0">
 					{t("settings:experimental.CUSTOM_TOOLS.description")}

@@ -3,9 +3,12 @@
 import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
 
 import { TemperatureControl } from "../TemperatureControl"
+import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
+	// The real checkbox (a native input), not a stub: only the barrel is mocked.
+	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
 	Slider: ({ value, onValueChange, "data-testid": dataTestId }: any) => (
 		<input
 			type="range"
@@ -14,22 +17,6 @@ vi.mock("@/components/ui", () => ({
 			data-testid={dataTestId}
 			role="slider"
 		/>
-	),
-}))
-
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: ({ children, onChange, checked, ...props }: any) => (
-		<label>
-			<input
-				type="checkbox"
-				role="checkbox"
-				checked={checked || false}
-				aria-checked={checked || false}
-				onChange={(e: any) => onChange?.({ target: { checked: e.target.checked } })}
-				{...props}
-			/>
-			{children}
-		</label>
 	),
 }))
 

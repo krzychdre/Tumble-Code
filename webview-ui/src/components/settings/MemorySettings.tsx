@@ -1,6 +1,6 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeCheckbox, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 
 import type { ProviderSettingsEntry } from "@roo-code/types"
@@ -9,7 +9,16 @@ import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Link } from "@/components/ui"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	Slider,
+	Link,
+	LabeledCheckbox,
+} from "@/components/ui"
 
 type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
 	autoMemoryEnabled?: boolean
@@ -65,13 +74,13 @@ export const MemorySettings = ({
 
 			<Section>
 				<SearchableSetting settingId="memory-enable" section="memory" label={t("settings:memory.enable.label")}>
-					<VSCodeCheckbox
+					<LabeledCheckbox
 						checked={autoMemoryEnabled ?? true}
 						onChange={(e: any) => {
 							setCachedStateField("autoMemoryEnabled", e.target.checked)
 						}}>
 						<span className="font-medium">{t("settings:memory.enable.label")}</span>
-					</VSCodeCheckbox>
+					</LabeledCheckbox>
 					<div className="text-vscode-descriptionForeground text-sm mt-1">
 						<Trans i18nKey="settings:memory.enable.description">
 							<Link href="https://docs.roocode.com/features/memory" style={{ display: "inline" }}>
@@ -88,13 +97,13 @@ export const MemorySettings = ({
 							section="memory"
 							label={t("settings:memory.recall.label")}
 							className="mt-4">
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={memoryRecallEnabled ?? true}
 								onChange={(e: any) => {
 									setCachedStateField("memoryRecallEnabled", e.target.checked)
 								}}>
 								<span className="font-medium">{t("settings:memory.recall.label")}</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								{t("settings:memory.recall.description")}
 							</div>
@@ -128,7 +137,7 @@ export const MemorySettings = ({
 							section="memory"
 							label={t("settings:memory.shareWithClaudeCode.label")}
 							className="mt-4">
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={autoMemoryShareWithClaudeCode ?? false}
 								disabled={!!autoMemoryDirectory}
 								onChange={(e: any) => {
@@ -136,7 +145,7 @@ export const MemorySettings = ({
 								}}
 								data-testid="memory-share-claude-code-checkbox">
 								<span className="font-medium">{t("settings:memory.shareWithClaudeCode.label")}</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								{autoMemoryDirectory
 									? t("settings:memory.shareWithClaudeCode.overridden")
@@ -183,13 +192,13 @@ export const MemorySettings = ({
 							section="memory"
 							label={t("settings:memory.dream.enable.label")}
 							className="mt-4">
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={autoDreamEnabled ?? true}
 								onChange={(e: any) => {
 									setCachedStateField("autoDreamEnabled", e.target.checked)
 								}}>
 								<span className="font-medium">{t("settings:memory.dream.enable.label")}</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								{t("settings:memory.dream.enable.description")}
 							</div>

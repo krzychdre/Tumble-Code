@@ -25,25 +25,6 @@ vi.mock("@src/utils/vscode", () => ({
 	},
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeCheckbox: function MockVSCodeCheckbox({
-		children,
-		checked,
-		onChange,
-	}: {
-		children?: React.ReactNode
-		checked?: boolean
-		onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
-	}) {
-		return (
-			<label>
-				<input type="checkbox" checked={checked} onChange={onChange} />
-				{children}
-			</label>
-		)
-	},
-}))
-
 describe("McpToolRow", () => {
 	const mockTool = {
 		name: "test-tool",

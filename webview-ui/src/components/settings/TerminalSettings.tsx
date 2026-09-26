@@ -1,7 +1,7 @@
 import { HTMLAttributes, useState, useCallback, useEffect, useId } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
-import { VSCodeCheckbox, VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { buildDocLink } from "@src/utils/docLinks"
 import { useMount } from "react-use"
@@ -13,7 +13,16 @@ import {
 } from "@roo-code/types"
 
 import { cn } from "@/lib/utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Slider, Link } from "@/components/ui"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	Slider,
+	Link,
+	LabeledCheckbox,
+} from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
 import { SectionHeader } from "./SectionHeader"
@@ -278,7 +287,7 @@ export const TerminalSettings = ({
 							settingId="terminal-shell-integration-disabled"
 							section="terminal"
 							label={t("settings:terminal.shellIntegrationDisabled.label")}>
-							<VSCodeCheckbox
+							<LabeledCheckbox
 								checked={terminalShellIntegrationDisabled ?? true}
 								onChange={(e: any) =>
 									setCachedStateField("terminalShellIntegrationDisabled", e.target.checked)
@@ -286,7 +295,7 @@ export const TerminalSettings = ({
 								<span className="font-medium">
 									{t("settings:terminal.shellIntegrationDisabled.label")}
 								</span>
-							</VSCodeCheckbox>
+							</LabeledCheckbox>
 							<div className="text-vscode-descriptionForeground text-sm mt-1">
 								<Trans i18nKey="settings:terminal.shellIntegrationDisabled.description">
 									<Link
@@ -307,7 +316,7 @@ export const TerminalSettings = ({
 									settingId="terminal-inherit-env"
 									section="terminal"
 									label={t("settings:terminal.inheritEnv.label")}>
-									<VSCodeCheckbox
+									<LabeledCheckbox
 										checked={inheritEnv}
 										onChange={(e: any) => {
 											setInheritEnv(e.target.checked)
@@ -319,7 +328,7 @@ export const TerminalSettings = ({
 										}}
 										data-testid="terminal-inherit-env-checkbox">
 										<span className="font-medium">{t("settings:terminal.inheritEnv.label")}</span>
-									</VSCodeCheckbox>
+									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
 										<Trans i18nKey="settings:terminal.inheritEnv.description">
 											<Link
@@ -417,7 +426,7 @@ export const TerminalSettings = ({
 									settingId="terminal-powershell-counter"
 									section="terminal"
 									label={t("settings:terminal.powershellCounter.label")}>
-									<VSCodeCheckbox
+									<LabeledCheckbox
 										checked={terminalPowershellCounter ?? false}
 										onChange={(e: any) =>
 											setCachedStateField("terminalPowershellCounter", e.target.checked)
@@ -426,7 +435,7 @@ export const TerminalSettings = ({
 										<span className="font-medium">
 											{t("settings:terminal.powershellCounter.label")}
 										</span>
-									</VSCodeCheckbox>
+									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
 										<Trans i18nKey="settings:terminal.powershellCounter.description">
 											<Link
@@ -445,7 +454,7 @@ export const TerminalSettings = ({
 									settingId="terminal-zsh-clear-eol-mark"
 									section="terminal"
 									label={t("settings:terminal.zshClearEolMark.label")}>
-									<VSCodeCheckbox
+									<LabeledCheckbox
 										checked={terminalZshClearEolMark ?? true}
 										onChange={(e: any) =>
 											setCachedStateField("terminalZshClearEolMark", e.target.checked)
@@ -454,7 +463,7 @@ export const TerminalSettings = ({
 										<span className="font-medium">
 											{t("settings:terminal.zshClearEolMark.label")}
 										</span>
-									</VSCodeCheckbox>
+									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
 										<Trans i18nKey="settings:terminal.zshClearEolMark.description">
 											<Link
@@ -473,12 +482,12 @@ export const TerminalSettings = ({
 									settingId="terminal-zsh-oh-my"
 									section="terminal"
 									label={t("settings:terminal.zshOhMy.label")}>
-									<VSCodeCheckbox
+									<LabeledCheckbox
 										checked={terminalZshOhMy ?? false}
 										onChange={(e: any) => setCachedStateField("terminalZshOhMy", e.target.checked)}
 										data-testid="terminal-zsh-oh-my-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshOhMy.label")}</span>
-									</VSCodeCheckbox>
+									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
 										<Trans i18nKey="settings:terminal.zshOhMy.description">
 											<Link
@@ -497,12 +506,12 @@ export const TerminalSettings = ({
 									settingId="terminal-zsh-p10k"
 									section="terminal"
 									label={t("settings:terminal.zshP10k.label")}>
-									<VSCodeCheckbox
+									<LabeledCheckbox
 										checked={terminalZshP10k ?? false}
 										onChange={(e: any) => setCachedStateField("terminalZshP10k", e.target.checked)}
 										data-testid="terminal-zsh-p10k-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshP10k.label")}</span>
-									</VSCodeCheckbox>
+									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
 										<Trans i18nKey="settings:terminal.zshP10k.description">
 											<Link
@@ -521,12 +530,12 @@ export const TerminalSettings = ({
 									settingId="terminal-zdotdir"
 									section="terminal"
 									label={t("settings:terminal.zdotdir.label")}>
-									<VSCodeCheckbox
+									<LabeledCheckbox
 										checked={terminalZdotdir ?? false}
 										onChange={(e: any) => setCachedStateField("terminalZdotdir", e.target.checked)}
 										data-testid="terminal-zdotdir-checkbox">
 										<span className="font-medium">{t("settings:terminal.zdotdir.label")}</span>
-									</VSCodeCheckbox>
+									</LabeledCheckbox>
 									<div className="text-vscode-descriptionForeground text-sm mt-1">
 										<Trans i18nKey="settings:terminal.zdotdir.description">
 											<Link

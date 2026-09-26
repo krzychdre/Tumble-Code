@@ -1,9 +1,8 @@
-import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import { useEffect, useState } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useDebounce } from "react-use"
 
-import { Slider } from "@/components/ui"
+import { Slider, LabeledCheckbox } from "@/components/ui"
 
 interface TemperatureControlProps {
 	value: number | undefined | null
@@ -29,7 +28,7 @@ export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue
 	return (
 		<>
 			<div>
-				<VSCodeCheckbox
+				<LabeledCheckbox
 					checked={isCustomTemperature}
 					onChange={(e: any) => {
 						const isChecked = e.target.checked
@@ -43,7 +42,7 @@ export const TemperatureControl = ({ value, onChange, maxValue = 1, defaultValue
 						}
 					}}>
 					<label className="block font-medium mb-1">{t("settings:temperature.useCustom")}</label>
-				</VSCodeCheckbox>
+				</LabeledCheckbox>
 				<div className="text-sm text-vscode-descriptionForeground mt-1">
 					{t("settings:temperature.description")}
 				</div>

@@ -38,12 +38,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 		</select>
 	),
 	VSCodeOption: ({ children, value }: any) => <option value={value}>{children}</option>,
-	VSCodeCheckbox: ({ children, checked, onChange }: any) => (
-		<label>
-			<input type="checkbox" checked={checked} onChange={(e) => onChange?.(e)} />
-			{children}
-		</label>
-	),
 	VSCodeButton: ({ children, onClick }: any) => <button onClick={onClick}>{children}</button>,
 }))
 

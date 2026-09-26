@@ -322,6 +322,87 @@
 	.ui-link:focus-visible > .ui-link-content {
 		border-color: var(--vscode-focusBorder, #007fd4);
 	}
+
+	/*
+	 * Checkbox with label (components/ui/labeled-checkbox.tsx), the same look
+	 * as the deprecated toolkit's <vscode-checkbox>. `.ui-checkbox` mirrors the
+	 * toolkit's host element, `.ui-checkbox-box` its control and
+	 * `.ui-checkbox-label` its label part. Fallbacks are the toolkit's defaults.
+	 */
+	.ui-checkbox {
+		display: inline-flex;
+		align-items: center;
+		margin: 4px 0;
+		outline: none;
+		user-select: none;
+		font-size: var(--vscode-font-size, 13px);
+		line-height: normal;
+	}
+
+	.ui-checkbox[hidden] {
+		display: none;
+	}
+
+	.ui-checkbox-box {
+		position: relative;
+		display: block;
+		flex-shrink: 0;
+		width: 18px;
+		height: 18px;
+	}
+
+	.ui-checkbox-input {
+		appearance: none;
+		display: block;
+		box-sizing: border-box;
+		width: 18px;
+		height: 18px;
+		margin: 0;
+		padding: 0;
+		border: 1px solid var(--vscode-checkbox-border, #3c3c3c);
+		border-radius: 3px;
+		outline: none;
+		background: var(--vscode-checkbox-background, #3c3c3c);
+		cursor: pointer;
+	}
+
+	.ui-checkbox-input:enabled:active,
+	.ui-checkbox-input:focus-visible {
+		border-color: var(--vscode-focusBorder, #007fd4);
+	}
+
+	.ui-checkbox-check {
+		position: absolute;
+		top: 1px;
+		left: 1px;
+		display: block;
+		width: 16px;
+		height: 16px;
+		fill: var(--vscode-foreground, #cccccc);
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	.ui-checkbox-input:checked + .ui-checkbox-check {
+		opacity: 1;
+	}
+
+	.ui-checkbox-label {
+		padding-inline-start: 10px;
+		margin-inline-end: 10px;
+		font-family: var(--vscode-font-family, sans-serif);
+		color: var(--vscode-foreground, #cccccc);
+		cursor: pointer;
+	}
+
+	.ui-checkbox[data-disabled] {
+		opacity: 0.4;
+	}
+
+	.ui-checkbox[data-disabled] .ui-checkbox-input,
+	.ui-checkbox[data-disabled] .ui-checkbox-label {
+		cursor: not-allowed;
+	}
 }
 
 /*
@@ -335,6 +416,12 @@
 a.ui-link {
 	color: revert-layer;
 	text-decoration: revert-layer;
+	outline: revert-layer;
+	outline-offset: revert-layer;
+}
+
+/* Same for VS Code's unlayered `input:focus` outline before 1.104. */
+input.ui-checkbox-input {
 	outline: revert-layer;
 	outline-offset: revert-layer;
 }

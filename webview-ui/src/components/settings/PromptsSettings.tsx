@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from "react"
-import { VSCodeTextArea, VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
 
 import { supportPrompt, SupportPromptType } from "@roo/support-prompt"
 
@@ -14,6 +14,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 	StandardTooltip,
+	LabeledCheckbox,
 } from "@src/components/ui"
 
 import { SectionHeader } from "./SectionHeader"
@@ -199,7 +200,7 @@ const PromptsSettings = ({
 							</div>
 
 							<div>
-								<VSCodeCheckbox
+								<LabeledCheckbox
 									checked={includeTaskHistoryInEnhance}
 									onChange={(e: Event | FormEvent<HTMLElement>) => {
 										const target = ("target" in e ? e.target : null) as HTMLInputElement | null
@@ -214,7 +215,7 @@ const PromptsSettings = ({
 									<span className="font-medium">
 										{t("prompts:supportPrompts.enhance.includeTaskHistory")}
 									</span>
-								</VSCodeCheckbox>
+								</LabeledCheckbox>
 								<div className="text-vscode-descriptionForeground text-sm mt-1 mb-3">
 									{t("prompts:supportPrompts.enhance.includeTaskHistoryDescription")}
 								</div>

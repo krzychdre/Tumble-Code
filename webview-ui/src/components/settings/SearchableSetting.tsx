@@ -37,9 +37,9 @@ interface SearchableSettingProps extends HTMLAttributes<HTMLDivElement> {
  *   section="browser"
  *   label={t("settings:browser.enable.label")}
  * >
- *   <VSCodeCheckbox>
+ *   <LabeledCheckbox>
  *     <span className="font-medium">{t("settings:browser.enable.label")}</span>
- *   </VSCodeCheckbox>
+ *   </LabeledCheckbox>
  *   <div className="text-vscode-descriptionForeground text-sm">
  *     {t("settings:browser.enable.description")}
  *   </div>
