@@ -55,9 +55,14 @@ describe("McpConnectionManager", () => {
 			"streamable-http": (await import("@modelcontextprotocol/sdk/client/streamableHttp.js"))
 				.StreamableHTTPClientTransport as any,
 		}
-		for (const ctor of Object.values(constructors)) ctor.mockImplementation(() => transport)
+		for (const ctor of Object.values(constructors))
+			ctor.mockImplementation(function () {
+				return transport
+			})
 		const { Client } = await import("@modelcontextprotocol/sdk/client/index.js")
-		vi.mocked(Client).mockImplementation(fakeClient as any)
+		vi.mocked(Client).mockImplementation(function () {
+			return fakeClient() as any
+		})
 
 		deps = {
 			clientVersion: vi.fn().mockReturnValue("9.9.9"),

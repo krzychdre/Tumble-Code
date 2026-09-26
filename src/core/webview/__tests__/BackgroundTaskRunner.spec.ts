@@ -53,7 +53,7 @@ let taskCounter = 0
 vi.mock("../../task/Task", () => ({ Task: vi.fn() }))
 
 function installTaskFake() {
-	vi.mocked(Task).mockImplementation(((options: Record<string, any>) => {
+	vi.mocked(Task).mockImplementation(function (options: Record<string, any>) {
 		const emitter = new EventEmitter()
 		const taskId = `bg-${++taskCounter}`
 		const task = Object.assign(emitter, {
@@ -75,7 +75,7 @@ function installTaskFake() {
 			},
 		})
 		return task
-	}) as never)
+	} as never)
 }
 
 const ALLOW_ALL: OrganizationAllowList = { allowAll: true, providers: {} }
@@ -358,7 +358,14 @@ describe("BackgroundTaskRunner.memoryWriterQuery", () => {
 					},
 		)
 		const runner = new BackgroundTaskRunner(host)
-		return { query: runner.memoryWriterQuery(ACTIVE, "task-1"), runner, configs, disposed, postMessageToWebview, log }
+		return {
+			query: runner.memoryWriterQuery(ACTIVE, "task-1"),
+			runner,
+			configs,
+			disposed,
+			postMessageToWebview,
+			log,
+		}
 	}
 
 	it("asks one completion on the writer profile and never creates a Task", async () => {

@@ -33,7 +33,9 @@ describe("GeminiEmbedder", () => {
 			data: [{ embedding: [0.1, 0.2] }, { embedding: [0.3, 0.4] }],
 			usage: { prompt_tokens: 2, total_tokens: 2 },
 		})
-		MockedOpenAI.mockImplementation(() => ({ embeddings: { create: mockEmbeddingsCreate } }) as any)
+		MockedOpenAI.mockImplementation(function () {
+			return { embeddings: { create: mockEmbeddingsCreate } } as any
+		})
 	})
 
 	afterEach(() => {

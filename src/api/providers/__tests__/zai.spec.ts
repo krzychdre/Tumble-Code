@@ -26,7 +26,9 @@ vitest.mock("../../transform/r1-format", async (importOriginal) => {
 vitest.mock("openai", () => {
 	const createMock = vitest.fn()
 	return {
-		default: vitest.fn(() => ({ chat: { completions: { create: createMock } } })),
+		default: vitest.fn(function () {
+			return { chat: { completions: { create: createMock } } }
+		}),
 	}
 })
 

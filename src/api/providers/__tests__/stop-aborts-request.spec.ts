@@ -16,10 +16,12 @@ const mockResponsesCreate = vitest.fn()
 
 vitest.mock("openai", () => ({
 	__esModule: true,
-	default: vitest.fn().mockImplementation(() => ({
-		chat: { completions: { create: mockChatCreate } },
-		responses: { create: mockResponsesCreate },
-	})),
+	default: vitest.fn().mockImplementation(function () {
+		return {
+			chat: { completions: { create: mockChatCreate } },
+			responses: { create: mockResponsesCreate },
+		}
+	}),
 }))
 
 import { ZAiHandler } from "../zai"

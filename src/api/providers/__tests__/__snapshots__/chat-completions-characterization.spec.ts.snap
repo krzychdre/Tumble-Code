@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -31,7 +31,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -67,7 +67,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -110,7 +110,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -148,7 +148,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -170,7 +170,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -200,7 +200,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -222,7 +222,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCompatibleProvider (Z.ai)' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > BaseOpenAiCompatibleProvider (Z.ai) > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {
@@ -248,7 +248,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'BaseOpenAiCom
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -279,7 +279,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > O
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -315,7 +315,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > a
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -358,7 +358,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > f
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -396,7 +396,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > r
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -418,7 +418,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > s
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -452,7 +452,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > t
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -474,7 +474,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > t
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > DeepSeek > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {
@@ -500,7 +500,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'DeepSeek' > u
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -528,7 +528,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -562,7 +562,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -603,7 +603,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -639,7 +639,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -659,7 +659,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -687,7 +687,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -707,7 +707,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LM Studio > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {
@@ -731,7 +731,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LM Studio' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -762,7 +762,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > Op
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -798,7 +798,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > a 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -841,7 +841,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > fi
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -879,7 +879,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > re
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -901,7 +901,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > st
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -935,7 +935,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > th
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -957,7 +957,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > to
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > LiteLLM > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {
@@ -983,7 +983,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'LiteLLM' > us
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -1014,7 +1014,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -1050,7 +1050,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -1093,7 +1093,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -1131,7 +1131,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -1153,7 +1153,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -1183,7 +1183,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -1205,7 +1205,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (main path)' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (main path) > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {
@@ -1231,7 +1231,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -1262,7 +1262,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -1298,7 +1298,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -1341,7 +1341,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -1379,7 +1379,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -1401,7 +1401,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -1435,7 +1435,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -1457,7 +1457,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compatible (o-series path)' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenAI compatible (o-series path) > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {
@@ -1483,7 +1483,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenAI compat
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -1532,7 +1532,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -1569,7 +1569,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -1613,7 +1613,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -1640,7 +1640,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -1663,7 +1663,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -1698,7 +1698,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -1721,7 +1721,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > OpenRouter > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {
@@ -1748,7 +1748,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'OpenRouter' >
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > OpenRouter reasoning_details 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > OpenRouter reasoning_details 1`] = `
 {
   "chunks": [
     {
@@ -1779,7 +1779,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > a delta that starts with the previous delta 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > a delta that starts with the previous delta 1`] = `
 {
   "chunks": [
     {
@@ -1815,7 +1815,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > finish_reason stop after tool calls 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > finish_reason stop after tool calls 1`] = `
 {
   "chunks": [
     {
@@ -1858,7 +1858,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > reasoning_content 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > reasoning_content 1`] = `
 {
   "chunks": [
     {
@@ -1896,7 +1896,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > stream ends inside a closing think tag 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > stream ends inside a closing think tag 1`] = `
 {
   "chunks": [
     {
@@ -1918,7 +1918,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > think block split across chunks 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > think block split across chunks 1`] = `
 {
   "chunks": [
     {
@@ -1948,7 +1948,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > tool_calls not an array 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > tool_calls not an array 1`] = `
 {
   "chunks": [
     {
@@ -1970,7 +1970,7 @@ exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > 
 }
 `;
 
-exports[`Chat Completions stream loops (API-7 characterization) > 'Qwen Code' > usage repeated in every chunk 1`] = `
+exports[`Chat Completions stream loops (API-7 characterization) > Qwen Code > usage repeated in every chunk 1`] = `
 {
   "chunks": [
     {

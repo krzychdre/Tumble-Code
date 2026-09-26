@@ -131,11 +131,13 @@ vi.mock("vscode", () => ({
 	window: {
 		activeTextEditor: undefined,
 	},
-	EventEmitter: vi.fn().mockImplementation(() => ({
-		event: vi.fn(),
-		fire: vi.fn(),
-		dispose: vi.fn(),
-	})),
+	EventEmitter: vi.fn().mockImplementation(function () {
+		return {
+			event: vi.fn(),
+			fire: vi.fn(),
+			dispose: vi.fn(),
+		}
+	}),
 }))
 
 vi.mock("../../../utils/shell", () => ({
@@ -221,7 +223,7 @@ describe("SYSTEM_PROMPT", () => {
 			experiments,
 		})
 
-		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/consistent-system-prompt.snap")
+		await expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/consistent-system-prompt.snap")
 	})
 
 	it("should include MCP server info when mcpHub is provided", async () => {
@@ -235,7 +237,7 @@ describe("SYSTEM_PROMPT", () => {
 			experiments,
 		})
 
-		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-mcp-hub-provided.snap")
+		await expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-mcp-hub-provided.snap")
 	})
 
 	it("should explicitly handle undefined mcpHub", async () => {
@@ -247,7 +249,7 @@ describe("SYSTEM_PROMPT", () => {
 			experiments,
 		})
 
-		expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-undefined-mcp-hub.snap")
+		await expect(prompt).toMatchFileSnapshot("./__snapshots__/system-prompt/with-undefined-mcp-hub.snap")
 	})
 
 	it("should include vscode language in custom instructions", async () => {
@@ -272,11 +274,13 @@ describe("SYSTEM_PROMPT", () => {
 		vscode.window = {
 			activeTextEditor: undefined,
 		}
-		vscode.EventEmitter = vi.fn().mockImplementation(() => ({
-			event: vi.fn(),
-			fire: vi.fn(),
-			dispose: vi.fn(),
-		}))
+		vscode.EventEmitter = vi.fn().mockImplementation(function () {
+			return {
+				event: vi.fn(),
+				fire: vi.fn(),
+				dispose: vi.fn(),
+			}
+		})
 
 		const prompt = await SYSTEM_PROMPT({
 			context: mockContext,
@@ -306,11 +310,13 @@ describe("SYSTEM_PROMPT", () => {
 		vscode.window = {
 			activeTextEditor: undefined,
 		}
-		vscode.EventEmitter = vi.fn().mockImplementation(() => ({
-			event: vi.fn(),
-			fire: vi.fn(),
-			dispose: vi.fn(),
-		}))
+		vscode.EventEmitter = vi.fn().mockImplementation(function () {
+			return {
+				event: vi.fn(),
+				fire: vi.fn(),
+				dispose: vi.fn(),
+			}
+		})
 	})
 
 	// WS-F moved the role definition out of the opening bytes and into the MODE

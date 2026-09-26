@@ -54,7 +54,9 @@ describe("OpenRouterEmbedder", () => {
 			},
 		}
 
-		MockedOpenAI.mockImplementation(() => mockOpenAIInstance)
+		MockedOpenAI.mockImplementation(function () {
+			return mockOpenAIInstance
+		})
 	})
 
 	afterEach(() => {

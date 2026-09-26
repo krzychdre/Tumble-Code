@@ -15,14 +15,16 @@ const mockListLoaded = vi.fn()
 const mockListDownloadedModels = vi.fn()
 vi.mock("@lmstudio/sdk", () => {
 	return {
-		LMStudioClient: vi.fn().mockImplementation(() => ({
-			llm: {
-				listLoaded: mockListLoaded,
-			},
-			system: {
-				listDownloadedModels: mockListDownloadedModels,
-			},
-		})),
+		LMStudioClient: vi.fn().mockImplementation(function () {
+			return {
+				llm: {
+					listLoaded: mockListLoaded,
+				},
+				system: {
+					listDownloadedModels: mockListDownloadedModels,
+				},
+			}
+		}),
 	}
 })
 const MockedLMStudioClientConstructor = LMStudioClient as any

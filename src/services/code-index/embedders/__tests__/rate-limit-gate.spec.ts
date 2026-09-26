@@ -127,7 +127,9 @@ describe("OpenAICompatibleEmbedder - shared rate limiting", () => {
 		resetRateLimitGates()
 
 		mockEmbeddingsCreate = vi.fn()
-		MockedOpenAI.mockImplementation(() => ({ embeddings: { create: mockEmbeddingsCreate } }) as any)
+		MockedOpenAI.mockImplementation(function () {
+			return { embeddings: { create: mockEmbeddingsCreate } } as any
+		})
 	})
 
 	afterEach(() => {

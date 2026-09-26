@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 import { ProviderSettings, ClineMessage } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
@@ -11,7 +12,7 @@ vi.mock("@roo-code/telemetry")
 
 describe("MessageEnhancer", () => {
 	let mockProviderSettingsManager: ProviderSettingsManager
-	let mockSingleCompletion: ReturnType<typeof vi.fn>
+	let mockSingleCompletion: Mock
 
 	const mockApiConfiguration: ProviderSettings = {
 		apiProvider: "openai",

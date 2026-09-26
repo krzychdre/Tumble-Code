@@ -20,12 +20,18 @@ vi.mock("../../../utils/logging", () => ({
 const mockSend = vi.fn()
 
 vi.mock("@aws-sdk/client-bedrock-runtime", () => ({
-	BedrockRuntimeClient: vi.fn().mockImplementation(() => ({
-		send: mockSend,
-		config: { region: "us-east-1" },
-	})),
-	ConverseStreamCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
-	ConverseCommand: vi.fn().mockImplementation((input: unknown) => ({ input })),
+	BedrockRuntimeClient: vi.fn().mockImplementation(function () {
+		return {
+			send: mockSend,
+			config: { region: "us-east-1" },
+		}
+	}),
+	ConverseStreamCommand: vi.fn().mockImplementation(function (input: unknown) {
+		return { input }
+	}),
+	ConverseCommand: vi.fn().mockImplementation(function (input: unknown) {
+		return { input }
+	}),
 }))
 
 import { ConverseStreamCommand } from "@aws-sdk/client-bedrock-runtime"

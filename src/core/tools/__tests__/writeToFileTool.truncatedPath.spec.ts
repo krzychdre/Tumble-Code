@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
@@ -38,23 +39,29 @@ const workspace = vi.hoisted(() => ({
 
 vi.mock("../../../integrations/editor/DiffEditorLifecycleManager", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../../../integrations/editor/DiffEditorLifecycleManager")>()),
-	DiffEditorLifecycleManager: vi.fn().mockImplementation(() => lifecycle),
+	DiffEditorLifecycleManager: vi.fn().mockImplementation(function () {
+		return lifecycle
+	}),
 }))
 
 vi.mock("../../../integrations/editor/DecorationController", () => ({
-	DecorationController: vi.fn().mockImplementation(() => ({
-		addLines: vi.fn(),
-		clear: vi.fn(),
-		setActiveLine: vi.fn(),
-		updateOverlayAfterLine: vi.fn(),
-	})),
+	DecorationController: vi.fn().mockImplementation(function () {
+		return {
+			addLines: vi.fn(),
+			clear: vi.fn(),
+			setActiveLine: vi.fn(),
+			updateOverlayAfterLine: vi.fn(),
+		}
+	}),
 }))
 
 vi.mock("../../../integrations/editor/DiagnosticsCollector", () => ({
-	DiagnosticsCollector: vi.fn().mockImplementation(() => ({
-		capturePreDiagnostics: vi.fn().mockReturnValue([]),
-		collectPostSaveDiagnostics: vi.fn().mockResolvedValue(""),
-	})),
+	DiagnosticsCollector: vi.fn().mockImplementation(function () {
+		return {
+			capturePreDiagnostics: vi.fn().mockReturnValue([]),
+			collectPostSaveDiagnostics: vi.fn().mockResolvedValue(""),
+		}
+	}),
 }))
 
 vi.mock("../../plan-review/planReviewPause", () => ({
@@ -68,10 +75,12 @@ vi.mock("vscode", () => ({
 	window: {
 		showTextDocument: vi.fn().mockResolvedValue(undefined),
 	},
-	WorkspaceEdit: vi.fn().mockImplementation(() => ({
-		replace: vi.fn(),
-		delete: vi.fn(),
-	})),
+	WorkspaceEdit: vi.fn().mockImplementation(function () {
+		return {
+			replace: vi.fn(),
+			delete: vi.fn(),
+		}
+	}),
 	Range: vi.fn(),
 	Position: vi.fn(),
 	Selection: vi.fn(),
@@ -105,9 +114,9 @@ describe("write_to_file: diff opened for a truncated partial path (SVC-17)", () 
 	let cwd: string
 	let task: any
 	let parser: NativeToolCallParser
-	let pushToolResult: ReturnType<typeof vi.fn>
-	let askApproval: ReturnType<typeof vi.fn>
-	let handleError: ReturnType<typeof vi.fn>
+	let pushToolResult: Mock
+	let askApproval: Mock
+	let handleError: Mock
 
 	beforeEach(async () => {
 		vi.clearAllMocks()

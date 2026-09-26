@@ -35,7 +35,9 @@ vi.mock("vscode", () => ({
 	commands: { executeCommand: vi.fn() },
 	languages: { getDiagnostics: vi.fn(() => []) },
 	DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
-	WorkspaceEdit: vi.fn().mockImplementation(() => ({ replace: vi.fn(), delete: vi.fn() })),
+	WorkspaceEdit: vi.fn().mockImplementation(function () {
+		return { replace: vi.fn(), delete: vi.fn() }
+	}),
 	Range: vi.fn(),
 	Position: vi.fn(),
 	Selection: vi.fn(),

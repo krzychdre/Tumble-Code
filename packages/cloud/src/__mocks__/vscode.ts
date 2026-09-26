@@ -1,11 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-export const window = {
+import type { Mock } from "vitest"
+
+// Annotated: since Vitest 4 the inferred vi.fn() type points into a private
+// vitest chunk, which declaration emit cannot name (TS2742).
+
+export const window: { showInformationMessage: Mock; showErrorMessage: Mock } = {
 	showInformationMessage: vi.fn(),
 	showErrorMessage: vi.fn(),
 }
 
-export const env = {
+export const env: { openExternal: Mock } = {
 	openExternal: vi.fn(),
 }
 
@@ -13,7 +18,7 @@ export const Uri = {
 	parse: vi.fn((uri: string) => ({ toString: () => uri })),
 }
 
-export const commands = {
+export const commands: { executeCommand: Mock } = {
 	executeCommand: vi.fn().mockResolvedValue(undefined),
 }
 

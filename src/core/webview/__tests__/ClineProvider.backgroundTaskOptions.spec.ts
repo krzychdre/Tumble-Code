@@ -17,12 +17,14 @@ import { OrganizationAllowListViolationError } from "../../../utils/errors"
  */
 
 vi.mock("../../task/Task", () => ({
-	Task: vi.fn().mockImplementation((options: Record<string, unknown>) => ({
-		taskId: "bg-task",
-		instanceId: "1",
-		options,
-		start: vi.fn(),
-	})),
+	Task: vi.fn().mockImplementation(function (options: Record<string, unknown>) {
+		return {
+			taskId: "bg-task",
+			instanceId: "1",
+			options,
+			start: vi.fn(),
+		}
+	}),
 }))
 
 const ALLOW_ONLY_ANTHROPIC: OrganizationAllowList = {

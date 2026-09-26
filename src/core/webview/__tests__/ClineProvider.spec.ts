@@ -35,19 +35,26 @@ vi.mock("p-wait-for", () => ({
 	default: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock("fs/promises", () => ({
-	mkdir: vi.fn().mockResolvedValue(undefined),
-	writeFile: vi.fn().mockResolvedValue(undefined),
-	readFile: vi.fn().mockResolvedValue(""),
-	unlink: vi.fn().mockResolvedValue(undefined),
-	rmdir: vi.fn().mockResolvedValue(undefined),
-	// TaskHistoryStore.initialize/reconcile/refreshTask need these to be
-	// no-ops against the in-memory mock so the shared store becomes ready.
-	readdir: vi.fn().mockResolvedValue([]),
-	access: vi.fn().mockResolvedValue(undefined),
-	rm: vi.fn().mockResolvedValue(undefined),
-	stat: vi.fn().mockResolvedValue({ mtimeMs: 0, size: 0, isDirectory: () => true }),
-}))
+vi.mock("fs/promises", () => {
+	const fsMock = {
+		mkdir: vi.fn().mockResolvedValue(undefined),
+		writeFile: vi.fn().mockResolvedValue(undefined),
+		readFile: vi.fn().mockResolvedValue(""),
+		unlink: vi.fn().mockResolvedValue(undefined),
+		rmdir: vi.fn().mockResolvedValue(undefined),
+		// TaskHistoryStore.initialize/reconcile/refreshTask need these to be
+		// no-ops against the in-memory mock so the shared store becomes ready.
+		readdir: vi.fn().mockResolvedValue([]),
+		access: vi.fn().mockResolvedValue(undefined),
+		rm: vi.fn().mockResolvedValue(undefined),
+		stat: vi.fn().mockResolvedValue({ mtimeMs: 0, size: 0, isDirectory: () => true }),
+	}
+	// Modules that default-import fs/promises (services/roo-config, utils/fs)
+	// get the same functions; without `default` their calls threw inside the
+	// un-awaited SkillsManager.initialize() and the rejection was logged to the
+	// output channel at a timing-dependent moment.
+	return { ...fsMock, default: fsMock }
+})
 
 // Deterministic nonce so the generated webview HTML can be pinned byte for byte.
 vi.mock("../getNonce", () => ({ getNonce: () => "TESTNONCE0123456789abcdefghijklm" }))
@@ -139,30 +146,36 @@ vi.mock("delay", () => {
 // MCP-related modules are mocked once above (lines 87-109).
 
 vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
-	Client: vi.fn().mockImplementation(() => ({
-		connect: vi.fn().mockResolvedValue(undefined),
-		close: vi.fn().mockResolvedValue(undefined),
-		listTools: vi.fn().mockResolvedValue({ tools: [] }),
-		callTool: vi.fn().mockResolvedValue({ content: [] }),
-	})),
+	Client: vi.fn().mockImplementation(function () {
+		return {
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+			listTools: vi.fn().mockResolvedValue({ tools: [] }),
+			callTool: vi.fn().mockResolvedValue({ content: [] }),
+		}
+	}),
 }))
 
 vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
-	StdioClientTransport: vi.fn().mockImplementation(() => ({
-		connect: vi.fn().mockResolvedValue(undefined),
-		close: vi.fn().mockResolvedValue(undefined),
-	})),
+	StdioClientTransport: vi.fn().mockImplementation(function () {
+		return {
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		}
+	}),
 }))
 
 vi.mock("vscode", () => ({
 	ExtensionContext: vi.fn(),
 	OutputChannel: vi.fn(),
 	WebviewView: vi.fn(),
-	EventEmitter: vi.fn().mockImplementation(() => ({
-		event: vi.fn(),
-		fire: vi.fn(),
-		dispose: vi.fn(),
-	})),
+	EventEmitter: vi.fn().mockImplementation(function () {
+		return {
+			event: vi.fn(),
+			fire: vi.fn(),
+			dispose: vi.fn(),
+		}
+	}),
 	Uri: {
 		joinPath: vi.fn(),
 		file: vi.fn(),
@@ -219,35 +232,41 @@ const lmStudioFetchers = vi.hoisted(() => ({
 vi.mock("../../../api/providers/fetchers/lmstudio", () => lmStudioFetchers)
 
 vi.mock("../../prompts/system", () => ({
-	SYSTEM_PROMPT: vi.fn().mockImplementation(async () => "mocked system prompt"),
+	SYSTEM_PROMPT: vi.fn().mockImplementation(async function () {
+		return "mocked system prompt"
+	}),
 	codeMode: "code",
 }))
 
 vi.mock("../../../integrations/workspace/WorkspaceTracker", () => {
 	return {
-		default: vi.fn().mockImplementation(() => ({
-			initializeFilePaths: vi.fn(),
-			dispose: vi.fn(),
-		})),
+		default: vi.fn().mockImplementation(function () {
+			return {
+				initializeFilePaths: vi.fn(),
+				dispose: vi.fn(),
+			}
+		}),
 	}
 })
 
 vi.mock("../../task/Task", () => ({
-	Task: vi.fn().mockImplementation((options: any) => ({
-		api: undefined,
-		abortTask: vi.fn(),
-		handleWebviewAskResponse: vi.fn(),
-		clineMessages: [],
-		apiConversationHistory: [],
-		overwriteClineMessages: vi.fn(),
-		overwriteApiConversationHistory: vi.fn(),
-		getTaskNumber: vi.fn().mockReturnValue(0),
-		setTaskNumber: vi.fn(),
-		setParentTask: vi.fn(),
-		setRootTask: vi.fn(),
-		taskId: options?.historyItem?.id || "test-task-id",
-		emit: vi.fn(),
-	})),
+	Task: vi.fn().mockImplementation(function (options: any) {
+		return {
+			api: undefined,
+			abortTask: vi.fn(),
+			handleWebviewAskResponse: vi.fn(),
+			clineMessages: [],
+			apiConversationHistory: [],
+			overwriteClineMessages: vi.fn(),
+			overwriteApiConversationHistory: vi.fn(),
+			getTaskNumber: vi.fn().mockReturnValue(0),
+			setTaskNumber: vi.fn(),
+			setParentTask: vi.fn(),
+			setRootTask: vi.fn(),
+			taskId: options?.historyItem?.id || "test-task-id",
+			emit: vi.fn(),
+		}
+	}),
 }))
 
 vi.mock("../../../integrations/misc/extract-text", () => ({
@@ -335,11 +354,13 @@ vi.mock("../../../api/providers/fetchers/modelCache", () => ({
 }))
 
 vi.mock("../diff/strategies/multi-search-replace", () => ({
-	MultiSearchReplaceDiffStrategy: vi.fn().mockImplementation(() => ({
-		getToolDescription: () => "test",
-		getName: () => "test-strategy",
-		applyDiff: vi.fn(),
-	})),
+	MultiSearchReplaceDiffStrategy: vi.fn().mockImplementation(function () {
+		return {
+			getToolDescription: () => "test",
+			getName: () => "test-strategy",
+			applyDiff: vi.fn(),
+		}
+	}),
 }))
 
 // The state builder awaits this after it has read the chat messages; the state-order test
@@ -375,7 +396,7 @@ afterAll(() => {
 
 describe("ClineProvider", () => {
 	beforeAll(() => {
-		vi.mocked(Task).mockImplementation((options: any) => {
+		vi.mocked(Task).mockImplementation(function (options: any) {
 			const task: any = {
 				api: undefined,
 				abortTask: vi.fn(),

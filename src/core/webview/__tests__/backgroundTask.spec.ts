@@ -1,10 +1,9 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, type Mock } from "vitest"
 import { EventEmitter } from "events"
 
 import { RooCodeEventName } from "@roo-code/types"
 
 import { BackgroundTaskRunner, type BackgroundTaskHost } from "../BackgroundTaskRunner"
-
 
 /**
  * Focused unit tests for the reusable background-task primitive
@@ -45,7 +44,7 @@ function makeFakeTask({ taskId = "bg-1", completionText }: FakeTaskOptions = {})
 		abortTask: vi.fn(async () => {}),
 	})
 	return task as unknown as Parameters<BackgroundTaskRunner["awaitTaskCompletion"]>[0] & {
-		abortTask: ReturnType<typeof vi.fn>
+		abortTask: Mock
 	}
 }
 
@@ -53,7 +52,7 @@ function invokeAwait(
 	task: ReturnType<typeof makeFakeTask>,
 	options?: { signal?: AbortSignal },
 	_unused?: undefined,
-	cleanupSpy?: ReturnType<typeof vi.fn>,
+	cleanupSpy?: Mock,
 ) {
 	const runner = makeRunner()
 	const internals = runner as unknown as RunnerInternals
@@ -168,11 +167,7 @@ describe("BackgroundTaskRunner.resolveMemoryWriterApiConfiguration", () => {
 
 	// It must READ the writer profile: it used to call activateProfile, which
 	// also stores the writer profile as the user's current profile.
-	function makeFakeThis(opts: {
-		configId?: string
-		getProfile?: ReturnType<typeof vi.fn>
-		log?: ReturnType<typeof vi.fn>
-	}) {
+	function makeFakeThis(opts: { configId?: string; getProfile?: Mock; log?: Mock }) {
 		return makeRunner({
 			getMemoryWriterApiConfigId: vi.fn().mockReturnValue(opts.configId),
 			getProfile: opts.getProfile ?? vi.fn(),

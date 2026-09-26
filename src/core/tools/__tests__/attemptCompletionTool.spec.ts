@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 import { RooCodeEventName, TelemetryEventName, TodoItem } from "@roo-code/types"
 
 import type { ToolUse } from "../../../shared/tools"
@@ -46,12 +47,12 @@ import * as vscode from "vscode"
 
 describe("attemptCompletionTool", () => {
 	let mockTask: Partial<Task>
-	let mockPushToolResult: ReturnType<typeof vi.fn>
-	let mockAskApproval: ReturnType<typeof vi.fn>
-	let mockHandleError: ReturnType<typeof vi.fn>
-	let mockToolDescription: ReturnType<typeof vi.fn>
-	let mockAskFinishSubTaskApproval: ReturnType<typeof vi.fn>
-	let mockGetConfiguration: ReturnType<typeof vi.fn>
+	let mockPushToolResult: Mock
+	let mockAskApproval: Mock
+	let mockHandleError: Mock
+	let mockToolDescription: Mock
+	let mockAskFinishSubTaskApproval: Mock
+	let mockGetConfiguration: Mock
 
 	beforeEach(() => {
 		mockCapture.mockReset()
@@ -660,9 +661,9 @@ describe("attemptCompletionTool", () => {
 		const CHILD_ID = "task_1"
 		const PARENT_ID = "parent_1"
 
-		let mockGetHistoryItem: ReturnType<typeof vi.fn>
-		let mockReopenParentFromDelegation: ReturnType<typeof vi.fn>
-		let mockTryReattachDelegatedParent: ReturnType<typeof vi.fn>
+		let mockGetHistoryItem: Mock
+		let mockReopenParentFromDelegation: Mock
+		let mockTryReattachDelegatedParent: Mock
 
 		const setupDelegation = (
 			parentHistory: { status?: string; awaitingChildId?: string },

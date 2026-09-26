@@ -187,7 +187,9 @@ describe("ClineProvider flicker-free cancel", () => {
 		}
 
 		// Mock Task constructor
-		vi.mocked(Task).mockImplementation(() => mockTask2 as any)
+		vi.mocked(Task).mockImplementation(function () {
+			return mockTask2 as any
+		})
 	})
 
 	it("should not remove current task from stack when rehydrating same taskId", async () => {

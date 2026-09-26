@@ -22,7 +22,9 @@ vi.mock("vscode", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("vscode")>()
 	return {
 		...actual,
-		RelativePattern: vi.fn().mockImplementation((base: string, pattern: string) => ({ base, pattern })),
+		RelativePattern: vi.fn().mockImplementation(function (base: string, pattern: string) {
+			return { base, pattern }
+		}),
 	}
 })
 

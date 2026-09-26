@@ -9,7 +9,9 @@ const { mockCreate, perBlockCalls } = vi.hoisted(() => ({
 
 vi.mock("openai", () => ({
 	__esModule: true,
-	default: vi.fn().mockImplementation(() => ({ chat: { completions: { create: mockCreate } } })),
+	default: vi.fn().mockImplementation(function () {
+		return { chat: { completions: { create: mockCreate } } }
+	}),
 }))
 
 // Count inline and record which blocks reach the tokenizer for the input estimate.

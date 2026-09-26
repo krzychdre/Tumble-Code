@@ -16,11 +16,13 @@ vi.mock("node-cache", () => {
 	const mockDel = vi.fn()
 
 	return {
-		default: vi.fn().mockImplementation(() => ({
-			get: mockGet,
-			set: mockSet,
-			del: mockDel,
-		})),
+		default: vi.fn().mockImplementation(function () {
+			return {
+				get: mockGet,
+				set: mockSet,
+				del: mockDel,
+			}
+		}),
 	}
 })
 

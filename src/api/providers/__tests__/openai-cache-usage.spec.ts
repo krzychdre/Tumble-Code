@@ -10,13 +10,15 @@ const mockCreate = vitest.fn()
 vitest.mock("openai", () => {
 	return {
 		__esModule: true,
-		default: vitest.fn().mockImplementation(() => ({
-			chat: {
-				completions: {
-					create: mockCreate,
+		default: vitest.fn().mockImplementation(function () {
+			return {
+				chat: {
+					completions: {
+						create: mockCreate,
+					},
 				},
-			},
-		})),
+			}
+		}),
 	}
 })
 

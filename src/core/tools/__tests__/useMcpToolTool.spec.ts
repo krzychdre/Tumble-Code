@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 // npx vitest core/tools/__tests__/useMcpToolTool.spec.ts
 
 import { useMcpToolTool } from "../UseMcpToolTool"
@@ -43,10 +44,10 @@ vi.mock("../../../i18n", () => ({
 
 describe("useMcpToolTool", () => {
 	let mockTask: Partial<Task>
-	let mockAskApproval: ReturnType<typeof vi.fn>
-	let mockHandleError: ReturnType<typeof vi.fn>
-	let mockPushToolResult: ReturnType<typeof vi.fn>
-	let mockRemoveClosingTag: ReturnType<typeof vi.fn>
+	let mockAskApproval: Mock
+	let mockHandleError: Mock
+	let mockPushToolResult: Mock
+	let mockRemoveClosingTag: Mock
 	let mockProviderRef: any
 
 	beforeEach(() => {

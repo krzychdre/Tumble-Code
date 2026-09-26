@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 import { MarketplaceViewStateManager, ViewStateTransition } from "../MarketplaceViewStateManager"
 import { MarketplaceItem } from "@roo-code/types"
 
@@ -10,7 +11,7 @@ vi.mock("@/utils/vscode", () => ({
 
 describe("MarketplaceViewStateManager", () => {
 	let stateManager: MarketplaceViewStateManager
-	let mockStateChangeHandler: ReturnType<typeof vi.fn>
+	let mockStateChangeHandler: Mock
 
 	const mockMarketplaceItems: MarketplaceItem[] = [
 		{

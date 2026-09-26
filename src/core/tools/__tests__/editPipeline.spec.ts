@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 /**
  * CORE-R8: characterization tests of the shared edit pipeline.
  *
@@ -94,9 +95,9 @@ let disk: Record<string, string>
 /** Ordered log of the side effects the pipeline performs. */
 let log: string[]
 let task: any
-let askApproval: ReturnType<typeof vi.fn>
-let pushToolResult: ReturnType<typeof vi.fn>
-let handleError: ReturnType<typeof vi.fn>
+let askApproval: Mock
+let pushToolResult: Mock
+let handleError: Mock
 let experiments: Record<string, boolean>
 
 function makeTask() {

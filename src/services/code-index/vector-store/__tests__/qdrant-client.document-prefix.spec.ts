@@ -18,7 +18,9 @@ const client = vitest.hoisted(() => ({
 }))
 
 vitest.mock("@qdrant/js-client-rest", () => ({
-	QdrantClient: vitest.fn(() => client),
+	QdrantClient: vitest.fn(function () {
+		return client
+	}),
 }))
 
 vitest.mock("../../../../i18n", () => ({
@@ -60,7 +62,9 @@ function existingCollection(info: ReturnType<typeof collectionInfo>) {
 	})
 }
 
-const metadataPoint = (payload: Record<string, unknown>) => [{ id: metadataId, payload: { type: "metadata", ...payload } }]
+const metadataPoint = (payload: Record<string, unknown>) => [
+	{ id: metadataId, payload: { type: "metadata", ...payload } },
+]
 
 describe("QdrantVectorStore document prefix marker", () => {
 	beforeEach(() => {

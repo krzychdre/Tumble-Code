@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
-import { vi, describe, it, expect, beforeEach, afterEach } from "vitest"
+import { vi, describe, it, expect, beforeEach, afterEach, type MockInstance } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
 
@@ -619,7 +619,7 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 
 		// The acquireVsCodeApi stub above is assigned after the hoisted imports, so the
 		// vscode wrapper never sees it; spy on the wrapper itself.
-		let postMessageSpy: ReturnType<typeof vi.spyOn>
+		let postMessageSpy: MockInstance
 		const loadProfileCalls = () =>
 			postMessageSpy.mock.calls.filter(([message]) => (message as any)?.type === "loadApiConfiguration")
 

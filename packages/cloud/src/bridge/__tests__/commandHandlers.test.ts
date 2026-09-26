@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
 
 import { TaskBridgeCommandName, type TaskBridgeCommand } from "@roo-code/types"
 
@@ -6,8 +6,8 @@ import { dispatchBridgeCommand } from "../commandHandlers.js"
 import type { BridgeProvider, BridgeTask } from "../types.js"
 
 function makeTask(): BridgeTask & {
-	submitUserMessage: ReturnType<typeof vi.fn>
-	handleWebviewAskResponse: ReturnType<typeof vi.fn>
+	submitUserMessage: Mock
+	handleWebviewAskResponse: Mock
 } {
 	return {
 		taskId: "task-1",
@@ -33,7 +33,7 @@ const ts = 123
 describe("dispatchBridgeCommand", () => {
 	let task: ReturnType<typeof makeTask>
 	let provider: BridgeProvider
-	let setValue: ReturnType<typeof vi.fn>
+	let setValue: Mock
 
 	beforeEach(() => {
 		task = makeTask()

@@ -100,19 +100,23 @@ vi.mock("@modelcontextprotocol/sdk/types.js", () => ({
 }))
 
 vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
-	Client: vi.fn().mockImplementation(() => ({
-		connect: vi.fn().mockResolvedValue(undefined),
-		close: vi.fn().mockResolvedValue(undefined),
-		listTools: vi.fn().mockResolvedValue({ tools: [] }),
-		callTool: vi.fn().mockResolvedValue({ content: [] }),
-	})),
+	Client: vi.fn().mockImplementation(function () {
+		return {
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+			listTools: vi.fn().mockResolvedValue({ tools: [] }),
+			callTool: vi.fn().mockResolvedValue({ content: [] }),
+		}
+	}),
 }))
 
 vi.mock("@modelcontextprotocol/sdk/client/stdio.js", () => ({
-	StdioClientTransport: vi.fn().mockImplementation(() => ({
-		connect: vi.fn().mockResolvedValue(undefined),
-		close: vi.fn().mockResolvedValue(undefined),
-	})),
+	StdioClientTransport: vi.fn().mockImplementation(function () {
+		return {
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		}
+	}),
 }))
 
 // Workspace configuration seen by the command-list merge and the `debug` flag.
@@ -139,13 +143,15 @@ vi.mock("vscode", () => ({
 	workspace: {
 		getConfiguration: vi.fn().mockImplementation(() => ({
 			get: vi.fn().mockImplementation((key: string, fallback?: unknown) => workspaceConfig[key] ?? fallback),
-			inspect: vi.fn().mockImplementation((key: string) =>
-				configScopes[key]
-					? { key, ...configScopes[key] }
-					: workspaceConfig[key] !== undefined
-						? { key, workspaceValue: workspaceConfig[key] }
-						: undefined,
-			),
+			inspect: vi
+				.fn()
+				.mockImplementation((key: string) =>
+					configScopes[key]
+						? { key, ...configScopes[key] }
+						: workspaceConfig[key] !== undefined
+							? { key, workspaceValue: workspaceConfig[key] }
+							: undefined,
+				),
 			update: vi.fn(),
 		})),
 		onDidChangeConfiguration: vi.fn().mockImplementation(() => ({ dispose: vi.fn() })),
@@ -169,7 +175,9 @@ vi.mock("../../prompts/system", () => ({
 }))
 
 vi.mock("../../../integrations/workspace/WorkspaceTracker", () => ({
-	default: vi.fn().mockImplementation(() => ({ initializeFilePaths: vi.fn(), dispose: vi.fn() })),
+	default: vi.fn().mockImplementation(function () {
+		return { initializeFilePaths: vi.fn(), dispose: vi.fn() }
+	}),
 }))
 
 vi.mock("../../../integrations/misc/extract-text", () => ({
