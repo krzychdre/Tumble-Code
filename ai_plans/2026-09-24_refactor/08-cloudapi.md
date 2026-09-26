@@ -232,6 +232,26 @@ Backfill parsing (the whole upload read into memory at `events.py:65`), full-con
 (`web.py:690`), metrics aggregation, the marketplace YAML read on every request (`marketplace_service.py:23, 43`,
 two copied loaders). **Change:** `anyio.to_thread` for pure functions, cache the YAML, cap the upload size.
 
+**Status CAPI-M12:** DONE 2026-09-26, #459 (merge 3bcfcbc23), pytest 781 to 801. Backfill: 413 above
+`BACKFILL_MAX_BYTES` (default 50 MiB, about 5x the largest of the owner's 1,212 real uploads, 10,046,249 bytes; p99
+3.5 MB), checked on Content-Length before reading and counted for chunked bodies; the upload JSON parse, the task-page
+message decode and conversation island, and the metrics aggregation run in worker threads (`anyio.to_thread`);
+marketplace YAML: one loader, cached by path with mtime and size. Finding: `json_for_script` used `str.translate`,
+1.07 s for the 10 MB conversation; five `str.replace` passes give identical output in 86 ms.
+**Suite-wide SQLite foreign keys:** #460 (merge 8a9b58225), `PRAGMA foreign_keys=ON` on every test connection; the only
+new failure was test data (a user never created), no product defect.
+
+**Phase 9 close-out (2026-09-26):** main 8a9b58225, cloud API pytest 804 passed, 1 xfailed (414 at the start of the
+phase), `ruff check .` clean. Deployed once (decision 22): backup `~/cloudapi-backups/roo_cloud-2026-09-26-pre-phase9.dump`
+(24 MB, 17 tables), previous image tagged `self-hosted-cloudapi-api:pre-phase9`, new image from a `git archive` of
+origin/main, `docker compose up -d --no-build api`; `db-migrate.sh` ran a3b4c5d6e7f8 (MANAGED); banner now via
+logging; `/health` 200, `/app` and `/app/metrics` 303 to login, `/static/format.js` identical to main, marketplace 200,
+a freshly issued session token passes the new `iss`/`v` check inside the container. **DEF-C50 (extension, open):** the
+bridge stays down after a server restart until VS Code reloads: the stale token (60 s lifetime) was rejected, and
+`src/extension/bridge.ts:106-108` only logs "[bridge] failed to start"; socket.io-client 4.8.3 destroys the socket on a
+server CONNECT_ERROR (no auto-reconnect), and the 50 s token refresh emits no `auth-state-changed`, so nothing restarts
+it. Pre-existing (an expired token was rejected before Phase 9 too); needs a retry path and a VSIX rebuild.
+
 ## Dependencies (DEP-5)
 
 Audit: `pip-audit` against the `uv.lock` pins, 20 unique advisory IDs in 8 packages.
