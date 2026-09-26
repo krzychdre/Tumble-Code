@@ -234,15 +234,34 @@ async def backfill_messages(
     # something different when an attempt_completion is awaiting an answer), and
     # a backfill has the whole thing in hand — so classify it in one walk. The
     # marks line up with `parsed`, so a counter walks them alongside `messages`.
+    #
+    # The walk covers every message, including one that loses its row below:
+    # it still happened, and the awaiting state it leaves behind is part of
+    # the run (a tool call after a completion makes the next feedback a
+    # mid-run correction). Each stored row keeps its own message's mark.
     marks = classify_conversation(parsed)
     next_mark = 0
 
-    for msg in messages:
+    # The extension often stamps two consecutive messages with the same ts
+    # (an ask/say command_output pair, ask tool + say checkpoint_saved, say
+    # reasoning + say text), and (task_id, message_ts) is unique. Store one
+    # row per ts holding the LATER message, as the live bridge's upsert does
+    # (owner decision 26). Messages without a ts append as before.
+    last_index_of_ts = {}
+    for index, msg in enumerate(messages):
+        ts = msg.get("ts") if isinstance(msg, dict) else None
+        if isinstance(ts, (int, float, str)):
+            last_index_of_ts[ts] = index
+
+    for index, msg in enumerate(messages):
         is_dict = isinstance(msg, dict)
         kind, tool_path = (None, None)
         if is_dict:
             kind, tool_path = marks[next_mark]
             next_mark += 1
+            ts = msg.get("ts")
+            if isinstance(ts, (int, float, str)) and last_index_of_ts[ts] != index:
+                continue
         task_msg = TaskMessage(
             task_id=task_id,
             message_data=msg if isinstance(msg, str) else json.dumps(msg),
