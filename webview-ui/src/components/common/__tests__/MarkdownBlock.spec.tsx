@@ -264,4 +264,65 @@ describe("MarkdownBlock", () => {
 			expect(importCounts.mermaid).toBe(1)
 		})
 	})
+
+	// remark-math read any "$...$" pair as inline math, so prose prices ("$5 and $10")
+	// turned into italic KaTeX. Single-dollar math now follows Pandoc's rule: the
+	// opening "$" is followed by a non-space, the closing "$" is preceded by a
+	// non-space and not followed by a digit.
+	describe("dollar signs", () => {
+		beforeAll(async () => {
+			const { container, unmount } = render(<MarkdownBlock markdown="$x$" />)
+			await waitFor(() => expect(container.querySelector(".katex")).not.toBeNull())
+			unmount()
+		})
+
+		const mathSources = (container: HTMLElement) =>
+			Array.from(container.querySelectorAll(".katex annotation")).map((node) => node.textContent)
+
+		it.each([
+			"It costs $5 and $10 today.",
+			"It costs $5, or $10 with tax.",
+			"Between $1,000 and $2,500 per month.",
+			"between $ 5 and $ 10",
+			"Prices: 5$ and 10$.",
+		])("renders %j as plain text", (markdown) => {
+			const { container } = render(<MarkdownBlock markdown={markdown} />)
+
+			expect(container.querySelector(".katex")).toBeNull()
+			expect(container.querySelector("p")?.textContent).toBe(markdown)
+		})
+
+		it("renders prices in a table row as plain text", () => {
+			const { container } = render(
+				<MarkdownBlock markdown={"| Plan | Monthly | Yearly |\n| --- | --- | --- |\n| Pro | $5 | $50 |"} />,
+			)
+
+			expect(container.querySelector(".katex")).toBeNull()
+			expect(Array.from(container.querySelectorAll("td")).map((cell) => cell.textContent)).toEqual([
+				"Pro",
+				"$5",
+				"$50",
+			])
+		})
+
+		it.each([
+			["$x$", ["x"]],
+			["$2^n$", ["2^n"]],
+			["$2x + 1$", ["2x + 1"]],
+			["$10^{-3}$ is small", ["10^{-3}"]],
+			["a $x$ b $y$", ["x", "y"]],
+			["inline $$y_1$$ too", ["y_1"]],
+		])("renders %j as inline math", (markdown, sources) => {
+			const { container } = render(<MarkdownBlock markdown={markdown} />)
+
+			expect(mathSources(container)).toEqual(sources)
+		})
+
+		it("keeps display math and an escaped dollar", () => {
+			const { container } = render(<MarkdownBlock markdown={"\\$5 is literal\n\n$$\n5x = 10\n$$"} />)
+
+			expect(container.querySelector(".katex-display")).not.toBeNull()
+			expect(container.querySelector("p")?.textContent).toBe("$5 is literal")
+		})
+	})
 })
