@@ -1,4 +1,4 @@
-import { useState, type RefObject } from "react"
+import { useState, type Ref } from "react"
 import { Search, X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -11,7 +11,7 @@ export interface SettingsSearchInputProps {
 	onFocus?: () => void
 	onBlur?: () => void
 	onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>
-	inputRef?: RefObject<HTMLInputElement>
+	inputRef?: Ref<HTMLInputElement>
 }
 
 export function SettingsSearchInput({

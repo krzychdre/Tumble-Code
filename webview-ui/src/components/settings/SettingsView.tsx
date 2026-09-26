@@ -130,7 +130,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 	const contentRef = useRef<HTMLDivElement | null>(null)
 
 	const prevApiConfigName = useRef(currentApiConfigName)
-	const confirmDialogHandler = useRef<() => void>()
+	const confirmDialogHandler = useRef<(() => void) | undefined>(undefined)
 
 	const {
 		cachedState: settings,
@@ -435,7 +435,9 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 						// We pass isSelected manually for styling, but onSelect is handled conditionally
 						const triggerComponent = (
 							<TabTrigger
-								ref={(element) => (tabRefs.current[id] = element)}
+								ref={(element) => {
+									tabRefs.current[id] = element
+								}}
 								value={id}
 								isSelected={isSelected} // Pass manually for styling state
 								className={cn(

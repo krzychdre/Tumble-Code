@@ -57,7 +57,7 @@ export const TabList = forwardRef<
 	return (
 		<div ref={ref} role="tablist" className={cn("flex", className)} {...props}>
 			{React.Children.map(children, (child) => {
-				if (React.isValidElement(child)) {
+				if (React.isValidElement<{ value: string }>(child)) {
 					return React.cloneElement(child as React.ReactElement<any>, {
 						isSelected: child.props.value === value,
 						onSelect: () => onValueChange(child.props.value),

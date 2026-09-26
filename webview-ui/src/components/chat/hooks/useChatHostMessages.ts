@@ -34,7 +34,7 @@ interface ChatHostMessagesOptions {
 	ask: ReturnType<typeof useAskButtons>
 	composer: ReturnType<typeof useChatComposer>
 	isHidden: boolean
-	textAreaRef: React.RefObject<HTMLTextAreaElement>
+	textAreaRef: React.RefObject<HTMLTextAreaElement | null>
 	playSound: (audioType: AudioType) => void
 	/** The task message (the first message); a new object on every state push. */
 	task: ClineMessage | undefined

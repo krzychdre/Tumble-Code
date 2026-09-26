@@ -33,8 +33,8 @@ interface CommandPattern {
 interface CommandExecutionProps {
 	executionId: string
 	text?: string
-	icon?: JSX.Element | null
-	title?: JSX.Element | null
+	icon?: React.JSX.Element | null
+	title?: React.JSX.Element | null
 	// Expansion is owned by the chat row (ChatView's expandedRows map keyed by
 	// message ts), exactly like the other collapsible rows, so the choice
 	// survives virtualized unmount/remount and defaults to collapsed. The

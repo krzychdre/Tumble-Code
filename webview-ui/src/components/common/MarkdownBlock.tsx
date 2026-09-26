@@ -372,7 +372,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 			},
 			pre: ({ children, ..._props }: any) => {
 				// The structure from react-markdown v9 is: pre > code > text
-				const codeEl = children as React.ReactElement
+				const codeEl = children as React.ReactElement<{ className?: string; children?: React.ReactNode }>
 
 				if (!codeEl || !codeEl.props) {
 					return <pre>{children}</pre>
