@@ -56,14 +56,14 @@ describe("NativeToolCallParser partial-argument parsing (API P2)", () => {
 		vi.restoreAllMocks()
 	})
 
-	it("parses a 50 KB argument stream in 15,000 chunks far fewer times, and the final call in full", () => {
+	it("parses a 50 KB argument stream in 12,637 chunks far fewer times, and the final call in full", () => {
 		const parser = new NativeToolCallParser()
 		parser.startStreamingToolCall("call_1", "write_to_file")
 
 		let partials = 0
 		let lastPartialContentLength = 0
 		for (const chunk of chunksOf(args, 15_000)) {
-			// 5 ms per chunk: a 75 s stream, about 200 chunks per second.
+			// 5 ms per chunk (about 200 chunks per second): a 63 s stream.
 			now += 5
 			const partial = parser.processStreamingChunk("call_1", chunk)
 			if (partial) {
@@ -72,8 +72,8 @@ describe("NativeToolCallParser partial-argument parsing (API P2)", () => {
 			}
 		}
 
-		// Before: one parse of the whole accumulated text per chunk, 15,000 parses
-		// and about 390 million characters. Now: every chunk up to the size limit,
+		// Before: one parse of the whole accumulated text per chunk, 12,637 parses
+		// and 319 million characters (1,604 and 18 million now). Now: every chunk up to the size limit,
 		// then at most one parse per interval.
 		expect(parseJSON.calls).toBe(partials)
 		expect(parseJSON.calls).toBeLessThan(2_000)
