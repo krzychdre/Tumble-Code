@@ -4,7 +4,7 @@ import json
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
-from src.services.model_attribution import LLM_COMPLETION_EVENT
+from src.services.telemetry_vocab import LLM_COMPLETION_EVENT
 
 
 async def _live_quality_kind(db, task_id: str, message: dict, ts) -> str | None:
