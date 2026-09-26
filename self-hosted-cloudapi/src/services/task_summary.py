@@ -35,7 +35,6 @@ a live gauge of the *current* context, not a total.
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from typing import Iterable, Optional
@@ -56,6 +55,7 @@ from src.services.session_quality import (
     KIND_RETRY,
     KIND_TOOL,
 )
+from src.services.telemetry_vocab import API_REQ_STARTED, api_req_started_payload
 from src.utils.format import num
 
 # Titles are a single line; anything longer is truncated with an ellipsis.
@@ -191,15 +191,9 @@ def message_metrics(msg: dict) -> MessageMetrics:
 
     say = msg.get("say")
 
-    if say == "api_req_started":
-        text = msg.get("text")
-        if not text:
-            return _ZERO
-        try:
-            obj = json.loads(text)
-        except (json.JSONDecodeError, TypeError):
-            return _ZERO
-        if not isinstance(obj, dict):
+    if say == API_REQ_STARTED:
+        obj = api_req_started_payload(msg)
+        if obj is None:
             return _ZERO
         return MessageMetrics(
             tokens_in=int(num(obj.get("tokensIn"))),

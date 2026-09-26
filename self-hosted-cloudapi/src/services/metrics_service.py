@@ -12,11 +12,11 @@ the metrics page needs:
 
 ``telemetry_events.properties`` is stored as a JSON *string* (TEXT), and the test
 suite runs on SQLite (no jsonb operators), so we load the rows and aggregate in
-Python — the same server-side approach as ``web._compute_metrics``. The volume is
-modest (one self-hosted user), so this is cheap and dialect-portable.
+Python. The volume is modest (one self-hosted user), so this is cheap and
+dialect-portable. Event names, kinds, labels and the payload decoding come from
+``services/telemetry_vocab``.
 """
 
-import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -25,32 +25,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
+from src.services.telemetry_vocab import (
+    EMBEDDING_EVENT,
+    KIND_LABELS,
+    LLM_COMPLETION_EVENT,
+    TASK_KIND,
+    iter_event_props,
+    parse_event_props,
+)
 from src.utils.format import fmt_duration, fmt_tokens, num as _num
 
 logger = logging.getLogger(__name__)
-
-# TelemetryEventName.LLM_COMPLETION — the per-completion event carrying tokens,
-# cost, model, provider and mode. Keep in sync with packages/types/src/telemetry.ts.
-LLM_COMPLETION_EVENT = "LLM Completion"
-
-# TelemetryEventName.EMBEDDING_USAGE — tokens spent turning code into vectors.
-# A separate event, and a separate figure on the page: indexing a repository is
-# hundreds of thousands of input tokens with no output and no price, so adding
-# it to the conversation total would bury what the conversation actually cost.
-EMBEDDING_EVENT = "Embedding Usage"
-
-# Which part of the extension made a completion. Only ``task`` calls are turns
-# of a conversation; the rest is the machinery around it. Absent on every row
-# written before the extension started reporting it, and all of those are task
-# turns. Keep in sync with services/model_attribution and the CompletionKind
-# enum in packages/types/src/telemetry.ts.
-TASK_KIND = "task"
-KIND_LABELS: dict[str, str] = {
-    "task": "Conversation",
-    "condense": "Condensing",
-    "enhance": "Prompt enhancement",
-    "memory": "Memory recall",
-}
 
 # Period presets → how far back from "now" to include (None = all time). The key
 # is what the route accepts as ?period=… and what the selector renders.
@@ -115,13 +100,8 @@ async def _embedding_totals(
     total = 0
     calls = 0
     by_source: dict[str, dict] = {}
-    for (payload,) in (await db.execute(stmt)).all():
-        try:
-            props = json.loads(payload or "{}")
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if not isinstance(props, dict):
-            continue
+    payloads = (payload for (payload,) in (await db.execute(stmt)).all())
+    for props in iter_event_props(payloads):
         tokens = int(_num(props.get("promptTokens")))
         total += tokens
         calls += 1
@@ -205,11 +185,8 @@ async def compute_user_metrics(
         slot["count"] += 1
 
     for row in rows:
-        try:
-            props = json.loads(row.properties or "{}")
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if not isinstance(props, dict):
+        props = parse_event_props(row.properties)
+        if props is None:
             continue
 
         tin = _num(props.get("inputTokens"))

@@ -35,15 +35,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.models.event import TelemetryEvent
 from src.models.retention import RetentionPolicy
 from src.models.task import Task, TaskMessage, TaskShare
-from src.services.metrics_service import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
 from src.services.share_service import delete_tasks
+from src.services.telemetry_vocab import EMBEDDING_EVENT, LLM_COMPLETION_EVENT
 
 logger = logging.getLogger(__name__)
 
 # Telemetry event types the sweep must never remove, whatever the policy says:
 # every type the metrics page reads. LLM Completion holds the conversation
 # totals and cost history, Embedding Usage the code-index figure; nothing else
-# in the database can reproduce either. Taken from metrics_service so the page
+# in the database can reproduce either. Taken from telemetry_vocab so the page
 # and this list name the events the same way. Extend, never shrink.
 PROTECTED_EVENT_TYPES = (LLM_COMPLETION_EVENT, EMBEDDING_EVENT)
 

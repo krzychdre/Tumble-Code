@@ -32,7 +32,6 @@ wrong model name is worse than a blank one in a provenance display.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
@@ -41,11 +40,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.event import TelemetryEvent
 from src.models.task import Task
+from src.services.telemetry_vocab import (
+    KIND_LABELS,
+    LLM_COMPLETION_EVENT,
+    TASK_KIND,
+    api_req_started_payload,
+    iter_event_props,
+)
 from src.utils.format import fmt_tokens, num
 
-# Keep in sync with services/metrics_service.LLM_COMPLETION_EVENT and
-# packages/types/src/telemetry.ts.
-LLM_COMPLETION_EVENT = "LLM Completion"
 
 # How many model names a task badge spells out before it collapses to a count.
 # One: local model ids are long ("GLM-5.2-MXFP4-A8"), and a badge naming two of
@@ -53,14 +56,6 @@ LLM_COMPLETION_EVENT = "LLM Completion"
 # "read…". The rest of the list is in the tooltip, and the detail page names
 # every model in full.
 MODELS_SHOWN = 1
-
-
-# Which part of the extension made a call. Only ``task`` completions are turns
-# of the conversation; the rest is the machinery around it (summarising the
-# history, rewriting a prompt, ranking memories), which the extension started
-# reporting so its cost stops being invisible. Rows written before that carry no
-# kind at all, and every one of them is a task turn.
-TASK_KIND = "task"
 
 
 @dataclass(frozen=True)
@@ -121,13 +116,7 @@ async def completions_for_task(
         .order_by(TelemetryEvent.created_at)
     )
     completions: list[Completion] = []
-    for (payload,) in result.all():
-        try:
-            props = json.loads(payload or "{}")
-        except (json.JSONDecodeError, TypeError):
-            continue
-        if not isinstance(props, dict):
-            continue
+    for props in iter_event_props(payload for (payload,) in result.all()):
         completion = completion_from_properties(props)
         if completion is not None:
             completions.append(completion)
@@ -142,13 +131,8 @@ def _request_tokens(msg: dict) -> Optional[tuple[int, int]]:
     an empty usage report and attribute the wrong model to a row that has not
     even finished.
     """
-    if msg.get("say") != "api_req_started":
-        return None
-    try:
-        obj = json.loads(msg.get("text") or "{}")
-    except (json.JSONDecodeError, TypeError):
-        return None
-    if not isinstance(obj, dict):
+    obj = api_req_started_payload(msg)
+    if obj is None:
         return None
     pair = (int(num(obj.get("tokensIn"))), int(num(obj.get("tokensOut"))))
     return pair if pair != (0, 0) else None
@@ -246,15 +230,10 @@ def models_label(completions: list[Completion]) -> Optional[str]:
     return ", ".join(names) if names else None
 
 
-# How each non-conversation kind reads on the page. Anything the extension
-# starts reporting that is not listed falls back to its raw name rather than
-# being dropped, so a new kind shows up as an unexplained row instead of
-# silently vanishing from the totals.
-SIDE_CALL_LABELS: dict[str, str] = {
-    "condense": "Condensing",
-    "enhance": "Prompt enhancement",
-    "memory": "Memory recall",
-}
+# How each non-conversation kind reads on the page: the one map in
+# telemetry_vocab. Its ``task`` entry is never read here, because
+# side_calls_summary skips conversation turns before it looks a label up.
+SIDE_CALL_LABELS = KIND_LABELS
 
 
 def side_calls_summary(completions: list[Completion]) -> list[dict]:
