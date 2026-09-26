@@ -25,11 +25,6 @@ vi.mock("react-i18next", () => ({
 	},
 }))
 
-// Mock VSCodeBadge
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeBadge: ({ children, ...props }: { children: React.ReactNode }) => <span {...props}>{children}</span>,
-}))
-
 const queryClient = new QueryClient()
 
 const renderChatRowWithProviders = (message: any, isExpanded = false) => {

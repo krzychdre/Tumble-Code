@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { VSCodeBadge } from "@vscode/webview-ui-toolkit/react"
+import { ThemedBadge } from "@src/components/ui"
 
 import { ToolUseBlockHeader } from "@src/components/common/ToolUseBlock"
 
@@ -51,9 +51,9 @@ export const SkillToolRow = ({ message, tool: skillInfo, isExpanded, toggleExpan
 							{skillInfo.skill}
 						</span>
 						{skillInfo.source && (
-							<VSCodeBadge style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
+							<ThemedBadge style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
 								{skillInfo.source}
-							</VSCodeBadge>
+							</ThemedBadge>
 						)}
 					</div>
 					<span
@@ -100,9 +100,9 @@ export const RunSlashCommandToolRow = ({
 							/{slashCommandInfo.command}
 						</span>
 						{slashCommandInfo.source && (
-							<VSCodeBadge style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
+							<ThemedBadge style={{ fontSize: "calc(var(--vscode-font-size) - 2px)" }}>
 								{slashCommandInfo.source}
-							</VSCodeBadge>
+							</ThemedBadge>
 						)}
 					</div>
 					<span

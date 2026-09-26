@@ -61,14 +61,10 @@ vi.mock("@vscode/webview-ui-toolkit/react", async () => {
 		return Stub
 	}
 	return Object.fromEntries(
-		[
-			"VSCodeBadge",
-			"VSCodePanels",
-			"VSCodePanelTab",
-			"VSCodePanelView",
-			"VSCodeProgressRing",
-			"VSCodeTextField",
-		].map((name) => [name, stub(name)]),
+		["VSCodePanels", "VSCodePanelTab", "VSCodePanelView", "VSCodeProgressRing", "VSCodeTextField"].map((name) => [
+			name,
+			stub(name),
+		]),
 	)
 })
 
