@@ -93,9 +93,39 @@ export interface TaskHistoryAccess {
 
 	// Background tasks must not appear in or be resumable from task history.
 	isBackground: boolean
+
+	// Set when the task is cleared or replaced (see Task.abandoned).
+	abandoned?: boolean
+}
+
+/**
+ * While a task streams, `ui_messages.json` writes are coalesced (CORE-R7 step 4):
+ * a write runs once the task has been quiet for this long...
+ */
+export const CLINE_MESSAGES_SAVE_IDLE_MS = 1_000
+
+/** ...and at least this often while messages keep coming (the most a crash can lose). */
+export const CLINE_MESSAGES_SAVE_MAX_WAIT_MS = 3_000
+
+/** Every TaskHistory with a coalesced write pending (for {@link flushPendingClineMessageSaves}). */
+const historiesWithPendingSave = new Set<TaskHistory>()
+
+/**
+ * Runs every pending coalesced `ui_messages.json` write now. `deactivate` awaits
+ * it, so closing VS Code or the CLI while a task streams loses nothing: the
+ * provider's own task disposal is not awaited on shutdown.
+ */
+export async function flushPendingClineMessageSaves(): Promise<void> {
+	await Promise.all([...historiesWithPendingSave].map((history) => history.flushClineMessages()))
 }
 
 export class TaskHistory {
+	/** The coalesced `ui_messages.json` write, while one is pending. */
+	private pendingSave?: { idle: NodeJS.Timeout; maxWait: NodeJS.Timeout }
+	/** Writes run one after another, each with the list as it is when it starts. */
+	private saveChain: Promise<unknown> = Promise.resolve()
+	private hasWrittenClineMessages = false
+
 	constructor(private readonly access: TaskHistoryAccess) {}
 
 	// API Conversation History
@@ -456,7 +486,96 @@ export class TaskHistory {
 		}
 	}
 
+	/**
+	 * Persists `ui_messages.json` and refreshes the history item.
+	 *
+	 * Every added and every finished message calls this, and each write carries
+	 * the whole list, so while the task streams the writes are coalesced (CORE-R7
+	 * step 4): the call returns at once and one write runs after
+	 * {@link CLINE_MESSAGES_SAVE_IDLE_MS} of quiet, at least every
+	 * {@link CLINE_MESSAGES_SAVE_MAX_WAIT_MS}. The task's first write (it creates
+	 * the history item that delegation and cancel read) and every write after the
+	 * task was aborted or abandoned run at once, as before. An ask that waits for
+	 * the user and `dispose` flush a pending write. The webview pushes, the
+	 * `Message` events and the cloud `TASK_MESSAGE` captures are not affected:
+	 * they happen per message in `addToClineMessages` / `updateClineMessage`.
+	 */
 	async saveClineMessages(): Promise<boolean> {
+		if (!this.hasWrittenClineMessages || this.isAbortedOrAbandoned()) {
+			return this.flushClineMessages()
+		}
+
+		this.scheduleClineMessagesSave()
+		return true
+	}
+
+	/** Writes `ui_messages.json` now (after any write in flight) and cancels a pending coalesced write. */
+	async flushClineMessages(): Promise<boolean> {
+		this.cancelPendingSave()
+		return this.queueClineMessagesWrite()
+	}
+
+	/**
+	 * For `dispose`: a pending coalesced write of a live task runs now instead of
+	 * being lost. An aborted task's abort path writes the final list itself.
+	 */
+	flushPendingSave(): void {
+		if (!this.pendingSave) {
+			return
+		}
+
+		this.cancelPendingSave()
+
+		if (!this.isAbortedOrAbandoned()) {
+			void this.queueClineMessagesWrite()
+		}
+	}
+
+	private isAbortedOrAbandoned(): boolean {
+		return this.access.abort || this.access.abandoned === true
+	}
+
+	private scheduleClineMessagesSave(): void {
+		const fire = () => {
+			this.cancelPendingSave()
+			// The abort path (TaskLifecycle.cleanupAbort) writes the final list. A
+			// write landing after it could re-stamp a history status that the
+			// delegation flow set in between, so a write the abort overtook is dropped.
+			if (this.isAbortedOrAbandoned()) {
+				return
+			}
+			void this.queueClineMessagesWrite()
+		}
+
+		if (this.pendingSave) {
+			clearTimeout(this.pendingSave.idle)
+			this.pendingSave.idle = setTimeout(fire, CLINE_MESSAGES_SAVE_IDLE_MS)
+			return
+		}
+
+		this.pendingSave = {
+			idle: setTimeout(fire, CLINE_MESSAGES_SAVE_IDLE_MS),
+			maxWait: setTimeout(fire, CLINE_MESSAGES_SAVE_MAX_WAIT_MS),
+		}
+		historiesWithPendingSave.add(this)
+	}
+
+	private cancelPendingSave(): void {
+		if (this.pendingSave) {
+			clearTimeout(this.pendingSave.idle)
+			clearTimeout(this.pendingSave.maxWait)
+			this.pendingSave = undefined
+		}
+		historiesWithPendingSave.delete(this)
+	}
+
+	private queueClineMessagesWrite(): Promise<boolean> {
+		const write = this.saveChain.then(() => this.writeClineMessages())
+		this.saveChain = write
+		return write
+	}
+
+	private async writeClineMessages(): Promise<boolean> {
 		try {
 			// Guard: if the in-memory array is empty but the on-disk file already
 			// holds messages, persisting now would wipe a real conversation and
@@ -479,6 +598,8 @@ export class TaskHistory {
 				taskId: this.access.taskId,
 				globalStoragePath: this.access.globalStoragePath,
 			})
+
+			this.hasWrittenClineMessages = true
 
 			const historyItem = await this.emitTokenUsageUpdate()
 			if (!this.access.isBackground) {

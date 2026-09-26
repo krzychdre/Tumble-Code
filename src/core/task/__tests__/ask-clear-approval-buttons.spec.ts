@@ -31,6 +31,7 @@ function buildTask(provider: ProviderStub | undefined) {
 	;(task as any).history = {
 		addToClineMessages: vi.fn(async () => {}),
 		saveClineMessages: vi.fn(async () => {}),
+		flushClineMessages: vi.fn(async () => true),
 		updateClineMessage: vi.fn(async () => {}),
 		findMessageByTimestamp: vi.fn(() => undefined),
 	}

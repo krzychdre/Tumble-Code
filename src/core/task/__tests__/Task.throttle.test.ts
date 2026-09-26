@@ -1,6 +1,7 @@
 import { RooCodeEventName, ProviderSettings, TokenUsage, ToolUsage } from "@roo-code/types"
 
 import { Task } from "../Task"
+import { CLINE_MESSAGES_SAVE_IDLE_MS } from "../TaskHistory"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { hasToolUsageChanged, hasTokenUsageChanged } from "../../../shared/getApiMetrics"
 
@@ -436,6 +437,8 @@ describe("Task token usage throttling", () => {
 			say: "text",
 			text: "Message 2",
 		})
+		// The second write is coalesced (CORE-R7 step 4): let it run.
+		await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)
 
 		const secondEmitCount = emitSpy.mock.calls.filter(
 			(call) => call[0] === RooCodeEventName.TaskTokenUsageUpdated,
@@ -475,6 +478,8 @@ describe("Task token usage throttling", () => {
 			say: "text",
 			text: "Message 2",
 		})
+		// The second write is coalesced (CORE-R7 step 4): let it run.
+		await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)
 
 		// Snapshot should be updated to match the new toolUsage
 		const newSnapshot = (task as any).toolUsageSnapshot

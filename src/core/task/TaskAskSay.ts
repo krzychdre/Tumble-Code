@@ -329,6 +329,12 @@ export class TaskAskSay {
 		const shouldDrainQueuedMessageForAsk = type !== "command_output"
 		const isStatusMutable = !partial && isBlocking && !isMessageQueued && approval.decision === "ask"
 
+		// The task stops here until the user answers: write the coalesced message
+		// list now, so the file is current while nothing else happens (CORE-R7 step 4).
+		if (isBlocking && approval.decision !== "approve" && approval.decision !== "deny") {
+			await this.access.history.flushClineMessages()
+		}
+
 		if (isStatusMutable) {
 			const statusMutationTimeout = 2_000
 

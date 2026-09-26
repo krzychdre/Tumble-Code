@@ -29,6 +29,7 @@ function makeTaskWithAskSay() {
 			clineMessages.push(m)
 		}),
 		saveClineMessages: vi.fn(async () => {}),
+		flushClineMessages: vi.fn(async () => true),
 		updateClineMessage: vi.fn(async () => {}),
 		findMessageByTimestamp: vi.fn((ts: number) => clineMessages.find((m) => m.ts === ts)),
 	}

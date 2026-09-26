@@ -835,6 +835,14 @@ export class TaskLifecycle {
 	dispose(): void {
 		console.log(`[Task#dispose] disposing task ${this.access.taskId}.${this.access.instanceId}`)
 
+		// A coalesced ui_messages.json write that is still pending runs now
+		// (CORE-R7 step 4); for an aborted task the abort path writes instead.
+		try {
+			this.access.history.flushPendingSave()
+		} catch (error) {
+			console.error("Error flushing the pending message save:", error)
+		}
+
 		// Cancel any in-progress HTTP request
 		try {
 			this.access.cancelCurrentRequest()

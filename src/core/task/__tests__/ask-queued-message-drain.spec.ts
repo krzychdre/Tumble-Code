@@ -28,6 +28,7 @@ describe("Task.ask queued message drain", () => {
 		const historyStub = {
 			addToClineMessages: vi.fn(async () => {}),
 			saveClineMessages: vi.fn(async () => {}),
+			flushClineMessages: vi.fn(async () => true),
 			updateClineMessage: vi.fn(async () => {}),
 			findMessageByTimestamp: vi.fn(() => undefined),
 		}
@@ -72,6 +73,7 @@ describe("Task.ask queued message drain", () => {
 		const historyStub = {
 			addToClineMessages: vi.fn(async () => {}),
 			saveClineMessages: vi.fn(async () => {}),
+			flushClineMessages: vi.fn(async () => true),
 			updateClineMessage: vi.fn(async () => {}),
 			findMessageByTimestamp: vi.fn(() => undefined),
 		}
