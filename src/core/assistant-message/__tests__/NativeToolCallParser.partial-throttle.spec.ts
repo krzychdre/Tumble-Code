@@ -108,7 +108,9 @@ describe("NativeToolCallParser partial-argument parsing (API P2)", () => {
 		const parser = new NativeToolCallParser()
 		parser.startStreamingToolCall("call_3", "write_to_file")
 
-		expect(parser.processStreamingChunk("call_3", args.slice(0, PARTIAL_ARGS_ALWAYS_PARSE_LENGTH + 10))).not.toBeNull()
+		expect(
+			parser.processStreamingChunk("call_3", args.slice(0, PARTIAL_ARGS_ALWAYS_PARSE_LENGTH + 10)),
+		).not.toBeNull()
 		expect(parser.processStreamingChunk("call_3", "abc")).toBeNull()
 
 		now += PARTIAL_ARGS_PARSE_INTERVAL_MS
