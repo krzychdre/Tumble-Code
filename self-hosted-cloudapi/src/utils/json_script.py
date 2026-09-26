@@ -21,15 +21,21 @@ from typing import Any
 
 from markupsafe import Markup
 
-_ESCAPES = {
-    ord("<"): "\\u003c",
-    ord(">"): "\\u003e",
-    ord("&"): "\\u0026",
-    0x2028: "\\u2028",
-    0x2029: "\\u2029",
-}
+# Plain str.replace per character: str.translate with a mapping walks the
+# string one code point at a time in Python and took about a second on a
+# 10 MB conversation, where these five passes take about 30 ms.
+_ESCAPES = (
+    ("<", "\\u003c"),
+    (">", "\\u003e"),
+    ("&", "\\u0026"),
+    ("\u2028", "\\u2028"),
+    ("\u2029", "\\u2029"),
+)
 
 
 def json_for_script(value: Any) -> Markup:
     """JSON text for an island, safe to print inside ``<script>``."""
-    return Markup(json.dumps(value).translate(_ESCAPES))
+    text = json.dumps(value)
+    for raw, escaped in _ESCAPES:
+        text = text.replace(raw, escaped)
+    return Markup(text)
