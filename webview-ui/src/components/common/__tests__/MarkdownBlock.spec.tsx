@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@/utils/test-utils"
+import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
+import { vscode } from "@src/utils/vscode"
 
 import MarkdownBlock from "../MarkdownBlock"
 
@@ -323,6 +324,50 @@ describe("MarkdownBlock", () => {
 
 			expect(container.querySelector(".katex-display")).not.toBeNull()
 			expect(container.querySelector("p")?.textContent).toBe("$5 is literal")
+		})
+	})
+
+	// react-markdown's default urlTransform empties every href whose scheme is not
+	// http(s), mailto, irc(s) or xmpp. That also emptied "file://" links and the
+	// "name.ext:line" links the system prompt asks models to write, so the click
+	// handler below never saw a path to open.
+	describe("file links", () => {
+		beforeEach(() => {
+			vi.mocked(vscode.postMessage).mockClear()
+		})
+
+		it.each([
+			["[a](file:///tmp/a.ts)", "file:///tmp/a.ts", { type: "openFile", text: "/tmp/a.ts", values: undefined }],
+			[
+				"[a](file:///tmp/a.ts:12)",
+				"file:///tmp/a.ts:12",
+				{ type: "openFile", text: "/tmp/a.ts", values: { line: 12 } },
+			],
+			["[README.md](README.md:6)", "README.md:6", { type: "openFile", text: "./README.md", values: { line: 6 } }],
+			["[f](src/a.ts:3)", "src/a.ts:3", { type: "openFile", text: "./src/a.ts", values: { line: 3 } }],
+		])("keeps the href of %s and opens the file on click", (markdown, href, message) => {
+			render(<MarkdownBlock markdown={markdown} />)
+			const link = screen.getByRole("link")
+
+			expect(link).toHaveAttribute("href", href)
+			fireEvent.click(link)
+			expect(vscode.postMessage).toHaveBeenCalledWith(message)
+		})
+
+		it.each([
+			["https://example.com/a", "https://example.com/a"],
+			["mailto:a@b.c", "mailto:a@b.c"],
+			["./a.md#top", "./a.md#top"],
+			["javascript:alert(1)", ""],
+			["JavaScript:alert(1)", ""],
+			["javascript:1", ""],
+			["vbscript:msgbox(1)", ""],
+			["data:text/html,x", ""],
+			["vscode://file/a", ""],
+		])("href %s becomes %j", (url, href) => {
+			const { container } = render(<MarkdownBlock markdown={`[x](${url})`} />)
+
+			expect(container.querySelector("a")?.getAttribute("href")).toBe(href)
 		})
 	})
 })

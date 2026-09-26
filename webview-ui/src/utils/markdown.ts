@@ -1,3 +1,4 @@
+import { defaultUrlTransform } from "react-markdown"
 import { visit } from "unist-util-visit"
 
 /**
@@ -229,4 +230,26 @@ export function remarkSingleDollarMath(this: { data(): object }) {
 			},
 		},
 	})
+}
+
+// "README.md:6" or "a.ts:3-9": a file name with an extension and a line, no
+// slash. Without a slash the text before the colon reads as a URL scheme.
+const FILE_WITH_LINE = /^[^:/?#]+\.[^:/?#]*:\d+(-\d+)?$/
+
+/**
+ * react-markdown's urlTransform, widened to the links MarkdownBlock opens in the
+ * editor. The default keeps http(s), mailto, irc(s), xmpp and relative URLs and
+ * empties everything else, which also emptied "file:///abs/a.ts" and the
+ * "README.md:6" links the system prompt asks for. Those two now pass for
+ * links (href) only; javascript:, data:, vbscript: and every other scheme
+ * stay empty.
+ */
+export function markdownUrlTransform(url: string, key: string): string {
+	const safe = defaultUrlTransform(url)
+
+	if (safe || key !== "href") {
+		return safe
+	}
+
+	return /^file:/i.test(url) || FILE_WITH_LINE.test(url) ? url : ""
 }
