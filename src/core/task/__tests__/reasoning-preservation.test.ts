@@ -20,7 +20,9 @@ vi.mock("vscode", () => ({
 		openTextDocument: vi.fn(),
 		applyEdit: vi.fn(),
 	},
-	RelativePattern: vi.fn((base, pattern) => ({ base, pattern })),
+	RelativePattern: vi.fn(function (base, pattern) {
+		return { base, pattern }
+	}),
 	window: {
 		createOutputChannel: vi.fn(() => ({
 			appendLine: vi.fn(),

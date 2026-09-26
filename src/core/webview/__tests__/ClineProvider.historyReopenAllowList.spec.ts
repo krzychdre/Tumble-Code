@@ -167,9 +167,9 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 	beforeEach(() => {
 		vi.clearAllMocks()
 
-		vi.mocked(Task).mockImplementation(
-			(options: any) => fakeTask(options.historyItem?.id ?? "new", { options, isBackground: false }) as any,
-		)
+		vi.mocked(Task).mockImplementation(function (options: any) {
+			return fakeTask(options.historyItem?.id ?? "new", { options, isBackground: false }) as any
+		})
 
 		const context: any = {
 			globalState: { get: vi.fn(), update: vi.fn().mockResolvedValue(undefined), keys: vi.fn(() => []) },

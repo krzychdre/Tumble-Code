@@ -565,7 +565,6 @@
 		"@roo-code/build": "workspace:^",
 		"@roo-code/config-eslint": "workspace:^",
 		"@types/clone-deep": "^4.0.4",
-		"@types/debug": "^4.1.12",
 		"@types/lodash.debounce": "^4.0.9",
 		"@types/node": "^22.20.4",
 		"@types/ps-tree": "^1.1.6",
@@ -579,6 +578,6 @@
 		"ovsx": "0.10.4",
 		"proper-lockfile": "^4.1.2",
 		"rimraf": "^6.0.1",
-		"vitest": "^3.2.3"
+		"vitest": "^5.0.2"
 	}
 }

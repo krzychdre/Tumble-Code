@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 import type { ExtensionContext } from "vscode"
 
 import type { OrganizationSettings, AuthService } from "@roo-code/types"
@@ -16,18 +17,18 @@ global.fetch = vi.fn()
 describe("CloudSettingsService", () => {
 	let mockContext: ExtensionContext
 	let mockAuthService: {
-		getState: ReturnType<typeof vi.fn>
-		getSessionToken: ReturnType<typeof vi.fn>
-		hasActiveSession: ReturnType<typeof vi.fn>
-		on: ReturnType<typeof vi.fn>
-		getStoredOrganizationId: ReturnType<typeof vi.fn>
+		getState: Mock
+		getSessionToken: Mock
+		hasActiveSession: Mock
+		on: Mock
+		getStoredOrganizationId: Mock
 	}
 	let mockRefreshTimer: {
-		start: ReturnType<typeof vi.fn>
-		stop: ReturnType<typeof vi.fn>
+		start: Mock
+		stop: Mock
 	}
 	let cloudSettingsService: CloudSettingsService
-	let mockLog: ReturnType<typeof vi.fn>
+	let mockLog: Mock
 
 	const mockSettings: OrganizationSettings = {
 		version: 1,
@@ -75,7 +76,9 @@ describe("CloudSettingsService", () => {
 		mockLog = vi.fn()
 
 		// Mock RefreshTimer constructor
-		vi.mocked(RefreshTimer).mockImplementation(() => mockRefreshTimer as unknown as RefreshTimer)
+		vi.mocked(RefreshTimer).mockImplementation(function () {
+			return mockRefreshTimer as unknown as RefreshTimer
+		})
 
 		cloudSettingsService = new CloudSettingsService(mockContext, mockAuthService as unknown as AuthService, mockLog)
 	})

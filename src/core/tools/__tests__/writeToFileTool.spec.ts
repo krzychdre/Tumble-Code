@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 import * as path from "path"
 
 import type { MockedFunction } from "vitest"
@@ -107,9 +108,9 @@ describe("writeToFileTool", () => {
 	const mockedPathResolve = path.resolve as MockedFunction<typeof path.resolve>
 
 	const mockCline: any = {}
-	let mockAskApproval: ReturnType<typeof vi.fn>
-	let mockHandleError: ReturnType<typeof vi.fn>
-	let mockPushToolResult: ReturnType<typeof vi.fn>
+	let mockAskApproval: Mock
+	let mockHandleError: Mock
+	let mockPushToolResult: Mock
 	let toolResult: ToolResponse | undefined
 
 	beforeEach(() => {

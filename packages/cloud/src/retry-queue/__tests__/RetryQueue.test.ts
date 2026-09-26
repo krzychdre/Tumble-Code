@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 import type { ExtensionContext } from "vscode"
 import { RetryQueue } from "../RetryQueue.js"
 import type { QueuedRequest } from "../types.js"
@@ -298,7 +299,7 @@ describe("RetryQueue", () => {
 	})
 
 	describe("retryAll", () => {
-		let fetchMock: ReturnType<typeof vi.fn>
+		let fetchMock: Mock
 
 		beforeEach(() => {
 			// Mock global fetch

@@ -55,26 +55,28 @@ vi.mock("vscode", () => ({
 }))
 
 vi.mock("../../task/Task", () => ({
-	Task: vi.fn().mockImplementation((options) => ({
-		taskId: options.taskId || "test-task-id",
-		saveClineMessages: vi.fn(),
-		clineMessages: [],
-		apiConversationHistory: [],
-		overwriteClineMessages: vi.fn(),
-		overwriteApiConversationHistory: vi.fn(),
-		abortTask: vi.fn(),
-		handleWebviewAskResponse: vi.fn(),
-		getTaskNumber: vi.fn().mockReturnValue(0),
-		setTaskNumber: vi.fn(),
-		setParentTask: vi.fn(),
-		setRootTask: vi.fn(),
-		emit: vi.fn(),
-		parentTask: options.parentTask,
-		updateApiConfiguration: vi.fn(),
-		setTaskApiConfigName: vi.fn(),
-		_taskApiConfigName: options.historyItem?.apiConfigName,
-		taskApiConfigName: options.historyItem?.apiConfigName,
-	})),
+	Task: vi.fn().mockImplementation(function (options) {
+		return {
+			taskId: options.taskId || "test-task-id",
+			saveClineMessages: vi.fn(),
+			clineMessages: [],
+			apiConversationHistory: [],
+			overwriteClineMessages: vi.fn(),
+			overwriteApiConversationHistory: vi.fn(),
+			abortTask: vi.fn(),
+			handleWebviewAskResponse: vi.fn(),
+			getTaskNumber: vi.fn().mockReturnValue(0),
+			setTaskNumber: vi.fn(),
+			setParentTask: vi.fn(),
+			setRootTask: vi.fn(),
+			emit: vi.fn(),
+			parentTask: options.parentTask,
+			updateApiConfiguration: vi.fn(),
+			setTaskApiConfigName: vi.fn(),
+			_taskApiConfigName: options.historyItem?.apiConfigName,
+			taskApiConfigName: options.historyItem?.apiConfigName,
+		}
+	}),
 }))
 
 vi.mock("../../prompts/sections/custom-instructions")
@@ -110,10 +112,12 @@ vi.mock("../../../api", () => ({
 }))
 
 vi.mock("../../../integrations/workspace/WorkspaceTracker", () => ({
-	default: vi.fn().mockImplementation(() => ({
-		initializeFilePaths: vi.fn(),
-		dispose: vi.fn(),
-	})),
+	default: vi.fn().mockImplementation(function () {
+		return {
+			initializeFilePaths: vi.fn(),
+			dispose: vi.fn(),
+		}
+	}),
 }))
 
 vi.mock("../../diff/strategies/multi-search-replace", () => ({
@@ -410,7 +414,7 @@ describe("ClineProvider - CLI provider settings per mode", () => {
 				apiConfiguration: cliSettings.base,
 			}
 			vi.spyOn(provider, "getCurrentTask").mockReturnValue(task as never)
-			vi.spyOn(provider as never, "getTaskHistoryStore").mockResolvedValue({
+			vi.spyOn(provider as any, "getTaskHistoryStore").mockResolvedValue({
 				get: vi.fn(),
 				getAll: vi.fn(() => []),
 			} as never)

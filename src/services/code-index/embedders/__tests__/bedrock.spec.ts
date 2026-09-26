@@ -11,9 +11,11 @@ vitest.mock("@aws-sdk/client-bedrock-runtime", () => {
 		BedrockRuntimeClient: vitest.fn().mockImplementation(() => ({
 			send: vitest.fn(),
 		})),
-		InvokeModelCommand: vitest.fn().mockImplementation((input) => ({
-			input,
-		})),
+		InvokeModelCommand: vitest.fn().mockImplementation(function (input) {
+			return {
+				input,
+			}
+		}),
 	}
 })
 vitest.mock("@aws-sdk/credential-providers", () => ({
@@ -74,9 +76,11 @@ describe("BedrockEmbedder", () => {
 
 		// Set up the mock implementation
 		const MockedBedrockRuntimeClient = BedrockRuntimeClient as any
-		MockedBedrockRuntimeClient.mockImplementation(() => ({
-			send: mockSend,
-		}))
+		MockedBedrockRuntimeClient.mockImplementation(function () {
+			return {
+				send: mockSend,
+			}
+		})
 
 		embedder = new BedrockEmbedder("us-east-1", "test-profile", "amazon.titan-embed-text-v2:0")
 	})

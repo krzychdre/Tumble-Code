@@ -1,3 +1,4 @@
+import type { Mock } from "vitest"
 // cd src && ./node_modules/.bin/vitest run services/mcp/__tests__/McpConfigWatcher.spec.ts
 
 import * as path from "path"
@@ -24,13 +25,15 @@ vi.mock("vscode", () => {
 			createFileSystemWatcher: vi.fn(() => watcher),
 			onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
 		},
-		RelativePattern: vi.fn((base: string, pattern: string) => ({ base, pattern })),
+		RelativePattern: vi.fn(function (base: string, pattern: string) {
+			return { base, pattern }
+		}),
 		Disposable: { from: vi.fn((...items: unknown[]) => ({ items, dispose: vi.fn() })) },
 	}
 })
 
 function createFakeFactory() {
-	const watches: { file: string; listeners: McpFileListeners; dispose: ReturnType<typeof vi.fn> }[] = []
+	const watches: { file: string; listeners: McpFileListeners; dispose: Mock }[] = []
 	let folderListener: (() => void) | undefined
 	const folderSubscription = { dispose: vi.fn() }
 	const factory: McpWatcherFactory = {
@@ -54,7 +57,7 @@ describe("McpConfigWatcher", () => {
 
 	let fake: ReturnType<typeof createFakeFactory>
 	let guardUp: boolean
-	let listener: { [K in keyof McpConfigWatcherListener]: ReturnType<typeof vi.fn> }
+	let listener: { [K in keyof McpConfigWatcherListener]: Mock }
 	let watcher: McpConfigWatcher
 
 	beforeEach(() => {

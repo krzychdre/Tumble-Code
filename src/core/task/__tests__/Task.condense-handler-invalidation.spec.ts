@@ -120,7 +120,9 @@ vi.mock("vscode", () => {
 			onDidSaveTextDocument: vi.fn(() => mockDisposable),
 		},
 		env: { uriScheme: "vscode", language: "en" },
-		EventEmitter: vi.fn().mockImplementation(() => mockEventEmitter),
+		EventEmitter: vi.fn().mockImplementation(function () {
+			return mockEventEmitter
+		}),
 		Disposable: { from: vi.fn() },
 		TabInputText: vi.fn(),
 		version: "1.85.0",

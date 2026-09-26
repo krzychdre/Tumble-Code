@@ -22,23 +22,29 @@ const lifecycle = vi.hoisted(() => ({
 
 vi.mock("../DiffEditorLifecycleManager", async (importOriginal) => ({
 	...(await importOriginal<typeof import("../DiffEditorLifecycleManager")>()),
-	DiffEditorLifecycleManager: vi.fn().mockImplementation(() => lifecycle),
+	DiffEditorLifecycleManager: vi.fn().mockImplementation(function () {
+		return lifecycle
+	}),
 }))
 
 vi.mock("../DecorationController", () => ({
-	DecorationController: vi.fn().mockImplementation(() => ({
-		addLines: vi.fn(),
-		clear: vi.fn(),
-		setActiveLine: vi.fn(),
-		updateOverlayAfterLine: vi.fn(),
-	})),
+	DecorationController: vi.fn().mockImplementation(function () {
+		return {
+			addLines: vi.fn(),
+			clear: vi.fn(),
+			setActiveLine: vi.fn(),
+			updateOverlayAfterLine: vi.fn(),
+		}
+	}),
 }))
 
 vi.mock("../DiagnosticsCollector", () => ({
-	DiagnosticsCollector: vi.fn().mockImplementation(() => ({
-		capturePreDiagnostics: vi.fn().mockReturnValue([]),
-		collectPostSaveDiagnostics: vi.fn().mockResolvedValue(""),
-	})),
+	DiagnosticsCollector: vi.fn().mockImplementation(function () {
+		return {
+			capturePreDiagnostics: vi.fn().mockReturnValue([]),
+			collectPostSaveDiagnostics: vi.fn().mockResolvedValue(""),
+		}
+	}),
 }))
 
 interface Replacement {
@@ -55,10 +61,12 @@ vi.mock("vscode", () => ({
 	window: {
 		showTextDocument: vi.fn().mockResolvedValue(undefined),
 	},
-	WorkspaceEdit: vi.fn().mockImplementation(() => ({
-		replace: vi.fn((_uri: unknown, _range: unknown, text: string) => applied.replacements.push({ text })),
-		delete: vi.fn(),
-	})),
+	WorkspaceEdit: vi.fn().mockImplementation(function () {
+		return {
+			replace: vi.fn((_uri: unknown, _range: unknown, text: string) => applied.replacements.push({ text })),
+			delete: vi.fn(),
+		}
+	}),
 	Range: vi.fn(),
 	Position: vi.fn(),
 	Selection: vi.fn(),

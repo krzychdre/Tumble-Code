@@ -1,9 +1,10 @@
+import type { Mock } from "vitest"
 import { renderHook } from "@testing-library/react"
 
 import { useEscapeKey } from "./useEscapeKey"
 
 describe("useEscapeKey", () => {
-	let mockOnEscape: ReturnType<typeof vi.fn>
+	let mockOnEscape: Mock
 
 	beforeEach(() => {
 		mockOnEscape = vi.fn()

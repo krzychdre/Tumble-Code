@@ -49,16 +49,18 @@ describe("CloudService environment resolution (characterization)", () => {
 		workspaceState = { get: vi.fn(), update: vi.fn().mockResolvedValue(undefined) }
 		context = { workspaceState } as unknown as vscode.ExtensionContext
 
-		vi.mocked(WebAuthService).mockImplementation(() => makeAuthService() as unknown as WebAuthService)
-		vi.mocked(StaticTokenAuthService).mockImplementation(
-			() => makeAuthService() as unknown as StaticTokenAuthService,
-		)
-		vi.mocked(CloudSettingsService).mockImplementation(
-			() => makeSettingsService() as unknown as CloudSettingsService,
-		)
-		vi.mocked(StaticSettingsService).mockImplementation(
-			() => makeSettingsService() as unknown as StaticSettingsService,
-		)
+		vi.mocked(WebAuthService).mockImplementation(function () {
+			return makeAuthService() as unknown as WebAuthService
+		})
+		vi.mocked(StaticTokenAuthService).mockImplementation(function () {
+			return makeAuthService() as unknown as StaticTokenAuthService
+		})
+		vi.mocked(CloudSettingsService).mockImplementation(function () {
+			return makeSettingsService() as unknown as CloudSettingsService
+		})
+		vi.mocked(StaticSettingsService).mockImplementation(function () {
+			return makeSettingsService() as unknown as StaticSettingsService
+		})
 	})
 
 	afterEach(() => {

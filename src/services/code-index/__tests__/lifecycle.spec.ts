@@ -44,7 +44,9 @@ vi.mock("vscode", () => {
 	const nodePath = require("path")
 	return {
 		EventEmitter: FakeEventEmitter,
-		RelativePattern: vi.fn().mockImplementation((base: string, pattern: string) => ({ base, pattern })),
+		RelativePattern: vi.fn().mockImplementation(function (base: string, pattern: string) {
+			return { base, pattern }
+		}),
 		workspace: {
 			workspaceFolders: [{ uri: { fsPath: nodePath.resolve("/test/workspace") }, name: "test", index: 0 }],
 			createFileSystemWatcher: vi.fn(),
@@ -60,10 +62,12 @@ vi.mock("@roo-code/telemetry", () => ({
 vi.mock("../../../i18n", () => ({ t: (key: string) => key }))
 
 vi.mock("../../../core/ignore/RooIgnoreController", () => ({
-	RooIgnoreController: vi.fn().mockImplementation(() => ({
-		validateAccess: vi.fn().mockReturnValue(true),
-		dispose: vi.fn(),
-	})),
+	RooIgnoreController: vi.fn().mockImplementation(function () {
+		return {
+			validateAccess: vi.fn().mockReturnValue(true),
+			dispose: vi.fn(),
+		}
+	}),
 }))
 
 vi.mock("../processors/parser", () => ({ codeParser: { parseFile: vi.fn().mockResolvedValue([]) } }))

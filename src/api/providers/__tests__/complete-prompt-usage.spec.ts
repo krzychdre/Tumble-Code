@@ -7,9 +7,11 @@ import { BaseOpenAiCompatibleProvider } from "../base-openai-compatible-provider
 const mockCreate = vi.fn()
 
 vi.mock("openai", () => ({
-	default: vi.fn(() => ({
-		chat: { completions: { create: mockCreate } },
-	})),
+	default: vi.fn(function () {
+		return {
+			chat: { completions: { create: mockCreate } },
+		}
+	}),
 }))
 
 class TestProvider extends BaseOpenAiCompatibleProvider<"test-model"> {

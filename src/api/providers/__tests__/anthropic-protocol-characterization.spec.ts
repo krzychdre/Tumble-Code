@@ -18,11 +18,15 @@ vitest.mock("@roo-code/telemetry", () => ({
 const mockCreate = vitest.fn()
 
 vitest.mock("@anthropic-ai/sdk", () => ({
-	Anthropic: vitest.fn().mockImplementation(() => ({ messages: { create: mockCreate } })),
+	Anthropic: vitest.fn().mockImplementation(function () {
+		return { messages: { create: mockCreate } }
+	}),
 }))
 
 vitest.mock("@anthropic-ai/vertex-sdk", () => ({
-	AnthropicVertex: vitest.fn().mockImplementation(() => ({ messages: { create: mockCreate } })),
+	AnthropicVertex: vitest.fn().mockImplementation(function () {
+		return { messages: { create: mockCreate } }
+	}),
 }))
 
 import type { Anthropic } from "@anthropic-ai/sdk"

@@ -58,7 +58,10 @@ describe("custom-instructions global .roo support", () => {
 	const projectRooDir = path.join(mockCwd, ".roo")
 
 	beforeEach(() => {
-		vi.clearAllMocks()
+		// resetAllMocks, not clearAllMocks: it also drops the mockResolvedValueOnce
+		// queues a test left unused. Vitest 3 did that in the afterEach's
+		// restoreAllMocks; since Vitest 4 restoreAllMocks only touches vi.spyOn spies.
+		vi.resetAllMocks()
 		mockHomedir.mockReturnValue(mockHomeDir)
 		mockGetRooDirectoriesForCwd.mockReturnValue([globalRooDir, projectRooDir])
 		// getAllRooDirectoriesForCwd is now async and returns the same directories by default

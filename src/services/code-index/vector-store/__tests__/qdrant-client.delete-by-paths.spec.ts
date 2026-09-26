@@ -12,7 +12,9 @@ const client = vitest.hoisted(() => ({
 }))
 
 vitest.mock("@qdrant/js-client-rest", () => ({
-	QdrantClient: vitest.fn(() => client),
+	QdrantClient: vitest.fn(function () {
+		return client
+	}),
 }))
 
 vitest.mock("../../../../i18n", () => ({

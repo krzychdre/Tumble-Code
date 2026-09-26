@@ -44,7 +44,9 @@ vi.mock("vscode", () => ({
 		getWorkspaceFolder: vi.fn().mockReturnValue({ uri: { fsPath: "/test/path" } }),
 	},
 	window: { activeTextEditor: undefined },
-	EventEmitter: vi.fn().mockImplementation(() => ({ event: vi.fn(), fire: vi.fn(), dispose: vi.fn() })),
+	EventEmitter: vi.fn().mockImplementation(function () {
+		return { event: vi.fn(), fire: vi.fn(), dispose: vi.fn() }
+	}),
 }))
 
 // The modes list needs the extension's settings directory; stub it to a fixed

@@ -75,7 +75,9 @@ describe("OpenAICompatibleEmbedder", () => {
 			},
 		}
 
-		MockedOpenAI.mockImplementation(() => mockOpenAIInstance)
+		MockedOpenAI.mockImplementation(function () {
+			return mockOpenAIInstance
+		})
 
 		// Reset the shared rate limit state to prevent interference between tests
 		resetRateLimitGates()

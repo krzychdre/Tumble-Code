@@ -423,7 +423,7 @@ describe("safeWriteJson", () => {
 
 		// Clean up
 		await fs.unlink(lockTestFilePath).catch(() => {}) // Ignore errors if file doesn't exist
-		vi.unmock("proper-lockfile") // Ensure the mock is removed after this test
+		vi.doUnmock("proper-lockfile") // Ensure the mock is removed after this test (doUnmock: not hoisted, runs here)
 	})
 	test("should release lock even if an error occurs mid-operation", async () => {
 		const data = { message: "test lock release on error" }
@@ -536,7 +536,7 @@ describe("safeWriteJson", () => {
 			expect(releaseCalls).toBe(0)
 		} finally {
 			process.off("uncaughtException", uncaughtHandler)
-			vi.unmock("proper-lockfile") // Ensure the mock is removed after this test
+			vi.doUnmock("proper-lockfile") // Ensure the mock is removed after this test (doUnmock: not hoisted, runs here)
 		}
 	})
 })

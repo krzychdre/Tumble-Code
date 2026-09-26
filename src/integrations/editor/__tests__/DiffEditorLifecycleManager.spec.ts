@@ -44,10 +44,12 @@ vi.mock("vscode", () => ({
 		Information: 2,
 		Hint: 3,
 	},
-	WorkspaceEdit: vi.fn().mockImplementation(() => ({
-		replace: vi.fn(),
-		delete: vi.fn(),
-	})),
+	WorkspaceEdit: vi.fn().mockImplementation(function () {
+		return {
+			replace: vi.fn(),
+			delete: vi.fn(),
+		}
+	}),
 	ViewColumn: {
 		Active: 1,
 	},

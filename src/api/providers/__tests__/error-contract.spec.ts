@@ -39,7 +39,9 @@ vi.mock("../fetchers/ollama", () => ({
 
 // The real AnthropicVertex constructor starts a Google credential lookup.
 vi.mock("@anthropic-ai/vertex-sdk", () => ({
-	AnthropicVertex: vi.fn().mockImplementation(() => ({ messages: { create: vi.fn() } })),
+	AnthropicVertex: vi.fn().mockImplementation(function () {
+		return { messages: { create: vi.fn() } }
+	}),
 }))
 
 import OpenAI from "openai"

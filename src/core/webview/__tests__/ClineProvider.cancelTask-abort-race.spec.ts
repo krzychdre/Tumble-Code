@@ -318,7 +318,9 @@ describe("ClineProvider cancelTask abort-race (TE-7)", () => {
 				off: vi.fn(),
 				emit: vi.fn(),
 			}
-			vi.mocked(Task).mockImplementation(() => bg)
+			vi.mocked(Task).mockImplementation(function () {
+				return bg
+			})
 			return bg
 		}
 

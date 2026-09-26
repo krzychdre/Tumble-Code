@@ -221,7 +221,7 @@ describe("CustomToolRegistry", () => {
 		})
 	})
 
-	describe.sequential("loadFromDirectory", () => {
+	describe("loadFromDirectory", { concurrent: false }, () => {
 		it("should load tools from TypeScript files", async () => {
 			const result = await registry.loadFromDirectory(TEST_FIXTURES_DIR)
 
@@ -271,7 +271,7 @@ describe("CustomToolRegistry", () => {
 		}, 30000)
 	})
 
-	describe.sequential("clearCache", () => {
+	describe("clearCache", { concurrent: false }, () => {
 		it("should clear the TypeScript compilation cache", async () => {
 			await registry.loadFromDirectory(TEST_FIXTURES_DIR)
 			registry.clearCache()
@@ -284,7 +284,7 @@ describe("CustomToolRegistry", () => {
 		}, 120_000)
 	})
 
-	describe.sequential("loadFromDirectories", () => {
+	describe("loadFromDirectories", { concurrent: false }, () => {
 		it("should load tools from multiple directories", async () => {
 			const result = await registry.loadFromDirectories([TEST_FIXTURES_DIR, TEST_FIXTURES_OVERRIDE_DIR])
 
@@ -342,7 +342,7 @@ describe("CustomToolRegistry", () => {
 		}, 60000)
 	})
 
-	describe.sequential("loadFromDirectoriesIfStale", () => {
+	describe("loadFromDirectoriesIfStale", { concurrent: false }, () => {
 		it("should load tools from multiple directories when stale", async () => {
 			const result = await registry.loadFromDirectoriesIfStale([TEST_FIXTURES_DIR, TEST_FIXTURES_OVERRIDE_DIR])
 
