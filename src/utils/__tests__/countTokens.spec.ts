@@ -2,11 +2,12 @@
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 
-const { execMock, poolFactoryMock, tiktokenMock } = vi.hoisted(() => {
+const { execMock, poolFactoryMock, tiktokenMock, tiktokenPerBlockMock } = vi.hoisted(() => {
 	const execMock = vi.fn()
 	const poolFactoryMock = vi.fn(() => ({ exec: execMock }))
 	const tiktokenMock = vi.fn()
-	return { execMock, poolFactoryMock, tiktokenMock }
+	const tiktokenPerBlockMock = vi.fn()
+	return { execMock, poolFactoryMock, tiktokenMock, tiktokenPerBlockMock }
 })
 
 vi.mock("workerpool", () => ({
@@ -15,6 +16,7 @@ vi.mock("workerpool", () => ({
 
 vi.mock("../tiktoken", () => ({
 	tiktoken: tiktokenMock,
+	tiktokenPerBlock: tiktokenPerBlockMock,
 }))
 
 const content: Anthropic.Messages.ContentBlockParam[] = [{ type: "text", text: "hello world" }]
@@ -108,6 +110,61 @@ describe("countTokens worker pool", () => {
 		await expect(countTokens(content, { useWorker: false })).resolves.toBe(7)
 		expect(poolFactoryMock).not.toHaveBeenCalled()
 		expect(execMock).not.toHaveBeenCalled()
+	})
+})
+
+describe("countTokensPerBlock worker pool", () => {
+	const blocks: Anthropic.Messages.ContentBlockParam[] = [
+		{ type: "text", text: "hello" },
+		{ type: "text", text: "world" },
+	]
+
+	beforeEach(() => {
+		execMock.mockReset()
+		poolFactoryMock.mockClear()
+		tiktokenMock.mockReset()
+		tiktokenMock.mockResolvedValue(7)
+		tiktokenPerBlockMock.mockReset()
+		tiktokenPerBlockMock.mockResolvedValue([3, 4])
+		vi.spyOn(console, "error").mockImplementation(() => {})
+	})
+
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
+
+	it("asks the worker for raw per-block counts", async () => {
+		const { countTokensPerBlock } = await loadCountTokens()
+		execMock.mockResolvedValue({ success: true, counts: [10, 20] })
+
+		await expect(countTokensPerBlock(blocks)).resolves.toEqual([10, 20])
+		expect(execMock).toHaveBeenCalledWith("countTokensPerBlock", [blocks])
+		expect(tiktokenPerBlockMock).not.toHaveBeenCalled()
+	})
+
+	it("counts inline on a full queue and keeps the pool, like countTokens", async () => {
+		const { countTokensPerBlock } = await loadCountTokens()
+		execMock.mockImplementationOnce(throwQueueFull).mockResolvedValue({ success: true, counts: [10, 20] })
+
+		await expect(countTokensPerBlock(blocks)).resolves.toEqual([3, 4])
+		await expect(countTokensPerBlock(blocks)).resolves.toEqual([10, 20])
+		expect(poolFactoryMock).toHaveBeenCalledTimes(1)
+	})
+
+	it("disables the shared pool after a worker crash", async () => {
+		const { countTokensPerBlock, countTokens } = await loadCountTokens()
+		execMock.mockRejectedValueOnce(workerCrashError()).mockResolvedValue({ success: true, counts: [10, 20] })
+
+		await expect(countTokensPerBlock(blocks)).resolves.toEqual([3, 4])
+		await expect(countTokens(content)).resolves.toBe(7)
+		expect(execMock).toHaveBeenCalledTimes(1)
+	})
+
+	it("falls back inline when the answer does not have one count per block", async () => {
+		const { countTokensPerBlock } = await loadCountTokens()
+		execMock.mockResolvedValue({ success: true, counts: [10] })
+
+		await expect(countTokensPerBlock(blocks)).resolves.toEqual([3, 4])
 	})
 })
 

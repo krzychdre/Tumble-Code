@@ -138,7 +138,10 @@ describe("LmStudioHandler", () => {
 				},
 				{ role: "user", content: [{ type: "tool_result", tool_use_id: "call_1", content: fileBody }] },
 			]
-			const countTokensSpy = vi.spyOn(handler, "countTokens").mockResolvedValue(7)
+			// The input estimate goes through the per-handler count cache.
+			const countTokensSpy = vi
+				.spyOn(handler as unknown as { countInputTokens: LmStudioHandler["countTokens"] }, "countInputTokens")
+				.mockResolvedValue(7)
 
 			for await (const _chunk of handler.createMessage("system", messages)) {
 				// drain
