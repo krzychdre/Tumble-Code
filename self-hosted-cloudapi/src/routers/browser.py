@@ -11,10 +11,13 @@ Implements the browser-based authentication routes:
 import logging
 import re
 import secrets
-import html
 import urllib.parse
+from pathlib import Path
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query, Request
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, Response
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
@@ -29,6 +32,7 @@ from src.services.auth_service import (
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
 from src.auth.network_access import client_allowed
+from src.utils.json_script import json_for_script
 from config.auth import can_sign_in_on, front_channel
 from config.settings import settings
 
@@ -74,112 +78,58 @@ def _refuse_auth_redirect() -> HTMLResponse:
 
 router = APIRouter(tags=["browser-auth"])
 
+# The sign-in pages live beside the web viewer's templates but stand alone
+# (they extend nothing), so this module keeps its own loader.
+_templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "web" / "templates"))
+
 
 def _auth_success_html(redirect_url: str) -> str:
     """Render an HTML page that navigates to a vscode:// URI.
 
     Browsers often block HTTP 307 redirects to custom protocol URIs, so we
-    return an HTML page that uses JavaScript + a fallback link instead.
+    return an HTML page that uses JavaScript + a fallback link instead
+    (templates/auth_success.html).
     """
-    escaped_url = html.escape(redirect_url, quote=True)
-    # For JS: escape backslashes, single-quotes, and closing-script tags
-    js_safe_url = redirect_url.replace("\\", "\\\\").replace("'", "\\x27").replace("</", "<\\/")
-
-    parts = [
-        "<!DOCTYPE html>",
-        "<html lang='en'>",
-        "<head>",
-        "<meta charset='utf-8'>",
-        "<title>Roo Code - Authentication Successful</title>",
-        "<style>",
-        "  body {",
-        "    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;",
-        "    display: flex; justify-content: center; align-items: center;",
-        "    min-height: 100vh; margin: 0; background: #1e1e1e; color: #ccc;",
-        "  }",
-        "  .container {",
-        "    text-align: center; padding: 2rem; max-width: 480px;",
-        "    background: #2d2d2d; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.4);",
-        "  }",
-        "  .check { font-size: 3rem; margin-bottom: 0.5rem; }",
-        "  h1 { color: #4ec9b0; margin: 0 0 0.5rem; font-size: 1.4rem; }",
-        "  p { color: #999; margin: 0 0 1.5rem; line-height: 1.5; }",
-        "  a {",
-        "    display: inline-block; padding: 0.6rem 1.4rem;",
-        "    background: #0078d4; color: #fff; text-decoration: none;",
-        "    border-radius: 6px; font-weight: 600;",
-        "  }",
-        "  a:hover { background: #1a8ae8; }",
-        "</style>",
-        "</head>",
-        "<body>",
-        "<div class='container'>",
-        "  <div class='check'>&#10003;</div>",
-        "  <h1>Authentication Successful</h1>",
-        "  <p>You have successfully signed in to Roo Code.<br>Returning to VS Code...</p>",
-        f"  <a href='{escaped_url}'>Return to VS Code manually</a>",
-        "</div>",
-        "<script>",
-        "  // Attempt automatic navigation to the custom-protocol URI.",
-        "  // Some browsers ignore window.location for custom schemes;",
-        "  // the clickable link above serves as a fallback.",
-        "  try {",
-        f"    window.location.assign('{js_safe_url}');",
-        "  } catch(e) {",
-        "    // Fallback: user can click the link manually.",
-        "  }",
-        "</script>",
-        "</body>",
-        "</html>",
-    ]
-    return "\n".join(parts)
+    return _templates.get_template("auth_success.html").render(
+        redirect_url=redirect_url,
+        redirect_js=json_for_script(redirect_url),
+    )
 
 
 def _auth_error_html(reason: str, detail: str = "") -> str:
-    """Render an HTML error page for authentication failures."""
-    escaped_reason = html.escape(reason, quote=True)
-    escaped_detail = html.escape(detail, quote=True) if detail else ""
+    """Render an HTML error page for authentication failures (templates/auth_error.html)."""
+    return _templates.get_template("auth_error.html").render(reason=reason, detail=detail)
 
-    parts = [
-        "<!DOCTYPE html>",
-        "<html lang='en'>",
-        "<head>",
-        "<meta charset='utf-8'>",
-        "<title>Roo Code - Authentication Error</title>",
-        "<style>",
-        "  body {",
-        "    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;",
-        "    display: flex; justify-content: center; align-items: center;",
-        "    min-height: 100vh; margin: 0; background: #1e1e1e; color: #ccc;",
-        "  }",
-        "  .container {",
-        "    text-align: center; padding: 2rem; max-width: 480px;",
-        "    background: #2d2d2d; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.4);",
-        "  }",
-        "  .cross { font-size: 3rem; margin-bottom: 0.5rem; color: #f44747; }",
-        "  h1 { color: #f44747; margin: 0 0 0.5rem; font-size: 1.4rem; }",
-        "  p { color: #999; margin: 0 0 0.5rem; line-height: 1.5; }",
-        "  .detail { color: #777; font-size: 0.85rem; }",
-        "  a {",
-        "    display: inline-block; padding: 0.6rem 1.4rem; margin-top: 1rem;",
-        "    background: #444; color: #ccc; text-decoration: none;",
-        "    border-radius: 6px; font-weight: 600;",
-        "  }",
-        "  a:hover { background: #555; }",
-        "</style>",
-        "</head>",
-        "<body>",
-        "<div class='container'>",
-        "  <div class='cross'>&#10007;</div>",
-        "  <h1>Authentication Failed</h1>",
-        f"  <p>{escaped_reason}</p>",
-        f"  <p class='detail'>{escaped_detail}</p>",
-        "  <a href='javascript:window.close()'>Close this tab</a>",
-        "</div>",
-        "</body>",
-        "</html>",
-    ]
-    return "\n".join(parts)
+
+async def _start_sign_in(
+    request: Request,
+    db: AsyncSession,
+    state: str,
+    auth_redirect: str,
+    *,
+    screen_hint: Optional[str] = None,
+) -> Response:
+    """Shared body of the extension's sign-in routes.
+
+    Refuses a redirect that is not an editor callback (DEF-S3), stores the
+    state with a fresh PKCE verifier, and sends the browser to Authentik's
+    authorize URL, with ``&screen_hint=...`` appended when given.
+    """
+    if not is_allowed_auth_redirect(auth_redirect):
+        return _refuse_auth_redirect()
+    code_verifier, code_challenge = generate_pkce_pair()
+
+    await store_oauth_state(db, state, auth_redirect, code_verifier)
+
+    authorize_url = get_authorize_url(
+        state=state,
+        code_challenge=code_challenge,
+        auth_redirect=auth_redirect,
+        front=front_channel(request.headers.get("host")),
+    )
+    if screen_hint:
+        authorize_url += f"&screen_hint={screen_hint}"
+    return RedirectResponse(url=authorize_url)
 
 
 @router.get("/extension/sign-in")
@@ -190,21 +140,7 @@ async def sign_in_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Redirect to Authentik OAuth authorize URL for sign-in."""
-    if not is_allowed_auth_redirect(auth_redirect):
-        return _refuse_auth_redirect()
-    code_verifier, code_challenge = generate_pkce_pair()
-
-    # Store state and PKCE verifier
-    await store_oauth_state(db, state, auth_redirect, code_verifier)
-
-    # Build and redirect to Authentik authorize URL
-    authorize_url = get_authorize_url(
-        state=state,
-        code_challenge=code_challenge,
-        auth_redirect=auth_redirect,
-        front=front_channel(request.headers.get("host")),
-    )
-    return RedirectResponse(url=authorize_url)
+    return await _start_sign_in(request, db, state, auth_redirect)
 
 
 @router.get("/extension/provider-sign-up")
@@ -215,22 +151,7 @@ async def provider_sign_up_page(
     db: AsyncSession = Depends(get_db),
 ):
     """Redirect to Authentik OAuth authorize URL for sign-up."""
-    if not is_allowed_auth_redirect(auth_redirect):
-        return _refuse_auth_redirect()
-    # Same flow as sign-in but with a different screen_hint parameter
-    code_verifier, code_challenge = generate_pkce_pair()
-
-    await store_oauth_state(db, state, auth_redirect, code_verifier)
-
-    authorize_url = get_authorize_url(
-        state=state,
-        code_challenge=code_challenge,
-        auth_redirect=auth_redirect,
-        front=front_channel(request.headers.get("host")),
-    )
-    # Add screen_hint for registration
-    authorize_url += "&screen_hint=signup"
-    return RedirectResponse(url=authorize_url)
+    return await _start_sign_in(request, db, state, auth_redirect, screen_hint="signup")
 
 
 @router.get("/l/{slug}")
@@ -241,20 +162,13 @@ async def landing_page(
     auth_redirect: str = Query(...),
     db: AsyncSession = Depends(get_db),
 ):
-    """Redirect to Authentik OAuth authorize URL for landing page flow."""
-    if not is_allowed_auth_redirect(auth_redirect):
-        return _refuse_auth_redirect()
-    code_verifier, code_challenge = generate_pkce_pair()
+    """Redirect to Authentik OAuth authorize URL for landing page flow.
 
-    await store_oauth_state(db, state, auth_redirect, code_verifier)
-
-    authorize_url = get_authorize_url(
-        state=state,
-        code_challenge=code_challenge,
-        auth_redirect=auth_redirect,
-        front=front_channel(request.headers.get("host")),
-    )
-    return RedirectResponse(url=authorize_url)
+    ``slug`` is not used: the route exists because the extension builds
+    ``/l/<landingPageSlug>`` URLs (packages/cloud/src/WebAuthService.ts), and
+    it behaves exactly like ``/extension/sign-in``.
+    """
+    return await _start_sign_in(request, db, state, auth_redirect)
 
 
 @router.get("/app/login")

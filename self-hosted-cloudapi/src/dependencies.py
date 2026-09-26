@@ -3,23 +3,31 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import get_db
 from src.auth.jwt_issuer import decode_token
-from src.auth.static_token import validate_static_token
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Extract and validate the current user from the Bearer token.
 
-    Supports both session JWTs and static tokens (ROO_CODE_CLOUD_TOKEN).
-    Returns a dict with user_id, org_id, and token_type.
+    Supports both session JWTs and static tokens (ROO_CODE_CLOUD_TOKEN): both
+    are JWTs signed with the same key, so one decode serves both. Returns a
+    dict with user_id, org_id, and token_type.
+
+    The token is decoded once. It used to be decoded twice, first through
+    ``validate_static_token`` (which also requires ``iss == "rcc"`` and
+    ``v == 1``) and, when that refused, again without those checks; both paths
+    built the same dict, so the issuer and version never decided the outcome.
+    That is kept as found: a token signed with our key is accepted whatever
+    its ``iss``/``v`` (see tests/test_route_boilerplate.py). Requiring them
+    would refuse any such token a client already holds, a decision for the
+    owner rather than for a refactor.
+
+    Reads nothing from the database, so it asks for no session.
     """
     if credentials is None:
         raise HTTPException(
@@ -27,15 +35,7 @@ async def get_current_user(
             detail="Missing authentication token",
         )
 
-    token = credentials.credentials
-
-    # Try static token first
-    static_result = validate_static_token(token)
-    if static_result is not None:
-        return static_result
-
-    # Try JWT session token
-    payload = decode_token(token)
+    payload = decode_token(credentials.credentials)
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,13 +61,12 @@ async def get_current_user(
 
 async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-    db: AsyncSession = Depends(get_db),
 ) -> Optional[dict]:
     """Like get_current_user but returns None instead of raising for unauthenticated requests."""
     if credentials is None:
         return None
 
     try:
-        return await get_current_user(credentials, db)
+        return await get_current_user(credentials)
     except HTTPException:
         return None

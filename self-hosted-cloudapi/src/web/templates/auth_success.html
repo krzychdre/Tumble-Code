@@ -1,0 +1,53 @@
+{#- Rendered by routers/browser.py after an extension sign-in. Standalone: it
+    does not extend base.html, it only hands the browser back to the editor.
+    Browsers often block HTTP 3xx redirects to custom-protocol URIs
+    (vscode://...), so the page navigates with JavaScript and keeps a link as
+    the fallback. redirect_url is escaped by autoescape in the href;
+    redirect_js is the same URL through utils/json_script.json_for_script,
+    a JS string literal with "<" escaped, so it cannot close the script
+    element. -#}
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+<meta charset='utf-8'>
+<title>Roo Code - Authentication Successful</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; margin: 0; background: #1e1e1e; color: #ccc;
+  }
+  .container {
+    text-align: center; padding: 2rem; max-width: 480px;
+    background: #2d2d2d; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.4);
+  }
+  .check { font-size: 3rem; margin-bottom: 0.5rem; }
+  h1 { color: #4ec9b0; margin: 0 0 0.5rem; font-size: 1.4rem; }
+  p { color: #999; margin: 0 0 1.5rem; line-height: 1.5; }
+  a {
+    display: inline-block; padding: 0.6rem 1.4rem;
+    background: #0078d4; color: #fff; text-decoration: none;
+    border-radius: 6px; font-weight: 600;
+  }
+  a:hover { background: #1a8ae8; }
+</style>
+</head>
+<body>
+<div class='container'>
+  <div class='check'>&#10003;</div>
+  <h1>Authentication Successful</h1>
+  <p>You have successfully signed in to Roo Code.<br>Returning to VS Code...</p>
+  <a href='{{ redirect_url }}'>Return to VS Code manually</a>
+</div>
+<script>
+  // Attempt automatic navigation to the custom-protocol URI.
+  // Some browsers ignore window.location for custom schemes;
+  // the clickable link above serves as a fallback.
+  try {
+    window.location.assign({{ redirect_js }});
+  } catch(e) {
+    // Fallback: user can click the link manually.
+  }
+</script>
+</body>
+</html>
