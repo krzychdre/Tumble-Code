@@ -575,6 +575,24 @@ async def metrics_page(
     )
 
 
+# The columns _quality_overview reads: the row's identity for the list, and
+# the stored counts quality_of() grades.
+_QUALITY_COLUMNS = (
+    Task.id,
+    Task.title,
+    Task.q_requests,
+    Task.q_errors,
+    Task.q_retries,
+    Task.q_interventions,
+    Task.q_completion_replies,
+    Task.q_condense,
+    Task.q_tools,
+    Task.q_tool_paths,
+    Task.q_distinct_tool_paths,
+    Task.q_completed,
+)
+
+
 async def _quality_overview(db: AsyncSession, user_id: str, period: str) -> dict:
     """How the user's runs went over the period, in aggregate.
 
@@ -591,8 +609,10 @@ async def _quality_overview(db: AsyncSession, user_id: str, period: str) -> dict
     if start is not None:
         filters.append(Task.updated_at >= start)
 
-    result = await db.execute(select(Task).where(*filters))
-    tasks = list(result.scalars().all())
+    # Only what quality_of() and the "roughest" list read, not the whole row
+    # (prompt excerpt, workspace path, token totals, models...).
+    result = await db.execute(select(*_QUALITY_COLUMNS).where(*filters))
+    tasks = result.all()
     if not tasks:
         return {"has_data": False}
 

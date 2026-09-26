@@ -1,0 +1,1388 @@
+{
+  "metrics": {
+    "today": {
+      "period": "today",
+      "period_label": "Today",
+      "totals": {
+        "input": 3000,
+        "output": 300,
+        "cache_read": 300,
+        "cache_write": 40,
+        "cost": 0.75,
+        "completions": 2,
+        "total_tokens": 3300,
+        "total_tokens_fmt": "3.3k"
+      },
+      "duration_ms": 31891200000,
+      "duration": "8858h 40m",
+      "task_count": 1,
+      "by_model": [
+        {
+          "name": "glm-5",
+          "tokens": 3300,
+          "cost": 0.75,
+          "count": 2,
+          "tokens_fmt": "3.3k"
+        }
+      ],
+      "by_mode": [
+        {
+          "name": "code",
+          "tokens": 3300,
+          "cost": 0.75,
+          "count": 2,
+          "tokens_fmt": "3.3k"
+        }
+      ],
+      "by_provider": [
+        {
+          "name": "zai",
+          "tokens": 3300,
+          "cost": 0.75,
+          "count": 2,
+          "tokens_fmt": "3.3k"
+        }
+      ],
+      "by_kind": [
+        {
+          "name": "task",
+          "tokens": 3300,
+          "cost": 0.75,
+          "count": 2,
+          "tokens_fmt": "3.3k",
+          "label": "Conversation"
+        }
+      ],
+      "unreported": 0,
+      "embeddings": {
+        "tokens": 5000,
+        "tokens_fmt": "5k",
+        "calls": 1,
+        "by_source": [
+          {
+            "name": "index-scan",
+            "tokens": 5000,
+            "count": 1,
+            "tokens_fmt": "5k"
+          }
+        ],
+        "has_data": true
+      },
+      "by_day": [
+        {
+          "day": "2026-09-20",
+          "tokens": 3300,
+          "cost": 0.75
+        }
+      ],
+      "chart": {
+        "days": [
+          "2026-09-20"
+        ],
+        "day_tokens": [
+          3300
+        ],
+        "day_cost": [
+          0.75
+        ],
+        "model_labels": [
+          "glm-5"
+        ],
+        "model_tokens": [
+          3300
+        ],
+        "mode_labels": [
+          "code"
+        ],
+        "mode_tokens": [
+          3300
+        ]
+      },
+      "has_data": true
+    },
+    "7d": {
+      "period": "7d",
+      "period_label": "7 days",
+      "totals": {
+        "input": 3900,
+        "output": 390,
+        "cache_read": 300,
+        "cache_write": 40,
+        "cost": 0.905,
+        "completions": 10,
+        "total_tokens": 4290,
+        "total_tokens_fmt": "4.3k"
+      },
+      "duration_ms": 63329599500,
+      "duration": "17591h 33m",
+      "task_count": 4,
+      "by_model": [
+        {
+          "name": "glm-5",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 5,
+          "tokens_fmt": "3.4k"
+        },
+        {
+          "name": "qwen-3",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_mode": [
+        {
+          "name": "code",
+          "tokens": 3300,
+          "cost": 0.75,
+          "count": 3,
+          "tokens_fmt": "3.3k"
+        },
+        {
+          "name": "architect",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550"
+        },
+        {
+          "name": "ask",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330"
+        },
+        {
+          "name": "debug",
+          "tokens": 110,
+          "cost": 0.03,
+          "count": 2,
+          "tokens_fmt": "110"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_provider": [
+        {
+          "name": "zai",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 5,
+          "tokens_fmt": "3.4k"
+        },
+        {
+          "name": "openai",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_kind": [
+        {
+          "name": "task",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 8,
+          "tokens_fmt": "3.4k",
+          "label": "Conversation"
+        },
+        {
+          "name": "condense",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550",
+          "label": "Condensing"
+        },
+        {
+          "name": "memory",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330",
+          "label": "Memory recall"
+        }
+      ],
+      "unreported": 1,
+      "embeddings": {
+        "tokens": 5700,
+        "tokens_fmt": "5.7k",
+        "calls": 3,
+        "by_source": [
+          {
+            "name": "index-scan",
+            "tokens": 5000,
+            "count": 1,
+            "tokens_fmt": "5k"
+          },
+          {
+            "name": "search",
+            "tokens": 700,
+            "count": 1,
+            "tokens_fmt": "700"
+          },
+          {
+            "name": "unknown",
+            "tokens": 0,
+            "count": 1,
+            "tokens_fmt": "0"
+          }
+        ],
+        "has_data": true
+      },
+      "by_day": [
+        {
+          "day": "2026-09-14",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-15",
+          "tokens": 110,
+          "cost": 0.03
+        },
+        {
+          "day": "2026-09-17",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-18",
+          "tokens": 330,
+          "cost": 0.125
+        },
+        {
+          "day": "2026-09-19",
+          "tokens": 550,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-20",
+          "tokens": 3300,
+          "cost": 0.75
+        }
+      ],
+      "chart": {
+        "days": [
+          "2026-09-14",
+          "2026-09-15",
+          "2026-09-17",
+          "2026-09-18",
+          "2026-09-19",
+          "2026-09-20"
+        ],
+        "day_tokens": [
+          0,
+          110,
+          0,
+          330,
+          550,
+          3300
+        ],
+        "day_cost": [
+          0.0,
+          0.03,
+          0.0,
+          0.125,
+          0.0,
+          0.75
+        ],
+        "model_labels": [
+          "glm-5",
+          "qwen-3",
+          "unknown"
+        ],
+        "model_tokens": [
+          3410,
+          880,
+          0
+        ],
+        "mode_labels": [
+          "code",
+          "architect",
+          "ask",
+          "debug",
+          "unknown"
+        ],
+        "mode_tokens": [
+          3300,
+          550,
+          330,
+          110,
+          0
+        ]
+      },
+      "has_data": true
+    },
+    "30d": {
+      "period": "30d",
+      "period_label": "30 days",
+      "totals": {
+        "input": 11000,
+        "output": 1100,
+        "cache_read": 300,
+        "cache_write": 40,
+        "cost": 2.705,
+        "completions": 12,
+        "total_tokens": 12100,
+        "total_tokens_fmt": "12.1k"
+      },
+      "duration_ms": 63329599500,
+      "duration": "17591h 33m",
+      "task_count": 5,
+      "by_model": [
+        {
+          "name": "claude",
+          "tokens": 7810,
+          "cost": 1.8,
+          "count": 2,
+          "tokens_fmt": "7.8k"
+        },
+        {
+          "name": "glm-5",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 5,
+          "tokens_fmt": "3.4k"
+        },
+        {
+          "name": "qwen-3",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_mode": [
+        {
+          "name": "code",
+          "tokens": 11000,
+          "cost": 2.5,
+          "count": 4,
+          "tokens_fmt": "11k"
+        },
+        {
+          "name": "architect",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550"
+        },
+        {
+          "name": "ask",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330"
+        },
+        {
+          "name": "orchestrator",
+          "tokens": 110,
+          "cost": 0.05,
+          "count": 1,
+          "tokens_fmt": "110"
+        },
+        {
+          "name": "debug",
+          "tokens": 110,
+          "cost": 0.03,
+          "count": 2,
+          "tokens_fmt": "110"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_provider": [
+        {
+          "name": "anthropic",
+          "tokens": 7810,
+          "cost": 1.8,
+          "count": 2,
+          "tokens_fmt": "7.8k"
+        },
+        {
+          "name": "zai",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 5,
+          "tokens_fmt": "3.4k"
+        },
+        {
+          "name": "openai",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_kind": [
+        {
+          "name": "enhance",
+          "tokens": 7700,
+          "cost": 1.75,
+          "count": 1,
+          "tokens_fmt": "7.7k",
+          "label": "Prompt enhancement"
+        },
+        {
+          "name": "task",
+          "tokens": 3520,
+          "cost": 0.83,
+          "count": 9,
+          "tokens_fmt": "3.5k",
+          "label": "Conversation"
+        },
+        {
+          "name": "condense",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550",
+          "label": "Condensing"
+        },
+        {
+          "name": "memory",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330",
+          "label": "Memory recall"
+        }
+      ],
+      "unreported": 1,
+      "embeddings": {
+        "tokens": 5700,
+        "tokens_fmt": "5.7k",
+        "calls": 3,
+        "by_source": [
+          {
+            "name": "index-scan",
+            "tokens": 5000,
+            "count": 1,
+            "tokens_fmt": "5k"
+          },
+          {
+            "name": "search",
+            "tokens": 700,
+            "count": 1,
+            "tokens_fmt": "700"
+          },
+          {
+            "name": "unknown",
+            "tokens": 0,
+            "count": 1,
+            "tokens_fmt": "0"
+          }
+        ],
+        "has_data": true
+      },
+      "by_day": [
+        {
+          "day": "2026-08-31",
+          "tokens": 110,
+          "cost": 0.05
+        },
+        {
+          "day": "2026-09-08",
+          "tokens": 7700,
+          "cost": 1.75
+        },
+        {
+          "day": "2026-09-14",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-15",
+          "tokens": 110,
+          "cost": 0.03
+        },
+        {
+          "day": "2026-09-17",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-18",
+          "tokens": 330,
+          "cost": 0.125
+        },
+        {
+          "day": "2026-09-19",
+          "tokens": 550,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-20",
+          "tokens": 3300,
+          "cost": 0.75
+        }
+      ],
+      "chart": {
+        "days": [
+          "2026-08-31",
+          "2026-09-08",
+          "2026-09-14",
+          "2026-09-15",
+          "2026-09-17",
+          "2026-09-18",
+          "2026-09-19",
+          "2026-09-20"
+        ],
+        "day_tokens": [
+          110,
+          7700,
+          0,
+          110,
+          0,
+          330,
+          550,
+          3300
+        ],
+        "day_cost": [
+          0.05,
+          1.75,
+          0.0,
+          0.03,
+          0.0,
+          0.125,
+          0.0,
+          0.75
+        ],
+        "model_labels": [
+          "claude",
+          "glm-5",
+          "qwen-3",
+          "unknown"
+        ],
+        "model_tokens": [
+          7810,
+          3410,
+          880,
+          0
+        ],
+        "mode_labels": [
+          "code",
+          "architect",
+          "ask",
+          "orchestrator",
+          "debug",
+          "unknown"
+        ],
+        "mode_tokens": [
+          11000,
+          550,
+          330,
+          110,
+          110,
+          0
+        ]
+      },
+      "has_data": true
+    },
+    "90d": {
+      "period": "90d",
+      "period_label": "90 days",
+      "totals": {
+        "input": 11000,
+        "output": 1100,
+        "cache_read": 300,
+        "cache_write": 40,
+        "cost": 2.705,
+        "completions": 12,
+        "total_tokens": 12100,
+        "total_tokens_fmt": "12.1k"
+      },
+      "duration_ms": 63329599500,
+      "duration": "17591h 33m",
+      "task_count": 5,
+      "by_model": [
+        {
+          "name": "claude",
+          "tokens": 7810,
+          "cost": 1.8,
+          "count": 2,
+          "tokens_fmt": "7.8k"
+        },
+        {
+          "name": "glm-5",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 5,
+          "tokens_fmt": "3.4k"
+        },
+        {
+          "name": "qwen-3",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_mode": [
+        {
+          "name": "code",
+          "tokens": 11000,
+          "cost": 2.5,
+          "count": 4,
+          "tokens_fmt": "11k"
+        },
+        {
+          "name": "architect",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550"
+        },
+        {
+          "name": "ask",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330"
+        },
+        {
+          "name": "orchestrator",
+          "tokens": 110,
+          "cost": 0.05,
+          "count": 1,
+          "tokens_fmt": "110"
+        },
+        {
+          "name": "debug",
+          "tokens": 110,
+          "cost": 0.03,
+          "count": 2,
+          "tokens_fmt": "110"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_provider": [
+        {
+          "name": "anthropic",
+          "tokens": 7810,
+          "cost": 1.8,
+          "count": 2,
+          "tokens_fmt": "7.8k"
+        },
+        {
+          "name": "zai",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 5,
+          "tokens_fmt": "3.4k"
+        },
+        {
+          "name": "openai",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_kind": [
+        {
+          "name": "enhance",
+          "tokens": 7700,
+          "cost": 1.75,
+          "count": 1,
+          "tokens_fmt": "7.7k",
+          "label": "Prompt enhancement"
+        },
+        {
+          "name": "task",
+          "tokens": 3520,
+          "cost": 0.83,
+          "count": 9,
+          "tokens_fmt": "3.5k",
+          "label": "Conversation"
+        },
+        {
+          "name": "condense",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550",
+          "label": "Condensing"
+        },
+        {
+          "name": "memory",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330",
+          "label": "Memory recall"
+        }
+      ],
+      "unreported": 1,
+      "embeddings": {
+        "tokens": 45700,
+        "tokens_fmt": "45.7k",
+        "calls": 4,
+        "by_source": [
+          {
+            "name": "index-scan",
+            "tokens": 45000,
+            "count": 2,
+            "tokens_fmt": "45k"
+          },
+          {
+            "name": "search",
+            "tokens": 700,
+            "count": 1,
+            "tokens_fmt": "700"
+          },
+          {
+            "name": "unknown",
+            "tokens": 0,
+            "count": 1,
+            "tokens_fmt": "0"
+          }
+        ],
+        "has_data": true
+      },
+      "by_day": [
+        {
+          "day": "2026-08-31",
+          "tokens": 110,
+          "cost": 0.05
+        },
+        {
+          "day": "2026-09-08",
+          "tokens": 7700,
+          "cost": 1.75
+        },
+        {
+          "day": "2026-09-14",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-15",
+          "tokens": 110,
+          "cost": 0.03
+        },
+        {
+          "day": "2026-09-17",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-18",
+          "tokens": 330,
+          "cost": 0.125
+        },
+        {
+          "day": "2026-09-19",
+          "tokens": 550,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-20",
+          "tokens": 3300,
+          "cost": 0.75
+        }
+      ],
+      "chart": {
+        "days": [
+          "2026-08-31",
+          "2026-09-08",
+          "2026-09-14",
+          "2026-09-15",
+          "2026-09-17",
+          "2026-09-18",
+          "2026-09-19",
+          "2026-09-20"
+        ],
+        "day_tokens": [
+          110,
+          7700,
+          0,
+          110,
+          0,
+          330,
+          550,
+          3300
+        ],
+        "day_cost": [
+          0.05,
+          1.75,
+          0.0,
+          0.03,
+          0.0,
+          0.125,
+          0.0,
+          0.75
+        ],
+        "model_labels": [
+          "claude",
+          "glm-5",
+          "qwen-3",
+          "unknown"
+        ],
+        "model_tokens": [
+          7810,
+          3410,
+          880,
+          0
+        ],
+        "mode_labels": [
+          "code",
+          "architect",
+          "ask",
+          "orchestrator",
+          "debug",
+          "unknown"
+        ],
+        "mode_tokens": [
+          11000,
+          550,
+          330,
+          110,
+          110,
+          0
+        ]
+      },
+      "has_data": true
+    },
+    "all": {
+      "period": "all",
+      "period_label": "All time",
+      "totals": {
+        "input": 134457,
+        "output": 8991,
+        "cache_read": 300,
+        "cache_write": 40,
+        "cost": 5.704999999999999,
+        "completions": 14,
+        "total_tokens": 143448,
+        "total_tokens_fmt": "143.4k"
+      },
+      "duration_ms": 63415999500,
+      "duration": "17615h 33m",
+      "task_count": 6,
+      "by_model": [
+        {
+          "name": "old-model",
+          "tokens": 131348,
+          "cost": 3.0,
+          "count": 2,
+          "tokens_fmt": "131.3k"
+        },
+        {
+          "name": "claude",
+          "tokens": 7810,
+          "cost": 1.8,
+          "count": 2,
+          "tokens_fmt": "7.8k"
+        },
+        {
+          "name": "glm-5",
+          "tokens": 3410,
+          "cost": 0.78,
+          "count": 5,
+          "tokens_fmt": "3.4k"
+        },
+        {
+          "name": "qwen-3",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_mode": [
+        {
+          "name": "code",
+          "tokens": 142348,
+          "cost": 5.5,
+          "count": 6,
+          "tokens_fmt": "142.3k"
+        },
+        {
+          "name": "architect",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550"
+        },
+        {
+          "name": "ask",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330"
+        },
+        {
+          "name": "orchestrator",
+          "tokens": 110,
+          "cost": 0.05,
+          "count": 1,
+          "tokens_fmt": "110"
+        },
+        {
+          "name": "debug",
+          "tokens": 110,
+          "cost": 0.03,
+          "count": 2,
+          "tokens_fmt": "110"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_provider": [
+        {
+          "name": "zai",
+          "tokens": 134758,
+          "cost": 3.78,
+          "count": 7,
+          "tokens_fmt": "134.8k"
+        },
+        {
+          "name": "anthropic",
+          "tokens": 7810,
+          "cost": 1.8,
+          "count": 2,
+          "tokens_fmt": "7.8k"
+        },
+        {
+          "name": "openai",
+          "tokens": 880,
+          "cost": 0.125,
+          "count": 2,
+          "tokens_fmt": "880"
+        },
+        {
+          "name": "unknown",
+          "tokens": 0,
+          "cost": 0.0,
+          "count": 3,
+          "tokens_fmt": "0"
+        }
+      ],
+      "by_kind": [
+        {
+          "name": "task",
+          "tokens": 134868,
+          "cost": 3.8299999999999996,
+          "count": 11,
+          "tokens_fmt": "134.9k",
+          "label": "Conversation"
+        },
+        {
+          "name": "enhance",
+          "tokens": 7700,
+          "cost": 1.75,
+          "count": 1,
+          "tokens_fmt": "7.7k",
+          "label": "Prompt enhancement"
+        },
+        {
+          "name": "condense",
+          "tokens": 550,
+          "cost": 0.0,
+          "count": 1,
+          "tokens_fmt": "550",
+          "label": "Condensing"
+        },
+        {
+          "name": "memory",
+          "tokens": 330,
+          "cost": 0.125,
+          "count": 1,
+          "tokens_fmt": "330",
+          "label": "Memory recall"
+        }
+      ],
+      "unreported": 1,
+      "embeddings": {
+        "tokens": 45700,
+        "tokens_fmt": "45.7k",
+        "calls": 4,
+        "by_source": [
+          {
+            "name": "index-scan",
+            "tokens": 45000,
+            "count": 2,
+            "tokens_fmt": "45k"
+          },
+          {
+            "name": "search",
+            "tokens": 700,
+            "count": 1,
+            "tokens_fmt": "700"
+          },
+          {
+            "name": "unknown",
+            "tokens": 0,
+            "count": 1,
+            "tokens_fmt": "0"
+          }
+        ],
+        "has_data": true
+      },
+      "by_day": [
+        {
+          "day": "2026-03-04",
+          "tokens": 131346,
+          "cost": 3.0
+        },
+        {
+          "day": "2026-03-05",
+          "tokens": 2,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-08-31",
+          "tokens": 110,
+          "cost": 0.05
+        },
+        {
+          "day": "2026-09-08",
+          "tokens": 7700,
+          "cost": 1.75
+        },
+        {
+          "day": "2026-09-14",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-15",
+          "tokens": 110,
+          "cost": 0.03
+        },
+        {
+          "day": "2026-09-17",
+          "tokens": 0,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-18",
+          "tokens": 330,
+          "cost": 0.125
+        },
+        {
+          "day": "2026-09-19",
+          "tokens": 550,
+          "cost": 0.0
+        },
+        {
+          "day": "2026-09-20",
+          "tokens": 3300,
+          "cost": 0.75
+        }
+      ],
+      "chart": {
+        "days": [
+          "2026-03-04",
+          "2026-03-05",
+          "2026-08-31",
+          "2026-09-08",
+          "2026-09-14",
+          "2026-09-15",
+          "2026-09-17",
+          "2026-09-18",
+          "2026-09-19",
+          "2026-09-20"
+        ],
+        "day_tokens": [
+          131346,
+          2,
+          110,
+          7700,
+          0,
+          110,
+          0,
+          330,
+          550,
+          3300
+        ],
+        "day_cost": [
+          3.0,
+          0.0,
+          0.05,
+          1.75,
+          0.0,
+          0.03,
+          0.0,
+          0.125,
+          0.0,
+          0.75
+        ],
+        "model_labels": [
+          "old-model",
+          "claude",
+          "glm-5",
+          "qwen-3",
+          "unknown"
+        ],
+        "model_tokens": [
+          131348,
+          7810,
+          3410,
+          880,
+          0
+        ],
+        "mode_labels": [
+          "code",
+          "architect",
+          "ask",
+          "orchestrator",
+          "debug",
+          "unknown"
+        ],
+        "mode_tokens": [
+          142348,
+          550,
+          330,
+          110,
+          110,
+          0
+        ]
+      },
+      "has_data": true
+    }
+  },
+  "quality": {
+    "7d": {
+      "has_data": true,
+      "total": 12,
+      "grades": [
+        {
+          "key": "clean",
+          "label": "Clean",
+          "count": 2,
+          "share": 17
+        },
+        {
+          "key": "friction",
+          "label": "Friction",
+          "count": 9,
+          "share": 75
+        },
+        {
+          "key": "unfinished",
+          "label": "Unfinished",
+          "count": 1,
+          "share": 8
+        }
+      ],
+      "totals": {
+        "interventions": 1,
+        "completion_replies": 2,
+        "errors": 22,
+        "retries": 93,
+        "condense": 1,
+        "repeated_work": 4,
+        "requests": 19
+      },
+      "roughest": [
+        {
+          "id": "q-untitled",
+          "title": "Untitled task",
+          "friction": 19,
+          "reasons": "19 errors"
+        },
+        {
+          "id": "q-f6",
+          "title": "Friction 6",
+          "friction": 17,
+          "reasons": "17 provider retries"
+        },
+        {
+          "id": "q-f5",
+          "title": "Friction 5",
+          "friction": 16,
+          "reasons": "16 provider retries"
+        },
+        {
+          "id": "q-f4",
+          "title": "Friction 4",
+          "friction": 15,
+          "reasons": "15 provider retries"
+        },
+        {
+          "id": "q-f3",
+          "title": "Friction 3",
+          "friction": 14,
+          "reasons": "14 provider retries"
+        },
+        {
+          "id": "q-f2",
+          "title": "Friction 2",
+          "friction": 13,
+          "reasons": "13 provider retries"
+        },
+        {
+          "id": "q-f1",
+          "title": "Friction 1",
+          "friction": 12,
+          "reasons": "12 provider retries"
+        },
+        {
+          "id": "q-rough",
+          "title": "Rough run",
+          "friction": 11,
+          "reasons": "1 correction from you; 2 errors; 3 provider retries; context condensed 1 time; 4 repeated tool calls"
+        }
+      ]
+    },
+    "all": {
+      "has_data": true,
+      "total": 13,
+      "grades": [
+        {
+          "key": "clean",
+          "label": "Clean",
+          "count": 2,
+          "share": 15
+        },
+        {
+          "key": "friction",
+          "label": "Friction",
+          "count": 10,
+          "share": 77
+        },
+        {
+          "key": "unfinished",
+          "label": "Unfinished",
+          "count": 1,
+          "share": 8
+        }
+      ],
+      "totals": {
+        "interventions": 1,
+        "completion_replies": 2,
+        "errors": 27,
+        "retries": 93,
+        "condense": 1,
+        "repeated_work": 4,
+        "requests": 20
+      },
+      "roughest": [
+        {
+          "id": "q-untitled",
+          "title": "Untitled task",
+          "friction": 19,
+          "reasons": "19 errors"
+        },
+        {
+          "id": "q-f6",
+          "title": "Friction 6",
+          "friction": 17,
+          "reasons": "17 provider retries"
+        },
+        {
+          "id": "q-f5",
+          "title": "Friction 5",
+          "friction": 16,
+          "reasons": "16 provider retries"
+        },
+        {
+          "id": "q-f4",
+          "title": "Friction 4",
+          "friction": 15,
+          "reasons": "15 provider retries"
+        },
+        {
+          "id": "q-f3",
+          "title": "Friction 3",
+          "friction": 14,
+          "reasons": "14 provider retries"
+        },
+        {
+          "id": "q-f2",
+          "title": "Friction 2",
+          "friction": 13,
+          "reasons": "13 provider retries"
+        },
+        {
+          "id": "q-f1",
+          "title": "Friction 1",
+          "friction": 12,
+          "reasons": "12 provider retries"
+        },
+        {
+          "id": "q-rough",
+          "title": "Rough run",
+          "friction": 11,
+          "reasons": "1 correction from you; 2 errors; 3 provider retries; context condensed 1 time; 4 repeated tool calls"
+        }
+      ]
+    }
+  }
+}

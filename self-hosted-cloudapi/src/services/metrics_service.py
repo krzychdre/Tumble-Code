@@ -147,7 +147,11 @@ async def compute_user_metrics(
         period = DEFAULT_PERIOD
     start = period_start(period, now)
 
-    stmt = select(TelemetryEvent).where(
+    # Only the two columns the aggregation reads, as plain tuples: no ORM
+    # entity per event (identity map, attribute instrumentation) and none of
+    # the id/user/organization/type/task columns. The (user_id, event_type,
+    # created_at) index serves the filter, the range and the ORDER BY.
+    stmt = select(TelemetryEvent.properties, TelemetryEvent.created_at).where(
         TelemetryEvent.user_id == user_id,
         TelemetryEvent.event_type == LLM_COMPLETION_EVENT,
     )
@@ -155,8 +159,7 @@ async def compute_user_metrics(
         stmt = stmt.where(TelemetryEvent.created_at >= start)
     stmt = stmt.order_by(TelemetryEvent.created_at)
 
-    result = await db.execute(stmt)
-    rows = list(result.scalars().all())
+    rows = (await db.execute(stmt)).all()
 
     totals = {
         "input": 0,
@@ -184,8 +187,8 @@ async def compute_user_metrics(
         slot["cost"] += cost
         slot["count"] += 1
 
-    for row in rows:
-        props = parse_event_props(row.properties)
+    for payload, created_at in rows:
+        props = parse_event_props(payload)
         if props is None:
             continue
 
@@ -212,7 +215,7 @@ async def compute_user_metrics(
         _bucket(by_provider, str(props.get("apiProvider") or "unknown"), tokens, cost)
         _bucket(by_kind, kind, tokens, cost)
 
-        created = row.created_at or (now or datetime.now(timezone.utc))
+        created = created_at or (now or datetime.now(timezone.utc))
         day = created.strftime("%Y-%m-%d")
         dslot = by_day.setdefault(day, {"day": day, "tokens": 0, "cost": 0.0})
         dslot["tokens"] += tokens
