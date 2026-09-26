@@ -293,6 +293,51 @@ describe("importExport", () => {
 			expect(mockContextProxy.setValues).toHaveBeenCalledWith({ customInstructions: "Keep this setting" })
 		})
 
+		it("pins the exact warning text for skipped global settings (zod messages reach the user)", async () => {
+			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
+			;(fs.readFile as Mock).mockResolvedValue(
+				JSON.stringify({
+					providerProfiles: {
+						currentApiConfigName: "valid-profile",
+						apiConfigs: {
+							"valid-profile": {
+								apiProvider: "openai" as ProviderName,
+								apiKey: "test-key",
+								id: "valid-id",
+							},
+						},
+					},
+					globalSettings: {
+						autoApprovalEnabled: "yes",
+						mode: 7,
+						checkpointTimeout: 1.5,
+						customModes: [{ slug: "broken mode", name: "", roleDefinition: "x", groups: ["read"] }],
+					},
+				}),
+			)
+			mockProviderSettingsManager.export.mockResolvedValue({
+				currentApiConfigName: "default",
+				apiConfigs: { default: { apiProvider: "anthropic" as ProviderName, id: "default-id" } },
+			})
+			mockProviderSettingsManager.listConfig.mockResolvedValue([
+				{ name: "valid-profile", id: "valid-id", apiProvider: "openai" as ProviderName },
+			])
+
+			const result = await importSettings({
+				providerSettingsManager: mockProviderSettingsManager,
+				contextProxy: mockContextProxy,
+				customModesManager: mockCustomModesManager,
+			})
+
+			expect(result.success).toBe(true)
+			expect((result as { warnings?: string[] }).warnings).toEqual([
+				'Setting "globalSettings.autoApprovalEnabled" was skipped: [value]: Invalid input: expected boolean, received string',
+				'Setting "globalSettings.mode" was skipped: [value]: Invalid input: expected string, received number',
+				'Setting "globalSettings.checkpointTimeout" was skipped: [value]: Invalid input: expected int, received number',
+				'Setting "globalSettings.customModes" was skipped: [0.slug]: Slug must contain only letters numbers and dashes, [0.name]: Name is required',
+			])
+		})
+
 		it("should import settings successfully from a valid file", async () => {
 			;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: "/mock/path/settings.json" }])
 
@@ -365,7 +410,10 @@ describe("importExport", () => {
 				customModesManager: mockCustomModesManager,
 			})
 
-			expect(result).toEqual({ success: false, error: "[providerProfiles.currentApiConfigName]: Required" })
+			expect(result).toEqual({
+				success: false,
+				error: "[providerProfiles.currentApiConfigName]: Invalid input: expected string, received undefined",
+			})
 			expect(fs.readFile).toHaveBeenCalledWith("/mock/path/settings.json", "utf-8")
 			expect(mockProviderSettingsManager.import).not.toHaveBeenCalled()
 			expect(mockContextProxy.setValues).not.toHaveBeenCalled()

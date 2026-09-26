@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { zodToJsonSchema } from "zod-to-json-schema"
 
 import {
 	activeProviderIds,
@@ -11,6 +10,8 @@ import {
 	providerSettingsSchemaDiscriminated,
 	SECRET_STATE_KEYS,
 } from "../index.js"
+
+import { discriminatorMap } from "./helpers/discriminated-union.js"
 
 // The legacy flat arms of `providerSettingsSchemaDiscriminated` carry three
 // groups of fields: the shared profile settings, the provider's own config
@@ -57,8 +58,10 @@ const CREDENTIAL_FIELDS: Record<KnownProviderId, readonly string[]> = {
 	"qwen-code": [],
 }
 
-const legacyArm = (providerId: KnownProviderId): z.AnyZodObject => {
-	const arm = providerSettingsSchemaDiscriminated.optionsMap.get(providerId)
+const legacyArms = discriminatorMap(providerSettingsSchemaDiscriminated, "apiProvider")
+
+const legacyArm = (providerId: KnownProviderId): z.ZodObject => {
+	const arm = legacyArms.get(providerId)
 	if (!arm) throw new Error(`No legacy arm for ${providerId}`)
 	return arm
 }
@@ -77,7 +80,7 @@ const sortKeysDeep = (value: unknown): unknown => {
 	return value
 }
 
-const describeSchema = (schema: z.ZodTypeAny) => sortKeysDeep(zodToJsonSchema(schema, { $refStrategy: "none" }))
+const describeSchema = (schema: z.ZodType) => sortKeysDeep(z.toJSONSchema(schema, { reused: "inline" }))
 
 describe("legacy provider settings arms against the provider config schemas", () => {
 	it("has one legacy arm per active provider", () => {
@@ -89,7 +92,9 @@ describe("legacy provider settings arms against the provider config schemas", ()
 	it.each([...activeProviderIds])("%s: arm fields minus shared and credential fields equal the config", (id) => {
 		const armFields = Object.keys(legacyArm(id).shape).filter(
 			(field) =>
-				field !== "apiProvider" && !LEGACY_SHARED_FIELDS.includes(field) && !CREDENTIAL_FIELDS[id].includes(field),
+				field !== "apiProvider" &&
+				!LEGACY_SHARED_FIELDS.includes(field) &&
+				!CREDENTIAL_FIELDS[id].includes(field),
 		)
 		const configFields = Object.keys(providerConfigSchemas[id].shape)
 		expect(armFields.sort()).toEqual(configFields.sort())
@@ -113,7 +118,7 @@ describe("legacy provider settings arms against the provider config schemas", ()
 		const arm = legacyArm(id)
 		for (const [field, schema] of Object.entries(providerConfigSchemas[id].shape)) {
 			if (!(field in arm.shape)) continue
-			expect(describeSchema(arm.shape[field])).toEqual(describeSchema(schema as z.ZodTypeAny))
+			expect(describeSchema(arm.shape[field])).toEqual(describeSchema(schema as z.ZodType))
 		}
 	})
 })

@@ -94,7 +94,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 		const result = modeConfigSchema.safeParse(newMode)
 		if (!result.success) {
 			const nextErrors: Partial<Record<ErrorField, string>> = {}
-			for (const error of result.error.errors) {
+			for (const error of result.error.issues) {
 				const field = String(error.path[0])
 				if (ERROR_FIELDS.includes(field)) {
 					nextErrors[field as ErrorField] = error.message

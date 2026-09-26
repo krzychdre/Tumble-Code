@@ -137,7 +137,7 @@ const baseProviderSettingsSchema = z.object({
  * are the only provider fields the persisted config deliberately leaves out.
  */
 const legacyProviderArm = <Config extends z.ZodRawShape, Credentials extends z.ZodRawShape>(
-	config: z.ZodObject<Config, z.UnknownKeysParam>,
+	config: z.ZodObject<Config>,
 	credentials: Credentials,
 ) => baseProviderSettingsSchema.extend(config.shape).extend(credentials)
 

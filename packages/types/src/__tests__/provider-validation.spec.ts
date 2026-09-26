@@ -10,12 +10,16 @@ import {
 	type ProviderName,
 } from "../index.js"
 
+import { discriminatorMap } from "./helpers/discriminated-union.js"
+
+const legacyArms = discriminatorMap(providerSettingsSchemaDiscriminated, "apiProvider")
+
 // Providers whose secrets are a credential set resolved by a cloud SDK, not
 // one API key (see providerApiKeyFields).
 const CREDENTIAL_SET_PROVIDERS: readonly ProviderName[] = ["bedrock", "vertex"]
 
 const secretFieldsOfArm = (provider: ProviderName): string[] => {
-	const arm = providerSettingsSchemaDiscriminated.optionsMap.get(provider)
+	const arm = legacyArms.get(provider)
 	if (!arm) throw new Error(`No legacy arm for ${provider}`)
 	return Object.keys(arm.shape).filter((field) => (SECRET_STATE_KEYS as readonly string[]).includes(field))
 }
@@ -71,7 +75,7 @@ describe("providerRequiresModelId", () => {
 		for (const provider of activeProviderIds) {
 			const strategy = providerValidationRegistry[provider]
 			if (strategy.kind !== "required-fields") continue
-			const arm = providerSettingsSchemaDiscriminated.optionsMap.get(provider)!
+			const arm = legacyArms.get(provider)!
 			for (const field of strategy.fields) {
 				expect(Object.keys(arm.shape)).toContain(field)
 			}

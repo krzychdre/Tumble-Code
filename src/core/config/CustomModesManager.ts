@@ -465,11 +465,11 @@ export class CustomModesManager {
 			// Validate the mode configuration before saving
 			const validationResult = modeConfigSchema.safeParse(config)
 			if (!validationResult.success) {
-				const errorMessages = validationResult.error.errors
+				const errorMessages = validationResult.error.issues
 					.map((err) => `${err.path.join(".")}: ${err.message}`)
 					.join(", ")
 				const errorMessage = `Invalid mode configuration: ${errorMessages}`
-				logger.error("Mode validation failed", { slug, errors: validationResult.error.errors })
+				logger.error("Mode validation failed", { slug, errors: validationResult.error.issues })
 				vscode.window.showErrorMessage(t("common:customModes.errors.updateFailed", { error: errorMessage }))
 				throw new Error(errorMessage)
 			}
@@ -1022,11 +1022,11 @@ export class CustomModesManager {
 				const validationResult = modeConfigSchema.safeParse(modeConfig)
 				if (!validationResult.success) {
 					logger.error(`Invalid mode configuration for ${modeConfig.slug}`, {
-						errors: validationResult.error.errors,
+						errors: validationResult.error.issues,
 					})
 					return {
 						success: false,
-						error: `Invalid mode configuration for ${modeConfig.slug}: ${validationResult.error.errors.map((e) => e.message).join(", ")}`,
+						error: `Invalid mode configuration for ${modeConfig.slug}: ${validationResult.error.issues.map((e) => e.message).join(", ")}`,
 					}
 				}
 

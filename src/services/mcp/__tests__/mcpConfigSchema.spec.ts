@@ -74,7 +74,7 @@ describe("formatSchemaIssues", () => {
 		const result = McpSettingsSchema.safeParse({ mcpServers: { a: { command: "" }, b: { command: "" } } })
 		expect(result.success).toBe(false)
 
-		const error = (result as z.SafeParseError<unknown>).error
+		const error = (result as z.ZodSafeParseError<unknown>).error
 		expect(formatSchemaIssues(error, "\n")).toBe("mcpServers.a: Invalid input\nmcpServers.b: Invalid input")
 		expect(formatSchemaIssues(error, "; ")).toBe("mcpServers.a: Invalid input; mcpServers.b: Invalid input")
 	})

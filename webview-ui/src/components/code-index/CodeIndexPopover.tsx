@@ -319,7 +319,7 @@ export const CodeIndexPopover: React.FC<CodeIndexPopoverProps> = ({
 				const errors: Record<string, string> = {}
 				// Keep the first issue per field: an empty URL fails `min(1)` and then `url()`, and the
 				// "required" message from the first check is the one the user needs to see.
-				error.errors.forEach((err) => {
+				error.issues.forEach((err) => {
 					const field = err.path[0]
 					if (field && !(field in errors)) {
 						errors[field as string] = err.message

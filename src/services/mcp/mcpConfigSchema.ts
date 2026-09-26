@@ -41,7 +41,7 @@ const createServerTypeSchema = () => {
 			command: z.string().min(1, "Command cannot be empty"),
 			args: z.array(z.string()).optional(),
 			cwd: z.string().default(() => vscode.workspace.workspaceFolders?.at(0)?.uri.fsPath ?? process.cwd()),
-			env: z.record(z.string()).optional(),
+			env: z.record(z.string(), z.string()).optional(),
 			// Ensure no SSE fields are present
 			url: z.undefined().optional(),
 			headers: z.undefined().optional(),
@@ -55,7 +55,7 @@ const createServerTypeSchema = () => {
 		BaseConfigSchema.extend({
 			type: z.enum(["sse"]).optional(),
 			url: z.string().url("URL must be a valid URL format"),
-			headers: z.record(z.string()).optional(),
+			headers: z.record(z.string(), z.string()).optional(),
 			// Ensure no stdio fields are present
 			command: z.undefined().optional(),
 			args: z.undefined().optional(),
@@ -70,7 +70,7 @@ const createServerTypeSchema = () => {
 		BaseConfigSchema.extend({
 			type: z.enum(["streamable-http"]).optional(),
 			url: z.string().url("URL must be a valid URL format"),
-			headers: z.record(z.string()).optional(),
+			headers: z.record(z.string(), z.string()).optional(),
 			// Ensure no stdio fields are present
 			command: z.undefined().optional(),
 			args: z.undefined().optional(),
@@ -94,12 +94,12 @@ export type McpServerConfig = z.infer<typeof ServerConfigSchema>
 
 // Settings schema
 export const McpSettingsSchema = z.object({
-	mcpServers: z.record(ServerConfigSchema),
+	mcpServers: z.record(z.string(), ServerConfigSchema),
 })
 
 /** Formats schema problems as `path: message`, joined by `separator`. */
 export function formatSchemaIssues(error: z.ZodError, separator: string): string {
-	return error.errors.map((err) => `${err.path.join(".")}: ${err.message}`).join(separator)
+	return error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join(separator)
 }
 
 /**

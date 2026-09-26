@@ -1,0 +1,5 @@
+---
+"tumble-code": patch
+---
+
+Settings, custom modes and MCP configuration are now validated with zod 4 (the schema library), in the extension and in the CLI. What is accepted and rejected stays the same; only zod's own wording of some errors changes. A missing field now reads "Invalid input: expected string, received undefined" instead of "Required", a wrong type reads "Invalid input: expected boolean, received string" instead of "Expected boolean, received string", an unknown choice reads 'Invalid option: expected one of "global"|"project"' instead of "Invalid enum value. Expected 'global' | 'project', received 'team'", and a missing or wrong `mcpServers` in an MCP settings file reads "expected record" instead of "Required" or "Expected object". Our own messages (for example "Slug must contain only letters numbers and dashes" or "Duplicate mode slugs are not allowed") are unchanged. Custom tools keep their parameter descriptions even when a tool was built against an older copy of the types package.
