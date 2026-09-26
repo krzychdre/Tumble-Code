@@ -1,3 +1,7 @@
+// Since the last DEP-9 step the toolkit is no longer installed: these specs
+// now run on the replacement components and keep pinning the behaviour the
+// toolkit had (the toolkit-only branches in the helpers are unused).
+
 // Characterization of the webview's VSCodeRadioGroup / VSCodeRadio call site
 // (refactor DEP-9: the deprecated toolkit radios are being replaced). The
 // radios are the real toolkit components; only the toolkit's text inputs are
@@ -17,13 +21,6 @@ vi.mock("react-i18next", async () => {
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({ t: (key: string) => key }),
 }))
-
-vi.mock("@vscode/webview-ui-toolkit/react", async () => {
-	const actual = await vi.importActual<Record<string, unknown>>("@vscode/webview-ui-toolkit/react")
-	return {
-		...actual,
-	}
-})
 
 /** The element a user clicks for an option: the toolkit's host or the replacement's input. */
 const option = (labelKey: string) => {

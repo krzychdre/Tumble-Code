@@ -137,6 +137,27 @@ describe("ThemedTextField", () => {
 		expect([input().selectionStart, input().selectionEnd]).toEqual([2, 2])
 	})
 
+	it("ref.focus() and a click on a call site's own <label> child focus the input and select the text", () => {
+		const ref = React.createRef<HTMLInputElement>()
+		render(
+			<>
+				<ThemedTextField ref={ref} value="rename me" />
+				<ThemedTextField value="https://x">
+					<label className="block font-medium mb-1">Base URL</label>
+				</ThemedTextField>
+			</>,
+		)
+		const [first, second] = [...document.querySelectorAll<HTMLInputElement>("input.ui-text-field-control")]
+
+		act(() => ref.current!.focus())
+		expect(document.activeElement).toBe(first)
+		expect([first.selectionStart, first.selectionEnd]).toEqual([0, 9])
+
+		fireEvent.click(screen.getByText("Base URL"))
+		expect(document.activeElement).toBe(second)
+		expect([second.selectionStart, second.selectionEnd]).toEqual([0, 9])
+	})
+
 	it("starts with the caret after the text", () => {
 		render(<ThemedTextField value="hello" />)
 		expect([input().selectionStart, input().selectionEnd]).toEqual([5, 5])

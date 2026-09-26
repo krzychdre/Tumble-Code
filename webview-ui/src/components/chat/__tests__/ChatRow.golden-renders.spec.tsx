@@ -51,18 +51,6 @@ vi.mock("react-i18next", () => ({
 	initReactI18next: { type: "3rdParty", init: () => {} },
 }))
 
-// The toolkit's web components (FAST) are replaced by plain elements named
-// after the component; the real ones hung the worker after enough renders.
-vi.mock("@vscode/webview-ui-toolkit/react", async () => {
-	const React = await import("react")
-	const stub = (name: string) => {
-		const Stub = ({ children, ...props }: { children?: React.ReactNode }) =>
-			React.createElement("span", { "data-stub": name, ...props }, children)
-		return Stub
-	}
-	return Object.fromEntries(["VSCodeTextField"].map((name) => [name, stub(name)]))
-})
-
 vi.mock("../BlockTimestamp", () => ({
 	BlockTimestamp: (props: { startTs: number; endTs?: number; live?: boolean }) => (
 		<span

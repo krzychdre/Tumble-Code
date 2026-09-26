@@ -1,3 +1,7 @@
+// Since the last DEP-9 step the toolkit is no longer installed: these specs
+// now run on the replacement components and keep pinning the behaviour the
+// toolkit had (the toolkit-only branches in the helpers are unused).
+
 // Characterization of the webview's VSCodeBadge call sites (refactor DEP-9:
 // the deprecated `VSCodeBadge` from @vscode/webview-ui-toolkit is being
 // replaced). The toolkit is NOT mocked: in jsdom it renders a `<vscode-badge>`

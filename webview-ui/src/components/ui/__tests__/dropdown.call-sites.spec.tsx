@@ -1,3 +1,7 @@
+// Since the last DEP-9 step the toolkit is no longer installed: these specs
+// now run on the replacement components and keep pinning the behaviour the
+// toolkit had (the toolkit-only branches in the helpers are unused).
+
 // Characterization of the webview's VSCodeDropdown / VSCodeOption call sites
 // (refactor DEP-9: the deprecated toolkit dropdown is being replaced). The
 // toolkit is NOT mocked: its host has role="combobox" and its options are
