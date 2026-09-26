@@ -482,3 +482,15 @@ accessibility gap, follow-up DEP-9-F1). Remaining: Dropdown/Option, TextArea, Te
 vitest 3 globals had pulled in `@types/node`, vitest 5 does not, TS 6 no longer auto-includes); `check-types` stayed
 green. Fixed in #488 (`73cd79720`): `types` gains `"node"` in apps/cli, packages/core, vscode-shim, src, webview-ui
 (webview uses Node builtins only in specs and vite plugins); unused `packages/config-typescript/cjs.json` deleted.
+
+**Status (2026-09-26), DEP-7 jsdom, changesets, lint-staged, packaging:** jsdom 26 to 30.1.1 #487 (`f97116fd2`,
+scoped override `"jsdom>undici": "^8.10.2"`, the extension stays on undici 7; 47 ChatRow goldens regenerated because
+jsdom 26's cssstyle dropped real styles; two specs fixed that queried the wrong element or compared rem with px).
+`@changesets/cli` 2.29.7 to 3.0.3 #489 (`5ffa4bbfb`): v3 stops versioning private packages, which broke
+`changeset status` (tumble-code depends on private workspace packages); `privatePackages {version: true, tag:
+false}` restores the v2 default; dry `changeset version` byte-identical. lint-staged 16.4 to 17.6 #490
+(`b29dd5070`, needs Node >= 22.22.1). `@vscode/vsce` 3.3.2 to 4.0.0 and `ovsx` 0.10.4 to 1.2.0 #491 (`3b47b161e`):
+Renovate ignored vsce because vsce >= 3.4 refuses to package `.env`, which the VSIX ships (PostHog key);
+`--allow-package-env-file` on `vsix`/`vsix:nightly`; `publish:marketplace` now publishes the already built VSIX
+with `--packagePath` (ovsx 1.2 lacks the env flag and would repackage); VSIX file list (1,969) and manifest
+identical. Publish commands untested (need PATs): watch the next release run. Renovate's vsce ignore removed.
