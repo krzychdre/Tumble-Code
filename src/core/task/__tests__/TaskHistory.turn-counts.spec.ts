@@ -221,12 +221,37 @@ describe("CORE-R7 request-cycle counts (TaskAskSay + TaskHistory)", () => {
 			saves: 4 + 3,
 			// Metrics over the whole message list after every save.
 			metadataRuns: 7,
-			// One ask() per tool-argument chunk plus the final ask, each reads the settings.
-			getState: 11,
+			// Only the final ask reads the settings; the 10 partial asks of the streamed
+			// tool arguments no longer do (CORE-R7 step 3, was 11).
+			getState: 1,
 			// The cloud contract: one capture per finished message, one event per add/update.
 			taskMessageCaptures: 4,
 			messageEvents: { created: 4, updated: 19 + 29 + 9 + 3 },
 		})
+	})
+
+	it("a partial ask neither reads the settings nor consults the per-task approval override (CORE-R7 step 3)", async () => {
+		const { task, snapshot } = makeTask(0)
+		const override = vi.fn(async () => "approve" as const)
+		;(task as any).autoApprovalOverride = override
+
+		await partialAsk(task, JSON.stringify({ tool: "readFile", path: "a", toolCallId: "call-1" }))
+		await partialAsk(task, JSON.stringify({ tool: "readFile", path: "ab", toolCallId: "call-1" }))
+		expect(snapshot().getState).toBe(0)
+		expect(override).not.toHaveBeenCalled()
+
+		const { response } = await task.askSay.ask(
+			"tool",
+			JSON.stringify({ tool: "readFile", path: "ab", toolCallId: "call-1" }),
+			false,
+		)
+
+		expect(response).toBe("yesButtonClicked")
+		expect(snapshot().getState).toBe(1)
+		expect(override).toHaveBeenCalledTimes(1)
+		// The row was finished in place and marked answered before it was posted.
+		expect(task.clineMessages).toHaveLength(1)
+		expect(task.clineMessages[0]).toMatchObject({ partial: false, isAnswered: true })
 	})
 
 	it("sends and writes the whole history on every added message (bytes grow with the conversation)", async () => {

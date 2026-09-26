@@ -61,6 +61,34 @@ async function prepareToolResultSpill(cline: Task, state?: ArtifactSpillSettings
 	}
 }
 
+type ProviderState = Awaited<ReturnType<NonNullable<ReturnType<Task["providerRef"]["deref"]>>["getState"]>>
+
+/**
+ * The settings read for the tool block that is still streaming, per task
+ * (CORE-R7 step 3). This function runs once per streamed argument chunk, and a
+ * partial block only uses the settings for its one-line description, so they
+ * are read once per block while it streams instead of once per chunk. The
+ * complete block always reads them fresh: validation and execution depend on
+ * them, and they may have changed while the block streamed (a mode switch).
+ */
+const streamingBlockState = new WeakMap<Task, { toolCallId: string; state: ProviderState | undefined }>()
+
+async function getStateForToolBlock(cline: Task, toolCallId: string, partial: boolean) {
+	if (!partial) {
+		streamingBlockState.delete(cline)
+		return cline.providerRef.deref()?.getState()
+	}
+
+	const streaming = streamingBlockState.get(cline)
+	if (streaming && streaming.toolCallId === toolCallId) {
+		return streaming.state
+	}
+
+	const state = await cline.providerRef.deref()?.getState()
+	streamingBlockState.set(cline, { toolCallId, state })
+	return state
+}
+
 export async function presentAssistantMessage(cline: Task) {
 	if (cline.abort) {
 		throw new Error(`[Task#presentAssistantMessage] task ${cline.taskId}.${cline.instanceId} aborted`)
@@ -251,15 +279,20 @@ export async function presentAssistantMessage(cline: Task) {
 			}
 
 			// Fetch state early so it's available for toolDescription and validation
-			const state = await cline.providerRef.deref()?.getState()
+			// (read once per block while it streams, fresh for the complete block).
+			const state = await getStateForToolBlock(cline, toolCallId, block.partial === true)
 			const { customModes, experiments: stateExperiments, disabledTools } = state ?? {}
 			// The task's own mode, not the one in provider state: that is the focused task's
 			// mode, and a background subagent or a delegated child may run in another one.
 			const taskMode = await cline.getTaskMode()
 
 			// Prepare the tool-result spill policy before the tool runs, so the
-			// (synchronous) push below can move an oversized result to disk.
-			await prepareToolResultSpill(cline, state)
+			// (synchronous) push below can move an oversized result to disk. Only on
+			// the complete block: a streaming chunk runs no tool and pushes at most a
+			// one-line "interrupted" result.
+			if (!block.partial) {
+				await prepareToolResultSpill(cline, state)
+			}
 
 			// One line naming the call, from the tool's row in the descriptor table.
 			const toolDescription = (): string => describeToolUse(block, { customModes })

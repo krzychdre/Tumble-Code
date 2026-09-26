@@ -99,23 +99,33 @@ export class TaskAskSay {
 		// update (which shows approval buttons) and the former separate
 		// clearApprovalButtons message (which could arrive before buttons were
 		// rendered, leaving them stuck on-screen).
+		//
+		// A partial ask (one streamed chunk of a tool call) only adds or updates
+		// its row and returns through AskIgnoredError before the decision is
+		// used, so it skips the settings read and the decision (CORE-R7 step 3):
+		// both ran once per streamed chunk.
 		const provider = this.access.providerRef.deref()
-		const baseState = provider ? await provider.getState() : undefined
-		// Resolve relative tool paths (plan-review write gate) against the
-		// asking task's own cwd — it may differ from the provider's when the
-		// task runs in a worktree.
-		const state = baseState ? { ...baseState, cwd: this.access.cwd ?? baseState.cwd } : undefined
-		// Per-task override first (headless background tasks): lets a task run
-		// autonomously without mutating the global auto-approval settings. Only
-		// short-circuits when it returns a concrete "approve"/"deny"; otherwise
-		// falls through to the normal global auto-approval flow.
-		const override = await this.access.autoApprovalOverride?.(type, text, isProtected)
-		const approval: CheckAutoApprovalResult =
-			override === "approve"
-				? { decision: "approve" }
-				: override === "deny"
-					? { decision: "deny" }
-					: await checkAutoApproval({ state, ask: type, text, isProtected })
+		let state: Awaited<ReturnType<ClineProvider["getState"]>> | undefined
+		let approval: CheckAutoApprovalResult = { decision: "ask" }
+
+		if (partial !== true) {
+			const baseState = provider ? await provider.getState() : undefined
+			// Resolve relative tool paths (plan-review write gate) against the
+			// asking task's own cwd: it may differ from the provider's when the
+			// task runs in a worktree.
+			state = baseState ? { ...baseState, cwd: this.access.cwd ?? baseState.cwd } : undefined
+			// Per-task override first (headless background tasks): lets a task run
+			// autonomously without mutating the global auto-approval settings. Only
+			// short-circuits when it returns a concrete "approve"/"deny"; otherwise
+			// falls through to the normal global auto-approval flow.
+			const override = await this.access.autoApprovalOverride?.(type, text, isProtected)
+			approval =
+				override === "approve"
+					? { decision: "approve" }
+					: override === "deny"
+						? { decision: "deny" }
+						: await checkAutoApproval({ state, ask: type, text, isProtected })
+		}
 		const isAutoAnswered = approval.decision === "approve" || approval.decision === "deny"
 
 		if (partial !== undefined) {
