@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config"
+import { configDefaults, defineConfig } from "vitest/config"
 import path from "path"
 import { resolveVerbosity } from "./utils/vitest-verbosity"
 
@@ -10,6 +10,9 @@ export default defineConfig({
 		globals: true,
 		setupFiles: ["./vitest.setup.ts"],
 		watch: false,
+		// Vitest 4 stopped excluding dist/ by default; keep build output (tsc emits
+		// compiled copies of the specs there) out of the run.
+		exclude: [...configDefaults.exclude, "**/dist/**"],
 		reporters,
 		silent,
 		testTimeout: 20_000,
@@ -23,14 +26,10 @@ export default defineConfig({
 		// event loop starved and whole describe blocks timed out at 20s
 		// (Task.spec.ts was the usual victim). Sequential-but-isolated keeps
 		// the original cross-worker-flake fix without the accumulation.
-		poolOptions: isWindowsCI
-			? {
-					forks: {
-						maxForks: 1,
-						minForks: 1,
-					},
-				}
-			: undefined,
+		// Vitest 4 removed `poolOptions` (forks.maxForks/minForks): the worker
+		// cap is the top-level `maxWorkers`, and `isolate` stays at its default
+		// (true), so every file still gets a fresh process.
+		maxWorkers: isWindowsCI ? 1 : undefined,
 	},
 	resolve: {
 		alias: {
