@@ -58,7 +58,15 @@ from src.services.session_quality import (
 )
 from src.services.task_summary import DEFAULT_TITLE, derive_title, duration_ms
 from src.services.task_tree import Spend, ancestors, subtree_size, subtree_spend, subtrees
-from src.utils.format import fmt_duration, fmt_tokens
+from src.utils.format import (
+    JINJA_FILTERS,
+    fmt_bytes,
+    fmt_cost,
+    fmt_duration,
+    fmt_int,
+    fmt_tokens,
+    plural,
+)
 from src.utils.json_script import json_for_script
 from src.utils.pagination import page_window
 
@@ -85,6 +93,7 @@ def _asset_version() -> str:
 
 
 templates.env.globals["asset_v"] = _asset_version()
+templates.env.filters.update(JINJA_FILTERS)
 
 router = APIRouter(tags=["web"])
 
@@ -156,18 +165,14 @@ def _quality_panel(task: Task) -> dict:
             {"label": "Repeated tool calls", "value": q.repeated_work, "tone": "warn"},
         ],
         "efficiency": [
-            {"label": "Tokens / turn", "value": f"{per_request:,}" if per_request else "—"},
+            {"label": "Tokens / turn", "value": fmt_int(per_request) if per_request else "\u2014"},
             {"label": "From cache", "value": f"{cache_share}%" if cache_share is not None else "—"},
             {
                 "label": "Cost / turn",
-                "value": f"${task.cost / q.requests:.4f}" if q.requests and task.cost else "—",
+                "value": fmt_cost(task.cost / q.requests) if q.requests and task.cost else "\u2014",
             },
         ],
     }
-
-
-def _plural(n: int, word: str) -> str:
-    return f"{n} {word}{'' if n == 1 else 's'}"
 
 
 def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
@@ -185,7 +190,7 @@ def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
     subtasks = subtree_size(tree, task.id)
     fields = {
         "tokens": fmt_tokens(total.tokens) if total.tokens else None,
-        "cost": f"${total.cost:.4f}" if total.cost > 0 else None,
+        "cost": fmt_cost(total.cost) if total.cost > 0 else None,
         "rollup": subtasks > 0,
         "tokens_title": None,
         "cost_title": None,
@@ -195,12 +200,14 @@ def _spend_fields(task: Task, tree: dict[str, list[Task]]) -> dict:
     }
     if subtasks:
         rest = total - own
-        where = _plural(subtasks, "subtask")
+        where = plural(subtasks, "subtask")
         fields["tokens_title"] = (
-            f"{total.tokens:,} tokens for the run: {own.tokens:,} this task + {rest.tokens:,} in {where}"
+            f"{fmt_int(total.tokens)} tokens for the run: {fmt_int(own.tokens)} this task"
+            f" + {fmt_int(rest.tokens)} in {where}"
         )
         fields["cost_title"] = (
-            f"${total.cost:.4f} for the run: ${own.cost:.4f} this task + ${rest.cost:.4f} in {where}"
+            f"{fmt_cost(total.cost)} for the run: {fmt_cost(own.cost)} this task"
+            f" + {fmt_cost(rest.cost)} in {where}"
         )
     return fields
 
@@ -241,7 +248,7 @@ def _spend_row(key: str, label: str, spend: Spend) -> dict:
         "tokens": fmt_tokens(spend.tokens),
         "tokens_in": fmt_tokens(spend.tokens_in),
         "tokens_out": fmt_tokens(spend.tokens_out),
-        "cost": f"${spend.cost:.4f}",
+        "cost": fmt_cost(spend.cost),
     }
 
 
@@ -268,7 +275,7 @@ def _spend_summary(task: Task, tree: dict[str, list[Task]]) -> dict:
         "rows": [
             _spend_row("run", "whole run", total),
             _spend_row("own", "this task", own),
-            _spend_row("subtasks", _plural(count, "subtask"), rest),
+            _spend_row("subtasks", plural(count, "subtask"), rest),
         ],
         "subtasks": rest,
     }
@@ -353,28 +360,28 @@ def _metrics_tooltip(task: Task) -> list[str]:
     services/task_summary is that the list never re-derives these.
     """
     lines = [
-        f"↑ In: {task.tokens_in:,}",
-        f"↓ Out: {task.tokens_out:,}",
+        f"↑ In: {fmt_int(task.tokens_in)}",
+        f"↓ Out: {fmt_int(task.tokens_out)}",
     ]
     if task.cache_writes or task.cache_reads:
-        lines.append(f"⚡ Cache: {task.cache_writes:,} write / {task.cache_reads:,} read")
+        lines.append(f"⚡ Cache: {fmt_int(task.cache_writes)} write / {fmt_int(task.cache_reads)} read")
     span = duration_ms(task.first_ts, task.last_ts)
     if span:
         lines.append(f"⏱ Session: {fmt_duration(span)}")
-    lines.append(f"$ Cost: ${task.cost:.4f}")
+    lines.append(f"$ Cost: {fmt_cost(task.cost)}")
     return lines
 
 
 def _run_tooltip(total: Spend, subtasks: int) -> list[str]:
     """The same breakdown for a task together with its subtasks."""
     lines = [
-        f"Σ With its {_plural(subtasks, 'subtask')}",
-        f"↑ In: {total.tokens_in:,}",
-        f"↓ Out: {total.tokens_out:,}",
+        f"Σ With its {plural(subtasks, 'subtask')}",
+        f"↑ In: {fmt_int(total.tokens_in)}",
+        f"↓ Out: {fmt_int(total.tokens_out)}",
     ]
     if total.cache_writes or total.cache_reads:
-        lines.append(f"⚡ Cache: {total.cache_writes:,} write / {total.cache_reads:,} read")
-    lines.append(f"$ Cost: ${total.cost:.4f}")
+        lines.append(f"⚡ Cache: {fmt_int(total.cache_writes)} write / {fmt_int(total.cache_reads)} read")
+    lines.append(f"$ Cost: {fmt_cost(total.cost)}")
     return lines
 
 
@@ -812,27 +819,20 @@ def _positive_int(value) -> Optional[int]:
 
 
 def _plan_view(plan) -> dict:
-    """View-model for the preview, including a readable size."""
+    """View-model for the preview, including a readable size.
+
+    The size is an approximation, see RetentionPlan.message_bytes.
+    """
     return {
         "task_count": plan.task_count,
         "message_count": plan.message_count,
         "event_count": plan.event_count,
         "exempt_shared": plan.exempt_shared,
         "total_bytes": plan.total_bytes,
-        "size": _fmt_bytes(plan.total_bytes),
+        "size": fmt_bytes(plan.total_bytes),
         "is_empty": plan.is_empty,
         "reasons": sorted(set(plan.reasons.values())),
     }
-
-
-def _fmt_bytes(n: int) -> str:
-    """Human size. Stated as an approximation — see RetentionPlan.message_bytes."""
-    size = float(n)
-    for unit in ("B", "KB", "MB", "GB"):
-        if abs(size) < 1024 or unit == "GB":
-            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
-        size /= 1024
-    return f"{size:.1f} GB"
 
 
 @router.post("/app/tasks/bulk-delete")

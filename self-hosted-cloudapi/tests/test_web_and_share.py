@@ -1404,6 +1404,13 @@ async def test_format_helpers_are_single_source_of_truth():
     assert task_summary.num is fmt.num
     assert web.fmt_tokens is fmt.fmt_tokens
     assert web.fmt_duration is fmt.fmt_duration
+    assert web.fmt_cost is fmt.fmt_cost
+    assert web.fmt_int is fmt.fmt_int
+    assert web.fmt_bytes is fmt.fmt_bytes
+    assert web.plural is fmt.plural
+    # The templates format through the same functions, registered as filters.
+    for name, fn in fmt.JINJA_FILTERS.items():
+        assert web.templates.env.filters[name] is fn
 
     # metrics_service aliases ``num`` as ``_num`` for its internal call sites.
     assert metrics_service._num is fmt.num

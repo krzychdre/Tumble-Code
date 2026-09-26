@@ -244,7 +244,7 @@
 		if (obj.tokensIn != null || obj.tokensOut != null) {
 			bits.push("↑" + (obj.tokensIn || 0) + " ↓" + (obj.tokensOut || 0))
 		}
-		if (obj.cost != null) bits.push("$" + Number(obj.cost).toFixed(4))
+		if (obj.cost != null) bits.push(window.TumbleFormat.cost(obj.cost))
 		// One-liner: the figures ride in the row's detail; the body holds only the
 		// optional folded request prompt. No cost yet → the request is in flight.
 		const body = obj.request ? md(obj.request) : ""
