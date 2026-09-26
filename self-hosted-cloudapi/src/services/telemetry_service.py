@@ -66,6 +66,57 @@ async def _link_task_tree(db, task_id: str) -> None:
     await link_pending_children(db, task_id)
 
 
+async def _get_or_create_task(db, task_id: str, user_id: str):
+    """Return ``(task, created)``, creating the row for ``user_id`` when missing.
+
+    ``created`` is True only when this call inserted the row. The owner is not
+    checked here: a row that already existed (or that a concurrent writer
+    inserted first) comes back as it is, and the caller compares its
+    ``user_id``.
+
+    The live bridge persists each chunk in its own transaction, so the first
+    chunks of a new task run concurrently. A plain lookup-then-insert let two of
+    them both miss the lookup and both insert; the loser died on the primary key
+    (``tasks_pkey``) and its message was lost (DEF-C48). The insert is therefore
+    a dialect-native ``INSERT ... ON CONFLICT (id) DO NOTHING``, and the row is
+    read back afterwards, whoever inserted it. On Postgres the losing insert
+    waits for the winner's transaction and then does nothing, so the read-back
+    sees the committed row.
+
+    The lookup comes first so a chunk for a task that already exists, the
+    common case, costs one SELECT as before.
+    """
+    from sqlalchemy import select
+    from src.models.task import Task
+
+    query = select(Task).where(Task.id == task_id)
+    task = (await db.execute(query)).scalar_one_or_none()
+    if task is not None:
+        return task, False
+
+    dialect = db.bind.dialect.name
+    if dialect not in ("postgresql", "sqlite"):
+        # No portable ON CONFLICT: keep the plain insert.
+        task = Task(id=task_id, user_id=user_id)
+        db.add(task)
+        await db.flush()
+        return task, True
+
+    if dialect == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as _insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert as _insert
+
+    result = await db.execute(
+        _insert(Task)
+        .values(id=task_id, user_id=user_id)
+        .on_conflict_do_nothing(index_elements=["id"])
+    )
+    created = result.rowcount == 1
+    task = (await db.execute(query)).scalar_one()
+    return task, created
+
+
 def _stamp_workspace_path(task, workspace_path) -> None:
     """Record the task's project/worktree root, once.
 
@@ -153,8 +204,8 @@ async def backfill_messages(
     belongs to another user: the upload names its task by id only, so without
     this check any signed-in user could replace someone else's conversation.
     """
-    from sqlalchemy import select, delete
-    from src.models.task import Task, TaskMessage
+    from sqlalchemy import delete
+    from src.models.task import TaskMessage
     from src.services.task_summary import (
         derive_prompt,
         derive_title,
@@ -162,15 +213,10 @@ async def backfill_messages(
         refresh_task_summary,
     )
 
-    # Get-or-create the parent task, owned by the uploading user.
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one_or_none()
-    if task is None:
-        task = Task(id=task_id, user_id=user_id)
-        db.add(task)
-        # Flush the new parent before inserting messages (FK on task_id).
-        await db.flush()
-    elif task.user_id != user_id:
+    # Get-or-create the parent task, owned by the uploading user. The row is
+    # in the database before any message is inserted (FK on task_id).
+    task, _created = await _get_or_create_task(db, task_id, user_id)
+    if task.user_id != user_id:
         raise TaskNotOwnedError(task_id)
     _stamp_workspace_path(task, workspace_path)
     await _link_task_tree(db, task_id)
@@ -266,22 +312,16 @@ async def upsert_task_message(
     final drops the `"partial":true"` flag and can be a few bytes shorter despite
     longer text — which is exactly why finals bypass the length check.)
     """
-    from sqlalchemy import func, select
-    from src.models.task import Task, TaskMessage
+    from sqlalchemy import func
+    from src.models.task import TaskMessage
     from src.services.session_quality import tool_path_of
     from src.services.task_summary import message_metrics
 
     if not isinstance(message, dict):
         return False
 
-    result = await db.execute(select(Task).where(Task.id == task_id))
-    task = result.scalar_one_or_none()
-    created = task is None
-    if created:
-        task = Task(id=task_id, user_id=user_id)
-        db.add(task)
-        await db.flush()
-    elif task.user_id != user_id:
+    task, created = await _get_or_create_task(db, task_id, user_id)
+    if task.user_id != user_id:
         # Never let a bridge event write into (or read from) another user's
         # task.
         return False
