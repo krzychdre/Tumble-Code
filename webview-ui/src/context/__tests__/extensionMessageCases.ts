@@ -168,6 +168,22 @@ export const extensionMessageCases: ExtensionMessageCase[] = [
 		check: (view) => expect(view.mcpServers).toEqual([mcpServer]),
 	},
 	{
+		// The host omits an unchanged history from full pushes (CORE-R7).
+		name: "state: a push without taskHistory keeps the history the view has",
+		seed: historySeed,
+		message: statePush({ mode: "ask" }),
+		check: (view) => {
+			expect(ids(view)).toEqual(["c", "b", "a"])
+			expect(view.mode).toBe("ask")
+		},
+	},
+	{
+		name: "state: a push with an empty taskHistory clears the history",
+		seed: historySeed,
+		message: statePush({ taskHistory: [] }),
+		check: (view) => expect(ids(view)).toEqual([]),
+	},
+	{
 		name: "state: a push with an older clineMessagesSeq keeps the newer messages",
 		seed: [statePush({ clineMessages: [makeClineMessage(1, "new")], clineMessagesSeq: 5 })],
 		message: statePush({ clineMessages: [makeClineMessage(1, "stale")], clineMessagesSeq: 4, mode: "ask" }),
