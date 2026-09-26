@@ -165,6 +165,31 @@ describe("ChatRow - inline diff stats and actions", () => {
 		})
 	})
 
+	it("sends a Windows absolute new-file path untouched to openFile", () => {
+		const message = createToolAskMessage({
+			tool: "newFileCreated",
+			path: "C:\\project\\src\\new-file.ts",
+			content: "+new file",
+			diffStats: { added: 1, removed: 0 },
+		})
+
+		const { container } = renderChatRow(message)
+		const openFileIcon = container.querySelector(".codicon-link-external") as HTMLElement | null
+
+		expect(openFileIcon).toBeInTheDocument()
+		if (!openFileIcon) {
+			throw new Error("Expected external link icon for newFileCreated")
+		}
+
+		fireEvent.click(openFileIcon)
+
+		// No "./" prefix: the extension must see the absolute Windows path.
+		expect(mockPostMessage).toHaveBeenCalledWith({
+			type: "openFile",
+			text: "C:\\project\\src\\new-file.ts",
+		})
+	})
+
 	it("preserves protected and outside-workspace messaging in unified branch", () => {
 		const outsideWorkspaceMessage = createToolAskMessage({
 			tool: "searchAndReplace",
