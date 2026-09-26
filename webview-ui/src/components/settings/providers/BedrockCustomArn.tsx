@@ -1,8 +1,8 @@
 import { useMemo } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { validateBedrockArn } from "@src/utils/validate"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedTextField } from "@src/components/ui"
 import { type ProviderFormProps } from "./shared"
 
 type BedrockCustomArnProps = ProviderFormProps
@@ -17,13 +17,13 @@ export const BedrockCustomArn = ({ apiConfiguration, setApiConfigurationField }:
 
 	return (
 		<>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.awsCustomArn || ""}
 				onInput={(e) => setApiConfigurationField("awsCustomArn", (e.target as HTMLInputElement).value)}
 				placeholder={t("settings:placeholders.customArn")}
 				className="w-full">
 				<label className="block font-medium mb-1">{t("settings:labels.customArn")}</label>
-			</VSCodeTextField>
+			</ThemedTextField>
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.awsCustomArnUse")}
 				<ul className="list-disc pl-5 mt-1">

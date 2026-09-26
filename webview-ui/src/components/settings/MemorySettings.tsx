@@ -1,6 +1,5 @@
 import { HTMLAttributes } from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 
 import type { ProviderSettingsEntry } from "@roo-code/types"
@@ -18,6 +17,7 @@ import {
 	Slider,
 	Link,
 	LabeledCheckbox,
+	ThemedTextField,
 } from "@/components/ui"
 
 type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
@@ -117,7 +117,7 @@ export const MemorySettings = ({
 							<label className="block text-sm font-medium mb-2">
 								{t("settings:memory.directory.label")}
 							</label>
-							<VSCodeTextField
+							<ThemedTextField
 								value={autoMemoryDirectory ?? ""}
 								placeholder={t("settings:memory.directory.placeholder")}
 								onInput={(e: any) => {

@@ -22,9 +22,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", async () => {
 	const actual = await vi.importActual<Record<string, unknown>>("@vscode/webview-ui-toolkit/react")
 	return {
 		...actual,
-		VSCodeTextField: ({ value, onChange, onInput, ...props }: any) => (
-			<input type="text" value={value ?? ""} onChange={onChange ?? onInput} {...props} />
-		),
 	}
 })
 

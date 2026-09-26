@@ -1,10 +1,10 @@
 import { useState } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { type OrganizationAllowList, type RouterModels, openRouterDefaultModelId } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedTextField } from "@src/components/ui"
 import { getOpenRouterAuthUrl } from "@src/oauth/urls"
 import { VSCodeButtonLink } from "@src/components/common/VSCodeButtonLink"
 
@@ -38,7 +38,7 @@ export const OpenRouter = ({
 
 	return (
 		<>
-			<VSCodeTextField
+			<ThemedTextField
 				value={apiConfiguration?.openRouterApiKey || ""}
 				type="password"
 				onInput={handleInputChange("openRouterApiKey")}
@@ -53,7 +53,7 @@ export const OpenRouter = ({
 						/>
 					)}
 				</div>
-			</VSCodeTextField>
+			</ThemedTextField>
 			<div className="text-sm text-vscode-descriptionForeground -mt-2">
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
@@ -76,7 +76,7 @@ export const OpenRouter = ({
 						{t("settings:providers.useCustomBaseUrl")}
 					</Checkbox>
 					{openRouterBaseUrlSelected && (
-						<VSCodeTextField
+						<ThemedTextField
 							value={apiConfiguration?.openRouterBaseUrl || ""}
 							type="url"
 							onInput={handleInputChange("openRouterBaseUrl")}

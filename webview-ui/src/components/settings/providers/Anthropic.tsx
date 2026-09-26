@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedTextField } from "@src/components/ui"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 
 import { noTransform } from "../transforms"
@@ -52,7 +52,7 @@ export const Anthropic = ({ apiConfiguration, setApiConfigurationField }: Anthro
 				</Checkbox>
 				{anthropicBaseUrlSelected && (
 					<>
-						<VSCodeTextField
+						<ThemedTextField
 							value={apiConfiguration?.anthropicBaseUrl || ""}
 							type="url"
 							onInput={handleInputChange("anthropicBaseUrl")}

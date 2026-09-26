@@ -40,19 +40,6 @@ vi.mock("@/components/ui/hooks/useOpenRouterModelProviders", () => ({
 	OPENROUTER_DEFAULT_PROVIDER_NAME: "[default]",
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ value, onInput, onBlur, placeholder, className, type }: any) => (
-		<input
-			type={type ?? "text"}
-			value={value ?? ""}
-			placeholder={placeholder}
-			className={className}
-			onChange={(e: any) => onInput?.({ target: { value: e.target.value } })}
-			onBlur={(e: any) => onBlur?.({ target: { value: e.target.value } })}
-		/>
-	),
-}))
-
 const MODELS = {
 	openai: { "text-embedding-3-small": { dimension: 1536 } },
 	gemini: { "gemini-embedding-001": { dimension: 3072 } },
@@ -262,7 +249,7 @@ function renderFor(provider: EmbedderProvider) {
 }
 
 function typeInto(placeholder: string, value: string) {
-	fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value } })
+	fireEvent.input(screen.getByPlaceholderText(placeholder), { target: { value } })
 }
 
 /** The embedding model dropdown (ThemedDropdown; the provider picker is a Radix select). */

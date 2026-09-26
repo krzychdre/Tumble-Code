@@ -199,27 +199,6 @@ vi.mock("../ChatTextArea", () => {
 })
 
 // Mock VSCode components
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: function MockVSCodeTextField({
-		value,
-		onInput,
-		placeholder,
-	}: {
-		value?: string
-		onInput?: (e: { target: { value: string } }) => void
-		placeholder?: string
-	}) {
-		return (
-			<input
-				type="text"
-				value={value}
-				onChange={(e) => onInput?.({ target: { value: e.target.value } })}
-				placeholder={placeholder}
-			/>
-		)
-	},
-}))
-
 // Mock window.postMessage to trigger state hydration
 const mockPostMessage = (state: Partial<ExtensionState>) => {
 	window.postMessage(

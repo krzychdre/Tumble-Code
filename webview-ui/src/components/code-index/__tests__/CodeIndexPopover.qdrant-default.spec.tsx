@@ -35,18 +35,6 @@ vi.mock("@/components/ui/hooks/useOpenRouterModelProviders", () => ({
 	OPENROUTER_DEFAULT_PROVIDER_NAME: "[default]",
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ value, onInput, onBlur, placeholder }: any) => (
-		<input
-			type="text"
-			value={value ?? ""}
-			placeholder={placeholder}
-			onChange={(e: any) => onInput?.({ target: { value: e.target.value } })}
-			onBlur={(e: any) => onBlur?.({ target: { value: e.target.value } })}
-		/>
-	),
-}))
-
 const mockExtensionState = {
 	codebaseIndexConfig: {
 		codebaseIndexEnabled: true,

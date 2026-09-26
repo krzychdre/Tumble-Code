@@ -3,15 +3,7 @@ import { Vertex } from "../Vertex"
 import type { ProviderSettings } from "@roo-code/types"
 import { VERTEX_REGIONS } from "@roo-code/types"
 import enSettings from "@src/i18n/locales/en/settings.json"
-
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ children, value, onInput, type }: any) => (
-		<div>
-			{children}
-			<input type={type} value={value} onChange={(e) => onInput(e)} />
-		</div>
-	),
-}))
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 vi.mock("vscrui", () => ({
 	Checkbox: ({ children, checked, onChange, "data-testid": testId }: any) => (
@@ -48,6 +40,8 @@ vi.mock("react-i18next", () => ({
 }))
 
 vi.mock("@src/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange }: any) => (
 		<div data-value={value} data-onvaluechange={onValueChange}>

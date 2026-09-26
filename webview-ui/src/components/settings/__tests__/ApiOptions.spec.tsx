@@ -12,17 +12,9 @@ const { ExtensionStateContextProvider } = ExtensionStateContext
 import ApiOptions, { ApiOptionsProps } from "../ApiOptions"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedButton as RealThemedButton } from "@/components/ui/themed-button"
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock VSCode components
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ children, value, onBlur }: any) => (
-		<div>
-			{children}
-			<input type="text" value={value} onChange={onBlur} />
-		</div>
-	),
-}))
-
 // Mock other components
 vi.mock("vscrui", () => ({
 	Checkbox: ({ children, checked, onChange }: any) => (
@@ -40,6 +32,8 @@ vi.mock("vscrui", () => ({
 
 // Mock @shadcn/ui components
 vi.mock("@/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	// The real button, not a stub: only the barrel is mocked.
 	ThemedButton: (props: any) => <RealThemedButton {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.

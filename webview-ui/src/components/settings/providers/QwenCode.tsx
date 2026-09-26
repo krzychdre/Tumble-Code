@@ -1,6 +1,5 @@
 import React from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { Link } from "@src/components/ui"
+import { Link, ThemedTextField } from "@src/components/ui"
 
 import { type ProviderFormProps } from "./shared"
 
@@ -27,7 +26,7 @@ export const QwenCode: React.FC<QwenCodeProps> = ({ apiConfiguration, setApiConf
 	return (
 		<div className="flex flex-col gap-4">
 			<div>
-				<VSCodeTextField
+				<ThemedTextField
 					value={apiConfiguration?.qwenCodeOauthPath || ""}
 					className="w-full mt-1"
 					type="text"
@@ -35,7 +34,7 @@ export const QwenCode: React.FC<QwenCodeProps> = ({ apiConfiguration, setApiConf
 					onBlur={handleBlur}
 					placeholder={defaultPath}>
 					OAuth Credentials Path
-				</VSCodeTextField>
+				</ThemedTextField>
 
 				<p className="text-xs mt-1 text-vscode-descriptionForeground">
 					Path to your Qwen OAuth credentials file. Defaults to ~/.qwen/oauth_creds.json if left empty.

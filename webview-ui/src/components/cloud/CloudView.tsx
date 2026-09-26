@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
-import { ThemedProgressRing } from "@src/components/ui"
+import { ThemedProgressRing, ThemedTextField } from "@src/components/ui"
 
 import { type CloudUserInfo, type CloudOrganizationMembership, TelemetryEventName } from "@roo-code/types"
 
@@ -260,7 +259,7 @@ export const CloudView = ({ userInfo, isAuthenticated, cloudApiUrl, organization
 									<p className="text-base text-vscode-descriptionForeground">
 										{t("cloud:pasteCallbackUrl")}
 									</p>
-									<VSCodeTextField
+									<ThemedTextField
 										ref={manualUrlInputRef as any}
 										value={manualUrl}
 										onChange={handleManualUrlChange}

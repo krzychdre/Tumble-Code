@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedTextField } from "@src/components/ui"
 
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
 
@@ -41,7 +41,7 @@ export const Gemini = ({ apiConfiguration, setApiConfigurationField }: GeminiPro
 					{t("settings:providers.useCustomBaseUrl")}
 				</Checkbox>
 				{googleGeminiBaseUrlSelected && (
-					<VSCodeTextField
+					<ThemedTextField
 						value={apiConfiguration?.googleGeminiBaseUrl || ""}
 						type="url"
 						onInput={handleInputChange("googleGeminiBaseUrl")}

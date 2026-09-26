@@ -2,6 +2,7 @@ import React from "react"
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { Bedrock } from "../Bedrock"
 import { ProviderSettings } from "@roo-code/types"
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock the vscrui Checkbox component
 vi.mock("vscrui", () => ({
@@ -19,37 +20,6 @@ vi.mock("vscrui", () => ({
 }))
 
 // Mock the VSCodeTextField component
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({
-		children,
-		value,
-		onInput,
-		placeholder,
-		className,
-		style,
-		"data-testid": dataTestId,
-		...rest
-	}: any) => {
-		// For all text fields - apply data-testid directly to input if provided
-		return (
-			<div
-				data-testid={dataTestId ? `${dataTestId}-text-field` : "vscode-text-field"}
-				className={className}
-				style={style}>
-				{children}
-				<input
-					type="text"
-					value={value}
-					onChange={(e) => onInput && onInput(e)}
-					placeholder={placeholder}
-					data-testid={dataTestId}
-					{...rest}
-				/>
-			</div>
-		)
-	},
-}))
-
 // Mock the translation hook
 vi.mock("@src/i18n/TranslationContext", () => ({
 	useAppTranslation: () => ({
@@ -59,6 +29,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 
 // Mock the UI components
 vi.mock("@src/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	Select: ({ children, value, onValueChange }: any) => (
 		<select value={value} onChange={(e) => onValueChange && onValueChange(e.target.value)}>
 			{children}
@@ -156,7 +128,7 @@ describe("Bedrock Component", () => {
 			expect(inputField).toBeInTheDocument()
 
 			// Test with a valid URL
-			fireEvent.change(inputField, { target: { value: "https://bedrock.us-east-1.amazonaws.com" } })
+			fireEvent.input(inputField, { target: { value: "https://bedrock.us-east-1.amazonaws.com" } })
 
 			// Verify the configuration field was updated with the valid URL
 			expect(mockSetApiConfigurationField).toHaveBeenCalledWith(
@@ -183,7 +155,7 @@ describe("Bedrock Component", () => {
 			const inputField = screen.getByTestId("vpc-endpoint-input")
 
 			// Clear the field
-			fireEvent.change(inputField, { target: { value: "" } })
+			fireEvent.input(inputField, { target: { value: "" } })
 
 			// Verify the configuration field was updated with empty string
 			expect(mockSetApiConfigurationField).toHaveBeenCalledWith("awsBedrockEndpoint", "")
@@ -247,7 +219,7 @@ describe("Bedrock Component", () => {
 			expect(screen.getByTestId("vpc-endpoint-input")).toHaveValue(veryLongUrl)
 
 			// Change the URL to something else
-			fireEvent.change(screen.getByTestId("vpc-endpoint-input"), {
+			fireEvent.input(screen.getByTestId("vpc-endpoint-input"), {
 				target: { value: "https://shorter-url.com" },
 			})
 
@@ -330,7 +302,7 @@ describe("Bedrock Component", () => {
 			const inputField = screen.getByTestId("vpc-endpoint-input")
 
 			// Enter an invalid URL (missing protocol)
-			fireEvent.change(inputField, { target: { value: "invalid-url" } })
+			fireEvent.input(inputField, { target: { value: "invalid-url" } })
 
 			// The component should still update the configuration
 			// (URL validation would typically happen at a higher level or when used)

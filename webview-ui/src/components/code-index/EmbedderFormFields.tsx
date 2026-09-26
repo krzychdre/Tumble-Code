@@ -1,9 +1,8 @@
 import React from "react"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import type { EmbeddingModelProfile } from "@roo-code/types"
 
-import { ThemedDropdown, ThemedOption } from "@src/components/ui"
+import { ThemedDropdown, ThemedOption, ThemedTextField } from "@src/components/ui"
 import { cn } from "@src/lib/utils"
 
 import type { CodeIndexSettingKey, CodeIndexTranslate, LocalCodeIndexSettings } from "./codeIndexSettings"
@@ -57,7 +56,7 @@ export const SettingTextField = ({
 					</span>
 				)}
 			</label>
-			<VSCodeTextField
+			<ThemedTextField
 				type={type}
 				value={(settings[field] as string | undefined) || ""}
 				onInput={(e: any) => updateSetting(field, e.target.value)}
@@ -91,7 +90,7 @@ export const ModelDimensionField = ({ context }: FieldProps) => {
 	return (
 		<div className="space-y-2">
 			<label className="text-sm font-medium">{t("settings:codeIndex.modelDimensionLabel")}</label>
-			<VSCodeTextField
+			<ThemedTextField
 				value={settings.codebaseIndexEmbedderModelDimension?.toString() || ""}
 				onInput={(e: any) => {
 					const value = e.target.value ? parseInt(e.target.value, 10) || undefined : undefined

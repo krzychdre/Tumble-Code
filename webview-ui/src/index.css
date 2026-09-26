@@ -1024,6 +1024,103 @@
 		cursor: not-allowed;
 	}
 
+	/*
+	 * Text field (components/ui/themed-text-field.tsx), the same look as the
+	 * deprecated toolkit's <vscode-text-field>. Fallbacks are the toolkit's
+	 * defaults.
+	 */
+	.ui-text-field {
+		display: inline-block;
+		outline: none;
+		user-select: none;
+		font-family: var(
+			--vscode-font-family,
+			-apple-system,
+			BlinkMacSystemFont,
+			Segoe UI,
+			Roboto,
+			Helvetica,
+			Arial,
+			sans-serif
+		);
+	}
+
+	.ui-text-field-label {
+		display: block;
+		margin-bottom: 2px;
+		color: var(--vscode-foreground, #cccccc);
+		font-size: var(--vscode-font-size, 13px);
+		line-height: normal;
+		cursor: pointer;
+	}
+
+	.ui-text-field-root {
+		position: relative;
+		display: flex;
+		flex-direction: row;
+		box-sizing: border-box;
+		height: 26px;
+		min-width: 100px;
+		border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
+		border-radius: 2px;
+		background: var(--vscode-input-background, #3c3c3c);
+		color: var(--vscode-input-foreground, #cccccc);
+	}
+
+	.ui-text-field:not([data-disabled]):active .ui-text-field-root,
+	.ui-text-field:not([data-disabled]):focus-within .ui-text-field-root {
+		border-color: var(--vscode-focusBorder, #007fd4);
+	}
+
+	.ui-text-field-control {
+		appearance: none;
+		box-sizing: border-box;
+		width: 100%;
+		height: calc(100% - 4px);
+		margin: auto 0;
+		padding: 0 9px;
+		border: none;
+		outline: none;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		font-size: var(--vscode-font-size, 13px);
+		line-height: normal;
+		user-select: text;
+	}
+
+	/* Slot wrappers get their layout only when they hold something, as in the toolkit. */
+	.ui-text-field-start,
+	.ui-text-field-end {
+		display: flex;
+		margin: auto;
+		fill: currentcolor;
+	}
+
+	.ui-text-field-start {
+		margin-inline-start: 8px;
+	}
+
+	.ui-text-field-end {
+		margin-inline-end: 8px;
+	}
+
+	.ui-text-field-control::placeholder {
+		opacity: 1;
+		color: #757575; /* Chromium's default, which the toolkit's text field showed */
+	}
+
+	.ui-text-field[data-disabled] {
+		opacity: 0.4;
+	}
+
+	.ui-text-field[data-disabled] .ui-text-field-label,
+	.ui-text-field[data-disabled] .ui-text-field-control,
+	.ui-text-field[data-readonly] .ui-text-field-label,
+	.ui-text-field[data-readonly] .ui-text-field-control {
+		cursor: not-allowed;
+	}
+
 	.ui-themed-button-content {
 		display: flex;
 	}
@@ -1052,7 +1149,8 @@ a.ui-link {
 
 /* Same for VS Code's unlayered `input:focus` outline before 1.104. */
 input.ui-checkbox-input,
-input.ui-radio-input {
+input.ui-radio-input,
+input.ui-text-field-control {
 	outline: revert-layer;
 	outline-offset: revert-layer;
 }

@@ -9,6 +9,7 @@ import { ExtensionStateContextProvider } from "@/context/ExtensionStateContext"
 import SettingsView from "../SettingsView"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
+import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 vi.mock("@src/utils/vscode", () => ({ vscode: { postMessage: vi.fn() } }))
 
@@ -18,18 +19,6 @@ vi.mock("../ApiConfigManager", () => ({
 		<div data-testid="api-config-management">
 			<span>Current config: {currentApiConfigName}</span>
 		</div>
-	),
-}))
-
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextField: ({ value, onInput, placeholder, "data-testid": dataTestId }: any) => (
-		<input
-			type="text"
-			value={value}
-			onChange={(e) => onInput({ target: { value: e.target.value } })}
-			placeholder={placeholder}
-			data-testid={dataTestId}
-		/>
 	),
 }))
 
@@ -76,6 +65,8 @@ vi.mock("../../../components/common/Tab", () => ({
 }))
 
 vi.mock("@/components/ui", () => ({
+	// The real text field (a native input), not a stub.
+	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	...vi.importActual("@/components/ui"),
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { Checkbox } from "vscrui"
-import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import {
 	type ModelInfo,
@@ -12,7 +11,15 @@ import {
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StandardTooltip } from "@src/components/ui"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	StandardTooltip,
+	ThemedTextField,
+} from "@src/components/ui"
 
 import { noTransform } from "../transforms"
 import { type ProviderFormProps, useProviderField } from "./shared"
@@ -84,48 +91,48 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 				{t("settings:providers.apiKeyStorageNotice")}
 			</div>
 			{apiConfiguration?.awsUseApiKey ? (
-				<VSCodeTextField
+				<ThemedTextField
 					value={apiConfiguration?.awsApiKey || ""}
 					type="password"
 					onInput={handleInputChange("awsApiKey")}
 					placeholder={t("settings:placeholders.apiKey")}
 					className="w-full">
 					<label className="block font-medium mb-1">{t("settings:providers.awsApiKey")}</label>
-				</VSCodeTextField>
+				</ThemedTextField>
 			) : apiConfiguration?.awsUseProfile ? (
-				<VSCodeTextField
+				<ThemedTextField
 					value={apiConfiguration?.awsProfile || ""}
 					onInput={handleInputChange("awsProfile")}
 					placeholder={t("settings:placeholders.profileName")}
 					className="w-full">
 					<label className="block font-medium mb-1">{t("settings:providers.awsProfileName")}</label>
-				</VSCodeTextField>
+				</ThemedTextField>
 			) : (
 				<>
-					<VSCodeTextField
+					<ThemedTextField
 						value={apiConfiguration?.awsAccessKey || ""}
 						type="password"
 						onInput={handleInputChange("awsAccessKey")}
 						placeholder={t("settings:placeholders.accessKey")}
 						className="w-full">
 						<label className="block font-medium mb-1">{t("settings:providers.awsAccessKey")}</label>
-					</VSCodeTextField>
-					<VSCodeTextField
+					</ThemedTextField>
+					<ThemedTextField
 						value={apiConfiguration?.awsSecretKey || ""}
 						type="password"
 						onInput={handleInputChange("awsSecretKey")}
 						placeholder={t("settings:placeholders.secretKey")}
 						className="w-full">
 						<label className="block font-medium mb-1">{t("settings:providers.awsSecretKey")}</label>
-					</VSCodeTextField>
-					<VSCodeTextField
+					</ThemedTextField>
+					<ThemedTextField
 						value={apiConfiguration?.awsSessionToken || ""}
 						type="password"
 						onInput={handleInputChange("awsSessionToken")}
 						placeholder={t("settings:placeholders.sessionToken")}
 						className="w-full">
 						<label className="block font-medium mb-1">{t("settings:providers.awsSessionToken")}</label>
-					</VSCodeTextField>
+					</ThemedTextField>
 				</>
 			)}
 			<div>
@@ -228,7 +235,7 @@ export const Bedrock = ({ apiConfiguration, setApiConfigurationField, selectedMo
 			</Checkbox>
 			{awsEndpointSelected && (
 				<>
-					<VSCodeTextField
+					<ThemedTextField
 						value={apiConfiguration?.awsBedrockEndpoint || ""}
 						style={{ width: "100%", marginTop: 3, marginBottom: 5 }}
 						type="url"
