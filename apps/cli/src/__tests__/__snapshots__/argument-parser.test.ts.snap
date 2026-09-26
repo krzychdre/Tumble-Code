@@ -11,17 +11,19 @@ exports[`CLI argument parser (commander characterization) > handles an unknown l
 
 exports[`CLI argument parser (commander characterization) > handles excess arguments to a list subcommand 1`] = `
 {
-  "exitCode": 0,
-  "listed": 1,
-  "stderr": "",
+  "exitCode": 1,
+  "listed": 0,
+  "stderr": "error: too many arguments for 'modes'. Expected 0 arguments but got 1: extra.
+",
 }
 `;
 
 exports[`CLI argument parser (commander characterization) > handles excess arguments to a subcommand 1`] = `
 {
-  "exitCode": 0,
-  "stderr": "",
-  "upgraded": 1,
+  "exitCode": 1,
+  "stderr": "error: too many arguments for 'upgrade'. Expected 0 arguments but got 1: now.
+",
+  "upgraded": 0,
 }
 `;
 
@@ -189,23 +191,10 @@ Options:
 
 exports[`CLI argument parser (commander characterization) > passes options that follow the prompt through as arguments (passThroughOptions) 1`] = `
 {
-  "exitCode": undefined,
-  "runArgs": [
-    "hello",
-    {
-      "continue": false,
-      "debug": false,
-      "ephemeral": false,
-      "exitOnError": false,
-      "oneshot": false,
-      "outputFormat": "text",
-      "print": false,
-      "requireApproval": false,
-      "signalOnlyExit": false,
-      "stdinPromptStream": false,
-    },
-  ],
-  "stderr": "",
+  "exitCode": 1,
+  "runArgs": undefined,
+  "stderr": "error: too many arguments. Expected 1 argument but got 2: hello, -p.
+",
 }
 `;
 
@@ -229,22 +218,9 @@ exports[`CLI argument parser (commander characterization) > reads a prompt that 
 
 exports[`CLI argument parser (commander characterization) > treats a second positional argument as excess 1`] = `
 {
-  "exitCode": undefined,
-  "runArgs": [
-    "hello",
-    {
-      "continue": false,
-      "debug": false,
-      "ephemeral": false,
-      "exitOnError": false,
-      "oneshot": false,
-      "outputFormat": "text",
-      "print": false,
-      "requireApproval": false,
-      "signalOnlyExit": false,
-      "stdinPromptStream": false,
-    },
-  ],
-  "stderr": "",
+  "exitCode": 1,
+  "runArgs": undefined,
+  "stderr": "error: too many arguments. Expected 1 argument but got 2: hello, world.
+",
 }
 `;
