@@ -71,7 +71,12 @@ None required. React 19.3 is additive relative to 19.2, and the CLI moved
 - `cd webview-ui && npx vitest run` — 219 files, 2955 tests, all passed.
 - `cd apps/cli && npx vitest run` — 95 passed + 1 skipped (96 files),
   1299 passed + 1 skipped.
-- `pnpm knip` from the main tree — exit 0.
+- `pnpm knip` from the main tree — exits 1, but the full output is
+  byte-identical to a run against main's content in the same live tree
+  (A/B verified): every finding (unused exports in apps/cli agent code and
+  src/core, duplicate exports, zoo-port skill scripts) pre-exists on main.
+  No new knip findings from the React 19.3 bump; the pre-existing failures
+  are handled separately per the 2026-09-24 plan conventions.
 
 ## Deferred / notes
 
