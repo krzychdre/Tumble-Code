@@ -40,6 +40,22 @@ type NativeArgsFor<TName extends ToolName> = TName extends keyof NativeToolArgs 
 export type ToolCallStreamEvent = ApiStreamToolCallStartChunk | ApiStreamToolCallDeltaChunk | ApiStreamToolCallEndChunk
 
 /**
+ * Streamed tool arguments are parsed from the start for every preview, so
+ * parsing on every chunk is quadratic in the argument size: a 50 KB
+ * `write_to_file` in 12,600 chunks parsed about 320 million characters (API P2).
+ * Arguments up to this length (paths, commands, queries) are still parsed on
+ * every chunk; a parse of them costs microseconds.
+ */
+export const PARTIAL_ARGS_ALWAYS_PARSE_LENGTH = 4_096
+
+/**
+ * Longer arguments (file contents) are parsed for a preview at most once per
+ * this interval, which still updates the preview ten times a second. The
+ * complete call is always parsed in full by `finalizeStreamingToolCall`.
+ */
+export const PARTIAL_ARGS_PARSE_INTERVAL_MS = 100
+
+/**
  * Parser for native tool calls (OpenAI-style function calling).
  * Converts native tool call format to ToolUse format for compatibility
  * with existing tool execution infrastructure.
@@ -51,6 +67,7 @@ export type ToolCallStreamEvent = ApiStreamToolCallStartChunk | ApiStreamToolCal
  * This class also handles raw tool call chunk processing, converting
  * provider-level raw chunks into start/delta/end events.
  */
+
 export class NativeToolCallParser {
 	// Streaming state management for argument accumulation (keyed by tool call id)
 	// Note: name is string to accommodate dynamic MCP tools (mcp--serverName--toolName)
@@ -60,6 +77,8 @@ export class NativeToolCallParser {
 			id: string
 			name: string
 			argumentsAccumulator: string
+			/** When the accumulated arguments were last parsed for a preview (API P2). */
+			lastPartialParseAt?: number
 		}
 	>()
 
@@ -269,6 +288,17 @@ export class NativeToolCallParser {
 		if (toolCall.name.startsWith(mcpPrefix)) {
 			return null
 		}
+
+		// Large arguments only feed a preview: parse them at most once per interval.
+		const now = Date.now()
+		if (
+			toolCall.argumentsAccumulator.length > PARTIAL_ARGS_ALWAYS_PARSE_LENGTH &&
+			toolCall.lastPartialParseAt !== undefined &&
+			now - toolCall.lastPartialParseAt < PARTIAL_ARGS_PARSE_INTERVAL_MS
+		) {
+			return null
+		}
+		toolCall.lastPartialParseAt = now
 
 		// Parse whatever we can from the incomplete JSON!
 		// partial-json-parser extracts partial values (strings, arrays, objects) immediately
