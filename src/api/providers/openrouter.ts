@@ -203,7 +203,8 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	): AsyncGenerator<ApiStreamChunk> {
 		const model = await this.fetchModel()
 
-		let { id: modelId, maxTokens, temperature, topP, reasoning } = model
+		const { id: modelId, maxTokens, temperature, topP } = model
+		let { reasoning } = model
 
 		// Reset reasoning_details accumulator for this request
 		this.currentReasoningDetails = []
@@ -422,7 +423,7 @@ export class OpenRouterHandler extends BaseProvider implements SingleCompletionH
 	}
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		let { id: modelId, maxTokens, temperature, reasoning } = await this.fetchModel()
+		const { id: modelId, maxTokens, temperature, reasoning } = await this.fetchModel()
 
 		const completionParams: OpenRouterChatCompletionParams = {
 			model: modelId,

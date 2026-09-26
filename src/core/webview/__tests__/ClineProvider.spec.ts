@@ -517,10 +517,10 @@ describe("ClineProvider", () => {
 			},
 		}
 
-		// @ts-ignore - Access private property for testing
+		// @ts-expect-error - Access private property for testing
 		updateGlobalStateSpy = vi.spyOn(provider.contextProxy, "setValue")
 
-		// @ts-ignore - Accessing private property for testing.
+		// @ts-expect-error - Accessing private property for testing.
 		provider.customModesManager = mockCustomModesManager
 
 		// Mock getMcpHub method for generateSystemPrompt
@@ -536,7 +536,7 @@ describe("ClineProvider", () => {
 	test("constructor initializes correctly", () => {
 		expect(provider).toBeInstanceOf(ClineProvider)
 		// Since getVisibleInstance returns the last instance where view.visible is true
-		// @ts-ignore - accessing private property for testing
+		// @ts-expect-error - accessing private property for testing
 		provider.view = mockWebviewView
 		expect(ClineProvider.getVisibleInstance()).toBe(provider)
 	})
@@ -641,7 +641,7 @@ describe("ClineProvider", () => {
 				visibilityCallback = cb
 				return { dispose: vi.fn() }
 			})
-			// @ts-ignore - accessing private property for testing
+			// @ts-expect-error - accessing private property for testing
 			provider.view = mockWebviewView
 			await provider.resolveWebviewView(mockWebviewView)
 			;(mockOutputChannel.appendLine as ReturnType<typeof vi.fn>).mockClear()

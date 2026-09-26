@@ -83,7 +83,6 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
 		const { id: modelId, info, maxTokens, temperature } = this.getModel()
 
@@ -118,7 +117,7 @@ export class MiniMaxHandler extends BaseProvider implements SingleCompletionHand
 		}
 
 		// The task's signal: Stop closes the HTTP request.
-		stream = await this.client.messages.create(requestParams, { signal: metadata?.signal })
+		const stream = await this.client.messages.create(requestParams, { signal: metadata?.signal })
 
 		yield* processAnthropicStream(stream, info)
 	}

@@ -232,7 +232,10 @@ export class ExecaTerminalProcess extends BaseTerminalProcess {
 			timeoutId = setTimeout(() => {
 				try {
 					this.subprocess?.kill("SIGKILL")
-				} catch (e) {}
+				} catch (e) {
+					// the process may have exited already
+					console.warn(`[ExecaTerminalProcess#run] SIGKILL failed: ${e}`)
+				}
 
 				resolve(undefined)
 			}, 5_000)

@@ -470,6 +470,7 @@ describe("OpenAiHandler", () => {
 			const stream = reasoningHandler.createMessage(systemPrompt, messages)
 			// Consume the stream to trigger the API call
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			// Assert the mockCreate was called with reasoning_effort
 			expect(mockCreate).toHaveBeenCalled()
@@ -487,6 +488,7 @@ describe("OpenAiHandler", () => {
 			const stream = noReasoningHandler.createMessage(systemPrompt, messages)
 			// Consume the stream to trigger the API call
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			// Assert the mockCreate was called without reasoning_effort
 			expect(mockCreate).toHaveBeenCalled()
@@ -506,6 +508,7 @@ describe("OpenAiHandler", () => {
 			const noTempHandler = new OpenAiHandler(noTempOptions)
 			const stream = noTempHandler.createMessage(systemPrompt, messages)
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			expect(mockCreate).toHaveBeenCalled()
 			const callArgs = mockCreate.mock.calls[0][0]
@@ -517,6 +520,7 @@ describe("OpenAiHandler", () => {
 			// required default, omit `temperature` so the server's own default applies instead of forcing 0.
 			const stream = handler.createMessage(systemPrompt, messages)
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			expect(mockCreate).toHaveBeenCalled()
 			const callArgs = mockCreate.mock.calls[0][0]
@@ -527,6 +531,7 @@ describe("OpenAiHandler", () => {
 			const customTempHandler = new OpenAiHandler({ ...mockOptions, modelTemperature: 0.5 })
 			const stream = customTempHandler.createMessage(systemPrompt, messages)
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			expect(mockCreate).toHaveBeenCalled()
 			const callArgs = mockCreate.mock.calls[0][0]
@@ -537,6 +542,7 @@ describe("OpenAiHandler", () => {
 			const deepseekHandler = new OpenAiHandler({ ...mockOptions, openAiModelId: "deepseek-reasoner" })
 			const stream = deepseekHandler.createMessage(systemPrompt, messages)
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			expect(mockCreate).toHaveBeenCalled()
 			const callArgs = mockCreate.mock.calls[0][0]
@@ -548,6 +554,7 @@ describe("OpenAiHandler", () => {
 			const zeroTempHandler = new OpenAiHandler({ ...mockOptions, modelTemperature: 0 })
 			const stream = zeroTempHandler.createMessage(systemPrompt, messages)
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			expect(mockCreate).toHaveBeenCalled()
 			const callArgs = mockCreate.mock.calls[0][0]
@@ -568,6 +575,7 @@ describe("OpenAiHandler", () => {
 			const stream = handlerWithMaxTokens.createMessage(systemPrompt, messages)
 			// Consume the stream to trigger the API call
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			// Assert the mockCreate was called with max_tokens
 			expect(mockCreate).toHaveBeenCalled()
@@ -589,6 +597,7 @@ describe("OpenAiHandler", () => {
 			const stream = handlerWithoutMaxTokens.createMessage(systemPrompt, messages)
 			// Consume the stream to trigger the API call
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			// Assert the mockCreate was called without max_tokens
 			expect(mockCreate).toHaveBeenCalled()
@@ -610,6 +619,7 @@ describe("OpenAiHandler", () => {
 			const stream = handlerWithDefaultMaxTokens.createMessage(systemPrompt, messages)
 			// Consume the stream to trigger the API call
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			// Assert the mockCreate was called without max_tokens
 			expect(mockCreate).toHaveBeenCalled()
@@ -632,6 +642,7 @@ describe("OpenAiHandler", () => {
 			const stream = handlerWithUserMaxTokens.createMessage(systemPrompt, messages)
 			// Consume the stream to trigger the API call
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			// Assert the mockCreate was called with user-configured modelMaxTokens (32000), not model default maxTokens (4096)
 			expect(mockCreate).toHaveBeenCalled()
@@ -654,6 +665,7 @@ describe("OpenAiHandler", () => {
 			const stream = handlerWithoutUserMaxTokens.createMessage(systemPrompt, messages)
 			// Consume the stream to trigger the API call
 			for await (const _chunk of stream) {
+				// consume the stream
 			}
 			// Assert the mockCreate was called with model default maxTokens (4096) as fallback
 			expect(mockCreate).toHaveBeenCalled()

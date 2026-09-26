@@ -2,11 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 import { GoogleAuth } from "google-auth-library"
 
-import {
-	type ModelInfo,
-	ANTHROPIC_DEFAULT_MAX_TOKENS,
-	selectAnthropicVertexModel,
-} from "@roo-code/types"
+import { type ModelInfo, ANTHROPIC_DEFAULT_MAX_TOKENS, selectAnthropicVertexModel } from "@roo-code/types"
 
 import { ApiHandlerOptions } from "../../shared/api"
 
@@ -119,7 +115,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 		messages: Anthropic.Messages.MessageParam[],
 		metadata?: ApiHandlerCreateMessageMetadata,
 	): ApiStream {
-		let { id, info, temperature, maxTokens, reasoning: thinking, betas } = this.getModel()
+		const { id, info, temperature, maxTokens, reasoning: thinking, betas } = this.getModel()
 
 		const { supportsPromptCache } = info
 
@@ -216,7 +212,7 @@ export class AnthropicVertexHandler extends BaseProvider implements SingleComple
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
 		try {
-			let {
+			const {
 				id,
 				info: { supportsPromptCache },
 				temperature,

@@ -5,21 +5,12 @@ export default [
 	...config,
 	{
 		rules: {
-			// TODO: The rules listed below should be re-enabled once their existing violations are fixed.
-			"no-useless-escape": "off",
-			"no-empty": "off",
-			"prefer-const": "off",
-
+			// TODO: Re-enable these once the existing violations are fixed. See
+			// ai_plans/2026-09-26_re-enable-eslint-rules.md for the measured
+			// violation counts and scope decision.
 			"@typescript-eslint/no-unused-vars": "off",
 			"@typescript-eslint/no-explicit-any": "off",
 			"@typescript-eslint/no-require-imports": "off",
-			"@typescript-eslint/ban-ts-comment": "off",
-		},
-	},
-	{
-		files: ["core/assistant-message/presentAssistantMessage.ts"],
-		rules: {
-			"no-case-declarations": "off",
 		},
 	},
 	{

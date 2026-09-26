@@ -117,9 +117,7 @@ const STOPWORDS = new Set(
 /** Topic words of a memory: name + description, minus filler, status words and anything with a digit (dates, PR and branch numbers). */
 function topicWords(memory: MemoryHeader): Set<string> {
 	const text = `${memory.filename.replace(/\.md$/, "")} ${memory.description ?? ""}`.toLowerCase()
-	return new Set(
-		text.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3 && !STOPWORDS.has(w) && !/\d/.test(w)),
-	)
+	return new Set(text.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3 && !STOPWORDS.has(w) && !/\d/.test(w)))
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
@@ -314,8 +312,7 @@ export async function executeAutoDream(context: AutoDreamContext): Promise<void>
 
 	// Declare the promise holder first so the `finally` can deregister itself
 	// without a use-before-assignment error.
-	let run: Promise<void> | undefined
-	run = (async () => {
+	const run: Promise<void> | undefined = (async () => {
 		try {
 			const changed = await consolidateMemories(memoryDir, context.query, controller.signal)
 			if (changed.length > 0 && context.onImproved) {

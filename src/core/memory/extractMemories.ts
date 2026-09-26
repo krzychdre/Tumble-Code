@@ -332,8 +332,7 @@ export async function executeExtractMemories(context: ExtractionContext): Promis
 
 	// Declare the promise holder first so the `finally` can deregister itself
 	// without a use-before-assignment error.
-	let run: Promise<void> | undefined
-	run = (async () => {
+	const run: Promise<void> | undefined = (async () => {
 		try {
 			const answer = await context.query(
 				EXTRACTION_SYSTEM_PROMPT,

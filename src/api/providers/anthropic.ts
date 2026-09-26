@@ -2,12 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
 import { CacheControlEphemeral } from "@anthropic-ai/sdk/resources"
 
-import {
-	type ModelInfo,
-	ANTHROPIC_DEFAULT_MAX_TOKENS,
-	ApiProviderError,
-	selectAnthropicModel,
-} from "@roo-code/types"
+import { type ModelInfo, ANTHROPIC_DEFAULT_MAX_TOKENS, ApiProviderError, selectAnthropicModel } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import type { ApiHandlerOptions } from "../../shared/api"
@@ -52,7 +47,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	): ApiStream {
 		let stream: AnthropicStream<Anthropic.Messages.RawMessageStreamEvent>
 		const cacheControl: CacheControlEphemeral = { type: "ephemeral" }
-		let {
+		const {
 			id: modelId,
 			betas = ["fine-grained-tool-streaming-2025-05-14"],
 			maxTokens,
@@ -182,7 +177,7 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 	}
 
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
-		let { id: model, temperature } = this.getModel()
+		const { id: model, temperature } = this.getModel()
 
 		let message
 		try {

@@ -198,7 +198,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 							{
 								type: "text",
 								text: systemPrompt,
-								// @ts-ignore-next-line
+								// @ts-expect-error-next-line
 								cache_control: { type: "ephemeral" },
 							},
 						],
@@ -227,7 +227,7 @@ export class OpenAiHandler extends BaseProvider implements SingleCompletionHandl
 								msg.content.push(lastTextPart)
 							}
 
-							// @ts-ignore-next-line
+							// @ts-expect-error-next-line
 							lastTextPart["cache_control"] = { type: "ephemeral" }
 						}
 					})

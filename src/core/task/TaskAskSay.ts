@@ -304,7 +304,7 @@ export class TaskAskSay {
 			})
 		}
 
-		let timeouts: NodeJS.Timeout[] = []
+		const timeouts: NodeJS.Timeout[] = []
 
 		if (approval.decision === "approve") {
 			this.approveAsk()
