@@ -158,6 +158,22 @@ def test_bad_tokens_are_refused(legacy_secret, token_factory):
     assert decode_token(token_factory()) is None
 
 
+@pytest.mark.parametrize(
+    "claims",
+    [
+        pytest.param({k: v for k, v in _claims().items() if k != "iss"}, id="missing-iss"),
+        pytest.param(_claims(iss="someone-else"), id="wrong-iss"),
+        pytest.param({k: v for k, v in _claims().items() if k != "v"}, id="missing-v"),
+        pytest.param(_claims(v=2), id="wrong-v"),
+        pytest.param(_claims(v="1"), id="string-v"),
+        pytest.param(_claims(v=True), id="boolean-v"),
+    ],
+)
+def test_a_token_without_our_issuer_and_version_is_refused(legacy_secret, claims):
+    """Signed with our key, but not a token this server issues (owner decision 24)."""
+    assert decode_token(_hand_signed(claims, LEGACY_SECRET)) is None
+
+
 def test_rs256_round_trip(monkeypatch):
     from cryptography.hazmat.primitives import serialization
     from cryptography.hazmat.primitives.asymmetric import rsa

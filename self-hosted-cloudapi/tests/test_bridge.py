@@ -146,6 +146,54 @@ def test_user_id_from_token_rejects_garbage():
     assert _user_id_from_token("not-a-real-token") is None
 
 
+def _signed_token(claims: dict, expires_in: int = 60) -> str:
+    """A token signed with our key carrying exactly the claims the test names."""
+    import time
+
+    import jwt
+
+    from config.settings import settings
+    from src.auth.jwt_issuer import get_jwt_key
+
+    now = int(time.time())
+    return jwt.encode(
+        {"exp": now + expires_in, "iat": now, "nbf": now, "r": {"u": "user_x"}, **claims},
+        get_jwt_key(),
+        settings.jwt_algorithm,
+    )
+
+
+def test_user_id_from_token_accepts_a_static_token():
+    # The shape the retired issue_static_token gave long-lived
+    # ROO_CODE_CLOUD_TOKEN values, some of which users still hold.
+    token = _signed_token(
+        {"iss": "rcc", "v": 1, "sub": "cj_user_static", "r": {"u": "user_static", "t": "cj"}},
+        expires_in=86400 * 365,
+    )
+    assert _user_id_from_token(token) == "user_static"
+
+
+FOREIGN_CLAIMS = [
+    pytest.param({"v": 1}, id="missing-iss"),
+    pytest.param({"iss": "someone-else", "v": 1}, id="wrong-iss"),
+    pytest.param({"iss": "rcc"}, id="missing-v"),
+    pytest.param({"iss": "rcc", "v": 2}, id="wrong-v"),
+]
+
+
+@pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
+def test_user_id_from_token_refuses_a_token_without_our_issuer_and_version(claims):
+    assert _user_id_from_token(_signed_token(claims)) is None
+
+
+@pytest.mark.parametrize("claims", FOREIGN_CLAIMS)
+async def test_connect_extension_refuses_a_token_without_our_issuer_and_version(
+    patch_session_factory, claims
+):
+    assert await sio_module.connect("extsid", {}, {"token": _signed_token(claims)}) is False
+    assert registry.meta("extsid") is None
+
+
 def test_cookie_from_environ_extracts_session_cookie():
     environ = {"HTTP_COOKIE": "foo=bar; tumble_session=abc123; baz=qux"}
     assert _cookie_from_environ(environ) == "abc123"

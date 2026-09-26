@@ -25,7 +25,6 @@ from sqlalchemy import select
 from src.auth.jwt_issuer import decode_token
 from src.auth.network_access import client_allowed, scope_client
 from src.auth.origins import is_trusted_origin
-from src.auth.static_token import validate_static_token
 from src.auth.web_session import COOKIE_NAME, resolve_web_user
 from src.database import async_session_factory
 from src.models.task import Task
@@ -85,9 +84,8 @@ def _user_id_from_token(token: Optional[str]) -> Optional[str]:
     """Resolve a handshake bearer/JWT/static token to a user_id, or None."""
     if not token:
         return None
-    static_result = validate_static_token(token)
-    if static_result is not None:
-        return static_result.get("user_id")
+    # One decode: decode_token requires our issuer and version, for session
+    # and static tokens alike (both carry them).
     payload = decode_token(token)
     if payload is None:
         return None
