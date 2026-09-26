@@ -60,7 +60,7 @@ describe("highlightHunks", () => {
 
 		expect(result.oldLines).toHaveLength(2)
 		expect(result.newLines).toHaveLength(2)
-		expect(getHighlighter).toHaveBeenCalledWith("javascript")
+		expect(getHighlighter).toHaveBeenCalledWith("javascript", "github-light")
 		expect(mockHighlighter.codeToHast).toHaveBeenCalledTimes(2)
 	})
 

@@ -190,8 +190,9 @@ describe("CodeBlock", () => {
 			render(<CodeBlock source={code} language="typescript" />)
 		})
 
-		// Verify getHighlighter was called with the right language
-		expect(highlighterUtil.getHighlighter).toHaveBeenCalledWith("typescript")
+		// Verify getHighlighter was called with the right language and the
+		// theme matching the current body class (dark when no vscode-light class)
+		expect(highlighterUtil.getHighlighter).toHaveBeenCalledWith("typescript", "github-dark")
 		expect(highlighterUtil.normalizeLanguage).toHaveBeenCalledWith("typescript")
 	})
 
