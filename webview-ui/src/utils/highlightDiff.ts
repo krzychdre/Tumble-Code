@@ -1,5 +1,5 @@
 import { ReactNode } from "react"
-import { getHighlighter } from "./highlighter"
+import { getHighlighter, type ShikiThemeName } from "./highlighter"
 import { toJsxRuntime } from "hast-util-to-jsx-runtime"
 import { Fragment, jsx, jsxs } from "react/jsx-runtime"
 
@@ -16,8 +16,8 @@ export async function highlightHunks(
 	_filePath?: string,
 ): Promise<{ oldLines: ReactNode[]; newLines: ReactNode[] }> {
 	try {
-		const highlighter = await getHighlighter(lang)
-		const shikiTheme = theme === "light" ? "github-light" : "github-dark"
+		const shikiTheme: ShikiThemeName = theme === "light" ? "github-light" : "github-dark"
+		const highlighter = await getHighlighter(lang, shikiTheme)
 
 		// Helper to highlight text and extract lines
 		const highlightAndExtractLines = (text: string): ReactNode[] => {

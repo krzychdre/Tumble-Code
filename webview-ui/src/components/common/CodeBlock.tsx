@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useCallback, useState } from "react"
 import styled from "styled-components"
 import { useCopyToClipboard } from "@src/utils/clipboard"
-import { getHighlighter, isLanguageLoaded, normalizeLanguage } from "@src/utils/highlighter"
+import { getHighlighter, isLanguageLoaded, normalizeLanguage, type ShikiThemeName } from "@src/utils/highlighter"
 import type { ShikiTransformer } from "shiki"
 import { toJsxRuntime } from "hast-util-to-jsx-runtime"
 import { Fragment, jsx, jsxs } from "react/jsx-runtime"
@@ -211,12 +211,16 @@ const CodeBlock = memo(
 					}
 				}
 
-				const highlighter = await getHighlighter(currentLanguage)
+				const shikiTheme: ShikiThemeName = document.body.className.toLowerCase().includes("light")
+					? "github-light"
+					: "github-dark"
+
+				const highlighter = await getHighlighter(currentLanguage, shikiTheme)
 				if (!isMountedRef.current) return
 
 				const hast = await highlighter.codeToHast(source || "", {
 					lang: currentLanguage || "txt",
-					theme: document.body.className.toLowerCase().includes("light") ? "github-light" : "github-dark",
+					theme: shikiTheme,
 					transformers: [
 						{
 							pre(node) {
