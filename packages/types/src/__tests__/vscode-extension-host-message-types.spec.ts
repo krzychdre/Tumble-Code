@@ -42,6 +42,7 @@ type ExpectedExtensionMessageType =
 	| "workspaceUpdated"
 	| "invoke"
 	| "messageUpdated"
+	| "messageAdded"
 	| "subagentsUpdated"
 	| "subagentMessages"
 	| "memoryActivity"
@@ -108,6 +109,7 @@ type ExpectedExtensionMessageType =
 	| "planReviewDraftsConsumed"
 
 type ExpectedWebviewMessageType =
+	| "resyncClineMessages"
 	| "updateTodoList"
 	| "deleteMultipleTasksWithIds"
 	| "upsertApiConfiguration"

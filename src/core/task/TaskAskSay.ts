@@ -499,6 +499,8 @@ export class TaskAskSay {
 			if (lastFollowUpIndex !== -1) {
 				// Mark this follow-up as answered
 				this.access.clineMessages[lastFollowUpIndex].isAnswered = true
+				// A view that gets new messages alone would not see this otherwise (CORE-R7).
+				void this.access.history.postEditedClineMessage(this.access.clineMessages[lastFollowUpIndex])
 				// Save the updated messages
 				this.access.history.saveClineMessages().catch((error) => {
 					console.error("Failed to save answered follow-up state:", error)

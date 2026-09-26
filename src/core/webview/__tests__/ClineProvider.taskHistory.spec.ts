@@ -1395,9 +1395,9 @@ describe("ClineProvider Task History Synchronization", () => {
 			expect(findCallsByType(post.mock.calls, "taskHistoryItemUpdated").map((c) => c[0].taskHistoryItem)).toEqual(
 				[item],
 			)
-			expect(findCallsByType(post.mock.calls, "taskHistoryItemDeleted").map((c) => c[0].taskHistoryItemId)).toEqual(
-				["gone"],
-			)
+			expect(
+				findCallsByType(post.mock.calls, "taskHistoryItemDeleted").map((c) => c[0].taskHistoryItemId),
+			).toEqual(["gone"])
 			// Sorted newest first, entries without ts or task dropped.
 			expect(
 				findCallsByType(post.mock.calls, "taskHistoryUpdated")[0][0].taskHistory.map((h: HistoryItem) => h.id),
@@ -1820,6 +1820,23 @@ describe("ClineProvider Task History Synchronization", () => {
 			const full = ofType("state", newPost)
 			expect(full).toHaveLength(1)
 			expect(full[0].state.clineMessages.map((m: ClineMessage) => m.text)).toEqual(["m0", "m1", "m2", "four"])
+		})
+
+		it("a message changed in place is posted as messageUpdated to an accepting view that holds the list, never to the CLI", async () => {
+			current = makeTask("task-1", 2)
+			await launch({ acceptsMessageAdded: true })
+
+			await provider.postEditedClineMessage(current, current.clineMessages[0])
+			expect(ofType("messageUpdated").map((m) => [m.sourceTaskId, m.clineMessage.ts])).toEqual([["task-1", 1]])
+
+			await launch({})
+			await provider.postEditedClineMessage(current, current.clineMessages[0])
+			expect(posted()).toEqual([])
+
+			// An accepting view that holds another list gets nothing either.
+			await launch({ acceptsMessageAdded: true })
+			await provider.postEditedClineMessage(makeTask("task-other", 2), current.clineMessages[0])
+			expect(posted()).toEqual([])
 		})
 
 		it("resyncClineMessages answers with a full push of the current task's list", async () => {

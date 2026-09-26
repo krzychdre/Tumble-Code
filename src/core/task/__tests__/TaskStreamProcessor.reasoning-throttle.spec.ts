@@ -74,6 +74,7 @@ function makeHarness() {
 			}),
 			updateClineMessage: vi.fn(async (message: ClineMessage) => record("updated", message)),
 			saveClineMessages: vi.fn().mockResolvedValue(true),
+			postEditedClineMessage: vi.fn().mockResolvedValue(undefined),
 			addToApiConversationHistory: vi.fn().mockResolvedValue(undefined),
 		} as any,
 		providerRef: { deref: () => ({ postStateToWebviewWithoutTaskHistory: vi.fn() }) } as any,
@@ -217,7 +218,11 @@ describe("TaskStreamProcessor partial reasoning posts", () => {
 
 	it("posts pending reasoning before a text message starts, and interleaved reasoning still works", async () => {
 		const { access, posts } = await runStream(
-			[{ reasoning: "Thinking about the first part.\n" }, { text: "Here is " }, { reasoning: "More.**Next** thoughts" }],
+			[
+				{ reasoning: "Thinking about the first part.\n" },
+				{ text: "Here is " },
+				{ reasoning: "More.**Next** thoughts" },
+			],
 			5,
 			2,
 		)

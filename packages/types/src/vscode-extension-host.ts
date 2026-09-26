@@ -37,6 +37,7 @@ export type ExtensionTaskMessageType =
 	| "taskHistoryItemUpdated"
 	| "taskHistoryItemDeleted"
 	| "messageUpdated"
+	| "messageAdded"
 	| "subagentsUpdated"
 	| "subagentMessages"
 	| "memoryActivity"
@@ -175,7 +176,13 @@ export interface ExtensionMessage {
 	}>
 	clineMessage?: ClineMessage
 	/**
-	 * Source task of a `messageUpdated` push, and the target of `subagentsUpdated`
+	 * For `messageAdded`: the position of `clineMessage` in the task's message
+	 * list. A view whose list is not exactly this long has missed a message and
+	 * asks for the whole list (`resyncClineMessages`).
+	 */
+	messageIndex?: number
+	/**
+	 * Source task of a `messageUpdated` or `messageAdded` push, and the target of `subagentsUpdated`
 	 * / `subagentMessages`. The webview routes by it: current task → main chat,
 	 * subscribed subagent → its live tail, otherwise dropped.
 	 */
@@ -513,6 +520,7 @@ export interface UpdateTodoListPayload {
 
 /** Task lifecycle, the chat transcript, message queue, subagents and checkpoints. */
 export type WebviewTaskMessageType =
+	| "resyncClineMessages"
 	| "updateTodoList"
 	| "deleteMultipleTasksWithIds"
 	| "newTask"
@@ -721,6 +729,12 @@ export type EditQueuedMessagePayload = Pick<QueuedMessage, "id" | "text" | "imag
 
 export interface WebviewMessage {
 	type: WebviewMessageType
+	/**
+	 * For `webviewDidLaunch`: the view applies `messageAdded` (a new chat
+	 * message sent alone, CORE-R7). Views that leave it out, like the CLI,
+	 * keep receiving the whole message list with every added message.
+	 */
+	acceptsMessageAdded?: boolean
 	text?: string
 	taskId?: string
 	editedMessageContent?: string

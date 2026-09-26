@@ -115,6 +115,7 @@ function makeTask(historyMessages: number, view: "full" | "appends" = "full") {
 		// What the real provider posts to a view that accepts it: the message and
 		// the state without the message list (about 6 KB on real settings; the
 		// stand-in below is the part that does not grow with the conversation).
+		postEditedClineMessage: vi.fn(async () => {}),
 		postClineMessageAdded: vi.fn(async (_task: unknown, message: ClineMessage) => {
 			if (view === "full") {
 				return false
@@ -231,7 +232,7 @@ describe("CORE-R7 request-cycle counts (TaskAskSay + TaskHistory)", () => {
 
 	const chunks = { reasoning: 20, text: 30, toolArgs: 10 }
 
-	it("pins today's pushes, saves, getState calls and the cloud contract for one cycle", async () => {
+	it("pins the pushes, saves, getState calls and the cloud contract of one cycle for a view without messageAdded (the CLI)", async () => {
 		const { task, snapshot } = makeTask(0)
 
 		await runTurn(task, chunks)
@@ -459,6 +460,23 @@ describe("coalesced ui_messages.json writes (CORE-R7 step 4)", () => {
 		task.askSay.handleWebviewAskResponse("messageResponse", "the first")
 		await vi.advanceTimersByTimeAsync(200)
 		await expect(answered).resolves.toMatchObject({ response: "messageResponse", text: "the first" })
+	})
+
+	it("an answered follow-up is shown to the view without a Message event (CORE-R7)", async () => {
+		const { task, snapshot } = makeTask(0, "appends")
+		const provider = (task as any).providerRef.deref()
+
+		const answered = task.askSay.ask("followup", "which one?")
+		await vi.advanceTimersByTimeAsync(0)
+		const before = snapshot().messageEvents
+		task.askSay.handleWebviewAskResponse("messageResponse", "the first")
+		await vi.advanceTimersByTimeAsync(200)
+		await answered
+
+		expect(provider.postEditedClineMessage).toHaveBeenCalledTimes(1)
+		const [, edited] = provider.postEditedClineMessage.mock.calls[0]
+		expect(edited).toMatchObject({ ask: "followup", isAnswered: true })
+		expect(snapshot().messageEvents).toEqual(before)
 	})
 
 	it("keeps the cloud contract: one TASK_MESSAGE capture and one Message event per message", async () => {

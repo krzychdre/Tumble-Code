@@ -25,6 +25,10 @@ export const PERF_COUNTER_NAMES = [
 	"statePostBytes",
 	/** `clineMessages` entries carried by those state messages. */
 	"statePostMessages",
+	/** `messageAdded` messages posted to the webview (a new chat message alone, with the state without the list). */
+	"messageAddedPosts",
+	/** Serialized size of those messages, in bytes. */
+	"messageAddedBytes",
 	/** `messageUpdated` messages posted to the webview (one chat message each). */
 	"messageUpdatedPosts",
 	/** Serialized size of those messages, in bytes. */
@@ -96,6 +100,9 @@ class PerfCounters {
 			this.values.statePosts += 1
 			this.values.statePostBytes += bytes
 			this.values.statePostMessages += message.state?.clineMessages?.length ?? 0
+		} else if (message.type === "messageAdded") {
+			this.values.messageAddedPosts += 1
+			this.values.messageAddedBytes += bytes
 		} else if (message.type === "messageUpdated") {
 			this.values.messageUpdatedPosts += 1
 			this.values.messageUpdatedBytes += bytes

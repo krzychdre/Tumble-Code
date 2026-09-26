@@ -11,6 +11,7 @@ import { useExtensionMessage } from "./utils/extensionBus"
 import { telemetryClient } from "./utils/TelemetryClient"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
+import { WEBVIEW_DID_LAUNCH_MESSAGE } from "./context/webviewDidLaunchMessage"
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
@@ -200,7 +201,7 @@ const App = () => {
 	}, [telemetrySetting, telemetryKey, machineId, didHydrateState])
 
 	// Tell the extension that we are ready to receive messages.
-	useEffect(() => vscode.postMessage({ type: "webviewDidLaunch" }), [])
+	useEffect(() => vscode.postMessage(WEBVIEW_DID_LAUNCH_MESSAGE), [])
 
 	// Initialize source map support for better error reporting
 	useEffect(() => {

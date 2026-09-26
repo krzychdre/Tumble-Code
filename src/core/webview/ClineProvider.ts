@@ -28,6 +28,7 @@ import {
 	type TerminalActionId,
 	type TerminalActionPromptType,
 	type HistoryItem,
+	type ClineMessage,
 	type CreateTaskOptions,
 	type ExtensionMessage,
 	type ExtensionState,
@@ -180,6 +181,20 @@ export class ClineProvider
 	 * (and are posted) in a different order.
 	 */
 	private clineMessagesSeq = 0
+
+	/**
+	 * The view declared on its launch that it applies `messageAdded` (CORE-R7).
+	 * Per webview: cleared when a webview is resolved, set again by every
+	 * `webviewDidLaunch`. The CLI never declares it.
+	 */
+	private webviewAcceptsMessageAdded = false
+
+	/**
+	 * The message list the view was last sent in a state push (the task's live
+	 * array) and how long it was when posted. A new message is sent alone only
+	 * when it extends exactly this list; see {@link postClineMessageAdded}.
+	 */
+	private viewClineMessages?: { list: readonly ClineMessage[]; count: number }
 
 	/** Builds getState() and the webview state (CORE-R1). */
 	private readonly stateBuilder: ProviderStateBuilder
@@ -846,8 +861,10 @@ export class ClineProvider
 
 	async resolveWebviewView(webviewView: vscode.WebviewView | vscode.WebviewPanel) {
 		this.view = webviewView
-		// A new webview starts without the task history.
+		// A new webview starts without the task history or any message, and has
+		// not declared what it accepts yet.
 		this.forgetWebviewTaskHistory()
+		this.setWebviewAcceptsMessageAdded(false)
 		const inTabMode = "onDidChangeViewState" in webviewView
 
 		if (inTabMode) {
@@ -1439,6 +1456,7 @@ export class ClineProvider
 	 */
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview({ includeTaskHistory: "whenChanged" })
+		this.rememberViewClineMessages(state.clineMessages)
 		this.postMessageToWebview({ type: "state", state })
 
 		// Check MDM compliance and send user to account tab if not compliant
@@ -1464,6 +1482,7 @@ export class ClineProvider
 	async postStateToWebviewWithoutTaskHistory(): Promise<void> {
 		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
 		const { taskHistory: _omit, ...rest } = state
+		this.rememberViewClineMessages(rest.clineMessages)
 		this.postMessageToWebview({ type: "state", state: rest })
 
 		// Preserve existing MDM redirect behavior
@@ -1497,6 +1516,118 @@ export class ClineProvider
 		if (this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance()) {
 			await this.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
 		}
+	}
+
+	/**
+	 * Posts a chat message just added to `task` as a `messageAdded` (the
+	 * message, its index and the state without the message list, the history
+	 * and the sequence number) instead of a state push with the whole list
+	 * (CORE-R7). Returns false, posting nothing, when the view needs the full
+	 * push the caller then sends:
+	 * - the view did not declare `acceptsMessageAdded` on launch (the CLI);
+	 * - `task` is not the current task;
+	 * - the view was not sent this task's current list (a new or resumed task,
+	 *   a replaced list, a new webview) or misses a message before this one.
+	 * The rest of the state travels along because a new message can come with
+	 * other changes (the todo list, the queue, the history item), exactly as
+	 * the full push carried them. If the view changes while that state is
+	 * built, the full push is sent here instead (and true returned).
+	 */
+	async postClineMessageAdded(
+		task: { readonly taskId: string; readonly clineMessages: ClineMessage[] },
+		message: ClineMessage,
+	): Promise<boolean> {
+		const index = task.clineMessages.lastIndexOf(message)
+
+		if (!this.canSendClineMessageAlone(task, index)) {
+			return false
+		}
+
+		const state = await this.getStateToPostToWebview({ includeTaskHistory: false })
+
+		// Re-checked after the await: the view may have been replaced or
+		// reloaded (it holds nothing then), or a full push may already have
+		// carried this message (sending it again is harmless: the webview
+		// replaces a message whose ts it knows).
+		if (!this.canSendClineMessageAlone(task, index)) {
+			await this.postStateToWebviewWithoutTaskHistory()
+			return true
+		}
+
+		const { clineMessages: _omitMessages, clineMessagesSeq: _omitSeq, taskHistory: _omitHistory, ...rest } = state
+		this.viewClineMessages!.count = Math.max(this.viewClineMessages!.count, index + 1)
+		this.postMessageToWebview({
+			type: "messageAdded",
+			sourceTaskId: task.taskId,
+			messageIndex: index,
+			clineMessage: message,
+			state: rest,
+		})
+
+		// Preserve existing MDM redirect behavior
+		if (this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance()) {
+			await this.postMessageToWebview({ type: "action", action: "cloudButtonClicked" })
+		}
+
+		return true
+	}
+
+	/**
+	 * Shows the view a message of `task` that was changed in place without a
+	 * post of its own (a follow-up marked answered, the rows an aborted stream
+	 * finishes). A full state push used to carry such changes with the next
+	 * added message; a view that gets new messages alone (CORE-R7) needs them
+	 * posted. Only to such a view and only when it holds this task's list;
+	 * any other view (the CLI) still sees them in its next full push, so what
+	 * it receives does not change. Emits no task event.
+	 */
+	async postEditedClineMessage(
+		task: { readonly taskId: string; readonly clineMessages: ClineMessage[] },
+		message: ClineMessage,
+	): Promise<void> {
+		if (!this.webviewAcceptsMessageAdded || this.viewClineMessages?.list !== task.clineMessages) {
+			return
+		}
+
+		await this.postMessageToWebview({ type: "messageUpdated", sourceTaskId: task.taskId, clineMessage: message })
+	}
+
+	/**
+	 * The view has every message of `task` before `index` in this very list, so
+	 * the message at `index` can be sent alone. `count >= index`: a full push
+	 * posted after the message was pushed already carries it.
+	 */
+	private canSendClineMessageAlone(task: { readonly clineMessages: ClineMessage[] }, index: number): boolean {
+		const current = this.getCurrentTask()
+
+		return (
+			this.webviewAcceptsMessageAdded &&
+			index !== -1 &&
+			current !== undefined &&
+			current.clineMessages === task.clineMessages &&
+			this.viewClineMessages?.list === task.clineMessages &&
+			this.viewClineMessages.count >= index
+		)
+	}
+
+	/**
+	 * Records the message list a state push is about to post. `postMessage`
+	 * serializes the live array at once, so its length now is what the view
+	 * receives.
+	 */
+	private rememberViewClineMessages(clineMessages: ClineMessage[] | undefined): void {
+		this.viewClineMessages =
+			this.view && clineMessages ? { list: clineMessages, count: clineMessages.length } : undefined
+	}
+
+	/**
+	 * What the view declared on launch (see {@link webviewAcceptsMessageAdded}).
+	 * Also forgets which message list it holds: a (re)loaded webview starts
+	 * empty until its launch push.
+	 */
+	setWebviewAcceptsMessageAdded(accepts: boolean): void {
+		this.webviewAcceptsMessageAdded = accepts
+		this.viewClineMessages = undefined
 	}
 
 	/**

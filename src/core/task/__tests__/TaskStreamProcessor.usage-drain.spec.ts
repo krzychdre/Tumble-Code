@@ -38,6 +38,7 @@ function makeAccess(overrides: Partial<TaskStreamProcessorAccess> = {}): TaskStr
 		} as any,
 		history: {
 			saveClineMessages: vi.fn().mockResolvedValue(undefined),
+			postEditedClineMessage: vi.fn().mockResolvedValue(undefined),
 			updateClineMessage: vi.fn().mockResolvedValue(undefined),
 		} as any,
 		...overrides,
@@ -116,6 +117,27 @@ describe("TaskStreamProcessor background usage drain", () => {
 		// This is precisely the destructive behavior that stranded dirty buffers
 		// when abortStream was mistakenly wired into the usage drain.
 		expect(access.diffViewProvider.revertChanges).toHaveBeenCalledTimes(1)
+	})
+
+	it("abortStream shows the view the rows it finished in place: the partial message and the request row (CORE-R7)", async () => {
+		const partial = { ts: 2, type: "say", say: "text", text: "half", partial: true } as any
+		const access = makeAccess()
+		access.clineMessages.push(partial)
+		const processor = new TaskStreamProcessor(access, {} as any)
+
+		await processor.createAbortStreamFn(0, vi.fn())("streaming_failed")
+
+		expect(partial.partial).toBe(false)
+		expect((access.history.postEditedClineMessage as any).mock.calls.map(([m]: any[]) => m.ts)).toEqual([2, 1])
+	})
+
+	it("abortStream without a partial message shows only the request row", async () => {
+		const access = makeAccess()
+		const processor = new TaskStreamProcessor(access, {} as any)
+
+		await processor.createAbortStreamFn(0, vi.fn())("user_cancelled")
+
+		expect((access.history.postEditedClineMessage as any).mock.calls.map(([m]: any[]) => m.ts)).toEqual([1])
 	})
 })
 
