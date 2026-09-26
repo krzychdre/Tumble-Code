@@ -6,7 +6,7 @@ import remarkMath from "remark-math"
 import remarkGfm from "remark-gfm"
 
 import { vscode } from "@src/utils/vscode"
-import { type AlertType, remarkGithubAlerts, remarkSingleDollarMath } from "@src/utils/markdown"
+import { type AlertType, markdownUrlTransform, remarkGithubAlerts, remarkSingleDollarMath } from "@src/utils/markdown"
 
 import CodeBlock from "./CodeBlock"
 import MermaidBlock from "./MermaidBlock"
@@ -465,6 +465,8 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 					},
 				]}
 				rehypePlugins={rehypeKatexPlugin ? [rehypeKatexPlugin as any] : []}
+				// Keeps file:// and "name.ext:line" hrefs for the click handler above.
+				urlTransform={markdownUrlTransform}
 				components={components}>
 				{markdown || ""}
 			</ReactMarkdown>
