@@ -12,15 +12,6 @@ vi.mock("react-i18next", () => ({
 	Trans: ({ i18nKey, children }: any) => <span>{i18nKey || children}</span>,
 }))
 
-// Mock VSCodeLink
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeLink: ({ children, onClick }: any) => (
-		<a href="#" onClick={onClick}>
-			{children}
-		</a>
-	),
-}))
-
 // Wrapper component with TooltipProvider
 const TestWrapper = ({ children }: { children: React.ReactNode }) => <TooltipProvider>{children}</TooltipProvider>
 

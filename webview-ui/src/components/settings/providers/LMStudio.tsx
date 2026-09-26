@@ -1,7 +1,8 @@
 import { useMemo } from "react"
 import { Trans } from "react-i18next"
 import { Checkbox } from "vscrui"
-import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { Link } from "@src/components/ui"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
@@ -107,8 +108,8 @@ export const LMStudio = ({ apiConfiguration, setApiConfigurationField }: LMStudi
 				<Trans
 					i18nKey="settings:providers.lmStudio.description"
 					components={{
-						a: <VSCodeLink href="https://lmstudio.ai/docs" />,
-						b: <VSCodeLink href="https://lmstudio.ai/docs/basics/server" />,
+						a: <Link href="https://lmstudio.ai/docs" />,
+						b: <Link href="https://lmstudio.ai/docs/basics/server" />,
 						span: (
 							<span className="text-vscode-errorForeground ml-1">
 								<span className="font-medium">Note:</span>

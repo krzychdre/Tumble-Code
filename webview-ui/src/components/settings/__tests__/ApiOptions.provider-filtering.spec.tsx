@@ -63,6 +63,7 @@ vi.mock("@src/components/ui/hooks/useOpenRouterModelProviders", () => ({
 
 // Mock the SearchableSelect component to capture the options passed to it
 vi.mock("@src/components/ui", () => ({
+	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	SearchableSelect: ({ options, ...props }: any) => {
 		// Store the options in a data attribute for testing
 		return (

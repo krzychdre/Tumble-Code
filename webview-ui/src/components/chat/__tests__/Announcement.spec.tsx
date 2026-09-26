@@ -16,14 +16,6 @@ vi.mock("@roo/package", () => ({
 	},
 }))
 
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeLink: ({ children, href, onClick, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
-		<a href={href} onClick={onClick} {...props}>
-			{children}
-		</a>
-	),
-}))
-
 vi.mock("react-i18next", () => ({
 	Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
 }))

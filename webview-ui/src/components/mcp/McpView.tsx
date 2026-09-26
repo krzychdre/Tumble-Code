@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { Trans } from "react-i18next"
-import { VSCodeLink, VSCodePanels, VSCodePanelTab, VSCodePanelView } from "@vscode/webview-ui-toolkit/react"
+import { VSCodePanels, VSCodePanelTab, VSCodePanelView } from "@vscode/webview-ui-toolkit/react"
 
 import type { McpServer } from "@roo-code/types"
 
@@ -18,6 +18,7 @@ import {
 	DialogFooter,
 	ToggleSwitch,
 	StandardTooltip,
+	Link,
 } from "@src/components/ui"
 import { buildDocLink } from "@src/utils/docLinks"
 import { Section } from "@src/components/settings/Section"
@@ -47,11 +48,11 @@ const McpView = () => {
 						marginTop: "5px",
 					}}>
 					<Trans i18nKey="mcp:description">
-						<VSCodeLink
+						<Link
 							href={buildDocLink("features/mcp/using-mcp-in-roo", "mcp_settings")}
 							style={{ display: "inline" }}>
 							Learn More
-						</VSCodeLink>
+						</Link>
 					</Trans>
 				</div>
 
@@ -158,14 +159,14 @@ const McpView = () => {
 								fontSize: "12px",
 								color: "var(--vscode-descriptionForeground)",
 							}}>
-							<VSCodeLink
+							<Link
 								href={buildDocLink(
 									"features/mcp/using-mcp-in-roo#editing-mcp-settings-files",
 									"mcp_edit_settings",
 								)}
 								style={{ display: "inline" }}>
 								{t("mcp:learnMoreEditingSettings")}
-							</VSCodeLink>
+							</Link>
 						</div>
 					</>
 				)}

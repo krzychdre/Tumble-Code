@@ -1,4 +1,4 @@
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
+import { Link } from "@src/components/ui"
 
 import type { ModelInfo } from "@roo-code/types"
 
@@ -63,9 +63,9 @@ export const ModelInfoView = ({
 					: t("settings:modelInfo.gemini.freeRequests", {
 							count: selectedModelId && selectedModelId.includes("flash") ? 15 : 2,
 						})}{" "}
-				<VSCodeLink href="https://ai.google.dev/pricing" className="text-sm">
+				<Link href="https://ai.google.dev/pricing" className="text-sm">
 					{t("settings:modelInfo.gemini.pricingDetails")}
-				</VSCodeLink>
+				</Link>
 			</span>
 		),
 	].filter(Boolean)

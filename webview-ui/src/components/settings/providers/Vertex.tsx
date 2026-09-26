@@ -1,12 +1,12 @@
 import { useMemo } from "react"
 import { Trans } from "react-i18next"
 import { Checkbox } from "vscrui"
-import { VSCodeLink, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { VERTEX_REGIONS, VERTEX_1M_CONTEXT_MODEL_IDS, looksLikeFilePath } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Link } from "@src/components/ui"
 
 import { type ProviderFormProps, useProviderField } from "./shared"
 
@@ -34,25 +34,25 @@ export const Vertex = ({ apiConfiguration, setApiConfigurationField }: VertexPro
 			<div className="text-sm text-vscode-descriptionForeground">
 				<div>{t("settings:providers.googleCloudSetup.title")}</div>
 				<div>
-					<VSCodeLink
+					<Link
 						href="https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude#before_you_begin"
 						className="text-sm">
 						{t("settings:providers.googleCloudSetup.step1")}
-					</VSCodeLink>
+					</Link>
 				</div>
 				<div>
-					<VSCodeLink
+					<Link
 						href="https://cloud.google.com/docs/authentication/provide-credentials-adc#google-idp"
 						className="text-sm">
 						{t("settings:providers.googleCloudSetup.step2")}
-					</VSCodeLink>
+					</Link>
 				</div>
 				<div>
-					<VSCodeLink
+					<Link
 						href="https://developers.google.com/workspace/guides/create-credentials?hl=en#service-account"
 						className="text-sm">
 						{t("settings:providers.googleCloudSetup.step3")}
-					</VSCodeLink>
+					</Link>
 				</div>
 			</div>
 			<VSCodeTextField

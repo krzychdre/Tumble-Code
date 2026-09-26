@@ -28,16 +28,12 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			onInput={(e: any) => onInput?.({ target: { value: e.target.value } })}
 		/>
 	),
-	VSCodeLink: ({ children, href }: any) => (
-		<a href={href} data-testid="vscode-link">
-			{children}
-		</a>
-	),
 }))
 
 // Mock the UI components used by MemorySettings. SelectValue renders nothing —
 // the real Radix SelectValue is a display slot, not an option.
 vi.mock("@/components/ui", () => ({
+	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Slider: ({ defaultValue, onValueChange, "data-testid": dataTestId, min, max }: any) => (
 		<input
 			type="range"

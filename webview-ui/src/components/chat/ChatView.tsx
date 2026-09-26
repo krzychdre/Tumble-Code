@@ -1,6 +1,5 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { LRUCache } from "lru-cache"
 import { Trans } from "react-i18next"
 
@@ -20,7 +19,7 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import RooHero from "@src/components/welcome/RooHero"
 import RooTips from "@src/components/welcome/RooTips"
-import { StandardTooltip, Button } from "@src/components/ui"
+import { StandardTooltip, Button, Link } from "@src/components/ui"
 import { CloudUpsellDialog } from "@src/components/cloud/CloudUpsellDialog"
 
 import TelemetryBanner from "../common/TelemetryBanner"
@@ -536,7 +535,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 								<Trans
 									i18nKey="cloud:upsell.taskList"
 									components={{
-										learnMoreLink: <VSCodeLink href="#" />,
+										learnMoreLink: <Link href="#" />,
 									}}
 								/>
 							</DismissibleUpsell>

@@ -1,5 +1,4 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react"
-import { VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { Trans } from "react-i18next"
 import { ChevronsUpDown, Check, X, Info } from "lucide-react"
 
@@ -20,6 +19,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 	Button,
+	Link,
 } from "@src/components/ui"
 import { useEscapeKey } from "@src/hooks/useEscapeKey"
 
@@ -304,9 +304,9 @@ export const ModelPicker = ({
 							<Trans
 								i18nKey="settings:modelPicker.automaticFetch"
 								components={{
-									serviceLink: <VSCodeLink href={serviceUrl} className="text-sm" />,
+									serviceLink: <Link href={serviceUrl} className="text-sm" />,
 									defaultModelLink: (
-										<VSCodeLink onClick={() => onSelect(defaultModelId)} className="text-sm" />
+										<Link onClick={() => onSelect(defaultModelId)} className="text-sm" />
 									),
 								}}
 								values={{ serviceName, defaultModelId }}

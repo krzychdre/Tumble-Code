@@ -55,7 +55,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			data-testid={dataTestId}
 		/>
 	),
-	VSCodeLink: ({ children, href }: any) => <a href={href || "#"}>{children}</a>,
 	VSCodeRadio: ({ value, checked, onChange }: any) => (
 		<input type="radio" value={value} checked={checked} onChange={onChange} />
 	),
@@ -116,6 +115,7 @@ vi.mock("../../../components/common/Tab", () => ({
 
 vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
+	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	ToggleSwitch: ({ checked, onChange, "aria-label": ariaLabel, "data-testid": dataTestId }: any) => (
 		<button role="switch" aria-checked={checked} aria-label={ariaLabel} data-testid={dataTestId} onClick={onChange}>
 			Toggle

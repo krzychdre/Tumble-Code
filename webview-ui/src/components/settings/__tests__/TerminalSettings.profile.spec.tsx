@@ -22,6 +22,7 @@ vi.mock("@/utils/vscode", () => ({
 
 // Render Select as a list of buttons so we can drive onValueChange in tests.
 vi.mock("@/components/ui", () => ({
+	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange, "data-testid": testId }: any) => (
 		<div data-testid={testId ?? "select"} data-value={value}>
 			{renderSelectChildren(children, onValueChange)}
@@ -43,7 +44,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			{children}
 		</label>
 	),
-	VSCodeLink: ({ children }: any) => <a>{children}</a>,
 	VSCodeButton: ({ children, onClick, ...rest }: any) => (
 		<button onClick={onClick} {...rest}>
 			{children}
