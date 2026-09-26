@@ -9,9 +9,12 @@ const isTestEnv = process.env.NODE_ENV === "test"
 // Load translations based on environment
 if (!isTestEnv) {
 	try {
-		// Dynamic imports to avoid browser compatibility issues
-		const fs = require("fs")
-		const path = require("path")
+		// Deferred CJS requires so a bundler never pulls Node builtins into a
+		// browser-facing bundle graph.
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const fs = require("fs") as typeof import("fs")
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		const path = require("path") as typeof import("path")
 
 		const localesDir = path.join(__dirname, "i18n", "locales")
 

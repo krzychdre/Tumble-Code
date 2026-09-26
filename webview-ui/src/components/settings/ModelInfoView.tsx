@@ -47,11 +47,13 @@ export const ModelInfoView = ({
 			</>
 		),
 		<ModelInfoSupportsItem
+			key="supportsImages"
 			isSupported={modelInfo?.supportsImages ?? false}
 			supportsLabel={t("settings:modelInfo.supportsImages")}
 			doesNotSupportLabel={t("settings:modelInfo.noImages")}
 		/>,
 		<ModelInfoSupportsItem
+			key="supportsPromptCache"
 			isSupported={modelInfo?.supportsPromptCache ?? false}
 			supportsLabel={t("settings:modelInfo.supportsPromptCache")}
 			doesNotSupportLabel={t("settings:modelInfo.noPromptCache")}

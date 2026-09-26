@@ -11,6 +11,9 @@ export interface LanguageParser {
 
 async function loadLanguage(wasmPath: string) {
 	try {
+		// Lazy CJS require: web-tree-sitter's WASM bootstrap is expensive, keep
+		// it out of module-load time.
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const { Language } = require("web-tree-sitter")
 		return await Language.load(wasmPath)
 	} catch (error) {
@@ -23,6 +26,7 @@ let parserInit: Promise<void> | undefined
 
 function initParser(): Promise<void> {
 	if (!parserInit) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const { Parser } = require("web-tree-sitter")
 		parserInit = (Parser.init() as Promise<void>).catch((error: unknown) => {
 			parserInit = undefined
@@ -67,6 +71,7 @@ function getGrammar(wasmPath: string): Promise<GrammarEntry> {
 	const slot = {} as CacheSlot
 	slot.promise = (async () => {
 		const language = (await loadLanguage(wasmPath)) as LanguageT
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const { Parser } = require("web-tree-sitter")
 		const parser: ParserT = new Parser()
 		try {
@@ -94,6 +99,7 @@ function getGrammar(wasmPath: string): Promise<GrammarEntry> {
 function getQuery(grammar: GrammarEntry, source: string): QueryT {
 	let query = grammar.queries.get(source)
 	if (!query) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const { Query } = require("web-tree-sitter")
 		query = new Query(grammar.language, source) as QueryT
 		grammar.queries.set(source, query)

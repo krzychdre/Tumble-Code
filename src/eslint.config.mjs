@@ -10,6 +10,13 @@ export default [
 			// violation counts and scope decision.
 			"@typescript-eslint/no-unused-vars": "off",
 			"@typescript-eslint/no-explicit-any": "off",
+		},
+	},
+	{
+		// Specs and mocks intentionally require CJS modules inside vi.mock
+		// factories, where ESM imports are hoisted out of scope.
+		files: ["**/__mocks__/**/*.ts", "**/__tests__/**/*.ts"],
+		rules: {
 			"@typescript-eslint/no-require-imports": "off",
 		},
 	},

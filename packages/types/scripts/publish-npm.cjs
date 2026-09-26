@@ -1,5 +1,6 @@
-/* eslint-env node */
-
+/* Legacy script run with plain node; packages/types/eslint.config.mjs already
+   declares CommonJS globals for *.cjs files, but the removed eslint-env
+   comment is unsupported in ESLint 10. */
 const fs = require("fs")
 const path = require("path")
 const { execSync } = require("child_process")

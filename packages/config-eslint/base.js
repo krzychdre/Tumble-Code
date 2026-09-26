@@ -20,8 +20,6 @@ export const deferredEslint10Rules = {
 	"preserve-caught-error": "off",
 	// 39 findings: extension (src) 31, core 4, webview 2, cli 1, vscode-shim 1.
 	"no-useless-assignment": "off",
-	// 1 finding: src/activate/registerCodeActions.ts `userInput` is never assigned.
-	"no-unassigned-vars": "off",
 }
 
 /**

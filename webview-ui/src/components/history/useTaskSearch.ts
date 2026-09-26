@@ -64,10 +64,11 @@ export const useTaskSearch = () => {
 					return (a.ts || 0) - (b.ts || 0)
 				case "mostExpensive":
 					return (b.totalCost || 0) - (a.totalCost || 0)
-				case "mostTokens":
+				case "mostTokens": {
 					const aTokens = (a.tokensIn || 0) + (a.tokensOut || 0) + (a.cacheWrites || 0) + (a.cacheReads || 0)
 					const bTokens = (b.tokensIn || 0) + (b.tokensOut || 0) + (b.cacheWrites || 0) + (b.cacheReads || 0)
 					return bTokens - aTokens
+				}
 				case "mostRelevant":
 					// Keep fuse order if searching, otherwise sort by newest
 					return searchQuery ? 0 : (b.ts || 0) - (a.ts || 0)
