@@ -26,7 +26,11 @@ import { sanitizeToolUseId } from "../../utils/tool-id"
 import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
 import { toolNamesWhere } from "../tools/toolDescriptors"
-import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
+import {
+	NativeToolCallParser,
+	PARTIAL_ARGS_PARSE_INTERVAL_MS,
+	type ToolCallStreamEvent,
+} from "../assistant-message/NativeToolCallParser"
 import { type ClineProvider } from "../webview/ClineProvider"
 
 import { type TaskAskSay } from "./TaskAskSay"
@@ -37,6 +41,17 @@ import { type UpdateApiReqMsgFn, type AbortStreamFn, type TokenSnapshot } from "
 import { IncrementalReasoningFormatter } from "./reasoningFormatter"
 
 const DEFAULT_USAGE_COLLECTION_TIMEOUT_MS = 5000 // 5 seconds
+
+/**
+ * Every partial update of the streamed reasoning posts the whole reasoning so
+ * far to the webview, so a post per chunk is quadratic in the reasoning length
+ * (a 44 KB reasoning in 4-character chunks posted 10,946 times, 245 million
+ * characters). Partial updates are posted at most once per this interval, the
+ * rate of the streamed tool-argument previews (API P2). The message in memory
+ * is still updated on every chunk, and pending text is posted before any other
+ * message, on abort, on a stream error and when the stream ends.
+ */
+export const REASONING_PARTIAL_POST_INTERVAL_MS = PARTIAL_ARGS_PARSE_INTERVAL_MS
 
 // Tools that cannot mutate the workspace (the `workspaceReadOnly` column of the
 // tool descriptor table). An eager pre-edit checkpoint is only safe while every
@@ -110,6 +125,12 @@ export class TaskStreamProcessor {
 	private _reasoningMessage: string = ""
 	/** Formats the streamed reasoning line by line instead of whole per chunk (API P3). */
 	private readonly reasoningFormatter = new IncrementalReasoningFormatter()
+	/** When a partial reasoning update was last posted to the webview. */
+	private lastReasoningPostAt: number | undefined
+	/** A partial reasoning message updated in memory but not posted yet. */
+	private pendingReasoningPost: ClineMessage | undefined
+	/** Posts `pendingReasoningPost` when the interval ends, if the stream goes quiet. */
+	private reasoningPostTimer: ReturnType<typeof setTimeout> | undefined
 	private _requestStartTs: number = 0
 	private _firstChunkTs: number | undefined
 	private _assistantMessage: string = ""
@@ -193,6 +214,8 @@ export class TaskStreamProcessor {
 		this._firstChunkTs = undefined
 		this._reasoningMessage = ""
 		this.reasoningFormatter.reset()
+		this.flushReasoningPost()
+		this.lastReasoningPostAt = undefined
 		this._assistantMessage = ""
 		this._inputTokens = 0
 		this._outputTokens = 0
@@ -211,6 +234,10 @@ export class TaskStreamProcessor {
 		if (this._firstChunkTs === undefined) {
 			this._firstChunkTs = performance.now()
 		}
+		if (chunk.type !== "reasoning") {
+			// Deferred reasoning text is posted before anything else can post.
+			this.flushReasoningPost()
+		}
 		switch (chunk.type) {
 			case "reasoning": {
 				const text = String(chunk.text)
@@ -218,6 +245,17 @@ export class TaskStreamProcessor {
 				// Line breaks before "...end of sentence.**Title Here**" section titles,
 				// formatted incrementally (the same result as formatting the whole text).
 				const formattedReasoning = this.reasoningFormatter.append(text)
+				if (this.deferReasoningPost(formattedReasoning)) {
+					break
+				}
+				if (!this.access.abort && this.pendingReasoningPost === this.access.clineMessages.at(-1)) {
+					// `say` below posts this very message with the newer text
+					// (an aborted task's `say` throws, so it flushes instead).
+					this.dropPendingReasoningPost()
+				} else {
+					this.flushReasoningPost()
+				}
+				this.lastReasoningPostAt = Date.now()
 				this.access.askSay.say("reasoning", formattedReasoning, undefined, true)
 				break
 			}
@@ -306,6 +344,74 @@ export class TaskStreamProcessor {
 				break
 			}
 		}
+	}
+
+	/**
+	 * Updates the partial reasoning message in memory without posting it, when
+	 * the last post was less than an interval ago. Returns false when the chunk
+	 * must go through `say` as before: the first chunk of a message (the last
+	 * message is not a partial reasoning), an aborted task, or the interval passed.
+	 */
+	private deferReasoningPost(formattedReasoning: string): boolean {
+		const last = this.access.clineMessages.at(-1)
+		const now = Date.now()
+		if (
+			this.access.abort ||
+			this.lastReasoningPostAt === undefined ||
+			now - this.lastReasoningPostAt >= REASONING_PARTIAL_POST_INTERVAL_MS ||
+			!last ||
+			last.type !== "say" ||
+			last.say !== "reasoning" ||
+			!last.partial
+		) {
+			return false
+		}
+
+		// The in-place update `say` makes for a partial message, minus the post.
+		last.text = formattedReasoning
+		this.pendingReasoningPost = last
+		if (this.reasoningPostTimer === undefined) {
+			this.reasoningPostTimer = setTimeout(
+				() => {
+					if (this.access.abandoned) {
+						this.dropPendingReasoningPost()
+						return
+					}
+					this.flushReasoningPost()
+				},
+				this.lastReasoningPostAt + REASONING_PARTIAL_POST_INTERVAL_MS - now,
+			)
+			this.reasoningPostTimer.unref?.()
+		}
+		return true
+	}
+
+	/**
+	 * Posts the deferred partial reasoning update, if any. A message that was
+	 * already closed (no longer partial) was posted by whatever closed it.
+	 */
+	private flushReasoningPost(): void {
+		const message = this.pendingReasoningPost
+		this.dropPendingReasoningPost()
+		if (!message?.partial) {
+			return
+		}
+		this.lastReasoningPostAt = Date.now()
+		void this.access.history.updateClineMessage(message)
+	}
+
+	/** Forgets the deferred reasoning post and clears its timer. */
+	private dropPendingReasoningPost(): void {
+		if (this.reasoningPostTimer !== undefined) {
+			clearTimeout(this.reasoningPostTimer)
+			this.reasoningPostTimer = undefined
+		}
+		this.pendingReasoningPost = undefined
+	}
+
+	/** Drops a deferred reasoning post and its timer: the task is going away. */
+	dispose(): void {
+		this.dropPendingReasoningPost()
 	}
 
 	/**
@@ -518,6 +624,9 @@ export class TaskStreamProcessor {
 	 */
 	async finalizeStream(): Promise<void> {
 		this.access.didCompleteReadingStream = true
+
+		// The last partial reasoning update carries the whole text, as before.
+		this.flushReasoningPost()
 
 		// Set any blocks to be complete to allow `presentAssistantMessage`
 		// to finish and set `userMessageContentReady` to true.
@@ -788,6 +897,9 @@ export class TaskStreamProcessor {
 	 */
 	createAbortStreamFn(lastApiReqIndex: number, updateApiReqMsg: UpdateApiReqMsgFn): AbortStreamFn {
 		return async (cancelReason: ClineApiReqCancelReason, streamingFailedMessage?: string) => {
+			// Deferred reasoning text is posted while the message is still partial.
+			this.flushReasoningPost()
+
 			if (this.access.diffViewProvider.isEditing) {
 				await this.access.diffViewProvider.revertChanges() // closes diff view
 			}

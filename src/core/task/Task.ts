@@ -1596,6 +1596,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			}
 		}
 
+		// A deferred partial reasoning post and its timer go with the task.
+		this.streamProcessor?.dispose()
+
 		// Delegate most cleanup to lifecycle module
 		this.lifecycle.dispose()
 
