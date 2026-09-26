@@ -11,7 +11,6 @@ from sqlalchemy import (
     ForeignKey,
     DateTime,
     BigInteger,
-    UniqueConstraint,
     Index,
 )
 from sqlalchemy.orm import relationship
@@ -136,9 +135,13 @@ class TaskMessage(Base):
 
     # The bridge upserts a streaming message in place via ON CONFLICT on this
     # pair. NULL message_ts stays distinct, so legacy/backfilled rows still
-    # append. See migration d4e5f6a7b8c9.
+    # append. Declared as the unique INDEX migration d4e5f6a7b8c9 creates (not a
+    # UniqueConstraint), so a fresh database built by create_all and a migrated
+    # one hold the same object. ON CONFLICT must name the columns
+    # (index_elements), never constraint="uq_task_messages_task_ts": Postgres
+    # accepts ON CONFLICT ON CONSTRAINT only for a constraint, not for an index.
     __table_args__ = (
-        UniqueConstraint("task_id", "message_ts", name="uq_task_messages_task_ts"),
+        Index("uq_task_messages_task_ts", "task_id", "message_ts", unique=True),
     )
 
     task = relationship("Task", back_populates="messages")
