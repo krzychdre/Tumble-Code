@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Trans } from "react-i18next"
-import { Checkbox } from "vscrui"
+import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
 
 import { VERTEX_REGIONS, VERTEX_1M_CONTEXT_MODEL_IDS, looksLikeFilePath } from "@roo-code/types"
 

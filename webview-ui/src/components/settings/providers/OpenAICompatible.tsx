@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react"
-import { Checkbox } from "vscrui"
+import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
 
 import {
 	type ModelInfo,

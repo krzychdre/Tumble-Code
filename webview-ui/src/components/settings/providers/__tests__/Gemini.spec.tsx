@@ -2,8 +2,8 @@ import { render, screen } from "@testing-library/react"
 import { Gemini } from "../Gemini"
 import type { ProviderSettings } from "@roo-code/types"
 
-vi.mock("vscrui", () => ({
-	Checkbox: ({ children, checked, onChange, "data-testid": testId, _ }: any) => (
+vi.mock("@src/components/ui/vscrui-checkbox", () => ({
+	VSCRUICheckbox: ({ children, checked, onChange, "data-testid": testId }: any) => (
 		<label data-testid={testId}>
 			<input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
 			{children}

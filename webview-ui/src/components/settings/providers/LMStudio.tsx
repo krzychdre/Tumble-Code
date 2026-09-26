@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { Trans } from "react-i18next"
-import { Checkbox } from "vscrui"
+import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
 import { Link, ThemedTextField } from "@src/components/ui"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"

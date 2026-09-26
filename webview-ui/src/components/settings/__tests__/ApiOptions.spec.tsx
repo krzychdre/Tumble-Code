@@ -16,8 +16,8 @@ import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-t
 
 // Mock VSCode components
 // Mock other components
-vi.mock("vscrui", () => ({
-	Checkbox: ({ children, checked, onChange }: any) => (
+vi.mock("@src/components/ui/vscrui-checkbox", () => ({
+	VSCRUICheckbox: ({ children, checked, onChange }: any) => (
 		<label data-testid={`checkbox-${children?.toString().replace(/\s+/g, "-").toLowerCase()}`}>
 			<input
 				type="checkbox"
