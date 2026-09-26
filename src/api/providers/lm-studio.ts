@@ -6,6 +6,7 @@ import { type ModelInfo, openAiModelInfoSaneDefaults, LMSTUDIO_DEFAULT_TEMPERATU
 import type { ApiHandlerOptions } from "../../shared/api"
 
 import { flattenMessagesForTokenCount } from "../../utils/flattenMessagesForTokenCount"
+import { BlockTokenCountCache } from "../../utils/BlockTokenCountCache"
 
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
@@ -32,6 +33,9 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 	private client: OpenAI | null = null
 	private abortController?: AbortController
 	private readonly providerName = "LM Studio"
+	// Per-block counts of the last request's prompt, so the next request only
+	// tokenizes the blocks it adds. Lives and dies with this handler.
+	private readonly inputTokenCache = new BlockTokenCountCache()
 
 	constructor(options: ApiHandlerOptions) {
 		super()
@@ -87,7 +91,7 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		// -------------------------
 		let inputTokens = 0
 		try {
-			inputTokens = await this.countTokens([
+			inputTokens = await this.countInputTokens([
 				{ type: "text", text: systemPrompt },
 				...flattenMessagesForTokenCount(messages),
 			])
@@ -157,6 +161,15 @@ export class LmStudioHandler extends BaseProvider implements SingleCompletionHan
 		} catch (error) {
 			throw handleProviderError(error, this.providerName, { messageTransformer: () => LM_STUDIO_ERROR_HINT })
 		}
+	}
+
+	/**
+	 * The prompt size estimate: the same number `countTokens` gives for these
+	 * blocks, but blocks already counted for an earlier request are not
+	 * tokenized again (the history only grows between requests).
+	 */
+	private countInputTokens(content: Anthropic.Messages.ContentBlockParam[]): Promise<number> {
+		return this.inputTokenCache.count(content, `lmstudio:${this.getModel().id}`)
 	}
 
 	override getModel(): { id: string; info: ModelInfo } {
