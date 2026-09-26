@@ -83,6 +83,16 @@ built from Python strings (`browser.py:44-148`): templates. `dependencies.py:33-
 second path skips the issuer and version checks; `:17` and `:64` open a DB session per extension call without using
 it. **Size** S each.
 
+**Status CAPI-M6:** DONE 2026-09-26, #442 (merge 72035960e), pytest 452 to 561 on the branch (109 tests in
+`test_route_boilerplate.py`). `client_session` dependency in `routers/auth.py`; `require_web_user` plus one
+`LoginRequired` handler (303 to `/app/login`) for 8 web routes and `/shared`; one `_start_sign_in` for the three
+sign-in routes (`/l/{slug}` kept, the extension builds it in `WebAuthService.ts`); the auth success and error pages are
+Jinja templates; `get_current_user` no longer opens an unused DB session and decodes the JWT once. Visible change:
+an anonymous `/app` request with an invalid query now gets 303 instead of 422. **Open (owner question):** the issuer
+(`iss == "rcc"`) and version (`v == 1`) checks never decide anything, because a token failing them is decoded again
+without them; the same pattern is in `realtime/sio.py::_user_id_from_token`. Every token this server ever issued
+carries both claims (`jwt_issuer.py` since #112), so enforcing them would log nobody out.
+
 ### CAPI-M7 Configuration and bootstrap consistency
 
 `BRIDGE_PATH` is configurable (`config/settings.py:140`) and advertised to clients but `main.py:143` hard-codes the
