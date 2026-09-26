@@ -17,6 +17,18 @@ type Logger = (...args: unknown[]) => void
 
 type BusListener = (...args: unknown[]) => void
 
+const RETRY_BASE_MS = 1_000
+const RETRY_MAX_MS = 60_000
+
+/**
+ * Delay before the given retry (0-based) of a bridge connection the server
+ * refused: 1 s, 2 s, 4 s, ... capped at one minute. Also used by the extension
+ * host to retry a bridge start that failed.
+ */
+export function bridgeRetryDelayMs(attempt: number): number {
+	return Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS)
+}
+
 /** The slice of the extension `API` event bus the orchestrator subscribes to. */
 export interface BridgeEventSource {
 	on(event: string, listener: BusListener): void
@@ -58,6 +70,10 @@ export class BridgeOrchestrator {
 	/** Reconnect attempt counter for throttled logging. */
 	private reconnectAttempt = 0
 
+	/** Manual reconnects after the server refused the handshake (DEF-C50). */
+	private refusedRetry = 0
+	private refusedRetryTimer: ReturnType<typeof setTimeout> | null = null
+
 	constructor(private readonly options: BridgeOrchestratorOptions) {}
 
 	private log(...args: unknown[]) {
@@ -93,6 +109,8 @@ export class BridgeOrchestrator {
 
 		socket.on("connect", () => {
 			this.reconnectAttempt = 0
+			this.refusedRetry = 0
+			this.clearRefusedRetry()
 			this.log("connected", socket.id)
 			this.register()
 			this.startHeartbeat()
@@ -104,6 +122,12 @@ export class BridgeOrchestrator {
 			const msg = err?.message ?? String(err)
 			const isAuthShaped = /token|auth|unauthorized|401|403/i.test(msg)
 			this.log("connect_error:", msg, isAuthShaped ? "(auth)" : "(network/server)")
+			// A handshake the server refused (for example a token that expired while
+			// the server restarted) leaves the socket inactive: socket.io-client does
+			// not reconnect it by itself. Reconnect by hand; the `auth` callback then
+			// fetches a fresh token. Transport errors keep `active` true because the
+			// manager is already retrying them.
+			if (!socket.active) this.scheduleRefusedRetry(socket)
 		})
 		socket.on(TaskSocketEvents.RELAYED_COMMAND, (data: unknown) => void this.onRelayedCommand(data))
 		socket.on(ExtensionSocketEvents.RELAYED_COMMAND, (data: unknown) => void this.onRelayedCommand(data))
@@ -128,6 +152,7 @@ export class BridgeOrchestrator {
 	async stop(): Promise<void> {
 		if (!this.started) return
 		this.started = false
+		this.clearRefusedRetry()
 		this.stopHeartbeat()
 		this.unsubscribeFromBus()
 		if (this.socket) {
@@ -147,6 +172,23 @@ export class BridgeOrchestrator {
 			this.socket = null
 		}
 		this.userId = null
+	}
+
+	private scheduleRefusedRetry(socket: Socket) {
+		if (!this.started || this.refusedRetryTimer) return
+		const delay = bridgeRetryDelayMs(this.refusedRetry++)
+		this.log(`server refused the connection; retrying in ${Math.round(delay / 1000)} s`)
+		this.refusedRetryTimer = setTimeout(() => {
+			this.refusedRetryTimer = null
+			if (this.started && this.socket === socket && !socket.connected) socket.connect()
+		}, delay)
+	}
+
+	private clearRefusedRetry() {
+		if (this.refusedRetryTimer) {
+			clearTimeout(this.refusedRetryTimer)
+			this.refusedRetryTimer = null
+		}
 	}
 
 	// --- extension → server -------------------------------------------------

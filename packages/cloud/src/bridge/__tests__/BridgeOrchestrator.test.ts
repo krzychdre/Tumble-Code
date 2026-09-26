@@ -18,6 +18,12 @@ class FakeEmitter {
 	emitted: Array<{ event: string; data: any }> = []
 	connected = true
 	id = "fake-sid"
+	/**
+	 * socket.io-client's `active`: false once the server refused the handshake
+	 * (the socket is destroyed and the manager no longer reconnects it).
+	 */
+	active = true
+	connectCalls = 0
 	/** Stands in for the socket.io Manager (socket.io property). Lazily created. */
 	private _io: FakeEmitter | null = null
 
@@ -48,6 +54,10 @@ class FakeEmitter {
 	}
 	disconnect() {
 		this.connected = false
+	}
+	connect() {
+		this.connectCalls++
+		this.active = true
 	}
 	/** Test helper: fire a server-pushed event into the orchestrator's listeners. */
 	fire(event: string, ...args: any[]) {
@@ -276,5 +286,68 @@ describe("BridgeOrchestrator", () => {
 		logs.length = 0
 		manager.fire("reconnect_attempt", 1)
 		expect(logs.some((l) => l.includes("reconnect attempt #1"))).toBe(true)
+	})
+
+	describe("handshake refused by the server (DEF-C50)", () => {
+		function refuse(message = "invalid token") {
+			// What socket.io-client 4.8 does on a server CONNECT_ERROR: destroy the
+			// socket (active = false, no automatic reconnection), then emit.
+			socket.connected = false
+			socket.active = false
+			socket.fire("connect_error", new Error(message))
+		}
+
+		it("reconnects by hand with growing delays until the server accepts", async () => {
+			const orch = build()
+			await orch.start()
+
+			refuse()
+			await vi.advanceTimersByTimeAsync(999)
+			expect(socket.connectCalls).toBe(0)
+			await vi.advanceTimersByTimeAsync(1)
+			expect(socket.connectCalls).toBe(1)
+
+			refuse()
+			await vi.advanceTimersByTimeAsync(1999)
+			expect(socket.connectCalls).toBe(1)
+			await vi.advanceTimersByTimeAsync(1)
+			expect(socket.connectCalls).toBe(2)
+
+			// A successful connect resets the delay back to the first step.
+			socket.connected = true
+			socket.fire("connect")
+			refuse()
+			await vi.advanceTimersByTimeAsync(1000)
+			expect(socket.connectCalls).toBe(3)
+		})
+
+		it("caps the delay at one minute and keeps retrying", async () => {
+			const orch = build()
+			await orch.start()
+			for (let i = 0; i < 10; i++) {
+				refuse()
+				await vi.advanceTimersByTimeAsync(60_000)
+			}
+			expect(socket.connectCalls).toBe(10)
+		})
+
+		it("leaves transport errors to socket.io's own reconnection", async () => {
+			const orch = build()
+			await orch.start()
+			socket.connected = false
+			// active stays true: the manager is already reconnecting.
+			socket.fire("connect_error", new Error("xhr poll error"))
+			await vi.advanceTimersByTimeAsync(120_000)
+			expect(socket.connectCalls).toBe(0)
+		})
+
+		it("stop() cancels a pending reconnect", async () => {
+			const orch = build()
+			await orch.start()
+			refuse()
+			await orch.stop()
+			await vi.advanceTimersByTimeAsync(120_000)
+			expect(socket.connectCalls).toBe(0)
+		})
 	})
 })
