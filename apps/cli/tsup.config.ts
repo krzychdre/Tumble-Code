@@ -5,7 +5,15 @@ import { BUNDLED_DEPENDENCIES } from "./src/lib/utils/release-manifest.js"
 export default defineConfig({
 	entry: ["src/index.ts", "src/lib/utils/release-manifest.ts"],
 	format: ["esm"],
-	dts: true,
+	dts: {
+		// tsup 8.5 always passes `baseUrl` to its declaration build (dist/rollup.js
+		// sets `baseUrl: compilerOptions.baseUrl || "."`), and TypeScript 6 reports
+		// that option as deprecated (TS5101). The silencer applies to this
+		// declaration build only; our own tsconfig has no baseUrl and
+		// `tsc --noEmit` still reports every deprecation. TypeScript 7 drops the
+		// option, so tsup (or its replacement) must stop passing it before then.
+		compilerOptions: { ignoreDeprecations: "6.0" },
+	},
 	clean: true,
 	sourcemap: true,
 	target: "node22",
