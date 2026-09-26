@@ -530,3 +530,13 @@ over about a second; ink 7 shows it also on fast turns because its host config s
 `marginTop={spinner ? 0 : 1}` so busy and idle frames have equal height (no gap between spinner and input rule
 while busy), (b) batch transcript changes per event-loop turn (masks it on fast turns only), (c) accept.
 Recommendation (a); OWNER DECISION PENDING (item CLI-F2).
+
+**Status (2026-09-26), DEP-6 webview rows and DEP-9 TextField:** lucide-react 0.518 to 1.48 #500 (`e85d43bf8`, no
+icon removed, 30 redrawn upstream, new `lucide-icons.golden.spec`, index.js +6.5 KB). katex 0.16 to 0.18.9 #501
+(`d1d9bcd9b`): `rehype-katex` still pins katex ^0.16, so override `"rehype-katex>katex": "^0.18.9"` (0.16 HTML
+under the 0.18 stylesheet, whose classes are prefixed, would render unstyled; `katex-styles.spec` pins it).
+react-markdown 9.1 to 10.1 #502 (`0c3766b22`, no golden changed). shiki 3.4.1 to 4.4.3 #503 (`6995fea81`,
+real-Shiki goldens identical, index.js +8.8 KB, lazy chunks stay lazy). DEP-9 `VSCodeTextField` (50 uses +
+`DecoratedVSCodeTextField`) #504 (`3b7c3803d`): the same lost-typing bug as TextArea for `onChange` fields fixed
+(regression spec fails on main); native change semantics and select-all on focus/label click/Tab kept. Next:
+remove the toolkit package, then mermaid and i18next, then React 19.
