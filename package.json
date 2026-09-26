@@ -35,7 +35,7 @@
 		"esbuild": "^0.25.0",
 		"eslint": "^10.11.0",
 		"husky": "^9.1.7",
-		"knip": "^5.44.4",
+		"knip": "^6.38.0",
 		"lint-staged": "^16.0.0",
 		"mkdirp": "^3.0.1",
 		"prettier": "^3.4.2",
@@ -62,7 +62,6 @@
 			"bluebird": ">=3.7.2",
 			"glob": "^13.0.6",
 			"zod": "4.6.5",
-			"knip>zod": "3.25.76",
 			"@lmstudio/sdk>zod": "3.25.76",
 			"picomatch@>=4": "4.0.4",
 			"typescript": "$typescript"
