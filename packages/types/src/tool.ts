@@ -64,7 +64,9 @@ export type ToolName = z.infer<typeof toolNamesSchema>
  * ToolUsage
  */
 
-export const toolUsageSchema = z.record(
+// `partialRecord`: a usage record names only the tools that were used (a plain
+// `z.record` over an enum requires every key in zod 4).
+export const toolUsageSchema = z.partialRecord(
 	toolNamesSchema,
 	z.object({
 		attempts: z.number(),

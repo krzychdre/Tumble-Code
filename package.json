@@ -61,7 +61,9 @@
 			"form-data": ">=4.0.4",
 			"bluebird": ">=3.7.2",
 			"glob": "^13.0.6",
-			"zod": "3.25.76",
+			"zod": "4.6.5",
+			"knip>zod": "3.25.76",
+			"@lmstudio/sdk>zod": "3.25.76",
 			"picomatch@>=4": "4.0.4"
 		},
 		"packageExtensions": {

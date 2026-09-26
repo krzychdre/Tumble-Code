@@ -83,7 +83,7 @@ const rawGroupEntryArraySchema = z.array(groupEntrySchema).refine(
  * tool groups (e.g., "browser") before validation, ensuring backward compatibility
  * with older user configs.
  *
- * The type assertion to `z.ZodType<GroupEntry[], z.ZodTypeDef, GroupEntry[]>` is
+ * The type assertion to `z.ZodType<GroupEntry[], GroupEntry[]>` is
  * required because `z.preprocess` erases the input type to `unknown`, which
  * propagates through `modeConfigSchema → rooCodeSettingsSchema → createRunSchema`
  * and breaks `zodResolver` generic inference in downstream consumers.
@@ -91,7 +91,7 @@ const rawGroupEntryArraySchema = z.array(groupEntrySchema).refine(
 export const groupEntryArraySchema = z.preprocess((val) => {
 	if (!Array.isArray(val)) return val
 	return val.filter((entry) => !isDeprecatedGroupEntry(entry))
-}, rawGroupEntryArraySchema) as z.ZodType<GroupEntry[], z.ZodTypeDef, GroupEntry[]>
+}, rawGroupEntryArraySchema) as z.ZodType<GroupEntry[], GroupEntry[]>
 
 export const modeConfigSchema = z.object({
 	slug: z.string().regex(/^[a-zA-Z0-9-]+$/, "Slug must contain only letters numbers and dashes"),
@@ -107,7 +107,7 @@ export const modeConfigSchema = z.object({
 	 * The opener would be pointing at a section that is not in the prompt, which
 	 * is exactly the defect the opener was reworded to remove.
 	 *
-	 * `.trim()` is a ZodString check in zod 3, not a `ZodEffects` wrapper, so the
+	 * `.trim()` is a ZodString check (an overwrite in zod 4), not a wrapper, so the
 	 * field stays a plain `string` for type inference and for `zodResolver` in
 	 * the webview forms. It also normalizes the stored value, which is harmless:
 	 * every consumer trims before use anyway.

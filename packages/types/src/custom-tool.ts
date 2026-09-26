@@ -1,10 +1,10 @@
-import type { ZodType, z } from "zod/v4"
+import type { ZodType, z } from "zod"
 
 import { TaskLike } from "./task.js"
 
 // Re-export from Zod for convenience.
 
-export { z as parametersSchema } from "zod/v4"
+export { z as parametersSchema } from "zod"
 
 export type CustomToolParametersSchema = ZodType
 

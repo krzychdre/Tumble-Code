@@ -75,8 +75,12 @@ describe("MCP configuration error text (characterization)", () => {
 	})
 
 	it.each([
-		["missing mcpServers", {}, "mcpServers: Required"],
-		["mcpServers that is not an object", { mcpServers: [] }, "mcpServers: Expected object, received array"],
+		["missing mcpServers", {}, "mcpServers: Invalid input: expected record, received undefined"],
+		[
+			"mcpServers that is not an object",
+			{ mcpServers: [] },
+			"mcpServers: Invalid input: expected record, received array",
+		],
 		["a server entry that is a string", { mcpServers: { a: "node" } }, "mcpServers.a: Invalid input"],
 		[
 			"a server entry with a bad timeout",

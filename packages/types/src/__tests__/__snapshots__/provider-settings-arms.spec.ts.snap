@@ -2,7 +2,7 @@
 
 exports[`flat provider settings schema (must not change) > keeps the same fields and field types 1`] = `
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
     "anthropicBaseUrl": {
@@ -21,46 +21,54 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
       "type": "string",
     },
     "apiProvider": {
-      "enum": [
-        "openrouter",
-        "litellm",
-        "deepseek",
-        "ollama",
-        "lmstudio",
-        "vscode-lm",
-        "openai",
-        "fake-ai",
-        "anthropic",
-        "bedrock",
-        "deepseek",
-        "gemini",
-        "gemini-cli",
-        "mistral",
-        "moonshot",
-        "minimax",
-        "openai-codex",
-        "openai-native",
-        "qwen-code",
-        "vertex",
-        "xai",
-        "zai",
-        "cerebras",
-        "chutes",
-        "deepinfra",
-        "doubao",
-        "featherless",
-        "groq",
-        "huggingface",
-        "io-intelligence",
-        "baseten",
-        "fireworks",
-        "poe",
-        "requesty",
-        "sambanova",
-        "unbound",
-        "vercel-ai-gateway",
+      "anyOf": [
+        {
+          "enum": [
+            "openrouter",
+            "litellm",
+            "deepseek",
+            "ollama",
+            "lmstudio",
+            "vscode-lm",
+            "openai",
+            "fake-ai",
+            "anthropic",
+            "bedrock",
+            "gemini",
+            "gemini-cli",
+            "mistral",
+            "moonshot",
+            "minimax",
+            "openai-codex",
+            "openai-native",
+            "qwen-code",
+            "vertex",
+            "xai",
+            "zai",
+          ],
+          "type": "string",
+        },
+        {
+          "enum": [
+            "cerebras",
+            "chutes",
+            "deepinfra",
+            "doubao",
+            "featherless",
+            "groq",
+            "huggingface",
+            "io-intelligence",
+            "baseten",
+            "fireworks",
+            "poe",
+            "requesty",
+            "sambanova",
+            "unbound",
+            "vercel-ai-gateway",
+          ],
+          "type": "string",
+        },
       ],
-      "type": "string",
     },
     "awsAccessKey": {
       "type": "string",
@@ -205,11 +213,16 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
       "type": "string",
     },
     "minimaxBaseUrl": {
-      "enum": [
-        "https://api.minimax.io/v1",
-        "https://api.minimaxi.com/v1",
+      "anyOf": [
+        {
+          "const": "https://api.minimax.io/v1",
+          "type": "string",
+        },
+        {
+          "const": "https://api.minimaxi.com/v1",
+          "type": "string",
+        },
       ],
-      "type": "string",
     },
     "mistralApiKey": {
       "type": "string",
@@ -233,11 +246,16 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
       "type": "string",
     },
     "moonshotBaseUrl": {
-      "enum": [
-        "https://api.moonshot.ai/v1",
-        "https://api.moonshot.cn/v1",
+      "anyOf": [
+        {
+          "const": "https://api.moonshot.ai/v1",
+          "type": "string",
+        },
+        {
+          "const": "https://api.moonshot.cn/v1",
+          "type": "string",
+        },
       ],
-      "type": "string",
     },
     "ollamaApiKey": {
       "type": "string",
@@ -249,6 +267,7 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
       "type": "string",
     },
     "ollamaNumCtx": {
+      "maximum": 9007199254740991,
       "minimum": 128,
       "type": "integer",
     },
@@ -497,6 +516,9 @@ exports[`flat provider settings schema (must not change) > keeps the same fields
     },
     "openAiHeaders": {
       "additionalProperties": {
+        "type": "string",
+      },
+      "propertyNames": {
         "type": "string",
       },
       "type": "object",

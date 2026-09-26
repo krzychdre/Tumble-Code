@@ -37,6 +37,26 @@ describe("serializeCustomTool", () => {
 		})
 	})
 
+	it("keeps parameter descriptions of a schema built by another zod copy", () => {
+		// A tool bundled against zod 3.25's `zod/v4` keeps `.describe()` text in that copy's own
+		// registry; only the schema's `description` getter can read it. Simulate that here.
+		const foreignPath = z.string()
+		Object.defineProperty(foreignPath, "description", { get: () => "Path of the file to read" })
+
+		const tool = defineCustomTool({
+			name: "foreign_tool",
+			description: "Built by another zod copy",
+			parameters: z.object({ path: foreignPath, limit: z.number().describe("Own description").optional() }),
+			async execute() {
+				return "done"
+			},
+		})
+
+		const properties = (serializeCustomTool(tool).parameters as { properties: Record<string, unknown> }).properties
+		expect(properties.path).toEqual({ type: "string", description: "Path of the file to read" })
+		expect(properties.limit).toEqual({ type: "number", description: "Own description" })
+	})
+
 	it("should serialize a tool with required string parameter", () => {
 		const tool = defineCustomTool({
 			name: "greeter",

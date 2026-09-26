@@ -12,7 +12,9 @@ overrides:
   form-data: '>=4.0.4'
   bluebird: '>=3.7.2'
   glob: ^13.0.6
-  zod: 3.25.76
+  zod: 4.6.5
+  knip>zod: 3.25.76
+  '@lmstudio/sdk>zod': 3.25.76
   picomatch@>=4: 4.0.4
 
 packageExtensionsChecksum: sha256-LHpPRUweo8t2y1sqmjDSuFHPPdJ/bhyzKIiqmRiWtzc=
@@ -186,13 +188,13 @@ importers:
     dependencies:
       '@modelcontextprotocol/sdk':
         specifier: 1.30.1
-        version: 1.30.1(zod@3.25.76)
+        version: 1.30.1(zod@4.6.5)
       '@roo-code/core':
         specifier: workspace:^
         version: link:../core
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
@@ -216,8 +218,8 @@ importers:
   packages/build:
     dependencies:
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
@@ -244,8 +246,8 @@ importers:
         specifier: ^4.8.1
         version: 4.8.3
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
@@ -314,13 +316,13 @@ importers:
         version: 3.1.6
       openai:
         specifier: ^7.23.0
-        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@3.25.76)
+        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@4.6.5)
       proper-lockfile:
         specifier: ^4.1.2
         version: 4.1.2
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
@@ -347,8 +349,8 @@ importers:
         specifier: ^5.0.0
         version: 5.1.1
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
@@ -369,8 +371,8 @@ importers:
   packages/types:
     dependencies:
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
@@ -393,9 +395,6 @@ importers:
       vitest:
         specifier: ^3.2.3
         version: 3.2.4(@types/debug@4.1.12)(@types/node@22.20.4)(@vitest/ui@3.2.4)(jiti@2.7.0)(jsdom@26.1.0)(lightningcss@1.33.0)(tsx@4.19.4)(yaml@2.9.0)
-      zod-to-json-schema:
-        specifier: ^3.25.1
-        version: 3.25.1(zod@3.25.76)
 
   packages/vscode-shim:
     devDependencies:
@@ -416,10 +415,10 @@ importers:
     dependencies:
       '@anthropic-ai/sdk':
         specifier: ^0.128.0
-        version: 0.128.0(zod@3.25.76)
+        version: 0.128.0(zod@4.6.5)
       '@anthropic-ai/vertex-sdk':
         specifier: ^0.19.11
-        version: 0.19.11(zod@3.25.76)
+        version: 0.19.11(zod@4.6.5)
       '@aws-sdk/client-bedrock-runtime':
         specifier: ^3.1140.0
         version: 3.1140.0
@@ -428,7 +427,7 @@ importers:
         version: 3.1140.0
       '@google/genai':
         specifier: ^2.24.0
-        version: 2.24.0(@modelcontextprotocol/sdk@1.30.1(zod@3.25.76))
+        version: 2.24.0(@modelcontextprotocol/sdk@1.30.1(zod@4.6.5))
       '@lmstudio/sdk':
         specifier: ^2.0.0
         version: 2.0.0
@@ -437,7 +436,7 @@ importers:
         version: 2.7.0
       '@modelcontextprotocol/sdk':
         specifier: 1.30.1
-        version: 1.30.1(zod@3.25.76)
+        version: 1.30.1(zod@4.6.5)
       '@qdrant/js-client-rest':
         specifier: ^1.19.0
         version: 1.19.0(typescript@5.8.3)
@@ -524,7 +523,7 @@ importers:
         version: 0.6.3
       openai:
         specifier: ^7.23.0
-        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@3.25.76)
+        version: 7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@4.6.5)
       os-name:
         specifier: ^7.0.1
         version: 7.0.1
@@ -592,8 +591,8 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/build':
         specifier: workspace:^
@@ -830,8 +829,8 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2(@types/react@18.3.23)(react@18.3.1)
       zod:
-        specifier: 3.25.76
-        version: 3.25.76
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@roo-code/config-eslint':
         specifier: workspace:^
@@ -904,7 +903,7 @@ packages:
     resolution: {integrity: sha512-tl5cBFZC1jVFrTuQyvQObA4WmuNgcYVeXfriqOumgtLAHUm4gPUj18YnszBW60v0PrjDB8nBDOC6wd9CmHQFlA==}
     hasBin: true
     peerDependencies:
-      zod: 3.25.76
+      zod: 4.6.5
     peerDependenciesMeta:
       zod:
         optional: true
@@ -1663,7 +1662,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
-      zod: 3.25.76
+      zod: 4.6.5
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -6381,7 +6380,7 @@ packages:
       '@smithy/signature-v4': '>=5.4.0 <6'
       undici: ^7.29.0
       ws: ^8.21.0
-      zod: 3.25.76
+      zod: 4.6.5
     peerDependenciesMeta:
       '@aws-sdk/credential-provider-node':
         optional: true
@@ -8329,16 +8328,19 @@ packages:
   zod-to-json-schema@3.25.1:
     resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
     peerDependencies:
-      zod: 3.25.76
+      zod: 4.6.5
 
   zod-validation-error@3.4.1:
     resolution: {integrity: sha512-1KP64yqDPQ3rupxNv7oXhf7KdhHHgaqbKuspVoiN93TT0xrBjql+Svjkdjq/Qh/7GSMmgQs3AfvBT0heE35thw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      zod: 3.25.76
+      zod: 4.6.5
 
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
+  zod@4.6.5:
+    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
 
   zustand@5.0.9:
     resolution: {integrity: sha512-ALBtUj0AfjJt3uNRQoL1tL2tMvj6Gp/6e39dnfT6uzpelGru8v1tPOGBzayOWbPJvujM8JojDk3E1LxeFisBNg==}
@@ -8375,16 +8377,16 @@ snapshots:
       package-manager-detector: 1.6.0
       tinyexec: 1.2.4
 
-  '@anthropic-ai/sdk@0.128.0(zod@3.25.76)':
+  '@anthropic-ai/sdk@0.128.0(zod@4.6.5)':
     dependencies:
       json-schema-to-ts: 3.1.1
       standardwebhooks: 1.1.1
     optionalDependencies:
-      zod: 3.25.76
+      zod: 4.6.5
 
-  '@anthropic-ai/vertex-sdk@0.19.11(zod@3.25.76)':
+  '@anthropic-ai/vertex-sdk@0.19.11(zod@4.6.5)':
     dependencies:
-      '@anthropic-ai/sdk': 0.128.0(zod@3.25.76)
+      '@anthropic-ai/sdk': 0.128.0(zod@4.6.5)
       google-auth-library: 10.5.0
     transitivePeerDependencies:
       - supports-color
@@ -9205,14 +9207,14 @@ snapshots:
 
   '@floating-ui/utils@0.2.9': {}
 
-  '@google/genai@2.24.0(@modelcontextprotocol/sdk@1.30.1(zod@3.25.76))':
+  '@google/genai@2.24.0(@modelcontextprotocol/sdk@1.30.1(zod@4.6.5))':
     dependencies:
       google-auth-library: 10.5.0
       p-retry: 4.6.2
       protobufjs: 7.6.6
       ws: 8.21.3
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.30.1(zod@3.25.76)
+      '@modelcontextprotocol/sdk': 1.30.1(zod@4.6.5)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -9372,15 +9374,15 @@ snapshots:
     dependencies:
       '@opentelemetry/semantic-conventions': 1.43.0
       ws: 8.21.3
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod: 4.6.5
+      zod-to-json-schema: 3.25.1(zod@4.6.5)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
   '@mixmark-io/domino@2.2.0': {}
 
-  '@modelcontextprotocol/sdk@1.30.1(zod@3.25.76)':
+  '@modelcontextprotocol/sdk@1.30.1(zod@4.6.5)':
     dependencies:
       '@hono/node-server': 2.1.1(hono@4.13.9)
       ajv: 8.18.0
@@ -9397,8 +9399,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0
       raw-body: 3.0.2
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod: 4.6.5
+      zod-to-json-schema: 3.25.1(zod@4.6.5)
     transitivePeerDependencies:
       - supports-color
 
@@ -14576,13 +14578,13 @@ snapshots:
       is-inside-container: 1.0.0
       is-wsl: 3.1.0
 
-  openai@7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@3.25.76):
+  openai@7.23.0(@aws-sdk/credential-provider-node@3.972.84)(@smithy/signature-v4@5.7.3)(undici@7.30.0)(ws@8.21.3)(zod@4.6.5):
     optionalDependencies:
       '@aws-sdk/credential-provider-node': 3.972.84
       '@smithy/signature-v4': 5.7.3
       undici: 7.30.0
       ws: 8.21.3
-      zod: 3.25.76
+      zod: 4.6.5
 
   option@0.2.4: {}
 
@@ -16661,11 +16663,17 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
+  zod-to-json-schema@3.25.1(zod@4.6.5):
+    dependencies:
+      zod: 4.6.5
+
   zod-validation-error@3.4.1(zod@3.25.76):
     dependencies:
       zod: 3.25.76
 
   zod@3.25.76: {}
+
+  zod@4.6.5: {}
 
   zustand@5.0.9(@types/react@19.3.0)(react@19.2.3):
     optionalDependencies:

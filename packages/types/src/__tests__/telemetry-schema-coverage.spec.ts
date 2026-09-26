@@ -6,11 +6,15 @@
 
 import { TelemetryEventName, rooCodeTelemetryEventSchema } from "../telemetry.js"
 
+import { discriminatorMap } from "./helpers/discriminated-union.js"
+
+const optionsMap = discriminatorMap(rooCodeTelemetryEventSchema, "type")
+
 describe("rooCodeTelemetryEventSchema coverage", () => {
 	const allEvents = Object.values(TelemetryEventName)
 
 	it("has a schema entry for every enum member", () => {
-		const covered = new Set(rooCodeTelemetryEventSchema.optionsMap.keys())
+		const covered = new Set(optionsMap.keys())
 		const missing = allEvents.filter((event) => !covered.has(event))
 
 		expect(missing).toEqual([])
@@ -18,14 +22,14 @@ describe("rooCodeTelemetryEventSchema coverage", () => {
 
 	it("has no entry that is not an enum member", () => {
 		const known = new Set<unknown>(allEvents)
-		const extra = [...rooCodeTelemetryEventSchema.optionsMap.keys()].filter((key) => !known.has(key))
+		const extra = [...optionsMap.keys()].filter((key) => !known.has(key))
 
 		expect(extra).toEqual([])
-		expect(rooCodeTelemetryEventSchema.optionsMap.size).toBe(allEvents.length)
+		expect(optionsMap.size).toBe(allEvents.length)
 	})
 
 	it("keeps the dedicated property schemas for the events that have them", () => {
-		const generic = rooCodeTelemetryEventSchema.optionsMap.get(TelemetryEventName.TASK_CREATED)
+		const generic = optionsMap.get(TelemetryEventName.TASK_CREATED)
 		const dedicated = [
 			TelemetryEventName.TELEMETRY_SETTINGS_CHANGED,
 			TelemetryEventName.TASK_MESSAGE,
@@ -34,12 +38,12 @@ describe("rooCodeTelemetryEventSchema coverage", () => {
 		]
 
 		for (const event of dedicated) {
-			expect(rooCodeTelemetryEventSchema.optionsMap.get(event)).not.toBe(generic)
+			expect(optionsMap.get(event)).not.toBe(generic)
 		}
 
 		const genericEvents = allEvents.filter((event) => !dedicated.includes(event))
 		for (const event of genericEvents) {
-			expect(rooCodeTelemetryEventSchema.optionsMap.get(event)).toBe(generic)
+			expect(optionsMap.get(event)).toBe(generic)
 		}
 	})
 

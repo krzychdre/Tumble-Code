@@ -1,7 +1,10 @@
 /**
  * Characterization of the zod behavior our shared schemas depend on (DEP-8, zod 3 to zod 4).
  *
- * Every case here passed on zod 3.25.76 before the switch. The cases fall into three groups:
+ * Every case here passed on zod 3.25.76 before the switch. The expectations that changed with zod 4
+ * are the default messages (zod 3 said "Required" and "Expected string, received number"; zod 4 says
+ * "Invalid input: expected string, received undefined"); they are listed in the changeset.
+ * The cases fall into three groups:
  * - parse results that other code relies on (partial records, defaults, coercion, null handling);
  * - validation messages that reach the user (custom modes, settings import) or the model;
  * - the shape of the issues list (path and message), because callers join them into text.
@@ -184,12 +187,14 @@ describe("zod behavior characterization (DEP-8)", () => {
 	describe("zod default messages that reach the user (.roomodes, custom_modes.yaml, mode dialogs)", () => {
 		it("missing field", () => {
 			const { name: _name, ...withoutName } = validMode
-			expect(formatIssues(modeConfigSchema.safeParse(withoutName).error!)).toEqual(["name: Required"])
+			expect(formatIssues(modeConfigSchema.safeParse(withoutName).error!)).toEqual([
+				"name: Invalid input: expected string, received undefined",
+			])
 		})
 
 		it("wrong type", () => {
 			expect(formatIssues(modeConfigSchema.safeParse({ ...validMode, name: 42 }).error!)).toEqual([
-				"name: Expected string, received number",
+				"name: Invalid input: expected string, received number",
 			])
 		})
 
@@ -209,18 +214,20 @@ describe("zod behavior characterization (DEP-8)", () => {
 
 		it("unknown source", () => {
 			expect(formatIssues(modeConfigSchema.safeParse({ ...validMode, source: "team" }).error!)).toEqual([
-				"source: Invalid enum value. Expected 'global' | 'project', received 'team'",
+				'source: Invalid option: expected one of "global"|"project"',
 			])
 		})
 
 		it("groups is not an array", () => {
 			expect(formatIssues(modeConfigSchema.safeParse({ ...validMode, groups: "read" }).error!)).toEqual([
-				"groups: Expected array, received string",
+				"groups: Invalid input: expected array, received string",
 			])
 		})
 
 		it("customModes is missing", () => {
-			expect(formatIssues(customModesSettingsSchema.safeParse({}).error!)).toEqual(["customModes: Required"])
+			expect(formatIssues(customModesSettingsSchema.safeParse({}).error!)).toEqual([
+				"customModes: Invalid input: expected array, received undefined",
+			])
 		})
 	})
 

@@ -331,9 +331,9 @@ describe("importExport", () => {
 
 			expect(result.success).toBe(true)
 			expect((result as { warnings?: string[] }).warnings).toEqual([
-				'Setting "globalSettings.autoApprovalEnabled" was skipped: [value]: Expected boolean, received string',
-				'Setting "globalSettings.mode" was skipped: [value]: Expected string, received number',
-				'Setting "globalSettings.checkpointTimeout" was skipped: [value]: Expected integer, received float, [value]: Number must be greater than or equal to 10',
+				'Setting "globalSettings.autoApprovalEnabled" was skipped: [value]: Invalid input: expected boolean, received string',
+				'Setting "globalSettings.mode" was skipped: [value]: Invalid input: expected string, received number',
+				'Setting "globalSettings.checkpointTimeout" was skipped: [value]: Invalid input: expected int, received number',
 				'Setting "globalSettings.customModes" was skipped: [0.slug]: Slug must contain only letters numbers and dashes, [0.name]: Name is required',
 			])
 		})
@@ -410,7 +410,10 @@ describe("importExport", () => {
 				customModesManager: mockCustomModesManager,
 			})
 
-			expect(result).toEqual({ success: false, error: "[providerProfiles.currentApiConfigName]: Required" })
+			expect(result).toEqual({
+				success: false,
+				error: "[providerProfiles.currentApiConfigName]: Invalid input: expected string, received undefined",
+			})
 			expect(fs.readFile).toHaveBeenCalledWith("/mock/path/settings.json", "utf-8")
 			expect(mockProviderSettingsManager.import).not.toHaveBeenCalled()
 			expect(mockContextProxy.setValues).not.toHaveBeenCalled()

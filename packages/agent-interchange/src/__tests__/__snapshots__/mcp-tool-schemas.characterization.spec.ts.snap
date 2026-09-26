@@ -10,9 +10,9 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Session being handed over, from list_agent_sessions."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       },
       "to": {
         "type": "string",
@@ -23,110 +23,106 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Which agent should pick this up."
       },
       "next_steps": {
+        "description": "Concrete steps for the next agent, one per entry. Strongly recommended.",
         "type": "array",
         "items": {
           "type": "string"
-        },
-        "description": "Concrete steps for the next agent, one per entry. Strongly recommended."
+        }
       },
       "notes": {
-        "type": "string",
-        "description": "Anything the transcript does not show: constraints, traps, decisions already made."
+        "description": "Anything the transcript does not show: constraints, traps, decisions already made.",
+        "type": "string"
       }
     },
     "required": [
       "session_id",
       "to"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "list_agent_plans": {
     "type": "object",
     "properties": {
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       },
       "query": {
-        "type": "string",
-        "description": "Substring the title or path must contain."
+        "description": "Substring the title or path must contain.",
+        "type": "string"
       },
       "limit": {
+        "description": "How many to return. Default 30.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 100,
-        "description": "How many to return. Default 30."
+        "maximum": 100
       }
     },
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "list_agent_sessions": {
     "type": "object",
     "properties": {
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       },
       "agent": {
+        "description": "Only sessions from this agent. Omit for both.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Only sessions from this agent. Omit for both."
+        ]
       },
       "query": {
-        "type": "string",
-        "description": "Case-insensitive substring the title must contain."
+        "description": "Case-insensitive substring the title must contain.",
+        "type": "string"
       },
       "limit": {
+        "description": "How many to return. Default 25.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 200,
-        "description": "How many to return. Default 25."
+        "maximum": 200
       }
     },
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "list_handoffs": {
     "type": "object",
     "properties": {
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       },
       "status": {
+        "description": "Filter by lifecycle state. Omit for all.",
         "type": "string",
         "enum": [
           "open",
           "picked-up",
           "done",
           "abandoned"
-        ],
-        "description": "Filter by lifecycle state. Omit for all."
+        ]
       },
       "to": {
+        "description": "Only handoffs addressed to this agent.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Only handoffs addressed to this agent."
+        ]
       },
       "limit": {
+        "description": "How many to return. Default 25.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 100,
-        "description": "How many to return. Default 25."
+        "maximum": 100
       }
     },
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "read_agent_plan": {
@@ -137,15 +133,14 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Absolute path from list_agent_plans."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       }
     },
     "required": [
       "path"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "read_agent_session": {
@@ -156,42 +151,42 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "The id from list_agent_sessions."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       },
       "format": {
+        "description": "\`briefing\` (default) or \`transcript\` for the raw messages.",
         "type": "string",
         "enum": [
           "briefing",
           "transcript"
-        ],
-        "description": "\`briefing\` (default) or \`transcript\` for the raw messages."
+        ]
       },
       "offset": {
+        "description": "Transcript only: first message to show. Default 0.",
         "type": "integer",
         "minimum": 0,
-        "description": "Transcript only: first message to show. Default 0."
+        "maximum": 9007199254740991
       },
       "limit": {
+        "description": "Transcript only: how many messages. Default 30.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 200,
-        "description": "Transcript only: how many messages. Default 30."
+        "maximum": 200
       },
       "include_thinking": {
-        "type": "boolean",
-        "description": "Transcript only: include the model's reasoning blocks. Default false."
+        "description": "Transcript only: include the model's reasoning blocks. Default false.",
+        "type": "boolean"
       },
       "subagents": {
-        "type": "boolean",
-        "description": "Transcript only: show the subagent turns instead of the main thread. Default false."
+        "description": "Transcript only: show the subagent turns instead of the main thread. Default false.",
+        "type": "boolean"
       }
     },
     "required": [
       "session_id"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "read_handoff": {
@@ -202,15 +197,14 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "The id from list_handoffs."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       }
     },
     "required": [
       "handoff_id"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "search_agent_sessions": {
@@ -222,29 +216,28 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Text to look for."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       },
       "agent": {
+        "description": "Only search this agent's sessions.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Only search this agent's sessions."
+        ]
       },
       "limit": {
+        "description": "How many sessions to return. Default 10.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 50,
-        "description": "How many sessions to return. Default 10."
+        "maximum": 50
       }
     },
     "required": [
       "query"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "update_handoff": {
@@ -255,41 +248,40 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "The id from list_handoffs."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected.",
         "type": "string",
-        "minLength": 1,
-        "description": "Absolute workspace path. Defaults to the immutable canonical startup workspace <workspace>. Empty values are rejected."
+        "minLength": 1
       },
       "status": {
+        "description": "New lifecycle state.",
         "type": "string",
         "enum": [
           "open",
           "picked-up",
           "done",
           "abandoned"
-        ],
-        "description": "New lifecycle state."
+        ]
       },
       "note": {
-        "type": "string",
-        "description": "One line for the log."
+        "description": "One line for the log.",
+        "type": "string"
       },
       "picked_up_by": {
+        "description": "Which agent took it.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Which agent took it."
+        ]
       },
       "picked_up_session_id": {
-        "type": "string",
-        "description": "The session that is continuing the work."
+        "description": "The session that is continuing the work.",
+        "type": "string"
       }
     },
     "required": [
       "handoff_id"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   }
 }"
@@ -305,9 +297,9 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Session being handed over, from list_agent_sessions."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       },
       "to": {
         "type": "string",
@@ -318,110 +310,106 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Which agent should pick this up."
       },
       "next_steps": {
+        "description": "Concrete steps for the next agent, one per entry. Strongly recommended.",
         "type": "array",
         "items": {
           "type": "string"
-        },
-        "description": "Concrete steps for the next agent, one per entry. Strongly recommended."
+        }
       },
       "notes": {
-        "type": "string",
-        "description": "Anything the transcript does not show: constraints, traps, decisions already made."
+        "description": "Anything the transcript does not show: constraints, traps, decisions already made.",
+        "type": "string"
       }
     },
     "required": [
       "session_id",
       "to"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "list_agent_plans": {
     "type": "object",
     "properties": {
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       },
       "query": {
-        "type": "string",
-        "description": "Substring the title or path must contain."
+        "description": "Substring the title or path must contain.",
+        "type": "string"
       },
       "limit": {
+        "description": "How many to return. Default 30.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 100,
-        "description": "How many to return. Default 30."
+        "maximum": 100
       }
     },
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "list_agent_sessions": {
     "type": "object",
     "properties": {
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       },
       "agent": {
+        "description": "Only sessions from this agent. Omit for both.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Only sessions from this agent. Omit for both."
+        ]
       },
       "query": {
-        "type": "string",
-        "description": "Case-insensitive substring the title must contain."
+        "description": "Case-insensitive substring the title must contain.",
+        "type": "string"
       },
       "limit": {
+        "description": "How many to return. Default 25.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 200,
-        "description": "How many to return. Default 25."
+        "maximum": 200
       }
     },
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "list_handoffs": {
     "type": "object",
     "properties": {
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       },
       "status": {
+        "description": "Filter by lifecycle state. Omit for all.",
         "type": "string",
         "enum": [
           "open",
           "picked-up",
           "done",
           "abandoned"
-        ],
-        "description": "Filter by lifecycle state. Omit for all."
+        ]
       },
       "to": {
+        "description": "Only handoffs addressed to this agent.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Only handoffs addressed to this agent."
+        ]
       },
       "limit": {
+        "description": "How many to return. Default 25.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 100,
-        "description": "How many to return. Default 25."
+        "maximum": 100
       }
     },
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "read_agent_plan": {
@@ -432,15 +420,14 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Absolute path from list_agent_plans."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       }
     },
     "required": [
       "path"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "read_agent_session": {
@@ -451,42 +438,42 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "The id from list_agent_sessions."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       },
       "format": {
+        "description": "\`briefing\` (default) or \`transcript\` for the raw messages.",
         "type": "string",
         "enum": [
           "briefing",
           "transcript"
-        ],
-        "description": "\`briefing\` (default) or \`transcript\` for the raw messages."
+        ]
       },
       "offset": {
+        "description": "Transcript only: first message to show. Default 0.",
         "type": "integer",
         "minimum": 0,
-        "description": "Transcript only: first message to show. Default 0."
+        "maximum": 9007199254740991
       },
       "limit": {
+        "description": "Transcript only: how many messages. Default 30.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 200,
-        "description": "Transcript only: how many messages. Default 30."
+        "maximum": 200
       },
       "include_thinking": {
-        "type": "boolean",
-        "description": "Transcript only: include the model's reasoning blocks. Default false."
+        "description": "Transcript only: include the model's reasoning blocks. Default false.",
+        "type": "boolean"
       },
       "subagents": {
-        "type": "boolean",
-        "description": "Transcript only: show the subagent turns instead of the main thread. Default false."
+        "description": "Transcript only: show the subagent turns instead of the main thread. Default false.",
+        "type": "boolean"
       }
     },
     "required": [
       "session_id"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "read_handoff": {
@@ -497,15 +484,14 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "The id from list_handoffs."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       }
     },
     "required": [
       "handoff_id"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "search_agent_sessions": {
@@ -517,29 +503,28 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "Text to look for."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       },
       "agent": {
+        "description": "Only search this agent's sessions.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Only search this agent's sessions."
+        ]
       },
       "limit": {
+        "description": "How many sessions to return. Default 10.",
         "type": "integer",
         "minimum": 1,
-        "maximum": 50,
-        "description": "How many sessions to return. Default 10."
+        "maximum": 50
       }
     },
     "required": [
       "query"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   },
   "update_handoff": {
@@ -550,41 +535,40 @@ exports[`agent-interchange tool input schemas (characterization) > advertises st
         "description": "The id from list_handoffs."
       },
       "workspace": {
+        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace.",
         "type": "string",
-        "minLength": 0,
-        "description": "Absolute workspace path. Defaults to the canonical startup workspace <workspace>. This server was explicitly started with cross-workspace access; pass \\"\\" for every workspace."
+        "minLength": 0
       },
       "status": {
+        "description": "New lifecycle state.",
         "type": "string",
         "enum": [
           "open",
           "picked-up",
           "done",
           "abandoned"
-        ],
-        "description": "New lifecycle state."
+        ]
       },
       "note": {
-        "type": "string",
-        "description": "One line for the log."
+        "description": "One line for the log.",
+        "type": "string"
       },
       "picked_up_by": {
+        "description": "Which agent took it.",
         "type": "string",
         "enum": [
           "claude-code",
           "tumble-code"
-        ],
-        "description": "Which agent took it."
+        ]
       },
       "picked_up_session_id": {
-        "type": "string",
-        "description": "The session that is continuing the work."
+        "description": "The session that is continuing the work.",
+        "type": "string"
       }
     },
     "required": [
       "handoff_id"
     ],
-    "additionalProperties": false,
     "$schema": "http://json-schema.org/draft-07/schema#"
   }
 }"

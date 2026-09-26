@@ -559,7 +559,7 @@
 		"web-tree-sitter": "^0.25.6",
 		"workerpool": "^10.0.3",
 		"yaml": "^2.9.0",
-		"zod": "3.25.76"
+		"zod": "4.6.5"
 	},
 	"devDependencies": {
 		"@roo-code/build": "workspace:^",
