@@ -37,8 +37,17 @@ describe("agent-interchange tool input schemas (characterization)", () => {
 			const schemas = Object.fromEntries(
 				[...tools].sort((a, b) => a.name.localeCompare(b.name)).map((tool) => [tool.name, tool.inputSchema]),
 			)
-			const text = JSON.stringify(schemas, null, 2).split(fs.realpathSync.native(workspaceDir)).join("<workspace>")
-			expect(text.split(workspaceDir).join("<workspace>")).toMatchSnapshot()
+			// Inside the serialized JSON the path is JSON-escaped (backslashes are
+			// doubled on Windows), so a raw substring replace never matches there.
+			const jsonEscaped = JSON.stringify(workspaceDir).slice(1, -1)
+			const text = JSON.stringify(schemas, null, 2)
+				.split(fs.realpathSync.native(workspaceDir))
+				.join("<workspace>")
+				.split(jsonEscaped)
+				.join("<workspace>")
+				.split(workspaceDir)
+				.join("<workspace>")
+			expect(text).toMatchSnapshot()
 		} finally {
 			await Promise.all([client.close(), server.close()])
 		}
