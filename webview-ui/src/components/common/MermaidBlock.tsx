@@ -41,10 +41,25 @@ const MERMAID_THEME = {
 	fillType2: "#454545",
 }
 
+// Mermaid 12 lays out flowchart, state, class, ER and requirement diagrams
+// with ELK and draws them in the "neo" look with 120px minimum node and
+// wrapping widths by default. The palette above was tuned for Mermaid 11's
+// classic look, so these keep the 11 layout and sizes. The layout is set per
+// diagram type, not globally, because a global layout would also override the
+// diagrams that pick their own (mindmap's cose-bilkent, swimlane).
+const DAGRE = { layout: "dagre" }
+const CLASSIC_NODE_SIZES = { minNodeWidth: 0, wrappingWidth: 200 }
+
 const MERMAID_CONFIG: MermaidConfig = {
 	startOnLoad: false,
 	securityLevel: "loose",
 	theme: "dark",
+	look: "classic",
+	flowchart: { ...DAGRE, ...CLASSIC_NODE_SIZES },
+	state: { ...DAGRE, ...CLASSIC_NODE_SIZES },
+	class: DAGRE,
+	er: DAGRE,
+	requirement: DAGRE,
 	suppressErrorRendering: true,
 	themeVariables: {
 		...MERMAID_THEME,
