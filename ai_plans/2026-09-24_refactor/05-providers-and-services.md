@@ -556,6 +556,8 @@ buffer). The hot spots are elsewhere:
 | P7  | Both MCP config files re-read and parsed on about 20 call sites, including every stderr chunk of a crash-looping server                        | `McpHub.ts:784-786, 1385-1387`                                                                 | SVC-8 config store                     |
 | P8  | Slash-command list re-read from disk on every keystroke                                                                                        | `ChatTextArea.tsx:598-606` into `commands.ts:127-145`                                          | SVC-11 cache                           |
 
+**Status (2026-09-26):** P1 and P8 already done by #331; P5 skipped in #335; P2 DONE #456 (9ed27b73d, parses 12,637 to 1,604, 319 M to 18 M characters for a 50 KB write); P3 DONE #461 (29159d7af, 5.48e11 to 4.32e9 characters over 13,598 real reasoning messages; the whole-text partial post is left, a protocol or throttle decision); P4 DONE #462 (eda567548, last message counted once; LM Studio full-history count left as a follow-up, worker pool already fixed by #229); P6 `.rooignore` DONE #464 (65ebf2aba, 34,498 to 7,852 fs calls on 3,650 paths), scanner mtime shortcut skipped (cache format change, misses mtime-preserving edits, 27 MB per full scan); P7 skipped (crash burst only, about 2 KB of config per notify). There is no P9 (the roadmap's "P1 to P9" was a typo).
+
 ## Do not touch
 
 The two provider registries (portable versus runtime, intentional split with a compile-time check); the type

@@ -438,6 +438,8 @@ trailing-debounced `saveClineMessages` that flushes on abort, completion and dis
 today's numbers and is updated deliberately. **Existing:** `Task.persistence` (9), `Task.throttle` (19),
 `ask-finalized-dedup` (21), `flicker-free-cancel` (4).
 
+**Status (2026-09-26):** step 1 DONE in #443 (8ba722d98): perfCounters behind `tumble-code.debug`, TaskHistory.turn-counts pins the cycle counts and the cloud contract; real data: add-push bytes per task median 4.8 MB, p90 108 MB, max 5.4 GB. Step 2 already done by #267. Step 3 DONE in #450 (d7fda1cce) and #466 (99b0a724b): getState per streamed tool chunk 3 to 0 (1 per block), scripted cycle 11 to 1. Step 4 persistence DONE in #463 (7c239d57d): coalesced ui_messages writes (1 s idle, 3 s max), scripted cycle saves 7 to 2, replay of 1,054 tasks 138,318 to 65,970 writes and 73.0 to 37.5 GB; pushes, Message events and TASK_MESSAGE captures unchanged and pinned; TaskTokenUsageUpdated may arrive 1 to 3 s later. Step 4 incremental pushes BLOCKED: CLI MessageProcessor and JsonEventEmitter read clineMessages from state pushes (decision 19); needs an owner decision. Step 5 is not defined in any plan doc. P6 (history sort) measured 0.25 ms per sort; the payload (about 4.5 MB per full push, 28 handler sites) is left as a follow-up. Owed: agent-bench run with `tumble-code.debug` on (main before #443 vs current main), VSIX rebuild and manual smoke test.
+
 ## Suggested order
 
 CORE-Q (Phase 3), CORE-R10, CORE-R5, then CORE-R1, CORE-R3, CORE-R2, CORE-R9, CORE-R4 (a, b), CORE-R8, CORE-R12,
