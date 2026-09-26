@@ -569,3 +569,8 @@ version; one copy each of react, react-dom, @types/react, @types/react-dom in th
 not start); bumped to vscrui 1.1.0 (same Checkbox source), pinned by a real-vscrui characterization spec. Type-only
 fixes in 11 webview files, valid on 18 and 19. Full webview suite 219 files / 2,929 tests; index.js +45 KB
 (+12.8 KB gzip); headless Chrome smoke identical. Polish plural forms (DEF-P11-1) fixed in #509 (`39afbde56`).
+React 19 notes: react/react-dom pinned exactly at 19.2.3 (a caret made pnpm pick react-dom 19.3.0, which needs
+react 19.3 and would split the monorepo again); golden diffs are attribute order only (react-dom 19 sets `src` on
+img and `type` on input last). Follow-ups: React 19.3 for CLI and webview together; styled-components 6.4 (removes a
+cast in CodeBlock and two `postcss` audit allowlist entries, the React 18 types blocker is gone); replace `vscrui`
+with `LabeledCheckbox` (DEP-9 style); first Escape in the mode popover only closes the tooltip (pre-existing).
