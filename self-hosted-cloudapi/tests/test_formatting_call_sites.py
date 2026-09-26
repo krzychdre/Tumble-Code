@@ -11,6 +11,7 @@ from src.auth.web_session import get_web_user_optional
 from src.models.task import Task
 from src.routers import web
 from src.services.task_tree import Spend
+from src.utils import format as fmt
 
 from tests.test_side_call_metrics import _embedding_event
 from tests.test_web_and_share import (
@@ -26,26 +27,26 @@ def _task(task_id="t", **figures) -> Task:
     return Task(id=task_id, user_id="u", title=task_id, **figures)
 
 
-# --- routers/web.py helpers --------------------------------------------------
+# --- routers/web.py helpers and the ones that moved out of it --------------------------------------------------
 
 
 def test_plural_counts_one_and_many():
-    assert web._plural(0, "subtask") == "0 subtasks"
-    assert web._plural(1, "subtask") == "1 subtask"
-    assert web._plural(2, "subtask") == "2 subtasks"
+    assert fmt.plural(0, "subtask") == "0 subtasks"
+    assert fmt.plural(1, "subtask") == "1 subtask"
+    assert fmt.plural(2, "subtask") == "2 subtasks"
     # No thousands separator: a plural is a count in a sentence.
-    assert web._plural(1500, "subtask") == "1500 subtasks"
+    assert fmt.plural(1500, "subtask") == "1500 subtasks"
 
 
 def test_byte_sizes_step_through_the_units():
-    assert web._fmt_bytes(0) == "0 B"
-    assert web._fmt_bytes(1023) == "1023 B"
-    assert web._fmt_bytes(1024) == "1.0 KB"
-    assert web._fmt_bytes(1536) == "1.5 KB"
-    assert web._fmt_bytes(5 * 1024 * 1024) == "5.0 MB"
-    assert web._fmt_bytes(3 * 1024**3) == "3.0 GB"
+    assert fmt.fmt_bytes(0) == "0 B"
+    assert fmt.fmt_bytes(1023) == "1023 B"
+    assert fmt.fmt_bytes(1024) == "1.0 KB"
+    assert fmt.fmt_bytes(1536) == "1.5 KB"
+    assert fmt.fmt_bytes(5 * 1024 * 1024) == "5.0 MB"
+    assert fmt.fmt_bytes(3 * 1024**3) == "3.0 GB"
     # GB is the last unit, however large the figure.
-    assert web._fmt_bytes(2048 * 1024**3) == "2048.0 GB"
+    assert fmt.fmt_bytes(2048 * 1024**3) == "2048.0 GB"
 
 
 def test_a_spend_row_formats_tokens_compactly_and_cost_to_four_places():
@@ -163,9 +164,13 @@ async def test_the_metrics_page_prints_its_figures(client, db_session, session_f
     assert "2 embedding calls" in body
     # The "where the tokens went" panel and the breakdown tables.
     assert '<span class="kind-num cell-cost">$0.1234</span>' in body
-    assert '<span class="kind-num cell-cost">$0.0312</span>' in body
+    # $0.03125 is a true tie: it rounds up now, as the browser's toFixed does
+    # (it printed "$0.0312" while Python's "%.4f" formatted it).
+    assert '<span class="kind-num cell-cost">$0.0313</span>' in body
     assert '<td class="bd-num">$0.1234</td>' in body
-    assert '<td class="bd-num">$0.0312</td>' in body
+    assert '<td class="bd-num">$0.0313</td>' in body
+    # The charts format through static/format.js, so it loads first.
+    assert body.index("/static/format.js") < body.index("/static/metrics.js")
 
 
 async def test_the_metrics_page_says_one_in_the_singular(client, db_session, session_factory):
@@ -216,3 +221,5 @@ async def test_the_task_page_prints_the_side_call_cost(client, db_session, sessi
     # The spend table the live header later keeps current.
     assert '<td id="hdr-own-tokens">303.7k</td>' in body
     assert '<td id="hdr-own-cost" class="spend-cost">$0.1656</td>' in body
+    # render.js and live.js format through static/format.js, so it loads first.
+    assert body.index("/static/format.js") < body.index("/static/render.js")

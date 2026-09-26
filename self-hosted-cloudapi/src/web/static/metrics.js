@@ -49,20 +49,9 @@
 		'ui-monospace, "JetBrains Mono", "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace'
 	Chart.defaults.font.size = 11
 
-	function fmtTokens(n) {
-		var num = Number(n) || 0
-		var units = [
-			[1e9, "B"],
-			[1e6, "M"],
-			[1e3, "k"],
-		]
-		for (var i = 0; i < units.length; i++) {
-			if (Math.abs(num) >= units[i][0]) {
-				return (num / units[i][0]).toFixed(1).replace(/\.0$/, "") + units[i][1]
-			}
-		}
-		return String(Math.round(num))
-	}
+	// The same compact counts and costs the server renders (static/format.js).
+	var fmtTokens = window.TumbleFormat.tokens
+	var fmtCost = window.TumbleFormat.cost
 
 	function get(id) {
 		return document.getElementById(id)
@@ -107,7 +96,7 @@
 						callbacks: {
 							label: function (ctx) {
 								if (ctx.dataset.yAxisID === "yCost") {
-									return "Cost: $" + Number(ctx.parsed.y).toFixed(4)
+									return "Cost: " + fmtCost(ctx.parsed.y)
 								}
 								return "Tokens: " + Number(ctx.parsed.y).toLocaleString()
 							},

@@ -71,22 +71,22 @@
   <div class="stat-card" data-metric="tokens">
     <div class="stat-label">Total tokens</div>
     <div class="stat-value">{{ t.total_tokens_fmt }}</div>
-    <div class="stat-sub">↑ {{ "{:,}".format(t.input) }} in · ↓ {{ "{:,}".format(t.output) }} out</div>
+    <div class="stat-sub">↑ {{ t.input|fmt_int }} in · ↓ {{ t.output|fmt_int }} out</div>
   </div>
   <div class="stat-card" data-metric="cache">
     <div class="stat-label">Cache tokens</div>
-    <div class="stat-value">{{ "{:,}".format(t.cache_read + t.cache_write) }}</div>
-    <div class="stat-sub">{{ "{:,}".format(t.cache_write) }} write · {{ "{:,}".format(t.cache_read) }} read</div>
+    <div class="stat-value">{{ (t.cache_read + t.cache_write)|fmt_int }}</div>
+    <div class="stat-sub">{{ t.cache_write|fmt_int }} write · {{ t.cache_read|fmt_int }} read</div>
   </div>
   <div class="stat-card" data-metric="cost">
     <div class="stat-label">Cost</div>
-    <div class="stat-value">${{ "%.4f"|format(t.cost) }}</div>
-    <div class="stat-sub">{{ t.completions }} API completion{{ '' if t.completions == 1 else 's' }}</div>
+    <div class="stat-value">{{ t.cost|fmt_cost }}</div>
+    <div class="stat-sub">{{ t.completions|plural("API completion") }}</div>
   </div>
   <div class="stat-card" data-metric="duration">
     <div class="stat-label">Session duration</div>
     <div class="stat-value">{{ metrics.duration }}</div>
-    <div class="stat-sub">{{ metrics.task_count }} task{{ '' if metrics.task_count == 1 else 's' }}</div>
+    <div class="stat-sub">{{ metrics.task_count|plural("task") }}</div>
   </div>
   {% if metrics.embeddings.has_data %}
   {# Its own tile, deliberately not inside "Total tokens": indexing a repository
@@ -96,7 +96,7 @@
     <div class="stat-label">Indexing</div>
     <div class="stat-value">{{ metrics.embeddings.tokens_fmt }}</div>
     <div class="stat-sub">
-      {{ "{:,}".format(metrics.embeddings.calls) }} embedding call{{ '' if metrics.embeddings.calls == 1 else 's' }}
+      {{ metrics.embeddings.calls|fmt_int }} embedding call{{ '' if metrics.embeddings.calls == 1 else 's' }}
       {%- for s in metrics.embeddings.by_source %} · {{ s.name }} {{ s.tokens_fmt }}{% endfor %}
     </div>
   </div>
@@ -117,7 +117,7 @@
       <span class="kind-bar"><i style="width: {{ (100 * k.tokens / metrics.totals.total_tokens) if metrics.totals.total_tokens else 0 }}%"></i></span>
       <span class="kind-num">{{ k.tokens_fmt }}<span class="unit">tok</span></span>
       <span class="kind-num">{{ k.count }}<span class="unit">calls</span></span>
-      <span class="kind-num cell-cost">{% if k.cost %}${{ "%.4f"|format(k.cost) }}{% endif %}</span>
+      <span class="kind-num cell-cost">{% if k.cost %}{{ k.cost|fmt_cost }}{% endif %}</span>
     </div>
     {% endfor %}
   </div>
@@ -156,7 +156,7 @@
         <tr>
           <td class="bd-name" title="{{ r.name }}">{{ r.name }}</td>
           <td class="bd-num">{{ r.tokens_fmt }}</td>
-          <td class="bd-num">${{ "%.4f"|format(r.cost) }}</td>
+          <td class="bd-num">{{ r.cost|fmt_cost }}</td>
           <td class="bd-num">{{ r.count }}</td>
         </tr>
         {% endfor %}
@@ -180,6 +180,7 @@
 <script id="metrics-data" type="application/json">{{ chart_json }}</script>
 {% if metrics.has_data %}
 <script src="/static/vendor/chart.umd.min.js"></script>
+<script src="/static/format.js?v={{ asset_v }}"></script>
 <script src="/static/metrics.js?v={{ asset_v }}"></script>
 {% endif %}
 {% endblock %}

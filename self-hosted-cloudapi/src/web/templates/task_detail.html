@@ -48,7 +48,7 @@
   <div class="detail-side-calls">
     {% for c in side_calls %}
     <span class="side-call" title="{{ c.models | join(', ') }}">
-      {{ c.label }} <b>{{ c.count }}</b> · {{ c.tokens_fmt }} tok{% if c.cost %} · ${{ "%.4f"|format(c.cost) }}{% endif %}
+      {{ c.label }} <b>{{ c.count }}</b> · {{ c.tokens_fmt }} tok{% if c.cost %} · {{ c.cost|fmt_cost }}{% endif %}
     </span>
     {% endfor %}
   </div>
@@ -193,6 +193,7 @@
 {% block scripts %}
 <script src="/static/vendor/marked.min.js"></script>
 <script src="/static/vendor/purify.min.js"></script>
+<script src="/static/format.js?v={{ asset_v }}"></script>
 <script src="/static/render.js?v={{ asset_v }}"></script>
 {% if live %}
 <script src="/static/vendor/socket.io.min.js"></script>

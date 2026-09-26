@@ -46,26 +46,10 @@
 	})
 
 	// --- helpers -------------------------------------------------------------
-	// Compact, human-readable token counts: 1 000 000 → "1M", 96 941 → "96.9k".
-	// Used for tokens in/out and context; cost has its own formatter.
-	function fmt(n) {
-		if (n == null) return "—"
-		var num = Number(n)
-		if (!isFinite(num)) return "—"
-		var abs = Math.abs(num)
-		var units = [
-			{ v: 1e9, s: "B" },
-			{ v: 1e6, s: "M" },
-			{ v: 1e3, s: "k" },
-		]
-		for (var i = 0; i < units.length; i++) {
-			if (abs >= units[i].v) {
-				// One decimal, but drop a trailing ".0" so 1 000 000 → "1M".
-				return (num / units[i].v).toFixed(1).replace(/\.0$/, "") + units[i].s
-			}
-		}
-		return String(num)
-	}
+	// Token counts and costs read exactly as the server rendered them
+	// (static/format.js, loaded before this file).
+	var fmt = window.TumbleFormat.tokens
+	var fmtCost = window.TumbleFormat.cost
 
 	// --- the spend table ------------------------------------------------------
 	// This task's figures as last known, and what its stored subtasks add to
@@ -85,7 +69,7 @@
 		setCell("hdr-" + key + "-tokens", both ? fmt(s.tokensIn + s.tokensOut) : null)
 		setCell("hdr-" + key + "-in", s.tokensIn != null ? fmt(s.tokensIn) : null)
 		setCell("hdr-" + key + "-out", s.tokensOut != null ? fmt(s.tokensOut) : null)
-		setCell("hdr-" + key + "-cost", s.cost != null ? "$" + Number(s.cost).toFixed(4) : null)
+		setCell("hdr-" + key + "-cost", s.cost != null ? fmtCost(s.cost) : null)
 	}
 
 	function showSpend() {

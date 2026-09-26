@@ -87,6 +87,8 @@ def test_render_js_get_metrics_matches_golden_totals(tmp_path):
         f'<script id="golden" type="application/json">{island}</script>\n'
         f'<script src="{(_STATIC / "vendor" / "marked.min.js").as_uri()}"></script>\n'
         f'<script src="{(_STATIC / "vendor" / "purify.min.js").as_uri()}"></script>\n'
+        # render.js formats costs through static/format.js, as the page loads it.
+        f'<script src="{(_STATIC / "format.js").as_uri()}"></script>\n'
         f'<script src="{(_STATIC / "render.js").as_uri()}"></script>\n'
         f'<script src="{_HARNESS.as_uri()}"></script>\n'
         "</body></html>\n",
