@@ -494,3 +494,13 @@ Renovate ignored vsce because vsce >= 3.4 refuses to package `.env`, which the V
 `--allow-package-env-file` on `vsix`/`vsix:nightly`; `publish:marketplace` now publishes the already built VSIX
 with `--packagePath` (ovsx 1.2 lacks the env flag and would repackage); VSIX file list (1,969) and manifest
 identical. Publish commands untested (need PATs): watch the next release run. Renovate's vsce ignore removed.
+
+**Status (2026-09-26), more Phase 11 merges:** DEP-9 `VSCodeDropdown`/`VSCodeOption` to `ThemedDropdown`/
+`ThemedOption` #493 (`b59a48516`, 5 call sites, no echo dependency, pixel-identical except focus-corner
+antialiasing). `@testing-library/jest-dom` 6.6.3 to 7.0.1 #495 (`1781131f9`, explicit `@testing-library/dom`
+peer; #492 was closed by a branch deletion after a refused merge and re-opened as #495). CLI `commander` 12 to 15
+#494 (`3e4109cb0`): characterization `argument-parser.test.ts` (28, real parser); help texts, parsed values and
+error texts byte-identical; excess arguments now error, including options after the prompt, which main silently
+dropped (`tumble "prompt" -p` ignored `-p` because the root command uses `passThroughOptions`); README examples
+fixed. Follow-up CLI-F1: decide whether options after the prompt should work (drop root `passThroughOptions`,
+keep `enablePositionalOptions` for `list`).
