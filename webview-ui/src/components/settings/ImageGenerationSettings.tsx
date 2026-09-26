@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react"
-import { VSCodeTextField, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-import { LabeledCheckbox } from "@src/components/ui"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { LabeledCheckbox, ThemedDropdown, ThemedOption } from "@src/components/ui"
 import { IMAGE_GENERATION_MODELS, type ImageGenerationProvider } from "@roo-code/types"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -114,16 +114,16 @@ export const ImageGenerationSettings = ({
 						<label className="block font-medium mb-1">
 							{t("settings:experimental.IMAGE_GENERATION.modelSelectionLabel")}
 						</label>
-						<VSCodeDropdown
+						<ThemedDropdown
 							value={currentModel}
 							onChange={(e: any) => handleModelChange(e.target.value)}
 							className="w-full">
 							{availableModels.map((model) => (
-								<VSCodeOption key={model.value} value={model.value} className="py-2 px-3">
+								<ThemedOption key={model.value} value={model.value} className="py-2 px-3">
 									{model.label}
-								</VSCodeOption>
+								</ThemedOption>
 							))}
-						</VSCodeDropdown>
+						</ThemedDropdown>
 						<p className="text-vscode-descriptionForeground text-xs mt-1">
 							{t("settings:experimental.IMAGE_GENERATION.modelSelectionDescription")}
 						</p>

@@ -45,8 +45,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			onBlur={(e: any) => onBlur?.({ target: { value: e.target.value } })}
 		/>
 	),
-	VSCodeDropdown: ({ children }: any) => <select>{children}</select>,
-	VSCodeOption: ({ children, value }: any) => <option value={value}>{children}</option>,
 }))
 
 const mockExtensionState = {

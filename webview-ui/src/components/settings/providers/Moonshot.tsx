@@ -1,6 +1,5 @@
-import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedDropdown, ThemedOption } from "@src/components/ui"
 
 import { cn } from "@/lib/utils"
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
@@ -18,17 +17,17 @@ export const Moonshot = ({ apiConfiguration, setApiConfigurationField }: Moonsho
 		<>
 			<div>
 				<label className="block font-medium mb-1">{t("settings:providers.moonshotBaseUrl")}</label>
-				<VSCodeDropdown
+				<ThemedDropdown
 					value={apiConfiguration.moonshotBaseUrl}
 					onChange={handleInputChange("moonshotBaseUrl")}
 					className={cn("w-full")}>
-					<VSCodeOption value="https://api.moonshot.ai/v1" className="p-2">
+					<ThemedOption value="https://api.moonshot.ai/v1" className="p-2">
 						api.moonshot.ai
-					</VSCodeOption>
-					<VSCodeOption value="https://api.moonshot.cn/v1" className="p-2">
+					</ThemedOption>
+					<ThemedOption value="https://api.moonshot.cn/v1" className="p-2">
 						api.moonshot.cn
-					</VSCodeOption>
-				</VSCodeDropdown>
+					</ThemedOption>
+				</ThemedDropdown>
 			</div>
 			<ApiKeyField
 				apiConfiguration={apiConfiguration}

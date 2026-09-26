@@ -51,16 +51,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			onBlur={(e: any) => onBlur?.({ target: { value: e.target.value } })}
 		/>
 	),
-	VSCodeDropdown: ({ children, value, onChange, className }: any) => (
-		<select
-			data-testid="model-dropdown"
-			value={value ?? ""}
-			className={className}
-			onChange={(e: any) => onChange?.({ target: { value: e.target.value } })}>
-			{children}
-		</select>
-	),
-	VSCodeOption: ({ children, value }: any) => <option value={value}>{children}</option>,
 }))
 
 const MODELS = {
@@ -275,6 +265,18 @@ function typeInto(placeholder: string, value: string) {
 	fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value } })
 }
 
+/** The embedding model dropdown (ThemedDropdown; the provider picker is a Radix select). */
+function modelDropdown() {
+	const dropdown = document.querySelector<HTMLElement>(".ui-dropdown")
+	expect(dropdown).not.toBeNull()
+	return dropdown!
+}
+
+function chooseModel(value: string) {
+	fireEvent.click(modelDropdown())
+	fireEvent.click(modelDropdown().querySelector(`[role="option"][data-value="${value}"]`)!)
+}
+
 function clickSave() {
 	fireEvent.click(screen.getByText("settings:codeIndex.saveSettings").closest("button")!)
 }
@@ -324,7 +326,7 @@ describe("CodeIndexPopover per embedder provider", () => {
 				expect(screen.queryByText(key)).not.toBeInTheDocument()
 			}
 			if (testCase.dropdownModel) {
-				expect(screen.getByTestId("model-dropdown")).toHaveClass("border-red-500")
+				expect(modelDropdown()).toHaveClass("border-red-500")
 			}
 			expect(savedPayloads()).toHaveLength(0)
 		})
@@ -337,9 +339,7 @@ describe("CodeIndexPopover per embedder provider", () => {
 				typeInto(input.placeholder, input.value)
 			}
 			if (testCase.dropdownModel) {
-				fireEvent.change(screen.getByTestId("model-dropdown"), {
-					target: { value: testCase.dropdownModel },
-				})
+				chooseModel(testCase.dropdownModel)
 			}
 			clickSave()
 
@@ -374,9 +374,7 @@ describe("CodeIndexPopover per embedder provider", () => {
 					typeInto(input.placeholder, input.value)
 				}
 				if (testCase.dropdownModel) {
-					fireEvent.change(screen.getByTestId("model-dropdown"), {
-						target: { value: testCase.dropdownModel },
-					})
+					chooseModel(testCase.dropdownModel)
 				}
 				clickSave()
 

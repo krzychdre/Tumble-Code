@@ -1,8 +1,7 @@
-import { VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
-
 import { zaiApiLineConfigs, zaiApiLineSchema } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { ThemedDropdown, ThemedOption } from "@src/components/ui"
 
 import { cn } from "@/lib/utils"
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
@@ -18,19 +17,19 @@ export const ZAi = ({ apiConfiguration, setApiConfigurationField }: ZAiProps) =>
 		<>
 			<div>
 				<label className="block font-medium mb-1">{t("settings:providers.zaiEntrypoint")}</label>
-				<VSCodeDropdown
+				<ThemedDropdown
 					value={apiConfiguration.zaiApiLine || zaiApiLineSchema.enum.international_coding}
 					onChange={handleInputChange("zaiApiLine")}
 					className={cn("w-full")}>
 					{zaiApiLineSchema.options.map((zaiApiLine) => {
 						const config = zaiApiLineConfigs[zaiApiLine]
 						return (
-							<VSCodeOption key={zaiApiLine} value={zaiApiLine} className="p-2">
+							<ThemedOption key={zaiApiLine} value={zaiApiLine} className="p-2">
 								{config.name} ({config.baseUrl})
-							</VSCodeOption>
+							</ThemedOption>
 						)
 					})}
-				</VSCodeDropdown>
+				</ThemedDropdown>
 				<div className="text-xs text-vscode-descriptionForeground mt-1">
 					{t("settings:providers.zaiEntrypointDescription")}
 				</div>

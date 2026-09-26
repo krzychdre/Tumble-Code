@@ -32,12 +32,6 @@ vi.mock("@vscode/webview-ui-toolkit/react", () => ({
 			/>
 		</div>
 	),
-	VSCodeDropdown: ({ children, value, onChange }: any) => (
-		<select value={value} onChange={(e) => onChange?.(e)}>
-			{children}
-		</select>
-	),
-	VSCodeOption: ({ children, value }: any) => <option value={value}>{children}</option>,
 }))
 
 vi.mock("vscrui", () => ({

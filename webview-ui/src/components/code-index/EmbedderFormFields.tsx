@@ -1,8 +1,9 @@
 import React from "react"
-import { VSCodeTextField, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import type { EmbeddingModelProfile } from "@roo-code/types"
 
+import { ThemedDropdown, ThemedOption } from "@src/components/ui"
 import { cn } from "@src/lib/utils"
 
 import type { CodeIndexSettingKey, CodeIndexTranslate, LocalCodeIndexSettings } from "./codeIndexSettings"
@@ -112,21 +113,21 @@ export const ModelDropdownField = ({ context }: FieldProps) => {
 	return (
 		<div className="space-y-2">
 			<label className="text-sm font-medium">{t("settings:codeIndex.modelLabel")}</label>
-			<VSCodeDropdown
+			<ThemedDropdown
 				value={settings.codebaseIndexEmbedderModelId}
 				onChange={(e: any) => updateSetting("codebaseIndexEmbedderModelId", e.target.value)}
 				className={cn("w-full", {
 					"border-red-500": formErrors.codebaseIndexEmbedderModelId,
 				})}>
-				<VSCodeOption value="" className="p-2">
+				<ThemedOption value="" className="p-2">
 					{t("settings:codeIndex.selectModel")}
-				</VSCodeOption>
+				</ThemedOption>
 				{models.map(({ id, profile }) => (
-					<VSCodeOption key={id} value={id} className="p-2">
+					<ThemedOption key={id} value={id} className="p-2">
 						{id} {profile ? t("settings:codeIndex.modelDimensions", { dimension: profile.dimension }) : ""}
-					</VSCodeOption>
+					</ThemedOption>
 				))}
-			</VSCodeDropdown>
+			</ThemedDropdown>
 			<FieldError message={formErrors.codebaseIndexEmbedderModelId} />
 		</div>
 	)
