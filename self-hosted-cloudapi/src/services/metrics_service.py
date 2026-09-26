@@ -29,7 +29,7 @@ from src.services.telemetry_vocab import (
     EMBEDDING_EVENT,
     KIND_LABELS,
     LLM_COMPLETION_EVENT,
-    TASK_KIND,
+    completion_kind,
     iter_event_props,
     parse_event_props,
 )
@@ -203,7 +203,7 @@ async def compute_user_metrics(
         totals["cost"] += cost
         totals["completions"] += 1
 
-        kind = str(props.get("completionKind") or TASK_KIND)
+        kind = completion_kind(props)
         if props.get("usageReported") is False:
             unreported += 1
 

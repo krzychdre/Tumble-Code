@@ -18,6 +18,7 @@ import json
 import pytest
 
 from src.services import metrics_service, model_attribution, task_summary
+from src.services.telemetry_vocab import TASK_KIND
 
 # --- characterization: the two label maps -----------------------------------
 
@@ -31,10 +32,10 @@ def test_the_two_kind_label_maps_agree_on_every_side_call_kind():
     side_labels = model_attribution.SIDE_CALL_LABELS
 
     for kind in set(kind_labels) | set(side_labels):
-        if kind == metrics_service.TASK_KIND:
+        if kind == TASK_KIND:
             continue
         assert kind_labels.get(kind) == side_labels.get(kind), kind
-    assert kind_labels[metrics_service.TASK_KIND] == "Conversation"
+    assert kind_labels[TASK_KIND] == "Conversation"
 
 
 def test_side_calls_summary_labels_known_and_unknown_kinds():
@@ -52,37 +53,59 @@ def test_side_calls_summary_labels_known_and_unknown_kinds():
     ]
 
 
-# --- characterization: the kind read off an event ---------------------------
+# --- the kind read off an event: one rule for both pages --------------------
+#
+# The metrics page used to read the kind as ``str(kind or "task")``, so a
+# malformed numeric kind became its own row "5", while the task detail page
+# (``completion_from_properties``) counted it as a conversation turn. Owner
+# decision 25: both pages treat a kind that is not a non-empty string as an
+# ordinary conversation turn, through ``telemetry_vocab.completion_kind``.
+
+# (raw completionKind, or MISSING for no key) -> the kind both pages use
+MISSING = object()
+KIND_CASES = [
+    pytest.param(MISSING, "task", id="missing"),
+    pytest.param(None, "task", id="null"),
+    pytest.param("", "task", id="empty"),
+    pytest.param("condense", "condense", id="known"),
+    pytest.param("brand-new", "brand-new", id="unknown-string"),
+    pytest.param(5, "task", id="number"),
+    pytest.param(0, "task", id="zero"),
+    pytest.param(True, "task", id="boolean"),
+    pytest.param(["memory"], "task", id="list"),
+    pytest.param({"k": "memory"}, "task", id="object"),
+]
 
 
-@pytest.mark.parametrize(
-    "raw, attribution_kind",
-    [
-        (None, "task"),
-        ("", "task"),
-        ("condense", "condense"),
-        (5, "task"),
-    ],
-)
-def test_completion_kind_in_attribution(raw, attribution_kind):
+def _props_with_kind(raw) -> dict:
     props = {"modelId": "m", "inputTokens": 1, "outputTokens": 1}
-    if raw is not None:
+    if raw is not MISSING:
         props["completionKind"] = raw
-    completion = model_attribution.completion_from_properties(props)
+    return props
+
+
+@pytest.mark.parametrize("raw, kind", KIND_CASES)
+def test_completion_kind(raw, kind):
+    from src.services.telemetry_vocab import completion_kind
+
+    assert completion_kind(_props_with_kind(raw)) == kind
+
+
+@pytest.mark.parametrize("raw, kind", KIND_CASES)
+def test_completion_kind_on_the_task_detail_page(raw, kind):
+    completion = model_attribution.completion_from_properties(_props_with_kind(raw))
     assert completion is not None
-    assert completion.kind == attribution_kind
+    assert completion.kind == kind
 
 
-async def test_completion_kind_in_metrics_stringifies_a_non_string_kind(db_session):
-    """The metrics page reads the kind as ``str(kind or "task")``, so a
-    malformed numeric kind becomes its own bucket ``"5"``, whereas the task
-    detail page (``completion_from_properties``) treats it as a conversation
-    turn. Pinned, not unified: the move must not change either page."""
+async def test_completion_kind_on_the_metrics_page_counts_a_malformed_kind_as_a_turn(db_session):
+    """A numeric, boolean, list or empty kind lands in the Conversation row,
+    exactly as the task detail page counts it, instead of a row of its own."""
     from tests.test_web_and_share import _seed_user
     from src.models.event import TelemetryEvent
 
     await _seed_user(db_session)
-    for kind in (5, "", "memory"):
+    for kind in (5, True, ["memory"], "", "memory"):
         db_session.add(
             TelemetryEvent(
                 user_id="user_test",
@@ -95,8 +118,8 @@ async def test_completion_kind_in_metrics_stringifies_a_non_string_kind(db_sessi
     await db_session.commit()
 
     m = await metrics_service.compute_user_metrics(db_session, "user_test", period="all")
-    labels = {row["name"]: row["label"] for row in m["by_kind"]}
-    assert labels == {"5": "5", "task": "Conversation", "memory": "Memory recall"}
+    rows = {row["name"]: (row["label"], row["tokens"]) for row in m["by_kind"]}
+    assert rows == {"task": ("Conversation", 4), "memory": ("Memory recall", 1)}
 
 
 # --- characterization: skipping undecodable payloads ------------------------
@@ -221,16 +244,17 @@ def test_telemetry_vocabulary_is_single_source_of_truth():
 
     assert metrics_service.LLM_COMPLETION_EVENT is vocab.LLM_COMPLETION_EVENT
     assert metrics_service.EMBEDDING_EVENT is vocab.EMBEDDING_EVENT
-    assert metrics_service.TASK_KIND is vocab.TASK_KIND
     assert metrics_service.KIND_LABELS is vocab.KIND_LABELS
     assert metrics_service.iter_event_props is vocab.iter_event_props
     assert metrics_service.parse_event_props is vocab.parse_event_props
+    assert metrics_service.completion_kind is vocab.completion_kind
 
     assert model_attribution.LLM_COMPLETION_EVENT is vocab.LLM_COMPLETION_EVENT
     assert model_attribution.TASK_KIND is vocab.TASK_KIND
     assert model_attribution.SIDE_CALL_LABELS is vocab.KIND_LABELS
     assert model_attribution.iter_event_props is vocab.iter_event_props
     assert model_attribution.api_req_started_payload is vocab.api_req_started_payload
+    assert model_attribution.completion_kind is vocab.completion_kind
 
     assert task_summary.api_req_started_payload is vocab.api_req_started_payload
     assert telemetry_service.LLM_COMPLETION_EVENT is vocab.LLM_COMPLETION_EVENT

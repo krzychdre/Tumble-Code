@@ -45,6 +45,7 @@ from src.services.telemetry_vocab import (
     LLM_COMPLETION_EVENT,
     TASK_KIND,
     api_req_started_payload,
+    completion_kind,
     iter_event_props,
 )
 from src.utils.format import fmt_tokens, num
@@ -76,13 +77,12 @@ def completion_from_properties(props: dict) -> Optional[Completion]:
     if not model or not isinstance(model, str):
         return None
     mode = props.get("mode")
-    kind = props.get("completionKind")
     return Completion(
         model=model,
         mode=mode if isinstance(mode, str) and mode else None,
         input_tokens=int(num(props.get("inputTokens"))),
         output_tokens=int(num(props.get("outputTokens"))),
-        kind=kind if isinstance(kind, str) and kind else TASK_KIND,
+        kind=completion_kind(props),
         cost=float(num(props.get("cost"))),
     )
 
