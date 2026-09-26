@@ -4,9 +4,9 @@ import { Bedrock } from "../Bedrock"
 import { ProviderSettings } from "@roo-code/types"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
-// Mock the vscrui Checkbox component
-vi.mock("vscrui", () => ({
-	Checkbox: ({ children, checked, onChange }: any) => (
+// Mock the VSCRUICheckbox component
+vi.mock("@src/components/ui/vscrui-checkbox", () => ({
+	VSCRUICheckbox: ({ children, checked, onChange }: any) => (
 		<label data-testid={`checkbox-${children?.toString().replace(/\s+/g, "-").toLowerCase()}`}>
 			<input
 				type="checkbox"

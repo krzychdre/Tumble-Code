@@ -819,9 +819,6 @@ importers:
       vscode-material-icons:
         specifier: ^0.1.1
         version: 0.1.1
-      vscrui:
-        specifier: ^1.1.0
-        version: 1.1.0(@types/react@19.3.0)(react@19.3.0)
       zod:
         specifier: 4.6.5
         version: 4.6.5
@@ -8407,12 +8404,6 @@ packages:
 
   vscode-material-icons@0.1.1:
     resolution: {integrity: sha512-GsoEEF8Tbb0yUFQ6N6FPvh11kFkL9F95x0FkKlbbfRQN9eFms67h+L3t6b9cUv58dSn2gu8kEhNfoESVCrz4ag==}
-
-  vscrui@1.1.0:
-    resolution: {integrity: sha512-pECJdL4LeL/MlphyuiGY6eGCxOcS3XxA4/vzYok+XqEGWy6lj0J5PdwjVC41VPjBvgC8DbYPlWf4z1UTVJTr9A==}
-    peerDependencies:
-      '@types/react': '*'
-      react: ^17 || ^18 || ^19
 
   w3c-xmlserializer@6.0.0:
     resolution: {integrity: sha512-4Nsy8K5Tr6SPDH9jhKJOHf7ChDrc1zufZTVSF7x72hwuEXBqxqk9G6cK+K2NRUtB3iELRJqjXb4JPDMBjMTl2Q==}
@@ -17008,11 +16999,6 @@ snapshots:
       - msw
 
   vscode-material-icons@0.1.1: {}
-
-  vscrui@1.1.0(@types/react@19.3.0)(react@19.3.0):
-    dependencies:
-      '@types/react': 19.3.0
-      react: 19.3.0
 
   w3c-xmlserializer@6.0.0:
     dependencies:

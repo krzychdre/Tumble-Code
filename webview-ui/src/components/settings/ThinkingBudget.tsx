@@ -37,7 +37,7 @@ Notes:
 */
 
 import { useEffect } from "react"
-import { Checkbox } from "vscrui"
+import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
 
 import { type ProviderSettings, type ModelInfo, type ReasoningEffortExtended, reasoningEfforts } from "@roo-code/types"
 
