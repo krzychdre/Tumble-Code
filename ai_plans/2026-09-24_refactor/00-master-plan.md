@@ -271,6 +271,8 @@ only after the owner confirms it (ask at the start of the item that depends on i
 | 21 | CAPI-M12 (CPU-heavy work off the event loop, upload size cap, cached marketplace YAML) in Phase 9? | **Decided** | Yes, as the last branch of the phase; the upload cap is derived from the largest real task file with headroom and lives in settings (owner 2026-09-26) |
 | 22 | Deploy the cloud API after Phase 9? | **Decided** | Once, at the end of the phase: `pg_dump` backup first, image built from an export of main, restart, then a live check of sign-in, task list, metrics and the bridge (owner 2026-09-26) |
 | 23 | CAPI-M10: add a Postgres service container to the cloud API CI job for the migration drift test? | **Decided** | No: SQLite only; whatever needs Postgres (the datetime migration) stays untested and is documented in `08-cloudapi.md` (owner 2026-09-26) |
+| 24 | CAPI-M6 finding: the JWT issuer (`iss == "rcc"`) and version (`v == 1`) checks are bypassed by a second decode without them (API and bridge). Enforce? | **Decided** | Yes: one decode with mandatory issuer and version checks in the API and the bridge, own `fix/` branch; every token ever issued carries both claims, so nobody is logged out (owner 2026-09-26) |
+| 25 | CAPI-M3 finding: a non-string `completionKind` is its own row on the metrics page but a conversation turn on the task detail page. Unify? | **Decided** | Yes: both pages treat it as an ordinary conversation turn, one function in `telemetry_vocab.py` (owner 2026-09-26) |
 
 ## Do not touch (collected from all audits)
 
