@@ -27,7 +27,7 @@ from src.services.model_attribution import (
     side_calls_summary,
 )
 
-from tests.test_web_and_share import (
+from tests.web_helpers import (
     _add_message,
     _llm_event,
     _override_web_user,

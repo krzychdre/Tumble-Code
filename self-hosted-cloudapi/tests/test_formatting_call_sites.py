@@ -14,7 +14,7 @@ from src.services.task_tree import Spend
 from src.utils import format as fmt
 
 from tests.test_side_call_metrics import _embedding_event
-from tests.test_web_and_share import (
+from tests.web_helpers import (
     _add_message,
     _llm_event,
     _override_web_user,

@@ -19,7 +19,8 @@ from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
-from src.routers import auth, extension, settings as settings_router, events, marketplace, browser, web
+from src.routers import auth, extension, settings as settings_router, events, marketplace, browser
+from src.routers import shared, web_metrics, web_settings, web_tasks
 
 
 configure_logging(settings.log_level)
@@ -138,8 +139,13 @@ app.include_router(events.router)
 # Marketplace API
 app.include_router(marketplace.router)
 
-# Web UI (task list + read-only task viewer)
-app.include_router(web.router)
+# Web UI: task list and task page, metrics, retention settings, share links.
+# /app/tasks/{task_id} (GET) is registered before /app/tasks/bulk-delete (POST),
+# as it always was; tests/test_route_table.py pins the pairs whose paths overlap.
+app.include_router(web_tasks.router)
+app.include_router(web_metrics.router)
+app.include_router(web_settings.router)
+app.include_router(shared.router)
 
 # Static assets for the web UI (CSS, vendored JS, the renderer)
 _STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"

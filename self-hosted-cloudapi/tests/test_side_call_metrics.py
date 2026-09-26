@@ -14,7 +14,7 @@ from src.auth.web_session import get_web_user_optional
 from src.models.event import TelemetryEvent
 from src.services.metrics_service import compute_user_metrics
 
-from tests.test_web_and_share import _llm_event, _override_web_user, _seed_user
+from tests.web_helpers import _llm_event, _override_web_user, _seed_user
 
 
 def _embedding_event(user_id="user_test", *, prompt_tokens=1000, source="index-scan"):

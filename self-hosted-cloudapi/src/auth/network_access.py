@@ -49,6 +49,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from config.settings import settings
+from src.web.templating import templates
 
 logger = logging.getLogger(__name__)
 
@@ -160,10 +161,6 @@ class WebAccessMiddleware:
             return
 
         logger.warning("[web-access] refused %s %s from %s", scope.get("method"), scope["path"], client)
-        # Imported here: the templates belong to the web router, which imports
-        # half the app, and a middleware module should not.
-        from src.routers.web import templates
-
         response = templates.TemplateResponse(
             Request(scope),
             "forbidden.html",
