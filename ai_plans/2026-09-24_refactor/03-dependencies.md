@@ -422,3 +422,15 @@ and keeps its 18px square next to wrapping labels. Headless Chrome: 7 of 8 patte
 319, webview 2,401 (193 files) green; src 9 failed of 9,803 in two stale specs from the parallel Phase 10 follow-ups
 (the API-7 characterization mocked `countTokens`, which LM Studio no longer calls after #469; the registry count
 after #472 added `resyncClineMessages`), fixed in #474 (`e8334ad22`), no product defect.
+
+**Status (2026-09-26), DEP-7 eslint:** DONE in #476 (`e61b8b8b9`): eslint 9.28 to 10.11, `@eslint/js` 10.0.1,
+`eslint-plugin-react-hooks` 5.2 to 7.1.1, `typescript-eslint` 8.32 to 8.70.1; `eslint-plugin-react` 7.37.5 still
+calls the removed `context.getFilename()`, wrapped with `@eslint/compat` `fixupPluginRules` (remove when it ships
+eslint 10 support). Deferred (off, counts in `packages/config-eslint/base.js`): new recommended rules
+`preserve-caught-error` (48), `no-useless-assignment` (39, some in task/condense/diff logic, review each),
+`no-unassigned-vars` (1, dead `userInput` in `registerCodeActions.ts`). React Compiler rules: the 8 with zero hits
+are on; off with counts: set-state-in-effect 45, refs 7, immutability 3, preserve-manual-memoization 3, purity 2,
+globals 1. The rules find only 5 of the 8 bailouts (the plugin bundles a newer compiler than
+babel-plugin-react-compiler 1.0.0), so `check-react-compiler-bailouts.mjs` stays. CLI has no hooks rules (measured:
+refs 19, exhaustive-deps 7, error-boundaries 4, set-state-in-effect 4, static-components 2, rules-of-hooks 0).
+Follow-up items: DEP-7-F1 re-enable the deferred rules one per PR; DEP-7-F2 `rules-of-hooks` in the CLI.
