@@ -211,7 +211,7 @@ show `tasks_pkey` violations from two concurrent first bridge chunks (the losing
 shared-conversation upload fails with 500 when two messages share a `ts` (decision 26). Both plus the
 `uq_task_messages_task_ts` model/migration drift are on one stacked fix branch set.
 
-**DEF-C47:** DONE 2026-09-26, #454 (merge see git log), pytest 769 to 771. Reproduced on Postgres (copy of the live
+**DEF-C47:** DONE 2026-09-26, #454 (merge 42e69601f), pytest 769 to 771. Reproduced on Postgres (copy of the live
 data, scratch DB): child streams, then the relation event raised `ForeignKeyViolationError` (non-deferrable
 `tasks_parent_task_id_fkey`), rolling back the whole telemetry request including the `task_relations` row. Not seen
 live yet (no FK errors in the logs, all 19 live relations stamped). Fix: one UPDATE with `EXISTS` on the parent row;
