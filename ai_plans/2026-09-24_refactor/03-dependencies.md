@@ -434,3 +434,10 @@ globals 1. The rules find only 5 of the 8 bailouts (the plugin bundles a newer c
 babel-plugin-react-compiler 1.0.0), so `check-react-compiler-bailouts.mjs` stays. CLI has no hooks rules (measured:
 refs 19, exhaustive-deps 7, error-boundaries 4, set-state-in-effect 4, static-components 2, rules-of-hooks 0).
 Follow-up items: DEP-7-F1 re-enable the deferred rules one per PR; DEP-7-F2 `rules-of-hooks` in the CLI.
+
+**Status (2026-09-26), DEP-9 slice 3:** `VSCodeButton` replaced by `components/ui/themed-button` (one native
+`<button type="button">` with the toolkit's `appearance` prop and copied styles, incl. 13.33px font and the
+double-painted pressed icon background) in #477 (`7cec4909d`): 7 real uses in 5 components. `VSCodeButtonLink` is
+our own wrapper around `ui/Button`, not the toolkit (rename only, not done). ErrorRow copy button: padding became
+margin, so a 3px strip around it now expands the row like the rest of the header. High-contrast themes not
+pixel-checked (CSS copied from the toolkit source).
