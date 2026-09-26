@@ -1395,22 +1395,31 @@ async def test_format_helpers_are_single_source_of_truth():
 
     Token parsing moved out of ``web.py`` into ``task_summary.py`` when the task
     list stopped deriving its numbers at read time, so that module is now the one
-    that must be pinned; ``web.py`` only formats what it is handed.
+    that must be pinned; the web presenters only format what they are handed.
     """
-    from src.routers import web
     from src.services import metrics_service, task_summary
     from src.utils import format as fmt
+    from src.web import templating
+    from src.web.presenters import settings as settings_presenter
+    from src.web.presenters import task_detail, task_rows
 
     assert task_summary.num is fmt.num
-    assert web.fmt_tokens is fmt.fmt_tokens
-    assert web.fmt_duration is fmt.fmt_duration
-    assert web.fmt_cost is fmt.fmt_cost
-    assert web.fmt_int is fmt.fmt_int
-    assert web.fmt_bytes is fmt.fmt_bytes
-    assert web.plural is fmt.plural
+    # The web presenters (routers/web.py before CAPI-M5) format through the
+    # same functions.
+    assert task_rows.fmt_tokens is fmt.fmt_tokens
+    assert task_rows.fmt_duration is fmt.fmt_duration
+    assert task_rows.fmt_cost is fmt.fmt_cost
+    assert task_rows.fmt_int is fmt.fmt_int
+    assert task_rows.plural is fmt.plural
+    assert task_detail.fmt_tokens is fmt.fmt_tokens
+    assert task_detail.fmt_duration is fmt.fmt_duration
+    assert task_detail.fmt_cost is fmt.fmt_cost
+    assert task_detail.fmt_int is fmt.fmt_int
+    assert task_detail.plural is fmt.plural
+    assert settings_presenter.fmt_bytes is fmt.fmt_bytes
     # The templates format through the same functions, registered as filters.
     for name, fn in fmt.JINJA_FILTERS.items():
-        assert web.templates.env.filters[name] is fn
+        assert templating.templates.env.filters[name] is fn
 
     # metrics_service aliases ``num`` as ``_num`` for its internal call sites.
     assert metrics_service._num is fmt.num
@@ -1889,9 +1898,9 @@ async def _seed_pages(session_factory, count, user_id="user_test", prefix="task-
 
 async def test_pager_links_every_page_in_the_window(client, session_factory, db_session, monkeypatch):
     """Reaching page 5 must cost one click, not four of "Older"."""
-    from src.routers import web
+    from src.routers import web_tasks
 
-    monkeypatch.setattr(web, "PAGE_SIZE", 2)
+    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)  # 10 pages
 
@@ -1915,9 +1924,9 @@ async def test_pager_links_every_page_in_the_window(client, session_factory, db_
 async def test_pager_jump_box_appears_only_when_numbers_stop_covering_the_range(
     client, session_factory, db_session, monkeypatch
 ):
-    from src.routers import web
+    from src.routers import web_tasks
 
-    monkeypatch.setattr(web, "PAGE_SIZE", 2)
+    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 8)  # 4 pages: all four are on screen
 
@@ -1935,9 +1944,9 @@ async def test_pager_jump_box_appears_only_when_numbers_stop_covering_the_range(
 
 
 async def test_pager_jumps_straight_to_a_far_page(client, session_factory, db_session, monkeypatch):
-    from src.routers import web
+    from src.routers import web_tasks
 
-    monkeypatch.setattr(web, "PAGE_SIZE", 2)
+    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)
 
@@ -1958,9 +1967,9 @@ async def test_pager_out_of_range_lands_on_the_nearest_real_page(
     client, session_factory, db_session, monkeypatch
 ):
     """A typed page number or a stale bookmark must not replace the list with a 422."""
-    from src.routers import web
+    from src.routers import web_tasks
 
-    monkeypatch.setattr(web, "PAGE_SIZE", 2)
+    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)
 
@@ -1980,9 +1989,9 @@ async def test_pager_out_of_range_lands_on_the_nearest_real_page(
 async def test_pager_links_carry_the_search_encoded(client, session_factory, db_session, monkeypatch):
     """Paging must keep the filter, and a search containing & must not truncate
     the URL at the ampersand."""
-    from src.routers import web
+    from src.routers import web_tasks
 
-    monkeypatch.setattr(web, "PAGE_SIZE", 2)
+    monkeypatch.setattr(web_tasks, "PAGE_SIZE", 2)
     await _seed_user(db_session)
     await _seed_pages(session_factory, 20)
 
@@ -2062,7 +2071,7 @@ async def test_task_list_does_not_read_message_bodies(client, db_session, sessio
     """The whole point of the summary columns: rendering the list must never touch
     the message corpus. Guards against a future change quietly reintroducing the
     N+1 read that cost 2.47s per page view on the live deployment."""
-    from src.routers import web
+    from src.routers import web_tasks
 
     await _seed_user(db_session)
     async with session_factory() as s:
@@ -2078,7 +2087,7 @@ async def test_task_list_does_not_read_message_bodies(client, db_session, sessio
         called = True
         return []
 
-    monkeypatch.setattr(web, "_load_task_messages", _boom)
+    monkeypatch.setattr(web_tasks, "_load_task_messages", _boom)
 
     _override_web_user(client.app)
     try:

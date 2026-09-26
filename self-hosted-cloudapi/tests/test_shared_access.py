@@ -84,3 +84,34 @@ async def test_share_view_of_an_unknown_task_is_404_for_everybody(client, db_ses
         assert client.get("/shared/nope", follow_redirects=False).status_code == 404
     finally:
         app.dependency_overrides.pop(get_web_user_optional, None)
+
+
+# --- services/task_access.py, called directly ------------------------------------------------------------------
+
+
+def _viewer(user_id):
+    return {"user_id": user_id, "session_id": "s", "email": f"{user_id}@example.com", "name": user_id}
+
+
+@pytest.mark.parametrize("visibility,task_org,viewer,status", CASES)
+async def test_the_service_decides_like_the_route(db_session, session_factory, visibility, task_org, viewer, status):
+    from src.services.task_access import ShareVerdict, shared_view_access
+
+    await _seed(session_factory, db_session, visibility, task_org)
+    access = await shared_view_access(db_session, "t-share", _viewer(viewer) if viewer else None)
+
+    expected = {200: ShareVerdict.ALLOWED, 303: ShareVerdict.LOGIN_REQUIRED, 404: ShareVerdict.NOT_FOUND}
+    assert access.verdict is expected[status]
+    assert access.share is not None
+    # Only the owner's view is live.
+    assert access.is_owner is (access.verdict is ShareVerdict.ALLOWED and viewer == "owner")
+    if access.verdict is ShareVerdict.ALLOWED:
+        assert access.task is not None and access.task.id == "t-share"
+
+
+async def test_the_service_finds_no_share_for_an_unknown_task(db_session):
+    from src.services.task_access import ShareVerdict, shared_view_access
+
+    access = await shared_view_access(db_session, "nope", _viewer("owner"))
+    assert access.verdict is ShareVerdict.NOT_FOUND
+    assert (access.share, access.task, access.is_owner) == (None, None, False)

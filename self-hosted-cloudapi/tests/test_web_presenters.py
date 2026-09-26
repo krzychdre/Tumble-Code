@@ -391,3 +391,23 @@ async def test_quality_overview_lists_at_most_eight_roughest_runs(db_session):
     assert overview["total"] == 10
     assert [r["friction"] for r in overview["roughest"]] == [10, 9, 8, 7, 6, 5, 4, 3]
     assert overview["grades"][1] == {"key": "friction", "label": "Friction", "count": 10, "share": 100}
+
+
+# --- the old import path ---------------------------------------------------------------------------------------
+
+
+def test_the_old_import_path_re_exports_the_moved_helpers():
+    from src.services import quality_overview
+    from src.web import templating
+    from src.web.presenters import settings as settings_presenter
+    from src.web.presenters import task_detail, task_rows
+
+    assert web._list_row is task_rows._list_row
+    assert web._row_tooltip is task_rows._row_tooltip
+    assert web._wrap_prompt is task_rows._wrap_prompt
+    assert web._spend_summary is task_detail._spend_summary
+    assert web._quality_panel is task_detail._quality_panel
+    assert web._load_task_messages is task_detail._load_task_messages
+    assert web._plan_view is settings_presenter._plan_view
+    assert web._quality_overview is quality_overview.quality_overview
+    assert web.templates is templating.templates
