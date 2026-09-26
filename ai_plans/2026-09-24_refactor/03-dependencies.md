@@ -540,3 +540,10 @@ real-Shiki goldens identical, index.js +8.8 KB, lazy chunks stay lazy). DEP-9 `V
 `DecoratedVSCodeTextField`) #504 (`3b7c3803d`): the same lost-typing bug as TextArea for `onChange` fields fixed
 (regression spec fails on main); native change semantics and select-all on focus/label click/Tab kept. Next:
 remove the toolkit package, then mermaid and i18next, then React 19.
+
+**Status (2026-09-26), DEP-9 DONE:** mermaid 11.17 to 12.0 #505 (`30c05d2fd`): 12 defaults to ELK layout, the
+"neo" look and 120px nodes; `MermaidBlock.tsx` sets look "classic", dagre and the 11 node sizes (near
+pixel-identical); ELK is a new 1.46 MB lazy chunk never fetched with this config (VSIX size only). Toolkit
+removed in #506 (`44873608c`): package, mocks, the vitest `focus()` stub (jsdom focus is real again; new
+real-focus specs fail with the stub), dead toolkit CSS; webview `index.js` 3,087,781 to 2,919,632 bytes (-5.4%,
+gzip -39 kB), no FAST code left. React 19 (DEP-8 part 1) started.
