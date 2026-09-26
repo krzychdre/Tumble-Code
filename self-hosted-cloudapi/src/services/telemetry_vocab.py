@@ -85,13 +85,25 @@ def iter_event_props(payloads: Iterable) -> Iterator[dict]:
             yield props
 
 
+def _reject_constant(name: str):
+    """``json.loads`` hook for ``NaN``, ``Infinity`` and ``-Infinity``.
+
+    They are not JSON: TypeScript's ``JSON.parse`` rejects the whole text, so
+    the extension ignores such a request. Raising here makes Python do the
+    same instead of handing a NaN to ``int()``, which raises.
+    """
+    raise ValueError(f"non-standard JSON constant {name}")
+
+
 def api_req_started_payload(msg) -> Optional[dict]:
     """The decoded JSON of an ``api_req_started`` message, or None.
 
     None for anything that is not a request, for a request with no text yet,
-    and for a partial whose text is not (yet) a JSON object. The message
-    ``type`` is not checked here: ``task_summary`` requires ``"say"`` on top,
-    ``model_attribution`` does not, and each keeps its own rule.
+    for a partial whose text is not (yet) a JSON object, and for a text using
+    the non-standard constants ``NaN``/``Infinity`` (``JSON.parse`` rejects
+    those too). The message ``type`` is not checked here: ``task_summary``
+    requires ``"say"`` on top, ``model_attribution`` does not, and each keeps
+    its own rule.
     """
     if not isinstance(msg, dict) or msg.get("say") != API_REQ_STARTED:
         return None
@@ -99,7 +111,7 @@ def api_req_started_payload(msg) -> Optional[dict]:
     if not text:
         return None
     try:
-        obj = json.loads(text)
-    except (json.JSONDecodeError, TypeError):
+        obj = json.loads(text, parse_constant=_reject_constant)
+    except (ValueError, TypeError):  # JSONDecodeError is a ValueError
         return None
     return obj if isinstance(obj, dict) else None
