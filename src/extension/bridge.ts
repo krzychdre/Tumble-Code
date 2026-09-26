@@ -3,6 +3,7 @@ import * as vscode from "vscode"
 import {
 	BridgeOrchestrator,
 	CloudService,
+	bridgeRetryDelayMs,
 	type BridgeEventSource,
 	type BridgeProvider,
 	type InstanceStatePayload,
@@ -33,6 +34,19 @@ export function setupRemoteControlBridge(opts: {
 	const { context, api, provider, log } = opts
 
 	let orchestrator: BridgeOrchestrator | null = null
+	// A failed start (bridge config 401 while the server restarts, network error)
+	// is retried with backoff while signed in; before, the bridge stayed offline
+	// until VS Code reloaded (DEF-C50).
+	let startRetry = 0
+	let startRetryTimer: ReturnType<typeof setTimeout> | null = null
+	let disposed = false
+
+	const clearStartRetry = () => {
+		if (startRetryTimer) {
+			clearTimeout(startRetryTimer)
+			startRetryTimer = null
+		}
+	}
 
 	const isAuthenticated = () => CloudService.hasInstance() && CloudService.instance.isAuthenticated()
 
@@ -85,7 +99,8 @@ export function setupRemoteControlBridge(opts: {
 	}
 
 	const start = async () => {
-		if (orchestrator) return
+		if (orchestrator || disposed) return
+		clearStartRetry()
 		const cloudAPI = CloudService.hasInstance() ? CloudService.instance.cloudAPI : null
 		if (!cloudAPI || !CloudService.instance.isAuthenticated()) {
 			log("[bridge] no active cloud session; will connect after sign-in")
@@ -102,14 +117,25 @@ export function setupRemoteControlBridge(opts: {
 		})
 		try {
 			await orchestrator.start()
+			startRetry = 0
 			log("[bridge] remote control bridge connected")
 		} catch (error) {
-			log(`[bridge] failed to start: ${error instanceof Error ? error.message : String(error)}`)
 			orchestrator = null
+			const delay = bridgeRetryDelayMs(startRetry++)
+			log(
+				`[bridge] failed to start: ${error instanceof Error ? error.message : String(error)}; ` +
+					`retrying in ${Math.round(delay / 1000)} s`,
+			)
+			startRetryTimer = setTimeout(() => {
+				startRetryTimer = null
+				if (isAuthenticated()) void start()
+			}, delay)
 		}
 	}
 
 	const stop = async () => {
+		clearStartRetry()
+		startRetry = 0
 		if (!orchestrator) return
 		await orchestrator.stop()
 		orchestrator = null
@@ -137,7 +163,12 @@ export function setupRemoteControlBridge(opts: {
 		CloudService.instance.on("auth-state-changed", reconcile)
 		context.subscriptions.push({ dispose: () => CloudService.instance.off("auth-state-changed", reconcile) })
 	}
-	context.subscriptions.push({ dispose: () => void stop() })
+	context.subscriptions.push({
+		dispose: () => {
+			disposed = true
+			void stop()
+		},
+	})
 
 	reconcile()
 }

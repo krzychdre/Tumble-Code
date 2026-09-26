@@ -37,7 +37,8 @@ const cloud = vi.hoisted(() => {
 })
 
 vi.mock("vscode", () => ({ workspace: { workspaceFolders: [] } }))
-vi.mock("@roo-code/cloud", () => ({
+vi.mock("@roo-code/cloud", async (importOriginal) => ({
+	bridgeRetryDelayMs: (await importOriginal<typeof import("@roo-code/cloud")>()).bridgeRetryDelayMs,
 	CloudService: { hasInstance: () => true, instance: cloud.instance },
 	BridgeOrchestrator: cloud.BridgeOrchestrator,
 }))
