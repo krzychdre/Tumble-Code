@@ -3,7 +3,7 @@
 import * as vscode from "vscode"
 import * as path from "path"
 import * as fs from "fs/promises"
-import type { HistoryItem, ExtensionMessage } from "@roo-code/types"
+import type { ClineMessage, HistoryItem, ExtensionMessage } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { ContextProxy } from "../../config/ContextProxy"
@@ -1683,6 +1683,153 @@ describe("ClineProvider Task History Synchronization", () => {
 			const pushes = statePushes()
 			expect(pushes).toHaveLength(7)
 			expect(pushes.filter((message) => "taskHistory" in message.state)).toHaveLength(2)
+		})
+	})
+
+	describe("chat messages: a view that accepts messageAdded gets only the new message (CORE-R7)", () => {
+		type FakeTask = { taskId: string; clineMessages: ClineMessage[]; todoList: unknown[] }
+		const makeTask = (taskId: string, count: number): FakeTask => ({
+			taskId,
+			clineMessages: Array.from({ length: count }, (_, i) => ({
+				ts: i + 1,
+				type: "say" as const,
+				say: "text" as const,
+				text: `m${i}`,
+			})),
+			todoList: [{ id: "t1", content: "todo", status: "pending" }],
+		})
+		const posted = (post: ReturnType<typeof vi.fn> = mockPostMessage) => post.mock.calls.map((call) => call[0])
+		const ofType = (type: string, post?: ReturnType<typeof vi.fn>) =>
+			posted(post).filter((message) => message?.type === type)
+
+		let current: FakeTask | undefined
+		beforeEach(() => {
+			current = undefined
+			vi.spyOn(provider, "getCurrentTask").mockImplementation(() => current as any)
+		})
+
+		/** Resolves the view, reports its launch and waits for the launch's full push. */
+		const launch = async (launchMessage: Record<string, unknown>) => {
+			await provider.resolveWebviewView(mockWebviewView)
+			provider.isViewLaunched = true
+			mockPostMessage.mockClear()
+			await webviewMessageHandler(provider, { type: "webviewDidLaunch", ...launchMessage } as any)
+			await vi.waitFor(() => expect(ofType("state")).toHaveLength(1))
+			mockPostMessage.mockClear()
+		}
+
+		const add = (task: FakeTask, text: string) => {
+			const message = { ts: 1_000 + task.clineMessages.length, type: "say", say: "text", text } as ClineMessage
+			task.clineMessages.push(message)
+			return { message, appended: provider.postClineMessageAdded(task, message) }
+		}
+
+		it("posts the message alone with the state that has no message list, one per added message", async () => {
+			current = makeTask("task-1", 3)
+			await launch({ acceptsMessageAdded: true })
+
+			const first = add(current, "four")
+			await expect(first.appended).resolves.toBe(true)
+			const second = add(current, "five")
+			await expect(second.appended).resolves.toBe(true)
+
+			expect(ofType("state")).toHaveLength(0)
+			const added = ofType("messageAdded")
+			expect(added.map((m) => [m.sourceTaskId, m.messageIndex, m.clineMessage.text])).toEqual([
+				["task-1", 3, "four"],
+				["task-1", 4, "five"],
+			])
+			const state = added[0].state
+			for (const key of ["clineMessages", "clineMessagesSeq", "taskHistory"]) {
+				expect(state, key).not.toHaveProperty(key)
+			}
+			// The rest of the state still travels with every message (todos, mode, settings).
+			expect(state.currentTaskTodos).toEqual(current.todoList)
+			expect(state.currentTaskId).toBe("task-1")
+			expect(state).toHaveProperty("mode")
+		})
+
+		it("a view that launched without the flag (the CLI) is never sent messageAdded", async () => {
+			current = makeTask("task-1", 3)
+			await launch({})
+
+			await expect(add(current, "four").appended).resolves.toBe(false)
+			expect(posted()).toEqual([])
+
+			// Declined explicitly: the same.
+			await launch({ acceptsMessageAdded: false })
+			await expect(add(current, "five").appended).resolves.toBe(false)
+			expect(posted()).toEqual([])
+		})
+
+		it("the first message of a task the view has not been sent needs a full push first", async () => {
+			current = makeTask("task-1", 3)
+			await launch({ acceptsMessageAdded: true })
+
+			current = makeTask("task-2", 0)
+			await expect(add(current, "first").appended).resolves.toBe(false)
+
+			await provider.postStateToWebviewWithoutTaskHistory()
+			await expect(add(current, "second").appended).resolves.toBe(true)
+			expect(ofType("messageAdded").map((m) => m.messageIndex)).toEqual([1])
+		})
+
+		it("a replaced message list (overwrite, resume) needs a full push first", async () => {
+			current = makeTask("task-1", 3)
+			await launch({ acceptsMessageAdded: true })
+
+			current.clineMessages = current.clineMessages.slice(0, 2)
+			await expect(add(current, "after rewind").appended).resolves.toBe(false)
+		})
+
+		it("a message of a task that is not the current one is not sent alone", async () => {
+			current = makeTask("task-1", 3)
+			await launch({ acceptsMessageAdded: true })
+			const other = makeTask("task-other", 3)
+
+			await expect(add(other, "elsewhere").appended).resolves.toBe(false)
+		})
+
+		it("a message the view may not have in order (a list sent before an unposted message) needs a full push", async () => {
+			current = makeTask("task-1", 3)
+			await launch({ acceptsMessageAdded: true })
+
+			// A message pushed without being posted leaves the view one behind.
+			current.clineMessages.push({ ts: 999, type: "say", say: "text", text: "unposted" } as ClineMessage)
+			await expect(add(current, "next").appended).resolves.toBe(false)
+		})
+
+		it("a new webview for the provider holds nothing until a full push", async () => {
+			current = makeTask("task-1", 3)
+			await launch({ acceptsMessageAdded: true })
+
+			await provider.resolveWebviewView(makeMockWebviewView(vi.fn()))
+			await expect(add(current, "four").appended).resolves.toBe(false)
+		})
+
+		it("a view replaced while the message's state is being built gets a full push instead", async () => {
+			current = makeTask("task-1", 3)
+			await launch({ acceptsMessageAdded: true })
+			const newPost = vi.fn()
+
+			const { appended } = add(current, "four")
+			void provider.resolveWebviewView(makeMockWebviewView(newPost))
+			await expect(appended).resolves.toBe(true)
+
+			expect(ofType("messageAdded", newPost)).toHaveLength(0)
+			const full = ofType("state", newPost)
+			expect(full).toHaveLength(1)
+			expect(full[0].state.clineMessages.map((m: ClineMessage) => m.text)).toEqual(["m0", "m1", "m2", "four"])
+		})
+
+		it("resyncClineMessages answers with a full push of the current task's list", async () => {
+			current = makeTask("task-1", 2)
+			await launch({ acceptsMessageAdded: true })
+
+			await webviewMessageHandler(provider, { type: "resyncClineMessages" } as any)
+
+			await vi.waitFor(() => expect(ofType("state")).toHaveLength(1))
+			expect(ofType("state")[0].state.clineMessages.map((m: ClineMessage) => m.text)).toEqual(["m0", "m1"])
 		})
 	})
 })

@@ -251,6 +251,77 @@ export const extensionMessageCases: ExtensionMessageCase[] = [
 		check: (view) => expect(view.commands).toEqual([]),
 	},
 
+	// messageAdded (CORE-R7: the host sends a new chat message alone instead of the whole list)
+	{
+		name: "messageAdded: appends the current task's new message and merges the state that came with it",
+		seed: chatSeed,
+		message: {
+			type: "messageAdded",
+			sourceTaskId: "task-a",
+			messageIndex: 2,
+			clineMessage: makeClineMessage(3, "three"),
+			state: { mode: "ask", currentTaskTodos: [{ id: "t1", content: "todo", status: "pending" }] },
+		},
+		check: (view) => {
+			expect(texts(view)).toEqual(["one", "two", "three"])
+			expect(view.mode).toBe("ask")
+			expect(view.currentTaskTodos).toEqual([{ id: "t1", content: "todo", status: "pending" }])
+			expect(view.currentTaskId).toBe("task-a")
+		},
+	},
+	{
+		name: "messageAdded: replaces a message the view already has (same ts) instead of adding it twice",
+		seed: chatSeed,
+		message: {
+			type: "messageAdded",
+			sourceTaskId: "task-a",
+			messageIndex: 1,
+			clineMessage: makeClineMessage(2, "two, again"),
+			state: {},
+		},
+		check: (view) => expect(texts(view)).toEqual(["one", "two, again"]),
+	},
+	{
+		name: "messageAdded: the first message while no task is current starts the list",
+		message: {
+			type: "messageAdded",
+			sourceTaskId: "task-a",
+			messageIndex: 0,
+			clineMessage: makeClineMessage(1, "one"),
+			state: { currentTaskId: "task-a" },
+		},
+		check: (view) => {
+			expect(texts(view)).toEqual(["one"])
+			expect(view.currentTaskId).toBe("task-a")
+		},
+	},
+	{
+		name: "messageAdded: a gap in the list keeps the message and asks the host for the whole list",
+		seed: chatSeed,
+		message: {
+			type: "messageAdded",
+			sourceTaskId: "task-a",
+			messageIndex: 5,
+			clineMessage: makeClineMessage(6, "six"),
+			state: {},
+		},
+		check: (view) => expect(texts(view)).toEqual(["one", "two", "six"]),
+		posts: [{ type: "resyncClineMessages" }],
+	},
+	{
+		name: "messageAdded: a message of another task leaves the chat alone and asks the host for the whole list",
+		seed: chatSeed,
+		message: {
+			type: "messageAdded",
+			sourceTaskId: "task-b",
+			messageIndex: 2,
+			clineMessage: makeClineMessage(3, "foreign"),
+			state: { mode: "ask" },
+		},
+		check: (view) => expect(texts(view)).toEqual(["one", "two"]),
+		posts: [{ type: "resyncClineMessages" }],
+	},
+
 	// messageUpdated
 	{
 		name: "messageUpdated: replaces the message with the same ts",

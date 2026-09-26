@@ -52,6 +52,8 @@ interface Counts {
 	getState: number
 	statePushes: number
 	statePushBytes: number
+	messageAddedPosts: number
+	messageAddedBytes: number
 	messageUpdatedPosts: number
 	saves: number
 	saveBytes: number
@@ -71,8 +73,13 @@ interface TurnTask {
  * A task with the real TaskAskSay and TaskHistory, a provider that counts
  * what reaches it, and `history` earlier messages of about the median real
  * message size (1.7 KB, measured on 1,053 local tasks).
+ *
+ * `view` is what the provider's webview declared at launch: "full" (the CLI,
+ * or a provider without the messageAdded path) gets a full state push per
+ * added message, "appends" (the VS Code webview) gets only the new message
+ * with the state that has no message list (CORE-R7).
  */
-function makeTask(historyMessages: number) {
+function makeTask(historyMessages: number, view: "full" | "appends" = "full") {
 	const clineMessages: ClineMessage[] = []
 	for (let i = 0; i < historyMessages; i++) {
 		clineMessages.push({ ts: i + 1, type: "say", say: "text", text: "x".repeat(1_700) })
@@ -82,6 +89,8 @@ function makeTask(historyMessages: number) {
 		getState: 0,
 		statePushes: 0,
 		statePushBytes: 0,
+		messageAddedPosts: 0,
+		messageAddedBytes: 0,
 		messageUpdatedPosts: 0,
 	}
 	const messageEvents = { created: 0, updated: 0 }
@@ -103,6 +112,17 @@ function makeTask(historyMessages: number) {
 		}),
 		updateTaskHistory: vi.fn(async () => []),
 		subagentRegistry: { isWatched: () => false },
+		// What the real provider posts to a view that accepts it: the message and
+		// the state without the message list (about 6 KB on real settings; the
+		// stand-in below is the part that does not grow with the conversation).
+		postClineMessageAdded: vi.fn(async (_task: unknown, message: ClineMessage) => {
+			if (view === "full") {
+				return false
+			}
+			counts.messageAddedPosts++
+			counts.messageAddedBytes += bytes({ type: "messageAdded", clineMessage: message, state: { mode: "code" } })
+			return true
+		}),
 	}
 
 	const task = {
@@ -267,7 +287,42 @@ describe("CORE-R7 request-cycle counts (TaskAskSay + TaskHistory)", () => {
 		expect(task.clineMessages[0]).toMatchObject({ partial: false, isAnswered: true })
 	})
 
-	it("sends and writes the whole history on every added message (bytes grow with the conversation)", async () => {
+	it("a view that accepts messageAdded gets each added message alone, with the same cloud contract (CORE-R7)", async () => {
+		const { task, snapshot } = makeTask(0, "appends")
+
+		await runTurn(task, chunks)
+		await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)
+
+		expect(task.clineMessages).toHaveLength(4)
+		expect(snapshot()).toMatchObject({
+			// No state push carries the message list any more (was 4, one per message).
+			statePushes: 0,
+			messageAddedPosts: 4,
+			messageUpdatedPosts: 19 + 29 + 9 + 3,
+			saves: 2,
+			metadataRuns: 2,
+			getState: 1,
+			taskMessageCaptures: 4,
+			messageEvents: { created: 4, updated: 19 + 29 + 9 + 3 },
+		})
+	})
+
+	it("to a view that accepts messageAdded the bytes per added message do not grow with the conversation", async () => {
+		const empty = makeTask(0, "appends")
+		await runTurn(empty.task, chunks)
+		const small = empty.snapshot()
+
+		const long = makeTask(300, "appends")
+		await runTurn(long.task, chunks)
+		const large = long.snapshot()
+
+		expect(large.messageAddedPosts).toBe(small.messageAddedPosts)
+		expect(large.statePushBytes).toBe(0)
+		// Only the timestamps' digits can differ.
+		expect(Math.abs(large.messageAddedBytes - small.messageAddedBytes)).toBeLessThan(100)
+	})
+
+	it("sends and writes the whole history on every added message to a view without messageAdded (the CLI)", async () => {
 		const empty = makeTask(0)
 		await runTurn(empty.task, chunks)
 		await vi.advanceTimersByTimeAsync(CLINE_MESSAGES_SAVE_IDLE_MS)

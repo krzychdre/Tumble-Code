@@ -84,6 +84,7 @@ describe("ExtensionStateContext message table", () => {
 				"marketplaceData",
 				"mcpServers",
 				"memoryActivity",
+				"messageAdded",
 				"messageUpdated",
 				"selectedImages",
 				"skills",
@@ -109,7 +110,8 @@ describe("ExtensionStateContext message table", () => {
 
 		expect(latest!.autoApprovalEnabled).toBe(false)
 		expect(vi.mocked(vscode.postMessage).mock.calls.map(([m]) => m)).toEqual([
-			{ type: "webviewDidLaunch" },
+			// The launch declares that this view applies messageAdded (CORE-R7).
+			{ type: "webviewDidLaunch", acceptsMessageAdded: true },
 			{ type: "autoApprovalEnabled", bool: true },
 			{ type: "autoApprovalEnabled", bool: false },
 		])
