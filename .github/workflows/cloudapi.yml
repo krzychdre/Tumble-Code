@@ -53,7 +53,7 @@ jobs:
               run: uv run pytest
 
     lint-and-audit:
-        name: cloudapi-lint-and-audit (lint advisory)
+        name: cloudapi-lint-and-audit
         runs-on: ubuntu-latest
         steps:
             - name: Checkout code
@@ -62,11 +62,11 @@ jobs:
               uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
               with:
                   python-version: "3.12"
-            # Advisory until the existing ruff findings are cleaned up: some of the
-            # automatic fixes are wrong here (E712 on SQLAlchemy column comparisons,
-            # F401 on imports that register models), so they need a reviewed change.
+            # Blocking since CAPI-M7 cleaned up the last findings. Fix new ones by
+            # hand, not with a blind --fix: E712 wants `not Column`, which is wrong
+            # for a SQLAlchemy comparison (write `.is_(False)`), and an import that
+            # only registers models needs `# noqa: F401`.
             - name: Lint with ruff
-              continue-on-error: true
               run: make lint
             # Blocking: the floors raised in DEP-5 left the lock with no known
             # advisory, so a new one should fail the run.

@@ -1,19 +1,8 @@
 """Clerk-compatible API response formatting."""
 
-from typing import Optional, List, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Tuple
 
 from src.models.user import User
-from src.models.organization import Organization as OrganizationModel, Membership as MembershipModel
-from src.schemas.auth import (
-    ClerkSignInResponse,
-    ClerkSessionTokenResponse,
-    ClerkMeResponse,
-    ClerkOrgMembershipsResponse,
-    EmailAddress,
-    ClerkOrganization,
-    ClerkMembership,
-)
 
 
 def format_sign_in_response(session_id: str, client_token: str) -> Tuple[dict, str]:

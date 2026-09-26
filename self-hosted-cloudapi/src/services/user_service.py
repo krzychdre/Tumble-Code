@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from src.models.user import User
-from src.models.organization import Organization, Membership
+from src.models.organization import Membership
 from src.models.settings import OrganizationSettings, UserSettings
 
 

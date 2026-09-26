@@ -10,7 +10,6 @@ advertised a path nobody listened on. The default stays ``/bridge/socket.io``.
 import importlib
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 

@@ -158,6 +158,9 @@ alters tables that only the ORM models' `create_all` creates, so it fails.
 (FRESH: build the schema and stamp head; LEGACY: tables without Alembic
 history, stamp the baseline and upgrade; MANAGED: upgrade).
 
+The server itself never creates or alters tables, so run `make migrate` before
+the first start and again after every update that brings a new migration.
+
 For a non-compose deployment, leave `AUTHENTIK_INTERNAL_URL` unset — it falls
 back to `AUTHENTIK_BASE_URL`.
 
@@ -294,7 +297,7 @@ database is not supported.
 
 ## Architecture
 
-See [plans/self-hosted-cloud-api-architecture.md](../plans/self-hosted-cloud-api-architecture.md) for the full architecture document.
+See [ai_plans/self-hosted-cloud-api-architecture.md](../ai_plans/self-hosted-cloud-api-architecture.md) for the full architecture document.
 
 ## License
 

@@ -1,6 +1,6 @@
 """Organization and Membership models."""
 
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
 
 from src.models.base import Base, TimestampMixin, generate_id

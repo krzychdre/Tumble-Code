@@ -14,7 +14,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         response = await call_next(request)
         duration = time.time() - start_time
-        logger.info(
-            f"{request.method} {request.url.path} -> {response.status_code} ({duration:.3f}s)"
+        # DEBUG: uvicorn's access log already records every request at INFO;
+        # this line adds the duration (LOG_LEVEL=DEBUG shows it).
+        logger.debug(
+            "%s %s -> %s (%.3fs)", request.method, request.url.path, response.status_code, duration
         )
         return response

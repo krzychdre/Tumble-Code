@@ -1,5 +1,7 @@
 """FastAPI application factory and lifespan management."""
 
+import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -12,6 +14,7 @@ from config.settings import settings
 from src.auth.network_access import WebAccessMiddleware, describe_policy
 from src.auth.web_session import LoginRequired, redirect_to_login
 from src.auth.origins import trusted_origins
+from src.logging_setup import configure_logging
 from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
@@ -19,61 +22,60 @@ from src.middleware.rate_limit import limiter
 from src.routers import auth, extension, settings as settings_router, events, marketplace, browser, web
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Application lifespan: startup and shutdown events."""
-    # Startup
-    from src.database import engine, Base
-    from src.models import (  # noqa: F401 - Import all models so tables are created
-        User, Session, ClientToken, Ticket,
-        Organization, Membership,
-        OrganizationSettings, UserSettings,
-        Task, TaskMessage, TaskShare, TaskRelation,
-        TelemetryEvent, ProviderConfig, AuthentikStateStore, RetentionPolicy,
-    )
+configure_logging(settings.log_level)
+logger = logging.getLogger(__name__)
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
-    print("Roo Cloud API started")
-    print(f"  API Base URL: {settings.api_base_url}")
-    print(f"  Authentik URL: {settings.authentik_base_url}")
-    print(f"  JWT Algorithm: {settings.jwt_algorithm}")
-    print(f"  Web panel open to: {describe_policy()}")
+def _log_banner() -> None:
+    """Log the effective configuration once at startup."""
+    logger.info("Roo Cloud API started")
+    logger.info("  API Base URL: %s", settings.api_base_url)
+    logger.info("  Authentik URL: %s", settings.authentik_base_url)
+    logger.info("  JWT Algorithm: %s", settings.jwt_algorithm)
+    logger.info("  Web panel open to: %s", describe_policy())
     if settings.web_public_url:
-        print(f"  Web panel public URL: {settings.web_public_url}")
+        logger.info("  Web panel public URL: %s", settings.web_public_url)
     elif settings.web_allowed_networks and is_loopback_host(urlsplit(settings.authentik_base_url).hostname):
         # The allowlist lets other machines in, but sign-in would still send
         # them to localhost, which on their side is themselves.
-        print(
-            "  WARNING: WEB_ALLOWED_NETWORKS is set but WEB_PUBLIC_URL is not; "
+        logger.warning(
+            "WEB_ALLOWED_NETWORKS is set but WEB_PUBLIC_URL is not; "
             "other machines can open the panel but cannot sign in"
         )
-    print(f"  Trusted web origins: {', '.join(trusted_origins())}")
+    logger.info("  Trusted web origins: %s", ", ".join(trusted_origins()))
     if settings.cors_origins_has_wildcard:
         # Kept running rather than refused: every .env copied from an older
         # .env.example carries "*", and a rebuild must not stop the service.
-        print(
-            "  WARNING: CORS_ORIGINS contains '*', which is no longer honoured "
+        logger.warning(
+            "CORS_ORIGINS contains '*', which is no longer honoured "
             "(it let any web page act with a signed-in reader's cookie); "
             "remove it and list extra origins explicitly if you need any"
         )
-    print(f"  Telemetry: {'enabled' if settings.telemetry_enabled else 'disabled'}")
-    print(f"  Bridge: {'enabled' if settings.bridge_enabled else 'disabled'}")
-    print(f"  Credits: {'enabled' if settings.credit_system_enabled else 'disabled'}")
-    print(
-        "  Retention sweep: "
-        + (
-            f"every {settings.retention_sweep_hours}h"
-            if settings.retention_sweep_enabled
-            else "disabled"
-        )
+    logger.info("  Telemetry: %s", "enabled" if settings.telemetry_enabled else "disabled")
+    logger.info("  Bridge: %s", "enabled" if settings.bridge_enabled else "disabled")
+    logger.info(
+        "  Retention sweep: %s",
+        f"every {settings.retention_sweep_hours}h" if settings.retention_sweep_enabled else "disabled",
     )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup and shutdown events.
+
+    No create_all here: the schema is db-migrate.sh's job (the container runs
+    it before uvicorn, `make migrate` runs it locally), see src/db_bootstrap.py.
+    Building tables at startup left them without an alembic_version row, so a
+    later migrate took the database for LEGACY and the migrations that create
+    tables failed on tables that already existed.
+    """
+    # Imported here so tests can point src.database.engine elsewhere.
+    from src.database import engine
+
+    _log_banner()
 
     sweeper = None
     if settings.retention_sweep_enabled:
-        import asyncio
-
         from src.services.retention_scheduler import run_retention_loop
 
         sweeper = asyncio.create_task(run_retention_loop())
@@ -88,7 +90,7 @@ async def lifespan(app: FastAPI):
         except asyncio.CancelledError:
             pass
     await engine.dispose()
-    print("Roo Cloud API stopped")
+    logger.info("Roo Cloud API stopped")
 
 
 app = FastAPI(

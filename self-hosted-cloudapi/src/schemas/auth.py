@@ -75,13 +75,3 @@ class ClerkOrgMembershipsResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel, serialize_by_alias=True)
 
     response: List[ClerkMembership]
-
-
-class AuthCallbackParams(BaseModel):
-    """Parameters received from the VS Code URI callback."""
-    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel)
-
-    code: Optional[str] = None
-    state: Optional[str] = None
-    organization_id: Optional[str] = None
-    provider_model: Optional[str] = None

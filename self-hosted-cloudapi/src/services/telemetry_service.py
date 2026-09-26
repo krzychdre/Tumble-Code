@@ -269,7 +269,7 @@ async def upsert_task_message(
     from sqlalchemy import func, select
     from src.models.task import Task, TaskMessage
     from src.services.session_quality import tool_path_of
-    from src.services.task_summary import derive_title, message_metrics, refresh_task_summary
+    from src.services.task_summary import message_metrics
 
     if not isinstance(message, dict):
         return False

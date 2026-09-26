@@ -5,16 +5,17 @@ from sqlalchemy.orm import DeclarativeBase
 
 from config.settings import settings
 
-_db_url = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
+# DATABASE_URL with the async driver; alembic/env.py uses the same value.
+ASYNC_DATABASE_URL = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
 _engine_kwargs: dict = {"echo": False}
 # QueuePool tuning only applies to server-side databases; SQLite (used in
 # tests and lightweight dev setups) uses StaticPool/NullPool and rejects
 # these keys.
-if _db_url.startswith("postgresql"):
+if ASYNC_DATABASE_URL.startswith("postgresql"):
     _engine_kwargs["pool_size"] = 20
     _engine_kwargs["max_overflow"] = 10
 
-engine = create_async_engine(_db_url, **_engine_kwargs)
+engine = create_async_engine(ASYNC_DATABASE_URL, **_engine_kwargs)
 
 async_session_factory = async_sessionmaker(
     engine,

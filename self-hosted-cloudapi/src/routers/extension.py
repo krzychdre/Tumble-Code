@@ -85,10 +85,6 @@ async def bridge_config_endpoint(
 async def credit_balance_endpoint(
     current_user: dict = Depends(get_current_user),
 ):
-    """Get credit balance."""
-    if not settings.credit_system_enabled:
-        # Return a default balance when credit system is not enabled
-        return {"balance": 0}
-
-    # TODO: Implement actual credit tracking
+    """Credit balance. The extension asks for it (CloudAPI.creditBalance);
+    a self-hosted deployment sells no credits, so it is always zero."""
     return {"balance": 0}
