@@ -291,6 +291,7 @@
 		"triggerLabelOffShort": "Désactivé",
 		"triggerLabel_zero": "0 approuvé automatiquement",
 		"triggerLabel_one": "1 approuvé automatiquement",
+		"triggerLabel_many": "{{count}} approuvés automatiquement",
 		"triggerLabel_other": "{{count}} approuvés automatiquement",
 		"triggerLabelAll": "BRRR",
 		"mode": {
@@ -324,12 +325,14 @@
 			"title": "Contexte tronqué",
 			"inProgress": "Troncature du contexte...",
 			"messagesRemoved": "{{count}} message supprimé",
+			"messagesRemoved_many": "{{count}} messages supprimés",
 			"messagesRemoved_other": "{{count}} messages supprimés",
 			"description": "Les messages plus anciens ont été supprimés de la conversation pour rester dans la limite de la fenêtre de contexte. C'est une approche rapide mais moins conservatrice du contexte par rapport à la condensation."
 		},
 		"prune": {
 			"title": "Ancienne sortie d'outil déplacée sur le disque",
 			"summary": "{{count}} résultat d'outil, environ {{kb}} Ko libérés",
+			"summary_many": "{{count}} résultats d'outil, environ {{kb}} Ko libérés",
 			"summary_other": "{{count}} résultats d'outil, environ {{kb}} Ko libérés",
 			"description": "Les anciens résultats d'outil trop volumineux ont été enregistrés comme artefacts de tâche et remplacés par un aperçu court. Rien n'a été perdu : chaque aperçu nomme son artefact, et le modèle peut relire le texte complet avec read_artifact. Cela s'est exécuté à la place d'un résumé par IA, donc aucun texte de conversation n'a été réécrit."
 		}
@@ -390,7 +393,8 @@
 	"codebaseSearch": {
 		"wantsToSearch": "Tumble veut rechercher dans la base de code <code>{{query}}</code>",
 		"wantsToSearchWithPath": "Tumble veut rechercher dans la base de code <code>{{query}}</code> dans <code>{{path}}</code>",
-		"didSearch_one": "1 résultat trouvé",
+		"didSearch_one": "{{count}} résultat trouvé",
+		"didSearch_many": "{{count}} résultats trouvés",
 		"didSearch_other": "{{count}} résultats trouvés",
 		"resultTooltip": "Score de similarité : {{score}} (cliquer pour ouvrir le fichier)"
 	},
@@ -473,8 +477,10 @@
 	"tooManyTools": {
 		"title": "Trop d'outils activés",
 		"toolsPart_one": "{{count}} outil",
+		"toolsPart_many": "{{count}} outils",
 		"toolsPart_other": "{{count}} outils",
 		"serversPart_one": "{{count}} serveur MCP",
+		"serversPart_many": "{{count}} serveurs MCP",
 		"serversPart_other": "{{count}} serveurs MCP",
 		"messageTemplate": "Tu as {{tools}} activés via {{servers}}. Un nombre aussi élevé peut confondre le modèle et entraîner des erreurs. Essaie de le maintenir en dessous de {{threshold}}.",
 		"openMcpSettings": "Ouvrir les paramètres MCP"

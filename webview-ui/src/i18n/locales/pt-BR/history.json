@@ -43,6 +43,7 @@
 	},
 	"viewAllHistory": "Ver tudo",
 	"subtasks_one": "{{count}} subtarefa",
+	"subtasks_many": "{{count}} subtarefas",
 	"subtasks_other": "{{count}} subtarefas",
 	"subtaskTag": "Subtarefa",
 	"deleteWithSubtasks": "Isso também excluirá {{count}} subtarefa(s). Tem certeza?",

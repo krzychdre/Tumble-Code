@@ -43,6 +43,7 @@
 	},
 	"viewAllHistory": "Visualizza tutto",
 	"subtasks_one": "{{count}} sottoattività",
+	"subtasks_many": "{{count}} sottoattività",
 	"subtasks_other": "{{count}} sottoattività",
 	"subtaskTag": "Sottoattività",
 	"deleteWithSubtasks": "Questo eliminerà anche {{count}} sottoattività. Sei sicuro?",

@@ -50,6 +50,7 @@
 	},
 	"viewAllHistory": "Veure-ho tot",
 	"subtasks_one": "{{count}} subtasca",
+	"subtasks_many": "{{count}} subtasques",
 	"subtasks_other": "{{count}} subtasques",
 	"subtaskTag": "Subtasca",
 	"deleteWithSubtasks": "Això també eliminarà {{count}} subtasca(s). Estàs segur?",

@@ -47,15 +47,22 @@ describe("i18next behaviour used by the webview", () => {
 		expect(i18next.t("chat:contextManagement.truncation.messagesRemoved", { count: 4 })).toBe("4 messages removed")
 	})
 
-	it("falls back when a locale lacks the plural category Intl asks for", async () => {
-		// Polish needs one/few/many; the locale only has _one and _other.
+	it("selects the Polish one/few/many/other forms Intl asks for", async () => {
+		// Polish needs one (1), few (2-4, 22-24), many (0, 5-21, 25) and other (fractions).
+		// A locale lacking the asked form falls back to English ("Found 2 results").
 		await i18next.changeLanguage("pl")
-		expect([1, 2, 5, 22, 1.5].map((count) => i18next.t("chat:codebaseSearch.didSearch", { count }))).toEqual([
+		expect([1, 2, 5, 22, 0, 1.5].map((count) => i18next.t("chat:codebaseSearch.didSearch", { count }))).toEqual([
 			"Znaleziono 1 wynik",
-			"Found 2 results",
-			"Found 5 results",
-			"Found 22 results",
-			"Znaleziono 1.5 wyników",
+			"Znaleziono 2 wyniki",
+			"Znaleziono 5 wyników",
+			"Znaleziono 22 wyniki",
+			"Znaleziono 0 wyników",
+			"Znaleziono 1.5 wyniku",
+		])
+		expect([1, 3, 12].map((count) => i18next.t("history:subtasks", { count }))).toEqual([
+			"1 podzadanie",
+			"3 podzadania",
+			"12 podzadań",
 		])
 	})
 

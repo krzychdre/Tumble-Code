@@ -309,9 +309,11 @@
 		"toggleAriaLabel": "Przełącz automatyczne zatwierdzanie",
 		"triggerLabelOff": "Automatyczne zatwierdzanie wyłączone",
 		"triggerLabelOffShort": "Wyłączone",
-		"triggerLabel_zero": "0 automatycznie zatwierdzone",
-		"triggerLabel_one": "1 automatycznie zatwierdzony",
-		"triggerLabel_other": "{{count}} automatycznie zatwierdzonych",
+		"triggerLabel_zero": "0 automatycznie zatwierdzonych",
+		"triggerLabel_one": "{{count}} automatycznie zatwierdzony",
+		"triggerLabel_few": "{{count}} automatycznie zatwierdzone",
+		"triggerLabel_many": "{{count}} automatycznie zatwierdzonych",
+		"triggerLabel_other": "{{count}} automatycznie zatwierdzonego",
 		"triggerLabelAll": "BRRR",
 		"mode": {
 			"label": "Tryb autozatwierdzania",
@@ -343,14 +345,20 @@
 		"truncation": {
 			"title": "Kontekst obcięty",
 			"inProgress": "Obcinanie kontekstu...",
-			"messagesRemoved": "{{count}} wiadomość usunięta",
-			"messagesRemoved_other": "{{count}} wiadomości usunięte",
+			"messagesRemoved": "Usunięto {{count}} wiadomość",
+			"messagesRemoved_one": "Usunięto {{count}} wiadomość",
+			"messagesRemoved_few": "Usunięto {{count}} wiadomości",
+			"messagesRemoved_many": "Usunięto {{count}} wiadomości",
+			"messagesRemoved_other": "Usunięto {{count}} wiadomości",
 			"description": "Starsze wiadomości zostały usunięte z konwersacji, aby pozostać w granicach okna kontekstu. To szybsze, ale mniej zachowujące kontekst podejście w porównaniu z kondensacją."
 		},
 		"prune": {
 			"title": "Stare wyniki narzędzi przeniesiono na dysk",
 			"summary": "{{count}} wynik narzędzia, uwolniono ok. {{kb}} KB",
-			"summary_other": "{{count}} wyników narzędzi, uwolniono ok. {{kb}} KB",
+			"summary_one": "{{count}} wynik narzędzia, uwolniono ok. {{kb}} KB",
+			"summary_few": "{{count}} wyniki narzędzi, uwolniono ok. {{kb}} KB",
+			"summary_many": "{{count}} wyników narzędzi, uwolniono ok. {{kb}} KB",
+			"summary_other": "{{count}} wyniku narzędzi, uwolniono ok. {{kb}} KB",
 			"description": "Stare, zbyt duże wyniki narzędzi zostały zapisane jako artefakty zadania i zastąpione krótkim podglądem. Nic nie zostało utracone: każdy podgląd podaje nazwę swojego artefaktu, a model może odczytać pełny tekst z powrotem przez read_artifact. Zamiast podsumowania przez AI wykonano to oczyszczanie, więc żaden tekst rozmowy nie został przepisany."
 		}
 	},
@@ -410,8 +418,10 @@
 	"codebaseSearch": {
 		"wantsToSearch": "Tumble chce przeszukać bazę kodu w poszukiwaniu <code>{{query}}</code>",
 		"wantsToSearchWithPath": "Tumble chce przeszukać bazę kodu w poszukiwaniu <code>{{query}}</code> w <code>{{path}}</code>",
-		"didSearch_one": "Znaleziono 1 wynik",
-		"didSearch_other": "Znaleziono {{count}} wyników",
+		"didSearch_one": "Znaleziono {{count}} wynik",
+		"didSearch_few": "Znaleziono {{count}} wyniki",
+		"didSearch_many": "Znaleziono {{count}} wyników",
+		"didSearch_other": "Znaleziono {{count}} wyniku",
 		"resultTooltip": "Wynik podobieństwa: {{score}} (kliknij, aby otworzyć plik)"
 	},
 	"read-batch": {
@@ -493,10 +503,14 @@
 	"tooManyTools": {
 		"title": "Włączono zbyt wiele narzędzi",
 		"toolsPart_one": "{{count}} narzędzie",
-		"toolsPart_other": "{{count}} narzędzi",
+		"toolsPart_few": "{{count}} narzędzia",
+		"toolsPart_many": "{{count}} narzędzi",
+		"toolsPart_other": "{{count}} narzędzia",
 		"serversPart_one": "{{count}} serwer MCP",
-		"serversPart_other": "{{count}} serwerów MCP",
-		"messageTemplate": "Masz {{tools}} włączonych przez {{servers}}. Taka duża liczba może zamieszać model i prowadzić do błędów. Staraj się, aby była poniżej {{threshold}}.",
+		"serversPart_few": "{{count}} serwery MCP",
+		"serversPart_many": "{{count}} serwerów MCP",
+		"serversPart_other": "{{count}} serwera MCP",
+		"messageTemplate": "Masz włączone {{tools}} przez {{servers}}. Taka duża liczba może zamieszać model i prowadzić do błędów. Staraj się, aby była poniżej {{threshold}}.",
 		"openMcpSettings": "Otwórz ustawienia MCP"
 	},
 	"readCommandOutput": {
