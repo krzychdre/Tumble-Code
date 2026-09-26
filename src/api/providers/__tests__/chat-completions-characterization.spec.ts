@@ -93,9 +93,7 @@ const SEQUENCES: Record<string, RawChunk[]> = {
 	// The first delta carries text and the start of the tool call together.
 	"finish_reason stop after tool calls": [
 		textDelta("I will read it.", {
-			tool_calls: [
-				{ index: 0, id: "call_1", type: "function", function: { name: "read_file", arguments: "" } },
-			],
+			tool_calls: [{ index: 0, id: "call_1", type: "function", function: { name: "read_file", arguments: "" } }],
 		}),
 		deltaChunk({ tool_calls: [{ index: 0, function: { arguments: '{"path":' } }] }),
 		deltaChunk({ tool_calls: [{ index: 0, function: { arguments: '"a.ts"}' } }] }),
@@ -180,10 +178,17 @@ function chatClient(chunks: RawChunk[]) {
 	}
 }
 
-/** LM Studio counts tokens locally; the length of the text keeps the count deterministic. */
+/**
+ * LM Studio counts tokens locally; the length of the text keeps the count deterministic.
+ * The prompt estimate goes through the handler's per-block cache (#469), not `countTokens`,
+ * so both paths are replaced.
+ */
 function countByLength(handler: ApiHandler) {
-	vi.spyOn(handler, "countTokens").mockImplementation(async (blocks) =>
-		blocks.reduce((sum, block) => sum + (block.type === "text" ? block.text.length : 0), 0),
+	const byLength = async (blocks: Parameters<ApiHandler["countTokens"]>[0]) =>
+		blocks.reduce((sum, block) => sum + (block.type === "text" ? block.text.length : 0), 0)
+	vi.spyOn(handler, "countTokens").mockImplementation(byLength)
+	vi.spyOn(handler as unknown as { countInputTokens: typeof byLength }, "countInputTokens").mockImplementation(
+		byLength,
 	)
 }
 
@@ -220,7 +225,11 @@ const LOOPS: LoopCase[] = [
 	{
 		name: "BaseOpenAiCompatibleProvider (Z.ai)",
 		build: (chunks) => {
-			const handler = new ZAiHandler({ apiModelId: "glm-4.6", zaiApiKey: "k", zaiApiLine: "international_coding" })
+			const handler = new ZAiHandler({
+				apiModelId: "glm-4.6",
+				zaiApiKey: "k",
+				zaiApiLine: "international_coding",
+			})
 			Reflect.set(handler, "client", chatClient(chunks))
 			return handler
 		},
@@ -236,7 +245,10 @@ const LOOPS: LoopCase[] = [
 	{
 		name: "LM Studio",
 		build: (chunks) => {
-			const handler = new LmStudioHandler({ lmStudioModelId: "local-model", lmStudioBaseUrl: "http://localhost:1234" })
+			const handler = new LmStudioHandler({
+				lmStudioModelId: "local-model",
+				lmStudioBaseUrl: "http://localhost:1234",
+			})
 			countByLength(handler)
 			Reflect.set(handler, "client", chatClient(chunks))
 			return handler
