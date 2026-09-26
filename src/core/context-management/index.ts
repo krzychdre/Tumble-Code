@@ -219,6 +219,12 @@ export function willManageContext({
 export type ContextManagementOptions = {
 	messages: ApiMessage[]
 	totalTokens: number
+	/**
+	 * Tokens of the last message, when the caller already counted them with
+	 * `apiHandler` (TaskApiLoop does, for the threshold check). Counted here
+	 * otherwise (API P4: the last message used to be counted twice per request).
+	 */
+	lastMessageTokens?: number
 	contextWindow: number
 	maxTokens?: number | null
 	apiHandler: ApiHandler
@@ -308,6 +314,7 @@ export type ContextManagementResult = SummarizeResponse & {
 export async function manageContext({
 	messages,
 	totalTokens,
+	lastMessageTokens: precomputedLastMessageTokens,
 	contextWindow,
 	maxTokens,
 	apiHandler,
@@ -335,12 +342,15 @@ export async function manageContext({
 	// Calculate the maximum tokens reserved for response
 	const reservedTokens = maxTokens || ANTHROPIC_DEFAULT_MAX_TOKENS
 
-	// Estimate tokens for the last message (which is always a user message)
+	// Estimate tokens for the last message (which is always a user message),
+	// unless the caller already counted them with the same handler.
 	const lastMessage = messages[messages.length - 1]
 	const lastMessageContent = lastMessage.content
-	const lastMessageTokens = Array.isArray(lastMessageContent)
-		? await estimateTokenCount(lastMessageContent, apiHandler)
-		: await estimateTokenCount([{ type: "text", text: lastMessageContent as string }], apiHandler)
+	const lastMessageTokens =
+		precomputedLastMessageTokens ??
+		(Array.isArray(lastMessageContent)
+			? await estimateTokenCount(lastMessageContent, apiHandler)
+			: await estimateTokenCount([{ type: "text", text: lastMessageContent as string }], apiHandler))
 
 	// Calculate total effective tokens (totalTokens never includes the last message)
 	const prevContextTokens = totalTokens + lastMessageTokens
