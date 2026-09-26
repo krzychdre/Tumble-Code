@@ -554,3 +554,10 @@ gzip -39 kB), no FAST code left. React 19 (DEP-8 part 1) started.
 `input` only); the removed toolkit mock had bridged them. Test-side, fixed in #507 (`59aa622d4`). DEP-9 follow-up
 F2: the toolkit text field had no border, so the red error border and coloured price borders in OpenAI Compatible
 never showed (kept as is).
+
+**Status (2026-09-26), DEP-6 webview rows DONE:** i18next 25.2 to 26.4 (src and webview) and react-i18next 15.5 to
+17.0 #508 (`04064f09c`), no product change, characterization specs on both sides. Findings from the DEP-6 webview
+helper, not fixed (follow-up items): DEF-P11-1 Polish locale lacks `_few`/`_many` plural forms, so the code search
+result count shows English for 2+ results; DEF-P11-2 markdown renders "$5 and $10" partly as math; DEF-P11-3
+`file://` links get an empty `href`, so the webview's file-link handling never sees them; PERF-P11-1 Shiki loads all
+65 themes at start although two are used; mermaid still brings its own KaTeX 0.16 (two copies in the bundle).
