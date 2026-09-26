@@ -907,6 +907,8 @@ export class TaskStreamProcessor {
 			// if last message is a partial we need to update and save it
 			const lastMessage = this.access.clineMessages.at(-1)
 
+			const finishedPartial = lastMessage?.partial ? lastMessage : undefined
+
 			if (lastMessage && lastMessage.partial) {
 				// lastMessage.ts = Date.now() DO NOT update ts since it is used as a key for virtuoso list
 				lastMessage.partial = false
@@ -917,6 +919,16 @@ export class TaskStreamProcessor {
 			// we can display the cost of the partial stream and the cancellation reason
 			updateApiReqMsg(cancelReason, streamingFailedMessage)
 			await this.access.history.saveClineMessages()
+
+			// Both rows changed in place; a view that gets new messages alone
+			// would not see it with the next message (CORE-R7).
+			if (finishedPartial) {
+				void this.access.history.postEditedClineMessage(finishedPartial)
+			}
+			const apiReqMessage = this.access.clineMessages[lastApiReqIndex]
+			if (apiReqMessage && apiReqMessage !== finishedPartial) {
+				void this.access.history.postEditedClineMessage(apiReqMessage)
+			}
 
 			// Signals to provider that it can retrieve the saved messages
 			// from disk, as abortTask can not be awaited on in nature.

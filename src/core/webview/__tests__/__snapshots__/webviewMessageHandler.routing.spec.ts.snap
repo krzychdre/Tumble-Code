@@ -2625,6 +2625,17 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > restartMcpS
 }
 `;
 
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > resyncClineMessages 1`] = `
+{
+  "events": [
+    [
+      "provider.postStateToWebviewWithoutTaskHistory",
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
 exports[`webviewMessageHandler routing (characterization, CORE-R3) > rooCloudManualUrl 1`] = `
 {
   "events": [
@@ -3820,6 +3831,127 @@ exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidL
   "events": [
     [
       "provider.forgetWebviewTaskHistory",
+    ],
+    [
+      "provider.setWebviewAcceptsMessageAdded",
+      false,
+    ],
+    [
+      "customModesManager.getCustomModes",
+    ],
+    [
+      "contextProxy.setValue",
+      "customModes",
+      [
+        {
+          "groups": [],
+          "name": "M1",
+          "roleDefinition": "r",
+          "slug": "m1",
+          "source": "project",
+        },
+      ],
+    ],
+    [
+      "provider.postStateToWebview",
+    ],
+    [
+      "workspaceTracker.initializeFilePaths",
+    ],
+    [
+      "getTheme",
+    ],
+    [
+      "provider.getMcpHub",
+    ],
+    [
+      "mcpHub.getAllServers",
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "mcpServers": [
+          {
+            "name": "srv",
+          },
+        ],
+        "type": "mcpServers",
+      },
+    ],
+    [
+      "providerSettingsManager.listConfig",
+    ],
+    [
+      "contextProxy.getValue",
+      "telemetrySetting",
+    ],
+    [
+      "Telemetry.updateTelemetryState",
+      true,
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "text": "{"name":"theme"}",
+        "type": "theme",
+      },
+    ],
+    [
+      "contextProxy.getValue",
+      "currentApiConfigName",
+    ],
+    [
+      "providerSettingsManager.hasConfig",
+      "default",
+    ],
+    [
+      "contextProxy.setValue",
+      "listApiConfigMeta",
+      [
+        {
+          "apiProvider": "anthropic",
+          "id": "id-default",
+          "name": "default",
+        },
+        {
+          "apiProvider": "openai",
+          "id": "id-other",
+          "name": "other",
+        },
+      ],
+    ],
+    [
+      "provider.postMessageToWebview",
+      {
+        "listApiConfig": [
+          {
+            "apiProvider": "anthropic",
+            "id": "id-default",
+            "name": "default",
+          },
+          {
+            "apiProvider": "openai",
+            "id": "id-other",
+            "name": "other",
+          },
+        ],
+        "type": "listApiConfig",
+      },
+    ],
+  ],
+  "outcome": "resolved",
+}
+`;
+
+exports[`webviewMessageHandler routing (characterization, CORE-R3) > webviewDidLaunch#acceptsMessageAdded 1`] = `
+{
+  "events": [
+    [
+      "provider.forgetWebviewTaskHistory",
+    ],
+    [
+      "provider.setWebviewAcceptsMessageAdded",
+      true,
     ],
     [
       "customModesManager.getCustomModes",

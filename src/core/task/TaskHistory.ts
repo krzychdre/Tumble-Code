@@ -405,9 +405,14 @@ export class TaskHistory {
 		this.access.clineMessages.push(message)
 		const provider = this.access.providerRef.deref()
 		if (!this.access.isBackground) {
-			// Avoid resending large, mostly-static fields (notably taskHistory) on every chat message update.
-			// taskHistory is maintained in-memory in the webview and updated via taskHistoryItemUpdated.
-			await provider?.postStateToWebviewWithoutTaskHistory()
+			// A view that accepts it gets the new message alone (CORE-R7); any
+			// other view (the CLI), or one that may be out of step, gets the
+			// state push with the whole message list. Neither carries taskHistory:
+			// the webview keeps it in memory and follows taskHistoryItemUpdated.
+			const sentAlone = (await provider?.postClineMessageAdded?.(this.access, message)) ?? false
+			if (!sentAlone) {
+				await provider?.postStateToWebviewWithoutTaskHistory()
+			}
 		} else if (provider?.subagentRegistry.isWatched(this.access.taskId)) {
 			// A background task's messages never ride the state push (state
 			// carries only the CURRENT task's messages). Stream new messages
@@ -432,6 +437,18 @@ export class TaskHistory {
 			// Track that this message has been synced to cloud
 			this.access.cloudSyncedMessageTimestamps.add(message.ts)
 		}
+	}
+
+	/**
+	 * Shows the webview a message this task changed in place without posting
+	 * it (see ClineProvider.postEditedClineMessage). No Message event, no
+	 * cloud capture: those follow the message's own add and updates.
+	 */
+	async postEditedClineMessage(message: ClineMessage): Promise<void> {
+		if (this.access.isBackground) {
+			return
+		}
+		await this.access.providerRef.deref()?.postEditedClineMessage?.(this.access, message)
 	}
 
 	async overwriteClineMessages(newMessages: ClineMessage[]) {

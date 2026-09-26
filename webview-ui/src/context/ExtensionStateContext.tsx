@@ -27,6 +27,7 @@ import {
 	mergeExtensionState,
 	updateExtensionState,
 } from "./extensionStateReducer"
+import { WEBVIEW_DID_LAUNCH_MESSAGE } from "./webviewDidLaunchMessage"
 
 export interface ExtensionStateContextType extends ExtensionState {
 	historyPreviewCollapsed?: boolean // Add the new state property
@@ -155,8 +156,20 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		vscode.postMessage({ type: "autoApprovalEnabled", bool: store.extensionState.autoApprovalEnabled ?? false })
 	}, [store])
 
+	// A messageAdded that did not fit the chat: ask the host for the whole list once.
+	const clineMessagesResyncRequested = store.clineMessagesResyncRequested
 	useEffect(() => {
-		vscode.postMessage({ type: "webviewDidLaunch" })
+		if (!clineMessagesResyncRequested) {
+			return
+		}
+		vscode.postMessage({ type: "resyncClineMessages" })
+		setStore((prev) =>
+			prev.clineMessagesResyncRequested ? { ...prev, clineMessagesResyncRequested: false } : prev,
+		)
+	}, [clineMessagesResyncRequested])
+
+	useEffect(() => {
+		vscode.postMessage(WEBVIEW_DID_LAUNCH_MESSAGE)
 	}, [])
 
 	const contextValue: ExtensionStateContextType = {

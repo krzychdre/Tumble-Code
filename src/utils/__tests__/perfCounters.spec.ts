@@ -30,6 +30,8 @@ describe("perfCounters", () => {
 		perfCounters.recordWebviewPost(state)
 		const updated = { type: "messageUpdated", clineMessage: { ts: 2, text: "héllo" } }
 		perfCounters.recordWebviewPost(updated)
+		const added = { type: "messageAdded", clineMessage: { ts: 3 }, messageIndex: 0 }
+		perfCounters.recordWebviewPost(added)
 		perfCounters.recordWebviewPost({ type: "action" })
 		perfCounters.recordSave("uiMessages", [{ ts: 1 }])
 		perfCounters.recordSave("apiHistory", [{ role: "user" }])
@@ -42,6 +44,8 @@ describe("perfCounters", () => {
 		expect(values.messageUpdatedPosts).toBe(1)
 		// UTF-8 bytes, not UTF-16 code units: "é" is two bytes.
 		expect(values.messageUpdatedBytes).toBe(JSON.stringify(updated).length + 1)
+		expect(values.messageAddedPosts).toBe(1)
+		expect(values.messageAddedBytes).toBe(Buffer.byteLength(JSON.stringify(added)))
 		expect(values.otherPosts).toBe(1)
 		expect(values.uiMessagesSaves).toBe(1)
 		expect(values.uiMessagesSaveBytes).toBe(JSON.stringify([{ ts: 1 }]).length)

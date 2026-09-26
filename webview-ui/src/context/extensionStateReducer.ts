@@ -49,6 +49,11 @@ export interface ExtensionStore {
 	marketplaceItems: MarketplaceItem[]
 	marketplaceInstalledMetadata: MarketplaceInstalledMetadata
 	skills: SkillMetadata[]
+	/**
+	 * A `messageAdded` did not fit the chat (a gap, or another task): the
+	 * provider asks the host for the whole list and clears the flag.
+	 */
+	clineMessagesResyncRequested: boolean
 }
 
 // A fresh object per provider mount, like the useState literal it replaces.
@@ -161,10 +166,15 @@ export const createInitialExtensionStore = (): ExtensionStore => ({
 	marketplaceItems: [],
 	marketplaceInstalledMetadata: { project: {}, global: {} },
 	skills: [],
+	clineMessagesResyncRequested: false,
 })
 
 /** The store as one flat object, the shape the context exposes (slices win over same-named state keys). */
-export const flattenExtensionStore = ({ extensionState, ...slices }: ExtensionStore) => ({
+export const flattenExtensionStore = ({
+	extensionState,
+	clineMessagesResyncRequested: _resyncRequested,
+	...slices
+}: ExtensionStore) => ({
 	...extensionState,
 	...slices,
 })
@@ -262,6 +272,43 @@ export function applyExtensionMessage(prev: ExtensionStore, message: ExtensionMe
 			return { ...prev, filePaths: message.filePaths ?? [], openedTabs: message.openedTabs ?? [] }
 		case "commands":
 			return { ...prev, commands: message.commands ?? [] }
+		case "messageAdded": {
+			const clineMessage = message.clineMessage
+			if (!clineMessage) {
+				return prev
+			}
+			const current = prev.extensionState
+			// The host sends a message alone only for the task whose list this
+			// view holds; another task means the view missed a full push.
+			if (
+				message.sourceTaskId !== undefined &&
+				current.currentTaskId !== undefined &&
+				message.sourceTaskId !== current.currentTaskId
+			) {
+				return { ...prev, clineMessagesResyncRequested: true }
+			}
+			// The state that came with the message (never the list itself).
+			const merged = message.state ? applyExtensionMessage(prev, { type: "state", state: message.state }) : prev
+			const messages = merged.extensionState.clineMessages
+			const knownIndex = findLastIndex(messages, (msg) => msg.ts === clineMessage.ts)
+			if (knownIndex !== -1) {
+				// A full push already carried it: replace, never add twice.
+				const nextMessages = [...messages]
+				nextMessages[knownIndex] = clineMessage
+				return {
+					...merged,
+					extensionState: { ...merged.extensionState, clineMessages: nextMessages },
+				}
+			}
+			return {
+				...merged,
+				extensionState: { ...merged.extensionState, clineMessages: [...messages, clineMessage] },
+				// A gap: keep the message visible and fetch the whole list.
+				clineMessagesResyncRequested:
+					merged.clineMessagesResyncRequested ||
+					(message.messageIndex !== undefined && message.messageIndex !== messages.length),
+			}
+		}
 		case "messageUpdated": {
 			const clineMessage = message.clineMessage!
 			return updateExtensionState(prev, (prevState) => {

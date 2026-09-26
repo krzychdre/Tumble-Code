@@ -505,6 +505,8 @@ function createProvider() {
 		}),
 		getStateToPostToWebview: async () => ({ mode: "code", hasOpenedModeSelector: undefined }),
 		forgetWebviewTaskHistory: () => undefined,
+		setWebviewAcceptsMessageAdded: () => undefined,
+		postStateToWebviewWithoutTaskHistory: async () => undefined,
 		postMessageToWebview: async () => undefined,
 		postStateToWebview: async () => undefined,
 		log: () => undefined,
@@ -547,6 +549,8 @@ const mcpItem = { id: "item-1", type: "mcp", name: "Item", description: "d", url
 // as a bare `{ type }`. Labels after a "#" are extra variants of the same type.
 const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["webviewDidLaunch", {}],
+	["webviewDidLaunch#acceptsMessageAdded", { acceptsMessageAdded: true }],
+	["resyncClineMessages", {}],
 	["newTask", { text: "build it", images: ["data:image/png;base64,AAA"] }],
 	["customInstructions", { text: "be brief" }],
 	["askResponse", { askResponse: "messageResponse", text: "yes", images: [] }],
@@ -763,7 +767,7 @@ describe("webviewMessageHandler routing (characterization, CORE-R3)", () => {
 	})
 
 	it("covers every routed message type exactly once in the route list", () => {
-		expect(ROUTED_TYPES).toHaveLength(137)
+		expect(ROUTED_TYPES).toHaveLength(138)
 	})
 
 	it.each(ROUTES)("%s", async (label, fields) => {

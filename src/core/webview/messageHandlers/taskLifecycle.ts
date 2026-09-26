@@ -11,12 +11,14 @@ import { resolveIncomingImages, serializeError } from "./context"
 import type { MessageHandlerMap } from "./types"
 
 export const taskLifecycleHandlers: MessageHandlerMap = {
-	webviewDidLaunch: async (ctx) => {
+	webviewDidLaunch: async (ctx, message) => {
 		const { provider, getGlobalState, updateGlobalState } = ctx
-		// A (re)loaded webview starts without the task history: the state push
-		// below must carry the whole one. Before any await, so no push that
-		// started earlier can be taken for having delivered it.
+		// A (re)loaded webview starts without the task history and without any
+		// chat message: the state push below must carry both in full. Before any
+		// await, so no push that started earlier can be taken for having
+		// delivered them. The view also declares whether it applies messageAdded.
 		provider.forgetWebviewTaskHistory()
+		provider.setWebviewAcceptsMessageAdded(message.acceptsMessageAdded === true)
 		// Load custom modes first
 		const customModes = await provider.customModesManager.getCustomModes()
 		await updateGlobalState("customModes", customModes)
@@ -87,6 +89,11 @@ export const taskLifecycleHandlers: MessageHandlerMap = {
 		TelemetryService.instance.updateTelemetryState(getGlobalState("telemetrySetting") !== "disabled")
 
 		provider.isViewLaunched = true
+	},
+
+	// The view found a gap in the chat after a messageAdded: send it the whole list.
+	resyncClineMessages: async (ctx) => {
+		await ctx.provider.postStateToWebviewWithoutTaskHistory()
 	},
 
 	newTask: async (ctx, message) => {
