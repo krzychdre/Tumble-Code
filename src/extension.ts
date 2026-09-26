@@ -32,6 +32,7 @@ import { syncCloudUrls, registerCloudUrlsSubscription } from "./activate/cloud-u
 import { ContextProxy } from "./core/config/ContextProxy"
 import { initMemoryPaths } from "./core/memory/paths"
 import { ClineProvider } from "./core/webview/ClineProvider"
+import { flushPendingClineMessageSaves } from "./core/task/TaskHistory"
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import { Terminal } from "./integrations/terminal/Terminal"
 import { TerminalRegistry } from "./integrations/terminal/TerminalRegistry"
@@ -468,6 +469,15 @@ export async function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated.
 export async function deactivate() {
 	outputChannel.appendLine(`${Package.name} extension deactivated`)
+
+	// Coalesced chat-message writes of streaming tasks (CORE-R7 step 4).
+	try {
+		await flushPendingClineMessageSaves()
+	} catch (error) {
+		outputChannel.appendLine(
+			`Failed to write pending task messages: ${error instanceof Error ? error.message : String(error)}`,
+		)
+	}
 
 	if (cloudService && CloudService.hasInstance()) {
 		try {
