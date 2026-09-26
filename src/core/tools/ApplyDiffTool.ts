@@ -28,7 +28,8 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 
 	async execute(params: ApplyDiffParams, task: Task, callbacks: ToolCallbacks): Promise<void> {
 		const { askApproval, handleError, pushToolResult, toolCallId } = callbacks
-		let { path: relPath, diff: diffContent } = params
+		const { path: relPath } = params
+		let { diff: diffContent } = params
 
 		if (diffContent && !task.api.getModel().id.includes("claude")) {
 			diffContent = unescapeHtmlEntities(diffContent)

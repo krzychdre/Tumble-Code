@@ -63,8 +63,11 @@ async function until(condition: () => boolean, ms: number, what: string): Promis
 const spawnedChildren = new Set<ChildProcess>()
 
 function createVscodeTerminal(id: number, cwd: string): RooTerminal {
-	let rooTerminal: Terminal | undefined
 	let child: ChildProcess | undefined
+
+	// The fake below must exist before the Terminal it wraps, but its close
+	// handler needs the Terminal; a const holder breaks that cycle.
+	const terminalRef: { instance?: Terminal } = {}
 
 	const fake = {
 		name: "Roo Code",
@@ -101,7 +104,7 @@ function createVscodeTerminal(id: number, cwd: string): RooTerminal {
 					spawnedChildren.delete(spawned)
 					const exitCode = code ?? 128 + (signal ? os.constants.signals[signal] : 0)
 					// What TerminalRegistry does on onDidEndTerminalShellExecution.
-					rooTerminal!.shellExecutionComplete(TerminalProcess.interpretExitCode(exitCode))
+					terminalRef.instance?.shellExecutionComplete(TerminalProcess.interpretExitCode(exitCode))
 				})
 
 				const stdout = spawned.stdout!
@@ -119,7 +122,8 @@ function createVscodeTerminal(id: number, cwd: string): RooTerminal {
 		},
 	}
 
-	rooTerminal = new Terminal(id, fake as unknown as vscode.Terminal, cwd)
+	const rooTerminal = new Terminal(id, fake as unknown as vscode.Terminal, cwd)
+	terminalRef.instance = rooTerminal
 	return rooTerminal
 }
 

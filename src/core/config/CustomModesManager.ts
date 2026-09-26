@@ -834,7 +834,7 @@ export class CustomModesManager {
 				? path.join(baseDir, `rules-${slug}`)
 				: path.join(baseDir, ".roo", `rules-${slug}`)
 
-			let rulesFiles: RuleFile[] = []
+			const rulesFiles: RuleFile[] = []
 			try {
 				const stats = await fs.stat(modeRulesDir)
 				if (stats.isDirectory()) {
@@ -949,7 +949,7 @@ export class CustomModesManager {
 
 				// Check if path starts with a rules-* folder (old export format)
 				let cleanedRelativePath = normalizedRelativePath
-				const rulesMatch = normalizedRelativePath.match(/^rules-[^\/\\]+[\/\\]/)
+				const rulesMatch = normalizedRelativePath.match(/^rules-[^/\\]+[/\\]/)
 				if (rulesMatch) {
 					// Strip the entire rules-* folder reference for backwards compatibility
 					cleanedRelativePath = normalizedRelativePath.substring(rulesMatch[0].length)

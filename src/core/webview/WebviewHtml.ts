@@ -38,7 +38,7 @@ export interface HmrHtmlOptions extends WebviewHtmlOptions {
 /** The scheme and host of the configured OpenRouter base URL, for the CSP. */
 export function openRouterOrigin(baseUrl: string | undefined): string {
 	const openRouterBaseUrl = baseUrl || DEFAULT_OPENROUTER_ORIGIN
-	return openRouterBaseUrl.match(/^(https?:\/\/[^\/]+)/)?.[1] || DEFAULT_OPENROUTER_ORIGIN
+	return openRouterBaseUrl.match(/^(https?:\/\/[^/]+)/)?.[1] || DEFAULT_OPENROUTER_ORIGIN
 }
 
 function assetUris(webview: vscode.Webview, extensionUri: vscode.Uri) {

@@ -3,7 +3,7 @@ import OpenAI from "openai"
 export function addCacheBreakpoints(systemPrompt: string, messages: OpenAI.Chat.ChatCompletionMessageParam[]) {
 	messages[0] = {
 		role: "system",
-		// @ts-ignore-next-line
+		// @ts-expect-error-next-line
 		content: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
 	}
 
@@ -34,7 +34,7 @@ export function addCacheBreakpoints(systemPrompt: string, messages: OpenAI.Chat.
 					msg.content.push(lastTextPart)
 				}
 
-				// @ts-ignore-next-line
+				// @ts-expect-error-next-line
 				lastTextPart["cache_control"] = { type: "ephemeral" }
 			}
 		})

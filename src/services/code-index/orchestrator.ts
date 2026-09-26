@@ -163,7 +163,7 @@ export class CodeIndexOrchestrator {
 
 				let cumulativeBlocksIndexed = 0
 				let cumulativeBlocksFoundSoFar = 0
-				let batchErrors: Error[] = []
+				const batchErrors: Error[] = []
 
 				const handleFileParsed = (fileBlockCount: number) => {
 					cumulativeBlocksFoundSoFar += fileBlockCount
@@ -247,7 +247,7 @@ export class CodeIndexOrchestrator {
 
 				let cumulativeBlocksIndexed = 0
 				let cumulativeBlocksFoundSoFar = 0
-				let batchErrors: Error[] = []
+				const batchErrors: Error[] = []
 
 				const handleFileParsed = (fileBlockCount: number) => {
 					cumulativeBlocksFoundSoFar += fileBlockCount

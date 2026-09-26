@@ -34,7 +34,7 @@ export function resetOsInfoCacheForTests(): void {
 export function getSystemInfoSection(cwd: string): string {
 	const osInfo = resolveOsInfo()
 
-	let details = `====
+	const details = `====
 
 SYSTEM INFORMATION
 

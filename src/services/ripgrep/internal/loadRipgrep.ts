@@ -12,6 +12,7 @@ export type LoadRipgrepResult = { rgPath?: string; loadError?: string }
 
 export function loadRipgrep(): LoadRipgrepResult | undefined {
 	try {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- see module doc above
 		return require("@vscode/ripgrep") as LoadRipgrepResult
 	} catch (error) {
 		return {

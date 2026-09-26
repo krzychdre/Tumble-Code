@@ -70,7 +70,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	constructor(options: ProviderSettings) {
 		super()
 		this.options = options
-		let region = this.options.awsRegion
+		const region = this.options.awsRegion
 
 		// process the various user input options, be opinionated about the intent of the options
 		// and determine the model to use during inference and for cost calculations
@@ -472,8 +472,8 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 		 * match[4] - The resource ID (e.g., "anthropic.claude-3-sonnet-20240229-v1:0")
 		 */
 
-		const arnRegex = /^arn:[^:]+:(?:bedrock|sagemaker):([^:]+):([^:]*):(?:([^\/]+)\/([\w\.\-:]+)|([^\/]+))$/
-		let match = arn.match(arnRegex)
+		const arnRegex = /^arn:[^:]+:(?:bedrock|sagemaker):([^:]+):([^:]*):(?:([^/]+)\/([\w.\-:]+)|([^/]+))$/
+		const match = arn.match(arnRegex)
 
 		if (match && match[1] && match[3] && match[4]) {
 			// Create the result object
@@ -500,7 +500,7 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			// Check if the original model ID had a region prefix
 			if (originalModelId && result.modelId !== originalModelId) {
 				// If the model ID changed after parsing, it had a region prefix
-				let prefix = originalModelId.replace(result.modelId, "")
+				const prefix = originalModelId.replace(result.modelId, "")
 				result.crossRegionInference = AwsBedrockHandler.isSystemInferenceProfile(prefix)
 			}
 

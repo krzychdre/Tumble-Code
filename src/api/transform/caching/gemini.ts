@@ -8,7 +8,7 @@ export function addCacheBreakpoints(
 	// *Always* cache the system prompt.
 	messages[0] = {
 		role: "system",
-		// @ts-ignore-next-line
+		// @ts-expect-error-next-line
 		content: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
 	}
 
@@ -37,7 +37,7 @@ export function addCacheBreakpoints(
 					msg.content.push(lastTextPart)
 				}
 
-				// @ts-ignore-next-line - Add cache control property
+				// @ts-expect-error-next-line - Add cache control property
 				lastTextPart["cache_control"] = { type: "ephemeral" }
 			}
 		}
