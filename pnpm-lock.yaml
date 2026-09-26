@@ -755,8 +755,8 @@ importers:
         specifier: ^11.1.0
         version: 11.1.0
       lucide-react:
-        specifier: ^0.518.0
-        version: 0.518.0(@types/react@18.3.23)(react@18.3.1)
+        specifier: ^1.48.0
+        version: 1.48.0(@types/react@18.3.23)(react@18.3.1)
       mermaid:
         specifier: ^11.17.2
         version: 11.17.2
@@ -6374,8 +6374,8 @@ packages:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
 
-  lucide-react@0.518.0:
-    resolution: {integrity: sha512-kFg34uQqnVl/7HwAiigxPSpj//43VIVHQbMygQPtS1yT4btMXHCWUipHcgcXHD2pm1Z2nUBA/M+Vnh/YmWXQUw==}
+  lucide-react@1.48.0:
+    resolution: {integrity: sha512-R0CIKY/fXiC6y9xRBADgsK+VW2p/pcTJOMhLZf1T+uG+vJUvyUR02nGOgmIIC7MPkiNK4Ox8QDnbqF8rJYWPZQ==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -14576,7 +14576,7 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  lucide-react@0.518.0(@types/react@18.3.23)(react@18.3.1):
+  lucide-react@1.48.0(@types/react@18.3.23)(react@18.3.1):
     dependencies:
       react: 18.3.1
     optionalDependencies:
