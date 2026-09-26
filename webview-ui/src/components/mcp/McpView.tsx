@@ -1,6 +1,5 @@
 import React, { useState } from "react"
 import { Trans } from "react-i18next"
-import { VSCodePanels, VSCodePanelTab, VSCodePanelView } from "@vscode/webview-ui-toolkit/react"
 
 import type { McpServer } from "@roo-code/types"
 
@@ -19,6 +18,9 @@ import {
 	ToggleSwitch,
 	StandardTooltip,
 	Link,
+	ThemedPanels,
+	ThemedPanelTab,
+	ThemedPanelView,
 } from "@src/components/ui"
 import { buildDocLink } from "@src/utils/docLinks"
 import { Section } from "@src/components/settings/Section"
@@ -338,22 +340,22 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 								fontSize: "13px",
 								borderRadius: "0 0 4px 4px",
 							}}>
-							<VSCodePanels style={{ marginBottom: "10px" }}>
-								<VSCodePanelTab id="tools">
+							<ThemedPanels style={{ marginBottom: "10px" }}>
+								<ThemedPanelTab id="tools">
 									{t("mcp:tabs.tools")} ({server.tools?.length || 0})
-								</VSCodePanelTab>
-								<VSCodePanelTab id="resources">
+								</ThemedPanelTab>
+								<ThemedPanelTab id="resources">
 									{t("mcp:tabs.resources")} (
 									{[...(server.resourceTemplates || []), ...(server.resources || [])].length || 0})
-								</VSCodePanelTab>
+								</ThemedPanelTab>
 								{server.instructions && (
-									<VSCodePanelTab id="instructions">{t("mcp:instructions")}</VSCodePanelTab>
+									<ThemedPanelTab id="instructions">{t("mcp:instructions")}</ThemedPanelTab>
 								)}
-								<VSCodePanelTab id="logs">
+								<ThemedPanelTab id="logs">
 									{t("mcp:tabs.logs")} ({server.errorHistory?.length || 0})
-								</VSCodePanelTab>
+								</ThemedPanelTab>
 
-								<VSCodePanelView id="tools-view">
+								<ThemedPanelView id="tools-view">
 									{server.tools && server.tools.length > 0 ? (
 										<div
 											style={{
@@ -378,9 +380,9 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 											{t("mcp:emptyState.noTools")}
 										</div>
 									)}
-								</VSCodePanelView>
+								</ThemedPanelView>
 
-								<VSCodePanelView id="resources-view">
+								<ThemedPanelView id="resources-view">
 									{(server.resources && server.resources.length > 0) ||
 									(server.resourceTemplates && server.resourceTemplates.length > 0) ? (
 										<div
@@ -405,19 +407,19 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 											{t("mcp:emptyState.noResources")}
 										</div>
 									)}
-								</VSCodePanelView>
+								</ThemedPanelView>
 
 								{server.instructions && (
-									<VSCodePanelView id="instructions-view">
+									<ThemedPanelView id="instructions-view">
 										<div style={{ padding: "10px 0", fontSize: "12px" }}>
 											<div className="opacity-80 whitespace-pre-wrap break-words">
 												{server.instructions}
 											</div>
 										</div>
-									</VSCodePanelView>
+									</ThemedPanelView>
 								)}
 
-								<VSCodePanelView id="logs-view">
+								<ThemedPanelView id="logs-view">
 									{server.errorHistory && server.errorHistory.length > 0 ? (
 										<div
 											style={{
@@ -438,8 +440,8 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 											{t("mcp:emptyState.noLogs")}
 										</div>
 									)}
-								</VSCodePanelView>
-							</VSCodePanels>
+								</ThemedPanelView>
+							</ThemedPanels>
 
 							{/* Network Timeout */}
 							<div style={{ padding: "10px 7px" }}>

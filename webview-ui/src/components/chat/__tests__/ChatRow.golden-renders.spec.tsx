@@ -60,9 +60,7 @@ vi.mock("@vscode/webview-ui-toolkit/react", async () => {
 			React.createElement("span", { "data-stub": name, ...props }, children)
 		return Stub
 	}
-	return Object.fromEntries(
-		["VSCodePanels", "VSCodePanelTab", "VSCodePanelView", "VSCodeTextField"].map((name) => [name, stub(name)]),
-	)
+	return Object.fromEntries(["VSCodeTextField"].map((name) => [name, stub(name)]))
 })
 
 vi.mock("../BlockTimestamp", () => ({
