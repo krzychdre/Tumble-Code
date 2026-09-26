@@ -1,10 +1,10 @@
 import React, { useState } from "react"
-import { VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 
 import { type GroupEntry, type McpServer, type ModeConfig, modeConfigSchema } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { Button, Input, LabeledCheckbox, ThemedRadio, ThemedRadioGroup } from "@src/components/ui"
+import { Button, Input, LabeledCheckbox, ThemedRadio, ThemedRadioGroup, ThemedTextArea } from "@src/components/ui"
 import McpServerChecklist from "@src/components/modes/McpServerChecklist"
 
 import { availableGroups, getGroupName } from "./modeGroups"
@@ -163,7 +163,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.roleDefinition.description")}
 						</div>
-						<VSCodeTextArea
+						<ThemedTextArea
 							resize="vertical"
 							value={roleDefinition}
 							onChange={(e) => setRoleDefinition((e.target as HTMLTextAreaElement).value)}
@@ -191,7 +191,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.whenToUse.description")}
 						</div>
-						<VSCodeTextArea
+						<ThemedTextArea
 							resize="vertical"
 							value={whenToUse}
 							onChange={(e) => setWhenToUse((e.target as HTMLTextAreaElement).value)}
@@ -263,7 +263,7 @@ export function CreateModeDialog({ modes, mcpServers, onCreate, onClose }: Creat
 						<div className="text-[13px] text-vscode-descriptionForeground mb-2">
 							{t("prompts:createModeDialog.customInstructions.description")}
 						</div>
-						<VSCodeTextArea
+						<ThemedTextArea
 							resize="vertical"
 							value={customInstructions}
 							onChange={(e) => setCustomInstructions((e.target as HTMLTextAreaElement).value)}

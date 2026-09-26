@@ -1,5 +1,4 @@
 import { useState, useEffect, FormEvent } from "react"
-import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
 
 import { supportPrompt, SupportPromptType } from "@roo/support-prompt"
 
@@ -15,6 +14,7 @@ import {
 	SelectValue,
 	StandardTooltip,
 	LabeledCheckbox,
+	ThemedTextArea,
 } from "@src/components/ui"
 
 import { SectionHeader } from "./SectionHeader"
@@ -146,7 +146,7 @@ const PromptsSettings = ({
 						</StandardTooltip>
 					</div>
 
-					<VSCodeTextArea
+					<ThemedTextArea
 						resize="vertical"
 						value={getSupportPromptValue(activeSupportOption)}
 						onInput={(e) => {
@@ -225,7 +225,7 @@ const PromptsSettings = ({
 								<label className="block font-medium mb-1">
 									{t("prompts:supportPrompts.enhance.testEnhancement")}
 								</label>
-								<VSCodeTextArea
+								<ThemedTextArea
 									resize="vertical"
 									value={testPrompt}
 									onChange={(e) => setTestPrompt((e.target as HTMLTextAreaElement).value)}

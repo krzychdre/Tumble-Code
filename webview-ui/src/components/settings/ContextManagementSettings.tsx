@@ -1,7 +1,6 @@
 import { HTMLAttributes } from "react"
 import React from "react"
 import { useAppTranslation } from "@/i18n/TranslationContext"
-import { VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
 import { FoldVertical } from "lucide-react"
 
 import { PRUNE_CONDENSE_DEFAULTS } from "@roo-code/types"
@@ -20,6 +19,7 @@ import {
 	Button,
 	StandardTooltip,
 	LabeledCheckbox,
+	ThemedTextArea,
 } from "@/components/ui"
 
 import { SetCachedStateField } from "./types"
@@ -471,7 +471,7 @@ export const ContextManagementSettings = ({
 					<div className="text-sm text-vscode-descriptionForeground mb-2">
 						{t("prompts:supportPrompts.types.CONDENSE.description")}
 					</div>
-					<VSCodeTextArea
+					<ThemedTextArea
 						resize="vertical"
 						value={getCondensePromptValue()}
 						onInput={(e) => {

@@ -4,6 +4,7 @@ import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
 import { ContextManagementSettings } from "../ContextManagementSettings"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
 
 // Mock the translation hook
 vi.mock("@/hooks/useAppTranslation", () => ({
@@ -23,6 +24,7 @@ vi.mock("@/components/ui", () => ({
 	...vi.importActual("@/components/ui"),
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
+	ThemedTextArea: (props: any) => <RealThemedTextArea {...props} />,
 	Slider: ({ value, onValueChange, "data-testid": dataTestId, disabled, min, max }: any) => (
 		<input
 			type="range"
@@ -81,10 +83,6 @@ vi.mock("@/utils/vscode", () => ({
 }))
 
 // Mock VSCode components to behave like standard HTML elements
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextArea: ({ value, onChange, ...props }: any) => <textarea value={value} onChange={onChange} {...props} />,
-}))
-
 describe("ContextManagementSettings", () => {
 	const defaultProps = {
 		autoCondenseContext: false,

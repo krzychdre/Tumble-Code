@@ -5,6 +5,7 @@ import { render, screen, fireEvent } from "@/utils/test-utils"
 
 import PromptsSettings from "../PromptsSettings"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
+import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
 
 const { mockPostMessage, mockSetEnhancementApiConfigId } = vi.hoisted(() => ({
 	mockPostMessage: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 vi.mock("@src/components/ui", () => ({
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
+	ThemedTextArea: (props: any) => <RealThemedTextArea {...props} />,
 	Button: ({ children, onClick, ...props }: any) => (
 		<button onClick={onClick} {...props}>
 			{children}
@@ -51,12 +53,6 @@ vi.mock("@src/components/ui", () => ({
 	SelectValue: () => null,
 	SelectContent: ({ children }: any) => <>{children}</>,
 	SelectItem: ({ value, children }: any) => <option value={value}>{children}</option>,
-}))
-
-vi.mock("@vscode/webview-ui-toolkit/react", () => ({
-	VSCodeTextArea: ({ value, onInput }: any) => (
-		<textarea data-testid="support-prompt-textarea" value={value} onChange={(e) => onInput?.(e)} />
-	),
 }))
 
 describe("PromptsSettings immediate writes (WEB-3)", () => {
@@ -99,7 +95,7 @@ describe("PromptsSettings immediate writes (WEB-3)", () => {
 		const setCustomSupportPrompts = vi.fn()
 		render(<PromptsSettings customSupportPrompts={{}} setCustomSupportPrompts={setCustomSupportPrompts} />)
 
-		fireEvent.change(screen.getAllByTestId("support-prompt-textarea")[0], { target: { value: "be brief" } })
+		fireEvent.input(document.querySelectorAll("textarea")[0], { target: { value: "be brief" } })
 
 		expect(setCustomSupportPrompts).toHaveBeenCalledWith({ ENHANCE: "be brief" })
 		expect(mockPostMessage).not.toHaveBeenCalled()

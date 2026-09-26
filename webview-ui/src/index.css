@@ -933,6 +933,97 @@
 		text-overflow: ellipsis;
 	}
 
+	/*
+	 * Text area (components/ui/themed-text-area.tsx), the same look as the
+	 * deprecated toolkit's <vscode-text-area>. Fallbacks are the toolkit's
+	 * defaults.
+	 */
+	.ui-text-area {
+		display: inline-block;
+		outline: none;
+		user-select: none;
+		font-family: var(
+			--vscode-font-family,
+			-apple-system,
+			BlinkMacSystemFont,
+			Segoe UI,
+			Roboto,
+			Helvetica,
+			Arial,
+			sans-serif
+		);
+	}
+
+	.ui-text-area-control {
+		position: relative;
+		box-sizing: border-box;
+		width: 100%;
+		min-width: 100px;
+		margin: 0;
+		padding: 9px;
+		border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
+		border-radius: 2px;
+		outline: none;
+		background: var(--vscode-input-background, #3c3c3c);
+		color: var(--vscode-input-foreground, #cccccc);
+		font: inherit;
+		font-size: var(--vscode-font-size, 13px);
+		line-height: normal;
+		resize: none;
+		user-select: text;
+	}
+
+	.ui-text-area-control:enabled:active,
+	.ui-text-area:not([data-disabled]):focus-within .ui-text-area-control {
+		border-color: var(--vscode-focusBorder, #007fd4);
+	}
+
+	.ui-text-area-control[data-resize="both"] {
+		resize: both;
+	}
+
+	.ui-text-area-control[data-resize="horizontal"] {
+		resize: horizontal;
+	}
+
+	.ui-text-area-control[data-resize="vertical"] {
+		resize: vertical;
+	}
+
+	.ui-text-area-control::placeholder {
+		color: #757575; /* Chromium's default, which the toolkit's text area showed */
+	}
+
+	.ui-text-area-control::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	.ui-text-area-control::-webkit-scrollbar-corner {
+		background: var(--vscode-input-background, #3c3c3c);
+	}
+
+	.ui-text-area-control::-webkit-scrollbar-thumb {
+		background: var(--vscode-scrollbarSlider-background, #79797966);
+	}
+
+	.ui-text-area-control::-webkit-scrollbar-thumb:hover {
+		background: var(--vscode-scrollbarSlider-hoverBackground, #646464b3);
+	}
+
+	.ui-text-area-control::-webkit-scrollbar-thumb:active {
+		background: var(--vscode-scrollbarSlider-activeBackground, #bfbfbf66);
+	}
+
+	.ui-text-area[data-disabled] {
+		opacity: 0.4;
+	}
+
+	.ui-text-area[data-disabled] .ui-text-area-control,
+	.ui-text-area[data-readonly] .ui-text-area-control {
+		cursor: not-allowed;
+	}
+
 	.ui-themed-button-content {
 		display: flex;
 	}
@@ -962,6 +1053,17 @@ a.ui-link {
 /* Same for VS Code's unlayered `input:focus` outline before 1.104. */
 input.ui-checkbox-input,
 input.ui-radio-input {
+	outline: revert-layer;
+	outline-offset: revert-layer;
+}
+
+/*
+ * The text area draws its focus as a border colour, like the toolkit. VS Code
+ * before 1.104 and the `textarea:focus` rule below add an unlayered outline;
+ * hand the outline back to the layers.
+ */
+textarea.ui-text-area-control,
+textarea.ui-text-area-control:focus {
 	outline: revert-layer;
 	outline-offset: revert-layer;
 }
