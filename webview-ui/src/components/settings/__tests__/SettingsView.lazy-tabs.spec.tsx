@@ -3,6 +3,11 @@
  * their module factories must not run until the corresponding settings tab is
  * selected. The mock factories double as fetch counters (same pattern as
  * MarkdownBlock.spec.tsx's importCounts).
+ *
+ * Since the static search index (settingsSearchIndex.ts) replaced the
+ * cycle-render indexing, SettingsView must NOT mount any tab besides the
+ * active one on startup — so the lazy factories must not fire AT ALL until
+ * the user actually opens the Modes/MCP tab.
  */
 // npx vitest run src/components/settings/__tests__/SettingsView.lazy-tabs.spec.tsx
 
@@ -157,21 +162,20 @@ describe("SettingsView lazy Modes/MCP tabs (P4)", () => {
 		;(useExtensionState as any).mockReturnValue(createExtensionState())
 	})
 
-	// SettingsView's search indexing mounts EVERY tab once (renderTab cycles
-	// through sectionNames on mount), so with the real components the Modes
-	// and MCP factories each run exactly once during that initial cycle and
-	// never again for actual tab clicks. The laziness claim to pin here:
-	// the factory runs at most once (React.lazy caches its import), and the
-	// fetch is deferred — never at SettingsView module scope.
+	// With the static search index there is no startup indexing cycle that
+	// force-mounts every tab, so the lazy factories must not fire on mount.
+	// The laziness claims to pin here: the factory fires ZERO times at
+	// startup, exactly once when its tab is actually opened (React.lazy
+	// caches its import), and never at SettingsView module scope.
 
-	it("fetches the Modes chunk at most once, never at module scope", async () => {
+	it("does not fetch the Modes chunk on startup, fetches once when opened", async () => {
 		renderSettingsView()
 
-		// The initial mount: at most one fetch from the indexing cycle.
+		// The initial mount: NO fetch — nothing but the active tab renders.
 		await waitFor(() => {
 			expect(screen.getByTestId("save-button")).toBeInTheDocument()
 		})
-		expect(importCounts.modes).toBeLessThanOrEqual(1)
+		expect(importCounts.modes).toBe(0)
 
 		// Selecting the tab (again) must not re-fetch.
 		const modesTrigger = screen.getByTestId("tab-modes")
@@ -182,16 +186,16 @@ describe("SettingsView lazy Modes/MCP tabs (P4)", () => {
 		fireEvent.click(screen.getByTestId("tab-modes"))
 		expect(await screen.findByTestId("modes-view")).toBeInTheDocument()
 
-		expect(importCounts.modes).toBeLessThanOrEqual(1)
+		expect(importCounts.modes).toBe(1)
 	})
 
-	it("fetches the MCP chunk at most once, never at module scope", async () => {
+	it("does not fetch the MCP chunk on startup, fetches once when opened", async () => {
 		renderSettingsView()
 
 		await waitFor(() => {
 			expect(screen.getByTestId("save-button")).toBeInTheDocument()
 		})
-		expect(importCounts.mcp).toBeLessThanOrEqual(1)
+		expect(importCounts.mcp).toBe(0)
 
 		const mcpTrigger = screen.getByTestId("tab-mcp")
 		fireEvent.click(mcpTrigger)
@@ -201,7 +205,7 @@ describe("SettingsView lazy Modes/MCP tabs (P4)", () => {
 		fireEvent.click(screen.getByTestId("tab-mcp"))
 		expect(await screen.findByTestId("mcp-view")).toBeInTheDocument()
 
-		expect(importCounts.mcp).toBeLessThanOrEqual(1)
+		expect(importCounts.mcp).toBe(1)
 	})
 
 	it("shows the loading fallback while a lazy tab chunk is pending", async () => {
