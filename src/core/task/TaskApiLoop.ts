@@ -826,7 +826,13 @@ export class TaskApiLoop {
 		)
 
 		if (hasTextContent || hasToolUses) {
-			await pWaitFor(() => this.access.userMessageContentReady)
+			// The abort term matters: a task aborted while a tool is still running (for example during its
+			// approval ask) never sets userMessageContentReady, and this wait would poll forever.
+			await pWaitFor(() => this.access.userMessageContentReady || this.access.abort)
+
+			if (this.access.abort) {
+				return "return_true"
+			}
 
 			const didToolUse = this.access.assistantMessageContent.some(
 				(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
