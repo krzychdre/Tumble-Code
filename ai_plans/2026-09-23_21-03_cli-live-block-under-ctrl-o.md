@@ -1,6 +1,6 @@
 # CLI: the running block streams live in the expanded transcript (ctrl+o)
 
-**Status:** implemented on `feat/cli-command-execution-timeout` (the user asked for it on the same branch as the timeout change), committed, not pushed
+**Status:** LANDED on main (content-verified 2026-09-27). Implemented on `feat/cli-command-execution-timeout` (the user asked for it on the same branch as the timeout change)
 **Related plans:** `2026-09-21_cli-answer-lost-in-dynamic-tail.md` (invariants I1 and I8, which this change narrows), `2026-09-22_cli-ctrl-o-expands-but-never-collapses.md` (what ctrl+o does to scrollback), `2026-09-22_cli-stream-answer-into-scrollback.md` (why an answer streams in the collapsed transcript)
 **Touched:**
 

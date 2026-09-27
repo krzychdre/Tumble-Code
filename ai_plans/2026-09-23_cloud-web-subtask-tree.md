@@ -1,6 +1,6 @@
 # Cloud web: subtasks as a tree instead of a list
 
-**Status:** done on `feat/cloud-web-subtask-tree` (off `main` `e7341a1b5`), committed, not pushed.
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `feat/cloud-web-subtask-tree` (off `main` `e7341a1b5`).
 First of three stacked branches; `feat/cloud-web-remote-access` and `feat/cloud-web-run-cost-rollup` sit on top.
 **Related plans:** `2026-07-30_cloud-web-gui-overhaul.md` (branch 4 introduced `task_relations`,
 `tasks.parent_task_id`, the "Runs / All" scope and the subtask panel), `2026-09-23_cloud-web-run-cost-rollup.md`

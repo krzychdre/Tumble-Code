@@ -1,6 +1,6 @@
 # CLI: quieter tool rows, faint secondary text, visible user turns, clean start
 
-**Status:** done on `feat/cli-transcript-visual-hierarchy` (one branch for all four points, off `main` `e2364b059`), committed, not pushed
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `feat/cli-transcript-visual-hierarchy` (one branch for all four points, off `main` `e2364b059`)
 **Related plans:** `2026-09-22_cli-bash-row-overflows-width.md` (ResultRow row geometry),
 `2026-09-22_cli-clear-command.md` (clearing the screen from ink), `2026-08-05_cli-claude-code-style-ui-redesign.md` (theme)
 **Touched:** `apps/cli/src/ui/theme.ts`, `apps/cli/src/ui/components/primitives/ResultRow.tsx` + new test,

@@ -6,7 +6,9 @@
 - `fix/cli-answer-lost-in-dynamic-tail`: 5 commits on top of `f6ed54afd` (plan doc `10922060d`, finalization fix `2c34d4d2b`, idle promotion `a6631749a`, expanded rendering `1653dccbd`, ctrl+o verbose toggle `fff985550`). Implemented, tested, lint clean, knip output byte-identical to the base.
 - `main` = `61be588a7` at the time of writing.
 **Worktree for the merge work:** a fresh worktree with its OWN `pnpm install` (see slice 0). NOT `/tmp/tumble-cli-fix`, whose `node_modules` is a symlink to the main tree.
-**Status:** planned, not started. Nothing in this document has been executed.
+**Status:** RESOLVED 2026-09-21: the stack returned to `main` via PR #166 (squash, `ce2c52c9c`). Nothing in this
+document's execution record was written before the merge; read the slices below as the plan as executed.
+[UPDATE 2026-09-27: merged to main, verified by content.]
 
 Writing and coding rule: never use an em dash or an en dash anywhere (code,
 comments, tests, commit messages, UI strings, changesets). Use a hyphen, a
@@ -28,6 +30,9 @@ no Claude-style rendering). Anyone building the CLI from `main` today gets a
 different, older program than the one the user runs. Every day this stays
 unmerged, `main` drifts further and the merge gets harder (it already costs a
 provider-surface reconciliation, see below).
+
+[UPDATE 2026-09-27: merged to main, verified by content. The paragraph above describes the state before the
+PR #166 merge and is kept as the historical record.]
 
 ## Facts measured on 2026-09-21
 
@@ -409,6 +414,9 @@ Only after this passes: slice 8.
 worktree `/tmp/tumble-cli-integrate` (its own real `pnpm install`, no symlinked
 `node_modules`). Slices 6 (push and PR), 7 (rebuild and verify the installed
 bundle) and 8 (cleanup) are NOT done.
+
+[UPDATE 2026-09-27: merged to main, verified by content. The stack landed via PR #166 (2026-09-21) and the
+installed CLI bundle is a local build of main; slices 6-8 are moot as written.]
 
 ### Gate table
 

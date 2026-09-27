@@ -38,6 +38,9 @@ Nothing relies on removed/changed APIs. No deprecation warnings observed in the 
 
 ## Verification
 
+[UPDATE 2026-09-27: the VSIX debt is cleared. The installed VSIX is a main@059bac30c build from 2026-09-27
+18:51 with styled-components 6.4.4 in the bundle; the "owed" notes below are history.]
+
 - `cd webview-ui && npx tsc --noEmit` — exit 0
 - `cd webview-ui && npx eslint src/components/common/CodeBlock.tsx` — exit 0
 - `cd webview-ui && CI=1 npx vitest run` — **219 files / 2955 tests passed** (full suite)

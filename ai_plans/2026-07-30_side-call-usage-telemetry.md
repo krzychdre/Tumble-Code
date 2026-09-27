@@ -178,6 +178,10 @@ that stays the conversation's alone.
 
 ### Operational note
 
+[UPDATE 2026-09-27: merged to main, verified by content. Both halves are live: the cloud api image is a
+main@059bac30c build (rebuilt and redeployed 2026-09-27) and the installed VSIX is the main build from
+2026-09-27 18:51.]
+
 Both branches are unmerged and neither is deployed. The console half needs
 `docker compose up -d --build api`; the extension half needs a rebuilt VSIX.
 Until the extension ships, the console renders exactly as before — every stored

@@ -6,6 +6,10 @@
 
 ## Why stacked (not off main)
 
+[UPDATE 2026-09-27: merged to main, verified by content. `apps/vscode-e2e/src/suite/providers/deepseek-v4.test.ts`
+is on main as a real-API test (no @copilotkit/aimock, which this fork rejected); the "not yet merged" note below
+was true when the port was made and is kept as history.]
+
 The test exercises the `deepseek-v4-flash` / `deepseek-v4-pro` models. Those models do **not**
 exist on `main` — they were added by **zoo #6 (DeepSeek V4 Support)**, which we ported to
 `feature/zoo-6-deepseek-v4` (status=ported, not yet merged to main). Branching #72 off main

@@ -1,6 +1,6 @@
 # CLI: heap out of memory during long reasoning (React development performance tracks)
 
-**Status:** done on `fix/cli-oom-react-dev-perf-tracks` (off `main` `e6256e334`), committed, not pushed
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `fix/cli-oom-react-dev-perf-tracks` (off `main` `e6256e334`)
 **Touched:** `apps/cli/src/index.ts` (now a bootstrap), `apps/cli/src/main.ts` (the former `index.ts`, unchanged),
 new `apps/cli/src/lib/utils/react-production.ts` + test
 

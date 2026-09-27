@@ -1,6 +1,6 @@
 # CLI: configurable command execution timeout
 
-**Status:** implemented on `feat/cli-command-execution-timeout` (from `main` d7237f29d), committed, not pushed
+**Status:** LANDED on main (content-verified 2026-09-27). Implemented on `feat/cli-command-execution-timeout` (from `main` d7237f29d)
 **Related plans:** `2026-09-23_19-45_cli-context-window-per-model.md` (same settings-file pattern), `2026-09-23_cli-per-mode-provider-settings.md` (how settings reach the extension)
 **Touched:**
 

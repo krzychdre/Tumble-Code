@@ -1,6 +1,6 @@
 # Cloud web: open the panel from other machines, behind a host/network allowlist
 
-**Status:** done on `feat/cloud-web-remote-access` (stacked on `feat/cloud-web-subtask-tree`), committed, not pushed.
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `feat/cloud-web-remote-access` (stacked on `feat/cloud-web-subtask-tree`).
 Second of three stacked branches. **Live since 2026-09-23** on the local stack, built from the top branch
 (`feat/cloud-web-run-cost-rollup`), with `WEB_PUBLIC_URL=http://192.168.50.141:8085` and
 `WEB_ALLOWED_NETWORKS=192.168.50.0/24` in `.env` (see "Deployed" below).

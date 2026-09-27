@@ -1,6 +1,6 @@
 # Cloud web: the live header showed dashes, or another task's figures
 
-**Status:** done on `fix/cloud-web-live-header-foreign-state` (off `main` `d7237f29d`), committed, not pushed.
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `fix/cloud-web-live-header-foreign-state` (off `main` `d7237f29d`).
 First of three stacked branches; `feat/cloud-web-task-cost-summary` and `feat/cloud-web-phone-layout` sit on it.
 **Related plans:** `2026-09-23_cloud-web-run-cost-rollup.md` (the run totals the next branch moves to the top).
 **Touched:** `self-hosted-cloudapi/src/web/static/live.js`, new `tests/browser/live_checks.html`,
@@ -63,4 +63,7 @@ checks failed, reproducing the screenshot. Verified by mutation on a scratch cop
   reads `provider.getCurrentTask()`. An event from a task that is not the foreground one (a parent waiting on a
   running subtask) is therefore labelled with its own id but carries the foreground task's tokens, mode and
   running state. The relayed events of that label reach this page. Needs its own branch and a VSIX rebuild.
+  [UPDATE 2026-09-27: merged to main, verified by content. The snapshot fix itself is still open on main
+  (`snapshot(taskId)` still reads `provider.getCurrentTask()`); only the VSIX part is satisfied, the installed
+  VSIX is the main@059bac30c build from 2026-09-27.]
 - The server still returns the whole record on join; filtering there would lose the auto-approval values.

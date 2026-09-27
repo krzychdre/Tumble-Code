@@ -1,7 +1,7 @@
 # Cloud web: one account of what a task spent, at the top of its page
 
-**Status:** done on `feat/cloud-web-task-cost-summary` (stacked on `fix/cloud-web-live-header-foreign-state`),
-committed, not pushed. Second of three; `feat/cloud-web-phone-layout` sits on it.
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `feat/cloud-web-task-cost-summary`
+(stacked on `fix/cloud-web-live-header-foreign-state`). Second of three; `feat/cloud-web-phone-layout` sits on it.
 **Related plans:** `2026-09-23_cloud-web-run-cost-rollup.md` (the run totals and `Spend`, reused here),
 `2026-09-23_cloud-web-live-header-foreign-state.md` (the header fix this builds on).
 **Touched:** `self-hosted-cloudapi/src/routers/web.py`, `src/web/templates/task_detail.html`,

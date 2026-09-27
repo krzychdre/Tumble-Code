@@ -68,6 +68,10 @@ Files changed (9):
 
 ## §5 Acceptance
 
+[UPDATE 2026-09-27: merged to main, verified by content. All workflow `uses:` lines on main are SHA-pinned
+with a version comment, e.g. `actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4`. The checkboxes
+below record the state at port time and are kept as history.]
+
 - [ ] All 11 mapped action@version pairs are pinned with SHA + version comment
 - [ ] No non-mapped actions were altered
 - [ ] All changed YAML files are syntactically valid

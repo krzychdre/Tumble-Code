@@ -1,6 +1,6 @@
 # CLI: context window per model in cli-settings.json
 
-**Status:** implemented on `feat/cli-context-window-setting` (from `main` ab901f663), committed, not pushed
+**Status:** LANDED on main (content-verified 2026-09-27). Implemented on `feat/cli-context-window-setting` (from `main` ab901f663)
 **Related plans:** `2026-09-22_cli-context-gauge-in-footer.md` (the bar), `2026-09-23_cli-per-mode-provider-settings.md` (how settings reach the extension), `2026-09-23_cli-settings-api-key.md` (layered resolver)
 **Touched:**
 - `apps/cli/src/types/types.ts` (`CliModelSettings`, `CliSettings.models`)

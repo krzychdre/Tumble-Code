@@ -1,7 +1,7 @@
 # Cloud web: a run's cost includes its subtasks
 
-**Status:** done on `feat/cloud-web-run-cost-rollup` (stacked on `feat/cloud-web-remote-access`), committed, not pushed.
-Third and last of the stack; this is the branch to push.
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `feat/cloud-web-run-cost-rollup` (stacked on `feat/cloud-web-remote-access`).
+Third and last of the stack.
 **Related plans:** `2026-09-23_cloud-web-subtask-tree.md` (the tree this sums over, and the `subtrees()` fix this
 branch's tests uncovered), `2026-07-30_cloud-web-gui-overhaul.md` (the denormalized task summary columns).
 **Touched:** `self-hosted-cloudapi/src/services/task_tree.py`, `src/routers/web.py`, new

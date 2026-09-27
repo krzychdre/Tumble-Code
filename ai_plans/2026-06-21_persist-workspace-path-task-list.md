@@ -3,6 +3,9 @@
 Date: 2026-06-21
 Branch: stacks on `feature/self-hosted-remote-task-control` (depends on the
 unmerged "task list on cloud web view" commit `82e4b0a1b`; main does not have it).
+[UPDATE 2026-09-27: merged to main, verified by content. `workspacePath` is persisted on main
+(`e5f6a7b8c9d0_task_workspace_path.py` migration is part of the cloudapi baseline) and the
+cloud web task list shows the project/worktree. The dependency note above is history.]
 
 ## Problem / evidence
 

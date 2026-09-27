@@ -1,7 +1,7 @@
 # Cloud web: every page fits a phone
 
-**Status:** done on `feat/cloud-web-phone-layout` (stacked on `feat/cloud-web-task-cost-summary`), committed,
-not pushed. Third and last of the stack.
+**Status:** LANDED on main (content-verified 2026-09-27). Done on `feat/cloud-web-phone-layout` (stacked on
+`feat/cloud-web-task-cost-summary`). Third and last of the stack.
 **Related plans:** `2026-09-23_cloud-web-task-cost-summary.md` (the spend table this lays out on a phone),
 `2026-07-30_cloud-web-gui-overhaul.md` (the design system).
 **Touched:** `self-hosted-cloudapi/src/web/static/app.css`, `src/web/static/render.js`, `src/web/static/live.js`,

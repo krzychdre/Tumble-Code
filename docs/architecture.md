@@ -6,9 +6,9 @@ panel to the extension, and a model answer from the provider back to the chat. E
 boundary updates this page in the same pull request. For the level-0 overview and the detailed mechanism pages,
 start at [docs/README.md](README.md).
 
-Item names such as `CORE-R1` in code comments refer to the 2026-09-24 refactor plan. That plan was kept on a
-branch that no longer exists; what it achieved and what remains is summarised in
-[`ai_plans/2026-09-27_simplification-roadmap.md`](../ai_plans/2026-09-27_simplification-roadmap.md).
+Item names such as `CORE-R1` in code comments refer to the 2026-09-24 refactor plan. That plan is kept on the
+`docs/refactor-plan-2026-09-24` branch (intentionally unmerged); what it achieved and what remains is summarised
+in [`ai_plans/2026-09-27_simplification-roadmap.md`](../ai_plans/2026-09-27_simplification-roadmap.md).
 
 ## The workspaces
 

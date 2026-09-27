@@ -1,6 +1,6 @@
 # CLI spinner: time of the step next to the time of the turn
 
-**Status:** implemented on `feat/cli-spinner-step-timer` (from `main` ab901f663), committed, not pushed
+**Status:** LANDED on main (content-verified 2026-09-27). Implemented on `feat/cli-spinner-step-timer` (from `main` ab901f663)
 **Related plans:** `2026-08-05_cli-claude-code-style-ui-redesign.md` (the spinner), `2026-09-22_cli-spinner-verbs-rock-tumbler.md` (the word)
 **Touched:**
 - `apps/cli/src/ui/components/Spinner.tsx` (two clocks, `formatElapsed`)
