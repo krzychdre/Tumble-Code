@@ -9,6 +9,7 @@ import {
 	DEFAULT_TERMINAL_OUTPUT_PREVIEW_SIZE,
 	PersistedCommandOutput,
 	readCliRuntimeEnv,
+	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -122,7 +123,8 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 			const provider = await task.providerRef.deref()
 			const providerState = await provider?.getState()
 
-			const { terminalShellIntegrationDisabled = true } = providerState ?? {}
+			const { terminalShellIntegrationDisabled = SETTINGS_DEFAULTS.terminalShellIntegrationDisabled } =
+				providerState ?? {}
 
 			// Get command execution timeout from VSCode configuration (in seconds)
 			const commandExecutionTimeoutSeconds = vscode.workspace
@@ -223,7 +225,7 @@ export async function executeCommandInTerminal(
 		executionId,
 		command,
 		customCwd,
-		terminalShellIntegrationDisabled = true,
+		terminalShellIntegrationDisabled = SETTINGS_DEFAULTS.terminalShellIntegrationDisabled,
 		commandExecutionTimeout = 0,
 		agentTimeout = 0,
 	}: ExecuteCommandOptions,

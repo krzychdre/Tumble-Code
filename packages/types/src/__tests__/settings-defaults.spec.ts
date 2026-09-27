@@ -53,12 +53,14 @@ describe("resolveSettings", () => {
 		const resolved = resolveSettings({
 			autoCondenseContext: false,
 			terminalCommandDelay: 0,
+			requestDelaySeconds: 0,
 			searxngBaseUrl: "",
 			mcpEnabled: false,
 			soundVolume: 0,
 		})
 		expect(resolved.autoCondenseContext).toBe(false)
 		expect(resolved.terminalCommandDelay).toBe(0)
+		expect(resolved.requestDelaySeconds).toBe(0)
 		expect(resolved.searxngBaseUrl).toBe("")
 		expect(resolved.mcpEnabled).toBe(false)
 		expect(resolved.soundVolume).toBe(0)

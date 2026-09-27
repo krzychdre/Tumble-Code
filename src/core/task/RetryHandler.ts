@@ -11,7 +11,7 @@
 
 import delay from "delay"
 import { backoffDelayMsNoJitter, countdown } from "@roo-code/core"
-import { type ProviderSettings } from "@roo-code/types"
+import { SETTINGS_DEFAULTS, type ProviderSettings } from "@roo-code/types"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type ClineProvider } from "../webview/ClineProvider"
 
@@ -98,7 +98,8 @@ export class RetryHandler {
 	 * @returns The delay in seconds
 	 */
 	calculateBackoffDelay(retryAttempt: number, error: any, state: any): number {
-		const baseDelay = state?.requestDelaySeconds || 5
+		// `||` would mask a user-set 0 (no backoff): `??` keeps it.
+		const baseDelay = state?.requestDelaySeconds ?? SETTINGS_DEFAULTS.requestDelaySeconds
 
 		let exponentialDelay = Math.ceil(
 			backoffDelayMsNoJitter(retryAttempt, {

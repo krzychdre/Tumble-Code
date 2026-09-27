@@ -51,6 +51,7 @@ const settingsDefaults = {
 	includeDiagnosticMessages: true,
 	maxDiagnosticMessages: 50,
 	writeDelayMs: DEFAULT_WRITE_DELAY_MS,
+	requestDelaySeconds: 5,
 
 	autoCondenseContext: true,
 	autoCondenseContextPercent: 100,

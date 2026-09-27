@@ -39,6 +39,11 @@ jobs:
             # (scripts/find-unused-i18n-keys.mjs --missing).
             - name: Test the dead-code scripts
               run: node --test 'scripts/__tests__/*.test.mjs'
+            # D2: no literal defaults on SETTINGS_DEFAULTS keys at call sites —
+            # the table (packages/types/src/settings-defaults.ts) is the one
+            # place a static default may live.
+            - name: Check settings defaults at call sites
+              run: node scripts/check-settings-defaults.mjs
 
     compile:
         runs-on: ubuntu-latest

@@ -8,6 +8,7 @@ import {
 	type TaskEvents,
 	RooCodeEventName,
 	getMaxMcpToolsThreshold,
+	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 } from "@roo-code/types"
 
@@ -214,7 +215,7 @@ export class TaskLifecycle {
 			// Avoid clobbering a newer value that may have been set while awaiting provider state
 			// (e.g., user switches provider profile immediately after task creation).
 			if (this.access._taskApiConfigName === undefined) {
-				this.access._taskApiConfigName = state?.currentApiConfigName ?? "default"
+				this.access._taskApiConfigName = state?.currentApiConfigName ?? SETTINGS_DEFAULTS.currentApiConfigName
 			}
 		} catch (error) {
 			// If there's an error getting state, use the default profile (unless a newer value was set).

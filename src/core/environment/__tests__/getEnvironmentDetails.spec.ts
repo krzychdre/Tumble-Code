@@ -149,7 +149,7 @@ describe("getEnvironmentDetails", () => {
 		// Visible Files and Open Tabs headers only appear when there's content
 		expect(result).toContain("# Current Time") // First emission for this task instance
 		expect(result).not.toContain("# Git Status") // Git status is disabled by default (maxGitStatusFiles = 0)
-		expect(result).not.toContain("# Current Cost") // Cost is churn; off by default
+		expect(result).toContain("# Current Cost") // On by default (SETTINGS_DEFAULTS.includeCurrentCost)
 		expect(result).toContain("# Current Mode")
 		expect(result).toContain("<model>test-model</model>")
 
@@ -161,8 +161,9 @@ describe("getEnvironmentDetails", () => {
 			language: "en",
 		})
 
-		// getApiMetrics is only consulted when includeCurrentCost is enabled.
-		expect(getApiMetrics).not.toHaveBeenCalled()
+		// includeCurrentCost defaults on (SETTINGS_DEFAULTS), so the cost
+		// section consults the metrics.
+		expect(getApiMetrics).toHaveBeenCalled()
 	})
 
 	it("should include file details when includeFileDetails is true", async () => {
@@ -561,7 +562,10 @@ describe("getEnvironmentDetails", () => {
 			}
 		})
 
-		it("omits time on later turns by default but keeps it every turn when includeCurrentTime is true", async () => {
+		it("omits time on later turns when includeCurrentTime is false but keeps it every turn when true", async () => {
+			// The settings default is `true` (SETTINGS_DEFAULTS); the mock state
+			// here overrides it to exercise the off branch.
+			mockProvider.getState.mockResolvedValue({ ...mockState, includeCurrentTime: false })
 			await getEnvironmentDetails(mockCline as Task)
 			const second = await getEnvironmentDetails(mockCline as Task)
 			expect(second).not.toContain("# Current Time")
@@ -571,7 +575,8 @@ describe("getEnvironmentDetails", () => {
 			expect(third).toContain("# Current Time")
 		})
 
-		it("includes cost only when includeCurrentCost is explicitly enabled", async () => {
+		it("includes cost when includeCurrentCost is enabled and omits it when disabled", async () => {
+			mockProvider.getState.mockResolvedValue({ ...mockState, includeCurrentCost: false })
 			const withoutCost = await getEnvironmentDetails(mockCline as Task)
 			expect(withoutCost).not.toContain("# Current Cost")
 

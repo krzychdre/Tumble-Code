@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk"
 
+import { SETTINGS_DEFAULTS } from "@roo-code/types"
 import { parseMentions, ParseMentionsResult, MentionContentBlock } from "./index"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import type { SkillLookup } from "../../services/skills/skillInvocation"
@@ -38,9 +39,9 @@ export async function processUserContentMentions({
 	cwd,
 	fileContextTracker,
 	rooIgnoreController,
-	showRooIgnoredFiles = false,
-	includeDiagnosticMessages = true,
-	maxDiagnosticMessages = 50,
+	showRooIgnoredFiles = SETTINGS_DEFAULTS.showRooIgnoredFiles,
+	includeDiagnosticMessages = SETTINGS_DEFAULTS.includeDiagnosticMessages,
+	maxDiagnosticMessages = SETTINGS_DEFAULTS.maxDiagnosticMessages,
 	skillsManager,
 	currentMode = "code",
 }: {

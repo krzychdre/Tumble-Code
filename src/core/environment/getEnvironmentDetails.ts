@@ -58,7 +58,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 
 	const clineProvider = cline.providerRef.deref()
 	const state = await clineProvider?.getState()
-	const { maxWorkspaceFiles = 200 } = state ?? {}
+	const { maxWorkspaceFiles = SETTINGS_DEFAULTS.maxWorkspaceFiles } = state ?? {}
 
 	// includeFileDetails marks task/resume/subtask starts — always emit the full
 	// block there so the model's baseline never depends on dedup state.
@@ -225,9 +225,14 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 	}
 
 	// Time and cost are churn: they differ every turn while adding nothing the
-	// task needs, so both default off. Time is still emitted on the first turn
-	// (and on resume/subtask starts) so the model knows today's date.
-	const { includeCurrentTime = false, includeCurrentCost = false, maxGitStatusFiles = 0 } = state ?? {}
+	// task needs, so by default both are on (SETTINGS_DEFAULTS) but the
+	// per-turn emission below only fires when enabled. Time is still emitted on
+	// the first turn (and on resume/subtask starts) so the model knows today's date.
+	const {
+		includeCurrentTime = SETTINGS_DEFAULTS.includeCurrentTime,
+		includeCurrentCost = SETTINGS_DEFAULTS.includeCurrentCost,
+		maxGitStatusFiles = SETTINGS_DEFAULTS.maxGitStatusFiles,
+	} = state ?? {}
 
 	// Add current time information with timezone (every turn if enabled,
 	// otherwise only on full emissions).
@@ -320,7 +325,7 @@ export async function getEnvironmentDetails(cline: Task, includeFileDetails: boo
 
 				if (listing) {
 					const [files, didHitLimit] = listing
-					const { showRooIgnoredFiles = false } = state ?? {}
+					const { showRooIgnoredFiles = SETTINGS_DEFAULTS.showRooIgnoredFiles } = state ?? {}
 
 					const result = formatResponse.formatFilesList(
 						cline.cwd,

@@ -37,6 +37,7 @@ import {
 	openRouterDefaultModelId,
 	DEFAULT_MODES,
 	isRetiredProvider,
+	SETTINGS_DEFAULTS,
 	TelemetryEventName,
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
@@ -879,13 +880,13 @@ export class ClineProvider
 		this.getState().then(
 			({
 				terminalShellIntegrationTimeout = Terminal.defaultShellIntegrationTimeout,
-				terminalShellIntegrationDisabled = false,
-				terminalCommandDelay = 0,
-				terminalZshClearEolMark = true,
-				terminalZshOhMy = false,
-				terminalZshP10k = false,
-				terminalPowershellCounter = false,
-				terminalZdotdir = false,
+				terminalShellIntegrationDisabled = SETTINGS_DEFAULTS.terminalShellIntegrationDisabled,
+				terminalCommandDelay = SETTINGS_DEFAULTS.terminalCommandDelay,
+				terminalZshClearEolMark = SETTINGS_DEFAULTS.terminalZshClearEolMark,
+				terminalZshOhMy = SETTINGS_DEFAULTS.terminalZshOhMy,
+				terminalZshP10k = SETTINGS_DEFAULTS.terminalZshP10k,
+				terminalPowershellCounter = SETTINGS_DEFAULTS.terminalPowershellCounter,
+				terminalZdotdir = SETTINGS_DEFAULTS.terminalZdotdir,
 				terminalProfile,
 			}) => {
 				Terminal.setShellIntegrationTimeout(terminalShellIntegrationTimeout)
@@ -1327,7 +1328,8 @@ export class ClineProvider
 	// OpenRouter
 
 	async handleOpenRouterCallback(code: string) {
-		const { apiConfiguration, currentApiConfigName = "default" } = await this.getState()
+		const { apiConfiguration, currentApiConfigName = SETTINGS_DEFAULTS.currentApiConfigName } =
+			await this.getState()
 
 		let apiKey: string
 
@@ -2376,7 +2378,7 @@ export class ClineProvider
 	}
 
 	public async getProviderProfile(): Promise<string> {
-		const { currentApiConfigName = "default" } = await this.getState()
+		const { currentApiConfigName = SETTINGS_DEFAULTS.currentApiConfigName } = await this.getState()
 		return currentApiConfigName
 	}
 
