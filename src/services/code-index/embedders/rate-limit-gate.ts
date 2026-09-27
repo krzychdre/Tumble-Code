@@ -1,3 +1,5 @@
+import { backoffDelayMsNoJitter } from "@roo-code/core"
+
 /** Backoff after the first 429 from an endpoint; it doubles with every further 429. */
 const BASE_BACKOFF_MS = 5_000
 /** The backoff never grows past five minutes. */
@@ -34,7 +36,8 @@ export class RateLimitGate {
 		const now = Date.now()
 		this.consecutiveErrors = now - this.lastErrorAt < ESCALATION_WINDOW_MS ? this.consecutiveErrors + 1 : 1
 		this.lastErrorAt = now
-		this.resetAt = now + Math.min(BASE_BACKOFF_MS * Math.pow(2, this.consecutiveErrors - 1), MAX_BACKOFF_MS)
+		this.resetAt =
+			now + backoffDelayMsNoJitter(this.consecutiveErrors - 1, { baseMs: BASE_BACKOFF_MS, capMs: MAX_BACKOFF_MS })
 	}
 
 	/** Milliseconds left in the current backoff, 0 when there is none. */

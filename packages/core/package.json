@@ -6,6 +6,7 @@
 	"type": "module",
 	"exports": {
 		".": "./src/index.ts",
+		"./backoff": "./src/backoff.ts",
 		"./cli": "./src/cli.ts",
 		"./browser": "./src/browser.ts",
 		"./fs": "./src/fs/index.ts",

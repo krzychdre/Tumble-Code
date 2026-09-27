@@ -1,6 +1,7 @@
 import type { EmbedderProvider } from "@roo-code/types"
 import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
+import { backoffDelayMsNoJitter } from "@roo-code/core"
 
 import {
 	IEmbedder,
@@ -247,7 +248,13 @@ export abstract class BaseHttpEmbedder implements IEmbedder {
 				if (this.isRateLimitError(error)) {
 					gate.recordRateLimit()
 					if (attempt < MAX_BATCH_RETRIES - 1) {
-						const delayMs = Math.max(INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt), gate.remainingDelay())
+						const delayMs = Math.max(
+							backoffDelayMsNoJitter(attempt, {
+								baseMs: INITIAL_RETRY_DELAY_MS,
+								capMs: Number.MAX_SAFE_INTEGER,
+							}),
+							gate.remainingDelay(),
+						)
 						console.warn(
 							t("embeddings:rateLimitRetry", {
 								delayMs,

@@ -236,6 +236,9 @@ importers:
 
   packages/cloud:
     dependencies:
+      '@roo-code/core':
+        specifier: workspace:^
+        version: link:../core
       '@roo-code/types':
         specifier: workspace:^
         version: link:../types

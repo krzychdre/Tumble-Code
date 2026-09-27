@@ -28,6 +28,7 @@ import {
 import { isPathInIgnoredDirectory } from "../../glob/ignore-utils"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
+import { backoffDelayMsNoJitter } from "@roo-code/core"
 import { sanitizeErrorMessage } from "../shared/validation-helpers"
 import { Package } from "../../../shared/package"
 import { reportEmbeddingUsage } from "../embedding-usage"
@@ -495,7 +496,10 @@ export class DirectoryScanner implements IDirectoryScanner {
 				})
 
 				if (attempts < MAX_BATCH_RETRIES) {
-					const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempts - 1)
+					const delay = backoffDelayMsNoJitter(attempts - 1, {
+						baseMs: INITIAL_RETRY_DELAY_MS,
+						capMs: Number.MAX_SAFE_INTEGER,
+					})
 					await new Promise((resolve) => setTimeout(resolve, delay))
 				}
 			}
