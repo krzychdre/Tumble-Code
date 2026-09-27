@@ -10,6 +10,8 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { getTaskDirectoryPath } from "../../utils/storage"
 
+import { quarantineCorruptFile } from "./quarantineCorruptFile"
+
 export type ApiMessage = Anthropic.MessageParam & {
 	ts?: number
 	isSummary?: boolean
@@ -50,26 +52,29 @@ export async function readApiMessages({
 
 	if (await fileExistsAtPath(filePath)) {
 		const fileContent = await fs.readFile(filePath, "utf8")
+		let parsedData: unknown
 		try {
-			const parsedData = JSON.parse(fileContent)
-			if (!Array.isArray(parsedData)) {
-				console.warn(
-					`[readApiMessages] Parsed data is not an array (got ${typeof parsedData}), returning empty. TaskId: ${taskId}, Path: ${filePath}`,
-				)
-				return []
-			}
-			if (parsedData.length === 0) {
-				console.error(
-					`[Roo-Debug] readApiMessages: Found API conversation history file, but it's empty (parsed as []). TaskId: ${taskId}, Path: ${filePath}`,
-				)
-			}
-			return parsedData
+			parsedData = JSON.parse(fileContent)
 		} catch (error) {
-			console.warn(
-				`[readApiMessages] Error parsing API conversation history file, returning empty. TaskId: ${taskId}, Path: ${filePath}, Error: ${error}`,
+			await quarantineCorruptFile(
+				filePath,
+				`API conversation history of task ${taskId} is not valid JSON (${error})`,
 			)
 			return []
 		}
+		if (!Array.isArray(parsedData)) {
+			await quarantineCorruptFile(
+				filePath,
+				`API conversation history of task ${taskId} is not an array (got ${typeof parsedData})`,
+			)
+			return []
+		}
+		if (parsedData.length === 0) {
+			console.error(
+				`[Roo-Debug] readApiMessages: Found API conversation history file, but it's empty (parsed as []). TaskId: ${taskId}, Path: ${filePath}`,
+			)
+		}
+		return parsedData
 	} else {
 		const oldPath = path.join(taskDir, "claude_messages.json")
 
