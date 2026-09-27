@@ -3,6 +3,7 @@ import * as http from "http"
 import { URL } from "url"
 import type { ExtensionContext } from "vscode"
 import { z } from "zod"
+import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
 
 /**
  * OpenAI Codex OAuth Configuration
@@ -239,7 +240,7 @@ export async function exchangeCodeForTokens(code: string, codeVerifier: string):
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
 		body: body.toString(),
-		signal: AbortSignal.timeout(30000),
+		signal: AbortSignal.timeout(CONTROL_REQUEST_TIMEOUT_MS),
 	})
 
 	if (!response.ok) {
@@ -290,7 +291,7 @@ export async function refreshAccessToken(credentials: OpenAiCodexCredentials): P
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
 		body: body.toString(),
-		signal: AbortSignal.timeout(30000),
+		signal: AbortSignal.timeout(CONTROL_REQUEST_TIMEOUT_MS),
 	})
 
 	if (!response.ok) {

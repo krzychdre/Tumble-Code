@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, afterEach } from "vitest"
 
-import { parseOpenAiCodexUsagePayload } from "../rate-limits"
+import { fetchOpenAiCodexRateLimitInfo, parseOpenAiCodexUsagePayload } from "../rate-limits"
 
 describe("parseOpenAiCodexUsagePayload()", () => {
 	it("maps primary/secondary windows", () => {
@@ -43,5 +43,27 @@ describe("parseOpenAiCodexUsagePayload()", () => {
 		expect(out.primary?.usedPercent).toBe(100)
 		expect(out.secondary?.usedPercent).toBe(0)
 		expect(out.fetchedAt).toBe(fetchedAt)
+	})
+})
+
+describe("fetchOpenAiCodexRateLimitInfo()", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	// R5: the usage lookup is a short control request; on a dropped connection it must give up.
+	it("aborts the request after the control request timeout", async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValue(
+				new Response(JSON.stringify({ rate_limit: { primary_window: { used_percent: 1 } } }), { status: 200 }),
+			)
+		vi.stubGlobal("fetch", fetchMock)
+		const timeoutSpy = vi.spyOn(AbortSignal, "timeout")
+
+		await fetchOpenAiCodexRateLimitInfo("token")
+
+		expect(timeoutSpy).toHaveBeenCalledWith(30_000)
+		expect(fetchMock.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal)
 	})
 })

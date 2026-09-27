@@ -1,4 +1,5 @@
 import { t } from "../../../i18n"
+import { getApiRequestTimeout } from "./timeout-config"
 
 // Image generation types
 interface ImageGenerationResponse {
@@ -73,6 +74,7 @@ export async function generateImageWithProvider(options: ImageGenerationOptions)
 				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Code",
 				"X-Title": "Roo Code",
 			},
+			signal: AbortSignal.timeout(getApiRequestTimeout()),
 			body: JSON.stringify({
 				model,
 				messages: [
@@ -220,6 +222,7 @@ export async function generateImageWithImagesApi(options: ImagesApiOptions): Pro
 				"X-Title": "Roo Code",
 			},
 			body: JSON.stringify(requestBody),
+			signal: AbortSignal.timeout(getApiRequestTimeout()),
 		}
 
 		const response = await fetch(url, fetchOptions)

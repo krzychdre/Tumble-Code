@@ -1,4 +1,5 @@
 import type { OpenAiCodexRateLimitInfo } from "@roo-code/types"
+import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
 
 const WHAM_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
 
@@ -79,7 +80,11 @@ export async function fetchOpenAiCodexRateLimitInfo(
 		headers["ChatGPT-Account-Id"] = options.accountId
 	}
 
-	const response = await fetch(WHAM_USAGE_URL, { method: "GET", headers })
+	const response = await fetch(WHAM_USAGE_URL, {
+		method: "GET",
+		headers,
+		signal: AbortSignal.timeout(CONTROL_REQUEST_TIMEOUT_MS),
+	})
 	if (!response.ok) {
 		const text = await response.text().catch(() => "")
 		throw new Error(
