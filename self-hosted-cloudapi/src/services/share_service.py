@@ -56,45 +56,56 @@ async def share_task(
                     error="Public task sharing is disabled for this organization",
                 )
 
-    # Check for existing share
-    result = await db.execute(
-        select(TaskShare).where(TaskShare.task_id == task_id)
-    )
-    existing_share = result.scalar_one_or_none()
-
     # Absolute URLs so the link the extension copies to the clipboard is
     # directly openable in a browser.
     base = settings.api_base_url.rstrip("/")
     share_url = f"{base}/shared/{task_id}"
     manage_url = f"{base}/app/tasks/{task_id}"
 
-    if existing_share:
-        # Refresh visibility and (legacy relative) URLs to the absolute form.
-        existing_share.visibility = visibility
-        existing_share.share_url = share_url
-        existing_share.manage_url = manage_url
-        await db.flush()
-        return ShareResponse(
-            success=True,
+    # Race-proof creation, not select-then-insert. Two concurrent share
+    # requests (a double click, two tabs) used to both pass the "no share
+    # yet" SELECT and both INSERT, leaving two rows for one task — and every
+    # reader of a task's share uses scalar_one_or_none(), so the duplicates
+    # broke the shared page outright. The unique index uq_task_shares_task_id
+    # (migration b4c5d6e7f8a9) backs an ON CONFLICT DO NOTHING insert: exactly
+    # one racing caller's row lands (rowcount 1, is_new_share=True); the
+    # others conflict and get rowcount 0, then refresh the surviving row.
+    # index_elements (never constraint=...): Postgres only accepts ON CONFLICT
+    # ON CONSTRAINT for a constraint, not a unique index.
+    dialect = db.bind.dialect.name
+    if dialect == "postgresql":
+        from sqlalchemy.dialects.postgresql import insert as _insert
+    else:
+        from sqlalchemy.dialects.sqlite import insert as _insert
+
+    result = await db.execute(
+        _insert(TaskShare)
+        .values(
+            task_id=task_id,
+            visibility=visibility,
             share_url=share_url,
-            is_new_share=False,
             manage_url=manage_url,
         )
-
-    # Create new share
-    share = TaskShare(
-        task_id=task_id,
-        visibility=visibility,
-        share_url=share_url,
-        manage_url=manage_url,
+        .on_conflict_do_nothing(index_elements=["task_id"])
     )
-    db.add(share)
+    created = result.rowcount == 1
+
+    if not created:
+        # A share row already exists (sequential re-share, or a racing caller
+        # that lost the insert): refresh visibility and (legacy relative)
+        # URLs in place, exactly like the old existing-share branch. A plain
+        # UPDATE by task_id — no uniqueness decision left to race.
+        await db.execute(
+            update(TaskShare)
+            .where(TaskShare.task_id == task_id)
+            .values(visibility=visibility, share_url=share_url, manage_url=manage_url)
+        )
     await db.flush()
 
     return ShareResponse(
         success=True,
         share_url=share_url,
-        is_new_share=True,
+        is_new_share=created,
         manage_url=manage_url,
     )
 

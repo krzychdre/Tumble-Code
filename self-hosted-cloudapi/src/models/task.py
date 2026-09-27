@@ -159,4 +159,15 @@ class TaskShare(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    # One share row per task, ever. POST /api/extension/share used to be a
+    # non-atomic select-then-insert, so two concurrent requests both inserted
+    # and every scalar_one_or_none() reader of a task's share (shared_view_access
+    # et al.) started raising MultipleResultsFound. Declared as the unique INDEX
+    # (not a UniqueConstraint) exactly like uq_task_messages_task_ts above, so a
+    # fresh create_all database and a migrated one hold the same object, and the
+    # service can upsert with ON CONFLICT naming index_elements.
+    __table_args__ = (
+        Index("uq_task_shares_task_id", "task_id", unique=True),
+    )
+
     task = relationship("Task", back_populates="shares")
