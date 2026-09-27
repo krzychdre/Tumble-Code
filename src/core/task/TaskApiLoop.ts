@@ -1395,29 +1395,23 @@ export class TaskApiLoop {
 		const iterator = stream[Symbol.asyncIterator]()
 
 		// Set up abort handling
-		abortSignal.addEventListener("abort", () => {
-			console.log(
-				`[Task#${this.access.taskId}.${this.access.instanceId}] AbortSignal triggered for current request`,
-			)
-			this.access.currentRequestAbortController = undefined
-		})
+		abortSignal.addEventListener(
+			"abort",
+			() => {
+				console.log(
+					`[Task#${this.access.taskId}.${this.access.instanceId}] AbortSignal triggered for current request`,
+				)
+				this.access.currentRequestAbortController = undefined
+			},
+			{ once: true },
+		)
 
 		try {
-			// Await first chunk
+			// Await first chunk. The same race as every later chunk (processStream), so its abort listener is
+			// removed as soon as the chunk arrives instead of staying on the signal for the whole stream.
 			this.access.isWaitingForFirstChunk = true
 
-			const firstChunkPromise = iterator.next()
-			const abortPromise = new Promise<never>((_, reject) => {
-				if (abortSignal.aborted) {
-					reject(new Error("Request cancelled by user"))
-				} else {
-					abortSignal.addEventListener("abort", () => {
-						reject(new Error("Request cancelled by user"))
-					})
-				}
-			})
-
-			const firstChunk = await Promise.race([firstChunkPromise, abortPromise])
+			const firstChunk = await raceNextChunkWithAbort(iterator, abortSignal)
 			yield firstChunk.value
 			this.access.isWaitingForFirstChunk = false
 		} catch (error) {
