@@ -10,6 +10,8 @@ import { fileExistsAtPath } from "../../utils/fs"
 import { GlobalFileNames } from "../../shared/globalFileNames"
 import { getTaskDirectoryPath } from "../../utils/storage"
 
+import { quarantineCorruptFile } from "./quarantineCorruptFile"
+
 export type ReadTaskMessagesOptions = {
 	taskId: string
 	globalStoragePath: string
@@ -23,25 +25,39 @@ export async function readTaskMessages({
 	const filePath = path.join(taskDir, GlobalFileNames.uiMessages)
 	const fileExists = await fileExistsAtPath(filePath)
 
-	if (fileExists) {
-		try {
-			const parsedData = JSON.parse(await fs.readFile(filePath, "utf8"))
-			if (!Array.isArray(parsedData)) {
-				console.warn(
-					`[readTaskMessages] Parsed data is not an array (got ${typeof parsedData}), returning empty. TaskId: ${taskId}, Path: ${filePath}`,
-				)
-				return []
-			}
-			return parsedData
-		} catch (error) {
-			console.warn(
-				`[readTaskMessages] Failed to parse ${filePath} for task ${taskId}, returning empty: ${error instanceof Error ? error.message : String(error)}`,
-			)
-			return []
-		}
+	if (!fileExists) {
+		return []
 	}
 
-	return []
+	let fileContent: string
+	try {
+		fileContent = await fs.readFile(filePath, "utf8")
+	} catch (error) {
+		// Not a corrupt file (for example a permission error): leave it where it is.
+		console.warn(
+			`[readTaskMessages] Failed to read ${filePath} for task ${taskId}, returning empty: ${error instanceof Error ? error.message : String(error)}`,
+		)
+		return []
+	}
+
+	let parsedData: unknown
+	try {
+		parsedData = JSON.parse(fileContent)
+	} catch (error) {
+		await quarantineCorruptFile(
+			filePath,
+			`UI messages of task ${taskId} are not valid JSON (${error instanceof Error ? error.message : String(error)})`,
+		)
+		return []
+	}
+	if (!Array.isArray(parsedData)) {
+		await quarantineCorruptFile(
+			filePath,
+			`UI messages of task ${taskId} are not an array (got ${typeof parsedData})`,
+		)
+		return []
+	}
+	return parsedData
 }
 
 export type SaveTaskMessagesOptions = {

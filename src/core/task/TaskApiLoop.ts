@@ -858,7 +858,13 @@ export class TaskApiLoop {
 		)
 
 		if (hasTextContent || hasToolUses) {
-			await pWaitFor(() => this.access.userMessageContentReady)
+			// The abort term matters: a task aborted while a tool is still running (for example during its
+			// approval ask) never sets userMessageContentReady, and this wait would poll forever.
+			await pWaitFor(() => this.access.userMessageContentReady || this.access.abort)
+
+			if (this.access.abort) {
+				return "return_true"
+			}
 
 			const didToolUse = this.access.assistantMessageContent.some(
 				(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
@@ -1421,29 +1427,23 @@ export class TaskApiLoop {
 		const iterator = stream[Symbol.asyncIterator]()
 
 		// Set up abort handling
-		abortSignal.addEventListener("abort", () => {
-			console.log(
-				`[Task#${this.access.taskId}.${this.access.instanceId}] AbortSignal triggered for current request`,
-			)
-			this.access.currentRequestAbortController = undefined
-		})
+		abortSignal.addEventListener(
+			"abort",
+			() => {
+				console.log(
+					`[Task#${this.access.taskId}.${this.access.instanceId}] AbortSignal triggered for current request`,
+				)
+				this.access.currentRequestAbortController = undefined
+			},
+			{ once: true },
+		)
 
 		try {
-			// Await first chunk
+			// Await first chunk. The same race as every later chunk (processStream), so its abort listener is
+			// removed as soon as the chunk arrives instead of staying on the signal for the whole stream.
 			this.access.isWaitingForFirstChunk = true
 
-			const firstChunkPromise = iterator.next()
-			const abortPromise = new Promise<never>((_, reject) => {
-				if (abortSignal.aborted) {
-					reject(new Error("Request cancelled by user"))
-				} else {
-					abortSignal.addEventListener("abort", () => {
-						reject(new Error("Request cancelled by user"))
-					})
-				}
-			})
-
-			const firstChunk = await Promise.race([firstChunkPromise, abortPromise])
+			const firstChunk = await raceNextChunkWithAbort(iterator, abortSignal)
 			yield firstChunk.value
 			this.access.isWaitingForFirstChunk = false
 		} catch (error) {

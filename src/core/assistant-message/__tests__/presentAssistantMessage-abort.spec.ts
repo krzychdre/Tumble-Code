@@ -76,6 +76,20 @@ describe("presentAssistantMessage - abort crash regression (handleError -> say r
 		})
 	})
 
+	// R4: every production caller fires presentAssistantMessage without awaiting it, so throwing on an
+	// already aborted task only produced an unhandled rejection.
+	it("returns quietly instead of rejecting when the task is already aborted", async () => {
+		mockTask.abort = true
+		mockTask.assistantMessageContent = [
+			{ type: "tool_use", id: "call-1", name: "read_file", params: {}, partial: false },
+		]
+		vi.spyOn(console, "log").mockImplementation(() => {})
+
+		await expect(presentAssistantMessage(mockTask)).resolves.toBeUndefined()
+		expect(mockTask.askSay.ask).not.toHaveBeenCalled()
+		expect(mockTask.currentStreamingContentIndex).toBe(0)
+	})
+
 	it("does not crash when ask() throws an abort Error and cline.abort is set", async () => {
 		// Reproduces the original crash. The real race: presentAssistantMessage
 		// enters with abort=false and dispatches the tool; the user aborts
