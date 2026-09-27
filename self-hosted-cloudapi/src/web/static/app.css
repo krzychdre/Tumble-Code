@@ -277,6 +277,13 @@ table.breakdown th {
    Buttons and controls
    ========================================================================== */
 
+/* A form that renders as one inline control, so a POST button sits in a
+   row of links (the sign-out button in the header) without a line break. */
+form.inline {
+	display: inline-flex;
+	margin: 0;
+}
+
 .btn {
 	display: inline-flex;
 	align-items: center;

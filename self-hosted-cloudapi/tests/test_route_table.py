@@ -51,7 +51,7 @@ EXPECTED = {
     ("/extension/provider-sign-up", ("GET",), "provider_sign_up_page", "APIRoute"),
     ("/l/{slug}", ("GET",), "landing_page", "APIRoute"),
     ("/app/login", ("GET",), "web_login", "APIRoute"),
-    ("/app/logout", ("GET",), "web_logout", "APIRoute"),
+    ("/app/logout", ("POST",), "web_logout", "APIRoute"),
     ("/auth/clerk/callback", ("GET",), "auth_callback", "APIRoute"),
     ("/auth/error", ("GET",), "auth_error_page", "APIRoute"),
     ("/api/extension/share", ("POST",), "share_task_endpoint", "APIRoute"),
@@ -131,7 +131,7 @@ def test_web_routes_keep_their_openapi_operations():
     html, json_ = ("text/html",), ("application/json",)
     assert ops == {
         ("/app/login", "get"): ("web_login_app_login_get", ("browser-auth",), json_, ()),
-        ("/app/logout", "get"): ("web_logout_app_logout_get", ("browser-auth",), json_, ()),
+        ("/app/logout", "post"): ("web_logout_app_logout_post", ("browser-auth",), json_, ()),
         ("/app", "get"): (
             "task_list_app_get",
             ("web",),

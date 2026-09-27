@@ -22,13 +22,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src.auth.authentik import generate_pkce_pair, get_authorize_url
-from src.auth.web_session import clear_session_cookie, cookie_should_be_secure, set_session_cookie
+from src.auth.web_session import (
+    WebUser,
+    clear_session_cookie,
+    cookie_should_be_secure,
+    get_web_user_optional,
+    set_session_cookie,
+)
 from src.services.auth_service import (
     store_oauth_state,
     get_oauth_state,
     get_or_create_user,
     create_session,
     create_ticket,
+    deactivate_session,
 )
 from src.auth.authentik import exchange_code_for_tokens, get_userinfo
 from src.auth.network_access import client_allowed
@@ -202,9 +209,26 @@ async def web_login(
     return RedirectResponse(url=authorize_url)
 
 
-@router.get("/app/logout")
-async def web_logout(request: Request):
-    """Clear the browser session cookie and return to the login page."""
+@router.post("/app/logout")
+async def web_logout(
+    request: Request,
+    user: Optional[WebUser] = Depends(get_web_user_optional),
+    db: AsyncSession = Depends(get_db),
+):
+    """Deactivate the session, clear the cookie, and return to the login page.
+
+    A POST (R10): logout changes server state, and a GET link can be forged —
+    an ``<img src="/app/logout">`` on any same-site page used to be able to
+    sign the reader out. The session row is deactivated too, so the logout
+    ends the session everywhere (the extension's client tokens for the same
+    Session stop working), not just in the browser that clicked.
+
+    Nobody signed in gets the same redirect and cookie clear: an anonymous
+    GET of the old link, a stale cookie for a session that is gone, and the
+    follow-up request after logout all land on the login page.
+    """
+    if user is not None:
+        await deactivate_session(db, user["session_id"])
     response = RedirectResponse(url="/app/login", status_code=303)
     clear_session_cookie(response, secure=cookie_should_be_secure(request))
     return response

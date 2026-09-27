@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from src.models.user import User, Session, ClientToken, Ticket
 from src.models.oauth import AuthentikStateStore
@@ -202,14 +202,24 @@ async def get_oauth_state(
     db: AsyncSession,
     state: str,
 ) -> Optional[AuthentikStateStore]:
-    """Retrieve and validate OAuth state."""
+    """Retrieve, validate, and consume OAuth state.
+
+    The row is single-use (R10): it is deleted as soon as it is read, so a
+    replayed callback — the state parameter leaked to logs, or a browser
+    retry — finds nothing. On the not-found path nothing is deleted, and
+    expired rows wait for ``purge_expired_auth_rows``.
+    """
     result = await db.execute(
         select(AuthentikStateStore).where(
             AuthentikStateStore.state == state,
             AuthentikStateStore.expires_at > datetime.now(timezone.utc),
         )
     )
-    return result.scalar_one_or_none()
+    state_store = result.scalar_one_or_none()
+    if state_store is not None:
+        await db.execute(delete(AuthentikStateStore).where(AuthentikStateStore.state == state))
+        await db.flush()
+    return state_store
 
 
 async def deactivate_session(
@@ -222,3 +232,43 @@ async def deactivate_session(
     if session:
         session.is_active = False
         await db.flush()
+
+
+async def purge_expired_auth_rows(db: AsyncSession, now: Optional[datetime] = None) -> int:
+    """Delete expired single-use and idle-expired auth rows; return how many.
+
+    R10: OAuth state rows, login tickets and client tokens carry an expiry but
+    were never removed, so the three tables only ever grew. Tickets are
+    removed once expired, used or not — a used ticket is dead weight the same
+    way an expired one is, and ``validate_ticket`` has already made it
+    unusable. Client tokens are removed only when expiry is actually on
+    (``client_token_idle_days > 0``): a NULL ``expires_at`` means never-expire
+    by configuration, and such rows must stay.
+
+    Not per-user: these tables have no owner-facing retention policy and
+    expiry is intrinsic to each row, so this runs as one global sweep in the
+    retention cycle, outside the per-user savepoints — a failure here must
+    not poison (or be poisoned by) any user's retention round.
+    """
+    now = now or datetime.now(timezone.utc)
+    total = 0
+
+    # Callers may pass a naive ``now`` (SQLite habits); make it explicitly UTC
+    # so the bound value compares like with like on both databases.
+    expired = now if now.tzinfo is not None else now.replace(tzinfo=timezone.utc)
+
+    states = await db.execute(
+        delete(AuthentikStateStore).where(AuthentikStateStore.expires_at < expired)
+    )
+    total += states.rowcount or 0
+
+    tickets = await db.execute(delete(Ticket).where(Ticket.expires_at < expired))
+    total += tickets.rowcount or 0
+
+    if settings.client_token_idle_days > 0:
+        tokens = await db.execute(delete(ClientToken).where(ClientToken.expires_at < expired))
+        total += tokens.rowcount or 0
+
+    if total:
+        await db.flush()
+    return total
