@@ -2,9 +2,13 @@
 
 Read this page before you change code that crosses a folder boundary. It names the parts of the repository, which
 direction they may depend on each other, and the two paths almost every change touches: a message from the chat
-panel to the extension, and a model answer from the provider back to the chat. Every refactor item that moves a
-boundary updates this page in the same pull request. Item names such as `CORE-R1` refer to the refactor plan
-(`ai_plans/2026-09-24_refactor/`).
+panel to the extension, and a model answer from the provider back to the chat. Every change that moves a
+boundary updates this page in the same pull request. For the level-0 overview and the detailed mechanism pages,
+start at [docs/README.md](README.md).
+
+Item names such as `CORE-R1` in code comments refer to the 2026-09-24 refactor plan. That plan was kept on a
+branch that no longer exists; what it achieved and what remains is summarised in
+[`ai_plans/2026-09-27_simplification-roadmap.md`](../ai_plans/2026-09-27_simplification-roadmap.md).
 
 ## The workspaces
 
@@ -20,7 +24,7 @@ that depend on each other by name (`"@roo-code/types": "workspace:^"`).
 | `apps/vscode-e2e/`            | `@roo-code/vscode-e2e`                                   | End-to-end tests in a real VS Code.                                                                                                                                               |
 | `apps/vscode-nightly/`        | `@roo-code/vscode-nightly`                               | The nightly VSIX build.                                                                                                                                                           |
 | `packages/types/`             | `@roo-code/types`                                        | Zod schemas and TypeScript types shared by everyone: settings, providers, `ExtensionMessage` and `WebviewMessage`, the CLI runtime contract. Its only runtime dependency is zod.  |
-| `packages/core/`              | `@roo-code/core`                                         | Platform-agnostic logic (no `vscode`). Entry points: `.` (host), `./browser` (webview-safe), `./cli`, `./fs` (`safeWriteJson`).                                                   |
+| `packages/core/`              | `@roo-code/core`                                         | Platform-agnostic logic (no `vscode`). Entry points: `.` (host), `./browser` (webview-safe), `./cli`, `./fs` (`safeWriteJson`), `./path`.                                         |
 | `packages/cloud/`             | `@roo-code/cloud`                                        | `CloudService`: login, settings sync, sharing, the bridge to the self-hosted cloud API.                                                                                           |
 | `packages/telemetry/`         | `@roo-code/telemetry`                                    | `TelemetryService` and its clients.                                                                                                                                               |
 | `packages/agent-interchange/` | `@roo-code/agent-interchange`                            | Reading and handing off sessions between Claude Code and Tumble Code (an MCP server plus readers).                                                                                |
@@ -81,12 +85,12 @@ slots by literal name, so renaming a slot means changing both.
 ## Where settings defaults live today
 
 Settings are stored by `ContextProxy` (`src/core/config/ContextProxy.ts`) under the keys and schemas in
-`packages/types/src/global-settings.ts` and `provider-settings.ts`. The default for an unset value is applied in
-several places: `ClineProvider.getState()` (what host code reads), `ClineProvider.getStateToPostToWebview()` (what
-the webview receives), and the webview's initial state in `webview-ui/src/context/ExtensionStateContext.tsx`. A
-few values already have one shared constant in `packages/types` (for example
-`DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS`); when you add a setting, add such a constant and use it in all
-three places. CORE-R1 will replace the copies with one defaults table.
+`packages/types/src/global-settings.ts` and `provider-settings.ts`. The default for an unset value comes from one
+table, `SETTINGS_DEFAULTS` in `packages/types/src/settings-defaults.ts` (CORE-R1). `ProviderStateBuilder`
+(`src/core/webview/ProviderStateBuilder.ts`) applies it with `resolveSettings` when it builds `getState()` and the
+webview state; the settings form reads it through `webview-ui/src/components/settings/schema.ts`. When you add a
+setting, add its default to that table. Code that reads a possibly unset value writes
+`?? SETTINGS_DEFAULTS.key`, never a literal such as `?? true` or `|| 5`.
 
 ## From the webview to a handler
 
@@ -104,21 +108,22 @@ three places. CORE-R1 will replace the copies with one defaults table.
 ## From a provider stream to a chat row
 
 1. `buildApiHandler` (`src/api/index.ts`) picks a provider class in `src/api/providers/`; its `createMessage`
-   returns an `ApiStream` of chunks (`text`, `reasoning`, `tool_call_partial`, `tool_call`, `usage`; see
-   `src/api/transform/stream.ts`). Each provider parses its own wire format today; API-7 will add one shared
-   Chat Completions stream adapter.
+   returns an `ApiStream` of chunks (`text`, `reasoning`, `tool_call_*`, `usage` and six more; see
+   `src/api/transform/stream.ts`). Providers on the Chat Completions wire format share
+   `src/api/transform/chat-completions-stream.ts` (API-7); the others parse their own format.
 2. `TaskApiLoop.attemptApiRequest` (`src/core/task/TaskApiLoop.ts`) iterates the stream and hands each chunk to
    `TaskStreamProcessor.processChunk`, which turns text and reasoning into `say(...)` calls and tool calls into
    `presentAssistantMessage` (tool execution).
 3. `TaskAskSay` records the result as a `ClineMessage`; `TaskHistory.addToClineMessages` pushes a state update and
    `TaskHistory.updateClineMessage` sends a `messageUpdated` message for a streaming partial.
 4. In the webview, `ChatView.tsx` shapes the message list (`modifiedMessages`, `visibleMessages`,
-   `groupedMessages`) and renders one `ChatRow` per entry. WEB-1 will move that shaping into pure functions.
+   `groupedMessages`) with the pure functions in `webview-ui/src/components/chat/rows/` (WEB-1) and renders one
+   `ChatRow` per entry.
 
 ## Do not touch without a dedicated item
 
 These look odd but encode tested race fixes or deliberate contracts. Change them only in a planned item with the
-named tests in place (full list: "Do not touch" in `ai_plans/2026-09-24_refactor/00-master-plan.md`).
+named tests in place. This list is now the authoritative copy (the plan it was taken from is gone).
 
 - State delivery to the webview: `clineMessagesSeq`, the three `postStateToWebview*` variants, the `sourceTaskId`
   routing in the webview state merge.
