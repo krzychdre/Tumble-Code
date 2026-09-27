@@ -18,6 +18,17 @@ from config.auth import (
 )
 
 
+# Explicit timeouts for the Authentik back channel (token / userinfo). httpx's
+# default (5 s everywhere) would leave a hung Authentik blocking the sign-in
+# request for the client's whole patience; instead: fail fast on connect, and
+# give the actual token/userinfo call reasonable room. No automatic retry:
+# both calls are one side of a user-facing redirect flow (the code exchange
+# consumes a single-use authorization code — replaying it fails with
+# `invalid_grant`), so a retry would not help; the browser flow surfaces the
+# error and the user can sign in again.
+AUTHENTIK_TIMEOUT = httpx.Timeout(connect=5.0, read=15.0, write=5.0, pool=5.0)
+
+
 def _back_channel_headers(extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     """Headers for server-to-server Authentik calls, including the brand ``Host``.
 
@@ -75,7 +86,7 @@ async def exchange_code_for_tokens(
     ``redirect_uri`` is the one the authorization request carried, as OAuth
     requires (RFC 6749, 4.1.3); the configured one when omitted.
     """
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=AUTHENTIK_TIMEOUT) as client:
         token_data = {
             "grant_type": "authorization_code",
             "code": code,
@@ -100,7 +111,7 @@ async def exchange_code_for_tokens(
 
 async def get_userinfo(access_token: str) -> Dict[str, Any]:
     """Fetch user info from Authentik using the access token."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=AUTHENTIK_TIMEOUT) as client:
         response = await client.get(
             get_authentik_userinfo_url(),
             headers=_back_channel_headers(

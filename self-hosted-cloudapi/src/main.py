@@ -72,6 +72,7 @@ async def lifespan(app: FastAPI):
     """
     # Imported here so tests can point src.database.engine elsewhere.
     from src.database import engine
+    from src.realtime.sio import sio
 
     _log_banner()
 
@@ -90,6 +91,15 @@ async def lifespan(app: FastAPI):
             await sweeper
         except asyncio.CancelledError:
             pass
+    if settings.bridge_enabled:
+        # Close the bridge: stop engine.io's background tasks and disconnect
+        # every client, so shutdown does not wait on them (and so a connecting
+        # client cannot ride a half-closed server). The service task starts
+        # lazily on the first connection, so shutdown() is only awaited when
+        # there is something to stop (calling it before any connection exists
+        # would await a None task handle).
+        if sio.eio.service_task_handle is not None:
+            await sio.shutdown()
     await engine.dispose()
     logger.info("Roo Cloud API stopped")
 
@@ -180,8 +190,31 @@ if settings.bridge_enabled:
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
+    """Liveness: the process answers. Never touches the database, so a dead
+    DB does not take the whole container down with it."""
     return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Readiness: the app can actually serve requests, i.e. the database
+    answers ``SELECT 1``. Returns 503 when it does not, so orchestrators and
+    the Docker healthcheck route traffic or restart accordingly."""
+    from sqlalchemy import text
+
+    # Imported here (like lifespan does) so tests can point src.database.engine
+    # at their own fixture.
+    from src.database import engine
+
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as exc:
+        logger.warning("readiness check failed: %s", exc)
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse({"status": "unavailable"}, status_code=503)
+    return {"status": "ready", "version": "0.1.0"}
 
 
 if __name__ == "__main__":

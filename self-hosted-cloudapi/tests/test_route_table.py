@@ -76,6 +76,7 @@ EXPECTED = {
     ("/static", (), "static", "Mount"),
     ("/bridge", (), None, "Mount"),
     ("/health", ("GET",), "health_check", "APIRoute"),
+    ("/health/ready", ("GET",), "readiness_check", "APIRoute"),
 }
 
 

@@ -54,6 +54,9 @@ class _CapturingClient:
 
     last_headers: dict = {}
 
+    def __init__(self, *args, **kwargs):
+        pass
+
     async def __aenter__(self):
         return self
 

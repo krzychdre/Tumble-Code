@@ -47,6 +47,15 @@ services:
       BACKFILL_MAX_BYTES: ${BACKFILL_MAX_BYTES:-52428800}
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_REQUESTS_PER_MINUTE: ${RATE_LIMIT_REQUESTS_PER_MINUTE:-60}
+    healthcheck:
+      # Readiness, not liveness: /health would report ok even with a dead
+      # database. The slim image has no curl/wget; python ships with the
+      # base image. /health/ready answers 503 when SELECT 1 fails.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:' + __import__('os').environ.get('PORT', '8085') + '/health/ready', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy

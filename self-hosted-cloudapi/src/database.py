@@ -7,7 +7,10 @@ from config.settings import settings
 
 # DATABASE_URL with the async driver; alembic/env.py uses the same value.
 ASYNC_DATABASE_URL = settings.database_url.replace("postgresql://", "postgresql+asyncpg://")
-_engine_kwargs: dict = {"echo": False}
+# pool_pre_ping: a transparent round-trip before each checkout, so a
+# connection dropped by the server (restart, idle timeout) is replaced
+# instead of surfacing as "connection already closed" on the first query.
+_engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
 # QueuePool tuning only applies to server-side databases; SQLite (used in
 # tests and lightweight dev setups) uses StaticPool/NullPool and rejects
 # these keys.
