@@ -44,13 +44,23 @@ Every JSON file above is written with `safeWriteJson` (`packages/core/src/fs/saf
 ```mermaid
 flowchart LR
   L[take a proper-lockfile lock<br/>on the target] --> W[stream JSON to<br/>.name.new_ts.tmp]
-  W --> R[rename temp over target]
+  W --> S[fsync the temp file]
+  S --> R[rename temp over target]
   R --> U[release lock]
   W -. error .-> D[delete temp, keep old file]
 ```
 
-Rename is atomic on the same file system, so a reader sees the old file or the new one, never half of each. A
-lock left by a crashed process goes stale after about 31 seconds.
+Rename is atomic on the same file system, so a reader sees the old file or the new one, never half of each. The
+`fsync` before the rename makes sure the new bytes are on disk before the name points at them; without it a power
+loss could leave an empty file. A lock left by a crashed process goes stale after about 31 seconds.
+
+## Reading a damaged file
+
+`readApiMessages` and `readTaskMessages` (`src/core/task-persistence/`) return `[]` when a task file does not
+parse or is not an array, because every caller expects an array. Before that they call `quarantineCorruptFile`,
+which renames the file to `<name>.corrupt-<timestamp>`. The task's next save therefore writes a fresh file
+instead of overwriting the damaged one, and the original bytes stay on disk for manual recovery. A read error
+such as a missing permission is not treated as damage: the file stays where it is.
 
 ## Save timing
 

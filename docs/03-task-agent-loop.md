@@ -90,8 +90,25 @@ flowchart TD
   AR -- no --> ASK[ask api_req_failed: user retries or cancels]
 ```
 
+A failure after the first chunk goes through `handleStreamError` instead, with the same outcomes: fail fast for a
+background task, back off and retry when auto-retry is on, otherwise ask the user.
+
 Two separate rate limits exist: the provider profile's `rateLimitSeconds`, and the process-wide
 `lastGlobalApiRequestTime` in `RetryHandler.ts` that spaces requests across all tasks (do not touch).
+
+### Timeouts
+
+| What                                               | Limit                                          | Where                                              |
+| -------------------------------------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| Silence on an open stream (first or later chunk)   | `apiRequestTimeout` setting, 10 min by default | `raceNextChunkWithAbort(iterator, signal, idleMs)` |
+| Waiting for the response headers                   | the same setting, passed to the provider SDK   | `BaseProvider.timeoutMs`                           |
+| Short control requests (token refresh, model list) | 30 s, `CONTROL_REQUEST_TIMEOUT_MS`             | `src/api/providers/utils/timeout-config.ts`        |
+| Image generation, embeddings                       | `apiRequestTimeout`                            | `AbortSignal.timeout(getApiRequestTimeout())`      |
+
+When a stream stays silent past the limit, the loop raises `StreamIdleTimeoutError`, aborts the request's
+`AbortController` (which closes the HTTP connection) and lets the error take the normal retry path above. The
+Gemini, Vertex and Mistral SDKs get no request timeout on purpose: `@google/genai` keeps its timer armed while the
+body streams and would cut long answers; the idle limit covers them instead.
 
 ### Abort
 
@@ -105,7 +122,10 @@ tests pin:
 3. `drainAbort`: wait for in-flight memory extraction.
 
 The stream loop races every `iterator.next()` against the abort signal (`raceNextChunkWithAbort`), so a stalled
-provider does not block a cancel.
+provider does not block a cancel. After the stream, the wait for the tool results
+(`userMessageContentReady`) also ends on `abort`, so a task cancelled while a tool is still asking for approval
+does not keep polling. `presentAssistantMessage` returns quietly on an aborted task; every caller fires it
+without awaiting, so it must never throw.
 
 ## Context management
 
