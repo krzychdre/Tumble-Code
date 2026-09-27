@@ -69,6 +69,7 @@ import { ThemedProgressRing } from "@src/components/ui"
 import { WorktreesView } from "../worktrees/WorktreesView"
 import { SettingsSearch } from "./SettingsSearch"
 import { useSearchIndexRegistry, SearchIndexProvider } from "./useSettingsSearch"
+import { resolveStaticSearchIndex } from "./settingsSearchIndex"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
 // The Modes and MCP tabs are large modules off the chat critical path: each
@@ -329,45 +330,29 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		})
 	}, [scrollToActiveTab])
 
-	// Search index registry - settings register themselves on mount
+	// Search index: a static, declarative index (tab titles, Modes/MCP
+	// headings, experiment flags) is available immediately, so search never
+	// needs to mount tabs. Eager tabs still augment the index at runtime via
+	// SearchableSetting registration (batched by the registry).
 	const getSectionLabel = useCallback((section: SectionName) => t(`settings:sections.${section}`), [t])
-	const { contextValue: searchContextValue, index: searchIndex } = useSearchIndexRegistry(getSectionLabel)
+	const { contextValue: searchContextValue, index: runtimeIndex } = useSearchIndexRegistry(getSectionLabel)
 
-	// Track which tabs have been indexed (visited at least once)
-	const [indexingTabIndex, setIndexingTabIndex] = useState(0)
-	const initialTab = useRef<SectionName>(activeTab)
-	const isIndexing = indexingTabIndex < sectionNames.length
-	const isIndexingComplete = !isIndexing
-	const tabTitlesRegistered = useRef(false)
+	const staticIndex = useMemo(() => resolveStaticSearchIndex(t, getSectionLabel), [t, getSectionLabel])
 
-	// Index all tabs by cycling through them on mount
-	useLayoutEffect(() => {
-		if (indexingTabIndex >= sectionNames.length) {
-			// All tabs indexed, now register tab titles as searchable items
-			if (!tabTitlesRegistered.current && searchContextValue) {
-				sections.forEach(({ id }) => {
-					const tabTitle = t(`settings:sections.${id}`)
-					// Register each tab title as a searchable item
-					// Using a special naming convention for tab titles: "tab-{sectionName}"
-					searchContextValue.registerSetting({
-						settingId: `tab-${id}`,
-						section: id,
-						label: tabTitle,
-					})
-				})
-				tabTitlesRegistered.current = true
-				// Return to initial tab
-				setActiveTab(initialTab.current)
-			}
-			return
+	const searchIndex = useMemo(() => {
+		// Static entries are keyed with their own ids (`tab-*`, `modes-*`,
+		// `mcp-*`, `experimental-*`); runtime entries use the setting ids the
+		// components pass. Neither set can collide, and since the lazy
+		// Modes/MCP tabs never register at runtime, nothing double-lists.
+		const merged = new Map(staticIndex.map((entry) => [entry.settingId, entry]))
+		for (const entry of runtimeIndex) {
+			merged.set(entry.settingId, entry)
 		}
+		return Array.from(merged.values())
+	}, [staticIndex, runtimeIndex])
 
-		// Move to the next tab on next render
-		setIndexingTabIndex((prev) => prev + 1)
-	}, [indexingTabIndex, searchContextValue, sections, t])
-
-	// Determine which tab content to render (for indexing or active display)
-	const renderTab = isIndexing ? sectionNames[indexingTabIndex] : activeTab
+	// Render only the active tab (no indexing cycle that force-mounts tabs).
+	const renderTab = activeTab
 
 	// Handle search navigation - switch to the correct tab and scroll to the element
 	const handleSearchNavigate = useCallback(
@@ -407,9 +392,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					<h3 className="text-vscode-foreground m-0 flex-shrink-0">{t("settings:header.title")}</h3>
 				</div>
 				<div className="flex items-center gap-2 shrink-0">
-					{isIndexingComplete && (
-						<SettingsSearch index={searchIndex} onNavigate={handleSearchNavigate} sections={sections} />
-					)}
+					<SettingsSearch index={searchIndex} onNavigate={handleSearchNavigate} sections={sections} />
 					<StandardTooltip
 						content={
 							!isSettingValid
@@ -492,11 +475,8 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					})}
 				</TabList>
 
-				{/* Content area - renders only the active tab (or indexing tab during initial indexing) */}
-				<TabContent
-					ref={contentRef}
-					className={cn("p-0 flex-1 overflow-auto", isIndexing && "opacity-0")}
-					data-testid="settings-content">
+				{/* Content area - renders only the active tab */}
+				<TabContent ref={contentRef} className={cn("p-0 flex-1 overflow-auto")} data-testid="settings-content">
 					<SearchIndexProvider value={searchContextValue}>
 						{/* Providers Section */}
 						{renderTab === "providers" && (
