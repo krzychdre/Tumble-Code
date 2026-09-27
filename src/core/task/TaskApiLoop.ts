@@ -55,6 +55,7 @@ import {
 	resetGlobalApiRequestTime,
 } from "./RetryHandler"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
 
 /**
  * Thrown out of attemptApiRequest when the user answers the api_req_failed ask
@@ -250,6 +251,7 @@ interface StackItem {
 export async function raceNextChunkWithAbort<T>(
 	iterator: AsyncIterator<T>,
 	signal: AbortSignal,
+	idleTimeoutMs?: number,
 ): Promise<IteratorResult<T>> {
 	const nextPromise = iterator.next()
 
@@ -263,15 +265,32 @@ export async function raceNextChunkWithAbort<T>(
 	}
 
 	let rejectRef: (error: Error) => void
+	let idleTimer: ReturnType<typeof setTimeout> | undefined
 	const abortPromise = new Promise<never>((_, reject) => {
 		rejectRef = reject
 		signal.addEventListener("abort", onAbort, { once: true })
+		if (idleTimeoutMs !== undefined && idleTimeoutMs > 0) {
+			idleTimer = setTimeout(() => reject(new StreamIdleTimeoutError(idleTimeoutMs)), idleTimeoutMs)
+		}
 	})
 
 	try {
 		return await Promise.race([nextPromise, abortPromise])
 	} finally {
 		signal.removeEventListener("abort", onAbort)
+		clearTimeout(idleTimer)
+	}
+}
+
+/**
+ * The provider sent nothing for longer than the API request timeout while a stream was open. Raised by
+ * {@link raceNextChunkWithAbort}; the stream loop closes the HTTP request and retries like any other stream
+ * failure, instead of waiting on a dead connection until the user presses Stop.
+ */
+export class StreamIdleTimeoutError extends Error {
+	constructor(readonly idleTimeoutMs: number) {
+		super(`The provider sent no data for ${Math.round(idleTimeoutMs / 1000)} seconds; the stream was closed.`)
+		this.name = "StreamIdleTimeoutError"
 	}
 }
 
@@ -703,11 +722,24 @@ export class TaskApiLoop {
 		// Helper to race iterator.next() with abort signal.
 		// AP-5: delegates to the exported raceNextChunkWithAbort so the listener
 		// cleanup logic is unit-testable without going through the full loop.
+		// R5: a stream that goes silent for longer than the API request timeout is treated as failed. The
+		// provider SDKs time out only the wait for the response headers (or, like @google/genai, the whole
+		// response), so without this a dropped connection mid-answer waited until the user pressed Stop.
+		const idleTimeoutMs = getApiRequestTimeout()
 		const nextChunkWithAbort = async () => {
-			if (this.access.currentRequestAbortController) {
-				return raceNextChunkWithAbort(iterator, this.access.currentRequestAbortController.signal)
+			const controller = this.access.currentRequestAbortController
+			if (!controller) {
+				return iterator.next()
 			}
-			return iterator.next()
+			try {
+				return await raceNextChunkWithAbort(iterator, controller.signal, idleTimeoutMs)
+			} catch (error) {
+				if (error instanceof StreamIdleTimeoutError) {
+					// Close the HTTP request too; the error then takes the normal stream-failure path.
+					controller.abort()
+				}
+				throw error
+			}
 		}
 
 		try {

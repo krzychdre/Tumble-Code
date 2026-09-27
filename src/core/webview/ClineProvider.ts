@@ -98,6 +98,7 @@ import { getHmrHtml, getProductionHtml, openRouterOrigin, type WebviewHtmlOption
 import { TaskHistoryGateway } from "./TaskHistoryGateway"
 import { BackgroundTaskRunner, type BackgroundTaskOptions, type BackgroundTaskOutcome } from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
+import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -1334,7 +1335,11 @@ export class ClineProvider
 			const baseUrl = apiConfiguration.openRouterBaseUrl || "https://openrouter.ai/api/v1"
 			// Extract the base domain for the auth endpoint.
 			const baseUrlDomain = baseUrl.match(/^(https?:\/\/[^/]+)/)?.[1] || "https://openrouter.ai"
-			const response = await axios.post(`${baseUrlDomain}/api/v1/auth/keys`, { code })
+			const response = await axios.post(
+				`${baseUrlDomain}/api/v1/auth/keys`,
+				{ code },
+				{ timeout: CONTROL_REQUEST_TIMEOUT_MS },
+			)
 
 			if (response.data && response.data.key) {
 				apiKey = response.data.key

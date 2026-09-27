@@ -15,6 +15,7 @@ import { streamChatCompletion } from "../transform/chat-completions-stream"
 import { BaseProvider } from "./base-provider"
 import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessageMetadata } from "../index"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
+import { CONTROL_REQUEST_TIMEOUT_MS } from "./utils/timeout-config"
 
 const QWEN_OAUTH_BASE_URL = "https://chat.qwen.ai"
 const QWEN_OAUTH_TOKEN_ENDPOINT = `${QWEN_OAUTH_BASE_URL}/api/v1/oauth2/token`
@@ -130,6 +131,7 @@ export class QwenCodeHandler extends BaseProvider implements SingleCompletionHan
 				Accept: "application/json",
 			},
 			body: objectToUrlEncoded(bodyData),
+			signal: AbortSignal.timeout(CONTROL_REQUEST_TIMEOUT_MS),
 		})
 
 		if (!response.ok) {
