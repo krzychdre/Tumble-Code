@@ -743,11 +743,23 @@ export class TaskApiLoop {
 		}
 
 		try {
+			// F3: process the current chunk BEFORE reading the next one. The old loop read ahead
+			// (a leftover from the manual-iterator rewrite in #6122, which needed the captured
+			// look-ahead item to seed the background usage drain), so every chunk sat unread in a
+			// local until the next one arrived and the user saw each piece of text one chunk late
+			// — the last piece only when the stream ended. Nothing depends on the look-ahead:
+			// the drain starts after the loop exits and must receive { done: true } because the
+			// loop owns the iterator until then, and the break conditions below read state set by
+			// processing the current chunk (this.access.abort / didRejectTool / didAlreadyUseTool),
+			// not the next one. With the read last, a break also no longer pays for one more
+			// iterator.next() that its result would throw away.
 			let item = await nextChunkWithAbort()
 			while (!item.done) {
 				const chunk = item.value
-				item = await nextChunkWithAbort()
 				if (!chunk) {
+					// Sometimes chunk is undefined, no idea that can cause
+					// it, but this workaround seems to fix it.
+					item = await nextChunkWithAbort()
 					continue
 				}
 
@@ -773,6 +785,8 @@ export class TaskApiLoop {
 					)
 					break
 				}
+
+				item = await nextChunkWithAbort()
 			}
 
 			// Handle background usage drain
