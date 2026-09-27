@@ -12,6 +12,7 @@ it carries no secret, only the session/user ids, and is validated server-side
 against the DB on every request.
 """
 
+from datetime import datetime, timezone
 from typing import Optional, TypedDict
 from urllib.parse import urlsplit
 
@@ -97,7 +98,9 @@ async def resolve_web_user(raw_cookie: Optional[str], db: AsyncSession) -> Optio
     Shared by the HTTP dependency (`get_web_user_optional`) and the socket.io
     handshake, which reads the cookie from the ASGI environ rather than from a
     FastAPI Request. Returns None for missing/invalid/expired cookies,
-    deactivated sessions, or a user that no longer exists.
+    deactivated sessions, expired sessions (``Session.expires_at`` in the
+    past, checked here since R10 — an expired session is treated exactly like
+    a nonexistent one), or a user that no longer exists.
     """
     if not raw_cookie:
         return None
@@ -116,6 +119,15 @@ async def resolve_web_user(raw_cookie: Optional[str], db: AsyncSession) -> Optio
     session = result.scalar_one_or_none()
     if session is None:
         return None
+
+    if session.expires_at is not None:
+        expires_at = session.expires_at
+        # SQLite's aiosqlite driver returns naive datetimes even for columns
+        # declared as DateTime(timezone=True); Postgres returns aware ones.
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at <= datetime.now(timezone.utc):
+            return None
 
     result = await db.execute(select(User).where(User.id == session.user_id))
     user = result.scalar_one_or_none()

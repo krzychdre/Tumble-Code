@@ -18,6 +18,7 @@ import logging
 
 from config.settings import settings
 from src.database import async_session_factory
+from src.services.auth_service import purge_expired_auth_rows
 from src.services.retention_service import sweep_all_enabled
 
 logger = logging.getLogger(__name__)
@@ -35,9 +36,16 @@ async def run_retention_loop() -> None:
         try:
             async with async_session_factory() as db:
                 count = await sweep_all_enabled(db)
+                # Global auth hygiene (R10): expired OAuth state rows, login
+                # tickets and client tokens, outside the per-user savepoints —
+                # these tables have no user-facing policy and no per-user
+                # scoping, and the cycle still commits once as a whole.
+                purged = await purge_expired_auth_rows(db)
                 await db.commit()
             if count:
                 logger.info("[retention] swept %s enabled polic(ies)", count)
+            if purged:
+                logger.info("[retention] purged %s expired auth row(s)", purged)
         except asyncio.CancelledError:
             raise
         except Exception:
