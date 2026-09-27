@@ -65,6 +65,8 @@ vi.mock("../../../components/common/Tab", () => ({
 }))
 
 vi.mock("@/components/ui", () => ({
+	// P4: SettingsView lazy-tab fallback renders a progress ring; stub it.
+	ThemedProgressRing: () => <span data-testid="progress-ring" />,
 	// The real text field (a native input), not a stub.
 	ThemedTextField: (props: any) => <RealThemedTextField {...props} />,
 	...vi.importActual("@/components/ui"),

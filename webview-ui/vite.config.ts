@@ -109,8 +109,11 @@ export default defineConfig(({ mode }) => {
 			sourcemap: true,
 			// Vite 8 uses Rolldown/Oxc by default; keep non-production modes readable.
 			minify: mode === "production",
-			// Use a single combined CSS bundle so all webviews share styles
-			cssCodeSplit: false,
+			// Split CSS per chunk so lazy-loaded code (KaTeX, the lazy tab
+			// views) can take its stylesheet with it. The ENTRY stylesheet
+			// still lands at the fixed assets/index.css name that
+			// WebviewHtml.ts <link>s and all webviews share.
+			cssCodeSplit: true,
 			rolldownOptions: {
 				// Externalize vscode: it does not exist in the browser context. Nothing in
 				// the webview graph imports it today; keeping it external means a stray
@@ -136,9 +139,17 @@ export default defineConfig(({ mode }) => {
 					chunkFileNames: "assets/[name]-[hash].js",
 					assetFileNames: (assetInfo) => {
 						const name = assetInfo.name ?? ""
+						const originalFileNames =
+							(assetInfo as { originalFileNames?: string[] }).originalFileNames ?? []
 
 						if (name.endsWith(".css")) {
-							return "assets/index.css"
+							// The entry chunk's stylesheet (built from src/index.css)
+							// keeps the fixed name every webview HTML links; CSS owned
+							// by lazy chunks gets a hashed name so chunks can't collide.
+							// The entry stylesheets originalFileName is the HTML entry
+							// (index.html), every lazy chunk CSS keeps its module path.
+							const isEntryStyles = originalFileNames.some((original) => original.endsWith("index.html"))
+							return isEntryStyles ? "assets/index.css" : "assets/[name]-[hash].css"
 						}
 
 						if (/\.(woff2?|ttf)$/.test(name)) {

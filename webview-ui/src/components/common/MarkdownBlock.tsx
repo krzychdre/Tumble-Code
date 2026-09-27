@@ -30,8 +30,9 @@ const ALERT_LABELS: Record<AlertType, string> = {
 	caution: "Caution",
 }
 
-// KaTeX (through rehype-katex) is imported the first time a message may contain
-// math, so it stays out of the startup bundle. remark-math still parses "$...$"
+// KaTeX (through rehype-katex) and its stylesheet are imported the first time
+// a message may contain math, so both stay out of the startup bundle (the CSS
+// used to ride the eager index.css import). remark-math still parses "$...$"
 // eagerly; until the plugin has loaded, a formula shows as its TeX source.
 type RehypeKatex = (typeof import("rehype-katex"))["default"]
 
@@ -40,8 +41,13 @@ let rehypeKatexLoad: Promise<void> | undefined
 const rehypeKatexListeners = new Set<() => void>()
 
 const loadRehypeKatex = () => {
-	rehypeKatexLoad ??= import("rehype-katex").then(
-		(module) => {
+	rehypeKatexLoad ??= Promise.all([
+		// Dynamic CSS import: the bundler emits the stylesheet as its own
+		// chunk and injects a <link> only when this runs.
+		import("katex/dist/katex.min.css"),
+		import("rehype-katex"),
+	]).then(
+		([, module]) => {
 			rehypeKatex = module.default
 			rehypeKatexListeners.forEach((listener) => listener())
 		},
