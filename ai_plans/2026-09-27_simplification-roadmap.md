@@ -41,6 +41,7 @@ merged; its "do not touch" list now lives in `docs/architecture.md`.
 | R3   | Done  | krzychdre/Tumble-Code#525 | Cleanup only, see the corrected row below.                                                                                                                                                                                                |
 | R4   | Done  | krzychdre/Tumble-Code#526 |                                                                                                                                                                                                                                           |
 | R5   | Done  | krzychdre/Tumble-Code#527 | `AbortSignal.timeout` and `CONTROL_REQUEST_TIMEOUT_MS` instead of a new helper; idle limit on the first and every later chunk. The Gemini, Vertex and Mistral SDK timeouts stay unset on purpose (the genai timer covers the whole body). |
+| R7   | Done  | krzychdre/Tumble-Code#534 | `begin_nested()` (SAVEPOINT) per user in `sweep_all_enabled`; savepoint over commit-per-user: one atomic unit and one fsync per cycle.                                                                                                    |
 
 New findings from this round, not yet done:
 
