@@ -86,4 +86,62 @@ describe("TaskApiLoop request signal (API-5)", () => {
 		// The client-destroy behavior is still requested from the provider.
 		expect(access.api.cancelRequest).toHaveBeenCalledWith(true)
 	})
+
+	// R3: the first chunk used a hand-written race whose abort listener stayed on the signal for the whole
+	// stream. It now goes through raceNextChunkWithAbort, which removes its listener once the chunk arrives.
+	it("leaves no first-chunk abort listener on the signal once the first chunk has arrived", async () => {
+		const live = new Map<EventListenerOrEventListenerObject, AbortSignal>()
+		const add = AbortSignal.prototype.addEventListener
+		const remove = AbortSignal.prototype.removeEventListener
+		vi.spyOn(AbortSignal.prototype, "addEventListener").mockImplementation(function (
+			this: AbortSignal,
+			type: string,
+			listener: any,
+			options?: any,
+		) {
+			if (type === "abort") live.set(listener, this)
+			return add.call(this, type, listener, options)
+		})
+		vi.spyOn(AbortSignal.prototype, "removeEventListener").mockImplementation(function (
+			this: AbortSignal,
+			type: string,
+			listener: any,
+			options?: any,
+		) {
+			if (type === "abort") live.delete(listener)
+			return remove.call(this, type, listener, options)
+		})
+		const { loop, access } = makeTask()
+
+		const stream = loop.attemptApiRequest()
+		await stream.next()
+
+		const signal = access.currentRequestAbortController.signal
+		const onSignal = [...live.values()].filter((owner) => owner === signal)
+		// Only the one-shot logging listener remains.
+		expect(onSignal).toHaveLength(1)
+	})
+
+	it("still rejects the first chunk when the user stops before it arrives", async () => {
+		const createMessage = vi.fn(async function* () {
+			// The first chunk never arrives.
+			await new Promise(() => {})
+			yield { type: "text" as const, text: "never" }
+		})
+		const { loop, access } = makeTask()
+		access.api.createMessage = createMessage
+		const handleError = vi.spyOn(loop as any, "handleApiRequestError").mockImplementation(async function* (
+			error: unknown,
+		) {
+			yield { type: "text", text: `handled: ${(error as Error).message}` }
+		})
+
+		const stream = loop.attemptApiRequest()
+		const pending = stream.next()
+		await vi.waitFor(() => expect(createMessage).toHaveBeenCalled())
+		access.currentRequestAbortController.abort()
+
+		expect((await pending).value).toEqual({ type: "text", text: "handled: Request cancelled by user" })
+		expect(handleError).toHaveBeenCalledTimes(1)
+	})
 })
