@@ -250,6 +250,8 @@ export class TaskHistoryStore {
 	/** Global watcher debounce: coalesces events into a set of changed IDs. */
 	private watcherDebounce: ReturnType<typeof setTimeout> | null = null
 	private pendingWatcherIds: Set<string> = new Set()
+	/** In-flight (or most recently completed) targeted-refresh pass. */
+	private watcherRefreshTail: Promise<void> = Promise.resolve()
 	private disposed = false
 	private initializedSuccessfully = false
 	private readonly listeners = new Set<TaskHistoryChangeListener>()
@@ -274,6 +276,23 @@ export class TaskHistoryStore {
 
 	static getPendingRecordLockCountForTests(store: TaskHistoryStore): number {
 		return store.perIdLocks.size
+	}
+
+	/**
+	 * Wait until every watcher-triggered targeted refresh has settled, so a
+	 * test can count {@link getPendingRecordLockCountForTests} without racing
+	 * a `fs.watch`-armed debounce (F2). Fires the armed debounce immediately
+	 * instead of waiting for its timer, then awaits the pass (each
+	 * `refreshTask` takes the same per-ID lock as `upsert`, so counting
+	 * before the pass settles is non-deterministic).
+	 */
+	static async waitForWatcherRefreshesForTests(store: TaskHistoryStore): Promise<void> {
+		if (store.watcherDebounce) {
+			clearTimeout(store.watcherDebounce)
+			store.watcherDebounce = null
+			store.runTargetedRefreshPass()
+		}
+		await store.watcherRefreshTail
 	}
 
 	/** Debounce window for index writes in milliseconds. */
@@ -488,6 +507,10 @@ export class TaskHistoryStore {
 			this.watcherDebounce = null
 		}
 		this.pendingWatcherIds.clear()
+		// Watcher-triggered refreshes are moot after dispose; reset the tail
+		// so a late in-flight pass cannot keep a test waiting (or mutate
+		// state) after teardown.
+		this.watcherRefreshTail = Promise.resolve()
 
 		if (this.fsWatcher) {
 			this.fsWatcher.close()
@@ -1204,25 +1227,37 @@ export class TaskHistoryStore {
 		}
 		this.watcherDebounce = setTimeout(() => {
 			this.watcherDebounce = null
-			const ids = Array.from(this.pendingWatcherIds)
-			this.pendingWatcherIds.clear()
-			// Targeted refresh per ID — never a full scan. Each refreshTask
-			// runs under its own per-ID lock and notifies only if the cache
-			// actually changed.
-			Promise.all(
-				ids.map(async (id) => {
-					try {
-						const event = await this.refreshTask(id, { external: true })
-						if (event) {
-							this.scheduleIndexWrite()
-							this.notifyChanged(event)
-						}
-					} catch (err) {
-						console.error(`[TaskHistoryStore] targeted refresh for ${id} failed:`, err)
-					}
-				}),
-			).catch(() => {})
+			this.runTargetedRefreshPass()
 		}, TaskHistoryStore.WATCHER_DEBOUNCE_MS)
+	}
+
+	/**
+	 * Run one targeted-refresh pass for the coalesced IDs. The promise is
+	 * tracked on {@link watcherRefreshTail} so tests can await settlement
+	 * (see {@link TaskHistoryStore.waitForWatcherRefreshesForTests}).
+	 *
+	 * Targeted refresh per ID — never a full scan. Each refreshTask
+	 * runs under its own per-ID lock and notifies only if the cache
+	 * actually changed.
+	 */
+	private runTargetedRefreshPass(): void {
+		const ids = Array.from(this.pendingWatcherIds)
+		this.pendingWatcherIds.clear()
+		this.watcherRefreshTail = Promise.all(
+			ids.map(async (id) => {
+				try {
+					const event = await this.refreshTask(id, { external: true })
+					if (event) {
+						this.scheduleIndexWrite()
+						this.notifyChanged(event)
+					}
+				} catch (err) {
+					console.error(`[TaskHistoryStore] targeted refresh for ${id} failed:`, err)
+				}
+			}),
+		)
+			.catch(() => {})
+			.then(() => {})
 	}
 
 	/**

@@ -729,6 +729,11 @@ describe("TaskHistoryStore", () => {
 			await Promise.all(
 				Array.from({ length: 100 }, (_, index) => store.upsert(makeHistoryItem({ id: `lock-${index}` }))),
 			)
+			// Each upsert creates a task directory, which fs.watch observes and
+			// turns into a targeted refreshTask under the same per-ID locks
+			// (after a debounce). Waiting for those refreshes to settle before
+			// counting makes the assertion deterministic (F2 Windows flake).
+			await TaskHistoryStore.waitForWatcherRefreshesForTests(store)
 			expect(TaskHistoryStore.getPendingRecordLockCountForTests(store)).toBe(0)
 		})
 
