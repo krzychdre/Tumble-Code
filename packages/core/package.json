@@ -1,7 +1,7 @@
 {
 	"name": "@roo-code/core",
 	"private": true,
-	"description": "Platform agnostic core functionality for Roo Code.",
+	"description": "Platform agnostic core functionality for Tumble Code.",
 	"version": "0.0.1",
 	"type": "module",
 	"exports": {
