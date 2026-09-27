@@ -3,13 +3,22 @@ import { vscode } from "@src/utils/vscode"
 
 import MarkdownBlock from "../MarkdownBlock"
 
-// Counts when KaTeX (through rehype-katex) and Mermaid are first imported: both are
-// heavy and must stay out of the startup bundle until a message actually needs them.
-const { importCounts } = vi.hoisted(() => ({ importCounts: { katex: 0, mermaid: 0 } }))
+// Counts when KaTeX (through rehype-katex), its stylesheet and Mermaid are
+// first imported: all three are heavy and must stay out of the startup bundle
+// until a message actually needs them (P4 moved the CSS onto the same lazy
+// barrier as the JS).
+const { importCounts } = vi.hoisted(() => ({ importCounts: { katex: 0, katexCss: 0, mermaid: 0 } }))
 
 vi.mock("rehype-katex", async (importOriginal) => {
 	importCounts.katex++
 	return importOriginal()
+})
+
+// The stylesheet is now a dynamic import next to rehype-katex; jsdom has no
+// real CSS chunk, so the mock counts the fetch and provides an empty module.
+vi.mock("katex/dist/katex.min.css", () => {
+	importCounts.katexCss++
+	return { default: "" }
 })
 
 // jsdom cannot lay out a real diagram, so Mermaid renders a marker SVG.
@@ -240,21 +249,24 @@ describe("MarkdownBlock", () => {
 
 	// These run in order: the first proves nothing heavy loaded for plain markdown.
 	describe("lazy KaTeX and Mermaid", () => {
-		it("does not load KaTeX or Mermaid for markdown without math or diagrams", async () => {
+		it("does not load KaTeX, its stylesheet or Mermaid for markdown without math or diagrams", async () => {
 			render(<MarkdownBlock markdown={"Plain **text** with `code` and a list:\n\n- one\n- two"} />)
 
 			await screen.findByText(/Plain/)
 
 			expect(importCounts.katex).toBe(0)
+			expect(importCounts.katexCss).toBe(0)
 			expect(importCounts.mermaid).toBe(0)
 		})
 
-		it("loads KaTeX on demand and renders inline and display math", async () => {
+		it("loads KaTeX and its stylesheet on demand and renders inline and display math", async () => {
 			const { container } = render(<MarkdownBlock markdown={"Euler: $e^{i\\pi}+1=0$\n\n$$\na^2+b^2=c^2\n$$"} />)
 
 			await waitFor(() => expect(container.querySelectorAll(".katex").length).toBe(2))
 			expect(container.querySelector(".katex-display")).not.toBeNull()
 			expect(importCounts.katex).toBe(1)
+			// The stylesheet rides the same lazy barrier as the JS plugin.
+			expect(importCounts.katexCss).toBe(1)
 			expect(importCounts.mermaid).toBe(0)
 		})
 

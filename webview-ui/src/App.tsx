@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from "react"
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState, useMemo } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { type ExtensionMessage, TelemetryEventName } from "@roo-code/types"
@@ -15,14 +15,28 @@ import ChatView, { ChatViewRef } from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeViewProvider"
-import { MarketplaceView } from "./components/marketplace/MarketplaceView"
 import { CheckpointRestoreDialog } from "./components/chat/CheckpointRestoreDialog"
 import { DeleteMessageDialog, EditMessageDialog } from "./components/chat/MessageModificationConfirmationDialog"
 import ErrorBoundary from "./components/ErrorBoundary"
-import { CloudView } from "./components/cloud/CloudView"
+import { ThemedProgressRing } from "./components/ui"
 import { useAddNonInteractiveClickListener } from "./components/ui/hooks/useAddNonInteractiveClickListener"
 import { TooltipProvider } from "./components/ui/tooltip"
 import { STANDARD_TOOLTIP_DELAY } from "./components/ui/standard-tooltip"
+
+// The Marketplace and Cloud views are off the chat critical path: each becomes
+// its own chunk fetched on first open (P4). The chat view itself, Settings and
+// History stay eager (Settings is the welcome-gate recovery path).
+const MarketplaceView = lazy(() =>
+	import("./components/marketplace/MarketplaceView").then((module) => ({ default: module.MarketplaceView })),
+)
+const CloudView = lazy(() => import("./components/cloud/CloudView").then((module) => ({ default: module.CloudView })))
+
+// Subtle fallback while a lazy tab's chunk arrives: the standard progress ring.
+const TabLoadingFallback = () => (
+	<div className="flex flex-1 items-center justify-center" data-testid="tab-loading">
+		<ThemedProgressRing />
+	</div>
+)
 
 type Tab = "settings" | "history" | "chat" | "marketplace" | "cloud"
 
@@ -247,19 +261,23 @@ const App = () => {
 				<SettingsView ref={settingsRef} onDone={() => setTab("chat")} targetSection={currentSection} />
 			)}
 			{tab === "marketplace" && (
-				<MarketplaceView
-					stateManager={marketplaceStateManager}
-					onDone={() => switchTab("chat")}
-					targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
-				/>
+				<Suspense fallback={<TabLoadingFallback />}>
+					<MarketplaceView
+						stateManager={marketplaceStateManager}
+						onDone={() => switchTab("chat")}
+						targetTab={currentMarketplaceTab as "mcp" | "mode" | undefined}
+					/>
+				</Suspense>
 			)}
 			{tab === "cloud" && (
-				<CloudView
-					userInfo={cloudUserInfo}
-					isAuthenticated={cloudIsAuthenticated}
-					cloudApiUrl={cloudApiUrl}
-					organizations={cloudOrganizations}
-				/>
+				<Suspense fallback={<TabLoadingFallback />}>
+					<CloudView
+						userInfo={cloudUserInfo}
+						isAuthenticated={cloudIsAuthenticated}
+						cloudApiUrl={cloudApiUrl}
+						organizations={cloudOrganizations}
+					/>
+				</Suspense>
 			)}
 			<ChatView
 				ref={chatViewRef}

@@ -1,5 +1,7 @@
 import React, {
+	Suspense,
 	forwardRef,
+	lazy,
 	memo,
 	useCallback,
 	useEffect,
@@ -63,12 +65,24 @@ import PromptsSettings from "./PromptsSettings"
 import { SlashCommandsSettings } from "./SlashCommandsSettings"
 import { SkillsSettings } from "./SkillsSettings"
 import { UISettings } from "./UISettings"
-import ModesView from "../modes/ModesView"
-import McpView from "../mcp/McpView"
+import { ThemedProgressRing } from "@src/components/ui"
 import { WorktreesView } from "../worktrees/WorktreesView"
 import { SettingsSearch } from "./SettingsSearch"
 import { useSearchIndexRegistry, SearchIndexProvider } from "./useSettingsSearch"
 import { onExtensionMessage } from "@src/utils/extensionBus"
+
+// The Modes and MCP tabs are large modules off the chat critical path: each
+// becomes its own chunk fetched on first open (P4). All other settings
+// sections stay eager.
+const ModesView = lazy(() => import("../modes/ModesView"))
+const McpView = lazy(() => import("../mcp/McpView"))
+
+// Subtle fallback while a lazy tab's chunk arrives: the standard progress ring.
+const TabLoadingFallback = () => (
+	<div className="flex flex-1 items-center justify-center" data-testid="tab-loading">
+		<ThemedProgressRing />
+	</div>
+)
 
 export const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 export const settingsTabList =
@@ -651,17 +665,23 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 
 						{/* Modes Section */}
 						{renderTab === "modes" && (
-							<ModesView
-								onSelectApiConfiguration={(configName: string) =>
-									checkUnsaveChanges(() =>
-										vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
-									)
-								}
-							/>
+							<Suspense fallback={<TabLoadingFallback />}>
+								<ModesView
+									onSelectApiConfiguration={(configName: string) =>
+										checkUnsaveChanges(() =>
+											vscode.postMessage({ type: "loadApiConfiguration", text: configName }),
+										)
+									}
+								/>
+							</Suspense>
 						)}
 
 						{/* MCP Section */}
-						{renderTab === "mcp" && <McpView />}
+						{renderTab === "mcp" && (
+							<Suspense fallback={<TabLoadingFallback />}>
+								<McpView />
+							</Suspense>
+						)}
 
 						{/* Worktrees Section */}
 						{renderTab === "worktrees" && <WorktreesView />}

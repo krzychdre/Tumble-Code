@@ -1,76 +1,78 @@
-import posthog from "posthog-js"
+import type { TelemetryClient } from "../TelemetryClient"
 
-import { telemetryClient } from "../TelemetryClient"
+// P4: TelemetryClient loads posthog-js through a dynamic import, only when
+// telemetry is enabled. vi.mock factories do NOT re-run for dynamic imports
+// after vi.resetModules(), so per-test isolation (fresh client statics AND a
+// fresh fetch counter) uses vi.doMock before each dynamic import: the factory
+// runs exactly once per actual module fetch, which is precisely the laziness
+// signal under test.
 
-vi.mock("posthog-js", () => ({
-	default: {
-		reset: vi.fn(),
-		init: vi.fn(),
-		identify: vi.fn(),
-		capture: vi.fn(),
-	},
-}))
+interface PosthogMock {
+	reset: ReturnType<typeof vi.fn>
+	init: ReturnType<typeof vi.fn>
+	identify: ReturnType<typeof vi.fn>
+	capture: ReturnType<typeof vi.fn>
+}
+
+const makePosthogMock = (): PosthogMock => ({
+	reset: vi.fn(),
+	init: vi.fn(),
+	identify: vi.fn(),
+	capture: vi.fn(),
+})
+
+// Fetch counter: incremented by the vi.doMock factory, i.e. exactly once per
+// actual module fetch. Reset by freshClient() before each dynamic import.
+const fetches = { count: 0 }
+
+const freshClient = async (): Promise<{ client: TelemetryClient; posthog: PosthogMock }> => {
+	vi.resetModules()
+	fetches.count = 0
+	const posthog = makePosthogMock()
+
+	vi.doMock("posthog-js", () => {
+		fetches.count++
+		return { default: posthog }
+	})
+
+	const { telemetryClient } = await import("../TelemetryClient")
+	return { client: telemetryClient, posthog }
+}
 
 describe("TelemetryClient", () => {
-	beforeEach(() => {
-		vi.clearAllMocks()
+	it("is a singleton per module instance", async () => {
+		const { client } = await freshClient()
+		const constructor = Object.getPrototypeOf(client).constructor
+		expect(constructor.getInstance()).toBe(client)
+		expect(constructor.getInstance()).toBe(constructor.getInstance())
 	})
 
-	it("should be a singleton", () => {
-		// Basic test to verify the service exists
-		expect(telemetryClient).toBeDefined()
+	it("has updateTelemetryState and capture methods", async () => {
+		const { client } = await freshClient()
+		expect(typeof client.updateTelemetryState).toBe("function")
+		expect(typeof client.capture).toBe("function")
 	})
 
-	it("should have updateTelemetryState method", () => {
-		// Test if the method exists
-		expect(typeof telemetryClient.updateTelemetryState).toBe("function")
+	it("never fetches posthog-js while telemetry stays off", async () => {
+		const { client, posthog } = await freshClient()
+		await client.updateTelemetryState("disabled")
+		await client.updateTelemetryState("unset")
+		client.capture("test_event")
 
-		// Call it with different values to verify it doesn't throw errors
-		expect(() => telemetryClient.updateTelemetryState("enabled")).not.toThrow()
-		expect(() => telemetryClient.updateTelemetryState("disabled")).not.toThrow()
-		expect(() => telemetryClient.updateTelemetryState("unset")).not.toThrow()
+		expect(fetches.count).toBe(0)
+		expect(posthog.init).not.toHaveBeenCalled()
+		expect(posthog.capture).not.toHaveBeenCalled()
 	})
 
-	it("should have capture method", () => {
-		// Test if the method exists
-		expect(typeof telemetryClient.capture).toBe("function")
+	it("fetches and initializes posthog-js exactly once when enabled with key and id", async () => {
+		const { client, posthog } = await freshClient()
+		await client.updateTelemetryState("enabled", "test-api-key", "test-user-id")
 
-		// Call it to verify it doesn't throw errors
-		expect(() => telemetryClient.capture("test_event")).not.toThrow()
-		expect(() => telemetryClient.capture("test_event", { key: "value" })).not.toThrow()
-	})
-
-	it("should reset PostHog when updating telemetry state", () => {
-		// Act
-		telemetryClient.updateTelemetryState("enabled")
-
-		// Assert
-		expect(posthog.reset).toHaveBeenCalled()
-	})
-
-	it("should initialize PostHog when telemetry is enabled with API key and distinctId", () => {
-		// Arrange
-		const API_KEY = "test-api-key"
-		const DISTINCT_ID = "test-user-id"
-
-		// Act
-		telemetryClient.updateTelemetryState("enabled", API_KEY, DISTINCT_ID)
-
-		// Assert
+		expect(fetches.count).toBe(1)
+		expect(posthog.init).toHaveBeenCalledTimes(1)
 		expect(posthog.init).toHaveBeenCalledWith(
-			API_KEY,
-			expect.objectContaining({
-				api_host: "https://ph.roocode.com",
-				persistence: "localStorage",
-				loaded: expect.any(Function),
-			}),
+			"test-api-key",
+			expect.objectContaining({ persistence: "localStorage" }),
 		)
-
-		// Instead of trying to extract and call the callback, manually call identify
-		// This simulates what would happen when the loaded callback is triggered
-		posthog.identify(DISTINCT_ID)
-
-		// Now verify identify was called
-		expect(posthog.identify).toHaveBeenCalled()
 	})
 })

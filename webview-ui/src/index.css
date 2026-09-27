@@ -18,7 +18,9 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "./preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
-@import "katex/dist/katex.min.css";
+/* KaTeX's stylesheet is NOT imported here: it rides the same lazy barrier as
+   rehype-katex in MarkdownBlock.tsx, so it is only fetched when chat math
+   actually renders. */
 
 @plugin "tailwindcss-animate";
 
