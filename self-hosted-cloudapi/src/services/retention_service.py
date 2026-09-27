@@ -258,8 +258,21 @@ async def apply_sweep(
 async def sweep_all_enabled(db: AsyncSession, now: Optional[datetime] = None) -> int:
     """Run the sweep for every user who has switched retention on.
 
-    Returns the number of policies processed. Each user is handled
-    independently: one user's data failing to delete must not stop the rest.
+    Returns the number of policies processed. Each user runs inside a
+    SAVEPOINT (``begin_nested``) rather than the bare loop transaction, for
+    two reasons:
+
+    - On PostgreSQL an error poisons the whole transaction, and the caller
+      commits once per cycle — without savepoints, one failing user would
+      make the sweep silently do nothing for everyone.
+    - A user that fails *mid-delete* must not leak its half-finished work
+      into that commit either; rolling back to the savepoint drops all of
+      it, so a failed user keeps exactly what it started with.
+
+    A savepoint over a commit-per-user: one fsync per cycle instead of one
+    per user, and the whole cycle still lands as a single commit, which is
+    the natural unit for a scheduled sweep — retention rounds must not
+    partially persist just because the process died at an unlucky moment.
     """
     result = await db.execute(
         select(RetentionPolicy).where(RetentionPolicy.enabled == True)  # noqa: E712
@@ -267,7 +280,8 @@ async def sweep_all_enabled(db: AsyncSession, now: Optional[datetime] = None) ->
     policies = list(result.scalars().all())
     for policy in policies:
         try:
-            await apply_sweep(db, policy.user_id, policy, now=now)
+            async with db.begin_nested():
+                await apply_sweep(db, policy.user_id, policy, now=now)
         except Exception:  # one user's failure must not abort the rest
             logger.exception("[retention] sweep failed for %s", policy.user_id)
     return len(policies)

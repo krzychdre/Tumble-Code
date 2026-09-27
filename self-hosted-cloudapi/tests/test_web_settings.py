@@ -275,6 +275,55 @@ async def test_scheduled_sweep_skips_disabled_policies(db_session, session_facto
         assert {r[0] for r in rows.all()} == {"r-off"}
 
 
+async def test_a_failing_user_does_not_poison_the_others(
+    db_session, session_factory, monkeypatch
+):
+    """R7: one user's sweep failing mid-delete must not affect the rest.
+
+    The loop used to share one transaction across every user. On PostgreSQL
+    any error poisons it, so the sweep silently did nothing for everyone —
+    and whatever the failing user had already deleted stayed in the
+    transaction and was committed anyway. Each user now runs inside a
+    savepoint: the failing one is rolled back whole, the others are swept.
+    """
+    from src.services import retention_service
+    from src.services.retention_service import sweep_all_enabled
+
+    await _seed_user(db_session)
+    await _seed_user(db_session, user_id="user_bad", email="bad@example.com")
+    await _seed_user(db_session, user_id="user_ok", email="ok@example.com")
+    async with session_factory() as s:
+        await _make_task(s, "bad-1", "user_bad", age_days=200)
+        await _make_task(s, "bad-2", "user_bad", age_days=200)
+        await _make_task(s, "ok-1", "user_ok", age_days=200)
+        await _policy(s, "user_bad", enabled=True, max_age_days=30, max_tasks=None)
+        await _policy(s, "user_ok", enabled=True, max_age_days=30, max_tasks=None)
+        await s.commit()
+
+    real_delete = retention_service.delete_tasks
+
+    async def flaky_delete(db, task_ids, user_id):
+        if user_id == "user_bad":
+            # Half of the delete lands in the transaction, then it blows up —
+            # the shape of a lock timeout or a constraint hit mid-sweep.
+            await real_delete(db, task_ids[:1], user_id)
+            raise RuntimeError("simulated mid-delete failure")
+        return await real_delete(db, task_ids, user_id)
+
+    monkeypatch.setattr(retention_service, "delete_tasks", flaky_delete)
+
+    async with session_factory() as s:
+        processed = await sweep_all_enabled(s)
+        await s.commit()  # exactly what run_retention_loop does
+
+    assert processed == 2
+    async with session_factory() as s:
+        rows = await s.execute(select(Task.id))
+        remaining = {r[0] for r in rows.all()}
+    assert "ok-1" not in remaining, "the healthy user must still be swept"
+    assert remaining == {"bad-1", "bad-2"}, "the failing user keeps everything"
+
+
 async def test_settings_page_shows_the_preview(client, db_session, session_factory):
     await _seed_user(db_session)
     async with session_factory() as s:

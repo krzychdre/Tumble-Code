@@ -125,7 +125,8 @@ erDiagram
 ### Background work
 
 `retention_scheduler.py` runs `sweep_all_enabled` every few hours (default 6) and deletes tasks older than each
-user's retention policy. The loop starts and stops with the app's lifespan.
+user's retention policy. Each user runs inside a savepoint within the cycle's single transaction, so one user's
+failed sweep is rolled back whole without affecting the others. The loop starts and stops with the app's lifespan.
 
 ### Database and deploy
 
