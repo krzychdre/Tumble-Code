@@ -54,6 +54,7 @@ import { VERSION } from "@/lib/utils/version.js"
 import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
 
 import { ExtensionHost, ExtensionHostOptions } from "@/agent/index.js"
+import { installProcessGuards } from "@/lib/process-guards.js"
 import { isExpectedControlFlowError } from "./cancellation.js"
 import { runStdinStreamMode } from "./stdin-stream.js"
 
@@ -581,17 +582,26 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			const { render } = await import("ink")
 			const { App } = await import("../../ui/App.js")
 			const { createScrollSafeStdout } = await import("../../ui/utils/scrollSafeStdout.js")
+			const { TuiErrorBoundary } = await import("../../ui/components/TuiErrorBoundary.js")
 
-			render(
-				createElement(App, {
-					...extensionHostOptions,
-					initialPrompt: prompt,
-					initialTaskId: requestedCreateSessionId,
-					initialSessionId: resolvedResumeSessionId,
-					continueSession: false,
-					version: VERSION,
-					createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
-				}),
+			const instance = render(
+				createElement(
+					TuiErrorBoundary,
+					{
+						// A render crash is reported once here; the guards'
+						// uncaughtException handler does not fire for it.
+						onError: (error: Error) => console.error("[CLI] TUI crashed:", error.stack || error.message),
+					},
+					createElement(App, {
+						...extensionHostOptions,
+						initialPrompt: prompt,
+						initialTaskId: requestedCreateSessionId,
+						initialSessionId: resolvedResumeSessionId,
+						continueSession: false,
+						version: VERSION,
+						createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
+					}),
+				),
 				{
 					// Handle Ctrl+C in App component for double-press exit.
 					exitOnCtrlC: false,
@@ -605,6 +615,25 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 					stdout: createScrollSafeStdout(process.stdout),
 				},
 			)
+
+			// The TUI installs no handlers of its own anywhere else: without
+			// these, a crash or `kill` left the terminal in raw mode (no
+			// unmount) and --ephemeral storage leaked in /tmp. Cleanup unmounts
+			// the renderer, whose teardown restores the terminal, then lets the
+			// App's own host disposal (useExtensionHost's unmount effect) run.
+			// The exit timeout bounds a hung dispose so the guard cannot strand
+			// the terminal either. Normal exits go through App's Ctrl+C
+			// handler (exitOnCtrlC is false); SIGINT reaches this handler only
+			// when no useInput consumer is alive to see it.
+			const disposeGuards = installProcessGuards({
+				onCleanup: async () => {
+					instance.unmount()
+					// Give the unmount effects (host dispose, transcript
+					// detach) a tick to run before the process goes away.
+					await new Promise((resolve) => setImmediate(resolve))
+				},
+			})
+			void disposeGuards
 		} catch (error) {
 			console.error("[CLI] Failed to start TUI:", error instanceof Error ? error.message : String(error))
 
@@ -648,15 +677,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			console.error(error.stack)
 		}
 
-		const clearKeepAliveInterval = () => {
-			if (!keepAliveInterval) {
-				return
-			}
-
-			clearInterval(keepAliveInterval)
-			keepAliveInterval = undefined
-		}
-
 		const flushStdout = async () => {
 			try {
 				if (!process.stdout.writable || process.stdout.destroyed) {
@@ -696,55 +716,6 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			await host.dispose()
 		}
 
-		const onSigint = () => {
-			void shutdown("SIGINT", 130)
-		}
-
-		const onSigterm = () => {
-			void shutdown("SIGTERM", 143)
-		}
-
-		const onUncaughtException = (error: Error) => {
-			if (
-				isExpectedControlFlowError(error, {
-					stdinStreamMode: useStdinPromptStream,
-					shuttingDown: isShuttingDown,
-					operation: "runtime",
-				})
-			) {
-				return
-			}
-
-			emitRuntimeError(error, "uncaughtException")
-
-			if (signalOnlyExit) {
-				return
-			}
-
-			void shutdown("uncaughtException", 1)
-		}
-
-		const onUnhandledRejection = (reason: unknown) => {
-			if (
-				isExpectedControlFlowError(reason, {
-					stdinStreamMode: useStdinPromptStream,
-					shuttingDown: isShuttingDown,
-					operation: "runtime",
-				})
-			) {
-				return
-			}
-
-			const error = normalizeError(reason)
-			emitRuntimeError(error, "unhandledRejection")
-
-			if (signalOnlyExit) {
-				return
-			}
-
-			void shutdown("unhandledRejection", 1)
-		}
-
 		const parkUntilSignal = async (reason: string): Promise<never> => {
 			ensureKeepAliveInterval()
 
@@ -756,34 +727,43 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			throw new Error("unreachable")
 		}
 
-		async function shutdown(signal: string, exitCode: number): Promise<void> {
-			if (isShuttingDown) {
-				return
-			}
+		// The same guard module the TUI uses (R6). Cleanup is one pass shared
+		// by signals, crashes and the task loop's own exit paths: host dispose
+		// + JSON emitter flush. Expected control-flow errors are ignored;
+		// --signal-only-exit keeps the process parked (no exit, cleanup stays
+		// with the task loop, which already ran disposeHost before parking).
+		const disposeGuards = installProcessGuards({
+			onCleanup: async (cause) => {
+				isShuttingDown = true
 
-			isShuttingDown = true
-			process.off("SIGINT", onSigint)
-			process.off("SIGTERM", onSigterm)
-			process.off("uncaughtException", onUncaughtException)
-			process.off("unhandledRejection", onUnhandledRejection)
-			clearKeepAliveInterval()
+				if (!useJsonOutput && cause !== "dispose") {
+					console.log(`\n[CLI] Received ${cause}, shutting down...`)
+				}
 
-			if (!useJsonOutput) {
-				console.log(`\n[CLI] Received ${signal}, shutting down...`)
-			}
+				await disposeHost()
 
-			await disposeHost()
-			if (jsonEmitter) {
-				await jsonEmitter.flush()
-			}
-			await flushStdout()
-			process.exit(exitCode)
-		}
+				if (jsonEmitter) {
+					await jsonEmitter.flush()
+				}
+			},
+			onError: (error, source) => emitRuntimeError(normalizeError(error), source),
+			keepAlive: signalOnlyExit,
+			isExpectedError: (error) =>
+				isExpectedControlFlowError(error, {
+					stdinStreamMode: useStdinPromptStream,
+					shuttingDown: isShuttingDown,
+					operation: "runtime",
+				}),
+			// --signal-only-exit parks instead of exiting, so a stdin harness
+			// keeps its process; every other run exits with the guard's code.
+			onExit: (code) => {
+				if (signalOnlyExit) {
+					return
+				}
 
-		process.on("SIGINT", onSigint)
-		process.on("SIGTERM", onSigterm)
-		process.on("uncaughtException", onUncaughtException)
-		process.on("unhandledRejection", onUnhandledRejection)
+				process.exit(code)
+			},
+		})
 
 		try {
 			await host.activate()
@@ -816,37 +796,25 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 				}
 			}
 
-			await disposeHost()
-			if (jsonEmitter) {
-				await jsonEmitter.flush()
-			}
+			// The shared cleanup pass (host dispose + JSON flush) also removes
+			// the guards, so nothing double-handles a late signal.
+			await disposeGuards()
 			await flushStdout()
 
 			if (signalOnlyExit) {
 				await parkUntilSignal("Task loop completed")
 			}
 
-			process.off("SIGINT", onSigint)
-			process.off("SIGTERM", onSigterm)
-			process.off("uncaughtException", onUncaughtException)
-			process.off("unhandledRejection", onUnhandledRejection)
 			process.exit(0)
 		} catch (error) {
 			emitRuntimeError(normalizeError(error))
-			await disposeHost()
-			if (jsonEmitter) {
-				await jsonEmitter.flush()
-			}
+			await disposeGuards()
 			await flushStdout()
 
 			if (signalOnlyExit) {
 				await parkUntilSignal("Task loop failed")
 			}
 
-			process.off("SIGINT", onSigint)
-			process.off("SIGTERM", onSigterm)
-			process.off("uncaughtException", onUncaughtException)
-			process.off("unhandledRejection", onUnhandledRejection)
 			process.exit(1)
 		}
 	}
