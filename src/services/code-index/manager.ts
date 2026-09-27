@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { backoffDelayMsNoJitter } from "@roo-code/core"
 import { ContextProxy } from "../../core/config/ContextProxy"
 import { VectorStoreSearchResult } from "./interfaces"
 import { IndexingState } from "./interfaces/manager"
@@ -394,10 +395,10 @@ export class CodeIndexManager {
 			return
 		}
 
-		const delay = Math.min(
-			CodeIndexManager.AUTO_RETRY_MAX_DELAY_MS,
-			CodeIndexManager.AUTO_RETRY_INITIAL_DELAY_MS * 2 ** this._retryAttempt,
-		)
+		const delay = backoffDelayMsNoJitter(this._retryAttempt, {
+			baseMs: CodeIndexManager.AUTO_RETRY_INITIAL_DELAY_MS,
+			capMs: CodeIndexManager.AUTO_RETRY_MAX_DELAY_MS,
+		})
 		this._retryAttempt++
 
 		console.log(

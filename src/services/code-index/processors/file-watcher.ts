@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { backoffDelayMsNoJitter } from "@roo-code/core"
 import {
 	QDRANT_CODE_BLOCK_NAMESPACE,
 	MAX_FILE_SIZE_BYTES,
@@ -446,7 +447,13 @@ export class FileWatcher implements IFileWatcher {
 								)
 							}
 							await new Promise((resolve) =>
-								setTimeout(resolve, INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount - 1)),
+								setTimeout(
+									resolve,
+									backoffDelayMsNoJitter(retryCount - 1, {
+										baseMs: INITIAL_RETRY_DELAY_MS,
+										capMs: Number.MAX_SAFE_INTEGER,
+									}),
+								),
 							)
 						}
 					}

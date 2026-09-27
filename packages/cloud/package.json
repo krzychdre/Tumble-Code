@@ -12,6 +12,7 @@
 		"clean": "rimraf .turbo"
 	},
 	"dependencies": {
+		"@roo-code/core": "workspace:^",
 		"@roo-code/types": "workspace:^",
 		"jwt-decode": "^4.0.0",
 		"socket.io-client": "^4.8.1",

@@ -8,6 +8,7 @@ import {
 	modeMarketplaceItemSchema,
 	mcpMarketplaceItemSchema,
 } from "@roo-code/types"
+import { backoffDelayMsNoJitter } from "@roo-code/core"
 import { getRooCodeApiUrl } from "@roo-code/cloud"
 
 const modeMarketplaceResponse = z.object({
@@ -100,7 +101,7 @@ export class RemoteConfigLoader {
 				lastError = error as Error
 				if (i < maxRetries - 1) {
 					// Exponential backoff: 1s, 2s, 4s
-					const delay = Math.pow(2, i) * 1000
+					const delay = backoffDelayMsNoJitter(i, { baseMs: 1_000, capMs: 4_000 })
 					await new Promise((resolve) => setTimeout(resolve, delay))
 				}
 			}

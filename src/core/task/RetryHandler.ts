@@ -3,12 +3,14 @@
  *
  * This module extracts the retry/backoff logic from TaskApiLoop,
  * including exponential backoff calculation, rate limit handling,
- * and countdown UX.
+ * and countdown UX. The delay ladder and the countdown loops come
+ * from the shared helpers in `@roo-code/core` (D1).
  *
  * Extracted from: TaskApiLoop.ts (Phase 2A refactoring)
  */
 
 import delay from "delay"
+import { backoffDelayMsNoJitter, countdown } from "@roo-code/core"
 import { type ProviderSettings } from "@roo-code/types"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type ClineProvider } from "../webview/ClineProvider"
@@ -75,6 +77,20 @@ export class RetryHandler {
 	constructor(private readonly access: RetryHandlerAccess) {}
 
 	/**
+	 * Seconds left in the user-configured provider rate-limit window, 0 when
+	 * the window has passed or no limit is set. One implementation, used by
+	 * both the retry backoff and the pre-request wait (D1: was written twice).
+	 */
+	private providerRateLimitDelaySeconds(state: any): number {
+		const rateLimit = (state?.apiConfiguration ?? this.access.apiConfiguration)?.rateLimitSeconds || 0
+		if (!getLastGlobalApiRequestTime() || rateLimit <= 0) {
+			return 0
+		}
+		const elapsed = performance.now() - getLastGlobalApiRequestTime()!
+		return Math.ceil(Math.min(rateLimit, Math.max(0, rateLimit * 1000 - elapsed) / 1000))
+	}
+
+	/**
 	 * Calculate the backoff delay for a retry attempt.
 	 * @param retryAttempt - The current retry attempt number
 	 * @param error - The error that triggered the retry
@@ -84,18 +100,15 @@ export class RetryHandler {
 	calculateBackoffDelay(retryAttempt: number, error: any, state: any): number {
 		const baseDelay = state?.requestDelaySeconds || 5
 
-		let exponentialDelay = Math.min(
-			Math.ceil(baseDelay * Math.pow(2, retryAttempt)),
-			MAX_EXPONENTIAL_BACKOFF_SECONDS,
+		let exponentialDelay = Math.ceil(
+			backoffDelayMsNoJitter(retryAttempt, {
+				baseMs: baseDelay * 1000,
+				capMs: MAX_EXPONENTIAL_BACKOFF_SECONDS * 1000,
+			}) / 1000,
 		)
 
 		// Respect provider rate limit window
-		let rateLimitDelay = 0
-		const rateLimit = (state?.apiConfiguration ?? this.access.apiConfiguration)?.rateLimitSeconds || 0
-		if (getLastGlobalApiRequestTime() && rateLimit > 0) {
-			const elapsed = performance.now() - getLastGlobalApiRequestTime()!
-			rateLimitDelay = Math.ceil(Math.min(rateLimit, Math.max(0, rateLimit * 1000 - elapsed) / 1000))
-		}
+		const rateLimitDelay = this.providerRateLimitDelaySeconds(state)
 
 		// Prefer RetryInfo on 429 if present
 		if (error?.status === 429) {
@@ -117,19 +130,19 @@ export class RetryHandler {
 	 * @param headerText - Error text to display
 	 */
 	async showCountdownUX(seconds: number, headerText: string): Promise<void> {
-		for (let i = seconds; i > 0; i--) {
-			if (this.access.abort) {
-				throw new Error(`[Task#${this.access.taskId}] Aborted during retry countdown`)
-			}
-
-			await this.access.askSay.say(
-				"api_req_retry_delayed",
-				`${headerText}<retry_timer>${i}</retry_timer>`,
-				undefined,
-				true,
-			)
-			await delay(1000)
-		}
+		await countdown(seconds, {
+			onTick: (i) =>
+				this.access.askSay.say(
+					"api_req_retry_delayed",
+					`${headerText}<retry_timer>${i}</retry_timer>`,
+					undefined,
+					true,
+				),
+			isAborted: () => this.access.abort,
+			abortError: new Error(`[Task#${this.access.taskId}] Aborted during retry countdown`),
+			// The specs spy on the `delay` module to count countdown seconds.
+			sleep: (ms) => delay(ms),
+		})
 
 		await this.access.askSay.say("api_req_retry_delayed", headerText, undefined, false)
 	}
@@ -190,26 +203,19 @@ export class RetryHandler {
 	 */
 	async maybeWaitForProviderRateLimit(retryAttempt: number): Promise<void> {
 		const state = await this.access.providerRef.deref()?.getState()
-		const rateLimitSeconds =
-			state?.apiConfiguration?.rateLimitSeconds ?? this.access.apiConfiguration?.rateLimitSeconds ?? 0
-
-		if (rateLimitSeconds <= 0 || !getLastGlobalApiRequestTime()) {
-			return
-		}
-
-		const now = performance.now()
-		const timeSinceLastRequest = now - getLastGlobalApiRequestTime()!
-		const rateLimitDelay = Math.ceil(
-			Math.min(rateLimitSeconds, Math.max(0, rateLimitSeconds * 1000 - timeSinceLastRequest) / 1000),
-		)
+		const rateLimitDelay = this.providerRateLimitDelaySeconds(state)
 
 		// Only show countdown UX on first attempt
 		if (rateLimitDelay > 0 && retryAttempt === 0) {
-			for (let i = rateLimitDelay; i > 0; i--) {
-				const delayMessage = JSON.stringify({ seconds: i })
-				await this.access.askSay.say("api_req_rate_limit_wait", delayMessage, undefined, true)
-				await delay(1000)
-			}
+			// D1: this countdown used to ignore abort, so a cancelled task
+			// still waited out the whole rate-limit window.
+			await countdown(rateLimitDelay, {
+				onTick: (i) =>
+					this.access.askSay.say("api_req_rate_limit_wait", JSON.stringify({ seconds: i }), undefined, true),
+				isAborted: () => this.access.abort,
+				// The specs spy on the `delay` module to count countdown seconds.
+				sleep: (ms) => delay(ms),
+			})
 			await this.access.askSay.say("api_req_rate_limit_wait", undefined, undefined, false)
 		}
 	}
