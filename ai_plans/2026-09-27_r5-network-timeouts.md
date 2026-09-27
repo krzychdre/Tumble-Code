@@ -27,14 +27,16 @@ keeps its `httpOptions.timeout` armed while the response body is read (see `apiC
 cap the whole answer at 10 minutes and cut long generations. The idle watchdog covers a stalled stream for these
 providers without that risk.
 
-The first chunk (`attemptApiRequest`) is still bounded only by the provider SDK's own timeout. Once R3 is merged
-the first chunk uses `raceNextChunkWithAbort` too, and the idle timeout can be passed there in a follow-up.
+The first chunk (`attemptApiRequest`) uses the same idle timeout since R3 moved it onto `raceNextChunkWithAbort`: on
+`StreamIdleTimeoutError` it aborts the request controller and the error takes the normal first-chunk retry path
+(`handleApiRequestError`).
 
 ## Tests
 
 - `TaskApiLoop.stream-idle-timeout.spec.ts`: the race rejects with `StreamIdleTimeoutError` after the idle time,
   clears its timer when a chunk arrives, and waits without limit when no timeout is given; `processStream`
-  aborts the request controller and hands the error to `handleStreamError`.
+  aborts the request controller and hands the error to `handleStreamError`; `attemptApiRequest` does the same for
+  a first chunk that never arrives, handing it to `handleApiRequestError`.
 - `openai.spec.ts`: the model list request carries `timeout: 30_000`.
 - `rate-limits.spec.ts`: the usage lookup passes `AbortSignal.timeout(30_000)`.
 - The new cases fail without the fix. `vitest run api integrations services/code-index core/webview core/task`

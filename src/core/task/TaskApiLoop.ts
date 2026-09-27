@@ -20,7 +20,7 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
-import { type ApiStream } from "../../api/transform/stream"
+import { type ApiStream, type ApiStreamChunk } from "../../api/transform/stream"
 import { describeBackgroundApiFailure, getApiErrorStatus, isAutoRetryableApiError } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
@@ -1440,10 +1440,20 @@ export class TaskApiLoop {
 
 		try {
 			// Await first chunk. The same race as every later chunk (processStream), so its abort listener is
-			// removed as soon as the chunk arrives instead of staying on the signal for the whole stream.
+			// removed as soon as the chunk arrives instead of staying on the signal for the whole stream. The
+			// idle timeout (R5) also bounds providers whose SDK gets no request timeout (Gemini, Vertex, Mistral).
 			this.access.isWaitingForFirstChunk = true
 
-			const firstChunk = await raceNextChunkWithAbort(iterator, abortSignal)
+			let firstChunk: IteratorResult<ApiStreamChunk>
+			try {
+				firstChunk = await raceNextChunkWithAbort(iterator, abortSignal, getApiRequestTimeout())
+			} catch (error) {
+				if (error instanceof StreamIdleTimeoutError) {
+					// Close the HTTP request; the error then takes the normal first-chunk retry path.
+					this.access.currentRequestAbortController?.abort()
+				}
+				throw error
+			}
 			yield firstChunk.value
 			this.access.isWaitingForFirstChunk = false
 		} catch (error) {

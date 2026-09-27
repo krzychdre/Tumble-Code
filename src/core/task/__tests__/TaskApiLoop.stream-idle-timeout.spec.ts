@@ -88,3 +88,54 @@ describe("TaskApiLoop.processStream idle timeout (R5)", () => {
 		expect(controller.signal.aborted).toBe(true)
 	})
 })
+
+describe("TaskApiLoop.attemptApiRequest first-chunk idle timeout (R5)", () => {
+	it("closes the request and hands a StreamIdleTimeoutError to the first-chunk error path", async () => {
+		const createMessage = vi.fn(async function* () {
+			// The provider never sends the first chunk.
+			await new Promise(() => {})
+			yield { type: "text" as const, text: "never" }
+		})
+		const access: any = {
+			taskId: "task-1",
+			instanceId: "inst-1",
+			isBackground: false,
+			abort: false,
+			apiConfiguration: { apiProvider: "gemini" },
+			api: {
+				getModel: vi.fn().mockReturnValue({ id: "test-model", info: {} }),
+				countTokens: vi.fn().mockResolvedValue(0),
+				createMessage,
+			},
+			apiConversationHistory: [],
+			clineMessages: [],
+			microcompactStrippedTokens: 0,
+			skipPrevResponseIdOnce: false,
+			providerRef: { deref: () => ({ getState: async () => ({}) }) },
+			getTaskMode: async () => "code",
+			getTokenUsage: () => ({ contextTokens: 0 }),
+			combineMessages: (messages: unknown[]) => messages,
+			autoApprovalHandler: { checkAutoApprovalLimits: vi.fn().mockResolvedValue({ shouldProceed: true }) },
+			askSay: { ask: vi.fn(), say: vi.fn() },
+		}
+		const loop = new TaskApiLoop(access)
+		vi.spyOn(console, "log").mockImplementation(() => {})
+		vi.spyOn(loop, "getSystemPrompt").mockResolvedValue("system prompt")
+		vi.spyOn(loop, "maybeWaitForProviderRateLimit").mockResolvedValue(undefined)
+		vi.spyOn(loop as any, "buildToolsArray").mockResolvedValue({ allTools: [], allowedFunctionNames: undefined })
+		const handleError = vi.spyOn(loop as any, "handleApiRequestError").mockImplementation(async function* (
+			error: unknown,
+		) {
+			yield { type: "text", text: `handled: ${(error as Error).name}` }
+		})
+
+		const stream = loop.attemptApiRequest()
+		const pending = stream.next()
+		await vi.waitFor(() => expect(createMessage).toHaveBeenCalled())
+		const signal = access.currentRequestAbortController.signal
+
+		expect((await pending).value).toEqual({ type: "text", text: "handled: StreamIdleTimeoutError" })
+		expect(handleError.mock.calls[0][0]).toBeInstanceOf(StreamIdleTimeoutError)
+		expect(signal.aborted).toBe(true)
+	})
+})
