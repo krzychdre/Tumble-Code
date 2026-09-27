@@ -2,17 +2,19 @@
 
 Start at the top and stop reading as soon as you know enough. Each level assumes the one above it.
 
-| Level | Page                                             | Answers                                                                               |
-| ----- | ------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| 0     | [System overview](01-system-overview.md)         | What are the running pieces and how do they talk to each other?                       |
-| 1     | [Architecture map](architecture.md)              | Which folder owns what, which imports are allowed, what must not be touched?          |
-| 2     | [Extension host](02-extension-host.md)           | How the extension activates, what `ClineProvider` does, how state reaches the panel.  |
-| 2     | [Webview UI](05-webview-ui.md)                   | How the React panel is built, how it merges state, how chat rows are shaped.          |
-| 2     | [CLI](07-cli.md)                                 | How the terminal client runs the extension without VS Code.                           |
-| 2     | [Cloud](08-cloud.md)                             | `packages/cloud` and the self-hosted FastAPI service: auth, sync, bridge, web panel.  |
-| 3     | [Task and the agent loop](03-task-agent-loop.md) | One conversation turn from the user message to the tool result, with retry and abort. |
-| 3     | [Tools and providers](04-tools-and-providers.md) | How a tool call is parsed, approved and executed; how a provider streams chunks.      |
-| 3     | [Persistence](06-persistence.md)                 | Where settings, secrets, tasks and history live, and how writes stay atomic.          |
+| Level | Page                                                      | Answers                                                                               |
+| ----- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 0     | [System overview](01-system-overview.md)                  | What are the running pieces and how do they talk to each other?                       |
+| 1     | [Architecture map](architecture.md)                       | Which folder owns what, which imports are allowed, what must not be touched?          |
+| 2     | [Extension host](02-extension-host.md)                    | How the extension activates, what `ClineProvider` does, how state reaches the panel.  |
+| 2     | [Webview UI](05-webview-ui.md)                            | How the React panel is built, how it merges state, how chat rows are shaped.          |
+| 2     | [CLI](07-cli.md)                                          | How the terminal client runs the extension without VS Code.                           |
+| 2     | [Cloud](08-cloud.md)                                      | `packages/cloud` and the self-hosted FastAPI service: auth, sync, bridge, web panel.  |
+| 3     | [Task and the agent loop](03-task-agent-loop.md)          | One conversation turn from the user message to the tool result, with retry and abort. |
+| 3     | [Tools and providers](04-tools-and-providers.md)          | How a tool call is parsed, approved and executed; how a provider streams chunks.      |
+| 3     | [Persistence](06-persistence.md)                          | Where settings, secrets, tasks and history live, and how writes stay atomic.          |
+| 3     | [Environment variables](09-environment-variables.md)      | Every variable the code reads, per workspace, including the dead ones.                |
+| 3     | [Adding a setting, tool or provider](10-adding-things.md) | The file-by-file checklist for the three most common extension changes.               |
 
 Plans and proposals live in `ai_plans/`. The current ones:
 

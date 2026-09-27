@@ -67,7 +67,9 @@ Gemini, the Responses API and a few others keep their own parsers because their 
 
 Roughly 15 files: the settings schema, model list, validation and registry entry in `packages/types`; the handler,
 barrel export and runtime registry entry in `src/api`; the settings form, `provider-ui-registry.tsx` and model
-selection helpers in `webview-ui`. Copy the most similar existing provider and follow the compiler errors.
+selection helpers in `webview-ui`. Copy the most similar existing provider and follow the compiler errors. The
+step-by-step checklist, and the equivalents for a setting and a tool, are on
+[10-adding-things.md](10-adding-things.md).
 
 ## Auto-approval
 
