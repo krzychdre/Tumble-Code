@@ -31,6 +31,7 @@ vi.mock("fs/promises", async () => {
 	mockedFs.rm = vi.fn(actual.rm) as any
 	mockedFs.readdir = vi.fn(actual.readdir) as any
 	mockedFs.mkdir = vi.fn(actual.mkdir) as any
+	mockedFs.open = vi.fn(actual.open) as any
 	// fs.stat and fs.lstat will be available via { ...actual }
 
 	return mockedFs
@@ -122,6 +123,40 @@ describe("safeWriteJson", () => {
 
 		const content = await readFileContent(currentTestFilePath)
 		expect(content).toEqual(newData)
+	})
+
+	// Regression (R2): the temp file must reach the disk before it replaces the target, otherwise a power loss can
+	// leave the target name pointing at an empty file.
+	test("syncs the temporary file to disk before renaming it over the target", async () => {
+		const events: string[] = []
+		const { open: actualOpen, rename: actualRename } =
+			await vi.importActual<typeof import("fs/promises")>("fs/promises")
+		vi.mocked(fs.open).mockImplementation((async (...args: Parameters<typeof actualOpen>) => {
+			const handle = await actualOpen(...args)
+			const sync = handle.sync.bind(handle)
+			handle.sync = async () => {
+				events.push(`sync ${path.basename(String(args[0]))}`)
+				return sync()
+			}
+			return handle
+		}) as any)
+		const renameSpy = vi.spyOn(fs, "rename")
+		renameSpy.mockImplementation((async (from: string, to: string) => {
+			events.push(`rename ${path.basename(from)}`)
+			return actualRename(from, to)
+		}) as any)
+
+		try {
+			await safeWriteJson(currentTestFilePath, { durable: true })
+		} finally {
+			vi.mocked(fs.open).mockRestore()
+			renameSpy.mockRestore()
+		}
+
+		const tempRename = events.findIndex((event) => event.startsWith("rename .test-file.json.new_"))
+		expect(tempRename).toBeGreaterThan(0)
+		expect(events[tempRename - 1]).toBe(events[tempRename]!.replace("rename", "sync"))
+		expect(await readFileContent(currentTestFilePath)).toEqual({ durable: true })
 	})
 
 	test("always acquires an inter-process lock", async () => {

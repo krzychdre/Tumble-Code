@@ -66,6 +66,20 @@ async function streamJsonToTemporaryFile(
 	if (mode !== undefined) {
 		await fs.chmod(targetPath, mode)
 	}
+	await flushToDisk(targetPath)
+}
+
+/**
+ * Force the file's bytes to disk before it is renamed over the target. Without this, a power loss right after the
+ * rename can leave the target name pointing at an empty file on file systems that reorder metadata and data writes.
+ */
+async function flushToDisk(filePath: string): Promise<void> {
+	const handle = await fs.open(filePath, "r+")
+	try {
+		await handle.sync()
+	} finally {
+		await handle.close()
+	}
 }
 
 async function writeJsonAtomically(filePath: string, data: unknown, options?: SafeWriteJsonOptions): Promise<void> {
