@@ -20,6 +20,8 @@ Plans and proposals live in `ai_plans/`. The current ones:
   2026-09 refactor achieved, and the ranked list of what to simplify, speed up and harden next.
 - [`ai_plans/2026-09-27_ui-modernization.md`](../ai_plans/2026-09-27_ui-modernization.md): UI proposals for the
   VS Code panel, the cloud web panel and the CLI.
+- [`ai_plans/2026-09-27_agent-fix-plan/`](../ai_plans/2026-09-27_agent-fix-plan/00-README.md): the roadmap's next
+  items as self-contained work packages (exact code, tests, commands), in the order to execute them.
 
 ## How these pages are written
 
