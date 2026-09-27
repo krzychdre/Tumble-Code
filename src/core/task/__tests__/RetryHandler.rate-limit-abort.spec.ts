@@ -24,6 +24,18 @@ function makeHandler(overrides: Partial<RetryHandlerAccess> = {}) {
 	return { handler: new RetryHandler(access), access, say }
 }
 
+describe("RetryHandler.calculateBackoffDelay requestDelaySeconds (D2)", () => {
+	it("returns 0 when the user set requestDelaySeconds to 0 (|| used to mask it to 5)", () => {
+		const { handler } = makeHandler()
+		expect(handler.calculateBackoffDelay(0, undefined, { requestDelaySeconds: 0 })).toBe(0)
+	})
+
+	it("uses the table default (5 s) when the setting is unset", () => {
+		const { handler } = makeHandler()
+		expect(handler.calculateBackoffDelay(0, undefined, {})).toBe(5)
+	})
+})
+
 describe("RetryHandler.maybeWaitForProviderRateLimit abort (D1)", () => {
 	beforeEach(() => {
 		vi.useFakeTimers()

@@ -1315,8 +1315,8 @@ export class TaskApiLoop {
 			apiConfiguration,
 			autoApprovalEnabled,
 			requestDelaySeconds,
-			autoCondenseContext = true,
-			autoCondenseContextPercent = 100,
+			autoCondenseContext = SETTINGS_DEFAULTS.autoCondenseContext,
+			autoCondenseContextPercent = SETTINGS_DEFAULTS.autoCondenseContextPercent,
 			profileThresholds = {},
 		} = state ?? {}
 

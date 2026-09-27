@@ -1,6 +1,7 @@
 // Prompt enhancement, system prompt preview and the commit and file search pickers.
 
 import * as vscode from "vscode"
+import { SETTINGS_DEFAULTS } from "@roo-code/types"
 import { t } from "../../../i18n"
 import { searchWorkspaceFiles } from "../../../services/search/file-search"
 import { searchCommits } from "../../../utils/git"
@@ -131,7 +132,8 @@ export const enhanceAndSearchHandlers: MessageHandlerMap = {
 
 			try {
 				// Get showRooIgnoredFiles setting from state
-				const { showRooIgnoredFiles = false } = (await provider.getState()) ?? {}
+				const { showRooIgnoredFiles = SETTINGS_DEFAULTS.showRooIgnoredFiles } =
+					(await provider.getState()) ?? {}
 
 				// Filter results using RooIgnoreController if showRooIgnoredFiles is false
 				let filteredResults = results
