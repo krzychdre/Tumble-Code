@@ -4,9 +4,11 @@ import hashlib
 import json
 from typing import Optional
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.settings import settings as app_settings
+from src.models.settings import UserSettings
 from src.services.user_service import get_or_create_org_settings, get_or_create_user_settings
 from src.schemas.settings import (
     OrganizationSettingsResponse,
@@ -101,20 +103,49 @@ async def update_user_settings(
     settings: UserSettingsConfig,
     version: Optional[int] = None,
 ) -> UserSettingsData:
-    """Update user settings with optimistic locking."""
+    """Update user settings with optimistic locking.
+
+    The version check is a compare-and-swap IN SQL, not read-then-compare in
+    Python: ``UPDATE ... WHERE version = :expected RETURNING``. The old
+    read-compare-write let two parallel PATCHes carrying the same expected
+    version both pass the comparison and both write — one update silently
+    lost. The atomic UPDATE lets exactly one of them match the row; the
+    loser updates zero rows and gets the same 409 a sequential stale write
+    gets. A PATCH without an expected version opts out of optimistic locking
+    and always wins, exactly as before.
+    """
     user_settings = await get_or_create_user_settings(db, user_id)
 
-    # Optimistic locking check
-    if version is not None and user_settings.version != version:
+    new_version = user_settings.version + 1
+    stmt = (
+        update(UserSettings)
+        .where(UserSettings.user_id == user_id)
+        .values(settings=json.dumps(settings.model_dump(by_alias=False)))
+        .values(version=new_version)
+    )
+    if version is not None:
+        # The CAS guard: only advance the row when it is still at the version
+        # the caller saw. Combined into one statement with the write above,
+        # so no other transaction can slip between the check and the write.
+        stmt = stmt.where(UserSettings.version == version)
+
+    result = await db.execute(stmt.returning(UserSettings.version))
+    row = result.scalar_one_or_none()
+    if row is None:
+        # 0 rows updated: the row exists (get_or_create above) but is no
+        # longer at the expected version — somebody else updated it first.
+        # (SQLite does not support UPDATE ... RETURNING on every driver
+        # version, but the suite's SQLite does; see test_cloud_races.py.)
         from fastapi import HTTPException
         raise HTTPException(status_code=409, detail="Version conflict")
 
-    user_settings.settings = json.dumps(settings.model_dump(by_alias=False))
-    user_settings.version += 1
     await db.flush()
+    # The session holds a stale snapshot of the row; forget it so nothing
+    # later in this session reads the pre-update values.
+    db.expire(user_settings)
 
     return UserSettingsData(
         features=UserFeatures(),
         settings=settings,
-        version=user_settings.version,
+        version=row,
     )
