@@ -24,6 +24,7 @@ import type { CompletionResult, SingleCompletionHandler, ApiHandlerCreateMessage
 import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
+import { CONTROL_REQUEST_TIMEOUT_MS } from "./utils/timeout-config"
 
 /**
  * Custom interface for GLM params to support thinking mode.
@@ -631,7 +632,7 @@ export async function getOpenAiModels(baseUrl?: string, apiKey?: string, openAiH
 			return []
 		}
 
-		const config: Record<string, any> = {}
+		const config: Record<string, any> = { timeout: CONTROL_REQUEST_TIMEOUT_MS }
 		const headers: Record<string, string> = {
 			...DEFAULT_HEADERS,
 			...(openAiHeaders || {}),

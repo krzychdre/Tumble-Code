@@ -5,6 +5,7 @@ import { t } from "../../../i18n"
 import { HttpError } from "../shared/validation-helpers"
 import { handleProviderError } from "../../../api/providers/utils/error-handler"
 import { BaseHttpEmbedder, EmbedBatchResult, decodeEmbedding } from "./base-http-embedder"
+import { getApiRequestTimeout } from "../../../api/providers/utils/timeout-config"
 
 interface EmbeddingItem {
 	embedding: string | number[]
@@ -145,6 +146,7 @@ export class OpenAICompatibleEmbedder extends BaseHttpEmbedder {
 				"api-key": this.apiKey,
 				Authorization: `Bearer ${this.apiKey}`,
 			},
+			signal: AbortSignal.timeout(getApiRequestTimeout()),
 			body: JSON.stringify({
 				input: batchTexts,
 				model: model,

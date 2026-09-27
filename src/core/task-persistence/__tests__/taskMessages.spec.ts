@@ -17,6 +17,10 @@ import { perfCounters } from "../../../utils/perfCounters"
 
 let tmpBaseDir: string
 
+async function listCorruptCopies(dir: string, fileName: string): Promise<string[]> {
+	return (await fs.readdir(dir)).filter((name) => name.startsWith(`${fileName}.corrupt-`))
+}
+
 beforeEach(async () => {
 	hoisted.safeWriteJsonMock.mockClear()
 	// Create a unique, writable temp directory to act as globalStoragePath
@@ -101,6 +105,30 @@ describe("taskMessages.readTaskMessages", () => {
 		})
 
 		expect(result).toEqual([])
+	})
+
+	// Regression (R1): the next save writes over ui_messages.json, so a damaged file must be moved aside first.
+	it("moves an unparseable ui_messages.json aside instead of leaving it to be overwritten", async () => {
+		const taskId = "task-corrupt-quarantine"
+		const taskDir = path.join(tmpBaseDir, "tasks", taskId)
+		await fs.mkdir(taskDir, { recursive: true })
+		const filePath = path.join(taskDir, "ui_messages.json")
+		await fs.writeFile(filePath, "", "utf8") // what a power loss can leave behind
+
+		expect(await readTaskMessages({ taskId, globalStoragePath: tmpBaseDir })).toEqual([])
+
+		await expect(fs.access(filePath)).rejects.toThrow()
+		expect(await listCorruptCopies(taskDir, "ui_messages.json")).toHaveLength(1)
+	})
+
+	it("moves a non-array ui_messages.json aside", async () => {
+		const taskId = "task-non-array-quarantine"
+		const taskDir = path.join(tmpBaseDir, "tasks", taskId)
+		await fs.mkdir(taskDir, { recursive: true })
+		await fs.writeFile(path.join(taskDir, "ui_messages.json"), "42", "utf8")
+
+		expect(await readTaskMessages({ taskId, globalStoragePath: tmpBaseDir })).toEqual([])
+		expect(await listCorruptCopies(taskDir, "ui_messages.json")).toHaveLength(1)
 	})
 
 	it("returns [] when file contains valid JSON that is not an array", async () => {

@@ -1447,6 +1447,18 @@ describe("getOpenAiModels", () => {
 		expect(axios.get).not.toHaveBeenCalled()
 	})
 
+	// R5: a model list request on a dropped connection must not wait forever.
+	it("limits the model list request with the control request timeout", async () => {
+		vi.mocked(axios.get).mockResolvedValueOnce({ data: { data: [] } })
+
+		await getOpenAiModels("https://api.openai.com/v1", "test-key")
+
+		expect(axios.get).toHaveBeenCalledWith(
+			"https://api.openai.com/v1/models",
+			expect.objectContaining({ timeout: 30_000 }),
+		)
+	})
+
 	it("should trim whitespace from baseUrl", async () => {
 		const mockResponse = {
 			data: {

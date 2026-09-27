@@ -20,7 +20,7 @@ import {
 } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler, type ApiHandlerCreateMessageMetadata } from "../../api"
-import { type ApiStream } from "../../api/transform/stream"
+import { type ApiStream, type ApiStreamChunk } from "../../api/transform/stream"
 import { describeBackgroundApiFailure, getApiErrorStatus, isAutoRetryableApiError } from "../../api/apiErrors"
 import { checkContextWindowExceededError } from "../context/context-management/context-error-handling"
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
@@ -55,6 +55,7 @@ import {
 	resetGlobalApiRequestTime,
 } from "./RetryHandler"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
+import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
 
 /**
  * Thrown out of attemptApiRequest when the user answers the api_req_failed ask
@@ -250,6 +251,7 @@ interface StackItem {
 export async function raceNextChunkWithAbort<T>(
 	iterator: AsyncIterator<T>,
 	signal: AbortSignal,
+	idleTimeoutMs?: number,
 ): Promise<IteratorResult<T>> {
 	const nextPromise = iterator.next()
 
@@ -263,15 +265,32 @@ export async function raceNextChunkWithAbort<T>(
 	}
 
 	let rejectRef: (error: Error) => void
+	let idleTimer: ReturnType<typeof setTimeout> | undefined
 	const abortPromise = new Promise<never>((_, reject) => {
 		rejectRef = reject
 		signal.addEventListener("abort", onAbort, { once: true })
+		if (idleTimeoutMs !== undefined && idleTimeoutMs > 0) {
+			idleTimer = setTimeout(() => reject(new StreamIdleTimeoutError(idleTimeoutMs)), idleTimeoutMs)
+		}
 	})
 
 	try {
 		return await Promise.race([nextPromise, abortPromise])
 	} finally {
 		signal.removeEventListener("abort", onAbort)
+		clearTimeout(idleTimer)
+	}
+}
+
+/**
+ * The provider sent nothing for longer than the API request timeout while a stream was open. Raised by
+ * {@link raceNextChunkWithAbort}; the stream loop closes the HTTP request and retries like any other stream
+ * failure, instead of waiting on a dead connection until the user presses Stop.
+ */
+export class StreamIdleTimeoutError extends Error {
+	constructor(readonly idleTimeoutMs: number) {
+		super(`The provider sent no data for ${Math.round(idleTimeoutMs / 1000)} seconds; the stream was closed.`)
+		this.name = "StreamIdleTimeoutError"
 	}
 }
 
@@ -703,11 +722,24 @@ export class TaskApiLoop {
 		// Helper to race iterator.next() with abort signal.
 		// AP-5: delegates to the exported raceNextChunkWithAbort so the listener
 		// cleanup logic is unit-testable without going through the full loop.
+		// R5: a stream that goes silent for longer than the API request timeout is treated as failed. The
+		// provider SDKs time out only the wait for the response headers (or, like @google/genai, the whole
+		// response), so without this a dropped connection mid-answer waited until the user pressed Stop.
+		const idleTimeoutMs = getApiRequestTimeout()
 		const nextChunkWithAbort = async () => {
-			if (this.access.currentRequestAbortController) {
-				return raceNextChunkWithAbort(iterator, this.access.currentRequestAbortController.signal)
+			const controller = this.access.currentRequestAbortController
+			if (!controller) {
+				return iterator.next()
 			}
-			return iterator.next()
+			try {
+				return await raceNextChunkWithAbort(iterator, controller.signal, idleTimeoutMs)
+			} catch (error) {
+				if (error instanceof StreamIdleTimeoutError) {
+					// Close the HTTP request too; the error then takes the normal stream-failure path.
+					controller.abort()
+				}
+				throw error
+			}
 		}
 
 		try {
@@ -826,7 +858,13 @@ export class TaskApiLoop {
 		)
 
 		if (hasTextContent || hasToolUses) {
-			await pWaitFor(() => this.access.userMessageContentReady)
+			// The abort term matters: a task aborted while a tool is still running (for example during its
+			// approval ask) never sets userMessageContentReady, and this wait would poll forever.
+			await pWaitFor(() => this.access.userMessageContentReady || this.access.abort)
+
+			if (this.access.abort) {
+				return "return_true"
+			}
 
 			const didToolUse = this.access.assistantMessageContent.some(
 				(block) => block.type === "tool_use" || block.type === "mcp_tool_use",
@@ -1389,29 +1427,33 @@ export class TaskApiLoop {
 		const iterator = stream[Symbol.asyncIterator]()
 
 		// Set up abort handling
-		abortSignal.addEventListener("abort", () => {
-			console.log(
-				`[Task#${this.access.taskId}.${this.access.instanceId}] AbortSignal triggered for current request`,
-			)
-			this.access.currentRequestAbortController = undefined
-		})
+		abortSignal.addEventListener(
+			"abort",
+			() => {
+				console.log(
+					`[Task#${this.access.taskId}.${this.access.instanceId}] AbortSignal triggered for current request`,
+				)
+				this.access.currentRequestAbortController = undefined
+			},
+			{ once: true },
+		)
 
 		try {
-			// Await first chunk
+			// Await first chunk. The same race as every later chunk (processStream), so its abort listener is
+			// removed as soon as the chunk arrives instead of staying on the signal for the whole stream. The
+			// idle timeout (R5) also bounds providers whose SDK gets no request timeout (Gemini, Vertex, Mistral).
 			this.access.isWaitingForFirstChunk = true
 
-			const firstChunkPromise = iterator.next()
-			const abortPromise = new Promise<never>((_, reject) => {
-				if (abortSignal.aborted) {
-					reject(new Error("Request cancelled by user"))
-				} else {
-					abortSignal.addEventListener("abort", () => {
-						reject(new Error("Request cancelled by user"))
-					})
+			let firstChunk: IteratorResult<ApiStreamChunk>
+			try {
+				firstChunk = await raceNextChunkWithAbort(iterator, abortSignal, getApiRequestTimeout())
+			} catch (error) {
+				if (error instanceof StreamIdleTimeoutError) {
+					// Close the HTTP request; the error then takes the normal first-chunk retry path.
+					this.access.currentRequestAbortController?.abort()
 				}
-			})
-
-			const firstChunk = await Promise.race([firstChunkPromise, abortPromise])
+				throw error
+			}
 			yield firstChunk.value
 			this.access.isWaitingForFirstChunk = false
 		} catch (error) {

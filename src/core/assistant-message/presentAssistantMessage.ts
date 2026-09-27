@@ -90,8 +90,11 @@ async function getStateForToolBlock(cline: Task, toolCallId: string, partial: bo
 }
 
 export async function presentAssistantMessage(cline: Task) {
+	// Every caller fires this without awaiting it, so a throw here could only become an unhandled rejection.
+	// An aborted task simply stops presenting; the API loop notices the abort flag on its own.
 	if (cline.abort) {
-		throw new Error(`[Task#presentAssistantMessage] task ${cline.taskId}.${cline.instanceId} aborted`)
+		console.log(`[Task#presentAssistantMessage] task ${cline.taskId}.${cline.instanceId} aborted, skipping`)
+		return
 	}
 
 	if (cline.presentAssistantMessageLocked) {
