@@ -59,15 +59,47 @@ import { runStdinStreamMode } from "./stdin-stream.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SIGNAL_ONLY_EXIT_KEEPALIVE_MS = 60_000
-const STREAM_RESUME_WAIT_TIMEOUT_MS = 2_000
+/**
+ * The stdin-stream resume bootstrap waits for the task to register its live
+ * resume ask. Registration involves history reads and writes, so this budget
+ * is more generous than the old wait for any waiting state: a timeout here
+ * falls back to the old behavior, which loses the first message command (F1).
+ */
+const STREAM_RESUME_ASK_WAIT_TIMEOUT_MS = 10_000
+
+/**
+ * Whether the task is waiting on the LIVE resume ask it asks when it is
+ * opened (`resume_completed_task` for a finished task, `resume_task` for a
+ * paused one). The ask is registered only once the resumed task re-runs
+ * `resumeTaskFromHistory`; a state push of the persisted history can arrive
+ * much earlier, its tail still holding the OLD ask (typically
+ * `completion_result`, or a stale resume ask from an abandoned open), which
+ * would make a message command answer an ask nothing is waiting on — the
+ * answer is then cleared when the real ask is registered and the turn is
+ * lost (the F1 integration flake). The live ask is told from a stale tail by
+ * its timestamp: it is appended after `since` (the extension runs in this
+ * process, so the clocks agree).
+ */
+export function isLiveResumeAskWaiting(host: ExtensionHost, since: number): boolean {
+	const agentState = host.client.getAgentState()
+	return (
+		agentState.isWaitingForInput &&
+		(agentState.currentAsk === "resume_task" || agentState.currentAsk === "resume_completed_task") &&
+		(agentState.lastMessageTs ?? 0) > since
+	)
+}
 
 async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: string): Promise<void> {
+	const bootstrapStartedAt = Date.now()
 	host.sendToExtension({ type: "showTaskWithId", text: sessionId })
 
-	// Best-effort wait so early stdin "message" commands can target the resumed task.
-	await pWaitFor(() => host.client.hasActiveTask() || host.isWaitingForInput(), {
+	// Best-effort wait so early stdin "message" commands can target the
+	// resumed task. Wait for the LIVE resume ask, not just any waiting state:
+	// the first full state push carries the persisted history, whose tail is
+	// the pre-resume ask (F1).
+	await pWaitFor(() => isLiveResumeAskWaiting(host, bootstrapStartedAt), {
 		interval: 25,
-		timeout: STREAM_RESUME_WAIT_TIMEOUT_MS,
+		timeout: STREAM_RESUME_ASK_WAIT_TIMEOUT_MS,
 	}).catch(() => undefined)
 }
 
@@ -154,9 +186,7 @@ async function findProviderConfigProblem(
 	// The provider needs a model named when it has no default model (openai,
 	// ollama, lmstudio); the settings UI requires one for the same providers.
 	if (!config.model && providerRequiresModelId(config.provider)) {
-		return [
-			`No model given for ${config.provider}. Use --model or set model in ${getSettingsPath()}.`,
-		]
+		return [`No model given for ${config.provider}. Use --model or set model in ${getSettingsPath()}.`]
 	}
 
 	if (!REASONING_EFFORTS.includes(config.reasoningEffort)) {
