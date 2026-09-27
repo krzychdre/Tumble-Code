@@ -7,9 +7,11 @@
  * Provider, and/or Clerk instance.
  *
  * The VS Code settings are:
- *   - `roo-cline.cloudApiUrl`      → overrides `ROO_CODE_API_URL`
- *   - `roo-cline.cloudProviderUrl` → overrides `ROO_CODE_PROVIDER_URL`
- *   - `roo-cline.clerkBaseUrl`     → overrides `CLERK_BASE_URL`
+ *   - `roo-cline.cloudApiUrl`         → overrides `ROO_CODE_API_URL`
+ *   - `roo-cline.cloudProviderUrl`    → overrides `ROO_CODE_PROVIDER_URL`
+ *   - `roo-cline.clerkBaseUrl`        → overrides `CLERK_BASE_URL`
+ *   - `roo-cline.bridgeRetryDelayMs`  → re-arms the remote-control bridge
+ *                                       after socket.io `reconnect_failed`
  *
  * Empty strings are treated as "not set" so the defaults still apply.
  *
@@ -48,6 +50,16 @@ export function syncCloudUrls(): void {
 }
 
 /**
+ * Bridge re-arm delay after socket.io gives up reconnecting (R11). Read live
+ * (not cached) so `bridge.ts` picks up setting changes on the next (re)start;
+ * `0` or negative keeps the old give-up behaviour.
+ */
+export function getBridgeRetryDelayMs(): number {
+	const raw = vscode.workspace.getConfiguration(Package.name).get<number>("bridgeRetryDelayMs")
+	return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 0
+}
+
+/**
  * Register a VS Code configuration-change listener that keeps the cloud URL
  * overrides in sync whenever the user changes a setting.
  *
@@ -59,7 +71,8 @@ export function registerCloudUrlsSubscription(context: vscode.ExtensionContext):
 			if (
 				e.affectsConfiguration(`${Package.name}.cloudApiUrl`) ||
 				e.affectsConfiguration(`${Package.name}.cloudProviderUrl`) ||
-				e.affectsConfiguration(`${Package.name}.clerkBaseUrl`)
+				e.affectsConfiguration(`${Package.name}.clerkBaseUrl`) ||
+				e.affectsConfiguration(`${Package.name}.bridgeRetryDelayMs`)
 			) {
 				syncCloudUrls()
 			}

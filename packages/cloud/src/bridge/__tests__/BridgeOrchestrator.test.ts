@@ -109,6 +109,9 @@ describe("BridgeOrchestrator", () => {
 			workspacePath: "/work",
 			snapshot: vi.fn(async () => ({ mode: "code", isRunning: true })),
 			ioFactory: ioFactory as any,
+			// Deterministic jitter: the top of the equal-jitter band, so the
+			// hand-reconnect delays below stay exactly 1 s, 2 s, ... (R11).
+			random: () => 0.999,
 		})
 	}
 
@@ -301,14 +304,15 @@ describe("BridgeOrchestrator", () => {
 			const orch = build()
 			await orch.start()
 
+			// random()=0.999 → first delay 999 ms (equal-jitter band, R11).
 			refuse()
-			await vi.advanceTimersByTimeAsync(999)
+			await vi.advanceTimersByTimeAsync(998)
 			expect(socket.connectCalls).toBe(0)
 			await vi.advanceTimersByTimeAsync(1)
 			expect(socket.connectCalls).toBe(1)
 
 			refuse()
-			await vi.advanceTimersByTimeAsync(1999)
+			await vi.advanceTimersByTimeAsync(1998)
 			expect(socket.connectCalls).toBe(1)
 			await vi.advanceTimersByTimeAsync(1)
 			expect(socket.connectCalls).toBe(2)
@@ -317,7 +321,7 @@ describe("BridgeOrchestrator", () => {
 			socket.connected = true
 			socket.fire("connect")
 			refuse()
-			await vi.advanceTimersByTimeAsync(1000)
+			await vi.advanceTimersByTimeAsync(999)
 			expect(socket.connectCalls).toBe(3)
 		})
 

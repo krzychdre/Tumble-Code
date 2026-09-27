@@ -1,9 +1,12 @@
+import { backoffDelayMs } from "./backoff.js"
+
 /**
  * RefreshTimer - A utility for executing a callback with configurable retry behavior
  *
  * This timer executes a callback function and schedules the next execution based on the result:
  * - If the callback succeeds (returns true), it schedules the next attempt after a fixed interval
- * - If the callback fails (returns false), it uses exponential backoff up to a maximum interval
+ * - If the callback fails (returns false), it uses exponential backoff with equal jitter up to a
+ *   maximum interval (R11: many clients restarting in sync must not retry on the same tick)
  */
 
 /**
@@ -33,6 +36,12 @@ export interface RefreshTimerOptions {
 	 * @default 300000 (5 minutes)
 	 */
 	maxBackoffMs?: number
+
+	/**
+	 * Random source in [0, 1) used for the equal-jitter part of the backoff.
+	 * Injectable for deterministic tests; defaults to Math.random.
+	 */
+	random?: () => number
 }
 
 /**
@@ -43,6 +52,7 @@ export class RefreshTimer {
 	private successInterval: number
 	private initialBackoffMs: number
 	private maxBackoffMs: number
+	private random: () => number
 	private currentBackoffMs: number
 	private attemptCount: number
 	private timerId: NodeJS.Timeout | null
@@ -58,6 +68,7 @@ export class RefreshTimer {
 		this.successInterval = options.successInterval ?? 50000 // 50 seconds
 		this.initialBackoffMs = options.initialBackoffMs ?? 1000 // 1 second
 		this.maxBackoffMs = options.maxBackoffMs ?? 300000 // 5 minutes
+		this.random = options.random ?? Math.random
 		this.currentBackoffMs = this.initialBackoffMs
 		this.attemptCount = 0
 		this.timerId = null
@@ -120,15 +131,14 @@ export class RefreshTimer {
 
 			this.timerId = setTimeout(() => this.executeCallback(), this.successInterval)
 		} else {
-			// Increment attempt count
+			// Backoff step for this failure, with equal jitter so clients that
+			// restart in sync do not all retry on the same tick (R11).
+			this.currentBackoffMs = backoffDelayMs(this.attemptCount, {
+				baseMs: this.initialBackoffMs,
+				capMs: this.maxBackoffMs,
+				random: this.random,
+			})
 			this.attemptCount++
-
-			// Calculate backoff time with exponential increase
-			// Formula: initialBackoff * 2^(attemptCount - 1)
-			this.currentBackoffMs = Math.min(
-				this.initialBackoffMs * Math.pow(2, this.attemptCount - 1),
-				this.maxBackoffMs,
-			)
 
 			this.timerId = setTimeout(() => this.executeCallback(), this.currentBackoffMs)
 		}

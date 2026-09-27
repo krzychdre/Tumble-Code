@@ -10,6 +10,7 @@ import {
 	type TaskBridgeCommand,
 } from "@roo-code/types"
 
+import { backoffDelayMs } from "../backoff.js"
 import { dispatchBridgeCommand } from "./commandHandlers.js"
 import type { BridgeConfig, BridgeProvider, InstanceStatePayload } from "./types.js"
 
@@ -22,11 +23,13 @@ const RETRY_MAX_MS = 60_000
 
 /**
  * Delay before the given retry (0-based) of a bridge connection the server
- * refused: 1 s, 2 s, 4 s, ... capped at one minute. Also used by the extension
- * host to retry a bridge start that failed.
+ * refused: 1 s, 2 s, 4 s, ... capped at one minute, with equal jitter so
+ * windows that restart together do not reconnect on the same tick (R11).
+ * Also used by the extension host to retry a bridge start that failed.
+ * `random` is injectable for deterministic tests.
  */
-export function bridgeRetryDelayMs(attempt: number): number {
-	return Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS)
+export function bridgeRetryDelayMs(attempt: number, random: () => number = Math.random): number {
+	return backoffDelayMs(attempt, { baseMs: RETRY_BASE_MS, capMs: RETRY_MAX_MS, random })
 }
 
 /** The slice of the extension `API` event bus the orchestrator subscribes to. */
@@ -46,6 +49,17 @@ export interface BridgeOrchestratorOptions {
 	log?: Logger
 	/** Injectable for tests; defaults to the real socket.io-client. */
 	ioFactory?: typeof io
+	/**
+	 * Re-arm the socket.io manager after `reconnect_failed` (R11). Once the
+	 * manager exhausts its reconnection attempts the socket stays dead until
+	 * the next VS Code reload; with this delay (milliseconds) the orchestrator
+	 * calls `socket.connect()` again, restarting the manager's reconnect
+	 * cycle with a fresh bridge token. `0` (default) keeps the old
+	 * give-up-after-reconnect_failed behaviour.
+	 */
+	reconnectRearmDelayMs?: number
+	/** Random source in [0, 1) for the re-arm backoff; injectable for deterministic tests. */
+	random?: () => number
 }
 
 /**
@@ -73,6 +87,10 @@ export class BridgeOrchestrator {
 	/** Manual reconnects after the server refused the handshake (DEF-C50). */
 	private refusedRetry = 0
 	private refusedRetryTimer: ReturnType<typeof setTimeout> | null = null
+
+	/** Manual re-arms after the manager gave up reconnecting (R11). */
+	private rearmRetry = 0
+	private rearmTimer: ReturnType<typeof setTimeout> | null = null
 
 	constructor(private readonly options: BridgeOrchestratorOptions) {}
 
@@ -110,7 +128,9 @@ export class BridgeOrchestrator {
 		socket.on("connect", () => {
 			this.reconnectAttempt = 0
 			this.refusedRetry = 0
+			this.rearmRetry = 0
 			this.clearRefusedRetry()
+			this.clearRearm()
 			this.log("connected", socket.id)
 			this.register()
 			this.startHeartbeat()
@@ -143,7 +163,17 @@ export class BridgeOrchestrator {
 			}
 		})
 		manager.on("reconnect_failed", () => {
-			this.log("reconnect failed — giving up; remote control is offline")
+			const rearm = this.options.reconnectRearmDelayMs ?? 0
+			if (rearm > 0) {
+				// The manager exhausted its reconnection attempts and the socket
+				// is dead. Re-arm it: after `reconnectRearmDelayMs` we call
+				// `connect()` again, which restarts the manager's reconnect
+				// cycle (with a fresh bridge token via the `auth` callback).
+				this.log("reconnect failed — re-arming the connector")
+				this.scheduleRearm(socket, rearm)
+			} else {
+				this.log("reconnect failed — giving up; remote control is offline")
+			}
 		})
 
 		this.subscribeToBus()
@@ -153,6 +183,7 @@ export class BridgeOrchestrator {
 		if (!this.started) return
 		this.started = false
 		this.clearRefusedRetry()
+		this.clearRearm()
 		this.stopHeartbeat()
 		this.unsubscribeFromBus()
 		if (this.socket) {
@@ -176,7 +207,7 @@ export class BridgeOrchestrator {
 
 	private scheduleRefusedRetry(socket: Socket) {
 		if (!this.started || this.refusedRetryTimer) return
-		const delay = bridgeRetryDelayMs(this.refusedRetry++)
+		const delay = bridgeRetryDelayMs(this.refusedRetry++, this.options.random)
 		this.log(`server refused the connection; retrying in ${Math.round(delay / 1000)} s`)
 		this.refusedRetryTimer = setTimeout(() => {
 			this.refusedRetryTimer = null
@@ -188,6 +219,32 @@ export class BridgeOrchestrator {
 		if (this.refusedRetryTimer) {
 			clearTimeout(this.refusedRetryTimer)
 			this.refusedRetryTimer = null
+		}
+	}
+
+	/** One `reconnect_failed` → one scheduled `connect()`; a pending re-arm is not doubled (R11). */
+	private scheduleRearm(socket: Socket, firstDelayMs: number) {
+		if (!this.started || this.rearmTimer) return
+		const delay =
+			this.rearmRetry === 0 ? firstDelayMs : bridgeRetryDelayMs(this.rearmRetry - 1, this.options.random)
+		this.log(`re-arming reconnect in ${Math.round(delay / 1000)} s`)
+		this.rearmTimer = setTimeout(() => {
+			this.rearmTimer = null
+			if (this.started && this.socket === socket && !socket.connected) {
+				socket.connect()
+				// If this re-arm also fails, back off exponentially for the next one.
+				this.rearmRetry++
+				this.scheduleRearm(socket, firstDelayMs)
+			} else {
+				this.rearmRetry = 0
+			}
+		}, delay)
+	}
+
+	private clearRearm() {
+		if (this.rearmTimer) {
+			clearTimeout(this.rearmTimer)
+			this.rearmTimer = null
 		}
 	}
 

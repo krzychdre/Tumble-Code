@@ -1,4 +1,6 @@
 import { EventEmitter } from "events"
+
+import { backoffDelayMs } from "../backoff.js"
 import type { QueuedRequest, QueueStats, RetryQueueConfig, RetryQueueEvents, RetryQueueStorage } from "./types.js"
 
 type AuthHeaderProvider = () => Record<string, string> | undefined
@@ -31,10 +33,12 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 		this.config = {
 			maxRetries: 5,
 			retryDelay: 60000,
+			retryDelayMaxMs: 600000,
 			maxQueueSize: 100,
 			persistQueue: true,
 			networkCheckInterval: 60000,
 			requestTimeout: 30000,
+			random: Math.random,
 			...config,
 		}
 
@@ -117,8 +121,16 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 			return
 		}
 
+		const now = Date.now()
 		const requests = Array.from(this.queue.values())
 		if (requests.length === 0) {
+			return
+		}
+
+		// Per-item backoff (R11): only requests whose own failure window has
+		// elapsed are retried; a failing request never delays the others.
+		const due = requests.filter((request) => (request.nextAttemptAt ?? 0) <= now)
+		if (due.length === 0) {
 			return
 		}
 
@@ -126,10 +138,10 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 
 		try {
 			// Sort by timestamp to process in FIFO order (oldest first)
-			requests.sort((a, b) => a.timestamp - b.timestamp)
+			due.sort((a, b) => a.timestamp - b.timestamp)
 
-			// Process all requests in FIFO order
-			for (const request of requests) {
+			// Process the due requests in FIFO order
+			for (const request of due) {
 				try {
 					const response = await this.retryRequest(request)
 
@@ -175,12 +187,19 @@ export class RetryQueue extends EventEmitter<RetryQueueEvents> {
 						this.queue.delete(request.id)
 						this.emit("request-max-retries-exceeded", request, error as Error)
 					} else {
+						// Per-item exponential backoff with equal jitter (R11):
+						// only this request waits; the others stay on their own
+						// schedules.
+						request.nextAttemptAt =
+							Date.now() +
+							backoffDelayMs(request.retryCount - 1, {
+								baseMs: this.config.retryDelay,
+								capMs: this.config.retryDelayMaxMs,
+								random: this.config.random,
+							})
 						this.queue.set(request.id, request)
 						this.emit("request-retry-failed", request, error as Error)
 					}
-
-					// Add a small delay between retry attempts
-					await this.delay(100)
 				}
 			}
 

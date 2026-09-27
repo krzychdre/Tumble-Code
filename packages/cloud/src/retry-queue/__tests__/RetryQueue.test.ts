@@ -366,8 +366,9 @@ describe("RetryQueue", () => {
 		})
 
 		it("should enforce max retries limit", async () => {
-			// Create queue with max retries of 2
-			retryQueue = new RetryQueue(mockContext.workspaceState, { maxRetries: 2 })
+			// Create queue with max retries of 2; retryDelay 0 keeps back-to-back
+			// retryAll() cycles immediate (per-item backoff, R11).
+			retryQueue = new RetryQueue(mockContext.workspaceState, { maxRetries: 2, retryDelay: 0 })
 
 			const maxRetriesListener = vi.fn()
 			retryQueue.on("request-max-retries-exceeded", maxRetriesListener)
@@ -400,8 +401,9 @@ describe("RetryQueue", () => {
 		})
 
 		it("should default to maxRetries=5 and discard after 5 failures", async () => {
-			// Default config should be maxRetries=5 (not 0/infinite)
-			retryQueue = new RetryQueue(mockContext.workspaceState)
+			// Default config should be maxRetries=5 (not 0/infinite);
+			// retryDelay 0 keeps consecutive retryAll() cycles immediate.
+			retryQueue = new RetryQueue(mockContext.workspaceState, { retryDelay: 0 })
 
 			const maxRetriesListener = vi.fn()
 			retryQueue.on("request-max-retries-exceeded", maxRetriesListener)
@@ -440,7 +442,7 @@ describe("RetryQueue", () => {
 				},
 			} as unknown as ExtensionContext
 
-			const queue1 = new RetryQueue(context1.workspaceState, { maxRetries: 5 })
+			const queue1 = new RetryQueue(context1.workspaceState, { maxRetries: 5, retryDelay: 0 })
 			await queue1.enqueue("https://api.example.com/test", { method: "POST" }, "telemetry")
 
 			const failFetch = vi.fn().mockRejectedValue(new Error("Network error"))
@@ -466,7 +468,7 @@ describe("RetryQueue", () => {
 				},
 			} as unknown as ExtensionContext
 
-			const queue2 = new RetryQueue(context2.workspaceState, { maxRetries: 5 })
+			const queue2 = new RetryQueue(context2.workspaceState, { maxRetries: 5, retryDelay: 0 })
 			const stats = queue2.getStats()
 			expect(stats.totalQueued).toBe(1)
 
@@ -575,6 +577,9 @@ describe("RetryQueue", () => {
 		})
 
 		it("should retry on 500+ status codes", async () => {
+			// retryDelay 0: the second retryAll() below runs immediately after the
+			// first failure (per-item backoff, R11).
+			retryQueue = new RetryQueue(mockContext.workspaceState, { retryDelay: 0 })
 			const failListener = vi.fn()
 			const successListener = vi.fn()
 			retryQueue.on("request-retry-failed", failListener)

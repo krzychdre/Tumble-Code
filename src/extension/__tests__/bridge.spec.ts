@@ -36,12 +36,21 @@ const cloud = vi.hoisted(() => {
 	}
 })
 
-vi.mock("vscode", () => ({ workspace: { workspaceFolders: [] } }))
+vi.mock("vscode", () => ({
+	workspace: {
+		workspaceFolders: [],
+		getConfiguration: () => ({ get: () => undefined }),
+	},
+}))
 vi.mock("@roo-code/cloud", async (importOriginal) => ({
 	bridgeRetryDelayMs: (await importOriginal<typeof import("@roo-code/cloud")>()).bridgeRetryDelayMs,
 	CloudService: { hasInstance: () => true, instance: cloud.instance },
 	BridgeOrchestrator: cloud.BridgeOrchestrator,
 }))
+
+// R11: bridgeRetryDelayMs now carries equal jitter. Pin the random source so
+// the retry ladder below stays exactly 1 s, 2 s, ... — deterministic tests.
+vi.spyOn(Math, "random").mockReturnValue(0.999)
 
 import { setupRemoteControlBridge } from "../bridge"
 
@@ -83,12 +92,14 @@ describe("setupRemoteControlBridge retry (DEF-C50)", () => {
 		await vi.advanceTimersByTimeAsync(0)
 		expect(failures()).toBe(1)
 
-		await vi.advanceTimersByTimeAsync(999)
+		// random()=0.999 → first retry after 999 ms (equal-jitter band, R11).
+		await vi.advanceTimersByTimeAsync(998)
 		expect(failures()).toBe(1)
 		await vi.advanceTimersByTimeAsync(1)
 		expect(failures()).toBe(2)
 
-		await vi.advanceTimersByTimeAsync(1999)
+		// Second retry after 1999 ms.
+		await vi.advanceTimersByTimeAsync(1998)
 		expect(connected()).toBe(0)
 		await vi.advanceTimersByTimeAsync(1)
 		expect(connected()).toBe(1)

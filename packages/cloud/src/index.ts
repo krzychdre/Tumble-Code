@@ -1,4 +1,6 @@
 export * from "./config.js"
+export { backoffDelayMs } from "./backoff.js"
+export type { BackoffOptions } from "./backoff.js"
 
 export { CloudService } from "./CloudService.js"
 
