@@ -482,6 +482,15 @@
 					"markdownDescription": "%settings.clerkBaseUrl.description%",
 					"order": 102,
 					"scope": "machine"
+				},
+				"tumble-code.bridgeRetryDelayMs": {
+					"type": "number",
+					"default": 0,
+					"minimum": 0,
+					"description": "%settings.bridgeRetryDelayMs.description%",
+					"markdownDescription": "%settings.bridgeRetryDelayMs.description%",
+					"order": 103,
+					"scope": "machine"
 				}
 			}
 		}

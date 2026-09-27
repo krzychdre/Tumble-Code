@@ -12,6 +12,7 @@ import {
 import { TaskStatus } from "@roo-code/types"
 
 import type { ClineProvider } from "../core/webview/ClineProvider"
+import { getBridgeRetryDelayMs } from "../activate/cloud-urls"
 import type { API } from "./api"
 
 /**
@@ -113,6 +114,9 @@ export function setupRemoteControlBridge(opts: {
 			events: api as unknown as BridgeEventSource,
 			workspacePath,
 			snapshot,
+			// Re-arm the connector after socket.io gives up reconnecting (R11).
+			// Read at every start so the setting applies without a reload.
+			reconnectRearmDelayMs: getBridgeRetryDelayMs(),
 			log: (...args: unknown[]) => log(`[bridge] ${args.map(String).join(" ")}`),
 		})
 		try {
