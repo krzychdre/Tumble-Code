@@ -7,6 +7,31 @@ import { findLast } from "@roo-code/core/browser"
 
 type Translate = (key: string) => string
 
+/**
+ * What an approval button does, independent of its translated label (§2.6):
+ * the tooltip (and any shortcut hint) is picked from this kind via a lookup
+ * table, not by comparing translated strings.
+ */
+export type AskButtonKind =
+	| "retry"
+	| "startNewTask"
+	| "proceedAnyways"
+	| "save"
+	| "reject"
+	| "approve"
+	| "read-batch.approve"
+	| "read-batch.deny"
+	| "list-batch.approve"
+	| "list-batch.deny"
+	| "edit-batch.approve"
+	| "edit-batch.deny"
+	| "runCommand"
+	| "proceedWhileRunning"
+	| "killCommand"
+	| "resumeTask"
+	| "terminate"
+	| "completeSubtaskAndReturn"
+
 interface AskButtonsOptions {
 	messages: ClineMessage[]
 	/** `messages` without the task message, with API requests and command sequences combined. */
@@ -22,8 +47,9 @@ const hasCompletionResult = (messages: ClineMessage[]) =>
 
 /**
  * The ask state machine: the last message decides which ask the extension is
- * waiting for (`clineAsk`), the two approval button texts, whether they are
- * enabled, and whether the text area may send.
+ * waiting for (`clineAsk`), the two approval button texts (plus their kinds,
+ * which drive tooltips), whether they are enabled, and whether the text area
+ * may send.
  */
 export function useAskButtons({
 	messages,
@@ -42,6 +68,24 @@ export function useAskButtons({
 	const [enableButtons, setEnableButtons] = useState<boolean>(false)
 	const [primaryButtonText, setPrimaryButtonText] = useState<string | undefined>(undefined)
 	const [secondaryButtonText, setSecondaryButtonText] = useState<string | undefined>(undefined)
+	const [primaryButtonKind, setPrimaryButtonKind] = useState<AskButtonKind | undefined>(undefined)
+	const [secondaryButtonKind, setSecondaryButtonKind] = useState<AskButtonKind | undefined>(undefined)
+
+	// Text and kind always change together (§2.6).
+	const setPrimaryButton = useCallback(
+		(kind: AskButtonKind | undefined, textKey: string | undefined) => {
+			setPrimaryButtonText(textKey === undefined ? undefined : t(textKey))
+			setPrimaryButtonKind(kind)
+		},
+		[t],
+	)
+	const setSecondaryButton = useCallback(
+		(kind: AskButtonKind | undefined, textKey: string | undefined) => {
+			setSecondaryButtonText(textKey === undefined ? undefined : t(textKey))
+			setSecondaryButtonKind(kind)
+		},
+		[t],
+	)
 
 	const clineAskRef = useRef(clineAsk)
 	useEffect(() => {
@@ -98,16 +142,16 @@ export function useAskButtons({
 							setSendingDisabled(true)
 							setClineAsk("api_req_failed")
 							setEnableButtons(true)
-							setPrimaryButtonText(t("chat:retry.title"))
-							setSecondaryButtonText(t("chat:startNewTask.title"))
+							setPrimaryButton("retry", "chat:retry.title")
+							setSecondaryButton("startNewTask", "chat:startNewTask.title")
 							break
 						case "mistake_limit_reached":
 							playSound("progress_loop")
 							setSendingDisabled(false)
 							setClineAsk("mistake_limit_reached")
 							setEnableButtons(true)
-							setPrimaryButtonText(t("chat:proceedAnyways.title"))
-							setSecondaryButtonText(t("chat:startNewTask.title"))
+							setPrimaryButton("proceedAnyways", "chat:proceedAnyways.title")
+							setSecondaryButton("startNewTask", "chat:startNewTask.title")
 							break
 						case "followup":
 							setSendingDisabled(isPartial)
@@ -117,8 +161,8 @@ export function useAskButtons({
 							// We have no buttons for this tool, so no problem having them "enabled"
 							// to workaround this issue.  See #1358.
 							setEnableButtons(true)
-							setPrimaryButtonText(undefined)
-							setSecondaryButtonText(undefined)
+							setPrimaryButton(undefined, undefined)
+							setSecondaryButton(undefined, undefined)
 							break
 						case "tool": {
 							setSendingDisabled(isPartial)
@@ -130,43 +174,43 @@ export function useAskButtons({
 								case "appliedDiff":
 								case "newFileCreated":
 									if (tool.batchDiffs && Array.isArray(tool.batchDiffs)) {
-										setPrimaryButtonText(t("chat:edit-batch.approve.title"))
-										setSecondaryButtonText(t("chat:edit-batch.deny.title"))
+										setPrimaryButton("edit-batch.approve", "chat:edit-batch.approve.title")
+										setSecondaryButton("edit-batch.deny", "chat:edit-batch.deny.title")
 									} else {
-										setPrimaryButtonText(t("chat:save.title"))
-										setSecondaryButtonText(t("chat:reject.title"))
+										setPrimaryButton("save", "chat:save.title")
+										setSecondaryButton("reject", "chat:reject.title")
 									}
 									break
 								case "generateImage":
-									setPrimaryButtonText(t("chat:save.title"))
-									setSecondaryButtonText(t("chat:reject.title"))
+									setPrimaryButton("save", "chat:save.title")
+									setSecondaryButton("reject", "chat:reject.title")
 									break
 								case "finishTask":
-									setPrimaryButtonText(t("chat:completeSubtaskAndReturn"))
-									setSecondaryButtonText(undefined)
+									setPrimaryButton("completeSubtaskAndReturn", "chat:completeSubtaskAndReturn")
+									setSecondaryButton(undefined, undefined)
 									break
 								case "readFile":
 									if (tool.batchFiles && Array.isArray(tool.batchFiles)) {
-										setPrimaryButtonText(t("chat:read-batch.approve.title"))
-										setSecondaryButtonText(t("chat:read-batch.deny.title"))
+										setPrimaryButton("read-batch.approve", "chat:read-batch.approve.title")
+										setSecondaryButton("read-batch.deny", "chat:read-batch.deny.title")
 									} else {
-										setPrimaryButtonText(t("chat:approve.title"))
-										setSecondaryButtonText(t("chat:reject.title"))
+										setPrimaryButton("approve", "chat:approve.title")
+										setSecondaryButton("reject", "chat:reject.title")
 									}
 									break
 								case "listFilesTopLevel":
 								case "listFilesRecursive":
 									if (tool.batchDirs && Array.isArray(tool.batchDirs)) {
-										setPrimaryButtonText(t("chat:list-batch.approve.title"))
-										setSecondaryButtonText(t("chat:list-batch.deny.title"))
+										setPrimaryButton("list-batch.approve", "chat:list-batch.approve.title")
+										setSecondaryButton("list-batch.deny", "chat:list-batch.deny.title")
 									} else {
-										setPrimaryButtonText(t("chat:approve.title"))
-										setSecondaryButtonText(t("chat:reject.title"))
+										setPrimaryButton("approve", "chat:approve.title")
+										setSecondaryButton("reject", "chat:reject.title")
 									}
 									break
 								default:
-									setPrimaryButtonText(t("chat:approve.title"))
-									setSecondaryButtonText(t("chat:reject.title"))
+									setPrimaryButton("approve", "chat:approve.title")
+									setSecondaryButton("reject", "chat:reject.title")
 									break
 							}
 							break
@@ -175,22 +219,22 @@ export function useAskButtons({
 							setSendingDisabled(isPartial)
 							setClineAsk("command")
 							setEnableButtons(!isPartial)
-							setPrimaryButtonText(t("chat:runCommand.title"))
-							setSecondaryButtonText(t("chat:reject.title"))
+							setPrimaryButton("runCommand", "chat:runCommand.title")
+							setSecondaryButton("reject", "chat:reject.title")
 							break
 						case "command_output":
 							setSendingDisabled(false)
 							setClineAsk("command_output")
 							setEnableButtons(true)
-							setPrimaryButtonText(t("chat:proceedWhileRunning.title"))
-							setSecondaryButtonText(t("chat:killCommand.title"))
+							setPrimaryButton("proceedWhileRunning", "chat:proceedWhileRunning.title")
+							setSecondaryButton("killCommand", "chat:killCommand.title")
 							break
 						case "use_mcp_server":
 							setSendingDisabled(isPartial)
 							setClineAsk("use_mcp_server")
 							setEnableButtons(!isPartial)
-							setPrimaryButtonText(t("chat:approve.title"))
-							setSecondaryButtonText(t("chat:reject.title"))
+							setPrimaryButton("approve", "chat:approve.title")
+							setSecondaryButton("reject", "chat:reject.title")
 							break
 						case "completion_result": {
 							// Extension waiting for feedback, but we can just present a new task button.
@@ -211,8 +255,8 @@ export function useAskButtons({
 							setSendingDisabled(isPartial)
 							setClineAsk("completion_result")
 							setEnableButtons(!isPartial)
-							setPrimaryButtonText(t("chat:startNewTask.title"))
-							setSecondaryButtonText(undefined)
+							setPrimaryButton("startNewTask", "chat:startNewTask.title")
+							setSecondaryButton(undefined, undefined)
 							break
 						}
 						case "resume_task":
@@ -224,19 +268,19 @@ export function useAskButtons({
 							// - It has a parentTaskId AND
 							// - Its messages contain a completion_result (either ask or say)
 							if (currentTaskItem?.parentTaskId && hasCompletionResult(messages)) {
-								setPrimaryButtonText(t("chat:startNewTask.title"))
-								setSecondaryButtonText(undefined)
+								setPrimaryButton("startNewTask", "chat:startNewTask.title")
+								setSecondaryButton(undefined, undefined)
 							} else {
-								setPrimaryButtonText(t("chat:resumeTask.title"))
-								setSecondaryButtonText(t("chat:terminate.title"))
+								setPrimaryButton("resumeTask", "chat:resumeTask.title")
+								setSecondaryButton("terminate", "chat:terminate.title")
 							}
 							break
 						case "resume_completed_task":
 							setSendingDisabled(false)
 							setClineAsk("resume_completed_task")
 							setEnableButtons(true)
-							setPrimaryButtonText(t("chat:startNewTask.title"))
-							setSecondaryButtonText(undefined)
+							setPrimaryButton("startNewTask", "chat:startNewTask.title")
+							setSecondaryButton(undefined, undefined)
 							break
 					}
 					break
@@ -259,8 +303,8 @@ export function useAskButtons({
 							// handlers (handleSendMessage, handlePrimaryButtonClick, etc.).
 							setClineAsk(undefined)
 							setEnableButtons(false)
-							setPrimaryButtonText(undefined)
-							setSecondaryButtonText(undefined)
+							setPrimaryButton(undefined, undefined)
+							setSecondaryButton(undefined, undefined)
 							break
 					}
 					break
@@ -272,21 +316,21 @@ export function useAskButtons({
 	useEffect(() => {
 		if (clineAsk === "resume_task" && currentTaskItem?.parentTaskId) {
 			if (hasCompletionResult(messages)) {
-				setPrimaryButtonText(t("chat:startNewTask.title"))
-				setSecondaryButtonText(undefined)
+				setPrimaryButton("startNewTask", "chat:startNewTask.title")
+				setSecondaryButton(undefined, undefined)
 			}
 		}
-	}, [clineAsk, currentTaskItem?.parentTaskId, messages, t])
+	}, [clineAsk, currentTaskItem?.parentTaskId, messages, setPrimaryButton, setSecondaryButton])
 
 	useEffect(() => {
 		if (messages.length === 0) {
 			setSendingDisabled(false)
 			setClineAsk(undefined)
 			setEnableButtons(false)
-			setPrimaryButtonText(undefined)
-			setSecondaryButtonText(undefined)
+			setPrimaryButton(undefined, undefined)
+			setSecondaryButton(undefined, undefined)
 		}
-	}, [messages.length])
+	}, [messages.length, setPrimaryButton, setSecondaryButton])
 
 	const isStreaming = useMemo(() => {
 		// Checking clineAsk isn't enough since messages effect may be called
@@ -338,9 +382,9 @@ export function useAskButtons({
 		setSendingDisabled(true)
 		setClineAsk(undefined)
 		setEnableButtons(false)
-		setPrimaryButtonText(undefined)
-		setSecondaryButtonText(undefined)
-	}, [])
+		setPrimaryButton(undefined, undefined)
+		setSecondaryButton(undefined, undefined)
+	}, [setPrimaryButton, setSecondaryButton])
 
 	return {
 		clineAsk,
@@ -349,7 +393,9 @@ export function useAskButtons({
 		enableButtons,
 		setEnableButtons,
 		primaryButtonText,
+		primaryButtonKind,
 		secondaryButtonText,
+		secondaryButtonKind,
 		sendingDisabled,
 		setSendingDisabled,
 		isStreaming,
