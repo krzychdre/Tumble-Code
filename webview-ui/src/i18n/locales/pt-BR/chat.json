@@ -35,8 +35,10 @@
 	},
 	"diffView": {
 		"unchangedLines_one": "... {{count}} linha inalterada",
+		"unchangedLines_many": "... {{count}} linhas inalteradas",
 		"unchangedLines_other": "... {{count}} linhas inalteradas",
 		"hiddenLines_one": "{{count}} linha oculta",
+		"hiddenLines_many": "{{count}} linhas ocultas",
 		"hiddenLines_other": "{{count}} linhas ocultas",
 		"openDiff": "Abrir diff",
 		"openFile": "Abrir arquivo"

@@ -43,6 +43,7 @@ Options:
   --session-id <session-id>              Resume a specific task by session ID
   -c, --continue                         Resume the most recent task in the current workspace (default: false)
   -w, --workspace <path>                 Workspace directory path (defaults to current working directory)
+  --resume                               Start with a picker of this workspace's earlier tasks to resume (default: false)
   -p, --print                            Print response and exit (non-interactive mode) (default: false)
   --stdin-prompt-stream                  Read NDJSON commands from stdin (requires --print and --output-format stream-json) (default: false)
   --signal-only-exit                     Do not exit from normal completion/errors; only terminate on SIGINT/SIGTERM (intended for stdin stream harnesses) (default: false)
@@ -67,6 +68,7 @@ Options:
 Commands:
   list                                   List commands, modes, models, or sessions
   upgrade                                Upgrade Tumble Code CLI to the latest version
+  doctor [options]                       Check the extension bundle, ripgrep, Node.js, the MCP config and the cloud connection
   auth                                   Manage Tumble Cloud and provider authentication
 "
 `;
