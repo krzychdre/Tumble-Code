@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from starlette.middleware.gzip import GZipMiddleware
 
 from config.auth import is_loopback_host
 from config.settings import settings
@@ -21,6 +21,7 @@ from src.middleware.request_logging import RequestLoggingMiddleware
 from src.middleware.rate_limit import limiter
 from src.routers import auth, extension, settings as settings_router, events, marketplace, browser
 from src.routers import shared, web_metrics, web_settings, web_tasks
+from src.web.static_files import VersionedStaticFiles
 
 
 configure_logging(settings.log_level)
@@ -116,6 +117,15 @@ app = FastAPI(
 )
 
 # Setup middleware
+# Innermost, so it sees each response exactly as the app produced it: the
+# BaseHTTPMiddleware layers above re-stream a body in chunks, and outside them
+# GZip would compress even a 30-byte /health answer. Every response the client
+# accepts gzip for leaves compressed: Chart.js goes from 290 KB to 82 KB,
+# app.css from 58 KB to 14 KB, pages and JSON alike. Bodies under 1 KB stay plain
+# (not worth the CPU). Starlette skips text/event-stream and anything already
+# carrying a Content-Encoding, which covers the socket.io bridge's own
+# compression.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 setup_cors(app)
 # Outside CORS (a preflight is an OPTIONS and passes), inside the request
 # logging, so a refused forgery is still logged with its 403.
@@ -161,9 +171,10 @@ app.include_router(web_metrics.router)
 app.include_router(web_settings.router)
 app.include_router(shared.router)
 
-# Static assets for the web UI (CSS, vendored JS, the renderer)
+# Static assets for the web UI (CSS, vendored JS, the renderer). A URL with the
+# current ?v= token is cached for a year, see src/web/static_files.py.
 _STATIC_DIR = Path(__file__).resolve().parent / "web" / "static"
-app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+app.mount("/static", VersionedStaticFiles(directory=str(_STATIC_DIR)), name="static")
 
 # Live remote-control bridge (socket.io). Mounted as a sub-app so `app` stays a
 # FastAPI instance (tests rely on app.dependency_overrides). The engine.io

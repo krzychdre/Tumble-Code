@@ -902,6 +902,13 @@ textarea::placeholder {
 .signal.tone-warn .signal-value {
 	color: var(--signal);
 }
+/* The retention preview's size is measured on demand: the value is a link. */
+a.signal-value {
+	color: var(--signal);
+}
+a.signal-value:hover {
+	color: var(--signal-bright);
+}
 
 /* Aggregate quality, on the metrics page. */
 .quality-overview {

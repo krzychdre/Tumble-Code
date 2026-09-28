@@ -24,6 +24,7 @@ router = APIRouter(tags=["web"])
 async def settings_page(
     request: Request,
     ran: str = Query(""),
+    size: str = Query(""),
     user: WebUser = Depends(require_web_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -33,11 +34,15 @@ async def settings_page(
     shown here and what would be deleted cannot drift apart. It renders whether
     or not retention is switched on - before you arm it is the one moment the
     preview is genuinely worth reading.
+
+    The counts are always shown; the approximate size only with ``?size=1``
+    (the "Calculate" link on the page), because summing it reads every
+    selected conversation and event and was most of this page's cost.
     """
     # read_policy, not get_policy: a GET must not write, so a user who has
     # never saved a policy sees the unsaved default instead of getting a row.
     policy = await read_policy(db, user["user_id"])
-    plan = await plan_sweep(db, user["user_id"], policy)
+    plan = await plan_sweep(db, user["user_id"], policy, measure_size=size == "1")
 
     return templates.TemplateResponse(
         request,

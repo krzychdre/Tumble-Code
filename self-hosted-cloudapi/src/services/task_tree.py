@@ -28,7 +28,7 @@ import logging
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
@@ -254,12 +254,41 @@ def subtree_spend(tree: dict[str, list[Task]], task: Task) -> Spend:
     return total
 
 
+def _ancestor_query(parent_id: str, limit: int):
+    """Rows of the ancestor chain starting at ``parent_id``, in one statement.
+
+    A recursive CTE (``WITH RECURSIVE``, which both SQLite and Postgres run)
+    climbs ``parent_task_id`` from the given parent. ``depth`` stops it after
+    ``limit`` steps, which also bounds it on a cycle in the client-supplied
+    links: a loop just repeats rows until the depth runs out, and the caller
+    walks the result with a seen-set exactly as the per-level walk did.
+    """
+    chain = (
+        select(Task.id, Task.parent_task_id, literal(1).label("depth"))
+        .where(Task.id == parent_id)
+        .cte("ancestor_chain", recursive=True)
+    )
+    chain = chain.union_all(
+        select(Task.id, Task.parent_task_id, (chain.c.depth + 1).label("depth"))
+        .join(chain, Task.id == chain.c.parent_task_id)
+        .where(chain.c.depth < limit)
+    )
+    return select(Task).where(Task.id.in_(select(chain.c.id)))
+
+
 async def ancestors(db: AsyncSession, task: Task, limit: int = 10) -> list[Task]:
     """The chain from ``task``'s parent up to the root, nearest first.
 
-    Bounded by ``limit`` and by a seen-set: the data comes from a client, and a
-    cycle (however impossible in principle) must not hang a page render.
+    One query whatever the depth (``_ancestor_query``); it used to be one per
+    level. Bounded by ``limit`` and by a seen-set: the data comes from a
+    client, and a cycle (however impossible in principle) must not hang a
+    page render.
     """
+    if not task.parent_task_id or limit <= 0:
+        return []
+    result = await db.execute(_ancestor_query(task.parent_task_id, limit))
+    by_id = {row.id: row for row in result.scalars().all()}
+
     chain: list[Task] = []
     seen = {task.id}
     current = task
@@ -268,8 +297,7 @@ async def ancestors(db: AsyncSession, task: Task, limit: int = 10) -> list[Task]
             logger.warning("[task_tree] cycle at task %s; stopping walk", current.id)
             break
         seen.add(current.parent_task_id)
-        result = await db.execute(select(Task).where(Task.id == current.parent_task_id))
-        parent = result.scalar_one_or_none()
+        parent = by_id.get(current.parent_task_id)
         if parent is None:
             break
         chain.append(parent)

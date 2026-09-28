@@ -191,12 +191,12 @@
 <script id="request-models" type="application/json">{{ request_models_json | default("{}") }}</script>
 {% endblock %}
 {% block scripts %}
-<script src="/static/vendor/marked.min.js"></script>
-<script src="/static/vendor/purify.min.js"></script>
+<script src="/static/vendor/marked.min.js?v={{ asset_v }}"></script>
+<script src="/static/vendor/purify.min.js?v={{ asset_v }}"></script>
 <script src="/static/format.js?v={{ asset_v }}"></script>
 <script src="/static/render.js?v={{ asset_v }}"></script>
 {% if live %}
-<script src="/static/vendor/socket.io.min.js"></script>
+<script src="/static/vendor/socket.io.min.js?v={{ asset_v }}"></script>
 <script src="/static/live.js?v={{ asset_v }}"></script>
 {% endif %}
 {% endblock %}

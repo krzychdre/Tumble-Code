@@ -151,7 +151,7 @@ def test_web_routes_keep_their_openapi_operations():
             json_,
             (("task_id", "path", True),),
         ),
-        ("/app/settings", "get"): ("settings_page_app_settings_get", ("web",), html, (("ran", "query", False),)),
+        ("/app/settings", "get"): ("settings_page_app_settings_get", ("web",), html, (("ran", "query", False), ("size", "query", False))),
         ("/app/settings", "post"): ("save_settings_app_settings_post", ("web",), json_, ()),
         ("/app/settings/run", "post"): ("run_retention_now_app_settings_run_post", ("web",), json_, ()),
         ("/app/tasks/bulk-delete", "post"): ("bulk_delete_tasks_app_tasks_bulk_delete_post", ("web",), json_, ()),
