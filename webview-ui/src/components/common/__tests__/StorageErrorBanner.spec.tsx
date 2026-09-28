@@ -26,6 +26,8 @@ vi.mock("@src/i18n/TranslationContext", () => ({
 // Mock the extension state (the real context pulls in the whole provider tree)
 const mockUseExtensionState = vi.fn()
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockUseExtensionState() as never),
+
 	useExtensionState: () => mockUseExtensionState(),
 }))
 

@@ -1,7 +1,7 @@
 import { defaultModeSlug } from "@roo/modes"
 
 import { render, fireEvent, screen } from "@src/utils/test-utils"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionState, useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"
 import * as pathMentions from "@src/utils/path-mentions"
 
@@ -73,6 +73,17 @@ describe("ChatTextArea", () => {
 			taskHistory: [],
 			cwd: "/test/workspace",
 		})
+		;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+			selector({
+				filePaths: [],
+				openedTabs: [],
+				apiConfiguration: {
+					apiProvider: "anthropic",
+				},
+				taskHistory: [],
+				cwd: "/test/workspace",
+			}),
+		)
 	})
 
 	describe("enhance prompt button", () => {
@@ -83,6 +94,14 @@ describe("ChatTextArea", () => {
 				taskHistory: [],
 				cwd: "/test/workspace",
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					taskHistory: [],
+					cwd: "/test/workspace",
+				}),
+			)
 			render(<ChatTextArea {...defaultProps} sendingDisabled={true} />)
 			const enhanceButton = getEnhancePromptButton()
 			expect(enhanceButton).toHaveClass("cursor-pointer")
@@ -103,6 +122,15 @@ describe("ChatTextArea", () => {
 				taskHistory: [],
 				cwd: "/test/workspace",
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					apiConfiguration,
+					taskHistory: [],
+					cwd: "/test/workspace",
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} inputValue="Test prompt" />)
 
@@ -125,6 +153,17 @@ describe("ChatTextArea", () => {
 				taskHistory: [],
 				cwd: "/test/workspace",
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					apiConfiguration: {
+						apiProvider: "openrouter",
+					},
+					taskHistory: [],
+					cwd: "/test/workspace",
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} inputValue="" />)
 
@@ -147,6 +186,17 @@ describe("ChatTextArea", () => {
 				taskHistory: [],
 				cwd: "/test/workspace",
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					apiConfiguration: {
+						apiProvider: "openrouter",
+					},
+					taskHistory: [],
+					cwd: "/test/workspace",
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} inputValue="Test prompt" />)
 
@@ -174,6 +224,18 @@ describe("ChatTextArea", () => {
 				taskHistory: [],
 				cwd: "/test/workspace",
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					apiConfiguration: {
+						apiProvider: "openrouter",
+						newSetting: "test",
+					},
+					taskHistory: [],
+					cwd: "/test/workspace",
+				}),
+			)
 
 			rerender(<ChatTextArea {...defaultProps} />)
 
@@ -297,6 +359,14 @@ describe("ChatTextArea", () => {
 				openedTabs: [],
 				cwd: mockCwd,
 			})
+			mockConvertToMentionPath.mockClear()
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					cwd: mockCwd,
+				}),
+			)
 			mockConvertToMentionPath.mockClear()
 		})
 
@@ -528,6 +598,18 @@ describe("ChatTextArea", () => {
 					clineMessages: mockClineMessages,
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: {
+							apiProvider: "anthropic",
+						},
+						taskHistory: [],
+						clineMessages: mockClineMessages,
+						cwd: "/test/workspace",
+					}),
+				)
 			})
 
 			it("should navigate to previous prompt on arrow up when cursor is at beginning", () => {
@@ -609,6 +691,19 @@ describe("ChatTextArea", () => {
 						cwd: "/test/workspace",
 					})
 					rerender(<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />)
+					;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+						selector({
+							filePaths: [],
+							openedTabs: [],
+							apiConfiguration: { apiProvider: "anthropic" },
+							taskHistory: [],
+							clineMessages: [
+								...mockClineMessages,
+								{ type: "say", say: "text", text: answer, ts: 4000, partial: true },
+							],
+							cwd: "/test/workspace",
+						}),
+					)
 				}
 
 				textarea.setSelectionRange(0, 0)
@@ -712,6 +807,18 @@ describe("ChatTextArea", () => {
 					clineMessages: mixedClineMessages,
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: {
+							apiProvider: "anthropic",
+						},
+						taskHistory: [],
+						clineMessages: mixedClineMessages,
+						cwd: "/test/workspace",
+					}),
+				)
 
 				const setInputValue = vi.fn()
 				const { container } = render(
@@ -740,6 +847,18 @@ describe("ChatTextArea", () => {
 					clineMessages: [],
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: {
+							apiProvider: "anthropic",
+						},
+						taskHistory: [],
+						clineMessages: [],
+						cwd: "/test/workspace",
+					}),
+				)
 
 				const setInputValue = vi.fn()
 				const { container } = render(
@@ -771,6 +890,18 @@ describe("ChatTextArea", () => {
 					clineMessages: clineMessagesWithEmpty,
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: {
+							apiProvider: "anthropic",
+						},
+						taskHistory: [],
+						clineMessages: clineMessagesWithEmpty,
+						cwd: "/test/workspace",
+					}),
+				)
 
 				const setInputValue = vi.fn()
 				const { container } = render(
@@ -805,6 +936,18 @@ describe("ChatTextArea", () => {
 					clineMessages: [], // No conversation messages
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: {
+							apiProvider: "anthropic",
+						},
+						taskHistory: mockTaskHistory,
+						clineMessages: [], // No conversation messages
+						cwd: "/test/workspace",
+					}),
+				)
 
 				const setInputValue = vi.fn()
 				const { container } = render(
@@ -842,6 +985,21 @@ describe("ChatTextArea", () => {
 					clineMessages: [],
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: {
+							apiProvider: "anthropic",
+						},
+						taskHistory: [
+							{ task: "Task 1", workspace: "/test/workspace" },
+							{ task: "Task 2", workspace: "/test/workspace" },
+						],
+						clineMessages: [],
+						cwd: "/test/workspace",
+					}),
+				)
 
 				rerender(<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />)
 
@@ -868,6 +1026,21 @@ describe("ChatTextArea", () => {
 					],
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						apiConfiguration: {
+							apiProvider: "anthropic",
+						},
+						taskHistory: [],
+						clineMessages: [
+							{ type: "say", say: "user_feedback", text: "Message 1", ts: 1000 },
+							{ type: "say", say: "user_feedback", text: "Message 2", ts: 2000 },
+						],
+						cwd: "/test/workspace",
+					}),
+				)
 
 				setInputValue.mockClear()
 				rerender(<ChatTextArea {...defaultProps} setInputValue={setInputValue} inputValue="" />)
@@ -974,6 +1147,15 @@ describe("ChatTextArea", () => {
 				cwd: "/test/workspace",
 				commands: mockCommands,
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					taskHistory: [],
+					cwd: "/test/workspace",
+					commands: mockCommands,
+				}),
+			)
 		})
 
 		it("should highlight valid slash commands", () => {
@@ -1083,6 +1265,15 @@ describe("ChatTextArea", () => {
 				cwd: "/test/workspace",
 				commands: undefined,
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					filePaths: [],
+					openedTabs: [],
+					taskHistory: [],
+					cwd: "/test/workspace",
+					commands: undefined,
+				}),
+			)
 
 			const { getByTestId } = render(<ChatTextArea {...defaultProps} inputValue="/setup the project" />)
 
@@ -1123,6 +1314,14 @@ describe("ChatTextArea", () => {
 					taskHistory: [],
 					cwd: "/test/workspace",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						taskHistory: [],
+						cwd: "/test/workspace",
+					}),
+				)
 
 				const { container } = render(<ChatTextArea {...defaultProps} onSend={onSend} />)
 
@@ -1147,6 +1346,15 @@ describe("ChatTextArea", () => {
 					cwd: "/test/workspace",
 					enterBehavior: "newline",
 				})
+				;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+					selector({
+						filePaths: [],
+						openedTabs: [],
+						taskHistory: [],
+						cwd: "/test/workspace",
+						enterBehavior: "newline",
+					}),
+				)
 
 				const { container } = render(<ChatTextArea {...defaultProps} onSend={onSend} />)
 

@@ -34,6 +34,9 @@ vi.mock("react-i18next", async () => {
 })
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({ version: "1.0.0", apiConfiguration: {} } as never),
+
 	useExtensionState: () => ({ version: "1.0.0", apiConfiguration: {} }),
 }))
 

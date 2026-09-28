@@ -9,7 +9,7 @@ import { WebviewMessage } from "@roo/WebviewMessage"
 import { Mode, getAllModes } from "@roo/modes"
 
 import { vscode } from "@src/utils/vscode"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import {
 	ContextMenuOptionType,
@@ -83,24 +83,25 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		ref,
 	) => {
 		const { t } = useAppTranslation()
-		const {
-			filePaths,
-			openedTabs,
-			currentApiConfigName,
-			listApiConfigMeta,
-			customModes,
-			customModePrompts,
-			cwd,
-			pinnedApiConfigs,
-			togglePinnedApiConfig,
-			taskHistory,
-			clineMessages,
-			commands,
-			cloudUserInfo,
-			enterBehavior,
-			lockApiConfigAcrossModes,
-			modeApiConfigs,
-		} = useExtensionState()
+		// P1: narrow selectors. The 1,300-line composer used to consume the
+		// whole extension state and re-render on every streamed token even
+		// though none of these slices change while a token streams.
+		const filePaths = useExtensionSelector((s) => s.filePaths)
+		const openedTabs = useExtensionSelector((s) => s.openedTabs)
+		const currentApiConfigName = useExtensionSelector((s) => s.currentApiConfigName)
+		const listApiConfigMeta = useExtensionSelector((s) => s.listApiConfigMeta)
+		const customModes = useExtensionSelector((s) => s.customModes)
+		const customModePrompts = useExtensionSelector((s) => s.customModePrompts)
+		const cwd = useExtensionSelector((s) => s.cwd)
+		const pinnedApiConfigs = useExtensionSelector((s) => s.pinnedApiConfigs)
+		const togglePinnedApiConfig = useExtensionSelector((s) => s.togglePinnedApiConfig)
+		const taskHistory = useExtensionSelector((s) => s.taskHistory)
+		const clineMessages = useExtensionSelector((s) => s.clineMessages)
+		const commands = useExtensionSelector((s) => s.commands)
+		const cloudUserInfo = useExtensionSelector((s) => s.cloudUserInfo)
+		const enterBehavior = useExtensionSelector((s) => s.enterBehavior)
+		const lockApiConfigAcrossModes = useExtensionSelector((s) => s.lockApiConfigAcrossModes)
+		const modeApiConfigs = useExtensionSelector((s) => s.modeApiConfigs)
 
 		// Find the ID and display text for the currently selected API configuration.
 		const { currentConfigId, displayName } = useMemo(() => {

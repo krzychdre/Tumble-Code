@@ -6,7 +6,7 @@ import { type HistoryItem, type ShareVisibility, TelemetryEventName, type Extens
 
 import { vscode } from "@/utils/vscode"
 import { telemetryClient } from "@/utils/TelemetryClient"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionSelector } from "@/context/ExtensionStateContext"
 import { useCloudUpsell } from "@/hooks/useCloudUpsell"
 import { CloudUpsellDialog } from "@/components/cloud/CloudUpsellDialog"
 import {
@@ -32,7 +32,8 @@ export const ShareButton = ({ item, disabled = false }: ShareButtonProps) => {
 	const [shareSuccess, setShareSuccess] = useState<{ visibility: ShareVisibility; url: string } | null>(null)
 	const [wasConnectInitiatedFromShare, setWasConnectInitiatedFromShare] = useState(false)
 	const { t } = useTranslation()
-	const { cloudUserInfo } = useExtensionState()
+	// P1: narrow slice.
+	const cloudUserInfo = useExtensionSelector((s) => s.cloudUserInfo)
 
 	// Use enhanced cloud upsell hook with auto-open on auth success
 	const {

@@ -32,6 +32,14 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		mode: "code",
 		currentTaskItem: undefined,
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			mcpServers: [],
+			alwaysAllowMcp: false,
+			currentCheckpoint: null,
+			mode: "code",
+			currentTaskItem: undefined,
+		} as never),
 }))
 
 // The real text area is heavy; the mock shows the images it is given.

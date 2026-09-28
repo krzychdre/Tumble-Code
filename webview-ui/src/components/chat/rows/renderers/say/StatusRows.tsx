@@ -4,7 +4,7 @@ import type { TodoItem } from "@roo-code/types"
 
 import { safeJsonParse } from "@roo-code/core/browser"
 
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import ErrorRow from "@src/components/chat/ErrorRow"
 import WarningRow from "@src/components/chat/WarningRow"
 import { ReasoningBlock } from "@src/components/chat/ReasoningBlock"
@@ -74,7 +74,8 @@ export const ShellIntegrationWarningRow = () => <CommandExecutionError />
 
 /** A checkpoint, with its restore and diff menu. */
 export const CheckpointSavedRow = ({ message, onJumpToPreviousCheckpoint }: RowRendererProps) => {
-	const { currentCheckpoint } = useExtensionState()
+	// P1: narrow slice.
+	const currentCheckpoint = useExtensionSelector((s) => s.currentCheckpoint)
 	return (
 		<CheckpointSaved
 			ts={message.ts!}

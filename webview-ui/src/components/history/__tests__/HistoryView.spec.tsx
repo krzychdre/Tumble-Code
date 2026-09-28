@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from "@/utils/test-utils"
 
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionState, useExtensionSelector } from "@src/context/ExtensionStateContext"
 
 import HistoryView from "../HistoryView"
 
@@ -41,6 +41,12 @@ describe("HistoryView", () => {
 			taskHistory: mockTaskHistory,
 			cwd: "/test/workspace",
 		})
+		;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+			selector({
+				taskHistory: mockTaskHistory,
+				cwd: "/test/workspace",
+			}),
+		)
 	})
 
 	it("renders the history interface", () => {

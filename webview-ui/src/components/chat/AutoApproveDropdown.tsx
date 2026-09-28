@@ -5,7 +5,7 @@ import { vscode } from "@/utils/vscode"
 
 import { cn } from "@/lib/utils"
 
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
 import { useAppTranslation } from "@/i18n/TranslationContext"
 
@@ -31,20 +31,19 @@ export const AutoApproveDropdown = ({ disabled = false, triggerClassName = "" }:
 	const portalContainer = useRooPortal("roo-portal")
 	const { t } = useAppTranslation()
 
-	const {
-		autoApprovalEnabled,
-		setAutoApprovalEnabled,
-		autoApprovalMode = "default",
-		setAutoApprovalMode,
-		setAlwaysAllowReadOnly,
-		setAlwaysAllowWrite,
-		setAlwaysAllowExecute,
-		setAlwaysAllowMcp,
-		setAlwaysAllowModeSwitch,
-		setAlwaysAllowSubtasks,
-		setAlwaysApprovePlan,
-		setAlwaysAllowFollowupQuestions,
-	} = useExtensionState()
+	// P1: narrow slices.
+	const autoApprovalEnabled = useExtensionSelector((s) => s.autoApprovalEnabled)
+	const setAutoApprovalEnabled = useExtensionSelector((s) => s.setAutoApprovalEnabled)
+	const autoApprovalMode = useExtensionSelector((s) => s.autoApprovalMode) ?? "default"
+	const setAutoApprovalMode = useExtensionSelector((s) => s.setAutoApprovalMode)
+	const setAlwaysAllowReadOnly = useExtensionSelector((s) => s.setAlwaysAllowReadOnly)
+	const setAlwaysAllowWrite = useExtensionSelector((s) => s.setAlwaysAllowWrite)
+	const setAlwaysAllowExecute = useExtensionSelector((s) => s.setAlwaysAllowExecute)
+	const setAlwaysAllowMcp = useExtensionSelector((s) => s.setAlwaysAllowMcp)
+	const setAlwaysAllowModeSwitch = useExtensionSelector((s) => s.setAlwaysAllowModeSwitch)
+	const setAlwaysAllowSubtasks = useExtensionSelector((s) => s.setAlwaysAllowSubtasks)
+	const setAlwaysApprovePlan = useExtensionSelector((s) => s.setAlwaysApprovePlan)
+	const setAlwaysAllowFollowupQuestions = useExtensionSelector((s) => s.setAlwaysAllowFollowupQuestions)
 
 	const toggles = useAutoApprovalToggles()
 

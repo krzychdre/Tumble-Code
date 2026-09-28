@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 
 import MarkdownBlock from "../common/MarkdownBlock"
 import { Lightbulb, ChevronUp } from "lucide-react"
@@ -24,7 +24,8 @@ interface ReasoningBlockProps {
 
 export const ReasoningBlock = ({ content, ts, endTs }: ReasoningBlockProps) => {
 	const { t } = useTranslation()
-	const { reasoningBlockCollapsed } = useExtensionState()
+	// P1: narrow slice.
+	const reasoningBlockCollapsed = useExtensionSelector((s) => s.reasoningBlockCollapsed)
 
 	const [isCollapsed, setIsCollapsed] = useState(reasoningBlockCollapsed)
 	const contentRef = useRef<HTMLDivElement>(null)

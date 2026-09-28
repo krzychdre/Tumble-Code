@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { countEnabledMcpTools, getMaxMcpToolsThreshold } from "@roo-code/types"
 
@@ -32,7 +32,9 @@ export interface TooManyToolsInfo {
  */
 export function useTooManyTools(): TooManyToolsInfo {
 	const { t } = useAppTranslation()
-	const { mcpServers, experiments } = useExtensionState()
+	// P1: narrow slices.
+	const mcpServers = useExtensionSelector((s) => s.mcpServers)
+	const experiments = useExtensionSelector((s) => s.experiments)
 
 	const { enabledServerCount, enabledToolCount } = useMemo(() => countEnabledMcpTools(mcpServers), [mcpServers])
 

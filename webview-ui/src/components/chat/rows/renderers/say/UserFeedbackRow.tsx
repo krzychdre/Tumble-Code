@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { vscode } from "@src/utils/vscode"
 import { appendImages } from "@src/utils/imageUtils"
 import { onExtensionMessage } from "@src/utils/extensionBus"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import Thumbnails from "@src/components/common/Thumbnails"
 import { Mention } from "@src/components/chat/Mention"
 import { ChatTextArea } from "@src/components/chat/ChatTextArea"
@@ -20,7 +20,8 @@ import type { RowRendererProps } from "../types"
 /** A message the user sent, editable in place (text, images and mode) until the model streams. */
 export const UserFeedbackRow = ({ message, isStreaming, supportsImages }: RowRendererProps) => {
 	const { t } = useTranslation()
-	const { mode } = useExtensionState()
+	// P1: narrow slice.
+	const mode = useExtensionSelector((s) => s.mode)
 	const [isEditing, setIsEditing] = useState(false)
 	const [editedContent, setEditedContent] = useState("")
 	const [editMode, setEditMode] = useState<Mode>(mode || "code")

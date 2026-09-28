@@ -8,8 +8,10 @@ import { ModelInfo } from "@roo-code/types"
 
 import { ModelPicker } from "../ModelPicker"
 
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 Element.prototype.scrollIntoView = vi.fn()

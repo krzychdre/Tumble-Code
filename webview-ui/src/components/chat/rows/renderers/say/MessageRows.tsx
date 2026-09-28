@@ -6,7 +6,7 @@ import type { ClineSayTool } from "@roo-code/types"
 import { safeJsonParse } from "@roo-code/core/browser"
 
 import { vscode } from "@src/utils/vscode"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import CodeAccordion from "@src/components/common/CodeAccordion"
 import MarkdownBlock from "@src/components/common/MarkdownBlock"
 import ImageBlock from "@src/components/common/ImageBlock"
@@ -81,7 +81,8 @@ export const CompletionResultSayRow = ({ message }: RowRendererProps) => {
 /** A subtask's result, back in the parent task, with a link to the subtask. */
 export const SubtaskResultRow = ({ message }: RowRendererProps) => {
 	const { t } = useTranslation()
-	const { currentTaskItem } = useExtensionState()
+	// P1: narrow slice.
+	const currentTaskItem = useExtensionSelector((s) => s.currentTaskItem)
 	// Get the child task ID that produced this result
 	const completedChildTaskId = currentTaskItem?.completedByChildId
 	return (

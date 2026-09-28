@@ -13,7 +13,7 @@ import { findLastIndex, getModelMaxOutputTokens } from "@roo-code/core/browser"
 import { formatLargeNumber } from "@src/utils/format"
 import { cn } from "@src/lib/utils"
 import { StandardTooltip, Button } from "@src/components/ui"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@/components/ui/hooks/useSelectedModel"
 import { vscode } from "@src/utils/vscode"
 
@@ -59,27 +59,29 @@ const TaskHeader = ({
 	todos,
 }: TaskHeaderProps) => {
 	const { t } = useTranslation()
-	const { apiConfiguration, currentTaskItem, clineMessages } = useExtensionState()
+	// P1: narrow slices. TaskHeader used to consume the whole extension state
+	// (and scan all messages every render); the scan now runs in the selector,
+	// once per committed store change instead of once per render.
+	const apiConfiguration = useExtensionSelector((s) => s.apiConfiguration)
+	const currentTaskItem = useExtensionSelector((s) => s.currentTaskItem)
+	const isTaskComplete = useExtensionSelector((s) => {
+		const clineMessages = s.clineMessages
+		if (!clineMessages || clineMessages.length === 0) {
+			return false
+		}
+		// Check if the task is complete by looking at the last relevant message (skipping resume messages)
+		const lastRelevantIndex = findLastIndex(
+			clineMessages,
+			(m) => !(m.ask === "resume_task" || m.ask === "resume_completed_task"),
+		)
+		return lastRelevantIndex !== -1 ? clineMessages[lastRelevantIndex]?.ask === "completion_result" : false
+	})
 	const { id: modelId, info: model } = useSelectedModel(apiConfiguration)
 	const [isTaskExpanded, setIsTaskExpanded] = useState(false)
 	const [showLongRunningTaskMessage, setShowLongRunningTaskMessage] = useState(false)
 	const { isOpen, openUpsell, closeUpsell, handleConnect } = useCloudUpsell({
 		autoOpenOnAuth: false,
 	})
-
-	// Check if the task is complete by looking at the last relevant message (skipping resume messages)
-	const isTaskComplete =
-		clineMessages && clineMessages.length > 0
-			? (() => {
-					const lastRelevantIndex = findLastIndex(
-						clineMessages,
-						(m) => !(m.ask === "resume_task" || m.ask === "resume_completed_task"),
-					)
-					return lastRelevantIndex !== -1
-						? clineMessages[lastRelevantIndex]?.ask === "completion_result"
-						: false
-				})()
-			: false
 
 	useEffect(() => {
 		const timer = setTimeout(() => {

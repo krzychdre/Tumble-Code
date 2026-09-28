@@ -38,10 +38,11 @@ vi.mock("@src/components/mcp/McpView", () => {
 
 // Import the actual component AFTER the mocks are registered.
 import SettingsView from "../SettingsView"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 vi.mock("@src/i18n/TranslationContext", () => ({
@@ -159,7 +160,7 @@ describe("SettingsView lazy Modes/MCP tabs (P4)", () => {
 				mutations: { retry: false },
 			},
 		})
-		;(useExtensionState as any).mockReturnValue(createExtensionState())
+		;(mockState.fn as any).mockReturnValue(createExtensionState())
 	})
 
 	// With the static search index there is no startup indexing cycle that

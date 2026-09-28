@@ -34,6 +34,16 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		clineMessages: [],
 		currentTaskItem: undefined,
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			mcpServers: [],
+			alwaysAllowMcp: false,
+			currentCheckpoint: null,
+			mode: "code",
+			apiConfiguration: { apiProvider: "openrouter", openRouterModelId: "some/model" },
+			clineMessages: [],
+			currentTaskItem: undefined,
+		} as never),
 }))
 
 // The real text area is heavy; the mock shows the one prop under test.

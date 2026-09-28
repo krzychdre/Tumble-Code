@@ -19,6 +19,11 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 		cwd: "/test/workspace",
 		filePaths: ["/test/workspace/file1.ts", "/test/workspace/file2.ts"],
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			cwd: "/test/workspace",
+			filePaths: ["/test/workspace/file1.ts", "/test/workspace/file2.ts"],
+		} as never),
 }))
 
 vi.mock("@/i18n/TranslationContext", () => ({

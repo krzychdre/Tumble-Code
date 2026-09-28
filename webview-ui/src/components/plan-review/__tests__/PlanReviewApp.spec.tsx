@@ -100,6 +100,18 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		clineMessages: [],
 		currentTaskItem: undefined,
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			language: "en",
+			apiConfiguration: {},
+			customModes: [],
+			mcpServers: [],
+			alwaysAllowMcp: false,
+			currentCheckpoint: undefined,
+			mode: "architect",
+			clineMessages: [],
+			currentTaskItem: undefined,
+		} as never),
 }))
 
 import PlanReviewApp from "../PlanReviewApp"

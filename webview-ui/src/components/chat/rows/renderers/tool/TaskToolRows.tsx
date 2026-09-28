@@ -4,7 +4,7 @@ import { ArrowRight, ClipboardCheck, PocketKnife, Split } from "lucide-react"
 import type { TodoItem } from "@roo-code/types"
 
 import { vscode } from "@src/utils/vscode"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import MarkdownBlock from "@src/components/common/MarkdownBlock"
 import { TodoChangeDisplay } from "@src/components/chat/TodoChangeDisplay"
 
@@ -71,7 +71,8 @@ export const SwitchModeToolRow = ({ message, tool }: ToolRendererProps) => (
 /** A subtask the model wants to create, with a link to it once it exists. */
 export const NewTaskToolRow = ({ tool, meta }: ToolRendererProps) => {
 	const { t } = useTranslation()
-	const { currentTaskItem } = useExtensionState()
+	// P1: narrow slice.
+	const currentTaskItem = useExtensionSelector((s) => s.currentTaskItem)
 
 	// The row's position among the newTask asks picks its child task ID.
 	const thisNewTaskIndex = meta.newTaskIndex ?? -1

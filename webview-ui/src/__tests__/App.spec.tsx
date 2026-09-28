@@ -153,6 +153,8 @@ vi.mock("@src/i18n/TranslationContext", () => {
 })
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockUseExtensionState() as never),
+
 	useExtensionState: () => mockUseExtensionState(),
 	ExtensionStateContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))

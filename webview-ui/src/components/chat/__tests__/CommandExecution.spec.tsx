@@ -4,7 +4,6 @@ import React from "react"
 import { render, screen, fireEvent, act } from "@testing-library/react"
 
 import { CommandExecution } from "../CommandExecution"
-import { ExtensionStateContext } from "../../../context/ExtensionStateContext"
 import { TooltipProvider } from "../../ui/tooltip"
 
 // Mock dependencies
@@ -13,6 +12,23 @@ import { TooltipProvider } from "../../ui/tooltip"
 // resolve every key to itself and assert on the keys. With real (truthy)
 // tooltip content StandardTooltip renders a Radix Tooltip, which needs a
 // TooltipProvider in the tree: every render below goes through one.
+// The component reads allowed/denied commands and their setters through
+// useExtensionSelector. The tests drive per-test state through
+// ExtensionStateWrapper; the mock selector reads the value the wrapper
+// publishes (the wrapper renders the real ExtensionStateContext.Provider
+// below, but the mocked hook reads the holder instead).
+const mockSelectorState = vi.hoisted(() => ({ current: undefined as unknown }))
+
+vi.mock("@src/context/ExtensionStateContext", async () => {
+	const actual = await vi.importActual<typeof import("@src/context/ExtensionStateContext")>(
+		"@src/context/ExtensionStateContext",
+	)
+	return {
+		...actual,
+		useExtensionSelector: (selector: (s: never) => unknown) => selector(mockSelectorState.current as never),
+	}
+})
+
 vi.mock("i18next", () => ({
 	t: (key: string) => key,
 }))
@@ -54,11 +70,10 @@ const mockExtensionState = {
 	setDeniedCommands: vi.fn(),
 }
 
-const ExtensionStateWrapper = ({ children }: { children: React.ReactNode }) => (
-	<ExtensionStateContext.Provider value={mockExtensionState as any}>
-		<TooltipProvider>{children}</TooltipProvider>
-	</ExtensionStateContext.Provider>
-)
+const ExtensionStateWrapper = ({ children }: { children: React.ReactNode }) => {
+	mockSelectorState.current = mockExtensionState
+	return <TooltipProvider>{children}</TooltipProvider>
+}
 
 // The whole body (command block, output, pattern selector) is only mounted when
 // the parent marks the row as expanded, so every test that asserts on that body
@@ -174,11 +189,8 @@ describe("CommandExecution", () => {
 			deniedCommands: ["rm"],
 		}
 
-		render(
-			<ExtensionStateContext.Provider value={stateWithNpmTest as any}>
-				<CommandExecution executionId="test-1" text="npm test" isExpanded={true} />
-			</ExtensionStateContext.Provider>,
-		)
+		mockSelectorState.current = stateWithNpmTest
+		render(<CommandExecution executionId="test-1" text="npm test" isExpanded={true} />)
 
 		const allowButton = screen.getByText("Allow")
 		fireEvent.click(allowButton)
@@ -203,11 +215,8 @@ describe("CommandExecution", () => {
 			deniedCommands: ["rm -rf"],
 		}
 
-		render(
-			<ExtensionStateContext.Provider value={stateWithRmRf as any}>
-				<CommandExecution executionId="test-1" text="rm -rf" isExpanded={true} />
-			</ExtensionStateContext.Provider>,
-		)
+		mockSelectorState.current = stateWithRmRf
+		render(<CommandExecution executionId="test-1" text="rm -rf" isExpanded={true} />)
 
 		const denyButton = screen.getByText("Deny")
 		fireEvent.click(denyButton)
@@ -419,11 +428,8 @@ EOF`
 			deniedCommands: undefined,
 		}
 
-		render(
-			<ExtensionStateContext.Provider value={stateWithUndefined as any}>
-				<CommandExecution executionId="test-1" text="npm install" isExpanded={true} />
-			</ExtensionStateContext.Provider>,
-		)
+		mockSelectorState.current = stateWithUndefined
+		render(<CommandExecution executionId="test-1" text="npm install" isExpanded={true} />)
 
 		// Should show pattern selector when patterns are available
 		expect(screen.getByTestId("command-pattern-selector")).toBeInTheDocument()
@@ -437,11 +443,8 @@ EOF`
 			deniedCommands: ["rm file.txt"],
 		}
 
-		render(
-			<ExtensionStateContext.Provider value={stateWithRmInDenied as any}>
-				<CommandExecution executionId="test-1" text="rm file.txt" isExpanded={true} />
-			</ExtensionStateContext.Provider>,
-		)
+		mockSelectorState.current = stateWithRmInDenied
+		render(<CommandExecution executionId="test-1" text="rm file.txt" isExpanded={true} />)
 
 		const allowButton = screen.getByText("Allow")
 		fireEvent.click(allowButton)
@@ -571,11 +574,8 @@ Running tests...
 				deniedCommands: ["git push origin main"],
 			}
 
-			render(
-				<ExtensionStateContext.Provider value={conflictState as any}>
-					<CommandExecution executionId="test-11" text="git push origin main" isExpanded={true} />
-				</ExtensionStateContext.Provider>,
-			)
+			mockSelectorState.current = conflictState
+			render(<CommandExecution executionId="test-11" text="git push origin main" isExpanded={true} />)
 
 			// Click to allow "git push origin main"
 			const allowButton = screen.getByText("Allow")

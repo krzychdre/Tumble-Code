@@ -64,6 +64,14 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 		shouldShowAnnouncement: false,
 		language: "en",
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			version: "1.0.0",
+			clineMessages: [],
+			taskHistory: [],
+			shouldShowAnnouncement: false,
+			language: "en",
+		} as never),
 	ExtensionStateContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 

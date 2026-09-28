@@ -43,6 +43,14 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		mode: "code",
 		currentTaskItem: mockCurrentTaskItem,
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			mcpServers: [],
+			alwaysAllowMcp: false,
+			currentCheckpoint: null,
+			mode: "code",
+			currentTaskItem: mockCurrentTaskItem,
+		} as never),
 }))
 
 // Mock useSelectedModel hook

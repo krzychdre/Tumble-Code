@@ -84,10 +84,11 @@ vi.mock("react-i18next", () => ({
 
 // Import the component under test AFTER the mocks are registered.
 import SettingsView from "../SettingsView"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 // Mock UI components: partial mock of the barrel; stub the tooltip exports
@@ -219,7 +220,7 @@ describe("SettingsView static search index", () => {
 				mutations: { retry: false },
 			},
 		})
-		;(useExtensionState as any).mockReturnValue(createExtensionState())
+		;(mockState.fn as any).mockReturnValue(createExtensionState())
 	})
 
 	it("search input is available immediately (no indexing cycle)", () => {

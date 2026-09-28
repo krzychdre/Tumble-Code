@@ -4,17 +4,18 @@ import type { HistoryItem } from "@roo-code/types"
 
 import { useTaskSearch } from "../useTaskSearch"
 
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
+
 vi.mock("@/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 vi.mock("@/utils/highlight", () => ({
 	highlightFzfMatch: vi.fn((text) => `<mark>${text}</mark>`),
 }))
 
-import { useExtensionState } from "@/context/ExtensionStateContext"
-
-const mockUseExtensionState = useExtensionState as ReturnType<typeof vi.fn>
+const mockUseExtensionState = mockState.fn as unknown as ReturnType<typeof vi.fn>
 
 const mockTaskHistory: HistoryItem[] = [
 	{

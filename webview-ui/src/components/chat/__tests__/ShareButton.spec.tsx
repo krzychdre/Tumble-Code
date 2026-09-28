@@ -28,6 +28,17 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 			organizationName: "Test Organization",
 		},
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			sharingEnabled: true,
+			publicSharingEnabled: true,
+			cloudIsAuthenticated: true,
+			cloudUserInfo: {
+				id: "test-user",
+				email: "test@example.com",
+				organizationName: "Test Organization",
+			},
+		} as never),
 }))
 
 // Mock telemetry client

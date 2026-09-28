@@ -19,6 +19,11 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 		mcpServers: mockMcpServers(),
 		experiments: mockExperiments(),
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			mcpServers: mockMcpServers(),
+			experiments: mockExperiments(),
+		} as never),
 }))
 
 // Mock i18n TranslationContext

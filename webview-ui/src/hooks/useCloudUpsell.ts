@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import { TelemetryEventName } from "@roo-code/types"
 import { vscode } from "@/utils/vscode"
 import { telemetryClient } from "@/utils/TelemetryClient"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
 interface UseCloudUpsellOptions {
 	onAuthSuccess?: () => void
@@ -13,7 +13,10 @@ export const useCloudUpsell = (options: UseCloudUpsellOptions = {}) => {
 	const { onAuthSuccess, autoOpenOnAuth = false } = options
 	const [isOpen, setIsOpen] = useState(false)
 	const [shouldOpenOnAuth, setShouldOpenOnAuth] = useState(false)
-	const { cloudIsAuthenticated, sharingEnabled, publicSharingEnabled } = useExtensionState()
+	// P1: narrow slices.
+	const cloudIsAuthenticated = useExtensionSelector((s) => s.cloudIsAuthenticated)
+	const sharingEnabled = useExtensionSelector((s) => s.sharingEnabled)
+	const publicSharingEnabled = useExtensionSelector((s) => s.publicSharingEnabled)
 	const wasUnauthenticatedRef = useRef(false)
 	const initiatedAuthRef = useRef(false)
 

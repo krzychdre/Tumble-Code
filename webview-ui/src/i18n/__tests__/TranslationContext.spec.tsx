@@ -9,6 +9,8 @@ import TranslationProvider, { useAppTranslation } from "../TranslationContext"
 const extensionState = { language: "en", didHydrateState: true }
 
 vi.mock("@/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(extensionState as never),
+
 	useExtensionState: () => extensionState,
 }))
 
