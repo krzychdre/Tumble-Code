@@ -94,6 +94,28 @@ describe("CustomModesManager", () => {
 	})
 
 	describe("getCustomModes", () => {
+		it("logs a .roomodes read failure once and loads the global modes alone", async () => {
+			const settingsModes = [{ slug: "mode1", name: "Mode 1", roleDefinition: "Role 1", groups: ["read"] }]
+			;(fs.readFile as Mock).mockImplementation(async (path: string) => {
+				if (path === mockSettingsPath) {
+					return yaml.stringify({ customModes: settingsModes })
+				}
+				throw Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" })
+			})
+			const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+			try {
+				const modes = await manager.getCustomModes()
+
+				expect(modes.map((m) => [m.slug, m.source])).toEqual([["mode1", "global"]])
+				expect(consoleError.mock.calls).toEqual([
+					[`[CustomModesManager] Failed to load modes from ${mockRoomodes}: EACCES: permission denied`],
+				])
+			} finally {
+				consoleError.mockRestore()
+			}
+		})
+
 		it("should handle valid YAML in .roomodes file and JSON for global customModes", async () => {
 			const settingsModes = [{ slug: "mode1", name: "Mode 1", roleDefinition: "Role 1", groups: ["read"] }]
 
