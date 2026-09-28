@@ -324,13 +324,94 @@ describe("extension.ts", () => {
 		// the point is it resolves, so we only check it doesn't reject.
 		await expect(activate(mockContext)).resolves.toBeDefined()
 
-		// The degradation line must have been logged to the output channel.
+		// The degradation line must have been logged to the output channel. The
+		// cloud starts in the background (P9), so the line may come after
+		// activate() has resolved.
 		const vscode = await import("vscode")
 		const channel = (vscode.window as any).createOutputChannel()
-		const lines = (channel.appendLine as any).mock.calls.map((c: any[]) => c[0]) as string[]
-		expect(
-			lines.some((l) => l.includes("[CloudService] initialization failed") && l.includes("local-only mode")),
-		).toBe(true)
+		await vi.waitFor(() => {
+			const lines = (channel.appendLine as any).mock.calls.map((c: any[]) => c[0]) as string[]
+			expect(
+				lines.some((l) => l.includes("[CloudService] initialization failed") && l.includes("local-only mode")),
+			).toBe(true)
+		})
+	})
+
+	// P9: activation used to await CloudService.createInstance (and the cloud
+	// profile sync after it) before it registered the sidebar webview and every
+	// command, so a slow cloud start (the OS keyring read in WebAuthService)
+	// left all `tumble-code.*` commands missing for as long as it took.
+	describe("activation does not wait for the cloud", () => {
+		/** Resolves to "activated" or, if activate() is still pending after `ms`, "still waiting". */
+		async function raceActivation(activation: Promise<unknown>, ms = 1_000) {
+			let timer: ReturnType<typeof setTimeout> | undefined
+			const waiting = new Promise<string>((resolve) => {
+				timer = setTimeout(() => resolve("still waiting"), ms)
+			})
+			try {
+				return await Promise.race([activation.then(() => "activated"), waiting])
+			} finally {
+				clearTimeout(timer)
+			}
+		}
+
+		test("registers the commands and the sidebar webview while the cloud is still starting", async () => {
+			vi.resetModules()
+			vi.clearAllMocks()
+
+			const cloud = await import("@roo-code/cloud")
+			vi.mocked(cloud.CloudService.createInstance).mockReturnValueOnce(new Promise(() => {}))
+
+			const vscodeMock = (await import("vscode")) as any
+			const { registerCommands } = await import("../activate")
+			const { activate } = await import("../extension")
+
+			expect(await raceActivation(activate(mockContext))).toBe("activated")
+
+			expect(cloud.CloudService.createInstance).toHaveBeenCalledTimes(1)
+			expect(registerCommands).toHaveBeenCalledTimes(1)
+			expect(vscodeMock.window.registerWebviewViewProvider).toHaveBeenCalledWith(
+				"tumble-code-sidebar",
+				expect.anything(),
+				expect.anything(),
+			)
+			expect(vscodeMock.commands.executeCommand).toHaveBeenCalledWith("test-extension.activationCompleted")
+		})
+
+		test("wires profile sync, state push, cleanup and the bridge once a late cloud start finishes", async () => {
+			vi.resetModules()
+			vi.clearAllMocks()
+
+			const cloud = await import("@roo-code/cloud")
+			let finishCloudStart: (instance: unknown) => void = () => {}
+			vi.mocked(cloud.CloudService.createInstance).mockReturnValueOnce(
+				new Promise((resolve) => {
+					finishCloudStart = resolve as (instance: unknown) => void
+				}) as any,
+			)
+
+			const { ClineProvider } = await import("../core/webview/ClineProvider")
+			const provider = ClineProvider.getVisibleInstance() as any
+			const { activate } = await import("../extension")
+
+			expect(await raceActivation(activate(mockContext))).toBe("activated")
+
+			// Nothing that needs a started cloud has run yet.
+			expect(provider.initializeCloudProfileSyncWhenReady).not.toHaveBeenCalled()
+			expect(mockContext.subscriptions).not.toContain(mockCloudServiceInstance)
+			expect(mockCloudServiceInstance.on).not.toHaveBeenCalled()
+
+			finishCloudStart(mockCloudServiceInstance)
+
+			await vi.waitFor(() => {
+				expect(provider.initializeCloudProfileSyncWhenReady).toHaveBeenCalledTimes(1)
+				// The webview may already show signed-out cloud facts: push fresh ones.
+				expect(provider.postStateToWebviewWithoutClineMessages).toHaveBeenCalled()
+				expect(mockContext.subscriptions).toContain(mockCloudServiceInstance)
+				// The remote-control bridge follows the cloud session.
+				expect(mockCloudServiceInstance.on).toHaveBeenCalledWith("auth-state-changed", expect.any(Function))
+			})
+		})
 	})
 
 	test("deactivate releases the cached tree-sitter parsers", async () => {

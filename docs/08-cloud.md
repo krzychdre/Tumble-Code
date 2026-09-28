@@ -25,6 +25,11 @@ graph TD
   BO -. uses auth of .-> CS
 ```
 
+Extension activation starts `CloudService` in the background and does not wait for it (see
+[the extension host](02-extension-host.md#activation)). Code that runs outside activation must therefore not assume
+a started cloud: check `CloudService.hasInstance()` (true only after `initialize()` finished) before reading
+`CloudService.instance`, or catch its "not initialized" error. `CloudService.isEnabled()` is false while starting.
+
 | Client code            | Endpoint                                                                                                                                                        |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `WebAuthService`       | `POST /v1/client/sign_ins`, `POST /v1/client/sessions/{id}/tokens`, `GET /v1/me`, `GET /v1/me/organization_memberships`, `POST /v1/client/sessions/{id}/remove` |

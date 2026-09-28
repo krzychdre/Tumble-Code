@@ -22,12 +22,19 @@ flowchart TD
   I --> J[memory paths]
   J --> K[one CodeIndexManager per workspace folder - background]
   K --> L[new ClineProvider sidebar]
-  L --> M[CloudService.createInstance - awaited, failure means local-only]
-  M --> N[cloud profile sync, register webview view provider]
-  N --> O[worktree auto-open, settings auto-import]
-  O --> P[registerCommands, diff content provider, URI handler,<br/>code actions, terminal actions, .roo watchers]
-  P --> Q[return API object, start remote-control bridge]
+  L --> M[cloud start - background:<br/>CloudService.createInstance, profile sync, state push]
+  L --> N[register webview view provider, registerCommands]
+  N --> O[worktree auto-open, settings auto-import - awaited]
+  O --> P[diff content provider, URI handler,<br/>code actions, terminal actions, .roo watchers]
+  P --> Q[return API object]
+  M -. once settled .-> R[remote-control bridge]
 ```
+
+The cloud start runs in the background (`src/extension/cloudStartup.ts`, P9): the webview and the commands never
+wait for it, and a failed start only means local-only mode. It counts as "starting" until it settles or 10 s pass;
+in that window `CloudService.hasInstance()` is false, the MDM redirect to the account tab is held back, and a
+Clerk sign-in callback (`handleUri`) waits for it. When the start settles, activation pushes a fresh state to a
+visible webview (which may have shown signed-out cloud facts) and sets up the remote-control bridge.
 
 `deactivate()` flushes pending chat-message saves, removes cloud listeners, stops MCP servers, shuts telemetry
 down, cleans terminals and disposes the tree-sitter parsers.

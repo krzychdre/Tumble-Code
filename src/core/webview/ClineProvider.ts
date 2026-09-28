@@ -102,6 +102,7 @@ import { TaskHistoryGateway } from "./TaskHistoryGateway"
 import { BackgroundTaskRunner, type BackgroundTaskOptions, type BackgroundTaskOutcome } from "./BackgroundTaskRunner"
 import { profileTaskOptions } from "./profileTaskOptions"
 import { CONTROL_REQUEST_TIMEOUT_MS } from "../../api/providers/utils/timeout-config"
+import { isCloudStartPending } from "../../extension/cloudStartup"
 
 /**
  * https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -256,7 +257,11 @@ export class ClineProvider
 				this.getStateToPostToWebview(options as { includeTaskHistory: TaskHistoryInclusion }),
 			postMessageToWebview: (message) => this.postMessageToWebview(message),
 			getCurrentTask: () => this.getCurrentTask(),
-			shouldRedirectToCloudAuth: () => !!this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance(),
+			// Held back while the cloud is still starting in the background (P9):
+			// the session is not known yet, and activation pushes the state (and
+			// with it this redirect) again once the start has settled.
+			shouldRedirectToCloudAuth: () =>
+				!isCloudStartPending() && !!this.mdmService?.requiresCloudAuth() && !this.checkMdmCompliance(),
 			hasView: () => !!this.view,
 		})
 		this.taskHistory = new TaskHistoryGateway({

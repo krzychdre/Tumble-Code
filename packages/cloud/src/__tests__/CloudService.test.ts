@@ -392,6 +392,33 @@ describe("CloudService", () => {
 		})
 	})
 
+	// P9: extension activation starts the cloud in the background, so a task
+	// can add chat messages while createInstance is still awaiting the auth
+	// service (a keyring read). isEnabled() gates the per-message cloud capture
+	// and must answer "no" in that window instead of throwing.
+	describe("isEnabled while the instance is still initializing", () => {
+		it("returns false instead of throwing before initialize() has finished", async () => {
+			let finishAuthInit: () => void = () => {}
+			mockAuthService.initialize.mockReturnValue(
+				new Promise<void>((resolve) => {
+					finishAuthInit = resolve
+				}),
+			)
+			mockAuthService.isAuthenticated.mockReturnValue(true)
+
+			const creating = CloudService.createInstance(mockContext)
+
+			expect(CloudService.hasInstance()).toBe(false)
+			expect(() => CloudService.isEnabled()).not.toThrow()
+			expect(CloudService.isEnabled()).toBe(false)
+
+			finishAuthInit()
+			await creating
+
+			expect(CloudService.isEnabled()).toBe(true)
+		})
+	})
+
 	describe("dispose", () => {
 		it("should dispose of all services and clean up", async () => {
 			const cloudService = await CloudService.createInstance(mockContext)
