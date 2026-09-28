@@ -105,7 +105,7 @@ describe("Checkpoint functionality", () => {
 
 		// Update the mock to return our mockCheckpointService
 		const checkpointsModule = await import("../../../services/checkpoints")
-		vi.mocked(checkpointsModule.RepoPerTaskCheckpointService.create).mockReturnValue(mockCheckpointService)
+		vi.mocked(checkpointsModule.ShadowCheckpointService.create).mockReturnValue(mockCheckpointService)
 	})
 
 	afterEach(() => {
@@ -429,7 +429,7 @@ describe("Checkpoint functionality", () => {
 			const service = getCheckpointService(mockTask)
 
 			const checkpointsModule = await import("../../../services/checkpoints")
-			expect(vi.mocked(checkpointsModule.RepoPerTaskCheckpointService.create)).toHaveBeenCalledWith({
+			expect(vi.mocked(checkpointsModule.ShadowCheckpointService.create)).toHaveBeenCalledWith({
 				taskId: "test-task-id",
 				workspaceDir: "/test/workspace",
 				shadowDir: "/test/storage",

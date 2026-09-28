@@ -79,7 +79,7 @@ import { getModelMaxOutputTokens } from "../../shared/api"
 // services
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpServerManager } from "../../services/mcp/McpServerManager"
-import { RepoPerTaskCheckpointService } from "../../services/checkpoints"
+import { ShadowCheckpointService } from "../../services/checkpoints"
 
 // integrations
 import { DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
@@ -430,7 +430,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	// Checkpoints
 	enableCheckpoints: boolean
 	checkpointTimeout: number
-	checkpointService?: RepoPerTaskCheckpointService
+	checkpointService?: ShadowCheckpointService
 	checkpointServiceInitializing = false
 
 	// Memory recall coordinator. Lazily constructed on first access so it

@@ -13,7 +13,7 @@ import { arePathsEqual } from "../../utils/path"
 import { executeRipgrep } from "../../services/search/file-search"
 import { t } from "../../i18n"
 
-import { CheckpointDiff, CheckpointResult, CheckpointEventMap } from "./types"
+import { CheckpointDiff, CheckpointResult, CheckpointEventMap, CheckpointServiceOptions } from "./types"
 import { getExcludePatterns } from "./excludes"
 
 /**
@@ -112,7 +112,19 @@ function createSanitizedGit(baseDir: string): SimpleGit {
 	return git
 }
 
-export abstract class ShadowCheckpointService extends EventEmitter {
+export class ShadowCheckpointService extends EventEmitter {
+	/**
+	 * Creates a checkpoint service backed by the per-task shadow git directory
+	 * `<shadowDir>/tasks/<taskId>/checkpoints`.
+	 */
+	public static create({ taskId, workspaceDir, shadowDir, log = console.log }: CheckpointServiceOptions) {
+		return new ShadowCheckpointService(
+			taskId,
+			path.join(shadowDir, "tasks", taskId, "checkpoints"),
+			workspaceDir,
+			log,
+		)
+	}
 	public readonly taskId: string
 	public readonly checkpointsDir: string
 	public readonly workspaceDir: string
@@ -467,10 +479,6 @@ export abstract class ShadowCheckpointService extends EventEmitter {
 
 	public static hashWorkspaceDir(workspaceDir: string) {
 		return crypto.createHash("sha256").update(workspaceDir).digest("hex").toString().slice(0, 8)
-	}
-
-	protected static taskRepoDir({ taskId, globalStorageDir }: { taskId: string; globalStorageDir: string }) {
-		return path.join(globalStorageDir, "tasks", taskId, "checkpoints")
 	}
 
 	protected static workspaceRepoDir({
