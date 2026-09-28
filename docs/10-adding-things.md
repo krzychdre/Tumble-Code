@@ -89,10 +89,22 @@ like this).
 3. **Message conversion**: only for a new wire format, a converter in `src/api/transform/` (the converters are on
    the do-not-touch list per protocol: add a new file, do not edit the shared ones).
 4. **Webview**: the `PROVIDER_DESCRIPTORS` row decides the settings form.
-    - `form: { kind: "fields", fields: [...] }` when the settings are an API key (`apiKey`: label key, get-key
-      link, optionally depending on the chosen endpoint), an endpoint or API-line dropdown (`select`) and a "use
-      custom base URL" toggle (`optionalUrl`). `ProviderDescriptorForm` renders it and `provider-ui-registry.tsx`
-      picks it up by itself: no component, no registry row.
+
+    - `form: { kind: "fields", fields: [...] }` when the settings fit the field kinds. `ProviderDescriptorForm`
+      renders it and `provider-ui-registry.tsx` picks it up by itself: no component, no registry row. The kinds:
+
+        - `apiKey`: label key, get-key link, optionally depending on the chosen endpoint;
+        - `select`: an endpoint or API-line dropdown;
+        - `url`: a labelled URL field with an optional note (Mistral's Codestral URL);
+        - `checkbox`: a boolean setting with an optional note (Anthropic's 1M context beta);
+        - `optionalUrl`: a "use custom base URL" checkbox revealing a URL field; `alsoClear` lists settings reset
+          with the URL when it is unticked and `revealedFields` adds checkboxes under the URL (Anthropic's
+          auth-token switch).
+
+        Any field can carry `visibleWhen: { modelIdStartsWith }` or `{ modelIdIn }`, so it is shown only for some
+        models; the model id is the configured one, or the provider's default when none is set (the same rule the
+        request uses, `resolveProviderFormModelId`).
+
     - `form: custom` when the provider needs anything else; then write the component in
       `webview-ui/src/components/settings/providers/`, export it from `index.ts` there and add its row to
       `customForms` in `provider-ui-registry.tsx` (the compiler asks for it).
@@ -100,6 +112,11 @@ like this).
       The generic model picker, the default model set on a provider switch and the selected-model lookup in
       `useSelectedModel` read `providerModelDefinitions`, so a static-list provider needs no webview edit beyond
       the translation keys its descriptor names, added to `webview-ui/src/i18n/locales/*/settings.json`.
+    - `modelPicker: "in-form"` when the provider's own form selects the model, so `ApiOptions` does not add the
+      generic model picker (`PROVIDERS_WITH_CUSTOM_MODEL_UI` is derived from it); `modelSourceOptions` for a
+      fetched model list names the settings keys the list request reads its base URL, API key and headers from
+      (`getProviderModelSourceOptions` is derived from it).
+
 5. **CLI**: `apps/cli/src/lib/utils/provider-types.ts` derives the provider list from the shared registry; add
    `keyEnvVar`/`baseUrlEnvVar` to `providerEnvMap` if the provider takes an API key and/or base URL from the
    environment (and a row in [09-environment-variables.md](09-environment-variables.md)).
@@ -109,8 +126,7 @@ like this).
 
 Still manual (not derived from one table yet): the settings schema arms (step 1, three files), the model selection
 switches in `provider-model-selection.ts` and `useSelectedModel.ts` for providers with fetched lists or special
-rules, `getProviderModelSourceOptions` in `webview-ui/src/components/settings/utils/providerModelConfig.ts` for
-fetched lists, and the translation keys in every locale.
+rules (1M context tiers, Z.ai lines, DeepSeek aliases), and the translation keys in every locale.
 
 ## How these paths were verified
 

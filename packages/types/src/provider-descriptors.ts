@@ -1,4 +1,7 @@
+import type { ModelSourceOptions } from "./model-source.js"
 import { zaiApiLineSchema } from "./provider-config/configs.js"
+import { ANTHROPIC_1M_CONTEXT_MODEL_IDS } from "./provider-model-selection.js"
+import { getProviderModelDefinition } from "./provider-models.js"
 import type { ActiveProviderDefinition } from "./provider-registry.js"
 import type { ProviderSettings } from "./provider-settings.js"
 import { providerApiKeyFields } from "./provider-validation.js"
@@ -19,6 +22,10 @@ import { zaiApiLineConfigs } from "./providers/zai.js"
  *   provider has no settings form (hidden providers).
  * - `service`: the name and link the model picker shows ("browse models at ...").
  * - `docsSlug`: the page under `providers/` on the docs site the settings link to.
+ * - `modelPicker`: "in-form" when the provider's own form picks the model (fetched lists,
+ *   OAuth), so the settings do not add the generic model picker below it.
+ * - `modelSourceOptions`: for a provider whose model list is fetched, which settings keys the
+ *   fetch request reads its base URL, API key and headers from.
  *
  * What is deliberately NOT repeated here, because it already has its own typed table keyed the
  * same way: the label, lifecycle and model source (`providerRegistry`), the model list, model-id
@@ -34,6 +41,23 @@ type DescribedProviderId = ActiveProviderDefinition["id"]
 export type ProviderStringSettingKey = {
 	[K in keyof ProviderSettings]-?: NonNullable<ProviderSettings[K]> extends string ? K : never
 }[keyof ProviderSettings]
+
+/** A `ProviderSettings` key whose value is a boolean (feature toggles). */
+export type ProviderBooleanSettingKey = {
+	[K in keyof ProviderSettings]-?: NonNullable<ProviderSettings[K]> extends boolean ? K : never
+}[keyof ProviderSettings]
+
+/**
+ * Which models a field is shown for. The model id is the one the settings resolve to: the
+ * configured id, or the provider's default model when none (or an empty one) is configured,
+ * which is also what the request uses (`resolveProviderFormModelId`).
+ */
+export type ProviderModelRule = { readonly modelIdStartsWith: string } | { readonly modelIdIn: readonly string[] }
+
+type FieldVisibility = {
+	/** Show the field only for these models; without it the field is always shown. */
+	readonly visibleWhen?: ProviderModelRule
+}
 
 /**
  * Where the "get an API key" link points: a fixed URL, or one that depends on another setting
@@ -52,7 +76,7 @@ export type ProviderGetKeyUrl =
  * empty). The settings key is the provider's entry in `providerApiKeyFields`, so a provider
  * whose entry there is null cannot have this field (the table type below rejects it).
  */
-export type ProviderApiKeyFieldDescriptor = {
+export type ProviderApiKeyFieldDescriptor = FieldVisibility & {
 	readonly kind: "apiKey"
 	/** i18n key of the field label. */
 	readonly labelKey: string
@@ -62,7 +86,7 @@ export type ProviderApiKeyFieldDescriptor = {
 }
 
 /** A dropdown that writes one of a fixed set of values (an endpoint or API line). */
-export type ProviderSelectFieldDescriptor = {
+export type ProviderSelectFieldDescriptor = FieldVisibility & {
 	readonly kind: "select"
 	readonly key: ProviderStringSettingKey
 	/** i18n key of the field label. */
@@ -78,22 +102,60 @@ export type ProviderSelectFieldDescriptor = {
 }
 
 /**
- * A "Use custom base URL" checkbox that reveals a URL field. Ticking it writes nothing;
- * unticking it clears the stored URL.
+ * A checkbox that writes a boolean setting, with an optional note under it. Inside an
+ * `optionalUrl` field (`revealedFields`) it renders bare, under the URL, without the note.
  */
-export type ProviderOptionalUrlFieldDescriptor = {
-	readonly kind: "optionalUrl"
-	readonly key: ProviderStringSettingKey
+export type ProviderCheckboxFieldDescriptor = FieldVisibility & {
+	readonly kind: "checkbox"
+	readonly key: ProviderBooleanSettingKey
 	/** i18n key of the checkbox label. */
-	readonly toggleLabelKey: string
-	/** i18n key of the URL field placeholder. */
-	readonly placeholderKey: string
+	readonly labelKey: string
+	/** i18n key of a note under the checkbox. */
+	readonly descriptionKey?: string
 }
+
+/** A URL field with a label above it and an optional note under it. */
+export type ProviderUrlFieldDescriptor = FieldVisibility & {
+	readonly kind: "url"
+	readonly key: ProviderStringSettingKey
+	/** i18n key of the field label. */
+	readonly labelKey: string
+	/** Placeholder text, shown as is (an example URL). */
+	readonly placeholder: string
+	/** i18n key of a note under the field. */
+	readonly descriptionKey?: string
+}
+
+/** The URL field's placeholder: an i18n key, or text shown as is (an example URL). */
+type PlaceholderText =
+	| { readonly placeholderKey: string; readonly placeholder?: never }
+	| { readonly placeholder: string; readonly placeholderKey?: never }
+
+/**
+ * A "Use custom base URL" checkbox that reveals a URL field (and `revealedFields` under it).
+ * Ticking it writes nothing; unticking it clears the stored URL and then writes `alsoClear`,
+ * in order, so settings that only make sense with a custom URL are reset with it.
+ */
+export type ProviderOptionalUrlFieldDescriptor = FieldVisibility &
+	PlaceholderText & {
+		readonly kind: "optionalUrl"
+		readonly key: ProviderStringSettingKey
+		/** i18n key of the checkbox label. */
+		readonly toggleLabelKey: string
+		/** `data-testid` of the checkbox input, for tests that tick it. */
+		readonly toggleTestId?: string
+		/** Values written after the URL is cleared, when the checkbox is unticked. */
+		readonly alsoClear?: Readonly<Partial<ProviderSettings>>
+		/** Checkboxes shown under the URL while the checkbox is ticked. */
+		readonly revealedFields?: readonly Omit<ProviderCheckboxFieldDescriptor, "descriptionKey" | "visibleWhen">[]
+	}
 
 export type ProviderFieldDescriptor =
 	| ProviderApiKeyFieldDescriptor
 	| ProviderSelectFieldDescriptor
 	| ProviderOptionalUrlFieldDescriptor
+	| ProviderUrlFieldDescriptor
+	| ProviderCheckboxFieldDescriptor
 
 /** The fields a provider may use: no `apiKey` field without an API key settings key. */
 type ProviderFieldDescriptorFor<P extends DescribedProviderId> = (typeof providerApiKeyFields)[P] extends null
@@ -111,6 +173,23 @@ export type ProviderDescriptor<P extends DescribedProviderId = DescribedProvider
 	readonly service?: { readonly name: string; readonly url: string }
 	/** Page under `providers/` on the docs site; without it the settings show no docs link. */
 	readonly docsSlug?: string
+	/**
+	 * "in-form": the provider's form has its own model selection, so the settings do not show
+	 * the generic model picker. Without it, a provider with a static model list gets the
+	 * generic picker.
+	 */
+	readonly modelPicker?: "in-form"
+	/** For a fetched model list: the settings keys each request option is read from. */
+	readonly modelSourceOptions?: ProviderModelSourceOptionKeys
+}
+
+/** For each model-source request option, a settings key holding a value of that option's type. */
+export type ProviderModelSourceOptionKeys = {
+	readonly [O in keyof ModelSourceOptions]?: {
+		[K in keyof ProviderSettings]-?: NonNullable<ProviderSettings[K]> extends NonNullable<ModelSourceOptions[O]>
+			? K
+			: never
+	}[keyof ProviderSettings]
 }
 
 const custom = { kind: "custom" } as const
@@ -122,8 +201,13 @@ const apiKey = (labelKey: string, getKeyLabelKey: string, getKeyUrl: ProviderGet
 const zaiChinaLines = zaiApiLineSchema.options.filter((line) => zaiApiLineConfigs[line].isChina)
 
 export const PROVIDER_DESCRIPTORS = {
-	openrouter: { form: custom, docsSlug: "openrouter" },
-	litellm: { form: custom, docsSlug: "litellm" },
+	openrouter: { form: custom, docsSlug: "openrouter", modelPicker: "in-form" },
+	litellm: {
+		form: custom,
+		docsSlug: "litellm",
+		modelPicker: "in-form",
+		modelSourceOptions: { liteLlmBaseUrl: "litellmBaseUrl", liteLlmApiKey: "litellmApiKey" },
+	},
 	deepseek: {
 		form: {
 			kind: "fields",
@@ -137,18 +221,68 @@ export const PROVIDER_DESCRIPTORS = {
 		},
 		service: { name: "DeepSeek", url: "https://platform.deepseek.com" },
 		docsSlug: "deepseek",
+		modelSourceOptions: { baseUrl: "deepSeekBaseUrl", apiKey: "deepSeekApiKey" },
 	},
-	ollama: { form: custom, service: { name: "Ollama", url: "https://ollama.ai" }, docsSlug: "ollama" },
-	lmstudio: { form: custom, service: { name: "LM Studio", url: "https://lmstudio.ai/docs" }, docsSlug: "lmstudio" },
+	ollama: {
+		form: custom,
+		service: { name: "Ollama", url: "https://ollama.ai" },
+		docsSlug: "ollama",
+		modelPicker: "in-form",
+		modelSourceOptions: { baseUrl: "ollamaBaseUrl", apiKey: "ollamaApiKey" },
+	},
+	lmstudio: {
+		form: custom,
+		service: { name: "LM Studio", url: "https://lmstudio.ai/docs" },
+		docsSlug: "lmstudio",
+		modelPicker: "in-form",
+		modelSourceOptions: { baseUrl: "lmStudioBaseUrl" },
+	},
 	"vscode-lm": {
 		form: custom,
 		service: { name: "VS Code LM", url: "https://code.visualstudio.com/api/extension-guides/language-model" },
 		docsSlug: "vscode-lm",
+		modelPicker: "in-form",
 	},
-	openai: { form: custom, docsSlug: "openai-compatible" },
+	openai: {
+		form: custom,
+		docsSlug: "openai-compatible",
+		modelPicker: "in-form",
+		modelSourceOptions: { baseUrl: "openAiBaseUrl", apiKey: "openAiApiKey", headers: "openAiHeaders" },
+	},
 	"fake-ai": { form: { kind: "none" } },
 	anthropic: {
-		form: custom,
+		form: {
+			kind: "fields",
+			fields: [
+				apiKey(
+					"settings:providers.anthropicApiKey",
+					"settings:providers.getAnthropicApiKey",
+					"https://console.anthropic.com/settings/keys",
+				),
+				{
+					kind: "optionalUrl",
+					key: "anthropicBaseUrl",
+					toggleLabelKey: "settings:providers.useCustomBaseUrl",
+					placeholder: "https://api.anthropic.com",
+					// The auth-token switch only applies to a custom endpoint.
+					alsoClear: { anthropicUseAuthToken: false },
+					revealedFields: [
+						{
+							kind: "checkbox",
+							key: "anthropicUseAuthToken",
+							labelKey: "settings:providers.anthropicUseAuthToken",
+						},
+					],
+				},
+				{
+					kind: "checkbox",
+					key: "anthropicBeta1MContext",
+					labelKey: "settings:providers.anthropic1MContextBetaLabel",
+					descriptionKey: "settings:providers.anthropic1MContextBetaDescription",
+					visibleWhen: { modelIdIn: ANTHROPIC_1M_CONTEXT_MODEL_IDS },
+				},
+			],
+		},
 		service: { name: "Anthropic", url: "https://console.anthropic.com" },
 		docsSlug: "anthropic",
 	},
@@ -170,6 +304,7 @@ export const PROVIDER_DESCRIPTORS = {
 					kind: "optionalUrl",
 					key: "googleGeminiBaseUrl",
 					toggleLabelKey: "settings:providers.useCustomBaseUrl",
+					toggleTestId: "checkbox-custom-base-url",
 					placeholderKey: "settings:defaults.geminiUrl",
 				},
 			],
@@ -178,7 +313,28 @@ export const PROVIDER_DESCRIPTORS = {
 		docsSlug: "gemini",
 	},
 	"gemini-cli": { form: { kind: "none" } },
-	mistral: { form: custom, service: { name: "Mistral", url: "https://console.mistral.ai" }, docsSlug: "mistral" },
+	mistral: {
+		form: {
+			kind: "fields",
+			fields: [
+				apiKey(
+					"settings:providers.mistralApiKey",
+					"settings:providers.getMistralApiKey",
+					"https://console.mistral.ai/",
+				),
+				{
+					kind: "url",
+					key: "mistralCodestralUrl",
+					labelKey: "settings:providers.codestralBaseUrl",
+					placeholder: "https://codestral.mistral.ai",
+					descriptionKey: "settings:providers.codestralBaseUrlDesc",
+					visibleWhen: { modelIdStartsWith: "codestral-" },
+				},
+			],
+		},
+		service: { name: "Mistral", url: "https://console.mistral.ai" },
+		docsSlug: "mistral",
+	},
 	moonshot: {
 		form: {
 			kind: "fields",
@@ -228,7 +384,7 @@ export const PROVIDER_DESCRIPTORS = {
 		service: { name: "MiniMax", url: "https://minimax.chat" },
 		docsSlug: "minimax",
 	},
-	"openai-codex": { form: custom, docsSlug: "openai-codex" },
+	"openai-codex": { form: custom, docsSlug: "openai-codex", modelPicker: "in-form" },
 	"openai-native": {
 		form: custom,
 		service: { name: "OpenAI", url: "https://platform.openai.com" },
@@ -322,4 +478,36 @@ export const resolveProviderGetKeyUrl = (getKeyUrl: ProviderGetKeyUrl, settings:
 	return typeof value === "string" && Object.hasOwn(getKeyUrl.byValue, value)
 		? getKeyUrl.byValue[value]!
 		: getKeyUrl.otherwise
+}
+
+/**
+ * The model id the settings form sees: the configured id, or the provider's default model when
+ * none (or an empty one) is configured, the same rule the request uses (`resolveCatalogModel`).
+ * Z.ai's mainland default is not considered (no Z.ai field has a model rule).
+ */
+export const resolveProviderFormModelId = (provider: string | undefined, settings: ProviderSettings): string => {
+	const definition = getProviderModelDefinition(provider)
+	const field = definition?.modelIdField
+	const configured = field && field !== "vsCodeLmModelSelector" ? settings[field] : undefined
+	return configured || definition?.defaultModelId || ""
+}
+
+/** Whether a model id satisfies a field's `visibleWhen` rule. */
+export const matchesProviderModelRule = (rule: ProviderModelRule, modelId: string): boolean =>
+	"modelIdStartsWith" in rule ? modelId.startsWith(rule.modelIdStartsWith) : rule.modelIdIn.includes(modelId)
+
+/** The providers whose own form selects the model (`modelPicker: "in-form"`), in table order. */
+export const getInFormModelPickerProviderIds = (): DescribedProviderId[] =>
+	(Object.keys(PROVIDER_DESCRIPTORS) as DescribedProviderId[]).filter(
+		(provider) => (PROVIDER_DESCRIPTORS[provider] as ProviderDescriptor).modelPicker === "in-form",
+	)
+
+/**
+ * The options of the model-list request for the settings' provider, read from the keys its
+ * `modelSourceOptions` names (an unset key stays as an undefined option); `{}` for a provider
+ * without a fetched list.
+ */
+export const resolveProviderModelSourceOptions = (settings: ProviderSettings): ModelSourceOptions => {
+	const keys = getProviderDescriptor(settings.apiProvider)?.modelSourceOptions
+	return keys ? Object.fromEntries(Object.entries(keys).map(([option, key]) => [option, settings[key]])) : {}
 }

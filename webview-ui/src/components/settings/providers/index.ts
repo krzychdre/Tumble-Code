@@ -1,10 +1,8 @@
-// Hand-written provider forms. Providers whose settings are only an API key, an endpoint choice
-// and an optional base URL have no component here: `ProviderDescriptorForm` renders them from
+// Hand-written provider forms. Providers whose settings fit the descriptor field kinds (API key,
+// endpoint choice, URL, optional base URL, checkbox, model-dependent visibility) have no component here: `ProviderDescriptorForm` renders them from
 // their row in PROVIDER_DESCRIPTORS (packages/types/src/provider-descriptors.ts).
-export { Anthropic } from "./Anthropic"
 export { Bedrock } from "./Bedrock"
 export { LMStudio } from "./LMStudio"
-export { Mistral } from "./Mistral"
 export { Ollama } from "./Ollama"
 export { OpenAI } from "./OpenAI"
 export { OpenAICodex } from "./OpenAICodex"

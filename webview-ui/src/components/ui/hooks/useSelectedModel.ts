@@ -16,6 +16,7 @@ import {
 	mainlandZAiModels,
 	litellmDefaultModelInfo,
 	lMStudioDefaultModelInfo,
+	ANTHROPIC_1M_CONTEXT_MODEL_IDS,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
 	VERTEX_1M_CONTEXT_MODEL_IDS,
 	isRetiredProvider,
@@ -317,10 +318,7 @@ function getSelectedModel({
 			// Apply 1M context beta tier pricing for supported Claude 4 models
 			if (
 				provider === "anthropic" &&
-				(id === "claude-sonnet-4-20250514" ||
-					id === "claude-sonnet-4-5" ||
-					id === "claude-sonnet-4-6" ||
-					id === "claude-opus-4-6") &&
+				ANTHROPIC_1M_CONTEXT_MODEL_IDS.includes(id) &&
 				apiConfiguration.anthropicBeta1MContext &&
 				baseInfo
 			) {
