@@ -76,13 +76,15 @@
 			"project": ["src/**/*.ts"],
 		},
 	},
+	// Every rule is an error: unused exports and types were "warn" until
+	// ai_plans/2026-09-28_knip-unused-exports.md cleaned them. ("classMembers" is gone:
+	// knip 6 no longer has that issue type and only printed a warning for it.)
 	"rules": {
-		"classMembers": "off",
-		"duplicates": "warn",
-		"enumMembers": "warn",
-		"exports": "warn",
-		"nsExports": "warn",
-		"types": "warn",
-		"nsTypes": "warn",
+		"duplicates": "error",
+		"enumMembers": "error",
+		"exports": "error",
+		"nsExports": "error",
+		"types": "error",
+		"nsTypes": "error",
 	},
 }

@@ -9,97 +9,13 @@
  * (`getMemorySection`) and the `validateToolUse` carve-out (`isAutoMemPath`).
  * The background writers (extraction, dream) are not agents: they ask one
  * small completion each and write the files in code (memoryFiles.ts).
+ *
+ * Only what callers outside the module use goes through this barrel; the
+ * module's own files (and their specs) import each other directly.
  */
 
-export {
-	initMemoryPaths,
-	resetMemoryPaths,
-	isMemoryPathsInitialized,
-	isAutoMemoryEnabled,
-	getMemoryBaseDir,
-	sanitizeCwd,
-	getAutoMemPath,
-	getAutoMemEntrypoint,
-	isAutoMemPath,
-	validateMemoryPath,
-	ensureMemoryDirExists,
-	ENTRYPOINT_NAME,
-	type MemoryConfig,
-} from "./paths"
-
-export { MEMORY_TYPES, parseMemoryType, type MemoryType } from "./memoryTypes"
-export {
-	TYPES_SECTION_INDIVIDUAL,
-	WHAT_NOT_TO_SAVE_SECTION,
-	MEMORY_DRIFT_CAVEAT,
-	WHEN_TO_ACCESS_SECTION,
-	TRUSTING_RECALL_SECTION,
-	MEMORY_FRONTMATTER_EXAMPLE,
-} from "./memoryTypes"
-export { memoryAgeDays, memoryAge, memoryFreshnessText, memoryFreshnessNote } from "./memoryAge"
-export { parseFrontmatter, type MemoryFrontmatter } from "./frontmatter"
-export {
-	buildMemoryLines,
-	truncateEntrypointContent,
-	buildSearchingPastContextSection,
-	loadMemoryPrompt,
-	loadMemoryIndex,
-	MAX_ENTRYPOINT_LINES,
-	MAX_ENTRYPOINT_BYTES,
-	DIR_EXISTS_GUIDANCE,
-	type EntrypointTruncation,
-} from "./memoryPrompt"
-export { scanMemoryFiles, formatMemoryManifest, type MemoryHeader } from "./memoryScan"
-export { renderTranscript, type TranscriptMessage, type RenderTranscriptOptions } from "./transcript"
-export {
-	findRelevantMemories,
-	selectRelevantMemories,
-	parseSelectedMemories,
-	collectRecentSuccessfulTools,
-	SELECTOR_SYSTEM_PROMPT,
-	type SideQuery,
-	type RecentToolMessageView,
-} from "./relevance"
-export {
-	readMemoriesForSurfacing,
-	memoryHeader,
-	collectSurfacedMemories,
-	filterDuplicateMemoryAttachments,
-	wrapMemoryAsSystemReminder,
-	getMemoryMtime,
-	MAX_MEMORY_LINES,
-	MAX_MEMORY_BYTES,
-	MAX_SESSION_BYTES,
-	type RelevantMemory,
-	type FileStateCache,
-	type FileStateEntry,
-} from "./surfacing"
-export {
-	startRelevantMemoryPrefetch,
-	type MemoryPrefetch,
-	type PrefetchContext,
-	type PrefetchMessage,
-} from "./prefetch"
-export {
-	executeExtractMemories,
-	drainPendingExtraction,
-	hasMemoryWritesSince,
-	resetExtractionState,
-	type ExtractionContext,
-	type ExtractionMessageView,
-} from "./extractMemories"
-export {
-	executeAutoDream,
-	drainPendingDreams,
-	resetAutoDreamState,
-	type AutoDreamConfig,
-	type AutoDreamContext,
-} from "./autoDream"
-export {
-	readLastConsolidatedAt,
-	tryAcquireConsolidationLock,
-	rollbackConsolidationLock,
-	recordConsolidation,
-	countSessionsSince,
-	HOLDER_STALE_MS,
-} from "./consolidationLock"
+export { isAutoMemoryEnabled } from "./paths"
+export { renderTranscript, type TranscriptMessage } from "./transcript"
+export { type SideQuery } from "./relevance"
+export { executeExtractMemories, drainPendingExtraction } from "./extractMemories"
+export { executeAutoDream, drainPendingDreams, type AutoDreamConfig } from "./autoDream"

@@ -5,7 +5,7 @@ import { extractToolData } from "../utils/tools.js"
 
 import TodoDisplay from "./TodoDisplay.js"
 import { getToolRenderer } from "./tools/index.js"
-import GenericTool from "./tools/GenericTool.js"
+import { GenericTool } from "./tools/GenericTool.js"
 
 import AssistantMessage from "./messages/AssistantMessage.js"
 import SystemMessage from "./messages/SystemMessage.js"

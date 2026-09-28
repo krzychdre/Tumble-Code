@@ -454,7 +454,3 @@ export async function getLatestTerminalOutput(): Promise<string> {
 		await vscode.env.clipboard.writeText(originalClipboard)
 	}
 }
-
-// Export processUserContentMentions from its own file
-export { processUserContentMentions } from "./processUserContentMentions"
-export type { ProcessUserContentMentionsResult } from "./processUserContentMentions"

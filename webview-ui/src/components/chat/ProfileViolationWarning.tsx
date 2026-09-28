@@ -13,5 +13,3 @@ export const ProfileViolationWarning: React.FC = () => {
 		</div>
 	)
 }
-
-export default ProfileViolationWarning

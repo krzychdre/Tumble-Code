@@ -7,19 +7,9 @@
 
 export {
 	getEnvVarName,
-	getBaseUrlEnvVarName,
 	getApiKeyFromEnv,
-	getBaseUrlFromEnv,
 	getProviderSettings,
 	getApiKeyField,
-	getBaseUrlField,
-	getModelField,
 	providerRequiresApiKey,
 	providerRequiresModelId,
-	isSupportedProvider,
-	keylessProviders,
-	providerEnvMap,
-	supportedProviders,
-	type SupportedProvider,
-	type ProviderEnvMapping,
 } from "./provider-types.js"

@@ -297,13 +297,6 @@ export const AutocompleteInput = forwardRef(AutocompleteInputInner) as <T extend
 ) => ReturnType<typeof AutocompleteInputInner>
 
 /**
- * Re-export types and hook for convenience
+ * Re-export types for convenience
  */
-export { useAutocompletePicker } from "./useAutocompletePicker.js"
-export type {
-	AutocompleteItem,
-	AutocompleteTrigger,
-	AutocompletePickerState,
-	AutocompletePickerActions,
-	TriggerDetectionResult,
-} from "./types.js"
+export type { AutocompleteItem, AutocompleteTrigger, AutocompletePickerState } from "./types.js"

@@ -74,19 +74,6 @@ function SelectContent({
 	)
 }
 
-function SelectLabel({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Label>) {
-	return (
-		<SelectPrimitive.Label
-			data-slot="select-label"
-			className={cn(
-				"px-2 py-1.5 text-xs font-semibold text-vscode-descriptionForeground uppercase tracking-wide",
-				className,
-			)}
-			{...props}
-		/>
-	)
-}
-
 function SelectItem({ className, children, ...props }: React.ComponentProps<typeof SelectPrimitive.Item>) {
 	return (
 		<SelectPrimitive.Item
@@ -149,7 +136,6 @@ export {
 	SelectContent,
 	SelectGroup,
 	SelectItem,
-	SelectLabel,
 	SelectScrollDownButton,
 	SelectScrollUpButton,
 	SelectSeparator,

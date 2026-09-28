@@ -6,9 +6,5 @@
  */
 
 export { parsePatch, ParseError } from "./parser"
-export type { Hunk, UpdateFileChunk, ApplyPatchArgs } from "./parser"
-
-export { seekSequence } from "./seek-sequence"
-
-export { applyChunksToContent, processHunk, processAllHunks, ApplyPatchError } from "./apply"
+export { processAllHunks } from "./apply"
 export type { ApplyPatchFileChange } from "./apply"

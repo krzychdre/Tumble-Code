@@ -47,5 +47,5 @@ export const messageHandlerGroups: Readonly<{ [D in HandlerDomain]: DomainHandle
 /** Message type to handler, assembled once from the domain modules. */
 export const messageHandlers: MessageHandlerMap = Object.assign({}, ...Object.values(messageHandlerGroups))
 
-export { createHandlerContext, type HandlerContext } from "./context"
-export type { MessageHandler, MessageHandlerMap } from "./types"
+export { createHandlerContext } from "./context"
+export type { MessageHandlerMap } from "./types"

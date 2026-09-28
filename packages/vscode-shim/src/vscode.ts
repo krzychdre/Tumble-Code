@@ -49,7 +49,7 @@ export {
 	getRuntimeConfig,
 } from "./api/WorkspaceConfiguration.js"
 export { WorkspaceAPI } from "./api/WorkspaceAPI.js"
-export { TabGroupsAPI, type Tab, type TabInputText, type TabGroup } from "./api/TabGroupsAPI.js"
+export { TabGroupsAPI } from "./api/TabGroupsAPI.js"
 export { WindowAPI } from "./api/WindowAPI.js"
 export { CommandsAPI } from "./api/CommandsAPI.js"
 export { createVSCodeAPIMock } from "./api/create-vscode-api-mock.js"
@@ -76,72 +76,23 @@ export {
 // ============================================================================
 // Types from ./types.ts
 // ============================================================================
-export type { Thenable, Memento, FileStat, TextEditorOptions, ConfigurationInspect } from "./types.js"
+export type { Thenable, Memento, FileStat } from "./types.js"
 
 // ============================================================================
 // Interfaces from ./interfaces/
 // ============================================================================
 
 // Document interfaces
-export type {
-	TextDocument,
-	TextLine,
-	WorkspaceFoldersChangeEvent,
-	WorkspaceFolder,
-	TextDocumentChangeEvent,
-	TextDocumentContentChangeEvent,
-	ConfigurationChangeEvent,
-	TextDocumentContentProvider,
-	FileSystemWatcher,
-	RelativePattern,
-} from "./interfaces/document.js"
-
-// Editor interfaces
-export type {
-	TextEditor,
-	TextEditorEdit,
-	TextEditorSelectionChangeEvent,
-	TextDocumentShowOptions,
-	DecorationRenderOptions,
-} from "./interfaces/editor.js"
+export type { TextDocument, TextLine, WorkspaceFolder } from "./interfaces/document.js"
 
 // Terminal interfaces
-export type {
-	Terminal,
-	TerminalOptions,
-	TerminalExitStatus,
-	TerminalState,
-	TerminalDimensionsChangeEvent,
-	TerminalDimensions,
-	TerminalDataWriteEvent,
-} from "./interfaces/terminal.js"
-
-// Webview interfaces
-export type {
-	WebviewViewProvider,
-	WebviewView,
-	Webview,
-	WebviewOptions,
-	WebviewPortMapping,
-	ViewBadge,
-	WebviewViewResolveContext,
-	WebviewViewProviderOptions,
-	UriHandler,
-} from "./interfaces/webview.js"
+export type { Terminal } from "./interfaces/terminal.js"
 
 // Extension host interface
 export type { IExtensionHost, ExtensionHostEventMap, ExtensionHostEventName } from "./interfaces/extension-host.js"
 
 // Workspace interfaces
-export type {
-	WorkspaceConfiguration,
-	QuickPickOptions,
-	InputBoxOptions,
-	OpenDialogOptions,
-	Disposable,
-	DiagnosticCollection,
-	IdentityInfo,
-} from "./interfaces/workspace.js"
+export type { WorkspaceConfiguration, Disposable, IdentityInfo } from "./interfaces/workspace.js"
 
 // ============================================================================
 // Secret Storage interface (backwards compatibility)

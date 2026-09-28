@@ -102,5 +102,3 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
 
 // Custom hook for easy translations
 export const useAppTranslation = () => useContext(TranslationContext)
-
-export default TranslationProvider

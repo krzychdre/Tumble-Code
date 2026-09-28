@@ -60,5 +60,3 @@ export function GenericTool({ toolData, rawContent, message, expanded = false }:
 		</Box>
 	)
 }
-
-export default GenericTool

@@ -9,7 +9,6 @@ import type { ClineAsk, ToolProgressStatus, ToolName, GenerateImageParams, ToolP
 export {
 	toolParamNames,
 	type ToolParamName,
-	type ToolGroupConfig,
 	TOOL_DISPLAY_NAMES,
 	TOOL_GROUPS,
 	ALWAYS_AVAILABLE_TOOLS,

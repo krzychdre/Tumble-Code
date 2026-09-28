@@ -64,7 +64,3 @@ export async function saveSettings(settings: CliSettingsUpdate): Promise<void> {
 		await safeWriteJson(settingsPath, merged, { prettyPrint: true })
 	}
 }
-
-export async function resetOnboarding(): Promise<void> {
-	await saveSettings({ onboardingProviderChoice: undefined })
-}

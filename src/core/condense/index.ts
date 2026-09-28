@@ -15,7 +15,6 @@ import type { ContextLedger } from "../context-management/ledger/types"
 import { generateFoldedFileContext } from "./foldedFileContext"
 import { validateSummaryFacts } from "./factValidation"
 
-export type { FoldedFileContextResult, FoldedFileContextOptions } from "./foldedFileContext"
 export * from "./factValidation"
 
 /**

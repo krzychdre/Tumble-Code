@@ -6,8 +6,7 @@ import { pickSound } from "../spinnerSounds.js"
 import * as theme from "../theme.js"
 
 /**
- * Formats a number with K (thousands) or M (millions) suffix.
- * Local copy — deliberately not imported from MetricsDisplay (WP-C consolidates).
+ * Formats a number with K (thousands) or M (millions) suffix, e.g. 1234 -> "1.2K".
  */
 function formatNumber(num: number): string {
 	if (num >= 1_000_000) {

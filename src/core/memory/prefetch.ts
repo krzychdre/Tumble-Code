@@ -24,7 +24,7 @@ import {
 } from "./relevance"
 import { type RelevantMemory, type FileStateCache, collectSurfacedMemories, MAX_SESSION_BYTES } from "./surfacing"
 
-export { type SideQuery, type RecentToolMessageView } from "./relevance"
+export { type SideQuery } from "./relevance"
 export { type RelevantMemory, type FileStateCache } from "./surfacing"
 
 /** Minimal message view the prefetch needs to find the last user message. */

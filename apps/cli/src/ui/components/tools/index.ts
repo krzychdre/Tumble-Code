@@ -21,19 +21,6 @@ import { GenericTool } from "./GenericTool.js"
 
 // Re-export types
 export type { ToolRendererProps } from "./types.js"
-export { getToolCategory, toolStatusFromMessage } from "./types.js"
-
-// Re-export utilities
-export * from "./utils.js"
-
-// Re-export individual components for direct usage
-export { FileReadTool } from "./FileReadTool.js"
-export { FileWriteTool } from "./FileWriteTool.js"
-export { SearchTool } from "./SearchTool.js"
-export { CommandTool } from "./CommandTool.js"
-export { ModeTool } from "./ModeTool.js"
-export { CompletionTool } from "./CompletionTool.js"
-export { GenericTool } from "./GenericTool.js"
 
 /**
  * Map of tool categories to their renderer components

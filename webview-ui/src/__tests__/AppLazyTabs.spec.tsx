@@ -92,7 +92,7 @@ vi.mock("@src/i18n/TranslationContext", () => {
 	const tFunction = (key: string) => key
 	return {
 		__esModule: true,
-		default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+		TranslationProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 		useAppTranslation: () => ({
 			t: tFunction,
 			i18n: { t: tFunction, changeLanguage: vi.fn(() => Promise.resolve()) },

@@ -2,7 +2,7 @@ import { useLayoutEffect } from "react"
 import { act, render, screen, waitFor } from "@/utils/test-utils"
 
 import i18next from "../setup"
-import TranslationProvider, { useAppTranslation } from "../TranslationContext"
+import { TranslationProvider, useAppTranslation } from "../TranslationContext"
 
 // The provider reads the language from the extension state. A mutable object lets a
 // test start in one language and switch to another, like the settings view does.

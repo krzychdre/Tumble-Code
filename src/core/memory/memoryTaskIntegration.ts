@@ -24,12 +24,7 @@ import { runCompletion } from "../../utils/single-completion-handler"
 
 import { type SideQuery } from "./relevance"
 import { startRelevantMemoryPrefetch, type MemoryPrefetch, type PrefetchMessage } from "./prefetch"
-import {
-	filterDuplicateMemoryAttachments,
-	wrapMemoryAsSystemReminder,
-	type RelevantMemory,
-	type FileStateCache,
-} from "./surfacing"
+import { filterDuplicateMemoryAttachments, wrapMemoryAsSystemReminder, type FileStateCache } from "./surfacing"
 
 /**
  * Build a {@link SideQuery} over a handler that implements
@@ -180,5 +175,3 @@ export class MemoryCoordinator {
 		this.endActivity = undefined
 	}
 }
-
-export { type RelevantMemory }

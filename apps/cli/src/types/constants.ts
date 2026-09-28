@@ -25,11 +25,4 @@ export const REASONING_EFFORTS = [...reasoningEffortsExtended, "unspecified", "d
  */
 export const FOLLOWUP_TIMEOUT_SECONDS = 60
 
-export const ASCII_ROO = `  _,'   ___
- <__\\__/   \\
-    \\_  /  _\\
-      \\,\\ / \\\\
-        //   \\\\
-      ,/'     \`\\_,`
-
 export const AUTH_BASE_URL = process.env.ROO_AUTH_BASE_URL ?? "http://localhost:3000"

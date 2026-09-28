@@ -224,8 +224,6 @@ export function getAutoMemEntrypoint(cwd: string): string {
 	return path.join(getAutoMemPath(cwd), AUTO_MEM_ENTRYPOINT_NAME)
 }
 
-export const ENTRYPOINT_NAME = AUTO_MEM_ENTRYPOINT_NAME
-
 /**
  * Containment check: does `absolutePath` live inside the memory dir for `cwd`?
  *
