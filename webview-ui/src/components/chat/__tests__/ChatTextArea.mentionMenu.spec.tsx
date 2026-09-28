@@ -454,6 +454,34 @@ describe("ChatTextArea mention menu (characterization)", () => {
 			fireEvent.blur(textbox())
 			expect(screen.getByTestId("menu-probe")).toBeInTheDocument()
 		})
+
+		// The "mouse went down on the menu" flag used to be set on mousedown and never reset,
+		// so after the first click in the menu a blur never closed it again.
+		it("after a click in the menu, a later blur closes the menu again", () => {
+			render(<Harness />)
+			type("@")
+
+			// A click on the menu: mousedown, the textarea loses focus, mouseup.
+			fireEvent.mouseDown(screen.getByTestId("menu-probe"))
+			fireEvent.blur(textbox())
+			fireEvent.mouseUp(screen.getByTestId("menu-probe"))
+			expect(screen.getByTestId("menu-probe")).toBeInTheDocument()
+
+			fireEvent.focus(textbox())
+			fireEvent.blur(textbox())
+			expect(screen.queryByTestId("menu-probe")).toBeNull()
+		})
+
+		it("a mousedown on the menu that ends without a blur does not keep a later blur from closing", () => {
+			render(<Harness />)
+			type("@")
+
+			fireEvent.mouseDown(screen.getByTestId("menu-probe"))
+			fireEvent.mouseUp(document.body)
+
+			fireEvent.blur(textbox())
+			expect(screen.queryByTestId("menu-probe")).toBeNull()
+		})
 	})
 
 	describe("backspace after a mention", () => {

@@ -148,7 +148,6 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		}, [setInputValue, inputValue])
 
 		const [isDraggingOver, setIsDraggingOver] = useState(false)
-		const [textAreaBaseHeight, setTextAreaBaseHeight] = useState<number | undefined>(undefined)
 		const [cursorPosition, setCursorPosition] = useState(0)
 		const [intendedCursorPosition, setIntendedCursorPosition] = useState<number | null>(null)
 		const [isFocused, setIsFocused] = useState(false)
@@ -597,13 +596,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								onPaste={handlePaste}
 								onSelect={updateCursorPosition}
 								onMouseUp={updateCursorPosition}
-								onHeightChange={(height) => {
-									if (textAreaBaseHeight === undefined || height < textAreaBaseHeight) {
-										setTextAreaBaseHeight(height)
-									}
-
-									onHeightChange?.(height)
-								}}
+								onHeightChange={(height) => onHeightChange?.(height)}
 								placeholder={placeholderText}
 								minRows={3}
 								maxRows={15}

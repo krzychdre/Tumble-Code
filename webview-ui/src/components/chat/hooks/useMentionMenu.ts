@@ -61,7 +61,10 @@ export function useMentionMenu({
 	const [searchRequestId, setSearchRequestId] = useState<string>("")
 	const [showContextMenu, setShowContextMenu] = useState(false)
 	const [searchQuery, setSearchQuery] = useState("")
-	const [isMouseDownOnMenu, setIsMouseDownOnMenu] = useState(false)
+	// True from a mousedown on the menu until that click ends: the textarea blur the mousedown
+	// causes consumes it, and the next mouseup clears it when no blur came (the textarea was not
+	// focused). A ref, because nothing renders it.
+	const isMouseDownOnMenuRef = useRef(false)
 	const [selectedMenuIndex, setSelectedMenuIndex] = useState(-1)
 	const [selectedType, setSelectedType] = useState<ContextMenuOptionType | null>(null)
 	const [justDeletedSpaceAfterMention, setJustDeletedSpaceAfterMention] = useState(false)
@@ -450,15 +453,24 @@ export function useMentionMenu({
 
 	/** Textarea blur: hide the menu unless the user clicked on it. */
 	const handleMenuBlur = useCallback(() => {
-		if (!isMouseDownOnMenu) {
-			setShowContextMenu(false)
+		if (isMouseDownOnMenuRef.current) {
+			isMouseDownOnMenuRef.current = false
+			return
 		}
-	}, [isMouseDownOnMenu])
+		setShowContextMenu(false)
+	}, [])
 
 	const closeMenu = useCallback(() => setShowContextMenu(false), [])
 
 	const handleMenuMouseDown = useCallback(() => {
-		setIsMouseDownOnMenu(true)
+		isMouseDownOnMenuRef.current = true
+		window.addEventListener(
+			"mouseup",
+			() => {
+				isMouseDownOnMenuRef.current = false
+			},
+			{ once: true },
+		)
 	}, [])
 
 	const menuProps = {
