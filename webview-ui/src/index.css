@@ -1559,8 +1559,9 @@ input[cmdk-input]:focus {
  *
  * They stay OUTSIDE the cascade layers on purpose. styled-components injected
  * unlayered rules, and two unlayered style sheets compete with them: VS Code's
- * webview default styles (e.g. a `code` rule with the monaco font, 1px 3px
- * padding and 4px rounded corners) and the lazily loaded katex.min.css
+ * webview default styles before VS Code 1.104 (e.g. a `code` rule with the
+ * monaco font, 1px 3px padding and 4px rounded corners; the extension still
+ * supports 1.102) and the lazily loaded katex.min.css
  * (`.katex { font: normal 1.21em ... }`). Any layered rule loses
  * to an unlayered one whatever its specificity, so inside `@layer components`
  * inline code and formulas would change size, font and corners.

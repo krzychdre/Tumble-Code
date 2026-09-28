@@ -26,7 +26,8 @@ styled-components injected unlayered rules, and two unlayered style sheets compe
 webview:
 
 - VS Code's webview default styles (for example `code { font-family: var(--monaco-monospace-font); padding: 1px 3px;
-border-radius: 4px }`),
+border-radius: 4px }`). VS Code layers them itself from 1.104 on (see the `revert-layer` note in `index.css`),
+  but `src/package.json` still accepts `^1.102.0`, where they are unlayered,
 - the lazily loaded `katex.min.css` (`.katex { font: normal 1.21em KaTeX_Main, ... }`, checked in node_modules).
 
 A layered rule loses to any unlayered rule regardless of specificity, so inside `@layer components` inline code
