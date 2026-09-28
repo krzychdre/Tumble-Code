@@ -5,6 +5,5 @@
 	"src/components/common/DiffView.tsx": ["DiffView"],
 	"src/components/common/MermaidButton.tsx": ["MermaidButton"],
 	"src/components/mcp/McpView.tsx": ["ServerRow"],
-	"src/components/settings/providers/LMStudio.tsx": ["LMStudio"],
 	"src/hooks/useScrollLifecycle.ts": ["useScrollLifecycle"]
 }

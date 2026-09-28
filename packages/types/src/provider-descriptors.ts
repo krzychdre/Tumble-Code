@@ -4,7 +4,7 @@ import { zaiApiLineSchema } from "./provider-config/configs.js"
 import { ANTHROPIC_1M_CONTEXT_MODEL_IDS } from "./provider-model-selection.js"
 import { getProviderModelDefinition } from "./provider-models.js"
 import type { ActiveProviderDefinition } from "./provider-registry.js"
-import type { ProviderSettings } from "./provider-settings.js"
+import type { ModelIdKey, ProviderSettings } from "./provider-settings.js"
 import { providerApiKeyFields } from "./provider-validation.js"
 import { zaiApiLineConfigs } from "./providers/zai.js"
 
@@ -55,9 +55,18 @@ export type ProviderBooleanSettingKey = {
  */
 export type ProviderModelRule = { readonly modelIdStartsWith: string } | { readonly modelIdIn: readonly string[] }
 
+/**
+ * Show a field only while another setting is set (truthy: a non-empty string, `true`): LM
+ * Studio's draft model under the speculative decoding checkbox.
+ */
+export type ProviderSettingRule = { readonly settingIsSet: keyof ProviderSettings }
+
+/** When a field is shown: for some models, or while another setting is set. */
+export type ProviderFieldRule = ProviderModelRule | ProviderSettingRule
+
 type FieldVisibility = {
-	/** Show the field only for these models; without it the field is always shown. */
-	readonly visibleWhen?: ProviderModelRule
+	/** Show the field only when the rule holds; without it the field is always shown. */
+	readonly visibleWhen?: ProviderFieldRule
 }
 
 /**
@@ -119,6 +128,57 @@ export type ProviderCheckboxFieldDescriptor = FieldVisibility & {
 	readonly labelKey: string
 	/** i18n key of a note under the checkbox. */
 	readonly descriptionKey?: string
+	/**
+	 * `false`: render the checkbox directly in the form (LM Studio). By default it sits in its
+	 * own `<div>` together with its note.
+	 */
+	readonly grouped?: false
+}
+
+/**
+ * A labelled text field. The label and an optional help text sit above the input, inside the
+ * field (Ollama's API key and context window, the local servers' base URLs).
+ */
+export type ProviderTextFieldDescriptor = FieldVisibility &
+	PlaceholderText & {
+		readonly kind: "text"
+		readonly key: ProviderStringSettingKey
+		/** i18n key of the field label. */
+		readonly labelKey: string
+		/** i18n key of a help text under the label. */
+		readonly helpKey?: string
+		/** The input's `type`; without it a plain text field. */
+		readonly inputType?: "url" | "password"
+	}
+
+/**
+ * The model picker over the provider's fetched model list (behaviour, not layout): the form
+ * requests the list once, with the options its row's `modelSourceOptions` name, and flags a
+ * configured model that a non-empty list does not contain. The picker shows the row's
+ * `service` name and link. Only for providers with a fetched list whose form picks the model
+ * (`modelPicker: "in-form"`); `provider-descriptors.spec.ts` checks that.
+ */
+export type ProviderFetchedModelPickerFieldDescriptor = FieldVisibility & {
+	readonly kind: "fetchedModelPicker"
+	/** The settings key the picked model id is written to. */
+	readonly key: ModelIdKey
+	/** i18n key of a label replacing the picker's default one. */
+	readonly labelKey?: string
+	/** Hide the price columns (models on a local server cost nothing). */
+	readonly hidePricing?: true
+}
+
+/**
+ * A note in the description colour. `links` renders `<tag>` elements of the translated text as
+ * links (tag name to URL) and `warningTag` renders one tag as the bold warning label in the error
+ * colour (LM Studio's "Note:"); without either the text is shown as is.
+ */
+export type ProviderNoteFieldDescriptor = FieldVisibility & {
+	readonly kind: "note"
+	/** i18n key of the text. */
+	readonly textKey: string
+	readonly links?: Readonly<Record<string, string>>
+	readonly warningTag?: string
 }
 
 /**
@@ -178,7 +238,10 @@ export type ProviderOptionalUrlFieldDescriptor = FieldVisibility &
 		/** Values written after the URL is cleared, when the checkbox is unticked. */
 		readonly alsoClear?: Readonly<Partial<ProviderSettings>>
 		/** Checkboxes shown under the URL while the checkbox is ticked. */
-		readonly revealedFields?: readonly Omit<ProviderCheckboxFieldDescriptor, "descriptionKey" | "visibleWhen">[]
+		readonly revealedFields?: readonly Omit<
+			ProviderCheckboxFieldDescriptor,
+			"descriptionKey" | "visibleWhen" | "grouped"
+		>[]
 	}
 
 export type ProviderFieldDescriptor =
@@ -188,6 +251,9 @@ export type ProviderFieldDescriptor =
 	| ProviderUrlFieldDescriptor
 	| ProviderCheckboxFieldDescriptor
 	| ProviderModelTierSelectFieldDescriptor
+	| ProviderTextFieldDescriptor
+	| ProviderFetchedModelPickerFieldDescriptor
+	| ProviderNoteFieldDescriptor
 
 /** The fields a provider may use: no `apiKey` field without an API key settings key. */
 type ProviderFieldDescriptorFor<P extends DescribedProviderId> = (typeof providerApiKeyFields)[P] extends null
@@ -263,7 +329,43 @@ export const PROVIDER_DESCRIPTORS = {
 		modelSourceOptions: { baseUrl: "ollamaBaseUrl", apiKey: "ollamaApiKey" },
 	},
 	lmstudio: {
-		form: custom,
+		form: {
+			kind: "fields",
+			fields: [
+				{
+					kind: "text",
+					key: "lmStudioBaseUrl",
+					labelKey: "settings:providers.lmStudio.baseUrl",
+					inputType: "url",
+					placeholderKey: "settings:defaults.lmStudioUrl",
+				},
+				{ kind: "fetchedModelPicker", key: "lmStudioModelId", hidePricing: true },
+				{
+					kind: "checkbox",
+					key: "lmStudioSpeculativeDecodingEnabled",
+					labelKey: "settings:providers.lmStudio.speculativeDecoding",
+					grouped: false,
+				},
+				{
+					kind: "fetchedModelPicker",
+					key: "lmStudioDraftModelId",
+					labelKey: "settings:providers.lmStudio.draftModelId",
+					hidePricing: true,
+					visibleWhen: { settingIsSet: "lmStudioSpeculativeDecodingEnabled" },
+				},
+				{
+					kind: "note",
+					textKey: "settings:providers.lmStudio.draftModelDesc",
+					visibleWhen: { settingIsSet: "lmStudioSpeculativeDecodingEnabled" },
+				},
+				{
+					kind: "note",
+					textKey: "settings:providers.lmStudio.description",
+					links: { a: "https://lmstudio.ai/docs", b: "https://lmstudio.ai/docs/basics/server" },
+					warningTag: "span",
+				},
+			],
+		},
 		service: { name: "LM Studio", url: "https://lmstudio.ai/docs" },
 		docsSlug: "lmstudio",
 		modelPicker: "in-form",
@@ -555,9 +657,22 @@ export const resolveProviderFormModelId = (provider: string | undefined, setting
 	return configured || definition?.defaultModelId || ""
 }
 
-/** Whether a model id satisfies a field's `visibleWhen` rule. */
+/** Whether a model id satisfies a model rule. */
 export const matchesProviderModelRule = (rule: ProviderModelRule, modelId: string): boolean =>
 	"modelIdStartsWith" in rule ? modelId.startsWith(rule.modelIdStartsWith) : rule.modelIdIn.includes(modelId)
+
+/** Whether a rule is about the model (as opposed to another setting). */
+export const isProviderModelRule = (rule: ProviderFieldRule): rule is ProviderModelRule => !("settingIsSet" in rule)
+
+/**
+ * Whether a field with this `visibleWhen` rule is shown: the model rule against the form's model
+ * id (`resolveProviderFormModelId`), the setting rule against the settings.
+ */
+export const matchesProviderFieldRule = (
+	rule: ProviderFieldRule,
+	modelId: string,
+	settings: ProviderSettings,
+): boolean => (isProviderModelRule(rule) ? matchesProviderModelRule(rule, modelId) : !!settings[rule.settingIsSet])
 
 /** The providers whose own form selects the model (`modelPicker: "in-form"`), in table order. */
 export const getInFormModelPickerProviderIds = (): DescribedProviderId[] =>

@@ -3,6 +3,8 @@ import {
 	getDescriptorFormProviderIds,
 	getInFormModelPickerProviderIds,
 	getProviderDescriptor,
+	isProviderModelRule,
+	matchesProviderFieldRule,
 	matchesProviderModelRule,
 	resolveProviderFormModelId,
 	resolveProviderGetKeyUrl,
@@ -76,6 +78,7 @@ describe("PROVIDER_DESCRIPTORS", () => {
 			"anthropic",
 			"deepseek",
 			"gemini",
+			"lmstudio",
 			"minimax",
 			"mistral",
 			"moonshot",
@@ -110,9 +113,36 @@ describe("PROVIDER_DESCRIPTORS", () => {
 
 	it("uses model rules only on providers whose model id comes from a static list", () => {
 		for (const [provider, descriptor] of entries) {
-			if (fieldsOf(descriptor).some((field) => field.visibleWhen)) {
+			if (fieldsOf(descriptor).some((field) => field.visibleWhen && isProviderModelRule(field.visibleWhen))) {
 				const definition = providerModelDefinitions[provider]
 				expect("models" in definition && definition.modelIdField === "apiModelId", provider).toBe(true)
+			}
+		}
+	})
+
+	it("uses the fetched model picker only where the form picks from a fetched list", () => {
+		for (const [provider, descriptor] of entries) {
+			if (fieldsOf(descriptor).some((field) => field.kind === "fetchedModelPicker")) {
+				const definition = getProviderDefinition(provider)
+				expect(definition && "modelSource" in definition && definition.modelSource, provider).toBeTruthy()
+				expect(descriptor.modelSourceOptions, provider).toBeDefined()
+				expect(descriptor.modelPicker, provider).toBe("in-form")
+				expect(descriptor.service, provider).toBeDefined()
+			}
+		}
+	})
+
+	it("points setting rules at settings the same form writes", () => {
+		for (const [provider, descriptor] of entries) {
+			const fields = fieldsOf(descriptor)
+			for (const field of fields) {
+				if (field.visibleWhen && !isProviderModelRule(field.visibleWhen)) {
+					const { settingIsSet } = field.visibleWhen
+					expect(
+						fields.some((other) => "key" in other && other.key === settingIsSet),
+						`${provider}: ${settingIsSet}`,
+					).toBe(true)
+				}
 			}
 		}
 	})
@@ -185,6 +215,23 @@ describe("matchesProviderModelRule", () => {
 		expect(matchesProviderModelRule({ modelIdStartsWith: "codestral-" }, "my-codestral-latest")).toBe(false)
 		expect(matchesProviderModelRule({ modelIdIn: ["a", "b"] }, "b")).toBe(true)
 		expect(matchesProviderModelRule({ modelIdIn: ["a", "b"] }, "c")).toBe(false)
+	})
+})
+
+describe("matchesProviderFieldRule", () => {
+	it("applies model rules to the model id and setting rules to the settings", () => {
+		expect(matchesProviderFieldRule({ modelIdIn: ["m"] }, "m", {})).toBe(true)
+		expect(matchesProviderFieldRule({ modelIdIn: ["m"] }, "n", { lmStudioSpeculativeDecodingEnabled: true })).toBe(
+			false,
+		)
+		const rule = { settingIsSet: "lmStudioSpeculativeDecodingEnabled" } as const
+		expect(matchesProviderFieldRule(rule, "", { lmStudioSpeculativeDecodingEnabled: true })).toBe(true)
+		expect(matchesProviderFieldRule(rule, "", { lmStudioSpeculativeDecodingEnabled: false })).toBe(false)
+		expect(matchesProviderFieldRule(rule, "", {})).toBe(false)
+		expect(matchesProviderFieldRule({ settingIsSet: "ollamaBaseUrl" }, "", { ollamaBaseUrl: "" })).toBe(false)
+		expect(matchesProviderFieldRule({ settingIsSet: "ollamaBaseUrl" }, "", { ollamaBaseUrl: "http://o" })).toBe(
+			true,
+		)
 	})
 })
 

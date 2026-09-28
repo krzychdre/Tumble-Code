@@ -104,18 +104,29 @@ like this).
           auth-token switch);
         - `modelTierSelect`: a dropdown whose options depend on the selected model: a base option that is always
           offered, plus each listed option only when the model's `tiers` name it; hidden when none is (OpenAI's
-          service tier). Label, tooltip and option texts are i18n keys like every other field's.
+          service tier). Label, tooltip and option texts are i18n keys like every other field's;
+        - `text`: a labelled text field (plain, `url` or `password` input) with an optional help text inside the
+          field (LM Studio's base URL);
+        - `fetchedModelPicker` (behaviour): the model picker over the provider's fetched model list. The form
+          requests the list once, with the settings keys `modelSourceOptions` names, and flags a configured model
+          the (non-empty) list does not contain; the picker shows the row's `service`. Requires a `modelSource` in
+          `providerRegistry`, `modelSourceOptions`, `service` and `modelPicker: "in-form"` (the descriptor spec
+          checks it). LM Studio's main and draft model pickers;
+        - `note`: a text in the description colour, optionally with `links` (tags of the translated text rendered
+          as links) and a `warningTag` (LM Studio's "Note:" label).
 
         Every text in a row is an i18n key (except example URLs and endpoint host names, shown as is);
         `provider-descriptors.i18n.spec.ts` in webview-ui fails when a key the table names is missing from any
         locale's `settings.json`.
 
         By default a field below the first one sits in its own group (`<div>`); `grouped: false` on `apiKey` and
-        `optionalUrl` renders it directly in the form instead (OpenAI's base URL checkbox above the API key).
+        `optionalUrl` renders it directly in the form instead (OpenAI's base URL checkbox above the API key), and
+        on `checkbox` drops the checkbox's own `<div>` (LM Studio's speculative decoding switch).
 
         Any field can carry `visibleWhen: { modelIdStartsWith }` or `{ modelIdIn }`, so it is shown only for some
         models; the model id is the configured one, or the provider's default when none is set (the same rule the
-        request uses, `resolveProviderFormModelId`).
+        request uses, `resolveProviderFormModelId`). `visibleWhen: { settingIsSet }` shows it only while another
+        setting of the form is set (LM Studio's draft model picker under the speculative decoding checkbox).
 
     - `form: custom` when the provider needs anything else; then write the component in
       `webview-ui/src/components/settings/providers/`, export it from `index.ts` there and add its row to
