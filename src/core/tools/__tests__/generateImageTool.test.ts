@@ -13,7 +13,7 @@ import { OpenRouterHandler } from "../../../api/providers/openrouter"
 vi.mock("fs/promises")
 vi.mock("../../../utils/pathUtils")
 vi.mock("../../../utils/fs")
-vi.mock("../../../utils/safeWriteJson")
+vi.mock("@roo-code/core/fs")
 vi.mock("../../../api/providers/openrouter")
 
 describe("generateImageTool", () => {

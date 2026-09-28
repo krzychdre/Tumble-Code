@@ -46,7 +46,7 @@ export function insertMention(
 
 	// Process the value - escape spaces if it's a file path mention.
 	// escapeSpacesForMention is a DISPLAY/transport formatter for the @-mention
-	// grammar (see src/shared/context-mentions.ts), NOT a shell escaper.
+	// grammar (see @roo-code/core/browser context-mentions), NOT a shell escaper.
 	let processedValue = value
 	if (value && value.startsWith("/")) {
 		// Only escape if the path contains spaces that aren't already escaped

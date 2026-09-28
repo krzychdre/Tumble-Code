@@ -6,7 +6,7 @@ import * as vscode from "vscode"
 import { t } from "../../../i18n"
 import { openFile } from "../../../integrations/misc/open-file"
 import { fileExistsAtPath } from "../../../utils/fs"
-import { safeWriteJson } from "../../../utils/safeWriteJson"
+import { safeWriteJson } from "@roo-code/core/fs"
 import { logAndToast, serializeError } from "./context"
 import type { MessageHandlerMap } from "./types"
 

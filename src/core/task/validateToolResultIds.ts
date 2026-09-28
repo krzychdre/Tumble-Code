@@ -1,7 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { TelemetryService } from "@roo-code/telemetry"
-import { findLastIndex } from "../../shared/array"
-
+import { findLastIndex } from "@roo-code/core/browser"
 /**
  * Custom error class for tool result ID mismatches.
  * Used for structured error tracking via PostHog.

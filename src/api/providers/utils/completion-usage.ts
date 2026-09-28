@@ -1,6 +1,6 @@
 import type { ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostOpenAI } from "../../../shared/cost"
+import { calculateApiCostOpenAI } from "@roo-code/core/browser"
 import type { CompletionUsage } from "../../index"
 import type { ApiStreamUsageChunk } from "../../transform/stream"
 

@@ -61,7 +61,7 @@ vi.mock("../core/task/Task", () => {
 })
 
 vi.mock("../core/prompts/sections/custom-instructions")
-vi.mock("../utils/safeWriteJson", () => {
+vi.mock("@roo-code/core/fs", () => {
 	const write = vi.fn().mockResolvedValue(undefined)
 	return {
 		safeWriteJson: write,

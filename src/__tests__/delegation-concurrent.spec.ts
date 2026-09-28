@@ -77,7 +77,7 @@ vi.mock("proper-lockfile", () => ({
 
 // safeWriteJson is mocked to a plain write so we don't pull in the
 // stream/stringify machinery.
-vi.mock("../utils/safeWriteJson", () => {
+vi.mock("@roo-code/core/fs", () => {
 	const write = vi.fn(async (filePath: string, data: any) => {
 		backingFiles.set(filePath, JSON.stringify(data))
 	})

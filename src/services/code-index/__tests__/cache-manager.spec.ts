@@ -5,13 +5,12 @@ import debounce from "lodash.debounce"
 import { CacheManager } from "../cache-manager"
 
 // Mock safeWriteJson utility
-vitest.mock("../../../utils/safeWriteJson", () => ({
+vitest.mock("@roo-code/core/fs", () => ({
 	safeWriteJson: vitest.fn().mockResolvedValue(undefined),
 }))
 
 // Import the mocked version
-import { safeWriteJson } from "../../../utils/safeWriteJson"
-
+import { safeWriteJson } from "@roo-code/core/fs"
 // Mock vscode
 vitest.mock("vscode", () => ({
 	Uri: {

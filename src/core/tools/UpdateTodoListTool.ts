@@ -5,8 +5,7 @@ import type { ToolUse } from "../../shared/tools"
 import cloneDeep from "clone-deep"
 import crypto from "crypto"
 import { TodoItem, TodoStatus, todoStatusSchema } from "@roo-code/types"
-import { getLatestTodo } from "../../shared/todo"
-
+import { getLatestTodo } from "@roo-code/core/browser"
 interface UpdateTodoListParams {
 	todos: string
 }

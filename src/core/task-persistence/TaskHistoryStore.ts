@@ -5,7 +5,7 @@ import * as path from "path"
 import { historyItemSchema, type HistoryItem } from "@roo-code/types"
 
 import { GlobalFileNames } from "../../shared/globalFileNames"
-import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from "../../utils/safeWriteJson"
+import { safeWriteJson, withLockedJsonTransaction, type LockedJsonWriter } from "@roo-code/core/fs"
 import { getStorageBasePath } from "../../utils/storage"
 import { logger } from "../../utils/logging"
 

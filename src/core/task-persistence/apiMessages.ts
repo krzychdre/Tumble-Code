@@ -1,4 +1,4 @@
-import { safeWriteJson } from "../../utils/safeWriteJson"
+import { safeWriteJson } from "@roo-code/core/fs"
 import { perfCounters } from "../../utils/perfCounters"
 import * as path from "path"
 import * as fs from "fs/promises"

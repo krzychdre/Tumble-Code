@@ -17,7 +17,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 import type { MockInstance } from "vitest"
 import { GoogleAuth, OAuth2Client } from "google-auth-library"
 
-import { calculateApiCostAnthropic } from "../../../shared/cost"
+import { calculateApiCostAnthropic } from "@roo-code/core/browser"
 import type { ApiStreamChunk } from "../../transform/stream"
 import type { ApiHandler } from "../../index"
 import { AnthropicHandler } from "../anthropic"

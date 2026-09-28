@@ -18,8 +18,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 import { type ApiHandler } from "../../api"
 import { type ApiStream, type GroundingSource } from "../../api/transform/stream"
 
-import { calculateApiCostAnthropic, calculateApiCostOpenAI } from "../../shared/cost"
-import { findLastIndex } from "../../shared/array"
+import { calculateApiCostAnthropic, calculateApiCostOpenAI, findLastIndex } from "@roo-code/core/browser"
 import { t } from "../../i18n"
 import { sanitizeToolUseId } from "../../utils/tool-id"
 

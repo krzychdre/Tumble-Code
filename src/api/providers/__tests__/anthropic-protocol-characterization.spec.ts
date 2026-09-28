@@ -31,7 +31,7 @@ vitest.mock("@anthropic-ai/vertex-sdk", () => ({
 
 import type { Anthropic } from "@anthropic-ai/sdk"
 
-import { calculateApiCostAnthropic } from "../../../shared/cost"
+import { calculateApiCostAnthropic } from "@roo-code/core/browser"
 import type { ApiStreamChunk } from "../../transform/stream"
 import type { ApiHandler } from "../../index"
 import { AnthropicHandler } from "../anthropic"
