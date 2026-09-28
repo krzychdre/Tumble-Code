@@ -1,0 +1,62 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
+<!--
+  static/app.js, loaded by every panel page: the confirmations that used to be
+  inline onsubmit handlers (now data-confirm on the form, so the page can run
+  under a script-src 'self' policy), and the copy button of the empty state.
+-->
+<form id="del" method="post" action="/app/tasks/x/delete" data-confirm="Delete this task permanently?">
+  <button type="submit" id="del-btn">Delete task</button>
+</form>
+<form id="plain" method="post" action="/elsewhere">
+  <button type="submit" id="plain-btn">Go</button>
+</form>
+<p><code id="api-url">https://cloud.example.test</code>
+  <button type="button" class="btn ghost copy-btn" data-copy="#api-url" hidden>Copy</button></p>
+
+<script>
+  window.__copied = []
+  try {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: function (t) { window.__copied.push(t); return Promise.resolve() } },
+    })
+  } catch (e) {}
+</script>
+<script src="../../src/web/static/app.js"></script>
+<script>
+window.addEventListener("load", function () {
+  var out = [], fail = 0
+  function check(name, cond) { out.push((cond ? "PASS " : "FAIL ") + name); if (!cond) fail++ }
+
+  var submitted = []
+  document.addEventListener("submit", function (e) {
+    if (!e.defaultPrevented) submitted.push(e.target.id)
+    e.preventDefault()
+  })
+  var asked = [], answer = false
+  window.confirm = function (msg) { asked.push(msg); return answer }
+
+  document.getElementById("del-btn").click()
+  check("asks the form's own question", asked[0] === "Delete this task permanently?")
+  check("declining cancels the submission", submitted.length === 0)
+  answer = true
+  document.getElementById("del-btn").click()
+  check("accepting submits", submitted.join() === "del")
+  asked = []
+  document.getElementById("plain-btn").click()
+  check("a form without data-confirm is not asked about", asked.length === 0 && submitted.join() === "del,plain")
+
+  var copy = document.querySelector(".copy-btn")
+  check("copy button revealed by the script", copy.hidden === false)
+  copy.click()
+  setTimeout(function () {
+    check("copies the referenced text", window.__copied[0] === "https://cloud.example.test")
+    check("says it did", copy.textContent === "Copied")
+    var pre = document.createElement("pre")
+    pre.id = "results"
+    pre.textContent = out.join("\n") + "\nTOTAL_FAILURES=" + fail
+    document.body.appendChild(pre)
+  }, 50)
+})
+</script>
+</body></html>

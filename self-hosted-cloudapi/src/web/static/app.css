@@ -42,7 +42,9 @@
 	/* --- text ------------------------------------------------------------ */
 	--text: #e4ebf2;
 	--text-dim: #9aa7b4;
-	--text-faint: #6b7885;
+	/* 5.4:1 on --bg, 5.0:1 on --surface-1: AA for small text (was #6b7885,
+	   4.2:1 and 3.9:1). */
+	--text-faint: #7d8a97;
 
 	/* --- signal: the single interface accent ------------------------------ */
 	--signal: #e9a33a;
@@ -90,6 +92,12 @@
 	--t-lead: 1.125rem;
 	--t-title: 1.375rem;
 	--t-stat: 1.75rem;
+	/* Page titles: 20px on a phone, growing with the window to 24px. */
+	--t-h1: clamp(1.25rem, 1rem + 1vw, 1.5rem);
+	/* Glyph sizes: the fold caret of a conversation row, and inline text set
+	   a step smaller than its line (units, code). */
+	--t-tick: 0.625rem;
+	--t-inline: 0.9em;
 
 	/* Widths for the two measures. The scanning one carries one more column
 	   than it used to (which model answered), and at 1180px that column could
@@ -103,6 +111,33 @@
 *::before,
 *::after {
 	box-sizing: border-box;
+}
+
+/* The attribute always wins: a control hidden with `hidden` stays hidden even
+   when its class sets a display (.btn is inline-flex). */
+[hidden] {
+	display: none !important;
+}
+
+/* Off screen until a keyboard reaches it, then the first thing on the page. */
+.skip-link {
+	position: absolute;
+	left: var(--s3);
+	top: -3rem;
+	z-index: 50;
+	padding: var(--s2) var(--s3);
+	background: var(--signal);
+	color: var(--signal-ink);
+	font-weight: 600;
+	font-size: var(--t-sm);
+}
+.skip-link:focus {
+	top: var(--s2);
+	color: var(--signal-ink);
+	text-decoration: none;
+}
+main:focus {
+	outline: none;
 }
 
 html {
@@ -190,7 +225,7 @@ table.breakdown th {
 	gap: var(--s2);
 	color: var(--text);
 	font-weight: 650;
-	font-size: 0.9375rem;
+	font-size: var(--t-body);
 	letter-spacing: -0.01em;
 	white-space: nowrap;
 }
@@ -266,7 +301,7 @@ table.breakdown th {
 }
 
 .page-title {
-	font-size: var(--t-title);
+	font-size: var(--t-h1);
 	font-weight: 620;
 	letter-spacing: -0.015em;
 	margin: 0;
@@ -478,7 +513,7 @@ textarea::placeholder {
 }
 .tree-toggle::before {
 	content: "▸";
-	font-size: 0.8rem;
+	font-size: var(--t-micro);
 	line-height: 1;
 	transition: transform 0.12s ease;
 }
@@ -522,7 +557,7 @@ textarea::placeholder {
 	position: absolute;
 	left: 0.55rem;
 	color: var(--text-faint);
-	font-size: 0.95rem;
+	font-size: var(--t-body);
 	pointer-events: none;
 }
 .search-clear {
@@ -887,7 +922,7 @@ textarea::placeholder {
 }
 .signal-value {
 	font-family: var(--mono);
-	font-size: 1.125rem;
+	font-size: var(--t-lead);
 	line-height: 1.2;
 	color: var(--text);
 }
@@ -1034,7 +1069,7 @@ a.signal-value:hover {
 	color: var(--text-faint);
 	opacity: 0.55;
 	margin-left: 0.2em;
-	font-size: 0.9em;
+	font-size: var(--t-inline);
 }
 .cell-cost .unit {
 	color: inherit;
@@ -1390,7 +1425,7 @@ a.signal-value:hover {
 .filter-more > summary::before {
 	content: "▸";
 	margin-right: var(--s2);
-	font-size: 0.8rem;
+	font-size: var(--t-micro);
 	transition: transform 0.12s ease;
 }
 .filter-more[open] > summary::before {
@@ -1486,6 +1521,37 @@ a.signal-value:hover {
 }
 .empty .filter-chips {
 	justify-content: center;
+}
+
+/* The first-run state: how to connect the extension, the URL ready to copy. */
+.connect {
+	max-width: 44rem;
+	margin: var(--s6) auto;
+	padding: var(--s4) var(--s5);
+}
+.connect-steps {
+	margin: var(--s3) 0 0;
+	padding-left: var(--s5);
+	color: var(--text-dim);
+	font-size: var(--t-sm);
+}
+.connect-steps li + li {
+	margin-top: var(--s2);
+}
+.copy-row {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--s2);
+	max-width: 100%;
+}
+.copy-row code {
+	overflow-wrap: anywhere;
+}
+.copy-btn {
+	min-height: 24px;
+	padding: 0 var(--s2);
+	font-size: var(--t-micro);
 }
 
 .empty {
@@ -2001,7 +2067,7 @@ a.signal-value:hover {
 /* Disclosure on the LEFT so the timestamp keeps the row's right edge. */
 .msg.foldable > details > summary.msg-head::before {
 	content: "▸";
-	font-size: 0.6rem;
+	font-size: var(--t-tick);
 	color: var(--text-faint);
 	width: 0.7rem;
 	flex-shrink: 0;
@@ -2034,7 +2100,7 @@ pre {
 }
 code {
 	font-family: var(--mono);
-	font-size: 0.9em;
+	font-size: var(--t-inline);
 }
 :not(pre) > code {
 	background: var(--surface-2);
@@ -2695,9 +2761,6 @@ table.breakdown tr:last-child td {
 		flex: 1;
 		text-align: center;
 	}
-	.page-title {
-		font-size: var(--t-lead);
-	}
 	.detail-title-row {
 		flex-direction: column;
 		gap: var(--s2);
@@ -2854,7 +2917,7 @@ table.breakdown tr:last-child td {
 	}
 	.auto-more::before {
 		content: "▸";
-		font-size: 0.8rem;
+		font-size: var(--t-micro);
 		line-height: 1;
 		transition: transform 0.12s ease;
 	}

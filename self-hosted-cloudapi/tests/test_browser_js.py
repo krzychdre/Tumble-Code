@@ -39,7 +39,9 @@ _MIN_CHECKS = {
     "resume_span_checks.html": 6,
     "tasklist_checks.html": 18,
     # Density toggle, select mode, and the 300 ms fetch-and-swap of the filter form.
-    "tasklist_filter_checks.html": 18,
+    "tasklist_filter_checks.html": 19,
+    # data-confirm forms (formerly inline onsubmit) and the empty state's copy button.
+    "app_checks.html": 7,
     "tasktree_checks.html": 19,
     # escapeHtml must escape " and ' so values interpolated into double-quoted
     # src="..."/title="..." attributes cannot break out (CodeQL #8/#11).

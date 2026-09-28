@@ -15,6 +15,7 @@ from src.auth.network_access import WebAccessMiddleware, describe_policy
 from src.auth.web_session import LoginRequired, redirect_to_login
 from src.auth.origins import trusted_origins
 from src.logging_setup import configure_logging
+from src.middleware.content_security_policy import ContentSecurityPolicyMiddleware
 from src.middleware.cors import setup_cors
 from src.middleware.csrf import CsrfOriginMiddleware
 from src.middleware.request_logging import RequestLoggingMiddleware
@@ -133,6 +134,9 @@ app.add_middleware(CsrfOriginMiddleware)
 # Inside the request logging, so a refused request is still logged with its 403.
 app.add_middleware(WebAccessMiddleware)
 app.add_middleware(RequestLoggingMiddleware)
+# Outermost of these, so the 403 page the access middleware renders carries
+# the policy too. It only adds a header to /app and /shared HTML responses.
+app.add_middleware(ContentSecurityPolicyMiddleware)
 
 # Apply rate limiter if enabled
 if settings.rate_limit_enabled and limiter is not None:

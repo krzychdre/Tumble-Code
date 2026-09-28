@@ -71,6 +71,10 @@
   <datalist id="model-options">{% for m in model_options %}<option value="{{ m }}">{% endfor %}</datalist>
 </form>
 
+{# Outside the swapped region, so it stays the same live region: tasklist.js
+   says the new count here after a filter replaces the list. #}
+<p id="list-status" class="sr-only" role="status" aria-live="polite"></p>
+
 <div id="task-results" class="task-results" data-swap>
 {% if tasks %}
 {% if view.has_filters %}{{ chip_list(view) }}{% endif %}
@@ -128,7 +132,7 @@
 
   {# Without scripting nothing can be expanded, so the subtrees are simply shown
      and the toggles that could not work are not. #}
-  <noscript><style>.task-children[hidden] { display: block; } .tree-toggle, .tree-expand-all { display: none; }</style></noscript>
+  <noscript><link rel="stylesheet" href="/static/noscript.css?v={{ asset_v }}"></noscript>
 
   <ul class="task-list">
     {# Recursive: a subtask renders the same row as a run, one level deeper,
@@ -256,10 +260,18 @@
   <p class="empty-hint">Remove a filter above, or <a href="{{ view.cleared_url() }}">clear them all</a>.</p>
 </div>
 {% else %}
-<div class="empty">
-  <p>No shared tasks yet.</p>
-  <p class="empty-hint">In VS Code, open a task and click <strong>Share</strong> to make it appear here.</p>
-</div>
+{# Nothing has ever arrived: say how to connect the extension, with the one
+   value it needs ready to copy. #}
+<section class="connect panel" aria-labelledby="connect-title">
+  <h2 class="chart-title" id="connect-title">No tasks yet: connect the extension</h2>
+  <ol class="connect-steps">
+    <li>In VS Code, open the settings and set <code>tumble-code.cloudApiUrl</code> to
+      <span class="copy-row"><code id="api-url">{{ api_url }}</code>
+      <button type="button" class="btn ghost copy-btn" data-copy="#api-url" hidden>Copy</button></span></li>
+    <li>Sign in from the Tumble Code panel (the account icon).</li>
+    <li>Open a task and click <strong>Share</strong>. It appears here, and live tasks can be followed and steered from this page.</li>
+  </ol>
+</section>
 {% endif %}
 </div>
 {% endblock %}
