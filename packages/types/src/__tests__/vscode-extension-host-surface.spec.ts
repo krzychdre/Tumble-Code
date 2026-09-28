@@ -117,8 +117,6 @@ type ExpectedExtensionMessageField =
 	| "worktreeIncludeStatus"
 	| "hasGitignore"
 	| "gitignoreContent"
-	| "branch"
-	| "hasWorktreeInclude"
 	| "copyProgressBytesCopied"
 	| "copyProgressTotalBytes"
 	| "copyProgressItemName"

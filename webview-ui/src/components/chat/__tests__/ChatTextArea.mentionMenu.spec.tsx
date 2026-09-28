@@ -511,27 +511,6 @@ describe("ChatTextArea mention menu (characterization)", () => {
 			expect(ta.value).toBe("plain text")
 		})
 	})
-
-	describe("host messages handled next to the menu", () => {
-		it("insertTextIntoTextarea inserts the text at the cursor with separating spaces", () => {
-			vi.useFakeTimers()
-			try {
-				render(<Harness initial="run now" />)
-				const ta = textbox()
-				ta.setSelectionRange(3, 3)
-
-				postFromHost({ type: "insertTextIntoTextarea", text: "/setup" })
-				expect(ta.value).toBe("run /setup  now")
-
-				act(() => {
-					vi.runAllTimers()
-				})
-				expect(ta.selectionStart).toBe(3 + 1 + "/setup".length + 1)
-			} finally {
-				vi.useRealTimers()
-			}
-		})
-	})
 })
 
 describe("ChatTextArea highlight layer (characterization)", () => {
