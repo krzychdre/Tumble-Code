@@ -17,7 +17,7 @@
 		"build": "tsup",
 		"build:extension": "pnpm --filter tumble-code bundle",
 		"dev": "tsx src/index.ts",
-		"dev:local": "ROO_AUTH_BASE_URL=http://localhost:3000 ROO_CODE_PROVIDER_URL=http://localhost:8080/proxy tsx src/index.ts",
+		"dev:local": "ROO_AUTH_BASE_URL=http://localhost:3000 tsx src/index.ts",
 		"clean": "rimraf dist .turbo"
 	},
 	"dependencies": {
@@ -36,6 +36,7 @@
 	"devDependencies": {
 		"@roo-code/config-eslint": "workspace:^",
 		"@roo-code/config-typescript": "workspace:^",
+		"@roo-code/config-vitest": "workspace:^",
 		"@types/node": "^22.20.4",
 		"@types/react": "^19.3.0",
 		"ink-testing-library": "^4.0.0",

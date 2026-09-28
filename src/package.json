@@ -467,14 +467,6 @@
 					"order": 100,
 					"scope": "machine"
 				},
-				"tumble-code.cloudProviderUrl": {
-					"type": "string",
-					"default": "",
-					"description": "%settings.cloudProviderUrl.description%",
-					"markdownDescription": "%settings.cloudProviderUrl.description%",
-					"order": 101,
-					"scope": "machine"
-				},
 				"tumble-code.clerkBaseUrl": {
 					"type": "string",
 					"default": "",
@@ -572,6 +564,7 @@
 	"devDependencies": {
 		"@roo-code/build": "workspace:^",
 		"@roo-code/config-eslint": "workspace:^",
+		"@roo-code/config-vitest": "workspace:^",
 		"@types/clone-deep": "^4.0.4",
 		"@types/lodash.debounce": "^4.0.9",
 		"@types/node": "^22.20.4",

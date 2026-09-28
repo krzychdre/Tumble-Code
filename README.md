@@ -36,7 +36,7 @@ Tumble Code is a community-maintained fork of [Roo Code](https://github.com/RooC
 - [Tiếng Việt](locales/vi/README.md)
 - [简体中文](locales/zh-CN/README.md)
 - [繁體中文](locales/zh-TW/README.md)
-      </details>
+  </details>
 
 ---
 
@@ -156,7 +156,6 @@ The following settings are scoped `machine`. A value set in User settings on you
 - `tumble-code.autoImportSettingsPath` (same)
 - `tumble-code.debugProxy.serverUrl` (a local proxy address)
 - `tumble-code.cloudApiUrl`
-- `tumble-code.cloudProviderUrl`
 - `tumble-code.clerkBaseUrl`
 
 Remember that in a remote window `localhost` means the **server**, not your laptop, so addresses like `http://127.0.0.1:...` must point at something reachable from the server.

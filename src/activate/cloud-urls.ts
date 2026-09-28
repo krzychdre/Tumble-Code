@@ -3,12 +3,11 @@
  *
  * Reads the Roo Code Cloud URL overrides from VS Code settings and applies
  * them as runtime overrides in the `@roo-code/cloud` package. This allows
- * users to point the extension at a self-hosted or development Cloud API,
- * Provider, and/or Clerk instance.
+ * users to point the extension at a self-hosted or development Cloud API
+ * and/or Clerk instance.
  *
  * The VS Code settings are:
  *   - `roo-cline.cloudApiUrl`         → overrides `ROO_CODE_API_URL`
- *   - `roo-cline.cloudProviderUrl`    → overrides `ROO_CODE_PROVIDER_URL`
  *   - `roo-cline.clerkBaseUrl`        → overrides `CLERK_BASE_URL`
  *   - `roo-cline.bridgeRetryDelayMs`  → re-arms the remote-control bridge
  *                                       after socket.io `reconnect_failed`
@@ -28,7 +27,7 @@
 
 import * as vscode from "vscode"
 
-import { setRooCodeApiUrl, setRooCodeProviderUrl, setClerkBaseUrl } from "@roo-code/cloud"
+import { setRooCodeApiUrl, setClerkBaseUrl } from "@roo-code/cloud"
 
 import { Package } from "../shared/package"
 
@@ -41,11 +40,9 @@ export function syncCloudUrls(): void {
 	const config = vscode.workspace.getConfiguration(Package.name)
 
 	const cloudApiUrl = config.get<string>("cloudApiUrl")?.trim() || undefined
-	const cloudProviderUrl = config.get<string>("cloudProviderUrl")?.trim() || undefined
 	const clerkBaseUrl = config.get<string>("clerkBaseUrl")?.trim() || undefined
 
 	setRooCodeApiUrl(cloudApiUrl)
-	setRooCodeProviderUrl(cloudProviderUrl)
 	setClerkBaseUrl(clerkBaseUrl)
 }
 
@@ -70,7 +67,6 @@ export function registerCloudUrlsSubscription(context: vscode.ExtensionContext):
 		vscode.workspace.onDidChangeConfiguration((e) => {
 			if (
 				e.affectsConfiguration(`${Package.name}.cloudApiUrl`) ||
-				e.affectsConfiguration(`${Package.name}.cloudProviderUrl`) ||
 				e.affectsConfiguration(`${Package.name}.clerkBaseUrl`) ||
 				e.affectsConfiguration(`${Package.name}.bridgeRetryDelayMs`)
 			) {

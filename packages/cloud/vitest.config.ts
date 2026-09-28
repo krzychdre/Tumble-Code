@@ -1,14 +1,6 @@
-import { configDefaults, defineConfig } from "vitest/config"
+import { defineRooVitestConfig } from "@roo-code/config-vitest"
 
-export default defineConfig({
-	test: {
-		globals: true,
-		environment: "node",
-		watch: false,
-		// Vitest 4 stopped excluding dist/ by default; keep build output (tsc emits
-		// compiled copies of the specs there) out of the run.
-		exclude: [...configDefaults.exclude, "**/dist/**"],
-	},
+export default defineRooVitestConfig({
 	resolve: {
 		alias: {
 			vscode: new URL("./src/__mocks__/vscode.ts", import.meta.url).pathname,

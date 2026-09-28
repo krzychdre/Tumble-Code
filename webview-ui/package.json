@@ -74,6 +74,7 @@
 	},
 	"devDependencies": {
 		"@roo-code/config-eslint": "workspace:^",
+		"@roo-code/config-vitest": "workspace:^",
 		"@babel/core": "^7.29.0",
 		"@rolldown/plugin-babel": "^0.2.4",
 		"@tailwindcss/vite": "^4.3.3",

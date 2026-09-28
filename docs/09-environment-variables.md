@@ -22,13 +22,12 @@ The same-named VS Code settings take priority over most of the extension variabl
 | `ROO_TEST_LOGS`                                                                | `src/utils/logging/index.ts`                                                                                                                                                          | Under tests (`NODE_ENV=test`), `1` turns the real CompactLogger on (off by default so test output stays clean).                                                                                     |
 | `NODE_ENV`                                                                     | `src/extension.ts`, `i18n/setup.ts`, `CustomModesManager`, `SkillsManager`, `utils/logging/index.ts`, `core/webview/PlanReviewPanel.ts`, `apps/cli/src/lib/utils/react-production.ts` | `development`/`production` selects dev behaviour (HMR port, i18n reload, hot-reloading custom modes/skills, plan-review dev page, production React builds in the CLI). `test` switches logging off. |
 | `VITE_PORT`                                                                    | `src/core/webview/PlanReviewPanel.ts`                                                                                                                                                 | Set by the dev launch config; its presence switches the plan-review panel to the Vite dev server.                                                                                                   |
-| `NODE_TLS_REJECT_UNAUTHORIZED`                                                 | `src/utils/networkProxy.ts`                                                                                                                                                           | Temporarily set to `0` while the network proxy is active (global-agent 4.x reads it); the original value is restored afterwards. Do not set globally — it disables TLS verification.                |
+| `NODE_TLS_REJECT_UNAUTHORIZED`                                                 | `src/utils/networkProxy.ts`                                                                                                                                                           | Temporarily set to `0` while the network proxy is active (global-agent 4.x reads it); the original value is restored afterwards. Do not set globally: it disables TLS verification.                 |
 | `GLOBAL_AGENT_HTTP_PROXY`, `GLOBAL_AGENT_HTTPS_PROXY`, `GLOBAL_AGENT_NO_PROXY` | `src/utils/networkProxy.ts`                                                                                                                                                           | Written from the network-proxy setting when the proxy is enabled; global-agent reads them for outbound HTTP(S). Not meant to be set by hand.                                                        |
 | `POSTHOG_API_KEY`                                                              | `packages/telemetry/src/PostHogTelemetryClient.ts`, `src/core/webview/ProviderStateBuilder.ts`                                                                                        | The PostHog project key. Empty means telemetry is off. Dev setups point it at the local collector.                                                                                                  |
 | `POSTHOG_HOST`                                                                 | `packages/telemetry/src/PostHogTelemetryClient.ts`                                                                                                                                    | PostHog host; defaults to `http://localhost:8080/telemetry` (the self-hosted collector).                                                                                                            |
 | `CLERK_BASE_URL`                                                               | `packages/cloud/src/config.ts` (`getClerkBaseUrl`)                                                                                                                                    | Auth (Clerk-compatible facade) base URL. Overridden by the `roo-cline.clerkBaseUrl` setting; auto-detects to the API URL for self-hosted when unset.                                                |
 | `ROO_CODE_API_URL`                                                             | `packages/cloud/src/config.ts` (`getRooCodeApiUrl`)                                                                                                                                   | Cloud API base URL. Overridden by the `roo-cline.cloudApiUrl` setting. Defaults to `https://app.tumblecode.dev`.                                                                                    |
-| `ROO_CODE_PROVIDER_URL`                                                        | `packages/cloud/src/config.ts` (`getRooCodeProviderUrl`)                                                                                                                              | **Dead.** The getter has no caller outside tests since the cloud proxy provider was removed; only the `cloudProviderUrl` setting keeps the override from mattering. Do not set (see D15).           |
 | `ROO_CODE_DISABLE_TELEMETRY`                                                   | `packages/cloud/src/TelemetryClient.ts`                                                                                                                                               | `1` makes the cloud telemetry client a no-op regardless of settings.                                                                                                                                |
 | `PKG_NAME`, `PKG_VERSION`, `PKG_OUTPUT_CHANNEL`, `PKG_SHA`                     | `src/shared/package.ts`, `apps/vscode-nightly/esbuild.mjs`                                                                                                                            | Injected at build time by esbuild `define`, never read from a real environment: the package name/version/output channel/git sha baked into the bundle.                                              |
 | `DEBUG`                                                                        | `packages/vscode-shim/src/utils/logger.ts`                                                                                                                                            | Any non-empty value enables the shim's `debug()` log lines (used by the CLI host).                                                                                                                  |
@@ -36,7 +35,7 @@ The same-named VS Code settings take priority over most of the extension variabl
 
 ## CLI runtime contract (`packages/types/src/cli-runtime.ts`)
 
-Six variables the CLI sets for the extension it hosts. Names come from `CLI_RUNTIME_ENV` — import that constant, never
+Six variables the CLI sets for the extension it hosts. Names come from `CLI_RUNTIME_ENV`; import that constant, never
 a string literal. `packages/vscode-shim` still reads two `globalThis` slots by literal name; see
 [architecture.md](architecture.md#the-cli-runtime-contract).
 
@@ -64,7 +63,7 @@ openai-native), `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`, `LITELLM_API_KEY`, `DEEP
 `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, `GOOGLE_GEMINI_BASE_URL`, `OPENROUTER_BASE_URL`, `LITELLM_BASE_URL`,
 `DEEPSEEK_BASE_URL`, `OLLAMA_BASE_URL`, `LMSTUDIO_BASE_URL`, `AWS_BEDROCK_ENDPOINT`, `MISTRAL_BASE_URL`,
 `MOONSHOT_BASE_URL`, `MINIMAX_BASE_URL`. Keyless providers (codex, lmstudio, bedrock, vertex, qwen-code) resolve
-credentials through OAuth caches, the AWS SDK or gcloud instead — those SDK chains bring their own standard variables
+credentials through OAuth caches, the AWS SDK or gcloud instead; those SDK chains bring their own standard variables
 (`AWS_*`, `GOOGLE_APPLICATION_CREDENTIALS`, ...), which this page does not duplicate.
 
 ## Agent interchange (`packages/agent-interchange`)
@@ -93,12 +92,12 @@ template.
 | `API_BASE_URL`                                                        | required                           | Public URL of this API.                                                                               |
 | `PORT`                                                                | `8085`                             | Listen port.                                                                                          |
 | `LOG_LEVEL`                                                           | `INFO`                             | Service log level (DEBUG/INFO/WARNING/ERROR/CRITICAL).                                                |
-| `JWT_ALGORITHM` / `JWT_SECRET` / `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` | `HS256` / required(HS) / — / —     | JWT signing; RS256 uses the PEM key paths instead of the shared secret.                               |
+| `JWT_ALGORITHM` / `JWT_SECRET` / `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` | `HS256` / required(HS) / - / -     | JWT signing; RS256 uses the PEM key paths instead of the shared secret.                               |
 | `CLIENT_TOKEN_IDLE_DAYS`                                              | `30`                               | Days the extension's token may go unused before expiring; `0` = never.                                |
 | `AUTHENTIK_BASE_URL`                                                  | required                           | Front-channel (browser) Authentik URL.                                                                |
 | `AUTHENTIK_INTERNAL_URL`                                              | falls back to `AUTHENTIK_BASE_URL` | Back-channel (server-to-server) URL; compose service name inside docker.                              |
 | `AUTHENTIK_APP_SLUG`                                                  | `tumble-code`                      | Authentik application slug.                                                                           |
-| `AUTHENTIK_CLIENT_ID` / `AUTHENTIK_CLIENT_SECRET`                     | `tumble-code` / —                  | OAuth2 client credentials (the blueprint provisions the same values into Authentik).                  |
+| `AUTHENTIK_CLIENT_ID` / `AUTHENTIK_CLIENT_SECRET`                     | `tumble-code` / -                  | OAuth2 client credentials (the blueprint provisions the same values into Authentik).                  |
 | `AUTHENTIK_REDIRECT_URI`                                              | required                           | OAuth2 redirect URI.                                                                                  |
 | `CORS_ORIGINS`                                                        | empty                              | Extra trusted origins (comma-separated or JSON array); `*` ignored with a warning (DEF-S8).           |
 | `WEB_ALLOWED_NETWORKS`                                                | empty (open)                       | IPs/CIDRs allowed to open the web panel.                                                              |
@@ -129,19 +128,24 @@ Read by the test harnesses; set in CI, rarely by hand.
 | `OPENROUTER_API_KEY`, `ZAI_API_KEY`, `DEEPSEEK_API_KEY`            | `apps/vscode-e2e/src/suite/providers/`, `test-utils.ts` | Real provider keys for the live provider e2e tests.        |
 | `AIMOCK_URL`, `AIMOCK_RECORD`                                      | `apps/vscode-e2e/src/suite/providers/`                  | The @copilotkit/aimock mock server (record/replay mode).   |
 | `CI`                                                               | `src/vitest.config.ts`                                  | Adjusts vitest when running under CI.                      |
+| `GITHUB_ACTIONS`                                                   | `packages/config-vitest/index.js` (`resolveVerbosity`)  | `true` adds the github-actions reporter to src/webview-ui. |
+| `ROO_CLI_FAKE_AI_MODULE`                                           | `apps/cli/src/lib/utils/fake-ai-module.ts`              | Integration suite only: runs the CLI on a scripted model.  |
+| `VSCODE_TEXTMATE_DEBUG`                                            | `webview-ui/vite.config.ts`                             | Baked into the webview bundle at build time (`define`).    |
+| `npm_execpath`                                                     | `scripts/bootstrap.mjs`                                 | Set by the package manager; tells bootstrap pnpm is used.  |
 | `BOOTSTRAP_IN_PROGRESS`                                            | `scripts/bootstrap.mjs`                                 | Guards the bootstrap script against re-entry.              |
 | `ZAI_API_KEY`, `VLLM_BASE_URL`, `VLLM_API_KEY`, `VLLM_METRICS_URL` | `scripts/agent-bench/`                                  | Keys/endpoints for the cache-probe scripts (Z.ai / vLLM).  |
 | `ROO_CLI_ROOT`                                                     | `apps/cli/scripts/integration/`                         | The integration harness points the CLI at a build to test. |
 
-## Dead or near-dead variables (found by this audit, see D15)
+## Removed variables (D15)
 
-- `ROO_CODE_PROVIDER_URL` — the getter `getRooCodeProviderUrl` has no caller outside tests (the cloud proxy provider
-  was removed); the `roo-cline.cloudProviderUrl` setting still feeds the runtime override, so the value can be set but
-  nothing reads it.
+- `ROO_CODE_PROVIDER_URL`: removed in D15 together with the `tumble-code.cloudProviderUrl` setting and
+  `getRooCodeProviderUrl`/`setRooCodeProviderUrl` in `packages/cloud/src/config.ts`. The getter had no caller outside
+  tests after the cloud proxy provider was removed, so a value could be set but nothing read it.
 - `SDK_BASE_URL` / `ROO_SDK_BASE_URL`: removed in D6 together with the old tRPC client (`apps/cli/src/lib/sdk`),
-  which was its only reader. `AUTH_BASE_URL`/`ROO_AUTH_BASE_URL` is still live (`tumble auth login`).
+  which was its only reader.
 
-Removing `ROO_CODE_PROVIDER_URL` is a code change with its own PR (D15), not part of the docs page.
+What is left of the cloud URL family: `ROO_CODE_API_URL` and `CLERK_BASE_URL` (extension, overridable by settings),
+`ROO_AUTH_BASE_URL` (CLI sign-in page) and `POSTHOG_HOST` (telemetry collector).
 
 ## Settings versus environment
 
