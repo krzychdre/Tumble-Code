@@ -11,8 +11,8 @@
  * predicate plus auth/payload conditions that warrant switching handlers
  * (401/403, 400).
  *
- * The task retry loop (`TaskApiLoop.handleApiRequestError` and
- * `handleStreamError`, with `RetryHandler` for the backoff) uses the lightest
+ * The task retry loop (`RetryHandler.handleApiRequestError` and
+ * `TaskApiLoop.handleStreamError`) uses the lightest
  * policy, {@linkcode isAutoRetryableApiError}: apart from the context-window
  * case, with auto-approval on it retries every failed request except the
  * statuses that never fix themselves (401, 403, 404), for which it asks the

@@ -130,11 +130,13 @@ describe("TaskApiLoop request signal (API-5)", () => {
 		})
 		const { loop, access } = makeTask()
 		access.api.createMessage = createMessage
-		const handleError = vi.spyOn(loop as any, "handleApiRequestError").mockImplementation(async function* (
-			error: unknown,
-		) {
-			yield { type: "text", text: `handled: ${(error as Error).message}` }
-		})
+		// S3: the first-chunk error dispatch lives on RetryHandler; the loop
+		// calls it with a callback that re-enters attemptApiRequest.
+		const handleError = vi
+			.spyOn((loop as any).retryHandler, "handleApiRequestError")
+			.mockImplementation(async function* (error: unknown) {
+				yield { type: "text", text: `handled: ${(error as Error).message}` }
+			})
 
 		const stream = loop.attemptApiRequest()
 		const pending = stream.next()

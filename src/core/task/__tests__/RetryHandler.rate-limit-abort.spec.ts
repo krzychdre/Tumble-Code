@@ -16,9 +16,15 @@ function makeHandler(overrides: Partial<RetryHandlerAccess> = {}) {
 		taskId: "test-task",
 		instanceId: "test-instance",
 		abort: false,
+		isBackground: false,
 		apiConfiguration: { apiProvider: "anthropic", rateLimitSeconds: 30 },
+		api: { getModel: () => ({ id: "test-model" }) } as unknown as RetryHandlerAccess["api"],
+		contextManager: {
+			handleContextWindowExceededError: vi.fn().mockResolvedValue(undefined),
+		} as unknown as RetryHandlerAccess["contextManager"],
 		providerRef: new WeakRef(provider),
 		askSay: { say } as unknown as TaskAskSay,
+		abortTask: vi.fn().mockResolvedValue(undefined),
 		...overrides,
 	}
 	return { handler: new RetryHandler(access), access, say }
