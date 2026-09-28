@@ -1,6 +1,7 @@
 import delay from "delay"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { getModeBySlug } from "../../shared/modes"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
@@ -83,7 +84,7 @@ export class SwitchModeTool extends BaseTool<"switch_mode"> {
 			toolCallId: block.id,
 		})
 
-		await task.ask("tool", partialMessage, block.partial).catch(() => {})
+		await task.ask("tool", partialMessage, block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

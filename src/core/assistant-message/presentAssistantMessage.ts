@@ -259,17 +259,14 @@ export async function presentAssistantMessage(cline: Task) {
 		case "tool_use": {
 			// Native tool calling is the only supported tool calling mechanism.
 			// A tool_use block without an id is invalid and cannot be executed.
-			const toolCallId = (block as any).id as string | undefined
+			const toolCallId = block.id as string | undefined
 			if (!toolCallId) {
 				const errorMessage =
 					"Invalid tool call: missing tool_use.id. XML tool calls are no longer supported. Remove any XML tool markup (e.g. <read_file>...</read_file>) and use native tool calling instead."
 				// Record a tool error for visibility/telemetry. Use the reported tool name if present.
 				try {
-					if (
-						typeof (cline as any).recordToolError === "function" &&
-						typeof (block as any).name === "string"
-					) {
-						;(cline as any).recordToolError((block as any).name as ToolName, errorMessage)
+					if (typeof block.name === "string") {
+						cline.recordToolError(block.name as ToolName, errorMessage)
 					}
 				} catch {
 					// Best-effort only

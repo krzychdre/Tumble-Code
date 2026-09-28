@@ -24,6 +24,26 @@
  */
 
 /**
+ * The fields provider SDKs (and `handleProviderError`) put on an error, as
+ * this module and the provider error handlers read them. Nothing here is
+ * validated: every field is optional and read defensively.
+ */
+export type ProviderErrorFields = {
+	status?: unknown
+	statusCode?: unknown
+	status_code?: unknown
+	code?: unknown
+	name?: unknown
+	/** Bedrock's exception type name. */
+	__type?: unknown
+	/** AWS SDK v3 response metadata. */
+	$metadata?: { httpStatusCode?: unknown }
+	errorDetails?: unknown
+	/** OpenRouter puts the upstream provider's raw error text here. */
+	error?: { metadata?: { raw?: string } }
+}
+
+/**
  * The HTTP status of a provider error, whatever the SDK calls it:
  * - `status`: OpenAI, Anthropic and Google GenAI SDKs, and the errors our own
  *   handlers throw through `handleProviderError`.
@@ -36,7 +56,7 @@
  */
 export function getApiErrorStatus(error: unknown): number | undefined {
 	if (error == null || typeof error !== "object") return undefined
-	const e = error as any
+	const e = error as ProviderErrorFields
 	const candidates = [e.status, e.statusCode, e.status_code, e.$metadata?.httpStatusCode]
 	return candidates.find((value): value is number => typeof value === "number")
 }
@@ -57,7 +77,7 @@ export function getApiErrorStatus(error: unknown): number | undefined {
  */
 export function isRetryableApiError(error: unknown): boolean {
 	if (error == null) return false
-	const e = error as any
+	const e = error as ProviderErrorFields
 
 	// Network / connectivity (provider offline, DNS, timeout).
 	if (e.code === "ECONNRESET" || e.code === "ETIMEDOUT" || e.code === "ENOTFOUND" || e.code === "EAI_AGAIN") {

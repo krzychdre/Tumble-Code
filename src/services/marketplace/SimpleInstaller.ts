@@ -27,8 +27,10 @@ export class SimpleInstaller {
 				return await this.installMode(item, target)
 			case "mcp":
 				return await this.installMcp(item, target, options)
-			default:
-				throw new Error(`Unsupported item type: ${(item as any).type}`)
+			default: {
+				const unsupported: never = item
+				throw new Error(`Unsupported item type: ${(unsupported as { type?: unknown }).type}`)
+			}
 		}
 	}
 
@@ -289,8 +291,10 @@ export class SimpleInstaller {
 			case "mcp":
 				await this.removeMcp(item, target)
 				break
-			default:
-				throw new Error(`Unsupported item type: ${(item as any).type}`)
+			default: {
+				const unsupported: never = item
+				throw new Error(`Unsupported item type: ${(unsupported as { type?: unknown }).type}`)
+			}
 		}
 	}
 

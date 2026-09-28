@@ -360,7 +360,7 @@ export class McpConnectionManager {
 			})
 		} else {
 			// Should not happen if validateServerConfig is correct
-			throw new Error(`Unsupported MCP server type: ${(config as any).type}`)
+			throw new Error(`Unsupported MCP server type: ${(config as { type?: unknown }).type}`)
 		}
 
 		this.installTransportHandlers(

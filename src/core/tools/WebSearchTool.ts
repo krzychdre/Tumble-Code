@@ -1,6 +1,7 @@
 import { resolveWebToolsConfig, WEB_TOOLS_DEFAULTS } from "@roo-code/types"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import type { ToolUse } from "../../shared/tools"
 import {
@@ -119,7 +120,7 @@ export class WebSearchTool extends BaseTool<"web_search"> {
 				}),
 				block.partial,
 			)
-			.catch(() => {})
+			.catch(ignorePartialAskRejection)
 	}
 }
 

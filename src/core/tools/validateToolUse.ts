@@ -150,7 +150,7 @@ export function isToolAllowedForMode(
 	}
 
 	// Always allow these tools (unless explicitly disabled above)
-	if (ALWAYS_AVAILABLE_TOOLS.includes(tool as any)) {
+	if ((ALWAYS_AVAILABLE_TOOLS as readonly string[]).includes(tool)) {
 		return true
 	}
 

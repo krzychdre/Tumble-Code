@@ -5,6 +5,7 @@ import { type ClineSayTool } from "@roo-code/types"
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import type { ToolUse } from "../../shared/tools"
 
 import { BaseTool, type ToolCallbacks } from "./BaseTool"
@@ -91,7 +92,7 @@ export class SearchReplaceTool extends BaseTool<"search_replace"> {
 			toolCallId: block.id,
 		}
 
-		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})
+		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

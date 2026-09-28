@@ -133,10 +133,10 @@ export class AnthropicHandler extends BaseProvider implements SingleCompletionHa
 					stream: true,
 					...nativeToolParams,
 				}
-				stream = (await this.client.messages.create(
+				stream = await this.client.messages.create(
 					requestParams as Anthropic.Messages.MessageCreateParamsStreaming,
 					{ signal: metadata?.signal },
-				)) as any
+				)
 			} catch (error) {
 				TelemetryService.instance.captureException(
 					new ApiProviderError(

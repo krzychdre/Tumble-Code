@@ -3,6 +3,7 @@ import * as path from "path"
 import { type ClineSayTool, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { listFiles } from "../../services/glob/list-files"
 import { getReadablePath } from "../../utils/path"
@@ -88,7 +89,7 @@ export class ListFilesTool extends BaseTool<"list_files"> {
 		}
 
 		const partialMessage = JSON.stringify({ ...sharedMessageProps, content: "" } satisfies ClineSayTool)
-		await task.ask("tool", partialMessage, block.partial).catch(() => {})
+		await task.ask("tool", partialMessage, block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

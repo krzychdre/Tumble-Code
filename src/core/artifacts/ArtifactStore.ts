@@ -2,6 +2,7 @@ import * as fs from "fs"
 import * as path from "path"
 
 import { getTaskDirectoryPath } from "../../utils/storage"
+import { logger } from "../../utils/logging"
 
 /**
  * Kinds of task artifact.
@@ -185,6 +186,11 @@ async function flushToDisk(filePath: string): Promise<void> {
  * // artifact.id === "tool-1706119234567.txt"
  * ```
  */
+/** Cleanup is best effort: a file that cannot be deleted now is retried on the next cleanup. */
+function logArtifactCleanupFailure(error: unknown): void {
+	logger.debug(`[ArtifactStore] artifact not removed: ${String(error)}`)
+}
+
 export class ArtifactStore {
 	/**
 	 * @param taskDir - Absolute path of the task directory that owns the artifacts.
@@ -254,7 +260,9 @@ export class ArtifactStore {
 			await flushToDisk(tempPath)
 			await fs.promises.rename(tempPath, filePath)
 		} catch (error) {
-			await fs.promises.unlink(tempPath).catch(() => {})
+			await fs.promises.unlink(tempPath).catch(() => {
+				// The temp file may never have been created; the write error below is what matters.
+			})
 			throw error
 		} finally {
 			claimedPaths.delete(filePath)
@@ -292,7 +300,7 @@ export class ArtifactStore {
 			const files = await fs.promises.readdir(storageDir)
 			for (const file of files) {
 				if (kinds.some((kind) => file.startsWith(`${kind}-`))) {
-					await fs.promises.unlink(path.join(storageDir, file)).catch(() => {})
+					await fs.promises.unlink(path.join(storageDir, file)).catch(logArtifactCleanupFailure)
 				}
 			}
 		} catch {
@@ -318,7 +326,7 @@ export class ArtifactStore {
 			for (const file of files) {
 				const match = file.match(pattern)
 				if (match && !keepTimestamps.has(match[1])) {
-					await fs.promises.unlink(path.join(storageDir, file)).catch(() => {})
+					await fs.promises.unlink(path.join(storageDir, file)).catch(logArtifactCleanupFailure)
 				}
 			}
 		} catch {

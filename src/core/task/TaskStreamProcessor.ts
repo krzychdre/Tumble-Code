@@ -16,7 +16,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { type ApiHandler } from "../../api"
-import { type ApiStream, type GroundingSource } from "../../api/transform/stream"
+import { type ApiStream, type ApiStreamChunk, type GroundingSource } from "../../api/transform/stream"
 
 import { calculateApiCostAnthropic, calculateApiCostOpenAI, findLastIndex } from "@roo-code/core/browser"
 
@@ -26,6 +26,7 @@ import { type ClineProvider } from "../webview/ClineProvider"
 
 import { AssistantMessageAssembler, type AssistantMessageAssemblerAccess } from "./AssistantMessageAssembler"
 import { StreamToolCallHandler, type StreamToolCallHandlerAccess } from "./StreamToolCallHandler"
+import type { Task } from "./Task"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
@@ -93,7 +94,7 @@ export interface TaskStreamProcessorAccess extends StreamToolCallHandlerAccess, 
 export class TaskStreamProcessor {
 	constructor(
 		private readonly access: TaskStreamProcessorAccess,
-		private readonly _task: any,
+		private readonly _task: Task,
 	) {
 		// Created in the constructor body (not as field initializers): with
 		// useDefineForClassFields semantics, field initializers run before the
@@ -211,7 +212,7 @@ export class TaskStreamProcessor {
 	 * Process a single chunk from the API stream.
 	 * Handles reasoning, usage, grounding, tool_call_partial, tool_call, and text chunks.
 	 */
-	processChunk(chunk: any, streamModelInfo: ModelInfo): void {
+	processChunk(chunk: ApiStreamChunk, streamModelInfo: ModelInfo): void {
 		if (this._firstChunkTs === undefined) {
 			this._firstChunkTs = performance.now()
 		}
@@ -584,8 +585,8 @@ export class TaskStreamProcessor {
 		lastApiReqIndex: number,
 		currentTokens: TokenSnapshot,
 		streamModelInfo: ModelInfo,
-		iterator: AsyncGenerator<any>,
-		currentItem: IteratorResult<any> | undefined,
+		iterator: AsyncGenerator<ApiStreamChunk>,
+		currentItem: IteratorResult<ApiStreamChunk> | undefined,
 		updateApiReqMsg: UpdateApiReqMsgFn,
 	): (apiReqIndex: number) => Promise<void> {
 		const access = this.access

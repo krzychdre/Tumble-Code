@@ -205,6 +205,7 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 						defaultHeaders: headers,
 						timeout: this.timeoutMs,
 					})
+				// The body is a plain record (fields the SDK overloads do not know), so the call is untyped on purpose.
 				return (client as any).responses.create(body, { signal, headers })
 			},
 			// Per the implementation guide: the Codex backend with a Bearer token.
@@ -226,8 +227,8 @@ export class OpenAiCodexHandler extends BaseProvider implements SingleCompletion
 	}
 
 	private getReasoningEffort(model: OpenAiCodexModel): ReasoningEffortExtended | undefined {
-		const selected = (this.options.reasoningEffort as any) ?? (model.info.reasoningEffort as any)
-		return selected && selected !== "disable" && selected !== "none" ? (selected as any) : undefined
+		const selected = this.options.reasoningEffort ?? model.info.reasoningEffort
+		return selected && selected !== "disable" && selected !== "none" ? selected : undefined
 	}
 
 	override getModel() {

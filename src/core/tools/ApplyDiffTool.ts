@@ -6,6 +6,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { getReadablePath } from "../../utils/path"
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
@@ -301,7 +302,9 @@ export class ApplyDiffTool extends BaseTool<"apply_diff"> {
 			return
 		}
 
-		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial, toolProgressStatus).catch(() => {})
+		await task
+			.ask("tool", JSON.stringify(sharedMessageProps), block.partial, toolProgressStatus)
+			.catch(ignorePartialAskRejection)
 	}
 }
 

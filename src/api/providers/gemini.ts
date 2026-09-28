@@ -1,3 +1,4 @@
+import type OpenAI from "openai"
 import type { Anthropic } from "@anthropic-ai/sdk"
 import {
 	GoogleGenAI,
@@ -269,11 +270,15 @@ export class GeminiHandler extends BaseProvider implements SingleCompletionHandl
 		// Google built-in tools (Grounding, URL Context) are mutually exclusive
 		// with function declarations in the Gemini API, so we always use
 		// function declarations when tools are provided.
-		const functionDeclarations = (metadata?.tools ?? []).map((tool) => ({
-			name: (tool as any).function.name,
-			description: (tool as any).function.description,
-			parametersJsonSchema: sanitizeSchemaForGemini((tool as any).function.parameters),
-		}))
+		// Our tool arrays hold function tools only (never OpenAI "custom" tools).
+		const functionDeclarations = (metadata?.tools ?? []).map((tool) => {
+			const { function: fn } = tool as OpenAI.Chat.ChatCompletionFunctionTool
+			return {
+				name: fn.name,
+				description: fn.description,
+				parametersJsonSchema: sanitizeSchemaForGemini(fn.parameters),
+			}
+		})
 		const availableFunctionNameSet = new Set(functionDeclarations.map((declaration) => declaration.name))
 
 		const tools: GenerateContentConfig["tools"] = [

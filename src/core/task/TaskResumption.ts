@@ -16,6 +16,8 @@ import {
 	type TaskEvents,
 	RooCodeEventName,
 } from "@roo-code/types"
+
+import { type ClineProvider } from "../webview/ClineProvider"
 import { findLastIndex, getLatestTodo } from "@roo-code/core/browser"
 import { formatResponse } from "../prompts/responses"
 import { type ApiMessage } from "../task-persistence"
@@ -47,7 +49,7 @@ export interface TaskResumptionAccess {
 	apiConversationHistory: ApiMessage[]
 
 	// Provider reference
-	providerRef: WeakRef<any> // ClineProvider
+	providerRef: WeakRef<ClineProvider>
 
 	// Delegated modules
 	history: TaskMessageLog

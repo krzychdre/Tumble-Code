@@ -251,10 +251,7 @@ export class MessageManager {
 	 */
 	private async cleanupOrphanedArtifacts(validIds: Set<string>): Promise<void> {
 		try {
-			// Access globalStoragePath and taskId through the task reference
-			const task = this.task as any // Access private member
-			const globalStoragePath = task.globalStoragePath
-			const taskId = task.taskId
+			const { globalStoragePath, taskId } = this.task
 
 			if (!globalStoragePath || !taskId) {
 				return

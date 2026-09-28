@@ -5,6 +5,7 @@ import fs from "fs/promises"
 import { type ClineSayTool, DEFAULT_WRITE_DELAY_MS, SETTINGS_DEFAULTS } from "@roo-code/types"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
@@ -140,7 +141,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 			} else {
 				if (!task.diffViewProvider.isEditing) {
 					const partialMessage = JSON.stringify(sharedMessageProps)
-					await task.ask("tool", partialMessage, true).catch(() => {})
+					await task.ask("tool", partialMessage, true).catch(ignorePartialAskRejection)
 					await task.diffViewProvider.open(relPath, fileExists ? "modify" : "create")
 				}
 
@@ -314,7 +315,7 @@ export class WriteToFileTool extends BaseTool<"write_to_file"> {
 		}
 
 		const partialMessage = JSON.stringify(sharedMessageProps)
-		await task.ask("tool", partialMessage, block.partial).catch(() => {})
+		await task.ask("tool", partialMessage, block.partial).catch(ignorePartialAskRejection)
 
 		if (newContent) {
 			if (!task.diffViewProvider.isEditing) {

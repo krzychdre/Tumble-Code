@@ -183,7 +183,7 @@ export class GenerateImageTool extends BaseTool<"generate_image"> {
 			}
 
 			// OpenRouter is the only supported image-generation provider.
-			const openRouterHandler = new OpenRouterHandler({} as any)
+			const openRouterHandler = new OpenRouterHandler({})
 			const result = await openRouterHandler.generateImage(
 				prompt,
 				selectedModel,

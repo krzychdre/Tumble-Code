@@ -1,4 +1,5 @@
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
@@ -110,7 +111,7 @@ export class UpdateTodoListTool extends BaseTool<"update_todo_list"> {
 			// later complete card under the finalized-duplicate dedup.
 			toolCallId: block.id,
 		})
-		await task.ask("tool", approvalMsg, block.partial).catch(() => {})
+		await task.ask("tool", approvalMsg, block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

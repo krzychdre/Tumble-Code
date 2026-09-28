@@ -130,7 +130,9 @@ export class ProviderSettingsManager {
 	private _lock = Promise.resolve()
 	private lock<T>(cb: () => Promise<T>) {
 		const next = this._lock.then(cb)
-		this._lock = next.catch(() => {}) as Promise<void>
+		this._lock = next.catch(() => {
+			// The caller gets `next`'s rejection; the chain itself must survive it.
+		}) as Promise<void>
 		return next
 	}
 

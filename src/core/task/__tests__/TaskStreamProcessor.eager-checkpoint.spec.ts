@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 import { TaskStreamProcessor, type TaskStreamProcessorAccess } from "../TaskStreamProcessor"
+import type { ApiStreamChunk } from "../../../api/transform/stream"
 
 vi.mock("@roo-code/telemetry", () => ({
 	TelemetryService: {
@@ -53,7 +54,7 @@ function makeTask() {
 	}
 }
 
-function startToolCallChunk(name: string, id = "call_1") {
+function startToolCallChunk(name: string, id = "call_1"): ApiStreamChunk {
 	return { type: "tool_call_partial", index: 0, id, name, arguments: "" }
 }
 

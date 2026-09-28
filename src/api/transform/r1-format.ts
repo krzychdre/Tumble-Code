@@ -185,9 +185,13 @@ export function convertToR1Format(
 								arguments: JSON.stringify(part.input),
 							},
 						})
-					} else if ((part as any).type === "reasoning" && (part as any).text) {
-						// Extract reasoning from content blocks (Task stores it this way)
-						extractedReasoning = (part as any).text
+					} else {
+						// Extract reasoning from content blocks (Task stores it this way);
+						// stored reasoning blocks are not in Anthropic's ContentBlockParam union.
+						const stored = part as { type: string; text?: string }
+						if (stored.type === "reasoning" && stored.text) {
+							extractedReasoning = stored.text
+						}
 					}
 				}
 
@@ -204,7 +208,7 @@ export function convertToR1Format(
 
 				// Check if we can merge with the last message (only if no tool calls)
 				const lastMessage = result[result.length - 1]
-				if (lastMessage?.role === "assistant" && !toolCalls.length && !(lastMessage as any).tool_calls) {
+				if (lastMessage?.role === "assistant" && !toolCalls.length && !lastMessage.tool_calls) {
 					// Merge text content
 					if (typeof lastMessage.content === "string" && typeof assistantMessage.content === "string") {
 						lastMessage.content += `\n${assistantMessage.content}`
@@ -222,7 +226,7 @@ export function convertToR1Format(
 			} else {
 				// Simple string content
 				const lastMessage = result[result.length - 1]
-				if (lastMessage?.role === "assistant" && !(lastMessage as any).tool_calls) {
+				if (lastMessage?.role === "assistant" && !lastMessage.tool_calls) {
 					if (typeof lastMessage.content === "string") {
 						lastMessage.content += `\n${message.content}`
 					} else {

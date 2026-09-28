@@ -18,6 +18,7 @@ import { formatResponse } from "../prompts/responses"
 import { getGitStatus } from "../../utils/git"
 
 import { Task } from "../task/Task"
+import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { formatReminderSection } from "./reminder"
 
 // Transient change-tracking per Task instance (never persisted, so a new or
@@ -62,7 +63,7 @@ export async function getEnvironmentDetails(
 	 * omit it and keep the live read, because they run after a failed request
 	 * where settings may legitimately have changed since cycle start.
 	 */
-	cycleState?: Record<string, any>,
+	cycleState?: ProviderState,
 ) {
 	let details = ""
 
@@ -146,7 +147,9 @@ export async function getEnvironmentDetails(
 		await pWaitFor(() => busyTerminals.every((t) => !TerminalRegistry.isProcessHot(t.id)), {
 			interval: 100,
 			timeout: 5_000,
-		}).catch(() => {})
+		}).catch(() => {
+			// A terminal that stays busy past the timeout is reported as it is.
+		})
 	}
 
 	// Reset, this lets us know when to wait for saved files to update terminals.

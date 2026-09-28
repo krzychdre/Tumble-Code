@@ -1,6 +1,7 @@
 import type { ClineAskUseMcpServer, McpExecutionStatus, McpResourceLink } from "@roo-code/types"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
 import type { ToolUse } from "../../shared/tools"
@@ -104,7 +105,7 @@ export class UseMcpToolTool extends BaseTool<"use_mcp_tool"> {
 			arguments: params.arguments,
 		} satisfies ClineAskUseMcpServer)
 
-		await task.ask("use_mcp_server", partialMessage, true).catch(() => {})
+		await task.ask("use_mcp_server", partialMessage, true).catch(ignorePartialAskRejection)
 	}
 
 	private async validateParams(

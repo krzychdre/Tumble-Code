@@ -12,6 +12,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import pWaitFor from "p-wait-for"
 import {
+	type ModelInfo,
 	type ProviderSettings,
 	type ToolName,
 	type ClineApiReqInfo,
@@ -124,7 +125,7 @@ type EmbeddedReasoningBlock = {
 	type: "reasoning"
 	encrypted_content?: unknown
 	text?: unknown
-	summary?: any[]
+	summary?: unknown[]
 	id?: string
 }
 
@@ -204,7 +205,7 @@ export class ApiRequestBuilder {
 		state: ProviderState | undefined,
 		apiConfiguration: ProviderSettings | undefined,
 		mode: string | undefined,
-		modelInfo: any,
+		modelInfo: ModelInfo,
 	): Promise<ToolsArrayResult> {
 		const provider = this.access.providerRef.deref()
 		if (!provider) {
@@ -289,13 +290,14 @@ export class ApiRequestBuilder {
 		messages: ApiMessage[],
 		preserveReasoning: boolean = false,
 	): Array<
-		Anthropic.Messages.MessageParam | { type: "reasoning"; encrypted_content: string; id?: string; summary?: any[] }
+		| Anthropic.Messages.MessageParam
+		| { type: "reasoning"; encrypted_content: string; id?: string; summary?: unknown[] }
 	> {
 		type ReasoningItemForRequest = {
 			type: "reasoning"
 			encrypted_content: string
 			id?: string
-			summary?: any[]
+			summary?: unknown[]
 		}
 
 		const cleanConversationHistory: (Anthropic.Messages.MessageParam | ReasoningItemForRequest)[] = []

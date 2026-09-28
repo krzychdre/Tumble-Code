@@ -62,7 +62,8 @@ export function toResponsesApiInput(messages: Anthropic.Messages.MessageParam[])
 	const formattedInput: any[] = []
 
 	for (const message of messages) {
-		if ((message as any).type === "reasoning") {
+		// Stored reasoning items travel in the history next to Anthropic messages.
+		if ((message as { type?: unknown }).type === "reasoning") {
 			formattedInput.push(message)
 			continue
 		}

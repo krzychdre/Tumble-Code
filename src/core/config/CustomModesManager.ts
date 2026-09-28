@@ -223,7 +223,7 @@ export class CustomModesManager {
 			return result.data.customModes.map((mode) => ({ ...mode, source }))
 		} catch (error) {
 			// Only log if the error wasn't already handled in parseYamlSafely
-			if (!(error as any).alreadyHandled) {
+			if (!(error as { alreadyHandled?: unknown }).alreadyHandled) {
 				const errorMsg = `Failed to load modes from ${filePath}: ${error instanceof Error ? error.message : String(error)}`
 				console.error(`[CustomModesManager] ${errorMsg}`)
 			}

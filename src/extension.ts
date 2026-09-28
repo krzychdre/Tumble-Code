@@ -508,7 +508,7 @@ export async function deactivate() {
 			}
 
 			if (userInfoHandler) {
-				CloudService.instance.off("user-info", userInfoHandler as any)
+				CloudService.instance.off("user-info", userInfoHandler)
 			}
 
 			outputChannel.appendLine("CloudService event handlers cleaned up")

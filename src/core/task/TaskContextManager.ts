@@ -2,6 +2,7 @@ import OpenAI from "openai"
 import EventEmitter from "events"
 
 import {
+	type ModeConfig,
 	type ProviderSettings,
 	type TokenUsage,
 	type ContextCondense,
@@ -903,7 +904,7 @@ export class TaskContextManager {
 	 * This consolidates the duplicated tool-building logic across multiple methods.
 	 */
 	private async buildCondensingMetadata(
-		customModes: any,
+		customModes: ModeConfig[] | undefined,
 		experiments: Record<string, boolean> | undefined,
 		apiConfiguration: ProviderSettings | undefined,
 		disabledTools: string[] | undefined,

@@ -13,6 +13,7 @@ import type { ClineProvider } from "./ClineProvider"
 import type { ProviderState } from "./ProviderStateBuilder"
 import type { SubagentRegistry } from "./SubagentRegistry"
 import { profileTaskOptions } from "./profileTaskOptions"
+import { logger } from "../../utils/logging"
 
 /** Options of {@link BackgroundTaskRunner.createBackgroundTask}. */
 export interface BackgroundTaskOptions {
@@ -87,6 +88,11 @@ export interface BackgroundTaskHost {
  * TaskLifecycle.prepareAbort / drainAbort), and running background tasks are
  * neither awaited nor aborted by it.
  */
+/** A background task that fails to abort cleanly has nothing left to report to. */
+function logAbortFailure(error: unknown): void {
+	logger.debug(`[BackgroundTaskRunner] abortTask failed: ${String(error)}`)
+}
+
 export class BackgroundTaskRunner {
 	// Headless background tasks (parallel subagents). Keyed by
 	// taskId; entries are removed on completion/abort.
@@ -198,7 +204,7 @@ export class BackgroundTaskRunner {
 				type: "memoryActivity",
 				memoryActivity: { ...this.memoryActivityCounts },
 			})
-			.catch(() => {})
+			.catch((error) => logger.debug(`[BackgroundTaskRunner] memoryActivity not posted: ${String(error)}`))
 	}
 
 	/**
@@ -218,7 +224,7 @@ export class BackgroundTaskRunner {
 			let settled = false
 
 			const onSignalAbort = () => {
-				void task.abortTask().catch(() => {})
+				void task.abortTask().catch(logAbortFailure)
 			}
 
 			const finish = (result: {
@@ -254,7 +260,7 @@ export class BackgroundTaskRunner {
 				if (result.completed) {
 					void task
 						.abortTask(true)
-						.catch(() => {})
+						.catch(logAbortFailure)
 						.then(() => this.cleanupBackgroundTaskFiles(task.taskId))
 				}
 				resolve({ ...result, writtenPaths })

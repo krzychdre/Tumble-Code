@@ -4,6 +4,7 @@ import { RooCodeEventName, type HistoryItem, TelemetryEventName } from "@roo-cod
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { parentAwaitsChild } from "../webview/DelegationService"
 import { formatResponse } from "../prompts/responses"
 import { Package } from "../../shared/package"
@@ -236,10 +237,10 @@ export class AttemptCompletionTool extends BaseTool<"attempt_completion"> {
 
 		if (command) {
 			if (lastMessage && lastMessage.ask === "command") {
-				await task.ask("command", command ?? "", block.partial).catch(() => {})
+				await task.ask("command", command ?? "", block.partial).catch(ignorePartialAskRejection)
 			} else {
 				await task.say("completion_result", result ?? "", undefined, false)
-				await task.ask("command", command ?? "", block.partial).catch(() => {})
+				await task.ask("command", command ?? "", block.partial).catch(ignorePartialAskRejection)
 			}
 		} else {
 			await task.say("completion_result", result ?? "", undefined, block.partial)

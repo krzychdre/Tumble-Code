@@ -77,7 +77,7 @@ export async function readMemoriesForSurfacing(
 	const results = await Promise.all(
 		selected.map(async ({ path: filePath, mtimeMs }): Promise<RelevantMemory | null> => {
 			try {
-				const content = await fs.readFile(filePath, { encoding: "utf-8", signal: signal as any })
+				const content = await fs.readFile(filePath, { encoding: "utf-8", signal })
 				const lines = content.split("\n")
 				const truncatedByLines = lines.length > MAX_MEMORY_LINES
 				let body = truncatedByLines ? lines.slice(0, MAX_MEMORY_LINES).join("\n") : content

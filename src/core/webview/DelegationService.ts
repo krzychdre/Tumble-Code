@@ -11,7 +11,7 @@ import {
 
 import type { Mode } from "../../shared/modes"
 import type { Task } from "../task/Task"
-import type { TaskHistoryStore } from "../task-persistence"
+import type { ApiMessage, TaskHistoryStore } from "../task-persistence"
 import { readApiMessages, saveApiMessages, saveTaskMessages } from "../task-persistence"
 import { readTaskMessages } from "../task-persistence/taskMessages"
 import { validateAndFixToolResultIds } from "../task/validateToolResultIds"
@@ -165,7 +165,7 @@ export class DelegationService {
 		//    The mode switch must happen before createTask() because the Task constructor
 		//    initializes its mode from provider.getState() during initializeTaskMode().
 		try {
-			await this.host.handleModeSwitch(mode as any)
+			await this.host.handleModeSwitch(mode)
 		} catch (e) {
 			this.host.log(
 				`[delegateParentAndOpenChild] handleModeSwitch failed for mode '${mode}': ${
@@ -186,7 +186,7 @@ export class DelegationService {
 		// startTask() races with step 5's atomicReadAndUpdate, and the last
 		// writer to the parent's history_item.json overwrites the other's
 		// changes, causing the parent's delegation fields to be lost.
-		const child = await this.host.createTask(message, undefined, parent as any, {
+		const child = await this.host.createTask(message, undefined, parent, {
 			initialTodos,
 			initialStatus: "active",
 			startTask: false,
@@ -381,12 +381,12 @@ export class DelegationService {
 			// 5: Untouched-tail proof: read the parent's persisted API messages and scan
 			//    backward for the last `new_task` tool_use, then verify NO later message
 			//    contains a `tool_result` with that tool_use_id.
-			let parentApiMessages: any[] = []
+			let parentApiMessages: ApiMessage[] = []
 			try {
-				parentApiMessages = (await readApiMessages({
+				parentApiMessages = await readApiMessages({
 					taskId: parentTaskId,
 					globalStoragePath: this.host.contextProxy.globalStorageUri.fsPath,
-				})) as any[]
+				})
 			} catch (readErr) {
 				this.host.log(
 					`[tryReattachDelegatedParent] Rejecting: failed to read parent API messages for ${parentTaskId}: ${
@@ -484,12 +484,12 @@ export class DelegationService {
 			parentClineMessages = []
 		}
 
-		let parentApiMessages: any[] = []
+		let parentApiMessages: ApiMessage[] = []
 		try {
-			parentApiMessages = (await readApiMessages({
+			parentApiMessages = await readApiMessages({
 				taskId: parentTaskId,
 				globalStoragePath,
-			})) as any[]
+			})
 		} catch {
 			parentApiMessages = []
 		}
@@ -588,7 +588,7 @@ export class DelegationService {
 			}
 		}
 
-		await saveApiMessages({ messages: parentApiMessages as any, taskId: parentTaskId, globalStoragePath })
+		await saveApiMessages({ messages: parentApiMessages, taskId: parentTaskId, globalStoragePath })
 
 		// 3) Close child instance if still open (single-open-task invariant).
 		//    This MUST happen BEFORE updating the child's status to "completed" because
@@ -667,7 +667,7 @@ export class DelegationService {
 				// non-fatal
 			}
 			try {
-				await parentInstance.overwriteApiConversationHistory(parentApiMessages as any)
+				await parentInstance.overwriteApiConversationHistory(parentApiMessages)
 			} catch {
 				// non-fatal
 			}

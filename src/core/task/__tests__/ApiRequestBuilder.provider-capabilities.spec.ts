@@ -22,7 +22,10 @@ describe("ApiRequestBuilder tool restrictions follow the provider capability", (
 			deferredToolDirectory: new Map(),
 		} as unknown as ApiRequestBuilderAccess
 
-		await new ApiRequestBuilder(access).buildToolsArray({} as never, { apiProvider } as never, "code", {})
+		await new ApiRequestBuilder(access).buildToolsArray({} as never, { apiProvider } as never, "code", {
+			contextWindow: 128_000,
+			supportsPromptCache: false,
+		})
 
 		return buildToolsMock.mock.calls[0][0].includeAllToolsWithRestrictions
 	}

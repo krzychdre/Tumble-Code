@@ -15,6 +15,7 @@ import {
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 
 import { ToolUse, ToolResponse } from "../../shared/tools"
 import { formatResponse } from "../prompts/responses"
@@ -206,7 +207,7 @@ export class ExecuteCommandTool extends BaseTool<"execute_command"> {
 
 	override async handlePartial(task: Task, block: ToolUse<"execute_command">): Promise<void> {
 		const command = block.params.command
-		await task.ask("command", command ?? "", block.partial).catch(() => {})
+		await task.ask("command", command ?? "", block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

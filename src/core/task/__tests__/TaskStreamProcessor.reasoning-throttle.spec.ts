@@ -121,7 +121,8 @@ async function runStream(steps: Step[], gapMs: number, chunkSize = 4) {
 	const harness = makeHarness()
 	await harness.processor.resetStreamingState()
 	for (const step of steps) {
-		const [type, text] = "reasoning" in step ? ["reasoning", step.reasoning] : ["text", step.text]
+		const [type, text] =
+			"reasoning" in step ? (["reasoning", step.reasoning] as const) : (["text", step.text] as const)
 		for (const chunk of chunksOf(text, chunkSize)) {
 			await vi.advanceTimersByTimeAsync(gapMs)
 			harness.processor.processChunk({ type, text: chunk }, modelInfo)

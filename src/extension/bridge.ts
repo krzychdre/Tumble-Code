@@ -57,6 +57,9 @@ export function setupRemoteControlBridge(opts: {
 		showTaskWithId: (id: string) => provider.showTaskWithId(id),
 		postStateToWebview: () => provider.postStateToWebview(),
 		contextProxy: {
+			// The bridge protocol carries untyped key/value pairs; ContextProxy.setValue
+			// wants a known settings key with its value type, which only the remote
+			// caller knows, so the cast stays.
 			setValue: (key: string, value: unknown) => provider.contextProxy.setValue(key as any, value as any),
 		},
 	}

@@ -344,7 +344,7 @@ export class NativeOllamaHandler extends BaseProvider implements SingleCompletio
 			)
 
 			// Store stream reference so cancelRequest() can abort it
-			this.currentStream = stream as any
+			this.currentStream = stream
 
 			let totalInputTokens = 0
 			let totalOutputTokens = 0
