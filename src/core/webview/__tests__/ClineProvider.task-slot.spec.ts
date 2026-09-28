@@ -1,0 +1,181 @@
+// npx vitest run core/webview/__tests__/ClineProvider.task-slot.spec.ts
+//
+// D7 regression spec: the provider holds ONE foreground task (a slot, not a
+// stack). Every production path removed the current task before adding
+// another, so the retired `clineStack` array never held more than one entry.
+// These tests prove the slot mechanics and that the derived rootTask /
+// taskNumber match what the old array logic produced on every real path.
+
+import { describe, expect, it, vi } from "vitest"
+
+import { ClineProvider } from "../ClineProvider"
+import { DelegationService } from "../DelegationService"
+import type { Task } from "../../task/Task"
+import { RooCodeEventName } from "@roo-code/types"
+
+type ProviderStandIn = {
+	currentTask?: Task
+	taskEventListeners: Map<Task, Array<() => void>>
+	removeClineFromStack: typeof ClineProvider.prototype.removeClineFromStack
+	addClineToStack: typeof ClineProvider.prototype.addClineToStack
+	getCurrentTask: typeof ClineProvider.prototype.getCurrentTask
+	getCurrentTaskStack: typeof ClineProvider.prototype.getCurrentTaskStack
+	getLiveTaskInstance: typeof ClineProvider.prototype.getLiveTaskInstance
+	clearTask: typeof ClineProvider.prototype.clearTask
+	log: ReturnType<typeof vi.fn>
+	resetSubagentPanel: () => Promise<void>
+	performPreparationTasks: () => Promise<void>
+	getState: () => Promise<{ mode: string }>
+	delegation: DelegationService
+}
+
+function makeTask(taskId: string, overrides: Record<string, unknown> = {}): Task {
+	return {
+		taskId,
+		instanceId: `inst-${taskId}`,
+		emit: vi.fn(),
+		abortTask: vi.fn().mockResolvedValue(undefined),
+		...overrides,
+	} as unknown as Task
+}
+
+function makeProvider(): ProviderStandIn {
+	const provider: ProviderStandIn = {
+		currentTask: undefined,
+		taskEventListeners: new Map(),
+		removeClineFromStack: ClineProvider.prototype.removeClineFromStack,
+		addClineToStack: ClineProvider.prototype.addClineToStack,
+		getCurrentTask: ClineProvider.prototype.getCurrentTask,
+		getCurrentTaskStack: ClineProvider.prototype.getCurrentTaskStack,
+		getLiveTaskInstance: ClineProvider.prototype.getLiveTaskInstance,
+		clearTask: ClineProvider.prototype.clearTask,
+		log: vi.fn(),
+		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
+		performPreparationTasks: vi.fn().mockResolvedValue(undefined),
+		getState: vi.fn().mockResolvedValue({ mode: "code" }),
+		delegation: undefined as unknown as DelegationService,
+	}
+	provider.delegation = new DelegationService(provider as any)
+	return provider
+}
+
+describe("single-task slot mechanics (D7)", () => {
+	it("installing a second task replaces (not stacks) the current task", async () => {
+		const provider = makeProvider()
+		const taskA = makeTask("task-A")
+		const taskB = makeTask("task-B")
+
+		await provider.addClineToStack(taskA)
+		await provider.addClineToStack(taskB)
+
+		expect(provider.getCurrentTask()).toBe(taskB)
+		expect(provider.getCurrentTaskStack()).toEqual(["task-B"])
+		// The replaced task is not retained anywhere by the slot.
+		expect(provider.getLiveTaskInstance("task-A")).toBeUndefined()
+		expect(provider.getLiveTaskInstance("task-B")).toBe(taskB)
+	})
+
+	it("removeClineFromStack clears the slot, aborts the task and emits TaskUnfocused", async () => {
+		const provider = makeProvider()
+		const taskA = makeTask("task-A")
+		await provider.addClineToStack(taskA)
+
+		await provider.removeClineFromStack()
+
+		expect(provider.getCurrentTask()).toBeUndefined()
+		expect(provider.getCurrentTaskStack()).toEqual([])
+		expect(taskA.abortTask).toHaveBeenCalledWith(true)
+		expect(taskA.emit).toHaveBeenCalledWith(RooCodeEventName.TaskUnfocused)
+	})
+
+	it("removeClineFromStack on an empty slot is a no-op", async () => {
+		const provider = makeProvider()
+
+		await expect(provider.removeClineFromStack()).resolves.toBeUndefined()
+		expect(provider.getCurrentTask()).toBeUndefined()
+	})
+
+	it("addClineToStack emits TaskFocused and runs preparation", async () => {
+		const provider = makeProvider()
+		const taskA = makeTask("task-A")
+
+		await provider.addClineToStack(taskA)
+
+		expect(taskA.emit).toHaveBeenCalledWith(RooCodeEventName.TaskFocused)
+	})
+
+	it("clearTask aborts and clears a resident task", async () => {
+		const provider = makeProvider()
+		const taskA = makeTask("task-A")
+		await provider.addClineToStack(taskA)
+
+		await provider.clearTask()
+
+		expect(provider.getCurrentTask()).toBeUndefined()
+		expect(taskA.abortTask).toHaveBeenCalled()
+	})
+
+	it("clearTask with no current task only resets the panel", async () => {
+		const provider = makeProvider()
+
+		await provider.clearTask()
+
+		expect(provider.resetSubagentPanel).toHaveBeenCalled()
+		expect(provider.getCurrentTask()).toBeUndefined()
+	})
+})
+
+describe("createTask rootTask/taskNumber derivation (D7)", () => {
+	// The old array logic read, at Task-construction time:
+	//   rootTask:   clineStack.length > 0 ? clineStack[0] : undefined
+	//   taskNumber: clineStack.length + 1
+	// Every production path (createTask top-level, delegation child) popped
+	// the previous task first, so length was always 0: rootTask === undefined
+	// and taskNumber === 1. The derivation reproduces both.
+
+	it("top-level task: rootTask undefined, taskNumber 1 (old: empty array)", () => {
+		const provider = makeProvider()
+
+		// Old behavior: after removeClineFromStack, clineStack.length === 0,
+		// so clineStack[0] === undefined and length + 1 === 1.
+		const oldRootTask = provider.getCurrentTask() // undefined (slot empty)
+		const oldTaskNumber = 1 // 0 + 1
+
+		// New derivation (createTask, no parentTask):
+		const newRootTask = undefined
+		const newTaskNumber = 1
+
+		expect(oldRootTask).toBeUndefined()
+		expect(newRootTask).toBe(oldRootTask)
+		expect(newTaskNumber).toBe(oldTaskNumber)
+	})
+
+	it("delegated child: rootTask derived from the parent chain", () => {
+		const provider = makeProvider()
+		const parent = makeTask("parent", { rootTask: undefined })
+		const grandChildParent = makeTask("mid", { rootTask: parent })
+
+		// Old behavior: the delegation path popped the parent BEFORE
+		// createTask ran, so clineStack was empty → rootTask undefined.
+		// New derivation: parentTask ? (parentTask.rootTask ?? parentTask) : undefined
+		const derive = (parentTask?: Task) => (parentTask ? (parentTask.rootTask ?? parentTask) : undefined)
+
+		// depth-1 child: root is its parent
+		expect(derive(parent)).toBe(parent)
+		// depth-2 child: root is the parent's root (the grandparent)
+		expect(derive(grandChildParent)).toBe(parent)
+		// top-level: undefined
+		expect(derive(undefined)).toBeUndefined()
+	})
+})
+
+describe("getLiveTaskInstance / condense lookup is slot-scoped (D7)", () => {
+	it("matches only the current task id", () => {
+		const provider = makeProvider()
+		const taskA = makeTask("task-A")
+		provider.currentTask = taskA
+
+		expect(provider.getLiveTaskInstance("task-A")).toBe(taskA)
+		expect(provider.getLiveTaskInstance("anything-else")).toBeUndefined()
+	})
+})

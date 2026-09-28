@@ -853,23 +853,18 @@ describe("ClineProvider", () => {
 		// Setup Cline instance with auto-mock from the top of the file
 		const mockCline = new Task(defaultTaskOptions) // Create a new mocked instance
 
-		// add the mock object to the stack
+		// add the mock object as the current task
 		await provider.addClineToStack(mockCline)
+		expect(provider.getCurrentTask()).toBe(mockCline)
 
-		// get the stack size before the abort call
-		const stackSizeBeforeAbort = provider.getTaskStackSize()
-
-		// call the removeClineFromStack method so it will call the current cline abort and remove it from the stack
+		// call the removeClineFromStack method so it will call the current cline abort and remove it from the slot
 		await provider.removeClineFromStack()
-
-		// get the stack size after the abort call
-		const stackSizeAfterAbort = provider.getTaskStackSize()
 
 		// check if the abort method was called
 		expect(mockCline.abortTask).toHaveBeenCalled()
 
-		// check if the stack size was decreased
-		expect(stackSizeBeforeAbort - stackSizeAfterAbort).toBe(1)
+		// check that the slot was cleared
+		expect(provider.getCurrentTask()).toBeUndefined()
 	})
 
 	describe("clearTask message handler", () => {
@@ -954,11 +949,11 @@ describe("ClineProvider", () => {
 			// Mock the provider methods
 			const clearTaskSpy = vi.spyOn(provider, "clearTask").mockResolvedValue(undefined)
 
-			// Add only one task to stack
+			// Add only one task as the current task
 			await provider.addClineToStack(mockCline)
 
-			// Verify stack size is 1
-			expect(provider.getTaskStackSize()).toBe(1)
+			// Verify the slot holds it
+			expect(provider.getCurrentTask()).toBe(mockCline)
 
 			// Get the message handler
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]
@@ -971,22 +966,21 @@ describe("ClineProvider", () => {
 		})
 	})
 
-	test("addClineToStack adds multiple Cline instances to the stack", async () => {
+	test("addClineToStack replaces the current task (single-task slot, D7)", async () => {
 		// Setup Cline instance with auto-mock from the top of the file
 		const mockCline1 = new Task(defaultTaskOptions) // Create a new mocked instance
 		const mockCline2 = new Task(defaultTaskOptions) // Create a new mocked instance
 		Object.defineProperty(mockCline1, "taskId", { value: "test-task-id-1", writable: true })
 		Object.defineProperty(mockCline2, "taskId", { value: "test-task-id-2", writable: true })
 
-		// add Cline instances to the stack
+		// install the first, then the second — production discipline is
+		// pop-then-push, but even a bare double-add must not stack.
 		await provider.addClineToStack(mockCline1)
 		await provider.addClineToStack(mockCline2)
 
-		// verify cline instances were added to the stack
-		expect(provider.getTaskStackSize()).toBe(2)
-
-		// verify current cline instance is the last one added
+		// verify the slot holds exactly the latest task
 		expect(provider.getCurrentTask()).toBe(mockCline2)
+		expect(provider.getCurrentTaskStack()).toEqual(["test-task-id-2"])
 	})
 
 	// Each state push is built asynchronously: the chat messages are read part-way through and
@@ -1604,7 +1598,7 @@ describe("ClineProvider", () => {
 
 		test("handles case when no current task exists", async () => {
 			// Clear the cline stack
-			;(provider as any).clineStack = []
+			;(provider as any).currentTask = undefined
 
 			// Trigger message deletion
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]

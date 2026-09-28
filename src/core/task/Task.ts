@@ -173,8 +173,8 @@ export interface TaskOptions extends CreateTaskOptions {
 	taskMode?: string
 	/**
 	 * Marks this task as a headless background task (memory writer / parallel
-	 * subagent). Background tasks are not pushed onto the provider's `clineStack`,
-	 * do not drive the webview, and skip their own memory background-writers.
+	 * subagent). Background tasks never occupy the provider's current-task
+	 * slot, do not drive the webview, and skip their own memory background-writers.
 	 */
 	isBackground?: boolean
 	/**

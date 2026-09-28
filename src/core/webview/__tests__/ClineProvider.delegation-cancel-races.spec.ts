@@ -162,7 +162,7 @@ describe("ClineProvider delegation cancel/reopen races", () => {
 			cancelCurrentRequest: vi.fn(),
 			abandoned: false,
 		}
-		;(provider as any).clineStack = [childTask]
+		;(provider as any).currentTask = childTask
 
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 		;(provider as any).updateTaskHistory = updateTaskHistory

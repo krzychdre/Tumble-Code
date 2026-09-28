@@ -76,7 +76,7 @@ import { ClineProvider } from "../../webview/ClineProvider"
 import { attemptCompletionTool, type AttemptCompletionCallbacks } from "../../tools/AttemptCompletionTool"
 
 type ProviderStandIn = {
-	clineStack: Task[]
+	currentTask?: Task
 	taskEventListeners: Map<Task, Array<() => void>>
 	resetSubagentPanel: () => Promise<void>
 	removeClineFromStack: typeof ClineProvider.prototype.removeClineFromStack
@@ -92,7 +92,7 @@ function makeProvider(): ProviderStandIn {
 	// provider, plus the real `clearTask` / `removeClineFromStack` bodies so
 	// the test walks the exact code the webview's "Start New Task" reaches.
 	const provider: ProviderStandIn = {
-		clineStack: [],
+		currentTask: undefined,
 		taskEventListeners: new Map(),
 		resetSubagentPanel: vi.fn().mockResolvedValue(undefined),
 		removeClineFromStack: ClineProvider.prototype.removeClineFromStack,
@@ -111,7 +111,7 @@ function makeProvider(): ProviderStandIn {
 		updateTaskHistory: vi.fn().mockResolvedValue([]),
 		memoryWriterQuery: vi.fn(() => async () => "NONE"),
 		getCurrentTask(this: ProviderStandIn) {
-			return this.clineStack.at(-1)
+			return this.currentTask
 		},
 	}
 	return provider
@@ -135,7 +135,7 @@ function makeTask(provider: ProviderStandIn, options: { parentTaskId?: string; i
 	history.saveClineMessages = vi.fn().mockResolvedValue(undefined)
 	history.updateClineMessage = vi.fn().mockResolvedValue(undefined)
 	;(task as unknown as { checkpointSave: unknown }).checkpointSave = vi.fn().mockResolvedValue(undefined)
-	provider.clineStack.push(task)
+	provider.currentTask = task
 	return task
 }
 
@@ -182,7 +182,7 @@ describe("memory writers after a normally completed task", () => {
 		// ChatView answers completion_result with startNewTask() -> "clearTask".
 		await provider.clearTask()
 
-		expect(provider.clineStack).toHaveLength(0)
+		expect(provider.currentTask).toBeUndefined()
 		expect(task.abandoned).toBe(true)
 		expect(extractSpy).toHaveBeenCalledTimes(1)
 		expect(extractSpy.mock.calls[0][0]).toMatchObject({ taskId: task.taskId, isMainAgent: true })

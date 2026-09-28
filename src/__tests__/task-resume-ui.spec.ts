@@ -204,7 +204,7 @@ function makeProvider(overrides: Record<string, any> = {}) {
 			setProviderSettings: vi.fn(),
 			getProviderSettings: vi.fn(() => ({})),
 		},
-		clineStack: [],
+		currentTask: undefined,
 		taskEventListeners: new Map(),
 		// The real method rather than a stub. The history items these tests use
 		// carry no `parallelChildIds`, so it returns at its first guard and
@@ -248,7 +248,7 @@ describe("createTaskWithHistoryItem – eager state push", () => {
 
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => existingTask),
-			clineStack: [existingTask],
+			currentTask: existingTask,
 			taskEventListeners: new Map([[existingTask, [vi.fn()]]]),
 		})
 
@@ -259,14 +259,11 @@ describe("createTaskWithHistoryItem – eager state push", () => {
 })
 
 describe("showTaskWithId – rootTask/parentTask resolution", () => {
-	it("passes rootTask and parentTask from clineStack when resuming a subtask", async () => {
-		const rootTask = { taskId: "root-1", on: vi.fn(), off: vi.fn(), emit: vi.fn() }
-		const parentTask = { taskId: "parent-1", on: vi.fn(), off: vi.fn(), emit: vi.fn() }
-
+	it("passes undefined rootTask/parentTask when neither matches the current task", async () => {
 		const createTaskWithHistoryItem = vi.fn().mockResolvedValue({})
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
-			clineStack: [rootTask, parentTask],
+			currentTask: { taskId: "other-task", on: vi.fn(), off: vi.fn(), emit: vi.fn() },
 			getHistoryItem: vi.fn().mockResolvedValue({
 				...baseHistoryItem,
 				id: "subtask-1",
@@ -280,15 +277,42 @@ describe("showTaskWithId – rootTask/parentTask resolution", () => {
 
 		expect(createTaskWithHistoryItem).toHaveBeenCalledTimes(1)
 		const callArgs = createTaskWithHistoryItem.mock.calls[0][0]
-		expect(callArgs.rootTask).toBe(rootTask)
-		expect(callArgs.parentTask).toBe(parentTask)
+		expect(callArgs.rootTask).toBeUndefined()
+		expect(callArgs.parentTask).toBeUndefined()
 	})
 
-	it("passes undefined rootTask/parentTask when IDs are not in clineStack", async () => {
+	it("resolves rootTask/parentTask when they match the current task", async () => {
+		// With the single-task slot (D7), the old find() over the stack could
+		// only ever match the current task. A subtask whose root/parent IS the
+		// currently open task gets the live reference back.
+		const currentTask = { taskId: "parent-1", on: vi.fn(), off: vi.fn(), emit: vi.fn() }
+
 		const createTaskWithHistoryItem = vi.fn().mockResolvedValue({})
 		const provider = makeProvider({
-			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
-			clineStack: [],
+			getCurrentTask: vi.fn(() => currentTask),
+			currentTask,
+			getHistoryItem: vi.fn().mockResolvedValue({
+				...baseHistoryItem,
+				id: "subtask-1",
+				rootTaskId: "parent-1",
+				parentTaskId: "parent-1",
+			}),
+			createTaskWithHistoryItem,
+		})
+
+		await (ClineProvider.prototype as any).showTaskWithId.call(provider, "subtask-1")
+
+		expect(createTaskWithHistoryItem).toHaveBeenCalledTimes(1)
+		const callArgs = createTaskWithHistoryItem.mock.calls[0][0]
+		expect(callArgs.rootTask).toBe(currentTask)
+		expect(callArgs.parentTask).toBe(currentTask)
+	})
+
+	it("passes undefined rootTask/parentTask when there is no current task", async () => {
+		const createTaskWithHistoryItem = vi.fn().mockResolvedValue({})
+		const provider = makeProvider({
+			getCurrentTask: vi.fn(() => undefined),
+			currentTask: undefined,
 			getHistoryItem: vi.fn().mockResolvedValue({
 				...baseHistoryItem,
 				id: "subtask-1",
@@ -326,7 +350,7 @@ describe("showTaskWithId – rootTask/parentTask resolution", () => {
 		const createTaskWithHistoryItem = vi.fn().mockResolvedValue({})
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
-			clineStack: [],
+			currentTask: undefined,
 			getHistoryItem: vi.fn().mockResolvedValue({ ...baseHistoryItem, id: "task-1" }),
 			createTaskWithHistoryItem,
 		})
@@ -343,7 +367,7 @@ describe("showTaskWithId – rootTask/parentTask resolution", () => {
 		const createTaskWithHistoryItem = vi.fn().mockResolvedValue({})
 		const provider = makeProvider({
 			getCurrentTask: vi.fn(() => ({ taskId: "other-task" })),
-			clineStack: [],
+			currentTask: undefined,
 			getHistoryItem: vi.fn().mockResolvedValue({ ...baseHistoryItem, id: "top-level-1" }),
 			createTaskWithHistoryItem,
 		})
