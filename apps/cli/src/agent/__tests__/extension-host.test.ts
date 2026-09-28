@@ -172,6 +172,13 @@ describe("ExtensionHost", () => {
 			expect(getPrivate(host, "askDispatcher")).toBeDefined()
 		})
 
+		// Print mode writes the transcript reader's rows; the TUI (and JSON
+		// output) disable output and must leave the reader to their own sink.
+		it("attaches the print mode printer to the transcript reader only when output is enabled", () => {
+			expect(getPrivate(createTestHost(), "printer")).toBeDefined()
+			expect(getPrivate(createTestHost({ disableOutput: true }), "printer")).toBeUndefined()
+		})
+
 		it("should mark process as CLI runtime", () => {
 			delete process.env.ROO_CLI_RUNTIME
 			createTestHost()

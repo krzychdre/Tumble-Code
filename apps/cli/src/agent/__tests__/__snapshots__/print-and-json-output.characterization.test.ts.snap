@@ -1,0 +1,768 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`JSON output (characterization) > json: answer repeated in completion_result 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "The sum is 5.",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Sum it",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 3,
+      "content": "The sum is 5.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: command output 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Two files.",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "List files",
+      "done": true
+    },
+    {
+      "type": "tool_use",
+      "id": 3,
+      "subtype": "command",
+      "tool_use": {
+        "name": "execute_command",
+        "input": {
+          "command": "ls -1"
+        }
+      },
+      "done": true
+    },
+    {
+      "type": "tool_result",
+      "id": 3,
+      "subtype": "command",
+      "tool_result": {
+        "name": "execute_command",
+        "output": "a.txt\\nb.txt"
+      },
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 8,
+      "content": "Two files.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: command output finalized in place 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Run it",
+      "done": true
+    },
+    {
+      "type": "tool_use",
+      "id": 2,
+      "subtype": "command",
+      "tool_use": {
+        "name": "execute_command",
+        "input": {
+          "command": "echo hi"
+        }
+      },
+      "done": true
+    },
+    {
+      "type": "tool_result",
+      "id": 2,
+      "subtype": "command",
+      "tool_result": {
+        "name": "execute_command",
+        "output": "hi\\n"
+      },
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: error say 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Recovered.",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Do it",
+      "done": true
+    },
+    {
+      "type": "error",
+      "id": 3,
+      "content": "Something broke"
+    },
+    {
+      "type": "assistant",
+      "id": 4,
+      "content": "Recovered.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: partial then final, then completion 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "I said hello.",
+  "cost": {
+    "totalCost": 0.0123,
+    "inputTokens": 0,
+    "outputTokens": 0
+  },
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Say hi",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 3,
+      "content": "Hello there.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: reasoning then answer 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Answer is 42.",
+  "cost": {
+    "totalCost": 0.5,
+    "inputTokens": 0,
+    "outputTokens": 0
+  },
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Think first",
+      "done": true
+    },
+    {
+      "type": "thinking",
+      "id": 3,
+      "content": "Let me think.",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 4,
+      "content": "Answer is 42.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: restarted stream after interleaved reasoning 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Dzień dobry!",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Greet me",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 5,
+      "content": "Dzień dobry!",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: resumed task 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "New answer.",
+  "cost": {
+    "totalCost": 0.25,
+    "inputTokens": 0,
+    "outputTokens": 0
+  },
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "thinking",
+      "id": 4,
+      "content": "Old thought.",
+      "done": true
+    },
+    {
+      "type": "user",
+      "id": 6,
+      "content": "",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 8,
+      "content": "New answer.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: state push replays 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Twice.",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Replay",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 2,
+      "content": "Once.",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 3,
+      "content": "Twice.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: tool asks 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Read.",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Read it",
+      "done": true
+    },
+    {
+      "type": "tool_use",
+      "id": 3,
+      "subtype": "tool",
+      "tool_use": {
+        "name": "readFile",
+        "input": {
+          "tool": "readFile",
+          "path": "src/a.ts",
+          "content": "src/a.ts"
+        }
+      },
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 4,
+      "content": "{\\"tool\\":\\"searchTaskHistory\\",\\"query\\":\\"x\\"}",
+      "subtype": "tool",
+      "done": true
+    },
+    {
+      "type": "tool_use",
+      "id": 5,
+      "subtype": "mcp",
+      "tool_use": {
+        "name": "mcp_server",
+        "input": {
+          "raw": "{\\"type\\":\\"use_mcp_tool\\",\\"serverName\\":\\"srv\\",\\"toolName\\":\\"t\\",\\"arguments\\":\\"{}\\"}"
+        }
+      },
+      "done": true
+    },
+    {
+      "type": "tool_result",
+      "subtype": "mcp",
+      "tool_result": {
+        "name": "mcp_server",
+        "output": "mcp result"
+      }
+    },
+    {
+      "type": "assistant",
+      "id": 7,
+      "content": "Read.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > json: two new messages in one state push 1`] = `
+"{
+  "type": "result",
+  "success": true,
+  "content": "Second part.",
+  "events": [
+    {
+      "type": "system",
+      "subtype": "init",
+      "content": "Task started",
+      "schemaVersion": 1,
+      "protocol": "roo-cli-stream",
+      "capabilities": [
+        "stdin:start",
+        "stdin:message",
+        "stdin:cancel",
+        "stdin:ping",
+        "stdin:shutdown"
+      ]
+    },
+    {
+      "type": "user",
+      "id": 1,
+      "content": "Batch",
+      "done": true
+    },
+    {
+      "type": "assistant",
+      "id": 4,
+      "content": "Second part.",
+      "done": true
+    }
+  ]
+}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: answer repeated in completion_result 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Sum it","done":true}
+{"type":"assistant","id":3,"content":"The sum "}
+{"type":"assistant","id":3,"content":"is 5."}
+{"type":"assistant","id":3,"content":"The sum is 5.","done":true}
+{"type":"result","id":5,"content":"The sum is 5.","done":true,"success":true}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: command output 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"List files","done":true}
+{"type":"tool_use","id":3,"subtype":"command","tool_use":{"name":"execute_command","input":{"command":"ls -1"}},"done":true}
+{"type":"tool_result","id":3,"subtype":"command","tool_result":{"name":"execute_command","output":"a.txt"}}
+{"type":"tool_result","id":3,"subtype":"command","tool_result":{"name":"execute_command","output":"\\nb.txt"},"done":true}
+{"type":"assistant","id":8,"content":"Two "}
+{"type":"assistant","id":8,"content":"files."}
+{"type":"assistant","id":8,"content":"Two files.","done":true}
+{"type":"result","id":9,"content":"Two files.","done":true,"success":true}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: command output finalized in place 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Run it","done":true}
+{"type":"tool_use","id":2,"subtype":"command","tool_use":{"name":"execute_command","input":{"command":"echo hi"}},"done":true}
+{"type":"tool_result","id":2,"subtype":"command","tool_result":{"name":"execute_command","output":"h"}}
+{"type":"tool_result","id":2,"subtype":"command","tool_result":{"name":"execute_command","output":"i"}}
+{"type":"tool_result","id":2,"subtype":"command","tool_result":{"name":"execute_command","output":"\\n"},"done":true}
+{"type":"result","id":4,"done":true,"success":true}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: error say 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Do it","done":true}
+{"type":"error","id":3,"content":"Something broke"}
+{"type":"assistant","id":4,"content":"Recovered."}
+{"type":"assistant","id":4,"content":"Recovered.","done":true}
+{"type":"result","id":5,"content":"Recovered.","done":true,"success":true}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: partial then final, then completion 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Say hi","done":true}
+{"type":"assistant","id":3,"content":"Hel"}
+{"type":"assistant","id":3,"content":"lo "}
+{"type":"assistant","id":3,"content":"there."}
+{"type":"assistant","id":3,"content":"Hello there.","done":true}
+{"type":"result","id":5,"content":"I said hello.","done":true,"success":true,"cost":{"totalCost":0.0123,"inputTokens":0,"outputTokens":0}}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: reasoning then answer 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Think first","done":true}
+{"type":"thinking","id":3,"content":"Let me "}
+{"type":"thinking","id":3,"content":"think."}
+{"type":"thinking","id":3,"content":"Let me think.","done":true}
+{"type":"assistant","id":4,"content":"Answer "}
+{"type":"assistant","id":4,"content":"is 42."}
+{"type":"assistant","id":4,"content":"Answer is 42.","done":true}
+{"type":"result","id":5,"content":"Answer is 42.","done":true,"success":true,"cost":{"totalCost":0.5,"inputTokens":0,"outputTokens":0}}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: restarted stream after interleaved reasoning 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Greet me","done":true}
+{"type":"assistant","id":3,"content":"Dzi"}
+{"type":"thinking","id":4,"content":"Polite form."}
+{"type":"assistant","id":5,"content":"Dzień"}
+{"type":"assistant","id":5,"content":" dobry!"}
+{"type":"assistant","id":5,"content":"Dzień dobry!","done":true}
+{"type":"result","id":6,"content":"Dzień dobry!","done":true,"success":true}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: resumed task 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"thinking","id":4,"content":"Old thought.","done":true}
+{"type":"user","id":6,"content":"","done":true}
+{"type":"assistant","id":8,"content":"New "}
+{"type":"assistant","id":8,"content":"answer."}
+{"type":"assistant","id":8,"content":"New answer.","done":true}
+{"type":"result","id":9,"content":"New answer.","done":true,"success":true,"cost":{"totalCost":0.25,"inputTokens":0,"outputTokens":0}}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: state push replays 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Replay","done":true}
+{"type":"assistant","id":2,"content":"Once."}
+{"type":"assistant","id":2,"content":"Once.","done":true}
+{"type":"assistant","id":3,"content":"Twice.","done":true}
+{"type":"result","id":4,"content":"Twice.","done":true,"success":true}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: tool asks 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Read it","done":true}
+{"type":"tool_use","id":3,"subtype":"tool","tool_use":{"name":"readFile","input":{"tool":"readFile","path":"src/a.ts","content":"src/a.ts"}},"done":true}
+{"type":"assistant","id":4,"content":"{\\"tool\\":\\"searchTaskHistory\\",\\"query\\":\\"x\\"}","subtype":"tool","done":true}
+{"type":"tool_use","id":5,"subtype":"mcp","tool_use":{"name":"mcp_server","input":{"raw":"{\\"type\\":\\"use_mcp_tool\\",\\"serverName\\":\\"srv\\",\\"toolName\\":\\"t\\",\\"arguments\\":\\"{}\\"}"}},"done":true}
+{"type":"tool_result","subtype":"mcp","tool_result":{"name":"mcp_server","output":"mcp result"}}
+{"type":"assistant","id":7,"content":"Read."}
+{"type":"assistant","id":7,"content":"Read.","done":true}
+{"type":"result","id":8,"content":"Read.","done":true,"success":true}
+"
+`;
+
+exports[`JSON output (characterization) > stream-json: two new messages in one state push 1`] = `
+"{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
+{"type":"user","id":1,"content":"Batch","done":true}
+{"type":"assistant","id":4,"content":"Second part.","done":true}
+{"type":"result","id":5,"content":"Second part.","done":true,"success":true}
+"
+`;
+
+exports[`print mode output (characterization) > answer repeated in completion_result 1`] = `
+"
+[assistant] The sum is 5.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > command output 1`] = `
+"
+[command request]
+  Command: ls -1
+
+[command output] a.txt
+b.txt
+
+[assistant] Two files.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > command output finalized in place 1`] = `
+"
+[command request]
+  Command: echo hi
+
+[command output] hi
+
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > error say 1`] = `
+"«err:
+[error] Something broke
+»
+[assistant] Recovered.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > partial then final, then completion 1`] = `
+"
+[assistant] Hello there.
+
+[assistant] I said hello.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > reasoning then answer 1`] = `
+"
+[reasoning] Let me think.
+
+[assistant] Answer is 42.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > restarted stream after interleaved reasoning 1`] = `
+"
+[assistant] Dzi
+[reasoning] Polite form.
+[assistant] Dzień dobry!
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > resumed task 1`] = `
+"
+[Resume Task]
+
+[continuing task]
+
+[assistant] New answer.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > state push replays 1`] = `
+"
+[assistant] Once.
+
+[assistant] Twice.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > tool asks 1`] = `
+"
+[Tool Request] readFile
+  path: src/a.ts
+  content: src/a.ts
+
+[mcp request]
+  Server: srv
+  Tool: t
+
+[assistant] Read.
+
+[task complete]
+"
+`;
+
+exports[`print mode output (characterization) > two new messages in one state push 1`] = `
+"
+[assistant] First part.
+
+[assistant] Second part.
+
+[task complete]
+"
+`;
