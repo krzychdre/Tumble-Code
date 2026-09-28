@@ -8,6 +8,8 @@
 		"cache": "Кэш",
 		"apiCost": "Стоимость API",
 		"size": "Размер",
+		"tokensIn": "Входные токены",
+		"tokensOut": "Выходные токены",
 		"contextWindow": "Длина контекста",
 		"export": "Экспортировать историю задач",
 		"delete": "Удалить задачу (Shift + клик для пропуска подтверждения)",
@@ -50,7 +52,8 @@
 	"tokenProgress": {
 		"availableSpace": "Доступно места: {{amount}} токенов",
 		"tokensUsed": "Использовано токенов: {{used}} из {{total}}",
-		"reservedForResponse": "Зарезервировано для ответа модели: {{amount}} токенов"
+		"reservedForResponse": "Зарезервировано для ответа модели: {{amount}} токенов",
+		"contextUsed": "Использованный контекст"
 	},
 	"reject": {
 		"title": "Отклонить",

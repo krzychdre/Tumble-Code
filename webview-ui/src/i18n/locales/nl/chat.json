@@ -8,6 +8,8 @@
 		"cache": "Cache",
 		"apiCost": "API-kosten",
 		"size": "Grootte",
+		"tokensIn": "Invoertokens",
+		"tokensOut": "Uitvoertokens",
 		"contextWindow": "Contextlengte",
 		"export": "Taakgeschiedenis exporteren",
 		"delete": "Taak verwijderen (Shift + Klik om bevestiging over te slaan)",
@@ -50,7 +52,8 @@
 	"tokenProgress": {
 		"availableSpace": "Beschikbare ruimte: {{amount}} tokens",
 		"tokensUsed": "Gebruikte tokens: {{used}} van {{total}}",
-		"reservedForResponse": "Gereserveerd voor modelantwoord: {{amount}} tokens"
+		"reservedForResponse": "Gereserveerd voor modelantwoord: {{amount}} tokens",
+		"contextUsed": "Gebruikte context"
 	},
 	"reject": {
 		"title": "Weigeren",

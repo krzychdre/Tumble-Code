@@ -8,6 +8,8 @@
 		"cache": "キャッシュ",
 		"apiCost": "APIコスト",
 		"size": "サイズ",
+		"tokensIn": "入力トークン",
+		"tokensOut": "出力トークン",
 		"contextWindow": "コンテキストウィンドウ",
 		"export": "タスク履歴をエクスポート",
 		"delete": "タスクを削除（Shift + クリックで確認をスキップ）",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "利用可能な空き容量: {{amount}} トークン",
 		"tokensUsed": "使用トークン: {{used}} / {{total}}",
-		"reservedForResponse": "モデル応答用に予約: {{amount}} トークン"
+		"reservedForResponse": "モデル応答用に予約: {{amount}} トークン",
+		"contextUsed": "使用済みコンテキスト"
 	},
 	"retry": {
 		"title": "再試行",

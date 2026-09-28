@@ -8,6 +8,8 @@
 		"cache": "Caché",
 		"apiCost": "Cost d'API",
 		"size": "Mida",
+		"tokensIn": "Tokens d'entrada",
+		"tokensOut": "Tokens de sortida",
 		"contextWindow": "Finestra de context",
 		"export": "Exportar historial de tasques",
 		"delete": "Eliminar tasca (Shift + Clic per ometre confirmació)",
@@ -34,7 +36,8 @@
 	"tokenProgress": {
 		"availableSpace": "Espai disponible: {{amount}} tokens",
 		"tokensUsed": "Tokens utilitzats: {{used}} de {{total}}",
-		"reservedForResponse": "Reservat per a resposta del model: {{amount}} tokens"
+		"reservedForResponse": "Reservat per a resposta del model: {{amount}} tokens",
+		"contextUsed": "Context utilitzat"
 	},
 	"retry": {
 		"title": "Tornar a intentar",
