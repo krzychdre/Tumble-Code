@@ -251,3 +251,59 @@ the day header is a Virtuoso row rather than a DOM section (keeps the
 virtualized list). ChatRow.golden.json untouched — no chat-row rendering
 changed. VSIX rebuild still owed before any of this is visible in the
 installed extension.
+
+## Progress log - krok 4 and krok 5 (2026-09-28)
+
+Steps 4 and 5 of §5, plus §2.12 and §4, landed as 16 PRs built by four parallel helpers and
+squash-merged in dependency order (stacks rebased onto main between rounds), then one cross-PR
+spec fix. Each PR has its own plan doc `ai_plans/2026-09-28_ui-*.md` with deviations.
+
+**Krok 4, cloud web panel (§3), stack:**
+
+- §3.2 task list, PR #607 (`3d7992284`): sticky nine-column header, allow-listed `?sort=&dir=`
+  (cost and tokens sort by the run total the row shows), GET filters with removable chips,
+  300 ms fetch-and-swap, zebra and compact density, phone cards, Select mode, compact pager.
+- §3.5 accessibility, PR #610 (`ed6041f52`): skip link, `--text-faint` #7d8a97, captions and
+  `scope`, live status, `data-confirm`, `hidden`, a strict CSP on `/app` and `/shared`
+  (`style-src-attr 'unsafe-inline'` kept for computed widths; `frame-ancestors 'none'`), empty
+  states with the API URL to copy.
+- §3.1 light theme, PR #613 (`0681ffa71`): light tokens, accent #9a5b00, auto/dark/light toggle
+  applied before paint.
+- §3.3 task detail, PR #615 (`7279b74c2`): timeline rail (strip on narrow screens), next error /
+  next message of yours, `content-visibility` on rows, skeleton.
+- §3.4 metrics, PR #617 (`642af6a04`): server-rendered inline SVG charts, Chart.js removed;
+  doughnuts became ranked bars (top 8 plus "N others").
+
+**Krok 5, chat panel:**
+
+- §2.7 diffs, PR #606 (`4bdbb28d9`): merged gutter under 400px, "... N unchanged lines" folds,
+  sticky header with +N -M and "Open diff" (opens the unified patch; the chat has no two-sided
+  file versions).
+- §2.8 todo list, PR #608 (`262af1aa5`): header button with `aria-expanded` and a progress bar,
+  inline styles moved to classes.
+- §2.10 settings, PR #612 (`cf1699ef7`): unsaved-changes dot on Save and on tabs (scoped by the
+  tab that was open during the edit), `focus:ring-0` removed. Search had landed in #545.
+
+**§2.12 clean-up, stack:**
+
+- PR #603 (`ccdd6d0d5`): lucide plus codicons only; brand logos as inline SVG.
+- PR #611 (`c1cf294e8`): styled-components removed. The moved rules are unlayered at the end of
+  `index.css`, not in `@layer components`, so katex and the VS Code (< 1.104) defaults keep their
+  current precedence.
+- PR #618 (`4d1d2826e`): one checkbox, `Button variant="icon"`, one `IconButton`. Not done: one
+  text field (needs a decision on the look and the change-event API).
+
+**§4 CLI, stack:**
+
+- PR #604 (`32689fb0d`) NO_COLOR/FORCE_COLOR and the crash hint with the debug log path;
+  PR #605 (`47deee92d`) `tumble doctor`; PR #609 (`9ed7ae322`) cloud/bridge status line
+  (`ExtensionState.remoteControlStatus`); PR #614 (`4415a639c`) Ctrl+R, `/resume`, `--resume`;
+  PR #616 (`53772cba4`) `/copy` (OSC 52) and `/export`.
+- `tumble doctor` checks the production cloud URL unless `ROO_CODE_API_URL` is set.
+
+**Full run on merged main:** 15 of 17 turbo test tasks and cloudapi pytest (941 passed,
+1 xfailed) green; three package-wide guards broke across PRs (plural `_many` forms, lucide icon
+golden, CLI argument-parser characterization) and were fixed in PR #619 (`5aed76ddf`): webview
+3561/3561, CLI 1442 passed. Screenshots per theme were not taken.
+
+Owed before anything is visible: VSIX rebuild, CLI rebuild, api image rebuild.
