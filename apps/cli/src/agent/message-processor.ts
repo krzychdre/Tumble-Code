@@ -31,6 +31,7 @@ import {
 	taskCompleted,
 } from "./events.js"
 import type { AgentStateInfo } from "./agent-state.js"
+import { DeliveryReader } from "./transcript-deliveries.js"
 
 // =============================================================================
 // Message Processor Options
@@ -76,6 +77,8 @@ export class MessageProcessor {
 	private store: StateStore
 	private emitter: TypedEventEmitter
 	private options: Required<MessageProcessorOptions>
+	/** The news in each message, published as `delivery` events (D11). */
+	private deliveries = new DeliveryReader()
 
 	constructor(store: StateStore, emitter: TypedEventEmitter, options: MessageProcessorOptions = {}) {
 		this.store = store
@@ -219,8 +222,8 @@ export class MessageProcessor {
 		// Emit events based on state changes
 		this.emitStateChangeEvents(previousState, currentState)
 
-		// Emit new message events for any messages we haven't seen
-		this.emitNewMessageEvents(previousState, currentState, clineMessages)
+		// Then every message of the push that is new or changed, in order.
+		this.emitDeliveries(message)
 	}
 
 	/**
@@ -244,8 +247,8 @@ export class MessageProcessor {
 
 		const currentState = this.store.getAgentState()
 
-		// Emit message updated event
-		this.emitter.emit("messageUpdated", clineMessage)
+		// The change itself first, then what it does to the agent state.
+		this.emitDeliveries(message)
 
 		// Emit state change events
 		this.emitStateChangeEvents(previousState, currentState)
@@ -361,21 +364,13 @@ export class MessageProcessor {
 	}
 
 	/**
-	 * Emit events for new messages.
-	 *
-	 * We compare the previous and current message counts to find new messages.
-	 * This is a simple heuristic - for more accuracy, we'd track by timestamp.
+	 * Publish the news in a state push or a messageUpdated: every message that
+	 * is new or changed since it was last delivered, not only the last one of
+	 * a push (see transcript-deliveries.ts).
 	 */
-	private emitNewMessageEvents(
-		_previousState: AgentStateInfo,
-		_currentState: AgentStateInfo,
-		messages: ClineMessage[],
-	): void {
-		// For now, just emit the last message as new
-		// A more sophisticated implementation would track seen message timestamps
-		const lastMessage = messages[messages.length - 1]
-		if (lastMessage) {
-			this.emitter.emit("message", lastMessage)
+	private emitDeliveries(message: ExtensionMessage): void {
+		for (const delivery of this.deliveries.read(message)) {
+			this.emitter.emit("delivery", delivery)
 		}
 	}
 
@@ -390,6 +385,18 @@ export class MessageProcessor {
 	notifyTaskCleared(): void {
 		this.store.clear()
 		this.emitter.emit("taskCleared", undefined as void)
+	}
+
+	/**
+	 * A task is being resumed: mark its history in the deliveries that follow.
+	 */
+	beginHistoryReplay(): void {
+		this.deliveries.beginHistoryReplay()
+	}
+
+	/** Forget what was delivered (the client starts from scratch). */
+	reset(): void {
+		this.deliveries.reset()
 	}
 
 	/**

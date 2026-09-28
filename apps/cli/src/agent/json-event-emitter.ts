@@ -12,6 +12,11 @@
  * - Minimal fields per event
  * - No redundant wrappers
  * - `done` flag instead of partial:false
+ *
+ * It reads the client's `delivery` events (D11): every message that is new or
+ * changed, once, keyed by the message's ts (the event id). A message that is
+ * not the last one of the state push that brings it is emitted too, and a
+ * resumed task's history is not emitted at all.
  */
 
 import type { ClineMessage } from "@roo-code/types"
@@ -21,6 +26,7 @@ import type { JsonEvent, JsonEventCost, JsonEventQueueItem, JsonFinalOutput } fr
 
 import type { ExtensionClient } from "./extension-client.js"
 import type { AgentStateChangeEvent, TaskCompletedEvent } from "./events.js"
+import type { MessageDelivery } from "./transcript-deliveries.js"
 import { AgentLoopState } from "./agent-state.js"
 
 /**
@@ -169,13 +175,12 @@ export class JsonEventEmitter {
 		this.client = client
 
 		// Subscribe to message events
-		const unsubMessage = client.on("message", (msg) => this.handleMessage(msg, false))
-		const unsubMessageUpdated = client.on("messageUpdated", (msg) => this.handleMessage(msg, true))
+		const unsubDelivery = client.on("delivery", (delivery) => this.handleDelivery(delivery))
 		const unsubStateChange = client.on("stateChange", (event) => this.handleStateChange(event))
 		const unsubTaskCompleted = client.on("taskCompleted", (event) => this.handleTaskCompleted(event))
 		const unsubError = client.on("error", (error) => this.handleError(error))
 
-		this.unsubscribers.push(unsubMessage, unsubMessageUpdated, unsubStateChange, unsubTaskCompleted, unsubError)
+		this.unsubscribers.push(unsubDelivery, unsubStateChange, unsubTaskCompleted, unsubError)
 
 		// Emit init event
 		this.emitEvent({
@@ -494,9 +499,28 @@ export class JsonEventEmitter {
 	}
 
 	/**
+	 * Handle one delivery of the client's event stream.
+	 */
+	private handleDelivery(delivery: MessageDelivery): void {
+		if (delivery.history) {
+			// A resumed task's history happened before this run: nothing of it
+			// is emitted (its cost still counts, through getTaskCost). The task
+			// is not new, so no prompt echo follows either: its next say:text
+			// is the model's.
+			if (isCostMessage(delivery.message)) {
+				this.costMessages.set(delivery.message.ts, delivery.message)
+			}
+			this.expectPromptEchoAsUser = false
+			return
+		}
+
+		this.handleMessage(delivery.message)
+	}
+
+	/**
 	 * Handle a ClineMessage and emit the appropriate JSON event.
 	 */
-	private handleMessage(msg: ClineMessage, _isUpdate: boolean): void {
+	private handleMessage(msg: ClineMessage): void {
 		const isDone = !msg.partial
 
 		// Before the duplicate filter below: a request's cost arrives as an

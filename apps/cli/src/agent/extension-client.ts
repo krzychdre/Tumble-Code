@@ -444,6 +444,15 @@ export class ExtensionClient {
 	}
 
 	/**
+	 * A task is about to be opened again (showTaskWithId): its history, which
+	 * arrives next, is marked as such in the `delivery` events up to and
+	 * including the push that ends with its resume ask.
+	 */
+	beginHistoryReplay(): void {
+		this.processor.beginHistoryReplay()
+	}
+
+	/**
 	 * Resume a paused task.
 	 *
 	 * Use when the agent state is RESUMABLE (resume_task ask).
@@ -503,6 +512,7 @@ export class ExtensionClient {
 	 */
 	reset(): void {
 		this.store.reset()
+		this.processor.reset()
 		this.transcript.reset()
 		this.emitter.removeAllListeners()
 	}

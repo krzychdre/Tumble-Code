@@ -36,6 +36,7 @@ import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/l
 import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
 import type { WaitingForInputEvent } from "./events.js"
+import type { MessageDelivery } from "./transcript-deliveries.js"
 import type { AgentStateInfo } from "./agent-state.js"
 import { ExtensionClient } from "./extension-client.js"
 import { OutputManager } from "./output-manager.js"
@@ -311,9 +312,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	 */
 	private setupClientEventHandlers(): void {
 		// Print mode's output comes from the transcript reader (see the
-		// constructor); the client's message events only feed the debug log.
-		this.client.on("message", (msg: ClineMessage) => this.logMessageDebug(msg, "new"))
-		this.client.on("messageUpdated", (msg: ClineMessage) => this.logMessageDebug(msg, "updated"))
+		// constructor); the client's deliveries only feed the debug log here.
+		this.client.on("delivery", ({ message, update }) => this.logMessageDebug(message, update ? "updated" : "new"))
 
 		// Handle waiting for input - delegate to AskDispatcher.
 		this.client.on("waitingForInput", (event: WaitingForInputEvent) => {
@@ -566,8 +566,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 				this.client.off("taskCompleted", completeHandler)
 				this.client.off("error", errorHandler)
 
-				if (messageHandler) {
-					this.client.off("message", messageHandler)
+				if (deliveryHandler) {
+					this.client.off("delivery", deliveryHandler)
 				}
 
 				if (waitingHandler) {
@@ -576,18 +576,20 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 			}
 
 			// When exitOnError is enabled, listen for api_req_retry_delayed messages
-			// (sent by Task.ts during auto-approval retry backoff) and exit immediately.
-			let messageHandler: ((msg: ClineMessage) => void) | null = null
+			// (sent by Task.ts during auto-approval retry backoff) and exit
+			// immediately. Every new one counts, not only the last message of a
+			// push, but not an old one in a resumed task's history.
+			let deliveryHandler: ((delivery: MessageDelivery) => void) | null = null
 
 			if (this.options.exitOnError) {
-				messageHandler = (msg: ClineMessage) => {
-					if (msg.type === "say" && msg.say === "api_req_retry_delayed") {
+				deliveryHandler = ({ message: msg, history }: MessageDelivery) => {
+					if (!history && msg.type === "say" && msg.say === "api_req_retry_delayed") {
 						cleanup()
 						reject(new Error(msg.text?.split("\n")[0] || "API request failed"))
 					}
 				}
 
-				this.client.on("message", messageHandler)
+				this.client.on("delivery", deliveryHandler)
 			}
 
 			// An api_req_failed ask in an unattended run (or with --exit-on-error)
@@ -628,8 +630,10 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	}
 
 	public async resumeTask(taskId: string): Promise<void> {
-		// Print mode shows what the task does from here on, not its history.
+		// Print mode and the JSON output show what the task does from here on,
+		// not its history.
 		this.printer?.beginHistoryReplay()
+		this.client.beginHistoryReplay()
 		this.sendToExtension({ type: "showTaskWithId", text: taskId })
 		return this.waitForTaskCompletion()
 	}

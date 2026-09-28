@@ -165,7 +165,7 @@ function isStreaming(messages) {
 │  │                         detectAgentState()                │  │
 │  │                                  │                        │  │
 │  │                                  ▼                        │  │
-│  │  Events: stateChange, message, waitingForInput, etc.      │  │
+│  │  Events: stateChange, delivery, waitingForInput, etc.     │  │
 │  └───────────────────────────────────────────────────────────┘  │
 │                           │                                     │
 │                           ▼                                     │
@@ -235,6 +235,7 @@ Handles incoming messages from the extension:
 - `"state"` messages → Update `clineMessages` array and track mode
 - `"messageUpdated"` messages → Update single message in array
 - Emits events for state transitions and mode changes
+- Emits a `delivery` event for every message that is new or changed since it was last delivered (a state push replays the whole array, so replays are dropped); a resumed task's history is marked `history: true`. The JSON output and the `--exit-on-error` hook read these (`transcript-deliveries.ts`).
 
 ### AskDispatcher
 

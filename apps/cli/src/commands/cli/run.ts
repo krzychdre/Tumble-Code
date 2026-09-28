@@ -92,6 +92,8 @@ export function isLiveResumeAskWaiting(host: ExtensionHost, since: number): bool
 
 async function bootstrapResumeForStdinStream(host: ExtensionHost, sessionId: string): Promise<void> {
 	const bootstrapStartedAt = Date.now()
+	// The JSON output shows what the task does from here on, not its history.
+	host.client.beginHistoryReplay()
 	host.sendToExtension({ type: "showTaskWithId", text: sessionId })
 
 	// Best-effort wait so early stdin "message" commands can target the

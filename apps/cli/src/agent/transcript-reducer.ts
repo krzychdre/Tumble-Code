@@ -1,6 +1,11 @@
 /**
  * Transcript reducer: how the TUI reads the extension's messages.
  *
+ * This is the rows stage of that reading: it takes the deliveries of each
+ * extension message (`deliveriesOf`, transcript-deliveries.ts, the stage the
+ * JSON output reads too) and decides per delivery with the transcript it
+ * shows, so it gets every delivery, replays included (see `reduceSay`).
+ *
  * A pure function of (bookkeeping, what the transcript shows now, one
  * extension message) that returns the new bookkeeping plus the ordered list
  * of changes to apply to the transcript. It holds no React and no store, so
@@ -38,6 +43,7 @@ import type { PendingAsk, TaskHistoryItem, TUIMessage, ToolData } from "../ui/ty
 import type { FileResult, ModeResult, SlashCommandResult } from "../ui/components/autocomplete/index.js"
 import { extractToolData, formatToolAskMessage, parseTodosFromToolInfo } from "../ui/utils/tools.js"
 import { mcpServersFromMessage } from "../lib/utils/mcp-status.js"
+import { deliveriesOf } from "./transcript-deliveries.js"
 import { parseMcpAsk, type McpAskDetails } from "../lib/utils/mcp-ask.js"
 
 /**
@@ -528,7 +534,14 @@ function reduceSay(r: Reduction, ts: number, say: ClineSay, text: string, partia
 	// completion of the very message it repeats, so it falls through.
 	const repeated = streamed && streamed.id !== messageId ? r.findMessage(streamed.id) : undefined
 
-	if (streamClass === "answer" && streamed && !partial && !isFinalizingExisting && streamed.text === text && text !== "") {
+	if (
+		streamClass === "answer" &&
+		streamed &&
+		!partial &&
+		!isFinalizingExisting &&
+		streamed.text === text &&
+		text !== ""
+	) {
 		r.markSeen(messageId)
 
 		// The repeat carries the COMPLETE text, so it is also the finalization
@@ -758,7 +771,7 @@ function reduceAsk(r: Reduction, ts: number, ask: ClineAsk, text: string, partia
 	})
 }
 
-/** `isLast`: the message is the last one of the transcript it arrived in (always true for messageUpdated). */
+/** `isLast`: the message is the last one of the transcript it arrived in (see `Delivery`). */
 function reduceClineMessage(r: Reduction, message: ClineMessage, isLast: boolean): void {
 	const text = message.text || ""
 	const partial = message.partial || false
@@ -816,9 +829,9 @@ export function reduceExtensionMessage(
 		const clineMessages = state.clineMessages
 
 		if (clineMessages) {
-			clineMessages.forEach((clineMessage, index) => {
-				reduceClineMessage(r, clineMessage, index === clineMessages.length - 1)
-			})
+			for (const delivery of deliveriesOf(message)) {
+				reduceClineMessage(r, delivery.message, delivery.isLast)
+			}
 
 			// Token usage from clineMessages, skipping the first message (the
 			// task prompt) as the webview does.
@@ -833,8 +846,8 @@ export function reduceExtensionMessage(
 			r.setIsResumingTask(false)
 		}
 	} else if (message.type === "messageUpdated") {
-		if (message.clineMessage) {
-			reduceClineMessage(r, message.clineMessage, true)
+		for (const delivery of deliveriesOf(message)) {
+			reduceClineMessage(r, delivery.message, delivery.isLast)
 		}
 	} else if (message.type === "fileSearchResults") {
 		r.emit({ type: "setFileSearchResults", results: (message.results as FileResult[]) || [] })
