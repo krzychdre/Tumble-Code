@@ -2718,6 +2718,28 @@ describe("ClineProvider", () => {
 			])
 		})
 
+		test("provider.on receives a forwarded event with its arguments and provider.off removes the listener", async () => {
+			const task = await makeTask()
+			attach(task)
+			const listener = vi.fn()
+
+			provider.on(RooCodeEventName.TaskCompleted, listener)
+			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+			provider.off(RooCodeEventName.TaskCompleted, listener)
+			task.emit(RooCodeEventName.TaskCompleted, "task-1", tokenUsage, toolUsage)
+
+			expect(listener.mock.calls).toEqual([["task-1", tokenUsage, toolUsage]])
+		})
+
+		test("the delegation host's emit reaches provider listeners with its arguments", () => {
+			const listener = vi.fn()
+			provider.on(RooCodeEventName.TaskDelegationCompleted, listener)
+
+			const host = (provider as any).delegation.host
+			expect(host.emit(RooCodeEventName.TaskDelegationCompleted, "parent-1", "child-1", "done")).toBe(true)
+			expect(listener).toHaveBeenCalledWith("parent-1", "child-1", "done")
+		})
+
 		test("lifecycle events update the subagent registry before they are forwarded", async () => {
 			const task = await makeTask()
 			attach(task)
