@@ -20,11 +20,15 @@
  *   Measure  Two of them. Lists and metrics are wide (scanning many rows);
  *            a conversation is narrow (reading prose).
  *
- * Deliberately dark-only. A half-committed light theme would dilute the
- * identity, and this is a personal console for someone already working dark.
+ * Dark first, with a light theme that redefines only the tokens (below the
+ * :root block): for a light OS preference unless the reader forced dark, and
+ * whenever the reader forced light (static/theme.js sets data-theme on <html>
+ * before the first paint). Nothing outside the token blocks names a colour.
  */
 
 :root {
+	color-scheme: dark;
+
 	/* --- ground: surfaces step up toward the light ----------------------- */
 	--bg: #0d1117;
 	--surface-1: #141a22;
@@ -66,6 +70,28 @@
 	--d-error-wash: rgba(242, 119, 122, 0.12);
 	--d-you-wash: rgba(106, 155, 244, 0.12);
 
+	/* Text on a filled button of that hue, and the fill on hover. */
+	--d-error-ink: #2a0d0e;
+	--d-error-bright: #f79093;
+	--d-cache-ink: #06231a;
+	--d-cache-bright: #63dcb2;
+
+	/* Categorical hues for charts with many series (models, modes). Ordered so
+	   adjacent slices never sit on neighbouring hues. */
+	--cat-1: #6cc4f5;
+	--cat-2: #a78bfa;
+	--cat-3: #4ec9a0;
+	--cat-4: #e9a33a;
+	--cat-5: #f2777a;
+	--cat-6: #6a9bf4;
+	--cat-7: #d6b4fc;
+	--cat-8: #8fd6bd;
+	--cat-9: #f5b855;
+	--cat-10: #93b7f7;
+
+	/* The drop shadow of a floating bar. */
+	--shadow-lift: 0 6px 24px rgba(0, 0, 0, 0.45);
+
 	/* --- spacing: 4px base ------------------------------------------------ */
 	--s1: 0.25rem;
 	--s2: 0.5rem;
@@ -105,6 +131,120 @@
 	   The reading measure is untouched: prose does not get wider. */
 	--measure-wide: 1360px;
 	--measure-read: 860px;
+}
+
+/* The light theme: the same tokens, light. Written twice because a media
+   query and an attribute selector cannot share one rule: once for a light OS
+   preference (unless the reader forced dark), once for a forced light theme.
+   Surfaces are near-white, lines are low-alpha black, the accent is a darker
+   amber that passes AA on white, and the data hues sit around 45% lightness. */
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme="dark"]) {
+		color-scheme: light;
+
+		--bg: #f5f6f8;
+		--surface-1: #ffffff;
+		--surface-2: #eceff3;
+		--surface-3: #dfe4ea;
+		--sunken: #eef0f3;
+
+		--line: rgba(0, 0, 0, 0.1);
+		--line-strong: rgba(0, 0, 0, 0.2);
+		--edge-light: rgba(255, 255, 255, 0.7);
+
+		--text: #1b2128;
+		--text-dim: #46515d;
+		--text-faint: #5c6874;
+
+		--signal: #9a5b00;
+		--signal-bright: #b86e00;
+		--signal-ink: #ffffff;
+		--signal-wash: rgba(154, 91, 0, 0.1);
+
+		--d-in: #0a6c9e;
+		--d-out: #6a45cc;
+		--d-cache: #18765a;
+		--d-cost: #9a5b00;
+		--d-error: #b8323a;
+		--d-you: #2c5fc4;
+
+		--d-in-wash: rgba(10, 108, 158, 0.1);
+		--d-out-wash: rgba(106, 69, 204, 0.1);
+		--d-cache-wash: rgba(24, 118, 90, 0.1);
+		--d-error-wash: rgba(184, 50, 58, 0.1);
+		--d-you-wash: rgba(44, 95, 196, 0.1);
+
+		--d-error-ink: #ffffff;
+		--d-error-bright: #9e2a31;
+		--d-cache-ink: #ffffff;
+		--d-cache-bright: #13624a;
+
+		--cat-1: #0a6c9e;
+		--cat-2: #6a45cc;
+		--cat-3: #18765a;
+		--cat-4: #9a5b00;
+		--cat-5: #b8323a;
+		--cat-6: #2c5fc4;
+		--cat-7: #9c5fd0;
+		--cat-8: #3e8f76;
+		--cat-9: #b87400;
+		--cat-10: #5a82d6;
+
+		--shadow-lift: 0 6px 24px rgba(0, 0, 0, 0.12);
+	}
+}
+:root[data-theme="light"] {
+	color-scheme: light;
+
+	--bg: #f5f6f8;
+	--surface-1: #ffffff;
+	--surface-2: #eceff3;
+	--surface-3: #dfe4ea;
+	--sunken: #eef0f3;
+
+	--line: rgba(0, 0, 0, 0.1);
+	--line-strong: rgba(0, 0, 0, 0.2);
+	--edge-light: rgba(255, 255, 255, 0.7);
+
+	--text: #1b2128;
+	--text-dim: #46515d;
+	--text-faint: #5c6874;
+
+	--signal: #9a5b00;
+	--signal-bright: #b86e00;
+	--signal-ink: #ffffff;
+	--signal-wash: rgba(154, 91, 0, 0.1);
+
+	--d-in: #0a6c9e;
+	--d-out: #6a45cc;
+	--d-cache: #18765a;
+	--d-cost: #9a5b00;
+	--d-error: #b8323a;
+	--d-you: #2c5fc4;
+
+	--d-in-wash: rgba(10, 108, 158, 0.1);
+	--d-out-wash: rgba(106, 69, 204, 0.1);
+	--d-cache-wash: rgba(24, 118, 90, 0.1);
+	--d-error-wash: rgba(184, 50, 58, 0.1);
+	--d-you-wash: rgba(44, 95, 196, 0.1);
+
+	--d-error-ink: #ffffff;
+	--d-error-bright: #9e2a31;
+	--d-cache-ink: #ffffff;
+	--d-cache-bright: #13624a;
+
+	--cat-1: #0a6c9e;
+	--cat-2: #6a45cc;
+	--cat-3: #18765a;
+	--cat-4: #9a5b00;
+	--cat-5: #b8323a;
+	--cat-6: #2c5fc4;
+	--cat-7: #9c5fd0;
+	--cat-8: #3e8f76;
+	--cat-9: #b87400;
+	--cat-10: #5a82d6;
+
+	--shadow-lift: 0 6px 24px rgba(0, 0, 0, 0.12);
 }
 
 *,
@@ -211,7 +351,7 @@ table.breakdown th {
 	gap: var(--s4);
 	padding: 0 var(--s5);
 	height: 52px;
-	background: rgba(13, 17, 23, 0.85);
+	background: color-mix(in srgb, var(--bg) 85%, transparent);
 	backdrop-filter: blur(12px);
 	border-bottom: 1px solid var(--line);
 	position: sticky;
@@ -253,6 +393,22 @@ table.breakdown th {
 
 .spacer {
 	flex: 1;
+}
+
+/* The theme toggle: quiet, like the user's name beside it. */
+.theme-toggle {
+	padding: var(--s1) var(--s2);
+	background: none;
+	border: 1px solid var(--line);
+	color: var(--text-dim);
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.theme-toggle:hover {
+	color: var(--text);
+	border-color: var(--line-strong);
 }
 
 .user {
@@ -652,7 +808,7 @@ textarea::placeholder {
 	border-radius: var(--r-lg);
 	box-shadow:
 		inset 0 1px 0 0 var(--edge-light),
-		0 6px 24px rgba(0, 0, 0, 0.45);
+		var(--shadow-lift);
 	font-family: var(--mono);
 	font-size: var(--t-micro);
 	color: var(--text-dim);
@@ -684,12 +840,12 @@ textarea::placeholder {
    the error hue is used as a fill. */
 .btn-danger {
 	background: var(--d-error);
-	color: #2a0d0e;
+	color: var(--d-error-ink);
 	border-color: transparent;
 }
 .btn-danger:hover {
-	background: #f79093;
-	color: #2a0d0e;
+	background: var(--d-error-bright);
+	color: var(--d-error-ink);
 }
 
 /* Columns: title | project | model | messages | duration | tokens | cost |
@@ -1884,7 +2040,7 @@ a.signal-value:hover {
 
 .msg.role-user {
 	background: var(--d-you-wash);
-	border-color: rgba(106, 155, 244, 0.22);
+	border-color: color-mix(in srgb, var(--d-you) 22%, transparent);
 }
 .msg.role-user .msg-role {
 	color: var(--d-you);
@@ -1912,7 +2068,7 @@ a.signal-value:hover {
 
 .msg.role-completion {
 	background: var(--d-cache-wash);
-	border-color: rgba(78, 201, 160, 0.22);
+	border-color: color-mix(in srgb, var(--d-cache) 22%, transparent);
 }
 .msg.role-completion .msg-role {
 	color: var(--d-cache);
@@ -1932,7 +2088,7 @@ a.signal-value:hover {
 
 .msg.role-error {
 	background: var(--d-error-wash);
-	border-color: rgba(242, 119, 122, 0.28);
+	border-color: color-mix(in srgb, var(--d-error) 28%, transparent);
 }
 .msg.role-error .msg-role {
 	color: var(--d-error);
@@ -1961,7 +2117,7 @@ a.signal-value:hover {
 /* --- live row states ------------------------------------------------------ */
 
 .msg.running {
-	border-color: rgba(233, 163, 58, 0.35);
+	border-color: color-mix(in srgb, var(--signal) 35%, transparent);
 	background: var(--signal-wash);
 }
 .msg.running::before {
@@ -1973,12 +2129,12 @@ a.signal-value:hover {
 	100% {
 		box-shadow:
 			0 0 0 3px var(--bg),
-			0 0 0 5px rgba(233, 163, 58, 0.35);
+			0 0 0 5px color-mix(in srgb, var(--signal) 35%, transparent);
 	}
 	50% {
 		box-shadow:
 			0 0 0 3px var(--bg),
-			0 0 0 5px rgba(233, 163, 58, 0);
+			0 0 0 5px transparent;
 	}
 }
 
@@ -2345,12 +2501,12 @@ details.env-details > pre {
 
 .btn-approve {
 	background: var(--d-cache);
-	color: #06231a;
+	color: var(--d-cache-ink);
 	border-color: transparent;
 }
 .btn-approve:hover {
-	background: #63dcb2;
-	color: #06231a;
+	background: var(--d-cache-bright);
+	color: var(--d-cache-ink);
 }
 .btn-deny {
 	background: transparent;
