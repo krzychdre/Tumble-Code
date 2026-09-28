@@ -9,13 +9,13 @@ careful item." This is that item. Branch `refactor/s4-schema-arms`, from main 22
 
 Adding a provider meant, besides its config schema, four hand-written list entries in three files:
 
-| File                          | Hand-written entry                                                                 |
-| ----------------------------- | ---------------------------------------------------------------------------------- |
-| `provider-config/index.ts`    | `knownProviderConfigurationSchema` arm (`providerId` literal + config)             |
-| `provider-settings.ts`        | legacy arm `legacyProviderArm(config, credentials)` with the credential fields     |
-| `provider-settings.ts`        | `.merge({ apiProvider: literal })` member of `providerSettingsSchemaDiscriminated` |
-| `provider-settings.ts`        | `...arm.shape` spread in the flat `providerSettingsSchema`                         |
-| `global-settings.ts`          | the credentials in `SECRET_STATE_KEYS`                                             |
+| File                       | Hand-written entry                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------- |
+| `provider-config/index.ts` | `knownProviderConfigurationSchema` arm (`providerId` literal + config)             |
+| `provider-settings.ts`     | legacy arm `legacyProviderArm(config, credentials)` with the credential fields     |
+| `provider-settings.ts`     | `.merge({ apiProvider: literal })` member of `providerSettingsSchemaDiscriminated` |
+| `provider-settings.ts`     | `...arm.shape` spread in the flat `providerSettingsSchema`                         |
+| `global-settings.ts`       | the credentials in `SECRET_STATE_KEYS`                                             |
 
 All of them restate two facts per provider: its config schema (`providerConfigSchemas`, already a typed record) and
 its credential keys (written twice: in the legacy arm and in `SECRET_STATE_KEYS`; a third copy lived in
@@ -39,8 +39,8 @@ Generated from the two tables, in `providerConfigSchemas` key order (the order e
 
 - `knownProviderConfigurationSchema`: one `{ providerId: literal, config }` arm per provider.
 - `providerSettingsSchemaDiscriminated`: per provider `{ ...base shape, ...config shape, ...credentials,
-  apiProvider: literal }` (the same key order `baseProviderSettingsSchema.extend(config).extend(credentials)
-  .merge({ apiProvider })` produced), then the unchanged `apiProvider: undefined` arm.
+apiProvider: literal }` (the same key order `baseProviderSettingsSchema.extend(config).extend(credentials)
+.merge({ apiProvider })` produced), then the unchanged `apiProvider: undefined` arm.
 - `providerSettingsSchema` (the flat schema): `apiProvider`, then `Object.assign({}, ...arm shapes)`, then the
   codebase-index shape. Spreading the arms into one object keeps each key at its first occurrence and the last
   schema for it, exactly like the former literal list of spreads. Its type is the intersection of the arm shapes
