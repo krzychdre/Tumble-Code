@@ -45,34 +45,9 @@ export interface ClientEventMap {
 	waitingForInput: WaitingForInputEvent
 
 	/**
-	 * Emitted when the agent stops waiting and resumes running.
-	 */
-	resumedRunning: void
-
-	/**
-	 * Emitted when the agent starts streaming content.
-	 */
-	streamingStarted: void
-
-	/**
-	 * Emitted when streaming ends.
-	 */
-	streamingEnded: void
-
-	/**
 	 * Emitted when a task completes (either successfully or with error).
 	 */
 	taskCompleted: TaskCompletedEvent
-
-	/**
-	 * Emitted when a task is cleared/cancelled.
-	 */
-	taskCleared: void
-
-	/**
-	 * Emitted when the current mode changes.
-	 */
-	modeChanged: ModeChangedEvent
 
 	/**
 	 * Emitted on any error during message processing.
@@ -88,8 +63,6 @@ export interface AgentStateChangeEvent {
 	previousState: AgentStateInfo
 	/** The new/current state info */
 	currentState: AgentStateInfo
-	/** Whether this is a significant state transition (state enum changed) */
-	isSignificantChange: boolean
 }
 
 /**
@@ -116,16 +89,6 @@ export interface TaskCompletedEvent {
 	message?: ClineMessage
 }
 
-/**
- * Event payload when mode changes.
- */
-export interface ModeChangedEvent {
-	/** The previous mode (undefined if first mode set) */
-	previousMode: string | undefined
-	/** The new/current mode */
-	currentMode: string
-}
-
 // =============================================================================
 // Typed Event Emitter
 // =============================================================================
@@ -143,7 +106,7 @@ export interface ModeChangedEvent {
  * })
  *
  * // Type-safe emission
- * emitter.emit('stateChange', { previousState, currentState, isSignificantChange })
+ * emitter.emit('stateChange', { previousState, currentState })
  * ```
  */
 export class TypedEventEmitter {
@@ -191,24 +154,9 @@ export class TypedEventEmitter {
 		this.emitter.emit(event, payload)
 	}
 
-	/**
-	 * Remove all listeners for an event, or all events.
-	 *
-	 * @param event - Optional event name. If not provided, removes all listeners.
-	 */
-	removeAllListeners<K extends keyof ClientEventMap>(event?: K): void {
-		if (event) {
-			this.emitter.removeAllListeners(event)
-		} else {
-			this.emitter.removeAllListeners()
-		}
-	}
-
-	/**
-	 * Get the number of listeners for an event.
-	 */
-	listenerCount<K extends keyof ClientEventMap>(event: K): number {
-		return this.emitter.listenerCount(event)
+	/** Remove every listener of every event. */
+	removeAllListeners(): void {
+		this.emitter.removeAllListeners()
 	}
 }
 
@@ -217,41 +165,10 @@ export class TypedEventEmitter {
 // =============================================================================
 
 /**
- * Helper to determine if a state change is "significant".
- *
- * A significant change is when the AgentLoopState enum value changes,
- * as opposed to just internal state updates within the same state.
- */
-export function isSignificantStateChange(previous: AgentStateInfo, current: AgentStateInfo): boolean {
-	return previous.state !== current.state
-}
-
-/**
  * Helper to determine if we transitioned to waiting for input.
  */
 export function transitionedToWaiting(previous: AgentStateInfo, current: AgentStateInfo): boolean {
 	return !previous.isWaitingForInput && current.isWaitingForInput
-}
-
-/**
- * Helper to determine if we transitioned from waiting to running.
- */
-export function transitionedToRunning(previous: AgentStateInfo, current: AgentStateInfo): boolean {
-	return previous.isWaitingForInput && !current.isWaitingForInput && current.isRunning
-}
-
-/**
- * Helper to determine if streaming started.
- */
-export function streamingStarted(previous: AgentStateInfo, current: AgentStateInfo): boolean {
-	return !previous.isStreaming && current.isStreaming
-}
-
-/**
- * Helper to determine if streaming ended.
- */
-export function streamingEnded(previous: AgentStateInfo, current: AgentStateInfo): boolean {
-	return previous.isStreaming && !current.isStreaming
 }
 
 /**
@@ -262,109 +179,4 @@ export function taskCompleted(previous: AgentStateInfo, current: AgentStateInfo)
 	const wasNotComplete = !previous.currentAsk || !completionAsks.includes(previous.currentAsk)
 	const isNowComplete = current.currentAsk !== undefined && completionAsks.includes(current.currentAsk)
 	return wasNotComplete && isNowComplete
-}
-
-// =============================================================================
-// Observable Pattern (Alternative API)
-// =============================================================================
-
-/**
- * Subscription function type for observable pattern.
- */
-export type Observer<T> = (value: T) => void
-
-/**
- * Unsubscribe function type.
- */
-export type Unsubscribe = () => void
-
-/**
- * Simple observable for state.
- *
- * This provides an alternative to the event emitter pattern
- * for those who prefer a more functional approach.
- *
- * Usage:
- * ```typescript
- * const stateObservable = new Observable<AgentStateInfo>()
- *
- * const unsubscribe = stateObservable.subscribe((state) => {
- *   console.log('New state:', state)
- * })
- *
- * // Later...
- * unsubscribe()
- * ```
- */
-export class Observable<T> {
-	private observers: Set<Observer<T>> = new Set()
-	private currentValue: T | undefined
-
-	/**
-	 * Create an observable with an optional initial value.
-	 */
-	constructor(initialValue?: T) {
-		this.currentValue = initialValue
-	}
-
-	/**
-	 * Subscribe to value changes.
-	 *
-	 * @param observer - Function called when value changes
-	 * @returns Unsubscribe function
-	 */
-	subscribe(observer: Observer<T>): Unsubscribe {
-		this.observers.add(observer)
-
-		// Immediately emit current value if we have one
-		if (this.currentValue !== undefined) {
-			observer(this.currentValue)
-		}
-
-		return () => {
-			this.observers.delete(observer)
-		}
-	}
-
-	/**
-	 * Update the value and notify all subscribers.
-	 */
-	next(value: T): void {
-		this.currentValue = value
-		for (const observer of this.observers) {
-			try {
-				observer(value)
-			} catch (error) {
-				console.error("Error in observer:", error)
-			}
-		}
-	}
-
-	/**
-	 * Get the current value without subscribing.
-	 */
-	getValue(): T | undefined {
-		return this.currentValue
-	}
-
-	/**
-	 * Check if there are any subscribers.
-	 */
-	hasSubscribers(): boolean {
-		return this.observers.size > 0
-	}
-
-	/**
-	 * Get the number of subscribers.
-	 */
-	getSubscriberCount(): number {
-		return this.observers.size
-	}
-
-	/**
-	 * Remove all subscribers.
-	 */
-	clear(): void {
-		this.observers.clear()
-	}
 }
