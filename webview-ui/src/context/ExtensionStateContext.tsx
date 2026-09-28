@@ -264,9 +264,14 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		client.applyMessage(message)
 	})
 
-	// Subscribe the provider itself so the two effects below re-run after
-	// every committed store change (the version is the effect trigger).
-	const version = useSyncExternalStore(client.subscribe, client.getVersion, client.getVersion)
+	// Subscribe the provider itself: the store drives the two effects below, the
+	// value is what legacy `useExtensionState` consumers read. Both go through
+	// `useSyncExternalStore`, never through a `client.getStore()` or
+	// `client.getValue()` call in the render body: the React Compiler memoizes
+	// such a call on `client`, which never changes, so the context froze at the
+	// first render (the welcome view could not leave Anthropic).
+	const store = useSyncExternalStore(client.subscribe, client.getStore, client.getStore)
+	const value = useSyncExternalStore(client.subscribe, client.getValue, client.getValue)
 
 	useEffect(() => {
 		if (!autoApprovalEchoPending.current) {
@@ -275,12 +280,12 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		autoApprovalEchoPending.current = false
 		vscode.postMessage({
 			type: "autoApprovalEnabled",
-			bool: client.getStore().extensionState.autoApprovalEnabled ?? false,
+			bool: store.extensionState.autoApprovalEnabled ?? false,
 		})
-	}, [version, client])
+	}, [store])
 
 	// A messageAdded that did not fit the chat: ask the host for the whole list once.
-	const resyncRequested = client.getStore().clineMessagesResyncRequested
+	const resyncRequested = store.clineMessagesResyncRequested
 	useEffect(() => {
 		if (!resyncRequested) {
 			return
@@ -295,7 +300,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 
 	return (
 		<ExtensionStoreContext.Provider value={client}>
-			<ExtensionStateContext.Provider value={client.getValue()}>{children}</ExtensionStateContext.Provider>
+			<ExtensionStateContext.Provider value={value}>{children}</ExtensionStateContext.Provider>
 		</ExtensionStoreContext.Provider>
 	)
 }
