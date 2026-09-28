@@ -871,6 +871,8 @@
 		"standard": "Standardowy",
 		"flex": "Elastyczny",
 		"priority": "Priorytetowy",
+		"label": "Poziom usług",
+		"tooltip": "Aby żądania API były przetwarzane szybciej, wypróbuj poziom usług z przetwarzaniem priorytetowym. Aby płacić mniej kosztem większych opóźnień, wypróbuj poziom z przetwarzaniem elastycznym.",
 		"pricingTableTitle": "Cennik według poziomu usług (cena za 1 mln tokenów)",
 		"columns": {
 			"tier": "Poziom",

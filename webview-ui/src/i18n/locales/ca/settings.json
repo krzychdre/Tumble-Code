@@ -871,6 +871,8 @@
 		"standard": "Estàndard",
 		"flex": "Flex",
 		"priority": "Prioritat",
+		"label": "Nivell de servei",
+		"tooltip": "Per a un processament més ràpid de les sol·licituds a l'API, prova el nivell de servei de processament prioritari. Per a preus més baixos amb més latència, prova el nivell de processament flexible.",
 		"pricingTableTitle": "Preus per nivell de servei (preu per 1M de fitxes)",
 		"columns": {
 			"tier": "Nivell",

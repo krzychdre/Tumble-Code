@@ -871,6 +871,8 @@
 		"standard": "Tiêu chuẩn",
 		"flex": "Linh hoạt",
 		"priority": "Ưu tiên",
+		"label": "Cấp dịch vụ",
+		"tooltip": "Để xử lý yêu cầu API nhanh hơn, hãy thử cấp dịch vụ xử lý ưu tiên. Để có giá thấp hơn với độ trễ cao hơn, hãy thử cấp xử lý linh hoạt.",
 		"pricingTableTitle": "Giá theo cấp độ dịch vụ (giá mỗi 1 triệu token)",
 		"columns": {
 			"tier": "Cấp độ",

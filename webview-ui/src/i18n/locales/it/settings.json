@@ -871,6 +871,8 @@
 		"standard": "Standard",
 		"flex": "Flessibile",
 		"priority": "Priorità",
+		"label": "Livello di servizio",
+		"tooltip": "Per un'elaborazione più rapida delle richieste API, prova il livello di servizio con elaborazione prioritaria. Per prezzi più bassi con latenza maggiore, prova il livello di elaborazione flessibile.",
 		"pricingTableTitle": "Prezzi per livello di servizio (prezzo per 1 milione di token)",
 		"columns": {
 			"tier": "Livello",

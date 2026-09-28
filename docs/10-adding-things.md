@@ -102,7 +102,11 @@ like this).
           auth-token switch);
         - `modelTierSelect`: a dropdown whose options depend on the selected model: a base option that is always
           offered, plus each listed option only when the model's `tiers` name it; hidden when none is (OpenAI's
-          service tier).
+          service tier). Label, tooltip and option texts are i18n keys like every other field's.
+
+        Every text in a row is an i18n key (except example URLs and endpoint host names, shown as is);
+        `provider-descriptors.i18n.spec.ts` in webview-ui fails when a key the table names is missing from any
+        locale's `settings.json`.
 
         By default a field below the first one sits in its own group (`<div>`); `grouped: false` on `apiKey` and
         `optionalUrl` renders it directly in the form instead (OpenAI's base URL checkbox above the API key).

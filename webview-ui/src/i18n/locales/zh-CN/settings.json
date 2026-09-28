@@ -871,6 +871,8 @@
 		"standard": "标准",
 		"flex": "灵活",
 		"priority": "优先",
+		"label": "服务层级",
+		"tooltip": "如需更快地处理 API 请求，请尝试优先处理服务层级。如需以更高延迟换取更低价格，请尝试弹性处理层级。",
 		"pricingTableTitle": "按服务等级定价 (每百万Token价格)",
 		"columns": {
 			"tier": "等级",

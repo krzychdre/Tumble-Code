@@ -125,19 +125,19 @@ export type ProviderCheckboxFieldDescriptor = FieldVisibility & {
  * A dropdown whose options depend on the selected model: `baseOption` is always offered (and
  * shown while the setting is unset), each of `options` only when the selected model's `tiers`
  * list a tier of that name, in the order given here. Without any such tier the field is hidden.
- * The label and tooltip are shown as is (the OpenAI service tier has no translations).
  */
 export type ProviderModelTierSelectFieldDescriptor = FieldVisibility & {
 	readonly kind: "modelTierSelect"
 	readonly key: ProviderStringSettingKey
-	/** Label text, shown as is. */
-	readonly label: string
-	/** Tooltip text of the info icon next to the label, shown as is. */
-	readonly tooltip?: string
+	/** i18n key of the field label. */
+	readonly labelKey: string
+	/** i18n key of the tooltip on the info icon next to the label. */
+	readonly tooltipKey?: string
 	/** `data-testid` of the field's wrapper. */
 	readonly testId?: string
-	readonly baseOption: { readonly value: string; readonly label: string }
-	readonly options: readonly { readonly value: ServiceTier; readonly label: string }[]
+	/** `labelKey`: i18n key of the option text. */
+	readonly baseOption: { readonly value: string; readonly labelKey: string }
+	readonly options: readonly { readonly value: ServiceTier; readonly labelKey: string }[]
 }
 
 /** A URL field with a label above it and an optional note under it. */
@@ -439,14 +439,13 @@ export const PROVIDER_DESCRIPTORS = {
 				{
 					kind: "modelTierSelect",
 					key: "openAiNativeServiceTier",
-					label: "Service tier",
-					tooltip:
-						"For faster processing of API requests, try the priority processing service tier. For lower prices with higher latency, try the flex processing tier.",
+					labelKey: "settings:serviceTier.label",
+					tooltipKey: "settings:serviceTier.tooltip",
 					testId: "openai-service-tier",
-					baseOption: { value: "default", label: "Standard" },
+					baseOption: { value: "default", labelKey: "settings:serviceTier.standard" },
 					options: [
-						{ value: "flex", label: "Flex" },
-						{ value: "priority", label: "Priority" },
+						{ value: "flex", labelKey: "settings:serviceTier.flex" },
+						{ value: "priority", labelKey: "settings:serviceTier.priority" },
 					],
 				},
 			],

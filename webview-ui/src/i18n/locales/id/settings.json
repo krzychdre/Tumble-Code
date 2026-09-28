@@ -871,6 +871,8 @@
 		"standard": "Standar",
 		"flex": "Fleksibel",
 		"priority": "Prioritas",
+		"label": "Tingkat layanan",
+		"tooltip": "Untuk pemrosesan permintaan API yang lebih cepat, coba tingkat layanan pemrosesan prioritas. Untuk harga lebih rendah dengan latensi lebih tinggi, coba tingkat pemrosesan flex.",
 		"pricingTableTitle": "Harga berdasarkan tingkat layanan (harga per 1 juta token)",
 		"columns": {
 			"tier": "Tingkat",
