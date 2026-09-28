@@ -7,17 +7,19 @@ import { Text } from "ink"
  * stayed in raw mode and the user saw ink's raw error dump (or nothing at
  * all). The boundary replaces the tree with a readable message, keeps the
  * "Ctrl+C to exit" affordance alive (the crash path also unmounts via the
- * process guards) and hands the error to `onError` — run.ts passes the
+ * process guards) and hands the error to `onError`; run.ts passes the
  * guard error emitter so the crash is reported once, in the right place.
  *
  * Deliberately minimal compared with the webview ErrorBoundary: no i18n, no
- * telemetry, no source-map lookup — the CLI cannot assume either is up.
+ * telemetry, no source-map lookup: the CLI cannot assume either is up.
  */
 interface ErrorBoundaryProps {
 	/** Optional only so `createElement(type, props, child)` type-checks. */
 	children?: ReactNode
 	/** Called once when a render error is caught. */
 	onError?: (error: Error, info: ErrorInfo) => void
+	/** Shown under the fallback: where the debug log is, or to rerun with --debug. */
+	hint?: string
 }
 
 interface ErrorBoundaryState {
@@ -47,6 +49,7 @@ export class TuiErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundar
 				{`${name}: ${message}`}
 				{stack ? `\n${stack}` : ""}
 				{"\nSomething went wrong in the TUI. Press Ctrl+C to exit."}
+				{this.props.hint ? `\n${this.props.hint}` : ""}
 			</Text>
 		)
 	}

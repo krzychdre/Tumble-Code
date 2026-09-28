@@ -6,6 +6,7 @@ import { createElement } from "react"
 import pWaitFor from "p-wait-for"
 
 import { setLogger } from "@roo-code/vscode-shim"
+import { debugLog, getDebugLogPath } from "@roo-code/core/cli"
 
 import {
 	FlagOptions,
@@ -55,6 +56,7 @@ import { CLEAR_SCREEN } from "@/ui/utils/clearTerminal.js"
 
 import { ExtensionHost, ExtensionHostOptions } from "@/agent/index.js"
 import { installProcessGuards } from "@/lib/process-guards.js"
+import { formatCrashHint, formatCrashReport } from "@/lib/crash-report.js"
 import { isExpectedControlFlowError } from "./cancellation.js"
 import { runStdinStreamMode } from "./stdin-stream.js"
 
@@ -578,6 +580,9 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 
 	// Run!
 
+	// Named in every crash report: the debug log, or how to get one (§4).
+	const crashHintOptions = { debug: flagOptions.debug, logPath: getDebugLogPath() }
+
 	if (isTuiEnabled) {
 		try {
 			const { render } = await import("ink")
@@ -590,8 +595,12 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 					TuiErrorBoundary,
 					{
 						// A render crash is reported once here; the guards'
-						// uncaughtException handler does not fire for it.
-						onError: (error: Error) => console.error("[CLI] TUI crashed:", error.stack || error.message),
+						// uncaughtException handler does not fire for it. The
+						// fallback stays on screen, so the hint goes there and
+						// the stack goes into the debug log (a no-op without
+						// --debug, which is what the hint then suggests).
+						onError: (error: Error) => debugLog("[CLI] TUI crashed", error.stack || error.message),
+						hint: formatCrashHint(crashHintOptions),
 					},
 					createElement(App, {
 						...extensionHostOptions,
@@ -626,22 +635,33 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 			// the terminal either. Normal exits go through App's Ctrl+C
 			// handler (exitOnCtrlC is false); SIGINT reaches this handler only
 			// when no useInput consumer is alive to see it.
+			//
+			// A crash is only recorded in onError and printed after the
+			// unmount: before it, ink owns the screen, and console.error is
+			// routed into the debug log by the host's quiet mode.
+			let crash: { error: unknown; source: string } | undefined
+
 			const disposeGuards = installProcessGuards({
 				onCleanup: async () => {
 					instance.unmount()
 					// Give the unmount effects (host dispose, transcript
 					// detach) a tick to run before the process goes away.
 					await new Promise((resolve) => setImmediate(resolve))
+
+					if (crash) {
+						process.stderr.write(
+							formatCrashReport(crash.error, { source: crash.source, ...crashHintOptions }),
+						)
+					}
+				},
+				onError: (error, source) => {
+					crash ??= { error, source }
+					debugLog(`[CLI] ${source}`, error instanceof Error ? error.stack || error.message : String(error))
 				},
 			})
 			void disposeGuards
 		} catch (error) {
-			console.error("[CLI] Failed to start TUI:", error instanceof Error ? error.message : String(error))
-
-			if (error instanceof Error) {
-				console.error(error.stack)
-			}
-
+			process.stderr.write(formatCrashReport(error, { source: "starting the TUI", ...crashHintOptions }))
 			process.exit(1)
 		}
 	} else {
@@ -674,8 +694,11 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 				return
 			}
 
-			console.error("[CLI] Error:", errorMessage)
-			console.error(error.stack)
+			// process.stderr, not console.error: while the host is alive,
+			// its quiet mode routes console.error into the debug log, so a
+			// run without --debug never showed why it failed.
+			const stack = error.stack ? `${error.stack}\n` : ""
+			process.stderr.write(`[CLI] Error: ${errorMessage}\n${stack}${formatCrashHint(crashHintOptions)}\n`)
 		}
 
 		const flushStdout = async () => {
