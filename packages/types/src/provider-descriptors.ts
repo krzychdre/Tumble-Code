@@ -1,3 +1,4 @@
+import type { ServiceTier } from "./model.js"
 import type { ModelSourceOptions } from "./model-source.js"
 import { zaiApiLineSchema } from "./provider-config/configs.js"
 import { ANTHROPIC_1M_CONTEXT_MODEL_IDS } from "./provider-model-selection.js"
@@ -16,9 +17,9 @@ import { zaiApiLineConfigs } from "./providers/zai.js"
  *
  * - `form`: how the webview renders the provider's settings. `fields` rows are rendered by the
  *   generic `ProviderDescriptorForm` (webview-ui/src/components/settings/providers/), so a
- *   provider whose settings are "API key, maybe an endpoint choice or a custom base URL" needs
- *   no component of its own. `custom` means a hand-written component in that directory (OAuth
- *   flows, fetched model lists, cloud credentials, model-dependent controls); `none` means the
+ *   provider whose settings are "API key, maybe an endpoint choice, URLs, checkboxes or a
+ *   model-dependent choice" needs no component of its own. `custom` means a hand-written
+ *   component in that directory (OAuth flows, fetched model lists, cloud credentials); `none` means the
  *   provider has no settings form (hidden providers).
  * - `service`: the name and link the model picker shows ("browse models at ...").
  * - `docsSlug`: the page under `providers/` on the docs site the settings link to.
@@ -83,6 +84,12 @@ export type ProviderApiKeyFieldDescriptor = FieldVisibility & {
 	readonly getKeyUrl: ProviderGetKeyUrl
 	/** i18n key of the link text. */
 	readonly getKeyLabelKey: string
+	/**
+	 * `false`: render the trio directly in the form even below another field (OpenAI native,
+	 * whose ungrouped base-URL checkbox sits above it). By default the trio is wrapped in its own
+	 * group when it is not the first field.
+	 */
+	readonly grouped?: false
 }
 
 /** A dropdown that writes one of a fixed set of values (an endpoint or API line). */
@@ -112,6 +119,25 @@ export type ProviderCheckboxFieldDescriptor = FieldVisibility & {
 	readonly labelKey: string
 	/** i18n key of a note under the checkbox. */
 	readonly descriptionKey?: string
+}
+
+/**
+ * A dropdown whose options depend on the selected model: `baseOption` is always offered (and
+ * shown while the setting is unset), each of `options` only when the selected model's `tiers`
+ * list a tier of that name, in the order given here. Without any such tier the field is hidden.
+ * The label and tooltip are shown as is (the OpenAI service tier has no translations).
+ */
+export type ProviderModelTierSelectFieldDescriptor = FieldVisibility & {
+	readonly kind: "modelTierSelect"
+	readonly key: ProviderStringSettingKey
+	/** Label text, shown as is. */
+	readonly label: string
+	/** Tooltip text of the info icon next to the label, shown as is. */
+	readonly tooltip?: string
+	/** `data-testid` of the field's wrapper. */
+	readonly testId?: string
+	readonly baseOption: { readonly value: string; readonly label: string }
+	readonly options: readonly { readonly value: ServiceTier; readonly label: string }[]
 }
 
 /** A URL field with a label above it and an optional note under it. */
@@ -144,6 +170,11 @@ export type ProviderOptionalUrlFieldDescriptor = FieldVisibility &
 		readonly toggleLabelKey: string
 		/** `data-testid` of the checkbox input, for tests that tick it. */
 		readonly toggleTestId?: string
+		/**
+		 * `false`: render the checkbox and the URL directly in the form, without the wrapping
+		 * group (OpenAI native). By default they sit in their own `<div>`.
+		 */
+		readonly grouped?: false
 		/** Values written after the URL is cleared, when the checkbox is unticked. */
 		readonly alsoClear?: Readonly<Partial<ProviderSettings>>
 		/** Checkboxes shown under the URL while the checkbox is ticked. */
@@ -156,6 +187,7 @@ export type ProviderFieldDescriptor =
 	| ProviderOptionalUrlFieldDescriptor
 	| ProviderUrlFieldDescriptor
 	| ProviderCheckboxFieldDescriptor
+	| ProviderModelTierSelectFieldDescriptor
 
 /** The fields a provider may use: no `apiKey` field without an API key settings key. */
 type ProviderFieldDescriptorFor<P extends DescribedProviderId> = (typeof providerApiKeyFields)[P] extends null
@@ -386,7 +418,39 @@ export const PROVIDER_DESCRIPTORS = {
 	},
 	"openai-codex": { form: custom, docsSlug: "openai-codex", modelPicker: "in-form" },
 	"openai-native": {
-		form: custom,
+		form: {
+			kind: "fields",
+			fields: [
+				{
+					kind: "optionalUrl",
+					key: "openAiNativeBaseUrl",
+					toggleLabelKey: "settings:providers.useCustomBaseUrl",
+					placeholder: "https://api.openai.com/v1",
+					grouped: false,
+				},
+				{
+					...apiKey(
+						"settings:providers.openAiApiKey",
+						"settings:providers.getOpenAiApiKey",
+						"https://platform.openai.com/api-keys",
+					),
+					grouped: false,
+				},
+				{
+					kind: "modelTierSelect",
+					key: "openAiNativeServiceTier",
+					label: "Service tier",
+					tooltip:
+						"For faster processing of API requests, try the priority processing service tier. For lower prices with higher latency, try the flex processing tier.",
+					testId: "openai-service-tier",
+					baseOption: { value: "default", label: "Standard" },
+					options: [
+						{ value: "flex", label: "Flex" },
+						{ value: "priority", label: "Priority" },
+					],
+				},
+			],
+		},
 		service: { name: "OpenAI", url: "https://platform.openai.com" },
 		docsSlug: "openai",
 	},

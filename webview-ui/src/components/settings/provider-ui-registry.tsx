@@ -17,7 +17,6 @@ import {
 	LMStudio,
 	LiteLLM,
 	Ollama,
-	OpenAI,
 	OpenAICompatible,
 	OpenAICodex,
 	OpenRouter,
@@ -42,20 +41,21 @@ export type ProviderFormRenderContext = {
 	openAiCodexIsAuthenticated: boolean | undefined
 }
 
-/** The component a form definition renders: a hand-written one, or the descriptor form (named after its provider). */
-export type ProviderFormId =
-	| "bedrock"
-	| "lmstudio"
-	| "litellm"
-	| "ollama"
-	| "openai-codex"
-	| "openai-compatible"
-	| "openai-native"
-	| "openrouter"
-	| "qwen-code"
-	| "vertex"
-	| "vscode-lm"
-	| DescriptorFormProviderId
+/** Hand-written forms whose id differs from their provider id. */
+const customFormIdAliases = { openai: "openai-compatible" } as const satisfies Partial<
+	Record<CustomFormProviderId, string>
+>
+
+type FormIdOf<P extends CustomFormProviderId | DescriptorFormProviderId> = P extends keyof typeof customFormIdAliases
+	? (typeof customFormIdAliases)[P]
+	: P
+
+/**
+ * The component a form definition renders: a hand-written one (named after its provider unless
+ * `customFormIdAliases` renames it), or the descriptor form (named after its provider). Derived
+ * from `PROVIDER_DESCRIPTORS`, so migrating a provider to the descriptor form keeps its id.
+ */
+export type ProviderFormId = FormIdOf<CustomFormProviderId | DescriptorFormProviderId>
 
 export type ProviderFormDefinition = {
 	readonly status: "form"
@@ -100,12 +100,26 @@ const simpleForm = (
 	render: ProviderFormDefinition["render"],
 ): ProviderFormDefinition => withValidation(provider, { status: "form", formId, render })
 
+/** A hand-written form; its id is the provider id or its alias in `customFormIdAliases`. */
+const customForm = <P extends CustomFormProviderId>(
+	provider: P,
+	render: ProviderFormDefinition["render"],
+): ProviderFormDefinition =>
+	simpleForm(
+		provider,
+		(Object.hasOwn(customFormIdAliases, provider)
+			? customFormIdAliases[provider as keyof typeof customFormIdAliases]
+			: provider) as FormIdOf<P>,
+		render,
+	)
+
 const descriptorForm = (provider: DescriptorFormProviderId): ProviderFormDefinition =>
 	simpleForm(provider, provider, (context) => (
 		<ProviderDescriptorForm
 			provider={provider}
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
+			selectedModelInfo={context.selectedModelInfo}
 		/>
 	))
 
@@ -115,7 +129,7 @@ const descriptorForms = Object.fromEntries(
 ) as { [provider in DescriptorFormProviderId]: ProviderFormDefinition }
 
 const customForms = {
-	openrouter: simpleForm("openrouter", "openrouter", (context) => (
+	openrouter: customForm("openrouter", (context) => (
 		<OpenRouter
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
@@ -127,7 +141,7 @@ const customForms = {
 			modelValidationError={context.modelValidationError}
 		/>
 	)),
-	litellm: simpleForm("litellm", "litellm", (context) => (
+	litellm: customForm("litellm", (context) => (
 		<LiteLLM
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
@@ -136,25 +150,25 @@ const customForms = {
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
-	ollama: simpleForm("ollama", "ollama", (context) => (
+	ollama: customForm("ollama", (context) => (
 		<Ollama
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
 		/>
 	)),
-	lmstudio: simpleForm("lmstudio", "lmstudio", (context) => (
+	lmstudio: customForm("lmstudio", (context) => (
 		<LMStudio
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
 		/>
 	)),
-	"vscode-lm": simpleForm("vscode-lm", "vscode-lm", (context) => (
+	"vscode-lm": customForm("vscode-lm", (context) => (
 		<VSCodeLM
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
 		/>
 	)),
-	openai: simpleForm("openai", "openai-compatible", (context) => (
+	openai: customForm("openai", (context) => (
 		<OpenAICompatible
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
@@ -163,7 +177,7 @@ const customForms = {
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
-	bedrock: simpleForm("bedrock", "bedrock", (context) => (
+	bedrock: customForm("bedrock", (context) => (
 		<Bedrock
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
@@ -171,7 +185,7 @@ const customForms = {
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
-	"openai-codex": simpleForm("openai-codex", "openai-codex", (context) => (
+	"openai-codex": customForm("openai-codex", (context) => (
 		<OpenAICodex
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
@@ -179,22 +193,14 @@ const customForms = {
 			openAiCodexIsAuthenticated={context.openAiCodexIsAuthenticated}
 		/>
 	)),
-	"openai-native": simpleForm("openai-native", "openai-native", (context) => (
-		<OpenAI
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
-			selectedModelInfo={context.selectedModelInfo}
-			simplifySettings={context.simplifySettings}
-		/>
-	)),
-	"qwen-code": simpleForm("qwen-code", "qwen-code", (context) => (
+	"qwen-code": customForm("qwen-code", (context) => (
 		<QwenCode
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
-	vertex: simpleForm("vertex", "vertex", (context) => (
+	vertex: customForm("vertex", (context) => (
 		<Vertex
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
