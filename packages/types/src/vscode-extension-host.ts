@@ -62,10 +62,8 @@ export type ExtensionUiMessageType =
 	| "invoke"
 	| "enhancedPrompt"
 	| "commitSearchResults"
-	| "autoApprovalEnabled"
 	| "fileSearchResults"
 	| "acceptInput"
-	| "setHistoryPreviewCollapsed"
 	| "vsCodeSetting"
 	| "terminalProfiles"
 	| "insertTextIntoTextarea"
@@ -75,10 +73,7 @@ export type ExtensionUiMessageType =
 
 /** Modes, prompts, rules, slash commands, skills and custom tools. */
 export type ExtensionModesMessageType =
-	| "updatePrompt"
 	| "systemPrompt"
-	| "updateCustomMode"
-	| "deleteCustomMode"
 	| "exportModeResult"
 	| "importModeResult"
 	| "checkRulesDirectoryResult"
@@ -91,8 +86,6 @@ export type ExtensionModesMessageType =
 /** Provider profiles, models, cloud account and organization. */
 export type ExtensionProviderMessageType =
 	| "listApiConfig"
-	| "vsCodeLmApiAvailable"
-	| "toggleApiConfigPin"
 	| "authenticatedUser"
 	| "providerModels"
 	| "organizationSwitchResult"
@@ -105,7 +98,6 @@ export type ExtensionMcpMessageType = "mcpServers"
 export type ExtensionCodeIndexMessageType =
 	| "indexingStatusUpdate"
 	| "indexCleared"
-	| "codebaseIndexConfig"
 	| "codeIndexSettingsSaved"
 	| "codeIndexSecretStatus"
 
@@ -120,7 +112,6 @@ export type ExtensionWorktreeMessageType =
 	| "branchList"
 	| "worktreeDefaults"
 	| "worktreeIncludeStatus"
-	| "branchWorktreeIncludeResult"
 
 /** Plan review panel. */
 export type ExtensionPlanReviewMessageType = "planReviewInit" | "planReviewUpdate" | "planReviewDraftsConsumed"
@@ -546,7 +537,6 @@ export type WebviewTaskMessageType =
 	| "checkpointDiff"
 	| "checkpointRestore"
 	| "condenseTaskContextRequest"
-	| "shareTaskSuccess"
 	| "queueMessage"
 	| "removeQueuedMessage"
 	| "editQueuedMessage"
@@ -565,7 +555,6 @@ export type WebviewUiMessageType =
 	| "openKeyboardShortcuts"
 	| "openExtensionLogs"
 	| "enhancePrompt"
-	| "enhancedPrompt"
 	| "draggedImages"
 	| "searchCommits"
 	| "searchFiles"
@@ -591,7 +580,6 @@ export type WebviewSettingsMessageType =
 	| "resetState"
 	| "updateVSCodeSetting"
 	| "getVSCodeSetting"
-	| "vsCodeSetting"
 	| "requestTerminalProfiles"
 	| "openTerminalProfilePicker"
 	| "enhancementApiConfigId"
@@ -626,16 +614,12 @@ export type WebviewModesMessageType =
 	| "updatePrompt"
 	| "getSystemPrompt"
 	| "copySystemPrompt"
-	| "systemPrompt"
 	| "updateCustomMode"
 	| "deleteCustomMode"
 	| "openCustomModesSettings"
 	| "exportMode"
-	| "exportModeResult"
 	| "importMode"
-	| "importModeResult"
 	| "checkRulesDirectory"
-	| "checkRulesDirectoryResult"
 	| "requestCommands"
 	| "openCommandFile"
 	| "deleteCommand"
@@ -666,8 +650,6 @@ export type WebviewCodeIndexMessageType =
 	| "startIndexing"
 	| "stopIndexing"
 	| "clearIndexData"
-	| "indexingStatusUpdate"
-	| "indexCleared"
 	| "toggleWorkspaceIndexing"
 	| "setAutoEnableDefault"
 	| "saveCodeIndexSettingsAtomic"
@@ -678,7 +660,6 @@ export type WebviewMarketplaceMessageType =
 	| "filterMarketplaceItems"
 	| "installMarketplaceItem"
 	| "removeInstalledMarketplaceItem"
-	| "marketplaceInstallResult"
 	| "fetchMarketplaceData"
 
 /** Git worktrees and branches. */
