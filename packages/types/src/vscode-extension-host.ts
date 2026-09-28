@@ -108,7 +108,6 @@ export * from "./vscode-extension-host/subagents.js"
 export * from "./vscode-extension-host/planReview.js"
 export * from "./vscode-extension-host/state.js"
 export * from "./vscode-extension-host/chat-rows.js"
-export * from "./vscode-extension-host/legacy-groups.js"
 
 /** Host to view message type names by domain; the keys mirror `messageHandlerGroups`. */
 export type ExtensionMessageTypesByDomain = {

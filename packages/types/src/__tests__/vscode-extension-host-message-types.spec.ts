@@ -9,27 +9,8 @@
 import type {
 	ExtensionMessage,
 	WebviewMessage,
-	ExtensionCodeIndexMessageType,
-	ExtensionMarketplaceMessageType,
-	ExtensionMcpMessageType,
 	ExtensionMessageType,
-	ExtensionModesMessageType,
-	ExtensionPlanReviewMessageType,
-	ExtensionProviderMessageType,
-	ExtensionTaskMessageType,
-	ExtensionUiMessageType,
-	ExtensionWorktreeMessageType,
-	WebviewCodeIndexMessageType,
-	WebviewMarketplaceMessageType,
-	WebviewMcpMessageType,
 	WebviewMessageType,
-	WebviewModesMessageType,
-	WebviewPlanReviewMessageType,
-	WebviewProviderMessageType,
-	WebviewSettingsMessageType,
-	WebviewTaskMessageType,
-	WebviewUiMessageType,
-	WebviewWorktreeMessageType,
 	ExtensionMessageTypesByDomain,
 	WebviewMessageTypesByDomain,
 } from "../vscode-extension-host.js"
@@ -275,35 +256,5 @@ describe("extension host message type names", () => {
 		>().toEqualTypeOf<ExpectedWebviewMessageType>()
 		expectTypeOf<EmptyDomains<ExtensionMessageTypesByDomain>>().toBeNever()
 		expectTypeOf<EmptyDomains<WebviewMessageTypesByDomain>>().toBeNever()
-	})
-
-	it("the deprecated pre-S7 groups still partition both sets", () => {
-		type LegacyExtensionGroups = {
-			task: ExtensionTaskMessageType
-			ui: ExtensionUiMessageType
-			modes: ExtensionModesMessageType
-			provider: ExtensionProviderMessageType
-			mcp: ExtensionMcpMessageType
-			codeIndex: ExtensionCodeIndexMessageType
-			marketplace: ExtensionMarketplaceMessageType
-			worktree: ExtensionWorktreeMessageType
-			planReview: ExtensionPlanReviewMessageType
-		}
-		type LegacyWebviewGroups = {
-			task: WebviewTaskMessageType
-			ui: WebviewUiMessageType
-			settings: WebviewSettingsMessageType
-			provider: WebviewProviderMessageType
-			modes: WebviewModesMessageType
-			mcp: WebviewMcpMessageType
-			codeIndex: WebviewCodeIndexMessageType
-			marketplace: WebviewMarketplaceMessageType
-			worktree: WebviewWorktreeMessageType
-			planReview: WebviewPlanReviewMessageType
-		}
-		expectTypeOf<Overlaps<LegacyExtensionGroups>>().toBeNever()
-		expectTypeOf<Overlaps<LegacyWebviewGroups>>().toBeNever()
-		expectTypeOf<LegacyExtensionGroups[keyof LegacyExtensionGroups]>().toEqualTypeOf<ExpectedExtensionMessageType>()
-		expectTypeOf<LegacyWebviewGroups[keyof LegacyWebviewGroups]>().toEqualTypeOf<ExpectedWebviewMessageType>()
 	})
 })
