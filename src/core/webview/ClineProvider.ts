@@ -129,7 +129,10 @@ export class ClineProvider
 	private disposables: vscode.Disposable[] = []
 	private webviewDisposables: vscode.Disposable[] = []
 	private view?: vscode.WebviewView | vscode.WebviewPanel
-	private clineStack: Task[] = []
+	// The single foreground task slot (D7: clineStack was a stack of one —
+	// every production path removed the current task before adding another).
+	// Background tasks (memory writers, parallel subagents) never occupy it.
+	private currentTask?: Task
 	// Live summaries + tail subscriptions for the UI-visible subset of
 	// backgroundTasks (parallel subagents). Memory writers never register.
 	// The `currentTaskIdProvider` stamps `sourceTaskId` on every
@@ -209,8 +212,8 @@ export class ClineProvider
 
 	/**
 	 * Headless background tasks: memory writers and parallel subagents
-	 * (CORE-R6 d). Kept OFF `clineStack` so `getCurrentTask()` and the webview
-	 * stay bound to the foreground task.
+	 * (CORE-R6 d). Kept OUT of the current-task slot so `getCurrentTask()`
+	 * and the webview stay bound to the foreground task.
 	 */
 	private readonly backgroundTaskRunner: BackgroundTaskRunner
 
@@ -505,14 +508,12 @@ export class ClineProvider
 		return this.cloudProfileSync.initializeWhenReady()
 	}
 
-	// Adds a new Task instance to clineStack, marking the start of a new task.
-	// The instance is pushed to the top of the stack (LIFO order).
-	// When the task is completed, the top instance is removed, reactivating the
-	// previous task.
+	// Installs a Task instance as THE current (foreground) task, marking the
+	// start of a new task. Callers enforce the single-open invariant: every
+	// production path first removes the previous task (or replaces it
+	// in-place via createTaskWithHistoryItem's rehydrate branch).
 	async addClineToStack(task: Task) {
-		// Add this cline instance into the stack that represents the order of
-		// all the called tasks.
-		this.clineStack.push(task)
+		this.currentTask = task
 		task.emit(RooCodeEventName.TaskFocused)
 
 		// Perform special setup provider specific tasks.
@@ -549,15 +550,17 @@ export class ClineProvider
 		return this._disposed
 	}
 
-	// Removes and destroys the top Cline instance (the current finished task),
-	// activating the previous one (resuming the parent task).
+	// Removes and destroys the current task instance. Resuming a parent is
+	// NOT done here — it happens by rehydrating the parent from history
+	// (createTaskWithHistoryItem / delegation complete).
 	async removeClineFromStack(options?: { skipDelegationRepair?: boolean }) {
-		if (this.clineStack.length === 0) {
+		// Take the current task instance out of the slot.
+		let task = this.currentTask
+		this.currentTask = undefined
+
+		if (!task) {
 			return
 		}
-
-		// Pop the top Cline instance from the stack.
-		let task = this.clineStack.pop()
 
 		if (task) {
 			// Capture delegation metadata before abort/dispose, since abortTask(true)
@@ -625,12 +628,8 @@ export class ClineProvider
 		}
 	}
 
-	getTaskStackSize(): number {
-		return this.clineStack.length
-	}
-
 	public getCurrentTaskStack(): string[] {
-		return this.clineStack.map((cline) => cline.taskId)
+		return this.currentTask ? [this.currentTask.taskId] : []
 	}
 
 	// Pending Edit Operations Management
@@ -721,8 +720,8 @@ export class ClineProvider
 		this._disposed = true
 		this.log("Disposing ClineProvider...")
 
-		// Clear all tasks from the stack.
-		while (this.clineStack.length > 0) {
+		// Clear the current task (if any).
+		if (this.currentTask) {
 			await this.removeClineFromStack()
 		}
 
@@ -1068,11 +1067,8 @@ export class ClineProvider
 		})
 
 		if (isRehydratingCurrentTask) {
-			// Replace the current task in-place to avoid UI flicker
-			const stackIndex = this.clineStack.length - 1
-
 			// Properly dispose of the old task to ensure garbage collection
-			const oldTask = this.clineStack[stackIndex]
+			const oldTask = this.currentTask!
 
 			// Abort the old task to stop running processes and mark as abandoned
 			try {
@@ -1090,8 +1086,8 @@ export class ClineProvider
 				this.taskEventListeners.delete(oldTask)
 			}
 
-			// Replace the task in the stack
-			this.clineStack[stackIndex] = task
+			// Replace the current task in-place to avoid UI flicker
+			this.currentTask = task
 			task.emit(RooCodeEventName.TaskFocused)
 
 			// Perform preparation tasks and set up event listeners
@@ -1389,16 +1385,19 @@ export class ClineProvider
 		if (id !== this.getCurrentTask()?.taskId) {
 			const historyItem = await this.getHistoryItem(id)
 
-			// Resolve rootTask/parentTask references from the active stack so
+			// Resolve rootTask/parentTask references from the current task so
 			// that subtask delegation metadata survives history-item round-trips
-			// (only the IDs are persisted, not the live Task objects).
+			// (only the IDs are persisted, not the live Task objects). With the
+			// single-task slot, the previous find() over the stack could only
+			// ever match the current task anyway.
 			let rootTask: Task | undefined
 			let parentTask: Task | undefined
-			if (historyItem.rootTaskId) {
-				rootTask = this.clineStack.find((t) => t.taskId === historyItem.rootTaskId)
+			const current = this.getCurrentTask()
+			if (historyItem.rootTaskId && current?.taskId === historyItem.rootTaskId) {
+				rootTask = current
 			}
-			if (historyItem.parentTaskId) {
-				parentTask = this.clineStack.find((t) => t.taskId === historyItem.parentTaskId)
+			if (historyItem.parentTaskId && current?.taskId === historyItem.parentTaskId) {
+				parentTask = current
 			}
 
 			await this.createTaskWithHistoryItem({ ...historyItem, rootTask, parentTask })
@@ -1413,13 +1412,7 @@ export class ClineProvider
 
 	/* Condenses a task's message history to use fewer tokens. */
 	async condenseTaskContext(taskId: string) {
-		let task: Task | undefined
-		for (let i = this.clineStack.length - 1; i >= 0; i--) {
-			if (this.clineStack[i].taskId === taskId) {
-				task = this.clineStack[i]
-				break
-			}
-		}
+		const task = this.currentTask?.taskId === taskId ? this.currentTask : undefined
 		if (!task) {
 			// Task gone: still dismiss the spinner so the UI doesn't hang.
 			await this.postMessageToWebview({ type: "condenseTaskContextResponse", text: taskId })
@@ -1891,11 +1884,7 @@ export class ClineProvider
 	 */
 
 	public getCurrentTask(): Task | undefined {
-		if (this.clineStack.length === 0) {
-			return undefined
-		}
-
-		return this.clineStack[this.clineStack.length - 1]
+		return this.currentTask
 	}
 
 	private logWebviewHiddenDiagnostics(): void {
@@ -1907,7 +1896,7 @@ export class ClineProvider
 			`[Tumble Code] Webview hidden during active task.\n` +
 				`  taskId:       ${task.taskId}\n` +
 				`  messageCount: ${task.clineMessages.length}\n` +
-				`  stackDepth:   ${this.clineStack.length}\n` +
+				`  stackDepth:   ${this.currentTask ? 1 : 0}\n` +
 				`  timestamp:    ${new Date().toISOString()}\n` +
 				`If the panel appears gray after this, include this log when reporting the issue.`,
 		)
@@ -1997,12 +1986,20 @@ export class ClineProvider
 			task: text,
 			images,
 			experiments,
-			rootTask: this.clineStack.length > 0 ? this.clineStack[0] : undefined,
+			// Derive rootTask from the parent chain (D7): the old array read
+			// (`clineStack[0]`) always saw an empty array on every production
+			// path (pop-before-push), so it yielded undefined. The chain
+			// derivation yields the same undefined for top-level tasks and
+			// records the lineage for delegated children, matching the
+			// persisted rootTaskId semantics.
+			rootTask: parentTask ? (parentTask.rootTask ?? parentTask) : undefined,
 			parentTask,
-			taskNumber: this.clineStack.length + 1,
+			// The old array read (`length + 1`) always evaluated to 1 because
+			// every production path popped the previous task first.
+			taskNumber: 1,
 			onCreated: this.taskCreationCallback,
 			initialTodos: options.initialTodos,
-			// Ensure this task is present in clineStack before startTask() emits
+			// Ensure this task is the current task before startTask() emits
 			// its initial state update, so state.currentTaskId is available ASAP.
 			startTask: false,
 			...options,
@@ -2046,12 +2043,7 @@ export class ClineProvider
 	 * rehydrate while the children kept running.
 	 */
 	public getLiveTaskInstance(taskId: string): Task | undefined {
-		for (let i = this.clineStack.length - 1; i >= 0; i--) {
-			if (this.clineStack[i].taskId === taskId) {
-				return this.clineStack[i]
-			}
-		}
-		return undefined
+		return this.currentTask?.taskId === taskId ? this.currentTask : undefined
 	}
 
 	/**
@@ -2331,9 +2323,8 @@ export class ClineProvider
 		// (the webview scopes by currentTaskId; after the pop there is no
 		// current task and the post would be dropped by the scope guard).
 		await this.resetSubagentPanel()
-		if (this.clineStack.length > 0) {
-			const task = this.clineStack[this.clineStack.length - 1]
-			console.log(`[clearTask] clearing task ${task.taskId}.${task.instanceId}`)
+		if (this.currentTask) {
+			console.log(`[clearTask] clearing task ${this.currentTask.taskId}.${this.currentTask.instanceId}`)
 			await this.removeClineFromStack()
 		}
 	}

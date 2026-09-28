@@ -195,19 +195,27 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		provider.updateTaskHistory = vi.fn().mockResolvedValue([]) as any
 
 		stack = []
-		;(provider as any).clineStack = stack
-		provider.addClineToStack = vi.fn(async (task: any) => {
+		;(provider as any).currentTask = undefined
+		// Mirror of the provider's current-task slot (D7): keep `stack` in
+		// sync so the assertions below observe what the slot holds.
+		const install = (task: any) => {
+			;(provider as any).currentTask = task
 			stack.push(task)
+		}
+		provider.addClineToStack = vi.fn(async (task: any) => {
+			install(task)
 		}) as any
 		provider.removeClineFromStack = vi.fn(async () => {
 			stack.pop()
+			;(provider as any).currentTask = undefined
 		}) as any
+		;(provider as any).install = install
 	})
 
 	describe("createTaskWithHistoryItem", () => {
 		it("rejects a task whose profile the organization disallows, without constructing it", async () => {
 			useProfile(DISALLOWED_PROFILE)
-			stack.push(fakeTask("other"))
+			;(provider as any).install(fakeTask("other"))
 
 			await expect(provider.createTaskWithHistoryItem(historyItem("old"))).rejects.toBeInstanceOf(
 				OrganizationAllowListViolationError,
@@ -235,7 +243,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		it("keeps the current task in place when rehydrating it on a disallowed profile", async () => {
 			useProfile(DISALLOWED_PROFILE)
 			const current = fakeTask("same")
-			stack.push(current)
+			;(provider as any).install(current)
 
 			await expect(provider.createTaskWithHistoryItem(historyItem("same"))).rejects.toBeInstanceOf(
 				OrganizationAllowListViolationError,
@@ -266,7 +274,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 			current.abort = true
 			current.isStreaming = false
 		})
-		stack.push(current)
+		;(provider as any).install(current)
 		provider.getHistoryItem = vi.fn().mockResolvedValue(historyItem("running")) as any
 
 		await expect(provider.cancelTask()).resolves.toBeUndefined()
@@ -279,7 +287,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 	it("streaming failure: the rehydrate rejection is shown to the user instead of only logged", async () => {
 		useProfile(DISALLOWED_PROFILE)
 		const failed = fakeTask("streaming", { abortReason: "streaming_failed", isBackground: false })
-		stack.push(failed)
+		;(provider as any).install(failed)
 		provider.getHistoryItem = vi.fn().mockResolvedValue(historyItem("streaming")) as any
 		;(provider as any).taskCreationCallback(failed)
 		const onAborted = failed.on.mock.calls.find(([event]: [string]) => event === RooCodeEventName.TaskAborted)[1]
@@ -293,7 +301,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 	it("subtask return: a disallowed parent is not resumed, the user is told, and the delegation still completes", async () => {
 		useProfile(DISALLOWED_PROFILE)
 		const child = fakeTask("child", { parentTaskId: "parent" })
-		stack.push(child)
+		;(provider as any).install(child)
 		provider.getHistoryItem = vi.fn(async (id: string) =>
 			id === "parent"
 				? historyItem("parent", { status: "delegated", awaitingChildId: "child" })

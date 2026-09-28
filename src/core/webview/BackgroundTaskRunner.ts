@@ -105,7 +105,7 @@ export class BackgroundTaskRunner {
 	 * `run_parallel_tasks` subagents.
 	 *
 	 * Unlike `ClineProvider.createTask`, a background task:
-	 * - is **never** pushed onto `clineStack`, so `getCurrentTask()` and the
+	 * - is **never** installed as the current task, so `getCurrentTask()` and the
 	 *   webview stay bound to the foreground task;
 	 * - runs autonomously via `autoApprovalOverride` (interactive asks never block
 	 *   it: the task isn't the current task, so no webview response would arrive);

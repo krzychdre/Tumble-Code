@@ -34,7 +34,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 				})
 
 		const provider = {
-			clineStack: [childTask] as any[],
+			currentTask: childTask as any,
 			taskEventListeners: new Map(),
 			log: vi.fn(),
 			getHistoryItem,
@@ -69,8 +69,8 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 
 		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
 
-		// Stack should be empty after pop
-		expect(provider.clineStack).toHaveLength(0)
+		// Slot should be empty after removal
+		expect(provider.currentTask).toBeUndefined()
 
 		// Parent lookup should have been called
 		expect(getHistoryItem).toHaveBeenCalledWith("parent-1")
@@ -98,8 +98,8 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 
 		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
 
-		// Stack should be empty
-		expect(provider.clineStack).toHaveLength(0)
+		// Slot should be empty
+		expect(provider.currentTask).toBeUndefined()
 
 		// No parent lookup or update should happen
 		expect(getHistoryItem).not.toHaveBeenCalled()
@@ -166,8 +166,8 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		// Should NOT throw
 		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
 
-		// Stack should still be empty (pop was not blocked)
-		expect(provider.clineStack).toHaveLength(0)
+		// Slot should still be empty (removal was not blocked)
+		expect(provider.currentTask).toBeUndefined()
 
 		// The abort should still have been called
 		expect(childTask.abortTask).toHaveBeenCalledWith(true)
@@ -181,9 +181,9 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		expect(updateTaskHistory).not.toHaveBeenCalled()
 	})
 
-	it("handles empty stack gracefully", async () => {
+	it("handles an empty slot gracefully", async () => {
 		const provider = {
-			clineStack: [] as any[],
+			currentTask: undefined as any,
 			taskEventListeners: new Map(),
 			log: vi.fn(),
 			getHistoryItem: vi.fn(),
@@ -193,7 +193,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		// Should not throw
 		await (ClineProvider.prototype as any).removeClineFromStack.call(provider)
 
-		expect(provider.clineStack).toHaveLength(0)
+		expect(provider.currentTask).toBeUndefined()
 		expect(provider.getHistoryItem).not.toHaveBeenCalled()
 		expect(provider.updateTaskHistory).not.toHaveBeenCalled()
 	})
@@ -220,8 +220,8 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		// Call with skipDelegationRepair: true (as delegateParentAndOpenChild would)
 		await (ClineProvider.prototype as any).removeClineFromStack.call(provider, { skipDelegationRepair: true })
 
-		// Stack should be empty after pop
-		expect(provider.clineStack).toHaveLength(0)
+		// Slot should be empty after removal
+		expect(provider.currentTask).toBeUndefined()
 
 		// Parent lookup should NOT have been called — repair was skipped entirely
 		expect(getHistoryItem).not.toHaveBeenCalled()
@@ -263,7 +263,7 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		const updateTaskHistory = vi.fn().mockResolvedValue(undefined)
 
 		const provider = {
-			clineStack: [taskB] as any[],
+			currentTask: taskB as any,
 			taskEventListeners: new Map(),
 			log: vi.fn(),
 			getHistoryItem,
@@ -273,8 +273,8 @@ describe("ClineProvider.removeClineFromStack() delegation awareness", () => {
 		// Simulate what delegateParentAndOpenChild does: pop B with skipDelegationRepair
 		await (ClineProvider.prototype as any).removeClineFromStack.call(provider, { skipDelegationRepair: true })
 
-		// B was popped
-		expect(provider.clineStack).toHaveLength(0)
+		// B was removed
+		expect(provider.currentTask).toBeUndefined()
 
 		// Grandparent A should NOT have been looked up or modified
 		expect(getHistoryItem).not.toHaveBeenCalled()
