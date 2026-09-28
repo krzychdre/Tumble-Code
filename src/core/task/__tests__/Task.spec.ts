@@ -11,6 +11,7 @@ import { type GlobalState, type ProviderSettings, type ModelInfo, TelemetryEvent
 import { TelemetryService } from "@roo-code/telemetry"
 
 import { Task } from "../Task"
+import { resetGlobalApiRequestTime, getLastGlobalApiRequestTime } from "../RetryHandler"
 import { ClineProvider } from "../../webview/ClineProvider"
 import { ApiStreamChunk } from "../../../api/transform/stream"
 import { ContextProxy } from "../../config/ContextProxy"
@@ -412,11 +413,11 @@ describe("Cline", () => {
 	describe("getEnvironmentDetails", () => {
 		describe("API conversation handling", () => {
 			beforeEach(() => {
-				Task.resetGlobalApiRequestTime()
+				resetGlobalApiRequestTime()
 			})
 
 			afterEach(() => {
-				Task.resetGlobalApiRequestTime()
+				resetGlobalApiRequestTime()
 			})
 
 			it("should strip non-protocol fields from API conversation history before sending to the API", async () => {
@@ -865,7 +866,7 @@ describe("Cline", () => {
 			beforeEach(() => {
 				vi.clearAllMocks()
 				// Reset the global timestamp before each test
-				Task.resetGlobalApiRequestTime()
+				resetGlobalApiRequestTime()
 
 				// Install a controllable clock; tests advance `mockNow` explicitly.
 				mockNow = 1_000_000
@@ -906,7 +907,7 @@ describe("Cline", () => {
 
 			afterEach(() => {
 				// Clean up the global state after each test
-				Task.resetGlobalApiRequestTime()
+				resetGlobalApiRequestTime()
 				// Restore the real clock so nothing leaks into other tests (critical under singleFork).
 				perfNowSpy.mockRestore()
 			})
@@ -1233,7 +1234,7 @@ describe("Cline", () => {
 				await iterator.next()
 
 				// Access the private static property via reflection for testing
-				const globalTimestamp = (Task as any).lastGlobalApiRequestTime
+				const globalTimestamp = getLastGlobalApiRequestTime()
 				expect(globalTimestamp).toBeDefined()
 				expect(globalTimestamp).toBeGreaterThan(0)
 			})
@@ -2212,7 +2213,7 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 			TelemetryService.createInstance([])
 		}
 
-		Task.resetGlobalApiRequestTime()
+		resetGlobalApiRequestTime()
 
 		mockApiConfig = {
 			apiProvider: "anthropic",
@@ -2293,7 +2294,7 @@ describe("AP-7: context management fallback on zero tracked tokens", () => {
 	})
 
 	afterEach(() => {
-		Task.resetGlobalApiRequestTime()
+		resetGlobalApiRequestTime()
 		vi.restoreAllMocks()
 	})
 

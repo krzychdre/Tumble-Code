@@ -209,7 +209,7 @@ Sources: [1](https://example.com), [2](https://another.com)
 		]
 
 		// Spy on addToApiConversationHistory to check what gets persisted
-		const addToApiHistorySpy = vi.spyOn(task as any, "addToApiConversationHistory")
+		const addToApiHistorySpy = vi.spyOn(task.history, "addToApiConversationHistory")
 
 		// Simulate the logic from Task.ts that strips grounding sources
 		let cleanAssistantMessage = assistantMessageWithSources
@@ -221,7 +221,7 @@ Sources: [1](https://example.com), [2](https://another.com)
 		}
 
 		// Add the cleaned message to API history
-		await (task as any).addToApiConversationHistory({
+		await task.history.addToApiConversationHistory({
 			role: "assistant",
 			content: [{ type: "text", text: cleanAssistantMessage }],
 		})
@@ -261,7 +261,7 @@ Sources: [1](https://example.com), [2](https://another.com)
 				.trim()
 		}
 
-		await (task as any).addToApiConversationHistory({
+		await task.history.addToApiConversationHistory({
 			role: "assistant",
 			content: [{ type: "text", text: cleanAssistantMessage }],
 		})

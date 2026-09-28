@@ -23,6 +23,7 @@ import { manageContext, willManageContext } from "../context-management"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { getMessagesSinceLastSummary, summarizeConversation, getEffectiveApiHistory } from "../condense"
 import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
+import { getCurrentProfileId } from "./currentProfileId"
 import { type TaskHistory } from "./TaskHistory"
 import { type TaskAskSay } from "./TaskAskSay"
 // The persisted history type itself (not a local copy), so a change in the SDK
@@ -412,8 +413,8 @@ export class TaskContextManager {
 
 		const contextWindow = modelInfo.contextWindow
 
-		// Get the current profile ID using helper
-		const currentProfileId = this.getCurrentProfileId(state)
+		// Get the current profile ID using the shared helper
+		const currentProfileId = getCurrentProfileId(state)
 
 		// Log the context window error for debugging
 		console.warn(
@@ -886,17 +887,6 @@ export class TaskContextManager {
 		}
 
 		return { pruneBeforeCondense, pruneToolResultBudget, artifactStore }
-	}
-
-	/**
-	 * Get the current profile ID from state.
-	 * Helper method extracted from Task for use in context management.
-	 */
-	private getCurrentProfileId(state: any): string {
-		return (
-			state?.listApiConfigMeta?.find((profile: any) => profile.name === state?.currentApiConfigName)?.id ??
-			"default"
-		)
 	}
 
 	/**

@@ -3,8 +3,9 @@
 import { describe, it, expect, vi } from "vitest"
 import { RooCodeEventName } from "@roo-code/types"
 import { Task } from "../core/task/Task"
+import { TaskSubtasks } from "../core/task/TaskSubtasks"
 
-describe("Task.startSubtask() metadata-driven delegation", () => {
+describe("TaskSubtasks.startSubtask() metadata-driven delegation", () => {
 	it("Routes to provider.delegateParentAndOpenChild without pausing parent", async () => {
 		const provider = {
 			getState: vi.fn().mockResolvedValue({
@@ -15,25 +16,15 @@ describe("Task.startSubtask() metadata-driven delegation", () => {
 			handleModeSwitch: vi.fn(),
 		} as any
 
-		// Create a minimal Task-like instance with only fields used by startSubtask
-		const parent = Object.create(Task.prototype) as Task
-		;(parent as any).taskId = "parent-1"
-		;(parent as any).providerRef = { deref: () => provider }
-		;(parent as any).emit = vi.fn()
-		// Mock the subtasks module that startSubtask delegates to
-		;(parent as any).subtasks = {
-			startSubtask: async (message: string, initialTodos: any[], mode: string) => {
-				const p = (parent as any).providerRef.deref()
-				return p.delegateParentAndOpenChild({
-					parentTaskId: (parent as any).taskId,
-					message,
-					initialTodos,
-					mode,
-				})
-			},
-		}
+		// Minimal parent exposing just the TaskSubtasksAccess members startSubtask reads.
+		const parent = {
+			taskId: "parent-1",
+			providerRef: { deref: () => provider },
+			emit: vi.fn(),
+		} as any
 
-		const child = await (Task.prototype as any).startSubtask.call(parent, "Do something", [], "code")
+		const subtasks = new TaskSubtasks(parent)
+		const child = await subtasks.startSubtask("Do something", [], "code")
 
 		expect(provider.delegateParentAndOpenChild).toHaveBeenCalledWith({
 			parentTaskId: "parent-1",

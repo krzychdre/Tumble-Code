@@ -211,7 +211,7 @@ describe("Task reasoning preservation", () => {
 		const reasoningMessage = "Let me think about this step by step. First, I need to..."
 
 		// Spy on addToApiConversationHistory
-		const addToApiHistorySpy = vi.spyOn(task as any, "addToApiConversationHistory")
+		const addToApiHistorySpy = vi.spyOn(task.history, "addToApiConversationHistory")
 
 		// Simulate what happens in the streaming loop when preserveReasoning is true
 		let finalAssistantMessage = assistantMessage
@@ -219,7 +219,7 @@ describe("Task reasoning preservation", () => {
 			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
 		}
 
-		await (task as any).addToApiConversationHistory({
+		await task.history.addToApiConversationHistory({
 			role: "assistant",
 			content: [{ type: "text", text: finalAssistantMessage }],
 		})
@@ -278,7 +278,7 @@ describe("Task reasoning preservation", () => {
 		const reasoningMessage = "Let me think about this step by step. First, I need to..."
 
 		// Spy on addToApiConversationHistory
-		const addToApiHistorySpy = vi.spyOn(task as any, "addToApiConversationHistory")
+		const addToApiHistorySpy = vi.spyOn(task.history, "addToApiConversationHistory")
 
 		// Simulate what happens in the streaming loop when preserveReasoning is false
 		let finalAssistantMessage = assistantMessage
@@ -286,7 +286,7 @@ describe("Task reasoning preservation", () => {
 			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
 		}
 
-		await (task as any).addToApiConversationHistory({
+		await task.history.addToApiConversationHistory({
 			role: "assistant",
 			content: [{ type: "text", text: finalAssistantMessage }],
 		})
@@ -335,7 +335,7 @@ describe("Task reasoning preservation", () => {
 		const reasoningMessage = "" // Empty reasoning
 
 		// Spy on addToApiConversationHistory
-		const addToApiHistorySpy = vi.spyOn(task as any, "addToApiConversationHistory")
+		const addToApiHistorySpy = vi.spyOn(task.history, "addToApiConversationHistory")
 
 		// Simulate what happens in the streaming loop
 		let finalAssistantMessage = assistantMessage
@@ -343,7 +343,7 @@ describe("Task reasoning preservation", () => {
 			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
 		}
 
-		await (task as any).addToApiConversationHistory({
+		await task.history.addToApiConversationHistory({
 			role: "assistant",
 			content: [{ type: "text", text: finalAssistantMessage }],
 		})
@@ -394,7 +394,7 @@ describe("Task reasoning preservation", () => {
 			finalAssistantMessage = `<think>${reasoningMessage}</think>\n${assistantMessage}`
 		}
 
-		await (task as any).addToApiConversationHistory({
+		await task.history.addToApiConversationHistory({
 			role: "assistant",
 			content: [{ type: "text", text: finalAssistantMessage }],
 		})
@@ -424,7 +424,7 @@ describe("Task reasoning preservation", () => {
 			getResponseId: vi.fn().mockReturnValue("resp_test"),
 		} as any
 
-		await (task as any).addToApiConversationHistory({
+		await task.history.addToApiConversationHistory({
 			role: "assistant",
 			content: [{ type: "text", text: "Here is my response." }],
 		})
@@ -476,7 +476,7 @@ describe("Task reasoning preservation", () => {
 		const reasoningText = "Let me analyze this carefully. First, I'll consider the requirements..."
 		const assistantText = "Here is my response."
 
-		await (task as any).addToApiConversationHistory(
+		await task.history.addToApiConversationHistory(
 			{
 				role: "assistant",
 				content: [{ type: "text", text: assistantText }],

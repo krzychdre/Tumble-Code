@@ -26,6 +26,7 @@ import { checkContextWindowExceededError } from "../context/context-management/c
 import { getMessagesSinceLastSummary, getEffectiveApiHistory } from "../condense"
 import { processUserContentMentions } from "../mentions/processUserContentMentions"
 import { mergeConsecutiveApiMessages } from "./mergeConsecutiveApiMessages"
+import { getCurrentProfileId } from "./currentProfileId"
 import { maybeRemoveImageBlocks } from "../../api/transform/image-cleaning"
 import { formatResponse } from "../prompts/responses"
 import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
@@ -107,9 +108,6 @@ class BackgroundRetriesExhaustedError extends Error {
 		this.name = "BackgroundRetriesExhaustedError"
 	}
 }
-
-// Re-export functions for backward compatibility
-export { getLastGlobalApiRequestTime, setLastGlobalApiRequestTime, resetGlobalApiRequestTime } from "./RetryHandler"
 
 /**
  * Interface for Task access needed by TaskApiLoop.
@@ -206,17 +204,11 @@ export interface TaskApiLoopAccess {
 
 	// Methods needed
 	emit: (event: any, ...args: any[]) => boolean
-	updateApiConfiguration(newApiConfiguration: ProviderSettings): void
 	getTokenUsage(): TokenUsage
 	// The task's own mode (see Task#getTaskMode). Provider state holds the FOCUSED
 	// task's mode, which a background subagent or a delegated child does not share.
 	getTaskMode(): Promise<string>
-	recordToolUsage(toolName: ToolName): void
-	recordToolError(toolName: ToolName, error?: string): void
-	emitFinalTokenUsageUpdate(): void
 	abortTask(isAbandoned?: boolean): Promise<void>
-	cancelCurrentRequest(destroyClient?: boolean): void
-	pushToolResultToUserContent(toolResult: Anthropic.ToolResultBlockParam): boolean
 	combineMessages(messages: ClineMessage[]): ClineMessage[]
 
 	// Deferred-tool loading state (Phase 4 of ai_plans/deferred-tool-loading.md)
@@ -547,7 +539,7 @@ export class TaskApiLoop {
 		)
 
 		// Respect provider rate limiting
-		await this.maybeWaitForProviderRateLimit(currentItem.retryAttempt ?? 0)
+		await this.retryHandler.maybeWaitForProviderRateLimit(currentItem.retryAttempt ?? 0)
 		setLastGlobalApiRequestTime(performance.now())
 
 		await this.access.askSay.say(
@@ -1099,7 +1091,7 @@ export class TaskApiLoop {
 		// api_req_failed ask at once, a retry with no delay): it backs off.
 		// Each retry is a new loop turn, so maxAgentTurns bounds it.
 		if (state?.autoApprovalEnabled || this.access.isBackground) {
-			await this.backoffAndAnnounce(
+			await this.retryHandler.backoffAndAnnounce(
 				currentItem.retryAttempt ?? 0,
 				new Error(
 					"Unexpected API Response: The language model did not provide any assistant messages. This may indicate an issue with the API or the model's output.",
@@ -1238,7 +1230,7 @@ export class TaskApiLoop {
 				// background task has nobody to click it.
 				const stateForBackoff = await this.access.providerRef.deref()?.getState()
 				if (stateForBackoff?.autoApprovalEnabled || this.access.isBackground) {
-					await this.backoffAndAnnounce(currentItem.retryAttempt ?? 0, error)
+					await this.retryHandler.backoffAndAnnounce(currentItem.retryAttempt ?? 0, error)
 
 					if (this.access.abort) {
 						console.log(
@@ -1273,30 +1265,6 @@ export class TaskApiLoop {
 	}
 
 	/**
-	 * Get the current profile ID from state.
-	 * Delegates to ApiRequestBuilder.
-	 */
-	getCurrentProfileId(state: any): string {
-		return this.apiRequestBuilder.getCurrentProfileId(state)
-	}
-
-	/**
-	 * Handle context window exceeded error by delegating to context manager
-	 */
-	async handleContextWindowExceededError(): Promise<void> {
-		return this.access.contextManager.handleContextWindowExceededError()
-	}
-
-	/**
-	 * Enforce user-configured provider rate limit.
-	 * Shows countdown UX on first attempt, skips on retries.
-	 * Delegates to RetryHandler.
-	 */
-	async maybeWaitForProviderRateLimit(retryAttempt: number): Promise<void> {
-		return this.retryHandler.maybeWaitForProviderRateLimit(retryAttempt)
-	}
-
-	/**
 	 * Attempt an API request with retry logic.
 	 * This is an async generator that yields chunks from the API stream.
 	 */
@@ -1325,7 +1293,7 @@ export class TaskApiLoop {
 		const mode = await this.access.getTaskMode()
 
 		if (!options.skipProviderRateLimit) {
-			await this.maybeWaitForProviderRateLimit(retryAttempt)
+			await this.retryHandler.maybeWaitForProviderRateLimit(retryAttempt)
 		}
 
 		setLastGlobalApiRequestTime(performance.now())
@@ -1389,7 +1357,7 @@ export class TaskApiLoop {
 		const messagesSinceLastSummary = getMessagesSinceLastSummary(effectiveHistory)
 		const mergedForApi = mergeConsecutiveApiMessages(messagesSinceLastSummary, { roles: ["user"] })
 		const messagesWithoutImages = maybeRemoveImageBlocks(mergedForApi, this.access.api)
-		const cleanConversationHistory = this.buildCleanConversationHistory(
+		const cleanConversationHistory = this.apiRequestBuilder.buildCleanConversationHistory(
 			messagesWithoutImages as ApiMessage[],
 			this.access.api.getModel().info.preserveReasoning === true,
 		)
@@ -1518,7 +1486,7 @@ export class TaskApiLoop {
 			settings: this.access.apiConfiguration,
 		})
 		const contextWindow = modelInfo.contextWindow
-		const currentProfileId = this.getCurrentProfileId(state)
+		const currentProfileId = getCurrentProfileId(state)
 
 		// Compute lastMessageTokens
 		const lastMessage = this.access.apiConversationHistory[this.access.apiConversationHistory.length - 1]
@@ -1576,7 +1544,7 @@ export class TaskApiLoop {
 					`Retry attempt ${retryAttempt + 1}/${MAX_CONTEXT_WINDOW_RETRIES}. ` +
 					`Attempting automatic truncation...`,
 			)
-			await this.handleContextWindowExceededError()
+			await this.access.contextManager.handleContextWindowExceededError()
 			yield* this.attemptApiRequest(retryAttempt + 1, { contextAlreadyManaged: true, rateLimitRetries })
 			return
 		}
@@ -1597,7 +1565,7 @@ export class TaskApiLoop {
 		// A background task never reaches that ask (its approval policy would
 		// approve it at once, a retry with no delay): it always backs off.
 		if ((autoApprovalEnabled || this.access.isBackground) && isAutoRetryableApiError(error)) {
-			await this.backoffAndAnnounce(retryAttempt, error)
+			await this.retryHandler.backoffAndAnnounce(retryAttempt, error)
 
 			if (this.access.abort) {
 				throw new Error(
@@ -1675,26 +1643,5 @@ export class TaskApiLoop {
 		)
 		this.access.abortReason = "streaming_failed"
 		await this.access.abortTask()
-	}
-
-	/**
-	 * Shared exponential backoff for retries with countdown UX.
-	 * Delegates to RetryHandler.
-	 */
-	async backoffAndAnnounce(retryAttempt: number, error: any): Promise<void> {
-		return this.retryHandler.backoffAndAnnounce(retryAttempt, error)
-	}
-
-	/**
-	 * Build clean conversation history by stripping reasoning blocks.
-	 * Delegates to ApiRequestBuilder.
-	 */
-	buildCleanConversationHistory(
-		messages: ApiMessage[],
-		preserveReasoning: boolean = false,
-	): Array<
-		Anthropic.Messages.MessageParam | { type: "reasoning"; encrypted_content: string; id?: string; summary?: any[] }
-	> {
-		return this.apiRequestBuilder.buildCleanConversationHistory(messages, preserveReasoning)
 	}
 }

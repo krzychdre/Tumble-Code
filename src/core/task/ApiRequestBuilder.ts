@@ -406,14 +406,4 @@ export class ApiRequestBuilder {
 
 		return cleanConversationHistory
 	}
-
-	/**
-	 * Get the current profile ID from state.
-	 */
-	getCurrentProfileId(state: any): string {
-		return (
-			state?.listApiConfigMeta?.find((profile: any) => profile.name === state?.currentApiConfigName)?.id ??
-			"default"
-		)
-	}
 }
