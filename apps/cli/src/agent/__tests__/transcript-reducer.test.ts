@@ -1,6 +1,6 @@
 import type { ExtensionMessage, McpServer, ProviderSettings, TodoItem, TokenUsage } from "@roo-code/types"
 
-import type { PendingAsk, TUIMessage } from "../../ui/types.js"
+import type { CloudStatus, PendingAsk, TUIMessage } from "../../ui/types.js"
 import { getStaticCount } from "../../ui/transcript.js"
 import {
 	applyAddMessage,
@@ -29,6 +29,7 @@ interface TranscriptModel {
 	previousTodos: TodoItem[]
 	tokenUsage: TokenUsage | null
 	mcpServers: McpServer[]
+	cloudStatus: CloudStatus | null
 	currentMode: string | null
 	apiConfiguration: ProviderSettings | null
 	taskHistory: unknown[]
@@ -51,6 +52,7 @@ function emptyModel(): TranscriptModel {
 		previousTodos: [],
 		tokenUsage: null,
 		mcpServers: [],
+		cloudStatus: null,
 		currentMode: null,
 		apiConfiguration: null,
 		taskHistory: [],
@@ -116,6 +118,9 @@ function apply(model: TranscriptModel, effect: TranscriptEffect): void {
 			break
 		case "setRouterModels":
 			model.routerModels = effect.models
+			break
+		case "setCloudStatus":
+			model.cloudStatus = effect.status
 			break
 	}
 }
@@ -457,6 +462,22 @@ describe("transcript reducer", () => {
 		const reconnected = [{ ...servers[0], status: "disconnected", error: "gone" }]
 		handle({ type: "state", state: { mcpServers: reconnected } } as never)
 		expect(model.mcpServers).toBe(reconnected)
+	})
+
+	// UI plan §4: the footer shows the cloud session and the bridge status.
+	it("keeps the cloud session and bridge status from full state pushes, not from partial ones", () => {
+		handle({
+			type: "state",
+			state: { cloudIsAuthenticated: true, remoteControlStatus: "offline", mode: "code" },
+		} as never)
+		expect(model.cloudStatus).toEqual({ signedIn: true, remoteControl: "offline" })
+
+		handle({ type: "state", state: { storageErrorMessage: "x" } } as never)
+		expect(model.cloudStatus).toEqual({ signedIn: true, remoteControl: "offline" })
+
+		// An extension without the field (older bundle) has no bridge to report.
+		handle({ type: "state", state: { cloudIsAuthenticated: false } } as never)
+		expect(model.cloudStatus).toEqual({ signedIn: false, remoteControl: "off" })
 	})
 
 	it("preserves structured tool details for interactive approval dialogs", () => {

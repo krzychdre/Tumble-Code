@@ -218,3 +218,80 @@ describe("bridgeRetryDelayMs jitter (R11)", () => {
 		}
 	})
 })
+
+// UI plan §4: the CLI status line shows whether the bridge is connected and
+// marks it offline. The orchestrator reports each change of its connection.
+describe("BridgeOrchestrator connection status", () => {
+	let socket: FakeEmitter
+	let statuses: string[]
+
+	beforeEach(() => {
+		socket = new FakeEmitter()
+		statuses = []
+	})
+
+	async function startOrchestrator() {
+		const orch = new BridgeOrchestrator({
+			getBridgeConfig: vi.fn(async () => CONFIG),
+			provider: makeProvider(),
+			events: new FakeEmitter() as unknown as any,
+			workspacePath: "/work",
+			snapshot: vi.fn(async () => null),
+			ioFactory: vi.fn(() => socket) as any,
+			onStatusChange: (status) => statuses.push(status),
+		})
+		await orch.start()
+		return orch
+	}
+
+	it("is connecting until the socket connects, then connected", async () => {
+		const orch = await startOrchestrator()
+		expect(statuses).toEqual(["connecting"])
+		expect(orch.status).toBe("connecting")
+
+		socket.fire("connect")
+
+		expect(statuses).toEqual(["connecting", "connected"])
+		expect(orch.status).toBe("connected")
+	})
+
+	it("is offline after a failed connection attempt, even while socket.io keeps retrying", async () => {
+		const orch = await startOrchestrator()
+
+		socket.fire("connect_error", new Error("xhr poll error"))
+
+		expect(orch.status).toBe("offline")
+		expect(statuses.at(-1)).toBe("offline")
+	})
+
+	it("is connecting after a drop socket.io will retry, offline after one it will not", async () => {
+		const orch = await startOrchestrator()
+		socket.fire("connect")
+
+		socket.active = true
+		socket.fire("disconnect", "transport close")
+		expect(orch.status).toBe("connecting")
+
+		socket.fire("connect")
+		socket.active = false
+		socket.fire("disconnect", "io server disconnect")
+		expect(orch.status).toBe("offline")
+	})
+
+	it("is offline once the manager gives up reconnecting", async () => {
+		const orch = await startOrchestrator()
+
+		;(socket.io as FakeEmitter).fire("reconnect_failed")
+
+		expect(orch.status).toBe("offline")
+	})
+
+	it("reports a status only when it changes", async () => {
+		await startOrchestrator()
+
+		socket.fire("connect_error", new Error("a"))
+		socket.fire("connect_error", new Error("b"))
+
+		expect(statuses).toEqual(["connecting", "offline"])
+	})
+})

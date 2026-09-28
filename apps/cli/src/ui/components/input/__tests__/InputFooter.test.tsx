@@ -135,4 +135,43 @@ describe("InputFooter", () => {
 			expect(frame).not.toContain("$")
 		})
 	})
+
+	// UI plan §4: the cloud session and remote-control bridge, with an offline marker.
+	describe("cloud status", () => {
+		it("shows nothing for a run that is not signed in to the cloud", () => {
+			const { lastFrame } = render(
+				<InputFooter mode="code" model="gpt-5" cloud={{ signedIn: false, remoteControl: "off" }} />,
+			)
+			expect(lastFrame() ?? "").not.toContain("cloud")
+			expect(lastFrame() ?? "").not.toContain("offline")
+		})
+
+		it("shows a connected bridge", () => {
+			const { lastFrame } = render(
+				<InputFooter mode="code" cloud={{ signedIn: true, remoteControl: "connected" }} />,
+			)
+			expect(lastFrame()).toContain("● cloud")
+		})
+
+		it("shows a bridge that is still connecting", () => {
+			const { lastFrame } = render(<InputFooter cloud={{ signedIn: true, remoteControl: "connecting" }} />)
+			expect(lastFrame()).toContain("○ cloud connecting")
+		})
+
+		it("marks a signed-in run whose bridge is down as offline", () => {
+			const { lastFrame } = render(
+				<InputFooter mode="code" cloud={{ signedIn: true, remoteControl: "offline" }} />,
+			)
+			const frame = lastFrame() ?? ""
+			expect(frame).toContain("○ cloud offline")
+			// Before the mode, so it survives a narrow terminal cutting the model id.
+			expect(frame.indexOf("offline")).toBeLessThan(frame.indexOf("code"))
+		})
+
+		it("shows the cloud session while the bridge has not started yet", () => {
+			const { lastFrame } = render(<InputFooter cloud={{ signedIn: true, remoteControl: "off" }} />)
+			expect(lastFrame()).toContain("○ cloud")
+			expect(lastFrame()).not.toContain("offline")
+		})
+	})
 })
