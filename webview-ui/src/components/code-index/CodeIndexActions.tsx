@@ -16,6 +16,7 @@ import {
 } from "@src/components/ui"
 
 import type { CodeIndexSaveStatus } from "./useCodeIndexSettings"
+import { useIndexClearedError } from "./useIndexClearedError"
 
 type CodeIndexActionsProps = {
 	indexingStatus: IndexingStatus
@@ -28,7 +29,8 @@ type CodeIndexActionsProps = {
 
 /**
  * The buttons at the bottom of the popover: start, stop or clear the index (depending on the
- * indexing state, only while indexing is enabled), and Save with its error line.
+ * indexing state, only while indexing is enabled), and Save with its error line. A failed clear
+ * shows its error line here too.
  */
 export const CodeIndexActions = ({
 	indexingStatus,
@@ -39,6 +41,7 @@ export const CodeIndexActions = ({
 	onSave,
 }: CodeIndexActionsProps) => {
 	const { t } = useAppTranslation()
+	const { error: clearIndexError, dismiss: dismissClearIndexError } = useIndexClearedError()
 
 	return (
 		<>
@@ -86,7 +89,10 @@ export const CodeIndexActions = ({
 											{t("settings:codeIndex.clearDataDialog.cancelButton")}
 										</AlertDialogCancel>
 										<AlertDialogAction
-											onClick={() => vscode.postMessage({ type: "clearIndexData" })}>
+											onClick={() => {
+												dismissClearIndexError()
+												vscode.postMessage({ type: "clearIndexData" })
+											}}>
 											{t("settings:codeIndex.clearDataDialog.confirmButton")}
 										</AlertDialogAction>
 									</AlertDialogFooter>
@@ -99,6 +105,12 @@ export const CodeIndexActions = ({
 					{saveStatus === "saving" ? t("settings:codeIndex.saving") : t("settings:codeIndex.saveSettings")}
 				</Button>
 			</div>
+
+			{clearIndexError && (
+				<div className="mt-2">
+					<span className="text-sm text-vscode-errorForeground block">{clearIndexError}</span>
+				</div>
+			)}
 
 			{/* Save Status Messages */}
 			{saveStatus === "error" && (
