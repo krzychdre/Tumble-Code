@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
-import { t } from "i18next"
 import { ArrowRight, Check, ListChecks, SquareDashed } from "lucide-react"
-import { useState, useRef, useMemo, useEffect } from "react"
+import { useState, useRef, useMemo, useEffect, useId } from "react"
+import { useTranslation } from "react-i18next"
 
 type TodoStatus = "completed" | "in_progress" | "pending"
 
@@ -16,7 +16,16 @@ function getTodoIcon(status: TodoStatus | null) {
 	}
 }
 
+/**
+ * The task's todo list under the task header.
+ *
+ * §2.8 (ai_plans/2026-09-27_ui-modernization.md): the header is a real
+ * `<button>` with `aria-expanded` / `aria-controls`, and a thin progress bar
+ * (same 3px track as the context bar, §2.4) sits next to the "3/7" count.
+ */
 export function TodoListDisplay({ todos }: { todos: any[] }) {
+	const { t } = useTranslation()
+	const listId = useId()
 	const [isCollapsed, setIsCollapsed] = useState(true)
 	const ulRef = useRef<HTMLUListElement>(null)
 	const itemRefs = useRef<(HTMLLIElement | null)[]>([])
@@ -52,34 +61,52 @@ export function TodoListDisplay({ todos }: { todos: any[] }) {
 	const completedCount = todos.filter((todo: any) => todo.status === "completed").length
 
 	const allCompleted = completedCount === totalCount && totalCount > 0
+	const progressLabel = t("chat:todo.partial", { completed: completedCount, total: totalCount })
 
 	return (
 		<div data-todo-list className="mt-1 -mx-2.5 border-t border-vscode-sideBar-background overflow-hidden">
-			<div
+			<button
+				type="button"
+				aria-expanded={!isCollapsed}
+				aria-controls={listId}
 				className={cn(
-					"flex items-center gap-2 pt-2 px-2.5 cursor-pointer select-none",
+					"flex w-full items-center gap-2 pt-2 px-2.5 text-left cursor-pointer select-none bg-transparent border-none focus-ring",
 					mostImportantTodo?.status === "in_progress" && isCollapsed
 						? "text-vscode-charts-yellow"
 						: "text-vscode-foreground",
 				)}
 				onClick={() => setIsCollapsed((v) => !v)}>
-				<ListChecks className="size-3 shrink-0" />
+				<ListChecks className="size-3 shrink-0" aria-hidden="true" />
 				<span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
 					{isCollapsed
 						? allCompleted
 							? t("chat:todo.complete", { total: completedCount })
 							: mostImportantTodo?.content // show current todo while not done
-						: t("chat:todo.partial", { completed: completedCount, total: totalCount })}
+						: progressLabel}
 				</span>
-				{isCollapsed && completedCount < totalCount && (
-					<div className="shrink-0 text-vscode-descriptionForeground text-xs">
-						{completedCount}/{totalCount}
-					</div>
-				)}
-			</div>
+				<span className="flex shrink-0 items-center gap-1.5 text-vscode-descriptionForeground text-[length:var(--text-meta)] tabular-nums">
+					{completedCount}/{totalCount}
+					<span
+						role="progressbar"
+						aria-valuemin={0}
+						aria-valuemax={totalCount}
+						aria-valuenow={completedCount}
+						aria-label={progressLabel}
+						className="relative block h-[3px] w-10 overflow-hidden bg-[color-mix(in_srgb,var(--vscode-foreground)_20%,transparent)]">
+						<span
+							data-todo-progress-fill
+							className="absolute inset-y-0 left-0 bg-[var(--status-done)] transition-[width] duration-300 ease-out"
+							style={{ width: `${(completedCount / totalCount) * 100}%` }}
+						/>
+					</span>
+				</span>
+			</button>
 			{/* Inline expanded list */}
 			{!isCollapsed && (
-				<ul ref={ulRef} className="list-none max-h-[300px] overflow-y-auto mt-2 -mb-1 pb-0 px-2 cursor-default">
+				<ul
+					id={listId}
+					ref={ulRef}
+					className="list-none max-h-[300px] overflow-y-auto mt-2 -mb-1 pb-0 px-2 cursor-default">
 					{todos.map((todo: any, idx: number) => {
 						const icon = getTodoIcon(todo.status as TodoStatus)
 						return (

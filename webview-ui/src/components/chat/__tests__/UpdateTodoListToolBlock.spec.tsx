@@ -1,4 +1,4 @@
-import { render } from "@/utils/test-utils"
+import { render, screen, fireEvent } from "@/utils/test-utils"
 
 import UpdateTodoListToolBlock from "../UpdateTodoListToolBlock"
 
@@ -97,5 +97,65 @@ describe("UpdateTodoListToolBlock user-edit variant", () => {
 		// Read-only: the approval is over, so there is nothing to edit here.
 		expect(queryByRole("button", { name: "Edit" })).toBeNull()
 		expect(queryByRole("textbox")).toBeNull()
+	})
+})
+
+// §2.8 (ai_plans/2026-09-27_ui-modernization.md): the block's 32 inline style
+// objects moved to classes (theme colours instead of hex literals, no leaked
+// radii). Every state is checked: read-only, user edit, editing, adding a
+// todo and the delete confirmation.
+describe("UpdateTodoListToolBlock styling", () => {
+	const mixed = [
+		{ id: "a", content: "Done thing", status: "completed" },
+		{ id: "b", content: "Current thing", status: "in_progress" },
+		{ id: "c", content: "Later thing", status: "" },
+	]
+	const inlineStyled = (container: HTMLElement) =>
+		Array.from(container.querySelectorAll("[style]")).map((el) => el.outerHTML.slice(0, 120))
+
+	it("renders the read-only and user-edit variants without inline styles", () => {
+		const readOnly = render(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} editable={false} />)
+		expect(inlineStyled(readOnly.container)).toEqual([])
+		readOnly.unmount()
+
+		const userEdit = render(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} userEdited />)
+		expect(inlineStyled(userEdit.container)).toEqual([])
+	})
+
+	it("renders editing, adding and the delete confirmation without inline styles", () => {
+		const { container } = render(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} />)
+
+		fireEvent.click(screen.getByRole("button", { name: "Edit" }))
+		expect(inlineStyled(container)).toEqual([])
+
+		fireEvent.click(screen.getByRole("button", { name: "+ Add Todo" }))
+		expect(inlineStyled(container)).toEqual([])
+
+		fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0])
+		expect(screen.getByText("Are you sure you want to delete this todo item?")).toBeInTheDocument()
+		expect(inlineStyled(container)).toEqual([])
+	})
+
+	it("marks each todo's status dot with a data attribute", () => {
+		const { container } = render(<UpdateTodoListToolBlock todos={mixed} onChange={vi.fn()} editable={false} />)
+
+		const dots = Array.from(container.querySelectorAll("[data-todo-status]")).map((el) =>
+			el.getAttribute("data-todo-status"),
+		)
+		expect(dots).toEqual(["completed", "in_progress", "pending"])
+	})
+
+	it("keeps editing working: removing a todo after confirmation notifies onChange", () => {
+		const onChange = vi.fn()
+		render(<UpdateTodoListToolBlock todos={mixed} onChange={onChange} />)
+
+		fireEvent.click(screen.getByRole("button", { name: "Edit" }))
+		fireEvent.click(screen.getAllByRole("button", { name: "Remove" })[0])
+		fireEvent.click(screen.getByRole("button", { name: "Delete" }))
+
+		expect(onChange).toHaveBeenLastCalledWith([
+			expect.objectContaining({ id: "b" }),
+			expect.objectContaining({ id: "c" }),
+		])
 	})
 })
