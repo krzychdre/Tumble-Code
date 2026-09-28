@@ -24,7 +24,7 @@ from sqlalchemy import event
 from src.models.event import TelemetryEvent
 from src.models.task import Task
 from src.models.user import User
-from src.routers.web import _quality_overview
+from src.services.quality_overview import quality_overview as _quality_overview
 from src.services.metrics_service import compute_user_metrics
 
 NOW = datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)

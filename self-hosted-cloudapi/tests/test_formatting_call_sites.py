@@ -9,9 +9,11 @@ to change nothing a user reads.
 
 from src.auth.web_session import get_web_user_optional
 from src.models.task import Task
-from src.routers import web
 from src.services.task_tree import Spend
 from src.utils import format as fmt
+from src.web.presenters.settings import _plan_view
+from src.web.presenters.task_detail import _quality_panel, _spend_row
+from src.web.presenters.task_rows import _metrics_tooltip, _run_tooltip, _spend_fields
 
 from tests.test_side_call_metrics import _embedding_event
 from tests.web_helpers import (
@@ -27,7 +29,7 @@ def _task(task_id="t", **figures) -> Task:
     return Task(id=task_id, user_id="u", title=task_id, **figures)
 
 
-# --- routers/web.py helpers and the ones that moved out of it --------------------------------------------------
+# --- web presenter helpers (routers/web.py before CAPI-M5) ------------------------------------------------------
 
 
 def test_plural_counts_one_and_many():
@@ -50,7 +52,7 @@ def test_byte_sizes_step_through_the_units():
 
 
 def test_a_spend_row_formats_tokens_compactly_and_cost_to_four_places():
-    row = web._spend_row(
+    row = _spend_row(
         "own", "this task", Spend(cost=0.1656, tokens_in=297_800, tokens_out=5_900)
     )
     assert row == {
@@ -61,12 +63,12 @@ def test_a_spend_row_formats_tokens_compactly_and_cost_to_four_places():
         "tokens_out": "5.9k",
         "cost": "$0.1656",
     }
-    assert web._spend_row("own", "x", Spend())["cost"] == "$0.0000"
+    assert _spend_row("own", "x", Spend())["cost"] == "$0.0000"
 
 
 def test_the_metrics_tooltip_separates_thousands_and_prints_cost():
     task = _task(tokens_in=1_234_567, tokens_out=3_365, cache_writes=12_000, cache_reads=1_000, cost=1.5)
-    assert web._metrics_tooltip(task) == [
+    assert _metrics_tooltip(task) == [
         "↑ In: 1,234,567",
         "↓ Out: 3,365",
         "⚡ Cache: 12,000 write / 1,000 read",
@@ -76,7 +78,7 @@ def test_the_metrics_tooltip_separates_thousands_and_prints_cost():
 
 def test_the_run_tooltip_names_its_subtasks():
     total = Spend(cost=0.00005, tokens_in=10_000, tokens_out=999)
-    assert web._run_tooltip(total, 1) == [
+    assert _run_tooltip(total, 1) == [
         "Σ With its 1 subtask",
         "↑ In: 10,000",
         "↓ Out: 999",
@@ -90,7 +92,7 @@ def test_a_run_row_splits_its_sum_into_this_task_and_its_subtasks():
         _task("c1", tokens_in=1_000_000, tokens_out=40_000, cost=1.194),
         _task("c2", tokens_in=50_000, tokens_out=1_234, cost=0.0493),
     ]
-    fields = web._spend_fields(parent, {"p": kids})
+    fields = _spend_fields(parent, {"p": kids})
     assert fields["tokens"] == "1.2M"
     assert fields["cost"] == "$1.4089"
     assert fields["tokens_title"] == (
@@ -102,20 +104,20 @@ def test_a_run_row_splits_its_sum_into_this_task_and_its_subtasks():
 
 
 def test_a_task_without_figures_shows_no_cost_cell():
-    fields = web._spend_fields(_task("p"), {})
+    fields = _spend_fields(_task("p"), {})
     assert fields["tokens"] is None
     assert fields["cost"] is None
 
 
 def test_the_quality_panel_formats_its_efficiency_figures():
     task = _task(tokens_in=1_234_567, cache_reads=617_283, cost=0.5, q_requests=4)
-    efficiency = {e["label"]: e["value"] for e in web._quality_panel(task)["efficiency"]}
+    efficiency = {e["label"]: e["value"] for e in _quality_panel(task)["efficiency"]}
     assert efficiency == {
         "Tokens / turn": "308,642",
         "From cache": "50%",
         "Cost / turn": "$0.1250",
     }
-    empty = {e["label"]: e["value"] for e in web._quality_panel(_task())["efficiency"]}
+    empty = {e["label"]: e["value"] for e in _quality_panel(_task())["efficiency"]}
     assert empty == {"Tokens / turn": "\u2014", "From cache": "\u2014", "Cost / turn": "\u2014"}
 
 
@@ -129,7 +131,7 @@ def test_the_retention_preview_states_its_size():
         is_empty = False
         reasons = {}
 
-    assert web._plan_view(Plan())["size"] == "3.5 MB"
+    assert _plan_view(Plan())["size"] == "3.5 MB"
 
 
 # --- rendered pages ----------------------------------------------------------

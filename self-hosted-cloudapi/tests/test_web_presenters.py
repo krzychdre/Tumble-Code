@@ -13,8 +13,10 @@ whose subtasks cost $1.2434 more.
 from datetime import datetime, timedelta, timezone
 
 from src.models.task import Task
-from src.routers import web
+from src.services.quality_overview import quality_overview as _quality_overview
 from src.services.task_tree import Spend
+from src.web.presenters.task_detail import _spend_summary
+from src.web.presenters.task_rows import _PROMPT_WRAP_COLS, _PROMPT_WRAP_LINES, _list_row, _row_tooltip
 
 from tests.web_helpers import _seed_user
 
@@ -107,7 +109,7 @@ def _leaf_row(task_id: str, tokens: str, cost: str, hover: str) -> dict:
 
 def test_list_row_nests_the_whole_tree_and_sums_the_run():
     root, tree = _ado_run()
-    row = web._list_row(root, tree, True)
+    row = _list_row(root, tree, True)
 
     c_row = _leaf_row("c", "2", "$0.0001", "↑ In: 1\n↓ Out: 1\n$ Cost: $0.0001")
     b_row = _leaf_row("b", "15", "$0.0493", "↑ In: 10\n↓ Out: 5\n$ Cost: $0.0493")
@@ -155,8 +157,8 @@ def test_list_row_nests_the_whole_tree_and_sums_the_run():
 
 def test_list_row_flat_view_does_not_nest_but_still_sums_the_run():
     root, tree = _ado_run()
-    flat = web._list_row(root, tree, False)
-    nested = web._list_row(root, tree, True)
+    flat = _list_row(root, tree, False)
+    nested = _list_row(root, tree, True)
 
     assert flat["children"] == []
     assert {k: v for k, v in flat.items() if k != "children"} == {
@@ -165,7 +167,7 @@ def test_list_row_flat_view_does_not_nest_but_still_sums_the_run():
 
 
 def test_list_row_for_a_task_with_nothing_recorded():
-    row = web._list_row(_task("bare"), {}, True)
+    row = _list_row(_task("bare"), {}, True)
 
     assert row == {
         "id": "bare",
@@ -193,7 +195,7 @@ def test_list_row_for_a_task_with_nothing_recorded():
 
 
 def test_list_row_falls_back_to_the_default_title():
-    row = web._list_row(_task("untitled", title=None), {}, True)
+    row = _list_row(_task("untitled", title=None), {}, True)
     assert row["title"] == "Untitled task"
 
 
@@ -202,7 +204,7 @@ def test_list_row_falls_back_to_the_default_title():
 
 def test_spend_summary_of_a_run_states_the_run_then_its_parts():
     root, tree = _ado_run()
-    summary = web._spend_summary(root, tree)
+    summary = _spend_summary(root, tree)
 
     assert summary["rows"] == [
         {
@@ -240,7 +242,7 @@ def test_spend_summary_of_a_run_states_the_run_then_its_parts():
 def test_spend_summary_of_a_task_without_subtasks_is_one_row():
     root, _tree = _ado_run()
 
-    assert web._spend_summary(root, {}) == {
+    assert _spend_summary(root, {}) == {
         "rows": [
             {
                 "key": "own",
@@ -259,23 +261,23 @@ def test_spend_summary_of_a_task_without_subtasks_is_one_row():
 
 
 def test_row_tooltip_is_none_when_there_is_nothing_to_say():
-    assert web._row_tooltip(_task("empty")) is None
+    assert _row_tooltip(_task("empty")) is None
 
 
 def test_row_tooltip_with_only_a_prompt():
-    assert web._row_tooltip(_task("p", prompt_excerpt="Only a prompt")) == "Only a prompt"
+    assert _row_tooltip(_task("p", prompt_excerpt="Only a prompt")) == "Only a prompt"
 
 
 def test_row_tooltip_with_only_figures_has_no_heading():
     task = _task("f", tokens_in=1500, tokens_out=20, cost=0.5)
-    assert web._row_tooltip(task) == "↑ In: 1,500\n↓ Out: 20\n$ Cost: $0.5000"
+    assert _row_tooltip(task) == "↑ In: 1,500\n↓ Out: 20\n$ Cost: $0.5000"
 
 
 def test_row_tooltip_with_a_run_heads_the_own_figures_and_adds_the_run():
     root, _tree = _ado_run()
     total = Spend(cost=1.4090, tokens_in=299_000, tokens_out=6_400, cache_reads=100_000, cache_writes=2_000)
 
-    assert web._row_tooltip(root, total, 3) == (
+    assert _row_tooltip(root, total, 3) == (
         "Fix the bug\n\n- step one\n\n"
         "This task\n↑ In: 297,800\n↓ Out: 5,900\n⚡ Cache: 2,000 write / 100,000 read\n"
         "⏱ Session: 1m 0s\n$ Cost: $0.1656\n\n"
@@ -287,17 +289,17 @@ def test_row_tooltip_with_a_run_heads_the_own_figures_and_adds_the_run():
 def test_row_tooltip_skips_an_empty_run_block_but_keeps_the_heading():
     # A Spend is always truthy, so the heading follows ``total`` being given,
     # while the run block needs a figure to report.
-    assert web._row_tooltip(_task("g", cost=0.25), Spend(), 1) == (
+    assert _row_tooltip(_task("g", cost=0.25), Spend(), 1) == (
         "This task\n↑ In: 0\n↓ Out: 0\n$ Cost: $0.2500"
     )
 
 
 def test_row_tooltip_wraps_and_caps_a_long_prompt():
-    text = web._row_tooltip(_task("long", prompt_excerpt="word " * 400))
+    text = _row_tooltip(_task("long", prompt_excerpt="word " * 400))
     lines = text.split("\n")
 
-    assert len(lines) == web._PROMPT_WRAP_LINES
-    assert all(len(line) <= web._PROMPT_WRAP_COLS for line in lines)
+    assert len(lines) == _PROMPT_WRAP_LINES
+    assert all(len(line) <= _PROMPT_WRAP_COLS for line in lines)
     assert lines[0] == " ".join(["word"] * 15)
     assert lines[-1] == " ".join(["word"] * 15) + "…"
 
@@ -318,7 +320,7 @@ def _graded(task_id: str, *, user_id="user_test", parent=None, age_days=1, **qua
 
 async def test_quality_overview_without_tasks_has_no_data(db_session):
     await _seed_user(db_session)
-    assert await web._quality_overview(db_session, "user_test", "all") == {"has_data": False}
+    assert await _quality_overview(db_session, "user_test", "all") == {"has_data": False}
 
 
 async def test_quality_overview_grades_runs_in_the_period(db_session):
@@ -340,7 +342,7 @@ async def test_quality_overview_grades_runs_in_the_period(db_session):
     )
     await db_session.commit()
 
-    week = await web._quality_overview(db_session, "user_test", "7d")
+    week = await _quality_overview(db_session, "user_test", "7d")
     assert week == {
         "has_data": True,
         "total": 4,
@@ -374,7 +376,7 @@ async def test_quality_overview_grades_runs_in_the_period(db_session):
         ],
     }
 
-    everything = await web._quality_overview(db_session, "user_test", "all")
+    everything = await _quality_overview(db_session, "user_test", "all")
     assert everything["total"] == 5
     assert [r["id"] for r in everything["roughest"]] == ["old", "rough", "stuck"]
 
@@ -386,28 +388,8 @@ async def test_quality_overview_lists_at_most_eight_roughest_runs(db_session):
     )
     await db_session.commit()
 
-    overview = await web._quality_overview(db_session, "user_test", "all")
+    overview = await _quality_overview(db_session, "user_test", "all")
 
     assert overview["total"] == 10
     assert [r["friction"] for r in overview["roughest"]] == [10, 9, 8, 7, 6, 5, 4, 3]
     assert overview["grades"][1] == {"key": "friction", "label": "Friction", "count": 10, "share": 100}
-
-
-# --- the old import path ---------------------------------------------------------------------------------------
-
-
-def test_the_old_import_path_re_exports_the_moved_helpers():
-    from src.services import quality_overview
-    from src.web import templating
-    from src.web.presenters import settings as settings_presenter
-    from src.web.presenters import task_detail, task_rows
-
-    assert web._list_row is task_rows._list_row
-    assert web._row_tooltip is task_rows._row_tooltip
-    assert web._wrap_prompt is task_rows._wrap_prompt
-    assert web._spend_summary is task_detail._spend_summary
-    assert web._quality_panel is task_detail._quality_panel
-    assert web._load_task_messages is task_detail._load_task_messages
-    assert web._plan_view is settings_presenter._plan_view
-    assert web._quality_overview is quality_overview.quality_overview
-    assert web.templates is templating.templates

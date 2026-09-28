@@ -50,6 +50,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from src.database import Base
 from src.db_bootstrap import classify_and_seed
+from src.models import RETIRED_TABLES, include_name
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 BASELINE_SQL = PROJECT_DIR / "tests" / "fixtures" / "baseline_schema_sqlite.sql"
@@ -131,7 +132,14 @@ def _drift(db_file: Path) -> list:
     try:
         with engine.connect() as conn:
             context = MigrationContext.configure(
-                conn, opts={"compare_type": True, "compare_server_default": True}
+                conn,
+                opts={
+                    "compare_type": True,
+                    "compare_server_default": True,
+                    # The same filter alembic/env.py gives autogenerate: a
+                    # retired table stays in the database but has no model.
+                    "include_name": include_name,
+                },
             )
             return compare_metadata(context, Base.metadata)
     finally:
@@ -381,3 +389,17 @@ def test_a_fresh_database_has_no_drift(tmp_path):
         engine.dispose()
 
     assert _drift(db_file) == []
+
+
+def test_retired_tables_are_kept_in_the_database_but_have_no_model(migrated_db):
+    """provider_configs (the LLM proxy routing table) lost its last reader when
+    the cloud proxy provider was removed; its ORM model was deleted in D6.
+
+    The table itself is not dropped: no migration removes it, so any rows an
+    existing deployment still holds survive, and the drift check (like
+    autogenerate in alembic/env.py) skips it instead of asking for a drop."""
+    assert "provider_configs" in RETIRED_TABLES
+    assert RETIRED_TABLES.isdisjoint(Base.metadata.tables)
+    assert RETIRED_TABLES <= _tables(migrated_db)
+    assert include_name("provider_configs", "table", {}) is False
+    assert include_name("tasks", "table", {}) is True

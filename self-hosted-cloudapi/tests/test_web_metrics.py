@@ -439,7 +439,7 @@ async def test_quality_overview_excludes_subtasks(client, db_session, session_fa
         )
         await s.commit()
 
-    from src.routers.web import _quality_overview
+    from src.services.quality_overview import quality_overview as _quality_overview
 
     async with session_factory() as s:
         overview = await _quality_overview(s, "user_test", "all")
