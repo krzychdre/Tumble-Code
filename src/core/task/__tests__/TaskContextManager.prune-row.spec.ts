@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest"
 
 import type { ApiMessage } from "../../task-persistence/apiMessages"
 import { TaskContextManager, type TaskContextManagerAccess } from "../TaskContextManager"
+import type { ProviderState } from "../../webview/ProviderStateBuilder"
 
 /**
  * A prune-only round rewrites the STORED history: old tool output the transcript
@@ -63,7 +64,7 @@ function buildAccess() {
 }
 
 const params = {
-	state: { mode: "code" },
+	state: { mode: "code" } as ProviderState,
 	systemPrompt: "system",
 	autoCondenseContext: true,
 	autoCondenseContextPercent: 70,

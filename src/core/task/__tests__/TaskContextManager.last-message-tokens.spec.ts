@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 
 import { TaskContextManager, type TaskContextManagerAccess } from "../TaskContextManager"
+import type { ProviderState } from "../../webview/ProviderStateBuilder"
 
 const manageContextMock = vi.hoisted(() => vi.fn())
 const willManageContextMock = vi.hoisted(() => vi.fn())
@@ -48,7 +49,7 @@ function buildAccess(condenseHandler?: object) {
 }
 
 const params = {
-	state: { mode: "code" },
+	state: { mode: "code" } as ProviderState,
 	systemPrompt: "system",
 	autoCondenseContext: true,
 	autoCondenseContextPercent: 70,

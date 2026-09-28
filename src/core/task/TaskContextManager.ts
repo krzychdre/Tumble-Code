@@ -31,6 +31,8 @@ import { type TaskAskSay } from "./TaskAskSay"
 // access interface disagree.
 import type { ApiMessage } from "../task-persistence/apiMessages"
 import { type ClineProvider } from "../webview/ClineProvider"
+import { type ProviderState } from "../webview/ProviderStateBuilder"
+import type { Task } from "./Task"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import type { ArtifactStore } from "../artifacts/ArtifactStore"
@@ -191,7 +193,7 @@ export interface TaskContextManagerAccess {
  * Parameters for manageContextIfNeeded
  */
 export interface ManageContextParams {
-	state: any
+	state: ProviderState | undefined
 	systemPrompt: string
 	autoCondenseContext: boolean
 	autoCondenseContextPercent: number
@@ -247,6 +249,15 @@ export class TaskContextManager {
 	constructor(private readonly access: TaskContextManagerAccess) {}
 
 	/**
+	 * The access object IS the owning Task (Task.ts constructs this class with
+	 * `this`), and a few callees (environment details) still take the whole
+	 * Task. One typed cast here replaces an `as any` at each call site.
+	 */
+	private get task(): Task {
+		return this.access as unknown as Task
+	}
+
+	/**
 	 * Get files read by Roo, with error handling.
 	 * Used when context management needs to know which files have been read.
 	 *
@@ -290,7 +301,7 @@ export class TaskContextManager {
 		)
 
 		// Generate environment details to include in the condensed summary
-		const environmentDetails = await getEnvironmentDetails(this.access as any, true)
+		const environmentDetails = await getEnvironmentDetails(this.task, true)
 
 		const filesReadByRoo = await this.getFilesReadByRooSafely("condenseContext")
 
@@ -439,7 +450,7 @@ export class TaskContextManager {
 
 		try {
 			// Generate environment details to include in the condensed summary
-			const environmentDetails = await getEnvironmentDetails(this.access as any, true)
+			const environmentDetails = await getEnvironmentDetails(this.task, true)
 
 			// Resolve the condense handler (background model with fallback to the
 			// foreground model) so a configured `autoCondenseContextApiConfigId`
@@ -625,9 +636,7 @@ export class TaskContextManager {
 		// Only generate environment details / folded files when a condense could
 		// actually run — both are condense-only inputs, wasted when the breaker is open.
 		const environmentDetails =
-			contextManagementWillRun && !condenseCircuitOpen
-				? await getEnvironmentDetails(this.access as any, true)
-				: undefined
+			contextManagementWillRun && !condenseCircuitOpen ? await getEnvironmentDetails(this.task, true) : undefined
 
 		// Get files read by Roo for code folding - only when condense could run
 		const filesReadByRoo =
@@ -867,7 +876,7 @@ export class TaskContextManager {
 	 * @param willRun - Whether context management is expected to run this pass.
 	 */
 	private async resolvePruneOptions(
-		state: any,
+		state: ProviderState | undefined,
 		willRun: boolean,
 	): Promise<{ pruneBeforeCondense: boolean; pruneToolResultBudget: number; artifactStore?: ArtifactStore }> {
 		const pruneBeforeCondense = isPruneBeforeCondenseEnabled(state)

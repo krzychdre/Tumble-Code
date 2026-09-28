@@ -22,7 +22,12 @@ import { checkContextWindowExceededError } from "../context/context-management/c
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { type ClineProvider } from "../webview/ClineProvider"
+import { type ProviderState } from "../webview/ProviderStateBuilder"
 import type { ApiStream } from "../../api/transform/stream"
+import { logger } from "../../utils/logging"
+
+/** The provider-state fields the backoff and rate-limit math read (a full ProviderState fits). */
+type BackoffState = Partial<Pick<ProviderState, "apiConfiguration" | "requestDelaySeconds">>
 
 /**
  * Module-level constant for exponential backoff limit
@@ -168,7 +173,7 @@ export class RetryHandler {
 	 * the window has passed or no limit is set. One implementation, used by
 	 * both the retry backoff and the pre-request wait (D1: was written twice).
 	 */
-	private providerRateLimitDelaySeconds(state: any): number {
+	private providerRateLimitDelaySeconds(state: BackoffState | undefined): number {
 		const rateLimit = (state?.apiConfiguration ?? this.access.apiConfiguration)?.rateLimitSeconds || 0
 		if (!getLastGlobalApiRequestTime() || rateLimit <= 0) {
 			return 0
@@ -184,7 +189,7 @@ export class RetryHandler {
 	 * @param state - The current provider state
 	 * @returns The delay in seconds
 	 */
-	calculateBackoffDelay(retryAttempt: number, error: any, state: any): number {
+	calculateBackoffDelay(retryAttempt: number, error: any, state: BackoffState | undefined): number {
 		// `||` would mask a user-set 0 (no backoff): `??` keeps it.
 		const baseDelay = state?.requestDelaySeconds ?? SETTINGS_DEFAULTS.requestDelaySeconds
 
@@ -296,7 +301,7 @@ export class RetryHandler {
 	 *   state read ran after this wait, and settings changed during a long
 	 *   countdown must still be seen (same freshness as before).
 	 */
-	async maybeWaitForProviderRateLimit(retryAttempt: number, cycleState?: any): Promise<number> {
+	async maybeWaitForProviderRateLimit(retryAttempt: number, cycleState?: ProviderState): Promise<number> {
 		const state = cycleState ?? (await this.access.providerRef.deref()?.getState())
 		const rateLimitDelay = this.providerRateLimitDelaySeconds(state)
 
@@ -470,8 +475,11 @@ export class RetryHandler {
 		let model: string | undefined
 		try {
 			model = this.access.api.getModel().id
-		} catch {
+		} catch (error) {
 			// The message just omits the model.
+			logger.debug(`[RetryHandler] model id unavailable for the background failure line: ${String(error)}`, {
+				ctx: "RetryHandler",
+			})
 		}
 		const message = describeBackgroundApiFailure(error, {
 			provider: this.access.apiConfiguration?.apiProvider,

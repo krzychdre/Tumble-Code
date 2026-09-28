@@ -89,6 +89,7 @@ import { RooTerminalProcess } from "../../integrations/terminal/types"
 // utils
 import { getWorkspacePath } from "../../utils/path"
 import { sanitizeToolUseId } from "../../utils/tool-id"
+import { logger } from "../../utils/logging"
 
 // prompts
 import { formatResponse } from "../prompts/responses"
@@ -576,10 +577,13 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						)
 					}
 				}
-			} catch {
+			} catch (error) {
 				// Capability read failed (e.g. handler doesn't expose getModel
-				// cleanly) — skip the warning, the 400-as-trigger fallback
+				// cleanly): skip the warning, the 400-as-trigger fallback
 				// still ensures correctness.
+				logger.debug(`[condense] background profile capability read failed: ${String(error)}`, {
+					ctx: "Task",
+				})
 			}
 			return handler
 		} catch (error) {
@@ -1045,7 +1049,15 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 						error instanceof Error ? error.message : String(error),
 					)
 					const provider = this.providerRef.deref()
-					provider?.postStateToWebview().catch(() => {})
+					provider?.postStateToWebview().catch((postError) => {
+						// Best effort: the resume failure is already logged above.
+						logger.debug(
+							`[Task#${this.taskId}] postStateToWebview after resume failure: ${String(postError)}`,
+							{
+								ctx: "Task",
+							},
+						)
+					})
 				})
 			} else {
 				throw new Error("Either historyItem or task/images must be provided")
