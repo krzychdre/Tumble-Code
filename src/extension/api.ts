@@ -190,6 +190,24 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 	}
 
 	private registerListeners(provider: ClineProvider) {
+		// Delegation lifecycle. DelegationService emits these on the provider
+		// (its host), never on a Task, and the payload already names both the
+		// parent and the child, so they are forwarded once per provider rather
+		// than per task. ClineProvider.dispose() removes all of its listeners,
+		// these included.
+
+		provider.on(RooCodeEventName.TaskDelegated, (parentTaskId, childTaskId) => {
+			this.emit(RooCodeEventName.TaskDelegated, parentTaskId, childTaskId)
+		})
+
+		provider.on(RooCodeEventName.TaskDelegationCompleted, (parentTaskId, childTaskId, summary) => {
+			this.emit(RooCodeEventName.TaskDelegationCompleted, parentTaskId, childTaskId, summary)
+		})
+
+		provider.on(RooCodeEventName.TaskDelegationResumed, (parentTaskId, childTaskId) => {
+			this.emit(RooCodeEventName.TaskDelegationResumed, parentTaskId, childTaskId)
+		})
+
 		provider.on(RooCodeEventName.TaskCreated, (task) => {
 			// Task Lifecycle
 
@@ -248,18 +266,6 @@ export class API extends EventEmitter<RooCodeEvents> implements RooCodeAPI {
 
 			task.on(RooCodeEventName.TaskSpawned, (childTaskId) => {
 				this.emit(RooCodeEventName.TaskSpawned, task.taskId, childTaskId)
-			})
-
-			task.on(RooCodeEventName.TaskDelegated as any, (childTaskId: string) => {
-				;(this.emit as any)(RooCodeEventName.TaskDelegated, task.taskId, childTaskId)
-			})
-
-			task.on(RooCodeEventName.TaskDelegationCompleted as any, (childTaskId: string, summary: string) => {
-				;(this.emit as any)(RooCodeEventName.TaskDelegationCompleted, task.taskId, childTaskId, summary)
-			})
-
-			task.on(RooCodeEventName.TaskDelegationResumed as any, (childTaskId: string) => {
-				;(this.emit as any)(RooCodeEventName.TaskDelegationResumed, task.taskId, childTaskId)
 			})
 
 			// Task Execution

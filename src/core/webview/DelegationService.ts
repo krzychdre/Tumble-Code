@@ -89,7 +89,7 @@ export class DelegationService {
 	 *
 	 * - Enforce single-open invariant
 	 * - Persist parent delegation metadata
-	 * - Emit TaskDelegated (task-level; API forwards to provider/bridge)
+	 * - Emit TaskDelegated on the provider (the public API forwards it)
 	 * - Create child as sole active and switch mode to child's mode
 	 */
 	async delegate(params: {
