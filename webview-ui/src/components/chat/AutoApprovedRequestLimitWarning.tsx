@@ -41,7 +41,6 @@ export const AutoApprovedRequestLimitWarning = memo(({ message }: AutoApprovedRe
 			<div
 				className="bg-vscode-panel-border flex flex-col gap-3"
 				style={{
-					borderRadius: "4px",
 					display: "flex",
 					marginTop: "15px",
 					padding: "14px 16px 22px",
@@ -51,7 +50,7 @@ export const AutoApprovedRequestLimitWarning = memo(({ message }: AutoApprovedRe
 					<Trans i18nKey={descriptionKey} ns="chat" values={{ count }} />
 				</div>
 				<Button
-					style={{ width: "100%", padding: "6px", borderRadius: "4px" }}
+					style={{ width: "100%", padding: "6px" }}
 					onClick={(e) => {
 						e.preventDefault()
 						setButtonClicked(true)

@@ -41,7 +41,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 				backgroundColor: checked
 					? "var(--vscode-button-background)"
 					: "var(--vscode-button-secondaryBackground)",
-				borderRadius: `${dimensions.height / 2}px`,
+				borderRadius: 0,
 				position: "relative",
 				cursor: disabled ? "not-allowed" : "pointer",
 				transition: "background-color 0.2s",
@@ -54,7 +54,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 					width: `${dimensions.dotSize}px`,
 					height: `${dimensions.dotSize}px`,
 					backgroundColor: "var(--vscode-foreground)",
-					borderRadius: "50%",
+					borderRadius: 0,
 					position: "absolute",
 					top: `${(dimensions.height - dimensions.dotSize) / 2}px`,
 					left: checked

@@ -31,8 +31,7 @@ export const Markdown = memo(({ markdown, partial }: { markdown?: string; partia
 						right: "8px",
 						opacity: 0,
 						animation: "fadeIn 0.2s ease-in-out forwards",
-						borderRadius: "4px",
-					}}>
+						}}>
 					<style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1.0; } }`}</style>
 					<StandardTooltip content="Copy as markdown">
 						<ThemedButton

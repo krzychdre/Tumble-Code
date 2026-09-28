@@ -47,7 +47,7 @@ function VSCodeTextFieldWithNodesInner(
 				`group`,
 				`relative flex items-center cursor-text`,
 				`bg-vscode-input-background text-vscode-input-foreground`,
-				`rounded-[2px]`,
+				`rounded`,
 				className,
 			)}
 			style={style}
