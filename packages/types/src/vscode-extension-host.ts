@@ -309,7 +309,8 @@ export interface ExtensionMessage {
 	worktreeIncludeStatus?: WorktreeIncludeStatus
 	hasGitignore?: boolean
 	gitignoreContent?: string
-	// branchWorktreeIncludeResult
+	// Were for branchWorktreeIncludeResult, removed in S7; nothing sets or reads
+	// these two now (see ai_plans/2026-09-28_s7-split-extension-message-types.md).
 	branch?: string
 	hasWorktreeInclude?: boolean
 	// worktreeCopyProgress (size-based)
