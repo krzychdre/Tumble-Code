@@ -111,11 +111,15 @@ like this).
           requests the list once, with the settings keys `modelSourceOptions` names, and flags a configured model
           the (non-empty) list does not contain; the picker shows the row's `service`. Requires a `modelSource` in
           `providerRegistry`, `modelSourceOptions`, `service` and `modelPicker: "in-form"` (the descriptor spec
-          checks it). LM Studio's main and draft model pickers;
+          checks it). LM Studio's main and draft model pickers, Ollama's picker;
+        - `integer`: a labelled whole-number field; clearing it unsets the setting, other input is written only
+          when `parseInt` reads a number of at least `min` (Ollama's context window size);
         - `note`: a text in the description colour, optionally with `links` (tags of the translated text rendered
-          as links) and a `warningTag` (LM Studio's "Note:" label).
+          as links) and a `warningTag` (LM Studio's "Note:" label), or followed by a `warningKey` text in the error
+          colour (Ollama).
 
-        Every text in a row is an i18n key (except example URLs and endpoint host names, shown as is);
+        Every text in a row is an i18n key (except example URLs, endpoint host names and Ollama's untranslated
+        "e.g., 4096" placeholder, shown as is);
         `provider-descriptors.i18n.spec.ts` in webview-ui fails when a key the table names is missing from any
         locale's `settings.json`.
 
@@ -126,7 +130,8 @@ like this).
         Any field can carry `visibleWhen: { modelIdStartsWith }` or `{ modelIdIn }`, so it is shown only for some
         models; the model id is the configured one, or the provider's default when none is set (the same rule the
         request uses, `resolveProviderFormModelId`). `visibleWhen: { settingIsSet }` shows it only while another
-        setting of the form is set (LM Studio's draft model picker under the speculative decoding checkbox).
+        setting of the form is set (LM Studio's draft model picker under the speculative decoding checkbox, Ollama's API
+        key once a base URL is set).
 
     - `form: custom` when the provider needs anything else; then write the component in
       `webview-ui/src/components/settings/providers/`, export it from `index.ts` there and add its row to

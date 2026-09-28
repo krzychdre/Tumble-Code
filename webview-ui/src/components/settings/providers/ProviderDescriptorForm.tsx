@@ -9,6 +9,7 @@ import {
 	type ProviderDescriptor,
 	type ProviderFetchedModelPickerFieldDescriptor,
 	type ProviderFieldDescriptor,
+	type ProviderIntegerFieldDescriptor,
 	type ProviderModelTierSelectFieldDescriptor,
 	type ProviderNoteFieldDescriptor,
 	type ProviderOptionalUrlFieldDescriptor,
@@ -186,6 +187,15 @@ const DescriptorFields = ({
 								service={descriptor.service}
 							/>
 						)
+					case "integer":
+						return (
+							<IntegerField
+								key={field.key}
+								field={field}
+								apiConfiguration={apiConfiguration}
+								setApiConfigurationField={setApiConfigurationField}
+							/>
+						)
 					case "note":
 						return <NoteField key={`note-${index}`} field={field} />
 				}
@@ -326,11 +336,45 @@ const FetchedModelPickerField = ({
 	)
 }
 
+const IntegerField = ({
+	field,
+	apiConfiguration,
+	setApiConfigurationField,
+}: ProviderFormProps & { field: ProviderIntegerFieldDescriptor }) => {
+	const { t } = useAppTranslation()
+
+	return (
+		<ThemedTextField
+			value={apiConfiguration[field.key]?.toString() || ""}
+			onInput={(e) => {
+				const value = (e.target as HTMLInputElement)?.value
+				if (value === "") {
+					setApiConfigurationField(field.key, undefined)
+				} else {
+					const numValue = parseInt(value, 10)
+					if (!isNaN(numValue) && numValue >= (field.min ?? -Infinity)) {
+						setApiConfigurationField(field.key, numValue)
+					}
+				}
+			}}
+			placeholder={field.placeholder}
+			className="w-full">
+			<label className="block font-medium mb-1">{t(field.labelKey)}</label>
+			{field.helpKey && <div className="text-xs text-vscode-descriptionForeground mt-1">{t(field.helpKey)}</div>}
+		</ThemedTextField>
+	)
+}
+
 const NoteField = ({ field }: { field: ProviderNoteFieldDescriptor }) => {
 	const { t } = useAppTranslation()
 
 	if (!field.links && !field.warningTag) {
-		return <div className="text-sm text-vscode-descriptionForeground">{t(field.textKey)}</div>
+		return (
+			<div className="text-sm text-vscode-descriptionForeground">
+				{t(field.textKey)}
+				{field.warningKey && <span className="text-vscode-errorForeground ml-1">{t(field.warningKey)}</span>}
+			</div>
+		)
 	}
 
 	const components: Record<string, React.ReactElement> = Object.fromEntries(

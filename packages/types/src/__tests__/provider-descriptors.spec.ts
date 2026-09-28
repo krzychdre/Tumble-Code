@@ -82,6 +82,7 @@ describe("PROVIDER_DESCRIPTORS", () => {
 			"minimax",
 			"mistral",
 			"moonshot",
+			"ollama",
 			"openai-native",
 			"xai",
 			"zai",
@@ -128,6 +129,20 @@ describe("PROVIDER_DESCRIPTORS", () => {
 				expect(descriptor.modelSourceOptions, provider).toBeDefined()
 				expect(descriptor.modelPicker, provider).toBe("in-form")
 				expect(descriptor.service, provider).toBeDefined()
+			}
+		}
+	})
+
+	it("keeps integer minimums and plain-note warnings consistent", () => {
+		for (const [provider, descriptor] of entries) {
+			for (const field of fieldsOf(descriptor)) {
+				if (field.kind === "integer" && field.min !== undefined) {
+					expect(Number.isInteger(field.min), provider).toBe(true)
+				}
+				if (field.kind === "note" && field.warningKey) {
+					// The warning is appended to a plain note; the Trans variant has its own tag.
+					expect(field.links ?? field.warningTag, provider).toBeUndefined()
+				}
 			}
 		}
 	})
