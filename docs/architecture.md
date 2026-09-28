@@ -112,8 +112,9 @@ setting, add its default to that table. Code that reads a possibly unset value w
    `src/api/transform/stream.ts`). Providers on the Chat Completions wire format share
    `src/api/transform/chat-completions-stream.ts` (API-7); the others parse their own format.
 2. `TaskApiLoop.attemptApiRequest` (`src/core/task/TaskApiLoop.ts`) iterates the stream and hands each chunk to
-   `TaskStreamProcessor.processChunk`, which turns text and reasoning into `say(...)` calls and tool calls into
-   `presentAssistantMessage` (tool execution).
+   `TaskStreamProcessor.processChunk`, which turns text and reasoning into `say(...)` calls and delegates tool-call
+   chunks to `StreamToolCallHandler` (partial/final tool_use blocks) which drives `presentAssistantMessage` (tool
+   execution); `AssistantMessageAssembler` builds and saves the finished assistant message to API history.
 3. `TaskAskSay` records the result as a `ClineMessage`; `TaskMessageLog.addToClineMessages` pushes a state update and
    `TaskMessageLog.updateClineMessage` sends a `messageUpdated` message for a streaming partial.
 4. In the webview, `ChatView.tsx` shapes the message list (`modifiedMessages`, `visibleMessages`,

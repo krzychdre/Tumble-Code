@@ -254,7 +254,8 @@ describe("TaskStreamProcessor orphaned tool_call_end handling (TE-8)", () => {
 		// Also manually consume the parser's streamingToolCalls entry so
 		// finalizeStreamingToolCall returns null (simulating a prior finalize).
 		// We do this by calling finalizeStreamingToolCall directly.
-		processor["toolCallParser"].finalizeStreamingToolCall("call_orphan")
+		// (The parser instance moved to StreamToolCallHandler with the S2 split.)
+		;(processor as any).toolCallHandler.toolCallParser.finalizeStreamingToolCall("call_orphan")
 
 		// Now finish_reason will emit tool_call_end for "call_orphan", but
 		// streamingToolCallIndices is empty, assistantMessageContent is empty,
