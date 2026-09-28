@@ -68,7 +68,7 @@ export const ToolBlock = ({
 				status
 					? {
 							borderLeft: `var(--border-status) solid ${STATUS_BORDER_COLOR[status]}`,
-					  }
+						}
 					: undefined
 			}>
 			<button
@@ -101,15 +101,10 @@ export const ToolBlock = ({
 				</div>
 			)}
 			{hasBody && (
-				<div
-					id={bodyId}
-					className="overflow-y-auto max-h-[300px] font-mono"
-					hidden={!isExpanded}>
+				<div id={bodyId} className="overflow-y-auto max-h-[300px] font-mono" hidden={!isExpanded}>
 					{children}
 				</div>
 			)}
 		</div>
 	)
 }
-
-export default ToolBlock

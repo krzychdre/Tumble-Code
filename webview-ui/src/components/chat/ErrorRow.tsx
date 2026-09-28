@@ -333,5 +333,3 @@ export const ErrorRow = memo(
 		)
 	},
 )
-
-export default ErrorRow

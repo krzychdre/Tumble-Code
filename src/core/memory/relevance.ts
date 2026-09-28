@@ -37,9 +37,6 @@ Respond with ONLY a JSON object of the form: {"selected_memories": ["file1.md", 
  */
 export type SideQuery = (system: string, user: string, signal: AbortSignal) => Promise<string>
 
-/** Shared selector prompt for unit tests / reuse. */
-export const SELECTOR_SYSTEM_PROMPT = SELECT_MEMORIES_SYSTEM_PROMPT
-
 /**
  * Ask the side-query model which memory filenames are relevant to `query`.
  *

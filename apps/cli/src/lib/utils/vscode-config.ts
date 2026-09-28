@@ -241,8 +241,3 @@ function readFlatSecret(secrets: Record<string, unknown> | undefined, keyField: 
 function isSupportedConfigProvider(id: string): id is SupportedProvider {
 	return (supportedProviders as readonly string[]).includes(id) && classifyProvider(id) !== "retired"
 }
-
-/** Resolve the CLI provider config from the extension's persisted state. */
-export function resolveVsCodeProviderConfig(): VsCodeProviderConfig | undefined {
-	return readVsCodeConfig()
-}

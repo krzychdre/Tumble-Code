@@ -1,45 +1,12 @@
 import { getToolPayloadKind, type ToolPayloadKind } from "@roo-code/core/cli"
 
 /**
- * Truncate text and return truncation info
- */
-export function truncateText(
-	text: string,
-	maxLines: number = 10,
-): { text: string; truncated: boolean; totalLines: number; hiddenLines: number } {
-	const lines = text.split("\n")
-	const totalLines = lines.length
-
-	if (lines.length <= maxLines) {
-		return { text, truncated: false, totalLines, hiddenLines: 0 }
-	}
-
-	const truncatedText = lines.slice(0, maxLines).join("\n")
-	return {
-		text: truncatedText,
-		truncated: true,
-		totalLines,
-		hiddenLines: totalLines - maxLines,
-	}
-}
-
-/**
  * Sanitize content for terminal display
  * - Replaces tabs with spaces
  * - Strips carriage returns
  */
 export function sanitizeContent(text: string): string {
 	return text.replace(/\t/g, "    ").replace(/\r/g, "")
-}
-
-/**
- * Format diff stats as a colored string representation
- */
-export function formatDiffStats(stats: { added: number; removed: number }): { added: string; removed: string } {
-	return {
-		added: `+${stats.added}`,
-		removed: `-${stats.removed}`,
-	}
 }
 
 /** Titles of the payload names that differ from their family's title. */
@@ -87,28 +54,6 @@ export function getToolDisplayName(toolName: string): string {
 	}
 	const kind = getToolPayloadKind(toolName)
 	return kind ? KIND_DISPLAY_NAMES[kind] : toolName
-}
-
-/**
- * Format a file path for display, optionally with workspace indicator
- */
-export function formatPath(path: string, isOutsideWorkspace?: boolean, isProtected?: boolean): string {
-	let result = path
-	const badges: string[] = []
-
-	if (isOutsideWorkspace) {
-		badges.push("outside workspace")
-	}
-
-	if (isProtected) {
-		badges.push("protected")
-	}
-
-	if (badges.length > 0) {
-		result += ` (${badges.join(", ")})`
-	}
-
-	return result
 }
 
 /**

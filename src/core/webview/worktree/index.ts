@@ -15,6 +15,3 @@ export {
 	handleGetWorktreeIncludeStatus,
 	handleCreateWorktreeInclude,
 } from "./handlers"
-
-// Re-export types from @roo-code/types for convenience
-export type { WorktreeListResponse, WorktreeDefaultsResponse } from "@roo-code/types"

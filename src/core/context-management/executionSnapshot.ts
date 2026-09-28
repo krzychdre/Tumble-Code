@@ -76,7 +76,7 @@ export const RESUME_THIN_KEEP_RECENT_MESSAGES = 16
  * on exactly these tasks — a flat 12-message tail measured p90 185k / max 557k, while the budget
  * holds p90 and max at their 4-message values and still lifts the median tail from 26k to 52k.
  */
-export const RESUME_THIN_TAIL_MAX_CHARS = RESUME_SNAPSHOT_MIN_CHARS
+const RESUME_THIN_TAIL_MAX_CHARS = RESUME_SNAPSHOT_MIN_CHARS
 
 /**
  * Slack around the task's last activity before an mtime counts as an outside edit. Covers write

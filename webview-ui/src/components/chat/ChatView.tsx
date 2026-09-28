@@ -29,10 +29,10 @@ import VersionIndicator from "../common/VersionIndicator"
 import HistoryPreview from "../history/HistoryPreview"
 import Announcement from "./Announcement"
 import ChatRow from "./ChatRow"
-import WarningRow from "./WarningRow"
+import { WarningRow } from "./WarningRow"
 import { ChatTextArea } from "./ChatTextArea"
 import TaskHeader from "./TaskHeader"
-import ProfileViolationWarning from "./ProfileViolationWarning"
+import { ProfileViolationWarning } from "./ProfileViolationWarning"
 import { CheckpointWarning } from "./CheckpointWarning"
 import { QueuedMessages } from "./QueuedMessages"
 import { WorktreeSelector } from "./WorktreeSelector"
@@ -479,7 +479,15 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				}
 			}
 		},
-		[enableButtons, primaryButtonText, secondaryButtonText, handlePrimaryButtonClick, handleSecondaryButtonClick, inputValue, selectedImages],
+		[
+			enableButtons,
+			primaryButtonText,
+			secondaryButtonText,
+			handlePrimaryButtonClick,
+			handleSecondaryButtonClick,
+			inputValue,
+			selectedImages,
+		],
 	)
 
 	return (

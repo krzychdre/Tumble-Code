@@ -6,7 +6,7 @@ import type { ClineApiReqInfo } from "@roo-code/types"
 import { safeJsonParse } from "@roo-code/core/browser"
 
 import { cn } from "@/lib/utils"
-import ErrorRow from "@src/components/chat/ErrorRow"
+import { ErrorRow } from "@src/components/chat/ErrorRow"
 import { BlockTimestamp } from "@src/components/chat/BlockTimestamp"
 import { ProgressIndicator } from "@src/components/chat/ProgressIndicator"
 

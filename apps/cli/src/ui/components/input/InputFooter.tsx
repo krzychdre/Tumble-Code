@@ -3,8 +3,12 @@ import { Box, Text } from "ink"
 
 import * as theme from "../../theme.js"
 import type { Toast } from "../../hooks/useToast.js"
-import { formatCost } from "../MetricsDisplay.js"
 import ContextGauge from "./ContextGauge.js"
+
+/** Formats a cost as currency with a $ prefix, e.g. 1.5 -> "$1.50". */
+function formatCost(cost: number): string {
+	return `$${cost.toFixed(2)}`
+}
 
 interface InputFooterProps {
 	/** Current toast (highest-priority left hint) */

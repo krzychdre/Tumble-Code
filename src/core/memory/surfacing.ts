@@ -16,7 +16,6 @@
  */
 
 import fs from "fs/promises"
-import { stat as fsStat } from "fs/promises"
 
 import { memoryAge, memoryFreshnessText } from "./memoryAge"
 
@@ -161,17 +160,4 @@ export function filterDuplicateMemoryAttachments(
  */
 export function wrapMemoryAsSystemReminder(memory: RelevantMemory): string {
 	return `<system-reminder>\n${memory.header}\n\n${memory.content}\n</system-reminder>`
-}
-
-/**
- * Re-stat a memory file's mtime. Used to refresh the header after the model
- * edits a memory (so a re-surface shows the new age).
- */
-export async function getMemoryMtime(filePath: string): Promise<number> {
-	try {
-		const s = await fsStat(filePath)
-		return s.mtimeMs
-	} catch {
-		return 0
-	}
 }

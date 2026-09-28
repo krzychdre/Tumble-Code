@@ -14,12 +14,7 @@ import { McpConfigWatcher, type McpWatcherFactory, vscodeWatcherFactory } from "
 import { logMcpError, type McpConnection, McpConnectionManager } from "./McpConnectionManager"
 import { McpToolCatalog } from "./McpToolCatalog"
 
-export {
-	type ConnectedMcpConnection,
-	type DisconnectedMcpConnection,
-	type McpConnection,
-	DisableReason,
-} from "./McpConnectionManager"
+export { type ConnectedMcpConnection, type DisconnectedMcpConnection, type McpConnection } from "./McpConnectionManager"
 
 /**
  * The part of the provider (ClineProvider) the hub and McpServerManager use.

@@ -73,5 +73,3 @@ export const WarningRow: React.FC<WarningRowProps> = ({ title, message, docsURL,
 		</div>
 	)
 }
-
-export default WarningRow

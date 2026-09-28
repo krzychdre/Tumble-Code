@@ -4,12 +4,7 @@ import { routeStdinStreamCommand } from "./stdin-stream/router.js"
 import { attachSessionListeners } from "./stdin-stream/session-events.js"
 import { StdinStreamSession, type StdinStreamModeOptions } from "./stdin-stream/session.js"
 
-export {
-	parseStdinStreamCommand,
-	VALID_STDIN_COMMANDS,
-	type StdinStreamCommand,
-	type StdinStreamCommandName,
-} from "./stdin-stream/parse.js"
+export { parseStdinStreamCommand } from "./stdin-stream/parse.js"
 export { shouldSendMessageAsAskResponse } from "./stdin-stream/handlers/message.js"
 export type { StdinStreamModeOptions } from "./stdin-stream/session.js"
 

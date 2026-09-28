@@ -9,7 +9,6 @@ import {
 import { initMemoryPaths, resetMemoryPaths } from "../paths"
 import { logger } from "../../../utils/logging"
 import { scanMemoryFiles } from "../memoryScan"
-import * as surfacing from "../surfacing"
 
 describe("relevance", () => {
 	describe("parseSelectedMemories", () => {

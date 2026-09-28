@@ -7,10 +7,9 @@
  *
  * @example
  * ```tsx
+ * import { AutocompleteInput } from './autocomplete/AutocompleteInput'
  * import {
- *   AutocompleteInput,
  *   PickerSelect,
- *   useAutocompletePicker,
  *   createFileTrigger,
  *   createSlashCommandTrigger,
  * } from './autocomplete'
@@ -27,12 +26,9 @@
  * ```
  */
 
-// Main components
-export { type AutocompleteInputProps, type AutocompleteInputHandle, AutocompleteInput } from "./AutocompleteInput.js"
-export { type PickerSelectProps, PickerSelect } from "./PickerSelect.js"
-
-// Hook
-export { useAutocompletePicker } from "./useAutocompletePicker.js"
+// Main components (AutocompleteInput itself is imported from ./AutocompleteInput.js directly)
+export { type AutocompleteInputHandle } from "./AutocompleteInput.js"
+export { PickerSelect } from "./PickerSelect.js"
 
 // Types
 export * from "./types.js"

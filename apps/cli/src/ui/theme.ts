@@ -34,8 +34,6 @@ export const theme = {
 	code: "#E6DB74", // inline code spans
 } as const
 
-export type Theme = typeof theme
-
 /**
  * A hex colour the way SGR 2 (dim) draws a palette colour: every channel at
  * 2/3, xterm's formula, which VTE copies. Use it instead of `dimColor` on a
@@ -70,7 +68,6 @@ export const inactive = theme.inactive
 export const permission = theme.permission
 export const promptBorder = theme.promptBorder
 export const userMessageBg = theme.userMessageBg
-export const bashBorder = theme.bashBorder
 export const success = theme.success
 export const error = theme.error
 export const warning = theme.warning
@@ -78,6 +75,4 @@ export const suggestion = theme.suggestion
 export const planMode = theme.planMode
 export const diffAdded = theme.diffAdded
 export const diffRemoved = theme.diffRemoved
-export const diffAddedDimmed = theme.diffAddedDimmed
-export const diffRemovedDimmed = theme.diffRemovedDimmed
 export const code = theme.code

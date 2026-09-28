@@ -254,7 +254,3 @@ export const supportPrompt = {
 } as const
 
 export type { SupportPromptType }
-
-export type CustomSupportPrompts = {
-	[key: string]: string | undefined
-}
