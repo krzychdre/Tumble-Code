@@ -42,4 +42,18 @@ describe("TuiErrorBoundary", () => {
 		expect(onError).toHaveBeenCalledTimes(1)
 		expect(onError.mock.calls[0]?.[0]).toBeInstanceOf(Error)
 	})
+
+	it("shows the crash hint (debug log path, --debug) under the fallback", async () => {
+		const { lastFrame } = render(
+			<TuiErrorBoundary hint="Run again with --debug to write a debug log to /tmp/x.log">
+				<Boom />
+			</TuiErrorBoundary>,
+		)
+
+		await vi.waitFor(() => {
+			expect(lastFrame()).toContain("Error: render exploded")
+		})
+
+		expect(lastFrame()).toContain("Run again with --debug to write a debug log to /tmp/x.log")
+	})
 })
