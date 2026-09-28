@@ -221,3 +221,33 @@ data hues, a 4px spacing scale, a type scale) and no build step. Keep both.
 5. Diffs, todo list, settings search, SVG charts.
 
 Each step is its own pull request with before and after screenshots in light, dark and high-contrast themes.
+
+## Progress log — krok 3 (2026-09-28)
+
+Step 3 of §5 landed as three stacked PRs, each squash-merged right after its
+touched specs went green:
+
+- **§2.5 Composer — PR #588** (`9120a384e`): single visible focus outline on
+  the composer (the textarea keeps the ring; nested toolbar buttons drop
+  theirs), quiet hint row, `aria-label`s on every control, the ContextMenu
+  rendered as `role="listbox"` with `aria-activedescendant`, square 48px
+  attachment tiles. Built on the post-#569 hooks (`useMentionMenu`,
+  `useHighlightLayer`, `ComposerToolbar`).
+- **§2.6 Action bar — PR #593** (`996fd30db`): `useAskButtons` now sets an
+  `AskButtonKind` per slot; new `askButtonTooltips.ts` maps kind → tooltip
+  key (replacing the translated-label ternary chains) and appends the
+  shortcut; Ctrl/Cmd+Enter answers primary and Esc answers secondary;
+  `.disabled-action-button` gives disabled buttons a real disabled style.
+- **§2.9 History — PR #601** (`339376ba8`): history rows and subtask rows are
+  real `<button>`s; `toDayRows()` interleaves Today/Yesterday/date headers
+  into the Virtuoso data while the parent-child tree grouping stays intact;
+  empty states for no-history and no-search-hits (search-empty checked
+  first because `tasks` is already filtered); `tabular-nums` on footer
+  timestamps/costs; 4 new locale keys × 18 locales.
+
+Deviations from the letter of the plan: tooltips are asserted at the
+lookup-table layer (Radix tooltip portals don't open reliably in jsdom), and
+the day header is a Virtuoso row rather than a DOM section (keeps the
+virtualized list). ChatRow.golden.json untouched — no chat-row rendering
+changed. VSIX rebuild still owed before any of this is visible in the
+installed extension.
