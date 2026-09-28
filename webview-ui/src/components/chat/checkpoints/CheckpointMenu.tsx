@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react"
-import { CheckIcon, Cross2Icon } from "@radix-ui/react-icons"
+import { Check, X } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 import { Button, Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
@@ -147,13 +147,13 @@ export const CheckpointMenu = ({
 										className="grow"
 										data-testid="confirm-restore-btn">
 										<div className="flex flex-row gap-1">
-											<CheckIcon />
+											<Check className="size-4" />
 											<div>{t("chat:checkpoint.menu.confirm")}</div>
 										</div>
 									</Button>
 									<Button variant="secondary" onClick={() => setRestoreConfirming(false)}>
 										<div className="flex flex-row gap-1">
-											<Cross2Icon />
+											<X className="size-4" />
 											<div>{t("chat:checkpoint.menu.cancel")}</div>
 										</div>
 									</Button>

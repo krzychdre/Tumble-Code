@@ -1,11 +1,12 @@
 import { memo, type ReactNode, useState } from "react"
 import { Trans } from "react-i18next"
-import { SiDiscord, SiReddit, SiX } from "react-icons/si"
 
 import { Package } from "@roo/package"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { vscode } from "@src/utils/vscode"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Link } from "@src/components/ui"
+
+import { DiscordLogo, RedditLogo, XLogo } from "./BrandIcons"
 
 interface AnnouncementProps {
 	hideAnnouncement: () => void
@@ -73,17 +74,17 @@ const Announcement = ({ hideAnnouncement }: AnnouncementProps) => {
 					<div className="mt-4 text-sm text-center text-vscode-descriptionForeground">
 						<div className="flex items-center justify-center gap-4">
 							<SocialLink
-								icon={<SiX className="w-4 h-4" aria-hidden />}
+								icon={<XLogo className="w-4 h-4" aria-hidden />}
 								label="X"
 								href="https://x.com/roocode"
 							/>
 							<SocialLink
-								icon={<SiDiscord className="w-4 h-4" aria-hidden />}
+								icon={<DiscordLogo className="w-4 h-4" aria-hidden />}
 								label="Discord"
 								href="https://discord.gg/rCQcvT7Fnt"
 							/>
 							<SocialLink
-								icon={<SiReddit className="w-4 h-4" aria-hidden />}
+								icon={<RedditLogo className="w-4 h-4" aria-hidden />}
 								label="Reddit"
 								href="https://www.reddit.com/r/RooCode/"
 							/>
