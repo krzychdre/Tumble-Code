@@ -73,7 +73,7 @@ import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
 function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps) {
 	const { initialPrompt, initialTaskId, initialSessionId, continueSession, version, ...hostOptions } =
 		extensionHostOptions
-	const { workspacePath, user, provider, model, mode, nonInteractive = false, reasoningEffort } = hostOptions
+	const { workspacePath, provider, model, mode, nonInteractive = false, reasoningEffort } = hostOptions
 
 	const { exit } = useApp()
 	const [permissionMode, setPermissionMode] = useState<PermissionMode>(() => getPermissionMode(nonInteractive))
@@ -215,7 +215,6 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	const welcomeProps = useMemo<WelcomeBannerProps>(
 		() => ({
 			workspacePath,
-			user,
 			provider: activeProvider,
 			model: activeModel,
 			mode: currentMode || mode,
@@ -223,17 +222,7 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 			nonInteractive,
 			version,
 		}),
-		[
-			workspacePath,
-			user,
-			activeProvider,
-			activeModel,
-			currentMode,
-			mode,
-			activeReasoningEffort,
-			nonInteractive,
-			version,
-		],
+		[workspacePath, activeProvider, activeModel, currentMode, mode, activeReasoningEffort, nonInteractive, version],
 	)
 
 	const { staticKey, staticItems, dynamicMessages, streamCommits, committedHead } = useTranscriptPromotion({

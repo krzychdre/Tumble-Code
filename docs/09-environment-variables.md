@@ -51,10 +51,9 @@ a string literal. `packages/vscode-shim` still reads two `globalThis` slots by l
 
 Plus the CLI's own endpoints in `apps/cli/src/types/constants.ts`:
 
-| Variable            | What it does                                                                                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ROO_AUTH_BASE_URL` | Sign-in page base for `tumble auth login` (default `http://localhost:3000`).                                                                                             |
-| `ROO_SDK_BASE_URL`  | **Effectively dead.** Read into `SDK_BASE_URL`, whose only remaining consumer is a type-only import (`lib/sdk/types.ts`); the old tRPC client was removed (D6). See D15. |
+| Variable            | What it does                                                                 |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `ROO_AUTH_BASE_URL` | Sign-in page base for `tumble auth login` (default `http://localhost:3000`). |
 
 ## CLI provider keys (`apps/cli/src/lib/utils/provider-types.ts`)
 
@@ -139,10 +138,10 @@ Read by the test harnesses; set in CI, rarely by hand.
 - `ROO_CODE_PROVIDER_URL` — the getter `getRooCodeProviderUrl` has no caller outside tests (the cloud proxy provider
   was removed); the `roo-cline.cloudProviderUrl` setting still feeds the runtime override, so the value can be set but
   nothing reads it.
-- `SDK_BASE_URL` / `ROO_SDK_BASE_URL` — the old tRPC SDK client was deleted; only a type-only import of
-  `lib/sdk/index.js` keeps the module alive. `AUTH_BASE_URL`/`ROO_AUTH_BASE_URL` is still live (`tumble auth login`).
+- `SDK_BASE_URL` / `ROO_SDK_BASE_URL`: removed in D6 together with the old tRPC client (`apps/cli/src/lib/sdk`),
+  which was its only reader. `AUTH_BASE_URL`/`ROO_AUTH_BASE_URL` is still live (`tumble auth login`).
 
-Removing either is a code change with its own PR (D6/D15), not part of the docs page.
+Removing `ROO_CODE_PROVIDER_URL` is a code change with its own PR (D15), not part of the docs page.
 
 ## Settings versus environment
 

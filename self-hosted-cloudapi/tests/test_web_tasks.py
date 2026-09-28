@@ -788,7 +788,7 @@ async def test_hover_wraps_a_paragraph_and_caps_its_height():
     """Native tooltips do not wrap: an unbroken 1000-character paragraph would
     render one line wider than the screen. And a prompt of many short lines is
     within the character cap but taller than a hover should be."""
-    from src.routers.web import _PROMPT_WRAP_COLS, _PROMPT_WRAP_LINES, _wrap_prompt
+    from src.web.presenters.task_rows import _PROMPT_WRAP_COLS, _PROMPT_WRAP_LINES, _wrap_prompt
 
     lines = _wrap_prompt("Refactor the scheduler carefully. " * 30)
     assert max(len(line) for line in lines) <= _PROMPT_WRAP_COLS
@@ -903,7 +903,7 @@ async def test_live_upsert_replaces_metrics_instead_of_adding(db_session, sessio
 
 async def test_task_list_is_paginated(client, db_session, session_factory):
     """More tasks than one page must not all render at once."""
-    from src.routers.web import PAGE_SIZE
+    from src.routers.web_tasks import PAGE_SIZE
 
     await _seed_user(db_session)
     async with session_factory() as s:

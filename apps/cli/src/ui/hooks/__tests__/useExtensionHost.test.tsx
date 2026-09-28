@@ -26,7 +26,6 @@ describe("useExtensionHost", () => {
 			mode: "architect",
 			reasoningEffort: "high",
 			consecutiveMistakeLimit: 3,
-			user: null,
 			provider: "openai",
 			apiKey: "1111",
 			model: "GLM-5.3-Flash-NVFP4",
@@ -67,7 +66,6 @@ describe("useExtensionHost", () => {
 describe("useExtensionHost task completion", () => {
 	const options: ExtensionHostOptions = {
 		mode: "code",
-		user: null,
 		provider: "openai",
 		model: "m",
 		workspacePath: "/tmp/ws",

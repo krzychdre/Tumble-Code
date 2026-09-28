@@ -29,7 +29,6 @@ import { createVSCodeAPI, IExtensionHost, ExtensionHostEventMap, setRuntimeConfi
 import { DebugLogger, setDebugLogEnabled } from "@roo-code/core/cli"
 
 import { DEFAULT_FLAGS, type SupportedProvider } from "@/types/index.js"
-import type { User } from "@/lib/sdk/index.js"
 import { toProviderSettings } from "@/lib/utils/provider-config.js"
 import { loadFakeAiProviderSettings } from "@/lib/utils/fake-ai-module.js"
 import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permissions.js"
@@ -74,7 +73,6 @@ export interface ExtensionHostOptions {
 	consecutiveMistakeLimit?: number
 	/** Seconds a shell command may run before the extension stops it; 0 means no limit. */
 	commandExecutionTimeout?: number
-	user: User | null
 	provider: SupportedProvider
 	apiKey?: string
 	model: string

@@ -18,7 +18,6 @@ class Organization(Base, TimestampMixin):
 
     memberships = relationship("Membership", back_populates="organization", cascade="all, delete-orphan")
     org_settings = relationship("OrganizationSettings", back_populates="organization", uselist=False, cascade="all, delete-orphan")
-    provider_config = relationship("ProviderConfig", back_populates="organization", uselist=False, cascade="all, delete-orphan")
 
 
 class Membership(Base, TimestampMixin):

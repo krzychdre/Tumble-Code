@@ -13,6 +13,7 @@ from alembic import context
 # talk to the same database.
 from src.database import ASYNC_DATABASE_URL, Base
 import src.models  # noqa: F401 - registers every table on Base.metadata
+from src.models import include_name
 
 config = context.config
 
@@ -34,6 +35,7 @@ def run_migrations_offline():
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_name=include_name,
         literal_binds=True,
         dialect_opts={"param": "value"},
     )
@@ -43,7 +45,7 @@ def run_migrations_offline():
 
 def do_run_migrations(connection):
     """Run migrations with a given connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(connection=connection, target_metadata=target_metadata, include_name=include_name)
     with context.begin_transaction():
         context.run_migrations()
 

@@ -53,16 +53,3 @@ async def get_current_user(
         "org_id": org_id,
         "token_type": token_type,
     }
-
-
-async def get_current_user_optional(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-) -> Optional[dict]:
-    """Like get_current_user but returns None instead of raising for unauthenticated requests."""
-    if credentials is None:
-        return None
-
-    try:
-        return await get_current_user(credentials)
-    except HTTPException:
-        return None

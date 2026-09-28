@@ -460,13 +460,12 @@ def test_extension_routes_accept_a_session_token(client):
     ],
 )
 async def test_get_current_user_result(claims):
-    from src.dependencies import get_current_user, get_current_user_optional
+    from src.dependencies import get_current_user
 
     creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=_jwt(claims))
     r = claims.get("r", {})
     expected = {"user_id": r.get("u") or claims.get("sub"), "org_id": r.get("o"), "token_type": r.get("t", "auth")}
     assert await get_current_user(creds) == expected
-    assert await get_current_user_optional(creds) == expected
 
 
 # Every token the server issues carries iss "rcc" and v 1 (jwt_issuer has
@@ -495,13 +494,12 @@ def test_extension_routes_refuse_a_token_without_our_issuer_and_version(client, 
 async def test_get_current_user_refuses_a_token_without_our_issuer_and_version(claims):
     from fastapi import HTTPException
 
-    from src.dependencies import get_current_user, get_current_user_optional
+    from src.dependencies import get_current_user
 
     creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=_jwt(claims))
     with pytest.raises(HTTPException) as exc:
         await get_current_user(creds)
     assert exc.value.status_code == 401
-    assert await get_current_user_optional(creds) is None
 
 
 def test_extension_routes_accept_a_static_token(client):
@@ -511,14 +509,6 @@ def test_extension_routes_accept_a_static_token(client):
     resp = client.get("/api/extension/credit-balance", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json() == {"balance": 0}
-
-
-async def test_get_current_user_optional_is_none_without_a_good_token():
-    from src.dependencies import get_current_user_optional
-
-    assert await get_current_user_optional(None) is None
-    bad = HTTPAuthorizationCredentials(scheme="Bearer", credentials="garbage")
-    assert await get_current_user_optional(bad) is None
 
 
 def test_the_extension_token_check_opens_no_database_session(client):

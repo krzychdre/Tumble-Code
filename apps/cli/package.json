@@ -17,14 +17,13 @@
 		"build": "tsup",
 		"build:extension": "pnpm --filter tumble-code bundle",
 		"dev": "tsx src/index.ts",
-		"dev:local": "ROO_AUTH_BASE_URL=http://localhost:3000 ROO_SDK_BASE_URL=http://localhost:3001 ROO_CODE_PROVIDER_URL=http://localhost:8080/proxy tsx src/index.ts",
+		"dev:local": "ROO_AUTH_BASE_URL=http://localhost:3000 ROO_CODE_PROVIDER_URL=http://localhost:8080/proxy tsx src/index.ts",
 		"clean": "rimraf dist .turbo"
 	},
 	"dependencies": {
 		"@roo-code/core": "workspace:^",
 		"@roo-code/types": "workspace:^",
 		"@roo-code/vscode-shim": "workspace:^",
-		"@trpc/client": "^11.8.1",
 		"@vscode/ripgrep": "^1.15.9",
 		"commander": "^15.0.0",
 		"execa": "^9.5.2",
@@ -32,7 +31,6 @@
 		"ink": "7.1.1",
 		"p-wait-for": "^5.0.2",
 		"react": "^19.3.0",
-		"superjson": "^2.2.6",
 		"zustand": "^5.0.0"
 	},
 	"devDependencies": {
