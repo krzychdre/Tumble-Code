@@ -1,5 +1,4 @@
 import {
-	PROVIDER_SERVICE_CONFIG,
 	PROVIDER_DEFAULT_MODEL_IDS,
 	getProviderServiceConfig,
 	getDefaultModelIdForProvider,
@@ -13,40 +12,42 @@ import { MODELS_BY_PROVIDER } from "../../constants"
 import * as types from "@roo-code/types"
 
 describe("providerModelConfig", () => {
-	describe("PROVIDER_SERVICE_CONFIG", () => {
-		it("contains service config for anthropic", () => {
-			expect(PROVIDER_SERVICE_CONFIG.anthropic).toEqual({
-				serviceName: "Anthropic",
-				serviceUrl: "https://console.anthropic.com",
-			})
-		})
-
-		it("contains service config for bedrock", () => {
-			expect(PROVIDER_SERVICE_CONFIG.bedrock).toEqual({
-				serviceName: "Amazon Bedrock",
-				serviceUrl: "https://aws.amazon.com/bedrock",
-			})
-		})
-
-		it("contains service config for ollama", () => {
-			expect(PROVIDER_SERVICE_CONFIG.ollama).toEqual({
-				serviceName: "Ollama",
-				serviceUrl: "https://ollama.ai",
-			})
-		})
-
-		it("contains service config for lmstudio", () => {
-			expect(PROVIDER_SERVICE_CONFIG.lmstudio).toEqual({
-				serviceName: "LM Studio",
-				serviceUrl: "https://lmstudio.ai/docs",
-			})
-		})
-
-		it("contains service config for vscode-lm", () => {
-			expect(PROVIDER_SERVICE_CONFIG["vscode-lm"]).toEqual({
+	// Characterization (S4): the model picker's service link for every provider, pinned before the
+	// map moved into the provider descriptors in packages/types (PROVIDER_DESCRIPTORS[id].service).
+	describe("getProviderServiceConfig for every provider", () => {
+		const expected: Record<string, { serviceName: string; serviceUrl: string }> = {
+			anthropic: { serviceName: "Anthropic", serviceUrl: "https://console.anthropic.com" },
+			bedrock: { serviceName: "Amazon Bedrock", serviceUrl: "https://aws.amazon.com/bedrock" },
+			deepseek: { serviceName: "DeepSeek", serviceUrl: "https://platform.deepseek.com" },
+			"fake-ai": { serviceName: "fake-ai", serviceUrl: "" },
+			gemini: { serviceName: "Google Gemini", serviceUrl: "https://ai.google.dev" },
+			"gemini-cli": { serviceName: "gemini-cli", serviceUrl: "" },
+			litellm: { serviceName: "litellm", serviceUrl: "" },
+			lmstudio: { serviceName: "LM Studio", serviceUrl: "https://lmstudio.ai/docs" },
+			minimax: { serviceName: "MiniMax", serviceUrl: "https://minimax.chat" },
+			mistral: { serviceName: "Mistral", serviceUrl: "https://console.mistral.ai" },
+			moonshot: { serviceName: "Moonshot", serviceUrl: "https://platform.moonshot.cn" },
+			ollama: { serviceName: "Ollama", serviceUrl: "https://ollama.ai" },
+			openai: { serviceName: "openai", serviceUrl: "" },
+			"openai-codex": { serviceName: "openai-codex", serviceUrl: "" },
+			"openai-native": { serviceName: "OpenAI", serviceUrl: "https://platform.openai.com" },
+			openrouter: { serviceName: "openrouter", serviceUrl: "" },
+			"qwen-code": { serviceName: "Qwen Code", serviceUrl: "https://dashscope.console.aliyun.com" },
+			vertex: { serviceName: "GCP Vertex AI", serviceUrl: "https://console.cloud.google.com/vertex-ai" },
+			"vscode-lm": {
 				serviceName: "VS Code LM",
 				serviceUrl: "https://code.visualstudio.com/api/extension-guides/language-model",
-			})
+			},
+			xai: { serviceName: "xAI", serviceUrl: "https://x.ai" },
+			zai: { serviceName: "Z.ai", serviceUrl: "https://z.ai" },
+		}
+
+		it("covers every provider", () => {
+			expect(Object.keys(expected).sort()).toEqual([...new Set(types.providerNames)].sort())
+		})
+
+		it.each(Object.entries(expected))("%s", (provider, config) => {
+			expect(getProviderServiceConfig(provider as types.ProviderName)).toEqual(config)
 		})
 	})
 

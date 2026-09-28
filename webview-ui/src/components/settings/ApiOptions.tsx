@@ -8,25 +8,12 @@ import {
 	type ProviderSettings,
 	type RouterModels,
 	classifyProvider,
+	getProviderDefaultModelId,
 	getProviderDefinition,
+	getProviderDescriptor,
+	getProviderModelDefinition,
 	isRetiredProvider,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
-	openRouterDefaultModelId,
-	litellmDefaultModelId,
-	openAiNativeDefaultModelId,
-	openAiCodexDefaultModelId,
-	anthropicDefaultModelId,
-	qwenCodeDefaultModelId,
-	geminiDefaultModelId,
-	deepSeekDefaultModelId,
-	moonshotDefaultModelId,
-	mistralDefaultModelId,
-	xaiDefaultModelId,
-	bedrockDefaultModelId,
-	vertexDefaultModelId,
-	internationalZAiDefaultModelId,
-	mainlandZAiDefaultModelId,
-	minimaxDefaultModelId,
 } from "@roo-code/types"
 
 import {
@@ -272,49 +259,16 @@ const ApiOptions = ({
 				}
 			}
 
-			// Define a mapping object that associates each provider with its model configuration
-			const PROVIDER_MODEL_CONFIG: Partial<
-				Record<
-					ProviderName,
-					{
-						field: keyof ProviderSettings
-						default?: string
-					}
-				>
-			> = {
-				openrouter: { field: "openRouterModelId", default: openRouterDefaultModelId },
-				litellm: { field: "litellmModelId", default: litellmDefaultModelId },
-				anthropic: { field: "apiModelId", default: anthropicDefaultModelId },
-				"openai-codex": { field: "apiModelId", default: openAiCodexDefaultModelId },
-				"qwen-code": { field: "apiModelId", default: qwenCodeDefaultModelId },
-				"openai-native": { field: "apiModelId", default: openAiNativeDefaultModelId },
-				gemini: { field: "apiModelId", default: geminiDefaultModelId },
-				deepseek: { field: "apiModelId", default: deepSeekDefaultModelId },
-				moonshot: { field: "apiModelId", default: moonshotDefaultModelId },
-				minimax: { field: "apiModelId", default: minimaxDefaultModelId },
-				mistral: { field: "apiModelId", default: mistralDefaultModelId },
-				xai: { field: "apiModelId", default: xaiDefaultModelId },
-				bedrock: { field: "apiModelId", default: bedrockDefaultModelId },
-				vertex: { field: "apiModelId", default: vertexDefaultModelId },
-				zai: {
-					field: "apiModelId",
-					default:
-						apiConfiguration.zaiApiLine === "china_coding"
-							? mainlandZAiDefaultModelId
-							: internationalZAiDefaultModelId,
-				},
-				openai: { field: "openAiModelId" },
-				ollama: { field: "ollamaModelId" },
-				lmstudio: { field: "lmStudioModelId" },
-			}
-
-			const config = PROVIDER_MODEL_CONFIG[value]
-			if (config) {
+			// The provider's model-id field and default model come from providerModelDefinitions
+			// (Z.ai's default depends on its API line). VS Code LM stores a selector object, not
+			// an id, and is left alone.
+			const modelIdField = getProviderModelDefinition(value)?.modelIdField
+			if (modelIdField && modelIdField !== "vsCodeLmModelSelector") {
 				validateAndResetModel(
 					value,
-					apiConfiguration[config.field] as string | undefined,
-					config.field,
-					config.default,
+					apiConfiguration[modelIdField],
+					modelIdField,
+					getProviderDefaultModelId(value, { isChina: apiConfiguration.zaiApiLine === "china_coding" }),
 				)
 			}
 		},
@@ -328,18 +282,12 @@ const ApiOptions = ({
 	const docs = useMemo(() => {
 		const definition = getProviderDefinition(selectedProvider)
 		const name = definition && "label" in definition ? definition.label : undefined
+		const slug = getProviderDescriptor(selectedProvider)?.docsSlug
 
-		if (!name) {
+		if (!name || !slug) {
 			return undefined
 		}
 
-		// Get the URL slug - use custom mapping if available, otherwise use the provider key.
-		const slugs: Record<string, string> = {
-			"openai-native": "openai",
-			openai: "openai-compatible",
-		}
-
-		const slug = slugs[selectedProvider] || selectedProvider
 		return {
 			url: buildDocLink(`providers/${slug}`, "provider_docs"),
 			name,

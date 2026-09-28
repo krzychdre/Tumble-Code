@@ -4,7 +4,25 @@ import { render, screen, fireEvent, within } from "@/utils/test-utils"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 
 import { type ModelInfo, type ProviderSettings, openAiModelInfoSaneDefaults } from "@roo-code/types"
-import { openAiCodexDefaultModelId } from "@roo-code/types"
+import {
+	anthropicDefaultModelId,
+	bedrockDefaultModelId,
+	deepSeekDefaultModelId,
+	geminiDefaultModelId,
+	getSelectableProviderDefinitions,
+	internationalZAiDefaultModelId,
+	litellmDefaultModelId,
+	mainlandZAiDefaultModelId,
+	minimaxDefaultModelId,
+	mistralDefaultModelId,
+	moonshotDefaultModelId,
+	openAiCodexDefaultModelId,
+	openAiNativeDefaultModelId,
+	openRouterDefaultModelId,
+	qwenCodeDefaultModelId,
+	vertexDefaultModelId,
+	xaiDefaultModelId,
+} from "@roo-code/types"
 
 import * as ExtensionStateContext from "@src/context/ExtensionStateContext"
 const { ExtensionStateContextProvider } = ExtensionStateContext
@@ -13,6 +31,7 @@ import ApiOptions, { ApiOptionsProps } from "../ApiOptions"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedButton as RealThemedButton } from "@/components/ui/themed-button"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
+import { ThemedDropdown as RealThemedDropdown, ThemedOption as RealThemedOption } from "@/components/ui/themed-dropdown"
 
 // Mock VSCode components
 // Mock other components
@@ -38,6 +57,13 @@ vi.mock("@/components/ui", () => ({
 	ThemedButton: (props: any) => <RealThemedButton {...props} />,
 	// The real checkbox (a native input), not a stub: only the barrel is mocked.
 	LabeledCheckbox: (props: any) => <RealLabeledCheckbox {...props} />,
+	// The real dropdown, for the provider forms that pick an endpoint.
+	get ThemedDropdown() {
+		return RealThemedDropdown
+	},
+	get ThemedOption() {
+		return RealThemedOption
+	},
 	Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 	Select: ({ children, value, onValueChange }: any) => (
 		<div className="select-mock">
@@ -609,6 +635,104 @@ describe("ApiOptions", () => {
 			"Provider “future-provider” is not supported by this version. Its saved settings were preserved",
 		)
 		expect(screen.queryByTestId("litellm-provider")).not.toBeInTheDocument()
+	})
+
+	// Characterization (S4): the model field each provider switch initializes, and the docs page
+	// each provider links to. Pinned before the per-provider maps in ApiOptions were derived from
+	// the provider tables in packages/types.
+	describe("provider switch (characterization)", () => {
+		const switchTo = (provider: string, apiConfiguration: ProviderSettings = {}) => {
+			const setApiConfigurationField = vi.fn()
+			renderApiOptions({ apiConfiguration, setApiConfigurationField })
+			const providerSelect = screen.getByTestId("provider-select").querySelector("select") as HTMLSelectElement
+			fireEvent.change(providerSelect, { target: { value: provider } })
+			expect(setApiConfigurationField).toHaveBeenCalledWith("apiProvider", provider)
+			return setApiConfigurationField.mock.calls.filter(([field]) => field !== "apiProvider")
+		}
+
+		const expectedModelInit: Record<string, [keyof ProviderSettings, string] | null> = {
+			anthropic: ["apiModelId", anthropicDefaultModelId],
+			bedrock: ["apiModelId", bedrockDefaultModelId],
+			deepseek: ["apiModelId", deepSeekDefaultModelId],
+			gemini: ["apiModelId", geminiDefaultModelId],
+			litellm: ["litellmModelId", litellmDefaultModelId],
+			lmstudio: null,
+			minimax: ["apiModelId", minimaxDefaultModelId],
+			mistral: ["apiModelId", mistralDefaultModelId],
+			moonshot: ["apiModelId", moonshotDefaultModelId],
+			ollama: null,
+			openai: null,
+			"openai-codex": ["apiModelId", openAiCodexDefaultModelId],
+			"openai-native": ["apiModelId", openAiNativeDefaultModelId],
+			openrouter: ["openRouterModelId", openRouterDefaultModelId],
+			"qwen-code": ["apiModelId", qwenCodeDefaultModelId],
+			vertex: ["apiModelId", vertexDefaultModelId],
+			"vscode-lm": null,
+			xai: ["apiModelId", xaiDefaultModelId],
+			zai: ["apiModelId", internationalZAiDefaultModelId],
+		}
+
+		it("covers every selectable provider", () => {
+			expect(Object.keys(expectedModelInit).sort()).toEqual(
+				getSelectableProviderDefinitions()
+					.map(({ id }) => id)
+					.sort(),
+			)
+		})
+
+		it.each(Object.entries(expectedModelInit))(
+			"switching to %s with no model set initializes %j",
+			(provider, expected) => {
+				expect(switchTo(provider)).toEqual(expected ? [[expected[0], expected[1], false]] : [])
+			},
+		)
+
+		it("uses the mainland Z.ai default on the China coding line", () => {
+			expect(switchTo("zai", { zaiApiLine: "china_coding" })).toEqual([
+				["apiModelId", mainlandZAiDefaultModelId, false],
+			])
+		})
+
+		it("keeps a model id that the new provider lists", () => {
+			expect(switchTo("xai", { apiModelId: xaiDefaultModelId })).toEqual([])
+		})
+
+		it("keeps any model id for a provider with a fetched model list", () => {
+			expect(switchTo("openrouter", { openRouterModelId: "some/other-model" })).toEqual([])
+		})
+
+		const expectedDocsPaths: Record<string, string> = {
+			anthropic: "providers/anthropic",
+			bedrock: "providers/bedrock",
+			deepseek: "providers/deepseek",
+			gemini: "providers/gemini",
+			litellm: "providers/litellm",
+			lmstudio: "providers/lmstudio",
+			minimax: "providers/minimax",
+			mistral: "providers/mistral",
+			moonshot: "providers/moonshot",
+			ollama: "providers/ollama",
+			openai: "providers/openai-compatible",
+			"openai-codex": "providers/openai-codex",
+			"openai-native": "providers/openai",
+			openrouter: "providers/openrouter",
+			"qwen-code": "providers/qwen-code",
+			vertex: "providers/vertex",
+			"vscode-lm": "providers/vscode-lm",
+			xai: "providers/xai",
+			zai: "providers/zai",
+		}
+
+		it.each(Object.entries(expectedDocsPaths))("%s links to the docs page %s", (provider, path) => {
+			renderApiOptions({ apiConfiguration: { apiProvider: provider as ProviderSettings["apiProvider"] } })
+			const docsLink = screen
+				.getAllByRole("link")
+				.find((link) => link.getAttribute("href")?.startsWith("https://docs.roocode.com/providers/"))
+			expect(docsLink).toHaveAttribute(
+				"href",
+				`https://docs.roocode.com/${path}?utm_source=extension&utm_medium=ide&utm_campaign=provider_docs`,
+			)
+		})
 	})
 
 	it("does not reintroduce retired providers into active provider options", () => {

@@ -7,7 +7,8 @@
 // toolkit is NOT mocked: its host has role="combobox" and its options are
 // light-DOM elements with role="option" and aria-selected, so the assertions
 // go through those roles and hold for the replacement too. Call sites: the
-// base URL / entrypoint choice of MiniMax, Moonshot and Z.ai, the embedding
+// base URL / entrypoint choice of MiniMax, Moonshot and Z.ai (rendered by
+// ProviderDescriptorForm since S4), the embedding
 // model of the codebase index (ModelDropdownField) and the image generation
 // model (ImageGenerationSettings). The toolkit also puts a hidden native
 // <select> (its form proxy) into the host, so options are found through their
@@ -19,9 +20,7 @@ import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
 import type { ProviderSettings } from "@roo-code/types"
 
-import { MiniMax } from "@src/components/settings/providers/MiniMax"
-import { Moonshot } from "@src/components/settings/providers/Moonshot"
-import { ZAi } from "@src/components/settings/providers/ZAi"
+import { ProviderDescriptorForm } from "@src/components/settings/providers/ProviderDescriptorForm"
 import { ModelDropdownField, type EmbedderFormContext } from "@src/components/code-index/EmbedderFormFields"
 import { ImageGenerationSettings } from "@src/components/settings/ImageGenerationSettings"
 
@@ -53,7 +52,9 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 	it("MiniMax lists both hosts, shows the stored one and saves a choice once, without echoing prop changes", async () => {
 		const set = vi.fn()
 		const config: ProviderSettings = { minimaxBaseUrl: "https://api.minimaxi.com/v1" }
-		const { rerender } = render(<MiniMax apiConfiguration={config} setApiConfigurationField={set} />)
+		const { rerender } = render(
+			<ProviderDescriptorForm provider="minimax" apiConfiguration={config} setApiConfigurationField={set} />,
+		)
 
 		await waitFor(() => expect(selectedText()).toBe("api.minimaxi.com"))
 		expect(optionTexts()).toEqual(["api.minimax.io", "api.minimaxi.com"])
@@ -66,14 +67,16 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 
 		set.mockClear()
 		rerender(
-			<MiniMax
+			<ProviderDescriptorForm
+				provider="minimax"
 				apiConfiguration={{ minimaxBaseUrl: "https://api.minimax.io/v1" }}
 				setApiConfigurationField={set}
 			/>,
 		)
 		await waitFor(() => expect(selectedText()).toBe("api.minimax.io"))
 		rerender(
-			<MiniMax
+			<ProviderDescriptorForm
+				provider="minimax"
 				apiConfiguration={{ minimaxBaseUrl: "https://api.minimaxi.com/v1" }}
 				setApiConfigurationField={set}
 			/>,
@@ -84,7 +87,7 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 
 	it("MiniMax without a stored base URL shows the first host and saves nothing", async () => {
 		const set = vi.fn()
-		render(<MiniMax apiConfiguration={{}} setApiConfigurationField={set} />)
+		render(<ProviderDescriptorForm provider="minimax" apiConfiguration={{}} setApiConfigurationField={set} />)
 
 		await waitFor(() => expect(selectedText()).toBe("api.minimax.io"))
 		expect(set).not.toHaveBeenCalled()
@@ -93,7 +96,8 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 	it("Moonshot saves the chosen host", async () => {
 		const set = vi.fn()
 		render(
-			<Moonshot
+			<ProviderDescriptorForm
+				provider="moonshot"
 				apiConfiguration={{ moonshotBaseUrl: "https://api.moonshot.ai/v1" }}
 				setApiConfigurationField={set}
 			/>,
@@ -106,7 +110,7 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 
 	it("Z.ai falls back to the international coding line and saves the chosen line id", async () => {
 		const set = vi.fn()
-		render(<ZAi apiConfiguration={{}} setApiConfigurationField={set} />)
+		render(<ProviderDescriptorForm provider="zai" apiConfiguration={{}} setApiConfigurationField={set} />)
 
 		await waitFor(() => expect(selectedText()).toMatch(/^International Coding/))
 		expect(options().length).toBeGreaterThan(1)
@@ -120,7 +124,8 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 	it("ArrowDown on the closed dropdown saves the next host at once", async () => {
 		const set = vi.fn()
 		render(
-			<MiniMax
+			<ProviderDescriptorForm
+				provider="minimax"
 				apiConfiguration={{ minimaxBaseUrl: "https://api.minimax.io/v1" }}
 				setApiConfigurationField={set}
 			/>,
@@ -138,7 +143,8 @@ describe("VSCodeDropdown call sites: provider base URL", () => {
 		const Harness = () => {
 			const [config, setConfig] = useState<ProviderSettings>({ minimaxBaseUrl: "https://api.minimax.io/v1" })
 			return (
-				<MiniMax
+				<ProviderDescriptorForm
+					provider="minimax"
 					apiConfiguration={config}
 					setApiConfigurationField={(field, value) => {
 						if (field === "minimaxBaseUrl") saved.push(value as string)

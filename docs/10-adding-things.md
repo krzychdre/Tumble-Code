@@ -59,32 +59,61 @@ custom-tool registry (`packages/core/src/custom-tools/`) and `McpHub` respective
 
 ## Add a provider
 
-The largest of the three — roughly 15 files today (tracked as S4: the goal is to generate the webview side from one
-descriptor). Copy the most similar existing provider and follow the compiler errors.
+About 15 code files, most of them one row in a typed table keyed by provider id, so the compiler lists what is
+missing once the id is in `providerRegistry`. Copy the most similar existing provider and follow the compiler
+errors. Worked example: a provider with a static model list and an API key (Moonshot, MiniMax and xAI are shaped
+like this).
 
-1. **Portable metadata** (`packages/types`): the provider entry in `provider-registry.ts` (id, name, capabilities),
-   the model list under `packages/types/src/providers/`, the settings fields in `provider-settings.ts` (the flat
-   `providerSettingsSchema` is on the do-not-touch list — add to it, don't restructure it), and validation in the
-   provider validation registry.
+1. **Portable metadata** (`packages/types/src/`), all required:
+    - `providers/<id>.ts`: the model list and default model id; export it from `providers/index.ts`.
+    - `provider-registry.ts`: the `providerRegistry` entry (id, lifecycle, label, display order, model source for
+      fetched lists).
+    - `provider-models.ts`: the `providerModelDefinitions` row (model-id field, model list, default model, unknown
+      model policy).
+    - `provider-validation.ts`: the API key field in `providerApiKeyFields` and the required fields in
+      `providerValidationRegistry`.
+    - `provider-config/configs.ts` and `provider-config/index.ts`: the config schema, its entry in
+      `providerConfigSchemas` and the `knownProviderConfigurationSchema` arm.
+    - `provider-settings.ts`: the legacy settings arm (the flat `providerSettingsSchema` is on the do-not-touch list:
+      add to it, do not restructure it).
+    - `global-settings.ts`: the API key in `SECRET_STATE_KEYS`, so it is stored in `SecretStorage`.
+    - `provider-model-selection.ts`: the case that resolves the configured model (a static-list provider joins the
+      `resolveCatalogModel` group).
+    - `provider-descriptors.ts`: the `PROVIDER_DESCRIPTORS` row (see step 4).
 2. **Handler** (`src/api`): the handler class in `src/api/providers/` implementing `createMessage` returning an
-   `ApiStream`; export it from the barrel and register the factory in `src/api/runtime-provider-registry.ts`.
-   If the API speaks the Chat Completions wire format, reuse `chat-completions-stream.ts` instead of writing a
-   parser (API-7); otherwise write the provider's own parser and emit the chunk types from
-   `src/api/transform/stream.ts`.
-3. **Message conversion**: a converter in `src/api/transform/` mapping between the extension's messages and the
-   provider's format (the converters are on the do-not-touch list per protocol — add a new file, don't edit the
-   shared ones).
-4. **Webview**: the settings form component, the entry in `provider-ui-registry.tsx`, and the model-selection
-   helpers.
-5. **CLI**: `apps/cli/src/lib/utils/provider-types.ts` already derives from the shared registry; add
+   `ApiStream`; export it from the barrel and register the factory, capabilities and `resolveModel` in
+   `src/api/runtime-provider-registry.ts`. If the API speaks the Chat Completions wire format, reuse
+   `chat-completions-stream.ts` instead of writing a parser (API-7); otherwise write the provider's own parser and
+   emit the chunk types from `src/api/transform/stream.ts`.
+3. **Message conversion**: only for a new wire format, a converter in `src/api/transform/` (the converters are on
+   the do-not-touch list per protocol: add a new file, do not edit the shared ones).
+4. **Webview**: the `PROVIDER_DESCRIPTORS` row decides the settings form.
+    - `form: { kind: "fields", fields: [...] }` when the settings are an API key (`apiKey`: label key, get-key
+      link, optionally depending on the chosen endpoint), an endpoint or API-line dropdown (`select`) and a "use
+      custom base URL" toggle (`optionalUrl`). `ProviderDescriptorForm` renders it and `provider-ui-registry.tsx`
+      picks it up by itself: no component, no registry row.
+    - `form: custom` when the provider needs anything else; then write the component in
+      `webview-ui/src/components/settings/providers/`, export it from `index.ts` there and add its row to
+      `customForms` in `provider-ui-registry.tsx` (the compiler asks for it).
+    - `service` (the model picker's "browse models" name and link) and `docsSlug` (the docs page) complete the row.
+      The generic model picker, the default model set on a provider switch and the selected-model lookup in
+      `useSelectedModel` read `providerModelDefinitions`, so a static-list provider needs no webview edit beyond
+      the translation keys its descriptor names, added to `webview-ui/src/i18n/locales/*/settings.json`.
+5. **CLI**: `apps/cli/src/lib/utils/provider-types.ts` derives the provider list from the shared registry; add
    `keyEnvVar`/`baseUrlEnvVar` to `providerEnvMap` if the provider takes an API key and/or base URL from the
    environment (and a row in [09-environment-variables.md](09-environment-variables.md)).
-6. **Tests**: request-construction and stream-parsing unit tests against recorded fixtures, the registry table spec,
-   and — only for a real workflow — one e2e case under `apps/vscode-e2e/src/suite/providers/`.
+6. **Tests**: request-construction and stream-parsing unit tests against recorded fixtures; the table specs
+   (`provider-registry.spec.ts`, `provider-descriptors.spec.ts`, `provider-forms.table.spec.tsx`) cover the rows;
+   and, only for a real workflow, one e2e case under `apps/vscode-e2e/src/suite/providers/`.
+
+Still manual (not derived from one table yet): the settings schema arms (step 1, three files), the model selection
+switches in `provider-model-selection.ts` and `useSelectedModel.ts` for providers with fetched lists or special
+rules, `getProviderModelSourceOptions` in `webview-ui/src/components/settings/utils/providerModelConfig.ts` for
+fetched lists, and the translation keys in every locale.
 
 ## How these paths were verified
 
 Each table above names the file that owns the step; the entry conditions (which file the compiler complains about
 first) come from `TOOL_DESCRIPTORS`/`TOOL_HANDLERS` being `Record<ToolName, ...>`, `SETTINGS_SCHEMA` being keyed by
-`BufferableSettingsKey`, and the provider registries being typed records. When a step moves, this page moves with it
+`BufferableSettingsKey`, and the provider registries (including `PROVIDER_DESCRIPTORS`) being typed records. When a step moves, this page moves with it
 (same-PR docs rule).

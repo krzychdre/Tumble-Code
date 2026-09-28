@@ -65,10 +65,15 @@ Gemini, the Responses API and a few others keep their own parsers because their 
 
 ### Adding a provider today
 
-Roughly 15 files: the settings schema, model list, validation and registry entry in `packages/types`; the handler,
-barrel export and runtime registry entry in `src/api`; the settings form, `provider-ui-registry.tsx` and model
-selection helpers in `webview-ui`. Copy the most similar existing provider and follow the compiler errors. The
-step-by-step checklist, and the equivalents for a setting and a tool, are on
+About 15 code files, plus one translation key per label in each locale: the portable tables in `packages/types`
+(model list, registry entry, model definition, API key field, validation, config schema, settings arm, secret key,
+model selection, and one row in `PROVIDER_DESCRIPTORS`), the handler, barrel export and runtime registry entry in
+`src/api`, and the CLI's environment map. The webview settings form comes from the provider's
+`PROVIDER_DESCRIPTORS` row (`packages/types/src/provider-descriptors.ts`, S4) when the provider only needs an API
+key, an endpoint choice and an optional base URL; `ProviderDescriptorForm` renders it, and the model picker's
+service link, the docs link and the default model on a provider switch are read from the same tables. Only a
+provider with its own controls (OAuth, fetched model lists, cloud credentials, model-dependent options) still needs a
+hand-written component. The step-by-step checklist, and the equivalents for a setting and a tool, are on
 [10-adding-things.md](10-adding-things.md).
 
 ## Auto-approval

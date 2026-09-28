@@ -8,26 +8,19 @@ import {
 	bedrockModels,
 	deepSeekModels,
 	deepSeekModelAliases,
-	moonshotModels,
-	minimaxModels,
-	geminiModels,
-	mistralModels,
 	openAiModelInfoSaneDefaults,
-	openAiNativeModels,
 	vertexModels,
-	xaiModels,
 	vscodeLlmModels,
 	vscodeLlmDefaultModelId,
-	openAiCodexModels,
 	internationalZAiModels,
 	mainlandZAiModels,
-	qwenCodeModels,
 	litellmDefaultModelInfo,
 	lMStudioDefaultModelInfo,
 	BEDROCK_1M_CONTEXT_MODEL_IDS,
 	VERTEX_1M_CONTEXT_MODEL_IDS,
 	isRetiredProvider,
 	getProviderDefaultModelId,
+	getProviderModelDefinition,
 	providerModelDefinitions,
 } from "@roo-code/types"
 
@@ -216,11 +209,6 @@ function getSelectedModel({
 			const routerInfo = routerModels.litellm?.[id]
 			return { id, info: routerInfo ?? litellmDefaultModelInfo }
 		}
-		case "xai": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = xaiModels[id as keyof typeof xaiModels]
-			return info ? { id, info } : { id, info: undefined }
-		}
 		case "bedrock": {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
 			const baseInfo = bedrockModels[id as keyof typeof bedrockModels]
@@ -268,26 +256,11 @@ function getSelectedModel({
 
 			return { id, info: baseInfo }
 		}
-		case "gemini": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = geminiModels[id as keyof typeof geminiModels]
-			return { id, info }
-		}
 		case "deepseek": {
 			const id = apiConfiguration.apiModelId || defaultModelId
 			const routerInfo = routerModels.deepseek?.[id]
 			const staticInfo = deepSeekModels[id as keyof typeof deepSeekModels] ?? deepSeekAliasModels[id]
 			return { id, info: routerInfo ?? staticInfo }
-		}
-		case "moonshot": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = moonshotModels[id as keyof typeof moonshotModels]
-			return { id, info }
-		}
-		case "minimax": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = minimaxModels[id as keyof typeof minimaxModels]
-			return { id, info }
 		}
 		case "zai": {
 			const isChina = apiConfiguration.zaiApiLine === "china_coding"
@@ -295,16 +268,6 @@ function getSelectedModel({
 			const defaultModelId = getProviderDefaultModelId(provider, { isChina })
 			const id = apiConfiguration.apiModelId ?? defaultModelId
 			const info = models[id as keyof typeof models]
-			return { id, info }
-		}
-		case "openai-native": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = openAiNativeModels[id as keyof typeof openAiNativeModels]
-			return { id, info }
-		}
-		case "mistral": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = mistralModels[id as keyof typeof mistralModels]
 			return { id, info }
 		}
 		case "openai": {
@@ -345,20 +308,9 @@ function getSelectedModel({
 			const info = vscodeLlmModels[modelFamily as keyof typeof vscodeLlmModels]
 			return { id, info: { ...openAiModelInfoSaneDefaults, ...info, supportsImages: false } } // VSCode LM API currently doesn't support images.
 		}
-		case "qwen-code": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = qwenCodeModels[id as keyof typeof qwenCodeModels]
-			return { id, info }
-		}
-		case "openai-codex": {
-			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = openAiCodexModels[id as keyof typeof openAiCodexModels]
-			return { id, info }
-		}
-		// case "anthropic":
-		// case "fake-ai":
-		default: {
-			provider satisfies "anthropic" | "gemini-cli" | "fake-ai"
+		case "anthropic":
+		case "gemini-cli":
+		case "fake-ai": {
 			const id = apiConfiguration.apiModelId ?? defaultModelId
 			const baseInfo = anthropicModels[id as keyof typeof anthropicModels]
 
@@ -398,6 +350,14 @@ function getSelectedModel({
 			}
 
 			return { id, info: baseInfo }
+		}
+		// Every other provider (xAI, Gemini, Moonshot, MiniMax, OpenAI, Mistral, Qwen Code,
+		// OpenAI Codex, and any new one with a static list): the configured id, or the default
+		// model, looked up in the provider's list in providerModelDefinitions.
+		default: {
+			const id = apiConfiguration.apiModelId ?? defaultModelId
+			const models = getProviderModelDefinition(provider)?.models
+			return { id, info: models && Object.hasOwn(models, id) ? models[id] : undefined }
 		}
 	}
 }

@@ -1,5 +1,9 @@
 import {
+	getDescriptorFormProviderIds,
 	providerValidationRegistry,
+	type CustomFormProviderId,
+	type DescriptorFormProviderId,
+	type NoFormProviderId,
 	type ModelInfo,
 	type OrganizationAllowList,
 	type ProviderName,
@@ -11,13 +15,9 @@ import {
 import {
 	Anthropic,
 	Bedrock,
-	DeepSeek,
-	Gemini,
 	LMStudio,
 	LiteLLM,
-	MiniMax,
 	Mistral,
-	Moonshot,
 	Ollama,
 	OpenAI,
 	OpenAICompatible,
@@ -26,9 +26,8 @@ import {
 	QwenCode,
 	Vertex,
 	VSCodeLM,
-	XAI,
-	ZAi,
 } from "./providers"
+import { ProviderDescriptorForm } from "./providers/ProviderDescriptorForm"
 import type { SetApiConfigurationField } from "./providers/shared"
 
 export type ProviderFormRenderContext = {
@@ -45,16 +44,13 @@ export type ProviderFormRenderContext = {
 	openAiCodexIsAuthenticated: boolean | undefined
 }
 
+/** The component a form definition renders: a hand-written one, or the descriptor form (named after its provider). */
 export type ProviderFormId =
 	| "anthropic"
 	| "bedrock"
-	| "deepseek"
-	| "gemini"
 	| "lmstudio"
 	| "litellm"
-	| "minimax"
 	| "mistral"
-	| "moonshot"
 	| "ollama"
 	| "openai-codex"
 	| "openai-compatible"
@@ -63,8 +59,7 @@ export type ProviderFormId =
 	| "qwen-code"
 	| "vertex"
 	| "vscode-lm"
-	| "xai"
-	| "zai"
+	| DescriptorFormProviderId
 
 export type ProviderFormDefinition = {
 	readonly status: "form"
@@ -85,6 +80,16 @@ type ProviderUiRegistry = {
 	[provider in ProviderName]: ProviderUiDefinition
 }
 
+/**
+ * Hand-written forms, one per provider whose `PROVIDER_DESCRIPTORS` row says `form: custom`.
+ * The key set is checked against the descriptor table in both directions: a custom provider
+ * without a row, or a row for a provider the descriptor form renders, does not compile.
+ */
+type CustomProviderForms = { [provider in CustomFormProviderId]: ProviderFormDefinition }
+
+/** Providers without a settings form (`form: none` in `PROVIDER_DESCRIPTORS`) and why. */
+type NoProviderForms = { [provider in NoFormProviderId]: ProviderFormException }
+
 const withValidation = <TDefinition extends Omit<ProviderUiDefinition, "validation">>(
 	provider: ProviderName,
 	definition: TDefinition,
@@ -99,7 +104,21 @@ const simpleForm = (
 	render: ProviderFormDefinition["render"],
 ): ProviderFormDefinition => withValidation(provider, { status: "form", formId, render })
 
-export const providerUiRegistry = {
+const descriptorForm = (provider: DescriptorFormProviderId): ProviderFormDefinition =>
+	simpleForm(provider, provider, (context) => (
+		<ProviderDescriptorForm
+			provider={provider}
+			apiConfiguration={context.apiConfiguration}
+			setApiConfigurationField={context.setApiConfigurationField}
+		/>
+	))
+
+/** Every provider the descriptor form renders gets its definition from its descriptor row. */
+const descriptorForms = Object.fromEntries(
+	getDescriptorFormProviderIds().map((provider) => [provider, descriptorForm(provider)]),
+) as { [provider in DescriptorFormProviderId]: ProviderFormDefinition }
+
+const customForms = {
 	openrouter: simpleForm("openrouter", "openrouter", (context) => (
 		<OpenRouter
 			apiConfiguration={context.apiConfiguration}
@@ -118,13 +137,6 @@ export const providerUiRegistry = {
 			setApiConfigurationField={context.setApiConfigurationField}
 			organizationAllowList={context.organizationAllowList}
 			modelValidationError={context.modelValidationError}
-			simplifySettings={context.simplifySettings}
-		/>
-	)),
-	deepseek: simpleForm("deepseek", "deepseek", (context) => (
-		<DeepSeek
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
@@ -155,7 +167,6 @@ export const providerUiRegistry = {
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
-	"fake-ai": withValidation("fake-ai", { status: "no-form", reason: "hidden-test-provider" }),
 	anthropic: simpleForm("anthropic", "anthropic", (context) => (
 		<Anthropic
 			apiConfiguration={context.apiConfiguration}
@@ -171,31 +182,11 @@ export const providerUiRegistry = {
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
-	gemini: simpleForm("gemini", "gemini", (context) => (
-		<Gemini
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
-		/>
-	)),
-	"gemini-cli": withValidation("gemini-cli", { status: "no-form", reason: "headless-provider" }),
 	mistral: simpleForm("mistral", "mistral", (context) => (
 		<Mistral
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
 			simplifySettings={context.simplifySettings}
-		/>
-	)),
-	moonshot: simpleForm("moonshot", "moonshot", (context) => (
-		<Moonshot
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
-			simplifySettings={context.simplifySettings}
-		/>
-	)),
-	minimax: simpleForm("minimax", "minimax", (context) => (
-		<MiniMax
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
 		/>
 	)),
 	"openai-codex": simpleForm("openai-codex", "openai-codex", (context) => (
@@ -227,13 +218,14 @@ export const providerUiRegistry = {
 			setApiConfigurationField={context.setApiConfigurationField}
 		/>
 	)),
-	xai: simpleForm("xai", "xai", (context) => (
-		<XAI apiConfiguration={context.apiConfiguration} setApiConfigurationField={context.setApiConfigurationField} />
-	)),
-	zai: simpleForm("zai", "zai", (context) => (
-		<ZAi apiConfiguration={context.apiConfiguration} setApiConfigurationField={context.setApiConfigurationField} />
-	)),
-} satisfies ProviderUiRegistry
+} satisfies CustomProviderForms
+
+const noForms = {
+	"fake-ai": withValidation("fake-ai", { status: "no-form", reason: "hidden-test-provider" }),
+	"gemini-cli": withValidation("gemini-cli", { status: "no-form", reason: "headless-provider" }),
+} satisfies NoProviderForms
+
+export const providerUiRegistry = { ...descriptorForms, ...customForms, ...noForms } satisfies ProviderUiRegistry
 
 export const getProviderUiDefinition = (provider: ProviderName): ProviderUiDefinition => providerUiRegistry[provider]
 
