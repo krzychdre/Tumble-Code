@@ -5,13 +5,10 @@ import * as cloudConfig from "../config.js"
 import {
 	PRODUCTION_CLERK_BASE_URL,
 	PRODUCTION_ROO_CODE_API_URL,
-	PRODUCTION_ROO_CODE_PROVIDER_URL,
 	getClerkBaseUrl,
 	getRooCodeApiUrl,
-	getRooCodeProviderUrl,
 	setClerkBaseUrl,
 	setRooCodeApiUrl,
-	setRooCodeProviderUrl,
 } from "../config.js"
 
 describe("cloud config", () => {
@@ -19,12 +16,10 @@ describe("cloud config", () => {
 		// Reset runtime overrides between tests
 		setClerkBaseUrl(undefined)
 		setRooCodeApiUrl(undefined)
-		setRooCodeProviderUrl(undefined)
 
 		// Clear any env vars set during tests
 		delete process.env.CLERK_BASE_URL
 		delete process.env.ROO_CODE_API_URL
-		delete process.env.ROO_CODE_PROVIDER_URL
 	})
 
 	describe("default values", () => {
@@ -36,11 +31,6 @@ describe("cloud config", () => {
 		it("should return production Roo Code API URL by default", () => {
 			expect(getRooCodeApiUrl()).toBe(PRODUCTION_ROO_CODE_API_URL)
 			expect(getRooCodeApiUrl()).toBe("https://app.tumblecode.dev")
-		})
-
-		it("should return production Roo Code Provider URL by default", () => {
-			expect(getRooCodeProviderUrl()).toBe(PRODUCTION_ROO_CODE_PROVIDER_URL)
-			expect(getRooCodeProviderUrl()).toBe("https://api.tumblecode.dev/proxy")
 		})
 	})
 
@@ -56,12 +46,6 @@ describe("cloud config", () => {
 			expect(getRooCodeApiUrl()).toBe("https://custom-api.example.com")
 			delete process.env.ROO_CODE_API_URL
 		})
-
-		it("should use ROO_CODE_PROVIDER_URL env var when set", () => {
-			process.env.ROO_CODE_PROVIDER_URL = "https://custom-proxy.example.com/proxy"
-			expect(getRooCodeProviderUrl()).toBe("https://custom-proxy.example.com/proxy")
-			delete process.env.ROO_CODE_PROVIDER_URL
-		})
 	})
 
 	describe("runtime overrides", () => {
@@ -73,11 +57,6 @@ describe("cloud config", () => {
 		it("should override Roo Code API URL via setRooCodeApiUrl", () => {
 			setRooCodeApiUrl("https://runtime-api.example.com")
 			expect(getRooCodeApiUrl()).toBe("https://runtime-api.example.com")
-		})
-
-		it("should override Roo Code Provider URL via setRooCodeProviderUrl", () => {
-			setRooCodeProviderUrl("https://runtime-proxy.example.com/proxy")
-			expect(getRooCodeProviderUrl()).toBe("https://runtime-proxy.example.com/proxy")
 		})
 
 		it("should take precedence over env vars when runtime override is set", () => {
@@ -96,9 +75,9 @@ describe("cloud config", () => {
 		})
 
 		it("should fall back to production default when both runtime and env are cleared", () => {
-			setRooCodeProviderUrl("https://runtime-proxy.example.com/proxy")
-			setRooCodeProviderUrl(undefined) // Clear runtime override
-			expect(getRooCodeProviderUrl()).toBe(PRODUCTION_ROO_CODE_PROVIDER_URL)
+			setRooCodeApiUrl("https://runtime-api.example.com")
+			setRooCodeApiUrl(undefined) // Clear runtime override
+			expect(getRooCodeApiUrl()).toBe(PRODUCTION_ROO_CODE_API_URL)
 		})
 	})
 

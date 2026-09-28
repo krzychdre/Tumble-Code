@@ -598,7 +598,7 @@ pnpm check-types
 pnpm lint
 ```
 
-The `dev:local` script points the CLI at a self-hosted cloud stack on this machine (`ROO_AUTH_BASE_URL=http://localhost:3000`, `ROO_CODE_PROVIDER_URL=http://localhost:8080/proxy`). To use another deployment, set the same variables before `pnpm dev`:
+The `dev:local` script points `tumble auth login` at a sign-in page on this machine (`ROO_AUTH_BASE_URL=http://localhost:3000`). To use another deployment, set the same variable before `pnpm dev`:
 
 ```bash
 ROO_AUTH_BASE_URL=https://auth.example.com pnpm dev --print "Hello"

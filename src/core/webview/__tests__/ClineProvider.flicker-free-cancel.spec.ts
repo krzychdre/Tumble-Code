@@ -78,7 +78,6 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 	getRooCodeApiUrl: vi.fn().mockReturnValue("https://api.roo-code.com"),
-	getRooCodeProviderUrl: vi.fn().mockReturnValue("https://api.roocode.com/proxy"),
 }))
 
 vi.mock("../../../shared/embeddingModels", () => ({

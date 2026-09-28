@@ -130,7 +130,6 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
-	getRooCodeProviderUrl: vi.fn().mockReturnValue("http://localhost:8080/proxy"),
 }))
 
 describe("ClineProvider - API Handler Rebuild Guard", () => {

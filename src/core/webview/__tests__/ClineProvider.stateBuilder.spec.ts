@@ -239,7 +239,6 @@ vi.mock("@roo-code/cloud", () => ({
 		},
 	},
 	getRooCodeApiUrl: vi.fn().mockReturnValue("http://localhost:8080"),
-	getRooCodeProviderUrl: vi.fn().mockReturnValue("http://localhost:8080/proxy"),
 }))
 
 /** A value for every setting the builders read, each different from its default. */
