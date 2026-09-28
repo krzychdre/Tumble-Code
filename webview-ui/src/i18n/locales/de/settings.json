@@ -16,7 +16,8 @@
 		"title": "Einstellungen",
 		"saveButtonTooltip": "Änderungen speichern",
 		"nothingChangedTooltip": "Nichts geändert",
-		"doneButtonTooltip": "Ungespeicherte Änderungen verwerfen und Einstellungsbereich schließen"
+		"doneButtonTooltip": "Ungespeicherte Änderungen verwerfen und Einstellungsbereich schließen",
+		"unsavedChanges": "Ungespeicherte Änderungen"
 	},
 	"unsavedChangesDialog": {
 		"title": "Ungespeicherte Änderungen",

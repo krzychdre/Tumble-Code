@@ -16,7 +16,8 @@
 		"title": "सेटिंग्स",
 		"saveButtonTooltip": "परिवर्तन सहेजें",
 		"nothingChangedTooltip": "कुछ भी नहीं बदला",
-		"doneButtonTooltip": "असहेजे परिवर्तनों को छोड़ें और सेटिंग्स पैनल बंद करें"
+		"doneButtonTooltip": "असहेजे परिवर्तनों को छोड़ें और सेटिंग्स पैनल बंद करें",
+		"unsavedChanges": "बिना सहेजे गए परिवर्तन"
 	},
 	"unsavedChangesDialog": {
 		"title": "असहेजे परिवर्तन",

@@ -16,7 +16,8 @@
 		"title": "Configurações",
 		"saveButtonTooltip": "Salvar alterações",
 		"nothingChangedTooltip": "Nada alterado",
-		"doneButtonTooltip": "Descartar alterações não salvas e fechar o painel de configurações"
+		"doneButtonTooltip": "Descartar alterações não salvas e fechar o painel de configurações",
+		"unsavedChanges": "Alterações não salvas"
 	},
 	"unsavedChangesDialog": {
 		"title": "Alterações não salvas",

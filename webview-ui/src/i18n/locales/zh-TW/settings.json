@@ -12,7 +12,8 @@
 		"title": "設定",
 		"saveButtonTooltip": "儲存變更",
 		"nothingChangedTooltip": "無任何變更",
-		"doneButtonTooltip": "捨棄未儲存的變更並回到工作檢視"
+		"doneButtonTooltip": "捨棄未儲存的變更並回到工作檢視",
+		"unsavedChanges": "未儲存的變更"
 	},
 	"search": {
 		"placeholder": "搜尋設定...",

@@ -49,11 +49,25 @@ export interface SettingsDraftStore {
 	mergeFromState: (state: Partial<ExtensionState>) => void
 	/** Throws away every unsaved edit. */
 	resetToState: (state: Partial<ExtensionState>) => void
+	/**
+	 * Names where the next edits come from (the Settings view passes the open
+	 * tab). Each write that marks the buffer dirty records the current scope.
+	 */
+	setScope: (scope: string | undefined) => void
+	/**
+	 * The scopes with unsaved edits (§2.10: the tabs that get a dot). Empty
+	 * whenever the buffer is clean; the same object until it changes.
+	 */
+	getDirtyScopes: () => ReadonlySet<string>
 }
+
+const NO_SCOPES: ReadonlySet<string> = new Set()
 
 export function createSettingsDraftStore(initial: CachedSettings): SettingsDraftStore {
 	let state = initial
 	let dirty = false
+	let scope: string | undefined
+	let dirtyScopes = NO_SCOPES
 	const listeners = new Set<() => void>()
 
 	const emit = () => {
@@ -62,12 +76,22 @@ export function createSettingsDraftStore(initial: CachedSettings): SettingsDraft
 		}
 	}
 
-	const commit = (nextState: CachedSettings, nextDirty: boolean) => {
-		if (nextState === state && nextDirty === dirty) {
+	/**
+	 * `markScope`: this write is an edit that marks the buffer dirty, so the
+	 * current scope joins the dirty scopes. A clean buffer has none.
+	 */
+	const commit = (nextState: CachedSettings, nextDirty: boolean, markScope = false) => {
+		const nextScopes = !nextDirty
+			? NO_SCOPES
+			: markScope && scope !== undefined && !dirtyScopes.has(scope)
+				? new Set([...dirtyScopes, scope])
+				: dirtyScopes
+		if (nextState === state && nextDirty === dirty && nextScopes === dirtyScopes) {
 			return
 		}
 		state = nextState
 		dirty = nextDirty
+		dirtyScopes = nextScopes
 		emit()
 	}
 
@@ -80,12 +104,12 @@ export function createSettingsDraftStore(initial: CachedSettings): SettingsDraft
 		},
 		getState: () => state,
 		isDirty: () => dirty,
-		setDirty: (nextDirty) => commit(state, nextDirty),
+		setDirty: (nextDirty) => commit(state, nextDirty, nextDirty),
 		setField: (key, value) => {
 			if (!isSettingChange(key, state[key], value)) {
 				return
 			}
-			commit({ ...state, [key]: value }, true)
+			commit({ ...state, [key]: value }, true, true)
 		},
 		setApiConfigurationField: (field, value, isUserAction = true) => {
 			if (state.apiConfiguration?.[field] === value) {
@@ -106,12 +130,14 @@ export function createSettingsDraftStore(initial: CachedSettings): SettingsDraft
 			// Also skip if it's an automatic sync with semantically equal values
 			const isAutomaticNoOpSync = !isUserAction && areValuesEqual(previousValue, value)
 
+			const isEdit = !isInitialSync && !isAutomaticNoOpSync
 			commit(
 				{
 					...state,
 					apiConfiguration: { ...state.apiConfiguration, [field]: value } as ProviderSettings,
 				},
-				dirty || (!isInitialSync && !isAutomaticNoOpSync),
+				dirty || isEdit,
+				isEdit,
 			)
 		},
 		setExperimentEnabled: (id, enabled) => {
@@ -124,9 +150,14 @@ export function createSettingsDraftStore(initial: CachedSettings): SettingsDraft
 					experiments: { ...state.experiments, [id]: enabled } as ExtensionState["experiments"],
 				},
 				true,
+				true,
 			)
 		},
 		mergeFromState: (fromState) => commit({ ...state, ...pickCachedSettings(fromState) }, false),
 		resetToState: (fromState) => commit(pickCachedSettings(fromState), false),
+		setScope: (nextScope) => {
+			scope = nextScope
+		},
+		getDirtyScopes: () => dirtyScopes,
 	}
 }

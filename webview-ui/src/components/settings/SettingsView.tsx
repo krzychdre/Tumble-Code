@@ -121,6 +121,19 @@ export const sectionNames = [
 
 export type SectionName = (typeof sectionNames)[number]
 
+/**
+ * §2.10: marks unsaved edits on the Save button and on each tab that has
+ * them. A small square (square corners, §1) in the text colour, decorative:
+ * the tab adds screen-reader text and Save is only enabled when dirty.
+ */
+const UnsavedDot = ({ className }: { className?: string }) => (
+	<span
+		data-testid="unsaved-dot"
+		aria-hidden="true"
+		className={cn("inline-block size-1.5 shrink-0 bg-current", className)}
+	/>
+)
+
 type SettingsViewProps = {
 	onDone: () => void
 	targetSection?: string
@@ -152,6 +165,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 		store: draftStore,
 		cachedState: settings,
 		isChangeDetected,
+		dirtyScopes,
 		setChangeDetected,
 		setApiConfigurationField,
 		mergeFromState,
@@ -244,6 +258,13 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 			contentRef.current.scrollTop = scrollPositions.current[activeTab] ?? 0
 		}
 	}, [activeTab])
+
+	// §2.10: edits are attributed to the open tab, so every tab with unsaved
+	// edits gets a dot. Only the open tab is mounted, so its edits happen after
+	// this runs.
+	useLayoutEffect(() => {
+		draftStore.setScope(activeTab)
+	}, [draftStore, activeTab])
 
 	// Store direct DOM element refs for each tab
 	const tabRefs = useRef<Record<SectionName, HTMLButtonElement | null>>(
@@ -408,6 +429,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 							disabled={!isChangeDetected || !isSettingValid}
 							data-testid="save-button">
 							{t("settings:common.save")}
+							{isChangeDetected && <UnsavedDot className="ml-1.5" />}
 						</Button>
 					</StandardTooltip>
 				</div>
@@ -426,6 +448,7 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 					data-testid="settings-tab-list">
 					{sections.map(({ id, icon: Icon }) => {
 						const isSelected = id === activeTab
+						const hasUnsavedEdits = dirtyScopes.has(id)
 						const onSelect = () => handleTabChange(id)
 
 						// Base TabTrigger component definition
@@ -441,13 +464,20 @@ const SettingsView = forwardRef<SettingsViewRef, SettingsViewProps>(({ onDone, t
 									isSelected // Use manual isSelected for styling
 										? `${settingsTabTrigger} ${settingsTabTriggerActive}`
 										: settingsTabTrigger,
-									"cursor-pointer focus:ring-0", // Remove the focus ring styling
+									"cursor-pointer",
 								)}
 								data-testid={`tab-${id}`}
+								data-unsaved={hasUnsavedEdits}
 								data-compact={isCompactMode}>
 								<div className={cn("flex items-center gap-2", isCompactMode && "justify-center")}>
 									<Icon className="w-4 h-4" />
 									<span className="tab-label">{t(`settings:sections.${id}`)}</span>
+									{hasUnsavedEdits && (
+										<>
+											<UnsavedDot />
+											<span className="sr-only">{t("settings:header.unsavedChanges")}</span>
+										</>
+									)}
 								</div>
 							</TabTrigger>
 						)

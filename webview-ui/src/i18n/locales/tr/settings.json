@@ -16,7 +16,8 @@
 		"title": "Ayarlar",
 		"saveButtonTooltip": "Değişiklikleri kaydet",
 		"nothingChangedTooltip": "Hiçbir şey değişmedi",
-		"doneButtonTooltip": "Kaydedilmemiş değişiklikleri at ve ayarlar panelini kapat"
+		"doneButtonTooltip": "Kaydedilmemiş değişiklikleri at ve ayarlar panelini kapat",
+		"unsavedChanges": "Kaydedilmemiş değişiklikler"
 	},
 	"unsavedChangesDialog": {
 		"title": "Kaydedilmemiş Değişiklikler",

@@ -16,7 +16,8 @@
 		"title": "Instellingen",
 		"saveButtonTooltip": "Wijzigingen opslaan",
 		"nothingChangedTooltip": "Niets gewijzigd",
-		"doneButtonTooltip": "Niet-opgeslagen wijzigingen negeren en instellingen sluiten"
+		"doneButtonTooltip": "Niet-opgeslagen wijzigingen negeren en instellingen sluiten",
+		"unsavedChanges": "Niet-opgeslagen wijzigingen"
 	},
 	"unsavedChangesDialog": {
 		"title": "Niet-opgeslagen wijzigingen",
