@@ -42,6 +42,13 @@ interface UIState {
 	// Autocomplete picker state
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	pickerState: AutocompletePickerState<any>
+
+	/**
+	 * Text a command asked to put into the prompt (as if typed); App applies
+	 * it through the input's handle and clears it. /resume and --resume ask
+	 * for "#", which opens the task history picker.
+	 */
+	requestedInput: string | null
 }
 
 interface UIActions {
@@ -75,6 +82,8 @@ interface UIActions {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	setPickerState: (state: AutocompletePickerState<any>) => void
 
+	requestInput: (text: string | null) => void
+
 	// Reset all UI state to defaults
 	resetUIState: () => void
 }
@@ -99,6 +108,7 @@ const initialState: UIState = {
 		isLoading: false,
 		triggerInfo: null,
 	},
+	requestedInput: null,
 }
 
 export const useUIStateStore = create<UIState & UIActions>((set) => ({
@@ -133,5 +143,6 @@ export const useUIStateStore = create<UIState & UIActions>((set) => ({
 			transcriptReprintEpoch: 0,
 		})),
 	setPickerState: (state) => set({ pickerState: state }),
+	requestInput: (text) => set({ requestedInput: text }),
 	resetUIState: () => set(initialState),
 }))

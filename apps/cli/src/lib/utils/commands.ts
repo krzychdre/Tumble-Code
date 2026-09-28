@@ -10,7 +10,12 @@
  * Action types that can be triggered by global commands.
  * Each action corresponds to a message type sent to the extension host.
  */
-export type GlobalCommandAction = "clearTask" | "clearConversation" | "setPermissions" | "openMcpPanel"
+export type GlobalCommandAction =
+	| "clearTask"
+	| "clearConversation"
+	| "setPermissions"
+	| "openMcpPanel"
+	| "openResumePicker"
 
 /**
  * Definition of a CLI global command
@@ -46,6 +51,11 @@ export const GLOBAL_COMMANDS: GlobalCommand[] = [
 		description: "Change action approval mode",
 		argumentHint: "<ask|allow>",
 		action: "setPermissions",
+	},
+	{
+		name: "resume",
+		description: "Pick an earlier task of this workspace to resume (same as typing #)",
+		action: "openResumePicker",
 	},
 	{
 		name: "mcp",

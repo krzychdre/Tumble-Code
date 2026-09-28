@@ -32,6 +32,8 @@ export type FlagOptions = {
 	commandExecutionTimeout?: string
 	ephemeral: boolean
 	oneshot: boolean
+	/** Start the TUI with the task history picker open. */
+	resume: boolean
 	outputFormat?: OutputFormat
 }
 

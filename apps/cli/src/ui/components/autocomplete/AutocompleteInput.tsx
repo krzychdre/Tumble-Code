@@ -3,6 +3,8 @@ import { useState, useCallback, useEffect, useImperativeHandle, forwardRef, useR
 import { useInputHistory } from "../../hooks/useInputHistory.js"
 import { useTerminalSize } from "../../hooks/TerminalSizeContext.js"
 import { MultilineTextInput } from "../MultilineTextInput.js"
+import { acceptQuery, searchOlder, startReverseSearch, type ReverseSearchState } from "../../utils/reverseSearch.js"
+import { ReverseSearchPrompt } from "./ReverseSearchPrompt.js"
 
 import type { AutocompleteItem, AutocompleteTrigger, AutocompletePickerState } from "./types.js"
 import { useAutocompletePicker } from "./useAutocompletePicker.js"
@@ -38,6 +40,11 @@ export interface AutocompleteInputHandle<T extends AutocompleteItem = Autocomple
 	closePicker: () => void
 	/** Force refresh search results (used when async data arrives after initial search) */
 	refreshSearch: () => void
+	/**
+	 * Replace the prompt text as if typed, so triggers fire: `setValue("#")`
+	 * opens the task history picker (/resume, --resume).
+	 */
+	setValue: (value: string) => void
 }
 
 /**
@@ -74,6 +81,18 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 		})
 
 	const [wasBrowsing, setWasBrowsing] = useState(false)
+
+	// Ctrl+R reverse search over the input history (UI plan §4). While it
+	// runs, ReverseSearchPrompt replaces the text input and owns the keys.
+	const [search, setSearch] = useState<ReverseSearchState | null>(null)
+	const searchRef = useRef(search)
+	searchRef.current = search
+	const historyRef = useRef(history)
+	historyRef.current = history
+	const inputValueRef = useRef(inputValue)
+	inputValueRef.current = inputValue
+	// What was typed before Ctrl+R; Escape gives it back.
+	const draftBeforeSearchRef = useRef("")
 
 	// Track previous picker state values to avoid unnecessary parent updates
 	const prevPickerStateRef = useRef({
@@ -201,6 +220,47 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 		[pickerState.isOpen, addEntry, resetBrowsing, onSubmit],
 	)
 
+	const startSearch = useCallback(() => {
+		if (pickerState.isOpen) {
+			return
+		}
+
+		draftBeforeSearchRef.current = inputValueRef.current
+		setSearch(startReverseSearch(historyRef.current))
+	}, [pickerState.isOpen])
+
+	const searchType = useCallback((text: string) => {
+		setSearch((current) => current && acceptQuery(current, historyRef.current, current.query + text))
+	}, [])
+
+	const searchBackspace = useCallback(() => {
+		setSearch((current) => current && acceptQuery(current, historyRef.current, current.query.slice(0, -1)))
+	}, [])
+
+	const searchOlderMatch = useCallback(() => {
+		setSearch((current) => current && searchOlder(current, historyRef.current))
+	}, [])
+
+	/** Leave the search with `text` in the prompt, the cursor at its end. */
+	const endSearch = useCallback(
+		(text: string) => {
+			setSearch(null)
+			setInputValue(text)
+			setDraft(text)
+			resetBrowsing(text)
+			setInputKeyCounter((c) => c + 1)
+		},
+		[setDraft, resetBrowsing],
+	)
+
+	const searchAccept = useCallback(() => {
+		const current = searchRef.current
+		const match = current?.matchIndex != null ? historyRef.current[current.matchIndex] : undefined
+		endSearch(match ?? draftBeforeSearchRef.current)
+	}, [endSearch])
+
+	const searchCancel = useCallback(() => endSearch(draftBeforeSearchRef.current), [endSearch])
+
 	/**
 	 * Handle escape key
 	 */
@@ -231,6 +291,11 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 			handleIndexChange: pickerActions.handleIndexChange,
 			closePicker: pickerActions.handleClose,
 			refreshSearch: pickerActions.forceRefresh,
+			setValue: (value: string) => {
+				handleChange(value)
+				// Re-mount so the cursor lands at the end of the new text.
+				setInputKeyCounter((c) => c + 1)
+			},
 		}),
 		[
 			pickerState,
@@ -238,8 +303,23 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 			pickerActions.handleIndexChange,
 			pickerActions.handleClose,
 			pickerActions.forceRefresh,
+			handleChange,
 		],
 	)
+
+	if (search && isActive) {
+		return (
+			<ReverseSearchPrompt
+				state={search}
+				match={search.matchIndex != null ? (history[search.matchIndex] ?? null) : null}
+				onType={searchType}
+				onBackspace={searchBackspace}
+				onOlder={searchOlderMatch}
+				onAccept={searchAccept}
+				onCancel={searchCancel}
+			/>
+		)
+	}
 
 	return (
 		<MultilineTextInput
@@ -250,6 +330,7 @@ function AutocompleteInputInner<T extends AutocompleteItem>(
 			onEscape={handleEscape}
 			onUpAtFirstLine={navigateUp}
 			onDownAtLastLine={navigateDown}
+			onReverseSearch={startSearch}
 			lineNavigationActive={!pickerState.isOpen}
 			placeholder={placeholder}
 			isActive={isActive}

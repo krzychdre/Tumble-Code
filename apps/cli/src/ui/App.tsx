@@ -1,5 +1,5 @@
 import { Box, Text, useApp, useInput } from "ink"
-import { useState, useCallback, useRef, useMemo } from "react"
+import { useState, useCallback, useEffect, useRef, useMemo } from "react"
 
 import type { UsableSuggestion } from "@roo-code/types"
 
@@ -54,6 +54,8 @@ export interface TUIAppProps extends ExtensionHostOptions {
 	initialTaskId?: string
 	initialSessionId?: string
 	continueSession?: boolean
+	/** Start with the task history picker open (`tumble --resume`). */
+	openResumePicker?: boolean
 	version: string
 	// Create extension host factory for dependency injection.
 	createExtensionHost: (options: ExtensionHostOptions) => ExtensionHostInterface
@@ -71,8 +73,15 @@ import type { WelcomeBannerProps } from "./components/WelcomeBanner.js"
  * the bordered `InputArea` with its footer.
  */
 function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps) {
-	const { initialPrompt, initialTaskId, initialSessionId, continueSession, version, ...hostOptions } =
-		extensionHostOptions
+	const {
+		initialPrompt,
+		initialTaskId,
+		initialSessionId,
+		continueSession,
+		openResumePicker,
+		version,
+		...hostOptions
+	} = extensionHostOptions
 	const { workspacePath, provider, model, mode, nonInteractive = false, reasoningEffort } = hostOptions
 
 	const { exit } = useApp()
@@ -280,6 +289,25 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 	// Input is owned by whichever dialog is up; the picker renders on top of
 	// the input area only when the input itself is active.
 	const inputActive = !showApprovalDialog && !showFollowupDialog && !showTodoViewer && !showMcpPanel && !secretPrompt
+
+	// --- Text a command put into the prompt (/resume, --resume) ---------------
+
+	useEffect(() => {
+		if (openResumePicker) {
+			useUIStateStore.getState().requestInput("#")
+		}
+	}, [openResumePicker])
+
+	const requestedInput = useUIStateStore((state) => state.requestedInput)
+
+	useEffect(() => {
+		if (requestedInput === null || !inputActive || showFollowupCustomInput || !autocompleteRef.current) {
+			return
+		}
+
+		autocompleteRef.current.setValue(requestedInput)
+		useUIStateStore.getState().requestInput(null)
+	}, [requestedInput, inputActive, showFollowupCustomInput])
 
 	// --- MCP servers (/mcp panel, failure notice) ------------------------------
 

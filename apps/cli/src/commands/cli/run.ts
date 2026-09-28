@@ -255,6 +255,13 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 		process.exit(1)
 	}
 
+	if (flagOptions.resume && (flagOptions.print || isResumeRequested || requestedCreateSessionId || prompt)) {
+		console.error(
+			"[CLI] Error: --resume opens the interactive task picker; it cannot be combined with --print, a prompt, --session-id, --continue or --create-with-session-id",
+		)
+		process.exit(1)
+	}
+
 	if (isResumeRequested && prompt) {
 		console.error("[CLI] Error: cannot use prompt or --prompt-file with --session-id/--continue")
 		console.error("[CLI] Usage: tumble [--session-id <session-id> | --continue] [options]")
@@ -608,6 +615,7 @@ export async function run(promptArg: string | undefined, flagOptions: FlagOption
 						initialTaskId: requestedCreateSessionId,
 						initialSessionId: resolvedResumeSessionId,
 						continueSession: false,
+						openResumePicker: flagOptions.resume,
 						version: VERSION,
 						createExtensionHost: (opts: ExtensionHostOptions) => new ExtensionHost(opts),
 					}),

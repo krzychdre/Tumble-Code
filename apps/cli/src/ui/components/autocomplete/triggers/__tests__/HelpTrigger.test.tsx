@@ -73,7 +73,7 @@ describe("HelpTrigger", () => {
 			const trigger = createHelpTrigger()
 
 			const results = trigger.search("") as HelpShortcutResult[]
-			expect(results.length).toBe(12)
+			expect(results.length).toBe(13)
 			expect(results.map((r) => r.shortcut)).toContain("/")
 			expect(results.map((r) => r.shortcut)).toContain("@")
 			expect(results.map((r) => r.shortcut)).toContain("!")
