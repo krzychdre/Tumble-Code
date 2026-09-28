@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} tệp đã thay đổi trong cuộc hội thoại này"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} dòng không thay đổi",
+		"unchangedLines_other": "... {{count}} dòng không thay đổi",
+		"hiddenLines_one": "{{count}} dòng bị ẩn",
+		"hiddenLines_other": "{{count}} dòng bị ẩn",
+		"openDiff": "Mở diff",
+		"openFile": "Mở tệp"
+	},
 	"tokenProgress": {
 		"availableSpace": "Không gian khả dụng: {{amount}} tokens",
 		"tokensUsed": "Tokens đã sử dụng: {{used}} trong {{total}}",

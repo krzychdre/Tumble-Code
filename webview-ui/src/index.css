@@ -1478,6 +1478,27 @@ input[cmdk-input]:focus {
 		"liga" 1;
 }
 
+/*
+ * DiffView gutters (§2.7): two line-number columns on wide panels; below 400px
+ * of panel width one merged column, which gives back about 60px of code width
+ * in the sidebar. A container query, so it follows the panel, not the window.
+ */
+.diff-view {
+	container-type: inline-size;
+}
+.diff-view .diff-gutter-merged {
+	display: none;
+	width: 4ch;
+}
+@container (max-width: 399px) {
+	.diff-view .diff-gutter-split {
+		display: none;
+	}
+	.diff-view .diff-gutter-merged {
+		display: table-cell;
+	}
+}
+
 /* DiffView background tints via CSS classes instead of inline styles */
 .diff-content-inserted {
 	background-color: color-mix(in srgb, var(--vscode-diffEditor-insertedTextBackground) 70%, transparent);

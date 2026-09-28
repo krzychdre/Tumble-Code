@@ -36,6 +36,14 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} file diubah dalam percakapan ini"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} baris tidak berubah",
+		"unchangedLines_other": "... {{count}} baris tidak berubah",
+		"hiddenLines_one": "{{count}} baris tersembunyi",
+		"hiddenLines_other": "{{count}} baris tersembunyi",
+		"openDiff": "Buka diff",
+		"openFile": "Buka file"
+	},
 	"retry": {
 		"title": "Coba Lagi",
 		"tooltip": "Coba operasi lagi"

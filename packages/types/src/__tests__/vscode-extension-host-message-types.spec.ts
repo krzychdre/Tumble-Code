@@ -115,6 +115,7 @@ type ExpectedWebviewMessageType =
 	| "openImage"
 	| "saveImage"
 	| "openFile"
+	| "openDiff"
 	| "readFileContent"
 	| "openMention"
 	| "cancelTask"

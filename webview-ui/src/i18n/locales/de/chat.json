@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} Datei(en) in dieser Unterhaltung geändert"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} unveränderte Zeile",
+		"unchangedLines_other": "... {{count}} unveränderte Zeilen",
+		"hiddenLines_one": "{{count}} ausgeblendete Zeile",
+		"hiddenLines_other": "{{count}} ausgeblendete Zeilen",
+		"openDiff": "Diff öffnen",
+		"openFile": "Datei öffnen"
+	},
 	"tokenProgress": {
 		"availableSpace": "Verfügbarer Speicher: {{amount}} Tokens",
 		"tokensUsed": "Verwendete Tokens: {{used}} von {{total}}",

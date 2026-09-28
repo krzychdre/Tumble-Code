@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "इस वार्तालाप में {{count}} फ़ाइल(ें) बदली गईं"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} अपरिवर्तित पंक्ति",
+		"unchangedLines_other": "... {{count}} अपरिवर्तित पंक्तियाँ",
+		"hiddenLines_one": "{{count}} छिपी हुई पंक्ति",
+		"hiddenLines_other": "{{count}} छिपी हुई पंक्तियाँ",
+		"openDiff": "डिफ़ खोलें",
+		"openFile": "फ़ाइल खोलें"
+	},
 	"tokenProgress": {
 		"availableSpace": "उपलब्ध स्थान: {{amount}} tokens",
 		"tokensUsed": "प्रयुक्त tokens: {{used}} / {{total}}",

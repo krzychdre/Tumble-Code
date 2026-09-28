@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "此對話中已變更 {{count}} 個檔案"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} 行未變更",
+		"unchangedLines_other": "... {{count}} 行未變更",
+		"hiddenLines_one": "已隱藏 {{count}} 行",
+		"hiddenLines_other": "已隱藏 {{count}} 行",
+		"openDiff": "開啟差異",
+		"openFile": "開啟檔案"
+	},
 	"retry": {
 		"title": "重試",
 		"tooltip": "再次嘗試操作"

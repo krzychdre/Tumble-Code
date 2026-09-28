@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "この会話で {{count}} 個のファイルが変更されました"
 	},
+	"diffView": {
+		"unchangedLines_one": "... 変更のない {{count}} 行",
+		"unchangedLines_other": "... 変更のない {{count}} 行",
+		"hiddenLines_one": "非表示の {{count}} 行",
+		"hiddenLines_other": "非表示の {{count}} 行",
+		"openDiff": "差分を開く",
+		"openFile": "ファイルを開く"
+	},
 	"tokenProgress": {
 		"availableSpace": "利用可能な空き容量: {{amount}} トークン",
 		"tokensUsed": "使用トークン: {{used}} / {{total}}",

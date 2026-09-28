@@ -33,6 +33,18 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} файл(ов) изменено в этом разговоре"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} неизменённая строка",
+		"unchangedLines_few": "... {{count}} неизменённые строки",
+		"unchangedLines_many": "... {{count}} неизменённых строк",
+		"unchangedLines_other": "... {{count}} неизменённой строки",
+		"hiddenLines_one": "{{count}} скрытая строка",
+		"hiddenLines_few": "{{count}} скрытые строки",
+		"hiddenLines_many": "{{count}} скрытых строк",
+		"hiddenLines_other": "{{count}} скрытой строки",
+		"openDiff": "Открыть diff",
+		"openFile": "Открыть файл"
+	},
 	"retry": {
 		"title": "Повторить",
 		"tooltip": "Попробовать выполнить операцию снова"

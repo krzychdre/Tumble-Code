@@ -1,8 +1,12 @@
 import { memo, useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { ThemedProgressRing } from "@src/components/ui"
 import { type ToolProgressStatus } from "@roo-code/types"
 import { getLanguageFromPath } from "@src/utils/getLanguageFromPath"
 import { formatPathTooltip } from "@src/utils/formatPathTooltip"
+import { parseUnifiedDiff } from "@src/utils/parseUnifiedDiff"
+import { countDiffStats } from "@src/utils/diffFolds"
+import { vscode } from "@src/utils/vscode"
 
 import { ToolUseBlock, ToolUseBlockHeader } from "./ToolUseBlock"
 import CodeBlock from "./CodeBlock"
@@ -37,22 +41,32 @@ const CodeAccordion = ({
 	onJumpToFile,
 	diffStats,
 }: CodeAccordionProps) => {
+	const { t } = useTranslation()
 	const inferredLanguage = useMemo(() => language ?? (path ? getLanguageFromPath(path) : "txt"), [path, language])
 	const source = useMemo(() => code.trim(), [code])
 	const hasHeader = Boolean(path || isFeedback || header)
 
-	// Use provided diff stats only (render-only)
+	const isDiff = inferredLanguage === "diff"
+
+	// §2.7: the file header always shows "+N -M" for a diff. The payload's stats
+	// win; without them (user edits, older history) they are counted from the diff.
 	const derivedStats = useMemo(() => {
 		if (diffStats && (diffStats.added > 0 || diffStats.removed > 0)) return diffStats
+		if (isDiff && source) return countDiffStats(parseUnifiedDiff(source, path))
 		return null
-	}, [diffStats])
+	}, [diffStats, isDiff, source, path])
 
 	const hasValidStats = Boolean(derivedStats && (derivedStats.added > 0 || derivedStats.removed > 0))
 
 	return (
-		<ToolUseBlock>
+		// overflow-visible: an overflow-hidden block would become the sticky header's
+		// scroll box and pin nothing.
+		<ToolUseBlock className="overflow-visible">
 			{hasHeader && (
-				<ToolUseBlockHeader onClick={onToggleExpand} className="group">
+				<ToolUseBlockHeader
+					onClick={onToggleExpand}
+					data-testid="code-accordion-header"
+					className="group sticky top-0 z-10 bg-vscode-editor-background">
 					{isLoading && <ThemedProgressRing className="size-3 mr-2" />}
 					{header ? (
 						<div className="flex items-center">
@@ -98,26 +112,42 @@ const CodeAccordion = ({
 							</>
 						)
 					)}
+					{isDiff && source && (
+						<button
+							type="button"
+							className="flex items-center mr-1 p-0 cursor-pointer bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground focus-ring"
+							title={t("chat:diffView.openDiff")}
+							aria-label={t("chat:diffView.openDiff")}
+							onClick={(e) => {
+								e.stopPropagation()
+								vscode.postMessage({ type: "openDiff", text: source })
+							}}>
+							<span className="codicon codicon-diff" aria-hidden="true" />
+						</button>
+					)}
 					{onJumpToFile && path && (
-						<span
-							className="codicon codicon-link-external mr-1"
-							style={{ fontSize: 13.5 }}
+						<button
+							type="button"
+							className="flex items-center mr-1 p-0 cursor-pointer bg-transparent border-none text-vscode-descriptionForeground hover:text-vscode-foreground focus-ring"
+							title={t("chat:diffView.openFile")}
+							aria-label={t("chat:diffView.openFile")}
 							onClick={(e) => {
 								e.stopPropagation()
 								onJumpToFile()
-							}}
-							aria-label={`Open file: ${path}`}
-						/>
+							}}>
+							<span className="codicon codicon-link-external" aria-hidden="true" />
+						</button>
 					)}
 					{!onJumpToFile && (
 						<span
-							className={`opacity-0 group-hover:opacity-100 codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
+							className={`opacity-60 group-hover:opacity-100 codicon codicon-chevron-${isExpanded ? "up" : "down"}`}
+							aria-hidden="true"></span>
 					)}
 				</ToolUseBlockHeader>
 			)}
 			{(!hasHeader || isExpanded) && (
 				<div className="overflow-x-auto overflow-y-auto max-h-[300px] max-w-full">
-					{inferredLanguage === "diff" ? (
+					{isDiff ? (
 						<DiffView source={source} filePath={path} />
 					) : (
 						<CodeBlock source={source} language={inferredLanguage} />

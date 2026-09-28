@@ -33,6 +33,14 @@
 	"fileChangesInConversation": {
 		"header": "{{count}} file(s) changed in this conversation"
 	},
+	"diffView": {
+		"unchangedLines_one": "... {{count}} unchanged line",
+		"unchangedLines_other": "... {{count}} unchanged lines",
+		"hiddenLines_one": "{{count}} hidden line",
+		"hiddenLines_other": "{{count}} hidden lines",
+		"openDiff": "Open diff",
+		"openFile": "Open file"
+	},
 	"subagents": {
 		"headerActive": "Subagents: {{active}}/{{total}} active",
 		"headerDone": "Subagents: {{total}} finished",

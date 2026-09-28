@@ -12,6 +12,7 @@ export type FilesAndCheckpointsWebviewMessageType =
 	| "openImage"
 	| "saveImage"
 	| "openFile"
+	| "openDiff"
 	| "readFileContent"
 	| "openMention"
 	| "openExternal"
