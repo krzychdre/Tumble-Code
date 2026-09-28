@@ -1,7 +1,7 @@
 {
 	"src/App.tsx": ["App"],
 	"src/components/chat/McpExecution.tsx": ["McpExecution"],
-	"src/components/code-index/CodeIndexPopover.tsx": ["CodeIndexPopover"],
+	"src/components/code-index/useCodeIndexSettings.ts": ["useCodeIndexSettings"],
 	"src/components/common/DiffView.tsx": ["DiffView"],
 	"src/components/common/MermaidButton.tsx": ["MermaidButton"],
 	"src/components/mcp/McpView.tsx": ["ServerRow"],
