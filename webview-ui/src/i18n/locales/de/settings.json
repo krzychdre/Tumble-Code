@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "Chat-Dichte",
+			"description": "Steuert den Abstand zwischen Chat-Zeilen und -Blöcken",
+			"comfortable": "Komfortabel",
+			"compact": "Kompakt"
+		},
 		"collapseThinking": {
 			"label": "Gedankenblöcke standardmäßig ausblenden",
 			"description": "Wenn aktiviert, werden Gedankenblöcke standardmäßig ausgeblendet, bis du mit ihnen interagierst"

@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "Densitat del xat",
+			"description": "Controla l'espai entre files i blocs del xat",
+			"comfortable": "Còmoda",
+			"compact": "Compacta"
+		},
 		"collapseThinking": {
 			"label": "Replega els missatges de pensament per defecte",
 			"description": "Quan estigui activat, els blocs de pensament es replegaran per defecte fins que interactuïs amb ells"

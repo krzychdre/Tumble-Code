@@ -72,6 +72,9 @@ const App = () => {
 	const didHydrateState = useExtensionSelector((s) => s.didHydrateState)
 	const showWelcome = useExtensionSelector((s) => s.showWelcome)
 	const settingsImportedAt = useExtensionSelector((s) => s.settingsImportedAt)
+	// §2.1 (ai_plans/2026-09-27_ui-modernization.md): the density choice rides
+	// the root element, so the spacing tokens in index.css follow the setting.
+	const uiDensity = useExtensionSelector((s) => s.uiDensity ?? "comfortable")
 	const shouldShowAnnouncement = useExtensionSelector((s) => s.shouldShowAnnouncement)
 	const telemetrySetting = useExtensionSelector((s) => s.telemetrySetting)
 	const telemetryKey = useExtensionSelector((s) => s.telemetryKey)
@@ -242,6 +245,12 @@ const App = () => {
 			telemetryClient.capture(TelemetryEventName.MARKETPLACE_TAB_VIEWED)
 		}
 	}, [tab])
+
+	// §2.1 (ai_plans/2026-09-27_ui-modernization.md): publish the density
+	// choice as a data attribute on the root, where the spacing tokens read it.
+	useEffect(() => {
+		document.documentElement.setAttribute("data-density", uiDensity)
+	}, [uiDensity])
 
 	if (!didHydrateState) {
 		return null

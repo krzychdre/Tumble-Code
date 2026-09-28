@@ -358,6 +358,13 @@ export const globalSettingsSchema = z.object({
 	 * @default "send"
 	 */
 	enterBehavior: z.enum(["send", "newline"]).optional(),
+	/**
+	 * Chat spacing density (§2.1, ai_plans/2026-09-27_ui-modernization.md).
+	 * - "comfortable": the default 8px/12px row and block spacing
+	 * - "compact": 4px/8px, for narrow sidebars
+	 * @default "comfortable"
+	 */
+	uiDensity: z.enum(["comfortable", "compact"]).optional(),
 	profileThresholds: z.record(z.string(), z.number()).optional(),
 	hasOpenedModeSelector: z.boolean().optional(),
 	lastModeExportPath: z.string().optional(),

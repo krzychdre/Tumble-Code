@@ -102,6 +102,12 @@
 		"footer": "使用斜線命令快速存取經常使用的提示詞和工作流程。"
 	},
 	"ui": {
+		"density": {
+			"label": "聊天密度",
+			"description": "控制聊天行與區塊之間的間距",
+			"comfortable": "寬鬆",
+			"compact": "緊湊"
+		},
 		"collapseThinking": {
 			"label": "預設折疊「思考」訊息",
 			"description": "啟用後，「思考」塊將預設折疊，直到您與其互動"

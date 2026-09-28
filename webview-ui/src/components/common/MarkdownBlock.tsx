@@ -134,7 +134,7 @@ const StyledMarkdown = styled.div`
 		overflow-x: auto;
 		overflow-y: hidden;
 		background-color: var(--vscode-textCodeBlock-background);
-		border-radius: 3px;
+		border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
 	}
 
 	.katex-error {
@@ -280,7 +280,7 @@ const StyledMarkdown = styled.div`
 		margin: 1em 0;
 		padding: 0.5em 1em;
 		border-left: 0.25em solid var(--alert-accent, var(--vscode-textBlockQuote-border));
-		border-radius: 3px;
+		border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
 		background-color: var(--vscode-textBlockQuote-background);
 	}
 

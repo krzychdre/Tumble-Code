@@ -879,6 +879,12 @@
 		}
 	},
 	"ui": {
+		"density": {
+			"label": "聊天密度",
+			"description": "控制聊天行与块之间的间距",
+			"comfortable": "宽松",
+			"compact": "紧凑"
+		},
 		"collapseThinking": {
 			"label": "默认折叠「思考」消息",
 			"description": "启用后，「思考」块将默认折叠，直到您与其交互"

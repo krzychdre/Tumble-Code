@@ -50,7 +50,7 @@ const CodeBlockButton = styled.button`
 	align-items: center;
 	justify-content: center;
 	opacity: 0.4;
-	border-radius: 3px;
+	border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
 	pointer-events: var(--copy-button-events, none);
 	margin-left: 4px;
 	height: 24px;
@@ -78,7 +78,7 @@ const CodeBlockButtonWrapper = styled.div`
 	pointer-events: none;
 	opacity: var(--copy-button-opacity, 0);
 	padding: 4px 6px;
-	border-radius: 3px;
+	border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -124,12 +124,12 @@ export const StyledPre = styled.div<{
 		windowshade === "true" ? `${collapsedHeight || WINDOW_SHADE_SETTINGS.collapsedHeight}px` : "none"};
 	overflow-y: auto;
 	padding: 8px 3px;
-	border-radius: 6px;
+	border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
 	${({ preStyle }) => preStyle && { ...preStyle }}
 
 	pre {
 		background-color: ${CODE_BLOCK_BG_COLOR};
-		border-radius: 5px;
+		border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
 		margin: 0;
 		padding: 10px;
 		width: 100%;
