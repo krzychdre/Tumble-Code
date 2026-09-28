@@ -12,17 +12,7 @@ import {
 	type RouterModels,
 } from "@roo-code/types"
 
-import {
-	Bedrock,
-	LiteLLM,
-	Ollama,
-	OpenAICompatible,
-	OpenAICodex,
-	OpenRouter,
-	QwenCode,
-	Vertex,
-	VSCodeLM,
-} from "./providers"
+import { Bedrock, LiteLLM, OpenAICompatible, OpenAICodex, OpenRouter, QwenCode, Vertex, VSCodeLM } from "./providers"
 import { ProviderDescriptorForm } from "./providers/ProviderDescriptorForm"
 import type { SetApiConfigurationField } from "./providers/shared"
 
@@ -147,12 +137,6 @@ const customForms = {
 			organizationAllowList={context.organizationAllowList}
 			modelValidationError={context.modelValidationError}
 			simplifySettings={context.simplifySettings}
-		/>
-	)),
-	ollama: customForm("ollama", (context) => (
-		<Ollama
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
 		/>
 	)),
 	"vscode-lm": customForm("vscode-lm", (context) => (

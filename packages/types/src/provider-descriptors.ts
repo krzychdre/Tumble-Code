@@ -43,6 +43,11 @@ export type ProviderStringSettingKey = {
 	[K in keyof ProviderSettings]-?: NonNullable<ProviderSettings[K]> extends string ? K : never
 }[keyof ProviderSettings]
 
+/** A `ProviderSettings` key whose value is a number (sizes, limits). */
+export type ProviderNumberSettingKey = {
+	[K in keyof ProviderSettings]-?: NonNullable<ProviderSettings[K]> extends number ? K : never
+}[keyof ProviderSettings]
+
 /** A `ProviderSettings` key whose value is a boolean (feature toggles). */
 export type ProviderBooleanSettingKey = {
 	[K in keyof ProviderSettings]-?: NonNullable<ProviderSettings[K]> extends boolean ? K : never
@@ -169,9 +174,28 @@ export type ProviderFetchedModelPickerFieldDescriptor = FieldVisibility & {
 }
 
 /**
+ * A labelled field for a whole number, with an optional help text inside the field. Clearing it
+ * unsets the setting; any other input is read with `parseInt` (leading digits) and written only
+ * when it is a number of at least `min` (Ollama's context window size).
+ */
+export type ProviderIntegerFieldDescriptor = FieldVisibility & {
+	readonly kind: "integer"
+	readonly key: ProviderNumberSettingKey
+	/** i18n key of the field label. */
+	readonly labelKey: string
+	/** i18n key of a help text under the label. */
+	readonly helpKey?: string
+	/** Placeholder text, shown as is. */
+	readonly placeholder?: string
+	/** The smallest value written; smaller input is ignored. */
+	readonly min?: number
+}
+
+/**
  * A note in the description colour. `links` renders `<tag>` elements of the translated text as
  * links (tag name to URL) and `warningTag` renders one tag as the bold warning label in the error
- * colour (LM Studio's "Note:"); without either the text is shown as is.
+ * colour (LM Studio's "Note:"); without either the text is shown as is, followed by the
+ * `warningKey` text in the error colour when there is one (Ollama).
  */
 export type ProviderNoteFieldDescriptor = FieldVisibility & {
 	readonly kind: "note"
@@ -179,6 +203,8 @@ export type ProviderNoteFieldDescriptor = FieldVisibility & {
 	readonly textKey: string
 	readonly links?: Readonly<Record<string, string>>
 	readonly warningTag?: string
+	/** i18n key of a warning shown after the text in the error colour (not with `links`/`warningTag`). */
+	readonly warningKey?: string
 }
 
 /**
@@ -254,6 +280,7 @@ export type ProviderFieldDescriptor =
 	| ProviderTextFieldDescriptor
 	| ProviderFetchedModelPickerFieldDescriptor
 	| ProviderNoteFieldDescriptor
+	| ProviderIntegerFieldDescriptor
 
 /** The fields a provider may use: no `apiKey` field without an API key settings key. */
 type ProviderFieldDescriptorFor<P extends DescribedProviderId> = (typeof providerApiKeyFields)[P] extends null
@@ -322,7 +349,42 @@ export const PROVIDER_DESCRIPTORS = {
 		modelSourceOptions: { baseUrl: "deepSeekBaseUrl", apiKey: "deepSeekApiKey" },
 	},
 	ollama: {
-		form: custom,
+		form: {
+			kind: "fields",
+			fields: [
+				{
+					kind: "text",
+					key: "ollamaBaseUrl",
+					labelKey: "settings:providers.ollama.baseUrl",
+					inputType: "url",
+					placeholderKey: "settings:defaults.ollamaUrl",
+				},
+				{
+					// Only a remote or cloud Ollama takes a key, so it is offered once a base URL is set.
+					kind: "text",
+					key: "ollamaApiKey",
+					labelKey: "settings:providers.ollama.apiKey",
+					helpKey: "settings:providers.ollama.apiKeyHelp",
+					inputType: "password",
+					placeholderKey: "settings:placeholders.apiKey",
+					visibleWhen: { settingIsSet: "ollamaBaseUrl" },
+				},
+				{ kind: "fetchedModelPicker", key: "ollamaModelId", hidePricing: true },
+				{
+					kind: "integer",
+					key: "ollamaNumCtx",
+					labelKey: "settings:providers.ollama.numCtx",
+					helpKey: "settings:providers.ollama.numCtxHelp",
+					placeholder: "e.g., 4096",
+					min: 128,
+				},
+				{
+					kind: "note",
+					textKey: "settings:providers.ollama.description",
+					warningKey: "settings:providers.ollama.warning",
+				},
+			],
+		},
 		service: { name: "Ollama", url: "https://ollama.ai" },
 		docsSlug: "ollama",
 		modelPicker: "in-form",
