@@ -36,6 +36,13 @@ describe("globalCommands", () => {
 			expect(mcpCommand?.action).toBe("openMcpPanel")
 		})
 
+		// UI plan §4: an interactive resume picker reachable by name.
+		it("should contain the /resume command", () => {
+			const resumeCommand = GLOBAL_COMMANDS.find((cmd) => cmd.name === "resume")
+			expect(resumeCommand).toBeDefined()
+			expect(resumeCommand?.action).toBe("openResumePicker")
+		})
+
 		it("should have valid structure for all commands", () => {
 			for (const cmd of GLOBAL_COMMANDS) {
 				expect(cmd.name).toBeTruthy()
@@ -116,6 +123,7 @@ describe("globalCommands", () => {
 				"clearConversation",
 				"setPermissions",
 				"openMcpPanel",
+				"openResumePicker",
 			]
 
 			for (const cmd of GLOBAL_COMMANDS) {

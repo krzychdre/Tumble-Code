@@ -157,6 +157,16 @@ describe("useTaskSubmit conversation commands", () => {
 		})
 	})
 
+	describe("/resume", () => {
+		it("asks the prompt to open the task history picker, without touching the extension or the model", async () => {
+			await api.handleSubmit("/resume")
+
+			expect(useUIStateStore.getState().requestedInput).toBe("#")
+			expect(sendToExtension).not.toHaveBeenCalled()
+			expect(runTask).not.toHaveBeenCalled()
+		})
+	})
+
 	describe("/clear", () => {
 		it("drops the conversation and re-requests what the reset wiped", async () => {
 			await api.handleSubmit("/clear")
