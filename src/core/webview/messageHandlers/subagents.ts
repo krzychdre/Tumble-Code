@@ -1,8 +1,8 @@
 // Parallel subagent panel: live tail, cancel and mid-run guidance.
 
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const subagentsHandlers: MessageHandlerMap = {
+export const subagentsHandlers: DomainHandlerMap<"subagents"> = {
 	subscribeSubagentMessages: async (ctx, message) => {
 		const { provider } = ctx
 		// Open a live tail on a parallel subagent: mark it watched (so

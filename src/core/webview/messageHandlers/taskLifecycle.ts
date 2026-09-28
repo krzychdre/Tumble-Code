@@ -8,9 +8,9 @@ import { getTheme } from "../../../integrations/theme/getTheme"
 import { checkExistKey } from "../../../shared/checkExistApiConfig"
 import { setPendingTodoList } from "../../tools/UpdateTodoListTool"
 import { resolveIncomingImages, serializeError } from "./context"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const taskLifecycleHandlers: MessageHandlerMap = {
+export const taskLifecycleHandlers: DomainHandlerMap<"taskLifecycle"> = {
 	webviewDidLaunch: async (ctx, message) => {
 		const { provider, getGlobalState, updateGlobalState } = ctx
 		// A (re)loaded webview starts without the task history and without any

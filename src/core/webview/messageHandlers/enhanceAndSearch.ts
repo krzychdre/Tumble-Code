@@ -9,9 +9,9 @@ import { RooIgnoreController } from "../../ignore/RooIgnoreController"
 import { generateSystemPrompt } from "../generateSystemPrompt"
 import { MessageEnhancer } from "../messageEnhancer"
 import { logAndToast } from "./context"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const enhanceAndSearchHandlers: MessageHandlerMap = {
+export const enhanceAndSearchHandlers: DomainHandlerMap<"enhanceAndSearch"> = {
 	enhancePrompt: async (ctx, message) => {
 		const { provider } = ctx
 		if (message.text) {

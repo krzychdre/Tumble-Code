@@ -12,9 +12,9 @@ import {
 	handleGetWorktreeIncludeStatus,
 	handleCreateWorktreeInclude,
 } from "../worktree"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const worktreesHandlers: MessageHandlerMap = {
+export const worktreesHandlers: DomainHandlerMap<"worktrees"> = {
 	listWorktrees: async (ctx) => {
 		const { provider } = ctx
 		try {

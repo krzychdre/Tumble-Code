@@ -14,14 +14,18 @@ import { settingsHandlers } from "./settings"
 import { subagentsHandlers } from "./subagents"
 import { taskLifecycleHandlers } from "./taskLifecycle"
 import { worktreesHandlers } from "./worktrees"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap, HandlerDomain, MessageHandlerMap } from "./types"
 
 /**
- * The domain modules, each owning a disjoint set of message types. To add a
- * webview message, add its handler to the module of its domain (or a new
- * module listed here); the registry spec fails if two modules claim a type.
+ * The domain modules, each owning a disjoint set of message types. The keys
+ * are the domains of `WebviewMessageTypesByDomain` in @roo-code/types (one
+ * file per domain under packages/types/src/vscode-extension-host/), so a new
+ * domain needs both a types file and a module here. To add a webview message,
+ * add its name to its domain's types file and its handler to the module of
+ * that domain; a handler in the wrong module is a type error, and the
+ * registry spec fails if two modules claim a type.
  */
-export const messageHandlerGroups: Readonly<Record<string, MessageHandlerMap>> = {
+export const messageHandlerGroups: Readonly<{ [D in HandlerDomain]: DomainHandlerMap<D> }> = {
 	taskLifecycle: taskLifecycleHandlers,
 	messageEdits: messageEditsHandlers,
 	settings: settingsHandlers,

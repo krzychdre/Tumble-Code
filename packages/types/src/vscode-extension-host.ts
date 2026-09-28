@@ -1,132 +1,161 @@
-import { z } from "zod"
+/*
+ * The extension host <-> webview (and CLI) message channel, assembled from
+ * one file per domain under ./vscode-extension-host/. The domains mirror the
+ * handler modules in src/core/webview/messageHandlers/ (plus the plan review
+ * panel): a webview message type lives in the file of the module that
+ * handles it, a host message type in the file of the domain that sends it.
+ * To add a message, add its name to that domain file; the unions below pick
+ * it up.
+ */
 
-import type { GlobalSettings, RooCodeSettings } from "./global-settings.js"
+import type { RooCodeSettings } from "./global-settings.js"
 import type { ProviderSettings, ProviderSettingsEntry } from "./provider-settings.js"
 import type { HistoryItem } from "./history.js"
 import type { ModeConfig, PromptComponent } from "./mode.js"
-import type { TelemetrySetting } from "./telemetry.js"
-import type { Experiments } from "./experiment.js"
 import type { ClineMessage, QueuedMessage } from "./message.js"
-import {
-	type MarketplaceItem,
-	type MarketplaceInstalledMetadata,
-	type InstallMarketplaceItemOptions,
-	marketplaceItemSchema,
-} from "./marketplace.js"
-import type { TodoItem } from "./todo.js"
-import type { CloudUserInfo, CloudOrganizationMembership, OrganizationAllowList, ShareVisibility } from "./cloud.js"
+import type { MarketplaceItem, MarketplaceInstalledMetadata, InstallMarketplaceItemOptions } from "./marketplace.js"
+import type { CloudUserInfo, OrganizationAllowList, ShareVisibility } from "./cloud.js"
 import type { SerializedCustomToolDefinition } from "./custom-tool.js"
 import type { GitCommit } from "./git.js"
 import type { McpServer } from "./mcp.js"
 import type { ModelSourceRequest, ModelSourceResult } from "./model-source.js"
-import type { OpenAiCodexRateLimitInfo } from "./providers/openai-codex-rate-limits.js"
 import type { SkillMetadata } from "./skills.js"
 import type { SubagentSummary } from "./subagent.js"
 import type { WorktreeIncludeStatus } from "./worktree.js"
 
-/*
- * ExtensionMessage type names, grouped by domain. Narrow a handler to one
- * domain (e.g. `Extract<ExtensionMessage, { type: ExtensionWorktreeMessageType }>`
- * or a `switch` over one of these unions) instead of the whole channel.
- */
+import type {
+	TaskLifecycleWebviewMessageType,
+	TaskLifecycleExtensionMessageType,
+	ClineAskResponse,
+	EditQueuedMessagePayload,
+	UpdateTodoListPayload,
+} from "./vscode-extension-host/taskLifecycle.js"
+import type {
+	MessageEditsWebviewMessageType,
+	MessageEditsExtensionMessageType,
+} from "./vscode-extension-host/messageEdits.js"
+import type {
+	SettingsWebviewMessageType,
+	SettingsExtensionMessageType,
+	AudioType,
+} from "./vscode-extension-host/settings.js"
+import type { DebugWebviewMessageType } from "./vscode-extension-host/debug.js"
+import type {
+	CodeIndexWebviewMessageType,
+	CodeIndexExtensionMessageType,
+	IndexClearedPayload,
+	IndexingStatusPayload,
+} from "./vscode-extension-host/codeIndex.js"
+import type {
+	CustomModesWebviewMessageType,
+	CustomModesExtensionMessageType,
+} from "./vscode-extension-host/customModes.js"
+import type { WorktreesWebviewMessageType, WorktreesExtensionMessageType } from "./vscode-extension-host/worktrees.js"
+import type {
+	CommandsAndSkillsWebviewMessageType,
+	CommandsAndSkillsExtensionMessageType,
+	Command,
+} from "./vscode-extension-host/commandsAndSkills.js"
+import type { CloudAuthWebviewMessageType, CloudAuthExtensionMessageType } from "./vscode-extension-host/cloudAuth.js"
+import type {
+	EnhanceAndSearchWebviewMessageType,
+	EnhanceAndSearchExtensionMessageType,
+} from "./vscode-extension-host/enhanceAndSearch.js"
+import type {
+	ProviderProfilesWebviewMessageType,
+	ProviderProfilesExtensionMessageType,
+	CliModeProviderSettings,
+} from "./vscode-extension-host/providerProfiles.js"
+import type {
+	MarketplaceWebviewMessageType,
+	MarketplaceExtensionMessageType,
+	InstallMarketplaceItemWithParametersPayload,
+} from "./vscode-extension-host/marketplace.js"
+import type { McpWebviewMessageType, McpExtensionMessageType } from "./vscode-extension-host/mcp.js"
+import type {
+	PromptsAndModesWebviewMessageType,
+	PromptsAndModesExtensionMessageType,
+} from "./vscode-extension-host/promptsAndModes.js"
+import type {
+	FilesAndCheckpointsWebviewMessageType,
+	FilesAndCheckpointsExtensionMessageType,
+	CheckpointDiffPayload,
+	CheckpointRestorePayload,
+} from "./vscode-extension-host/filesAndCheckpoints.js"
+import type { SubagentsWebviewMessageType, SubagentsExtensionMessageType } from "./vscode-extension-host/subagents.js"
+import type {
+	PlanReviewWebviewMessageType,
+	PlanReviewExtensionMessageType,
+} from "./vscode-extension-host/planReview.js"
+import type { ExtensionState } from "./vscode-extension-host/state.js"
 
-/** Task lifecycle, the chat transcript, subagents and checkpoints. */
-export type ExtensionTaskMessageType =
-	| "state"
-	| "taskHistoryUpdated"
-	| "taskHistoryItemUpdated"
-	| "taskHistoryItemDeleted"
-	| "messageUpdated"
-	| "messageAdded"
-	| "subagentsUpdated"
-	| "subagentMessages"
-	| "memoryActivity"
-	| "currentCheckpointUpdated"
-	| "checkpointInitWarning"
-	| "commandExecutionStatus"
-	| "mcpExecutionStatus"
-	| "condenseTaskContextStarted"
-	| "condenseTaskContextResponse"
-	| "shareTaskSuccess"
-	| "showDeleteMessageDialog"
-	| "showEditMessageDialog"
-	| "interactionRequired"
-	| "taskWithAggregatedCosts"
+export * from "./vscode-extension-host/taskLifecycle.js"
+export * from "./vscode-extension-host/messageEdits.js"
+export * from "./vscode-extension-host/settings.js"
+export * from "./vscode-extension-host/debug.js"
+export * from "./vscode-extension-host/codeIndex.js"
+export * from "./vscode-extension-host/customModes.js"
+export * from "./vscode-extension-host/worktrees.js"
+export * from "./vscode-extension-host/commandsAndSkills.js"
+export * from "./vscode-extension-host/cloudAuth.js"
+export * from "./vscode-extension-host/enhanceAndSearch.js"
+export * from "./vscode-extension-host/providerProfiles.js"
+export * from "./vscode-extension-host/marketplace.js"
+export * from "./vscode-extension-host/mcp.js"
+export * from "./vscode-extension-host/promptsAndModes.js"
+export * from "./vscode-extension-host/filesAndCheckpoints.js"
+export * from "./vscode-extension-host/subagents.js"
+export * from "./vscode-extension-host/planReview.js"
+export * from "./vscode-extension-host/state.js"
+export * from "./vscode-extension-host/chat-rows.js"
+export * from "./vscode-extension-host/legacy-groups.js"
 
-/** Webview shell: actions, input box, pickers, search results and editor settings. */
-export type ExtensionUiMessageType =
-	| "action"
-	| "selectedImages"
-	| "theme"
-	| "workspaceUpdated"
-	| "invoke"
-	| "enhancedPrompt"
-	| "commitSearchResults"
-	| "fileSearchResults"
-	| "acceptInput"
-	| "vsCodeSetting"
-	| "terminalProfiles"
-	| "insertTextIntoTextarea"
-	| "dismissedUpsells"
-	| "folderSelected"
-	| "fileContent"
+/** Host to view message type names by domain; the keys mirror `messageHandlerGroups`. */
+export type ExtensionMessageTypesByDomain = {
+	taskLifecycle: TaskLifecycleExtensionMessageType
+	messageEdits: MessageEditsExtensionMessageType
+	settings: SettingsExtensionMessageType
+	codeIndex: CodeIndexExtensionMessageType
+	customModes: CustomModesExtensionMessageType
+	worktrees: WorktreesExtensionMessageType
+	commandsAndSkills: CommandsAndSkillsExtensionMessageType
+	cloudAuth: CloudAuthExtensionMessageType
+	enhanceAndSearch: EnhanceAndSearchExtensionMessageType
+	providerProfiles: ProviderProfilesExtensionMessageType
+	marketplace: MarketplaceExtensionMessageType
+	mcp: McpExtensionMessageType
+	promptsAndModes: PromptsAndModesExtensionMessageType
+	filesAndCheckpoints: FilesAndCheckpointsExtensionMessageType
+	subagents: SubagentsExtensionMessageType
+	planReview: PlanReviewExtensionMessageType
+}
 
-/** Modes, prompts, rules, slash commands, skills and custom tools. */
-export type ExtensionModesMessageType =
-	| "systemPrompt"
-	| "exportModeResult"
-	| "importModeResult"
-	| "checkRulesDirectoryResult"
-	| "deleteCustomModeCheck"
-	| "commands"
-	| "customToolsResult"
-	| "modes"
-	| "skills"
+/** View to host message type names by domain; the keys mirror `messageHandlerGroups`. */
+export type WebviewMessageTypesByDomain = {
+	taskLifecycle: TaskLifecycleWebviewMessageType
+	messageEdits: MessageEditsWebviewMessageType
+	settings: SettingsWebviewMessageType
+	debug: DebugWebviewMessageType
+	codeIndex: CodeIndexWebviewMessageType
+	customModes: CustomModesWebviewMessageType
+	worktrees: WorktreesWebviewMessageType
+	commandsAndSkills: CommandsAndSkillsWebviewMessageType
+	cloudAuth: CloudAuthWebviewMessageType
+	enhanceAndSearch: EnhanceAndSearchWebviewMessageType
+	providerProfiles: ProviderProfilesWebviewMessageType
+	marketplace: MarketplaceWebviewMessageType
+	mcp: McpWebviewMessageType
+	promptsAndModes: PromptsAndModesWebviewMessageType
+	filesAndCheckpoints: FilesAndCheckpointsWebviewMessageType
+	subagents: SubagentsWebviewMessageType
+	planReview: PlanReviewWebviewMessageType
+}
 
-/** Provider profiles, models, cloud account and organization. */
-export type ExtensionProviderMessageType =
-	| "listApiConfig"
-	| "authenticatedUser"
-	| "providerModels"
-	| "organizationSwitchResult"
-	| "openAiCodexRateLimits"
+/** Every ExtensionMessage type name: the union of the per-domain unions. */
+export type ExtensionMessageType = ExtensionMessageTypesByDomain[keyof ExtensionMessageTypesByDomain]
 
-/** MCP servers. */
-export type ExtensionMcpMessageType = "mcpServers"
-
-/** Codebase indexing. */
-export type ExtensionCodeIndexMessageType =
-	| "indexingStatusUpdate"
-	| "indexCleared"
-	| "codeIndexSettingsSaved"
-	| "codeIndexSecretStatus"
-
-/** Marketplace. */
-export type ExtensionMarketplaceMessageType = "marketplaceInstallResult" | "marketplaceRemoveResult" | "marketplaceData"
-
-/** Git worktrees and branches. */
-export type ExtensionWorktreeMessageType =
-	| "worktreeList"
-	| "worktreeResult"
-	| "worktreeCopyProgress"
-	| "branchList"
-	| "worktreeDefaults"
-	| "worktreeIncludeStatus"
-
-/** Plan review panel. */
-export type ExtensionPlanReviewMessageType = "planReviewInit" | "planReviewUpdate" | "planReviewDraftsConsumed"
-
-/** Every ExtensionMessage type name: the union of the per-domain unions above. */
-export type ExtensionMessageType =
-	| ExtensionTaskMessageType
-	| ExtensionUiMessageType
-	| ExtensionModesMessageType
-	| ExtensionProviderMessageType
-	| ExtensionMcpMessageType
-	| ExtensionCodeIndexMessageType
-	| ExtensionMarketplaceMessageType
-	| ExtensionWorktreeMessageType
-	| ExtensionPlanReviewMessageType
+/** Every WebviewMessage type name: the union of the per-domain unions. */
+export type WebviewMessageType = WebviewMessageTypesByDomain[keyof WebviewMessageTypesByDomain]
 
 /**
  * ExtensionMessage
@@ -291,423 +320,10 @@ export interface ExtensionMessage {
 	path?: string
 }
 
-export interface OpenAiCodexRateLimitsMessage {
-	type: "openAiCodexRateLimits"
-	values?: OpenAiCodexRateLimitInfo
-	error?: string
-}
-
-export type ExtensionState = Pick<
-	GlobalSettings,
-	| "currentApiConfigName"
-	| "listApiConfigMeta"
-	| "pinnedApiConfigs"
-	| "customInstructions"
-	| "dismissedUpsells"
-	| "autoApprovalEnabled"
-	| "autoApprovalMode"
-	| "alwaysAllowReadOnly"
-	| "alwaysAllowReadOnlyOutsideWorkspace"
-	| "alwaysAllowWrite"
-	| "alwaysAllowWriteOutsideWorkspace"
-	| "alwaysAllowWriteProtected"
-	| "alwaysAllowMcp"
-	| "alwaysAllowModeSwitch"
-	| "alwaysAllowSubtasks"
-	| "alwaysApprovePlan"
-	| "alwaysAllowFollowupQuestions"
-	| "alwaysAllowExecute"
-	| "followupAutoApproveTimeoutMs"
-	| "allowedCommands"
-	| "deniedCommands"
-	| "allowedMaxRequests"
-	| "allowedMaxCost"
-	| "soundEnabled"
-	| "soundVolume"
-	| "customSoundCelebration"
-	| "customSoundCelebrationOriginal"
-	| "customSoundProgressLoop"
-	| "customSoundProgressLoopOriginal"
-	| "customSoundNotification"
-	| "customSoundNotificationOriginal"
-	| "terminalOutputPreviewSize"
-	| "terminalShellIntegrationTimeout"
-	| "terminalShellIntegrationDisabled"
-	| "terminalCommandDelay"
-	| "terminalPowershellCounter"
-	| "terminalZshClearEolMark"
-	| "terminalZshOhMy"
-	| "terminalZshP10k"
-	| "terminalZdotdir"
-	| "terminalProfile"
-	| "execaShellPath"
-	| "diagnosticsEnabled"
-	| "language"
-	| "modeApiConfigs"
-	| "customModePrompts"
-	| "customSupportPrompts"
-	| "enhancementApiConfigId"
-	| "customCondensingPrompt"
-	| "codebaseIndexConfig"
-	| "codebaseIndexModels"
-	| "profileThresholds"
-	| "includeDiagnosticMessages"
-	| "maxDiagnosticMessages"
-	| "imageGenerationProvider"
-	| "openRouterImageGenerationSelectedModel"
-	| "includeTaskHistoryInEnhance"
-	| "reasoningBlockCollapsed"
-	| "enterBehavior"
-	| "includeCurrentTime"
-	| "includeCurrentCost"
-	| "maxGitStatusFiles"
-	| "parallelTasksMaxConcurrency"
-	| "subagentFollowupTimeoutSec"
-	| "requestDelaySeconds"
-	| "showWorktreesInHomeScreen"
-	| "disabledTools"
-	| "autoMemoryEnabled"
-	| "autoMemoryDirectory"
-	| "autoMemoryShareWithClaudeCode"
-	| "memoryRecallEnabled"
-	| "autoDreamEnabled"
-	| "autoDreamMinHours"
-	| "autoDreamMinSessions"
-	| "memoryWriterApiConfigId"
-	| "autoCondenseContextApiConfigId"
-	| "webToolsEnabled"
-	| "webSearchBackend"
-	| "searxngBaseUrl"
-	| "webSearchMaxResults"
-	| "webFetchMaxBytes"
-	| "maxInlineToolResultBytes"
-	| "pruneBeforeCondense"
-	| "pruneToolResultBudget"
-> & {
-	lockApiConfigAcrossModes?: boolean
-	version: string
-	clineMessages: ClineMessage[]
-	currentTaskId?: string
-	currentTaskItem?: HistoryItem
-	currentTaskTodos?: TodoItem[] // Initial todos for the current task
-	/** Live parallel background subagents (run_parallel_tasks children). */
-	subagents?: SubagentSummary[]
-	/** Live memory-system activity (recall prefetches / background writers). */
-	memoryActivity?: { recall: number; write: number }
-	apiConfiguration: ProviderSettings
-	uriScheme?: string
-	shouldShowAnnouncement: boolean
-
-	taskHistory: HistoryItem[]
-
-	writeDelayMs: number
-
-	enableCheckpoints: boolean
-	checkpointTimeout: number // Timeout for checkpoint initialization in seconds (default: 15)
-	maxOpenTabsContext: number // Maximum number of VSCode open tabs to include in context (0-500)
-	maxWorkspaceFiles: number // Maximum number of files to include in current working directory details (0-500)
-	showRooIgnoredFiles: boolean // Whether to show .rooignore'd files in listings
-	enableSubfolderRules: boolean // Whether to load rules from subdirectories
-	maxReadFileLine?: number // Maximum line limit for read_file tool (-1 for default)
-	maxImageFileSize: number // Maximum size of image files to process in MB
-	maxTotalImageSize: number // Maximum total size for all images in a single read operation in MB
-
-	experiments: Experiments // Map of experiment IDs to their enabled state
-
-	mcpEnabled: boolean
-
-	mode: string
-	customModes: ModeConfig[]
-	toolRequirements?: Record<string, boolean> // Map of tool names to their requirements (e.g. {"apply_diff": true})
-
-	cwd?: string // Current working directory
-	telemetrySetting: TelemetrySetting
-	telemetryKey?: string
-	machineId?: string
-
-	renderContext: "sidebar" | "editor"
-	settingsImportedAt?: number
-	historyPreviewCollapsed?: boolean
-
-	/**
-	 * Last persistent storage failure reported by the extension host (task
-	 * history store, provider profile persistence), formatted as
-	 * "<context>: <message>". The empty string means "no error": the
-	 * postMessage channel drops undefined values, so an explicit empty
-	 * string is the only way a state push can clear the flag in the
-	 * webview merge.
-	 */
-	storageErrorMessage?: string
-
-	cloudUserInfo: CloudUserInfo | null
-	cloudIsAuthenticated: boolean
-	cloudAuthSkipModel?: boolean // Flag indicating auth completed without model selection (user should pick 3rd-party provider)
-	cloudApiUrl?: string
-	cloudOrganizations?: CloudOrganizationMembership[]
-	sharingEnabled: boolean
-	publicSharingEnabled: boolean
-	organizationAllowList: OrganizationAllowList
-	organizationSettingsVersion?: number
-
-	autoCondenseContext: boolean
-	autoCondenseContextPercent: number
-	marketplaceItems?: MarketplaceItem[]
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	marketplaceInstalledMetadata?: { project: Record<string, any>; global: Record<string, any> }
-	profileThresholds: Record<string, number>
-	hasOpenedModeSelector: boolean
-	openRouterImageApiKey?: string
-	messageQueue?: QueuedMessage[]
-	lastShownAnnouncementId?: string
-	apiModelId?: string
-	mcpServers?: McpServer[]
-	mdmCompliant?: boolean
-	taskSyncEnabled: boolean
-	openAiCodexIsAuthenticated?: boolean
-	debug?: boolean
-
-	/**
-	 * Monotonically increasing sequence number for clineMessages state pushes.
-	 * When present, the frontend should only apply clineMessages from a state push
-	 * if its seq is greater than the last applied seq. This prevents stale state
-	 * (captured during async getStateToPostToWebview) from overwriting newer messages.
-	 */
-	clineMessagesSeq?: number
-
-	/**
-	 * Webview-accessible URIs for user-uploaded custom sound files, one per AudioType.
-	 * Missing/undefined means the built-in WAV is used. Computed at state-push time
-	 * from the corresponding `customSound*` settings + the on-disk file.
-	 */
-	customSoundUris?: Partial<Record<AudioType, string>>
-}
-
-export interface Command {
-	name: string
-	source: "global" | "project" | "built-in"
-	filePath?: string
-	description?: string
-	argumentHint?: string
-}
-
 /**
  * WebviewMessage
  * Webview | CLI -> Extension
  */
-
-export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse" | "objectResponse"
-
-export type AudioType = "notification" | "celebration" | "progress_loop"
-
-export interface UpdateTodoListPayload {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	todos: any[]
-}
-
-/*
- * WebviewMessage type names, grouped by domain, like the ExtensionMessage
- * ones above.
- */
-
-/** Task lifecycle, the chat transcript, message queue, subagents and checkpoints. */
-export type WebviewTaskMessageType =
-	| "resyncClineMessages"
-	| "updateTodoList"
-	| "deleteMultipleTasksWithIds"
-	| "newTask"
-	| "askResponse"
-	| "terminalOperation"
-	| "clearTask"
-	| "exportCurrentTask"
-	| "shareCurrentTask"
-	| "showTaskWithId"
-	| "deleteTaskWithId"
-	| "exportTaskWithId"
-	| "cancelTask"
-	| "subscribeSubagentMessages"
-	| "unsubscribeSubagentMessages"
-	| "cancelSubagent"
-	| "queueSubagentMessage"
-	| "cancelAutoApproval"
-	| "deleteMessage"
-	| "deleteMessageConfirm"
-	| "submitEditedMessage"
-	| "editMessageConfirm"
-	| "taskSyncEnabled"
-	| "checkpointDiff"
-	| "checkpointRestore"
-	| "condenseTaskContextRequest"
-	| "queueMessage"
-	| "removeQueuedMessage"
-	| "editQueuedMessage"
-	| "getTaskWithAggregatedCosts"
-
-/** Webview shell: launch, images, files, search, navigation, sounds and diagnostics. */
-export type WebviewUiMessageType =
-	| "webviewDidLaunch"
-	| "didShowAnnouncement"
-	| "selectImages"
-	| "openImage"
-	| "saveImage"
-	| "openFile"
-	| "readFileContent"
-	| "openMention"
-	| "openKeyboardShortcuts"
-	| "openExtensionLogs"
-	| "enhancePrompt"
-	| "draggedImages"
-	| "searchCommits"
-	| "searchFiles"
-	| "hasOpenedModeSelector"
-	| "focusPanelRequest"
-	| "openExternal"
-	| "switchTab"
-	| "showMdmAuthRequiredNotification"
-	| "dismissUpsell"
-	| "getDismissedUpsells"
-	| "openMarkdownPreview"
-	| "openDebugApiHistory"
-	| "openDebugUiHistory"
-	| "downloadErrorDiagnostics"
-	| "selectCustomSound"
-	| "resetCustomSound"
-
-/** Settings, editor settings and telemetry. */
-export type WebviewSettingsMessageType =
-	| "customInstructions"
-	| "importSettings"
-	| "exportSettings"
-	| "resetState"
-	| "updateVSCodeSetting"
-	| "getVSCodeSetting"
-	| "requestTerminalProfiles"
-	| "openTerminalProfilePicker"
-	| "enhancementApiConfigId"
-	| "autoApprovalEnabled"
-	| "telemetrySetting"
-	| "updateSettings"
-	| "debugSetting"
-
-/** Provider profiles, models, cloud account and organization. */
-export type WebviewProviderMessageType =
-	| "upsertApiConfiguration"
-	| "deleteApiConfiguration"
-	| "loadApiConfiguration"
-	| "loadApiConfigurationById"
-	| "renameApiConfiguration"
-	| "requestProviderModels"
-	| "toggleApiConfigPin"
-	| "lockApiConfigAcrossModes"
-	| "assignCurrentApiConfigToModes"
-	| "cliModeProviderSettings"
-	| "rooCloudSignIn"
-	| "rooCloudSignOut"
-	| "rooCloudManualUrl"
-	| "openAiCodexSignIn"
-	| "openAiCodexSignOut"
-	| "switchOrganization"
-	| "requestOpenAiCodexRateLimits"
-
-/** Modes, prompts, rules, slash commands, skills and custom tools. */
-export type WebviewModesMessageType =
-	| "mode"
-	| "updatePrompt"
-	| "getSystemPrompt"
-	| "copySystemPrompt"
-	| "updateCustomMode"
-	| "deleteCustomMode"
-	| "openCustomModesSettings"
-	| "exportMode"
-	| "importMode"
-	| "checkRulesDirectory"
-	| "requestCommands"
-	| "openCommandFile"
-	| "deleteCommand"
-	| "createCommand"
-	| "refreshCustomTools"
-	| "requestModes"
-	| "requestSkills"
-	| "createSkill"
-	| "deleteSkill"
-	| "updateSkillModes"
-	| "openSkillFile"
-
-/** MCP servers. */
-export type WebviewMcpMessageType =
-	| "openMcpSettings"
-	| "openProjectMcpSettings"
-	| "restartMcpServer"
-	| "refreshAllMcpServers"
-	| "toggleToolAlwaysAllow"
-	| "toggleToolEnabledForPrompt"
-	| "toggleMcpServer"
-	| "updateMcpTimeout"
-	| "deleteMcpServer"
-
-/** Codebase indexing. */
-export type WebviewCodeIndexMessageType =
-	| "requestIndexingStatus"
-	| "startIndexing"
-	| "stopIndexing"
-	| "clearIndexData"
-	| "toggleWorkspaceIndexing"
-	| "setAutoEnableDefault"
-	| "saveCodeIndexSettingsAtomic"
-	| "requestCodeIndexSecretStatus"
-
-/** Marketplace. */
-export type WebviewMarketplaceMessageType =
-	| "filterMarketplaceItems"
-	| "installMarketplaceItem"
-	| "removeInstalledMarketplaceItem"
-	| "fetchMarketplaceData"
-
-/** Git worktrees and branches. */
-export type WebviewWorktreeMessageType =
-	| "listWorktrees"
-	| "createWorktree"
-	| "deleteWorktree"
-	| "switchWorktree"
-	| "getAvailableBranches"
-	| "getWorktreeDefaults"
-	| "getWorktreeIncludeStatus"
-	| "createWorktreeInclude"
-	| "browseForWorktreePath"
-
-/** Plan review panel. */
-export type WebviewPlanReviewMessageType =
-	| "openPlanReview"
-	| "planReviewReady"
-	| "planReviewSubmit"
-	| "planReviewClose"
-	| "planReviewDraftsChanged"
-
-/** Every WebviewMessage type name: the union of the per-domain unions above. */
-export type WebviewMessageType =
-	| WebviewTaskMessageType
-	| WebviewUiMessageType
-	| WebviewSettingsMessageType
-	| WebviewProviderMessageType
-	| WebviewModesMessageType
-	| WebviewMcpMessageType
-	| WebviewCodeIndexMessageType
-	| WebviewMarketplaceMessageType
-	| WebviewWorktreeMessageType
-	| WebviewPlanReviewMessageType
-
-/**
- * Provider settings the CLI resolved from ~/.roo/cli-settings.json, sent once
- * at startup. While set, a mode switch applies `modes[mode] ?? base` instead of
- * the provider profile bound to the mode, and nothing is written to the
- * profile store.
- */
-export interface CliModeProviderSettings {
-	base: ProviderSettings
-	modes: Record<string, ProviderSettings>
-}
-
-export type EditQueuedMessagePayload = Pick<QueuedMessage, "id" | "text" | "images">
-
 export interface WebviewMessage {
 	type: WebviewMessageType
 	/**
@@ -832,46 +448,6 @@ export interface WebviewMessage {
 	planReview?: { filePath?: string; markdown?: string; baselineMarkdown?: string; language?: string }
 }
 
-export interface RequestOpenAiCodexRateLimitsMessage {
-	type: "requestOpenAiCodexRateLimits"
-}
-
-export const checkoutDiffPayloadSchema = z.object({
-	ts: z.number().optional(),
-	previousCommitHash: z.string().optional(),
-	commitHash: z.string(),
-	mode: z.enum(["full", "checkpoint", "from-init", "to-current"]),
-})
-
-export type CheckpointDiffPayload = z.infer<typeof checkoutDiffPayloadSchema>
-
-export const checkoutRestorePayloadSchema = z.object({
-	ts: z.number(),
-	commitHash: z.string(),
-	mode: z.enum(["preview", "restore"]),
-})
-
-export type CheckpointRestorePayload = z.infer<typeof checkoutRestorePayloadSchema>
-
-export interface IndexingStatusPayload {
-	state: "Standby" | "Indexing" | "Indexed" | "Error" | "Stopping"
-	message: string
-}
-
-export interface IndexClearedPayload {
-	success: boolean
-	error?: string
-}
-
-export const installMarketplaceItemWithParametersPayloadSchema = z.object({
-	item: marketplaceItemSchema,
-	parameters: z.record(z.string(), z.any()),
-})
-
-export type InstallMarketplaceItemWithParametersPayload = z.infer<
-	typeof installMarketplaceItemWithParametersPayloadSchema
->
-
 export type WebViewMessagePayload =
 	| CheckpointDiffPayload
 	| CheckpointRestorePayload
@@ -880,143 +456,3 @@ export type WebViewMessagePayload =
 	| InstallMarketplaceItemWithParametersPayload
 	| UpdateTodoListPayload
 	| EditQueuedMessagePayload
-
-export interface IndexingStatus {
-	systemStatus: string
-	message?: string
-	processedItems: number
-	totalItems: number
-	currentItemUnit?: string
-	workspacePath?: string
-	workspaceEnabled?: boolean
-	autoEnableDefault?: boolean
-}
-
-export interface IndexingStatusUpdateMessage {
-	type: "indexingStatusUpdate"
-	values: IndexingStatus
-}
-
-export interface LanguageModelChatSelector {
-	vendor?: string
-	family?: string
-	version?: string
-	id?: string
-}
-
-export interface ClineSayTool {
-	tool:
-		| "editedExistingFile"
-		| "appliedDiff"
-		| "newFileCreated"
-		| "codebaseSearch"
-		| "readFile"
-		| "readArtifact"
-		// Emitted by builds before `read_artifact` existed; kept so old task
-		// histories still render.
-		| "readCommandOutput"
-		| "listFilesTopLevel"
-		| "listFilesRecursive"
-		| "searchFiles"
-		| "searchTaskHistory"
-		| "switchMode"
-		| "newTask"
-		| "finishTask"
-		| "reviewPlan"
-		| "generateImage"
-		| "imageGenerated"
-		| "runSlashCommand"
-		| "updateTodoList"
-		| "skill"
-		| "webSearch"
-		| "webFetch"
-	path?: string
-	// For readArtifact (and the legacy readCommandOutput)
-	readStart?: number
-	readEnd?: number
-	totalBytes?: number
-	searchPattern?: string
-	matchCount?: number
-	diff?: string
-	content?: string
-	// Original file content before first edit (for merged diff display in FileChangesPanel)
-	originalContent?: string
-	// Unified diff statistics computed by the extension
-	diffStats?: { added: number; removed: number }
-	regex?: string
-	filePattern?: string
-	mode?: string
-	reason?: string
-	isOutsideWorkspace?: boolean
-	isProtected?: boolean
-	additionalFileCount?: number // Number of additional files in the same read_file request
-	lineNumber?: number
-	startLine?: number // Starting line for read_file operations (for navigation on click)
-	query?: string
-	batchFiles?: Array<{
-		path: string
-		lineSnippet: string
-		isOutsideWorkspace?: boolean
-		key: string
-		content?: string
-	}>
-	batchDiffs?: Array<{
-		path: string
-		changeCount: number
-		key: string
-		content: string
-		// Per-file unified diff statistics computed by the extension
-		diffStats?: { added: number; removed: number }
-		diffs?: Array<{
-			content: string
-			startLine?: number
-		}>
-	}>
-	batchDirs?: Array<{
-		path: string
-		recursive: boolean
-		isOutsideWorkspace?: boolean
-		key: string
-	}>
-	question?: string
-	imageData?: string // Base64 encoded image data for generated images
-	// Properties for runSlashCommand tool
-	command?: string
-	args?: string
-	source?: string
-	description?: string
-	// Properties for skill tool
-	skill?: string
-	// Properties for the web tools: the queries web_search ran, and the URL
-	// web_fetch read (after redirects).
-	queries?: string[]
-	fetchedUrl?: string
-	// Native tool-call id, stamped by tools whose handlePartial placeholder and
-	// complete payload diverge in text (read_file, search_files). Lets the
-	// finalized-duplicate dedup recognise the placeholder and the complete card
-	// as the same invocation without a brittle text comparison.
-	toolCallId?: string
-}
-
-export interface ClineAskUseMcpServer {
-	serverName: string
-	type: "use_mcp_tool" | "access_mcp_resource"
-	toolName?: string
-	arguments?: string
-	uri?: string
-	response?: string
-}
-
-export interface ClineApiReqInfo {
-	request?: string
-	tokensIn?: number
-	tokensOut?: number
-	cacheWrites?: number
-	cacheReads?: number
-	cost?: number
-	cancelReason?: ClineApiReqCancelReason
-	streamingFailedMessage?: string
-	apiProtocol?: "anthropic" | "openai"
-}
-
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "max_turns_reached"

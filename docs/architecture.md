@@ -95,11 +95,13 @@ setting, add its default to that table. Code that reads a possibly unset value w
 ## From the webview to a handler
 
 1. A component calls `vscode.postMessage({ type: ..., ... })` (`webview-ui/src/utils/vscode.ts`) with a
-   `WebviewMessage` (`packages/types/src/vscode-extension-host.ts`).
+   `WebviewMessage` (`packages/types/src/vscode-extension-host.ts`, which assembles the message type names from one
+   file per domain in `packages/types/src/vscode-extension-host/`).
 2. `ClineProvider.setWebviewMessageListener` receives it and calls `webviewMessageHandler`
    (`src/core/webview/webviewMessageHandler.ts`), which looks the type up in the routing table of
    `src/core/webview/messageHandlers/` (one module per domain, assembled in `index.ts`). Find your handler by the
-   message type string; a new message gets its handler in the module of its domain.
+   message type string; a new message gets its name in the domain's types file and its handler in the module of the
+   same name (each module is typed to its domain, so a handler in the wrong module does not compile).
    `webviewMessageHandler.routing.spec.ts` snapshots the side effects of every routed type.
 3. The answer goes back as an `ExtensionMessage` through `ClineProvider.postMessageToWebview` or one of the
    `postStateToWebview*` methods, and `ExtensionStateContext.tsx` merges it into React state (`case "state"`,

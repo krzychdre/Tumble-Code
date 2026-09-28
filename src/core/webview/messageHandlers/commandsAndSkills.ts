@@ -19,7 +19,7 @@ import {
 	handleOpenSkillFile,
 } from "../skillsMessageHandler"
 import { type HandlerContext, serializeError, logAndToast } from "./context"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
 const getCurrentMode = async (ctx: HandlerContext): Promise<string> => {
 	const { provider } = ctx
@@ -91,7 +91,7 @@ const getDiscoveredCommands = async (ctx: HandlerContext): Promise<SlashCommand[
 	return commandList
 }
 
-export const commandsAndSkillsHandlers: MessageHandlerMap = {
+export const commandsAndSkillsHandlers: DomainHandlerMap<"commandsAndSkills"> = {
 	refreshCustomTools: async (ctx) => {
 		const { provider, getCurrentCwd } = ctx
 		try {
