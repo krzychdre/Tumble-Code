@@ -172,6 +172,8 @@ function AppInner({ createExtensionHost, ...extensionHostOptions }: TUIAppProps)
 		resetTranscript,
 		permissionMode,
 		onPermissionModeChange: setPermissionMode,
+		workspacePath,
+		model: activeModel,
 	})
 
 	// Initialize countdown hook for followup auto-accept

@@ -116,6 +116,14 @@ In interactive mode (see [Terminal UI](#terminal-ui) for the full visual grammar
 `tumble --resume` starts with a picker of this workspace's earlier tasks; inside a session `/resume` (or typing `#`)
 opens the same picker. `-c` resumes the most recent task directly, `--session-id <id>` a given one.
 
+### Copying and exporting
+
+`/copy` puts the last answer on the clipboard and `/copy code` only its last fenced code block. The CLI sends the text
+with the OSC 52 terminal escape, which most modern terminals accept (under tmux set `set -g set-clipboard on`); it
+cannot tell whether the terminal took it, so if the clipboard stays empty use `/export`. `/export` saves the
+conversation as Markdown, by default to `tumble-export-YYYY-MM-DD-HHMMSS.md` in the workspace, or to the file you name
+(relative to the workspace); it never overwrites a file and prints the path it wrote.
+
 ### Approval-Required Mode (`--require-approval`)
 
 If you want manual approval prompts, enable approval-required mode:
