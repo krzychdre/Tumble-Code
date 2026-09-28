@@ -789,7 +789,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					// The block already left this turn (abort, reset): the preview
 					// has nowhere to go and the artifact would be an orphan.
 					const orphan = path.join(artifactDirForKind(context.store.getTaskDir(), "tool"), spilled.artifactId)
-					void fs.unlink(orphan).catch(() => {})
+					void fs
+						.unlink(orphan)
+						.catch((error) =>
+							logger.debug(`[Task] orphaned spill artifact not removed: ${String(error)}`, { orphan }),
+						)
 					return
 				}
 

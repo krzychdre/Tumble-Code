@@ -40,10 +40,7 @@ async function readHeadAndMtime(
 	maxLines: number,
 	signal?: AbortSignal,
 ): Promise<{ content: string; mtimeMs: number }> {
-	const [data, stat] = await Promise.all([
-		fs.readFile(filePath, { encoding: "utf-8", signal: signal as any }),
-		fs.stat(filePath),
-	])
+	const [data, stat] = await Promise.all([fs.readFile(filePath, { encoding: "utf-8", signal }), fs.stat(filePath)])
 	const lines = data.split("\n", maxLines)
 	const content = lines.length > maxLines ? lines.slice(0, maxLines).join("\n") : data
 	return { content, mtimeMs: stat.mtimeMs }

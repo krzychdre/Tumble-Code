@@ -36,7 +36,7 @@ export function buildThinkingBlock(reasoning: string, signature: string): Conten
  * Builds a generic reasoning block for non-Anthropic providers.
  * Stores reasoning content with optional summary.
  */
-export function buildReasoningBlock(reasoning: string, summary: any[]): ContentBlock {
+export function buildReasoningBlock(reasoning: string, summary: unknown[]): ContentBlock {
 	return {
 		type: "reasoning",
 		text: reasoning,
@@ -51,7 +51,7 @@ export function buildReasoningBlock(reasoning: string, summary: any[]): ContentB
 export function buildEncryptedReasoningBlock(encryptedContent: string, id?: string): ContentBlock {
 	return {
 		type: "reasoning",
-		summary: [] as any[],
+		summary: [],
 		encrypted_content: encryptedContent,
 		...(id ? { id } : {}),
 	}

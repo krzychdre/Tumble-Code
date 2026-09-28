@@ -6,6 +6,7 @@ import { type ClineSayTool } from "@roo-code/types"
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { fileExistsAtPath } from "../../utils/fs"
@@ -358,7 +359,7 @@ export class ApplyPatchTool extends BaseTool<"apply_patch"> {
 			toolCallId: block.id,
 		}
 
-		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})
+		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

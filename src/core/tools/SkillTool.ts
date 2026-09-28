@@ -1,4 +1,5 @@
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { BaseTool, ToolCallbacks } from "./BaseTool"
 import type { ToolUse } from "../../shared/tools"
@@ -91,7 +92,7 @@ export class SkillTool extends BaseTool<"skill"> {
 			toolCallId: block.id,
 		})
 
-		await task.ask("tool", partialMessage, block.partial).catch(() => {})
+		await task.ask("tool", partialMessage, block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

@@ -19,6 +19,15 @@ type GlobalStateKey = keyof GlobalState
  * default folder and is kept). Not a deletion candidate: it re-applies the
  * defaults after `resetAllState()` and repairs a bad folder on every start.
  */
+/**
+ * `stateCache[key] = value` with `key` a union of keys does not type-check
+ * (TypeScript wants a value assignable to every key's type); a generic key
+ * ties the value to its own key.
+ */
+function setCachedValue<K extends GlobalStateKey>(cache: GlobalState, key: K, value: GlobalState[K]): void {
+	cache[key] = value
+}
+
 export const autoMemoryDefaultsMigration: ContextProxyMigration = {
 	id: "auto-memory-defaults",
 	introduced: "2026-07-13",
@@ -46,8 +55,8 @@ export const autoMemoryDefaultsMigration: ContextProxyMigration = {
 			if (keys.length === 0) return
 			for (const key of keys) {
 				const value = updates[key]
-				stateCache[key] = value as any
-				await globalState.update(key, value as any)
+				setCachedValue(stateCache, key, value)
+				await globalState.update(key, value)
 			}
 			logger.info(`[memory] migrateAutoMemoryDefaults applied ${keys.length} default(s)`)
 		} catch (error) {

@@ -16,6 +16,7 @@ import type { ReadFileParams, ReadFileMode, ReadFileToolParams, FileEntry, LineR
 import { isLegacyReadFileParams, type ClineSayTool } from "@roo-code/types"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { RecordSource } from "../context-tracking/FileContextTrackerTypes"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
@@ -612,9 +613,9 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			} else {
 				if (statusMessage) {
 					const textBlock = { type: "text" as const, text: finalResult }
-					pushToolResult([...result, textBlock] as any)
+					pushToolResult([...result, textBlock])
 				} else {
-					pushToolResult(result as any)
+					pushToolResult(result)
 				}
 			}
 		} else {
@@ -655,7 +656,7 @@ export class ReadFileTool extends BaseTool<"read_file"> {
 			...sharedMessageProps,
 			content: undefined,
 		} satisfies ClineSayTool)
-		await task.ask("tool", partialMessage, block.partial).catch(() => {})
+		await task.ask("tool", partialMessage, block.partial).catch(ignorePartialAskRejection)
 	}
 
 	/**

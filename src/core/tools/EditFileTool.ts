@@ -6,6 +6,7 @@ import { type ClineSayTool } from "@roo-code/types"
 import { getReadablePath } from "../../utils/path"
 import { isPathOutsideWorkspace } from "../../utils/pathUtils"
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import { fileExistsAtPath } from "../../utils/fs"
 import type { ToolUse } from "../../shared/tools"
@@ -138,7 +139,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			}
 
 			// Finalize the existing partial tool ask row so the UI doesn't get stuck in a spinner state.
-			await task.ask("tool", JSON.stringify(sharedMessageProps), false).catch(() => {})
+			await task.ask("tool", JSON.stringify(sharedMessageProps), false).catch(ignorePartialAskRejection)
 		}
 
 		const recordFailureForPathAndMaybeEscalate = async (relPath: string, formattedError: string): Promise<void> => {
@@ -411,7 +412,7 @@ export class EditFileTool extends BaseTool<"edit_file"> {
 			toolCallId: block.id,
 		}
 
-		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})
+		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

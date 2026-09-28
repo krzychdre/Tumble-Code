@@ -157,8 +157,8 @@ export class TaskMessageLog {
 			getResponseId?: () => string | undefined
 			getEncryptedContent?: () => { encrypted_content: string; id?: string } | undefined
 			getThoughtSignature?: () => string | undefined
-			getSummary?: () => any[] | undefined
-			getReasoningDetails?: () => any[] | undefined
+			getSummary?: () => unknown[] | undefined
+			getReasoningDetails?: () => ApiMessage["reasoning_details"]
 		}
 
 		const responseId = handler.getResponseId?.()
@@ -178,8 +178,11 @@ export class TaskMessageLog {
 		)
 		const isAnthropicProtocol = apiProtocol === "anthropic"
 
-		// Start from the original assistant message
-		const messageWithTs: any = {
+		// Start from the original assistant message. `content` is widened to
+		// MessageContent while the reasoning blocks are inserted: stored
+		// reasoning/thought-signature blocks are not in Anthropic's
+		// ContentBlockParam union, hence the cast on return.
+		const messageWithTs: Omit<ApiMessage, "content"> & { content: MessageContent } = {
 			...message,
 			...(responseId ? { id: responseId } : {}),
 			ts: Date.now(),
@@ -202,10 +205,7 @@ export class TaskMessageLog {
 			content = insertBlockBeforeContent(buildThinkingBlock(reasoning, thoughtSignature), content)
 		} else if (reasoning && !reasoningDetails) {
 			// Other providers (non-Anthropic): Store as generic reasoning block.
-			content = insertBlockBeforeContent(
-				buildReasoningBlock(reasoning, reasoningSummary ?? ([] as any[])),
-				content,
-			)
+			content = insertBlockBeforeContent(buildReasoningBlock(reasoning, reasoningSummary ?? []), content)
 		} else if (reasoningData?.encrypted_content) {
 			// OpenAI Native encrypted reasoning
 			content = insertBlockBeforeContent(

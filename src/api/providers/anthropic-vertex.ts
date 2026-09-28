@@ -38,7 +38,9 @@ const VERTEX_AUTH_SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 class DeferredErrorGoogleAuth extends GoogleAuth {
 	override getClient(): ReturnType<GoogleAuth["getClient"]> {
 		const client = super.getClient()
-		client.catch(() => {})
+		client.catch(() => {
+			// Handled by the request that awaits `client` (see above).
+		})
 		return client
 	}
 }

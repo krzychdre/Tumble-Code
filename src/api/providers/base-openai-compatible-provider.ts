@@ -15,6 +15,12 @@ import { handleProviderError } from "./utils/error-handler"
 import { createRequestAbortController } from "./utils/request-abort"
 import { openAiCompletionUsage, openAiUsageChunk } from "./utils/completion-usage"
 
+/** Binary reasoning switch some OpenAI-compatible APIs (e.g. Z.ai) accept next to the standard params. */
+type ThinkingParam = { thinking?: { type: "enabled" } }
+
+/** MiniMax reports some errors in a `base_resp` field of an HTTP 200 response. */
+type MiniMaxBaseResp = { base_resp?: { status_code?: number; status_msg?: string } }
+
 type BaseOpenAiCompatibleProviderOptions<ModelName extends string> = ApiHandlerOptions & {
 	providerName: string
 	baseURL: string
@@ -107,7 +113,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 		const temperature = this.options.modelTemperature ?? info.defaultTemperature ?? this.defaultTemperature
 
-		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
+		const params: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming & ThinkingParam = {
 			model,
 			max_tokens,
 			temperature,
@@ -121,7 +127,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 
 		// Add thinking parameter if reasoning is enabled and model supports it
 		if (this.options.enableReasoningEffort && info.supportsReasoningBinary) {
-			;(params as any).thinking = { type: "enabled" }
+			params.thinking = { type: "enabled" }
 		}
 
 		// A fresh controller for this request: the task's signal (the Stop button) or
@@ -185,14 +191,14 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 	async completePromptWithUsage(prompt: string): Promise<CompletionResult> {
 		const { id: modelId, info: modelInfo } = this.getModel()
 
-		const params: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+		const params: OpenAI.Chat.Completions.ChatCompletionCreateParams & ThinkingParam = {
 			model: modelId,
 			messages: [{ role: "user", content: prompt }],
 		}
 
 		// Add thinking parameter if reasoning is enabled and model supports it
 		if (this.options.enableReasoningEffort && modelInfo.supportsReasoningBinary) {
-			;(params as any).thinking = { type: "enabled" }
+			params.thinking = { type: "enabled" }
 		}
 
 		this.abortController = new AbortController()
@@ -202,7 +208,7 @@ export abstract class BaseOpenAiCompatibleProvider<ModelName extends string>
 			})
 
 			// Check for provider-specific error responses (e.g., MiniMax base_resp)
-			const responseAny = response as any
+			const responseAny = response as typeof response & MiniMaxBaseResp
 			if (responseAny.base_resp?.status_code && responseAny.base_resp.status_code !== 0) {
 				throw new Error(
 					`${this.providerName} API Error (${responseAny.base_resp.status_code}): ${responseAny.base_resp.status_msg || "Unknown error"}`,

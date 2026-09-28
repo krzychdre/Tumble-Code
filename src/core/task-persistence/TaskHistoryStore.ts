@@ -113,6 +113,11 @@ interface SharedStoreEntry {
  * focused unit tests).
  */
 const sharedStores = new Map<string, SharedStoreEntry>()
+/** Watchers are an optimisation: the periodic sweep still catches changes a failed watcher misses. */
+function logWatcherFailure(error: unknown): void {
+	logger.debug(`[TaskHistoryStore] task directory watcher not armed: ${String(error)}`)
+}
+
 function fingerprintHistoryItem(item: HistoryItem): string {
 	const text = JSON.stringify(item)
 	let hash = 2166136261
@@ -364,7 +369,10 @@ export class TaskHistoryStore {
 		let entry = sharedStores.get(key)
 		if (!entry) {
 			const store = new TaskHistoryStore(storagePath)
-			store.initialized.catch(() => {})
+			store.initialized.catch(() => {
+				// Only keeps an init failure from surfacing as an unhandled
+				// rejection; `ready` below reports it to the acquirer.
+			})
 			const newEntry: SharedStoreEntry = {
 				store,
 				refCount: 0,
@@ -868,7 +876,7 @@ export class TaskHistoryStore {
 			this.liveTaskIds.set(taskId, (this.liveTaskIds.get(taskId) ?? 0) + 1)
 			// Arm the watcher right away: a task switching to live must not
 			// wait for the next sweep (up to 5 min) to get watcher coverage.
-			this.ensureTaskDirWatcher(taskId).catch(() => {})
+			this.ensureTaskDirWatcher(taskId).catch(logWatcherFailure)
 		} else {
 			const count = this.liveTaskIds.get(taskId)
 			if (count === undefined) {
@@ -1274,7 +1282,7 @@ export class TaskHistoryStore {
 						// history_item.json are detected. A removed subdir is
 						// handled by the per-task watcher's own close path
 						// below (and by reconcile's cache-prune).
-						this.ensureTaskDirWatcher(taskId).catch(() => {})
+						this.ensureTaskDirWatcher(taskId).catch(logWatcherFailure)
 						// Schedule a targeted refresh for this ID (the dir
 						// add/rename may have brought a new file with it).
 						this.scheduleTargetedRefresh(taskId)
@@ -1290,7 +1298,7 @@ export class TaskHistoryStore {
 				}
 
 				// Arm watchers for task directories that already exist.
-				this.refreshTaskDirWatchers().catch(() => {})
+				this.refreshTaskDirWatchers().catch(logWatcherFailure)
 			})
 			.catch((err) => {
 				console.error("[TaskHistoryStore] Failed to get tasks dir for watcher:", err)
@@ -1340,7 +1348,9 @@ export class TaskHistoryStore {
 				}
 			}),
 		)
-			.catch(() => {})
+			.catch(() => {
+				// Each targeted refresh already logs its own failure above.
+			})
 			.then(() => {})
 	}
 
@@ -1626,7 +1636,7 @@ export class TaskHistoryStore {
 				// refreshTask over stale records) don't arm watchers for
 				// tasks that are neither live nor recent.
 				if (this.shouldWatchTaskDir(taskId)) {
-					this.ensureTaskDirWatcher(taskId).catch(() => {})
+					this.ensureTaskDirWatcher(taskId).catch(logWatcherFailure)
 				}
 				this.scheduleIndexWrite()
 				return result

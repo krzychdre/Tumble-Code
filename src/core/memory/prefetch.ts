@@ -96,7 +96,7 @@ export function startRelevantMemoryPrefetch(
 	}
 	if (lastUserIndex === -1 || !input || isWhitespaceOnly(input)) return undefined
 
-	const surfaced = collectSurfacedMemories(messages as any)
+	const surfaced = collectSurfacedMemories(messages)
 	if (surfaced.totalBytes >= MAX_SESSION_BYTES) return undefined
 
 	// Chain abort to the parent (task) controller so Escape cancels immediately.

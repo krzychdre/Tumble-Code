@@ -141,6 +141,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 			modelId: model.id,
 			info: model.info,
 			signal: metadata?.signal,
+			// The request body is built as a plain record (it carries fields the SDK's
+			// overloads do not know), so the SDK call is untyped on purpose.
 			openSdkStream: (body, signal) =>
 				(this.client as any).responses.create(body, { signal, headers: requestHeaders }),
 			fallbackRequest: async () => ({
@@ -366,7 +368,8 @@ export class OpenAiNativeHandler extends BaseProvider implements SingleCompletio
 				requestBody.prompt_cache_retention = promptCacheRetention
 			}
 
-			// Make the non-streaming request
+			// Make the non-streaming request. Untyped on purpose: the body is a plain
+			// record and the response is read defensively below.
 			const response = await (this.client as any).responses.create(requestBody, {
 				signal: abortController.signal,
 			})

@@ -2,6 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import pWaitFor from "p-wait-for"
 import { serializeError } from "serialize-error"
 import {
+	type ModelInfo,
 	type ProviderSettings,
 	type TokenUsage,
 	type ToolName,
@@ -31,7 +32,7 @@ import { getEnvironmentDetails } from "../environment/getEnvironmentDetails"
 import { type TaskMessageLog } from "./TaskMessageLog"
 import { type TaskAskSay } from "./TaskAskSay"
 import { type TaskStreamProcessor } from "./TaskStreamProcessor"
-import { type UpdateApiReqMsgFn } from "./StreamProcessorTypes"
+import { type AbortStreamFn, type UpdateApiReqMsgFn } from "./StreamProcessorTypes"
 import { type TaskContextManager } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { findLastIndex } from "@roo-code/core/browser"
@@ -47,7 +48,9 @@ import { AutoApprovalHandler } from "../auto-approval"
 import { presentAssistantMessage } from "../assistant-message"
 import { type AssistantMessageContent } from "../assistant-message"
 import { type ApiMessage } from "../task-persistence"
-import { ApiRequestBuilder } from "./ApiRequestBuilder"
+import { ApiRequestBuilder, type ToolsArrayResult } from "./ApiRequestBuilder"
+import { type DiffViewProvider } from "../../integrations/editor/DiffViewProvider"
+import { type ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import { RetryHandler, isRateLimitError, setLastGlobalApiRequestTime } from "./RetryHandler"
 import { type MemoryCoordinator } from "../memory/memoryTaskIntegration"
 import { getApiRequestTimeout } from "../../api/providers/utils/timeout-config"
@@ -113,8 +116,8 @@ export interface TaskApiLoopAccess {
 	rooIgnoreController?: RooIgnoreController
 
 	// Diff and tools
-	diffViewProvider: any // DiffViewProvider
-	toolRepetitionDetector: any // ToolRepetitionDetector
+	diffViewProvider: DiffViewProvider
+	toolRepetitionDetector: ToolRepetitionDetector
 	autoApprovalHandler: AutoApprovalHandler
 
 	// Provider reference
@@ -128,7 +131,7 @@ export interface TaskApiLoopAccess {
 	settlePendingToolResultSpills(): Promise<void>
 	didRejectTool: boolean
 	didAlreadyUseTool: boolean
-	cachedStreamingModel?: { id: string; info: any }
+	cachedStreamingModel?: { id: string; info: ModelInfo }
 
 	// Delegated modules
 	history: TaskMessageLog
@@ -712,10 +715,10 @@ export class TaskApiLoop {
 	 */
 	private async processStream(
 		stream: ApiStream,
-		abortStream: any,
+		abortStream: AbortStreamFn,
 		updateApiReqMsg: UpdateApiReqMsgFn,
 		lastApiReqIndex: number,
-		streamModelInfo: any,
+		streamModelInfo: ModelInfo,
 		currentItem: StackItem,
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 		stack: StackItem[],
@@ -815,9 +818,9 @@ export class TaskApiLoop {
 	 */
 	private async handleBackgroundUsageDrain(
 		lastApiReqIndex: number,
-		streamModelInfo: any,
-		iterator: AsyncGenerator<any>,
-		item: IteratorResult<any>,
+		streamModelInfo: ModelInfo,
+		iterator: AsyncGenerator<ApiStreamChunk>,
+		item: IteratorResult<ApiStreamChunk>,
 		// The background drain only updates the api_req message with the final
 		// token/cost figures — it must be handed `updateApiReqMsg`, NOT `abortStream`.
 		// Passing `abortStream` here caused `captureUsageData` to abort the stream
@@ -856,7 +859,7 @@ export class TaskApiLoop {
 		currentItem: StackItem,
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 		stack: StackItem[],
-		abortStream: any,
+		abortStream: AbortStreamFn,
 	): Promise<"continue" | "return_true" | "return_false"> {
 		// Finalize the stream
 		await this.access.streamProcessor.finalizeStream()
@@ -1172,7 +1175,7 @@ export class TaskApiLoop {
 	 */
 	private async handleStreamError(
 		error: any,
-		abortStream: any,
+		abortStream: AbortStreamFn,
 		currentItem: StackItem,
 		currentUserContent: Anthropic.Messages.ContentBlockParam[],
 		stack: StackItem[],
@@ -1536,8 +1539,8 @@ export class TaskApiLoop {
 		state: ProviderState | undefined,
 		apiConfiguration: ProviderSettings | undefined,
 		mode: string | undefined,
-		modelInfo: any,
-	): Promise<{ allTools: any[]; allowedFunctionNames: string[] | undefined }> {
+		modelInfo: ModelInfo,
+	): Promise<ToolsArrayResult> {
 		return this.apiRequestBuilder.buildToolsArray(state, apiConfiguration, mode, modelInfo)
 	}
 }

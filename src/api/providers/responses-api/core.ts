@@ -320,7 +320,10 @@ export class ResponsesApiCore {
 			try {
 				const stream = await params.openSdkStream(params.body, abortController.signal)
 
-				if (typeof (stream as any)?.[Symbol.asyncIterator] !== "function") {
+				if (
+					typeof (stream as Partial<AsyncIterable<unknown>> | null | undefined)?.[Symbol.asyncIterator] !==
+					"function"
+				) {
 					throw new Error(
 						"OpenAI SDK did not return an AsyncIterable for Responses API streaming. Falling back to SSE.",
 					)

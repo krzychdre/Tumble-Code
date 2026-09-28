@@ -1,6 +1,7 @@
 import { resolveWebToolsConfig } from "@roo-code/types"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { formatResponse } from "../prompts/responses"
 import type { ToolUse } from "../../shared/tools"
 import { WebFetchError, WebFetchService } from "../../services/web/WebFetchService"
@@ -97,7 +98,7 @@ export class WebFetchTool extends BaseTool<"web_fetch"> {
 				}),
 				block.partial,
 			)
-			.catch(() => {})
+			.catch(ignorePartialAskRejection)
 	}
 }
 

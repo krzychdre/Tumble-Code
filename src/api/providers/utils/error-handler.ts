@@ -10,7 +10,7 @@
  */
 
 import i18n from "../../../i18n/setup"
-import { getApiErrorStatus } from "../../apiErrors"
+import { getApiErrorStatus, type ProviderErrorFields } from "../../apiErrors"
 
 /**
  * Handles API provider errors and transforms them into user-friendly messages
@@ -58,7 +58,7 @@ export function handleProviderError(
 	const messagePrefix = options?.messagePrefix || "completion"
 
 	if (error instanceof Error) {
-		const anyErr = error as any
+		const anyErr = error as Error & ProviderErrorFields
 		const msg = anyErr?.error?.metadata?.raw || error.message || ""
 
 		// Log the original error details for debugging
@@ -69,7 +69,7 @@ export function handleProviderError(
 			status: anyErr.status,
 		})
 
-		let wrapped: Error
+		let wrapped: Error & ProviderErrorFields
 
 		// Special case: Invalid character/ByteString conversion error in API key
 		// This is specific to OpenAI-compatible SDKs
@@ -90,19 +90,19 @@ export function handleProviderError(
 		// $metadata.httpStatusCode) are normalized to `status` here.
 		const status = getApiErrorStatus(error)
 		if (status !== undefined) {
-			;(wrapped as any).status = status
+			wrapped.status = status
 		} else if (anyErr.status !== undefined) {
-			;(wrapped as any).status = anyErr.status
+			wrapped.status = anyErr.status
 		}
 		if (anyErr.errorDetails !== undefined) {
-			;(wrapped as any).errorDetails = anyErr.errorDetails
+			wrapped.errorDetails = anyErr.errorDetails
 		}
 		if (anyErr.code !== undefined) {
-			;(wrapped as any).code = anyErr.code
+			wrapped.code = anyErr.code
 		}
 		// Preserve AWS-specific metadata if present (for Bedrock)
 		if (anyErr.$metadata !== undefined) {
-			;(wrapped as any).$metadata = anyErr.$metadata
+			wrapped.$metadata = anyErr.$metadata
 		}
 
 		return wrapped
@@ -110,7 +110,7 @@ export function handleProviderError(
 
 	// Non-Error: wrap with provider-specific prefix (or the caller's own wording)
 	console.error(`[${providerName}] Non-Error exception:`, error)
-	const wrapped = new Error(
+	const wrapped: Error & ProviderErrorFields = new Error(
 		options?.messageTransformer
 			? options.messageTransformer(String(error))
 			: `${providerName} ${messagePrefix} error: ${String(error)}`,
@@ -119,7 +119,7 @@ export function handleProviderError(
 	// Also try to preserve status for non-Error exceptions (e.g., plain objects with status)
 	const status = getApiErrorStatus(error)
 	if (status !== undefined) {
-		;(wrapped as any).status = status
+		wrapped.status = status
 	}
 
 	return wrapped

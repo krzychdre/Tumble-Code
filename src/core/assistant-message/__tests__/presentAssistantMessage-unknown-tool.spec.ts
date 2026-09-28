@@ -146,6 +146,32 @@ describe("presentAssistantMessage - Unknown Tool Handling", () => {
 		expect(mockTask.askSay.say).toHaveBeenCalledWith("error", expect.anything())
 	})
 
+	it("does not record a tool error for a missing-id tool_use without a string name", async () => {
+		mockTask.assistantMessageContent = [{ type: "tool_use", name: 42, params: {}, partial: false }]
+
+		await presentAssistantMessage(mockTask)
+
+		expect(mockTask.recordToolError).not.toHaveBeenCalled()
+		const textBlocks = mockTask.userMessageContent.filter((item: any) => item.type === "text")
+		expect(textBlocks.some((b: any) => String(b.text).includes("missing tool_use.id"))).toBe(true)
+	})
+
+	it("still reports a missing-id tool_use when recording the tool error throws", async () => {
+		mockTask.recordToolError = vi.fn(() => {
+			throw new Error("telemetry down")
+		})
+		mockTask.assistantMessageContent = [{ type: "tool_use", name: "read_file", params: {}, partial: false }]
+
+		await presentAssistantMessage(mockTask)
+
+		expect(mockTask.recordToolError).toHaveBeenCalledWith(
+			"read_file",
+			expect.stringContaining("missing tool_use.id"),
+		)
+		expect(mockTask.consecutiveMistakeCount).toBe(1)
+		expect(mockTask.askSay.say).toHaveBeenCalledWith("error", expect.anything())
+	})
+
 	it("should handle unknown tool without freezing (native tool calling)", async () => {
 		// This test ensures the extension doesn't freeze when an unknown tool is called
 		const toolCallId = "tool_call_freeze_test"

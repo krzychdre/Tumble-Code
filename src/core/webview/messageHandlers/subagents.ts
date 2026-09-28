@@ -1,5 +1,7 @@
 // Parallel subagent panel: live tail, cancel and mid-run guidance.
 
+import { logger } from "../../../utils/logging"
+
 import type { DomainHandlerMap } from "./types"
 
 export const subagentsHandlers: DomainHandlerMap<"subagents"> = {
@@ -38,7 +40,9 @@ export const subagentsHandlers: DomainHandlerMap<"subagents"> = {
 				// registry keeps the row "cancelled" when the TaskAborted
 				// listener races in with its generic "failed".
 				provider.subagentRegistry.markTerminal(subagentTask.taskId, "cancelled")
-				subagentTask.abortTask().catch(() => {})
+				subagentTask
+					.abortTask()
+					.catch((error) => logger.debug(`[subagents] cancel: abortTask failed: ${String(error)}`))
 			}
 		}
 	},

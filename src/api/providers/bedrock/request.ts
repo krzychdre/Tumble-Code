@@ -101,6 +101,9 @@ export function buildConversationId(messages: Anthropic.Messages.MessageParam[])
 		: "default_conversation"
 }
 
+/** Bedrock model entries carry `cachableFields`, which the shared ModelInfo schema does not declare. */
+type BedrockCachableModelInfo = ModelInfo & { cachableFields?: readonly string[] }
+
 export function supportsAwsPromptCache(modelConfig: {
 	id: BedrockModelId | string
 	info: ModelInfo
@@ -109,8 +112,8 @@ export function supportsAwsPromptCache(modelConfig: {
 	// but it's used in the bedrockModels object
 	return (
 		modelConfig?.info?.supportsPromptCache &&
-		(modelConfig?.info as any)?.cachableFields &&
-		(modelConfig?.info as any)?.cachableFields?.length > 0
+		(modelConfig?.info as BedrockCachableModelInfo | undefined)?.cachableFields &&
+		((modelConfig?.info as BedrockCachableModelInfo | undefined)?.cachableFields?.length ?? 0) > 0
 	)
 }
 
@@ -244,7 +247,7 @@ export function buildAnthropicBetas(baseModelId: string, awsBedrock1MContext: bo
 	const betas: string[] = []
 
 	// 1M context for supported Claude 4 models
-	if (BEDROCK_1M_CONTEXT_MODEL_IDS.includes(baseModelId as any) && awsBedrock1MContext) {
+	if ((BEDROCK_1M_CONTEXT_MODEL_IDS as readonly string[]).includes(baseModelId) && awsBedrock1MContext) {
 		betas.push("context-1m-2025-08-07")
 	}
 
@@ -258,7 +261,9 @@ export function buildAnthropicBetas(baseModelId: string, awsBedrock1MContext: bo
 
 /** The configured service tier when the model supports one, otherwise a falsy value. */
 export function resolveServiceTier(baseModelId: string, serviceTier: BedrockServiceTier | undefined) {
-	return serviceTier && BEDROCK_SERVICE_TIER_MODEL_IDS.includes(baseModelId as any) ? serviceTier : undefined
+	return serviceTier && (BEDROCK_SERVICE_TIER_MODEL_IDS as readonly string[]).includes(baseModelId)
+		? serviceTier
+		: undefined
 }
 
 /**

@@ -18,7 +18,7 @@ export type ApiMessage = Anthropic.MessageParam & {
 	id?: string
 	// For reasoning items stored in API history
 	type?: "reasoning"
-	summary?: any[]
+	summary?: unknown[]
 	encrypted_content?: string
 	text?: string
 	// For OpenRouter reasoning_details array format (used by Gemini 3, etc.)

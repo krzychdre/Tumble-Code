@@ -346,4 +346,21 @@ describe("SimpleInstaller", () => {
 			)
 		})
 	})
+
+	describe("unsupported item types", () => {
+		// Pins the error text of the exhaustive switch default branches.
+		const unsupportedItem = { id: "x", name: "x", description: "", type: "skill" } as unknown as MarketplaceItem
+
+		it("installItem rejects with the item type in the message", async () => {
+			await expect(installer.installItem(unsupportedItem, { target: "project" })).rejects.toThrow(
+				"Unsupported item type: skill",
+			)
+		})
+
+		it("removeItem rejects with the item type in the message", async () => {
+			await expect(installer.removeItem(unsupportedItem, { target: "project" })).rejects.toThrow(
+				"Unsupported item type: skill",
+			)
+		})
+	})
 })

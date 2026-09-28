@@ -65,11 +65,11 @@ export function convertToResponsesApiInput(messages: Anthropic.Messages.MessageP
 						break
 					case "thinking":
 						// Include reasoning if it has content
-						if ((part as any).thinking && (part as any).thinking.trim().length > 0) {
+						if (part.thinking && part.thinking.trim().length > 0) {
 							input.push({
 								type: "message",
 								role: "assistant",
-								content: [{ type: "output_text", text: `[Thinking] ${(part as any).thinking}` }],
+								content: [{ type: "output_text", text: `[Thinking] ${part.thinking}` }],
 							})
 						}
 						break

@@ -3,6 +3,7 @@ import * as vscode from "vscode"
 import { TodoItem } from "@roo-code/types"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { getModeBySlug } from "../../shared/modes"
 import { formatResponse } from "../prompts/responses"
 import { t } from "../../i18n"
@@ -122,7 +123,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 			}
 
 			// Delegate parent and open child as sole active task
-			const child = await (provider as any).delegateParentAndOpenChild({
+			const child = await provider.delegateParentAndOpenChild({
 				parentTaskId: task.taskId,
 				message: unescapedMessage,
 				initialTodos: todoItems,
@@ -153,7 +154,7 @@ export class NewTaskTool extends BaseTool<"new_task"> {
 			toolCallId: block.id,
 		})
 
-		await task.ask("tool", partialMessage, block.partial).catch(() => {})
+		await task.ask("tool", partialMessage, block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

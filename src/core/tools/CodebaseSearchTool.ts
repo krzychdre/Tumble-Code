@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import path from "path"
 
 import { Task } from "../task/Task"
+import { ignorePartialAskRejection } from "../task/AskIgnoredError"
 import { CodeIndexManager } from "../../services/code-index/manager"
 import { getWorkspacePath } from "../../utils/path"
 import { formatResponse } from "../prompts/responses"
@@ -147,7 +148,7 @@ Code Chunk: ${result.codeChunk}
 			toolCallId: block.id,
 		}
 
-		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})
+		await task.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(ignorePartialAskRejection)
 	}
 }
 

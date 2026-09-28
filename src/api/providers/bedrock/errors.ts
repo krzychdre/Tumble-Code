@@ -9,7 +9,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { logger } from "../../../utils/logging"
 import type { ApiStreamChunk } from "../../transform/stream"
-import { getApiErrorStatus } from "../../apiErrors"
+import { getApiErrorStatus, type ProviderErrorFields } from "../../apiErrors"
 import { handleProviderError } from "../utils/error-handler"
 
 export interface BedrockErrorContext {
@@ -185,13 +185,15 @@ export function getBedrockErrorType(error: unknown): string {
 		return "GENERIC"
 	}
 
+	const fields = error as Error & ProviderErrorFields
+
 	// Check for HTTP 429 status code (Too Many Requests)
-	if ((error as any).status === 429 || (error as any).$metadata?.httpStatusCode === 429) {
+	if (fields.status === 429 || fields.$metadata?.httpStatusCode === 429) {
 		return "THROTTLING"
 	}
 
 	// Check for Amazon Bedrock specific throttling exception names
-	if ((error as any).name === "ThrottlingException" || (error as any).__type === "ThrottlingException") {
+	if (fields.name === "ThrottlingException" || fields.__type === "ThrottlingException") {
 		return "THROTTLING"
 	}
 
@@ -306,8 +308,9 @@ export async function* bedrockStreamFailure(
 			// The AWS SDK keeps the HTTP status in $metadata.httpStatusCode only;
 			// the retry loop and the background-model fallback read `status`.
 			const status = getApiErrorStatus(error)
-			if (status !== undefined && (error as any).status === undefined) {
-				;(error as any).status = status
+			const fields: Error & ProviderErrorFields = error
+			if (status !== undefined && fields.status === undefined) {
+				fields.status = status
 			}
 			throw error
 		} else {
