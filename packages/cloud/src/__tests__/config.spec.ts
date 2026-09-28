@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest"
 
+import * as cloudConfig from "../config.js"
+
 import {
 	PRODUCTION_CLERK_BASE_URL,
 	PRODUCTION_ROO_CODE_API_URL,
@@ -151,6 +153,16 @@ describe("cloud config", () => {
 			// Clerk should auto-detect from the env-based API URL
 			expect(getClerkBaseUrl()).toBe("https://selfhosted.example.com")
 			delete process.env.ROO_CODE_API_URL
+		})
+	})
+
+	describe("removed cloud provider URL (D15)", () => {
+		// The cloud proxy provider that read ROO_CODE_PROVIDER_URL is gone; the
+		// getter had no caller outside tests, so the variable and its
+		// cloudProviderUrl setting were accepted but never used.
+		it("exports no provider URL getter, setter or default", () => {
+			const names = Object.keys(cloudConfig).filter((name) => /ProviderUrl|PROVIDER_URL/.test(name))
+			expect(names).toEqual([])
 		})
 	})
 })
