@@ -2,7 +2,7 @@ import { create } from "zustand"
 
 import type { TokenUsage, ProviderSettings, TodoItem, McpServer } from "@roo-code/types"
 
-import type { TUIMessage, PendingAsk, TaskHistoryItem } from "./types.js"
+import type { CloudStatus, TUIMessage, PendingAsk, TaskHistoryItem } from "./types.js"
 import type { FileResult, SlashCommandResult, ModeResult } from "./components/autocomplete/index.js"
 
 /**
@@ -157,6 +157,9 @@ interface CLIState {
 	// MCP servers as McpHub reports them. They belong to the process, not to
 	// a task, so neither reset clears them.
 	mcpServers: McpServer[]
+
+	// The cloud session and its bridge (footer status). Process-wide too.
+	cloudStatus: CloudStatus | null
 }
 
 interface CLIActions {
@@ -202,6 +205,9 @@ interface CLIActions {
 
 	// MCP actions
 	setMcpServers: (servers: McpServer[]) => void
+
+	// Cloud status action; an equal status keeps the old object.
+	setCloudStatus: (status: CloudStatus) => void
 }
 
 const initialState: CLIState = {
@@ -226,6 +232,7 @@ const initialState: CLIState = {
 	currentTodos: [],
 	previousTodos: [],
 	mcpServers: [],
+	cloudStatus: null,
 }
 
 export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
@@ -311,7 +318,7 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 	setComplete: (complete) => set({ isComplete: complete }),
 	setHasStartedTask: (started) => set({ hasStartedTask: started }),
 	setError: (error) => set({ error }),
-	reset: () => set((state) => ({ ...initialState, mcpServers: state.mcpServers })),
+	reset: () => set((state) => ({ ...initialState, mcpServers: state.mcpServers, cloudStatus: state.cloudStatus })),
 	resetForTaskSwitch: () =>
 		set((state) => ({
 			// Clear task-specific state
@@ -360,4 +367,11 @@ export const useCLIStore = create<CLIState & CLIActions>((set, get) => ({
 	setApiConfiguration: (config) => set({ apiConfiguration: config }),
 	setTodos: (todos) => set((state) => ({ previousTodos: state.currentTodos, currentTodos: todos })),
 	setMcpServers: (servers) => set({ mcpServers: servers }),
+	setCloudStatus: (status) => {
+		const current = get().cloudStatus
+		if (current?.signedIn === status.signedIn && current.remoteControl === status.remoteControl) {
+			return
+		}
+		set({ cloudStatus: status })
+	},
 }))

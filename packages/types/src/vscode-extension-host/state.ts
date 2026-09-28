@@ -18,6 +18,9 @@ import type { SubagentSummary } from "../subagent.js"
 
 import type { AudioType } from "./settings.js"
 
+/** The remote-control bridge connection as the state push reports it. */
+export type RemoteControlStatus = "off" | "connecting" | "connected" | "offline"
+
 export type ExtensionState = Pick<
 	GlobalSettings,
 	| "currentApiConfigName"
@@ -165,6 +168,13 @@ export type ExtensionState = Pick<
 	cloudIsAuthenticated: boolean
 	cloudAuthSkipModel?: boolean // Flag indicating auth completed without model selection (user should pick 3rd-party provider)
 	cloudApiUrl?: string
+	/**
+	 * The remote-control bridge to the cloud: "off" while signed out (or
+	 * before the bridge starts), "connecting", "connected", or "offline"
+	 * after a failed connection attempt (it keeps retrying). The CLI status
+	 * line shows it. Always sent explicitly, so a push can clear it.
+	 */
+	remoteControlStatus?: RemoteControlStatus
 	cloudOrganizations?: CloudOrganizationMembership[]
 	sharingEnabled: boolean
 	publicSharingEnabled: boolean

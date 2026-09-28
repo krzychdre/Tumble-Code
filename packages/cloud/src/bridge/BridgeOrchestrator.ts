@@ -8,6 +8,7 @@ import {
 	HEARTBEAT_INTERVAL_MS,
 	taskBridgeCommandSchema,
 	type TaskBridgeCommand,
+	type RemoteControlStatus,
 } from "@roo-code/types"
 
 import { backoffDelayMs } from "../backoff.js"
@@ -60,7 +61,16 @@ export interface BridgeOrchestratorOptions {
 	reconnectRearmDelayMs?: number
 	/** Random source in [0, 1) for the re-arm backoff; injectable for deterministic tests. */
 	random?: () => number
+	/**
+	 * Called when the connection changes (UI plan §4, the CLI status line):
+	 * "connecting" from start() and after a drop socket.io will retry,
+	 * "connected", and "offline" after a failed attempt (even while socket.io
+	 * keeps retrying), a drop it will not retry, or when it gives up.
+	 */
+	onStatusChange?: (status: BridgeConnectionStatus) => void
 }
+
+type BridgeConnectionStatus = Exclude<RemoteControlStatus, "off">
 
 /**
  * Connects the extension to the cloud socket.io bridge and wires it both ways:
@@ -92,7 +102,20 @@ export class BridgeOrchestrator {
 	private rearmRetry = 0
 	private rearmTimer: ReturnType<typeof setTimeout> | null = null
 
+	private currentStatus: BridgeConnectionStatus = "connecting"
+
 	constructor(private readonly options: BridgeOrchestratorOptions) {}
+
+	/** The connection as last reported through `onStatusChange`. */
+	get status(): BridgeConnectionStatus {
+		return this.currentStatus
+	}
+
+	private setStatus(status: BridgeConnectionStatus, force = false) {
+		if (!force && status === this.currentStatus) return
+		this.currentStatus = status
+		this.options.onStatusChange?.(status)
+	}
 
 	private log(...args: unknown[]) {
 		this.options.log?.("[BridgeOrchestrator]", ...args)
@@ -124,8 +147,10 @@ export class BridgeOrchestrator {
 			},
 		})
 		this.socket = socket
+		this.setStatus("connecting", true)
 
 		socket.on("connect", () => {
+			this.setStatus("connected")
 			this.reconnectAttempt = 0
 			this.refusedRetry = 0
 			this.rearmRetry = 0
@@ -135,10 +160,16 @@ export class BridgeOrchestrator {
 			this.register()
 			this.startHeartbeat()
 		})
-		socket.on("disconnect", (reason: string) => this.log("disconnected", reason))
+		socket.on("disconnect", (reason: string) => {
+			this.log("disconnected", reason)
+			// socket.io retries a transport drop by itself (`active` stays true);
+			// a server or client disconnect it does not.
+			this.setStatus(socket.active ? "connecting" : "offline")
+		})
 		socket.on("connect_error", (err: Error) => {
 			// Auth-shaped failures (token rejected, expired) have distinctive messages;
 			// surface the type so the user can tell auth issues from network issues.
+			this.setStatus("offline")
 			const msg = err?.message ?? String(err)
 			const isAuthShaped = /token|auth|unauthorized|401|403/i.test(msg)
 			this.log("connect_error:", msg, isAuthShaped ? "(auth)" : "(network/server)")
@@ -163,6 +194,7 @@ export class BridgeOrchestrator {
 			}
 		})
 		manager.on("reconnect_failed", () => {
+			this.setStatus("offline")
 			const rearm = this.options.reconnectRearmDelayMs ?? 0
 			if (rearm > 0) {
 				// The manager exhausted its reconnection attempts and the socket

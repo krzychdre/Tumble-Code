@@ -25,6 +25,7 @@ import { formatLanguage } from "../../shared/language"
 import { EMBEDDING_MODEL_PROFILES } from "../../shared/embeddingModels"
 import { resolveCustomSoundUri } from "../../integrations/misc/custom-sounds"
 import { perfCounters } from "../../utils/perfCounters"
+import { getRemoteControlStatus } from "../../extension/remoteControlStatus"
 
 import type { ContextProxy } from "../config/ContextProxy"
 import type { Task } from "../task/Task"
@@ -390,6 +391,7 @@ export class ProviderStateBuilder {
 			// webview's banner).
 			storageErrorMessage: this.sources.getStorageErrorMessage(),
 			cloudIsAuthenticated: state.cloudIsAuthenticated ?? false,
+			remoteControlStatus: getRemoteControlStatus(),
 			sharingEnabled: state.sharingEnabled ?? false,
 			publicSharingEnabled: state.publicSharingEnabled ?? false,
 			lockApiConfigAcrossModes: state.lockApiConfigAcrossModes ?? false,

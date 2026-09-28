@@ -183,6 +183,25 @@ describe("useCLIStore", () => {
 		})
 	})
 
+	// UI plan §4: the footer's cloud status belongs to the process, like the MCP servers.
+	describe("cloudStatus", () => {
+		it("starts unknown, survives both resets, and keeps its identity for an equal status", () => {
+			const store = useCLIStore.getState()
+			expect(store.cloudStatus).toBeNull()
+
+			store.setCloudStatus({ signedIn: true, remoteControl: "connected" })
+			const first = useCLIStore.getState().cloudStatus
+
+			// Every state push repeats the status; an equal one must not re-render the footer.
+			useCLIStore.getState().setCloudStatus({ signedIn: true, remoteControl: "connected" })
+			expect(useCLIStore.getState().cloudStatus).toBe(first)
+
+			useCLIStore.getState().reset()
+			useCLIStore.getState().resetForTaskSwitch()
+			expect(useCLIStore.getState().cloudStatus).toEqual({ signedIn: true, remoteControl: "connected" })
+		})
+	})
+
 	describe("mcpServers", () => {
 		it("survives both resets: the servers belong to the process, not to a task", () => {
 			const servers = [{ name: "s", config: "{}", status: "connected" as const }]

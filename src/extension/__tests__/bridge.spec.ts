@@ -16,7 +16,11 @@ const cloud = vi.hoisted(() => {
 	}
 	const starts: Array<() => Promise<void>> = []
 	const stops = { count: 0 }
+	const created: Array<{ onStatusChange?: (status: string) => void }> = []
 	class BridgeOrchestrator {
+		constructor(options: { onStatusChange?: (status: string) => void }) {
+			created.push(options)
+		}
 		start = vi.fn(() => {
 			const next = starts.shift()
 			return next ? next() : Promise.resolve()
@@ -31,6 +35,7 @@ const cloud = vi.hoisted(() => {
 		listeners,
 		starts,
 		stops,
+		created,
 		BridgeOrchestrator,
 		emit: (event: string) => (listeners.get(event) ?? []).forEach((cb) => cb()),
 	}
@@ -53,6 +58,7 @@ vi.mock("@roo-code/cloud", async (importOriginal) => ({
 vi.spyOn(Math, "random").mockReturnValue(0.999)
 
 import { setupRemoteControlBridge } from "../bridge"
+import { getRemoteControlStatus } from "../remoteControlStatus"
 
 describe("setupRemoteControlBridge retry (DEF-C50)", () => {
 	let logs: string[]
@@ -64,6 +70,7 @@ describe("setupRemoteControlBridge retry (DEF-C50)", () => {
 		cloud.listeners.clear()
 		cloud.starts.length = 0
 		cloud.stops.count = 0
+		cloud.created.length = 0
 		logs = []
 		subscriptions = []
 	})
@@ -73,11 +80,13 @@ describe("setupRemoteControlBridge retry (DEF-C50)", () => {
 		vi.useRealTimers()
 	})
 
+	const postState = vi.fn(async () => {})
+
 	function setup() {
 		setupRemoteControlBridge({
 			context: { subscriptions } as unknown as vscode.ExtensionContext,
 			api: {} as never,
-			provider: {} as never,
+			provider: { postStateToWebview: postState } as never,
 			log: (message) => logs.push(message),
 		})
 	}
@@ -127,5 +136,68 @@ describe("setupRemoteControlBridge retry (DEF-C50)", () => {
 		await vi.advanceTimersByTimeAsync(120_000)
 		expect(failures()).toBe(1)
 		expect(connected()).toBe(0)
+	})
+})
+
+// UI plan §4: the state push carries the bridge status for the CLI status line.
+describe("setupRemoteControlBridge status", () => {
+	let subscriptions: Array<{ dispose: () => void }>
+	const postState = vi.fn(async () => {})
+
+	beforeEach(() => {
+		vi.useFakeTimers()
+		cloud.state.authenticated = true
+		cloud.listeners.clear()
+		cloud.starts.length = 0
+		cloud.created.length = 0
+		postState.mockClear()
+		subscriptions = []
+	})
+
+	afterEach(() => {
+		subscriptions.forEach((s) => s.dispose())
+		vi.useRealTimers()
+	})
+
+	function setup() {
+		setupRemoteControlBridge({
+			context: { subscriptions } as unknown as vscode.ExtensionContext,
+			api: {} as never,
+			provider: { postStateToWebview: postState } as never,
+			log: () => {},
+		})
+	}
+
+	it("follows the orchestrator and pushes state on every change", async () => {
+		setup()
+		await vi.advanceTimersByTimeAsync(0)
+
+		const options = cloud.created[0]!
+		options.onStatusChange?.("connecting")
+		expect(getRemoteControlStatus()).toBe("connecting")
+		options.onStatusChange?.("connected")
+		expect(getRemoteControlStatus()).toBe("connected")
+		expect(postState).toHaveBeenCalled()
+	})
+
+	it("is offline while a failed start waits for its retry", async () => {
+		cloud.starts.push(() => Promise.reject(new Error("fetch failed")))
+		setup()
+		await vi.advanceTimersByTimeAsync(0)
+
+		expect(getRemoteControlStatus()).toBe("offline")
+		expect(postState).toHaveBeenCalled()
+	})
+
+	it("is off once signed out", async () => {
+		setup()
+		await vi.advanceTimersByTimeAsync(0)
+		cloud.created[0]!.onStatusChange?.("connected")
+
+		cloud.state.authenticated = false
+		cloud.emit("auth-state-changed")
+		await vi.advanceTimersByTimeAsync(0)
+
+		expect(getRemoteControlStatus()).toBe("off")
 	})
 })

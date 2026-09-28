@@ -9,11 +9,12 @@ import {
 	type InstanceStatePayload,
 } from "@roo-code/cloud"
 
-import { TaskStatus } from "@roo-code/types"
+import { TaskStatus, type RemoteControlStatus } from "@roo-code/types"
 
 import type { ClineProvider } from "../core/webview/ClineProvider"
 import { getBridgeRetryDelayMs } from "../activate/cloud-urls"
 import type { API } from "./api"
+import { setRemoteControlStatus } from "./remoteControlStatus"
 
 /**
  * Wire the live remote-control bridge to the extension. There is no opt-in
@@ -46,6 +47,18 @@ export function setupRemoteControlBridge(opts: {
 		if (startRetryTimer) {
 			clearTimeout(startRetryTimer)
 			startRetryTimer = null
+		}
+	}
+
+	// The status line of the CLI reads the bridge status from the state push,
+	// so every change pushes state. Never throws: it runs inside socket event
+	// handlers and the auth-state listener.
+	const reportStatus = (next: RemoteControlStatus) => {
+		if (!setRemoteControlStatus(next)) return
+		try {
+			void Promise.resolve(provider.postStateToWebview()).catch(() => {})
+		} catch {
+			// A provider that cannot post state yet has nobody to tell.
 		}
 	}
 
@@ -121,13 +134,16 @@ export function setupRemoteControlBridge(opts: {
 			// Read at every start so the setting applies without a reload.
 			reconnectRearmDelayMs: getBridgeRetryDelayMs(),
 			log: (...args: unknown[]) => log(`[bridge] ${args.map(String).join(" ")}`),
+			onStatusChange: reportStatus,
 		})
+		reportStatus("connecting")
 		try {
 			await orchestrator.start()
 			startRetry = 0
 			log("[bridge] remote control bridge connected")
 		} catch (error) {
 			orchestrator = null
+			reportStatus("offline")
 			const delay = bridgeRetryDelayMs(startRetry++)
 			log(
 				`[bridge] failed to start: ${error instanceof Error ? error.message : String(error)}; ` +
@@ -143,6 +159,7 @@ export function setupRemoteControlBridge(opts: {
 	const stop = async () => {
 		clearStartRetry()
 		startRetry = 0
+		reportStatus("off")
 		if (!orchestrator) return
 		await orchestrator.stop()
 		orchestrator = null

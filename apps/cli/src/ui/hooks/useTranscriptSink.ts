@@ -70,6 +70,9 @@ function applyTranscriptEffects(effects: readonly TranscriptEffect[]): void {
 			case "setRouterModels":
 				store.setRouterModels(effect.models)
 				break
+			case "setCloudStatus":
+				store.setCloudStatus(effect.status)
+				break
 		}
 	}
 }
