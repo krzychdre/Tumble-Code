@@ -22,7 +22,6 @@ import {
 	providerSettingsWithIdSchema,
 	isSecretStateKey,
 	ProviderSettingsEntry,
-	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 	getModelId,
 	type ProviderName,
 	TelemetryEventName,
@@ -31,6 +30,9 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { Mode, modes } from "../../shared/modes"
 import { resolveProviderModel } from "../../api"
+
+import { flagRecord, runFlaggedMigrations } from "./migrations/runner"
+import { PROVIDER_PROFILE_MIGRATIONS } from "./migrations/provider-profiles/registry"
 
 // Type-safe model migrations mapping
 type ModelMigrations = {
@@ -102,13 +104,8 @@ export class ProviderSettingsManager {
 			default: { id: this.defaultConfigId, provider: { providerId: "anthropic", config: {} } },
 		},
 		modeApiConfigs: this.defaultModeApiConfigs,
-		migrations: {
-			rateLimitSecondsMigrated: true, // Mark as migrated on fresh installs
-			openAiHeadersMigrated: true, // Mark as migrated on fresh installs
-			consecutiveMistakeLimitMigrated: true, // Mark as migrated on fresh installs
-			todoListEnabledMigrated: true, // Mark as migrated on fresh installs
-			claudeCodeLegacySettingsMigrated: true, // Mark as migrated on fresh installs
-		},
+		// Fresh installs have nothing to migrate: every one-shot migration is done.
+		migrations: flagRecord(PROVIDER_PROFILE_MIGRATIONS, true),
 	}
 
 	private loadedEnvelope: ProviderProfilesEnvelope | undefined
@@ -267,60 +264,24 @@ export class ProviderSettingsManager {
 					}
 				}
 
-				// Ensure migrations field exists
+				// Ensure migrations field exists (none recorded yet: all pending)
 				if (!providerProfiles.migrations) {
-					providerProfiles.migrations = {
-						rateLimitSecondsMigrated: false,
-						openAiHeadersMigrated: false,
-						consecutiveMistakeLimitMigrated: false,
-						todoListEnabledMigrated: false,
-						claudeCodeLegacySettingsMigrated: false,
-					} // Initialize with default values
+					providerProfiles.migrations = flagRecord(PROVIDER_PROFILE_MIGRATIONS, false)
 					isDirty = true
 				}
 
-				if (!providerProfiles.migrations.rateLimitSecondsMigrated) {
-					await this.migrateRateLimitSeconds(providerProfiles)
-					providerProfiles.migrations.rateLimitSecondsMigrated = true
-					isDirty = true
-				}
-
-				if (!providerProfiles.migrations.openAiHeadersMigrated) {
-					await this.migrateOpenAiHeaders(providerProfiles)
-					providerProfiles.migrations.openAiHeadersMigrated = true
-					isDirty = true
-				}
-
-				if (!providerProfiles.migrations.consecutiveMistakeLimitMigrated) {
-					await this.migrateConsecutiveMistakeLimit(providerProfiles)
-					providerProfiles.migrations.consecutiveMistakeLimitMigrated = true
-					isDirty = true
-				}
-
-				if (!providerProfiles.migrations.todoListEnabledMigrated) {
-					await this.migrateTodoListEnabled(providerProfiles)
-					providerProfiles.migrations.todoListEnabledMigrated = true
-					isDirty = true
-				}
-
-				if (!providerProfiles.migrations.claudeCodeLegacySettingsMigrated) {
-					// These keys were used by the removed local Claude Code CLI wrapper.
-					for (const apiConfig of Object.values(providerProfiles.apiConfigs)) {
-						if (!this.isOpaqueProfile(apiConfig)) continue
-						const config = apiConfig.provider.opaqueLegacyPayload
-						if (config.apiProvider !== "claude-code") continue
-
-						if ("claudeCodePath" in config) {
-							delete config.claudeCodePath
-							isDirty = true
-						}
-						if ("claudeCodeMaxOutputTokens" in config) {
-							delete config.claudeCodeMaxOutputTokens
-							isDirty = true
-						}
-					}
-
-					providerProfiles.migrations.claudeCodeLegacySettingsMigrated = true
+				// One-shot migrations (one dated file each under
+				// ./migrations/provider-profiles). Their done flags live in
+				// `providerProfiles.migrations` and are written in the same
+				// store() call as the migrated data below.
+				if (
+					await runFlaggedMigrations(
+						PROVIDER_PROFILE_MIGRATIONS,
+						providerProfiles.migrations,
+						providerProfiles,
+						this.context,
+					)
+				) {
 					isDirty = true
 				}
 
@@ -332,90 +293,6 @@ export class ProviderSettingsManager {
 			})
 		} catch (error) {
 			throw new Error(`Failed to initialize config: ${error}`)
-		}
-	}
-
-	private async migrateRateLimitSeconds(providerProfiles: ProviderProfilesData) {
-		try {
-			let rateLimitSeconds: number | undefined
-
-			try {
-				rateLimitSeconds = await this.context.globalState.get<number>("rateLimitSeconds")
-			} catch (error) {
-				console.error("[MigrateRateLimitSeconds] Error getting global rate limit:", error)
-			}
-
-			if (rateLimitSeconds === undefined) {
-				// Failed to get the existing value, use the default.
-				rateLimitSeconds = 0
-			}
-
-			for (const [_name, apiConfig] of Object.entries(providerProfiles.apiConfigs)) {
-				if (this.isOpaqueProfile(apiConfig)) {
-					if (apiConfig.provider.opaqueLegacyPayload.rateLimitSeconds === undefined) {
-						apiConfig.provider.opaqueLegacyPayload.rateLimitSeconds = rateLimitSeconds
-					}
-				} else {
-					apiConfig.shared ??= {}
-					if (apiConfig.shared.rateLimitSeconds === undefined)
-						apiConfig.shared.rateLimitSeconds = rateLimitSeconds
-				}
-			}
-		} catch (error) {
-			console.error(`[MigrateRateLimitSeconds] Failed to migrate rate limit settings:`, error)
-		}
-	}
-
-	private async migrateOpenAiHeaders(providerProfiles: ProviderProfilesData) {
-		try {
-			for (const [_name, apiConfig] of Object.entries(providerProfiles.apiConfigs)) {
-				if (this.isOpaqueProfile(apiConfig) || apiConfig.provider.providerId !== "openai") continue
-				const config = apiConfig.provider.config
-
-				// Check if openAiHostHeader exists but openAiHeaders doesn't
-				if (
-					config.openAiHostHeader &&
-					(!config.openAiHeaders || Object.keys(config.openAiHeaders).length === 0)
-				) {
-					// Create the headers object with the Host value
-					config.openAiHeaders = { Host: config.openAiHostHeader }
-
-					// Delete the old property to prevent re-migration
-					// This prevents the header from reappearing after deletion
-					config.openAiHostHeader = undefined
-				}
-			}
-		} catch (error) {
-			console.error(`[MigrateOpenAiHeaders] Failed to migrate OpenAI headers:`, error)
-		}
-	}
-
-	private async migrateConsecutiveMistakeLimit(providerProfiles: ProviderProfilesData) {
-		try {
-			for (const profile of Object.values(providerProfiles.apiConfigs)) {
-				if (this.isOpaqueProfile(profile)) {
-					profile.provider.opaqueLegacyPayload.consecutiveMistakeLimit ??= DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
-				} else {
-					profile.shared ??= {}
-					profile.shared.consecutiveMistakeLimit ??= DEFAULT_CONSECUTIVE_MISTAKE_LIMIT
-				}
-			}
-		} catch (error) {
-			console.error(`[MigrateConsecutiveMistakeLimit] Failed to migrate consecutive mistake limit:`, error)
-		}
-	}
-
-	private async migrateTodoListEnabled(providerProfiles: ProviderProfilesData) {
-		try {
-			for (const profile of Object.values(providerProfiles.apiConfigs)) {
-				if (this.isOpaqueProfile(profile)) profile.provider.opaqueLegacyPayload.todoListEnabled ??= true
-				else {
-					profile.shared ??= {}
-					profile.shared.todoListEnabled ??= true
-				}
-			}
-		} catch (error) {
-			console.error(`[MigrateTodoListEnabled] Failed to migrate todo list enabled setting:`, error)
 		}
 	}
 
