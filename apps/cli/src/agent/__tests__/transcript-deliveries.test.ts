@@ -139,4 +139,33 @@ describe("DeliveryReader", () => {
 			{ ts: 1, text: "a", isLast: true, update: false, history: false },
 		])
 	})
+
+	// D11 step 4: the reader also keeps the transcript, which replaced the
+	// client's StateStore (agent loop state, the JSON cost).
+	it("keeps the transcript: a push replaces it, an update replaces in place or appends", () => {
+		const reader = new DeliveryReader()
+		const texts = () => reader.transcript.map((m) => `${m.ts}:${m.text}`)
+
+		expect(reader.hasTranscript).toBe(false)
+		expect(reader.transcript).toEqual([])
+
+		reader.read(push(say(1, "a"), say(2, "b", true)))
+		reader.read(update(say(2, "bee")))
+		reader.read(update(say(3, "c")))
+		// An update that changes nothing leaves the transcript as it is.
+		reader.read(update(say(3, "c")))
+
+		expect(reader.hasTranscript).toBe(true)
+		expect(texts()).toEqual(["1:a", "2:bee", "3:c"])
+
+		reader.read(push(say(9, "new task")))
+		expect(texts()).toEqual(["9:new task"])
+
+		reader.read({ type: "state", state: {} } as unknown as ExtensionMessage)
+		expect(texts()).toEqual(["9:new task"])
+
+		reader.reset()
+		expect(reader.hasTranscript).toBe(false)
+		expect(reader.transcript).toEqual([])
+	})
 })

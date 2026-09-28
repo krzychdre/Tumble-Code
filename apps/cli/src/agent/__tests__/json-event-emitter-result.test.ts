@@ -4,6 +4,7 @@ import { Writable } from "stream"
 import type { TaskCompletedEvent } from "../events.js"
 import { JsonEventEmitter } from "../json-event-emitter.js"
 import { AgentLoopState, type AgentStateInfo } from "../agent-state.js"
+import { createMockClient } from "../extension-client.js"
 
 function createMockStdout(): { stdout: NodeJS.WriteStream; lines: () => Record<string, unknown>[] } {
 	const chunks: string[] = []
@@ -181,5 +182,36 @@ describe("JsonEventEmitter result emission", () => {
 
 		const result = lines().find((line) => line.type === "result")
 		expect(result?.cost).toMatchObject({ totalCost: 0.125, inputTokens: 50, outputTokens: 5 })
+	})
+	// D11 step 4: a state push reports its state change events (taskCompleted
+	// among them) before its deliveries, so the result of a push that both
+	// brings a priced request and ends the task finds that price only in the
+	// client's copy of the transcript (getMessages), not in the deliveries yet.
+	it("counts the price of a request that arrives in the same push as the task's end", () => {
+		const { stdout, lines } = createMockStdout()
+		const emitter = new JsonEventEmitter({ mode: "stream-json", stdout })
+		const { client } = createMockClient()
+		emitter.attachToClient(client)
+
+		client.beginHistoryReplay()
+		client.handleMessage({
+			type: "state",
+			state: {
+				clineMessages: [
+					{ ts: 500, type: "say", say: "text", text: "Old prompt" },
+					{
+						ts: 501,
+						type: "say",
+						say: "api_req_started",
+						text: JSON.stringify({ cost: 0.2, tokensIn: 40, tokensOut: 4 }),
+					},
+					{ ts: 502, type: "ask", ask: "completion_result", text: "" },
+					{ ts: 503, type: "ask", ask: "resume_completed_task", partial: false },
+				],
+			},
+		} as never)
+
+		const result = lines().find((line) => line.type === "result")
+		expect(result?.cost).toMatchObject({ totalCost: 0.2, inputTokens: 40, outputTokens: 4 })
 	})
 })

@@ -23,7 +23,9 @@
  *   history, which arrives as news but happened before this run. The client
  *   publishes its output as the `delivery` event; the JSON output reads it
  *   (with the message's ts as the event id, its protocol) and so does the
- *   `--exit-on-error` hook.
+ *   `--exit-on-error` hook. It also keeps the transcript itself (the
+ *   client's copy of the task's messages): the agent loop state is read from
+ *   it, and so is the JSON result's cost.
  *
  * Before this stage those two read only the LAST message of each push, so a
  * message that was not the last one of the push that brought it, and was never
@@ -105,10 +107,32 @@ function isResumeAsk(message: ClineMessage): boolean {
 	)
 }
 
+/** The transcript with one updated message: replaced in place by ts, or appended if it is new. */
+function withUpdate(transcript: ClineMessage[], message: ClineMessage): ClineMessage[] {
+	const index = transcript.findIndex((m) => m.ts === message.ts)
+	return index === -1 ? [...transcript, message] : transcript.map((m, i) => (i === index ? message : m))
+}
+
 export class DeliveryReader {
 	/** What each ts of the current transcript looked like when it was last delivered. */
 	private delivered = new Map<number, DeliveredContent>()
 	private historyReplay = false
+	/**
+	 * The current transcript: the last push's array, a messageUpdated
+	 * replacing its message in place (by ts) or appending a ts it does not
+	 * have. Undefined until the first push or update.
+	 */
+	private current: ClineMessage[] | undefined
+
+	/** The current transcript (empty before anything arrived). */
+	get transcript(): ClineMessage[] {
+		return this.current ?? []
+	}
+
+	/** Whether a push or an update has arrived (a transcript exists, possibly empty). */
+	get hasTranscript(): boolean {
+		return this.current !== undefined
+	}
 
 	/**
 	 * A task is being resumed: what arrives from now on up to and including
@@ -122,6 +146,7 @@ export class DeliveryReader {
 	reset(): void {
 		this.delivered = new Map()
 		this.historyReplay = false
+		this.current = undefined
 	}
 
 	/** The news in one extension message, in order. */
@@ -154,6 +179,9 @@ export class DeliveryReader {
 		}
 
 		this.delivered = next
+		this.current = isPush
+			? (message.state?.clineMessages ?? [])
+			: withUpdate(this.transcript, deliveries[0]!.message)
 
 		// The resumed task asks its resume ask once its history is loaded; the
 		// push that ends with it closes the history (the ask included: it only
