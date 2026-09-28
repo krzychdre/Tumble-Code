@@ -1,16 +1,16 @@
 /**
- * The webview's extension store as a versioned external store for
+ * The webview's extension store as an external store for
  * `useSyncExternalStore` (roadmap P1).
  *
  * The reducer stays pure and unchanged (`extensionStateReducer.ts`); this
- * class only adds the external-store protocol around it: a monotonically
- * increasing version, a listener set, and an eagerly rebuilt read model (`T`,
- * the flattened context value) so selector consumers can read a consistent
+ * class only adds the external-store protocol around it: a listener set and
+ * an eagerly rebuilt read model (`T`, the flattened context value) so
+ * selector consumers can read a consistent
  * snapshot the moment a host message lands, before React re-renders anything.
  *
  * The context actions (`A`) are created once per client and never change
  * identity: they close over the client, never over a store snapshot, so the
- * flattened value can reference them across versions without churning the
+ * flattened value can reference them across store changes without churning the
  * memoized children of legacy consumers. The first value is built lazily (on
  * the first `getValue`) so the actions factory can attach them first.
  *
@@ -35,7 +35,6 @@ export class ExtensionStoreClient<T, A> {
 
 	private readonly buildValue: (store: ExtensionStore, client: ExtensionStoreClient<T, A>) => T
 	private store: ExtensionStore
-	private version = 0
 	private listeners = new Set<StoreListener>()
 	private cachedValue: T | undefined
 
@@ -51,10 +50,7 @@ export class ExtensionStoreClient<T, A> {
 	/** The current store. Read-only; never mutate. */
 	getStore = (): ExtensionStore => this.store
 
-	/** Bumped on every store change; the `useSyncExternalStore` snapshot. */
-	getVersion = (): number => this.version
-
-	/** The read model for the current version (the flattened context value). */
+	/** The read model for the current store (the flattened context value). */
 	getValue = (): T => {
 		if (this.cachedValue === undefined) {
 			this.cachedValue = this.buildValue(this.store, this)
@@ -91,7 +87,6 @@ export class ExtensionStoreClient<T, A> {
 			return false
 		}
 		this.store = next
-		this.version += 1
 		this.cachedValue = this.buildValue(next, this)
 		// Iterate a snapshot: a listener removed during delivery is skipped.
 		for (const listener of [...this.listeners]) {
