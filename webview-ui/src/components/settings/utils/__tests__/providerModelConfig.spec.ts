@@ -76,6 +76,16 @@ describe("providerModelConfig", () => {
 	})
 
 	describe("getDefaultModelIdForProvider", () => {
+		it.each(["international_coding", "china_coding", "international_api", "china_api"] as const)(
+			"Z.ai %s: the default is the request's default for that line",
+			(zaiApiLine) => {
+				const settings = { apiProvider: "zai", zaiApiLine } as const
+				expect(getDefaultModelIdForProvider("zai", settings)).toBe(
+					types.zaiModelCatalog(settings).defaultModelId,
+				)
+			},
+		)
+
 		it("returns default model ID for known provider", () => {
 			const defaultId = getDefaultModelIdForProvider("anthropic")
 			expect(defaultId).toBeDefined()

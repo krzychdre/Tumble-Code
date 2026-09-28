@@ -603,3 +603,13 @@ export const zaiApiLineConfigs = {
 		isChina: true,
 	},
 } satisfies Record<ZaiApiLine, { name: string; baseUrl: string; isChina: boolean }>
+
+/** The API line a Z.ai profile uses: the configured one, or International Coding when unset. */
+export const getZaiApiLineConfig = (line: ZaiApiLine | undefined) => zaiApiLineConfigs[line ?? "international_coding"]
+
+/**
+ * Whether a Z.ai API line is a mainland China endpoint, which bills with the mainland model
+ * list (its own ids, prices and context windows). The one rule both the request and the
+ * settings UI use to pick the list; do not compare line ids directly.
+ */
+export const isZaiChinaLine = (line: ZaiApiLine | undefined): boolean => getZaiApiLineConfig(line).isChina

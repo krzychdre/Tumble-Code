@@ -4,7 +4,7 @@ import OpenAI from "openai"
 import {
 	type ModelInfo,
 	ZAI_DEFAULT_TEMPERATURE,
-	zaiApiLineConfigs,
+	getZaiApiLineConfig,
 	resolveCatalogModel,
 	zaiModelCatalog,
 } from "@roo-code/types"
@@ -40,7 +40,7 @@ export class ZAiHandler extends BaseOpenAiCompatibleProvider<string> {
 		super({
 			...options,
 			providerName: "Z.ai",
-			baseURL: zaiApiLineConfigs[options.zaiApiLine ?? "international_coding"].baseUrl,
+			baseURL: getZaiApiLineConfig(options.zaiApiLine).baseUrl,
 			apiKey: options.zaiApiKey ?? "not-provided",
 			defaultProviderModelId: defaultModelId,
 			providerModels: models,

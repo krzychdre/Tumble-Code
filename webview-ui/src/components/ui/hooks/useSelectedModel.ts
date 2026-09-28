@@ -12,8 +12,6 @@ import {
 	vertexModels,
 	vscodeLlmModels,
 	vscodeLlmDefaultModelId,
-	internationalZAiModels,
-	mainlandZAiModels,
 	litellmDefaultModelInfo,
 	lMStudioDefaultModelInfo,
 	ANTHROPIC_1M_CONTEXT_MODEL_IDS,
@@ -23,6 +21,7 @@ import {
 	getProviderDefaultModelId,
 	getProviderModelDefinition,
 	providerModelDefinitions,
+	zaiModelCatalog,
 } from "@roo-code/types"
 
 import { useOpenRouterModelProviders } from "./useOpenRouterModelProviders"
@@ -57,7 +56,7 @@ function getProviderModelList(
 		case "deepseek":
 			return { ...deepSeekModels, ...deepSeekAliasModels, ...dynamicModels }
 		case "zai":
-			return apiConfiguration.zaiApiLine === "china_coding" ? mainlandZAiModels : internationalZAiModels
+			return zaiModelCatalog(apiConfiguration).models
 		default: {
 			const definition = providerModelDefinitions[provider as keyof typeof providerModelDefinitions]
 			return definition && "models" in definition ? definition.models : undefined
@@ -264,11 +263,10 @@ function getSelectedModel({
 			return { id, info: routerInfo ?? staticInfo }
 		}
 		case "zai": {
-			const isChina = apiConfiguration.zaiApiLine === "china_coding"
-			const models = isChina ? mainlandZAiModels : internationalZAiModels
-			const defaultModelId = getProviderDefaultModelId(provider, { isChina })
+			// The request's list (the mainland one on every China line), see `zaiModelCatalog`.
+			const { models, defaultModelId } = zaiModelCatalog(apiConfiguration)
 			const id = apiConfiguration.apiModelId ?? defaultModelId
-			const info = models[id as keyof typeof models]
+			const info = models[id]
 			return { id, info }
 		}
 		case "openai": {

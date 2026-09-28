@@ -12,6 +12,7 @@ import {
 	getProviderDescriptor,
 	getProviderModelDefinition,
 	isRetiredProvider,
+	isZaiChinaLine,
 	DEFAULT_CONSECUTIVE_MISTAKE_LIMIT,
 } from "@roo-code/types"
 
@@ -267,7 +268,7 @@ const ApiOptions = ({
 					value,
 					apiConfiguration[modelIdField],
 					modelIdField,
-					getProviderDefaultModelId(value, { isChina: apiConfiguration.zaiApiLine === "china_coding" }),
+					getProviderDefaultModelId(value, { isChina: isZaiChinaLine(apiConfiguration.zaiApiLine) }),
 				)
 			}
 		},
