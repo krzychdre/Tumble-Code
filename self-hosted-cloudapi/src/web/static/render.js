@@ -248,7 +248,8 @@
 		// One-liner: the figures ride in the row's detail; the body holds only the
 		// optional folded request prompt. No cost yet → the request is in flight.
 		const body = obj.request ? md(obj.request) : ""
-		const active = obj.cost == null && obj.cancelReason == null && obj.streamingFailedMessage == null
+		const failed = obj.cancelReason != null || obj.streamingFailedMessage != null
+		const active = obj.cost == null && !failed
 		const attribution = modelOf(m)
 		return {
 			role: "api",
@@ -261,6 +262,10 @@
 			body: body,
 			active: active,
 			activity: "Calling API…",
+			// For the timeline (static/timeline.js): what the request cost, and
+			// whether it failed.
+			cost: typeof obj.cost === "number" ? obj.cost : null,
+			failed: failed,
 		}
 	}
 
@@ -351,6 +356,9 @@
 		const foldable = !!info.body
 		el.className = "msg role-" + info.role + (active ? " running" : "") + (foldable ? " foldable" : "")
 		if (ts != null) el.setAttribute("data-ts", String(ts))
+		if (info.kind) el.setAttribute("data-kind", info.kind)
+		if (info.cost != null) el.setAttribute("data-cost", String(info.cost))
+		if (info.failed) el.setAttribute("data-failed", "1")
 		const spinner = active ? '<span class="spinner" aria-hidden="true"></span>' : ""
 		// Right-aligned meta: absolute time (+ step duration, backfilled later).
 		const time = ts != null ? '<span class="msg-time">' + timeHtml(ts) + "</span>" : ""
@@ -517,6 +525,7 @@
 			if (m.partial && !m.text && !(m.images && m.images.length)) return
 			const info = classify(m)
 			if (!info) return
+			info.kind = m.say || m.ask || m.type
 			clearPlaceholder()
 			const ts = m.ts
 			const key = keyOf(m)

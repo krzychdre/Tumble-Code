@@ -1844,6 +1844,113 @@ a.signal-value:hover {
 	padding: var(--s5) 0;
 }
 
+/* Placeholder rows while the conversation renders: the shape of what is
+   coming, not a spinner. The shimmer stops under reduced motion (the global
+   rule at the end), and the rows keep their shape without it. */
+.skeleton {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s3);
+}
+.skeleton-row {
+	height: 2.5rem;
+	background: linear-gradient(90deg, var(--surface-1) 25%, var(--surface-2) 50%, var(--surface-1) 75%);
+	background-size: 200% 100%;
+	animation: skeleton 1.4s ease-in-out infinite;
+}
+.skeleton-row.short {
+	width: 60%;
+}
+@keyframes skeleton {
+	from {
+		background-position: 100% 0;
+	}
+	to {
+		background-position: -100% 0;
+	}
+}
+
+/* --- the timeline (static/timeline.js) --------------------------------------
+   Above the conversation on a narrow screen: a strip of bars in time order,
+   a request's height its cost against the dearest, errors and your messages
+   full height in their own hues. Beside it on a wide screen: the same ticks
+   as a rail, a request's length its cost. */
+.timeline {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+	margin-bottom: var(--s3);
+}
+.tl-jumps {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--s2);
+}
+.tl-jumps .btn {
+	min-height: 26px;
+	padding: 0 var(--s2);
+	font-size: var(--t-micro);
+}
+.tl-track {
+	display: flex;
+	align-items: flex-end;
+	gap: 1px;
+	height: 2rem;
+	border-bottom: 1px solid var(--line);
+}
+.tl-tick {
+	flex: 1 1 0;
+	min-width: 2px;
+	max-width: 10px;
+	height: calc(var(--v, 1) * 100%);
+	padding: 0;
+	border: 0;
+	background: var(--d-cost);
+	opacity: 0.75;
+	cursor: pointer;
+}
+.tl-tick:hover,
+.tl-tick:focus-visible {
+	opacity: 1;
+}
+.tl-error {
+	background: var(--d-error);
+}
+.tl-user {
+	background: var(--d-you);
+}
+@media (min-width: 1240px) {
+	.timeline {
+		position: fixed;
+		top: calc(52px + var(--s5));
+		bottom: var(--s5);
+		left: calc(50% + var(--measure-read) / 2 + var(--s5));
+		width: 7.5rem;
+		margin: 0;
+	}
+	.tl-jumps {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	.tl-track {
+		flex: 1;
+		min-height: 0;
+		flex-direction: column;
+		align-items: flex-start;
+		height: auto;
+		border-bottom: 0;
+		border-left: 1px solid var(--line);
+	}
+	.tl-tick {
+		width: calc(var(--v, 1) * 100%);
+		min-width: 0;
+		max-width: none;
+		height: auto;
+		min-height: 2px;
+		max-height: 10px;
+	}
+}
+
 /* Controls above the conversation. Filters on the left (what to show), fold
    actions on the right (how much of it). */
 .convo-toolbar {
@@ -1967,6 +2074,20 @@ a.signal-value:hover {
 	border: 1px solid transparent;
 	border-radius: var(--r-md);
 	background: transparent;
+	/* A long run is thousands of rows: the ones off screen skip layout and
+	   paint, sized by their last known height (120px until they have one).
+	   The clip margin keeps the spine tick, which sits left of the row, from
+	   being cut off by the paint containment this implies. */
+	content-visibility: auto;
+	contain-intrinsic-size: auto 120px;
+	overflow-clip-margin: var(--s5);
+	/* A jump lands the row below the sticky top bar, not under it. */
+	scroll-margin-top: calc(52px + var(--s3));
+}
+/* The row a timeline tick or a jump landed on. */
+.msg.tl-target {
+	outline: 1px solid var(--signal);
+	outline-offset: 2px;
 }
 /* Each row's tick on the spine. Its colour is the row's own encoding, so the
    left edge alone tells you the shape of the session. */

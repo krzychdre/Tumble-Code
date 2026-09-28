@@ -146,8 +146,28 @@
 </section>
 {% endif %}
 
+{# Filled by timeline.js from the rendered conversation: a tick per API
+   request (sized by cost), per error or retry, and per message of yours.
+   Hidden until there is something on it; beside the conversation on a wide
+   screen, above it on a narrow one. #}
+<nav id="timeline" class="timeline" aria-label="Conversation timeline" hidden>
+  <div class="tl-jumps">
+    <button type="button" id="tl-next-error" class="btn ghost">Next error</button>
+    <button type="button" id="tl-next-user" class="btn ghost">Next message of yours</button>
+  </div>
+  <div class="tl-track" id="tl-track"></div>
+</nav>
+
 <div id="conversation" class="conversation" aria-busy="true">
-  <div class="loading">Rendering conversation…</div>
+  {# Placeholder rows while render.js builds the conversation; the words are
+     for a screen reader. #}
+  <div class="loading skeleton" role="status">
+    <span class="sr-only">Rendering conversation…</span>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row short"></div>
+    <div class="skeleton-row"></div>
+    <div class="skeleton-row short"></div>
+  </div>
 </div>
 
 {% if live %}
@@ -196,6 +216,7 @@
 <script src="/static/vendor/purify.min.js?v={{ asset_v }}"></script>
 <script src="/static/format.js?v={{ asset_v }}"></script>
 <script src="/static/render.js?v={{ asset_v }}"></script>
+<script src="/static/timeline.js?v={{ asset_v }}"></script>
 {% if live %}
 <script src="/static/vendor/socket.io.min.js?v={{ asset_v }}"></script>
 <script src="/static/live.js?v={{ asset_v }}"></script>
