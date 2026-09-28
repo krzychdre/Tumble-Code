@@ -19,7 +19,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 
 import { Tab, TabContent, TabHeader } from "../common/Tab"
 import { useTaskSearch } from "./useTaskSearch"
-import { useGroupedTasks } from "./useGroupedTasks"
+import { useGroupedTasks, toDayRows } from "./useGroupedTasks"
 import { countAllSubtasks } from "./types"
 import TaskItem from "./TaskItem"
 import TaskGroupItem from "./TaskGroupItem"
@@ -45,6 +45,12 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 
 	// Use grouped tasks hook
 	const { groups, flatTasks, toggleExpand, isSearchMode } = useGroupedTasks(tasks, searchQuery)
+	// §2.9: day headers interleaved with the (unchanged) parent-child groups.
+	const dayRows = useMemo(() => toDayRows(groups, t), [groups, t])
+	// §2.9: `tasks` is already search-filtered, so an empty search result set
+	// also reads as tasks.length === 0 — check the search-empty state first.
+	const hasNoSearchResults = isSearchMode && tasks.length === 0
+	const hasNoTasks = tasks.length === 0
 
 	const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
 	const [deleteSubtaskCount, setDeleteSubtaskCount] = useState<number>(0)
@@ -251,7 +257,23 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 			</TabHeader>
 
 			<TabContent className="px-2 py-0">
-				{isSearchMode && flatTasks ? (
+				{hasNoSearchResults ? (
+					// §2.9: empty states — no search hits must be checked before the
+					// plain "no history" one, because `tasks` is already filtered.
+					<div
+						data-testid="history-empty-search"
+						className="flex flex-col items-center justify-center gap-2 py-16 text-vscode-descriptionForeground">
+						<span className="codicon codicon-search size-6 text-base" />
+						<p>{t("history:noSearchResults")}</p>
+					</div>
+				) : hasNoTasks ? (
+					<div
+						data-testid="history-empty-state"
+						className="flex flex-col items-center justify-center gap-2 py-16 text-vscode-descriptionForeground">
+						<span className="codicon codicon-history size-6 text-base" />
+						<p>{t("history:noHistory")}</p>
+					</div>
+				) : isSearchMode && flatTasks ? (
 					// Search mode: flat list with subtask prefix
 					<Virtuoso
 						className="flex-1 overflow-y-scroll"
@@ -278,10 +300,11 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 						)}
 					/>
 				) : (
-					// Grouped mode: task groups with expandable subtasks
+					// Grouped mode (§2.9): day headers interleaved with the
+					// parent-child groups; subtask trees unchanged.
 					<Virtuoso
 						className="flex-1 overflow-y-scroll"
-						data={groups}
+						data={dayRows}
 						data-testid="virtuoso-container"
 						initialTopMostItemIndex={0}
 						components={{
@@ -289,21 +312,30 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 								<div {...props} ref={ref} data-testid="virtuoso-item-list" />
 							)),
 						}}
-						itemContent={(_index, group) => (
-							<TaskGroupItem
-								key={group.parent.id}
-								group={group}
-								variant="full"
-								showWorkspace={showAllWorkspaces}
-								isSelectionMode={isSelectionMode}
-								isSelected={selectedTaskIds.includes(group.parent.id)}
-								onToggleSelection={toggleTaskSelection}
-								onDelete={handleDelete}
-								onToggleExpand={() => toggleExpand(group.parent.id)}
-								onToggleSubtaskExpand={toggleExpand}
-								className="m-2"
-							/>
-						)}
+						itemContent={(_index, row) =>
+							row.type === "day-header" ? (
+								<div
+									key={row.key}
+									data-testid={`history-day-${row.day}`}
+									className="px-4 pt-4 pb-1 text-[length:var(--text-meta)] uppercase tracking-wide text-vscode-descriptionForeground select-none">
+									{row.label}
+								</div>
+							) : (
+								<TaskGroupItem
+									key={row.key}
+									group={row.group}
+									variant="full"
+									showWorkspace={showAllWorkspaces}
+									isSelectionMode={isSelectionMode}
+									isSelected={selectedTaskIds.includes(row.group.parent.id)}
+									onToggleSelection={toggleTaskSelection}
+									onDelete={handleDelete}
+									onToggleExpand={() => toggleExpand(row.group.parent.id)}
+									onToggleSubtaskExpand={toggleExpand}
+									className="m-2"
+								/>
+							)
+						}
 					/>
 				)}
 			</TabContent>

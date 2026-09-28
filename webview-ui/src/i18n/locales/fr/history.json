@@ -55,5 +55,9 @@
 	"subtaskTag": "Sous-tâche",
 	"deleteWithSubtasks": "Cela supprimera aussi {{count}} sous-tâche(s). Êtes-vous sûr ?",
 	"expandSubtasks": "Développer les sous-tâches",
-	"collapseSubtasks": "Réduire les sous-tâches"
+	"collapseSubtasks": "Réduire les sous-tâches",
+	"today": "Aujourd'hui",
+	"yesterday": "Hier",
+	"noHistory": "Aucune tâche pour le moment. Lancez une conversation pour constituer votre historique.",
+	"noSearchResults": "Aucune tâche ne correspond à cette recherche."
 }

@@ -48,5 +48,9 @@
 	"subtaskTag": "Sottoattività",
 	"deleteWithSubtasks": "Questo eliminerà anche {{count}} sottoattività. Sei sicuro?",
 	"expandSubtasks": "Espandi sottoattività",
-	"collapseSubtasks": "Comprimi sottoattività"
+	"collapseSubtasks": "Comprimi sottoattività",
+	"today": "Oggi",
+	"yesterday": "Ieri",
+	"noHistory": "Nessuna attività. Avvia una conversazione per creare la cronologia.",
+	"noSearchResults": "Nessuna attività corrisponde a questa ricerca."
 }

@@ -61,8 +61,9 @@ describe("SubtaskRow", () => {
 			render(<SubtaskRow node={node} depth={2} onToggleExpand={vi.fn()} />)
 
 			const row = screen.getByTestId("subtask-row-leaf-1")
-			// The clickable row inside should have paddingLeft = depth * 16 = 32px
-			const clickableRow = row.querySelector("[role='button']")
+			// §2.9: the clickable row is a real <button>; paddingLeft = depth * 16 = 32px
+			const clickableRow = row.querySelector("button")
+			expect(clickableRow).not.toBeNull()
 			expect(clickableRow).toHaveStyle({ paddingLeft: "32px" })
 		})
 

@@ -47,5 +47,9 @@
 	"subtaskTag": "子任务",
 	"deleteWithSubtasks": "这也将删除 {{count}} 个子任务。您确定吗？",
 	"expandSubtasks": "展开子任务",
-	"collapseSubtasks": "收起子任务"
+	"collapseSubtasks": "收起子任务",
+	"today": "今天",
+	"yesterday": "昨天",
+	"noHistory": "还没有任务。开始一段对话来建立历史记录。",
+	"noSearchResults": "没有任务匹配此搜索。"
 }

@@ -47,5 +47,9 @@
 	"subtaskTag": "Alt görev",
 	"deleteWithSubtasks": "Bu, {{count}} alt görev(i) de silecektir. Emin misiniz?",
 	"expandSubtasks": "Alt görevleri genişlet",
-	"collapseSubtasks": "Alt görevleri daralt"
+	"collapseSubtasks": "Alt görevleri daralt",
+	"today": "Bugün",
+	"yesterday": "Dün",
+	"noHistory": "Henüz görev yok. Geçmişinizi oluşturmak için bir sohbet başlatın.",
+	"noSearchResults": "Bu aramayla eşleşen görev yok."
 }

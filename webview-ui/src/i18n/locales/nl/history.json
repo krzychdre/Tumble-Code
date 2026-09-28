@@ -47,5 +47,9 @@
 	"subtaskTag": "Subtaak",
 	"deleteWithSubtasks": "Dit zal ook {{count}} subtaak(en) verwijderen. Weet je het zeker?",
 	"expandSubtasks": "Subtaken uitvouwen",
-	"collapseSubtasks": "Subtaken samenvouwen"
+	"collapseSubtasks": "Subtaken samenvouwen",
+	"today": "Vandaag",
+	"yesterday": "Gisteren",
+	"noHistory": "Nog geen taken. Start een gesprek om je geschiedenis op te bouwen.",
+	"noSearchResults": "Geen taken komen overeen met deze zoekopdracht."
 }
