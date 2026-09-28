@@ -427,6 +427,113 @@ describe("ExtensionClient", () => {
 		})
 	})
 
+	// D11 step 4: what the client remembers of the transcript (the agent loop
+	// state and getMessages, which the JSON cost reads) and the order of its
+	// events, pinned before the StateStore goes.
+	describe("Transcript and agent state", () => {
+		const text = (ts: number, value: string, partial = false) =>
+			createMessage({ ts, type: "say", say: "text", text: value, partial })
+		const texts = (messages: ClineMessage[]) => messages.map((m) => `${m.ts}:${m.text}`)
+
+		it("keeps the last push, an update replacing its message in place and appending an unknown ts", () => {
+			const { client } = createMockClient()
+
+			client.handleMessage(createStateMessage([text(1, "A"), text(2, "B", true)]))
+			client.handleMessage({ type: "messageUpdated", clineMessage: text(2, "Bee") })
+			client.handleMessage({ type: "messageUpdated", clineMessage: text(9, "Z") })
+
+			expect(texts(client.getMessages())).toEqual(["1:A", "2:Bee", "9:Z"])
+
+			client.handleMessage(createStateMessage([text(5, "New task")]))
+
+			expect(texts(client.getMessages())).toEqual(["5:New task"])
+		})
+
+		it("is initialized by a messageUpdated alone", () => {
+			const { client } = createMockClient()
+
+			client.handleMessage({ type: "messageUpdated", clineMessage: text(1, "Hi") })
+
+			expect(client.isInitialized()).toBe(true)
+			expect(texts(client.getMessages())).toEqual(["1:Hi"])
+			expect(client.hasActiveTask()).toBe(true)
+		})
+
+		it("ignores a push without clineMessages and a messageUpdated without a message", () => {
+			const { client } = createMockClient()
+			const events: string[] = []
+			client.on("stateChange", () => events.push("stateChange"))
+			client.on("delivery", () => events.push("delivery"))
+
+			client.handleMessage(createStateMessage([text(1, "A")]))
+			events.length = 0
+			client.handleMessage({ type: "state", state: { mode: "code" } } as ExtensionMessage)
+			client.handleMessage({ type: "messageUpdated" } as ExtensionMessage)
+
+			expect(events).toEqual([])
+			expect(texts(client.getMessages())).toEqual(["1:A"])
+		})
+
+		it("forgets the transcript and the agent state on reset", () => {
+			const { client } = createMockClient()
+
+			client.handleMessage(createStateMessage([createMessage({ ts: 1, type: "ask", ask: "tool" })]))
+			client.reset()
+
+			expect(client.getMessages()).toEqual([])
+			expect(client.isInitialized()).toBe(false)
+			expect(client.getAgentState().state).toBe(AgentLoopState.NO_TASK)
+			expect(client.hasActiveTask()).toBe(false)
+		})
+
+		it("orders a push as state change events then deliveries, an update as deliveries then state change events", () => {
+			const { client } = createMockClient()
+			const order: string[] = []
+			client.on("stateChange", (e) => order.push(`stateChange ${e.currentState.state}`))
+			client.on("waitingForInput", (e) => order.push(`waiting ${e.ask}`))
+			client.on("taskCompleted", (e) => order.push(`completed ${e.success}`))
+			client.on("delivery", (d) => order.push(`delivery ${d.message.ts}`))
+
+			client.handleMessage(
+				createStateMessage([text(1, "Go"), createMessage({ ts: 2, type: "ask", ask: "tool" })]),
+			)
+			client.handleMessage({
+				type: "messageUpdated",
+				clineMessage: createMessage({ ts: 3, type: "ask", ask: "completion_result", text: "Done" }),
+			})
+			// An update that changes nothing: no delivery, the state change event still comes.
+			client.handleMessage({
+				type: "messageUpdated",
+				clineMessage: createMessage({ ts: 3, type: "ask", ask: "completion_result", text: "Done" }),
+			})
+
+			expect(order).toEqual([
+				"stateChange waiting_for_input",
+				"waiting tool",
+				"delivery 1",
+				"delivery 2",
+				"delivery 3",
+				"stateChange idle",
+				"completed true",
+				"stateChange idle",
+			])
+		})
+
+		it("is already current inside the listeners of both kinds of events", () => {
+			const { client } = createMockClient()
+			const seen: string[] = []
+			const look = (event: string) =>
+				seen.push(`${event} ${client.getMessages().length} ${client.getCurrentAsk() ?? "-"}`)
+			client.on("stateChange", () => look("stateChange"))
+			client.on("delivery", () => look("delivery"))
+
+			client.handleMessage(createStateMessage([createMessage({ ts: 1, type: "ask", ask: "followup" })]))
+			client.handleMessage({ type: "messageUpdated", clineMessage: text(2, "Thinking", true) })
+
+			expect(seen).toEqual(["stateChange 1 followup", "delivery 1 followup", "delivery 2 -", "stateChange 2 -"])
+		})
+	})
+
 	describe("Response methods", () => {
 		it("should send approve response", () => {
 			const { client, sentMessages } = createMockClient()
