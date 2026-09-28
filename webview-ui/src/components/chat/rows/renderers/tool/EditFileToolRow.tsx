@@ -71,8 +71,7 @@ export const EditFileToolRow = ({ message, tool, isExpanded, toggleExpand }: Too
 							color: "var(--vscode-button-foreground)",
 							background: "var(--vscode-button-background)",
 							padding: "2px 8px",
-							borderRadius: "3px",
-							border: "none",
+								border: "none",
 						}}>
 						<MessageSquarePlus className="w-3 h-3" />
 						{t("chat:planReview.reviewFile")}

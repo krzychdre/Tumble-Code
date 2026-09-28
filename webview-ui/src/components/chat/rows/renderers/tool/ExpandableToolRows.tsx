@@ -13,7 +13,6 @@ const boxStyle = {
 	marginTop: "4px",
 	backgroundColor: "var(--vscode-editor-background)",
 	border: "1px solid var(--vscode-editorGroup-border)",
-	borderRadius: "4px",
 	overflow: "hidden",
 	cursor: "pointer",
 } as const

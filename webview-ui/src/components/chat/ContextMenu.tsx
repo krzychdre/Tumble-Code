@@ -280,7 +280,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 				style={{
 					backgroundColor: "var(--vscode-dropdown-background)",
 					border: "1px solid var(--vscode-editorGroup-border)",
-					borderRadius: "3px",
 					boxShadow: "0 4px 10px rgba(0, 0, 0, 0.25)",
 					zIndex: 1000,
 					display: "flex",

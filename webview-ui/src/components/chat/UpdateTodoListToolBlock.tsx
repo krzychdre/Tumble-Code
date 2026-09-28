@@ -70,7 +70,6 @@ const TodoStatusDot = ({ status }: { status?: string }) => (
 			display: "inline-block",
 			width: 8,
 			height: 8,
-			borderRadius: "50%",
 			background:
 				status === "completed"
 					? "var(--vscode-charts-green)"
@@ -273,7 +272,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 									color: isEditing
 										? "var(--vscode-button-foreground)"
 										: "var(--vscode-button-secondaryForeground)",
-									borderRadius: 4,
 									padding: "2px 8px",
 									cursor: "pointer",
 									fontSize: 13,
@@ -332,7 +330,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 												onChange={(e) => handleStatusChange(todo.id!, e.target.value)}
 												style={{
 													marginRight: 6,
-													borderRadius: 4,
 													border: "1px solid var(--vscode-input-border)",
 													background: "var(--vscode-input-background)",
 													color: "var(--vscode-input-foreground)",
@@ -397,7 +394,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 											border: "1px solid var(--vscode-button-border)",
 											background: "var(--vscode-button-background)",
 											color: "var(--vscode-button-foreground)",
-											borderRadius: 4,
 											padding: "1px 7px",
 											cursor: newContent.trim() ? "pointer" : "not-allowed",
 											fontSize: 12,
@@ -414,7 +410,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 											border: "1px solid var(--vscode-button-secondaryBorder)",
 											background: "var(--vscode-button-secondaryBackground)",
 											color: "var(--vscode-button-secondaryForeground)",
-											borderRadius: 4,
 											padding: "1px 7px",
 											cursor: "pointer",
 											fontSize: 12,
@@ -431,7 +426,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 												border: "1px dashed var(--vscode-button-secondaryBorder)",
 												background: "var(--vscode-button-secondaryBackground)",
 												color: "var(--vscode-button-secondaryForeground)",
-												borderRadius: 4,
 												padding: "1px 8px",
 												cursor: "pointer",
 												fontSize: 12,
@@ -465,7 +459,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						<div
 							style={{
 								background: "#fff",
-								borderRadius: 8,
 								boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
 								padding: "16px 20px",
 								minWidth: 200,
@@ -482,7 +475,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 										border: "1px solid #bbb",
 										background: "transparent",
 										color: "#888",
-										borderRadius: 4,
 										padding: "2px 10px",
 										cursor: "pointer",
 										fontSize: 12,
@@ -495,7 +487,6 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 										border: "1px solid #f14c4c",
 										background: "#f14c4c",
 										color: "#fff",
-										borderRadius: 4,
 										padding: "2px 10px",
 										cursor: "pointer",
 										fontSize: 12,

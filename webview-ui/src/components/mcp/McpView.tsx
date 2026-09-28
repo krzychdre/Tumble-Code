@@ -260,7 +260,6 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 					padding: "8px",
 					background: "var(--vscode-textCodeBlock-background)",
 					cursor: isExpandable ? "pointer" : "default",
-					borderRadius: isExpanded || isExpandable ? "4px" : "4px 4px 0 0",
 					opacity: server.disabled ? 0.6 : 1,
 				}}
 				onClick={handleRowClick}>
@@ -278,7 +277,6 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 								marginLeft: "8px",
 								padding: "1px 6px",
 								fontSize: "11px",
-								borderRadius: "4px",
 								background: "var(--vscode-badge-background)",
 								color: "var(--vscode-badge-foreground)",
 							}}>
@@ -309,7 +307,6 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 					style={{
 						width: "8px",
 						height: "8px",
-						borderRadius: "50%",
 						background: getStatusColor(),
 						marginLeft: "8px",
 					}}
@@ -338,7 +335,6 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 								background: "var(--vscode-textCodeBlock-background)",
 								padding: "0 10px 10px 10px",
 								fontSize: "13px",
-								borderRadius: "0 0 4px 4px",
 							}}>
 							<ThemedPanels style={{ marginBottom: "10px" }}>
 								<ThemedPanelTab id="tools">
@@ -462,7 +458,6 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 											background: "var(--vscode-dropdown-background)",
 											color: "var(--vscode-dropdown-foreground)",
 											border: "1px solid var(--vscode-dropdown-border)",
-											borderRadius: "2px",
 											outline: "none",
 											cursor: "pointer",
 										}}>
@@ -490,7 +485,6 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 							style={{
 								fontSize: "13px",
 								background: "var(--vscode-textCodeBlock-background)",
-								borderRadius: "0 0 4px 4px",
 								width: "100%",
 							}}>
 							<div

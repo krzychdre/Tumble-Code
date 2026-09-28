@@ -60,7 +60,6 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 							width: 34,
 							height: 34,
 							objectFit: "cover",
-							borderRadius: 4,
 							cursor: "pointer",
 						}}
 						onClick={() => handleImageClick(image)}
@@ -74,8 +73,7 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 								right: -4,
 								width: 13,
 								height: 13,
-								borderRadius: "50%",
-								backgroundColor: "var(--vscode-badge-background)",
+									backgroundColor: "var(--vscode-badge-background)",
 								display: "flex",
 								justifyContent: "center",
 								alignItems: "center",

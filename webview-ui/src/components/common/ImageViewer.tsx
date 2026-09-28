@@ -167,8 +167,7 @@ export function ImageViewer({
 							alignItems: "center",
 							justifyContent: "center",
 							backgroundColor: "var(--vscode-editor-background)",
-							borderRadius: "4px",
-							padding: "20px",
+								padding: "20px",
 						}}>
 						<span style={{ color: "var(--vscode-errorForeground)" }}>⚠️ {imageError}</span>
 					</div>

@@ -416,7 +416,6 @@
 		margin: 0;
 		padding: 0;
 		border: 1px solid var(--vscode-checkbox-border, #3c3c3c);
-		border-radius: 3px;
 		outline: none;
 		background: var(--vscode-checkbox-background, #3c3c3c);
 		cursor: pointer;
@@ -475,7 +474,6 @@
 		margin: 0;
 		padding: 4px 11px;
 		border: 1px solid var(--vscode-button-border, transparent);
-		border-radius: 2px;
 		outline: none;
 		background: var(--vscode-button-background, #0e639c);
 		color: var(--vscode-button-foreground, #ffffff);
@@ -524,7 +522,6 @@
 	.ui-themed-button[data-appearance="icon"] {
 		padding: 3px;
 		border: none;
-		border-radius: 5px;
 		background-color: transparent;
 		color: var(--vscode-foreground, #cccccc);
 	}
@@ -585,7 +582,6 @@
 		min-height: 18px;
 		padding: 3px 6px;
 		border: 1px solid var(--vscode-button-border, transparent);
-		border-radius: 11px;
 		background-color: var(--vscode-badge-background, #4d4d4d);
 		color: var(--vscode-badge-foreground, #ffffff);
 	}
@@ -642,7 +638,6 @@
 		margin: 0;
 		padding: 0;
 		border: 1px solid var(--vscode-checkbox-border, #3c3c3c);
-		border-radius: 999px;
 		outline: none;
 		background: var(--vscode-checkbox-background, #3c3c3c);
 		cursor: pointer;
@@ -658,7 +653,6 @@
 		position: absolute;
 		inset: 5px;
 		display: inline-block;
-		border-radius: 999px;
 		background: var(--vscode-foreground, #cccccc);
 		opacity: 0;
 		pointer-events: none;
@@ -843,7 +837,6 @@
 		min-width: 100px;
 		height: 26px;
 		vertical-align: top;
-		border-radius: 2px;
 		outline: none;
 		background: var(--vscode-dropdown-background, #3c3c3c);
 		color: var(--vscode-foreground, #cccccc);
@@ -868,7 +861,6 @@
 		min-height: 100%;
 		padding: 2px 6px 2px 8px;
 		border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
-		border-radius: 2px;
 		font-family: inherit;
 		font-size: var(--vscode-font-size, 13px);
 		line-height: normal;
@@ -927,7 +919,6 @@
 		padding: 0;
 		overflow-y: auto;
 		border: 1px solid var(--vscode-scrollbarSlider-background, #79797966);
-		border-radius: 2px;
 		background: var(--vscode-dropdown-background, #3c3c3c);
 		scrollbar-color: var(--vscode-scrollbarSlider-background) transparent;
 	}
@@ -1018,7 +1009,6 @@
 		margin: 0;
 		padding: 9px;
 		border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
-		border-radius: 2px;
 		outline: none;
 		background: var(--vscode-input-background, #3c3c3c);
 		color: var(--vscode-input-foreground, #cccccc);
@@ -1118,7 +1108,6 @@
 		height: 26px;
 		min-width: 100px;
 		border: 1px solid var(--vscode-dropdown-border, #3c3c3c);
-		border-radius: 2px;
 		background: var(--vscode-input-background, #3c3c3c);
 		color: var(--vscode-input-foreground, #cccccc);
 	}
@@ -1308,7 +1297,6 @@ body:focus-within .code-block-scrollable {
 
 .code-block-scrollable::-webkit-scrollbar-thumb {
 	background-color: var(--vscode-scrollbarSlider-background);
-	border-radius: 5px;
 	border: 2px solid transparent;
 	background-clip: content-box;
 }
@@ -1361,21 +1349,21 @@ body:focus-within .code-block-scrollable {
 
 .mention-context-textarea-highlight {
 	background-color: color-mix(in srgb, var(--vscode-badge-foreground) 30%, transparent);
-	border-radius: 3px;
+	border-radius: 0;
 	box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--vscode-badge-foreground) 30%, transparent);
 	color: transparent;
 }
 
 .mention-context-highlight {
 	background-color: color-mix(in srgb, var(--vscode-badge-foreground) 15%, transparent);
-	border-radius: 6px;
+	border-radius: 0;
 	padding: 1px 4px;
 	font-family: var(--font-mono);
 }
 
 .mention-context-highlight-with-shadow {
 	background-color: color-mix(in srgb, var(--vscode-badge-foreground) 15%, transparent);
-	border-radius: 3px;
+	border-radius: 0;
 	padding: 1px 4px;
 	box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--vscode-badge-foreground) 30%, transparent);
 	font-family: var(--font-mono);
@@ -1525,7 +1513,6 @@ input[cmdk-input]:focus {
 
 .settings-highlight {
 	animation: settings-highlight-fade 1.5s ease-out forwards;
-	border-radius: 4px;
 	padding: 8px;
 	margin: -8px;
 }
