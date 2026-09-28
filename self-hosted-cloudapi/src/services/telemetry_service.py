@@ -181,58 +181,26 @@ class TaskNotOwnedError(Exception):
     """
 
 
-async def backfill_messages(
-    db: AsyncSession,
-    task_id: str,
-    user_id: str,
-    messages: list,
-    workspace_path: str | None = None,
-) -> None:
-    """Backfill task messages.
+def _build_backfill_rows(task_id: str, messages: list) -> tuple[list[dict], str, str]:
+    """The ``task_messages`` rows of an uploaded conversation, and its title and prompt.
 
-    Ensures the parent Task row exists (owned by the uploading user) before
-    inserting messages — TaskMessage.task_id is a FK to tasks.id, so without
-    this the insert raises an IntegrityError. Idempotent: re-uploading a task
-    (e.g. re-sharing after more turns) replaces the previously stored messages
-    rather than appending duplicates.
-
-    `workspace_path` is the project/worktree root (explicit client field, with a
-    registry fallback resolved by the caller); stamped on the Task so offline
-    tasks show their project in the web view.
-
-    Raises TaskNotOwnedError, before touching anything, when the task already
-    belongs to another user: the upload names its task by id only, so without
-    this check any signed-in user could replace someone else's conversation.
+    Pure and CPU-bound: a conversation runs to 10 MB (BACKFILL_MAX_BYTES), and
+    classifying it, serializing every message and extracting its token/cost
+    figures took a few hundred milliseconds of event loop, so the backfill
+    runs this in a worker thread (P11). Every row is a plain dict with the
+    same keys, ready for one bulk INSERT; the column defaults (``id``,
+    ``created_at``) are filled per row by the insert.
     """
-    from sqlalchemy import delete
-    from src.models.task import TaskMessage
-    from src.services.task_summary import (
-        derive_prompt,
-        derive_title,
-        message_metrics,
-        refresh_task_summary,
-    )
-
-    # Get-or-create the parent task, owned by the uploading user. The row is
-    # in the database before any message is inserted (FK on task_id).
-    task, _created = await _get_or_create_task(db, task_id, user_id)
-    if task.user_id != user_id:
-        raise TaskNotOwnedError(task_id)
-    _stamp_workspace_path(task, workspace_path)
-    await _link_task_tree(db, task_id)
-
-    # Replace any existing messages for this task (idempotent re-share).
-    await db.execute(delete(TaskMessage).where(TaskMessage.task_id == task_id))
+    from src.services.session_quality import classify_conversation
+    from src.services.task_summary import derive_prompt, derive_title, message_metrics
 
     # The token/cost figures are parsed here, once, and stored alongside the
     # message so the task rollup is a numeric SUM rather than a re-parse of the
     # whole conversation on every page view (see services/task_summary).
-    from src.services.session_quality import classify_conversation
-
     parsed: list[dict] = [m for m in messages if isinstance(m, dict)]
     # Quality markers need the conversation in order (a user_feedback means
     # something different when an attempt_completion is awaiting an answer), and
-    # a backfill has the whole thing in hand — so classify it in one walk. The
+    # a backfill has the whole thing in hand, so classify it in one walk. The
     # marks line up with `parsed`, so a counter walks them alongside `messages`.
     #
     # The walk covers every message, including one that loses its row below:
@@ -253,6 +221,7 @@ async def backfill_messages(
         if isinstance(ts, (int, float, str)):
             last_index_of_ts[ts] = index
 
+    rows: list[dict] = []
     for index, msg in enumerate(messages):
         is_dict = isinstance(msg, dict)
         kind, tool_path = (None, None)
@@ -262,16 +231,69 @@ async def backfill_messages(
             ts = msg.get("ts")
             if isinstance(ts, (int, float, str)) and last_index_of_ts[ts] != index:
                 continue
-        task_msg = TaskMessage(
-            task_id=task_id,
-            message_data=msg if isinstance(msg, str) else json.dumps(msg),
-            message_ts=msg.get("ts") if is_dict else None,
-            q_kind=kind,
-            tool_path=tool_path,
-            **message_metrics(msg if is_dict else {}).as_columns(),
+        rows.append(
+            {
+                "task_id": task_id,
+                "message_data": msg if isinstance(msg, str) else json.dumps(msg),
+                "message_ts": msg.get("ts") if is_dict else None,
+                "q_kind": kind,
+                "tool_path": tool_path,
+                **message_metrics(msg if is_dict else {}).as_columns(),
+            }
         )
-        db.add(task_msg)
-    await db.flush()
+    return rows, derive_title(parsed), derive_prompt(parsed)
+
+
+async def backfill_messages(
+    db: AsyncSession,
+    task_id: str,
+    user_id: str,
+    messages: list,
+    workspace_path: str | None = None,
+) -> None:
+    """Backfill task messages.
+
+    Ensures the parent Task row exists (owned by the uploading user) before
+    inserting messages: TaskMessage.task_id is a FK to tasks.id, so without
+    this the insert raises an IntegrityError. Idempotent: re-uploading a task
+    (e.g. re-sharing after more turns) replaces the previously stored messages
+    rather than appending duplicates.
+
+    `workspace_path` is the project/worktree root (explicit client field, with a
+    registry fallback resolved by the caller); stamped on the Task so offline
+    tasks show their project in the web view.
+
+    Raises TaskNotOwnedError, before touching anything, when the task already
+    belongs to another user: the upload names its task by id only, so without
+    this check any signed-in user could replace someone else's conversation.
+
+    The rows are built in a worker thread (``_build_backfill_rows``) and
+    written with one bulk INSERT, not one ORM object per message: the event
+    loop only runs the queries (P11).
+    """
+    import anyio
+    from sqlalchemy import delete, insert
+    from src.models.task import TaskMessage
+    from src.services.task_summary import refresh_task_summary
+
+    # Get-or-create the parent task, owned by the uploading user. The row is
+    # in the database before any message is inserted (FK on task_id).
+    task, _created = await _get_or_create_task(db, task_id, user_id)
+    if task.user_id != user_id:
+        raise TaskNotOwnedError(task_id)
+    _stamp_workspace_path(task, workspace_path)
+    await _link_task_tree(db, task_id)
+
+    # Replace any existing messages for this task (idempotent re-share).
+    await db.execute(delete(TaskMessage).where(TaskMessage.task_id == task_id))
+
+    rows, title, prompt = await anyio.to_thread.run_sync(_build_backfill_rows, task_id, messages)
+    if rows:
+        # One Core INSERT executed with the whole list (executemany): no ORM
+        # object, identity-map entry or unit-of-work step per row. SQLAlchemy
+        # batches the parameters itself, within SQLite's and asyncpg's
+        # bound-parameter limits, so this is the same on both dialects.
+        await db.execute(insert(TaskMessage), rows)
 
     # A re-share replaces the whole conversation, so the title and its excerpt
     # are re-derived from scratch (force=True): the row may still carry the
@@ -280,8 +302,8 @@ async def backfill_messages(
     await refresh_task_summary(
         db,
         task_id,
-        title=derive_title(parsed),
-        prompt=derive_prompt(parsed),
+        title=title,
+        prompt=prompt,
         force_title=True,
     )
 

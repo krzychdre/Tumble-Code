@@ -30,6 +30,7 @@ from src.database import async_session_factory
 from src.models.task import Task
 from src.services.telemetry_service import upsert_task_message
 from src.realtime.hub import registry
+from src.realtime.partial_buffer import PartialMessageBuffer
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +165,8 @@ async def connect(sid, environ, auth):
 
 @sio.event
 async def disconnect(sid):
+    # A stream cut off mid-way still leaves its last revision behind.
+    await partial_messages.flush_sid(sid)
     registry.detach(sid)
 
 
@@ -237,7 +240,7 @@ async def on_task_event(sid, data):
 
     if owned:
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
-        if is_message and await _save_message(task_id, user_id, data) is False:
+        if is_message and await _persist(sid, task_id, user_id, data) is False:
             # Only if the row was deleted and recreated by another user while
             # this socket was open (task ids are client-chosen UUIDs, so in
             # practice never); stop relaying from here on.
@@ -245,7 +248,9 @@ async def on_task_event(sid, data):
         return
 
     if is_message:
-        owned = await _save_message(task_id, user_id, data)
+        # Written at once even when partial: this write creates the task row
+        # for a new task and is what answers whose task it is.
+        owned = await _save_messages(task_id, user_id, [data])
     else:
         try:
             owned = await _task_access(user_id, task_id)
@@ -259,26 +264,67 @@ async def on_task_event(sid, data):
         await sio.emit(TASK_RELAYED_EVENT, data, room=_room(task_id))
 
 
-async def _save_message(task_id: str, user_id: str, data: dict) -> Optional[bool]:
-    """Persist a message event; return whether the task is the user's, or None
-    when the save failed (ownership then stays unknown)."""
-    # Worktree root: prefer the value the originating window stamped on the
-    # event, correct even when several windows share one cloud account, since
-    # the registry tracks only one instance per user. Fall back to the
-    # registered instance for older clients that don't send it.
-    workspace_path = data.get("workspacePath") or (
-        registry.instance(user_id) or {}
-    ).get("workspacePath")
+async def _persist(sid: str, task_id: str, user_id: str, data: dict) -> Optional[bool]:
+    """Persist a message event of a task the socket is known to own.
+
+    A partial revision with a ``ts`` is held and coalesced with the next ones
+    (see realtime/partial_buffer); anything else is written at once, together
+    with the task's held partials, in one transaction. Returns what
+    ``_save_messages`` does, or True for a held partial (its write reports an
+    ownership change itself, see ``_write_held``).
+    """
+    message = data["message"]
+    ts = message.get("ts")
+    if message.get("partial") and ts is not None:
+        partial_messages.hold(sid, task_id, user_id, data)
+        return True
+    earlier = await partial_messages.settle(task_id, ts)
+    return await _save_messages(task_id, user_id, [*earlier, data])
+
+
+async def _save_messages(task_id: str, user_id: str, events: list[dict]) -> Optional[bool]:
+    """Persist message events of one task in one transaction; return whether
+    the task is the user's, or None when the save failed (ownership then stays
+    unknown)."""
     try:
         async with async_session_factory() as db:
-            owned = await upsert_task_message(
-                db, task_id, user_id, data["message"], workspace_path=workspace_path
-            )
+            owned = None
+            for data in events:
+                # Worktree root: prefer the value the originating window
+                # stamped on the event, correct even when several windows share
+                # one cloud account, since the registry tracks only one
+                # instance per user. Fall back to the registered instance for
+                # older clients that don't send it.
+                workspace_path = data.get("workspacePath") or (
+                    registry.instance(user_id) or {}
+                ).get("workspacePath")
+                owned = await upsert_task_message(
+                    db, task_id, user_id, data["message"], workspace_path=workspace_path
+                )
+                if owned is False:
+                    # Nothing was written for a foreign task, and nothing else
+                    # of it may be.
+                    break
             await db.commit()
         return owned
     except Exception as exc:  # persistence must never break the live relay
         logger.warning("[bridge] failed to persist task message: %s", exc)
         return None
+
+
+async def _write_held(sid: str, task_id: str, user_id: str, events: list[dict]) -> None:
+    """Write partial rows the buffer held back (window over, disconnect, shutdown)."""
+    if await _save_messages(task_id, user_id, events) is False:
+        registry.remember_task_access(sid, task_id, False)
+
+
+# Streamed partial rows, coalesced per (task, ts) before they are written.
+partial_messages = PartialMessageBuffer(_write_held)
+
+
+async def flush_pending_messages() -> None:
+    """Write every held partial row now (app shutdown)."""
+    await partial_messages.flush_all()
 
 
 # --- browser → server -----------------------------------------------------

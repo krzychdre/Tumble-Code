@@ -147,3 +147,21 @@ async def test_shared_page_parses_and_serializes_the_conversation_off_the_loop(
     assert "Build me a feature" in resp.text
     assert [c["on_loop"] for c in parses] == [False]
     assert [c["on_loop"] for c in dumps] == [False]
+
+
+async def test_backfill_rows_are_built_off_the_loop(client, db_session, monkeypatch):
+    """P11: the parse was already off the loop, but classifying the whole
+    conversation, serializing every message and extracting its metrics (10 MB
+    of messages at most) ran inline on the event loop."""
+    from src.services import telemetry_service
+
+    calls = _spy(monkeypatch, telemetry_service, "_build_backfill_rows")
+    await _seed_user(db_session)
+    _override_current_user(client.app)
+    files, data = _backfill_files("task-rows", _msgs())
+
+    resp = client.post("/api/events/backfill", files=files, data=data)
+
+    assert resp.status_code == 200
+    assert len(calls) == 1
+    assert calls[0]["on_loop"] is False
