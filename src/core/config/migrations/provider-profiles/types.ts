@@ -1,11 +1,6 @@
 import type { ExtensionContext } from "vscode"
 
-import type {
-	OpaqueProviderProfile,
-	PersistedProviderProfile,
-	ProviderProfileMigrations,
-	ProviderProfilesData,
-} from "@roo-code/types"
+import type { ProviderProfileMigrations, ProviderProfilesData } from "@roo-code/types"
 
 import type { FlaggedMigration } from "../runner"
 
@@ -19,7 +14,3 @@ export type ProviderProfileMigration = FlaggedMigration<
 	ProviderProfilesData,
 	ProviderProfileMigrationContext
 >
-
-/** Retired or unknown providers are stored opaquely (no typed `config`). */
-export const isOpaqueProfile = (profile: PersistedProviderProfile): profile is OpaqueProviderProfile =>
-	!("config" in profile.provider)

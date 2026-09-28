@@ -12,6 +12,13 @@ import { SECRET_STATE_KEYS } from "./global-settings.js"
 
 export const PROVIDER_PROFILES_SCHEMA_VERSION = 2 as const
 
+/**
+ * Done-record of the one-shot provider-profile migrations. Flags of deleted
+ * migrations stay here as optional keys because the object is strict and
+ * stored envelopes still carry them (all five below were retired on
+ * 2026-09-28, see RETIRED_PROVIDER_PROFILE_MIGRATION_FLAGS in
+ * src/core/config/migrations/provider-profiles/registry.ts).
+ */
 export const providerProfileMigrationsSchema = z
 	.object({
 		rateLimitSecondsMigrated: z.boolean().optional(),

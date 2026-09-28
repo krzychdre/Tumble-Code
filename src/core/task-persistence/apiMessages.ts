@@ -1,4 +1,4 @@
-import { safeWriteJson, withLockedJsonTransaction } from "@roo-code/core/fs"
+import { safeWriteJson } from "@roo-code/core/fs"
 import { perfCounters } from "../../utils/perfCounters"
 import * as path from "path"
 import * as fs from "fs/promises"
@@ -40,9 +40,6 @@ export type ApiMessage = Anthropic.MessageParam & {
 	isTruncationMarker?: boolean
 }
 
-/** File name the Cline-era extension used for the API conversation history of a task. */
-const LEGACY_API_MESSAGES_FILE = "claude_messages.json"
-
 export async function readApiMessages({
 	taskId,
 	globalStoragePath,
@@ -57,18 +54,8 @@ export async function readApiMessages({
 		return readCurrentApiMessages(taskId, filePath)
 	}
 
-	const oldPath = path.join(taskDir, LEGACY_API_MESSAGES_FILE)
-	if (await fileExistsAtPath(oldPath)) {
-		return migrateLegacyApiMessages(taskId, filePath, oldPath)
-	}
-
-	// A concurrent reader may have migrated the legacy file between the two checks above: it writes the new file
-	// before it deletes the old one, so looking once more closes that window.
-	if (await fileExistsAtPath(filePath)) {
-		return readCurrentApiMessages(taskId, filePath)
-	}
-
-	// If we reach here, neither the new nor the old history file was found.
+	// The Cline-era claude_messages.json is no longer read (deleted 2026-09-28,
+	// ai_plans/2026-09-28_delete-old-config-migrations.md).
 	console.error(
 		`[Roo-Debug] readApiMessages: API conversation history file not found for taskId: ${taskId}. Expected at: ${filePath}`,
 	)
@@ -97,84 +84,6 @@ async function readCurrentApiMessages(taskId: string, filePath: string): Promise
 		)
 	}
 	return parsedData
-}
-
-/**
- * Parse a Cline-era claude_messages.json. Returns `undefined` when the file is gone or unusable, in which case it is
- * left on disk untouched.
- */
-async function readLegacyApiMessages(taskId: string, oldPath: string): Promise<ApiMessage[] | undefined> {
-	let fileContent: string
-	try {
-		fileContent = await fs.readFile(oldPath, "utf8")
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-			return undefined
-		}
-		throw error
-	}
-
-	let parsedData: unknown
-	try {
-		parsedData = JSON.parse(fileContent)
-	} catch (error) {
-		console.warn(
-			`[readApiMessages] Error parsing OLD API conversation history file (claude_messages.json), returning empty. TaskId: ${taskId}, Path: ${oldPath}, Error: ${error}`,
-		)
-		return undefined
-	}
-	if (!Array.isArray(parsedData)) {
-		console.warn(
-			`[readApiMessages] Parsed OLD data is not an array (got ${typeof parsedData}), returning empty. TaskId: ${taskId}, Path: ${oldPath}`,
-		)
-		return undefined
-	}
-	if (parsedData.length === 0) {
-		console.error(
-			`[Roo-Debug] readApiMessages: Found OLD API conversation history file (claude_messages.json), but it's empty (parsed as []). TaskId: ${taskId}, Path: ${oldPath}`,
-		)
-	}
-	return parsedData
-}
-
-/**
- * Move a Cline-era claude_messages.json to api_conversation_history.json and return its messages.
- *
- * The read is often the only thing that happens to the task (search_task_history, the delegation re-attach check,
- * a resume), so the migration must be complete on its own: the new file is written atomically, in the format
- * saveApiMessages uses, before the old one is deleted. It runs under the same lock saveApiMessages takes on the new
- * file, so concurrent readers migrate once and a reader waiting on the lock finds the new file. If anything fails,
- * the old file stays where it is and the messages are still returned; the next read tries again.
- */
-async function migrateLegacyApiMessages(taskId: string, filePath: string, oldPath: string): Promise<ApiMessage[]> {
-	let legacyMessages: ApiMessage[] | undefined
-	let migrated: "done" | "already-migrated" | "unusable"
-
-	try {
-		migrated = await withLockedJsonTransaction(filePath, filePath, async (writeJson) => {
-			if (await fileExistsAtPath(filePath)) {
-				return "already-migrated"
-			}
-			legacyMessages = await readLegacyApiMessages(taskId, oldPath)
-			if (legacyMessages === undefined) {
-				return "unusable"
-			}
-			await writeJson(legacyMessages)
-			await fs.unlink(oldPath)
-			return "done"
-		})
-	} catch (error) {
-		console.warn(
-			`[readApiMessages] Could not migrate claude_messages.json to ${GlobalFileNames.apiConversationHistory}, keeping the old file. TaskId: ${taskId}, Error: ${error}`,
-		)
-		// Without the lock the old file was not read yet; reading it is harmless because nothing is deleted here.
-		return legacyMessages ?? (await readLegacyApiMessages(taskId, oldPath)) ?? []
-	}
-
-	if (migrated === "already-migrated") {
-		return readCurrentApiMessages(taskId, filePath)
-	}
-	return legacyMessages ?? []
 }
 
 export async function saveApiMessages({

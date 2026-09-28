@@ -16,8 +16,8 @@
  *   again on the next start; each one must therefore be idempotent.
  *
  * - {@link StartupMigration}: ContextProxy global state. These have no
- *   flag: each one detects its own legacy key (for example
- *   `customCondensingPrompt`) and removes it when done, so "the legacy key
+ *   flag: each one detects its own legacy key (for example the plain-text
+ *   `vertexJsonCredentials` copy) and removes it when done, so "the legacy key
  *   is absent" is the done record. They run on every start and are no-ops
  *   once the legacy key is gone. A persisted flag would be wrong here:
  *   `resetAllState()` clears every global state key and re-runs them, and

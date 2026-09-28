@@ -146,8 +146,8 @@ describe("ContextProxy", () => {
 			const result = proxy.getGlobalState("apiProvider")
 			expect(result).toBe("deepseek")
 
-			// Original context should be called once during updateGlobalState (+4 for migration checks)
-			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 4) // From initialization + migration checks
+			// Original context should be called once during updateGlobalState (+1 for the vertexJsonCredentials migration check)
+			expect(mockGlobalState.get).toHaveBeenCalledTimes(GLOBAL_STATE_KEYS.length + 1) // From initialization + migration checks
 		})
 
 		it("should handle default values correctly", async () => {
@@ -679,7 +679,6 @@ describe("ContextProxy", () => {
 			expect(touchedKeys).not.toContain("customCondensingPrompt")
 			expect(touchedKeys).not.toContain("openRouterImageGenerationSettings")
 			expect(mockGlobalState.get).not.toHaveBeenCalledWith("openRouterImageGenerationSettings")
-			expect(mockGlobalState.get).not.toHaveBeenCalledWith("customCondensingPrompt")
 		})
 	})
 })
