@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useId } from "react"
+
+import { cn } from "@/lib/utils"
+
 import { ToolUseBlock, ToolUseBlockHeader } from "../common/ToolUseBlock"
 import MarkdownBlock from "../common/MarkdownBlock"
 import { BlockTimestamp } from "./BlockTimestamp"
@@ -32,21 +35,9 @@ interface UpdateTodoListToolBlockProps {
 }
 
 const STATUS_OPTIONS = [
-	{ value: "", label: "Not Started", color: "var(--vscode-foreground)", border: "#bbb", bg: "transparent" },
-	{
-		value: "in_progress",
-		label: "In Progress",
-		color: "var(--vscode-charts-yellow)",
-		border: "var(--vscode-charts-yellow)",
-		bg: "rgba(255, 221, 51, 0.15)",
-	},
-	{
-		value: "completed",
-		label: "Completed",
-		color: "var(--vscode-charts-green)",
-		border: "var(--vscode-charts-green)",
-		bg: "var(--vscode-charts-green)",
-	},
+	{ value: "", label: "Not Started" },
+	{ value: "in_progress", label: "In Progress" },
+	{ value: "completed", label: "Completed" },
 ]
 
 const genId = () => Math.random().toString(36).slice(2, 10)
@@ -56,53 +47,60 @@ const genId = () => Math.random().toString(36).slice(2, 10)
 // render would set state on every render and loop forever.
 const NO_TODOS: TodoItem[] = []
 
-const todoStatusColor = (status?: string) =>
-	status === "completed"
-		? "var(--vscode-charts-green)"
-		: status === "in_progress"
-			? "var(--vscode-charts-yellow)"
-			: "var(--vscode-foreground)"
+/*
+ * §2.8 (ai_plans/2026-09-27_ui-modernization.md): the block used 32 inline
+ * style objects with hex colours that ignored the theme (a white delete
+ * dialog in dark themes). They are classes now, coloured from the theme.
+ */
 
-/** The coloured dot in front of a todo: filled green, filled yellow, or an empty ring. */
-const TodoStatusDot = ({ status }: { status?: string }) => (
-	<span
-		style={{
-			display: "inline-block",
-			width: 8,
-			height: 8,
-			background:
-				status === "completed"
-					? "var(--vscode-charts-green)"
-					: status === "in_progress"
-						? "var(--vscode-charts-yellow)"
-						: "transparent",
-			border:
-				status === "completed" || status === "in_progress"
-					? undefined
-					: "1px solid var(--vscode-descriptionForeground)",
-			marginRight: 6,
-			marginTop: 7,
-			flexShrink: 0,
-		}}
-	/>
-)
+type TodoDotStatus = "completed" | "in_progress" | "pending"
+
+const dotStatus = (status?: string): TodoDotStatus =>
+	status === "completed" || status === "in_progress" ? status : "pending"
+
+const TODO_TEXT_COLOR: Record<TodoDotStatus, string> = {
+	completed: "text-vscode-charts-green",
+	in_progress: "text-vscode-charts-yellow",
+	pending: "text-vscode-foreground",
+}
+
+const TODO_DOT_CLASS: Record<TodoDotStatus, string> = {
+	completed: "bg-vscode-charts-green",
+	in_progress: "bg-vscode-charts-yellow",
+	pending: "border border-vscode-descriptionForeground",
+}
+
+/** The coloured square in front of a todo: filled green, filled yellow, or an empty outline. */
+const TodoStatusDot = ({ status }: { status?: string }) => {
+	const kind = dotStatus(status)
+	return (
+		<span
+			data-todo-status={kind}
+			aria-hidden="true"
+			className={cn("inline-block size-2 shrink-0 mr-1.5 mt-[7px]", TODO_DOT_CLASS[kind])}
+		/>
+	)
+}
 
 /** A todo's text, coloured by its status. */
 const TodoText = ({ todo }: { todo: TodoItem }) => (
 	<span
-		style={{
-			flex: 1,
-			minWidth: 0,
-			fontWeight: 500,
-			color: todoStatusColor(todo.status),
-			fontSize: 13,
-			marginRight: 6,
-			padding: "1px 3px",
-			lineHeight: "1.4",
-		}}>
+		className={cn(
+			"flex-1 min-w-0 font-medium text-[13px] leading-[1.4] mr-1.5 px-[3px] py-px",
+			TODO_TEXT_COLOR[dotStatus(todo.status)],
+		)}>
 		{todo.content}
 	</span>
 )
+
+const LIST_ITEM = "flex items-start min-h-5 mb-0.5"
+const SMALL_BUTTON = "px-[7px] py-px text-xs cursor-pointer border border-solid"
+const PRIMARY_BUTTON =
+	"bg-vscode-button-background text-vscode-button-foreground border-[var(--vscode-button-border,transparent)] disabled:cursor-not-allowed disabled:opacity-60"
+const SECONDARY_BUTTON =
+	"bg-vscode-button-secondaryBackground text-vscode-button-secondaryForeground border-[var(--vscode-button-secondaryBorder,transparent)]"
+const TEXT_INPUT =
+	"flex-1 min-w-0 font-medium text-[13px] mr-1.5 px-[3px] py-px border-0 border-b border-solid outline-none"
 
 const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 	todos = NO_TODOS,
@@ -121,6 +119,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 	const newInputRef = useRef<HTMLInputElement>(null)
 	const [deleteId, setDeleteId] = useState<string | null>(null)
 	const [isEditing, setIsEditing] = useState(false)
+	const deleteLabelId = useId()
 
 	// Automatically exit edit mode when external editable becomes false
 	useEffect(() => {
@@ -211,25 +210,18 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 		return (
 			<ToolUseBlock>
 				<ToolUseBlockHeader>
-					<div className="flex items-center w-full" style={{ width: "100%" }}>
-						<span
-							className="codicon codicon-feedback mr-1.5"
-							style={{ color: "var(--vscode-charts-yellow)" }}
-						/>
-						<span className="font-bold mr-2" style={{ fontWeight: "bold" }}>
-							User Edit
-						</span>
+					<div className="flex items-center w-full">
+						<span className="codicon codicon-feedback mr-1.5 text-vscode-charts-yellow" />
+						<span className="font-bold mr-2">User Edit</span>
 						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
 						<div className="flex-grow" />
 					</div>
 				</ToolUseBlockHeader>
 				{editTodos.length > 0 ? (
-					<div className="overflow-x-auto max-w-full" style={{ padding: "6px 0 2px 0" }}>
-						<ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
+					<div className="overflow-x-auto max-w-full pt-1.5 pb-0.5">
+						<ul className="m-0 pl-0 list-none">
 							{editTodos.map((todo, idx) => (
-								<li
-									key={todo.id || idx}
-									style={{ marginBottom: 2, display: "flex", alignItems: "flex-start", minHeight: 20 }}>
+								<li key={todo.id || idx} className={LIST_ITEM}>
 									<TodoStatusDot status={todo.status} />
 									<TodoText todo={todo} />
 								</li>
@@ -237,7 +229,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 						</ul>
 					</div>
 				) : (
-					<div className="overflow-x-auto max-w-full" style={{ padding: "12px 0 8px 0" }}>
+					<div className="overflow-x-auto max-w-full pt-3 pb-2">
 						<span className="text-vscode-descriptionForeground">User Edits</span>
 					</div>
 				)}
@@ -249,52 +241,31 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 		<>
 			<ToolUseBlock>
 				<ToolUseBlockHeader>
-					<div className="flex items-center w-full" style={{ width: "100%" }}>
-						<span
-							className="codicon codicon-checklist mr-1.5"
-							style={{ color: "var(--vscode-foreground)" }}
-						/>
-						<span className="font-bold mr-2" style={{ fontWeight: "bold" }}>
-							Todo List Updated
-						</span>
+					<div className="flex items-center w-full">
+						<span className="codicon codicon-checklist mr-1.5 text-vscode-foreground" />
+						<span className="font-bold mr-2">Todo List Updated</span>
 						{typeof startTs === "number" && <BlockTimestamp startTs={startTs} endTs={endTs} live />}
 						<div className="flex-grow" />
 						{editable && (
 							<button
+								type="button"
 								onClick={() => setIsEditing(!isEditing)}
-								style={{
-									border: isEditing
-										? "1px solid var(--vscode-button-border)"
-										: "1px solid var(--vscode-button-secondaryBorder)",
-									background: isEditing
-										? "var(--vscode-button-background)"
-										: "var(--vscode-button-secondaryBackground)",
-									color: isEditing
-										? "var(--vscode-button-foreground)"
-										: "var(--vscode-button-secondaryForeground)",
-									padding: "2px 8px",
-									cursor: "pointer",
-									fontSize: 13,
-									marginLeft: 8,
-								}}>
+								aria-pressed={isEditing}
+								className={cn(
+									"ml-2 px-2 py-0.5 text-[13px] cursor-pointer border border-solid focus-ring",
+									isEditing ? PRIMARY_BUTTON : SECONDARY_BUTTON,
+								)}>
 								{isEditing ? "Done" : "Edit"}
 							</button>
 						)}
 					</div>
 				</ToolUseBlockHeader>
-				<div className="overflow-x-auto max-w-full" style={{ padding: "6px 0 2px 0" }}>
+				<div className="overflow-x-auto max-w-full pt-1.5 pb-0.5">
 					{Array.isArray(editTodos) && editTodos.length > 0 ? (
-						<ul style={{ margin: 0, paddingLeft: 0, listStyle: "none" }}>
+						<ul className="m-0 pl-0 list-none">
 							{editTodos.map((todo, idx) => {
 								return (
-									<li
-										key={todo.id || idx}
-										style={{
-											marginBottom: 2,
-											display: "flex",
-											alignItems: "flex-start",
-											minHeight: 20,
-										}}>
+									<li key={todo.id || idx} className={LIST_ITEM}>
 										<TodoStatusDot status={todo.status} />
 										{isEditing ? (
 											<input
@@ -302,19 +273,10 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 												value={todo.content}
 												placeholder="Enter todo item"
 												onChange={(e) => handleContentChange(todo.id!, e.target.value)}
-												style={{
-													flex: 1,
-													minWidth: 0,
-													fontWeight: 500,
-													color: "var(--vscode-input-foreground)",
-													background: "var(--vscode-input-background)",
-													border: "none",
-													outline: "none",
-													fontSize: 13,
-													marginRight: 6,
-													padding: "1px 3px",
-													borderBottom: "1px solid var(--vscode-input-border)",
-												}}
+												className={cn(
+													TEXT_INPUT,
+													"text-vscode-input-foreground bg-vscode-input-background border-vscode-input-border",
+												)}
 												onBlur={(e) => {
 													if (!e.target.value.trim()) {
 														handleDelete(todo.id!)
@@ -328,14 +290,7 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 											<select
 												value={todo.status || ""}
 												onChange={(e) => handleStatusChange(todo.id!, e.target.value)}
-												style={{
-													marginRight: 6,
-													border: "1px solid var(--vscode-input-border)",
-													background: "var(--vscode-input-background)",
-													color: "var(--vscode-input-foreground)",
-													fontSize: 12,
-													padding: "1px 4px",
-												}}>
+												className="mr-1.5 border border-solid border-vscode-input-border bg-vscode-input-background text-vscode-input-foreground text-xs px-1 py-px">
 												{STATUS_OPTIONS.map((opt) => (
 													<option key={opt.value} value={opt.value}>
 														{opt.label}
@@ -345,18 +300,11 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 										)}
 										{isEditing && (
 											<button
+												type="button"
 												onClick={() => handleDelete(todo.id!)}
-												style={{
-													border: "none",
-													background: "transparent",
-													color: "#f14c4c",
-													cursor: "pointer",
-													fontSize: 14,
-													marginLeft: 2,
-													padding: 0,
-													lineHeight: 1,
-												}}
-												title="Remove">
+												className="ml-0.5 p-0 border-none bg-transparent text-vscode-errorForeground cursor-pointer text-sm leading-none focus-ring"
+												title="Remove"
+												aria-label="Remove">
 												×
 											</button>
 										)}
@@ -364,8 +312,8 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 								)
 							})}
 							{adding ? (
-								<li style={{ marginTop: 2, display: "flex", alignItems: "center" }}>
-									<span style={{ width: 14, marginRight: 6 }} />
+								<li className="flex items-center mt-0.5">
+									<span className="w-3.5 mr-1.5" />
 									<input
 										ref={newInputRef}
 										type="text"
@@ -373,63 +321,39 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 										placeholder="Enter todo item, press Enter to add"
 										onChange={(e) => setNewContent(e.target.value)}
 										onKeyDown={handleNewInputKeyDown}
-										style={{
-											flex: 1,
-											minWidth: 0,
-											fontWeight: 500,
-											color: "var(--vscode-foreground)",
-											background: "transparent",
-											border: "none",
-											outline: "none",
-											fontSize: 13,
-											marginRight: 6,
-											padding: "1px 3px",
-											borderBottom: "1px solid #eee",
-										}}
+										className={cn(
+											TEXT_INPUT,
+											"text-vscode-foreground bg-transparent border-vscode-input-border",
+										)}
 									/>
 									<button
+										type="button"
 										onClick={handleAdd}
 										disabled={!newContent.trim()}
-										style={{
-											border: "1px solid var(--vscode-button-border)",
-											background: "var(--vscode-button-background)",
-											color: "var(--vscode-button-foreground)",
-											padding: "1px 7px",
-											cursor: newContent.trim() ? "pointer" : "not-allowed",
-											fontSize: 12,
-											marginRight: 4,
-										}}>
+										className={cn(SMALL_BUTTON, PRIMARY_BUTTON, "mr-1 focus-ring")}>
 										Add
 									</button>
 									<button
+										type="button"
 										onClick={() => {
 											setAdding(false)
 											setNewContent("")
 										}}
-										style={{
-											border: "1px solid var(--vscode-button-secondaryBorder)",
-											background: "var(--vscode-button-secondaryBackground)",
-											color: "var(--vscode-button-secondaryForeground)",
-											padding: "1px 7px",
-											cursor: "pointer",
-											fontSize: 12,
-										}}>
+										className={cn(SMALL_BUTTON, SECONDARY_BUTTON, "focus-ring")}>
 										Cancel
 									</button>
 								</li>
 							) : (
-								<li style={{ marginTop: 2 }}>
+								<li className="mt-0.5">
 									{isEditing && (
 										<button
+											type="button"
 											onClick={() => setAdding(true)}
-											style={{
-												border: "1px dashed var(--vscode-button-secondaryBorder)",
-												background: "var(--vscode-button-secondaryBackground)",
-												color: "var(--vscode-button-secondaryForeground)",
-												padding: "1px 8px",
-												cursor: "pointer",
-												fontSize: 12,
-											}}>
+											className={cn(
+												SMALL_BUTTON,
+												SECONDARY_BUTTON,
+												"px-2 border-dashed focus-ring",
+											)}>
 											+ Add Todo
 										</button>
 									)}
@@ -443,54 +367,31 @@ const UpdateTodoListToolBlock: React.FC<UpdateTodoListToolBlockProps> = ({
 				{/* Delete confirmation dialog */}
 				{deleteId && (
 					<div
-						style={{
-							position: "fixed",
-							left: 0,
-							top: 0,
-							right: 0,
-							bottom: 0,
-							background: "rgba(0,0,0,0.15)",
-							zIndex: 9999,
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-						}}
+						className="fixed inset-0 z-[9999] flex items-center justify-center bg-[rgba(0,0,0,0.15)]"
 						onClick={cancelDelete}>
 						<div
-							style={{
-								background: "#fff",
-								boxShadow: "0 2px 16px rgba(0,0,0,0.15)",
-								padding: "16px 20px",
-								minWidth: 200,
-								zIndex: 10000,
-							}}
+							role="alertdialog"
+							aria-modal="true"
+							aria-labelledby={deleteLabelId}
+							className="z-[10000] min-w-[200px] px-5 py-4 bg-vscode-editorHoverWidget-background text-vscode-editorHoverWidget-foreground border border-solid border-vscode-editorHoverWidget-border shadow-[0_2px_16px_var(--vscode-widget-shadow)]"
 							onClick={(e) => e.stopPropagation()}>
-							<div style={{ marginBottom: 12, fontSize: 14, color: "#333" }}>
+							<div id={deleteLabelId} className="mb-3 text-sm">
 								Are you sure you want to delete this todo item?
 							</div>
-							<div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+							<div className="flex justify-end gap-2">
 								<button
+									type="button"
 									onClick={cancelDelete}
-									style={{
-										border: "1px solid #bbb",
-										background: "transparent",
-										color: "#888",
-										padding: "2px 10px",
-										cursor: "pointer",
-										fontSize: 12,
-									}}>
+									className={cn(SMALL_BUTTON, SECONDARY_BUTTON, "px-2.5 py-0.5 focus-ring")}>
 									Cancel
 								</button>
 								<button
+									type="button"
 									onClick={confirmDelete}
-									style={{
-										border: "1px solid #f14c4c",
-										background: "#f14c4c",
-										color: "#fff",
-										padding: "2px 10px",
-										cursor: "pointer",
-										fontSize: 12,
-									}}>
+									className={cn(
+										SMALL_BUTTON,
+										"px-2.5 py-0.5 bg-vscode-errorForeground text-vscode-editor-background border-vscode-errorForeground focus-ring",
+									)}>
 									Delete
 								</button>
 							</div>
