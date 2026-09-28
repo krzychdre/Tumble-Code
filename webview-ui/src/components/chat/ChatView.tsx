@@ -15,6 +15,7 @@ import { ProfileValidator } from "@roo/ProfileValidator"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { cn } from "@src/lib/utils"
 import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import RooHero from "@src/components/welcome/RooHero"
@@ -49,6 +50,7 @@ import { withCondensingRow } from "./rows/condensingRow"
 import { selectLatestTodos } from "./latestTodos"
 import { useChatSounds } from "./hooks/useChatSounds"
 import { useAskButtons } from "./hooks/useAskButtons"
+import { askButtonTooltipKey, askButtonShortcut } from "./askButtonTooltips"
 import { useChatComposer } from "./hooks/useChatComposer"
 import { MAX_IMAGES_PER_MESSAGE, useChatHostMessages } from "./hooks/useChatHostMessages"
 import { useCheckpointNavigation } from "./hooks/useCheckpointNavigation"
@@ -175,7 +177,16 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 		playSound,
 		t,
 	})
-	const { clineAsk, enableButtons, primaryButtonText, secondaryButtonText, sendingDisabled, isStreaming } = ask
+	const {
+		clineAsk,
+		enableButtons,
+		primaryButtonText,
+		primaryButtonKind,
+		secondaryButtonText,
+		secondaryButtonKind,
+		sendingDisabled,
+		isStreaming,
+	} = ask
 
 	const switchToMode = useCallback(
 		(modeSlug: string): void => {
@@ -449,7 +460,27 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 	useImperativeHandle(ref, () => ({ acceptInput }))
 
+	// §2.6: Ctrl/Cmd+Enter answers with the primary action, Esc with the
+	// secondary — only while the buttons are on screen and enabled. isMac is
+	// the module-level constant above (also used by the mode shortcut text).
 	const areButtonsVisible = showScrollToBottom || primaryButtonText || secondaryButtonText
+
+	const handleActionBarKeyDown = useCallback(
+		(event: React.KeyboardEvent<HTMLDivElement>) => {
+			if (event.key === "Enter" && (isMac ? event.metaKey : event.ctrlKey)) {
+				if (enableButtons && primaryButtonText) {
+					event.preventDefault()
+					handlePrimaryButtonClick(inputValue, selectedImages)
+				}
+			} else if (event.key === "Escape") {
+				if (enableButtons && secondaryButtonText) {
+					event.preventDefault()
+					handleSecondaryButtonClick(inputValue, selectedImages)
+				}
+			}
+		},
+		[enableButtons, primaryButtonText, secondaryButtonText, handlePrimaryButtonClick, handleSecondaryButtonClick, inputValue, selectedImages],
+	)
 
 	return (
 		<div
@@ -569,6 +600,8 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 					<FileChangesPanel clineMessages={messages} />
 					{areButtonsVisible && (
 						<div
+							data-testid="action-bar"
+							onKeyDown={handleActionBarKeyDown}
 							className={`flex h-9 items-center mb-1 px-[15px] ${
 								showScrollToBottom ? "opacity-100" : enableButtons ? "opacity-100" : "opacity-50"
 							}`}>
@@ -599,30 +632,18 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 									{primaryButtonText && (
 										<StandardTooltip
 											content={
-												primaryButtonText === t("chat:retry.title")
-													? t("chat:retry.tooltip")
-													: primaryButtonText === t("chat:save.title")
-														? t("chat:save.tooltip")
-														: primaryButtonText === t("chat:approve.title")
-															? t("chat:approve.tooltip")
-															: primaryButtonText === t("chat:runCommand.title")
-																? t("chat:runCommand.tooltip")
-																: primaryButtonText === t("chat:startNewTask.title")
-																	? t("chat:startNewTask.tooltip")
-																	: primaryButtonText === t("chat:resumeTask.title")
-																		? t("chat:resumeTask.tooltip")
-																		: primaryButtonText ===
-																			  t("chat:proceedAnyways.title")
-																			? t("chat:proceedAnyways.tooltip")
-																			: primaryButtonText ===
-																				  t("chat:proceedWhileRunning.title")
-																				? t("chat:proceedWhileRunning.tooltip")
-																				: undefined
+												askButtonTooltipKey(primaryButtonKind) !== undefined
+													? `${t(askButtonTooltipKey(primaryButtonKind)!)} (${askButtonShortcut("primary")})`
+													: `(${askButtonShortcut("primary")})`
 											}>
 											<Button
 												variant="primary"
 												disabled={!enableButtons}
-												className={secondaryButtonText ? "flex-1 mr-[6px]" : "flex-[2] mr-0"}
+												className={cn(
+													secondaryButtonText ? "flex-1 mr-[6px]" : "flex-[2] mr-0",
+													// §2.6: a real disabled style, not just opacity.
+													!enableButtons && "disabled-action-button",
+												)}
 												onClick={() => handlePrimaryButtonClick(inputValue, selectedImages)}>
 												{primaryButtonText}
 											</Button>
@@ -631,20 +652,17 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 									{secondaryButtonText && (
 										<StandardTooltip
 											content={
-												secondaryButtonText === t("chat:startNewTask.title")
-													? t("chat:startNewTask.tooltip")
-													: secondaryButtonText === t("chat:reject.title")
-														? t("chat:reject.tooltip")
-														: secondaryButtonText === t("chat:terminate.title")
-															? t("chat:terminate.tooltip")
-															: secondaryButtonText === t("chat:killCommand.title")
-																? t("chat:killCommand.tooltip")
-																: undefined
+												askButtonTooltipKey(secondaryButtonKind) !== undefined
+													? `${t(askButtonTooltipKey(secondaryButtonKind)!)} (${askButtonShortcut("secondary")})`
+													: `(${askButtonShortcut("secondary")})`
 											}>
 											<Button
 												variant="secondary"
 												disabled={!enableButtons}
-												className="flex-1 ml-[6px]"
+												className={cn(
+													"flex-1 ml-[6px]",
+													!enableButtons && "disabled-action-button",
+												)}
 												onClick={() => handleSecondaryButtonClick(inputValue, selectedImages)}>
 												{secondaryButtonText}
 											</Button>
