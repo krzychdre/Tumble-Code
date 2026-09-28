@@ -21,7 +21,8 @@ Save buffer (the `cachedState` rule from `AGENTS.md`: controls bind to the buffe
 4. **Settings view**: add a row to `SETTINGS_SCHEMA` in `webview-ui/src/components/settings/schema.ts` — it says when
    the change reaches the host (`onSave` via the Save button, or `immediate` via `postImmediateSetting` for things a
    running task already consults) and how Save serializes it. Then render the control in the right section component,
-   binding to the buffer with `setCachedStateField`. `schema.spec.ts` pins the rows.
+   binding to the buffer with `const [value, setValue] = useSetting("yourKey")` from `settings/SettingsDraftContext.tsx`
+   (typed by the key, no new props on `SettingsView`). `schema.spec.ts` pins the rows.
 5. **State**: if the webview needs the current value outside the Settings view, add it to the state
    `ProviderStateBuilder` (`src/core/webview/ProviderStateBuilder.ts`) posts, so it arrives as part of `ExtensionState`.
 6. **Docs and changelog**: a changeset, and when the setting changes a documented mechanism, the docs page in the

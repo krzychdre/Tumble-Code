@@ -8,18 +8,17 @@ import { LANGUAGES } from "@roo-code/types"
 import { cn } from "@src/lib/utils"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 
-type LanguageSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	language: string
-	setCachedStateField: SetCachedStateField<"language">
-}
+type LanguageSettingsProps = HTMLAttributes<HTMLDivElement>
 
-export const LanguageSettings = ({ language, setCachedStateField, className, ...props }: LanguageSettingsProps) => {
+export const LanguageSettings = ({ className, ...props }: LanguageSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [languageSetting, setLanguage] = useSetting("language")
+	const language = languageSetting || "en"
 
 	return (
 		<div className={cn("flex flex-col gap-2", className)} {...props}>
@@ -30,9 +29,7 @@ export const LanguageSettings = ({ language, setCachedStateField, className, ...
 					settingId="language-select"
 					section="language"
 					label={t("settings:sections.language")}>
-					<Select
-						value={language}
-						onValueChange={(value) => setCachedStateField("language", value as Language)}>
+					<Select value={language} onValueChange={(value) => setLanguage(value as Language)}>
 						<SelectTrigger className="w-full">
 							<SelectValue placeholder={t("settings:common.select")} />
 						</SelectTrigger>

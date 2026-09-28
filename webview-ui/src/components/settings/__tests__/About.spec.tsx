@@ -1,8 +1,9 @@
-import { render, screen } from "@/utils/test-utils"
+import { screen } from "@/utils/test-utils"
 
 import { TranslationProvider } from "@/i18n/__mocks__/TranslationContext"
 
 import { About } from "../About"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 
 vi.mock("@/utils/vscode", () => ({
 	vscode: { postMessage: vi.fn() },
@@ -26,68 +27,71 @@ vi.mock("@roo/package", () => ({
 }))
 
 describe("About", () => {
-	const defaultProps = {
-		telemetrySetting: "enabled" as const,
-		setTelemetrySetting: vi.fn(),
-	}
+	const defaultDraft = { telemetrySetting: "enabled" as const }
 
 	beforeEach(() => {
 		vi.clearAllMocks()
 	})
 
 	it("renders the About section header", () => {
-		render(
+		renderWithSettingsDraft(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
+			defaultDraft,
 		)
 		expect(screen.getByText("settings:sections.about")).toBeInTheDocument()
 	})
 
 	it("displays version information", () => {
-		render(
+		renderWithSettingsDraft(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
+			defaultDraft,
 		)
 		expect(screen.getByText(/Version: 1\.0\.0/)).toBeInTheDocument()
 	})
 
 	it("renders the bug report section with label and link text", () => {
-		render(
+		renderWithSettingsDraft(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
+			defaultDraft,
 		)
 		expect(screen.getByText("settings:about.bugReport.label")).toBeInTheDocument()
 		expect(screen.getByText("settings:about.bugReport.link")).toBeInTheDocument()
 	})
 
 	it("renders the feature request section with label and link text", () => {
-		render(
+		renderWithSettingsDraft(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
+			defaultDraft,
 		)
 		expect(screen.getByText("settings:about.featureRequest.label")).toBeInTheDocument()
 		expect(screen.getByText("settings:about.featureRequest.link")).toBeInTheDocument()
 	})
 
 	it("renders the security issue section with label and link text", () => {
-		render(
+		renderWithSettingsDraft(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
+			defaultDraft,
 		)
 		expect(screen.getByText("settings:about.securityIssue.label")).toBeInTheDocument()
 		expect(screen.getByText("settings:about.securityIssue.link")).toBeInTheDocument()
 	})
 
 	it("renders export, import, and reset buttons", () => {
-		render(
+		renderWithSettingsDraft(
 			<TranslationProvider>
-				<About {...defaultProps} />
+				<About />
 			</TranslationProvider>,
+			defaultDraft,
 		)
 		expect(screen.getByText("settings:footer.settings.export")).toBeInTheDocument()
 		expect(screen.getByText("settings:footer.settings.import")).toBeInTheDocument()

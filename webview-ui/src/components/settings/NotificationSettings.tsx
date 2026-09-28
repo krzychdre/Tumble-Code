@@ -7,7 +7,7 @@ import { vscode } from "@src/utils/vscode"
 import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { Button, LabeledCheckbox } from "@/components/ui"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
@@ -33,11 +33,7 @@ const CUSTOM_SOUND_SLOTS: { id: AudioType; labelKey: string; descriptionKey: str
 	},
 ]
 
-type NotificationSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	soundEnabled?: boolean
-	soundVolume?: number
-	setCachedStateField: SetCachedStateField<"soundEnabled" | "soundVolume">
-}
+type NotificationSettingsProps = HTMLAttributes<HTMLDivElement>
 
 type CustomSoundRowProps = {
 	audioType: AudioType
@@ -123,13 +119,10 @@ const CustomSoundRow = ({ audioType, label, description, basename, uri }: Custom
 	)
 }
 
-export const NotificationSettings = ({
-	soundEnabled,
-	soundVolume,
-	setCachedStateField,
-	...props
-}: NotificationSettingsProps) => {
+export const NotificationSettings = (props: NotificationSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [soundEnabled, setSoundEnabled] = useSetting("soundEnabled")
+	const [soundVolume, setSoundVolume] = useSetting("soundVolume")
 	// Custom sound fields are managed by their own message round-trip
 	// (selectCustomSound / resetCustomSound) and are not part of the
 	// Save-on-Done settings cache. Reading them from live extension state
@@ -168,7 +161,7 @@ export const NotificationSettings = ({
 					label={t("settings:notifications.sound.label")}>
 					<LabeledCheckbox
 						checked={soundEnabled}
-						onChange={(e: any) => setCachedStateField("soundEnabled", e.target.checked)}
+						onChange={(e: any) => setSoundEnabled(e.target.checked)}
 						data-testid="sound-enabled-checkbox">
 						<span className="font-medium">{t("settings:notifications.sound.label")}</span>
 					</LabeledCheckbox>
@@ -192,7 +185,7 @@ export const NotificationSettings = ({
 									max={1}
 									step={0.01}
 									value={[soundVolume ?? 0.5]}
-									onValueChange={([value]) => setCachedStateField("soundVolume", value)}
+									onValueChange={([value]) => setSoundVolume(value)}
 									data-testid="sound-volume-slider"
 								/>
 								<span className="w-10">{((soundVolume ?? 0.5) * 100).toFixed(0)}%</span>

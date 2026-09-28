@@ -1,8 +1,10 @@
 // npx vitest src/components/settings/__tests__/ContextManagementSettings.spec.tsx
 
-import { render, screen, fireEvent, waitFor } from "@/utils/test-utils"
+import { act, screen, fireEvent, waitFor } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
 import { ContextManagementSettings } from "../ContextManagementSettings"
+import type { BufferedKey } from "../schema"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
 
@@ -82,6 +84,38 @@ vi.mock("@/utils/vscode", () => ({
 	},
 }))
 
+// The section reads its settings from the Save buffer (useSetting); only
+// listApiConfigMeta is still a prop. The tests keep describing a section by
+// its old props: every other key seeds the buffer, and a
+// `setCachedStateField` mock sees each buffer write.
+type SectionSeed = Record<string, any>
+
+const renderCM = ({
+	listApiConfigMeta = [],
+	setCachedStateField,
+	setCustomSupportPrompts: _,
+	...draft
+}: SectionSeed) => {
+	const result = renderWithSettingsDraft(<ContextManagementSettings listApiConfigMeta={listApiConfigMeta} />, draft, {
+		onSetField: setCachedStateField,
+	})
+	return {
+		...result,
+		// A new seed updates the buffer, like SettingsView re-rendering with new props did.
+		rerender: ({
+			listApiConfigMeta: _list,
+			setCachedStateField: _set,
+			setCustomSupportPrompts: _prompts,
+			...next
+		}: SectionSeed) =>
+			act(() => {
+				for (const [key, value] of Object.entries(next)) {
+					result.store.setField(key as BufferedKey, value)
+				}
+			}),
+	}
+}
+
 // Mock VSCode components to behave like standard HTML elements
 describe("ContextManagementSettings", () => {
 	const defaultProps = {
@@ -106,7 +140,7 @@ describe("ContextManagementSettings", () => {
 	})
 
 	it("renders diagnostic settings", () => {
-		render(<ContextManagementSettings {...defaultProps} />)
+		renderCM({ ...defaultProps })
 
 		// Check for diagnostic checkbox
 		expect(screen.getByTestId("include-diagnostic-messages-checkbox")).toBeInTheDocument()
@@ -117,7 +151,7 @@ describe("ContextManagementSettings", () => {
 	})
 
 	it("renders with diagnostic messages enabled", () => {
-		render(<ContextManagementSettings {...defaultProps} includeDiagnosticMessages={true} />)
+		renderCM({ ...defaultProps, includeDiagnosticMessages: true })
 
 		const checkbox = screen.getByTestId("include-diagnostic-messages-checkbox")
 		expect(checkbox).toBeChecked()
@@ -128,7 +162,7 @@ describe("ContextManagementSettings", () => {
 	})
 
 	it("renders with diagnostic messages disabled", () => {
-		render(<ContextManagementSettings {...defaultProps} includeDiagnosticMessages={false} />)
+		renderCM({ ...defaultProps, includeDiagnosticMessages: false })
 
 		const checkbox = screen.getByTestId("include-diagnostic-messages-checkbox")
 		expect(checkbox).not.toBeChecked()
@@ -140,7 +174,7 @@ describe("ContextManagementSettings", () => {
 
 	it("calls setCachedStateField when include diagnostic messages checkbox is toggled", async () => {
 		const setCachedStateField = vi.fn()
-		render(<ContextManagementSettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		renderCM({ ...defaultProps, setCachedStateField: setCachedStateField })
 
 		const checkbox = screen.getByTestId("include-diagnostic-messages-checkbox")
 		fireEvent.click(checkbox)
@@ -152,7 +186,7 @@ describe("ContextManagementSettings", () => {
 
 	it("calls setCachedStateField when max diagnostic messages slider is changed", async () => {
 		const setCachedStateField = vi.fn()
-		render(<ContextManagementSettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+		renderCM({ ...defaultProps, setCachedStateField: setCachedStateField })
 
 		const slider = screen.getByTestId("max-diagnostic-messages-slider")
 		fireEvent.change(slider, { target: { value: "100" } })
@@ -163,36 +197,36 @@ describe("ContextManagementSettings", () => {
 	})
 
 	it("keeps slider visible when include diagnostic messages is unchecked", () => {
-		const { rerender } = render(<ContextManagementSettings {...defaultProps} includeDiagnosticMessages={true} />)
+		const { rerender } = renderCM({ ...defaultProps, includeDiagnosticMessages: true })
 
 		const slider = screen.getByTestId("max-diagnostic-messages-slider")
 		expect(slider).toBeInTheDocument()
 
 		// Update to disabled - slider should still be visible
-		rerender(<ContextManagementSettings {...defaultProps} includeDiagnosticMessages={false} />)
+		rerender({ ...defaultProps, includeDiagnosticMessages: false })
 		expect(screen.getByTestId("max-diagnostic-messages-slider")).toBeInTheDocument()
 	})
 
 	it("displays correct max diagnostic messages value", () => {
-		const { rerender } = render(<ContextManagementSettings {...defaultProps} maxDiagnosticMessages={25} />)
+		const { rerender } = renderCM({ ...defaultProps, maxDiagnosticMessages: 25 })
 
 		expect(screen.getByText("25")).toBeInTheDocument()
 
 		// Update value - 100 should display as "Unlimited"
-		rerender(<ContextManagementSettings {...defaultProps} maxDiagnosticMessages={100} />)
+		rerender({ ...defaultProps, maxDiagnosticMessages: 100 })
 		expect(
 			screen.getByText("settings:contextManagement.diagnostics.maxMessages.unlimitedLabel"),
 		).toBeInTheDocument()
 
 		// Test unlimited value (-1) displays as "Unlimited"
-		rerender(<ContextManagementSettings {...defaultProps} maxDiagnosticMessages={-1} />)
+		rerender({ ...defaultProps, maxDiagnosticMessages: -1 })
 		expect(
 			screen.getByText("settings:contextManagement.diagnostics.maxMessages.unlimitedLabel"),
 		).toBeInTheDocument()
 	})
 
 	it("renders other context management settings", () => {
-		render(<ContextManagementSettings {...defaultProps} />)
+		renderCM({ ...defaultProps })
 
 		// Check for other sliders
 		expect(screen.getByTestId("open-tabs-limit-slider")).toBeInTheDocument()
@@ -206,13 +240,7 @@ describe("ContextManagementSettings", () => {
 	describe("Edge cases for maxDiagnosticMessages", () => {
 		it("handles zero value as unlimited", async () => {
 			const setCachedStateField = vi.fn()
-			render(
-				<ContextManagementSettings
-					{...defaultProps}
-					maxDiagnosticMessages={0}
-					setCachedStateField={setCachedStateField}
-				/>,
-			)
+			renderCM({ ...defaultProps, maxDiagnosticMessages: 0, setCachedStateField: setCachedStateField })
 
 			// Zero is now treated as unlimited
 			expect(
@@ -226,13 +254,7 @@ describe("ContextManagementSettings", () => {
 
 		it("handles negative values as unlimited", async () => {
 			const setCachedStateField = vi.fn()
-			render(
-				<ContextManagementSettings
-					{...defaultProps}
-					maxDiagnosticMessages={-10}
-					setCachedStateField={setCachedStateField}
-				/>,
-			)
+			renderCM({ ...defaultProps, maxDiagnosticMessages: -10, setCachedStateField: setCachedStateField })
 
 			// Component displays "Unlimited" for any negative value
 			expect(
@@ -247,13 +269,7 @@ describe("ContextManagementSettings", () => {
 		it("handles very large numbers by capping at maximum", async () => {
 			const setCachedStateField = vi.fn()
 			const largeNumber = 1000
-			render(
-				<ContextManagementSettings
-					{...defaultProps}
-					maxDiagnosticMessages={largeNumber}
-					setCachedStateField={setCachedStateField}
-				/>,
-			)
+			renderCM({ ...defaultProps, maxDiagnosticMessages: largeNumber, setCachedStateField: setCachedStateField })
 
 			// Should display the actual value even if it exceeds slider max
 			expect(screen.getByText(largeNumber.toString())).toBeInTheDocument()
@@ -265,7 +281,7 @@ describe("ContextManagementSettings", () => {
 
 		it("enforces maximum value constraint", async () => {
 			const setCachedStateField = vi.fn()
-			render(<ContextManagementSettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			renderCM({ ...defaultProps, setCachedStateField: setCachedStateField })
 
 			const slider = screen.getByTestId("max-diagnostic-messages-slider")
 
@@ -280,7 +296,7 @@ describe("ContextManagementSettings", () => {
 
 		it("handles boundary value at minimum (1)", async () => {
 			const setCachedStateField = vi.fn()
-			render(<ContextManagementSettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			renderCM({ ...defaultProps, setCachedStateField: setCachedStateField })
 
 			const slider = screen.getByTestId("max-diagnostic-messages-slider")
 			fireEvent.change(slider, { target: { value: "1" } })
@@ -292,7 +308,7 @@ describe("ContextManagementSettings", () => {
 
 		it("handles boundary value at maximum (100) as unlimited (-1)", async () => {
 			const setCachedStateField = vi.fn()
-			render(<ContextManagementSettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			renderCM({ ...defaultProps, setCachedStateField: setCachedStateField })
 
 			const slider = screen.getByTestId("max-diagnostic-messages-slider")
 			fireEvent.change(slider, { target: { value: "100" } })
@@ -305,7 +321,7 @@ describe("ContextManagementSettings", () => {
 
 		it("handles decimal values by parsing as float", async () => {
 			const setCachedStateField = vi.fn()
-			render(<ContextManagementSettings {...defaultProps} setCachedStateField={setCachedStateField} />)
+			renderCM({ ...defaultProps, setCachedStateField: setCachedStateField })
 
 			const slider = screen.getByTestId("max-diagnostic-messages-slider")
 			fireEvent.change(slider, { target: { value: "50.7" } })
@@ -323,7 +339,7 @@ describe("ContextManagementSettings", () => {
 			autoCondenseContext: true,
 			autoCondenseContextPercent: 75,
 		}
-		render(<ContextManagementSettings {...propsWithAutoCondense} />)
+		renderCM({ ...propsWithAutoCondense })
 
 		// Should render the auto condense section
 		const autoCondenseCheckbox = screen.getByTestId("auto-condense-context-checkbox")
@@ -352,7 +368,7 @@ describe("ContextManagementSettings", () => {
 		it("toggles auto condense context setting", () => {
 			const mockSetCachedStateField = vitest.fn()
 			const props = { ...autoCondenseProps, setCachedStateField: mockSetCachedStateField }
-			render(<ContextManagementSettings {...props} />)
+			renderCM({ ...props })
 
 			const checkbox = screen.getByTestId("auto-condense-context-checkbox")
 			expect(checkbox).toBeChecked()
@@ -363,7 +379,7 @@ describe("ContextManagementSettings", () => {
 		})
 
 		it("shows threshold settings when auto condense is enabled", () => {
-			render(<ContextManagementSettings {...autoCondenseProps} />)
+			renderCM({ ...autoCondenseProps })
 
 			// Threshold settings should be visible
 			expect(screen.getByTestId("condense-threshold-slider")).toBeInTheDocument()
@@ -374,7 +390,7 @@ describe("ContextManagementSettings", () => {
 		it("updates auto condense context percent", () => {
 			const mockSetCachedStateField = vitest.fn()
 			const props = { ...autoCondenseProps, setCachedStateField: mockSetCachedStateField }
-			render(<ContextManagementSettings {...props} />)
+			renderCM({ ...props })
 
 			// Find the condense threshold slider
 			const slider = screen.getByTestId("condense-threshold-slider")
@@ -387,7 +403,7 @@ describe("ContextManagementSettings", () => {
 		})
 
 		it("displays correct auto condense context percent value", () => {
-			render(<ContextManagementSettings {...autoCondenseProps} />)
+			renderCM({ ...autoCondenseProps })
 			expect(screen.getByText("75%")).toBeInTheDocument()
 		})
 	})
@@ -401,11 +417,11 @@ describe("ContextManagementSettings", () => {
 		}
 
 		it("renders the condense-profile select only when autoCondenseContext is enabled", () => {
-			render(<ContextManagementSettings {...profileProps} />)
+			renderCM({ ...profileProps })
 			expect(screen.getByTestId("condense-profile-select")).toBeInTheDocument()
 
 			const disabledProps = { ...profileProps, autoCondenseContext: false }
-			render(<ContextManagementSettings {...disabledProps} />)
+			renderCM({ ...disabledProps })
 			// The second render has autoCondenseContext false → no condense-profile select.
 			// (queryByTestId across the whole screen body; only the enabled render has it.)
 			expect(screen.getAllByTestId("condense-profile-select")).toHaveLength(1)
@@ -414,7 +430,7 @@ describe("ContextManagementSettings", () => {
 		it("selecting a profile calls setCachedStateField with the profile id", async () => {
 			const mockSetCachedStateField = vitest.fn()
 			const props = { ...profileProps, setCachedStateField: mockSetCachedStateField }
-			render(<ContextManagementSettings {...props} />)
+			renderCM({ ...props })
 
 			const select = screen.getByTestId("condense-profile-select") as HTMLSelectElement
 			fireEvent.change(select, { target: { value: "profile-1" } })
@@ -431,7 +447,7 @@ describe("ContextManagementSettings", () => {
 				autoCondenseContextApiConfigId: "profile-1",
 				setCachedStateField: mockSetCachedStateField,
 			}
-			render(<ContextManagementSettings {...props} />)
+			renderCM({ ...props })
 
 			const select = screen.getByTestId("condense-profile-select") as HTMLSelectElement
 			fireEvent.change(select, { target: { value: "-" } })
@@ -441,14 +457,14 @@ describe("ContextManagementSettings", () => {
 		})
 
 		it("shows 'use current profile' for a cleared (empty string) compaction profile", () => {
-			render(<ContextManagementSettings {...profileProps} autoCondenseContextApiConfigId="" />)
+			renderCM({ ...profileProps, autoCondenseContextApiConfigId: "" })
 			// The value handed to Select, not the DOM value: a native select falls
 			// back to its first option by itself, the Radix one shows no item.
 			expect(screen.getByTestId("condense-profile-select")).toHaveAttribute("data-value", "-")
 		})
 
 		it("never renders a SelectItem with an empty-string value (Radix rejects it at runtime)", () => {
-			render(<ContextManagementSettings {...profileProps} />)
+			renderCM({ ...profileProps })
 			const select = screen.getByTestId("condense-profile-select") as HTMLSelectElement
 			const optionValues = Array.from(select.querySelectorAll("option")).map((o) => o.getAttribute("value"))
 			expect(optionValues.length).toBeGreaterThan(0)
@@ -465,7 +481,7 @@ describe("ContextManagementSettings", () => {
 			maxGitStatusFiles: 0,
 			setCachedStateField: mockSetCachedStateField,
 		}
-		render(<ContextManagementSettings {...props} />)
+		renderCM({ ...props })
 
 		// Check boundary values are displayed by checking the slider values directly
 		const openTabsSlider = screen.getByTestId("open-tabs-limit-slider")
@@ -485,7 +501,7 @@ describe("ContextManagementSettings", () => {
 		}
 
 		expect(() => {
-			render(<ContextManagementSettings {...propsWithUndefined} />)
+			renderCM({ ...propsWithUndefined })
 		}).not.toThrow()
 
 		// Should use default values
@@ -499,7 +515,7 @@ describe("ContextManagementSettings", () => {
 				...defaultProps,
 				autoCondenseContext: false,
 			}
-			render(<ContextManagementSettings {...propsWithoutAutoCondense} />)
+			renderCM({ ...propsWithoutAutoCondense })
 
 			// When auto condense is false, threshold slider should not be visible
 			expect(screen.queryByTestId("condense-threshold-slider")).not.toBeInTheDocument()
@@ -508,7 +524,7 @@ describe("ContextManagementSettings", () => {
 
 	describe("Accessibility", () => {
 		it("has proper labels and descriptions", () => {
-			render(<ContextManagementSettings {...defaultProps} />)
+			renderCM({ ...defaultProps })
 
 			// Check that labels are present
 			expect(screen.getByText("settings:contextManagement.openTabs.label")).toBeInTheDocument()
@@ -522,7 +538,7 @@ describe("ContextManagementSettings", () => {
 		})
 
 		it("has proper test ids for all interactive elements", () => {
-			render(<ContextManagementSettings {...defaultProps} />)
+			renderCM({ ...defaultProps })
 
 			expect(screen.getByTestId("open-tabs-limit-slider")).toBeInTheDocument()
 			expect(screen.getByTestId("workspace-files-limit-slider")).toBeInTheDocument()
@@ -532,7 +548,7 @@ describe("ContextManagementSettings", () => {
 
 	describe("Integration with translation system", () => {
 		it("uses translation keys for all text content", () => {
-			render(<ContextManagementSettings {...defaultProps} />)
+			renderCM({ ...defaultProps })
 
 			// Verify that translation keys are being used (mocked to return the key)
 			expect(screen.getByText("settings:sections.contextManagement")).toBeInTheDocument()
@@ -566,7 +582,7 @@ describe("ContextManagementSettings immediate writes (WEB-3)", () => {
 
 	it("posts profileThresholds as soon as a profile threshold changes", () => {
 		const setCachedStateField = vi.fn()
-		render(<ContextManagementSettings {...props} setCachedStateField={setCachedStateField} />)
+		renderCM({ ...props, setCachedStateField: setCachedStateField })
 
 		fireEvent.change(screen.getByTestId("threshold-profile-select"), { target: { value: "p1" } })
 		fireEvent.change(screen.getByTestId("condense-threshold-slider"), { target: { value: "55" } })
@@ -582,7 +598,7 @@ describe("ContextManagementSettings immediate writes (WEB-3)", () => {
 
 	it("keeps the default threshold in the Save buffer without posting", () => {
 		const setCachedStateField = vi.fn()
-		render(<ContextManagementSettings {...props} setCachedStateField={setCachedStateField} />)
+		renderCM({ ...props, setCachedStateField: setCachedStateField })
 
 		fireEvent.change(screen.getByTestId("condense-threshold-slider"), { target: { value: "55" } })
 

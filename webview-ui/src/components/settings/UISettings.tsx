@@ -3,26 +3,21 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { LabeledCheckbox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@src/components/ui"
 import { telemetryClient } from "@/utils/TelemetryClient"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 
-interface UISettingsProps extends HTMLAttributes<HTMLDivElement> {
-	reasoningBlockCollapsed: boolean
-	enterBehavior: "send" | "newline"
-	uiDensity: "comfortable" | "compact"
-	setCachedStateField: SetCachedStateField<"reasoningBlockCollapsed" | "enterBehavior" | "uiDensity">
-}
+type UISettingsProps = HTMLAttributes<HTMLDivElement>
 
-export const UISettings = ({
-	reasoningBlockCollapsed,
-	enterBehavior,
-	uiDensity,
-	setCachedStateField,
-	...props
-}: UISettingsProps) => {
+export const UISettings = (props: UISettingsProps) => {
 	const { t } = useAppTranslation()
+	const [reasoningBlockCollapsedSetting, setReasoningBlockCollapsed] = useSetting("reasoningBlockCollapsed")
+	const [enterBehaviorSetting, setEnterBehavior] = useSetting("enterBehavior")
+	const [uiDensitySetting, setUiDensity] = useSetting("uiDensity")
+	const reasoningBlockCollapsed = reasoningBlockCollapsedSetting ?? true
+	const enterBehavior = enterBehaviorSetting ?? "send"
+	const uiDensity = uiDensitySetting ?? "comfortable"
 
 	// Detect platform for dynamic modifier key display
 	const primaryMod = useMemo(() => {
@@ -31,7 +26,7 @@ export const UISettings = ({
 	}, [])
 
 	const handleReasoningBlockCollapsedChange = (value: boolean) => {
-		setCachedStateField("reasoningBlockCollapsed", value)
+		setReasoningBlockCollapsed(value)
 
 		// Track telemetry event
 		telemetryClient.capture("ui_settings_collapse_thinking_changed", {
@@ -41,7 +36,7 @@ export const UISettings = ({
 
 	const handleEnterBehaviorChange = (requireCtrlEnter: boolean) => {
 		const newBehavior = requireCtrlEnter ? "newline" : "send"
-		setCachedStateField("enterBehavior", newBehavior)
+		setEnterBehavior(newBehavior)
 
 		// Track telemetry event
 		telemetryClient.capture("ui_settings_enter_behavior_changed", {
@@ -103,7 +98,7 @@ export const UISettings = ({
 								value={uiDensity}
 								onValueChange={(value) => {
 									const newDensity = value as "comfortable" | "compact"
-									setCachedStateField("uiDensity", newDensity)
+									setUiDensity(newDensity)
 
 									// Track telemetry event
 									telemetryClient.capture("ui_settings_density_changed", {
@@ -118,7 +113,9 @@ export const UISettings = ({
 									<SelectItem value="compact">{t("settings:ui.density.compact")}</SelectItem>
 								</SelectContent>
 							</Select>
-							<div className="text-xs text-muted-foreground mt-1">{t("settings:ui.density.description")}</div>
+							<div className="text-xs text-muted-foreground mt-1">
+								{t("settings:ui.density.description")}
+							</div>
 						</div>
 					</SearchableSetting>
 				</div>

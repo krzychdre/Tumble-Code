@@ -1,10 +1,12 @@
 // Characterization (WEB-3): the Auto-Approve section writes some settings to
 // the host the moment they change, outside the Save buffer. The command
-// lists are also kept in the Save buffer (setCachedStateField), so the next
+// lists are also kept in the Save buffer (useSetting), so the next
 // Save sends them again; the mode goes to the host and the live context only.
-import { render, screen, fireEvent } from "@/utils/test-utils"
+import { screen, fireEvent } from "@/utils/test-utils"
 
 import { AutoApproveSettings } from "../AutoApproveSettings"
+import type { CachedSettings } from "../schema"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 
 const { mockPostMessage, mockSetAutoApprovalMode, mockSetAutoApprovalEnabled, extensionState } = vi.hoisted(() => ({
 	mockPostMessage: vi.fn(),
@@ -35,18 +37,14 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 	useExtensionState: () => extensionState.current,
 }))
 
-const renderSection = (props: Partial<React.ComponentProps<typeof AutoApproveSettings>> = {}) => {
-	const setCachedStateField = vi.fn()
-	render(
-		<AutoApproveSettings
-			alwaysAllowExecute={true}
-			allowedCommands={["git status", "ls"]}
-			deniedCommands={["rm -rf"]}
-			setCachedStateField={setCachedStateField}
-			{...props}
-		/>,
-	)
-	return { setCachedStateField }
+const renderSection = (draft: Partial<CachedSettings> = {}) => {
+	const { setField } = renderWithSettingsDraft(<AutoApproveSettings />, {
+		alwaysAllowExecute: true,
+		allowedCommands: ["git status", "ls"],
+		deniedCommands: ["rm -rf"],
+		...draft,
+	})
+	return { setCachedStateField: setField }
 }
 
 describe("AutoApproveSettings immediate writes (WEB-3)", () => {
@@ -91,13 +89,14 @@ describe("AutoApproveSettings immediate writes (WEB-3)", () => {
 
 		fireEvent.change(screen.getByTestId("denied-command-input"), { target: { value: "sudo" } })
 		fireEvent.click(screen.getByTestId("add-denied-command-button"))
+		// The buffer holds the added command, so removing the first entry leaves "sudo".
 		fireEvent.click(screen.getByTestId("remove-denied-command-0"))
 
 		expect(setCachedStateField).toHaveBeenNthCalledWith(1, "deniedCommands", ["rm -rf", "sudo"])
-		expect(setCachedStateField).toHaveBeenNthCalledWith(2, "deniedCommands", [])
+		expect(setCachedStateField).toHaveBeenNthCalledWith(2, "deniedCommands", ["sudo"])
 		expect(mockPostMessage.mock.calls.map(([message]) => message)).toEqual([
 			{ type: "updateSettings", updatedSettings: { deniedCommands: ["rm -rf", "sudo"] } },
-			{ type: "updateSettings", updatedSettings: { deniedCommands: [] } },
+			{ type: "updateSettings", updatedSettings: { deniedCommands: ["sudo"] } },
 		])
 	})
 

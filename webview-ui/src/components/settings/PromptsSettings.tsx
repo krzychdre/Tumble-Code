@@ -21,34 +21,24 @@ import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { postImmediateSetting } from "./postImmediateSetting"
+import { useSetting } from "./SettingsDraftContext"
 import type { ExtensionMessage } from "@roo-code/types"
 import { onExtensionMessage } from "@src/utils/extensionBus"
 
-interface PromptsSettingsProps {
-	customSupportPrompts: Record<string, string | undefined>
-	setCustomSupportPrompts: (prompts: Record<string, string | undefined>) => void
-	includeTaskHistoryInEnhance?: boolean
-	setIncludeTaskHistoryInEnhance?: (value: boolean) => void
-}
-
-const PromptsSettings = ({
-	customSupportPrompts,
-	setCustomSupportPrompts,
-	includeTaskHistoryInEnhance: propsIncludeTaskHistoryInEnhance,
-	setIncludeTaskHistoryInEnhance: propsSetIncludeTaskHistoryInEnhance,
-}: PromptsSettingsProps) => {
+const PromptsSettings = () => {
 	const { t } = useAppTranslation()
 	const {
 		listApiConfigMeta,
 		enhancementApiConfigId,
 		setEnhancementApiConfigId,
 		includeTaskHistoryInEnhance: contextIncludeTaskHistoryInEnhance,
-		setIncludeTaskHistoryInEnhance: contextSetIncludeTaskHistoryInEnhance,
 	} = useExtensionState()
+	const [customSupportPromptsSetting, setCustomSupportPrompts] = useSetting("customSupportPrompts")
+	const customSupportPrompts = customSupportPromptsSetting || {}
+	const [draftIncludeTaskHistoryInEnhance, setIncludeTaskHistoryInEnhance] = useSetting("includeTaskHistoryInEnhance")
 
-	// Use props if provided, otherwise fall back to context
-	const includeTaskHistoryInEnhance = propsIncludeTaskHistoryInEnhance ?? contextIncludeTaskHistoryInEnhance ?? true
-	const setIncludeTaskHistoryInEnhance = propsSetIncludeTaskHistoryInEnhance ?? contextSetIncludeTaskHistoryInEnhance
+	// The Save buffer first; the live state only while the buffer has no value.
+	const includeTaskHistoryInEnhance = draftIncludeTaskHistoryInEnhance ?? contextIncludeTaskHistoryInEnhance ?? true
 
 	const [testPrompt, setTestPrompt] = useState("")
 	const [isEnhancing, setIsEnhancing] = useState(false)

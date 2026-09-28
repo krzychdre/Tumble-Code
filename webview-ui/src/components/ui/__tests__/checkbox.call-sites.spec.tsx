@@ -15,10 +15,11 @@
 
 import userEvent from "@testing-library/user-event"
 
-import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
+import { act, fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
 import { ExperimentalFeature } from "@src/components/settings/ExperimentalFeature"
 import { MemorySettings } from "@src/components/settings/MemorySettings"
+import { renderWithSettingsDraft } from "@src/components/settings/__tests__/settingsDraftTestUtils"
 import McpToolRow from "@src/components/mcp/McpToolRow"
 import { vscode } from "@src/utils/vscode"
 
@@ -63,14 +64,9 @@ describe("checkbox call sites (VSCodeCheckbox replacement characterization)", ()
 	})
 
 	it("MemorySettings: data-testid reaches the checkbox; a disabled one ignores clicks", async () => {
-		const setCachedStateField = vi.fn()
-		const { rerender } = render(
-			<MemorySettings
-				autoMemoryEnabled={true}
-				autoMemoryShareWithClaudeCode={false}
-				listApiConfigMeta={[]}
-				setCachedStateField={setCachedStateField}
-			/>,
+		const { setField: setCachedStateField, store } = renderWithSettingsDraft(
+			<MemorySettings listApiConfigMeta={[]} />,
+			{ autoMemoryEnabled: true, autoMemoryShareWithClaudeCode: false },
 		)
 
 		const checkbox = screen.getByTestId("memory-share-claude-code-checkbox") as CheckableElement
@@ -80,15 +76,7 @@ describe("checkbox call sites (VSCodeCheckbox replacement characterization)", ()
 		await waitFor(() => expect(setCachedStateField).toHaveBeenCalledWith("autoMemoryShareWithClaudeCode", true))
 
 		// A custom memory directory disables the "share with Claude Code" option.
-		rerender(
-			<MemorySettings
-				autoMemoryEnabled={true}
-				autoMemoryDirectory="/tmp/memory"
-				autoMemoryShareWithClaudeCode={false}
-				listApiConfigMeta={[]}
-				setCachedStateField={setCachedStateField}
-			/>,
-		)
+		act(() => store.setField("autoMemoryDirectory", "/tmp/memory"))
 		const disabled = screen.getByTestId("memory-share-claude-code-checkbox") as CheckableElement
 		await waitFor(() => expect(disabled).toBeDisabled())
 		setCachedStateField.mockClear()

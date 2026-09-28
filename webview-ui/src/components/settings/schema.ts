@@ -4,7 +4,7 @@
 //
 // Adding a setting to the Settings view: add its row here (and its default to
 // SETTINGS_DEFAULTS in packages/types when the host has a static one), then
-// render its control with `setCachedStateField`. Save picks it up by itself.
+// render its control with `useSetting(key)` (SettingsDraftContext). Save picks it up by itself.
 
 import {
 	type ExtensionState,

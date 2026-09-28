@@ -1,9 +1,10 @@
 // Characterization (WEB-3): which Prompts settings go to the host at once and
 // which wait for Save. The task-history checkbox and the enhancement profile
 // are written immediately; the support prompt texts stay in the Save buffer.
-import { render, screen, fireEvent } from "@/utils/test-utils"
+import { screen, fireEvent } from "@/utils/test-utils"
 
 import PromptsSettings from "../PromptsSettings"
+import { renderWithSettingsDraft } from "./settingsDraftTestUtils"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedTextArea as RealThemedTextArea } from "@/components/ui/themed-text-area"
 
@@ -69,26 +70,21 @@ describe("PromptsSettings immediate writes (WEB-3)", () => {
 	})
 
 	it("posts includeTaskHistoryInEnhance immediately and also sets the Save buffer", () => {
-		const setIncludeTaskHistoryInEnhance = vi.fn()
-		render(
-			<PromptsSettings
-				customSupportPrompts={{}}
-				setCustomSupportPrompts={vi.fn()}
-				includeTaskHistoryInEnhance={true}
-				setIncludeTaskHistoryInEnhance={setIncludeTaskHistoryInEnhance}
-			/>,
-		)
+		const { setField } = renderWithSettingsDraft(<PromptsSettings />, {
+			customSupportPrompts: {},
+			includeTaskHistoryInEnhance: true,
+		})
 
 		fireEvent.click(screen.getByRole("checkbox", { name: "prompts:supportPrompts.enhance.includeTaskHistory" }))
 
-		expect(setIncludeTaskHistoryInEnhance).toHaveBeenCalledWith(false)
+		expect(setField).toHaveBeenCalledWith("includeTaskHistoryInEnhance", false)
 		expect(mockPostMessage.mock.calls.map(([message]) => message)).toEqual([
 			{ type: "updateSettings", updatedSettings: { includeTaskHistoryInEnhance: false } },
 		])
 	})
 
 	it("posts the enhancement profile immediately through its own message", () => {
-		render(<PromptsSettings customSupportPrompts={{}} setCustomSupportPrompts={vi.fn()} />)
+		renderWithSettingsDraft(<PromptsSettings />, { customSupportPrompts: {} })
 
 		fireEvent.change(screen.getByTestId("select--"), { target: { value: "p1" } })
 
@@ -100,12 +96,11 @@ describe("PromptsSettings immediate writes (WEB-3)", () => {
 
 	// The first text area is the support prompt, the second the enhancement test input.
 	it("keeps an edited support prompt in the Save buffer without posting", () => {
-		const setCustomSupportPrompts = vi.fn()
-		render(<PromptsSettings customSupportPrompts={{}} setCustomSupportPrompts={setCustomSupportPrompts} />)
+		const { setField } = renderWithSettingsDraft(<PromptsSettings />, { customSupportPrompts: {} })
 
 		fireEvent.input(document.querySelectorAll("textarea")[0], { target: { value: "be brief" } })
 
-		expect(setCustomSupportPrompts).toHaveBeenCalledWith({ ENHANCE: "be brief" })
+		expect(setField).toHaveBeenCalledWith("customSupportPrompts", { ENHANCE: "be brief" })
 		expect(mockPostMessage).not.toHaveBeenCalled()
 	})
 })

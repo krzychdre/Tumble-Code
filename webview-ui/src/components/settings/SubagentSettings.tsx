@@ -11,29 +11,22 @@ import {
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { Slider } from "@/components/ui"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 
-type SubagentSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	parallelTasksMaxConcurrency?: number
-	subagentFollowupTimeoutSec?: number
-	setCachedStateField: SetCachedStateField<"parallelTasksMaxConcurrency" | "subagentFollowupTimeoutSec">
-}
+type SubagentSettingsProps = HTMLAttributes<HTMLDivElement>
 
 /**
  * Settings for parallel background subagents (`run_parallel_tasks` fan-outs):
  * the hard concurrency cap and how long an interactive followup question
  * waits for the user before auto-approving.
  */
-export const SubagentSettings = ({
-	parallelTasksMaxConcurrency,
-	subagentFollowupTimeoutSec,
-	setCachedStateField,
-	...props
-}: SubagentSettingsProps) => {
+export const SubagentSettings = (props: SubagentSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [parallelTasksMaxConcurrency, setParallelTasksMaxConcurrency] = useSetting("parallelTasksMaxConcurrency")
+	const [subagentFollowupTimeoutSec, setSubagentFollowupTimeoutSec] = useSetting("subagentFollowupTimeoutSec")
 
 	const concurrency = parallelTasksMaxConcurrency ?? DEFAULT_PARALLEL_TASKS_MAX_CONCURRENCY
 	const followupTimeout = subagentFollowupTimeoutSec ?? DEFAULT_SUBAGENT_FOLLOWUP_TIMEOUT_SEC
@@ -59,7 +52,7 @@ export const SubagentSettings = ({
 							max={MAX_PARALLEL_TASKS_MAX_CONCURRENCY}
 							step={1}
 							value={[concurrency]}
-							onValueChange={([value]) => setCachedStateField("parallelTasksMaxConcurrency", value)}
+							onValueChange={([value]) => setParallelTasksMaxConcurrency(value)}
 							data-testid="subagents-max-concurrency-slider"
 						/>
 						<span className="w-10">
@@ -84,7 +77,7 @@ export const SubagentSettings = ({
 							max={1800}
 							step={30}
 							value={[followupTimeout]}
-							onValueChange={([value]) => setCachedStateField("subagentFollowupTimeoutSec", value)}
+							onValueChange={([value]) => setSubagentFollowupTimeoutSec(value)}
 							data-testid="subagents-followup-timeout-slider"
 						/>
 						<span className="w-14">

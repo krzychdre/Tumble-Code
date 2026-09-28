@@ -4,7 +4,7 @@ import { Trans } from "react-i18next"
 
 import type { ProviderSettingsEntry } from "@roo-code/types"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
@@ -21,25 +21,7 @@ import {
 } from "@/components/ui"
 
 type MemorySettingsProps = HTMLAttributes<HTMLDivElement> & {
-	autoMemoryEnabled?: boolean
-	autoMemoryDirectory?: string
-	autoMemoryShareWithClaudeCode?: boolean
-	memoryRecallEnabled?: boolean
-	autoDreamEnabled?: boolean
-	autoDreamMinHours?: number
-	autoDreamMinSessions?: number
-	memoryWriterApiConfigId?: string
 	listApiConfigMeta: ProviderSettingsEntry[]
-	setCachedStateField: SetCachedStateField<
-		| "autoMemoryEnabled"
-		| "autoMemoryDirectory"
-		| "autoMemoryShareWithClaudeCode"
-		| "memoryRecallEnabled"
-		| "autoDreamEnabled"
-		| "autoDreamMinHours"
-		| "autoDreamMinSessions"
-		| "memoryWriterApiConfigId"
-	>
 }
 
 // Radix Select rejects empty-string item values; "-" is safe because profile
@@ -54,20 +36,18 @@ const MIN_DREAM_SESSIONS = 1
 const MAX_DREAM_SESSIONS = 100
 const DEFAULT_DREAM_SESSIONS = 5
 
-export const MemorySettings = ({
-	autoMemoryEnabled,
-	autoMemoryDirectory,
-	autoMemoryShareWithClaudeCode,
-	memoryRecallEnabled,
-	autoDreamEnabled,
-	autoDreamMinHours,
-	autoDreamMinSessions,
-	memoryWriterApiConfigId,
-	listApiConfigMeta,
-	setCachedStateField,
-	...props
-}: MemorySettingsProps) => {
+export const MemorySettings = ({ listApiConfigMeta, ...props }: MemorySettingsProps) => {
 	const { t } = useAppTranslation()
+	const [autoMemoryEnabled, setAutoMemoryEnabled] = useSetting("autoMemoryEnabled")
+	const [autoMemoryDirectory, setAutoMemoryDirectory] = useSetting("autoMemoryDirectory")
+	const [autoMemoryShareWithClaudeCode, setAutoMemoryShareWithClaudeCode] = useSetting(
+		"autoMemoryShareWithClaudeCode",
+	)
+	const [memoryRecallEnabled, setMemoryRecallEnabled] = useSetting("memoryRecallEnabled")
+	const [autoDreamEnabled, setAutoDreamEnabled] = useSetting("autoDreamEnabled")
+	const [autoDreamMinHours, setAutoDreamMinHours] = useSetting("autoDreamMinHours")
+	const [autoDreamMinSessions, setAutoDreamMinSessions] = useSetting("autoDreamMinSessions")
+	const [memoryWriterApiConfigId, setMemoryWriterApiConfigId] = useSetting("memoryWriterApiConfigId")
 	return (
 		<div {...props}>
 			<SectionHeader>{t("settings:sections.memory")}</SectionHeader>
@@ -77,7 +57,7 @@ export const MemorySettings = ({
 					<LabeledCheckbox
 						checked={autoMemoryEnabled ?? true}
 						onChange={(e: any) => {
-							setCachedStateField("autoMemoryEnabled", e.target.checked)
+							setAutoMemoryEnabled(e.target.checked)
 						}}>
 						<span className="font-medium">{t("settings:memory.enable.label")}</span>
 					</LabeledCheckbox>
@@ -100,7 +80,7 @@ export const MemorySettings = ({
 							<LabeledCheckbox
 								checked={memoryRecallEnabled ?? true}
 								onChange={(e: any) => {
-									setCachedStateField("memoryRecallEnabled", e.target.checked)
+									setMemoryRecallEnabled(e.target.checked)
 								}}>
 								<span className="font-medium">{t("settings:memory.recall.label")}</span>
 							</LabeledCheckbox>
@@ -122,7 +102,7 @@ export const MemorySettings = ({
 								placeholder={t("settings:memory.directory.placeholder")}
 								onInput={(e: any) => {
 									// "" (not undefined) so Save clears the host's value.
-									setCachedStateField("autoMemoryDirectory", e.target.value)
+									setAutoMemoryDirectory(e.target.value)
 								}}
 								className="w-full"
 								data-testid="memory-directory-input"
@@ -141,7 +121,7 @@ export const MemorySettings = ({
 								checked={autoMemoryShareWithClaudeCode ?? false}
 								disabled={!!autoMemoryDirectory}
 								onChange={(e: any) => {
-									setCachedStateField("autoMemoryShareWithClaudeCode", e.target.checked)
+									setAutoMemoryShareWithClaudeCode(e.target.checked)
 								}}
 								data-testid="memory-share-claude-code-checkbox">
 								<span className="font-medium">{t("settings:memory.shareWithClaudeCode.label")}</span>
@@ -165,7 +145,7 @@ export const MemorySettings = ({
 								value={memoryWriterApiConfigId || UNSET_PROFILE}
 								onValueChange={(value) => {
 									// "" (not undefined) so Save clears the host's value.
-									setCachedStateField("memoryWriterApiConfigId", value === UNSET_PROFILE ? "" : value)
+									setMemoryWriterApiConfigId(value === UNSET_PROFILE ? "" : value)
 								}}
 								data-testid="memory-writer-profile-select">
 								<SelectTrigger className="w-full">
@@ -195,7 +175,7 @@ export const MemorySettings = ({
 							<LabeledCheckbox
 								checked={autoDreamEnabled ?? true}
 								onChange={(e: any) => {
-									setCachedStateField("autoDreamEnabled", e.target.checked)
+									setAutoDreamEnabled(e.target.checked)
 								}}>
 								<span className="font-medium">{t("settings:memory.dream.enable.label")}</span>
 							</LabeledCheckbox>
@@ -221,7 +201,7 @@ export const MemorySettings = ({
 											step={1}
 											defaultValue={[autoDreamMinHours ?? DEFAULT_DREAM_HOURS]}
 											onValueChange={([value]) => {
-												setCachedStateField("autoDreamMinHours", value)
+												setAutoDreamMinHours(value)
 											}}
 											className="flex-1"
 											data-testid="memory-dream-hours-slider"
@@ -250,7 +230,7 @@ export const MemorySettings = ({
 											step={1}
 											defaultValue={[autoDreamMinSessions ?? DEFAULT_DREAM_SESSIONS]}
 											onValueChange={([value]) => {
-												setCachedStateField("autoDreamMinSessions", value)
+												setAutoDreamMinSessions(value)
 											}}
 											className="flex-1"
 											data-testid="memory-dream-sessions-slider"

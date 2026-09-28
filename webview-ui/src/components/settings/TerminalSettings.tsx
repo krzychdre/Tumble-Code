@@ -24,59 +24,36 @@ import {
 	ThemedButton,
 } from "@/components/ui"
 
-import { SetCachedStateField } from "./types"
+import { useSetting } from "./SettingsDraftContext"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
 import { SearchableSetting } from "./SearchableSetting"
 import { useExtensionMessage } from "@src/utils/extensionBus"
 
 type TerminalSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	terminalOutputPreviewSize?: TerminalOutputPreviewSize
-	terminalShellIntegrationTimeout?: number
-	terminalShellIntegrationDisabled?: boolean
-	terminalCommandDelay?: number
-	terminalPowershellCounter?: boolean
-	terminalZshClearEolMark?: boolean
-	terminalZshOhMy?: boolean
-	terminalZshP10k?: boolean
-	terminalZdotdir?: boolean
-	terminalProfile?: string
 	onTerminalProfilePickerOpened?: () => void
-	setCachedStateField: SetCachedStateField<
-		| "terminalOutputPreviewSize"
-		| "terminalShellIntegrationTimeout"
-		| "terminalShellIntegrationDisabled"
-		| "terminalCommandDelay"
-		| "terminalPowershellCounter"
-		| "terminalZshClearEolMark"
-		| "terminalZshOhMy"
-		| "terminalZshP10k"
-		| "terminalZdotdir"
-		| "terminalProfile"
-	>
 }
 
 // Sentinel value that maps to `undefined` (use VS Code's default shell).
 // The Select component cannot accept empty-string item values.
 const DEFAULT_PROFILE_VALUE = "__default__"
 
-export const TerminalSettings = ({
-	terminalOutputPreviewSize,
-	terminalShellIntegrationTimeout,
-	terminalShellIntegrationDisabled,
-	terminalCommandDelay,
-	terminalPowershellCounter,
-	terminalZshClearEolMark,
-	terminalZshOhMy,
-	terminalZshP10k,
-	terminalZdotdir,
-	terminalProfile,
-	onTerminalProfilePickerOpened,
-	setCachedStateField,
-	className,
-	...props
-}: TerminalSettingsProps) => {
+export const TerminalSettings = ({ onTerminalProfilePickerOpened, className, ...props }: TerminalSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [terminalOutputPreviewSize, setTerminalOutputPreviewSize] = useSetting("terminalOutputPreviewSize")
+	const [terminalShellIntegrationTimeout, setTerminalShellIntegrationTimeout] = useSetting(
+		"terminalShellIntegrationTimeout",
+	)
+	const [terminalShellIntegrationDisabled, setTerminalShellIntegrationDisabled] = useSetting(
+		"terminalShellIntegrationDisabled",
+	)
+	const [terminalCommandDelay, setTerminalCommandDelay] = useSetting("terminalCommandDelay")
+	const [terminalPowershellCounter, setTerminalPowershellCounter] = useSetting("terminalPowershellCounter")
+	const [terminalZshClearEolMark, setTerminalZshClearEolMark] = useSetting("terminalZshClearEolMark")
+	const [terminalZshOhMy, setTerminalZshOhMy] = useSetting("terminalZshOhMy")
+	const [terminalZshP10k, setTerminalZshP10k] = useSetting("terminalZshP10k")
+	const [terminalZdotdir, setTerminalZdotdir] = useSetting("terminalZdotdir")
+	const [terminalProfile, setTerminalProfile] = useSetting("terminalProfile")
 
 	const [inheritEnv, setInheritEnv] = useState<boolean>(true)
 	const [profileNames, setProfileNames] = useState<string[]>([])
@@ -114,9 +91,9 @@ export const TerminalSettings = ({
 
 	useEffect(() => {
 		if (isProfilesLoaded && terminalProfile && !profileNames.includes(terminalProfile)) {
-			setCachedStateField("terminalProfile", undefined)
+			setTerminalProfile(undefined)
 		}
-	}, [isProfilesLoaded, profileNames, setCachedStateField, terminalProfile])
+	}, [isProfilesLoaded, profileNames, setTerminalProfile, terminalProfile])
 
 	return (
 		<div className={cn("flex flex-col", className)} {...props}>
@@ -142,7 +119,7 @@ export const TerminalSettings = ({
 							<Select
 								value={terminalOutputPreviewSize || "medium"}
 								onValueChange={(value) =>
-									setCachedStateField("terminalOutputPreviewSize", value as TerminalOutputPreviewSize)
+									setTerminalOutputPreviewSize(value as TerminalOutputPreviewSize)
 								}>
 								<SelectTrigger className="w-full" data-testid="terminal-output-preview-size-dropdown">
 									<SelectValue placeholder={t("settings:common.select")} />
@@ -195,7 +172,7 @@ export const TerminalSettings = ({
 										id={defaultProfileId}
 										name={profileModeId}
 										checked={!isProfileOverrideSelected}
-										onChange={() => setCachedStateField("terminalProfile", undefined)}
+										onChange={() => setTerminalProfile(undefined)}
 										data-testid="terminal-profile-default-radio"
 									/>
 									<label htmlFor={defaultProfileId} className="cursor-pointer">
@@ -222,7 +199,7 @@ export const TerminalSettings = ({
 										disabled={profileNames.length === 0}
 										onChange={() => {
 											if (!terminalProfile && profileNames.length > 0) {
-												setCachedStateField("terminalProfile", profileNames[0])
+												setTerminalProfile(profileNames[0])
 											}
 										}}
 										data-testid="terminal-profile-override-radio"
@@ -250,10 +227,7 @@ export const TerminalSettings = ({
 										value={terminalProfile || DEFAULT_PROFILE_VALUE}
 										data-testid="terminal-profile-dropdown"
 										onValueChange={(value) =>
-											setCachedStateField(
-												"terminalProfile",
-												value === DEFAULT_PROFILE_VALUE ? undefined : value,
-											)
+											setTerminalProfile(value === DEFAULT_PROFILE_VALUE ? undefined : value)
 										}>
 										<SelectTrigger className="w-full ml-6">
 											<SelectValue placeholder={t("settings:common.select")} />
@@ -289,9 +263,7 @@ export const TerminalSettings = ({
 							label={t("settings:terminal.shellIntegrationDisabled.label")}>
 							<LabeledCheckbox
 								checked={terminalShellIntegrationDisabled ?? true}
-								onChange={(e: any) =>
-									setCachedStateField("terminalShellIntegrationDisabled", e.target.checked)
-								}>
+								onChange={(e: any) => setTerminalShellIntegrationDisabled(e.target.checked)}>
 								<span className="font-medium">
 									{t("settings:terminal.shellIntegrationDisabled.label")}
 								</span>
@@ -360,8 +332,7 @@ export const TerminalSettings = ({
 													DEFAULT_TERMINAL_SHELL_INTEGRATION_TIMEOUT_MS,
 											]}
 											onValueChange={([value]) =>
-												setCachedStateField(
-													"terminalShellIntegrationTimeout",
+												setTerminalShellIntegrationTimeout(
 													Math.min(60000, Math.max(1000, value)),
 												)
 											}
@@ -400,10 +371,7 @@ export const TerminalSettings = ({
 											step={10}
 											value={[terminalCommandDelay ?? 0]}
 											onValueChange={([value]) =>
-												setCachedStateField(
-													"terminalCommandDelay",
-													Math.min(1000, Math.max(0, value)),
-												)
+												setTerminalCommandDelay(Math.min(1000, Math.max(0, value)))
 											}
 										/>
 										<span className="w-10">{terminalCommandDelay ?? 50}ms</span>
@@ -428,9 +396,7 @@ export const TerminalSettings = ({
 									label={t("settings:terminal.powershellCounter.label")}>
 									<LabeledCheckbox
 										checked={terminalPowershellCounter ?? false}
-										onChange={(e: any) =>
-											setCachedStateField("terminalPowershellCounter", e.target.checked)
-										}
+										onChange={(e: any) => setTerminalPowershellCounter(e.target.checked)}
 										data-testid="terminal-powershell-counter-checkbox">
 										<span className="font-medium">
 											{t("settings:terminal.powershellCounter.label")}
@@ -456,9 +422,7 @@ export const TerminalSettings = ({
 									label={t("settings:terminal.zshClearEolMark.label")}>
 									<LabeledCheckbox
 										checked={terminalZshClearEolMark ?? true}
-										onChange={(e: any) =>
-											setCachedStateField("terminalZshClearEolMark", e.target.checked)
-										}
+										onChange={(e: any) => setTerminalZshClearEolMark(e.target.checked)}
 										data-testid="terminal-zsh-clear-eol-mark-checkbox">
 										<span className="font-medium">
 											{t("settings:terminal.zshClearEolMark.label")}
@@ -484,7 +448,7 @@ export const TerminalSettings = ({
 									label={t("settings:terminal.zshOhMy.label")}>
 									<LabeledCheckbox
 										checked={terminalZshOhMy ?? false}
-										onChange={(e: any) => setCachedStateField("terminalZshOhMy", e.target.checked)}
+										onChange={(e: any) => setTerminalZshOhMy(e.target.checked)}
 										data-testid="terminal-zsh-oh-my-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshOhMy.label")}</span>
 									</LabeledCheckbox>
@@ -508,7 +472,7 @@ export const TerminalSettings = ({
 									label={t("settings:terminal.zshP10k.label")}>
 									<LabeledCheckbox
 										checked={terminalZshP10k ?? false}
-										onChange={(e: any) => setCachedStateField("terminalZshP10k", e.target.checked)}
+										onChange={(e: any) => setTerminalZshP10k(e.target.checked)}
 										data-testid="terminal-zsh-p10k-checkbox">
 										<span className="font-medium">{t("settings:terminal.zshP10k.label")}</span>
 									</LabeledCheckbox>
@@ -532,7 +496,7 @@ export const TerminalSettings = ({
 									label={t("settings:terminal.zdotdir.label")}>
 									<LabeledCheckbox
 										checked={terminalZdotdir ?? false}
-										onChange={(e: any) => setCachedStateField("terminalZdotdir", e.target.checked)}
+										onChange={(e: any) => setTerminalZdotdir(e.target.checked)}
 										data-testid="terminal-zdotdir-checkbox">
 										<span className="font-medium">{t("settings:terminal.zdotdir.label")}</span>
 									</LabeledCheckbox>

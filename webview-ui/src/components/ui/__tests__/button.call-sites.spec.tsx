@@ -16,6 +16,7 @@ import React from "react"
 import { fireEvent, render, screen, waitFor } from "@/utils/test-utils"
 
 import { TerminalSettings } from "@src/components/settings/TerminalSettings"
+import { renderWithSettingsDraft } from "@src/components/settings/__tests__/settingsDraftTestUtils"
 import { ErrorRow } from "@src/components/chat/ErrorRow"
 import { Markdown } from "@src/components/chat/Markdown"
 import { vscode } from "@src/utils/vscode"
@@ -69,13 +70,9 @@ describe("VSCodeButton call sites (replacement characterization)", () => {
 
 	it("TerminalSettings: the Configure button is a keyboard-focusable button that opens the profile picker", async () => {
 		const onTerminalProfilePickerOpened = vi.fn()
-		render(
-			<TerminalSettings
-				terminalShellIntegrationDisabled={false}
-				onTerminalProfilePickerOpened={onTerminalProfilePickerOpened}
-				setCachedStateField={vi.fn()}
-			/>,
-		)
+		renderWithSettingsDraft(<TerminalSettings onTerminalProfilePickerOpened={onTerminalProfilePickerOpened} />, {
+			terminalShellIntegrationDisabled: false,
+		})
 
 		const { host, control } = await buttonParts(screen.getByTestId("terminal-profile-configure-button"))
 		expect(control.tagName).toBe("BUTTON")

@@ -7,7 +7,7 @@ import { useAppTranslation } from "@/i18n/TranslationContext"
 import { vscode } from "@/utils/vscode"
 import { Button, Input, Slider, LabeledCheckbox } from "@/components/ui"
 
-import { SetCachedStateField } from "./types"
+import { useSetting, useSettingsDraft } from "./SettingsDraftContext"
 import { postImmediateSetting } from "./postImmediateSetting"
 import { SectionHeader } from "./SectionHeader"
 import { Section } from "./Section"
@@ -19,64 +19,34 @@ import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useAutoApprovalState } from "@/hooks/useAutoApprovalState"
 import { useAutoApprovalToggles } from "@/hooks/useAutoApprovalToggles"
 
-type AutoApproveSettingsProps = HTMLAttributes<HTMLDivElement> & {
-	alwaysAllowReadOnly?: boolean
-	alwaysAllowReadOnlyOutsideWorkspace?: boolean
-	alwaysAllowWrite?: boolean
-	alwaysAllowWriteOutsideWorkspace?: boolean
-	alwaysAllowWriteProtected?: boolean
-	alwaysAllowMcp?: boolean
-	alwaysAllowModeSwitch?: boolean
-	alwaysAllowSubtasks?: boolean
-	alwaysApprovePlan?: boolean
-	alwaysAllowExecute?: boolean
-	alwaysAllowFollowupQuestions?: boolean
-	followupAutoApproveTimeoutMs?: number
-	allowedCommands?: string[]
-	allowedMaxRequests?: number | undefined
-	allowedMaxCost?: number | undefined
-	deniedCommands?: string[]
-	setCachedStateField: SetCachedStateField<
-		| "alwaysAllowReadOnly"
-		| "alwaysAllowReadOnlyOutsideWorkspace"
-		| "alwaysAllowWrite"
-		| "alwaysAllowWriteOutsideWorkspace"
-		| "alwaysAllowWriteProtected"
-		| "alwaysAllowMcp"
-		| "alwaysAllowModeSwitch"
-		| "alwaysAllowSubtasks"
-		| "alwaysApprovePlan"
-		| "alwaysAllowExecute"
-		| "alwaysAllowFollowupQuestions"
-		| "followupAutoApproveTimeoutMs"
-		| "allowedCommands"
-		| "allowedMaxRequests"
-		| "allowedMaxCost"
-		| "deniedCommands"
-	>
-}
+type AutoApproveSettingsProps = HTMLAttributes<HTMLDivElement>
 
-export const AutoApproveSettings = ({
-	alwaysAllowReadOnly,
-	alwaysAllowReadOnlyOutsideWorkspace,
-	alwaysAllowWrite,
-	alwaysAllowWriteOutsideWorkspace,
-	alwaysAllowWriteProtected,
-	alwaysAllowMcp,
-	alwaysAllowModeSwitch,
-	alwaysAllowSubtasks,
-	alwaysApprovePlan,
-	alwaysAllowExecute,
-	alwaysAllowFollowupQuestions,
-	followupAutoApproveTimeoutMs = 60000,
-	allowedCommands,
-	allowedMaxRequests,
-	allowedMaxCost,
-	deniedCommands,
-	setCachedStateField,
-	...props
-}: AutoApproveSettingsProps) => {
+export const AutoApproveSettings = (props: AutoApproveSettingsProps) => {
 	const { t } = useAppTranslation()
+	const [alwaysAllowReadOnly] = useSetting("alwaysAllowReadOnly")
+	const [alwaysAllowReadOnlyOutsideWorkspace, setAlwaysAllowReadOnlyOutsideWorkspace] = useSetting(
+		"alwaysAllowReadOnlyOutsideWorkspace",
+	)
+	const [alwaysAllowWrite] = useSetting("alwaysAllowWrite")
+	const [alwaysAllowWriteOutsideWorkspace, setAlwaysAllowWriteOutsideWorkspace] = useSetting(
+		"alwaysAllowWriteOutsideWorkspace",
+	)
+	const [alwaysAllowWriteProtected, setAlwaysAllowWriteProtected] = useSetting("alwaysAllowWriteProtected")
+	const [alwaysAllowMcp] = useSetting("alwaysAllowMcp")
+	const [alwaysAllowModeSwitch] = useSetting("alwaysAllowModeSwitch")
+	const [alwaysAllowSubtasks] = useSetting("alwaysAllowSubtasks")
+	const [alwaysApprovePlan] = useSetting("alwaysApprovePlan")
+	const [alwaysAllowExecute] = useSetting("alwaysAllowExecute")
+	const [alwaysAllowFollowupQuestions] = useSetting("alwaysAllowFollowupQuestions")
+	const [followupAutoApproveTimeoutMs = 60000, setFollowupAutoApproveTimeoutMs] =
+		useSetting("followupAutoApproveTimeoutMs")
+	const [allowedCommands, setAllowedCommands] = useSetting("allowedCommands")
+	const [allowedMaxRequestsSetting, setAllowedMaxRequests] = useSetting("allowedMaxRequests")
+	const [allowedMaxCostSetting, setAllowedMaxCost] = useSetting("allowedMaxCost")
+	const allowedMaxRequests = allowedMaxRequestsSetting ?? undefined
+	const allowedMaxCost = allowedMaxCostSetting ?? undefined
+	const draft = useSettingsDraft()
+	const [deniedCommands, setDeniedCommands] = useSetting("deniedCommands")
 	const [commandInput, setCommandInput] = useState("")
 	const [deniedCommandInput, setDeniedCommandInput] = useState("")
 	const {
@@ -105,7 +75,7 @@ export const AutoApproveSettings = ({
 
 		if (commandInput && !currentCommands.includes(commandInput)) {
 			const newCommands = [...currentCommands, commandInput]
-			setCachedStateField("allowedCommands", newCommands)
+			setAllowedCommands(newCommands)
 			setCommandInput("")
 			postImmediateSetting("allowedCommands", newCommands)
 		}
@@ -116,7 +86,7 @@ export const AutoApproveSettings = ({
 
 		if (deniedCommandInput && !currentCommands.includes(deniedCommandInput)) {
 			const newCommands = [...currentCommands, deniedCommandInput]
-			setCachedStateField("deniedCommands", newCommands)
+			setDeniedCommands(newCommands)
 			setDeniedCommandInput("")
 			postImmediateSetting("deniedCommands", newCommands)
 		}
@@ -180,14 +150,14 @@ export const AutoApproveSettings = ({
 						alwaysAllowExecute={alwaysAllowExecute}
 						alwaysAllowFollowupQuestions={alwaysAllowFollowupQuestions}
 						mode={autoApprovalMode}
-						onToggle={(key, value) => setCachedStateField(key, value)}
+						onToggle={(key, value) => draft.setField(key, value)}
 					/>
 
 					<MaxLimitInputs
 						allowedMaxRequests={allowedMaxRequests}
 						allowedMaxCost={allowedMaxCost}
-						onMaxRequestsChange={(value) => setCachedStateField("allowedMaxRequests", value)}
-						onMaxCostChange={(value) => setCachedStateField("allowedMaxCost", value)}
+						onMaxRequestsChange={(value) => setAllowedMaxRequests(value)}
+						onMaxCostChange={(value) => setAllowedMaxCost(value)}
 					/>
 				</div>
 
@@ -205,9 +175,7 @@ export const AutoApproveSettings = ({
 							label={t("settings:autoApprove.readOnly.outsideWorkspace.label")}>
 							<LabeledCheckbox
 								checked={alwaysAllowReadOnlyOutsideWorkspace}
-								onChange={(e: any) =>
-									setCachedStateField("alwaysAllowReadOnlyOutsideWorkspace", e.target.checked)
-								}
+								onChange={(e: any) => setAlwaysAllowReadOnlyOutsideWorkspace(e.target.checked)}
 								data-testid="always-allow-readonly-outside-workspace-checkbox">
 								<span className="font-medium">
 									{t("settings:autoApprove.readOnly.outsideWorkspace.label")}
@@ -232,9 +200,7 @@ export const AutoApproveSettings = ({
 							label={t("settings:autoApprove.write.outsideWorkspace.label")}>
 							<LabeledCheckbox
 								checked={alwaysAllowWriteOutsideWorkspace}
-								onChange={(e: any) =>
-									setCachedStateField("alwaysAllowWriteOutsideWorkspace", e.target.checked)
-								}
+								onChange={(e: any) => setAlwaysAllowWriteOutsideWorkspace(e.target.checked)}
 								data-testid="always-allow-write-outside-workspace-checkbox">
 								<span className="font-medium">
 									{t("settings:autoApprove.write.outsideWorkspace.label")}
@@ -250,9 +216,7 @@ export const AutoApproveSettings = ({
 							label={t("settings:autoApprove.write.protected.label")}>
 							<LabeledCheckbox
 								checked={alwaysAllowWriteProtected}
-								onChange={(e: any) =>
-									setCachedStateField("alwaysAllowWriteProtected", e.target.checked)
-								}
+								onChange={(e: any) => setAlwaysAllowWriteProtected(e.target.checked)}
 								data-testid="always-allow-write-protected-checkbox">
 								<span className="font-medium">{t("settings:autoApprove.write.protected.label")}</span>
 							</LabeledCheckbox>
@@ -279,9 +243,7 @@ export const AutoApproveSettings = ({
 									max={300000}
 									step={1000}
 									value={[followupAutoApproveTimeoutMs]}
-									onValueChange={([value]) =>
-										setCachedStateField("followupAutoApproveTimeoutMs", value)
-									}
+									onValueChange={([value]) => setFollowupAutoApproveTimeoutMs(value)}
 									data-testid="followup-timeout-slider"
 								/>
 								<span className="w-20">{followupAutoApproveTimeoutMs / 1000}s</span>
@@ -339,7 +301,7 @@ export const AutoApproveSettings = ({
 									data-testid={`remove-command-${index}`}
 									onClick={() => {
 										const newCommands = (allowedCommands ?? []).filter((_, i) => i !== index)
-										setCachedStateField("allowedCommands", newCommands)
+										setAllowedCommands(newCommands)
 										postImmediateSetting("allowedCommands", newCommands)
 									}}>
 									<div className="flex flex-row items-center gap-1">
@@ -394,7 +356,7 @@ export const AutoApproveSettings = ({
 									data-testid={`remove-denied-command-${index}`}
 									onClick={() => {
 										const newCommands = (deniedCommands ?? []).filter((_, i) => i !== index)
-										setCachedStateField("deniedCommands", newCommands)
+										setDeniedCommands(newCommands)
 										postImmediateSetting("deniedCommands", newCommands)
 									}}>
 									<div className="flex flex-row items-center gap-1">
