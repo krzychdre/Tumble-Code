@@ -455,7 +455,8 @@
 		"noResults": "결과 없음",
 		"problems": "문제",
 		"terminal": "터미널",
-		"url": "콘텐츠를 가져올 URL 붙여넣기"
+		"url": "콘텐츠를 가져올 URL 붙여넣기",
+		"menuLabel": "컨텍스트 메뉴"
 	},
 	"queuedMessages": {
 		"title": "대기열 메시지",
@@ -543,5 +544,8 @@
 		"recalling": "메모리 불러오는 중…",
 		"writing": "메모리 쓰는 중…",
 		"both": "메모리 불러오는 및 쓰는 중…"
-	}
+	},
+	"composerHint": "{{key}} 보내기 · Shift+Enter 줄 바꿈 · @ 멘션 · / 명령",
+	"thumbnailAlt": "섬네일 {{index}}",
+	"removeImage": "이미지 {{index}} 제거"
 }

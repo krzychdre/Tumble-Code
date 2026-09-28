@@ -456,7 +456,8 @@
 		"noResults": "无结果",
 		"problems": "问题",
 		"terminal": "终端",
-		"url": "粘贴URL以获取内容"
+		"url": "粘贴URL以获取内容",
+		"menuLabel": "上下文菜单"
 	},
 	"queuedMessages": {
 		"title": "队列消息",
@@ -544,5 +545,8 @@
 		"recalling": "正在回忆记忆…",
 		"writing": "正在写入记忆…",
 		"both": "正在回忆并写入记忆…"
-	}
+	},
+	"composerHint": "{{key}} 发送 · Shift+Enter 换行 · @ 提及 · / 命令",
+	"thumbnailAlt": "缩略图 {{index}}",
+	"removeImage": "删除图片 {{index}}"
 }

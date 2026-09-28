@@ -482,7 +482,8 @@
 		"noResults": "No results",
 		"problems": "Problems",
 		"terminal": "Terminal",
-		"url": "Paste URL to fetch contents"
+		"url": "Paste URL to fetch contents",
+		"menuLabel": "Context menu"
 	},
 	"todo": {
 		"partial": "{{completed}} of {{total}} to-dos done",
@@ -534,5 +535,8 @@
 		"save": "Save",
 		"reviewFile": "Review plan",
 		"loading": "Loading plan…"
-	}
+	},
+	"composerHint": "{{key}} send · Shift+Enter new line · @ mention · / command",
+	"thumbnailAlt": "Thumbnail {{index}}",
+	"removeImage": "Remove image {{index}}"
 }

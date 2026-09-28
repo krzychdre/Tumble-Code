@@ -476,6 +476,14 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 		const placeholderBottomText = `\n(${t("chat:addContext")}${shouldDisableImages ? `, ${t("chat:dragFiles")}` : `, ${t("chat:dragFilesImages")}`})`
 
+		// Quiet hint row under the input (§2.5): names the key that sends
+		// (Enter, or Ctrl/Cmd+Enter when Enter is a newline) plus the
+		// mention and command prefixes, at --text-meta size.
+		const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0
+		const hintRow = t("chat:composerHint", {
+			key: enterBehavior === "newline" ? (isMac ? "⌘+Enter" : "Ctrl+Enter") : "Enter",
+		})
+
 		return (
 			<div
 				className={cn(
@@ -552,7 +560,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"text-vscode-editor-font-size",
 									"leading-vscode-editor-line-height",
 									isFocused
-										? "border border-vscode-focusBorder outline outline-vscode-focusBorder"
+										? "border border-transparent outline outline-1 outline-vscode-focusBorder"
 										: isDraggingOver
 											? "border-2 border-dashed border-vscode-focusBorder"
 											: "border border-transparent",
@@ -598,6 +606,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								onMouseUp={updateCursorPosition}
 								onHeightChange={(height) => onHeightChange?.(height)}
 								placeholder={placeholderText}
+								aria-label={placeholderText}
 								minRows={3}
 								maxRows={15}
 								autoFocus={true}
@@ -610,7 +619,7 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									"cursor-text",
 									"py-2 pl-2",
 									isFocused
-										? "border border-vscode-focusBorder outline outline-vscode-focusBorder"
+										? "border border-transparent outline outline-1 outline-vscode-focusBorder"
 										: isDraggingOver
 											? "border-2 border-dashed border-vscode-focusBorder"
 											: "border border-transparent",
@@ -679,6 +688,14 @@ export const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						}}
 					/>
 				)}
+	
+				{/* Quiet hint row (§2.5): always present, at --text-meta size. */}
+				<div
+					data-testid="composer-hint-row"
+					className="px-2 py-0.5 text-[length:var(--text-meta)] text-vscode-descriptionForeground select-none"
+					aria-hidden="true">
+					{hintRow}
+				</div>
 
 				<ComposerToolbar
 					mode={mode}

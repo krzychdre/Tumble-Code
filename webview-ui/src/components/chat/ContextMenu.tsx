@@ -32,6 +32,10 @@ interface ContextMenuProps {
 	commands?: Command[]
 }
 
+/** Stable DOM id for a listbox option, used by `aria-activedescendant` (§2.5). */
+const contextMenuOptionId = (option: ContextMenuQueryItem | undefined): string =>
+	`context-menu-option-${option ? `${option.type}-${option.value ?? "none"}` : "none"}`
+
 const ContextMenu: React.FC<ContextMenuProps> = ({
 	onSelect,
 	searchQuery,
@@ -277,6 +281,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 			onMouseDown={onMouseDown}>
 			<div
 				ref={menuRef}
+				role="listbox"
+				aria-label={t("chat:contextMenu.menuLabel")}
+				{...(isOptionSelectable(filteredOptions[selectedIndex] ?? ({} as ContextMenuQueryItem))
+					? { "aria-activedescendant": contextMenuOptionId(filteredOptions[selectedIndex]) }
+					: {})}
 				style={{
 					backgroundColor: "var(--vscode-dropdown-background)",
 					border: "1px solid var(--vscode-editorGroup-border)",
@@ -338,6 +347,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 					filteredOptions.map((option, index) => (
 						<div
 							key={`${option.type}-${option.value || index}`}
+							id={contextMenuOptionId(option)}
+							role="option"
+							aria-selected={index === selectedIndex && isOptionSelectable(option)}
 							onClick={() => isOptionSelectable(option) && onSelect(option.type, option.value)}
 							style={{
 								padding:
@@ -420,6 +432,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 					))
 				) : (
 					<div
+						role="option"
+						aria-selected={false}
+						aria-disabled={true}
 						style={{
 							padding: "4px",
 							display: "flex",

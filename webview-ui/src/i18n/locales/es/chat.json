@@ -459,7 +459,8 @@
 		"noResults": "No hay resultados",
 		"problems": "Problemas",
 		"terminal": "Terminal",
-		"url": "Pega la URL para obtener el contenido"
+		"url": "Pega la URL para obtener el contenido",
+		"menuLabel": "Menú contextual"
 	},
 	"queuedMessages": {
 		"title": "Mensajes en cola",
@@ -549,5 +550,8 @@
 		"recalling": "Recuperando memoria…",
 		"writing": "Escribiendo memoria…",
 		"both": "Recuperando y escribiendo memoria…"
-	}
+	},
+	"composerHint": "{{key}} enviar · Mayús+Entrar nueva línea · @ mención · / comando",
+	"thumbnailAlt": "Miniatura {{index}}",
+	"removeImage": "Eliminar imagen {{index}}"
 }

@@ -455,7 +455,8 @@
 		"noResults": "Keine Ergebnisse",
 		"problems": "Probleme",
 		"terminal": "Terminal",
-		"url": "URL einfügen, um Inhalte abzurufen"
+		"url": "URL einfügen, um Inhalte abzurufen",
+		"menuLabel": "Kontextmenü"
 	},
 	"queuedMessages": {
 		"title": "Warteschlange Nachrichten",
@@ -543,5 +544,8 @@
 		"recalling": "Erinnerungen werden abgerufen…",
 		"writing": "Gedächtnis wird geschrieben…",
 		"both": "Gedächtnis wird abgerufen und geschrieben…"
-	}
+	},
+	"composerHint": "{{key}} senden · Umschalt+Eingabe neue Zeile · @ Erwähnung · / Befehl",
+	"thumbnailAlt": "Miniaturbild {{index}}",
+	"removeImage": "Bild {{index}} entfernen"
 }

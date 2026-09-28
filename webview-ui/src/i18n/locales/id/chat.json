@@ -461,7 +461,8 @@
 		"noResults": "Tidak ada hasil",
 		"problems": "Masalah",
 		"terminal": "Terminal",
-		"url": "Tempel URL untuk mengambil konten"
+		"url": "Tempel URL untuk mengambil konten",
+		"menuLabel": "Menu konteks"
 	},
 	"queuedMessages": {
 		"title": "Pesan Antrian",
@@ -549,5 +550,8 @@
 		"recalling": "Mengingat memori…",
 		"writing": "Menulis memori…",
 		"both": "Mengingat dan menulis memori…"
-	}
+	},
+	"composerHint": "{{key}} kirim · Shift+Enter baris baru · @ mention · / perintah",
+	"thumbnailAlt": "Gambar kecil {{index}}",
+	"removeImage": "Hapus gambar {{index}}"
 }

@@ -455,7 +455,8 @@
 		"noResults": "Geen resultaten",
 		"problems": "Problemen",
 		"terminal": "Terminal",
-		"url": "Plak URL om inhoud op te halen"
+		"url": "Plak URL om inhoud op te halen",
+		"menuLabel": "Contextmenu"
 	},
 	"queuedMessages": {
 		"title": "Berichten in wachtrij",
@@ -543,5 +544,8 @@
 		"recalling": "Geheugen wordt opgehaald…",
 		"writing": "Geheugen wordt geschreven…",
 		"both": "Geheugen wordt opgehaald en geschreven…"
-	}
+	},
+	"composerHint": "{{key}} verzenden · Shift+Enter nieuwe regel · @ vermelding · / opdracht",
+	"thumbnailAlt": "Miniatuur {{index}}",
+	"removeImage": "Afbeelding {{index}} verwijderen"
 }

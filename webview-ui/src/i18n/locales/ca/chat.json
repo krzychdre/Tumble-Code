@@ -467,7 +467,8 @@
 		"noResults": "Sense resultats",
 		"problems": "Problemes",
 		"terminal": "Terminal",
-		"url": "Enganxa la URL per obtenir-ne el contingut"
+		"url": "Enganxa la URL per obtenir-ne el contingut",
+		"menuLabel": "Menú contextual"
 	},
 	"todo": {
 		"partial": "{{completed}} de {{total}} tasques pendents fetes",
@@ -549,5 +550,8 @@
 		"recalling": "S'està recol·lectant memòria…",
 		"writing": "S'està escrivint memòria…",
 		"both": "S'està recol·lectant i escrivint memòria…"
-	}
+	},
+	"composerHint": "{{key}} envia · Maj+Enter nova línia · @ menció · / ordre",
+	"thumbnailAlt": "Miniatura {{index}}",
+	"removeImage": "Elimina la imatge {{index}}"
 }

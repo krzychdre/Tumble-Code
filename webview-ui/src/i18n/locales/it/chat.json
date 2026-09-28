@@ -459,7 +459,8 @@
 		"noResults": "Nessun risultato",
 		"problems": "Problemi",
 		"terminal": "Terminale",
-		"url": "Incolla l'URL per recuperare i contenuti"
+		"url": "Incolla l'URL per recuperare i contenuti",
+		"menuLabel": "Menu contestuale"
 	},
 	"queuedMessages": {
 		"title": "Messaggi in coda",
@@ -549,5 +550,8 @@
 		"recalling": "Richiamo della memoria…",
 		"writing": "Scrittura della memoria…",
 		"both": "Richiamo e scrittura della memoria…"
-	}
+	},
+	"composerHint": "{{key}} invia · Maiusc+Invio nuova riga · @ menzione · / comando",
+	"thumbnailAlt": "Miniatura {{index}}",
+	"removeImage": "Rimuovi immagine {{index}}"
 }

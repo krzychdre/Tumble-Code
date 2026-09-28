@@ -454,7 +454,8 @@
 		"noResults": "找不到結果",
 		"problems": "問題",
 		"terminal": "終端機",
-		"url": "貼上 URL 以擷取內容"
+		"url": "貼上 URL 以擷取內容",
+		"menuLabel": "內容功能表"
 	},
 	"todo": {
 		"partial": "已完成 {{completed}}／{{total}} 個待辦事項",
@@ -534,5 +535,8 @@
 		"recalling": "正在回憶記憶…",
 		"writing": "正在寫入記憶…",
 		"both": "正在回憶並寫入記憶…"
-	}
+	},
+	"composerHint": "{{key}} 傳送 · Shift+Enter 換行 · @ 提及 · / 命令",
+	"thumbnailAlt": "縮圖 {{index}}",
+	"removeImage": "刪除圖片 {{index}}"
 }

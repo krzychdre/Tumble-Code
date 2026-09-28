@@ -455,7 +455,8 @@
 		"noResults": "結果なし",
 		"problems": "問題",
 		"terminal": "ターミナル",
-		"url": "URLを貼り付けてコンテンツを取得"
+		"url": "URLを貼り付けてコンテンツを取得",
+		"menuLabel": "コンテキストメニュー"
 	},
 	"queuedMessages": {
 		"title": "キューメッセージ",
@@ -543,5 +544,8 @@
 		"recalling": "メモリを呼び出し中…",
 		"writing": "メモリを書き込み中…",
 		"both": "メモリを呼び出し・書き込み中…"
-	}
+	},
+	"composerHint": "{{key}} 送信 · Shift+Enter 改行 · @ メンション · / コマンド",
+	"thumbnailAlt": "サムネイル {{index}}",
+	"removeImage": "画像 {{index}} を削除"
 }
