@@ -231,7 +231,7 @@ export class McpConnectionManager {
 		try {
 			const client = new Client(
 				{
-					name: "Roo Code",
+					name: "Tumble Code",
 					version: this.deps.clientVersion(),
 				},
 				{

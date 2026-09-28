@@ -48,9 +48,9 @@
 	"settings.debugProxy.enabled.description": "**Debug Proxy を有効化** — すべての送信ネットワーク要求を MITM デバッグのためにプロキシ経由でルーティングします。デバッグモード (F5) で実行しているときだけ有効です。",
 	"settings.debugProxy.serverUrl.description": "プロキシ URL（例: `http://127.0.0.1:8888`）。**Debug Proxy** が有効なときにだけ使用されます。",
 	"settings.debugProxy.tlsInsecure.description": "プロキシからの自己署名証明書を許可します。**MITM インスペクションに必須です。** ⚠️ 危険な設定なので、ローカルでのデバッグにだけ使用してください。",
-	"settings.cloudApiUrl.description": "Override the Roo Code Cloud API URL (e.g. `https://app.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments.",
-	"settings.cloudProviderUrl.description": "Override the Roo Code Cloud Provider URL (e.g. `https://api.roocode.com/proxy`). Leave empty to use the default. Intended for self-hosted or development deployments.",
-	"settings.clerkBaseUrl.description": "Override the Clerk authentication base URL (e.g. `https://clerk.roocode.com`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.cloudApiUrl.description": "Override the Tumble Code Cloud API URL (e.g. `https://app.tumblecode.dev`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.cloudProviderUrl.description": "Override the Tumble Code Cloud Provider URL (e.g. `https://api.tumblecode.dev/proxy`). Leave empty to use the default. Intended for self-hosted or development deployments.",
+	"settings.clerkBaseUrl.description": "Override the Clerk authentication base URL (e.g. `https://auth.tumblecode.dev`). Leave empty to auto-detect from the Cloud API URL; for self-hosted deployments, the Clerk facade is served by the same API. Only set this explicitly if the Clerk endpoint differs from the Cloud API URL. Intended for self-hosted or development deployments.",
 	"command.pickUpAgentSession.title": "エージェントセッションを引き継ぐ…",
 	"command.handOffCurrentTask.title": "現在のタスクを引き継ぐ…"
 }

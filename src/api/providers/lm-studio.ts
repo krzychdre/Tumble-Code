@@ -26,7 +26,7 @@ import { createRequestAbortController } from "./utils/request-abort"
  * error for the retry loop and the background-model fallback.
  */
 const LM_STUDIO_ERROR_HINT =
-	"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Roo Code's prompts."
+	"Please check the LM Studio developer logs to debug what went wrong. You may need to load the model with a larger context length to work with Tumble Code's prompts."
 
 export class LmStudioHandler extends BaseProvider implements SingleCompletionHandler {
 	protected options: ApiHandlerOptions
