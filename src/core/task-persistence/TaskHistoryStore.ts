@@ -246,6 +246,13 @@ export class TaskHistoryStore {
 	private fsWatcher: fsSync.FSWatcher | null = null
 	/** Per-task directory watchers for portable change detection. */
 	private taskDirWatchers: Map<string, fsSync.FSWatcher> = new Map()
+	/**
+	 * Refcounts of "live" task IDs: tasks that currently occupy some
+	 * provider's task slot. A live task's watcher is pinned and never
+	 * demoted, no matter how stale its file looks. Refcounted because the
+	 * shared store serves several providers that may hold the same task.
+	 */
+	private liveTaskIds: Map<string, number> = new Map()
 	private reconcileTimer: ReturnType<typeof setTimeout> | null = null
 	/** Global watcher debounce: coalesces events into a set of changed IDs. */
 	private watcherDebounce: ReturnType<typeof setTimeout> | null = null
@@ -303,6 +310,16 @@ export class TaskHistoryStore {
 
 	/** Debounce window for watcher-triggered targeted refresh. */
 	private static readonly WATCHER_DEBOUNCE_MS = 500
+
+	/**
+	 * A task folder keeps its per-directory watcher while its
+	 * `history_item.json` mtime is within this window (P7). 2× the reconcile
+	 * interval: a watcher must outlive at least one full reconcile cycle,
+	 * because that cycle is what refreshes the mtime for a task another
+	 * window is still writing to. Tasks older than that are covered by the
+	 * five-minute reconcile alone.
+	 */
+	private static readonly RECENT_WINDOW_MS = 2 * TaskHistoryStore.RECONCILE_INTERVAL_MS
 
 	/** Legacy globalState keys cleared once migration to per-task files succeeds. */
 	public static readonly LEGACY_TASK_HISTORY_KEY = "taskHistory"
@@ -829,6 +846,66 @@ export class TaskHistoryStore {
 		this.fileMeta.clear()
 	}
 
+	// ────────────────────────────── Live-task gating (P7) ──────────────────────────────
+
+	/**
+	 * Mark (or unmark) a task as live — currently occupying some provider's
+	 * task slot. A live task's per-directory watcher is pinned: it is armed
+	 * immediately on mark and never demoted by the periodic sweep while the
+	 * refcount is above zero. Refcounted because the shared store serves
+	 * several providers (sidebar + editor tab) that may hold the same task
+	 * live at the same time.
+	 *
+	 * The promotion is fire-and-forget on the watcher side; the refcount
+	 * itself is updated synchronously so a racing demotion sweep can never
+	 * miss a mark.
+	 */
+	setTaskLive(taskId: string, live: boolean): void {
+		if (this.disposed) {
+			return
+		}
+		if (live) {
+			this.liveTaskIds.set(taskId, (this.liveTaskIds.get(taskId) ?? 0) + 1)
+			// Arm the watcher right away: a task switching to live must not
+			// wait for the next sweep (up to 5 min) to get watcher coverage.
+			this.ensureTaskDirWatcher(taskId).catch(() => {})
+		} else {
+			const count = this.liveTaskIds.get(taskId)
+			if (count === undefined) {
+				return
+			}
+			if (count <= 1) {
+				this.liveTaskIds.delete(taskId)
+			} else {
+				this.liveTaskIds.set(taskId, count - 1)
+			}
+			// Demotion of the watcher stays with the periodic sweep, so an
+			// unmark right after a burst of writes doesn't flap the watcher
+			// off while the file is still fresh (grace by recency).
+		}
+	}
+
+	/**
+	 * Whether a task's per-directory watcher should exist right now:
+	 * it must be live (pinned by a provider slot) or recent (its
+	 * `history_item.json` was modified within {@link RECENT_WINDOW_MS}).
+	 * Everything else relies on the five-minute reconcile for updates.
+	 */
+	private shouldWatchTaskDir(taskId: string): boolean {
+		if (this.liveTaskIds.has(taskId)) {
+			return true
+		}
+		const meta = this.fileMeta.get(taskId)
+		if (!meta) {
+			// No metadata yet: unknown age. Treat as recent so a freshly
+			// discovered task dir is watched until the first sweep refreshes
+			// its metadata (reconcile populates fileMeta for every on-disk
+			// record, so this is a startup transient only).
+			return true
+		}
+		return Date.now() - meta.mtimeMs < TaskHistoryStore.RECENT_WINDOW_MS
+	}
+
 	// ────────────────────────────── Migration ──────────────────────────────
 
 	/**
@@ -1150,11 +1227,18 @@ export class TaskHistoryStore {
 	 *   a per-task watcher; on a removed subdir it closes that watcher so we
 	 *   don't leak it.
 	 * - Per-task directory watchers detect modifications to existing
-	 *   `history_item.json` files. When they fire, the changed ID is added to
-	 *   a coalescing set and a single debounced pass issues a TARGETED
-	 *   {@link refreshTask} per ID — never a full {@link reconcile} scan.
+	 *   `history_item.json` files, but only for LIVE or RECENT tasks (P7):
+	 *   a watcher is armed for a task currently occupying a provider slot
+	 *   ({@link setTaskLive}) or whose file was modified within
+	 *   {@link RECENT_WINDOW_MS}; record transactions and live marks promote
+	 *   immediately, the periodic sweep demotes what went idle. Watcher
+	 *   count scales with activity, not with total task count. When a
+	 *   watcher fires, the changed ID is added to a coalescing set and a
+	 *   single debounced pass issues a TARGETED {@link refreshTask} per ID —
+	 *   never a full {@link reconcile} scan.
 	 * - A periodic full reconcile remains as a fallback for platforms where
-	 *   `fs.watch` is unreliable.
+	 *   `fs.watch` is unreliable, and is the sole visibility guarantee for
+	 *   tasks whose folders are not watched.
 	 *
 	 * Event-triggered targeted refresh reads the indicated ID unconditionally
 	 * (ignoring mtime/size) so a same-size/same-mtime content change is still
@@ -1261,8 +1345,16 @@ export class TaskHistoryStore {
 	}
 
 	/**
-	 * (Re)arm per-task watchers for every task directory currently on disk,
-	 * and close watchers whose task directory no longer exists.
+	 * (Re)arm per-task watchers for the task directories that are live or
+	 * recent (P7), and close watchers that no longer qualify or whose task
+	 * directory no longer exists. Runs at init and after every periodic
+	 * reconcile — which also refreshes `fileMeta`, so "recent" stays accurate
+	 * here.
+	 *
+	 * Everything unwatched is covered by the five-minute reconcile: it
+	 * detects new records, removals, and mtime/size changes of existing
+	 * ones, so an unwatched folder's external change still reaches the task
+	 * list within one interval.
 	 */
 	private async refreshTaskDirWatchers(): Promise<void> {
 		if (this.disposed) {
@@ -1276,9 +1368,9 @@ export class TaskHistoryStore {
 			return
 		}
 		const onDisk = new Set(entries.filter((name) => !name.startsWith("_") && !name.startsWith(".")))
-		// Close watchers for dirs that are gone.
+		// Close watchers for dirs that are gone or no longer qualify.
 		for (const [taskId, watcher] of this.taskDirWatchers) {
-			if (!onDisk.has(taskId)) {
+			if (!onDisk.has(taskId) || !this.shouldWatchTaskDir(taskId)) {
 				try {
 					watcher.close()
 				} catch {
@@ -1287,9 +1379,13 @@ export class TaskHistoryStore {
 				this.taskDirWatchers.delete(taskId)
 			}
 		}
-		// Arm watchers for dirs that exist.
+		// Arm watchers for dirs that qualify. `shouldWatchTaskDir` reads
+		// `fileMeta`, which the preceding reconcile refreshed for every
+		// on-disk record.
 		for (const name of onDisk) {
-			await this.ensureTaskDirWatcher(name)
+			if (this.shouldWatchTaskDir(name)) {
+				await this.ensureTaskDirWatcher(name)
+			}
 		}
 	}
 
@@ -1522,6 +1618,16 @@ export class TaskHistoryStore {
 					},
 				})
 				await this.refreshFileMetaForPath(filePath, taskId)
+				// Touch promotion (P7): a transaction just touched this
+				// task's file, so it is "recent" — make sure it has watcher
+				// coverage even if the periodic sweep hasn't run since the
+				// dir was created or demoted. Gated by shouldWatchTaskDir so
+				// read-only transactions (e.g. the initial reconcile's
+				// refreshTask over stale records) don't arm watchers for
+				// tasks that are neither live nor recent.
+				if (this.shouldWatchTaskDir(taskId)) {
+					this.ensureTaskDirWatcher(taskId).catch(() => {})
+				}
 				this.scheduleIndexWrite()
 				return result
 			})

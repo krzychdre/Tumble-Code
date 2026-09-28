@@ -103,6 +103,20 @@ export class TaskHistoryGateway {
 	/** Unsubscribe for the shared store's change notifications. */
 	private unsubscribe?: () => void
 	/**
+	 * The task this provider currently holds in its task slot, as last
+	 * reported to the store's live-task gate (P7). Tracked so a task switch
+	 * unmarks the previous id. The id is stored (not read back from the
+	 * host) because the slot may already have moved on by the time the
+	 * unmark is applied.
+	 */
+	private liveTaskId?: string
+	/**
+	 * A live-task id that could not be applied yet because the store
+	 * wasn't ready (acquire failed or is still in flight). Applied on the
+	 * next successful acquire; cleared when the task switches again.
+	 */
+	private pendingLiveTaskId?: string
+	/**
 	 * Last persistent storage failure, formatted as "<context>: <message>".
 	 * Empty string means storage is healthy. Sent to the webview as part of
 	 * the state so the StorageErrorBanner can surface failures (disk full,
@@ -160,6 +174,14 @@ export class TaskHistoryGateway {
 				}
 				this.handle = handle
 				this.subscribe(handle.store)
+				// A live-task mark that arrived while no store was ready is
+				// applied now (P7). `setLiveTaskId` keeps `liveTaskId` as
+				// the previously-reported occupant, so this is a mark, never
+				// a double-mark.
+				if (this.pendingLiveTaskId) {
+					handle.store.setTaskLive(this.pendingLiveTaskId, true)
+					this.pendingLiveTaskId = undefined
+				}
 
 				// Legacy migration runs once per successful acquire. A failed
 				// migration does NOT fail the acquire: the store itself is
@@ -204,6 +226,43 @@ export class TaskHistoryGateway {
 			throw new Error("ClineProvider is disposed")
 		}
 		return taskHistoryStore
+	}
+
+	/**
+	 * Report the provider's current task slot occupant to the shared store's
+	 * live-task gate (P7): a live task's folder keeps its fs watcher for as
+	 * long as the task occupies the slot, regardless of file age.
+	 *
+	 * Call with the new id on every slot change, and with `undefined` when
+	 * the slot is cleared. The gateway tracks the previously reported id and
+	 * unmarks it on the switch. Fire-and-forget on purpose: a live mark must
+	 * never block a task switch on a store acquire; if the store isn't
+	 * ready, the id is remembered and applied on the next successful
+	 * acquire.
+	 */
+	setLiveTaskId(taskId: string | undefined): void {
+		if (taskId === this.liveTaskId) {
+			return
+		}
+		const previous = this.liveTaskId
+		this.liveTaskId = taskId
+		this.pendingLiveTaskId = taskId
+
+		const apply = (store: TaskHistoryStore) => {
+			if (previous) {
+				store.setTaskLive(previous, false)
+			}
+			if (taskId) {
+				store.setTaskLive(taskId, true)
+			}
+		}
+
+		if (this.handle) {
+			apply(this.handle.store)
+			this.pendingLiveTaskId = undefined
+		}
+		// No handle yet (or a reacquire in flight): the pending id is applied
+		// by the acquire chain when the store becomes ready.
 	}
 
 	/**
@@ -308,6 +367,13 @@ export class TaskHistoryGateway {
 	 * consumers only detach so closing one panel never breaks the others.
 	 */
 	dispose(): void {
+		// Release this provider's live-task mark so the shared store can
+		// demote the watcher when the task ages out (P7).
+		if (this.handle && this.liveTaskId) {
+			this.handle.store.setTaskLive(this.liveTaskId, false)
+		}
+		this.liveTaskId = undefined
+		this.pendingLiveTaskId = undefined
 		this.unsubscribe?.()
 		this.unsubscribe = undefined
 		this.handle?.dispose()

@@ -533,6 +533,10 @@ export class ClineProvider
 	// (Was `addClineToStack`; the slot mechanics live in TaskSlot.)
 	async setCurrentTask(task: Task) {
 		await this.taskSlot.set(task)
+		// Report the slot occupant to the store's live-task gate (P7) so its
+		// folder keeps a watcher for the lifetime of the task. Same-id
+		// rehydrates are a no-op inside the gateway.
+		this.taskHistory.setLiveTaskId(task.taskId)
 	}
 
 	async performPreparationTasks(cline: Task) {
@@ -564,6 +568,9 @@ export class ClineProvider
 	// (Was `removeClineFromStack`; the slot mechanics live in TaskSlot.)
 	async clearCurrentTask(options?: { skipDelegationRepair?: boolean }) {
 		await this.taskSlot.clear(options)
+		// Slot is empty: drop the live-task mark so the store can demote the
+		// watcher when the task's file ages out (P7).
+		this.taskHistory.setLiveTaskId(undefined)
 	}
 
 	/**
