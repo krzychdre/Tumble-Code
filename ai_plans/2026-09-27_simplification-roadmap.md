@@ -42,10 +42,10 @@ merged; its "do not touch" list now lives in `docs/architecture.md`.
 | R4   | Done  | krzychdre/Tumble-Code#526 |                                                                                                                                                                                                                                           |
 | R5   | Done  | krzychdre/Tumble-Code#527 | `AbortSignal.timeout` and `CONTROL_REQUEST_TIMEOUT_MS` instead of a new helper; idle limit on the first and every later chunk. The Gemini, Vertex and Mistral SDK timeouts stay unset on purpose (the genai timer covers the whole body). |
 | R7   | Done  | krzychdre/Tumble-Code#534 | `begin_nested()` (SAVEPOINT) per user in `sweep_all_enabled`; savepoint over commit-per-user: one atomic unit and one fsync per cycle.                                                                                                    |
-| R6   | Done  | krzychdre/Tumble-Code#539 | One `installProcessGuards(cleanup)` shared by both CLI modes; Ink error boundary around `App`; `exitOnCtrlC` stays off.                                                                                                                  |
+| R6   | Done  | krzychdre/Tumble-Code#539 | One `installProcessGuards(cleanup)` shared by both CLI modes; Ink error boundary around `App`; `exitOnCtrlC` stays off.                                                                                                                   |
 | R8   | Done  | krzychdre/Tumble-Code#536 | Unique index on `TaskShare.task_id` + `ON CONFLICT`; SQL CAS (`UPDATE ... WHERE version = :v RETURNING`) for the settings version check.                                                                                                  |
 | R9   | Done  | krzychdre/Tumble-Code#537 | `/health/ready` with `SELECT 1`; compose healthcheck; explicit `httpx.Timeout`; `pool_pre_ping=True`; graceful-shutdown timeout; `sio.shutdown()` in the lifespan.                                                                        |
-| R10  | Done  | krzychdre/Tumble-Code#538 | Single-use OAuth state, expired-ticket/state/token purge in the retention cycle, POST `/app/logout` that deactivates the session, `Session.expires_at` checked.                                                                          |
+| R10  | Done  | krzychdre/Tumble-Code#538 | Single-use OAuth state, expired-ticket/state/token purge in the retention cycle, POST `/app/logout` that deactivates the session, `Session.expires_at` checked.                                                                           |
 | R11  | Done  | krzychdre/Tumble-Code#540 | Equal-jitter backoff helper in `packages/cloud`; per-item `RetryQueue` backoff windows; bridge reconnect re-arm via `tumble-code.bridgeRetryDelayMs`.                                                                                     |
 
 New findings from this round, not yet done:
@@ -131,7 +131,7 @@ Do these first. Each is a few lines plus a regression test at the lowest layer t
 3. P1 and P2 (webview responsiveness), measured before and after with the React profiler.
 4. D3, D7, D8, D10, then S1 to S3.
 5. P5, P7, P9, P11, then S4 to S7.
-6. P8 (JSONL) last, only if long tasks are measurably slow.
+6. P8 (JSONL) last, only if long tasks are measurably slow. Measured 2026-09-28: not needed yet, thresholds in `ai_plans/2026-09-28_p8-measurement.md`.
 
 Each item: one pull request, a changeset, and a regression test at the lowest layer that proves it (see
 `AGENTS.md`). Update `docs/` in the same pull request when a mechanism described there changes.
