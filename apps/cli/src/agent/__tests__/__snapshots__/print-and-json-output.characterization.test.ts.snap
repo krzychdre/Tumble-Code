@@ -343,12 +343,6 @@ exports[`JSON output (characterization) > json: resumed task 1`] = `
       ]
     },
     {
-      "type": "thinking",
-      "id": 4,
-      "content": "Old thought.",
-      "done": true
-    },
-    {
       "type": "user",
       "id": 6,
       "content": "",
@@ -514,6 +508,12 @@ exports[`JSON output (characterization) > json: two new messages in one state pu
     },
     {
       "type": "assistant",
+      "id": 3,
+      "content": "First part.",
+      "done": true
+    },
+    {
+      "type": "assistant",
       "id": 4,
       "content": "Second part.",
       "done": true
@@ -605,7 +605,6 @@ exports[`JSON output (characterization) > stream-json: restarted stream after in
 
 exports[`JSON output (characterization) > stream-json: resumed task 1`] = `
 "{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
-{"type":"thinking","id":4,"content":"Old thought.","done":true}
 {"type":"user","id":6,"content":"","done":true}
 {"type":"assistant","id":8,"content":"New "}
 {"type":"assistant","id":8,"content":"answer."}
@@ -640,6 +639,7 @@ exports[`JSON output (characterization) > stream-json: tool asks 1`] = `
 exports[`JSON output (characterization) > stream-json: two new messages in one state push 1`] = `
 "{"type":"system","subtype":"init","content":"Task started","schemaVersion":1,"protocol":"roo-cli-stream","capabilities":["stdin:start","stdin:message","stdin:cancel","stdin:ping","stdin:shutdown"]}
 {"type":"user","id":1,"content":"Batch","done":true}
+{"type":"assistant","id":3,"content":"First part.","done":true}
 {"type":"assistant","id":4,"content":"Second part.","done":true}
 {"type":"result","id":5,"content":"Second part.","done":true,"success":true}
 "
