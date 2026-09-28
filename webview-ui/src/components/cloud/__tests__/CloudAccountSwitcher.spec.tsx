@@ -53,6 +53,8 @@ const organizations: CloudOrganizationMembership[] = [
 
 const mockState: Record<string, unknown> = {}
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState as never),
+
 	useExtensionState: () => mockState,
 }))
 

@@ -2,7 +2,6 @@ import type { HistoryItem } from "@roo-code/types"
 
 import { render, screen, fireEvent } from "@/utils/test-utils"
 import { vscode } from "@/utils/vscode"
-import { useExtensionState } from "@/context/ExtensionStateContext"
 import { useCopyToClipboard } from "@/utils/clipboard"
 
 import { TaskActions } from "../TaskActions"
@@ -21,8 +20,11 @@ vi.mock("@/utils/vscode", () => ({
 }))
 
 // Mock the useExtensionState hook
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
+
 vi.mock("@/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 // Mock the useCopyToClipboard hook
@@ -31,7 +33,7 @@ vi.mock("@/utils/clipboard", () => ({
 }))
 
 const mockPostMessage = vi.mocked(vscode.postMessage)
-const mockUseExtensionState = vi.mocked(useExtensionState)
+const mockUseExtensionState = mockState.fn as unknown as ReturnType<typeof vi.fn>
 const mockUseCopyToClipboard = vi.mocked(useCopyToClipboard)
 
 // Mock react-i18next

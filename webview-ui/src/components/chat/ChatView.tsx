@@ -15,7 +15,7 @@ import { ProfileValidator } from "@roo/ProfileValidator"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import RooHero from "@src/components/welcome/RooHero"
 import RooTips from "@src/components/welcome/RooTips"
@@ -82,28 +82,29 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 	const { t } = useAppTranslation()
 	const modeShortcutText = `${isMac ? "⌘" : "Ctrl"} + . ${t("chat:forNextMode")}, ${isMac ? "⌘" : "Ctrl"} + Shift + . ${t("chat:forPreviousMode")}`
 
-	const {
-		clineMessages: messages,
-		currentTaskItem,
-		currentTaskTodos,
-		taskHistory,
-		apiConfiguration,
-		organizationAllowList,
-		mode,
-		setMode,
-		alwaysAllowModeSwitch,
-		customModes,
-		telemetrySetting,
-		soundEnabled,
-		soundVolume,
-		customSoundUris,
-		cloudIsAuthenticated,
-		messageQueue = [],
-		showWorktreesInHomeScreen,
-		subagents,
-		memoryActivity,
-		clearSubagents,
-	} = useExtensionState()
+	// P1: grouped narrow selectors. ChatView re-renders per token by design
+	// (it renders the messages), but everything it reads but the messages now
+	// comes from identity-stable slices.
+	const messages = useExtensionSelector((s) => s.clineMessages)
+	const currentTaskItem = useExtensionSelector((s) => s.currentTaskItem)
+	const currentTaskTodos = useExtensionSelector((s) => s.currentTaskTodos)
+	const taskHistory = useExtensionSelector((s) => s.taskHistory)
+	const apiConfiguration = useExtensionSelector((s) => s.apiConfiguration)
+	const organizationAllowList = useExtensionSelector((s) => s.organizationAllowList)
+	const mode = useExtensionSelector((s) => s.mode)
+	const setMode = useExtensionSelector((s) => s.setMode)
+	const alwaysAllowModeSwitch = useExtensionSelector((s) => s.alwaysAllowModeSwitch)
+	const customModes = useExtensionSelector((s) => s.customModes)
+	const telemetrySetting = useExtensionSelector((s) => s.telemetrySetting)
+	const soundEnabled = useExtensionSelector((s) => s.soundEnabled)
+	const soundVolume = useExtensionSelector((s) => s.soundVolume)
+	const customSoundUris = useExtensionSelector((s) => s.customSoundUris)
+	const cloudIsAuthenticated = useExtensionSelector((s) => s.cloudIsAuthenticated)
+	const messageQueue = useExtensionSelector((s) => s.messageQueue) ?? []
+	const showWorktreesInHomeScreen = useExtensionSelector((s) => s.showWorktreesInHomeScreen)
+	const subagents = useExtensionSelector((s) => s.subagents)
+	const memoryActivity = useExtensionSelector((s) => s.memoryActivity)
+	const clearSubagents = useExtensionSelector((s) => s.clearSubagents)
 
 	const playSound = useChatSounds({ soundEnabled, soundVolume, customSoundUris })
 

@@ -1,7 +1,7 @@
 import { defaultModeSlug } from "@roo/modes"
 
 import { render, fireEvent, screen } from "@src/utils/test-utils"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionState, useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { vscode } from "@src/utils/vscode"
 
 import { ChatTextArea } from "../ChatTextArea"
@@ -73,6 +73,12 @@ describe("ChatTextArea - lockApiConfigAcrossModes toggle", () => {
 				...defaultState,
 				lockApiConfigAcrossModes: false,
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					...defaultState,
+					lockApiConfigAcrossModes: false,
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} />)
 
@@ -88,6 +94,12 @@ describe("ChatTextArea - lockApiConfigAcrossModes toggle", () => {
 				...defaultState,
 				lockApiConfigAcrossModes: true,
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					...defaultState,
+					lockApiConfigAcrossModes: true,
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} />)
 
@@ -102,6 +114,11 @@ describe("ChatTextArea - lockApiConfigAcrossModes toggle", () => {
 			;(useExtensionState as ReturnType<typeof vi.fn>).mockReturnValue({
 				...defaultState,
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					...defaultState,
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} />)
 
@@ -118,6 +135,12 @@ describe("ChatTextArea - lockApiConfigAcrossModes toggle", () => {
 				...defaultState,
 				lockApiConfigAcrossModes: false,
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					...defaultState,
+					lockApiConfigAcrossModes: false,
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} />)
 
@@ -138,6 +161,12 @@ describe("ChatTextArea - lockApiConfigAcrossModes toggle", () => {
 				...defaultState,
 				lockApiConfigAcrossModes: true,
 			})
+			;(useExtensionSelector as ReturnType<typeof vi.fn>).mockImplementation((selector: any) =>
+				selector({
+					...defaultState,
+					lockApiConfigAcrossModes: true,
+				}),
+			)
 
 			render(<ChatTextArea {...defaultProps} />)
 

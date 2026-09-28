@@ -28,6 +28,13 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 			apiModelId: "claude-3-opus-20240229",
 		},
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			apiConfiguration: {
+				apiProvider: "anthropic",
+				apiModelId: "claude-3-opus-20240229",
+			},
+		} as never),
 }))
 
 // Mock the getModelId function from @roo-code/types

@@ -51,6 +51,8 @@ const mockExtensionState = {
 }
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockExtensionState as never),
+
 	useExtensionState: () => mockExtensionState,
 }))
 

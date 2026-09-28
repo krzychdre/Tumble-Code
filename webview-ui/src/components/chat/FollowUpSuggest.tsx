@@ -4,7 +4,7 @@ import { ClipboardCopy, Timer } from "lucide-react"
 import { Button, StandardTooltip } from "@/components/ui"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { hasUsableAnswer, type SuggestionItem } from "@roo-code/types"
 import { cn } from "@/lib/utils"
 
@@ -28,7 +28,10 @@ export const FollowUpSuggest = ({
 	isAnswered = false,
 	isFollowUpAutoApprovalPaused = false,
 }: FollowUpSuggestProps) => {
-	const { autoApprovalEnabled, alwaysAllowFollowupQuestions, followupAutoApproveTimeoutMs } = useExtensionState()
+	// P1: narrow slices.
+	const autoApprovalEnabled = useExtensionSelector((s) => s.autoApprovalEnabled)
+	const alwaysAllowFollowupQuestions = useExtensionSelector((s) => s.alwaysAllowFollowupQuestions)
+	const followupAutoApproveTimeoutMs = useExtensionSelector((s) => s.followupAutoApproveTimeoutMs)
 	const [countdown, setCountdown] = useState<number | null>(null)
 	const [suggestionSelected, setSuggestionSelected] = useState(false)
 	const { t } = useAppTranslation()

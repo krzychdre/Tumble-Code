@@ -10,7 +10,7 @@ import { vscode } from "./utils/vscode"
 import { useExtensionMessage } from "./utils/extensionBus"
 import { telemetryClient } from "./utils/TelemetryClient"
 import { initializeSourceMaps, exposeSourceMapsForDebugging } from "./utils/sourceMapInitializer"
-import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
+import { ExtensionStateContextProvider, useExtensionSelector } from "./context/ExtensionStateContext"
 import ChatView, { ChatViewRef } from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView, { SettingsViewRef } from "./components/settings/SettingsView"
@@ -67,21 +67,21 @@ const tabsByMessageAction: Partial<Record<NonNullable<ExtensionMessage["action"]
 }
 
 const App = () => {
-	const {
-		didHydrateState,
-		showWelcome,
-		settingsImportedAt,
-		shouldShowAnnouncement,
-		telemetrySetting,
-		telemetryKey,
-		machineId,
-		cloudUserInfo,
-		cloudIsAuthenticated,
-		cloudApiUrl,
-		cloudOrganizations,
-		renderContext,
-		mdmCompliant,
-	} = useExtensionState()
+	// P1: narrow slices. App used to consume the whole extension state, so
+	// every streamed token re-rendered the entire tab tree.
+	const didHydrateState = useExtensionSelector((s) => s.didHydrateState)
+	const showWelcome = useExtensionSelector((s) => s.showWelcome)
+	const settingsImportedAt = useExtensionSelector((s) => s.settingsImportedAt)
+	const shouldShowAnnouncement = useExtensionSelector((s) => s.shouldShowAnnouncement)
+	const telemetrySetting = useExtensionSelector((s) => s.telemetrySetting)
+	const telemetryKey = useExtensionSelector((s) => s.telemetryKey)
+	const machineId = useExtensionSelector((s) => s.machineId)
+	const cloudUserInfo = useExtensionSelector((s) => s.cloudUserInfo)
+	const cloudIsAuthenticated = useExtensionSelector((s) => s.cloudIsAuthenticated)
+	const cloudApiUrl = useExtensionSelector((s) => s.cloudApiUrl)
+	const cloudOrganizations = useExtensionSelector((s) => s.cloudOrganizations)
+	const renderContext = useExtensionSelector((s) => s.renderContext)
+	const mdmCompliant = useExtensionSelector((s) => s.mdmCompliant)
 
 	// Create a persistent state manager
 	const marketplaceStateManager = useMemo(() => new MarketplaceViewStateManager(), [])

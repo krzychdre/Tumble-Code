@@ -41,6 +41,9 @@ const server = {
 
 let servers = [server]
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({ mcpServers: servers, alwaysAllowMcp: false, mcpEnabled: true } as never),
+
 	useExtensionState: () => ({ mcpServers: servers, alwaysAllowMcp: false, mcpEnabled: true }),
 }))
 

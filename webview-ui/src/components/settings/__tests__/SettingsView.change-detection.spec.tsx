@@ -12,12 +12,13 @@ const mockVscode = {
 
 // Import the actual component
 import SettingsView from "../SettingsView"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 
 // Mock the extension state context
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 // Mock the translation context
@@ -322,7 +323,7 @@ describe("SettingsView - Change Detection Fix", () => {
 
 	it("should not show unsaved changes when no changes are made", async () => {
 		const onDone = vi.fn()
-		;(useExtensionState as any).mockReturnValue(createExtensionState())
+		;(mockState.fn as any).mockReturnValue(createExtensionState())
 
 		render(
 			<QueryClientProvider client={queryClient}>

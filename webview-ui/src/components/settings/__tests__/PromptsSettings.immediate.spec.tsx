@@ -32,6 +32,14 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		includeTaskHistoryInEnhance: true,
 		setIncludeTaskHistoryInEnhance: vi.fn(),
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			listApiConfigMeta: [{ id: "p1", name: "work" }],
+			enhancementApiConfigId: "",
+			setEnhancementApiConfigId: mockSetEnhancementApiConfigId,
+			includeTaskHistoryInEnhance: true,
+			setIncludeTaskHistoryInEnhance: vi.fn(),
+		} as never),
 }))
 
 vi.mock("@src/components/ui", () => ({

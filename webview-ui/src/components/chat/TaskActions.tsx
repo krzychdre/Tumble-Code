@@ -5,7 +5,7 @@ import type { HistoryItem } from "@roo-code/types"
 
 import { vscode } from "@/utils/vscode"
 import { useCopyToClipboard } from "@/utils/clipboard"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
 import { DeleteTaskDialog } from "../history/DeleteTaskDialog"
 import { ShareButton } from "./ShareButton"
@@ -21,7 +21,8 @@ export const TaskActions = ({ item, buttonsDisabled }: TaskActionsProps) => {
 	const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null)
 	const { t } = useTranslation()
 	const { copyWithFeedback, showCopyFeedback } = useCopyToClipboard()
-	const { debug } = useExtensionState()
+	// P1: narrow slice.
+	const debug = useExtensionSelector((s) => s.debug)
 
 	return (
 		<div className="flex flex-row items-center -ml-0.5 mt-1 gap-1">

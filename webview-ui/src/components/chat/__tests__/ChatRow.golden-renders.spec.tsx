@@ -113,6 +113,35 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		version: "1.0.0",
 		apiConfiguration: {},
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			mcpServers: [
+				{
+					name: "weather",
+					config: "{}",
+					status: "connected",
+					tools: [{ name: "forecast", description: "Get the forecast", alwaysAllow: false }],
+					resources: [
+						{ uri: "weather://today", name: "Today", mimeType: "text/plain", description: "Today" },
+					],
+					resourceTemplates: [],
+				},
+			],
+			alwaysAllowMcp: false,
+			currentCheckpoint: "abc123",
+			mode: "code",
+			currentTaskItem: mockCurrentTaskItem,
+			reasoningBlockCollapsed: true,
+			autoApprovalEnabled: false,
+			alwaysAllowFollowupQuestions: false,
+			followupAutoApproveTimeoutMs: 60000,
+			allowedCommands: [],
+			deniedCommands: [],
+			setAllowedCommands: () => {},
+			setDeniedCommands: () => {},
+			version: "1.0.0",
+			apiConfiguration: {},
+		} as never),
 }))
 
 const TS = 1_700_000_000_000

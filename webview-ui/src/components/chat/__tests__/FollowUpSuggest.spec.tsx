@@ -35,6 +35,14 @@ const TestExtensionStateContext = createContext<TestExtensionState | undefined>(
 
 // Mock the useExtensionState hook to use our test context
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => {
+		const context = useContext(TestExtensionStateContext)
+		if (!context) {
+			throw new Error("useExtensionSelector must be used within TestExtensionStateProvider")
+		}
+		return selector(context as never)
+	},
+
 	useExtensionState: () => {
 		const context = useContext(TestExtensionStateContext)
 		if (!context) {

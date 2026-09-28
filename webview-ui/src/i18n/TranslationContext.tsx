@@ -1,7 +1,7 @@
 import React, { createContext, useContext, ReactNode, useEffect, useCallback, useState, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import i18next, { loadLanguage } from "./setup"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionSelector } from "@/context/ExtensionStateContext"
 
 // Create context for translations
 export const TranslationContext = createContext<{
@@ -55,9 +55,10 @@ const FirstRenderLanguageGate: React.FC<{ language: string; hold: boolean; child
 export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 	// Subscribes to languageChanged, so the context value refreshes on a switch.
 	const { i18n } = useTranslation()
-	const extensionState = useExtensionState()
-	const language = extensionState.language ?? "en"
-	const didHydrateState = extensionState.didHydrateState
+	// P1: narrow slices. The provider used to consume the whole extension
+	// state and re-render the entire app below it on every streamed token.
+	const language = useExtensionSelector((s) => s.language ?? "en")
+	const didHydrateState = useExtensionSelector((s) => s.didHydrateState)
 	// Latches once the hydrated UI has rendered in its language; after that a
 	// switch never holds the tree back again.
 	const [hasShownHydratedUi, setHasShownHydratedUi] = useState(false)
@@ -91,9 +92,7 @@ export const TranslationProvider: React.FC<{ children: ReactNode }> = ({ childre
 				i18n,
 			}}>
 			<Suspense fallback={null}>
-				<FirstRenderLanguageGate
-					language={language}
-					hold={!!didHydrateState && !hasShownHydratedUi}>
+				<FirstRenderLanguageGate language={language} hold={!!didHydrateState && !hasShownHydratedUi}>
 					{children}
 				</FirstRenderLanguageGate>
 			</Suspense>

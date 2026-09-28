@@ -1,5 +1,5 @@
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import type { AudioType, ClineMessage, HistoryItem } from "@roo-code/types"
 
@@ -183,15 +183,20 @@ export function useChatHostMessages({
 		}
 	}, [modifiedMessagesLength, isStreaming, isHidden, task])
 
-	// The header's "condense context" button.
-	const handleCondenseContext = (taskId: string) => {
-		if (isCondensing || sendingDisabled) {
-			return
-		}
-		setIsCondensing(true)
-		setSendingDisabled(true)
-		vscode.postMessage({ type: "condenseTaskContextRequest", text: taskId })
-	}
+	// The header's "condense context" button. Stable identity while tokens
+	// stream (P1): the two flags only change on condense/send boundaries, so
+	// memoizing on them keeps the identity stable across streamed tokens.
+	const handleCondenseContext = useCallback(
+		(taskId: string) => {
+			if (isCondensing || sendingDisabled) {
+				return
+			}
+			setIsCondensing(true)
+			setSendingDisabled(true)
+			vscode.postMessage({ type: "condenseTaskContextRequest", text: taskId })
+		},
+		[isCondensing, sendingDisabled, setSendingDisabled],
+	)
 
 	return { isCondensing, checkpointWarning, aggregatedCostsMap, handleCondenseContext }
 }

@@ -40,6 +40,8 @@ vi.mock("@src/utils/vscode", () => ({
 }))
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector({} as never),
+
 	useExtensionState: () => ({}),
 }))
 

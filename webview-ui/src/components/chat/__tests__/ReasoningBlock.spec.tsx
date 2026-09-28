@@ -9,6 +9,8 @@ vi.mock("@src/utils/format", () => ({
 }))
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector({ reasoningBlockCollapsed: false } as never),
+
 	useExtensionState: () => ({ reasoningBlockCollapsed: false }),
 }))
 

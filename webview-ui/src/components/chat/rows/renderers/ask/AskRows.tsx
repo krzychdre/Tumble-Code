@@ -7,7 +7,7 @@ import { COMMAND_OUTPUT_STRING } from "@roo/combineCommandSequences"
 import { safeJsonParse } from "@roo-code/core/browser"
 
 import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import McpResourceRow from "@src/components/mcp/McpResourceRow"
 import ErrorRow from "@src/components/chat/ErrorRow"
 import { Markdown } from "@src/components/chat/Markdown"
@@ -54,7 +54,9 @@ export const CommandAskRow = ({ message, isLast, lastModifiedMessage, isExpanded
 /** An MCP tool call or resource read waiting for approval. */
 export const UseMcpServerRow = ({ message, isLast, lastModifiedMessage }: RowRendererProps) => {
 	const { t } = useTranslation()
-	const { mcpServers, alwaysAllowMcp } = useExtensionState()
+	// P1: narrow slices.
+	const mcpServers = useExtensionSelector((s) => s.mcpServers)
+	const alwaysAllowMcp = useExtensionSelector((s) => s.alwaysAllowMcp)
 
 	// The header: nothing when the request does not parse.
 	const mcpServerUse = safeJsonParse<ClineAskUseMcpServer>(message.text)

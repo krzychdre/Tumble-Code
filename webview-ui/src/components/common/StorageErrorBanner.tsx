@@ -2,7 +2,7 @@ import { memo } from "react"
 
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 
 /**
  * Persistent banner for extension-host storage failures (task history
@@ -17,7 +17,8 @@ import { useExtensionState } from "@src/context/ExtensionStateContext"
  */
 const StorageErrorBanner = () => {
 	const { t } = useAppTranslation()
-	const { storageErrorMessage } = useExtensionState()
+	// P1: narrow slice.
+	const storageErrorMessage = useExtensionSelector((s) => s.storageErrorMessage)
 
 	if (!storageErrorMessage) {
 		return null

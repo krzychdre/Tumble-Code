@@ -17,6 +17,11 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 		hasOpenedModeSelector: false,
 		setHasOpenedModeSelector: vi.fn(),
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			hasOpenedModeSelector: false,
+			setHasOpenedModeSelector: vi.fn(),
+		} as never),
 }))
 
 vi.mock("@/i18n/TranslationContext", () => ({

@@ -1,6 +1,6 @@
 import React, { HTMLAttributes, useCallback, forwardRef } from "react"
 
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionSelector } from "@/context/ExtensionStateContext"
 import { cn } from "@/lib/utils"
 
 type TabProps = HTMLAttributes<HTMLDivElement>
@@ -18,7 +18,8 @@ export const TabHeader = ({ className, children, ...props }: TabProps) => (
 )
 
 export const TabContent = forwardRef<HTMLDivElement, TabProps>(({ className, children, ...props }, ref) => {
-	const { renderContext } = useExtensionState()
+	// P1: narrow slice.
+	const renderContext = useExtensionSelector((s) => s.renderContext)
 
 	const onWheel = useCallback(
 		(e: React.WheelEvent<HTMLDivElement>) => {

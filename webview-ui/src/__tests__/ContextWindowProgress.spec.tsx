@@ -16,6 +16,11 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		apiConfiguration: { apiProvider: "openai" },
 		currentTaskItem: { id: "test-id", number: 1, size: 1024 },
 	})),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			apiConfiguration: { apiProvider: "openai" },
+			currentTaskItem: { id: "test-id", number: 1, size: 1024 },
+		} as never),
 }))
 
 // Mock highlighting function to avoid JSX parsing issues in tests

@@ -18,6 +18,11 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 		version: "1.0.0",
 		apiConfiguration: {},
 	}),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			version: "1.0.0",
+			apiConfiguration: {},
+		} as never),
 }))
 
 // Mock selected model hook

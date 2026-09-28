@@ -9,7 +9,7 @@ import { type Mode, getAllModes, defaultModeSlug } from "@roo/modes"
 import { vscode } from "@/utils/vscode"
 import { telemetryClient } from "@/utils/TelemetryClient"
 import { cn } from "@/lib/utils"
-import { useExtensionState } from "@/context/ExtensionStateContext"
+import { useExtensionSelector } from "@/context/ExtensionStateContext"
 import { useAppTranslation } from "@/i18n/TranslationContext"
 import { useRooPortal } from "@/components/ui/hooks/useRooPortal"
 import { Popover, PopoverContent, PopoverTrigger, StandardTooltip } from "@/components/ui"
@@ -48,7 +48,9 @@ export const ModeSelector = ({
 	const scrollContainerRef = React.useRef<HTMLDivElement>(null)
 	const lastNotifiedInvalidModeRef = React.useRef<string | null>(null)
 	const portalContainer = useRooPortal("roo-portal")
-	const { hasOpenedModeSelector, setHasOpenedModeSelector } = useExtensionState()
+	// P1: narrow slices.
+	const hasOpenedModeSelector = useExtensionSelector((s) => s.hasOpenedModeSelector)
+	const setHasOpenedModeSelector = useExtensionSelector((s) => s.setHasOpenedModeSelector)
 	const { t } = useAppTranslation()
 
 	const trackModeSelectorOpened = React.useCallback(() => {

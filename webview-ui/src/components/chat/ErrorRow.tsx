@@ -7,7 +7,7 @@ import { vscode } from "@src/utils/vscode"
 import CodeBlock from "../common/CodeBlock"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@src/components/ui/dialog"
 import { Button, ThemedButton } from "../ui"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { useSelectedModel } from "@src/components/ui/hooks/useSelectedModel"
 import { PROVIDERS } from "../settings/constants"
 
@@ -94,7 +94,9 @@ export const ErrorRow = memo(
 		const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
 		const [showDetailsCopySuccess, setShowDetailsCopySuccess] = useState(false)
 		const { copyWithFeedback } = useCopyToClipboard()
-		const { version, apiConfiguration } = useExtensionState()
+		// P1: narrow slices.
+		const version = useExtensionSelector((s) => s.version)
+		const apiConfiguration = useExtensionSelector((s) => s.apiConfiguration)
 		const { provider, id: modelId } = useSelectedModel(apiConfiguration)
 
 		const usesProxy = PROVIDERS.find((p) => p.value === provider)?.proxy ?? false

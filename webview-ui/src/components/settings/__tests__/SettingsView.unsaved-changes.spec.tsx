@@ -13,8 +13,10 @@ const mockVscode = {
 ;(global as any).acquireVsCodeApi = () => mockVscode
 
 // Mock the extension state context
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 // Mock the translation context
@@ -249,7 +251,6 @@ vi.mock("../SettingsSearch", () => ({
 	SettingsSearch: () => null,
 }))
 
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 import ApiOptions from "../ApiOptions"
 import { vscode } from "@src/utils/vscode"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
@@ -331,7 +332,7 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 				mutations: { retry: false },
 			},
 		})
-		;(useExtensionState as any).mockReturnValue(defaultExtensionState)
+		;(mockState.fn as any).mockReturnValue(defaultExtensionState)
 	})
 
 	it("should not show unsaved changes when settings are automatically initialized", async () => {
@@ -476,7 +477,7 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 				apiModelId: undefined,
 			},
 		}
-		;(useExtensionState as any).mockReturnValue(stateWithUndefined)
+		;(mockState.fn as any).mockReturnValue(stateWithUndefined)
 
 		render(
 			<QueryClientProvider client={queryClient}>
@@ -519,7 +520,7 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 				apiModelId: null,
 			},
 		}
-		;(useExtensionState as any).mockReturnValue(stateWithNull)
+		;(mockState.fn as any).mockReturnValue(stateWithNull)
 
 		render(
 			<QueryClientProvider client={queryClient}>
@@ -657,7 +658,7 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 			)
 			fireEvent.click(screen.getByTestId("edit-model"))
 			await waitFor(() => expect((screen.getByTestId("save-button") as HTMLButtonElement).disabled).toBe(false))
-			;(useExtensionState as any).mockReturnValue({ ...defaultExtensionState, currentApiConfigName: "other" })
+			;(mockState.fn as any).mockReturnValue({ ...defaultExtensionState, currentApiConfigName: "other" })
 			view.rerender(
 				<QueryClientProvider client={queryClient}>
 					<SettingsView onDone={vi.fn()} />
@@ -724,7 +725,7 @@ describe("SettingsView - Unsaved Changes Detection", () => {
 				</QueryClientProvider>,
 			)
 			const pushState = (state: any) => {
-				;(useExtensionState as any).mockReturnValue(state)
+				;(mockState.fn as any).mockReturnValue(state)
 				view.rerender(
 					<QueryClientProvider client={queryClient}>
 						<SettingsView onDone={vi.fn()} />

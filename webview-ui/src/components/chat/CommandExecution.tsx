@@ -9,7 +9,7 @@ import { COMMAND_OUTPUT_STRING } from "@roo/combineCommandSequences"
 
 import { vscode } from "@src/utils/vscode"
 import { extractPatternsFromCommand } from "@src/utils/command-parser"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { useExtensionSelector } from "@src/context/ExtensionStateContext"
 import { cn } from "@src/lib/utils"
 
 import { Button, StandardTooltip } from "@src/components/ui"
@@ -54,7 +54,11 @@ export const CommandExecution = ({
 	isExpanded = false,
 	onToggleExpand,
 }: CommandExecutionProps) => {
-	const { allowedCommands = [], deniedCommands = [], setAllowedCommands, setDeniedCommands } = useExtensionState()
+	// P1: narrow slices.
+	const allowedCommands = useExtensionSelector((s) => s.allowedCommands) ?? []
+	const deniedCommands = useExtensionSelector((s) => s.deniedCommands) ?? []
+	const setAllowedCommands = useExtensionSelector((s) => s.setAllowedCommands)
+	const setDeniedCommands = useExtensionSelector((s) => s.setDeniedCommands)
 
 	const { command, output: parsedOutput } = useMemo(() => parseCommandAndOutput(text), [text])
 

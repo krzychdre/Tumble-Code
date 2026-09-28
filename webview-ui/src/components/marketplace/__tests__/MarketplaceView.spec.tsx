@@ -7,6 +7,18 @@ import { MarketplaceView } from "../MarketplaceView"
 import { MarketplaceViewStateManager } from "../MarketplaceViewStateManager"
 import { DEFAULT_CHECKPOINT_TIMEOUT_SECONDS } from "@roo-code/types"
 
+// Tab (rendered inside the view) reads its slice through useExtensionSelector,
+// while the view itself still consumes the raw ExtensionStateContext.
+vi.mock("@/context/ExtensionStateContext", async () => {
+	const actual = await vi.importActual<typeof import("@/context/ExtensionStateContext")>(
+		"@/context/ExtensionStateContext",
+	)
+	return {
+		...actual,
+		useExtensionSelector: (selector: (s: never) => unknown) => selector({ renderContext: "marketplace" } as never),
+	}
+})
+
 vi.mock("@/utils/vscode", () => ({
 	vscode: {
 		postMessage: vi.fn(),

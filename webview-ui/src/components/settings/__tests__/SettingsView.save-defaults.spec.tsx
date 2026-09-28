@@ -19,13 +19,14 @@ vi.mock("@src/utils/vscode", () => ({
 
 // Import the actual component
 import SettingsView from "../SettingsView"
-import { useExtensionState } from "@src/context/ExtensionStateContext"
 import { LabeledCheckbox as RealLabeledCheckbox } from "@/components/ui/labeled-checkbox"
 import { ThemedTextField as RealThemedTextField } from "@/components/ui/themed-text-field"
 
 // Mock the extension state context
+const mockState = vi.hoisted(() => ({ fn: vi.fn() }))
 vi.mock("@src/context/ExtensionStateContext", () => ({
-	useExtensionState: vi.fn(),
+	useExtensionState: mockState.fn,
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(mockState.fn() as never),
 }))
 
 // Mock the translation context
@@ -272,7 +273,7 @@ const untouchedState = () => ({
 // Marks the form dirty without changing a value, presses Save and returns
 // every message the view posted, in order.
 const saveWithState = async (state: Record<string, unknown>) => {
-	;(useExtensionState as any).mockReturnValue(state)
+	;(mockState.fn as any).mockReturnValue(state)
 	const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
 	render(
@@ -607,7 +608,7 @@ describe("SettingsView Save after the MCP tab toggled MCP", { timeout: 20_000 },
 	})
 
 	it("does not send the value mcpEnabled had when the settings opened", async () => {
-		;(useExtensionState as any).mockReturnValue({ ...populatedState(), mcpEnabled: true })
+		;(mockState.fn as any).mockReturnValue({ ...populatedState(), mcpEnabled: true })
 		const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 		const view = (
 			<QueryClientProvider client={queryClient}>
@@ -617,7 +618,7 @@ describe("SettingsView Save after the MCP tab toggled MCP", { timeout: 20_000 },
 		const { rerender } = render(view)
 
 		// The toggle turned MCP off: the host pushes the new state.
-		;(useExtensionState as any).mockReturnValue({ ...populatedState(), mcpEnabled: false })
+		;(mockState.fn as any).mockReturnValue({ ...populatedState(), mcpEnabled: false })
 		rerender(view)
 
 		fireEvent.click(await screen.findByTestId("open-profile-picker"))

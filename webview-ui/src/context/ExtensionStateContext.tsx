@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
+import React, { useContext, useEffect, useRef, useState, useSyncExternalStore } from "react"
 
 import {
 	type ProviderSettings,
@@ -20,14 +20,14 @@ import { Mode } from "@roo/modes"
 import { vscode } from "@src/utils/vscode"
 import { useAnyExtensionMessage } from "@src/utils/extensionBus"
 
-import {
-	applyExtensionMessage,
-	createInitialExtensionStore,
-	flattenExtensionStore,
-	mergeExtensionState,
-	updateExtensionState,
-} from "./extensionStateReducer"
+import type { ExtensionStore } from "./extensionStateReducer"
+import { mergeExtensionState } from "./extensionStateReducer"
+import { ExtensionStoreClient } from "./extensionStoreClient"
+import { ExtensionStateContext, ExtensionStoreContext } from "./extensionContexts"
+import { useExtensionSelectorHook } from "./useExtensionSelector"
 import { WEBVIEW_DID_LAUNCH_MESSAGE } from "./webviewDidLaunchMessage"
+
+export { ExtensionStateContext }
 
 export interface ExtensionStateContextType extends ExtensionState {
 	historyPreviewCollapsed?: boolean // Add the new state property
@@ -108,102 +108,83 @@ export interface ExtensionStateContextType extends ExtensionState {
 	skills?: SkillMetadata[]
 }
 
-export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
-
 export { mergeExtensionState }
 
-export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-	const [store, setStore] = useState(createInitialExtensionStore)
-	const state = store.extensionState
+/** The store client handle that rides on the context value for selectors. */
+type Client = ExtensionStoreClient<ExtensionStateContextType, ExtensionStateContextActions>
 
-	// Local writes from the setters below: they only touch `extensionState`.
-	const setState = useCallback(
-		(update: (prevState: ExtensionState) => ExtensionState) =>
-			setStore((prev) => updateExtensionState(prev, update)),
-		[],
-	)
+/** Actions are part of the context value; created once per provider. */
+type ExtensionStateContextActions = Pick<
+	ExtensionStateContextType,
+	| "setApiConfiguration"
+	| "setCustomInstructions"
+	| "setAlwaysAllowReadOnly"
+	| "setAlwaysAllowWrite"
+	| "setAlwaysAllowExecute"
+	| "setAlwaysAllowMcp"
+	| "setAlwaysAllowModeSwitch"
+	| "setAlwaysAllowSubtasks"
+	| "setAlwaysApprovePlan"
+	| "setAlwaysAllowFollowupQuestions"
+	| "setAllowedCommands"
+	| "setDeniedCommands"
+	| "setMcpEnabled"
+	| "setTaskSyncEnabled"
+	| "setMode"
+	| "setEnhancementApiConfigId"
+	| "setAutoApprovalEnabled"
+	| "setAutoApprovalMode"
+	| "togglePinnedApiConfig"
+	| "setHasOpenedModeSelector"
+	| "clearSubagents"
+	| "setIncludeTaskHistoryInEnhance"
+	| "setShowWorktreesInHomeScreen"
+>
 
-	const setApiConfiguration = useCallback(
-		(value: ProviderSettings) => {
+/**
+ * The context actions. Created once per provider instance; each closes over
+ * the store client, never over a store snapshot, so identities are stable for
+ * the provider's lifetime (P1: stable action identities).
+ */
+const createActions = (client: Client): ExtensionStateContextActions => {
+	const setState = (update: (prevState: ExtensionState) => ExtensionState) => client.updateExtensionState(update)
+
+	return {
+		setApiConfiguration: (value: ProviderSettings) =>
 			setState((prevState) => ({
 				...prevState,
 				apiConfiguration: {
 					...prevState.apiConfiguration,
 					...value,
 				},
-			}))
-		},
-		[setState],
-	)
-
-	// Side effects of host messages stay here, outside the pure reducer.
-	// `toggleAutoApprove` flips the value in the reducer; the host learns the
-	// new value once it is committed.
-	const autoApprovalEchoPending = useRef(false)
-
-	useAnyExtensionMessage((message: ExtensionMessage) => {
-		if (message.type === "action" && message.action === "toggleAutoApprove") {
-			autoApprovalEchoPending.current = true
-		}
-		setStore((prev) => applyExtensionMessage(prev, message))
-	})
-
-	useEffect(() => {
-		if (!autoApprovalEchoPending.current) {
-			return
-		}
-		autoApprovalEchoPending.current = false
-		vscode.postMessage({ type: "autoApprovalEnabled", bool: store.extensionState.autoApprovalEnabled ?? false })
-	}, [store])
-
-	// A messageAdded that did not fit the chat: ask the host for the whole list once.
-	const clineMessagesResyncRequested = store.clineMessagesResyncRequested
-	useEffect(() => {
-		if (!clineMessagesResyncRequested) {
-			return
-		}
-		vscode.postMessage({ type: "resyncClineMessages" })
-		setStore((prev) =>
-			prev.clineMessagesResyncRequested ? { ...prev, clineMessagesResyncRequested: false } : prev,
-		)
-	}, [clineMessagesResyncRequested])
-
-	useEffect(() => {
-		vscode.postMessage(WEBVIEW_DID_LAUNCH_MESSAGE)
-	}, [])
-
-	const contextValue: ExtensionStateContextType = {
-		...flattenExtensionStore(store),
-		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? true,
-		soundVolume: state.soundVolume,
-		writeDelayMs: state.writeDelayMs,
-		cloudIsAuthenticated: state.cloudIsAuthenticated ?? false,
-		cloudOrganizations: state.cloudOrganizations ?? [],
-		organizationSettingsVersion: state.organizationSettingsVersion ?? -1,
-		profileThresholds: state.profileThresholds ?? {},
-		alwaysAllowFollowupQuestions: state.alwaysAllowFollowupQuestions ?? false,
-		taskSyncEnabled: state.taskSyncEnabled,
-		setApiConfiguration,
-		setCustomInstructions: (value) => setState((prevState) => ({ ...prevState, customInstructions: value })),
-		setAlwaysAllowReadOnly: (value) => setState((prevState) => ({ ...prevState, alwaysAllowReadOnly: value })),
-		setAlwaysAllowWrite: (value) => setState((prevState) => ({ ...prevState, alwaysAllowWrite: value })),
-		setAlwaysAllowExecute: (value) => setState((prevState) => ({ ...prevState, alwaysAllowExecute: value })),
-		setAlwaysAllowMcp: (value) => setState((prevState) => ({ ...prevState, alwaysAllowMcp: value })),
-		setAlwaysAllowModeSwitch: (value) => setState((prevState) => ({ ...prevState, alwaysAllowModeSwitch: value })),
-		setAlwaysAllowSubtasks: (value) => setState((prevState) => ({ ...prevState, alwaysAllowSubtasks: value })),
-		setAlwaysApprovePlan: (value) => setState((prevState) => ({ ...prevState, alwaysApprovePlan: value })),
-		setAlwaysAllowFollowupQuestions: (value) =>
+			})),
+		setCustomInstructions: (value?: string) =>
+			setState((prevState) => ({ ...prevState, customInstructions: value })),
+		setAlwaysAllowReadOnly: (value: boolean) =>
+			setState((prevState) => ({ ...prevState, alwaysAllowReadOnly: value })),
+		setAlwaysAllowWrite: (value: boolean) => setState((prevState) => ({ ...prevState, alwaysAllowWrite: value })),
+		setAlwaysAllowExecute: (value: boolean) =>
+			setState((prevState) => ({ ...prevState, alwaysAllowExecute: value })),
+		setAlwaysAllowMcp: (value: boolean) => setState((prevState) => ({ ...prevState, alwaysAllowMcp: value })),
+		setAlwaysAllowModeSwitch: (value: boolean) =>
+			setState((prevState) => ({ ...prevState, alwaysAllowModeSwitch: value })),
+		setAlwaysAllowSubtasks: (value: boolean) =>
+			setState((prevState) => ({ ...prevState, alwaysAllowSubtasks: value })),
+		setAlwaysApprovePlan: (value: boolean) => setState((prevState) => ({ ...prevState, alwaysApprovePlan: value })),
+		setAlwaysAllowFollowupQuestions: (value: boolean) =>
 			setState((prevState) => ({ ...prevState, alwaysAllowFollowupQuestions: value })),
-		setAllowedCommands: (value) => setState((prevState) => ({ ...prevState, allowedCommands: value })),
-		setDeniedCommands: (value) => setState((prevState) => ({ ...prevState, deniedCommands: value })),
-		setMcpEnabled: (value) => setState((prevState) => ({ ...prevState, mcpEnabled: value })),
-		setTaskSyncEnabled: (value) => setState((prevState) => ({ ...prevState, taskSyncEnabled: value })),
+		setAllowedCommands: (value: string[]) => setState((prevState) => ({ ...prevState, allowedCommands: value })),
+		setDeniedCommands: (value: string[]) => setState((prevState) => ({ ...prevState, deniedCommands: value })),
+		setMcpEnabled: (value: boolean) => setState((prevState) => ({ ...prevState, mcpEnabled: value })),
+		setTaskSyncEnabled: (value: boolean) => setState((prevState) => ({ ...prevState, taskSyncEnabled: value })),
 		setMode: (value: Mode) => setState((prevState) => ({ ...prevState, mode: value })),
-		setEnhancementApiConfigId: (value) =>
+		setEnhancementApiConfigId: (value: string) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
-		setAutoApprovalEnabled: (value) => setState((prevState) => ({ ...prevState, autoApprovalEnabled: value })),
-		setAutoApprovalMode: (value) => setState((prevState) => ({ ...prevState, autoApprovalMode: value })),
-		togglePinnedApiConfig: (configId) =>
+		setAutoApprovalEnabled: (value: boolean) =>
+			setState((prevState) => ({ ...prevState, autoApprovalEnabled: value })),
+		setAutoApprovalMode: (value: AutoApprovalMode) =>
+			setState((prevState) => ({ ...prevState, autoApprovalMode: value })),
+		togglePinnedApiConfig: (configId: string) =>
 			setState((prevState) => {
 				const currentPinned = prevState.pinnedApiConfigs || {}
 				const newPinned = {
@@ -218,19 +199,104 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 
 				return { ...prevState, pinnedApiConfigs: newPinned }
 			}),
-		enterBehavior: state.enterBehavior ?? "send",
-		setHasOpenedModeSelector: (value) => setState((prevState) => ({ ...prevState, hasOpenedModeSelector: value })),
+		setHasOpenedModeSelector: (value: boolean) =>
+			setState((prevState) => ({ ...prevState, hasOpenedModeSelector: value })),
 		clearSubagents: () => setState((prevState) => ({ ...prevState, subagents: [] })),
-		includeDiagnosticMessages: state.includeDiagnosticMessages,
-		maxDiagnosticMessages: state.maxDiagnosticMessages,
-		setIncludeTaskHistoryInEnhance: (value) =>
+		setIncludeTaskHistoryInEnhance: (value: boolean) =>
 			setState((prevState) => ({ ...prevState, includeTaskHistoryInEnhance: value })),
-		showWorktreesInHomeScreen: state.showWorktreesInHomeScreen ?? true,
-		setShowWorktreesInHomeScreen: (value) =>
+		setShowWorktreesInHomeScreen: (value: boolean) =>
 			setState((prevState) => ({ ...prevState, showWorktreesInHomeScreen: value })),
 	}
+}
 
-	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
+/**
+ * Builds the flattened context value (the read model) for one store state.
+ * Pure: same store in, same value out; the actions come from the client (they
+ * are created once per provider and never change identity). This replaces the
+ * object literal that used to be rebuilt — with fresh closures — on every
+ * provider render.
+ */
+const buildContextValue = (store: ExtensionStore, client: Client): ExtensionStateContextType => {
+	const state = store.extensionState
+	const { clineMessagesResyncRequested: _resyncRequested, ...slices } = store
+	return {
+		...state,
+		...slices,
+		reasoningBlockCollapsed: state.reasoningBlockCollapsed ?? true,
+		soundVolume: state.soundVolume,
+		writeDelayMs: state.writeDelayMs,
+		cloudIsAuthenticated: state.cloudIsAuthenticated ?? false,
+		cloudOrganizations: state.cloudOrganizations ?? [],
+		organizationSettingsVersion: state.organizationSettingsVersion ?? -1,
+		profileThresholds: state.profileThresholds ?? {},
+		alwaysAllowFollowupQuestions: state.alwaysAllowFollowupQuestions ?? false,
+		taskSyncEnabled: state.taskSyncEnabled,
+		...client.actions,
+		enterBehavior: state.enterBehavior ?? "send",
+		includeDiagnosticMessages: state.includeDiagnosticMessages,
+		maxDiagnosticMessages: state.maxDiagnosticMessages,
+		showWorktreesInHomeScreen: state.showWorktreesInHomeScreen ?? true,
+	}
+}
+
+export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+	// One client per provider instance. A lazy useState initializer is the
+	// compiler-friendly idiom; a lazily-written ref would bail the component
+	// out of the React Compiler ("cannot access refs during render").
+	const [client] = useState(
+		() =>
+			new ExtensionStoreClient<ExtensionStateContextType, ExtensionStateContextActions>(
+				createActions,
+				buildContextValue,
+			),
+	)
+
+	// Side effects of host messages stay here, outside the pure reducer.
+	// `toggleAutoApprove` flips the value in the reducer; the host learns the
+	// new value once it is committed.
+	const autoApprovalEchoPending = useRef(false)
+
+	useAnyExtensionMessage((message: ExtensionMessage) => {
+		if (message.type === "action" && message.action === "toggleAutoApprove") {
+			autoApprovalEchoPending.current = true
+		}
+		client.applyMessage(message)
+	})
+
+	// Subscribe the provider itself so the two effects below re-run after
+	// every committed store change (the version is the effect trigger).
+	const version = useSyncExternalStore(client.subscribe, client.getVersion, client.getVersion)
+
+	useEffect(() => {
+		if (!autoApprovalEchoPending.current) {
+			return
+		}
+		autoApprovalEchoPending.current = false
+		vscode.postMessage({
+			type: "autoApprovalEnabled",
+			bool: client.getStore().extensionState.autoApprovalEnabled ?? false,
+		})
+	}, [version, client])
+
+	// A messageAdded that did not fit the chat: ask the host for the whole list once.
+	const resyncRequested = client.getStore().clineMessagesResyncRequested
+	useEffect(() => {
+		if (!resyncRequested) {
+			return
+		}
+		vscode.postMessage({ type: "resyncClineMessages" })
+		client.clearClineMessagesResyncRequest()
+	}, [resyncRequested, client])
+
+	useEffect(() => {
+		vscode.postMessage(WEBVIEW_DID_LAUNCH_MESSAGE)
+	}, [])
+
+	return (
+		<ExtensionStoreContext.Provider value={client}>
+			<ExtensionStateContext.Provider value={client.getValue()}>{children}</ExtensionStateContext.Provider>
+		</ExtensionStoreContext.Provider>
+	)
 }
 
 export const useExtensionState = () => {
@@ -242,3 +308,5 @@ export const useExtensionState = () => {
 
 	return context
 }
+
+export const useExtensionSelector = useExtensionSelectorHook

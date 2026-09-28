@@ -22,6 +22,11 @@ vi.mock("@src/context/ExtensionStateContext", () => ({
 		organizationAllowList: undefined,
 		cloudIsAuthenticated: false,
 	})),
+	useExtensionSelector: (selector: (s: never) => unknown) =>
+		selector({
+			organizationAllowList: undefined,
+			cloudIsAuthenticated: false,
+		} as never),
 }))
 
 // Mock the translation hook

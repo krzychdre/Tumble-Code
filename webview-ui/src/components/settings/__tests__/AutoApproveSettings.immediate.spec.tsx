@@ -30,6 +30,8 @@ vi.mock("@/context/ExtensionStateContext", () => ({
 }))
 
 vi.mock("@src/context/ExtensionStateContext", () => ({
+	useExtensionSelector: (selector: (s: never) => unknown) => selector(extensionState.current as never),
+
 	useExtensionState: () => extensionState.current,
 }))
 
