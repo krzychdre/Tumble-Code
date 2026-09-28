@@ -35,10 +35,11 @@ import { getPermissionMode, getPermissionSettings } from "@/lib/utils/permission
 import { lastMcpErrorLine, mcpServersFromMessage, takeNewMcpFailures } from "@/lib/utils/mcp-status.js"
 import { createEphemeralStorageDir, getDefaultMcpSettingsPath } from "@/lib/storage/index.js"
 
-import type { WaitingForInputEvent, TaskCompletedEvent } from "./events.js"
+import type { WaitingForInputEvent } from "./events.js"
 import type { AgentStateInfo } from "./agent-state.js"
 import { ExtensionClient } from "./extension-client.js"
 import { OutputManager } from "./output-manager.js"
+import { TranscriptPrinter } from "./transcript-printer.js"
 import { PromptManager } from "./prompt-manager.js"
 import { AskDispatcher } from "./ask-dispatcher.js"
 
@@ -184,10 +185,18 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	public readonly client: ExtensionClient
 
 	/**
-	 * OutputManager: Handles all CLI output and streaming.
-	 * Uses Observable pattern internally for stream tracking.
+	 * OutputManager: writes print mode's lines (disabled for the TUI and JSON).
 	 */
 	private outputManager: OutputManager
+
+	/**
+	 * Print mode's transcript: the reducer's rows written to the terminal.
+	 * Undefined when output is disabled (the TUI attaches its own sink).
+	 */
+	private printer: TranscriptPrinter | undefined
+
+	// Streaming messages whose first partial was logged (debug log only).
+	private loggedFirstPartial = new Set<number>()
 
 	/**
 	 * PromptManager: Handles all user input collection.
@@ -234,6 +243,13 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 		// Initialize output manager.
 		this.outputManager = new OutputManager({ disabled: options.disableOutput })
+
+		// Print mode reads the transcript the way the TUI does: the reducer
+		// decides the rows, the printer writes them (D11).
+		if (!options.disableOutput) {
+			this.printer = new TranscriptPrinter(this.outputManager, () => this.options.nonInteractive ?? false)
+			this.client.transcript.attach(this.printer)
+		}
 
 		// Initialize prompt manager with console mode callbacks.
 		this.promptManager = new PromptManager({
@@ -294,30 +310,14 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	 * The client emits events, managers handle them.
 	 */
 	private setupClientEventHandlers(): void {
-		// Handle new messages - delegate to OutputManager.
-		this.client.on("message", (msg: ClineMessage) => {
-			this.logMessageDebug(msg, "new")
-			this.outputManager.outputMessage(msg)
-		})
-
-		// Handle message updates - delegate to OutputManager.
-		this.client.on("messageUpdated", (msg: ClineMessage) => {
-			this.logMessageDebug(msg, "updated")
-			this.outputManager.outputMessage(msg)
-		})
+		// Print mode's output comes from the transcript reader (see the
+		// constructor); the client's message events only feed the debug log.
+		this.client.on("message", (msg: ClineMessage) => this.logMessageDebug(msg, "new"))
+		this.client.on("messageUpdated", (msg: ClineMessage) => this.logMessageDebug(msg, "updated"))
 
 		// Handle waiting for input - delegate to AskDispatcher.
 		this.client.on("waitingForInput", (event: WaitingForInputEvent) => {
 			this.askDispatcher.handleAsk(event.message)
-		})
-
-		// Handle task completion.
-		this.client.on("taskCompleted", (event: TaskCompletedEvent) => {
-			// Output completion message via OutputManager.
-			// Note: completion_result is an "ask" type, not a "say" type.
-			if (event.message && event.message.type === "ask" && event.message.ask === "completion_result") {
-				this.outputManager.outputCompletionResult(event.message.ts, event.message.text || "")
-			}
 		})
 	}
 
@@ -384,13 +384,13 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 	private logMessageDebug(msg: ClineMessage, type: "new" | "updated"): void {
 		if (msg.partial) {
-			if (!this.outputManager.hasLoggedFirstPartial(msg.ts)) {
-				this.outputManager.setLoggedFirstPartial(msg.ts)
+			if (!this.loggedFirstPartial.has(msg.ts)) {
+				this.loggedFirstPartial.add(msg.ts)
 				cliLogger.debug("message:start", { ts: msg.ts, type: msg.say || msg.ask })
 			}
 		} else {
 			cliLogger.debug(`message:${type === "new" ? "new" : "complete"}`, { ts: msg.ts, type: msg.say || msg.ask })
-			this.outputManager.clearLoggedFirstPartial(msg.ts)
+			this.loggedFirstPartial.delete(msg.ts)
 		}
 	}
 
@@ -628,6 +628,8 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 	}
 
 	public async resumeTask(taskId: string): Promise<void> {
+		// Print mode shows what the task does from here on, not its history.
+		this.printer?.beginHistoryReplay()
 		this.sendToExtension({ type: "showTaskWithId", text: taskId })
 		return this.waitForTaskCompletion()
 	}
@@ -656,7 +658,6 @@ export class ExtensionHost extends EventEmitter implements ExtensionHostInterfac
 
 	async dispose(): Promise<void> {
 		// Clear managers.
-		this.outputManager.clear()
 		this.askDispatcher.clear()
 
 		// Remove message listener.

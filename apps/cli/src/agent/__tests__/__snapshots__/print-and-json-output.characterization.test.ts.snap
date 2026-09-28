@@ -649,8 +649,6 @@ exports[`print mode output (characterization) > answer repeated in completion_re
 "
 [assistant] The sum is 5.
 
-[assistant] The sum is 5.
-
 [task complete]
 "
 `;
@@ -660,7 +658,6 @@ exports[`print mode output (characterization) > command output 1`] = `
 [command request]
   Command: ls -1
 
-[command output] a.txt
 [command output] a.txt
 b.txt
 
@@ -724,8 +721,6 @@ exports[`print mode output (characterization) > restarted stream after interleav
 
 exports[`print mode output (characterization) > resumed task 1`] = `
 "
-[reasoning] Old thought.
-
 [Resume Task]
 
 [continuing task]
@@ -764,6 +759,8 @@ exports[`print mode output (characterization) > tool asks 1`] = `
 
 exports[`print mode output (characterization) > two new messages in one state push 1`] = `
 "
+[assistant] First part.
+
 [assistant] Second part.
 
 [task complete]

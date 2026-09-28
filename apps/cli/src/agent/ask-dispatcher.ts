@@ -207,7 +207,7 @@ export class AskDispatcher {
 	 * These don't actually block the agent - just need acknowledgment.
 	 */
 	private async handleNonBlockingAsk(_ts: number, _ask: ClineAsk, _text: string): Promise<AskHandleResult> {
-		// command_output - output is handled by OutputManager
+		// command_output - print mode writes the output from the transcript (TranscriptPrinter)
 		// Just send approval to continue
 		this.sendApprovalResponse(true)
 		return { handled: true, response: "yesButtonClicked" }
@@ -357,7 +357,6 @@ export class AskDispatcher {
 	private async handleCommandApproval(ts: number, text: string): Promise<AskHandleResult> {
 		this.outputManager.output("\n[command request]")
 		this.outputManager.output(`  Command: ${text || "(no command specified)"}`)
-		this.outputManager.markDisplayed(ts, text || "", false)
 
 		if (this.nonInteractive) {
 			// Auto-approved by extension settings
@@ -418,8 +417,6 @@ export class AskDispatcher {
 			this.outputManager.output(`  ${key}: ${displayValue}`)
 		}
 
-		this.outputManager.markDisplayed(ts, text || "", false)
-
 		if (this.nonInteractive) {
 			// Auto-approved by extension settings (unless protected)
 			return { handled: true }
@@ -456,7 +453,6 @@ export class AskDispatcher {
 				this.outputManager.output(`    ${line}`)
 			}
 		}
-		this.outputManager.markDisplayed(ts, text || "", false)
 
 		if (this.nonInteractive) {
 			// Auto-approved by extension settings
@@ -480,7 +476,6 @@ export class AskDispatcher {
 	private async handleApiFailedRetry(ts: number, text: string): Promise<AskHandleResult> {
 		this.outputManager.output("\n[api request failed]")
 		this.outputManager.output(`  Error: ${text || "Unknown error"}`)
-		this.outputManager.markDisplayed(ts, text || "", false)
 
 		if (this.exitOnError) {
 			console.error(`[CLI] API request failed: ${text || "Unknown error"}`)
@@ -518,7 +513,6 @@ export class AskDispatcher {
 		if (text) {
 			this.outputManager.output(`  Details: ${text}`)
 		}
-		this.outputManager.markDisplayed(ts, text || "", false)
 
 		if (this.nonInteractive) {
 			// Auto-proceed in non-interactive mode
@@ -545,7 +539,6 @@ export class AskDispatcher {
 		if (text) {
 			this.outputManager.output(`  Details: ${text}`)
 		}
-		this.outputManager.markDisplayed(ts, text || "", false)
 
 		if (this.nonInteractive) {
 			// Auto-proceed in non-interactive mode
@@ -573,7 +566,6 @@ export class AskDispatcher {
 		if (text) {
 			this.outputManager.output(`  ${text}`)
 		}
-		this.outputManager.markDisplayed(ts, text || "", false)
 
 		if (this.nonInteractive) {
 			this.outputManager.output("\n[continuing task]")
@@ -601,7 +593,6 @@ export class AskDispatcher {
 		if (text) {
 			this.outputManager.output(`  ${text}`)
 		}
-		this.outputManager.markDisplayed(ts, text || "", false)
 
 		try {
 			const approved = await this.promptManager.promptForYesNo("Approve? (y/n): ")

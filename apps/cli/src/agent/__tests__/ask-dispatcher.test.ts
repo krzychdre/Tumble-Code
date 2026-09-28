@@ -10,7 +10,6 @@ function createDispatcher({ approve }: { approve: boolean }) {
 
 	const outputManager = {
 		output: (line: string) => output.push(line),
-		markDisplayed: () => {},
 	} as unknown as OutputManager
 
 	const promptManager = {
@@ -74,7 +73,7 @@ describe("AskDispatcher follow-up questions (print mode)", () => {
 			}),
 		} as unknown as PromptManager
 		const dispatcher = new AskDispatcher({
-			outputManager: { output: () => {}, markDisplayed: () => {} } as unknown as OutputManager,
+			outputManager: { output: () => {} } as unknown as OutputManager,
 			promptManager,
 			sendMessage: (message) => sent.push(message),
 			nonInteractive: true,
@@ -107,7 +106,6 @@ describe("AskDispatcher follow-up answers match the shared rule (CLI-5)", () => 
 		const dispatcher = new AskDispatcher({
 			outputManager: {
 				output: (...parts: unknown[]) => output.push(parts.map((part) => String(part)).join(" ")),
-				markDisplayed: () => {},
 			} as unknown as OutputManager,
 			promptManager,
 			sendMessage: (message) => sent.push(message),
@@ -187,7 +185,6 @@ describe("AskDispatcher api_req_failed in non-interactive print mode", () => {
 		const dispatcher = new AskDispatcher({
 			outputManager: {
 				output: (...parts: string[]) => output.push(parts.join(" ")),
-				markDisplayed: () => {},
 			} as unknown as OutputManager,
 			promptManager: { promptForYesNo } as unknown as PromptManager,
 			sendMessage: (message) => sent.push(message),
