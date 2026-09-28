@@ -90,8 +90,6 @@ async def owned_task(monkeypatch, session_factory, db_session):
     registry.register_extension(SID, OWNER)
     # The socket already knows it owns the task (every chunk after the first).
     registry.remember_task_access(SID, TASK, True)
-    yield
-    sio_module.partial_messages.discard()
 
 
 def _chunk(ts, text, partial=True, task_id=TASK):
@@ -131,6 +129,24 @@ async def test_partials_for_one_ts_within_the_window_coalesce_into_one_commit(
     rows = await _rows(session_factory)
     assert rows == [(42, {"ts": 42, "type": "say", "say": "reasoning",
                           "text": "thinking " * 5, "partial": True})]
+
+
+async def test_a_long_stream_is_still_written_once_per_window(
+    owned_task, emit, commits, delay, session_factory
+):
+    """The window runs from the first held chunk and is not pushed back by
+    later ones, so the stored history never lags a live stream by more than
+    one window."""
+    delay(0.05)
+    for i in range(1, 9):
+        await sio_module.on_task_event(SID, _chunk(42, "word " * i))
+        await asyncio.sleep(0.02)
+
+    # 8 chunks over at least 0.16 s, never 0.05 s apart: a window reset by
+    # every chunk would not have written anything yet.
+    assert len(commits) >= 1
+    await asyncio.sleep(0.1)
+    assert [m["text"] for _ts, m in await _rows(session_factory)] == ["word " * 8]
 
 
 async def test_the_held_revision_is_the_fullest_one(owned_task, emit, commits, delay, session_factory):

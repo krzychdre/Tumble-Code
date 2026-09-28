@@ -116,3 +116,17 @@ def client(session_factory):
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture(autouse=True)
+def _drop_held_bridge_partials():
+    """The bridge holds streamed partial rows back for a short window (P11).
+
+    The buffer is a process singleton: a test that ends with a partial still
+    held must not leave its timer behind to fire into a closed event loop or
+    a disposed engine.
+    """
+    yield
+    from src.realtime.sio import partial_messages
+
+    partial_messages.discard()

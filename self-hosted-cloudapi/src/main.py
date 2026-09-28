@@ -72,7 +72,7 @@ async def lifespan(app: FastAPI):
     """
     # Imported here so tests can point src.database.engine elsewhere.
     from src.database import engine
-    from src.realtime.sio import sio
+    from src.realtime.sio import flush_pending_messages, sio
 
     _log_banner()
 
@@ -100,6 +100,10 @@ async def lifespan(app: FastAPI):
         # would await a None task handle).
         if sio.eio.service_task_handle is not None:
             await sio.shutdown()
+    # Streamed partial rows the bridge is still holding back (the disconnects
+    # above wrote their sockets' rows already): write them before the engine
+    # goes away. Nothing is held when the bridge is off.
+    await flush_pending_messages()
     await engine.dispose()
     logger.info("Roo Cloud API stopped")
 
