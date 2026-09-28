@@ -272,9 +272,9 @@ const ModelTierSelectField = ({
 	return (
 		<div className="flex flex-col gap-1 mt-2" data-testid={field.testId}>
 			<div className="flex items-center gap-1">
-				<label className="block font-medium mb-1">{field.label}</label>
-				{field.tooltip && (
-					<StandardTooltip content={field.tooltip}>
+				<label className="block font-medium mb-1">{t(field.labelKey)}</label>
+				{field.tooltipKey && (
+					<StandardTooltip content={t(field.tooltipKey)}>
 						<i className="codicon codicon-info text-vscode-descriptionForeground text-xs" />
 					</StandardTooltip>
 				)}
@@ -291,7 +291,7 @@ const ModelTierSelectField = ({
 				<SelectContent>
 					{[field.baseOption, ...options].map((option) => (
 						<SelectItem key={option.value} value={option.value}>
-							{option.label}
+							{t(option.labelKey)}
 						</SelectItem>
 					))}
 				</SelectContent>

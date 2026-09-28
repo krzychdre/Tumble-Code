@@ -871,6 +871,8 @@
 		"standard": "Standaard",
 		"flex": "Flex",
 		"priority": "Prioriteit",
+		"label": "Serviceniveau",
+		"tooltip": "Probeer voor snellere verwerking van API-verzoeken het serviceniveau met prioriteitsverwerking. Probeer voor lagere prijzen met hogere latentie het flexibele verwerkingsniveau.",
 		"pricingTableTitle": "Prijzen per serviceniveau (prijs per 1M tokens)",
 		"columns": {
 			"tier": "Niveau",

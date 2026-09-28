@@ -14,9 +14,21 @@ import { fireEvent, render, screen } from "@/utils/test-utils"
 
 import { renderProviderForm, type ProviderFormRenderContext } from "../provider-ui-registry"
 
-vi.mock("@src/i18n/TranslationContext", () => ({
-	useAppTranslation: () => ({ t: (key: string) => key }),
-}))
+// Keys render as themselves, except the service tier's, which render in English from the real
+// locale file: the tier field showed hard-coded English text before it was translated, so the
+// snapshots below prove the English DOM did not change (S4 service tier i18n).
+vi.mock("@src/i18n/TranslationContext", async () => {
+	const { default: enSettings } = await import("@src/i18n/locales/en/settings.json")
+	const serviceTier: Record<string, unknown> = enSettings.serviceTier
+	return {
+		useAppTranslation: () => ({
+			t: (key: string) => {
+				const name = key.startsWith("settings:serviceTier.") ? key.slice("settings:serviceTier.".length) : ""
+				return typeof serviceTier[name] === "string" ? serviceTier[name] : key
+			},
+		}),
+	}
+})
 
 vi.mock("@src/components/common/VSCodeButtonLink", () => ({
 	VSCodeButtonLink: ({ children, href, appearance }: any) => (

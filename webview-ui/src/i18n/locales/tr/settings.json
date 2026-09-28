@@ -871,6 +871,8 @@
 		"standard": "Standart",
 		"flex": "Esnek",
 		"priority": "Öncelik",
+		"label": "Hizmet katmanı",
+		"tooltip": "API isteklerinin daha hızlı işlenmesi için öncelikli işleme hizmet katmanını deneyin. Daha yüksek gecikmeyle daha düşük fiyatlar için esnek işleme katmanını deneyin.",
 		"pricingTableTitle": "Hizmet seviyesine göre fiyatlandırma (1 milyon token başına fiyat)",
 		"columns": {
 			"tier": "Seviye",

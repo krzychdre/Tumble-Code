@@ -871,6 +871,8 @@
 		"standard": "Standard",
 		"flex": "Flex",
 		"priority": "Priorität",
+		"label": "Service-Stufe",
+		"tooltip": "Für eine schnellere Verarbeitung von API-Anfragen probiere die Service-Stufe mit Prioritätsverarbeitung. Für niedrigere Preise bei höherer Latenz probiere die Flex-Stufe.",
 		"pricingTableTitle": "Preise nach Service-Stufe (Preis pro 1 Mio. Token)",
 		"columns": {
 			"tier": "Stufe",
