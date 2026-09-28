@@ -596,6 +596,7 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["openImage", { text: "data:image/png;base64,AAA", values: { a: 1 } }],
 	["saveImage", { dataUri: "data:image/png;base64,AAA" }],
 	["openFile", { text: "src/a.ts", values: { line: 3 } }],
+	["openDiff", { text: "--- a/src/a.ts\n+++ b/src/a.ts\n@@ -1 +1 @@\n-a\n+b" }],
 	["readFileContent", { text: "src/a.ts" }],
 	["openMention", { text: "/src/a.ts" }],
 	["openExternal", { url: "https://example.com/" }],
@@ -741,7 +742,7 @@ const ROUTES: Array<[string, Record<string, unknown>]> = [
 	["enhancedPrompt#unhandled", {}],
 ]
 
-/** Every message type the handler routes today (137 types). */
+/** Every message type the handler routes today (139 types). */
 const ROUTED_TYPES = [...new Set(ROUTES.map(([label]) => label.split("#")[0]))].filter(
 	(type) => type !== "enhancedPrompt",
 )
@@ -764,7 +765,7 @@ describe("webviewMessageHandler routing (characterization, CORE-R3)", () => {
 	})
 
 	it("covers every routed message type exactly once in the route list", () => {
-		expect(ROUTED_TYPES).toHaveLength(138)
+		expect(ROUTED_TYPES).toHaveLength(139)
 	})
 
 	it.each(ROUTES)("%s", async (label, fields) => {
