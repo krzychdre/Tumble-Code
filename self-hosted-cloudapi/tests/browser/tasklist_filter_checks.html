@@ -15,6 +15,7 @@
   <input type="checkbox" name="subtasks" value="1">
   <button type="submit" id="apply">Apply</button>
 </form>
+<p id="list-status" class="sr-only" role="status" aria-live="polite"></p>
 <div id="task-results" data-swap>
   <form id="bulk-form" method="post" action="/app/tasks/bulk-delete">
     <div class="select-head">
@@ -119,6 +120,7 @@ window.addEventListener("load", function () {
         later(50, function () {
           check("results swapped from the response", document.querySelector(".cell-title").textContent === "New one")
           check("count swapped too", document.querySelector("#list-count .count-pill").textContent === "1")
+          check("the new count is announced", document.getElementById("list-status").textContent === "1 task")
           check("the form (and its caret) was not replaced", document.getElementById("filter-form") === form && q.value === "abc")
           // The new rows are live: the selection code re-bound to them.
           var fresh = document.querySelector('input[name="task_ids"]')

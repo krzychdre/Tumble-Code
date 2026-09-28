@@ -11,7 +11,7 @@
 <section class="task-stats panel">
   <div class="live-line">
     <span id="live-status" class="live-status">Connecting…</span>
-    <span id="live-activity" class="live-activity" style="display:none"></span>
+    <span id="live-activity" class="live-activity" hidden></span>
     <span class="live-stat">mode <b id="hdr-mode">&#8212;</b></span>
     <span class="live-stat">context <b id="hdr-context">&#8212;</b></span>
   </div>
@@ -30,7 +30,7 @@
   <input id="auto-ModeSwitch" type="checkbox"><input id="auto-Subtasks" type="checkbox">
   <textarea id="chat-input"></textarea>
   <button id="btn-send" type="button">Send</button>
-  <button id="btn-stop" type="button" style="display:none">Stop</button>
+  <button id="btn-stop" type="button" hidden>Stop</button>
   <button id="btn-resume" type="button">Resume</button>
   <button type="button" id="auto-more" aria-expanded="false" aria-controls="auto-bar">Auto-approve settings</button>
 </div>
@@ -139,7 +139,7 @@ window.addEventListener("load", function () {
           check("another task's snapshot: its context is not shown", text("hdr-context") === "32.2k")
           check("another task's snapshot: its mode is not shown", text("hdr-mode") === "\u2014")
           check("another task's snapshot: its running state does not offer Stop",
-                document.getElementById("btn-stop").style.display === "none")
+                document.getElementById("btn-stop").hidden === true)
           // Auto-approval is the extension's setting, not the task's, and the
           // controls push every toggle at once: they must start from the truth.
           check("another task's snapshot: auto-approval still reflects the extension",
@@ -181,7 +181,7 @@ window.addEventListener("load", function () {
               check("this task's snapshot: context against the window", text("hdr-context") === "33k / 200k")
               check("this task's snapshot: mode", text("hdr-mode") === "code")
               check("this task's snapshot: running offers Stop",
-                    document.getElementById("btn-stop").style.display === "")
+                    document.getElementById("btn-stop").hidden === false)
 
               // Every load so far bound its own handler to the fold button;
               // the next scenario gets a fresh one, so exactly one is bound.
