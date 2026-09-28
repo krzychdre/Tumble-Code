@@ -27,6 +27,9 @@ import {
 	qwenCodeModels,
 	xaiDefaultModelId,
 	xaiModels,
+	internationalZAiModels,
+	mainlandZAiModels,
+	zaiModelCatalog,
 } from "@roo-code/types"
 
 import { useSelectedModel } from "../useSelectedModel"
@@ -806,5 +809,54 @@ describe("useSelectedModel", () => {
 			const selected = select({ apiProvider, apiModelId: "" })
 			expect(selected).toMatchObject({ id: "", info: undefined, isUnknownModel: false })
 		})
+	})
+
+	// Regression (Z.ai China API): the settings must show the model list the request uses. The
+	// handler picks it with `zaiModelCatalog` (mainland list for every China line); the hook used
+	// to treat only `china_coding` as China, so `china_api` showed international prices, context
+	// windows and known-model checks.
+	describe("Z.ai API lines use the request's model list", () => {
+		beforeEach(() => {
+			mockUseRouterModels.mockReturnValue({
+				models: undefined,
+				modelIds: undefined,
+				isLoading: false,
+				error: undefined,
+			} as any)
+			mockUseOpenRouterModelProviders.mockReturnValue({ data: {}, isLoading: false, isError: false } as any)
+		})
+
+		const lines = [
+			[undefined, internationalZAiModels],
+			["international_coding", internationalZAiModels],
+			["international_api", internationalZAiModels],
+			["china_coding", mainlandZAiModels],
+			["china_api", mainlandZAiModels],
+		] as const
+
+		const select = (apiConfiguration: ProviderSettings) =>
+			renderHook(() => useSelectedModel(apiConfiguration), { wrapper: createWrapper() }).result.current
+
+		it.each(lines)("%s: the default model has the info the request uses", (zaiApiLine, models) => {
+			const settings: ProviderSettings = { apiProvider: "zai", zaiApiLine }
+			const selected = select(settings)
+			expect(selected.info).toEqual(models[selected.id as keyof typeof models])
+			expect(selected.info).toEqual(zaiModelCatalog(settings).models[selected.id])
+		})
+
+		it.each(lines)("%s: a model priced per line has the request's prices", (zaiApiLine, models) => {
+			const settings: ProviderSettings = { apiProvider: "zai", zaiApiLine, apiModelId: "glm-4.5" }
+			const selected = select(settings)
+			expect(selected.info).toEqual(models["glm-4.5"])
+			expect(selected.info).toEqual(zaiModelCatalog(settings).models["glm-4.5"])
+		})
+
+		it.each(lines)(
+			"%s: a model only the international list has is unknown on China lines",
+			(zaiApiLine, models) => {
+				const selected = select({ apiProvider: "zai", zaiApiLine, apiModelId: "glm-4-32b-0414-128k" })
+				expect(selected.isUnknownModel).toBe(!("glm-4-32b-0414-128k" in models))
+			},
+		)
 	})
 })

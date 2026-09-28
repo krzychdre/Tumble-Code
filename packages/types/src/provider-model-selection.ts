@@ -12,7 +12,7 @@ import {
 	internationalZAiModels,
 	mainlandZAiDefaultModelId,
 	mainlandZAiModels,
-	zaiApiLineConfigs,
+	isZaiChinaLine,
 } from "./providers/zai.js"
 
 /**
@@ -154,7 +154,7 @@ export const isVertexClaudeModel = (settings: ModelSelectionSettings): boolean =
 
 /** The Z.ai model list of the profile's API line: the mainland line has its own list and default. */
 export function zaiModelCatalog(settings: ModelSelectionSettings) {
-	const isChina = zaiApiLineConfigs[settings.zaiApiLine ?? "international_coding"].isChina
+	const isChina = isZaiChinaLine(settings.zaiApiLine)
 
 	return {
 		models: (isChina ? mainlandZAiModels : internationalZAiModels) as unknown as Record<string, ModelInfo>,

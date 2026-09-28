@@ -1,13 +1,12 @@
 import type { ProviderName, ModelInfo, ModelSource, ModelSourceOptions, ProviderSettings } from "@roo-code/types"
 import {
-	internationalZAiDefaultModelId,
-	mainlandZAiDefaultModelId,
 	getProviderDefinition,
 	getInFormModelPickerProviderIds,
 	getProviderDescriptor,
 	modelSources,
 	providerModelDefinitions,
 	resolveProviderModelSourceOptions,
+	zaiModelCatalog,
 } from "@roo-code/types"
 
 import { MODELS_BY_PROVIDER } from "../constants"
@@ -31,11 +30,9 @@ export const getProviderServiceConfig = (provider: ProviderName): ProviderServic
 }
 
 export const getDefaultModelIdForProvider = (provider: ProviderName, apiConfiguration?: ProviderSettings): string => {
-	// Handle Z.ai's China/International entrypoint distinction
+	// Z.ai's default depends on its API line (the request's rule, see `zaiModelCatalog`).
 	if (provider === "zai" && apiConfiguration) {
-		return apiConfiguration.zaiApiLine === "china_coding"
-			? mainlandZAiDefaultModelId
-			: internationalZAiDefaultModelId
+		return zaiModelCatalog(apiConfiguration).defaultModelId
 	}
 
 	return PROVIDER_DEFAULT_MODEL_IDS[provider] ?? ""

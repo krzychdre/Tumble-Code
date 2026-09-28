@@ -6,7 +6,7 @@ import { getProviderModelDefinition } from "./provider-models.js"
 import type { ActiveProviderDefinition } from "./provider-registry.js"
 import type { ModelIdKey, ProviderSettings } from "./provider-settings.js"
 import { providerApiKeyFields } from "./provider-validation.js"
-import { zaiApiLineConfigs } from "./providers/zai.js"
+import { isZaiChinaLine, zaiApiLineConfigs } from "./providers/zai.js"
 
 /**
  * Provider descriptors: what the settings UI needs to know about a provider, as data (S4).
@@ -323,7 +323,7 @@ const custom = { kind: "custom" } as const
 const apiKey = (labelKey: string, getKeyLabelKey: string, getKeyUrl: ProviderGetKeyUrl) =>
 	({ kind: "apiKey", labelKey, getKeyUrl, getKeyLabelKey }) as const
 
-const zaiChinaLines = zaiApiLineSchema.options.filter((line) => zaiApiLineConfigs[line].isChina)
+const zaiChinaLines = zaiApiLineSchema.options.filter(isZaiChinaLine)
 
 export const PROVIDER_DESCRIPTORS = {
 	openrouter: { form: custom, docsSlug: "openrouter", modelPicker: "in-form" },
