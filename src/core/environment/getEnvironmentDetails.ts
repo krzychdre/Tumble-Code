@@ -53,11 +53,20 @@ const lastFileDetails = new WeakMap<Task, string>()
 export const FILE_DETAILS_UNCHANGED_NOTE =
 	"(Unchanged since the listing earlier in this conversation. Use list_files if you need a fresh view.)"
 
-export async function getEnvironmentDetails(cline: Task, includeFileDetails: boolean = false) {
+export async function getEnvironmentDetails(
+	cline: Task,
+	includeFileDetails: boolean = false,
+	/**
+	 * The caller's state snapshot (P5). Provided by the request cycle, which
+	 * takes ONE snapshot per cycle; the condense/forced-truncation callers
+	 * omit it and keep the live read, because they run after a failed request
+	 * where settings may legitimately have changed since cycle start.
+	 */
+	cycleState?: Record<string, any>,
+) {
 	let details = ""
 
-	const clineProvider = cline.providerRef.deref()
-	const state = await clineProvider?.getState()
+	const state = cycleState ?? (await cline.providerRef.deref()?.getState())
 	const { maxWorkspaceFiles = SETTINGS_DEFAULTS.maxWorkspaceFiles } = state ?? {}
 
 	// includeFileDetails marks task/resume/subtask starts — always emit the full

@@ -30,6 +30,7 @@ import { buildNativeToolsArrayWithRestrictions } from "./build-tools"
 import { type TaskContextManager, MAX_CONTEXT_WINDOW_RETRIES } from "./TaskContextManager"
 import { getModelMaxOutputTokens } from "../../shared/api"
 import { type ClineProvider } from "../webview/ClineProvider"
+import { type ProviderState } from "../webview/ProviderStateBuilder"
 import { type ApiMessage } from "../task-persistence"
 import { type RooIgnoreController } from "../ignore/RooIgnoreController"
 
@@ -119,10 +120,18 @@ export class ApiRequestBuilder {
 
 	/**
 	 * Build the system prompt with MCP, mode, and custom instructions.
+	 *
+	 * `cycleState` is the request cycle's state snapshot (P5): one
+	 * `getState()` per cycle instead of two reads here. When it is omitted
+	 * (standalone callers: `generateSystemPrompt`, condense paths) the
+	 * builder reads live, as before. The MCP-enabled exception: the connect
+	 * wait can take up to 10 s, and the documented invariant
+	 * ("settings changed meanwhile are current", see the old comment below)
+	 * must survive it — so when the wait ran, the post-wait read stays live.
 	 */
-	async buildSystemPrompt(): Promise<string> {
+	async buildSystemPrompt(cycleState?: ProviderState): Promise<string> {
 		let mcpHub: McpHub | undefined
-		if (isMcpEnabledForPrompt(await this.access.providerRef.deref()?.getState())) {
+		if (isMcpEnabledForPrompt(cycleState ?? (await this.access.providerRef.deref()?.getState()))) {
 			const provider = this.access.providerRef.deref()
 
 			if (!provider) {
@@ -140,8 +149,12 @@ export class ApiRequestBuilder {
 			})
 		}
 
-		// Read after the MCP wait above, so settings changed meanwhile are current.
-		const state = await this.access.providerRef.deref()?.getState()
+		// P5: use the cycle snapshot when no MCP wait ran above (the common
+		// case — no hub work means nothing waited, so nothing could have
+		// raced). When the wait DID run, read live: settings changed during
+		// those up to 10 seconds must still be current (the pre-P5
+		// invariant, kept deliberately for this case).
+		const state = cycleState && !mcpHub ? cycleState : await this.access.providerRef.deref()?.getState()
 
 		const provider = this.access.providerRef.deref()
 

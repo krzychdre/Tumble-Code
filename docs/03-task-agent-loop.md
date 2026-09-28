@@ -46,6 +46,14 @@ graph TD
 an explicit loop over a stack of pending user contents, not recursion: each finished turn pushes the tool results
 as the next item.
 
+Each request cycle takes **one `getState()` snapshot** at cycle start (P5) and passes it down: the rate-limit wait,
+mentions, environment details, the request generator, the system prompt and the tools array all read that object
+instead of re-reading the provider (previously six to eight reads per cycle, each re-reading settings, custom
+modes, cloud facts and command lists). The snapshot is rebuilt only when the cycle itself writes provider state
+(a slash-command `mode:` switch). Volatile decisions stay live reads: abort/background flags (Access getters),
+post-stream retry paths, asks, and the builder's post-MCP-connect read, which keeps the documented
+"settings changed during the connect wait are current" invariant.
+
 ```mermaid
 sequenceDiagram
   autonumber
