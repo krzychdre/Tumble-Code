@@ -10,8 +10,7 @@ import {
 } from "@roo-code/types"
 
 import type { ApiHandlerOptions } from "../../../shared/api"
-import { parseApiPrice } from "../../../shared/cost"
-
+import { parseApiPrice } from "@roo-code/core/browser"
 /**
  * OpenRouterBaseModel
  */

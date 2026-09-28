@@ -1,6 +1,6 @@
 import * as path from "path"
 
-import { mentionRegexGlobal, unescapeSpaces } from "../../shared/context-mentions"
+import { mentionRegexGlobal, unescapeSpaces } from "@roo-code/core/browser"
 import {
 	isSupportedImageFormat,
 	readImageAsDataUrlWithBuffer,

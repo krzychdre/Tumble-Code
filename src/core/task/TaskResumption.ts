@@ -16,8 +16,7 @@ import {
 	type TaskEvents,
 	RooCodeEventName,
 } from "@roo-code/types"
-import { findLastIndex } from "../../shared/array"
-import { getLatestTodo } from "../../shared/todo"
+import { findLastIndex, getLatestTodo } from "@roo-code/core/browser"
 import { formatResponse } from "../prompts/responses"
 import { type ApiMessage } from "../task-persistence"
 import { buildContextLedger } from "../context-management/ledger/buildLedger"

@@ -3,7 +3,7 @@ import * as fs from "fs/promises"
 
 import type { SubagentSummary } from "@roo-code/types"
 
-import { safeWriteJson } from "../../utils/safeWriteJson"
+import { safeWriteJson } from "@roo-code/core/fs"
 import { getTaskDirectoryPath } from "../../utils/storage"
 import { fileExistsAtPath } from "../../utils/fs"
 

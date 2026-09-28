@@ -41,10 +41,9 @@ vi.mock("fs/promises", () => ({
 }))
 
 // Import safeWriteJson to use in mocks
-import { safeWriteJson } from "../../../utils/safeWriteJson"
-
+import { safeWriteJson } from "@roo-code/core/fs"
 // Mock safeWriteJson
-vi.mock("../../../utils/safeWriteJson", () => ({
+vi.mock("@roo-code/core/fs", () => ({
 	safeWriteJson: vi.fn(async (filePath, data) => {
 		// Instead of trying to write to the file system, just call fs.writeFile mock
 		// This avoids the complex file locking and temp file operations

@@ -68,7 +68,7 @@ vi.mock("../../../utils/export", () => ({
 	saveLastExportPath: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock("../../../utils/safeWriteJson", () => {
+vi.mock("@roo-code/core/fs", () => {
 	const write = vi.fn().mockImplementation(async (filePath: string, data: unknown) => {
 		await fs.mkdir(path.dirname(filePath), { recursive: true })
 		await fs.writeFile(filePath, JSON.stringify(data), "utf8")
@@ -886,7 +886,7 @@ describe("ClineProvider Task History Synchronization", () => {
 			await provider.resolveWebviewView(mockWebviewView)
 
 			// Temporarily make the store's atomic writer throw
-			const { safeWriteJson } = await import("../../../utils/safeWriteJson")
+			const { safeWriteJson } = await import("@roo-code/core/fs")
 			const mockSafeWriteJson = vi.mocked(safeWriteJson)
 			let callCount = 0
 			mockSafeWriteJson.mockImplementation(async () => {

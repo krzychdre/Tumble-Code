@@ -10,8 +10,7 @@ import { AnthropicVertex } from "@anthropic-ai/vertex-sdk"
 import { VERTEX_1M_CONTEXT_MODEL_IDS } from "@roo-code/types"
 
 import { ApiStreamChunk } from "../../transform/stream"
-import { calculateApiCostAnthropic } from "../../../shared/cost"
-
+import { calculateApiCostAnthropic } from "@roo-code/core/browser"
 import { AnthropicVertexHandler } from "../anthropic-vertex"
 
 vitest.mock("@anthropic-ai/vertex-sdk", () => ({

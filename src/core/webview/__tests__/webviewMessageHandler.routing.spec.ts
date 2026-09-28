@@ -151,7 +151,7 @@ vi.mock("os", async (importOriginal) => {
 	return { ...actual, ...overrides, default: { ...actual, ...overrides } }
 })
 
-vi.mock("../../../utils/safeWriteJson", () => ({ safeWriteJson: h.fn("safeWriteJson", async () => undefined) }))
+vi.mock("@roo-code/core/fs", () => ({ safeWriteJson: h.fn("safeWriteJson", async () => undefined) }))
 vi.mock("../../../services/roo-config", () => ({
 	getRooDirectoriesForCwd: h.fn("getRooDirectoriesForCwd", (cwd: string) => [`${cwd}/.roo`]),
 }))

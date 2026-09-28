@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import { createHash } from "crypto"
 import { ICacheManager } from "./interfaces/cache"
 import debounce from "lodash.debounce"
-import { safeWriteJson } from "../../utils/safeWriteJson"
+import { safeWriteJson } from "@roo-code/core/fs"
 import { TelemetryService } from "@roo-code/telemetry"
 import { TelemetryEventName } from "@roo-code/types"
 

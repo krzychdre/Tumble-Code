@@ -40,7 +40,7 @@ describe("Path Mentions Utilities", () => {
 
 		it("is a mention-grammar formatter, not a shell escaper (CodeQL #6 regression)", () => {
 			// The escaped value, embedded in an @-mention token, must be matched by
-			// mentionRegex (src/shared/context-mentions.ts) and round-trip back to the
+			// mentionRegex (@roo-code/core/browser context-mentions) and round-trip back to the
 			// original path via unescapeSpaces. This proves the `\ ` escaping serves
 			// the mention grammar, not shell interpolation.
 			const original = "/src/file with spaces & $ HOME `cmd`.txt"

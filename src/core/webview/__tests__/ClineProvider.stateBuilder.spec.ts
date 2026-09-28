@@ -62,7 +62,7 @@ vi.mock("../../../utils/storage", () => ({
 	getStorageBasePath: vi.fn().mockImplementation((defaultPath: string) => defaultPath),
 }))
 
-vi.mock("../../../utils/safeWriteJson", () => {
+vi.mock("@roo-code/core/fs", () => {
 	const write = vi.fn().mockResolvedValue(undefined)
 	return {
 		safeWriteJson: write,

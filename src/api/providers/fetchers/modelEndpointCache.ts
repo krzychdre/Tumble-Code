@@ -10,8 +10,7 @@ import { ContextProxy } from "../../../core/config/ContextProxy"
 import type { FetchableModelSourceId } from "../../../shared/api"
 import { getCacheDirectoryPath } from "../../../utils/storage"
 import { fileExistsAtPath } from "../../../utils/fs"
-import { safeWriteJson } from "../../../utils/safeWriteJson"
-
+import { safeWriteJson } from "@roo-code/core/fs"
 import { getOpenRouterModelEndpoints } from "./openrouter"
 import { getModels } from "./modelCache"
 

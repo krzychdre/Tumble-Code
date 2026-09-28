@@ -8,8 +8,7 @@ import type { ProviderName, ModelRecord } from "@roo-code/types"
 import { modelInfoSchema, TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 
-import { safeWriteJson } from "../../../utils/safeWriteJson"
-
+import { safeWriteJson } from "@roo-code/core/fs"
 import { ContextProxy } from "../../../core/config/ContextProxy"
 import { getCacheDirectoryPath } from "../../../utils/storage"
 import type { GetModelsOptions } from "../../../shared/api"

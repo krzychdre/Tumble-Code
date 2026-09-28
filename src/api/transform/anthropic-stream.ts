@@ -2,8 +2,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 
 import type { ModelInfo } from "@roo-code/types"
 
-import { calculateApiCostAnthropic } from "../../shared/cost"
-
+import { calculateApiCostAnthropic } from "@roo-code/core/browser"
 import type { ApiStream } from "./stream"
 
 /**

@@ -12,8 +12,7 @@ import { importSettings, importSettingsFromFile, importSettingsWithFeedback, exp
 import { ProviderSettingsManager } from "../ProviderSettingsManager"
 import { ContextProxy } from "../ContextProxy"
 import { CustomModesManager } from "../CustomModesManager"
-import { safeWriteJson } from "../../../utils/safeWriteJson"
-
+import { safeWriteJson } from "@roo-code/core/fs"
 import type { Mock } from "vitest"
 
 vi.mock("vscode", () => ({
@@ -62,7 +61,7 @@ vi.mock("os", () => ({
 	homedir: vi.fn(() => "/mock/home"),
 }))
 
-vi.mock("../../../utils/safeWriteJson")
+vi.mock("@roo-code/core/fs")
 
 // Mock the model resolution to avoid provider details in tests
 vi.mock("../../../api", () => {
