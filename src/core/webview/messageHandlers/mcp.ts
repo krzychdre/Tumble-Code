@@ -8,9 +8,9 @@ import { openFile } from "../../../integrations/misc/open-file"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { safeWriteJson } from "@roo-code/core/fs"
 import { logAndToast, serializeError } from "./context"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const mcpHandlers: MessageHandlerMap = {
+export const mcpHandlers: DomainHandlerMap<"mcp"> = {
 	openMcpSettings: async (ctx) => {
 		const { provider } = ctx
 		const mcpSettingsFilePath = await provider.getMcpHub()?.getMcpSettingsFilePath()

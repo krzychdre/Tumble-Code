@@ -4,9 +4,9 @@ import { TelemetryEventName } from "@roo-code/types"
 import { TelemetryService } from "@roo-code/telemetry"
 import type { Mode } from "../../../shared/modes"
 import { serializeError } from "./context"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const promptsAndModesHandlers: MessageHandlerMap = {
+export const promptsAndModesHandlers: DomainHandlerMap<"promptsAndModes"> = {
 	customInstructions: async (ctx, message) => {
 		const { provider } = ctx
 		await provider.updateCustomInstructions(message.text)

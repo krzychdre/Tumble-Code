@@ -7,7 +7,7 @@ import * as vscode from "vscode"
 import { openFile } from "../../../integrations/misc/open-file"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { generateErrorDiagnostics } from "../diagnosticsHandler"
-import type { MessageHandler, MessageHandlerMap } from "./types"
+import type { DomainHandlerMap, MessageHandler } from "./types"
 
 const openDebugHistory: MessageHandler = async (ctx, message) => {
 	const { provider } = ctx
@@ -63,7 +63,7 @@ const openDebugHistory: MessageHandler = async (ctx, message) => {
 	}
 }
 
-export const debugHandlers: MessageHandlerMap = {
+export const debugHandlers: DomainHandlerMap<"debug"> = {
 	openMarkdownPreview: async (ctx, message) => {
 		const { provider } = ctx
 		if (message.text) {

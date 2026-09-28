@@ -13,9 +13,9 @@ import { selectImages } from "../../../integrations/misc/process-images"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export"
 import { isPathOutsideWorkspace } from "../../../utils/pathUtils"
 import { openMention } from "../../mentions"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const filesAndCheckpointsHandlers: MessageHandlerMap = {
+export const filesAndCheckpointsHandlers: DomainHandlerMap<"filesAndCheckpoints"> = {
 	selectImages: async (ctx, message) => {
 		const { provider } = ctx
 		const images = await selectImages()

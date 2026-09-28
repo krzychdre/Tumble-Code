@@ -9,7 +9,7 @@ import type { ApiMessage } from "../../task-persistence/apiMessages"
 import { saveTaskMessages } from "../../task-persistence"
 import { handleCheckpointRestoreOperation } from "../checkpointRestoreHandler"
 import { type HandlerContext, resolveIncomingImages } from "./context"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
 type CurrentTask = NonNullable<ReturnType<HandlerContext["provider"]["getCurrentTask"]>>
 
@@ -355,7 +355,7 @@ const handleMessageModificationsOperation = async (
 	}
 }
 
-export const messageEditsHandlers: MessageHandlerMap = {
+export const messageEditsHandlers: DomainHandlerMap<"messageEdits"> = {
 	deleteMessage: async (ctx, message) => {
 		const { provider } = ctx
 		if (!provider.getCurrentTask()) {

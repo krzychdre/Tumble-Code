@@ -2,9 +2,9 @@
 
 import { t } from "../../../i18n"
 import { CodeIndexManager } from "../../../services/code-index/manager"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const codeIndexHandlers: MessageHandlerMap = {
+export const codeIndexHandlers: DomainHandlerMap<"codeIndex"> = {
 	saveCodeIndexSettingsAtomic: async (ctx, message) => {
 		const { provider, getGlobalState, updateGlobalState } = ctx
 		if (!message.codeIndexSettings) {

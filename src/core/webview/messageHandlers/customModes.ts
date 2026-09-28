@@ -12,9 +12,9 @@ import { defaultModeSlug } from "../../../shared/modes"
 import { resolveDefaultSaveUri, saveLastExportPath } from "../../../utils/export"
 import { fileExistsAtPath } from "../../../utils/fs"
 import { getWorkspacePath } from "../../../utils/path"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const customModesHandlers: MessageHandlerMap = {
+export const customModesHandlers: DomainHandlerMap<"customModes"> = {
 	openCustomModesSettings: async (ctx) => {
 		const { provider } = ctx
 		const customModesFilePath = await provider.customModesManager.getCustomModesFilePath()

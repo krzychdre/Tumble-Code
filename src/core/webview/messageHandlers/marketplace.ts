@@ -2,9 +2,9 @@
 
 import * as vscode from "vscode"
 import type { MarketplaceItemType } from "../../../services/marketplace"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const marketplaceHandlers: MessageHandlerMap = {
+export const marketplaceHandlers: DomainHandlerMap<"marketplace"> = {
 	filterMarketplaceItems: async (ctx, message) => {
 		const { provider, marketplaceManager } = ctx
 		if (marketplaceManager && message.filters) {

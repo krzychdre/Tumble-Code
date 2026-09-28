@@ -18,11 +18,11 @@ import { Package } from "../../../shared/package"
 import { getCommand } from "../../../utils/commands"
 import { sanitizeCommandList } from "../../auto-approval/sanitizeCommandList"
 import { exportSettings, importSettingsWithFeedback } from "../../config/importExport"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
 const ALLOWED_VSCODE_SETTINGS = new Set(["terminal.integrated.inheritEnv"])
 
-export const settingsHandlers: MessageHandlerMap = {
+export const settingsHandlers: DomainHandlerMap<"settings"> = {
 	updateSettings: async (ctx, message) => {
 		const { provider, getGlobalState } = ctx
 		if (message.updatedSettings) {

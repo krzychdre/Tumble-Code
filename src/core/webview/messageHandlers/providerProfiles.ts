@@ -4,9 +4,9 @@ import * as vscode from "vscode"
 import { fetchModelSource } from "../../../api/providers/fetchers/modelSourceRegistry"
 import { t } from "../../../i18n"
 import { logAndToast, serializeError } from "./context"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const providerProfilesHandlers: MessageHandlerMap = {
+export const providerProfilesHandlers: DomainHandlerMap<"providerProfiles"> = {
 	requestProviderModels: async (ctx, message) => {
 		const { provider } = ctx
 		const request = message.modelSourceRequest

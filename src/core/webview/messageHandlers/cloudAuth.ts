@@ -5,9 +5,9 @@ import { CloudService } from "@roo-code/cloud"
 import { TelemetryService } from "@roo-code/telemetry"
 import { type UserSettingsConfig, TelemetryEventName } from "@roo-code/types"
 import { t } from "../../../i18n"
-import type { MessageHandlerMap } from "./types"
+import type { DomainHandlerMap } from "./types"
 
-export const cloudAuthHandlers: MessageHandlerMap = {
+export const cloudAuthHandlers: DomainHandlerMap<"cloudAuth"> = {
 	shareCurrentTask: async (ctx, message) => {
 		const { provider } = ctx
 		const shareTaskId = provider.getCurrentTask()?.taskId
