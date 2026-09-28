@@ -2,8 +2,10 @@ import { useState } from "react"
 
 import {
 	type DescriptorFormProviderId,
+	type ModelInfo,
 	type ProviderCheckboxFieldDescriptor,
 	type ProviderFieldDescriptor,
+	type ProviderModelTierSelectFieldDescriptor,
 	type ProviderOptionalUrlFieldDescriptor,
 	type ProviderSelectFieldDescriptor,
 	type ProviderSettings,
@@ -16,7 +18,17 @@ import {
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
-import { ThemedDropdown, ThemedOption, ThemedTextField } from "@src/components/ui"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+	StandardTooltip,
+	ThemedDropdown,
+	ThemedOption,
+	ThemedTextField,
+} from "@src/components/ui"
 import { VSCRUICheckbox as Checkbox } from "@src/components/ui/vscrui-checkbox"
 
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
@@ -24,14 +36,20 @@ import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
 /**
  * The settings form of every provider whose `PROVIDER_DESCRIPTORS` row lists its fields
  * (packages/types/src/provider-descriptors.ts). A provider that needs more than the field kinds
- * there (API key, endpoint choice, URL, optional base URL, checkbox, each optionally shown only
- * for some models) keeps a hand-written component next to this one.
+ * there (API key, endpoint choice, URL, optional base URL, checkbox, a choice among the selected
+ * model's tiers, each optionally shown only for some models) keeps a hand-written component next
+ * to this one.
  */
 export const ProviderDescriptorForm = ({
 	provider,
 	apiConfiguration,
 	setApiConfigurationField,
-}: ProviderFormProps & { provider: DescriptorFormProviderId }) => {
+	selectedModelInfo,
+}: ProviderFormProps & {
+	provider: DescriptorFormProviderId
+	/** The selected model's info as the settings resolve it (`useSelectedModel`); feeds `modelTierSelect`. */
+	selectedModelInfo?: ModelInfo
+}) => {
 	const modelId = resolveProviderFormModelId(provider, apiConfiguration)
 	// Widened to the field union: a row's literal type only lists the kinds that row uses.
 	const fields: readonly ProviderFieldDescriptor[] = PROVIDER_DESCRIPTORS[provider].form.fields
@@ -54,8 +72,9 @@ export const ProviderDescriptorForm = ({
 								labelKey={field.labelKey}
 								getKeyUrl={resolveProviderGetKeyUrl(field.getKeyUrl, apiConfiguration)}
 								getKeyLabelKey={field.getKeyLabelKey}
-								// Below another field the trio sits in its own group (see ApiKeyField).
-								grouped={index > 0}
+								// Below another field the trio sits in its own group (see ApiKeyField),
+								// unless the row keeps the form flat.
+								grouped={index > 0 && field.grouped !== false}
 							/>
 						)
 					case "select":
@@ -92,6 +111,16 @@ export const ProviderDescriptorForm = ({
 								field={field}
 								apiConfiguration={apiConfiguration}
 								setApiConfigurationField={setApiConfigurationField}
+							/>
+						)
+					case "modelTierSelect":
+						return (
+							<ModelTierSelectField
+								key={field.key}
+								field={field}
+								apiConfiguration={apiConfiguration}
+								setApiConfigurationField={setApiConfigurationField}
+								selectedModelInfo={selectedModelInfo}
 							/>
 						)
 				}
@@ -184,8 +213,8 @@ const OptionalUrlField = ({
 	const handleInputChange = useProviderField(setApiConfigurationField)
 	const [selected, setSelected] = useState(!!apiConfiguration[field.key])
 
-	return (
-		<div>
+	const controls = (
+		<>
 			<Checkbox
 				data-testid={field.toggleTestId}
 				checked={selected}
@@ -220,6 +249,53 @@ const OptionalUrlField = ({
 					))}
 				</>
 			)}
+		</>
+	)
+
+	return field.grouped === false ? controls : <div>{controls}</div>
+}
+
+const ModelTierSelectField = ({
+	field,
+	apiConfiguration,
+	setApiConfigurationField,
+	selectedModelInfo,
+}: ProviderFormProps & { field: ProviderModelTierSelectFieldDescriptor; selectedModelInfo?: ModelInfo }) => {
+	const { t } = useAppTranslation()
+	const tierNames = new Set(selectedModelInfo?.tiers?.map((tier) => tier.name))
+	const options = field.options.filter((option) => tierNames.has(option.value))
+
+	if (options.length === 0) {
+		return null
+	}
+
+	return (
+		<div className="flex flex-col gap-1 mt-2" data-testid={field.testId}>
+			<div className="flex items-center gap-1">
+				<label className="block font-medium mb-1">{field.label}</label>
+				{field.tooltip && (
+					<StandardTooltip content={field.tooltip}>
+						<i className="codicon codicon-info text-vscode-descriptionForeground text-xs" />
+					</StandardTooltip>
+				)}
+			</div>
+
+			<Select
+				value={apiConfiguration[field.key] || field.baseOption.value}
+				onValueChange={(value) =>
+					setApiConfigurationField(field.key, value as ProviderSettings[typeof field.key])
+				}>
+				<SelectTrigger className="w-full">
+					<SelectValue placeholder={t("settings:common.select")} />
+				</SelectTrigger>
+				<SelectContent>
+					{[field.baseOption, ...options].map((option) => (
+						<SelectItem key={option.value} value={option.value}>
+							{option.label}
+						</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
 		</div>
 	)
 }

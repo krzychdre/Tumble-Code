@@ -10,6 +10,7 @@ import {
 	type ProviderDescriptor,
 	type ProviderFieldDescriptor,
 } from "../provider-descriptors.js"
+import type { ModelInfo } from "../model.js"
 import { providerModelDefinitions } from "../provider-models.js"
 import { activeProviderIds, getProviderDefinition, getSelectableProviderDefinitions } from "../provider-registry.js"
 import type { ProviderSettings } from "../provider-settings.js"
@@ -78,9 +79,33 @@ describe("PROVIDER_DESCRIPTORS", () => {
 			"minimax",
 			"mistral",
 			"moonshot",
+			"openai-native",
 			"xai",
 			"zai",
 		])
+	})
+
+	it("offers model tier options only where the provider's static model list has such a tier", () => {
+		for (const [provider, descriptor] of entries) {
+			for (const field of fieldsOf(descriptor)) {
+				if (field.kind !== "modelTierSelect") {
+					continue
+				}
+
+				const definition = providerModelDefinitions[provider]
+				const models: Record<string, ModelInfo> = "models" in definition ? definition.models : {}
+				const tierNames = new Set(
+					Object.values(models).flatMap((info) => (info.tiers ?? []).map((tier) => tier.name)),
+				)
+				const values = field.options.map(({ value }) => value)
+
+				expect(new Set(values).size, provider).toBe(values.length)
+				expect(values, provider).not.toContain(field.baseOption.value)
+				for (const value of values) {
+					expect(tierNames.has(value), `${provider}: no model has the ${value} tier`).toBe(true)
+				}
+			}
+		}
 	})
 
 	it("uses model rules only on providers whose model id comes from a static list", () => {

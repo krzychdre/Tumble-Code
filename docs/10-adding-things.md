@@ -99,7 +99,13 @@ like this).
         - `checkbox`: a boolean setting with an optional note (Anthropic's 1M context beta);
         - `optionalUrl`: a "use custom base URL" checkbox revealing a URL field; `alsoClear` lists settings reset
           with the URL when it is unticked and `revealedFields` adds checkboxes under the URL (Anthropic's
-          auth-token switch).
+          auth-token switch);
+        - `modelTierSelect`: a dropdown whose options depend on the selected model: a base option that is always
+          offered, plus each listed option only when the model's `tiers` name it; hidden when none is (OpenAI's
+          service tier).
+
+        By default a field below the first one sits in its own group (`<div>`); `grouped: false` on `apiKey` and
+        `optionalUrl` renders it directly in the form instead (OpenAI's base URL checkbox above the API key).
 
         Any field can carry `visibleWhen: { modelIdStartsWith }` or `{ modelIdIn }`, so it is shown only for some
         models; the model id is the configured one, or the provider's default when none is set (the same rule the
@@ -107,7 +113,9 @@ like this).
 
     - `form: custom` when the provider needs anything else; then write the component in
       `webview-ui/src/components/settings/providers/`, export it from `index.ts` there and add its row to
-      `customForms` in `provider-ui-registry.tsx` (the compiler asks for it).
+      `customForms` in `provider-ui-registry.tsx` (the compiler asks for it). The form id is the provider id
+      (`ProviderFormId` is derived from the table); only a component named differently needs an entry in
+      `customFormIdAliases` there.
     - `service` (the model picker's "browse models" name and link) and `docsSlug` (the docs page) complete the row.
       The generic model picker, the default model set on a provider switch and the selected-model lookup in
       `useSelectedModel` read `providerModelDefinitions`, so a static-list provider needs no webview edit beyond

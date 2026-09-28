@@ -1,10 +1,10 @@
 // Hand-written provider forms. Providers whose settings fit the descriptor field kinds (API key,
-// endpoint choice, URL, optional base URL, checkbox, model-dependent visibility) have no component here: `ProviderDescriptorForm` renders them from
-// their row in PROVIDER_DESCRIPTORS (packages/types/src/provider-descriptors.ts).
+// endpoint choice, URL, optional base URL, checkbox, model tier choice, model-dependent
+// visibility) have no component here: `ProviderDescriptorForm` renders them from their row in
+// PROVIDER_DESCRIPTORS (packages/types/src/provider-descriptors.ts).
 export { Bedrock } from "./Bedrock"
 export { LMStudio } from "./LMStudio"
 export { Ollama } from "./Ollama"
-export { OpenAI } from "./OpenAI"
 export { OpenAICodex } from "./OpenAICodex"
 export { OpenAICompatible } from "./OpenAICompatible"
 export { OpenRouter } from "./OpenRouter"
