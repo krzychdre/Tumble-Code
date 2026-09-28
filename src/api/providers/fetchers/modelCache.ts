@@ -10,7 +10,7 @@ import { TelemetryService } from "@roo-code/telemetry"
 
 import { safeWriteJson } from "@roo-code/core/fs"
 import { ContextProxy } from "../../../core/config/ContextProxy"
-import { getCacheDirectoryPath } from "../../../utils/storage"
+import { getCacheDirectoryPath, getStorageBasePathSync } from "../../../utils/storage"
 import type { GetModelsOptions } from "../../../shared/api"
 
 import { getOpenRouterModels } from "./openrouter"
@@ -362,7 +362,8 @@ export function getModelsFromCache(provider: ProviderName): ModelRecord | undefi
 
 /**
  * Synchronous version of getCacheDirectoryPath for use in getModelsFromCache.
- * Returns the cache directory path without async operations.
+ * Resolves the same directory the writes use (honouring `customStoragePath`)
+ * without any file system call; a missing directory is a cache miss.
  */
 function getCacheDirectoryPathSync(): string | undefined {
 	try {
@@ -370,8 +371,7 @@ function getCacheDirectoryPathSync(): string | undefined {
 		if (!globalStoragePath) {
 			return undefined
 		}
-		const cachePath = path.join(globalStoragePath, "cache")
-		return cachePath
+		return path.join(getStorageBasePathSync(globalStoragePath), "cache")
 	} catch (error) {
 		console.error(`[MODEL_CACHE] Error getting cache directory path:`, error)
 		return undefined

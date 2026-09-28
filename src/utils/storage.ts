@@ -21,16 +21,35 @@ const storageBasePathCache = new Map<string, string>()
  * If a custom path is configured, uses that path
  * Otherwise uses the default VSCode extension global storage path
  */
-export async function getStorageBasePath(defaultPath: string): Promise<string> {
-	// Get user-configured custom storage path
-	let customStoragePath = ""
-
+/**
+ * Reads the `customStoragePath` setting ("" when unset); `undefined` when the
+ * VS Code configuration is not accessible (e.g. in some tests).
+ */
+function readCustomStoragePath(): string | undefined {
 	try {
-		// This is the line causing the error in tests
 		const config = vscode.workspace.getConfiguration(Package.name)
-		customStoragePath = config.get<string>("customStoragePath", "")
+		return config.get<string>("customStoragePath", "")
 	} catch (error) {
 		console.warn("Could not access VSCode configuration - using default path")
+		return undefined
+	}
+}
+
+/**
+ * Synchronous counterpart of `getStorageBasePath` for callers that cannot
+ * await (the cold read in `modelCache.getModelsFromCache`). It resolves the
+ * same directory without touching the file system: the configured custom
+ * path when one is set, otherwise `defaultPath`. It does not create or check
+ * the custom directory, so a caller must treat a missing file as a miss.
+ */
+export function getStorageBasePathSync(defaultPath: string): string {
+	return readCustomStoragePath() || defaultPath
+}
+
+export async function getStorageBasePath(defaultPath: string): Promise<string> {
+	// Get user-configured custom storage path
+	const customStoragePath = readCustomStoragePath()
+	if (customStoragePath === undefined) {
 		return defaultPath
 	}
 
