@@ -3,11 +3,15 @@
 // Characterization tests for the start-up migrations run by
 // ProviderSettingsManager.initialize() and ContextProxy.initialize().
 // They feed each legacy storage shape into a fake VS Code storage, pin the
-// migrated result, and prove three properties the D9 move must keep:
-//   1. the migrated result for every legacy shape,
+// migrated result, and prove three properties:
+//   1. the migrated result for every legacy shape that is still migrated,
 //   2. a second start does not write or change anything,
 //   3. a start whose final write fails leaves state that is safe to migrate
 //      again (every migration is idempotent), with the same end result.
+// The old one-time migrations (five provider-profile ones, image-generation
+// settings, both condensing prompt ones) were deleted
+// (ai_plans/2026-09-28_delete-old-config-migrations.md); the tests below also
+// pin that their legacy keys are now left exactly as stored.
 
 import * as vscode from "vscode"
 
@@ -137,7 +141,8 @@ const legacyFlatProfiles = () => ({
 	},
 })
 
-const ALL_FLAGS = [
+/** The flags of the deleted provider-profile migrations, still accepted in stored envelopes. */
+const RETIRED_FLAGS = [
 	"rateLimitSecondsMigrated",
 	"openAiHeadersMigrated",
 	"consecutiveMistakeLimitMigrated",
@@ -162,15 +167,33 @@ describe("config migrations characterization: ProviderSettingsManager", () => {
 		expect(storage.secrets.size).toBe(0)
 	})
 
-	it("legacy flat profiles without a migrations record: all migrations run and all flags are recorded", async () => {
+	it("legacy flat profiles: upgraded to v2 with secrets seeded, retired legacy fields left as stored", async () => {
 		const storage = makeStorage({ rateLimitSeconds: 7 }, { [API_CONFIG_KEY]: JSON.stringify(legacyFlatProfiles()) })
 		await startProviderSettingsManager(storage)
 
 		const envelope = storedEnvelope(storage)
 		expect(envelope.schemaVersion).toBe(2)
-		expect(envelope.data.migrations).toEqual(Object.fromEntries(ALL_FLAGS.map((flag) => [flag, true])))
-		expect(envelope).toMatchSnapshot("envelope after first start")
-		expect(storedProfileSecrets(storage)).toMatchSnapshot("profile secrets after first start")
+		expect(envelope.data.migrations).toEqual({})
+		const configs = envelope.data.apiConfigs
+		// No global rate limit copied, no defaults filled in.
+		expect(configs.main.shared).toBeUndefined()
+		expect(configs.keepsOwnValues.shared).toEqual({
+			rateLimitSeconds: 9,
+			consecutiveMistakeLimit: 5,
+			todoListEnabled: false,
+		})
+		// openAiHostHeader is not turned into openAiHeaders any more.
+		expect(configs.compat.provider.config.openAiHostHeader).toBe("llm.internal")
+		expect(configs.compat.provider.config.openAiHeaders).toBeUndefined()
+		// The removed Claude Code CLI keys stay in the opaque payload.
+		expect(configs.oldClaudeCode.provider.opaqueLegacyPayload).toMatchObject({
+			claudeCodePath: "/usr/local/bin/claude",
+			claudeCodeMaxOutputTokens: 8000,
+		})
+		expect(storedProfileSecrets(storage)).toEqual({
+			"id-compat": { openAiApiKey: "sk-openai-legacy" },
+			"id-main": { apiKey: "sk-ant-legacy" },
+		})
 	})
 
 	it("a second start writes nothing and changes nothing", async () => {
@@ -189,54 +212,29 @@ describe("config migrations characterization: ProviderSettingsManager", () => {
 		expect(storage.secrets).toEqual(afterFirst)
 	})
 
-	it("uses rateLimitSeconds 0 when no global rate limit was stored", async () => {
-		const storage = makeStorage({}, { [API_CONFIG_KEY]: JSON.stringify(legacyFlatProfiles()) })
-		await startProviderSettingsManager(storage)
-		const configs = storedEnvelope(storage).data.apiConfigs
-		expect(configs.main.shared.rateLimitSeconds).toBe(0)
-		expect(configs.keepsOwnValues.shared.rateLimitSeconds).toBe(9)
-		expect(configs.oldClaudeCode.provider.opaqueLegacyPayload.rateLimitSeconds).toBe(0)
-	})
+	it.each([true, false])(
+		"a v2 envelope carrying every retired flag (%s) still loads, keeps the flags and is not rewritten",
+		async (flagValue) => {
+			const seed = makeStorage({}, { [API_CONFIG_KEY]: JSON.stringify(legacyFlatProfiles()) })
+			await startProviderSettingsManager(seed)
+			const withRetiredFlags = storedEnvelope(seed)
+			withRetiredFlags.data.migrations = Object.fromEntries(RETIRED_FLAGS.map((flag) => [flag, flagValue]))
 
-	it.each(ALL_FLAGS)("only the migration whose flag is false (%s) runs", async (pendingFlag) => {
-		const input = {
-			...legacyFlatProfiles(),
-			modeApiConfigs: { code: "id-main" },
-			migrations: Object.fromEntries(ALL_FLAGS.map((flag) => [flag, flag !== pendingFlag])),
-		}
-		const storage = makeStorage({ rateLimitSeconds: 7 }, { [API_CONFIG_KEY]: JSON.stringify(input) })
-		await startProviderSettingsManager(storage)
+			const storage = makeStorage({ rateLimitSeconds: 7 }, { [API_CONFIG_KEY]: JSON.stringify(withRetiredFlags) })
+			const manager = await startProviderSettingsManager(storage)
 
-		const envelope = storedEnvelope(storage)
-		expect(envelope.data.migrations).toEqual(Object.fromEntries(ALL_FLAGS.map((flag) => [flag, true])))
-		expect(envelope.data.apiConfigs).toMatchSnapshot(`apiConfigs with only ${pendingFlag} pending`)
-	})
+			expect(storage.secretsStore).not.toHaveBeenCalled()
+			expect(storedEnvelope(storage)).toEqual(withRetiredFlags)
+			expect((await manager.listConfig()).map((entry) => entry.name).sort()).toEqual([
+				"compat",
+				"keepsOwnValues",
+				"main",
+				"oldClaudeCode",
+			])
+		},
+	)
 
-	it("a v2 envelope with every flag already true is left untouched (no write)", async () => {
-		const storage = makeStorage({ rateLimitSeconds: 7 }, { [API_CONFIG_KEY]: JSON.stringify(legacyFlatProfiles()) })
-		await startProviderSettingsManager(storage)
-		const before = storage.secrets.get(API_CONFIG_KEY)
-		storage.secretsStore.mockClear()
-
-		await startProviderSettingsManager(storage)
-		expect(storage.secrets.get(API_CONFIG_KEY)).toBe(before)
-		expect(storage.secretsStore).not.toHaveBeenCalled()
-	})
-
-	it("a v2 envelope with no migrations record gets all five flags set false and then run", async () => {
-		// Seed the baseline v2 envelope, then drop its migrations record.
-		const seed = makeStorage({ rateLimitSeconds: 7 }, { [API_CONFIG_KEY]: JSON.stringify(legacyFlatProfiles()) })
-		await startProviderSettingsManager(seed)
-		const baseline = storedEnvelope(seed)
-		const withoutMigrations = structuredClone(baseline)
-		delete withoutMigrations.data.migrations
-
-		const storage = makeStorage({ rateLimitSeconds: 7 }, { [API_CONFIG_KEY]: JSON.stringify(withoutMigrations) })
-		await startProviderSettingsManager(storage)
-		expect(storedEnvelope(storage)).toEqual(baseline)
-	})
-
-	it("mid-crash: when the write that records the flags fails, the next start re-runs safely to the same result", async () => {
+	it("mid-crash: when the upgrade write fails, the next start reaches the same result", async () => {
 		const reference = makeStorage(
 			{ rateLimitSeconds: 7 },
 			{ [API_CONFIG_KEY]: JSON.stringify(legacyFlatProfiles()) },
@@ -256,24 +254,9 @@ describe("config migrations characterization: ProviderSettingsManager", () => {
 		expect(storedEnvelope(storage)).toEqual(storedEnvelope(reference))
 		expect(storedProfileSecrets(storage)).toEqual(storedProfileSecrets(reference))
 	})
-
-	it("idempotent: re-running every migration over already-migrated data (flags reset) changes only the flags", async () => {
-		const storage = makeStorage({ rateLimitSeconds: 7 }, { [API_CONFIG_KEY]: JSON.stringify(legacyFlatProfiles()) })
-		await startProviderSettingsManager(storage)
-		const baseline = storedEnvelope(storage)
-
-		const reset = structuredClone(baseline)
-		reset.data.migrations = Object.fromEntries(ALL_FLAGS.map((flag) => [flag, false]))
-		storage.secrets.set(API_CONFIG_KEY, JSON.stringify(reset))
-		// A different global value must not overwrite the per-profile values already migrated.
-		storage.state.set("rateLimitSeconds", 99)
-
-		await startProviderSettingsManager(storage)
-		expect(storedEnvelope(storage)).toEqual(baseline)
-	})
 })
 
-/** Minimal text that the v1-default condensing prompt fingerprint recognizes. */
+/** Minimal text that the deleted v1-default condensing prompt cleanup used to recognize. */
 const V1_DEFAULT_CONDENSE_PROMPT = [
 	"Your task is to create a detailed summary of the conversation so far.",
 	"1. Previous Conversation:",
@@ -288,33 +271,44 @@ const V1_DEFAULT_CONDENSE_PROMPT = [
 const sortedState = (storage: FakeStorage) => Object.fromEntries([...storage.state.entries()].sort())
 const sortedSecrets = (storage: FakeStorage) => Object.fromEntries([...storage.secrets.entries()].sort())
 
-/** Every legacy shape ContextProxy.initialize() migrates, all at once. */
-const legacyGlobalState = () => ({
+/** Legacy keys of the deleted ContextProxy migrations: now left exactly as stored. */
+const retiredLegacyState = () => ({
 	openRouterImageGenerationSettings: {
 		openRouterApiKey: "sk-or-image",
 		selectedModel: "google/gemini-2.5-flash-image-preview",
 	},
+	customCondensingPrompt: "My own condensing prompt",
+	customSupportPrompts: { CONDENSE: V1_DEFAULT_CONDENSE_PROMPT },
+})
+
+/** Every legacy shape ContextProxy.initialize() still migrates, plus the retired keys. */
+const legacyGlobalState = () => ({
+	...retiredLegacyState(),
 	vertexJsonCredentials: '{"type":"service_account"}',
 	apiProvider: "no-such-provider",
-	customCondensingPrompt: "My own condensing prompt",
 	autoMemoryDirectory: "relative/not-allowed",
 })
 
 describe("config migrations characterization: ContextProxy", () => {
-	it("migrates every legacy global-state shape", async () => {
+	it("migrates every legacy global-state shape that is still migrated and leaves retired keys alone", async () => {
 		const storage = makeStorage(legacyGlobalState())
 		const proxy = new ContextProxy(storage.context)
 		await proxy.initialize()
 
-		expect(sortedState(storage)).toMatchSnapshot("global state after first start")
-		expect(sortedSecrets(storage)).toMatchSnapshot("secrets after first start")
-		expect(proxy.getSecret("openRouterImageApiKey")).toBe("sk-or-image")
+		expect(sortedState(storage)).toEqual({
+			...retiredLegacyState(),
+			autoDreamEnabled: true,
+			autoDreamMinHours: 24,
+			autoDreamMinSessions: 5,
+			autoMemoryEnabled: true,
+			memoryRecallEnabled: true,
+		})
+		expect(sortedSecrets(storage)).toEqual({ vertexJsonCredentials: '{"type":"service_account"}' })
+		expect(proxy.getSecret("openRouterImageApiKey")).toBeUndefined()
 		expect(proxy.getSecret("vertexJsonCredentials")).toBe('{"type":"service_account"}')
 		expect(proxy.getGlobalState("apiProvider")).toBeUndefined()
-		expect(proxy.getGlobalState("customSupportPrompts")).toEqual({ CONDENSE: "My own condensing prompt" })
-		expect(proxy.getGlobalState("openRouterImageGenerationSelectedModel")).toBe(
-			"google/gemini-2.5-flash-image-preview",
-		)
+		expect(proxy.getGlobalState("customSupportPrompts")).toEqual({ CONDENSE: V1_DEFAULT_CONDENSE_PROMPT })
+		expect(proxy.getGlobalState("openRouterImageGenerationSelectedModel")).toBeUndefined()
 	})
 
 	it("a second start writes nothing and changes nothing", async () => {
@@ -335,47 +329,33 @@ describe("config migrations characterization: ContextProxy", () => {
 		expect(sortedSecrets(storage)).toEqual(secretsAfterFirst)
 	})
 
-	it("runs the legacy-prompt move before the v1-default cleanup (a legacy v1 default ends up cleared)", async () => {
-		const storage = makeStorage({ customCondensingPrompt: V1_DEFAULT_CONDENSE_PROMPT })
-		const proxy = new ContextProxy(storage.context)
-		await proxy.initialize()
-
-		expect(storage.state.has("customCondensingPrompt")).toBe(false)
-		expect(storage.state.has("customSupportPrompts")).toBe(false)
-		expect(proxy.getGlobalState("customSupportPrompts")).toBeUndefined()
-	})
-
-	it("keeps a user's explicit memory choices and a stored v1 default next to other prompts", async () => {
+	it("keeps a user's explicit memory choices", async () => {
 		const storage = makeStorage({
 			autoMemoryEnabled: false,
 			autoDreamEnabled: false,
 			memoryRecallEnabled: false,
 			autoDreamMinHours: 3,
 			autoDreamMinSessions: 1,
-			customSupportPrompts: { CONDENSE: V1_DEFAULT_CONDENSE_PROMPT, ENHANCE: "enhance it" },
 			apiProvider: "anthropic",
 		})
 		await new ContextProxy(storage.context).initialize()
-		expect(sortedState(storage)).toMatchSnapshot("explicit user choices kept")
+		expect(sortedState(storage)).toEqual({
+			apiProvider: "anthropic",
+			autoDreamEnabled: false,
+			autoDreamMinHours: 3,
+			autoDreamMinSessions: 1,
+			autoMemoryEnabled: false,
+			memoryRecallEnabled: false,
+		})
 	})
 
-	it("does not overwrite existing new-location values with legacy copies", async () => {
+	it("does not overwrite an existing secret with a legacy plain-text copy", async () => {
 		const storage = makeStorage(
-			{
-				openRouterImageGenerationSettings: { openRouterApiKey: "old-key", selectedModel: "old/model" },
-				openRouterImageGenerationSelectedModel: "new/model",
-				vertexJsonCredentials: "stale-copy",
-				customCondensingPrompt: "legacy text",
-				customSupportPrompts: { CONDENSE: "already customized" },
-			},
-			{ openRouterImageApiKey: "new-key", vertexJsonCredentials: "current-secret" },
+			{ vertexJsonCredentials: "stale-copy" },
+			{ vertexJsonCredentials: "current-secret" },
 		)
 		await new ContextProxy(storage.context).initialize()
-		expect(sortedState(storage)).toMatchSnapshot("state when new locations already set")
-		expect(sortedSecrets(storage)).toEqual({
-			openRouterImageApiKey: "new-key",
-			vertexJsonCredentials: "current-secret",
-		})
+		expect(sortedSecrets(storage)).toEqual({ vertexJsonCredentials: "current-secret" })
 	})
 
 	it("mid-crash: a failed write during one start leaves state that the next start migrates to the same result", async () => {
@@ -384,13 +364,7 @@ describe("config migrations characterization: ContextProxy", () => {
 
 		const storage = makeStorage(legacyGlobalState())
 		// Every clean-up write of a legacy key fails on the first start.
-		for (const key of [
-			"openRouterImageGenerationSettings",
-			"vertexJsonCredentials",
-			"apiProvider",
-			"customCondensingPrompt",
-			"autoMemoryEnabled",
-		]) {
+		for (const key of ["vertexJsonCredentials", "apiProvider", "autoMemoryEnabled"]) {
 			storage.failStateWritesFor.add(key)
 		}
 		await expect(new ContextProxy(storage.context).initialize()).resolves.toBeUndefined()

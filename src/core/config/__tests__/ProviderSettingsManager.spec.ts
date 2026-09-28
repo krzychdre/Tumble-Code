@@ -221,124 +221,49 @@ describe("ProviderSettingsManager", () => {
 			expect(storedEnvelope.data.apiConfigs.test.id).toBeTruthy()
 		})
 
-		it("should call migrateRateLimitSeconds if it has not done so already", async () => {
-			mockGlobalState.get.mockResolvedValue(42)
-
-			mockSecrets.get.mockResolvedValue(
-				JSON.stringify({
+		// The five one-time profile migrations were deleted
+		// (ai_plans/2026-09-28_delete-old-config-migrations.md). Their flags stay in the strict migrations
+		// schema, so a stored envelope that still carries them (even as false) loads and nothing is rewritten.
+		it("loads a stored envelope whose retired migration flags are false without migrating or rewriting it", async () => {
+			mockGlobalState.get.mockReturnValue(42)
+			const stored = {
+				schemaVersion: 2,
+				data: {
 					currentApiConfigName: "default",
 					apiConfigs: {
-						default: {
-							config: {},
-							id: "default",
-							rateLimitSeconds: undefined,
-						},
-						test: {
-							apiProvider: "anthropic",
-							rateLimitSeconds: undefined,
-						},
-						existing: {
-							apiProvider: "anthropic",
-							// this should not really be possible, unless someone has loaded a hand edited config,
-							// but we don't overwrite so we'll check that
-							rateLimitSeconds: 43,
+						default: { id: "default", provider: { providerId: "anthropic", config: {} } },
+						compat: {
+							id: "compat",
+							provider: {
+								providerId: "openai",
+								config: {
+									openAiBaseUrl: "https://llm.example.com/v1",
+									openAiHostHeader: "llm.internal",
+								},
+							},
 						},
 					},
+					modeApiConfigs: { code: "default" },
 					migrations: {
 						rateLimitSecondsMigrated: false,
-					},
-				}),
-			)
-
-			await providerSettingsManager.initialize()
-
-			// Get the last call to store, which should contain the migrated config
-			const calls = mockSecrets.store.mock.calls
-			const storedConfig = unwrapStoredProfiles(calls[calls.length - 1][1])
-			expect(storedConfig.apiConfigs.default.rateLimitSeconds).toEqual(42)
-			expect(storedConfig.apiConfigs.test.rateLimitSeconds).toEqual(42)
-			expect(storedConfig.apiConfigs.existing.rateLimitSeconds).toEqual(43)
-		})
-
-		it("should call migrateConsecutiveMistakeLimit if it has not done so already", async () => {
-			mockSecrets.get.mockResolvedValue(
-				JSON.stringify({
-					currentApiConfigName: "default",
-					apiConfigs: {
-						default: {
-							config: {},
-							id: "default",
-							consecutiveMistakeLimit: undefined,
-						},
-						test: {
-							apiProvider: "anthropic",
-							consecutiveMistakeLimit: undefined,
-						},
-						existing: {
-							apiProvider: "anthropic",
-							// this should not really be possible, unless someone has loaded a hand edited config,
-							// but we don't overwrite so we'll check that
-							consecutiveMistakeLimit: 5,
-						},
-					},
-					migrations: {
-						rateLimitSecondsMigrated: true,
-						openAiHeadersMigrated: true,
+						openAiHeadersMigrated: false,
 						consecutiveMistakeLimitMigrated: false,
-					},
-				}),
-			)
-
-			await providerSettingsManager.initialize()
-
-			// Get the last call to store, which should contain the migrated config
-			const calls = mockSecrets.store.mock.calls
-			const storedConfig = unwrapStoredProfiles(calls[calls.length - 1][1])
-			expect(storedConfig.apiConfigs.default.consecutiveMistakeLimit).toEqual(3)
-			expect(storedConfig.apiConfigs.test.consecutiveMistakeLimit).toEqual(3)
-			expect(storedConfig.apiConfigs.existing.consecutiveMistakeLimit).toEqual(5)
-			expect(storedConfig.migrations.consecutiveMistakeLimitMigrated).toEqual(true)
-		})
-
-		it("should call migrateTodoListEnabled if it has not done so already", async () => {
-			mockSecrets.get.mockResolvedValue(
-				JSON.stringify({
-					currentApiConfigName: "default",
-					apiConfigs: {
-						default: {
-							config: {},
-							id: "default",
-							todoListEnabled: undefined,
-						},
-						test: {
-							apiProvider: "anthropic",
-							todoListEnabled: undefined,
-						},
-						existing: {
-							apiProvider: "anthropic",
-							// this should not really be possible, unless someone has loaded a hand edited config,
-							// but we don't overwrite so we'll check that
-							todoListEnabled: false,
-						},
-					},
-					migrations: {
-						rateLimitSecondsMigrated: true,
-						openAiHeadersMigrated: true,
-						consecutiveMistakeLimitMigrated: true,
 						todoListEnabledMigrated: false,
+						claudeCodeLegacySettingsMigrated: false,
 					},
-				}),
-			)
+				},
+			}
+			mockSecrets.get.mockResolvedValue(JSON.stringify(stored))
 
 			await providerSettingsManager.initialize()
 
-			// Get the last call to store, which should contain the migrated config
-			const calls = mockSecrets.store.mock.calls
-			const storedConfig = unwrapStoredProfiles(calls[calls.length - 1][1])
-			expect(storedConfig.apiConfigs.default.todoListEnabled).toEqual(true)
-			expect(storedConfig.apiConfigs.test.todoListEnabled).toEqual(true)
-			expect(storedConfig.apiConfigs.existing.todoListEnabled).toEqual(false)
-			expect(storedConfig.migrations.todoListEnabledMigrated).toEqual(true)
+			expect(mockSecrets.store).not.toHaveBeenCalled()
+			expect(await providerSettingsManager.listConfig()).toHaveLength(2)
+			const compat = await providerSettingsManager.getProfile({ name: "compat" })
+			expect(compat.openAiHostHeader).toBe("llm.internal")
+			expect(compat.openAiHeaders).toBeUndefined()
+			expect(compat.rateLimitSeconds).toBeUndefined()
+			expect(compat.todoListEnabled).toBeUndefined()
 		})
 
 		it("should throw error if secrets storage fails", async () => {

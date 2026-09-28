@@ -3,7 +3,7 @@
 import { providerProfileMigrationsSchema } from "@roo-code/types"
 
 import { flagRecord, runFlaggedMigrations, runStartupMigrations, type FlaggedMigration } from "../runner"
-import { PROVIDER_PROFILE_MIGRATIONS } from "../provider-profiles/registry"
+import { PROVIDER_PROFILE_MIGRATIONS, RETIRED_PROVIDER_PROFILE_MIGRATION_FLAGS } from "../provider-profiles/registry"
 import { CONTEXT_PROXY_MIGRATIONS } from "../context-proxy/registry"
 
 type Flag = "a" | "b" | "c"
@@ -57,20 +57,28 @@ describe("runStartupMigrations", () => {
 })
 
 describe("migration registries", () => {
-	it("provider-profile registry flags match the persisted migrations schema, in order", () => {
-		expect(PROVIDER_PROFILE_MIGRATIONS.map((m) => m.flag)).toEqual(
-			Object.keys(providerProfileMigrationsSchema.shape),
-		)
+	// Retired flags belong to deleted migrations. They stay in the strict schema so stored envelopes that carry
+	// them still parse, and they must never come back into the registry (a returning flag would be skipped on
+	// every install that recorded it as done years ago).
+	it("schema keys are exactly the retired flags followed by the live registry flags, in order", () => {
+		expect([
+			...RETIRED_PROVIDER_PROFILE_MIGRATION_FLAGS,
+			...PROVIDER_PROFILE_MIGRATIONS.map((m) => m.flag),
+		]).toEqual(Object.keys(providerProfileMigrationsSchema.shape))
 	})
 
-	it("flagRecord builds a record over every registry flag", () => {
-		expect(flagRecord(PROVIDER_PROFILE_MIGRATIONS, true)).toEqual({
-			rateLimitSecondsMigrated: true,
-			openAiHeadersMigrated: true,
-			consecutiveMistakeLimitMigrated: true,
-			todoListEnabledMigrated: true,
-			claudeCodeLegacySettingsMigrated: true,
-		})
+	it("no retired flag is used by a live migration", () => {
+		const live = new Set<string>(PROVIDER_PROFILE_MIGRATIONS.map((m) => m.flag))
+		expect(RETIRED_PROVIDER_PROFILE_MIGRATION_FLAGS.filter((flag) => live.has(flag))).toEqual([])
+	})
+
+	it("the strict schema still accepts a stored record with every retired flag", () => {
+		const stored = Object.fromEntries(RETIRED_PROVIDER_PROFILE_MIGRATION_FLAGS.map((flag) => [flag, false]))
+		expect(providerProfileMigrationsSchema.parse(stored)).toEqual(stored)
+	})
+
+	it("flagRecord builds a record over the live registry flags only", () => {
+		expect(flagRecord(PROVIDER_PROFILE_MIGRATIONS, true)).toEqual({})
 	})
 
 	it("every migration carries a valid introduction date and ContextProxy ids are unique", () => {
