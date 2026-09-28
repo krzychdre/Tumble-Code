@@ -50,6 +50,45 @@ describe("providerModelConfig", () => {
 		})
 	})
 
+	// Characterization (S4): the model picker's service link for every provider, pinned before the
+	// map moved into the provider descriptors in packages/types.
+	describe("getProviderServiceConfig for every provider", () => {
+		const expected: Record<string, { serviceName: string; serviceUrl: string }> = {
+			anthropic: { serviceName: "Anthropic", serviceUrl: "https://console.anthropic.com" },
+			bedrock: { serviceName: "Amazon Bedrock", serviceUrl: "https://aws.amazon.com/bedrock" },
+			deepseek: { serviceName: "DeepSeek", serviceUrl: "https://platform.deepseek.com" },
+			"fake-ai": { serviceName: "fake-ai", serviceUrl: "" },
+			gemini: { serviceName: "Google Gemini", serviceUrl: "https://ai.google.dev" },
+			"gemini-cli": { serviceName: "gemini-cli", serviceUrl: "" },
+			litellm: { serviceName: "litellm", serviceUrl: "" },
+			lmstudio: { serviceName: "LM Studio", serviceUrl: "https://lmstudio.ai/docs" },
+			minimax: { serviceName: "MiniMax", serviceUrl: "https://minimax.chat" },
+			mistral: { serviceName: "Mistral", serviceUrl: "https://console.mistral.ai" },
+			moonshot: { serviceName: "Moonshot", serviceUrl: "https://platform.moonshot.cn" },
+			ollama: { serviceName: "Ollama", serviceUrl: "https://ollama.ai" },
+			openai: { serviceName: "openai", serviceUrl: "" },
+			"openai-codex": { serviceName: "openai-codex", serviceUrl: "" },
+			"openai-native": { serviceName: "OpenAI", serviceUrl: "https://platform.openai.com" },
+			openrouter: { serviceName: "openrouter", serviceUrl: "" },
+			"qwen-code": { serviceName: "Qwen Code", serviceUrl: "https://dashscope.console.aliyun.com" },
+			vertex: { serviceName: "GCP Vertex AI", serviceUrl: "https://console.cloud.google.com/vertex-ai" },
+			"vscode-lm": {
+				serviceName: "VS Code LM",
+				serviceUrl: "https://code.visualstudio.com/api/extension-guides/language-model",
+			},
+			xai: { serviceName: "xAI", serviceUrl: "https://x.ai" },
+			zai: { serviceName: "Z.ai", serviceUrl: "https://z.ai" },
+		}
+
+		it("covers every provider", () => {
+			expect(Object.keys(expected).sort()).toEqual([...new Set(types.providerNames)].sort())
+		})
+
+		it.each(Object.entries(expected))("%s", (provider, config) => {
+			expect(getProviderServiceConfig(provider as types.ProviderName)).toEqual(config)
+		})
+	})
+
 	describe("getProviderServiceConfig", () => {
 		it("returns correct config for known provider", () => {
 			const config = getProviderServiceConfig("gemini")

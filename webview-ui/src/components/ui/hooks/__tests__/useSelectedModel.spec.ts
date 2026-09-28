@@ -13,6 +13,20 @@ import {
 	openAiModelInfoSaneDefaults,
 	minimaxDefaultModelId,
 	minimaxModels,
+	geminiDefaultModelId,
+	geminiModels,
+	mistralDefaultModelId,
+	mistralModels,
+	moonshotDefaultModelId,
+	moonshotModels,
+	openAiCodexDefaultModelId,
+	openAiCodexModels,
+	openAiNativeDefaultModelId,
+	openAiNativeModels,
+	qwenCodeDefaultModelId,
+	qwenCodeModels,
+	xaiDefaultModelId,
+	xaiModels,
 } from "@roo-code/types"
 
 import { useSelectedModel } from "../useSelectedModel"
@@ -740,6 +754,57 @@ describe("useSelectedModel", () => {
 			if (expected) {
 				expect(result.current.id).toBe((apiConfiguration as ProviderSettings).apiModelId)
 			}
+		})
+	})
+
+	// Characterization (S4): the providers whose selected model is a plain entry of their static
+	// list, pinned before their switch cases were folded into one lookup.
+	describe("plain static-list providers", () => {
+		beforeEach(() => {
+			mockUseRouterModels.mockReturnValue({
+				models: undefined,
+				modelIds: undefined,
+				isLoading: false,
+				error: undefined,
+			} as any)
+			mockUseOpenRouterModelProviders.mockReturnValue({ data: {}, isLoading: false, isError: false } as any)
+		})
+
+		const lists: [ProviderSettings["apiProvider"], string, Record<string, ModelInfo>][] = [
+			["xai", xaiDefaultModelId, xaiModels],
+			["gemini", geminiDefaultModelId, geminiModels],
+			["moonshot", moonshotDefaultModelId, moonshotModels],
+			["minimax", minimaxDefaultModelId, minimaxModels],
+			["openai-native", openAiNativeDefaultModelId, openAiNativeModels],
+			["mistral", mistralDefaultModelId, mistralModels],
+			["qwen-code", qwenCodeDefaultModelId, qwenCodeModels],
+			["openai-codex", openAiCodexDefaultModelId, openAiCodexModels],
+		]
+
+		const select = (apiConfiguration: ProviderSettings) =>
+			renderHook(() => useSelectedModel(apiConfiguration), { wrapper: createWrapper() }).result.current
+
+		it.each(lists)("%s: no model id selects the default model", (apiProvider, defaultId, models) => {
+			const selected = select({ apiProvider })
+			expect(selected).toMatchObject({ provider: apiProvider, id: defaultId, isUnknownModel: false })
+			expect(selected.info).toEqual(models[defaultId])
+		})
+
+		it.each(lists)("%s: a listed model id selects that model", (apiProvider, _defaultId, models) => {
+			const listed = Object.keys(models).at(-1)!
+			const selected = select({ apiProvider, apiModelId: listed })
+			expect(selected).toMatchObject({ id: listed, isUnknownModel: false })
+			expect(selected.info).toEqual(models[listed])
+		})
+
+		it.each(lists)("%s: an unknown id is kept with no info and flagged", (apiProvider) => {
+			const selected = select({ apiProvider, apiModelId: "not-a-listed-model" })
+			expect(selected).toMatchObject({ id: "not-a-listed-model", info: undefined, isUnknownModel: true })
+		})
+
+		it.each(lists)("%s: an empty id is kept (the ?? default does not replace it)", (apiProvider) => {
+			const selected = select({ apiProvider, apiModelId: "" })
+			expect(selected).toMatchObject({ id: "", info: undefined, isUnknownModel: false })
 		})
 	})
 })
