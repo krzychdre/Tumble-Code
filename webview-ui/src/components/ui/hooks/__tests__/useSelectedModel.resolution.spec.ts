@@ -162,6 +162,17 @@ const cases: [string, ProviderSettings, Expected][] = [
 		{ apiProvider: "vertex", apiModelId: vertexGemini, vertex1MContext: true },
 		{ id: vertexGemini, info: models(vertexModels)[vertexGemini], isUnknownModel: false },
 	],
+	// The settings show the default Claude model with its 1M tier (the host routes by the configured id and
+	// does not apply it).
+	[
+		"vertex unset with 1M",
+		{ apiProvider: "vertex", vertex1MContext: true },
+		{
+			id: "claude-sonnet-4-5@20250929",
+			info: firstTier(models(vertexModels)["claude-sonnet-4-5@20250929"]!),
+			isUnknownModel: false,
+		},
+	],
 	[
 		"vertex unknown",
 		{ apiProvider: "vertex", apiModelId: "vertex-api6" },

@@ -134,6 +134,12 @@ const cases: [string, ProviderSettings, { id: string; info: ModelInfo } | undefi
 		{ apiProvider: "vertex", apiModelId: vertexGemini, vertex1MContext: true },
 		{ id: vertexGemini, info: models(vertexModels)[vertexGemini]! },
 	],
+	// An unset id runs the default (a Claude model) on the Gemini handler, chosen by the configured id: no tier.
+	[
+		"vertex unset with 1M",
+		{ apiProvider: "vertex", vertex1MContext: true },
+		{ id: vertexDefaultModelId, info: models(vertexModels)[vertexDefaultModelId]! },
+	],
 	[
 		"vertex unknown",
 		{ apiProvider: "vertex", apiModelId: "vertex-api6" },
