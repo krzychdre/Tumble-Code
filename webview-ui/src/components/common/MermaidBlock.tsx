@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react"
 import type { MermaidConfig } from "mermaid"
-import styled from "styled-components"
 import { useDebounceEffect } from "@src/utils/useDebounceEffect"
 import { vscode } from "@src/utils/vscode"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
@@ -187,8 +186,10 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 	// Copy functionality handled directly through the copyWithFeedback utility
 
 	return (
-		<MermaidBlockContainer>
-			{isLoading && <LoadingMessage>{t("common:mermaid.loading")}</LoadingMessage>}
+		// The look comes from the `.mermaid-block*` rules in the content-blocks
+		// section of index.css.
+		<div className="mermaid-block">
+			{isLoading && <div className="mermaid-block-loading">{t("common:mermaid.loading")}</div>}
 
 			{error ? (
 				<div style={{ marginTop: "0px", overflow: "hidden", marginBottom: "8px" }}>
@@ -222,14 +223,15 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 							<span style={{ fontWeight: "bold" }}>{t("common:mermaid.render_error")}</span>
 						</div>
 						<div style={{ display: "flex", alignItems: "center" }}>
-							<CopyButton
+							<button
+								className="mermaid-block-copy"
 								onClick={(e) => {
 									e.stopPropagation()
 									const combinedContent = `Error: ${error}\n\n\`\`\`mermaid\n${code}\n\`\`\``
 									copyWithFeedback(combinedContent, e)
 								}}>
 								<span className={`codicon codicon-${showCopyFeedback ? "check" : "copy"}`}></span>
-							</CopyButton>
+							</button>
 							<span className={`codicon codicon-chevron-${isErrorExpanded ? "up" : "down"}`}></span>
 						</div>
 					</div>
@@ -249,10 +251,14 @@ export default function MermaidBlock({ code }: MermaidBlockProps) {
 				</div>
 			) : (
 				<MermaidButton containerRef={containerRef} code={code} isLoading={isLoading} svgToPng={svgToPng}>
-					<SvgContainer onClick={handleClick} ref={containerRef} $isLoading={isLoading}></SvgContainer>
+					<div
+						className="mermaid-block-diagram"
+						data-loading={isLoading ? "true" : "false"}
+						onClick={handleClick}
+						ref={containerRef}></div>
 				</MermaidButton>
 			)}
-		</MermaidBlockContainer>
+		</div>
 	)
 }
 
@@ -312,53 +318,3 @@ async function svgToPng(svgEl: SVGElement): Promise<string> {
 		img.src = svgDataUrl
 	})
 }
-
-const MermaidBlockContainer = styled.div`
-	position: relative;
-	margin: 8px 0;
-`
-
-const LoadingMessage = styled.div`
-	padding: 8px 0;
-	color: var(--vscode-descriptionForeground);
-	font-style: italic;
-	font-size: 0.9em;
-`
-
-const CopyButton = styled.button`
-	padding: 3px;
-	height: 24px;
-	margin-right: 4px;
-	color: var(--vscode-editor-foreground);
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: transparent;
-	border: none;
-	cursor: pointer;
-
-	&:hover {
-		opacity: 0.8;
-	}
-`
-
-interface SvgContainerProps {
-	$isLoading: boolean
-}
-
-const SvgContainer = styled.div<SvgContainerProps>`
-	opacity: ${(props) => (props.$isLoading ? 0.3 : 1)};
-	min-height: 20px;
-	transition: opacity 0.2s ease;
-	cursor: pointer;
-	display: flex;
-	justify-content: center;
-	max-height: 400px;
-
-	/* Ensure the SVG scales within the container */
-	& > svg {
-		display: block; /* Ensure block layout */
-		width: 100%;
-		max-height: 100%; /* Respect container's max-height */
-	}
-`

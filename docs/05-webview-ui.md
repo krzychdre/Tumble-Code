@@ -102,7 +102,9 @@ Provider-specific forms are looked up in `settings/provider-ui-registry.tsx`.
 - Square corners everywhere: `--radius: 0` and the Tailwind radius scale are flattened in `index.css`.
 - One monospace font, the editor font (`--font-mono`), for tool blocks and code.
 - In-repo `Themed*` components in `components/ui/` replace the removed `@vscode/webview-ui-toolkit`.
-- A few files still use styled-components (`CodeBlock`, `MarkdownBlock`, `MermaidBlock`, `settings/styles.ts`).
+- No CSS-in-JS: `CodeBlock`, `MarkdownBlock`, `MermaidBlock` and the settings model description are styled by the
+  unlayered "content blocks" section at the end of `index.css` (unlayered so VS Code's default webview styles and
+  `katex.min.css` do not override them).
 
 ## Heavy renderers, loaded on demand
 

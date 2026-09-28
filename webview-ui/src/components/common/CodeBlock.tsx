@@ -1,5 +1,4 @@
 import { memo, useEffect, useRef, useCallback, useState } from "react"
-import styled from "styled-components"
 import { useCopyToClipboard } from "@src/utils/clipboard"
 import { getHighlighter, isLanguageLoaded, normalizeLanguage, type ShikiThemeName } from "@src/utils/highlighter"
 import type { ShikiTransformer } from "shiki"
@@ -9,8 +8,8 @@ import { ChevronDown, ChevronUp, Copy, Check } from "lucide-react"
 import { useAppTranslation } from "@src/i18n/TranslationContext"
 import { StandardTooltip } from "@/components/ui"
 
-export const CODE_BLOCK_BG_COLOR = "var(--vscode-editor-background, --vscode-sideBar-background, rgb(30 30 30))"
-export const WRAPPER_ALPHA = "cc" // 80% opacity
+// The look of the block (container, scroller, copy toolbar, buttons) lives in
+// the `code-block*` rules of the content-blocks section of index.css.
 
 // Configuration constants
 export const WINDOW_SHADE_SETTINGS = {
@@ -38,132 +37,6 @@ interface CodeBlockProps {
 	collapsedHeight?: number
 	initialWindowShade?: boolean
 }
-
-const CodeBlockButton = styled.button`
-	background: transparent;
-	border: none;
-	color: var(--vscode-foreground);
-	cursor: var(--copy-button-cursor, default);
-	padding: 4px;
-	margin: 0 0px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	opacity: 0.4;
-	border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
-	pointer-events: var(--copy-button-events, none);
-	margin-left: 4px;
-	height: 24px;
-	width: 24px;
-
-	&:hover {
-		background: var(--vscode-toolbar-hoverBackground);
-		opacity: 1;
-	}
-
-	/* Style for Lucide icons to ensure consistent sizing and positioning */
-	svg {
-		display: block;
-	}
-`
-
-const CodeBlockButtonWrapper = styled.div`
-	position: fixed;
-	top: var(--copy-button-top);
-	right: var(--copy-button-right, 8px);
-	height: auto;
-	z-index: 40;
-	background: ${CODE_BLOCK_BG_COLOR}${WRAPPER_ALPHA};
-	overflow: visible;
-	pointer-events: none;
-	opacity: var(--copy-button-opacity, 0);
-	padding: 4px 6px;
-	border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-
-	&:hover {
-		background: var(--vscode-editor-background);
-		opacity: 1 !important;
-	}
-
-	${CodeBlockButton} {
-		position: relative;
-		top: 0;
-		right: 0;
-	}
-`
-
-const CodeBlockContainer = styled.div`
-	position: relative;
-	overflow: hidden;
-	background-color: ${CODE_BLOCK_BG_COLOR};
-
-	${CodeBlockButtonWrapper} {
-		opacity: 0;
-		pointer-events: none;
-		transition: opacity 0.2s; /* Keep opacity transition for buttons */
-	}
-
-	&[data-partially-visible="true"]:hover ${CodeBlockButtonWrapper} {
-		opacity: 1;
-		pointer-events: all;
-		cursor: pointer;
-	}
-`
-
-export const StyledPre = styled.div<{
-	preStyle?: React.CSSProperties
-	wordwrap?: "true" | "false" | undefined
-	windowshade?: "true" | "false"
-	collapsedHeight?: number
-}>`
-	background-color: ${CODE_BLOCK_BG_COLOR};
-	max-height: ${({ windowshade, collapsedHeight }) =>
-		windowshade === "true" ? `${collapsedHeight || WINDOW_SHADE_SETTINGS.collapsedHeight}px` : "none"};
-	overflow-y: auto;
-	padding: 8px 3px;
-	border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
-	${({ preStyle }) => preStyle && { ...preStyle }}
-
-	pre {
-		background-color: ${CODE_BLOCK_BG_COLOR};
-		border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
-		margin: 0;
-		padding: 10px;
-		width: 100%;
-		box-sizing: border-box;
-	}
-
-	pre,
-	code {
-		/* Undefined wordwrap defaults to true (pre-wrap) behavior. */
-		white-space: ${({ wordwrap }) => (wordwrap === "false" ? "pre" : "pre-wrap")};
-		word-break: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "normal")};
-		overflow-wrap: ${({ wordwrap }) => (wordwrap === "false" ? "normal" : "break-word")};
-		font-size: 0.95em;
-		font-family: var(--font-mono);
-	}
-
-	pre > code {
-		.hljs-deletion {
-			background-color: var(--vscode-diffEditor-removedTextBackground);
-			display: inline-block;
-			width: 100%;
-		}
-		.hljs-addition {
-			background-color: var(--vscode-diffEditor-insertedTextBackground);
-			display: inline-block;
-			width: 100%;
-		}
-	}
-
-	.hljs {
-		color: var(--vscode-editor-foreground, #fff);
-		background-color: ${CODE_BLOCK_BG_COLOR};
-	}
-`
 
 const CodeBlock = memo(
 	({
@@ -606,8 +479,8 @@ const CodeBlock = memo(
 		}
 
 		return (
-			<CodeBlockContainer ref={codeBlockRef}>
-				<MemoizedStyledPre
+			<div className="code-block" ref={codeBlockRef}>
+				<MemoizedCodeScroller
 					preRef={preRef}
 					preStyle={preStyle}
 					wordWrap={wordWrap}
@@ -617,7 +490,8 @@ const CodeBlock = memo(
 					updateCodeBlockButtonPosition={updateCodeBlockButtonPosition}
 				/>
 				{!isSelecting && (
-					<CodeBlockButtonWrapper
+					<div
+						className="code-block-toolbar"
 						ref={copyButtonWrapperRef}
 						onMouseOver={() => updateCodeBlockButtonPosition()}
 						style={{ gap: 0 }}>
@@ -625,7 +499,8 @@ const CodeBlock = memo(
 							<StandardTooltip
 								content={t(`chat:codeblock.tooltips.${windowShade ? "expand" : "collapse"}`)}
 								side="top">
-								<CodeBlockButton
+								<button
+									className="code-block-button"
 									onClick={() => {
 										// Get the current code block element
 										const codeBlock = codeBlockRef.current // Capture ref early
@@ -656,17 +531,17 @@ const CodeBlock = memo(
 										)
 									}}>
 									{windowShade ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-								</CodeBlockButton>
+								</button>
 							</StandardTooltip>
 						)}
 						<StandardTooltip content={t("chat:codeblock.tooltips.copy_code")} side="top">
-							<CodeBlockButton onClick={handleCopy}>
+							<button className="code-block-button" onClick={handleCopy}>
 								{showCopyFeedback ? <Check size={16} /> : <Copy size={16} />}
-							</CodeBlockButton>
+							</button>
 						</StandardTooltip>
-					</CodeBlockButtonWrapper>
+					</div>
 				)}
-			</CodeBlockContainer>
+			</div>
 		)
 	},
 )
@@ -674,8 +549,10 @@ const CodeBlock = memo(
 // Memoized content component to prevent unnecessary re-renders of highlighted code
 const MemoizedCodeContent = memo(({ children }: { children: React.ReactNode }) => <>{children}</>)
 
-// Memoized StyledPre component
-const MemoizedStyledPre = memo(
+// Memoized scroller. max-height (window shade) and the caller's preStyle are
+// inline because they vary per block; word wrap is a data attribute that the
+// `.code-block-scroller[data-wordwrap="false"]` rules read.
+const MemoizedCodeScroller = memo(
 	({
 		preRef,
 		preStyle,
@@ -693,16 +570,18 @@ const MemoizedStyledPre = memo(
 		highlightedCode: React.ReactNode
 		updateCodeBlockButtonPosition: (forceHide?: boolean) => void
 	}) => (
-		<StyledPre
+		<div
 			ref={preRef}
-			preStyle={preStyle}
-			wordwrap={wordWrap ? "true" : "false"}
-			windowshade={windowShade ? "true" : "false"}
-			collapsedHeight={collapsedHeight}
+			className="code-block-scroller"
+			data-wordwrap={wordWrap ? "true" : "false"}
+			style={{
+				maxHeight: windowShade ? `${collapsedHeight || WINDOW_SHADE_SETTINGS.collapsedHeight}px` : "none",
+				...preStyle,
+			}}
 			onMouseDown={() => updateCodeBlockButtonPosition(true)}
 			onMouseUp={() => updateCodeBlockButtonPosition(false)}>
 			<MemoizedCodeContent>{highlightedCode}</MemoizedCodeContent>
-		</StyledPre>
+		</div>
 	),
 )
 

@@ -618,11 +618,7 @@ const ASK_CASES: Case[] = [
 // Radix and React generate ids per render order; normalize them so a snapshot
 // does not depend on how many components rendered before it. React 18's useId
 // writes ":r1:", React 19.2 writes "_r_1_"; both become ":r:".
-// styled-components names its classes after a per-process counter of styled
-// components, which depends on module load order; a registry move changes that
-// order without changing any output, so the generated names are masked too.
-const normalize = (html: string) =>
-	html.replace(/:r[0-9a-z]+:|_r_[0-9a-z]+_/g, ":r:").replace(/\bsc-[A-Za-z0-9]+ [A-Za-z0-9]+\b/g, "sc-styled")
+const normalize = (html: string) => html.replace(/:r[0-9a-z]+:|_r_[0-9a-z]+_/g, ":r:")
 
 function renderCase(c: Case) {
 	mockCurrentTaskItem = c.currentTaskItem

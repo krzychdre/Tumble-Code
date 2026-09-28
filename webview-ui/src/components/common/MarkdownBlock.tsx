@@ -1,6 +1,5 @@
 import React, { memo, useEffect, useMemo, useSyncExternalStore } from "react"
 import ReactMarkdown from "react-markdown"
-import styled from "styled-components"
 import { visit } from "unist-util-visit"
 import remarkMath from "remark-math"
 import remarkGfm from "remark-gfm"
@@ -86,245 +85,6 @@ const useRehypeKatex = (markdown: string) => {
 interface MarkdownBlockProps {
 	markdown?: string
 }
-
-const StyledMarkdown = styled.div`
-	* {
-		font-weight: 400;
-	}
-
-	strong {
-		font-weight: 600;
-	}
-
-	code:not(pre > code) {
-		font-family: var(--vscode-editor-font-family, monospace);
-		font-size: 0.85em;
-		filter: saturation(110%) brightness(95%);
-		color: var(--vscode-textPreformat-foreground) !important;
-		background-color: var(--vscode-textPreformat-background) !important;
-		padding: 1px 2px;
-		white-space: pre-line;
-		word-break: break-word;
-		overflow-wrap: anywhere;
-	}
-
-	/* Target only Dark High Contrast theme using the data attribute VS Code adds to the body */
-	body[data-vscode-theme-kind="vscode-high-contrast"] & code:not(pre > code) {
-		color: var(
-			--vscode-editorInlayHint-foreground,
-			var(--vscode-symbolIcon-stringForeground, var(--vscode-charts-orange, #e9a700))
-		);
-	}
-
-	/* KaTeX styling */
-	.katex {
-		font-size: 1.1em;
-		color: var(--vscode-editor-foreground);
-		font-family: KaTeX_Main, "Times New Roman", serif;
-		line-height: 1.2;
-		white-space: normal;
-		text-indent: 0;
-	}
-
-	.katex-display {
-		display: block;
-		margin: 1em 0;
-		text-align: center;
-		padding: 0.5em;
-		overflow-x: auto;
-		overflow-y: hidden;
-		background-color: var(--vscode-textCodeBlock-background);
-		border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
-	}
-
-	.katex-error {
-		color: var(--vscode-errorForeground);
-	}
-
-	font-family:
-		var(--vscode-font-family),
-		system-ui,
-		-apple-system,
-		BlinkMacSystemFont,
-		"Segoe UI",
-		Roboto,
-		Oxygen,
-		Ubuntu,
-		Cantarell,
-		"Open Sans",
-		"Helvetica Neue",
-		sans-serif;
-
-	font-size: var(--vscode-font-size, 13px);
-
-	p,
-	li,
-	ol,
-	ul {
-		line-height: 1.35em;
-	}
-
-	li {
-		margin: 0.5em 0;
-	}
-
-	ol,
-	ul {
-		padding-left: 2em;
-		margin-left: 0;
-	}
-
-	ol {
-		list-style-type: decimal;
-	}
-
-	ul {
-		list-style-type: disc;
-	}
-
-	ol ol {
-		list-style-type: lower-alpha;
-	}
-
-	ol ol ol {
-		list-style-type: lower-roman;
-	}
-
-	p {
-		white-space: pre-wrap;
-		margin: 1em 0 0.25em;
-	}
-
-	/* Prevent layout shifts during streaming */
-	pre {
-		min-height: 3em;
-		transition: height 0.2s ease-out;
-	}
-
-	/* Code block container styling */
-	div:has(> pre) {
-		position: relative;
-		contain: layout style;
-		padding: 0.5em 1em;
-	}
-
-	a {
-		color: var(--vscode-textLink-foreground);
-		text-decoration: none;
-		text-decoration-color: var(--vscode-textLink-foreground);
-		&:hover {
-			color: var(--vscode-textLink-activeForeground);
-			text-decoration: underline;
-		}
-	}
-
-	h1 {
-		font-size: 1.65em;
-		font-weight: 700;
-		margin: 1.35em 0 0.5em;
-	}
-
-	h2 {
-		font-size: 1.35em;
-		font-weight: 500;
-		margin: 1.35em 0 0.5em;
-	}
-
-	h3 {
-		font-size: 1.2em;
-		font-weight: 500;
-	}
-
-	/* Table styles for remark-gfm */
-	table {
-		border-collapse: collapse;
-		margin: 1em 0;
-		width: auto;
-		min-width: 50%;
-		max-width: 100%;
-		table-layout: fixed;
-	}
-
-	/* Table wrapper for horizontal scrolling */
-	.table-wrapper {
-		overflow-x: auto;
-		margin: 1em 0;
-	}
-
-	th,
-	td {
-		border: 1px solid var(--vscode-panel-border);
-		padding: 8px 12px;
-		text-align: left;
-		word-wrap: break-word;
-		overflow-wrap: break-word;
-	}
-
-	th {
-		background-color: var(--vscode-editor-background);
-		font-weight: 600;
-		color: var(--vscode-foreground);
-	}
-
-	tr:nth-child(even) {
-		background-color: var(--vscode-editor-inactiveSelectionBackground);
-	}
-
-	tr:hover {
-		background-color: var(--vscode-list-hoverBackground);
-	}
-
-	/* GitHub-style Markdown alerts (#258). The accent color per type is set via
-	   the --alert-accent custom property on the element itself. */
-	.markdown-alert {
-		margin: 1em 0;
-		padding: 0.5em 1em;
-		border-left: 0.25em solid var(--alert-accent, var(--vscode-textBlockQuote-border));
-		border-radius: 0; /* square corners (ai_plans/2026-09-27_ui-modernization.md §2.1) */
-		background-color: var(--vscode-textBlockQuote-background);
-	}
-
-	.markdown-alert > :first-child {
-		margin-top: 0;
-	}
-
-	.markdown-alert > :last-child {
-		margin-bottom: 0;
-	}
-
-	.markdown-alert-title {
-		display: flex;
-		align-items: center;
-		gap: 0.5em;
-		font-weight: 600;
-		color: var(--alert-accent, var(--vscode-foreground));
-		margin-bottom: 0.25em;
-	}
-
-	.markdown-alert-title .codicon {
-		font-size: 1em;
-	}
-
-	.markdown-alert-note {
-		--alert-accent: var(--vscode-charts-blue, var(--vscode-textLink-foreground));
-	}
-
-	.markdown-alert-tip {
-		--alert-accent: var(--vscode-charts-green, var(--vscode-terminal-ansiGreen));
-	}
-
-	.markdown-alert-important {
-		--alert-accent: var(--vscode-charts-purple, var(--vscode-textLink-foreground));
-	}
-
-	.markdown-alert-warning {
-		--alert-accent: var(--vscode-charts-yellow, var(--vscode-editorWarning-foreground));
-	}
-
-	.markdown-alert-caution {
-		--alert-accent: var(--vscode-charts-red, var(--vscode-editorError-foreground));
-	}
-`
 
 const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 	const rehypeKatexPlugin = useRehypeKatex(markdown ?? "")
@@ -458,7 +218,9 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 	)
 
 	return (
-		<StyledMarkdown>
+		// The look comes from the `.markdown-block` rules in the content-blocks
+		// section of index.css.
+		<div className="markdown-block">
 			<ReactMarkdown
 				remarkPlugins={[
 					// singleTilde: false so a single "~" around text (e.g. "1~3", "~10") is not
@@ -486,7 +248,7 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 				components={components}>
 				{markdown || ""}
 			</ReactMarkdown>
-		</StyledMarkdown>
+		</div>
 	)
 })
 

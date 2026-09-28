@@ -44,9 +44,6 @@ const CASES: Array<{ name: string; language: string; source: string }> = [
 	{ name: "unknown language", language: "nosuchlang", source: "x = 1" },
 ]
 
-// styled-components names its classes after a per-process counter.
-const normalize = (html: string) => html.replace(/\bsc-[A-Za-z0-9]+( [A-Za-z0-9]+)?\b/g, "sc-styled")
-
 const GOLDEN_FILE = path.join(__dirname, "__golden__", "CodeBlock.shiki.golden.json")
 const UPDATE = process.env.UPDATE_GOLDEN === "1"
 const golden: Record<string, unknown> = fs.existsSync(GOLDEN_FILE)
@@ -118,7 +115,7 @@ describe("Shiki golden renders", () => {
 					timeout: 10000,
 				})
 				const pre = container.querySelector("pre.shiki, pre[class*='github']")!
-				check(`CodeBlock ${theme} > ${name}`, normalize(pre.outerHTML))
+				check(`CodeBlock ${theme} > ${name}`, pre.outerHTML)
 				unmount()
 			})
 
