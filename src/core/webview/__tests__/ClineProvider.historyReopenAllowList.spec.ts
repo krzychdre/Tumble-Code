@@ -195,11 +195,11 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		provider.updateTaskHistory = vi.fn().mockResolvedValue([]) as any
 
 		stack = []
-		;(provider as any).taskSlot.current = undefined
+		;(provider as any).taskSlot.seedForTests()
 		// Mirror of the provider's current-task slot (D7): keep `stack` in
 		// sync so the assertions below observe what the slot holds.
 		const install = (task: any) => {
-			;(provider as any).taskSlot.current = task
+			;(provider as any).taskSlot.seedForTests(task)
 			stack.push(task)
 		}
 		provider.setCurrentTask = vi.fn(async (task: any) => {
@@ -207,7 +207,7 @@ describe("Reopening a task from history obeys the organization allow list (DEF-C
 		}) as any
 		provider.clearCurrentTask = vi.fn(async () => {
 			stack.pop()
-			;(provider as any).taskSlot.current = undefined
+			;(provider as any).taskSlot.seedForTests()
 		}) as any
 		;(provider as any).install = install
 	})

@@ -1602,7 +1602,7 @@ describe("ClineProvider", () => {
 
 		test("handles case when no current task exists", async () => {
 			// Clear the cline stack
-			;(provider as any).taskSlot.current = undefined
+			;(provider as any).taskSlot.seedForTests()
 
 			// Trigger message deletion
 			const messageHandler = (mockWebviewView.webview.onDidReceiveMessage as any).mock.calls[0][0]

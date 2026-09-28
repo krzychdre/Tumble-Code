@@ -5,6 +5,8 @@ import { isCheckpointedTool } from "../checkpoints/checkpointedTools"
 import { toolNamesWhere } from "../tools/toolDescriptors"
 import { NativeToolCallParser, type ToolCallStreamEvent } from "../assistant-message/NativeToolCallParser"
 
+import type { Task } from "./Task"
+
 // Tools that cannot mutate the workspace (the `workspaceReadOnly` column of the
 // tool descriptor table). An eager pre-edit checkpoint is only safe while every
 // earlier tool block in the turn is in this set: anything else (execute_command,
@@ -40,7 +42,7 @@ export class StreamToolCallHandler {
 
 	constructor(
 		private readonly access: StreamToolCallHandlerAccess,
-		private readonly _task: any,
+		private readonly _task: Task,
 	) {}
 
 	/** Clears parser and tracking state left over from an interrupted stream. */
@@ -120,7 +122,7 @@ export class StreamToolCallHandler {
 							(b.type === "tool_use" && WORKSPACE_READ_ONLY_TOOLS.has(b.name as ToolName)),
 					)
 				) {
-					const pending: Promise<void> = this._task.checkpointSave(true)
+					const pending = this._task.checkpointSave(true) as Promise<void>
 					pending.catch(() => {})
 					this._task.pendingCheckpointSave = pending
 				}

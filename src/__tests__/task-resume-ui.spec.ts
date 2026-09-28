@@ -265,7 +265,7 @@ describe("createTaskWithHistoryItem – eager state push", () => {
 			getCurrentTask: vi.fn(() => existingTask),
 			taskEventListeners: new Map([[existingTask, [vi.fn()]]]),
 		})
-		;(provider as any).taskSlot.current = existingTask
+		;(provider as any).taskSlot.seedForTests(existingTask)
 
 		await (ClineProvider.prototype as any).createTaskWithHistoryItem.call(provider, { ...baseHistoryItem })
 

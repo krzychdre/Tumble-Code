@@ -187,7 +187,7 @@ describe("getLiveTaskInstance / condense lookup is slot-scoped (D7)", () => {
 	it("matches only the current task id", () => {
 		const provider = makeProvider()
 		const taskA = makeTask("task-A")
-		provider.taskSlot.current = taskA
+		provider.taskSlot.seedForTests(taskA)
 
 		expect(provider.getLiveTaskInstance("task-A")).toBe(taskA)
 		expect(provider.getLiveTaskInstance("anything-else")).toBeUndefined()
