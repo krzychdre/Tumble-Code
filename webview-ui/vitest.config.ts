@@ -1,22 +1,15 @@
-import { defineConfig } from "vitest/config"
 import path from "path"
-import { resolveVerbosity } from "../src/utils/vitest-verbosity"
+import { defineRooVitestConfig, resolveVerbosity } from "@roo-code/config-vitest"
 
-const { silent, reporters, onConsoleLog } = resolveVerbosity()
-
-export default defineConfig({
+export default defineRooVitestConfig({
 	test: {
-		globals: true,
+		...resolveVerbosity(),
 		setupFiles: ["./vitest.setup.ts"],
-		watch: false,
-		reporters,
-		silent,
 		environment: "jsdom",
 		// The convention here is *.spec.*, but *.test.* is collected too (as in
 		// src/): three *.test.ts files once sat here for months without ever
 		// running, and one of them had a wrong expectation nobody saw.
 		include: ["src/**/*.{spec,test}.{ts,tsx}"],
-		onConsoleLog,
 	},
 	resolve: {
 		alias: {

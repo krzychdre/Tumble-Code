@@ -1,13 +1,7 @@
-import { configDefaults, defineConfig } from "vitest/config"
+import { defineRooVitestConfig } from "@roo-code/config-vitest"
 
-export default defineConfig({
+export default defineRooVitestConfig({
 	test: {
-		globals: true,
-		environment: "node",
-		watch: false,
-		// Vitest 4 stopped excluding dist/ by default; keep build output (tsc emits
-		// compiled copies of the specs there) out of the run.
-		exclude: [...configDefaults.exclude, "**/dist/**"],
 		// The handoff and installer tests make real durable writes (fsync,
 		// atomic rename), and on the Windows CI runner, while every other
 		// workspace's suite runs in parallel, their duration swings about 20x
