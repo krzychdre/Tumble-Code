@@ -44,8 +44,6 @@ _MIN_CHECKS = {
     "app_checks.html": 7,
     # The theme applied in <head> and the auto/dark/light toggle.
     "theme_checks.html": 8,
-    # Chart colours from the CSS variables, and a redraw on a theme change.
-    "metrics_theme_checks.html": 8,
     # Ticks per request/error/message, sizes by cost, jumps that wrap, live rows.
     "timeline_checks.html": 19,
     "tasktree_checks.html": 19,

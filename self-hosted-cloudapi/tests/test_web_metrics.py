@@ -129,9 +129,8 @@ async def test_metrics_page_renders_dimensions(client, db_session, session_facto
     assert "nvidia/nemotron" in body
     assert "orchestrator" in body
     assert "$0.1234" in body
-    # Chart payload + library are wired when there is data.
-    assert "/static/vendor/chart.umd.min.js" in body
-    assert 'id="metrics-data"' in body
+    # The charts are drawn by the server when there is data.
+    assert 'class="chart-svg' in body
 
 
 async def test_metrics_page_empty_state(client, db_session):
@@ -146,8 +145,8 @@ async def test_metrics_page_empty_state(client, db_session):
 
     assert resp.status_code == 200
     assert "No usage recorded" in resp.text
-    # No chart library loaded when there is nothing to plot.
-    assert "/static/vendor/chart.umd.min.js" not in resp.text
+    # Nothing to plot, no chart.
+    assert 'class="chart-svg' not in resp.text
 
 
 async def test_web_num_excludes_booleans(client, db_session, session_factory):

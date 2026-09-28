@@ -150,7 +150,7 @@ async def test_the_task_page_does_not_grow_a_query_per_level(
 
 
 def test_large_responses_are_gzipped(client):
-    resp = client.get("/static/vendor/chart.umd.min.js", headers={"Accept-Encoding": "gzip"})
+    resp = client.get("/static/vendor/socket.io.min.js", headers={"Accept-Encoding": "gzip"})
     assert resp.status_code == 200
     assert resp.headers.get("content-encoding") == "gzip"
     assert "Accept-Encoding" in resp.headers.get("vary", "")
@@ -175,10 +175,10 @@ def test_small_responses_stay_plain(client):
 
 
 def test_uncompressed_when_the_client_does_not_ask(client):
-    resp = client.get("/static/vendor/chart.umd.min.js", headers={"Accept-Encoding": "identity"})
+    resp = client.get("/static/vendor/socket.io.min.js", headers={"Accept-Encoding": "identity"})
     assert "content-encoding" not in resp.headers
     assert len(resp.content) == os.path.getsize(
-        os.path.join(os.path.dirname(__file__), "..", "src", "web", "static", "vendor", "chart.umd.min.js")
+        os.path.join(os.path.dirname(__file__), "..", "src", "web", "static", "vendor", "socket.io.min.js")
     )
 
 
@@ -190,7 +190,7 @@ def _static_urls(html: str) -> list[str]:
 
 
 def test_every_template_versions_its_static_urls():
-    """Every page, including those that load Chart.js only when there is data."""
+    """Every page, including those that load a vendored script only on some pages."""
     templates_dir = os.path.join(os.path.dirname(__file__), "..", "src", "web", "templates")
     found = []
     for name in sorted(os.listdir(templates_dir)):
@@ -198,7 +198,7 @@ def test_every_template_versions_its_static_urls():
             for url in _static_urls(fh.read()):
                 found.append(url)
                 assert url.endswith("?v={{ asset_v }}"), f"{name}: {url} has no version token"
-    assert any("chart.umd.min.js" in u for u in found)
+    assert any("socket.io.min.js" in u for u in found)
 
 
 async def test_a_rendered_page_carries_the_current_token(client, db_session, session_factory):
@@ -224,14 +224,14 @@ def test_a_versioned_asset_is_cached_for_a_year(client):
     from src.web.templating import templates
 
     token = templates.env.globals["asset_v"]
-    resp = client.get(f"/static/vendor/chart.umd.min.js?v={token}")
+    resp = client.get(f"/static/vendor/socket.io.min.js?v={token}")
     assert resp.status_code == 200
     cache = resp.headers.get("cache-control", "")
     assert "immutable" in cache and "max-age=31536000" in cache, cache
 
 
 def test_an_unversioned_or_stale_url_is_not_cached_for_a_year(client):
-    for url in ("/static/vendor/chart.umd.min.js", "/static/vendor/chart.umd.min.js?v=stale"):
+    for url in ("/static/vendor/socket.io.min.js", "/static/vendor/socket.io.min.js?v=stale"):
         resp = client.get(url)
         assert resp.status_code == 200
         assert "immutable" not in resp.headers.get("cache-control", ""), url

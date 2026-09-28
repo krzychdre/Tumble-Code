@@ -87,11 +87,11 @@ def test_no_colour_literal_outside_the_token_blocks():
     assert "color-mix(in srgb, var(--bg) 85%, transparent)" in topbar
 
 
-def test_metrics_colours_come_from_the_css_variables():
-    source = (_STATIC / "metrics.js").read_text(encoding="utf-8")
-    assert not re.findall(r"#[0-9a-fA-F]{6}\b|rgba?\(", source)
-    assert "getComputedStyle" in source
-    assert "matchMedia" in source
+def test_chart_colours_come_from_the_css_variables():
+    """The charts are server-rendered SVG (test_web_metrics_svg); their marks
+    are coloured by classes that read the tokens, so they follow the theme."""
+    for rule in (".chart-bar-tokens", ".chart-bar-cost", ".chart-bar-rank"):
+        assert "var(--" in _block(_NO_COMMENTS, rule + " {"), rule
 
 
 async def test_pages_declare_both_schemes_and_apply_the_theme_before_paint(client, db_session):
