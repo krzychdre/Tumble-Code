@@ -131,6 +131,8 @@ async def task_list(
             "all_total": all_total,
             "has_prev": page > 1,
             "has_next": page < page_count,
+            # What the empty state tells the reader to point the extension at.
+            "api_url": settings.api_base_url,
             **await _filter_suggestions(db, user_id),
         },
     )

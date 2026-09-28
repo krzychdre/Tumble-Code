@@ -325,6 +325,16 @@
 		})
 	}
 
+	// The swapped list is a new node, so it cannot announce itself; the status
+	// line outside it (role="status") says what the filter left.
+	function announceCount() {
+		var status = document.getElementById("list-status")
+		if (!status) return
+		var pill = document.querySelector("#list-count .count-pill")
+		var n = pill ? Number(pill.textContent) || 0 : 0
+		status.textContent = n === 0 ? "No tasks match" : n + " task" + (n === 1 ? "" : "s")
+	}
+
 	function reload() {
 		clearTimeout(timer)
 		timer = null
@@ -348,6 +358,7 @@
 				// A slower answer to an older query must not overwrite a newer one.
 				if (mine !== generation) return
 				swapFrom(new DOMParser().parseFromString(html, "text/html"))
+				announceCount()
 				try {
 					window.history.replaceState(null, "", url)
 				} catch (e) {

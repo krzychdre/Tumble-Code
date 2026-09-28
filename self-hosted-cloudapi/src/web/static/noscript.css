@@ -1,0 +1,13 @@
+/*
+ * Loaded only inside <noscript> on the task list. Without scripting nothing
+ * can be expanded, so every subtree is simply shown and the toggles that could
+ * not work are not. A stylesheet rather than an inline <style>, so the page
+ * needs no 'unsafe-inline' under its Content Security Policy.
+ */
+.task-children[hidden] {
+	display: block !important;
+}
+.tree-toggle,
+.tree-expand-all {
+	display: none !important;
+}

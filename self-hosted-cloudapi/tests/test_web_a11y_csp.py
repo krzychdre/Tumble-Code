@@ -80,6 +80,7 @@ async def test_every_page_starts_with_a_skip_link(rendered):
 
 
 def _root_tokens(css: str) -> dict[str, str]:
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
     root = css[css.index(":root {"):]
     root = root[:root.index("\n}")]
     return dict(re.findall(r"(--[\w-]+):\s*([^;]+);", root))

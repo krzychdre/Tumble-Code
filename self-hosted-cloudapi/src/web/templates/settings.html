@@ -112,7 +112,7 @@
   {% endif %}
 
   <form method="post" action="/app/settings/run" class="settings-actions"
-        onsubmit="return confirm('Delete {{ plan.task_count }} task(s) and {{ plan.event_count }} telemetry event(s) permanently? This cannot be undone.');">
+        data-confirm="Delete {{ plan.task_count }} task(s) and {{ plan.event_count }} telemetry event(s) permanently? This cannot be undone.">
     <button class="btn btn-danger" type="submit" {{ 'disabled' if plan.is_empty }}>Run now</button>
     <span class="settings-meta">Runs the saved rules immediately, whether or not the schedule is on.</span>
   </form>

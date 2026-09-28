@@ -145,8 +145,8 @@
 	// resumable, completed, or offline — shows Resume, never Stop.
 	function setRunning(running) {
 		isRunning = !!running
-		if (els.stop) els.stop.style.display = isRunning ? "" : "none"
-		if (els.resume) els.resume.style.display = isRunning ? "none" : ""
+		if (els.stop) els.stop.hidden = !isRunning
+		if (els.resume) els.resume.hidden = isRunning
 		refreshActivity()
 	}
 
@@ -159,11 +159,11 @@
 		if (!label && isRunning) label = "Working…"
 		if (label) {
 			els.activity.textContent = label
-			els.activity.style.display = ""
+			els.activity.hidden = false
 			els.activity.classList.add("busy")
 		} else {
 			els.activity.textContent = ""
-			els.activity.style.display = "none"
+			els.activity.hidden = true
 			els.activity.classList.remove("busy")
 		}
 	}
