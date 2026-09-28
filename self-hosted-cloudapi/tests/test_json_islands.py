@@ -13,6 +13,7 @@ The checks below read each island the way a browser does (up to the first
 was stored and that no raw ``</script><img`` reaches the HTML.
 """
 
+import html
 import json
 import re
 from pathlib import Path
@@ -132,9 +133,10 @@ async def test_metrics_island_survives_a_hostile_model_name(
 
     assert resp.status_code == 200
     assert "</script><img" not in resp.text
-    chart = _island(resp.text, "metrics-data")
-    assert chart["model_labels"] == [BREAKOUT]
-    assert chart["mode_labels"] == [COMMENT]
+    # The charts are server-rendered SVG now: the names are escaped text.
+    assert "<!--<script>" not in resp.text
+    assert html.escape(BREAKOUT, quote=False) in resp.text
+    assert html.escape(COMMENT, quote=False) in resp.text
 
 
 def test_json_for_script_escapes_everything_that_can_end_or_confuse_an_island():

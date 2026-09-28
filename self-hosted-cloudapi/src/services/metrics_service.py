@@ -143,8 +143,6 @@ async def compute_user_metrics(
       - by_model / by_mode / by_provider: lists of {name, tokens, tokens_fmt,
         cost, count}, sorted desc by tokens
       - by_day: chronological list of {day, tokens, cost}
-      - chart: Chart.js-ready {days, day_tokens, day_cost, model_labels,
-        model_tokens, mode_labels, mode_tokens}
       - has_data
     """
     if period not in PERIODS:
@@ -290,14 +288,5 @@ def aggregate_user_metrics(
         "unreported": unreported,
         "embeddings": embeddings,
         "by_day": days,
-        "chart": {
-            "days": [d["day"] for d in days],
-            "day_tokens": [int(d["tokens"]) for d in days],
-            "day_cost": [round(d["cost"], 6) for d in days],
-            "model_labels": [m["name"] for m in models],
-            "model_tokens": [int(m["tokens"]) for m in models],
-            "mode_labels": [m["name"] for m in modes],
-            "mode_tokens": [int(m["tokens"]) for m in modes],
-        },
         "has_data": len(rows) > 0,
     }

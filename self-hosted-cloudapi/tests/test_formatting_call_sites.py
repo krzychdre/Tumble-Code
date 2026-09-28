@@ -172,8 +172,6 @@ async def test_the_metrics_page_prints_its_figures(client, db_session, session_f
     assert '<span class="kind-num cell-cost">$0.0313</span>' in body
     assert '<td class="bd-num">$0.1234</td>' in body
     assert '<td class="bd-num">$0.0313</td>' in body
-    # The charts format through static/format.js, so it loads first.
-    assert body.index("/static/format.js") < body.index("/static/metrics.js")
 
 
 async def test_the_metrics_page_says_one_in_the_singular(client, db_session, session_factory):

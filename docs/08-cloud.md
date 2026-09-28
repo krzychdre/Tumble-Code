@@ -151,10 +151,11 @@ failed sweep is rolled back whole without affecting the others. The loop starts 
 Server-rendered Jinja templates in `src/web/templates/` with one stylesheet (`static/app.css`, design tokens on
 `:root`) and small plain-JavaScript files, no build step:
 
-| Page        | Template                      | Script                                                |
-| ----------- | ----------------------------- | ----------------------------------------------------- |
-| Task list   | `tasks_list.html`             | `tasklist.js` (selection, bulk delete, tree fold)     |
-| Task detail | `task_detail.html`            | `render.js` (conversation), `live.js` (bridge client) |
-| Metrics     | `metrics.html`                | `metrics.js` (Chart.js)                               |
-| Settings    | `settings.html`               | none                                                  |
-| Shared task | `task_detail.html`, read-only | `render.js`                                           |
+| Page        | Template                      | Script                                                                   |
+| ----------- | ----------------------------- | ------------------------------------------------------------------------ |
+| Every page  | `base.html`                   | `theme.js` (theme, in `<head>`), `app.js` (`data-confirm`, copy buttons) |
+| Task list   | `tasks_list.html`             | `tasklist.js` (selection, bulk delete, tree fold, live filters, density) |
+| Task detail | `task_detail.html`            | `render.js` (conversation), `timeline.js`, `live.js` (bridge client)     |
+| Metrics     | `metrics.html`                | none (charts are server-rendered SVG)                                    |
+| Settings    | `settings.html`               | none                                                                     |
+| Shared task | `task_detail.html`, read-only | `render.js`, `timeline.js`                                               |

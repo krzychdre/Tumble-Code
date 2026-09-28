@@ -130,18 +130,67 @@
 </section>
 {% endif %}
 
+{# The charts are inline SVG drawn here (web/presenters/charts.py gives the
+   geometry): no script, they print, and every mark is coloured by a class
+   that reads the theme's tokens. Each is an image with a summary, pointing
+   at the table that holds the same figures. #}
+{% macro daily_chart(c, cls, bar_cls) %}
+<svg class="chart-svg chart-daily {{ cls }}" viewBox="0 0 {{ c.width }} {{ c.height }}" preserveAspectRatio="none"
+     role="img" aria-label="{{ c.summary }}" aria-describedby="table-daily">
+  {% for b in c.bars %}
+  <g class="chart-mark"><title>{{ b.title }}</title><rect class="chart-hit" x="{{ b.slot_x }}" y="0" width="10" height="{{ c.height }}"></rect><rect class="chart-bar {{ bar_cls }}" x="{{ b.x }}" y="{{ b.y }}" width="{{ b.width }}" height="{{ b.height }}"></rect></g>
+  {% endfor %}
+  <line class="chart-axis" x1="0" y1="{{ c.height }}" x2="{{ c.width }}" y2="{{ c.height }}" vector-effect="non-scaling-stroke"></line>
+</svg>
+{% endmacro %}
+{% macro ranked_chart(c, cls, table_id) %}
+<svg class="chart-svg chart-ranked {{ cls }}" width="100%" height="{{ c.height }}"
+     role="img" aria-label="{{ c.summary }}" aria-describedby="{{ table_id }}">
+  {% for i in c.rows %}
+  <g class="chart-mark"><title>{{ i.title }}</title>
+    <rect class="chart-hit" x="0" y="{{ i.row_y }}" width="100%" height="{{ c.row_height }}"></rect>
+    <text class="chart-label" x="0" y="{{ i.text_y }}">{{ i.label }}</text>
+    <text class="chart-value" x="100%" y="{{ i.text_y }}" text-anchor="end">{{ i.value }}</text>
+    <rect class="chart-bar chart-bar-rank" x="0" y="{{ i.bar_y }}" width="{{ i.width }}%" height="{{ c.bar_height }}"></rect>
+  </g>
+  {% endfor %}
+</svg>
+{% endmacro %}
 <section class="chart-grid">
   <div class="chart-card chart-wide">
     <h2 class="chart-title">Tokens &amp; cost per day</h2>
-    <div class="chart-box"><canvas id="chart-daily"></canvas></div>
+    {# Two charts on one time axis, not one chart with two y-axes. #}
+    <div class="chart-daily-pair">
+      <div class="chart-row">
+        <span class="chart-row-label">Tokens <b>{{ charts.tokens.peak }}</b> max</span>
+        {{ daily_chart(charts.tokens, 'chart-daily-tokens', 'chart-bar-tokens') }}
+      </div>
+      <div class="chart-row">
+        <span class="chart-row-label">Cost <b>{{ charts.cost.peak }}</b> max</span>
+        {{ daily_chart(charts.cost, 'chart-daily-cost', 'chart-bar-cost') }}
+      </div>
+      <div class="chart-days"><span>{{ charts.tokens.first }}</span><span>{{ charts.tokens.last }}</span></div>
+    </div>
+    <details class="chart-table">
+      <summary>Show as a table</summary>
+      <table class="breakdown" id="table-daily">
+        <caption class="sr-only">Tokens and cost per day</caption>
+        <thead><tr><th scope="col">Day</th><th scope="col">Tokens</th><th scope="col">Cost</th></tr></thead>
+        <tbody>
+          {% for d in metrics.by_day %}
+          <tr><td class="bd-name">{{ d.day }}</td><td class="bd-num">{{ d.tokens|fmt_int }}</td><td class="bd-num">{{ d.cost|fmt_cost }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </details>
   </div>
   <div class="chart-card">
     <h2 class="chart-title">Tokens by model</h2>
-    <div class="chart-box"><canvas id="chart-models"></canvas></div>
+    {{ ranked_chart(charts.models, 'chart-models', 'table-model') }}
   </div>
   <div class="chart-card">
     <h2 class="chart-title">Tokens by mode</h2>
-    <div class="chart-box"><canvas id="chart-modes"></canvas></div>
+    {{ ranked_chart(charts.modes, 'chart-modes', 'table-mode') }}
   </div>
 </section>
 
@@ -149,7 +198,7 @@
   {% macro breakdown(title, rows) %}
   <div class="breakdown-card">
     <h2 class="chart-title">{{ title }}</h2>
-    <table class="breakdown">
+    <table class="breakdown" id="table-{{ title.split(' ')[-1]|lower }}">
       <caption class="sr-only">Tokens, cost and calls {{ title|lower }}</caption>
       <thead><tr><th scope="col">{{ title.split(' ')[-1]|capitalize }}</th><th scope="col">Tokens</th><th scope="col">Cost</th><th scope="col">Calls</th></tr></thead>
       <tbody>
@@ -174,14 +223,5 @@
   <p>No usage recorded for this period.</p>
   <p class="empty-hint">Run a task in VS Code with telemetry enabled and come back, or pick a longer period above.</p>
 </div>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script id="metrics-data" type="application/json">{{ chart_json }}</script>
-{% if metrics.has_data %}
-<script src="/static/vendor/chart.umd.min.js?v={{ asset_v }}"></script>
-<script src="/static/format.js?v={{ asset_v }}"></script>
-<script src="/static/metrics.js?v={{ asset_v }}"></script>
 {% endif %}
 {% endblock %}
