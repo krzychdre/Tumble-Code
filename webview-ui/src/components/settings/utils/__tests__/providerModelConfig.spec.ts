@@ -1,5 +1,4 @@
 import {
-	PROVIDER_SERVICE_CONFIG,
 	PROVIDER_DEFAULT_MODEL_IDS,
 	getProviderServiceConfig,
 	getDefaultModelIdForProvider,
@@ -13,45 +12,8 @@ import { MODELS_BY_PROVIDER } from "../../constants"
 import * as types from "@roo-code/types"
 
 describe("providerModelConfig", () => {
-	describe("PROVIDER_SERVICE_CONFIG", () => {
-		it("contains service config for anthropic", () => {
-			expect(PROVIDER_SERVICE_CONFIG.anthropic).toEqual({
-				serviceName: "Anthropic",
-				serviceUrl: "https://console.anthropic.com",
-			})
-		})
-
-		it("contains service config for bedrock", () => {
-			expect(PROVIDER_SERVICE_CONFIG.bedrock).toEqual({
-				serviceName: "Amazon Bedrock",
-				serviceUrl: "https://aws.amazon.com/bedrock",
-			})
-		})
-
-		it("contains service config for ollama", () => {
-			expect(PROVIDER_SERVICE_CONFIG.ollama).toEqual({
-				serviceName: "Ollama",
-				serviceUrl: "https://ollama.ai",
-			})
-		})
-
-		it("contains service config for lmstudio", () => {
-			expect(PROVIDER_SERVICE_CONFIG.lmstudio).toEqual({
-				serviceName: "LM Studio",
-				serviceUrl: "https://lmstudio.ai/docs",
-			})
-		})
-
-		it("contains service config for vscode-lm", () => {
-			expect(PROVIDER_SERVICE_CONFIG["vscode-lm"]).toEqual({
-				serviceName: "VS Code LM",
-				serviceUrl: "https://code.visualstudio.com/api/extension-guides/language-model",
-			})
-		})
-	})
-
 	// Characterization (S4): the model picker's service link for every provider, pinned before the
-	// map moved into the provider descriptors in packages/types.
+	// map moved into the provider descriptors in packages/types (PROVIDER_DESCRIPTORS[id].service).
 	describe("getProviderServiceConfig for every provider", () => {
 		const expected: Record<string, { serviceName: string; serviceUrl: string }> = {
 			anthropic: { serviceName: "Anthropic", serviceUrl: "https://console.anthropic.com" },

@@ -3,6 +3,7 @@ import {
 	internationalZAiDefaultModelId,
 	mainlandZAiDefaultModelId,
 	getProviderDefinition,
+	getProviderDescriptor,
 	modelSources,
 	providerModelDefinitions,
 } from "@roo-code/types"
@@ -14,27 +15,6 @@ export interface ProviderServiceConfig {
 	serviceUrl: string
 }
 
-export const PROVIDER_SERVICE_CONFIG: Partial<Record<ProviderName, ProviderServiceConfig>> = {
-	anthropic: { serviceName: "Anthropic", serviceUrl: "https://console.anthropic.com" },
-	bedrock: { serviceName: "Amazon Bedrock", serviceUrl: "https://aws.amazon.com/bedrock" },
-	deepseek: { serviceName: "DeepSeek", serviceUrl: "https://platform.deepseek.com" },
-	moonshot: { serviceName: "Moonshot", serviceUrl: "https://platform.moonshot.cn" },
-	gemini: { serviceName: "Google Gemini", serviceUrl: "https://ai.google.dev" },
-	mistral: { serviceName: "Mistral", serviceUrl: "https://console.mistral.ai" },
-	"openai-native": { serviceName: "OpenAI", serviceUrl: "https://platform.openai.com" },
-	"qwen-code": { serviceName: "Qwen Code", serviceUrl: "https://dashscope.console.aliyun.com" },
-	vertex: { serviceName: "GCP Vertex AI", serviceUrl: "https://console.cloud.google.com/vertex-ai" },
-	xai: { serviceName: "xAI", serviceUrl: "https://x.ai" },
-	zai: { serviceName: "Z.ai", serviceUrl: "https://z.ai" },
-	minimax: { serviceName: "MiniMax", serviceUrl: "https://minimax.chat" },
-	ollama: { serviceName: "Ollama", serviceUrl: "https://ollama.ai" },
-	lmstudio: { serviceName: "LM Studio", serviceUrl: "https://lmstudio.ai/docs" },
-	"vscode-lm": {
-		serviceName: "VS Code LM",
-		serviceUrl: "https://code.visualstudio.com/api/extension-guides/language-model",
-	},
-}
-
 /** The default model of every provider with a static model list, from `providerModelDefinitions`. */
 export const PROVIDER_DEFAULT_MODEL_IDS: Partial<Record<ProviderName, string>> = Object.fromEntries(
 	Object.entries(providerModelDefinitions).flatMap(([provider, definition]) =>
@@ -42,8 +22,10 @@ export const PROVIDER_DEFAULT_MODEL_IDS: Partial<Record<ProviderName, string>> =
 	),
 )
 
+/** The model picker's service name and link, from the provider's `PROVIDER_DESCRIPTORS` row. */
 export const getProviderServiceConfig = (provider: ProviderName): ProviderServiceConfig => {
-	return PROVIDER_SERVICE_CONFIG[provider] ?? { serviceName: provider, serviceUrl: "" }
+	const service = getProviderDescriptor(provider)?.service
+	return service ? { serviceName: service.name, serviceUrl: service.url } : { serviceName: provider, serviceUrl: "" }
 }
 
 export const getDefaultModelIdForProvider = (provider: ProviderName, apiConfiguration?: ProviderSettings): string => {
