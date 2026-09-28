@@ -353,6 +353,80 @@ describe("ExtensionClient", () => {
 		})
 	})
 
+	// D11 step 2: the client publishes the deliveries stage, every new or
+	// changed message once, instead of the last message of each state push.
+	describe("Delivery events", () => {
+		const text = (ts: number, value: string, partial = false) =>
+			createMessage({ ts, type: "say", say: "text", text: value, partial })
+
+		it("delivers every new message of a state push, the first of two included", () => {
+			const { client } = createMockClient()
+			const delivered: Array<[number, boolean]> = []
+			client.on("delivery", (d) => delivered.push([d.message.ts, d.isLast]))
+
+			client.handleMessage(createStateMessage([text(1, "Batch")]))
+			client.handleMessage(
+				createStateMessage([text(1, "Batch"), text(2, "First part."), text(3, "Second part.")]),
+			)
+
+			expect(delivered).toEqual([
+				[1, true],
+				[2, false],
+				[3, true],
+			])
+		})
+
+		it("delivers nothing for a pure replay, and a messageUpdated as an update", () => {
+			const { client } = createMockClient()
+			const delivered: Array<[number, string | undefined, boolean]> = []
+			client.on("delivery", (d) => delivered.push([d.message.ts, d.message.text, d.update]))
+
+			client.handleMessage(createStateMessage([text(1, "Hel", true)]))
+			client.handleMessage({ type: "messageUpdated", clineMessage: text(1, "Hello", false) })
+			client.handleMessage(createStateMessage([text(1, "Hello", false)]))
+
+			expect(delivered).toEqual([
+				[1, "Hel", false],
+				[1, "Hello", true],
+			])
+		})
+
+		it("delivers after the state change of the same push, as the message event did", () => {
+			const { client } = createMockClient()
+			const order: string[] = []
+			client.on("stateChange", () => order.push("stateChange"))
+			client.on("delivery", (d) => order.push(`delivery ${d.message.ts}`))
+
+			client.handleMessage(createStateMessage([text(1, "Hi")]))
+
+			expect(order).toEqual(["stateChange", "delivery 1"])
+		})
+
+		it("marks a resumed task's history after beginHistoryReplay", () => {
+			const { client } = createMockClient()
+			const history: Array<[number, boolean]> = []
+			client.on("delivery", (d) => history.push([d.message.ts, d.history]))
+
+			client.beginHistoryReplay()
+			client.handleMessage(createStateMessage([text(1, "Old prompt"), text(2, "Old answer.")]))
+			client.handleMessage(
+				createStateMessage([
+					text(1, "Old prompt"),
+					text(2, "Old answer."),
+					createMessage({ ts: 3, type: "ask", ask: "resume_task", partial: false }),
+				]),
+			)
+			client.handleMessage({ type: "messageUpdated", clineMessage: text(4, "New.") })
+
+			expect(history).toEqual([
+				[1, true],
+				[2, true],
+				[3, true],
+				[4, false],
+			])
+		})
+	})
+
 	describe("Response methods", () => {
 		it("should send approve response", () => {
 			const { client, sentMessages } = createMockClient()

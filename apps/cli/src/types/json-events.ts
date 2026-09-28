@@ -21,6 +21,12 @@ import {
  * - Minimal fields per event
  * - No redundant wrappers
  * - `done` flag instead of partial:false
+ *
+ * Which messages become events: every message the task adds or changes, once
+ * per change, with the message's ts as the event `id`. That includes a message
+ * that arrives together with the next one in one update from the extension.
+ * A task resumed with `--session-id` emits only what it does from then on,
+ * nothing of its history.
  */
 
 /**

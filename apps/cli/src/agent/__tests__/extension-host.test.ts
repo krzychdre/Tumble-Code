@@ -832,6 +832,55 @@ describe("ExtensionHost", () => {
 		})
 	})
 
+	// --exit-on-error reads the client's delivery stream (D11 step 3): a
+	// retry backoff fails the run even when another message arrives in the
+	// same push, and an old backoff in a resumed task's history does not.
+	describe("--exit-on-error on api_req_retry_delayed", () => {
+		const push = (...messages: object[]) =>
+			({ type: "state", state: { clineMessages: messages } }) as unknown as ExtensionMessage
+		const retry = (ts: number) => ({
+			ts,
+			type: "say",
+			say: "api_req_retry_delayed",
+			text: "429 Too Many Requests\nRetrying in 5 seconds",
+		})
+		const text = (ts: number, value: string) => ({ ts, type: "say", say: "text", text: value })
+
+		it("rejects on a backoff that is not the last message of its push", async () => {
+			const host = createTestHost({ exitOnError: true })
+			host.markWebviewReady()
+
+			const taskPromise = host.runTask("test prompt")
+			host.client.handleMessage(push(text(1, "test prompt"), retry(2), text(3, "later")))
+
+			await expect(taskPromise).rejects.toThrow("429 Too Many Requests")
+		}, 5000)
+
+		it("ignores a backoff in a resumed task's history", async () => {
+			const host = createTestHost({ exitOnError: true })
+			host.markWebviewReady()
+
+			const taskPromise = host.resumeTask("task-abc")
+			host.client.handleMessage(push(text(1, "old prompt"), retry(2)))
+			host.client.handleMessage(
+				push(text(1, "old prompt"), retry(2), { ts: 3, type: "ask", ask: "resume_task", partial: false }),
+			)
+			host.client.getEmitter().emit("taskCompleted", {
+				success: true,
+				stateInfo: {
+					state: AgentLoopState.IDLE,
+					isWaitingForInput: false,
+					isRunning: false,
+					isStreaming: false,
+					requiredAction: "start_task" as const,
+					description: "Task completed",
+				},
+			})
+
+			await expect(taskPromise).resolves.toBeUndefined()
+		})
+	})
+
 	describe("initial settings", () => {
 		it("should set mode from options", () => {
 			const host = createTestHost({ mode: "architect" })

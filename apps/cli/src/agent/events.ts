@@ -11,6 +11,7 @@ import { EventEmitter } from "events"
 import { ClineMessage, ClineAsk } from "@roo-code/types"
 
 import type { AgentStateInfo } from "./agent-state.js"
+import type { MessageDelivery } from "./transcript-deliveries.js"
 
 // =============================================================================
 // Event Types
@@ -31,14 +32,11 @@ export interface ClientEventMap {
 	stateChange: AgentStateChangeEvent
 
 	/**
-	 * Emitted when a new message is added to the message list.
+	 * Emitted for every message that is new or changed, once per change: each
+	 * message of a state push that was not delivered before in this form, and
+	 * each messageUpdated that changes something (see transcript-deliveries.ts).
 	 */
-	message: ClineMessage
-
-	/**
-	 * Emitted when an existing message is updated (e.g., partial -> complete).
-	 */
-	messageUpdated: ClineMessage
+	delivery: MessageDelivery
 
 	/**
 	 * Emitted when the agent starts waiting for user input.
