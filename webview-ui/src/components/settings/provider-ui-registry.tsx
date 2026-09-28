@@ -13,11 +13,9 @@ import {
 } from "@roo-code/types"
 
 import {
-	Anthropic,
 	Bedrock,
 	LMStudio,
 	LiteLLM,
-	Mistral,
 	Ollama,
 	OpenAI,
 	OpenAICompatible,
@@ -46,11 +44,9 @@ export type ProviderFormRenderContext = {
 
 /** The component a form definition renders: a hand-written one, or the descriptor form (named after its provider). */
 export type ProviderFormId =
-	| "anthropic"
 	| "bedrock"
 	| "lmstudio"
 	| "litellm"
-	| "mistral"
 	| "ollama"
 	| "openai-codex"
 	| "openai-compatible"
@@ -167,25 +163,11 @@ const customForms = {
 			simplifySettings={context.simplifySettings}
 		/>
 	)),
-	anthropic: simpleForm("anthropic", "anthropic", (context) => (
-		<Anthropic
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
-			simplifySettings={context.simplifySettings}
-		/>
-	)),
 	bedrock: simpleForm("bedrock", "bedrock", (context) => (
 		<Bedrock
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
 			selectedModelInfo={context.selectedModelInfo}
-			simplifySettings={context.simplifySettings}
-		/>
-	)),
-	mistral: simpleForm("mistral", "mistral", (context) => (
-		<Mistral
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
 			simplifySettings={context.simplifySettings}
 		/>
 	)),

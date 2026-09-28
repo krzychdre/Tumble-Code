@@ -3,9 +3,11 @@ import {
 	internationalZAiDefaultModelId,
 	mainlandZAiDefaultModelId,
 	getProviderDefinition,
+	getInFormModelPickerProviderIds,
 	getProviderDescriptor,
 	modelSources,
 	providerModelDefinitions,
+	resolveProviderModelSourceOptions,
 } from "@roo-code/types"
 
 import { MODELS_BY_PROVIDER } from "../constants"
@@ -77,43 +79,15 @@ export const getProviderModelSource = (provider: ProviderName): ModelSource | un
 	return sourceId ? modelSources[sourceId] : undefined
 }
 
-export const getProviderModelSourceOptions = (apiConfiguration: ProviderSettings): ModelSourceOptions => {
-	switch (apiConfiguration.apiProvider) {
-		case "openai":
-			return {
-				baseUrl: apiConfiguration.openAiBaseUrl,
-				apiKey: apiConfiguration.openAiApiKey,
-				headers: apiConfiguration.openAiHeaders,
-			}
-		case "ollama":
-			return { baseUrl: apiConfiguration.ollamaBaseUrl, apiKey: apiConfiguration.ollamaApiKey }
-		case "lmstudio":
-			return { baseUrl: apiConfiguration.lmStudioBaseUrl }
-		case "litellm":
-			return {
-				liteLlmBaseUrl: apiConfiguration.litellmBaseUrl,
-				liteLlmApiKey: apiConfiguration.litellmApiKey,
-			}
-		case "deepseek":
-			return { baseUrl: apiConfiguration.deepSeekBaseUrl, apiKey: apiConfiguration.deepSeekApiKey }
-		default:
-			return {}
-	}
-}
+/** The options of the model-list request, from the provider's `modelSourceOptions` descriptor row. */
+export const getProviderModelSourceOptions = (apiConfiguration: ProviderSettings): ModelSourceOptions =>
+	resolveProviderModelSourceOptions(apiConfiguration)
 
 /**
- * List of providers that have their own custom model selection UI
- * and should not use the generic ModelPicker in ApiOptions
+ * Providers whose form has its own model selection and should not get the generic ModelPicker
+ * in ApiOptions (`modelPicker: "in-form"` in PROVIDER_DESCRIPTORS).
  */
-export const PROVIDERS_WITH_CUSTOM_MODEL_UI: ProviderName[] = [
-	"openrouter",
-	"openai", // OpenAI Compatible
-	"openai-codex", // OpenAI Codex has custom UI with auth and rate limits
-	"litellm",
-	"ollama",
-	"lmstudio",
-	"vscode-lm",
-]
+export const PROVIDERS_WITH_CUSTOM_MODEL_UI: readonly ProviderName[] = getInFormModelPickerProviderIds()
 
 /**
  * Checks if a provider should use the generic ModelPicker

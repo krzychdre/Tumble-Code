@@ -79,7 +79,8 @@ function withFirstTier(info: ModelInfo): ModelInfo {
 		: info
 }
 
-const ANTHROPIC_1M_CONTEXT_MODEL_IDS: readonly string[] = [
+/** Anthropic models that offer the 1M context beta (the settings show its checkbox for them). */
+export const ANTHROPIC_1M_CONTEXT_MODEL_IDS: readonly string[] = [
 	"claude-sonnet-4-20250514",
 	"claude-sonnet-4-5",
 	"claude-sonnet-4-6",

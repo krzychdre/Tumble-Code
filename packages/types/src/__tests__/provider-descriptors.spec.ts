@@ -1,12 +1,17 @@
 import {
 	PROVIDER_DESCRIPTORS,
 	getDescriptorFormProviderIds,
+	getInFormModelPickerProviderIds,
 	getProviderDescriptor,
+	matchesProviderModelRule,
+	resolveProviderFormModelId,
 	resolveProviderGetKeyUrl,
+	resolveProviderModelSourceOptions,
 	type ProviderDescriptor,
 	type ProviderFieldDescriptor,
 } from "../provider-descriptors.js"
-import { activeProviderIds, getSelectableProviderDefinitions } from "../provider-registry.js"
+import { providerModelDefinitions } from "../provider-models.js"
+import { activeProviderIds, getProviderDefinition, getSelectableProviderDefinitions } from "../provider-registry.js"
 import type { ProviderSettings } from "../provider-settings.js"
 import { providerApiKeyFields } from "../provider-validation.js"
 
@@ -67,13 +72,33 @@ describe("PROVIDER_DESCRIPTORS", () => {
 
 	it("lists the generic-form providers", () => {
 		expect(getDescriptorFormProviderIds().sort()).toEqual([
+			"anthropic",
 			"deepseek",
 			"gemini",
 			"minimax",
+			"mistral",
 			"moonshot",
 			"xai",
 			"zai",
 		])
+	})
+
+	it("uses model rules only on providers whose model id comes from a static list", () => {
+		for (const [provider, descriptor] of entries) {
+			if (fieldsOf(descriptor).some((field) => field.visibleWhen)) {
+				const definition = providerModelDefinitions[provider]
+				expect("models" in definition && definition.modelIdField === "apiModelId", provider).toBe(true)
+			}
+		}
+	})
+
+	it("gives fetched-list request options only to providers with a fetched model list", () => {
+		for (const [provider, descriptor] of entries) {
+			if (descriptor.modelSourceOptions) {
+				const definition = getProviderDefinition(provider)
+				expect(definition && "modelSource" in definition && definition.modelSource, provider).toBeTruthy()
+			}
+		}
 	})
 
 	it("builds the Z.ai line options from zaiApiLineConfigs", () => {
@@ -105,6 +130,67 @@ describe("getProviderDescriptor", () => {
 		expect(getProviderDescriptor("groq")).toBeUndefined()
 		expect(getProviderDescriptor("toString")).toBeUndefined()
 		expect(getProviderDescriptor(undefined)).toBeUndefined()
+	})
+})
+
+describe("resolveProviderFormModelId", () => {
+	it("returns the configured id, or the provider default for an unset or empty id", () => {
+		expect(resolveProviderFormModelId("mistral", { apiModelId: "mistral-large-latest" })).toBe(
+			"mistral-large-latest",
+		)
+		expect(resolveProviderFormModelId("mistral", {})).toBe(providerModelDefinitions.mistral.defaultModelId)
+		expect(resolveProviderFormModelId("mistral", { apiModelId: "" })).toBe(
+			providerModelDefinitions.mistral.defaultModelId,
+		)
+	})
+
+	it("reads the provider's own model id field and handles providers without one", () => {
+		expect(resolveProviderFormModelId("ollama", { apiModelId: "a", ollamaModelId: "llama3" })).toBe("llama3")
+		expect(resolveProviderFormModelId("ollama", { apiModelId: "a" })).toBe("")
+		expect(resolveProviderFormModelId("vscode-lm", { apiModelId: "a" })).toBe(
+			providerModelDefinitions["vscode-lm"].defaultModelId,
+		)
+		expect(resolveProviderFormModelId("groq", { apiModelId: "a" })).toBe("")
+	})
+})
+
+describe("matchesProviderModelRule", () => {
+	it("matches a prefix or a list of ids", () => {
+		expect(matchesProviderModelRule({ modelIdStartsWith: "codestral-" }, "codestral-latest")).toBe(true)
+		expect(matchesProviderModelRule({ modelIdStartsWith: "codestral-" }, "my-codestral-latest")).toBe(false)
+		expect(matchesProviderModelRule({ modelIdIn: ["a", "b"] }, "b")).toBe(true)
+		expect(matchesProviderModelRule({ modelIdIn: ["a", "b"] }, "c")).toBe(false)
+	})
+})
+
+describe("getInFormModelPickerProviderIds", () => {
+	it("lists the providers whose form selects the model", () => {
+		expect(getInFormModelPickerProviderIds().sort()).toEqual([
+			"litellm",
+			"lmstudio",
+			"ollama",
+			"openai",
+			"openai-codex",
+			"openrouter",
+			"vscode-lm",
+		])
+	})
+})
+
+describe("resolveProviderModelSourceOptions", () => {
+	it("reads the keys the provider's row names and nothing for other providers", () => {
+		expect(
+			resolveProviderModelSourceOptions({
+				apiProvider: "openai",
+				openAiBaseUrl: "https://b",
+				openAiApiKey: "k",
+				openAiHeaders: { a: "b" },
+				ollamaBaseUrl: "https://o",
+			}),
+		).toStrictEqual({ baseUrl: "https://b", apiKey: "k", headers: { a: "b" } })
+		expect(resolveProviderModelSourceOptions({ apiProvider: "lmstudio" })).toStrictEqual({ baseUrl: undefined })
+		expect(resolveProviderModelSourceOptions({ apiProvider: "anthropic", apiKey: "k" })).toStrictEqual({})
+		expect(resolveProviderModelSourceOptions({})).toStrictEqual({})
 	})
 })
 
