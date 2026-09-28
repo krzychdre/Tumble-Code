@@ -3,7 +3,6 @@
 // visibility) have no component here: `ProviderDescriptorForm` renders them from their row in
 // PROVIDER_DESCRIPTORS (packages/types/src/provider-descriptors.ts).
 export { Bedrock } from "./Bedrock"
-export { LMStudio } from "./LMStudio"
 export { Ollama } from "./Ollama"
 export { OpenAICodex } from "./OpenAICodex"
 export { OpenAICompatible } from "./OpenAICompatible"

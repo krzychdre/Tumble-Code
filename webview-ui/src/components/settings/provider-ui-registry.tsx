@@ -14,7 +14,6 @@ import {
 
 import {
 	Bedrock,
-	LMStudio,
 	LiteLLM,
 	Ollama,
 	OpenAICompatible,
@@ -152,12 +151,6 @@ const customForms = {
 	)),
 	ollama: customForm("ollama", (context) => (
 		<Ollama
-			apiConfiguration={context.apiConfiguration}
-			setApiConfigurationField={context.setApiConfigurationField}
-		/>
-	)),
-	lmstudio: customForm("lmstudio", (context) => (
-		<LMStudio
 			apiConfiguration={context.apiConfiguration}
 			setApiConfigurationField={context.setApiConfigurationField}
 		/>

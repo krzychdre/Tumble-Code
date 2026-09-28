@@ -1,24 +1,33 @@
 import { useState } from "react"
+import { Trans } from "react-i18next"
 
 import {
 	type DescriptorFormProviderId,
 	type ModelInfo,
+	type ModelRecord,
 	type ProviderCheckboxFieldDescriptor,
+	type ProviderDescriptor,
+	type ProviderFetchedModelPickerFieldDescriptor,
 	type ProviderFieldDescriptor,
 	type ProviderModelTierSelectFieldDescriptor,
+	type ProviderNoteFieldDescriptor,
 	type ProviderOptionalUrlFieldDescriptor,
 	type ProviderSelectFieldDescriptor,
 	type ProviderSettings,
+	type ProviderTextFieldDescriptor,
 	type ProviderUrlFieldDescriptor,
 	PROVIDER_DESCRIPTORS,
-	matchesProviderModelRule,
+	matchesProviderFieldRule,
 	providerApiKeyFields,
 	resolveProviderFormModelId,
 	resolveProviderGetKeyUrl,
+	resolveProviderModelSourceOptions,
 } from "@roo-code/types"
 
 import { useAppTranslation } from "@src/i18n/TranslationContext"
+import { useProviderModels } from "@src/components/ui/hooks/useProviderModels"
 import {
+	Link,
 	Select,
 	SelectContent,
 	SelectItem,
@@ -31,52 +40,86 @@ import {
 } from "@src/components/ui"
 import { LabeledCheckbox } from "@src/components/ui/labeled-checkbox"
 
+import { ModelPicker } from "../ModelPicker"
 import { ApiKeyField, type ProviderFormProps, useProviderField } from "./shared"
+
+type ProviderDescriptorFormProps = ProviderFormProps & {
+	provider: DescriptorFormProviderId
+	/** The selected model's info as the settings resolve it (`useSelectedModel`); feeds `modelTierSelect`. */
+	selectedModelInfo?: ModelInfo
+}
+
+// Widened to the field union: a row's literal type only lists the kinds that row uses.
+const fieldsOf = (provider: DescriptorFormProviderId): readonly ProviderFieldDescriptor[] =>
+	PROVIDER_DESCRIPTORS[provider].form.fields
 
 /**
  * The settings form of every provider whose `PROVIDER_DESCRIPTORS` row lists its fields
  * (packages/types/src/provider-descriptors.ts). A provider that needs more than the field kinds
- * there (API key, endpoint choice, URL, optional base URL, checkbox, a choice among the selected
- * model's tiers, each optionally shown only for some models) keeps a hand-written component next
- * to this one.
+ * there (API key, endpoint choice, text and URL fields, optional base URL, checkbox, a choice
+ * among the selected model's tiers, a picker over the fetched model list, notes, each optionally
+ * shown only for some models or while another setting is set) keeps a hand-written component
+ * next to this one.
  */
-export const ProviderDescriptorForm = ({
+export const ProviderDescriptorForm = (props: ProviderDescriptorFormProps) =>
+	fieldsOf(props.provider).some((field) => field.kind === "fetchedModelPicker") ? (
+		// Keyed by provider: switching between two such providers mounts a fresh form, as it did
+		// when each had its own component.
+		<FetchedModelsForm key={props.provider} {...props} />
+	) : (
+		<DescriptorFields {...props} />
+	)
+
+/** Requests the provider's model list once for all of its `fetchedModelPicker` fields. */
+const FetchedModelsForm = (props: ProviderDescriptorFormProps) => {
+	const { models = {} } = useProviderModels(
+		props.provider,
+		resolveProviderModelSourceOptions({ ...props.apiConfiguration, apiProvider: props.provider }),
+	)
+
+	return <DescriptorFields {...props} fetchedModels={models} />
+}
+
+const DescriptorFields = ({
 	provider,
 	apiConfiguration,
 	setApiConfigurationField,
 	selectedModelInfo,
-}: ProviderFormProps & {
-	provider: DescriptorFormProviderId
-	/** The selected model's info as the settings resolve it (`useSelectedModel`); feeds `modelTierSelect`. */
-	selectedModelInfo?: ModelInfo
-}) => {
+	fetchedModels = {},
+}: ProviderDescriptorFormProps & { fetchedModels?: ModelRecord }) => {
 	const modelId = resolveProviderFormModelId(provider, apiConfiguration)
-	// Widened to the field union: a row's literal type only lists the kinds that row uses.
-	const fields: readonly ProviderFieldDescriptor[] = PROVIDER_DESCRIPTORS[provider].form.fields
+	const fields = fieldsOf(provider)
+	const descriptor: ProviderDescriptor = PROVIDER_DESCRIPTORS[provider]
 
 	return (
 		<>
 			{fields.map((field, index) => {
-				if (field.visibleWhen && !matchesProviderModelRule(field.visibleWhen, modelId)) {
+				if (field.visibleWhen && !matchesProviderFieldRule(field.visibleWhen, modelId, apiConfiguration)) {
 					return null
 				}
 
 				switch (field.kind) {
-					case "apiKey":
+					case "apiKey": {
+						// Never null here: the row type allows an apiKey field only where
+						// providerApiKeyFields names the key.
+						const apiKeyField = providerApiKeyFields[provider]
 						return (
-							<ApiKeyField
-								key={field.kind}
-								apiConfiguration={apiConfiguration}
-								setApiConfigurationField={setApiConfigurationField}
-								field={providerApiKeyFields[provider]}
-								labelKey={field.labelKey}
-								getKeyUrl={resolveProviderGetKeyUrl(field.getKeyUrl, apiConfiguration)}
-								getKeyLabelKey={field.getKeyLabelKey}
-								// Below another field the trio sits in its own group (see ApiKeyField),
-								// unless the row keeps the form flat.
-								grouped={index > 0 && field.grouped !== false}
-							/>
+							apiKeyField && (
+								<ApiKeyField
+									key={field.kind}
+									apiConfiguration={apiConfiguration}
+									setApiConfigurationField={setApiConfigurationField}
+									field={apiKeyField}
+									labelKey={field.labelKey}
+									getKeyUrl={resolveProviderGetKeyUrl(field.getKeyUrl, apiConfiguration)}
+									getKeyLabelKey={field.getKeyLabelKey}
+									// Below another field the trio sits in its own group (see ApiKeyField),
+									// unless the row keeps the form flat.
+									grouped={index > 0 && field.grouped !== false}
+								/>
+							)
 						)
+					}
 					case "select":
 						return (
 							<SelectField
@@ -123,6 +166,28 @@ export const ProviderDescriptorForm = ({
 								selectedModelInfo={selectedModelInfo}
 							/>
 						)
+					case "text":
+						return (
+							<TextField
+								key={field.key}
+								field={field}
+								apiConfiguration={apiConfiguration}
+								setApiConfigurationField={setApiConfigurationField}
+							/>
+						)
+					case "fetchedModelPicker":
+						return (
+							<FetchedModelPickerField
+								key={field.key}
+								field={field}
+								apiConfiguration={apiConfiguration}
+								setApiConfigurationField={setApiConfigurationField}
+								models={fetchedModels}
+								service={descriptor.service}
+							/>
+						)
+					case "note":
+						return <NoteField key={`note-${index}`} field={field} />
 				}
 			})}
 		</>
@@ -190,8 +255,8 @@ const CheckboxField = ({
 }: ProviderFormProps & { field: ProviderCheckboxFieldDescriptor }) => {
 	const { t } = useAppTranslation()
 
-	return (
-		<div>
+	const controls = (
+		<>
 			<LabeledCheckbox
 				checked={apiConfiguration[field.key] ?? false}
 				onCheckedChange={(checked: boolean) => setApiConfigurationField(field.key, checked)}>
@@ -200,6 +265,88 @@ const CheckboxField = ({
 			{field.descriptionKey && (
 				<div className="text-sm text-vscode-descriptionForeground mt-1 ml-6">{t(field.descriptionKey)}</div>
 			)}
+		</>
+	)
+
+	return field.grouped === false ? controls : <div>{controls}</div>
+}
+
+const TextField = ({
+	field,
+	apiConfiguration,
+	setApiConfigurationField,
+}: ProviderFormProps & { field: ProviderTextFieldDescriptor }) => {
+	const { t } = useAppTranslation()
+	const handleInputChange = useProviderField(setApiConfigurationField)
+
+	return (
+		<ThemedTextField
+			value={apiConfiguration[field.key] || ""}
+			type={field.inputType}
+			onInput={handleInputChange(field.key)}
+			placeholder={field.placeholderKey ? t(field.placeholderKey) : field.placeholder}
+			className="w-full">
+			<label className="block font-medium mb-1">{t(field.labelKey)}</label>
+			{field.helpKey && <div className="text-xs text-vscode-descriptionForeground mt-1">{t(field.helpKey)}</div>}
+		</ThemedTextField>
+	)
+}
+
+const FetchedModelPickerField = ({
+	field,
+	apiConfiguration,
+	setApiConfigurationField,
+	models,
+	service,
+}: ProviderFormProps & {
+	field: ProviderFetchedModelPickerFieldDescriptor
+	models: ModelRecord
+	service: ProviderDescriptor["service"]
+}) => {
+	const { t } = useAppTranslation()
+	const configured = apiConfiguration[field.key]
+	// A configured model the server does not list; nothing is flagged until a list arrived.
+	const notAvailable = !!configured && Object.keys(models).length > 0 && !(configured in models)
+
+	return (
+		<ModelPicker
+			apiConfiguration={apiConfiguration}
+			setApiConfigurationField={setApiConfigurationField}
+			defaultModelId=""
+			models={models}
+			modelIdKey={field.key}
+			serviceName={service?.name ?? ""}
+			serviceUrl={service?.url ?? ""}
+			label={field.labelKey ? t(field.labelKey) : undefined}
+			errorMessage={
+				notAvailable ? t("settings:validation.modelAvailability", { modelId: configured }) : undefined
+			}
+			hidePricing={field.hidePricing}
+		/>
+	)
+}
+
+const NoteField = ({ field }: { field: ProviderNoteFieldDescriptor }) => {
+	const { t } = useAppTranslation()
+
+	if (!field.links && !field.warningTag) {
+		return <div className="text-sm text-vscode-descriptionForeground">{t(field.textKey)}</div>
+	}
+
+	const components: Record<string, React.ReactElement> = Object.fromEntries(
+		Object.entries(field.links ?? {}).map(([tag, href]) => [tag, <Link key={tag} href={href} />]),
+	)
+	if (field.warningTag) {
+		components[field.warningTag] = (
+			<span className="text-vscode-errorForeground ml-1">
+				<span className="font-medium">Note:</span>
+			</span>
+		)
+	}
+
+	return (
+		<div className="text-sm text-vscode-descriptionForeground">
+			<Trans i18nKey={field.textKey} components={components} />
 		</div>
 	)
 }
