@@ -308,8 +308,8 @@ describe("WebAuthService", () => {
 				throw new Error("Crypto error")
 			})
 
-			await expect(authService.login()).rejects.toThrow("Failed to initiate Roo Code Cloud authentication")
-			expect(mockLog).toHaveBeenCalledWith("[auth] Error initiating Roo Code Cloud auth: Error: Crypto error")
+			await expect(authService.login()).rejects.toThrow("Failed to initiate Tumble Code Cloud authentication")
+			expect(mockLog).toHaveBeenCalledWith("[auth] Error initiating Tumble Code Cloud auth: Error: Crypto error")
 		})
 	})
 
@@ -334,7 +334,7 @@ describe("WebAuthService", () => {
 			mockContext.globalState.get.mockReturnValue("stored-state")
 
 			await expect(authService.handleCallback("code", "different-state")).rejects.toThrow(
-				"Failed to handle Roo Code Cloud callback",
+				"Failed to handle Tumble Code Cloud callback",
 			)
 			expect(mockLog).toHaveBeenCalledWith("[auth] State mismatch in callback")
 		})
@@ -443,7 +443,7 @@ describe("WebAuthService", () => {
 			authService.on("auth-state-changed", authStateChangedSpy)
 
 			await expect(authService.handleCallback("auth-code", storedState)).rejects.toThrow(
-				"Failed to handle Roo Code Cloud callback",
+				"Failed to handle Tumble Code Cloud callback",
 			)
 			expect(authStateChangedSpy).toHaveBeenCalled()
 		})
@@ -1127,7 +1127,7 @@ describe("WebAuthService", () => {
 			})
 
 			await expect(authService.handleCallback("auth-code", storedState)).rejects.toThrow(
-				"Failed to handle Roo Code Cloud callback",
+				"Failed to handle Tumble Code Cloud callback",
 			)
 		})
 	})

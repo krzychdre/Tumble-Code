@@ -93,7 +93,7 @@ describe("OpenRouterEmbedder", () => {
 				apiKey: mockApiKey,
 				defaultHeaders: {
 					"HTTP-Referer": "https://github.com/RooCodeInc/Roo-Code",
-					"X-Title": "Roo Code",
+					"X-Title": "Tumble Code",
 				},
 			})
 		})

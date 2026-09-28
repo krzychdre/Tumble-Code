@@ -252,7 +252,7 @@ def test_sign_in_routes_refuse_a_foreign_redirect_with_the_error_page(client, ro
     resp = client.get(route, params={"state": "st", "auth_redirect": "https://evil.example"})
     assert resp.status_code == 400
     page = _parse(resp.text)
-    assert page.title == "Roo Code - Authentication Error"
+    assert page.title == "Tumble Code - Authentication Error"
     assert page.paragraphs == [
         "Invalid sign-in request.",
         "The sign-in link does not return to an editor. Start the sign-in again from the extension.",
@@ -355,9 +355,9 @@ def test_success_page_sends_the_browser_to_exactly_the_url(url):
     body = _auth_success_html(url)
     assert body.startswith("<!DOCTYPE html>")
     page = _parse(body)
-    assert page.title == "Roo Code - Authentication Successful"
+    assert page.title == "Tumble Code - Authentication Successful"
     assert page.h1 == "Authentication Successful"
-    assert page.paragraphs == ["You have successfully signed in to Roo Code.Returning to VS Code..."]
+    assert page.paragraphs == ["You have successfully signed in to Tumble Code.Returning to VS Code..."]
     assert page.links == [url]
     assert page.link_texts == ["Return to VS Code manually"]
     assert len(page.scripts) == 1
@@ -382,7 +382,7 @@ def test_error_page_shows_the_reason_and_the_detail_as_text(reason, detail):
     body = _auth_error_html(reason, detail) if detail else _auth_error_html(reason)
     assert body.startswith("<!DOCTYPE html>")
     page = _parse(body)
-    assert page.title == "Roo Code - Authentication Error"
+    assert page.title == "Tumble Code - Authentication Error"
     assert page.h1 == "Authentication Failed"
     assert page.paragraphs == [reason, detail]
     assert page.links == ["javascript:window.close()"]
