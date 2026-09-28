@@ -9,31 +9,15 @@
 import type * as Types from "../index.js"
 import * as runtime from "../index.js"
 
-/** Every type the channel module exported before it was split by domain. */
+/**
+ * Every type the channel module exported before it was split by domain, minus the
+ * deprecated pre-S7 group aliases deleted on 2026-09-28.
+ */
 type ChannelTypeExports = [
 	Types.ExtensionMessage,
 	Types.WebviewMessage,
 	Types.ExtensionMessageType,
 	Types.WebviewMessageType,
-	Types.ExtensionTaskMessageType,
-	Types.ExtensionUiMessageType,
-	Types.ExtensionModesMessageType,
-	Types.ExtensionProviderMessageType,
-	Types.ExtensionMcpMessageType,
-	Types.ExtensionCodeIndexMessageType,
-	Types.ExtensionMarketplaceMessageType,
-	Types.ExtensionWorktreeMessageType,
-	Types.ExtensionPlanReviewMessageType,
-	Types.WebviewTaskMessageType,
-	Types.WebviewUiMessageType,
-	Types.WebviewSettingsMessageType,
-	Types.WebviewProviderMessageType,
-	Types.WebviewModesMessageType,
-	Types.WebviewMcpMessageType,
-	Types.WebviewCodeIndexMessageType,
-	Types.WebviewMarketplaceMessageType,
-	Types.WebviewWorktreeMessageType,
-	Types.WebviewPlanReviewMessageType,
 	Types.OpenAiCodexRateLimitsMessage,
 	Types.ExtensionState,
 	Types.Command,
@@ -214,9 +198,59 @@ type ExpectedWebviewMessageField =
 	| "worktreeIncludeContent"
 	| "planReview"
 
+/**
+ * The deprecated pre-S7 group aliases (legacy-groups.ts) were deleted on
+ * 2026-09-28 (ai_plans/2026-09-28_delete-legacy-message-groups.md). Each line
+ * must be a type error; tsc fails with TS2578 if one of them is exported again.
+ */
+type RemovedLegacyGroupExports = [
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionTaskMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionUiMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionModesMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionProviderMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionMcpMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionCodeIndexMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionMarketplaceMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionWorktreeMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.ExtensionPlanReviewMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewTaskMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewUiMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewSettingsMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewProviderMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewModesMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewMcpMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewCodeIndexMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewMarketplaceMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewWorktreeMessageType,
+	// @ts-expect-error deleted with legacy-groups.ts
+	Types.WebviewPlanReviewMessageType,
+]
+
 describe("extension host channel public surface", () => {
 	it("every channel type is still exported from the package entry", () => {
 		expectTypeOf<ChannelTypeExports>().not.toBeNever()
+	})
+
+	it("the deprecated pre-S7 group aliases are no longer exported", () => {
+		expectTypeOf<RemovedLegacyGroupExports>().not.toBeNever()
 	})
 
 	it("ExtensionMessage keeps exactly its fields", () => {
