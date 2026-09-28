@@ -35,6 +35,7 @@ vi.mock("@/commands/auth/openai-codex.js", () => ({
 // Capture what the extension host is constructed with, without booting the
 // real extension bundle.
 const mockHost = vi.hoisted(() => ({
+	runTaskError: undefined as Error | undefined,
 	lastOptions: undefined as
 		| undefined
 		| {
@@ -62,7 +63,11 @@ vi.mock("@/agent/index.js", () => {
 		}
 
 		async activate(): Promise<void> {}
-		async runTask(): Promise<void> {}
+		async runTask(): Promise<void> {
+			if (mockHost.runTaskError) {
+				throw mockHost.runTaskError
+			}
+		}
 		async resumeTask(): Promise<void> {}
 		async dispose(): Promise<void> {}
 	}
@@ -167,14 +172,17 @@ describe("run provider requirements shared with the settings UI", () => {
 		expect(exitSpy.mock.calls[0]?.[0]).not.toBe(1)
 	}
 
-	it.each(["ollama", "lmstudio", "openai"] as const)("%s without a model stops with a model error", async (provider) => {
-		await expect(run("hello", baseFlags({ provider, baseUrl: "http://localhost:1234/v1" }))).rejects.toBe(
-			exitError,
-		)
+	it.each(["ollama", "lmstudio", "openai"] as const)(
+		"%s without a model stops with a model error",
+		async (provider) => {
+			await expect(run("hello", baseFlags({ provider, baseUrl: "http://localhost:1234/v1" }))).rejects.toBe(
+				exitError,
+			)
 
-		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining(`No model given for ${provider}`))
-		expect(mockHost.lastOptions).toBeUndefined()
-	})
+			expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining(`No model given for ${provider}`))
+			expect(mockHost.lastOptions).toBeUndefined()
+		},
+	)
 
 	it("ollama passes an API key on to its settings", async () => {
 		await runToEnd({ provider: "ollama", model: "qwen3", apiKey: "ollama-key" })
@@ -1169,5 +1177,48 @@ describe("run clears the screen when the interactive UI starts", () => {
 		await run("hello", baseFlags({ print: true }))
 
 		expect(writeSpy).not.toHaveBeenCalledWith(CLEAR_SCREEN)
+	})
+})
+
+describe("run reports a failed print run on stderr with the debug log hint", () => {
+	let tempDir: string
+
+	beforeEach(() => {
+		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cli-run-crash-test-"))
+		mockGetConfigDir.mockReturnValue(tempDir)
+	})
+
+	afterEach(() => {
+		mockHost.runTaskError = undefined
+		vi.restoreAllMocks()
+		mockGetConfigDir.mockReset()
+		fs.rmSync(tempDir, { recursive: true, force: true })
+	})
+
+	// While the extension host is alive, console.error goes into the debug log
+	// (extension-host.ts setupQuietMode), so the report must go straight to
+	// process.stderr to reach the terminal of a run without --debug.
+	it("writes the error and the --debug hint with process.stderr.write, not console.error", async () => {
+		mockHost.runTaskError = new Error("task loop exploded")
+		const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
+		vi.spyOn(process.stdout, "write").mockImplementation(((
+			_chunk: unknown,
+			encodingOrCallback?: unknown,
+			callback?: unknown,
+		) => {
+			const done = typeof encodingOrCallback === "function" ? encodingOrCallback : callback
+			;(done as (() => void) | undefined)?.()
+			return true
+		}) as typeof process.stdout.write)
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as unknown as typeof process.exit)
+		await saveSettings({ provider: "openrouter" })
+
+		await run("hello", baseFlags({ print: true }))
+
+		const written = stderrSpy.mock.calls.map(([chunk]) => String(chunk)).join("")
+		expect(written).toContain("task loop exploded")
+		expect(written).toContain("--debug")
+		expect(written).toContain("cli-debug.log")
+		expect(exitSpy).toHaveBeenCalledWith(1)
 	})
 })

@@ -24,6 +24,14 @@ const DEBUG_LOG_PATH = path.join(os.homedir(), ".roo", "cli-debug.log")
 let debugLogEnabled = false
 
 /**
+ * Where the debug log lives. The CLI names it in its crash report, so the
+ * user knows which file to attach (or that --debug would have written it).
+ */
+export function getDebugLogPath(): string {
+	return DEBUG_LOG_PATH
+}
+
+/**
  * Enable or disable file-based debug logging.
  * Logging is disabled by default and should only be enabled in dev/debug mode.
  */
