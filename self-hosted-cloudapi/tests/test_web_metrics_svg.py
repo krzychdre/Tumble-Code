@@ -105,7 +105,7 @@ async def test_ranked_bars_fold_the_tail_and_escape_names(client, session_factor
     # The eight biggest, then everything else as one row.
     assert len(labels) == 9 and labels[0] == "<script>alert(1)</script>"
     assert labels[-1] == "4 others"
-    widths = [float(w) for w in re.findall(r'<rect class="chart-bar[^"]*"[^>]*width="([\d.]+)"', models)]
+    widths = [float(w) for w in re.findall(r'<rect class="chart-bar[^"]*"[^>]*width="([\d.]+)%"', models)]
     assert widths[0] == max(widths)
     assert widths[1] < widths[0]
 

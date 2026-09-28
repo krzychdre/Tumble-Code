@@ -4,7 +4,7 @@
  * The server renders the same figures first (src/utils/format.py) and the
  * scripts rewrite some of them live, so the two must agree to the character:
  * tests/test_format_golden.py checks one table of inputs and expected strings
- * against both. Load this before render.js, live.js and metrics.js.
+ * against both. Load this before render.js, live.js and timeline.js.
  */
 ;(function () {
 	"use strict"

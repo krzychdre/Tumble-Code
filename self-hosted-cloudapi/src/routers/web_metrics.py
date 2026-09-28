@@ -8,7 +8,7 @@ from src.auth.web_session import WebUser, require_web_user
 from src.database import get_db
 from src.services.metrics_service import DEFAULT_PERIOD, PERIOD_LABELS, compute_user_metrics
 from src.services.quality_overview import quality_overview
-from src.utils.json_script import json_for_script
+from src.web.presenters.charts import metrics_charts
 from src.web.templating import templates
 
 router = APIRouter(tags=["web"])
@@ -41,6 +41,7 @@ async def metrics_page(
             "metrics": metrics,
             "quality": quality,
             "periods": periods,
-            "chart_json": json_for_script(metrics["chart"]),
+            # Server-rendered SVG geometry (web/presenters/charts.py).
+            "charts": metrics_charts(metrics),
         },
     )

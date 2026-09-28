@@ -121,7 +121,7 @@ app = FastAPI(
 # Innermost, so it sees each response exactly as the app produced it: the
 # BaseHTTPMiddleware layers above re-stream a body in chunks, and outside them
 # GZip would compress even a 30-byte /health answer. Every response the client
-# accepts gzip for leaves compressed: Chart.js goes from 290 KB to 82 KB,
+# accepts gzip for leaves compressed: socket.io from 67 KB to 17 KB,
 # app.css from 58 KB to 14 KB, pages and JSON alike. Bodies under 1 KB stay plain
 # (not worth the CPU). Starlette skips text/event-stream and anything already
 # carrying a Content-Encoding, which covers the socket.io bridge's own

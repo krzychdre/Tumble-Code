@@ -78,16 +78,6 @@
 
 	/* Categorical hues for charts with many series (models, modes). Ordered so
 	   adjacent slices never sit on neighbouring hues. */
-	--cat-1: #6cc4f5;
-	--cat-2: #a78bfa;
-	--cat-3: #4ec9a0;
-	--cat-4: #e9a33a;
-	--cat-5: #f2777a;
-	--cat-6: #6a9bf4;
-	--cat-7: #d6b4fc;
-	--cat-8: #8fd6bd;
-	--cat-9: #f5b855;
-	--cat-10: #93b7f7;
 
 	/* The drop shadow of a floating bar. */
 	--shadow-lift: 0 6px 24px rgba(0, 0, 0, 0.45);
@@ -179,17 +169,6 @@
 		--d-cache-ink: #ffffff;
 		--d-cache-bright: #13624a;
 
-		--cat-1: #0a6c9e;
-		--cat-2: #6a45cc;
-		--cat-3: #18765a;
-		--cat-4: #9a5b00;
-		--cat-5: #b8323a;
-		--cat-6: #2c5fc4;
-		--cat-7: #9c5fd0;
-		--cat-8: #3e8f76;
-		--cat-9: #b87400;
-		--cat-10: #5a82d6;
-
 		--shadow-lift: 0 6px 24px rgba(0, 0, 0, 0.12);
 	}
 }
@@ -232,17 +211,6 @@
 	--d-error-bright: #9e2a31;
 	--d-cache-ink: #ffffff;
 	--d-cache-bright: #13624a;
-
-	--cat-1: #0a6c9e;
-	--cat-2: #6a45cc;
-	--cat-3: #18765a;
-	--cat-4: #9a5b00;
-	--cat-5: #b8323a;
-	--cat-6: #2c5fc4;
-	--cat-7: #9c5fd0;
-	--cat-8: #3e8f76;
-	--cat-9: #b87400;
-	--cat-10: #5a82d6;
 
 	--shadow-lift: 0 6px 24px rgba(0, 0, 0, 0.12);
 }
@@ -2760,9 +2728,93 @@ details.env-details > pre {
 .chart-title {
 	margin: 0 0 var(--s3);
 }
-.chart-box {
-	position: relative;
-	height: 240px;
+/* --- charts: inline SVG from web/presenters/charts.py -------------------------
+   Every mark is coloured here, from the tokens, so the charts follow the
+   theme and print; the markup carries geometry only. */
+.chart-daily-pair {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s2);
+}
+.chart-row {
+	display: grid;
+	grid-template-columns: 9rem minmax(0, 1fr);
+	align-items: end;
+	gap: var(--s3);
+}
+.chart-row-label,
+.chart-days {
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text-faint);
+}
+.chart-row-label b {
+	color: var(--text);
+	font-weight: 550;
+}
+.chart-days {
+	display: flex;
+	justify-content: space-between;
+	margin-left: calc(9rem + var(--s3));
+}
+.chart-svg {
+	display: block;
+	width: 100%;
+}
+.chart-daily {
+	height: 88px;
+}
+.chart-ranked {
+	height: auto;
+	font-family: var(--mono);
+}
+.chart-bar-tokens {
+	fill: var(--d-in);
+}
+.chart-bar-rank {
+	fill: var(--d-in);
+}
+.chart-bar-cost {
+	fill: var(--d-cost);
+}
+.chart-hit {
+	fill: transparent;
+}
+.chart-mark:hover .chart-hit {
+	fill: var(--line);
+}
+.chart-axis {
+	stroke: var(--line-strong);
+	stroke-width: 1;
+}
+.chart-label {
+	fill: var(--text-dim);
+	font-size: var(--t-micro);
+}
+.chart-value {
+	fill: var(--text-faint);
+	font-size: var(--t-micro);
+}
+.chart-table {
+	margin-top: var(--s3);
+}
+.chart-table > summary {
+	cursor: pointer;
+	font-family: var(--mono);
+	font-size: var(--t-micro);
+	color: var(--text-faint);
+}
+.chart-table > summary:hover {
+	color: var(--text);
+}
+@media (max-width: 640px) {
+	.chart-row {
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--s1);
+	}
+	.chart-days {
+		margin-left: 0;
+	}
 }
 
 .breakdown-grid {
