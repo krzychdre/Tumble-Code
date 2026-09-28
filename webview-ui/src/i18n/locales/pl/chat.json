@@ -485,7 +485,8 @@
 		"noResults": "Brak wyników",
 		"problems": "Problemy",
 		"terminal": "Terminal",
-		"url": "Wklej adres URL, aby pobrać zawartość"
+		"url": "Wklej adres URL, aby pobrać zawartość",
+		"menuLabel": "Menu kontekstowe"
 	},
 	"queuedMessages": {
 		"title": "Wiadomości w kolejce",
@@ -557,5 +558,8 @@
 	},
 	"searchTaskHistory": {
 		"title": "Tumble przeszukał historię tego zadania"
-	}
+	},
+	"composerHint": "{{key}} wyślij · Shift+Enter nowa linia · @ wzmianka · / komenda",
+	"thumbnailAlt": "Miniatura {{index}}",
+	"removeImage": "Usuń obraz {{index}}"
 }

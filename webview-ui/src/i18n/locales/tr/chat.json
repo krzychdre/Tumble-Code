@@ -456,7 +456,8 @@
 		"noResults": "Sonuç yok",
 		"problems": "Sorunlar",
 		"terminal": "Terminal",
-		"url": "İçeriği getirmek için URL'yi yapıştırın"
+		"url": "İçeriği getirmek için URL'yi yapıştırın",
+		"menuLabel": "Bağlam menüsü"
 	},
 	"queuedMessages": {
 		"title": "Sıradaki Mesajlar",
@@ -544,5 +545,8 @@
 		"recalling": "Bellek geri çağrılıyor…",
 		"writing": "Bellek yazılıyor…",
 		"both": "Bellek geri çağrılıyor ve yazılıyor…"
-	}
+	},
+	"composerHint": "{{key}} gönder · Shift+Enter yeni satır · @ bahsetme · / komut",
+	"thumbnailAlt": "Küçük resim {{index}}",
+	"removeImage": "Görseli kaldır {{index}}"
 }

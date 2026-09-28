@@ -456,7 +456,8 @@
 		"noResults": "Không có kết quả",
 		"problems": "Vấn đề",
 		"terminal": "Terminal",
-		"url": "Dán URL để lấy nội dung"
+		"url": "Dán URL để lấy nội dung",
+		"menuLabel": "Menu ngữ cảnh"
 	},
 	"queuedMessages": {
 		"title": "Tin nhắn trong hàng đợi",
@@ -544,5 +545,8 @@
 		"recalling": "Đang gọi lại bộ nhớ…",
 		"writing": "Đang ghi bộ nhớ…",
 		"both": "Đang gọi lại và ghi bộ nhớ…"
-	}
+	},
+	"composerHint": "{{key}} gửi · Shift+Enter dòng mới · @ nhắc đến · / lệnh",
+	"thumbnailAlt": "Hình thu nhỏ {{index}}",
+	"removeImage": "Xóa hình ảnh {{index}}"
 }
