@@ -38,9 +38,10 @@ to `providerConfigSchemas` instead, as a second typed record:
 Generated from the two tables, in `providerConfigSchemas` key order (the order every hand-written list used):
 
 - `knownProviderConfigurationSchema`: one `{ providerId: literal, config }` arm per provider.
-- `providerSettingsSchemaDiscriminated`: per provider `{ ...base shape, ...config shape, ...credentials,
-apiProvider: literal }` (the same key order `baseProviderSettingsSchema.extend(config).extend(credentials)
-.merge({ apiProvider })` produced), then the unchanged `apiProvider: undefined` arm.
+- `providerSettingsSchemaDiscriminated`: per provider an object of the base shape, the config shape, the
+  credentials and the `apiProvider` literal, in that key order (the order the former
+  `extend(config).extend(credentials).merge(apiProvider)` chain produced), then the unchanged
+  `apiProvider: undefined` arm.
 - `providerSettingsSchema` (the flat schema): `apiProvider`, then `Object.assign({}, ...arm shapes)`, then the
   codebase-index shape. Spreading the arms into one object keeps each key at its first occurrence and the last
   schema for it, exactly like the former literal list of spreads. Its type is the intersection of the arm shapes
